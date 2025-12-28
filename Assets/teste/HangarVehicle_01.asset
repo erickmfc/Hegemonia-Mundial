@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: HangarVehicle_01
+  m_EditorClassIdentifier: 
+  nomeItem: Base de Veiculos
+  descricao: Hangar avancado para producao e manutencao de veiculos pesados.
+  icone: {fileID: 21300000, guid: 2a877839557c34c469256d2b6decfac7, type: 3}
+  prefabDaUnidade: {fileID: 7213140222438100777, guid: 3400c82bc731b6e41ac8bdaf38724b1d, type: 3}
+  preco: 2000
+  categoria: 1
