@@ -114,10 +114,33 @@ public class CriarBarraDeVida : MonoBehaviour
         fillRect.offsetMin = new Vector2(2, 2);
         fillRect.offsetMax = new Vector2(-2, -2);
         
-        // 7. Adiciona o script BarraDeVida
+        // 7. Cria o texto de vida (acima da barra)
+        GameObject textoObj = new GameObject("TextoVida");
+        textoObj.transform.SetParent(barraObj.transform);
+        
+        Text textoVida = textoObj.AddComponent<Text>();
+        textoVida.text = "100/100";
+        textoVida.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        textoVida.fontSize = 14;
+        textoVida.alignment = TextAnchor.MiddleCenter;
+        textoVida.color = Color.white;
+        
+        // Adiciona sombra para melhor leitura
+        Shadow sombra = textoObj.AddComponent<Shadow>();
+        sombra.effectColor = Color.black;
+        sombra.effectDistance = new Vector2(1, -1);
+        
+        RectTransform textoRect = textoObj.GetComponent<RectTransform>();
+        textoRect.anchorMin = new Vector2(0, 0.5f);
+        textoRect.anchorMax = new Vector2(1, 1.5f);
+        textoRect.offsetMin = Vector2.zero;
+        textoRect.offsetMax = Vector2.zero;
+        
+        // 8. Adiciona o script BarraDeVida
         BarraDeVida scriptBarra = barraObj.AddComponent<BarraDeVida>();
         scriptBarra.canvasBarra = canvas;
         scriptBarra.imagemPreenchimento = fillImage;
+        scriptBarra.textoVidaLegacy = textoVida; // Usa Text padrão
         scriptBarra.scriptVida = GetComponent<Vida>();
         
         return barraObj;

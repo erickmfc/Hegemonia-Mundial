@@ -159,7 +159,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projetil
   velocidade: 7
-  dano: 1
+  dano: 5
   tempoDeVida: 2
   efeitoExplosao: {fileID: 0}
   mostrarDebug: 1

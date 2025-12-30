@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro; // Para TextMeshPro
 
 /// <summary>
 /// Barra de vida visual que fica em cima da cabeça das unidades (World Space UI)
@@ -12,6 +13,12 @@ public class BarraDeVida : MonoBehaviour
     
     [Tooltip("A imagem de preenchimento da barra (Image com Fill Amount)")]
     public Image imagemPreenchimento;
+    
+    [Tooltip("Texto que mostra os números de vida (opcional)")]
+    public TextMeshProUGUI textoVida;
+    
+    [Tooltip("Caso não use TextMeshPro, pode usar Text padrão")]
+    public Text textoVidaLegacy;
     
     [Tooltip("Canvas que contém a barra")]
     public Canvas canvasBarra;
@@ -156,6 +163,9 @@ public class BarraDeVida : MonoBehaviour
             imagemPreenchimento.color = corVidaBaixa;
         }
         
+        // Atualiza o texto de vida (se existir)
+        AtualizarTextoVida();
+        
         // Esconde a barra se a vida estiver cheia (opcional)
         if (esconderSeVidaCheia && canvasBarra != null)
         {
@@ -169,6 +179,24 @@ public class BarraDeVida : MonoBehaviour
             {
                 canvasBarra.enabled = false;
             }
+        }
+    }
+    
+    void AtualizarTextoVida()
+    {
+        // Formato: "80/100"
+        string textoHP = $"{scriptVida.vidaAtual}/{scriptVida.vidaMaxima}";
+        
+        // Atualiza TextMeshPro se existir
+        if (textoVida != null)
+        {
+            textoVida.text = textoHP;
+        }
+        
+        // Ou atualiza Text padrão se existir
+        if (textoVidaLegacy != null)
+        {
+            textoVidaLegacy.text = textoHP;
         }
     }
 }

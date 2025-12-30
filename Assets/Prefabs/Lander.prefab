@@ -813,6 +813,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 534916325478024271}
+  - component: {fileID: -6393788796559108787}
+  - component: {fileID: -93985643297332602}
   m_Layer: 0
   m_Name: Lander
   m_TagString: Inimigo
@@ -836,6 +838,39 @@ Transform:
   - {fileID: 1949220553658807382}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-6393788796559108787
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6793208548603132257}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4de8bb8afc3a2bc479f518685bc41eba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Vida
+  vidaMaxima: 100
+  vidaAtual: 0
+  efeitoDano: {fileID: 0}
+  efeitoMorte: {fileID: 0}
+  tempoAteDestruir: 2
+  desativarColliderAoMorrer: 1
+--- !u!114 &-93985643297332602
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6793208548603132257}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76050b7fd91b6a7428ea7cbabceb249f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CriarBarraDeVida
+  altura: 2.5
+  criarAutomaticamente: 1
+  prefabBarraPersonalizada: {fileID: 0}
 --- !u!1 &7174088392788750771
 GameObject:
   m_ObjectHideFlags: 0

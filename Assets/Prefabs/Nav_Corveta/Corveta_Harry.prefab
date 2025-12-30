@@ -262,7 +262,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8672180954570090896, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
       propertyPath: m_Name
-      value: Corveta_01 Variant
+      value: Corveta_Harry
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -276,7 +276,13 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5707549902247036885, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
       insertIndex: 0
       addedObject: {fileID: 6178102707819315901}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8672180954570090896, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3264593070338787110}
+    - targetCorrespondingSourceObject: {fileID: 8672180954570090896, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -1471942157314440906}
   m_SourcePrefab: {fileID: 100100000, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
 --- !u!4 &1827454147123030364 stripped
 Transform:
@@ -288,6 +294,44 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5748121664860133533, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
   m_PrefabInstance: {fileID: 6226545035045056137}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &3328414222254851865 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8672180954570090896, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
+  m_PrefabInstance: {fileID: 6226545035045056137}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3264593070338787110
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3328414222254851865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4de8bb8afc3a2bc479f518685bc41eba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Vida
+  vidaMaxima: 100
+  vidaAtual: 0
+  efeitoDano: {fileID: 0}
+  efeitoMorte: {fileID: 0}
+  tempoAteDestruir: 2
+  desativarColliderAoMorrer: 1
+--- !u!114 &-1471942157314440906
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3328414222254851865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76050b7fd91b6a7428ea7cbabceb249f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CriarBarraDeVida
+  altura: 2.5
+  criarAutomaticamente: 1
+  prefabBarraPersonalizada: {fileID: 0}
 --- !u!4 &4040802754107415295 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7960940317155996790, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}

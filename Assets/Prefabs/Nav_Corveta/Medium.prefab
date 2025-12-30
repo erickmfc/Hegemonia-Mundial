@@ -9773,5 +9773,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MissilTeleguiado
   velocidade: 50
-  dano: 5
+  dano: 20
   distanciaDeImpacto: 2
