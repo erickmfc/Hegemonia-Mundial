@@ -138,12 +138,16 @@ public class ControleTorreta : MonoBehaviour
             
             // Cria a bala
             GameObject bala = Instantiate(municaoPrefab, barrilDaVez.position, barrilDaVez.rotation);
-            MissilTeleguiado scriptBala = bala.GetComponent<MissilTeleguiado>();
             
-            if (scriptBala != null)
+            // CORREÇÃO: Usa Projetil ao invés de MissilTeleguiado (tiro em linha reta)
+            Projetil scriptBala = bala.GetComponent<Projetil>();
+            
+            if (scriptBala != null && alvoAtual != null)
             {
-                scriptBala.DefinirAlvo(alvoAtual);
-                scriptBala.velocidade = 130f; 
+                // Calcula direção FIXA do tiro (balístico, não rastreador)
+                Vector3 direcao = (alvoAtual.position - barrilDaVez.position).normalized;
+                scriptBala.SetDirecao(direcao);
+                scriptBala.velocidade = 200f; // Tiro de metralhadora é rápido
             }
 
             if (somTiro != null) fonteAudio.PlayOneShot(somTiro);
