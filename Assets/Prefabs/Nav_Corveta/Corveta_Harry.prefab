@@ -66,7 +66,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3096068962966928352, guid: 8581ba07ea958764d974012d27a2b4c3, type: 3}
       propertyPath: alcance
-      value: 130
+      value: 220
       objectReference: {fileID: 0}
     - target: {fileID: 3096068962966928352, guid: 8581ba07ea958764d974012d27a2b4c3, type: 3}
       propertyPath: tempoRecarga
@@ -156,7 +156,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3096068962966928352, guid: 8581ba07ea958764d974012d27a2b4c3, type: 3}
       propertyPath: alcance
-      value: 120
+      value: 220
       objectReference: {fileID: 0}
     - target: {fileID: 3096068962966928352, guid: 8581ba07ea958764d974012d27a2b4c3, type: 3}
       propertyPath: tempoRecarga
@@ -189,6 +189,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 3355573304112704897, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
+      propertyPath: alcance
+      value: 190
+      objectReference: {fileID: 0}
+    - target: {fileID: 3355573304112704897, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
       propertyPath: etiquetaAlvo
       value: Inimigo
       objectReference: {fileID: 0}
@@ -200,6 +204,10 @@ PrefabInstance:
       propertyPath: 'locaisDoTiro.Array.data[0]'
       value: 
       objectReference: {fileID: 5939822326719651362}
+    - target: {fileID: 7301275355502265783, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
+      propertyPath: alcance
+      value: 200
+      objectReference: {fileID: 0}
     - target: {fileID: 7301275355502265783, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
       propertyPath: etiquetaAlvo
       value: Inimigo
@@ -300,15 +308,23 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -3122543749085965987, guid: d01d237123600e843ac16646c1d8982e, type: 3}
       propertyPath: alcance
-      value: 170
+      value: 190
       objectReference: {fileID: 0}
+    - target: {fileID: -3122543749085965987, guid: d01d237123600e843ac16646c1d8982e, type: 3}
+      propertyPath: somDisparo
+      value: 
+      objectReference: {fileID: 8300000, guid: 80c0b6ef6e76cb34587ea0a341c31aba, type: 3}
     - target: {fileID: -3122543749085965987, guid: d01d237123600e843ac16646c1d8982e, type: 3}
       propertyPath: missilPrefab
       value: 
       objectReference: {fileID: 5758307721282507023, guid: e4c9c7d1191961041acc6fa85af91e35, type: 3}
     - target: {fileID: -3122543749085965987, guid: d01d237123600e843ac16646c1d8982e, type: 3}
+      propertyPath: municaoAtual
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -3122543749085965987, guid: d01d237123600e843ac16646c1d8982e, type: 3}
       propertyPath: tempoEntreDisparos
-      value: 4
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 2661089882510235010, guid: d01d237123600e843ac16646c1d8982e, type: 3}
       propertyPath: m_LocalScale.x
@@ -365,6 +381,10 @@ PrefabInstance:
     - target: {fileID: 2661089882510657954, guid: d01d237123600e843ac16646c1d8982e, type: 3}
       propertyPath: m_Name
       value: Iron_Dor
+      objectReference: {fileID: 0}
+    - target: {fileID: 2661089882520058466, guid: d01d237123600e843ac16646c1d8982e, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
