@@ -10,7 +10,7 @@ public class CriarBarraDeVida : MonoBehaviour
 {
     [Header("Configuração Automática")]
     [Tooltip("Altura da barra acima da unidade")]
-    public float altura = 2.5f;
+    public float altura = 3.5f; // Aumentado para melhor visualização
     
     [Tooltip("Criar a barra automaticamente no Start?")]
     public bool criarAutomaticamente = true;
@@ -78,10 +78,10 @@ public class CriarBarraDeVida : MonoBehaviour
         CanvasScaler scaler = barraObj.AddComponent<CanvasScaler>();
         scaler.dynamicPixelsPerUnit = 10;
         
-        // 4. Configura o RectTransform do Canvas
+        // 4. Configura o RectTransform do Canvas (MAIOR PARA MELHOR VISUALIZAÇÃO)
         RectTransform canvasRect = barraObj.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(100, 10);
-        canvasRect.localScale = new Vector3(0.01f, 0.01f, 0.01f);
+        canvasRect.sizeDelta = new Vector2(150, 20); // Aumentado de 100x10 para 150x20
+        canvasRect.localScale = new Vector3(0.02f, 0.02f, 0.02f); // Aumentado de 0.01 para 0.02 (2x maior)
         
         // 5. Cria o fundo da barra (Background)
         GameObject fundoObj = new GameObject("Fundo");
@@ -114,16 +114,17 @@ public class CriarBarraDeVida : MonoBehaviour
         fillRect.offsetMin = new Vector2(2, 2);
         fillRect.offsetMax = new Vector2(-2, -2);
         
-        // 7. Cria o texto de vida (acima da barra)
+        // 7. Cria o texto de vida (acima da barra) - MAIOR E MAIS VISÍVEL
         GameObject textoObj = new GameObject("TextoVida");
         textoObj.transform.SetParent(barraObj.transform);
         
         Text textoVida = textoObj.AddComponent<Text>();
         textoVida.text = "100/100";
         textoVida.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        textoVida.fontSize = 14;
+        textoVida.fontSize = 18; // Aumentado de 14 para 18
         textoVida.alignment = TextAnchor.MiddleCenter;
         textoVida.color = Color.white;
+        textoVida.fontStyle = FontStyle.Bold; // Negrito para melhor leitura
         
         // Adiciona sombra para melhor leitura
         Shadow sombra = textoObj.AddComponent<Shadow>();

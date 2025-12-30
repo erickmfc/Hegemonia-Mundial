@@ -35,10 +35,10 @@ public class BarraDeVida : MonoBehaviour
     
     [Header("Comportamento")]
     [Tooltip("Altura da barra acima da unidade (em metros)")]
-    public float alturaAcimaDaUnidade = 2.5f;
+    public float alturaAcimaDaUnidade = 3.5f; // Aumentado para melhor visualização
     
     [Tooltip("Esconder a barra quando a vida estiver cheia?")]
-    public bool esconderSeVidaCheia = true;
+    public bool esconderSeVidaCheia = false; // Mudado para false - sempre mostrar
     
     [Tooltip("Esconder quando a unidade morrer?")]
     public bool esconderAoMorrer = true;

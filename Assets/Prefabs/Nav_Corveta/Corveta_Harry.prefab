@@ -312,7 +312,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Vida
   vidaMaxima: 100
-  vidaAtual: 0
+  vidaAtual: 100
   efeitoDano: {fileID: 0}
   efeitoMorte: {fileID: 0}
   tempoAteDestruir: 2
