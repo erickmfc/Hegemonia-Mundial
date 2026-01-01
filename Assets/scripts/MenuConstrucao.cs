@@ -11,7 +11,11 @@ public class MenuConstrucao : MonoBehaviour
     public Color corFundo = new Color(0.1f, 0.1f, 0.15f, 0.95f);
     public Color corAbas = new Color(0.2f, 0.2f, 0.25f);
     
-    [Header("Catálogo (Arraste seus Itens)")]
+    [Header("Catálogo")]
+    [Tooltip("Marque para carregar TODAS as fichas DadosConstrucao do projeto automaticamente")]
+    public bool autoCarregarFichas = true;
+    
+    [Tooltip("Lista manual de fichas (usada se autoCarregarFichas = false)")]
     public List<DadosConstrucao> catalogo = new List<DadosConstrucao>();
 
     // Variáveis Internas
@@ -23,9 +27,47 @@ public class MenuConstrucao : MonoBehaviour
     void Start()
     {
         gerente = FindObjectOfType<GerenteDeJogo>();
+        
+        // Auto-carregar todas as fichas se a opção estiver marcada
+        if (autoCarregarFichas)
+        {
+            CarregarTodasAsFichas();
+        }
+        
         GerarInterfaceCompleta();
         AlternarMenu(false);
-        FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Militar);
+        FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Exercito);
+    }
+    
+    // Carrega TODAS as fichas DadosConstrucao encontradas no projeto
+    void CarregarTodasAsFichas()
+    {
+        catalogo.Clear();
+        
+        // Carrega todos os ScriptableObjects do tipo DadosConstrucao
+        DadosConstrucao[] todasFichas = Resources.FindObjectsOfTypeAll<DadosConstrucao>();
+        
+        foreach (var ficha in todasFichas)
+        {
+            // Ignora fichas sem prefab válido para evitar itens quebrados
+            if (ficha != null && ficha.prefabDaUnidade != null)
+            {
+                catalogo.Add(ficha);
+            }
+        }
+        
+        // Ordena por categoria e depois por nome
+        catalogo = catalogo.OrderBy(f => (int)f.categoria).ThenBy(f => f.nomeItem).ToList();
+        
+        Debug.Log($"[MenuConstrucao] Auto-carregadas {catalogo.Count} fichas de construção.");
+    }
+    
+    // Botão para atualizar no Editor (útil para testar)
+    [ContextMenu("Atualizar Catálogo Agora")]
+    public void AtualizarCatalogoEditor()
+    {
+        CarregarTodasAsFichas();
+        Debug.Log($"Catálogo atualizado! {catalogo.Count} fichas encontradas.");
     }
 
     void Update()
@@ -240,11 +282,14 @@ public class MenuConstrucao : MonoBehaviour
         Button btn = btnObj.AddComponent<Button>();
         
         // --- VALIDAÇÃO DE PRÉ-REQUISITOS ---
-        bool ehUnidadeMilitar = (item.categoria == DadosConstrucao.CategoriaItem.Militar);
+        // Exército, Marinha e Aeronáutica são unidades de compra direta
+        bool ehUnidadeMilitar = (item.categoria == DadosConstrucao.CategoriaItem.Exercito ||
+                                  item.categoria == DadosConstrucao.CategoriaItem.Marinha ||
+                                  item.categoria == DadosConstrucao.CategoriaItem.Aeronautica);
         bool podeComprar = true;
         string motivoBloqueio = "";
 
-        if(ehUnidadeMilitar && gerente != null)
+        if(ehUnidadeMilitar && gerente != null && item.prefabDaUnidade != null)
         {
              string nomeLower = item.prefabDaUnidade.name.ToLower();
              bool ehSoldado = (nomeLower.Contains("soldado") || nomeLower.Contains("soldier") || nomeLower.Contains("person") || nomeLower.Contains("infantry") || nomeLower.Contains("variant"));
@@ -262,6 +307,13 @@ public class MenuConstrucao : MonoBehaviour
                  motivoBloqueio = "(Requer Hangar)";
              }
              */
+        }
+        
+        // Bloqueia se o prefab não existe
+        if(item.prefabDaUnidade == null)
+        {
+            podeComprar = false;
+            motivoBloqueio = "(Prefab Ausente!)";
         }
 
         if(podeComprar)
@@ -416,17 +468,19 @@ public class MenuConstrucao : MonoBehaviour
 
     void ClicouNoItem(DadosConstrucao item)
     {
-        // NOVA LÓGICA: Se NÃO for militar, é construção.
-        // Isso força modo construção para Infraestrutura, Energia, Urbana.
-        bool ehConstrucao = (item.categoria != DadosConstrucao.CategoriaItem.Militar);
+        // 1. Separa o que é Construção (Muro, Prédio) do que é Tropa (Navio, Tanque)
+        // Se NÃO for exército, nem marinha, nem aeronáutica, então é construção.
+        bool ehConstrucao = (item.categoria != DadosConstrucao.CategoriaItem.Exercito &&
+                             item.categoria != DadosConstrucao.CategoriaItem.Marinha &&
+                             item.categoria != DadosConstrucao.CategoriaItem.Aeronautica);
 
         if (ehConstrucao)
         {
+            // --- LÓGICA DE CONSTRUÇÃO (Muros, Prédios) ---
             var construtor = FindObjectOfType<Construtor>();
             if (construtor != null) 
             {
-                // CRÍTICO: Fecha o menu antes de começa a construir
-                AlternarMenu(false);
+                AlternarMenu(false); // Fecha o menu
                 construtor.SelecionarParaConstruir(item.prefabDaUnidade);
             }
             else
@@ -436,8 +490,48 @@ public class MenuConstrucao : MonoBehaviour
         }
         else
         {
-            // Compra Direta (Militar)
-            if(gerente != null) gerente.ComprarUnidade(item.prefabDaUnidade, item.preco);
+            // --- LÓGICA DE COMPRA DE UNIDADES (Marinha / Exército) ---
+
+            // AQUI ESTÁ A CORREÇÃO: Se for MARINHA, chama o Estaleiro!
+            if (item.categoria == DadosConstrucao.CategoriaItem.Marinha)
+            {
+                // Procura o script do Estaleiro na cena
+                var estaleiro = FindObjectOfType<Estaleiro>(); 
+                
+                if (estaleiro != null)
+                {
+                    // Manda o Estaleiro criar o navio no lugar certo
+                    estaleiro.ConstruirUnidade(item.prefabDaUnidade);
+                    Debug.Log("Ordem enviada ao Estaleiro: Construir " + item.nomeItem);
+                    AlternarMenu(false); // Fecha o menu após compra
+                }
+                else
+                {
+                    Debug.LogError("ERRO: Não achei o Hangar Naval com o script 'Estaleiro' na cena! Construa um Estaleiro primeiro.");
+                }
+            }
+            // Exército usa o GerenteDeJogo (Hangar/Tenda)
+            else if (item.categoria == DadosConstrucao.CategoriaItem.Exercito)
+            {
+                if(gerente != null) 
+                {
+                    gerente.ComprarUnidade(item.prefabDaUnidade, item.preco);
+                    AlternarMenu(false); // Fecha o menu após compra
+                }
+                else
+                {
+                    Debug.LogError("ERRO: GerenteDeJogo não encontrado!");
+                }
+            }
+            // Aeronáutica (futuro - por enquanto usa GerenteDeJogo)
+            else if (item.categoria == DadosConstrucao.CategoriaItem.Aeronautica)
+            {
+                if(gerente != null) 
+                {
+                    gerente.ComprarUnidade(item.prefabDaUnidade, item.preco);
+                    AlternarMenu(false);
+                }
+            }
         }
     }
 }

@@ -182,7 +182,13 @@ public class GerenteSelecao : MonoBehaviour
 
     public void DeselecionarTudo()
     {
-        foreach (var u in unidadesSelecionadas) if(u) u.DefinirSelecao(false);
+        foreach (var u in unidadesSelecionadas)
+        {
+            if (u)
+            {
+                u.DefinirSelecao(false);
+            }
+        }
         unidadesSelecionadas.Clear();
     }
 }

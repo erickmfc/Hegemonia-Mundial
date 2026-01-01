@@ -17,4 +17,4 @@ MonoBehaviour:
   icone: {fileID: 21300000, guid: 2a877839557c34c469256d2b6decfac7, type: 3}
   prefabDaUnidade: {fileID: 7213140222438100777, guid: 3400c82bc731b6e41ac8bdaf38724b1d, type: 3}
   preco: 2000
-  categoria: 1
+  categoria: 4

@@ -3,245 +3,118 @@ using UnityEngine;
 public class Projetil : MonoBehaviour
 {
     [Header("Configuração da Bala")]
-    public float velocidade = 70f;
-    public int dano = 20;
-    public float tempoDeVida = 5f; // Tempo até autodestruir (evita balas eternas)
-    public GameObject efeitoExplosao; // (Opcional) Partícula de explosão
-
-    [Header("Debug")]
-    public bool mostrarDebug = true;
+    public float velocidade = 50f;
+    public int dano = 10;
+    public float tempoDeVida = 3f;
+    public GameObject efeitoExplosao; // O visual do impacto (se tiver)
 
     private Vector3 direcao; // Direção fixa ao ser disparado
-    private bool inicializado = false;
-    private int frameCounter = 0;
-
-    void Start()
-    {
-        // Se não foi inicializado com SetDirecao, usa a direção forward do objeto
-        if (!inicializado)
-        {
-            direcao = transform.forward;
-        }
-        
-        // VERIFICAÇÃO E AUTO-CORREÇÃO DE COMPONENTES OBRIGATÓRIOS
-        Collider col = GetComponent<Collider>();
-        Rigidbody rb = GetComponent<Rigidbody>();
-        
-        if (mostrarDebug)
-        {
-            Debug.Log($"🚀 PROJÉTIL CRIADO: {gameObject.name}");
-        }
-        
-        // AUTO-FIX: Cria Collider se não existir
-        if (col == null)
-        {
-            Debug.LogWarning($"⚠️ {gameObject.name} não tinha Collider! Criando automaticamente...");
-            SphereCollider newCol = gameObject.AddComponent<SphereCollider>();
-            newCol.radius = 0.15f; // Raio padrão
-            newCol.isTrigger = true;
-            col = newCol;
-            Debug.Log($"✅ SphereCollider adicionado automaticamente!");
-        }
-        else
-        {
-            if (mostrarDebug)
-            {
-                Debug.Log($"✅ Collider encontrado: {col.GetType().Name} | IsTrigger={col.isTrigger}");
-            }
-            
-            // AUTO-FIX: Marca como trigger se não estiver
-            if (!col.isTrigger)
-            {
-                Debug.LogWarning($"⚠️ Collider não era trigger! Corrigindo...");
-                col.isTrigger = true;
-                Debug.Log($"✅ Collider agora é Trigger!");
-            }
-        }
-        
-        // AUTO-FIX: Cria Rigidbody se não existir
-        if (rb == null)
-        {
-            Debug.LogWarning($"⚠️ {gameObject.name} não tinha Rigidbody! Criando automaticamente...");
-            Rigidbody newRb = gameObject.AddComponent<Rigidbody>();
-            newRb.useGravity = false;
-            newRb.isKinematic = true;
-            rb = newRb;
-            Debug.Log($"✅ Rigidbody adicionado automaticamente!");
-        }
-        else
-        {
-            if (mostrarDebug)
-            {
-                Debug.Log($"✅ Rigidbody: IsKinematic={rb.isKinematic} | UseGravity={rb.useGravity}");
-            }
-            
-            // AUTO-FIX: Configura Rigidbody corretamente
-            if (rb.useGravity)
-            {
-                rb.useGravity = false;
-                Debug.Log($"✅ Gravidade desativada!");
-            }
-            if (!rb.isKinematic)
-            {
-                rb.isKinematic = true;
-                Debug.Log($"✅ Rigidbody configurado como Kinematic!");
-            }
-        }
-        
-        if (mostrarDebug)
-        {
-            Debug.Log($"📍 Direção: {direcao} | Velocidade: {velocidade}");
-            Debug.Log($"🎯 Projétil totalmente configurado e pronto!");
-        }
-        
-        // Autodestrói após o tempo de vida
-        Destroy(gameObject, tempoDeVida);
-    }
+    private bool usaDirecaoCustom = false;
+    private GameObject dono; // Quem atirou essa bala (para não se auto-atacar)
+    private float tempoSeguranca = 0.1f; // Tempo antes de poder causar dano (evita auto-hit)
+    private float tempoNascimento;
 
     /// <summary>
-    /// Define a direção fixa que o projétil vai seguir (linha reta)
+    /// Define a direção fixa que o projétil vai seguir (usado pelas torretas)
     /// </summary>
     public void SetDirecao(Vector3 novaDirecao)
     {
         direcao = novaDirecao.normalized;
-        transform.forward = direcao; // Faz o projétil apontar na direção
-        inicializado = true;
+        transform.forward = direcao;
+        usaDirecaoCustom = true;
+    }
+
+    /// <summary>
+    /// Define quem atirou essa bala (para não causar dano em si mesmo)
+    /// </summary>
+    public void SetDono(GameObject quemAtirou)
+    {
+        dono = quemAtirou;
+    }
+
+    void Start()
+    {
+        tempoNascimento = Time.time;
         
-        if (mostrarDebug)
-        {
-            Debug.Log($"🎯 Direção definida: {direcao}");
-        }
+        // Destrói a bala depois de X segundos para não travar o jogo
+        Destroy(gameObject, tempoDeVida);
     }
 
     void Update()
     {
-        // 🎯 TÉCNICA DO LASER INVISÍVEL (Raycast)
-        // Calcula a distância que a bala vai percorrer neste frame
-        float distanciaNesteFrame = velocidade * Time.deltaTime;
-        
-        // Lança um "laser invisível" para frente para detectar colisões ANTES de mover
-        RaycastHit hit;
-        if (Physics.Raycast(transform.position, direcao, out hit, distanciaNesteFrame))
+        // Move a bala para frente
+        transform.Translate(Vector3.forward * velocidade * Time.deltaTime);
+
+        // --- SISTEMA DE DETECÇÃO (RAYCAST) ---
+        // Lança um raio invisível para frente antes de andar
+        float distanciaFrame = velocidade * Time.deltaTime;
+        RaycastHit toque;
+
+        if (Physics.Raycast(transform.position, transform.forward, out toque, distanciaFrame))
         {
-            // 💥 DETECTOU ALGO NO CAMINHO!
-            if (mostrarDebug)
-            {
-                Debug.Log($"🔍 RAYCAST DETECTOU: {hit.collider.gameObject.name} a {hit.distance}m de distância");
-            }
-            
-            // Verifica se é um alvo válido
-            if (!hit.collider.isTrigger && !hit.collider.CompareTag("Player"))
-            {
-                if (hit.collider.CompareTag("Aereo") || hit.collider.CompareTag("Inimigo"))
-                {
-                    if (mostrarDebug)
-                    {
-                        Debug.Log($"🎯 Raycast confirmou ALVO VÁLIDO! Aplicando dano imediato.");
-                    }
-                    
-                    // Move a bala até o ponto de impacto exato
-                    transform.position = hit.point;
-                    
-                    // Aplica o dano
-                    AtingirAlvo(hit.collider.gameObject);
-                    return; // Sai do Update pois a bala será destruída
-                }
-            }
-        }
-        
-        // Se não detectou nada, move normalmente em LINHA RETA
-        transform.Translate(direcao * velocidade * Time.deltaTime, Space.World);
-        
-        // Debug a cada segundo
-        frameCounter++;
-        if (mostrarDebug && frameCounter % 60 == 0)
-        {
-            Debug.Log($"🔵 Projétil {gameObject.name} ainda ativo na posição {transform.position}");
+            // Bateu em algo! Vamos ver o que é.
+            VerificarImpacto(toque.collider.gameObject);
         }
     }
 
+    // Caso o Raycast falhe e a física normal detecte (Segurança Extra)
     void OnTriggerEnter(Collider other)
     {
-        if (mostrarDebug)
-        {
-            Debug.Log($"💥 COLISÃO DETECTADA! Projétil colidiu com: {other.gameObject.name} | Tag: {other.tag} | IsTrigger: {other.isTrigger}");
-        }
-
-        // Ignora colisão com próprio atirador e triggers
-        if (other.isTrigger)
-        {
-            if (mostrarDebug) Debug.Log($"⏭️ Ignorado (outro objeto é trigger)");
-            return;
-        }
-        
-        if (other.CompareTag("Player"))
-        {
-            if (mostrarDebug) Debug.Log($"⏭️ Ignorado (aliado)");
-            return;
-        }
-
-        // Verifica se atingiu um inimigo (aéreo ou terrestre)
-        if (other.CompareTag("Aereo") || other.CompareTag("Inimigo"))
-        {
-            if (mostrarDebug) Debug.Log($"🎯 ALVO VÁLIDO! Aplicando dano...");
-            AtingirAlvo(other.gameObject);
-        }
-        else
-        {
-            if (mostrarDebug) Debug.Log($"🌍 Atingiu objeto não-alvo ({other.tag}), destruindo projétil");
-            Destroy(gameObject);
-        }
+        VerificarImpacto(other.gameObject);
     }
 
-    void AtingirAlvo(GameObject alvo)
+    void VerificarImpacto(GameObject alvo)
     {
-        if (alvo == null) return;
+        // PROTEÇÃO 1: Tempo de segurança (nos primeiros 0.1s não causa dano)
+        if (Time.time - tempoNascimento < tempoSeguranca)
+        {
+            return; // Ignora colisões muito cedo
+        }
 
-        Debug.Log($"💥💥💥 PROJÉTIL ATINGIU: {alvo.name}");
+        // PROTEÇÃO 2: Não ataca o próprio dono
+        if (dono != null)
+        {
+            // Verifica se é o próprio dono ou um filho/parte do dono
+            if (alvo == dono || alvo.transform.IsChildOf(dono.transform) || 
+                (alvo.transform.root == dono.transform.root))
+            {
+                return; // Ignora - é o próprio atirador!
+            }
+        }
 
-        // Tenta causar dano com sistema de Vida
-        Vida vidaAlvo = alvo.GetComponent<Vida>();
+        // PROTEÇÃO 3: Ignora outros projéteis
+        if (alvo.GetComponent<Projetil>() != null)
+        {
+            return;
+        }
+
+        // Tenta achar o script de Vida no objeto que bateu (ou no pai)
+        SistemaDeDanos vidaAlvo = alvo.GetComponent<SistemaDeDanos>();
+        if (vidaAlvo == null)
+        {
+            vidaAlvo = alvo.GetComponentInParent<SistemaDeDanos>();
+        }
+
+        // Se o alvo tiver vida...
         if (vidaAlvo != null)
         {
-            vidaAlvo.ReceberDano(dano);
-            Debug.Log($"✅ Dano de {dano} aplicado via sistema Vida");
-        }
-        else
-        {
-            // Tenta causar dano em prédios
-            AtributosPredio predio = alvo.GetComponent<AtributosPredio>();
-            if (predio != null)
+            // PROTEÇÃO 4: Verifica se não é o dono pelo SistemaDeDanos
+            if (dono != null && vidaAlvo.gameObject == dono)
             {
-                predio.vidaAtual -= dano;
-                Debug.Log($"✅ Dano de {dano} aplicado em prédio");
-                
-                if (predio.vidaAtual <= 0)
-                {
-                    Destroy(alvo);
-                }
+                return;
             }
-            else
-            {
-                Debug.LogWarning($"⚠️ {alvo.name} não tem componente Vida nem AtributosPredio!");
-            }
+
+            vidaAlvo.ReceberDano(dano); // Causa o dano!
+            Debug.Log("Bala acertou e causou dano em: " + vidaAlvo.gameObject.name);
         }
 
-        // Efeito de explosão
+        // Cria explosão (se tiver configurado)
         if (efeitoExplosao != null)
         {
-            Instantiate(efeitoExplosao, transform.position, transform.rotation);
+            Instantiate(efeitoExplosao, transform.position, Quaternion.identity);
         }
 
+        // Destrói a bala (ela cumpriu sua missão)
         Destroy(gameObject);
     }
-
-    void OnDestroy()
-    {
-        if (mostrarDebug)
-        {
-            Debug.Log($"💀 Projétil {gameObject.name} foi destruído");
-        }
-    }
 }
-
-

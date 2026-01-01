@@ -16,5 +16,5 @@ MonoBehaviour:
   descricao: Centro de comando.
   icone: {fileID: 21300000, guid: 55436ade50846ce4fb33cd2e27d4df6d, type: 3}
   prefabDaUnidade: {fileID: 2030342796816762014, guid: 7623c26977ff79245a039a808a163f13, type: 3}
-  preco: 0
-  categoria: 1
+  preco: 100
+  categoria: 0

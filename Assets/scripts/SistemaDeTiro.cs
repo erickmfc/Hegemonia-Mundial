@@ -38,7 +38,14 @@ public class SistemaDeTiro : MonoBehaviour
     void Atirar()
     {
         // Cria a bala na posição da boca do cano e com a rotação da boca do cano
-        Instantiate(prefabProjetil, bocaDoCano.position, bocaDoCano.rotation);
+        GameObject bala = Instantiate(prefabProjetil, bocaDoCano.position, bocaDoCano.rotation);
+        
+        // Define quem atirou (para não se auto-atacar)
+        Projetil scriptBala = bala.GetComponent<Projetil>();
+        if (scriptBala != null)
+        {
+            scriptBala.SetDono(transform.root.gameObject);
+        }
 
         // Execução do Som
         if (fonteAudio != null && somTiro != null)

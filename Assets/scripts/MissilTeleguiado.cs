@@ -76,11 +76,11 @@ public class MissilTeleguiado : MonoBehaviour
     {
         if (alvo == null) return;
 
-        // PRIORIDADE 1: Tenta causar dano em unidades (com script "Vida")
-        Vida vidaUnidade = alvo.GetComponent<Vida>();
-        if (vidaUnidade != null)
+        // PRIORIDADE 1: Tenta causar dano em unidades (com SistemaDeDanos)
+        SistemaDeDanos sistemaDanos = alvo.GetComponent<SistemaDeDanos>();
+        if (sistemaDanos != null)
         {
-            vidaUnidade.ReceberDano(dano);
+            sistemaDanos.ReceberDano(dano);
             Debug.Log($"Míssil causou {dano} de dano em {alvo.name}!");
             return;
         }
@@ -99,11 +99,11 @@ public class MissilTeleguiado : MonoBehaviour
             return;
         }
 
-        // FALLBACK: Para unidades antigas sem sistema de vida, destrói diretamente
+        // FALLBACK: Destrói diretamente
         if (alvo.CompareTag("Aereo") || alvo.CompareTag("Inimigo"))
         {
             Destroy(alvo.gameObject);
-            Debug.Log($"{alvo.name} foi destruído pelo míssil! (SEM sistema de vida)");
+            Debug.Log($"{alvo.name} foi destruído pelo míssil!");
         }
     }
 }

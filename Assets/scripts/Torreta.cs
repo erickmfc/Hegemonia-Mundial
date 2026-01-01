@@ -86,11 +86,17 @@ public class Torreta : MonoBehaviour
         GameObject bala = Instantiate(prefabProjetil, pontoTiro.position, pontoTiro.rotation);
         Projetil scriptBala = bala.GetComponent<Projetil>();
         
-        if (scriptBala != null && alvoAtual != null)
+        if (scriptBala != null)
         {
-            // Calcula a direção FIXA do tiro (linha reta balística)
-            Vector3 direcao = (alvoAtual.position - pontoTiro.position).normalized;
-            scriptBala.SetDirecao(direcao);
+            // Define quem atirou (para não se auto-atacar)
+            scriptBala.SetDono(transform.root.gameObject);
+            
+            if (alvoAtual != null)
+            {
+                // Calcula a direção FIXA do tiro (linha reta balística)
+                Vector3 direcao = (alvoAtual.position - pontoTiro.position).normalized;
+                scriptBala.SetDirecao(direcao);
+            }
         }
     }
     

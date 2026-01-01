@@ -46,10 +46,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projetil
   velocidade: 7
-  dano: 20
+  dano: 5
   tempoDeVida: 2.5
-  efeitoExplosao: {fileID: 0}
-  mostrarDebug: 1
+  efeitoExplosao: {fileID: 2799687479890543324, guid: 07180301372540a46864ed63d728a152, type: 3}
 --- !u!1 &2041022671228705025
 GameObject:
   m_ObjectHideFlags: 0
@@ -181,13 +180,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8215332079580885057}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.5, y: 0.5, z: -0.5, w: 0.5}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: 0.49835038, y: -0.5016442, z: 0.49835038, w: -0.5016442}
+  m_LocalPosition: {x: 0, y: 0.001322031, z: 0}
   m_LocalScale: {x: 4.746336, y: 4.746336, z: 4.746336}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5097578534862851897}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: -89.623}
 --- !u!33 &4837378228221065667
 MeshFilter:
   m_ObjectHideFlags: 0

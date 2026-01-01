@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Corveta_Harry
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Corveta Harry
+  descricao: Navio de patrulha coverta costeira com armamento leve. Ideal para defesa
+    naval.
+  icone: {fileID: 0}
+  prefabDaUnidade: {fileID: 3328414222254851865, guid: ae1720cb96c535c4e879f3d55c0721da, type: 3}
+  preco: 1500
+  categoria: 1

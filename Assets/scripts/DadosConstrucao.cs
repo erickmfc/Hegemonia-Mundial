@@ -7,7 +7,10 @@ public class DadosConstrucao : ScriptableObject
 {
     public enum CategoriaItem
     {
-        Militar,
+        Exercito,       // Tropas terrestres (antigo Militar)
+        Marinha,        // Navios e unidades navais
+        Aeronautica,    // Aviões e helicópteros
+        Tecnologia,     // Pesquisas e upgrades (novo nome para Militar)
         Infraestrutura,
         Energia,
         Urbana
