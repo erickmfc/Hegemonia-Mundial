@@ -1,272 +1,244 @@
 using UnityEngine;
+using System.Collections;
 
 public class LancadorMisseis : MonoBehaviour
 {
-    [Header("Modo de Operação")]
-    public bool modoManual = false; // Se TRUE, segue o mouse. Se FALSE, age sozinho.
-    
-    [Header("Munição")]
-    public int municaoAtual = 4;
+    [Header("Configuração de Munição")]
+    public int municaoAtual = 0;
     public int municaoMaxima = 4;
+    public int custoMissil = 200;
 
-    [Header("Configuração")]
-    public float alcance = 200f;
-    public float velocidadeGiro = 5f;
-    public float tempoEntreDisparos = 1.0f;
-    private float cronometro = 0f;
+    [Header("Configuração de Lançamento")]
+    public float alcanceMaximo = 500f;
+    public float tempoRecarga = 2.0f;
+    public Transform[] pontosDeSaida; // Canos de saída
+    public GameObject missilPrefab;   // Prefab do MisselICBM
 
-    [Header("Conexões")]
-    public Transform cabecaRotativa; // A parte que gira
-    public Transform[] pontosDeSaida; // Arraste os 4 pontos aqui (Saida 1, 2, 3, 4)
-    public GameObject missilPrefab;
+    [Header("Visual")]
+    public Transform cabecaRotativa; // Parte que gira (opcional)
 
-    [Header("Áudio")]
-    public AudioClip somDisparo; // Som ao lançar o míssil
-    private AudioSource fonteAudio;
-    
-    // Variáveis internas
-    private Transform alvoAtual;
-    private int indiceCanoAtual = 0; // Para saber qual dos 4 canos atira agora
-    
-    // Sistema Anti-Overkill: Rastreia alvos atacados recentemente
-    [System.Serializable]
-    private struct AlvoInfo
-    {
-        public Transform alvo;
-        public float tempo;
-        
-        public AlvoInfo(Transform t, float time)
-        {
-            alvo = t;
-            tempo = time;
-        }
-    }
-    private System.Collections.Generic.List<AlvoInfo> alvosRecentes = new System.Collections.Generic.List<AlvoInfo>();
+    // Estado Interno
+    private bool menuAberto = false;
+    private bool mirando = false;
+    private GameObject marcadorFantasma; // O círculo vermelho
+    private float cronometroRecarga = 0f;
+    private int indiceCano = 0;
+    private GerenteDeJogo gerente;
 
     void Start()
     {
-        // Inicialização Inteligente do AudioSource
-        fonteAudio = GetComponent<AudioSource>();
-        if (fonteAudio == null)
-        {
-            fonteAudio = gameObject.AddComponent<AudioSource>();
-        }
-        fonteAudio.spatialBlend = 1.0f; // Som 3D espacial
+        gerente = FindObjectOfType<GerenteDeJogo>();
+        CriarMarcadorFantasma();
     }
 
     void Update()
     {
-        // Se acabou a munição, não faz nada
-        if (municaoAtual <= 0) return;
+        cronometroRecarga -= Time.deltaTime;
 
-        cronometro -= Time.deltaTime;
-
-        if (modoManual)
+        // TECLA L: Abre/Fecha o Menu do Lançador
+        if (Input.GetKeyDown(KeyCode.L) && !mirando)
         {
-            MirarNoMouse();
-            // Botão Esquerdo do Mouse para atirar
-            if (Input.GetMouseButtonDown(0) && cronometro <= 0)
-            {
-                Atirar(null); // No manual, atira sem alvo travado (vai reto ou onde mirou)
-            }
+            menuAberto = !menuAberto;
+            if(menuAberto) Debug.Log("[Lançador] Menu Aberto. Use o mouse para interagir.");
         }
-        else
+
+        // LÓGICA DE MIRA (Só funciona se estiver no modo mirado)
+        if (mirando)
         {
-            // Modo Automático (Radar)
-            ProcurarInimigo();
-            if (alvoAtual != null)
+            AtualizarPosicaoFantasma();
+
+            // Clique ESQUERDO: Lança
+            if (Input.GetMouseButtonDown(0))
             {
-                MirarNoAlvo();
-                // Se estiver mirando perto o suficiente, atira
-                if (cronometro <= 0)
+                if (cronometroRecarga <= 0)
                 {
-                    Atirar(alvoAtual);
+                    Disparar(marcadorFantasma.transform.position);
+                    // Sai do modo mira e volta pro menu
+                    mirando = false; 
+                    marcadorFantasma.SetActive(false);
+                    menuAberto = false; // Mantém fechado para ver a explosão 
                 }
+                else
+                {
+                    Debug.Log("[Lançador] Carregando misseis... aguarde.");
+                }
+            }
+
+            // Clique DIREITO: Cancela
+            if (Input.GetMouseButtonDown(1))
+            {
+                mirando = false;
+                marcadorFantasma.SetActive(false);
+                menuAberto = true; // Volta pro menu
+                Debug.Log("[Lançador] Mira cancelada.");
             }
         }
     }
 
-    void MirarNoMouse()
+    // --- LÓGICA DO MENU (OnGUI Simples e Rápido) ---
+    void OnGUI()
+    {
+        if (!menuAberto) return;
+
+        // Caixa do Menu no centro da tela
+        float largura = 250;
+        float altura = 180;
+        float x = (Screen.width - largura) / 2;
+        float y = (Screen.height - altura) / 2;
+
+        GUI.Box(new Rect(x, y, largura, altura), "🎮 CONTROLE DE MÍSSEIS");
+
+        // Info Munição
+        GUI.Label(new Rect(x + 20, y + 30, 200, 20), $"Mísseis Prontos: {municaoAtual} / {municaoMaxima}");
+
+        // Info Dinheiro (se tiver gerente)
+        if(gerente != null)
+             GUI.Label(new Rect(x + 20, y + 50, 200, 20), $"Dinheiro: ${gerente.dinheiroAtual}");
+
+        // BOTÃO: COMPRAR
+        if (GUI.Button(new Rect(x + 25, y + 80, 200, 30), $"Comprar Míssil (${custoMissil})"))
+        {
+            ComprarMissil();
+        }
+
+        // BOTÃO: MIRAR E ATIRAR
+        if (municaoAtual > 0)
+        {
+            if (GUI.Button(new Rect(x + 25, y + 120, 200, 40), "🎯 MIRAR NO MAPA"))
+            {
+                AtivarMira();
+            }
+        }
+        else
+        {
+            GUI.Label(new Rect(x + 50, y + 130, 200, 20), "Sem mísseis! Compre antes.");
+        }
+    }
+
+    // --- AÇÕES ---
+
+    void ComprarMissil()
+    {
+        if (municaoAtual >= municaoMaxima)
+        {
+            Debug.Log("[Lançador] Silo cheio!");
+            return;
+        }
+
+        if (gerente != null)
+        {
+            if (gerente.dinheiroAtual >= custoMissil)
+            {
+                gerente.dinheiroAtual -= custoMissil;
+                municaoAtual++;
+                Debug.Log("[Lançador] Míssil comprado!");
+            }
+            else
+            {
+                Debug.Log("[Lançador] Sem dinheiro!");
+            }
+        }
+        else
+        {
+            // Se não tiver gerente (teste), dá o míssil de graça
+            municaoAtual++;
+            Debug.Log("[Lançador] Modo Teste: Míssil adicionado (Grátis)");
+        }
+    }
+
+    void AtivarMira()
+    {
+        menuAberto = false; // Fecha menu pra não atrapalhar
+        mirando = true;
+        marcadorFantasma.SetActive(true);
+        Debug.Log("[Lançador] Modo Mira Ativo: Clique no mapa para lançar!");
+    }
+
+    void AtualizarPosicaoFantasma()
     {
         Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit toque;
-        
-        // Cria um raio da câmera até o chão/mundo
-        if (Physics.Raycast(raio, out toque, Mathf.Infinity))
+
+        // Tenta bater no chão
+        if (Physics.Raycast(raio, out toque, 5000f))
         {
-            Vector3 pontoMira = toque.point;
-            pontoMira.y = cabecaRotativa.position.y; // Mantém a altura para não inclinar errado
-            
-            Vector3 direcao = pontoMira - cabecaRotativa.position;
-            Quaternion rotacao = Quaternion.LookRotation(direcao);
-            cabecaRotativa.rotation = Quaternion.Lerp(cabecaRotativa.rotation, rotacao, Time.deltaTime * velocidadeGiro);
-        }
-    }
+            marcadorFantasma.transform.position = toque.point + Vector3.up * 0.5f;
 
-    void ProcurarInimigo()
-    {
-        // Limpa alvos antigos da lista (após 3 segundos, considera "livre" novamente)
-        alvosRecentes.RemoveAll(info => Time.time - info.tempo > 3f);
-
-        // Procura inimigos aereos ou terrestres
-        GameObject[] inimigos = GameObject.FindGameObjectsWithTag("Aereo"); 
-        // DICA: Se quiser atacar tanque também, teria que buscar "Inimigo" ou fazer uma lista mista
-        
-        float menorDistancia = Mathf.Infinity;
-        GameObject inimigoPerto = null;
-
-        foreach (GameObject inimigo in inimigos)
-        {
-            float dist = Vector3.Distance(transform.position, inimigo.transform.position);
-            
-            // Só considera se estiver no alcance
-            if (dist > alcance) continue;
-
-            // Verifica se já está sendo atacado recentemente
-            bool jaAtacado = alvosRecentes.Exists(info => info.alvo == inimigo.transform);
-            
-            // Prioriza alvos NÃO atacados recentemente
-            if (!jaAtacado && dist < menorDistancia)
+            // Se tiver cabeça rotativa, mira ela pro fantasma
+            if (cabecaRotativa != null)
             {
-                menorDistancia = dist;
-                inimigoPerto = inimigo;
+                Vector3 dir = toque.point - cabecaRotativa.position;
+                dir.y = 0; // Não inclina pra cima/baixo
+                if(dir != Vector3.zero) 
+                    cabecaRotativa.rotation = Quaternion.Lerp(cabecaRotativa.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 10f);
             }
         }
-
-        // Se não encontrou nenhum alvo "livre", pega qualquer um dentro do alcance
-        if (inimigoPerto == null)
-        {
-            foreach (GameObject inimigo in inimigos)
-            {
-                float dist = Vector3.Distance(transform.position, inimigo.transform.position);
-                if (dist < menorDistancia && dist <= alcance)
-                {
-                    menorDistancia = dist;
-                    inimigoPerto = inimigo;
-                }
-            }
-        }
-
-        if (inimigoPerto != null)
-        {
-            alvoAtual = inimigoPerto.transform;
-        }
     }
 
-    void MirarNoAlvo()
+    void Disparar(Vector3 alvo)
     {
-        Vector3 direcao = alvoAtual.position - cabecaRotativa.position;
-        Quaternion rotacao = Quaternion.LookRotation(direcao);
-        cabecaRotativa.rotation = Quaternion.Lerp(cabecaRotativa.rotation, rotacao, Time.deltaTime * velocidadeGiro);
-    }
+        if (municaoAtual <= 0) return;
 
-    void Atirar(Transform alvoDestino)
-    {
-        if (pontosDeSaida.Length == 0) return;
+        // Escolhe o cano de saída
+        Transform saida = transform;
+        if (pontosDeSaida != null && pontosDeSaida.Length > 0)
+        {
+            saida = pontosDeSaida[indiceCano];
+            indiceCano = (indiceCano + 1) % pontosDeSaida.Length;
+        }
 
-        // Pega o cano da vez
-        Transform canoAtual = pontosDeSaida[indiceCanoAtual];
-
-        // Cria o míssil
-        GameObject missil = Instantiate(missilPrefab, canoAtual.position, canoAtual.rotation);
+        // Instancia o míssil respeitando a rotação do ponto de saída (cano)
+        // Isso permite que você ajuste a rotação no Unity (ex: se o míssil sair de lado, gire o ponto de saída)
+        GameObject missil = Instantiate(missilPrefab, saida.position, saida.rotation);
         
-        // Configura o alvo do míssil
-        MissilTeleguiado scriptMissil = missil.GetComponent<MissilTeleguiado>();
-        if (scriptMissil != null && alvoDestino != null)
+        // Passa o alvo para o script de voo (MisselICBM)
+        MisselICBM scriptVoo = missil.GetComponent<MisselICBM>();
+        if (scriptVoo != null)
         {
-            scriptMissil.DefinirAlvo(alvoDestino);
+            scriptVoo.IniciarLancamento(alvo);
         }
 
-        municaoAtual--; // Gasta uma bala
-        cronometro = tempoEntreDisparos;
-
-        // Registra o alvo como "recentemente atacado" para evitar overkill
-        if (alvoDestino != null)
-        {
-            alvosRecentes.Add(new AlvoInfo(alvoDestino, Time.time));
-            Debug.Log($"Míssil disparado em {alvoDestino.name}! Restam: {municaoAtual}");
-        }
-        else
-        {
-            Debug.Log("Míssil disparado! Restam: " + municaoAtual);
-        }
-
-        // Executa o Som de Disparo
-        if (fonteAudio != null && somDisparo != null)
-        {
-            fonteAudio.PlayOneShot(somDisparo);
-        }
-
-        // Passa para o próximo cano (0 -> 1 -> 2 -> 3 -> 0)
-        indiceCanoAtual++;
-        if (indiceCanoAtual >= pontosDeSaida.Length)
-        {
-            indiceCanoAtual = 0;
-        }
+        municaoAtual--;
+        cronometroRecarga = tempoRecarga;
+        Debug.Log("[Lançador] LANÇAMENTO CONFIRMADO! Destino: " + alvo);
         
-        // IMPORTANTE: Limpa o alvo atual para forçar busca de novo alvo
-        alvoAtual = null;
+        // Efeito Sonoro (Opcional - Adicione aqui se quiser)
+        AudioSource audio = GetComponent<AudioSource>();
+        if(audio != null) audio.Play();
     }
 
-    // ========== VISUALIZAÇÃO DE DEBUG ==========
-    void OnDrawGizmos()
+    // Utilitário: Cria o círculo vermelho via código pra você não ter que fazer prefab
+    void CriarMarcadorFantasma()
     {
-        // Desenha o alcance quando o objeto NÃO está selecionado (círculo fino)
-        Gizmos.color = new Color(1f, 0f, 0f, 0.3f); // Vermelho transparente
-        DrawRangeCircle();
+        marcadorFantasma = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        marcadorFantasma.name = "Mira_Laser_Fantasma";
+        Destroy(marcadorFantasma.GetComponent<Collider>()); // Tira colisão
+        marcadorFantasma.transform.localScale = new Vector3(10, 0.1f, 10); // Grande e achatado
+        
+        // Tenta criar material vermelho transparente
+        Renderer rend = marcadorFantasma.GetComponent<Renderer>();
+        rend.material = new Material(Shader.Find("Standard"));
+        
+        // Define o modo de renderização para Transparente no Standard Shader
+        rend.material.SetFloat("_Mode", 3); // 3 = Transparent
+        rend.material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        rend.material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        rend.material.SetInt("_ZWrite", 0);
+        rend.material.DisableKeyword("_ALPHATEST_ON");
+        rend.material.EnableKeyword("_ALPHABLEND_ON");
+        rend.material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        rend.material.renderQueue = 3000;
+
+        rend.material.color = new Color(1, 0, 0, 0.2f); // Vermelho COM MAIS TRANSPARÊNCIA (0.2f)
+        
+        // Desliga por padrão
+        marcadorFantasma.SetActive(false);
     }
 
+    // Desenha o alcance no Editor
     void OnDrawGizmosSelected()
     {
-        // Quando o objeto ESTÁ selecionado, mostra mais detalhes
-        
-        // Cor do alcance muda se tem alvo ou não
-        if (alvoAtual != null)
-        {
-            Gizmos.color = Color.yellow; // Amarelo = tem alvo
-            
-            // Desenha linha até o alvo
-            Gizmos.DrawLine(transform.position, alvoAtual.position);
-            
-            // Desenha uma esfera no alvo
-            Gizmos.DrawWireSphere(alvoAtual.position, 2f);
-        }
-        else
-        {
-            Gizmos.color = Color.red; // Vermelho = sem alvo
-        }
-        
-        DrawRangeCircle();
-        
-        // Informações no topo da esfera de alcance
-        #if UNITY_EDITOR
-        UnityEditor.Handles.Label(transform.position + Vector3.up * 5f, 
-            $"Munição: {municaoAtual}/{municaoMaxima}\n" +
-            $"Modo: {(modoManual ? "MANUAL" : "AUTO")}\n" +
-            $"Alcance: {alcance}m");
-        #endif
-    }
-
-    void DrawRangeCircle()
-    {
-        // Desenha um círculo representando o alcance
-        int segmentos = 50;
-        float angulo = 0f;
-        float incremento = 360f / segmentos;
-        
-        Vector3 pontoAnterior = transform.position + new Vector3(alcance, 0, 0);
-        
-        for (int i = 0; i <= segmentos; i++)
-        {
-            angulo = i * incremento * Mathf.Deg2Rad;
-            Vector3 pontoAtual = transform.position + new Vector3(
-                Mathf.Cos(angulo) * alcance,
-                0,
-                Mathf.Sin(angulo) * alcance
-            );
-            
-            Gizmos.DrawLine(pontoAnterior, pontoAtual);
-            pontoAnterior = pontoAtual;
-        }
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, alcanceMaximo);
     }
 }

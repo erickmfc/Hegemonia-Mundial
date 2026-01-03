@@ -15,6 +15,6 @@ MonoBehaviour:
   nomeItem: USS Ironclad
   descricao: Encouracado blindado. Extremamente resistente a danos.
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 0}
+  prefabDaUnidade: {fileID: 2462426102010119520, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
   preco: 4000
   categoria: 1
