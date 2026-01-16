@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Soldado_Rifle
+  m_EditorClassIdentifier: 
+  nomeItem: Soldado Rifle
+  descricao: Unidade de infantaria leve. Ideal para reconhecimento.
+  icone: {fileID: 0}
+  prefabDaUnidade: {fileID: 4503012449419316977, guid: 0a9f44cbaa32cfd46a267ade9d4ec739, type: 3}
+  preco: 50
+  categoria: 0

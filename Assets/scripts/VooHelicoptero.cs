@@ -5,12 +5,12 @@ public class VooHelicoptero : MonoBehaviour
 {
     [Header("Configuração")]
     public Transform modeloVisual; // O modelo 3D do helicóptero (Filho)
-    public float alturaDeVoo = 6.0f; // Altura que ele vai subir
+    public float alturaVisualExtra = 0.0f; // Ajuste fino apenas (Default 0 agora que voa fisicamente)
     public float suavidade = 2.0f;
     
     [Header("Animação")]
-    public float forcaBalanco = 0.5f; // Quanto ele sobe e desce parado
-    public float inclinacaoFrente = 15f; // Quanto ele inclina ao andar
+    public float forcaBalanco = 0.2f; // Balanço leve
+    public float inclinacaoFrente = 15f; 
 
     private NavMeshAgent agente;
 
@@ -25,36 +25,45 @@ public class VooHelicoptero : MonoBehaviour
         }
     }
 
+    // Variável para receber velocidade do ControleUnidade 
+    private float velocidadeExterna = 0f;
+
+    public void SetVelocidadeAtual(float v)
+    {
+        velocidadeExterna = v;
+    }
+
     void Update()
     {
         if (modeloVisual == null) return;
 
-        // 1. ALTREZA (Levanta o helicóptero do chão suavemente)
-        // Efeito "Bobbing" (flutuar para cima e para baixo)
+        // 1. ANIMAÇÃO DE FLUTUAÇÃO (Bobbing)
+        // Agora somamos a 0 (ou ajuste fino), pois o Pai já está na altura de voo real
         float oscilacao = Mathf.Sin(Time.time * 2f) * forcaBalanco;
-        float alturaAlvo = alturaDeVoo + oscilacao;
+        float alturaLocalAlvo = alturaVisualExtra + oscilacao;
 
         Vector3 novaPosicao = modeloVisual.localPosition;
-        novaPosicao.y = Mathf.Lerp(novaPosicao.y, alturaAlvo, Time.deltaTime * suavidade);
+        novaPosicao.y = Mathf.Lerp(novaPosicao.y, alturaLocalAlvo, Time.deltaTime * suavidade);
         modeloVisual.localPosition = novaPosicao;
 
-        // 2. INCLINAÇÃO (Inclina o nariz quando voa para frente)
-        if (agente != null)
+        // 2. INCLINAÇÃO
+        float velocidade = velocidadeExterna;
+        if (agente != null && agente.isActiveAndEnabled)
         {
-            float velocidade = agente.velocity.magnitude;
-            float anguloAlvo = 0f;
-
-            // Se estiver andando rápido (> 0.5f), inclina
-            if (velocidade > 0.5f)
-            {
-                anguloAlvo = inclinacaoFrente;
-            }
-
-            // Aplica a rotação no eixo X (frente/trás) suavemente
-            Quaternion rotacaoAtual = modeloVisual.localRotation;
-            Quaternion rotacaoAlvo = Quaternion.Euler(anguloAlvo, rotacaoAtual.eulerAngles.y, 0);
-            
-            modeloVisual.localRotation = Quaternion.Lerp(rotacaoAtual, rotacaoAlvo, Time.deltaTime * suavidade);
+            velocidade = agente.velocity.magnitude;
         }
+
+        float anguloAlvo = 0f;
+        if (velocidade > 0.5f)
+        {
+            anguloAlvo = inclinacaoFrente;
+        }
+
+        // Aplica a rotação (Mantendo a rotação Y original do modelo se houver, mas geralmente local é 0)
+        // Cuidado: Quaternion.Euler(x, y, z) substitui tudo.
+        // Vamos manter o Y local atual caso ele tenha animações girando, mas geralmente o Pai gira.
+        Quaternion rotacaoAlvo = Quaternion.Euler(anguloAlvo, 0, 0); // Local rotation assumindo frente Z
+        
+        modeloVisual.localRotation = Quaternion.Slerp(modeloVisual.localRotation, rotacaoAlvo, Time.deltaTime * suavidade);
     }
 }

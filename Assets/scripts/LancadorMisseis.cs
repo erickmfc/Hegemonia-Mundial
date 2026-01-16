@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
+[DisallowMultipleComponent] // Evita que você coloque dois scripts iguais no mesmo objeto sem querer
 public class LancadorMisseis : MonoBehaviour
 {
     [Header("Configuração de Munição")]
@@ -25,6 +26,10 @@ public class LancadorMisseis : MonoBehaviour
     private int indiceCano = 0;
     private GerenteDeJogo gerente;
 
+    // --- CONTROLE ESTÁTICO PARA EVITAR MENUS DUPLICADOS ---
+    private static LancadorMisseis menuAtivo; // Guarda quem está com o menu aberto agora
+    private static float ultimoTempoInput = 0f; // Para evitar que dois scripts processem o 'L' no mesmo frame
+
     void Start()
     {
         gerente = FindObjectOfType<GerenteDeJogo>();
@@ -36,13 +41,17 @@ public class LancadorMisseis : MonoBehaviour
         cronometroRecarga -= Time.deltaTime;
 
         // TECLA L: Abre/Fecha o Menu do Lançador
+        // Verifica se tempo já passou para evitar duplo processamento se houver múltiplos scripts na cena
         if (Input.GetKeyDown(KeyCode.L) && !mirando)
         {
-            menuAberto = !menuAberto;
-            if(menuAberto) Debug.Log("[Lançador] Menu Aberto. Use o mouse para interagir.");
+            if (Time.time != ultimoTempoInput)
+            {
+                ultimoTempoInput = Time.time;
+                GerenciarInputMenu();
+            }
         }
 
-        // LÓGICA DE MIRA (Só funciona se estiver no modo mirado)
+        // LÓGICA DE MIRA (Só funciona se estiver no modo mirado DESTE script)
         if (mirando)
         {
             AtualizarPosicaoFantasma();
@@ -53,10 +62,12 @@ public class LancadorMisseis : MonoBehaviour
                 if (cronometroRecarga <= 0)
                 {
                     Disparar(marcadorFantasma.transform.position);
-                    // Sai do modo mira e volta pro menu
+                    
+                    // Finaliza mira
                     mirando = false; 
                     marcadorFantasma.SetActive(false);
-                    menuAberto = false; // Mantém fechado para ver a explosão 
+                    // Garante que o menu permaneça fechado
+                    FecharMenu();
                 }
                 else
                 {
@@ -67,17 +78,59 @@ public class LancadorMisseis : MonoBehaviour
             // Clique DIREITO: Cancela
             if (Input.GetMouseButtonDown(1))
             {
-                mirando = false;
-                marcadorFantasma.SetActive(false);
-                menuAberto = true; // Volta pro menu
-                Debug.Log("[Lançador] Mira cancelada.");
+                CancelarMira();
             }
         }
+    }
+
+    // Gerencia quem abre/fecha quando aperta L
+    void GerenciarInputMenu()
+    {
+        if (menuAberto)
+        {
+            // Se EU estou aberto, eu fecho.
+            FecharMenu();
+        }
+        else
+        {
+            // Se eu estou fechado, quero abrir.
+            // Mas primeiro, se tem OUTRO aberto, manda fechar.
+            if (menuAtivo != null && menuAtivo != this)
+            {
+                menuAtivo.FecharMenu();
+            }
+            
+            // Agora abro o meu
+            AbrirMenu();
+        }
+    }
+
+    void AbrirMenu()
+    {
+        menuAberto = true;
+        menuAtivo = this;
+        Debug.Log("[Lançador] Menu Aberto: " + gameObject.name);
+    }
+
+    void FecharMenu()
+    {
+        menuAberto = false;
+        if (menuAtivo == this) menuAtivo = null;
+    }
+
+    void CancelarMira()
+    {
+        mirando = false;
+        marcadorFantasma.SetActive(false);
+        // Ao cancelar, reabre o menu deste lançador
+        AbrirMenu();
+        Debug.Log("[Lançador] Mira cancelada.");
     }
 
     // --- LÓGICA DO MENU (OnGUI Simples e Rápido) ---
     void OnGUI()
     {
+        // Só desenha se estiver marcado como aberto
         if (!menuAberto) return;
 
         // Caixa do Menu no centro da tela
@@ -148,7 +201,7 @@ public class LancadorMisseis : MonoBehaviour
 
     void AtivarMira()
     {
-        menuAberto = false; // Fecha menu pra não atrapalhar
+        FecharMenu(); // Garante que fecha o menu visualmente
         mirando = true;
         marcadorFantasma.SetActive(true);
         Debug.Log("[Lançador] Modo Mira Ativo: Clique no mapa para lançar!");
@@ -188,7 +241,6 @@ public class LancadorMisseis : MonoBehaviour
         }
 
         // Instancia o míssil respeitando a rotação do ponto de saída (cano)
-        // Isso permite que você ajuste a rotação no Unity (ex: se o míssil sair de lado, gire o ponto de saída)
         GameObject missil = Instantiate(missilPrefab, saida.position, saida.rotation);
         
         // Passa o alvo para o script de voo (MisselICBM)
@@ -202,7 +254,7 @@ public class LancadorMisseis : MonoBehaviour
         cronometroRecarga = tempoRecarga;
         Debug.Log("[Lançador] LANÇAMENTO CONFIRMADO! Destino: " + alvo);
         
-        // Efeito Sonoro (Opcional - Adicione aqui se quiser)
+        // Efeito Sonoro
         AudioSource audio = GetComponent<AudioSource>();
         if(audio != null) audio.Play();
     }

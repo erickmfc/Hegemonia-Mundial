@@ -57,8 +57,22 @@ public class ControleTorreta : MonoBehaviour
         float menorDistancia = Mathf.Infinity;
         GameObject inimigoMaisPerto = null;
 
+        // Busca meu próprio ID
+        IdentidadeUnidade meuID = GetComponentInParent<IdentidadeUnidade>();
+        
         foreach (GameObject inimigo in inimigos)
         {
+            // Verificação de Amigo ou Inimigo (IFF)
+            IdentidadeUnidade idAlvo = inimigo.GetComponent<IdentidadeUnidade>();
+            
+            // Regra:
+            // 1. Se eu não tenho ID ou o alvo não tem ID, ataca (comportamento padrão antigo).
+            // 2. Se ambos têm ID e são IGUAIS, ignora (Aliado).
+            if (meuID != null && idAlvo != null)
+            {
+                if (meuID.teamID == idAlvo.teamID) continue; // Pula aliados
+            }
+
             float distancia = Vector3.Distance(transform.position, inimigo.transform.position);
             if (distancia < menorDistancia)
             {

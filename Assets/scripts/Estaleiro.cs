@@ -29,6 +29,13 @@ public class Estaleiro : MonoBehaviour
         // 1. Cria o navio na posição e rotação do Spawn
         GameObject novoNavio = Instantiate(prefabDoNavio, pontoDeNascimento.position, pontoDeNascimento.rotation);
 
+        // --- DEFINIR IDENTIDADE ---
+        IdentidadeUnidade identidade = novoNavio.GetComponent<IdentidadeUnidade>();
+        if(identidade == null) identidade = novoNavio.AddComponent<IdentidadeUnidade>();
+        
+        identidade.teamID = 1; // Jogador
+        identidade.nomeDoPais = "Minha Nação";
+
         // 2. Dá o comando para ele sair da doca
         // Usamos uma "Corrotina" ou Invoke para garantir que o NavMeshAgent inicializou
         StartCoroutine(MoverParaSaida(novoNavio));

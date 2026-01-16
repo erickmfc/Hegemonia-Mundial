@@ -1,4 +1,6 @@
 using UnityEngine;
+using System.Collections.Generic;
+using Hegemonia.Menus.Comandos; // Para achar os comandos
 
 // 1. O ESQUELETO DA FICHA TÉCNICA (ScriptableObject)
 // Isso cria uma nova opção no menu do Unity: botão direito > Create > Hegemonia > Ficha de Construcao
@@ -28,4 +30,8 @@ public class DadosConstrucao : ScriptableObject
     
     [Header("Classificação")]
     public CategoriaItem categoria;
+
+    [Header("Comportamentos e Menu")]
+    [Tooltip("Scripts de ação que aparecerão no menu quando esta unidade for selecionada")]
+    public List<ComandoMenu> scriptsDeComando;
 }

@@ -192,6 +192,18 @@ public class GerenteDeJogo : MonoBehaviour
             return;
         }
 
+        // --- DEFINIR IDENTIDADE (TeamID 1 = Jogador) ---
+        IdentidadeUnidade identidade = novaUnidade.GetComponent<IdentidadeUnidade>();
+        if (identidade == null)
+        {
+            // Se não tiver, adiciona na hora
+            identidade = novaUnidade.AddComponent<IdentidadeUnidade>();
+            Debug.Log($"[Gerente] Adicionei RG na marra em: {novaUnidade.name}");
+        }
+        
+        identidade.teamID = 1;
+        identidade.nomeDoPais = "Minha Nação";
+        
         // --- CORREÇÃO DE FÍSICA (IMPEDE VOAR) ---
         Rigidbody rb = novaUnidade.GetComponent<Rigidbody>();
         if (rb != null)

@@ -135,6 +135,7 @@ GameObject:
   - component: {fileID: 2954132244537216716}
   - component: {fileID: 1507352004153207596}
   - component: {fileID: -3531820236190028511}
+  - component: {fileID: -619355810013099590}
   m_Layer: 0
   m_Name: Tanque
   m_TagString: Player
@@ -273,6 +274,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 4480961355066741266}
   selecionado: 0
+  velocidadeVoo: 8
 --- !u!208 &-3531820236190028511
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -289,6 +291,21 @@ NavMeshObstacle:
   m_CarveOnlyStationary: 1
   m_Center: {x: 0, y: 0, z: 0}
   m_TimeToStationary: 0.5
+--- !u!114 &-619355810013099590
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8121466773515346818}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
 --- !u!1001 &4173445283179853415
 PrefabInstance:
   m_ObjectHideFlags: 0

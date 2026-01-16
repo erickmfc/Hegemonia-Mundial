@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Dados_Helicoptero_Ray
+  m_EditorClassIdentifier: 
+  nomeItem: Helicóptero Ray
+  descricao: "Transporte Aéreo Tático.\nCapacidade: 8 Unidades.\nAlta mobilidade para deslocamento de tropas."
+  icone: {fileID: 0}
+  prefabDaUnidade: {fileID: 161708, guid: 23e4ba5a16bf9dc40bb70fd3c0b603e0, type: 3}
+  preco: 850
+  categoria: 2

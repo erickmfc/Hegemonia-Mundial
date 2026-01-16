@@ -17,9 +17,14 @@ public class SistemaDeDanos : MonoBehaviour
     void Start()
     {
         vidaAtual = vidaMaxima;
-        
-        // Garante que os efeitos comecem desligados para não ter erro
         DesativarEfeitos();
+    }
+
+    public void AtualizarVidaMaxima(int bonus)
+    {
+        vidaMaxima += bonus;
+        vidaAtual += bonus; // Cura o valor adicionado
+        Debug.Log($"{gameObject.name} melhorado! Vida Máxima: {vidaMaxima}");
     }
 
     public void ReceberDano(int dano)
