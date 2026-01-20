@@ -4,9 +4,13 @@ using System.Collections.Generic;
 
 public class GerenteDeJogo : MonoBehaviour
 {
-    [Header("Economia")]
-    public int dinheiroAtual = 5000;
-    public TextMeshProUGUI mostradorDinheiro; 
+    [Header("Economia - DEPRECATED: Use GerenciadorRecursos.Instancia")]
+    [Tooltip("Deprecated: Este campo agora é gerenciado pelo GerenciadorRecursos")]
+    public int dinheiroAtual 
+    { 
+        get { return GerenciadorRecursos.Instancia != null ? GerenciadorRecursos.Instancia.dinheiro : 5000; }
+        set { if (GerenciadorRecursos.Instancia != null) GerenciadorRecursos.Instancia.dinheiro = value; }
+    } 
 
     [Header("Logística do Hangar (Tanques)")]
     public Transform spawnInterno; // Onde nasce (dentro do hangar)
@@ -34,7 +38,7 @@ public class GerenteDeJogo : MonoBehaviour
 
     void Start()
     {
-        AtualizarPainel();
+        // AtualizarPainel() removido - agora gerenciado pelo PainelRecursos
     }
 
     [Header("Fila de Produção")]
@@ -100,11 +104,16 @@ public class GerenteDeJogo : MonoBehaviour
         // 3. Verifica Dinheiro Total
         int custoTotal = preco * quantidade;
 
-        if (dinheiroAtual >= custoTotal)
+        // Usa o novo sistema de recursos
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        if (recursos == null)
         {
-            dinheiroAtual -= custoTotal;
-            AtualizarPainel();
+            Debug.LogError("❌ GerenciadorRecursos não encontrado! Crie um GameObject com este componente na cena.");
+            return;
+        }
 
+        if (recursos.TentarGastar(custoDinheiro: custoTotal))
+        {
             // 4. Adiciona na Fila (Um pedido para cada unidade)
             for (int i = 0; i < quantidade; i++)
             {
@@ -124,7 +133,7 @@ public class GerenteDeJogo : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Dinheiro Insuficiente!");
+            Debug.LogError($"❌ Dinheiro Insuficiente! Precisa: ${custoTotal}, Tem: ${recursos.dinheiro}");
         }
     }
 
@@ -276,21 +285,19 @@ public class GerenteDeJogo : MonoBehaviour
         ComprarUnidade(unidade, preco, 1);
     }
 
-    void AtualizarPainel()
-    {
-        if(mostradorDinheiro != null)
-            mostradorDinheiro.text = "$ " + dinheiroAtual.ToString();
-    }
+
 
     // Mantido para compatibilidade com o Construtor.cs
     public bool TentarGastarDinheiro(int custo)
     {
-        if (dinheiroAtual >= custo)
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        if (recursos != null)
         {
-            dinheiroAtual -= custo;
-            AtualizarPainel();
-            return true;
+            return recursos.TentarGastar(custoDinheiro: custo);
         }
+        
+        // Fallback se o GerenciadorRecursos não existir
+        Debug.LogWarning("⚠️ GerenciadorRecursos não encontrado! Usando sistema legado.");
         return false;
     }
 

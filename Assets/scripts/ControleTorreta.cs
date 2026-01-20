@@ -11,7 +11,12 @@ public class ControleTorreta : MonoBehaviour
     
     [Header("Mecânica & Recarga")]
     [Tooltip("Velocidade que a torreta gira para acompanhar o alvo.")]
-    public float velocidadeGiro = 60f; 
+    public float velocidadeGiro = 60f;
+    
+    [Header("Limites de Rotação (Anti-Clipping)")]
+    public bool limitarRotacao = true;
+    [Range(-180, 180)] public float anguloMinimo = -90f;
+    [Range(-180, 180)] public float anguloMaximo = 90f;
 
     [Tooltip("Tempo em SEGUNDOS entre cada tiro (Quanto menor, mais rápido).")]
     public float tempoEntreTiros = 0.08f; 
@@ -48,11 +53,24 @@ public class ControleTorreta : MonoBehaviour
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
         fonteAudio.spatialBlend = 1f;
         
+        // Garante que a referência exista
+        if (pecaQueGira == null) pecaQueGira = transform;
+
         InvokeRepeating("ProcurarAlvo", 0f, 0.2f);
     }
 
+    [Header("Comportamento")]
+    [Tooltip("Se ativado, a torreta não ataca automaticamente.")]
+    public bool modoPassivo = false;
+
     void ProcurarAlvo()
     {
+        if (modoPassivo) 
+        {
+            alvoAtual = null;
+            return;
+        }
+
         GameObject[] inimigos = GameObject.FindGameObjectsWithTag(etiquetaAlvo);
         float menorDistancia = Mathf.Infinity;
         GameObject inimigoMaisPerto = null;
@@ -110,18 +128,40 @@ public class ControleTorreta : MonoBehaviour
         if (alvoAtual != null)
         {
             // MODO COMBATE: Olha para o inimigo
-            Vector3 direcao = alvoAtual.position - transform.position;
-            Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
-            pecaQueGira.rotation = Quaternion.Lerp(pecaQueGira.rotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
+            if (pecaQueGira != null)
+            {
+                Vector3 direcao = alvoAtual.position - pecaQueGira.position;
+                
+                if (limitarRotacao && pecaQueGira.parent != null)
+                {
+                    // Lógica Local Clamp (Respeita a rotação do barco pai)
+                    Vector3 localDir = pecaQueGira.parent.InverseTransformDirection(direcao);
+                    float anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+                    float anguloTravado = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
+                    
+                    Quaternion rotacaoAlvo = Quaternion.Euler(0, anguloTravado, 0);
+                    pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
+                }
+                else
+                {
+                    // Lógica Global (Sem limites ou sem pai)
+                    Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
+                    // Trava X e Z para não tombar
+                    rotacaoAlvo = Quaternion.Euler(0, rotacaoAlvo.eulerAngles.y, 0);
+                    pecaQueGira.rotation = Quaternion.Lerp(pecaQueGira.rotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
+                }
+            }
 
             // MODO TIRO: Atira se der o tempo
             if (contadorTempo <= 0f)
             {
-                Disparar();
-                // CORREÇÃO: Só define o tempo do próximo tiro se NÃO entrou em recarga
-                if (!estaRecarregando)
+                // Verifica se o ângulo permite atirar (Se a arma não está apontando para o alvo, não atira)
+                // Isso evita atirar "através" do barco enquanto gira
+                Vector3 dirAlvo = (alvoAtual.position - pecaQueGira.position).normalized;
+                if(Vector3.Angle(pecaQueGira.forward, dirAlvo) < 10f) // Só atira se < 10 graus de erro
                 {
-                    contadorTempo = tempoEntreTiros;
+                    Disparar();
+                    if (!estaRecarregando) contadorTempo = tempoEntreTiros;
                 }
             }
             contadorTempo -= Time.deltaTime;
@@ -136,10 +176,18 @@ public class ControleTorreta : MonoBehaviour
     void ModoOcioso()
     {
         // Gira suavemente no eixo Y (procurando)
-        // Se a sua torreta for montada diferente, talvez precise ser eixo Z ou X
         if (pecaQueGira != null)
         {
-            pecaQueGira.Rotate(0, 10f * Time.deltaTime, 0);
+            if (limitarRotacao)
+            {
+                // Se tem limite, volta para o centro (0 graus)
+                pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, Quaternion.identity, Time.deltaTime * 2f);
+            }
+            else
+            {
+                // Radar girando 360
+                pecaQueGira.Rotate(0, 10f * Time.deltaTime, 0);
+            }
         }
     }
 

@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3bee04a271d80f4382ce8b7aef13c5d, type: 3}
+  m_Name: Dados_Armazem_Militar
+  m_EditorClassIdentifier: Assembly-CSharp::DadosArmazemMilitar
+  capacidadeMaxima: 5000
+  municaoLeve: 0
+  municaoLeveMaximo: 10000
+  municaoPesada: 0
+  municaoPesadaMaximo: 1000
+  misseis: 0
+  misseisMaximo: 100
+  explosivos: 0
+  explosivosMaximo: 500
+  equipamento: 0
+  equipamentoMaximo: 1000
+  blindagem: 0
+  blindagemMaximo: 200
+  descricao: "Armaz\xE9m militar estrat\xE9gico"
+  localizacao: Base Militar Principal
+  nivelSeguranca: 5

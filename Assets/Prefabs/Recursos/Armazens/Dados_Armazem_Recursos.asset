@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a48d1103d836af4cbee6fc0088e5972, type: 3}
+  m_Name: Dados_Armazem_Recursos
+  m_EditorClassIdentifier: Assembly-CSharp::DadosArmazemRecursos
+  capacidadeMaxima: 10000
+  alimentos: 0
+  alimentosMaximo: 5000
+  agua: 0
+  aguaMaximo: 5000
+  petroleo: 0
+  petroleoMaximo: 3000
+  minerais: 0
+  mineraisMaximo: 2000
+  metal: 0
+  metalMaximo: 2000
+  energia: 0
+  energiaMaximo: 1000
+  descricao: "Armaz\xE9m de recursos civis do pa\xEDs"
+  localizacao: Base Principal

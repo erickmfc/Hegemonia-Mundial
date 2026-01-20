@@ -43,31 +43,51 @@ public class ControleUnidade : MonoBehaviour
         if(anelSelecao != null) anelSelecao.SetActive(selecionado);
     }
 
+    [Header("Visual")]
+    public float tamanhoSelecao = 0f; // 0 = Automatico
+    public Color corSelecao = new Color(1f, 1f, 1f, 0.4f); // Branco semi-transparente (estilo padrão)
+
     void CriarSelecaoVisual()
     {
         if (anelSelecao != null) return;
 
-        // Cria um cilindro simples para ser o anel
+        // Cria o anel
         anelSelecao = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        
-        // Remove o colisor para não atrapalhar cliques ou física
         Destroy(anelSelecao.GetComponent<Collider>());
-        
         anelSelecao.transform.SetParent(this.transform);
         
-        // Posição: rente ao chão
-        anelSelecao.transform.localPosition = new Vector3(0, 0.02f, 0);
+        // Posição: Levemente acima do chão para evitar Z-Fighting
+        anelSelecao.transform.localPosition = new Vector3(0, 0.05f, 0);
         
-        // Tamanho: 1.2m de diâmetro (ajustado para soldados)
-        anelSelecao.transform.localScale = new Vector3(1.2f, 0.01f, 1.2f);
+        // --- CÁLCULO DE TAMANHO AUTOMÁTICO ---
+        float diametroFinal = 1.5f; // Padrão soldado
+
+        if (tamanhoSelecao > 0)
+        {
+            diametroFinal = tamanhoSelecao;
+        }
+        else
+        {
+            // Tenta adivinhar pelo NavMeshAgent
+            if (agente != null) diametroFinal = agente.radius * 2.5f;
+            // Ou pelo Collider
+            else 
+            {
+                Collider col = GetComponent<Collider>();
+                if (col != null) diametroFinal = col.bounds.size.x * 1.2f;
+            }
+        }
         
-        // Visual: Verde "Hegemonia" com 0.045 de transparência
+        // Aplica escala (Y baixinho para parecer disco)
+        anelSelecao.transform.localScale = new Vector3(diametroFinal, 0.02f, diametroFinal);
+        
+        // Material e Cor
         Renderer rend = anelSelecao.GetComponent<Renderer>();
         if(rend != null)
         {
-            // Usa Sprite/Default que aceita transparência bem
             rend.material = new Material(Shader.Find("Sprites/Default"));
-            rend.material.color = new Color(0, 1, 0, 0.045f);
+            rend.material.color = corSelecao;
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
     }
 

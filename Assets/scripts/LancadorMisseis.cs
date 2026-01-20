@@ -144,9 +144,10 @@ public class LancadorMisseis : MonoBehaviour
         // Info Munição
         GUI.Label(new Rect(x + 20, y + 30, 200, 20), $"Mísseis Prontos: {municaoAtual} / {municaoMaxima}");
 
-        // Info Dinheiro (se tiver gerente)
-        if(gerente != null)
-             GUI.Label(new Rect(x + 20, y + 50, 200, 20), $"Dinheiro: ${gerente.dinheiroAtual}");
+        // Info Dinheiro (usando o novo sistema)
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        if(recursos != null)
+             GUI.Label(new Rect(x + 20, y + 50, 200, 20), $"Dinheiro: ${recursos.dinheiro}");
 
         // BOTÃO: COMPRAR
         if (GUI.Button(new Rect(x + 25, y + 80, 200, 30), $"Comprar Míssil (${custoMissil})"))
@@ -178,24 +179,24 @@ public class LancadorMisseis : MonoBehaviour
             return;
         }
 
-        if (gerente != null)
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        if (recursos != null)
         {
-            if (gerente.dinheiroAtual >= custoMissil)
+            if (recursos.TentarGastar(custoDinheiro: custoMissil))
             {
-                gerente.dinheiroAtual -= custoMissil;
                 municaoAtual++;
-                Debug.Log("[Lançador] Míssil comprado!");
+                Debug.Log($"[Lançador] 🚀 Míssil comprado! Restam ${recursos.dinheiro}");
             }
             else
             {
-                Debug.Log("[Lançador] Sem dinheiro!");
+                Debug.Log("[Lançador] ❌ Sem dinheiro para comprar míssil!");
             }
         }
         else
         {
-            // Se não tiver gerente (teste), dá o míssil de graça
+            // Se não tiver GerenciadorRecursos (teste), dá o míssil de graça
             municaoAtual++;
-            Debug.Log("[Lançador] Modo Teste: Míssil adicionado (Grátis)");
+            Debug.Log("[Lançador] ⚠️ Modo Teste: Míssil adicionado (Grátis - GerenciadorRecursos não encontrado)");
         }
     }
 

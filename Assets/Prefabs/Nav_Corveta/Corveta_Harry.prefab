@@ -523,6 +523,10 @@ PrefabInstance:
       propertyPath: 'locaisDoTiro.Array.data[0]'
       value: 
       objectReference: {fileID: 1849941006307440148}
+    - target: {fileID: 7683597468495315001, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
+      propertyPath: tipoUnidade
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 7960940317155996790, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 276.6987

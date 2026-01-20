@@ -362,128 +362,112 @@ public class MenuConstrucao : MonoBehaviour
         rtIcon.offsetMin = Vector2.zero; rtIcon.offsetMax = Vector2.zero;
     }
 
-    // --- GERADOR DE ICONES 3D (RUNTIME) MELHORADO ---
+    // --- GERADOR DE ICONES 3D (RUNTIME) V2.0 - ALTA QUALIDADE ---
     Texture2D GerarSnapshot(GameObject prefab)
     {
         if(prefab == null) return null;
 
-        // 1. Cria um estúdio invisível lá longe
+        // 1. Cria estúdio isolado
         GameObject studio = new GameObject("Studio_Snapshot");
-        studio.transform.position = new Vector3(0, -5000, 0); // Bem longe
-        int layerSnapshot = LayerMask.NameToLayer("UI"); // Tenta usar UI ou Default
-        if(layerSnapshot < 0) layerSnapshot = 0;
-
-        // 2. Instancia o objeto
+        studio.transform.position = new Vector3(0, -5000, 0); 
+        
+        // 2. Instancia objeto
         GameObject obj = Instantiate(prefab, studio.transform);
         obj.transform.localPosition = Vector3.zero;
-        obj.transform.localRotation = Quaternion.Euler(0, 150, 0); // Rotaciona para ficar de frente (ajuste conforme seu modelo)
+        
+        // Rotaciona para melhor ângulo (Isométrico clássico)
+        // Y=45 (quina), X=0 (chão plano) - A câmera que vai inclinar
+        obj.transform.rotation = Quaternion.Euler(0, 45, 0); 
 
-        // Previne scripts chatos de rodar
+        // Desativa scripts e componentes indesejados
         foreach(var c in obj.GetComponentsInChildren<MonoBehaviour>()) c.enabled = false;
         foreach(var nav in obj.GetComponentsInChildren<NavMeshAgent>()) nav.enabled = false;
-        
-        // Define Layers para a câmera ver apenas isso se quisesse, mas aqui vamos na força bruta
-        
-        // 3. Calcula o tamanho do objeto para posicionar a câmera
+        foreach(var p in obj.GetComponentsInChildren<ParticleSystem>()) p.gameObject.SetActive(false); // Esconde partículas pois estragam o enquadramento
+
+        // 3. Calcula Bounds precisos
         Bounds bounds = new Bounds(obj.transform.position, Vector3.zero);
         Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-        
-        // Filtra renderers (Ignora partículas, trilhas, etc)
-        var validRenderers = new List<Renderer>();
-        foreach(var r in renderers)
-        {
-            if(r is ParticleSystemRenderer || r is TrailRenderer) continue;
-
-            // FILTRO DE SEGURANÇA: Ignora "sujeira" que possa vir junto no prefab (Terreno, Mapa, etc)
-            string rName = r.gameObject.name.ToLower();
-            if(rName.Contains("terrain") || rName.Contains("mapa") || rName.Contains("chao") || rName.Contains("ground") || rName.Contains("environment")) 
-                continue;
-
-            validRenderers.Add(r);
-            
-            // Força atualização de SkinnedMesh
-            if(r is SkinnedMeshRenderer smr)
-            {
-                smr.updateWhenOffscreen = true;
-                smr.forceMatrixRecalculationPerRender = true; 
-            }
-        }
-        
-        if(validRenderers.Count == 0) { Destroy(studio); return null; }
-
         bool primeiro = true;
-        foreach (Renderer r in validRenderers) 
+        
+        foreach (Renderer r in renderers) 
         {
+            // Ignora renderers invisíveis, partículas, trilhas ou coisas gigantes (terreno)
+            if(!r.enabled || r is ParticleSystemRenderer || r is TrailRenderer) continue;
+            if(r.bounds.size.magnitude > 1000f) continue; // Ignora skybox ou terreno gigante
+            
             if(primeiro) { bounds = r.bounds; primeiro = false; }
             else bounds.Encapsulate(r.bounds);
         }
         
-        // --- CORREÇÃO DE TAMANHO (Para soldados não ficarem minúsculos ou estourados) ---
-        // Se o objeto for muito pequeno (tipo um soldado), fingimos que ele é maior para a câmera afastar
+        if(renderers.Length == 0 || bounds.size.magnitude < 0.1f) { Destroy(studio); return null; }
+
         float maxDim = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-        if(maxDim < 2.0f) maxDim = 2.0f; // Tamanho mínimo de referência (2 metros)
+        // Garante tamanho mínimo para câmera não entrar no objeto
+        if(maxDim < 1f) maxDim = 1f;
 
-        float cameraDist = maxDim * 2.0f; 
-
-        // 4. Configura Câmera e Luz
+        // 4. Configura Câmera
         GameObject camObj = new GameObject("Cam_Snapshot");
         camObj.transform.SetParent(studio.transform);
-        
         Camera cam = camObj.AddComponent<Camera>();
-        cam.backgroundColor = new Color(0.25f, 0.3f, 0.35f, 1f); 
+        
+        // Fundo Transparente
         cam.clearFlags = CameraClearFlags.Color;
-        cam.nearClipPlane = 0.1f;
-        cam.farClipPlane = 1000f;
-        cam.orthographic = true; 
-        cam.orthographicSize = maxDim * 0.6f; // Ajuste de Zoom (quanto menor, mais perto)
-
-        // Posiciona a câmera em ângulo isométrico "RTS"
-        // 45 graus de cima, 45 do lado
-        Vector3 direcao = new Vector3(1, 1, -1).normalized;
-        cam.transform.position = bounds.center + direcao * cameraDist;
-        cam.transform.LookAt(bounds.center); 
+        cam.backgroundColor = new Color(0,0,0,0); 
+        cam.cullingMask = -1; // Vê tudo (no estúdio isolado)
         
-        // Ajuste fino para centralizar verticalmente (Humanoides costumam ter pivot no pé)
-        if(maxDim < 3.0f) cam.transform.position += Vector3.up * (maxDim * 0.2f);
-
-        // Luz Principal
-        GameObject luz = new GameObject("Luz_Key");
-        luz.transform.SetParent(studio.transform);
-        Light l = luz.AddComponent<Light>();
-        l.type = LightType.Directional;
-        l.intensity = 1.2f;
-        l.transform.rotation = Quaternion.LookRotation(bounds.center - (bounds.center + new Vector3(1, 2, -1))); // Luz vindo de cima/direita
+        cam.orthographic = true;
+        cam.orthographicSize = maxDim * 0.7f; // Zoom ajustado
         
-        // Luz de Preenchimento (para não ficar sombras pretas)
-        GameObject luzFill = new GameObject("Luz_Fill");
-        luzFill.transform.SetParent(studio.transform);
-        Light lf = luzFill.AddComponent<Light>();
-        lf.type = LightType.Directional;
-        lf.color = new Color(0.5f, 0.5f, 0.6f);
-        lf.intensity = 0.5f;
-        lf.transform.rotation = Quaternion.LookRotation(bounds.center - (bounds.center + new Vector3(-1, 0, -1)));
+        // Posiciona câmera em ângulo isométrico perfeito (30 graus vertical)
+        float dist = maxDim * 5f;
+        Vector3 dir = Quaternion.Euler(30, 0, 0) * Vector3.back; // 30 graus de cima
+        cam.transform.position = bounds.center - (dir * dist);
+        cam.transform.LookAt(bounds.center);
 
-        // 5. Renderiza
-        int res = 256; // Resolução do ícone
-        RenderTexture rt = RenderTexture.GetTemporary(res, res, 24);
+        // 5. Iluminação de Estúdio (Três Pontos)
+        
+        // Luz Principal (Sol) - Branco Quente
+        CriarLuz(studio.transform, bounds.center, Quaternion.Euler(50, -30, 0), 1.2f, new Color(1f, 0.95f, 0.9f));
+        
+        // Luz de Preenchimento (Sombra) - Azulado Frio
+        CriarLuz(studio.transform, bounds.center, Quaternion.Euler(30, 150, 0), 0.6f, new Color(0.8f, 0.85f, 1f));
+        
+        // Luz de Recorte (Backlight) - Destaca silhueta
+        CriarLuz(studio.transform, bounds.center, Quaternion.Euler(-10, 0, 0), 0.8f, Color.white);
+
+        // 6. Renderiza
+        int res = 512; // Resolução maior (512x512)
+        RenderTexture rt = RenderTexture.GetTemporary(res, res, 24, RenderTextureFormat.ARGB32);
+        rt.antiAliasing = 8; // Suavização máxima
+        
         cam.targetTexture = rt;
         cam.Render();
 
-        // 6. Passa para Texture2D
+        // 7. Gera Textura
         RenderTexture.active = rt;
         Texture2D tex = new Texture2D(res, res, TextureFormat.RGBA32, false);
         tex.ReadPixels(new Rect(0, 0, res, res), 0, 0);
         tex.Apply();
 
-        // 7. Limpa a bagunça
-        RenderTexture.active = null;
+        // 8. Limpeza
         cam.targetTexture = null;
+        RenderTexture.active = null;
         RenderTexture.ReleaseTemporary(rt);
-        Destroy(studio); // Tchau estúdio
+        Destroy(studio);
 
         return tex;
     }
 
+    void CriarLuz(Transform parent, Vector3 target, Quaternion rotation, float intensity, Color color)
+    {
+        GameObject lObj = new GameObject("Light_Snap");
+        lObj.transform.SetParent(parent);
+        Light l = lObj.AddComponent<Light>();
+        l.type = LightType.Directional;
+        l.intensity = intensity;
+        l.color = color;
+        l.transform.rotation = rotation;
+    }
     void ClicouNoItem(DadosConstrucao item)
     {
         // 1. Separa o que é Construção (Muro, Prédio) do que é Tropa (Navio, Tanque)
