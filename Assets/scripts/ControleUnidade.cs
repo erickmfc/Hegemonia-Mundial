@@ -129,7 +129,7 @@ public class ControleUnidade : MonoBehaviour
         }
 
         // 3. Controle de Animação (Genérico)
-        if (animator != null)
+        if (animator != null && animator.runtimeAnimatorController != null)
         {
             animator.SetFloat("Velocidade", velocidadeAtual);
         }

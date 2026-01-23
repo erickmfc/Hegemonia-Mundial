@@ -243,6 +243,14 @@ public class ControleTorreta : MonoBehaviour
         if (somRecarga != null) fonteAudio.PlayOneShot(somRecarga);
     }
 
+    /// <summary>
+    /// Liga/Desliga o modo automático de ataque
+    /// </summary>
+    public void DefinirModoAtivo(bool ativo)
+    {
+        modoPassivo = !ativo; // Se ativo = true, modoPassivo = false
+    }
+
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;

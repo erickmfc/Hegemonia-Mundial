@@ -67,5 +67,31 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4297645250895064467}
   m_SourcePrefab: {fileID: 100100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
+--- !u!1 &5570318996861275845 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
+  m_PrefabInstance: {fileID: 5570318996861306981}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4297645250895064467
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5570318996861275845}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 100
+  vidaAtual: 100
+  fxFumacaLeve: {fileID: 0}
+  fxFumacaEscura: {fileID: 0}
+  fxFogoCritico: {fileID: 0}
+  fxExplosaoFinal: {fileID: 0}

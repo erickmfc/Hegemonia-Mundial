@@ -34,11 +34,15 @@ public class MisselTatico : MonoBehaviour
         temAlvo = true;
         tempoDeVida = 0;
 
-        // Se NÃO usar rotação do lançador, força UP (estilo VLS)
+        // Se usar rotação inicial, NÃO mexemos na rotação (confia no Instantiate do Lançador).
+        // Se NÃO usar (ex: silo vertical), força pra cima.
         if (!usarRotacaoInicialDoLancador)
         {
             transform.rotation = Quaternion.LookRotation(Vector3.up);
         }
+        
+        // DEBUG: Garantir que saia alinhado com o tubo
+        // O instantiate já faz isso, mas aqui reforçamos a lógica de não sobrescrever.
 
         PrepararFisica();
         
@@ -75,36 +79,23 @@ public class MisselTatico : MonoBehaviour
 
         tempoDeVida += Time.deltaTime;
 
-        // 1. MOVIMENTO (Sempre em frente)
+        // 1. MOVIMENTO (Sempre em frente no eixo local Z)
         transform.Translate(Vector3.forward * velocidade * Time.deltaTime);
 
         // 2. GUIAGEM
         if (tempoDeVida < atrasoParaVirar)
         {
             // Fase de Decolagem: Segue reto na direção que saiu do tubo
-            // Não força rotação, apenas mantém a inércia direcional
+            // Não faz NADA aqui, apenas mantém a rotação inicial que veio do Instantiate
         }
         else if (temAlvo)
         {
-            // Fase de Cruzeiro/Mergulho
+            // Fase de Cruzeiro/Mergulho (Só começa depois do atraso)
             
             // Calcula direção para o alvo
              Vector3 direcaoParaAlvo = (alvo - transform.position).normalized;
-             float distancia = Vector3.Distance(transform.position, alvo);
-
-            // Perfil de Voo
-            Vector3 pontoDeMira = alvo;
-            
-            // Se ainda está longe, tenta virar para o alvo + arco
-            // Se está muito perto, vai direto (Dive)
-            if (distancia > 15f)
-            {
-                // Faz "Lead" ou curva suave parabólica
-                // Adiciona um offset em Y baseado na distância para manter altura
-                // Mas diferentemente do ICBM, o Tático voa mais "direto" depois do arco inicial
-                // Vamos simplificar: Olha pro alvo, mas se estiver subindo, deixa subir um pouco mais.
-            }
-
+             
+            // Faz curva suave em direção ao alvo
             Quaternion targetRot = Quaternion.LookRotation(direcaoParaAlvo);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, velocidadeDeGiro * Time.deltaTime);
         }

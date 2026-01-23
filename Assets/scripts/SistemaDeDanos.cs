@@ -4,7 +4,7 @@ public class SistemaDeDanos : MonoBehaviour
 {
     [Header("Configuração da Unidade")]
     public int vidaMaxima = 100; // Cada unidade pode ter um valor diferente
-    private int vidaAtual;
+    public int vidaAtual; // Público para leitura da Barra de Vida
 
     [Header("Efeitos Visuais (Arraste os GameObjects aqui)")]
     public GameObject fxFumacaLeve;   // Dano Leve (70%)

@@ -176,6 +176,26 @@ public class GerenteSelecao : MonoBehaviour
 
     void AdicionarSelecao(ControleUnidade unidade)
     {
+        // VERIFICA SE É DO MEU TIME
+        IdentidadeUnidade id = unidade.GetComponent<IdentidadeUnidade>();
+        
+        if (id != null)
+        {
+            // Se tem identidade, respeita o time.
+            // Team ID 1 = Jogador. Se for diferente, ignora.
+            if (id.teamID != 1) return; 
+        }
+        else
+        {
+            // --- CORREÇÃO AUTOMÁTICA ---
+            // Se a unidade não tem identidade (ex: Hamer recém colocado),
+            // assumimos que é do jogador e colocamos o RG nela agora.
+            id = unidade.gameObject.AddComponent<IdentidadeUnidade>();
+            id.teamID = 1; // Registra como Aliado
+            id.nomeDoPais = "Minha Nação";
+            Debug.Log($"[Sistema] Identidade criada automaticamente para: {unidade.name}");
+        }
+
         unidadesSelecionadas.Add(unidade);
         unidade.DefinirSelecao(true);
     }

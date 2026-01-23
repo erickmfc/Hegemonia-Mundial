@@ -549,6 +549,7 @@ GameObject:
   - component: {fileID: 1429588479860886460}
   - component: {fileID: 2514975774586500930}
   - component: {fileID: 7448119204042953529}
+  - component: {fileID: 1489107452339292928}
   m_Layer: 0
   m_Name: Leon_c1
   m_TagString: Untagged
@@ -587,6 +588,8 @@ MonoBehaviour:
   anelSelecao: {fileID: 0}
   selecionado: 0
   velocidadeVoo: 8
+  tamanhoSelecao: 0
+  corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
 --- !u!195 &8188787113491107946
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -597,8 +600,8 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 4
-  m_Acceleration: 10
+  m_Speed: 5.5
+  m_Acceleration: 3
   avoidancePriority: 50
   m_AngularSpeed: 120
   m_StoppingDistance: 0
@@ -607,7 +610,7 @@ NavMeshAgent:
   m_AutoRepath: 1
   m_Height: 2
   m_BaseOffset: 0
-  m_WalkableMask: 9
+  m_WalkableMask: 11
   m_ObstacleAvoidanceType: 4
 --- !u!65 &1429588479860886460
 BoxCollider:
@@ -661,6 +664,9 @@ MonoBehaviour:
   etiquetaAlvo: Inimigo
   alcance: 80
   velocidadeGiro: 5
+  limitarRotacao: 1
+  anguloMinimo: -90
+  anguloMaximo: 90
   tempoEntreTiros: 0.08
   tamanhoCartucho: 50
   tempoRecarga: 5
@@ -671,6 +677,25 @@ MonoBehaviour:
   somTiro: {fileID: 8300000, guid: 0bd05763df902854a80475577a26666a, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
+  modoPassivo: 0
+--- !u!114 &1489107452339292928
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1939874857473241444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 500
+  vidaAtual: 500
+  fxFumacaLeve: {fileID: 0}
+  fxFumacaEscura: {fileID: 0}
+  fxFogoCritico: {fileID: 0}
+  fxExplosaoFinal: {fileID: 100012, guid: 3364c97de68d3a147af572d1c71c6455, type: 3}
 --- !u!1 &2164202855941383057
 GameObject:
   m_ObjectHideFlags: 0

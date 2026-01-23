@@ -104,16 +104,16 @@ public class CriadorHUDRecursos : MonoBehaviour
         PainelRecursos painelScript = painelPrincipal.AddComponent<PainelRecursos>();
 
         // 3. CRIAR LINHAS DE RECURSO
-        painelScript.textoDinheiro = CriarLinha(painelPrincipal.transform, "Dinheiro", "💰", out painelScript.ganhoTextoDinheiro);
-        painelScript.textoPetroleo = CriarLinha(painelPrincipal.transform, "Petróleo", "⛽", out painelScript.ganhoTextoPetroleo);
-        painelScript.textoAco = CriarLinha(painelPrincipal.transform, "Aço", "🔩", out painelScript.ganhoTextoAco);
-        painelScript.textoEnergia = CriarLinha(painelPrincipal.transform, "Energia", "⚡", out painelScript.ganhoTextoEnergia);
+        painelScript.textoDinheiro = CriarLinha(painelPrincipal.transform, "Dinheiro", "$", out painelScript.ganhoTextoDinheiro);
+        painelScript.textoPetroleo = CriarLinha(painelPrincipal.transform, "Petróleo", "Oil", out painelScript.ganhoTextoPetroleo);
+        painelScript.textoAco = CriarLinha(painelPrincipal.transform, "Aço", "Stl", out painelScript.ganhoTextoAco);
+        painelScript.textoEnergia = CriarLinha(painelPrincipal.transform, "Energia", "Pwr", out painelScript.ganhoTextoEnergia);
         
         CriarSeparador(painelPrincipal.transform);
 
-        painelScript.textoEstoque = CriarLinha(painelPrincipal.transform, "Estoque", "📦", out var temp1);
-        painelScript.textoPopulacao = CriarLinha(painelPrincipal.transform, "População", "👥", out var temp2);
-        painelScript.textoExercito = CriarLinha(painelPrincipal.transform, "Exército", "⚔️", out var temp3);
+        painelScript.textoEstoque = CriarLinha(painelPrincipal.transform, "Estoque", "Cap", out var temp1);
+        painelScript.textoPopulacao = CriarLinha(painelPrincipal.transform, "População", "Pop", out var temp2);
+        painelScript.textoExercito = CriarLinha(painelPrincipal.transform, "Exército", "Uni", out var temp3);
 
         Debug.Log("✅ HUD Vertical 'Slim' (Magrinho) criado!");
         Selection.activeGameObject = painelPrincipal;
@@ -136,7 +136,8 @@ public class CriadorHUDRecursos : MonoBehaviour
         GameObject objTexto = new GameObject("Valor");
         objTexto.transform.SetParent(linha.transform, false);
         TextMeshProUGUI txtValor = objTexto.AddComponent<TextMeshProUGUI>();
-        txtValor.text = $"{icone} 0";
+        // Use espaço para separar label do valor
+        txtValor.text = $"{icone}: 0";
         txtValor.fontSize = 16; // Fonte levemente menor (era 18)
         txtValor.color = Color.white;
         txtValor.alignment = TextAlignmentOptions.Left;

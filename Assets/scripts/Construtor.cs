@@ -189,6 +189,18 @@ public class Construtor : MonoBehaviour
         }
     }
 
+    // --- API PARA INTELIGÊNCIA ARTIFICIAL (CPU) ---
+    public GameObject ConstruirEstruturaIA(GameObject prefab, Vector3 posicao, Quaternion rotacao)
+    {
+        if (prefab == null) return null;
+
+        // Instancia direto:
+        GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
+        
+        Debug.Log($"[Construtor IA] Construiu {prefab.name} em {posicao}");
+        return novoPredio;
+    }
+    
     // CHAMADO PELO SEU MENU
     public void SelecionarParaConstruir(GameObject prefab)
     {

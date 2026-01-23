@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2f8230b18fb9114aa18b387b955a725, type: 3}
+  m_Name: "C\xE9rebro_General"
+  m_EditorClassIdentifier: Assembly-CSharp::IA_General_Autonomo
+  nomeComportamento: Nova Estrategia
+  descricao: "\r\nLiberdade de Escolha: Ele olha o que tem no \"Card\xE1pio\" (Arsenal)
+    e decide o que comprar.\r\nEconomia Inteligente: \xC0s vezes ele decide n\xE3o
+    comprar nada para juntar dinheiro para unidades mais caras (Tanques/Helic\xF3pteros).\r\nAtaques
+    em Pelot\xE3o: Ele n\xE3o manda um soldado sozinho para a morte. Ele espera juntar
+    um grupo (ex: 4 unidades) e manda atacar em conjunto."
+  chanceDeEconomizar: 0.3
+  exercitoAtual: []
+  tamanhoDoPelotao: 4

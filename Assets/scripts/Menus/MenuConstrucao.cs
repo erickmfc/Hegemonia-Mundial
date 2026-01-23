@@ -17,6 +17,7 @@ public class MenuConstrucao : MonoBehaviour
     
     [Tooltip("Lista manual de fichas (usada se autoCarregarFichas = false)")]
     public List<DadosConstrucao> catalogo = new List<DadosConstrucao>();
+    public static List<DadosConstrucao> catalogoGlobal; // Acesso global para a IA
 
     // Variáveis Internas
     private GameObject painelPrincipal;
@@ -59,6 +60,8 @@ public class MenuConstrucao : MonoBehaviour
         // Ordena por categoria e depois por nome
         catalogo = catalogo.OrderBy(f => (int)f.categoria).ThenBy(f => f.nomeItem).ToList();
         
+        catalogoGlobal = catalogo; // Expor para a IA
+
         Debug.Log($"[MenuConstrucao] Auto-carregadas {catalogo.Count} fichas de construção.");
     }
     
@@ -369,20 +372,42 @@ public class MenuConstrucao : MonoBehaviour
 
         // 1. Cria estúdio isolado
         GameObject studio = new GameObject("Studio_Snapshot");
+        // Movemos o estúdio para longe, mas vamos instanciar o objeto em 0,0,0 primeiro para tentar evitar erro de NavMesh
         studio.transform.position = new Vector3(0, -5000, 0); 
         
-        // 2. Instancia objeto
-        GameObject obj = Instantiate(prefab, studio.transform);
-        obj.transform.localPosition = Vector3.zero;
-        
-        // Rotaciona para melhor ângulo (Isométrico clássico)
-        // Y=45 (quina), X=0 (chão plano) - A câmera que vai inclinar
-        obj.transform.rotation = Quaternion.Euler(0, 45, 0); 
+        GameObject obj = null;
+        try 
+        {
+            // Tenta instanciar desativado se possível, mas Unity n tem isso direto sem ser via editor.
+            // Vamos instanciar em 0,0,0 e mover.
+            bool estavaAtivo = prefab.activeSelf;
+            // Se pudessemos desativar o prefab... nao podemos (é asset).
+            
+            // Instancia na origem (esperando que 0,0,0 tenha NavMesh ou seja seguro)
+            obj = Instantiate(prefab, Vector3.zero, Quaternion.Euler(0, 45, 0));
+            obj.transform.SetParent(studio.transform, false); // Move para o estudio (-5000)
+            
+            // Mas se o NavMeshAgent reclamar no Instantiate, ja era.
+            // A solução robusta seria ter NavMesh em -5000 ou desativar o Agent no Prefab.
+            // Porem como workaround de código:
+        }
+        catch
+        {
+            if(studio != null) Destroy(studio);
+            return null;
+        }
+
+        if(obj == null) { if(studio!=null) Destroy(studio); return null; }
 
         // Desativa scripts e componentes indesejados
         foreach(var c in obj.GetComponentsInChildren<MonoBehaviour>()) c.enabled = false;
         foreach(var nav in obj.GetComponentsInChildren<NavMeshAgent>()) nav.enabled = false;
-        foreach(var p in obj.GetComponentsInChildren<ParticleSystem>()) p.gameObject.SetActive(false); // Esconde partículas pois estragam o enquadramento
+        foreach(var p in obj.GetComponentsInChildren<ParticleSystem>()) p.gameObject.SetActive(false);
+        // Desativa UI flutuante (HealthBars etc) para não poluir o ícone e evitar erros de fonte
+        foreach(var kv in obj.GetComponentsInChildren<Canvas>()) kv.enabled = false;
+        // Se usar TMP
+        var tmps = obj.GetComponentsInChildren<TMPro.TMP_Text>();
+        foreach(var t in tmps) t.enabled = false;
 
         // 3. Calcula Bounds precisos
         Bounds bounds = new Bounds(obj.transform.position, Vector3.zero);
@@ -391,9 +416,8 @@ public class MenuConstrucao : MonoBehaviour
         
         foreach (Renderer r in renderers) 
         {
-            // Ignora renderers invisíveis, partículas, trilhas ou coisas gigantes (terreno)
             if(!r.enabled || r is ParticleSystemRenderer || r is TrailRenderer) continue;
-            if(r.bounds.size.magnitude > 1000f) continue; // Ignora skybox ou terreno gigante
+            if(r.bounds.size.magnitude > 1000f) continue; 
             
             if(primeiro) { bounds = r.bounds; primeiro = false; }
             else bounds.Encapsulate(r.bounds);
@@ -402,7 +426,6 @@ public class MenuConstrucao : MonoBehaviour
         if(renderers.Length == 0 || bounds.size.magnitude < 0.1f) { Destroy(studio); return null; }
 
         float maxDim = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-        // Garante tamanho mínimo para câmera não entrar no objeto
         if(maxDim < 1f) maxDim = 1f;
 
         // 4. Configura Câmera
@@ -410,35 +433,27 @@ public class MenuConstrucao : MonoBehaviour
         camObj.transform.SetParent(studio.transform);
         Camera cam = camObj.AddComponent<Camera>();
         
-        // Fundo Transparente
         cam.clearFlags = CameraClearFlags.Color;
         cam.backgroundColor = new Color(0,0,0,0); 
-        cam.cullingMask = -1; // Vê tudo (no estúdio isolado)
+        cam.cullingMask = -1; // Vê tudo no layer (se isolasse layers seria melhor, mas hacky studio funciona)
         
         cam.orthographic = true;
-        cam.orthographicSize = maxDim * 0.7f; // Zoom ajustado
+        cam.orthographicSize = maxDim * 0.7f; 
         
-        // Posiciona câmera em ângulo isométrico perfeito (30 graus vertical)
         float dist = maxDim * 5f;
-        Vector3 dir = Quaternion.Euler(30, 0, 0) * Vector3.back; // 30 graus de cima
+        Vector3 dir = Quaternion.Euler(30, 0, 0) * Vector3.back; 
         cam.transform.position = bounds.center - (dir * dist);
         cam.transform.LookAt(bounds.center);
 
-        // 5. Iluminação de Estúdio (Três Pontos)
-        
-        // Luz Principal (Sol) - Branco Quente
+        // 5. Iluminação
         CriarLuz(studio.transform, bounds.center, Quaternion.Euler(50, -30, 0), 1.2f, new Color(1f, 0.95f, 0.9f));
-        
-        // Luz de Preenchimento (Sombra) - Azulado Frio
         CriarLuz(studio.transform, bounds.center, Quaternion.Euler(30, 150, 0), 0.6f, new Color(0.8f, 0.85f, 1f));
-        
-        // Luz de Recorte (Backlight) - Destaca silhueta
         CriarLuz(studio.transform, bounds.center, Quaternion.Euler(-10, 0, 0), 0.8f, Color.white);
 
         // 6. Renderiza
-        int res = 512; // Resolução maior (512x512)
+        int res = 512; 
         RenderTexture rt = RenderTexture.GetTemporary(res, res, 24, RenderTextureFormat.ARGB32);
-        rt.antiAliasing = 8; // Suavização máxima
+        rt.antiAliasing = 8;
         
         cam.targetTexture = rt;
         cam.Render();

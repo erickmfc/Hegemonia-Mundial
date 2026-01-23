@@ -11,9 +11,18 @@ public class Fabrica : MonoBehaviour
 
     void Start()
     {
-        Debug.Log($"Fabrica Iniciada no objeto: {gameObject.name}");
+        // Se eu tiver ID de IA, NÃO me registro no Gerente Global do Jogador
+        var id = GetComponentInParent<IdentidadeUnidade>();
+        if (id != null && id.teamID != 1) return; 
 
-        // Assim que esse prédio nascer, ele procura o Gerente e se registra
+        // Lógica de Registro Global (Apenas para o Jogador Humano - Time 1)
+        StartCoroutine(RegistrarNoGerente(0.1f));
+    }
+
+    System.Collections.IEnumerator RegistrarNoGerente(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
         GerenteDeJogo gerente = FindObjectOfType<GerenteDeJogo>(); 
         
         // --- AUTOCORREÇÃO DE CONFIGURAÇÃO ---
@@ -23,27 +32,41 @@ public class Fabrica : MonoBehaviour
 
         if (gerente != null)
         {
-            if(pontoNascimento == null || pontoSaida == null)
-            {
-                Debug.LogError($"ERRO NA FÁBRICA ({gameObject.name}): Ponto de Nascimento ou Saída estão vazios! Configure no Prefab.");
-            }
+            if (ehQuartel) gerente.AtualizarPontoQuartel(pontoNascimento, pontoSaida);
+            else gerente.AtualizarPontoHangar(pontoNascimento, pontoSaida);
+        }
+    }
 
-            if (ehQuartel)
-            {
-                // Eu sou um Quartel, atualize o ponto dos soldados!
-                Debug.Log($"Registrando Tenda (Quartel) no Gerente...");
-                gerente.AtualizarPontoQuartel(pontoNascimento, pontoSaida);
-            }
-            else
-            {
-                // Eu sou um Hangar, atualize o ponto dos tanques!
-                Debug.Log($"Registrando Hangar no Gerente...");
-                gerente.AtualizarPontoHangar(pontoNascimento, pontoSaida);
-            }
-        }
-        else
+    // --- NOVA FUNCIONALIDADE PARA IA ---
+    public GameObject ProduzirUnidade(GameObject prefab)
+    {
+        if (prefab == null) return null;
+
+        Transform spawn = (pontoNascimento != null) ? pontoNascimento : transform;
+        Transform saida = (pontoSaida != null) ? pontoSaida : transform;
+
+        // Instancia
+        GameObject unidade = Instantiate(prefab, spawn.position, spawn.rotation);
+
+        // Configura Identidade (Time da Fábrica = Time da Unidade)
+        var idFabrica = GetComponentInParent<IdentidadeUnidade>();
+        var idUnidade = unidade.GetComponent<IdentidadeUnidade>();
+        
+        if (idFabrica != null && idUnidade != null)
         {
-            Debug.LogError("Fabrica nao encontrou o GerenteDeJogo!");
+            idUnidade.teamID = idFabrica.teamID;
+            idUnidade.nomeDoPais = idFabrica.nomeDoPais;
         }
+
+        // Tenta mover para a saída
+        var controle = unidade.GetComponent<ControleUnidade>();
+        if(controle != null) controle.MoverParaPonto(saida.position);
+        else 
+        {
+            var nav = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if(nav != null && nav.isOnNavMesh) nav.SetDestination(saida.position);
+        }
+
+        return unidade;
     }
 }

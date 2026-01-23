@@ -42,15 +42,17 @@ public class Projetil : MonoBehaviour
 
     void Update()
     {
-        // Move a bala para frente
-        transform.Translate(Vector3.forward * velocidade * Time.deltaTime);
+        Vector3 moveDirection = usaDirecaoCustom ? direcao : transform.forward;
+        
+        // Move a bala
+        transform.position += moveDirection * velocidade * Time.deltaTime;
 
         // --- SISTEMA DE DETECÇÃO (RAYCAST) ---
         // Lança um raio invisível para frente antes de andar
         float distanciaFrame = velocidade * Time.deltaTime;
         RaycastHit toque;
 
-        if (Physics.Raycast(transform.position, transform.forward, out toque, distanciaFrame))
+        if (Physics.Raycast(transform.position, moveDirection, out toque, distanciaFrame))
         {
             // Bateu em algo! Vamos ver o que é.
             VerificarImpacto(toque.collider.gameObject);
