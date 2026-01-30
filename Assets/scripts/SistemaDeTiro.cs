@@ -38,6 +38,9 @@ public class SistemaDeTiro : MonoBehaviour
     private ControleUnidade selecao; 
     private IdentidadeUnidade minhaIdentidade;
 
+    // OTIMIZAÇÃO: Buffer de colisão para evitar GC
+    private Collider[] bufferColisores = new Collider[50];
+
     void Update()
     {
         // Se estiver recarregando ou em modo passivo, não faz nada
@@ -67,15 +70,23 @@ public class SistemaDeTiro : MonoBehaviour
             // Gira em direção ao alvo (Apenas Y para soldados terrestres)
             Vector3 direcao = (alvoAtual.position - transform.position).normalized;
             direcao.y = 0; // Mantém o soldado em pé
+            
+            float anguloParaAlvo = 180f; // Valor padrão alto para não atirar se direção for zero
+            
             if (direcao != Vector3.zero)
             {
                 Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
-                // Gira suavemente a raiz do objeto (o soldado em si)
-                transform.root.rotation = Quaternion.Slerp(transform.root.rotation, rotacaoAlvo, Time.deltaTime * 10f);
+                
+                // VELOCIDADE DE ROTAÇÃO: 45 graus/segundo para alinhamento rápido
+                transform.root.rotation = Quaternion.Slerp(transform.root.rotation, rotacaoAlvo, Time.deltaTime * 45f);
+                
+                // Calcula o ângulo atual entre a frente do tanque e o alvo
+                anguloParaAlvo = Vector3.Angle(transform.root.forward, direcao);
             }
 
-            // Lógica de Tiro
-            if (tempoParaProximoTiro <= 0)
+            // Lógica de Tiro - SÓ ATIRA SE ESTIVER APONTANDO PRO ALVO
+            // Adiciona verificação: o tanque precisa estar virado para o alvo (< 10 graus - mais preciso)
+            if (tempoParaProximoTiro <= 0 && anguloParaAlvo < 10f)
             {
                 if (balasAtuais > 0)
                 {
@@ -110,62 +121,61 @@ public class SistemaDeTiro : MonoBehaviour
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
         fonteAudio.spatialBlend = 1.0f; 
 
-        // Scan lento para economizar processamento
-        InvokeRepeating("ProcurarAlvo", 0f, 0.5f);
+        // OTIMIZAÇÃO: Scan com intervalo aleatório para evitar picos de CPU
+        float inicioAleatorio = Random.Range(0f, 1.0f);
+        InvokeRepeating("ProcurarAlvo", inicioAleatorio, 0.5f);
     }
     
     void ProcurarAlvo()
     {
         if (modoPassivo || recarregando) return;
 
-        // Procura todos os coliders na esfera de alcance
-        Collider[] hits = Physics.OverlapSphere(transform.position, alcanceTiro);
+        // OTIMIZAÇÃO: Usa NonAlloc para não gerar lixo
+        int qtd = Physics.OverlapSphereNonAlloc(transform.position, alcanceTiro, bufferColisores);
+        
         float menorDist = Mathf.Infinity;
         Transform melhorAlvo = null;
-
-        // Debug de Scan (Só ativa se não tiver alvo, pra não spammar)
-        bool debugScan = (alvoAtual == null); 
 
         // Lazy Load (Garante que pegamos a identidade mesmo se foi adicionada depois do Start)
         if (minhaIdentidade == null) minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
 
-        foreach (var hit in hits)
+        for (int i = 0; i < qtd; i++)
         {
+            Collider hit = bufferColisores[i];
+            if (hit == null) continue;
+
             // Ignora a si mesmo (Root vs Root para garantir partes do veículo)
-            if (hit.transform.root == transform.root)
-            {
-                // if(debugScan) Debug.Log($"[Scan] Ignorando {hit.name} (É parte de mim)");
-                continue; 
-            }
+            if (hit.transform.root == transform.root) continue; 
 
             // 1. TENTA POR IDENTIDADE (Mais seguro)
             IdentidadeUnidade idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
             
             bool ehInimigoConfirmado = false;
+            
+            // Pré-calcula a verificação de tag para usar como fallback ou override
+            // Atenção: CompareTag é rápido, mas evitar strings literais em loops é melhor. Aqui ok.
+            bool tagInimigoDetectada = hit.CompareTag(etiquetaAlvo) || hit.CompareTag("Inimigo"); // Simplificado
 
             if (idAlvo != null && minhaIdentidade != null)
             {
-                // Se temos times definidos, usa a lógica de times
+                // Lógica de Times (Prioridade 1)
                 if (idAlvo.teamID != minhaIdentidade.teamID) 
                 {
                     ehInimigoConfirmado = true;
-                    // if(debugScan) Debug.Log($"[Scan] Achei Inimigo por ID: {hit.name} (MeuID:{minhaIdentidade.teamID} vs AlvoID:{idAlvo.teamID})");
                 }
-                // else if(debugScan) Debug.Log($"[Scan] Ignorando {hit.name} (Mesmo Time por ID: {idAlvo.teamID})");
+                // (FIX) Override por Tag: Se for do mesmo time mas tiver a tag "Inimigo", ataca igual.
+                else if (tagInimigoDetectada)
+                {
+                    ehInimigoConfirmado = true;
+                }
             }
             else 
             {
-                // 2. FALLBACK POR TAG (Se não tiver ID configurado em um dos dois)
-                // Verifica a tag no colisor (hit) E na raiz (root), pois tanques complexos têm partes sem tag
-                bool tagDireta = hit.CompareTag(etiquetaAlvo) || hit.CompareTag("Inimigo");
-                bool tagRaiz = hit.transform.root.CompareTag(etiquetaAlvo) || hit.transform.root.CompareTag("Inimigo");
-                
-                if (tagDireta || tagRaiz)
+                // Lógica puramente por Tag (Prioridade 2 - Fallback)
+                if (tagInimigoDetectada)
                 {
                     ehInimigoConfirmado = true;
-                    // if(debugScan) Debug.Log($"[Scan] Achei Inimigo por TAG: {hit.name}");
                 }
-                // else if(debugScan) Debug.Log($"[Scan] Ignorando {hit.name} (Sem ID e sem TAG de inimigo)");
             }
 
             if (ehInimigoConfirmado)
@@ -178,10 +188,13 @@ public class SistemaDeTiro : MonoBehaviour
                 }
             }
         }
+        
+        // Limpar buffer opcional
+        for(int i=0; i<qtd; i++) bufferColisores[i] = null;
 
         if (melhorAlvo != null && alvoAtual != melhorAlvo)
         {
-            Debug.Log($"[SistemaDeTiro] 🎯 ALVO TRAVADO: {melhorAlvo.name} (Dist: {menorDist:F1}m)");
+            // Debug.Log($"[SistemaDeTiro] 🎯 ALVO TRAVADO: {melhorAlvo.name} (Dist: {menorDist:F1}m)");
         }
         
         alvoAtual = melhorAlvo;
@@ -220,7 +233,18 @@ public class SistemaDeTiro : MonoBehaviour
         }
 
         balasAtuais--;
-        if (fonteAudio != null && somTiro != null) fonteAudio.PlayOneShot(somTiro);
+        
+        // SISTEMA DE SOM: Tenta usar o sistema novo de som (SomUnidade) primeiro
+        var somUnidade = GetComponentInParent<SomUnidade>();
+        if (somUnidade != null)
+        {
+            somUnidade.TocarSomTiro();
+        }
+        // Fallback: Sistema antigo de AudioSource
+        else if (fonteAudio != null && somTiro != null)
+        {
+            fonteAudio.PlayOneShot(somTiro);
+        }
         
         // Ativa animação se tiver o script de Animação
         var anim = GetComponentInParent<AnimacoesSoldado>();

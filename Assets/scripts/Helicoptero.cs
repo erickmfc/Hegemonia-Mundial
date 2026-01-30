@@ -84,7 +84,7 @@ public class Helicoptero : MonoBehaviour
         // 2. Se falhar, procura na cena (pode ter sido criado mas Awake ainda não setou Instancia)
         if (gerenciador == null)
         {
-            gerenciador = FindObjectOfType<GerenciadorHelicopteros>();
+            gerenciador = FindFirstObjectByType<GerenciadorHelicopteros>();
         }
 
         // 3. Se ainda não existe, cria um

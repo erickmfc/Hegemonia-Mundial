@@ -220,7 +220,7 @@ public class Heliporto : MonoBehaviour
         }
 
         // 2. FORÇA BRUTA: Varre todo o mapa procurando helicópteros perdidos
-        Helicoptero[] encontradosNaCena = FindObjectsOfType<Helicoptero>();
+        Helicoptero[] encontradosNaCena = FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
         foreach(var h in encontradosNaCena)
         {
             if(!todosHelicopteros.Contains(h)) todosHelicopteros.Add(h);
@@ -337,7 +337,7 @@ public class Heliporto : MonoBehaviour
 
     void TentarEvoluir(Helicoptero heli)
     {
-        GerenteDeJogo gerente = FindObjectOfType<GerenteDeJogo>();
+        GerenteDeJogo gerente = FindFirstObjectByType<GerenteDeJogo>();
         if(gerente != null)
         {
             if(gerente.TentarGastarDinheiro(heli.custoUpgrade))
@@ -425,7 +425,7 @@ public class Heliporto : MonoBehaviour
             canvasObj.AddComponent<GraphicRaycaster>();
 
             // EventSystem se não existir
-            if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+            if (FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
             {
                 GameObject eventSys = new GameObject("EventSystem");
                 eventSys.AddComponent<UnityEngine.EventSystems.EventSystem>();

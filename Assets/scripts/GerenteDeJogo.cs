@@ -20,8 +20,16 @@ public class GerenteDeJogo : MonoBehaviour
     public Transform spawnSoldado; // Onde nasce (dentro da tenda)
     public Transform saidaSoldado; // Para onde vai (na rua/frente da tenda)
 
+    public static GerenteDeJogo Instancia;
+
+    [Header("Jogadores na Partida")]
+    public List<IdentidadeIA> comandantesIA = new List<IdentidadeIA>();
+
     void Awake()
     {
+        if (Instancia == null) Instancia = this;
+        else Destroy(gameObject);
+
         // Tenta achar sozinho se esquecer de arrastar
         if (spawnSoldado == null) 
         {
@@ -33,6 +41,16 @@ public class GerenteDeJogo : MonoBehaviour
         {
             var obj = GameObject.Find("Saida_Soldado");
             if(obj != null) saidaSoldado = obj.transform;
+        }
+    }
+
+    public void RegistrarJogadorIA(IdentidadeIA ia)
+    {
+        if (!comandantesIA.Contains(ia))
+        {
+            comandantesIA.Add(ia);
+            Debug.Log($"[Gerente] Novo Comandante Registrado: {ia.nomeComandante} (Time {ia.teamID})");
+            Debug.Log($"[Gerente] Autonomia concedida para: {ia.nomeComandante}. A IA agora é reconhecida como Jogador.");
         }
     }
 
@@ -265,7 +283,15 @@ public class GerenteDeJogo : MonoBehaviour
                 novaUnidade.transform.position = posNascimento;
             }
             
-            controle.MoverParaPonto(posDestino);
+            // Tenta mover. Se colidir, o NavMeshAgent lida com isso.
+            // MODIFICAÇÃO: Randomizar levemente o destino para evitar fila indiana perfeita e colisão
+            Vector3 destinoFinal = posDestino;
+            
+            // Adiciona variação aleatória de 3m ao redor do ponto de saída
+            Vector2 randomCircle = UnityEngine.Random.insideUnitCircle * 3.0f; 
+            destinoFinal += new Vector3(randomCircle.x, 0, randomCircle.y);
+
+            controle.MoverParaPonto(destinoFinal);
         }
 
         Debug.Log($"SUCESSO: Saiu da fábrica: {pedido.nomeUnidade} em {novaUnidade.transform.position}");

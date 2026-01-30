@@ -92,7 +92,7 @@ public class GerenciadorHelicopteros : MonoBehaviour
     /// </summary>
     public bool ExisteHeliporto()
     {
-        Heliporto[] heliportos = FindObjectsOfType<Heliporto>();
+        Heliporto[] heliportos = FindObjectsByType<Heliporto>(FindObjectsSortMode.None);
         return heliportos != null && heliportos.Length > 0;
     }
 
@@ -101,7 +101,7 @@ public class GerenciadorHelicopteros : MonoBehaviour
     /// </summary>
     public int QuantidadeHeliportos()
     {
-        Heliporto[] heliportos = FindObjectsOfType<Heliporto>();
+        Heliporto[] heliportos = FindObjectsByType<Heliporto>(FindObjectsSortMode.None);
         return heliportos != null ? heliportos.Length : 0;
     }
 }

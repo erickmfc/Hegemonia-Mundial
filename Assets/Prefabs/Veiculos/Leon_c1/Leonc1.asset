@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Leonc1
   descricao: Unidade de tiro curto
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: a62a15f8b53f31943bb88d0ddcc2a6bf, type: 3}
   prefabDaUnidade: {fileID: 1939874857473241444, guid: ab9ac6710d48e2246afb2248c0c1a075, type: 3}
   preco: 100
   categoria: 0

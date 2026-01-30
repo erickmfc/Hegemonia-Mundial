@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: Soldado Rifle
   descricao: Unidade de infantaria leve. Ideal para reconhecimento.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 9b4a942b58b769d4b8b7cabeb44b6d66, type: 3}
   prefabDaUnidade: {fileID: 4503012449419316977, guid: 0a9f44cbaa32cfd46a267ade9d4ec739, type: 3}
   preco: 50
   categoria: 0
+  scriptsDeComando: []

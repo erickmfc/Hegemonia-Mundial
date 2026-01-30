@@ -59,7 +59,7 @@ public class CameraController : MonoBehaviour
         // Se estiver segurando o Direito, verifica se tem unidades selecionadas (para não conflitar com Mover)
         if (Input.GetMouseButton(1))
         {
-            var gerenteSel = FindObjectOfType<GerenteSelecao>();
+            var gerenteSel = FindFirstObjectByType<GerenteSelecao>();
             if (gerenteSel != null && gerenteSel.unidadesSelecionadas.Count > 0)
             {
                 podeRotacionar = false; 

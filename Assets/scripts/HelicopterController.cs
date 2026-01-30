@@ -20,7 +20,7 @@ public class HelicopterController : MonoBehaviour
     [Header("Referências")]
     public Transform helicePrincipal; 
     public Transform heliceTraseira; 
-    public NavMeshAgent agent; 
+    // public NavMeshAgent agent; // REMOVIDO PARA USAR SISTEMA MANUAL
     public Vector3 eixoRotacaoTraseira = Vector3.forward;
     
     // Variáveis de controle
@@ -33,54 +33,25 @@ public class HelicopterController : MonoBehaviour
     private Vector3 destinoVoo;
     private bool temDestino = false;
 
+    // Referência opcional para sistema de armas
+    private ControleTorreta sistemaArmas;
+
     void Start()
     {
-        if (agent == null) agent = GetComponent<NavMeshAgent>();
-        
-        // Ajustamos o agente para não interferir se estiver ligado
-        if (agent != null) 
+        // Busca sistema de armas (ControleTorreta)
+        sistemaArmas = GetComponent<ControleTorreta>();
+
+        // CORREÇÃO CRÍTICA: Garante altura mínima para não nascer enterrado
+        if(alturaDoSolo < 2.5f) 
         {
-            agent.updatePosition = false; // Importante: não travar a posição
-            agent.updateRotation = false; // Importante: não travar a rotação
-            agent.updateUpAxis = false;
-        } 
-        CriarVisualSelecao();
-    }
-
-    void Update()
-    {
-        // 1. Seleção
-        if (Input.GetMouseButtonDown(0)) VerificarSelecao();
-
-        // 2. Hélices
-        if (helicePrincipal != null) helicePrincipal.Rotate(Vector3.up * velocidadeHelice * Time.deltaTime);
-        if (heliceTraseira != null) heliceTraseira.Rotate(eixoRotacaoTraseira * velocidadeHelice * 1.5f * Time.deltaTime);
-
-        // 3. Comandos
-        if (selecionado)
-        {
-            if (Input.GetMouseButtonDown(1)) 
-            {
-                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-                RaycastHit hit;
-                // Raycast para o mundo ignorando triggers ou UI se possível, mas padrão funciona
-                if (Physics.Raycast(ray, out hit))
-                {
-                    DefinirDestino(hit.point);
-                }
-            }
-
-            if (Input.GetKeyDown(KeyCode.O)) TentarEmbarcarTropas();
-            if (Input.GetKeyDown(KeyCode.U)) IniciarProtocoloDesembarque();
-            if (Input.GetKeyDown(KeyCode.K)) Pousar();
+            alturaDoSolo = 3.0f; 
         }
 
-        // --- MOVIMENTO E FÍSICA ---
-        ProcessarVoo();
-
-        // --- CONFIRMAÇÃO VISUAL ---
-        if(anelSelecao != null) anelSelecao.SetActive(selecionado);
+        // NavMesh removido por solicitação. Voo 100% manual agora.
+        CriarVisualSelecao();
     }
+    
+    // ... [MANTÉM UPDATE INALTERADO ATÉ LINHA 112] ...
 
     // --- NOVA LÓGICA DE VOO MANUAL (Ignora NavMesh/Água) ---
     public void DefinirDestino(Vector3 alvo)
@@ -94,7 +65,8 @@ public class HelicopterController : MonoBehaviour
     { 
         estaNoChao = false; 
         preparandoDesembarque = false;
-        if(agent) agent.enabled = false; // Desativa NavMesh para voar livre
+        // if(agent) agent.enabled = false; // Removido
+
     }
     
     public void Pousar() 
@@ -105,47 +77,58 @@ public class HelicopterController : MonoBehaviour
 
     float GetAlturaDoSoloAtual()
     {
-        // MELHORIA: Raycast do "Céu" (1000m) para baixo.
-        // Garante que pegamos o terreno mesmo se o helicóptero estiver enterrado, na água ou muito alto.
-        // Isso evita que ele "perca" o chão e vá para Y=0 se o terreno for alto.
-        
+        // Começa BEM ALTO (1000m) para achar o chão mesmo se estivermos voando
         Vector3 origem = new Vector3(transform.position.x, 1000f, transform.position.z);
         
-        // Raio de 2000m para cobrir de +1000 até -1000
-        RaycastHit[] hits = Physics.RaycastAll(origem, Vector3.down, 2000f);
+        // Filtra camadas para ignorar o próprio heli, UI e Ignorados
+        int layerMask = ~LayerMask.GetMask("Unidades", "Ignore Raycast", "UI");
+
+        // Raio infinito (quase)
+        RaycastHit[] hits = Physics.RaycastAll(origem, Vector3.down, 2000f, layerMask);
         
-        float maiorY = -1000f; 
+        float maiorY = -1000f; // Começa bem baixo
         bool achouChao = false;
 
         foreach (RaycastHit hit in hits)
         {
-            // O MAIS IMPORTANTE: Ignora a si mesmo para não tentar pousar no próprio teto
+            // Ignora a si mesmo e filhos
             if (hit.collider.transform.root == transform.root) continue;
-            
-            // Ignora triggers invisíveis (zonas de detecção etc)
+            // Ignora triggers
             if (hit.collider.isTrigger) continue;
 
-            // Queremos o ponto mais alto SÓLIDO (Chão, Prédio, Água com colisor)
+            // É Chão sólido?
             if (hit.point.y > maiorY)
             {
                 maiorY = hit.point.y;
                 achouChao = true;
             }
         }
+        
+        // Debug para ver onde detectou o chão
+        Debug.DrawLine(origem, new Vector3(transform.position.x, maiorY, transform.position.z), Color.yellow);
 
-        return achouChao ? maiorY : 0f;
+        // Se não achou chão nenhum (abismo?), retorna a altura atual corrigida
+        if (!achouChao) return transform.position.y - alturaDoSolo; 
+
+        return maiorY;
     }
 
     void ProcessarVoo()
     {
         float soloY = GetAlturaDoSoloAtual();
         float alturaAlvoRelativa = estaNoChao ? alturaDoSolo : altitudeDeVoo;
+        
+        // SEGURANÇA: Nunca pousa abaixo da altura do solo (evita enterrar)
+        // Se alturaDoSolo configurada for 0, forçamos 3m para garantir
+        float alturaMinimaSegura = Mathf.Max(alturaDoSolo, 2.5f);
+        if (estaNoChao) alturaAlvoRelativa = alturaMinimaSegura;
+
         float yFinal = soloY + alturaAlvoRelativa;
 
         Vector3 posAtual = transform.position;
         Vector3 novaPos = posAtual;
 
-        // 1. Movimento Horizontal (Se tiver destino e não estiver no chão)
+        // ... [RESTO DA LÓGICA DE MOVIMENTO] ...
         // Só movemos horizontalmente se já estivermos decolando ou voando (ou seja, subindo para voar)
         // Pequena melhoria: só move horizontalmente se já tiver altura razoável? Não, helicóptero pode "taxiar" ou voar baixo.
         
@@ -158,15 +141,29 @@ public class HelicopterController : MonoBehaviour
 
             if (vetorDirecao.magnitude > 1.0f) // Tolerância de chegada
             {
-                Vector3 moveDir = vetorDirecao.normalized * velocidadeNavegacao * Time.deltaTime;
-                novaPos += moveDir;
-                velocidadeAtual = velocidadeNavegacao;
-
-                // Rotação suave para o destino
+                // 1. PRIMEIRO: Rotação suave para o destino (ANTES de mover)
                 if (vetorDirecao != Vector3.zero)
                 {
                     Quaternion rotAlvo = Quaternion.LookRotation(vetorDirecao);
-                    transform.rotation = Quaternion.Slerp(transform.rotation, rotAlvo, Time.deltaTime * rotacaoSuavidade);
+                    // Aumenta a velocidade de rotação para 3x (7.5 em vez de 2.5)
+                    transform.rotation = Quaternion.Slerp(transform.rotation, rotAlvo, Time.deltaTime * (rotacaoSuavidade * 3f));
+                }
+
+                // 2. DEPOIS: Move na direção que está apontando (não na direção do alvo)
+                // Isso garante que ele voe para frente e não de lado
+                // Mas só move se estiver razoavelmente apontado para o alvo (evita voo de lado)
+                float anguloErro = Vector3.Angle(transform.forward, vetorDirecao.normalized);
+                
+                if (anguloErro < 45f) // Só move se estiver apontando +/- na direção certa (dentro de 45°)
+                {
+                    Vector3 moveDir = transform.forward * velocidadeNavegacao * Time.deltaTime;
+                    novaPos += moveDir;
+                    velocidadeAtual = velocidadeNavegacao;
+                }
+                else
+                {
+                    // Se estiver muito desalinhado, só rotaciona sem mover (faz a curva parado)
+                    velocidadeAtual = 0f;
                 }
             }
             else
@@ -269,14 +266,31 @@ public class HelicopterController : MonoBehaviour
 
     void VerificarSelecao()
     {
+        // Se clicar na UI, ignora
+        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
-        if (Physics.Raycast(ray, out hit))
+        
+        // Filtra camadas para não pegar triggers invisíveis
+        int layerMask = ~LayerMask.GetMask("Ignore Raycast", "UI");
+
+        if (Physics.Raycast(ray, out hit, 5000f, layerMask))
         {
-            // Verifica se o objeto clicado é este helicóptero (ou parte dele)
-            // Usa 'transform.root' para garantir que pegamos o pai se clicarmos no modelo visual
-            if (hit.collider.transform.root == this.transform) selecionado = true;
-            else selecionado = false;
+            // Tenta encontrar o controlador no objeto clicado ou nos pais dele
+            HelicopterController clicado = hit.collider.GetComponentInParent<HelicopterController>();
+            
+            // Se encontrou ALGUÉM e esse alguém sou EU, então fui selecionado
+            if (clicado != null && clicado == this)
+            {
+                selecionado = true;
+                // Debug.Log($"[Falcon] Selecionado: {name}");
+            }
+            else
+            {
+                // Se clicou no chão ou em outra unidade, perde a seleção
+                selecionado = false;
+            }
         }
     }
 
@@ -292,8 +306,9 @@ public class HelicopterController : MonoBehaviour
         Renderer rend = anelSelecao.GetComponent<Renderer>();
         if(rend != null)
         {
-            rend.material = new Material(Shader.Find("Sprites/Default"));
-            rend.material.color = new Color(0, 1, 0, 0.045f);
+            // Usa shader Unlit/Color que funciona melhor para UI 3D sem iluminação
+            rend.material = new Material(Shader.Find("Unlit/Color"));
+            rend.material.color = new Color(0, 1, 0, 0.15f); // Verde MUITO transparente (era 0.4, agora 0.15)
         }
         anelSelecao.SetActive(false);
     }

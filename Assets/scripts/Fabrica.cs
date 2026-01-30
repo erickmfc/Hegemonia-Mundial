@@ -23,7 +23,7 @@ public class Fabrica : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         
-        GerenteDeJogo gerente = FindObjectOfType<GerenteDeJogo>(); 
+        GerenteDeJogo gerente = FindFirstObjectByType<GerenteDeJogo>(); 
         
         // --- AUTOCORREÇÃO DE CONFIGURAÇÃO ---
         string meuNome = gameObject.name.ToLower();

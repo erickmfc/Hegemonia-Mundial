@@ -49,7 +49,11 @@ public class TransporteTerrestre : MonoBehaviour
 
     void Update()
     {
-        VerificarSelecao();
+        // VerificarSelecao(); // REMOVIDO: Usar sistema padrão abaixo
+        
+        // Integração com ControleUnidade (Padrão do Projeto)
+        var ctrl = GetComponent<ControleUnidade>();
+        if(ctrl != null) selecionado = ctrl.selecionado;
 
         if (selecionado)
         {
@@ -68,24 +72,7 @@ public class TransporteTerrestre : MonoBehaviour
 
     void VerificarSelecao()
     {
-        if (Input.GetMouseButtonDown(0))
-        {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-            if (Physics.Raycast(ray, out hit))
-            {
-                // Se clicou em mim ou num filho meu
-                if (hit.collider.transform.root == transform.root)
-                {
-                    selecionado = true;
-                    // Debug.Log("Transporte Selecionado");
-                }
-                else
-                {
-                    selecionado = false;
-                }
-            }
-        }
+        // Método obsoleto substituído por ControleUnidade.selecionado
     }
 
     public void TentarEmbarcar()
@@ -98,29 +85,82 @@ public class TransporteTerrestre : MonoBehaviour
             return;
         }
 
-        // Busca soldados próximos (Assumindo tag "Player" ou similar, ajustável conforme seu jogo)
-        // Se usar IdentidadeUnidade, seria melhor filtrar pelo time ID, mas vamos simplificar como no Heli
-        GameObject[] possiveisSoldados = GameObject.FindGameObjectsWithTag("Player"); 
+        Debug.Log($"[{gameObject.name}] Tentando embarcar soldados... (Raio: {distanciaParaEmbarque}m)");
+
+        // --- BUSCA GLOBAL POR PROXIMIDADE (Sem depender de Tags) ---
+        // Pega tudo que tem collider em volta (Camadas Default, Player, etc)
+        Collider[] hits = Physics.OverlapSphere(transform.position, distanciaParaEmbarque);
         
-        foreach (var soldado in possiveisSoldados)
+        foreach (var hit in hits)
         {
             if (totalEmbarcados >= capacidadeMaxima) break;
 
-            // Não embarca a si mesmo se por acaso tiver a tag
-            if (soldado == gameObject) continue;
-            if (!soldado.activeInHierarchy) continue; // Ignora desativados
+            GameObject soldado = hit.gameObject;
 
-            float dist = Vector3.Distance(transform.position, soldado.transform.position);
-            if (dist <= distanciaParaEmbarque)
+            // Ignora a mim mesmo e meus filhos/partes
+            if (soldado.transform.root == transform.root) continue;
+            
+            // Pega a raiz do objeto (caso o hit seja no pé ou braço)
+            soldado = soldado.transform.root.gameObject;
+
+            if (!soldado.activeInHierarchy) continue; 
+            
+            // Evita adicionar o mesmo objeto duas vezes (OverlapSphere pode pegar vários colliders do mesmo soldado)
+            if (JaEstaEmbarcado(soldado)) continue;
+
+             // --- FILTRAGEM ---
+
+            // 1. Ignora Veículos (Verifica se TEM o script de transporte)
+            if (soldado.GetComponent<TransporteTerrestre>() != null) continue;
+            
+            // 2. Ignora NAVIOS (Por Nome - Fallback de Segurança)
+            string nomeLower = soldado.name.ToLower();
+            if (nomeLower.Contains("uss") || nomeLower.Contains("corveta") || 
+                nomeLower.Contains("fragata") || nomeLower.Contains("destroyer") ||
+                nomeLower.Contains("navio") || nomeLower.Contains("ship") ||
+                nomeLower.Contains("mako") || nomeLower.Contains("ironclad") ||
+                nomeLower.Contains("liberty") || nomeLower.Contains("leviathan") ||
+                nomeLower.Contains("sovereign"))
             {
-                // Verifica se é soldado (tem NavMeshAgent ou script de controle geralmente)
-                if (soldado.GetComponent<NavMeshAgent>() != null || soldado.name.ToLower().Contains("soldado"))
-                {
-                    EmbarcarUnidade(soldado);
-                    totalEmbarcados++;
-                }
+                Debug.LogWarning($"⚠️ [TransporteTerrestre] BLOQUEADO: {soldado.name} parece ser um navio!");
+                continue;
+            }
+
+            // 2. Identifica se é Biológico (Pessoa) vs Máquina
+            SistemaDeDanos sd = soldado.GetComponent<SistemaDeDanos>();
+            bool ehBiologico = false;
+            
+            if (sd != null) 
+            {
+                ehBiologico = sd.unidadeBiologica;
+            }
+            else
+            {
+                // Fallback visual/físico
+                var nav = soldado.GetComponent<NavMeshAgent>();
+                // Soldados têm raio pequeno (< 0.8), Tanques têm > 1.5
+                if(nav != null && nav.radius < 0.8f) ehBiologico = true;
+                
+                // Fallback nominal
+                string nome = soldado.name.ToLower();
+                if(nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("infant") || nome.Contains("person")) ehBiologico = true;
+            }
+
+            // SÓ EMBARCA SE: For Biológico
+            if (ehBiologico)
+            {
+                Debug.Log($"Embarcando: {soldado.name}");
+                EmbarcarUnidade(soldado);
+                totalEmbarcados++;
             }
         }
+    }
+
+    bool JaEstaEmbarcado(GameObject obj)
+    {
+        if (soldadosInternos.Contains(obj)) return true;
+        foreach(var s in soldadosNosAssentos) if(s == obj) return true;
+        return false;
     }
 
     void EmbarcarUnidade(GameObject soldado)

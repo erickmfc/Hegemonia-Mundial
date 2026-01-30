@@ -15,6 +15,16 @@ public class IA_Comandante : MonoBehaviour
     [Tooltip("Intervalo entre decisões da IA")]
     public float intervaloDeProcessamento = 1.0f;
 
+    [Header("Identidade e Personalidade")]
+    public IdentidadeIA identidade;
+
+    [Header("Scripts Customizáveis (Espaço Livre)")]
+    [Tooltip("Arraste seus scripts extras aqui para acessá-los facilmente")]
+    public MonoBehaviour scriptExtra1;
+    public MonoBehaviour scriptExtra2;
+    public MonoBehaviour scriptExtra3;
+    public MonoBehaviour scriptExtra4;
+
     [Header("Recursos do Comandante")]
     public float dinheiro = 2000f; // Capital inicial
 

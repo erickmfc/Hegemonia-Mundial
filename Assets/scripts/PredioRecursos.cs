@@ -92,8 +92,8 @@ public class PredioRecursos : MonoBehaviour
             jaRegistrado = true;
             estaProduzindo = true;
 
-            Debug.Log($"✅ [{gameObject.name}] Produção ativada! " +
-                      $"💰+{producaoDinheiro}/s | ⛽+{producaoPetroleo}/s | 🔩+{producaoAco}/s | ⚡+{producaoEnergia}/s");
+            Debug.Log($"[OK] [{gameObject.name}] Producao ativada! " +
+                      $"$+{producaoDinheiro}/s | P+{producaoPetroleo}/s | A+{producaoAco}/s | E+{producaoEnergia}/s");
         }
         else
         {
@@ -126,7 +126,7 @@ public class PredioRecursos : MonoBehaviour
             jaRegistrado = false;
             estaProduzindo = false;
 
-            Debug.Log($"⏸️ [{gameObject.name}] Produção desativada!");
+            Debug.Log($"[PAUSA] [{gameObject.name}] Producao desativada!");
         }
     }
 
@@ -149,7 +149,7 @@ public class PredioRecursos : MonoBehaviour
         // Reativa com novos valores
         AtivarProducao();
 
-        Debug.Log($"⬆️ [{gameObject.name}] Produção aumentada {multiplicador}x!");
+        Debug.Log($"[UP] [{gameObject.name}] Producao aumentada {multiplicador}x!");
     }
 
     protected virtual void OnDestroy()
@@ -158,7 +158,7 @@ public class PredioRecursos : MonoBehaviour
         if (jaRegistrado)
         {
             DesativarProducao();
-            Debug.Log($"💥 [{gameObject.name}] Prédio destruído. Produção removida.");
+            Debug.Log($"[DES] [{gameObject.name}] Predio destruido. Producao removida.");
         }
     }
 

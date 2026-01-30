@@ -10,7 +10,7 @@ public class UsinaPetroleo : PredioRecursos
     [Tooltip("Nível atual da usina (1, 2, 3...)")]
     public int nivel = 1;
 
-    void Start()
+    protected override void Start()
     {
         // Configura produção baseada no nível
         ConfigurarProducaoPorNivel();

@@ -132,12 +132,11 @@ GameObject:
   m_Component:
   - component: {fileID: 425844}
   - component: {fileID: 4369092241715460329}
-  - component: {fileID: 3984496375915310466}
   - component: {fileID: 5208440624927715841}
   - component: {fileID: 4481467648014901712}
-  - component: {fileID: 8782220592944276430}
   - component: {fileID: 1442098198245929}
   - component: {fileID: -3325090875797799037}
+  - component: {fileID: 7659967480039748551}
   m_Layer: 0
   m_Name: H_Ray
   m_TagString: Aereo
@@ -175,8 +174,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7c5da31c4c456e4b8c933a94535c88d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HelicopterController
-  altitudeDeVoo: 10
-  velocidadeHelice: 1000
+  altitudeDeVoo: 12
+  velocidadeHelice: 100
   alturaDoSolo: 2.9
   antygaviti: 1.2
   velocidadeNavegacao: 16
@@ -186,30 +185,7 @@ MonoBehaviour:
   tropasEmbarcadas: []
   helicePrincipal: {fileID: 418564}
   heliceTraseira: {fileID: 413970}
-  agent: {fileID: 3984496375915310466}
   eixoRotacaoTraseira: {x: 0, y: 0, z: 1}
---- !u!195 &3984496375915310466
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 161708}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 0.5
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 2
-  m_BaseOffset: 0
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 4
 --- !u!54 &5208440624927715841
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -232,7 +208,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 1
   m_Interpolate: 0
   m_Constraints: 0
@@ -252,29 +228,8 @@ MonoBehaviour:
   anelSelecao: {fileID: 601449192149514539, guid: 00009c2ede91a1041a37ada027c98132, type: 3}
   selecionado: 1
   velocidadeVoo: 8
---- !u!136 &8782220592944276430
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 161708}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 1, z: 0}
+  tamanhoSelecao: 0
+  corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
 --- !u!114 &1442098198245929
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -312,6 +267,19 @@ MonoBehaviour:
   teamID: 1
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
+  tipoUnidade: 3
+--- !u!114 &7659967480039748551
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 161708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92b8eeabfb201704885b55c0cf01a2dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ConfigurarHRay
 --- !u!1 &174438
 GameObject:
   m_ObjectHideFlags: 0
@@ -421,8 +389,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2.37, y: 0.9, z: 0.4}
-  m_Center: {x: 0, y: -0.0071196556, z: 0}
+  m_Size: {x: 2.37, y: 0.28, z: 0.4}
+  m_Center: {x: 0, y: -0.1, z: 0}
 --- !u!1 &180260
 GameObject:
   m_ObjectHideFlags: 0
@@ -574,7 +542,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4186404912646762751, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -0.36
       objectReference: {fileID: 0}
     - target: {fileID: 4186404912646762751, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
       propertyPath: m_LocalPosition.y
@@ -637,28 +605,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 200
-  fxFumacaLeve: {fileID: 6473686404303522090}
-  fxFumacaEscura: {fileID: 8181523433100511062}
-  fxFogoCritico: {fileID: 1124997248942601606}
-  fxExplosaoFinal: {fileID: 2799687479890543324, guid: 07180301372540a46864ed63d728a152, type: 3}
---- !u!1 &1124997248942601606 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2068186019343644654, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
-  m_PrefabInstance: {fileID: 1382437081529959016}
-  m_PrefabAsset: {fileID: 0}
+  vidaMaxima: 500
+  vidaAtual: 500
+  unidadeBiologica: 0
+  prefabDestrocos: {fileID: 161708, guid: 6e733342390399a449a3385730e48c22, type: 3}
+  somExplosaoExclusivo: {fileID: 8300000, guid: d47e6ed162da1f740ad807d00f4679f3, type: 3}
+  tamanhoDoEfeito: 2.8
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
 --- !u!4 &2969699705579729559 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4186404912646762751, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
-  m_PrefabInstance: {fileID: 1382437081529959016}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &6473686404303522090 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5402138464619744066, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
-  m_PrefabInstance: {fileID: 1382437081529959016}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &8181523433100511062 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7108363587908158782, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
   m_PrefabInstance: {fileID: 1382437081529959016}
   m_PrefabAsset: {fileID: 0}

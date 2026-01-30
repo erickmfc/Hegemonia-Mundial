@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 2475281459698438669}
   m_Layer: 0
   m_Name: ICBM_Pai 1
-  m_TagString: Untagged
+  m_TagString: Missel
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -46,12 +46,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MisselICBM
   velocidade: 20
+  velocidadeDeGiro: 30
   alturaDoArco: 50
-  alturaDecolagem: 30
-  velocidadeDecolagem: 5
+  atrasoParaVirar: 1.5
   efeitoExplosao: {fileID: 2799687479890543324, guid: 07180301372540a46864ed63d728a152, type: 3}
+  somExplosao: {fileID: 0}
   raioDeDano: 15
   escalaExplosao: 10
+  distanciaSom: 500
 --- !u!1001 &1148370498778617513
 PrefabInstance:
   m_ObjectHideFlags: 0

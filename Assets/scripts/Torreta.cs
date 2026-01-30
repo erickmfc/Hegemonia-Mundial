@@ -68,8 +68,11 @@ public class Torreta : MonoBehaviour
         Vector3 rotacao = Quaternion.Lerp(cabecaGiro.rotation, olharPara, Time.deltaTime * velocidadeGiro).eulerAngles;
         cabecaGiro.rotation = Quaternion.Euler(0f, rotacao.y, 0f); 
 
-        // 2. ATIRAR
-        if (contagemTiro <= 0f)
+        // 2. ATIRAR (Só se estiver bem alinhado)
+        // Calcula o ângulo entre a direção que a torreta está apontando e a direção do alvo
+        float anguloParaAlvo = Vector3.Angle(cabecaGiro.forward, direcao.normalized);
+        
+        if (contagemTiro <= 0f && anguloParaAlvo < 8f) // Só atira se < 8 graus de erro
         {
             Atirar();
             contagemTiro = 1f / cadenciaTiro;

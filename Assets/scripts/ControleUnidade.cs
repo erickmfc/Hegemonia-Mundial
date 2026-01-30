@@ -16,22 +16,26 @@ public class ControleUnidade : MonoBehaviour
     private bool voando = false;
     public float velocidadeVoo = 8.0f; // Velocidade base para helicópteros
 
-    // O Awake roda NA HORA que o objeto nasce, antes de receber ordens.
+    // --- DETECÇÃO DE CONFLITO ---
+    private HelicopterController helicopteroExterno;
+
     void Awake()
     {
         agente = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>(); // Pega o Animator do próprio objeto
+        animator = GetComponent<Animator>(); 
         
-        // Verifica se é uma unidade aérea
+        // Verifica controladores externos
+        helicopteroExterno = GetComponent<HelicopterController>();
+        
+        // Verifica se é uma unidade aérea (GENÉRICA)
         scriptVoo = GetComponent<VooHelicoptero>();
-        if (scriptVoo != null)
+        if (scriptVoo != null || helicopteroExterno != null)
         {
             ehAereo = true;
-            // Desliga o NavMeshAgent para não prender no chão ou colidir com paredes invisíveis do Mesh
             if(agente != null) 
             {
                 agente.enabled = false;
-                agente = null; // Anula a referência para forçar lógica manual
+                agente = null; 
             }
         }
     }
@@ -39,7 +43,6 @@ public class ControleUnidade : MonoBehaviour
     void Start()
     {
         CriarSelecaoVisual();
-        // Garante que comece deselecionado visualmente
         if(anelSelecao != null) anelSelecao.SetActive(selecionado);
     }
 
@@ -93,6 +96,10 @@ public class ControleUnidade : MonoBehaviour
 
     void Update()
     {
+        // SE TIVER HELICOPTER CONTROLLER: NÃO FAZ NADA DE MOVIMENTO AQUI
+        // Deixa o outro script cuidar de tudo, este fica só para Seleção/Identidade
+        if (helicopteroExterno != null) return;
+
         float velocidadeAtual = 0f;
 
         // 1. Lógica Aérea (Movimento Reto)
@@ -174,7 +181,21 @@ public class ControleUnidade : MonoBehaviour
             // Se ele acabou de nascer no ar ou foi desativado, essa verificação evita o erro.
             if (agente.isOnNavMesh && agente.isActiveAndEnabled)
             {
-                agente.SetDestination(destino);
+                // ✨ SISTEMA DE NAVEGAÇÃO NAVAL INTELIGENTE ✨
+                // Verifica se esta unidade tem navegação naval inteligente (marcha à ré automática)
+                NavegacaoInteligenteNaval navegacaoNaval = GetComponent<NavegacaoInteligenteNaval>();
+                
+                if (navegacaoNaval != null)
+                {
+                    // Usa o sistema inteligente que decide automaticamente se vai de frente ou de ré
+                    navegacaoNaval.DefinirDestino(destino);
+                    Debug.Log($"[Navegação] {name} usando sistema naval inteligente para destino em {destino}");
+                }
+                else
+                {
+                    // Navegação normal (terrestre ou navio sem o sistema inteligente)
+                    agente.SetDestination(destino);
+                }
             }
             else
             {
@@ -185,12 +206,79 @@ public class ControleUnidade : MonoBehaviour
         }
     }
 
+    [Header("Visual de Alcance")]
+    public LineRenderer linhaAlcance;
+    public Color corAlcance = new Color(1f, 0f, 0f, 0.8f); // Vermelho
+    public float larguraLinha = 0.15f;
+    public int segmentosCirculo = 50;
+
+    void CriarVisualAlcance()
+    {
+        if (linhaAlcance != null) return;
+
+        // Tenta pegar o alcance da Torreta ou Sistema de Tiro
+        float alcance = 0f;
+        var torreta = GetComponent<ControleTorreta>();
+        if (torreta != null) alcance = torreta.alcance;
+        else 
+        {
+            var tiro = GetComponent<SistemaDeTiro>();
+            if (tiro != null) alcance = tiro.alcanceTiro;
+        }
+
+        // Se não tem alcance de tiro, não desenha nada
+        if (alcance <= 0) return;
+
+        // Cria o LineRenderer
+        GameObject objLinha = new GameObject("LinhaAlcance");
+        objLinha.transform.SetParent(this.transform);
+        objLinha.transform.localPosition = Vector3.zero;
+        
+        linhaAlcance = objLinha.AddComponent<LineRenderer>();
+        linhaAlcance.useWorldSpace = false; // Relativo ao pai (se mover, move junto)
+        linhaAlcance.startWidth = larguraLinha;
+        linhaAlcance.endWidth = larguraLinha;
+        linhaAlcance.positionCount = segmentosCirculo + 1;
+        linhaAlcance.loop = true;
+        
+        // Material simples (unlit) para brilhar
+        linhaAlcance.material = new Material(Shader.Find("Sprites/Default"));
+        linhaAlcance.startColor = corAlcance;
+        linhaAlcance.endColor = corAlcance;
+
+        // Desenha o círculo
+        float angulo = 0f;
+        for (int i = 0; i < segmentosCirculo + 1; i++)
+        {
+            float x = Mathf.Sin(Mathf.Deg2Rad * angulo) * alcance;
+            float z = Mathf.Cos(Mathf.Deg2Rad * angulo) * alcance;
+            
+            linhaAlcance.SetPosition(i, new Vector3(x, 0.5f, z)); // 0.5f de altura do chão
+            
+            angulo += (360f / segmentosCirculo);
+        }
+        
+        linhaAlcance.gameObject.SetActive(false); // Começa invisível
+    }
+
     public void DefinirSelecao(bool estado)
     {
         selecionado = estado;
-        if (anelSelecao != null)
+        
+        // Círculo Verde (Seleção)
+        if (anelSelecao != null) anelSelecao.SetActive(estado);
+        
+        // Círculo Vermelho (Alcance)
+        if (estado)
         {
-            anelSelecao.SetActive(estado);
+            // Tenta criar se não existir (lazy visualization)
+            if (linhaAlcance == null) CriarVisualAlcance();
+            
+            if (linhaAlcance != null) linhaAlcance.gameObject.SetActive(true);
+        }
+        else
+        {
+            if (linhaAlcance != null) linhaAlcance.gameObject.SetActive(false);
         }
     }
 }

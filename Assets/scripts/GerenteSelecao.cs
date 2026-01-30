@@ -107,8 +107,18 @@ public class GerenteSelecao : MonoBehaviour
 
             Vector3 posAlvo = inicio + new Vector3(x * espacamento, 0, z * espacamento);
 
-            // Manda a unidade andar
-            unidadesSelecionadas[i].MoverParaPonto(posAlvo);
+            // CORREÇÃO: Verifica se tem HelicopterController (sistema especial de voo)
+            HelicopterController heli = unidadesSelecionadas[i].GetComponent<HelicopterController>();
+            if (heli != null)
+            {
+                // Usa o sistema de voo avançado do helicóptero
+                heli.DefinirDestino(posAlvo);
+            }
+            else
+            {
+                // Manda a unidade terrestre/genérica andar
+                unidadesSelecionadas[i].MoverParaPonto(posAlvo);
+            }
         }
     }
 

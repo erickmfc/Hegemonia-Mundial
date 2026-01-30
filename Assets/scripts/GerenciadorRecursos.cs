@@ -99,7 +99,7 @@ public class GerenciadorRecursos : MonoBehaviour
             return true;
         }
         
-        Debug.LogWarning($"❌ Recursos insuficientes! Precisa: ${custoDinheiro}, ⛽{custoPetroleo}, 🔩{custoAco}, ⚡{custoEnergia}");
+        Debug.LogWarning($"[RECURSOS] Insuficiente! Precisa: ${custoDinheiro}, P:{custoPetroleo}, A:{custoAco}, E:{custoEnergia}");
         return false;
     }
 
@@ -149,7 +149,7 @@ public class GerenciadorRecursos : MonoBehaviour
             return true;
         }
         
-        Debug.LogWarning($"❌ Limite de população atingido! ({populacaoAtual}/{populacaoMaxima})");
+        Debug.LogWarning($"[LIMITE] Limite de populacao atingido! ({populacaoAtual}/{populacaoMaxima})");
         return false;
     }
 

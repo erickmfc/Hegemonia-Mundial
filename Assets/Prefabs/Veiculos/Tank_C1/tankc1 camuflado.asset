@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: tankc1 camuflado
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Tank C1 camuflado
+  descricao: Tank rapido e leve
+  icone: {fileID: 21300000, guid: da82712718b20c34eb726b3cf7a82a84, type: 3}
+  prefabDaUnidade: {fileID: 716812746667202105, guid: 00929fe6e1919b9429088c031374b34e, type: 3}
+  preco: 150
+  categoria: 0
+  scriptsDeComando: []

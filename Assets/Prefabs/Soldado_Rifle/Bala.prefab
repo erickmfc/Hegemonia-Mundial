@@ -151,7 +151,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projetil
   velocidade: 70
-  dano: 5
+  dano: 2
   tempoDeVida: 5
   efeitoExplosao: {fileID: 2799687479890543324, guid: 07180301372540a46864ed63d728a152, type: 3}
 --- !u!1 &5390248436861774909

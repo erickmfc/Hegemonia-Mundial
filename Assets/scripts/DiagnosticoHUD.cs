@@ -15,10 +15,10 @@ public class DiagnosticoHUD : MonoBehaviour
 
     void Start()
     {
-        gerenciador = FindObjectOfType<GerenciadorRecursos>();
-        painel = FindObjectOfType<PainelRecursos>();
-        menuC = FindObjectOfType<MenuConstrucao>();
-        eventSystems = FindObjectsOfType<UnityEngine.EventSystems.EventSystem>();
+        gerenciador = FindFirstObjectByType<GerenciadorRecursos>();
+        painel = FindFirstObjectByType<PainelRecursos>();
+        menuC = FindFirstObjectByType<MenuConstrucao>();
+        eventSystems = FindObjectsByType<UnityEngine.EventSystems.EventSystem>(FindObjectsSortMode.None);
         
         Debug.Log("🔍 --- DIAGNÓSTICO DO SISTEMA ---");
         Debug.Log($"GerenciadorRecursos: {(gerenciador != null ? "✅ OK" : "❌ FALTA")}");

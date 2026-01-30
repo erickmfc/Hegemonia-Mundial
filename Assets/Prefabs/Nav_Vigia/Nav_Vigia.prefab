@@ -115,15 +115,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 286.18744
+      value: 268.1004
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.9545175
+      value: 0.9272557
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 29.264034
+      value: 27.522892
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
       propertyPath: m_LocalRotation.w
@@ -277,6 +277,9 @@ MonoBehaviour:
   etiquetaAlvo: Inimigo
   alcance: 90
   velocidadeGiro: 5
+  limitarRotacao: 1
+  anguloMinimo: -90
+  anguloMaximo: 90
   tempoEntreTiros: 0.08
   tamanhoCartucho: 50
   tempoRecarga: 4
@@ -288,6 +291,10 @@ MonoBehaviour:
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
   modoPassivo: 0
+  misselPrefab: {fileID: 0}
+  locaisDoMissel: []
+  somMissel: {fileID: 0}
+  tempoEntreMisseis: 2
 --- !u!4 &3975373837891164833 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -26978675240219414, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
@@ -323,6 +330,9 @@ MonoBehaviour:
   etiquetaAlvo: Inimigo
   alcance: 90
   velocidadeGiro: 5
+  limitarRotacao: 1
+  anguloMinimo: -90
+  anguloMaximo: 90
   tempoEntreTiros: 0.08
   tamanhoCartucho: 50
   tempoRecarga: 4
@@ -334,6 +344,10 @@ MonoBehaviour:
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
   modoPassivo: 0
+  misselPrefab: {fileID: 0}
+  locaisDoMissel: []
+  somMissel: {fileID: 0}
+  tempoEntreMisseis: 2
 --- !u!1 &4920767160384793370 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
@@ -444,6 +458,8 @@ MonoBehaviour:
   anelSelecao: {fileID: 601449192149514539, guid: 00009c2ede91a1041a37ada027c98132, type: 3}
   selecionado: 0
   velocidadeVoo: 8
+  tamanhoSelecao: 0
+  corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
 --- !u!114 &-3385564236487319108
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -480,6 +496,9 @@ MonoBehaviour:
   etiquetaAlvo: Aereo
   alcance: 90
   velocidadeGiro: 5
+  limitarRotacao: 1
+  anguloMinimo: -90
+  anguloMaximo: 90
   tempoEntreTiros: 0.08
   tamanhoCartucho: 50
   tempoRecarga: 4
@@ -491,3 +510,7 @@ MonoBehaviour:
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
   modoPassivo: 0
+  misselPrefab: {fileID: 0}
+  locaisDoMissel: []
+  somMissel: {fileID: 0}
+  tempoEntreMisseis: 2

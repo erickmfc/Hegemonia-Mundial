@@ -31,6 +31,9 @@ public class ControleTorreta : MonoBehaviour
     private float contadorTempo = 0f;
     private int balasAtuais;
     private bool estaRecarregando = false;
+    
+    // OTIMIZAÇÃO: Buffer reutilizável para evitar Garbage Collection (Lixo de Memória)
+    private Collider[] bufferColisores = new Collider[40]; 
 
     [Header("Peças")]
     public Transform pecaQueGira; 
@@ -56,7 +59,11 @@ public class ControleTorreta : MonoBehaviour
         // Garante que a referência exista
         if (pecaQueGira == null) pecaQueGira = transform;
 
-        InvokeRepeating("ProcurarAlvo", 0f, 0.2f);
+        // OTIMIZAÇÃO: Distribui a carga de processamento. 
+        // Em vez de todas as torretas procurarem no mesmo frame, cada uma tem um "offset" aleatório.
+        // Aumentei o intervalo de 0.2s para 0.4s (ainda é muito rápido, mas metade do custo).
+        float inicioAleatorio = Random.Range(0f, 0.5f);
+        InvokeRepeating("ProcurarAlvo", inicioAleatorio, 0.4f);
     }
 
     [Header("Comportamento")]
@@ -71,41 +78,86 @@ public class ControleTorreta : MonoBehaviour
             return;
         }
 
-        GameObject[] inimigos = GameObject.FindGameObjectsWithTag(etiquetaAlvo);
+        // --- SISTEMA DE DETECÇÃO OTIMIZADO (V3 - NonAlloc) ---
+        // Usa buffer fixo para não gerar lixo na memória a cada varredura.
+        // Retorna quantos objetos encontrou (até o limite do buffer, ex: 40).
+        int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferColisores);
+        
         float menorDistancia = Mathf.Infinity;
-        GameObject inimigoMaisPerto = null;
+        Transform melhorAlvo = null;
 
         // Busca meu próprio ID
         IdentidadeUnidade meuID = GetComponentInParent<IdentidadeUnidade>();
-        
-        foreach (GameObject inimigo in inimigos)
+        int meuTime = (meuID != null) ? meuID.teamID : 1; // Se não tiver, assume Jogador (1)
+
+        for (int i = 0; i < quantidadeEncontrada; i++)
         {
-            // Verificação de Amigo ou Inimigo (IFF)
-            IdentidadeUnidade idAlvo = inimigo.GetComponent<IdentidadeUnidade>();
+            Collider hit = bufferColisores[i];
+            if (hit == null) continue;
+
+            Transform alvoTr = hit.transform;
             
-            // Regra:
-            // 1. Se eu não tenho ID ou o alvo não tem ID, ataca (comportamento padrão antigo).
-            // 2. Se ambos têm ID e são IGUAIS, ignora (Aliado).
-            if (meuID != null && idAlvo != null)
+            // Ignora a mim mesmo e meus filhos
+            if (alvoTr.root == transform.root) continue;
+
+            // 1. TENTA POR IDENTIDADE (Padrão Ouro)
+            IdentidadeUnidade idAlvo = alvoTr.GetComponentInParent<IdentidadeUnidade>();
+            bool ehInimigo = false;
+
+            if (idAlvo != null)
             {
-                if (meuID.teamID == idAlvo.teamID) continue; // Pula aliados
+                if (idAlvo.teamID != meuTime && idAlvo.teamID != 0) // Diferente de mim e Não é Neutro
+                {
+                    ehInimigo = true;
+                }
+            }
+            // 2. FALLBACK POR TAG (Para objetos simples sem script)
+            else 
+            {
+                // Verifica a tag do objeto e da raiz para garantir
+                if (hit.CompareTag(etiquetaAlvo) || hit.CompareTag("Inimigo"))
+                {
+                    ehInimigo = true;
+                }
             }
 
-            float distancia = Vector3.Distance(transform.position, inimigo.transform.position);
-            if (distancia < menorDistancia)
+            if (ehInimigo)
             {
-                menorDistancia = distancia;
-                inimigoMaisPerto = inimigo;
+                float dist = Vector3.Distance(transform.position, alvoTr.position);
+                if (dist < menorDistancia)
+                {
+                    // Verifica linha de visão (Opcional - Pode pesar se tiver muitos muros)
+                    // if (!Physics.Linecast(transform.position + Vector3.up, alvoTr.position + Vector3.up))
+                    {
+                        menorDistancia = dist;
+                        melhorAlvo = alvoTr;
+                    }
+                }
             }
         }
 
-        if (inimigoMaisPerto != null && menorDistancia <= alcance)
+        // Limpa referências do buffer para não prender objetos na memória (opcional, mas bom)
+        for(int i=0; i<quantidadeEncontrada; i++) bufferColisores[i] = null;
+
+        alvoAtual = melhorAlvo;
+    }
+    
+    /// <summary>
+    /// Liga/Desliga o modo automático de ataque
+    /// </summary>
+    public void DefinirModoAtivo(bool ativo)
+    {
+        modoPassivo = !ativo; // Se ativo = true, modoPassivo = false
+        
+        // CORREÇÃO IMPORTANTE: Se está sendo desativado, limpa o alvo imediatamente
+        if (modoPassivo)
         {
-            alvoAtual = inimigoMaisPerto.transform;
+            alvoAtual = null;
+            Debug.Log($"[ControleTorreta] Modo passivo ativado - Alvo limpo");
         }
         else
         {
-            alvoAtual = null;
+            Debug.Log($"[ControleTorreta] Modo ativo - Procurando alvos");
         }
     }
 
@@ -158,7 +210,7 @@ public class ControleTorreta : MonoBehaviour
                 // Verifica se o ângulo permite atirar (Se a arma não está apontando para o alvo, não atira)
                 // Isso evita atirar "através" do barco enquanto gira
                 Vector3 dirAlvo = (alvoAtual.position - pecaQueGira.position).normalized;
-                if(Vector3.Angle(pecaQueGira.forward, dirAlvo) < 10f) // Só atira se < 10 graus de erro
+                if(Vector3.Angle(pecaQueGira.forward, dirAlvo) < 5f) // Só atira se < 5 graus de erro (mais preciso)
                 {
                     Disparar();
                     if (!estaRecarregando) contadorTempo = tempoEntreTiros;
@@ -191,49 +243,88 @@ public class ControleTorreta : MonoBehaviour
         }
     }
 
+    [Header("Armamento Secundário (Mísseis)")]
+    [Tooltip("Se definido, usa este prefab para disparos especiais ou de longo alcance.")]
+    public GameObject misselPrefab;
+    public Transform[] locaisDoMissel; 
+    public AudioClip somMissel;
+    public float tempoEntreMisseis = 2.0f;
+    private float cooldownMissel = 0f;
+
     void Disparar()
     {
+        // Lógica: Se tiver vaga para míssil e cooldown ok, solta míssil. Senão bala normal.
+        // Mas como o user pediu para "escolher", vamos assumir que se tiver misselPrefab, ele VAI tentar usar intercalado ou substituir.
+        // Para simplificar: Vamos manter o tiro padrão (bala) acontecendo rápido, e o míssil disparando paralelo se tiver alvo e cooldown.
+        
+        // 1. DISPARO DE MÍSSIL (Arma Pesada)
+        if (misselPrefab != null && cooldownMissel <= 0f && alvoAtual != null)
+        {
+            DispararMissel();
+            cooldownMissel = tempoEntreMisseis;
+            return; // Se atirou míssil, talvez não atire bala no mesmo frame? Ou atira os dois. Vamos retornar pra dar peso.
+        }
+
+        // 2. DISPARO PADRÃO (Metralhadora/Canhão)
         if (municaoPrefab != null && locaisDoTiro != null && locaisDoTiro.Length > 0)
         {
-            // Pega o cano da vez
             Transform barrilDaVez = locaisDoTiro[indiceBarrilAtual];
-            
-            // Cria a bala
             GameObject bala = Instantiate(municaoPrefab, barrilDaVez.position, barrilDaVez.rotation);
-            
-            // CORREÇÃO: Usa Projetil ao invés de MissilTeleguiado (tiro em linha reta)
             Projetil scriptBala = bala.GetComponent<Projetil>();
             
             if (scriptBala != null)
             {
-                // Define quem atirou (para não se auto-atacar)
                 scriptBala.SetDono(transform.root.gameObject);
-                
                 if (alvoAtual != null)
                 {
-                    // Calcula direção FIXA do tiro (balístico, não rastreador)
                     Vector3 direcao = (alvoAtual.position - barrilDaVez.position).normalized;
                     scriptBala.SetDirecao(direcao);
-                    scriptBala.velocidade = 200f; // Tiro de metralhadora é rápido
+                    scriptBala.velocidade = 200f; 
                 }
             }
 
             if (somTiro != null) fonteAudio.PlayOneShot(somTiro);
 
-            // Cicla para o próximo cano
             indiceBarrilAtual++;
-            if (indiceBarrilAtual >= locaisDoTiro.Length)
-            {
-                indiceBarrilAtual = 0;
-            }
+            if (indiceBarrilAtual >= locaisDoTiro.Length) indiceBarrilAtual = 0;
 
-            // Gasta bala
             balasAtuais--;
-            if (balasAtuais <= 0)
+            if (balasAtuais <= 0) IniciarRecarga();
+        }
+
+        if(cooldownMissel > 0) cooldownMissel -= Time.deltaTime;
+    }
+
+    void DispararMissel()
+    {
+        // Usa locais específicos se tiver, senão usa os da metralhadora
+        Transform[] saidas = (locaisDoMissel != null && locaisDoMissel.Length > 0) ? locaisDoMissel : locaisDoTiro;
+        if(saidas.Length == 0) return;
+
+        // Pega um aleatório ou sequencial (vou usar sequencial do indiceBarril pra variar)
+        Transform saida = saidas[indiceBarrilAtual % saidas.Length]; 
+
+        GameObject missel = Instantiate(misselPrefab, saida.position, saida.rotation);
+        
+        // Tenta configurar guiagem (Suporta MissilTeleguiado E MisselICBM)
+        MissilTeleguiado guiado = missel.GetComponent<MissilTeleguiado>();
+        if(guiado != null)
+        {
+            // Usa o método público DefinirAlvo
+            guiado.DefinirAlvo(alvoAtual);
+        }
+        else
+        {
+            // Tenta ICBM (que usa IniciarLancamento em vez de IniciarSequencia)
+            MisselICBM icbm = missel.GetComponent<MisselICBM>();
+            if(icbm != null)
             {
-                IniciarRecarga();
+                 icbm.IniciarLancamento(alvoAtual.position);
             }
         }
+
+        if (somMissel != null) fonteAudio.PlayOneShot(somMissel);
+        Debug.Log("🚀 Míssil Disparado!");
     }
 
     void IniciarRecarga()
@@ -241,14 +332,6 @@ public class ControleTorreta : MonoBehaviour
         estaRecarregando = true;
         contadorTempo = tempoRecarga;
         if (somRecarga != null) fonteAudio.PlayOneShot(somRecarga);
-    }
-
-    /// <summary>
-    /// Liga/Desliga o modo automático de ataque
-    /// </summary>
-    public void DefinirModoAtivo(bool ativo)
-    {
-        modoPassivo = !ativo; // Se ativo = true, modoPassivo = false
     }
 
     void OnDrawGizmosSelected()

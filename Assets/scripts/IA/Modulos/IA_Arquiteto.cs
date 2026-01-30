@@ -15,7 +15,17 @@ public class IA_Arquiteto : MonoBehaviour
     public void Inicializar(IA_Comandante comandante)
     {
         chefe = comandante;
-        if (centroDaBase == null) centroDaBase = transform;
+        
+        // Garante que centroDaBase não seja nulo
+        if (centroDaBase == null)
+        {
+            if (comandante != null && comandante.basePrincipal != null)
+                centroDaBase = comandante.basePrincipal;
+            else if (comandante != null)
+                centroDaBase = comandante.transform;
+            else
+                centroDaBase = transform;
+        }
     }
 
     /// <summary>
@@ -23,6 +33,24 @@ public class IA_Arquiteto : MonoBehaviour
     /// </summary>
     public Vector3 EncontrarLocalConstrucao(string tipoPredio)
     {
+        // Valida centroDaBase antes de usar
+        if (centroDaBase == null)
+        {
+            Debug.LogError("[IA Arquiteto] ERRO: centroDaBase não está configurado! Tentando auto-atribuir...");
+            if (chefe != null && chefe.basePrincipal != null)
+                centroDaBase = chefe.basePrincipal;
+            else if (chefe != null)
+                centroDaBase = chefe.transform;
+            else
+                centroDaBase = transform;
+                
+            if (centroDaBase == null)
+            {
+                Debug.LogError("[IA Arquiteto] ERRO CRÍTICO: Impossível determinar centro da base!");
+                return Vector3.zero;
+            }
+        }
+        
         // Lógica Espiral (Simples)
         // x = r * cos(theta)
         // z = r * sin(theta)
@@ -30,8 +58,8 @@ public class IA_Arquiteto : MonoBehaviour
         // Tenta achar um ponto livre em 10 tentativas incrementais
         for (int i = 0; i < 10; i++)
         {
-            espiralAtual += 30f; // Graus
-            espiralDistancia += 0.5f; // Expande levemente
+            espiralAtual += 45f; // Graus (Menos densidade angular)
+            espiralDistancia += 2.5f; // Expande mais rápido para garantir espaço entre anéis
 
             float rad = espiralAtual * Mathf.Deg2Rad;
             float x = Mathf.Cos(rad) * espiralDistancia;
@@ -42,8 +70,8 @@ public class IA_Arquiteto : MonoBehaviour
             // TODO: Raycast para verificar se o chão é plano e não tem nada em cima
             // if (VerificarTerreno(pontoCandidato)) return pontoCandidato;
 
-            // Retorno temporário:
-            return pontoCandidato;
+            // Retorno temporário (removido return precoce para permitir loop se lógica existisse)
+            if (i == 9) return pontoCandidato; // Retorna na última tentativa por enquanto
         }
 
         return Vector3.zero; // Não achou
@@ -86,7 +114,7 @@ public class IA_Arquiteto : MonoBehaviour
         GameObject prefabQuartel = BuscarNoCatalogo("Tenda"); 
         // GameObject prefabDefesa = BuscarNoCatalogo("Torreta");
 
-        Construtor construtor = FindObjectOfType<Construtor>();
+        Construtor construtor = FindFirstObjectByType<Construtor>();
         if (construtor == null)
         {
             Debug.LogError("[IA Arquiteto] ERRO: Script Construtor não encontrado na cena!");
@@ -100,7 +128,11 @@ public class IA_Arquiteto : MonoBehaviour
             GameObject predio = construtor.ConstruirEstruturaIA(prefabRefinaria, pos, Quaternion.identity);
             ConfigurarPredioIA(predio);
         }
-        else Debug.LogWarning("[IA Arquiteto] Não achei prefab de 'Refinaria' no catálogo.");
+        else 
+        {
+            Debug.LogWarning("[IA Arquiteto] Não achei prefab de 'Refinaria' no catálogo.");
+            ListarPrefabsDisponiveis(); // Mostra o que está disponível
+        }
 
         // 3. Constrói Tenda (Militar)
         if (prefabQuartel != null)
@@ -143,5 +175,25 @@ public class IA_Arquiteto : MonoBehaviour
             }
         }
         return null;
+    }
+    
+    void ListarPrefabsDisponiveis()
+    {
+        if (MenuConstrucao.catalogoGlobal == null || MenuConstrucao.catalogoGlobal.Count == 0)
+        {
+            Debug.LogWarning("[IA Arquiteto] Catálogo vazio!");
+            return;
+        }
+        
+        Debug.Log("[IA Arquiteto] === PREFABS DISPONÍVEIS NO CATÁLOGO ===");
+        foreach (var item in MenuConstrucao.catalogoGlobal)
+        {
+            if (item != null)
+            {
+                string prefabInfo = item.prefabDaUnidade != null ? item.prefabDaUnidade.name : "(sem prefab)";
+                Debug.Log($"  - {item.nomeItem} ({item.categoria}) -> {prefabInfo}");
+            }
+        }
+        Debug.Log("[IA Arquiteto] =====================================");
     }
 }

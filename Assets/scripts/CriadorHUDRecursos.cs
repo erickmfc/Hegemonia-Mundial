@@ -38,7 +38,7 @@ public class CriadorHUDRecursos : MonoBehaviour
         Debug.Log("🎨 Iniciando CRIAÇÃO DO HUD COMPACTO (LISTA VERTICAL)...");
         
         // 0. LIMPEZA: Remove HUD antigo
-        PainelRecursos[] antigos = FindObjectsOfType<PainelRecursos>();
+        PainelRecursos[] antigos = FindObjectsByType<PainelRecursos>(FindObjectsSortMode.None);
         foreach (var p in antigos)
             if (p != null && p.gameObject != null) DestroyImmediate(p.gameObject);
             
@@ -48,18 +48,18 @@ public class CriadorHUDRecursos : MonoBehaviour
         if (objStatusAntigo != null) DestroyImmediate(objStatusAntigo);
 
         // 0.1 RECUPERAÇÃO DE DEPENDÊNCIAS (Gerenciadores)
-        if (FindObjectOfType<GerenciadorRecursos>() == null)
+        if (FindFirstObjectByType<GerenciadorRecursos>() == null)
             new GameObject("GerenciadorRecursos").AddComponent<GerenciadorRecursos>();
             
-        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+        if (FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
              new GameObject("EventSystem").AddComponent<UnityEngine.EventSystems.EventSystem>()
                 .gameObject.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
 
-        if (FindObjectOfType<CensoImperial>() == null)
+        if (FindFirstObjectByType<CensoImperial>() == null)
              new GameObject("CensoImperial").AddComponent<CensoImperial>();
 
         // 1. Criar Canvas
-        Canvas canvas = FindObjectOfType<Canvas>();
+        Canvas canvas = FindFirstObjectByType<Canvas>();
         if (canvas == null)
         {
             GameObject canvasObj = new GameObject("Canvas_HUD");

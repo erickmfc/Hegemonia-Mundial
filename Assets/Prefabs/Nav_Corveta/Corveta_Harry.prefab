@@ -411,21 +411,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
---- !u!1 &617208190223214357 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5402138464619744066, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
-  m_PrefabInstance: {fileID: 4785219584486878295}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &2363678276968474985 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7108363587908158782, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
-  m_PrefabInstance: {fileID: 4785219584486878295}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &6835109507006012345 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2068186019343644654, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
-  m_PrefabInstance: {fileID: 4785219584486878295}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &8678888164491238568 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4186404912646762751, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
@@ -571,6 +556,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Corveta_Harry
       objectReference: {fileID: 0}
+    - target: {fileID: 8672180954570090896, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}
+      propertyPath: m_TagString
+      value: Navio
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -642,10 +631,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
   vidaMaxima: 100
-  fxFumacaLeve: {fileID: 617208190223214357}
-  fxFumacaEscura: {fileID: 2363678276968474985}
-  fxFogoCritico: {fileID: 6835109507006012345}
-  fxExplosaoFinal: {fileID: 2799687479890543324, guid: 07180301372540a46864ed63d728a152, type: 3}
+  vidaAtual: 0
+  unidadeBiologica: 0
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 1
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
 --- !u!4 &4040802754107415295 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7960940317155996790, guid: 605373be7db2d5e4aa95a9f75f5174fb, type: 3}

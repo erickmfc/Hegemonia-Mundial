@@ -64,6 +64,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 9500000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -91,7 +95,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
   vidaMaxima: 100
   vidaAtual: 100
-  fxFumacaLeve: {fileID: 0}
-  fxFumacaEscura: {fileID: 0}
-  fxFogoCritico: {fileID: 0}
-  fxExplosaoFinal: {fileID: 0}
+  unidadeBiologica: 0
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 1
+  ajusteDePosicao: {x: 0, y: 0, z: 0}

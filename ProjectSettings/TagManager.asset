@@ -9,6 +9,7 @@ TagManager:
   - Missel
   - FxTemporaire
   - Destrutivel
+  - Navio
   layers:
   - Default
   - TransparentFX

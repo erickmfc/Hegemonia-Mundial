@@ -6,13 +6,13 @@ using UnityEngine;
 /// </summary>
 public class RefinariaAco : PredioRecursos
 {
-    void Start()
+    protected override void Start()
     {
-        // Configuração padrão de uma refinaria
-        producaoAco = 3f;         // +3 aço/s
+        // ConfiguraÃ§Ã£o padrÃ£o de uma refinaria
+        producaoAco = 3f;         // +3 aÃ§o/s
         producaoDinheiro = -1f;   // Consome 1 dinheiro/s (custo operacional)
         
-        delayInicial = 5f; // Demora 5s para começar a produzir
+        delayInicial = 5f; // Demora 5s para comeÃ§ar a produzir
         
         base.Start();
     }
@@ -24,10 +24,10 @@ public class RefinariaAco : PredioRecursos
 /// </summary>
 public class UsinaEnergia : PredioRecursos
 {
-    void Start()
+    protected override void Start()
     {
         producaoEnergia = 10f;    // +10 energia/s
-        producaoPetroleo = -0.5f; // Consome 0.5 petróleo/s (combustível)
+        producaoPetroleo = -0.5f; // Consome 0.5 petrÃ³leo/s (combustÃ­vel)
         
         base.Start();
     }
@@ -35,11 +35,11 @@ public class UsinaEnergia : PredioRecursos
 
 /// <summary>
 /// Exemplo: Casa Residencial
-/// Aumenta limite de população e gera pequena renda
+/// Aumenta limite de populaÃ§Ã£o e gera pequena renda
 /// </summary>
 public class CasaResidencial : MonoBehaviour
 {
-    [Header("👥 Configurações")]
+    [Header("ðŸ‘¥ ConfiguraÃ§Ãµes")]
     public int aumentoLimitePopulacao = 10;
     public float rendaDinheiro = 1f; // Imposto
 
@@ -50,7 +50,7 @@ public class CasaResidencial : MonoBehaviour
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (recursos != null)
         {
-            // Aumenta limite de população
+            // Aumenta limite de populaÃ§Ã£o
             recursos.AumentarLimitePopulacao(aumentoLimitePopulacao);
             
             // Adiciona renda de impostos
@@ -58,7 +58,7 @@ public class CasaResidencial : MonoBehaviour
             
             jaRegistrado = true;
             
-            Debug.Log($"🏠 Casa construída! População máxima +{aumentoLimitePopulacao}, Renda +${rendaDinheiro}/s");
+            Debug.Log($"ðŸ  Casa construÃ­da! PopulaÃ§Ã£o mÃ¡xima +{aumentoLimitePopulacao}, Renda +${rendaDinheiro}/s");
         }
     }
 
@@ -69,7 +69,7 @@ public class CasaResidencial : MonoBehaviour
             GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
             if (recursos != null)
             {
-                // Remove benefícios ao destruir
+                // Remove benefÃ­cios ao destruir
                 recursos.AumentarLimitePopulacao(-aumentoLimitePopulacao);
                 recursos.ModificarGanhos(multDinheiro: -rendaDinheiro);
             }
@@ -83,25 +83,25 @@ public class CasaResidencial : MonoBehaviour
 /// </summary>
 public class Banco : PredioRecursos
 {
-    void Start()
+    protected override void Start()
     {
         producaoDinheiro = 20f;   // +20 dinheiro/s (juros)
         
-        delayInicial = 10f; // Demora 10s para começar a render
+        delayInicial = 10f; // Demora 10s para comeÃ§ar a render
         
         base.Start();
     }
 }
 
 /// <summary>
-/// Exemplo: Poço de Petróleo
-/// Gera petróleo mas consome energia
+/// Exemplo: PoÃ§o de PetrÃ³leo
+/// Gera petrÃ³leo mas consome energia
 /// </summary>
 public class PocoPetroleo : PredioRecursos
 {
-    void Start()
+    protected override void Start()
     {
-        producaoPetroleo = 5f;    // +5 petróleo/s
+        producaoPetroleo = 5f;    // +5 petrÃ³leo/s
         producaoEnergia = -2f;    // Consome 2 energia/s (bomba)
         
         base.Start();

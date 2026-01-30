@@ -35,8 +35,7 @@ public class MenuComandoInteligente : MonoBehaviour
     {
         DetectarSelecao();
         
-        // Só reconstrói o menu se mudar a quantidade de selecionados (simples otimização)
-        // O ideal seria verificar se mudaram *quem* são, mas count já ajuda muito.
+        // Atualiza a interface
         if (selecionados.Count != lastSelectionCount)
         {
             lastSelectionCount = selecionados.Count;
@@ -46,24 +45,38 @@ public class MenuComandoInteligente : MonoBehaviour
 
         if (painelMestre != null)
         {
-            painelMestre.SetActive(selecionados.Count > 0);
+            // Só mostra o painel se tiver unidades selecionadas E comandos disponíveis
+            bool deveExibir = (selecionados.Count > 0 && comandosAtuais.Count > 0);
+            painelMestre.SetActive(deveExibir);
         }
     }
 
     void DetectarSelecao()
     {
         selecionados.Clear();
-        // Nota: Isso pega APENAS Helicópteros por enquanto. 
-        // Idealmente você teria uma classe base 'UnidadeSelecionavel' ou usaria Tags.
-        // Vamos manter HelicopterController para não quebrar seu fluxo, mas extendendo a lógica:
         
-        HelicopterController[] todosHelis = FindObjectsOfType<HelicopterController>();
+        // 1. Busca por Helicópteros (Lógica Antiga)
+        HelicopterController[] todosHelis = FindObjectsByType<HelicopterController>(FindObjectsSortMode.None);
         foreach (var heli in todosHelis)
         {
             Transform anel = heli.transform.Find("AnelSelecao"); 
             if (anel != null && anel.gameObject.activeSelf)
             {
                 selecionados.Add(heli.gameObject);
+            }
+        }
+
+        // 2. Busca Unidades Genéricas (ControleUnidade) - NOVO SUPORTE
+        ControleUnidade[] todasUnidades = FindObjectsByType<ControleUnidade>(FindObjectsSortMode.None);
+        foreach (var unit in todasUnidades)
+        {
+            // Evita duplicatas se a unidade tiver ambos os scripts
+            if (!selecionados.Contains(unit.gameObject))
+            {
+                if (unit.selecionado)
+                {
+                    selecionados.Add(unit.gameObject);
+                }
             }
         }
     }
@@ -133,21 +146,14 @@ public class MenuComandoInteligente : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        // Ajusta tamanho do painel
+        // Ajusta tamanho do painel (SEM cabeçalho de vida)
         int qtd = comandosAtuais.Count;
         RectTransform rt = painelMestre.GetComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(180, 25 + (Mathf.Max(1, qtd) * 45)); 
+        rt.sizeDelta = new Vector2(180, 20 + (qtd * 45)); // Reduzido de 50 para 20 (sem header)
 
-        if (qtd == 0 && selecionados.Count > 0)
+        foreach (var comando in comandosAtuais)
         {
-            CriarTextoAviso("Sem Ordens");
-        }
-        else
-        {
-            foreach (var comando in comandosAtuais)
-            {
-                CriarBotao(comando);
-            }
+            CriarBotao(comando);
         }
     }
 
@@ -193,9 +199,14 @@ public class MenuComandoInteligente : MonoBehaviour
         Text t = txtObj.AddComponent<Text>();
         t.text = comando.tituloBotao;
         
+        // CORREÇÃO FINAL: Não tenta mais carregar Arial.ttf builtin pois causa erro na Unity nova.
         Font fonte = null;
         try { fonte = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
+        
+        // Se falhar (ou se o builtin estiver quebrado), cria do sistema
         if (fonte == null) fonte = Font.CreateDynamicFontFromOSFont("Arial", 14);
+        
+        // Se AINDA falhar, o Unity usa o padrão (melhor que crashar)
         t.font = fonte;
 
         t.alignment = TextAnchor.MiddleCenter;

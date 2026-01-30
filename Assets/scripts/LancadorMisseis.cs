@@ -32,7 +32,7 @@ public class LancadorMisseis : MonoBehaviour
 
     void Start()
     {
-        gerente = FindObjectOfType<GerenteDeJogo>();
+        gerente = FindFirstObjectByType<GerenteDeJogo>();
         CriarMarcadorFantasma();
     }
 

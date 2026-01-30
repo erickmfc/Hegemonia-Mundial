@@ -176,17 +176,62 @@ public class IA_General : MonoBehaviour
 
     void ManterPosicaoDefensiva()
     {
-        if (pontoDeEncontro == null) pontoDeEncontro = chefe.transform;
-        
-        foreach (var u in exercitoDisponivel)
+        if (pontoDeEncontro == null) 
         {
+            // Se não tiver ponto definido, usa uma posição à frente do Comandante (Base)
+            // para não ficar spawnando em cima da própria construção.
+            pontoDeEncontro = chefe.transform;
+        }
+
+        // Configuração da Formação
+        float espacamentoX = 8.0f; // Espaço lateral (generoso para tanques)
+        float espacamentoZ = 8.0f; // Espaço de profundidade
+        int colunas = 6;           // Unidades por linha
+
+        // Vetores de direção baseados no ponto de encontro
+        // Se o ponto de encontro for a base, usa a frente da base.
+        Vector3 frente = pontoDeEncontro.forward;
+        Vector3 direita = pontoDeEncontro.right;
+
+        // Ponto inicial da formação (um pouco à frente do ponto de encontro)
+        Vector3 origemFormacao = pontoDeEncontro.position + (frente * 15f);
+
+        for (int i = 0; i < exercitoDisponivel.Count; i++)
+        {
+            var u = exercitoDisponivel[i];
             if (u == null) continue;
+
+            // Calcula linha e coluna na grade
+            int linha = i / colunas;
+            int coluna = i % colunas;
+
+            // Calcula posição no mundo:
+            // Desloca para a direita baseado na coluna
+            // Desloca para trás (ou frente) baseado na linha
+            // Centraliza a linha horizontalmente: (coluna - (colunas/2))
+            float xOffset = (coluna - (colunas / 2.0f)) * espacamentoX;
+            float zOffset = linha * espacamentoZ; 
+
+            Vector3 destinoSlot = origemFormacao + (direita * xOffset) + (frente * zOffset);
+
             var nav = u.GetComponent<UnityEngine.AI.NavMeshAgent>();
             
-            // Se estiver muito longe do ponto de encontro, volta
-            if (nav != null && Vector3.Distance(u.transform.position, pontoDeEncontro.position) > 30f)
+            // Só manda mover se estiver longe do slot (evita recálculo constante/jitter)
+            if (nav != null && nav.isOnNavMesh)
             {
-                nav.SetDestination(pontoDeEncontro.position);
+                if (Vector3.Distance(u.transform.position, destinoSlot) > 2.0f)
+                {
+                    nav.SetDestination(destinoSlot);
+                    nav.isStopped = false;
+                }
+                else
+                {
+                    // Se já chegou, para de tentar andar e foca rotação para frente
+                    if (!nav.isStopped) nav.isStopped = true;
+                    
+                    // Rotação suave para olhar para frente (opcional, ajuda vizualização)
+                    u.transform.rotation = Quaternion.Slerp(u.transform.rotation, Quaternion.LookRotation(frente), Time.deltaTime * 2f);
+                }
             }
         }
     }
