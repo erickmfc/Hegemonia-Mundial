@@ -141,7 +141,7 @@ public class CriadorHUDRecursos : MonoBehaviour
         txtValor.fontSize = 16; // Fonte levemente menor (era 18)
         txtValor.color = Color.white;
         txtValor.alignment = TextAlignmentOptions.Left;
-        txtValor.enableWordWrapping = false;
+        txtValor.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
         
         // Ganho (+10/s)
         GameObject objGanho = new GameObject("Ganho");

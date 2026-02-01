@@ -21,17 +21,13 @@ public class VerificadorHelicopteros : MonoBehaviour
             // Verifica se parece um helicóptero pelo nome
             if (nome.Contains("heli") || nome.Contains("chopper") || nome.Contains("copter") || nome.Contains("apache") || nome.Contains("blackhawk"))
             {
-                // Verifica se tem algum controlador de voo (HelicopterController)
-                if (prefab.GetComponent<HelicopterController>() != null)
+                // Verifica se FALTA o script Helicoptero
+                if (prefab.GetComponent<Helicoptero>() == null)
                 {
-                    // Verifica se FALTA o script Helicoptero (o do sistema de heliporto)
-                    if (prefab.GetComponent<Helicoptero>() == null)
-                    {
-                        prefab.AddComponent<Helicoptero>();
-                        EditorUtility.SetDirty(prefab);
-                        corrigidos++;
-                        Debug.Log($"✅ Adicionado script 'Helicoptero' ao prefab: {prefab.name}");
-                    }
+                    prefab.AddComponent<Helicoptero>();
+                    EditorUtility.SetDirty(prefab);
+                    corrigidos++;
+                    Debug.Log($"✅ Adicionado script 'Helicoptero' ao prefab: {prefab.name}");
                 }
             }
         }

@@ -1034,6 +1034,10 @@ MonoBehaviour:
   velocidadeVoo: 8
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
+  linhaAlcance: {fileID: 0}
+  corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
+  larguraLinha: 0.15
+  segmentosCirculo: 50
 --- !u!114 &-8360559527445873690
 MonoBehaviour:
   m_ObjectHideFlags: 0

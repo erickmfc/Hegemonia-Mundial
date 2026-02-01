@@ -36,17 +36,19 @@ public class IA_Arquiteto : MonoBehaviour
         // Valida centroDaBase antes de usar
         if (centroDaBase == null)
         {
-            Debug.LogError("[IA Arquiteto] ERRO: centroDaBase não está configurado! Tentando auto-atribuir...");
+            // Erro silencioso/Warning que resolve sozinho
+            Debug.LogWarning("[IA Arquiteto] `centroDaBase` não estava configurado. Tentando auto-atribuir usando o Comandante ou Transform atual.");
+            
             if (chefe != null && chefe.basePrincipal != null)
                 centroDaBase = chefe.basePrincipal;
             else if (chefe != null)
                 centroDaBase = chefe.transform;
             else
-                centroDaBase = transform;
+                centroDaBase = transform; // Fallback final
                 
             if (centroDaBase == null)
             {
-                Debug.LogError("[IA Arquiteto] ERRO CRÍTICO: Impossível determinar centro da base!");
+                Debug.LogError("[IA Arquiteto] ERRO CRÍTICO: Impossível determinar centro da base mesmo após tentativas de recuperação!");
                 return Vector3.zero;
             }
         }
@@ -82,6 +84,8 @@ public class IA_Arquiteto : MonoBehaviour
     /// </summary>
     public Vector3 EncontrarPontoDefensivo()
     {
+        if (centroDaBase == null) centroDaBase = transform;
+
         // Pega um ponto na borda do raio de 90m (exemplo)
         Vector3 direcaoAleatoria = Random.onUnitSphere;
         direcaoAleatoria.y = 0;
@@ -93,6 +97,18 @@ public class IA_Arquiteto : MonoBehaviour
 
     void Start()
     {
+        // Tenta encontrar o chefe se ainda não foi atribuído
+        if (chefe == null) chefe = GetComponent<IA_Comandante>();
+        if (chefe == null) chefe = GetComponentInParent<IA_Comandante>();
+
+        // Tenta corrigir centroDaBase logo no início se possível
+        if (centroDaBase == null)
+        {
+            if (chefe != null && chefe.basePrincipal != null) centroDaBase = chefe.basePrincipal;
+            else if (chefe != null) centroDaBase = chefe.transform;
+            else centroDaBase = transform;
+        }
+
         // Espera um pouco para garantir que o MenuConstrucao carregou o catálogo
         Invoke("ConstruirBaseInicial", 2.0f);
     }
@@ -107,7 +123,7 @@ public class IA_Arquiteto : MonoBehaviour
             return;
         }
 
-        Debug.Log("[IA Arquiteto] Iniciando construção da Base Inicial...");
+        // Debug.Log("[IA Arquiteto] Iniciando construção da Base Inicial...");
 
         // 1. Encontra os prefabs essenciais no catálogo pelo NOME
         GameObject prefabRefinaria = BuscarNoCatalogo("Refinaria"); 
@@ -130,8 +146,7 @@ public class IA_Arquiteto : MonoBehaviour
         }
         else 
         {
-            Debug.LogWarning("[IA Arquiteto] Não achei prefab de 'Refinaria' no catálogo.");
-            ListarPrefabsDisponiveis(); // Mostra o que está disponível
+            // Debug.LogWarning("[IA Arquiteto] Não achei prefab de 'Refinaria' no catálogo.");
         }
 
         // 3. Constrói Tenda (Militar)
@@ -141,7 +156,10 @@ public class IA_Arquiteto : MonoBehaviour
             GameObject predio = construtor.ConstruirEstruturaIA(prefabQuartel, pos, Quaternion.identity);
             ConfigurarPredioIA(predio);
         }
-        else Debug.LogWarning("[IA Arquiteto] Não achei prefab de 'Tenda' no catálogo.");
+        else 
+        {
+            // Debug.LogWarning("[IA Arquiteto] Não achei prefab de 'Tenda' no catálogo.");
+        }
 
         baseIniciada = true;
     }
@@ -179,21 +197,6 @@ public class IA_Arquiteto : MonoBehaviour
     
     void ListarPrefabsDisponiveis()
     {
-        if (MenuConstrucao.catalogoGlobal == null || MenuConstrucao.catalogoGlobal.Count == 0)
-        {
-            Debug.LogWarning("[IA Arquiteto] Catálogo vazio!");
-            return;
-        }
-        
-        Debug.Log("[IA Arquiteto] === PREFABS DISPONÍVEIS NO CATÁLOGO ===");
-        foreach (var item in MenuConstrucao.catalogoGlobal)
-        {
-            if (item != null)
-            {
-                string prefabInfo = item.prefabDaUnidade != null ? item.prefabDaUnidade.name : "(sem prefab)";
-                Debug.Log($"  - {item.nomeItem} ({item.categoria}) -> {prefabInfo}");
-            }
-        }
-        Debug.Log("[IA Arquiteto] =====================================");
+        // Debug
     }
 }

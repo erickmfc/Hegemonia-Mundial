@@ -36,12 +36,14 @@ public class ConfigurarHRay : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         Debug.Log("   ✅ Rigidbody Configurado (Kinematic=True)");
 
-        // 3. ADICIONAR HELICOPTER CONTROLLER (O QUE FALTAVA!)
-        var heli = GetComponent<HelicopterController>();
+        // 3. ADICIONAR HELICOPTERO (O QUE FALTAVA!)
+        var heli = GetComponent<Helicoptero>();
         if (heli == null)
         {
-            heli = gameObject.AddComponent<HelicopterController>();
-            Debug.Log("   ✅ Adicionado: HelicopterController (Agora voa de verdade!)");
+            // Adiciona o novo sistema unificado
+            heli = gameObject.AddComponent<Helicoptero>();
+            heli.velocidadeHelice = 1200f;
+            Debug.Log("   ✅ Adicionado: Helicoptero (Agora voa de verdade!)");
         }
 
         // 4. CONECTAR HÉLICES (Nomes específicos do H_Ray)
@@ -71,7 +73,7 @@ public class ConfigurarHRay : MonoBehaviour
 
         // 7. Configura Voo
         heli.altitudeDeVoo = 15f;
-        heli.alturaDoSolo = 3f;
+        heli.altitudeDeVoo = 15f;
 
         Debug.Log("✨ [Doutor H-Ray] REPARO CONCLUÍDO! ✨");
     }

@@ -83,11 +83,10 @@ public class TransporteAnfibio : MonoBehaviour
         unidade.transform.rotation = transform.rotation;
         unidade.SetActive(true);
 
-        HelicopterController heli = unidade.GetComponent<HelicopterController>();
+        Helicoptero heli = unidade.GetComponent<Helicoptero>();
         if (heli != null)
         {
-            heli.Decolar();
-            heli.DefinirDestino(pontoDeDecolagem.position + (Vector3.up * 20f) + (transform.forward * 30f));
+            heli.Decolar(pontoDeDecolagem.position + (Vector3.up * 20f) + (transform.forward * 30f));
         }
     }
 
@@ -228,8 +227,8 @@ public class TransporteAnfibio : MonoBehaviour
             else
             {
                  // Tenta mover helis por comando
-                 HelicopterController heli = unidade.GetComponent<HelicopterController>();
-                 if(heli) heli.DefinirDestino(pontoDeEntrada.position);
+                 Helicoptero heli = unidade.GetComponent<Helicoptero>();
+                 if(heli) heli.Decolar(pontoDeEntrada.position);
             }
 
             yield return new WaitForSeconds(0.5f);
@@ -327,7 +326,7 @@ public class TransporteAnfibio : MonoBehaviour
             if (unidade == null) continue;
             
             // Se for Avião/Heli, NÃO solta na praia
-            if (unidade.GetComponent<HelicopterController>() != null) continue;
+            if (unidade.GetComponent<Helicoptero>() != null) continue;
 
             // FORÇA NAVIO A FICAR PARADO
             transform.position = posicaoFinalNavio;
@@ -440,7 +439,7 @@ public class TransporteAnfibio : MonoBehaviour
                 if (u == null) continue;
                 GUI.Label(new Rect(Screen.width - largura - 10, y, 120, 18), u.name, textoNormal);
 
-                bool ehAereo = (u.GetComponent<HelicopterController>() != null);
+                bool ehAereo = (u.GetComponent<Helicoptero>() != null);
                 
                 if (ehAereo)
                 {

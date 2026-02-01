@@ -85,74 +85,102 @@ public class TransporteTerrestre : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[{gameObject.name}] Tentando embarcar soldados... (Raio: {distanciaParaEmbarque}m)");
+        Debug.Log($"[{gameObject.name}] BUSCANDO PASSAGEIROS... (Raio: {distanciaParaEmbarque}m)");
 
-        // --- BUSCA GLOBAL POR PROXIMIDADE (Sem depender de Tags) ---
-        // Pega tudo que tem collider em volta (Camadas Default, Player, etc)
+        // --- BUSCA GLOBAL POR PROXIMIDADE ---
         Collider[] hits = Physics.OverlapSphere(transform.position, distanciaParaEmbarque);
+        List<GameObject> processados = new List<GameObject>(); // Evita duplicatas na mesma passada
         
         foreach (var hit in hits)
         {
             if (totalEmbarcados >= capacidadeMaxima) break;
 
-            GameObject soldado = hit.gameObject;
+            // Tenta achar a unidade lógica (onde está o ControleUnidade ou NavMesh)
+            // Em vez de ir para a Raiz (que pode ser um agrupamento), busca o componente funcional.
+            ControleUnidade ctrl = hit.GetComponentInParent<ControleUnidade>();
+            GameObject soldado = null;
 
-            // Ignora a mim mesmo e meus filhos/partes
-            if (soldado.transform.root == transform.root) continue;
-            
-            // Pega a raiz do objeto (caso o hit seja no pé ou braço)
-            soldado = soldado.transform.root.gameObject;
+            if (ctrl != null) soldado = ctrl.gameObject;
+            else 
+            {
+                // Tenta achar NavMesh se não tiver Controle
+                var nav = hit.GetComponentInParent<NavMeshAgent>();
+                if(nav != null) soldado = nav.gameObject;
+                else soldado = hit.transform.root.gameObject; // Última tentativa
+            }
 
-            if (!soldado.activeInHierarchy) continue; 
-            
-            // Evita adicionar o mesmo objeto duas vezes (OverlapSphere pode pegar vários colliders do mesmo soldado)
-            if (JaEstaEmbarcado(soldado)) continue;
+            if (soldado == null || !soldado.activeInHierarchy) continue;
+            if (processados.Contains(soldado)) continue; // Já testou este cara
+            processados.Add(soldado); 
+
+            // Ignora a mim mesmo
+            if (soldado == gameObject || soldado.transform.root == transform.root) continue;
 
              // --- FILTRAGEM ---
 
-            // 1. Ignora Veículos (Verifica se TEM o script de transporte)
+            // 1. Ignora Veículos de Transporte e Tanques Grandes
+            // Se tiver script de transporte ou for muito grande
             if (soldado.GetComponent<TransporteTerrestre>() != null) continue;
             
-            // 2. Ignora NAVIOS (Por Nome - Fallback de Segurança)
+            // 2. Filtro por Nome (Mais permissivo)
             string nomeLower = soldado.name.ToLower();
-            if (nomeLower.Contains("uss") || nomeLower.Contains("corveta") || 
-                nomeLower.Contains("fragata") || nomeLower.Contains("destroyer") ||
-                nomeLower.Contains("navio") || nomeLower.Contains("ship") ||
-                nomeLower.Contains("mako") || nomeLower.Contains("ironclad") ||
-                nomeLower.Contains("liberty") || nomeLower.Contains("leviathan") ||
-                nomeLower.Contains("sovereign"))
-            {
-                Debug.LogWarning($"⚠️ [TransporteTerrestre] BLOQUEADO: {soldado.name} parece ser um navio!");
-                continue;
-            }
-
-            // 2. Identifica se é Biológico (Pessoa) vs Máquina
-            SistemaDeDanos sd = soldado.GetComponent<SistemaDeDanos>();
-            bool ehBiologico = false;
             
-            if (sd != null) 
+            // Bloqueia Navios e Aviões óbvios
+            if (nomeLower.Contains("uss") || nomeLower.Contains("ship") || nomeLower.Contains("aviao") || nomeLower.Contains("jet")) continue;
+
+            // 3. Verifica se é "Embarcável" (Biológico ou Pequeno)
+            SistemaDeDanos sd = soldado.GetComponent<SistemaDeDanos>();
+            bool ehViavel = false;
+            
+            if (sd != null && sd.unidadeBiologica) 
             {
-                ehBiologico = sd.unidadeBiologica;
+                ehViavel = true;
             }
             else
             {
-                // Fallback visual/físico
+                // Fallback: Verifica tamanho físico
                 var nav = soldado.GetComponent<NavMeshAgent>();
-                // Soldados têm raio pequeno (< 0.8), Tanques têm > 1.5
-                if(nav != null && nav.radius < 0.8f) ehBiologico = true;
+                // Soldados < 0.8, Tanques > 1.5. Aceitamos até 1.0 (Exoesqueletos?)
+                if(nav != null && nav.radius < 1.0f) ehViavel = true;
                 
-                // Fallback nominal
-                string nome = soldado.name.ToLower();
-                if(nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("infant") || nome.Contains("person")) ehBiologico = true;
+                // Fallback nominal expandido
+                if(nomeLower.Contains("soldado") || nomeLower.Contains("soldier") || 
+                   nomeLower.Contains("infant") || nomeLower.Contains("atira") || 
+                   nomeLower.Contains("rifle") || nomeLower.Contains("fuzil") || 
+                   nomeLower.Contains("sniper") || nomeLower.Contains("medico") ||
+                   nomeLower.Contains("eng") || nomeLower.Contains("person") ||
+                   nomeLower.Contains("caoc") || nomeLower.Contains("unidade")) // CAOC pode ser unidade especial?
+                {
+                    ehViavel = true;
+                }
             }
 
-            // SÓ EMBARCA SE: For Biológico
-            if (ehBiologico)
+            // SÓ EMBARCA SE FOR VIÁVEL
+            if (ehViavel)
             {
-                Debug.Log($"Embarcando: {soldado.name}");
-                EmbarcarUnidade(soldado);
-                totalEmbarcados++;
+                // Verifica time (Opcional: Só embarca aliados)
+                var identidade = soldado.GetComponent<IdentidadeUnidade>();
+                var minhaIdentidade = GetComponent<IdentidadeUnidade>();
+                
+                bool mesmoTime = true;
+                if(identidade != null && minhaIdentidade != null)
+                {
+                    if(identidade.teamID != minhaIdentidade.teamID) mesmoTime = false;
+                }
+
+                if(mesmoTime)
+                {
+                    Debug.Log($"Embarcando Passageiro: {soldado.name}");
+                    EmbarcarUnidade(soldado);
+                    totalEmbarcados++;
+                }
             }
+        }
+        
+        if (totalEmbarcados == soldadosInternos.Count + ContarVisiveis())
+        {
+             // Se não mudou nada
+             Debug.Log("Nenhum passageiro válido encontrado por perto.");
         }
     }
 
@@ -308,5 +336,10 @@ public class TransporteTerrestre : MonoBehaviour
         int c = 0;
         foreach(var s in soldadosNosAssentos) if(s != null) c++;
         return c;
+    }
+
+    public bool TemPassageiros
+    {
+        get { return soldadosInternos.Count > 0 || ContarVisiveis() > 0; }
     }
 }

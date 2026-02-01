@@ -27,7 +27,7 @@ public class MenuConstrucao : MonoBehaviour
 
     void Start()
     {
-        gerente = FindObjectOfType<GerenteDeJogo>();
+        gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
         
         // Auto-carregar todas as fichas se a opção estiver marcada
         if (autoCarregarFichas)
@@ -93,7 +93,7 @@ public class MenuConstrucao : MonoBehaviour
         GameObject canvasObj = GameObject.Find("Canvas_Interface");
         if (canvasObj == null)
         {
-            Canvas canvasExistente = FindObjectOfType<Canvas>();
+            Canvas canvasExistente = Object.FindFirstObjectByType<Canvas>();
             if (canvasExistente != null) canvasObj = canvasExistente.gameObject;
             else
             {
@@ -328,7 +328,7 @@ public class MenuConstrucao : MonoBehaviour
             if(ehHelicoptero)
             {
                 bool temHeliporto = (GerenciadorHelicopteros.Instancia != null && GerenciadorHelicopteros.Instancia.ExisteHeliporto()) 
-                                     || FindObjectOfType<Heliporto>() != null;
+                                     || Object.FindFirstObjectByType<Heliporto>() != null;
                 if(!temHeliporto)
                 {
                     podeComprar = false;
@@ -494,7 +494,7 @@ public class MenuConstrucao : MonoBehaviour
         if (ehConstrucao)
         {
             // --- LÓGICA DE CONSTRUÇÃO (Muros, Prédios) ---
-            var construtor = FindObjectOfType<Construtor>();
+            var construtor = Object.FindFirstObjectByType<Construtor>();
             if (construtor != null) 
             {
                 AlternarMenu(false); // Fecha o menu
@@ -513,7 +513,7 @@ public class MenuConstrucao : MonoBehaviour
             if (item.categoria == DadosConstrucao.CategoriaItem.Marinha)
             {
                 // Procura o script do Estaleiro na cena
-                var estaleiro = FindObjectOfType<Estaleiro>(); 
+                var estaleiro = Object.FindFirstObjectByType<Estaleiro>(); 
                 
                 if (estaleiro != null)
                 {

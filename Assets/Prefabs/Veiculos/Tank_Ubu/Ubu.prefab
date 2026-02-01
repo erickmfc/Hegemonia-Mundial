@@ -1919,7 +1919,7 @@ MonoBehaviour:
   limitarRotacao: 1
   anguloMinimo: -90
   anguloMaximo: 90
-  tempoEntreTiros: 0.08
+  tempoEntreTiros: 2
   tamanhoCartucho: 10
   tempoRecarga: 2
   pecaQueGira: {fileID: 8132759676447714569}
@@ -1951,6 +1951,10 @@ MonoBehaviour:
   velocidadeVoo: 8
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
+  linhaAlcance: {fileID: 0}
+  corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
+  larguraLinha: 0.15
+  segmentosCirculo: 50
 --- !u!114 &7254714663791140750
 MonoBehaviour:
   m_ObjectHideFlags: 0

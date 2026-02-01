@@ -39,11 +39,13 @@ public class ConfigurarFalcon : MonoBehaviour
         Debug.Log("   ✅ Rigidbody Configurado (Kinematic=True, Gravity=False)");
 
         // 3. RESTAURAR HELICOPTER CONTROLLER (Cérebro)
-        var heli = GetComponent<HelicopterController>();
+        Helicoptero heli = GetComponent<Helicoptero>();
         if (heli == null)
         {
-            heli = gameObject.AddComponent<HelicopterController>();
-            Debug.Log("   ✅ Adicionado: HelicopterController (Agora a hélice vai girar!)");
+            // Adiciona o novo sistema unificado
+            heli = gameObject.AddComponent<Helicoptero>();
+            heli.velocidadeHelice = 1500f; // Falcon é rápido
+            Debug.Log("   ✅ Adicionado: Helicoptero (Agora a hélice vai girar!)");
         }
         
         // Tenta achar as hélices automaticamente pelos nomes comuns
@@ -88,7 +90,7 @@ public class ConfigurarFalcon : MonoBehaviour
 
         // 6. Configura Voo Padrão
         heli.altitudeDeVoo = 15f;
-        heli.alturaDoSolo = 3f; // Altura segura para não nascer no chão
+        heli.altitudeDeVoo = 3f; // Altura segura para não nascer no chão
 
         Debug.Log("✨ [Doutor Falcon] REPARO CONCLUÍDO! O Pássaro deve voar agora! ✨");
     }

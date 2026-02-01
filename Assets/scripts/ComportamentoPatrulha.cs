@@ -13,14 +13,14 @@ public class ComportamentoPatrulha : MonoBehaviour
 
     // Referências opcionais (tenta pegar sozinho)
     private NavMeshAgent navAgent;
-    private HelicopterController heliController;
+    private Helicoptero heliController;
 
     void Start()
     {
         // Define o centro como onde ele estava quando começou a patrulhar
         centroPatrulha = transform.position;
         navAgent = GetComponent<NavMeshAgent>();
-        heliController = GetComponent<HelicopterController>();
+        heliController = GetComponent<Helicoptero>();
         patrulhando = true;
     }
 
@@ -38,31 +38,9 @@ public class ComportamentoPatrulha : MonoBehaviour
         // Se for Helicóptero (usa nosso sistema de voo manual)
         if (heliController != null)
         {
-            // O heli tem um método 'DefinirDestino' que fizemos privado,
-            // mas podemos mandar mensagem ou mudar propriedade se ele expor.
-            // Para ser rápido e não mudar o heli de novo agora, vamos usar SendMessage ou simular clique.
-            // O ideal é o HelicopterController ter um método publico "VoarPara(Vector3)".
-            // Como mudamos o HelicopterController antes, vamos ver se conseguimos mover ele.
-            
-            // Hack para mover o helicóptero diretamente se ele permitir, 
-            // ou vamos assumir que este script controla a translação se o heli estiver em modo passivo.
-            // Porém, o heli tem seu próprio Update de voo.
-            
-            // SOLUÇÃO ELEGANTE: O Comando deve chamar um método público no Heli.
-            // Mas como estamos criando um componete genérico, vamos tentar usar o NavMeshAgent se tiver,
-            // ou mover transform se for o heli novo.
-            
-             // Se o HeliController estiver controlando a posição, precisamos dizer a ele o destino.
-             // Vamos usar SendMessage para "DefinirDestino" que criamos no passo anterior (era private, mas Invoke funciona se precisar, ou mudamos para public).
-             // Vamos tentar mover direto via Transform se não tiver conflitanto.
-             
-             // Melhor: Vamos ajustar o alvo Y para a altura do heli
-             alvo.y = transform.position.y; 
-             
-             // Gira para olhar
-             transform.LookAt(alvo);
-             // Move para frente
-             transform.position = Vector3.MoveTowards(transform.position, alvo, velocidade * Time.deltaTime);
+            // O heli novo tem um metodo Decolar que recebe o destino
+             alvo.y = heliController.altitudeDeVoo; 
+             heliController.Decolar(alvo);
         }
         else if (navAgent != null && navAgent.isActiveAndEnabled)
         {

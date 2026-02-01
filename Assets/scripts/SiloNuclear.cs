@@ -15,10 +15,13 @@ public class SiloNuclear : MonoBehaviour
     public bool prontoParaLancar = true;
 
     private MenuMisseis menuManager;
+    private GerenciadorDePartida gerenciador; // Adicionado para o novo gerenciador
 
     void Start()
     {
-        menuManager = FindObjectOfType<MenuMisseis>();
+        menuManager = Object.FindFirstObjectByType<MenuMisseis>(); // Alterado de FindObjectOfType
+        // Localiza o gerenciador de jogo
+        gerenciador = Object.FindFirstObjectByType<GerenciadorDePartida>(); // Nova linha adicionada
     }
 
     void OnMouseDown()

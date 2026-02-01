@@ -95,7 +95,14 @@ public class ControleSubmarino : MonoBehaviour
         // --- MOVIMENTO REALISTA (Estilo Liberty) ---
         if (agente != null && agente.enabled)
         {
-            if (agente.hasPath && agente.remainingDistance > agente.stoppingDistance)
+            // Se está em modo mira, força parada total
+            if (modoMira)
+            {
+                velocidadeAtualSimulada = 0f;
+                agente.velocity = Vector3.zero;
+                agente.ResetPath();
+            }
+            else if (agente.hasPath && agente.remainingDistance > agente.stoppingDistance)
             {
                 // Movimento com física de leme
                 ExecutarMarchaFrenteRealista();
@@ -158,7 +165,7 @@ public class ControleSubmarino : MonoBehaviour
             MostrarOgivasDisponiveis();
         }
         
-        // Tecla I - Ligar/Desligar modo mira
+        // Tecla I - TOGGLE Modo Mira (Liga/Desliga)
         if (Input.GetKeyDown(KeyCode.I))
         {
             if (!modoMira && misseisDisponiveis > 0)
@@ -169,7 +176,7 @@ public class ControleSubmarino : MonoBehaviour
             {
                 CancelarModoMira();
             }
-            else
+            else if (misseisDisponiveis <= 0)
             {
                 Debug.Log("[Submarino] Sem mísseis disponíveis!");
             }
@@ -198,15 +205,24 @@ public class ControleSubmarino : MonoBehaviour
     void IniciarModoMira()
     {
         modoMira = true;
-        Debug.Log("[Submarino] 🎯 MODO MIRA ATIVADO - Clique com BOTÃO DIREITO para escolher o alvo (I novamente para cancelar)");
         
+        // Para o submarino imediatamente
+        if (agente != null)
+        {
+            agente.ResetPath();
+            agente.velocity = Vector3.zero;
+        }
+        velocidadeAtualSimulada = 0f;
+        lemeAtual = 0f;
+        
+        Debug.Log("[Submarino] 🎯 MODO MIRA ATIVADO - Clique BOTÃO DIREITO para disparar. Aperte 'I' novamente para cancelar.");
         AtivarCursorMira();
     }
     
     void CancelarModoMira()
     {
         modoMira = false;
-        Debug.Log("[Submarino] Modo mira cancelado");
+        Debug.Log("[Submarino] ❌ Modo mira cancelado. Submarino livre para navegar.");
         DesativarCursorMira();
     }
     
@@ -230,7 +246,7 @@ public class ControleSubmarino : MonoBehaviour
     
     void ProcessarMira()
     {
-        // Detecta clique do BOTÃO DIREITO do mouse
+        // Detecta clique do BOTÃO DIREITO do mouse (disparo)
         if (Input.GetMouseButtonDown(1))
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -240,6 +256,8 @@ public class ControleSubmarino : MonoBehaviour
             {
                 pontoAlvoAtual = hit.point;
                 DispararMissel(pontoAlvoAtual);
+                
+                // Após disparar, sai do modo mira automaticamente
                 CancelarModoMira();
             }
         }
@@ -250,6 +268,7 @@ public class ControleSubmarino : MonoBehaviour
         if (misseisDisponiveis <= 0)
         {
             Debug.Log("[Submarino] Sem mísseis disponíveis!");
+            CancelarModoMira();
             return;
         }
         
@@ -272,8 +291,8 @@ public class ControleSubmarino : MonoBehaviour
                 misseisUsados[i] = true;
                 misseisDisponiveis--;
                 
-                Debug.Log($"[Submarino] Míssil {i + 1} disparado! ({misseisDisponiveis} restantes)");
-                Debug.Log($"[Submarino] Alvo: {alvo}");
+                Debug.Log($"[Submarino] 🚀 Míssil {i + 1} disparado! ({misseisDisponiveis} restantes)");
+                Debug.Log($"[Submarino] 🎯 Alvo: {alvo}");
                 return;
             }
         }

@@ -68,9 +68,18 @@ public class MovimentoRealTerrestre : MonoBehaviour
         bool temCaminho = agente.hasPath && distanciaAteAlvo > distanciaParada;
         
         // Correção de bug do NavMesh (às vezes ele acha que tem caminho mas já está lá)
-        if (agente.remainingDistance <= distanciaParada && !agente.pathPending)
+        // PROTEÇÃO: Só verifica remainingDistance se estiver no NavMesh e Ativo
+        if (agente.isOnNavMesh && agente.isActiveAndEnabled)
         {
-            temCaminho = false; 
+            if (agente.remainingDistance <= distanciaParada && !agente.pathPending)
+            {
+                temCaminho = false; 
+            }
+        }
+        else
+        {
+            // Se perdeu o NavMesh, aborta movimento para evitar erros
+            temCaminho = false;
         }
 
         // --- LÓGICA DE MOVIMENTO FÍSICO ---
@@ -82,23 +91,28 @@ public class MovimentoRealTerrestre : MonoBehaviour
             // Calcula o ângulo relativo do alvo (Ex: o alvo está 30 graus à direita)
             float anguloParaAlvo = Vector3.SignedAngle(transform.forward, vetorDirecao, Vector3.up);
 
-            // A. Acelera
-            velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeMaxima, aceleracao * Time.deltaTime);
+            // --- LÓGICA DE FREIO EM CURVA ---
+            // Se o ângulo for agudo (> 10 graus), reduz a velocidade alvo para fazer a curva mais fechada
+            float fatorCurva = Mathf.Clamp01(Mathf.Abs(anguloParaAlvo) / 45.0f); // 0 = Reto, 1 = Curva Fechada (>45)
+            float velocidadeAlvo = Mathf.Lerp(velocidadeMaxima, velocidadeMaxima * 0.2f, fatorCurva);
 
-            // B. Gira o chassi (PROPORCIONAL À VELOCIDADE)
-            // Carros não giram parados. Quanto mais rápido, mais ele completa a curva.
-            // Se estiver parado (vel=0), giro=0. Isso impede o "giro de eixo" antes de andar.
-            if (velocidadeAtual > 0.1f)
+            // A. Acelera / Freia para atingir a velocidade ideal da curva
+            velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeAlvo, aceleracao * Time.deltaTime);
+
+            // B. Gira o chassi
+            // TRUQUE: Garante que mesmo lento, o carro consiga girar (Simulação de Pivot/Skid-Steer)
+            // Se estivermos muito lentos, fingimos que estamos mais rápidos para o cálculo de rotação,
+            // ou simplesmente impomos um giro mínimo.
+            float fatorGiro = Mathf.Clamp(velocidadeAtual / velocidadeMaxima, 0.35f, 1.0f);
+            
+            // Em ângulos extremos e baixa velocidade, aumentamos a potência para evitar o "loop da morte" (Rodinha)
+            if (fatorCurva > 0.8f && velocidadeAtual < velocidadeMaxima * 0.5f)
             {
-                // Calcula quanto podemos girar neste frame baseado na distância percorrida
-                // FatorVelocidade: 0.1 (lento) a 1.0 (rápido)
-                float fatorVelocidade = Mathf.Clamp01(velocidadeAtual / velocidadeMaxima);
-                
-                // O passo de giro agora depende da velocidade. Se andar pouco, gira pouco.
-                float passoGiro = (potenciaCurva * fatorVelocidade) * Time.deltaTime;
-                
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotacaoAlvo, passoGiro);
+                fatorGiro = 1.0f; // Força giro máximo se estiver lento e precisando virar muito
             }
+
+            float passoGiro = (potenciaCurva * fatorGiro) * Time.deltaTime;
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotacaoAlvo, passoGiro);
 
             // Visual: O VOLANTE vira parado (isso é normal), mas o chassi não.
             float anguloDesejadoVolante = Mathf.Clamp(anguloParaAlvo, -anguloMaximoVolante, anguloMaximoVolante);

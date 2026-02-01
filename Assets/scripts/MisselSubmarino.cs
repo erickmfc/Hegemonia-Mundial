@@ -1,19 +1,32 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class MisselSubmarino : MonoBehaviour
 {
     [Header("Configuração de Voo")]
-    [Tooltip("Velocidade máxima do míssil")]
-    public float velocidadeMaxima = 80f; // Aumentado para compensar a altitude maior
+    [Tooltip("Velocidade máxima de cruzeiro")]
+    public float velocidadeMaxima = 80f; 
     
-    [Tooltip("Aceleração do míssil (aumenta velocidade ao longo do tempo)")]
-    public float aceleracao = 15f; // Aumentado levemente para chegar à velocidade máxima mais rápido
+    [Tooltip("Velocidade máxima no modo Turbo")]
+    public float velocidadeTurbo = 150f;
+
+    [Tooltip("Aceleração inicial")]
+    public float aceleracao = 15f; 
     
-    [Tooltip("Altura que o míssil deve alcançar antes de ir ao alvo")]
-    public float alturaVoo = 300f; // Aumentado significativamente conforme solicitado (era 100f)
+    [Tooltip("Aceleração após o tempo de delay (Turbo)")]
+    public float aceleracaoTurbo = 60f;
+
+    [Tooltip("Tempo após sair da água para ativar o modo Turbo")]
+    public float delayParaTurbo = 4.0f;
+
+    [Tooltip("Altura de cruzeiro que o míssil deve manter")]
+    public float alturaVoo = 300f; 
     
-    [Tooltip("Força de rotação para seguir o alvo")]
+    [Tooltip("Distância horizontal do alvo para começar o mergulho final")]
+    public float distanciaInicioMergulho = 100f;
+
+    [Tooltip("Força de rotação para manobras")]
     public float forcaRotacao = 3f;
     
     [Header("Dano")]
@@ -30,6 +43,9 @@ public class MisselSubmarino : MonoBehaviour
     private float velocidadeAtual = 0f;
     private bool atingiuAlturaVoo = false;
     private bool lancado = false;
+    private bool modoTurboAtivo = false;
+    private float tempoDesdeSuperficie = 0f;
+    private bool naSuperficie = false;
     private Rigidbody rb;
     
     public void IniciarLancamento(Vector3 alvo, bool submarinSubmerso)
@@ -68,19 +84,24 @@ public class MisselSubmarino : MonoBehaviour
     
     IEnumerator SequenciaLancamento()
     {
-        // Se está submerso, sobe até a superfície primeiro
+        // FASE 1: Se está submerso, sobe até a superfície
         if (estaSubmerso)
         {
             yield return StartCoroutine(SubirParaSuperficie());
         }
+        else
+        {
+            // Se já nasceu fora da água, considera que saiu agora
+            naSuperficie = true; 
+        }
         
-        // Ativa fumaça após sair da água
+        // Ativa fumaça
         AtivarRastro();
         
-        // Sobe até altura de voo
+        // FASE 2: Sobe até altura de cruzeiro
         yield return StartCoroutine(SubirParaAltura());
         
-        // Agora persegue o alvo
+        // FASE 3: Cruzeiro (gerenciado no FixedUpdate)
         atingiuAlturaVoo = true;
     }
     
@@ -88,94 +109,146 @@ public class MisselSubmarino : MonoBehaviour
     {
         Debug.Log("Míssil saindo da água...");
         
-        float tempoSubidaReta = 3.0f; // 3 segundos subindo reto
-        float velocidadeInicial = 8f; // Velocidade lenta inicial
+        float tempoSubidaReta = 3.0f; // Sobe reto por um tempo (efeito dramático)
+        float velocidadeInicial = 8f; 
         float tempoDecorrido = 0f;
         
-        // FASE 1: Sobe reto por 3 segundos com velocidade constante baixa
+        // Sobe com velocidade constante inicial
         while (tempoDecorrido < tempoSubidaReta && transform.position.y < 0f)
         {
-            velocidadeAtual = velocidadeInicial; // Mantém velocidade constante
-            
-            Vector3 direcao = Vector3.up;
-            rb.linearVelocity = direcao * velocidadeAtual;
-            
+            velocidadeAtual = velocidadeInicial;
+            rb.linearVelocity = Vector3.up * velocidadeAtual;
             tempoDecorrido += Time.deltaTime;
             yield return null;
         }
         
-        Debug.Log("Míssil iniciando aceleração...");
-        
-        // FASE 2: Continua subindo até a superfície, mas agora COM aceleração
+        // Acelera até a superfície
         while (transform.position.y < 0f)
         {
             velocidadeAtual += aceleracao * Time.deltaTime;
-            velocidadeAtual = Mathf.Min(velocidadeAtual, velocidadeMaxima * 0.5f); // 50% da velocidade máxima na água
-            
-            Vector3 direcao = Vector3.up;
-            rb.linearVelocity = direcao * velocidadeAtual;
-            
+            rb.linearVelocity = Vector3.up * velocidadeAtual;
             yield return null;
         }
         
         Debug.Log("Míssil na superfície!");
+        naSuperficie = true;
+        tempoDesdeSuperficie = 0f; // Reseta timer do turbo
     }
     
     IEnumerator SubirParaAltura()
     {
         Debug.Log("Míssil subindo para altitude de cruzeiro...");
         
-        // Continua subindo com aceleração
+        // Continua subindo até atingir a altura configurada
+        // Nota: O FixedUpdate já vai começar a contar o tempo para o Turbo
         while (transform.position.y < alturaVoo)
         {
-            velocidadeAtual += aceleracao * Time.deltaTime;
-            velocidadeAtual = Mathf.Min(velocidadeAtual, velocidadeMaxima);
+            // Atualiza velocidade
+            AtualizarVelocidade(Time.deltaTime); // Usa aceleração normal ou turbo
             
-            Vector3 direcao = Vector3.up;
-            rb.linearVelocity = direcao * velocidadeAtual;
+            // Move para cima
+            rb.linearVelocity = Vector3.up * velocidadeAtual;
             
             yield return null;
         }
         
-        Debug.Log("Míssil em altitude de cruzeiro!");
+        Debug.Log("Míssil em altitude de cruzeiro! Iniciando navegação horizontal.");
+    }
+
+    void AtualizarVelocidade(float dt)
+    {
+        // Verifica se deve ativar o turbo
+        if (naSuperficie && !modoTurboAtivo)
+        {
+            tempoDesdeSuperficie += dt;
+            if (tempoDesdeSuperficie >= delayParaTurbo)
+            {
+                modoTurboAtivo = true;
+                Debug.Log("MODO TURBO ATIVADO! Aceleração máxima!");
+            }
+        }
+
+        // Define alvo de velocidade e aceleração baseados no modo
+        float alvoVelocidade = modoTurboAtivo ? velocidadeTurbo : velocidadeMaxima;
+        float accAtual = modoTurboAtivo ? aceleracaoTurbo : aceleracao;
+
+        if (velocidadeAtual < alvoVelocidade)
+        {
+            velocidadeAtual += accAtual * dt;
+            velocidadeAtual = Mathf.Min(velocidadeAtual, alvoVelocidade);
+        }
     }
     
     void FixedUpdate()
     {
         if (!lancado) return;
         
+        // Timer do turbo
+        if (naSuperficie && !modoTurboAtivo && !atingiuAlturaVoo)
+        {
+            tempoDesdeSuperficie += Time.fixedDeltaTime;
+        }
+
         if (atingiuAlturaVoo)
         {
-            // Persegue o alvo
-            Vector3 direcao = (pontoAlvo - transform.position).normalized;
+            AtualizarVelocidade(Time.fixedDeltaTime);
             
-            // Acelera se ainda não atingiu velocidade máxima
-            if (velocidadeAtual < velocidadeMaxima)
+            // --- NOVA LÓGICA DE NAVEGAÇÃO ROBUSTA ---
+            Vector3 vetorParaAlvoGlobal = pontoAlvo - transform.position;
+            float distanciaTotal = vetorParaAlvoGlobal.magnitude;
+            
+            Vector3 posicaoHorizontal = new Vector3(transform.position.x, 0, transform.position.z);
+            Vector3 alvoHorizontal = new Vector3(pontoAlvo.x, 0, pontoAlvo.z);
+            float distanciaHorizontal = Vector3.Distance(posicaoHorizontal, alvoHorizontal);
+
+            Vector3 direcaoDesejada;
+            float forcaRotacaoAtual = forcaRotacao;
+
+            // 1. MODO MERGULHO FINAL
+            // Se estiver perto horizontalmente OU se já estiver muito perto do alvo em geral
+            if (distanciaHorizontal < distanciaInicioMergulho || distanciaTotal < distanciaInicioMergulho)
             {
-                velocidadeAtual += aceleracao * Time.fixedDeltaTime;
-                velocidadeAtual = Mathf.Min(velocidadeAtual, velocidadeMaxima);
+                direcaoDesejada = vetorParaAlvoGlobal.normalized;
+                
+                // CRÍTICO: Aumenta DRASTICAMENTE a rotação no mergulho para evitar orbitar
+                // Quanto mais perto, mais agressivo vira
+                // Se estiver muito rápido (Turbo), precisa virar muito mais rápido
+                float fatorProximidade = Mathf.Clamp01(150f / Mathf.Max(distanciaTotal, 1f)); // Aumenta conforme chega perto
+                forcaRotacaoAtual = Mathf.Lerp(forcaRotacao, forcaRotacao * 8.0f, fatorProximidade);
+                
+                // Se estiver MUITO perto (< 20m) força LookAt imediato para garantir acerto
+                if(distanciaTotal < 30f)
+                {
+                    forcaRotacaoAtual = 200f; // Rotação instantânea praticamente
+                }
             }
-            
-            // Verifica distância para o alvo
-            float distancia = Vector3.Distance(transform.position, pontoAlvo);
-            
-            // DETONADOR DE PROXIMIDADE: Se chegar muito perto, explode!
-            if (distancia < 3.0f)
+            // 2. MODO CRUZEIRO
+            else
             {
-                Explodir();
-                return;
+                Vector3 destinoCruzeiro = new Vector3(pontoAlvo.x, alturaVoo, pontoAlvo.z);
+                Vector3 vetorCruzeiro = destinoCruzeiro - transform.position;
+                direcaoDesejada = vetorCruzeiro.normalized;
+                
+                // Mantém rotação suave no cruzeiro
+                forcaRotacaoAtual = forcaRotacao;
             }
 
-            // Rotaciona suavemente para o alvo (usa transform já que física está travada)
-            // Só rotaciona se estiver a uma distância segura para evitar "giro louco"
-            if (distancia > 1.0f)
+            // Aplica Rotação usando RotateTowards para controle preciso de graus/segundo
+            if (direcaoDesejada != Vector3.zero)
             {
-                Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
-                transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, forcaRotacao * Time.fixedDeltaTime);
+                Quaternion rotacaoAlvo = Quaternion.LookRotation(direcaoDesejada);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotacaoAlvo, forcaRotacaoAtual * 50f * Time.fixedDeltaTime);
             }
             
-            // Move na direção que está olhando (se estiver perto, mergulha com tudo)
+            // Move para frente
             rb.linearVelocity = transform.forward * velocidadeAtual;
+
+            // 3. DETONADOR DE PROXIMIDADE
+            // Aumentado levemente para evitar missed hits por frame skipping em alta velocidade
+            if (distanciaTotal < 5.0f || (distanciaTotal < 10.0f && velocidadeAtual > 100f))
+            {
+                Explodir();
+            }
         }
     }
     
@@ -184,7 +257,6 @@ public class MisselSubmarino : MonoBehaviour
         if (sistemaFumaca != null)
         {
             sistemaFumaca.Play();
-            Debug.Log("Rastro de fumaça ativado!");
         }
     }
     
@@ -195,79 +267,71 @@ public class MisselSubmarino : MonoBehaviour
     
     void OnTriggerEnter(Collider other)
     {
-        // Qualquer colisão explode (você pode adicionar filtros de layer aqui se quiser)
         Explodir();
     }
     
     [Header("Efeitos da Explosão")]
-    public GameObject efeitoVisualExplosao; // Prefab do efeito visual da explosão
-    public float escalaVisualExplosao = 1.0f; // Tamanho do efeito visual
-    public float tempoDuracaoExplosao = 5.0f; // Tempo que a explosão fica na tela
-    public AudioClip somExplosao; // Som da explosão
-    public float volumeSom = 1.0f; // Volume do som
+    public GameObject efeitoVisualExplosao; // Principal
+    public GameObject[] efeitosVisuaisExtras; // Extras (vários efeitos)
+    public float escalaVisualExplosao = 1.0f; 
+    public float tempoDuracaoExplosao = 7.0f; // Tempo garantido
+    public AudioClip somExplosao; 
+    public float volumeSom = 1.0f; 
     
     void Explodir()
     {
-        Debug.Log("Míssil explodiu!");
+        // Debug eliminado para performance se necessário, mas mantido por enquanto
+        // Debug.Log("Míssil explodiu!");
         
-        // 1. Cria o Efeito Visual
-        if (efeitoVisualExplosao != null)
-        {
-            GameObject fx = Instantiate(efeitoVisualExplosao, transform.position, Quaternion.identity);
-            fx.transform.localScale = Vector3.one * escalaVisualExplosao;
-            
-            // Tenta ajustar a duração das partículas para elas durarem mais, se possível
-            var par = fx.GetComponent<ParticleSystem>();
-            if (par != null)
-            {
-               var main = par.main;
-               // Se o tempo pedido for muito longo, aumenta a duração da partícula também
-               if (tempoDuracaoExplosao > main.duration) main.duration = tempoDuracaoExplosao;
-            }
+        // 1. Cria TODOS os efeitos visuais
+        List<GameObject> efeitosParaCriar = new List<GameObject>();
+        if (efeitoVisualExplosao != null) efeitosParaCriar.Add(efeitoVisualExplosao);
+        if (efeitosVisuaisExtras != null) efeitosParaCriar.AddRange(efeitosVisuaisExtras);
 
-            Destroy(fx, tempoDuracaoExplosao); // Usa o tempo configurado
+        if (efeitosParaCriar.Count > 0)
+        {
+            foreach (var prefabFx in efeitosParaCriar)
+            {
+                if (prefabFx != null)
+                {
+                    GameObject fx = Instantiate(prefabFx, transform.position, Quaternion.identity);
+                    fx.transform.localScale = Vector3.one * escalaVisualExplosao;
+                    Destroy(fx, tempoDuracaoExplosao);
+                }
+            }
         }
         else if (GerenciadorFXGlobal.Instancia != null)
         {
-            // Fallback para o gerenciador global se não tiver efeito específico
             GerenciadorFXGlobal.Instancia.TocarEfeito("Explosao", transform.position, escalaVisualExplosao);
         }
         
         // 2. Toca o Som
         if (somExplosao != null)
         {
-            // Cria um objeto temporário para tocar o som (para não cortar se o míssil for destruído)
             GameObject audioObj = new GameObject("SomExplosaoMissil");
             audioObj.transform.position = transform.position;
-            
             AudioSource source = audioObj.AddComponent<AudioSource>();
             source.clip = somExplosao;
             source.volume = volumeSom;
-            source.spatialBlend = 1.0f; // 3D
+            source.spatialBlend = 1.0f;
             source.minDistance = 10f;
             source.maxDistance = 500f;
             source.Play();
-            
             Destroy(audioObj, somExplosao.length + 0.5f);
         }
         
-        // 3. Aplica dano em área
+        // 3. Aplica dano
         Collider[] objetosNaArea = Physics.OverlapSphere(transform.position, raioExplosao);
-        
         foreach (Collider obj in objetosNaArea)
         {
             SistemaDeDanos sistemaDano = obj.GetComponent<SistemaDeDanos>();
             if (sistemaDano != null)
             {
-                // Calcula dano baseado na distância (mais perto = mais dano)
                 float distancia = Vector3.Distance(transform.position, obj.transform.position);
-                float multiplicadorDistancia = 1f - Mathf.Clamp01(distancia / raioExplosao);
-                float danoFinal = dano * multiplicadorDistancia;
-                
-                sistemaDano.ReceberDano(danoFinal);
+                float multiplicador = 1f - Mathf.Clamp01(distancia / raioExplosao);
+                sistemaDano.ReceberDano(dano * multiplicador);
             }
             
-            // Empurra objetos físicos
             Rigidbody rbAlvo = obj.GetComponent<Rigidbody>();
             if (rbAlvo != null)
             {
@@ -275,21 +339,19 @@ public class MisselSubmarino : MonoBehaviour
             }
         }
         
-        // Destroi o míssil
         Destroy(gameObject);
     }
     
     void OnDrawGizmosSelected()
     {
-        // Desenha raio de explosão no editor
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, raioExplosao);
+        Gizmos.color = Color.yellow;
+        if (lancado) Gizmos.DrawLine(transform.position, pontoAlvo);
         
-        // Desenha linha até o alvo
-        if (lancado)
-        {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawLine(transform.position, pontoAlvo);
-        }
+        Vector3 posAltura = new Vector3(transform.position.x, alturaVoo, transform.position.z);
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawLine(transform.position, posAltura);
+        Gizmos.DrawSphere(posAltura, 1.0f);
     }
 }

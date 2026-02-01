@@ -17,7 +17,7 @@ public class ControleUnidade : MonoBehaviour
     public float velocidadeVoo = 8.0f; // Velocidade base para helicópteros
 
     // --- DETECÇÃO DE CONFLITO ---
-    private HelicopterController helicopteroExterno;
+    private Helicoptero helicopteroExterno;
 
     void Awake()
     {
@@ -25,7 +25,7 @@ public class ControleUnidade : MonoBehaviour
         animator = GetComponent<Animator>(); 
         
         // Verifica controladores externos
-        helicopteroExterno = GetComponent<HelicopterController>();
+        helicopteroExterno = GetComponent<Helicoptero>();
         
         // Verifica se é uma unidade aérea (GENÉRICA)
         scriptVoo = GetComponent<VooHelicoptero>();

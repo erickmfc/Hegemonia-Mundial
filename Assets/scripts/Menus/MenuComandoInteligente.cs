@@ -20,10 +20,12 @@ public class MenuComandoInteligente : MonoBehaviour
     public float antygavitiComando = 5.0f; 
 
     private int lastSelectionCount = -1;
+    private GerenciadorDePartida gerenciador; // Adicionado para suportar a nova linha
 
     void Start()
     {
-        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+        gerenciador = Object.FindFirstObjectByType<GerenciadorDePartida>();
+        if (Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
         {
             new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem), typeof(UnityEngine.EventSystems.StandaloneInputModule));
         }
@@ -55,12 +57,11 @@ public class MenuComandoInteligente : MonoBehaviour
     {
         selecionados.Clear();
         
-        // 1. Busca por Helicópteros (Lógica Antiga)
-        HelicopterController[] todosHelis = FindObjectsByType<HelicopterController>(FindObjectsSortMode.None);
+        // 1. Busca por Helicópteros (Novo Sistema)
+        Helicoptero[] todosHelis = FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
         foreach (var heli in todosHelis)
         {
-            Transform anel = heli.transform.Find("AnelSelecao"); 
-            if (anel != null && anel.gameObject.activeSelf)
+            if (heli.selecionado)
             {
                 selecionados.Add(heli.gameObject);
             }
