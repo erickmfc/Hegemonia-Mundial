@@ -69,14 +69,37 @@ public class IA_Arquiteto : MonoBehaviour
 
             Vector3 pontoCandidato = centroDaBase.position + new Vector3(x, 0, z);
 
-            // TODO: Raycast para verificar se o chão é plano e não tem nada em cima
-            // if (VerificarTerreno(pontoCandidato)) return pontoCandidato;
+            if (VerificarTerreno(pontoCandidato)) return pontoCandidato;
 
-            // Retorno temporário (removido return precoce para permitir loop se lógica existisse)
-            if (i == 9) return pontoCandidato; // Retorna na última tentativa por enquanto
+            if (i == 9) return pontoCandidato; // Fallback extremo
         }
 
         return Vector3.zero; // Não achou
+    }
+
+    bool VerificarTerreno(Vector3 ponto)
+    {
+        // 1. Verifica se tem algo construído em cima (Raio de 4m)
+        if (Physics.CheckSphere(ponto, 4.0f, LayerMask.GetMask("Default", "Construcao", "Unidades")))
+        {
+            return false;
+        }
+
+        // 2. Verifica se o terreno é plano o suficiente
+        // Lança 5 raios: Centro, Frente, Trás, Esquerda, Direita
+        float alturaCentro = Terrain.activeTerrain.SampleHeight(ponto);
+        Vector3[] offsets = { Vector3.forward * 3, Vector3.back * 3, Vector3.left * 3, Vector3.right * 3 };
+
+        foreach (var offset in offsets)
+        {
+            float alturaPonto = Terrain.activeTerrain.SampleHeight(ponto + offset);
+            if (Mathf.Abs(alturaCentro - alturaPonto) > 1.0f) // Tolerância de 1 metro de desnível
+            {
+                return false; 
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -156,9 +179,20 @@ public class IA_Arquiteto : MonoBehaviour
             GameObject predio = construtor.ConstruirEstruturaIA(prefabQuartel, pos, Quaternion.identity);
             ConfigurarPredioIA(predio);
         }
-        else 
+
+        // 4. Constrói HANGAR/AEROPORTO (Para Helicópteros)
+        GameObject prefabHangar = BuscarNoCatalogo("Hangar");
+        if (prefabHangar == null) prefabHangar = BuscarNoCatalogo("Aeroporto");
+        if (prefabHangar == null) prefabHangar = BuscarNoCatalogo("Air");
+
+        if (prefabHangar != null)
         {
-            // Debug.LogWarning("[IA Arquiteto] Não achei prefab de 'Tenda' no catálogo.");
+             Vector3 pos = EncontrarLocalConstrucao("Hangar");
+             // Afasta um pouco mais
+             pos += new Vector3(15, 0, 15); 
+             GameObject predio = construtor.ConstruirEstruturaIA(prefabHangar, pos, Quaternion.identity);
+             ConfigurarPredioIA(predio);
+             Debug.Log("✈️ [IA Arquiteto] Construindo Hangar para força aérea!");
         }
 
         baseIniciada = true;
@@ -185,6 +219,8 @@ public class IA_Arquiteto : MonoBehaviour
 
     GameObject BuscarNoCatalogo(string nomeParcial)
     {
+        if (MenuConstrucao.catalogoGlobal == null) return null;
+
         foreach (var item in MenuConstrucao.catalogoGlobal)
         {
             if (item != null && item.nomeItem.ToLower().Contains(nomeParcial.ToLower()) && item.prefabDaUnidade != null)

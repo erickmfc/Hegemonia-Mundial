@@ -34,7 +34,16 @@ public class CameraController : MonoBehaviour
 
         // --- 3. Zoom (Rodinha do Mouse) ---
         // --- 3. Zoom (Rodinha do Mouse e Teclado) ---
-        float zoomInput = Input.GetAxis("Mouse ScrollWheel");
+        float zoomInput = 0f;
+        
+        // Bloqueia Zoom se estiver sobre UI ou com Menus Abertos
+        bool mouseEmCimaDeUI = UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+        bool menusAbertos = MenuConstrucao.EstaAberto || MenuPier.EstaAberto;
+
+        if (!mouseEmCimaDeUI && !menusAbertos)
+        {
+            zoomInput = Input.GetAxis("Mouse ScrollWheel");
+        }
 
         // Teclas + e - (Teclado Numérico e Alfanumérico)
         // Adiciona um valor constante por frame enquanto a tecla é segurada

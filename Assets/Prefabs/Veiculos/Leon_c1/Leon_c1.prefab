@@ -498,7 +498,7 @@ MonoBehaviour:
   pecaQueGira: {fileID: 3900457900727325353}
   locaisDoTiro:
   - {fileID: 3239523955739626138}
-  municaoPrefab: {fileID: 103092412673567969, guid: ebf2dc395069cef46a875dd90ae1f642, type: 3}
+  municaoPrefab: {fileID: 4904590025691999903, guid: 08e9d536354a0c649a7f67a606438415, type: 3}
   somTiro: {fileID: 8300000, guid: 0bd05763df902854a80475577a26666a, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
@@ -507,6 +507,7 @@ MonoBehaviour:
   locaisDoMissel: []
   somMissel: {fileID: 0}
   tempoEntreMisseis: 2
+  municoesPorCano: []
 --- !u!114 &1489107452339292928
 MonoBehaviour:
   m_ObjectHideFlags: 0

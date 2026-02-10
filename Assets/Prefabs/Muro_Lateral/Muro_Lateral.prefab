@@ -12,6 +12,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Muro_Lateral
       objectReference: {fileID: 0}
+    - target: {fileID: 100000, guid: e7a8d7657b47c472995b17101a033f76, type: 3}
+      propertyPath: m_TagString
+      value: Player
+      objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: e7a8d7657b47c472995b17101a033f76, type: 3}
       propertyPath: m_LocalPosition.x
       value: 37
@@ -79,7 +83,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
   vidaMaxima: 100
   vidaAtual: 100
-  fxFumacaLeve: {fileID: 0}
-  fxFumacaEscura: {fileID: 0}
-  fxFogoCritico: {fileID: 0}
-  fxExplosaoFinal: {fileID: 0}
+  unidadeBiologica: 0
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 1
+  ajusteDePosicao: {x: 0, y: 0, z: 0}

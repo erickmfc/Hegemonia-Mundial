@@ -10,7 +10,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
       propertyPath: m_Name
-      value: missel_sub Variant
+      value: M_Ar
       objectReference: {fileID: 0}
     - target: {fileID: 6976244030905703328, guid: 85f64d442092cec46825ce90d568f070, type: 3}
       propertyPath: m_LocalPosition.x
@@ -52,8 +52,44 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 7179879167464136693, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+    - {fileID: 7642978235071116871, guid: 85f64d442092cec46825ce90d568f070, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8370618390031616174}
   m_SourcePrefab: {fileID: 100100000, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+--- !u!1 &9101077041816161868 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+  m_PrefabInstance: {fileID: 2809713710930956103}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8370618390031616174
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9101077041816161868}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aecb182717d267243ab56355d65746e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MisselLeopardAutomatico
+  velocidadeMaxima: 60
+  velocidadeTurbo: 120
+  aceleracao: 20
+  alturaVoo: 40
+  forcaRotacao: 5
+  dano: 750
+  raioExplosao: 10
+  sistemaFumaca: {fileID: 0}
+  efeitoVisualExplosao: {fileID: 100002, guid: 4bf22a1d8d9e7724b9af67921436851d, type: 3}
+  efeitosVisuaisExtras: []
+  escalaVisualExplosao: 15
+  tempoDuracaoExplosao: 8
+  somExplosao: {fileID: 8300000, guid: 1fd31868d68903d4f9e2c4a3b7ef98f3, type: 3}
+  volumeSom: 5

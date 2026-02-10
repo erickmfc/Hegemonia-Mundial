@@ -10,7 +10,7 @@ public class LancadorMLRS : MonoBehaviour
     public GameObject missilPrefab;
     
     [Tooltip("Distância máxima que ele detecta inimigos")]
-    public float alcanceDoRadar = 300f;
+    public float alcanceDoRadar = 1000f; // Forcei 1000m para garantir
     
     [Tooltip("Tempo em segundos entre cada disparo")]
     public float intervaloEntreDisparos = 0.5f;
@@ -33,42 +33,53 @@ public class LancadorMLRS : MonoBehaviour
     public AudioClip somMotor;
     [Range(0f, 1f)] public float volumeMotor = 0.5f;
 
-    // Variáveis internas (Controle)
+    [Header("--- Modos de Combate ---")]
+    [Tooltip("Se marcado (ATIVO), busca e atira sozinho.")]
+    public bool modoCombateAtivo = true;
+
+    [Header("--- Debug (Modo Detetive) ---")]
+    [Tooltip("Marque isso se o tanque não estiver atirando para saber o motivo no Console")]
+    public bool mostrarLogsDeBusca = true;
+
+    // Variáveis internas
     private float cronometroDisparo;
-    private int indiceBocaAtual = 0; // Qual tubo vai atirar agora (0 a 11)
+    private int indiceBocaAtual = 0;
     private Transform alvoAtual;
-    private AudioSource audioSourceDisparo; // Canal para tiros
-    private AudioSource audioSourceMotor;   // Canal para motor
+    private AudioSource audioSourceDisparo;
+    private AudioSource audioSourceMotor;
+    private float timerDebug = 0f; 
 
     void Start()
     {
-        // Configura o áudio automaticamente
         ConfigurarAudio();
     }
 
     void Update()
     {
-        // 1. Procura alvo se não tiver um
+        if (!modoCombateAtivo) { alvoAtual = null; return; }
+
         if (alvoAtual == null)
         {
             BuscarAlvo();
         }
         else
         {
-            // 2. SEGURANÇA: Se o alvo foi destruído, reseta
-            if (alvoAtual == null) return;
-
-            // Se tiver alvo, verifica se ele ainda está vivo ou no alcance
-            float distancia = Vector3.Distance(transform.position, alvoAtual.position);
-            
-            // Verifica se está ativo na hierarquia (para pooling)
-            if (distancia > alcanceDoRadar || !alvoAtual.gameObject.activeInHierarchy)
+            // Verifica se o alvo ainda existe
+            if (alvoAtual == null || !alvoAtual.gameObject.activeInHierarchy)
             {
                 alvoAtual = null;
                 return;
             }
 
-            // 3. Mira e Atira
+            // Verifica distância
+            float distancia = Vector3.Distance(transform.position, alvoAtual.position);
+            if (distancia > alcanceDoRadar)
+            {
+                if(mostrarLogsDeBusca) Debug.LogWarning($"⚠️ Alvo perdido! {alvoAtual.name} fugiu para {distancia:F1}m (Máx: {alcanceDoRadar}m)");
+                alvoAtual = null;
+                return;
+            }
+
             MirarNoAlvo();
             GerenciarDisparo();
         }
@@ -76,46 +87,58 @@ public class LancadorMLRS : MonoBehaviour
 
     void ConfigurarAudio()
     {
-        // Pega o AudioSource que já existe no objeto ou adiciona
         audioSourceDisparo = GetComponent<AudioSource>();
         
-        // Cria um segundo canal de áudio só para o motor (para não cortar o som do tiro)
-        GameObject motorObj = new GameObject("SomDoMotor");
-        motorObj.transform.parent = this.transform;
-        motorObj.transform.localPosition = Vector3.zero;
-        
-        audioSourceMotor = motorObj.AddComponent<AudioSource>();
-        audioSourceMotor.loop = true; // Motor fica em loop
-        audioSourceMotor.clip = somMotor;
-        audioSourceMotor.volume = volumeMotor;
-        audioSourceMotor.spatialBlend = 1f; // Som 3D
-        audioSourceMotor.Play(); // Dá a partida no motor
+        // Cria canal de motor se não existir
+        Transform motorCheck = transform.Find("SomDoMotor");
+        if (motorCheck == null)
+        {
+            GameObject motorObj = new GameObject("SomDoMotor");
+            motorObj.transform.parent = this.transform;
+            motorObj.transform.localPosition = Vector3.zero;
+            
+            audioSourceMotor = motorObj.AddComponent<AudioSource>();
+            audioSourceMotor.loop = true;
+            audioSourceMotor.clip = somMotor;
+            audioSourceMotor.volume = volumeMotor;
+            audioSourceMotor.spatialBlend = 1f;
+            if(somMotor != null) audioSourceMotor.Play();
+        }
     }
 
     void BuscarAlvo()
     {
-        // Cria uma esfera invisível para detectar colisores em volta
+        timerDebug -= Time.deltaTime;
+        if (timerDebug > 0) return;
+        timerDebug = 0.5f; // Busca a cada 0.5s
+
         Collider[] hitColliders = Physics.OverlapSphere(transform.position, alcanceDoRadar);
         float menorDistancia = Mathf.Infinity;
-        Transform alvoMaisProximo = null;
+        Transform candidato = null;
 
         foreach (var hit in hitColliders)
         {
+            if (hit.transform.root == transform.root) continue; // Ignora a si mesmo
+
             if (hit.CompareTag(tagInimiga))
             {
                 float distancia = Vector3.Distance(transform.position, hit.transform.position);
                 if (distancia < menorDistancia)
                 {
                     menorDistancia = distancia;
-                    alvoMaisProximo = hit.transform;
+                    candidato = hit.transform;
                 }
             }
         }
 
-        if (alvoMaisProximo != null)
+        if (candidato != null)
         {
-            alvoAtual = alvoMaisProximo;
-            Debug.Log($"🎯 MLRS: Alvo identificado! [{alvoAtual.name}] Distância: {menorDistancia:F1}m");
+            alvoAtual = candidato;
+            if(mostrarLogsDeBusca) Debug.Log($"🎯 ALVO TRAVADO: {alvoAtual.name} | Dist: {menorDistancia:F1}m");
+        }
+        else if (mostrarLogsDeBusca)
+        {
+            Debug.Log($"🔍 Radar varrendo... Nada encontrado em {alcanceDoRadar}m");
         }
     }
 
@@ -123,16 +146,14 @@ public class LancadorMLRS : MonoBehaviour
     {
         if (torreRotatoria != null)
         {
-            // Faz a torre olhar para o alvo (apenas no eixo Y - horizontal)
             Vector3 direcaoAlvo = alvoAtual.position - torreRotatoria.position;
-            direcaoAlvo.y = 0; // Mantém a rotação plana
+            direcaoAlvo.y = 0;
             Quaternion rotacaoAlvo = Quaternion.LookRotation(direcaoAlvo);
             torreRotatoria.rotation = Quaternion.Slerp(torreRotatoria.rotation, rotacaoAlvo, Time.deltaTime * 5f);
         }
 
         if (canoElevacao != null)
         {
-            // Faz os canos olharem para o alvo (ajuste de altura)
             Vector3 direcaoCanos = alvoAtual.position - canoElevacao.position;
             Quaternion rotacaoCanos = Quaternion.LookRotation(direcaoCanos);
             canoElevacao.rotation = Quaternion.Slerp(canoElevacao.rotation, rotacaoCanos, Time.deltaTime * 5f);
@@ -146,47 +167,113 @@ public class LancadorMLRS : MonoBehaviour
         if (cronometroDisparo <= 0)
         {
             Atirar();
-            cronometroDisparo = intervaloEntreDisparos; // Reseta o tempo
+            cronometroDisparo = intervaloEntreDisparos;
         }
     }
 
     void Atirar()
     {
-        // Segurança: Verifica se temos o prefab do míssil e pontos de saída
-        if (missilPrefab == null || pontosDeSaida.Length == 0) return;
+        if (missilPrefab == null) 
+        {
+            Debug.LogError("⛔ LEOPARD ERRO! O campo 'Missil Prefab' está vazio no Inspector!");
+            return;
+        }
 
-        // Pega o ponto atual (0, 1, 2... até 11)
+        if (pontosDeSaida == null || pontosDeSaida.Length == 0)
+        {
+            Debug.LogError("⛔ LEOPARD ERRO! A lista 'Pontos De Saida' está com tamanho 0!");
+            return;
+        }
+
+        // --- SISTEMA ANTI-FALHA (Pula slots vazios) ---
+        int tentativas = 0;
+        // Enquanto o slot atual for nulo (None), avança para o próximo
+        while (pontosDeSaida[indiceBocaAtual] == null && tentativas < pontosDeSaida.Length)
+        {
+            indiceBocaAtual++;
+            if (indiceBocaAtual >= pontosDeSaida.Length) indiceBocaAtual = 0;
+            tentativas++;
+        }
+        
+        // Se depois de tentar rodar tudo, ainda for nulo (todos vazios)
+        if (pontosDeSaida[indiceBocaAtual] == null)
+        {
+             Debug.LogError($"⛔ LEOPARD ERRO! Todos os {pontosDeSaida.Length} 'Pontos De Saida' estão vazios (None)!");
+             return;
+        }
+        // ----------------------------------------------
+
         Transform pontoDeDisparoAtual = pontosDeSaida[indiceBocaAtual];
 
         if (pontoDeDisparoAtual != null)
         {
-            // Cria o míssil na posição e rotação da "boca" atual
-            Instantiate(missilPrefab, pontoDeDisparoAtual.position, pontoDeDisparoAtual.rotation);
+            GameObject novoMissil = Instantiate(missilPrefab, pontoDeDisparoAtual.position, pontoDeDisparoAtual.rotation);
 
-            // Toca o som de tiro
+            // --- SEGURANÇA: IGNORAR COLISÃO COM O PRÓPRIO TANQUE ---
+            Collider[] tankColliders = GetComponentsInChildren<Collider>();
+            Collider[] missilColliders = novoMissil.GetComponentsInChildren<Collider>();
+            foreach (var tankCol in tankColliders)
+            {
+                foreach (var missilCol in missilColliders)
+                {
+                    Physics.IgnoreCollision(tankCol, missilCol);
+                }
+            }
+            // -------------------------------------------------------
+
+            // --- TENTATIVA UNIVERSAL DE INICIALIZAÇÃO ---
+            // Tenta ativar o míssil de todas as formas conhecidas (Leopard Novo ou Submarino Antigo)
+            
+            bool disparoSucesso = false;
+
+            // 1. Tenta script novo (Leopard Inteligente)
+            var scriptLeopard = novoMissil.GetComponent<MisselLeopardAutomatico>();
+            if (scriptLeopard != null)
+            {
+                scriptLeopard.DefinirAlvo(alvoAtual);
+                disparoSucesso = true;
+            }
+            
+            // 2. Tenta script antigo (Submarino) usando Vector3
+            if (!disparoSucesso)
+            {
+                var scriptSub = novoMissil.GetComponent<MisselSubmarino>();
+                if (scriptSub != null)
+                {
+                    // Lança mirando na posição atual do alvo
+                    scriptSub.IniciarLancamento(alvoAtual.position, false); // false = não submerso
+                    disparoSucesso = true;
+                }
+            }
+
+            // 3. Fallback (Mensagens genéricas)
+            if (!disparoSucesso)
+            {
+                novoMissil.SendMessage("DefinirAlvo", alvoAtual, SendMessageOptions.DontRequireReceiver);
+                novoMissil.SendMessage("SetTarget", alvoAtual, SendMessageOptions.DontRequireReceiver);
+            }
+
+            if (mostrarLogsDeBusca) Debug.Log("🚀 Míssil Disparado!");
+
             if (audioSourceDisparo != null && somDisparo != null)
             {
                 audioSourceDisparo.PlayOneShot(somDisparo);
             }
-
-            // Efeito visual (Debug no editor)
-            Debug.DrawRay(pontoDeDisparoAtual.position, pontoDeDisparoAtual.forward * 5, Color.red, 1f);
         }
 
-        // Avança para a próxima boca
+        // Prepara próxima boca
         indiceBocaAtual++;
-
-        // Se chegou na última (12), volta para a primeira (0)
-        if (indiceBocaAtual >= pontosDeSaida.Length)
-        {
-            indiceBocaAtual = 0;
-        }
+        if (indiceBocaAtual >= pontosDeSaida.Length) indiceBocaAtual = 0;
     }
 
-    // Desenha o alcance do radar no editor para facilitar sua vida
     void OnDrawGizmosSelected()
     {
-        Gizmos.color = Color.yellow;
+        Gizmos.color = (alvoAtual != null) ? Color.red : new Color(0, 1, 1, 0.3f);
         Gizmos.DrawWireSphere(transform.position, alcanceDoRadar);
+        
+        if (alvoAtual != null)
+        {
+            Gizmos.DrawLine(transform.position, alvoAtual.position);
+        }
     }
 }

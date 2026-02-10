@@ -45,7 +45,16 @@ public class Helicoptero : MonoBehaviour
     public Transform helicePrincipal;
     public Transform heliceTraseira;
 
+    [Header("--- ÁUDIO ---")]
+    public AudioSource audioMotor;
+    public float pitchMinimo = 0.5f;
+    public float pitchMaximo = 1.2f;
+    public float volumeMaximo = 1.0f;
+    public float tempoSpinUp = 4.0f; // Tempo para ligar motor/hélices
+    public float tempoSpinDown = 6.0f; // Tempo para parar
+
     // ESTADOS INTERNOS
+    private float velocidadeAtualHelice = 0.0f; // Para lerp suave
     private Vector3 destino;
     private bool estaVoando = false;
     private bool estaPousando = false;
@@ -84,6 +93,15 @@ public class Helicoptero : MonoBehaviour
         if(!helicePrincipal) helicePrincipal = transform.Find("helice_principal") ?? transform.Find("MainRotor");
         if(!heliceTraseira) heliceTraseira = transform.Find("helice_traseira") ?? transform.Find("TailRotor");
 
+        if(!audioMotor) audioMotor = GetComponent<AudioSource>();
+        if(audioMotor)
+        {
+            audioMotor.loop = true;
+            audioMotor.playOnAwake = false;
+            audioMotor.volume = 0;
+            audioMotor.pitch = pitchMinimo;
+        }
+
         StartCoroutine(RadarDeAmeacas());
     }
 
@@ -94,8 +112,41 @@ public class Helicoptero : MonoBehaviour
         GestaoDeInput(); 
         
         if (estaVoando) ProcessarMovimento();
-        if (motorLigado) AnimarHelices();
+        
+        // Controle Suave de Motor e Hélices
+        ControlarMotorEHelices();
+
         VerificarInatividade();
+    }
+
+    void ControlarMotorEHelices()
+    {
+        // Alvo de velocidade: Se motor ligado, 1 (100%). Se não, 0.
+        float target = motorLigado ? 1.0f : 0.0f;
+        float speed = motorLigado ? (1.0f / tempoSpinUp) : (1.0f / tempoSpinDown);
+        
+        velocidadeAtualHelice = Mathf.MoveTowards(velocidadeAtualHelice, target, speed * Time.deltaTime);
+
+        // --- HÉLICES ---
+        float rotacao = velocidadeAtualHelice * velocidadeHelice * Time.deltaTime;
+        if(helicePrincipal) helicePrincipal.Rotate(0, rotacao, 0);
+        if(heliceTraseira) heliceTraseira.Rotate(Vector3.right * rotacao, Space.Self);
+
+        // --- ÁUDIO ---
+        if(audioMotor)
+        {
+            if(velocidadeAtualHelice > 0.01f)
+            {
+                if(!audioMotor.isPlaying) audioMotor.Play();
+                
+                audioMotor.volume = Mathf.Lerp(0, volumeMaximo, velocidadeAtualHelice);
+                audioMotor.pitch = Mathf.Lerp(pitchMinimo, pitchMaximo, velocidadeAtualHelice);
+            }
+            else
+            {
+                if(audioMotor.isPlaying) audioMotor.Stop();
+            }
+        }
     }
 
     void GestaoDeInput()
@@ -108,7 +159,8 @@ public class Helicoptero : MonoBehaviour
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
 
-            if (Physics.Raycast(ray, out hit))
+            // Ignora triggers (como radares) para focar na física sólida
+            if (Physics.Raycast(ray, out hit, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
             {
                 if (hit.transform == transform || hit.transform.IsChildOf(transform))
                 {
@@ -410,11 +462,7 @@ public class Helicoptero : MonoBehaviour
         if(flares != null) foreach(var f in flares) if(f) f.Stop();
     }
 
-    void AnimarHelices()
-    {
-        if(helicePrincipal) helicePrincipal.Rotate(0, velocidadeHelice * Time.deltaTime, 0);
-        if(heliceTraseira) heliceTraseira.Rotate(Vector3.right * velocidadeHelice * Time.deltaTime, Space.Self);
-    }
+    // AnimarHelices removido - agora integrado no ControlarMotorEHelices para suavidade
 
     void OnDrawGizmosSelected()
     {

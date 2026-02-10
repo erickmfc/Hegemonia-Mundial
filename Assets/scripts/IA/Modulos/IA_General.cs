@@ -194,9 +194,10 @@ public class IA_General : MonoBehaviour
             Vector3 local = chefe.cerebroArquiteto.EncontrarPontoDefensivo();
             
             // Busca torreta no catálogo
-            var itemTorreta = MenuConstrucao.catalogoGlobal.Find(x => 
-                x.nomeItem.ToLower().Contains("torreta") || 
-                x.nomeItem.ToLower().Contains("turret"));
+            if (MenuConstrucao.catalogoGlobal == null) return;
+            var itemTorreta = MenuConstrucao.catalogoGlobal.Find(x =>  
+                (x.nomeItem.ToLower().Contains("torreta") || x.nomeItem.ToLower().Contains("turret"))
+                && x.prefabDaUnidade != null); // Garante que tem prefab
             
             if (itemTorreta != null && chefe.GastarDinheiro(itemTorreta.preco))
             {
@@ -352,7 +353,19 @@ public class IA_General : MonoBehaviour
         var catalogo = MenuConstrucao.catalogoGlobal;
         if (catalogo == null) return;
 
-        // Prioridade 1: TANQUES
+        // Prioridade 1: HELIS (MODO TESTE: Prioridade Máxima)
+        if (helicopterosDisponiveis.Count < minimoHelicopteros + 5 && chefe.dinheiro > 150)
+        {
+            var helis = catalogo.FindAll(i => i.nomeItem.ToLower().Contains("heli"));
+            if (helis.Count > 0 && ProdubirUnidade(helis[Random.Range(0, helis.Count)])) 
+            { 
+                ultimoRecrutamento = Time.time; 
+                Debug.Log("🚁 [IA GENERAL] COMPRANDO HELICÓPTERO (PRIORIDADE ALTA)");
+                return; 
+            }
+        }
+
+        // Prioridade 2: TANQUES
         if (tanquesDisponiveis.Count < minimoTanques + 2)
         {
             var tanques = catalogo.FindAll(i =>
@@ -362,12 +375,7 @@ public class IA_General : MonoBehaviour
             if (tanques.Count > 0 && ProdubirUnidade(tanques[Random.Range(0, tanques.Count)])) { ultimoRecrutamento = Time.time; return; }
         }
         
-        // Prioridade 2: HELIS
-        if (helicopterosDisponiveis.Count < minimoHelicopteros + 1 && chefe.dinheiro > 500)
-        {
-            var helis = catalogo.FindAll(i => i.nomeItem.ToLower().Contains("heli"));
-            if (helis.Count > 0 && ProdubirUnidade(helis[Random.Range(0, helis.Count)])) { ultimoRecrutamento = Time.time; return; }
-        }
+        // Prioridade 3: INFANTARIA
         
         // Prioridade 3: INFANTARIA
         if (outrasUnidades.Count < 5 && chefe.dinheiro > 200)

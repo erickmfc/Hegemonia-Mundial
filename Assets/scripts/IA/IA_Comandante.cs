@@ -8,8 +8,8 @@ public class IA_Comandante : MonoBehaviour
     [Header("Módulos da IA Suprema (Cérebros)")]
     // Estes scripts devem estar anexados ao mesmo GameObject ou serão criados automaticamente
     public IA_Economia cerebroEconomico;
-    public IA_Arquiteto cerebroArquiteto;
-    public IA_General cerebroGeneral;
+    public IA_Arquiteto_Pro cerebroArquiteto;
+    public IA_General_Pro cerebroGeneral;
     public IA_Combate cerebroCombate;
 
     [Tooltip("Intervalo entre decisões da IA")]
@@ -45,13 +45,16 @@ public class IA_Comandante : MonoBehaviour
         
         // Auto-Detectar ou Adicionar módulos se faltarem
         if (!TryGetComponent(out cerebroEconomico)) cerebroEconomico = gameObject.AddComponent<IA_Economia>();
-        if (!TryGetComponent(out cerebroArquiteto)) cerebroArquiteto = gameObject.AddComponent<IA_Arquiteto>();
-        if (!TryGetComponent(out cerebroGeneral)) cerebroGeneral = gameObject.AddComponent<IA_General>();
+        if (!TryGetComponent(out cerebroArquiteto)) cerebroArquiteto = gameObject.AddComponent<IA_Arquiteto_Pro>();
+        if (!TryGetComponent(out cerebroGeneral)) cerebroGeneral = gameObject.AddComponent<IA_General_Pro>();
         if (!TryGetComponent(out cerebroCombate)) cerebroCombate = gameObject.AddComponent<IA_Combate>();
     }
 
     void Start()
     {
+        // CHEAT DE TESTE: Dinheiro Infinito para a IA comprar o que quiser
+        dinheiro = 99999f; 
+
         // Inicializa os sub-cérebros
         cerebroEconomico.Inicializar(this);
         cerebroArquiteto.Inicializar(this);
@@ -70,10 +73,11 @@ public class IA_Comandante : MonoBehaviour
             
             // Ciclo de Pensamento da IA
             cerebroEconomico.ProcessarEconomia();
-            cerebroGeneral.ProcessarEstrategia();
-            cerebroCombate.LimparMemoria();
             
-            // O Arquiteto trabalha sob demanda
+            // O General Pro e o Arquiteto Pro possuem seus próprios Updates/Corotinas
+            // Então não precisamos chamar manualmente aqui, eles são autônomos.
+            
+            cerebroCombate.LimparMemoria();
         }
     }
 

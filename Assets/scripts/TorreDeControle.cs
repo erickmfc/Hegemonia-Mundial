@@ -46,7 +46,7 @@ public class TorreDeControle : MonoBehaviour
         
         // Se não tiver menu, busca ou reclama
         if (painelDeComando == null)
-            Debug.LogWarning("[TorreDeControle] Painel de Comando UI não atribuído!");
+            Debug.Log("[TorreDeControle] Painel de Comando UI não atribuído (opcional).");
         else
             painelDeComando.SetActive(false);
 

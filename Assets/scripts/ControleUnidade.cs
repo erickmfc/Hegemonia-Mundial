@@ -181,7 +181,15 @@ public class ControleUnidade : MonoBehaviour
             // Se ele acabou de nascer no ar ou foi desativado, essa verificação evita o erro.
             if (agente.isOnNavMesh && agente.isActiveAndEnabled)
             {
-                // ✨ SISTEMA DE NAVEGAÇÃO NAVAL INTELIGENTE ✨
+                // ✨ SISTEMA DE NAVEGAÇÃO NAVAL REALISTA OU INTELIGENTE ✨
+                ControleNavioRealista controleRealista = GetComponent<ControleNavioRealista>();
+                if (controleRealista != null)
+                {
+                    controleRealista.DefinirDestino(destino);
+                    // Debug.Log($"[Navegação] {name} usando Física Realista.");
+                    return;
+                }
+
                 // Verifica se esta unidade tem navegação naval inteligente (marcha à ré automática)
                 NavegacaoInteligenteNaval navegacaoNaval = GetComponent<NavegacaoInteligenteNaval>();
                 

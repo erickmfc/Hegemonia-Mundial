@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: bce0e1b8d57a44effaad30d020b4d2a2
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 4547
+  packageName: Pixel Map Terrain
+  packageVersion: 1.1
+  assetPath: Assets/Pixel Map Terrain/Scripts/Editor/PixelMapTerrainEditor.cs
+  uploadId: 2178

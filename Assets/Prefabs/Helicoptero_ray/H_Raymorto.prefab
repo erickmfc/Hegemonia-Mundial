@@ -176,19 +176,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7c5da31c4c456e4b8c933a94535c88d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HelicopterController
-  altitudeDeVoo: 10
-  velocidadeHelice: 1000
-  alturaDoSolo: 2.9
-  antygaviti: 1.2
-  velocidadeNavegacao: 16
-  rotacaoSuavidade: 2.5
-  distanciaParaEmbarque: 20
-  capacidadeMaxima: 8
-  tropasEmbarcadas: []
-  helicePrincipal: {fileID: 418564}
-  heliceTraseira: {fileID: 413970}
-  agent: {fileID: 3984496375915310466}
-  eixoRotacaoTraseira: {x: 0, y: 0, z: 1}
 --- !u!195 &3984496375915310466
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -196,7 +183,7 @@ NavMeshAgent:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 161708}
-  m_Enabled: 1
+  m_Enabled: 0
   m_AgentTypeID: 0
   m_Radius: 0.5
   m_Speed: 3.5
@@ -219,7 +206,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 161708}
   serializedVersion: 5
-  m_Mass: 1
+  m_Mass: 200
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -255,6 +242,10 @@ MonoBehaviour:
   velocidadeVoo: 8
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
+  linhaAlcance: {fileID: 0}
+  corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
+  larguraLinha: 0.15
+  segmentosCirculo: 50
 --- !u!136 &8782220592944276430
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -290,15 +281,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b45f7f566e989a54b8b2fbc38d71f9b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Helicoptero
+  controleSempreAtivo: 0
+  selecionado: 0
+  raioDoClique: 7
+  altitudeDeVoo: 14
+  alturaPouso: 1.33
+  velocidadeHelice: 1200
+  velocidadeNavegacao: 20
+  velocidadePouso: 4
+  distanciaBusca: 50
+  distanciaEmbarque: 4
+  capacidadeMaxima: 8
+  tagAlvo: Soldado
+  soldadosEmbarcados: []
+  modoCombateAtivo: 0
+  raioRadarMissil: 60
+  cooldownFlares: 10
+  tagMissil: Missil
+  tagInimigo: Inimigo
+  flares: []
+  helicePrincipal: {fileID: 0}
+  heliceTraseira: {fileID: 0}
   nomeHelicoptero: "Helic\xF3ptero"
-  tipoHelicoptero: Transporte
-  emMissao: 0
-  indoParaHeliporto: 0
-  heliportoDestino: {fileID: 8789044652267527472, guid: 1133f690dfb30e740ab8431e8cb395d9, type: 3}
-  velocidadeParaHeliporto: 25
-  alturaDeVoo: 15
-  distanciaChegada: 3
-  nivel: 1
   custoUpgrade: 200
 --- !u!114 &-3325090875797799037
 MonoBehaviour:
@@ -330,6 +334,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DestrocosEmChamas
   tamanhoFogo: 2
   iniciarNoStart: 1
+  causarExplosoes: 1
+  qtdExplosoes: 3
+  vidaUtil: 15
 --- !u!1 &174438
 GameObject:
   m_ObjectHideFlags: 0
@@ -659,6 +666,7 @@ MonoBehaviour:
   vidaAtual: 0
   unidadeBiologica: 0
   prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
 --- !u!4 &2969699705579729559 stripped

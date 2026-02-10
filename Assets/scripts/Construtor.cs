@@ -89,7 +89,8 @@ public class Construtor : MonoBehaviour
         // Clica para construir
         if (Input.GetMouseButtonDown(0))
         {
-            Instantiate(prefabSelecionado, ponto, fantasmaUnico.transform.rotation);
+            GameObject novo = Instantiate(prefabSelecionado, ponto, fantasmaUnico.transform.rotation);
+            EnsureCollider(novo);
             // Opcional: CancelarConstrucao(); // Se quiser fechar após construir um
         }
     }
@@ -185,7 +186,8 @@ public class Construtor : MonoBehaviour
         for (int i = 0; i < quantidade; i++)
         {
             Vector3 pos = inicio + (dir * (i * larguraDoMuro)) + (dir * (larguraDoMuro/2));
-            Instantiate(prefabSelecionado, pos, rotacaoFinal);
+            GameObject novoMuro = Instantiate(prefabSelecionado, pos, rotacaoFinal);
+            EnsureCollider(novoMuro); // Garante que o player também crie muros destrutíveis
         }
     }
 
@@ -197,6 +199,9 @@ public class Construtor : MonoBehaviour
         // Instancia direto:
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
         
+        // CORREÇÃO: Garante que tem colisor, senão não toma dano
+        EnsureCollider(novoPredio);
+
         Debug.Log($"[Construtor IA] Construiu {prefab.name} em {posicao}");
         return novoPredio;
     }
@@ -236,6 +241,35 @@ public class Construtor : MonoBehaviour
         // Se tiver NavMeshObstacle, remove também
         UnityEngine.AI.NavMeshObstacle[] navs = obj.GetComponentsInChildren<UnityEngine.AI.NavMeshObstacle>();
         foreach (var n in navs) Destroy(n);
+    }
+
+    // CORREÇÃO: Verifica se o objeto tem colisor e adiciona um se faltar
+    void EnsureCollider(GameObject obj)
+    {
+        if (obj.GetComponentInChildren<Collider>() == null)
+        {
+            // Debug.LogWarning($"[Construtor] O objeto '{obj.name}' não tinha colisor! Adicionando BoxCollider automático para receber danos.");
+            
+            // Adiciona Box Collider no pai ou no filho que tem MeshRenderer
+            Renderer r = obj.GetComponentInChildren<Renderer>();
+            if (r != null)
+            {
+                // Se o renderer estiver num filho, adicionamos o collider LÁ
+                if (r.gameObject != obj)
+                {
+                    r.gameObject.AddComponent<BoxCollider>();
+                }
+                else
+                {
+                    obj.AddComponent<BoxCollider>();
+                }
+            }
+            else
+            {
+                // Fallback: adiciona no root
+                obj.AddComponent<BoxCollider>();
+            }
+        }
     }
 
     // Muda a Layer recursivamente (para Ignore Raycast)

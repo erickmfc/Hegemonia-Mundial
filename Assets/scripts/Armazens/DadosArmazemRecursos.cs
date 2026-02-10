@@ -114,7 +114,8 @@ public class DadosArmazemRecursos : ScriptableObject
                 break;
         }
         
-        Debug.LogWarning($"Não foi possível adicionar {quantidade} de {tipo}. Armazém cheio ou limite atingido.");
+        // Removido para evitar spam no console
+        // Debug.LogWarning($"Não foi possível adicionar {quantidade} de {tipo}. Armazém cheio ou limite atingido.");
         return false;
     }
 

@@ -158,29 +158,30 @@ public class TransporteTerrestre : MonoBehaviour
             // SÓ EMBARCA SE FOR VIÁVEL
             if (ehViavel)
             {
-                // Verifica time (Opcional: Só embarca aliados)
-                var identidade = soldado.GetComponent<IdentidadeUnidade>();
+                // CRÍTICO: Verifica Identidade de Time (TeamID)
+                // A IA (Time 2) só deve pegar soldados do Time 2.
+                var identidadeSoldado = soldado.GetComponent<IdentidadeUnidade>();
                 var minhaIdentidade = GetComponent<IdentidadeUnidade>();
                 
-                bool mesmoTime = true;
-                if(identidade != null && minhaIdentidade != null)
+                if(identidadeSoldado != null && minhaIdentidade != null)
                 {
-                    if(identidade.teamID != minhaIdentidade.teamID) mesmoTime = false;
+                    if(identidadeSoldado.teamID != minhaIdentidade.teamID) 
+                    {
+                        // Se não for do mesmo time, ignora silenciosamente
+                        continue; 
+                    }
                 }
 
-                if(mesmoTime)
-                {
-                    Debug.Log($"Embarcando Passageiro: {soldado.name}");
-                    EmbarcarUnidade(soldado);
-                    totalEmbarcados++;
-                }
+                Debug.Log($"Embarcando Passageiro: {soldado.name}");
+                EmbarcarUnidade(soldado);
+                totalEmbarcados++;
             }
         }
         
         if (totalEmbarcados == soldadosInternos.Count + ContarVisiveis())
         {
              // Se não mudou nada
-             Debug.Log("Nenhum passageiro válido encontrado por perto.");
+             // Debug.Log("Nenhum passageiro válido encontrado por perto.");
         }
     }
 
@@ -220,7 +221,7 @@ public class TransporteTerrestre : MonoBehaviour
         Debug.Log($"Soldado {soldado.name} embarcou no interior.");
     }
 
-    void DesembarcarTudo()
+    public void DesembarcarTudo()
     {
         // 1. Desembarca os Visíveis
         for (int i = 0; i < soldadosNosAssentos.Length; i++)
@@ -252,8 +253,6 @@ public class TransporteTerrestre : MonoBehaviour
         
         // --- CÁLCULO DA POSIÇÃO DE SAÍDA ---
         // Pega uma posição aleatória num círculo de raio "distanciaDescarga"
-        // Ou fixo nas laterais? O user pediu "saiam 3 metros do carro".
-        
         Vector3 direcaoAleatoria = Random.onUnitSphere;
         direcaoAleatoria.y = 0; // Mantém no plano
         direcaoAleatoria.Normalize();
@@ -262,7 +261,7 @@ public class TransporteTerrestre : MonoBehaviour
 
         // Garante que seja no NavMesh
         NavMeshHit hit;
-        if (NavMesh.SamplePosition(pontoAlvo, out hit, 2.0f, NavMesh.AllAreas))
+        if (NavMesh.SamplePosition(pontoAlvo, out hit, 3.0f, NavMesh.AllAreas))
         {
             unidade.transform.position = hit.position;
             HabilitarMovimento(unidade, hit.position);
@@ -274,6 +273,17 @@ public class TransporteTerrestre : MonoBehaviour
             unidade.transform.position = pontoAlvo;
             HabilitarMovimento(unidade, pontoAlvo);
         }
+    }
+
+    // --- SENSORES PARA O GENERAL (IA) ---
+    public bool EstaCheio()
+    {
+        return (soldadosInternos.Count + ContarVisiveis()) >= capacidadeMaxima;
+    }
+
+    public bool TemTropas()
+    {
+        return (soldadosInternos.Count + ContarVisiveis()) > 0;
     }
 
     // --- Utilitários de Controle de Agente ---
@@ -321,7 +331,11 @@ public class TransporteTerrestre : MonoBehaviour
         {
             agent.Warp(posicaoInicial); // Reseta o agente na nova posição
             agent.enabled = true;
-            agent.SetDestination(posicaoInicial); // Manda ficar parado onde caiu
+            
+            // LÓGICA DE DISPERSÃO: Pequeno movimento para não ficarem entalados
+            Vector3 dispersao = Random.insideUnitSphere * 2.0f;
+            dispersao.y = 0;
+            agent.SetDestination(posicaoInicial + dispersao);
         }
          
         Rigidbody rb = unidade.GetComponent<Rigidbody>();
@@ -340,6 +354,6 @@ public class TransporteTerrestre : MonoBehaviour
 
     public bool TemPassageiros
     {
-        get { return soldadosInternos.Count > 0 || ContarVisiveis() > 0; }
+        get { return TemTropas(); }
     }
 }

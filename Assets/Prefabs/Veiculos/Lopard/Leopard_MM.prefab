@@ -1851,6 +1851,7 @@ GameObject:
   - component: {fileID: 6199627217225760772}
   - component: {fileID: 903389246659515328}
   - component: {fileID: 3028246738934235022}
+  - component: {fileID: 3969667189237308366}
   m_Layer: 0
   m_Name: Leopard_MM
   m_TagString: Player
@@ -1889,7 +1890,7 @@ MonoBehaviour:
   teamID: 1
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
-  tipoUnidade: 0
+  tipoUnidade: 1
 --- !u!114 &6199627217225760772
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2040,6 +2041,29 @@ MonoBehaviour:
   somDisparo: {fileID: 8300000, guid: 281e15cc92254794eaf05caf4d044b76, type: 3}
   somMotor: {fileID: 0}
   volumeMotor: 0.5
+  modoCombateAtivo: 1
+  mostrarLogsDeBusca: 1
+--- !u!114 &3969667189237308366
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7518181555260596841}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32ce560dd3360da439531016f604e494, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
+  anelSelecao: {fileID: 0}
+  selecionado: 0
+  velocidadeVoo: 8
+  tamanhoSelecao: 0
+  corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
+  linhaAlcance: {fileID: 0}
+  corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
+  larguraLinha: 0.15
+  segmentosCirculo: 50
 --- !u!1 &7670017638055445103
 GameObject:
   m_ObjectHideFlags: 0
@@ -2683,8 +2707,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2.61, y: 4.61, z: 8.61}
-  m_Center: {x: 0, y: 1.38, z: -0.54}
+  m_Size: {x: 2.61, y: 3.07, z: 8.61}
+  m_Center: {x: 0, y: 0.59, z: -0.54}
 --- !u!114 &4781388708393032451
 MonoBehaviour:
   m_ObjectHideFlags: 0

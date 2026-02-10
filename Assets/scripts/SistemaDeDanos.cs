@@ -195,7 +195,10 @@ public class SistemaDeDanos : MonoBehaviour
         var navMesh = GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (navMesh != null) 
         {
-            navMesh.isStopped = true;
+            if (navMesh.isOnNavMesh && navMesh.isActiveAndEnabled)
+            {
+                navMesh.isStopped = true;
+            }
             navMesh.enabled = false;
         }
 

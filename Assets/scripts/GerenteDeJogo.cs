@@ -30,17 +30,42 @@ public class GerenteDeJogo : MonoBehaviour
         if (Instancia == null) Instancia = this;
         else Destroy(gameObject);
 
-        // Tenta achar sozinho se esquecer de arrastar
+        // --- SISTEMA DE UI: MENU PIER (Tecla V) ---
+        if (GetComponent<MenuPier>() == null)
+        {
+            gameObject.AddComponent<MenuPier>();
+            Debug.Log("[Gerente] MenuPier adicionado automaticamente.");
+        }
+
+        // --- AUTOMATIZAÇÃO DE SPAWN POINTS ---
+        // Tenta achar as referências sozinho se o usuário esqueceu de arrastar
         if (spawnSoldado == null) 
         {
             var obj = GameObject.Find("Spawn_Soldado");
             if(obj != null) spawnSoldado = obj.transform;
+            else Debug.LogWarning("[Gerente] 'Spawn_Soldado' não encontrado na cena! Unidades nascerão na câmera.");
         }
         
         if (saidaSoldado == null) 
         {
+            // Tenta achar saída específica ou usa o próprio spawn
             var obj = GameObject.Find("Saida_Soldado");
             if(obj != null) saidaSoldado = obj.transform;
+            else if (spawnSoldado != null) saidaSoldado = spawnSoldado;
+        }
+
+        if (spawnInterno == null)
+        {
+            var obj = GameObject.Find("Spawn_Interno"); // Para veículos/tanques
+            if(obj != null) spawnInterno = obj.transform;
+            else Debug.LogWarning("[Gerente] 'Spawn_Interno' não encontrado! Veículos nascerão na câmera.");
+        }
+
+        if (pontoSaida == null)
+        {
+            var obj = GameObject.Find("Saida_Interno");
+            if (obj != null) pontoSaida = obj.transform;
+            else if (spawnInterno != null) pontoSaida = spawnInterno;
         }
     }
 
@@ -70,6 +95,7 @@ public class GerenteDeJogo : MonoBehaviour
         public float tempoTotal;
         public float tempoRestante;
         public bool ehSoldado;
+        public bool ehHelicoptero;
     }
 
     void Update()
@@ -100,9 +126,11 @@ public class GerenteDeJogo : MonoBehaviour
         // 1. Identificar Tipo
         string nome = unidadeParaConstruir.name.ToLower();
         // REMOVIDO "variant" POIS CAUSAVA CONFUSÃO COM TANQUES
+        // REMOVIDO "variant" POIS CAUSAVA CONFUSÃO COM TANQUES
         bool ehSoldado = (nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("person") || nome.Contains("infantry"));
+        bool ehHelicoptero = (nome.Contains("helicoptero") || nome.Contains("ray") || nome.Contains("viper") || nome.Contains("apache"));
 
-        Debug.Log($"INFO COMPRA: Unidade '{nome}' identificada como Soldado? {ehSoldado}");
+        Debug.Log($"INFO COMPRA: Unidade '{nome}' identificada como Soldado? {ehSoldado}, Helicóptero? {ehHelicoptero}");
 
         // 2. Verificar se a FÁBRICA existe
         // --- VERIFICAÇÃO DE FÁBRICA DESABILITADA (Spawn de Fallback será usado) ---
@@ -140,8 +168,14 @@ public class GerenteDeJogo : MonoBehaviour
                 novoPedido.prefab = unidadeParaConstruir;
                 novoPedido.ehSoldado = ehSoldado;
                 
-                // Tempo de Produção: 0s para Soldado (Instantâneo), 2s para Tanque
-                novoPedido.tempoTotal = ehSoldado ? 0f : 2.0f; 
+                novoPedido.ehSoldado = ehSoldado;
+                novoPedido.ehHelicoptero = ehHelicoptero;
+                
+                // Tempo de Produção: 0s para Soldado (Instantâneo), 2s para Tanque/Heli
+                float tempoBase = ehSoldado ? 0f : 2.0f;
+                // Se for helicóptero, pode ter um tempo diferente se quiser
+                
+                novoPedido.tempoTotal = tempoBase;
                 novoPedido.tempoRestante = novoPedido.tempoTotal;
 
                 filaProducao.Add(novoPedido);
@@ -157,10 +191,62 @@ public class GerenteDeJogo : MonoBehaviour
 
     void FinalizarProducao(PedidoDeProducao pedido)
     {
-        Transform spawnAtual = pedido.ehSoldado ? spawnSoldado : spawnInterno;
-        Transform destinoAtual = pedido.ehSoldado ? saidaSoldado : pontoSaida;
+        Transform spawnAtual = null;
+        Transform destinoAtual = null;
 
-        if(spawnAtual != null) Debug.Log($"SPAWNANDO EM: {spawnAtual.name} (Parente: {spawnAtual.parent.name})");
+        if (pedido.ehHelicoptero)
+        {
+            // Lógica Exclusiva para HELICÓPTEROS
+            Heliporto heliportoDestino = ObterProximoHeliporto();
+            if (heliportoDestino != null)
+            {
+                // Cria um objeto temporário para representar o ponto de spawn exato
+                // O heliporto calcula seu ponto mundial
+                Vector3 pontoPouso = heliportoDestino.ObterPontoDePousoMundial();
+                
+                // Hack: Cria Transforms temporários apenas para passar para a lógica abaixo
+                // O ideal seria refatorar para usar Vector3 direto, mas vamos manter a estrutura
+                GameObject tempSpawn = new GameObject("TempSpawn_Heli");
+                tempSpawn.transform.position = pontoPouso;
+                tempSpawn.transform.rotation = heliportoDestino.transform.rotation;
+                
+                spawnAtual = tempSpawn.transform;
+                destinoAtual = tempSpawn.transform; // Destino é o próprio ponto de pouso (hover)
+
+                // Destruir depois de usar (será usado no Instantiate logo abaixo)
+                Destroy(tempSpawn, 0.1f); 
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ Nenhum HELIPORTO encontrado! Helicóptero nascerá no Hangar de Veículos com fallback.");
+                 // Tenta Logística Normal se falhar
+                PontoLogistico logistica = ObterProximoSpawn(false); // False = Hangar
+                if (logistica != null && logistica.spawn != null)
+                {
+                    spawnAtual = logistica.spawn;
+                    destinoAtual = logistica.saida;
+                }
+            }
+        }
+        else
+        {
+            // Lógica Padrão (Soldado / Veículo Terrestre)
+            PontoLogistico logistica = ObterProximoSpawn(pedido.ehSoldado);
+        
+            if (logistica != null && logistica.spawn != null)
+            {
+                spawnAtual = logistica.spawn;
+                destinoAtual = logistica.saida;
+            }
+            else
+            {
+                // Fallback para variáveis legadas (Inspector ou último registrado)
+                spawnAtual = pedido.ehSoldado ? spawnSoldado : spawnInterno;
+                destinoAtual = pedido.ehSoldado ? saidaSoldado : pontoSaida;
+            }
+        }
+
+        if(spawnAtual != null) Debug.Log($"SPAWNANDO EM: {spawnAtual.name} (Parente: {spawnAtual.parent?.name ?? "World"})");
         else Debug.LogWarning("SPAWNANDO SEM FÁBRICA (NULL)");
 
         if (pedido.prefab == null)
@@ -207,8 +293,24 @@ public class GerenteDeJogo : MonoBehaviour
         else posDestino = posNascimento + new Vector3(2, 0, 2);
 
 
-        // CORREÇÃO DE ALTURA: Adiciona 0.5m para não nascer no chão
-        posNascimento += Vector3.up * 0.5f;
+        // CORREÇÃO DE ALTURA (Spawn Height Check)
+        if (pedido.ehHelicoptero)
+        {
+            // Raycast para cima do ponto de spawn para encontrar o chão real (evitar clipping no Heliporto)
+            RaycastHit hitHeli;
+            // Tenta raycast vindo bem de cima
+            Vector3 pontoDeTeste = new Vector3(posNascimento.x, posNascimento.y + 20f, posNascimento.z);
+            if (Physics.Raycast(pontoDeTeste, Vector3.down, out hitHeli, 50f))
+            {
+                posNascimento.y = hitHeli.point.y; // Ajusta para o chão encontrado
+            }
+            // Adiciona altura segura para garantir que não colida com o box do heliporto
+            posNascimento += Vector3.up * 1.5f; 
+        }
+        else
+        {
+            posNascimento += Vector3.up * 0.5f;
+        }
 
         // NASCER
         GameObject novaUnidade = Instantiate(pedido.prefab, posNascimento, rotNascimento);
@@ -328,17 +430,94 @@ public class GerenteDeJogo : MonoBehaviour
     }
 
     // --- MÉTODOS DE REGISTRO (Chamados pelo script Fabrica.cs dos prédios) ---
+    // STRUCT INTERNA PARA GUARDAR OS PARES (SPAWN + SAIDA)
+    [System.Serializable]
+    public class PontoLogistico
+    {
+        public Transform spawn;
+        public Transform saida;
+    }
+
+    // Listas para suportar múltiplos prédios
+    public List<PontoLogistico> listaQuarteis = new List<PontoLogistico>();
+    public List<PontoLogistico> listaHangares = new List<PontoLogistico>();
+    public List<Heliporto> listaHeliportos = new List<Heliporto>();
+
+    // Índices para Round-Robin
+    private int indexQuartel = 0;
+    private int indexHangar = 0;
+    private int indexHeliporto = 0;
+
     public void AtualizarPontoQuartel(Transform nascimento, Transform saida)
     {
+        // Mantém compatibilidade com variáveis antigas (aponta para o último)
         spawnSoldado = nascimento;
         saidaSoldado = saida;
-        Debug.Log("Logística Atualizada: Nova Tenda registrada como ativa!");
+
+        // Adiciona na lista se não estiver
+        if (!ListaContem(listaQuarteis, nascimento))
+        {
+            listaQuarteis.Add(new PontoLogistico { spawn = nascimento, saida = saida });
+            Debug.Log($"Logística: Nova TENDA registrada (Total: {listaQuarteis.Count})");
+        }
     }
 
     public void AtualizarPontoHangar(Transform nascimento, Transform saida)
     {
+        // Mantém compatibilidade
         spawnInterno = nascimento;
-        pontoSaida = saida; // Nota: A variável original chamava pontoSaida
-        Debug.Log("Logística Atualizada: Novo Hangar registrado como ativo!");
+        pontoSaida = saida;
+
+        // Adiciona na lista
+        if (!ListaContem(listaHangares, nascimento))
+        {
+            listaHangares.Add(new PontoLogistico { spawn = nascimento, saida = saida });
+            Debug.Log($"Logística: Novo HANGAR registrado (Total: {listaHangares.Count})");
+        }
+    }
+
+    public void RegistrarHeliporto(Heliporto heliporto)
+    {
+        if (!listaHeliportos.Contains(heliporto))
+        {
+            listaHeliportos.Add(heliporto);
+            Debug.Log($"Logística: Novo HELIPORTO registrado (Total: {listaHeliportos.Count})");
+        }
+    }
+
+    bool ListaContem(List<PontoLogistico> lista, Transform t)
+    {
+        return lista.Exists(x => x.spawn == t);
+    }
+
+    PontoLogistico ObterProximoSpawn(bool ehSoldado)
+    {
+        List<PontoLogistico> lista = ehSoldado ? listaQuarteis : listaHangares;
+        
+        // Limpeza de Nulos (caso prédio tenha sido destruído)
+        lista.RemoveAll(x => x.spawn == null);
+
+        if (lista.Count == 0) return null;
+
+        // Avança índice
+        if (ehSoldado)
+        {
+            indexQuartel = (indexQuartel + 1) % lista.Count;
+            return lista[indexQuartel];
+        }
+        else
+        {
+            indexHangar = (indexHangar + 1) % lista.Count;
+            return lista[indexHangar];
+        }
+    }
+
+    Heliporto ObterProximoHeliporto()
+    {
+        listaHeliportos.RemoveAll(h => h == null);
+        if (listaHeliportos.Count == 0) return null;
+
+        indexHeliporto = (indexHeliporto + 1) % listaHeliportos.Count;
+        return listaHeliportos[indexHeliporto];
     }
 }

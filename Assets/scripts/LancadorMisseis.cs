@@ -224,7 +224,7 @@ public class LancadorMisseis : MonoBehaviour
                 Vector3 dir = toque.point - cabecaRotativa.position;
                 dir.y = 0; // Não inclina pra cima/baixo
                 if(dir != Vector3.zero) 
-                    cabecaRotativa.rotation = Quaternion.Lerp(cabecaRotativa.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 10f);
+                    cabecaRotativa.rotation = Quaternion.Lerp(cabecaRotativa.rotation, Quaternion.LookRotation(dir, transform.up), Time.deltaTime * 10f);
             }
         }
     }

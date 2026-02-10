@@ -25,6 +25,52 @@ public class PainelRecursos : MonoBehaviour
     public TextMeshProUGUI textoEstoque;
     public TextMeshProUGUI textoExercito;
 
+    void Awake()
+    {
+        // CORREÇÃO CRÍTICA DE FONTE:
+        // Varre todos os textos filhos e remove caracteres inválidos (emojis antigos)
+        // que causam quadrados brancos na UI.
+        LimparTextosComEmojis(transform);
+    }
+
+    void LimparTextosComEmojis(Transform pai)
+    {
+        // Lista expandida de emojis problemáticos reportados no Log
+        // \U0001F4B0 = 💰
+        // \u26FD = ⛽
+        // \U0001F529 = 🔩 (Bolt/Nut) -> Trocado por "Part"
+        // \u26A1 = ⚡
+        // \U0001F4E6 = 📦
+        // \U0001F465 = 👥
+        // \u2694 = ⚔
+        
+        foreach(Transform filho in pai)
+        {
+            var tmp = filho.GetComponent<TextMeshProUGUI>();
+            if(tmp != null && !string.IsNullOrEmpty(tmp.text))
+            {
+                // Substituição seguras
+                string textoLimpo = tmp.text;
+                textoLimpo = textoLimpo.Replace("\U0001F4B0", "$");   // Dinheiro
+                textoLimpo = textoLimpo.Replace("\u26FD", "Oil");     // Combustivel
+                textoLimpo = textoLimpo.Replace("\u26A1", "Pwr");     // Energia
+                textoLimpo = textoLimpo.Replace("\U0001F4E6", "Mat"); // Materiais
+                textoLimpo = textoLimpo.Replace("\U0001F465", "Pop"); // População
+                textoLimpo = textoLimpo.Replace("\u2694", "Milit");   // Militar / Ammo
+                textoLimpo = textoLimpo.Replace("\U0001F527", "Eng"); // Wrench (Engenharia)
+                textoLimpo = textoLimpo.Replace("\U0001F529", "Part");// Nut and Bolt
+                
+                // Remove qualquer outro caractere "surrogate" que possa ter sobrado
+                // (Opcional, mas ajuda a limpar lixo visual)
+                
+                tmp.text = textoLimpo;
+            }
+            
+            // Recursivo para filhos
+            if(filho.childCount > 0) LimparTextosComEmojis(filho);
+        }
+    }
+
     void Start()
     {
         AtualizarTudo();

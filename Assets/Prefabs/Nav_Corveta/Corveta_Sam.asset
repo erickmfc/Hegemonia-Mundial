@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
-  m_Name: NovaConstrucao
+  m_Name: Corveta_Sam
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: Tank_UBU
-  descricao: Ubu um tank de longo alcance
+  nomeItem: Corveta sam
+  descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 7577207155171655125, guid: 3819380e8cefd1a4095e54913973124a, type: 3}
-  preco: 100
-  categoria: 0
+  prefabDaUnidade: {fileID: 1839352793183847460, guid: fd4134640fb717f46b44e2c904f79437, type: 3}
+  preco: 2000
+  categoria: 1
   scriptsDeComando: []

@@ -114,8 +114,8 @@ public class ControleTorreta : MonoBehaviour
             // 2. FALLBACK POR TAG (Para objetos simples sem script)
             else 
             {
-                // Verifica a tag do objeto e da raiz para garantir
-                if (hit.CompareTag(etiquetaAlvo) || hit.CompareTag("Inimigo"))
+                // Verifica a tag do objeto e da raiz (fallback seguro com string compare para evitar erro de tag inexistente)
+                if ((hit.tag == etiquetaAlvo) || (hit.tag == "Inimigo"))
                 {
                     ehInimigo = true;
                 }
@@ -184,21 +184,30 @@ public class ControleTorreta : MonoBehaviour
             {
                 Vector3 direcao = alvoAtual.position - pecaQueGira.position;
                 
-                if (limitarRotacao && pecaQueGira.parent != null)
+                if (pecaQueGira.parent != null)
                 {
-                    // Lógica Local Clamp (Respeita a rotação do barco pai)
+                    // Lógica UNIFICADA (Respeita a rotação do barco pai/convés)
+                    // Converte a direção do alvo para o espaço local do pai da peça
                     Vector3 localDir = pecaQueGira.parent.InverseTransformDirection(direcao);
-                    float anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
-                    float anguloTravado = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
                     
-                    Quaternion rotacaoAlvo = Quaternion.Euler(0, anguloTravado, 0);
+                    // Calcula o ângulo Yaw no plano do convés (XZ local)
+                    float anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+                    
+                    // Só aplica limite se necessário
+                    if (limitarRotacao)
+                    {
+                        anguloY = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
+                    }
+                    
+                    // Aplica rotação APENAS no eixo Y local (Gira no convés, sem tombar/subir)
+                    Quaternion rotacaoAlvo = Quaternion.Euler(0, anguloY, 0);
                     pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
                 }
                 else
                 {
-                    // Lógica Global (Sem limites ou sem pai)
+                    // Lógica Global (Sem limites ou sem pai - ex: Torreta no chão)
                     Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
-                    // Trava X e Z para não tombar
+                    // Trava X e Z globais apenas se não tiver pai
                     rotacaoAlvo = Quaternion.Euler(0, rotacaoAlvo.eulerAngles.y, 0);
                     pecaQueGira.rotation = Quaternion.Lerp(pecaQueGira.rotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
                 }
@@ -251,25 +260,39 @@ public class ControleTorreta : MonoBehaviour
     public float tempoEntreMisseis = 2.0f;
     private float cooldownMissel = 0f;
 
+    [Header("Custumização de Disparo")]
+    [Tooltip("Se quiser munições diferentes para canos diferentes, arraste aqui na ordem dos Locais Do Tiro.")]
+    public GameObject[] municoesPorCano; 
+
     void Disparar()
     {
-        // Lógica: Se tiver vaga para míssil e cooldown ok, solta míssil. Senão bala normal.
-        // Mas como o user pediu para "escolher", vamos assumir que se tiver misselPrefab, ele VAI tentar usar intercalado ou substituir.
-        // Para simplificar: Vamos manter o tiro padrão (bala) acontecendo rápido, e o míssil disparando paralelo se tiver alvo e cooldown.
-        
         // 1. DISPARO DE MÍSSIL (Arma Pesada)
         if (misselPrefab != null && cooldownMissel <= 0f && alvoAtual != null)
         {
             DispararMissel();
             cooldownMissel = tempoEntreMisseis;
-            return; // Se atirou míssil, talvez não atire bala no mesmo frame? Ou atira os dois. Vamos retornar pra dar peso.
+            return;
         }
 
         // 2. DISPARO PADRÃO (Metralhadora/Canhão)
-        if (municaoPrefab != null && locaisDoTiro != null && locaisDoTiro.Length > 0)
+        if (locaisDoTiro != null && locaisDoTiro.Length > 0)
         {
+            // Define qual prefab usar (Padrão ou Específico do Cano)
+            GameObject prefabParaUsar = municaoPrefab;
+            
+            // Verifica se tem munição específica para este cano (Override)
+            if (municoesPorCano != null && indiceBarrilAtual < municoesPorCano.Length)
+            {
+                if (municoesPorCano[indiceBarrilAtual] != null)
+                {
+                    prefabParaUsar = municoesPorCano[indiceBarrilAtual];
+                }
+            }
+
+            if (prefabParaUsar == null) return; // Segurança básica
+
             Transform barrilDaVez = locaisDoTiro[indiceBarrilAtual];
-            GameObject bala = Instantiate(municaoPrefab, barrilDaVez.position, barrilDaVez.rotation);
+            GameObject bala = Instantiate(prefabParaUsar, barrilDaVez.position, barrilDaVez.rotation);
             Projetil scriptBala = bala.GetComponent<Projetil>();
             
             if (scriptBala != null)
@@ -279,7 +302,8 @@ public class ControleTorreta : MonoBehaviour
                 {
                     Vector3 direcao = (alvoAtual.position - barrilDaVez.position).normalized;
                     scriptBala.SetDirecao(direcao);
-                    scriptBala.velocidade = 200f; 
+                    // Se o script da bala não tiver velocidade própria, aplicamos uma padrão
+                    if (scriptBala.velocidade == 0) scriptBala.velocidade = 200f; 
                 }
             }
 

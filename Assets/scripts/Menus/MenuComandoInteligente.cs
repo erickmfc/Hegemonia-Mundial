@@ -147,10 +147,23 @@ public class MenuComandoInteligente : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        // Ajusta tamanho do painel (SEM cabeçalho de vida)
+        // --- CABEÇALHO DE ESTADO (NOVO) ---
+        string textoEstado = "ESTADO: --";
+        if (selecionados.Count > 0)
+        {
+            var mlrs = selecionados[0].GetComponent<LancadorMLRS>();
+            if (mlrs != null)
+            {
+                textoEstado = mlrs.modoCombateAtivo ? "ESTADO: ATIVO 🚨" : "ESTADO: PASSIVO 💤";
+            }
+        }
+        CriarTextoAviso(textoEstado);
+        // ----------------------------------
+
+        // Ajusta tamanho do painel
         int qtd = comandosAtuais.Count;
         RectTransform rt = painelMestre.GetComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(180, 20 + (qtd * 45)); // Reduzido de 50 para 20 (sem header)
+        rt.sizeDelta = new Vector2(180, 50 + (qtd * 45)); // +30 para o header
 
         foreach (var comando in comandosAtuais)
         {

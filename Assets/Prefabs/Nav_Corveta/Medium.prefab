@@ -9684,6 +9684,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Medium
       objectReference: {fileID: 0}
+    - target: {fileID: 100000, guid: 3eab580ff0bdcd147b96627c91ef4017, type: 3}
+      propertyPath: m_TagString
+      value: Missel
+      objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 3eab580ff0bdcd147b96627c91ef4017, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.3

@@ -56,6 +56,10 @@ public class Heliporto : MonoBehaviour
         CriarInterfaceMenu();
         FecharMenu();
 
+        // Registrar no Gerente para compras futuras
+        GerenteDeJogo gerente = FindFirstObjectByType<GerenteDeJogo>();
+        if(gerente != null) gerente.RegistrarHeliporto(this);
+
         // Limpa lista de helicópteros pousados
         helicopterosPousados.RemoveAll(h => h == null);
     }
