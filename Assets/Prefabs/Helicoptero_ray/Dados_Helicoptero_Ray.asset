@@ -12,9 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: Dados_Helicoptero_Ray
   m_EditorClassIdentifier: 
-  nomeItem: Helicóptero Ray
-  descricao: "Transporte Aéreo Tático.\nCapacidade: 8 Unidades.\nAlta mobilidade para deslocamento de tropas."
-  icone: {fileID: 0}
+  nomeItem: "Helic\xF3ptero Ray"
+  descricao: "Transporte A\xE9reo T\xE1tico.\nCapacidade: 8 Unidades.\nAlta mobilidade
+    para deslocamento de tropas."
+  icone: {fileID: 21300000, guid: 1321306fa79ffb848af7c631ed242a86, type: 3}
   prefabDaUnidade: {fileID: 161708, guid: 23e4ba5a16bf9dc40bb70fd3c0b603e0, type: 3}
   preco: 850
   categoria: 2
+  scriptsDeComando: []

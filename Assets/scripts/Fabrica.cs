@@ -25,8 +25,17 @@ public class Fabrica : MonoBehaviour
         
         GerenteDeJogo gerente = FindFirstObjectByType<GerenteDeJogo>(); 
         
-        // --- AUTOCORREÇÃO DE CONFIGURAÇÃO ---
         string meuNome = gameObject.name.ToLower();
+
+        // --- PROTEÇÃO CONTRA ESTALEIROS ---
+        // Se for um prédio naval, NÃO se registra como fábrica terrestre!
+        if (meuNome.Contains("naval") || meuNome.Contains("navio") || meuNome.Contains("estaleiro") || meuNome.Contains("pier"))
+        {
+            // Debug.Log($"[Fabrica] '{name}' ignorado pelo GerenteDeJogo pois parece ser Naval.");
+            yield break;
+        }
+
+        // --- AUTOCORREÇÃO DE CONFIGURAÇÃO ---
         if(meuNome.Contains("hangar")) ehQuartel = false;
         if(meuNome.Contains("tenda") || meuNome.Contains("quartel")) ehQuartel = true;
 

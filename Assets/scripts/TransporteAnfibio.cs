@@ -154,76 +154,107 @@ public class TransporteAnfibio : MonoBehaviour
         yield return new WaitForSeconds(2.0f);
         estadoAtual = Estado.Embarcando;
 
+        // USA OverlapSphere PARA ENCONTRAR UNIDADES PRÓXIMAS
         Collider[] hits = Physics.OverlapSphere(transform.position, raioDeCaptura);
-        unidadesNaFila.Clear();
+        
+        // Limpa fila antiga para recalcular quem está perto e válido agorar
+        unidadesNaFila.Clear(); 
+        
+        // Lista auxiliar de Identidades já processadas para evitar duplicatas (vários colliders na mesma unidade)
+        HashSet<IdentidadeUnidade> processados = new HashSet<IdentidadeUnidade>();
 
         foreach (var hit in hits)
         {
-            // Filtro rigoroso: Não pegar a si mesmo ou filhos
-            if (hit.transform.root == transform.root) continue;
-
-            GameObject raiz = hit.transform.root.gameObject;
+            // Pega a unidade real (quem tem a identidade), subindo a hierarquia a partir do colisor
+            IdentidadeUnidade id = hit.GetComponentInParent<IdentidadeUnidade>();
             
+            // Se não tem identidade, ignora (pode ser cenário, chão, etc)
+            if (id == null) continue;
+
+            // Se já processamos essa identidade (outro collider do mesmo tanque), pula
+            if (processados.Contains(id)) continue;
+            processados.Add(id);
+
+            GameObject unidadeObj = id.gameObject;
+
+            // Filtro: Não pegar a si mesmo
+            if (unidadeObj == gameObject) continue;
+
             // ========== FILTRAGEM ANTI-NAVIO (TRIPLA PROTEÇÃO) ==========
             
-            // 1. PROTEÇÃO POR COMPONENTE (Detecta scripts de navio)
-            if (raiz.GetComponent<MovimentoNaval>() != null || 
-                raiz.GetComponent<ControladorNavioVigilante>() != null ||
-                raiz.GetComponent<TransporteAnfibio>() != null)
+            // 1. PROTEÇÃO POR COMPONENTE (Detecta scripts de navio na unidade)
+            // Se tiver qualquer script naval, ignora. Transporte não carrega navio.
+            if (unidadeObj.GetComponent<MovimentoNaval>() != null || 
+                unidadeObj.GetComponent<ControladorNavioVigilante>() != null ||
+                unidadeObj.GetComponent<TransporteAnfibio>() != null)
             {
-                Debug.Log($"🚫 [Transporte] BLOQUEADO por componente naval: {raiz.name}");
                 continue;
             }
 
-            // 2. PROTEÇÃO POR NOME (Fallback se configuração estiver errada)
-            string nomeLower = raiz.name.ToLower();
-            if (nomeLower.Contains("uss") || nomeLower.Contains("corveta") || 
-                nomeLower.Contains("fragata") || nomeLower.Contains("destroyer") ||
-                nomeLower.Contains("navio") || nomeLower.Contains("ship") ||
-                nomeLower.Contains("mako") || nomeLower.Contains("ironclad") ||
-                nomeLower.Contains("liberty") || nomeLower.Contains("leviathan") ||
-                nomeLower.Contains("sovereign"))
+            // 2. PROTEÇÃO POR IDENTIDADE (Time e Tipo)
+            if (id.teamID != 1) 
             {
-                Debug.LogWarning($"⚠️ [Transporte] BLOQUEADO por NOME: {raiz.name} parece ser um navio! Configure TipoUnidade = Naval");
+                // Ignora inimigos ou neutros
                 continue;
             }
 
-            // 3. PROTEÇÃO POR IDENTIDADE
-            IdentidadeUnidade id = raiz.GetComponent<IdentidadeUnidade>();
-            if (id != null && id.teamID == 1)
+            // CRÍTICO: FILTRO DE TIPO - SÓ TERRESTRES E HELIS
+            // Ignora outros navios e construções
+            if (id.tipoUnidade == TipoUnidade.Naval || id.tipoUnidade == TipoUnidade.Estrutura)
             {
-                // CRÍTICO: FILTRO DE TIPO - SÓ TERRESTRES E HELIS
-                // Ignora outros navios e construções
-                if (id.tipoUnidade == TipoUnidade.Naval || id.tipoUnidade == TipoUnidade.Estrutura)
-                {
-                    Debug.Log($"🚫 [Transporte] BLOQUEADO por TipoUnidade: {raiz.name} é {id.tipoUnidade}");
-                    continue;
-                }
+                // Debug.Log($"🚫 [Transporte] Ignorando {unidadeObj.name}: Tipo inválido ({id.tipoUnidade})");
+                continue;
+            }
 
-                // Opcional: Se já estiver embarcado em outro lugar, ignora
-                if (!raiz.activeInHierarchy) continue;
-                
-                // ACEITA APENAS: Infantaria, Veiculo (tanks), Aereo (helis)
-                if (id.tipoUnidade == TipoUnidade.Infantaria || 
-                    id.tipoUnidade == TipoUnidade.Veiculo || 
-                    id.tipoUnidade == TipoUnidade.Aereo)
-                {
-                    if (!unidadesNaFila.Contains(raiz))
-                    {
-                        unidadesNaFila.Add(raiz);
-                        Debug.Log($"✅ [Transporte] Adicionado à fila de embarque: {raiz.name} (Tipo: {id.tipoUnidade})");
-                    }
-                }
+            // 3. PROTEÇÃO POR NOME (Fallback final)
+            string nomeLower = unidadeObj.name.ToLower();
+            if (nomeLower.Contains("uss ") || nomeLower.Contains("navio") || nomeLower.Contains("ship"))
+            {
+                Debug.LogWarning($"⚠️ [Transporte] Ignorando {unidadeObj.name} pelo nome (parece navio).");
+                continue;
+            }
+
+            // Opcional: Se já estiver inativo (embarcado/morto), ignora
+            if (!unidadeObj.activeInHierarchy) continue;
+            
+            // ACEITA APENAS: Infantaria, Veiculo (tanks), Aereo (helis)
+            if (id.tipoUnidade == TipoUnidade.Infantaria || 
+                id.tipoUnidade == TipoUnidade.Veiculo || 
+                id.tipoUnidade == TipoUnidade.Aereo)
+            {
+                unidadesNaFila.Add(unidadeObj);
+                Debug.Log($"✅ [Transporte] Convocando: {unidadeObj.name} (Tipo: {id.tipoUnidade})");
             }
         }
 
+        if (unidadesNaFila.Count == 0)
+        {
+            Debug.LogWarning("[Transporte] Nenhuma unidade válida encontrada nas proximidades para embarcar.");
+        }
+
+        // Processa a fila de embarque UM POR UM
         foreach (GameObject unidade in unidadesNaFila)
         {
-            if (unidade == null) continue;
+            if (unidade == null || !unidade.activeInHierarchy) continue;
             
             // Move para a entrada
             NavMeshAgent nav = unidade.GetComponent<NavMeshAgent>();
-            if (nav != null) { nav.SetDestination(pontoDeEntrada.position); nav.isStopped = false; }
+            if (nav != null && nav.isActiveAndEnabled) 
+            { 
+                 if(nav.isOnNavMesh)
+                 {
+                    nav.SetDestination(pontoDeEntrada.position); 
+                    nav.isStopped = false; 
+                 }
+                 else
+                 {
+                     Debug.LogWarning($"[Transporte] Unidade {unidade.name} tem NavMeshAgent mas não está no NavMesh. Tentando Warp...");
+                     if(nav.Warp(unidade.transform.position))
+                     {
+                         nav.SetDestination(pontoDeEntrada.position);
+                     }
+                 }
+            }
             else
             {
                  // Tenta mover helis por comando
@@ -233,18 +264,23 @@ public class TransporteAnfibio : MonoBehaviour
 
             yield return new WaitForSeconds(0.5f);
             
-            // Espera chegar
+            // Espera chegar (Timeout de 12s para dar tempo)
             float timer = 0f;
-            while (Vector3.Distance(unidade.transform.position, pontoDeEntrada.position) > 10f && timer < 10f)
+            while (unidade != null && Vector3.Distance(unidade.transform.position, pontoDeEntrada.position) > 10f && timer < 12f)
             {
                 timer += Time.deltaTime;
                 yield return null;
             }
 
-            // Suga para dentro
-            unidade.SetActive(false);
-            unidadesGuardadas.Add(unidade);
+            if (unidade != null)
+            {
+                // Suga para dentro
+                unidade.SetActive(false);
+                unidadesGuardadas.Add(unidade);
+            }
         }
+        
+        Debug.Log("[Transporte] Embarque finalizado. Pressione P para fechar a porta.");
     }
 
     IEnumerator RotinaFechar()
@@ -268,7 +304,6 @@ public class TransporteAnfibio : MonoBehaviour
         // 2. Acha Praia
         bool achouPraia = false;
         Vector3 pontoPraia = Vector3.zero;
-        Vector3 posicaoOriginal = transform.position; // Salva posição original
         
         // Raio cast mais agressivo (de cima pra baixo e inclinado)
         for (float i = 15; i < 250; i += 10)
@@ -319,7 +354,6 @@ public class TransporteAnfibio : MonoBehaviour
 
         // 4. Solta TERRESTRES EM POSIÇÕES VÁLIDAS DO NAVMESH
         List<GameObject> paraRemover = new List<GameObject>();
-        int contadorDesembarcados = 0;
         
         foreach (GameObject unidade in unidadesGuardadas)
         {
@@ -371,7 +405,6 @@ public class TransporteAnfibio : MonoBehaviour
                     }
                     
                     paraRemover.Add(unidade);
-                    contadorDesembarcados++;
                     break; // Achou posição válida, sai do loop
                 }
             }

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: USS Liberty Prime
   descricao: Transport aereo e terrestre. Versatil e bem armada.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 89d40556283770c4ca13a3005ecf98dc, type: 3}
   prefabDaUnidade: {fileID: 8070944300659616728, guid: 6388f17d5eddb0f4a9aeb59566970c14, type: 3}
   preco: 2000
   categoria: 1

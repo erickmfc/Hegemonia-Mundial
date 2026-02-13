@@ -65,6 +65,21 @@ public class SistemaDeDanos : MonoBehaviour
         }
     }
 
+    // --- MÉTODOS DE REPARO (USADO PELO PIER DE MANUTENÇÃO) ---
+    public void Reparar(float quantidade)
+    {
+        if (morreu) return;
+
+        vidaAtual = Mathf.Min(vidaAtual + quantidade, vidaMaxima);
+        float porcentagem = vidaAtual / vidaMaxima;
+
+        // Atualiza visual (Remove fumaça se estiver bom)
+        if (!unidadeBiologica)
+        {
+            GerenciarEstadosDano(porcentagem);
+        }
+    }
+
     void GerenciarEstadosDano(float porcentagem)
     {
         // 🟢 Fase 1: Operacional (> 70%)

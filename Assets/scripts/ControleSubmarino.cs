@@ -63,10 +63,22 @@ public class ControleSubmarino : MonoBehaviour
         
         if (rastroAgua == null) rastroAgua = GetComponentInChildren<TrailRenderer>();
 
-        // Começa submerso
-        Vector3 pos = transform.position;
-        pos.y = profundidadeSubmersao;
-        transform.position = pos;
+        // Lógica de Inicialização Inteligente (Compatível com Estaleiro)
+        // Se nascer perto da superfície (Y > -5), começa como superfície.
+        // Se nascer fundo, começa submerso.
+        if (transform.position.y > -5f)
+        {
+            estaSubmerso = false;
+            // Garante Y exato da superfície se quiser, ou deixa onde o estaleiro botou
+            // Vector3 pos = transform.position; pos.y = alturaSuperificie; transform.position = pos;
+        }
+        else
+        {
+            estaSubmerso = true;
+            Vector3 pos = transform.position;
+            pos.y = profundidadeSubmersao;
+            transform.position = pos;
+        }
         
         // Todos os mísseis disponíveis
         for (int i = 0; i < 22; i++)

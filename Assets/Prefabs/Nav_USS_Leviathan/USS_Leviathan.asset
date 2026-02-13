@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: USS Leviathan
   descricao: Submarino nuclear estrategico. Capacidade de lancamento de misseis.
-  icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 0}
+  icone: {fileID: 21300000, guid: f249ab0e2a2ec344bb92da4b29567503, type: 3}
+  prefabDaUnidade: {fileID: 790024337851436606, guid: 4c78e761a25b3c44794b5411a4314ec2, type: 3}
   preco: 4500
   categoria: 1
+  scriptsDeComando: []

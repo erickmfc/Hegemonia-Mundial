@@ -49,7 +49,7 @@ GameObject:
   - component: {fileID: 3881439562138129166}
   m_Layer: 0
   m_Name: USS Leviathan
-  m_TagString: Untagged
+  m_TagString: Navio
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -82,7 +82,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fcbb47f473cee9f4e9ad3e3158f38319, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleSubmarino
-  profundidadeSubmersao: -5
+  profundidadeSubmersao: -1
   alturaSuperificie: 0
   velocidadeMovimento: 2
   locaisDisparo:
@@ -127,7 +127,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 1
-  m_Speed: 4
+  m_Speed: 11
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 120
@@ -209,8 +209,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 350
-  vidaAtual: 350
+  vidaMaxima: 800
+  vidaAtual: 800
   unidadeBiologica: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
@@ -228,8 +228,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34d222729e51a6c47b355ad5c18a8caa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OtimizadorLOD
-  distanciaParaSimplificar: 100
-  distanciaSsumir: 500
+  distanciaParaSimplificar: 300
+  distanciaSsumir: 700
   detalhesPequenos: []
   scriptsDecorativos: []
 --- !u!1 &932185402210133216

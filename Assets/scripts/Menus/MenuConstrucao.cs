@@ -347,8 +347,9 @@ public class MenuConstrucao : MonoBehaviour
 
         // Tornar o card INTEIRO clicável para construção
         Button btnCard = cardObj.AddComponent<Button>();
-        btnCard.transition = Selectable.Transition.None; // Ou ColorTint se quiser feedback
-        btnCard.onClick.AddListener(() => ConstruirItem(item));
+        btnCard.transition = Selectable.Transition.None; 
+        // Passa a imagem de fundo para o feedback de compra
+        btnCard.onClick.AddListener(() => ConstruirItem(item, imgBg));
         
         // Layout Vertical do Card
         VerticalLayoutGroup layoutCard = cardObj.AddComponent<VerticalLayoutGroup>();
@@ -489,7 +490,7 @@ public class MenuConstrucao : MonoBehaviour
         Text refTextoQtd = tQtd;
         btnMenos.GetComponent<Button>().onClick.AddListener(() => AlterarQuantidade(item.nomeItem, -1, refTextoQtd));
         btnMais.GetComponent<Button>().onClick.AddListener(() => AlterarQuantidade(item.nomeItem, 1, refTextoQtd));
-        btnComp.onClick.AddListener(() => ConstruirItem(item));
+        btnComp.onClick.AddListener(() => ConstruirItem(item, imgBg));
     }
 
     GameObject CriarBotaoSimples(string texto, Transform pai, Color corTexto)
@@ -539,11 +540,44 @@ public class MenuConstrucao : MonoBehaviour
         return obj;
     }
 
-    void ConstruirItem(DadosConstrucao item)
+    void ConstruirItem(DadosConstrucao item, Image cardImage = null)
     {
         if (gerente == null) gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
         if (gerente == null) return;
         
+        // --- 1. VERIFICAÇÃO PRELIMINAR DE DINHEIRO (Para Feedback Visual) ---
+        int qtd = quantidadesPorItem.ContainsKey(item.nomeItem) ? quantidadesPorItem[item.nomeItem] : 1;
+        int custoTotal = item.preco * qtd;
+        
+        // Se for prédio (qtd sempre 1)
+        if (!item.Equals(null) && (item.categoria == DadosConstrucao.CategoriaItem.Infraestrutura || item.categoria == DadosConstrucao.CategoriaItem.Energia || item.categoria == DadosConstrucao.CategoriaItem.Urbana))
+        {
+             custoTotal = item.preco;
+        }
+
+        bool temDinheiro = false;
+        if (GerenciadorRecursos.Instancia != null)
+        {
+            if (GerenciadorRecursos.Instancia.dinheiro >= custoTotal) temDinheiro = true;
+        }
+        else
+        {
+            // Fallback para GerenteDeJogo antigo
+            if (gerente.dinheiroAtual >= custoTotal) temDinheiro = true;
+        }
+
+        if (temDinheiro && cardImage != null)
+        {
+            StartCoroutine(FlashCard(cardImage));
+        }
+        else if (!temDinheiro && cardImage != null)
+        {
+            // Opçãonal: Flash Vermelho de erro
+            StartCoroutine(FlashCardErro(cardImage));
+            // Opcional: Se quiser bloquear a compra aqui... mas o gerente já bloqueia e mostra erro. 
+            // Vamos deixar seguir para o gerente mostrar o log de erro se quiser.
+        }
+
         if (item.prefabDaUnidade == null)
         {
             Debug.LogError($"[MenuConstrucao] Prefab '{item.nomeItem}' faltando!");
@@ -558,14 +592,51 @@ public class MenuConstrucao : MonoBehaviour
 
         if(item.categoria == DadosConstrucao.CategoriaItem.Marinha)
         {
-            if (!gerente.TentarGastarDinheiro(item.preco)) return; 
-            
-            PierMarinha[] estaleiros = Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None);
-            if(estaleiros.Length > 0)
+            // VERIFICAÇÃO CRÍTICA: Só mandar para o Estaleiro se for REALMENTE um navio (unidade)
+            // Se não tiver IdentidadeNaval, assumimos que é o PREDIO do Estaleiro/Pier, 
+            // então deixamos passar para o Construtor (fantasma) lá embaixo.
+            // EXTRA GUARD: O pré-fabricado do Estaleiro NÃO deve ser confundido com um navio!
+            bool ehPredioNaval = item.nomeItem.ToLower().Contains("estaleiro") || item.nomeItem.ToLower().Contains("pier") || item.nomeItem.ToLower().Contains("plataforma");
+
+            // Se for categoria Marinha e NÃO for um prédio conhecido, tentamos construir no Estaleiro
+            // Isso cobre navios que talvez estejam sem o script IdentidadeNaval na raiz
+            bool pareceSerNavio = item.prefabDaUnidade.GetComponent<IdentidadeNaval>() != null 
+                                || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
+                                || item.prefabDaUnidade.GetComponent<UnityEngine.AI.NavMeshAgent>() != null;
+
+            if (!ehPredioNaval && pareceSerNavio)
             {
-                estaleiros[0].ConstruirNavio(item.prefabDaUnidade);
-                AlternarMenu(false);
-                return;
+                // Tenta achar um Estaleiro com vaga
+                Estaleiro[] estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
+                Estaleiro estaleiroDisponivel = estaleiros.FirstOrDefault(e => e.TemVaga);
+
+                if (estaleiroDisponivel != null)
+                {
+                     if (!gerente.TentarGastarDinheiro(item.preco)) return; 
+
+                    Debug.Log("[MenuConstrucao] Construindo no Estaleiro: " + estaleiroDisponivel.name);
+                    estaleiroDisponivel.ConstruirUnidade(item.prefabDaUnidade);
+                    AlternarMenu(false);
+                    return;
+                }
+                
+                // Se não achou estaleiro com vaga, tenta Pier (sem gastar ainda, pier gasta dentro dele? Não, aqui gasta antes)
+                // O código original do Pier gastava antes? 
+                // Original: if (!gerente.TentarGastarDinheiro(item.preco)) return; ... estaleiroNaval.Construir...
+                
+                // Vamos manter a lógica: Se não achou Estaleiro Vago, tenta Pier.
+
+
+                // Fallback para PierMarinha antigo se não achar o novo ou se Estaleiros estiverem cheios
+                PierMarinha[] piers = Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None);
+                if(piers.Length > 0)
+                {
+                    if (!gerente.TentarGastarDinheiro(item.preco)) return;
+
+                    piers[0].ConstruirNavio(item.prefabDaUnidade);
+                    AlternarMenu(false);
+                    return;
+                }
             }
         }
 
@@ -595,8 +666,62 @@ public class MenuConstrucao : MonoBehaviour
         Construtor construtor = Object.FindFirstObjectByType<Construtor>();
         if (construtor != null)
         {
-            construtor.SelecionarParaConstruir(item.prefabDaUnidade);
+            // CORREÇÃO: Passamos o preço para permitir reembolso se cancelar!
+            construtor.SelecionarParaConstruir(item.prefabDaUnidade, item.preco);
             AlternarMenu(false);
         }
+    }
+
+    // --- ANIMAÇÕES DE FEEDBACK ---
+    IEnumerator FlashCard(Image img)
+    {
+        if (img == null) yield break;
+        
+        Color corOriginal = corCardBase;
+        Color corSucesso = new Color(0.2f, 0.8f, 0.2f, 0.9f); // Verde brilhante
+
+        float tempo = 0;
+        // Ida (Verde)
+        while(tempo < 0.15f)
+        {
+            tempo += Time.deltaTime;
+            if(img != null) img.color = Color.Lerp(corOriginal, corSucesso, tempo / 0.15f);
+            yield return null;
+        }
+
+        // Volta (Original)
+        tempo = 0;
+        while(tempo < 0.4f)
+        {
+            tempo += Time.deltaTime;
+            if(img != null) img.color = Color.Lerp(corSucesso, corOriginal, tempo / 0.4f);
+            yield return null;
+        }
+        
+        if(img != null) img.color = corOriginal;
+    }
+
+    IEnumerator FlashCardErro(Image img)
+    {
+        if (img == null) yield break;
+        
+        Color corOriginal = corCardBase;
+        Color corErro = new Color(0.8f, 0.2f, 0.2f, 0.9f); // Vermelho
+
+        float tempo = 0;
+        while(tempo < 0.1f)
+        {
+            tempo += Time.deltaTime;
+            if(img != null) img.color = Color.Lerp(corOriginal, corErro, tempo / 0.1f);
+            yield return null;
+        }
+        tempo = 0;
+        while(tempo < 0.3f)
+        {
+            tempo += Time.deltaTime;
+            if(img != null) img.color = Color.Lerp(corErro, corOriginal, tempo / 0.3f);
+            yield return null;
+        }
+        if(img != null) img.color = corOriginal;
     }
 }

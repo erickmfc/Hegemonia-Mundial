@@ -561,6 +561,9 @@ MonoBehaviour:
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  modoOperacao: 0
+  somMotorParado: {fileID: 0}
+  somMotorMovimento: {fileID: 0}
 --- !u!1 &7779056851268577667
 GameObject:
   m_ObjectHideFlags: 0
@@ -608,7 +611,6 @@ GameObject:
   - component: {fileID: 5921213788625917556}
   - component: {fileID: 9035103337520596398}
   - component: {fileID: 5685576029661716178}
-  - component: {fileID: 7178980987908963790}
   - component: {fileID: 4532009745570917375}
   m_Layer: 0
   m_Name: USS Liberty Prime
@@ -751,7 +753,7 @@ MonoBehaviour:
   anguloFechado: 0
   anguloAberto: 93.37
   velocidadePorta: 4
-  raioDeCaptura: 70
+  raioDeCaptura: 100
   unidadesGuardadas: []
   unidadesNaFila: []
   prefabMenuCarga: {fileID: 0}
@@ -778,25 +780,6 @@ MonoBehaviour:
   mostrarDebugVisual: 1
   corSetaFrente: {r: 0, g: 1, b: 0, a: 1}
   corSetaRe: {r: 1, g: 0, b: 0, a: 1}
---- !u!114 &7178980987908963790
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8070944300659616728}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 2300
-  vidaAtual: 2300
-  unidadeBiologica: 0
-  prefabDestrocos: {fileID: 0}
-  somExplosaoExclusivo: {fileID: 0}
-  tamanhoDoEfeito: 8.5
-  ajusteDePosicao: {x: 0, y: 0, z: 0}
 --- !u!114 &4532009745570917375
 MonoBehaviour:
   m_ObjectHideFlags: 0

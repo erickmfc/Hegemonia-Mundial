@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: TAnk_South
   descricao: Tank pesado e rigido, forte e armado
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: de80d984a7621b24fa5f6f5f4a63b1bf, type: 3}
   prefabDaUnidade: {fileID: 8362449112992261118, guid: f7b14804196071e41b50717bd952653a, type: 3}
   preco: 500
   categoria: 0

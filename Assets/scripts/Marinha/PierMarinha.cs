@@ -20,6 +20,10 @@ public class PierMarinha : MonoBehaviour
         [Header("Estado (Apenas Leitura)")]
         public IdentidadeNaval navioOcupante;
 
+        // Controle de Manutenção Interno
+        [System.NonSerialized] public float timerRecarga = 0f;
+        [System.NonSerialized] public bool atracagemCompleta = false; 
+
         public bool EstaLivre()
         {
             if (navioOcupante == null) return true;
@@ -35,11 +39,49 @@ public class PierMarinha : MonoBehaviour
     public List<VagaDeAtracagem> vagasDisponiveis = new List<VagaDeAtracagem>();
 
     [Header("Configurações Gerais")]
-    public float raioDeBusca = 1500f; // Aumentei para pegar navios mais longe
-    public float velocidadeManobra = 3.5f; // Velocidade lenta para entrar na vaga
+    public float raioDeBusca = 1500f; 
+    public float velocidadeManobra = 3.5f;
 
+    [Header("Manutenção e Reparo")]
+    public float reparoPorSegundo = 10f; // Cura 10HP/s
+    public float intervaloRecargaMissel = 1.0f; // 1 Míssil por segundo
+    
     [Header("Configuração de Saída")]
     public Transform[] pontosDeSaida;
+
+    void Update()
+    {
+        ProcessarManutencao();
+    }
+
+    void ProcessarManutencao()
+    {
+        foreach (var vaga in vagasDisponiveis)
+        {
+            // Lógica de reparo funciona se já atracou
+            if (vaga.navioOcupante != null && vaga.atracagemCompleta)
+            {
+                // 1. REPARO DE VIDA
+                SistemaDeDanos vida = vaga.navioOcupante.GetComponent<SistemaDeDanos>();
+                if (vida != null && vida.vidaAtual < vida.vidaMaxima)
+                {
+                    vida.Reparar(reparoPorSegundo * Time.deltaTime);
+                }
+
+                // 2. RECARGA DE MÍSSEIS
+                LancadorNaval lancador = vaga.navioOcupante.GetComponentInChildren<LancadorNaval>();
+                if (lancador != null && lancador.municaoTotal < lancador.municaoMaxima)
+                {
+                    vaga.timerRecarga += Time.deltaTime;
+                    if (vaga.timerRecarga >= intervaloRecargaMissel)
+                    {
+                        lancador.Recarregar(1);
+                        vaga.timerRecarga = 0f;
+                    }
+                }
+            }
+        }
+    }
 
     void OnMouseDown()
     {
@@ -64,8 +106,6 @@ public class PierMarinha : MonoBehaviour
                     Gizmos.color = Color.cyan;
                     Gizmos.DrawWireSphere(vaga.pontoDeManobra.position, 2f);
                     Gizmos.DrawLine(vaga.pontoDeManobra.position, vaga.pontoDeAtracagem.position);
-                    
-                    // Seta indicando frente
                     Gizmos.color = Color.blue;
                     Gizmos.DrawRay(vaga.pontoDeManobra.position, vaga.pontoDeManobra.forward * 10f);
                 }
@@ -75,7 +115,6 @@ public class PierMarinha : MonoBehaviour
 
     public void AtribuirVaga(VagaDeAtracagem vaga, IdentidadeNaval navio)
     {
-        // 🔹 Validação de Segurança antes de ocupar a vaga
         if (navio == null) return;
         
         var agent = navio.GetComponent<NavMeshAgent>();
@@ -88,90 +127,109 @@ public class PierMarinha : MonoBehaviour
         }
 
         vaga.navioOcupante = navio;
-        
-        // Vamos conduzir o navio manualmente via Coroutine
+        vaga.atracagemCompleta = false; 
         StartCoroutine(RotinaDeAtracagem(vaga, navio));
     }
 
     IEnumerator RotinaDeAtracagem(VagaDeAtracagem vaga, IdentidadeNaval navio)
     {
         NavMeshAgent agent = navio.GetComponent<NavMeshAgent>();
+        ControleNavioRealista controleFisico = navio.GetComponent<ControleNavioRealista>();
+        
         if(agent == null) yield break;
 
-        // Avisa o navio que ele está "ocupado" atracando
-        // Usamos ReceberOrdemDeAtracagem apenas para setar flags internas se houver, 
-        // mas vamos controlar o destino aqui.
+        float distanciaOriginal = 15f;
+        if (controleFisico != null)
+        {
+            distanciaOriginal = controleFisico.distanciaChegada;
+            // Permite chegar BEM perto para evitar "sliding" longo
+            controleFisico.distanciaChegada = 2.0f; 
+            controleFisico.modoOperacao = ControleNavioRealista.ModoOperacao.Ativo; 
+        }
+
         navio.ReceberOrdemDeAtracagem(vaga.pontoDeManobra != null ? vaga.pontoDeManobra : vaga.pontoDeAtracagem);
 
-        // ---------------------------------------------------------
-        // FASE 1: IR PARA O PONTO DE MANOBRA (WAYPOINT)
-        // ---------------------------------------------------------
+        // FASE 1: NAVEGAÇÃO AUTÔNOMA (NAVMESH)
         if (vaga.pontoDeManobra != null)
         {
-            Debug.Log($"[Pier] {navio.nomeDoNavio} indo para ponto de MANOBRA...");
-            agent.enabled = true;
-            agent.isStopped = false;
-            agent.SetDestination(vaga.pontoDeManobra.position);
-
-            // Espera chegar
-            while (agent.pathPending || agent.remainingDistance > 5f)
+            if (agent.isActiveAndEnabled)
             {
+                agent.isStopped = false;
+                agent.SetDestination(vaga.pontoDeManobra.position);
+            }
+
+            // Espera chegar mais perto (2.5m) para suavizar a transição
+            float timerChegada = 0f;
+            while (agent.isActiveAndEnabled && navio != null && (agent.pathPending || agent.remainingDistance > 2.5f))
+            {
+                timerChegada += Time.deltaTime;
+                if (timerChegada > 60f) break; // Timeout generoso
                 yield return null;
             }
 
-            // Chegou no waypoint. Agora, alinhar rotação com o waypoint (ficar de frente pro pier)
-            Debug.Log($"[Pier] {navio.nomeDoNavio} alinhando para entrada...");
-            agent.isStopped = true; // Para o NavMesh temporariamente
-            agent.enabled = false; // Desliga Agent para rotação manual suave
+            // Fase manual: Desliga física
+            if(controleFisico != null) controleFisico.enabled = false;
 
+            if(agent.isActiveAndEnabled) 
+            {
+                agent.isStopped = true; 
+                agent.enabled = false; 
+            }
+
+            // ALINHAMENTO IMPRECISO (Mantém dinâmico)
             Quaternion rotacaoAlvo = vaga.pontoDeManobra.rotation;
-            
-            // Rotaciona suavemente até alinhar
             float tempoGiro = 0f;
-            while (Quaternion.Angle(navio.transform.rotation, rotacaoAlvo) > 1f && tempoGiro < 5f)
+            // Aumentei pra 20s para dar tempo de virar navios pesados
+            while (Quaternion.Angle(navio.transform.rotation, rotacaoAlvo) > 1f && tempoGiro < 20f)
             {
                 navio.transform.rotation = Quaternion.RotateTowards(navio.transform.rotation, rotacaoAlvo, 40f * Time.deltaTime);
-                // Leve nudge pra frente pra não girar estático
                 navio.transform.position = Vector3.MoveTowards(navio.transform.position, vaga.pontoDeManobra.position, 2f * Time.deltaTime);
                 tempoGiro += Time.deltaTime;
                 yield return null;
             }
         }
+        else
+        {
+            if(controleFisico != null) controleFisico.enabled = false;
+        }
 
-        // ---------------------------------------------------------
-        // FASE 2: ENTRAR NA VAGA FINAL (Reta Final)
-        // ---------------------------------------------------------
-        Debug.Log($"[Pier] {navio.nomeDoNavio} entrando na vaga final...");
-        
-        // Garante que agent está desligado para fazermos movimento linear preciso (sem pathfinding batendo no pier)
-        if(agent.enabled) agent.enabled = false;
+        // FASE 2: ENTRADA FINAL NA VAGA
+        if(agent.isActiveAndEnabled) agent.enabled = false;
+        if(controleFisico != null) controleFisico.enabled = false;
 
         Vector3 posFinal = vaga.pontoDeAtracagem.position;
         Quaternion rotFinal = vaga.pontoDeAtracagem.rotation;
 
-        while (Vector3.Distance(navio.transform.position, posFinal) > 0.1f || Quaternion.Angle(navio.transform.rotation, rotFinal) > 1f)
+        float timerEntrada = 0f;
+        // Timeout longo (60s) para não teleportar se estiver lento
+        while ((Vector3.Distance(navio.transform.position, posFinal) > 0.05f || Quaternion.Angle(navio.transform.rotation, rotFinal) > 0.5f) && timerEntrada < 60f)
         {
             navio.transform.position = Vector3.MoveTowards(navio.transform.position, posFinal, velocidadeManobra * Time.deltaTime);
-            navio.transform.rotation = Quaternion.RotateTowards(navio.transform.rotation, rotFinal, 10f * Time.deltaTime);
+            navio.transform.rotation = Quaternion.RotateTowards(navio.transform.rotation, rotFinal, 15f * Time.deltaTime);
+            timerEntrada += Time.deltaTime;
             yield return null;
         }
 
-        // ---------------------------------------------------------
-        // FINALIZADO
-        // ---------------------------------------------------------
+        // Snap final imperceptível
         navio.transform.position = posFinal;
         navio.transform.rotation = rotFinal;
 
-        // Reativa agent parado para manter colisão/referência
-        agent.enabled = true;
-        agent.Warp(posFinal);
-        agent.isStopped = true;
+        if (agent != null)
+        {
+            agent.enabled = true;
+            agent.Warp(posFinal);
+            agent.isStopped = true;
+        }
 
+        if (controleFisico != null)
+        {
+            controleFisico.enabled = true; 
+            controleFisico.distanciaChegada = distanciaOriginal;
+        }
+
+        vaga.atracagemCompleta = true; 
         Debug.Log($"[Pier] {navio.nomeDoNavio} ATRACADO 100%.");
     }
-
-
-    // --- SISTEMA DE SAÍDA ---
 
     public void LiberarTodosNavios()
     {
@@ -184,46 +242,26 @@ public class PierMarinha : MonoBehaviour
     public void LiberarVaga(VagaDeAtracagem vaga, Transform saidaDestino = null)
     {
         if (vaga.navioOcupante == null) return;
-
         IdentidadeNaval navio = vaga.navioOcupante;
-        
-        // Se não foi passado destino, calcula o mais próximo automático
         if (saidaDestino == null) saidaDestino = GetSaidaMaisProxima(navio.transform.position);
 
-        if (saidaDestino != null)
-        {
-            // O próprio navio lida com a ré usando seu script IdentidadeNaval
-            navio.SairDaDoca(saidaDestino.position);
-            Debug.Log($"[Pier] Liberando {navio.nomeDoNavio} para {saidaDestino.name}");
-        }
-        else
-        {
-            // Fallback: Ré genérica e tchau
-            Vector3 saidaGenerica = navio.transform.position - (navio.transform.forward * 50f);
-            navio.SairDaDoca(saidaGenerica); 
-        }
+        if (saidaDestino != null) navio.SairDaDoca(saidaDestino.position);
+        else navio.SairDaDoca(navio.transform.position - (navio.transform.forward * 50f));
 
         vaga.navioOcupante = null; 
+        vaga.atracagemCompleta = false;
     }
-
-    // --- UTILS ---
 
     Transform GetSaidaMaisProxima(Vector3 posicaoNavio)
     {
         if (pontosDeSaida == null || pontosDeSaida.Length == 0) return null;
-
         Transform melhorSaida = null;
         float menorDistancia = float.MaxValue;
-
         foreach (Transform saida in pontosDeSaida)
         {
             if (saida == null) continue;
             float dist = Vector3.Distance(posicaoNavio, saida.position);
-            if (dist < menorDistancia)
-            {
-                menorDistancia = dist;
-                melhorSaida = saida;
-            }
+            if (dist < menorDistancia) { menorDistancia = dist; melhorSaida = saida; }
         }
         return melhorSaida;
     }
@@ -231,16 +269,12 @@ public class PierMarinha : MonoBehaviour
     public void ChamarNaviosParaVagasLivres()
     {
         IdentidadeNaval[] todosNavios = FindObjectsOfType<IdentidadeNaval>();
-
         foreach (var vaga in vagasDisponiveis)
         {
             if (vaga.EstaLivre())
             {
                 IdentidadeNaval melhorCandidato = FindBestShipForSpot(vaga, todosNavios);
-                if (melhorCandidato != null)
-                {
-                    AtribuirVaga(vaga, melhorCandidato);
-                }
+                if (melhorCandidato != null) AtribuirVaga(vaga, melhorCandidato);
             }
         }
     }
@@ -249,61 +283,90 @@ public class PierMarinha : MonoBehaviour
     {
         IdentidadeNaval candidato = null;
         float menorDistancia = raioDeBusca;
-
         foreach (var navio in navios)
         {
             if (navio.categoriaNavio == vaga.categoriaAceita && !navio.EstaAtracado)
             {
-                // Verifica distância
                 float dist = Vector3.Distance(transform.position, navio.transform.position);
-                if (dist < menorDistancia)
-                {
-                    menorDistancia = dist;
-                    candidato = navio;
-                }
+                if (dist < menorDistancia) { menorDistancia = dist; candidato = navio; }
             }
         }
         return candidato;
     }
 
-    // --- CONSTRUÇÃO DE NAVIOS (API PARA MENU) ---
     public void ConstruirNavio(GameObject prefabNavio)
     {
         if (prefabNavio == null) return;
-
-        // 1. Onde ele nasce? (Usa a saída como spawn point)
         Transform pontoSpawn = transform;
         if (pontosDeSaida != null && pontosDeSaida.Length > 0) pontoSpawn = pontosDeSaida[0];
-
-        // 2. Cria o Navio
         GameObject novoNavio = Instantiate(prefabNavio, pontoSpawn.position, pontoSpawn.rotation);
-        
-        Debug.Log($"[Pier] Construiu novo navio: {novoNavio.name}");
-
-        // 3. Tenta já colocar numa vaga (se disponível) ou mandar sair
         IdentidadeNaval id = novoNavio.GetComponent<IdentidadeNaval>();
         if (id != null)
         {
-            // Procura uma vaga livre do tipo certo
-            bool vagaEncontrada = false;
-            foreach (var vaga in vagasDisponiveis)
-            {
-                if (vaga.EstaLivre() && vaga.categoriaAceita == id.categoriaNavio)
-                {
-                    AtribuirVaga(vaga, id);
-                    vagaEncontrada = true;
-                    break;
-                }
-            }
+            if(pontosDeSaida != null && pontosDeSaida.Length > 1) id.MoverPara(pontosDeSaida[1].position); 
+            else id.MoverPara(transform.position + transform.forward * 100f);
+        }
+    }
 
-            if (!vagaEncontrada)
+    // --- INTERFACE VISUAL DE REPARO ---
+    void OnGUI()
+    {
+        if (Camera.main == null) return;
+
+        foreach (var vaga in vagasDisponiveis)
+        {
+            // MOSTRA SEMPRE QUE ATRACADO (Mesmo 100%)
+            if (vaga.navioOcupante != null && vaga.atracagemCompleta)
             {
-                Debug.Log("[Pier] Sem vagas. Navio enviado para saída.");
-                // Se não tem vaga, manda sair para não entupir o spawn
-                if(pontosDeSaida.Length > 1) 
-                    id.MoverPara(pontosDeSaida[1].position); // Vai para o segundo ponto (mar aberto)
-                else
-                    id.MoverPara(transform.position + transform.forward * 100f);
+                // Pega posição do navio na tela
+                Vector3 posMundo = vaga.navioOcupante.transform.position + Vector3.up * 8f; 
+                Vector3 screenPos = Camera.main.WorldToScreenPoint(posMundo);
+                if (screenPos.z < 0) continue;
+
+                float y = Screen.height - screenPos.y - 120f; 
+
+                float pctVida = 1f;
+                int municao = 0, munMax = 0;
+
+                SistemaDeDanos vida = vaga.navioOcupante.GetComponent<SistemaDeDanos>();
+                if (vida != null) pctVida = vida.vidaAtual / vida.vidaMaxima;
+
+                LancadorNaval lancador = vaga.navioOcupante.GetComponentInChildren<LancadorNaval>();
+                if (lancador != null) { municao = lancador.municaoTotal; munMax = lancador.municaoMaxima; }
+
+                float boxWidth = 200f;
+                float boxHeight = (munMax > 0) ? 80f : 50f;
+                Rect boxRect = new Rect(screenPos.x - boxWidth/2, y, boxWidth, boxHeight);
+                
+                Color oldColor = GUI.color;
+                GUI.color = new Color(0, 0, 0, 0.6f); 
+                GUI.DrawTexture(boxRect, Texture2D.whiteTexture, ScaleMode.StretchToFill);
+                GUI.color = oldColor;
+
+                GUIStyle styleHeader = new GUIStyle(GUI.skin.label);
+                styleHeader.alignment = TextAnchor.MiddleCenter;
+                styleHeader.fontStyle = FontStyle.Bold;
+                styleHeader.normal.textColor = Color.white;
+                styleHeader.fontSize = 12;
+
+                GUI.Label(new Rect(screenPos.x - 100, y + 5, 200, 20), "MANUTENÇÃO NAVAL", styleHeader);
+
+                GUIStyle styleStatus = new GUIStyle(GUI.skin.label);
+                styleStatus.alignment = TextAnchor.MiddleCenter;
+                styleStatus.fontStyle = FontStyle.Bold;
+                styleStatus.fontSize = 14; 
+
+                string txtVida = $"ESTRUTURA: {pctVida:P0}";
+                styleStatus.normal.textColor = Color.Lerp(Color.red, Color.green, pctVida);
+                GUI.Label(new Rect(screenPos.x - 100, y + 25, 200, 20), txtVida, styleStatus);
+
+                if (munMax > 0)
+                {
+                    string txtMun = $"MÍSSEIS: {municao}/{munMax}";
+                    float pctMun = (float)municao / munMax;
+                    styleStatus.normal.textColor = Color.Lerp(Color.yellow, Color.cyan, pctMun);
+                    GUI.Label(new Rect(screenPos.x - 100, y + 50, 200, 20), txtMun, styleStatus);
+                }
             }
         }
     }

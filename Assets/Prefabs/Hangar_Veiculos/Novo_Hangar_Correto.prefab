@@ -73,9 +73,11 @@ GameObject:
   - component: {fileID: 3424240349914242467}
   - component: {fileID: 3975915112393078087}
   - component: {fileID: 1024421754300359706}
+  - component: {fileID: 6463328205391421706}
+  - component: {fileID: 2406212096000650422}
   m_Layer: 0
   m_Name: Novo_Hangar_Correto
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -124,9 +126,44 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a8c35120ecd36f4381e941b70a2d508, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Fabrica
-  ehQuartel: 1
+  ehQuartel: 0
   pontoNascimento: {fileID: 1905925371578314754}
   pontoSaida: {fileID: 6585133962103735973}
+--- !u!114 &6463328205391421706
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7213140222438100777}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 200
+  vidaAtual: 200
+  unidadeBiologica: 0
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 3.9
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
+--- !u!114 &2406212096000650422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7213140222438100777}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 4
 --- !u!1001 &53148735877473895
 PrefabInstance:
   m_ObjectHideFlags: 0

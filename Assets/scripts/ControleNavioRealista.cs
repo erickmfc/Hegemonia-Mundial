@@ -30,11 +30,29 @@ public class ControleNavioRealista : MonoBehaviour
     [Tooltip("Distância para considerar que chegou.")]
     public float distanciaChegada = 15.0f;
 
+    [Header("Submarino / Profundidade")]
+    [Tooltip("Use valores negativos para submarinos (Ex: -5). Navios de superfície = 0.")]
+    public float profundidadeVisual = 0f;
+
     [Header("Referências Visuais")]
     public ParticleSystem bigodeiraProa; // Espuma na frente
     public TrailRenderer rastroEsteira;  // Rastro longo
     public ParticleSystem turbulenciaPopa; // Cavitação atrás
     public Transform modelo3D; // O casco visual para rotacionar
+
+    [Header("Áudio e Energia")]
+    public ModoOperacao modoOperacao = ModoOperacao.Ativo;
+    public AudioClip somMotorParado;
+    public AudioClip somMotorMovimento;
+    private AudioSource fonteAudio;
+    private float tempoInatividade = 0f;
+    private bool estaDesligado = false;
+
+    public enum ModoOperacao
+    {
+        Ativo,   // Sempre ligado
+        Passivo  // Desliga após 20s parado
+    }
 
     // Estado Interno (Simulação)
     private NavMeshAgent agente;
@@ -50,12 +68,19 @@ public class ControleNavioRealista : MonoBehaviour
     private float offsetOnda;
     private Quaternion rotacaoInicialModelo;
 
-    void Start()
+    void Awake()
     {
         agente = GetComponent<NavMeshAgent>();
-        agente.updatePosition = false; // Nós controlamos a posição (Soft-Sim)
-        agente.updateRotation = false; // Nós controlamos a rotação (Physics)
-        agente.acceleration = 9999; // Agente "NavMesh" instantâneo, nós seguimos ele
+        if(agente != null)
+        {
+            agente.updatePosition = false; // Nós controlamos a posição (Soft-Sim)
+            agente.updateRotation = false; // Nós controlamos a rotação (Physics)
+            agente.acceleration = 9999; // Agente "NavMesh" instantâneo, nós seguimos ele
+        }
+        else
+        {
+            Debug.LogError("[ControleNavioRealista] NavMeshAgent não encontrado!");
+        }
         
         offsetOnda = Random.Range(0f, 100f);
 
@@ -65,6 +90,15 @@ public class ControleNavioRealista : MonoBehaviour
         if (modelo3D != null)
             rotacaoInicialModelo = modelo3D.localRotation;
 
+        // Configuração de Áudio
+        fonteAudio = GetComponent<AudioSource>();
+        if (fonteAudio == null)
+            fonteAudio = gameObject.AddComponent<AudioSource>();
+            
+        fonteAudio.loop = true;
+        fonteAudio.spatialBlend = 1.0f; // 3D Sound
+        fonteAudio.playOnAwake = false;
+
         // Garante que os efeitos começam desligados
         if(bigodeiraProa) bigodeiraProa.Stop();
         if(turbulenciaPopa) turbulenciaPopa.Stop();
@@ -72,6 +106,11 @@ public class ControleNavioRealista : MonoBehaviour
 
     void Update()
     {
+        if (agente == null) return;
+        
+        // 0. VERIFICAÇÃO DE ATIVIDADE
+        VerificarInatividade();
+        
         // 1. INPUT (IA ou Player via NavMesh)
         CalcularInputNavegacao();
 
@@ -83,6 +122,30 @@ public class ControleNavioRealista : MonoBehaviour
 
         // 4. VISUAIS
         AtualizarEfeitosVisuais();
+
+        // 5. AUDIO
+        AtualizarAudio();
+    }
+
+    void VerificarInatividade()
+    {
+        // Se tem destino ou velocidade considerável (ou input de potencia), está ativo
+        // Consideramos "Função" como ter um destino ou estar se movendo por propulsão
+        if (temDestino || Mathf.Abs(potenciaAtual) > 0.05f || velocidadeVetorial.magnitude > 0.5f)
+        {
+            tempoInatividade = 0f;
+            if (estaDesligado) estaDesligado = false; // Acorda instantaneamente se tiver atividade
+        }
+        else
+        {
+            tempoInatividade += Time.deltaTime;
+        }
+
+        // Regra de Desligamento no Modo Passivo
+        if (modoOperacao == ModoOperacao.Passivo && tempoInatividade > 20.0f)
+        {
+            estaDesligado = true;
+        }
     }
 
     void CalcularInputNavegacao()
@@ -252,13 +315,41 @@ public class ControleNavioRealista : MonoBehaviour
     
     void agentNextPositionCheck(Vector3 novaPos)
     {
-        transform.position = novaPos;
-        agente.nextPosition = transform.position; // Mantem o navmesh colado no visual
+        // 1. Defina a posição visual do GameObject (Barco/Submarino) na profundidade desejada
+        Vector3 posVisual = new Vector3(novaPos.x, profundidadeVisual, novaPos.z);
+        transform.position = posVisual;
+
+        // 2. Informe ao NavMeshAgent que ele "virtualmente" está na superfície (NavMesh)
+        // O NavMesh geralmente está em Y=0 ou Y=NívelDaÁgua. 
+        // Assumimos que a água está perto de 0 ou usamos a altura do NavMesh atual se possível, mas 0 é seguro para o mar.
+        Vector3 posSimulacao = new Vector3(novaPos.x, 0f, novaPos.z); 
+        agente.nextPosition = posSimulacao; 
+
+        // 3. Ajuste o colisor (Cilindro do Agent) para que ele suba até a superfície e não fique afundado junto com o visual
+        // Se o submarino está em -10, o baseOffset tem que ser +10 para o colisor ficar no 0.
+        agente.baseOffset = -profundidadeVisual;
     }
 
     void AtualizarEfeitosVisuais()
     {
         if (modelo3D == null) return;
+
+        // Se estiver desligado (Economia de Energia / Stealth), corta efeitos
+        if (estaDesligado)
+        {
+            if (bigodeiraProa && bigodeiraProa.isPlaying) bigodeiraProa.Stop();
+            if (turbulenciaPopa && turbulenciaPopa.isPlaying) turbulenciaPopa.Stop();
+            if (rastroEsteira) rastroEsteira.emitting = false;
+            
+            // Mantém apenas o balanço suave do mar (sem motor)
+            float balancoMarOff = Mathf.Sin(Time.time * frequenciaOnda + offsetOnda) * 2.0f;
+            float pitchOndaOff = Mathf.Cos(Time.time * (frequenciaOnda * 1.5f) + offsetOnda) * alturaOnda;
+            
+            Quaternion simulacaoOffsetOff = Quaternion.Euler(pitchOndaOff, 0, balancoMarOff);
+            Quaternion rotacaoFinalOff = rotacaoInicialModelo * simulacaoOffsetOff;
+            modelo3D.localRotation = Quaternion.Slerp(modelo3D.localRotation, rotacaoFinalOff, Time.deltaTime * 0.5f);
+            return;
+        }
 
         float velocidadeReal = velocidadeVetorial.magnitude;
         float ratioVelocidade = velocidadeReal / velocidadeMaxima;
@@ -338,12 +429,61 @@ public class ControleNavioRealista : MonoBehaviour
             }
         }
     }
+
+    void AtualizarAudio()
+    {
+        if (fonteAudio == null) return;
+
+        // Regra de Desligamento
+        if (estaDesligado)
+        {
+            if (fonteAudio.isPlaying)
+            {
+                fonteAudio.Stop();
+            }
+            return;
+        }
+
+        // Verifica estado de movimento (Velocidade ou Potência do Motor)
+        // Se a potência for significativa (motor ligado) ou velocidade > 1, consideramos "em movimento"
+        bool emMovimento = velocidadeVetorial.magnitude > 1.0f || Mathf.Abs(potenciaAtual) > 0.1f;
+        AudioClip clipDesejado = emMovimento ? somMotorMovimento : somMotorParado;
+
+        if (clipDesejado != null)
+        {
+            if (fonteAudio.clip != clipDesejado || !fonteAudio.isPlaying)
+            {
+                fonteAudio.clip = clipDesejado;
+                fonteAudio.Play();
+            }
+            
+            // Ajuste de Pitch dinâmico
+            if (emMovimento)
+                fonteAudio.pitch = Mathf.Lerp(0.9f, 1.2f, velocidadeVetorial.magnitude / velocidadeMaxima);
+            else
+                fonteAudio.pitch = 1.0f;
+        }
+    }
     
     // Método para integração com ControleUnidade
     public void DefinirDestino(Vector3 destino)
     {
-        if(agente.isActiveAndEnabled)
-            agente.SetDestination(destino);
+        if (agente != null && agente.isActiveAndEnabled)
+        {
+            if (agente.isOnNavMesh)
+            {
+                agente.SetDestination(destino);
+            }
+            else
+            {
+                Debug.LogWarning($"[ControleNavioRealista] Tentativa de navegar sem estar no NavMesh! ({name})");
+            }
+            
+            // Se receber uma ordem, acorda!
+            estaDesligado = false;
+            tempoInatividade = 0;
+            // Se estiver em modo passivo, ele vai começar a contar o tempo de novo quando parar.
+        }
     }
     
     // Gizmos para ver o vetor de movimento vs frente

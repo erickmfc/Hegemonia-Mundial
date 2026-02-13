@@ -5,15 +5,31 @@ public class CameraController : MonoBehaviour
     public float velocidade = 20f;
     public float velocidadeZoom = 4000f;
     public float velocidadeRotacao = 100f;
-    public float multiplicadorShift = 2.5f;
+    public float multiplicadorShift = 3.23f; // Aumentado em ~29% (Antes 2.5)
+
+    private float tempoShiftPressionado = 0f;
 
     void Update()
     {
         // --- 1. Controle de Velocidade (Speed Shift) ---
         float velAtual = velocidade;
+        
         if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
         {
-            velAtual *= multiplicadorShift;
+            tempoShiftPressionado += Time.deltaTime; // Conta tempo
+            
+            float multi = multiplicadorShift;
+            // Se segurar por mais de 10 segundos, triplica a velocidade (Turbo Boost)
+            if (tempoShiftPressionado > 10f)
+            {
+                multi *= 3f;
+            }
+            
+            velAtual *= multi;
+        }
+        else
+        {
+            tempoShiftPressionado = 0f; // Reseta se soltar
         }
 
         Vector3 pos = transform.position;

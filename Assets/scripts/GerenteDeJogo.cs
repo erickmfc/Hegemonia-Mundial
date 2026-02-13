@@ -96,6 +96,7 @@ public class GerenteDeJogo : MonoBehaviour
         public float tempoRestante;
         public bool ehSoldado;
         public bool ehHelicoptero;
+        public bool ehNavio;
     }
 
     void Update()
@@ -127,10 +128,11 @@ public class GerenteDeJogo : MonoBehaviour
         string nome = unidadeParaConstruir.name.ToLower();
         // REMOVIDO "variant" POIS CAUSAVA CONFUSÃO COM TANQUES
         // REMOVIDO "variant" POIS CAUSAVA CONFUSÃO COM TANQUES
-        bool ehSoldado = (nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("person") || nome.Contains("infantry"));
+        bool ehSoldado = (nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("person") || nome.Contains("infantry") || nome.Contains("fuzileiro"));
         bool ehHelicoptero = (nome.Contains("helicoptero") || nome.Contains("ray") || nome.Contains("viper") || nome.Contains("apache"));
+        bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("destroier") || nome.Contains("porta") || nome.Contains("barco") || nome.Contains("lancha"));
 
-        Debug.Log($"INFO COMPRA: Unidade '{nome}' identificada como Soldado? {ehSoldado}, Helicóptero? {ehHelicoptero}");
+        Debug.Log($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}");
 
         // 2. Verificar se a FÁBRICA existe
         // --- VERIFICAÇÃO DE FÁBRICA DESABILITADA (Spawn de Fallback será usado) ---
@@ -170,6 +172,7 @@ public class GerenteDeJogo : MonoBehaviour
                 
                 novoPedido.ehSoldado = ehSoldado;
                 novoPedido.ehHelicoptero = ehHelicoptero;
+                novoPedido.ehNavio = ehNavio;
                 
                 // Tempo de Produção: 0s para Soldado (Instantâneo), 2s para Tanque/Heli
                 float tempoBase = ehSoldado ? 0f : 2.0f;
@@ -225,6 +228,25 @@ public class GerenteDeJogo : MonoBehaviour
                 {
                     spawnAtual = logistica.spawn;
                     destinoAtual = logistica.saida;
+                }
+            }
+        }
+        else if (pedido.ehNavio)
+        {
+            // Lógica Exclusiva para NAVIOS (Estaleiros)
+            PontoLogistico estaleiro = ObterProximoEstaleiro();
+            if (estaleiro != null && estaleiro.spawn != null)
+            {
+                spawnAtual = estaleiro.spawn;
+                destinoAtual = estaleiro.saida;
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ Nenhum ESTALEIRO encontrado! Navio nascerá na água perto da câmera (fallback).");
+                // Tenta achar água... ou usa fallback padrão
+                if (Camera.main != null)
+                {
+                    spawnAtual = Camera.main.transform; // Só para não ser null
                 }
             }
         }
@@ -441,11 +463,13 @@ public class GerenteDeJogo : MonoBehaviour
     // Listas para suportar múltiplos prédios
     public List<PontoLogistico> listaQuarteis = new List<PontoLogistico>();
     public List<PontoLogistico> listaHangares = new List<PontoLogistico>();
+    public List<PontoLogistico> listaEstaleiros = new List<PontoLogistico>();
     public List<Heliporto> listaHeliportos = new List<Heliporto>();
 
     // Índices para Round-Robin
     private int indexQuartel = 0;
     private int indexHangar = 0;
+    private int indexEstaleiro = 0;
     private int indexHeliporto = 0;
 
     public void AtualizarPontoQuartel(Transform nascimento, Transform saida)
@@ -476,6 +500,15 @@ public class GerenteDeJogo : MonoBehaviour
         }
     }
 
+    public void AtualizarPontoEstaleiro(Transform nascimento, Transform saida)
+    {
+        if (!ListaContem(listaEstaleiros, nascimento))
+        {
+            listaEstaleiros.Add(new PontoLogistico { spawn = nascimento, saida = saida });
+            Debug.Log($"Logística: Novo ESTALEIRO registrado (Total: {listaEstaleiros.Count})");
+        }
+    }
+
     public void RegistrarHeliporto(Heliporto heliporto)
     {
         if (!listaHeliportos.Contains(heliporto))
@@ -499,17 +532,44 @@ public class GerenteDeJogo : MonoBehaviour
 
         if (lista.Count == 0) return null;
 
-        // Avança índice
-        if (ehSoldado)
+        // Tenta encontrar um spawn válido no round-robin
+        for (int i = 0; i < lista.Count; i++)
         {
-            indexQuartel = (indexQuartel + 1) % lista.Count;
-            return lista[indexQuartel];
+            // Incrementa o índice
+            if (ehSoldado) 
+                indexQuartel = (indexQuartel + 1) % lista.Count;
+            else 
+                indexHangar = (indexHangar + 1) % lista.Count;
+
+            PontoLogistico candidato = ehSoldado ? lista[indexQuartel] : lista[indexHangar];
+            
+            if (candidato != null && candidato.spawn != null)
+            {
+                // PROTEÇÃO EXTRA: Checa o nome do objeto PAI do spawn
+                string nomePai = candidato.spawn.parent != null ? candidato.spawn.parent.name.ToLower() : candidato.spawn.name.ToLower();
+                
+                // Se for unidade terrestre e o spawn for naval, PULA
+                if (!ehSoldado && (nomePai.Contains("naval") || nomePai.Contains("navio") || nomePai.Contains("estaleiro") || nomePai.Contains("pier") || nomePai.Contains("liberty")))
+                {
+                    Debug.LogWarning($"[Logistica] Ignorando spawn naval '{nomePai}' para unidade terrestre.");
+                    continue; // Tenta o próximo
+                }
+
+                return candidato;
+            }
         }
-        else
-        {
-            indexHangar = (indexHangar + 1) % lista.Count;
-            return lista[indexHangar];
-        }
+
+        Debug.LogWarning($"[Logistica] Fim da lista. Nenhum spawn válido encontrado ({lista.Count} total).");
+        return null;
+    }
+
+    PontoLogistico ObterProximoEstaleiro()
+    {
+        listaEstaleiros.RemoveAll(x => x.spawn == null);
+        if (listaEstaleiros.Count == 0) return null;
+
+        indexEstaleiro = (indexEstaleiro + 1) % listaEstaleiros.Count;
+        return listaEstaleiros[indexEstaleiro];
     }
 
     Heliporto ObterProximoHeliporto()

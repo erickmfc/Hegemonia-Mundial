@@ -17,5 +17,5 @@ MonoBehaviour:
   icone: {fileID: 0}
   prefabDaUnidade: {fileID: 6374748384996421208, guid: 45105829ad4875643a6be21018e24af7, type: 3}
   preco: 100
-  categoria: 0
+  categoria: 1
   scriptsDeComando: []

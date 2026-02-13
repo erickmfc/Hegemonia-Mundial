@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Tank_UBU
   descricao: Ubu um tank de longo alcance
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: d663118deed06ee4cbffc17229bb7bc2, type: 3}
   prefabDaUnidade: {fileID: 7577207155171655125, guid: 3819380e8cefd1a4095e54913973124a, type: 3}
   preco: 100
   categoria: 0

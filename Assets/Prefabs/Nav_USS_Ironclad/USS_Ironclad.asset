@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: USS Ironclad
   descricao: Encouracado blindado. Extremamente resistente a danos.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 5a328b97bc167ac46b9c95018a648c37, type: 3}
   prefabDaUnidade: {fileID: 2462426102010119520, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
-  preco: 4000
+  preco: 1000
   categoria: 1
+  scriptsDeComando: []

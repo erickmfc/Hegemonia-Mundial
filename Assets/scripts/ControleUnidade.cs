@@ -172,6 +172,16 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
+        // --- TRAVA DE MIRA MANUAL ---
+        // Se o navio estiver em modo de tiro Manual, ele não deve andar com o botão direito (que é usado pra atirar).
+        LancadorNaval launcher = GetComponentInChildren<LancadorNaval>();
+        if (launcher != null && launcher.modoAtual == LancadorNaval.ModoOperacao.Manual)
+        {
+            // O jogador quer atirar, e não mover o navio.
+            // Ignoramos o comando de movimento para manter a estabilidade da mira.
+            return; 
+        }
+
         // Segurança extra. Se o agente ainda não foi pego, pega agora.
         if (agente == null) agente = GetComponent<NavMeshAgent>();
 

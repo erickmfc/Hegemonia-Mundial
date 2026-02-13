@@ -959,7 +959,7 @@ Transform:
   m_GameObject: {fileID: 7112348618836014945}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 2.9, y: 0, z: 0.318}
+  m_LocalPosition: {x: 3.57, y: 0, z: 0.261}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1109,8 +1109,8 @@ GameObject:
   - component: {fileID: 4684108664040287973}
   - component: {fileID: 5461910959688562906}
   - component: {fileID: 1740227756702615115}
-  - component: {fileID: 488987282549536065}
   - component: {fileID: 1344463978058793189}
+  - component: {fileID: 7156981930185589485}
   m_Layer: 0
   m_Name: Pier
   m_TagString: Untagged
@@ -1215,47 +1215,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &488987282549536065
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7311975716072282350}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 84f3ea26b68dca8499b2d335939edf00, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PierMarinha
-  vagasDisponiveis:
-  - nomeDaVaga: vg1
-    pontoDeAtracagem: {fileID: 4694762279306403692}
-    categoriaAceita: 0
-    navioOcupante: {fileID: 0}
-  - nomeDaVaga: vg2
-    pontoDeAtracagem: {fileID: 6311802585840844770}
-    categoriaAceita: 1
-    navioOcupante: {fileID: 0}
-  - nomeDaVaga: vg3
-    pontoDeAtracagem: {fileID: 613485233853265676}
-    categoriaAceita: 2
-    navioOcupante: {fileID: 0}
-  - nomeDaVaga: vg4
-    pontoDeAtracagem: {fileID: 2966162968413259700}
-    categoriaAceita: 0
-    navioOcupante: {fileID: 0}
-  - nomeDaVaga: vg5
-    pontoDeAtracagem: {fileID: 3951430435627802882}
-    categoriaAceita: 1
-    navioOcupante: {fileID: 0}
-  - nomeDaVaga: vg6
-    pontoDeAtracagem: {fileID: 1595468258827846938}
-    categoriaAceita: 2
-    navioOcupante: {fileID: 0}
-  raioDeBusca: 500
-  pontosDeSaida:
-  - {fileID: 3987429640973148773}
-  - {fileID: 1901419655587657849}
 --- !u!114 &1344463978058793189
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1275,6 +1234,56 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 6.6
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+--- !u!114 &7156981930185589485
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7311975716072282350}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e687dac5310e8434ea4409d2840c997a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PierMarinha
+  vagasDisponiveis:
+  - nomeDaVaga: 
+    pontoDeAtracagem: {fileID: 4694762279306403692}
+    pontoDeManobra: {fileID: 5605044964095140470}
+    categoriaAceita: 0
+    navioOcupante: {fileID: 0}
+  - nomeDaVaga: 
+    pontoDeAtracagem: {fileID: 6311802585840844770}
+    pontoDeManobra: {fileID: 5605044964095140470}
+    categoriaAceita: 1
+    navioOcupante: {fileID: 0}
+  - nomeDaVaga: 
+    pontoDeAtracagem: {fileID: 613485233853265676}
+    pontoDeManobra: {fileID: 5605044964095140470}
+    categoriaAceita: 2
+    navioOcupante: {fileID: 0}
+  - nomeDaVaga: 
+    pontoDeAtracagem: {fileID: 2966162968413259700}
+    pontoDeManobra: {fileID: 6388533823040187857}
+    categoriaAceita: 0
+    navioOcupante: {fileID: 0}
+  - nomeDaVaga: 
+    pontoDeAtracagem: {fileID: 3951430435627802882}
+    pontoDeManobra: {fileID: 6388533823040187857}
+    categoriaAceita: 1
+    navioOcupante: {fileID: 0}
+  - nomeDaVaga: 
+    pontoDeAtracagem: {fileID: 1595468258827846938}
+    pontoDeManobra: {fileID: 6388533823040187857}
+    categoriaAceita: 2
+    navioOcupante: {fileID: 0}
+  raioDeBusca: 1500
+  velocidadeManobra: 5
+  reparoPorSegundo: 10
+  intervaloRecargaMissel: 1
+  pontosDeSaida:
+  - {fileID: 1901419655587657849}
+  - {fileID: 3987429640973148773}
 --- !u!1 &7796679048472815945
 GameObject:
   m_ObjectHideFlags: 0
@@ -1478,7 +1487,7 @@ Transform:
   m_GameObject: {fileID: 7971942060799063017}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 2.96, y: 0, z: 0.318}
+  m_LocalPosition: {x: 4.37, y: 0, z: 0.318}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

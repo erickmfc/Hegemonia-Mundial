@@ -246,7 +246,8 @@ public class GerenteMercadoUI : MonoBehaviour
                 // Vamos ativar o construtor para o ULTIMO item selecionado como exemplo
                 if (scriptConstrutor != null && item.prefabParaConstruir != null)
                 {
-                    scriptConstrutor.SelecionarParaConstruir(item.prefabParaConstruir);
+                    // Passamos 0 pois a lógica de pagamento/reembolso não está implementada aqui
+                    scriptConstrutor.SelecionarParaConstruir(item.prefabParaConstruir, 0);
                 }
             }
         }

@@ -14,6 +14,7 @@ public class LancadorNaval : MonoBehaviour
 
     [Header("Configurações de Combate")]
     public int municaoTotal = 32;
+    public int municaoMaxima = 32; // Limite para recarga
     public int tirosPorSalva = 4; // Quantos mísseis saem de uma vez
     public float intervaloEntreTiros = 0.5f; // Tempo entre mísseis da mesma salva
     public float tempoRecargaSalva = 5.0f; // Tempo entre salvas
@@ -38,9 +39,15 @@ public class LancadorNaval : MonoBehaviour
     // --- Identidade Própria ---
     private IdentidadeUnidade minhaIdentidade;
     private ControleUnidade meuControle;
+    
+    // Timer para atrasar a ativação do modo automático
+    private float tempoParaAtivarAutomatico = 0f;
 
     void Start()
     {
+        // Se Maxima não foi configurada ou menor que total inicial, ajusta
+        if (municaoMaxima < municaoTotal) municaoMaxima = municaoTotal;
+
         audioSource = gameObject.AddComponent<AudioSource>();
         
         // Configurações iniciais do AudioSource para 3D
@@ -56,6 +63,12 @@ public class LancadorNaval : MonoBehaviour
         // Cache do ControleUnidade para saber se estou selecionado
         meuControle = GetComponent<ControleUnidade>();
         if (meuControle == null) meuControle = GetComponentInParent<ControleUnidade>();
+    }
+
+    // --- SISTEMA DE RECARGA (USADO PELO PIER) ---
+    public void Recarregar(int quantidade)
+    {
+        municaoTotal = Mathf.Min(municaoTotal + quantidade, municaoMaxima);
     }
 
     void Update()
@@ -77,7 +90,11 @@ public class LancadorNaval : MonoBehaviour
                 ComportamentoManual();
                 break;
             case ModoOperacao.Automatico:
-                ComportamentoAutomatico();
+                // Aguarda 3 segundos antes de iniciar o disparo (Safety Delay)
+                if (Time.time >= tempoParaAtivarAutomatico)
+                {
+                    ComportamentoAutomatico();
+                }
                 break;
             case ModoOperacao.Passivo:
                 // Não faz nada, descansa soldado
@@ -96,7 +113,15 @@ public class LancadorNaval : MonoBehaviour
             int proximo = (int)modoAtual + 1;
             if (proximo > 2) proximo = 0;
             
-            modoAtual = (ModoOperacao)proximo;
+            ModoOperacao novoModo = (ModoOperacao)proximo;
+            
+            // Se for entrar em Automático, define o delay de 3 segundos
+            if (novoModo == ModoOperacao.Automatico)
+            {
+                tempoParaAtivarAutomatico = Time.time + 3.0f;
+            }
+            
+            modoAtual = novoModo;
             
             Debug.Log($"<color=cyan>[LANÇADOR]</color> Modo alterado para: {modoAtual}");
         }
@@ -346,6 +371,9 @@ public class LancadorNaval : MonoBehaviour
 
     void OnGUI()
     {
+        // 1. Só mostra se estiver selecionado!
+        if (meuControle == null || !meuControle.selecionado) return;
+        
         if (MenuConstrucao.EstaAberto || MenuPier.EstaAberto) return;
 
         if (Camera.main == null) return;
@@ -365,16 +393,36 @@ public class LancadorNaval : MonoBehaviour
             style.fontStyle = FontStyle.Bold;
             style.fontSize = 14;
 
+            string texto = "";
+
             // Define cor baseada no modo
             switch (modoAtual)
             {
-                case ModoOperacao.Passivo: style.normal.textColor = Color.gray; break;
-                case ModoOperacao.Manual: style.normal.textColor = Color.yellow; break;
-                case ModoOperacao.Automatico: style.normal.textColor = Color.red; break;
+                case ModoOperacao.Passivo: 
+                    style.normal.textColor = Color.gray; 
+                    texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}";
+                    break;
+                case ModoOperacao.Manual: 
+                    style.normal.textColor = Color.yellow; 
+                    texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}";
+                    break;
+                case ModoOperacao.Automatico: 
+                    style.normal.textColor = Color.red;
+                    // Se estiver no delay de armar
+                    if (Time.time < tempoParaAtivarAutomatico)
+                    {
+                        float restante = tempoParaAtivarAutomatico - Time.time;
+                        texto = $"[ARMANDO {restante:F1}s]\nMísseis: {municaoTotal}/{municaoMaxima}";
+                        style.normal.textColor = Color.Lerp(Color.yellow, Color.red, Mathf.PingPong(Time.time * 5f, 1f));
+                    }
+                    else
+                    {
+                        texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}";
+                    }
+                    break;
             }
 
-            // Cria mensagem
-            string texto = $"[{modoAtual}]\nMísseis: {municaoTotal}";
+            // Cria mensagem final
             
             // Desenha sombra (hack simples)
             GUI.color = Color.black;
