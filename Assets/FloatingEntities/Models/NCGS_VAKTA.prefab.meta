@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: e1e9f48d71f586e48b0ab82651cd8eb4
+timeCreated: 1461171339
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/NCGS_VAKTA.prefab
+  uploadId: 178676

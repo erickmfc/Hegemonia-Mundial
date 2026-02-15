@@ -44,6 +44,10 @@ public class SomUnidade : MonoBehaviour
     private bool estaMovendo = false;
     private bool somMotorTocando = false;
 
+    // Cache de Componentes
+    private UnityEngine.AI.NavMeshAgent agenteCached;
+    private Rigidbody rbCached;
+
     void Awake()
     {
         // Pega ou cria AudioSource principal
@@ -53,114 +57,43 @@ public class SomUnidade : MonoBehaviour
             audioSource = gameObject.AddComponent<AudioSource>();
         }
         
-        // Cria AudioSource secundário para efeitos que não interferem com o motor
+        // Cria AudioSource secundário
         GameObject audioSecundarioObj = new GameObject("AudioSecundario");
         audioSecundarioObj.transform.SetParent(transform);
         audioSecundarioObj.transform.localPosition = Vector3.zero;
         audioSourceSecundario = audioSecundarioObj.AddComponent<AudioSource>();
         
         // Configuração padrão
-        audioSource.spatialBlend = 1f; // Som 3D
+        audioSource.spatialBlend = 1f; 
         audioSource.maxDistance = 50f;
-        audioSource.rolloffMode = AudioRolloffMode.Linear;
         
-        audioSourceSecundario.spatialBlend = 1f;
-        audioSourceSecundario.maxDistance = 100f; // Explosões ouvem de mais longe
-        audioSourceSecundario.rolloffMode = AudioRolloffMode.Linear;
-        
-        // Pega referências
+        // Cachear referências pesadas
         controleUnidade = GetComponent<ControleUnidade>();
         sistemaDanos = GetComponent<SistemaDeDanos>();
-    }
-
-    void Start()
-    {
-        // Configura o som do motor baseado no tipo
-        ConfigurarSonsPadrao();
-        
-        // DEBUG: Verifica configuração
-        Debug.Log($"[SomUnidade] Iniciando som para: {gameObject.name}");
-        Debug.Log($"   Tipo: {tipoUnidade}");
-        Debug.Log($"   Som Motor: {(somMotor != null ? somMotor.name : "NENHUM - SEM SOM!")}");
-        Debug.Log($"   Som Parado: {(somParado != null ? somParado.name : "Nenhum")}");
-        Debug.Log($"   AudioSource principal: {(audioSource != null ? "OK" : "ERRO")}");
-        Debug.Log($"   AudioSource secundário: {(audioSourceSecundario != null ? "OK" : "ERRO")}");
-        Debug.Log($"   Volume Motor: {volumeMotor}");
-        Debug.Log($"   3D Blend: {audioSource.spatialBlend}");
-        Debug.Log($"   Max Distance: {audioSource.maxDistance}");
-        
-        // Verifica se tem AudioListener na cena
-        AudioListener listener = FindFirstObjectByType<AudioListener>();
-        if (listener == null)
-        {
-            Debug.LogError($"[SomUnidade] ❌ NENHUM AUDIOLISTENER NA CENA! Sons não vão tocar!");
-        }
-        else
-        {
-            float distancia = Vector3.Distance(transform.position, listener.transform.position);
-            Debug.Log($"[SomUnidade] AudioListener encontrado. Distância: {distancia:F1}m");
-        }
-        
-        // Inicia som parado se tiver
-        if (somParado != null && !somMotorTocando)
-        {
-            IniciarSomMotor(false);
-            Debug.Log($"[SomUnidade] Som parado iniciado");
-        }
-        else if (somMotor != null && !somMotorTocando)
-        {
-            // Se não tem som parado mas tem som de motor, inicia o motor direto
-            IniciarSomMotor(true);
-            Debug.Log($"[SomUnidade] Som de motor iniciado (sem idle)");
-        }
-        else
-        {
-            Debug.LogWarning($"[SomUnidade] ⚠️ Nenhum som configurado! Adicione AudioClips no Inspector");
-        }
-        
-        // Registra evento de morte e dano se tiver sistema de danos
-        if (sistemaDanos != null)
-        {
-            sistemaDanos.OnMorte += TocarSomExplosao;
-            sistemaDanos.OnDano += TocarSomDano;
-        }
-    }
-
-    void Update()
-    {
-        // Detecta velocidade atual
-        DetectarVelocidade();
-        
-        // Ajusta o som do motor baseado na velocidade
-        AjustarSomMotor();
+        agenteCached = GetComponent<UnityEngine.AI.NavMeshAgent>();
+        rbCached = GetComponent<Rigidbody>();
     }
 
     void DetectarVelocidade()
     {
-        // Tenta pegar a velocidade do NavMeshAgent primeiro (unidades terrestres)
-        var agente = GetComponent<UnityEngine.AI.NavMeshAgent>();
-        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        // Usa cache em vez de GetComponent todo frame
+        if (agenteCached != null && agenteCached.enabled && agenteCached.isOnNavMesh)
         {
-            velocidadeAtual = agente.velocity.magnitude;
+            velocidadeAtual = agenteCached.velocity.magnitude;
         }
         // Para unidades com Rigidbody (física)
-        else
+        else if (rbCached != null)
         {
-            var rb = GetComponent<Rigidbody>();
-            if (rb != null)
+            velocidadeAtual = rbCached.linearVelocity.magnitude;
+        }
+        // Para unidades aéreas manuais
+        else if (controleUnidade != null)
+        {
+            if (lastPosition != Vector3.zero)
             {
-                velocidadeAtual = rb.linearVelocity.magnitude;
+                velocidadeAtual = (transform.position - lastPosition).magnitude / Time.deltaTime;
             }
-            // Para unidades aéreas ou outras que se movem manualmente (calcula pela mudança de posição)
-            else if (controleUnidade != null)
-            {
-                // Calcula velocidade baseado na variação de posição
-                if (lastPosition != Vector3.zero)
-                {
-                    velocidadeAtual = (transform.position - lastPosition).magnitude / Time.deltaTime;
-                }
-                lastPosition = transform.position;
-            }
+            lastPosition = transform.position;
         }
         
         estaMovendo = velocidadeAtual > 0.1f;

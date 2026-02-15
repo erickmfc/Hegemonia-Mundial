@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Tank C1 camuflado
   descricao: Tank rapido e leve
-  icone: {fileID: 21300000, guid: da82712718b20c34eb726b3cf7a82a84, type: 3}
+  icone: {fileID: 21300000, guid: 89432052383a2ea418007d5cdcffef83, type: 3}
   prefabDaUnidade: {fileID: 716812746667202105, guid: 00929fe6e1919b9429088c031374b34e, type: 3}
   preco: 150
   categoria: 0

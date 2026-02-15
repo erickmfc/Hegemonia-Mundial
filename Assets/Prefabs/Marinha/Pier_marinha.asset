@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Marinha
   descricao: Doca onde atraca navio
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 95928cab599781844ae1bfe14d3d42ae, type: 3}
   prefabDaUnidade: {fileID: 7311975716072282350, guid: 9c6e2660f55c9064fa5dc391e918ab84, type: 3}
   preco: 2000
   categoria: 1

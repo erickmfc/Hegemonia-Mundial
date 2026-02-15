@@ -48,7 +48,7 @@ public class MenuPier : MonoBehaviour
     public void AlternarMenu()
     {
         // 1. Garante que temos um Pier alvo
-        if (pierAlvo == null) pierAlvo = FindObjectOfType<PierMarinha>();
+        if (pierAlvo == null) pierAlvo = FindFirstObjectByType<PierMarinha>();
 
         if (pierAlvo == null)
         {
@@ -121,7 +121,7 @@ public class MenuPier : MonoBehaviour
             tituloContexto.text = $"CHAMAR: {vaga.categoriaAceita}\n<size=12>(Raio: {pierAlvo.raioDeBusca}m)</size>";
             tituloContexto.color = Color.green;
 
-            // Busca navios na cena manualmente
+            // Busca todos os piers na cena manualmente
             List<IdentidadeNaval> naviosCompativeis = EncontrarNaviosDisponiveis(vaga.categoriaAceita);
 
             if (naviosCompativeis.Count == 0)
@@ -174,6 +174,14 @@ public class MenuPier : MonoBehaviour
                     }
                 }
             }
+        }
+    }
+
+    public void RegistrarNovoPier(PierMarinha pier)
+    {
+        if (pierAlvo == null)
+        {
+            pierAlvo = pier;
         }
     }
 

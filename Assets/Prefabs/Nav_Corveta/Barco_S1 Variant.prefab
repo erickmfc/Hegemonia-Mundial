@@ -360,10 +360,14 @@ MonoBehaviour:
   frequenciaOnda: 0.2
   arrastoPassivo: 0.5
   distanciaChegada: 5
+  profundidadeVisual: 0
   bigodeiraProa: {fileID: 0}
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  modoOperacao: 0
+  somMotorParado: {fileID: 0}
+  somMotorMovimento: {fileID: 0}
 --- !u!65 &1597951890514396158
 BoxCollider:
   m_ObjectHideFlags: 0

@@ -210,6 +210,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 191448, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1732038228339872988}
+    - targetCorrespondingSourceObject: {fileID: 191448, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2921740228284362499}
   m_SourcePrefab: {fileID: 100100000, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
 --- !u!4 &8362449112992000846 stripped
 Transform:
@@ -307,8 +310,8 @@ MonoBehaviour:
   anguloMinimo: -90
   anguloMaximo: 90
   tempoEntreTiros: 0.08
-  tamanhoCartucho: 25
-  tempoRecarga: 4
+  tamanhoCartucho: 50
+  tempoRecarga: 2
   pecaQueGira: {fileID: 8362449112992000846}
   locaisDoTiro:
   - {fileID: 765438539151934518}
@@ -317,11 +320,12 @@ MonoBehaviour:
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
   modoPassivo: 0
-  misselPrefab: {fileID: 5058724136885039853, guid: 10d02d52534ee864dafea47c0df55ef5, type: 3}
+  misselPrefab: {fileID: 0}
   locaisDoMissel:
-  - {fileID: 6805592400104997161}
-  somMissel: {fileID: 8300000, guid: 1f5d14f7476b211498beb3c81883de6e, type: 3}
-  tempoEntreMisseis: 4
+  - {fileID: 0}
+  somMissel: {fileID: 0}
+  tempoEntreMisseis: 0
+  municoesPorCano: []
 --- !u!114 &3631173525999654636
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -359,3 +363,37 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 1
+--- !u!114 &2921740228284362499
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8362449112992261118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37af128960c2d574f99598557ad1624e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
+  etiquetaAlvo: Inimigo
+  alcance: 200
+  velocidadeGiro: 60
+  limitarRotacao: 1
+  anguloMinimo: -90
+  anguloMaximo: 90
+  tempoEntreTiros: 3.8
+  tamanhoCartucho: 10
+  tempoRecarga: 5
+  pecaQueGira: {fileID: 8362449112992000846}
+  locaisDoTiro:
+  - {fileID: 6805592400104997161}
+  municaoPrefab: {fileID: 5058724136885039853, guid: 4af361d2ac0c92d43be46d3fdf308162, type: 3}
+  somTiro: {fileID: 8300000, guid: 1f5d14f7476b211498beb3c81883de6e, type: 3}
+  somRecarga: {fileID: 0}
+  fogoCano: {fileID: 0}
+  modoPassivo: 0
+  misselPrefab: {fileID: 0}
+  locaisDoMissel: []
+  somMissel: {fileID: 0}
+  tempoEntreMisseis: 2
+  municoesPorCano: []

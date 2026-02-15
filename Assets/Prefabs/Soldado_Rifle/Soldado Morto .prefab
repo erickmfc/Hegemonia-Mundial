@@ -1,0 +1,114 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &9080047864039768087
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7624706648174739028}
+  - component: {fileID: 6649335733072883689}
+  m_Layer: 0
+  m_Name: 'Soldado Morto '
+  m_TagString: Soldado
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7624706648174739028
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9080047864039768087}
+  serializedVersion: 2
+  m_LocalRotation: {x: 1, y: 0, z: 0, w: 0}
+  m_LocalPosition: {x: 662.93787, y: 0.22, z: 104.75182}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6615162789329323106}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 180, y: 0, z: 0}
+--- !u!114 &6649335733072883689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9080047864039768087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe7ada6d5ebbb7c4f8886344a18c955e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DestrocosEmChamas
+  tamanhoFogo: 1
+  iniciarNoStart: 1
+  causarExplosoes: 0
+  qtdExplosoes: 3
+  vidaUtil: 10
+--- !u!1001 &7327407673367860979
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 7624706648174739028}
+    m_Modifications:
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.6900024
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4503012449419316977, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+      propertyPath: m_Name
+      value: Morto (1)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+--- !u!4 &6615162789329323106 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4503012449419219601, guid: 09db81aa34e561c42815f4924b3f5629, type: 3}
+  m_PrefabInstance: {fileID: 7327407673367860979}
+  m_PrefabAsset: {fileID: 0}

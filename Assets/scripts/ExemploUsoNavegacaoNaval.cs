@@ -116,12 +116,13 @@ public class ExemploUsoNavegacaoNaval : MonoBehaviour
     /// EXEMPLO AVANÇADO: Patrulha automática marítima
     /// </summary>
     [Header("Patrulha Automática")]
+    public bool testarMovimento = false;
+    public bool testarAtaque = false;
+    private bool iniciouPatrulha = false;
     public Transform[] pontosPatrulha;
     public float tempoEsperaNosPontos = 3f;
     
     private int pontoAtualPatrulha = 0;
-    private float timerEspera = 0f;
-    private bool iniciouPatrulha = false;
     
     public void IniciarPatrulha()
     {

@@ -662,6 +662,7 @@ GameObject:
   - component: {fileID: -8227105495172148465}
   - component: {fileID: 4814982541926657296}
   - component: {fileID: 5698581760425807609}
+  - component: {fileID: -134070534789951294}
   m_Layer: 0
   m_Name: Caoc1
   m_TagString: Player
@@ -886,6 +887,22 @@ MonoBehaviour:
   rodaTrasEsq: {fileID: 5105396178368035182}
   rodaTrasDir: {fileID: 5105396178368035182}
   anguloMaximoVolante: 40.9
+--- !u!114 &-134070534789951294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4672269003801672537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee5671bd37f183540a1280cb61668820, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TransporteTerrestre
+  capacidadeMaxima: 20
+  distanciaParaEmbarque: 10
+  distanciaDescarga: 3
+  assentosVisiveis: []
 --- !u!1 &4805804437488566608
 GameObject:
   m_ObjectHideFlags: 0

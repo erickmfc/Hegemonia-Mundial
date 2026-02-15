@@ -48,8 +48,9 @@ public class Heliporto : MonoBehaviour
     private GameObject conteudoScroll;
     private bool menuAberto = false;
 
-    // Referência ao objeto selecionado
-    private bool selecionado = false;
+    private Animator anim;
+    private IdentidadeUnidade identidade;
+    private bool selecionado; // Restoring missing field
 
     void Start()
     {

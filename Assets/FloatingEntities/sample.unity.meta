@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0694508df510d6a4ba33fcdf80728722
+timeCreated: 1461167996
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/sample.unity
+  uploadId: 178676

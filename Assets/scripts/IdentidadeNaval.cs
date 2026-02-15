@@ -132,8 +132,7 @@ public class IdentidadeNaval : MonoBehaviour
     /// </summary>
     public void MoverPara(Vector3 destino)
     {
-        estaAtracado = false;
-        manobrandoDeRe = false;
+        NotificarMovimento();
         
         if (agente == null) agente = GetComponent<NavMeshAgent>();
         
@@ -158,6 +157,23 @@ public class IdentidadeNaval : MonoBehaviour
         {
             // Fallback sem navmesh (move simples)
             Debug.LogWarning("Navio sem NavMeshAgent tentando mover. Usando script simples?");
+        }
+    }
+
+    /// <summary>
+    /// Método chamado por controladores externos (ControleUnidade) para avisar que o navio vai se mover
+    /// e deve abortar atracagem ou sair da doca.
+    /// </summary>
+    public void NotificarMovimento()
+    {
+        estaAtracado = false;
+        manobrandoDeRe = false;
+        targetSaida = Vector3.zero;
+        
+        if (agente != null)
+        {
+            agente.enabled = true;
+            agente.isStopped = false;
         }
     }
 }

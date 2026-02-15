@@ -2,17 +2,18 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// IA Arquiteto Pro: Responsável por urbanismo militar, 
-/// criando perímetros defensivos e organização de base.
+/// IA Arquiteto Pro: Responsável por urbanismo militar.
+/// Constrói base com layout aberto e espaçado, SEM prender unidades.
 /// </summary>
 public class IA_Arquiteto_Pro : MonoBehaviour
 {
     private IA_Comandante chefe;
     private bool baseIniciada = false;
 
-    [Header("Configurações de Defesa")]
-    public float distanciaMuro = 15f; // Aumentado para 15m para dar espaço
-    public float larguraMuro = 4f; // Ajuste conforme o prefab
+    [Header("Configurações de Construção")]
+    public float espacamentoEdificios = 20f; // Distância entre prédios
+    
+    // Controle de espiral para evitar sobreposição
 
     public void Inicializar(IA_Comandante comandante)
     {
@@ -23,12 +24,62 @@ public class IA_Arquiteto_Pro : MonoBehaviour
     {
         if (chefe == null) chefe = GetComponent<IA_Comandante>();
         Invoke("PlanejarBaseMilitar", 3.0f);
+
+        // --- MANUTENÇÃO DE BASE ---
+        // Verifica a cada 10 segundos se a base está intacta
+        InvokeRepeating("VerificarIntegridadeDaBase", 15.0f, 10.0f);
+    }
+
+    void VerificarIntegridadeDaBase()
+    {
+        if (!baseIniciada || chefe == null) return;
+
+        Debug.Log("🏗️ [IA Arquiteto] Verificando integridade da base...");
+        Vector3 centro = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : transform.position;
+
+        // Verifica se tem QUARTEL (Soldados)
+        if (!ExistePredio("Quartel") && !ExistePredio("Tenda"))
+        {
+            Debug.LogWarning("⚠️ [IA Arquiteto] Quartel destruído! Reconstruindo...");
+            Vector3 pos = EncontrarPosicaoAberta(centro, 1);
+            // Tenta achar posição livre caso a original esteja ocupada por destroços
+            if (Physics.CheckSphere(pos, 5.0f)) pos += Vector3.right * 10f; 
+            
+            GameObject novo = ConstruirEstrutura("Quartel", pos);
+            if (novo == null) ConstruirEstrutura("Tenda", pos);
+        }
+
+        // Verifica se tem HANGAR (Veículos)
+        if (!ExistePredio("Hangar") && !ExistePredio("Fabrica"))
+        {
+            Debug.LogWarning("⚠️ [IA Arquiteto] Hangar destruído! Reconstruindo...");
+            Vector3 pos = EncontrarPosicaoAberta(centro, 2);
+             if (Physics.CheckSphere(pos, 8.0f)) pos += Vector3.left * 10f;
+
+            ConstruirEstrutura("Hangar", pos);
+        }
+    }
+
+    bool ExistePredio(string nomeParcial)
+    {
+        Fabrica[] fabricas = FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
+        foreach (var f in fabricas)
+        {
+            // Verifica se é do meu time e se o nome bate
+            var id = f.GetComponent<IdentidadeUnidade>();
+            if (id != null && id.teamID == chefe.identidade.teamID && f.name.ToLower().Contains(nomeParcial.ToLower())) 
+            {
+                return true; 
+            }
+        }
+        return false;
     }
 
     void PlanejarBaseMilitar()
     {
         if (baseIniciada) return;
-
+        
+        // ... (código original de PlanejarBaseMilitar mantido abaixo)
         // Catálogo Check
         if (MenuConstrucao.catalogoGlobal == null || MenuConstrucao.catalogoGlobal.Count == 0)
         {
@@ -41,36 +92,106 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             }
         }
 
-        Debug.Log("🏗️ [IA Arquiteto] Construindo Base com Layout Espaçado...");
+        Debug.Log("🏗️ [IA Arquiteto Pro] Construindo Base com Layout ABERTO...");
 
-        // 1. Refinaria (Centro-Esquerda)
-        ConstruirEstrutura("Refinaria", new Vector3(-10, 0, 0));
+        Vector3 centro = (chefe != null && chefe.basePrincipal != null) 
+            ? chefe.basePrincipal.position 
+            : transform.position;
 
-        // 2. Quartel (Centro-Direita) - Este será murado
-        Vector3 posQuartel = new Vector3(15, 0, 0); 
+        // 1. Refinaria (Economia - Prioridade Máxima)
+        ConstruirEstrutura("Refinaria", EncontrarPosicaoAberta(centro, 0));
+
+        // 2. Quartel/Tenda (Produção de soldados)
+        Vector3 posQuartel = EncontrarPosicaoAberta(centro, 1);
         GameObject quartel = ConstruirEstrutura("Quartel", posQuartel);
-        if (quartel == null) quartel = ConstruirEstrutura("Tenda", posQuartel); 
+        if (quartel == null) quartel = ConstruirEstrutura("Tenda", posQuartel);
 
-        // 2b. Fábrica de Veículos (Essencial para Tanques/Transportes)
-        Vector3 posFabrica = new Vector3(15, 0, 15);
-        ConstruirEstrutura("Fabrica", posFabrica); // Tenta achar algo com "Fabrica" no nome (ex: Fabrica_Veiculos)
-
-        // 3. Muro - Quadrado Perfeito em volta do Quartel
-        if (quartel != null)
-        {
-            CriarPerimetroQuadrado(quartel.transform.position, distanciaMuro);
-        }
+        // 3. Hangar (Produção de veículos/helis)
+        Vector3 posHangar = EncontrarPosicaoAberta(centro, 2);
+        
+        // Tenta vários nomes possíveis para achar a fábrica de veículos
+        GameObject hangar = ConstruirEstrutura("Hangar", posHangar);
+        if (hangar == null) hangar = ConstruirEstrutura("Fabrica", posHangar);
+        
+        // 4. Defesas pontuais
+        ConstruirDefesasPontuais(centro);
 
         baseIniciada = true;
     }
 
-    GameObject ConstruirEstrutura(string nome, Vector3 offset)
+    /// <summary>
+    /// Encontra uma posição aberta usando padrão espiral para evitar sobreposição.
+    /// </summary>
+    Vector3 EncontrarPosicaoAberta(Vector3 centro, int indice)
+    {
+        // Distribui em círculo ao redor do centro com espaçamento generoso
+        float angulo = indice * 120f; // 120 graus entre cada prédio (3 pontos em círculo)
+        float raio = espacamentoEdificios;
+        
+        float rad = angulo * Mathf.Deg2Rad;
+        Vector3 offset = new Vector3(Mathf.Cos(rad) * raio, 0, Mathf.Sin(rad) * raio);
+        Vector3 pos = centro + offset;
+        
+        // Ajuste de altura ao terreno
+        if (Terrain.activeTerrain != null)
+            pos.y = Terrain.activeTerrain.SampleHeight(pos);
+        
+        return pos;
+    }
+
+    /// <summary>
+    /// Constrói defesas pontuais (muros curtos/barreiras) em pontos estratégicos,
+    /// deixando SEMPRE passagens amplas para as unidades circularem.
+    /// </summary>
+    void ConstruirDefesasPontuais(Vector3 centro)
+    {
+        GameObject prefabMuro = BuscarNoCatalogo("Muro");
+        if (prefabMuro == null) return;
+        if (chefe.dinheiro < 800) return; // Só constrói defesas se tiver recursos de sobra
+
+        Construtor construtor = FindFirstObjectByType<Construtor>();
+        if (construtor == null) return;
+
+        // Coloca APENAS 2-3 segmentos curtos de muro em direções estratégicas
+        // (voltados para longe da base, como cobertura), NUNCA fechando um perímetro
+        float raioDefesa = 30f;
+        
+        // 3 pontos defensivos com gaps enormes entre eles
+        float[] angulos = { 0f, 120f, 240f };
+        
+        foreach (float ang in angulos)
+        {
+            if (chefe.dinheiro < 300) break; // Para se o dinheiro acabar
+
+            float rad = ang * Mathf.Deg2Rad;
+            Vector3 posBarreira = centro + new Vector3(
+                Mathf.Cos(rad) * raioDefesa, 
+                0, 
+                Mathf.Sin(rad) * raioDefesa
+            );
+            
+            if (Terrain.activeTerrain != null)
+                posBarreira.y = Terrain.activeTerrain.SampleHeight(posBarreira);
+            
+            // Rotação: muro perpendicular à direção do centro (cobertura lateral)
+            Quaternion rot = Quaternion.LookRotation(
+                Vector3.Cross(Vector3.up, (posBarreira - centro).normalized)
+            );
+            
+            GameObject m = construtor.ConstruirEstruturaIA(prefabMuro, posBarreira, rot);
+            ConfigurarIdentidade(m);
+        }
+        
+        Debug.Log("🛡️ [Arquitetura] Barreiras defensivas pontuais colocadas (layout ABERTO).");
+    }
+
+    GameObject ConstruirEstrutura(string nome, Vector3 posicao)
     {
         if (chefe == null) chefe = GetComponentInParent<IA_Comandante>(); 
         if (chefe == null) return null;
 
-        // Economia de Guerra: Não constrói se estiver muito pobre (exceto Quartel que é vital)
-        if (chefe.dinheiro < 300 && nome != "Quartel") return null;
+        // Economia: Não constrói se estiver muito pobre (exceto Quartel que é vital)
+        if (chefe.dinheiro < 300 && nome != "Quartel" && nome != "Tenda") return null;
 
         GameObject prefab = BuscarNoCatalogo(nome);
         if (prefab == null) return null;
@@ -78,82 +199,14 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         Construtor construtor = FindFirstObjectByType<Construtor>();
         if (construtor == null) return null;
 
-        Vector3 local = (chefe != null && chefe.basePrincipal != null ? chefe.basePrincipal.position : transform.position) + offset;
-        local.y = Terrain.activeTerrain.SampleHeight(local);
+        // Ajuste de altura
+        if (Terrain.activeTerrain != null)
+            posicao.y = Terrain.activeTerrain.SampleHeight(posicao);
 
-        GameObject predio = construtor.ConstruirEstruturaIA(prefab, local, Quaternion.identity);
+        GameObject predio = construtor.ConstruirEstruturaIA(prefab, posicao, Quaternion.identity);
         if (predio != null) ConfigurarIdentidade(predio);
         
         return predio;
-    }
-
-    void CriarPerimetroQuadrado(Vector3 centro, float raio)
-    {
-        GameObject prefabMuro = BuscarNoCatalogo("Muro");
-        if (prefabMuro == null) return;
-
-        Construtor construtor = FindFirstObjectByType<Construtor>();
-        
-        // Calcula quantos muros cabem em cada lado (aprox)
-        // Lado do quadrado = raio * 2
-        // Quantidade = (raio * 2) / larguraMuro
-        int pecasPorLado = Mathf.CeilToInt((raio * 2) / larguraMuro);
-        float passo = larguraMuro;
-
-        // 1. Parede Norte (Z+)
-        // Vai de (-raio, raio) até (+raio, raio)
-        ConstruirLinha(construtor, prefabMuro, 
-            centro + new Vector3(-raio, 0, raio), 
-            centro + new Vector3(raio, 0, raio), 
-            pecasPorLado);
-
-        // 2. Parede Sul (Z-)
-        ConstruirLinha(construtor, prefabMuro, 
-            centro + new Vector3(-raio, 0, -raio), 
-            centro + new Vector3(raio, 0, -raio), 
-            pecasPorLado);
-
-        // 3. Parede Leste (X+)
-        // Vai de (raio, -raio) até (raio, raio)
-        ConstruirLinha(construtor, prefabMuro, 
-            centro + new Vector3(raio, 0, -raio), 
-            centro + new Vector3(raio, 0, raio), 
-            pecasPorLado);
-
-        // 4. Parede Oeste (X-)
-        ConstruirLinha(construtor, prefabMuro, 
-            centro + new Vector3(-raio, 0, -raio), 
-            centro + new Vector3(-raio, 0, raio), 
-            pecasPorLado);
-
-        Debug.Log("🛡️ [Arquitetura] Perímetro Quadrado construído.");
-    }
-
-    void ConstruirLinha(Construtor construtor, GameObject prefab, Vector3 inicio, Vector3 fim, int qtd)
-    {
-        Vector3 dir = (fim - inicio).normalized;
-        float distTotal = Vector3.Distance(inicio, fim);
-        Quaternion rot = Quaternion.LookRotation(dir);
-
-        for(int i = 0; i < qtd; i++)
-        {
-            // STOP: Se acabar o dinheiro, para de fazer muro! Prioridade é exército.
-            if (chefe.dinheiro < 500) 
-            {
-                // Debug.Log("[IA Arquiteto] Pausando construção de muros para poupar recursos.");
-                break;
-            }
-
-            // Interpolação linear para distribuir os muros
-            float t = (float)i / (float)qtd;
-            Vector3 pos = Vector3.Lerp(inicio, fim, t);
-            
-            // Ajuste de altura
-            pos.y = Terrain.activeTerrain.SampleHeight(pos);
-
-            GameObject m = construtor.ConstruirEstruturaIA(prefab, pos, rot);
-            ConfigurarIdentidade(m);
-        }
     }
 
     void ConfigurarIdentidade(GameObject obj)

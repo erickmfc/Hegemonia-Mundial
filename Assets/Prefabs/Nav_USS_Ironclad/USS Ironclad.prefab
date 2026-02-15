@@ -273,6 +273,7 @@ GameObject:
   - component: {fileID: 6007219979919448810}
   - component: {fileID: -7262620657248775482}
   - component: {fileID: 790862908155505700}
+  - component: {fileID: 4703495614372460612}
   m_Layer: 0
   m_Name: USS Ironclad
   m_TagString: Navio
@@ -313,7 +314,7 @@ NavMeshAgent:
   m_AgentTypeID: 0
   m_Radius: 0.5
   m_Speed: 11
-  m_Acceleration: 5
+  m_Acceleration: 7
   avoidancePriority: 50
   m_AngularSpeed: 60
   m_StoppingDistance: 0
@@ -373,11 +374,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
-  tempoAceleracao: 5
-  tempoDesaceleracao: 15
-  tempoParadaEmergencia: 10
+  tempoAceleracao: 3
+  tempoDesaceleracao: 5
+  tempoParadaEmergencia: 3
   velocidadeMaxima: 15
-  velocidadeLeme: 3.72
+  velocidadeLeme: 5
   curvaMaximaGraus: 30
   coeficienteAderna: 2
   alturaOnda: 0.5
@@ -438,7 +439,7 @@ MonoBehaviour:
   tirosPorSalva: 1
   intervaloEntreTiros: 0.13
   tempoRecargaSalva: 1
-  alcanceRadar: 500
+  alcanceRadar: 1000
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
   volumeSom: 1
   pitchSom: 1
@@ -460,7 +461,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigo
-  alcance: 400
+  alcance: 900
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -496,6 +497,7 @@ MonoBehaviour:
   vidaMaxima: 1500
   vidaAtual: 1500
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 4.3
@@ -517,6 +519,33 @@ MonoBehaviour:
   estaAtracado: 0
   velocidadeDeRe: 5
   velocidadeRotacaoRe: 2
+--- !u!54 &4703495614372460612
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2462426102010119520}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!1 &2518842337179265909
 GameObject:
   m_ObjectHideFlags: 0

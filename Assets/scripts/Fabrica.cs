@@ -54,8 +54,34 @@ public class Fabrica : MonoBehaviour
         Transform spawn = (pontoNascimento != null) ? pontoNascimento : transform;
         Transform saida = (pontoSaida != null) ? pontoSaida : transform;
 
-        // Instancia
-        GameObject unidade = Instantiate(prefab, spawn.position, spawn.rotation);
+        Vector3 posFinal = spawn.position;
+        Quaternion rotFinal = spawn.rotation;
+
+        // --- CORREÇÃO DE NAVMESH ---
+        // Antes de instanciar, verifica se o ponto está no NavMesh
+        // Isso evita o erro "Failed to create agent because it is not close enough to the NavMesh"
+        bool ehNaval = prefab.GetComponent<UnityEngine.AI.NavMeshAgent>() == null;
+        
+        if (!ehNaval)
+        {
+            UnityEngine.AI.NavMeshHit hit;
+            // Procura num raio de 5m
+            if (UnityEngine.AI.NavMesh.SamplePosition(spawn.position, out hit, 5.0f, UnityEngine.AI.NavMesh.AllAreas))
+            {
+                posFinal = hit.position;
+            }
+            else
+            {
+                Debug.LogWarning($"[Fabrica] '{name}' spawn Point fora do NavMesh! Tentando recuperar em raio maior (10m)...");
+                if (UnityEngine.AI.NavMesh.SamplePosition(spawn.position, out hit, 10.0f, UnityEngine.AI.NavMesh.AllAreas))
+                {
+                    posFinal = hit.position;
+                }
+            }
+        }
+
+        // Instancia na posição corrigida
+        GameObject unidade = Instantiate(prefab, posFinal, rotFinal);
 
         // Configura Identidade (Time da Fábrica = Time da Unidade)
         var idFabrica = GetComponentInParent<IdentidadeUnidade>();
@@ -67,9 +93,19 @@ public class Fabrica : MonoBehaviour
             idUnidade.nomeDoPais = idFabrica.nomeDoPais;
         }
 
+        // --- CHECAGEM DE SOM ---
+        if (unidade.GetComponent<SomUnidade>() == null)
+        {
+            Debug.LogWarning($"[Audio] Unidade '{unidade.name}' criada sem componente 'SomUnidade'! Adicione ao Prefab para ter áudio.");
+        }
+
         // Tenta mover para a saída
         var controle = unidade.GetComponent<ControleUnidade>();
-        if(controle != null) controle.MoverParaPonto(saida.position);
+        if(controle != null)
+        {
+             // Envia comando de movimento seguro
+             controle.MoverParaPonto(saida.position);
+        }
         else 
         {
             var nav = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();

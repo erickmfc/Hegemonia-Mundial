@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
+[RequireComponent(typeof(Rigidbody))]
 public class ControleNavioRealista : MonoBehaviour
 {
     [Header("Configurações Físicas (Hardcore)")]
@@ -56,6 +57,7 @@ public class ControleNavioRealista : MonoBehaviour
 
     // Estado Interno (Simulação)
     private NavMeshAgent agente;
+    private Rigidbody rb;
     private Vector3 velocidadeVetorial = Vector3.zero; // Vector de inércia real
     private float potenciaAlvo = 0f; // -1 a 1 (Input)
     private float potenciaAtual = 0f; // -1 a 1 (RPM do eixo)
@@ -67,11 +69,23 @@ public class ControleNavioRealista : MonoBehaviour
     private float tempoVibracao = 0f;
     private float offsetOnda;
     private Quaternion rotacaoInicialModelo;
+    private IdentidadeNaval identidade;
 
     void Awake()
     {
         agente = GetComponent<NavMeshAgent>();
-        if(agente != null)
+        rb = GetComponent<Rigidbody>();
+
+        // Correção de Robustez: Adiciona Rigidbody se faltar
+        if (rb == null)
+        {
+            rb = gameObject.AddComponent<Rigidbody>();
+            rb.useGravity = false;
+            rb.isKinematic = true; // Soft-Sim: Nós movemos via Transform
+            Debug.LogWarning($"[ControleNavioRealista] Rigidbody adicionado automaticamente ao {name}.");
+        }
+
+        if (agente != null)
         {
             agente.updatePosition = false; // Nós controlamos a posição (Soft-Sim)
             agente.updateRotation = false; // Nós controlamos a rotação (Physics)
@@ -265,10 +279,9 @@ public class ControleNavioRealista : MonoBehaviour
         // Convertemos velocidade global para local
         Vector3 velLocal = transform.InverseTransformDirection(velocidadeVetorial);
         
-        // Arrasto Longitudinal (Frente/Trás) - Baixo
-        float dragLong = 0.5f; 
-        // Arrasto Lateral (Lados) - Altíssimo (Quilha)
-        float dragLat = 3.0f; 
+        // Cálculo de arrasto hidrodinâmico (simplificado)
+        rb.linearDamping = 1.0f; 
+        rb.angularDamping = 2.0f; 
 
         // Aplica input do motor na velocidade local Z
         float forcaZ = potenciaAtual * velocidadeMaxima * 2.0f; // Fator de força empírico

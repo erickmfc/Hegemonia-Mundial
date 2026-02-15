@@ -185,8 +185,12 @@ public class Estaleiro : MonoBehaviour
         // Restaura escala final exata para garantir
         navioPronto.transform.localScale = slot.escalaOriginal;
 
-        // Mover para a saída
-        StartCoroutine(MoverParaSaida(navioPronto));
+        // --- MUDANÇA: NÃO MOVE MAIS SOZINHO ---
+        // O navio fica parado no slot, sob controle total do jogador.
+        // StartCoroutine(MoverParaSaida(navioPronto)); 
+        
+        // Ativa a lógica imediatamente no local de nascimento
+        ReativarLogicaUnidade(navioPronto);
 
         // Efeitos
         if (efeitoConclusao != null)
@@ -194,12 +198,20 @@ public class Estaleiro : MonoBehaviour
             Instantiate(efeitoConclusao, slot.pontoDeConstrucao.position, Quaternion.identity);
         }
 
-        // Libera o slot
+        // Libera o slot visualmente, mas o navio físico ainda está lá (cuidado com sobreposição se construir outro rápido!)
         slot.estaOcupado = false;
         slot.visualAtual = null;
         slot.prefabAtual = null;
         slot.progresso = 0f;
     }
+
+    // A rotina MoverParaSaida foi removida/desativada para dar controle total ao jogador.
+    /*
+    IEnumerator MoverParaSaida(GameObject navio)
+    {
+        ... (código antigo removido para limpeza) ...
+    }
+    */
 
     void DesativarLogicaUnidade(GameObject unidade)
     {
@@ -218,128 +230,89 @@ public class Estaleiro : MonoBehaviour
 
     void ReativarLogicaUnidade(GameObject unidade)
     {
-        Collider[] colliders = unidade.GetComponentsInChildren<Collider>();
-        foreach (var col in colliders) col.enabled = true;
+        Debug.Log($"[Estaleiro] Reativando unidade {unidade.name}...");
 
-        MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
-        foreach (var script in scripts) script.enabled = true;
+        // 1. Configurar Identidade e Camadas (Dados estáticos)
+        unidade.layer = LayerMask.NameToLayer("Default");
         
         IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
         if(identidade == null) identidade = unidade.AddComponent<IdentidadeUnidade>();
         identidade.teamID = 1; 
         identidade.nomeDoPais = "Hegemonia";
 
+        // 2. Posicionamento e NavMesh (Dados físicos)
+        // Se tiver forçando nível da água, já ajusta a altura ANTES de ligar qualquer coisa
+        if(forcarNivelDaAgua)
+        {
+             Vector3 pos = unidade.transform.position;
+             pos.y = nivelDaAgua;
+             unidade.transform.position = pos;
+        }
+
         var agent = unidade.GetComponent<NavMeshAgent>();
-        if (agent != null) agent.enabled = true;
-    }
-
-    IEnumerator MoverParaSaida(GameObject navio)
-    {
-        // 1. Garante que o NavMeshAgent esteja ativo para validação, mas os Colisores ainda OFF
-        var agent = navio.GetComponent<NavMeshAgent>();
-        if (agent != null)
+        if (agent != null) 
         {
+            // O agente precisa estar habilitado para aceitar Warp, mas evitamos updatePosition imediato se possível
             agent.enabled = true;
-            
-            // Força a altura do agente para o nível da água para garantir que ele ache o NavMesh
-            if(forcarNivelDaAgua)
+
+            // Verifica se tem NavMeshAgent (Navio com NavMesh)
+            var navMeshAgent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (navMeshAgent != null)
             {
-                Vector3 posAjustada = navio.transform.position;
-                posAjustada.y = nivelDaAgua; // Coloca o agente no nível 0 (NavMesh)
-                navio.transform.position = posAjustada;
+                // Busca ponto válido
+                NavMeshHit hit;
+                if (NavMesh.SamplePosition(unidade.transform.position, out hit, 20f, NavMesh.AllAreas))
+                {
+                    navMeshAgent.Warp(hit.position);
+                }
             }
+
+            agent.updatePosition = true;
+            agent.updateRotation = true;
+            agent.isStopped = false;
         }
 
-        yield return null; // Espera um frame para o Agente se registrar no NavMesh
+        // 3. Colisores (Física de interação)
+        Collider[] colliders = unidade.GetComponentsInChildren<Collider>();
+        foreach (var col in colliders) col.enabled = true;
 
-        // 2. Posiciona corretamente no NavMesh (Warp)
-        if (agent != null && pontoDeSaida != null)
+        // 4. Scripts (Lógica - Ligar por último para que encontrem tudo pronto no OnEnable/Start)
+        MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
+        foreach (var script in scripts) 
         {
-            NavMeshHit hit;
-            // Busca num raio generoso (50f)
-            if (NavMesh.SamplePosition(navio.transform.position, out hit, 50.0f, NavMesh.AllAreas))
+            // Não reativamos o NavMeshAgent aqui de novo (já foi tratado)
+            if (!(script is NavMeshAgent)) 
             {
-                agent.Warp(hit.position);
-                agent.SetDestination(pontoDeSaida.position);
-            }
-            else
-            {
-                if (NavMesh.SamplePosition(pontoDeSaida.position, out hit, 20.0f, NavMesh.AllAreas))
-                 {
-                     agent.Warp(hit.position);
-                     agent.SetDestination(pontoDeSaida.position);
-                 }
+                script.enabled = true;
             }
         }
+        
+        // Garante ControleUnidade presente e ativo
+        var ctrl = unidade.GetComponent<ControleUnidade>();
+        if (ctrl == null) ctrl = unidade.AddComponent<ControleUnidade>();
+        ctrl.enabled = true;
 
-        ReativarLogicaUnidade(navio);
+        Debug.Log($"[Estaleiro] Unidade {unidade.name} ativada, posicionada e scripts ligados.");
     }
 
     void OnDrawGizmos()
     {
-        // Gizmos helpers...
-        if (slots != null)
-        {
-            Gizmos.color = Color.yellow;
-            foreach (var slot in slots)
-            {
-                if (slot.pontoDeConstrucao != null)
-                {
-                    Gizmos.DrawWireCube(slot.pontoDeConstrucao.position, new Vector3(5, 1, 15));
-                    Gizmos.DrawLine(slot.pontoDeConstrucao.position, slot.pontoDeConstrucao.position + Vector3.up * 5);
-                }
-            }
-            if(pontoDeSaida != null)
-            {
-                Gizmos.color = Color.green;
-                Gizmos.DrawWireSphere(pontoDeSaida.position, 2f);
-                
-                // Draw lines to exit
-                foreach (var slot in slots)
-                {
-                    if (slot.pontoDeConstrucao != null)
-                        Gizmos.DrawLine(slot.pontoDeConstrucao.position, pontoDeSaida.position);
-                }
-            }
-        }
-    }
-
-    void OnGUI()
-    {
-        if (Camera.main == null) return;
-
+        if (slots == null) return;
         foreach (var slot in slots)
         {
-            if (slot.estaOcupado && slot.visualAtual != null)
+            if (slot.pontoDeConstrucao != null)
             {
-                // Pega posição do navio na tela
-                Vector3 posMundo = slot.visualAtual.transform.position + Vector3.up * 8f; 
-                Vector3 screenPos = Camera.main.WorldToScreenPoint(posMundo);
-                
-                // Se estiver atrás da câmera, ignora
-                if (screenPos.z < 0) continue;
-
-                float y = Screen.height - screenPos.y - 60f; // Ajuste de altura
-                float boxWidth = 160f;
-                float boxHeight = 40f;
-                Rect boxRect = new Rect(screenPos.x - boxWidth/2, y, boxWidth, boxHeight);
-                
-                // Fundo semi-transparente
-                Color oldColor = GUI.color;
-                GUI.color = new Color(0, 0, 0, 0.7f); 
-                GUI.DrawTexture(boxRect, Texture2D.whiteTexture, ScaleMode.StretchToFill);
-                GUI.color = oldColor;
-
-                // Texto de Status
-                GUIStyle styleStatus = new GUIStyle(GUI.skin.label);
-                styleStatus.alignment = TextAnchor.MiddleCenter;
-                styleStatus.fontStyle = FontStyle.Bold;
-                styleStatus.fontSize = 12; 
-                styleStatus.normal.textColor = Color.cyan;
-
-                string texto = $"CONSTRUINDO: {slot.progresso:F0}%";
-                GUI.Label(boxRect, texto, styleStatus);
+                Gizmos.color = slot.estaOcupado ? Color.red : Color.green;
+                Gizmos.DrawWireCube(slot.pontoDeConstrucao.position, Vector3.one * 5f);
             }
         }
+        
+        if(pontoDeSaida != null)
+        {
+            Gizmos.color = Color.blue;
+            Gizmos.DrawWireSphere(pontoDeSaida.position, 2f);
+            Gizmos.DrawLine(pontoDeSaida.position, pontoDeSaida.position + pontoDeSaida.forward * 10f);
+        }
     }
+
 }

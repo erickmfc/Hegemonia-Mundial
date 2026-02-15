@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 98a4f80a6ee5a5f4bb8166ed234c3bbb
+timeCreated: 1463483141
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/Sea/sea_test.mat
+  uploadId: 178676

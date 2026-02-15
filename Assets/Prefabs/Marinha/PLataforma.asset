@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: PLataforma
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: PLataforma
+  descricao: "Descri\xE7\xE3o curta..."
+  icone: {fileID: 21300000, guid: cb2174967db5cd74e8c35e639d419f33, type: 3}
+  prefabDaUnidade: {fileID: 4823762535859768294, guid: 5e87edf62f9c2604aba4d806190464ba, type: 3}
+  preco: 100
+  categoria: 3
+  scriptsDeComando: []

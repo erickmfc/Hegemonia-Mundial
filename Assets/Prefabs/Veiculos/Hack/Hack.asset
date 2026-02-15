@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Hack
   descricao: Ubuzeiro movel
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: b298b52d16ab5824b8666d908b1a7a26, type: 3}
   prefabDaUnidade: {fileID: 2719620262812312453, guid: 4bd14b61762be634c8f1815ff1d4489b, type: 3}
   preco: 100
   categoria: 0

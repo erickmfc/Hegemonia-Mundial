@@ -3,28 +3,42 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// IA General Pro: Gerencia táticas de Armas Combinadas.
-/// Recruta unidades e coordena ataques.
+/// IA General Pro: Gerencia recrutamento contínuo e combate ativo.
+/// Não fica parado esperando um batalhão completo - recruta e ataca progressivamente.
 /// </summary>
 public class IA_General_Pro : MonoBehaviour
 {
     private IA_Comandante chefe;
     
-    [Header("Composição do Batalhão")]
-    public int tanquesNecessarios = 2; // AI tentará manter isso
-    public int soldadosNecessarios = 4; // Reduzi para 4 para facilitar o start
-    public int transportesNecessarios = 1;
+    [Header("Composição Desejada (Mínimos)")]
+    public int soldadosDesejados = 6;
+    public int tanquesDesejados = 2;
+    public int helicopterosDesejados = 1;
 
-    // Listas de Controle
-    private List<GameObject> grupoTanques = new List<GameObject>();
+    [Header("Agressividade")]
+    [Tooltip("Quantidade mínima de unidades para lançar um ataque")]
+    public int minimoParaAtacar = 3;
+    [Tooltip("Tempo entre tentativas de ataque (segundos)")]
+    public float intervaloAtaque = 15f;
+
+    // Listas de Controle por tipo
     private List<GameObject> grupoSoldados = new List<GameObject>();
-    private List<GameObject> grupoTransporte = new List<GameObject>();
+    private List<GameObject> grupoTanques = new List<GameObject>();
+    private List<GameObject> grupoHelis = new List<GameObject>();
+    private List<GameObject> grupoOutros = new List<GameObject>();
 
     // Fábricas registradas pelo Arquiteto
     [SerializeField] private List<Fabrica> minhasFabricas = new List<Fabrica>();
 
+    // Timers
     private float _timerRecrutamento;
-    private string _ultimoStatus = "Iniciando..."; // Para Debug na tela
+    private float _timerAtaque;
+    private float _timerReorganizar;
+    private string _ultimoStatus = "Iniciando...";
+
+    // Estado
+    private bool jaAtacou = false;
+    private Vector3 ultimoAlvoPosicao;
 
     public void Inicializar(IA_Comandante comandante)
     {
@@ -35,215 +49,397 @@ public class IA_General_Pro : MonoBehaviour
     {
         if (chefe == null) return;
 
-        // 1. Processamento Tático (Lento)
-        if (Time.frameCount % 60 == 0) 
-        {
-            VerificarProntidaoParaCombate();
-        }
-
-        // 2. Recrutamento (A cada 2 segundos - mais rápido)
+        // 1. Recrutamento contínuo (a cada 2s) - NUNCA para de recrutar
         _timerRecrutamento += Time.deltaTime;
         if (_timerRecrutamento >= 2.0f)
         {
             _timerRecrutamento = 0;
             TentarRecrutar();
         }
-    }
 
-    void VerificarProntidaoParaCombate()
-    {
-        LimparMortos();
-
-        bool temForcaSuficiente = grupoTanques.Count >= tanquesNecessarios && 
-                                  grupoSoldados.Count >= soldadosNecessarios &&
-                                  grupoTransporte.Count >= transportesNecessarios;
-
-        if (temForcaSuficiente)
+        // 2. Reorganizar tropas (a cada 5s)
+        _timerReorganizar += Time.deltaTime;
+        if (_timerReorganizar >= 5.0f)
         {
-            _ultimoStatus = "⚔️ ATACANDO! Batalhão Pronto.";
-            Transform alvo = BuscarAlvo();
-            if (alvo != null)
+            _timerReorganizar = 0;
+            LimparMortos();
+            
+            // Se não está atacando, manda tropas pro ponto de encontro
+            if (!jaAtacou)
             {
-                LancarAtaqueCoordenado(alvo.position);
-            }
-            else
-            {
-                _ultimoStatus = "ATACANDO! (Procurando inimigos...)";
+                MoverTropasParaPontoDeEncontro();
             }
         }
-        else
+
+        // 3. Combate (a cada X segundos, verifica se pode atacar)
+        _timerAtaque += Time.deltaTime;
+        if (_timerAtaque >= intervaloAtaque)
         {
-            _ultimoStatus = $"🛡️ REAGRUPANDO (Recrutando reforços)";
-            ReagruparNoPontoDeEncontro();
+            _timerAtaque = 0;
+            AvaliarCombate();
         }
     }
 
-    // --- RECRUTAMENTO ---
+    // =============================================
+    // RECRUTAMENTO - Recruta continuamente, variando tipos
+    // =============================================
+    // =============================================
+    // RECRUTAMENTO - Recruta continuamente, variando tipos
+    // =============================================
     void TentarRecrutar()
     {
         if (chefe.dinheiro < 100) 
         {
-            _ultimoStatus = "Sem dinheiro para recrutar!";
+            _ultimoStatus = "💰 Sem dinheiro para recrutar";
             return; 
         }
 
-        // Prioridade 1: Transporte (Essencial para IA Pro)
-        // Busca "Houver" pois descobrimos que é este o nome no projeto
-        if (grupoTransporte.Count < transportesNecessarios)
+        LimparMortos();
+        int totalUnidades = TotalUnidades();
+
+        // Verifica quais fábricas temos disponíveis
+        bool temQuartel = minhasFabricas.Any(f => f.ehQuartel);
+        bool temFabricaVeiculos = minhasFabricas.Any(f => !f.ehQuartel && !f.name.Contains("Naval") && !f.name.Contains("Pier"));
+
+        // Prioridade 1: Soldados (Base do exército)
+        if (grupoSoldados.Count < soldadosDesejados)
         {
-            // Se comprar com sucesso, retorna para esperar nex frame. 
-            // Se falhar (ex: sem fábrica), continua para tentar outras coisas.
-            if (ComprarUnidade("Houver", "Hover", "Transporte", false)) return;
-            
-            _ultimoStatus = "Falha ao comprar Transporte (Tentando outros...)";
+            if (temQuartel)
+            {
+                if (ComprarUnidadePorCategoria(true, "Soldado", "Rifle", "Infantaria", "Tropa"))
+                {
+                    _ultimoStatus = "🎖️ Recrutando Infantaria...";
+                    return;
+                }
+            }
+            else
+            {
+                _ultimoStatus = "⚠️ Preciso de um Quartel!";
+                // Opcional: Pedir ao Arquiteto para construir (se houvesse comunicação direta)
+            }
         }
 
-        // Prioridade 2: Tanques
-        if (grupoTanques.Count < tanquesNecessarios)
+        // Prioridade 2: Tanques (Força pesada terrestre)
+        if (grupoTanques.Count < tanquesDesejados && chefe.dinheiro > 300)
         {
-             if (ComprarUnidade("Tanque", "Battle", "Tank", false)) return;
+            if (temFabricaVeiculos)
+            {
+                // Tenta comprar TANQUES especificamente (evita hovercrafts/navios por enquanto)
+                if (ComprarUnidadePorCategoria(false, "Tanque", "Tank", "Leopard", "Blindado", "Arthur"))
+                {
+                    _ultimoStatus = "🎖️ Comprando Tanque...";
+                    return;
+                }
+            }
+            else
+            {
+                _ultimoStatus = "⚠️ Preciso de Fábrica de Veículos!";
+            }
         }
 
-        // Prioridade 3: Soldados
-        if (grupoSoldados.Count < soldadosNecessarios)
+        // Prioridade 3: Helicópteros (Apoio Aéreo)
+        if (grupoHelis.Count < helicopterosDesejados && chefe.dinheiro > 500)
         {
-             if (ComprarUnidade("Soldado", "Rifle", "Infantaria", true)) return; // true = requer quartel
+            // Helicópteros geralmente feitos em Heliporto ou Fábrica Avançada
+             if (ComprarUnidadePorCategoria(false, "Heli", "Helicoptero", "Apache", "Cobra"))
+            {
+                _ultimoStatus = "🎖️ Comprando Helicóptero...";
+                return;
+            }
+        }
+
+        // Prioridade 4: Se o exército já está base ok, reforça com o que tiver fábrica
+        if (totalUnidades >= minimoParaAtacar)
+        {
+            if (temFabricaVeiculos && chefe.dinheiro > 400 && Random.value > 0.6f)
+            {
+                 ComprarUnidadePorCategoria(false, "Tanque", "Leopard");
+            }
+            else if (temQuartel)
+            {
+                 ComprarUnidadePorCategoria(true, "Soldado", "Rifle");
+            }
         }
     }
 
-    bool ComprarUnidade(string k1, string k2, string k3, bool requerQuartel)
+    /// <summary>
+    /// Tenta comprar uma unidade que contenha qualquer uma das keywords no nome.
+    /// </summary>
+    bool ComprarUnidadePorCategoria(bool requerQuartel, params string[] keywords)
     {
-        // Debug.Log($"[IA DEBUG] Tentando comprar unidade: {k1}/{k2}/{k3} (Requer Quartel: {requerQuartel})");
-
         // 1. Achar Fábrica compatível
-        Fabrica fabrica = minhasFabricas.FirstOrDefault(f => f != null && f.ehQuartel == requerQuartel);
-        if (fabrica == null) 
+        Fabrica fabrica = null;
+        
+        // Primeiro tenta na lista registrada
+        foreach (var f in minhasFabricas)
         {
-            // Debug.LogWarning("[IA DEBUG] Nenhuma fábrica registrada encontrada na lista interna. Tentando busca global...");
-            // Tenta achar qualquer fábrica na cena que seja da IA (Fallback)
-            var todasFabricas = FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
-            foreach(var f in todasFabricas)
+            // Filtra fábricas navais se não estamos pedindo barcos
+            if (f != null && f.ehQuartel == requerQuartel)
             {
-                 var id = f.GetComponentInParent<IdentidadeUnidade>();
-                 if (id != null && id.teamID == 2 && f.ehQuartel == requerQuartel)
-                 {
-                     fabrica = f;
-                     RegistrarFabrica(f); // Registra para a próxima
-                     // Debug.Log($"[IA DEBUG] Fábrica encontrada via busca global: {f.name}");
-                     break;
-                 }
-            }
-            
-            if (fabrica == null)
-            {
-                // Apenas avisa, não é erro critico (pode não ter construido ainda)
-                _ultimoStatus = requerQuartel ? "Sem Quartel!" : "Sem Fábrica/Aeroporto!";
-                // Debug.LogWarning($"[IA INFO] Não encontrei nenhuma fábrica válida para (Quartel={requerQuartel}). Ignorando pedido.");
-                return false;
-            }
-        }
+                // Evita estaleiros se estamos querendo tanques
+                if (!requerQuartel && (f.name.Contains("Naval") || f.name.Contains("Pier"))) continue;
 
-        // 2. Achar Prefab no Catálogo
-        if (MenuConstrucao.catalogoGlobal == null) 
-        {
-            Debug.LogError("[IA DEBUG] O Catálogo Global está NULO!");
-            return false;
+                fabrica = f;
+                break;
+            }
         }
         
-        Debug.Log($"[IA DEBUG] Pesquisando no catálogo com {MenuConstrucao.catalogoGlobal.Count} itens...");
-
-        var ficha = MenuConstrucao.catalogoGlobal.FirstOrDefault(item =>  
-            (item.nomeItem.ToLower().Contains(k1.ToLower()) || item.nomeItem.ToLower().Contains(k2.ToLower()) || item.nomeItem.ToLower().Contains(k3.ToLower())) &&
-            item.prefabDaUnidade != null &&
-            item.preco <= chefe.dinheiro
-        );
-
-        // Debug se não achar
-        if (ficha == null)
+        // Fallback: busca global na cena
+        if (fabrica == null)
         {
-            Debug.LogWarning($"[IA DEBUG] Não encontrei item compatível com '{k1}'/'{k2}'/'{k3}' por menos de ${chefe.dinheiro}. Tentando fallback...");
-            // Tenta pegar QUALQUER UM da categoria se for soldado
-            if (k1.Contains("Soldado"))
+            var todasFabricas = FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
+            foreach (var f in todasFabricas)
             {
-                ficha = MenuConstrucao.catalogoGlobal.FirstOrDefault(item => 
-                    item.categoria == DadosConstrucao.CategoriaItem.Exercito && item.preco < 200 && item.prefabDaUnidade != null);
+                var id = f.GetComponentInParent<IdentidadeUnidade>();
+                if (id != null && id.teamID == 2 && f.ehQuartel == requerQuartel)
+                {
+                     // Evita estaleiros se estamos querendo tanques
+                    if (!requerQuartel && (f.name.Contains("Naval") || f.name.Contains("Pier"))) continue;
+
+                    fabrica = f;
+                    RegistrarFabrica(f);
+                    break;
+                }
             }
         }
+        
+        if (fabrica == null) return false;
 
-        if (ficha == null)
+        // 2. Achar Prefab no Catálogo
+        if (MenuConstrucao.catalogoGlobal == null || MenuConstrucao.catalogoGlobal.Count == 0) 
+            return false;
+
+        // Busca por qualquer keyword strictamente
+        DadosConstrucao ficha = null;
+        foreach (var item in MenuConstrucao.catalogoGlobal)
         {
-             Debug.LogError($"[IA DEBUG] DESISTI: Realmente não achei nada no catálogo para '{k1}'. Verifique os nomes nos assets!");
-             return false;
+            if (item == null || item.prefabDaUnidade == null) continue;
+            if (item.preco > chefe.dinheiro) continue;
+            
+            string nomeLower = item.nomeItem.ToLower();
+
+            // Lógica Exclusiva: Se pedir Tanque, NÃO aceita Hovercraft/Navio
+            bool ehNaval = nomeLower.Contains("hover") || nomeLower.Contains("navio") || nomeLower.Contains("barco") || nomeLower.Contains("submarino");
+            if (ehNaval) continue; // Pula unidades navais/anfíbias que não foram pedidas explicitamente
+
+            foreach (string kw in keywords)
+            {
+                if (nomeLower.Contains(kw.ToLower()))
+                {
+                    ficha = item;
+                    break;
+                }
+            }
+            if (ficha != null) break;
         }
 
-        // 3. Produzir
-        Debug.Log($"[IA DEBUG] Item escolhido: {ficha.nomeItem} (${ficha.preco}). Tentando produzir na fábrica {fabrica.name}...");
+        // Fallback genérico APENAS para soldados
+        if (ficha == null && requerQuartel)
+        {
+            ficha = MenuConstrucao.catalogoGlobal.FirstOrDefault(item => 
+                item != null && 
+                item.prefabDaUnidade != null &&
+                item.categoria == DadosConstrucao.CategoriaItem.Exercito && 
+                item.preco <= chefe.dinheiro &&
+                item.preco < 300);
+        }
 
+        if (ficha == null) return false;
+
+        // 3. Produzir
         if (chefe.GastarDinheiro(ficha.preco))
         {
             GameObject novaUnidade = fabrica.ProduzirUnidade(ficha.prefabDaUnidade);
             if (novaUnidade != null)
             {
-                RegistrarSoldado(novaUnidade); 
+                RegistrarSoldado(novaUnidade);
                 
-                // Vai para o ponto de encontro
-                Vector3 pontoReagrupamento = chefe.transform.position + new Vector3(0,0,15);
-                var mov = novaUnidade.GetComponent<ControleUnidade>();
-                if (mov) mov.MoverParaPonto(pontoReagrupamento);
+                // Manda para o ponto de encontro (NÃO deixa parado na fábrica!)
+                Vector3 pontoEncontro = CalcularPontoDeEncontro();
+                MoverUnidade(novaUnidade, pontoEncontro);
                 
-                Debug.Log($"[IA General] SUCESSO: Comprou {ficha.nomeItem}");
+                Debug.Log($"[IA General Pro] ✅ Recrutou: {ficha.nomeItem} (${ficha.preco})");
                 return true;
             }
             else
             {
-                Debug.LogError("[IA DEBUG] A Fábrica falhou em instanciar o objeto (retornou null).");
+                // Devolve o dinheiro se falhou
+                chefe.AdicionarDinheiro(ficha.preco);
             }
-        }
-        else
-        {
-            _ultimoStatus = "Dinheiro insuficiente...";
-            Debug.Log($"[IA DEBUG] Falta de fundos: Tenho ${chefe.dinheiro}, preciso de ${ficha.preco}");
         }
         return false;
     }
 
-    // --- COMANDO ---
-    void LancarAtaqueCoordenado(Vector3 destino)
+    // =============================================
+    // COMBATE - Avalia e lança ataques progressivos
+    // =============================================
+    void AvaliarCombate()
     {
-        // Tanques na Frente
-        MoverGrupo(grupoTanques, destino);
-
-        // Transportes Recuados
-        if (chefe != null)
+        // 0. Verifica Tempo de Paz
+        if (chefe.tempoDePaz > 0)
         {
-            Vector3 dir = (chefe.transform.position - destino).normalized;
-            if (dir == Vector3.zero) dir = Vector3.back;
-            MoverGrupo(grupoTransporte, destino + dir * 15f);
+            float tempo = chefe.tempoDePaz;
+            _ultimoStatus = $"🕊️ TEMPO DE PAZ: {tempo:F0}s (Recrutando apenas)";
+            jaAtacou = false;
+            return;
         }
 
-        // Soldados (Se sobrarem a pé) flanqueiam
-        MoverGrupo(grupoSoldados, destino + new Vector3(8, 0, 8));
+        LimparMortos();
+        int total = TotalUnidades();
 
-        // ORDEM DE DESEMBARQUE: Se chegarem perto, desembarcam
-        foreach(var t in grupoTransporte)
+        if (total < minimoParaAtacar)
         {
-            if (Vector3.Distance(t.transform.position, destino) < 30f)
-            {
-                t.GetComponent<TransporteTerrestre>()?.DesembarcarTudo();
-            }
+            _ultimoStatus = $"🛡️ Preparando forças ({total}/{minimoParaAtacar})";
+            jaAtacou = false;
+            return;
+        }
+
+        // Busca um alvo
+        Transform alvo = BuscarAlvo();
+        if (alvo == null)
+        {
+            _ultimoStatus = "👀 Procurando inimigos...";
+            return;
+        }
+
+        _ultimoStatus = $"⚔️ ATACANDO com {total} unidades!";
+        jaAtacou = true;
+        ultimoAlvoPosicao = alvo.position;
+        LancarAtaqueCoordenado(alvo.position);
+    }
+
+    void LancarAtaqueCoordenado(Vector3 destino)
+    {
+        Vector3 direcao = (destino - chefe.transform.position).normalized;
+        if (direcao == Vector3.zero) direcao = Vector3.forward;
+
+        // Vetor lateral (Direita 90 graus)
+        Vector3 flancoDir = Vector3.Cross(Vector3.up, direcao).normalized;
+        
+        // 1. TANQUES: Vanguarda Centralizada
+        // Formação de Cunha ou Linha frontal
+        MoverEmFormacao(grupoTanques, destino, direcao, 5.0f); // 5m de espaçamento
+
+        // 2. SOLDADOS: Dividir em 2 Esquadrões (Esquerda e Direita)
+        List<GameObject> esquadraoEsq = new List<GameObject>();
+        List<GameObject> esquadraoDir = new List<GameObject>();
+
+        for (int i = 0; i < grupoSoldados.Count; i++)
+        {
+            if (i % 2 == 0) esquadraoEsq.Add(grupoSoldados[i]);
+            else esquadraoDir.Add(grupoSoldados[i]);
+        }
+
+        // Define posições afastadas do centro para não misturar com tanques
+        Vector3 posEsq = destino - flancoDir * 15f; // 15m para esquerda
+        Vector3 posDir = destino + flancoDir * 15f; // 15m para direita
+
+        // Move os esquadrões em formação de grid
+        MoverEmFormacao(esquadraoEsq, posEsq, direcao, 2.5f);
+        MoverEmFormacao(esquadraoDir, posDir, direcao, 2.5f);
+
+        // 3. HELICÓPTEROS: Flanco Aéreo Distante
+        // Ficam mais recuados e abertos
+        MoverEmFormacao(grupoHelis, destino + flancoDir * 30f - direcao * 10f, direcao, 10.0f);
+
+        // 4. OUTROS (Veículos leves/Caminhões): Retaguarda
+        MoverEmFormacao(grupoOutros, destino - direcao * 15f, direcao, 6.0f);
+    }
+
+    /// <summary>
+    /// Move uma lista de unidades para um ponto central, organizando-as em Grid para não encavalar.
+    /// </summary>
+    void MoverEmFormacao(List<GameObject> grupo, Vector3 centro, Vector3 direcaoFrente, float espacamento)
+    {
+        if (grupo.Count == 0) return;
+
+        Vector3 direita = Vector3.Cross(Vector3.up, direcaoFrente).normalized;
+        
+        // Calcula quantas colunas para ficar "quadrado"
+        int colunas = Mathf.CeilToInt(Mathf.Sqrt(grupo.Count)); 
+        if (colunas < 2) colunas = 2; // Mínimo 2 de largura
+
+        for (int i = 0; i < grupo.Count; i++)
+        {
+            if (grupo[i] == null) continue;
+
+            int linha = i / colunas;
+            int col = i % colunas;
+
+            // Centraliza o grid no ponto 'centro'
+            // X: offset lateral
+            float offsetX = (col - (colunas - 1) / 2f) * espacamento;
+            // Z: offset de profundidade (linhas vão ficando para trás do ponto de ataque)
+            float offsetZ = -linha * espacamento; 
+
+            Vector3 posFinal = centro + (direita * offsetX) + (direcaoFrente * offsetZ);
+            
+            MoverUnidade(grupo[i], posFinal);
         }
     }
 
+    // =============================================
+    // ORGANIZAÇÃO DE TROPAS (Wait/Rally Logic)
+    // =============================================
+    Vector3 CalcularPontoDeEncontro()
+    {
+        Vector3 centro = (chefe.basePrincipal != null) 
+            ? chefe.basePrincipal.position 
+            : chefe.transform.position;
+        
+        // Ponto de encontro: 25m à frente da base
+        return centro + Vector3.forward * 25f;
+    }
+
+    void MoverTropasParaPontoDeEncontro()
+    {
+        Vector3 ponto = CalcularPontoDeEncontro();
+        
+        // Usa a mesma lógica de formação, mas todos juntos num grande "Exército Parado"
+        var todos = new List<GameObject>();
+        todos.AddRange(grupoTanques);
+        todos.AddRange(grupoSoldados);
+        todos.AddRange(grupoHelis);
+        todos.AddRange(grupoOutros);
+
+        // Direção padrão para frente da base
+        Vector3 frente = Vector3.forward;
+        if (chefe.basePrincipal != null) frente = chefe.basePrincipal.forward;
+
+        // Grid mais apertado para esperar
+        MoverEmFormacao(todos, ponto, frente, 3.0f); 
+    }
+
+    // =============================================
+    // REGISTRO E CLASSIFICAÇÃO
+    // =============================================
     public void RegistrarSoldado(GameObject unidade)
     {
         if (unidade == null) return;
+        
+        // Evita duplicatas
+        if (grupoTanques.Contains(unidade) || grupoSoldados.Contains(unidade) || 
+            grupoHelis.Contains(unidade) || grupoOutros.Contains(unidade)) return;
+
         string n = unidade.name.ToLower();
         
-        if (grupoTanques.Contains(unidade) || grupoSoldados.Contains(unidade) || grupoTransporte.Contains(unidade)) return;
-
-        if (n.Contains("tank") || n.Contains("leopard") || n.Contains("blindado")) grupoTanques.Add(unidade);
-        else if (n.Contains("truck") || n.Contains("transp") || n.Contains("houver")) grupoTransporte.Add(unidade);
-        else grupoSoldados.Add(unidade); 
+        if (n.Contains("tank") || n.Contains("leopard") || n.Contains("blindado") || n.Contains("arthur"))
+        {
+            grupoTanques.Add(unidade);
+        }
+        else if (n.Contains("heli") || n.Contains("apache") || n.Contains("cobra") || 
+                 unidade.GetComponent<Helicoptero>() != null)
+        {
+            grupoHelis.Add(unidade);
+        }
+        else if (n.Contains("truck") || n.Contains("transp") || n.Contains("houver") || n.Contains("hover"))
+        {
+            grupoOutros.Add(unidade);
+        }
+        else
+        {
+            grupoSoldados.Add(unidade); // Default: infantaria
+        }
     }
 
     public void RegistrarFabrica(Fabrica fab)
@@ -251,92 +447,96 @@ public class IA_General_Pro : MonoBehaviour
         if (fab != null && !minhasFabricas.Contains(fab))
         {
             minhasFabricas.Add(fab);
+            Debug.Log($"[IA General Pro] 🏭 Fábrica registrada: {fab.name} (Quartel={fab.ehQuartel})");
         }
     }
 
+    // =============================================
+    // UTILIDADES
+    // =============================================
     void MoverGrupo(List<GameObject> grupo, Vector3 destino)
     {
         foreach (var u in grupo)
         {
-            if (u == null) continue;
-            
-            // Infantaria tenta pegar carona (DESATIVADO A PEDIDO DO USUÁRIO)
-            /*
-            bool ehInfantaria = grupoSoldados.Contains(u);
-            if (ehInfantaria && Vector3.Distance(u.transform.position, destino) > 50f)
-            {
-                 var transporteLivre = grupoTransporte.FirstOrDefault(t => !t.GetComponent<TransporteTerrestre>().EstaCheio());
-                 if (transporteLivre != null)
-                 {
-                     u.GetComponent<ControleUnidade>()?.MoverParaPonto(transporteLivre.transform.position);
-                     continue; 
-                 }
-            }
-            */
-
-            var controle = u.GetComponent<ControleUnidade>();
-            if (controle != null) controle.MoverParaPonto(destino);
+            if (u != null) MoverUnidade(u, destino);
         }
     }
 
-    void ReagruparNoPontoDeEncontro()
+    void MoverUnidade(GameObject u, Vector3 destino)
     {
-        if (chefe == null) return;
-        Vector3 ponto = chefe.transform.position + new Vector3(0, 0, 20);
+        if (u == null) return;
         
-        for(int i=0; i<grupoTanques.Count; i++) 
-            if(grupoTanques[i]) Enviar(grupoTanques[i], ponto + new Vector3(i*6 - 10, 0, 10));
-
-        for(int i=0; i<grupoTransporte.Count; i++) 
-            if(grupoTransporte[i]) Enviar(grupoTransporte[i], ponto + new Vector3(i*8, 0, 0));
-
-        for(int i=0; i<grupoSoldados.Count; i++) 
-        {
-            if(!grupoSoldados[i]) continue;
-            // Soldados vão DIRETO para perto dos caminhões para facilitar embarque
-            if (grupoTransporte.Count > 0)
-                Enviar(grupoSoldados[i], grupoTransporte[i % grupoTransporte.Count].transform.position + Vector3.back * 3f);
-            else
-                Enviar(grupoSoldados[i], ponto + new Vector3(i*2 - 5, 0, -10));
+        var controle = u.GetComponent<ControleUnidade>();
+        if (controle != null) 
+        { 
+            controle.MoverParaPonto(destino); 
+            return; 
         }
-    }
-
-    void Enviar(GameObject u, Vector3 pos)
-    {
-        u.GetComponent<ControleUnidade>()?.MoverParaPonto(pos);
+        
+        var nav = u.GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (nav != null && nav.isOnNavMesh) 
+        { 
+            nav.SetDestination(destino); 
+            nav.isStopped = false; 
+        }
     }
 
     void LimparMortos()
     {
         grupoTanques.RemoveAll(u => u == null);
         grupoSoldados.RemoveAll(u => u == null);
-        grupoTransporte.RemoveAll(u => u == null);
+        grupoHelis.RemoveAll(u => u == null);
+        grupoOutros.RemoveAll(u => u == null);
         minhasFabricas.RemoveAll(f => f == null);
+    }
+
+    int TotalUnidades()
+    {
+        return grupoTanques.Count + grupoSoldados.Count + grupoHelis.Count + grupoOutros.Count;
     }
 
     Transform BuscarAlvo()
     {
         var inimigos = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        return inimigos.FirstOrDefault(i => i.teamID == 1)?.transform; // Ataca jogador (Time 1)
+        Transform melhorAlvo = null;
+        float menorDist = float.MaxValue;
+
+        foreach (var ini in inimigos)
+        {
+            if (ini == null || ini.teamID == 2) continue; // Ignora aliados
+            if (ini.teamID == 1) // Jogador
+            {
+                float dist = Vector3.Distance(chefe.transform.position, ini.transform.position);
+                if (dist < menorDist)
+                {
+                    menorDist = dist;
+                    melhorAlvo = ini.transform;
+                }
+            }
+        }
+        return melhorAlvo;
     }
 
-    // --- DEBUG VISUAL NA TELA ---
+    // =============================================
+    // DEBUG VISUAL NA TELA
+    // =============================================
     void OnGUI()
     {
         if (chefe == null) return;
 
-        // Desenha painel no canto superior esquerdo
-        GUI.Box(new Rect(10, 10, 300, 160), "CÉREBRO DA IA");
+        GUI.Box(new Rect(10, 10, 320, 180), "CÉREBRO DA IA");
 
         string status = $"Estado: {_ultimoStatus}\n" +
                         $"Dinheiro: ${chefe.dinheiro:F0}\n" +
                         $"--------------------------\n" +
-                        $"Fábricas Conhecidas: {minhasFabricas.Count}\n" +
+                        $"Fábricas: {minhasFabricas.Count}\n" +
                         $"--------------------------\n" +
-                        $"Tanques: {grupoTanques.Count} / {tanquesNecessarios}\n" +
-                        $"Transportes: {grupoTransporte.Count} / {transportesNecessarios}\n" +
-                        $"Soldados: {grupoSoldados.Count} / {soldadosNecessarios}";
+                        $"Soldados: {grupoSoldados.Count} / {soldadosDesejados}\n" +
+                        $"Tanques: {grupoTanques.Count} / {tanquesDesejados}\n" +
+                        $"Helis: {grupoHelis.Count} / {helicopterosDesejados}\n" +
+                        $"Outros: {grupoOutros.Count}\n" +
+                        $"TOTAL: {TotalUnidades()} (min ataque: {minimoParaAtacar})";
 
-        GUI.Label(new Rect(20, 35, 280, 140), status);
+        GUI.Label(new Rect(20, 35, 300, 160), status);
     }
 }

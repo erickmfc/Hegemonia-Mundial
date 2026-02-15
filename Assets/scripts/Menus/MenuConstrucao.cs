@@ -644,14 +644,28 @@ public class MenuConstrucao : MonoBehaviour
                             || item.prefabDaUnidade.GetComponent<ControleUnidade>() != null
                             || item.prefabDaUnidade.GetComponent("Helicoptero") != null; 
         
-        // Verifica também se o nome sugere uma unidade para garantir (Ex: "Helicóptero")
-        if (!ehUnidadeMovel)
+        string nomeLower = item.prefabDaUnidade.name.ToLower();
+
+        // CORREÇÃO CRÍTICA: Se tiver nome de PRÉDIO, força ser prédio, mesmo que tenha scripts de unidade por engano
+        // Isso resolve o "Hangar de Veículos" sendo tratado como unidade
+        bool ehPredioExplícito = nomeLower.Contains("hangar") || nomeLower.Contains("fabrica") || nomeLower.Contains("refinaria") || 
+                                 nomeLower.Contains("quartel") || nomeLower.Contains("tenda") || nomeLower.Contains("silo") ||
+                                 nomeLower.Contains("torre") || nomeLower.Contains("muro") || nomeLower.Contains("wall");
+
+        if (ehPredioExplícito)
         {
-             string nomeLower = item.prefabDaUnidade.name.ToLower();
-             if (nomeLower.Contains("helicoptero") || nomeLower.Contains("soldado") || nomeLower.Contains("tank") || nomeLower.Contains("veiculo"))
-             {
-                 ehUnidadeMovel = true;
-             }
+            ehUnidadeMovel = false; // Força ser tratado como construção
+        }
+        else 
+        {
+            // Verifica também se o nome sugere uma unidade para garantir (Ex: "Helicóptero")
+            if (!ehUnidadeMovel)
+            {
+                 if (nomeLower.Contains("helicoptero") || nomeLower.Contains("soldado") || nomeLower.Contains("tank") || nomeLower.Contains("veiculo"))
+                 {
+                     ehUnidadeMovel = true;
+                 }
+            }
         }
 
         if (ehUnidadeMovel || item.categoria == DadosConstrucao.CategoriaItem.Exercito || item.categoria == DadosConstrucao.CategoriaItem.Aeronautica)
@@ -668,7 +682,7 @@ public class MenuConstrucao : MonoBehaviour
         {
             // CORREÇÃO: Passamos o preço para permitir reembolso se cancelar!
             construtor.SelecionarParaConstruir(item.prefabDaUnidade, item.preco);
-            AlternarMenu(false);
+            AlternarMenu(false); // Fecha o menu para construir
         }
     }
 

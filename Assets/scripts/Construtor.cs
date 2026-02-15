@@ -303,8 +303,14 @@ public class Construtor : MonoBehaviour
     void RemoverColisoresEScripts(GameObject obj)
     {
         // 1. Remove Colisores (Incluindo de filhos inativos)
+        // IMPORTANTE: Desativar 'enabled' primeiro para garantir que o Raycast não bata neles
+        // no mesmo frame em que são destruídos.
         Collider[] cols = obj.GetComponentsInChildren<Collider>(true);
-        foreach (var c in cols) Destroy(c);
+        foreach (var c in cols) 
+        {
+            c.enabled = false; 
+            Destroy(c);
+        }
         
         // 2. Remove NavMeshObstacles
         UnityEngine.AI.NavMeshObstacle[] navs = obj.GetComponentsInChildren<UnityEngine.AI.NavMeshObstacle>(true);

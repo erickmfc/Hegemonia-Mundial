@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: f3dbafc5d4173774f9e4400868f1a3e6
+timeCreated: 1461168966
+licenseType: Store
+ShaderImporter:
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Shaders/Ocean.shader
+  uploadId: 178676

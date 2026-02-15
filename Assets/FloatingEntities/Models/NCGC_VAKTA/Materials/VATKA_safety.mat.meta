@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 9e9be0d7e0099cf43ab27e328de2f770
+timeCreated: 1461168967
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/NCGC_VAKTA/Materials/VATKA_safety.mat
+  uploadId: 178676

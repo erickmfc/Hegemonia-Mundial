@@ -398,21 +398,19 @@ public class LancadorMultiplo : MonoBehaviour
             Vector3 destino = (alvo != null) ? alvo.position : (transform.position + transform.forward * 100f);
             scriptT.IniciarLancamento(destino);
         }
-        else
         {
-            Debug.LogWarning("[LancadorMultiplo] Míssil não tem script ICBM nem Tático, tentando Projetil genérico");
-            // Tenta achar movimentação genérica do ControleTorreta
             var projetil = missel.GetComponent<Projetil>();
-            if (projetil != null)
+            
+            // ADICIONA O COMPONENTE SE FALTAR
+            if (projetil == null) 
             {
-                 Debug.Log("[LancadorMultiplo] Usando script Projetil genérico");
-                 projetil.SetDono(this.gameObject);
-                 if (alvo != null) projetil.SetDirecao((alvo.position - pontoSaida.position).normalized);
+                 Debug.Log($"[LancadorMultiplo] Míssil sem script. Adicionando Projetil automaticamente.");
+                 projetil = missel.AddComponent<Projetil>();
             }
-            else
-            {
-                Debug.LogError("[LancadorMultiplo] ERRO: Míssil não tem nenhum script de controle (ICBM, Tático ou Projetil)!");
-            }
+
+            projetil.SetDono(this.gameObject);
+            if (alvo != null) projetil.SetDirecao((alvo.position - pontoSaida.position).normalized);
+            else projetil.SetDirecao(pontoSaida.forward); // Tiro cego
         }
     }
 

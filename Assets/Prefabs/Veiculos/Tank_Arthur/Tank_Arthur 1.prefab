@@ -269,6 +269,7 @@ MonoBehaviour:
   locaisDoMissel: []
   somMissel: {fileID: 0}
   tempoEntreMisseis: 2
+  municoesPorCano: []
 --- !u!195 &6705082087531572936
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -276,7 +277,7 @@ NavMeshAgent:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1132656051466373794}
-  m_Enabled: 1
+  m_Enabled: 0
   m_AgentTypeID: 0
   m_Radius: 3.02
   m_Speed: 5.9
@@ -328,7 +329,7 @@ MonoBehaviour:
   iniciarNoStart: 1
   causarExplosoes: 1
   qtdExplosoes: 5
-  vidaUtil: 15
+  vidaUtil: 10
 --- !u!1 &1392186725489195477
 GameObject:
   m_ObjectHideFlags: 0

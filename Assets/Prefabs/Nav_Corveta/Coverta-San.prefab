@@ -684,12 +684,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
-  tempoAceleracao: 10
-  tempoDesaceleracao: 0
+  tempoAceleracao: 5
+  tempoDesaceleracao: 3
   tempoParadaEmergencia: 5
-  velocidadeMaxima: 12
+  velocidadeMaxima: 15
   velocidadeLeme: 5
-  curvaMaximaGraus: 10
+  curvaMaximaGraus: 15
   coeficienteAderna: 2.5
   alturaOnda: 1.27
   frequenciaOnda: 0.2

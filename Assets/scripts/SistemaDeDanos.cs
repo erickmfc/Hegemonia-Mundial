@@ -15,6 +15,8 @@ public class SistemaDeDanos : MonoBehaviour
     [Header("Tipo de Unidade")]
     [Tooltip("Marque se for Soldado ou Monstro (sangra/morre sem explodir). Desmarque para Tanques/Prédios.")]
     public bool unidadeBiologica = false; 
+    [Tooltip("Marque se for um Muro ou Estrutura simples (sem efeitos de fumaça complexos, apenas quebra).")]
+    public bool ehEstrutura = false;
 
     [Header("Personalização Visual")]
     public GameObject prefabDestrocos; // O modelo 3D do tanque destruído/queimado OU corpo do soldado
@@ -34,6 +36,12 @@ public class SistemaDeDanos : MonoBehaviour
     void Start()
     {
         vidaAtual = vidaMaxima;
+        
+        // Auto-detecta se é Muro pela tag
+        if (gameObject.CompareTag("Destrutivel") || gameObject.name.Contains("Muro") || gameObject.name.Contains("Wall"))
+        {
+            ehEstrutura = true;
+        }
     }
 
     public void AtualizarVidaMaxima(int bonus)
@@ -53,7 +61,8 @@ public class SistemaDeDanos : MonoBehaviour
         OnDano?.Invoke();
 
         // Se for máquina, aplica o Protocolo de Estado Visual
-        if (!unidadeBiologica)
+        // Estruturas (Muros) geralmente não soltam fumaça gradual, só quebram no final ou soltam poeira
+        if (!unidadeBiologica && !ehEstrutura)
         {
             GerenciarEstadosDano(porcentagem);
         }
@@ -61,6 +70,7 @@ public class SistemaDeDanos : MonoBehaviour
         if (vidaAtual <= 0)
         {
             if (unidadeBiologica) MorrerBiologico();
+            else if (ehEstrutura) MorrerEstrutura();
             else StartCoroutine(SequenciaDeMorte());
         }
     }
@@ -235,11 +245,62 @@ public class SistemaDeDanos : MonoBehaviour
         morreu = true;
         OnMorte?.Invoke(); // Notifica a morte
         DesativarUnidade();
+        
+        // Efeito de Sangue
+        if (GerenciadorFXGlobal.Instancia != null)
+        {
+            GerenciadorFXGlobal.Instancia.TocarEfeito("Sangue", transform.position + Vector3.up, 1.0f);
+        }
+
         if (prefabDestrocos != null)
         {
+            // Instancia o corpo com a mesma posição e rotação do vivo (Em Pé)
+            // O script "AjusteCadaver" no prefab cuidará de deitar o corpo e limpar componentes.
             GameObject corpo = Instantiate(prefabDestrocos, transform.position, transform.rotation);
-            Destroy(corpo, 15.0f);
+            
+            // Verifica se o usuário esqueceu de colocar o script
+            AjusteCadaver ajuste = corpo.GetComponent<AjusteCadaver>();
+            if (ajuste == null)
+            {
+                // Adiciona o script de ajuste automaticamente se faltar
+                Debug.LogWarning($"[SistemaDeDanos] O prefab {prefabDestrocos.name} não tem o script 'AjusteCadaver'. Adicionando automaticamente...");
+                ajuste = corpo.AddComponent<AjusteCadaver>();
+                ajuste.rotacaoX = 180f; // Força 180 conforma solicitado, se não tiver script
+            }
+            
+            // Se já tiver script, confiamos na configuração do inspector dele.
+
+            Destroy(corpo, 60.0f); // Fica 1 min no chão
         }
+        
+        Destroy(gameObject);
+    }
+
+    void MorrerEstrutura() // Lógica para Muros/Caixas
+    {
+        morreu = true;
+        OnMorte?.Invoke();
+        DesativarUnidade();
+
+        // Toca som de desmoronamento/quebra
+        TocarSomExplosao(); 
+
+        // Cria Poeira/Destroços
+        if (GerenciadorFXGlobal.Instancia != null)
+        {
+            // Poeira cinza subindo
+            GerenciadorFXGlobal.Instancia.TocarEfeito("FumacaLeve", transform.position, tamanhoDoEfeito * 2f);
+        }
+
+        // Troca pelo modelo destruído (ex: muro quebrado)
+        if (prefabDestrocos != null)
+        {
+            GameObject escombros = Instantiate(prefabDestrocos, transform.position, transform.rotation);
+            escombros.transform.localScale = transform.localScale; 
+            // Escombros de muro geralmente ficam para sempre ou por muito tempo
+            // Destroy(escombros, 60.0f);
+        }
+
         Destroy(gameObject);
     }
 
@@ -279,7 +340,8 @@ public class SistemaDeDanos : MonoBehaviour
             GameObject destrocos = Instantiate(prefabDestrocos, transform.position, transform.rotation);
             // Destroços podem ter escala ajustada se necessário
             destrocos.transform.localScale = transform.localScale; 
-            Destroy(destrocos, 20.0f);
+            // Tanques destruídos ficam um tempo e somem
+            Destroy(destrocos, 60.0f);
         }
 
         // 6. Remove a unidade

@@ -37,8 +37,8 @@ public class NavegacaoInteligenteNaval : MonoBehaviour
     private NavMeshAgent agente;
     private bool emMarchaRe = false;
     private Vector3 destinoAtual;
+    private bool temDestino = false; // Restored missing field
     private float velocidadeOriginal;
-    private bool temDestino = false;
     private float velocidadeAtualSimulada = 0f; 
     private float lemeAtual = 0f; 
     

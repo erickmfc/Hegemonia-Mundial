@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Barco WW Transporte
   descricao: Barco Para 4 pessoas
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: c2fa6dcba72e79f42b8943a974f7eede, type: 3}
   prefabDaUnidade: {fileID: 6872568706108772620, guid: c577dacf59af348458813b0404384255, type: 3}
   preco: 100
   categoria: 1

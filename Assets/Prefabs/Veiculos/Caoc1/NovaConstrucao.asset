@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: NovaConstrucao
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: Nome da Unidade
+  nomeItem: Caminhao de transporte
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 60001eb62a892924388651eb6054858d, type: 3}
   prefabDaUnidade: {fileID: 4672269003801672537, guid: 191eb3d7205ed16448551931db8385ab, type: 3}
   preco: 100
   categoria: 0

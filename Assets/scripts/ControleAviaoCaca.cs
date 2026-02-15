@@ -41,7 +41,6 @@ public class ControleAviaoCaca : MonoBehaviour
     private float velocidadeAtual = 0f;
     private Vector3 destinoAtual;
     private bool temDestino = false;
-    private Transform alvoAtaque = null;
     
     // Controle de Rodas
     private float fatorRodas = 0f; // 0 = Baixadas, 1 = Recolhidas
@@ -208,7 +207,8 @@ public class ControleAviaoCaca : MonoBehaviour
         
         // BANKING (Inclina nas curvas)
         // Recalcula banking baseado na curva
-        float curva = 0f; // ... logica de banking avançada opcional
+        // BANKING (Inclina nas curvas)
+        // Recalcula banking baseado na curva
     }
 
     void IniciarDecolagem()

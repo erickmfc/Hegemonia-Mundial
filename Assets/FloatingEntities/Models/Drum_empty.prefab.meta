@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: cb752ddf9521c714eb0529474657b0fe
+timeCreated: 1461171355
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/Drum_empty.prefab
+  uploadId: 178676

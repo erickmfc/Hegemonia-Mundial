@@ -365,31 +365,69 @@ public class Helicoptero : MonoBehaviour
 
     IEnumerator RotinaEmbarque(GameObject s, NavMeshAgent nav)
     {
-        nav.SetDestination(transform.position); 
-        nav.isStopped = false; 
-        Vector3 ultimaPosHeli = transform.position;
-        
-        while(s && s.activeInHierarchy)
-        {
-            float distHorizontal = Vector2.Distance(new Vector2(s.transform.position.x, s.transform.position.z), new Vector2(transform.position.x, transform.position.z));
-            if(distHorizontal <= distanciaEmbarque) break; 
+        if(s == null || nav == null) yield break;
 
-            if(nav && nav.isActiveAndEnabled) 
+        Debug.Log($"[Helicoptero] Iniciando embarque de {s.name}...");
+        nav.isStopped = false; 
+        nav.speed = 12f; // Acelera o soldado para correr até o heli (Opcional, mas ajuda no gameplay)
+        nav.SetDestination(new Vector3(transform.position.x, s.transform.position.y, transform.position.z));
+
+        float timeout = 15.0f; // Tempo máximo para tentar embarcar
+        float timer = 0f;
+
+        while(s != null && s.activeInHierarchy && timer < timeout)
+        {
+            timer += Time.deltaTime;
+
+            // Atualiza destino periodicamente (caso o heli se mova levemente)
+            if (timer % 1.0f < 0.1f)
             {
-                if(Vector3.Distance(transform.position, ultimaPosHeli) > 1.0f)
-                {
-                    nav.SetDestination(transform.position);
-                    ultimaPosHeli = transform.position;
-                }
+                 nav.SetDestination(new Vector3(transform.position.x, s.transform.position.y, transform.position.z));
             }
-            yield return new WaitForSeconds(0.2f);
+
+            // Distância Horizontal (Ignora altura)
+            float distHorizontal = Vector2.Distance(
+                new Vector2(s.transform.position.x, s.transform.position.z), 
+                new Vector2(transform.position.x, transform.position.z)
+            );
+
+            // Debug de distância
+            // Debug.Log($"Distância {s.name} -> Heli: {distHorizontal:F1}m (Necessário: {distanciaEmbarque}m)");
+
+            if(distHorizontal <= distanciaEmbarque) 
+            {
+                // Chegou!
+                break; 
+            }
+            
+            // Se estiver muito perto mas travado, puxa ele
+            if (distHorizontal < distanciaEmbarque * 1.5f && nav.velocity.sqrMagnitude < 0.1f)
+            {
+                 // Está quase lá e parou? Considera embarcado.
+                 break;
+            }
+
+            yield return null; // Check todo frame para ser responsivo
         }
 
-        if(s && soldadosEmbarcados.Count < capacidadeMaxima)
+        if(s != null && soldadosEmbarcados.Count < capacidadeMaxima)
         {
-            soldadosEmbarcados.Add(s);
-            s.SetActive(false); 
-            Debug.Log($"⬇️ {s.name} embarcou com sucesso!");
+            // Verifica novamente a distância final para não pegar gente de muito longe se o timeout estourou
+             float distFinal = Vector2.Distance(
+                new Vector2(s.transform.position.x, s.transform.position.z), 
+                new Vector2(transform.position.x, transform.position.z)
+            );
+
+            if (distFinal <= distanciaEmbarque * 2.0f) // Tolerância final (dobro)
+            {
+                soldadosEmbarcados.Add(s);
+                s.SetActive(false); 
+                Debug.Log($"⬇️ {s.name} embarcou com sucesso! (Total: {soldadosEmbarcados.Count})");
+            }
+            else
+            {
+                Debug.Log($"❌ {s.name} falhou em embarcar (Longe demais: {distFinal:F1}m).");
+            }
         }
     }
 

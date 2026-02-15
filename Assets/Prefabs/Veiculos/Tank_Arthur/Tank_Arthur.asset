@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Tank Arthur
   descricao: Tank leve e rapido disparo
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: bc9ac575d5bfc2c4e8ef890c567734d3, type: 3}
   prefabDaUnidade: {fileID: 1132656051466373794, guid: 3476dbf21a11b084bb2ac35f78af323e, type: 3}
   preco: 100
   categoria: 0

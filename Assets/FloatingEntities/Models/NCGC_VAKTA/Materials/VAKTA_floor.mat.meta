@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: cbd6db471f9092e488d6ba4905560254
+timeCreated: 1461168967
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/NCGC_VAKTA/Materials/VAKTA_floor.mat
+  uploadId: 178676

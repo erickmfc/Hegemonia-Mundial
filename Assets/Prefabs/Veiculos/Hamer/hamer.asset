@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Hamer carro
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: f1e85997ddea5ac489a974fd754f3c2d, type: 3}
   prefabDaUnidade: {fileID: 4525599496537096036, guid: 059c1d16c4b51ea41830938657fbfe71, type: 3}
   preco: 200
   categoria: 0

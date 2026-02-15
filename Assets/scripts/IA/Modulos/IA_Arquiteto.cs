@@ -132,8 +132,8 @@ public class IA_Arquiteto : MonoBehaviour
             else centroDaBase = transform;
         }
 
-        // Espera um pouco para garantir que o MenuConstrucao carregou o catálogo
-        Invoke("ConstruirBaseInicial", 2.0f);
+        // DESATIVADO: IA_Arquiteto_Pro agora cuida de toda a construção da base.
+        // Invoke("ConstruirBaseInicial", 2.0f);
     }
 
     void ConstruirBaseInicial()

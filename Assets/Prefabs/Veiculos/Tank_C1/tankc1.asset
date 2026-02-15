@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: tankc1
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: Tank C1
+  nomeItem: Tank C1 Verde
   descricao: Tank rapido e leve
-  icone: {fileID: 21300000, guid: da82712718b20c34eb726b3cf7a82a84, type: 3}
+  icone: {fileID: 21300000, guid: 9424345f86868da4fbfeb50fa6f5f134, type: 3}
   prefabDaUnidade: {fileID: 716812746667202105, guid: 72844beb89a773340a2c78c1c88388c2, type: 3}
   preco: 100
   categoria: 0

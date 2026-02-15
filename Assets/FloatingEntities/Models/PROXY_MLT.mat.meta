@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a87e150a8134f4c4890d10d7b477a340
+timeCreated: 1461171502
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/PROXY_MLT.mat
+  uploadId: 178676

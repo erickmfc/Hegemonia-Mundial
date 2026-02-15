@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b6df34d94da740445b2bd9eaf8655212
+timeCreated: 1463593509
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Shaders/test.mat
+  uploadId: 178676

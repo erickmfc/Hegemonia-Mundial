@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 3184bec98636ed141aa2eb219fb84582
+timeCreated: 1461168966
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/NCGC_VAKTA/Materials/VAKTA_props.mat
+  uploadId: 178676

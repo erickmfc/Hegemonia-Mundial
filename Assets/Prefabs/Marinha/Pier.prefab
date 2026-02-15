@@ -1230,7 +1230,8 @@ MonoBehaviour:
   vidaMaxima: 500
   vidaAtual: 500
   unidadeBiologica: 0
-  prefabDestrocos: {fileID: 0}
+  ehEstrutura: 1
+  prefabDestrocos: {fileID: 4218999918339512119, guid: 16534a0ad22352443a007b15ababf921, type: 3}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 6.6
   ajusteDePosicao: {x: 0, y: 0, z: 0}

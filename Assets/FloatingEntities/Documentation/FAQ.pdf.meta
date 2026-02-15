@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8e355e2b531864547bedaaf1cce11492
+timeCreated: 1461852727
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Documentation/FAQ.pdf
+  uploadId: 178676

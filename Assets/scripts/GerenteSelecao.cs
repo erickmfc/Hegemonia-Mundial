@@ -29,7 +29,15 @@ public class GerenteSelecao : MonoBehaviour
     void Update()
     {
         // Se clicar em cima de botões da UI, não faz nada
-        if (EventSystem.current.IsPointerOverGameObject()) return;
+        if (EventSystem.current.IsPointerOverGameObject())
+        {
+            // DEBUG: Se o clique direito foi bloqueado pela UI
+            if (Input.GetMouseButtonDown(1))
+            {
+                Debug.LogWarning("[GerenteSelecao] Clique direito BLOQUEADO por UI (IsPointerOverGameObject=true)");
+            }
+            return;
+        }
 
         // 1. CLICOU (Marca onde começou)
         if (Input.GetMouseButtonDown(0))
@@ -43,12 +51,14 @@ public class GerenteSelecao : MonoBehaviour
         if (Input.GetMouseButton(0) && arrastando)
         {
             // Só mostra o verde se moveu um pouco o mouse (evita piscar)
-            if(Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 10)
+            // Aumentei tolerância para 20 pixels para evitar "arrastar sem querer"
+            if(Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 20)
             {
                 caixaSelecaoVisual.gameObject.SetActive(true);
             }
             
-            AtualizarDesenhoCaixa();
+            if (caixaSelecaoVisual.gameObject.activeSelf)
+                AtualizarDesenhoCaixa();
         }
 
         // 3. SOLTOU (Calcula quem pegou)
@@ -61,26 +71,54 @@ public class GerenteSelecao : MonoBehaviour
             else
             {
                 // Clique Simples (Sem arrastar)
-                // Se acertar uma unidade -> Seleciona ela.
-                // Se acertar chão/vazio -> Mantém tudo deselecionado (já deselecionou no MouseDown).
                 CliqueSimples();
             }
 
             // Limpeza
             arrastando = false;
+            // Desativa imediatamente para não ficar visualmente preso
             if(caixaSelecaoVisual != null)
                 caixaSelecaoVisual.gameObject.SetActive(false);
         }
 
         // 4. MOVIMENTO EM GRUPO (Botão Direito)
-        if (Input.GetMouseButtonDown(1) && unidadesSelecionadas.Count > 0)
+        if (Input.GetMouseButtonDown(1))
         {
-            Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-
-            if (Physics.Raycast(raio, out hit))
+            if(unidadesSelecionadas.Count > 0)
             {
-                MoverUnidadesEmGrupo(hit.point);
+                // Usa LayerMask para ignorar Triggers, UI, IgnoreRaycast (2) etc.
+                // Default (0), Water (4), Terrain (8) etc.
+                // Mas queremos ignorar IgnoreRaycast (2).
+                int layerMaskMove = ~(1 << 2); 
+
+                Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
+                RaycastHit hit;
+                Vector3 destino = Vector3.zero;
+                bool encontrouDestino = false;
+
+                // Tenta acertar um Collider primeiro (terreno, prédios, etc.)
+                if (Physics.Raycast(raio, out hit, Mathf.Infinity, layerMaskMove))
+                {
+                    destino = hit.point;
+                    encontrouDestino = true;
+                }
+                else
+                {
+                    // FALLBACK: Calcula interseção com o plano da água (Y = 0)
+                    // Isso garante que cliques sobre a água (que não tem Collider) funcionem!
+                    Plane planoAgua = new Plane(Vector3.up, Vector3.zero); // Plano horizontal em Y=0
+                    float distancia;
+                    if (planoAgua.Raycast(raio, out distancia))
+                    {
+                        destino = raio.GetPoint(distancia);
+                        encontrouDestino = true;
+                    }
+                }
+
+                if (encontrouDestino)
+                {
+                    MoverUnidadesEmGrupo(destino);
+                }
             }
         }
     }
@@ -88,35 +126,60 @@ public class GerenteSelecao : MonoBehaviour
     // --- NOVA LÓGICA DE FORMAÇÃO ---
     void MoverUnidadesEmGrupo(Vector3 destinoCentral)
     {
-        // 1. Calcula o tamanho do quadrado (raiz quadrada da quantidade)
+        // 1. Detecta tipo de grupo (Naval ou Terrestre)
+        bool ehGrupoNaval = false;
+        foreach (var u in unidadesSelecionadas)
+        {
+            if (u == null) continue;
+            // Se tiver qualquer componente naval, tratamos como grupo naval (espaçamento maior)
+            if (u.GetComponent<IdentidadeNaval>() != null || 
+                u.GetComponent<ControleSubmarino>() != null ||
+                u.GetComponent<NavegacaoInteligenteNaval>() != null)
+            {
+                ehGrupoNaval = true;
+                break;
+            }
+        }
+
+        // Define espaçamento dinâmico
+        float espacamentoReal = ehGrupoNaval ? 30.0f : espacamento; 
+
+        // 2. Calcula formação
         int total = unidadesSelecionadas.Count;
         int colunas = Mathf.CeilToInt(Mathf.Sqrt(total));
-        // float espacamento = 2.5f; // REMOVIDO: Agora usa a variável pública lá de cima
 
-        // 2. Calcula o offset para centralizar a formação no clique do mouse
-        float larguraTotal = (colunas - 1) * espacamento;
+        // Calcula o offset para centralizar a formação
+        float larguraTotal = (colunas - 1) * espacamentoReal;
         Vector3 inicio = destinoCentral - new Vector3(larguraTotal / 2, 0, larguraTotal / 2);
 
         for (int i = 0; i < total; i++)
         {
             if (unidadesSelecionadas[i] == null) continue;
 
-            // Matemática da Grade
             int x = i % colunas;
             int z = i / colunas;
 
-            Vector3 posAlvo = inicio + new Vector3(x * espacamento, 0, z * espacamento);
+            Vector3 posAlvo = inicio + new Vector3(x * espacamentoReal, 0, z * espacamentoReal);
 
-            // CORREÇÃO: Verifica se tem HelicopterController (sistema especial de voo)
+            // CORREÇÃO: Garante que o ponto é válido no NavMesh (Principalmente água)
+            if (ehGrupoNaval)
+            {
+                 UnityEngine.AI.NavMeshHit hit;
+                 // Apenas para naval que precisa ser estrito na agua
+                 if (UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, 15f, UnityEngine.AI.NavMesh.AllAreas))
+                 {
+                     posAlvo = hit.position;
+                 }
+            }
+
+            // CORREÇÃO: Verifica se tem HelicopterController/Voo
             Helicoptero heli = unidadesSelecionadas[i].GetComponent<Helicoptero>();
             if (heli != null)
             {
-                // Usa o sistema de voo avançado do helicóptero
                 heli.Decolar(posAlvo);
             }
             else
             {
-                // Manda a unidade terrestre/genérica andar
                 unidadesSelecionadas[i].MoverParaPonto(posAlvo);
             }
         }
@@ -175,12 +238,21 @@ public class GerenteSelecao : MonoBehaviour
 
     void CliqueSimples()
     {
+        // Se usar ~0 (Tudo), pega até triggers que não deveria.
+        // Vamos tentar pegar tudo exceto a Ignore Raycast (2).
+        int layerMask = ~(1 << 2); 
+
         Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit toque;
-        if (Physics.Raycast(raio, out toque))
+        
+        if (Physics.Raycast(raio, out toque, Mathf.Infinity, layerMask))
         {
             var unidade = toque.transform.GetComponentInParent<ControleUnidade>();
-            if (unidade != null) AdicionarSelecao(unidade);
+            if (unidade != null) 
+            {
+                AdicionarSelecao(unidade);
+                Debug.Log($"[GerenteSelecao] Selecionado: {unidade.name}");
+            }
         }
     }
 

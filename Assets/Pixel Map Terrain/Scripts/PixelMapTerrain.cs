@@ -172,7 +172,7 @@ public class PixelMapTerrain : MonoBehaviour {
 		gameObject.AddComponent<MeshRenderer>().sharedMaterials = mat;
 
 #if UNITY_EDITOR
-		EditorUtility.UnloadUnusedAssets();
+		EditorUtility.UnloadUnusedAssetsImmediate();
 #endif
 	}
 
@@ -205,7 +205,7 @@ public class PixelMapTerrain : MonoBehaviour {
 		// Unfortunately this doesn't really work.  Oh well.
 		DestroyImmediate(gameObject.GetComponent<MeshFilter>().sharedMesh);
 #if UNITY_EDITOR
-		EditorUtility.UnloadUnusedAssets();
+		EditorUtility.UnloadUnusedAssetsImmediate();
 #endif
 	}
 
@@ -219,9 +219,9 @@ public class PixelMapTerrain : MonoBehaviour {
 			tempImporter.textureType = TextureImporterType.Default;
 			tempImporter.mipmapEnabled = false;
 			tempImporter.filterMode = FilterMode.Point;
-			tempImporter.textureFormat = TextureImporterFormat.ARGB32;
+			tempImporter.textureCompression = TextureImporterCompression.Uncompressed;
 			tempImporter.npotScale = TextureImporterNPOTScale.ToNearest;
-			tempImporter.grayscaleToAlpha = true;
+			tempImporter.alphaSource = TextureImporterAlphaSource.FromGrayScale;
 			tempImporter.maxTextureSize = size;
 			AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath((Texture2D)img), ImportAssetOptions.ForceUpdate);
 		}

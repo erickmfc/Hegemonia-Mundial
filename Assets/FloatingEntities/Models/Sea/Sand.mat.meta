@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 68e7c1e2c227b364eac1c2649e0599d5
+timeCreated: 1461169328
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/Sea/Sand.mat
+  uploadId: 178676

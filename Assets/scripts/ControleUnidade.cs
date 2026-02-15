@@ -44,6 +44,22 @@ public class ControleUnidade : MonoBehaviour
     {
         CriarSelecaoVisual();
         if(anelSelecao != null) anelSelecao.SetActive(selecionado);
+
+        // --- CORREÇÃO DE RESPONSIVIDADE (SOLDADOS) ---
+        // Se for uma unidade simples (sem scripts complexos de movimento), aplica configurações ágeis
+        if (agente != null && 
+            GetComponent<MovimentoRealTerrestre>() == null && 
+            GetComponent<ControleNavioRealista>() == null &&
+            GetComponent<ControleSubmarino>() == null &&
+            GetComponent<VooHelicoptero>() == null &&
+            GetComponent<Helicoptero>() == null)
+        {
+            // É um soldado ou unidade simplesNavMesh
+            agente.acceleration = 60.0f; // Aceleração instantânea
+            agente.angularSpeed = 720.0f; // Giro instantâneo
+            agente.autoBraking = true;
+            // Debug.Log($"[ControleUnidade] Configurações de Agilidade aplicadas para {name} (Soldado).");
+        }
     }
 
     [Header("Visual")]
@@ -165,6 +181,8 @@ public class ControleUnidade : MonoBehaviour
     // COMANDO AUTOMÁTICO (Usado pela fábrica)
     public void MoverParaPonto(Vector3 destino)
     {
+        // Debug.Log($"[ControleUnidade] {name} recebeu MoverParaPonto({destino})...");
+
         if (ehAereo)
         {
             destinoAereo = destino;
@@ -172,23 +190,11 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
-        // --- TRAVA DE MIRA MANUAL ---
-        // Se o navio estiver em modo de tiro Manual, ele não deve andar com o botão direito (que é usado pra atirar).
-        LancadorNaval launcher = GetComponentInChildren<LancadorNaval>();
-        if (launcher != null && launcher.modoAtual == LancadorNaval.ModoOperacao.Manual)
-        {
-            // O jogador quer atirar, e não mover o navio.
-            // Ignoramos o comando de movimento para manter a estabilidade da mira.
-            return; 
-        }
-
-        // Segurança extra. Se o agente ainda não foi pego, pega agora.
+        // Segurança: Se o agente não foi pego no Awake (ex: adicionado depois), pega agora.
         if (agente == null) agente = GetComponent<NavMeshAgent>();
 
         if (agente != null)
         {
-            // CORREÇÃO CRÍTICA: O NavMeshAgent precisa estar ativo e NO CHÃO para receber ordens.
-            // Se ele acabou de nascer no ar ou foi desativado, essa verificação evita o erro.
             if (agente.isOnNavMesh && agente.isActiveAndEnabled)
             {
                 // ✨ SISTEMA DE NAVEGAÇÃO NAVAL REALISTA OU INTELIGENTE ✨
@@ -207,19 +213,39 @@ public class ControleUnidade : MonoBehaviour
                 {
                     // Usa o sistema inteligente que decide automaticamente se vai de frente ou de ré
                     navegacaoNaval.DefinirDestino(destino);
-                    Debug.Log($"[Navegação] {name} usando sistema naval inteligente para destino em {destino}");
+                    Debug.Log($"[Navegação] {name} usando sistema naval inteligente.");
+                    return;
                 }
-                else
+
+                // Verifica se é Submarino
+                ControleSubmarino controleSub = GetComponent<ControleSubmarino>();
+                if (controleSub != null)
                 {
-                    // Navegação normal (terrestre ou navio sem o sistema inteligente)
-                    agente.SetDestination(destino);
+                    controleSub.DefinirDestino(destino);
+                    return;
                 }
+
+                // Navegação normal (terrestre ou navio sem o sistema inteligente)
+                agente.SetDestination(destino);
+                agente.isStopped = false;
             }
             else
             {
-                // Opcional: Tenta "Warp" para a posição atual para forçar conexão se estiver muito perto
-                // mas geralmente é melhor apenas esperar o próximo frame.
-                // Debug.LogWarning($"Unidade {name} ignorou movimento pois não está no NavMesh.");
+                 // Agente fora do navmesh ou desativado - TENTA RECUPERAR!
+                 Debug.LogWarning($"[ControleUnidade] {name} FORA do NavMesh! isOnNavMesh={agente.isOnNavMesh}, enabled={agente.enabled}, isActiveAndEnabled={agente.isActiveAndEnabled}. Tentando Warp...");
+                 
+                 NavMeshHit hit;
+                 if (NavMesh.SamplePosition(transform.position, out hit, 50f, NavMesh.AllAreas))
+                 {
+                     agente.Warp(hit.position);
+                     Debug.Log($"[ControleUnidade] {name} RECUPERADO para NavMesh em {hit.position}. Enviando destino...");
+                     agente.SetDestination(destino);
+                     agente.isStopped = false;
+                 }
+                 else
+                 {
+                     Debug.LogError($"[ControleUnidade] {name} NÃO encontrou NavMesh perto! Posição: {transform.position}");
+                 }
             }
         }
     }

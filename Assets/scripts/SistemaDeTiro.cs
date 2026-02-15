@@ -88,6 +88,14 @@ public class SistemaDeTiro : MonoBehaviour
             // Adiciona verificação: o tanque precisa estar virado para o alvo (< 10 graus - mais preciso)
             if (tempoParaProximoTiro <= 0 && anguloParaAlvo < 10f)
             {
+                // --- CHECAGEM DE FOGO AMIGO (NOVO) ---
+                if (HaAmigoNaLinhaDeTiro())
+                {
+                    // Se tem amigo na frente, espera um pouco (0.3s) e não atira
+                    tempoParaProximoTiro = 0.3f;
+                    return;
+                }
+
                 if (balasAtuais > 0)
                 {
                     Atirar();
@@ -101,103 +109,120 @@ public class SistemaDeTiro : MonoBehaviour
         }
     }
 
+    // Função para evitar atirar nas costas dos aliados
+    bool HaAmigoNaLinhaDeTiro()
+    {
+        if (alvoAtual == null) return false;
+
+        Transform origem = (bocaDoCano != null) ? bocaDoCano : transform;
+        Vector3 direcao = (alvoAtual.position - origem.position).normalized;
+        float distancia = Vector3.Distance(origem.position, alvoAtual.position);
+
+        RaycastHit hit;
+        // Usa SphereCast (raio 0.5m) para ser mais seguro que um Raycast fino
+        // Assim detecta se passar "raspando" no amigo
+        if (Physics.SphereCast(origem.position, 0.5f, direcao, out hit, distancia))
+        {
+            // Ignora a si mesmo e ao alvo
+            if (hit.transform.root == transform.root) return false;
+            if (hit.transform.root == alvoAtual.root) return false;
+
+            // Verifica se o obstáculo é uma unidade
+            IdentidadeUnidade idObstaculo = hit.transform.GetComponentInParent<IdentidadeUnidade>();
+            
+            if (idObstaculo != null && minhaIdentidade != null)
+            {
+                // Se for do MESMO TIME, bloqueia o tiro
+                if (idObstaculo.teamID == minhaIdentidade.teamID)
+                {
+                    return true; // TEM AMIGO NA FRENTE
+                }
+            }
+        }
+        return false; // Caminho limpo
+    }
+
+    // CACHE de Componentes
+    private SomUnidade somUnidadeCached;
+    private AnimacoesSoldado animCached;
+
     void Start()
     {
         balasAtuais = capacidadePente; 
         selecao = GetComponentInParent<ControleUnidade>();
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
 
-        // AUTO-CORREÇÃO: Se eu (o atirador) não tenho Identidade, crio uma como Time 1 (Jogador)
+        // Cache para performance (evita GetComponent a cada tiro)
+        somUnidadeCached = GetComponentInParent<SomUnidade>();
+        animCached = GetComponentInParent<AnimacoesSoldado>();
+
+        // AUTO-CORREÇÃO: Se eu não tenho Identidade, crio uma como Time 1 (Jogador)
         if (minhaIdentidade == null)
         {
             var root = transform.root.gameObject;
             minhaIdentidade = root.AddComponent<IdentidadeUnidade>();
-            minhaIdentidade.teamID = 1; // Padrão Jogador
+            minhaIdentidade.teamID = 1; 
             minhaIdentidade.nomeDoPais = "Minha Nação";
-            // Debug.Log($"[SistemaDeTiro] Criei Identidade (Team 1) em {root.name} para poder identificar inimigos.");
         }
 
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
         fonteAudio.spatialBlend = 1.0f; 
 
-        // OTIMIZAÇÃO: Scan com intervalo aleatório para evitar picos de CPU
+        // OTIMIZAÇÃO: Scan com intervalo aleatório
         float inicioAleatorio = Random.Range(0f, 1.0f);
         InvokeRepeating("ProcurarAlvo", inicioAleatorio, 0.5f);
     }
     
     void ProcurarAlvo()
     {
-        if (modoPassivo || recarregando) return;
+        if (modoPassivo) return;
 
-        // OTIMIZAÇÃO: Usa NonAlloc para não gerar lixo
-        int qtd = Physics.OverlapSphereNonAlloc(transform.position, alcanceTiro, bufferColisores);
-        
-        float menorDist = Mathf.Infinity;
-        Transform melhorAlvo = null;
-
-        // Lazy Load (Garante que pegamos a identidade mesmo se foi adicionada depois do Start)
-        if (minhaIdentidade == null) minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
-
-        for (int i = 0; i < qtd; i++)
+        // Se já tem alvo e ele está vivo e no alcance, mantém (reduz jitter)
+        if (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy)
         {
-            Collider hit = bufferColisores[i];
-            if (hit == null) continue;
+             float dist = Vector3.Distance(transform.position, alvoAtual.position);
+             if (dist <= alcanceTiro) return; 
+        }
 
-            // Ignora a si mesmo (Root vs Root para garantir partes do veículo)
-            if (hit.transform.root == transform.root) continue; 
+        alvoAtual = null; // Reseta para buscar o mais próximo
 
-            // 1. TENTA POR IDENTIDADE (Mais seguro)
-            IdentidadeUnidade idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
-            
-            bool ehInimigoConfirmado = false;
-            
-            // Pré-calcula a verificação de tag para usar como fallback ou override
-            // Atenção: CompareTag é rápido, mas evitar strings literais em loops é melhor. Aqui ok.
-            bool tagInimigoDetectada = hit.CompareTag(etiquetaAlvo) || hit.CompareTag("Inimigo"); // Simplificado
+        // Busca nova lista de alvos potenciais
+        // Usa buffer para evitar GC excessivo se possível, mas aqui usaremos OverlapSphere simples por clareza
+        Collider[] hits = Physics.OverlapSphere(transform.position, alcanceTiro);
+        
+        float menorDistancia = Mathf.Infinity;
+        Transform candidato = null;
+
+        foreach (var hit in hits)
+        {
+            if (hit == null || hit.transform.root == transform.root) continue;
+
+            // Busca IdentidadeUnidade (Componente que define time)
+            IdentidadeUnidade idAlvo = hit.GetComponent<IdentidadeUnidade>();
+            if (idAlvo == null) idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
 
             if (idAlvo != null && minhaIdentidade != null)
             {
-                // Lógica de Times (Prioridade 1)
+                // Verifica se é inimigo (Time diferente)
                 if (idAlvo.teamID != minhaIdentidade.teamID) 
                 {
-                    ehInimigoConfirmado = true;
-                }
-                // (FIX) Override por Tag: Se for do mesmo time mas tiver a tag "Inimigo", ataca igual.
-                else if (tagInimigoDetectada)
-                {
-                    ehInimigoConfirmado = true;
-                }
-            }
-            else 
-            {
-                // Lógica puramente por Tag (Prioridade 2 - Fallback)
-                if (tagInimigoDetectada)
-                {
-                    ehInimigoConfirmado = true;
-                }
-            }
-
-            if (ehInimigoConfirmado)
-            {
-                float d = Vector3.Distance(transform.position, hit.transform.position);
-                if (d < menorDist)
-                {
-                    menorDist = d;
-                    melhorAlvo = hit.transform;
+                    // Prioriza o mais próximo
+                    float d = Vector3.Distance(transform.position, hit.transform.position);
+                    if (d < menorDistancia)
+                    {
+                        menorDistancia = d;
+                        candidato = hit.transform;
+                    }
                 }
             }
         }
-        
-        // Limpar buffer opcional
-        for(int i=0; i<qtd; i++) bufferColisores[i] = null;
 
-        if (melhorAlvo != null && alvoAtual != melhorAlvo)
+        if (candidato != null)
         {
-            // Debug.Log($"[SistemaDeTiro] 🎯 ALVO TRAVADO: {melhorAlvo.name} (Dist: {menorDist:F1}m)");
+            alvoAtual = candidato;
+            // Debug.Log($"[SistemaDeTiro] {name} encontrou alvo: {alvoAtual.name}");
         }
-        
-        alvoAtual = melhorAlvo;
     }
 
     void Atirar()
@@ -207,58 +232,52 @@ public class SistemaDeTiro : MonoBehaviour
 
         GameObject bala = Instantiate(prefabProjetil, origem.position, origem.rotation);
         
+        // --- CORREÇÃO DE SEGURANÇA ---
         Projetil scriptBala = bala.GetComponent<Projetil>();
+        if (scriptBala == null) 
+        {
+            scriptBala = bala.AddComponent<Projetil>();
+        }
+
         if (scriptBala != null)
         {
             scriptBala.SetDono(transform.root.gameObject);
-            
-            // APLICA A VELOCIDADE CONFIGURADA NO SISTEMA
             scriptBala.velocidade = velocidadeDoTiro;
 
-            // Se tiver alvo, podemos ajustar a MIRA (girar o boneco/arma) em vez de girar a BALA magicamente.
-            // Mas se quisermos "Auto Aim" leve:
             if (alvoAtual != null)
             {
-                 // Calcula a direção para o alvo
-                 Vector3 direcaoAlvo = (alvoAtual.position + Vector3.up * 1.0f) - origem.position; // +1 no Y para mirar no peito/centro
-                 
-                 // Define a direção customizada no projétil para ele ir RETO nessa direção
+                 Vector3 pontoAlvo = alvoAtual.position + Vector3.up * 1.2f; 
+                 Vector3 direcaoAlvo = (pontoAlvo - origem.position).normalized;
                  scriptBala.SetDirecao(direcaoAlvo);
             }
             else
             {
-                // Se não tem alvo (tiro cego), vai na direção que o cano está apontando
                 scriptBala.SetDirecao(origem.forward);
             }
         }
 
         balasAtuais--;
         
-        // SISTEMA DE SOM: Tenta usar o sistema novo de som (SomUnidade) primeiro
-        var somUnidade = GetComponentInParent<SomUnidade>();
-        if (somUnidade != null)
+        // SISTEMA DE SOM (OTIMIZADO)
+        if (somUnidadeCached != null)
         {
-            somUnidade.TocarSomTiro();
+            somUnidadeCached.TocarSomTiro();
         }
-        // Fallback: Sistema antigo de AudioSource
         else if (fonteAudio != null && somTiro != null)
         {
             fonteAudio.PlayOneShot(somTiro);
         }
         
-        // Ativa animação se tiver o script de Animação
-        var anim = GetComponentInParent<AnimacoesSoldado>();
-        if(anim != null) anim.DefinirAtaque(true);
+        // ANIMAÇÃO (OTIMIZADO)
+        if(animCached != null) animCached.DefinirAtaque(true);
         
-        // Reseta a animação depois de um tempo curto (opcional, ou melhor deixar o Update controlar)
         CancelInvoke("PararAnimacaoTiro");
         Invoke("PararAnimacaoTiro", 0.1f);
     }
     
     void PararAnimacaoTiro()
     {
-        var anim = GetComponentInParent<AnimacoesSoldado>();
-        if(anim != null) anim.DefinirAtaque(false);
+        if(animCached != null) animCached.DefinirAtaque(false);
     }
 
     IEnumerator RotinaRecarga()

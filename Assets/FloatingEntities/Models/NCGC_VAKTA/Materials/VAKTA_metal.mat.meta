@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: afd3df1f7df40504f8f8fb81597dd4ff
+timeCreated: 1463597370
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/NCGC_VAKTA/Materials/VAKTA_metal.mat
+  uploadId: 178676

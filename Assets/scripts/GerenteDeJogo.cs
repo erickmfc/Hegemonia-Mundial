@@ -43,7 +43,7 @@ public class GerenteDeJogo : MonoBehaviour
         {
             var obj = GameObject.Find("Spawn_Soldado");
             if(obj != null) spawnSoldado = obj.transform;
-            else Debug.LogWarning("[Gerente] 'Spawn_Soldado' não encontrado na cena! Unidades nascerão na câmera.");
+            else Debug.Log("[Gerente] 'Spawn_Soldado' não encontrado (Normal se não tiver base). Unidades nascerão na câmera.");
         }
         
         if (saidaSoldado == null) 
@@ -58,7 +58,7 @@ public class GerenteDeJogo : MonoBehaviour
         {
             var obj = GameObject.Find("Spawn_Interno"); // Para veículos/tanques
             if(obj != null) spawnInterno = obj.transform;
-            else Debug.LogWarning("[Gerente] 'Spawn_Interno' não encontrado! Veículos nascerão na câmera.");
+            else Debug.Log("[Gerente] 'Spawn_Interno' não encontrado (Normal se não tiver base). Veículos nascerão na câmera.");
         }
 
         if (pontoSaida == null)
@@ -203,32 +203,22 @@ public class GerenteDeJogo : MonoBehaviour
             Heliporto heliportoDestino = ObterProximoHeliporto();
             if (heliportoDestino != null)
             {
-                // Cria um objeto temporário para representar o ponto de spawn exato
-                // O heliporto calcula seu ponto mundial
+                // ... (Lógica de Ponto Temp mantida) ...
                 Vector3 pontoPouso = heliportoDestino.ObterPontoDePousoMundial();
-                
-                // Hack: Cria Transforms temporários apenas para passar para a lógica abaixo
-                // O ideal seria refatorar para usar Vector3 direto, mas vamos manter a estrutura
                 GameObject tempSpawn = new GameObject("TempSpawn_Heli");
                 tempSpawn.transform.position = pontoPouso;
                 tempSpawn.transform.rotation = heliportoDestino.transform.rotation;
                 
                 spawnAtual = tempSpawn.transform;
-                destinoAtual = tempSpawn.transform; // Destino é o próprio ponto de pouso (hover)
+                destinoAtual = tempSpawn.transform; // Hover
 
-                // Destruir depois de usar (será usado no Instantiate logo abaixo)
                 Destroy(tempSpawn, 0.1f); 
             }
             else
             {
-                Debug.LogWarning("⚠️ Nenhum HELIPORTO encontrado! Helicóptero nascerá no Hangar de Veículos com fallback.");
-                 // Tenta Logística Normal se falhar
-                PontoLogistico logistica = ObterProximoSpawn(false); // False = Hangar
-                if (logistica != null && logistica.spawn != null)
-                {
-                    spawnAtual = logistica.spawn;
-                    destinoAtual = logistica.saida;
-                }
+                Debug.LogWarning("⚠️ Nenhum HELIPORTO encontrado! Helicóptero nascerá no fallback (fora do hangar).");
+                 // MODIFICAÇÃO: Helicóptero NÃO deve nascer no hangar de carros.
+                 spawnAtual = null; // Força fallback de Câmera/Céu
             }
         }
         else if (pedido.ehNavio)
@@ -329,9 +319,29 @@ public class GerenteDeJogo : MonoBehaviour
             // Adiciona altura segura para garantir que não colida com o box do heliporto
             posNascimento += Vector3.up * 1.5f; 
         }
+        else if (!pedido.ehNavio) // Terrestre
+        {
+            // --- CORREÇÃO DE NAVMESH PRÉ-INSTANTIATE ---
+            // Verifica NavMesh ANTES de nascer para evitar erro do Unity
+             UnityEngine.AI.NavMeshHit hitNav;
+             if (UnityEngine.AI.NavMesh.SamplePosition(posNascimento, out hitNav, 5.0f, UnityEngine.AI.NavMesh.AllAreas))
+             {
+                 posNascimento = hitNav.position; // Posição segura no NavMesh
+                 posNascimento += Vector3.up * 0.1f; // Leve offset Y
+             }
+             else
+             {
+                 // Tenta raio maior
+                 if (UnityEngine.AI.NavMesh.SamplePosition(posNascimento, out hitNav, 10.0f, UnityEngine.AI.NavMesh.AllAreas))
+                 {
+                     posNascimento = hitNav.position;
+                 }
+             }
+        }
         else
         {
-            posNascimento += Vector3.up * 0.5f;
+             // Navio: Só garante altura da água
+             // posNascimento.y = 0; // Opcional
         }
 
         // NASCER
@@ -368,10 +378,16 @@ public class GerenteDeJogo : MonoBehaviour
         {
             Debug.LogWarning($"ALERTA: A unidade '{novaUnidade.name}' foi criada mas NÃO TEM RENDERERS (está invisível?). Verifique o Prefab.");
         }
+        
+        // --- CHECAGEM DE SOM ---
+        if (novaUnidade.GetComponent<SomUnidade>() == null)
+        {
+            Debug.LogWarning($"[Audio] Unidade '{novaUnidade.name}' criada sem componente 'SomUnidade' (Gerente Player)! Adicione ao Prefab.");
+        }
 
         // DEBUG DE DESTINO
-        Debug.Log($"DESTINO CALCULADO: {posDestino} (Alvo: {(destinoAtual != null ? destinoAtual.name : "Fallback")})");
-        Debug.DrawLine(posNascimento, posDestino, Color.yellow, 10.0f); // Desenha linha amarela na Scene por 10s
+        // Debug.Log($"DESTINO CALCULADO: {posDestino} (Alvo: {(destinoAtual != null ? destinoAtual.name : "Fallback")})");
+        // Debug.DrawLine(posNascimento, posDestino, Color.yellow, 10.0f); // Desenha linha amarela na Scene por 10s
 
         if(posDestino == Vector3.zero)
         {
@@ -386,25 +402,15 @@ public class GerenteDeJogo : MonoBehaviour
             UnityEngine.AI.NavMeshAgent agent = novaUnidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
             if(agent != null) 
             {
-                // Tenta encontrar o ponto válido mais próximo no NavMesh (Raio de 10m agora)
-                UnityEngine.AI.NavMeshHit hit;
-                if (UnityEngine.AI.NavMesh.SamplePosition(posNascimento, out hit, 10.0f, UnityEngine.AI.NavMesh.AllAreas))
+                // Já posicionamos no NavMesh antes, mas garantir o Warp nunca é demais se o Instantiate tiver movido
+                if (agent.isActiveAndEnabled && !agent.isOnNavMesh)
                 {
-                    agent.Warp(hit.position);
-                    Debug.Log($"NavMesh: Unidade posicionada no NavMesh em {hit.position}");
+                    UnityEngine.AI.NavMeshHit hitWarp;
+                    if (UnityEngine.AI.NavMesh.SamplePosition(novaUnidade.transform.position, out hitWarp, 3.0f, UnityEngine.AI.NavMesh.AllAreas))
+                    {
+                        agent.Warp(hitWarp.position);
+                    }
                 }
-                else
-                {
-                    Debug.LogWarning($"ALERTA: Não foi possível encontrar NavMesh próximo a {posNascimento}. Unidade pode ficar presa ou cair. Verifique se o mapa tem NavMesh baked.");
-                    // Se não tiver NavMesh, desabilita o Agent senão ele trava a unidade no infinito
-                    agent.enabled = false; 
-                    novaUnidade.transform.position = posNascimento;
-                }
-            }
-            else
-            {
-                // Sem agente, move transform direto
-                novaUnidade.transform.position = posNascimento;
             }
             
             // Tenta mover. Se colidir, o NavMeshAgent lida com isso.
@@ -418,7 +424,7 @@ public class GerenteDeJogo : MonoBehaviour
             controle.MoverParaPonto(destinoFinal);
         }
 
-        Debug.Log($"SUCESSO: Saiu da fábrica: {pedido.nomeUnidade} em {novaUnidade.transform.position}");
+        Debug.Log($"SUCESSO: Saiu da fábrica: {pedido.nomeUnidade}");
     }
 
     void OnDrawGizmos()
@@ -574,10 +580,15 @@ public class GerenteDeJogo : MonoBehaviour
 
     Heliporto ObterProximoHeliporto()
     {
+        // 1. Limpeza de nulos (se o prédio foi destruído)
         listaHeliportos.RemoveAll(h => h == null);
+        
         if (listaHeliportos.Count == 0) return null;
 
+        // 2. Round Robin
         indexHeliporto = (indexHeliporto + 1) % listaHeliportos.Count;
+        
+        // 3. Retorna o próximo da fila
         return listaHeliportos[indexHeliporto];
     }
 }

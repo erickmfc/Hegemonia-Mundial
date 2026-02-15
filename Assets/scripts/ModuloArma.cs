@@ -123,8 +123,10 @@ public class ModuloArma
             direcao = Quaternion.Euler(erroX, erroY, 0) * direcao;
         }
         
-        // Configura componente Projetil
+        // Configura componente Projetil (Se não tiver, adiciona)
         Projetil scriptProj = proj.GetComponent<Projetil>();
+        if (scriptProj == null) scriptProj = proj.AddComponent<Projetil>();
+        
         if (scriptProj != null)
         {
             scriptProj.SetDono(torreDono);
@@ -136,8 +138,14 @@ public class ModuloArma
         // Míssil teleguiado?
         if (tipo == TipoArma.Missil)
         {
-            MissilTeleguiado missil = proj.GetComponent<MissilTeleguiado>();
-            if (missil != null) missil.DefinirAlvo(alvo);
+            try {
+                // Tenta achar script de míssil
+                var missel = proj.GetComponent("MissilTeleguiado"); // via reflection básico se não tiver tipo
+                if (missel == null) missel = proj.GetComponent("MisselICBM");
+                
+                // Se for script conhecido
+                if(proj.GetComponent<MissilTeleguiado>()) proj.GetComponent<MissilTeleguiado>().DefinirAlvo(alvo);
+            } catch {}
         }
         
         // Efeitos

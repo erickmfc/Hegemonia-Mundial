@@ -520,4 +520,19 @@ public class ControleSubmarino : MonoBehaviour
         
         rastroAgua.emitting = naSuperficie && andando;
     }
+
+    /// <summary>
+    /// Método público para receber comando de movimento (via clique/IA)
+    /// </summary>
+    public void DefinirDestino(Vector3 destino)
+    {
+        if (agente != null && agente.enabled)
+        {
+            if (agente.isOnNavMesh)
+            {
+                agente.SetDestination(destino);
+                agente.isStopped = false;
+            }
+        }
+    }
 }

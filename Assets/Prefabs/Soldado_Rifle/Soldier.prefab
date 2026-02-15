@@ -1013,10 +1013,10 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.3
+  m_Radius: 1.74
   m_Height: 1.8
   m_Direction: 1
-  m_Center: {x: 0, y: 0.9, z: 0}
+  m_Center: {x: 0, y: 1.41, z: 0}
 --- !u!114 &797433705053309996
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1072,8 +1072,8 @@ MonoBehaviour:
   prefabProjetil: {fileID: 4904590025691999903, guid: 08e9d536354a0c649a7f67a606438415, type: 3}
   capacidadePente: 30
   tempoRecarga: 5
-  alcanceTiro: 70
-  velocidadeDoTiro: 70
+  alcanceTiro: 100
+  velocidadeDoTiro: 90
   bocaDoCano: {fileID: 8093790576361504616}
   forcaDoTiro: 1000
   somTiro: {fileID: 8300000, guid: ec9f47083560ce74e87495f678b41437, type: 3}
@@ -1091,12 +1091,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 100
-  vidaAtual: 100
+  vidaMaxima: 50
+  vidaAtual: 50
   unidadeBiologica: 1
-  prefabDestrocos: {fileID: 0}
+  ehEstrutura: 0
+  prefabDestrocos: {fileID: 9080047864039768087, guid: 5cc8acf925d464b4aabee83c89315571, type: 3}
   somExplosaoExclusivo: {fileID: 0}
-  tamanhoDoEfeito: 1
+  tamanhoDoEfeito: 0.8
   ajusteDePosicao: {x: 0, y: 0, z: 0}
 --- !u!1 &4503012449419316979
 GameObject:

@@ -14,7 +14,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       propertyPath: m_TagString
-      value: Player
+      value: Destrutivel
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       propertyPath: m_LocalScale.x
@@ -128,6 +128,7 @@ MonoBehaviour:
   larguraDoMuro: 4
   prefabSelecionado: {fileID: 5570318996861275845}
   modoConstrucao: 0
+  alturaDoMar: 0
 --- !u!65 &4868473442556747427
 BoxCollider:
   m_ObjectHideFlags: 0

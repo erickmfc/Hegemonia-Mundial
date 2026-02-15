@@ -15,6 +15,10 @@ public class IA_Comandante : MonoBehaviour
     [Tooltip("Intervalo entre decisões da IA")]
     public float intervaloDeProcessamento = 1.0f;
 
+    [Header("Estratégia Global")]
+    [Tooltip("Tempo (s) que a IA fica pacífica no início, apenas construindo.")]
+    public float tempoDePaz = 300f; // 5 minutos padrão
+
     [Header("Identidade e Personalidade")]
     public IdentidadeIA identidade;
 
@@ -66,6 +70,12 @@ public class IA_Comandante : MonoBehaviour
 
     void Update()
     {
+        // 1. Atualizar Tempo de Paz
+        if (tempoDePaz > 0)
+        {
+            tempoDePaz -= Time.deltaTime;
+        }
+
         _timer += Time.deltaTime;
         if (_timer >= intervaloDeProcessamento)
         {

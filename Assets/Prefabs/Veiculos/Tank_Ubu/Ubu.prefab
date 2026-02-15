@@ -1914,7 +1914,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigo
-  alcance: 120
+  alcance: 180
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -1925,7 +1925,7 @@ MonoBehaviour:
   pecaQueGira: {fileID: 8132759676447714569}
   locaisDoTiro:
   - {fileID: 2207350630763454658}
-  municaoPrefab: {fileID: 5058724136885039853, guid: 10d02d52534ee864dafea47c0df55ef5, type: 3}
+  municaoPrefab: {fileID: 5058724136885039853, guid: 4af361d2ac0c92d43be46d3fdf308162, type: 3}
   somTiro: {fileID: 8300000, guid: 1f5d14f7476b211498beb3c81883de6e, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
@@ -1934,6 +1934,7 @@ MonoBehaviour:
   locaisDoMissel: []
   somMissel: {fileID: 0}
   tempoEntreMisseis: 2
+  municoesPorCano: []
 --- !u!114 &8095024544495300127
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1970,6 +1971,7 @@ MonoBehaviour:
   vidaMaxima: 1000
   vidaAtual: 1000
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 8300000, guid: 1fd31868d68903d4f9e2c4a3b7ef98f3, type: 3}
   tamanhoDoEfeito: 3.4

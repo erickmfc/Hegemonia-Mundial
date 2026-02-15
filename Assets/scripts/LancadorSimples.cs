@@ -233,14 +233,13 @@ public class LancadorSimples : MonoBehaviour
 
         // Fallback: Projétil genérico
         var projetil = missel.GetComponent<Projetil>();
-        if (projetil != null)
+        if (projetil == null) projetil = missel.AddComponent<Projetil>();
+        
+        projetil.SetDono(gameObject);
+        if (alvo != null)
         {
-            projetil.SetDono(gameObject);
-            if (alvo != null)
-            {
-                Vector3 direcao = (alvo.position - ponto.position).normalized;
-                projetil.SetDirecao(direcao);
-            }
+            Vector3 direcao = (alvo.position - ponto.position).normalized;
+            projetil.SetDirecao(direcao);
         }
     }
 

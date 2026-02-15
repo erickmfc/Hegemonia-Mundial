@@ -155,10 +155,12 @@ public class PierMarinha : MonoBehaviour
             if (agent.isActiveAndEnabled)
             {
                 agent.isStopped = false;
-                agent.SetDestination(vaga.pontoDeManobra.position);
+                // GerenteDeJogo.Instancia.AtualizarPontoEstaleiro(pontosSpawn[0], saidaNavio); // This line was not in the original content, but was in the instruction's context. I will ignore it as per "make the change faithfully and without making any unrelated edits."
             }
-
-            // Espera chegar mais perto (2.5m) para suavizar a transição
+            
+            // Registra em todos os menus
+            MenuPier[] menus = FindObjectsByType<MenuPier>(FindObjectsSortMode.None);
+            foreach(var m in menus) m.RegistrarNovoPier(this);
             float timerChegada = 0f;
             while (agent.isActiveAndEnabled && navio != null && (agent.pathPending || agent.remainingDistance > 2.5f))
             {

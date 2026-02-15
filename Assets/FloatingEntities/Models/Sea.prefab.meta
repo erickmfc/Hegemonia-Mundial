@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: af2652a630f9e464895d954b8ce854bd
+timeCreated: 1461171366
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 61079
+  packageName: Fast Buoyancy
+  packageVersion: 1.2
+  assetPath: Assets/FloatingEntities/Models/Sea.prefab
+  uploadId: 178676

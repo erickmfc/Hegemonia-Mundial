@@ -5,12 +5,12 @@ using UnityEngine.AI;
 public class MovimentoRealTerrestre : MonoBehaviour
 {
     [Header("Configuração do Veículo")]
-    public float velocidadeMaxima = 8.0f;
-    public float aceleracao = 5.0f;
-    public float desaceleracao = 10.0f;
+    public float velocidadeMaxima = 12.0f; // Aumentado
+    public float aceleracao = 15.0f;       // Aumentado (Start rápido)
+    public float desaceleracao = 30.0f;    // Aumentado (Freio rápido)
     
     [Tooltip("Capacidade de curva (Graus por segundo na velocidade máxima)")]
-    public float potenciaCurva = 60.0f; 
+    public float potenciaCurva = 180.0f;   // Aumentado drasticamente (Giro rápido)
     public float distanciaParada = 1.0f;
 
     [Header("Configuração das Rodas")]
@@ -103,12 +103,14 @@ public class MovimentoRealTerrestre : MonoBehaviour
             // TRUQUE: Garante que mesmo lento, o carro consiga girar (Simulação de Pivot/Skid-Steer)
             // Se estivermos muito lentos, fingimos que estamos mais rápidos para o cálculo de rotação,
             // ou simplesmente impomos um giro mínimo.
-            float fatorGiro = Mathf.Clamp(velocidadeAtual / velocidadeMaxima, 0.35f, 1.0f);
+            
+            // CORREÇÃO: Fator mínimo de 0.8f para garantir giro rápido mesmo parado
+            float fatorGiro = Mathf.Clamp(velocidadeAtual / velocidadeMaxima, 0.8f, 1.2f);
             
             // Em ângulos extremos e baixa velocidade, aumentamos a potência para evitar o "loop da morte" (Rodinha)
-            if (fatorCurva > 0.8f && velocidadeAtual < velocidadeMaxima * 0.5f)
+            if (Mathf.Abs(anguloParaAlvo) > 45f && velocidadeAtual < velocidadeMaxima * 0.5f)
             {
-                fatorGiro = 1.0f; // Força giro máximo se estiver lento e precisando virar muito
+                fatorGiro = 2.0f; // Força giro x2 se estiver lento e precisando virar muito (Pivot Turn)
             }
 
             float passoGiro = (potenciaCurva * fatorGiro) * Time.deltaTime;
