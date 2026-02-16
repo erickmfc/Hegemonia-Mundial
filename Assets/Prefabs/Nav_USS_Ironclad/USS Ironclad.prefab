@@ -301,6 +301,7 @@ Transform:
   - {fileID: 3538961677613690183}
   - {fileID: 9107385023766568632}
   - {fileID: 1233328140907002169}
+  - {fileID: 4464066335829741274}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!195 &468479433794102226
@@ -312,10 +313,10 @@ NavMeshAgent:
   m_GameObject: {fileID: 2462426102010119520}
   m_Enabled: 1
   m_AgentTypeID: 0
-  m_Radius: 0.5
-  m_Speed: 11
-  m_Acceleration: 7
-  avoidancePriority: 50
+  m_Radius: 2
+  m_Speed: 15
+  m_Acceleration: 6
+  avoidancePriority: 19
   m_AngularSpeed: 60
   m_StoppingDistance: 0
   m_AutoTraverseOffMeshLink: 1
@@ -374,17 +375,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
-  tempoAceleracao: 3
-  tempoDesaceleracao: 5
+  tempoAceleracao: 4
+  tempoDesaceleracao: 4
   tempoParadaEmergencia: 3
-  velocidadeMaxima: 15
+  velocidadeMaxima: 20
   velocidadeLeme: 5
-  curvaMaximaGraus: 30
+  curvaMaximaGraus: 10
   coeficienteAderna: 2
-  alturaOnda: 0.5
-  frequenciaOnda: 0.2
-  arrastoPassivo: 0.5
+  alturaOnda: 2
+  frequenciaOnda: 1.5
+  arrastoPassivo: 1
   distanciaChegada: 15
+  offsetAlturaAgua: -1
   profundidadeVisual: 0
   bigodeiraProa: {fileID: 0}
   rastroEsteira: {fileID: 0}
@@ -527,7 +529,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2462426102010119520}
   serializedVersion: 5
-  m_Mass: 1
+  m_Mass: 50
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -541,7 +543,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
@@ -1040,6 +1042,68 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2234468026170433557}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+--- !u!1001 &1340709638671549974
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2234468026170433557}
+    m_Modifications:
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.22999999
+      objectReference: {fileID: 0}
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 8.420001
+      objectReference: {fileID: 0}
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3744211540431362381, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_Name
+      value: Efeito
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+--- !u!4 &4464066335829741274 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+  m_PrefabInstance: {fileID: 1340709638671549974}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &4087661641642646620
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -483,7 +483,7 @@ Transform:
   m_GameObject: {fileID: 1839352793183847460}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 272.9, y: -1.02, z: 55.415337}
+  m_LocalPosition: {x: 272.9, y: -2, z: 55.415337}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -520,6 +520,7 @@ MonoBehaviour:
   vidaMaxima: 1450
   vidaAtual: 1450
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 6
@@ -556,7 +557,7 @@ NavMeshAgent:
   m_AgentTypeID: 0
   m_Radius: 11.67
   m_Speed: 13
-  m_Acceleration: 8
+  m_Acceleration: 3
   avoidancePriority: 20
   m_AngularSpeed: 120
   m_StoppingDistance: 0
@@ -579,7 +580,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 86bf21ae7ce6f5a47b74d272af475dc8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IdentidadeNaval
-  nomeDoNavio: SAn
+  nomeDoNavio: San
   categoriaNavio: 1
   estaAtracado: 0
   velocidadeDeRe: 7
@@ -689,10 +690,10 @@ MonoBehaviour:
   tempoParadaEmergencia: 5
   velocidadeMaxima: 15
   velocidadeLeme: 5
-  curvaMaximaGraus: 15
+  curvaMaximaGraus: 11
   coeficienteAderna: 2.5
-  alturaOnda: 1.27
-  frequenciaOnda: 0.2
+  alturaOnda: 2
+  frequenciaOnda: 1
   arrastoPassivo: 0.5
   distanciaChegada: 15
   profundidadeVisual: 0
@@ -711,7 +712,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1839352793183847460}
   serializedVersion: 5
-  m_Mass: 0.0000001
+  m_Mass: 100
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}

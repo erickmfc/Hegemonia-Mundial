@@ -1,0 +1,221 @@
+
+# 🎙️ Relatório Falado: Catálogo de Itens do Menu (Hegemonia Global)
+
+Aqui está a descrição detalhada de todos os itens disponíveis para aquisição no menu de construção e recrutamento. Este guia serve para orientar o comandante sobre o que cada unidade faz, seus pontos fortes e como utilizá-las no campo de batalha.
+
+---
+
+## 🏗️ INFRAESTRUTURA E DEFESA (Construções)
+*Esses itens são a base da sua operação. Construa-os para gerar recursos, recrutar unidades e defender seu território.*
+
+### 🏢 Bases e Produção
+
+**Quartel General**
+*   **Custo:** $100
+*   **Descrição:** O coração da sua base. É o centro de comando principal.
+*   **Função:** Essencial para estabelecer sua presença. Geralmente a primeira estrutura a ser defendida.
+*   **Controles:** Selecione para acessar opções de gerenciamento global (se disponível).
+
+**Heliporto**
+*   **Custo:** $500
+*   **Descrição:** Base para operações aéreas. Uma plataforma elevada com marcações de pouso.
+*   **Função:** Permite a compra, pouso e reabastecimento de helicópteros e unidades aéreas VTOL.
+*   **Reação:** Unidades aéreas retornam aqui para reparos ou quando ociosas.
+
+**Estaleiro Naval**
+*   **Custo:** $2500
+*   **Descrição:** Complexo industrial costeiro para construção e manutenção de navios.
+*   **Função:** Habilita a produção de toda a frota naval (Corvetas, Cruzadores, Submarinos). Essencial para mapas com água.
+*   **Onde se sai melhor:** Deve ser posicionado em águas profundas e defendido por torres costeiras.
+
+**Tenda Militar / Barraca**
+*   **Custo:** $300
+*   **Descrição:** Alojamento de campo para tropas.
+*   **Função:** Permite o recrutamento de infantaria leve (Soldados). Aumenta o limite populacional/capacidade de tropas da base.
+
+**Armazém & Armazém Militar**
+*   **Custo:** $100
+*   **Descrição:** Estruturas logísticas robustas.
+*   **Função:** Ampliam a capacidade de armazenamento de recursos da sua facção. Protegem suprimentos contra ataques rápidos.
+
+**Plataforma**
+*   **Custo:** $2000
+*   **Descrição:** Estrutura offshore (no mar).
+*   **Função:** Pode servir como ponto de coleta de recursos (gás/petróleo) ou posto avançado naval para reparos rápidos longe da costa.
+
+### 🛡️ Defesa e Segurança
+
+**Muro de Concreto / Muro Lateral**
+*   **Custo:** $50
+*   **Descrição:** Barreira física fortificada.
+*   **Função:** Bloqueia o movimento inimigo e cria perímetros de segurança.
+*   **Tática:** Use para afunilar inimigos (chokepoints) em direção às suas torres de defesa.
+
+**Torre de Radar**
+*   **Custo:** $400
+*   **Descrição:** Estrutura alta com antena rotativa.
+*   **Função:** Remove a "Névoa de Guerra" (Fog of War) em um grande raio, revelando movimentos inimigos distantes.
+*   **Onde se sai melhor:** Pontos altos ou periféricos da base para alerta antecipado.
+
+**Torre Sentinela (Metralhadora)**
+*   **Custo:** ~$300 (Valor estimado pela classe)
+*   **Descrição:** Torre defensiva com armamento automático.
+*   **Função:** Defesa de ponto contra infantaria e veículos leves. Ataca automaticamente inimigos no raio.
+*   **Reação:** Rastreia alvos visíveis e abre fogo sem necessidade de ordem direta.
+
+**Sistema CIWS (Phalanx)**
+*   **Custo:** ~$300-500 (Valor estimado)
+*   **Descrição:** Canhão rotativo de alta cadência (Close-In Weapon System).
+*   **Função:** Especializado em interceptar mísseis e aeronaves, mas também pode estraçalhar infantaria próxima.
+*   **Onde se sai melhor:** Protegendo o Quartel General e Estaleiros de ataques aéreos.
+
+**Lançador de Mísseis**
+*   **Custo:** $3000
+*   **Descrição:** Silo ou plataforma de lançamento pesado.
+*   **Função:** Ataques estratégicos de longo alcance. Pode lançar mísseis balísticos ou táticos contra bases inimigas.
+*   **Controles:** Requer seleção de alvo manual e possui tempo de recarga longo.
+
+---
+
+## ⚔️ EXÉRCITO (Unidades Terrestres)
+*A força bruta da sua facção. Produzidos principalmente em Fábricas ou Tendas.*
+
+**Soldado Rifle**
+*   **Custo:** $50
+*   **Descrição:** Infantaria básica equipada com fuzil de assalto.
+*   **Função:** Reconhecimento barato, captura de pontos e defesa em massa.
+*   **Onde se sai melhor:** Combate urbano e cobertura. Fraco contra veículos pesados.
+
+### 🚜 Veículos Leves e Suporte
+
+**Hamer Carro (Humvee)**
+*   **Custo:** $200
+*   **Descrição:** Veículo tático leve 4x4.
+*   **Função:** Reconhecimento rápido e ataque "bata e corra" (hit-and-run).
+*   **Velocidade:** Alta.
+
+**Caminhão de Transporte**
+*   **Custo:** $100
+*   **Descrição:** Caminhão logístico.
+*   **Função:** Transporte de tropas ou recursos entre bases. Não combativo.
+
+**Hover**
+*   **Custo:** $100
+*   **Descrição:** Veículo hovercraft (colchão de ar).
+*   **Função:** Anfíbio. Pode transitar entre terra e água, ideal para ataques surpresa vindo do mar.
+
+**Hack (Ubuzeiro Móvel)**
+*   **Custo:** $100
+*   **Descrição:** Unidade de artilharia leve móvel.
+*   **Função:** Bombardeio de médio alcance.
+
+### 🛡️ Tanques e Pesados
+
+**Tanque de Batalha (MBT)**
+*   **Custo:** $500
+*   **Descrição:** O cavalo de batalha do exército. Blindagem pesada e canhão principal.
+*   **Função:** Linha de frente. Absorve dano e destrói estruturas e outros veículos.
+
+**Tank South**
+*   **Custo:** $500
+*   **Descrição:** Tanque super-pesado. Mais rígido e forte.
+*   **Reação:** Mais lento, mas com poder de fogo devastador.
+
+**Tank Arthur / Tank C1 (Verde/Camuflado)**
+*   **Custo:** $100 - $150
+*   **Descrição:** Tanques leves e médios.
+*   **Função:** Versões mais rápidas e baratas do MBT. Bons para "rush" (ataques rápidos em massa).
+*   **Diferença:** O modelo camuflado ($150) pode ter bônus em terrenos de floresta (visual).
+
+**Tank Antigravity / Leonc1**
+*   **Custo:** $100
+*   **Descrição:** Protótipos experimentais.
+*   **Função:** Unidades especializadas com mecânicas de movimento ou disparo únicas (tiro curto/rápido).
+
+**Artilharia (Fixa/Móvel)**
+*   **Custo:** $700
+*   **Descrição:** Canhão de longo alcance de alto calibre.
+*   **Função:** Destruição de bases inimigas de uma distância segura. Dano em área (AoE).
+
+---
+
+## ⚓ MARINHA (Unidades Navais)
+*Domine os mares. Construídos no Estaleiro Naval. Custo elevado, mas poder de fogo massivo.*
+
+### 🚤 Escolta e Patrulha
+
+**Barco WW / Lancha Arrowhead**
+*   **Custo:** $100 - $200
+*   **Descrição:** Embarcações leves e rápidas.
+*   **Função:** Patrulha costeira e transporte rápido.
+
+**Corveta (Harry / Sam)**
+*   **Custo:** $200 - $1500 (Variação de modelo)
+*   **Descrição:** Navio de guerra leve.
+*   **Função:** Caça-submarinos e defesa de frota. Manobrável.
+
+### 🛳️ Frota de Batalha
+
+**USS Dominion (Cruzador)**
+*   **Custo:** $1200
+*   **Descrição:** Cruzador de batalha. Equilíbrio entre velocidade e poder de fogo.
+*   **Função:** Engajamento naval direto.
+
+**USS Ironclad (Encouraçado)**
+*   **Custo:** $3500
+*   **Descrição:** Fortaleza flutuante. Extremamente resistente.
+*   **Função:** Absorver dano de frotas inteiras. Lento mas implacável.
+
+**USS Vindicator (Destroyer)**
+*   **Custo:** $5000 (Item mais caro!)
+*   **Descrição:** O ápice da tecnologia naval de superfície.
+*   **Função:** Destruidor de frotas e defesa anti-aérea suprema.
+*   **Onde se sai melhor:** Batalhas navais decisivas.
+
+**USS Sovereign (Porta-Aviões)**
+*   **Custo:** $3000
+*   **Descrição:** Aeródromo móvel no mar.
+*   **Função:** Projeção de poder aéreo. Pode lançar drones ou aviões (se implementado).
+
+**USS Liberty Prime**
+*   **Custo:** $4500
+*   **Descrição:** Transporte/Cruzador Híbrido massivo.
+*   **Função:** Versatilidade extrema em operações anfíbias.
+
+### 🦈 Submarinos (Stealth)
+
+**USS Mako**
+*   **Custo:** $2000
+*   **Descrição:** Submarino de ataque padrão.
+*   **Função:** Ataques surpresa com torpedos. Invisível até atacar.
+
+**USS Wraith**
+*   **Custo:** $2500
+*   **Descrição:** Submarino "Stealth" (Furtivo) avançado.
+*   **Função:** Infiltração profunda e eliminação de alvos VIP.
+
+**USS Leviathan**
+*   **Custo:** $1000 ? (Preço promocional? Poderoso)
+*   **Descrição:** Submarino estrategico nuclear.
+*   **Função:** Lançamento de mísseis balísticos do mar para a terra.
+
+---
+
+## 🚁 AERONÁUTICA (Unidades Aéreas)
+*Apoio rápido e transporte. Construídos no Heliporto.*
+
+**Helicóptero Ray**
+*   **Custo:** $850
+*   **Descrição:** Helicóptero de transporte tático e suporte.
+*   **O que tem:** Rotores duplos (provavelmente), capacidade de carga (8 unidades).
+*   **Função:** Levar soldados rapidamente para qualquer ponto do mapa ignorando terreno.
+*   **Reação:** Voa em linha reta, precisa pousar para desembarcar tropas (tecla Pousar).
+
+**FA1 (Caça Leve)**
+*   **Custo:** $100
+*   **Descrição:** Aeronave leve de ataque.
+*   **Função:** Interceptação rápida.
+
+---
+
+*Fim do Relatório. Comandante, use estes recursos com sabedoria.*

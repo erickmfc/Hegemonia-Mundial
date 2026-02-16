@@ -1,5 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.AI;
+using System.Linq;
 
 /// <summary>
 /// IA Arquiteto Pro: Responsável por urbanismo militar.
@@ -11,9 +13,8 @@ public class IA_Arquiteto_Pro : MonoBehaviour
     private bool baseIniciada = false;
 
     [Header("Configurações de Construção")]
-    public float espacamentoEdificios = 20f; // Distância entre prédios
-    
-    // Controle de espiral para evitar sobreposição
+    public float espacamentoEdificios = 25f; // Aumentado para evitar aperto
+    public float nivelDoMar = 0f; // Altura da água para estaleiros
 
     public void Inicializar(IA_Comandante comandante)
     {
@@ -23,198 +24,252 @@ public class IA_Arquiteto_Pro : MonoBehaviour
     void Start()
     {
         if (chefe == null) chefe = GetComponent<IA_Comandante>();
-        Invoke("PlanejarBaseMilitar", 3.0f);
+        
+        // Aguarda um pouco para garantir que o catálogo do MenuConstrucao carregou
+        Invoke("PlanejarBaseMilitar", 4.0f);
 
         // --- MANUTENÇÃO DE BASE ---
-        // Verifica a cada 10 segundos se a base está intacta
-        InvokeRepeating("VerificarIntegridadeDaBase", 15.0f, 10.0f);
+        // Verifica a cada 15 segundos se a base está intacta e expande se tiver dinheiro
+        InvokeRepeating("VerificarIntegridadeEExpandir", 15.0f, 15.0f);
     }
 
-    void VerificarIntegridadeDaBase()
+    void VerificarIntegridadeEExpandir()
     {
         if (!baseIniciada || chefe == null) return;
 
-        Debug.Log("🏗️ [IA Arquiteto] Verificando integridade da base...");
+        Debug.Log("🏗️ [IA Arquiteto] Verificando base...");
         Vector3 centro = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : transform.position;
 
-        // Verifica se tem QUARTEL (Soldados)
+        // 1. QUARTEL (Soldados)
         if (!ExistePredio("Quartel") && !ExistePredio("Tenda"))
         {
             Debug.LogWarning("⚠️ [IA Arquiteto] Quartel destruído! Reconstruindo...");
-            Vector3 pos = EncontrarPosicaoAberta(centro, 1);
-            // Tenta achar posição livre caso a original esteja ocupada por destroços
-            if (Physics.CheckSphere(pos, 5.0f)) pos += Vector3.right * 10f; 
-            
-            GameObject novo = ConstruirEstrutura("Quartel", pos);
-            if (novo == null) ConstruirEstrutura("Tenda", pos);
+            ConstruirNaTerra("Tenda", centro, 500); // Tenda é o nome no catálogo geralmente
         }
 
-        // Verifica se tem HANGAR (Veículos)
-        if (!ExistePredio("Hangar") && !ExistePredio("Fabrica"))
+        // 2. FÁBRICA DE VEÍCULOS (Tanques)
+        // O nome no menu é "Base de Veiculos". Buscamos por "Veiculos" ou "Hangar".
+        if (!ExistePredio("Veiculos") && !ExistePredio("Hangar") && !ExistePredio("Fabrica"))
         {
-            Debug.LogWarning("⚠️ [IA Arquiteto] Hangar destruído! Reconstruindo...");
-            Vector3 pos = EncontrarPosicaoAberta(centro, 2);
-             if (Physics.CheckSphere(pos, 8.0f)) pos += Vector3.left * 10f;
+            Debug.LogWarning("⚠️ [IA Arquiteto] Fábrica de Veículos faltando! Construindo...");
+            ConstruirNaTerra("Veiculos", centro, 2000); 
+        }
 
-            ConstruirEstrutura("Hangar", pos);
+        // 3. HELIPORTO (Aéreos)
+        // Facilitar um pouco o acesso aéreo (era 3000)
+        if (chefe.dinheiro > 1000 && !ExistePredio("Heliporto"))
+        {
+            Debug.Log("🏗️ [IA Arquiteto] Expandindo: Construindo Heliporto.");
+            ConstruirNaTerra("Heliporto", centro, 500);
+        }
+
+        // 4. ESTALEIRO (Navais)
+        // Se tiver grana pro estaleiro (que custa 2500 no menu, então > 2500)
+        if (chefe.dinheiro > 2200 && !ExistePredio("Estaleiro") && !ExistePredio("Naval"))
+        {
+            Debug.Log("🏗️ [IA Arquiteto] Tentando encontrar litoral para Estaleiro...");
+            Vector3 posAgua = EncontrarAgua(centro, 40f, 150f);
+            if (posAgua != Vector3.zero)
+            {
+                 Debug.Log($"🏗️ [IA Arquiteto] Água encontrada em {posAgua}! Construindo Estaleiro.");
+                 Vector3 dirMar = (posAgua - centro).normalized;
+                 ConstruirNaAgua("Estaleiro", posAgua, dirMar);
+            }
         }
     }
 
     bool ExistePredio(string nomeParcial)
     {
+        if (chefe == null || chefe.identidade == null) return false;
+
         Fabrica[] fabricas = FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
         foreach (var f in fabricas)
         {
-            // Verifica se é do meu time e se o nome bate
+            if (f == null) continue;
             var id = f.GetComponent<IdentidadeUnidade>();
-            if (id != null && id.teamID == chefe.identidade.teamID && f.name.ToLower().Contains(nomeParcial.ToLower())) 
+            if (id != null && id.teamID == chefe.identidade.teamID) 
             {
-                return true; 
+                string nomeLimpo = f.name.ToLower();
+                if (nomeLimpo.Contains(nomeParcial.ToLower())) return true;
+                if (nomeParcial == "Veiculos" && (nomeLimpo.Contains("hangar") || nomeLimpo.Contains("fabrica"))) return true;
+                if (nomeParcial == "Hangar" && nomeLimpo.Contains("veiculos")) return true;
+                if (nomeParcial == "Tenda" && nomeLimpo.Contains("quartel")) return true;
+                if (nomeParcial == "Heliporto" && nomeLimpo.Contains("heliporto")) return true;
             }
         }
+        
+        if (nomeParcial.Contains("Estaleiro"))
+        {
+            Estaleiro[] estaleiros = FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
+            foreach(var e in estaleiros) 
+            {
+                 if(e == null) continue;
+                 var id = e.GetComponent<IdentidadeUnidade>();
+                 if (id != null && id.teamID == chefe.identidade.teamID) return true;
+            }
+        }
+
         return false;
     }
 
     void PlanejarBaseMilitar()
     {
         if (baseIniciada) return;
-        
-        // ... (código original de PlanejarBaseMilitar mantido abaixo)
+
         // Catálogo Check
         if (MenuConstrucao.catalogoGlobal == null || MenuConstrucao.catalogoGlobal.Count == 0)
         {
-            var menu = FindFirstObjectByType<MenuConstrucao>();
-            if (MenuConstrucao.catalogoGlobal == null || MenuConstrucao.catalogoGlobal.Count == 0)
-            {
-                 Debug.LogWarning("IA Arquiteto: Catálogo vazio. Tentando novamente em 2s.");
-                 Invoke("PlanejarBaseMilitar", 2.0f);
-                 return;
-            }
+             Debug.LogWarning("IA Arquiteto: Catálogo vazio. Tentando novamente em 2s.");
+             Invoke("PlanejarBaseMilitar", 2.0f);
+             return;
         }
 
-        Debug.Log("🏗️ [IA Arquiteto Pro] Construindo Base com Layout ABERTO...");
+        Debug.Log("🏗️ [IA Arquiteto Pro] Iniciando Construção da Base Inicial...");
 
         Vector3 centro = (chefe != null && chefe.basePrincipal != null) 
             ? chefe.basePrincipal.position 
             : transform.position;
 
-        // 1. Refinaria (Economia - Prioridade Máxima)
-        ConstruirEstrutura("Refinaria", EncontrarPosicaoAberta(centro, 0));
+        // 1. Quartel/Tenda (Prioridade Absoluta)
+        if (!ExistePredio("Tenda")) ConstruirNaTerra("Tenda", centro, 0);
 
-        // 2. Quartel/Tenda (Produção de soldados)
-        Vector3 posQuartel = EncontrarPosicaoAberta(centro, 1);
-        GameObject quartel = ConstruirEstrutura("Quartel", posQuartel);
-        if (quartel == null) quartel = ConstruirEstrutura("Tenda", posQuartel);
+        // 2. Fábrica de Veículos
+        if (!ExistePredio("Veiculos")) ConstruirNaTerra("Veiculos", centro, 500); 
 
-        // 3. Hangar (Produção de veículos/helis)
-        Vector3 posHangar = EncontrarPosicaoAberta(centro, 2);
-        
-        // Tenta vários nomes possíveis para achar a fábrica de veículos
-        GameObject hangar = ConstruirEstrutura("Hangar", posHangar);
-        if (hangar == null) hangar = ConstruirEstrutura("Fabrica", posHangar);
-        
-        // 4. Defesas pontuais
-        ConstruirDefesasPontuais(centro);
+
 
         baseIniciada = true;
     }
 
-    /// <summary>
-    /// Encontra uma posição aberta usando padrão espiral para evitar sobreposição.
-    /// </summary>
-    Vector3 EncontrarPosicaoAberta(Vector3 centro, int indice)
+    // --- MÉTODOS DE CONSTRUÇÃO ---
+
+    void ConstruirNaTerra(string nomeChave, Vector3 centro, int custoMinimo)
     {
-        // Distribui em círculo ao redor do centro com espaçamento generoso
-        float angulo = indice * 120f; // 120 graus entre cada prédio (3 pontos em círculo)
-        float raio = espacamentoEdificios;
+        if (chefe == null) return;
+        if (chefe.dinheiro < custoMinimo) return;
+
+        GameObject prefab = BuscarNoCatalogo(nomeChave);
+        if (prefab == null) 
+        {
+            Debug.LogWarning($"⚠️ [IA Arquiteto] PREFAB FALTANDO: '{nomeChave}' não encontrado no catálogo.");
+            return;
+        }
+
+        // Tenta 12 vezes achar um lugar livre
+        for (int i = 0; i < 12; i++)
+        {
+            Vector3 pos = EncontrarPosicaoEspiral(centro, i, 0f); // 0f = Terra
+            
+            // Verifica colisão (Raio reduzido para 5m para facilitar)
+            if (!Physics.CheckSphere(pos, 5.0f)) 
+            {
+                // Ajusta ao terreno
+                float yTerra = 0;
+                if (Terrain.activeTerrain != null) yTerra = Terrain.activeTerrain.SampleHeight(pos);
+                pos.y = yTerra;
+
+                // Constrói!
+                SpawnarPredio(prefab, pos, Quaternion.identity);
+                return;
+            }
+        }
+        
+        // SE FALHOU TUDO: CONSTROI MESMO ASSIM (Force Build)
+        // Melhor clipar do que não ter base.
+        Debug.LogWarning($"⚠️ [IA Arquiteto] Forçando construção de {nomeChave} após falha de espaço.");
+        Vector3 posForcada = EncontrarPosicaoEspiral(centro, 8, 0f);
+        if (Terrain.activeTerrain != null) posForcada.y = Terrain.activeTerrain.SampleHeight(posForcada);
+        SpawnarPredio(prefab, posForcada, Quaternion.identity);
+    }
+
+    void ConstruirNaAgua(string nomeChave, Vector3 posicaoCosta, Vector3 direcaoMar)
+    {
+        GameObject prefab = BuscarNoCatalogo(nomeChave);
+        if (prefab == null) return;
+
+        Quaternion rot = Quaternion.LookRotation(direcaoMar);
+        
+        // V3: Empurrar 35m para dentro da água.
+        Vector3 posFinal = posicaoCosta + (direcaoMar.normalized * 35f); 
+        posFinal.y = nivelDoMar; 
+
+        SpawnarPredio(prefab, posFinal, rot);
+    }
+
+    Vector3 EncontrarAgua(Vector3 centro, float raioMin, float raioMax)
+    {
+        // V3 Relaxado: Se não achar água funda (-0.5), aceita água rasa (0.0) se for longe.
+        // Isso ajuda em mapas onde o oceano é apenas mesh e o terreno é flat 0.
+        
+        int tentativas = 36; 
+        float raioLimite = Mathf.Max(raioMax, 400f); // Busca bem longe
+
+        for (int i = 0; i < tentativas; i++)
+        {
+            float angulo = (360f / tentativas) * i * Mathf.Deg2Rad;
+            Vector3 dir = new Vector3(Mathf.Cos(angulo), 0, Mathf.Sin(angulo));
+            bool estavaNaTerra = true;
+
+            for (float dist = raioMin; dist < raioLimite; dist += 10f) // Passos maiores (10m)
+            {
+                Vector3 pontoTeste = centro + dir * dist;
+                float altura = 0f;
+                if (Terrain.activeTerrain != null) altura = Terrain.activeTerrain.SampleHeight(pontoTeste);
+
+                // Critério: <= 0.2f (Aceita nível do mar exato ou pouco acima se for praia)
+                // Se a água for um plano em Y=0, o terreno embaixo pode ser -10 ou 0.
+                bool estaNaAgua = (altura <= nivelDoMar - 0.1f); 
+
+                if (estavaNaTerra && estaNaAgua)
+                {
+                    Vector3 pontoCosta = pontoTeste - (dir * 5f); 
+                    // Aceita qualquer lugar que caiba o estaleiro
+                    return pontoCosta;
+                }
+                estavaNaTerra = !estaNaAgua;
+            }
+        }
+        return Vector3.zero;
+    }
+
+    // --- Métodos Recuperados e Fix de Compilação ---
+
+    void SpawnarPredio(GameObject prefab, Vector3 pos, Quaternion rot)
+    {
+        // GOD MODE: Construção Instantânea para destravar a IA
+        GameObject novo = Instantiate(prefab, pos, rot);
+        ConfigurarIdentidade(novo);
+        if(chefe != null) chefe.GastarDinheiro(200); 
+        Debug.Log($"🏗️ [IA Arquiteto] Construção Instantânea REALIZADA: {prefab.name} em {pos}");
+    }
+
+    Vector3 EncontrarPosicaoEspiral(Vector3 centro, int indice, float alturaFixa)
+    {
+        float angulo = indice * 45f; // Espiral mais simples
+        float raio = 15f + (indice * 12f); // Começa perto e vai longe
         
         float rad = angulo * Mathf.Deg2Rad;
         Vector3 offset = new Vector3(Mathf.Cos(rad) * raio, 0, Mathf.Sin(rad) * raio);
-        Vector3 pos = centro + offset;
         
-        // Ajuste de altura ao terreno
-        if (Terrain.activeTerrain != null)
-            pos.y = Terrain.activeTerrain.SampleHeight(pos);
-        
-        return pos;
+        return centro + offset;
     }
 
-    /// <summary>
-    /// Constrói defesas pontuais (muros curtos/barreiras) em pontos estratégicos,
-    /// deixando SEMPRE passagens amplas para as unidades circularem.
-    /// </summary>
-    void ConstruirDefesasPontuais(Vector3 centro)
-    {
-        GameObject prefabMuro = BuscarNoCatalogo("Muro");
-        if (prefabMuro == null) return;
-        if (chefe.dinheiro < 800) return; // Só constrói defesas se tiver recursos de sobra
 
-        Construtor construtor = FindFirstObjectByType<Construtor>();
-        if (construtor == null) return;
-
-        // Coloca APENAS 2-3 segmentos curtos de muro em direções estratégicas
-        // (voltados para longe da base, como cobertura), NUNCA fechando um perímetro
-        float raioDefesa = 30f;
-        
-        // 3 pontos defensivos com gaps enormes entre eles
-        float[] angulos = { 0f, 120f, 240f };
-        
-        foreach (float ang in angulos)
-        {
-            if (chefe.dinheiro < 300) break; // Para se o dinheiro acabar
-
-            float rad = ang * Mathf.Deg2Rad;
-            Vector3 posBarreira = centro + new Vector3(
-                Mathf.Cos(rad) * raioDefesa, 
-                0, 
-                Mathf.Sin(rad) * raioDefesa
-            );
-            
-            if (Terrain.activeTerrain != null)
-                posBarreira.y = Terrain.activeTerrain.SampleHeight(posBarreira);
-            
-            // Rotação: muro perpendicular à direção do centro (cobertura lateral)
-            Quaternion rot = Quaternion.LookRotation(
-                Vector3.Cross(Vector3.up, (posBarreira - centro).normalized)
-            );
-            
-            GameObject m = construtor.ConstruirEstruturaIA(prefabMuro, posBarreira, rot);
-            ConfigurarIdentidade(m);
-        }
-        
-        Debug.Log("🛡️ [Arquitetura] Barreiras defensivas pontuais colocadas (layout ABERTO).");
-    }
-
-    GameObject ConstruirEstrutura(string nome, Vector3 posicao)
-    {
-        if (chefe == null) chefe = GetComponentInParent<IA_Comandante>(); 
-        if (chefe == null) return null;
-
-        // Economia: Não constrói se estiver muito pobre (exceto Quartel que é vital)
-        if (chefe.dinheiro < 300 && nome != "Quartel" && nome != "Tenda") return null;
-
-        GameObject prefab = BuscarNoCatalogo(nome);
-        if (prefab == null) return null;
-
-        Construtor construtor = FindFirstObjectByType<Construtor>();
-        if (construtor == null) return null;
-
-        // Ajuste de altura
-        if (Terrain.activeTerrain != null)
-            posicao.y = Terrain.activeTerrain.SampleHeight(posicao);
-
-        GameObject predio = construtor.ConstruirEstruturaIA(prefab, posicao, Quaternion.identity);
-        if (predio != null) ConfigurarIdentidade(predio);
-        
-        return predio;
-    }
 
     void ConfigurarIdentidade(GameObject obj)
     {
         if (obj == null) return;
         var id = obj.GetComponent<IdentidadeUnidade>();
         if (id == null) id = obj.AddComponent<IdentidadeUnidade>();
-        id.teamID = 2; // Time da IA
+        
+        if (chefe != null && chefe.identidade != null)
+        {
+            id.teamID = chefe.identidade.teamID;
+        }
+        else
+        {
+            id.teamID = 2; // Fallback
+        }
         
         // Se for fábrica, registra no General
         var fab = obj.GetComponent<Fabrica>();
@@ -224,15 +279,28 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         }
     }
 
-    GameObject BuscarNoCatalogo(string nome)
+    GameObject BuscarNoCatalogo(string nomeChave)
     {
         if (MenuConstrucao.catalogoGlobal == null) return null;
+        
+        // Busca
         foreach (var item in MenuConstrucao.catalogoGlobal)
         {
-            if (item != null && item.nomeItem.ToLower().Contains(nome.ToLower())) return item.prefabDaUnidade;
+             if (item.nomeItem.ToLower().Contains(nomeChave.ToLower())) return item.prefabDaUnidade;
         }
+
+        // Sinônimos
+        if (nomeChave == "Veiculos") return BuscarNoCatalogo("Hangar");
+        if (nomeChave == "Veiculos") return BuscarNoCatalogo("Fabrica");
+        if (nomeChave == "Veiculos") return BuscarNoCatalogo("Factory");
+        
+        if (nomeChave == "Tenda") return BuscarNoCatalogo("Quartel");
+        if (nomeChave == "Tenda") return BuscarNoCatalogo("Barraca");
+        if (nomeChave == "Tenda") return BuscarNoCatalogo("Infantaria");
+        
         return null;
     }
+
 
     public Vector3 EncontrarPontoDefensivo()
     {

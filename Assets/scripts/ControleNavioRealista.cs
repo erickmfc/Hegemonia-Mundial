@@ -31,9 +31,12 @@ public class ControleNavioRealista : MonoBehaviour
     [Tooltip("Distância para considerar que chegou.")]
     public float distanciaChegada = 15.0f;
 
-    [Header("Submarino / Profundidade")]
-    [Tooltip("Use valores negativos para submarinos (Ex: -5). Navios de superfície = 0.")]
-    public float profundidadeVisual = 0f;
+    [Header("Ajuste de Altura (Navio / Submarino)")]
+    [Tooltip("Valor Positivo = Mais alto (flutuando). Negativo = Mais fundo (submarino).")]
+    public float offsetAlturaAgua = 0.0f; 
+    
+    // Mantido para compatibilidade interna, mas agora somado ao offset
+    [HideInInspector] public float profundidadeVisual = 0f;
 
     [Header("Referências Visuais")]
     public ParticleSystem bigodeiraProa; // Espuma na frente
@@ -329,7 +332,10 @@ public class ControleNavioRealista : MonoBehaviour
     void agentNextPositionCheck(Vector3 novaPos)
     {
         // 1. Defina a posição visual do GameObject (Barco/Submarino) na profundidade desejada
-        Vector3 posVisual = new Vector3(novaPos.x, profundidadeVisual, novaPos.z);
+        // Soma o offset (configurado no inspector) com a profundidade interna
+        float alturaFinal = profundidadeVisual + offsetAlturaAgua;
+        
+        Vector3 posVisual = new Vector3(novaPos.x, alturaFinal, novaPos.z);
         transform.position = posVisual;
 
         // 2. Informe ao NavMeshAgent que ele "virtualmente" está na superfície (NavMesh)
@@ -340,7 +346,7 @@ public class ControleNavioRealista : MonoBehaviour
 
         // 3. Ajuste o colisor (Cilindro do Agent) para que ele suba até a superfície e não fique afundado junto com o visual
         // Se o submarino está em -10, o baseOffset tem que ser +10 para o colisor ficar no 0.
-        agente.baseOffset = -profundidadeVisual;
+        agente.baseOffset = -alturaFinal;
     }
 
     void AtualizarEfeitosVisuais()
