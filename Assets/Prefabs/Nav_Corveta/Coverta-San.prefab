@@ -557,9 +557,9 @@ NavMeshAgent:
   m_AgentTypeID: 0
   m_Radius: 11.67
   m_Speed: 13
-  m_Acceleration: 3
+  m_Acceleration: 5
   avoidancePriority: 20
-  m_AngularSpeed: 120
+  m_AngularSpeed: 100
   m_StoppingDistance: 0
   m_AutoTraverseOffMeshLink: 1
   m_AutoBraking: 1
@@ -685,17 +685,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
-  tempoAceleracao: 5
-  tempoDesaceleracao: 3
+  tempoAceleracao: 7
+  tempoDesaceleracao: 5
   tempoParadaEmergencia: 5
   velocidadeMaxima: 15
-  velocidadeLeme: 5
-  curvaMaximaGraus: 11
+  velocidadeLeme: 1
+  curvaMaximaGraus: 10
   coeficienteAderna: 2.5
   alturaOnda: 2
   frequenciaOnda: 1
   arrastoPassivo: 0.5
   distanciaChegada: 15
+  offsetAlturaAgua: -3
   profundidadeVisual: 0
   bigodeiraProa: {fileID: 0}
   rastroEsteira: {fileID: 0}
@@ -3970,6 +3971,7 @@ MonoBehaviour:
   - {fileID: 0}
   missilPrefab: {fileID: 5758307721282507023, guid: e4c9c7d1191961041acc6fa85af91e35, type: 3}
   cabecaRotativa: {fileID: 7117674545723471132}
+  alturaPlanoMira: 0
 --- !u!4 &349700077293822149 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400010, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
@@ -4075,8 +4077,12 @@ PrefabInstance:
       value: 0.05
       objectReference: {fileID: 0}
     - target: {fileID: 5938996324687164987, guid: 0f4186ce4da6b864daaebbb3263d84af, type: 3}
+      propertyPath: InitialModule.size3D
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5938996324687164987, guid: 0f4186ce4da6b864daaebbb3263d84af, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 100
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 7847842779303332422, guid: 0f4186ce4da6b864daaebbb3263d84af, type: 3}
       propertyPath: m_Name
@@ -4088,11 +4094,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8034747084403064430, guid: 0f4186ce4da6b864daaebbb3263d84af, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.4625
+      value: 0.463
       objectReference: {fileID: 0}
     - target: {fileID: 8034747084403064430, guid: 0f4186ce4da6b864daaebbb3263d84af, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.0008
+      value: 0.025
       objectReference: {fileID: 0}
     - target: {fileID: 8034747084403064430, guid: 0f4186ce4da6b864daaebbb3263d84af, type: 3}
       propertyPath: m_LocalRotation.w

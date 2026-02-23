@@ -339,22 +339,30 @@ public class Estaleiro : MonoBehaviour
              unidade.transform.position = pos;
         }
 
-        // 3. ─── RIGIDBODY: Navios usam kinematic (script controla) ───────
+        // 3. ─── RIGIDBODY E NAVMESH: Configuração baseada na física ───────
         Rigidbody rb = unidade.GetComponent<Rigidbody>();
+        var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
+        
+        bool usaFisicaRealista = unidade.GetComponent<NavegacaoInteligenteNaval>() != null;
+
         if (rb != null)
         {
-            rb.isKinematic = true;   // NavMeshAgent / script controla a posição
+            if (usaFisicaRealista)
+            {
+                rb.isKinematic = false; // PRECISA SER FALSE para o motor aplicar força!
+            }
+            else
+            {
+                rb.isKinematic = true;   // NavMeshAgent / script controla a posição
+            }
+            
             rb.useGravity  = false;  // Sem queda de gravidade
-            // Mantém rotação livre no eixo Y (permite virar)
-            // mas trava X e Z para não capotar
             rb.constraints = RigidbodyConstraints.FreezeRotationX
                            | RigidbodyConstraints.FreezeRotationZ
                            | RigidbodyConstraints.FreezePositionY;
         }
-        // ─────────────────────────────────────────────────────────────────
 
         // 4. NavMeshAgent
-        var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent != null) 
         {
             agent.enabled = true;
@@ -366,18 +374,22 @@ public class Estaleiro : MonoBehaviour
                 agent.Warp(hit.position);
             }
 
-            agent.updatePosition = true;
+            if (usaFisicaRealista)
+            {
+                agent.updatePosition = false; // FÍSICA CONTROLA A POSIÇÃO, NÃO O AGENTE
+                agent.updateRotation = false; // FÍSICA CONTROLA A ROTAÇÃO
+            }
+            else
+            {
+                agent.updatePosition = true;
+                bool temNavegacaoAntiga = unidade.GetComponent<ControleNavioRealista>() != null;
+                agent.updateRotation = !temNavegacaoAntiga;
+            }
+
             agent.velocity = Vector3.zero;
             agent.isStopped = false;
-
-            // ─── CRÍTICO: NavegacaoInteligenteNaval precisa de updateRotation=false ───
-            // Se tiver navegação inteligente naval, ELA controla a rotação.
-            // Se deixar true aqui, o navio capota ou trava.
-            bool temNavegacaoInteligente = unidade.GetComponent<NavegacaoInteligenteNaval>() != null
-                                        || unidade.GetComponent<ControleNavioRealista>() != null;
-            agent.updateRotation = !temNavegacaoInteligente;
-            // ─────────────────────────────────────────────────────────────────────────
         }
+        // ─────────────────────────────────────────────────────────────────
 
         // 5. Reativa Colliders
         Collider[] colliders = unidade.GetComponentsInChildren<Collider>();
