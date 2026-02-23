@@ -1,15 +1,8 @@
 fileFormatVersion: 2
-guid: fdb99d24e4542d6489f96297adcb2a83
+guid: c25e8fc7d198e664ba9b696d34d0e36d
 NativeFormatImporter:
   externalObjects: {}
-  mainObjectFileID: 2100000
+  mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 308905
-  packageName: Camouflage Texture Pack
-  packageVersion: 1.1.0
-  assetPath: Assets/SnowyCocoon/Camouflage Texture Pack/DemoScene/DemoMaterial.mat
-  uploadId: 730892

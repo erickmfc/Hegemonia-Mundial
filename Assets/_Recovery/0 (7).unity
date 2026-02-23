@@ -679,20 +679,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e968bfc1e1dd7c047bc197b599b3eb5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IA_Comandante
-  cerebroEconomico: {fileID: 0}
-  cerebroArquiteto: {fileID: 0}
-  cerebroGeneral: {fileID: 0}
-  cerebroCombate: {fileID: 0}
-  intervaloDeProcessamento: 1
-  identidade: {fileID: 0}
-  scriptExtra1: {fileID: 0}
-  scriptExtra2: {fileID: 0}
-  scriptExtra3: {fileID: 0}
-  scriptExtra4: {fileID: 0}
-  dinheiro: 2000
-  minhasUnidades: []
-  pontoDeSpawn: {fileID: 0}
-  basePrincipal: {fileID: 0}
 --- !u!114 &192897821
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -720,20 +706,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e3c99ed5ea5dd048863ec01545c7fdb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IA_Comandante
-  cerebroEconomico: {fileID: 0}
-  cerebroArquiteto: {fileID: 0}
-  cerebroGeneral: {fileID: 0}
-  cerebroCombate: {fileID: 0}
-  intervaloDeProcessamento: 1
+  TeamID: 3
   identidade: {fileID: 0}
-  scriptExtra1: {fileID: 0}
-  scriptExtra2: {fileID: 0}
-  scriptExtra3: {fileID: 0}
-  scriptExtra4: {fileID: 0}
+  NomeComandante: General Kaos
   dinheiro: 2000
+  rendaPorSegundo: 15
+  estadoAtual: 0
+  intervaloDecisao: 2
   minhasUnidades: []
-  pontoDeSpawn: {fileID: 0}
+  minhasBases: []
+  meusTransportes: []
+  pontosDeRecursoConhecidos: []
+  alvoAtaquePrincipal: {fileID: 0}
+  pontoDeReuniao: {x: 0, y: 0, z: 0}
   basePrincipal: {fileID: 0}
+  cerebroGeneral: {fileID: 0}
+  cerebroArquiteto: {fileID: 0}
+  cerebroEconomico: {fileID: 0}
+  cerebroCombate: {fileID: 0}
 --- !u!1 &215529935
 GameObject:
   m_ObjectHideFlags: 0
@@ -1551,13 +1541,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.21217479, y: -0.0051167416, z: 0.0011109536, w: 0.97721773}
-  m_LocalPosition: {x: 314.4, y: 190.1, z: -172}
+  m_LocalRotation: {x: 0.19646025, y: 0.7352309, z: -0.23960057, w: 0.60285187}
+  m_LocalPosition: {x: 314.4, y: 143.73, z: -172}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 24.5, y: -0.6, z: 0}
+  m_LocalEulerAnglesHint: {x: 36.1, y: 101.3, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1872,7 +1862,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: f5d748311324fca47a7f548c46d42902, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: 14211923a2313ba46a6fac69b217ea79, type: 2}
   m_BuildHeightMesh: 0
 --- !u!1001 &408077560
 PrefabInstance:
@@ -2094,6 +2084,7 @@ MonoBehaviour:
   vidaMaxima: 1500
   vidaAtual: 1500
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
@@ -2502,6 +2493,7 @@ GameObject:
   - component: {fileID: 600254786}
   - component: {fileID: 600254785}
   - component: {fileID: 600254789}
+  - component: {fileID: 600254790}
   m_Layer: 0
   m_Name: Agua
   m_TagString: Untagged
@@ -2556,7 +2548,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: abade4e0514c4244b931cab87221df5e, type: 2}
+  - {fileID: 2100000, guid: be1672567266e5f40a8a109aace4fdd4, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -2623,6 +2615,20 @@ MonoBehaviour:
   m_IgnoreFromBuild: 0
   m_ApplyToChildren: 1
   m_AffectedAgents: ffffffff
+--- !u!114 &600254790
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 600254784}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ba5eef4493f04143b61cd5157c9aede, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OceanAdvanced
+  ocean: {fileID: 0}
+  sun: {fileID: 0}
 --- !u!1001 &632054429
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2718,7 +2724,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   m_UseGeometry: 0
-  m_DefaultArea: 0
+  m_DefaultArea: 3
   m_GenerateLinks: 0
   m_IgnoreNavMeshAgent: 1
   m_IgnoreNavMeshObstacle: 1
@@ -2727,7 +2733,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: f400270515778a24a86f00954af3dc98, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: a193ad8692db1164cbbaa466da052f77, type: 2}
   m_BuildHeightMesh: 0
 --- !u!4 &643600141
 Transform:
@@ -2865,9 +2871,11 @@ MonoBehaviour:
   soldadosDesejados: 6
   tanquesDesejados: 2
   helicopterosDesejados: 1
+  naviosDesejados: 2
   minimoParaAtacar: 3
   intervaloAtaque: 15
   minhasFabricas: []
+  meusEstaleiros: []
 --- !u!4 &697574929
 Transform:
   m_ObjectHideFlags: 0
@@ -4490,6 +4498,7 @@ MonoBehaviour:
   - {fileID: 0}
   missilPrefab: {fileID: 3882355927561866229, guid: 3a8a58aa55f99a948ab4923368d51560, type: 3}
   cabecaRotativa: {fileID: 0}
+  alturaPlanoMira: 0
 --- !u!114 &1066512844
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6829,7 +6838,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1846054608
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6837,25 +6846,29 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1846054607}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3e3c99ed5ea5dd048863ec01545c7fdb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IA_Comandante
-  cerebroEconomico: {fileID: 1140810510}
-  cerebroArquiteto: {fileID: 1889415619}
-  cerebroGeneral: {fileID: 697574928}
-  cerebroCombate: {fileID: 849671795}
-  intervaloDeProcessamento: 2
+  TeamID: 3
   identidade: {fileID: 0}
-  scriptExtra1: {fileID: 0}
-  scriptExtra2: {fileID: 0}
-  scriptExtra3: {fileID: 0}
-  scriptExtra4: {fileID: 0}
+  NomeComandante: General Kaos
   dinheiro: 8000
+  rendaPorSegundo: 15
+  estadoAtual: 0
+  intervaloDecisao: 2
   minhasUnidades: []
-  pontoDeSpawn: {fileID: 0}
+  minhasBases: []
+  meusTransportes: []
+  pontosDeRecursoConhecidos: []
+  alvoAtaquePrincipal: {fileID: 0}
+  pontoDeReuniao: {x: 0, y: 0, z: 0}
   basePrincipal: {fileID: 0}
+  cerebroGeneral: {fileID: 697574928}
+  cerebroArquiteto: {fileID: 1889415619}
+  cerebroEconomico: {fileID: 1140810510}
+  cerebroCombate: {fileID: 849671795}
 --- !u!4 &1846054609
 Transform:
   m_ObjectHideFlags: 0
@@ -6931,6 +6944,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IA_Arquiteto_Pro
   espacamentoEdificios: 20
+  nivelDoMar: 0
 --- !u!4 &1889415620
 Transform:
   m_ObjectHideFlags: 0

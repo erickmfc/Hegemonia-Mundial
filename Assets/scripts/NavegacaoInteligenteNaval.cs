@@ -2,287 +2,195 @@ using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
+[RequireComponent(typeof(Rigidbody))] // ⚠️ OBRIGATÓRIO: Garante que o navio tem física!
 public class NavegacaoInteligenteNaval : MonoBehaviour
 {
-    [Header("Configurações de Navegação")]
-    [Tooltip("Ângulo em graus para considerar que o destino está 'atrás' (90 = meio do navio, 180 = popa total)")]
-    [Range(90f, 180f)]
-    public float anguloParaMarchaRe = 130f; 
+    [Header("Motores e Física (Rigidbody)")]
+    [Tooltip("A força que o motor faz para empurrar o navio para a frente.")]
+    public float forcaMotor = 1000f;
+    [Tooltip("O tempo (em segundos) que o motor leva para chegar na sua potência máxima (Aceleração gradual).")]
+    public float tempoAceleracaoMotor = 8f;
+    [Tooltip("A força do leme para rodar a traseira do navio.")]
+    public float forcaLeme = 800f;
+    [Tooltip("Limite máximo de velocidade na água.")]
+    public float velocidadeMaxima = 15f;
     
-    [Tooltip("Distância máxima para usar marcha à ré (em metros)")]
-    [Range(5f, 300f)]
-    public float distanciaMaximaRe = 300f; 
+    [Header("Dinâmica da Água (O Segredo do Drift)")]
+    [Tooltip("Resistência da água contra a frente do navio (inércia/freio).")]
+    public float arrastoFrontal = 1.5f;
+    [Tooltip("Quanto o navio resiste a andar de lado. Valor baixo = derrapa mais (drift). Valor alto = anda nos trilhos.")]
+    public float aderenciaAguaLateral = 8f; 
     
-    [Tooltip("Velocidade de marcha à ré (% da velocidade normal)")]
-    [Range(0.3f, 1.0f)]
-    public float velocidadeRe = 0.5f; 
+    [Header("Marcha à Ré")]
+    public float distanciaMaximaRe = 200f;
+    public float multiplicadorForcaRe = 0.6f;
 
-    [Header("Física do Navio (Realismo)")]
-    [Tooltip("Velocidade máxima de rotação do leme (graus por segundo).")]
-    public float velocidadeGiroMax = 10f; 
-    
-    [Tooltip("Quanto tempo o navio demora para acelerar totalmente (inércia).")]
-    public float aceleracao = 2.0f;
-
-    [Header("Configurações Visuais")]
+    [Header("Efeitos Visuais")]
     public TrailRenderer rastroAgua;
     public Transform modelo3D;
-    public float forcaInclinacao = 5.0f;
-    
-    [Header("Debug Visual")]
-    public bool mostrarDebugVisual = true;
-    public Color corSetaFrente = Color.green;
-    public Color corSetaRe = Color.red;
-    
+    public float forcaInclinacao = 15f;
+
     private NavMeshAgent agente;
+    private Rigidbody rb;
     private bool emMarchaRe = false;
-    private Vector3 destinoAtual;
-    private bool temDestino = false; // Restored missing field
-    private float velocidadeOriginal;
-    private float velocidadeAtualSimulada = 0f; 
-    private float lemeAtual = 0f; 
-    
-    // NOVO: Estado de ancorgem para travar movimento
     private bool modoAncorado = false;
+    private float potenciaMotorAtual = 0f; // Vai de 0 a 1 para aceleração gradual
 
     void Start()
     {
         agente = GetComponent<NavMeshAgent>();
-        velocidadeOriginal = agente.speed;
+        rb = GetComponent<Rigidbody>();
 
-        // Desliga tudo que é automático do NavMeshAgent
-        agente.updateRotation = false; 
-        agente.updatePosition = true; // Mantém true para ele colar no navmesh
-        agente.acceleration = 9999; 
+        // 1. Configurar o GPS (NavMeshAgent) para NÃO interferir na física
+        agente.updatePosition = false;
+        agente.updateRotation = false;
+        agente.autoBraking = false;
+
+        // 2. Configurar o Corpo Físico (Rigidbody) automaticamente
+        rb.useGravity = false; // Desligamos a gravidade para ele não afundar no nada (assumindo que flutua)
+        rb.linearDamping = arrastoFrontal; // Resistência da água
+        rb.angularDamping = 2f; // Resistência ao giro (para não girar para sempre)
+        rb.interpolation = RigidbodyInterpolation.Interpolate; // Movimento suave para a câmara
+        
+        // Tranca a rotação para o navio não virar de cabeça para baixo (Capsize)
+        // e tranca o Y para não voar nem afundar
+        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezePositionY;
         
         if (rastroAgua == null) 
             rastroAgua = GetComponentInChildren<TrailRenderer>();
     }
-    
+
     void Update()
     {
-        if (agente == null || !agente.enabled) return;
-        
-        // TECLA "I" = TOGGLE ANCORAR / DESANCORAR
-        // Só funciona se o navio estiver selecionado
+        // COMANDOS DE JOGADOR DEVEM FICAR NO UPDATE
         if (Input.GetKeyDown(KeyCode.I))
         {
-            var controleUnidade = GetComponent<ControleUnidade>();
-            if (controleUnidade != null && controleUnidade.selecionado)
+            var controle = GetComponent<ControleUnidade>();
+            if (controle != null && controle.selecionado)
             {
-                modoAncorado = !modoAncorado; // Inverte o estado
-
-                if (modoAncorado)
-                {
-                    // PARADA DE EMERGÊNCIA / ANCORAGEM
-                    agente.ResetPath(); // Cancela o caminho atual
-                    agente.velocity = Vector3.zero;
-                    velocidadeAtualSimulada = 0f;
-                    lemeAtual = 0f;
-                    emMarchaRe = false;
-                    temDestino = false;
-                    Debug.Log("[Navio] ANCORADO! Motores desligados. Nenhum clique funcionará até apertar 'I' novamente.");
-                }
-                else
-                {
-                    Debug.Log("[Navio] MOTORES LIBERADOS. Pronto para receber ordens.");
-                }
-                return;
+                modoAncorado = !modoAncorado;
+                if (modoAncorado) agente.ResetPath();
+                Debug.Log(modoAncorado ? "[Navio] Âncora lançada!" : "[Navio] Âncora recolhida!");
             }
         }
 
-        // Se estiver ancorado, forca parada total e ignora resto do update de movimento
+        AtualizarVisuais();
+    }
+
+    // ⚠️ ATENÇÃO: Toda a física tem de ser calculada no FixedUpdate, não no Update!
+    void FixedUpdate()
+    {
         if (modoAncorado)
         {
-            velocidadeAtualSimulada = 0f;
-            agente.velocity = Vector3.zero;
+            FrearFisicamente();
             return;
         }
-        
-        // Verifica destino
-        if (agente.hasPath && agente.remainingDistance > agente.stoppingDistance)
+
+        if (agente.hasPath && agente.remainingDistance > 5f)
         {
-            Vector3 destinoReal = agente.destination;
-            
-            // Lógica para decidir se troca o destino (evita recalculos desnecessários)
-            if (Vector3.Distance(destinoAtual, destinoReal) > 1.0f)
-            {
-                destinoAtual = destinoReal;
-                DecidirEstrategiaNavegacao(destinoReal);
-                temDestino = true;
-            }
-            
-            if (emMarchaRe)
-            {
-                ExecutarMarchaRe();
-            }
-            else
-            {
-                ExecutarMarchaFrenteRealista();
-            }
+            AplicarFisicaNaval();
         }
         else
         {
-            // Freio suave (inércia na água)
-            velocidadeAtualSimulada = Mathf.Lerp(velocidadeAtualSimulada, 0f, Time.deltaTime * 0.5f);
-            agente.velocity = transform.forward * velocidadeAtualSimulada;
+            FrearFisicamente();
+        }
+
+        // Sincroniza o GPS invisível com o corpo físico de metal
+        agente.nextPosition = transform.position;
+    }
+
+    private void AplicarFisicaNaval()
+    {
+        Vector3 alvoGPS = agente.steeringTarget;
+        Vector3 direcaoParaAlvo = (alvoGPS - transform.position).normalized;
+        direcaoParaAlvo.y = 0;
+
+        // Calcula a velocidade de avanço real (se está a ir para a frente ou para trás)
+        float velocidadeAvanco = transform.InverseTransformDirection(rb.linearVelocity).z;
+
+        // DECIDIR SE VAI DE FRENTE OU DE RÉ
+        if (Mathf.Abs(velocidadeAvanco) < 2f) // Só decide mudar de marcha se estiver devagar
+        {
+            float anguloParaAlvo = Vector3.Angle(transform.forward, direcaoParaAlvo);
+            emMarchaRe = (anguloParaAlvo > 130f && Vector3.Distance(transform.position, alvoGPS) < distanciaMaximaRe);
+        }
+
+        Vector3 direcaoQueQueremosOlhar = emMarchaRe ? -direcaoParaAlvo : direcaoParaAlvo;
+
+        // === 1. O LEME (ROTAÇÃO FÍSICA) ===
+        float diferencaAngulo = Vector3.SignedAngle(transform.forward, direcaoQueQueremosOlhar, Vector3.up);
+        float inputLeme = Mathf.Clamp(diferencaAngulo / 45f, -1f, 1f); // O quanto o piloto rodou o volante
+        
+        // A MÁGICA DO LEME: O leme só funciona se tiver água a passar por ele!
+        float eficienciaLeme = Mathf.Clamp01(Mathf.Abs(velocidadeAvanco) / (velocidadeMaxima * 0.3f));
+        
+        // Aplica torque (força de rotação)
+        rb.AddTorque(transform.up * inputLeme * forcaLeme * eficienciaLeme * Time.fixedDeltaTime, ForceMode.VelocityChange);
+
+        // === 2. O MOTOR (PROPULSÃO FÍSICA) ===
+        // O motor acelera de forma gradual (não vai do 0 ao 100 direto)
+        potenciaMotorAtual = Mathf.MoveTowards(potenciaMotorAtual, 1f, Time.fixedDeltaTime / tempoAceleracaoMotor);
+
+        // Empurra na direção que o bico (ou a traseira) está a apontar
+        Vector3 direcaoMotor = emMarchaRe ? -transform.forward : transform.forward;
+        float forcaFinalMotor = emMarchaRe ? forcaMotor * multiplicadorForcaRe : forcaMotor;
+        
+        rb.AddForce(direcaoMotor * forcaFinalMotor * potenciaMotorAtual * Time.fixedDeltaTime, ForceMode.Acceleration);
+
+        // Limita a velocidade máxima
+        if (rb.linearVelocity.magnitude > velocidadeMaxima)
+        {
+            rb.linearVelocity = rb.linearVelocity.normalized * velocidadeMaxima;
+        }
+
+        // === 3. A QUILHA (O SEGREDO DO DRIFT E DA ADERÊNCIA) ===
+        // Sem isto, o navio escorrega de lado como se estivesse no gelo.
+        // Com isto, ele corta a água, mas ainda deixa a traseira deslizar um pouco (Drift).
+        Vector3 velocidadeLocal = transform.InverseTransformDirection(rb.linearVelocity);
+        float velocidadeLateral = velocidadeLocal.x; // Quão rápido ele está a deslizar de lado
+        
+        // Aplica uma força contrária ao deslizamento lateral
+        rb.AddRelativeForce(Vector3.left * velocidadeLateral * aderenciaAguaLateral, ForceMode.Acceleration);
+    }
+
+    private void FrearFisicamente()
+    {
+        // Corta a potência do motor de forma rápida (freio a motor)
+        potenciaMotorAtual = Mathf.MoveTowards(potenciaMotorAtual, 0f, Time.fixedDeltaTime / 2f);
+
+        // Para frear, basta deixar a resistência da água (rb.drag) atuar naturalmente,
+        // mas podemos ajudar a matar o deslizamento lateral mais depressa.
+        Vector3 velocidadeLocal = transform.InverseTransformDirection(rb.linearVelocity);
+        rb.AddRelativeForce(Vector3.left * velocidadeLocal.x * aderenciaAguaLateral, ForceMode.Acceleration);
+    }
+
+    private void AtualizarVisuais()
+    {
+        if (rastroAgua != null) 
+            rastroAgua.emitting = (rb.linearVelocity.magnitude > 2f);
+
+        if (modelo3D != null)
+        {
+            // A inclinação agora é baseada na força centrífuga real!
+            // Quanto mais rápido ele roda (angularVelocity.y), mais ele inclina.
+            float inclinacaoAlvo = -rb.angularVelocity.y * forcaInclinacao;
+            inclinacaoAlvo = Mathf.Clamp(inclinacaoAlvo, -20f, 20f);
             
-            if (velocidadeAtualSimulada < 0.1f)
-            {
-                emMarchaRe = false;
-                temDestino = false;
-            }
-        }
-        
-        AtualizarRastroAgua();
-        AtualizarInclinacaoNavio();
-    }
-    
-    void DecidirEstrategiaNavegacao(Vector3 destino)
-    {
-        Vector3 direcaoDestino = destino - transform.position;
-        float distanciaDestino = direcaoDestino.magnitude;
-        
-        if (distanciaDestino > distanciaMaximaRe)
-        {
-            emMarchaRe = false;
-            return;
-        }
-        
-        float anguloDestino = Vector3.Angle(transform.forward, direcaoDestino);
-        
-        if (anguloDestino >= anguloParaMarchaRe)
-        {
-            emMarchaRe = true;
-        }
-        else
-        {
-            emMarchaRe = false;
-        }
-    }
-    
-    void ExecutarMarchaFrenteRealista()
-    {
-        Vector3 direcaoDesejada = (agente.steeringTarget - transform.position).normalized;
-        direcaoDesejada.y = 0;
-
-        Vector3 produtoVetorial = Vector3.Cross(transform.forward, direcaoDesejada);
-        
-        float lemeAlvo = produtoVetorial.y * 2.0f; 
-        
-        if (Vector3.Dot(transform.forward, direcaoDesejada) < 0)
-        {
-            lemeAlvo = Mathf.Sign(produtoVetorial.y); 
-            if (lemeAlvo == 0) lemeAlvo = 1f;
-        }
-
-        lemeAlvo = Mathf.Clamp(lemeAlvo, -1f, 1f);
-
-        lemeAtual = Mathf.MoveTowards(lemeAtual, lemeAlvo, Time.deltaTime * 0.08f);
-
-        velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, velocidadeOriginal, Time.deltaTime * aceleracao);
-        
-        float eficienciaLeme = velocidadeAtualSimulada > 1.0f ? 1.0f : 0.3f; 
-
-        float giroReal = lemeAtual * velocidadeGiroMax * Time.deltaTime * eficienciaLeme;
-        transform.Rotate(0, giroReal, 0);
-
-        agente.velocity = transform.forward * velocidadeAtualSimulada;
-    }
-
-    void ExecutarMarchaRe()
-    {
-        Vector3 vetorParaDestino = agente.steeringTarget - transform.position;
-        vetorParaDestino.y = 0;
-
-        Quaternion rotacaoAlvo = Quaternion.LookRotation(-vetorParaDestino);
-        
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, rotacaoAlvo, Time.deltaTime * 6f);
-
-        float velocidadeAlvoRe = velocidadeOriginal * velocidadeRe;
-        velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, velocidadeAlvoRe, Time.deltaTime);
-
-        agente.velocity = -transform.forward * velocidadeAtualSimulada;
-    }
-    
-    void AtualizarRastroAgua()
-    {
-        if (rastroAgua == null) return;
-        rastroAgua.emitting = velocidadeAtualSimulada > 0.5f;
-    }
-    
-    void AtualizarInclinacaoNavio()
-    {
-        if (modelo3D == null) return;
-        
-        float giroFrame = Vector3.SignedAngle(transform.forward, agente.velocity.normalized, Vector3.up);
-        
-        float anguloAlvo = -giroFrame * forcaInclinacao; 
-        anguloAlvo = Mathf.Clamp(anguloAlvo, -15f, 15f);
-        
-        Quaternion novaRotacao = Quaternion.Euler(0, 0, anguloAlvo);
-        modelo3D.localRotation = Quaternion.Slerp(modelo3D.localRotation, novaRotacao, Time.deltaTime * 2.0f);
-    }
-    
-    void OnDrawGizmos()
-    {
-        if (!mostrarDebugVisual || !Application.isPlaying) return;
-        
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawLine(transform.position, transform.position + transform.forward * 5f);
-        
-        if (agente != null)
-        {
-            Gizmos.color = Color.blue;
-            Gizmos.DrawLine(transform.position, agente.steeringTarget); 
+            Quaternion rotacaoInclinada = Quaternion.Euler(0, 0, inclinacaoAlvo);
+            modelo3D.localRotation = Quaternion.Slerp(modelo3D.localRotation, rotacaoInclinada, Time.deltaTime * 3f);
         }
     }
 
-    void OnDrawGizmosSelected()
-    {
-        if (!mostrarDebugVisual) return;
-        
-        Gizmos.color = Color.yellow;
-        
-        Quaternion rotacaoLimiteDir = Quaternion.Euler(0, anguloParaMarchaRe, 0);
-        Quaternion rotacaoLimiteEsq = Quaternion.Euler(0, -anguloParaMarchaRe, 0);
-        
-        Vector3 dirEsquerda = rotacaoLimiteEsq * -transform.forward * distanciaMaximaRe;
-        Vector3 dirDireita = rotacaoLimiteDir * -transform.forward * distanciaMaximaRe;
-        
-        Gizmos.DrawLine(transform.position, transform.position + dirEsquerda);
-        Gizmos.DrawLine(transform.position, transform.position + dirDireita);
-        
-        Vector3 anterior = transform.position + dirEsquerda;
-        for (int i = 1; i <= 10; i++)
-        {
-            float t = i / 10f;
-            float ang = Mathf.Lerp(-anguloParaMarchaRe, anguloParaMarchaRe, t);
-            Vector3 dir = Quaternion.Euler(0, ang, 0) * -transform.forward * distanciaMaximaRe;
-            Vector3 atual = transform.position + dir;
-            Gizmos.DrawLine(anterior, atual);
-            anterior = atual;
-        }
-    }
-    
-    /// <summary>
-    /// Método público para definir, usado pelo ControleUnidade e outros scripts.
-    /// </summary>
     public void DefinirDestino(Vector3 novoDestino)
     {
-        // BLOQUEIO: Se estiver ancorado, ignora qualquer comando externo de movimento
-        if (modoAncorado)
-        {
-             // Opcional: Efeito sonoro de "erro" ou feedback visual
-            return;
-        }
+        if (modoAncorado) return;
 
         if (agente != null && agente.enabled)
         {
             agente.SetDestination(novoDestino);
         }
     }
-    
+
     public bool EstaEmMarchaRe()
     {
         return emMarchaRe;

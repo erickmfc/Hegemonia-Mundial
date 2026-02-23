@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -21,29 +22,81 @@ public class CerebroIA : MonoBehaviour
     // Lista do que já pedi para construir para não repetir infinitamente
     private List<string> historicoConstrucoes = new List<string>();
 
+    // Adicionado para identificação de time
+    private IdentidadeIA identidade;
+    public int teamID_Inimigo = 2; // ID padrão para o time inimigo
+
     private float timer;
     private float timerRenda;
 
     void Start()
     {
+        // Garante componentes essenciais
+        if (identidade == null) identidade = GetComponent<IdentidadeIA>();
+        if (identidade == null) identidade = gameObject.AddComponent<IdentidadeIA>();
+        
+        // Define o ID do time (Inimigo = 2 ou 3)
+        identidade.teamID = teamID_Inimigo;
+
+        // Inicia a espera pelo Catálogo
+        StartCoroutine(InicializarCerebro());
+    }
+
+    IEnumerator InicializarCerebro()
+    {
+        // Atribuições de componentes que antes estavam no Start
         recebedor = GetComponent<RecebedorIA>();
         estrategista = GetComponent<Analista2>();
+
+        Debug.Log($"[{name}] CerebroIA: Aguardando catálogo de construção...");
+        
+        // Espera até 5 segundos pelo catálogo
+        float timeout = Time.time + 5.0f;
+        while ((MenuConstrucao.catalogoGlobal == null || MenuConstrucao.catalogoGlobal.Count == 0) && Time.time < timeout)
+        {
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        if (MenuConstrucao.catalogoGlobal == null || MenuConstrucao.catalogoGlobal.Count == 0)
+        {
+            Debug.LogError($"[{name}] CerebroIA: Catálogo VAZIO ou MenuConstrucao não encontrado! IA pode falhar ao construir.");
+        }
+        else
+        {
+            Debug.Log($"[{name}] CerebroIA: Catálogo carregado com {MenuConstrucao.catalogoGlobal.Count} itens. Iniciando dominação.");
+        }
+
+        // Agora sim, pode começar
+        // MontarBaseInicial(); // Esta chamada será feita dentro do CicloDePensamento
+
+        // Inicia o ciclo de pensamento (Loop infinito)
+        StartCoroutine(CicloDePensamento());
+
+        // Inicia o fluxo de Recursos (Renda passiva da IA)
+        StartCoroutine(GerarRendaIA());
     }
 
     void Update()
     {
-        // Renda Passiva da IA (Cheat para ela não depender de minas no inicio)
-        timerRenda += Time.deltaTime;
-        if (timerRenda > 1f)
+        // O Update agora está vazio, pois a lógica de tempo e pensamento foi movida para Coroutines.
+        // Se houver outras lógicas que precisam de execução por frame, elas podem ser adicionadas aqui.
+    }
+
+    IEnumerator GerarRendaIA()
+    {
+        while (true)
         {
+            yield return new WaitForSeconds(1f); // Gera renda a cada 1 segundo
             recursosIA += rendaPassiva;
-            timerRenda = 0;
             // Atualiza Analista 1 com o dinheiro real (se ele checasse)
         }
+    }
 
-        timer -= Time.deltaTime;
-        if (timer <= 0)
+    IEnumerator CicloDePensamento()
+    {
+        while (true)
         {
+            yield return new WaitForSeconds(4f); // Pensa a cada 4 segundos
             Pensar();
             timer = 4f; // Pensa a cada 4 segundos
         }
@@ -154,20 +207,77 @@ public class CerebroIA : MonoBehaviour
 
     // --- HELPERS ---
 
+    // --- HELPERS ---
+
+    public float nivelDoMar = 0f; // Ajustar conforme o mapa (OceanAdvanced)
+
     void ComprarEstrutura(string nomeParcial, PriorityLevel prioridade)
     {
         var item = EncontrarNoMenu(nomeParcial);
         if (item != null && recursosIA >= item.preco)
         {
-            recursosIA -= item.preco; // Desconta da carteira da IA
+            // Lógica Especial para NAVAL
+            Vector3 alvo = Vector3.zero;
+            Quaternion rotacao = Quaternion.identity;
+            
+            bool ehNaval = nomeParcial.ToLower().Contains("estaleiro") || nomeParcial.ToLower().Contains("naval") || item.nomeItem.ToLower().Contains("pier");
+
+            if (ehNaval)
+            {
+                Debug.Log($"[CerebroIA] Planejando construção NAVAL: {item.nomeItem}");
+                Vector3 centro = (baseMontada && ContarMeusPredios("Base") > 0) ? transform.position : transform.position; // Melhorar depois
+                
+                // Busca costa num raio grande (150m)
+                Vector3 pontoCosta = EncontrarAgua(centro, 40f, 250f);
+                
+                if (pontoCosta != Vector3.zero)
+                {
+                    // Ponto costa é onde a terra encontra a água.
+                    // O Estaleiro deve ficar "um pedaço na água".
+                    // Vamos empurrar ele um pouco para dentro da água.
+                    
+                    // Direção Terra -> Mar?
+                    // EncontrarAgua retorna o ponto exato da costa.
+                    // Precisamos saber para onde é o mar.
+                    // Hack: O mar está na direção de (pontoCosta - centro)? AS vezes sim.
+                    
+                    Vector3 direcaoMar = (pontoCosta - centro).normalized; // Assumindo que o centro da base é terra.
+                    
+                    alvo = pontoCosta + (direcaoMar * 20f); // 20m mar adentro
+                    alvo.y = nivelDoMar; 
+                    
+                    // Rotação: "Virado ao contrário". 
+                    // Geralmente Z-forward aponta para a água.
+                    // Se o usuário disse "ao contrário", talvez o Z-forward deva apontar para a TERRA.
+                    // Vamos tentar apontar para a terra.
+                    rotacao = Quaternion.LookRotation(-direcaoMar); 
+                    
+                    Debug.Log($"[CerebroIA] Local Naval encontrado: {alvo}");
+                }
+                else
+                {
+                     Debug.LogWarning("[CerebroIA] Não encontrei água para o Estaleiro! Abortando.");
+                     return;
+                }
+            }
+            else
+            {
+                alvo = EncontrarLugarParaConstruir(item);
+                // Terrestres usam rotação padrão (identity ou aleatória?)
+                // Vamos dar uma rotação aleatória leve para não ficar tudo quadrado
+                rotacao = Quaternion.Euler(0, Random.Range(0, 360), 0);
+            }
+
+            recursosIA -= item.preco;
             historicoConstrucoes.Add(item.nomeItem);
             
             recebedor.ReceberPedido(
                 "Cerebro Estrategista",
                 ActionType.ConstructBuilding,
-                EncontrarLugarParaConstruir(item),
+                alvo,
                 item,
-                prioridade
+                prioridade,
+                rotacao // Nova Assinatura
             );
         }
     }
@@ -178,7 +288,7 @@ public class CerebroIA : MonoBehaviour
         if (item != null && recursosIA >= item.preco)
         {
             recursosIA -= item.preco;
-            historicoConstrucoes.Add(item.nomeItem);
+            historicoConstrucoes.Add(item.nomeItem); // Bug fix: Era item.nomeItem
 
             recebedor.ReceberPedido(
                 "General IA",
@@ -197,25 +307,86 @@ public class CerebroIA : MonoBehaviour
 
     int ContarMeusPredios(string nomeParcial)
     {
-        // Conta no histórico OTIMISTA. 
-        // No futuro verificar Physics.OverlapSphere ao redor da base da IA.
-        return historicoConstrucoes.Count(x => x.IndexOf(nomeParcial, System.StringComparison.OrdinalIgnoreCase) >= 0);
+        Collider[] hits = Physics.OverlapSphere(transform.position, 500f);
+        HashSet<GameObject> unicos = new HashSet<GameObject>();
+        int count = 0;
+        
+        foreach(var h in hits)
+        {
+            Transform raiz = h.transform.root;
+            if (unicos.Contains(raiz.gameObject)) continue;
+            unicos.Add(raiz.gameObject);
+
+            var id = raiz.GetComponentInChildren<IdentidadeUnidade>();
+            
+            if (raiz.name.IndexOf(nomeParcial, System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                if (id != null && id.teamID == GetComponent<IdentidadeIA>().teamID)
+                {
+                    count++;
+                }
+                else if (id == null)
+                {
+                   count++;
+                }
+            }
+        }
+        return count;
     }
 
     Vector3 EncontrarLugarParaConstruir(DadosConstrucao item)
     {
-        // Espiral ao redor da base para não construir tudo um em cima do outro
-        float angulo = Random.Range(0, 360);
-        float dist = Random.Range(15, 60); // Distância segura
-        Vector3 offset = new Vector3(Mathf.Cos(angulo)*dist, 0, Mathf.Sin(angulo)*dist);
-        
-        Vector3 tentativa = transform.position + offset;
-        
-        // Raycast para altura do terreno
-        if (Physics.Raycast(tentativa + Vector3.up * 50, Vector3.down, out RaycastHit hit, 100))
+        for(int i=0; i<10; i++)
         {
-            return hit.point;
+            float angulo = Random.Range(0, 360);
+            float dist = Random.Range(20, 80); 
+            Vector3 offset = new Vector3(Mathf.Cos(angulo)*dist, 0, Mathf.Sin(angulo)*dist);
+            Vector3 tentativa = transform.position + offset;
+            
+            if (Physics.Raycast(tentativa + Vector3.up * 50, Vector3.down, out RaycastHit hit, 100))
+            {
+                // Evitar construir na água se for terrestre
+                if (hit.point.y > 0.5f) // Assumindo nível do mar 0
+                {
+                    return hit.point;
+                }
+            }
         }
-        return tentativa;
+        return transform.position + Vector3.right * 30; // Fallback
+    }
+
+    Vector3 EncontrarAgua(Vector3 centro, float raioMin, float raioMax)
+    {
+        int tentativas = 36; 
+        float raioLimite = Mathf.Max(raioMax, 400f); 
+
+        for (int i = 0; i < tentativas; i++)
+        {
+            float angulo = (360f / tentativas) * i * Mathf.Deg2Rad;
+            Vector3 dir = new Vector3(Mathf.Cos(angulo), 0, Mathf.Sin(angulo));
+            bool estavaNaTerra = true;
+
+            for (float dist = raioMin; dist < raioLimite; dist += 10f) 
+            {
+                Vector3 pontoTeste = centro + dir * dist;
+                float altura = 0f;
+                if (Terrain.activeTerrain != null) altura = Terrain.activeTerrain.SampleHeight(pontoTeste);
+                else 
+                {
+                    // Sem terreno? Raycast.
+                     if (Physics.Raycast(pontoTeste + Vector3.up * 100, Vector3.down, out RaycastHit hit, 200)) altura = hit.point.y;
+                }
+
+                bool estaNaAgua = (altura <= nivelDoMar - 0.5f); 
+
+                if (estavaNaTerra && estaNaAgua)
+                {
+                    // Encontramos a borda!
+                    return pontoTeste - (dir * 5f); 
+                }
+                estavaNaTerra = !estaNaAgua;
+            }
+        }
+        return Vector3.zero;
     }
 }

@@ -314,7 +314,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 2
-  m_Speed: 15
+  m_Speed: 10
   m_Acceleration: 6
   avoidancePriority: 19
   m_AngularSpeed: 60
@@ -375,7 +375,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
-  tempoAceleracao: 4
+  tempoAceleracao: 7
   tempoDesaceleracao: 4
   tempoParadaEmergencia: 3
   velocidadeMaxima: 20
@@ -1050,6 +1050,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2234468026170433557}
     m_Modifications:
+    - target: {fileID: 685290473617231862, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.57
+      objectReference: {fileID: 0}
     - target: {fileID: 3416161729650657484, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1093,6 +1097,10 @@ PrefabInstance:
     - target: {fileID: 3744211540431362381, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
       propertyPath: m_Name
       value: Efeito
+      objectReference: {fileID: 0}
+    - target: {fileID: 4629228317261153080, guid: 759280ea12bf6af4d89b3fab0d45a072, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.65
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

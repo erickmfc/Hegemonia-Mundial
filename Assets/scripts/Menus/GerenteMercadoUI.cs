@@ -247,7 +247,7 @@ public class GerenteMercadoUI : MonoBehaviour
                 if (scriptConstrutor != null && item.prefabParaConstruir != null)
                 {
                     // Passamos 0 pois a lógica de pagamento/reembolso não está implementada aqui
-                    scriptConstrutor.SelecionarParaConstruir(item.prefabParaConstruir, 0);
+                    scriptConstrutor.SelecionarParaConstruir(item.prefabParaConstruir, 0, DadosConstrucao.CategoriaItem.Infraestrutura);
                 }
             }
         }

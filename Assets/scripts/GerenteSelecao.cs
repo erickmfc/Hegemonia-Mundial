@@ -161,6 +161,16 @@ public class GerenteSelecao : MonoBehaviour
 
             Vector3 posAlvo = inicio + new Vector3(x * espacamentoReal, 0, z * espacamentoReal);
 
+            // --- BLOQUEIO DE MOVIMENTO (MODO MANUAL) ---
+            // Se estiver mirando manualmente, o clique direito é para atirar, não andar
+            LancadorNaval lancador = unidadesSelecionadas[i].GetComponent<LancadorNaval>();
+            if (lancador != null && lancador.modoAtual == LancadorNaval.ModoOperacao.Manual)
+            {
+                // Verifica se o mouse está sobre um alvo válido (apenas para garantir que não trave se clicar no nada)
+                // Mas a regra geral é: Mode Manual = Sem Movimento por clique direito
+                continue; 
+            }
+
             // CORREÇÃO: Garante que o ponto é válido no NavMesh (Principalmente água)
             if (ehGrupoNaval)
             {

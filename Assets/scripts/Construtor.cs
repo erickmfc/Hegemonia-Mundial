@@ -13,6 +13,7 @@ public class Construtor : MonoBehaviour
 
     // Variáveis internas
     private int custoAtual = 0; // Custo do item sendo posicionado
+    private DadosConstrucao.CategoriaItem categoriaAtual; // Categoria do item sendo posicionado
     private bool definindoMuro = false;
     private Vector3 pontoInicial;
     private List<GameObject> fantasmasMuro = new List<GameObject>(); 
@@ -21,8 +22,6 @@ public class Construtor : MonoBehaviour
     
     // Configurações Extras
     public float alturaDoMar = 0.0f; // Altura padrão da água
-
-    // ... (rest of Start/Update)
 
     void Update()
     {
@@ -42,35 +41,69 @@ public class Construtor : MonoBehaviour
 
         // --- Lógica de Detecção de Terreno Aprimorada ---
         bool ehConstrucaoNaval = prefabSelecionado.name.ToLower().Contains("estaleiro") 
-                              || prefabSelecionado.name.ToLower().Contains("pier");
+                              || prefabSelecionado.name.ToLower().Contains("pier")
+                              || prefabSelecionado.name.ToLower().Contains("plataforma");
 
         int layerIgnore = LayerMask.NameToLayer("Ignore Raycast");
         int mascaraGeral = ~(1 << layerIgnore); // Tudo menos IgnoreRaycast
 
         if (ehConstrucaoNaval)
         {
-            // Estratégia Naval:
-            // 1. Tenta Raycast normal contra tudo.
-            if (Physics.Raycast(raio, out toque, 2000f, mascaraGeral))
+            // NOVA LÓGICA ROBUSTA: Baseada em Plano Matemático (ignora colisor da água)
+            // 1. Projeta o raio no Nível do Mar Teórico
+            Plane planoMar = new Plane(Vector3.up, new Vector3(0, alturaDoMar, 0));
+            float distancia;
+            
+            if (planoMar.Raycast(raio, out distancia))
             {
-                acertouChao = true;
+                Vector3 pontoNoMar = raio.GetPoint(distancia);
                 
-                // Verifica se bateu na água
-                bool bateuNaAgua = toque.collider.gameObject.layer == 4 || // Layer 4 = Water
-                                   toque.collider.name.ToLower().Contains("water") || 
-                                   toque.collider.name.ToLower().Contains("agua") ||
-                                   toque.collider.tag.ToLower().Contains("water");
-
-                if (bateuNaAgua)
+                // 2. Validação: Verifica se tem "Terra Firme" muito alta neste ponto (Ilha/Montanha)
+                // Lança um raio do céu para baixo na coordenada X,Z encontrada
+                RaycastHit infoTerreno;
+                Vector3 origemCeu = new Vector3(pontoNoMar.x, alturaDoMar + 500f, pontoNoMar.z);
+                
+                bool temTerraEmbaixo = false;
+                if (Physics.Raycast(origemCeu, Vector3.down, out infoTerreno, 1000f, mascaraGeral))
                 {
-                    // Se bateu na água, usa o ponto exato (suporta ondas se tiver colisor mesh)
-                    pontoMouse = toque.point;
+                    // Ignora se o raio bateu na própria água (se tiver colisor) ou em coisas navais
+                    // Queremos saber se bateu em TERRENO/CHÃO
+                    bool bateuEmAguaOuNaval = infoTerreno.collider.name.ToLower().Contains("agua") || 
+                                              infoTerreno.collider.name.ToLower().Contains("water") ||
+                                              infoTerreno.collider.gameObject.layer == 4; // Water
+
+                    if (!bateuEmAguaOuNaval)
+                    {
+                        // Bateu em algo sólido (provavelmente terreno)
+                        if (infoTerreno.point.y > alturaDoMar + 1.0f) // Tolerância de 1m
+                        {
+                            temTerraEmbaixo = true;
+                        }
+                    }
+                }
+
+                // 3. Decisão Final: Aplica a todos (Plataforma, Estaleiro, Pier)
+                // Se tiver terra firme muito alta (montanha) embaixo, bloqueia para não ficar "enterrado".
+                if (temTerraEmbaixo)
+                {
+                    acertouChao = false;
                 }
                 else
                 {
-                    // Se bateu no fundo do mar (Terrain) ou outra coisa, projeta para o Nível do Mar
-                    pontoMouse = toque.point;
+                    acertouChao = true;
+                    pontoMouse = pontoNoMar;
+                    
+                    // Altura Base: Nível do Mar
                     pontoMouse.y = alturaDoMar;
+                    
+                    // AJUSTE DE ALTURA ESPECÍFICO
+                    if (prefabSelecionado.name.ToLower().Contains("plataforma"))
+                    {
+                        // Sobe a plataforma para ficar "mais alta" como pedido
+                        // +50% visualmente? Vamos testar um valor fixo ou relativo.
+                        // Se o modelo tem pivô no centro, subir ajuda.
+                        pontoMouse.y = 30.0f; // Ajuste FIXO conforme referência da cena (Y ~30)
+                    }
                 }
             }
         }
@@ -123,13 +156,89 @@ public class Construtor : MonoBehaviour
         // Clica para construir
         if (Input.GetMouseButtonDown(0))
         {
-            Debug.Log($"[Construtor] Clique detectado em {ponto}! Construindo {prefabSelecionado.name}...");
-            GameObject novo = Instantiate(prefabSelecionado, ponto, fantasmaUnico.transform.rotation);
+            Vector3 posFinal = fantasmaUnico.transform.position;
+            Quaternion rotFinal = fantasmaUnico.transform.rotation;
+            
+            Debug.Log($"[Construtor] Construção Instantânea de {prefabSelecionado.name} em {posFinal}");
+            
+             // Instancia o objeto real
+            GameObject novo = Instantiate(prefabSelecionado, posFinal, rotFinal);
+            
+            // Garante que a lógica esteja ativa e com os colisores no lugar certo
+            ReativarLogicaUnidade(novo);
             EnsureCollider(novo);
             
-            // SUCESSO! Não reembolsa, apenas finaliza.
+            // ANIMAR ESCALA NA CONSTRUÇÃO
+            Vector3 escalaOriginal = novo.transform.localScale;
+            novo.transform.localScale = Vector3.zero;
+            AnimadorConstrucao anim = novo.AddComponent<AnimadorConstrucao>();
+            anim.IniciarAnimacao(escalaOriginal, 1.5f); // 1.5 segundos para crescer
+            
+            // SUCESSO! Não reembolsa dinheiro, apenas limpa a seleção
             CancelarConstrucao(false); 
         }
+    }
+
+    // --- CLASSE AUXILIAR PARA ANIMAR ---
+    public class AnimadorConstrucao : MonoBehaviour
+    {
+        private Vector3 alvoEscala;
+        private float duracao;
+        private float tempo;
+
+        public void IniciarAnimacao(Vector3 escalaFinal, float tempoTotal)
+        {
+            alvoEscala = escalaFinal;
+            duracao = tempoTotal;
+            tempo = 0f;
+        }
+
+        void Update()
+        {
+            tempo += Time.deltaTime;
+            float t = Mathf.Clamp01(tempo / duracao);
+            
+            // Easing simples: acelera rápido e freia no fim
+            float curva = 1f - Mathf.Pow(1f - t, 3f);
+            
+            transform.localScale = Vector3.Lerp(Vector3.zero, alvoEscala, curva);
+
+            if (tempo >= duracao)
+            {
+                transform.localScale = alvoEscala;
+                Destroy(this); // Remove o script depois que termina
+            }
+        }
+    }
+
+    void DesativarLogicaUnidade(GameObject unidade)
+    {
+        // Desativa NavMeshAgent para não andar enquanto constrói
+        var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (agent != null) agent.enabled = false;
+
+        // Desativa scripts de comportamento
+        MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
+        foreach (var script in scripts) script.enabled = false;
+        
+        // Mantém Collider ativo para cliques (Demolição futura)
+    }
+
+    void ReativarLogicaUnidade(GameObject unidade)
+    {
+        // Reativa Scripts
+        MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
+        foreach (var script in scripts) script.enabled = true;
+
+        // Reativa NavMeshAgent com segurança
+        var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (agent != null) 
+        {
+            agent.enabled = true;
+        }
+        
+        // Garante layer correta
+        unidade.layer = LayerMask.NameToLayer("Default");
     }
 
     // --- CONSTRUÇÃO DE MURO (Estilo RTS) ---
@@ -249,15 +358,16 @@ public class Construtor : MonoBehaviour
     }
     
     // CHAMADO PELO SEU MENU
-    public void SelecionarParaConstruir(GameObject prefab, int custo)
+    public void SelecionarParaConstruir(GameObject prefab, int custo, DadosConstrucao.CategoriaItem categoria)
     {
         // Se já estava construindo algo, cancela o anterior (e reembolsa se não construiu)
         if (modoConstrucao) CancelarConstrucao(true);
 
         prefabSelecionado = prefab;
         custoAtual = custo; // Salva o custo para reembolso
+        categoriaAtual = categoria;
         modoConstrucao = true;
-        Debug.Log($"[Construtor] MODO CONSTRUÇÃO ATIVADO para: {prefab.name}. Custo: {custo}");
+        Debug.Log($"[Construtor] MODO CONSTRUÇÃO ATIVADO para: {prefab.name}. Custo: {custo}. Categoria: {categoria}");
     }
 
     public void CancelarConstrucao(bool reembolsar = true)

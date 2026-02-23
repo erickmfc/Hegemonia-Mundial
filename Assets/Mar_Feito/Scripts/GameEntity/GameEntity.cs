@@ -44,15 +44,18 @@ public class GameEntity : MonoBehaviour
     protected virtual void FixedUpdate()
     {
 #if UNITY_EDITOR
+
         if (rb.centerOfMass != S_centerOfMass + centerOfMassOffset)
             rb.centerOfMass = S_centerOfMass + centerOfMassOffset;
 #endif
 
         speed = (transform.position - last_position) / Time.deltaTime;
         last_position = transform.position;
-
-        absSpeed = Mathf.Abs(speed.x) + Mathf.Abs(speed.y) + Mathf.Abs(speed.z);
-        
+        absSpeed = speed.x < 0F ? -speed.x : speed.x
+                 + speed.y < 0F ? -speed.y : speed.y
+                 + speed.z < 0F ? -speed.z : speed.z;
+        if(absSpeed < 0)
+            absSpeed = -absSpeed;
         sqrtSpeed = Mathf.Sqrt(absSpeed);
     }
 

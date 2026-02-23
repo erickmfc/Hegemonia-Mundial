@@ -456,40 +456,29 @@ public class ControleSubmarino : MonoBehaviour
 
     void ExecutarMarchaFrenteRealista()
     {
-        // 1. ONDE O NAVMESH QUER IR?
         Vector3 direcaoDesejada = (agente.steeringTarget - transform.position).normalized;
         direcaoDesejada.y = 0;
 
-        // 2. CÁLCULO DO LEME 
-        Vector3 produtoVetorial = Vector3.Cross(transform.forward, direcaoDesejada);
-        
-        // Alvo do Leme: -1 (Esquerda) a 1 (Direita)
-        float lemeAlvo = produtoVetorial.y * 3.0f; 
-        
-        // Se o alvo está atrás, força curva
-        if (Vector3.Dot(transform.forward, direcaoDesejada) < 0)
-        {
-            lemeAlvo = Mathf.Sign(produtoVetorial.y); 
-            if (lemeAlvo == 0) lemeAlvo = 1f;
-        }
+        // O SEGREDO DO "TRILHO" -> Mesma lógica mágica do cruzador
+        float angulo = Vector3.SignedAngle(transform.forward, direcaoDesejada, Vector3.up);
+        float lemeAlvo = Mathf.Clamp(angulo / 30.0f, -1f, 1f);
 
-        lemeAlvo = Mathf.Clamp(lemeAlvo, -1f, 1f);
+        // Giro imediato com maciez
+        lemeAtual = Mathf.MoveTowards(lemeAtual, lemeAlvo, Time.deltaTime * 2.0f);
 
-        // 3. INÉRCIA DO LEME
-        // Submarinos são pesados, curvam devagar
-        lemeAtual = Mathf.MoveTowards(lemeAtual, lemeAlvo, Time.deltaTime * 0.5f);
-
-        // 4. APLICA A ROTAÇÃO
+        // Aceleração forçada trancada
         velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, velocidadeOriginal, Time.deltaTime * aceleracao);
         
-        float eficienciaLeme = velocidadeAtualSimulada > 0.5f ? 1.0f : 0.2f; 
+        // Mantém a inércia do leme
+        float fluxoAgua = Mathf.Abs(velocidadeAtualSimulada) + 2f; 
+        float eficienciaLeme = Mathf.Clamp01(fluxoAgua / 2.0f); 
+
+        // Gira o Submarino (Rotação Pura)
         float giroReal = lemeAtual * velocidadeGiroMax * Time.deltaTime * eficienciaLeme;
         transform.Rotate(0, giroReal, 0);
 
-        // 5. MOVIMENTO (Sempre para frente)
-        // Mantém movimentação no plano NavMesh -> Velocity cuida do X/Z
-        Vector3 moveDir = transform.forward * velocidadeAtualSimulada;
-        agente.velocity = moveDir;
+        // Empurra para a frente (A mágica que evita que ele deslize para as laterais)
+        agente.velocity = transform.forward * velocidadeAtualSimulada;
     }
 
     void AtualizarInclinacaoNavio()

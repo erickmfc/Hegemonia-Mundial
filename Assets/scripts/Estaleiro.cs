@@ -72,7 +72,27 @@ public class Estaleiro : MonoBehaviour
 
     public bool ConstruirUnidade(GameObject prefabDoNavio)
     {
-        SlotConstrucao slotLivre = ObterSlotLivre();
+        SlotConstrucao slotLivre = null;
+
+        // REGRA ESPECÍFICA: Navios GRANDES devem procurar o slot "Atracagem_Grande"
+        bool ehNavioGrande = prefabDoNavio.GetComponent<NavioPetroleiro>() != null
+                          || prefabDoNavio.GetComponent<TransporteAnfibio>() != null
+                          || prefabDoNavio.GetComponent<NavioLiberty>() != null;
+        
+        if (ehNavioGrande)
+        {
+            slotLivre = ObterSlotEspecificoLivre("Atracagem_Grande");
+            if (slotLivre == null)
+            {
+                Debug.LogWarning("[Estaleiro] Navio grande requer 'Atracagem_Grande', mas está ocupada ou não existe. Tentando outros slots...");
+            }
+        }
+
+        // Se não for petroleiro ou se o slot preferido estiver ocupado, busca qualquer um
+        if (slotLivre == null)
+        {
+            slotLivre = ObterSlotLivre();
+        }
 
         if (slotLivre != null)
         {
@@ -84,6 +104,23 @@ public class Estaleiro : MonoBehaviour
             Debug.LogWarning("[Estaleiro] Todos os slots estão ocupados!");
             return false;
         }
+    }
+
+    SlotConstrucao ObterSlotEspecificoLivre(string nomeAlvo)
+    {
+        if (slots == null) return null;
+        foreach (var slot in slots)
+        {
+            // Verifica o nome configurado no Inspector ou o nome do objeto Transform
+            bool nomeBate = (slot.nomeSlot == nomeAlvo) || 
+                            (slot.pontoDeConstrucao != null && slot.pontoDeConstrucao.name == nomeAlvo);
+
+            if (nomeBate && !slot.estaOcupado)
+            {
+                return slot;
+            }
+        }
+        return null;
     }
 
     SlotConstrucao ObterSlotLivre()
@@ -117,12 +154,26 @@ public class Estaleiro : MonoBehaviour
         GameObject novoNavio = Instantiate(prefab, posFinal, slot.pontoDeConstrucao.rotation);
         novoNavio.transform.SetParent(null); 
 
-        // Salva a escala
+        // Salva a escala ORIGINAL (antes de qualquer animação)
         slot.escalaOriginal = novoNavio.transform.localScale;
 
-        // Desativa lógica
+        // ─── CRÍTICO: Desativa física ANTES de qualquer coisa ──────
+        // Impede o navio de cair por gravidade durante a animação de construção
+        Rigidbody rb = novoNavio.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.isKinematic = true;   // Script controla posição, não física
+            rb.useGravity  = false;  // Sem queda
+            // Trava rotação para não tombar durante construção
+            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+        }
+        // ─────────────────────────────────────────────────────────────
+
+        // Desativa lógica (scripts e colliders)
         DesativarLogicaUnidade(novoNavio);
 
+        // Mas re-aplica a configuração do Rigidbody pois DesativarLogicaUnidade coloca enabled=false nos MonoBehaviours
+        // O Rigidbody não é MonoBehaviour, então sobrevive
         slot.visualAtual = novoNavio;
 
         // Animação Escala Inicial
@@ -139,6 +190,10 @@ public class Estaleiro : MonoBehaviour
 
     void CriarBarraProgresso(SlotConstrucao slot)
     {
+        // REMOVIDO A PEDIDO: A barra verde estava atrapalhando/feia no estaleiro grande.
+        return; 
+
+        /* CÓDIGO ANTIGO DA BARRA VERDE
         if (slot.visualAtual == null) return;
 
         GameObject canvasObj = new GameObject("CanvasBarra_" + slot.nomeSlot);
@@ -181,6 +236,7 @@ public class Estaleiro : MonoBehaviour
 
         slot.barCanvasObj = canvasObj;
         slot.barFillImage = fillImg;
+        */
     }
 
     void ProcessarConstrucao(SlotConstrucao slot)
@@ -229,6 +285,14 @@ public class Estaleiro : MonoBehaviour
 
         ReativarLogicaUnidade(navioPronto);
 
+        // --- LÓGICA ESPECÍFICA PARA PETROLEIRO ---
+        NavioPetroleiro petroleiro = navioPronto.GetComponent<NavioPetroleiro>();
+        if (petroleiro != null && pontoDeSaida != null)
+        {
+            petroleiro.DefinirSaidaEstaleiro(pontoDeSaida.position);
+        }
+        // ----------------------------------------
+
         // Efeitos
         if (efeitoConclusao != null)
         {
@@ -267,7 +331,7 @@ public class Estaleiro : MonoBehaviour
         identidade.teamID = 1; 
         identidade.nomeDoPais = "Hegemonia";
 
-        // 2. Posição
+        // 2. Posição no nível da água
         if(forcarNivelDaAgua)
         {
              Vector3 pos = unidade.transform.position;
@@ -275,6 +339,21 @@ public class Estaleiro : MonoBehaviour
              unidade.transform.position = pos;
         }
 
+        // 3. ─── RIGIDBODY: Navios usam kinematic (script controla) ───────
+        Rigidbody rb = unidade.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.isKinematic = true;   // NavMeshAgent / script controla a posição
+            rb.useGravity  = false;  // Sem queda de gravidade
+            // Mantém rotação livre no eixo Y (permite virar)
+            // mas trava X e Z para não capotar
+            rb.constraints = RigidbodyConstraints.FreezeRotationX
+                           | RigidbodyConstraints.FreezeRotationZ
+                           | RigidbodyConstraints.FreezePositionY;
+        }
+        // ─────────────────────────────────────────────────────────────────
+
+        // 4. NavMeshAgent
         var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent != null) 
         {
@@ -288,17 +367,23 @@ public class Estaleiro : MonoBehaviour
             }
 
             agent.updatePosition = true;
-            agent.updateRotation = true;
-            // IMPORTANTE: Reseta velocidades para evitar pulo
             agent.velocity = Vector3.zero;
             agent.isStopped = false;
+
+            // ─── CRÍTICO: NavegacaoInteligenteNaval precisa de updateRotation=false ───
+            // Se tiver navegação inteligente naval, ELA controla a rotação.
+            // Se deixar true aqui, o navio capota ou trava.
+            bool temNavegacaoInteligente = unidade.GetComponent<NavegacaoInteligenteNaval>() != null
+                                        || unidade.GetComponent<ControleNavioRealista>() != null;
+            agent.updateRotation = !temNavegacaoInteligente;
+            // ─────────────────────────────────────────────────────────────────────────
         }
 
-        // 3. Reativa Colliders
+        // 5. Reativa Colliders
         Collider[] colliders = unidade.GetComponentsInChildren<Collider>();
         foreach (var col in colliders) col.enabled = true;
 
-        // 4. Reativa Scripts (EXCETO NavMeshAgent que já foi)
+        // 6. Reativa Scripts (EXCETO NavMeshAgent que já foi)
         MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
         foreach (var script in scripts) 
         {
@@ -312,6 +397,8 @@ public class Estaleiro : MonoBehaviour
         var ctrl = unidade.GetComponent<ControleUnidade>();
         if (ctrl == null) ctrl = unidade.AddComponent<ControleUnidade>();
         ctrl.enabled = true;
+
+        Debug.Log($"[Estaleiro] {unidade.name} reativado. RB kinematic={(rb != null ? rb.isKinematic.ToString() : "sem RB")}, NavRotation={(agent != null ? agent.updateRotation.ToString() : "sem Agent")}");
     }
 
     void OnDrawGizmos()

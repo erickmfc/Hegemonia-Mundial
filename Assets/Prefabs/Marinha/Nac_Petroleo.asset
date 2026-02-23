@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Nac_Petroleo
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Petroleiro
+  descricao: "Descri\xE7\xE3o curta..."
+  icone: {fileID: 21300000, guid: 452c7e6d68cbbab4090dd60b3218f736, type: 3}
+  prefabDaUnidade: {fileID: 7222618996886511285, guid: e7927ca4e3718334fb017c4fef5561a9, type: 3}
+  preco: 100
+  categoria: 1
+  scriptsDeComando: []

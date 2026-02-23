@@ -225,12 +225,6 @@ PrefabInstance:
       addedObject: {fileID: 8136881033670113497}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8566942003894839641}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 7937597992358247358}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
-      insertIndex: -1
       addedObject: {fileID: -3385564236487319108}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
       insertIndex: -1
@@ -241,6 +235,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
       insertIndex: -1
       addedObject: {fileID: -4122274775406230520}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -6938321945260974609}
     - targetCorrespondingSourceObject: {fileID: 8700725330082129686, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8937376481223955602}
@@ -407,8 +404,8 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
+  m_UseGravity: 0
+  m_IsKinematic: 1
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
@@ -434,47 +431,6 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 8
   m_ObstacleAvoidanceType: 4
---- !u!114 &8566942003894839641
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4920767160384793370}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ca5a422005c65c245a0e85ced197ba13, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ControladorNavioVigilante
-  alcanceAtaque: 15
-  cadenciaTiro: 0.5
-  projetilPrefab: {fileID: 103092412673567969, guid: ebf2dc395069cef46a875dd90ae1f642, type: 3}
-  pontosDisparo:
-  - {fileID: 598984735953559422}
-  - {fileID: 8343221529480566329}
-  - {fileID: 6928579310771772829}
-  antygaviti: 5
---- !u!114 &7937597992358247358
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4920767160384793370}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 32ce560dd3360da439531016f604e494, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
-  anelSelecao: {fileID: 601449192149514539, guid: 00009c2ede91a1041a37ada027c98132, type: 3}
-  selecionado: 0
-  velocidadeVoo: 8
-  tamanhoSelecao: 0
-  corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
-  linhaAlcance: {fileID: 0}
-  corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
-  larguraLinha: 0.15
-  segmentosCirculo: 50
 --- !u!114 &-3385564236487319108
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -526,6 +482,39 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FloatingGameEntityRealist
   centerOfMassOffset: {x: 0, y: 0, z: 0}
   buoyancyMesh: {fileID: 0}
+  Antygaviti: 5
+--- !u!114 &-6938321945260974609
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4920767160384793370}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
+  tempoAceleracao: 8
+  tempoDesaceleracao: 15
+  tempoParadaEmergencia: 10
+  velocidadeMaxima: 12
+  velocidadeLeme: 5
+  curvaMaximaGraus: 10
+  coeficienteAderna: 2.5
+  alturaOnda: 0.5
+  frequenciaOnda: 0.2
+  arrastoPassivo: 0.5
+  distanciaChegada: 15
+  offsetAlturaAgua: 0
+  profundidadeVisual: 0
+  bigodeiraProa: {fileID: 0}
+  rastroEsteira: {fileID: 0}
+  turbulenciaPopa: {fileID: 0}
+  modelo3D: {fileID: 0}
+  modoOperacao: 0
+  somMotorParado: {fileID: 0}
+  somMotorMovimento: {fileID: 0}
 --- !u!1 &7950831890961046612 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2800250516343163423, guid: 3fb77ba6d2e43484e8346d4de7d3dc64, type: 3}

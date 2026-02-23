@@ -177,6 +177,8 @@ MonoBehaviour:
     prefabAtual: {fileID: 0}
     progresso: 0
     escalaOriginal: {x: 0, y: 0, z: 0}
+    barCanvasObj: {fileID: 0}
+    barFillImage: {fileID: 0}
   - nomeSlot: 
     pontoDeConstrucao: {fileID: 686588862126957584}
     estaOcupado: 0
@@ -184,8 +186,13 @@ MonoBehaviour:
     prefabAtual: {fileID: 0}
     progresso: 0
     escalaOriginal: {x: 0, y: 0, z: 0}
+    barCanvasObj: {fileID: 0}
+    barFillImage: {fileID: 0}
   tempoDeConstrucao: 15
   usarAnimacaoEscala: 1
+  prefabBarraProgresso: {fileID: 0}
+  offsetBarra: {x: 0, y: 10, z: 0}
+  tamanhoBarra: {x: 4, y: 0.5}
   forcarNivelDaAgua: 1
   nivelDaAgua: 0
   offsetAltura: 0
@@ -677,7 +684,7 @@ GameObject:
   m_Component:
   - component: {fileID: 686588862126957584}
   m_Layer: 0
-  m_Name: Atracagem (1)
+  m_Name: Atracagem_Grande
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -692,7 +699,7 @@ Transform:
   m_GameObject: {fileID: 8513076260242051797}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.237, y: 0, z: 3.12}
+  m_LocalPosition: {x: 0.11, y: 0, z: 6.69}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

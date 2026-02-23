@@ -8,10 +8,6 @@ using ArchimedsLab;
 public class FloatingGameEntityRealist : GameEntity
 {
   public Mesh buoyancyMesh;
-  
-  [Header("Estabilidade")]
-  [Tooltip("Força que mantém o navio em pé (Antygaviti)")]
-  public float Antygaviti = 5.0f;
 
   /* These 4 arrays are cache array, preventing some operations to be done each frame. */
   tri[] _triangles;
@@ -37,12 +33,6 @@ public class FloatingGameEntityRealist : GameEntity
     Mesh m = buoyancyMesh == null ? GetComponent<MeshFilter>().mesh : buoyancyMesh;
     //Setting up the cache for the game. Here we use variables with a game-long lifetime.
     WaterCutter.CookCache(m, ref _triangles, ref worldBuffer, ref wetTris, ref dryTris);
-
-    // FIX: Ensure all MeshColliders are convex to avoid "Concave Mesh Collider with Rigidbody" errors
-    foreach (var mc in GetComponentsInChildren<MeshCollider>())
-    {
-        mc.convex = true;
-    }
   }
 
   protected override void FixedUpdate()
@@ -63,29 +53,6 @@ public class FloatingGameEntityRealist : GameEntity
     WaterCutter.SplitMesh(worldBuffer, ref wetTris, ref dryTris, out nbrWet, out nbrDry, realist);
     //This function will compute the forces depending on the triangles generated before.
     Archimeds.ComputeAllForces(wetTris, dryTris, nbrWet, nbrDry, speed, rb);
-    
-    // Aplicar a força de estabilização (Antygaviti)
-    AplicarEstabilidade();
-  }
-
-  // --- LÓGICA ANTYGAVITI (Estabilidade do Barco) ---
-  void AplicarEstabilidade() {
-    if (rb == null) return;
-
-    // 1. Calculamos o erro de rotação (o quanto o barco inclinou para o lado)
-    // Comparamos o "cima" do navio com o "cima" absoluto do mundo
-    Quaternion rotacaoDesejada = Quaternion.FromToRotation(transform.up, Vector3.up);
-
-    // 2. Transformamos isso em uma força de giro (Torque)
-    // Aqui usamos a variável "Antygaviti" que aparece no seu Inspector!
-    float forcaEstabilidade = Antygaviti * 10f; 
-
-    // 3. Aplicamos a força para puxar o mastro de volta para o céu
-    rb.AddTorque(new Vector3(rotacaoDesejada.x, rotacaoDesejada.y, rotacaoDesejada.z) * forcaEstabilidade);
-
-    // 4. Amortecimento Angular (Damping)
-    // Isso impede que o barco fique balançando para sempre como uma mola
-    rb.angularVelocity *= (1.0f - 0.1f); 
   }
 
 #if UNITY_EDITOR

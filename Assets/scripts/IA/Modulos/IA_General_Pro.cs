@@ -419,22 +419,6 @@ public class IA_General_Pro : MonoBehaviour
     
     int TotalUnidades() => grupoSoldados.Count + grupoTanques.Count + grupoHelis.Count + grupoNavios.Count;
 
-    void OnGUI()
-    {
-        if (chefe == null) return;
-        GUI.Box(new Rect(10, 10, 300, 180), "IA GENERAL SUPREMO");
-        
-        string navStatus = (meusEstaleiros.Count > 0) ? "Operante" : "Inativo";
-        
-        GUI.Label(new Rect(20, 35, 280, 150), 
-            $"{_ultimoStatus}\n" +
-            $"💰 ${chefe.dinheiro:F0}\n" +
-            $"🏭 Fab: {minhasFabricas.Count} | ⚓ Estaleiros: {meusEstaleiros.Count} ({navStatus})\n" +
-            $"--------------------------\n" +
-            $"💂 Inf: {grupoSoldados.Count}/{soldadosDesejados}\n" +
-            $"🚜 Tanq: {grupoTanques.Count}/{tanquesDesejados}\n" +
-            $"🚁 Heli: {grupoHelis.Count}/{helicopterosDesejados}\n" +
-            $"⚓ Mar: {grupoNavios.Count}/{naviosDesejados}\n" +
-            $"TOTAL: {TotalUnidades()} (Atq: {minimoParaAtacar})");
-    }
+    // OnGUI de debug removido — poluía a tela sobrepondo o HUD de recursos.
+    // Para ver status da IA, use o Console (Debug.Log) ou o Inspector.
 }

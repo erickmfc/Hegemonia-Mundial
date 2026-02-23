@@ -38,6 +38,32 @@ public class PierMarinha : MonoBehaviour
     [Header("Configuração das Bases")]
     public List<VagaDeAtracagem> vagasDisponiveis = new List<VagaDeAtracagem>();
 
+    [Header("Pontos de Logística (Arraste os GameObjects aqui)")]
+    public Transform saida_petro;   // Ponto de aproximação (Entrada do Pier)
+    public Transform Atraca_petro;  // Ponto de atracagem (Dock)
+
+    [Header("Estado")]
+    public bool ocupada = false;
+
+    public void TentarOcupar()
+    {
+        ocupada = true;
+    }
+
+    public void Liberar()
+    {
+        ocupada = false;
+    }
+
+    public void ReceberPetroleo(int quantidade)
+    {
+        if (GerenciadorRecursos.Instancia != null)
+        {
+            GerenciadorRecursos.Instancia.AdicionarRecursos(addPetroleo: quantidade);
+            // Opcional: Mostrar feedback flutuante (não implementado aqui)
+        }
+    }
+
     [Header("Configurações Gerais")]
     public float raioDeBusca = 1500f; 
     public float velocidadeManobra = 3.5f;
@@ -48,6 +74,46 @@ public class PierMarinha : MonoBehaviour
     
     [Header("Configuração de Saída")]
     public Transform[] pontosDeSaida;
+
+    [Header("Navegação (Petroleiros)")]
+    // Estes pontos devem ser configurados no Inspector
+    public Transform pontoEntrada;    // Onde o navio mira ao chegar
+    public Transform pontoAcoplagem;  // Onde o navio DESCARREGA
+    public Transform pontoSaidaNavio; // Para onde ele olha ao sair (pode ser um dos pontosDeSaida)
+
+    private bool ocupadoPorPetroleiro = false;
+
+    // Métodos duplicados removidos
+
+    private Construtor construtorLocal; // Referencia ao construtor da cena
+
+    void Awake()
+    {
+        // Pontos do Petroleiro removidos conforme solicitado
+    }
+
+    Transform CriarPonto(string nome, Vector3 pos)
+    {
+        GameObject p = new GameObject(nome);
+        p.transform.position = pos;
+        p.transform.SetParent(this.transform);
+        return p.transform;
+    }
+
+    void Start()
+    {
+        StartCoroutine(RotinaBuscaConstrucao());
+    }
+
+    IEnumerator RotinaBuscaConstrucao()
+    {
+        while(true)
+        {
+            yield return new WaitForSeconds(3.0f);
+            if(construtorLocal == null)
+                construtorLocal = FindFirstObjectByType<Construtor>();
+        }
+    }
 
     void Update()
     {
@@ -310,6 +376,7 @@ public class PierMarinha : MonoBehaviour
         }
     }
 
+    // --- INTERFACE VISUAL DE REPARO ---
     // --- INTERFACE VISUAL DE REPARO ---
     void OnGUI()
     {

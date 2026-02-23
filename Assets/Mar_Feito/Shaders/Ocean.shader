@@ -24,8 +24,6 @@ Shader "Nature/Ocean"
 		_WaveLengthInverse("Wave Length", Float) = 10.0
 		_Intensity("Intensity", Float) = 4.0
 		_Periode("Periode", Float) = 1.0
-
-		// Removed _OceanRefraction from properties to avoid global conflict
 	}
 	
 	CGINCLUDE
@@ -55,7 +53,7 @@ Shader "Nature/Ocean"
 	
 	
 	sampler2D _BumpMap;
-	sampler2D _HegemoniaWaterGrab;
+	sampler2D _CameraOpaqueTexture;
 	
 	uniform float4 _BumpDirection;
 	uniform float4 _BumpTiling;
@@ -105,10 +103,9 @@ Shader "Nature/Ocean"
 		
 		half4 distortOffset = half4(worldNormal.xz * 0.24 * 10.0, 0, 0);
 		half4 grabWithOffset = i.grabPassPos + distortOffset;
-
-		half4 rtRefractionsNoDistort = _BaseColor; //tex2Dproj(_HegemoniaWaterGrab, UNITY_PROJ_COORD(i.grabPassPos));
+		half4 rtRefractionsNoDistort = tex2Dproj(_CameraOpaqueTexture, UNITY_PROJ_COORD(i.grabPassPos));
 		half refrFix = SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(grabWithOffset));
-		half4 rtRefractions = _BaseColor; //tex2Dproj(_HegemoniaWaterGrab, UNITY_PROJ_COORD(grabWithOffset));
+		half4 rtRefractions = tex2Dproj(_CameraOpaqueTexture, UNITY_PROJ_COORD(grabWithOffset));
 		
 		worldNormal.xz *= _FresnelScale;
 		half refl2Refr = Fresnel(viewVector, worldNormal, FRESNEL_BIAS, FRESNEL_POWER);
@@ -134,8 +131,8 @@ Shader "Nature/Ocean"
 		
 		Lod 200
 		ColorMask RGB
-
-		//GrabPass { "_HegemoniaWaterGrab" }
+		
+		// GrabPass { "_OceanGrabRefractionTex" }
 		
 		Pass
 		{

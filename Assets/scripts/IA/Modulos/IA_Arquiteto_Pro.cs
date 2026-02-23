@@ -155,29 +155,29 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             return;
         }
 
-        // Tenta 12 vezes achar um lugar livre
-        for (int i = 0; i < 12; i++)
+        // Tenta 20 vezes achar um lugar livre e LONGE de outros prédios
+        for (int i = 0; i < 20; i++)
         {
-            Vector3 pos = EncontrarPosicaoEspiral(centro, i, 0f); // 0f = Terra
+            Vector3 pos = EncontrarPosicaoEspiral(centro, i, 0f);
             
-            // Verifica colisão (Raio reduzido para 5m para facilitar)
-            if (!Physics.CheckSphere(pos, 5.0f)) 
+            // Verifica colisão com MARGEM GRANDE (20m) para espalhar
+            if (!TemPredioProximo(pos, espacamentoEdificios)) 
             {
                 // Ajusta ao terreno
                 float yTerra = 0;
                 if (Terrain.activeTerrain != null) yTerra = Terrain.activeTerrain.SampleHeight(pos);
                 pos.y = yTerra;
 
-                // Constrói!
                 SpawnarPredio(prefab, pos, Quaternion.identity);
                 return;
             }
         }
         
-        // SE FALHOU TUDO: CONSTROI MESMO ASSIM (Force Build)
-        // Melhor clipar do que não ter base.
-        Debug.LogWarning($"⚠️ [IA Arquiteto] Forçando construção de {nomeChave} após falha de espaço.");
-        Vector3 posForcada = EncontrarPosicaoEspiral(centro, 8, 0f);
+        // SE FALHOU TUDO: Constrói longe numa direção aleatória
+        Debug.LogWarning($"⚠️ [IA Arquiteto] Forçando construção de {nomeChave} em ponto distante.");
+        Vector3 dirAleatoria = Random.insideUnitSphere;
+        dirAleatoria.y = 0;
+        Vector3 posForcada = centro + dirAleatoria.normalized * (espacamentoEdificios * 4f);
         if (Terrain.activeTerrain != null) posForcada.y = Terrain.activeTerrain.SampleHeight(posForcada);
         SpawnarPredio(prefab, posForcada, Quaternion.identity);
     }
@@ -245,13 +245,37 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
     Vector3 EncontrarPosicaoEspiral(Vector3 centro, int indice, float alturaFixa)
     {
-        float angulo = indice * 45f; // Espiral mais simples
-        float raio = 15f + (indice * 12f); // Começa perto e vai longe
+        // Ângulo áureo (137.5°) — distribui pontos uniformemente sem empilhar
+        float angulo = indice * 137.5f;
+        // Raio cresce com espaçamento mínimo generoso
+        float raio = espacamentoEdificios + (indice * espacamentoEdificios * 0.8f);
         
         float rad = angulo * Mathf.Deg2Rad;
         Vector3 offset = new Vector3(Mathf.Cos(rad) * raio, 0, Mathf.Sin(rad) * raio);
         
         return centro + offset;
+    }
+
+    /// <summary>
+    /// Verifica se já existe algum prédio/estrutura dentro do raio.
+    /// Usa OverlapSphere para checar colisões reais.
+    /// </summary>
+    bool TemPredioProximo(Vector3 posicao, float raioMinimo)
+    {
+        Collider[] vizinhos = Physics.OverlapSphere(posicao, raioMinimo);
+        foreach (var col in vizinhos)
+        {
+            if (col == null) continue;
+            // Checa se é uma estrutura (Fábrica, Estaleiro, ou qualquer objeto com IdentidadeUnidade + Estrutura)
+            if (col.GetComponent<Fabrica>() != null) return true;
+            if (col.GetComponent<Estaleiro>() != null) return true;
+            // Checa SistemaDeDanos.ehEstrutura (prédios, muros, etc.)
+            var danos = col.GetComponent<SistemaDeDanos>();
+            if (danos != null && danos.ehEstrutura) return true;
+            // Também rejeita se houver qualquer objeto grande (scale > 3)
+            if (col.transform.localScale.magnitude > 5f) return true;
+        }
+        return false;
     }
 
 

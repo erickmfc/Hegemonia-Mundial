@@ -14,8 +14,10 @@ public class MissionGenerator : MonoBehaviour
     public GameObject prefabNavioGuerra;
 
     // AUTO-START: Começa a gerar assim que dá Play
+    // AUTO-START: Começa a gerar assim que dá Play
     void Start()
     {
+        /*
         RecebedorIA recebedor = GetComponent<RecebedorIA>();
         if (recebedor != null)
         {
@@ -26,6 +28,8 @@ public class MissionGenerator : MonoBehaviour
         {
             Debug.LogError("[MissionGenerator] ERRO: Não encontrei o componente 'RecebedorIA' no mesmo objeto!");
         }
+        */
+        Debug.Log("[MissionGenerator] Auto-start DESATIVADO para evitar conflito com CerebroIA.");
     }
 
     // Método principal que gera TODAS as missões em sequência

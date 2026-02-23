@@ -179,7 +179,14 @@ public class MenuConstrucao : MonoBehaviour
         layoutPrincipal.childControlWidth = true;
         layoutPrincipal.childForceExpandHeight = false; // Header fixo
         
-        // 3. CABEÇALHO (Categorias)
+        // Inicializa Modo Demolição se não existir
+        if (Object.FindFirstObjectByType<ModoDemolicao>() == null)
+        {
+            GameObject go = new GameObject("ModoDemolicao_Manager");
+            go.AddComponent<ModoDemolicao>();
+        }
+
+        // 3. CABEÇALHO (Categorias + Demolição)
         GameObject headerObj = CriarRetangulo("Header_Abas", painelPrincipal.transform);
         LayoutElement leHeader = headerObj.AddComponent<LayoutElement>();
         leHeader.minHeight = 50;
@@ -196,6 +203,10 @@ public class MenuConstrucao : MonoBehaviour
         {
             CriarBotaoAbaModerno(cat, containerAbas);
         }
+        
+        // BOTÃO DE DEMOLIÇÃO (Adicionado ao Header)
+        // (Removido a pedido do usuário que não gostou da aba extra)
+        // CriarBotaoDemolicao(containerAbas);
 
         // 4. ÁREA DE CONTEÚDO (Scroll)
         GameObject bodyObj = CriarRetangulo("Body_Scroll", painelPrincipal.transform);
@@ -275,7 +286,46 @@ public class MenuConstrucao : MonoBehaviour
         RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
         rtTxt.anchorMin = Vector2.zero; rtTxt.anchorMax = Vector2.one;
 
-        btn.onClick.AddListener(() => FiltrarPorCategoria(categoria));
+        btn.onClick.AddListener(() => 
+        {
+            if(ModoDemolicao.Instancia) ModoDemolicao.Instancia.AlternarModo(false); // Desativa demolição
+            FiltrarPorCategoria(categoria);
+        });
+    }
+
+    void CriarBotaoDemolicao(Transform pai)
+    {
+        GameObject btnObj = CriarRetangulo("Btn_Demolicao", pai);
+        
+        // Fundo Vermelho Sutil
+        Image img = btnObj.AddComponent<Image>();
+        img.color = new Color(1, 0, 0, 0.2f); 
+
+        Button btn = btnObj.AddComponent<Button>();
+        
+        GameObject txtObj = CriarRetangulo("Texto", btnObj.transform);
+        Text txt = txtObj.AddComponent<Text>();
+        txt.text = "DEMOLIR";
+        txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        txt.alignment = TextAnchor.MiddleCenter;
+        txt.fontSize = 8;
+        txt.fontStyle = FontStyle.Bold;
+        txt.color = new Color(1f, 0.5f, 0.5f); // Texto Vermelho Claro
+        txt.resizeTextForBestFit = true;
+        
+        RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
+        rtTxt.anchorMin = Vector2.zero; rtTxt.anchorMax = Vector2.one;
+
+        // Lógica
+        btn.onClick.AddListener(() => 
+        {
+            if(ModoDemolicao.Instancia)
+            {
+                ModoDemolicao.Instancia.AlternarModo(true);
+                AlternarMenu(false); // Fecha o menu para poder clicar nas coisas
+                Debug.Log("[Menu] Modo Demolição Ativado!");
+            }
+        });
     }
 
     void AtualizarVisualAbas(DadosConstrucao.CategoriaItem catAtiva)
@@ -680,8 +730,8 @@ public class MenuConstrucao : MonoBehaviour
         Construtor construtor = Object.FindFirstObjectByType<Construtor>();
         if (construtor != null)
         {
-            // CORREÇÃO: Passamos o preço para permitir reembolso se cancelar!
-            construtor.SelecionarParaConstruir(item.prefabDaUnidade, item.preco);
+            // CORREÇÃO: Passamos o preço para permitir reembolso se cancelar! E agora a categoria!
+            construtor.SelecionarParaConstruir(item.prefabDaUnidade, item.preco, item.categoria);
             AlternarMenu(false); // Fecha o menu para construir
         }
     }

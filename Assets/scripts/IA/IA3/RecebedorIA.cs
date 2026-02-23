@@ -44,6 +44,7 @@ public class TaskRequest
     public string requester; 
     public ActionType type; 
     public Vector3 targetPosition; 
+    public Quaternion targetRotation = Quaternion.identity; // Novo: Rotação específica
     public GameObject targetObject; 
     public float cost; 
     public PriorityLevel priority; 
@@ -51,12 +52,13 @@ public class TaskRequest
     // Novo: Conexão direta com o Menu
     public DadosConstrucao menuItem; 
 
-    public TaskRequest(string req, ActionType t, Vector3 pos, DadosConstrucao item = null, GameObject obj = null, float c = 0, PriorityLevel p = PriorityLevel.Low)
+    public TaskRequest(string req, ActionType t, Vector3 pos, DadosConstrucao item = null, GameObject obj = null, float c = 0, PriorityLevel p = PriorityLevel.Low, Quaternion rot = default)
     {
         id = System.Guid.NewGuid().ToString();
         requester = req;
         type = t;
         targetPosition = pos;
+        targetRotation = (rot == default) ? Quaternion.identity : rot;
         
         if (item != null)
         {
@@ -120,12 +122,12 @@ public class RecebedorIA : MonoBehaviour
     }
 
     // Sobrecarga Inteligente: Recebe o item do menu direto!
-    public void ReceberPedido(string quemPediu, ActionType oQue, Vector3 onde, DadosConstrucao itemMenu, PriorityLevel prioridade = PriorityLevel.Low)
+    public void ReceberPedido(string quemPediu, ActionType oQue, Vector3 onde, DadosConstrucao itemMenu, PriorityLevel prioridade = PriorityLevel.Low, Quaternion rot = default)
     {
-        TaskRequest novoPedido = new TaskRequest(quemPediu, oQue, onde, itemMenu, null, 0, prioridade);
+        TaskRequest novoPedido = new TaskRequest(quemPediu, oQue, onde, itemMenu, null, 0, prioridade, rot);
         filaDeEntrada.Enqueue(novoPedido);
         
-        Debug.Log($"[Recebedor] Requisição INTELIGENTE: {itemMenu.nomeItem} ({oQue}) de {quemPediu}. Custo: {itemMenu.preco}");
+        Debug.Log($"[Recebedor] Requisição INTELIGENTE: {itemMenu.nomeItem} ({oQue}) de {quemPediu}, Rot={rot.eulerAngles}. Custo: {itemMenu.preco}");
     }
 
     public TaskRequest PegarProximoPedido()

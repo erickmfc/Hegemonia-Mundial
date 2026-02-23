@@ -208,13 +208,9 @@ public class LancadorNaval : MonoBehaviour
             }
             else
             {
-                // Fallback de tags para alvos sem identidade
-                if (!hit.CompareTag("Player") && !hit.CompareTag("Aliado"))
-                {
-                    string[] tagsHostis = new string[] { "Inimigo", "Enemy", "Inimigos", "Destrutivel" };
-                    foreach(string t in tagsHostis) { try { if(hit.CompareTag(t)) ehInimigo = true; } catch {} }
-                    foreach(string t in tagsInimigas) { try { if(hit.CompareTag(t)) ehInimigo = true; } catch {} }
-                }
+                // Sem identidade, ignoramos.
+                // O sistema de tags estava causando erros pois as tags não existem no projeto.
+                // Agora confiamos 100% no componente IdentidadeUnidade adicionado pelo AnalistaExecutivo.
             }
 
             if (ehInimigo)

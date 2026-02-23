@@ -5,7 +5,7 @@ using System.Collections;
 public class LancadorMisseis : MonoBehaviour
 {
     [Header("Configuração de Munição")]
-    public int municaoAtual = 0;
+    public int municaoAtual = 4;    // Começa cheio (igual ao máximo)
     public int municaoMaxima = 4;
     public int custoMissil = 200;
 
@@ -18,9 +18,14 @@ public class LancadorMisseis : MonoBehaviour
     [Header("Visual")]
     public Transform cabecaRotativa; // Parte que gira (opcional)
 
+    [Header("Mira")]
+    [Tooltip("Altura Y do plano de mira quando não há colisão sólida (ex: nível do mar)")]
+    public float alturaPlanoMira = 0f; // Nível do mar = Y 0
+
     // Estado Interno
     private bool menuAberto = false;
     private bool mirando = false;
+    private bool posicaoValida = false;   // TRUE só quando o fantasma está sobre algo
     private GameObject marcadorFantasma; // O círculo vermelho
     private float cronometroRecarga = 0f;
     private int indiceCano = 0;
@@ -59,19 +64,23 @@ public class LancadorMisseis : MonoBehaviour
             // Clique ESQUERDO: Lança
             if (Input.GetMouseButtonDown(0))
             {
-                if (cronometroRecarga <= 0)
+                if (!posicaoValida)
+                {
+                    Debug.LogWarning("[Lançador] Posicione o cursor no mapa antes de disparar.");
+                }
+                else if (cronometroRecarga <= 0)
                 {
                     Disparar(marcadorFantasma.transform.position);
-                    
+
                     // Finaliza mira
-                    mirando = false; 
+                    mirando = false;
+                    posicaoValida = false;
                     marcadorFantasma.SetActive(false);
-                    // Garante que o menu permaneça fechado
                     FecharMenu();
                 }
                 else
                 {
-                    Debug.Log("[Lançador] Carregando misseis... aguarde.");
+                    Debug.Log($"[Lançador] Recarregando... aguarde {cronometroRecarga:F1}s.");
                 }
             }
 
@@ -212,26 +221,62 @@ public class LancadorMisseis : MonoBehaviour
     {
         Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit toque;
+        Vector3 pontoMira;
 
-        // Tenta bater no chão
-        if (Physics.Raycast(raio, out toque, 5000f))
+        // Tenta bater em qualquer collider sólido (inclusive chão e terreno)
+        // Ignora apenas IgnoreRaycast (layer 2)
+        int mascara = ~(1 << 2);
+        if (Physics.Raycast(raio, out toque, 5000f, mascara))
         {
-            marcadorFantasma.transform.position = toque.point + Vector3.up * 0.5f;
-
-            // Se tiver cabeça rotativa, mira ela pro fantasma
-            if (cabecaRotativa != null)
+            pontoMira = toque.point;
+            posicaoValida = true;
+        }
+        else
+        {
+            // FALLBACK: Usa um plano horizontal na altura do nível do mar
+            // Isso permite mirar sobre a água mesmo que ela não tenha collider sólido
+            Plane planoMar = new Plane(Vector3.up, new Vector3(0, alturaPlanoMira, 0));
+            float distancia;
+            if (planoMar.Raycast(raio, out distancia))
             {
-                Vector3 dir = toque.point - cabecaRotativa.position;
-                dir.y = 0; // Não inclina pra cima/baixo
-                if(dir != Vector3.zero) 
-                    cabecaRotativa.rotation = Quaternion.Lerp(cabecaRotativa.rotation, Quaternion.LookRotation(dir, transform.up), Time.deltaTime * 10f);
+                pontoMira = raio.GetPoint(distancia);
+                posicaoValida = true;
             }
+            else
+            {
+                posicaoValida = false;
+                return; // Cursor fora da tela ou câmera paralela — não atualiza
+            }
+        }
+
+        marcadorFantasma.transform.position = pontoMira + Vector3.up * 0.5f;
+
+        // Gira a cabeça rotativa em direção ao alvo (apenas eixo Y)
+        if (cabecaRotativa != null)
+        {
+            Vector3 dir = pontoMira - cabecaRotativa.position;
+            dir.y = 0;
+            if (dir != Vector3.zero)
+                cabecaRotativa.rotation = Quaternion.Lerp(
+                    cabecaRotativa.rotation,
+                    Quaternion.LookRotation(dir, transform.up),
+                    Time.deltaTime * 10f);
         }
     }
 
     void Disparar(Vector3 alvo)
     {
-        if (municaoAtual <= 0) return;
+        if (municaoAtual <= 0)
+        {
+            Debug.LogWarning("[Lançador] Sem mísseis! Compre mais no menu (tecla L).");
+            return;
+        }
+
+        if (missilPrefab == null)
+        {
+            Debug.LogError("[Lançador] ERRO: Prefab do míssil não atribuído no Inspector!");
+            return;
+        }
 
         // Escolhe o cano de saída
         Transform saida = transform;

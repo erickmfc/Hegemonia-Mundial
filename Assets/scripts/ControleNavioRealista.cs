@@ -167,7 +167,6 @@ public class ControleNavioRealista : MonoBehaviour
 
     void CalcularInputNavegacao()
     {
-        // Se não tem caminho E já estamos parados, sai.
         if (!agente.hasPath && velocidadeVetorial.magnitude < 0.1f)
         {
             potenciaAlvo = 0f;
@@ -177,52 +176,46 @@ public class ControleNavioRealista : MonoBehaviour
 
         float distancia = agente.remainingDistance;
         
-        // --- LOGICA DE CHEGADA INTELIGENTE ---
-        // Se estiver muito perto ou sem caminho, corta motor.
-        // Aumentamos a tolerância para 15m (distanciaChegada) para evitar o loop de correcao infinita
+        // Ponto de chegada sem freio brusco longe
         if (distancia < distanciaChegada || !agente.hasPath)
         {
             potenciaAlvo = 0f;
             temDestino = false;
-            
-            // Se ainda estiver muito rápido perto do destino, aplica reverso?
-            // Por enquanto, apenas corta motor e deixa o "Parking Drag" atuar.
             return;
         }
 
         temDestino = true;
         
-        // Direção desejada (Steering Target é o próximo corner do NavMesh)
+        // Alvo no horizonte (Navigation Waypoint)
         Vector3 direcaoAlvo = (agente.steeringTarget - transform.position).normalized;
         direcaoAlvo.y = 0;
 
-        // Calculo do Leme (Dot Product para ver se está alinhado)
         float angulo = Vector3.SignedAngle(transform.forward, direcaoAlvo, Vector3.up);
-        float inputLeme = Mathf.Clamp(angulo / 45.0f, -1f, 1f); // 45 graus para leme total
+        float velReal = velocidadeVetorial.magnitude;
 
-        // Leme tem inércia
-        anguloLemeAtual = Mathf.MoveTowards(anguloLemeAtual, inputLeme, Time.deltaTime * (velocidadeLeme / 45.0f));
+        // O LEME vira proporcional ao angulo (30 graus é o suficiente pra dar leme máximo)
+        float inputLeme = Mathf.Clamp(angulo / 30.0f, -1f, 1f);
 
-        // Controle de Potência (Throttle)
-        // 1. Curva Fechada: Reduz motor
-        if (Mathf.Abs(angulo) > 90f)
+        // NUNCA PODE PARAR PARA VIRAR. Se o jogador mandou ir, o navio acelera para frente e vai corrigindo o Leme!
+        // Aceleração total a menos que esteja muito perto do destino (freio d'água)
+        if (distancia < 40.0f)
         {
-            potenciaAlvo = 0.2f; 
+            potenciaAlvo = Mathf.Clamp01(distancia / 40.0f);
         }
         else
         {
-            // 2. Aproximação Suave
-            // Se estiver chegando (< 50m), começa a reduzir proporcionalmente
-            if (distancia < 50.0f)
-            {
-                potenciaAlvo = Mathf.Clamp01(distancia / 50.0f);
-                if (potenciaAlvo < 0.1f) potenciaAlvo = 0f; // Corta final
-            }
-            else
-            {
-                potenciaAlvo = 1.0f; // Flank speed
-            }
+            potenciaAlvo = 1.0f; // Força total em frente, desenhando o arco gigantesco característico de navios!
         }
+
+        // Caso excepcional: Navio 100% PARADO e alvo muito atrás dele -> Dá ré curta pra manobrar (não desvia do realismo de peso)
+        if (Mathf.Abs(angulo) > 120f && velReal < 1.0f && distancia > 20f)
+        {
+            inputLeme = -Mathf.Clamp(angulo / 30.0f, -1f, 1f); // Reverte o leme na ré
+            potenciaAlvo = -0.5f; // Dá ré devagar para não engasgar
+        }
+
+        // Movimento do leme hidráulico macio
+        anguloLemeAtual = Mathf.MoveTowards(anguloLemeAtual, inputLeme, Time.deltaTime * velocidadeLeme);
     }
 
     void SimularMotor()
@@ -258,74 +251,46 @@ public class ControleNavioRealista : MonoBehaviour
 
     void SimularFisicaMovimento()
     {
-        // 1. Rotação (Giro)
-        // O navio gira baseado na velocidade da água passando pelo leme + propulsão
-        // Se estiver parado, leme não funciona direito (a menos que tenha thruster, ignorado aqui para realismo clássico)
-        float fluxoAgua = Mathf.Abs(velocidadeVetorial.magnitude); 
-        float eficienciaLeme = Mathf.Clamp01(fluxoAgua / 2.0f); // Precisa de 2m/s para leme full
+        if (!rb.isKinematic) rb.isKinematic = true;
+
+        // VELOCIDADE PURA DE TRILHO (1 Eixo): Só existe movimento na mesma linha que a frente do navio aponta
+        float velReal = velocidadeVetorial.magnitude;
+        // Verifica se tá de ré (Dot Product < 0)
+        if (Vector3.Dot(velocidadeVetorial, transform.forward) < 0f) velReal = -velReal;
+        if (float.IsNaN(velReal)) velReal = 0f;
+
+        // 1. Rotação (A curva arcada maravilhosa)
+        // O navio precisa de velocidade fluindo no leme para girar.
+        float fluxoAgua = Mathf.Abs(velReal) + (Mathf.Abs(potenciaAtual) * 2f); 
+        float eficienciaLeme = Mathf.Clamp01(fluxoAgua / 2.0f); 
         
-        float giro = anguloLemeAtual * curvaMaximaGraus * eficienciaLeme * Time.deltaTime;
+        float sentidoMotor = velReal >= -0.1f ? 1f : -1f; // Retrocede a curva se der ré
+        float giro = anguloLemeAtual * curvaMaximaGraus * eficienciaLeme * Time.deltaTime * sentidoMotor;
         
-        // Se estiver de ré, o leme inverte a lógica física visualmente, mas o NavMesh espera direção certa
-        // Simplificação: Giro sempre aponta pro destino.
         transform.Rotate(0, giro, 0);
 
-        // 2. Translação (Forces)
-        // Força avante (Propulsão)
-        Vector3 forcaMotor = transform.forward * potenciaAtual * (velocidadeMaxima / tempoAceleracao); 
-        // Na verdade, a força deve equilibrar o arrasto na velocidade máxima.
-        // Simplificando: Velocidade alvo é potencia * Max. MoveTowards simula força.
+        // 2. Aceleração (Sempre no eixo Z direcional)
+        // Empurra para a potência desejada gradual
+        float velocidadeAlvoReal = (potenciaAtual * velocidadeMaxima);
         
-        // Vamos usar uma abordagem de Vetores de Velocidade para Drift (Sideslip)
+        // Aplica o acelerador hidráulico suave
+        if (velReal < velocidadeAlvoReal)
+            velReal += (velocidadeMaxima * Time.deltaTime / tempoAceleracao);
+        else if (velReal > velocidadeAlvoReal)
+            velReal -= (velocidadeMaxima * Time.deltaTime / tempoAceleracao);
+            
+        // Fricção para atrito e estacionamento
+        float dragAtual = arrastoPassivo;
+        if (!temDestino) dragAtual *= 4.0f; 
+        velReal -= velReal * (Time.deltaTime * dragAtual); 
         
-        // Componente "Keel" (Quilha): Navio gosta de andar pra frente, não de lado.
-        // Convertemos velocidade global para local
-        Vector3 velLocal = transform.InverseTransformDirection(velocidadeVetorial);
-        
-        // Cálculo de arrasto hidrodinâmico (simplificado)
-        rb.linearDamping = 1.0f; 
-        rb.angularDamping = 2.0f; 
+        // Limita a física
+        velReal = Mathf.Clamp(velReal, -velocidadeMaxima * 0.4f, velocidadeMaxima);
 
-        // Aplica input do motor na velocidade local Z
-        float forcaZ = potenciaAtual * velocidadeMaxima * 2.0f; // Fator de força empírico
-        
-        // Integração Euler Simples para velocidade (não é física rigidbody real, é soft-sim)
-        // É mais fácil controlar a velocidade "desejada" na direção frontal e permitir o slip na lateral.
-        
-        // Nova Abordagem Drift:
-        // O vetor velocidade tenta alinhar com transform.forward, mas demora (drift).
-        Vector3 velocidadeDesejada = transform.forward * (potenciaAtual * velocidadeMaxima);
-        
-        // Lerp vectoral diferente para eixos (Simulando drift)
-        // O navio muda de direção de movimento LENTAMENTE
-        
-        if (velocidadeVetorial.magnitude < 0.1f && Mathf.Abs(potenciaAtual) < 0.01f)
-        {
-            velocidadeVetorial = Vector3.zero;
-        }
-        else
-        {
-            // Acelera na direção que o nariz aponta
-            velocidadeVetorial += transform.forward * (potenciaAtual * velocidadeMaxima * Time.deltaTime / tempoAceleracao);
-            
-            // Drag (Resistência da Água)
-            // Se chegou no destino (temDestino == false), aumenta o Drag (Freio de Mão Hidrodinamico)
-            float dragAtual = arrastoPassivo;
-            if (!temDestino) dragAtual *= 4.0f; // 4x mais arrasto para "estacionar"
-            
-            velocidadeVetorial -= velocidadeVetorial * (Time.deltaTime * dragAtual); 
-            
-            // "Kill Lateral Velocity" (A quilha matando o drift aos poucos)
-            // Projeta velocidade na direita
-            Vector3 velLateral = Vector3.Project(velocidadeVetorial, transform.right);
-            velocidadeVetorial -= velLateral * (Time.deltaTime * 1.0f); // Corrige o drift lentamente (1.0f factor)
-            
-            // Limite
-            velocidadeVetorial = Vector3.ClampMagnitude(velocidadeVetorial, velocidadeMaxima);
-        }
+        // O TRUQUE MESTRE: Sobrescreve TODO o vetor 3D forçando o navio a NUNCA patinar.
+        // O navio vai rasgar a água feito um dardo, só vai pra onde o nariz rotacionar.
+        velocidadeVetorial = transform.forward * velReal;
 
-        // Aplica posição
-        // Atualiza a posição do NavMeshAgent para não perder sync
         agentNextPositionCheck(transform.position + velocidadeVetorial * Time.deltaTime);
     }
     

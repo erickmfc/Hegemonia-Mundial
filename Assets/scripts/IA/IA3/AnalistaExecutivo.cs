@@ -56,7 +56,7 @@ public class AnalistaExecutivo : MonoBehaviour
         Construtor construtor = Object.FindFirstObjectByType<Construtor>();
         if (construtor != null)
         {
-            GameObject predio = construtor.ConstruirEstruturaIA(r.targetObject, r.targetPosition, Quaternion.identity);
+            GameObject predio = construtor.ConstruirEstruturaIA(r.targetObject, r.targetPosition, r.targetRotation);
             if (predio != null)
             {
                 ConfigurarTime(predio);
@@ -100,17 +100,34 @@ public class AnalistaExecutivo : MonoBehaviour
     {
         if (teamID == -1) return;
 
-        // Tenta achar IdentidadeUnidade (Serve para Terra, Ar e Mar se configurado corretamente)
-        var idUnit = obj.GetComponent<IdentidadeUnidade>();
-        if (idUnit != null) 
+        // Tenta achar IdentidadeUnidade (Inclusive nos filhos)
+        var idUnits = obj.GetComponentsInChildren<IdentidadeUnidade>(true);
+        
+        if (idUnits.Length > 0)
         {
-            idUnit.teamID = teamID; 
-            return;
+            // Já tem identidade, só atualiza
+            foreach(var idScript in idUnits)
+            {
+                idScript.teamID = teamID;
+            }
         }
-
-        // Se o navio não tiver IdentidadeUnidade, pode ser que precise adicionar dinamicamente?
-        // Ou verificar se IdentidadeNaval no futuro ganha esse campo.
-        // Por enquanto, assumimos que todo PREFAB de combate tem IdentidadeUnidade.
+        else
+        {
+            // --- CORREÇÃO CRÍTICA ---
+            // Se não tem identidade (ex: Tenda simples), ADICIONA o componente!
+            // Senão o Player ignora e não ataca.
+            
+            Debug.Log($"[Executor] Objeto {obj.name} sem IdentidadeUnidade. Adicionando automaticamente...");
+            
+            // Adiciona no root
+            IdentidadeUnidade novaId = obj.AddComponent<IdentidadeUnidade>();
+            novaId.teamID = teamID;
+            novaId.nomeDoPais = "Inimigo IA";
+            novaId.tipoUnidade = TipoUnidade.Estrutura; // Assume estrutura se não tinha script
+        }
+        
+        // Remove NavMeshAgent se for prédio estático para não pesar? 
+        // Não, deixa quieto. O importante é a identidade.
     }
 
     GameObject EncontrarPredioDeSpawn(string nomeParcial)

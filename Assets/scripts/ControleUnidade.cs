@@ -19,7 +19,7 @@ public class ControleUnidade : MonoBehaviour
     // --- DETECÇÃO DE CONFLITO ---
     private Helicoptero helicopteroExterno;
 
-    void Awake()
+    protected virtual void Awake()
     {
         agente = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>(); 
@@ -40,7 +40,7 @@ public class ControleUnidade : MonoBehaviour
         }
     }
 
-    void Start()
+    protected virtual void Start()
     {
         CriarSelecaoVisual();
         if(anelSelecao != null) anelSelecao.SetActive(selecionado);
@@ -52,7 +52,8 @@ public class ControleUnidade : MonoBehaviour
             GetComponent<ControleNavioRealista>() == null &&
             GetComponent<ControleSubmarino>() == null &&
             GetComponent<VooHelicoptero>() == null &&
-            GetComponent<Helicoptero>() == null)
+            GetComponent<Helicoptero>() == null &&
+            GetComponent<NavioPetroleiro>() == null)
         {
             // É um soldado ou unidade simplesNavMesh
             agente.acceleration = 60.0f; // Aceleração instantânea
@@ -74,35 +75,47 @@ public class ControleUnidade : MonoBehaviour
         anelSelecao = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         Destroy(anelSelecao.GetComponent<Collider>());
         anelSelecao.transform.SetParent(this.transform);
-        
-        // Posição: Levemente acima do chão para evitar Z-Fighting
+
+        // Posição: levemente acima do chão para evitar Z-Fighting
         anelSelecao.transform.localPosition = new Vector3(0, 0.05f, 0);
-        
-        // --- CÁLCULO DE TAMANHO AUTOMÁTICO ---
-        float diametroFinal = 1.5f; // Padrão soldado
+
+        // ─── CÁLCULO DE TAMANHO ───────────────────────────────────
+        // IMPORTANTE: como o anel é filho do navio, o localScale é
+        // multiplicado pela escala do pai. Precisamos compensar isso
+        // dividindo pelo scale real do objeto pai para manter o disco
+        // no tamanho correto na cena, independentemente de scale.
+        float escalaParent = Mathf.Max(transform.lossyScale.x, 0.01f);
+
+        float diametroMundo = 1.5f; // Tamanho padrão (soldado) em unidades de mundo
 
         if (tamanhoSelecao > 0)
         {
-            diametroFinal = tamanhoSelecao;
+            diametroMundo = tamanhoSelecao;
         }
         else
         {
-            // Tenta adivinhar pelo NavMeshAgent
-            if (agente != null) diametroFinal = agente.radius * 2.5f;
-            // Ou pelo Collider
-            else 
+            // Usa raio do NavMeshAgent → já está em espaço de mundo
+            if (agente != null)
+            {
+                diametroMundo = agente.radius * 2.5f;
+            }
+            // Ou bounding box do Collider (também em espaço de mundo)
+            else
             {
                 Collider col = GetComponent<Collider>();
-                if (col != null) diametroFinal = col.bounds.size.x * 1.2f;
+                if (col != null) diametroMundo = col.bounds.size.x * 1.2f;
             }
         }
-        
-        // Aplica escala (Y baixinho para parecer disco)
-        anelSelecao.transform.localScale = new Vector3(diametroFinal, 0.02f, diametroFinal);
-        
+
+        // Converte tamanho de mundo → local (divide pela escala do pai)
+        float diametroLocal = diametroMundo / escalaParent;
+
+        // Aplica escala (Y achatado para parecer disco)
+        anelSelecao.transform.localScale = new Vector3(diametroLocal, 0.02f / escalaParent, diametroLocal);
+
         // Material e Cor
         Renderer rend = anelSelecao.GetComponent<Renderer>();
-        if(rend != null)
+        if (rend != null)
         {
             rend.material = new Material(Shader.Find("Sprites/Default"));
             rend.material.color = corSelecao;

@@ -32,7 +32,7 @@
 	uniform float4 sun_color;
 
 	uniform sampler2D _Foam;
-	uniform sampler2D _HegemoniaAdvancedWaterGrab;
+	uniform sampler2D _CameraOpaqueTexture;
 	uniform sampler2D _CameraDepthTexture;
 	uniform sampler2D _CameraDepthNormalsTexture;
 	
@@ -240,7 +240,7 @@
 	#define REFLECTION
 	#define FOAM
 	#define SPECULAR
-	//#define REFRACTION
+	#define REFRACTION
 	
 	half4 frag( v2f i ) : SV_Target
 	{
@@ -277,12 +277,12 @@
 			
 			/* SSR test */
 			#ifdef SSR
-				//half4 refl = i.ref + distort;
+				half4 refl = i.ref + distort;
 				float3 decodedNormal;
 				float decodedDepth;
 				DecodeDepthNormal( tex2D( _CameraDepthNormalsTexture, i.uv), decodedDepth, normal);
 				float4 pixelPosition = float4(i.cameraRay * decodedDepth, 0.0);
-				//float3 reflected = tex2Dproj(_HegemoniaAdvancedWaterGrab, UNITY_PROJ_COORD(pixelPosition)) * _ReflectionColor; 
+				//float3 reflected = tex2Dproj(_RefractionTex, UNITY_PROJ_COORD(pixelPosition)) * _ReflectionColor; 
 			#endif
 
 			
@@ -292,8 +292,8 @@
 		#endif
 		
 		#ifdef REFRACTION
-			//half3 refraction = tex2Dproj(_HegemoniaAdvancedWaterGrab, UNITY_PROJ_COORD(i.grabPassPos + distort));
-			//refraction *= lerp(_ReflectionColor, _BaseColor, 1.0 - depthFactor * 2.0);
+			half3 refraction = tex2Dproj(_CameraOpaqueTexture, UNITY_PROJ_COORD(i.grabPassPos + distort));
+			refraction *= lerp(_ReflectionColor, _BaseColor, 1.0 - depthFactor * 2.0);
 			baseColor.a = 1.0 - (saturate(depthFactor * 2.0) * saturate(1.2 - 0.6));
 		#endif
 		
@@ -322,6 +322,7 @@
 		UNITY_APPLY_FOG(i.fogCoord, baseColor);
 
 		baseColor = saturate(baseColor);
+		baseColor.rgb = lerp(refraction.rgb, baseColor.rgb, clamp(baseColor.a, 0.0, 0.8));
 		baseColor.a = 1.0;
 		return saturate(baseColor);
 	}
@@ -333,7 +334,7 @@
 		Lod 300
 		//ColorMask RGBA
 		
-		//GrabPass { "_HegemoniaAdvancedWaterGrab" }
+		// GrabPass { "_OceanGrabRefractionTex" }
 		
 		Pass
 		{

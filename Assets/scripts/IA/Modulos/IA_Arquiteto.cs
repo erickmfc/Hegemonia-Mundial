@@ -53,15 +53,11 @@ public class IA_Arquiteto : MonoBehaviour
             }
         }
         
-        // Lógica Espiral (Simples)
-        // x = r * cos(theta)
-        // z = r * sin(theta)
-        
-        // Tenta achar um ponto livre em 10 tentativas incrementais
-        for (int i = 0; i < 10; i++)
+        // Lógica Espiral com ângulo áureo para distribuição uniforme
+        for (int i = 0; i < 20; i++)
         {
-            espiralAtual += 45f; // Graus (Menos densidade angular)
-            espiralDistancia += 2.5f; // Expande mais rápido para garantir espaço entre anéis
+            espiralAtual += 137.5f; // Ângulo áureo — espalha uniformemente
+            espiralDistancia += 20f; // 20m entre cada ponto (era 2.5m!)
 
             float rad = espiralAtual * Mathf.Deg2Rad;
             float x = Mathf.Cos(rad) * espiralDistancia;
@@ -71,7 +67,7 @@ public class IA_Arquiteto : MonoBehaviour
 
             if (VerificarTerreno(pontoCandidato)) return pontoCandidato;
 
-            if (i == 9) return pontoCandidato; // Fallback extremo
+            if (i == 19) return pontoCandidato; // Fallback extremo
         }
 
         return Vector3.zero; // Não achou
@@ -79,8 +75,8 @@ public class IA_Arquiteto : MonoBehaviour
 
     bool VerificarTerreno(Vector3 ponto)
     {
-        // 1. Verifica se tem algo construído em cima (Raio de 4m)
-        if (Physics.CheckSphere(ponto, 4.0f, LayerMask.GetMask("Default", "Construcao", "Unidades")))
+        // 1. Verifica se tem algo construído perto (Raio de 20m para espalhar)
+        if (Physics.CheckSphere(ponto, 20f))
         {
             return false;
         }
