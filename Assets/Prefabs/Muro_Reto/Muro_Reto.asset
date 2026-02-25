@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: Muro de Concreto
   descricao: "Barreira fortificada para impedir o avan\xE7o inimigo."
-  icone: {fileID: 21300000, guid: 7a603d1cb555485459c0b9ecf5e46c99, type: 3}
-  prefabDaUnidade: {fileID: 3718452790735941334, guid: c7114553e7dacaa478aed46543c34dd0, type: 3}
+  icone: {fileID: 21300000, guid: b0d6eebcd6e9f0a4ea094a478a329638, type: 3}
+  prefabDaUnidade: {fileID: 5570318996861275845, guid: e1126dc5ebee43547b1bf84b19a63afb, type: 3}
   preco: 50
   categoria: 4
+  scriptsDeComando: []

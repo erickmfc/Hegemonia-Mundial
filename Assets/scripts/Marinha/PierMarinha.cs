@@ -155,9 +155,25 @@ public class PierMarinha : MonoBehaviour
         ChamarNaviosParaVagasLivres();
     }
 
+    [Header("Indicadores Litorâneos (Terra/Água)")]
+    public float offsetAguaFrente = 35f; 
+    public float offsetTerraTras = -15f; 
+
     // --- VISUALIZAÇÃO NO EDITOR ---
     void OnDrawGizmos()
     {
+        // GIZMO DE COLOCAÇÃO CORRETA (Frente Azul = Água, Atrás Marrom = Terra)
+        Vector3 posAgua = transform.position + transform.forward * offsetAguaFrente;
+        Vector3 posTerra = transform.position + transform.forward * offsetTerraTras;
+
+        Gizmos.color = new Color(0f, 0.4f, 1f, 0.7f); // AZUL = ÁGUA
+        Gizmos.DrawSphere(posAgua, 3.5f);
+        Gizmos.DrawLine(posAgua, transform.position);
+
+        Gizmos.color = new Color(0.6f, 0.3f, 0f, 0.7f); // MARROM = TERRA FIRME
+        Gizmos.DrawSphere(posTerra, 3.5f);
+        Gizmos.DrawLine(transform.position, posTerra);
+
         if (vagasDisponiveis == null) return;
         
         foreach(var vaga in vagasDisponiveis)

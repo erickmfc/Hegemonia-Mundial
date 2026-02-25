@@ -70,6 +70,14 @@ public class MenuConstrucao : MonoBehaviour
         {
             if (ficha != null && ficha.prefabDaUnidade != null)
             {
+                // CRÍTICO: Filtra destroços em chamas para não poluir os botões nem ser pego pela IA
+                string nm = ficha.nomeItem.ToLower();
+                if (nm.Contains("destroc") || nm.Contains("destroç") || nm.Contains("chama") || 
+                    ficha.prefabDaUnidade.GetComponent<DestrocosEmChamas>() != null)
+                {
+                    continue; // Ignora e não coloca no menu!
+                }
+
                 catalogo.Add(ficha);
                 if (!quantidadesPorItem.ContainsKey(ficha.nomeItem))
                     quantidadesPorItem.Add(ficha.nomeItem, 1);

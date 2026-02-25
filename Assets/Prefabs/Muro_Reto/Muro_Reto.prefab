@@ -18,27 +18,27 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1
+      value: 3.38
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       propertyPath: m_LocalScale.y
-      value: 10
+      value: 19.2
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       propertyPath: m_LocalScale.z
-      value: 10
+      value: 19.59
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 44.51
+      value: 192.92177
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.15
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 62.73
+      value: 202.82791
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       propertyPath: m_LocalRotation.w
@@ -85,6 +85,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4868473442556747427}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7263187241285643564}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7714254742557778490}
   m_SourcePrefab: {fileID: 100100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
 --- !u!1 &5570318996861275845 stripped
 GameObject:
@@ -106,6 +112,7 @@ MonoBehaviour:
   vidaMaxima: 100
   vidaAtual: 100
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
@@ -117,7 +124,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5570318996861275845}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8847e03875bd6124798b978dc7987fa2, type: 3}
   m_Name: 
@@ -148,5 +155,37 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.099999994, y: 0.7, z: 0.60180205}
-  m_Center: {x: 0, y: -0.028892085, z: 0}
+  m_Size: {x: 1.3080566, y: 0.7, z: 0.6146019}
+  m_Center: {x: 0.18, y: -0.09, z: -0.05}
+--- !u!114 &7263187241285643564
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5570318996861275845}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 4
+--- !u!208 &7714254742557778490
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5570318996861275845}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.05, y: 0.32500002, z: 0.30100003}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: -0.029000001, z: 0}
+  m_TimeToStationary: 0.5

@@ -23,6 +23,9 @@ public class Construtor : MonoBehaviour
     // Configurações Extras
     public float alturaDoMar = 0.0f; // Altura padrão da água
 
+    private bool previewLocalInvalido = false;
+    private string motivoInvalido = ""; // Para mensagens dinâmicas de erro de terreno/território
+
     void Update()
     {
         if (!modoConstrucao || prefabSelecionado == null) return;
@@ -128,6 +131,77 @@ public class Construtor : MonoBehaviour
             // Não redeclara pontoMouse, usa o calculado acima
             
             bool ehMuro = prefabSelecionado.name.Contains("Muro") || prefabSelecionado.name.Contains("Fence");
+            
+            if (ehConstrucaoNaval && fantasmaUnico != null)
+            {
+                // Acha o componente para ler os offsets se possível (Estaleiro ou PierMarinha)
+                float oFrente = 35f; float oTras = -15f;
+                var pier = prefabSelecionado.GetComponent<PierMarinha>();
+                var est = prefabSelecionado.GetComponent<Estaleiro>();
+                if (pier) { oFrente = pier.offsetAguaFrente; oTras = pier.offsetTerraTras; }
+                else if (est) { oFrente = est.offsetAguaFrente; oTras = est.offsetTerraTras; }
+
+                Vector3 posFrente = fantasmaUnico.transform.position + fantasmaUnico.transform.forward * oFrente; 
+                Vector3 posTras = fantasmaUnico.transform.position + fantasmaUnico.transform.forward * oTras; 
+
+                int tFrente = VerTipoPonto(posFrente);
+                int tTras = VerTipoPonto(posTras);
+
+                // É totalmente terra, totalmente água, ou terra na frente e água atrás? Invalido!
+                previewLocalInvalido = (tFrente == 2 && tTras == 2) || (tFrente == 1 && tTras == 1) || (tFrente == 2 && tTras == 1);
+                if (previewLocalInvalido) motivoInvalido = "❌ LUGAR INVÁLIDO:\nAs pistas devem ir p/ Água e a base na Terra!";
+            }
+            else
+            {
+                previewLocalInvalido = false;
+                motivoInvalido = "";
+            }
+
+            // --- SISTEMA DE TERRITÓRIO E SOBERANIA ---
+            if (!previewLocalInvalido && GerenteDeTerritorio.Instancia != null)
+            {
+                int donoDoPonto = GerenteDeTerritorio.Instancia.ObterDonoDoPonto(pontoMouse);
+                int meuTime = 1; // O jogador sempre é 1
+
+                bool ehPrefeitura = prefabSelecionado.GetComponent<ComplexoGovernamental>() != null || prefabSelecionado.name.ToLower().Contains("prefeitura") || prefabSelecionado.name.ToLower().Contains("complexo");
+                bool ehBandeira = prefabSelecionado.name.ToLower().Contains("bandeira") || prefabSelecionado.name.ToLower().Contains("flag") || prefabSelecionado.GetComponent<MarcadorTerritorio>() != null;
+
+                // 1. Construções Comuns: Exigem terra nacionalmente dominada
+                if (!ehPrefeitura && !ehBandeira)
+                {
+                    if (donoDoPonto != meuTime) 
+                    {
+                        previewLocalInvalido = true;
+                        motivoInvalido = "❌ TERRITÓRIO NÃO REIVINDICADO:\nPlante Bandeiras para expandir o espaço do seu País antes de construir estruturas mecânicas aqui.";
+                    }
+                }
+                
+                // 2. Prefeituras: Só podem em terra Neutra ou Sua. Proibido 2 na mesma ilha/terra (NavMesh test).
+                if (ehPrefeitura)
+                {
+                    if (donoDoPonto != 0 && donoDoPonto != meuTime) 
+                    {
+                        previewLocalInvalido = true;
+                        motivoInvalido = "❌ INVASÃO DIRETA:\nVocê não pode fundar a capital do Governo em um país inimigo.";
+                    }
+                    else if (!GerenteDeTerritorio.Instancia.PodeConstruirPrefeitura(pontoMouse))
+                    {
+                        previewLocalInvalido = true;
+                        motivoInvalido = "❌ JÁ EXISTE LEI AQUI:\nEsta faixa de terra contígua já possui uma Prefeitura prefilada em alguma região. Você só pode possuir 1 governo por ilha.";
+                    }
+                }
+
+                // 3. Bandeiras (Expansões): Proibido fincar totalmente no quintal inimigo. 
+                // Se for 0, é ilha nova (ou beirada neutra da sua expansão). Se for meuTime, é sobreposição legal.
+                if (ehBandeira)
+                {
+                    if (donoDoPonto != 0 && donoDoPonto != meuTime) 
+                    {
+                        previewLocalInvalido = true;
+                        motivoInvalido = "❌ JURISDIÇÃO INIMIGA:\nA soberania desta área já foi assegurada por rivais. Cuidado.";
+                    }
+                }
+            }
 
             if (ehMuro) GerenciarConstrucaoMuro(pontoMouse);
             else GerenciarConstrucaoNormal(pontoMouse);
@@ -156,6 +230,12 @@ public class Construtor : MonoBehaviour
         // Clica para construir
         if (Input.GetMouseButtonDown(0))
         {
+            if (previewLocalInvalido)
+            {
+                Debug.LogWarning($"⚠️ [Construtor] Abortando: {motivoInvalido}");
+                return; // Aborta
+            }
+
             Vector3 posFinal = fantasmaUnico.transform.position;
             Quaternion rotFinal = fantasmaUnico.transform.rotation;
             
@@ -338,7 +418,10 @@ public class Construtor : MonoBehaviour
         {
             Vector3 pos = inicio + (dir * (i * larguraDoMuro)) + (dir * (larguraDoMuro/2));
             GameObject novoMuro = Instantiate(prefabSelecionado, pos, rotacaoFinal);
-            EnsureCollider(novoMuro); // Garante que o player também crie muros destrutíveis
+            
+            // Força a reativação de tudo e redefine a Layer para o padrão (para as balas baterem)
+            ReativarLogicaUnidade(novoMuro);
+            EnsureCollider(novoMuro); 
         }
     }
 
@@ -477,6 +560,65 @@ public class Construtor : MonoBehaviour
                 // Fallback: adiciona no root
                 obj.AddComponent<BoxCollider>();
             }
+        }
+    }
+
+    public float ObterAlturaTerreno(Vector3 ponto)
+    {
+        if (Terrain.activeTerrain != null) return Terrain.activeTerrain.SampleHeight(ponto);
+        RaycastHit hit;
+        if (Physics.Raycast(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, out hit, 1000f))
+        {
+            if (!hit.collider.name.ToLower().Contains("water")) return hit.point.y;
+        }
+        return 0f;
+    }
+
+    public int VerTipoPonto(Vector3 ponto)
+    {
+        // 1 = AGUA, 2 = TERRA, 0 = INCONCLUSIVO
+        RaycastHit hit;
+        if (Physics.Raycast(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, out hit, 1000f))
+        {
+            int l = hit.collider.gameObject.layer;
+            string n = hit.collider.name.ToLower();
+            
+            if (l == 4 || n.Contains("water") || n.Contains("agua") || n.Contains("ocean") || n.Contains("mar") || n.Contains("sea"))
+                return 1;
+            
+            if (l == LayerMask.NameToLayer("Ignore Raycast") || hit.collider.GetComponent<IdentidadeUnidade>())
+                return 0;
+
+            return 2;
+        }
+        
+        if (Terrain.activeTerrain != null) 
+        {
+            if (Terrain.activeTerrain.SampleHeight(ponto) <= alturaDoMar + 0.5f) return 1;
+            return 2;
+        }
+
+        return 0; // Desconhecido (Céu vazio?)
+    }
+
+    void OnGUI()
+    {
+        if (modoConstrucao && previewLocalInvalido && fantasmaUnico != null && !string.IsNullOrEmpty(motivoInvalido))
+        {
+             // Pega um estilo base bacana de caixa (Box) do próprio Unity para ter um fundo escuro que dá leitura
+             GUIStyle stylePopUp = new GUIStyle(GUI.skin.box);
+             stylePopUp.fontSize = 18;
+             stylePopUp.normal.textColor = new Color(1f, 0.3f, 0.3f); // Vermelho pastel legível
+             stylePopUp.fontStyle = FontStyle.Bold;
+             stylePopUp.alignment = TextAnchor.MiddleCenter;
+             stylePopUp.wordWrap = true;
+             
+             // Calcula a caixa fixa no centro e na porção inferior da tela, nunca vazando pras laterais
+             float largura = 450f;
+             float altura = 80f;
+             Rect popupRect = new Rect((Screen.width - largura) / 2f, Screen.height - 180f, largura, altura);
+             
+             GUI.Box(popupRect, motivoInvalido, stylePopUp);
         }
     }
 

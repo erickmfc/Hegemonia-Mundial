@@ -1,0 +1,238 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &275388624063899052
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6873243114232879193}
+  m_Layer: 0
+  m_Name: Saida (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6873243114232879193
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 275388624063899052}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -2.728, y: 0.243, z: 1.023}
+  m_LocalScale: {x: 3.0401993, y: 3.2174, z: 2}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2661089882510235022}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &877301305017457355
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8565701078481221167}
+  m_Layer: 0
+  m_Name: Saida (3)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8565701078481221167
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 877301305017457355}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -2.728, y: 0.232, z: -1.852}
+  m_LocalScale: {x: 3.0401993, y: 3.2174, z: 2}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2661089882510235022}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2321242075068196700
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 826026298553848029}
+  m_Layer: 0
+  m_Name: Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &826026298553848029
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2321242075068196700}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -2.7276669, y: 0.25308132, z: 1.8191164}
+  m_LocalScale: {x: 3.0401993, y: 3.2174, z: 2}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2661089882510235022}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7250022720564930818
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1626539414556571371}
+  m_Layer: 0
+  m_Name: Saida (2)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1626539414556571371
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7250022720564930818}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -2.728, y: 0.234, z: -1.035}
+  m_LocalScale: {x: 3.0401993, y: 3.2174, z: 2}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2661089882510235022}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &2661089882510626562
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 100000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_Name
+      value: Iron_Dor
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 323.9441
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.3051369
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 15.969775
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 400012, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 826026298553848029}
+    - targetCorrespondingSourceObject: {fileID: 400012, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6873243114232879193}
+    - targetCorrespondingSourceObject: {fileID: 400012, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1626539414556571371}
+    - targetCorrespondingSourceObject: {fileID: 400012, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8565701078481221167}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -3122543749085965987}
+  m_SourcePrefab: {fileID: 100100000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+--- !u!4 &2661089882510235010 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+  m_PrefabInstance: {fileID: 2661089882510626562}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2661089882510235022 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400012, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+  m_PrefabInstance: {fileID: 2661089882510626562}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &2661089882510657954 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: 985d626cb983e1c42baeaf703c326206, type: 3}
+  m_PrefabInstance: {fileID: 2661089882510626562}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &-3122543749085965987
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2661089882510657954}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0b7b911b44e2404788183d0445467fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LancadorMisseis
+  modoManual: 0
+  municaoAtual: 4
+  municaoMaxima: 4
+  alcance: 200
+  velocidadeGiro: 5
+  tempoEntreDisparos: 1
+  cabecaRotativa: {fileID: 2661089882510235010}
+  pontosDeSaida:
+  - {fileID: 826026298553848029}
+  - {fileID: 6873243114232879193}
+  - {fileID: 1626539414556571371}
+  - {fileID: 8565701078481221167}
+  missilPrefab: {fileID: 0}

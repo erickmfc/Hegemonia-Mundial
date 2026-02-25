@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Houver
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 4976393a25a85b74fb6d2dbaa812233f, type: 3}
   prefabDaUnidade: {fileID: 6374748384996421208, guid: 45105829ad4875643a6be21018e24af7, type: 3}
   preco: 100
   categoria: 1

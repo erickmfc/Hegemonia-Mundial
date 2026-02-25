@@ -126,11 +126,16 @@ public class GerenteDeJogo : MonoBehaviour
     {
         // 1. Identificar Tipo
         string nome = unidadeParaConstruir.name.ToLower();
-        // REMOVIDO "variant" POIS CAUSAVA CONFUSÃO COM TANQUES
-        // REMOVIDO "variant" POIS CAUSAVA CONFUSÃO COM TANQUES
+        
         bool ehSoldado = (nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("person") || nome.Contains("infantry") || nome.Contains("fuzileiro"));
-        bool ehHelicoptero = (nome.Contains("helicoptero") || nome.Contains("ray") || nome.Contains("viper") || nome.Contains("apache"));
         bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("destroier") || nome.Contains("porta") || nome.Contains("barco") || nome.Contains("lancha"));
+
+        // MELHORIA CRÍTICA: Identifica helicóptero pelo script REAL e não só pelo nome do prefab! 
+        // O "Falcon" estava escapando aqui porque o nome dele não tinha "ray" nem "apache".
+        bool ehHelicoptero = (unidadeParaConstruir.GetComponent<Helicoptero>() != null || 
+                              unidadeParaConstruir.GetComponent("HelicopterController") != null ||
+                              unidadeParaConstruir.GetComponent("VooHelicoptero") != null ||
+                              nome.Contains("helicoptero") || nome.Contains("ray") || nome.Contains("viper") || nome.Contains("apache") || nome.Contains("falcon") || nome.Contains("heli"));
 
         Debug.Log($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}");
 
@@ -148,6 +153,18 @@ public class GerenteDeJogo : MonoBehaviour
             return; // Cancela compra
         }
         */
+
+        // VERIFICAÇÃO ESTRITA: Helicópteros SÓ no Heliporto
+        if (ehHelicoptero)
+        {
+            listaHeliportos.RemoveAll(h => h == null);
+            if (listaHeliportos.Count == 0)
+            {
+                Debug.LogWarning("PROIBIDO: Você precisa construir um HELIPORTO antes de fabricar Helicópteros!");
+                // Opcional: Aqui poderíamos chamar algum UI Error na tela.
+                return; // Cancela antes de gastar dinheiro ou entrar na fila
+            }
+        }
 
         // 3. Verifica Dinheiro Total
         int custoTotal = preco * quantidade;
@@ -517,6 +534,11 @@ public class GerenteDeJogo : MonoBehaviour
 
     public void RegistrarHeliporto(Heliporto heliporto)
     {
+        IdentidadeUnidade id = heliporto.GetComponent<IdentidadeUnidade>();
+        if (id == null) id = heliporto.GetComponentInParent<IdentidadeUnidade>();
+
+        if (id != null && id.teamID != 1) return; // Não registra heliporto da IA no Gestor do Jogador
+
         if (!listaHeliportos.Contains(heliporto))
         {
             listaHeliportos.Add(heliporto);

@@ -48,6 +48,9 @@ public class ControleTorreta : MonoBehaviour
 
     private Transform alvoAtual;
     private int indiceBarrilAtual = 0; 
+    
+    private float rotacaoXOriginal;
+    private float rotacaoZOriginal;
 
     void Start()
     {
@@ -58,6 +61,10 @@ public class ControleTorreta : MonoBehaviour
         
         // Garante que a referência exista
         if (pecaQueGira == null) pecaQueGira = transform;
+        
+        // Armazena com segurança a rotação inicial para não bugar o quaternion na Update
+        rotacaoXOriginal = pecaQueGira.localEulerAngles.x;
+        rotacaoZOriginal = pecaQueGira.localEulerAngles.z;
 
         // OTIMIZAÇÃO: Distribui a carga de processamento. 
         // Em vez de todas as torretas procurarem no mesmo frame, cada uma tem um "offset" aleatório.
@@ -199,16 +206,16 @@ public class ControleTorreta : MonoBehaviour
                         anguloY = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
                     }
                     
-                    // Aplica rotação APENAS no eixo Y local (Gira no convés, sem tombar/subir)
-                    Quaternion rotacaoAlvo = Quaternion.Euler(0, anguloY, 0);
+                    // Usa a rotação original fixa do Start, evitando o erro fatal de Gimbal Lock no Update
+                    Quaternion rotacaoAlvo = Quaternion.Euler(rotacaoXOriginal, anguloY, rotacaoZOriginal);
                     pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
                 }
                 else
                 {
                     // Lógica Global (Sem limites ou sem pai - ex: Torreta no chão)
-                    Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
-                    // Trava X e Z globais apenas se não tiver pai
-                    rotacaoAlvo = Quaternion.Euler(0, rotacaoAlvo.eulerAngles.y, 0);
+                    Quaternion olhar = Quaternion.LookRotation(direcao);
+                    // Mantém os ângulos originais fixos também para unidades globais
+                    Quaternion rotacaoAlvo = Quaternion.Euler(rotacaoXOriginal, olhar.eulerAngles.y, rotacaoZOriginal);
                     pecaQueGira.rotation = Quaternion.Lerp(pecaQueGira.rotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
                 }
             }
@@ -241,13 +248,15 @@ public class ControleTorreta : MonoBehaviour
         {
             if (limitarRotacao)
             {
-                // Se tem limite, volta para o centro (0 graus)
-                pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, Quaternion.identity, Time.deltaTime * 2f);
+                // Se tem limite, volta para o centro mantendo a inclinação original do modelo 3D
+                Quaternion centro = Quaternion.Euler(rotacaoXOriginal, 0, rotacaoZOriginal);
+                pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, centro, Time.deltaTime * 2f);
             }
             else
             {
-                // Radar girando 360
-                pecaQueGira.Rotate(0, 10f * Time.deltaTime, 0);
+                // Radar girando 360 usando angulo livre protegido
+                float anguloLivre = (Time.time * 20f) % 360f;
+                pecaQueGira.localRotation = Quaternion.Euler(rotacaoXOriginal, anguloLivre, rotacaoZOriginal);
             }
         }
     }

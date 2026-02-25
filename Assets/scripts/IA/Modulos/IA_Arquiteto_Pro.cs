@@ -57,7 +57,7 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
         // 3. HELIPORTO (Aéreos)
         // Facilitar um pouco o acesso aéreo (era 3000)
-        if (chefe.dinheiro > 1000 && !ExistePredio("Heliporto"))
+        if (chefe.dinheiro > 1000 && ContarPredios("Heliporto") < 2)
         {
             Debug.Log("🏗️ [IA Arquiteto] Expandindo: Construindo Heliporto.");
             ConstruirNaTerra("Heliporto", centro, 500);
@@ -78,9 +78,10 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         }
     }
 
-    bool ExistePredio(string nomeParcial)
+    int ContarPredios(string nomeParcial)
     {
-        if (chefe == null || chefe.identidade == null) return false;
+        if (chefe == null || chefe.identidade == null) return 0;
+        int count = 0;
 
         Fabrica[] fabricas = FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
         foreach (var f in fabricas)
@@ -90,11 +91,10 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             if (id != null && id.teamID == chefe.identidade.teamID) 
             {
                 string nomeLimpo = f.name.ToLower();
-                if (nomeLimpo.Contains(nomeParcial.ToLower())) return true;
-                if (nomeParcial == "Veiculos" && (nomeLimpo.Contains("hangar") || nomeLimpo.Contains("fabrica"))) return true;
-                if (nomeParcial == "Hangar" && nomeLimpo.Contains("veiculos")) return true;
-                if (nomeParcial == "Tenda" && nomeLimpo.Contains("quartel")) return true;
-                if (nomeParcial == "Heliporto" && nomeLimpo.Contains("heliporto")) return true;
+                if (nomeLimpo.Contains(nomeParcial.ToLower())) count++;
+                else if (nomeParcial == "Veiculos" && (nomeLimpo.Contains("hangar") || nomeLimpo.Contains("fabrica"))) count++;
+                else if (nomeParcial == "Hangar" && nomeLimpo.Contains("veiculos")) count++;
+                else if (nomeParcial == "Tenda" && nomeLimpo.Contains("quartel")) count++;
             }
         }
         
@@ -105,11 +105,28 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             {
                  if(e == null) continue;
                  var id = e.GetComponent<IdentidadeUnidade>();
-                 if (id != null && id.teamID == chefe.identidade.teamID) return true;
+                 if (id != null && id.teamID == chefe.identidade.teamID) count++;
             }
         }
 
-        return false;
+        if (nomeParcial.Contains("Heliporto"))
+        {
+            Heliporto[] heliportos = FindObjectsByType<Heliporto>(FindObjectsSortMode.None);
+            foreach(var h in heliportos)
+            {
+                if(h == null) continue;
+                var id = h.GetComponent<IdentidadeUnidade>();
+                if (id == null) id = h.GetComponentInParent<IdentidadeUnidade>();
+                if (id != null && id.teamID == chefe.identidade.teamID) count++;
+            }
+        }
+
+        return count;
+    }
+
+    bool ExistePredio(string nomeParcial)
+    {
+        return ContarPredios(nomeParcial) > 0;
     }
 
     void PlanejarBaseMilitar()
@@ -155,6 +172,8 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             return;
         }
 
+        bool ehBandeiraOuPref = nomeChave.ToLower().Contains("bandeira") || nomeChave.ToLower().Contains("flag") || nomeChave.ToLower().Contains("prefeit");
+
         // Tenta 20 vezes achar um lugar livre e LONGE de outros prédios
         for (int i = 0; i < 20; i++)
         {
@@ -163,6 +182,36 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             // Verifica colisão com MARGEM GRANDE (20m) para espalhar
             if (!TemPredioProximo(pos, espacamentoEdificios)) 
             {
+                // ============================================
+                // REGRAS DE TERRITÓRIO E SOBERANIA PARA A IA
+                // ============================================
+                if (GerenteDeTerritorio.Instancia != null && !ehBandeiraOuPref)
+                {
+                    int dono = GerenteDeTerritorio.Instancia.ObterDonoDoPonto(pos);
+                    int idInimigo = chefe.identidade.teamID;
+                    
+                    if (dono != idInimigo)
+                    {
+                        // Se for terra inimiga (tem dono e não é ela), IA pula para outro local
+                        if (dono != 0) continue; 
+                        
+                        // Se for Neuta (Dono 0), a IA expande sua fronteira plantando uma bandeira!
+                        GameObject prefabBandeira = BuscarNoCatalogo("Bandeira");
+                        if (prefabBandeira == null) prefabBandeira = BuscarNoCatalogo("Flag");
+
+                        if (prefabBandeira != null && chefe.dinheiro >= 100) 
+                        {
+                             Vector3 posBandeira = pos;
+                             if (Terrain.activeTerrain != null) posBandeira.y = Terrain.activeTerrain.SampleHeight(posBandeira);
+                             
+                             Debug.Log("🚩 [IA Arquiteto] Território virgem detectado! Fincando Bandeira para expandir bordas.");
+                             SpawnarPredio(prefabBandeira, posBandeira, Quaternion.identity);
+                        }
+                        // Independentemente de bater o orçamento, esse spot não serve pra Fábrica agora.
+                        continue; 
+                    }
+                }
+
                 // Ajusta ao terreno
                 float yTerra = 0;
                 if (Terrain.activeTerrain != null) yTerra = Terrain.activeTerrain.SampleHeight(pos);
@@ -313,14 +362,22 @@ public class IA_Arquiteto_Pro : MonoBehaviour
              if (item.nomeItem.ToLower().Contains(nomeChave.ToLower())) return item.prefabDaUnidade;
         }
 
-        // Sinônimos
-        if (nomeChave == "Veiculos") return BuscarNoCatalogo("Hangar");
-        if (nomeChave == "Veiculos") return BuscarNoCatalogo("Fabrica");
-        if (nomeChave == "Veiculos") return BuscarNoCatalogo("Factory");
+        // Sinônimos - usando busca iterativa
+        if (nomeChave == "Veiculos") 
+        {
+            foreach (var item in MenuConstrucao.catalogoGlobal) {
+                string nm = item.nomeItem.ToLower();
+                if (nm.Contains("hangar") || nm.Contains("fabrica") || nm.Contains("factory") || nm.Contains("veiculos")) return item.prefabDaUnidade;
+            }
+        }
         
-        if (nomeChave == "Tenda") return BuscarNoCatalogo("Quartel");
-        if (nomeChave == "Tenda") return BuscarNoCatalogo("Barraca");
-        if (nomeChave == "Tenda") return BuscarNoCatalogo("Infantaria");
+        if (nomeChave == "Tenda") 
+        {
+            foreach (var item in MenuConstrucao.catalogoGlobal) {
+                string nm = item.nomeItem.ToLower();
+                if (nm.Contains("quartel") || nm.Contains("barraca") || nm.Contains("infantaria") || nm.Contains("tenda")) return item.prefabDaUnidade;
+            }
+        }
         
         return null;
     }

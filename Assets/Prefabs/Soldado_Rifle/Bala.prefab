@@ -152,7 +152,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Projetil
   velocidade: 90
   dano: 2
-  tempoDeVida: 5
+  tempoDeVida: 10
+  raioDeExplosao: 0
+  danoExplosao: 0
   efeitoImpacto: {fileID: 0}
 --- !u!1 &5390248436861774909
 GameObject:

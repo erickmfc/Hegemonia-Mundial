@@ -92,14 +92,12 @@ public class HovercraftTransporte : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.U)) 
             { 
-                rampaAberta = true; 
-                if (!processoEmbarqueAtivo) StartCoroutine(RotinaEmbarqueSequencial()); 
+                IniciarEmbarque();
             }
             
             if (Input.GetKeyDown(KeyCode.P)) 
             { 
-                rampaAberta = !rampaAberta; 
-                if (rampaAberta) StartCoroutine(RotinaDesembarqueSequencial()); 
+                IniciarDesembarque();
             }
             
             if (Input.GetMouseButtonDown(1))
@@ -199,6 +197,30 @@ public class HovercraftTransporte : MonoBehaviour
     // ===================================
     // ROTINA DE EMBARQUE
     // ===================================
+    
+    public void IniciarEmbarque()
+    {
+        rampaAberta = true; 
+        if (!processoEmbarqueAtivo) StartCoroutine(RotinaEmbarqueSequencial());
+    }
+
+    public void IniciarDesembarque()
+    {
+        rampaAberta = !rampaAberta; 
+        if (rampaAberta) StartCoroutine(RotinaDesembarqueSequencial());
+    }
+
+    public bool TemEspacoLivre()
+    {
+        foreach(var slot in slotsLogicos) if (slot.EstaVazio || (slot.veiculoOcupante == null && slot.soldadosOcupantes.Count < capacidadeSoldadosPorSlot)) return true;
+        return false;
+    }
+
+    public bool TemCarga()
+    {
+        foreach(var slot in slotsLogicos) if (!slot.EstaVazio) return true;
+        return false;
+    }
 
     IEnumerator RotinaEmbarqueSequencial()
     {

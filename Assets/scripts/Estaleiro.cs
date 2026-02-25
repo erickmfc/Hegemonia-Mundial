@@ -21,6 +21,7 @@ public class Estaleiro : MonoBehaviour
         // UI de Progresso Interna
         [HideInInspector] public GameObject barCanvasObj;
         [HideInInspector] public Image barFillImage;
+        [HideInInspector] public Text textProgresso;
     }
 
     [Header("Estrutura e Vagas")]
@@ -29,7 +30,7 @@ public class Estaleiro : MonoBehaviour
 
     [Header("Configuração de Construção")]
     public float tempoDeConstrucao = 5.0f; // Tempo em segundos para construir
-    public bool usarAnimacaoEscala = true; // Se true, o navio cresce do chão (Scale Y)
+    public bool usarAnimacaoEscala = false; // DESATIVADO TEMPORARIAMENTE A PEDIDO
 
     [Header("Visual da Barra de Progresso")]
     public GameObject prefabBarraProgresso; // Opcional: Prefab customizado
@@ -58,7 +59,7 @@ public class Estaleiro : MonoBehaviour
         // Processa a construção em cada slot ocupado
         foreach (var slot in slots)
         {
-            if (slot.estaOcupado && slot.visualAtual != null)
+            if (slot.estaOcupado)
             {
                 ProcessarConstrucao(slot);
             }
@@ -139,62 +140,15 @@ public class Estaleiro : MonoBehaviour
         slot.prefabAtual = prefab;
         slot.progresso = 0f;
 
-        // Calcula posição de nascimento
-        Vector3 posFinal = slot.pontoDeConstrucao.position;
-        if (forcarNivelDaAgua)
-        {
-            posFinal.y = nivelDaAgua + offsetAltura;
-        }
-        else
-        {
-            posFinal.y += offsetAltura;
-        }
-
-        // Instancia o visual
-        GameObject novoNavio = Instantiate(prefab, posFinal, slot.pontoDeConstrucao.rotation);
-        novoNavio.transform.SetParent(null); 
-
-        // Salva a escala ORIGINAL (antes de qualquer animação)
-        slot.escalaOriginal = novoNavio.transform.localScale;
-
-        // ─── CRÍTICO: Desativa física ANTES de qualquer coisa ──────
-        // Impede o navio de cair por gravidade durante a animação de construção
-        Rigidbody rb = novoNavio.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.isKinematic = true;   // Script controla posição, não física
-            rb.useGravity  = false;  // Sem queda
-            // Trava rotação para não tombar durante construção
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-        }
-        // ─────────────────────────────────────────────────────────────
-
-        // Desativa lógica (scripts e colliders)
-        DesativarLogicaUnidade(novoNavio);
-
-        // Mas re-aplica a configuração do Rigidbody pois DesativarLogicaUnidade coloca enabled=false nos MonoBehaviours
-        // O Rigidbody não é MonoBehaviour, então sobrevive
-        slot.visualAtual = novoNavio;
-
-        // Animação Escala Inicial
-        if (usarAnimacaoEscala)
-        {
-            novoNavio.transform.localScale = new Vector3(slot.escalaOriginal.x, 0.001f, slot.escalaOriginal.z);
-        }
-
         // --- CRIAR BARRA DE PROGRESSO ---
         CriarBarraProgresso(slot);
 
-        Debug.Log($"[Estaleiro] Iniciando construção de {prefab.name} no {slot.nomeSlot}");
+        Debug.Log($"[Estaleiro] Iniciando construção de {prefab.name} no {slot.nomeSlot}. Aguardando conclusão...");
     }
 
     void CriarBarraProgresso(SlotConstrucao slot)
     {
-        // REMOVIDO A PEDIDO: A barra verde estava atrapalhando/feia no estaleiro grande.
-        return; 
-
-        /* CÓDIGO ANTIGO DA BARRA VERDE
-        if (slot.visualAtual == null) return;
+        if (slot.prefabAtual == null) return;
 
         GameObject canvasObj = new GameObject("CanvasBarra_" + slot.nomeSlot);
         canvasObj.transform.position = slot.pontoDeConstrucao.position + offsetBarra;
@@ -203,40 +157,35 @@ public class Estaleiro : MonoBehaviour
         Canvas canvas = canvasObj.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
         
-        // Configura tamanho do canvas (pequeno, apenas para a barra)
         RectTransform rt = canvasObj.GetComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(5, 1); // 5 metros por 1 metro
-        rt.localScale = Vector3.one;
+        rt.sizeDelta = new Vector2(800, 150); 
+        rt.localScale = new Vector3(0.01f, 0.01f, 0.01f); 
 
-        // Fundo da Barra (Vermelho/Escuro)
-        GameObject bgObj = new GameObject("Background");
-        bgObj.transform.SetParent(canvasObj.transform, false);
-        Image bgImg = bgObj.AddComponent<Image>();
-        bgImg.color = new Color(0.2f, 0f, 0f, 0.8f);
-        RectTransform rtBg = bgObj.GetComponent<RectTransform>();
-        rtBg.anchorMin = Vector2.zero; rtBg.anchorMax = Vector2.one;
-        rtBg.sizeDelta = Vector2.zero;
-
-        // Fill da Barra (Verde)
-        GameObject fillObj = new GameObject("Fill");
-        fillObj.transform.SetParent(canvasObj.transform, false);
-        Image fillImg = fillObj.AddComponent<Image>();
-        fillImg.color = Color.green;
-        fillImg.type = Image.Type.Filled;
-        fillImg.fillMethod = Image.FillMethod.Horizontal;
-        fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
-        fillImg.fillAmount = 0f; // Começa vazio
+        // Texto Informativo com Porcentagem
+        GameObject txtObj = new GameObject("Text");
+        txtObj.transform.SetParent(canvasObj.transform, false);
+        Text txt = txtObj.AddComponent<Text>();
+        txt.text = "PREPARANDO... 0%";
+        txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); // CORRIGIDO: Arial.ttf removido
+        txt.fontSize = 80; 
+        txt.fontStyle = FontStyle.Bold;
+        txt.alignment = TextAnchor.MiddleCenter;
+        txt.color = new Color(0f, 0.8f, 1f, 1f); // Azul Neon no texto
         
-        RectTransform rtFill = fillObj.GetComponent<RectTransform>();
-        rtFill.anchorMin = Vector2.zero; rtFill.anchorMax = Vector2.one;
-        rtFill.sizeDelta = Vector2.zero;
+        Shadow ts = txtObj.AddComponent<Shadow>();
+        ts.effectColor = Color.black; 
+        ts.effectDistance = new Vector2(4, -4);
 
-        // LookAt Camera Script (Simples)
+        RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
+        rtTxt.anchorMin = Vector2.zero; rtTxt.anchorMax = Vector2.one;
+        rtTxt.sizeDelta = Vector2.zero;
+
+        // LookAt Camera Script
         canvasObj.AddComponent<OlharParaCamera>(); 
 
         slot.barCanvasObj = canvasObj;
-        slot.barFillImage = fillImg;
-        */
+        slot.barFillImage = null; // Removido linhas visíveis
+        slot.textProgresso = txt;
     }
 
     void ProcessarConstrucao(SlotConstrucao slot)
@@ -245,18 +194,14 @@ public class Estaleiro : MonoBehaviour
         float incremento = (Time.deltaTime / tempoDeConstrucao) * 100f;
         slot.progresso += incremento;
 
-        // Atualiza Visual (Escala)
-        if (usarAnimacaoEscala)
-        {
-            float pct = Mathf.Clamp01(slot.progresso / 100f);
-            float scaleY = Mathf.Lerp(0.001f, slot.escalaOriginal.y, pct);
-            slot.visualAtual.transform.localScale = new Vector3(slot.escalaOriginal.x, scaleY, slot.escalaOriginal.z);
-        }
-
         // Atualiza Barra de Progresso
         if (slot.barFillImage != null)
         {
             slot.barFillImage.fillAmount = slot.progresso / 100f;
+            if (slot.textProgresso != null)
+            {
+                slot.textProgresso.text = $"PREPARANDO NAVIO... {Mathf.FloorToInt(slot.progresso)}%";
+            }
         }
 
         // Verifica Conclusão
@@ -268,12 +213,16 @@ public class Estaleiro : MonoBehaviour
 
     void FinalizarConstrucao(SlotConstrucao slot)
     {
-        Debug.Log($"[Estaleiro] Construção finalizada no {slot.nomeSlot}!");
+        Debug.Log($"[Estaleiro] Construção finalizada no {slot.nomeSlot}! Nascendo 100% puro.");
 
-        GameObject navioPronto = slot.visualAtual; 
+        // Calcula posição de nascimento exata
+        Vector3 posFinal = slot.pontoDeConstrucao.position;
+        if (forcarNivelDaAgua) posFinal.y = nivelDaAgua + offsetAltura;
+        else posFinal.y += offsetAltura;
 
-        // Restaura escala
-        navioPronto.transform.localScale = slot.escalaOriginal;
+        // 1. INSTANCIA O PREFAB CRU E INTACTO!
+        GameObject navioPronto = Instantiate(slot.prefabAtual, posFinal, slot.pontoDeConstrucao.rotation);
+        navioPronto.transform.SetParent(null); 
 
         // Destroi a barra
         if (slot.barCanvasObj != null)
@@ -283,7 +232,31 @@ public class Estaleiro : MonoBehaviour
             slot.barFillImage = null;
         }
 
-        ReativarLogicaUnidade(navioPronto);
+        // --- LÓGICA DE IDENTIDADE (Básica) ---
+        navioPronto.layer = LayerMask.NameToLayer("Default");
+        IdentidadeUnidade identidade = navioPronto.GetComponent<IdentidadeUnidade>();
+        if(identidade == null) identidade = navioPronto.AddComponent<IdentidadeUnidade>();
+        identidade.teamID = 1; 
+        identidade.nomeDoPais = "Hegemonia";
+
+        var ctrl = navioPronto.GetComponent<ControleUnidade>();
+        if (ctrl == null) navioPronto.AddComponent<ControleUnidade>();
+
+        // ORDENA QUE O NAVIO VÁ PARA O PONTO DE SAÍDA AUTOMATICAMENTE
+        var agenteNovo = navioPronto.GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (agenteNovo != null && pontoDeSaida != null)
+        {
+            // Garante que o NavMesh dele faça um Warp inicial seguro
+            UnityEngine.AI.NavMeshHit hit;
+            if (UnityEngine.AI.NavMesh.SamplePosition(navioPronto.transform.position, out hit, 20f, UnityEngine.AI.NavMesh.AllAreas))
+            {
+                agenteNovo.Warp(hit.position);
+            }
+        
+            var navRealista = navioPronto.GetComponent<NavegacaoInteligenteNaval>();
+            if (navRealista != null) navRealista.DefinirDestino(pontoDeSaida.position);
+            else agenteNovo.SetDestination(pontoDeSaida.position);
+        }
 
         // --- LÓGICA ESPECÍFICA PARA PETROLEIRO ---
         NavioPetroleiro petroleiro = navioPronto.GetComponent<NavioPetroleiro>();
@@ -306,115 +279,42 @@ public class Estaleiro : MonoBehaviour
         slot.progresso = 0f;
     }
 
-    void DesativarLogicaUnidade(GameObject unidade)
+    [Header("Indicadores Litorâneos (Terra/Água)")]
+    public float offsetAguaFrente = 35f; 
+    public float offsetTerraTras = -15f; 
+
+    public bool EstaNaConstrucaoValida(float nivelAgua = 0f)
     {
-        // Desativa NavMeshAgent
-        var agent = unidade.GetComponent<NavMeshAgent>();
-        if (agent != null) agent.enabled = false;
+        Vector3 posFrente = transform.position + transform.forward * offsetAguaFrente;
+        Vector3 posTras = transform.position + transform.forward * offsetTerraTras;
 
-        // Desativa scripts
-        MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
-        foreach (var script in scripts) script.enabled = false;
-
-        // Desativa Colliders
-        Collider[] colliders = unidade.GetComponentsInChildren<Collider>();
-        foreach (var col in colliders) col.enabled = false;
-    }
-
-    void ReativarLogicaUnidade(GameObject unidade)
-    {
-        // 1. Setup Básico
-        unidade.layer = LayerMask.NameToLayer("Default");
+        float hFrente = 0f;
+        float hTras = 0f;
         
-        IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
-        if(identidade == null) identidade = unidade.AddComponent<IdentidadeUnidade>();
-        identidade.teamID = 1; 
-        identidade.nomeDoPais = "Hegemonia";
-
-        // 2. Posição no nível da água
-        if(forcarNivelDaAgua)
+        if(Terrain.activeTerrain != null)
         {
-             Vector3 pos = unidade.transform.position;
-             pos.y = nivelDaAgua;
-             unidade.transform.position = pos;
+            hFrente = Terrain.activeTerrain.SampleHeight(posFrente);
+            hTras = Terrain.activeTerrain.SampleHeight(posTras);
         }
 
-        // 3. ─── RIGIDBODY E NAVMESH: Configuração baseada na física ───────
-        Rigidbody rb = unidade.GetComponent<Rigidbody>();
-        var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
-        
-        bool usaFisicaRealista = unidade.GetComponent<NavegacaoInteligenteNaval>() != null;
-
-        if (rb != null)
-        {
-            if (usaFisicaRealista)
-            {
-                rb.isKinematic = false; // PRECISA SER FALSE para o motor aplicar força!
-            }
-            else
-            {
-                rb.isKinematic = true;   // NavMeshAgent / script controla a posição
-            }
-            
-            rb.useGravity  = false;  // Sem queda de gravidade
-            rb.constraints = RigidbodyConstraints.FreezeRotationX
-                           | RigidbodyConstraints.FreezeRotationZ
-                           | RigidbodyConstraints.FreezePositionY;
-        }
-
-        // 4. NavMeshAgent
-        if (agent != null) 
-        {
-            agent.enabled = true;
-
-            // Warp para garantir NavMesh
-            UnityEngine.AI.NavMeshHit hit;
-            if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hit, 20f, UnityEngine.AI.NavMesh.AllAreas))
-            {
-                agent.Warp(hit.position);
-            }
-
-            if (usaFisicaRealista)
-            {
-                agent.updatePosition = false; // FÍSICA CONTROLA A POSIÇÃO, NÃO O AGENTE
-                agent.updateRotation = false; // FÍSICA CONTROLA A ROTAÇÃO
-            }
-            else
-            {
-                agent.updatePosition = true;
-                bool temNavegacaoAntiga = unidade.GetComponent<ControleNavioRealista>() != null;
-                agent.updateRotation = !temNavegacaoAntiga;
-            }
-
-            agent.velocity = Vector3.zero;
-            agent.isStopped = false;
-        }
-        // ─────────────────────────────────────────────────────────────────
-
-        // 5. Reativa Colliders
-        Collider[] colliders = unidade.GetComponentsInChildren<Collider>();
-        foreach (var col in colliders) col.enabled = true;
-
-        // 6. Reativa Scripts (EXCETO NavMeshAgent que já foi)
-        MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
-        foreach (var script in scripts) 
-        {
-            if (!(script is UnityEngine.AI.NavMeshAgent)) 
-            {
-                script.enabled = true;
-            }
-        }
-        
-        // Garante ControleUnidade
-        var ctrl = unidade.GetComponent<ControleUnidade>();
-        if (ctrl == null) ctrl = unidade.AddComponent<ControleUnidade>();
-        ctrl.enabled = true;
-
-        Debug.Log($"[Estaleiro] {unidade.name} reativado. RB kinematic={(rb != null ? rb.isKinematic.ToString() : "sem RB")}, NavRotation={(agent != null ? agent.updateRotation.ToString() : "sem Agent")}");
+        // Deve prever a frente perto d'água e traseira em solo alto
+        return (hFrente <= nivelAgua + 1f) && (hTras > nivelAgua);
     }
 
     void OnDrawGizmos()
     {
+        // GIZMO DE COLOCAÇÃO CORRETA (Frente Azul = Água, Atrás Marrom = Terra)
+        Vector3 posAgua = transform.position + transform.forward * offsetAguaFrente;
+        Vector3 posTerra = transform.position + transform.forward * offsetTerraTras;
+
+        Gizmos.color = new Color(0f, 0.4f, 1f, 0.7f); // AZUL = ÁGUA
+        Gizmos.DrawSphere(posAgua, 3.5f);
+        Gizmos.DrawLine(posAgua, transform.position);
+
+        Gizmos.color = new Color(0.6f, 0.3f, 0f, 0.7f); // MARROM = TERRA FIRME
+        Gizmos.DrawSphere(posTerra, 3.5f);
+        Gizmos.DrawLine(transform.position, posTerra);
+        
         if (slots == null) return;
         foreach (var slot in slots)
         {

@@ -302,6 +302,12 @@ MonoBehaviour:
   flares: []
   helicePrincipal: {fileID: 0}
   heliceTraseira: {fileID: 0}
+  audioMotor: {fileID: 0}
+  pitchMinimo: 0.5
+  pitchMaximo: 1.2
+  volumeMaximo: 1
+  tempoSpinUp: 4
+  tempoSpinDown: 6
   nomeHelicoptero: "Helic\xF3ptero"
   custoUpgrade: 200
 --- !u!114 &-3325090875797799037
@@ -311,7 +317,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 161708}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
   m_Name: 
@@ -319,7 +325,7 @@ MonoBehaviour:
   teamID: 1
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
-  tipoUnidade: 0
+  tipoUnidade: 3
 --- !u!114 &422640897367272454
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -665,6 +671,7 @@ MonoBehaviour:
   vidaMaxima: 200
   vidaAtual: 0
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1

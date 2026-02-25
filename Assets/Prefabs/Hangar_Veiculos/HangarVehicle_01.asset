@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: Base de Veiculos
   descricao: Hangar avancado para producao e manutencao de veiculos pesados.
-  icone: {fileID: 21300000, guid: 2a877839557c34c469256d2b6decfac7, type: 3}
+  icone: {fileID: 21300000, guid: 05c4c9a9cb8d2df4fb5d12cc92ce0cfa, type: 3}
   prefabDaUnidade: {fileID: 7213140222438100777, guid: de1399e2c962362479dda709fd9b10f1, type: 3}
   preco: 2000
   categoria: 4
+  scriptsDeComando: []

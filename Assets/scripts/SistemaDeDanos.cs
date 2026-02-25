@@ -73,6 +73,10 @@ public class SistemaDeDanos : MonoBehaviour
             else if (ehEstrutura) MorrerEstrutura();
             else StartCoroutine(SequenciaDeMorte());
         }
+        else
+        {
+             // Opcional: Debug.Log($"Vida restante do {gameObject.name}: {vidaAtual}");
+        }
     }
 
     // --- MÉTODOS DE REPARO (USADO PELO PIER DE MANUTENÇÃO) ---
@@ -230,6 +234,7 @@ public class SistemaDeDanos : MonoBehaviour
         // Tenta desativar scripts de controle
         foreach(var script in GetComponents<MonoBehaviour>())
         {
+            if (script == null) continue; // PREVENÇÃO DE MISSING SCRIPT (Evita Crash Silencioso)
             if (script == this) continue; // Não desativa a si mesmo ainda
             if (script.GetType().Name.Contains("Controle") || 
                 script.GetType().Name.Contains("Patrulha") ||
@@ -278,6 +283,7 @@ public class SistemaDeDanos : MonoBehaviour
 
     void MorrerEstrutura() // Lógica para Muros/Caixas
     {
+        Debug.Log($"🧱 [SistemaDeDanos] O muro/estrutura '{gameObject.name}' chegou a vida 0! Iniciando Destruição...");
         morreu = true;
         OnMorte?.Invoke();
         DesativarUnidade();

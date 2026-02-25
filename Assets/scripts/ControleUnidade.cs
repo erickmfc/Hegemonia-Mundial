@@ -245,19 +245,24 @@ public class ControleUnidade : MonoBehaviour
             else
             {
                  // Agente fora do navmesh ou desativado - TENTA RECUPERAR!
-                 Debug.LogWarning($"[ControleUnidade] {name} FORA do NavMesh! isOnNavMesh={agente.isOnNavMesh}, enabled={agente.enabled}, isActiveAndEnabled={agente.isActiveAndEnabled}. Tentando Warp...");
+                 if (!gameObject.activeInHierarchy) return; // Impede erros se o objeto estiver desligado (ex: em construção)
                  
-                 NavMeshHit hit;
-                 if (NavMesh.SamplePosition(transform.position, out hit, 50f, NavMesh.AllAreas))
+                 if (!agente.enabled) agente.enabled = true; // Força a ativação do componente
+
+                 if (!agente.isOnNavMesh)
                  {
-                     agente.Warp(hit.position);
-                     Debug.Log($"[ControleUnidade] {name} RECUPERADO para NavMesh em {hit.position}. Enviando destino...");
+                     NavMeshHit hit;
+                     if (NavMesh.SamplePosition(transform.position, out hit, 100f, NavMesh.AllAreas))
+                     {
+                         agente.Warp(hit.position);
+                     }
+                 }
+
+                 // Só dá a ordem se a recuperação funcionou
+                 if (agente.isOnNavMesh && agente.isActiveAndEnabled)
+                 {
                      agente.SetDestination(destino);
                      agente.isStopped = false;
-                 }
-                 else
-                 {
-                     Debug.LogError($"[ControleUnidade] {name} NÃO encontrou NavMesh perto! Posição: {transform.position}");
                  }
             }
         }

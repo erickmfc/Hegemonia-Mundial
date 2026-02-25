@@ -43,6 +43,10 @@ public class LancadorNaval : MonoBehaviour
     // Timer para atrasar a ativação do modo automático
     private float tempoParaAtivarAutomatico = 0f;
 
+    // --- BANCO DE DADOS GLOBAL DE COMBATE DA FROTA ---
+    // Compartilhado estaticamente por TODOS os navios! Impede que 5 navios atirem num barco que já vai morrer.
+    private static Dictionary<Transform, float> bancoDanoProjetadoFrotas = new Dictionary<Transform, float>();
+
     void Start()
     {
         // Se Maxima não foi configurada ou menor que total inicial, ajusta
@@ -232,6 +236,27 @@ public class LancadorNaval : MonoBehaviour
         return listaInimigos;
     }
 
+    void RegistrarDanoProjetado(Transform alvo, float dano)
+    {
+        if (alvo == null) return;
+        if (!bancoDanoProjetadoFrotas.ContainsKey(alvo)) bancoDanoProjetadoFrotas[alvo] = 0f;
+        
+        bancoDanoProjetadoFrotas[alvo] += dano;
+        
+        // O míssil expira da conta após 15 segundos se não acertar (Segurança)
+        StartCoroutine(DecairDanoProjetado(alvo, dano, 15f));
+    }
+
+    IEnumerator DecairDanoProjetado(Transform alvo, float dano, float tempo)
+    {
+        yield return new WaitForSeconds(tempo);
+        if (alvo != null && bancoDanoProjetadoFrotas.ContainsKey(alvo))
+        {
+            bancoDanoProjetadoFrotas[alvo] -= dano;
+            if (bancoDanoProjetadoFrotas[alvo] < 0) bancoDanoProjetadoFrotas[alvo] = 0;
+        }
+    }
+
     IEnumerator DispararSalvaInteligente(List<Transform> alvos)
     {
         tempoUltimoDisparo = Time.time;
@@ -242,80 +267,66 @@ public class LancadorNaval : MonoBehaviour
         MisselNaval refMissel = prefabMissel.GetComponent<MisselNaval>();
         if (refMissel != null) danoMissel = refMissel.dano;
 
-        int indiceAlvoAtual = 0;
-        Dictionary<Transform, float> danoProjetado = new Dictionary<Transform, float>();
-
         for (int i = 0; i < misseisDisponiveisNaSalva; i++)
         {
-            // Validação de segurança para o índice
-            if (indiceAlvoAtual >= alvos.Count) indiceAlvoAtual = 0;
-
             Transform alvoDaVez = null;
-            if (alvos.Count > 0) alvoDaVez = alvos[indiceAlvoAtual];
-            
-            // Se o alvo atual morreu ou sumiu, tenta achar outro na lista
-            if (alvoDaVez == null) 
-            {
-                bool achouNovo = false;
-                for(int j=0; j < alvos.Count; j++) 
-                {
-                    if (alvos[j] != null) 
-                    { 
-                        alvoDaVez = alvos[j]; 
-                        indiceAlvoAtual = j; 
-                        achouNovo = true; 
-                        break; 
-                    }
-                }
-                
-                // Se TODOS da lista morreram, faz um re-scan rápido
-                if(!achouNovo) 
-                {
-                     // Pequena pausa antes de re-scanear para dar tempo de destruir objs
-                    yield return new WaitForEndOfFrame(); 
-                    alvos = BuscarTodosInimigos(); // Atualiza a lista
-                    danoProjetado.Clear(); // Reseta projeção para nova lista
-                    indiceAlvoAtual = 0;
-                    
-                    if (alvos.Count > 0) alvoDaVez = alvos[0];
-                    else break; // Não tem mais ninguém vivo, economiza munição
-                }
-            }
 
-            // Mira visual
-            if (cabecaRotativa != null && alvoDaVez != null)
+            // PROCURA O MELHOR ALVO: Um que esteja vivo e não tenha mísseis suficientes indo para matá-lo
+            for (int j = 0; j < alvos.Count; j++)
             {
-                Vector3 direcao = alvoDaVez.position - cabecaRotativa.position;
-                direcao.y = 0;
-                cabecaRotativa.rotation = Quaternion.LookRotation(direcao);
-            }
+                Transform potencialAlvo = alvos[j];
+                if (potencialAlvo == null) continue;
 
-            // Dispara
-            if (alvoDaVez != null)
-            {
-                DispararUnico(alvoDaVez.position, alvoDaVez);
-            }
-            
-            // Lógica de Troca de Alvo (Evitar Overkill)
-            if (alvoDaVez != null)
-            {
-                float danoJaCausado = 0f;
-                if (danoProjetado.ContainsKey(alvoDaVez)) danoJaCausado = danoProjetado[alvoDaVez];
-                
-                SistemaDeDanos vidaScript = alvoDaVez.GetComponent<SistemaDeDanos>();
-                if (vidaScript == null) vidaScript = alvoDaVez.GetComponentInParent<SistemaDeDanos>();
+                SistemaDeDanos vidaScript = potencialAlvo.GetComponent<SistemaDeDanos>();
+                if (vidaScript == null) vidaScript = potencialAlvo.GetComponentInParent<SistemaDeDanos>();
 
-                if (vidaScript != null)
+                if (vidaScript != null && vidaScript.vidaAtual > 0)
                 {
-                    danoProjetado[alvoDaVez] = danoJaCausado + danoMissel;
-                    
-                    // Se o dano projetado já mata, muda para o próximo da lista
-                    if (danoProjetado[alvoDaVez] >= vidaScript.vidaAtual)
+                    float danoFuturo = 0f;
+                    // Consulta a Rede Global de Combate (Todos os navios amigos informam aqui)
+                    if (bancoDanoProjetadoFrotas.ContainsKey(potencialAlvo)) 
                     {
-                        indiceAlvoAtual++;
+                        danoFuturo = bancoDanoProjetadoFrotas[potencialAlvo];
+                    }
+
+                    // Verifica: A vida real dele é MAIOR que os mísseis que já estão voando pra cabeça dele?
+                    if (vidaScript.vidaAtual > danoFuturo)
+                    {
+                        // Bingo! Achamos um alvo precisando de mais porrada.
+                        alvoDaVez = potencialAlvo;
+                        
+                        // Agenda o dano na nuvem militar para outros não focarem atoa
+                        RegistrarDanoProjetado(potencialAlvo, danoMissel);
+                        break;
                     }
                 }
             }
+
+            // Se varremos TUDO e não tem mais alvo sobrando, ou todo mundo já está "Virtualmente morto"
+            if (alvoDaVez == null)
+            {
+                Debug.Log($"<color=green>[LANÇADOR]</color> Inimigos já possuem mísseis letais a caminho. Parando a salva para economizar munição.");
+                break; // Cancela o resto da salva!
+            }
+
+            // Mira visual da torre para o alvo que vai atirar
+            if (cabecaRotativa != null)
+            {
+                // Respeita a inclinação realista do navio sobre as ondas!
+                Vector3 direcao = alvoDaVez.position - cabecaRotativa.position;
+                Vector3 upDoNavio = cabecaRotativa.parent != null ? cabecaRotativa.parent.up : Vector3.up;
+                
+                // Projeta o alvo no "chão" do navio para a torre não focar pra cima/baixo torta
+                Vector3 direcaoNoConves = Vector3.ProjectOnPlane(direcao, upDoNavio).normalized;
+
+                if (direcaoNoConves != Vector3.zero)
+                {
+                    cabecaRotativa.rotation = Quaternion.LookRotation(direcaoNoConves, upDoNavio);
+                }
+            }
+
+            // Dispara e vai diminuir munição original no método
+            DispararUnico(alvoDaVez.position, alvoDaVez);
             
             yield return new WaitForSeconds(intervaloEntreTiros);
         }

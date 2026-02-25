@@ -66,6 +66,7 @@ public class Helicoptero : MonoBehaviour
     [HideInInspector] public string nomeHelicoptero = "Falcão Negro"; 
     [HideInInspector] public int custoUpgrade = 800;  
     private bool disponivelParaPatrulha = true; 
+    private IdentidadeUnidade identidade;
 
     void Awake()
     {
@@ -85,6 +86,9 @@ public class Helicoptero : MonoBehaviour
         // --- LOG DE VIDA ---
         Debug.Log($"🚁 SISTEMA DO HELICÓPTERO INICIADO NO OBJETO: {name}");
         // -------------------
+
+        identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade == null) identidade = GetComponentInParent<IdentidadeUnidade>();
 
         selecionado = false;
         controleSempreAtivo = false;
@@ -151,6 +155,9 @@ public class Helicoptero : MonoBehaviour
 
     void GestaoDeInput()
     {
+        // Se for da IA, não permite controle do jogador
+        if (identidade != null && identidade.teamID != 1 && !controleSempreAtivo) return;
+
         // 1. CLIQUE ESQUERDO (Seleção)
         if (Input.GetMouseButtonDown(0))
         {
@@ -331,7 +338,7 @@ public class Helicoptero : MonoBehaviour
         }
     }
 
-    void ChamarReforcos()
+    public void ChamarReforcos()
     {
         if(soldadosEmbarcados.Count >= capacidadeMaxima) 
         {
@@ -431,7 +438,7 @@ public class Helicoptero : MonoBehaviour
         }
     }
 
-    void OrdemPousoOuDesembarque()
+    public void OrdemPousoOuDesembarque()
     {
         if(estaVoando) 
         { 
@@ -512,6 +519,9 @@ public class Helicoptero : MonoBehaviour
     public string ObterDescricaoMenu() { return $"{nomeHelicoptero}\nLotação: {soldadosEmbarcados.Count}/{capacidadeMaxima}"; }
     public void MelhorarHelicoptero() { capacidadeMaxima += 4; nomeHelicoptero += "+"; }
     
+    public int TemEspaco() { return capacidadeMaxima - soldadosEmbarcados.Count; }
+    public bool TemSoldados() { return soldadosEmbarcados.Count > 0; }
+
     public void ChamarParaHeliporto(Transform t) { Decolar(t.position); }
     public void ChamarParaHeliporto(Heliporto h) { Decolar(h.transform.position); }
     public void ChamarParaHeliporto(GameObject g) { Decolar(g.transform.position); }

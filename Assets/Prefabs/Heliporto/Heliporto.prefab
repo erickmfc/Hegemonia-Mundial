@@ -111,6 +111,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100000, guid: 4c476731e97554c8bb604c97f97898d9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8191425608684633835}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 4c476731e97554c8bb604c97f97898d9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 485905940811318997}
   m_SourcePrefab: {fileID: 100100000, guid: 4c476731e97554c8bb604c97f97898d9, type: 3}
 --- !u!1 &8749062362275969107 stripped
 GameObject:
@@ -181,6 +184,22 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 3
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+--- !u!114 &485905940811318997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8749062362275969107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 4
 --- !u!4 &8749062362276127857 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400002, guid: 4c476731e97554c8bb604c97f97898d9, type: 3}
