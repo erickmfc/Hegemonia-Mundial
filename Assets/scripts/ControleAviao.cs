@@ -41,6 +41,7 @@ public class ControleAviao : MonoBehaviour
     private float giroLateralRoll = 0f; 
     private float empinadaPitch = 0f;   
     private float multiplicadorVelocidadeTurbo = 1f;
+    private float tempoSegurandoTab = 0f;
 
     void Start()
     {
@@ -85,14 +86,24 @@ public class ControleAviao : MonoBehaviour
             ControleUnidade cu = GetComponent<ControleUnidade>();
             bool selecionado = (cu != null && cu.selecionado);
 
-            // TURBO: Segurar o TAB acelera o dobro (atinge a vel. máxima em 5 seg)
+            // TURBO: Segurar o TAB acelera de forma progressiva
             if (selecionado && Input.GetKey(KeyCode.Tab))
             {
-                multiplicadorVelocidadeTurbo = Mathf.MoveTowards(multiplicadorVelocidadeTurbo, 2f, (1f / 5f) * Time.deltaTime);
+                tempoSegurandoTab += Time.deltaTime;
+                
+                if (tempoSegurandoTab >= 11f)
+                    multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 6f, Time.deltaTime);
+                else if (tempoSegurandoTab >= 5f)
+                    multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 4f, Time.deltaTime);
+                else if (tempoSegurandoTab >= 2f)
+                    multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 2f, Time.deltaTime);
+                else
+                    multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 1.5f, Time.deltaTime);
             }
             else
             {
-                multiplicadorVelocidadeTurbo = Mathf.MoveTowards(multiplicadorVelocidadeTurbo, 1f, (1f / 5f) * Time.deltaTime);
+                tempoSegurandoTab = 0f; // Reseta o cronômetro
+                multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 1f, Time.deltaTime * 2f);
             }
 
             ManobraVooRealista();
@@ -274,13 +285,21 @@ public class ControleAviao : MonoBehaviour
         
         Debug.Log($"[{gameObject.name}] Retornando para a base...");
 
-        // Espera chegar perto do aeroporto
-        while (Vector3.Distance(transform.position, alvoGPSVoo) > 15f)
+        // Espera chegar na bolha do aeroporto com uma margem maior para não criar o bug de ficar "girando" infinito
+        while (true)
         {
-            // Quando chegarem em um raio de 200 metros do pouso as rodas aparecem novamente direto
-            if (Vector3.Distance(transform.position, alvoGPSVoo) <= 200f)
+            float distHorizontalPouso = Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(alvoGPSVoo.x, alvoGPSVoo.z));
+            
+            // Quando chegarem em um raio de 400 metros do pouso as rodas aparecem
+            if (distHorizontalPouso <= 400f)
             {
                 AbaixarRodas();
+            }
+
+            // Uma margem grande (70m horizontal) garante que jatos a 150km/h acertem o gatilho sem orbitar
+            if (distHorizontalPouso <= 70f)
+            {
+                break;
             }
 
             yield return null;

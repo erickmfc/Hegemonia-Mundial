@@ -57,6 +57,9 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (decida != null)
         {
             foreach (Transform filho in decida) waypointsDecida.Add(filho);
+            // Como o objeto no Unity está do inicio (Freiada) ao fim (Alinhando)
+            // e o avião entra pelo Alinhando, invertemos a lista inteira!
+            waypointsDecida.Reverse();
         }
     }
 
