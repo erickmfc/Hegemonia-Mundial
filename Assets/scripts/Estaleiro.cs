@@ -159,7 +159,7 @@ public class Estaleiro : MonoBehaviour
         
         RectTransform rt = canvasObj.GetComponent<RectTransform>();
         rt.sizeDelta = new Vector2(800, 150); 
-        rt.localScale = new Vector3(0.01f, 0.01f, 0.01f); 
+        rt.localScale = new Vector3(0.003f, 0.003f, 0.003f); // 70% menor
 
         // Texto Informativo com Porcentagem
         GameObject txtObj = new GameObject("Text");
@@ -180,8 +180,8 @@ public class Estaleiro : MonoBehaviour
         rtTxt.anchorMin = Vector2.zero; rtTxt.anchorMax = Vector2.one;
         rtTxt.sizeDelta = Vector2.zero;
 
-        // LookAt Camera Script
-        canvasObj.AddComponent<OlharParaCamera>(); 
+        // Texto plano sem seguir a câmera, com redução e virado 180 graus
+        canvasObj.transform.localRotation = Quaternion.Euler(90f, 0f, 180f);
 
         slot.barCanvasObj = canvasObj;
         slot.barFillImage = null; // Removido linhas visíveis
@@ -198,10 +198,10 @@ public class Estaleiro : MonoBehaviour
         if (slot.barFillImage != null)
         {
             slot.barFillImage.fillAmount = slot.progresso / 100f;
-            if (slot.textProgresso != null)
-            {
-                slot.textProgresso.text = $"PREPARANDO NAVIO... {Mathf.FloorToInt(slot.progresso)}%";
-            }
+        }
+        if (slot.textProgresso != null)
+        {
+            slot.textProgresso.text = $"PREPARANDO... {Mathf.FloorToInt(slot.progresso)}%";
         }
 
         // Verifica Conclusão

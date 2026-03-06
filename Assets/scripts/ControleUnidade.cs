@@ -9,6 +9,11 @@ public class ControleUnidade : MonoBehaviour
     public GameObject anelSelecao; 
     public bool selecionado = false;
 
+    [Header("Imigração / Fronteira")]
+    public bool aguardandoVisto = false;
+    public bool vistoAprovado = false;
+    private int ultimoDonoChao = -1;
+
     // --- CONTROLE AÉREO ---
     private VooHelicoptero scriptVoo;
     private bool ehAereo = false;
@@ -47,19 +52,16 @@ public class ControleUnidade : MonoBehaviour
 
         // --- CORREÇÃO DE RESPONSIVIDADE (SOLDADOS) ---
         // Se for uma unidade simples (sem scripts complexos de movimento), aplica configurações ágeis
-        if (agente != null && 
-            GetComponent<MovimentoRealTerrestre>() == null && 
-            GetComponent<ControleNavioRealista>() == null &&
-            GetComponent<ControleSubmarino>() == null &&
-            GetComponent<VooHelicoptero>() == null &&
-            GetComponent<Helicoptero>() == null &&
-            GetComponent<NavioPetroleiro>() == null)
+        if (agente != null && !ehAereo &&
+            !TryGetComponent<MovimentoRealTerrestre>(out _) && 
+            !TryGetComponent<ControleNavioRealista>(out _) &&
+            !TryGetComponent<ControleSubmarino>(out _) &&
+            !TryGetComponent<NavioPetroleiro>(out _))
         {
-            // É um soldado ou unidade simplesNavMesh
+            // É um soldado ou unidade terrestre com NavMesh simples
             agente.acceleration = 60.0f; // Aceleração instantânea
             agente.angularSpeed = 720.0f; // Giro instantâneo
             agente.autoBraking = true;
-            // Debug.Log($"[ControleUnidade] Configurações de Agilidade aplicadas para {name} (Soldado).");
         }
     }
 
@@ -125,6 +127,9 @@ public class ControleUnidade : MonoBehaviour
 
     void Update()
     {
+        // 0. Desenha a linha de caminho (Rota) se estiver selecionado, para todos os tipos (Terra/Ar/Mar)
+        AtualizarVisualCaminho();
+
         // SE TIVER HELICOPTER CONTROLLER: NÃO FAZ NADA DE MOVIMENTO AQUI
         // Deixa o outro script cuidar de tudo, este fica só para Seleção/Identidade
         if (helicopteroExterno != null) return;
@@ -162,6 +167,50 @@ public class ControleUnidade : MonoBehaviour
         else if (agente != null && agente.enabled)
         {
             velocidadeAtual = agente.velocity.magnitude;
+
+            // --- CORREDOR NULO (Alfândega e Imigração) ---
+            if (GerenteDeTerritorio.Instancia != null)
+            {
+                // Busca a identidade, se não achar retorna 0.
+                int teamMeu = GetComponent<IdentidadeIA>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 0;
+                
+                // Só processa checagem para times diferentes do Player (1)
+                if (teamMeu != 0 && teamMeu != 1)
+                {
+                    int donoAtual = GerenteDeTerritorio.Instancia.ObterDonoDoPonto(transform.position);
+
+                    // Acabou de entrar na terra do jogador
+                    if (donoAtual == 1 && ultimoDonoChao != 1)
+                    {
+                        if (!vistoAprovado && !aguardandoVisto)
+                        {
+                            aguardandoVisto = true;
+                            if (SistemaConsulado.Instancia != null)
+                            {
+                                SistemaConsulado.Instancia.SolicitarEntrada(this);
+                            }
+                        }
+                    }
+                    // Se saiu do país (ex. voltou pro próprio país ou área neutra)
+                    else if (donoAtual != 1 && ultimoDonoChao == 1)
+                    {
+                        vistoAprovado = false; 
+                        aguardandoVisto = false;
+                    }
+
+                    ultimoDonoChao = donoAtual;
+
+                    // Bloqueia movimento se estiver na terra do player sem visto (e aguardando)
+                    if (donoAtual == 1 && !vistoAprovado && aguardandoVisto)
+                    {
+                        agente.isStopped = true;
+                    }
+                    else
+                    {
+                        agente.isStopped = false;
+                    }
+                }
+            }
         }
 
         // 3. Controle de Animação (Genérico)
@@ -196,6 +245,13 @@ public class ControleUnidade : MonoBehaviour
     {
         // Debug.Log($"[ControleUnidade] {name} recebeu MoverParaPonto({destino})...");
 
+        // Caça Militar Aéreo
+        if (TryGetComponent<ControleAviaoCaca>(out var caca))
+        {
+            caca.DefinirDestino(destino);
+            return;
+        }
+
         if (ehAereo)
         {
             destinoAereo = destino;
@@ -211,8 +267,7 @@ public class ControleUnidade : MonoBehaviour
             if (agente.isOnNavMesh && agente.isActiveAndEnabled)
             {
                 // ✨ SISTEMA DE NAVEGAÇÃO NAVAL REALISTA OU INTELIGENTE ✨
-                ControleNavioRealista controleRealista = GetComponent<ControleNavioRealista>();
-                if (controleRealista != null)
+                if (TryGetComponent<ControleNavioRealista>(out var controleRealista))
                 {
                     controleRealista.DefinirDestino(destino);
                     // Debug.Log($"[Navegação] {name} usando Física Realista.");
@@ -220,19 +275,16 @@ public class ControleUnidade : MonoBehaviour
                 }
 
                 // Verifica se esta unidade tem navegação naval inteligente (marcha à ré automática)
-                NavegacaoInteligenteNaval navegacaoNaval = GetComponent<NavegacaoInteligenteNaval>();
-                
-                if (navegacaoNaval != null)
+                if (TryGetComponent<NavegacaoInteligenteNaval>(out var navegacaoNaval))
                 {
                     // Usa o sistema inteligente que decide automaticamente se vai de frente ou de ré
                     navegacaoNaval.DefinirDestino(destino);
-                    Debug.Log($"[Navegação] {name} usando sistema naval inteligente.");
+                    // Debug.Log($"[Navegação] {name} usando sistema naval inteligente.");
                     return;
                 }
 
                 // Verifica se é Submarino
-                ControleSubmarino controleSub = GetComponent<ControleSubmarino>();
-                if (controleSub != null)
+                if (TryGetComponent<ControleSubmarino>(out var controleSub))
                 {
                     controleSub.DefinirDestino(destino);
                     return;
@@ -247,22 +299,29 @@ public class ControleUnidade : MonoBehaviour
                  // Agente fora do navmesh ou desativado - TENTA RECUPERAR!
                  if (!gameObject.activeInHierarchy) return; // Impede erros se o objeto estiver desligado (ex: em construção)
                  
-                 if (!agente.enabled) agente.enabled = true; // Força a ativação do componente
-
-                 if (!agente.isOnNavMesh)
+                 try 
                  {
-                     NavMeshHit hit;
-                     if (NavMesh.SamplePosition(transform.position, out hit, 100f, NavMesh.AllAreas))
+                     if (!agente.enabled) agente.enabled = true; // Força a ativação do componente
+
+                     if (!agente.isOnNavMesh)
                      {
-                         agente.Warp(hit.position);
+                         NavMeshHit hit;
+                         if (NavMesh.SamplePosition(transform.position, out hit, 100f, NavMesh.AllAreas))
+                         {
+                             agente.Warp(hit.position);
+                         }
+                     }
+
+                     // Só dá a ordem se a recuperação funcionou
+                     if (agente.isOnNavMesh && agente.isActiveAndEnabled)
+                     {
+                         agente.SetDestination(destino);
+                         agente.isStopped = false;
                      }
                  }
-
-                 // Só dá a ordem se a recuperação funcionou
-                 if (agente.isOnNavMesh && agente.isActiveAndEnabled)
+                 catch (System.Exception ex)
                  {
-                     agente.SetDestination(destino);
-                     agente.isStopped = false;
+                     Debug.LogWarning($"[ControleUnidade] Falha ao recuperar NavMeshAgent para {name}: {ex.Message}");
                  }
             }
         }
@@ -323,24 +382,110 @@ public class ControleUnidade : MonoBehaviour
         linhaAlcance.gameObject.SetActive(false); // Começa invisível
     }
 
+    [Header("Visual de Caminho")]
+    public LineRenderer linhaCaminho;
+    public Color corCaminho = new Color(0f, 1f, 0.5f, 0.4f);
+
+    void CriarVisualCaminho()
+    {
+        if (linhaCaminho != null) return;
+        
+        GameObject objLinha = new GameObject("LinhaCaminho");
+        objLinha.transform.SetParent(this.transform);
+        objLinha.transform.localPosition = Vector3.zero;
+        
+        linhaCaminho = objLinha.AddComponent<LineRenderer>();
+        linhaCaminho.useWorldSpace = true;
+        linhaCaminho.startWidth = 0.5f;
+        linhaCaminho.endWidth = 0.5f;
+        
+        linhaCaminho.material = new Material(Shader.Find("Sprites/Default"));
+        linhaCaminho.startColor = corCaminho;
+        linhaCaminho.endColor = corCaminho;
+        linhaCaminho.gameObject.SetActive(false);
+        linhaCaminho.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+    }
+
+    void AtualizarVisualCaminho()
+    {
+        if (!selecionado || linhaCaminho == null) return;
+
+        Vector3 metaLinha = Vector3.zero;
+        bool tentarDesenharReta = false;
+
+        // Tenta Aéreo Genérico
+        if (ehAereo && voando)
+        {
+            metaLinha = destinoAereo;
+            tentarDesenharReta = true;
+        }
+        else if (helicopteroExterno != null)
+        {
+            metaLinha = helicopteroExterno.destino; 
+            if (helicopteroExterno.estaVoando && Vector3.Distance(transform.position, metaLinha) > 2f) 
+                tentarDesenharReta = true;
+        }
+
+        ControleAviao aviao = GetComponent<ControleAviao>();
+        if (aviao != null)
+        {
+            if (aviao.estaEmModoVooFisico || aviao.estadoAtual == ControleAviao.EstadoAviao.Pousando || aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+            {
+                metaLinha = aviao.alvoGPSVoo;
+                if (Vector3.Distance(transform.position, metaLinha) > 2f && metaLinha != Vector3.zero) 
+                    tentarDesenharReta = true;
+            }
+        }
+
+        // Tenta ControleAviaoCaca (Caça Militar)
+        ControleAviaoCaca caca = GetComponent<ControleAviaoCaca>();
+        if (caca != null)
+        {
+            metaLinha = caca.DestinoAtual;
+            if (Vector3.Distance(transform.position, metaLinha) > 2f)
+                tentarDesenharReta = true;
+        }
+
+        if (tentarDesenharReta)
+        {
+            linhaCaminho.positionCount = 2;
+            linhaCaminho.SetPosition(0, transform.position + Vector3.up * 1f);
+            linhaCaminho.SetPosition(1, metaLinha + Vector3.up * 1f);
+            if (!linhaCaminho.gameObject.activeSelf) linhaCaminho.gameObject.SetActive(true);
+        }
+        else if (agente != null && agente.enabled && agente.hasPath)
+        {
+            var caminho = agente.path;
+            linhaCaminho.positionCount = caminho.corners.Length;
+            for(int i = 0; i < caminho.corners.Length; i++)
+            {
+                linhaCaminho.SetPosition(i, caminho.corners[i] + Vector3.up * 0.5f);
+            }
+            if (!linhaCaminho.gameObject.activeSelf) linhaCaminho.gameObject.SetActive(true);
+        }
+        else
+        {
+            if (linhaCaminho.gameObject.activeSelf) linhaCaminho.gameObject.SetActive(false);
+        }
+    }
+
     public void DefinirSelecao(bool estado)
     {
         selecionado = estado;
         
-        // Círculo Verde (Seleção)
         if (anelSelecao != null) anelSelecao.SetActive(estado);
         
-        // Círculo Vermelho (Alcance)
         if (estado)
         {
-            // Tenta criar se não existir (lazy visualization)
             if (linhaAlcance == null) CriarVisualAlcance();
+            if (linhaCaminho == null) CriarVisualCaminho();
             
             if (linhaAlcance != null) linhaAlcance.gameObject.SetActive(true);
         }
         else
         {
             if (linhaAlcance != null) linhaAlcance.gameObject.SetActive(false);
+            if (linhaCaminho != null) linhaCaminho.gameObject.SetActive(false);
         }
     }
 }

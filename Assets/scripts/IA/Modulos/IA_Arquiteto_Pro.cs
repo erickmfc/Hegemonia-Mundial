@@ -147,6 +147,12 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             ? chefe.basePrincipal.position 
             : transform.position;
 
+        // 0. Fundar a Capital / Prefeitura primeiro (Soberania Máxima daquele raio)
+        if (!ExistePredio("Prefeitura") && !ExistePredio("Complexo")) ConstruirNaTerra("Prefeitura", centro, 0);
+
+        // 0.5 Expandir a borda imediata com uma bandeira proxima do centro (Opcional mas recomendado)
+        if (!ExistePredio("Bandeira") && !ExistePredio("Flag")) ConstruirNaTerra("Bandeira", centro, 0);
+
         // 1. Quartel/Tenda (Prioridade Absoluta)
         if (!ExistePredio("Tenda")) ConstruirNaTerra("Tenda", centro, 0);
 
@@ -195,20 +201,42 @@ public class IA_Arquiteto_Pro : MonoBehaviour
                         // Se for terra inimiga (tem dono e não é ela), IA pula para outro local
                         if (dono != 0) continue; 
                         
-                        // Se for Neuta (Dono 0), a IA expande sua fronteira plantando uma bandeira!
-                        GameObject prefabBandeira = BuscarNoCatalogo("Bandeira");
-                        if (prefabBandeira == null) prefabBandeira = BuscarNoCatalogo("Flag");
+                        // Se for Neuta (Dono 0), a IA expande sua fronteira!
+                        // 1. Tenta construir uma Prefeitura se for uma nova ilha (Permitido pelo Gerente)
+                        bool podePrefeitura = GerenteDeTerritorio.Instancia.PodeConstruirPrefeitura(pos);
+                        GameObject prefabExpansao = null;
+                        int custoExpansao = 0;
+                        string nomeAcao = "";
 
-                        if (prefabBandeira != null && chefe.dinheiro >= 100) 
+                        if (podePrefeitura && chefe.dinheiro >= 1000f) // Asume custo da prefeitura por volta de 1000
+                        {
+                            prefabExpansao = BuscarNoCatalogo("Prefeitura");
+                            if (prefabExpansao == null) prefabExpansao = BuscarNoCatalogo("Complexo");
+                            custoExpansao = 1000;
+                            nomeAcao = "Prefeitura / Capital";
+                        }
+
+                        // 2. Se não der pra construir prefeitura (ou falta $ ou já tem uma na ilha), usa a Bandeira local
+                        if (prefabExpansao == null)
+                        {
+                            prefabExpansao = BuscarNoCatalogo("Bandeira");
+                            if (prefabExpansao == null) prefabExpansao = BuscarNoCatalogo("Flag");
+                            custoExpansao = 100; // Custo estimando da bandeira
+                            nomeAcao = "Bandeira";
+                        }
+
+                        if (prefabExpansao != null && chefe.dinheiro >= custoExpansao) 
                         {
                              Vector3 posBandeira = pos;
                              if (Terrain.activeTerrain != null) posBandeira.y = Terrain.activeTerrain.SampleHeight(posBandeira);
                              
-                             Debug.Log("🚩 [IA Arquiteto] Território virgem detectado! Fincando Bandeira para expandir bordas.");
-                             SpawnarPredio(prefabBandeira, posBandeira, Quaternion.identity);
+                             Debug.Log($"🚩 [IA Arquiteto] Território virgem detectado! Erguendo {nomeAcao} para reivindicar área.");
+                             SpawnarPredio(prefabExpansao, posBandeira, Quaternion.identity);
                         }
-                        // Independentemente de bater o orçamento, esse spot não serve pra Fábrica agora.
-                        continue; 
+                        // IMPORTANTE: Como fundamos uma prefeitura/bandeira que leva tempo para registrar no Gerente,
+                        // cancelamos o plano original de construir o prédio AQUI e AGORA para não bugar.
+                        // O método de manutenção voltará a tentar construir o prédio no próximo ciclo do Update/Invoke!
+                        return; 
                     }
                 }
 
@@ -318,6 +346,7 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             // Checa se é uma estrutura (Fábrica, Estaleiro, ou qualquer objeto com IdentidadeUnidade + Estrutura)
             if (col.GetComponent<Fabrica>() != null) return true;
             if (col.GetComponent<Estaleiro>() != null) return true;
+            if (col.GetComponent<Heliporto>() != null) return true; // Adicionado para impedir sobreposição de heliportos
             // Checa SistemaDeDanos.ehEstrutura (prédios, muros, etc.)
             var danos = col.GetComponent<SistemaDeDanos>();
             if (danos != null && danos.ehEstrutura) return true;

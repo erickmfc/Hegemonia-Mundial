@@ -31,6 +31,15 @@ public class ControleAviaoCaca : MonoBehaviour
     public float anguloRecolher = 90f; 
     public float velocidadeTremPouso = 2f;
 
+    [Header("Efeitos Sonoros")]
+    [Tooltip("Som reproduzido quando o avião passa perto da câmera num rasante (Flyby).")]
+    public AudioClip somPassagem;
+    [Tooltip("Distância máxima da câmera para tocar o som de passagem.")]
+    public float distanciaAtivacaoSom = 100f;
+    private AudioSource audioSourcePassagem;
+    private bool jaTocouPassagem = false;
+    private Transform cameraTransform;
+
     // ============================================
     // ESTADOS INTERNOS
     // ============================================
@@ -40,15 +49,19 @@ public class ControleAviaoCaca : MonoBehaviour
 
     private float velocidadeAtual = 0f;
     private Vector3 destinoAtual;
+    public Vector3 DestinoAtual => destinoAtual;
     private bool temDestino = false;
     
     // Controle de Rodas
     private float fatorRodas = 0f; // 0 = Baixadas, 1 = Recolhidas
     private List<Quaternion> rotacoesOriginaisRodas = new List<Quaternion>();
 
-    // Referências
     private ControleUnidade controleUnidade;
     private SistemaDeTiro sistemaTiro; // Para saber se tem alvo
+
+    // --- IDENTIFICAÇÃO (CRISTAL) ---
+    public Color corIdentificacao;
+    private GameObject cristalIdentificacao;
 
     void Start()
     {
@@ -56,6 +69,24 @@ public class ControleAviaoCaca : MonoBehaviour
         sistemaTiro = GetComponentInChildren<SistemaDeTiro>();
         
         destinoAtual = transform.position;
+
+        // --- GERAR CRISTAL ÚNICO ---
+        corIdentificacao = Random.ColorHSV(0f, 1f, 0.8f, 1f, 0.8f, 1f);
+        cristalIdentificacao = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Destroy(cristalIdentificacao.GetComponent<Collider>());
+        cristalIdentificacao.name = "CristalIdentificacao";
+        cristalIdentificacao.transform.SetParent(this.transform);
+        cristalIdentificacao.transform.localPosition = new Vector3(0, 2.5f, 0); // Fica em cima do avião
+        cristalIdentificacao.transform.localRotation = Quaternion.Euler(45f, 45f, 45f);
+        // Aumentado em +30% o tamanho (0.6 -> 0.78)
+        cristalIdentificacao.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
+        
+        Renderer rend = cristalIdentificacao.GetComponent<Renderer>();
+        if (rend != null)
+        {
+            rend.material = new Material(Shader.Find("Sprites/Default"));
+            rend.material.color = corIdentificacao;
+        }
 
         // Salva rotação original das rodas
         foreach(var roda in rodas)
@@ -65,10 +96,29 @@ public class ControleAviaoCaca : MonoBehaviour
 
         // Garante que começa desligado
         ControlarEfeitosMotor(false);
+
+        // Inicializa som de passagem
+        if (Camera.main != null) cameraTransform = Camera.main.transform;
+        
+        GameObject objSom = new GameObject("SomPassagem");
+        objSom.transform.SetParent(transform);
+        objSom.transform.localPosition = Vector3.zero;
+        audioSourcePassagem = objSom.AddComponent<AudioSource>();
+        audioSourcePassagem.spatialBlend = 1f; // 3D
+        audioSourcePassagem.minDistance = 15f;
+        audioSourcePassagem.maxDistance = 250f;
+        audioSourcePassagem.playOnAwake = false;
+        audioSourcePassagem.clip = somPassagem;
     }
 
     void Update()
     {
+        // Animação do Cristal
+        if (cristalIdentificacao != null)
+        {
+            cristalIdentificacao.transform.Rotate(0, 90f * Time.deltaTime, 0, Space.World);
+        }
+
         // 1. GERENCIAMENTO DE ESTADO
         AtualizarLogicaEstado();
 
@@ -85,6 +135,27 @@ public class ControleAviaoCaca : MonoBehaviour
             if (dist > 50f) // Só decola se o destino for longe
             {
                 IniciarDecolagem();
+            }
+        }
+
+        // 5. SOM DE PASSAGEM (Flyby) na Câmera
+        if (cameraTransform != null && somPassagem != null)
+        {
+            float distCam = Vector3.Distance(transform.position, cameraTransform.position);
+            
+            // Só toca se estiver voando, próximo e ainda não tocou esse "passe"
+            if (distCam < distanciaAtivacaoSom && estadoAtual == EstadoVoo.Voando)
+            {
+                if (!jaTocouPassagem)
+                {
+                    audioSourcePassagem.Play();
+                    jaTocouPassagem = true;
+                }
+            }
+            else if (distCam > distanciaAtivacaoSom * 1.5f)
+            {
+                // Reseta a flag para poder tocar novamente se ele voltar
+                jaTocouPassagem = false;
             }
         }
     }
@@ -117,6 +188,13 @@ public class ControleAviaoCaca : MonoBehaviour
         switch (estadoAtual)
         {
             case EstadoVoo.NoChao:
+                // Se o avião está com estado "NoChao" mas foi spawnado / já está no alto
+                if (alturaDoChao > alturaDecolagem + 5f)
+                {
+                    estadoAtual = EstadoVoo.Voando;
+                    break;
+                }
+
                 velocidadeAtual = Mathf.Lerp(velocidadeAtual, 0f, Time.deltaTime);
                 ControlarEfeitosMotor(false);
                 break;

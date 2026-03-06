@@ -89,14 +89,14 @@ public class MarcadorTerritorio : MonoBehaviour
             default: corBase = new Color(0.5f, 0.5f, 0.5f, 1f); break; // Cinza (Neutro ou 8+)
         }
 
-        Color corBorda = new Color(corBase.r, corBase.g, corBase.b, 0.8f);
-        Color corFundo = new Color(corBase.r, corBase.g, corBase.b, 0.15f);
+        // BEM transparente:
+        Color corBorda = new Color(corBase.r, corBase.g, corBase.b, 0.15f); // Era 0.8f
+        Color corFundo = new Color(corBase.r, corBase.g, corBase.b, 0.02f); // Era 0.15f
 
-        // Prefeituras são mais intensas visualmente
+        // Prefeituras são levemente mais visíveis (mas ainda transparentes)
         if (ehPrefeitura)
         {
-            corBorda = new Color(corBase.r, corBase.g, corBase.b, 1f); 
-            corBorda *= 1.5f; // Efeito de brilho forçado em shaders HDR se tiver
+            corBorda = new Color(corBase.r, corBase.g, corBase.b, 0.3f); 
         }
 
         linhaFronteira.material = mat;

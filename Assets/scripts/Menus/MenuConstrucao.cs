@@ -56,7 +56,12 @@ public class MenuConstrucao : MonoBehaviour
         if (painelPrincipal != null)
         {
             painelPrincipal.SetActive(false);
-            if(canvasGroupPainel != null) canvasGroupPainel.alpha = 0;
+            if(canvasGroupPainel != null) 
+            {
+                canvasGroupPainel.alpha = 0;
+                canvasGroupPainel.blocksRaycasts = false;
+                canvasGroupPainel.interactable = false;
+            }
         }
 
         FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Exercito);
@@ -104,6 +109,14 @@ public class MenuConstrucao : MonoBehaviour
         if (painelPrincipal == null) return;
         
         StopAllCoroutines(); // Para animações anteriores
+        
+        // DEVOLVE O MOUSE NA HORA EXATA, NÃO ESPERA A TELA SUMIR!
+        if (canvasGroupPainel != null)
+        {
+            canvasGroupPainel.blocksRaycasts = abrir;
+            canvasGroupPainel.interactable = abrir;
+        }
+
         StartCoroutine(AnimarMenu(abrir));
     }
 
@@ -164,8 +177,10 @@ public class MenuConstrucao : MonoBehaviour
         Image imgFundo = painelPrincipal.AddComponent<Image>();
         imgFundo.color = corFundoJanela;
         
-        // CanvasGroup para animações de fade
+        // CanvasGroup para animações de fade e Bloqueio de Raycasts para garantir foco
         canvasGroupPainel = painelPrincipal.AddComponent<CanvasGroup>();
+        canvasGroupPainel.blocksRaycasts = true; // Garante que cliques não varem a tela para trás e registrem nela
+        canvasGroupPainel.interactable = true;
         
         // Layout Centralizado
         RectTransform rtPanel = painelPrincipal.GetComponent<RectTransform>();
@@ -224,6 +239,7 @@ public class MenuConstrucao : MonoBehaviour
         // Fundo sutil para a área de scroll
         Image imgBody = bodyObj.AddComponent<Image>();
         imgBody.color = new Color(0, 0, 0, 0.2f); 
+        imgBody.raycastTarget = true; // Necessário para ScrollRect capturar arraste
 
         ScrollRect sr = bodyObj.AddComponent<ScrollRect>();
         sr.scrollSensitivity = 15; // Mais suave (era 40)
@@ -237,6 +253,7 @@ public class MenuConstrucao : MonoBehaviour
         GameObject viewport = CriarRetangulo("Viewport", bodyObj.transform);
         Image imgView = viewport.AddComponent<Image>();
         imgView.color = Color.clear; // Transparente!
+        imgView.raycastTarget = false; // Viewport não intercepta raycast dos filhos
         viewport.AddComponent<RectMask2D>();
         
         RectTransform rtView = viewport.GetComponent<RectTransform>();
@@ -403,10 +420,10 @@ public class MenuConstrucao : MonoBehaviour
         Image imgBg = cardObj.AddComponent<Image>();
         imgBg.color = corCardBase;
 
-        // Tornar o card INTEIRO clicável para construção
+        // Tornar o card INTEIRO clicável para construção novamente!
         Button btnCard = cardObj.AddComponent<Button>();
         btnCard.transition = Selectable.Transition.None; 
-        // Passa a imagem de fundo para o feedback de compra
+        // Passa a imagem de fundo para o feedback de compra e executa
         btnCard.onClick.AddListener(() => ConstruirItem(item, imgBg));
         
         // Layout Vertical do Card
@@ -708,7 +725,8 @@ public class MenuConstrucao : MonoBehaviour
         // Isso resolve o "Hangar de Veículos" sendo tratado como unidade
         bool ehPredioExplícito = nomeLower.Contains("hangar") || nomeLower.Contains("fabrica") || nomeLower.Contains("refinaria") || 
                                  nomeLower.Contains("quartel") || nomeLower.Contains("tenda") || nomeLower.Contains("silo") ||
-                                 nomeLower.Contains("torre") || nomeLower.Contains("muro") || nomeLower.Contains("wall");
+                                 nomeLower.Contains("torre") || nomeLower.Contains("muro") || nomeLower.Contains("wall") ||
+                                 nomeLower.Contains("aeroporto") || nomeLower.Contains("heliporto") || nomeLower.Contains("pista");
 
         if (ehPredioExplícito)
         {
@@ -726,10 +744,18 @@ public class MenuConstrucao : MonoBehaviour
             }
         }
 
-        if (ehUnidadeMovel || item.categoria == DadosConstrucao.CategoriaItem.Exercito || item.categoria == DadosConstrucao.CategoriaItem.Aeronautica)
+        // Evita que prédios da categoria civil ou militar sejam tratados como unidades de combate
+        bool forcadoComoUnidade = false;
+        if (!ehPredioExplícito)
+        {
+            forcadoComoUnidade = (item.categoria == DadosConstrucao.CategoriaItem.Exercito || item.categoria == DadosConstrucao.CategoriaItem.Aeronautica);
+        }
+
+        if (ehUnidadeMovel || forcadoComoUnidade)
         {
             // É unidade! Manda comprar direto (Spawn na fábrica/heliporto)
             gerente.ComprarUnidade(item.prefabDaUnidade, item.preco, qtdParaConstruir);
+            AlternarMenu(false); // FORÇA FECHAMENTO DA TELA (Feedback visual)
             return;
         }
 

@@ -44,6 +44,7 @@ public class GestorDeConsumo : MonoBehaviour
             return;
         }
         Instancia = this;
+        transform.SetParent(null); // Garante que seja Root GameObject
         DontDestroyOnLoad(gameObject); // Persiste entre cenas
     }
 

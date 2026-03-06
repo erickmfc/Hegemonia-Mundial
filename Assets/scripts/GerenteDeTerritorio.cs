@@ -10,8 +10,22 @@ public class GerenteDeTerritorio : MonoBehaviour
 
     void Awake()
     {
-        if (Instancia == null) Instancia = this;
-        else Destroy(gameObject);
+        if (Instancia == null) 
+        {
+            Instancia = this;
+            
+            // Se o Gerente foi criado depois do jogo iniciar (pelo Construtor),
+            // busca e registra todos os marcadores que já nasceram na fase.
+            MarcadorTerritorio[] todosMarcadores = Object.FindObjectsByType<MarcadorTerritorio>(FindObjectsSortMode.None);
+            foreach (var m in todosMarcadores)
+            {
+                RegistrarMarcador(m);
+            }
+        }
+        else 
+        {
+            Destroy(gameObject);
+        }
     }
 
     public void RegistrarMarcador(MarcadorTerritorio marcador)
@@ -33,6 +47,9 @@ public class GerenteDeTerritorio : MonoBehaviour
         int donoVencedor = 0;
         // Float para achar quem vence a sobreposição num conflito do formato quadrado.
         float menorDistanciaQuadrada = float.MaxValue; 
+        
+        // --- Corredor Nulo ---
+        int donoSecundario = 0; // Se houver empate/sobreposição, guardamos o segundo dono 
 
         foreach (var m in marcadores)
         {
@@ -42,23 +59,37 @@ public class GerenteDeTerritorio : MonoBehaviour
             // A distância "quadrada" para borda é a diferença máxima nos seus dois eixos X e Z
             float distX = Mathf.Abs(ponto.x - m.transform.position.x);
             float distZ = Mathf.Abs(ponto.z - m.transform.position.z);
-            float distanciaQuadradaLocal = Mathf.Max(distX, distZ); // Isso faz o corte ser uma linha reta de x/z.
+            float distanciaQuadradaLocal = Mathf.Max(distX, distZ); // Corte em linha reta p/ divisas perfeitamente retas
 
-            // Vê se a pessoa ta dentro da expansão da nossa base (Bandeira=100m, Prefeitura=300m quadradamente)
+            // Vê se a pessoa ta dentro da expansão da nossa base (Bandeira=100m, Prefeitura=300m)
             if (distanciaQuadradaLocal <= m.raioDeDominio)
             {
-                // Se 2 inimigos plantarem bandeiras grudadas: 
-                // A disputa de sobreposição se ajusta para cortar a divisa exata no meio de forma reta!
                 if (distanciaQuadradaLocal < menorDistanciaQuadrada)
                 {
+                    // O vencedor anterior vira secundário (Corredor compartilhado se a diferença for pouca)
+                    if (donoVencedor != 0 && donoVencedor != m.teamID)
+                    {
+                        // Se a diferença entre a distância para a fronteira A e fronteira B for menos de 5 metros, é Corredor Nulo!
+                        // Mas aqui apenas guardamos. A matemática principal ocorre fora ou mantemos o mais forte.
+                        donoSecundario = donoVencedor;
+                    }
+
                     menorDistanciaQuadrada = distanciaQuadradaLocal;
                     donoVencedor = m.teamID;
+                }
+                else if (Mathf.Abs(distanciaQuadradaLocal - menorDistanciaQuadrada) < 5.0f && m.teamID != donoVencedor)
+                {
+                    // Margem de 5 metros onde é exatamene o meio da divisa: CORREDOR NULO MATEMÁTICO.
+                    // Ambos têm jurisprudência quase igual.
+                    donoSecundario = m.teamID;
                 }
             }
         }
 
         return donoVencedor;
     }
+
+
 
     /// <summary>
     /// Regra: "Não se pode por na mesma faixa de terra duas prefeituras."

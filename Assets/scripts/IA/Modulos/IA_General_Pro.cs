@@ -247,6 +247,18 @@ public class IA_General_Pro : MonoBehaviour
         }
     }
 
+    // =============================================
+    // RECRUTAMENTO DE CIVIS (MÉTODO PÚBLICO)
+    // =============================================
+    public void RecrutarTurista()
+    {
+        // Tenta comprar algo civil
+        if (ComprarUnidade(false, false, false, "civil", "turista", "caminhonete", "kombi", "onibus"))
+        {
+            _ultimoStatus = "🤝 Despachando Transporte Civil/Turistas para a fronteira.";
+        }
+    }
+
     bool ComprarUnidade(bool requerQuartel, bool ehNaval, bool ehHeli, params string[] keywords)
     {
         AtualizarListasDeFabricas(); 
@@ -351,14 +363,21 @@ public class IA_General_Pro : MonoBehaviour
         return false;
     }
 
+    private float _ultimoScanGlobal = -100f; // Cooldown para performance
+
     void AtualizarListasDeFabricas()
     {
-        // Limpa listas para evitar nulls
+        // Limpa listas para evitar nulls (rápido e não custa muito processamento)
         minhasFabricas.RemoveAll(f => f == null);
         meusEstaleiros.RemoveAll(e => e == null);
         meusHeliportos.RemoveAll(h => h == null);
 
-        // Re-scan global rápido
+        // OTIMIZAÇÃO: Evita fazer o Scan Global caríssimo da Unity se acabamos de fazer
+        // (Especialmente num loop onde a IA compra 4 coisas na mesma fração de segundo)
+        if (Time.time - _ultimoScanGlobal < 5.0f) return;
+        _ultimoScanGlobal = Time.time;
+
+        // Re-scan global
         var fabs = FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
         foreach(var f in fabs) RegistrarFabrica(f);
         
@@ -414,9 +433,22 @@ public class IA_General_Pro : MonoBehaviour
     public void RegistrarUnidade(GameObject u)
     {
         if (u == null) return;
-        if(grupoTanques.Contains(u) || grupoSoldados.Contains(u) || grupoNavios.Contains(u) || grupoHelis.Contains(u) || grupoTransportes.Contains(u)) return;
+        if(grupoTanques.Contains(u) || grupoSoldados.Contains(u) || grupoNavios.Contains(u) || grupoHelis.Contains(u) || grupoTransportes.Contains(u) || chefe.meusCivis.Contains(u)) return;
 
         string n = u.name.ToLower();
+
+        // Checa se é civil
+        if (n.Contains("civil") || n.Contains("turista") || n.Contains("onibus") || n.Contains("kombi"))
+        {
+            chefe.meusCivis.Add(u);
+            
+            // Mandá-lo viajar até a prefeitura do jogador:
+            if (chefe.alvoAtaquePrincipal != null)
+            {
+                MoverUnidade(u, chefe.alvoAtaquePrincipal.position);
+            }
+            return; // Civis não vão para os grupos táticos
+        }
         
         if(u.GetComponent<TransporteTerrestre>() != null) grupoTransportes.Add(u);
         else if(n.Contains("navio") || n.Contains("fragata") || n.Contains("corveta") || n.Contains("sub") || n.Contains("carrier") || n.Contains("liberty") || n.Contains("transporte naval") || n.Contains("hovercraft")) grupoNavios.Add(u);
@@ -537,17 +569,47 @@ public class IA_General_Pro : MonoBehaviour
     void MoverUnidade(GameObject u, Vector3 destino)
     {
         if (u == null) return;
+
+        var heli = u.GetComponent<Helicoptero>();
+        if (heli != null) 
+        { 
+            heli.Decolar(destino); 
+            return; 
+        }
+
+        // NÃO interrompe o soldado se ele já estiver correndo para embarcar num helicóptero!
+        if (Helicoptero.SoldadoEstaEmbarcando(u)) return;
+
         var ctrl = u.GetComponent<ControleUnidade>();
         if (ctrl) { ctrl.MoverParaPonto(destino); return; }
+
         var nav = u.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (nav && nav.isOnNavMesh) { nav.SetDestination(destino); nav.isStopped = false; }
     }
 
-    Transform BuscarAlvo()
+    public Transform BuscarAlvo()
     {
-        var alvos = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        foreach(var a in alvos) if(a.teamID == 1) return a.transform;
-        return null; // ou retorna uma base neutra
+        var alvos = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None).Where(a => a.teamID == 1).ToList();
+        if (alvos.Count == 0) return null;
+
+        // 1. Prefeitura (Alvo Primário Supremo)
+        var prefeitura = alvos.FirstOrDefault(a => a.name.ToLower().Contains("prefeitura") || a.GetComponent("ComplexoGovernamental") != null);
+        if (prefeitura != null) return prefeitura.transform;
+
+        // 2. Quartel General (Alvo Secundário Militar)
+        var quartel = alvos.FirstOrDefault(a => 
+        {
+            var f = a.GetComponent<Fabrica>();
+            return (f != null && f.ehQuartel) || a.name.ToLower().Contains("quartel");
+        });
+        if (quartel != null) return quartel.transform;
+
+        // 3. Outras Fábricas e Estruturas Estratégicas
+        var predio = alvos.FirstOrDefault(a => a.GetComponent<Fabrica>() != null || a.GetComponent<Estaleiro>() != null || a.GetComponent<Heliporto>() != null);
+        if (predio != null) return predio.transform;
+
+        // 4. Se não achou nenhum prédio, ataca a primeira unidade civil/militar que vir pela frente
+        return alvos[0].transform;
     }
     
     void MoverTropasParaPontoDeEncontro()

@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: Tenda Militar
   descricao: Alojamento para soldados. Permite recrutar infantaria.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 3a11829865205b648b8bbc19d941b4b0, type: 3}
   prefabDaUnidade: {fileID: 4918379845337785206, guid: 97a4164bfd1ae3444b166b729c80e307, type: 3}
   preco: 300
   categoria: 4
+  scriptsDeComando: []

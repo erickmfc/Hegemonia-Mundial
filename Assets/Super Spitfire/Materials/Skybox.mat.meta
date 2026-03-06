@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: d4aaf95b066b564448833c02f83acc3f
+timeCreated: 1452055496
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 53217
+  packageName: Super Spitfire
+  packageVersion: 1.1
+  assetPath: Assets/Super Spitfire/Materials/Skybox.mat
+  uploadId: 163002

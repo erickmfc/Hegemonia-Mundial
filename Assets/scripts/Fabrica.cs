@@ -93,11 +93,11 @@ public class Fabrica : MonoBehaviour
             idUnidade.nomeDoPais = idFabrica.nomeDoPais;
         }
 
-        // --- CHECAGEM DE SOM ---
-        if (unidade.GetComponent<SomUnidade>() == null)
-        {
-            Debug.LogWarning($"[Audio] Unidade '{unidade.name}' criada sem componente 'SomUnidade'! Adicione ao Prefab para ter áudio.");
-        }
+        // --- CHECAGEM DE SOM (Silenciado) ---
+        // if (unidade.GetComponent<SomUnidade>() == null)
+        // {
+        //     // Debug.LogWarning($"[Audio] Unidade '{unidade.name}' criada sem componente 'SomUnidade'! Adicione ao Prefab para ter áudio.");
+        // }
 
         // Tenta mover para a saída
         var controle = unidade.GetComponent<ControleUnidade>();

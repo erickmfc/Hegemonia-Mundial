@@ -131,8 +131,9 @@ public class Construtor : MonoBehaviour
             // Não redeclara pontoMouse, usa o calculado acima
             
             bool ehMuro = prefabSelecionado.name.Contains("Muro") || prefabSelecionado.name.Contains("Fence");
-            
-            if (ehConstrucaoNaval && fantasmaUnico != null)
+            bool ehPlataforma = prefabSelecionado.name.ToLower().Contains("plataforma");
+
+            if (ehConstrucaoNaval && fantasmaUnico != null && !ehPlataforma)
             {
                 // Acha o componente para ler os offsets se possível (Estaleiro ou PierMarinha)
                 float oFrente = 35f; float oTras = -15f;
@@ -158,8 +159,15 @@ public class Construtor : MonoBehaviour
             }
 
             // --- SISTEMA DE TERRITÓRIO E SOBERANIA ---
-            if (!previewLocalInvalido && GerenteDeTerritorio.Instancia != null)
+            if (!previewLocalInvalido)
             {
+                if (GerenteDeTerritorio.Instancia == null)
+                {
+                    // Força a criação do Gerente para as regras funcionarem na cena
+                    GameObject gerObj = new GameObject("GerenteDeTerritorio_Sistema");
+                    gerObj.AddComponent<GerenteDeTerritorio>();
+                }
+                
                 int donoDoPonto = GerenteDeTerritorio.Instancia.ObterDonoDoPonto(pontoMouse);
                 int meuTime = 1; // O jogador sempre é 1
 
@@ -167,38 +175,37 @@ public class Construtor : MonoBehaviour
                 bool ehBandeira = prefabSelecionado.name.ToLower().Contains("bandeira") || prefabSelecionado.name.ToLower().Contains("flag") || prefabSelecionado.GetComponent<MarcadorTerritorio>() != null;
 
                 // 1. Construções Comuns: Exigem terra nacionalmente dominada
-                if (!ehPrefeitura && !ehBandeira)
+                if (!ehPrefeitura && !ehBandeira && !ehPlataforma)
                 {
                     if (donoDoPonto != meuTime) 
                     {
                         previewLocalInvalido = true;
-                        motivoInvalido = "❌ TERRITÓRIO NÃO REIVINDICADO:\nPlante Bandeiras para expandir o espaço do seu País antes de construir estruturas mecânicas aqui.";
+                        motivoInvalido = "❌ TERRITÓRIO NÃO REIVINDICADO:\nConstrua dentro das linhas do seu País ou expanda plantando Bandeiras.";
                     }
                 }
                 
-                // 2. Prefeituras: Só podem em terra Neutra ou Sua. Proibido 2 na mesma ilha/terra (NavMesh test).
+                // 2. Prefeituras: Só podem em terra Neutra ou Sua. Proibido 2 na mesma ilha/terra.
                 if (ehPrefeitura)
                 {
                     if (donoDoPonto != 0 && donoDoPonto != meuTime) 
                     {
                         previewLocalInvalido = true;
-                        motivoInvalido = "❌ INVASÃO DIRETA:\nVocê não pode fundar a capital do Governo em um país inimigo.";
+                        motivoInvalido = "❌ INVASÃO DIRETA:\nVocê não pode fundar a Prefeitura/Capital em um país inimigo.";
                     }
                     else if (!GerenteDeTerritorio.Instancia.PodeConstruirPrefeitura(pontoMouse))
                     {
                         previewLocalInvalido = true;
-                        motivoInvalido = "❌ JÁ EXISTE LEI AQUI:\nEsta faixa de terra contígua já possui uma Prefeitura prefilada em alguma região. Você só pode possuir 1 governo por ilha.";
+                        motivoInvalido = "❌ JÁ EXISTE LEI AQUI:\nEsta ilha já possui uma Prefeitura.";
                     }
                 }
 
                 // 3. Bandeiras (Expansões): Proibido fincar totalmente no quintal inimigo. 
-                // Se for 0, é ilha nova (ou beirada neutra da sua expansão). Se for meuTime, é sobreposição legal.
                 if (ehBandeira)
                 {
                     if (donoDoPonto != 0 && donoDoPonto != meuTime) 
                     {
                         previewLocalInvalido = true;
-                        motivoInvalido = "❌ JURISDIÇÃO INIMIGA:\nA soberania desta área já foi assegurada por rivais. Cuidado.";
+                        motivoInvalido = "❌ JURISDIÇÃO INIMIGA:\nA soberania desta área já pertence a outra Nação.";
                     }
                 }
             }
@@ -221,6 +228,9 @@ public class Construtor : MonoBehaviour
         
         fantasmaUnico.transform.position = ponto;
 
+        // --- SISTEMA DE COR: FANTASMA VERMELHO SE FOR INVÁLIDO ---
+        AplicarCorNoFantasma(fantasmaUnico, previewLocalInvalido);
+
         // Rotacionar com R
         if (Input.GetKeyDown(KeyCode.R))
         {
@@ -233,7 +243,9 @@ public class Construtor : MonoBehaviour
             if (previewLocalInvalido)
             {
                 Debug.LogWarning($"⚠️ [Construtor] Abortando: {motivoInvalido}");
-                return; // Aborta
+                
+                // IMPORTANTE: Bloqueia a construção. Não avança!
+                return; 
             }
 
             Vector3 posFinal = fantasmaUnico.transform.position;
@@ -256,6 +268,36 @@ public class Construtor : MonoBehaviour
             
             // SUCESSO! Não reembolsa dinheiro, apenas limpa a seleção
             CancelarConstrucao(false); 
+        }
+    }
+
+    // Helper para pintar o fantasma de vermelho
+    void AplicarCorNoFantasma(GameObject fantasma, bool ehInvalido)
+    {
+        Renderer[] renders = fantasma.GetComponentsInChildren<Renderer>();
+        foreach (Renderer r in renders)
+        {
+            foreach (Material mat in r.materials)
+            {
+                if (ehInvalido)
+                {
+                    mat.color = new Color(1f, 0.2f, 0.2f, 0.6f); // Vermelho Translúcido
+                }
+                else
+                {
+                    mat.color = new Color(0.2f, 1f, 0.2f, 0.6f); // Verde Translúcido Seguro
+                }
+
+                // Força o material a ser transparente para o fantasma
+                mat.SetFloat("_Mode", 3);
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = 3000;
+            }
         }
     }
 
@@ -577,24 +619,34 @@ public class Construtor : MonoBehaviour
     public int VerTipoPonto(Vector3 ponto)
     {
         // 1 = AGUA, 2 = TERRA, 0 = INCONCLUSIVO
+        int mascaraGeral = ~(1 << LayerMask.NameToLayer("Ignore Raycast"));
         RaycastHit hit;
-        if (Physics.Raycast(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, out hit, 1000f))
+        
+        if (Physics.Raycast(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, out hit, 1000f, mascaraGeral))
         {
             int l = hit.collider.gameObject.layer;
             string n = hit.collider.name.ToLower();
             
+            // Checa explícito
             if (l == 4 || n.Contains("water") || n.Contains("agua") || n.Contains("ocean") || n.Contains("mar") || n.Contains("sea"))
                 return 1;
             
-            if (l == LayerMask.NameToLayer("Ignore Raycast") || hit.collider.GetComponent<IdentidadeUnidade>())
+            if (hit.collider.GetComponent<IdentidadeUnidade>())
                 return 0;
 
-            return 2;
+            // Se bateu no terreno, mas esse terreno está abaixo do nível do mar (típico de rios/praia profunda),
+            // então consideramos água!
+            if (hit.point.y <= alturaDoMar + 1.0f)
+            {
+                return 1;
+            }
+
+            return 2; // Terra Firme
         }
         
         if (Terrain.activeTerrain != null) 
         {
-            if (Terrain.activeTerrain.SampleHeight(ponto) <= alturaDoMar + 0.5f) return 1;
+            if (Terrain.activeTerrain.SampleHeight(ponto) <= alturaDoMar + 1.0f) return 1;
             return 2;
         }
 

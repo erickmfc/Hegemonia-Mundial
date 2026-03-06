@@ -117,9 +117,37 @@ public class GerenteSelecao : MonoBehaviour
 
                 if (encontrouDestino)
                 {
+                    MostrarMarcadorDestino(destino);
                     MoverUnidadesEmGrupo(destino);
                 }
             }
+        }
+    }
+
+    // --- MARCADOR VISUAL DO CLIQUE ---
+    void MostrarMarcadorDestino(Vector3 pos)
+    {
+        GameObject marcador = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        Destroy(marcador.GetComponent<Collider>());
+        marcador.transform.position = pos + Vector3.up * 0.1f;
+        marcador.transform.localScale = new Vector3(2f, 0.05f, 2f);
+        
+        Renderer r = marcador.GetComponent<Renderer>();
+        r.material = new Material(Shader.Find("Sprites/Default"));
+        r.material.color = new Color(0f, 1f, 0.5f, 0.6f); // Verde neon
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        
+        marcador.AddComponent<AnimadorMarcador>();
+    }
+
+    public class AnimadorMarcador : MonoBehaviour
+    {
+        float tempo = 0;
+        void Update()
+        {
+            tempo += Time.deltaTime * 3f;
+            transform.localScale = Vector3.Lerp(new Vector3(2f, 0.05f, 2f), Vector3.zero, tempo);
+            if (tempo >= 1f) Destroy(gameObject);
         }
     }
 
@@ -144,13 +172,31 @@ public class GerenteSelecao : MonoBehaviour
         // Define espaçamento dinâmico
         float espacamentoReal = ehGrupoNaval ? 30.0f : espacamento; 
 
-        // 2. Calcula formação
+        // 2. Calcula centro do grupo para saber a direção
+        Vector3 centroGrupo = Vector3.zero;
+        int validos = 0;
+        foreach (var u in unidadesSelecionadas)
+        {
+            if (u != null) { centroGrupo += u.transform.position; validos++; }
+        }
+        if (validos > 0) centroGrupo /= validos;
+
+        // Direção central
+        Vector3 direcaoMovimento = (destinoCentral - centroGrupo).normalized;
+        if (direcaoMovimento == Vector3.zero) direcaoMovimento = Vector3.forward;
+
+        // Rotação da Formação
+        Quaternion rotacaoFormacao = Quaternion.LookRotation(direcaoMovimento);
+
+        // 3. Calcula formação
         int total = unidadesSelecionadas.Count;
         int colunas = Mathf.CeilToInt(Mathf.Sqrt(total));
 
-        // Calcula o offset para centralizar a formação
+        // Ponto de partida centrado
         float larguraTotal = (colunas - 1) * espacamentoReal;
-        Vector3 inicio = destinoCentral - new Vector3(larguraTotal / 2, 0, larguraTotal / 2);
+        float profundidadeTotal = (Mathf.CeilToInt((float)total / colunas) - 1) * espacamentoReal;
+        
+        Vector3 offsetCentral = new Vector3(-larguraTotal / 2f, 0, -profundidadeTotal / 2f);
 
         for (int i = 0; i < total; i++)
         {
@@ -159,7 +205,14 @@ public class GerenteSelecao : MonoBehaviour
             int x = i % colunas;
             int z = i / colunas;
 
-            Vector3 posAlvo = inicio + new Vector3(x * espacamentoReal, 0, z * espacamentoReal);
+            // Ponto local na grade matemática
+            Vector3 posLocalGrade = offsetCentral + new Vector3(x * espacamentoReal, 0, z * espacamentoReal);
+            
+            // Roda o ponto local com base na direção da caminhada
+            Vector3 offsetRodado = rotacaoFormacao * posLocalGrade;
+
+            // Posição Final no Mundo Real
+            Vector3 posAlvo = destinoCentral + offsetRodado;
 
             // --- BLOQUEIO DE MOVIMENTO (MODO MANUAL) ---
             // Se estiver mirando manualmente, o clique direito é para atirar, não andar

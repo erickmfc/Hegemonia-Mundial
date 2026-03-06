@@ -109,11 +109,10 @@ public class NavegacaoInteligenteNaval : MonoBehaviour
         float velocidadeAvanco = transform.InverseTransformDirection(rb.linearVelocity).z;
 
         // DECIDIR SE VAI DE FRENTE OU DE RÉ
-        if (Mathf.Abs(velocidadeAvanco) < 2f) // Só decide mudar de marcha se estiver devagar
-        {
-            float anguloParaAlvo = Vector3.Angle(transform.forward, direcaoParaAlvo);
-            emMarchaRe = (anguloParaAlvo > 130f && Vector3.Distance(transform.position, alvoGPS) < distanciaMaximaRe);
-        }
+        // O jogador reportou um bug severo ao tentar atracar o navio no Píer de ré ("ia de ré e dava pau no posicionamento final").
+        // Solução: Desligamos a marcha à ré inteligente inteiramente (forçando atracação padrão frontal) 
+        // para contornar a interferência do 'drift invertido' e da aproximação NavMesh de ré.
+        emMarchaRe = false;
 
         Vector3 direcaoQueQueremosOlhar = emMarchaRe ? -direcaoParaAlvo : direcaoParaAlvo;
 

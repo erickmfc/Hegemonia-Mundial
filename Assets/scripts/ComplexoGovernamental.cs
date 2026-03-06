@@ -34,6 +34,13 @@ public class ComplexoGovernamental : MonoBehaviour
         {
             ehDoJogador = (identidade.teamID == 1);
         }
+
+        // --- SISTEMA DE CORREDOR NULO (ALFÂNDEGA) ---
+        // Apenas a base central do jogador precisará exibir o PopUp de Imigração
+        if (ehDoJogador && SistemaConsulado.Instancia == null)
+        {
+            gameObject.AddComponent<SistemaConsulado>();
+        }
     }
 
     void Update()
@@ -64,8 +71,11 @@ public class ComplexoGovernamental : MonoBehaviour
         Debug.Log($"🏛️ [Complexo Governamental] Abrindo o painel central da {nomeDoPais}!");
         aoAbrirMenuGestao?.Invoke();
         
-        // TODO: Chamar e exibir a UI Canvas do Gestor do Estado (em desenvolvimento).
-        // Ex: MenuGestaoEstado.Instancia.AbrirPainel(this);
+        // Em vez de Consulado Backend, abre a Interface Moderna de Abas.
+        if (MenuGoverno.Instancia != null)
+        {
+            MenuGoverno.Instancia.AlternarMenu(!MenuGoverno.EstaAberto);
+        }
     }
 
     /// <summary>

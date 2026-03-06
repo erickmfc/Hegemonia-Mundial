@@ -21,15 +21,16 @@ public class IA_Comandante : MonoBehaviour
     public float rendaPorSegundo = 15f; // Renda passiva base
 
     [Header("Estado Mental")]
-    public EstadoEstrategico estadoAtual = EstadoEstrategico.Expandir;
+    public EstadoEstrategico estadoAtual = EstadoEstrategico.Paz_Desenvolvimento;
     public float intervaloDecisao = 2.0f; // Segundos entre pensamentos
 
     public enum EstadoEstrategico
     {
-        Expandir,       // Buscar novos recursos e construir bases
-        Fortificar,     // Construir defesas nas bases existentes
-        Acumular_Forcas,// Criar tropas e reunir no ponto de encontro
-        Ataque_Total    // Enviar tudo para a base do jogador
+        Paz_Desenvolvimento, // Focada na economia, urbanismo e envio de turistas/imigrantes
+        Expandir,            // Buscar novos recursos e construir bases logísticas
+        Fortificar,          // Construir defesas nas bases existentes
+        Acumular_Forcas,     // Criar tropas militares e reunir na base
+        Ataque_Total         // Enviar TODO o exército para a base do jogador
     }
 
     // --- CONHECIMENTO GLOBAL ---
@@ -37,6 +38,7 @@ public class IA_Comandante : MonoBehaviour
     public List<GameObject> minhasUnidades = new List<GameObject>();
     public List<GameObject> minhasBases = new List<GameObject>();
     public List<GameObject> meusTransportes = new List<GameObject>();
+    public List<GameObject> meusCivis = new List<GameObject>(); // Para turismo/imigração
     
     // Locais de interesse (Recursos neutros, bases inimigas descobertas)
     public List<Transform> pontosDeRecursoConhecidos = new List<Transform>();
@@ -58,6 +60,7 @@ public class IA_Comandante : MonoBehaviour
     {
         // Garante componente de identidade
         if(identidade == null) identidade = GetComponent<IdentidadeIA>();
+        // Fallback: se não tiver no objeto, adiciona
         if(identidade == null) identidade = gameObject.AddComponent<IdentidadeIA>();
         identidade.teamID = TeamID;
     }
@@ -97,6 +100,9 @@ public class IA_Comandante : MonoBehaviour
 
             switch (estadoAtual)
             {
+                case EstadoEstrategico.Paz_Desenvolvimento:
+                    LogicaPazEDesenvolvimento();
+                    break;
                 case EstadoEstrategico.Expandir:
                     LogicaExpandir();
                     break;
@@ -111,34 +117,73 @@ public class IA_Comandante : MonoBehaviour
                     break;
             }
 
-            // Transição simples de estados (exemplo)
+            // Transição dinâmica do comportamento (Agressivo vs Pacífico)
             AvaliarMudancaDeEstado();
         }
     }
 
     void AvaliarMudancaDeEstado()
     {
-        int totalSoldados = minhasUnidades.Count(u => u != null && !u.name.Contains("Construtor"));
+        int totalSoldados = minhasUnidades.Count(u => u != null && !u.name.Contains("Construtor") && !u.name.Contains("Civil"));
+        int totalCivis = meusCivis.Count(u => u != null);
         
-        // Se temos poucas bases, PRIORITY = EXPANDIR
-        if (minhasBases.Count < 2) 
+        // A IA começa pacífica, juntando forças ou colonizando. 
+        // Se a economia está forte, ela expande e investe em civis/turismo.
+        
+        // Se tem menos de 2 bases, foca em exploração
+        if (minhasBases.Count < 2 && dinheiro > 1000) 
         {
             estadoAtual = EstadoEstrategico.Expandir;
             return;
         }
 
-        // Se temos exército grande, ATACAR
-        if (totalSoldados > 15)
+        // Se está incrivelmente rica e estruturada, ataca
+        if (totalSoldados >= 15 && dinheiro > 2000)
         {
             estadoAtual = EstadoEstrategico.Ataque_Total;
+            return;
         }
-        else if (totalSoldados < 5)
+        
+        // Se perdeu o exército, volta pra casa
+        if (totalSoldados < 5 && estadoAtual == EstadoEstrategico.Ataque_Total)
         {
             estadoAtual = EstadoEstrategico.Acumular_Forcas;
+            return;
+        }
+
+        // Se tem economia sobrando mas ainda não tem exército colossal, foca no Povo.
+        if (dinheiro > 1000 && totalSoldados >= 5 && totalSoldados < 15)
+        {
+            estadoAtual = EstadoEstrategico.Paz_Desenvolvimento;
+            return;
+        }
+        
+        // Estado base se não caiu nas outras regras
+        if (estadoAtual == EstadoEstrategico.Expandir && minhasBases.Count >= 2)
+        {
+            estadoAtual = EstadoEstrategico.Paz_Desenvolvimento;
         }
     }
 
     // --- LÓGICA DE CADA ESTADO ---
+
+    void LogicaPazEDesenvolvimento()
+    {
+        // 1. O foco de paz é ganhar muito dinheiro, gerenciar turismo e construir cidades
+        if (alvoAtaquePrincipal == null || !alvoAtaquePrincipal.gameObject.activeInHierarchy)
+        {
+            if (cerebroGeneral != null) alvoAtaquePrincipal = cerebroGeneral.BuscarAlvo();
+        }
+
+        // 2. Tentar enviar Embaixadores / Turistas civis até a prefeitura do jogador (Causando imigração)
+        if (dinheiro > 500 && alvoAtaquePrincipal != null && meusCivis.Count < 5)
+        {
+            if (cerebroGeneral != null)
+            {
+                cerebroGeneral.RecrutarTurista();
+            }
+        }
+    }
 
     void LogicaExpandir()
     {
@@ -193,12 +238,11 @@ public class IA_Comandante : MonoBehaviour
 
     void LogicaAtaqueTotal()
     {
-        if (alvoAtaquePrincipal == null)
+        // Atualiza ativamente o alvo caso o alvo principal tenha sido destruído!
+        if (alvoAtaquePrincipal == null || !alvoAtaquePrincipal.gameObject.activeInHierarchy)
         {
-            // Tenta achar o player
-            var player = FindFirstObjectByType<GerenteDeJogo>(); // Assume que o gerente está perto da base
-            if (player != null) alvoAtaquePrincipal = player.transform;
-            else return;
+            if (cerebroGeneral != null) alvoAtaquePrincipal = cerebroGeneral.BuscarAlvo();
+            if (alvoAtaquePrincipal == null) return; // Inimigo totalmente aniquilado?
         }
 
         // Ordena TODAS as unidades militares a atacar

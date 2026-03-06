@@ -30,11 +30,16 @@ public class GerenteDeJogo : MonoBehaviour
         if (Instancia == null) Instancia = this;
         else Destroy(gameObject);
 
-        // --- SISTEMA DE UI: MENU PIER (Tecla V) ---
+        // --- SISTEMA DE UI: MENU PIER (Tecla V) E MENU GOVERNO (Tecla X) ---
         if (GetComponent<MenuPier>() == null)
         {
             gameObject.AddComponent<MenuPier>();
             Debug.Log("[Gerente] MenuPier adicionado automaticamente.");
+        }
+        if (GetComponent<MenuGoverno>() == null)
+        {
+            gameObject.AddComponent<MenuGoverno>();
+            Debug.Log("[Gerente] MenuGoverno adicionado automaticamente.");
         }
 
         // --- AUTOMATIZAÇÃO DE SPAWN POINTS ---
@@ -81,7 +86,8 @@ public class GerenteDeJogo : MonoBehaviour
 
     void Start()
     {
-        // AtualizarPainel() removido - agora gerenciado pelo PainelRecursos
+        // Inicia o processamento da fila com uma Coroutine otimizada
+        StartCoroutine(ProcessarFilaCoroutine());
     }
 
     [Header("Fila de Produção")]
@@ -97,27 +103,29 @@ public class GerenteDeJogo : MonoBehaviour
         public bool ehSoldado;
         public bool ehHelicoptero;
         public bool ehNavio;
+        public bool ehAviao;
     }
 
-    void Update()
+    private System.Collections.IEnumerator ProcessarFilaCoroutine()
     {
-        ProcessarFila();
-    }
-
-    void ProcessarFila()
-    {
-        if (filaProducao.Count > 0)
+        while (true)
         {
-            // Pega o primeiro da fila
-            PedidoDeProducao pedidoAtual = filaProducao[0];
-            pedidoAtual.tempoRestante -= Time.deltaTime;
-
-            if (pedidoAtual.tempoRestante <= 0)
+            if (filaProducao.Count > 0)
             {
-                // Ficou pronto!
-                FinalizarProducao(pedidoAtual);
-                filaProducao.RemoveAt(0);
+                // Pega o primeiro da fila
+                PedidoDeProducao pedidoAtual = filaProducao[0];
+                pedidoAtual.tempoRestante -= 0.2f; // Subtrai o intervalo da coroutine
+
+                if (pedidoAtual.tempoRestante <= 0)
+                {
+                    // Ficou pronto!
+                    FinalizarProducao(pedidoAtual);
+                    filaProducao.RemoveAt(0);
+                }
             }
+            
+            // Aguarda 0.2 segundos antes de checar novamente
+            yield return new WaitForSeconds(0.2f);
         }
     }
 
@@ -130,29 +138,45 @@ public class GerenteDeJogo : MonoBehaviour
         bool ehSoldado = (nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("person") || nome.Contains("infantry") || nome.Contains("fuzileiro"));
         bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("destroier") || nome.Contains("porta") || nome.Contains("barco") || nome.Contains("lancha"));
 
-        // MELHORIA CRÍTICA: Identifica helicóptero pelo script REAL e não só pelo nome do prefab! 
-        // O "Falcon" estava escapando aqui porque o nome dele não tinha "ray" nem "apache".
         bool ehHelicoptero = (unidadeParaConstruir.GetComponent<Helicoptero>() != null || 
                               unidadeParaConstruir.GetComponent("HelicopterController") != null ||
                               unidadeParaConstruir.GetComponent("VooHelicoptero") != null ||
-                              nome.Contains("helicoptero") || nome.Contains("ray") || nome.Contains("viper") || nome.Contains("apache") || nome.Contains("falcon") || nome.Contains("heli"));
+                              nome.Contains("helicoptero") || nome.Contains("ray") || nome.Contains("viper") || nome.Contains("apache") || nome.Contains("heli"));
 
-        Debug.Log($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}");
+        bool ehAviao = (unidadeParaConstruir.GetComponent<ControleAviao>() != null || 
+                        nome.Contains("aviao") || nome.Contains("caca") || nome.Contains("g15") || 
+                        nome.Contains("jet") || nome.Contains("bomb") || nome.Contains("fighter") || nome.Contains("falcon"));
 
-        // 2. Verificar se a FÁBRICA existe
-        // --- VERIFICAÇÃO DE FÁBRICA DESABILITADA (Spawn de Fallback será usado) ---
-        /*
-        if (ehSoldado && spawnSoldado == null)
+        Debug.Log($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}, Avião? {ehAviao}");
+
+        // 2. Verificar se a FÁBRICA existe (Impedir aparecer na câmera do nada!)
+        if (ehSoldado)
         {
-            Debug.LogWarning("⚠️ Você precisa construir uma TENDA antes de treinar soldados!");
-            return; // Cancela compra
+            listaQuarteis.RemoveAll(q => q.spawn == null);
+            if (listaQuarteis.Count == 0 && spawnSoldado == null)
+            {
+                Debug.LogWarning("PROIBIDO: Você precisa construir uma TENDA/QUARTEL antes de treinar soldados!");
+                return; // Cancela compra e não gasta o dinheiro
+            }
         }
-        if (!ehSoldado && spawnInterno == null)
+        else if (ehNavio)
         {
-            Debug.LogWarning("⚠️ Você precisa construir um HANGAR antes de fabricar tanques!");
-            return; // Cancela compra
+            listaEstaleiros.RemoveAll(e => e.spawn == null);
+            if (listaEstaleiros.Count == 0)
+            {
+                Debug.LogWarning("PROIBIDO: Você precisa construir um ESTALEIRO NAVAL antes de fabricar navios!");
+                return; // Cancela compra
+            }
         }
-        */
+        else if (!ehHelicoptero && !ehAviao) // Fica sendo Veículo Terrestre
+        {
+            listaHangares.RemoveAll(h => h.spawn == null);
+            if (listaHangares.Count == 0 && spawnInterno == null)
+            {
+                Debug.LogWarning("PROIBIDO: Você precisa construir um HANGAR/FÁBRICA antes de fabricar blindados ou veículos pesados!");
+                return; // Cancela compra
+            }
+        }
 
         // VERIFICAÇÃO ESTRITA: Helicópteros SÓ no Heliporto
         if (ehHelicoptero)
@@ -164,6 +188,12 @@ public class GerenteDeJogo : MonoBehaviour
                 // Opcional: Aqui poderíamos chamar algum UI Error na tela.
                 return; // Cancela antes de gastar dinheiro ou entrar na fila
             }
+        }
+
+        if (ehAviao && FindFirstObjectByType<GerenciadorAeroporto>() == null)
+        {
+            Debug.LogWarning("PROIBIDO: Você precisa possuir o AEROPORTO NA CENA antes de comprar aviões ou caças táticos!");
+            return;
         }
 
         // 3. Verifica Dinheiro Total
@@ -190,6 +220,7 @@ public class GerenteDeJogo : MonoBehaviour
                 novoPedido.ehSoldado = ehSoldado;
                 novoPedido.ehHelicoptero = ehHelicoptero;
                 novoPedido.ehNavio = ehNavio;
+                novoPedido.ehAviao = ehAviao;
                 
                 // Tempo de Produção: 0s para Soldado (Instantâneo), 2s para Tanque/Heli
                 float tempoBase = ehSoldado ? 0f : 2.0f;
@@ -211,6 +242,20 @@ public class GerenteDeJogo : MonoBehaviour
 
     void FinalizarProducao(PedidoDeProducao pedido)
     {
+        if (pedido.ehAviao)
+        {
+            GerenciadorAeroporto aero = FindFirstObjectByType<GerenciadorAeroporto>();
+            if (aero != null)
+            {
+                aero.ComprarAviao(pedido.prefab);
+            }
+            else
+            {
+                Debug.LogError($"ERRO: O Avião '{pedido.nomeUnidade}' terminou a produção mas o Aeroporto sumiu!");
+            }
+            return; // Corta aqui a verificação padrão de fábricas terrestres. O próprio Aeroporto Instancia.
+        }
+
         Transform spawnAtual = null;
         Transform destinoAtual = null;
 

@@ -161,7 +161,9 @@ public class TorreDeControle : MonoBehaviour
             Text txtInfo = btnObj.GetComponentInChildren<Text>();
             if (txtInfo != null)
             {
-                txtInfo.text = $"{aviao.name}\nStatus: {aviao.ObterEstadoTexto()}"; // Precisa add getter no avião
+                // Converte a cor para Hex para usar no Rich Text
+                string hexColor = ColorUtility.ToHtmlStringRGB(aviao.corIdentificacao);
+                txtInfo.text = $"<color=#{hexColor}>■</color> {aviao.name}\nStatus: {aviao.ObterEstadoTexto()}";
             }
 
             // Configura ações dos botões

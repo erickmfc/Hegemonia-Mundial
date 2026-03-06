@@ -19,7 +19,7 @@ public class TransporteTerrestre : MonoBehaviour
 
     private bool selecionado = false;
 
-    void Start()
+    void Awake()
     {
         // Inicializa array de assentos baseados nos slots disponíveis
         if (assentosVisiveis != null)
@@ -347,6 +347,7 @@ public class TransporteTerrestre : MonoBehaviour
     
     int ContarVisiveis()
     {
+        if (soldadosNosAssentos == null) return 0;
         int c = 0;
         foreach(var s in soldadosNosAssentos) if(s != null) c++;
         return c;

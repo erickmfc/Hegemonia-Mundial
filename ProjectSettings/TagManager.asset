@@ -12,6 +12,7 @@ TagManager:
   - Navio
   - Soldado
   - Imovel
+  - Aviao
   layers:
   - Default
   - TransparentFX

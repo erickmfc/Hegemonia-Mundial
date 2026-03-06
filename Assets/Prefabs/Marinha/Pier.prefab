@@ -1289,6 +1289,7 @@ GameObject:
   - component: {fileID: 1740227756702615115}
   - component: {fileID: 1344463978058793189}
   - component: {fileID: 7156981930185589485}
+  - component: {fileID: -2325198407568977890}
   m_Layer: 0
   m_Name: Pier
   m_TagString: Untagged
@@ -1471,6 +1472,24 @@ MonoBehaviour:
   pontoEntrada: {fileID: 3064646619704684095}
   pontoAcoplagem: {fileID: 4246964438323260673}
   pontoSaidaNavio: {fileID: 3064646619704684095}
+  offsetAguaFrente: 35
+  offsetTerraTras: -15
+--- !u!114 &-2325198407568977890
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7311975716072282350}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 0
 --- !u!1 &7796679048472815945
 GameObject:
   m_ObjectHideFlags: 0

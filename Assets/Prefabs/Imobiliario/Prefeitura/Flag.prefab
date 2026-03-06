@@ -123,6 +123,7 @@ GameObject:
   - component: {fileID: 1315448553159251154}
   - component: {fileID: 905722813668682672}
   - component: {fileID: 670541215599553732}
+  - component: {fileID: -8697671829118982061}
   m_Layer: 0
   m_Name: Flag
   m_TagString: Untagged
@@ -179,6 +180,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MarcadorTerritorio
   raioDeDominio: 100
   ehPrefeitura: 0
+  mostrarBordasNoJogo: 1
+  larguraLinha: 1.5
+--- !u!114 &-8697671829118982061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3400848569100608902}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 250
+  vidaAtual: 250
+  unidadeBiologica: 0
+  ehEstrutura: 0
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 1
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
 --- !u!1 &3520296768327266330
 GameObject:
   m_ObjectHideFlags: 0

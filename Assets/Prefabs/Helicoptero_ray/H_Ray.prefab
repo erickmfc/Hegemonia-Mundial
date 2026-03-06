@@ -174,7 +174,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Helicoptero
   controleSempreAtivo: 0
-  selecionado: 0
+  selecionado: 1
   raioDoClique: 13
   altitudeDeVoo: 20
   alturaPouso: 1.33
@@ -196,6 +196,12 @@ MonoBehaviour:
   - {fileID: 5255319693904876876}
   helicePrincipal: {fileID: 418564}
   heliceTraseira: {fileID: 413970}
+  audioMotor: {fileID: 0}
+  pitchMinimo: 0.5
+  pitchMaximo: 1.2
+  volumeMaximo: 1
+  tempoSpinUp: 4
+  tempoSpinDown: 6
   nomeHelicoptero: Hay
   custoUpgrade: 200
 --- !u!114 &-3325090875797799037
@@ -277,6 +283,7 @@ MonoBehaviour:
   vidaMaxima: 450
   vidaAtual: 450
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 161708, guid: 6e733342390399a449a3385730e48c22, type: 3}
   somExplosaoExclusivo: {fileID: 8300000, guid: 1fd31868d68903d4f9e2c4a3b7ef98f3, type: 3}
   tamanhoDoEfeito: 5.4
@@ -10397,6 +10404,7 @@ MonoBehaviour:
   vidaMaxima: 500
   vidaAtual: 500
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 161708, guid: 6e733342390399a449a3385730e48c22, type: 3}
   somExplosaoExclusivo: {fileID: 8300000, guid: d47e6ed162da1f740ad807d00f4679f3, type: 3}
   tamanhoDoEfeito: 2.8
