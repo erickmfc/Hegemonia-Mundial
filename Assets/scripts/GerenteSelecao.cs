@@ -118,7 +118,15 @@ public class GerenteSelecao : MonoBehaviour
                 if (encontrouDestino)
                 {
                     MostrarMarcadorDestino(destino);
-                    MoverUnidadesEmGrupo(destino);
+
+                    // VERIFICA SE CLICOU EM UM AEROPORTO PARA OS AVIÕES POUSAREM (Abastecimento Manual)
+                    TorreDeControle torre = null;
+                    if (hit.collider != null)
+                    {
+                         torre = hit.collider.GetComponentInParent<TorreDeControle>();
+                    }
+
+                    MoverUnidadesEmGrupo(destino, torre);
                 }
             }
         }
@@ -152,7 +160,7 @@ public class GerenteSelecao : MonoBehaviour
     }
 
     // --- NOVA LÓGICA DE FORMAÇÃO ---
-    void MoverUnidadesEmGrupo(Vector3 destinoCentral)
+    void MoverUnidadesEmGrupo(Vector3 destinoCentral, TorreDeControle torreDestino = null)
     {
         // 1. Detecta tipo de grupo (Naval ou Terrestre)
         bool ehGrupoNaval = false;
@@ -237,7 +245,14 @@ public class GerenteSelecao : MonoBehaviour
 
             // CORREÇÃO: Verifica se tem HelicopterController/Voo
             Helicoptero heli = unidadesSelecionadas[i].GetComponent<Helicoptero>();
-            if (heli != null)
+            ControleAviaoCaca caca = unidadesSelecionadas[i].GetComponent<ControleAviaoCaca>();
+
+            if (torreDestino != null && caca != null)
+            {
+                // Se clicou no aeroporto, ordena pouso do caça imediatamente
+                torreDestino.OrdenarPouso(caca);
+            }
+            else if (heli != null)
             {
                 heli.Decolar(posAlvo);
             }

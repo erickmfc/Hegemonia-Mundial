@@ -25,6 +25,11 @@ public class LancadorMisselCaca : MonoBehaviour
     private SistemaDeDanos sistemaDanos;
     private int meuTime;
 
+    // Patrulha e Comportamento
+    public bool modoPassivo = false; // Controlado pelo MenuComportamento
+    private Vector3 pontoPatrulha;
+    private bool voltandoParaBase = false;
+
     // Detecção
     public class AlvoDetectado 
     {
@@ -60,6 +65,9 @@ public class LancadorMisselCaca : MonoBehaviour
         {
             tempoUltimoScan = Time.time;
             EscanearArea();
+            
+            // --- LÓGICA DE PATRULHA AUTOMÁTICA ---
+            ProcessarPatrulhaAutomatica();
         }
 
         // 2. Sistema de Recarga Automática na Base
@@ -88,6 +96,14 @@ public class LancadorMisselCaca : MonoBehaviour
                 }
                 
                 Debug.Log($"✈️ [Base] {gameObject.name} recarregou mísseis no Hangar/Porta-Aviões!");
+
+                // Se estava voltando para a base sozinho, ele decola de volta pra patrulha
+                if (voltandoParaBase)
+                {
+                    voltandoParaBase = false;
+                    vooBase.DefinirDestino(pontoPatrulha);
+                    Debug.Log($"✈️ [Base] {gameObject.name} voltando para a patrulha automática!");
+                }
             }
             if (sistemaDanos.vidaAtual < sistemaDanos.vidaMaxima)
             {
@@ -95,6 +111,65 @@ public class LancadorMisselCaca : MonoBehaviour
                 Debug.Log($"✈️ [Base] {gameObject.name} foi totalmente reparado!");
             }
         }
+    }
+
+    void ProcessarPatrulhaAutomatica()
+    {
+        // Se estiver no chão, não tenta atirar
+        if (vooBase.ObterEstadoTexto() == "No Chão") return;
+
+        // Se a missão era voltar pra base, foca nisso e ignora inimigos
+        if (voltandoParaBase) return;
+
+        // Se estiver ativo (não passivo) e tem mísseis
+        if (!modoPassivo)
+        {
+            if (municaoAtual > 0 && cronometroRecarga <= 0 && inimigosNaArea.Count > 0)
+            {
+                // Pega o inimigo mais próximo e atira! (O inimigosNaArea já é ordenado por distância via EscanearArea)
+                var alvo = inimigosNaArea[0];
+                if (alvo != null && alvo.transform != null)
+                {
+                    Disparar(alvo.transform);
+                }
+            }
+
+            // Volta para a base pegar munição se ficar vazio e não estiver passivo
+            if (municaoAtual <= 0)
+            {
+                TorreDeControle torreMaisProxima = PegaTorreMaisProxima();
+
+                if (torreMaisProxima != null)
+                {
+                    pontoPatrulha = vooBase.DestinoAtual; // Grava onde ele estava fazendo a ronda
+                    voltandoParaBase = true;
+                    torreMaisProxima.OrdenarPouso(vooBase);
+                    Debug.Log($"✈️ [Radar] {gameObject.name} sem munição! Retornando para a base na Torre.");
+                }
+            }
+        }
+    }
+
+    TorreDeControle PegaTorreMaisProxima()
+    {
+        TorreDeControle[] torres = FindObjectsByType<TorreDeControle>(FindObjectsSortMode.None);
+        TorreDeControle melhor = null;
+        float distMin = float.MaxValue;
+        
+        foreach(var t in torres)
+        {
+            IdentidadeUnidade id = t.GetComponent<IdentidadeUnidade>();
+            if (id != null && id.teamID == meuTime)
+            {
+                float d = Vector3.Distance(transform.position, t.transform.position);
+                if (d < distMin)
+                {
+                    distMin = d;
+                    melhor = t;
+                }
+            }
+        }
+        return melhor;
     }
 
     void EscanearArea()

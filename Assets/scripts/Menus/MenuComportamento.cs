@@ -57,6 +57,12 @@ public class MenuComportamento : MonoBehaviour
                 {
                     txtEstadoAtual.text = "ESTADO: --";
                 }
+
+                LancadorMisselCaca caca = unidade.GetComponent<LancadorMisselCaca>();
+                if (caca != null && torreta == null)
+                {
+                    txtEstadoAtual.text = caca.modoPassivo ? "ESTADO: <color=#88ffff>PASSIVO</color>" : "ESTADO: <color=#ff8888>PATRULHA/ATAQUE</color>";
+                }
             }
         }
     }
@@ -97,9 +103,16 @@ public class MenuComportamento : MonoBehaviour
                 LancadorMultiplo l = unidade.GetComponent<LancadorMultiplo>();
                 if(l != null) l.modoAutomatico = !passivo;
             }
+
+            LancadorMisselCaca caca = unidade.GetComponent<LancadorMisselCaca>();
+            if (caca != null)
+            {
+                caca.modoPassivo = passivo;
+                contagem++;
+            }
         }
         
-        Debug.Log($"Ordem enviada: Modo {(passivo ? "PASSIVO" : "ATAQUE")} aplicado a {contagem} torretas.");
+        Debug.Log($"Ordem enviada: Modo {(passivo ? "PASSIVO" : "ATAQUE/PATRULHA")} aplicado a {contagem} unidades armadas.");
     }
 
     void CriarInterface()
