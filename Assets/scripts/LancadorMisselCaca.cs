@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-[RequireComponent(typeof(ControleAviaoCaca))]
+[RequireComponent(typeof(ControleAviao))]
 [RequireComponent(typeof(ControleUnidade))]
 [RequireComponent(typeof(SistemaDeDanos))]
 public class LancadorMisselCaca : MonoBehaviour
@@ -21,7 +21,7 @@ public class LancadorMisselCaca : MonoBehaviour
     private float cronometroRecarga = 0f;
     private int indiceCano = 0;
     private ControleUnidade unidadeBase;
-    private ControleAviaoCaca vooBase;
+    private ControleAviao vooModerno;
     private SistemaDeDanos sistemaDanos;
     private int meuTime;
 
@@ -49,7 +49,7 @@ public class LancadorMisselCaca : MonoBehaviour
     void Start()
     {
         unidadeBase = GetComponent<ControleUnidade>();
-        vooBase = GetComponent<ControleAviaoCaca>();
+        vooModerno = GetComponent<ControleAviao>();
         sistemaDanos = GetComponent<SistemaDeDanos>();
         
         // Padrão 1 (Player) caso o avião não tenha tag especificada
@@ -71,7 +71,7 @@ public class LancadorMisselCaca : MonoBehaviour
         }
 
         // 2. Sistema de Recarga Automática na Base
-        if (vooBase.ObterEstadoTexto() == "No Chão")
+        if (vooModerno.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio || vooModerno.estadoAtual == ControleAviao.EstadoAviao.ReservaHangar)
         {
             // O avião está pousado (voltou para o aeroporto ou base). Ele recarrega mísseis e vida instantaneamente.
             if (municaoAtual < municaoMaxima)
@@ -101,8 +101,13 @@ public class LancadorMisselCaca : MonoBehaviour
                 if (voltandoParaBase)
                 {
                     voltandoParaBase = false;
-                    vooBase.DefinirDestino(pontoPatrulha);
-                    Debug.Log($"✈️ [Base] {gameObject.name} voltando para a patrulha automática!");
+                    
+                    // Esperar um pouco antes de decolar (só pra não dar soco instantâneo)
+                    if (vooModerno.aeroportoOrigem != null)
+                    {
+                        vooModerno.IniciarMissaoCompleta(pontoPatrulha);
+                        Debug.Log($"✈️ [Base] {gameObject.name} voltando para a patrulha automática!");
+                    }
                 }
             }
             if (sistemaDanos.vidaAtual < sistemaDanos.vidaMaxima)
@@ -116,7 +121,7 @@ public class LancadorMisselCaca : MonoBehaviour
     void ProcessarPatrulhaAutomatica()
     {
         // Se estiver no chão, não tenta atirar
-        if (vooBase.ObterEstadoTexto() == "No Chão") return;
+        if (vooModerno.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return;
 
         // Se a missão era voltar pra base, foca nisso e ignora inimigos
         if (voltandoParaBase) return;
@@ -137,39 +142,15 @@ public class LancadorMisselCaca : MonoBehaviour
             // Volta para a base pegar munição se ficar vazio e não estiver passivo
             if (municaoAtual <= 0)
             {
-                TorreDeControle torreMaisProxima = PegaTorreMaisProxima();
-
-                if (torreMaisProxima != null)
+                if (vooModerno.aeroportoOrigem != null)
                 {
-                    pontoPatrulha = vooBase.DestinoAtual; // Grava onde ele estava fazendo a ronda
+                    pontoPatrulha = vooModerno.alvoGPSVoo; // Grava onde ele estava fazendo a ronda
                     voltandoParaBase = true;
-                    torreMaisProxima.OrdenarPouso(vooBase);
-                    Debug.Log($"✈️ [Radar] {gameObject.name} sem munição! Retornando para a base na Torre.");
+                    vooModerno.ComandoRetornarBase();
+                    Debug.Log($"✈️ [Radar] {gameObject.name} sem munição! Retornando para a base via Aeroporto.");
                 }
             }
         }
-    }
-
-    TorreDeControle PegaTorreMaisProxima()
-    {
-        TorreDeControle[] torres = FindObjectsByType<TorreDeControle>(FindObjectsSortMode.None);
-        TorreDeControle melhor = null;
-        float distMin = float.MaxValue;
-        
-        foreach(var t in torres)
-        {
-            IdentidadeUnidade id = t.GetComponent<IdentidadeUnidade>();
-            if (id != null && id.teamID == meuTime)
-            {
-                float d = Vector3.Distance(transform.position, t.transform.position);
-                if (d < distMin)
-                {
-                    distMin = d;
-                    melhor = t;
-                }
-            }
-        }
-        return melhor;
     }
 
     void EscanearArea()
@@ -331,7 +312,7 @@ public class LancadorMisselCaca : MonoBehaviour
             if (GUI.Button(new Rect(140, slotY + 5, 80, 30), "SEGUIR"))
             {
                 // Ordena o jato voar para as costas do inimigo ou interceptar
-                vooBase.DefinirDestino(alvo.transform.position); 
+                if (vooModerno != null) vooModerno.alvoGPSVoo = alvo.transform.position;
             }
 
             // Desabilita o botão atacar se estiver no cooldown ou sem bala

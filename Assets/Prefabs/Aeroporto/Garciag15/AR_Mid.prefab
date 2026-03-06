@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2864504667967888179, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
     - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: m_LocalPosition.x
       value: 16.275032
@@ -69,15 +73,23 @@ PrefabInstance:
       value: 0.1
       objectReference: {fileID: 0}
     - target: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: InitialModule.maxNumParticles
+      value: 500
+      objectReference: {fileID: 0}
+    - target: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: InitialModule.startSizeY.scalar
       value: 0.18
       objectReference: {fileID: 0}
     - target: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 499.53
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: looping
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: lengthInSec
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
@@ -219,7 +231,7 @@ MonoBehaviour:
   raioExplosao: 50
   escalaVisualExplosao: 5
   volumeSom: 1
-  efeitoExplosaoPrefab: {fileID: 1000011797152326, guid: acf39d9f4addf294d93fa56fa373961b, type: 3}
+  efeitoExplosaoPrefab: {fileID: 2799687479890543324, guid: 07180301372540a46864ed63d728a152, type: 3}
   somExplosao: {fileID: 8300000, guid: 986d6b30567e30e428f3f21373fe45ca, type: 3}
 --- !u!198 &2931052983890345434 stripped
 ParticleSystem:

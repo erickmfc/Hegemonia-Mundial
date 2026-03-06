@@ -245,12 +245,13 @@ public class GerenteSelecao : MonoBehaviour
 
             // CORREÇÃO: Verifica se tem HelicopterController/Voo
             Helicoptero heli = unidadesSelecionadas[i].GetComponent<Helicoptero>();
-            ControleAviaoCaca caca = unidadesSelecionadas[i].GetComponent<ControleAviaoCaca>();
+            ControleAviao aviaoModerno = unidadesSelecionadas[i].GetComponent<ControleAviao>();
 
-            if (torreDestino != null && caca != null)
+            if (torreDestino != null && aviaoModerno != null)
             {
-                // Se clicou no aeroporto, ordena pouso do caça imediatamente
-                torreDestino.OrdenarPouso(caca);
+                // Se clicou no aeroporto, ordena pouso do caça de forma segura usando o novo sistema moderno!
+                aviaoModerno.ComandoRetornarBase();
+                Debug.Log($"[GerenteSelecao] Selecionou Retornar pra Base via RMB! ({aviaoModerno.gameObject.name})");
             }
             else if (heli != null)
             {

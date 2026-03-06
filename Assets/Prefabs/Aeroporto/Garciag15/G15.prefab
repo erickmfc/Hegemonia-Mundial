@@ -10007,8 +10007,9 @@ MonoBehaviour:
   anguloRecolher: 90
   velocidadeTremPouso: 2
   somPassagem: {fileID: 8300000, guid: 1a95cc7ea9246f8408d7deaf691da77a, type: 3}
-  distanciaAtivacaoSom: 100
+  distanciaAtivacaoSom: 200
   estadoAtual: 0
+  corIdentificacao: {r: 0, g: 0, b: 0, a: 0}
 --- !u!114 &1993989958026674800
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10029,8 +10030,9 @@ MonoBehaviour:
   - {fileID: 7303857111595364188}
   - {fileID: 6835887891883734991}
   missilCacaPrefab: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-  tempoRecarga: 1
+  tempoRecarga: 2
   raioDeDeteccao: 800
+  modoPassivo: 0
 --- !u!1 &6309512768409737743
 GameObject:
   m_ObjectHideFlags: 0

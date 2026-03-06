@@ -119,6 +119,11 @@ public class ControleAviaoCaca : MonoBehaviour
             cristalIdentificacao.transform.Rotate(0, 90f * Time.deltaTime, 0, Space.World);
         }
 
+        // --- SISTEMA DE COMBATIBILIDADE ---
+        // Se o novo ControleAviao (Moderno/Sistema de Aeroporto) existir, desliga TUDO do script velho (este) 
+        // e deixa só o cristal flutuando. O script moderno assume a boleia do avião.
+        if (GetComponent<ControleAviao>() != null) return;
+
         // 1. GERENCIAMENTO DE ESTADO
         AtualizarLogicaEstado();
 
