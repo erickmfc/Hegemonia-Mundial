@@ -34,6 +34,9 @@ public class GerenciadorAeroporto : MonoBehaviour
     [HideInInspector] public Transform wpPronto;
     [HideInInspector] public List<Transform> waypointsDecolagem = new List<Transform>();
     [HideInInspector] public List<Transform> waypointsDecida = new List<Transform>();
+    
+    [HideInInspector] public Transform wpAndadar;
+    [HideInInspector] public Transform wpAnalise;
 
     void Awake()
     {
@@ -60,6 +63,14 @@ public class GerenciadorAeroporto : MonoBehaviour
             // Como o objeto no Unity está do inicio (Freiada) ao fim (Alinhando)
             // e o avião entra pelo Alinhando, invertemos a lista inteira!
             waypointsDecida.Reverse();
+        }
+
+        // Tenta achar Andadar e Analise (em qualquer lugar dentro do Aeroporto)
+        Transform[] todasAsTags = GetComponentsInChildren<Transform>(true);
+        foreach (Transform t in todasAsTags)
+        {
+            if (t.name.ToLower() == "andadar") wpAndadar = t;
+            if (t.name.ToLower() == "analise") wpAnalise = t;
         }
     }
 

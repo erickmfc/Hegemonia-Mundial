@@ -119,29 +119,25 @@ public class ControleAviao : MonoBehaviour
     /// </summary>
     public IEnumerator MoverInterpolado(Vector3 destinoOriginal, float vel, bool pontoFinal = false)
     {
-        Vector3 destinoPlano = new Vector3(destinoOriginal.x, transform.position.y, destinoOriginal.z);
-        float raioDeAceitacao = pontoFinal ? 0.5f : 1.5f; // Aumentar levemente o raio mínimo de 0.2f para 0.5f
+        float raioDeAceitacao = pontoFinal ? 0.5f : 1.5f;
 
-        // Enquanto a distância no plano 2D for maior que raioDeAceitacao, continua andando
-        while (Vector3.Distance(transform.position, destinoPlano) > raioDeAceitacao)
+        // Modificado para usar X e Z na distância de aceitação, mas atualizando a Altura (Y) fielmente (Crucial para Pousos!)
+        while (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(destinoOriginal.x, destinoOriginal.z)) > raioDeAceitacao)
         {
-            // Atualiza o Y caso o avião esteja descendo uma rampa
-            destinoPlano = new Vector3(destinoOriginal.x, transform.position.y, destinoOriginal.z);
-            Vector3 vetorAteDestino = destinoPlano - transform.position;
+            Vector3 vetorAteDestino = destinoOriginal - transform.position;
             
-            // PROTEÇÃO ANTI-360º: Se o avião sobrevoou o ponto alvo ou o cruzou lateralmente muito perto, 
-            // e o alvo agora ficou para "trás", interrompe o trajeto para que ele não tente dar a volta.
+            // PROTEÇÃO ANTI-360º
             if (vetorAteDestino.magnitude < 4f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f)
             {
                 break;
             }
 
-            // 1. Olha para o ponto
-            Vector3 direcao = vetorAteDestino.normalized;
+            // Olha para o ponto (Apenas XZ para manobras horizontais)
+            Vector3 direcaoHorizon = new Vector3(vetorAteDestino.x, 0, vetorAteDestino.z).normalized;
             
-            if (direcao != Vector3.zero)
+            if (direcaoHorizon != Vector3.zero)
             {
-                Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
+                Quaternion rotacaoAlvo = Quaternion.LookRotation(direcaoHorizon);
                 float angulo = Quaternion.Angle(transform.rotation, rotacaoAlvo);
 
                 // Gira mais suave, como rodas virando
@@ -151,10 +147,16 @@ public class ControleAviao : MonoBehaviour
                 float fatorVelocidade = Mathf.Clamp01(1.2f - (angulo / 45f));
                 if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
 
-                // Move puxando para a direção que mira, garantindo que não vai orbitar infinitamente
-                Vector3 direcaoMovimento = Vector3.Lerp(transform.forward, direcao, 0.4f).normalized;
-
-                transform.position += direcaoMovimento * (vel * fatorVelocidade) * Time.deltaTime;
+                // Move puxando para a direção que mira
+                Vector3 direcaoMovimento = Vector3.Lerp(transform.forward, direcaoHorizon, 0.4f).normalized;
+                
+                // Movimento 3D completo: Move para frente, e desce (ou sobe) o Y suavemente pro alvo!
+                Vector3 stepXz = direcaoMovimento * (vel * fatorVelocidade) * Time.deltaTime;
+                
+                float fatorDescidaSubida = Mathf.Clamp01((vel * fatorVelocidade) * Time.deltaTime);
+                float novoY = Mathf.MoveTowards(transform.position.y, destinoOriginal.y, fatorDescidaSubida);
+                
+                transform.position = new Vector3(transform.position.x + stepXz.x, novoY, transform.position.z + stepXz.z);
             }
 
             // Garante que as asas estão retas (Tira o banking visual)
@@ -167,13 +169,11 @@ public class ControleAviao : MonoBehaviour
         }
 
         // Se for o último ponto, crava a posição para não ter erro
-        // Só crava se realmente estiver muito perto (prevenindo o teletransporte se ele sofreu "overshot" um pouco longe)
         if (pontoFinal)
         {
-            Vector3 finalPlanoPos = new Vector3(destinoOriginal.x, transform.position.y, destinoOriginal.z);
-            if (Vector3.Distance(transform.position, finalPlanoPos) < 2.5f)
+            if (Vector3.Distance(transform.position, destinoOriginal) < 3.5f)
             {
-                transform.position = finalPlanoPos;
+                transform.position = destinoOriginal;
             }
         }
     }
@@ -314,13 +314,42 @@ public class ControleAviao : MonoBehaviour
         // Segue a lista obrigatória de pouso reduzindo velocidade para atersar e depois para taxiar
         yield return StartCoroutine(SeguirCaminhoDeWaypoints(aeroportoOrigem.waypointsDecida, velocidadeMaximaVoo * 0.5f, velocidadeSolo, true));
 
-        // 5. TAXIANDO PRA VAGA
+        // 5. REABASTECIMENTO AUTOMÁTICO (ANDADAR -> ANÁLISE)
+        estadoAtual = EstadoAviao.RetornandoPraVaga;
+        
+        if (aeroportoOrigem.wpAndadar != null)
+        {
+            yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpAndadar.position, velocidadeSolo, true));
+        }
+
+        if (aeroportoOrigem.wpAnalise != null)
+        {
+            yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpAnalise.position, velocidadeSolo, true));
+            
+            // Pausa no ponto de Análise para rearmar os mísseis (3 segundos parados)
+            Debug.Log($"[{gameObject.name}] Chegou no ponto de Análise. Parado por 3 segundos para reabastecer...");
+            
+            // Esse script avisa que chegou num local seguro para os sistemas de tiro recarregarem
+            estadoAtual = EstadoAviao.ProntoNoPatio; 
+            
+            yield return new WaitForSeconds(3f);
+            
+            // Depois de 3s, confere se ele recebeu ordens de decolar pra patrulha
+            // Se o LancadorMissel mandar ele patrulhar, o estado passa a ser Decolando/EmMissao imediatamente
+            if (estadoAtual != EstadoAviao.ProntoNoPatio)
+            {
+                 // Ele decolou de novo direto do ponto de Análise!
+                 yield break; 
+            }
+        }
+
+        // 6. VAI PARA A VAGA PÁTIO/HANGAR SE NÃO SAIU EM MISSÃO
         estadoAtual = EstadoAviao.RetornandoPraVaga;
         yield return StartCoroutine(MoverInterpolado(vagaRetorno.position, velocidadeSolo, true));
 
-        // 6. PRONTO DE NOVO
+        // 7. PRONTO DE NOVO
         estadoAtual = EstadoAviao.ProntoNoPatio;
-        Debug.Log($"[{gameObject.name}] Motor Desligado. Aeronave pronta para nova missão.");
+        Debug.Log($"[{gameObject.name}] Motor Desligado. Aeronave pronta para nova missão no pátio.");
         
         // Zera o modelo para alinhar certinho na vaga
         transform.rotation = vagaRetorno.rotation;
