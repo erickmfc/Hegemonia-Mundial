@@ -47,15 +47,40 @@ public class Estaleiro : MonoBehaviour
     
     void Start()
     {
-        // Validação básica
+        // Validação básica: auto-criação de slots se estiver nulo
         if (slots == null || slots.Length == 0)
         {
-            Debug.LogWarning("[Estaleiro] Nenhum slot de construção configurado!");
+            Debug.LogWarning("[Estaleiro] Nenhum slot de construção configurado! Criando 3 slots básicos automaticamente.");
+            slots = new SlotConstrucao[3];
+            for (int i = 0; i < 3; i++)
+            {
+                GameObject novoPonto = new GameObject($"Ponto_Auto_Estaleiro_{i}");
+                novoPonto.transform.SetParent(this.transform);
+                novoPonto.transform.position = transform.position + (transform.forward * offsetAguaFrente) + (transform.right * (i * 20f - 20f));
+                
+                slots[i] = new SlotConstrucao
+                {
+                    nomeSlot = i == 0 ? "Atracagem_Grande" : $"Slot_{i}",
+                    pontoDeConstrucao = novoPonto.transform,
+                    estaOcupado = false
+                };
+            }
+        }
+        
+        // Auto-cria ponto de saída se nulo
+        if (pontoDeSaida == null)
+        {
+             GameObject goSaida = new GameObject("PontoDeSaida_Auto");
+             goSaida.transform.SetParent(this.transform);
+             goSaida.transform.position = transform.position + (transform.forward * (offsetAguaFrente + 40f));
+             pontoDeSaida = goSaida.transform;
+             Debug.Log("[Estaleiro] Ponto de saída não configurado, gerado automaticamente na água.");
         }
     }
 
     void Update()
     {
+        if (slots == null) return;
         // Processa a construção em cada slot ocupado
         foreach (var slot in slots)
         {

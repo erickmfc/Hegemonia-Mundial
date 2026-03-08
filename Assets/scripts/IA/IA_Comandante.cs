@@ -17,7 +17,7 @@ public class IA_Comandante : MonoBehaviour
     public string NomeComandante = "General Kaos";
 
     [Header("Recursos")]
-    public float dinheiro = 5000f;
+    public float dinheiro = 15000f;
     public float rendaPorSegundo = 15f; // Renda passiva base
 
     [Header("Estado Mental")]

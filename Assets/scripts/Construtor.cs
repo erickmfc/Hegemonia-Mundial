@@ -135,22 +135,9 @@ public class Construtor : MonoBehaviour
 
             if (ehConstrucaoNaval && fantasmaUnico != null && !ehPlataforma)
             {
-                // Acha o componente para ler os offsets se possível (Estaleiro ou PierMarinha)
-                float oFrente = 35f; float oTras = -15f;
-                var pier = prefabSelecionado.GetComponent<PierMarinha>();
-                var est = prefabSelecionado.GetComponent<Estaleiro>();
-                if (pier) { oFrente = pier.offsetAguaFrente; oTras = pier.offsetTerraTras; }
-                else if (est) { oFrente = est.offsetAguaFrente; oTras = est.offsetTerraTras; }
-
-                Vector3 posFrente = fantasmaUnico.transform.position + fantasmaUnico.transform.forward * oFrente; 
-                Vector3 posTras = fantasmaUnico.transform.position + fantasmaUnico.transform.forward * oTras; 
-
-                int tFrente = VerTipoPonto(posFrente);
-                int tTras = VerTipoPonto(posTras);
-
-                // É totalmente terra, totalmente água, ou terra na frente e água atrás? Invalido!
-                previewLocalInvalido = (tFrente == 2 && tTras == 2) || (tFrente == 1 && tTras == 1) || (tFrente == 2 && tTras == 1);
-                if (previewLocalInvalido) motivoInvalido = "❌ LUGAR INVÁLIDO:\nAs pistas devem ir p/ Água e a base na Terra!";
+                // RESTRIÇÕES REMOVIDAS: O usuário solicitou que Pier e Estaleiro possam ser construídos em qualquer lugar.
+                previewLocalInvalido = false;
+                motivoInvalido = "";
             }
             else
             {

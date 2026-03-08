@@ -44,6 +44,7 @@ GameObject:
   - component: {fileID: 2863402562455208433}
   - component: {fileID: 6932462010324174511}
   - component: {fileID: 8023363927540313036}
+  - component: {fileID: 2620938511765768467}
   m_Layer: 0
   m_Name: Estaleiros navais
   m_TagString: Player
@@ -179,6 +180,7 @@ MonoBehaviour:
     escalaOriginal: {x: 0, y: 0, z: 0}
     barCanvasObj: {fileID: 0}
     barFillImage: {fileID: 0}
+    textProgresso: {fileID: 0}
   - nomeSlot: 
     pontoDeConstrucao: {fileID: 686588862126957584}
     estaOcupado: 0
@@ -188,6 +190,7 @@ MonoBehaviour:
     escalaOriginal: {x: 0, y: 0, z: 0}
     barCanvasObj: {fileID: 0}
     barFillImage: {fileID: 0}
+    textProgresso: {fileID: 0}
   tempoDeConstrucao: 15
   usarAnimacaoEscala: 1
   prefabBarraProgresso: {fileID: 0}
@@ -197,6 +200,24 @@ MonoBehaviour:
   nivelDaAgua: 0
   offsetAltura: 0
   efeitoConclusao: {fileID: 0}
+  offsetAguaFrente: 35
+  offsetTerraTras: -15
+--- !u!208 &2620938511765768467
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3091952298521144747}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.515, y: 0.875, z: 0.88}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: -0.03, y: 0, z: -0.69}
+  m_TimeToStationary: 0.5
 --- !u!1 &3281884118873610546
 GameObject:
   m_ObjectHideFlags: 0
@@ -433,6 +454,7 @@ GameObject:
   - component: {fileID: 6644026312771152039}
   - component: {fileID: 7083881416510477888}
   - component: {fileID: 4091007596836683156}
+  - component: {fileID: 2566305471600480287}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -532,6 +554,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!208 &2566305471600480287
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5163089425254783067}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.6, y: 0.845, z: 0.545}
+  m_MoveThreshold: 0.1
+  m_Carve: 0
+  m_CarveOnlyStationary: 1
+  m_Center: {x: -0.1, y: 0, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1 &7172463333553851576
 GameObject:
   m_ObjectHideFlags: 0
@@ -575,6 +613,7 @@ GameObject:
   - component: {fileID: 8944943472959547843}
   - component: {fileID: 7461317867545225615}
   - component: {fileID: 8147872740946218246}
+  - component: {fileID: 6076136302727705592}
   m_Layer: 0
   m_Name: Cube (1)
   m_TagString: Untagged
@@ -674,6 +713,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!208 &6076136302727705592
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7822260224435937533}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.56, y: 1.055, z: 0.68}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: -0.06, y: 0, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1 &8513076260242051797
 GameObject:
   m_ObjectHideFlags: 0

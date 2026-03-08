@@ -20,24 +20,27 @@ public class SistemaArmamentoHelice : MonoBehaviour
     public Transform[] canosDeTiro; 
     
     public float cadenciaDeTiro = 0.12f; 
-    public float raioDeVisao = 500f;
-    
-    [Tooltip("Margem de erro na mira. Só atira se o inimigo estiver na frente do avião.")]
-    public float coneDeTiroGraus = 12f; 
+    public float raioDeVisao = 600f; // Aumentei um pouco para ele ver de mais longe
     
     [Header("=== MUNIÇÃO E RECARGA ===")]
     public int cartuchoMaximo = 100;
     public float tempoRecarga = 5f;
     private int balasAtuais;
     private bool recarregando = false;
-
     private float cronometroTiro = 0f;
+
+    // --- VARIÁVEIS DE CONTROLE INTERNO ---
     private ControleAviao controleAviao;
     private int meuTime = 1;
-
-    // --- NOVA OTIMIZAÇÃO DE RADAR ---
     private float cronometroScan = 0f;
     private Transform alvoAtualGuardado;
+
+    // === NOVA MÁQUINA DE ESTADOS DO SUPER TUCANO ===
+    private enum EstadoCombate { Patrulha, Afastamento, Mergulho_Subir, Mergulho_Atacar, Evasao }
+    private EstadoCombate estadoAtualAtaque = EstadoCombate.Patrulha;
+    
+    private Vector3 pontoManobraFixo;
+    private float cronometroEvasao = 0f;
 
     void Start()
     {
@@ -47,7 +50,7 @@ public class SistemaArmamentoHelice : MonoBehaviour
         IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
         if (id != null) meuTime = id.teamID;
 
-        // AUTO-DETECÇÃO DA HÉLICE (Para facilitar caso não consiga arrastar no Inspector)
+        // AUTO-DETECÇÃO DA HÉLICE
         if (helice == null)
         {
             Transform[] filhos = GetComponentsInChildren<Transform>(true);
@@ -56,7 +59,6 @@ public class SistemaArmamentoHelice : MonoBehaviour
                 if (t.name.ToLower().Contains("helice") || t.name.ToLower().Contains("propeller"))
                 {
                     helice = t;
-                    Debug.Log($"[ArmamentoHelice] Hélice auto-detectada com sucesso: {t.name}");
                     break;
                 }
             }
@@ -69,33 +71,27 @@ public class SistemaArmamentoHelice : MonoBehaviour
             Transform[] filhos = GetComponentsInChildren<Transform>(true);
             foreach (Transform t in filhos)
             {
-                // Busca objetos chamados "Tiro" ou "Tiro (1)" que você criou
-                if (t.name.ToLower().StartsWith("tiro")) 
-                {
-                    canos.Add(t);
-                }
+                if (t.name.ToLower().StartsWith("tiro")) canos.Add(t);
             }
             canosDeTiro = canos.ToArray();
-            Debug.Log($"[ArmamentoHelice] Mapeados {canosDeTiro.Length} pontos de tiro na asa.");
         }
     }
 
     void Update()
     {
-        // 1. ANIMAÇÃO DA HÉLICE
+        // 1. ANIMAÇÃO DA HÉLICE (Sempre roda)
         if (helice != null)
         {
-            // Mais rápido no ar, mais lento taxiando/parado
             bool noAr = (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao || 
                          controleAviao.estadoAtual == ControleAviao.EstadoAviao.Decolando);
-                         
             float velReal = noAr ? velocidadeGiroVoo : velocidadeGiroChao;
             helice.Rotate(eixoGiro * velReal * Time.deltaTime, Space.Self);
         }
 
-        // 2. LÓGICA DE DETECÇÃO E ATAQUE
-        if (controleAviao.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return; // Só ataca no ar
+        // Se não estiver voando em missão, não faz lógica de tiro
+        if (controleAviao.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return;
 
+        // Controle de recarga
         if (recarregando)
         {
             cronometroTiro -= Time.deltaTime;
@@ -104,24 +100,33 @@ public class SistemaArmamentoHelice : MonoBehaviour
                 recarregando = false;
                 balasAtuais = cartuchoMaximo;
             }
-            return; // Ele só sobrevoa em paz enquanto troca o cartucho!
+        }
+        else if (cronometroTiro > 0)
+        {
+            cronometroTiro -= Time.deltaTime;
         }
 
-        if (cronometroTiro > 0) cronometroTiro -= Time.deltaTime;
-
-        // 3. OTIMIZAÇÃO: Varredura leve (Não usa física em todos os frames)
+        // 2. RADAR: Escaneia inimigos 4 vezes por segundo
         cronometroScan -= Time.deltaTime;
         if (cronometroScan <= 0f)
         {
             EscanearAreaAoRedorLento();
-            cronometroScan = 0.25f; // Scaneia o mundo só 4 vezes por segundo (Super Leve)
+            cronometroScan = 0.25f; 
         }
 
-        ProcessarAtaqueEmTempoReal();
+        // 3. EXECUTA A MANOBRA DO SUPER TUCANO
+        ExecutarManobrasDeCombate();
     }
 
     void EscanearAreaAoRedorLento()
     {
+        // Se já temos um alvo e ele está vivo, não precisa procurar outro agora
+        if (alvoAtualGuardado != null && alvoAtualGuardado.gameObject.activeInHierarchy)
+        {
+            SistemaDeDanos vidaAtual = alvoAtualGuardado.GetComponentInParent<SistemaDeDanos>();
+            if (vidaAtual != null && vidaAtual.vidaAtual > 0) return; 
+        }
+
         Collider[] vizinhos = Physics.OverlapSphere(transform.position, raioDeVisao);
         Transform alvoMaisProximoScanner = null;
         float menorDistancia = Mathf.Infinity;
@@ -129,7 +134,6 @@ public class SistemaArmamentoHelice : MonoBehaviour
         foreach (var col in vizinhos)
         {
             IdentidadeUnidade id = col.GetComponentInParent<IdentidadeUnidade>();
-            
             if (id != null && id.teamID != meuTime && id.teamID != 0) 
             {
                 SistemaDeDanos vida = col.GetComponentInParent<SistemaDeDanos>();
@@ -147,36 +151,102 @@ public class SistemaArmamentoHelice : MonoBehaviour
         alvoAtualGuardado = alvoMaisProximoScanner;
     }
 
-    void ProcessarAtaqueEmTempoReal()
+    void ExecutarManobrasDeCombate()
     {
-        // Limpeza de segurança caso o alvo tenha morrido explodido!
-        if (alvoAtualGuardado == null || !alvoAtualGuardado.gameObject.activeInHierarchy) return;
-
-        Vector3 alvoPosition = alvoAtualGuardado.position;
-        Vector3 diferenca = alvoPosition - transform.position;
-        float distanciaDoAlvo = diferenca.magnitude;
-
-        // 1. EFEITO THUNDERBOLT (Mergulhar, desacelerar e passar rasgando por cima em linha reta!)
-        if (distanciaDoAlvo < 350f) 
+        if (alvoAtualGuardado == null) 
         {
-            Vector3 direcaoRasa = diferenca; direcaoRasa.y = 0; direcaoRasa.Normalize();
-            Vector3 rasantePontoFinal = alvoPosition + (direcaoRasa * 450f);
-            rasantePontoFinal.y = 20f; 
-            
-            controleAviao.ForcarAtaqueMergulho(rasantePontoFinal);
-        }
-        else if (!controleAviao.emAtaqueMergulho)
-        {
-            controleAviao.alvoGPSVoo = alvoPosition;
+            estadoAtualAtaque = EstadoCombate.Patrulha;
+            if (controleAviao != null) controleAviao.alvoPrioritarioIA = false;
+            return;
         }
 
-        // 2. MIRA FRONTAL MAIS PERMISSIVA (Qualquer coisa na reta leva bala)
-        float angulo = Vector3.Angle(transform.forward, diferenca.normalized);
+        controleAviao.alvoPrioritarioIA = true;
+        Vector3 posicaoAlvo = alvoAtualGuardado.position;
+        float distanciaDoAlvo = Vector3.Distance(transform.position, posicaoAlvo);
+        float alturaDoAviao = transform.position.y;
 
-        if (angulo <= 25f && cronometroTiro <= 0f)
+        switch (estadoAtualAtaque)
         {
-            AtirarMetralhadora(alvoPosition);
+            case EstadoCombate.Patrulha:
+                estadoAtualAtaque = EstadoCombate.Afastamento;
+                CalcularPontoAfastamento(posicaoAlvo);
+                break;
+
+            case EstadoCombate.Afastamento:
+                controleAviao.alvoGPSVoo = pontoManobraFixo;
+                float distManobra = Vector3.Distance(transform.position, pontoManobraFixo);
+                if (distManobra < 100f || (distanciaDoAlvo > 450f && alturaDoAviao > 150f))
+                {
+                    estadoAtualAtaque = EstadoCombate.Mergulho_Subir;
+                }
+                break;
+
+            case EstadoCombate.Mergulho_Subir:
+                // Sobe muito e ganha distância para o ataque Thunderbolt
+                Vector3 pontoCeu = transform.position + transform.forward * 100f;
+                pontoCeu.y = 200f; // Teto de ataque
+                controleAviao.alvoGPSVoo = pontoCeu;
+
+                if (alturaDoAviao >= 180f || distanciaDoAlvo > 600f)
+                {
+                    estadoAtualAtaque = EstadoCombate.Mergulho_Atacar;
+                }
+                break;
+
+            case EstadoCombate.Mergulho_Atacar:
+                Vector3 direcaoMergulho = (posicaoAlvo - transform.position).normalized;
+                Vector3 pontoChao = posicaoAlvo + (direcaoMergulho * 60f); 
+                pontoChao.y = 10f; 
+                controleAviao.alvoGPSVoo = pontoChao;
+
+                float anguloFrontal = Vector3.Angle(transform.forward, direcaoMergulho);
+                if (anguloFrontal <= 15f && cronometroTiro <= 0f && distanciaDoAlvo < 750f && !recarregando)
+                {
+                    AtirarMetralhadora(posicaoAlvo);
+                }
+
+                if (distanciaDoAlvo < 120f || recarregando || alturaDoAviao < 35f)
+                {
+                    cronometroEvasao = 4f;
+                    CalcularPontoEvasao(posicaoAlvo);
+                    estadoAtualAtaque = EstadoCombate.Evasao;
+                }
+                break;
+
+            case EstadoCombate.Evasao:
+                controleAviao.alvoGPSVoo = pontoManobraFixo;
+                cronometroEvasao -= Time.deltaTime;
+                if (cronometroEvasao <= 0f || alturaDoAviao > 180f)
+                {
+                    estadoAtualAtaque = EstadoCombate.Afastamento; 
+                    CalcularPontoAfastamento(posicaoAlvo);
+                }
+                break;
         }
+    }
+
+    void CalcularPontoAfastamento(Vector3 alvo)
+    {
+        // Vai para longe (600 metros na direção contrária de onde está olhando) e alto
+        Vector3 direcaoTras = -transform.forward;
+        direcaoTras.y = 0;
+        
+        // Pega um ponto de curva para não virar no próprio eixo de forma esquisita
+        Vector3 lateral = transform.right * (Random.value > 0.5f ? 1f : -1f); 
+        Vector3 direcaoCurva = (direcaoTras + lateral).normalized;
+
+        pontoManobraFixo = transform.position + (direcaoCurva * 600f);
+        pontoManobraFixo.y = 200f; // Sobe lá no alto para o mergulho
+    }
+
+    void CalcularPontoEvasao(Vector3 alvo)
+    {
+        // Continua indo pra frente, mas puxa com tudo pra cima
+        Vector3 direcaoFrente = transform.forward;
+        direcaoFrente.y = 0;
+
+        pontoManobraFixo = transform.position + (direcaoFrente * 400f);
+        pontoManobraFixo.y = 250f; // Altura de escape
     }
 
     void AtirarMetralhadora(Vector3 posicaoAlvoChao)
@@ -187,32 +257,25 @@ public class SistemaArmamentoHelice : MonoBehaviour
         {
             if (cano == null) continue;
             
-            // GAU-8 AUTO-AIM: Evita que o tiro voe reto pro céu caso o caça levante o nariz:
-            // Ele calcula um vetor magnético jogando as traçantes com força para baixo no chão onde o alvo está!
             Vector3 rajadaDir = (posicaoAlvoChao - cano.position).normalized;
-            
-            // Mistura 85% para o alvo da terra e 15% para o nariz físico
-            Vector3 direcaoFinal = Vector3.Lerp(cano.forward, rajadaDir, 0.85f).normalized;
+            Vector3 direcaoFinal = Vector3.Lerp(cano.forward, rajadaDir, 0.90f).normalized;
 
-            // Micro-vibração da arma estilo A-10 Thunderbolt
             direcaoFinal += new Vector3(Random.Range(-0.015f, 0.015f), Random.Range(-0.02f, 0.02f), Random.Range(-0.015f, 0.015f));
             direcaoFinal.Normalize();
 
-            // Cria a bala trassante
             GameObject bala = Instantiate(prefabProjetilTrassante, cano.position, Quaternion.LookRotation(direcaoFinal));
             Projetil scriptProj = bala.GetComponent<Projetil>();
             
             if (scriptProj != null)
             {
                 scriptProj.SetDono(this.gameObject);
-                scriptProj.SetDirecao(direcaoFinal); // Assegura que o tiro fure a terra!
+                scriptProj.SetDirecao(direcaoFinal);
             }
         }
 
         balasAtuais -= canosDeTiro.Length;
         if (balasAtuais <= 0)
         {
-            // Fica sem atirar pelo tempo de recarga inteiro
             recarregando = true;
             cronometroTiro = tempoRecarga; 
         }
@@ -221,11 +284,10 @@ public class SistemaArmamentoHelice : MonoBehaviour
             cronometroTiro = cadenciaDeTiro;
         }
         
-        // Toca som de metralhadora contínua se houver
         AudioSource audio = GetComponent<AudioSource>();
         if (audio != null) 
         {
-            audio.pitch = Random.Range(0.9f, 1.1f); // Variação leve para som de rajada
+            audio.pitch = Random.Range(0.9f, 1.1f);
             audio.Play();
         }
     }

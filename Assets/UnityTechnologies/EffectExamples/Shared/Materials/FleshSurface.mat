@@ -16,7 +16,7 @@ Material:
   - _NORMALMAP
   - _SPECULAR_SETUP
   m_InvalidKeywords: []
-  m_LightmapFlags: 1
+  m_LightmapFlags: 3
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -102,7 +102,7 @@ Material:
     - _DstBlendAlpha: 0
     - _EnvironmentReflections: 1
     - _GlossMapScale: 1
-    - _Glossiness: 0.471
+    - _Glossiness: 0.581
     - _GlossyReflections: 1
     - _Metallic: 0
     - _Mode: 0
@@ -110,7 +110,7 @@ Material:
     - _Parallax: 0.02
     - _QueueOffset: 0
     - _ReceiveShadows: 1
-    - _Smoothness: 0.471
+    - _Smoothness: 0.581
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
@@ -121,13 +121,13 @@ Material:
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
-    - _BaseColor: {r: 0.58088225, g: 0.50252795, b: 0.4313905, a: 1}
-    - _Color: {r: 0.58088225, g: 0.5025279, b: 0.43139046, a: 1}
-    - _EmissionColor: {r: 0.1544118, g: 0.036332183, b: 0.036332183, a: 1}
-    - _SpecColor: {r: 0.27357268, g: 0.36109945, b: 0.4044118, a: 1}
+    - _BaseColor: {r: 0.2811256, g: 0.45283014, b: 0.19864717, a: 1}
+    - _Color: {r: 0.28112558, g: 0.45283008, b: 0.19864714, a: 1}
+    - _EmissionColor: {r: 0.3018868, g: 0.118175045, b: 0.11249555, a: 1}
+    - _SpecColor: {r: 0.17528479, g: 0.26045182, b: 0.3679245, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &5268360861017603784
+--- !u!114 &1388223923412922641
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -138,5 +138,5 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Editor::UnityEditor.Rendering.Universal.AssetVersion
+  m_EditorClassIdentifier: 
   version: 10

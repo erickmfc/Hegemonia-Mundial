@@ -6,6 +6,7 @@ using System.Linq;
 /// <summary>
 /// IA Arquiteto Pro: Responsável por urbanismo militar.
 /// Constrói base com layout aberto e espaçado, SEM prender unidades.
+/// ATUALIZADO: Modo Tira-Restrições (God Mode) e Força bruta de posicionamento.
 /// </summary>
 public class IA_Arquiteto_Pro : MonoBehaviour
 {
@@ -29,7 +30,6 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         Invoke("PlanejarBaseMilitar", 4.0f);
 
         // --- MANUTENÇÃO DE BASE ---
-        // Verifica a cada 15 segundos se a base está intacta e expande se tiver dinheiro
         InvokeRepeating("VerificarIntegridadeEExpandir", 15.0f, 15.0f);
     }
 
@@ -53,59 +53,71 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         }
         else if (ContarPredios("Veiculos") < 4 && chefe.dinheiro > 1800f)
         {
-            // O jogador tem dinheiro, cria mais fábricas DITANTES (50m+)
-            Debug.Log("🏗️ [IA Arquiteto] Economia Forte! Expandindo base com novo Hangar de Veículos e Tropas.");
             ConstruirNaTerra("Veiculos", centro, 1000, 50f);
         }
 
-
-        // 4. HELIPORTO E AEROPORTO
+        // 3. AEROPORTO - Ajustado para 120 metros (Visível, mas protegido na fronteira)
         if (!ExistePredio("Aeroporto") && chefe.dinheiro >= 500f)
         {
-            // O aeroporto deve estar MUITO LONGE (240 metros de espaçamento para ficar no limite da linha verde)
             Debug.Log("🏗️ [IA Arquiteto] Economia Forte! Projetando construção do Aeroporto Tático Militar...");
-            ConstruirNaTerra("Aeroporto", centro, 500, 240f); 
+            ConstruirNaTerra("Aeroporto", centro, 500, 120f); 
         }
         else if (!ExistePredio("Heliporto") && chefe.dinheiro >= 3000f)
         {
             ConstruirNaTerra("Heliporto", centro, 3000, 30f); 
         }
+        
         // 4. ESTALEIRO (Navais)
-        // Se tiver grana pro estaleiro (que custa 2500 no menu, então > 2500)
-        if (chefe.dinheiro > 2200 && !ExistePredio("Estaleiro") && !ExistePredio("Naval"))
+        if (chefe.dinheiro > 1500 && !ExistePredio("Estaleiro") && !ExistePredio("Naval"))
         {
-            Debug.Log("🏗️ [IA Arquiteto] Tentando encontrar litoral para Estaleiro...");
-            Vector3 posAgua = EncontrarAgua(centro, 40f, 150f);
+            Vector3 posAgua = EncontrarAgua(centro, 50f, 600f);
             if (posAgua != Vector3.zero)
             {
-                 Debug.Log($"🏗️ [IA Arquiteto] Água encontrada em {posAgua}! Construindo Estaleiro.");
-                 Vector3 dirMar = (posAgua - centro).normalized;
-                 ConstruirNaAgua("Estaleiro", posAgua, dirMar);
+                if (GerenteDeTerritorio.Instancia != null)
+                {
+                    int dono = GerenteDeTerritorio.Instancia.ObterDonoDoPonto(posAgua);
+                    if (dono == chefe.identidade.teamID)
+                    {
+                        Vector3 dirMar = (posAgua - centro).normalized;
+                        ConstruirNaAgua("Estaleiro", posAgua, dirMar);
+                    }
+                    else
+                    {
+                        if (chefe.dinheiro > 500)
+                        {
+                            Vector3 dirMar = (posAgua - centro).normalized;
+                            Vector3 posBandeira = centro + (dirMar * (espacamentoEdificios * 3f));
+                            if (Terrain.activeTerrain != null) posBandeira.y = Terrain.activeTerrain.SampleHeight(posBandeira);
+                            ConstruirNaTerra("Bandeira", posBandeira, 0, 50f);
+                        }
+                    }
+                }
             }
         }
 
         // 5. CINTURÃO DE DEFESA (Torretas e AA)
         if (chefe.dinheiro > 1000)
         {
-            // O catálogo geralmente tem nomes como "TorretaAntiaerea", "Torreta Terra", etc
             int qtdAA = ContarPredios("Antiaerea") + ContarPredios("Aerea") + ContarPredios("AA");
             int qtdSolo = ContarPredios("Torreta") + ContarPredios("Defesa"); 
-            // Subtrair AA das terrestres caso o nome "Torreta" englobe as "TorretaAntiaerea"
             qtdSolo -= qtdAA; 
             if (qtdSolo < 0) qtdSolo = 0;
 
-            // Prioriza o céu se não tiver NENHUMA
             if (qtdAA < 3 && chefe.dinheiro >= 800)
             {
-                Debug.Log("🏗️ [IA Arquiteto] Protegendo espaço aéreo do General! Construindo Bateria Antiaérea.");
                 ConstruirDefesaInteligente("Antiaerea", centro, 800);
             }
-            // Depois as terrestres
             else if (qtdSolo < 5 && chefe.dinheiro >= 500)
             {
-                Debug.Log("🏗️ [IA Arquiteto] Reforçando o perímetro terrestre! Construindo Torreta/Bunker.");
                 ConstruirDefesaInteligente("Torreta", centro, 500);
             }
+        }
+        
+        // 6. MUROS
+        if (chefe.dinheiro > 600)
+        {
+            int qtdMuros = ContarPredios("Muro") + ContarPredios("Cerca") + ContarPredios("Wall");
+            if (qtdMuros < 10 && chefe.dinheiro >= 200) ConstruirDefesaInteligente("Muro", centro, 100);
         }
     }
 
@@ -126,6 +138,19 @@ public class IA_Arquiteto_Pro : MonoBehaviour
                 else if (nomeParcial == "Veiculos" && (nomeLimpo.Contains("hangar") || nomeLimpo.Contains("fabrica") || nomeLimpo.Contains("veiculo"))) count++;
                 else if (nomeParcial == "Hangar" && (nomeLimpo.Contains("veiculo") || nomeLimpo.Contains("hangar"))) count++;
                 else if (nomeParcial == "Tenda" && (nomeLimpo.Contains("quartel") || nomeLimpo.Contains("tenda"))) count++;
+            }
+        }
+        
+        if (nomeParcial == "Muro" || nomeParcial == "Cerca" || nomeParcial == "Wall")
+        {
+            IdentidadeUnidade[] todasIdentidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+            foreach(var id in todasIdentidades)
+            {
+                if (id.teamID == chefe.identidade.teamID)
+                {
+                    string nm = id.name.ToLower();
+                    if (nm.Contains("muro") || nm.Contains("cerca") || nm.Contains("wall") || nm.Contains("parede")) count++;
+                }
             }
         }
         
@@ -151,6 +176,17 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             }
         }
 
+        if (nomeParcial.ToLower().Contains("aeroporto"))
+        {
+            GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+            foreach(var a in aeroportos)
+            {
+                if(a == null) continue;
+                var id = a.GetComponent<IdentidadeUnidade>();
+                if (id != null && id.teamID == chefe.identidade.teamID) count++;
+            }
+        }
+
         return count;
     }
 
@@ -163,46 +199,37 @@ public class IA_Arquiteto_Pro : MonoBehaviour
     {
         if (baseIniciada) return;
 
-        // Catálogo Check
         if (MenuConstrucao.catalogoGlobal == null || MenuConstrucao.catalogoGlobal.Count == 0)
         {
-             Debug.LogWarning("IA Arquiteto: Catálogo vazio. Tentando novamente em 2s.");
              Invoke("PlanejarBaseMilitar", 2.0f);
              return;
         }
 
-        Debug.Log("🏗️ [IA Arquiteto Pro] Iniciando Construção da Base Inicial...");
-
-        Vector3 centro = (chefe != null && chefe.basePrincipal != null) 
-            ? chefe.basePrincipal.position 
-            : transform.position;
-
-        // 0. Fundar a Capital / Prefeitura primeiro (Soberania Máxima daquele raio)
-        if (!ExistePredio("Prefeitura") && !ExistePredio("Complexo")) ConstruirNaTerra("Prefeitura", centro, 0);
-
-        // 0.5 Expandir a borda imediata com uma bandeira proxima do centro (Opcional mas recomendado)
-        if (!ExistePredio("Bandeira") && !ExistePredio("Flag")) ConstruirNaTerra("Bandeira", centro, 0);
-
-        // 1. Quartel/Tenda (Prioridade Absoluta)
-        if (!ExistePredio("Tenda")) ConstruirNaTerra("Tenda", centro, 0);
-
-        // 2. Fábrica de Veículos
-        if (!ExistePredio("Veiculos")) ConstruirNaTerra("Veiculos", centro, 500); 
-
-        // 3. AEROPORTO (Construção Expressa a pedido do General - Construir nos primeiros segundos no limite da fronteira verde!)
-        // Ignorar preço de $5.000 para forçar a IA Suprema a tê-lo mesmo com pouco cash inicial 
-        if (!ExistePredio("Aeroporto") && chefe.dinheiro >= 100f) 
+        if (chefe == null) 
         {
-             Debug.Log("🏗️ [IA Arquiteto] Ordem Expressa do Comando Supremo: Erguendo aeroporto fronteiriço nos 10s iniciais!");
-             ConstruirNaTerra("Aeroporto", centro, 100, 240f);
+             chefe = GetComponent<IA_Comandante>();
+             if (chefe == null) 
+             { 
+                 Invoke("PlanejarBaseMilitar", 2.0f);
+                 return; 
+             }
         }
 
+        Vector3 centro = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : transform.position;
 
+        if (!ExistePredio("Prefeitura") && !ExistePredio("Complexo")) ConstruirNaTerra("Prefeitura", centro, 0);
+        if (!ExistePredio("Bandeira") && !ExistePredio("Flag")) ConstruirNaTerra("Bandeira", centro, 0);
+        if (!ExistePredio("Tenda")) ConstruirNaTerra("Tenda", centro, 0);
+        if (!ExistePredio("Veiculos")) ConstruirNaTerra("Veiculos", centro, 500); 
+
+        // AEROPORTO - Construído no começo mas perto (120m)
+        if (!ExistePredio("Aeroporto") && chefe.dinheiro >= 100f) 
+        {
+             ConstruirNaTerra("Aeroporto", centro, 100, 120f); 
+        }
 
         baseIniciada = true;
     }
-
-    // --- MÉTODOS DE CONSTRUÇÃO ---
 
     void ConstruirNaTerra(string nomeChave, Vector3 centro, int custoMinimo, float espacamentoCustom = -1f)
     {
@@ -212,90 +239,42 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         GameObject prefab = BuscarNoCatalogo(nomeChave);
         if (prefab == null) 
         {
-            Debug.LogWarning($"⚠️ [IA Arquiteto] PREFAB FALTANDO: '{nomeChave}' não encontrado no catálogo.");
+            Debug.LogWarning($"<color=red>⛔ [IA Arquiteto] ERRO CRÍTICO: Não achei '{nomeChave}' de forma alguma! Ele não existe no projeto!</color>");
             return;
         }
 
         bool ehBandeiraOuPref = nomeChave.ToLower().Contains("bandeira") || nomeChave.ToLower().Contains("flag") || nomeChave.ToLower().Contains("prefeit");
-        
-        // --- NOVO: Aeroporto é uma instalação furtiva extra-muros ---
         bool ehAeroporto = nomeChave.ToLower().Contains("aeroporto");
-        if (ehAeroporto) ehBandeiraOuPref = true; // Imunidade de Território para a Base Aérea (Não sofre embargo do dono!)
+        if (ehAeroporto) ehBandeiraOuPref = true; 
 
         float espMaior = espacamentoCustom > 0f ? espacamentoCustom : espacamentoEdificios;
-        
-        // Se pedir uma distância imensa (E.g Aeroporto a 600m), nós usamos os 600m para afastar o ponto central, mas a bolha de Colisão para empurrar as árvores e afins fica só em uns 80m. (Para caber a pista larga).
-        // Se empurrassemos a colisão inteira de 600m, o Unity nunca acharia um gramado de mais de um 1.2 kilometros vazios.
-        float bolhaDeColisao = (espMaior > 150f) ? 100f : espMaior;
+        float bolhaDeColisao = (espMaior > 100f) ? 80f : espMaior;
 
-        // Tenta 20 vezes achar um lugar livre e LONGE de outros prédios
+        // REMOÇÃO DE RESTRIÇÕES EXTREMAS: O Aeroporto ganha passe livre e pode nascer mais na marra!
         for (int i = 0; i < 20; i++)
         {
+            float margemReal = (i > 10) ? bolhaDeColisao * 0.5f : bolhaDeColisao;
             Vector3 pos = EncontrarPosicaoEspiral(centro, i, 0f, espMaior);
             
-            // Verifica colisão com MARGEM segura para encaixar o prédio
-            if (!TemPredioProximo(pos, bolhaDeColisao)) 
+            // Ignora colisão brutal se for Aeroporto na tentativa 15 em diante
+            bool ignorarColisao = (ehAeroporto && i >= 15);
+
+            if (!TemPredioProximo(pos, margemReal) || ignorarColisao) 
             {
-                // ============================================
-                // REGRAS DE TERRITÓRIO E SOBERANIA PARA A IA
-                // ============================================
                 if (GerenteDeTerritorio.Instancia != null && !ehBandeiraOuPref)
                 {
                     int dono = GerenteDeTerritorio.Instancia.ObterDonoDoPonto(pos);
                     int idInimigo = chefe.identidade.teamID;
                     
-                    if (dono != idInimigo)
-                    {
-                        // Se for terra inimiga (tem dono e não é ela), IA pula para outro local
-                        if (dono != 0) continue; 
-                        
-                        // Se for Neuta (Dono 0), a IA expande sua fronteira!
-                        // 1. Tenta construir uma Prefeitura se for uma nova ilha (Permitido pelo Gerente)
-                        bool podePrefeitura = GerenteDeTerritorio.Instancia.PodeConstruirPrefeitura(pos);
-                        GameObject prefabExpansao = null;
-                        int custoExpansao = 0;
-                        string nomeAcao = "";
-
-                        if (podePrefeitura && chefe.dinheiro >= 1000f) // Asume custo da prefeitura por volta de 1000
-                        {
-                            prefabExpansao = BuscarNoCatalogo("Prefeitura");
-                            if (prefabExpansao == null) prefabExpansao = BuscarNoCatalogo("Complexo");
-                            custoExpansao = 1000;
-                            nomeAcao = "Prefeitura / Capital";
-                        }
-
-                        // 2. Se não der pra construir prefeitura (ou falta $ ou já tem uma na ilha), usa a Bandeira local
-                        if (prefabExpansao == null)
-                        {
-                            prefabExpansao = BuscarNoCatalogo("Bandeira");
-                            if (prefabExpansao == null) prefabExpansao = BuscarNoCatalogo("Flag");
-                            custoExpansao = 100; // Custo estimando da bandeira
-                            nomeAcao = "Bandeira";
-                        }
-
-                        if (prefabExpansao != null && chefe.dinheiro >= custoExpansao) 
-                        {
-                             Vector3 posBandeira = pos;
-                             if (Terrain.activeTerrain != null) posBandeira.y = Terrain.activeTerrain.SampleHeight(posBandeira);
-                             
-                             Debug.Log($"🚩 [IA Arquiteto] Território virgem detectado! Erguendo {nomeAcao} para reivindicar área.");
-                             SpawnarPredio(prefabExpansao, posBandeira, Quaternion.identity);
-                        }
-                        // IMPORTANTE: Como fundamos uma prefeitura/bandeira que leva tempo para registrar no Gerente,
-                        // cancelamos o plano original de construir o prédio AQUI e AGORA para não bugar.
-                        // O método de manutenção voltará a tentar construir o prédio no próximo ciclo do Update/Invoke!
-                        return; 
-                    }
+                    if (dono != idInimigo && dono != 0) continue; // Fora daqui só se for do inimigo
                 }
 
-                // Ajusta ao terreno
                 float yTerra = 0;
                 if (Terrain.activeTerrain != null) yTerra = Terrain.activeTerrain.SampleHeight(pos);
                 pos.y = yTerra;
 
                 SpawnarPredio(prefab, pos, Quaternion.identity);
 
-                // O Aeroporto é tão grande que isolamos ele fora da cidade, mas para os mísseis e turrets protegerem ele, fincamos uma prefeitura invisivel ou bandeira de soberania la imediatamente!
                 if (ehAeroporto && chefe.dinheiro > 100)
                 {
                     GameObject prefabBandeiraX = BuscarNoCatalogo("Bandeira");
@@ -310,12 +289,15 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             }
         }
         
-        // SE FALHOU TUDO: Constrói longe numa direção aleatória
-        Debug.LogWarning($"⚠️ [IA Arquiteto] Forçando construção de {nomeChave} em ponto distante.");
-        Vector3 dirAleatoria = Random.insideUnitSphere;
+        // FORÇA BRUTA DEFINITIVA NA FRONTEIRA: 
+        // Bota para criar ali no local determinado custe o que custar!
+        Vector3 dirAleatoria = chefe.transform.forward; // Joga pra frente na direção do inimigo
         dirAleatoria.y = 0;
-        Vector3 posForcada = centro + dirAleatoria.normalized * (espacamentoEdificios * 4f);
+        float distanciaFinal = espacamentoCustom > 0f ? espacamentoCustom : (espacamentoEdificios * 4f);
+        Vector3 posForcada = centro + (dirAleatoria.normalized * distanciaFinal);
         if (Terrain.activeTerrain != null) posForcada.y = Terrain.activeTerrain.SampleHeight(posForcada);
+        
+        Debug.LogWarning($"<color=cyan>⚡ [IA Arquiteto] TIRANDO RESTRIÇÕES. Construindo {nomeChave} FORÇADO na fronteira XYZ: {posForcada}!</color>");
         SpawnarPredio(prefab, posForcada, Quaternion.identity);
     }
 
@@ -328,20 +310,21 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
         int meuTime = chefe.identidade.teamID;
 
-        // Distribui defesas como uma 'rosa dos ventos'
-        // Teste de 16 direções diferentes e distâncias variáveis
         for (int i = 0; i < 16; i++)
         {
              float ang = (360f / 16f) * i * Mathf.Deg2Rad;
-             // Varia a distância (mais perto para garantir que cabe no raio de território da IA)
              float distanciaBorda = espacamentoEdificios * Random.Range(1.0f, 2.8f); 
              float raioAfastamentoPredio = 15f;
              
              if (nomeChave.ToLower().Contains("anti") || nomeChave.ToLower().Contains("aerea") || nomeChave.ToLower().Contains("ares"))
              {
-                 // Empurra a torreta anti-aérea para as extremidades e afasta de construções
-                 distanciaBorda = Random.Range(120f, 200f); 
-                 raioAfastamentoPredio = 80f; // Evita fortemente construir onde há outros prédios para o míssil não acertar
+                 distanciaBorda = Random.Range(90f, 150f); 
+                 raioAfastamentoPredio = 60f; 
+             }
+             else if (nomeChave.ToLower().Contains("muro") || nomeChave.ToLower().Contains("cerca"))
+             {
+                 distanciaBorda = Random.Range(100f, 140f);
+                 raioAfastamentoPredio = 5f; 
              }
 
              Vector3 dirExt = new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang));
@@ -349,21 +332,19 @@ public class IA_Arquiteto_Pro : MonoBehaviour
              
              if (Terrain.activeTerrain != null) posSugerida.y = Terrain.activeTerrain.SampleHeight(posSugerida);
 
-             // 1. Não pode encavalar e obstruir fábricas/veículos (Raio variável para AA não bater em prédios)
              if (TemPredioProximo(posSugerida, raioAfastamentoPredio)) continue;
 
-             // 2. REGRA DE OURO DA DEFESA: Ela só pode erguer torreta se for DENTRO ou muito perto do Território dela
-             // Para não invadir a cidade alheia com uma torreta na parede deles rs
              if (GerenteDeTerritorio.Instancia != null)
              {
                  int dono = GerenteDeTerritorio.Instancia.ObterDonoDoPonto(posSugerida);
-                 // Aceita território DELA, ou território neutro muito colado na base dela, mas JAMAIS na base Inimiga.
                  if (dono != meuTime && dono != 0) continue; 
              }
              
-             // Achamos o Ponto Tático
-             SpawnarPredio(prefab, posSugerida, Quaternion.LookRotation(dirExt));
-             return; // Só despacha uma por vez!
+             Quaternion rotacaoFinal = Quaternion.LookRotation(dirExt);
+             if (nomeChave.ToLower().Contains("muro") || nomeChave.ToLower().Contains("cerca")) rotacaoFinal *= Quaternion.Euler(0, 90, 0); 
+             
+             SpawnarPredio(prefab, posSugerida, rotacaoFinal);
+             return; 
         }
     }
 
@@ -373,8 +354,6 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         if (prefab == null) return;
 
         Quaternion rot = Quaternion.LookRotation(direcaoMar);
-        
-        // V3: Empurrar 35m para dentro da água.
         Vector3 posFinal = posicaoCosta + (direcaoMar.normalized * 35f); 
         posFinal.y = nivelDoMar; 
 
@@ -383,11 +362,8 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
     Vector3 EncontrarAgua(Vector3 centro, float raioMin, float raioMax)
     {
-        // V3 Relaxado: Se não achar água funda (-0.5), aceita água rasa (0.0) se for longe.
-        // Isso ajuda em mapas onde o oceano é apenas mesh e o terreno é flat 0.
-        
         int tentativas = 36; 
-        float raioLimite = Mathf.Max(raioMax, 400f); // Busca bem longe
+        float raioLimite = Mathf.Max(raioMax, 400f); 
 
         for (int i = 0; i < tentativas; i++)
         {
@@ -395,20 +371,17 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             Vector3 dir = new Vector3(Mathf.Cos(angulo), 0, Mathf.Sin(angulo));
             bool estavaNaTerra = true;
 
-            for (float dist = raioMin; dist < raioLimite; dist += 10f) // Passos maiores (10m)
+            for (float dist = raioMin; dist < raioLimite; dist += 10f) 
             {
                 Vector3 pontoTeste = centro + dir * dist;
                 float altura = 0f;
                 if (Terrain.activeTerrain != null) altura = Terrain.activeTerrain.SampleHeight(pontoTeste);
 
-                // Critério: <= 0.2f (Aceita nível do mar exato ou pouco acima se for praia)
-                // Se a água for um plano em Y=0, o terreno embaixo pode ser -10 ou 0.
                 bool estaNaAgua = (altura <= nivelDoMar - 0.1f); 
 
                 if (estavaNaTerra && estaNaAgua)
                 {
                     Vector3 pontoCosta = pontoTeste - (dir * 5f); 
-                    // Aceita qualquer lugar que caiba o estaleiro
                     return pontoCosta;
                 }
                 estavaNaTerra = !estaNaAgua;
@@ -417,24 +390,21 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         return Vector3.zero;
     }
 
-    // --- Métodos Recuperados e Fix de Compilação ---
-
     void SpawnarPredio(GameObject prefab, Vector3 pos, Quaternion rot)
     {
-        // GOD MODE: Construção Instantânea para destravar a IA
         GameObject novo = Instantiate(prefab, pos, rot);
         ConfigurarIdentidade(novo);
         if(chefe != null) chefe.GastarDinheiro(200); 
-        Debug.Log($"🏗️ [IA Arquiteto] Construção Instantânea REALIZADA: {prefab.name} em {pos}");
+        Debug.Log($"<color=#00FF00>🏗️ [IA Arquiteto] {prefab.name} ERGUIDO COM SUCESSO na Posição XYZ: {pos}</color>");
     }
 
     Vector3 EncontrarPosicaoEspiral(Vector3 centro, int indice, float alturaFixa, float espacCustom = -1f)
     {
         float usarEspac = espacCustom > 0f ? espacCustom : espacamentoEdificios;
-        // Ângulo áureo (137.5°) — distribui pontos uniformemente sem empilhar
+        float passoCrescimento = espacCustom > 0f ? 15f : (usarEspac * 0.8f);
+
         float angulo = indice * 137.5f;
-        // Raio cresce com espaçamento mínimo generoso
-        float raio = usarEspac + (indice * usarEspac * 0.8f);
+        float raio = usarEspac + (indice * passoCrescimento);
         
         float rad = angulo * Mathf.Deg2Rad;
         Vector3 offset = new Vector3(Mathf.Cos(rad) * raio, 0, Mathf.Sin(rad) * raio);
@@ -444,13 +414,11 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
     bool TemPredioProximo(Vector3 posicao, float raioMinimo)
     {
-        // NOVO: GPS e Leitor de BoxCollider/Identidade para impedir TODAS as sobreposições.
         Collider[] vizinhos = Physics.OverlapSphere(posicao, raioMinimo);
         foreach (var col in vizinhos)
         {
             if (col == null || col is TerrainCollider) continue;
 
-            // Busca os componentes no objeto e nos pais
             if (col.GetComponentInParent<Fabrica>() != null) return true;
             if (col.GetComponentInParent<Estaleiro>() != null) return true;
             if (col.GetComponentInParent<Heliporto>() != null) return true;
@@ -458,17 +426,13 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             var danos = col.GetComponentInParent<SistemaDeDanos>();
             if (danos != null && danos.ehEstrutura) return true;
             
-            // Avalia unidades paradas e BoxColliders (Evita colocar casa em cima de tanque ou base inimiga)
             if (col.GetComponentInParent<ControleUnidade>() != null) return true;
             if (col.GetComponentInParent<IdentidadeUnidade>() != null) return true;
 
-            // Bloqueio rigoroso de BoxColliders (Qualquer cubo/estrutura física com mais de 3 metros)
             if (col is BoxCollider && col.bounds.size.magnitude > 3f) return true;
         }
         return false;
     }
-
-
 
     void ConfigurarIdentidade(GameObject obj)
     {
@@ -482,10 +446,9 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         }
         else
         {
-            id.teamID = 2; // Fallback
+            id.teamID = 2; 
         }
         
-        // Se for fábrica, registra no General
         var fab = obj.GetComponent<Fabrica>();
         if (fab != null && chefe != null && chefe.cerebroGeneral != null)
         {
@@ -495,50 +458,70 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
     GameObject BuscarNoCatalogo(string nomeChave)
     {
-        if (MenuConstrucao.catalogoGlobal == null) return null;
-        
-        // Busca
-        foreach (var item in MenuConstrucao.catalogoGlobal)
-        {
-             if (item.nomeItem.ToLower().Contains(nomeChave.ToLower())) return item.prefabDaUnidade;
-        }
+        GameObject prefabAchado = null;
 
-        // Sinônimos - usando busca iterativa
-        if (nomeChave == "Veiculos") 
+        // 1. BUSCA NORMAL (Onde estava falhando pois vc não adicionou o item no MenuConstrucao)
+        if (MenuConstrucao.catalogoGlobal != null)
         {
-            foreach (var item in MenuConstrucao.catalogoGlobal) {
-                string nm = item.nomeItem.ToLower();
-                if (nm.Contains("hangar") || nm.Contains("fabrica") || nm.Contains("factory") || nm.Contains("veiculos")) return item.prefabDaUnidade;
+            foreach (var item in MenuConstrucao.catalogoGlobal)
+            {
+                 if (item.nomeItem.ToLower().Contains(nomeChave.ToLower()))
+                 {
+                     prefabAchado = item.prefabDaUnidade;
+                     break;
+                 }
             }
-        }
-        
-        if (nomeChave == "Tenda") 
-        {
-            foreach (var item in MenuConstrucao.catalogoGlobal) {
-                string nm = item.nomeItem.ToLower();
-                if (nm.Contains("quartel") || nm.Contains("barraca") || nm.Contains("infantaria") || nm.Contains("tenda")) return item.prefabDaUnidade;
-            }
-        }
 
-        if (nomeChave == "Antiaerea") 
-        {
-            foreach (var item in MenuConstrucao.catalogoGlobal) {
-                string nm = item.nomeItem.ToLower();
-                if (nm.Contains("anti") || nm.Contains("aérea") || nm.Contains("aerea") || nm.Contains("patriot") || nm.Contains("sam") || nm.Contains("missil") || nm.Contains("ares")) return item.prefabDaUnidade;
+            if (prefabAchado == null)
+            {
+                foreach (var item in MenuConstrucao.catalogoGlobal) 
+                {
+                    string nm = item.nomeItem.ToLower();
+                    if (nomeChave == "Veiculos" && (nm.Contains("hangar") || nm.Contains("fabrica") || nm.Contains("factory") || nm.Contains("veiculos"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Tenda" && (nm.Contains("quartel") || nm.Contains("barraca") || nm.Contains("infantaria") || nm.Contains("tenda"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Antiaerea" && (nm.Contains("anti") || nm.Contains("aérea") || nm.Contains("aerea") || nm.Contains("patriot") || nm.Contains("sam") || nm.Contains("missil") || nm.Contains("ares"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Torreta" && (nm.Contains("torreta") || nm.Contains("defesa") || nm.Contains("bunker") || nm.Contains("canhao") || nm.Contains("metralhadora"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Muro" && (nm.Contains("muro") || nm.Contains("cerca") || nm.Contains("wall") || nm.Contains("barricada"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Aeroporto" && (nm.Contains("aeroporto") || nm.Contains("base aerea") || nm.Contains("pista") || nm.Contains("airport") || nm.Contains("hangar") && (nm.Contains("voo") || nm.Contains("aviao") || nm.Contains("aereo")))) prefabAchado = item.prefabDaUnidade;
+                }
             }
         }
 
-        if (nomeChave == "Torreta") 
+        if (prefabAchado != null) return prefabAchado;
+
+        // ==============================================================
+        // 🚨 GOD MODE: MODO "TIRA RESTRIÇÕES" ATIVADO 🚨
+        // Se a IA não achar no Catálogo Oficial, ela ROUBA direto do Jogo!
+        // ==============================================================
+        
+        Debug.LogWarning($"<color=yellow>⚠️ [IA God Mode] Ficha de '{nomeChave}' não encontrada no catálogo. Ativando clonagem forçada!</color>");
+
+        if (nomeChave == "Aeroporto")
         {
-            foreach (var item in MenuConstrucao.catalogoGlobal) {
-                string nm = item.nomeItem.ToLower();
-                if (nm.Contains("torreta") || nm.Contains("defesa") || nm.Contains("bunker") || nm.Contains("canhao") || nm.Contains("metralhadora")) return item.prefabDaUnidade;
+            var aeroNaCena = Object.FindFirstObjectByType<GerenciadorAeroporto>();
+            if (aeroNaCena != null) return aeroNaCena.gameObject;
+        }
+
+        // Tenta achar qualquer objeto na memória do Unity com o nome parecido
+        GameObject[] todosRecursos = Resources.FindObjectsOfTypeAll<GameObject>();
+        foreach (var obj in todosRecursos)
+        {
+            // Ignora lixo de memória da Unity
+            if (obj.hideFlags == HideFlags.NotEditable || obj.hideFlags == HideFlags.HideAndDontSave) continue;
+
+            if (obj.name.ToLower().Contains(nomeChave.ToLower()))
+            {
+                // Verifica se é uma construção válida
+                if (obj.GetComponent<SistemaDeDanos>() != null || nomeChave == "Aeroporto" || nomeChave == "Bandeira")
+                {
+                    Debug.Log($"<color=magenta>🧬 [God Mode] Prefab escondido localizado e roubado: {obj.name}</color>");
+                    return obj;
+                }
             }
         }
-        
+
         return null;
     }
-
 
     public Vector3 EncontrarPontoDefensivo()
     {

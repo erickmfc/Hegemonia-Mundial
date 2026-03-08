@@ -20,7 +20,6 @@ public class MenuConstrucao : MonoBehaviour
     public Color corTextoSecundario = new Color(0.7f, 0.7f, 0.7f, 1f);
 
     [Header("Cores das Categorias (Sutis)")]
-    // Cores mais sóbrias para os cards, usando transparência
     public Color corCardBase = new Color(0.2f, 0.2f, 0.25f, 0.8f);
     public Color corBordaAtiva = new Color(1f, 1f, 1f, 0.3f);
 
@@ -28,15 +27,13 @@ public class MenuConstrucao : MonoBehaviour
     public bool autoCarregarFichas = false;
     public List<DadosConstrucao> catalogo = new List<DadosConstrucao>();
 
-    // Referências Globais (Mantendo compatibilidade)
     public static List<DadosConstrucao> catalogoGlobal;
     public static bool EstaAberto;
 
-    // Elementos da UI
     private GameObject painelPrincipal;
     private Transform containerBotoes;
     private Transform containerAbas;
-    private CanvasGroup canvasGroupPainel; // Para animações de fade
+    private CanvasGroup canvasGroupPainel; 
     
     private GerenteDeJogo gerente;
     private bool menuAberto = false;
@@ -52,7 +49,6 @@ public class MenuConstrucao : MonoBehaviour
 
         GerarInterfaceCompleta();
 
-        // Estado inicial: Fechado
         if (painelPrincipal != null)
         {
             painelPrincipal.SetActive(false);
@@ -75,12 +71,11 @@ public class MenuConstrucao : MonoBehaviour
         {
             if (ficha != null && ficha.prefabDaUnidade != null)
             {
-                // CRÍTICO: Filtra destroços em chamas para não poluir os botões nem ser pego pela IA
                 string nm = ficha.nomeItem.ToLower();
                 if (nm.Contains("destroc") || nm.Contains("destroç") || nm.Contains("chama") || 
                     ficha.prefabDaUnidade.GetComponent<DestrocosEmChamas>() != null)
                 {
-                    continue; // Ignora e não coloca no menu!
+                    continue; 
                 }
 
                 catalogo.Add(ficha);
@@ -96,7 +91,6 @@ public class MenuConstrucao : MonoBehaviour
     {
         if (Input.GetKeyDown(teclaAtalho))
         {
-            // Fecha Menu do Pier se estiver aberto para evitar conflito visual
             MenuPier menuPier = Object.FindFirstObjectByType<MenuPier>();
             if (menuPier != null) menuPier.FecharMenu();
 
@@ -104,13 +98,18 @@ public class MenuConstrucao : MonoBehaviour
         }
     }
 
+    public void AlternarMenu()
+    {
+        if (painelPrincipal == null) return;
+        AlternarMenu(!menuAberto);
+    }
+
     public void AlternarMenu(bool abrir)
     {
         if (painelPrincipal == null) return;
         
-        StopAllCoroutines(); // Para animações anteriores
+        StopAllCoroutines(); 
         
-        // DEVOLVE O MOUSE NA HORA EXATA, NÃO ESPERA A TELA SUMIR!
         if (canvasGroupPainel != null)
         {
             canvasGroupPainel.blocksRaycasts = abrir;
@@ -120,7 +119,6 @@ public class MenuConstrucao : MonoBehaviour
         StartCoroutine(AnimarMenu(abrir));
     }
 
-    // Animação suave de Fade In/Out
     IEnumerator AnimarMenu(bool abrir)
     {
         menuAberto = abrir;
@@ -129,7 +127,6 @@ public class MenuConstrucao : MonoBehaviour
         if (abrir)
         {
             painelPrincipal.SetActive(true);
-            // Atualiza layout para evitar glitches visuais no primeiro frame
             if(containerBotoes != null) LayoutRebuilder.ForceRebuildLayoutImmediate(containerBotoes.GetComponent<RectTransform>());
         }
 
@@ -153,10 +150,8 @@ public class MenuConstrucao : MonoBehaviour
         }
     }
 
-    // --- GERAÇÃO DA INTERFACE MODERNA ---
     void GerarInterfaceCompleta()
     {
-        // 1. Canvas e Limpeza
         GameObject canvasObj = GameObject.Find("Canvas_Interface");
         if (canvasObj == null)
         {
@@ -172,44 +167,37 @@ public class MenuConstrucao : MonoBehaviour
         Transform painelAntigo = canvasObj.transform.Find("Painel_Construcao_Moderno");
         if (painelAntigo != null) DestroyImmediate(painelAntigo.gameObject);
 
-        // 2. Painel Principal (Background)
         painelPrincipal = CriarRetangulo("Painel_Construcao_Moderno", canvasObj.transform);
         Image imgFundo = painelPrincipal.AddComponent<Image>();
         imgFundo.color = corFundoJanela;
         
-        // CanvasGroup para animações de fade e Bloqueio de Raycasts para garantir foco
         canvasGroupPainel = painelPrincipal.AddComponent<CanvasGroup>();
-        canvasGroupPainel.blocksRaycasts = true; // Garante que cliques não varem a tela para trás e registrem nela
+        canvasGroupPainel.blocksRaycasts = true; 
         canvasGroupPainel.interactable = true;
         
-        // Layout Centralizado
         RectTransform rtPanel = painelPrincipal.GetComponent<RectTransform>();
         rtPanel.anchorMin = new Vector2(0.1f, 0.1f);
         rtPanel.anchorMax = new Vector2(0.9f, 0.9f);
         rtPanel.offsetMin = Vector2.zero;
         rtPanel.offsetMax = Vector2.zero;
         
-        // Adiciona um contorno sutil (Outline) se desejar, ou apenas sombra
         Outline outline = painelPrincipal.AddComponent<Outline>();
         outline.effectColor = new Color(1, 1, 1, 0.1f);
         outline.effectDistance = new Vector2(1, -1);
 
-        // -- ESTRUTURA INTERNA (Header + Body) --
         VerticalLayoutGroup layoutPrincipal = painelPrincipal.AddComponent<VerticalLayoutGroup>();
         layoutPrincipal.padding = new RectOffset(20, 20, 20, 20);
         layoutPrincipal.spacing = 15;
         layoutPrincipal.childControlHeight = true;
         layoutPrincipal.childControlWidth = true;
-        layoutPrincipal.childForceExpandHeight = false; // Header fixo
+        layoutPrincipal.childForceExpandHeight = false; 
         
-        // Inicializa Modo Demolição se não existir
         if (Object.FindFirstObjectByType<ModoDemolicao>() == null)
         {
             GameObject go = new GameObject("ModoDemolicao_Manager");
             go.AddComponent<ModoDemolicao>();
         }
 
-        // 3. CABEÇALHO (Categorias + Demolição)
         GameObject headerObj = CriarRetangulo("Header_Abas", painelPrincipal.transform);
         LayoutElement leHeader = headerObj.AddComponent<LayoutElement>();
         leHeader.minHeight = 50;
@@ -218,7 +206,7 @@ public class MenuConstrucao : MonoBehaviour
 
         HorizontalLayoutGroup layoutAbas = headerObj.AddComponent<HorizontalLayoutGroup>();
         layoutAbas.childControlWidth = true;
-        layoutAbas.childForceExpandWidth = true; // Botões preenchem espaço
+        layoutAbas.childForceExpandWidth = true; 
         layoutAbas.spacing = 10;
         containerAbas = headerObj.transform;
 
@@ -226,41 +214,33 @@ public class MenuConstrucao : MonoBehaviour
         {
             CriarBotaoAbaModerno(cat, containerAbas);
         }
-        
-        // BOTÃO DE DEMOLIÇÃO (Adicionado ao Header)
-        // (Removido a pedido do usuário que não gostou da aba extra)
-        // CriarBotaoDemolicao(containerAbas);
 
-        // 4. ÁREA DE CONTEÚDO (Scroll)
         GameObject bodyObj = CriarRetangulo("Body_Scroll", painelPrincipal.transform);
         LayoutElement leBody = bodyObj.AddComponent<LayoutElement>();
-        leBody.flexibleHeight = 1; // Ocupa o resto do espaço
+        leBody.flexibleHeight = 1; 
 
-        // Fundo sutil para a área de scroll
         Image imgBody = bodyObj.AddComponent<Image>();
         imgBody.color = new Color(0, 0, 0, 0.2f); 
-        imgBody.raycastTarget = true; // Necessário para ScrollRect capturar arraste
+        imgBody.raycastTarget = true; 
 
         ScrollRect sr = bodyObj.AddComponent<ScrollRect>();
-        sr.scrollSensitivity = 15; // Mais suave (era 40)
-        sr.decelerationRate = 0.135f; // Parada suave, estilo toque
-        sr.elasticity = 0.1f; // "Bounce" sutil no final
+        sr.scrollSensitivity = 15; 
+        sr.decelerationRate = 0.135f; 
+        sr.elasticity = 0.1f; 
         sr.inertia = true;
         sr.horizontal = false;
         sr.vertical = true;
 
-        // Viewport
         GameObject viewport = CriarRetangulo("Viewport", bodyObj.transform);
         Image imgView = viewport.AddComponent<Image>();
-        imgView.color = Color.clear; // Transparente!
-        imgView.raycastTarget = false; // Viewport não intercepta raycast dos filhos
+        imgView.color = Color.clear; 
+        imgView.raycastTarget = false; 
         viewport.AddComponent<RectMask2D>();
         
         RectTransform rtView = viewport.GetComponent<RectTransform>();
         rtView.anchorMin = Vector2.zero; rtView.anchorMax = Vector2.one;
         rtView.sizeDelta = Vector2.zero;
 
-        // Content
         GameObject content = CriarRetangulo("Content_Grid", viewport.transform);
         containerBotoes = content.transform;
         
@@ -269,7 +249,6 @@ public class MenuConstrucao : MonoBehaviour
         rtContent.pivot = new Vector2(0.5f, 1);
 
         GridLayoutGroup grid = content.AddComponent<GridLayoutGroup>();
-        // Compacto: 100x140
         grid.cellSize = new Vector2(100, 140);
         grid.spacing = new Vector2(10, 10);
         grid.padding = new RectOffset(10, 10, 10, 10);
@@ -288,67 +267,39 @@ public class MenuConstrucao : MonoBehaviour
     {
         GameObject btnObj = CriarRetangulo("Aba_" + categoria, pai);
         
-        // Fundo do botão da aba
         Image img = btnObj.AddComponent<Image>();
-        img.color = new Color(1, 1, 1, 0.05f); // Quase transparente inativo
+        img.color = new Color(1, 1, 1, 0.05f); 
 
         Button btn = btnObj.AddComponent<Button>();
         
-        // Texto da aba
         GameObject txtObj = CriarRetangulo("Texto", btnObj.transform);
         Text txt = txtObj.AddComponent<Text>();
         txt.text = categoria.ToString().ToUpper();
         txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         txt.alignment = TextAnchor.MiddleCenter;
-        txt.fontSize = 8; // Reduzido +10% (era 9)
+        txt.fontSize = 8; 
         txt.fontStyle = FontStyle.Bold;
         txt.color = corTextoSecundario;
         txt.resizeTextForBestFit = true;
         txt.resizeTextMinSize = 5;
         txt.resizeTextMaxSize = 8;
-        txt.raycastTarget = false; // Disable Raycast
+        txt.raycastTarget = false; 
         
         RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
         rtTxt.anchorMin = Vector2.zero; rtTxt.anchorMax = Vector2.one;
 
         btn.onClick.AddListener(() => 
         {
-            if(ModoDemolicao.Instancia) ModoDemolicao.Instancia.AlternarModo(false); // Desativa demolição
-            FiltrarPorCategoria(categoria);
-        });
-    }
-
-    void CriarBotaoDemolicao(Transform pai)
-    {
-        GameObject btnObj = CriarRetangulo("Btn_Demolicao", pai);
-        
-        // Fundo Vermelho Sutil
-        Image img = btnObj.AddComponent<Image>();
-        img.color = new Color(1, 0, 0, 0.2f); 
-
-        Button btn = btnObj.AddComponent<Button>();
-        
-        GameObject txtObj = CriarRetangulo("Texto", btnObj.transform);
-        Text txt = txtObj.AddComponent<Text>();
-        txt.text = "DEMOLIR";
-        txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        txt.alignment = TextAnchor.MiddleCenter;
-        txt.fontSize = 8;
-        txt.fontStyle = FontStyle.Bold;
-        txt.color = new Color(1f, 0.5f, 0.5f); // Texto Vermelho Claro
-        txt.resizeTextForBestFit = true;
-        
-        RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
-        rtTxt.anchorMin = Vector2.zero; rtTxt.anchorMax = Vector2.one;
-
-        // Lógica
-        btn.onClick.AddListener(() => 
-        {
-            if(ModoDemolicao.Instancia)
+            if(ModoDemolicao.Instancia) ModoDemolicao.Instancia.AlternarModo(false); 
+            
+            if (menuAberto && categoriaAtual == categoria)
             {
-                ModoDemolicao.Instancia.AlternarModo(true);
-                AlternarMenu(false); // Fecha o menu para poder clicar nas coisas
-                Debug.Log("[Menu] Modo Demolição Ativado!");
+                AlternarMenu(false); // Clicou na mesma aba, fecha o menu.
+            }
+            else
+            {
+                if (!menuAberto) AlternarMenu(true); // Se tiver fechado, abre.
+                FiltrarPorCategoria(categoria);
             }
         });
     }
@@ -365,11 +316,11 @@ public class MenuConstrucao : MonoBehaviour
 
             if (ehAtiva)
             {
-                img.color = new Color(corDestaque.r, corDestaque.g, corDestaque.b, 0.2f); // Glow sutil
+                img.color = new Color(corDestaque.r, corDestaque.g, corDestaque.b, 0.2f); 
                 if (txt)
                 {
                     txt.color = corDestaque;
-                    txt.fontSize = 8; // Mantemos consistente
+                    txt.fontSize = 8; 
                 }
             }
             else
@@ -391,10 +342,8 @@ public class MenuConstrucao : MonoBehaviour
 
         if (containerBotoes == null) return;
 
-        // Limpa itens antigos
         foreach (Transform child in containerBotoes) Destroy(child.gameObject);
 
-        // Cria novos cards
         foreach (DadosConstrucao item in catalogo)
         {
             if (item != null && item.categoria == categoriaDesejada)
@@ -403,7 +352,6 @@ public class MenuConstrucao : MonoBehaviour
             }
         }
         
-        // Força atualização layouts
         StartCoroutine(AtualizarLayouts());
     }
 
@@ -413,30 +361,25 @@ public class MenuConstrucao : MonoBehaviour
         if(containerBotoes != null) LayoutRebuilder.ForceRebuildLayoutImmediate(containerBotoes.GetComponent<RectTransform>());
     }
 
-    // --- CARDS MODERNOS ---
     void CriarCardItemModerno(DadosConstrucao item)
     {
         GameObject cardObj = CriarRetangulo("Card_" + item.nomeItem, containerBotoes);
         Image imgBg = cardObj.AddComponent<Image>();
         imgBg.color = corCardBase;
 
-        // Tornar o card INTEIRO clicável para construção novamente!
         Button btnCard = cardObj.AddComponent<Button>();
         btnCard.transition = Selectable.Transition.None; 
-        // Passa a imagem de fundo para o feedback de compra e executa
         btnCard.onClick.AddListener(() => ConstruirItem(item, imgBg));
         
-        // Layout Vertical do Card
         VerticalLayoutGroup layoutCard = cardObj.AddComponent<VerticalLayoutGroup>();
         layoutCard.padding = new RectOffset(5, 5, 5, 5);
         layoutCard.spacing = 2;
-        layoutCard.childControlHeight = true; // IMPORTANT: Force children to stack nicely
+        layoutCard.childControlHeight = true; 
         layoutCard.childForceExpandHeight = false;
 
-        // 1. Área do Ícone (Topo, quadrado pequeno)
         GameObject iconArea = CriarRetangulo("AreaIcone", cardObj.transform);
         LayoutElement leIcon = iconArea.AddComponent<LayoutElement>();
-        leIcon.minHeight = 60; // Reduzido drasticamente
+        leIcon.minHeight = 60; 
         leIcon.preferredHeight = 60;
         leIcon.flexibleHeight = 0;
         
@@ -450,81 +393,72 @@ public class MenuConstrucao : MonoBehaviour
         }
         else
         {
-            // Placeholder visual bonito
             imgIcon.color = new Color(1, 1, 1, 0.1f);
             GameObject textPlace = CriarRetangulo("TxtPlace", iconArea.transform);
             Text tPlace = textPlace.AddComponent<Text>();
             tPlace.text = "NO IMAGE";
             tPlace.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             tPlace.alignment = TextAnchor.MiddleCenter;
-            tPlace.fontSize = 7; // Reduzido drasticamente (40%-)
+            tPlace.fontSize = 7; 
             tPlace.color = new Color(1,1,1,0.2f);
             tPlace.resizeTextForBestFit = true;
             tPlace.resizeTextMaxSize = 7;
-            tPlace.raycastTarget = false; // Disable Raycast 
+            tPlace.raycastTarget = false; 
             RectTransform rtTp = textPlace.GetComponent<RectTransform>();
             rtTp.anchorMin = Vector2.zero; rtTp.anchorMax = Vector2.one;
         }
 
-        // 2. Nome do Item
         GameObject nomeObj = CriarRetangulo("NomeItem", cardObj.transform);
         LayoutElement leNome = nomeObj.AddComponent<LayoutElement>();
-        leNome.minHeight = 20; leNome.preferredHeight = 20; // Reduzido
+        leNome.minHeight = 20; leNome.preferredHeight = 20; 
         
         Text tNome = nomeObj.AddComponent<Text>();
         tNome.text = item.nomeItem;
         tNome.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        tNome.fontSize = 9; // Menor
+        tNome.fontSize = 9; 
         tNome.alignment = TextAnchor.MiddleCenter;
         tNome.color = corTextoPrimario;
         tNome.fontStyle = FontStyle.Bold;
         tNome.resizeTextForBestFit = true;
         tNome.resizeTextMinSize = 8;
         tNome.resizeTextMaxSize = 12;
-        tNome.raycastTarget = false; // Disable Raycast
+        tNome.raycastTarget = false; 
         
-        // 3. Preço
         GameObject precoObj = CriarRetangulo("Preco", cardObj.transform);
         LayoutElement lePreco = precoObj.AddComponent<LayoutElement>();
-        lePreco.minHeight = 15; lePreco.preferredHeight = 15; // Reduzido
+        lePreco.minHeight = 15; lePreco.preferredHeight = 15; 
 
         Text tPreco = precoObj.AddComponent<Text>();
         tPreco.text = $"<color=#00FF00>$ {item.preco}</color>";
         tPreco.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        tPreco.fontSize = 9; // Menor
+        tPreco.fontSize = 9; 
         tPreco.alignment = TextAnchor.MiddleCenter;
         tPreco.supportRichText = true;
-        tPreco.raycastTarget = false; // Disable Raycast
+        tPreco.raycastTarget = false; 
 
-        // Spacer to push controls to bottom
         GameObject spacer = new GameObject("Spacer");
         spacer.transform.SetParent(cardObj.transform, false);
         spacer.AddComponent<RectTransform>();
         LayoutElement leSpacer = spacer.AddComponent<LayoutElement>();
-        leSpacer.flexibleHeight = 1; // Pushes everything below down
+        leSpacer.flexibleHeight = 1; 
 
-        // 4. Controles de Quantidade e Compra
         GameObject controlsObj = CriarRetangulo("Controles", cardObj.transform);
         LayoutElement leControls = controlsObj.AddComponent<LayoutElement>();
-        leControls.minHeight = 25; leControls.preferredHeight = 25; // Reduzido
+        leControls.minHeight = 25; leControls.preferredHeight = 25; 
         
         HorizontalLayoutGroup layoutControls = controlsObj.AddComponent<HorizontalLayoutGroup>();
         layoutControls.spacing = 2;
         layoutControls.childControlWidth = true;
         layoutControls.childForceExpandWidth = true;
 
-        // Quantidade (Esquerda)
         GameObject qtdBox = CriarRetangulo("BoxQtd", controlsObj.transform);
         HorizontalLayoutGroup layoutQtd = qtdBox.AddComponent<HorizontalLayoutGroup>();
         layoutQtd.spacing = 2;
         
-        // Inicializa quantidade
         if (!quantidadesPorItem.ContainsKey(item.nomeItem)) quantidadesPorItem[item.nomeItem] = 1;
         
-        // Botão Menos
         GameObject btnMenos = CriarBotaoSimples("-", qtdBox.transform, new Color(1,0.3f,0.3f));
         
-        // Texto Qtd
         GameObject txtQtdObj = CriarRetangulo("TxtQtd", qtdBox.transform);
         Text tQtd = txtQtdObj.AddComponent<Text>();
         tQtd.text = quantidadesPorItem[item.nomeItem].ToString();
@@ -535,13 +469,11 @@ public class MenuConstrucao : MonoBehaviour
         LayoutElement leTxtQ = txtQtdObj.AddComponent<LayoutElement>();
         leTxtQ.flexibleWidth = 1;
 
-        // Botão Mais
         GameObject btnMais = CriarBotaoSimples("+", qtdBox.transform, new Color(0.3f,1f,0.3f));
 
-        // Botão COMPRAR (Direita, maior destaque)
         GameObject btnComprarObj = CriarRetangulo("BtnComprar", controlsObj.transform);
         Image imgComprar = btnComprarObj.AddComponent<Image>();
-        imgComprar.color = new Color(0.2f, 0.6f, 0.2f); // Verde botão
+        imgComprar.color = new Color(0.2f, 0.6f, 0.2f); 
         
         Button btnComp = btnComprarObj.AddComponent<Button>();
         LayoutElement leComp = btnComprarObj.AddComponent<LayoutElement>();
@@ -549,19 +481,18 @@ public class MenuConstrucao : MonoBehaviour
 
         GameObject txtCompObj = CriarRetangulo("TxtComp", btnComprarObj.transform);
         Text tComp = txtCompObj.AddComponent<Text>();
-        tComp.text = "ABRIR";
+        tComp.text = "COMPRAR";
         tComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         tComp.alignment = TextAnchor.MiddleCenter;
         tComp.color = Color.white;
-        tComp.fontSize = 8; // Menor
+        tComp.fontSize = 8; 
         tComp.resizeTextForBestFit = true;
         tComp.resizeTextMaxSize = 8;
         tComp.resizeTextMinSize = 5;
-        tComp.raycastTarget = false; // Disable Raycast
+        tComp.raycastTarget = false; 
         RectTransform rtTC = txtCompObj.GetComponent<RectTransform>();
         rtTC.anchorMin = Vector2.zero; rtTC.anchorMax = Vector2.one;
 
-        // Eventos
         Text refTextoQtd = tQtd;
         btnMenos.GetComponent<Button>().onClick.AddListener(() => AlterarQuantidade(item.nomeItem, -1, refTextoQtd));
         btnMais.GetComponent<Button>().onClick.AddListener(() => AlterarQuantidade(item.nomeItem, 1, refTextoQtd));
@@ -572,7 +503,7 @@ public class MenuConstrucao : MonoBehaviour
     {
         GameObject btnObj = CriarRetangulo("Btn" + texto, pai);
         Image img = btnObj.AddComponent<Image>();
-        img.color = new Color(1,1,1,0.1f); // Fundo sutil
+        img.color = new Color(1,1,1,0.1f); 
         
         Button btn = btnObj.AddComponent<Button>();
         
@@ -583,7 +514,7 @@ public class MenuConstrucao : MonoBehaviour
         t.color = corTexto;
         t.alignment = TextAnchor.MiddleCenter;
         t.fontStyle = FontStyle.Bold;
-        t.raycastTarget = false; // Disable Raycast
+        t.raycastTarget = false; 
         
         RectTransform rt = txtObj.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
@@ -620,11 +551,9 @@ public class MenuConstrucao : MonoBehaviour
         if (gerente == null) gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
         if (gerente == null) return;
         
-        // --- 1. VERIFICAÇÃO PRELIMINAR DE DINHEIRO (Para Feedback Visual) ---
         int qtd = quantidadesPorItem.ContainsKey(item.nomeItem) ? quantidadesPorItem[item.nomeItem] : 1;
         int custoTotal = item.preco * qtd;
         
-        // Se for prédio (qtd sempre 1)
         if (!item.Equals(null) && (item.categoria == DadosConstrucao.CategoriaItem.Infraestrutura || item.categoria == DadosConstrucao.CategoriaItem.Energia || item.categoria == DadosConstrucao.CategoriaItem.Urbana))
         {
              custoTotal = item.preco;
@@ -637,21 +566,11 @@ public class MenuConstrucao : MonoBehaviour
         }
         else
         {
-            // Fallback para GerenteDeJogo antigo
             if (gerente.dinheiroAtual >= custoTotal) temDinheiro = true;
         }
 
-        if (temDinheiro && cardImage != null)
-        {
-            StartCoroutine(FlashCard(cardImage));
-        }
-        else if (!temDinheiro && cardImage != null)
-        {
-            // Opçãonal: Flash Vermelho de erro
-            StartCoroutine(FlashCardErro(cardImage));
-            // Opcional: Se quiser bloquear a compra aqui... mas o gerente já bloqueia e mostra erro. 
-            // Vamos deixar seguir para o gerente mostrar o log de erro se quiser.
-        }
+        if (temDinheiro && cardImage != null) StartCoroutine(FlashCard(cardImage));
+        else if (!temDinheiro && cardImage != null) StartCoroutine(FlashCardErro(cardImage));
 
         if (item.prefabDaUnidade == null)
         {
@@ -660,83 +579,100 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         int qtdParaConstruir = 1;
-        if(quantidadesPorItem.ContainsKey(item.nomeItem))
-        {
-            qtdParaConstruir = quantidadesPorItem[item.nomeItem];
-        }
+        if(quantidadesPorItem.ContainsKey(item.nomeItem)) qtdParaConstruir = quantidadesPorItem[item.nomeItem];
 
+        // ==========================================
+        // 1. ROTEAMENTO PARA MARINHA (Navios)
+        // ==========================================
         if(item.categoria == DadosConstrucao.CategoriaItem.Marinha)
         {
-            // VERIFICAÇÃO CRÍTICA: Só mandar para o Estaleiro se for REALMENTE um navio (unidade)
-            // Se não tiver IdentidadeNaval, assumimos que é o PREDIO do Estaleiro/Pier, 
-            // então deixamos passar para o Construtor (fantasma) lá embaixo.
-            // EXTRA GUARD: O pré-fabricado do Estaleiro NÃO deve ser confundido com um navio!
-            bool ehPredioNaval = item.nomeItem.ToLower().Contains("estaleiro") || item.nomeItem.ToLower().Contains("pier") || item.nomeItem.ToLower().Contains("plataforma");
-
-            // Se for categoria Marinha e NÃO for um prédio conhecido, tentamos construir no Estaleiro
-            // Isso cobre navios que talvez estejam sem o script IdentidadeNaval na raiz
+            bool ehPredioNaval = item.nomeItem.ToLower().Contains("estaleiro") || item.nomeItem.ToLower().Contains("pier") || item.nomeItem.ToLower().Contains("plataforma") || item.nomeItem.ToLower().Contains("marinha");
             bool pareceSerNavio = item.prefabDaUnidade.GetComponent<IdentidadeNaval>() != null 
                                 || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
-                                || item.prefabDaUnidade.GetComponent<UnityEngine.AI.NavMeshAgent>() != null;
+                                || item.prefabDaUnidade.GetComponent<UnityEngine.AI.NavMeshAgent>() != null
+                                || item.nomeItem.ToLower().Contains("navio") || item.nomeItem.ToLower().Contains("sub");
 
             if (!ehPredioNaval && pareceSerNavio)
             {
-                // Tenta achar um Estaleiro com vaga
                 Estaleiro[] estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
-                Estaleiro estaleiroDisponivel = estaleiros.FirstOrDefault(e => e.TemVaga);
+                Estaleiro estaleiroDisponivel = estaleiros.FirstOrDefault(e => e.TemVaga && (e.GetComponent<IdentidadeUnidade>() == null || e.GetComponent<IdentidadeUnidade>().teamID == 1)); // Team 1 é Jogador, ou assume jogador se sem ID
 
                 if (estaleiroDisponivel != null)
                 {
-                     if (!gerente.TentarGastarDinheiro(item.preco)) return; 
-
-                    Debug.Log("[MenuConstrucao] Construindo no Estaleiro: " + estaleiroDisponivel.name);
-                    estaleiroDisponivel.ConstruirUnidade(item.prefabDaUnidade);
+                     if (!gerente.TentarGastarDinheiro(item.preco * qtdParaConstruir)) return; 
+                    Debug.Log("⚓ [Construção] Construindo Navio no Estaleiro: " + estaleiroDisponivel.name);
+                    for(int i=0; i<qtdParaConstruir; i++) estaleiroDisponivel.ConstruirUnidade(item.prefabDaUnidade);
                     AlternarMenu(false);
                     return;
                 }
                 
-                // Se não achou estaleiro com vaga, tenta Pier (sem gastar ainda, pier gasta dentro dele? Não, aqui gasta antes)
-                // O código original do Pier gastava antes? 
-                // Original: if (!gerente.TentarGastarDinheiro(item.preco)) return; ... estaleiroNaval.Construir...
-                
-                // Vamos manter a lógica: Se não achou Estaleiro Vago, tenta Pier.
+                Debug.LogWarning("❌ BLOQUEADO: Você precisa construir um ESTALEIRO e ele precisa ter vaga livre para comprar navios! (O Pier serve apenas para manutenção).");
+                return; // Impede que o navio nasça voando ou na câmera!
+            }
+        }
 
+        // ==========================================
+        // 2. ROTEAMENTO PARA AERONÁUTICA (Aviões)
+        // ==========================================
+        if (item.categoria == DadosConstrucao.CategoriaItem.Aeronautica)
+        {
+            bool pareceSerAviao = item.prefabDaUnidade.GetComponent<ControleAviao>() != null 
+                                || item.nomeItem.ToLower().Contains("caca") 
+                                || item.nomeItem.ToLower().Contains("avi") 
+                                || item.nomeItem.ToLower().Contains("tuk")
+                                || item.nomeItem.ToLower().Contains("g15");
+                                
+            bool ehPredioAeronautica = item.nomeItem.ToLower().Contains("aeroporto") 
+                                    || item.nomeItem.ToLower().Contains("pista") 
+                                    || item.prefabDaUnidade.GetComponent<GerenciadorAeroporto>() != null;
 
-                // Fallback para PierMarinha antigo se não achar o novo ou se Estaleiros estiverem cheios
-                PierMarinha[] piers = Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None);
-                if(piers.Length > 0)
+            if (!ehPredioAeronautica && pareceSerAviao)
+            {
+                GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+                GerenciadorAeroporto meuAero = aeroportos.FirstOrDefault(a => {
+                    IdentidadeUnidade id = a.GetComponent<IdentidadeUnidade>();
+                    return id == null || id.teamID == 1; // Team 1 é o jogador (assume jogador se sems script)
+                });
+
+                if (meuAero != null)
                 {
-                    if (!gerente.TentarGastarDinheiro(item.preco)) return;
-
-                    piers[0].ConstruirNavio(item.prefabDaUnidade);
+                    if (!gerente.TentarGastarDinheiro(item.preco * qtdParaConstruir)) return; 
+                    Debug.Log($"✈️ [Construção] Fabricando {qtdParaConstruir}x aviões no Aeroporto: {meuAero.name}");
+                    for(int i=0; i<qtdParaConstruir; i++) meuAero.ComprarAviao(item.prefabDaUnidade);
                     AlternarMenu(false);
                     return;
+                }
+                else
+                {
+                    Debug.LogWarning("❌ BLOQUEADO: Você precisa construir um AEROPORTO primeiro para comprar aviões!");
+                    return; // Impede que o avião nasça na câmera!
                 }
             }
         }
 
+
         bool ehUnidadeMovel = item.prefabDaUnidade.GetComponent<UnityEngine.AI.NavMeshAgent>() != null 
                             || item.prefabDaUnidade.GetComponent<ControleUnidade>() != null
                             || item.prefabDaUnidade.GetComponent("Helicoptero") != null; 
-        
-        string nomeLower = item.prefabDaUnidade.name.ToLower();
+        string nomeLower = (item.prefabDaUnidade.name + "_" + item.nomeItem).ToLower();
 
-        // CORREÇÃO CRÍTICA: Se tiver nome de PRÉDIO, força ser prédio, mesmo que tenha scripts de unidade por engano
-        // Isso resolve o "Hangar de Veículos" sendo tratado como unidade
         bool ehPredioExplícito = nomeLower.Contains("hangar") || nomeLower.Contains("fabrica") || nomeLower.Contains("refinaria") || 
                                  nomeLower.Contains("quartel") || nomeLower.Contains("tenda") || nomeLower.Contains("silo") ||
                                  nomeLower.Contains("torre") || nomeLower.Contains("muro") || nomeLower.Contains("wall") ||
                                  nomeLower.Contains("aeroporto") || nomeLower.Contains("heliporto") || nomeLower.Contains("pista") ||
-                                 nomeLower.Contains("ares") || nomeLower.Contains("antiaerea") || nomeLower.Contains("missil") ||
-                                 item.categoria == DadosConstrucao.CategoriaItem.Infraestrutura;
+                                 nomeLower.Contains("ares") || nomeLower.Contains("areas") || nomeLower.Contains("antiaerea") || nomeLower.Contains("missil") ||
+                                 nomeLower.Contains("bunker") || nomeLower.Contains("defesa") || nomeLower.Contains("torreta") || 
+                                 nomeLower.Contains("canhao") || nomeLower.Contains("metralhadora") || nomeLower.Contains("plataforma") || 
+                                 nomeLower.Contains("estaleiro") || nomeLower.Contains("pier") ||
+                                 item.categoria == DadosConstrucao.CategoriaItem.Infraestrutura || item.categoria == DadosConstrucao.CategoriaItem.Energia || item.categoria == DadosConstrucao.CategoriaItem.Urbana ||
+                                 item.categoria == DadosConstrucao.CategoriaItem.Tecnologia;
 
         if (ehPredioExplícito)
         {
-            ehUnidadeMovel = false; // Força ser tratado como construção
+            ehUnidadeMovel = false; 
         }
         else 
         {
-            // Verifica também se o nome sugere uma unidade para garantir (Ex: "Helicóptero")
             if (!ehUnidadeMovel)
             {
                  if (nomeLower.Contains("helicoptero") || nomeLower.Contains("soldado") || nomeLower.Contains("tank") || nomeLower.Contains("veiculo"))
@@ -746,7 +682,6 @@ public class MenuConstrucao : MonoBehaviour
             }
         }
 
-        // Evita que prédios da categoria civil ou militar sejam tratados como unidades de combate
         bool forcadoComoUnidade = false;
         if (!ehPredioExplícito)
         {
@@ -755,9 +690,8 @@ public class MenuConstrucao : MonoBehaviour
 
         if (ehUnidadeMovel || forcadoComoUnidade)
         {
-            // É unidade! Manda comprar direto (Spawn na fábrica/heliporto)
             gerente.ComprarUnidade(item.prefabDaUnidade, item.preco, qtdParaConstruir);
-            AlternarMenu(false); // FORÇA FECHAMENTO DA TELA (Feedback visual)
+            AlternarMenu(false); 
             return;
         }
 
@@ -766,22 +700,18 @@ public class MenuConstrucao : MonoBehaviour
         Construtor construtor = Object.FindFirstObjectByType<Construtor>();
         if (construtor != null)
         {
-            // CORREÇÃO: Passamos o preço para permitir reembolso se cancelar! E agora a categoria!
             construtor.SelecionarParaConstruir(item.prefabDaUnidade, item.preco, item.categoria);
-            AlternarMenu(false); // Fecha o menu para construir
+            AlternarMenu(false); 
         }
     }
 
-    // --- ANIMAÇÕES DE FEEDBACK ---
     IEnumerator FlashCard(Image img)
     {
         if (img == null) yield break;
-        
         Color corOriginal = corCardBase;
-        Color corSucesso = new Color(0.2f, 0.8f, 0.2f, 0.9f); // Verde brilhante
+        Color corSucesso = new Color(0.2f, 0.8f, 0.2f, 0.9f); 
 
         float tempo = 0;
-        // Ida (Verde)
         while(tempo < 0.15f)
         {
             tempo += Time.deltaTime;
@@ -789,7 +719,6 @@ public class MenuConstrucao : MonoBehaviour
             yield return null;
         }
 
-        // Volta (Original)
         tempo = 0;
         while(tempo < 0.4f)
         {
@@ -797,16 +726,14 @@ public class MenuConstrucao : MonoBehaviour
             if(img != null) img.color = Color.Lerp(corSucesso, corOriginal, tempo / 0.4f);
             yield return null;
         }
-        
         if(img != null) img.color = corOriginal;
     }
 
     IEnumerator FlashCardErro(Image img)
     {
         if (img == null) yield break;
-        
         Color corOriginal = corCardBase;
-        Color corErro = new Color(0.8f, 0.2f, 0.2f, 0.9f); // Vermelho
+        Color corErro = new Color(0.8f, 0.2f, 0.2f, 0.9f); 
 
         float tempo = 0;
         while(tempo < 0.1f)

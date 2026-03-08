@@ -26,6 +26,8 @@ public class GerenciadorAeroporto : MonoBehaviour
     
     private bool menuAtivo = false;
     private int abaAtual = 0; 
+    private Vector2 scrollPosFrota;
+    private Vector2 scrollPosHangar;
     [HideInInspector] public ControleAviao aviaoSelecionadoParaMissao;
 
     // Listas internas de Waypoints lidas no Awake
@@ -57,6 +59,20 @@ public class GerenciadorAeroporto : MonoBehaviour
             foreach (Transform filho in decolagem) waypointsDecolagem.Add(filho);
         }
 
+        // --- SISTEMA DE EMERGÊNCIA: AUTO-GERAÇÃO DE VAGAS ---
+        if (waypointsPatio.Count == 0)
+        {
+            Debug.LogWarning("[Aeroporto] Nenhuma vaga de pátio encontrada no Prefab! Gerando vagas automáticas...");
+            for (int i = 0; i < 6; i++)
+            {
+                GameObject vagaAuto = new GameObject($"Vaga_Auto_{i}");
+                vagaAuto.transform.SetParent(this.transform);
+                // Distribui em círculo ao redor do aeroporto
+                float ang = i * (360f / 6f) * Mathf.Deg2Rad;
+                vagaAuto.transform.localPosition = new Vector3(Mathf.Cos(ang) * 40f, 0, Mathf.Sin(ang) * 40f);
+                waypointsPatio.Add(vagaAuto.transform);
+            }
+        }
         if (decida != null)
         {
             foreach (Transform filho in decida) waypointsDecida.Add(filho);
@@ -71,6 +87,44 @@ public class GerenciadorAeroporto : MonoBehaviour
         {
             if (t.name.ToLower() == "andadar") wpAndadar = t;
             if (t.name.ToLower() == "analise") wpAnalise = t;
+        }
+    }
+
+    void Start()
+    {
+        // Inicia o serviço de reparação automática
+        StartCoroutine(ManutencaoDeFrota());
+    }
+
+    private IEnumerator ManutencaoDeFrota()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(2.0f); // Reparo de 2 em 2 segundos
+
+            // Repara quem está no pátio
+            for (int i = 0; i < avioesNoPatio.Count; i++)
+            {
+                var a = avioesNoPatio[i];
+                if (a != null && a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                {
+                    SistemaDeDanos sd = a.GetComponent<SistemaDeDanos>();
+                    if (sd != null && sd.vidaAtual < sd.vidaMaxima) 
+                        sd.Reparar(sd.vidaMaxima * 0.05f); // 5% de vida no pátio
+                }
+            }
+
+            // No hangar o reparo é prioritário
+            for (int i = 0; i < avioesNoHangar.Count; i++)
+            {
+                var h = avioesNoHangar[i];
+                if (h != null)
+                {
+                    SistemaDeDanos sd = h.GetComponent<SistemaDeDanos>();
+                    if (sd != null && sd.vidaAtual < sd.vidaMaxima) 
+                        sd.Reparar(sd.vidaMaxima * 0.10f); // 10% de vida no hangar
+                }
+            }
         }
     }
 
@@ -233,13 +287,18 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     public Transform ObterPrimeiraVagaLivre()
     {
+        if (waypointsPatio == null || waypointsPatio.Count == 0) return null;
+
         avioesNoPatio.RemoveAll(a => a == null); 
         List<Transform> restritas = new List<Transform>();
         foreach (var av in avioesNoPatio) 
             if (av != null && av.vagaRetorno != null) restritas.Add(av.vagaRetorno);
 
         foreach (var wp in waypointsPatio)
+        {
+            if (wp == null) continue;
             if (!restritas.Contains(wp)) return wp;
+        }
         return null;
     }
 
@@ -255,7 +314,8 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         float xMenu = (Screen.width / 2f) - 350f - (Screen.width * 0.1f);
         if (xMenu < 10f) xMenu = 10f; // Previne que o painel saia da tela
-        Rect telaDeMenu = new Rect(xMenu, Screen.height / 2f - 250f, 700f, 500f);
+        // Aumentado em 10% (de 500 para 600) conforme solicitado
+        Rect telaDeMenu = new Rect(xMenu, Screen.height / 2f - 300f, 700f, 600f);
         GUI.Box(telaDeMenu, "CENTRO DE CONTROLE TÁTICO & AEROPORTO");
 
         GUILayout.BeginArea(new Rect(telaDeMenu.x + 15, telaDeMenu.y + 35, telaDeMenu.width - 30, telaDeMenu.height - 45));
@@ -285,6 +345,9 @@ public class GerenciadorAeroporto : MonoBehaviour
 
             GUILayout.BeginVertical("box", GUILayout.Width(320));
             GUILayout.Label($"<b>FROTA ATIVA ({avioesNoPatio.Count})</b>");
+            
+            // Adicionada rolagem para frotas grandes
+            scrollPosFrota = GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(200));
             foreach (var a in avioesNoPatio)
             {
                 if (a == null) continue;
@@ -308,6 +371,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                 if (GUILayout.Button($"<color={corCristal}>■</color> ✈️ {nomeLimpo}{vidaStr} [<color={corEst}>{a.estadoAtual}</color>]", GUILayout.Height(30)))
                     aviaoSelecionadoParaMissao = a;
             }
+            GUILayout.EndScrollView();
             GUILayout.EndVertical();
 
             GUILayout.BeginVertical("box", GUILayout.Width(320));
@@ -319,6 +383,8 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
             GUILayout.EndHorizontal();
 
+            // Adicionada rolagem para o hangar
+            scrollPosHangar = GUILayout.BeginScrollView(scrollPosHangar, GUILayout.Height(200));
             for (int i = avioesNoHangar.Count - 1; i >= 0; i--)
             {
                 var h = avioesNoHangar[i];
@@ -370,6 +436,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                 }
                 GUILayout.EndHorizontal();
             }
+            GUILayout.EndScrollView();
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
             GUILayout.Space(20);
@@ -501,7 +568,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
     
-    private void LiberarTodosDoHangar()
+    public void LiberarTodosDoHangar()
     {
         // Copia a lista para evitar modificação simultânea no foreach
         List<ControleAviao> copiaHangar = new List<ControleAviao>(avioesNoHangar);

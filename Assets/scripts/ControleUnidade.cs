@@ -34,7 +34,9 @@ public class ControleUnidade : MonoBehaviour
         
         // Verifica se é uma unidade aérea (GENÉRICA)
         scriptVoo = GetComponent<VooHelicoptero>();
-        if (scriptVoo != null || helicopteroExterno != null)
+        bool temScriptAviao = GetComponent<ControleAviao>() != null || GetComponent<ControleAviaoCaca>() != null;
+
+        if (scriptVoo != null || helicopteroExterno != null || temScriptAviao)
         {
             ehAereo = true;
             if(agente != null) 
@@ -203,11 +205,11 @@ public class ControleUnidade : MonoBehaviour
                     // Bloqueia movimento se estiver na terra do player sem visto (e aguardando)
                     if (donoAtual == 1 && !vistoAprovado && aguardandoVisto)
                     {
-                        agente.isStopped = true;
+                        if (agente.isOnNavMesh) agente.isStopped = true;
                     }
                     else
                     {
-                        agente.isStopped = false;
+                        if (agente.isOnNavMesh) agente.isStopped = false;
                     }
                 }
             }
@@ -252,6 +254,13 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
+        // Avião de Passageiros / Cargueiro (Sistema de Aeroporto)
+        if (TryGetComponent<ControleAviao>(out var aviao))
+        {
+            aviao.IniciarMissaoCompleta(destino);
+            return;
+        }
+
         if (ehAereo)
         {
             destinoAereo = destino;
@@ -292,7 +301,7 @@ public class ControleUnidade : MonoBehaviour
 
                 // Navegação normal (terrestre ou navio sem o sistema inteligente)
                 agente.SetDestination(destino);
-                agente.isStopped = false;
+                if (agente.isOnNavMesh) agente.isStopped = false;
             }
             else
             {
@@ -316,7 +325,7 @@ public class ControleUnidade : MonoBehaviour
                      if (agente.isOnNavMesh && agente.isActiveAndEnabled)
                      {
                          agente.SetDestination(destino);
-                         agente.isStopped = false;
+                         if (agente.isOnNavMesh) agente.isStopped = false;
                      }
                  }
                  catch (System.Exception ex)

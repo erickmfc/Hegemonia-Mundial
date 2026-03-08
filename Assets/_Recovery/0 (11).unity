@@ -5428,7 +5428,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8250715248323221592, guid: 302247c9d375f5d41ab41de04df1dd24, type: 3}
       propertyPath: raioDeDominio
-      value: 500
+      value: 600
       objectReference: {fileID: 0}
     - target: {fileID: -7232328176086843731, guid: 302247c9d375f5d41ab41de04df1dd24, type: 3}
       propertyPath: m_Center.y

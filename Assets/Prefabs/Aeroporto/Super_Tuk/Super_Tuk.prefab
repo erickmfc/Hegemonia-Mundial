@@ -486,7 +486,7 @@ MonoBehaviour:
   anguloMaximo: 90
   tempoEntreTiros: 0.08
   tamanhoCartucho: 50
-  tempoRecarga: 4
+  tempoRecarga: 3
   pecaQueGira: {fileID: 0}
   locaisDoTiro:
   - {fileID: 4521405786522924042}
@@ -516,8 +516,8 @@ MonoBehaviour:
   altitudeCruzeiro: 60
   alturaDecolagem: 15
   velocidadeTaxi: 7
-  velocidadeCruzeiro: 40
-  velocidadeAtaque: 80
+  velocidadeCruzeiro: 50
+  velocidadeAtaque: 60
   velocidadeCurva: 1
   fogoNosMotores: []
   luzPosCombustao: {fileID: 0}
@@ -547,8 +547,8 @@ MonoBehaviour:
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
   velocidadeSolo: 7
-  velocidadeMaximaVoo: 100
-  taxaDeGiroLeme: 60
+  velocidadeMaximaVoo: 90
+  taxaDeGiroLeme: 80
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -629,8 +629,8 @@ MonoBehaviour:
   - {fileID: 4521405786522924042}
   - {fileID: 5512154896003509394}
   cadenciaDeTiro: 0.01
-  raioDeVisao: 650
-  coneDeTiroGraus: 12
+  raioDeVisao: 700
+  coneDeTiroGraus: 20
   cartuchoMaximo: 100
   tempoRecarga: 5
 --- !u!1 &4646874998638807707

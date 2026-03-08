@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 [RequireComponent(typeof(ControleAviao))]
-[RequireComponent(typeof(ControleUnidade))]
+// [RequireComponent(typeof(ControleUnidade))] // Removido para permitir deletar o script antigo
 [RequireComponent(typeof(SistemaDeDanos))]
 public class LancadorMisselCaca : MonoBehaviour
 {
