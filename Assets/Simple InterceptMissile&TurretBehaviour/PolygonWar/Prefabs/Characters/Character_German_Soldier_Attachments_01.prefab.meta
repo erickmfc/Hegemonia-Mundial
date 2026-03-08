@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 3035a5d48569d0246adb3ac2417277b4
+timeCreated: 1517524671
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Characters/Character_German_Soldier_Attachments_01.prefab
+  uploadId: 267706

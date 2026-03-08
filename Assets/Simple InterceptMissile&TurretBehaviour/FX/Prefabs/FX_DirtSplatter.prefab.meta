@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 834c99069a124aa439d5795c3579843b
+timeCreated: 1463710617
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Prefabs/FX_DirtSplatter.prefab
+  uploadId: 267706

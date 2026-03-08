@@ -56,9 +56,17 @@ PrefabInstance:
       propertyPath: m_Name
       value: AR_Mid
       objectReference: {fileID: 0}
+    - target: {fileID: 6581285286416740336, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: looping
-      value: 1
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: lengthInSec
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: ShapeModule.angle
@@ -66,7 +74,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: startDelay.scalar
-      value: 1
+      value: 0.3
       objectReference: {fileID: 0}
     - target: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: ShapeModule.radius.value
@@ -86,7 +94,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: looping
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: lengthInSec
@@ -229,9 +237,9 @@ MonoBehaviour:
   sistemaFumaca: {fileID: 2931052983890345434}
   dano: 750
   raioExplosao: 50
-  escalaVisualExplosao: 5
+  escalaVisualExplosao: 6
   volumeSom: 1
-  efeitoExplosaoPrefab: {fileID: 2799687479890543324, guid: 07180301372540a46864ed63d728a152, type: 3}
+  efeitoExplosaoPrefab: {fileID: 100002, guid: 6ecf76dc4f268d340b2666896a954bcc, type: 3}
   somExplosao: {fileID: 8300000, guid: 986d6b30567e30e428f3f21373fe45ca, type: 3}
 --- !u!198 &2931052983890345434 stripped
 ParticleSystem:

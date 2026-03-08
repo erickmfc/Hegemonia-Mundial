@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 3d80484738756bd42a05c06bc114941f
+timeCreated: 1474207114
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/Missile Model/Materials/missile_material_green.mat
+  uploadId: 267706

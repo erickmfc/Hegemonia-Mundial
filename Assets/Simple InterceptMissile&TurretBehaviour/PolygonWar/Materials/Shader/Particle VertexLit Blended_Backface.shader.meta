@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 63343626dde95de409e37d8c3d8b2c0b
+timeCreated: 1517347629
+licenseType: Store
+ShaderImporter:
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Materials/Shader/Particle
+    VertexLit Blended_Backface.shader
+  uploadId: 267706

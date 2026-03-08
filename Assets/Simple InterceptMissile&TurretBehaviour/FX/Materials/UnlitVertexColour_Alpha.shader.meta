@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 125f31ba4cdefb2469a075f509877b02
+timeCreated: 1461197347
+licenseType: Store
+ShaderImporter:
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Materials/UnlitVertexColour_Alpha.shader
+  uploadId: 267706

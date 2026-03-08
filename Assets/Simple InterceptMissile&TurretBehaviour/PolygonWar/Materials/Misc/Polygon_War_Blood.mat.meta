@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 045a9e918bee2f54a953f6339da470a5
+timeCreated: 1517373593
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Materials/Misc/Polygon_War_Blood.mat
+  uploadId: 267706

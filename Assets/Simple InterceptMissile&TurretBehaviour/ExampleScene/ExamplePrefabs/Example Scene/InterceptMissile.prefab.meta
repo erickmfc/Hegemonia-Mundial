@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 63638a456063b48a9a53abcc9f5a0cbf
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/ExampleScene/ExamplePrefabs/Example
+    Scene/InterceptMissile.prefab
+  uploadId: 267706

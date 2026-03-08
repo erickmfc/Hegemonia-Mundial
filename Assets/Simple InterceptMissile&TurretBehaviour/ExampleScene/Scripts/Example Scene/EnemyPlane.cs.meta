@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 3a0484a3bc2e14ff98f790d45b74eabf
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/ExampleScene/Scripts/Example
+    Scene/EnemyPlane.cs
+  uploadId: 267706

@@ -32,11 +32,18 @@ public class Projetil : MonoBehaviour
     [Tooltip("Prefab de efeito visual no impacto (opcional).")]
     public GameObject efeitoImpacto;
 
-    // --- Internos ---
+    // --- Internos e Míssil Guiado ---
     private GameObject dono;           // Quem atirou (para não se auto-atingir)
     private Vector3 direcaoCustom;     // Direção de voo definida externamente
     private bool temDirecaoCustom = false;
     private bool jaAcertou = false;    // Evita dano duplo se colidir com múltiplos colliders no mesmo frame
+    
+    // Homing (Perseguição)
+    public float curvaDePerseguicao = 0f; // Se maior que zero, é míssil teleguiado (Graus/Seg)
+    private Transform alvoPerseguido;
+
+    // Zero-alloc Raycasting buffer
+    private static RaycastHit[] bufferTiros = new RaycastHit[10];
 
     void Start()
     {
@@ -44,45 +51,82 @@ public class Projetil : MonoBehaviour
         Destroy(gameObject, tempoDeVida);
     }
 
+    /// <summary>
+    /// Define quem este projétil deve perseguir (Míssil Teleguiado)
+    /// </summary>
+    public void SetAlvo(Transform alvo)
+    {
+        alvoPerseguido = alvo;
+    }
+
     void Update()
     {
+        // --- HOMING (MÍSSIL TELEGUIADO) ---
+        if (alvoPerseguido != null && curvaDePerseguicao > 0f)
+        {
+            if (alvoPerseguido.gameObject.activeInHierarchy)
+            {
+                Vector3 pontoAlvo = alvoPerseguido.position + Vector3.up * 1f; // Aponta um pouco acima do centro da base
+                Vector3 direcaoIdeal = (pontoAlvo - transform.position).normalized;
+                
+                Vector3 direcaoAtual = temDirecaoCustom ? direcaoCustom : transform.forward;
+                Vector3 novaDirecao = Vector3.RotateTowards(direcaoAtual, direcaoIdeal, curvaDePerseguicao * Mathf.Deg2Rad * Time.deltaTime, 0f);
+                
+                SetDirecao(novaDirecao); // Atualiza a direção real do voo
+            }
+            else
+            {
+                alvoPerseguido = null; // Perde o alvo se ele sumir
+            }
+        }
+
         // Movimento neste frame
         float passo = velocidade * Time.deltaTime;
         Vector3 direcao = temDirecaoCustom ? direcaoCustom : transform.forward;
         
-        // --- DETECÇÃO CONTÍNUA (Anti-Tunneling) ---
-        // Lança um raio da posição atual até onde a bala vai estar no próximo frame
-        RaycastHit[] hits = Physics.RaycastAll(transform.position, direcao, passo);
+        // --- DETECÇÃO CONTÍNUA OTIMIZADA (Zero Allocation) ---
+        // Lança um raio da posição atual até onde a bala vai estar no próximo frame usando buffer
+        int numColisoes = Physics.RaycastNonAlloc(transform.position, direcao, bufferTiros, passo);
         
-        // Ordena por distância para processar do mais perto para o mais longe
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-
+        float distMaisPerto = Mathf.Infinity;
+        RaycastHit hitMaisPerto = new RaycastHit();
         bool bateuEmAlgoValido = false;
 
-        foreach (var hit in hits)
+        for (int i = 0; i < numColisoes; i++)
         {
-            // Ignora colisores que são triggers (se desejado, geralmente projéteis ignoram triggers de zona)
+            var hit = bufferTiros[i];
+
             if (hit.collider.isTrigger) continue;
-
-            // Se bateu no dono ou em filho do dono, ignora e continua o raio
-            if (dono != null && (hit.collider.gameObject == dono || hit.transform.IsChildOf(dono.transform)))
-                continue;
-
-            // Se bateu em si mesmo
+            
             if (hit.collider.gameObject == gameObject) continue;
+            
+            if (dono != null && (hit.collider.gameObject == dono || hit.transform.IsChildOf(dono.transform))) continue;
 
+            // Se for válido e for mais perto do que o anterior
+            if (hit.distance < distMaisPerto)
+            {
+                distMaisPerto = hit.distance;
+                hitMaisPerto = hit;
+                bateuEmAlgoValido = true;
+            }
+        }
+
+        if (bateuEmAlgoValido)
+        {
             // Achou algo válido!
-            transform.position = hit.point;
-            ProcessarImpacto(hit.collider.gameObject); 
-            bateuEmAlgoValido = true;
+            transform.position = hitMaisPerto.point;
+            ProcessarImpacto(hitMaisPerto.collider.gameObject); 
+            
+            // Limpa o buffer manual para este míssil
+            for(int k=0; k < numColisoes; k++) bufferTiros[k] = new RaycastHit(); 
             return; // Encerra o frame e a vida do projétil
         }
 
-        // Se não bateu em nada válido, move normalmente
-        if (!bateuEmAlgoValido)
-        {
-            transform.position += direcao * passo;
-        }
+        // Se não bateu em nada, move normalmente
+        transform.position += direcao * passo;
+        
+        // Limpa o buffer manual após o processamento
+        for(int k=0; k < numColisoes; k++) bufferTiros[k] = new RaycastHit(); 
     }
 
     /// <summary>

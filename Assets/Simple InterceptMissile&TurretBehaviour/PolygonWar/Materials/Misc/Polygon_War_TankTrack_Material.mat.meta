@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 9ae1a0ea8fcea344cb72990d98a53cd6
+timeCreated: 1513048349
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Materials/Misc/Polygon_War_TankTrack_Material.mat
+  uploadId: 267706

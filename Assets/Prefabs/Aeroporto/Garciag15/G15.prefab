@@ -9721,6 +9721,7 @@ GameObject:
   - component: {fileID: 7538818960477305039}
   - component: {fileID: -920725371610440869}
   - component: {fileID: 1993989958026674800}
+  - component: {fileID: 228078682546798533}
   m_Layer: 0
   m_Name: G15
   m_TagString: Aereo
@@ -9969,13 +9970,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 100
-  vidaAtual: 0
+  vidaMaxima: 500
+  vidaAtual: 500
   unidadeBiologica: 0
   ehEstrutura: 0
-  prefabDestrocos: {fileID: 0}
+  prefabDestrocos: {fileID: 5614758741420790710, guid: f9902641c24807d43a250327287f15c4, type: 3}
   somExplosaoExclusivo: {fileID: 0}
-  tamanhoDoEfeito: 1
+  tamanhoDoEfeito: 4.7
   ajusteDePosicao: {x: 0, y: 0, z: 0}
 --- !u!114 &-920725371610440869
 MonoBehaviour:
@@ -10007,7 +10008,7 @@ MonoBehaviour:
   anguloRecolher: 90
   velocidadeTremPouso: 2
   somPassagem: {fileID: 8300000, guid: 1a95cc7ea9246f8408d7deaf691da77a, type: 3}
-  distanciaAtivacaoSom: 200
+  distanciaAtivacaoSom: 250
   estadoAtual: 0
   corIdentificacao: {r: 0, g: 0, b: 0, a: 0}
 --- !u!114 &1993989958026674800
@@ -10030,9 +10031,35 @@ MonoBehaviour:
   - {fileID: 7303857111595364188}
   - {fileID: 6835887891883734991}
   missilCacaPrefab: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-  tempoRecarga: 2
+  tempoRecarga: 4
   raioDeDeteccao: 800
   modoPassivo: 0
+--- !u!114 &228078682546798533
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5614758741420790710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b80ba453cfb99ed4f879383f9daf5583, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleAviao
+  estadoAtual: 0
+  aeroportoOrigem: {fileID: 0}
+  vagaRetorno: {fileID: 0}
+  aguardandoCliqueRadar: 0
+  ordemParaRetorno: 0
+  velocidadeSolo: 10
+  velocidadeMaximaVoo: 150
+  taxaDeGiroLeme: 60
+  modeloMecanicoVisual: {fileID: 0}
+  asaBankingMaximo: 75
+  arfagemPitchMaxima: 30
+  rodas: []
+  alvoGPSVoo: {x: 0, y: 0, z: 0}
+  estaEmModoVooFisico: 0
 --- !u!1 &6309512768409737743
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 8def1c80f375f4742bbb5773dc8a1871
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/ExampleScene/Scripts/Example
+    Scene/SelfDestroy.cs
+  uploadId: 267706

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: cc22510d99ae1e248991db15ef540da0
+timeCreated: 1513564574
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Environments/SM_Env_Tree_Background_Patch_04.prefab
+  uploadId: 267706

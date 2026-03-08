@@ -377,10 +377,11 @@ public class Helicoptero : MonoBehaviour
             return; // Já está cheio ou com gente suficiente a caminho
         }
 
-        Collider[] hits = Physics.OverlapSphere(transform.position, distanciaBusca);
+        // GPS: Aumentado em 3x o raio de escaneamento para não deixar ninguém para trás na base gigante!
+        Collider[] hits = Physics.OverlapSphere(transform.position, distanciaBusca * 3.0f);
         bool encontrouAlguem = false;
 
-        if(selecionado) Debug.Log($"🔍 Procurando soldados em raio de {distanciaBusca}m...");
+        if(selecionado) Debug.Log($"🔍 Procurando soldados em raio expansivo de {distanciaBusca * 3.0f}m...");
 
         foreach(var h in hits)
         {
@@ -464,6 +465,12 @@ public class Helicoptero : MonoBehaviour
 
         while(s != null && s.activeInHierarchy && timer < timeout)
         {
+            if (estaVoando && !estaPousando) 
+            {
+                Debug.Log($"[Helicoptero] {name} decolou! Cancelando embarque de {s.name}.");
+                break;
+            }
+
             timer += Time.deltaTime;
 
             // Atualiza destino periodicamente, mas de forma limpa! (1x por segundo)
@@ -504,7 +511,7 @@ public class Helicoptero : MonoBehaviour
                 new Vector2(transform.position.x, transform.position.z)
             );
 
-            if (distFinal <= distanciaEmbarque * 3.0f) // Tolerância final mais generosa
+            if (distFinal <= distanciaEmbarque * 3.0f && !estaVoando) // Tolerância final mais generosa
             {
                 soldadosEmbarcados.Add(s);
                 s.SetActive(false); 

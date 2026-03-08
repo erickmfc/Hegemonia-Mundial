@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: dd96d31f190fd4eaebf0a2c8f1622025
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/Missile Model/Object/Materials/missileMat.mat
+  uploadId: 267706

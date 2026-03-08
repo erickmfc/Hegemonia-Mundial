@@ -235,7 +235,7 @@ public class LancadorMisseis : MonoBehaviour
         {
             // FALLBACK: Usa um plano horizontal na altura do nível do mar
             // Isso permite mirar sobre a água mesmo que ela não tenha collider sólido
-            Plane planoMar = new Plane(Vector3.up, new Vector3(0, alturaPlanoMira, 0));
+            UnityEngine.Plane planoMar = new UnityEngine.Plane(Vector3.up, new Vector3(0, alturaPlanoMira, 0));
             float distancia;
             if (planoMar.Raycast(raio, out distancia))
             {

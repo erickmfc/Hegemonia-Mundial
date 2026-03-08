@@ -69,10 +69,20 @@ public class Torreta : MonoBehaviour
         cabecaGiro.rotation = Quaternion.Euler(0f, rotacao.y, 0f); 
 
         // 2. ATIRAR (Só se estiver bem alinhado)
-        // Calcula o ângulo entre a direção que a torreta está apontando e a direção do alvo
-        float anguloParaAlvo = Vector3.Angle(cabecaGiro.forward, direcao.normalized);
+        // Calcula o ângulo ignorando a altura para evitar falhas se o alvo estiver num morro
+        Vector3 dirPlana = direcao;
+        dirPlana.y = 0;
         
-        if (contagemTiro <= 0f && anguloParaAlvo < 8f) // Só atira se < 8 graus de erro
+        Vector3 cabecaPlana = cabecaGiro.forward;
+        cabecaPlana.y = 0;
+
+        float anguloParaAlvo = 999f;
+        if (dirPlana != Vector3.zero && cabecaPlana != Vector3.zero)
+        {
+            anguloParaAlvo = Vector3.Angle(cabecaPlana.normalized, dirPlana.normalized);
+        }
+        
+        if (contagemTiro <= 0f && anguloParaAlvo < 8f) // Só atira se a base apontou de fato
         {
             Atirar();
             contagemTiro = 1f / cadenciaTiro;

@@ -59,6 +59,13 @@ public class ComplexoGovernamental : MonoBehaviour
     /// </summary>
     void OnMouseDown()
     {
+        // IGNORA O CLIQUE NO PRÉDIO 3D SE O MOUSE ESTIVER EM CIMA DE UMA TELA DE UI (Ex: Menu de Construção)
+        if (UnityEngine.EventSystems.EventSystem.current != null && 
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            return;
+        }
+
         // Evita abrir o menu do inimigo, a menos que tenhamos um modo "espião"
         if (ehDoJogador && !jaDerrotado)
         {

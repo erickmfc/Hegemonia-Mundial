@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8698f59a8ea9a0c449a001968fa1db7f
+timeCreated: 1502257525
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/FX/Bullet_Shell_FX.prefab
+  uploadId: 267706

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0f75f6db4a318f54382e0c98b2226db8
+timeCreated: 1467155436
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Prefabs/FX_Fireworks_Yellow_Large.prefab
+  uploadId: 267706

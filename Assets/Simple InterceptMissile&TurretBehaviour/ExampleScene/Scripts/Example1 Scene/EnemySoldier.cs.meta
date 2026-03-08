@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 57950522e01684e5a9ac74eb68840b64
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/ExampleScene/Scripts/Example1
+    Scene/EnemySoldier.cs
+  uploadId: 267706

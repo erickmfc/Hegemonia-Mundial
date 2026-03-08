@@ -130,7 +130,38 @@ public class ControleTorreta : MonoBehaviour
 
             if (ehInimigo)
             {
-                float dist = Vector3.Distance(transform.position, alvoTr.position);
+                // IDENTIFICAÇÃO DO TIPO DE TORRETA
+                string nomeBase = transform.root.name.ToLower();
+                string nomeObj = transform.name.ToLower();
+                bool souAntiAereo = nomeBase.Contains("ares") || nomeBase.Contains("antiaerea") || 
+                                    nomeBase.Contains("ciws") || nomeBase.Contains("sam") || 
+                                    nomeObj.Contains("ares") || nomeObj.Contains("antiaerea") || 
+                                    nomeObj.Contains("ciws") || nomeObj.Contains("sam");
+
+                // VERIFICA SE O ALVO É AÉREO
+                bool alvoAereo = alvoTr.position.y > 6f ||
+                                 alvoTr.GetComponentInParent<ControleAviao>() != null ||
+                                 alvoTr.GetComponentInParent<Helicoptero>() != null ||
+                                 alvoTr.name.ToLower().Contains("aviao") || 
+                                 alvoTr.name.ToLower().Contains("heli") || 
+                                 alvoTr.name.ToLower().Contains("caca") ||
+                                 alvoTr.tag == "Areo" || 
+                                 alvoTr.tag == "Aereo";
+                
+                if (souAntiAereo)
+                {
+                    // Torreta Anti-Aérea: IGNORE unidades terrestres, SÓ atira no que voa!
+                    if (!alvoAereo) continue;
+                }
+                else
+                {
+                    // Torreta comum (Tanque, Navio, Base): IGNORE os ares, SÓ atira no chão!
+                    if (alvoAereo) continue;
+                }
+
+                // Prioriza bordas reais para estruturas imensas como a Prefeitura
+                Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
+                float dist = Vector3.Distance(transform.position, pontoMaisProximo);
                 if (dist < menorDistancia)
                 {
                     // Verifica linha de visão (Opcional - Pode pesar se tiver muitos muros)
@@ -223,10 +254,19 @@ public class ControleTorreta : MonoBehaviour
             // MODO TIRO: Atira se der o tempo
             if (contadorTempo <= 0f)
             {
-                // Verifica se o ângulo permite atirar (Se a arma não está apontando para o alvo, não atira)
-                // Isso evita atirar "através" do barco enquanto gira
-                Vector3 dirAlvo = (alvoAtual.position - pecaQueGira.position).normalized;
-                if(Vector3.Angle(pecaQueGira.forward, dirAlvo) < 5f) // Só atira se < 5 graus de erro (mais preciso)
+                // Verifica se o ângulo permite atirar (Ignorando a altura "Y" porque tanques/navios não levantam o cano nas configurações básicas)
+                // Se não ignorar o Y, o ângulo para a base da Prefeitura sempre seria > 5 e nunca atiraria.
+                Vector3 dirAlvo = (alvoAtual.position - pecaQueGira.position);
+                dirAlvo.y = 0;
+                Vector3 minhaFrente = pecaQueGira.forward;
+                minhaFrente.y = 0;
+                
+                // Tolera o erro de engasgo se for antiaereo contra alvo rapido
+                string nomeB = transform.root.name.ToLower();
+                bool antiAereo = nomeB.Contains("ares") || nomeB.Contains("antiaerea") || nomeB.Contains("ciws") || nomeB.Contains("sam") || transform.name.ToLower().Contains("ares");
+                float anguloMaximo = antiAereo ? 45f : 8f;
+
+                if(Vector3.Angle(minhaFrente, dirAlvo) < anguloMaximo) // 8 graus para terrestre, 45 graus para aereo
                 {
                     Disparar();
                     if (!estaRecarregando) contadorTempo = tempoEntreTiros;

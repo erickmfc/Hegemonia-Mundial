@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 3e9f3e872cf2fd04fad2d7da12691386
+timeCreated: 1513048802
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Vehicles/SM_Veh_German_Tank_01.prefab
+  uploadId: 267706

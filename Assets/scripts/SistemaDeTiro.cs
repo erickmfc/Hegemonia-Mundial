@@ -9,7 +9,7 @@ public class SistemaDeTiro : MonoBehaviour
     public string etiquetaAlvo = "Inimigo"; 
     public float intervaloEntreTiros = 0.5f;
     private float tempoParaProximoTiro = 0f;
-    private Transform alvoAtual;
+    public Transform alvoAtual;
 
     [Header("Configuração de Munição")]
     public GameObject prefabProjetil; // A munição
@@ -60,8 +60,11 @@ public class SistemaDeTiro : MonoBehaviour
             }
 
             // Verifica distância (o Scan faz isso, mas o Update é mais rápido para parar de atirar se o alvo fugir)
-            float dist = Vector3.Distance(transform.position, alvoAtual.position);
-            if (dist > alcanceTiro)
+            Collider colInimigo = alvoAtual.GetComponentInChildren<Collider>();
+            Vector3 alvoPosicaoReal = (colInimigo != null) ? colInimigo.ClosestPoint(transform.position) : alvoAtual.position;
+            
+            float dist = Vector3.Distance(transform.position, alvoPosicaoReal);
+            if (dist > alcanceTiro + 3f) // Margem de 3 metros pra nao perder o alvo bobamente ao parar
             {
                 alvoAtual = null; // Perde o alvo se sair do alcance
                 return;
@@ -77,11 +80,18 @@ public class SistemaDeTiro : MonoBehaviour
             {
                 Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
                 
+                // Evita que o soldado gire o veículo inteiro caso esteja embarcado
+                Transform objParaGirar = transform.root;
+                if (objParaGirar.GetComponent<TransporteTerrestre>() != null) 
+                {
+                    objParaGirar = transform; // Gira apenas o corpo do atirador montado
+                }
+
                 // VELOCIDADE DE ROTAÇÃO: 45 graus/segundo para alinhamento rápido
-                transform.root.rotation = Quaternion.Slerp(transform.root.rotation, rotacaoAlvo, Time.deltaTime * 45f);
+                objParaGirar.rotation = Quaternion.Slerp(objParaGirar.rotation, rotacaoAlvo, Time.deltaTime * 45f);
                 
-                // Calcula o ângulo atual entre a frente do tanque e o alvo
-                anguloParaAlvo = Vector3.Angle(transform.root.forward, direcao);
+                // Calcula o ângulo atual
+                anguloParaAlvo = Vector3.Angle(objParaGirar.forward, direcao);
             }
 
             // Lógica de Tiro - SÓ ATIRA SE ESTIVER APONTANDO PRO ALVO
@@ -178,24 +188,31 @@ public class SistemaDeTiro : MonoBehaviour
     {
         if (modoPassivo) return;
 
-        // Se já tem alvo e ele está vivo e no alcance, mantém (reduz jitter)
         if (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy)
         {
-             float dist = Vector3.Distance(transform.position, alvoAtual.position);
-             if (dist <= alcanceTiro) return; 
+             Collider col = alvoAtual.GetComponentInChildren<Collider>();
+             Vector3 alvoPosReal = (col != null) ? col.ClosestPoint(transform.position) : alvoAtual.position;
+             float dist = Vector3.Distance(transform.position, alvoPosReal);
+             if (dist <= alcanceTiro + 3f) return; 
         }
 
         alvoAtual = null; // Reseta para buscar o mais próximo
 
-        // Busca nova lista de alvos potenciais
-        // Usa buffer para evitar GC excessivo se possível, mas aqui usaremos OverlapSphere simples por clareza
-        Collider[] hits = Physics.OverlapSphere(transform.position, alcanceTiro);
+        // Busca nova lista de alvos potenciais usando buffer para ZERO alocação de memória (GC Free)
+        int naviosNaArea = Physics.OverlapSphereNonAlloc(transform.position, alcanceTiro, bufferColisores);
         
         float menorDistancia = Mathf.Infinity;
         Transform candidato = null;
 
-        foreach (var hit in hits)
+        // Calcula quem eu sou FORA DO LOOP para não gastar processamento (String manipulation pesada)
+        string meuNomeTag = transform.root.name.ToLower();
+        bool euSouTanque = meuNomeTag.Contains("tank") || 
+                           meuNomeTag.Contains("tanque") ||
+                           meuNomeTag.Contains("blindado");
+
+        for (int i = 0; i < naviosNaArea; i++)
         {
+            Collider hit = bufferColisores[i];
             if (hit == null || hit.transform.root == transform.root) continue;
 
             // Busca IdentidadeUnidade (Componente que define time)
@@ -207,8 +224,26 @@ public class SistemaDeTiro : MonoBehaviour
                 // Verifica se é inimigo (Time diferente)
                 if (idAlvo.teamID != minhaIdentidade.teamID) 
                 {
-                    // Prioriza o mais próximo
-                    float d = Vector3.Distance(transform.position, hit.transform.position);
+                    // NÃO ATIRA EM ALVOS AÉREOS A NÃO SER QUE SEJA UM SOLDADO
+                    // Tenta otimizar checando o eixo Y antes para evitar ler strings atoa
+                    bool podeSerAereo = hit.transform.position.y > 6f;
+                    
+                    bool alvoAereo = podeSerAereo ||
+                                     hit.GetComponentInParent<Helicoptero>() != null ||
+                                     hit.GetComponentInParent<ControleAviao>() != null ||
+                                     hit.name.Contains("Aviao") || 
+                                     hit.name.Contains("Heli") ||
+                                     hit.name.Contains("caca");
+
+                    // Apenas INFANTARIA (Soldados) ou Jipes com metralhadora muito leves podem tentar atirar com suas mãos em alvos aéreos
+                    bool souSoldado = meuNomeTag.Contains("soldado") || meuNomeTag.Contains("infantaria") || meuNomeTag.Contains("rifle") || meuNomeTag.Contains("jipe");
+                    
+                    if (alvoAereo && !souSoldado) continue; // Tanques e caminhões cegos para os céus!
+
+                    // Prioriza o mais próximo usando o transform
+                    Vector3 alvoHitCenter = hit.transform.position;
+                    float d = Vector3.Distance(transform.position, alvoHitCenter);
+                    
                     if (d < menorDistancia)
                     {
                         menorDistancia = d;
@@ -223,6 +258,9 @@ public class SistemaDeTiro : MonoBehaviour
             alvoAtual = candidato;
             // Debug.Log($"[SistemaDeTiro] {name} encontrou alvo: {alvoAtual.name}");
         }
+
+        // --- Limpa o buffer manual para a próxima passada ---
+        for (int i = 0; i < naviosNaArea; i++) bufferColisores[i] = null;
     }
 
     void Atirar()

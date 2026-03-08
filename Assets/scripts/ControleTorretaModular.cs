@@ -144,7 +144,8 @@ public class ControleTorretaModular : MonoBehaviour
             
             if (ehInimigo)
             {
-                float dist = Vector3.Distance(transform.position, alvoTr.position);
+                Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
+                float dist = Vector3.Distance(transform.position, pontoMaisProximo);
                 if (dist < menorDistancia)
                 {
                     menorDistancia = dist;
@@ -188,9 +189,13 @@ public class ControleTorretaModular : MonoBehaviour
     {
         if (alvoAtual == null) return;
         
-        // Verifica se está apontando corretamente
-        Vector3 dirAlvo = (alvoAtual.position - pecaQueGira.position).normalized;
-        if (Vector3.Angle(pecaQueGira.forward, dirAlvo) > 5f) return;
+        // Analisa o ângulo de visão no plano 2D (ignora a altura)
+        Vector3 dirAlvo = (alvoAtual.position - pecaQueGira.position);
+        dirAlvo.y = 0;
+        Vector3 minhaFrente = pecaQueGira.forward;
+        minhaFrente.y = 0;
+
+        if (Vector3.Angle(minhaFrente, dirAlvo) > 8f) return;
         
         // Seleciona arma baseado na prioridade
         ModuloArma armaEscolhida = SelecionarArma();

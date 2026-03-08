@@ -90,6 +90,30 @@ public class GerenteDeJogo : MonoBehaviour
         StartCoroutine(ProcessarFilaCoroutine());
     }
 
+    [Header("Controle de Tempo")]
+    private float _tempoApertandoTab = 0f;
+
+    void Update()
+    {
+        // FAST-FORWARD: Acelera o tempo do jogo x2 se o usuário segurar o TAB por 2 segundos.
+        if (Input.GetKey(KeyCode.Tab))
+        {
+            _tempoApertandoTab += Time.unscaledDeltaTime;
+            if (_tempoApertandoTab >= 2.0f && Time.timeScale < 2.0f)
+            {
+                Time.timeScale = 2.0f;
+            }
+        }
+        else
+        {
+            if (_tempoApertandoTab > 0)
+            {
+                _tempoApertandoTab = 0f;
+                Time.timeScale = 1.0f; // Volta ao normal ao soltar!
+            }
+        }
+    }
+
     [Header("Fila de Produção")]
     public List<PedidoDeProducao> filaProducao = new List<PedidoDeProducao>();
 

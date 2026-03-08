@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: b79fc5429a0d94f668b0fed285ce5a98
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/ExampleScene/Scripts/Example
+    Scene/LaunchMissile.cs
+  uploadId: 267706

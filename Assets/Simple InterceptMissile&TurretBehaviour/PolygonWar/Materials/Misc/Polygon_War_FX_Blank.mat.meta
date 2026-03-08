@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: d167ef288d96bb84ca9743bf908f53cf
+timeCreated: 1517344945
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Materials/Misc/Polygon_War_FX_Blank.mat
+  uploadId: 267706

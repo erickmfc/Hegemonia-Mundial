@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f24b5a9eeebfe4439a0d307140911468
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 8400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/RenderTexture/SecondCamera.renderTexture
+  uploadId: 267706

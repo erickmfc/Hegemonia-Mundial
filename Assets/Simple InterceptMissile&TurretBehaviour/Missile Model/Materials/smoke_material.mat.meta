@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b5ed92a562f35be459c796f953076c8c
+timeCreated: 1475929354
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/Missile Model/Materials/smoke_material.mat
+  uploadId: 267706

@@ -106,7 +106,7 @@ public class GerenteSelecao : MonoBehaviour
                 {
                     // FALLBACK: Calcula interseção com o plano da água (Y = 0)
                     // Isso garante que cliques sobre a água (que não tem Collider) funcionem!
-                    Plane planoAgua = new Plane(Vector3.up, Vector3.zero); // Plano horizontal em Y=0
+                    UnityEngine.Plane planoAgua = new UnityEngine.Plane(Vector3.up, Vector3.zero); // Plano horizontal em Y=0
                     float distancia;
                     if (planoAgua.Raycast(raio, out distancia))
                     {
@@ -159,108 +159,125 @@ public class GerenteSelecao : MonoBehaviour
         }
     }
 
-    // --- NOVA LÓGICA DE FORMAÇÃO ---
+    // --- NOVA LÓGICA DE FORMAÇÃO TÁTICA (MISTA) ---
     void MoverUnidadesEmGrupo(Vector3 destinoCentral, TorreDeControle torreDestino = null)
     {
-        // 1. Detecta tipo de grupo (Naval ou Terrestre)
+        unidadesSelecionadas.RemoveAll(u => u == null);
+        int totalOriginal = unidadesSelecionadas.Count;
+        if (totalOriginal == 0) return;
+
+        // 1. Classifica o esquadrão taticamente
         bool ehGrupoNaval = false;
+        bool temVeiculo = false;
+
+        List<ControleUnidade> infantaria = new List<ControleUnidade>();
+        List<ControleUnidade> veiculos = new List<ControleUnidade>();
+        List<ControleUnidade> aereos = new List<ControleUnidade>();
+
         foreach (var u in unidadesSelecionadas)
         {
-            if (u == null) continue;
-            // Se tiver qualquer componente naval, tratamos como grupo naval (espaçamento maior)
+            // Checagem Aérea (Não entra na grade limitante de contato físico)
+            ControleAviao aviao = u.GetComponent<ControleAviao>();
+            Helicoptero heli = u.GetComponent<Helicoptero>();
+            
+            if (aviao != null)
+            {
+                if (torreDestino != null)
+                {
+                    aviao.ComandoRetornarBase();
+                    Debug.Log($"[GerenteSelecao] Selecionou Retornar pra Base via RMB! ({u.name})");
+                }
+                else
+                {
+                    u.MoverParaPonto(destinoCentral);
+                }
+                continue; // Avião resolvido
+            }
+            if (heli != null)
+            {
+                // Helicópteros ganham pequenos offsets individuais no ar para não se amalgamarem
+                Vector3 deslocHeli = new Vector3(Random.Range(-5f, 5f), 0, Random.Range(-5f, 5f));
+                heli.Decolar(destinoCentral + deslocHeli);
+                continue; // Helicóptero resolvido
+            }
+
+            // Checagem Naval
             if (u.GetComponent<IdentidadeNaval>() != null || 
                 u.GetComponent<ControleSubmarino>() != null ||
                 u.GetComponent<NavegacaoInteligenteNaval>() != null)
             {
                 ehGrupoNaval = true;
-                break;
+            }
+
+            // Checagem Terrestre (Tanque x Soldado)
+            string n = u.name.ToLower();
+            if (n.Contains("tank") || n.Contains("tanque") || n.Contains("blindado") || n.Contains("hammer") || n.Contains("humvee") || n.Contains("lancador"))
+            {
+                temVeiculo = true;
+                veiculos.Add(u);
+            }
+            else
+            {
+                infantaria.Add(u);
             }
         }
 
-        // Define espaçamento dinâmico
-        float espacamentoReal = ehGrupoNaval ? 30.0f : espacamento; 
+        // Define espaçamento dinâmico: Se tiver mista (1 tanque e 10 soldados), exige grade larga pra evitar atrito
+        float espacamentoReal = ehGrupoNaval ? 30.0f : (temVeiculo ? 7.0f : espacamento); 
 
-        // 2. Calcula centro do grupo para saber a direção
+        // 2. Ordena o pelotão: Tanques e suporte atrás, infantaria na linha de frente
+        List<ControleUnidade> gridUnidades = new List<ControleUnidade>();
+        gridUnidades.AddRange(veiculos);     // Índice Baixo da grade (Trás)
+        gridUnidades.AddRange(infantaria);   // Índice Alto da grade (Frente)
+
+        int totalGrade = gridUnidades.Count;
+        if (totalGrade == 0) return;
+
+        // 3. Calcula centro do grupo para direção tática de virada
         Vector3 centroGrupo = Vector3.zero;
-        int validos = 0;
-        foreach (var u in unidadesSelecionadas)
-        {
-            if (u != null) { centroGrupo += u.transform.position; validos++; }
-        }
-        if (validos > 0) centroGrupo /= validos;
+        foreach (var u in gridUnidades) centroGrupo += u.transform.position;
+        centroGrupo /= totalGrade;
 
-        // Direção central
         Vector3 direcaoMovimento = (destinoCentral - centroGrupo).normalized;
         if (direcaoMovimento == Vector3.zero) direcaoMovimento = Vector3.forward;
-
-        // Rotação da Formação
         Quaternion rotacaoFormacao = Quaternion.LookRotation(direcaoMovimento);
 
-        // 3. Calcula formação
-        int total = unidadesSelecionadas.Count;
-        int colunas = Mathf.CeilToInt(Mathf.Sqrt(total));
-
-        // Ponto de partida centrado
+        // 4. Desenha Formação Geométrica
+        int colunas = Mathf.CeilToInt(Mathf.Sqrt(totalGrade));
         float larguraTotal = (colunas - 1) * espacamentoReal;
-        float profundidadeTotal = (Mathf.CeilToInt((float)total / colunas) - 1) * espacamentoReal;
-        
+        float profundidadeTotal = (Mathf.CeilToInt((float)totalGrade / colunas) - 1) * espacamentoReal;
         Vector3 offsetCentral = new Vector3(-larguraTotal / 2f, 0, -profundidadeTotal / 2f);
 
-        for (int i = 0; i < total; i++)
+        for (int i = 0; i < totalGrade; i++)
         {
-            if (unidadesSelecionadas[i] == null) continue;
+            ControleUnidade alvoCtrl = gridUnidades[i];
 
             int x = i % colunas;
-            int z = i / colunas;
+            int z = i / colunas; // z é a linha (z alto = frente da base)
 
-            // Ponto local na grade matemática
             Vector3 posLocalGrade = offsetCentral + new Vector3(x * espacamentoReal, 0, z * espacamentoReal);
-            
-            // Roda o ponto local com base na direção da caminhada
             Vector3 offsetRodado = rotacaoFormacao * posLocalGrade;
 
-            // Posição Final no Mundo Real
+            // O ponto alvo final individual
             Vector3 posAlvo = destinoCentral + offsetRodado;
 
-            // --- BLOQUEIO DE MOVIMENTO (MODO MANUAL) ---
-            // Se estiver mirando manualmente, o clique direito é para atirar, não andar
-            LancadorNaval lancador = unidadesSelecionadas[i].GetComponent<LancadorNaval>();
+            // BLOQUEIO MANUAL
+            LancadorNaval lancador = alvoCtrl.GetComponent<LancadorNaval>();
             if (lancador != null && lancador.modoAtual == LancadorNaval.ModoOperacao.Manual)
-            {
-                // Verifica se o mouse está sobre um alvo válido (apenas para garantir que não trave se clicar no nada)
-                // Mas a regra geral é: Mode Manual = Sem Movimento por clique direito
                 continue; 
-            }
 
-            // CORREÇÃO: Garante que o ponto é válido no NavMesh (Principalmente água)
+            // NAVMESH PREDICTION: Ajuda navios em terreno acidentado / margens
             if (ehGrupoNaval)
             {
                  UnityEngine.AI.NavMeshHit hit;
-                 // Apenas para naval que precisa ser estrito na agua
                  if (UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, 15f, UnityEngine.AI.NavMesh.AllAreas))
                  {
                      posAlvo = hit.position;
                  }
             }
 
-            // CORREÇÃO: Verifica se tem HelicopterController/Voo
-            Helicoptero heli = unidadesSelecionadas[i].GetComponent<Helicoptero>();
-            ControleAviao aviaoModerno = unidadesSelecionadas[i].GetComponent<ControleAviao>();
-
-            if (torreDestino != null && aviaoModerno != null)
-            {
-                // Se clicou no aeroporto, ordena pouso do caça de forma segura usando o novo sistema moderno!
-                aviaoModerno.ComandoRetornarBase();
-                Debug.Log($"[GerenteSelecao] Selecionou Retornar pra Base via RMB! ({aviaoModerno.gameObject.name})");
-            }
-            else if (heli != null)
-            {
-                heli.Decolar(posAlvo);
-            }
-            else
-            {
-                unidadesSelecionadas[i].MoverParaPonto(posAlvo);
-            }
+            // Envia Comando
+            alvoCtrl.MoverParaPonto(posAlvo);
         }
     }
 

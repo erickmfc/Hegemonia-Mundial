@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 079954accd64b32419ec069129c81273
+timeCreated: 1463710642
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Prefabs/FX_Explosion_Rubble.prefab
+  uploadId: 267706

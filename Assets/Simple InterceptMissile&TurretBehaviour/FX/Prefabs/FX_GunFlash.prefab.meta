@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b955daae02e019d45a8fb68cfd843784
+timeCreated: 1496248183
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Prefabs/FX_GunFlash.prefab
+  uploadId: 267706

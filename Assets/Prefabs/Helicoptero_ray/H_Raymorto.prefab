@@ -221,7 +221,7 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1
-  m_IsKinematic: 1
+  m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
@@ -239,6 +239,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 601449192149514539, guid: 00009c2ede91a1041a37ada027c98132, type: 3}
   selecionado: 1
+  aguardandoVisto: 0
+  vistoAprovado: 0
   velocidadeVoo: 8
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
@@ -246,6 +248,8 @@ MonoBehaviour:
   corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
   larguraLinha: 0.15
   segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
 --- !u!136 &8782220592944276430
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -308,6 +312,8 @@ MonoBehaviour:
   volumeMaximo: 1
   tempoSpinUp: 4
   tempoSpinDown: 6
+  destino: {x: 0, y: 0, z: 0}
+  estaVoando: 0
   nomeHelicoptero: "Helic\xF3ptero"
   custoUpgrade: 200
 --- !u!114 &-3325090875797799037
@@ -317,7 +323,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 161708}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
   m_Name: 

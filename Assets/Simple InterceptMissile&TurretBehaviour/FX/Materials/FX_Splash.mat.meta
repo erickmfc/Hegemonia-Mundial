@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 1ee00051305bdb049b02c923f047227d
+timeCreated: 1496248029
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Materials/FX_Splash.mat
+  uploadId: 267706

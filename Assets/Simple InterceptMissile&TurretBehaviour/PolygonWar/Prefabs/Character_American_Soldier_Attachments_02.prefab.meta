@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0e60037b41a3542ebad1d6ef5439b8c9
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Character_American_Soldier_Attachments_02.prefab
+  uploadId: 267706

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: d295338eb2193c14f9feb82d278c826f
+timeCreated: 1512602362
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Environments/SM_Env_Tree_01.prefab
+  uploadId: 267706

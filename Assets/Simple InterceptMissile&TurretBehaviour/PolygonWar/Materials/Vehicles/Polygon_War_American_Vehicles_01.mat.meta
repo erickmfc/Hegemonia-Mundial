@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 0b6be81faa684a24e8304004514da955
+timeCreated: 1513563840
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Materials/Vehicles/Polygon_War_American_Vehicles_01.mat
+  uploadId: 267706

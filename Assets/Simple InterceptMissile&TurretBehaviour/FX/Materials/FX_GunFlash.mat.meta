@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f1b0fea076fb0574d868f6e3d9523f52
+timeCreated: 1496248097
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Materials/FX_GunFlash.mat
+  uploadId: 267706

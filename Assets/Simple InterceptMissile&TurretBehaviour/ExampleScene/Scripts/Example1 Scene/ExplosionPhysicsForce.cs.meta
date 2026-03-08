@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 1849d2a1a4dad46b99ce4aed7ba74ff7
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/ExampleScene/Scripts/Example1
+    Scene/ExplosionPhysicsForce.cs
+  uploadId: 267706

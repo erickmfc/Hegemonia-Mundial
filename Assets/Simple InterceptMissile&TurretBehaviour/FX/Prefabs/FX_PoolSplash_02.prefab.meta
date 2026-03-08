@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0d37f80e5a9508346b0ec65e1917e053
+timeCreated: 1496248185
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Prefabs/FX_PoolSplash_02.prefab
+  uploadId: 267706

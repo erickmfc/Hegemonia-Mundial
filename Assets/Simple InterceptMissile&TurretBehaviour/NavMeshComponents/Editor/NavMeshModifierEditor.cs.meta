@@ -1,0 +1,20 @@
+fileFormatVersion: 2
+guid: a8c4288ef2e341e4bab85c37922622c0
+timeCreated: 1520502095
+licenseType: Store
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/NavMeshComponents/Editor/NavMeshModifierEditor.cs
+  uploadId: 267706

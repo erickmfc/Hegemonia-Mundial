@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8c27aeead6d968e4ba986702d6b84335
+timeCreated: 1463710623
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Prefabs/FX_BloodSplatter.prefab
+  uploadId: 267706

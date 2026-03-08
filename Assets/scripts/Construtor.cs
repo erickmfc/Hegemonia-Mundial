@@ -54,7 +54,7 @@ public class Construtor : MonoBehaviour
         {
             // NOVA LÓGICA ROBUSTA: Baseada em Plano Matemático (ignora colisor da água)
             // 1. Projeta o raio no Nível do Mar Teórico
-            Plane planoMar = new Plane(Vector3.up, new Vector3(0, alturaDoMar, 0));
+            UnityEngine.Plane planoMar = new UnityEngine.Plane(Vector3.up, new Vector3(0, alturaDoMar, 0));
             float distancia;
             
             if (planoMar.Raycast(raio, out distancia))
@@ -558,21 +558,16 @@ public class Construtor : MonoBehaviour
         MonoBehaviour[] scripts = obj.GetComponentsInChildren<MonoBehaviour>(true);
         foreach (var s in scripts)
         {
-            // Ignora se for nulo (já destruído)
+            // Ignora se for nulo
             if (s == null) continue;
 
-            // NÃO DESTRUA O CONSTRUTOR SE ELE ESTIVER NO OBJETO! (Improvável, mas seguro)
+            // NÃO DESTRUA O CONSTRUTOR SE ELE ESTIVER NO OBJETO!
             if (s == this) continue;
 
-            // NÃO destruir componentes visuais ou de UI (Básico)
-            // Mas scripts complexos como "Button", "Image" são MonoBehaviours. 
-            // Se o estaleiro é um objeto 3D, ele pode ter scripts de lógica que não queremos.
-            // Vamos arriscar destruir tudo que for MonoBehaviour
-            // EXCETO os protegidos pelo Unity se forem MB? 
-            // Transform não é MB. Renderer não é MB.
-            
-            // Vamos simplesmente destruir:
-            Destroy(s);
+            // APENAS DESATIVA. Destruir (Destroy) faz os scripts da torreta/avião rodarem 
+            // funções on OnDestroy() ou Start() por 1 frame sem os colisores (que já foram deletados acima),
+            // causando erros massivos de NullReference e travando o fantasma no mouse.
+            s.enabled = false;
         }
     }
 

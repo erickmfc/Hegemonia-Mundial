@@ -37,6 +37,10 @@ public class ControleAviao : MonoBehaviour
 
     // Variáveis internas
     public Vector3 alvoGPSVoo;
+    public Vector3 centroDaPatrulha; 
+    [HideInInspector] public bool emAtaqueMergulho = false;
+    [HideInInspector] public Vector3 alvoDoMergulho;
+
     public bool estaEmModoVooFisico = false;
     private float giroLateralRoll = 0f; 
     private float empinadaPitch = 0f;   
@@ -147,16 +151,9 @@ public class ControleAviao : MonoBehaviour
                 float fatorVelocidade = Mathf.Clamp01(1.2f - (angulo / 45f));
                 if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
 
-                // Move puxando para a direção que mira
-                Vector3 direcaoMovimento = Vector3.Lerp(transform.forward, direcaoHorizon, 0.4f).normalized;
-                
-                // Movimento 3D completo: Move para frente, e desce (ou sobe) o Y suavemente pro alvo!
-                Vector3 stepXz = direcaoMovimento * (vel * fatorVelocidade) * Time.deltaTime;
-                
-                float fatorDescidaSubida = Mathf.Clamp01((vel * fatorVelocidade) * Time.deltaTime);
-                float novoY = Mathf.MoveTowards(transform.position.y, destinoOriginal.y, fatorDescidaSubida);
-                
-                transform.position = new Vector3(transform.position.x + stepXz.x, novoY, transform.position.z + stepXz.z);
+                // Movimento 3D Perfeito (Glide Slope): Move exatamente apontando pro alvo no ar
+                Vector3 direcaoMovimento3D = vetorAteDestino.normalized;
+                transform.position += direcaoMovimento3D * (vel * fatorVelocidade) * Time.deltaTime;
             }
 
             // Garante que as asas estão retas (Tira o banking visual)
@@ -196,6 +193,29 @@ public class ControleAviao : MonoBehaviour
                 }
 
                 yield return StartCoroutine(MoverInterpolado(caminho[i].position, velAtual, eHUultimoPonto));
+                
+                // --- NOVO: ESPERAR NO ALINHAMENTO DA PISTA ANTES DE DECOLAR ---
+                if (caminho[i].name.ToLower().Contains("alinhamento"))
+                {
+                    // Alinha o nariz fisicamente com o próximo waypoint (O fim da pista) antes de acelerar
+                    if (i + 1 < caminho.Count && caminho[i+1] != null)
+                    {
+                        Vector3 direcaoPista = (caminho[i+1].position - transform.position).normalized;
+                        direcaoPista.y = 0; // Rotacao apenas horizontal no chao
+                        if (direcaoPista != Vector3.zero)
+                        {
+                            Quaternion rotDesejada = Quaternion.LookRotation(direcaoPista);
+                            while (Quaternion.Angle(transform.rotation, rotDesejada) > 1f)
+                            {
+                                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotDesejada, 50f * Time.deltaTime);
+                                yield return null;
+                            }
+                        }
+                    }
+                    // Aguardando autorização da torre por 2.5s
+                    Debug.Log($"[{gameObject.name}] Aguardando autorização da torre na cabeceira da pista...");
+                    yield return new WaitForSeconds(2.5f);
+                }
             }
         }
     }
@@ -229,6 +249,7 @@ public class ControleAviao : MonoBehaviour
         
         // 1. DECOLAGEM (Chão)
         estadoAtual = EstadoAviao.Decolando;
+        vagaRetorno = null; // --- NOVO: LIBERA A VAGA PARA QUE O HANGAR POSSA USAR OUTROS CAÇAS ---
         Debug.Log($"[{gameObject.name}] Iniciando taxiamento e decolagem!");
         
         // Segue os waypoints de decolagem do aeroporto rigorosamente (Aumentando do Zero até a Velocidade do Voo)
@@ -240,7 +261,7 @@ public class ControleAviao : MonoBehaviour
         
         // Garante que a missão ocorra no alto (Sempre acima de 60 metros)
         if (alvoGPSVoo.y < 60f) alvoGPSVoo.y = 60f;
-        Vector3 pontoCentralMissao = alvoGPSVoo;
+        centroDaPatrulha = alvoGPSVoo;
 
         Debug.Log($"[{gameObject.name}] Saiu do chão. Voando para o Alvo!");
 
@@ -248,9 +269,13 @@ public class ControleAviao : MonoBehaviour
         StartCoroutine(RecolherRodas(3f));
 
         // Espera chegar no alvo (Distância horizontal menor que 100 metros) - Chegada suave
-        while (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(pontoCentralMissao.x, pontoCentralMissao.z)) > 100f)
+        while (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(centroDaPatrulha.x, centroDaPatrulha.z)) > 100f)
         {
             if (ordemParaRetorno) break; // Se mandou voltar no meio do caminho
+            
+            // Permite mudar o centro de patrulha ANTES MESMO DE CHEGAR LÁ
+            alvoGPSVoo = centroDaPatrulha; 
+            
             yield return null;
         }
         Debug.Log($"[{gameObject.name}] Chegou na zona de missão! Iniciando órbita/patrulha. Ficará aqui até receber ordem de retorno.");
@@ -258,17 +283,25 @@ public class ControleAviao : MonoBehaviour
         // Loop de órbita na área de missão (Vigilância/Patrulha/Ataque)
         while (!ordemParaRetorno)
         {
-            // O avião move o alvo GPS sempre em curva para formar um círculo ao redor do ponto de missão
-            alvoGPSVoo = transform.position + (transform.right * 150f) + (transform.forward * 100f);
-            
-            // Trava a altura para ele não espiralar para baixo e mergulhar em solo! (Causa do bug de perder altura)
-            alvoGPSVoo.y = pontoCentralMissao.y; 
-
-            // Se distanciar demais lateralmente, puxa de volta suavemente para o centro da ronda
-            if (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(pontoCentralMissao.x, pontoCentralMissao.z)) > 250f)
+            if (emAtaqueMergulho)
             {
-                 // Puxa o alvo para o centro da missão de novo para não escapar
-                 alvoGPSVoo = pontoCentralMissao;
+                // MODO THUNDERBOLT (Mergulho de Ataque Reto!)
+                alvoGPSVoo = alvoDoMergulho;
+            }
+            else
+            {
+                // O avião move o alvo GPS sempre em curva para formar um círculo ao redor do ponto de missão
+                alvoGPSVoo = transform.position + (transform.right * 150f) + (transform.forward * 100f);
+                
+                // Trava a altura para ele não espiralar para baixo e mergulhar em solo!
+                alvoGPSVoo.y = centroDaPatrulha.y; 
+
+                // Se distanciar demais lateralmente, puxa de volta suavemente para o centro da ronda
+                if (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(centroDaPatrulha.x, centroDaPatrulha.z)) > 250f)
+                {
+                     // Puxa o alvo para o centro da missão de novo para não escapar
+                     alvoGPSVoo = centroDaPatrulha;
+                }
             }
 
             yield return null;
@@ -345,14 +378,24 @@ public class ControleAviao : MonoBehaviour
 
         // 6. VAI PARA A VAGA PÁTIO/HANGAR SE NÃO SAIU EM MISSÃO
         estadoAtual = EstadoAviao.RetornandoPraVaga;
-        yield return StartCoroutine(MoverInterpolado(vagaRetorno.position, velocidadeSolo, true));
-
-        // 7. PRONTO DE NOVO
-        estadoAtual = EstadoAviao.ProntoNoPatio;
-        Debug.Log($"[{gameObject.name}] Motor Desligado. Aeronave pronta para nova missão no pátio.");
         
-        // Zera o modelo para alinhar certinho na vaga
-        transform.rotation = vagaRetorno.rotation;
+        Transform vagaSegura = aeroportoOrigem.ObterPrimeiraVagaLivre();
+        if (vagaSegura != null)
+        {
+             // O Pátio tem vaga para estacionar!
+             vagaRetorno = vagaSegura;
+             yield return StartCoroutine(MoverInterpolado(vagaRetorno.position, velocidadeSolo, true));
+             estadoAtual = EstadoAviao.ProntoNoPatio;
+             Debug.Log($"[{gameObject.name}] Motor Desligado. Aeronave estacionou pronta para nova missão no pátio.");
+             transform.rotation = vagaRetorno.rotation; // Alinhamento exato na vaga
+        }
+        else
+        {
+             // Pátio lotado! Vai taxiar reto para o wpPronto (portão do hangar) e ser consumido por ele
+             yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpPronto.position, velocidadeSolo, true));
+             aeroportoOrigem.GuardarNoHangarAutomatico(this);
+             Debug.Log($"[{gameObject.name}] Recapitulado direto pro Hangar: Pátio Físico estava lotado.");
+        }
     }
 
     // ==========================================
@@ -380,6 +423,17 @@ public class ControleAviao : MonoBehaviour
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, transform.eulerAngles.y, 0), 30f * Time.deltaTime);
         }
         
+        // PROTEÇÃO INVISÍVEL MUNDIAL (BUG DO VAZIO): Evita que o caça vá muito longe sem querer e se perca no infinito
+        if (Mathf.Abs(novaPos.x) > 1800f || Mathf.Abs(novaPos.z) > 1800f)
+        {
+             // Força rotação dura de volta para 0,0 do mapa sem perdoar curva! (180 Graus)
+             Vector3 centroDoMap = new Vector3(0, novaPos.y, 0);
+             alvoGPSVoo = centroDoMap;
+             Quaternion freioDeOuro = Quaternion.LookRotation((centroDoMap - transform.position).normalized);
+             transform.rotation = Quaternion.RotateTowards(transform.rotation, freioDeOuro, 100f * Time.deltaTime);
+             novaPos = transform.position + transform.forward * velocidadeMaximaVoo * Time.deltaTime;
+        }
+
         transform.position = novaPos;
 
         // Banking Visual (Inclinar asas)
@@ -447,5 +501,37 @@ public class ControleAviao : MonoBehaviour
                 rodas[i].localRotation = rotacoesOriginaisRodas[i]; // Aparecem novamente direto com a rotação original
             }
         }
+    }
+
+    // --- NOVA FUNÇÃO PARA ATAQUE DE MERGULHO ---
+    public void ForcarAtaqueMergulho(Vector3 direcaoRetoAtaque)
+    {
+        if (emAtaqueMergulho) return; // Se já está no mergulho, deixa terminar a manobra completa!
+        StartCoroutine(RotinaMergulho(direcaoRetoAtaque));
+    }
+
+    private IEnumerator RotinaMergulho(Vector3 pontoFinal)
+    {
+        emAtaqueMergulho = true;
+        float velOriginal = velocidadeMaximaVoo;
+        
+        // 1. SOBE PARA O ARTO (80m) E PERDE 50% DA VELOCIDADE PARA MIRAR BEM 
+        Vector3 pontoAlto = transform.position + transform.forward * 80f;
+        pontoAlto.y = 80f;
+        alvoDoMergulho = pontoAlto;
+        velocidadeMaximaVoo = velOriginal * 0.5f;
+
+        yield return new WaitForSeconds(1.2f); // Espera um pouco alevantando o nariz em baixa velocidade
+
+        // 2. DESCE RASGANDO (20m) DESPEJANDO FOGO! (Volta a acelerar)
+        alvoDoMergulho = pontoFinal; // O pontoFinal que o armamento enviou já tem y=20
+        velocidadeMaximaVoo = velOriginal * 0.8f; // Desce a 80% do máximo para ter mais tempo de atirar!
+
+        // Em linha reta até o fim do ataque rasante!
+        yield return new WaitForSeconds(3.5f);
+
+        // 3. FIM DO MERGULHO. Volta a patrulhar normal o ponto central e reacelera infinito.
+        velocidadeMaximaVoo = velOriginal;
+        emAtaqueMergulho = false;
     }
 }

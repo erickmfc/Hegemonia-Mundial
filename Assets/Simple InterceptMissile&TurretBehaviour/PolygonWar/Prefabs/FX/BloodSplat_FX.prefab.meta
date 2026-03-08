@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 78e1c8c5b281b8b439229473779ac9aa
+timeCreated: 1502247319
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/FX/BloodSplat_FX.prefab
+  uploadId: 267706

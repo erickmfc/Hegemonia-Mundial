@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 8c5ee94ef08f44ddb8feda8400782407
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/Scripts/Editor/InterceptMissileScannerEditor.cs
+  uploadId: 267706

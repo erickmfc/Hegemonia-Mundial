@@ -26,6 +26,13 @@ public class SiloNuclear : MonoBehaviour
 
     void OnMouseDown()
     {
+        // IGNORA O CLIQUE SE O MOUSE ESTIVER EM CIMA DA UI
+        if (UnityEngine.EventSystems.EventSystem.current != null && 
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            return;
+        }
+
         // Ao clicar no prédio, abre o menu se estiver pronto
         if (menuManager != null && prontoParaLancar)
         {

@@ -43,6 +43,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Heliporto
       objectReference: {fileID: 0}
+    - target: {fileID: 100000, guid: 4c476731e97554c8bb604c97f97898d9, type: 3}
+      propertyPath: m_TagString
+      value: Player
+      objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 4c476731e97554c8bb604c97f97898d9, type: 3}
       propertyPath: m_LocalScale.x
       value: 8
@@ -137,12 +141,6 @@ MonoBehaviour:
   corPlataforma: {r: 0, g: 1, b: 0, a: 0.5}
   helicopterosPousados: []
   capacidadeMaxima: 1
-  larguraMenu: 320
-  alturaBotao: 50
-  corFundoMenu: {r: 0.1, g: 0.1, b: 0.2, a: 0.95}
-  corBotaoDisponivel: {r: 0.2, g: 0.5, b: 0.3, a: 1}
-  corBotaoOcupado: {r: 0.5, g: 0.2, b: 0.2, a: 1}
-  listaManual: []
 --- !u!65 &2655388034084770420
 BoxCollider:
   m_ObjectHideFlags: 0

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 6a2d0c0fb6de21645a5a46098078f0c9
+timeCreated: 1517439624
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Vehicles/SM_Veh_Plane_Damaged_American_01.prefab
+  uploadId: 267706

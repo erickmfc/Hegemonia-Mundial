@@ -151,6 +151,13 @@ public class PierMarinha : MonoBehaviour
 
     void OnMouseDown()
     {
+        // IGNORA O CLIQUE SE O MOUSE ESTIVER EM CIMA DA UI
+        if (UnityEngine.EventSystems.EventSystem.current != null && 
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            return;
+        }
+
         Debug.Log("[Pier] Solicitando atracagem automática...");
         ChamarNaviosParaVagasLivres();
     }

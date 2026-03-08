@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: ddcb146fd764f4a4faf87001835f6e63
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/Scripts/AntiMissileGun/AntiMissileGunController.cs
+  uploadId: 267706

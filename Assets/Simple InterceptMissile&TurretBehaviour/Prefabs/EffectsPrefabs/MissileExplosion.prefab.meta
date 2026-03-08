@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0552fc55042c849d381dfc98b4bbe7b7
+timeCreated: 1440380849
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/Prefabs/EffectsPrefabs/MissileExplosion.prefab
+  uploadId: 267706

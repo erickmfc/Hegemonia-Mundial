@@ -274,7 +274,7 @@ public class SistemaDeDanos : MonoBehaviour
             }
             
             // Se já tiver script, confiamos na configuração do inspector dele.
-
+            LimparDestroco(corpo);
             Destroy(corpo, 60.0f); // Fica 1 min no chão
         }
         
@@ -303,6 +303,7 @@ public class SistemaDeDanos : MonoBehaviour
         {
             GameObject escombros = Instantiate(prefabDestrocos, transform.position, transform.rotation);
             escombros.transform.localScale = transform.localScale; 
+            LimparDestroco(escombros);
             // Escombros de muro geralmente ficam para sempre ou por muito tempo
             // Destroy(escombros, 60.0f);
         }
@@ -346,11 +347,38 @@ public class SistemaDeDanos : MonoBehaviour
             GameObject destrocos = Instantiate(prefabDestrocos, transform.position, transform.rotation);
             // Destroços podem ter escala ajustada se necessário
             destrocos.transform.localScale = transform.localScale; 
+            LimparDestroco(destrocos);
             // Tanques destruídos ficam um tempo e somem
             Destroy(destrocos, 60.0f);
         }
 
         // 6. Remove a unidade
         Destroy(gameObject);
+    }
+
+    void LimparDestroco(GameObject obj)
+    {
+        // 1. Remove qualquer sistema de controle que possa ter vindo copiado no Prefab
+        var controles = obj.GetComponentsInChildren<ControleUnidade>();
+        foreach (var c in controles) Destroy(c);
+        
+        var selecoes = obj.GetComponentsInChildren<GerenteSelecao>();
+        foreach (var s in selecoes) Destroy(s);
+        
+        var tiros = obj.GetComponentsInChildren<SistemaDeTiro>();
+        foreach (var t in tiros) Destroy(t);
+        
+        var id = obj.GetComponentsInChildren<IdentidadeUnidade>();
+        foreach (var i in id) Destroy(i);
+        
+        // 2. Tira ele da listagem removendo Tag e Layer de Seleção
+        obj.tag = "Untagged";
+        obj.layer = 0; // Default layer
+
+        // 3. Remove visuais de seleção que podem ter ficado presos
+        Transform circulo = obj.transform.Find("CirculoSelecao");
+        if (circulo != null) Destroy(circulo.gameObject);
+        Transform selecaoUI = obj.transform.Find("SelecaoUI");
+        if (selecaoUI != null) Destroy(selecaoUI.gameObject);
     }
 }

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: dbe9743d9065a2445a22fa67fa9fdbb5
+timeCreated: 1469254404
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/_Demo/Demo.unity
+  uploadId: 267706

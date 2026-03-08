@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: cd4d7020429cde74db076ffa72495419
+timeCreated: 1467155435
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/FX/Prefabs/FX_Fireworks_Green_Small.prefab
+  uploadId: 267706

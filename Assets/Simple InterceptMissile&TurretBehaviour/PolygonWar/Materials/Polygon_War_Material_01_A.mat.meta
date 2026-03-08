@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 22af96f9ba68eb54b9ce79bdf6661284
+timeCreated: 1512599928
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Materials/Polygon_War_Material_01_A.mat
+  uploadId: 267706

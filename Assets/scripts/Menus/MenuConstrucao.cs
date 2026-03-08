@@ -726,7 +726,9 @@ public class MenuConstrucao : MonoBehaviour
         bool ehPredioExplícito = nomeLower.Contains("hangar") || nomeLower.Contains("fabrica") || nomeLower.Contains("refinaria") || 
                                  nomeLower.Contains("quartel") || nomeLower.Contains("tenda") || nomeLower.Contains("silo") ||
                                  nomeLower.Contains("torre") || nomeLower.Contains("muro") || nomeLower.Contains("wall") ||
-                                 nomeLower.Contains("aeroporto") || nomeLower.Contains("heliporto") || nomeLower.Contains("pista");
+                                 nomeLower.Contains("aeroporto") || nomeLower.Contains("heliporto") || nomeLower.Contains("pista") ||
+                                 nomeLower.Contains("ares") || nomeLower.Contains("antiaerea") || nomeLower.Contains("missil") ||
+                                 item.categoria == DadosConstrucao.CategoriaItem.Infraestrutura;
 
         if (ehPredioExplícito)
         {

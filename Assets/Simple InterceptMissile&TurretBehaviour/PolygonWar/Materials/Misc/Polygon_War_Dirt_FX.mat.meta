@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: ae3fa6191020bd246ab9645e0c167855
+timeCreated: 1517347193
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Materials/Misc/Polygon_War_Dirt_FX.mat
+  uploadId: 267706

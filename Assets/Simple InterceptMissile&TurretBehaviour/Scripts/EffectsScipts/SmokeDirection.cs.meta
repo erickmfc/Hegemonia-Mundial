@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 6b13f77ac00ef4f0c85d6f62a1698ca5
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/Scripts/EffectsScipts/SmokeDirection.cs
+  uploadId: 267706

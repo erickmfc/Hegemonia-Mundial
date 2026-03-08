@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b55110ea93076493e99980dd7cff86c1
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/Documentation/Intercept
+    Missile & Turret Behavior Doc v1.0.1.pdf
+  uploadId: 267706
