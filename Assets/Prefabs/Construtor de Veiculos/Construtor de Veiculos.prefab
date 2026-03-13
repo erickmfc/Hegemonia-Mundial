@@ -76,8 +76,8 @@ GameObject:
   - component: {fileID: 6463328205391421706}
   - component: {fileID: 2406212096000650422}
   m_Layer: 0
-  m_Name: Hangar de veiculos
-  m_TagString: Player
+  m_Name: Construtor de Veiculos
+  m_TagString: Imovel
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -144,6 +144,7 @@ MonoBehaviour:
   vidaMaxima: 200
   vidaAtual: 200
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 3.9

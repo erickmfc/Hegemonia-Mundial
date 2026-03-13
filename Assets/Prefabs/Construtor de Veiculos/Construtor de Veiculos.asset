@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
-  m_Name: HangarVehicle_01
+  m_Name: Construtor de Veiculos
   m_EditorClassIdentifier: 
-  nomeItem: Base de Veiculos
+  nomeItem: Construtor de Veiculos
   descricao: Hangar avancado para producao e manutencao de veiculos pesados.
   icone: {fileID: 21300000, guid: 05c4c9a9cb8d2df4fb5d12cc92ce0cfa, type: 3}
   prefabDaUnidade: {fileID: 7213140222438100777, guid: de1399e2c962362479dda709fd9b10f1, type: 3}

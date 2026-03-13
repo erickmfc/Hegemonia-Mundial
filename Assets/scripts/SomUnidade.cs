@@ -67,6 +67,11 @@ public class SomUnidade : MonoBehaviour
         audioSource.spatialBlend = 1f; 
         audioSource.maxDistance = 50f;
         
+        // Torna o som de Tiro e Explosão em 3D
+        audioSourceSecundario.spatialBlend = 1f;
+        audioSourceSecundario.maxDistance = 150f;
+        audioSourceSecundario.rolloffMode = AudioRolloffMode.Linear;
+        
         // Cachear referências pesadas
         controleUnidade = GetComponent<ControleUnidade>();
         sistemaDanos = GetComponent<SistemaDeDanos>();

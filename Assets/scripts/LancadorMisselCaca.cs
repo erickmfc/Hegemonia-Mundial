@@ -15,18 +15,21 @@ public class LancadorMisselCaca : MonoBehaviour
     public Transform[] pontosDeSaida; 
     public GameObject missilCacaPrefab; 
     public float tempoRecarga = 2.0f;
-    public float raioDeDeteccao = 600f; // Área de identificação do Radar
+    public float raioDeDeteccao = 600f;
     
-    // Estado Temporário
     private float cronometroRecarga = 0f;
     private int indiceCano = 0;
-    private ControleUnidade unidadeBase;
-    private ControleAviao vooModerno;
-    private SistemaDeDanos sistemaDanos;
-    private int meuTime;
+    private ControleUnidade _unidadeBase;
+    private ControleAviao _vooModerno;
+    private SistemaDeDanos _sistemaDanos;
+    private int _meuTime;
+
+    // --- CACHE: Rigidbody e AudioSource (evita GetComponent repetido) ---
+    private Rigidbody _rb;
+    private AudioSource _audioSource;
 
     // Patrulha e Comportamento
-    public bool modoPassivo = false; // Controlado pelo MenuComportamento
+    public bool modoPassivo = false;
     private Vector3 pontoPatrulha;
     private bool voltandoParaBase = false;
 
@@ -46,73 +49,71 @@ public class LancadorMisselCaca : MonoBehaviour
     private bool radarFechado = false;
     private bool ultimoEstadoRadar = false;
 
+    // --- CACHE: Collider[] reutilizável para OverlapSphere (reduz GC) ---
+    private readonly Collider[] _hitBuffer = new Collider[64];
+    // --- CACHE: HashSet para deduplicação O(1) no scan ---
+    private readonly HashSet<Transform> _alvosJaVistos = new HashSet<Transform>();
+
     void Start()
     {
-        unidadeBase = GetComponent<ControleUnidade>();
-        vooModerno = GetComponent<ControleAviao>();
-        sistemaDanos = GetComponent<SistemaDeDanos>();
+        _unidadeBase = GetComponent<ControleUnidade>();
+        _vooModerno = GetComponent<ControleAviao>();
+        _sistemaDanos = GetComponent<SistemaDeDanos>();
+        _rb = GetComponent<Rigidbody>();
+        _audioSource = GetComponent<AudioSource>();
         
-        // Padrão 1 (Player) caso o avião não tenha tag especificada
-        meuTime = GetComponent<IdentidadeIA>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 1;
+        _meuTime = GetComponent<IdentidadeIA>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 1;
     }
 
     void Update()
     {
         if (cronometroRecarga > 0) cronometroRecarga -= Time.deltaTime;
 
-        // 1. Deteccão de Inimigos (Radar) - Apenas a cada 1 segundo pra não pesar a RAM
+        // Detecção de Inimigos (Radar) — Apenas a cada 1 segundo pra não pesar
         if (Time.time > tempoUltimoScan + 1.0f)
         {
             tempoUltimoScan = Time.time;
             EscanearArea();
-            
-            // --- LÓGICA DE PATRULHA AUTOMÁTICA ---
             ProcessarPatrulhaAutomatica();
         }
 
-        // 2. Sistema de Recarga Automática na Base
-        if (vooModerno.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio || vooModerno.estadoAtual == ControleAviao.EstadoAviao.ReservaHangar)
+        // Sistema de Recarga Automática na Base
+        ControleAviao.EstadoAviao estado = _vooModerno.estadoAtual;
+        if (estado == ControleAviao.EstadoAviao.ProntoNoPatio || estado == ControleAviao.EstadoAviao.ReservaHangar)
         {
-            // O avião está pousado (voltou para o aeroporto ou base). Ele recarrega mísseis e vida instantaneamente.
             if (municaoAtual < municaoMaxima)
             {
                 municaoAtual = municaoMaxima;
-                indiceCano = 0; // Reseta o cano de disparo
+                indiceCano = 0;
                 
-                // Reativa a malha (mesh) dos "mísseis em reserva" para mostrar que recarregou
-                if (pontosDeSaida != null && pontosDeSaida.Length > 0)
+                // Reativa mesh dos mísseis em reserva
+                if (pontosDeSaida != null)
                 {
-                    foreach (Transform tf in pontosDeSaida)
+                    for (int i = 0, count = pontosDeSaida.Length; i < count; i++)
                     {
-                        if (tf != null)
-                        {
-                            Renderer[] renderers = tf.GetComponentsInChildren<Renderer>();
-                            foreach(var r in renderers)
-                            {
-                                r.enabled = true;
-                            }
-                        }
+                        Transform tf = pontosDeSaida[i];
+                        if (tf == null) continue;
+                        Renderer[] renderers = tf.GetComponentsInChildren<Renderer>();
+                        for (int j = 0, jCount = renderers.Length; j < jCount; j++)
+                            renderers[j].enabled = true;
                     }
                 }
                 
                 Debug.Log($"✈️ [Base] {gameObject.name} recarregou mísseis no Hangar/Porta-Aviões!");
 
-                // Se estava voltando para a base sozinho, ele decola de volta pra patrulha
                 if (voltandoParaBase)
                 {
                     voltandoParaBase = false;
-                    
-                    // Esperar um pouco antes de decolar (só pra não dar soco instantâneo)
-                    if (vooModerno.aeroportoOrigem != null)
+                    if (_vooModerno.aeroportoOrigem != null)
                     {
-                        vooModerno.IniciarMissaoCompleta(pontoPatrulha);
+                        _vooModerno.IniciarMissaoCompleta(pontoPatrulha);
                         Debug.Log($"✈️ [Base] {gameObject.name} voltando para a patrulha automática!");
                     }
                 }
             }
-            if (sistemaDanos.vidaAtual < sistemaDanos.vidaMaxima)
+            if (_sistemaDanos.vidaAtual < _sistemaDanos.vidaMaxima)
             {
-                sistemaDanos.Reparar(sistemaDanos.vidaMaxima);
+                _sistemaDanos.Reparar(_sistemaDanos.vidaMaxima);
                 Debug.Log($"✈️ [Base] {gameObject.name} foi totalmente reparado!");
             }
         }
@@ -120,78 +121,60 @@ public class LancadorMisselCaca : MonoBehaviour
 
     void ProcessarPatrulhaAutomatica()
     {
-        // Se estiver no chão, não tenta atirar
-        if (vooModerno.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return;
-
-        // Se a missão era voltar pra base, foca nisso e ignora inimigos
+        if (_vooModerno.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return;
         if (voltandoParaBase) return;
+        if (modoPassivo) return;
 
-        // Se estiver ativo (não passivo) e tem mísseis
-        if (!modoPassivo)
+        if (municaoAtual > 0 && cronometroRecarga <= 0 && inimigosNaArea.Count > 0)
         {
-            if (municaoAtual > 0 && cronometroRecarga <= 0 && inimigosNaArea.Count > 0)
-            {
-                // Pega o inimigo mais próximo e atira! (O inimigosNaArea já é ordenado por distância via EscanearArea)
-                var alvo = inimigosNaArea[0];
-                if (alvo != null && alvo.transform != null)
-                {
-                    Disparar(alvo.transform);
-                }
-            }
+            AlvoDetectado alvo = inimigosNaArea[0];
+            if (alvo != null && alvo.transform != null)
+                Disparar(alvo.transform);
+        }
 
-            // Volta para a base pegar munição se ficar vazio e não estiver passivo
-            if (municaoAtual <= 0)
-            {
-                if (vooModerno.aeroportoOrigem != null)
-                {
-                    pontoPatrulha = vooModerno.alvoGPSVoo; // Grava onde ele estava fazendo a ronda
-                    voltandoParaBase = true;
-                    vooModerno.ComandoRetornarBase();
-                    Debug.Log($"✈️ [Radar] {gameObject.name} sem munição! Retornando para a base via Aeroporto.");
-                }
-            }
+        // Volta para a base se ficar sem munição
+        if (municaoAtual <= 0 && _vooModerno.aeroportoOrigem != null)
+        {
+            pontoPatrulha = _vooModerno.alvoGPSVoo;
+            voltandoParaBase = true;
+            _vooModerno.ComandoRetornarBase();
+            Debug.Log($"✈️ [Radar] {gameObject.name} sem munição! Retornando para a base via Aeroporto.");
         }
     }
 
     void EscanearArea()
     {
         inimigosNaArea.Clear();
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioDeDeteccao);
+        _alvosJaVistos.Clear();
 
-        foreach (var col in hits)
+        // OverlapSphereNonAlloc: Reutiliza buffer, zero alocação GC
+        int numHits = Physics.OverlapSphereNonAlloc(transform.position, raioDeDeteccao, _hitBuffer);
+
+        for (int i = 0; i < numHits; i++)
         {
-            var idIA = col.GetComponentInParent<IdentidadeIA>();
-            var idUnidade = col.GetComponentInParent<IdentidadeUnidade>();
+            Collider col = _hitBuffer[i];
+            if (col == null) continue;
+
+            IdentidadeIA idIA = col.GetComponentInParent<IdentidadeIA>();
+            IdentidadeUnidade idUnidade = (idIA == null) ? col.GetComponentInParent<IdentidadeUnidade>() : null;
             
-            int teamDele = idIA?.teamID ?? idUnidade?.teamID ?? -1;
+            int teamDele = idIA != null ? idIA.teamID : (idUnidade != null ? idUnidade.teamID : -1);
 
-            // Considera inimigo se for de outro time OU não tiver time (-1, ex: cubo de teste)
-            if (teamDele != meuTime)
-            {
-                var alvoDanos = col.GetComponentInParent<SistemaDeDanos>();
-                if (alvoDanos != null && alvoDanos.vidaAtual > 0)
-                {
-                    Transform alvoTransform = alvoDanos.transform;
-                    
-                    // Procura se já não listamos esse inimigo (visto que ele pode ter múltiplos colliders)
-                    bool jaAdicionado = false;
-                    foreach(var a in inimigosNaArea) {
-                        if (a.transform == alvoTransform) {
-                            jaAdicionado = true;
-                            break;
-                        }
-                    }
+            if (teamDele == _meuTime) continue;
 
-                    if (!jaAdicionado)
-                    {
-                        AlvoDetectado novo = new AlvoDetectado();
-                        novo.transform = alvoTransform;
-                        novo.nome = alvoTransform.name.Replace("(Clone)", ""); 
-                        novo.distancia = Vector3.Distance(transform.position, alvoTransform.position);
-                        inimigosNaArea.Add(novo);
-                    }
-                }
-            }
+            SistemaDeDanos alvoDanos = col.GetComponentInParent<SistemaDeDanos>();
+            if (alvoDanos == null || alvoDanos.vidaAtual <= 0) continue;
+
+            Transform alvoTransform = alvoDanos.transform;
+            
+            // HashSet.Add retorna false se já existia — O(1) ao invés de foreach
+            if (!_alvosJaVistos.Add(alvoTransform)) continue;
+
+            AlvoDetectado novo = new AlvoDetectado();
+            novo.transform = alvoTransform;
+            novo.nome = alvoTransform.name.Replace("(Clone)", ""); 
+            novo.distancia = Vector3.Distance(transform.position, alvoTransform.position);
+            inimigosNaArea.Add(novo);
         }
         
         // Ordena por distância (Mais próximos primeiro)
@@ -207,13 +190,10 @@ public class LancadorMisselCaca : MonoBehaviour
         {
             saida = pontosDeSaida[indiceCano];
             
-            // Oculta a malha (mesh) do "míssil em reserva" que está na asa do avião, 
-            // para mostrar que o míssil foi fisicamente gasto.
+            // Oculta mesh do míssil gasto
             Renderer[] renderers = saida.GetComponentsInChildren<Renderer>();
-            foreach(var r in renderers)
-            {
-                r.enabled = false;
-            }
+            for (int i = 0, count = renderers.Length; i < count; i++)
+                renderers[i].enabled = false;
 
             indiceCano = (indiceCano + 1) % pontosDeSaida.Length;
         }
@@ -223,47 +203,37 @@ public class LancadorMisselCaca : MonoBehaviour
         MisselCaca scriptVoo = missil.GetComponent<MisselCaca>();
         if (scriptVoo != null)
         {
-            Vector3 velAtual = GetComponent<Rigidbody>() != null ? GetComponent<Rigidbody>().linearVelocity : (transform.forward * 40f); 
-            scriptVoo.IniciarAtaque(alvo.position, velAtual, alvo); // passa o transform pra seguir
+            Vector3 velAtual = (_rb != null) ? _rb.linearVelocity : (transform.forward * 40f); 
+            scriptVoo.IniciarAtaque(alvo.position, velAtual, alvo);
         }
 
         municaoAtual--;
         cronometroRecarga = tempoRecarga;
         
-        AudioSource audio = GetComponent<AudioSource>();
-        if(audio != null) audio.Play();
+        if (_audioSource != null) _audioSource.Play();
     }
 
     void OnGUI()
     {
         bool radarAtivoVisualmente = false;
 
-        // 1ª Forma: Selecionado diretamente via clique do mouse (RTS)
-        if (unidadeBase != null && unidadeBase.selecionado) radarAtivoVisualmente = true;
+        if (_unidadeBase != null && _unidadeBase.selecionado) radarAtivoVisualmente = true;
 
-        // 2ª Forma: Selecionado na lista do Aeroporto
-        ControleAviao aviaoGeral = GetComponent<ControleAviao>();
-        if (aviaoGeral != null && aviaoGeral.aeroportoOrigem != null)
+        if (!radarAtivoVisualmente && _vooModerno != null && _vooModerno.aeroportoOrigem != null)
         {
-            if (aviaoGeral.aeroportoOrigem.aviaoSelecionadoParaMissao == aviaoGeral) radarAtivoVisualmente = true;
+            if (_vooModerno.aeroportoOrigem.aviaoSelecionadoParaMissao == _vooModerno) radarAtivoVisualmente = true;
         }
 
-        // Reseta o estado fechar/minimizar se abriu de novo
+        // Reseta estado fechar/minimizar se abriu de novo
         if (radarAtivoVisualmente && !ultimoEstadoRadar)
-        {
             radarFechado = false;
-        }
         ultimoEstadoRadar = radarAtivoVisualmente;
 
         if (!radarAtivoVisualmente || radarFechado) return;
-        
-        // E só se tivermos detectado pelo menos 1 inimigo (Radar Acionado)
         if (inimigosNaArea.Count == 0) return;
 
-        // Aumentando 10% do tamanho
         float largura = 385;
         float altura = 385;
-        // Posicione o visual à direita da tela, para não conflitar com a UI inferior de construção
         float x = Screen.width - largura - 20; 
         float y = (Screen.height - altura) / 2; 
 
@@ -277,31 +247,25 @@ public class LancadorMisselCaca : MonoBehaviour
 
         GUI.Box(new Rect(x, y, largura, altura), "📡 RADAR: ALVOS DETECTADOS");
         
-        // Botões de minimizar e fechar
         if (GUI.Button(new Rect(x + largura - 50, y + 5, 20, 20), "▲")) radarMinimizado = true;
         if (GUI.Button(new Rect(x + largura - 25, y + 5, 20, 20), "X")) radarFechado = true;
 
         GUI.Label(new Rect(x + 15, y + 30, 200, 20), $"<color=yellow>Mísseis Restantes: {municaoAtual} / {municaoMaxima}</color>");
 
         if (municaoAtual <= 0)
-        {
             GUI.Label(new Rect(x + 15, y + 50, 320, 20), "<color=red>AERONAVE SEM MÍSSEIS - RETORNE À BASE!</color>");
-        }
 
         GUI.Label(new Rect(x + 15, y + 75, 200, 20), $"Hostis na Área: {inimigosNaArea.Count}");
 
-        // Lista de Inimigos (ScrollView)
         scrollPosition = GUI.BeginScrollView(
             new Rect(x + 10, y + 100, largura - 20, altura - 110), 
             scrollPosition, 
             new Rect(0, 0, largura - 40, inimigosNaArea.Count * 45)
         );
 
-        for (int i = 0; i < inimigosNaArea.Count; i++)
+        for (int i = 0, count = inimigosNaArea.Count; i < count; i++)
         {
-            var alvo = inimigosNaArea[i];
-            
-            // É possível que o alvo tenha sido destruído neste frame
+            AlvoDetectado alvo = inimigosNaArea[i];
             if (alvo.transform == null) continue;
 
             float slotY = i * 45;
@@ -311,17 +275,13 @@ public class LancadorMisselCaca : MonoBehaviour
 
             if (GUI.Button(new Rect(140, slotY + 5, 80, 30), "SEGUIR"))
             {
-                // Ordena o jato voar para as costas do inimigo ou interceptar
-                if (vooModerno != null) vooModerno.alvoGPSVoo = alvo.transform.position;
+                if (_vooModerno != null) _vooModerno.alvoGPSVoo = alvo.transform.position;
             }
 
-            // Desabilita o botão atacar se estiver no cooldown ou sem bala
             GUI.enabled = (municaoAtual > 0 && cronometroRecarga <= 0);
             if (GUI.Button(new Rect(225, slotY + 5, 80, 30), "ATACAR"))
-            {
                 Disparar(alvo.transform);
-            }
-            GUI.enabled = true; // Volta ao normal
+            GUI.enabled = true;
         }
 
         GUI.EndScrollView();

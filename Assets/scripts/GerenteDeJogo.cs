@@ -160,7 +160,8 @@ public class GerenteDeJogo : MonoBehaviour
         string nome = unidadeParaConstruir.name.ToLower();
         
         bool ehSoldado = (nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("person") || nome.Contains("infantry") || nome.Contains("fuzileiro"));
-        bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("destroier") || nome.Contains("porta") || nome.Contains("barco") || nome.Contains("lancha"));
+        bool ehPredio = unidadeParaConstruir.CompareTag("Imovel") || nome.Contains("ares") || nome.Contains("torreta") || nome.Contains("missil") || nome.Contains("bunker") || nome.Contains("areas");
+        bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("sub") || nome.Contains("destroier") || nome.Contains("porta") || nome.Contains("barco") || nome.Contains("lancha") || nome.Contains("transporte"));
 
         bool ehHelicoptero = (unidadeParaConstruir.GetComponent<Helicoptero>() != null || 
                               unidadeParaConstruir.GetComponent("HelicopterController") != null ||
@@ -366,25 +367,29 @@ public class GerenteDeJogo : MonoBehaviour
         }
         else
         {
-            // FALLBACK MELHORADO: Nascer na frente da Câmera para o jogador VER que funcionou
-            if (Camera.main != null)
+            // FALLBACK MELHORADO: Tenta nascer em um ponto seguro do mapa se não houver prédios
+            GameObject baseAres = GameObject.Find("Base_Ares");
+            if (baseAres != null)
             {
-                posNascimento = Camera.main.transform.position + (Camera.main.transform.forward * 10f);
-                posNascimento.y = 10f; // Força altura para cair
-                // Raycast para achar o chão
+                posNascimento = baseAres.transform.position + Vector3.up * 2f;
+                rotNascimento = baseAres.transform.rotation;
+            }
+            else if (Camera.main != null)
+            {
+                // Nasce na frente da câmera, mas tenta fixar no chão
+                posNascimento = Camera.main.transform.position + (Camera.main.transform.forward * 15f);
+                posNascimento.y = 50f; 
                 RaycastHit hitChao;
-                if (Physics.Raycast(posNascimento + Vector3.up * 50, Vector3.down, out hitChao, 100f))
-                {
-                    posNascimento = hitChao.point;
-                }
+                if (Physics.Raycast(posNascimento, Vector3.down, out hitChao, 100f)) posNascimento = hitChao.point;
+                rotNascimento = Quaternion.identity;
             }
             else
             {
                 posNascimento = transform.position + new Vector3(3, 2, 0);
+                rotNascimento = Quaternion.identity;
             }
-
-            rotNascimento = Quaternion.identity;
-            Debug.LogWarning($"Usando Spawn de Fallback (Frente da Câmera) para: {pedido.nomeUnidade}. Motivo: Fábrica não encontrada (spawnSoldado/spawnInterno é null).");
+            
+            Debug.LogWarning($"[Logistica] Sem fábrica disponível para {pedido.nomeUnidade}. Usando fallback em {posNascimento}");
         }
 
         if(destinoAtual != null) posDestino = destinoAtual.position;
@@ -439,17 +444,29 @@ public class GerenteDeJogo : MonoBehaviour
             return;
         }
 
-        // --- DEFINIR IDENTIDADE (TeamID 1 = Jogador) ---
+        // --- DEFINIR IDENTIDADE (O GerenteDeJogo do Jogador sempre cria unidades para o Time 1) ---
         IdentidadeUnidade identidade = novaUnidade.GetComponent<IdentidadeUnidade>();
         if (identidade == null)
         {
-            // Se não tiver, adiciona na hora
             identidade = novaUnidade.AddComponent<IdentidadeUnidade>();
             Debug.Log($"[Gerente] Adicionei RG na marra em: {novaUnidade.name}");
         }
         
-        identidade.teamID = 1;
-        identidade.nomeDoPais = "Minha Nação";
+        // Garante que a unidade pertence ao jogador
+        identidade.teamID = 1; 
+        identidade.nomeDoPais = "Hegemonia";
+
+        // Se tiver controle de unidade, garante que está configurado
+        ControleUnidade controle = novaUnidade.GetComponent<ControleUnidade>();
+        if (controle == null) controle = novaUnidade.AddComponent<ControleUnidade>();
+
+        // Reativa NavMesh e logicamente
+        UnityEngine.AI.NavMeshAgent agent = novaUnidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (agent != null) 
+        {
+            agent.enabled = true;
+            if (agent.isOnNavMesh) agent.isStopped = false;
+        }
         
         // --- CORREÇÃO DE FÍSICA (IMPEDE VOAR) ---
         Rigidbody rb = novaUnidade.GetComponent<Rigidbody>();
@@ -481,11 +498,9 @@ public class GerenteDeJogo : MonoBehaviour
         }
 
         // MOVER
-        ControleUnidade controle = novaUnidade.GetComponent<ControleUnidade>();
         if (controle != null)
         {
             // Se tiver NavMeshAgent, usa lógica robusta de posicionamento
-            UnityEngine.AI.NavMeshAgent agent = novaUnidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
             if(agent != null) 
             {
                 // Já posicionamos no NavMesh antes, mas garantir o Warp nunca é demais se o Instantiate tiver movido

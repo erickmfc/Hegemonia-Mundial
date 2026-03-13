@@ -5,12 +5,15 @@ public class CameraController : MonoBehaviour
     public float velocidade = 20f;
     public float velocidadeZoom = 4000f;
     public float velocidadeRotacao = 100f;
-    public float multiplicadorShift = 3.23f; // Aumentado em ~29% (Antes 2.5)
+    public float multiplicadorShift = 9.69f; // Velocidade triplicada (Antes 3.23)
 
     private float tempoShiftPressionado = 0f;
 
     void Update()
     {
+        // Força a substituição do Inspector se estiver salvo um valor muito baixo
+        if (multiplicadorShift < 12f) multiplicadorShift = 12f;
+
         // --- 1. Controle de Velocidade (Speed Shift) ---
         float velAtual = velocidade;
         

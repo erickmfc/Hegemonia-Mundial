@@ -191,7 +191,12 @@ public class IA_General : MonoBehaviour
         // Pede pro Arquiteto achar um lugar
         if (chefe.cerebroArquiteto != null)
         {
-            Vector3 local = chefe.cerebroArquiteto.EncontrarPontoDefensivo();
+            // Calcula um ponto defensivo localmente (fallback já que o Arquiteto Pro removeu o método)
+            Vector3 centroBase = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : chefe.transform.position;
+            Vector3 dirAleat = Random.onUnitSphere; dirAleat.y = 0;
+            Vector3 local = centroBase + (dirAleat.normalized * 40f);
+            
+            if (Terrain.activeTerrain != null) local.y = Terrain.activeTerrain.SampleHeight(local);
             
             // Busca torreta no catálogo
             if (MenuConstrucao.catalogoGlobal == null) return;

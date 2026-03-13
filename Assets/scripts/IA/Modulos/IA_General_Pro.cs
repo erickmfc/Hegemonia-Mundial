@@ -3,24 +3,32 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// IA General Pro: Gerencia recrutamento contínuo e combate ativo (Terra, Ar e MAR).
-/// ATUALIZADO: Foco estratégico em destruir defesas com 3 caças (Super_Tuk).
+/// IA General Pro: Gerencia recrutamento contínuo e combate ativo.
+/// ATUALIZADO: Caças priorizam economia (Minas, Refinarias) para enfraquecer o jogador.
+/// ATUALIZADO (NOVO): Espionagem Tática. O General aprende a composição do exército inimigo e se adapta.
+/// FIX: Unidades não giram mais no próprio eixo ao se agrupar (Anti-Spin).
 /// </summary>
 public class IA_General_Pro : MonoBehaviour
 {
     private IA_Comandante chefe;
     
-    [Header("Composição Desejada")]
-    public int soldadosDesejados = 12;
-    public int tanquesDesejados = 10;
-    public int helicopterosDesejados = 4;
-    public int naviosDesejados = 3; 
-    public int transportesDesejados = 2; 
-    public int avioesDesejados = 3; // MUDANÇA: Limite de 3 Super_Tuk para ataque cirúrgico
+    [Header("Composição Desejada (Dinâmica)")]
+    public int soldadosDesejados = 20; 
+    public int tanquesDesejados = 15;  
+    public int helicopterosDesejados = 5;
+    public int naviosDesejados = 4; 
+    public int transportesDesejados = 3; 
+    public int avioesDesejados = 4; 
 
     [Header("Agressividade")]
     public int minimoParaAtacar = 5;
     public float intervaloAtaque = 15f;
+
+    [Header("Espionagem Tática (Machine Learning)")]
+    public bool usarInteligenciaAdaptativa = true;
+    public string relatorioInimigo = "Coletando informações...";
+    private float _timerEspionagem;
+    private bool _inimigoForteEmDefesa = false;
 
     // Listas de Controle
     private List<GameObject> grupoSoldados = new List<GameObject>();
@@ -29,7 +37,6 @@ public class IA_General_Pro : MonoBehaviour
     private List<GameObject> grupoNavios = new List<GameObject>(); 
     private List<GameObject> grupoTransportes = new List<GameObject>(); 
     private List<GameObject> grupoAvioes = new List<GameObject>(); 
-    private List<GameObject> grupoOutros = new List<GameObject>();
 
     [SerializeField] private List<Fabrica> minhasFabricas = new List<Fabrica>();
     [SerializeField] private List<Estaleiro> meusEstaleiros = new List<Estaleiro>(); 
@@ -40,10 +47,10 @@ public class IA_General_Pro : MonoBehaviour
     private float _timerAtaque;
     private float _timerReorganizar;
     private float _timerTransporte;
-    private string _ultimoStatus = "Iniciando...";
-
+    private float _timerCompraAviao = 0f;   
+    private float _timerRayTransporte = 0f; 
+    private float _timerDespachoAviao = 30f; 
     private bool jaAtacou = false;
-    private Vector3 ultimoAlvoPosicao;
 
     public void Inicializar(IA_Comandante comandante)
     {
@@ -53,16 +60,23 @@ public class IA_General_Pro : MonoBehaviour
     void Start()
     {
         if (chefe == null) chefe = GetComponent<IA_Comandante>();
-        if (chefe == null) 
-        {
-             chefe = FindFirstObjectByType<IA_Comandante>();
-        }
+        if (chefe == null) chefe = FindFirstObjectByType<IA_Comandante>();
         if (chefe != null && chefe.cerebroGeneral == null) chefe.cerebroGeneral = this;
     }
 
     void Update()
     {
         if (chefe == null) return;
+
+        if (usarInteligenciaAdaptativa)
+        {
+            _timerEspionagem += Time.deltaTime;
+            if (_timerEspionagem >= 20f) 
+            {
+                _timerEspionagem = 0;
+                EscanearEAdaptarAoInimigo();
+            }
+        }
 
         _timerRecrutamento += Time.deltaTime;
         if (_timerRecrutamento >= 2.5f) 
@@ -92,6 +106,77 @@ public class IA_General_Pro : MonoBehaviour
             _timerTransporte = 0;
             GerenciarTransportes();
         }
+
+        _timerCompraAviao += Time.deltaTime;
+        if (_timerCompraAviao >= 300f)
+        {
+            _timerCompraAviao = 0;
+            TentarComprarAviaoPeriodicamentre();
+        }
+
+        _timerRayTransporte += Time.deltaTime;
+        if (_timerRayTransporte >= 45f)
+        {
+            _timerRayTransporte = 0;
+            GerenciarTransporteRay();
+        }
+
+        _timerDespachoAviao += Time.deltaTime;
+        if (_timerDespachoAviao >= 60f)
+        {
+            _timerDespachoAviao = 0;
+            DespacharAvioesParaMissao();
+        }
+    }
+
+    void EscanearEAdaptarAoInimigo()
+    {
+        var unidadesInimigas = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None).Where(u => u.teamID == 1).ToList();
+        
+        int infantariaInimiga = 0;
+        int tanquesInimigos = 0;
+        int aereoInimigo = 0;
+        int defesasInimigas = 0;
+
+        foreach(var ini in unidadesInimigas)
+        {
+            string n = ini.name.ToLower();
+            if (n.Contains("soldado") || n.Contains("infantaria") || n.Contains("person")) infantariaInimiga++;
+            else if (n.Contains("tank") || n.Contains("leopard") || n.Contains("blindado")) tanquesInimigos++;
+            else if (n.Contains("heli") || n.Contains("caca") || n.Contains("aviao") || n.Contains("jet")) aereoInimigo++;
+            else if (n.Contains("torreta") || n.Contains("bunker") || n.Contains("missil") || n.Contains("anti") || n.Contains("defesa")) defesasInimigas++;
+        }
+
+        if (tanquesInimigos > (tanquesDesejados / 2)) 
+        {
+            helicopterosDesejados = Mathf.Max(5, helicopterosDesejados + 1);
+            avioesDesejados = Mathf.Max(4, avioesDesejados + 1);
+            tanquesDesejados = Mathf.Max(5, tanquesDesejados - 1); 
+            relatorioInimigo = "Inimigo prefere Blindados. Focando na supremacia aérea.";
+        }
+        else if (infantariaInimiga > (soldadosDesejados / 2))
+        {
+            tanquesDesejados = Mathf.Max(15, tanquesDesejados + 2);
+            soldadosDesejados = Mathf.Max(10, soldadosDesejados - 2); 
+            relatorioInimigo = "Inimigo recruta muita Infantaria. Produzindo força de blindados anti-pessoal.";
+        }
+        else if (aereoInimigo > 3)
+        {
+            avioesDesejados = Mathf.Max(4, avioesDesejados + 2);
+            relatorioInimigo = "Inimigo está dominando os céus. Requisitando mais caças interceptadores.";
+        }
+
+        if (defesasInimigas >= 4)
+        {
+            _inimigoForteEmDefesa = true;
+            minimoParaAtacar = 15; 
+            relatorioInimigo += " | Base inimiga fortificada. Preprando ataque em flanco.";
+        }
+        else
+        {
+            _inimigoForteEmDefesa = false;
+            minimoParaAtacar = 6; 
+        }
     }
 
     void GerenciarTransportes()
@@ -99,16 +184,6 @@ public class IA_General_Pro : MonoBehaviour
         Transform alvo = BuscarAlvo();
         Vector3 centro = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : transform.position;
 
-        // AEROPORTOS: Sempre puxar aeronaves do Hangar pro Pátio para voar!
-        if (meusAeroportos != null)
-        {
-            foreach (var aero in meusAeroportos)
-            {
-                if (aero != null) aero.LiberarTodosDoHangar();
-            }
-        }
-
-        // HELICOPTEROS
         foreach(var hObj in grupoHelis)
         {
             if (hObj == null) continue;
@@ -125,99 +200,174 @@ public class IA_General_Pro : MonoBehaviour
                         {
                             Vector3 eixoCentralZ = (alvo.position - centro).normalized;
                             Vector3 direitaMapa = Vector3.Cross(Vector3.up, eixoCentralZ);
-                            float direcaoPinça = (heli.GetInstanceID() % 2 == 0) ? 1f : -1f;
-                            Random.InitState(heli.GetInstanceID());
-                            Vector3 espalhamentoGPS = new Vector3(Random.Range(-25f, 25f), 0, Random.Range(-25f, 25f));
-                            
-                            Vector3 pontoDeDesembarque = alvo.position - (eixoCentralZ * 120f) + (direitaMapa * 60f * direcaoPinça) + espalhamentoGPS;
-
-                            float distParaAlvo = Vector3.Distance(heli.transform.position, alvo.position);
-                            float distParaDestino = Vector2.Distance(
-                                new Vector2(heli.transform.position.x, heli.transform.position.z), 
-                                new Vector2(pontoDeDesembarque.x, pontoDeDesembarque.z)
-                            );
+                            float direcaoPinca = (heli.GetInstanceID() % 2 == 0) ? 1f : -1f;
+                            Vector3 pontoDeDesembarque = alvo.position - (eixoCentralZ * 120f) + (direitaMapa * 60f * direcaoPinca);
 
                             if (heli.estaVoando)
                             {
-                                if (distParaDestino <= 20f || distParaAlvo <= 90f) heli.OrdemPousoOuDesembarque();
+                                if (Vector3.Distance(heli.transform.position, pontoDeDesembarque) <= 30f) heli.OrdemPousoOuDesembarque();
                                 else heli.destino = pontoDeDesembarque;
                             }
                             else
                             {
-                                if (distParaDestino > 20f && distParaAlvo > 90f) heli.Decolar(pontoDeDesembarque);
+                                if (Vector3.Distance(heli.transform.position, pontoDeDesembarque) > 30f) heli.Decolar(pontoDeDesembarque);
                                 else heli.OrdemPousoOuDesembarque();
                             }
                         }
                     }
-                    else
+                    else if (!heli.estaVoando && Vector3.Distance(heli.transform.position, centro) < 80f)
                     {
-                        if (!heli.estaVoando && Vector3.Distance(heli.transform.position, centro) < 250f)
-                             heli.ChamarReforcos();
+                        if (heli.TemEspaco() > 0) heli.ChamarReforcos();
                     }
                 }
                 else
                 {
-                    float distBase = Vector2.Distance(
-                        new Vector2(heli.transform.position.x, heli.transform.position.z), 
-                        new Vector2(centro.x, centro.z)
-                    );
-
                     if (heli.estaVoando)
                     {
-                        if (distBase <= 40f) heli.OrdemPousoOuDesembarque();
+                        if (Vector3.Distance(heli.transform.position, centro) <= 50f) heli.OrdemPousoOuDesembarque();
                         else heli.destino = centro;
                     }
                     else
                     {
-                        if (distBase > 40f)
-                        {
-                            Random.InitState(heli.GetInstanceID() + 2);
-                            Vector3 offsetBase = new Vector3(Random.Range(-25f, 25f), 0, Random.Range(-25f, 25f));
-                            heli.Decolar(centro + offsetBase);
-                        }
-                        else
-                        {
-                            if (heli.TemEspaco() > 0) heli.ChamarReforcos();
-                        }
+                        if (Vector3.Distance(heli.transform.position, centro) > 80f) 
+                            heli.Decolar(centro);
+                        else if (heli.TemEspaco() > 0 && Vector3.Distance(heli.transform.position, centro) < 80f) 
+                            heli.ChamarReforcos();
                     }
                 }
             }
         }
         
-        // TRANSPORTES NAVAIS
-        foreach(var nObj in grupoNavios)
-        {
-            if (nObj == null) continue;
-            HovercraftTransporte hover = nObj.GetComponent<HovercraftTransporte>();
-            if (hover)
-            {
-                if (alvo != null && Vector3.Distance(hover.transform.position, alvo.position) < 90f)
-                {
-                    if (hover.TemCarga()) hover.IniciarDesembarque();
-                }
-                else if (Vector3.Distance(hover.transform.position, centro) < 150f)
-                {
-                    if (hover.TemEspacoLivre() && !jaAtacou) hover.IniciarEmbarque();
-                }
-            }
-        }
-
-        // TRANSPORTES TERRESTRES
         foreach(var tObj in grupoTransportes)
         {
             if (tObj == null) continue;
             TransporteTerrestre transp = tObj.GetComponent<TransporteTerrestre>();
             if (transp)
             {
-                if (transp.TemPassageiros)
+                if (transp.EstaCheio())
                 {
-                    if (alvo != null && Vector3.Distance(transp.transform.position, alvo.position) < 60f) transp.DesembarcarTudo();
+                    if (alvo != null)
+                    {
+                        if (Vector3.Distance(transp.transform.position, alvo.position) < 80f)
+                            transp.DesembarcarTudo();
+                        else
+                            transp.GetComponent<ControleUnidade>()?.MoverParaPonto(alvo.position);
+                    }
+                }
+                else if (transp.TemPassageiros && alvo != null && Vector3.Distance(transp.transform.position, alvo.position) < 80f)
+                {
+                    transp.DesembarcarTudo();
+                }
+                else if (!transp.TemPassageiros && Vector3.Distance(transp.transform.position, centro) > 150f)
+                {
+                    transp.GetComponent<ControleUnidade>()?.MoverParaPonto(centro);
+                }
+                else if (!transp.EstaCheio() && !transp.EmCooldown() && Vector3.Distance(transp.transform.position, centro) < 100f)
+                {
+                    transp.TentarEmbarcar();
+                }
+            }
+        }
+    }
+
+    void GerenciarTransporteRay()
+    {
+        Transform alvoInimigo = BuscarAlvo();
+        if (alvoInimigo == null) return;
+
+        Vector3 centro = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : transform.position;
+
+        foreach (var hObj in grupoHelis)
+        {
+            if (hObj == null) continue;
+
+            bool ehRay = hObj.name.ToLower().Contains("ray") || hObj.name.ToLower().Contains("guincho");
+            if (!ehRay) continue;
+
+            Helicoptero heli = hObj.GetComponent<Helicoptero>();
+            if (heli == null || heli.modoCombateAtivo) continue;
+
+            if (heli.TemSoldados())
+            {
+                Vector3 dirAtaque = (alvoInimigo.position - centro).normalized;
+                Vector3 pontoDesembarque = alvoInimigo.position - (dirAtaque * 150f);
+                if (Terrain.activeTerrain != null)
+                    pontoDesembarque.y = Terrain.activeTerrain.SampleHeight(pontoDesembarque);
+
+                if (heli.estaVoando)
+                {
+                    if (Vector3.Distance(heli.transform.position, pontoDesembarque) <= 40f)
+                    {
+                        heli.OrdemPousoOuDesembarque(); 
+                    }
+                    else
+                    {
+                        heli.destino = pontoDesembarque;
+                    }
                 }
                 else
                 {
-                    if (Vector3.Distance(transp.transform.position, centro) > 150f) transp.GetComponent<ControleUnidade>()?.MoverParaPonto(centro);
-                    else if (!transp.EstaCheio()) transp.TentarEmbarcar();
+                    heli.Decolar(pontoDesembarque);
                 }
+            }
+            else
+            {
+                if (heli.estaVoando)
+                {
+                    if (Vector3.Distance(heli.transform.position, centro) <= 60f)
+                    {
+                        heli.OrdemPousoOuDesembarque(); 
+                    }
+                    else
+                    {
+                        heli.destino = centro; 
+                    }
+                }
+                else
+                {
+                    if (Vector3.Distance(heli.transform.position, centro) > 80f)
+                    {
+                        heli.Decolar(centro); 
+                    }
+                    else if (heli.TemEspaco() > 0)
+                    {
+                        heli.ChamarReforcos(); 
+                    }
+                }
+            }
+        }
+    }
+
+    void DespacharAvioesParaMissao()
+    {
+        if (meusAeroportos.Count == 0) return;
+
+        Vector3 alvoPos = Vector3.zero;
+        bool temAlvo = false;
+
+        var inimigos = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        foreach (var id in inimigos)
+        {
+            if (id == null || id.teamID != 1) continue;
+            alvoPos = id.transform.position;
+            temAlvo = true;
+            break;
+        }
+
+        if (!temAlvo) return; 
+
+        foreach (var aero in meusAeroportos)
+        {
+            if (aero == null) continue;
+
+            var avioesNoPatio = new System.Collections.Generic.List<ControleAviao>(aero.avioesNoPatio);
+            foreach (var aviao in avioesNoPatio)
+            {
+                if (aviao == null) continue;
+                if (aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio) continue;
+                if (aviao.aguardandoCliqueRadar) continue; 
+
+                aviao.IniciarMissaoCompleta(alvoPos);
             }
         }
     }
@@ -225,78 +375,107 @@ public class IA_General_Pro : MonoBehaviour
     void TentarRecrutar()
     {
         if (Time.time - _ultimoRecrutamentoReal < 2.5f) return;
-
-        if (chefe.dinheiro < 100) 
-        {
-            _ultimoStatus = "💰 Sem dinheiro ($" + (int)chefe.dinheiro + ")";
-            return; 
-        }
+        if (chefe.dinheiro < 100) return; 
 
         LimparMortos(); 
 
-        bool temQuartel = minhasFabricas.Any(f => f.ehQuartel);
-        bool temFabricaVeiculos = minhasFabricas.Any(f => !f.ehQuartel && !EhNaval(f));
+        bool temQuartel = minhasFabricas.Any(f =>
+            f != null && (
+                f.ehQuartel ||
+                f.name.ToLower().Contains("quartel") ||
+                f.name.ToLower().Contains("tenda") ||
+                f.name.ToLower().Contains("barrack") ||
+                f.name.ToLower().Contains("militar")
+            )
+        );
+        bool temFabricaVeiculos = minhasFabricas.Any(f => f != null && !f.ehQuartel && !EhNaval(f));
         bool temEstaleiro = meusEstaleiros.Count > 0 || minhasFabricas.Any(f => EhNaval(f));
 
         if (grupoSoldados.Count < 4 && temQuartel)
         {
-            if (ComprarUnidade(true, false, false, false, "Soldado", "Rifle", "Infantaria", "Sniper", "Fuzileiro")) { _ultimoStatus = "🎖️ Recrutando Soldado"; return; }
+            if (ComprarUnidade(true, false, false, false, "Soldado", "Rifle", "Infantaria", "Fuzileiro")) return;
+        }
+
+        if (grupoSoldados.Count < 4 && !temQuartel && minhasFabricas.Count > 0)
+        {
+            var fabricaFallback = minhasFabricas.FirstOrDefault(f => f != null);
+            if (fabricaFallback != null)
+            {
+                DadosConstrucao itemSoldado = MenuConstrucao.catalogoGlobal?.FirstOrDefault(i =>
+                    i != null && i.prefabDaUnidade != null &&
+                    (i.nomeItem.ToLower().Contains("soldado") || i.nomeItem.ToLower().Contains("rifle") || i.nomeItem.ToLower().Contains("infantaria")) &&
+                    i.preco <= chefe.dinheiro
+                );
+                if (itemSoldado != null && chefe.GastarDinheiro(itemSoldado.preco))
+                {
+                    var novo = fabricaFallback.ProduzirUnidade(itemSoldado.prefabDaUnidade);
+                    if (novo != null) { RegistrarUnidade(novo); _ultimoRecrutamentoReal = Time.time; return; }
+                    else chefe.AdicionarDinheiro(itemSoldado.preco); 
+                }
+            }
         }
         
-        if (grupoTanques.Count < 2)
+        if (grupoTanques.Count < 3 && temFabricaVeiculos)
         {
-             if (temFabricaVeiculos)
-             {
-                 if (ComprarUnidade(false, false, false, false, "Tank", "Tanque", "Leopard", "Blindado", "Leonc", "Hack", "UBU")) { _ultimoStatus = "🚜 Recrutando Tanque Prioritário"; return; }
-             }
+             if (ComprarUnidade(false, false, false, false, "Tank", "Tanque", "Leopard", "Blindado", "South", "Ubu", "Gravity", "Anti")) return;
         }
 
         if (grupoTransportes.Count < transportesDesejados && temFabricaVeiculos && chefe.dinheiro > 100)
         {
-             if (ComprarUnidade(false, false, false, false, "Caminhao", "Hamer", "Jeep", "Truck")) { _ultimoStatus = "🚚 Recrutando Transporte Terreste"; return; }
+             if (ComprarUnidade(false, false, false, false, "Caminhao", "Hamer", "Jeep", "Truck")) return;
         }
 
         if (grupoSoldados.Count < soldadosDesejados && temQuartel)
         {
-            if (ComprarUnidade(true, false, false, false, "Soldado", "Rifle", "Infantaria", "Sniper", "Fuzileiro")) { _ultimoStatus = "🎖️ Recrutando Soldado Extra"; return; }
+            if (ComprarUnidade(true, false, false, false, "Soldado", "Rifle", "Infantaria", "Fuzileiro")) return;
         }
 
         if (grupoTanques.Count < tanquesDesejados && temFabricaVeiculos)
         {
-             if (ComprarUnidade(false, false, false, false, "Tank", "Tanque", "Leopard", "Blindado", "Leonc", "Hack", "UBU", "Panzer")) { _ultimoStatus = "🚜 Recrutando Tanque Secundário"; return; }
+             if (ComprarUnidade(false, false, false, false, "Tank", "Tanque", "Leopard", "Blindado", "South", "Ubu", "Gravity", "Anti")) return;
+        }
+
+        if (grupoAvioes.Count < avioesDesejados && meusAeroportos.Count > 0 && chefe.dinheiro > 600)
+        {
+             if (ComprarUnidade(false, false, false, true, "Caca", "Tuk", "F22", "F-22", "Super", "Jet", "Aviao", "Caoc")) return;
         }
 
         if (grupoHelis.Count < helicopterosDesejados && chefe.dinheiro > 600)
         {
-             if (ComprarUnidade(false, false, true, false, "Heli", "Apache", "Cobra", "Falcon", "Ray", "Guincho")) { _ultimoStatus = "🚁 Recrutando Aéreo"; return; }
-        }
-
-        if (grupoNavios.Count < naviosDesejados && chefe.dinheiro > 800)
-        {
-            if (temEstaleiro)
-            {
-                bool temCarrier = grupoNavios.Any(n => n.name.ToLower().Contains("liberty") || n.name.ToLower().Contains("carrier") || n.name.ToLower().Contains("transporte"));
-                if (chefe.dinheiro > 1800 && !temCarrier)
-                {
-                    if (ComprarUnidade(false, true, false, false, "Liberty", "Prime", "Carrier", "Transporte")) 
-                    { _ultimoStatus = "⚓ Construindo Porta-Aviões (Liberty)..."; return; }
-                }
-
-                if (ComprarUnidade(false, true, false, false, "Fragata", "Corveta", "Submarino", "Navio", "Barco", "Hovercraft")) 
-                { _ultimoStatus = "⚓ Construindo Navio..."; return; }
-            }
-        }
-
-        if (grupoAvioes.Count < avioesDesejados && chefe.dinheiro > 1200 && meusAeroportos.Count > 0)
-        {
-             if (ComprarUnidade(false, false, false, true, "Caca", "Tuk", "Super", "Jet", "Aviao", "Bombard")) 
-             { _ultimoStatus = "✈️ Requisitando Caça Tático de Ataque"; return; }
+             if (ComprarUnidade(false, false, true, false, "Heli", "Apache", "Cobra", "Falcon", "Ray", "Guincho")) return;
         }
 
         if (chefe.dinheiro > 2000)
         {
-             if (Random.value > 0.4f && temFabricaVeiculos) ComprarUnidade(false, false, false, false, "Tank", "Tanque", "Blindado");
+             if (Random.value > 0.4f && temFabricaVeiculos) ComprarUnidade(false, false, false, false, "Tank", "South", "Ubu", "Gravity");
              else if (temQuartel) ComprarUnidade(true, false, false, false, "Soldado", "Infantaria");
+        }
+    }
+
+    void TentarComprarAviaoPeriodicamentre()
+    {
+        if (meusAeroportos.Count == 0) return;
+        if (grupoAvioes.Count >= 5) return; 
+        if (chefe.dinheiro < 600) return;   
+        if (MenuConstrucao.catalogoGlobal == null) return;
+
+        DadosConstrucao itemAviao = MenuConstrucao.catalogoGlobal.FirstOrDefault(i =>
+            i != null && i.prefabDaUnidade != null &&
+            i.preco <= chefe.dinheiro &&
+            (i.nomeItem.ToLower().Contains("caca") || i.nomeItem.ToLower().Contains("tuk") ||
+             i.nomeItem.ToLower().Contains("f22") || i.nomeItem.ToLower().Contains("jet") ||
+             i.nomeItem.ToLower().Contains("aviao") || i.nomeItem.ToLower().Contains("super") ||
+             i.nomeItem.ToLower().Contains("caoc"))
+        );
+
+        if (itemAviao == null) return;
+
+        GerenciadorAeroporto aeroEscolhido = meusAeroportos[Random.Range(0, meusAeroportos.Count)];
+        if (aeroEscolhido == null) return;
+
+        if (chefe.GastarDinheiro(itemAviao.preco))
+        {
+            aeroEscolhido.ComprarAviao(itemAviao.prefabDaUnidade);
         }
     }
 
@@ -304,10 +483,7 @@ public class IA_General_Pro : MonoBehaviour
 
     public void RecrutarTurista()
     {
-        if (ComprarUnidade(false, false, false, false, "civil", "turista", "caminhonete", "kombi", "onibus"))
-        {
-            _ultimoStatus = "🤝 Despachando Transporte Civil/Turistas para a fronteira.";
-        }
+        ComprarUnidade(false, false, false, false, "civil", "turista", "caminhonete", "kombi", "onibus");
     }
 
     bool ComprarUnidade(bool requerQuartel, bool ehNaval, bool ehHeli, bool ehAviao, params string[] keywords)
@@ -335,7 +511,7 @@ public class IA_General_Pro : MonoBehaviour
         {
             var estsValidos = meusEstaleiros.Where(e => e != null).OrderBy(x => Random.value).ToList();
             if (estsValidos.Count > 0) estaleiroEscolhido = estsValidos[0]; 
-            else return false; // NUNCA constrói navio em fábrica de terra (Hangar)
+            else return false; 
         }
         else
         {
@@ -344,7 +520,6 @@ public class IA_General_Pro : MonoBehaviour
         }
 
         if (fabricaEscolhida == null && estaleiroEscolhido == null && heliportoEscolhido == null && aeroportoEscolhido == null) return false;
-
         if (MenuConstrucao.catalogoGlobal == null) return false;
 
         DadosConstrucao itemEscolhido = null;
@@ -355,9 +530,10 @@ public class IA_General_Pro : MonoBehaviour
 
             string nome = item.nomeItem.ToLower();
             bool itemEhNaval = nome.Contains("navio") || nome.Contains("barco") || nome.Contains("sub") || 
-                               nome.Contains("carrier") || nome.Contains("liberty") || nome.Contains("transporte") ||
-                               nome.Contains("fragata") || nome.Contains("corveta") || nome.Contains("destroier") || nome.Contains("sam") ||
-                               nome.Contains("hovercraft") || nome.Contains("estaleiro") == false && item.categoria == DadosConstrucao.CategoriaItem.Marinha;
+                               nome.Contains("carrier") || nome.Contains("liberty") || nome.Contains("fragata") || 
+                               nome.Contains("corveta") || nome.Contains("destroier") || nome.Contains("hovercraft") || 
+                               nome.Contains("estaleiro") || nome.Contains("pier") || 
+                               item.categoria == DadosConstrucao.CategoriaItem.Marinha;
 
             if (ehNaval != itemEhNaval) continue;
 
@@ -380,27 +556,14 @@ public class IA_General_Pro : MonoBehaviour
             if (ehAviao && aeroportoEscolhido != null)
             {
                  aeroportoEscolhido.ComprarAviao(itemEscolhido.prefabDaUnidade);
-                 _ultimoStatus = $"✈️ Aeronave Requisitada: {itemEscolhido.nomeItem}";
                  _ultimoRecrutamentoReal = Time.time;
                  return true;
             }
             else if (ehHeli && heliportoEscolhido != null)
             {
-                Vector3 posPouso = heliportoEscolhido.ObterPontoDePousoMundial();
-                int helisPerto = Physics.OverlapSphere(posPouso, 5f).Count(c => c.GetComponentInParent<Helicoptero>() != null);
-                if (helisPerto > 0) posPouso += new Vector3(Random.Range(-18f, 18f), 0, Random.Range(-18f, 18f));
-                
-                posPouso += Vector3.up * 1.5f; 
+                Vector3 posPouso = heliportoEscolhido.ObterPontoDePousoMundial() + Vector3.up * 1.5f;
                 novo = Instantiate(itemEscolhido.prefabDaUnidade, posPouso, heliportoEscolhido.transform.rotation);
-                
-                IdentidadeUnidade id = novo.GetComponent<IdentidadeUnidade>();
-                if(id == null) id = novo.AddComponent<IdentidadeUnidade>();
-                id.teamID = chefe.identidade.teamID;
-                if (!string.IsNullOrEmpty(chefe.identidade.nomeComandante)) id.nomeDoPais = chefe.identidade.nomeComandante;
-
                 RegistrarUnidade(novo);
-                MoverUnidade(novo, CalcularPontoDeEncontro());
-                _ultimoStatus = $"🚁 Desdobrando: {itemEscolhido.nomeItem}";
                 _ultimoRecrutamentoReal = Time.time;
                 return true;
             }
@@ -408,7 +571,6 @@ public class IA_General_Pro : MonoBehaviour
             {
                 if (estaleiroEscolhido.ConstruirUnidade(itemEscolhido.prefabDaUnidade))
                 {
-                    _ultimoStatus = $"⚓ Ordem dada ao Estaleiro: {itemEscolhido.nomeItem}";
                     _ultimoRecrutamentoReal = Time.time;
                     return true;
                 }
@@ -431,15 +593,6 @@ public class IA_General_Pro : MonoBehaviour
 
     private float _ultimoScanGlobal = -100f; 
 
-    float CalcularAlcanceRadar()
-    {
-        float tempo = Time.time;
-        if (tempo % 60f < 5.1f) return 3000f;
-        if (tempo % 30f < 5.1f) return 2000f;
-        if (tempo % 10f < 5.1f) return 1000f;
-        return 400f; // Padrão
-    }
-
     void AtualizarListasDeFabricas()
     {
         minhasFabricas.RemoveAll(f => f == null);
@@ -450,19 +603,17 @@ public class IA_General_Pro : MonoBehaviour
         if (Time.time - _ultimoScanGlobal < 5.0f) return;
         _ultimoScanGlobal = Time.time;
 
-        float raioBusca = CalcularAlcanceRadar();
-
         var fabs = FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
         foreach(var f in fabs) RegistrarFabrica(f);
         
         var ests = FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
-        foreach(var e in ests) RegistrarEstaleiro(e, raioBusca);
+        foreach(var e in ests) RegistrarEstaleiro(e, 2000f);
         
         var helis = FindObjectsByType<Heliporto>(FindObjectsSortMode.None);
-        foreach(var h in helis) RegistrarHeliporto(h, raioBusca);
+        foreach(var h in helis) RegistrarHeliporto(h, 2000f);
 
         var aerops = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach(var a in aerops) RegistrarAeroporto(a, raioBusca);
+        foreach(var a in aerops) RegistrarAeroporto(a, 3000f);
     }
 
     void AvaliarCombate()
@@ -470,7 +621,6 @@ public class IA_General_Pro : MonoBehaviour
         Transform alvo = BuscarAlvo();
         if (alvo == null) return;
 
-        // --- NOVA ESTRATÉGIA: CAÇAS FOCAM EM DEFESAS (ATAQUE INDEPENDENTE DAS TROPAS) ---
         if (grupoAvioes.Count > 0)
         {
             Transform alvoDefesa = BuscarAlvoEstrategicoParaAvioes();
@@ -480,58 +630,43 @@ public class IA_General_Pro : MonoBehaviour
             {
                 if (av == null) continue;
                 ControleAviao jet = av.GetComponent<ControleAviao>();
-                if (jet != null)
-                {
-                    if (jet.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
-                    {
-                        Debug.Log($"[IA Suprema] Enviando Suporte Aéreo! Avião focando em: {(alvoDefesa != null ? alvoDefesa.name : "Base Principal")}");
-                        jet.IniciarMissaoCompleta(pontoAtaqueAereo);
-                    }
-                    else if (jet.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
-                    {
-                        jet.centroDaPatrulha = pontoAtaqueAereo;
-                        jet.alvoGPSVoo = pontoAtaqueAereo;
-                    }
-                }
+                if (jet != null) jet.IniciarMissaoCompleta(pontoAtaqueAereo);
             }
         }
 
         if (TotalUnidades() < minimoParaAtacar) return;
         
-        _ultimoStatus = "⚔️ ATAQUE TOTAL!";
         jaAtacou = true;
-        
         LancarAtaqueCoordenado(alvo.position);
-        
-        if (grupoNavios.Count > 0)
-        {
-             Vector3 ataqueNaval = alvo.position;
-             ataqueNaval.y = 0; 
-             MoverGrupo(grupoNavios, ataqueNaval);
-        }
     }
 
-    // MUDANÇA: Novo método para a IA caçar as defesas inimigas antes de atacar
     public Transform BuscarAlvoEstrategicoParaAvioes()
     {
         var alvosInimigos = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None).Where(a => a.teamID == 1).ToList();
         
-        // 1. Procura especificamente Torretas, Antiaéreas, Bunkers ou Lançadores de Míssil
+        var economia = alvosInimigos.Where(a => 
+            a.name.ToLower().Contains("refinaria") || 
+            a.name.ToLower().Contains("mina") || 
+            a.name.ToLower().Contains("usina") ||
+            a.name.ToLower().Contains("petroleo") ||
+            a.name.ToLower().Contains("gerador") ||
+            a.name.ToLower().Contains("armazem")
+        ).ToList();
+
+        if (economia.Count > 0) return economia[Random.Range(0, economia.Count)].transform;
+
         var defesas = alvosInimigos.Where(a => 
             a.name.ToLower().Contains("torreta") || 
             a.name.ToLower().Contains("anti") || 
             a.name.ToLower().Contains("bunker") ||
             a.name.ToLower().Contains("missil") ||
-            a.name.ToLower().Contains("defesa")
+            a.name.ToLower().Contains("defesa") ||
+            a.name.ToLower().Contains("ares")
         ).ToList();
 
-        if (defesas.Count > 0)
-        {
-            // Retorna a defesa mais próxima do centro do mapa ou do general
-            return defesas[0].transform;
-        }
+        if (defesas.Count > 0) return defesas[Random.Range(0, defesas.Count)].transform;
 
-        return null; // Se não achar defesa, os aviões atacam o alvo normal
+        return BuscarAlvo();
     }
 
     private int contagemEsquadrao = 1;
@@ -539,7 +674,7 @@ public class IA_General_Pro : MonoBehaviour
     void LancarAtaqueCoordenado(Vector3 destino)
     {
         var tropasLivres = grupoSoldados.Where(s => s != null && s.activeInHierarchy && !Helicoptero.SoldadoEstaEmbarcando(s)).ToList();
-        var tanquesLivres = grupoTanques.Where(t => t != null && t.activeInHierarchy).ToList();
+        var tanquesLivres = grupoTanques.Where(t => t != null && t.activeInHierarchy && !t.name.ToLower().Contains("ares")).ToList();
         
         int forcaMilitar = tropasLivres.Count + tanquesLivres.Count;
 
@@ -550,176 +685,74 @@ public class IA_General_Pro : MonoBehaviour
             IA_CerebroPelotao cerebro = novoPelotao.AddComponent<IA_CerebroPelotao>();
             
             Vector3 centro = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : chefe.transform.position;
-
-            // --- NOVA LÓGICA DE CERCO E FLANQUEAMENTO ---
-            // 1. Acha a direção reta até a base inimiga
             Vector3 dirParaAlvo = (destino - centro).normalized;
             if (dirParaAlvo == Vector3.zero) dirParaAlvo = chefe.transform.forward;
 
-            // 2. Calcula o lado "Esquerdo" do mapa com base na nossa direção
             Vector3 esquerdaLateral = Vector3.Cross(Vector3.up, dirParaAlvo).normalized;
-
-            // 3. Verifica a distância real até o inimigo para não passar do alvo sem querer
             float distanciaTotal = Vector3.Distance(centro, destino);
-
-            // O Pelotão avança 600 metros para frente! (Ou 70% do caminho se o inimigo estiver muito perto)
             float avancoFrontal = Mathf.Min(600f, distanciaTotal * 0.7f);
 
             Vector3 offsetFlanco = Vector3.zero;
-            int taticaDeFlanco = contagemEsquadrao % 3; // O segredo da divisão: 0 = Centro, 1 = Esquerda, 2 = Direita
-            string nomeTatica = "Centro";
+            int taticaDeFlanco = contagemEsquadrao % 3; 
 
-            if (taticaDeFlanco == 1)
+            if (_inimigoForteEmDefesa && taticaDeFlanco == 0)
             {
-                offsetFlanco = esquerdaLateral * 250f; // Abre 250 metros para a ESQUERDA
-                nomeTatica = "Esquerda";
-            }
-            else if (taticaDeFlanco == 2)
-            {
-                offsetFlanco = -esquerdaLateral * 250f; // Abre 250 metros para a DIREITA
-                nomeTatica = "Direita";
+                taticaDeFlanco = Random.Range(1, 3); 
             }
 
-            // O Ponto de Encontro Tático final longe da fronteira
+            if (taticaDeFlanco == 1) offsetFlanco = esquerdaLateral * 750f; 
+            else if (taticaDeFlanco == 2) offsetFlanco = -esquerdaLateral * 750f; 
+
             Vector3 stagingArea = centro + (dirParaAlvo * avancoFrontal) + offsetFlanco;
+            if (Terrain.activeTerrain != null) stagingArea.y = Terrain.activeTerrain.SampleHeight(stagingArea);
 
-            // Ajusta a altura para não ficar voando ou debaixo da terra
-            if (Terrain.activeTerrain != null)
-            {
-                stagingArea.y = Terrain.activeTerrain.SampleHeight(stagingArea);
-            }
-
-            Debug.Log($"🗺️ [IA General] Pelotão marchando para Zona de Encontro: {nomeTatica} a {avancoFrontal} metros de distância!");
-
-            // ------------------------------------------------------------------------
-            
-            cerebro.Inicializar(stagingArea, BuscarAlvo(), forcaMilitar, $"Omega-{contagemEsquadrao}-{nomeTatica}", chefe.identidade.teamID);
+            cerebro.Inicializar(stagingArea, BuscarAlvo(), forcaMilitar, $"Omega-{contagemEsquadrao}", chefe.identidade.teamID);
             contagemEsquadrao++;
 
-            foreach(var t in tanquesLivres)
-            {
-                 cerebro.AdicionarMembro(t);
-                 grupoTanques.Remove(t); 
-            }
-            foreach(var s in tropasLivres)
-            {
-                 cerebro.AdicionarMembro(s);
-                 grupoSoldados.Remove(s); 
-            }
-            
-            _ultimoStatus = $"⚔️ Pelotão Tático {cerebro.nomeDoPelotao} Enviado ao Front!";
+            foreach(var t in tanquesLivres) { cerebro.AdicionarMembro(t); grupoTanques.Remove(t); }
+            foreach(var s in tropasLivres) { cerebro.AdicionarMembro(s); grupoSoldados.Remove(s); }
         }
 
         Vector3 dir = (destino - chefe.transform.position).normalized;
         if(dir == Vector3.zero) dir = Vector3.forward;
 
-        var helisAtaqueBlindagem = grupoHelis.Where(h => 
-             h != null && h.GetComponent<Helicoptero>() != null && h.GetComponent<Helicoptero>().modoCombateAtivo
-        ).ToList();
-        
-        MoverEmFormacao(helisAtaqueBlindagem, destino, dir, 15f);
+        var helisAtaque = grupoHelis.Where(h => h != null && h.GetComponent<Helicoptero>() != null && h.GetComponent<Helicoptero>().modoCombateAtivo).ToList();
+        MoverEmFormacao(helisAtaque, destino, dir, 30f);
     }
     
     public void RegistrarUnidade(GameObject u)
     {
         if (u == null) return;
         if(grupoTanques.Contains(u) || grupoSoldados.Contains(u) || grupoNavios.Contains(u) || grupoHelis.Contains(u) || grupoTransportes.Contains(u) || chefe.meusCivis.Contains(u)) return;
+        if (grupoAvioes.Contains(u)) return;
 
         string n = u.name.ToLower();
 
-        if (n.Contains("civil") || n.Contains("turista") || n.Contains("onibus") || n.Contains("kombi"))
-        {
-            chefe.meusCivis.Add(u);
-            if (chefe.alvoAtaquePrincipal != null) MoverUnidade(u, chefe.alvoAtaquePrincipal.position);
-            return; 
-        }
-        
-        if(u.GetComponent<TransporteTerrestre>() != null) grupoTransportes.Add(u);
-        else if(n.Contains("navio") || n.Contains("fragata") || n.Contains("corveta") || n.Contains("sub") || n.Contains("carrier") || n.Contains("liberty") || n.Contains("transporte naval") || n.Contains("hovercraft")) grupoNavios.Add(u);
-        else if(n.Contains("tanque") || n.Contains("tank") || n.Contains("leopard") || n.Contains("blindado") || n.Contains("leonc") || n.Contains("hack") || n.Contains("ubu")) grupoTanques.Add(u);
+        if (n.Contains("civil") || n.Contains("turista") || n.Contains("onibus") || n.Contains("kombi")) chefe.meusCivis.Add(u);
+        else if(n.Contains("caca") || n.Contains("tuk") || n.Contains("jet") || n.Contains("aviao") || n.Contains("super") || n.Contains("f22") || n.Contains("caoc")) grupoAvioes.Add(u);
         else if(n.Contains("heli") || n.Contains("apache") || n.Contains("cobra") || n.Contains("falcon") || n.Contains("ray")) grupoHelis.Add(u);
-        else if(n.Contains("caca") || n.Contains("tuk") || n.Contains("jet") || n.Contains("aviao") || n.Contains("super")) grupoAvioes.Add(u);
+        else if(n.Contains("navio") || n.Contains("fragata") || n.Contains("corveta") || n.Contains("sub") || n.Contains("carrier") || n.Contains("liberty") || n.Contains("hovercraft")) grupoNavios.Add(u);
+        else if(n.Contains("tanque") || n.Contains("tank") || n.Contains("leopard") || n.Contains("blindado") || n.Contains("south") || n.Contains("ubu") || n.Contains("gravity") || n.Contains("ares")) grupoTanques.Add(u);
+        else if(u.GetComponent<TransporteTerrestre>() != null) grupoTransportes.Add(u);
         else grupoSoldados.Add(u);
     }
 
     public void RegistrarSoldado(GameObject u) { RegistrarUnidade(u); }
-
     public void RegistrarFabrica(Fabrica f)
     {
-         if(f == null) return;
-         var id = f.GetComponent<IdentidadeUnidade>();
-         if(id != null && id.teamID == chefe.identidade.teamID && !minhasFabricas.Contains(f))
-            minhasFabricas.Add(f);
+         if(f != null && f.GetComponent<IdentidadeUnidade>()?.teamID == chefe.identidade.teamID && !minhasFabricas.Contains(f)) minhasFabricas.Add(f);
     }
-    
-    public void RegistrarEstaleiro(Estaleiro e, float alcanceDeBusca = 400f)
+    public void RegistrarEstaleiro(Estaleiro e, float alcance)
     {
-        if(e == null) return;
-        var id = e.GetComponent<IdentidadeUnidade>();
-        int meuTime = (chefe != null && chefe.identidade != null) ? chefe.identidade.teamID : 2; 
-
-        if(id == null) 
-        {
-             // Se for neutro e estiver dentro do radar atual, reivindica
-             if(Vector3.Distance(transform.position, e.transform.position) < alcanceDeBusca) 
-             {
-                 id = e.gameObject.AddComponent<IdentidadeUnidade>();
-                 id.teamID = meuTime;
-             }
-        }
-        else if (id.teamID == 0)
-        {
-             if(Vector3.Distance(transform.position, e.transform.position) < alcanceDeBusca) id.teamID = meuTime;
-        }
-
-        // REGISTRO: Se for o meu time, registra independente da distância! (Aeroporto/Estaleiro podem ser longe)
-        if(id != null && id.teamID == meuTime && !meusEstaleiros.Contains(e)) meusEstaleiros.Add(e);
+        if(e != null && e.GetComponent<IdentidadeUnidade>()?.teamID == chefe.identidade.teamID && !meusEstaleiros.Contains(e)) meusEstaleiros.Add(e);
     }
-
-    public void RegistrarHeliporto(Heliporto h, float alcanceDeBusca = 400f)
+    public void RegistrarHeliporto(Heliporto h, float alcance)
     {
-        if(h == null) return;
-        var id = h.GetComponent<IdentidadeUnidade>();
-        int meuTime = (chefe != null && chefe.identidade != null) ? chefe.identidade.teamID : 2; 
-
-        if(id == null) 
-        {
-             if(Vector3.Distance(transform.position, h.transform.position) < alcanceDeBusca) 
-             {
-                 id = h.gameObject.AddComponent<IdentidadeUnidade>();
-                 id.teamID = meuTime;
-             }
-        }
-        else if (id.teamID == 0)
-        {
-             if(Vector3.Distance(transform.position, h.transform.position) < alcanceDeBusca) id.teamID = meuTime;
-        }
-
-        if(id != null && id.teamID == meuTime && !meusHeliportos.Contains(h)) meusHeliportos.Add(h);
+        if(h != null && h.GetComponent<IdentidadeUnidade>()?.teamID == chefe.identidade.teamID && !meusHeliportos.Contains(h)) meusHeliportos.Add(h);
     }
-
-    public void RegistrarAeroporto(GerenciadorAeroporto a, float alcanceDeBusca = 1000f)
+    public void RegistrarAeroporto(GerenciadorAeroporto a, float alcance)
     {
-        if(a == null) return;
-        var id = a.GetComponent<IdentidadeUnidade>();
-        int meuTime = (chefe != null && chefe.identidade != null) ? chefe.identidade.teamID : 2; 
-
-        if(id == null) 
-        {
-             // Aeroportos costumam ser construídos MUITO longe por segurança, usa o maior raio + 500m bônus intencional
-             if(Vector3.Distance(transform.position, a.transform.position) < alcanceDeBusca + 500f) 
-             {
-                 id = a.gameObject.AddComponent<IdentidadeUnidade>();
-                 id.teamID = meuTime;
-             }
-        }
-        else if (id.teamID == 0)
-        {
-             if(Vector3.Distance(transform.position, a.transform.position) < alcanceDeBusca + 500f) id.teamID = meuTime;
-        }
-
-        // Se já tem meu ID, aceita independente da distância
-        if(id != null && id.teamID == meuTime && !meusAeroportos.Contains(a)) meusAeroportos.Add(a);
+        if(a != null && a.GetComponent<IdentidadeUnidade>()?.teamID == chefe.identidade.teamID && !meusAeroportos.Contains(a)) meusAeroportos.Add(a);
     }
 
     bool EhNaval(MonoBehaviour b) 
@@ -739,14 +772,43 @@ public class IA_General_Pro : MonoBehaviour
         grupoHelis.RemoveAll(u => u == null);
         grupoAvioes.RemoveAll(u => u == null);
         minhasFabricas.RemoveAll(f => f == null);
-        meusEstaleiros.RemoveAll(e => e == null);
-        meusHeliportos.RemoveAll(h => h == null);
     }
 
     Vector3 CalcularPontoDeEncontro()
     {
         Vector3 centro = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : chefe.transform.position;
-        return centro + Vector3.forward * 30f;
+        Vector3 ponto = centro + chefe.transform.forward * 50f;
+
+        ponto = EvitarAeroporto(ponto, centro);
+        return ponto;
+    }
+
+    Vector3 EvitarAeroporto(Vector3 ponto, Vector3 centroBase)
+    {
+        var aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        foreach (var aero in aeroportos)
+        {
+            if (aero == null) continue;
+            Bounds b = new Bounds(aero.transform.position, Vector3.zero);
+            Renderer[] rends = aero.GetComponentsInChildren<Renderer>();
+            foreach (var r in rends) { if (r != null) b.Encapsulate(r.bounds); }
+            
+            // Aumentei massivamente a zona de repulsão de unidades do aeroporto
+            b.Expand(120f);
+
+            if (b.Contains(new Vector3(ponto.x, b.center.y, ponto.z)))
+            {
+                Vector3 fuga = (centroBase - aero.transform.position).normalized;
+                if (fuga.sqrMagnitude < 0.01f) fuga = Vector3.forward;
+                fuga.y = 0;
+                ponto = b.center + fuga * (b.extents.magnitude + 100f); // Empurra elas com força pra longe
+
+                UnityEngine.AI.NavMeshHit hit;
+                if (UnityEngine.AI.NavMesh.SamplePosition(ponto, out hit, 30f, UnityEngine.AI.NavMesh.AllAreas))
+                    ponto = hit.position;
+            }
+        }
+        return ponto;
     }
         
     void MoverEmFormacao(List<GameObject> grupo, Vector3 centro, Vector3 direcaoFrente, float espacamento)
@@ -770,24 +832,26 @@ public class IA_General_Pro : MonoBehaviour
     void MoverUnidade(GameObject u, Vector3 destino)
     {
         if (u == null) return;
+        
+        // =========================================================
+        // FIX: ANTI-SPINNING (Se a unidade já está a 4 metros ou menos do destino, ignora a ordem de andar)
+        // Impede que NavMeshAgent fique mandando milímetros e rodando a unidade.
+        // =========================================================
+        if (Vector3.Distance(u.transform.position, destino) < 4.5f) return;
 
         var heli = u.GetComponent<Helicoptero>();
-        if (heli != null) 
-        { 
-            heli.Decolar(destino); 
-            return; 
-        }
-
+        if (heli != null) { heli.Decolar(destino); return; }
         if (Helicoptero.SoldadoEstaEmbarcando(u)) return;
+
+        Vector3 centro = (chefe != null && chefe.basePrincipal != null) ? chefe.basePrincipal.position : u.transform.position;
+        destino = EvitarAeroporto(destino, centro);
+
+        UnityEngine.AI.NavMeshHit navHit;
+        if (UnityEngine.AI.NavMesh.SamplePosition(destino, out navHit, 20f, UnityEngine.AI.NavMesh.AllAreas))
+            destino = navHit.position;
 
         var ctrl = u.GetComponent<ControleUnidade>();
         if (ctrl) { ctrl.MoverParaPonto(destino); return; }
-
-        var aviao = u.GetComponent<ControleAviao>();
-        if (aviao != null) { aviao.IniciarMissaoCompleta(destino); return; }
-
-        var navIntel = u.GetComponent<NavegacaoInteligenteNaval>();
-        if (navIntel != null) { navIntel.DefinirDestino(destino); return; }
 
         var nav = u.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (nav && nav.isOnNavMesh) { nav.SetDestination(destino); nav.isStopped = false; }
@@ -801,25 +865,15 @@ public class IA_General_Pro : MonoBehaviour
         var prefeitura = alvos.FirstOrDefault(a => a.name.ToLower().Contains("prefeitura") || a.GetComponent("ComplexoGovernamental") != null);
         if (prefeitura != null) return prefeitura.transform;
 
-        var quartel = alvos.FirstOrDefault(a => 
-        {
-            var f = a.GetComponent<Fabrica>();
-            return (f != null && f.ehQuartel) || a.name.ToLower().Contains("quartel");
-        });
-        if (quartel != null) return quartel.transform;
-
-        var predio = alvos.FirstOrDefault(a => a.GetComponent<Fabrica>() != null || a.GetComponent<Estaleiro>() != null || a.GetComponent<Heliporto>() != null);
-        if (predio != null) return predio.transform;
-
         return alvos[0].transform;
     }
     
     void MoverTropasParaPontoDeEncontro()
     {
         if(chefe.basePrincipal == null) return;
-        MoverEmFormacao(grupoTransportes, CalcularPontoDeEncontro() - chefe.basePrincipal.forward * 5f, chefe.basePrincipal.forward, 8f);
-        MoverEmFormacao(grupoTanques, CalcularPontoDeEncontro(), chefe.basePrincipal.forward, 6f);
-        MoverEmFormacao(grupoSoldados, CalcularPontoDeEncontro() - chefe.basePrincipal.forward * 10f, chefe.basePrincipal.forward, 3f);
+        MoverEmFormacao(grupoTransportes, CalcularPontoDeEncontro() - chefe.basePrincipal.forward * 20f, chefe.basePrincipal.forward, 30f);
+        MoverEmFormacao(grupoTanques, CalcularPontoDeEncontro(), chefe.basePrincipal.forward, 25f);
+        MoverEmFormacao(grupoSoldados, CalcularPontoDeEncontro() - chefe.basePrincipal.forward * 30f, chefe.basePrincipal.forward, 15f);
     }
     
     int TotalUnidades() => grupoSoldados.Count + grupoTanques.Count + grupoHelis.Count + grupoNavios.Count + grupoTransportes.Count;

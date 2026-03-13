@@ -49,8 +49,8 @@ public class IA_Comandante : MonoBehaviour
     // --- MÓDULOS PRO (Cérebros Especializados) ---
     public IA_General_Pro cerebroGeneral;
     public IA_Arquiteto_Pro cerebroArquiteto;
-    public IA_Economia cerebroEconomico; // Mantido para compatibilidade
-    public IA_Combate cerebroCombate;    // Mantido para compatibilidade
+    // public IA_Economia cerebroEconomico; // REMOVIDO: Classe não encontrada
+    // public IA_Combate cerebroCombate;    // Mantido para compatibilidade
 
     // --- REFERÊNCIAS ---
     private GerenteDeJogo gerenteJogo;

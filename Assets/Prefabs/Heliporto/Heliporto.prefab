@@ -45,7 +45,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100000, guid: 4c476731e97554c8bb604c97f97898d9, type: 3}
       propertyPath: m_TagString
-      value: Player
+      value: Imovel
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 4c476731e97554c8bb604c97f97898d9, type: 3}
       propertyPath: m_LocalScale.x

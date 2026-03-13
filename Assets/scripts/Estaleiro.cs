@@ -3,6 +3,7 @@ using UnityEngine.AI;
 using UnityEngine.UI; // Necessário para a UI
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 public class Estaleiro : MonoBehaviour
 {
@@ -47,25 +48,7 @@ public class Estaleiro : MonoBehaviour
     
     void Start()
     {
-        // Validação básica: auto-criação de slots se estiver nulo
-        if (slots == null || slots.Length == 0)
-        {
-            Debug.LogWarning("[Estaleiro] Nenhum slot de construção configurado! Criando 3 slots básicos automaticamente.");
-            slots = new SlotConstrucao[3];
-            for (int i = 0; i < 3; i++)
-            {
-                GameObject novoPonto = new GameObject($"Ponto_Auto_Estaleiro_{i}");
-                novoPonto.transform.SetParent(this.transform);
-                novoPonto.transform.position = transform.position + (transform.forward * offsetAguaFrente) + (transform.right * (i * 20f - 20f));
-                
-                slots[i] = new SlotConstrucao
-                {
-                    nomeSlot = i == 0 ? "Atracagem_Grande" : $"Slot_{i}",
-                    pontoDeConstrucao = novoPonto.transform,
-                    estaOcupado = false
-                };
-            }
-        }
+        GarantirSlotsExistentes();
         
         // Auto-cria ponto de saída se nulo
         if (pontoDeSaida == null)
@@ -75,6 +58,51 @@ public class Estaleiro : MonoBehaviour
              goSaida.transform.position = transform.position + (transform.forward * (offsetAguaFrente + 40f));
              pontoDeSaida = goSaida.transform;
              Debug.Log("[Estaleiro] Ponto de saída não configurado, gerado automaticamente na água.");
+        }
+
+        RegistrarNoGerente();
+    }
+
+    void RegistrarNoGerente()
+    {
+        GerenteDeJogo gerente = GerenteDeJogo.Instancia;
+        if (gerente == null) gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
+
+        if (gerente != null)
+        {
+            // Pega identidade para saber se é do jogador
+            IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
+            if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
+
+            if (id == null || id.teamID == 1)
+            {
+                // Registra o primeiro slot como spawn se possível
+                Transform spawn = (slots != null && slots.Length > 0) ? slots[0].pontoDeConstrucao : transform;
+                gerente.AtualizarPontoEstaleiro(spawn, pontoDeSaida);
+            }
+        }
+    }
+
+    public void GarantirSlotsExistentes()
+    {
+        // Validação básica: auto-criação de slots se estiver nulo
+        if (slots == null || slots.Length == 0)
+        {
+            Debug.LogWarning("[Estaleiro] Nenhum slot de construção configurado no Inspector! Criando 3 slots básicos automaticamente.");
+            slots = new SlotConstrucao[3];
+            for (int i = 0; i < 3; i++)
+            {
+                GameObject novoPonto = new GameObject($"Ponto_Auto_Estaleiro_{i}");
+                novoPonto.transform.SetParent(this.transform);
+                novoPonto.transform.position = transform.position + (transform.forward * offsetAguaFrente) + (transform.right * (i * 20f - 20f));
+                
+                slots[i] = new SlotConstrucao
+                {
+                    nomeSlot = (i == 0) ? "Atracagem_Grande" : $"Slot_{i}",
+                    pontoDeConstrucao = novoPonto.transform,
+                    estaOcupado = false
+                };
+            }
         }
     }
 
@@ -98,6 +126,7 @@ public class Estaleiro : MonoBehaviour
 
     public bool ConstruirUnidade(GameObject prefabDoNavio)
     {
+        GarantirSlotsExistentes();
         SlotConstrucao slotLivre = null;
 
         // REGRA ESPECÍFICA: Navios GRANDES devem procurar o slot "Atracagem_Grande"
@@ -257,17 +286,27 @@ public class Estaleiro : MonoBehaviour
             slot.barFillImage = null;
         }
 
-        // --- LÓGICA DE IDENTIDADE (Básica) ---
+        // --- LÓGICA DE IDENTIDADE (Dinâmica) ---
         navioPronto.layer = LayerMask.NameToLayer("Default");
-        IdentidadeUnidade identidade = navioPronto.GetComponent<IdentidadeUnidade>();
-        if(identidade == null) identidade = navioPronto.AddComponent<IdentidadeUnidade>();
-        identidade.teamID = 1; 
-        identidade.nomeDoPais = "Hegemonia";
+        IdentidadeUnidade idEstaleiro = GetComponentInParent<IdentidadeUnidade>();
+        IdentidadeUnidade idNavio = navioPronto.GetComponent<IdentidadeUnidade>();
+        if(idNavio == null) idNavio = navioPronto.AddComponent<IdentidadeUnidade>();
+        
+        if (idEstaleiro != null)
+        {
+            idNavio.teamID = idEstaleiro.teamID;
+            idNavio.nomeDoPais = idEstaleiro.nomeDoPais;
+        }
+        else
+        {
+            idNavio.teamID = 1; 
+            idNavio.nomeDoPais = "Hegemonia";
+        }
 
         var ctrl = navioPronto.GetComponent<ControleUnidade>();
         if (ctrl == null) navioPronto.AddComponent<ControleUnidade>();
 
-        // ORDENA QUE O NAVIO VÁ PARA O PONTO DE SAÍDA AUTOMATICAMENTE
+        // Ordena que o navio vá para o ponto de saída automaticamente
         var agenteNovo = navioPronto.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agenteNovo != null && pontoDeSaida != null)
         {
@@ -281,6 +320,17 @@ public class Estaleiro : MonoBehaviour
             var navRealista = navioPronto.GetComponent<NavegacaoInteligenteNaval>();
             if (navRealista != null) navRealista.DefinirDestino(pontoDeSaida.position);
             else agenteNovo.SetDestination(pontoDeSaida.position);
+        }
+
+        // Registrar no General se for IA
+        if (idNavio.teamID != 1)
+        {
+            var commanders = Object.FindObjectsByType<IA_Comandante>(FindObjectsSortMode.None);
+            var myCommander = commanders.FirstOrDefault(c => c.identidade != null && c.identidade.teamID == idNavio.teamID);
+            if (myCommander != null && myCommander.cerebroGeneral != null)
+            {
+                myCommander.cerebroGeneral.RegistrarUnidade(navioPronto);
+            }
         }
 
         // --- LÓGICA ESPECÍFICA PARA PETROLEIRO ---

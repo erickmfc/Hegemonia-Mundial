@@ -1,7 +1,9 @@
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 public class PierMarinha : MonoBehaviour
 {
@@ -103,6 +105,29 @@ public class PierMarinha : MonoBehaviour
     void Start()
     {
         StartCoroutine(RotinaBuscaConstrucao());
+        RegistrarNoGerente();
+    }
+
+    void RegistrarNoGerente()
+    {
+        GerenteDeJogo gerente = GerenteDeJogo.Instancia;
+        if (gerente == null) gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
+
+        if (gerente != null)
+        {
+            // Pega identidade para saber se é do jogador
+            IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
+            if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
+
+            if (id == null || id.teamID == 1)
+            {
+                // Registra o primeiro ponto de saída ou o próprio transform como spawn
+                Transform spawn = (pontosDeSaida != null && pontosDeSaida.Length > 0) ? pontosDeSaida[0] : transform;
+                Transform saida = (pontosDeSaida != null && pontosDeSaida.Length > 1) ? pontosDeSaida[1] : spawn;
+                
+                gerente.AtualizarPontoEstaleiro(spawn, saida);
+            }
+        }
     }
 
     IEnumerator RotinaBuscaConstrucao()
@@ -247,9 +272,15 @@ public class PierMarinha : MonoBehaviour
                 // GerenteDeJogo.Instancia.AtualizarPontoEstaleiro(pontosSpawn[0], saidaNavio); // This line was not in the original content, but was in the instruction's context. I will ignore it as per "make the change faithfully and without making any unrelated edits."
             }
             
-            // Registra em todos os menus
+            // Registra em todos os menus e no gerente
             MenuPier[] menus = FindObjectsByType<MenuPier>(FindObjectsSortMode.None);
             foreach(var m in menus) m.RegistrarNovoPier(this);
+
+            var idPier = GetComponentInParent<IdentidadeUnidade>();
+            if (idPier != null && GerenteDeJogo.Instancia != null && idPier.teamID == 1)
+            {
+                // O GerenteDeJogo lida com o registro de tudo que o jogador possui
+            }
             float timerChegada = 0f;
             while (agent.isActiveAndEnabled && navio != null && (agent.pathPending || agent.remainingDistance > 2.5f))
             {
@@ -390,12 +421,34 @@ public class PierMarinha : MonoBehaviour
         if (prefabNavio == null) return;
         Transform pontoSpawn = transform;
         if (pontosDeSaida != null && pontosDeSaida.Length > 0) pontoSpawn = pontosDeSaida[0];
+        
         GameObject novoNavio = Instantiate(prefabNavio, pontoSpawn.position, pontoSpawn.rotation);
-        IdentidadeNaval id = novoNavio.GetComponent<IdentidadeNaval>();
-        if (id != null)
+        
+        // --- DEFINIR IDENTIDADE ---
+        var idPier = GetComponentInParent<IdentidadeUnidade>();
+        var idNavio = novoNavio.GetComponent<IdentidadeUnidade>();
+        if (idPier != null && idNavio != null)
         {
-            if(pontosDeSaida != null && pontosDeSaida.Length > 1) id.MoverPara(pontosDeSaida[1].position); 
-            else id.MoverPara(transform.position + transform.forward * 100f);
+            idNavio.teamID = idPier.teamID;
+            idNavio.nomeDoPais = idPier.nomeDoPais;
+        }
+
+        IdentidadeNaval idNaval = novoNavio.GetComponent<IdentidadeNaval>();
+        if (idNaval != null)
+        {
+            if(pontosDeSaida != null && pontosDeSaida.Length > 1) idNaval.MoverPara(pontosDeSaida[1].position); 
+            else idNaval.MoverPara(transform.position + transform.forward * 100f);
+        }
+
+        // Registrar no General se for IA
+        if (idPier != null && idPier.teamID != 1)
+        {
+            var commanders = Object.FindObjectsByType<IA_Comandante>(FindObjectsSortMode.None);
+            var myCommander = commanders.FirstOrDefault(c => c.identidade != null && c.identidade.teamID == idPier.teamID);
+            if (myCommander != null && myCommander.cerebroGeneral != null)
+            {
+                myCommander.cerebroGeneral.RegistrarUnidade(novoNavio);
+            }
         }
     }
 

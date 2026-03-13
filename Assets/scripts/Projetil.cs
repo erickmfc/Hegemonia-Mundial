@@ -47,6 +47,16 @@ public class Projetil : MonoBehaviour
 
     void Start()
     {
+        // Garante que qualquer som do projétil (ex: assobio, motor) seja 3D
+        AudioSource[] audios = GetComponentsInChildren<AudioSource>();
+        foreach (AudioSource a in audios)
+        {
+            a.spatialBlend = 1f;
+            a.rolloffMode = AudioRolloffMode.Linear;
+            a.minDistance = 10f;
+            a.maxDistance = 300f;
+        }
+
         // Auto-destrói depois de X segundos para não poluir a cena
         Destroy(gameObject, tempoDeVida);
     }
@@ -214,6 +224,16 @@ public class Projetil : MonoBehaviour
         {
             GameObject fx = Instantiate(efeitoImpacto, transform.position, Quaternion.identity);
             
+            // Garante que o som de impacto também fique 3D
+            AudioSource[] audiosImpacto = fx.GetComponentsInChildren<AudioSource>();
+            foreach (AudioSource a in audiosImpacto)
+            {
+                a.spatialBlend = 1f;
+                a.rolloffMode = AudioRolloffMode.Linear;
+                a.minDistance = 20f;
+                a.maxDistance = 600f;
+            }
+
             // Se for explosão, escala o efeito também
             if (raioDeExplosao > 0f)
             {

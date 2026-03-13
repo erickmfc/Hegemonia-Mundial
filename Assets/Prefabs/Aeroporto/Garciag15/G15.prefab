@@ -9906,7 +9906,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b88a9faebd1739d46a0e8d64db7f05aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CacaVooRealista
-  velocidadeMaxima: 150
+  velocidadeMaxima: 100
   aceleracaoMotor: 10
   taxaDeGiroLeme: 60
   modeloMecanicoVisual: {fileID: 0}
@@ -10059,6 +10059,10 @@ MonoBehaviour:
   arfagemPitchMaxima: 30
   rodas: []
   alvoGPSVoo: {x: 0, y: 0, z: 0}
+  centroDaPatrulha: {x: 0, y: 0, z: 0}
+  emAtaqueMergulho: 0
+  alvoDoMergulho: {x: 0, y: 0, z: 0}
+  alvoPrioritarioIA: 0
   estaEmModoVooFisico: 0
 --- !u!1 &6309512768409737743
 GameObject:

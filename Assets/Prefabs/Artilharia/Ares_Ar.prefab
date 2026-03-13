@@ -260,7 +260,7 @@ GameObject:
   - component: {fileID: -4723646779603236218}
   m_Layer: 0
   m_Name: Ares_Ar
-  m_TagString: Player
+  m_TagString: Imovel
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

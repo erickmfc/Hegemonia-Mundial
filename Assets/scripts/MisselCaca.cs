@@ -28,6 +28,12 @@ public class MisselCaca : MonoBehaviour
     private bool motorLigado = false;
     private float velocidadeAtual = 0f;
     private Rigidbody rb;
+    private bool jaExplodiu = false; // Impede explosão dupla
+
+    // --- CACHE: Buffer reutilizável para OverlapSphere (reduz GC) ---
+    private static readonly Collider[] _explosaoBuffer = new Collider[32];
+    // --- CACHE: WaitForSeconds reutilizável ---
+    private WaitForSeconds _esperaQuedaLivre;
 
     void Awake()
     {
@@ -39,6 +45,8 @@ public class MisselCaca : MonoBehaviour
         rb.freezeRotation = true; 
 
         if (sistemaFumaca != null) sistemaFumaca.Stop();
+        
+        _esperaQuedaLivre = new WaitForSeconds(tempoQuedaLivre);
     }
 
     public void IniciarAtaque(Vector3 alvo, Vector3 velocidadeInicialAviao, Transform alvoT = null)
@@ -47,11 +55,8 @@ public class MisselCaca : MonoBehaviour
         alvoTransform = alvoT;
         lancado = true;
         
-        // Mantém a inércia do avião inicialmente
         velocidadeAtual = velocidadeInicialAviao.magnitude;
         rb.linearVelocity = velocidadeInicialAviao;
-        
-        // Aponta para a frente inicialmente mantendo a inclinação
         
         StartCoroutine(SequenciaDeVoo());
     }
@@ -60,10 +65,9 @@ public class MisselCaca : MonoBehaviour
     {
         // FASE 1: Cai do avião graciosamente (Queda Livre)
         rb.useGravity = true;
-        // Empurra levemente pra baixo para desgrudar da asa
         rb.AddForce(Vector3.down * forcaQuedaAdicional, ForceMode.Impulse);
         
-        yield return new WaitForSeconds(tempoQuedaLivre);
+        yield return _esperaQuedaLivre;
 
         // FASE 2: Liga motor
         rb.useGravity = false;
@@ -77,25 +81,23 @@ public class MisselCaca : MonoBehaviour
 
         if (alvoTransform != null) pontoAlvo = alvoTransform.position;
 
-        if (motorLigado)
+        if (!motorLigado) return;
+
+        Vector3 vetorParaAlvo = pontoAlvo - transform.position;
+        
+        // Gira para o alvo de forma suave (tracking)
+        if (vetorParaAlvo.sqrMagnitude > 0.01f) // Evita normalização de vetor zero
         {
-            Vector3 vetorParaAlvo = pontoAlvo - transform.position;
-            
-            // Gira para o alvo de forma suave (tracking)
-            if (vetorParaAlvo != Vector3.zero)
-            {
-                Quaternion rotacaoAlvo = Quaternion.LookRotation(vetorParaAlvo.normalized);
-                transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, forcaRotacao * Time.fixedDeltaTime);
-            }
-
-            velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeMaxima, Time.fixedDeltaTime * 2f);
-            rb.linearVelocity = transform.forward * velocidadeAtual;
-
-            if (vetorParaAlvo.magnitude < 5f)
-            {
-                Explodir();
-            }
+            Quaternion rotacaoAlvo = Quaternion.LookRotation(vetorParaAlvo.normalized);
+            transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, forcaRotacao * Time.fixedDeltaTime);
         }
+
+        velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeMaxima, Time.fixedDeltaTime * 2f);
+        rb.linearVelocity = transform.forward * velocidadeAtual;
+
+        // sqrMagnitude < 25 equivale a magnitude < 5 (evita sqrt)
+        if (vetorParaAlvo.sqrMagnitude < 25f)
+            Explodir();
     }
 
     void OnCollisionEnter(Collision collision)
@@ -105,13 +107,16 @@ public class MisselCaca : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        // Ignora avião e colisor de gatilhos amigos
         if (other.CompareTag("Player")) return; 
         Explodir();
     }
 
     void Explodir()
     {
+        // Guard: impede explosão dupla (pode ser chamado por colisão + proximidade no mesmo frame)
+        if (jaExplodiu) return;
+        jaExplodiu = true;
+
         if (efeitoExplosaoPrefab != null)
         {
             GameObject fx = Instantiate(efeitoExplosaoPrefab, transform.position, Quaternion.identity);
@@ -133,14 +138,15 @@ public class MisselCaca : MonoBehaviour
             Destroy(audioObj, somExplosao.length + 0.5f);
         }
 
-        Collider[] atingidos = Physics.OverlapSphere(transform.position, raioExplosao);
-        foreach (Collider col in atingidos)
+        // OverlapSphereNonAlloc: Reutiliza buffer estático, zero GC
+        int numHits = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, _explosaoBuffer);
+        for (int i = 0; i < numHits; i++)
         {
+            Collider col = _explosaoBuffer[i];
+            if (col == null) continue;
             SistemaDeDanos alvoVida = col.GetComponentInParent<SistemaDeDanos>();
             if (alvoVida != null)
-            {
                 alvoVida.ReceberDano(dano);
-            }
         }
 
         Destroy(gameObject);

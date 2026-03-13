@@ -80,6 +80,48 @@ public class Fabrica : MonoBehaviour
             }
         }
 
+        // --- PROTEÇÃO CONTRA AEROPORTO ---
+        // Se o ponto de spawn caiu dentro do aeroporto, procura posição segura fora
+        GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        bool dentroDeAeroporto = false;
+        foreach (var aero in aeroportos)
+        {
+            if (aero == null) continue;
+            // Calcula bounds reais do aeroporto
+            Bounds boundsAero = new Bounds(aero.transform.position, Vector3.zero);
+            Renderer[] rends = aero.GetComponentsInChildren<Renderer>();
+            foreach (var rend in rends)
+            {
+                if (rend == null) continue;
+                boundsAero.Encapsulate(rend.bounds);
+            }
+            boundsAero.Expand(60f); // Margem de 30m para cada lado
+            
+            if (boundsAero.Contains(new Vector3(posFinal.x, boundsAero.center.y, posFinal.z)))
+            {
+                dentroDeAeroporto = true;
+                // Busca posição segura FORA do aeroporto
+                for (float r = 30f; r < 200f; r += 15f)
+                {
+                    for (int a = 0; a < 12; a++)
+                    {
+                        float ang = a * 30f * Mathf.Deg2Rad;
+                        Vector3 teste = boundsAero.center + new Vector3(Mathf.Cos(ang) * (boundsAero.extents.x + r), 0, Mathf.Sin(ang) * (boundsAero.extents.z + r));
+                        UnityEngine.AI.NavMeshHit navHit;
+                        if (UnityEngine.AI.NavMesh.SamplePosition(teste, out navHit, 15f, UnityEngine.AI.NavMesh.AllAreas))
+                        {
+                            posFinal = navHit.position;
+                            dentroDeAeroporto = false;
+                            Debug.Log($"[Fabrica] Spawn desviado do aeroporto para {posFinal}");
+                            break;
+                        }
+                    }
+                    if (!dentroDeAeroporto) break;
+                }
+                break;
+            }
+        }
+
         // Instancia na posição corrigida
         GameObject unidade = Instantiate(prefab, posFinal, rotFinal);
 
@@ -110,6 +152,17 @@ public class Fabrica : MonoBehaviour
         {
             var nav = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
             if(nav != null && nav.isOnNavMesh) nav.SetDestination(saida.position);
+        }
+
+        // Registrar no General se for IA
+        if (idUnidade != null && idUnidade.teamID != 1)
+        {
+            var commanders = Object.FindObjectsByType<IA_Comandante>(FindObjectsSortMode.None);
+            var myCommander = System.Linq.Enumerable.FirstOrDefault(commanders, c => c.identidade != null && c.identidade.teamID == idUnidade.teamID);
+            if (myCommander != null && myCommander.cerebroGeneral != null)
+            {
+                myCommander.cerebroGeneral.RegistrarUnidade(unidade);
+            }
         }
 
         return unidade;

@@ -53,7 +53,7 @@ public class PainelStatusImperial : MonoBehaviour
         {
             var dados = GerenciadorArmazens.Instancia.armazemRecursos;
             float ocupacao = dados.PercentualOcupacao();
-            textoArmazem.text = $"📦 ESTOQUE: {ocupacao:F1}%";
+            textoArmazem.text = $"ESTOQUE: {ocupacao:F1}%";
             
             // Tooltip Fake (detalhes se precisar)
             // textoArmazem.text += $" ({dados.EspacoDisponivel()} livres)";
@@ -65,7 +65,7 @@ public class PainelStatusImperial : MonoBehaviour
         if (textoPopulacaoDetalhada != null && GerenciadorRecursos.Instancia != null)
         {
             var g = GerenciadorRecursos.Instancia;
-            textoPopulacaoDetalhada.text = $"👥 POPULAÇÃO: {g.populacaoAtual} / {g.populacaoMaxima}";
+            textoPopulacaoDetalhada.text = $"POPULAÇÃO: {g.populacaoAtual} / {g.populacaoMaxima}";
             
             if(g.populacaoAtual >= g.populacaoMaxima) 
                 textoPopulacaoDetalhada.color = corAlerta;
@@ -77,8 +77,8 @@ public class PainelStatusImperial : MonoBehaviour
         if (textoExercito != null && CensoImperial.Instancia != null)
         {
             var c = CensoImperial.Instancia;
-            // Formato: ⚔️ 50 (💂30 🚛10 🚁5 🚢5)
-            textoExercito.text = $"⚔️ MILITAR: {c.totalUnidades}  <size=80%>(💂{c.infantaria}  🚛{c.veiculos}  🚁{c.aereo}  🚢{c.naval})</size>";
+            // Formato: Militar: 50 (Inf:30 Veic:10 Aer:5 Nav:5)
+            textoExercito.text = $"MILITAR: {c.totalUnidades}  <size=80%>(Inf:{c.infantaria}  Veic:{c.veiculos}  Aer:{c.aereo}  Nav:{c.naval})</size>";
         }
     }
 }

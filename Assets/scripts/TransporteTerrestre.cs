@@ -18,6 +18,10 @@ public class TransporteTerrestre : MonoBehaviour
     private GameObject[] soldadosNosAssentos; // Os que ficam visíveis
 
     private bool selecionado = false;
+    
+    // Cooldown: impede busca infinita de soldados
+    private float _cooldownEmbarque = 0f;
+    private const float COOLDOWN_EMBARQUE = 30f; // 30 segundos entre ciclos de busca
 
     void Awake()
     {
@@ -55,6 +59,9 @@ public class TransporteTerrestre : MonoBehaviour
         var ctrl = GetComponent<ControleUnidade>();
         if(ctrl != null) selecionado = ctrl.selecionado;
 
+        // Cooldown de embarque
+        if (_cooldownEmbarque > 0f) _cooldownEmbarque -= Time.deltaTime;
+
         if (selecionado)
         {
             // O -> OPEN / Entrar
@@ -77,6 +84,14 @@ public class TransporteTerrestre : MonoBehaviour
 
     public void TentarEmbarcar()
     {
+        // Se este veículo for um caça/avião que por acidente tem o script, ignora
+        string me = gameObject.name.ToLower();
+        if (me.Contains("caoc") || me.Contains("caca") || me.Contains("tuk") || me.Contains("jet") || me.Contains("aviao") || me.Contains("f22"))
+            return;
+
+        // Cooldown ativo — não busca
+        if (_cooldownEmbarque > 0f) return;
+
         // Conta total atual
         int totalEmbarcados = soldadosInternos.Count + ContarVisiveis();
         if (totalEmbarcados >= capacidadeMaxima)
@@ -85,6 +100,7 @@ public class TransporteTerrestre : MonoBehaviour
             return;
         }
 
+        int totalAntes = totalEmbarcados;
         Debug.Log($"[{gameObject.name}] BUSCANDO PASSAGEIROS... (Raio: {distanciaParaEmbarque}m)");
 
         // --- BUSCA GLOBAL POR PROXIMIDADE ---
@@ -126,7 +142,7 @@ public class TransporteTerrestre : MonoBehaviour
             string nomeLower = soldado.name.ToLower();
             
             // Bloqueia Navios e Aviões óbvios
-            if (nomeLower.Contains("uss") || nomeLower.Contains("ship") || nomeLower.Contains("aviao") || nomeLower.Contains("jet")) continue;
+            if (nomeLower.Contains("uss") || nomeLower.Contains("ship") || nomeLower.Contains("aviao") || nomeLower.Contains("jet") || nomeLower.Contains("caca") || nomeLower.Contains("caoc")) continue;
 
             // 3. Verifica se é "Embarcável" (Biológico ou Pequeno)
             SistemaDeDanos sd = soldado.GetComponent<SistemaDeDanos>();
@@ -149,7 +165,7 @@ public class TransporteTerrestre : MonoBehaviour
                    nomeLower.Contains("rifle") || nomeLower.Contains("fuzil") || 
                    nomeLower.Contains("sniper") || nomeLower.Contains("medico") ||
                    nomeLower.Contains("eng") || nomeLower.Contains("person") ||
-                   nomeLower.Contains("caoc") || nomeLower.Contains("unidade")) // CAOC pode ser unidade especial?
+                   nomeLower.Contains("unidade")) 
                 {
                     ehViavel = true;
                 }
@@ -180,8 +196,13 @@ public class TransporteTerrestre : MonoBehaviour
         
         if (totalEmbarcados == soldadosInternos.Count + ContarVisiveis())
         {
-             // Se não mudou nada
-             // Debug.Log("Nenhum passageiro válido encontrado por perto.");
+             // Ninguém encontrado — cooldown curto pra não spammar
+             _cooldownEmbarque = 10f;
+        }
+        else
+        {
+             // Embarcou alguém — cooldown de 30s para dar tempo de carregar
+             _cooldownEmbarque = COOLDOWN_EMBARQUE;
         }
     }
 
@@ -279,6 +300,14 @@ public class TransporteTerrestre : MonoBehaviour
     public bool EstaCheio()
     {
         return (soldadosInternos.Count + ContarVisiveis()) >= capacidadeMaxima;
+    }
+
+    /// <summary>
+    /// Retorna true se o transporte ainda está em cooldown de embarque.
+    /// </summary>
+    public bool EmCooldown()
+    {
+        return _cooldownEmbarque > 0f;
     }
 
     public bool TemTropas()

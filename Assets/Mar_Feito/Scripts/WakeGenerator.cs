@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 public class WakeGenerator : MonoBehaviour
@@ -11,7 +11,7 @@ public class WakeGenerator : MonoBehaviour
 
   void Awake()
   {
-    ocean = FindObjectOfType<OceanAdvanced>();
+    ocean = UnityEngine.Object.FindFirstObjectByType<OceanAdvanced>();
     speed = 0.0F;
     last_position = transform.position;
   }

@@ -7037,7 +7037,7 @@ GameObject:
   - component: {fileID: 6170321290299082972}
   m_Layer: 0
   m_Name: Pier_morto
-  m_TagString: Untagged
+  m_TagString: Imovel
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -7202,6 +7202,9 @@ MonoBehaviour:
     pontoDeManobra: {fileID: 530611756555493896}
     categoriaAceita: 2
     navioOcupante: {fileID: 0}
+  saida_petro: {fileID: 0}
+  Atraca_petro: {fileID: 0}
+  ocupada: 0
   raioDeBusca: 1500
   velocidadeManobra: 5
   reparoPorSegundo: 10
@@ -7209,6 +7212,11 @@ MonoBehaviour:
   pontosDeSaida:
   - {fileID: 5014351522792568736}
   - {fileID: 7540027564989050300}
+  pontoEntrada: {fileID: 0}
+  pontoAcoplagem: {fileID: 0}
+  pontoSaidaNavio: {fileID: 0}
+  offsetAguaFrente: 35
+  offsetTerraTras: -15
 --- !u!114 &6170321290299082972
 MonoBehaviour:
   m_ObjectHideFlags: 0

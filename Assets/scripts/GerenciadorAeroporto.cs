@@ -40,8 +40,19 @@ public class GerenciadorAeroporto : MonoBehaviour
     [HideInInspector] public Transform wpAndadar;
     [HideInInspector] public Transform wpAnalise;
 
+    // --- CACHE DE COMPONENTES (Evita GetComponent repetido) ---
+    private IdentidadeUnidade _identidadeCacheada;
+    private bool _identidadeVerificada = false;
+
+    // --- CACHE PARA OnGUI (Evita alocações repetidas) ---
+    private readonly HashSet<Transform> _vagasOcupadas = new HashSet<Transform>();
+
     void Awake()
     {
+        // Cache da identidade do aeroporto
+        _identidadeCacheada = GetComponent<IdentidadeUnidade>();
+        _identidadeVerificada = true;
+
         if (patio != null)
         {
             foreach (Transform filho in patio)
@@ -63,16 +74,18 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (waypointsPatio.Count == 0)
         {
             Debug.LogWarning("[Aeroporto] Nenhuma vaga de pátio encontrada no Prefab! Gerando vagas automáticas...");
-            for (int i = 0; i < 6; i++)
+            const int numVagas = 6;
+            float anguloStep = 360f / numVagas * Mathf.Deg2Rad;
+            for (int i = 0; i < numVagas; i++)
             {
                 GameObject vagaAuto = new GameObject($"Vaga_Auto_{i}");
                 vagaAuto.transform.SetParent(this.transform);
-                // Distribui em círculo ao redor do aeroporto
-                float ang = i * (360f / 6f) * Mathf.Deg2Rad;
+                float ang = i * anguloStep;
                 vagaAuto.transform.localPosition = new Vector3(Mathf.Cos(ang) * 40f, 0, Mathf.Sin(ang) * 40f);
                 waypointsPatio.Add(vagaAuto.transform);
             }
         }
+
         if (decida != null)
         {
             foreach (Transform filho in decida) waypointsDecida.Add(filho);
@@ -83,10 +96,13 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         // Tenta achar Andadar e Analise (em qualquer lugar dentro do Aeroporto)
         Transform[] todasAsTags = GetComponentsInChildren<Transform>(true);
-        foreach (Transform t in todasAsTags)
+        for (int i = 0, count = todasAsTags.Length; i < count; i++)
         {
-            if (t.name.ToLower() == "andadar") wpAndadar = t;
-            if (t.name.ToLower() == "analise") wpAnalise = t;
+            string nome = todasAsTags[i].name.ToLower();
+            if (nome == "andadar") wpAndadar = todasAsTags[i];
+            else if (nome == "analise") wpAnalise = todasAsTags[i];
+            // Sai mais cedo se já encontrou ambos
+            if (wpAndadar != null && wpAnalise != null) break;
         }
     }
 
@@ -98,86 +114,86 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     private IEnumerator ManutencaoDeFrota()
     {
+        WaitForSeconds espera = new WaitForSeconds(2.0f); // Reutiliza o objeto de espera
         while (true)
         {
-            yield return new WaitForSeconds(2.0f); // Reparo de 2 em 2 segundos
+            yield return espera;
 
             // Repara quem está no pátio
-            for (int i = 0; i < avioesNoPatio.Count; i++)
+            for (int i = avioesNoPatio.Count - 1; i >= 0; i--)
             {
-                var a = avioesNoPatio[i];
-                if (a != null && a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
-                {
-                    SistemaDeDanos sd = a.GetComponent<SistemaDeDanos>();
-                    if (sd != null && sd.vidaAtual < sd.vidaMaxima) 
-                        sd.Reparar(sd.vidaMaxima * 0.05f); // 5% de vida no pátio
-                }
+                ControleAviao a = avioesNoPatio[i];
+                if (a == null) { avioesNoPatio.RemoveAt(i); continue; }
+                if (a.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio) continue;
+
+                SistemaDeDanos sd = a.GetComponent<SistemaDeDanos>();
+                if (sd != null && sd.vidaAtual < sd.vidaMaxima) 
+                    sd.Reparar(sd.vidaMaxima * 0.05f); // 5% de vida no pátio
             }
 
             // No hangar o reparo é prioritário
-            for (int i = 0; i < avioesNoHangar.Count; i++)
+            for (int i = avioesNoHangar.Count - 1; i >= 0; i--)
             {
-                var h = avioesNoHangar[i];
-                if (h != null)
-                {
-                    SistemaDeDanos sd = h.GetComponent<SistemaDeDanos>();
-                    if (sd != null && sd.vidaAtual < sd.vidaMaxima) 
-                        sd.Reparar(sd.vidaMaxima * 0.10f); // 10% de vida no hangar
-                }
+                ControleAviao h = avioesNoHangar[i];
+                if (h == null) { avioesNoHangar.RemoveAt(i); continue; }
+
+                SistemaDeDanos sd = h.GetComponent<SistemaDeDanos>();
+                if (sd != null && sd.vidaAtual < sd.vidaMaxima) 
+                    sd.Reparar(sd.vidaMaxima * 0.10f); // 10% de vida no hangar
             }
         }
     }
 
     void Update()
     {
+        // TECLA DE ATALHO: Abre e Fecha o Centro de Controle (Apenas Toggle)
         if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Alpha7))
         {
+            if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
+            if (_identidadeCacheada != null && _identidadeCacheada.teamID != 1 && _identidadeCacheada.teamID != 0) return;
+
             menuAtivo = !menuAtivo;
             if (menuAeroportoUI != null) menuAeroportoUI.SetActive(menuAtivo);
+            
+            Debug.Log("[Aeroporto] Centro de Controle " + (menuAtivo ? "ABERTO" : "FECHADO"));
         }
 
         // Aguarda clique no MAPA para mandar o avião (Radar)
-        if (aviaoSelecionadoParaMissao != null)
+        if (aviaoSelecionadoParaMissao == null) return;
+        
+        bool esperandoAutorizacao = aviaoSelecionadoParaMissao.aguardandoCliqueRadar;
+        bool emVooConstante = (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao);
+
+        if (!esperandoAutorizacao && !emVooConstante) return;
+        if (!Input.GetMouseButtonDown(1)) return;
+        
+        // Tenta impedir clique se mouse estiver em cima de UI nativa da engine
+        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+
+        Ray r = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (!Physics.Raycast(r, out RaycastHit hit, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return;
+
+        aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
+
+        if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
         {
-            bool esperandoAutorizacao = aviaoSelecionadoParaMissao.aguardandoCliqueRadar;
-            bool emVooConstante = (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao);
-
-            if (esperandoAutorizacao || emVooConstante)
-            {
-                // Clique Botão Direito
-                if (Input.GetMouseButtonDown(1))
-                {
-                    // Tenta impedir clique se mouse estiver em cima de UI nativa da engine (opcional)
-                    if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
-
-                    Ray r = Camera.main.ScreenPointToRay(Input.mousePosition);
-                    if (Physics.Raycast(r, out RaycastHit hit, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-                    {
-                        aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
-
-                        if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
-                        {
-                            aviaoSelecionadoParaMissao.IniciarMissaoCompleta(hit.point);
-                            Debug.Log($"[Aeroporto] Coordenadas recebidas! {aviaoSelecionadoParaMissao.gameObject.name} decolando para: {hit.point}");
-                        }
-                        else
-                        {
-                            // Apenas atualiza o GPS do voo ao vivo!
-                            aviaoSelecionadoParaMissao.centroDaPatrulha = hit.point;
-                            aviaoSelecionadoParaMissao.alvoGPSVoo = hit.point;
-                            CacaVooRealista cv = aviaoSelecionadoParaMissao.GetComponent<CacaVooRealista>();
-                            if (cv != null) cv.alvoGPS = hit.point;
-                            Debug.Log($"[Aeroporto] Rota Alterada! {aviaoSelecionadoParaMissao.gameObject.name} mudando curso para: {hit.point}");
-                        }
-                        
-                        CriarSinalizador(hit.point, aviaoSelecionadoParaMissao);
-                        
-                        // Limpa a seleção para não combar acidentalmente depois
-                        aviaoSelecionadoParaMissao = null;
-                    }
-                }
-            }
+            aviaoSelecionadoParaMissao.IniciarMissaoCompleta(hit.point);
+            Debug.Log($"[Aeroporto] Coordenadas recebidas! {aviaoSelecionadoParaMissao.gameObject.name} decolando para: {hit.point}");
         }
+        else
+        {
+            // Apenas atualiza o GPS do voo ao vivo!
+            aviaoSelecionadoParaMissao.centroDaPatrulha = hit.point;
+            aviaoSelecionadoParaMissao.alvoGPSVoo = hit.point;
+            CacaVooRealista cv = aviaoSelecionadoParaMissao.GetComponent<CacaVooRealista>();
+            if (cv != null) cv.alvoGPS = hit.point;
+            Debug.Log($"[Aeroporto] Rota Alterada! {aviaoSelecionadoParaMissao.gameObject.name} mudando curso para: {hit.point}");
+        }
+        
+        CriarSinalizador(hit.point, aviaoSelecionadoParaMissao);
+        
+        // Limpa a seleção para não combar acidentalmente depois
+        aviaoSelecionadoParaMissao = null;
     }
 
     private void CriarSinalizador(Vector3 pos, ControleAviao aviao)
@@ -193,32 +209,33 @@ public class GerenciadorAeroporto : MonoBehaviour
         ControleAviaoCaca cc = aviao.GetComponent<ControleAviaoCaca>();
         if (cc != null) c = new Color(cc.corIdentificacao.r, cc.corIdentificacao.g, cc.corIdentificacao.b, 0.4f);
         
-        Renderer r = sinal.GetComponent<Renderer>();
-        if (r != null)
+        Renderer rend = sinal.GetComponent<Renderer>();
+        if (rend != null)
         {
-            r.material = new Material(Shader.Find("Sprites/Default"));
-            r.material.color = c;
+            rend.material = new Material(Shader.Find("Sprites/Default"));
+            rend.material.color = c;
         }
 
-        // Animação e Fade suave no StartCoroutine
+        // Animação e Fade suave
         StartCoroutine(AnimarSinalizador(sinal, c));
     }
 
     private IEnumerator AnimarSinalizador(GameObject sinal, Color baseColor)
     {
-        Renderer r = sinal.GetComponent<Renderer>();
+        Renderer rend = sinal.GetComponent<Renderer>();
         float t = 0;
-        while (t < 3.5f)
+        const float duracao = 3.5f;
+        while (t < duracao)
         {
             if (sinal == null) break;
             t += Time.deltaTime;
             sinal.transform.Rotate(0, 180f * Time.deltaTime, 0); // Gira o pilar loucamente
             
             // Pisca e apaga usando Fade no shader default alpha
-            if (r != null && r.material != null)
+            if (rend != null && rend.material != null)
             {
-                baseColor.a = Mathf.Lerp(0.5f, 0f, t / 3.5f);
-                r.material.color = baseColor;
+                baseColor.a = Mathf.Lerp(0.5f, 0f, t / duracao);
+                rend.material.color = baseColor;
             }
             yield return null;
         }
@@ -231,22 +248,47 @@ public class GerenciadorAeroporto : MonoBehaviour
         GameObject aeronaveNascente = Instantiate(prefabDeAeronave, posSpawn, Quaternion.identity);
 
         // --- SISTEMA DE IDENTIDADE (HERANÇA DO AEROPORTO) ---
-        IdentidadeUnidade idAeroporto = GetComponent<IdentidadeUnidade>();
+        if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
+        
         IdentidadeUnidade idAviao = aeronaveNascente.GetComponent<IdentidadeUnidade>();
         if (idAviao == null) idAviao = aeronaveNascente.AddComponent<IdentidadeUnidade>();
         
-        if (idAeroporto != null)
+        if (_identidadeCacheada != null)
         {
-            idAviao.teamID = idAeroporto.teamID;
-            idAviao.nomeDoPais = idAeroporto.nomeDoPais;
+            idAviao.teamID = _identidadeCacheada.teamID;
+            idAviao.nomeDoPais = _identidadeCacheada.nomeDoPais;
 
             // Se pertencer à IA (Time 2 ou maior), empurra o avião pra mente dela
             if (idAviao.teamID > 1) 
             {
-                IA_General_Pro mestreInteligencia = FindFirstObjectByType<IA_General_Pro>();
-                if (mestreInteligencia != null && mestreInteligencia.GetComponent<IdentidadeUnidade>().teamID == idAviao.teamID) 
+                // Busca o general correto que comanda este time específico
+                IA_General_Pro[] todosGenerais = UnityEngine.Object.FindObjectsByType<IA_General_Pro>(FindObjectsSortMode.None);
+                for (int i = 0, count = todosGenerais.Length; i < count; i++)
                 {
-                    mestreInteligencia.RegistrarUnidade(aeronaveNascente);
+                    IA_General_Pro gen = todosGenerais[i];
+                    if (gen == null) continue;
+
+                    int teamIDDoGeneral = -1;
+                    
+                    IdentidadeUnidade genIdU = gen.GetComponent<IdentidadeUnidade>();
+                    if (genIdU == null) genIdU = gen.GetComponentInParent<IdentidadeUnidade>();
+                    
+                    if (genIdU != null) 
+                    {
+                        teamIDDoGeneral = genIdU.teamID;
+                    }
+                    else
+                    {
+                        IdentidadeIA genIdIA = gen.GetComponent<IdentidadeIA>();
+                        if (genIdIA == null) genIdIA = gen.GetComponentInParent<IdentidadeIA>();
+                        if (genIdIA != null) teamIDDoGeneral = genIdIA.teamID;
+                    }
+
+                    if (teamIDDoGeneral == idAviao.teamID)
+                    {
+                        gen.RegistrarUnidade(aeronaveNascente);
+                        break; 
+                    }
                 }
             }
         }
@@ -289,17 +331,45 @@ public class GerenciadorAeroporto : MonoBehaviour
     {
         if (waypointsPatio == null || waypointsPatio.Count == 0) return null;
 
-        avioesNoPatio.RemoveAll(a => a == null); 
-        List<Transform> restritas = new List<Transform>();
-        foreach (var av in avioesNoPatio) 
-            if (av != null && av.vagaRetorno != null) restritas.Add(av.vagaRetorno);
-
-        foreach (var wp in waypointsPatio)
+        // Monta HashSet de vagas ocupadas (O(1) lookup ao invés de O(N))
+        _vagasOcupadas.Clear();
+        for (int i = avioesNoPatio.Count - 1; i >= 0; i--)
         {
-            if (wp == null) continue;
-            if (!restritas.Contains(wp)) return wp;
+            ControleAviao av = avioesNoPatio[i];
+            if (av == null) { avioesNoPatio.RemoveAt(i); continue; }
+            if (av.vagaRetorno != null) _vagasOcupadas.Add(av.vagaRetorno);
+        }
+
+        for (int i = 0, count = waypointsPatio.Count; i < count; i++)
+        {
+            Transform wp = waypointsPatio[i];
+            if (wp != null && !_vagasOcupadas.Contains(wp)) return wp;
         }
         return null;
+    }
+
+    // --- HELPER: Extrai texto formatado de um avião para OnGUI (evita código repetido) ---
+    private string ObterInfoAviao(Component aviao, out string corCristal, out string vidaStr)
+    {
+        corCristal = "white";
+        vidaStr = "";
+        
+        if (aviao == null) { return ""; }
+
+        ControleAviaoCaca cacaScript = aviao.GetComponent<ControleAviaoCaca>();
+        if (cacaScript != null) corCristal = "#" + ColorUtility.ToHtmlStringRGB(cacaScript.corIdentificacao);
+        
+        string nomeLimpo = aviao.gameObject.name.Replace("(Clone)", "").Trim();
+
+        SistemaDeDanos danos = aviao.GetComponent<SistemaDeDanos>();
+        if (danos != null && danos.vidaMaxima > 0)
+        {
+            int pct = Mathf.RoundToInt((danos.vidaAtual / danos.vidaMaxima) * 100f);
+            string corVid = (pct > 50) ? "white" : (pct > 25 ? "yellow" : "red");
+            vidaStr = $" (<color={corVid}>{pct}%</color>)";
+        }
+
+        return nomeLimpo;
     }
 
     void OnGUI()
@@ -308,15 +378,21 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (menuAeroportoUI != null && menuAeroportoUI.activeInHierarchy) return;
 
         // --- SISTEMA DE FAXINA (Fix para os fantasmas no pátio) ---
-        // Se um avião for destruído em combate, ele desocupa as vagas e os menus imediatamente!
         avioesNoPatio.RemoveAll(a => a == null);
         avioesNoHangar.RemoveAll(a => a == null);
 
         float xMenu = (Screen.width / 2f) - 350f - (Screen.width * 0.1f);
-        if (xMenu < 10f) xMenu = 10f; // Previne que o painel saia da tela
-        // Aumentado em 10% (de 500 para 600) conforme solicitado
+        if (xMenu < 10f) xMenu = 10f;
+        
         Rect telaDeMenu = new Rect(xMenu, Screen.height / 2f - 300f, 700f, 600f);
         GUI.Box(telaDeMenu, "CENTRO DE CONTROLE TÁTICO & AEROPORTO");
+
+        // --- BOTÃO DE FECHAR (X) ---
+        if (GUI.Button(new Rect(telaDeMenu.xMax - 35, telaDeMenu.y + 5, 30, 25), "<b>X</b>"))
+        {
+            menuAtivo = false;
+            if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+        }
 
         GUILayout.BeginArea(new Rect(telaDeMenu.x + 15, telaDeMenu.y + 35, telaDeMenu.width - 30, telaDeMenu.height - 45));
         
@@ -340,193 +416,161 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
         else if (abaAtual == 1)
         {
-            GUILayout.Label("<size=18><b>FROTA AÉREA E TÁTICA</b></size>");
-            GUILayout.BeginHorizontal();
-
-            GUILayout.BeginVertical("box", GUILayout.Width(320));
-            GUILayout.Label($"<b>FROTA ATIVA ({avioesNoPatio.Count})</b>");
-            
-            // Adicionada rolagem para frotas grandes
-            scrollPosFrota = GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(200));
-            foreach (var a in avioesNoPatio)
-            {
-                if (a == null) continue;
-                string corEst = (a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio) ? "green" : "red";
-                
-                string corCristal = "white"; // Fallback
-                ControleAviaoCaca cacaScript = a.GetComponent<ControleAviaoCaca>();
-                if (cacaScript != null) corCristal = "#" + ColorUtility.ToHtmlStringRGB(cacaScript.corIdentificacao);
-                
-                string nomeLimpo = a.gameObject.name.Replace("(Clone)", "").Trim();
-
-                string vidaStr = "";
-                SistemaDeDanos danos = a.GetComponent<SistemaDeDanos>();
-                if (danos != null && danos.vidaMaxima > 0)
-                {
-                    int pct = Mathf.RoundToInt((danos.vidaAtual / danos.vidaMaxima) * 100f);
-                    string corVid = (pct > 50) ? "white" : (pct > 25 ? "yellow" : "red");
-                    vidaStr = $" (<color={corVid}>{pct}%</color>)";
-                }
-
-                if (GUILayout.Button($"<color={corCristal}>■</color> ✈️ {nomeLimpo}{vidaStr} [<color={corEst}>{a.estadoAtual}</color>]", GUILayout.Height(30)))
-                    aviaoSelecionadoParaMissao = a;
-            }
-            GUILayout.EndScrollView();
-            GUILayout.EndVertical();
-
-            GUILayout.BeginVertical("box", GUILayout.Width(320));
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"<b>HANGAR ({avioesNoHangar.Count})</b>");
-            if (GUILayout.Button("Lib. Todos", GUILayout.Width(75), GUILayout.Height(20)))
-            {
-                LiberarTodosDoHangar();
-            }
-            GUILayout.EndHorizontal();
-
-            // Adicionada rolagem para o hangar
-            scrollPosHangar = GUILayout.BeginScrollView(scrollPosHangar, GUILayout.Height(200));
-            for (int i = avioesNoHangar.Count - 1; i >= 0; i--)
-            {
-                var h = avioesNoHangar[i];
-                if (h == null) continue;
-                
-                string corCristal = "white"; // Fallback
-                ControleAviaoCaca cacaScript = h.GetComponent<ControleAviaoCaca>();
-                if (cacaScript != null) corCristal = "#" + ColorUtility.ToHtmlStringRGB(cacaScript.corIdentificacao);
-                
-                string nomeLimpo = h.gameObject.name.Replace("(Clone)", "").Trim();
-
-                string vidaStr = "";
-                SistemaDeDanos danos = h.GetComponent<SistemaDeDanos>();
-                if (danos != null && danos.vidaMaxima > 0)
-                {
-                    int pct = Mathf.RoundToInt((danos.vidaAtual / danos.vidaMaxima) * 100f);
-                    string corVid = (pct > 50) ? "white" : (pct > 25 ? "yellow" : "red");
-                    vidaStr = $" (<color={corVid}>{pct}%</color>)";
-                }
-
-                GUILayout.BeginHorizontal();
-                GUILayout.Label($"<color={corCristal}>■</color> 🔒 {nomeLimpo}{vidaStr}", GUILayout.Width(170));
-                
-                if (aviaoSelecionadoParaMissao != null && avioesNoPatio.Contains(aviaoSelecionadoParaMissao))
-                {
-                    if (GUILayout.Button("⮂ TROCAR", GUILayout.Height(25)))
-                    {
-                        TrocarAvioesLogicaGeral(h, aviaoSelecionadoParaMissao);
-                        aviaoSelecionadoParaMissao = null; 
-                        break; 
-                    }
-                }
-                else
-                {
-                    if (ObterPrimeiraVagaLivre() != null)
-                    {
-                        if (GUILayout.Button("▶ LIBERAR", GUILayout.Height(25)))
-                        {
-                            LiberarAviaoParaPatio(h);
-                            break;
-                        }
-                    }
-                    else 
-                    {
-                        GUI.enabled = false;
-                        GUILayout.Button("Pátio L.(X)", GUILayout.Height(25));
-                        GUI.enabled = true;
-                    }
-                }
-                GUILayout.EndHorizontal();
-            }
-            GUILayout.EndScrollView();
-            GUILayout.EndVertical();
-            GUILayout.EndHorizontal();
-            GUILayout.Space(20);
-            
-            if (aviaoSelecionadoParaMissao != null && avioesNoPatio.Contains(aviaoSelecionadoParaMissao))
-            {
-                string corCristal = "white";
-                ControleAviaoCaca cacaScript = aviaoSelecionadoParaMissao.GetComponent<ControleAviaoCaca>();
-                if (cacaScript != null) corCristal = "#" + ColorUtility.ToHtmlStringRGB(cacaScript.corIdentificacao);
-                
-                string nomeLimpo = aviaoSelecionadoParaMissao.gameObject.name.Replace("(Clone)", "").Trim();
-
-                string vidaStr = "";
-                SistemaDeDanos danos = aviaoSelecionadoParaMissao.GetComponent<SistemaDeDanos>();
-                if (danos != null && danos.vidaMaxima > 0)
-                {
-                    int pct = Mathf.RoundToInt((danos.vidaAtual / danos.vidaMaxima) * 100f);
-                    string corVid = (pct > 50) ? "white" : (pct > 25 ? "yellow" : "red");
-                    vidaStr = $" (<color={corVid}>{pct}%</color>)";
-                }
-
-                GUILayout.Label($"<b>PAINEL DE ORDENS: <color={corCristal}>■</color> {nomeLimpo}{vidaStr}</b>");
-                
-                if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
-                {
-                    if (aviaoSelecionadoParaMissao.aguardandoCliqueRadar)
-                    {
-                        GUILayout.Label("<color=yellow>⚠️ MODO ALVO ATIVO! Feche o Menu e Clique no mapa com o Botão Direito.</color>");
-                        if (GUILayout.Button("❌ Cancelar Ordem", GUILayout.Height(30)))
-                        {
-                            aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
-                        }
-                    }
-                    else
-                    {
-                        GUILayout.BeginHorizontal();
-                        if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(40))) ExecutarModoRadar(true);
-                        if (GUILayout.Button("🛡️ Patrulha Aérea", GUILayout.Height(40))) ExecutarModoRadar(false);
-                        if (GUILayout.Button("💣 Ataque Solo", GUILayout.Height(40))) ExecutarModoRadar(false);
-                        GUILayout.EndHorizontal();
-                    }
-                }
-                else if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
-                {
-                    GUILayout.Label("<color=cyan>Aeronave civil/militar operando no espaço aéreo.</color>");
-                    
-                    GUILayout.BeginHorizontal();
-                    if (GUILayout.Button("🎯 ALTERAR ALVO/DESTINO", GUILayout.Height(50))) 
-                    {
-                        ExecutarModoRadar(false); // Mantém ofensivo ou pode ser ajustado opcionalmente
-                    }
-
-                    if (GUILayout.Button("🔙 ABORTAR E RETORNAR À BASE", GUILayout.Height(50)))
-                    {
-                        aviaoSelecionadoParaMissao.ComandoRetornarBase();
-                        aviaoSelecionadoParaMissao = null;
-                        menuAtivo = false;
-                        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
-                    }
-                    GUILayout.EndHorizontal();
-                }
-                else
-                {
-                     GUILayout.Label($"<color=orange>Aeronave em trânsito: {aviaoSelecionadoParaMissao.estadoAtual}...</color>");
-                     GUI.enabled = false;
-                     GUILayout.Button("Aguarde a manobra de pista...", GUILayout.Height(40));
-                     GUI.enabled = true;
-                }
-            }
+            DesenharAbaMilitar();
         }
         GUILayout.EndArea();
     }
 
+    private void DesenharAbaMilitar()
+    {
+        GUILayout.Label("<size=18><b>FROTA AÉREA E TÁTICA</b></size>");
+        GUILayout.BeginHorizontal();
+
+        // === COLUNA ESQUERDA: FROTA ATIVA ===
+        GUILayout.BeginVertical("box", GUILayout.Width(320));
+        GUILayout.Label($"<b>FROTA ATIVA ({avioesNoPatio.Count})</b>");
+        
+        scrollPosFrota = GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(200));
+        for (int i = 0, count = avioesNoPatio.Count; i < count; i++)
+        {
+            ControleAviao a = avioesNoPatio[i];
+            if (a == null) continue;
+            
+            string nomeLimpo = ObterInfoAviao(a, out string corCristal, out string vidaStr);
+            string corEst = (a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio) ? "green" : "red";
+
+            if (GUILayout.Button($"<color={corCristal}>■</color> ✈️ {nomeLimpo}{vidaStr} [<color={corEst}>{a.estadoAtual}</color>]", GUILayout.Height(30)))
+                aviaoSelecionadoParaMissao = a;
+        }
+        GUILayout.EndScrollView();
+        GUILayout.EndVertical();
+
+        // === COLUNA DIREITA: HANGAR ===
+        GUILayout.BeginVertical("box", GUILayout.Width(320));
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"<b>HANGAR ({avioesNoHangar.Count})</b>");
+        if (GUILayout.Button("Lib. Todos", GUILayout.Width(75), GUILayout.Height(20)))
+        {
+            LiberarTodosDoHangar();
+        }
+        GUILayout.EndHorizontal();
+
+        scrollPosHangar = GUILayout.BeginScrollView(scrollPosHangar, GUILayout.Height(200));
+        for (int i = avioesNoHangar.Count - 1; i >= 0; i--)
+        {
+            ControleAviao h = avioesNoHangar[i];
+            if (h == null) continue;
+            
+            string nomeLimpo = ObterInfoAviao(h, out string corCristal, out string vidaStr);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"<color={corCristal}>■</color> 🔒 {nomeLimpo}{vidaStr}", GUILayout.Width(170));
+            
+            if (aviaoSelecionadoParaMissao != null && avioesNoPatio.Contains(aviaoSelecionadoParaMissao))
+            {
+                if (GUILayout.Button("⮂ TROCAR", GUILayout.Height(25)))
+                {
+                    TrocarAvioesLogicaGeral(h, aviaoSelecionadoParaMissao);
+                    aviaoSelecionadoParaMissao = null; 
+                    GUILayout.EndHorizontal();
+                    break; 
+                }
+            }
+            else
+            {
+                if (ObterPrimeiraVagaLivre() != null)
+                {
+                    if (GUILayout.Button("▶ LIBERAR", GUILayout.Height(25)))
+                    {
+                        LiberarAviaoParaPatio(h);
+                        GUILayout.EndHorizontal();
+                        break;
+                    }
+                }
+                else 
+                {
+                    GUI.enabled = false;
+                    GUILayout.Button("Pátio L.(X)", GUILayout.Height(25));
+                    GUI.enabled = true;
+                }
+            }
+            GUILayout.EndHorizontal();
+        }
+        GUILayout.EndScrollView();
+        GUILayout.EndVertical();
+        GUILayout.EndHorizontal();
+        GUILayout.Space(20);
+        
+        // === PAINEL DE ORDENS DO AVIÃO SELECIONADO ===
+        if (aviaoSelecionadoParaMissao != null && avioesNoPatio.Contains(aviaoSelecionadoParaMissao))
+        {
+            string nomeLimpo = ObterInfoAviao(aviaoSelecionadoParaMissao, out string corCristal, out string vidaStr);
+            GUILayout.Label($"<b>PAINEL DE ORDENS: <color={corCristal}>■</color> {nomeLimpo}{vidaStr}</b>");
+            
+            if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+            {
+                if (aviaoSelecionadoParaMissao.aguardandoCliqueRadar)
+                {
+                    GUILayout.Label("<color=yellow>⚠️ MODO ALVO ATIVO! Feche o Menu e Clique no mapa com o Botão Direito.</color>");
+                    if (GUILayout.Button("❌ Cancelar Ordem", GUILayout.Height(30)))
+                    {
+                        aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
+                    }
+                }
+                else
+                {
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(40))) ExecutarModoRadar(true);
+                    if (GUILayout.Button("🛡️ Patrulha Aérea", GUILayout.Height(40))) ExecutarModoRadar(false);
+                    if (GUILayout.Button("💣 Ataque Solo", GUILayout.Height(40))) ExecutarModoRadar(false);
+                    GUILayout.EndHorizontal();
+                }
+            }
+            else if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+            {
+                GUILayout.Label("<color=cyan>Aeronave civil/militar operando no espaço aéreo.</color>");
+                
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("🎯 ALTERAR ALVO/DESTINO", GUILayout.Height(50))) 
+                {
+                    ExecutarModoRadar(false);
+                }
+
+                if (GUILayout.Button("🔙 ABORTAR E RETORNAR À BASE", GUILayout.Height(50)))
+                {
+                    aviaoSelecionadoParaMissao.ComandoRetornarBase();
+                    aviaoSelecionadoParaMissao = null;
+                    menuAtivo = false;
+                    if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                }
+                GUILayout.EndHorizontal();
+            }
+            else
+            {
+                 GUILayout.Label($"<color=orange>Aeronave em trânsito: {aviaoSelecionadoParaMissao.estadoAtual}...</color>");
+                 GUI.enabled = false;
+                 GUILayout.Button("Aguarde a manobra de pista...", GUILayout.Height(40));
+                 GUI.enabled = true;
+            }
+        }
+    }
+
     private void ExecutarModoRadar(bool deveSerPassivo)
     {
-        if (aviaoSelecionadoParaMissao != null)
+        if (aviaoSelecionadoParaMissao == null) return;
+        
+        // Tenta forçar o modo no script de Missil, caso exista
+        LancadorMisselCaca missilScript = aviaoSelecionadoParaMissao.GetComponent<LancadorMisselCaca>();
+        if (missilScript != null)
         {
-            // Tenta forçar o modo no script de Missil, caso exista
-            LancadorMisselCaca missilScript = aviaoSelecionadoParaMissao.GetComponent<LancadorMisselCaca>();
-            if (missilScript != null)
-            {
-                missilScript.modoPassivo = deveSerPassivo;
-                Debug.Log($"[Aeroporto] Modo Passivo definido como: {deveSerPassivo}");
-            }
-
-            aviaoSelecionadoParaMissao.aguardandoCliqueRadar = true;
-            menuAtivo = false;
-            if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
-            Debug.Log($"[Aeroporto] Modo Missão Ativado. Fechando painel. Dê a ordem com o clique Direito!");
+            missilScript.modoPassivo = deveSerPassivo;
+            Debug.Log($"[Aeroporto] Modo Passivo definido como: {deveSerPassivo}");
         }
+
+        aviaoSelecionadoParaMissao.aguardandoCliqueRadar = true;
+        menuAtivo = false;
+        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+        Debug.Log($"[Aeroporto] Modo Missão Ativado. Fechando painel. Dê a ordem com o clique Direito!");
     }
 
     private void TrocarAvioesLogicaGeral(ControleAviao modeloSubsaturado, ControleAviao hangarASeAfastar)
@@ -556,26 +600,25 @@ public class GerenciadorAeroporto : MonoBehaviour
     private void LiberarAviaoParaPatio(ControleAviao aviaoDoHangar)
     {
         Transform vagaDesignada = ObterPrimeiraVagaLivre();
-        if (vagaDesignada != null)
-        {
-            avioesNoHangar.Remove(aviaoDoHangar);
-            aviaoDoHangar.gameObject.SetActive(true);
-            
-            aviaoDoHangar.vagaRetorno = vagaDesignada;
-            if (!avioesNoPatio.Contains(aviaoDoHangar)) avioesNoPatio.Add(aviaoDoHangar);
-            
-            StartCoroutine(TrazerAviaoParaPatio(aviaoDoHangar, vagaDesignada));
-        }
+        if (vagaDesignada == null) return;
+        
+        avioesNoHangar.Remove(aviaoDoHangar);
+        aviaoDoHangar.gameObject.SetActive(true);
+        
+        aviaoDoHangar.vagaRetorno = vagaDesignada;
+        if (!avioesNoPatio.Contains(aviaoDoHangar)) avioesNoPatio.Add(aviaoDoHangar);
+        
+        StartCoroutine(TrazerAviaoParaPatio(aviaoDoHangar, vagaDesignada));
     }
     
     public void LiberarTodosDoHangar()
     {
         // Copia a lista para evitar modificação simultânea no foreach
         List<ControleAviao> copiaHangar = new List<ControleAviao>(avioesNoHangar);
-        foreach (var av in copiaHangar)
+        for (int i = 0, count = copiaHangar.Count; i < count; i++)
         {
             if (ObterPrimeiraVagaLivre() == null) break; // Pátio lotado
-            if (av != null) LiberarAviaoParaPatio(av);
+            if (copiaHangar[i] != null) LiberarAviaoParaPatio(copiaHangar[i]);
         }
     }
     

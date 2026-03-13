@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 public class SplashGenerator : MonoBehaviour
@@ -11,7 +11,7 @@ public class SplashGenerator : MonoBehaviour
 
   void Awake()
   {
-    ocean = FindObjectOfType<OceanAdvanced>();
+    ocean = UnityEngine.Object.FindFirstObjectByType<OceanAdvanced>();
     speed = 0.0F;
     last_position = transform.position;
     InvokeRepeating("CheckSplash", 0.1F, 0.2F);

@@ -19,6 +19,8 @@ public class NavioPetroleiro : ControleUnidade
     public enum EstadoPetroleiro
     {
         NASCENDO,
+        // MODO PASSIVO: navio esperando infraestrutura
+        AGUARDANDO_INFRAESTRUTURA,
         SAINDO_ESTALEIRO,
         INDO_PLATAFORMA,
         ACOPLANDO_PLATAFORMA,
@@ -43,6 +45,10 @@ public class NavioPetroleiro : ControleUnidade
     public PierMarinha pierAlvo;
     private Vector3? pontoDeSaidaEstaleiro = null;
 
+    // Controle do modo passivo
+    private float _timerVerificacao = 0f;
+    private const float INTERVALO_VERIFICACAO = 5f; // Verifica a cada 5s se a infra está pronta
+
     protected override void Awake()
     {
         base.Awake();
@@ -53,14 +59,14 @@ public class NavioPetroleiro : ControleUnidade
     {
         base.Start();
         
-        // Configuração inicial de física e navegação
         if (GetComponent<Rigidbody>()) GetComponent<Rigidbody>().isKinematic = true;
         if (agenteNav != null)
         {
-            agenteNav.enabled = false; // Começa desligado para manobra manual
+            agenteNav.enabled = false;
             agenteNav.stoppingDistance = 1.0f;
         }
 
+        // 🚢 Começa no MODO PASSIVO: apenas aguarda a infraestrutura estar pronta!
         MudarEstado(EstadoPetroleiro.NASCENDO);
     }
 
@@ -76,7 +82,21 @@ public class NavioPetroleiro : ControleUnidade
         switch (estadoAtual)
         {
             case EstadoPetroleiro.NASCENDO:
-                MudarEstado(EstadoPetroleiro.SAINDO_ESTALEIRO);
+                // Vai para PASSIVO ao nascer (nunca inicia automaticamente)
+                MudarEstado(EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA);
+                break;
+
+            case EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA:
+                // ===================================================
+                // MODO PASSIVO: Verifica a cada 5s se já há Plataforma E Pier na cena.
+                // Quando encontrar ambos, liga o ciclo de trabalho automaticamente.
+                // ===================================================
+                _timerVerificacao += Time.deltaTime;
+                if (_timerVerificacao >= INTERVALO_VERIFICACAO)
+                {
+                    _timerVerificacao = 0f;
+                    VerificarEAtivarServico();
+                }
                 break;
 
             case EstadoPetroleiro.SAINDO_ESTALEIRO:
@@ -93,7 +113,6 @@ public class NavioPetroleiro : ControleUnidade
                 break;
 
             case EstadoPetroleiro.CARREGANDO:
-                // Agora carrega de verdade!
                 ExecutarOperacaoLogistica(true, EstadoPetroleiro.SAINDO_PLATAFORMA);
                 break;
 
@@ -118,6 +137,33 @@ public class NavioPetroleiro : ControleUnidade
             case EstadoPetroleiro.RE_DO_PIER:
                 ExecutarManobraRe(6.0f, EstadoPetroleiro.INDO_PLATAFORMA, false, velocidadeManobra);
                 break;
+        }
+    }
+
+    // ===================================================
+    // ATIVAÇÃO AUTOMÁTICA: Procura Plataforma + Pier
+    // Só liga o navio quando a infraestrutura estiver montada!
+    // ===================================================
+    void VerificarEAtivarServico()
+    {
+        if (plataformaAlvo == null)
+            plataformaAlvo = Object.FindFirstObjectByType<PlataformaOffshore>();
+
+        if (pierAlvo == null)
+            pierAlvo = Object.FindFirstObjectByType<PierMarinha>();
+
+        // Só ativa se ambos existirem
+        if (plataformaAlvo != null && pierAlvo != null)
+        {
+            statusDebug = "Infraestrutura encontrada! Iniciando serviço de logística.";
+            Debug.Log("[Navio Petroleiro] Plataforma e Pier detectados! Saindo para trabalhar.");
+            MudarEstado(EstadoPetroleiro.SAINDO_ESTALEIRO);
+        }
+        else
+        {
+            string faltando = (plataformaAlvo == null && pierAlvo == null) ? "Plataforma e Pier" :
+                              (plataformaAlvo == null) ? "Plataforma Offshore" : "Pier Marinha";
+            statusDebug = $"Modo Passivo: Aguardando {faltando}...";
         }
     }
 
@@ -409,13 +455,13 @@ public class NavioPetroleiro : ControleUnidade
 
     void BuscarPlataforma()
     {
-        plataformaAlvo = FindObjectOfType<PlataformaOffshore>(); // Pega a primeira que achar
+        plataformaAlvo = Object.FindFirstObjectByType<PlataformaOffshore>();
         if (plataformaAlvo == null) Debug.LogError("[Navio] Nenhuma PlataformaOffshore na cena!");
     }
 
     void BuscarPier()
     {
-        pierAlvo = FindObjectOfType<PierMarinha>(); // Pega o primeiro que achar
+        pierAlvo = Object.FindFirstObjectByType<PierMarinha>();
         if (pierAlvo == null) Debug.LogError("[Navio] Nenhum PierMarinha na cena!");
     }
 }

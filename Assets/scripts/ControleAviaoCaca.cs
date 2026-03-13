@@ -5,23 +5,20 @@ using System.Collections.Generic;
 [RequireComponent(typeof(SistemaDeDanos))]
 public class ControleAviaoCaca : MonoBehaviour
 {
-    // ============================================
-    // CONFIGURAÇÕES GERAIS
-    // ============================================
     [Header("Status de Voo")]
     public float altitudeCruzeiro = 40f; 
     [Tooltip("Altura para recolher o trem de pouso e considerar 'Voando'.")]
     public float alturaDecolagem = 15f; 
     
     [Header("Velocidades")]
-    public float velocidadeTaxi = 10f;       // No chão
-    public float velocidadeCruzeiro = 40f;   // Voando normal (Passivo)
-    public float velocidadeAtaque = 80f;     // Voando em combate (Ativo)
-    public float velocidadeCurva = 1.0f;     // Agilidade da curva
+    public float velocidadeTaxi = 10f;
+    public float velocidadeCruzeiro = 40f;
+    public float velocidadeAtaque = 80f;
+    public float velocidadeCurva = 1.0f;
 
     [Header("Combustão e Efeitos")]
-    public List<ParticleSystem> fogoNosMotores; // Arraste os efeitos de fogo aqui
-    public Light luzPosCombustao; // Opcional
+    public List<ParticleSystem> fogoNosMotores;
+    public Light luzPosCombustao;
 
     [Header("Trem de Pouso")]
     [Tooltip("Objetos das rodas que vão girar.")]
@@ -40,11 +37,8 @@ public class ControleAviaoCaca : MonoBehaviour
     private bool jaTocouPassagem = false;
     private Transform cameraTransform;
 
-    // ============================================
-    // ESTADOS INTERNOS
-    // ============================================
     public enum EstadoVoo { NoChao, Decolando, Voando, Pousando }
-    [SerializeField] // Para ver no inspector
+    [SerializeField]
     private EstadoVoo estadoAtual = EstadoVoo.NoChao;
 
     private float velocidadeAtual = 0f;
@@ -52,23 +46,35 @@ public class ControleAviaoCaca : MonoBehaviour
     public Vector3 DestinoAtual => destinoAtual;
     private bool temDestino = false;
     
-    // Controle de Rodas
-    private float fatorRodas = 0f; // 0 = Baixadas, 1 = Recolhidas
+    private float fatorRodas = 0f;
     private List<Quaternion> rotacoesOriginaisRodas = new List<Quaternion>();
 
-    private ControleUnidade controleUnidade;
-    private SistemaDeTiro sistemaTiro; // Para saber se tem alvo
+    // --- CACHE DE COMPONENTES (evita GetComponent repetido no Update) ---
+    private ControleUnidade _controleUnidade;
+    private SistemaDeTiro _sistemaTiro;
+    private ControleAviao _controleAviaoModerno;
+    private bool _temControleModerno = false;
 
     // --- IDENTIFICAÇÃO (CRISTAL) ---
     public Color corIdentificacao;
     private GameObject cristalIdentificacao;
 
+    // --- CACHE: distância ao quadrado para flyby (evita sqrt) ---
+    private float _distAtivacaoSomSqr;
+    private float _distResetSomSqr;
+
     void Start()
     {
-        controleUnidade = GetComponent<ControleUnidade>();
-        sistemaTiro = GetComponentInChildren<SistemaDeTiro>();
+        _controleUnidade = GetComponent<ControleUnidade>();
+        _sistemaTiro = GetComponentInChildren<SistemaDeTiro>();
+        _controleAviaoModerno = GetComponent<ControleAviao>();
+        _temControleModerno = (_controleAviaoModerno != null);
         
         destinoAtual = transform.position;
+
+        // Pré-calcula distâncias ao quadrado (evita sqrt no Update)
+        _distAtivacaoSomSqr = distanciaAtivacaoSom * distanciaAtivacaoSom;
+        _distResetSomSqr = (distanciaAtivacaoSom * 1.5f) * (distanciaAtivacaoSom * 1.5f);
 
         // --- GERAR CRISTAL ÚNICO ---
         corIdentificacao = Random.ColorHSV(0f, 1f, 0.8f, 1f, 0.8f, 1f);
@@ -76,9 +82,8 @@ public class ControleAviaoCaca : MonoBehaviour
         Destroy(cristalIdentificacao.GetComponent<Collider>());
         cristalIdentificacao.name = "CristalIdentificacao";
         cristalIdentificacao.transform.SetParent(this.transform);
-        cristalIdentificacao.transform.localPosition = new Vector3(0, 2.5f, 0); // Fica em cima do avião
+        cristalIdentificacao.transform.localPosition = new Vector3(0, 2.5f, 0);
         cristalIdentificacao.transform.localRotation = Quaternion.Euler(45f, 45f, 45f);
-        // Aumentado em +30% o tamanho (0.6 -> 0.78)
         cristalIdentificacao.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
         
         Renderer rend = cristalIdentificacao.GetComponent<Renderer>();
@@ -89,12 +94,11 @@ public class ControleAviaoCaca : MonoBehaviour
         }
 
         // Salva rotação original das rodas
-        foreach(var roda in rodas)
+        for (int i = 0, count = rodas.Count; i < count; i++)
         {
-            if(roda != null) rotacoesOriginaisRodas.Add(roda.localRotation);
+            if (rodas[i] != null) rotacoesOriginaisRodas.Add(rodas[i].localRotation);
         }
 
-        // Garante que começa desligado
         ControlarEfeitosMotor(false);
 
         // Inicializa som de passagem
@@ -104,7 +108,7 @@ public class ControleAviaoCaca : MonoBehaviour
         objSom.transform.SetParent(transform);
         objSom.transform.localPosition = Vector3.zero;
         audioSourcePassagem = objSom.AddComponent<AudioSource>();
-        audioSourcePassagem.spatialBlend = 1f; // 3D
+        audioSourcePassagem.spatialBlend = 1f;
         audioSourcePassagem.minDistance = 15f;
         audioSourcePassagem.maxDistance = 250f;
         audioSourcePassagem.playOnAwake = false;
@@ -115,41 +119,29 @@ public class ControleAviaoCaca : MonoBehaviour
     {
         // Animação do Cristal
         if (cristalIdentificacao != null)
-        {
             cristalIdentificacao.transform.Rotate(0, 90f * Time.deltaTime, 0, Space.World);
-        }
 
-        // --- SISTEMA DE COMBATIBILIDADE ---
-        // Se o novo ControleAviao (Moderno/Sistema de Aeroporto) existir, desliga TUDO do script velho (este) 
-        // e deixa só o cristal flutuando. O script moderno assume a boleia do avião.
-        if (GetComponent<ControleAviao>() != null) return;
+        // Se o ControleAviao (Moderno) existir, desliga TUDO do script velho — o moderno assume
+        if (_temControleModerno) return;
 
-        // 1. GERENCIAMENTO DE ESTADO
         AtualizarLogicaEstado();
-
-        // 2. MOVIMENTO FÍSICO
         MoverAviao();
-
-        // 3. ANIMAÇÃO DO TREM DE POUSO
         AnimarTremDePouso();
 
-        // 4. INPUT DE DECOLAGEM (Teste ou via Clique do ControleUnidade)
+        // Decolagem automática se tem destino longe
         if (estadoAtual == EstadoVoo.NoChao && temDestino)
         {
-            float dist = Vector3.Distance(transform.position, destinoAtual);
-            if (dist > 50f) // Só decola se o destino for longe
-            {
+            float distSqr = (transform.position - destinoAtual).sqrMagnitude;
+            if (distSqr > 2500f) // 50² = 2500
                 IniciarDecolagem();
-            }
         }
 
-        // 5. SOM DE PASSAGEM (Flyby) na Câmera
+        // SOM DE PASSAGEM (Flyby) na Câmera
         if (cameraTransform != null && somPassagem != null)
         {
-            float distCam = Vector3.Distance(transform.position, cameraTransform.position);
+            float distCamSqr = (transform.position - cameraTransform.position).sqrMagnitude;
             
-            // Só toca se estiver voando, próximo e ainda não tocou esse "passe"
-            if (distCam < distanciaAtivacaoSom && estadoAtual == EstadoVoo.Voando)
+            if (distCamSqr < _distAtivacaoSomSqr && estadoAtual == EstadoVoo.Voando)
             {
                 if (!jaTocouPassagem)
                 {
@@ -157,58 +149,43 @@ public class ControleAviaoCaca : MonoBehaviour
                     jaTocouPassagem = true;
                 }
             }
-            else if (distCam > distanciaAtivacaoSom * 1.5f)
+            else if (distCamSqr > _distResetSomSqr)
             {
-                // Reseta a flag para poder tocar novamente se ele voltar
                 jaTocouPassagem = false;
             }
         }
     }
 
-    // Chamado por scripts externos (ControleUnidade)
     public void DefinirDestino(Vector3 novoDestino)
     {
         destinoAtual = novoDestino;
-        // Mantém a altura de voo no destino para evitar mergulhar no chão
         if (estadoAtual == EstadoVoo.Voando)
-        {
             destinoAtual.y = altitudeCruzeiro;
-        }
         temDestino = true;
     }
 
     void AtualizarLogicaEstado()
     {
-        float alturaDoChao = transform.position.y; // Simplificado (assumindo chão em Y=0 ou usando Raycast)
+        float alturaDoChao = transform.position.y;
+        float dt = Time.deltaTime;
         
-        // Verifica se tem chuva de tiros ou inimigos
-        bool emCombate = false;
-        if (sistemaTiro != null && !sistemaTiro.modoPassivo)
-        {
-            // Tenta pegar o alvo privado do sistema de tiro via Reflection ou supõe lógica
-            // Aqui vamos assumir que se não está passivo e tem munição, está "Ativo"
-             emCombate = true; 
-        }
+        bool emCombate = (_sistemaTiro != null && !_sistemaTiro.modoPassivo);
 
         switch (estadoAtual)
         {
             case EstadoVoo.NoChao:
-                // Se o avião está com estado "NoChao" mas foi spawnado / já está no alto
                 if (alturaDoChao > alturaDecolagem + 5f)
                 {
                     estadoAtual = EstadoVoo.Voando;
                     break;
                 }
-
-                velocidadeAtual = Mathf.Lerp(velocidadeAtual, 0f, Time.deltaTime);
+                velocidadeAtual = Mathf.Lerp(velocidadeAtual, 0f, dt);
                 ControlarEfeitosMotor(false);
                 break;
 
             case EstadoVoo.Decolando:
-                // Sobe inclinado
-                velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeCruzeiro, Time.deltaTime * 0.5f);
+                velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeCruzeiro, dt * 0.5f);
                 ControlarEfeitosMotor(true);
-                
                 if (alturaDoChao > alturaDecolagem)
                 {
                     estadoAtual = EstadoVoo.Voando;
@@ -217,16 +194,14 @@ public class ControleAviaoCaca : MonoBehaviour
                 break;
 
             case EstadoVoo.Voando:
-                // Lógica de Velocidade Variável
                 float targetSpeed = emCombate ? velocidadeAtaque : velocidadeCruzeiro;
-                velocidadeAtual = Mathf.Lerp(velocidadeAtual, targetSpeed, Time.deltaTime);
+                velocidadeAtual = Mathf.Lerp(velocidadeAtual, targetSpeed, dt);
                 ControlarEfeitosMotor(true);
                 break;
                 
             case EstadoVoo.Pousando:
-                velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeTaxi, Time.deltaTime * 0.2f);
-                ControlarEfeitosMotor(false); // Motor fraco no pouso
-                
+                velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeTaxi, dt * 0.2f);
+                ControlarEfeitosMotor(false);
                 if (alturaDoChao < 2f)
                 {
                     estadoAtual = EstadoVoo.NoChao;
@@ -238,60 +213,43 @@ public class ControleAviaoCaca : MonoBehaviour
 
     void MoverAviao()
     {
-        if (estadoAtual == EstadoVoo.NoChao) return; // Parado ou taxiando manualmente (não implementado taxi complexo)
+        if (estadoAtual == EstadoVoo.NoChao) return;
 
-        // DIREÇÃO
-        Vector3 direcao = transform.forward;
-        
+        float dt = Time.deltaTime;
+
         if (estadoAtual == EstadoVoo.Voando || estadoAtual == EstadoVoo.Decolando)
         {
-            // Se tem destino, vira para ele
             if (temDestino)
             {
                 Vector3 vetorParaDestino = destinoAtual - transform.position;
                 
-                // Se chegou perto do destino e não tem ataque, CIRCULA!
-                if (vetorParaDestino.magnitude < 100f && estadoAtual == EstadoVoo.Voando)
+                if (vetorParaDestino.sqrMagnitude < 10000f && estadoAtual == EstadoVoo.Voando) // 100² = 10000
                 {
-                    // Lógica de Circular: Move o destino para a "direita" constantemente
                     destinoAtual = transform.position + (transform.right * 200f) + (transform.forward * 100f);
                     vetorParaDestino = destinoAtual - transform.position;
                 }
-                // Se está "Ativo" (Combate), voa direto!
                 
                 Quaternion rotacaoAlvo = Quaternion.LookRotation(vetorParaDestino);
-                transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, Time.deltaTime * velocidadeCurva);
+                transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, dt * velocidadeCurva);
             }
             
-            // ALTURA
             // Ajuste suave de altura (Fly-by-wire)
-            float alturaDesejada = (estadoAtual == EstadoVoo.Decolando) ? altitudeCruzeiro : altitudeCruzeiro;
-            
-            // Simples subida/descida no pitch
-            float erroAltura = alturaDesejada - transform.position.y;
+            float erroAltura = altitudeCruzeiro - transform.position.y;
             Vector3 pos = transform.position;
-            pos.y += erroAltura * Time.deltaTime * 0.5f; // Sobe suave
+            pos.y += erroAltura * dt * 0.5f;
             transform.position = pos;
         }
         else if (estadoAtual == EstadoVoo.Pousando)
         {
-            // Desce para o destino (pista)
             if (temDestino)
             {
-                var dir = (destinoAtual - transform.position).normalized;
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime);
+                Vector3 dir = (destinoAtual - transform.position).normalized;
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), dt);
             }
-            // Força descida
-            transform.Translate(Vector3.down * 5f * Time.deltaTime, Space.World);
+            transform.Translate(Vector3.down * 5f * dt, Space.World);
         }
 
-        // APLICA MOVIMENTO FINAL (Sempre para frente!)
-        transform.Translate(Vector3.forward * velocidadeAtual * Time.deltaTime);
-        
-        // BANKING (Inclina nas curvas)
-        // Recalcula banking baseado na curva
-        // BANKING (Inclina nas curvas)
-        // Recalcula banking baseado na curva
+        transform.Translate(Vector3.forward * velocidadeAtual * dt);
     }
 
     void IniciarDecolagem()
@@ -301,7 +259,6 @@ public class ControleAviaoCaca : MonoBehaviour
         Debug.Log("🛫 [F_C19] Iniciando sequência de decolagem...");
         estadoAtual = EstadoVoo.Decolando;
         
-        // Define um destino longe e alto na frente se não tiver
         if (!temDestino)
         {
             destinoAtual = transform.position + transform.forward * 1000f;
@@ -318,39 +275,23 @@ public class ControleAviaoCaca : MonoBehaviour
         temDestino = true;
     }
 
-    // ============================================
-    // SISTEMAS AUXILIARES
-    // ============================================
-
     void AnimarTremDePouso()
     {
-        // Define o alvo (0 = Baixado, 1 = Recolhido)
         float meta = (estadoAtual == EstadoVoo.Voando || estadoAtual == EstadoVoo.Decolando) ? 1f : 0f;
-        
-        // Se já está decolando mas ainda baixo (<15m), mantém baixado? 
-        // Não, o user disse "rodas recuar assim que voar". 
-        // Vamos considerar estado 'Voando' como gatilho principal.
         if (estadoAtual == EstadoVoo.Decolando && transform.position.y < alturaDecolagem) meta = 0f;
 
-        // Move fator
         fatorRodas = Mathf.MoveTowards(fatorRodas, meta, Time.deltaTime * velocidadeTremPouso);
 
-        // Aplica rotação nas rodas
-        for (int i = 0; i < rodas.Count; i++)
+        for (int i = 0, count = rodas.Count; i < count; i++)
         {
-            if (rodas[i] == null) continue;
+            if (rodas[i] == null || i >= rotacoesOriginaisRodas.Count) continue;
             
-            // Calcula rotação atual baseada no fator (Lerp)
-            // 0 -> Rotação Original
-            // 1 -> Rotação Original * 90 graus
             Quaternion rotOriginal = rotacoesOriginaisRodas[i];
             Quaternion rotRecolhida = rotOriginal * Quaternion.Euler(eixoRecolher * anguloRecolher);
-            
             rodas[i].localRotation = Quaternion.Slerp(rotOriginal, rotRecolhida, fatorRodas);
         }
     }
 
-    // --- MÉTODOS PÚBLICOS DE ESTADO ---
     public string ObterEstadoTexto()
     {
         switch (estadoAtual)
@@ -365,20 +306,18 @@ public class ControleAviaoCaca : MonoBehaviour
 
     void ControlarEfeitosMotor(bool ligado)
     {
-        foreach (var ps in fogoNosMotores)
+        for (int i = 0, count = fogoNosMotores.Count; i < count; i++)
         {
+            ParticleSystem ps = fogoNosMotores[i];
             if (ps == null) continue;
             if (ligado && !ps.isPlaying) ps.Play();
-            if (!ligado && ps.isPlaying) ps.Stop();
+            else if (!ligado && ps.isPlaying) ps.Stop();
         }
         
         if (luzPosCombustao != null)
-        {
             luzPosCombustao.enabled = ligado;
-        }
     }
     
-    // Gizmos para debug
     void OnDrawGizmos()
     {
         if (!Application.isPlaying) return;

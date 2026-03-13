@@ -48,87 +48,96 @@ public class ControleAviao : MonoBehaviour
     private float multiplicadorVelocidadeTurbo = 1f;
     private float tempoSegurandoTab = 0f;
 
+    // --- CACHE DE COMPONENTES (evita GetComponent no Update) ---
+    private ControleUnidade _controleUnidade;
+    private SistemaDeDanos _sistemaDanos;
+
     void Start()
     {
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null) rb.isKinematic = true; 
 
+        // Cache de componentes usados no Update
+        _controleUnidade = GetComponent<ControleUnidade>();
+        _sistemaDanos = GetComponent<SistemaDeDanos>();
+
         if (rodas == null) rodas = new List<Transform>();
         if (rodas.Count == 0)
         {
-            foreach (Transform f in GetComponentsInChildren<Transform>(true))
+            Transform[] filhos = GetComponentsInChildren<Transform>(true);
+            for (int i = 0, count = filhos.Length; i < count; i++)
             {
+                Transform f = filhos[i];
+                if (f == transform) continue;
                 string n = f.name.ToLower();
                 if (n.Contains("wheel") || n.Contains("roda") || n.Contains("gear") || n.Contains("pneu") || n.Contains("tremdepouso"))
-                {
-                    if (f != transform) rodas.Add(f); 
-                }
+                    rodas.Add(f); 
             }
         }
 
-        foreach (var roda in rodas)
+        for (int i = 0, count = rodas.Count; i < count; i++)
         {
-            if (roda != null) rotacoesOriginaisRodas.Add(roda.localRotation);
-            else rotacoesOriginaisRodas.Add(Quaternion.identity);
+            rotacoesOriginaisRodas.Add(rodas[i] != null ? rodas[i].localRotation : Quaternion.identity);
         }
         AbaixarRodas(); 
     }
 
     void Update()
     {
-        if (estaEmModoVooFisico)
-        {
-            ControleUnidade cu = GetComponent<ControleUnidade>();
-            bool selecionado = (cu != null && cu.selecionado);
+        if (!estaEmModoVooFisico) return;
 
-            float multiplicadorDanos = 1f;
-            SistemaDeDanos danos = GetComponent<SistemaDeDanos>();
-            if (danos != null && danos.vidaMaxima > 0)
+        float dt = Time.deltaTime;
+        bool selecionado = (_controleUnidade != null && _controleUnidade.selecionado);
+
+        float multiplicadorDanos = 1f;
+        if (_sistemaDanos != null && _sistemaDanos.vidaMaxima > 0)
+        {
+            float pctVida = _sistemaDanos.vidaAtual / _sistemaDanos.vidaMaxima;
+            if (pctVida < 0.25f)
             {
-                float pctVida = danos.vidaAtual / danos.vidaMaxima;
-                if (pctVida < 0.25f)
+                multiplicadorDanos = 0.5f;
+                if (estadoAtual == EstadoAviao.EmMissao && !ordemParaRetorno)
                 {
-                    multiplicadorDanos = 0.5f;
-                    if (estadoAtual == EstadoAviao.EmMissao && !ordemParaRetorno)
-                    {
-                        Debug.Log($"<color=red>[{gameObject.name}] DANOS CRÍTICOS ({Mathf.RoundToInt(pctVida*100)}%)! Retornando base.</color>");
-                        ComandoRetornarBase();
-                    }
+                    Debug.Log($"<color=red>[{gameObject.name}] DANOS CRÍTICOS ({Mathf.RoundToInt(pctVida*100)}%)! Retornando base.</color>");
+                    ComandoRetornarBase();
                 }
             }
-
-            if (selecionado && Input.GetKey(KeyCode.Tab))
-            {
-                tempoSegurandoTab += Time.deltaTime;
-                if (tempoSegurandoTab >= 11f) multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 6f, Time.deltaTime);
-                else if (tempoSegurandoTab >= 5f) multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 4f, Time.deltaTime);
-                else if (tempoSegurandoTab >= 2f) multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 2f, Time.deltaTime);
-                else multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 1.5f, Time.deltaTime);
-            }
-            else
-            {
-                tempoSegurandoTab = 0f; 
-                multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 1f, Time.deltaTime * 2f);
-            }
-
-            ManobraVooRealista(multiplicadorDanos);
         }
+
+        if (selecionado && Input.GetKey(KeyCode.Tab))
+        {
+            tempoSegurandoTab += dt;
+            float alvo;
+            if (tempoSegurandoTab >= 11f) alvo = 6f;
+            else if (tempoSegurandoTab >= 5f) alvo = 4f;
+            else if (tempoSegurandoTab >= 2f) alvo = 2f;
+            else alvo = 1.5f;
+            multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, alvo, dt);
+        }
+        else
+        {
+            tempoSegurandoTab = 0f; 
+            multiplicadorVelocidadeTurbo = Mathf.Lerp(multiplicadorVelocidadeTurbo, 1f, dt * 2f);
+        }
+
+        ManobraVooRealista(multiplicadorDanos);
     }
 
     private void ManobraVooRealista(float multDano = 1f)
     {
+        float dt = Time.deltaTime;
         Vector3 retaAteAlvo = alvoGPSVoo - transform.position;
         Quaternion olharMundoDesejado = Quaternion.LookRotation(retaAteAlvo);
         float anguloPressaoLateralY = Vector3.SignedAngle(transform.forward, retaAteAlvo, Vector3.up);
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, olharMundoDesejado, taxaDeGiroLeme * Time.deltaTime);
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, olharMundoDesejado, taxaDeGiroLeme * dt);
         
         float velFinal = (velocidadeMaximaVoo * multiplicadorVelocidadeTurbo) * multDano;
-        Vector3 novaPos = transform.position + transform.forward * velFinal * Time.deltaTime;
+        Vector3 novaPos = transform.position + transform.forward * (velFinal * dt);
 
         if (novaPos.y < 15f)
         {
             novaPos.y = 15f;
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, transform.eulerAngles.y, 0), 30f * Time.deltaTime);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, transform.eulerAngles.y, 0), 30f * dt);
         }
         
         if (Mathf.Abs(novaPos.x) > 1800f || Mathf.Abs(novaPos.z) > 1800f)
@@ -136,8 +145,8 @@ public class ControleAviao : MonoBehaviour
              Vector3 centroDoMap = new Vector3(0, novaPos.y, 0);
              alvoGPSVoo = centroDoMap;
              Quaternion freioDeOuro = Quaternion.LookRotation((centroDoMap - transform.position).normalized);
-             transform.rotation = Quaternion.RotateTowards(transform.rotation, freioDeOuro, 100f * Time.deltaTime);
-             novaPos = transform.position + transform.forward * velocidadeMaximaVoo * Time.deltaTime;
+             transform.rotation = Quaternion.RotateTowards(transform.rotation, freioDeOuro, 100f * dt);
+             novaPos = transform.position + transform.forward * (velocidadeMaximaVoo * dt);
         }
 
         transform.position = novaPos;
@@ -146,8 +155,8 @@ public class ControleAviao : MonoBehaviour
         {
             float inclinacaoAlvoZ = Mathf.Clamp(anguloPressaoLateralY * -2.5f, -asaBankingMaximo, asaBankingMaximo);
             float inclinacaoAlvoX = Mathf.Clamp(retaAteAlvo.y * -3.0f, -arfagemPitchMaxima, arfagemPitchMaxima);
-            giroLateralRoll = Mathf.Lerp(giroLateralRoll, inclinacaoAlvoZ, Time.deltaTime * 5f);
-            empinadaPitch = Mathf.Lerp(empinadaPitch, inclinacaoAlvoX, Time.deltaTime * 5f);
+            giroLateralRoll = Mathf.Lerp(giroLateralRoll, inclinacaoAlvoZ, dt * 5f);
+            empinadaPitch = Mathf.Lerp(empinadaPitch, inclinacaoAlvoX, dt * 5f);
             modeloMecanicoVisual.localRotation = Quaternion.Euler(empinadaPitch, 0f, giroLateralRoll);
         }
     }
@@ -155,31 +164,42 @@ public class ControleAviao : MonoBehaviour
     public IEnumerator MoverInterpolado(Vector3 destinoOriginal, float vel, bool pontoFinal = false)
     {
         float raioDeAceitacao = pontoFinal ? 0.5f : 1.5f;
-        while (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(destinoOriginal.x, destinoOriginal.z)) > raioDeAceitacao)
+        float raioSqr = raioDeAceitacao * raioDeAceitacao; // Pré-calcula para sqrMagnitude
+        
+        while (true)
         {
+            Vector3 diff = new Vector3(destinoOriginal.x - transform.position.x, 0, destinoOriginal.z - transform.position.z);
+            if (diff.sqrMagnitude <= raioSqr) break; // sqrMagnitude evita sqrt
+
             Vector3 vetorAteDestino = destinoOriginal - transform.position;
-            if (vetorAteDestino.magnitude < 4f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f) break;
+            if (vetorAteDestino.sqrMagnitude < 16f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f) break; // 4² = 16
+
             Vector3 direcaoHorizon = new Vector3(vetorAteDestino.x, 0, vetorAteDestino.z).normalized;
             if (direcaoHorizon != Vector3.zero)
             {
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(direcaoHorizon), 50f * Time.deltaTime);
-                float fatorVelocidade = Mathf.Clamp01(1.2f - (Quaternion.Angle(transform.rotation, Quaternion.LookRotation(direcaoHorizon)) / 45f));
+                Quaternion rotAlvo = Quaternion.LookRotation(direcaoHorizon);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, 50f * Time.deltaTime);
+                float fatorVelocidade = Mathf.Clamp01(1.2f - (Quaternion.Angle(transform.rotation, rotAlvo) / 45f));
                 if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
                 transform.position += vetorAteDestino.normalized * (vel * fatorVelocidade) * Time.deltaTime;
             }
             if (modeloMecanicoVisual != null) modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.identity, Time.deltaTime * 5f);
             yield return null;
         }
-        if (pontoFinal && Vector3.Distance(transform.position, destinoOriginal) < 3.5f) transform.position = destinoOriginal;
+        if (pontoFinal && (transform.position - destinoOriginal).sqrMagnitude < 12.25f) // 3.5² = 12.25
+            transform.position = destinoOriginal;
     }
 
     public IEnumerator SeguirCaminhoDeWaypoints(List<Transform> caminho, float velInicial, float velFinal, bool aceleracaoGradativa = false)
     {
-        for (int i = 0; i < caminho.Count; i++)
+        int totalWaypoints = caminho.Count;
+        float divisor = (totalWaypoints > 1) ? (float)(totalWaypoints - 1) : 1f; // Pré-calcula divisor
+        
+        for (int i = 0; i < totalWaypoints; i++)
         {
             if (caminho[i] == null) continue;
-            float velAtual = aceleracaoGradativa && caminho.Count > 1 ? Mathf.Lerp(velInicial, velFinal, (float)i / (caminho.Count - 1)) : velInicial;
-            yield return StartCoroutine(MoverInterpolado(caminho[i].position, velAtual, i == caminho.Count - 1));
+            float velAtual = aceleracaoGradativa ? Mathf.Lerp(velInicial, velFinal, i / divisor) : velInicial;
+            yield return StartCoroutine(MoverInterpolado(caminho[i].position, velAtual, i == totalWaypoints - 1));
             if (caminho[i].name.ToLower().Contains("alinhamento")) yield return new WaitForSeconds(2.5f);
         }
     }
@@ -200,6 +220,12 @@ public class ControleAviao : MonoBehaviour
 
     private IEnumerator SequenciaDeVooEPouso()
     {
+        if (aeroportoOrigem == null) 
+        {
+            Destroy(gameObject); // Sem aeroporto, explode/se sacrifica
+            yield break;
+        }
+
         ordemParaRetorno = false;
         estadoAtual = EstadoAviao.Decolando;
         vagaRetorno = null; 
@@ -211,40 +237,69 @@ public class ControleAviao : MonoBehaviour
         centroDaPatrulha = alvoGPSVoo;
         StartCoroutine(RecolherRodas(3f));
 
-        while (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(centroDaPatrulha.x, centroDaPatrulha.z)) > 100f)
+        // Voa até o centro da patrulha
+        while (true)
         {
+            Vector3 diff = new Vector3(transform.position.x - centroDaPatrulha.x, 0, transform.position.z - centroDaPatrulha.z);
+            if (diff.sqrMagnitude <= 10000f) break; // 100² = 10000
             if (ordemParaRetorno) break;
             alvoGPSVoo = centroDaPatrulha; 
             yield return null;
         }
 
+        // Loop de patrulha
         while (!ordemParaRetorno)
         {
-            if (emAtaqueMergulho) alvoGPSVoo = alvoDoMergulho;
+            if (emAtaqueMergulho) 
+            {
+                alvoGPSVoo = alvoDoMergulho;
+            }
             else if (!alvoPrioritarioIA)
             {
                 alvoGPSVoo = transform.position + (transform.right * 150f) + (transform.forward * 100f);
-                alvoGPSVoo.y = centroDaPatrulha.y; 
-                if (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(centroDaPatrulha.x, centroDaPatrulha.z)) > 250f) alvoGPSVoo = centroDaPatrulha;
+                alvoGPSVoo.y = centroDaPatrulha.y;
+                
+                Vector3 diffPatrulha = new Vector3(transform.position.x - centroDaPatrulha.x, 0, transform.position.z - centroDaPatrulha.z);
+                if (diffPatrulha.sqrMagnitude > 62500f) alvoGPSVoo = centroDaPatrulha; // 250² = 62500
             }
             yield return null;
         }
 
+        // --- RETORNO À BASE ---
         ordemParaRetorno = false;
         estadoAtual = EstadoAviao.Pousando;
+
+        if (aeroportoOrigem == null || aeroportoOrigem.waypointsDecida == null || aeroportoOrigem.waypointsDecida.Count == 0)
+        {
+            // O Aeroporto sumiu ou os dados do aeroporto foram destruídos enquanto estávamos no céu!
+            Debug.LogWarning($"[{gameObject.name}] Meu Aeroporto original foi DESTRUÍDO. Realizando Pouso Forçado/Ejeção.");
+            var dmg = GetComponent<SistemaDeDanos>();
+            if (dmg) dmg.ReceberDano(9999f); else Destroy(gameObject);
+            yield break;
+        }
+
         Vector3 pontoFreiada = aeroportoOrigem.waypointsDecida[0].position;
         alvoGPSVoo = pontoFreiada;
         if (alvoGPSVoo.y < 40f) alvoGPSVoo.y = 40f; 
         
-        while (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(alvoGPSVoo.x, alvoGPSVoo.z)) > 70f)
+        while (true)
         {
-            if (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(alvoGPSVoo.x, alvoGPSVoo.z)) < 400f) AbaixarRodas();
+            Vector3 diff2D = new Vector3(transform.position.x - alvoGPSVoo.x, 0, transform.position.z - alvoGPSVoo.z);
+            float distSqr = diff2D.sqrMagnitude;
+            if (distSqr <= 4900f) break; // 70² = 4900
+            if (distSqr < 160000f) AbaixarRodas(); // 400² = 160000
             yield return null;
         }
 
         AbaixarRodas();
         estaEmModoVooFisico = false;
         yield return StartCoroutine(SeguirCaminhoDeWaypoints(aeroportoOrigem.waypointsDecida, velocidadeMaximaVoo * 0.5f, velocidadeSolo, true));
+
+        if (aeroportoOrigem == null) 
+        {
+            if (_sistemaDanos) _sistemaDanos.ReceberDano(9999f); else Destroy(gameObject);
+            yield break;
+        }
 
         estadoAtual = EstadoAviao.RetornandoPraVaga;
         if (aeroportoOrigem.wpAndadar != null) yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpAndadar.position, velocidadeSolo, true));
@@ -253,8 +308,7 @@ public class ControleAviao : MonoBehaviour
             yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpAnalise.position, velocidadeSolo, true));
             
             // REPARO AO CHEGAR: Restaura 100% da vida no ponto de análise
-            SistemaDeDanos danos = GetComponent<SistemaDeDanos>();
-            if (danos != null) danos.Reparar(danos.vidaMaxima);
+            if (_sistemaDanos != null) _sistemaDanos.Reparar(_sistemaDanos.vidaMaxima);
             
             estadoAtual = EstadoAviao.ProntoNoPatio; 
             yield return new WaitForSeconds(3f);
@@ -271,8 +325,11 @@ public class ControleAviao : MonoBehaviour
         }
         else
         {
-             yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpPronto.position, velocidadeSolo, true));
-             aeroportoOrigem.GuardarNoHangarAutomatico(this);
+             if (aeroportoOrigem.wpPronto != null)
+             {
+                 yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpPronto.position, velocidadeSolo, true));
+             }
+             if (aeroportoOrigem != null) aeroportoOrigem.GuardarNoHangarAutomatico(this);
         }
     }
 
@@ -285,22 +342,28 @@ public class ControleAviao : MonoBehaviour
         while (t < 1f)
         {
             t += Time.deltaTime;
-            for (int i = 0; i < rodas.Count; i++)
+            for (int i = 0, count = rodas.Count; i < count; i++)
             {
-                if (rodas[i] != null) rodas[i].localRotation = Quaternion.Slerp(rotacoesOriginaisRodas[i], rotacoesOriginaisRodas[i] * Quaternion.Euler(-50f, 0f, 0f), t);
+                if (rodas[i] != null && i < rotacoesOriginaisRodas.Count)
+                    rodas[i].localRotation = Quaternion.Slerp(rotacoesOriginaisRodas[i], rotacoesOriginaisRodas[i] * Quaternion.Euler(-50f, 0f, 0f), t);
             }
             yield return null;
         }
-        foreach (var roda in rodas) if (roda != null) roda.gameObject.SetActive(false);
+        for (int i = 0, count = rodas.Count; i < count; i++)
+            if (rodas[i] != null) rodas[i].gameObject.SetActive(false);
     }
 
     private void AbaixarRodas()
     {
         if (!rodasRecolhidas) return;
         rodasRecolhidas = false;
-        for (int i = 0; i < rodas.Count; i++)
+        for (int i = 0, count = rodas.Count; i < count; i++)
         {
-            if (rodas[i] != null) { rodas[i].gameObject.SetActive(true); rodas[i].localRotation = rotacoesOriginaisRodas[i]; }
+            if (rodas[i] != null && i < rotacoesOriginaisRodas.Count) 
+            { 
+                rodas[i].gameObject.SetActive(true); 
+                rodas[i].localRotation = rotacoesOriginaisRodas[i]; 
+            }
         }
     }
 
@@ -313,7 +376,8 @@ public class ControleAviao : MonoBehaviour
     {
         emAtaqueMergulho = true;
         float velOriginal = velocidadeMaximaVoo;
-        alvoDoMergulho = transform.position + transform.forward * 120f; alvoDoMergulho.y = 150f;
+        alvoDoMergulho = transform.position + transform.forward * 120f; 
+        alvoDoMergulho.y = 150f;
         velocidadeMaximaVoo = velOriginal * 0.4f;
         yield return new WaitForSeconds(2.0f);
         alvoDoMergulho = pontoFinal;

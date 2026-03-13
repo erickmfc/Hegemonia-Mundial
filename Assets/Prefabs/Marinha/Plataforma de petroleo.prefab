@@ -5701,9 +5701,10 @@ GameObject:
   - component: {fileID: 3759142123104144883}
   - component: {fileID: 8706000182368702247}
   - component: {fileID: 3316402462020892982}
+  - component: {fileID: 3620329125802953521}
   m_Layer: 0
   m_Name: Plataforma de petroleo
-  m_TagString: Player
+  m_TagString: Imovel
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -5801,6 +5802,22 @@ MonoBehaviour:
   pontoAbastecer: {fileID: 1317080866367275062}
   pontoSaida: {fileID: 8098672532111533384}
   ocupada: 0
+--- !u!208 &3620329125802953521
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4823762535859768294}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 7.5, y: 7.5, z: 10}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: -5.62, y: -7.65, z: 5.94}
+  m_TimeToStationary: 0.5
 --- !u!1 &5424129209385258168
 GameObject:
   m_ObjectHideFlags: 0

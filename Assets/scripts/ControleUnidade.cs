@@ -45,6 +45,12 @@ public class ControleUnidade : MonoBehaviour
                 agente = null; 
             }
         }
+        
+        // CORREÇÃO: Impede que animações do modelo (Root Motion) decolem sozinhas e deixem a seleção p/ trás
+        if (animator != null)
+        {
+            animator.applyRootMotion = false;
+        }
     }
 
     protected virtual void Start()

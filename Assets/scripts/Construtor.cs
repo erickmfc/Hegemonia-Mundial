@@ -25,10 +25,32 @@ public class Construtor : MonoBehaviour
 
     private bool previewLocalInvalido = false;
     private string motivoInvalido = ""; // Para mensagens dinâmicas de erro de terreno/território
+    
+    // FIX: Variável para ignorar o primeiro frame após a seleção, evitando conflito com o clique do botão da UI
+    private bool recemSelecionado = false;
 
     void Update()
     {
         if (!modoConstrucao || prefabSelecionado == null) return;
+        
+        // FIX: Se acabou de selecionar, ignora a checagem da UI neste frame para dar tempo do menu fechar
+        if (recemSelecionado)
+        {
+            recemSelecionado = false;
+            return;
+        }
+
+        // 1. Pausa o Construtor e oculta fantasmas se o mouse estiver sobre a Interface verdadeira (Menu, Minimapa)
+        // PROTEÇÃO: Ignora a malha invisível de Barras de Vida (WorldSpace Canvas) das tropas da IA!
+        if (IsMouseOverUI())
+        {
+            if (fantasmaUnico != null) fantasmaUnico.SetActive(false);
+            foreach (var f in fantasmasMuro) { if (f != null) f.SetActive(false); }
+            return; // Bloqueia a construção se o mouse estiver na UI
+        }
+
+        // 2. Garante que os fantasmas fiquem visíveis se o mouse não estiver na UI
+        if (fantasmaUnico != null && !fantasmaUnico.activeSelf) fantasmaUnico.SetActive(true);
 
         // Cancelar com Botão Direito
         if (Input.GetMouseButtonDown(1)) 
@@ -70,7 +92,6 @@ public class Construtor : MonoBehaviour
                 if (Physics.Raycast(origemCeu, Vector3.down, out infoTerreno, 1000f, mascaraGeral))
                 {
                     // Ignora se o raio bateu na própria água (se tiver colisor) ou em coisas navais
-                    // Queremos saber se bateu em TERRENO/CHÃO
                     bool bateuEmAguaOuNaval = infoTerreno.collider.name.ToLower().Contains("agua") || 
                                               infoTerreno.collider.name.ToLower().Contains("water") ||
                                               infoTerreno.collider.gameObject.layer == 4; // Water
@@ -102,9 +123,6 @@ public class Construtor : MonoBehaviour
                     // AJUSTE DE ALTURA ESPECÍFICO
                     if (prefabSelecionado.name.ToLower().Contains("plataforma"))
                     {
-                        // Sobe a plataforma para ficar "mais alta" como pedido
-                        // +50% visualmente? Vamos testar um valor fixo ou relativo.
-                        // Se o modelo tem pivô no centro, subir ajuda.
                         pontoMouse.y = 30.0f; // Ajuste FIXO conforme referência da cena (Y ~30)
                     }
                 }
@@ -118,18 +136,42 @@ public class Construtor : MonoBehaviour
                 acertouChao = true;
                 pontoMouse = toque.point;
             }
-            else if (Physics.Raycast(raio, out toque, 1000f, mascaraGeral))
+            else 
             {
-                acertouChao = true;
-                pontoMouse = toque.point;
-                // Debug (Opcional)
+                // =========================================================================
+                // 🛡️ A GRANDE CORREÇÃO: PERFURAÇÃO DE COLISORES BUGADOS (RAYCAST ALL)
+                // =========================================================================
+                // Em vez de bater na primeira coisa (que pode ser a caixa gigante do dedo do soldado),
+                // nós atravessamos todas as camadas até achar o chão verdadeiro.
+                RaycastHit[] hits = Physics.RaycastAll(raio, 2000f, mascaraGeral);
+                
+                // Ordena os impactos do mais perto da câmera para o mais longe
+                System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+                foreach (var h in hits)
+                {
+                    if (h.collider == null) continue;
+                    
+                    string n = h.collider.name.ToLower();
+                    
+                    // 1. Ignora os ossos bugados e cubos de colisão das tropas importadas
+                    if (n.Contains("bip001") || n.Contains("bone") || n.Contains("finger") || n.Contains("cube"))
+                        continue;
+
+                    // 2. Ignora os próprios soldados/veículos inteiros para poder clicar no chão atrás deles
+                    if (h.collider.GetComponentInParent<UnityEngine.AI.NavMeshAgent>() != null || h.collider.GetComponentInParent<ControleUnidade>() != null)
+                        continue;
+
+                    // Se sobreviveu aos filtros, achou o chão real!
+                    acertouChao = true;
+                    pontoMouse = h.point;
+                    break;
+                }
             }
         }
 
         if (acertouChao)
         {
-            // Não redeclara pontoMouse, usa o calculado acima
-            
             bool ehMuro = prefabSelecionado.name.Contains("Muro") || prefabSelecionado.name.Contains("Fence");
             bool ehPlataforma = prefabSelecionado.name.ToLower().Contains("plataforma");
 
@@ -205,12 +247,21 @@ public class Construtor : MonoBehaviour
     // --- CONSTRUÇÃO NORMAL (Casas, Quartéis) ---
     void GerenciarConstrucaoNormal(Vector3 ponto)
     {
-        // Atualiza o fantasma
+        // Atualiza o fantasma de forma segura (evita que Awake() cause erros antes de limparmos os scripts)
         if (fantasmaUnico == null)
         {
-            fantasmaUnico = Instantiate(prefabSelecionado, ponto, Quaternion.identity);
-            RemoverColisoresEScripts(fantasmaUnico); // Limpa scripts e colisores
+            GameObject containerSeguro = new GameObject("ContainerSeguro_Construtor");
+            containerSeguro.SetActive(false); // Mantém inativo para segurar o Awake
+
+            fantasmaUnico = Instantiate(prefabSelecionado, ponto, Quaternion.identity, containerSeguro.transform);
+            
+            RemoverColisoresEScripts(fantasmaUnico); // Limpa tudo com ele inativo
             SetLayerRecursively(fantasmaUnico, LayerMask.NameToLayer("Ignore Raycast"));
+            
+            fantasmaUnico.transform.SetParent(null); // Tira do container
+            Destroy(containerSeguro); // Limpa o container
+            
+            fantasmaUnico.SetActive(true); // Agora ele acorda sem scripts perigosos
         }
         
         fantasmaUnico.transform.position = ponto;
@@ -230,8 +281,6 @@ public class Construtor : MonoBehaviour
             if (previewLocalInvalido)
             {
                 Debug.LogWarning($"⚠️ [Construtor] Abortando: {motivoInvalido}");
-                
-                // IMPORTANTE: Bloqueia a construção. Não avança!
                 return; 
             }
 
@@ -322,49 +371,38 @@ public class Construtor : MonoBehaviour
 
     void DesativarLogicaUnidade(GameObject unidade)
     {
-        // Desativa NavMeshAgent para não andar enquanto constrói
         var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent != null) agent.enabled = false;
 
-        // Desativa scripts de comportamento
         MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
         foreach (var script in scripts) script.enabled = false;
-        
-        // Mantém Collider ativo para cliques (Demolição futura)
     }
 
     void ReativarLogicaUnidade(GameObject unidade)
     {
-        // Reativa Scripts
         MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
         foreach (var script in scripts) script.enabled = true;
 
-        // Reativa NavMeshAgent com segurança
         var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent != null) 
         {
             agent.enabled = true;
         }
         
-        // Garante layer correta
         unidade.layer = LayerMask.NameToLayer("Default");
     }
 
     // --- CONSTRUÇÃO DE MURO (Estilo RTS) ---
     void GerenciarConstrucaoMuro(Vector3 pontoAtual)
     {
-        // ROTAÇÃO COM TECLA R (funciona em qualquer etapa)
         if (Input.GetKeyDown(KeyCode.R))
         {
             rotacaoExtra += 90f;
             if (rotacaoExtra >= 360f) rotacaoExtra = 0f;
-            Debug.Log($"[Construtor] Muro rotacionado para {rotacaoExtra}°");
         }
 
-        // ETAPA 1: Ainda não definiu o início
         if (!definindoMuro)
         {
-            // Mostra 1 fantasma seguindo o mouse
             AtualizarFantasmas(1, pontoAtual, pontoAtual);
 
             if (Input.GetMouseButtonDown(0))
@@ -373,53 +411,45 @@ public class Construtor : MonoBehaviour
                 pontoInicial = pontoAtual;
             }
         }
-        // ETAPA 2: Já definiu o início, agora está esticando
         else
         {
-            // Calcula direção e distância
             Vector3 direcao = pontoAtual - pontoInicial;
             float distancia = direcao.magnitude;
             int quantidadePecas = Mathf.Max(1, Mathf.RoundToInt(distancia / larguraDoMuro));
             
-            // Calcula o ponto final "travado" na grade do tamanho do muro
             Vector3 pontoFinalAjustado = pontoInicial + (direcao.normalized * (quantidadePecas * larguraDoMuro));
 
-            // Atualiza visualização (Fantasmas)
             AtualizarFantasmas(quantidadePecas, pontoInicial, pontoFinalAjustado);
 
-            // CLIQUE FINAL: Constrói de verdade
             if (Input.GetMouseButtonDown(0))
             {
                 ConstruirLinhaDeMuro(quantidadePecas, pontoInicial, pontoFinalAjustado);
-                definindoMuro = false; // Reseta para começar outro trecho se quiser
-                
-                // Muros podem ser contínuos? Se sim, não cancela.
-                // Mas cobramos o preço por UNIDADE? 
-                // O MenuConstrucao cobra 1x o preço base. Se o muro gasta N peças, deveria cobrar N vezes.
-                // Isso é complexo. Por enquanto, vamos assumir que o preço pago é pelo "pacote" de muro ou apenas 1 peça.
-                // Para evitar exploit, vamos fechar também.
+                definindoMuro = false; 
                 CancelarConstrucao(false);
             }
         }
     }
 
-    // Cria ou remove fantasmas para mostrar a prévia do muro
     void AtualizarFantasmas(int quantidade, Vector3 inicio, Vector3 fim)
     {
-        // 1. Garante que temos fantasmas suficientes na lista
         while (fantasmasMuro.Count < quantidade)
         {
-            GameObject g = Instantiate(prefabSelecionado);
-            RemoverColisoresEScripts(g); // Fantasma não pode ter colisão e nem scripts
+            GameObject containerSeguro = new GameObject("ContainerSeguro_Muro");
+            containerSeguro.SetActive(false);
+
+            GameObject g = Instantiate(prefabSelecionado, containerSeguro.transform);
+            RemoverColisoresEScripts(g); 
             SetLayerRecursively(g, LayerMask.NameToLayer("Ignore Raycast"));
+            
+            g.transform.SetParent(null);
+            Destroy(containerSeguro);
+
             fantasmasMuro.Add(g);
         }
         
-        // 2. Posiciona os fantasmas necessários
         Vector3 dir = (fim - inicio).normalized;
-        if (dir == Vector3.zero) dir = Vector3.forward; // Evita erro se inicio == fim
+        if (dir == Vector3.zero) dir = Vector3.forward; 
         Quaternion rotacaoBase = Quaternion.LookRotation(dir);
-        // Aplica a rotação extra (tecla R)
         Quaternion rotacaoFinal = rotacaoBase * Quaternion.Euler(0, rotacaoExtra, 0);
 
         for (int i = 0; i < quantidade; i++)
@@ -429,7 +459,6 @@ public class Construtor : MonoBehaviour
             fantasmasMuro[i].transform.rotation = rotacaoFinal;
         }
 
-        // 3. Esconde os fantasmas sobrando (se encolheu o muro)
         for (int i = quantidade; i < fantasmasMuro.Count; i++)
         {
             fantasmasMuro[i].SetActive(false);
@@ -440,7 +469,6 @@ public class Construtor : MonoBehaviour
     {
         Vector3 dir = (fim - inicio).normalized;
         Quaternion rotacaoBase = Quaternion.LookRotation(dir);
-        // Aplica a rotação extra (tecla R)
         Quaternion rotacaoFinal = rotacaoBase * Quaternion.Euler(0, rotacaoExtra, 0);
 
         for (int i = 0; i < quantidade; i++)
@@ -448,37 +476,30 @@ public class Construtor : MonoBehaviour
             Vector3 pos = inicio + (dir * (i * larguraDoMuro)) + (dir * (larguraDoMuro/2));
             GameObject novoMuro = Instantiate(prefabSelecionado, pos, rotacaoFinal);
             
-            // Força a reativação de tudo e redefine a Layer para o padrão (para as balas baterem)
             ReativarLogicaUnidade(novoMuro);
             EnsureCollider(novoMuro); 
         }
     }
 
-    // API PARA INTELIGÊNCIA ARTIFICIAL (CPU)
     public GameObject ConstruirEstruturaIA(GameObject prefab, Vector3 posicao, Quaternion rotacao)
     {
         if (prefab == null) return null;
-
-        // Instancia direto:
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
-        
-        // CORREÇÃO: Garante que tem colisor, senão não toma dano
         EnsureCollider(novoPredio);
-
         Debug.Log($"[Construtor IA] Construiu {prefab.name} em {posicao}");
         return novoPredio;
     }
     
-    // CHAMADO PELO SEU MENU
     public void SelecionarParaConstruir(GameObject prefab, int custo, DadosConstrucao.CategoriaItem categoria)
     {
-        // Se já estava construindo algo, cancela o anterior (e reembolsa se não construiu)
         if (modoConstrucao) CancelarConstrucao(true);
 
         prefabSelecionado = prefab;
-        custoAtual = custo; // Salva o custo para reembolso
+        custoAtual = custo; 
         categoriaAtual = categoria;
         modoConstrucao = true;
+        
+        recemSelecionado = true;
         Debug.Log($"[Construtor] MODO CONSTRUÇÃO ATIVADO para: {prefab.name}. Custo: {custo}. Categoria: {categoria}");
     }
 
@@ -486,30 +507,25 @@ public class Construtor : MonoBehaviour
     {
         if (reembolsar && custoAtual > 0)
         {
-            // Devolve o dinheiro
-            if (GerenciadorRecursos.Instancia != null)
+            GerenteDeJogo gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
+            if (gerente != null)
+            {
+                gerente.dinheiroAtual += custoAtual;
+                Debug.Log($"[Construtor] Reembolsado ${custoAtual} (Gerente Antigo)");
+            }
+            else if (GerenciadorRecursos.Instancia != null)
             {
                 GerenciadorRecursos.Instancia.AdicionarRecursos(addDinheiro: custoAtual);
                 Debug.Log($"[Construtor] Reembolsado ${custoAtual}");
-            }
-            else
-            {
-                GerenteDeJogo gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
-                if (gerente != null)
-                {
-                    gerente.dinheiroAtual += custoAtual;
-                    Debug.Log($"[Construtor] Reembolsado ${custoAtual} (Gerente Antigo)");
-                }
             }
         }
 
         modoConstrucao = false;
         definindoMuro = false;
         prefabSelecionado = null;
-        custoAtual = 0; // Reseta custo
-        rotacaoExtra = 0f; // Reseta a rotação
+        custoAtual = 0; 
+        rotacaoExtra = 0f; 
 
-        // Limpa fantasmas
         if (fantasmaUnico != null) Destroy(fantasmaUnico);
         fantasmaUnico = null;
         
@@ -520,13 +536,8 @@ public class Construtor : MonoBehaviour
         fantasmasMuro.Clear();
     }
 
-    // Utilitário para o "Ghost" não ter colisão física e atrapalhar o clique
-    // E AGORA TAMBÉM remove scripts para evitar erros de lógica no fantasma
     void RemoverColisoresEScripts(GameObject obj)
     {
-        // 1. Remove Colisores (Incluindo de filhos inativos)
-        // IMPORTANTE: Desativar 'enabled' primeiro para garantir que o Raycast não bata neles
-        // no mesmo frame em que são destruídos.
         Collider[] cols = obj.GetComponentsInChildren<Collider>(true);
         foreach (var c in cols) 
         {
@@ -534,42 +545,25 @@ public class Construtor : MonoBehaviour
             Destroy(c);
         }
         
-        // 2. Remove NavMeshObstacles
         UnityEngine.AI.NavMeshObstacle[] navs = obj.GetComponentsInChildren<UnityEngine.AI.NavMeshObstacle>(true);
         foreach (var n in navs) Destroy(n);
 
-        // 3. Remove Scripts (MonoBehaviours) para o fantasma ser puramente visual
-        // CUIDADO: Não remover componentes essenciais de renderização (MeshFilter, Renderer, etc)
-        // Por padrão, GetComponentsInChildren<MonoBehaviour> pega scripts do usuário E componentes nativos que herdam de MB.
-        // Vamos filtrar.
         MonoBehaviour[] scripts = obj.GetComponentsInChildren<MonoBehaviour>(true);
         foreach (var s in scripts)
         {
-            // Ignora se for nulo
             if (s == null) continue;
-
-            // NÃO DESTRUA O CONSTRUTOR SE ELE ESTIVER NO OBJETO!
             if (s == this) continue;
-
-            // APENAS DESATIVA. Destruir (Destroy) faz os scripts da torreta/avião rodarem 
-            // funções on OnDestroy() ou Start() por 1 frame sem os colisores (que já foram deletados acima),
-            // causando erros massivos de NullReference e travando o fantasma no mouse.
             s.enabled = false;
         }
     }
 
-    // CORREÇÃO: Verifica se o objeto tem colisor e adiciona um se faltar
     void EnsureCollider(GameObject obj)
     {
         if (obj.GetComponentInChildren<Collider>() == null)
         {
-            // Debug.LogWarning($"[Construtor] O objeto '{obj.name}' não tinha colisor! Adicionando BoxCollider automático para receber danos.");
-            
-            // Adiciona Box Collider no pai ou no filho que tem MeshRenderer
             Renderer r = obj.GetComponentInChildren<Renderer>();
             if (r != null)
             {
-                // Se o renderer estiver num filho, adicionamos o collider LÁ
                 if (r.gameObject != obj)
                 {
                     r.gameObject.AddComponent<BoxCollider>();
@@ -581,7 +575,6 @@ public class Construtor : MonoBehaviour
             }
             else
             {
-                // Fallback: adiciona no root
                 obj.AddComponent<BoxCollider>();
             }
         }
@@ -600,30 +593,27 @@ public class Construtor : MonoBehaviour
 
     public int VerTipoPonto(Vector3 ponto)
     {
-        // 1 = AGUA, 2 = TERRA, 0 = INCONCLUSIVO
         int mascaraGeral = ~(1 << LayerMask.NameToLayer("Ignore Raycast"));
-        RaycastHit hit;
         
-        if (Physics.Raycast(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, out hit, 1000f, mascaraGeral))
+        // CORREÇÃO: Aplica a mesma técnica de ignorar os ossos (Bip001) para a verificação de território da IA!
+        RaycastHit[] hits = Physics.RaycastAll(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, 1000f, mascaraGeral);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (var hit in hits)
         {
-            int l = hit.collider.gameObject.layer;
+            if (hit.collider == null) continue;
             string n = hit.collider.name.ToLower();
             
-            // Checa explícito
+            if (n.Contains("bip001") || n.Contains("bone") || n.Contains("cube") || n.Contains("finger")) continue;
+            if (hit.collider.GetComponentInParent<IdentidadeUnidade>()) continue;
+
+            int l = hit.collider.gameObject.layer;
             if (l == 4 || n.Contains("water") || n.Contains("agua") || n.Contains("ocean") || n.Contains("mar") || n.Contains("sea"))
-                return 1;
+                return 1; // Agua
+
+            if (hit.point.y <= alturaDoMar + 1.0f) return 1; // Agua Funda
             
-            if (hit.collider.GetComponent<IdentidadeUnidade>())
-                return 0;
-
-            // Se bateu no terreno, mas esse terreno está abaixo do nível do mar (típico de rios/praia profunda),
-            // então consideramos água!
-            if (hit.point.y <= alturaDoMar + 1.0f)
-            {
-                return 1;
-            }
-
-            return 2; // Terra Firme
+            return 2; // Terra Firme Real
         }
         
         if (Terrain.activeTerrain != null) 
@@ -632,22 +622,41 @@ public class Construtor : MonoBehaviour
             return 2;
         }
 
-        return 0; // Desconhecido (Céu vazio?)
+        return 0; 
+    }
+
+    private bool IsMouseOverUI()
+    {
+        if (UnityEngine.EventSystems.EventSystem.current == null) return false;
+
+        UnityEngine.EventSystems.PointerEventData eventData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current);
+        eventData.position = Input.mousePosition;
+        
+        List<UnityEngine.EventSystems.RaycastResult> results = new List<UnityEngine.EventSystems.RaycastResult>();
+        UnityEngine.EventSystems.EventSystem.current.RaycastAll(eventData, results);
+        
+        foreach (UnityEngine.EventSystems.RaycastResult result in results)
+        {
+            Canvas c = result.gameObject.GetComponentInParent<Canvas>();
+            if (c != null && c.renderMode != RenderMode.WorldSpace)
+            {
+                return true; 
+            }
+        }
+        return false; 
     }
 
     void OnGUI()
     {
         if (modoConstrucao && previewLocalInvalido && fantasmaUnico != null && !string.IsNullOrEmpty(motivoInvalido))
         {
-             // Pega um estilo base bacana de caixa (Box) do próprio Unity para ter um fundo escuro que dá leitura
              GUIStyle stylePopUp = new GUIStyle(GUI.skin.box);
              stylePopUp.fontSize = 18;
-             stylePopUp.normal.textColor = new Color(1f, 0.3f, 0.3f); // Vermelho pastel legível
+             stylePopUp.normal.textColor = new Color(1f, 0.3f, 0.3f); 
              stylePopUp.fontStyle = FontStyle.Bold;
              stylePopUp.alignment = TextAnchor.MiddleCenter;
              stylePopUp.wordWrap = true;
              
-             // Calcula a caixa fixa no centro e na porção inferior da tela, nunca vazando pras laterais
              float largura = 450f;
              float altura = 80f;
              Rect popupRect = new Rect((Screen.width - largura) / 2f, Screen.height - 180f, largura, altura);
@@ -656,7 +665,6 @@ public class Construtor : MonoBehaviour
         }
     }
 
-    // Muda a Layer recursivamente (para Ignore Raycast)
     void SetLayerRecursively(GameObject obj, int newLayer)
     {
         if (obj == null) return;
