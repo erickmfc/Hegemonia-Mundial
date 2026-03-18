@@ -66,18 +66,18 @@ public class ControleSubmarino : MonoBehaviour
         // Lógica de Inicialização Inteligente (Compatível com Estaleiro)
         // Se nascer perto da superfície (Y > -5), começa como superfície.
         // Se nascer fundo, começa submerso.
+        // Se nascer fundo, começa submerso.
+        float navMeshY = transform.position.y - (agente != null ? agente.baseOffset : 0f);
+
         if (transform.position.y > -5f)
         {
             estaSubmerso = false;
-            // Garante Y exato da superfície se quiser, ou deixa onde o estaleiro botou
-            // Vector3 pos = transform.position; pos.y = alturaSuperificie; transform.position = pos;
+            if (agente != null) agente.baseOffset = alturaSuperificie - navMeshY;
         }
         else
         {
             estaSubmerso = true;
-            Vector3 pos = transform.position;
-            pos.y = profundidadeSubmersao;
-            transform.position = pos;
+            if (agente != null) agente.baseOffset = profundidadeSubmersao - navMeshY;
         }
         
         // Todos os mísseis disponíveis
@@ -317,23 +317,27 @@ public class ControleSubmarino : MonoBehaviour
         
         Debug.Log("[Submarino] Subindo para superfície...");
         
-        Vector3 posInicial = transform.position;
-        Vector3 posFinal = new Vector3(transform.position.x, alturaSuperificie, transform.position.z);
+        float navMeshY = transform.position.y - (agente != null ? agente.baseOffset : 0f);
+        float offsetDesejado = alturaSuperificie - navMeshY;
+        float offsetInicial = agente != null ? agente.baseOffset : 0f;
         
-        float distancia = Mathf.Abs(posFinal.y - posInicial.y);
+        float distancia = Mathf.Abs(offsetDesejado - offsetInicial);
         float duracao = distancia / velocidadeMovimento;
         float tempoDecorrido = 0f;
         
-        while (tempoDecorrido < duracao)
+        if (duracao > 0.1f)
         {
-            tempoDecorrido += Time.deltaTime;
-            float progresso = tempoDecorrido / duracao;
-            
-            transform.position = Vector3.Lerp(posInicial, posFinal, progresso);
-            yield return null;
+            while (tempoDecorrido < duracao)
+            {
+                tempoDecorrido += Time.deltaTime;
+                float progresso = tempoDecorrido / duracao;
+                
+                if (agente != null) agente.baseOffset = Mathf.Lerp(offsetInicial, offsetDesejado, progresso);
+                yield return null;
+            }
         }
         
-        transform.position = posFinal;
+        if (agente != null) agente.baseOffset = offsetDesejado;
         estaSubmerso = false;
         emMovimento = false;
         
@@ -347,23 +351,27 @@ public class ControleSubmarino : MonoBehaviour
         
         Debug.Log("[Submarino] Descendo...");
         
-        Vector3 posInicial = transform.position;
-        Vector3 posFinal = new Vector3(transform.position.x, profundidadeSubmersao, transform.position.z);
+        float navMeshY = transform.position.y - (agente != null ? agente.baseOffset : 0f);
+        float offsetDesejado = profundidadeSubmersao - navMeshY;
+        float offsetInicial = agente != null ? agente.baseOffset : 0f;
         
-        float distancia = Mathf.Abs(posFinal.y - posInicial.y);
+        float distancia = Mathf.Abs(offsetDesejado - offsetInicial);
         float duracao = distancia / velocidadeMovimento;
         float tempoDecorrido = 0f;
         
-        while (tempoDecorrido < duracao)
+        if (duracao > 0.1f)
         {
-            tempoDecorrido += Time.deltaTime;
-            float progresso = tempoDecorrido / duracao;
-            
-            transform.position = Vector3.Lerp(posInicial, posFinal, progresso);
-            yield return null;
+            while (tempoDecorrido < duracao)
+            {
+                tempoDecorrido += Time.deltaTime;
+                float progresso = tempoDecorrido / duracao;
+                
+                if (agente != null) agente.baseOffset = Mathf.Lerp(offsetInicial, offsetDesejado, progresso);
+                yield return null;
+            }
         }
         
-        transform.position = posFinal;
+        if (agente != null) agente.baseOffset = offsetDesejado;
         estaSubmerso = true;
         emMovimento = false;
         
