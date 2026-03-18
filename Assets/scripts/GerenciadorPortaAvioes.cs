@@ -499,13 +499,20 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (subir)
         {
             avioesNoHangar.Remove(av);
+            
+            // 1. O elevador desce do convés até o hangar interno para buscar o avião
+            yield return StartCoroutine(MoverSuave(plataformaElevador, localConvesEntrada, localHangarFrente, 2.5f));
+            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarFrente, localHangarInterno, 2.5f));
+            
             av.gameObject.SetActive(true);
             
-            // Coloca no elevador (no fundo)
-            av.transform.position = transform.TransformPoint(localHangarFrente);
+            // 2. O avião estaciona no elevador
             av.transform.SetParent(plataformaElevador);
+            av.transform.localPosition = Vector3.zero;
+            av.transform.localRotation = Quaternion.identity;
 
-            // Sobe o elevador
+            // 3. Elevador sobe com o avião: Hangar -> Frente -> Convés
+            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarInterno, localHangarFrente, 2.5f));
             yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarFrente, localConvesEntrada, 3.5f));
 
             av.transform.SetParent(this.transform); // Gruda no navio
@@ -514,7 +521,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             if (v != null) 
             {
                 av.vagaRetorno = v;
-                if (!avioesNoPatio.Contains(av)) avioesNoPatio.Add(av); // Adiciona DEPOIS de setar a vaga
+                if (!avioesNoPatio.Contains(av)) avioesNoPatio.Add(av);
                 yield return StartCoroutine(av.MoverInterpolado(Vector3.zero, av.velocidadeSolo, true, v));
             }
             else
@@ -526,8 +533,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         else
         {
             avioesNoPatio.Remove(av);
-            // Cria um ponto temporário grudado no navio para que, se o navio se mover,
-            // o avião continue perseguindo o local correto do convés (elevador).
+            
+            // 1. Garante que o elevador está paradinho no convés
+            plataformaElevador.localPosition = localConvesEntrada;
+            
+            // 2. Pontinho guia para o avião taxiar e subir no elevador
             GameObject tempAlvo = new GameObject("TempAlvoElevador");
             tempAlvo.transform.SetParent(this.transform, false);
             tempAlvo.transform.localPosition = localConvesEntrada;
@@ -535,19 +545,24 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             yield return StartCoroutine(av.MoverInterpolado(Vector3.zero, av.velocidadeSolo, true, tempAlvo.transform));
             Destroy(tempAlvo);
             
+            // 3. Centraliza perfeito no elevador e desce
             av.transform.SetParent(plataformaElevador);
+            av.transform.localPosition = Vector3.zero;
+            av.transform.localRotation = Quaternion.identity;
             av.vagaRetorno = null;
 
-            // Desce o elevador
+            // 4. Elevador desce as 3 etapas
             yield return StartCoroutine(MoverSuave(plataformaElevador, localConvesEntrada, localHangarFrente, 3.5f));
-            yield return new WaitForSeconds(0.5f);
+            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarFrente, localHangarInterno, 2.5f));
             
-            // Move suave para dentro do hangar
-            yield return StartCoroutine(MoverSuave(av.transform, localHangarFrente, localHangarInterno, 1.5f, true));
-
-            av.transform.SetParent(this.transform); // Mantém grudado no navio mesmo guardado
+            // 5. Avião guardado, tira ele da memória ativa e do visual
+            av.transform.SetParent(this.transform);
             av.gameObject.SetActive(false);
             avioesNoHangar.Add(av);
+            
+            // 6. Elevador retorna VAZIO para fechar o buraco do convés
+            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarInterno, localHangarFrente, 2.5f));
+            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarFrente, localConvesEntrada, 3.5f));
         }
         _elevadorOcupado = false;
     }
