@@ -68,6 +68,7 @@ public class ControleAviao : MonoBehaviour
             for (int i = 0, count = filhos.Length; i < count; i++)
             {
                 Transform f = filhos[i];
+                if (f == null) continue; // Added null check
                 if (f == transform) continue;
                 string n = f.name.ToLower();
                 if (n.Contains("wheel") || n.Contains("roda") || n.Contains("gear") || n.Contains("pneu") || n.Contains("tremdepouso"))
@@ -161,33 +162,48 @@ public class ControleAviao : MonoBehaviour
         }
     }
 
-    public IEnumerator MoverInterpolado(Vector3 destinoOriginal, float vel, bool pontoFinal = false)
+    public IEnumerator MoverInterpolado(Vector3 destinoFixo, float vel, bool pontoFinal = false, Transform alvoMovel = null, bool ignoreRotationSlowdown = false)
     {
-        float raioDeAceitacao = pontoFinal ? 0.5f : 1.5f;
-        float raioSqr = raioDeAceitacao * raioDeAceitacao; // Pré-calcula para sqrMagnitude
+        float raioDeAceitacao = pontoFinal ? 0.5f : 3.5f; // Aumentado para não engasgar em waypoints muito próximos
+        float raioSqr = raioDeAceitacao * raioDeAceitacao;
         
         while (true)
         {
-            Vector3 diff = new Vector3(destinoOriginal.x - transform.position.x, 0, destinoOriginal.z - transform.position.z);
-            if (diff.sqrMagnitude <= raioSqr) break; // sqrMagnitude evita sqrt
+            Vector3 destinoAlvo = (alvoMovel != null) ? alvoMovel.position : destinoFixo;
+            
+            // Se destinoFixo for zero mas temos um alvoMovel, não devemos considerar a distância até o zero
+            Vector3 meuPos = transform.position;
+            Vector3 diff = (alvoMovel != null) ? 
+                new Vector3(alvoMovel.position.x - meuPos.x, 0, alvoMovel.position.z - meuPos.z) : 
+                new Vector3(destinoFixo.x - meuPos.x, 0, destinoFixo.z - meuPos.z);
 
-            Vector3 vetorAteDestino = destinoOriginal - transform.position;
-            if (vetorAteDestino.sqrMagnitude < 16f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f) break; // 4² = 16
+            if (diff.sqrMagnitude <= raioSqr) break; 
+
+            Vector3 vetorAteDestino = (alvoMovel != null) ? (alvoMovel.position - meuPos) : (destinoFixo - meuPos);
+            if (vetorAteDestino.sqrMagnitude < 16f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f) break; 
 
             Vector3 direcaoHorizon = new Vector3(vetorAteDestino.x, 0, vetorAteDestino.z).normalized;
             if (direcaoHorizon != Vector3.zero)
             {
                 Quaternion rotAlvo = Quaternion.LookRotation(direcaoHorizon);
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, 50f * Time.deltaTime);
-                float fatorVelocidade = Mathf.Clamp01(1.2f - (Quaternion.Angle(transform.rotation, rotAlvo) / 45f));
-                if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, (ignoreRotationSlowdown ? 90f : 50f) * Time.deltaTime);
+                
+                float fatorVelocidade = 1f;
+                if (!ignoreRotationSlowdown)
+                {
+                    fatorVelocidade = Mathf.Clamp01(1.2f - (Quaternion.Angle(transform.rotation, rotAlvo) / 45f));
+                    if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
+                }
+                
                 transform.position += vetorAteDestino.normalized * (vel * fatorVelocidade) * Time.deltaTime;
             }
             if (modeloMecanicoVisual != null) modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.identity, Time.deltaTime * 5f);
             yield return null;
         }
-        if (pontoFinal && (transform.position - destinoOriginal).sqrMagnitude < 12.25f) // 3.5² = 12.25
-            transform.position = destinoOriginal;
+
+        Vector3 destinoFinal = (alvoMovel != null) ? alvoMovel.position : destinoFixo;
+        if (pontoFinal && (transform.position - destinoFinal).sqrMagnitude < 25f) 
+            transform.position = destinoFinal;
     }
 
     public IEnumerator SeguirCaminhoDeWaypoints(List<Transform> caminho, float velInicial, float velFinal, bool aceleracaoGradativa = false)
@@ -199,8 +215,12 @@ public class ControleAviao : MonoBehaviour
         {
             if (caminho[i] == null) continue;
             float velAtual = aceleracaoGradativa ? Mathf.Lerp(velInicial, velFinal, i / divisor) : velInicial;
-            yield return StartCoroutine(MoverInterpolado(caminho[i].position, velAtual, i == totalWaypoints - 1));
-            if (caminho[i].name.ToLower().Contains("alinhamento")) yield return new WaitForSeconds(2.5f);
+            
+            // Segurança: O waypoint pode ser destruído durante o percurso
+            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velAtual, i == totalWaypoints - 1, caminho[i], aceleracaoGradativa));
+            
+            if (caminho[i] != null && caminho[i].name.ToLower().Contains("alinhamento")) 
+                yield return new WaitForSeconds(2.5f);
         }
     }
 
@@ -286,8 +306,12 @@ public class ControleAviao : MonoBehaviour
         {
             Vector3 diff2D = new Vector3(transform.position.x - alvoGPSVoo.x, 0, transform.position.z - alvoGPSVoo.z);
             float distSqr = diff2D.sqrMagnitude;
-            if (distSqr <= 4900f) break; // 70² = 4900
-            if (distSqr < 160000f) AbaixarRodas(); // 400² = 160000
+            
+            // Aumentado o raio de aceitação para 120m para garantir transição suave 
+            // no ponto de aproximação distante do Porta-Aviões
+            if (distSqr <= 14400f) break; // 120² = 14400
+            
+            if (distSqr < 250000f) AbaixarRodas(); // 500² = 250000
             yield return null;
         }
 
@@ -302,10 +326,10 @@ public class ControleAviao : MonoBehaviour
         }
 
         estadoAtual = EstadoAviao.RetornandoPraVaga;
-        if (aeroportoOrigem.wpAndadar != null) yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpAndadar.position, velocidadeSolo, true));
-        if (aeroportoOrigem.wpAnalise != null)
+        if (aeroportoOrigem != null && aeroportoOrigem.wpAndadar != null) yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, aeroportoOrigem.wpAndadar));
+        if (aeroportoOrigem != null && aeroportoOrigem.wpAnalise != null)
         {
-            yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpAnalise.position, velocidadeSolo, true));
+            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, aeroportoOrigem.wpAnalise));
             
             // REPARO AO CHEGAR: Restaura 100% da vida no ponto de análise
             if (_sistemaDanos != null) _sistemaDanos.Reparar(_sistemaDanos.vidaMaxima);
@@ -315,11 +339,16 @@ public class ControleAviao : MonoBehaviour
             if (estadoAtual != EstadoAviao.ProntoNoPatio) yield break; 
         }
 
+        if (aeroportoOrigem == null) yield break;
+
         Transform vagaSegura = aeroportoOrigem.ObterPrimeiraVagaLivre();
         if (vagaSegura != null)
         {
              vagaRetorno = vagaSegura;
-             yield return StartCoroutine(MoverInterpolado(vagaRetorno.position, velocidadeSolo, true));
+             // Registro imediato para evitar que outros aviões pousem na mesma vaga
+             if (!aeroportoOrigem.avioesNoPatio.Contains(this)) aeroportoOrigem.avioesNoPatio.Add(this);
+             
+             yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, vagaRetorno));
              estadoAtual = EstadoAviao.ProntoNoPatio;
              transform.rotation = vagaRetorno.rotation; 
         }
@@ -327,7 +356,7 @@ public class ControleAviao : MonoBehaviour
         {
              if (aeroportoOrigem.wpPronto != null)
              {
-                 yield return StartCoroutine(MoverInterpolado(aeroportoOrigem.wpPronto.position, velocidadeSolo, true));
+                 yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, aeroportoOrigem.wpPronto));
              }
              if (aeroportoOrigem != null) aeroportoOrigem.GuardarNoHangarAutomatico(this);
         }

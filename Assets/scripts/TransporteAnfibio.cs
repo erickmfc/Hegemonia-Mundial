@@ -441,11 +441,12 @@ public class TransporteAnfibio : MonoBehaviour
     {
         if (!menuAberto) return;
 
-        // MENU REDUZIDO (80% do tamanho original) e MOVIDO 20% PARA BAIXO
-        float largura = 200f;  // Era 250, agora 200 (80%)
-        float altura = 320f;   // Era 400, agora 320 (80%)
-        float posY = Screen.height * 0.20f; // 20% da altura da tela
-        float fontSize = 13;   // Era 16, agora 13
+        // MENU REDUZIDO (80% do tamanho original) e MOVIDO 10% PARA CIMA (agora em 10% da tela)
+        float largura = 200f;  
+        float altura = 320f;   
+        float posY = Screen.height * 0.10f; // Subiu 10% (era 0.20f)
+        float posX = Screen.width - largura + 35f; // Movido 55 para a direita (era - 20, agora -20 + 55 = +35)
+        float fontSize = 13;   
         
         GUIStyle titulo = new GUIStyle(GUI.skin.label) { 
             fontSize = (int)fontSize, 
@@ -456,13 +457,13 @@ public class TransporteAnfibio : MonoBehaviour
         GUIStyle textoNormal = new GUIStyle(GUI.skin.label) { fontSize = 11 };
         GUIStyle botao = new GUIStyle(GUI.skin.button) { fontSize = 10 };
         
-        GUI.Box(new Rect(Screen.width - largura - 20, posY, largura, altura), "");
-        GUI.Label(new Rect(Screen.width - largura - 20, posY + 10, largura, 25), "📦 MANIFESTO DE CARGA", titulo);
+        GUI.Box(new Rect(posX, posY, largura, altura), "");
+        GUI.Label(new Rect(posX, posY + 10, largura, 25), "📦 MANIFESTO DE CARGA", titulo);
 
         float y = posY + 40;
         if (unidadesGuardadas.Count == 0)
         {
-            GUI.Label(new Rect(Screen.width - largura - 10, y, largura - 20, 18), "Nenhuma unidade a bordo.", textoNormal);
+            GUI.Label(new Rect(posX + 10, y, largura - 20, 18), "Nenhuma unidade a bordo.", textoNormal);
         }
         else
         {
@@ -470,24 +471,24 @@ public class TransporteAnfibio : MonoBehaviour
             foreach (var u in lista)
             {
                 if (u == null) continue;
-                GUI.Label(new Rect(Screen.width - largura - 10, y, 120, 18), u.name, textoNormal);
+                GUI.Label(new Rect(posX + 10, y, 120, 18), u.name, textoNormal);
 
                 bool ehAereo = (u.GetComponent<Helicoptero>() != null);
                 
                 if (ehAereo)
                 {
-                    if (GUI.Button(new Rect(Screen.width - 80, y, 65, 18), "DECOLAR", botao)) LancarUnidadeAerea(u);
+                    if (GUI.Button(new Rect(posX + largura - 75, y, 65, 18), "DECOLAR", botao)) LancarUnidadeAerea(u);
                 }
                 else
                 {
-                    GUI.Label(new Rect(Screen.width - 80, y, 65, 18), "[Porão]", textoNormal);
+                    GUI.Label(new Rect(posX + largura - 75, y, 65, 18), "[Porão]", textoNormal);
                 }
                 y += 20;
             }
         }
 
         y = posY + altura - 45;
-        GUI.Label(new Rect(Screen.width - largura - 10, y, largura - 20, 18), $"Status: {estadoAtual}", textoNormal);
-        GUI.Label(new Rect(Screen.width - largura - 10, y+20, largura - 20, 18), $"[U] Embarcar  |  [P] Fechar/Sair", textoNormal);
+        GUI.Label(new Rect(posX + 10, y, largura - 20, 18), $"Status: {estadoAtual}", textoNormal);
+        GUI.Label(new Rect(posX + 10, y+20, largura - 20, 18), $"[U] Embarcar  |  [P] Fechar/Sair", textoNormal);
     }
 }

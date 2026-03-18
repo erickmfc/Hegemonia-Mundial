@@ -8,6 +8,12 @@ public class MenuComportamento : MonoBehaviour
     public Color corFundo = new Color(0, 0, 0, 0.8f);
     public Color corBotaoAtivo = new Color(0.8f, 0, 0, 1f); // Vermelho Combate
     public Color corBotaoPassivo = new Color(0, 0.5f, 1f, 1f); // Azul Passivo
+    
+    // --- ADICIONADO: Novas cores para os novos botões ---
+    public Color corBotaoPatrulha = new Color(0.8f, 0.5f, 0f, 1f); // Laranja
+    public Color corBotaoSeguir = new Color(0.5f, 0f, 0.5f, 1f); // Roxo
+    // ----------------------------------------------------
+
     public Font fonteUI;
 
     private GameObject painelMenu;
@@ -91,8 +97,6 @@ public class MenuComportamento : MonoBehaviour
             }
 
             // --- Suporte para LANCADOR MULTIPLO (Leopard) ---
-            // Passivo (true) = Automatico desligado (false)
-            // Ativo (false) = Automatico ligado (true)
             LancadorMultiplo[] lancadores = unidade.GetComponentsInChildren<LancadorMultiplo>();
             foreach(var l in lancadores)
             {
@@ -115,6 +119,34 @@ public class MenuComportamento : MonoBehaviour
         Debug.Log($"Ordem enviada: Modo {(passivo ? "PASSIVO" : "ATAQUE/PATRULHA")} aplicado a {contagem} unidades armadas.");
     }
 
+    // --- ADICIONADO: Conexão com o novo sistema de linhas visuais ---
+    public void AtivarModoPatrulha()
+    {
+        DesenharLinhasOrdem desenhador = FindFirstObjectByType<DesenharLinhasOrdem>();
+        if (desenhador != null)
+        {
+            desenhador.IniciarModoPatrulha();
+        }
+        else
+        {
+            Debug.LogWarning("AVISO: Crie um objeto vazio na cena e adicione o script DesenharLinhasOrdem!");
+        }
+    }
+
+    public void AtivarModoSeguir()
+    {
+        DesenharLinhasOrdem desenhador = FindFirstObjectByType<DesenharLinhasOrdem>();
+        if (desenhador != null)
+        {
+            desenhador.IniciarModoSeguir();
+        }
+        else
+        {
+            Debug.LogWarning("AVISO: Crie um objeto vazio na cena e adicione o script DesenharLinhasOrdem!");
+        }
+    }
+    // ----------------------------------------------------------------
+
     void CriarInterface()
     {
         // 1. Canvas Check
@@ -126,7 +158,6 @@ public class MenuComportamento : MonoBehaviour
         }
 
         // 2. Painel Principal (Canto Superior Direito)
-        // REDUÇÃO DE 25%: Antes 200x160 -> Agora 150x120
         painelMenu = new GameObject("Painel_Comportamento", typeof(RectTransform), typeof(Image));
         painelMenu.transform.SetParent(canvasObj.transform, false);
         
@@ -138,7 +169,9 @@ public class MenuComportamento : MonoBehaviour
         rt.anchorMax = new Vector2(1, 1);
         rt.pivot = new Vector2(1, 1);
         rt.anchoredPosition = new Vector2(-20, -20); 
-        rt.sizeDelta = new Vector2(150, 120); // Reduzido
+        
+        // --- ALTERADO: Aumentei a altura de 120 para 200 para caber os 4 botões sem espremer ---
+        rt.sizeDelta = new Vector2(150, 200); 
 
         // 3. Título / Estado
         GameObject txtObj = new GameObject("TextoEstado", typeof(RectTransform), typeof(Text));
@@ -147,22 +180,28 @@ public class MenuComportamento : MonoBehaviour
         txtEstadoAtual.font = fonteUI != null ? fonteUI : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         txtEstadoAtual.text = "ESTADO: ...";
         txtEstadoAtual.alignment = TextAnchor.MiddleCenter;
-        txtEstadoAtual.fontSize = 11; // Reduzido de 14
+        txtEstadoAtual.fontSize = 11;
         txtEstadoAtual.color = Color.white;
         txtEstadoAtual.supportRichText = true;
         
         RectTransform txtRT = txtObj.GetComponent<RectTransform>();
         txtRT.anchorMin = new Vector2(0, 1); txtRT.anchorMax = new Vector2(1, 1);
-        txtRT.anchoredPosition = new Vector2(0, -15); // Antes -20
+        txtRT.anchoredPosition = new Vector2(0, -15);
         txtRT.sizeDelta = new Vector2(0, 25);
 
         // 4. Botão PASSIVO
-        // Antes Y -60 -> Agora -45
         CriarBotao("BTN_PASSIVO", "PASSIVO", corBotaoPassivo, new Vector2(0, -45), () => DefinirComportamento(true));
 
         // 5. Botão ATIVO
-        // Antes Y -110 -> Agora -85
         CriarBotao("BTN_ATIVO", "ATIVO", corBotaoAtivo, new Vector2(0, -85), () => DefinirComportamento(false));
+
+        // --- ADICIONADO: Novos botões embaixo dos antigos ---
+        // 6. Botão PATRULHA
+        CriarBotao("BTN_PATRULHA", "PATRULHA", corBotaoPatrulha, new Vector2(0, -125), () => AtivarModoPatrulha());
+
+        // 7. Botão SEGUIR
+        CriarBotao("BTN_SEGUIR", "SEGUIR", corBotaoSeguir, new Vector2(0, -165), () => AtivarModoSeguir());
+        // ----------------------------------------------------
     }
 
     void CriarBotao(string nome, string texto, Color cor, Vector2 pos, UnityEngine.Events.UnityAction acao)
@@ -181,16 +220,15 @@ public class MenuComportamento : MonoBehaviour
         rt.anchorMax = new Vector2(0.5f, 1);
         rt.pivot = new Vector2(0.5f, 1);
         rt.anchoredPosition = pos;
-        rt.sizeDelta = new Vector2(135, 30); // Reduzido de 180x40
+        rt.sizeDelta = new Vector2(135, 30); 
 
-        // Texto do Botão
         GameObject tObj = new GameObject("Txt", typeof(RectTransform), typeof(Text));
         tObj.transform.SetParent(btnObj.transform, false);
         Text t = tObj.GetComponent<Text>();
         t.text = texto;
         t.alignment = TextAnchor.MiddleCenter;
         t.color = Color.white;
-        t.fontSize = 10; // Fonte menor (padrao era ~14)
+        t.fontSize = 10;
         t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         t.fontStyle = FontStyle.Bold;
         

@@ -559,23 +559,34 @@ public class Construtor : MonoBehaviour
 
     void EnsureCollider(GameObject obj)
     {
+        // FIX RECURSIVO PARA ESCALA NEGATIVA EM BOXES EXISTENTES (Limpa o console de warnings)
+        BoxCollider[] boxes = obj.GetComponentsInChildren<BoxCollider>(true);
+        foreach (var box in boxes)
+        {
+            Vector3 scale = box.transform.lossyScale;
+            if (scale.x < 0 || scale.y < 0 || scale.z < 0)
+            {
+                GameObject targetChild = box.gameObject;
+                DestroyImmediate(box); // Remove o Box problemático
+                targetChild.AddComponent<MeshCollider>().convex = true; // Coloca um Mesh que aceita escala negativa
+            }
+        }
+
+        // GARANTIA DE COLISOR NA RAIZ (Sempre adiciona se não houver NENHUM colisor no objeto ou filhos)
         if (obj.GetComponentInChildren<Collider>() == null)
         {
             Renderer r = obj.GetComponentInChildren<Renderer>();
-            if (r != null)
+            GameObject target = (r != null && r.gameObject != obj) ? r.gameObject : obj;
+            
+            Vector3 s = target.transform.lossyScale;
+            if (s.x < 0 || s.y < 0 || s.z < 0)
             {
-                if (r.gameObject != obj)
-                {
-                    r.gameObject.AddComponent<BoxCollider>();
-                }
-                else
-                {
-                    obj.AddComponent<BoxCollider>();
-                }
+                var mc = target.AddComponent<MeshCollider>();
+                mc.convex = true;
             }
             else
             {
-                obj.AddComponent<BoxCollider>();
+                target.AddComponent<BoxCollider>();
             }
         }
     }

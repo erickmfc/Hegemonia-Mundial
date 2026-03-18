@@ -29,6 +29,10 @@ public class NavegacaoInteligenteNaval : MonoBehaviour
     public TrailRenderer rastroAgua;
     public Transform modelo3D;
     public float forcaInclinacao = 15f;
+    
+    [Header("Prevenção de Colisão")]
+    public float distanciaRadarObstaculo = 40f;
+    public float margemDesvioLateral = 15f;
 
     private NavMeshAgent agente;
     private Rigidbody rb;
@@ -86,7 +90,9 @@ public class NavegacaoInteligenteNaval : MonoBehaviour
             return;
         }
 
-        if (agente.hasPath && agente.remainingDistance > 5f)
+        // Se não tiver um caminho calculado pelo NavMesh (ex: água não mapeada), 
+        // mas estiver longe do destino e o agente estiver ativo, movemos de forma direta.
+        if ((agente.hasPath && agente.remainingDistance > 5f) || (!agente.hasPath && Vector3.Distance(transform.position, agente.destination) > 10f))
         {
             AplicarFisicaNaval();
         }
@@ -109,10 +115,36 @@ public class NavegacaoInteligenteNaval : MonoBehaviour
         float velocidadeAvanco = transform.InverseTransformDirection(rb.linearVelocity).z;
 
         // DECIDIR SE VAI DE FRENTE OU DE RÉ
-        // O jogador reportou um bug severo ao tentar atracar o navio no Píer de ré ("ia de ré e dava pau no posicionamento final").
-        // Solução: Desligamos a marcha à ré inteligente inteiramente (forçando atracação padrão frontal) 
-        // para contornar a interferência do 'drift invertido' e da aproximação NavMesh de ré.
         emMarchaRe = false;
+
+        // === NOVO: SISTEMA DE EVASÃO DE COLISÃO (DESVIAR DE AMIGOS) ===
+        bool obstaculoFrente = false;
+        float multiplicadorEvasao = 1f;
+
+        RaycastHit hitObstaculo;
+        // Raio central para detectar se algo está bem na frente
+        if (Physics.Raycast(transform.position + transform.up * 2f, transform.forward, out hitObstaculo, distanciaRadarObstaculo))
+        {
+            // Se for outra unidade ou prédio
+            if (hitObstaculo.collider.GetComponentInParent<IdentidadeUnidade>() != null || hitObstaculo.collider.CompareTag("Imovel"))
+            {
+                obstaculoFrente = true;
+                multiplicadorEvasao = 0.2f; // Reduz motor para não bater forte
+                
+                // Tenta ver para qual lado desviar
+                Vector3 direita = transform.right;
+                if (Physics.Raycast(transform.position + transform.up * 2f, (transform.forward + direita * 0.5f).normalized, distanciaRadarObstaculo * 0.8f))
+                {
+                    // Lado direito ocupado, tenta esquerda
+                    direcaoParaAlvo = (direcaoParaAlvo - transform.right * 0.5f).normalized;
+                }
+                else
+                {
+                    // Tenta desviar pela direita
+                    direcaoParaAlvo = (direcaoParaAlvo + transform.right * 0.5f).normalized;
+                }
+            }
+        }
 
         Vector3 direcaoQueQueremosOlhar = emMarchaRe ? -direcaoParaAlvo : direcaoParaAlvo;
 
@@ -134,7 +166,8 @@ public class NavegacaoInteligenteNaval : MonoBehaviour
         Vector3 direcaoMotor = emMarchaRe ? -transform.forward : transform.forward;
         float forcaFinalMotor = emMarchaRe ? forcaMotor * multiplicadorForcaRe : forcaMotor;
         
-        rb.AddForce(direcaoMotor * forcaFinalMotor * potenciaMotorAtual * Time.fixedDeltaTime, ForceMode.Acceleration);
+        // Aplica o multiplicador de evasão (freio se tiver obstáculo na cara)
+        rb.AddForce(direcaoMotor * forcaFinalMotor * potenciaMotorAtual * multiplicadorEvasao * Time.fixedDeltaTime, ForceMode.Acceleration);
 
         // Limita a velocidade máxima
         if (rb.linearVelocity.magnitude > velocidadeMaxima)

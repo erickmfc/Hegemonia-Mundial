@@ -118,7 +118,7 @@ public class ExemploUsoNavegacaoNaval : MonoBehaviour
     [Header("Patrulha Automática")]
     public bool testarMovimento = false;
     public bool testarAtaque = false;
-    private bool iniciouPatrulha = false;
+
     public Transform[] pontosPatrulha;
     public float tempoEsperaNosPontos = 3f;
     
@@ -132,7 +132,7 @@ public class ExemploUsoNavegacaoNaval : MonoBehaviour
             return;
         }
         
-        iniciouPatrulha = true;
+
         pontoAtualPatrulha = 0;
         IrParaProximoPontoPatrulha();
     }

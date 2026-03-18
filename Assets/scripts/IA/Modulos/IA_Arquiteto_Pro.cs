@@ -355,8 +355,8 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         float raioIdeal = -1f;
         if (nomeBaixo.Contains("aeroporto")) 
         {
-            raioIdeal = distanciasAprendidas.ContainsKey("Aeroporto") ? distanciasAprendidas["Aeroporto"] : 450f;
-            if (raioIdeal < 450f) raioIdeal = 450f; 
+            raioIdeal = distanciasAprendidas.ContainsKey("Aeroporto") ? distanciasAprendidas["Aeroporto"] : 650f;
+            if (raioIdeal < 650f) raioIdeal = 650f; 
         }
         else if (nomeBaixo.Contains("veiculo") && distanciasAprendidas.ContainsKey("Veiculos")) raioIdeal = distanciasAprendidas["Veiculos"];
         else if (nomeBaixo.Contains("tenda") && distanciasAprendidas.ContainsKey("Tenda")) raioIdeal = distanciasAprendidas["Tenda"];

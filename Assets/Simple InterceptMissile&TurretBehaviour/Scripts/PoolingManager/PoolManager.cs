@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,7 +11,7 @@ public class PoolManager : MonoBehaviour {
 	public static PoolManager instance {
 		get {
 			if (_instance == null) {
-				_instance = FindObjectOfType<PoolManager>();
+				_instance = Object.FindFirstObjectByType<PoolManager>();
 			}
 			return _instance;
 		}

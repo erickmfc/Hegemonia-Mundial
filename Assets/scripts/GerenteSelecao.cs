@@ -84,6 +84,14 @@ public class GerenteSelecao : MonoBehaviour
         // 4. MOVIMENTO EM GRUPO (Botão Direito)
         if (Input.GetMouseButtonDown(1))
         {
+            // --- CONEXÃO COM SISTEMA DE ORDENS (PATRULHA/SEGUIR) ---
+            DesenharLinhasOrdem desenhador = FindFirstObjectByType<DesenharLinhasOrdem>();
+            if (desenhador != null && (desenhador.modoPatrulhaAtivo || desenhador.modoSeguirAtivo))
+            {
+                return; // Ignora o movimento padrão se estiver gravando patrulha ou seguir
+            }
+            // -----------------------------------------------------
+
             if(unidadesSelecionadas.Count > 0)
             {
                 // Usa LayerMask para ignorar Triggers, UI, IgnoreRaycast (2) etc.
@@ -321,6 +329,8 @@ public class GerenteSelecao : MonoBehaviour
 
         foreach (var unidade in todasUnidades)
         {
+            if (unidade == null || !unidade.enabled) continue; // Ignora unidades desativadas (como soldados dentro de caminhões)
+
             // Onde o tanque está na tela?
             Vector3 posTela = Camera.main.WorldToScreenPoint(unidade.transform.position);
 
@@ -346,6 +356,14 @@ public class GerenteSelecao : MonoBehaviour
             var unidade = toque.transform.GetComponentInParent<ControleUnidade>();
             if (unidade != null) 
             {
+                // Se acertou num passageiro (visível mas não clicável), repassa pro caminhão (pai)
+                if (!unidade.enabled)
+                {
+                    var transporte_pai = unidade.transform.parent?.GetComponentInParent<ControleUnidade>();
+                    if (transporte_pai != null && transporte_pai.enabled) unidade = transporte_pai;
+                    else return; // Se não tem pai ativo, ignora o clique
+                }
+
                 AdicionarSelecao(unidade);
                 Debug.Log($"[GerenteSelecao] Selecionado: {unidade.name}");
             }

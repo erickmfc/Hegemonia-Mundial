@@ -433,7 +433,7 @@ public class Helicoptero : MonoBehaviour
             {
                 encontrouAlguem = true;
                 soldadosChamados.Add(s);
-                Debug.Log($"🪖 [{s.name}] ACEITO! Ordenando correr para o helicóptero!");
+                Debug.Log($"[Soldado] [{s.name}] ACEITO! Ordenando correr para o helicoptero!");
                 StartCoroutine(RotinaEmbarque(s, nav));
 
                 espacoLivre--;
@@ -511,15 +511,18 @@ public class Helicoptero : MonoBehaviour
                 new Vector2(transform.position.x, transform.position.z)
             );
 
-            if (distFinal <= distanciaEmbarque * 3.0f && !estaVoando) // Tolerância final mais generosa
+            // Proteção Final: Se o soldado chegou perto (15m), ele entra, mesmo que o heli tenha acabado de decolar
+            bool pertoBastante = distFinal <= 15f; 
+
+            if (pertoBastante && soldadosEmbarcados.Count < capacidadeMaxima)
             {
                 soldadosEmbarcados.Add(s);
                 s.SetActive(false); 
-                Debug.Log($"⬇️ {s.name} embarcou com sucesso! (Total: {soldadosEmbarcados.Count})");
+                Debug.Log($"[Helicoptero] {s.name} embarcou com sucesso! (Dist: {distFinal:F1}m)");
             }
             else
             {
-                Debug.Log($"❌ {s.name} falhou em embarcar (Longe demais: {distFinal:F1}m).");
+                Debug.Log($"[Helicoptero] {s.name} falhou em embarcar (Dist: {distFinal:F1}m).");
             }
         }
         

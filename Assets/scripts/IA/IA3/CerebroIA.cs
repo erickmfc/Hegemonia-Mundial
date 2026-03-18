@@ -26,7 +26,6 @@ public class CerebroIA : MonoBehaviour
     private IdentidadeIA identidade;
     public int teamID_Inimigo = 2; // ID padrão para o time inimigo
 
-    private float timer;
     private float timerRenda;
 
     void Start()
@@ -98,7 +97,6 @@ public class CerebroIA : MonoBehaviour
         {
             yield return new WaitForSeconds(4f); // Pensa a cada 4 segundos
             Pensar();
-            timer = 4f; // Pensa a cada 4 segundos
         }
     }
 
@@ -221,6 +219,7 @@ public class CerebroIA : MonoBehaviour
             Quaternion rotacao = Quaternion.identity;
             
             bool ehNaval = nomeParcial.ToLower().Contains("estaleiro") || nomeParcial.ToLower().Contains("naval") || item.nomeItem.ToLower().Contains("pier");
+            bool ehAeroporto = nomeParcial.ToLower().Contains("aeroporto") || item.nomeItem.ToLower().Contains("aeroporto") || item.nomeItem.ToLower().Contains("hangar");
 
             if (ehNaval)
             {
@@ -259,6 +258,25 @@ public class CerebroIA : MonoBehaviour
                      Debug.LogWarning("[CerebroIA] Não encontrei água para o Estaleiro! Abortando.");
                      return;
                 }
+            }
+            else if (ehAeroporto)
+            {
+                Debug.Log($"[CerebroIA] Planejando construção de AEROPORTO afastado: {item.nomeItem}");
+                float angulo = Random.Range(0, 360) * Mathf.Deg2Rad;
+                float dist = 650f; // Distância fixa para aeroportos conforme solicitado
+                Vector3 offset = new Vector3(Mathf.Cos(angulo) * dist, 0, Mathf.Sin(angulo) * dist);
+                alvo = transform.position + offset;
+                
+                if (Terrain.activeTerrain != null)
+                {
+                    alvo.y = Terrain.activeTerrain.SampleHeight(alvo);
+                }
+                else if (Physics.Raycast(alvo + Vector3.up * 100, Vector3.down, out RaycastHit hit, 200))
+                {
+                    alvo.y = hit.point.y;
+                }
+                
+                rotacao = Quaternion.Euler(0, Random.Range(0, 360), 0);
             }
             else
             {

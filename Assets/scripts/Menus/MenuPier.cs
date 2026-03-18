@@ -188,7 +188,7 @@ public class MenuPier : MonoBehaviour
     // Função auxiliar para buscar navios
     List<IdentidadeNaval> EncontrarNaviosDisponiveis(IdentidadeNaval.CategoriaNavio categoria)
     {
-        var todosNavios = FindObjectsOfType<IdentidadeNaval>();
+        var todosNavios = Object.FindObjectsByType<IdentidadeNaval>(FindObjectsSortMode.None);
         var lista = new List<IdentidadeNaval>();
 
         Debug.Log($"[MenuPier] Buscando navios da categoria: {categoria}. Total de navios na cena: {todosNavios.Length}");
@@ -242,7 +242,7 @@ public class MenuPier : MonoBehaviour
         if (canvasObj == null)
         {
             // Tenta achar qualquer canvas
-            Canvas c = FindObjectOfType<Canvas>();
+            Canvas c = Object.FindFirstObjectByType<Canvas>();
             if (c != null) canvasObj = c.gameObject;
             else
             {

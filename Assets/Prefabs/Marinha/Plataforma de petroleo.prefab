@@ -217,7 +217,7 @@ Transform:
   m_GameObject: {fileID: 1157021252145647898}
   serializedVersion: 2
   m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 59.3, y: -38.8, z: -0}
+  m_LocalPosition: {x: 59.3, y: -78.6, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -549,7 +549,7 @@ Transform:
   m_GameObject: {fileID: 3527135840072355658}
   serializedVersion: 2
   m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 24.9, y: -3.2, z: 9.9}
+  m_LocalPosition: {x: 4.3, y: -3.2, z: 9.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -5499,7 +5499,7 @@ Transform:
   m_GameObject: {fileID: 3697429511672649415}
   serializedVersion: 2
   m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -3.7, y: -17.7, z: -0}
+  m_LocalPosition: {x: 4.1, y: -17.9, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5812,11 +5812,11 @@ NavMeshObstacle:
   m_Enabled: 1
   serializedVersion: 3
   m_Shape: 1
-  m_Extents: {x: 7.5, y: 7.5, z: 10}
+  m_Extents: {x: 7.5, y: 7.5, z: 9.275}
   m_MoveThreshold: 0.1
   m_Carve: 1
   m_CarveOnlyStationary: 1
-  m_Center: {x: -5.62, y: -7.65, z: 5.94}
+  m_Center: {x: -5.62, y: -4.74, z: 6.73}
   m_TimeToStationary: 0.5
 --- !u!1 &5424129209385258168
 GameObject:

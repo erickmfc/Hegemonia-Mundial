@@ -627,20 +627,24 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         // ==========================================
-        // 1. ROTEAMENTO PARA MARINHA (Navios) - MANTIDO INTACTO!
+        // 1. ROTEAMENTO PARA MARINHA (Navios)
         // ==========================================
-        if(item.categoria == DadosConstrucao.CategoriaItem.Marinha)
+        bool pareceSerNavio = item.prefabDaUnidade.GetComponent<IdentidadeNaval>() != null 
+                            || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
+                            || item.prefabDaUnidade.GetComponent<HovercraftTransporte>() != null // Hovercraft = NAVAL!
+                            || item.nomeItem.ToLower().Contains("navio") || item.nomeItem.ToLower().Contains("sub")
+                            || item.nomeItem.ToLower().Contains("lancha") || item.nomeItem.ToLower().Contains("corveta")
+                            || item.nomeItem.ToLower().Contains("hovercraft") || item.nomeItem.ToLower().Contains("hover")
+                            || item.nomeItem.ToLower().Contains("marinha") 
+                            || item.prefabDaUnidade.name.ToLower().Contains("hover") || item.prefabDaUnidade.name.ToLower().Contains("marinha");
+
+        if (item.categoria == DadosConstrucao.CategoriaItem.Marinha || pareceSerNavio)
         {
             bool ehPredioNaval = item.prefabDaUnidade.CompareTag("Imovel") ||
                                  temComponentePredio ||
                                  item.nomeItem.ToLower().Contains("estaleiro") || 
                                  item.nomeItem.ToLower().Contains("pier") || 
                                  item.nomeItem.ToLower().Contains("plataforma");
-
-            bool pareceSerNavio = item.prefabDaUnidade.GetComponent<IdentidadeNaval>() != null 
-                                || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
-                                || item.nomeItem.ToLower().Contains("navio") || item.nomeItem.ToLower().Contains("sub")
-                                || item.nomeItem.ToLower().Contains("lancha") || item.nomeItem.ToLower().Contains("corveta");
 
             if (!ehPredioNaval && pareceSerNavio)
             {
@@ -716,10 +720,32 @@ public class MenuConstrucao : MonoBehaviour
             if (!ehPredioAeronautica && pareceSerAviao)
             {
                 GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-                GerenciadorAeroporto meuAero = aeroportos.FirstOrDefault(a => {
+                
+                // Filtra apenas aeroportos do jogador (Time 1)
+                var meusAeroportos = aeroportos.Where(a => {
                     IdentidadeUnidade id = a.GetComponent<IdentidadeUnidade>();
-                    return id == null || id.teamID == 1; 
-                });
+                    return id == null || id.teamID == 1;
+                }).ToList();
+
+                if (meusAeroportos.Count == 0)
+                {
+                    Debug.LogWarning("❌ BLOQUEADO: Você precisa construir um AEROPORTO primeiro para comprar aviões!");
+                    return;
+                }
+
+                // Tenta encontrar o melhor aeroporto:
+                // 1. Prioriza o que NÃO é um Porta-Aviões (se houver um aeroporto terrestre disponível)
+                // 2. Prioriza o que tem vaga no pátio
+                GerenciadorAeroporto meuAero = meusAeroportos.OrderByDescending(a => {
+                    int score = 0;
+                    // Se não for porta-aviões, ganha pontos (aviões terrestres devem preferir bases terrestres)
+                    if (a.GetType() != typeof(GerenciadorPortaAvioes)) score += 100;
+                    
+                    // Se tem vaga no pátio, ganha pontos
+                    if (a.ObterPrimeiraVagaLivre() != null) score += 50;
+                    
+                    return score;
+                }).FirstOrDefault();
 
                 if (meuAero != null)
                 {
@@ -731,8 +757,8 @@ public class MenuConstrucao : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogWarning("❌ BLOQUEADO: Você precisa construir um AEROPORTO primeiro para comprar aviões!");
-                    return; 
+                    Debug.LogWarning("❌ ERRO: Nenhum aeroporto válido encontrado!");
+                    return;
                 }
             }
         }

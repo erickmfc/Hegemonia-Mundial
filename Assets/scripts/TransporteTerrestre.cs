@@ -343,6 +343,9 @@ public class TransporteTerrestre : MonoBehaviour
         // (Nota: Isso impede que levem tiros diretos. Se quiser que levem tiro, teria que tratar no GerenteSelecao)
         Collider[] cols = unidade.GetComponentsInChildren<Collider>();
         foreach(var c in cols) c.enabled = false;
+
+        // VAZA DO MOUSE! O Raio-X vai ignorar esse cara com força bruta (Layer 2 = Ignore Raycast)
+        MudarLayerRecursivo(unidade.transform, 2);
     }
 
     void HabilitarMovimento(GameObject unidade, Vector3 posicaoInicial)
@@ -372,8 +375,20 @@ public class TransporteTerrestre : MonoBehaviour
         {
             rb.isKinematic = false; // (Ou true se usar NavMesh sempre)
         }
+
+        // VOLTA A SER CLICÁVEL! (Layer 0 = Default)
+        MudarLayerRecursivo(unidade.transform, 0);
     }
     
+    // Método para transpassar os cliques
+    void MudarLayerRecursivo(Transform raiz, int novoLayer)
+    {
+        raiz.gameObject.layer = novoLayer;
+        foreach (Transform filho in raiz)
+        {
+            MudarLayerRecursivo(filho, novoLayer);
+        }
+    }
     int ContarVisiveis()
     {
         if (soldadosNosAssentos == null) return 0;
@@ -382,8 +397,6 @@ public class TransporteTerrestre : MonoBehaviour
         return c;
     }
 
-    public bool TemPassageiros
-    {
-        get { return TemTropas(); }
-    }
+    public bool TemPassageiros => TemTropas();
+    public int QuantidadePassageiros => soldadosInternos.Count + ContarVisiveis();
 }

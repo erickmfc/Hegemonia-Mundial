@@ -83,7 +83,7 @@ public class PierMarinha : MonoBehaviour
     public Transform pontoAcoplagem;  // Onde o navio DESCARREGA
     public Transform pontoSaidaNavio; // Para onde ele olha ao sair (pode ser um dos pontosDeSaida)
 
-    private bool ocupadoPorPetroleiro = false;
+
 
     // Métodos duplicados removidos
 
@@ -390,7 +390,7 @@ public class PierMarinha : MonoBehaviour
 
     public void ChamarNaviosParaVagasLivres()
     {
-        IdentidadeNaval[] todosNavios = FindObjectsOfType<IdentidadeNaval>();
+        IdentidadeNaval[] todosNavios = Object.FindObjectsByType<IdentidadeNaval>(FindObjectsSortMode.None);
         foreach (var vaga in vagasDisponiveis)
         {
             if (vaga.EstaLivre())

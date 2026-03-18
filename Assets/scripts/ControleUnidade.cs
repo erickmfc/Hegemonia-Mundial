@@ -24,6 +24,10 @@ public class ControleUnidade : MonoBehaviour
     // --- DETECÇÃO DE CONFLITO ---
     private Helicoptero helicopteroExterno;
 
+    // --- SISTEMA DE VELOCIDADE DINÂMICA (Para Seguir) ---
+    private float velocidadeOriginalSalva = -1f;
+    private bool limiteVelocidadeAtivo = false;
+
     protected virtual void Awake()
     {
         agente = GetComponent<NavMeshAgent>();
@@ -248,9 +252,35 @@ public class ControleUnidade : MonoBehaviour
         }
     }
 
-    // COMANDO AUTOMÁTICO (Usado pela fábrica)
+    // Sobrecarga para SendMessage da IA (que não suporta parâmetros opcionais)
     public void MoverParaPonto(Vector3 destino)
     {
+        MoverParaPonto(destino, true);
+    }
+
+    // COMANDO AUTOMÁTICO (Usado pela fábrica e IA)
+    public void MoverParaPonto(Vector3 destino, bool cancelarComportamentos = true)
+    {
+        if (cancelarComportamentos)
+        {
+            // Interrompe comportamentos especiais se receber ordem DIRETA do jogador (clique direito)
+            var patCaminho = GetComponent<ComportamentoPatrulhaCaminho>();
+            if (patCaminho != null) Destroy(patCaminho);
+            
+            var seg = GetComponent<ComportamentoSeguir>();
+            if (seg != null) Destroy(seg);
+            
+            var patUniv = GetComponent<ComportamentoPatrulhaUniversal>();
+            if (patUniv != null) Destroy(patUniv);
+            
+            var segUniv = GetComponent<ComportamentoSeguirUniversal>();
+            if (segUniv != null) 
+            {
+                Destroy(segUniv);
+                RestaurarVelocidadeOriginal();
+            }
+        }
+
         // Debug.Log($"[ControleUnidade] {name} recebeu MoverParaPonto({destino})...");
 
         // Caça Militar Aéreo
@@ -263,7 +293,15 @@ public class ControleUnidade : MonoBehaviour
         // Avião de Passageiros / Cargueiro (Sistema de Aeroporto)
         if (TryGetComponent<ControleAviao>(out var aviao))
         {
-            aviao.IniciarMissaoCompleta(destino);
+            if (aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+            {
+                aviao.IniciarMissaoCompleta(destino);
+            }
+            else if (aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao || aviao.estadoAtual == ControleAviao.EstadoAviao.Decolando)
+            {
+                // Se já estiver voando, apenas muda a coordenada do GPS
+                aviao.alvoGPSVoo = destino;
+            }
             return;
         }
 
@@ -340,6 +378,48 @@ public class ControleUnidade : MonoBehaviour
                  }
             }
         }
+    }
+
+    public float ObterVelocidadeAtualReal()
+    {
+        if (agente != null && agente.enabled) return agente.velocity.magnitude;
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null) return rb.linearVelocity.magnitude;
+        if (ehAereo && voando) return velocidadeVoo;
+        return 0f;
+    }
+
+    public void AplicarLimiteVelocidade(float velocidadeAlvo)
+    {
+        // Salva a original apenas na primeira vez
+        if (velocidadeOriginalSalva < 0f)
+        {
+            if (TryGetComponent<ControleAviao>(out var aviao)) velocidadeOriginalSalva = aviao.velocidadeMaximaVoo;
+            else if (TryGetComponent<ControleNavioRealista>(out var nav1)) velocidadeOriginalSalva = nav1.velocidadeMaxima;
+            else if (TryGetComponent<NavegacaoInteligenteNaval>(out var nav2)) velocidadeOriginalSalva = nav2.velocidadeMaxima;
+            else if (TryGetComponent<NavMeshAgent>(out var nma)) velocidadeOriginalSalva = nma.speed;
+            else velocidadeOriginalSalva = 0f;
+        }
+
+        limiteVelocidadeAtivo = true;
+        ModificarVelocidadeInterna(velocidadeAlvo);
+    }
+
+    public void RestaurarVelocidadeOriginal()
+    {
+        if (limiteVelocidadeAtivo && velocidadeOriginalSalva > 0f)
+        {
+            ModificarVelocidadeInterna(velocidadeOriginalSalva);
+            limiteVelocidadeAtivo = false;
+        }
+    }
+
+    private void ModificarVelocidadeInterna(float v)
+    {
+        if (TryGetComponent<ControleAviao>(out var aviao)) aviao.velocidadeMaximaVoo = Mathf.Max(v, aviao.velocidadeSolo * 2.5f); // Avião não pode parar no ar
+        else if (TryGetComponent<ControleNavioRealista>(out var nav1)) nav1.velocidadeMaxima = v;
+        else if (TryGetComponent<NavegacaoInteligenteNaval>(out var nav2)) nav2.velocidadeMaxima = v;
+        else if (TryGetComponent<NavMeshAgent>(out var nma)) { if(nma.enabled) nma.speed = v; }
     }
 
     [Header("Visual de Alcance")]

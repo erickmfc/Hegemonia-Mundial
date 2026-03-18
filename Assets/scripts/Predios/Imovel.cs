@@ -75,7 +75,7 @@ public class Imovel : MonoBehaviour
         // Timer randômico para não sincronizar todos os imóveis
         timerCiclo = Random.Range(0f, INTERVALO_CICLO);
 
-        Debug.Log($"🏠 [Imóvel] {name} construído! Capacidade: {capacidade}");
+        Debug.Log($"[Imovel] {name} construido! Capacidade: {capacidade}");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -154,7 +154,7 @@ public class Imovel : MonoBehaviour
         recursos.RemoverPopulacao(querSair);
         AtualizarRenda();
 
-        Debug.Log($"🏚️ [Imóvel] {name}: -{querSair} moradores fugiram! Qualidade: {qualidadeAtual} ({moradoresAtuais}/{capacidade})");
+        Debug.Log($"[Imovel] {name}: -{querSair} moradores fugiram! Qualidade: {qualidadeAtual} ({moradoresAtuais}/{capacidade})");
     }
 
     // ═══════════════════════════════════════════════════════════════

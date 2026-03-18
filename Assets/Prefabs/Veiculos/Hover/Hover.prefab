@@ -847,6 +847,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 0}
   selecionado: 0
+  aguardandoVisto: 0
+  vistoAprovado: 0
   velocidadeVoo: 8
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
@@ -854,6 +856,8 @@ MonoBehaviour:
   corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
   larguraLinha: 0.15
   segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
 --- !u!114 &2376537443401352466
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -885,6 +889,7 @@ MonoBehaviour:
   vidaMaxima: 900
   vidaAtual: 900
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 5
@@ -917,7 +922,7 @@ NavMeshAgent:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6374748384996421208}
-  m_Enabled: 0
+  m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 2
   m_Speed: 7
@@ -967,7 +972,6 @@ MonoBehaviour:
   distanciaParaEmbarque: 50
   distanciaDescarga: 25
   capacidadeSoldadosPorSlot: 12
-  espacoEntreSoldados: 0.74
 --- !u!54 &349124250350881786
 Rigidbody:
   m_ObjectHideFlags: 0

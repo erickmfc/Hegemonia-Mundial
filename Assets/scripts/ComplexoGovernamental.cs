@@ -75,7 +75,7 @@ public class ComplexoGovernamental : MonoBehaviour
 
     public void AbrirMenuGestaoDeEstado()
     {
-        Debug.Log($"🏛️ [Complexo Governamental] Abrindo o painel central da {nomeDoPais}!");
+        Debug.Log($"[Complexo Governamental] Abrindo o painel central da {nomeDoPais}!");
         aoAbrirMenuGestao?.Invoke();
         
         // Em vez de Consulado Backend, abre a Interface Moderna de Abas.
@@ -94,7 +94,7 @@ public class ComplexoGovernamental : MonoBehaviour
         if (jaDerrotado) return;
         jaDerrotado = true;
 
-        Debug.LogWarning($"💥⚠️ ALERTA MÁXIMO! O Complexo Governamental da {nomeDoPais} caiu! O governo ruiu!");
+        Debug.LogWarning($"[ALERTA MAXIMO] O Complexo Governamental da {nomeDoPais} caiu! O governo ruiu!");
         aoSerDestruido?.Invoke();
 
         if (ehDoJogador)

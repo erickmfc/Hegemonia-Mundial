@@ -1,0 +1,1001 @@
+using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.UI;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+
+/// <summary>
+/// IA SUPREMA - PROJETO TITANIUM (V 21.0 - INTELIGÊNCIA ESPACIAL E ANTI-STUCK)
+/// - Desvio de Aliados: Unidades identificam os seus próprios prédios e contornam-nos matematicamente.
+/// - Fronteiras Seguras: Os pontos de aglomeração são validados pela Malha de Navegação (NavMesh).
+/// - Tratado de Paz: 1 Minuto de aglomeração pacífica obrigatória (anulado se atacada).
+/// - 3 Pontos de Fronteira: Exército distribui-se em Flanco Esquerdo, Centro e Direito a 110m da base.
+/// </summary>
+public class IA_Suprema : MonoBehaviour
+{
+    // ==============================================================
+    // ⚙️ CONFIGURAÇÕES DE IDENTIDADE E ECONOMIA
+    // ==============================================================
+    [Header("Identidade da Nação")]
+    public int teamID = 2;
+    public string nomeNacao = "Nova Federação Titã";
+    public Color corNacao = Color.red;
+
+    [Header("Economia e Inteligência")]
+    public float dinheiroIA = 15000f; 
+    public float rendaBase = 50f;
+    [Range(1, 5)] public int nivelDificuldade = 3;
+
+    [Header("Urbanismo e Altura")]
+    public bool permitirMarinha = false;
+    public float nivelDoMar = 0f;
+    public float isolamentoAeroporto = 650f;
+    public float cooldownConstrucao = 10f;
+
+    [Header("Logística de Guerra e Tempo")]
+    [Tooltip("Tempo (segundos) de PAZ OBRIGATÓRIA enquanto a IA junta tropas (1 min = 60s)")]
+    public float tempoDePazInicial = 60f; 
+    private float momentoFimDaPaz = 0f;
+
+    public float distanciaDesembarque = 150f;
+    public int metaSoldados = 20;
+    public int metaTanques = 10;
+    public int metaAereo = 5;
+    public int metaCacas = 4;
+    public int metaNaval = 3;
+
+    // ==============================================================
+    // 🧠 MEMÓRIA E ESTADOS
+    // ==============================================================
+    public enum EstadoIA { Acordando, FundandoCapital, DesenvolvimentoUrbano, GuerraTotal, Reagrupamento, DefesaDesesperada }
+    public EstadoIA estadoAtual = EstadoIA.Acordando;
+
+    private Dictionary<string, GameObject> biblioteca = new Dictionary<string, GameObject>();
+    private List<GameObject> meusPredios = new List<GameObject>();
+    private List<GameObject> minhasTropas = new List<GameObject>();
+    private List<GameObject> meusTransportes = new List<GameObject>();
+    
+    private Transform alvoJogadorBase;
+    private Transform alvoJogadorEconomia;
+    private bool prefeituraPronta = false;
+    private int forcaInimigaAerea = 0;
+
+    // ==============================================================
+    // 🚀 INICIALIZAÇÃO E CICLOS
+    // ==============================================================
+    void Start()
+    {
+        StartCoroutine(RotinaInicial());
+    }
+
+    IEnumerator RotinaInicial()
+    {
+        Debug.Log($"[IA Suprema] {nomeNacao} a iniciar... Tratado de paz ativado por {tempoDePazInicial}s.");
+        estadoAtual = EstadoIA.Acordando;
+        
+        momentoFimDaPaz = Time.time + 5f + tempoDePazInicial; 
+
+        yield return new WaitForSeconds(5f);
+
+        RealizarScanDeArquivos();
+
+        StartCoroutine(CicloEconomico());
+        StartCoroutine(CicloLogistico());
+        StartCoroutine(CicloTatico());
+        StartCoroutine(CicloManutencao()); 
+    }
+
+    IEnumerator CicloEconomico()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(1f);
+            float ganho = rendaBase * (1f + (nivelDificuldade * 0.1f));
+            int prediosVivos = meusPredios.Count(p => p != null);
+            
+            int geradoresRenda = Contar("refinaria") + Contar("plataforma");
+            
+            ganho += (prediosVivos * 5f) + (geradoresRenda * 20f); 
+            dinheiroIA += ganho;
+            
+            if (dinheiroIA < 0) dinheiroIA = 0; // Anti-Erro de economia negativa
+        }
+    }
+
+    IEnumerator CicloManutencao()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(5f);
+            
+            if (dinheiroIA > 1000f) 
+            {
+                foreach (var predio in meusPredios)
+                {
+                    if (predio == null) continue;
+                    var dmg = predio.GetComponent<SistemaDeDanos>();
+                    if (dmg != null && dmg.vidaAtual < dmg.vidaMaxima)
+                    {
+                        dinheiroIA -= 50f; 
+                        dmg.vidaAtual += 150f; 
+                        if (dmg.vidaAtual > dmg.vidaMaxima) dmg.vidaAtual = dmg.vidaMaxima;
+                    }
+                }
+            }
+        }
+    }
+
+    // ==============================================================
+    // 🏗️ CÉREBRO LOGÍSTICO (Anti-Freeze e Iron Dome)
+    // ==============================================================
+    IEnumerator CicloLogistico()
+    {
+        while (true)
+        {
+            LimparMortos();
+            AnalisarOponente();
+
+            bool fezObra = false;
+
+            if (!prefeituraPronta)
+            {
+                estadoAtual = EstadoIA.FundandoCapital;
+                fezObra = FundarCapitalImediata();
+            }
+            else
+            {
+                if (estadoAtual != EstadoIA.DefesaDesesperada)
+                {
+                    fezObra = GerenciarExpansaoBase();
+                }
+            }
+
+            if (fezObra)
+            {
+                Debug.Log($"[IA Suprema] Obra erguida! Pausa logística ({cooldownConstrucao}s).");
+                yield return new WaitForSeconds(cooldownConstrucao);
+            }
+            else
+            {
+                yield return new WaitForSeconds(3f); 
+            }
+        }
+    }
+
+    bool FundarCapitalImediata()
+    {
+        if (!biblioteca.ContainsKey("prefeitura")) return false;
+
+        Vector3 pos = transform.position;
+        pos.y = ObterAlturaSolo(pos); 
+
+        SpawnarObjeto(biblioteca["prefeitura"], pos, "Prefeitura_Sede");
+        prefeituraPronta = true;
+        return true;
+    }
+
+    bool GerenciarExpansaoBase()
+    {
+        if (dinheiroIA < 300) return false;
+
+        int quarteis = Contar("quartel");
+        int fabricas = Contar("fabrica");
+        int refinarias = Contar("refinaria");
+        int aeroportos = Contar("aeroporto");
+        int estaleiros = Contar("estaleiro");
+        int piers = Contar("pier");
+        int plataformas = Contar("plataforma");
+        int defesas = Contar("torreta");
+        int antiAereas = Contar("antiaerea");
+
+        if (refinarias == 0 && meusPredios.Count > 3 && biblioteca.ContainsKey("refinaria"))
+        {
+            if (TentarEdificar("refinaria", 500, 65f)) return true;
+        }
+
+        if (quarteis == 0 && biblioteca.ContainsKey("quartel")) { if (TentarEdificar("quartel", 300, 50f)) return true; }
+        if (refinarias == 0 && biblioteca.ContainsKey("refinaria")) { if (TentarEdificar("refinaria", 500, 65f)) return true; }
+        if (defesas < 1 && biblioteca.ContainsKey("torreta")) { if (TentarEdificar("torreta", 400, 80f)) return true; }
+
+        if (antiAereas < 2 && dinheiroIA > 1200 && biblioteca.ContainsKey("antiaerea"))
+        {
+            if (TentarEdificarIronDome("antiaerea", 800)) return true;
+        }
+
+        if (fabricas == 0 && biblioteca.ContainsKey("fabrica")) { if (TentarEdificar("fabrica", 800, 90f)) return true; }
+        if (defesas < 3 && biblioteca.ContainsKey("torreta")) { if (TentarEdificar("torreta", 400, 110f)) return true; }
+
+        if (antiAereas < 4 && (forcaInimigaAerea > 0 || dinheiroIA > 3000) && biblioteca.ContainsKey("antiaerea"))
+        {
+            if (TentarEdificarIronDome("antiaerea", 800)) return true;
+        }
+
+        if (permitirMarinha && dinheiroIA > 1500) 
+        {
+            if (estaleiros == 0 && biblioteca.ContainsKey("estaleiro")) { if (TentarEdificarNaAgua("estaleiro", 1500)) return true; }
+            if (piers == 0 && biblioteca.ContainsKey("pier")) { if (TentarEdificarNaAgua("pier", 1000)) return true; }
+
+            bool baseNavalPronta = (estaleiros > 0 || !biblioteca.ContainsKey("estaleiro")) && (piers > 0 || !biblioteca.ContainsKey("pier"));
+            if (baseNavalPronta && plataformas == 0 && biblioteca.ContainsKey("plataforma"))
+            {
+                if (TentarEdificarNaAgua("plataforma", 2000)) return true;
+            }
+        }
+
+        if (aeroportos == 0 && dinheiroIA > 3000 && biblioteca.ContainsKey("aeroporto")) 
+        {
+            if (TentarEdificar("aeroporto", 2500, isolamentoAeroporto)) return true;
+        }
+
+        if (refinarias < 2 && dinheiroIA > 2000 && biblioteca.ContainsKey("refinaria")) { if (TentarEdificar("refinaria", 600, 140f)) return true; }
+        if (fabricas < 2 && dinheiroIA > 3000 && biblioteca.ContainsKey("fabrica")) { if (TentarEdificar("fabrica", 1000, 160f)) return true; }
+        if (defesas < 6 && dinheiroIA > 1000 && biblioteca.ContainsKey("torreta")) { if (TentarEdificar("torreta", 400, 130f)) return true; }
+
+        return false; 
+    }
+
+    bool TentarEdificar(string chave, float custo, float distanciaDaBase)
+    {
+        if (!biblioteca.ContainsKey(chave) || dinheiroIA < custo) return false;
+
+        GameObject prefab = biblioteca[chave];
+        float meuRaioDeProtecao = CalcularRaioSeguro(chave); 
+
+        for (float r = distanciaDaBase; r < distanciaDaBase + 400f; r += 35f)
+        {
+            int particoes = Mathf.Max(8, Mathf.CeilToInt(r / 15f)); 
+            for (int i = 0; i < particoes; i++)
+            {
+                float ang = i * (360f / particoes) * Mathf.Deg2Rad;
+                Vector3 posTeste = transform.position + new Vector3(Mathf.Cos(ang) * r, 0, Mathf.Sin(ang) * r);
+                
+                float alturaSolo;
+                bool ehAgua;
+                ObterInfoTerrenoFisico(posTeste, out alturaSolo, out ehAgua);
+
+                if (ehAgua) continue; 
+
+                posTeste.y = alturaSolo; 
+
+                if (!LocalOcupado(posTeste, meuRaioDeProtecao))
+                {
+                    dinheiroIA -= custo;
+                    SpawnarObjeto(prefab, posTeste, chave);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    bool TentarEdificarIronDome(string chave, float custo)
+    {
+        if (!biblioteca.ContainsKey(chave) || dinheiroIA < custo) return false;
+        GameObject prefab = biblioteca[chave];
+        
+        float[] angulosPontas = { 45f, 135f, 225f, 315f };
+        
+        for (float dist = 110f; dist <= 300f; dist += 40f)
+        {
+            foreach (float ang in angulosPontas)
+            {
+                Vector3 posTeste = transform.position + new Vector3(Mathf.Cos(ang * Mathf.Deg2Rad) * dist, 0, Mathf.Sin(ang * Mathf.Deg2Rad) * dist);
+                
+                float alturaSolo;
+                bool ehAgua;
+                ObterInfoTerrenoFisico(posTeste, out alturaSolo, out ehAgua);
+                if (ehAgua) continue; 
+                
+                posTeste.y = alturaSolo;
+                
+                if (!TemPredioNoRaio(posTeste, 95f)) 
+                {
+                    dinheiroIA -= custo;
+                    SpawnarObjeto(prefab, posTeste, chave);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    bool TemPredioNoRaio(Vector3 p, float raio)
+    {
+        foreach (var predio in meusPredios)
+        {
+            if (predio == null) continue;
+            if (Vector3.Distance(p, predio.transform.position) < raio) return true;
+        }
+        return false;
+    }
+
+    bool TentarEdificarNaAgua(string chave, float custo)
+    {
+        if (!permitirMarinha || !biblioteca.ContainsKey(chave) || dinheiroIA < custo) return false;
+        
+        float meuRaio = CalcularRaioSeguro(chave);
+
+        for (int i = 0; i < 16; i++)
+        {
+            float ang = i * 22.5f * Mathf.Deg2Rad;
+            Vector3 dir = new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang));
+
+            for (float d = 150f; d < 2500f; d += 80f)
+            {
+                Vector3 pos = transform.position + dir * d;
+                
+                float alturaAgua;
+                bool ehAgua;
+                ObterInfoTerrenoFisico(pos, out alturaAgua, out ehAgua);
+
+                if (ehAgua) 
+                {
+                    pos.y = alturaAgua; 
+                    if (!LocalOcupado(pos, meuRaio))
+                    {
+                        dinheiroIA -= custo;
+                        SpawnarObjeto(biblioteca[chave], pos, chave, Quaternion.LookRotation(dir));
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    // ==============================================================
+    // 🛡️ SENSOR DE TERRENO E DISTANCIAMENTO SOCIAL
+    // ==============================================================
+    float ObterAlturaSolo(Vector3 p)
+    {
+        if (Terrain.activeTerrain != null) return Terrain.activeTerrain.SampleHeight(p);
+        
+        RaycastHit hit;
+        int mask = ~(1 << LayerMask.NameToLayer("Ignore Raycast"));
+        if (Physics.Raycast(new Vector3(p.x, 1000f, p.z), Vector3.down, out hit, 2000f, mask)) return hit.point.y;
+        return 0f;
+    }
+
+    void ObterInfoTerrenoFisico(Vector3 ponto, out float altura, out bool ehAgua)
+    {
+        altura = ObterAlturaSolo(ponto); 
+        ehAgua = false; 
+
+        int mascaraGeral = ~(1 << LayerMask.NameToLayer("Ignore Raycast"));
+        RaycastHit[] hits = Physics.RaycastAll(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, 1000f, mascaraGeral);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (var hit in hits)
+        {
+            if (hit.collider == null || hit.collider.isTrigger) continue;
+            string n = hit.collider.name.ToLower();
+
+            if (n.Contains("bip001") || n.Contains("bone") || n.Contains("cube")) continue;
+            if (hit.collider.GetComponentInParent<IdentidadeUnidade>() != null) continue;
+
+            if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Chao") || n.Contains("mapamundi") || hit.collider is TerrainCollider)
+            {
+                ehAgua = false;
+                altura = hit.point.y;
+                return;
+            }
+
+            if (n == "agua" || n.Contains("water") || n.Contains("sea") || hit.collider.gameObject.layer == 4)
+            {
+                ehAgua = true;
+                altura = hit.point.y; 
+                return;
+            }
+        }
+    }
+
+    float CalcularRaioSeguro(string nomeObjeto)
+    {
+        string n = nomeObjeto.ToLower();
+        if (n.Contains("aeroporto") || n.Contains("hangar")) return 200f; 
+        if (n.Contains("prefeitura") || n.Contains("complexo")) return 75f;
+        if (n.Contains("estaleiro") || n.Contains("pier") || n.Contains("naval") || n.Contains("plataforma")) return 65f;
+        if (n.Contains("fabrica") || n.Contains("construtor") || n.Contains("veiculo")) return 60f;
+        if (n.Contains("heliporto") || n.Contains("helipad")) return 55f;
+        if (n.Contains("quartel") || n.Contains("tenda") || n.Contains("infantaria")) return 45f;
+        if (n.Contains("refinaria") || n.Contains("mina") || n.Contains("armazem")) return 45f;
+        if (n.Contains("torreta") || n.Contains("defesa") || n.Contains("canhao")) return 25f;
+        if (n.Contains("antiaerea") || n.Contains("ares")) return 30f;
+        return 35f; 
+    }
+
+    bool LocalOcupado(Vector3 p, float raioNecessario)
+    {
+        foreach(var predio in meusPredios)
+        {
+            if (predio == null) continue;
+            float raioDoOutro = CalcularRaioSeguro(predio.name);
+            if (Vector3.Distance(p, predio.transform.position) < (raioNecessario + raioDoOutro)) return true; 
+        }
+
+        var outrasEstruturas = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        foreach(var est in outrasEstruturas)
+        {
+            if (est == null || est.teamID == this.teamID) continue;
+            var agent = est.GetComponent<NavMeshAgent>();
+            if (agent != null && agent.enabled) continue; 
+
+            float raioDoOutro = CalcularRaioSeguro(est.name);
+            if (Vector3.Distance(p, est.transform.position) < (raioNecessario + raioDoOutro)) return true;
+        }
+
+        Collider[] hits = Physics.OverlapSphere(p, raioNecessario * 0.7f); 
+        foreach (var h in hits) 
+        { 
+            if (h.gameObject.layer != 4 && h.gameObject.layer != LayerMask.NameToLayer("Ignore Raycast")) 
+            {
+                if (h.GetComponentInParent<IdentidadeUnidade>() != null || h.GetComponentInParent<NavMeshObstacle>() != null)
+                    return true; 
+            }
+        }
+        return false;
+    }
+
+    // ==============================================================
+    // ⚔️ CÉREBRO TÁTICO E RECRUTAMENTO
+    // ==============================================================
+    IEnumerator CicloTatico()
+    {
+        while (true)
+        {
+            if (prefeituraPronta)
+            {
+                LimparMortos(); 
+                DefinirPosturaGlobal();
+                GerenciarProducaoTropas();
+                GerenciarLogisticaTransporte(); 
+                
+                if (estadoAtual == EstadoIA.GuerraTotal)
+                {
+                    LancarOfensivaMassa();
+                }
+                else if (estadoAtual == EstadoIA.Reagrupamento)
+                {
+                    PatrulharBordasDaBase(); 
+                }
+                else if (estadoAtual == EstadoIA.DefesaDesesperada)
+                {
+                    RecuarParaDefesa();
+                }
+            }
+            yield return new WaitForSeconds(4f);
+        }
+    }
+
+    void DefinirPosturaGlobal()
+    {
+        int soldadosVivos = Contar("soldado");
+        int tanquesVivos = Contar("tanque");
+        
+        if (InimigoNoPortao())
+        {
+            momentoFimDaPaz = 0f; 
+            estadoAtual = EstadoIA.DefesaDesesperada;
+            return;
+        }
+
+        if (Time.time < momentoFimDaPaz)
+        {
+            estadoAtual = EstadoIA.Reagrupamento;
+            return; 
+        }
+
+        int metaRealSoldados = biblioteca.ContainsKey("soldado") ? metaSoldados : 0;
+        int metaRealTanques = biblioteca.ContainsKey("tanque") ? metaTanques : 0;
+
+        if (metaRealSoldados == 0 && metaRealTanques == 0)
+        {
+            estadoAtual = EstadoIA.GuerraTotal;
+            return;
+        }
+
+        if (soldadosVivos >= metaRealSoldados * 0.8f && tanquesVivos >= metaRealTanques * 0.8f)
+        {
+            estadoAtual = EstadoIA.GuerraTotal;
+        }
+        else
+        {
+            estadoAtual = EstadoIA.Reagrupamento; 
+        }
+    }
+
+    bool InimigoNoPortao()
+    {
+        Collider[] invasoes = Physics.OverlapSphere(transform.position, 150f);
+        foreach (var i in invasoes)
+        {
+            IdentidadeUnidade id = i.GetComponentInParent<IdentidadeUnidade>();
+            if (id != null && id.teamID == 1 && !i.name.ToLower().Contains("aviao")) return true; 
+        }
+        return false;
+    }
+
+    void GerenciarProducaoTropas()
+    {
+        int qtdTropasVivas = minhasTropas.Count(t => t != null);
+        if (qtdTropasVivas > 60) return; 
+
+        bool temQuartel = Contar("quartel") > 0 || !biblioteca.ContainsKey("quartel");
+        bool temFabrica = Contar("fabrica") > 0 || !biblioteca.ContainsKey("fabrica");
+        bool temAereo = Contar("aeroporto") > 0 || Contar("heliporto") > 0 || (!biblioteca.ContainsKey("aeroporto") && !biblioteca.ContainsKey("heliporto"));
+        bool temPista = Contar("aeroporto") > 0;
+        bool temNaval = Contar("estaleiro") > 0 || Contar("pier") > 0 || Contar("plataforma") > 0 || !biblioteca.ContainsKey("estaleiro");
+
+        if (temQuartel && Contar("soldado") < metaSoldados) TreinarTropa("soldado", 150);
+        if (temFabrica && Contar("tanque") < metaTanques) TreinarTropa("tanque", 600);
+        
+        if (temFabrica && Contar("transporte_aereo") < 2) TreinarTropa("transporte_aereo", 400, true);
+        if (temFabrica && Contar("transporte") < 2) TreinarTropa("transporte", 400);
+
+        if (temAereo && Contar("helicoptero") < metaAereo) TreinarTropa("helicoptero", 900, true);
+
+        if (temPista && ContarAvioes() < metaCacas)
+        {
+            TreinarAviao("caca", 1200);
+        }
+
+        if (permitirMarinha && temNaval && Contar("navio") < metaNaval) 
+            TreinarTropa("navio", 1500, false, true);
+    }
+
+    void TreinarAviao(string chave, float custo)
+    {
+        if (!biblioteca.ContainsKey(chave) || dinheiroIA < custo) return;
+
+        var aero = meusPredios.FirstOrDefault(p => p != null && p.name.Contains("aeroporto"));
+        if (aero != null)
+        {
+            var scriptAero = aero.GetComponent<GerenciadorAeroporto>();
+            if (scriptAero != null)
+            {
+                dinheiroIA -= custo;
+                scriptAero.ComprarAviao(biblioteca[chave]);
+                Debug.Log($"[IA Suprema] A encomendar Caça Tático no Aeroporto!");
+            }
+        }
+    }
+
+    int ContarAvioes()
+    {
+        int count = 0;
+        var avioes = FindObjectsByType<ControleAviao>(FindObjectsSortMode.None);
+        foreach(var a in avioes)
+        {
+            var id = a.GetComponent<IdentidadeUnidade>();
+            if (id != null && id.teamID == this.teamID) count++;
+        }
+        return count;
+    }
+
+    void TreinarTropa(string chave, float custo, bool voa = false, bool naval = false)
+    {
+        if (!biblioteca.ContainsKey(chave) || dinheiroIA < custo) return;
+
+        if (naval)
+        {
+            var pNaval = meusPredios.FirstOrDefault(p => p != null && (p.name.Contains("estaleiro") || p.name.Contains("pier") || p.name.Contains("plataforma")));
+            if (pNaval != null)
+            {
+                dinheiroIA -= custo;
+                pNaval.SendMessage("ConstruirNavio", biblioteca[chave], SendMessageOptions.DontRequireReceiver);
+                pNaval.SendMessage("ConstruirUnidade", biblioteca[chave], SendMessageOptions.DontRequireReceiver);
+            }
+            return;
+        }
+
+        Transform spawnPoint = transform;
+        if (meusPredios.Count > 0)
+        {
+            var pMilitar = meusPredios.FirstOrDefault(p => p != null && (p.name.Contains("fabrica") || p.name.Contains("quartel") || p.name.Contains("heliporto")));
+            if (pMilitar != null) spawnPoint = pMilitar.transform;
+        }
+
+        Vector3 spawn = spawnPoint.position + spawnPoint.forward * 40f + new Vector3(Random.Range(-15,15), 0, Random.Range(-15,15));
+        spawn.y = ObterAlturaSolo(spawn);
+        if (voa) spawn.y += 20f;
+
+        if (!voa && !naval)
+        {
+            NavMeshHit navHit;
+            if (NavMesh.SamplePosition(spawn, out navHit, 20f, NavMesh.AllAreas))
+            {
+                spawn = navHit.position;
+            }
+        }
+
+        dinheiroIA -= custo;
+        GameObject nova = Instantiate(biblioteca[chave], spawn, Quaternion.identity);
+        nova.name = chave;
+        ConfigurarObjeto(nova, false);
+        
+        if (chave == "transporte" || chave == "transporte_aereo") meusTransportes.Add(nova);
+        else minhasTropas.Add(nova);
+
+        Vector3[] pontosFronteira = ObterPontosDeFronteira();
+        Vector3 rallyPoint = pontosFronteira[Random.Range(0, 3)] + new Vector3(Random.Range(-15,15), 0, Random.Range(-15,15));
+        rallyPoint.y = ObterAlturaSolo(rallyPoint) + (voa ? 20f : 0f);
+        Mover(nova, rallyPoint);
+    }
+
+    // ==============================================================
+    // 🚧 SISTEMA DE 3 FRONTEIRAS (Esquerda, Centro, Direita a 110m)
+    // ==============================================================
+    Vector3[] ObterPontosDeFronteira()
+    {
+        Vector3[] pontos = new Vector3[3];
+        Vector3 centro = transform.position;
+        
+        Vector3 frente = transform.forward;
+        if (alvoJogadorBase != null)
+        {
+            frente = (alvoJogadorBase.position - centro).normalized;
+            frente.y = 0;
+        }
+        if (frente == Vector3.zero) frente = Vector3.forward;
+
+        float distFronteira = 110f; 
+
+        pontos[0] = centro + Quaternion.Euler(0, -45f, 0) * frente * distFronteira; 
+        pontos[1] = centro + frente * distFronteira; 
+        pontos[2] = centro + Quaternion.Euler(0, 45f, 0) * frente * distFronteira; 
+
+        // ANTI-ERRO NAVMESH: Valida as fronteiras no chão caminhável para evitar que fiquem no limbo
+        for(int i=0; i<3; i++) 
+        {
+            pontos[i].y = ObterAlturaSolo(pontos[i]);
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(pontos[i], out hit, 30f, NavMesh.AllAreas))
+            {
+                pontos[i] = hit.position;
+            }
+        }
+
+        return pontos;
+    }
+
+    // ==============================================================
+    // 🚁 LOGÍSTICA DE TRANSPORTE E ATAQUE DE ASSÉDIO (HARASSMENT)
+    // ==============================================================
+    void GerenciarLogisticaTransporte()
+    {
+        if (alvoJogadorBase == null) return;
+        Vector3 centroBase = transform.position;
+
+        foreach (var veiculo in meusTransportes)
+        {
+            if (veiculo == null) continue;
+
+            bool voa = veiculo.name == "transporte_aereo";
+
+            float distAlvo = Vector3.Distance(veiculo.transform.position, alvoJogadorBase.position);
+            float distBase = Vector3.Distance(veiculo.transform.position, centroBase);
+
+            Vector3 direcaoParaAlvo = (alvoJogadorBase.position - centroBase).normalized;
+            Vector3 pontoDeEjeccao = alvoJogadorBase.position - (direcaoParaAlvo * distanciaDesembarque); 
+            pontoDeEjeccao.y = ObterAlturaSolo(pontoDeEjeccao) + (voa ? 20f : 0f);
+
+            bool emMissaoOfensiva = (estadoAtual == EstadoIA.GuerraTotal);
+            
+            // Verifica se o transporte tem gente dentro (Pelo menos 1 passageiro) para não ir vazio
+            int passageiros = 0;
+            int capacidade = 4; // Padrão
+            if (veiculo.name.Contains("helicoptero") || veiculo.name.Contains("transporte_aereo"))
+            {
+                var h = veiculo.GetComponent<Helicoptero>();
+                if (h != null) { passageiros = h.soldadosEmbarcados.Count; capacidade = h.capacidadeMaxima; }
+            }
+            else
+            {
+                var t = veiculo.GetComponent<TransporteTerrestre>();
+                if (t != null) { passageiros = t.QuantidadePassageiros; capacidade = t.capacidadeMaxima; }
+            }
+
+            // Só vai para a guerra se estiver com pelo menos 70% da capacidade ou se já estiver longe da base
+            bool prontoParaGuerra = (passageiros >= capacidade * 0.7f) || (distBase > 150f && passageiros > 0);
+
+            if (emMissaoOfensiva && prontoParaGuerra)
+            {
+                if (distAlvo > distanciaDesembarque + 10f)
+                {
+                    Mover(veiculo, pontoDeEjeccao);
+                }
+                else if (distAlvo <= distanciaDesembarque + 15f)
+                {
+                    veiculo.SendMessage("DesembarcarTudo", SendMessageOptions.DontRequireReceiver);
+                    veiculo.SendMessage("OrdemPousoOuDesembarque", SendMessageOptions.DontRequireReceiver);
+                    Mover(veiculo, centroBase); 
+                }
+            }
+            else if (!emMissaoOfensiva || passageiros == 0)
+            {
+                if (distBase > 80f)
+                {
+                    Mover(veiculo, centroBase + new Vector3(Random.Range(-30, 30), 0, Random.Range(-30, 30)));
+                }
+                else
+                {
+                    // No chão da base, chama reforços se não estiver cheio
+                    veiculo.SendMessage("ChamarReforcos", SendMessageOptions.DontRequireReceiver);
+                    veiculo.SendMessage("TentarEmbarcar", SendMessageOptions.DontRequireReceiver);
+                }
+            }
+        }
+    }
+
+    void LancarOfensivaMassa()
+    {
+        if (alvoJogadorBase == null) return;
+
+        foreach (var t in minhasTropas)
+        {
+            if (t == null) continue;
+            if (t.transform.parent != null) continue; 
+
+            bool isHeli = t.name == "helicoptero";
+            Vector3 alvoTropa = alvoJogadorBase.position;
+            
+            if (isHeli && alvoJogadorEconomia != null) 
+            {
+                alvoTropa = alvoJogadorEconomia.position; 
+            }
+            
+            Vector3 alvoLocal = alvoTropa + new Vector3(Random.Range(-50f, 50f), 0, Random.Range(-50f, 50f));
+            Mover(t, alvoLocal);
+        }
+
+        foreach (var predio in meusPredios)
+        {
+            if (predio == null || !predio.name.Contains("aeroporto")) continue;
+            
+            var aero = predio.GetComponent<GerenciadorAeroporto>();
+            if (aero != null)
+            {
+                Vector3 alvoAereo = (alvoJogadorEconomia != null) ? alvoJogadorEconomia.position : alvoJogadorBase.position;
+                foreach(var aviao in aero.avioesNoPatio)
+                {
+                    if (aviao != null && aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                    {
+                        aviao.IniciarMissaoCompleta(alvoAereo);
+                    }
+                }
+            }
+        }
+    }
+
+    void PatrulharBordasDaBase()
+    {
+        Vector3[] fronteiras = ObterPontosDeFronteira();
+        int i = 0;
+
+        foreach (var tropa in minhasTropas)
+        {
+            if (tropa == null || tropa.transform.parent != null) continue;
+
+            Vector3 pontoBase = fronteiras[i % 3]; 
+
+            Vector3 posRonda = pontoBase + new Vector3(Mathf.Cos(Time.time + i) * 15f, 0, Mathf.Sin(Time.time + i) * 15f);
+            
+            bool voa = tropa.name == "helicoptero";
+            posRonda.y = ObterAlturaSolo(posRonda) + (voa ? 20f : 0f);
+            
+            if (Vector3.Distance(tropa.transform.position, posRonda) > 20f)
+            {
+                Mover(tropa, posRonda);
+            }
+            
+            i++;
+        }
+    }
+
+    void RecuarParaDefesa()
+    {
+        foreach (var t in minhasTropas)
+        {
+            if (t == null || t.transform.parent != null) continue;
+            bool voa = t.name == "helicoptero";
+            Vector3 fuga = transform.position + new Vector3(Random.Range(-30f, 30f), 0, Random.Range(-30f, 30f));
+            fuga.y = ObterAlturaSolo(fuga) + (voa ? 20f : 0f);
+            Mover(t, fuga);
+        }
+    }
+
+    // ==============================================================
+    // 🔍 SCANNER GLOBAL E IDENTIFICAÇÃO DE INIMIGOS
+    // ==============================================================
+    void AnalisarOponente()
+    {
+        var unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None).Where(u => u.teamID == 1).ToList();
+        if (unidades.Count == 0) return;
+
+        alvoJogadorEconomia = null; 
+
+        foreach (var u in unidades)
+        {
+            if (u == null) continue;
+            string n = u.name.ToLower();
+            if (n.Contains("prefeitura") || n.Contains("complexo")) alvoJogadorBase = u.transform;
+            
+            if (n.Contains("refinaria") || n.Contains("mina") || n.Contains("petroleo") || n.Contains("armazem"))
+            {
+                alvoJogadorEconomia = u.transform;
+            }
+        }
+        
+        if (alvoJogadorBase == null && unidades.Count > 0) alvoJogadorBase = unidades[0].transform;
+    }
+
+    void SpawnarObjeto(GameObject prefab, Vector3 pos, string nome, Quaternion rot = default)
+    {
+        if (rot == default) rot = Quaternion.identity;
+        GameObject novo = Instantiate(prefab, pos, rot);
+        novo.name = nome;
+        ConfigurarObjeto(novo, true);
+        meusPredios.Add(novo);
+    }
+
+    void ConfigurarObjeto(GameObject obj, bool ehPredio)
+    {
+        var id = obj.GetComponent<IdentidadeUnidade>();
+        if (!id) id = obj.AddComponent<IdentidadeUnidade>();
+        id.teamID = teamID; id.nomeDoPais = nomeNacao;
+
+        // CORREÇÃO RECURSIVA DE ESCALA NEGATIVA EM COLISORES
+        BoxCollider[] boxes = obj.GetComponentsInChildren<BoxCollider>(true);
+        foreach(var box in boxes)
+        {
+            Vector3 s = box.transform.lossyScale;
+            if (s.x < 0 || s.y < 0 || s.z < 0)
+            {
+                GameObject g = box.gameObject;
+                DestroyImmediate(box);
+                g.AddComponent<MeshCollider>().convex = true;
+            }
+        }
+
+        if (obj.GetComponent<Collider>() == null)
+        {
+            Vector3 s = obj.transform.lossyScale;
+            if (s.x < 0 || s.y < 0 || s.z < 0) obj.AddComponent<MeshCollider>().convex = true;
+            else obj.AddComponent<BoxCollider>();
+        }
+
+        var raycasters = obj.GetComponentsInChildren<GraphicRaycaster>(true);
+        foreach (var gr in raycasters) Destroy(gr);
+
+        var dmg = obj.GetComponent<SistemaDeDanos>();
+        if (!dmg) { dmg = obj.AddComponent<SistemaDeDanos>(); dmg.vidaMaxima = 1500; dmg.vidaAtual = 1500; }
+
+        var nav = obj.GetComponent<NavMeshAgent>();
+        var obs = obj.GetComponent<NavMeshObstacle>();
+        if (ehPredio) { if(nav) nav.enabled = false; if(obs) obs.enabled = true; }
+        else { if(obs) obs.enabled = false; if(nav) nav.enabled = true; }
+    }
+
+    void RealizarScanDeArquivos()
+    {
+        if (MenuConstrucao.catalogoGlobal != null)
+        {
+            foreach (var item in MenuConstrucao.catalogoGlobal)
+            {
+                if (item == null || item.prefabDaUnidade == null) continue;
+                string n = (item.nomeItem + " " + item.prefabDaUnidade.name).ToLower();
+                Mapear(n, item.prefabDaUnidade);
+            }
+            Debug.Log($"[IA Suprema] Catálogo do Jogador escaneado. {biblioteca.Count} plantas aprovadas para construção.");
+        }
+        else
+        {
+            Debug.LogWarning("[IA Suprema] O Catálogo Global do MenuConstrucao está vazio ou nulo! A IA não tem plantas para construir.");
+        }
+    }
+
+    void Mapear(string n, GameObject obj)
+    {
+        if (n.Contains("prefeitura") || n.Contains("complexo") || n.Contains("governo")) AddLib("prefeitura", obj);
+        else if (n.Contains("quartel") || n.Contains("tenda") || n.Contains("barraca")) AddLib("quartel", obj);
+        else if (n.Contains("fabrica") || n.Contains("construtor") || n.Contains("hangar")) AddLib("fabrica", obj);
+        else if (n.Contains("plataforma") || n.Contains("platform")) AddLib("plataforma", obj); 
+        else if (n.Contains("refinaria") || n.Contains("petroleo") || n.Contains("mina")) AddLib("refinaria", obj);
+        else if (n.Contains("antiaerea") || n.Contains("ares") || n.Contains("sam") || n.Contains("missil")) AddLib("antiaerea", obj);
+        else if (n.Contains("torreta") || n.Contains("defesa") || n.Contains("canhao")) AddLib("torreta", obj);
+        else if (n.Contains("aeroporto") || n.Contains("pista")) AddLib("aeroporto", obj);
+        else if (n.Contains("estaleiro") || n.Contains("naval")) AddLib("estaleiro", obj);
+        else if (n.Contains("pier") || n.Contains("porto")) AddLib("pier", obj);
+        else if (n.Contains("soldado") || n.Contains("infantaria") || n.Contains("fuzileiro") || n.Contains("person")) AddLib("soldado", obj);
+        else if (n.Contains("tanque") || n.Contains("tank") || n.Contains("leopard") || n.Contains("blindado")) AddLib("tanque", obj);
+        else if (n.Contains("ray") || n.Contains("guincho")) AddLib("transporte_aereo", obj);
+        else if (n.Contains("heli") || n.Contains("apache") || n.Contains("cobra")) AddLib("helicoptero", obj);
+        else if (n.Contains("transporte") || n.Contains("caminhao") || n.Contains("truck")) AddLib("transporte", obj);
+        else if (n.Contains("caca") || n.Contains("aviao") || n.Contains("jet") || n.Contains("tuk") || n.Contains("super")) AddLib("caca", obj);
+        else if (n.Contains("navio") || n.Contains("corveta") || n.Contains("fragata") || n.Contains("barco") || n.Contains("lancha") || n.Contains("sub") || n.Contains("marinha") || n.Contains("hovercraft") || n.Contains("hover")) AddLib("navio", obj);
+    }
+
+    void AddLib(string k, GameObject o) { if (!biblioteca.ContainsKey(k)) biblioteca.Add(k, o); }
+    
+    void LimparMortos() 
+    { 
+        meusPredios.RemoveAll(x => x == null); 
+        minhasTropas.RemoveAll(x => x == null); 
+        meusTransportes.RemoveAll(x => x == null); 
+    }
+    
+    int Contar(string k) => 
+        (meusPredios.Count(x => x != null && x.name == k)) + 
+        (minhasTropas.Count(x => x != null && x.name == k)) + 
+        (meusTransportes.Count(x => x != null && x.name == k));
+    
+    // ==============================================================
+    // 🧠 SISTEMA DE INTELIGÊNCIA ESPACIAL (ANTI-STUCK)
+    // ==============================================================
+    void Mover(GameObject u, Vector3 d) 
+    { 
+        if (u == null) return;
+
+        bool isAereo = u.name == "helicoptero" || u.name == "transporte_aereo" || u.name.Contains("caca") || u.name.Contains("aviao");
+
+        if (isAereo)
+        {
+            if (d.y <= ObterAlturaSolo(d) + 5f) 
+            {
+                d.y = ObterAlturaSolo(d) + 20f;
+            }
+            
+            u.SendMessage("Decolar", d, SendMessageOptions.DontRequireReceiver);
+            u.SendMessage("MoverParaPonto", d, SendMessageOptions.DontRequireReceiver); 
+            return;
+        }
+
+        // SISTEMA ANTI-OBSTÁCULO ALIADO: Verifica se o destino cai dentro de um prédio próprio
+        d = DesviarDePrediosAliados(d);
+
+        var nav = u.GetComponent<NavMeshAgent>(); 
+        if (nav && nav.isOnNavMesh) 
+        {
+            nav.SetDestination(d); 
+            nav.isStopped = false;
+        } 
+        else 
+        {
+            u.SendMessage("MoverParaPonto", d, SendMessageOptions.DontRequireReceiver);
+        }
+    }
+
+    Vector3 DesviarDePrediosAliados(Vector3 destino)
+    {
+        foreach (var predio in meusPredios)
+        {
+            if (predio == null) continue;
+            
+            float raioOcupacao = CalcularRaioSeguro(predio.name) * 0.8f; // 80% do raio de construção daquele prédio
+            float dist = Vector3.Distance(destino, predio.transform.position);
+            
+            // Se as tropas foram mandadas para dentro ou coladas na parede do prédio
+            if (dist < raioOcupacao)
+            {
+                // Calcula uma direção de fuga (empurra a tropa para fora do prédio)
+                Vector3 direcaoFuga = (destino - predio.transform.position).normalized;
+                if (direcaoFuga == Vector3.zero) direcaoFuga = Vector3.forward;
+                
+                destino = predio.transform.position + (direcaoFuga * (raioOcupacao + 10f));
+                
+                // Recalcula o Y para não flutuar
+                destino.y = ObterAlturaSolo(destino);
+            }
+        }
+
+        // Confirmação final: Garante que o ponto de desvio está mesmo numa área navegável (NavMesh)
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(destino, out hit, 15f, NavMesh.AllAreas))
+        {
+            return hit.position;
+        }
+        
+        return destino;
+    }
+}

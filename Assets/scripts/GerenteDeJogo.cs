@@ -128,6 +128,7 @@ public class GerenteDeJogo : MonoBehaviour
         public bool ehHelicoptero;
         public bool ehNavio;
         public bool ehAviao;
+        public bool ehCarrier;
     }
 
     private System.Collections.IEnumerator ProcessarFilaCoroutine()
@@ -161,7 +162,8 @@ public class GerenteDeJogo : MonoBehaviour
         
         bool ehSoldado = (nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("person") || nome.Contains("infantry") || nome.Contains("fuzileiro"));
         bool ehPredio = unidadeParaConstruir.CompareTag("Imovel") || nome.Contains("ares") || nome.Contains("torreta") || nome.Contains("missil") || nome.Contains("bunker") || nome.Contains("areas");
-        bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("sub") || nome.Contains("destroier") || nome.Contains("porta") || nome.Contains("barco") || nome.Contains("lancha") || nome.Contains("transporte"));
+        bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("sub") || nome.Contains("destroier") || nome.Contains("barco") || nome.Contains("lancha") || nome.Contains("transporte"));
+        bool ehCarrier = nome.Contains("porta") || nome.Contains("carrier");
 
         bool ehHelicoptero = (unidadeParaConstruir.GetComponent<Helicoptero>() != null || 
                               unidadeParaConstruir.GetComponent("HelicopterController") != null ||
@@ -171,6 +173,9 @@ public class GerenteDeJogo : MonoBehaviour
         bool ehAviao = (unidadeParaConstruir.GetComponent<ControleAviao>() != null || 
                         nome.Contains("aviao") || nome.Contains("caca") || nome.Contains("g15") || 
                         nome.Contains("jet") || nome.Contains("bomb") || nome.Contains("fighter") || nome.Contains("falcon"));
+
+        // Se for Porta-Aviões, ele conta como Navio para requisitos de Estaleiro
+        if (ehCarrier) ehNavio = true;
 
         Debug.Log($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}, Avião? {ehAviao}");
 
@@ -184,41 +189,40 @@ public class GerenteDeJogo : MonoBehaviour
                 return; // Cancela compra e não gasta o dinheiro
             }
         }
-        else if (ehNavio)
+        if (ehNavio)
         {
             listaEstaleiros.RemoveAll(e => e.spawn == null);
             if (listaEstaleiros.Count == 0)
             {
                 Debug.LogWarning("PROIBIDO: Você precisa construir um ESTALEIRO NAVAL antes de fabricar navios!");
-                return; // Cancela compra
+                return; 
             }
         }
-        else if (!ehHelicoptero && !ehAviao) // Fica sendo Veículo Terrestre
+        else if (ehAviao)
         {
-            listaHangares.RemoveAll(h => h.spawn == null);
-            if (listaHangares.Count == 0 && spawnInterno == null)
+            if (Object.FindAnyObjectByType<GerenciadorAeroporto>() == null)
             {
-                Debug.LogWarning("PROIBIDO: Você precisa construir um HANGAR/FÁBRICA antes de fabricar blindados ou veículos pesados!");
-                return; // Cancela compra
+                Debug.LogWarning("PROIBIDO: Você precisa possuir o AEROPORTO ou PORTA-AVIÕES antes de comprar aeronaves!");
+                return;
             }
         }
-
-        // VERIFICAÇÃO ESTRITA: Helicópteros SÓ no Heliporto
-        if (ehHelicoptero)
+        else if (ehHelicoptero)
         {
             listaHeliportos.RemoveAll(h => h == null);
             if (listaHeliportos.Count == 0)
             {
                 Debug.LogWarning("PROIBIDO: Você precisa construir um HELIPORTO antes de fabricar Helicópteros!");
-                // Opcional: Aqui poderíamos chamar algum UI Error na tela.
-                return; // Cancela antes de gastar dinheiro ou entrar na fila
+                return;
             }
         }
-
-        if (ehAviao && FindFirstObjectByType<GerenciadorAeroporto>() == null)
+        else // Veículo Terrestre
         {
-            Debug.LogWarning("PROIBIDO: Você precisa possuir o AEROPORTO NA CENA antes de comprar aviões ou caças táticos!");
-            return;
+            listaHangares.RemoveAll(h => h.spawn == null);
+            if (listaHangares.Count == 0 && spawnInterno == null)
+            {
+                Debug.LogWarning("PROIBIDO: Você precisa construir um HANGAR/FÁBRICA antes de fabricar blindados!");
+                return;
+            }
         }
 
         // 3. Verifica Dinheiro Total
@@ -246,6 +250,7 @@ public class GerenteDeJogo : MonoBehaviour
                 novoPedido.ehHelicoptero = ehHelicoptero;
                 novoPedido.ehNavio = ehNavio;
                 novoPedido.ehAviao = ehAviao;
+                novoPedido.ehCarrier = ehCarrier;
                 
                 // Tempo de Produção: 0s para Soldado (Instantâneo), 2s para Tanque/Heli
                 float tempoBase = ehSoldado ? 0f : 2.0f;
@@ -269,16 +274,36 @@ public class GerenteDeJogo : MonoBehaviour
     {
         if (pedido.ehAviao)
         {
-            GerenciadorAeroporto aero = FindFirstObjectByType<GerenciadorAeroporto>();
-            if (aero != null)
+            // Busca o MELHOR aeroporto (um que não esteja lotado e seja do jogador)
+            GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+            GerenciadorAeroporto aeroEscolhido = null;
+
+            foreach (var a in aeroportos)
             {
-                aero.ComprarAviao(pedido.prefab);
+                if (a == null) continue;
+                
+                // EXCLUSÃO TOTAL: Aviões novos NUNCA vão para Navios (Porta-Aviões, Transportes, Hovercrafts)
+                bool ehCarrier = (a is GerenciadorPortaAvioes) || (a.GetComponent<GerenciadorPortaAvioes>() != null);
+                bool ehTransporte = (a.GetComponentInParent<TransporteAnfibio>() != null) || (a.GetComponentInParent<HovercraftTransporte>() != null);
+                bool ehNaval = (a.GetComponentInParent<NavegacaoInteligenteNaval>() != null) || (a.GetComponentInParent<ControleNavioRealista>() != null);
+                bool ehCarrierNome = a.name.ToLower().Contains("carrier") || a.name.ToLower().Contains("porta") || a.name.ToLower().Contains("navio") || a.name.ToLower().Contains("ship");
+                
+                if (ehCarrier || ehTransporte || ehNaval || ehCarrierNome) continue;
+
+                if (a.ObterPrimeiraVagaLivre() != null)
+                {
+                    aeroEscolhido = a;
+                    break;
+                }
+                if (aeroEscolhido == null) aeroEscolhido = a;
             }
-            else
+
+            if (aeroEscolhido != null)
             {
-                Debug.LogError($"ERRO: O Avião '{pedido.nomeUnidade}' terminou a produção mas o Aeroporto sumiu!");
+                Debug.Log($"[Logística] Avião '{pedido.nomeUnidade}' entregue em: {aeroEscolhido.name}");
+                aeroEscolhido.ComprarAviao(pedido.prefab);
             }
-            return; // Corta aqui a verificação padrão de fábricas terrestres. O próprio Aeroporto Instancia.
+            return; 
         }
 
         Transform spawnAtual = null;
