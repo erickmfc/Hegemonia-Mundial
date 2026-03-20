@@ -305,7 +305,22 @@ public class Helicoptero : MonoBehaviour
 
     void ProcessarMovimento()
     {
-        float alturaAlvo = estaPousando ? alturaPouso : altitudeDeVoo;
+        // 1. Descobrir a altura real do chão ou obstáculo (prédios) debaixo do helicóptero
+        float alturaChaoTarget = 0f;
+        
+        // Dispara raios de cima pra baixo (sempre usa transform.position para evitar saltos bruscos se o destino mudar rápido)
+        Vector3 pontoBuscaOrigem = transform.position;
+        pontoBuscaOrigem.y = 800f; // Bem alto
+
+        RaycastHit[] hits = Physics.RaycastAll(pontoBuscaOrigem, Vector3.down, 1000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        foreach (var h in hits)
+        {
+            if (h.collider.transform.root == transform.root) continue; // Ignora o próprio helicóptero
+            if (h.point.y > alturaChaoTarget) alturaChaoTarget = h.point.y;
+        }
+
+        // Se estiver voando ele voa sempre X metros ALÉM DO TETO. Se pousando, pouse no teto suavemente.
+        float alturaAlvo = estaPousando ? (alturaChaoTarget + alturaPouso) : Mathf.Max(altitudeDeVoo, alturaChaoTarget + altitudeDeVoo);
         
         Vector3 meta = new Vector3(
             estaPousando ? transform.position.x : destino.x, 
@@ -314,24 +329,25 @@ public class Helicoptero : MonoBehaviour
         );
 
         float vel = estaPousando ? velocidadePouso : velocidadeNavegacao;
+        
+        // Para subir/descer na vertical (Teto do prédio é dinâmico), suaviza só esse eixo Y se for a única diferença
         transform.position = Vector3.MoveTowards(transform.position, meta, vel * Time.deltaTime);
 
         if (!estaPousando && Vector3.Distance(transform.position, meta) > 2f)
         {
-            Vector3 dir = (meta - transform.position).normalized;
-            dir.y = 0; 
+            Vector3 dir = (new Vector3(meta.x, transform.position.y, meta.z) - transform.position).normalized;
             if (dir != Vector3.zero)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 3f);
         }
 
-        if (estaPousando && Mathf.Abs(transform.position.y - alturaPouso) < 0.1f)
+        if (estaPousando && Mathf.Abs(transform.position.y - alturaAlvo) < 0.2f)
         {
             Vector3 pos = transform.position; 
-            pos.y = alturaPouso; 
+            pos.y = alturaAlvo; 
             transform.position = pos;
             estaVoando = false;
             estaPousando = false;
-            Debug.Log("🚁 Helicóptero pousou.");
+            Debug.Log("🚁 Helicóptero pousou taticamente.");
             if(soldadosEmbarcados.Count > 0) EjetarTodos();
             disponivelParaPatrulha = true; 
         }
@@ -366,6 +382,13 @@ public class Helicoptero : MonoBehaviour
 
     public void ChamarReforcos()
     {
+        // Se estiver voando e não for processo de pouso, não pode puxar ninguém!
+        if (estaVoando && !estaPousando)
+        {
+            if(selecionado) Debug.Log("❌ Helicóptero está voando e não pode embarcar ninguém agora!");
+            return;
+        }
+
         // Limpa soldados chamados que foram destruídos ou já embarcaram ou desistiram
         soldadosChamados.RemoveAll(s => s == null || !s.activeInHierarchy || soldadosEmbarcados.Contains(s));
 
@@ -511,10 +534,10 @@ public class Helicoptero : MonoBehaviour
                 new Vector2(transform.position.x, transform.position.z)
             );
 
-            // Proteção Final: Se o soldado chegou perto (15m), ele entra, mesmo que o heli tenha acabado de decolar
+            // Proteção Final: Se o soldado chegou perto, ele entra, APENAS se o helicóptero ainda estiver no solo!
             bool pertoBastante = distFinal <= 15f; 
 
-            if (pertoBastante && soldadosEmbarcados.Count < capacidadeMaxima)
+            if (pertoBastante && soldadosEmbarcados.Count < capacidadeMaxima && (!estaVoando || estaPousando))
             {
                 soldadosEmbarcados.Add(s);
                 s.SetActive(false); 
@@ -522,7 +545,7 @@ public class Helicoptero : MonoBehaviour
             }
             else
             {
-                Debug.Log($"[Helicoptero] {s.name} falhou em embarcar (Dist: {distFinal:F1}m).");
+                Debug.Log($"[Helicoptero] {s.name} falhou em embarcar (Dist: {distFinal:F1}m). Perto o bastante: {pertoBastante}, Voando: {estaVoando}");
             }
         }
         

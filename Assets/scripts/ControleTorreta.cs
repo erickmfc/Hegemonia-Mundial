@@ -36,9 +36,17 @@ public class ControleTorreta : MonoBehaviour
     private Collider[] bufferColisores = new Collider[40]; 
 
     [Header("Peças")]
+    [Tooltip("A base que gira para os lados (Eixo Y).")]
     public Transform pecaQueGira; 
+    [Tooltip("Opcional: A parte que levanta e abaixa (Eixo X). Deixe vazio para a base inclinar inteira.")]
+    public Transform canosDaTorreta; 
     public Transform[] locaisDoTiro;  
     public GameObject municaoPrefab; 
+    
+    [Header("Limites de Rotação Cima/Baixo (Pitch)")]
+    public bool limitarInclinacao = true;
+    [Range(-90, 90)] public float elevacaoMinima = -10f; // Abaixo
+    [Range(-90, 90)] public float elevacaoMaxima = 80f;  // Acima
 
     [Header("Efeitos")]
     public AudioClip somTiro;
@@ -50,11 +58,14 @@ public class ControleTorreta : MonoBehaviour
     private int indiceBarrilAtual = 0; 
     
     private float rotacaoXOriginal;
+    private float rotacaoYOriginal;
     private float rotacaoZOriginal;
+    private float giroPitchAlvo = 0f;
 
     void Start()
     {
         balasAtuais = tamanhoCartucho; // Começa com munição cheia
+        misseisAtuais = capacidadeMisseis;
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
         fonteAudio.spatialBlend = 1f;
@@ -62,13 +73,10 @@ public class ControleTorreta : MonoBehaviour
         // Garante que a referência exista
         if (pecaQueGira == null) pecaQueGira = transform;
         
-        // Armazena com segurança a rotação inicial para não bugar o quaternion na Update
         rotacaoXOriginal = pecaQueGira.localEulerAngles.x;
+        rotacaoYOriginal = pecaQueGira.localEulerAngles.y;
         rotacaoZOriginal = pecaQueGira.localEulerAngles.z;
 
-        // OTIMIZAÇÃO: Distribui a carga de processamento. 
-        // Em vez de todas as torretas procurarem no mesmo frame, cada uma tem um "offset" aleatório.
-        // Aumentei o intervalo de 0.2s para 0.4s (ainda é muito rápido, mas metade do custo).
         float inicioAleatorio = Random.Range(0f, 0.5f);
         InvokeRepeating("ProcurarAlvo", inicioAleatorio, 0.4f);
     }
@@ -76,6 +84,12 @@ public class ControleTorreta : MonoBehaviour
     [Header("Comportamento")]
     [Tooltip("Se ativado, a torreta não ataca automaticamente.")]
     public bool modoPassivo = false;
+    
+    [Header("Defesa Anti-Míssil")]
+    [Tooltip("Pode interceptar mísseis inimigos no ar?")]
+    public bool interceptarMisseis = false;
+    [Tooltip("Se ativado, dispara um míssil (Armamento Secundário) em vez de balas para abater a ameaça.")]
+    public bool usarMisselParaInterceptar = true;
 
     void ProcurarAlvo()
     {
@@ -85,17 +99,12 @@ public class ControleTorreta : MonoBehaviour
             return;
         }
 
-        // --- SISTEMA DE DETECÇÃO OTIMIZADO (V3 - NonAlloc) ---
-        // Usa buffer fixo para não gerar lixo na memória a cada varredura.
-        // Retorna quantos objetos encontrou (até o limite do buffer, ex: 40).
         int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferColisores);
-        
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
 
-        // Busca meu próprio ID
         IdentidadeUnidade meuID = GetComponentInParent<IdentidadeUnidade>();
-        int meuTime = (meuID != null) ? meuID.teamID : 1; // Se não tiver, assume Jogador (1)
+        int meuTime = (meuID != null) ? meuID.teamID : 1; 
 
         for (int i = 0; i < quantidadeEncontrada; i++)
         {
@@ -103,43 +112,53 @@ public class ControleTorreta : MonoBehaviour
             if (hit == null) continue;
 
             Transform alvoTr = hit.transform;
-            
-            // Ignora a mim mesmo e meus filhos
             if (alvoTr.root == transform.root) continue;
 
-            // 1. TENTA POR IDENTIDADE (Padrão Ouro)
-            IdentidadeUnidade idAlvo = alvoTr.GetComponentInParent<IdentidadeUnidade>();
+            bool ehMissil = alvoTr.GetComponentInParent<MisselCaca>() != null || 
+                            alvoTr.GetComponentInParent<MissilTeleguiado>() != null || 
+                            alvoTr.GetComponentInParent<MisselICBM>() != null || 
+                            hit.tag == "Missil";
+
             bool ehInimigo = false;
 
-            if (idAlvo != null)
+            if (interceptarMisseis && ehMissil)
             {
-                if (idAlvo.teamID != meuTime && idAlvo.teamID != 0) // Diferente de mim e Não é Neutro
-                {
+                Vector3 direcaoDoMissil = alvoTr.forward;
+                Vector3 direcaoParaMim = (transform.position - alvoTr.position).normalized;
+                
+                if (Vector3.Dot(direcaoDoMissil, direcaoParaMim) > 0.2f)
                     ehInimigo = true;
-                }
+                else
+                    continue; 
             }
-            // 2. FALLBACK POR TAG (Para objetos simples sem script)
-            else 
+            else
             {
-                // Verifica a tag do objeto e da raiz (fallback seguro com string compare para evitar erro de tag inexistente)
-                if ((hit.tag == etiquetaAlvo) || (hit.tag == "Inimigo"))
+                IdentidadeUnidade idAlvo = alvoTr.GetComponentInParent<IdentidadeUnidade>();
+                if (idAlvo != null)
                 {
-                    ehInimigo = true;
+                    if (idAlvo.teamID != meuTime && idAlvo.teamID != 0)
+                        ehInimigo = true;
+                }
+                else 
+                {
+                    if ((hit.tag == etiquetaAlvo) || (hit.tag == "Inimigo"))
+                        ehInimigo = true;
                 }
             }
 
             if (ehInimigo)
             {
-                // IDENTIFICAÇÃO DO TIPO DE TORRETA
                 string nomeBase = transform.root.name.ToLower();
                 string nomeObj = transform.name.ToLower();
-                bool souAntiAereo = nomeBase.Contains("ares") || nomeBase.Contains("antiaerea") || 
+                bool souAntiAereo = etiquetaAlvo.Equals("Aereo", System.StringComparison.OrdinalIgnoreCase) || 
+                                    etiquetaAlvo.Equals("Areo", System.StringComparison.OrdinalIgnoreCase) ||
+                                    nomeBase.Contains("ares") || nomeBase.Contains("antiaerea") || 
                                     nomeBase.Contains("ciws") || nomeBase.Contains("sam") || 
                                     nomeObj.Contains("ares") || nomeObj.Contains("antiaerea") || 
                                     nomeObj.Contains("ciws") || nomeObj.Contains("sam");
 
-                // VERIFICA SE O ALVO É AÉREO
-                bool alvoAereo = alvoTr.position.y > 6f ||
+                bool alvoAereo = ehMissil ||
+                                 alvoTr.position.y > 6f ||
                                  alvoTr.GetComponentInParent<ControleAviao>() != null ||
                                  alvoTr.GetComponentInParent<Helicoptero>() != null ||
                                  alvoTr.name.ToLower().Contains("aviao") || 
@@ -148,60 +167,81 @@ public class ControleTorreta : MonoBehaviour
                                  alvoTr.tag == "Areo" || 
                                  alvoTr.tag == "Aereo";
                 
-                if (souAntiAereo)
-                {
-                    // Torreta Anti-Aérea: IGNORE unidades terrestres, SÓ atira no que voa!
-                    if (!alvoAereo) continue;
-                }
-                else
-                {
-                    // Torreta comum (Tanque, Navio, Base): IGNORE os ares, SÓ atira no chão!
-                    if (alvoAereo) continue;
-                }
+                if (souAntiAereo) { if (!alvoAereo) continue; }
+                else { if (alvoAereo) continue; }
 
-                // Prioriza bordas reais para estruturas imensas como a Prefeitura
                 Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
                 float dist = Vector3.Distance(transform.position, pontoMaisProximo);
                 if (dist < menorDistancia)
                 {
-                    // Verifica linha de visão (Opcional - Pode pesar se tiver muitos muros)
-                    // if (!Physics.Linecast(transform.position + Vector3.up, alvoTr.position + Vector3.up))
-                    {
-                        menorDistancia = dist;
-                        melhorAlvo = alvoTr;
-                    }
+                    menorDistancia = dist;
+                    melhorAlvo = alvoTr;
                 }
             }
         }
 
-        // Limpa referências do buffer para não prender objetos na memória (opcional, mas bom)
         for(int i=0; i<quantidadeEncontrada; i++) bufferColisores[i] = null;
-
         alvoAtual = melhorAlvo;
     }
     
-    /// <summary>
-    /// Liga/Desliga o modo automático de ataque
-    /// </summary>
     public void DefinirModoAtivo(bool ativo)
     {
-        modoPassivo = !ativo; // Se ativo = true, modoPassivo = false
-        
-        // CORREÇÃO IMPORTANTE: Se está sendo desativado, limpa o alvo imediatamente
-        if (modoPassivo)
+        modoPassivo = !ativo; 
+        if (modoPassivo) alvoAtual = null;
+    }
+
+    Vector3 ObterPosicaoPreditaAlvo()
+    {
+        if (alvoAtual == null) return transform.position;
+        Vector3 alvoPosicao = alvoAtual.position;
+
+        float velBala = 200f; 
+        if (municaoPrefab != null)
         {
-            alvoAtual = null;
-            Debug.Log($"[ControleTorreta] Modo passivo ativado - Alvo limpo");
+            Projetil proj = municaoPrefab.GetComponent<Projetil>();
+            if (proj != null && proj.velocidade > 0f) velBala = proj.velocidade;
+        }
+
+        Vector3 targetVel = Vector3.zero;
+        Rigidbody rb = alvoAtual.GetComponentInParent<Rigidbody>();
+        if (rb != null && !rb.isKinematic) 
+        {
+            targetVel = rb.linearVelocity;
         }
         else
         {
-            Debug.Log($"[ControleTorreta] Modo ativo - Procurando alvos");
+            ControleUnidade cu = alvoAtual.GetComponentInParent<ControleUnidade>();
+            if (cu != null)
+            {
+                float speed = cu.ObterVelocidadeAtualReal();
+                targetVel = alvoAtual.forward * speed;
+            }
         }
+
+        if (targetVel.magnitude > 0.5f)
+        {
+            float dist = Vector3.Distance(pecaQueGira.position, alvoPosicao);
+            float tempoAteAlvo = dist / velBala;
+            alvoPosicao = alvoPosicao + (targetVel * tempoAteAlvo);
+        }
+
+        return alvoPosicao;
     }
 
     void Update()
     {
-        // 1. SISTEMA DE RECARGA
+        if (estaRecarregandoMisseis)
+        {
+            contadorRecargaMissel -= Time.deltaTime;
+            if (contadorRecargaMissel <= 0f)
+            {
+                estaRecarregandoMisseis = false;
+                misseisAtuais = capacidadeMisseis;
+                contadorRecargaMissel = 0f;
+            }
+        }
+        else if (cooldownMissel > 0f) cooldownMissel -= Time.deltaTime; 
+
         if (estaRecarregando)
         {
             contadorTempo -= Time.deltaTime;
@@ -211,43 +251,53 @@ public class ControleTorreta : MonoBehaviour
                 balasAtuais = tamanhoCartucho;
                 contadorTempo = 0f; 
             }
-            return; // Se estiver recarregando, não faz mais nada
+            return;
         }
 
-        // 2. COMPORTAMENTO DE MIRA
         if (alvoAtual != null)
         {
-            // MODO COMBATE: Olha para o inimigo
             if (pecaQueGira != null)
             {
-                Vector3 direcao = alvoAtual.position - pecaQueGira.position;
-                
+                Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
+                Vector3 direcao = alvoPosicao - pecaQueGira.position;
+                float anguloY = pecaQueGira.localEulerAngles.y;
+                float anguloX = rotacaoXOriginal;
+
                 if (pecaQueGira.parent != null)
                 {
-                    // Lógica UNIFICADA (Respeita a rotação do barco pai/convés)
-                    // Converte a direção do alvo para o espaço local do pai da peça
                     Vector3 localDir = pecaQueGira.parent.InverseTransformDirection(direcao);
+                    anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
                     
-                    // Calcula o ângulo Yaw no plano do convés (XZ local)
-                    float anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
-                    
-                    // Só aplica limite se necessário
-                    if (limitarRotacao)
-                    {
-                        anguloY = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
-                    }
-                    
-                    // Usa a rotação original fixa do Start, evitando o erro fatal de Gimbal Lock no Update
-                    Quaternion rotacaoAlvo = Quaternion.Euler(rotacaoXOriginal, anguloY, rotacaoZOriginal);
-                    pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
+                    if (limitarRotacao) anguloY = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
+
+                    // --- CÁLCULO PITCH (Esquema de Elevação) ---
+                    float distanciaPlana = new Vector2(localDir.x, localDir.z).magnitude;
+                    giroPitchAlvo = -Mathf.Atan2(localDir.y, distanciaPlana) * Mathf.Rad2Deg;
                 }
                 else
                 {
-                    // Lógica Global (Sem limites ou sem pai - ex: Torreta no chão)
                     Quaternion olhar = Quaternion.LookRotation(direcao);
-                    // Mantém os ângulos originais fixos também para unidades globais
-                    Quaternion rotacaoAlvo = Quaternion.Euler(rotacaoXOriginal, olhar.eulerAngles.y, rotacaoZOriginal);
-                    pecaQueGira.rotation = Quaternion.Lerp(pecaQueGira.rotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
+                    anguloY = olhar.eulerAngles.y;
+                    
+                    Vector3 localDir = pecaQueGira.InverseTransformDirection(direcao); 
+                    float distanciaPlana = new Vector2(localDir.x, localDir.z).magnitude;
+                    giroPitchAlvo = -Mathf.Atan2(localDir.y, distanciaPlana) * Mathf.Rad2Deg;
+                }
+
+                if (limitarInclinacao) giroPitchAlvo = Mathf.Clamp(giroPitchAlvo, -elevacaoMaxima, -elevacaoMinima); // Invertido pois -X é para cima na maioria dos modelos
+
+                if (canosDaTorreta != null) // Peças separadas (Gira Base = Yaw, Gira Cano = Pitch)
+                {
+                    Quaternion rotacaoBase = Quaternion.Euler(rotacaoXOriginal, anguloY, rotacaoZOriginal);
+                    pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoBase, Time.deltaTime * velocidadeGiro);
+
+                    Quaternion rotacaoCanos = Quaternion.Euler(giroPitchAlvo, canosDaTorreta.localEulerAngles.y, canosDaTorreta.localEulerAngles.z);
+                    canosDaTorreta.localRotation = Quaternion.Lerp(canosDaTorreta.localRotation, rotacaoCanos, Time.deltaTime * velocidadeGiro);
+                }
+                else // Peça única faz os dois movimentos (Base inclina inteira)
+                {
+                    Quaternion rotacaoTotal = Quaternion.Euler(giroPitchAlvo, anguloY, rotacaoZOriginal);
+                    pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoTotal, Time.deltaTime * velocidadeGiro);
                 }
             }
 
@@ -256,14 +306,21 @@ public class ControleTorreta : MonoBehaviour
             {
                 // Verifica se o ângulo permite atirar (Ignorando a altura "Y" porque tanques/navios não levantam o cano nas configurações básicas)
                 // Se não ignorar o Y, o ângulo para a base da Prefeitura sempre seria > 5 e nunca atiraria.
-                Vector3 dirAlvo = (alvoAtual.position - pecaQueGira.position);
+                Vector3 alvoPosicao = ObterPosicaoPreditaAlvo(); // Re-obter para garantir que é a mais recente
+                Vector3 dirAlvo = (alvoPosicao - pecaQueGira.position);
                 dirAlvo.y = 0;
                 Vector3 minhaFrente = pecaQueGira.forward;
                 minhaFrente.y = 0;
                 
                 // Tolera o erro de engasgo se for antiaereo contra alvo rapido
                 string nomeB = transform.root.name.ToLower();
-                bool antiAereo = nomeB.Contains("ares") || nomeB.Contains("antiaerea") || nomeB.Contains("ciws") || nomeB.Contains("sam") || transform.name.ToLower().Contains("ares");
+                string nomeO = transform.name.ToLower();
+                bool antiAereo = etiquetaAlvo.Equals("Aereo", System.StringComparison.OrdinalIgnoreCase) || 
+                                 etiquetaAlvo.Equals("Areo", System.StringComparison.OrdinalIgnoreCase) ||
+                                 nomeB.Contains("ares") || nomeB.Contains("antiaerea") || 
+                                 nomeB.Contains("ciws") || nomeB.Contains("sam") || 
+                                 nomeO.Contains("ares") || nomeO.Contains("antiaerea") || 
+                                 nomeO.Contains("ciws") || nomeO.Contains("sam");
                 float anguloMaximo = antiAereo ? 45f : 8f;
 
                 if(Vector3.Angle(minhaFrente, dirAlvo) < anguloMaximo) // 8 graus para terrestre, 45 graus para aereo
@@ -307,6 +364,15 @@ public class ControleTorreta : MonoBehaviour
     public Transform[] locaisDoMissel; 
     public AudioClip somMissel;
     public float tempoEntreMisseis = 2.0f;
+    
+    [Tooltip("Quantidade máxima de mísseis antes de precisar recarregar.")]
+    public int capacidadeMisseis = 4;
+    [Tooltip("Tempo em segundos para reabastecer os mísseis.")]
+    public float tempoRecargaMisseis = 10f;
+    
+    private int misseisAtuais;
+    private bool estaRecarregandoMisseis = false;
+    private float contadorRecargaMissel = 0f;
     private float cooldownMissel = 0f;
 
     [Header("Custumização de Disparo")]
@@ -315,15 +381,35 @@ public class ControleTorreta : MonoBehaviour
 
     void Disparar()
     {
-        // 1. DISPARO DE MÍSSIL (Arma Pesada)
-        if (misselPrefab != null && cooldownMissel <= 0f && alvoAtual != null)
+        bool alvoEhMissil = alvoAtual != null && (alvoAtual.GetComponentInParent<MisselCaca>() != null || alvoAtual.GetComponentInParent<MissilTeleguiado>() != null || alvoAtual.GetComponentInParent<MisselICBM>() != null || alvoAtual.tag == "Missil");
+
+        // 1. DISPARO DE MÍSSIL (Arma Pesada ou Interceptador)
+        if (misselPrefab != null && cooldownMissel <= 0f && !estaRecarregandoMisseis && misseisAtuais > 0 && alvoAtual != null)
         {
-            DispararMissel();
-            cooldownMissel = tempoEntreMisseis;
-            return;
+            // Se o alvo for míssil, só atira de míssil se 'usarMisselParaInterceptar' for true
+            if (!alvoEhMissil || (alvoEhMissil && usarMisselParaInterceptar))
+            {
+                DispararMissel();
+                cooldownMissel = tempoEntreMisseis;
+                misseisAtuais--;
+
+                if (misseisAtuais <= 0)
+                {
+                    estaRecarregandoMisseis = true;
+                    contadorRecargaMissel = tempoRecargaMisseis;
+                    // opcional: som de empty ou recarregando
+                }
+                
+                // Se é um míssil e pedimos pra usar míssil neles, não desperdiça bala agora
+                if (alvoEhMissil && usarMisselParaInterceptar) return;
+                
+                // Se não era míssil inimigo, o return normal do sistema de arma pesada
+                if (!alvoEhMissil) return; 
+            }
         }
 
-        // 2. DISPARO PADRÃO (Metralhadora/Canhão)
+        // Se o alvo for míssil, e nós NÃO temos missel (ou usarMisselParaInterceptar = false), vamos fuzilar ele com balas!
+        // 2. DISPARO PADRÃO (Metralhadora/Canhão/CIWS)
         if (locaisDoTiro != null && locaisDoTiro.Length > 0)
         {
             // Define qual prefab usar (Padrão ou Específico do Cano)
@@ -349,7 +435,8 @@ public class ControleTorreta : MonoBehaviour
                 scriptBala.SetDono(transform.root.gameObject);
                 if (alvoAtual != null)
                 {
-                    Vector3 direcao = (alvoAtual.position - barrilDaVez.position).normalized;
+                    Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
+                    Vector3 direcao = (alvoPosicao - barrilDaVez.position).normalized;
                     scriptBala.SetDirecao(direcao);
                     // Se o script da bala não tiver velocidade própria, aplicamos uma padrão
                     if (scriptBala.velocidade == 0) scriptBala.velocidade = 200f; 
@@ -364,8 +451,6 @@ public class ControleTorreta : MonoBehaviour
             balasAtuais--;
             if (balasAtuais <= 0) IniciarRecarga();
         }
-
-        if(cooldownMissel > 0) cooldownMissel -= Time.deltaTime;
     }
 
     void DispararMissel()
@@ -392,7 +477,7 @@ public class ControleTorreta : MonoBehaviour
             MisselICBM icbm = missel.GetComponent<MisselICBM>();
             if(icbm != null)
             {
-                 icbm.IniciarLancamento(alvoAtual.position);
+                 icbm.IniciarLancamento(ObterPosicaoPreditaAlvo());
             }
         }
 

@@ -206,7 +206,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
 {
     private Transform alvoSeguido;
     private ControleUnidade controle;
-    private float distanciaIdeal = 15f; 
+    private float distanciaIdeal = 45f; // Distância aumentada para caber navios
     private float tempoProximaAtualizacao = 0f;
 
     public void Configurar(Transform novoAlvo)
@@ -223,39 +223,46 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
             return;
         }
 
-        // Atualiza o destino a cada 0.5 segundos para não sobrecarregar
         if (Time.time > tempoProximaAtualizacao)
         {
             float distancia = Vector3.Distance(transform.position, alvoSeguido.position);
 
             if (distancia > distanciaIdeal)
             {
-                // Calcula posição de escolta (um pouco atrás do alvo)
-                Vector3 posicaoEscolta = alvoSeguido.position - (alvoSeguido.forward * (distanciaIdeal * 0.5f));
+                Vector3 posicaoEscolta = alvoSeguido.position - (alvoSeguido.forward * (distanciaIdeal * 0.8f));
                 controle.MoverParaPonto(posicaoEscolta, false);
                 
-                // --- IGUALAR VELOCIDADE AO LÍDER (Se estiver perto) ---
-                if (distancia < distanciaIdeal + 30f)
+                if (distancia < distanciaIdeal + 40f) // Zona de "alcançando"
                 {
                     ControleUnidade controleLider = alvoSeguido.GetComponent<ControleUnidade>();
                     if (controleLider != null)
                     {
                         float velLider = controleLider.ObterVelocidadeAtualReal();
-                        if (velLider > 0.5f) controle.AplicarLimiteVelocidade(velLider * 1.15f); // 15% mais rápido pra alcançar
+                        if (velLider > 0.5f) controle.AplicarLimiteVelocidade(velLider * 1.15f); 
                         else controle.RestaurarVelocidadeOriginal(); 
                     }
                 }
                 else
                 {
-                    // Se estiver muito longe, restaura a velocidade máxima para "correr atrás"
                     controle.RestaurarVelocidadeOriginal();
                 }
             }
             else
             {
-                 // Se já está na posição ideal, tenta não ultrapassar
+                 // Está na posição ideal ou muito perto
                  ControleUnidade controleLider = alvoSeguido.GetComponent<ControleUnidade>();
-                 if (controleLider != null) controle.AplicarLimiteVelocidade(controleLider.ObterVelocidadeAtualReal());
+                 
+                 // Se estiver MUITO perto (prestes a bater), freio total!
+                 if (distancia < distanciaIdeal * 0.6f) 
+                 {
+                     controle.AplicarLimiteVelocidade(0.1f);
+                     controle.MoverParaPonto(transform.position, false); // Ordena parar
+                 }
+                 else if (controleLider != null) 
+                 {
+                     // Se está ok, apenas caminha junto com a mesma velocidade
+                     controle.AplicarLimiteVelocidade(controleLider.ObterVelocidadeAtualReal());
+                 }
             }
             
             tempoProximaAtualizacao = Time.time + 0.5f;

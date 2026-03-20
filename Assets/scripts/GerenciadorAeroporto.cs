@@ -41,8 +41,8 @@ public class GerenciadorAeroporto : MonoBehaviour
     [HideInInspector] public Transform wpAnalise;
 
     // --- CACHE DE COMPONENTES (Evita GetComponent repetido) ---
-    private IdentidadeUnidade _identidadeCacheada;
-    private bool _identidadeVerificada = false;
+    protected IdentidadeUnidade _identidadeCacheada;
+    protected bool _identidadeVerificada = false;
 
     // --- CACHE PARA OnGUI (Evita alocações repetidas) ---
     private readonly HashSet<Transform> _vagasOcupadas = new HashSet<Transform>();

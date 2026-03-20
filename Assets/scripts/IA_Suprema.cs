@@ -707,9 +707,17 @@ public class IA_Suprema : MonoBehaviour
                 }
                 else if (distAlvo <= distanciaDesembarque + 15f)
                 {
-                    veiculo.SendMessage("DesembarcarTudo", SendMessageOptions.DontRequireReceiver);
-                    veiculo.SendMessage("OrdemPousoOuDesembarque", SendMessageOptions.DontRequireReceiver);
-                    Mover(veiculo, centroBase); 
+                    bool isHeli = veiculo.name.Contains("helicoptero") || veiculo.name.Contains("transporte_aereo");
+                    if (isHeli)
+                    {
+                        veiculo.SendMessage("OrdemPousoOuDesembarque", SendMessageOptions.DontRequireReceiver);
+                    }
+                    else
+                    {
+                        veiculo.SendMessage("DesembarcarTudo", SendMessageOptions.DontRequireReceiver);
+                        veiculo.SendMessage("OrdemPousoOuDesembarque", SendMessageOptions.DontRequireReceiver);
+                        Mover(veiculo, centroBase); 
+                    }
                 }
             }
             else if (!emMissaoOfensiva || passageiros == 0)
@@ -721,6 +729,12 @@ public class IA_Suprema : MonoBehaviour
                 else
                 {
                     // No chão da base, chama reforços se não estiver cheio
+                    bool isHeli = veiculo.name.Contains("helicoptero") || veiculo.name.Contains("transporte_aereo");
+                    if (isHeli)
+                    {
+                        veiculo.SendMessage("OrdemPousoOuDesembarque", SendMessageOptions.DontRequireReceiver);
+                    }
+                    
                     veiculo.SendMessage("ChamarReforcos", SendMessageOptions.DontRequireReceiver);
                     veiculo.SendMessage("TentarEmbarcar", SendMessageOptions.DontRequireReceiver);
                 }

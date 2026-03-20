@@ -60,7 +60,15 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             waypointsPatio.Clear(); // Evita duplicata se base.Awake já preencheu usando 'patio'
             foreach (Transform t in grupoParaPatio) 
             {
-                if (t.name.ToLower().Contains("parada")) waypointsPatio.Add(t);
+                if (grupoParadas != null) 
+                {
+                    waypointsPatio.Add(t); // Tira a restrição de nome se tiver um grupo específico!
+                }
+                else 
+                {
+                    string nm = t.name.ToLower();
+                    if (nm.Contains("parada") || nm.Contains("vaga") || nm.Contains("ponto") || nm.Contains("deck")) waypointsPatio.Add(t);
+                }
             }
         }
         
@@ -170,6 +178,13 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 {
                     if (hit.transform == this.transform || hit.transform.IsChildOf(this.transform))
                     {
+                        if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
+                        if (_identidadeCacheada != null && _identidadeCacheada.teamID != 1 && _identidadeCacheada.teamID != 0) 
+                        {
+                            Debug.LogWarning("[Porta-Aviões] Navio inimigo. Acesso Negado!");
+                            return; 
+                        }
+
                         Debug.Log("[Porta-Aviões] Você clicou no navio!");
                         _menuCarrierAtivo = true; // Abre o menu ao clicar
                     }
@@ -242,9 +257,25 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     {
         _avioesProximosNoAr.Clear();
         var todosAvioes = Object.FindObjectsByType<ControleAviao>(FindObjectsSortMode.None);
+        
+        IdentidadeUnidade meuId = GetComponent<IdentidadeUnidade>();
+        int meuTime = (meuId != null) ? meuId.teamID : 1;
+
         foreach (var av in todosAvioes)
         {
             if (av == null || av.aeroportoOrigem == this) continue;
+            
+            // --- BLOQUEIA AVIÕES INIMIGOS E NEUTROS ---
+            int aviaoTime = -1;
+            IdentidadeUnidade idU = av.GetComponent<IdentidadeUnidade>();
+            if (idU != null) aviaoTime = idU.teamID;
+            else 
+            {
+                var idIA = av.GetComponent<IdentidadeIA>();
+                if (idIA != null) aviaoTime = idIA.teamID;
+            }
+            
+            if (aviaoTime != meuTime) continue; // Pula se for de time diferente ou se não tiver time definido (-1)
             
             if (av.estadoAtual == ControleAviao.EstadoAviao.EmMissao || av.estadoAtual == ControleAviao.EstadoAviao.Decolando)
             {
@@ -321,15 +352,27 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             GUILayout.Space(10);
             GUILayout.Label("<color=orange><b>🛠️ HANGAR INTERNO (RESERVAS)</b></color>");
             
+            bool vagaDisponivel = ObterPrimeiraVagaLivre() != null;
+            
             for (int i = 0; i < avioesNoHangar.Count; i++)
             {
                 var av = avioesNoHangar[i];
                 if (av == null) continue;
                 GUILayout.BeginHorizontal("box");
                 GUILayout.Label($"🔒 {av.name.Replace("(Clone)","")}", GUILayout.Width(180));
-                GUI.enabled = !_elevadorOcupado;
-                if (GUILayout.Button("⬆️ ELEVADOR", GUILayout.Width(130))) StartCoroutine(RotinaElevadorSequencial(av, true));
-                GUI.enabled = true;
+                
+                if (vagaDisponivel)
+                {
+                    GUI.enabled = !_elevadorOcupado;
+                    if (GUILayout.Button("⬆️ ELEVADOR", GUILayout.Width(130))) StartCoroutine(RotinaElevadorSequencial(av, true));
+                    GUI.enabled = true;
+                }
+                else
+                {
+                    GUI.enabled = false;
+                    GUILayout.Button("PÁTIO LOTADO", GUILayout.Width(130));
+                    GUI.enabled = true;
+                }
                 GUILayout.EndHorizontal();
             }
 
@@ -397,10 +440,22 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 }
             }
             
-            if (avioesNoPatio.Contains(_selecionadoCarrier) && !_elevadorOcupado)
+            if (avioesNoPatio.Contains(_selecionadoCarrier))
             {
-                if (GUILayout.Button("⬇️ DESCER PARA HANGAR", GUILayout.Height(30))) 
-                    StartCoroutine(RotinaElevadorSequencial(_selecionadoCarrier, false));
+                if (!_elevadorOcupado)
+                {
+                    if (GUILayout.Button("⬇️ DESCER PARA HANGAR", GUILayout.Height(30))) 
+                    {
+                        StartCoroutine(RotinaElevadorSequencial(_selecionadoCarrier, false));
+                        _selecionadoCarrier = null;
+                    }
+                }
+                else
+                {
+                    GUI.enabled = false;
+                    GUILayout.Button("ELEVADOR EM USO", GUILayout.Height(30));
+                    GUI.enabled = true;
+                }
             }
             GUILayout.EndVertical();
         }
@@ -582,7 +637,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     public override void GuardarNoHangarAutomatico(ControleAviao av)
     {
-        if (!_elevadorOcupado) StartCoroutine(RotinaElevadorSequencial(av, false));
-        else base.GuardarNoHangarAutomatico(av);
+        base.GuardarNoHangarAutomatico(av);
+        if (av != null) av.transform.SetParent(this.transform);
     }
 }

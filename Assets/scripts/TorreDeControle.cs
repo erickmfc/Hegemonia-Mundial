@@ -83,6 +83,12 @@ public class TorreDeControle : MonoBehaviour
             // Se clicou em mim ou em um filho meu
             if (hit.transform.root == transform.root)
             {
+                if (identidade != null && identidade.teamID != 1 && identidade.teamID != 0) 
+                {
+                    Debug.LogWarning("[TorreDeControle] Torre Inimiga. Acesso Negado!");
+                    return; 
+                }
+                
                 AbrirMenu();
             }
         }
