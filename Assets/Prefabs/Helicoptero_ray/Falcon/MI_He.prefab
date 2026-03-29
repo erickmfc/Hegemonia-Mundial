@@ -249,7 +249,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c71d1820f2493404fa44c5551e23c2a2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MissilTeleguiado
-  velocidade: 10
+  velocidade: 100
   dano: 150
   distanciaDeImpacto: 2
 --- !u!65 &4891732440598805507

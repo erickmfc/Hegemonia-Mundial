@@ -1,0 +1,555 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Hegemonia.AI.BrainMaster
+{
+    public class IA_BrainMaster : MonoBehaviour
+    {
+        public enum IA_BootstrapStage
+        {
+            Disabled,
+            BuildPrefeitura,
+            BuildAeroporto,
+            BuildVehicleFactory,
+            BuildSupportHangar,
+            BuildTent,
+            AnalyzeTerrain,
+            ProduceGroundUnits,
+            HoldGroundUnits,
+            ProduceAircraft,
+            BuildShipyard,
+            HoldShipyard,
+            ProduceShip,
+            HoldShipLaunch,
+            Completed
+        }
+
+        public enum IA_IntegrationMode
+        {
+            ShadowReadOnly,
+            Hybrid,
+            Full
+        }
+
+        [Header("Identity")]
+        public int TeamId = 2;
+        public string NationName = "BrainMaster";
+
+        [Header("Economy")]
+        public int InitialCredits = 30000;
+        public int IncomePerSecond = 60;
+        public int Credits;
+
+        [Header("Stability")]
+        public IA_IntegrationMode IntegrationMode = IA_IntegrationMode.Hybrid;
+        public bool DisableLegacyAIWhenFull = true;
+        public int MaxCommandsPerFrame = 4;
+        public bool UseScriptedBootstrap = true;
+
+        [Header("Debug")]
+        public bool EnableVerboseLogs = false;
+        public bool EnableBootstrapConsoleTrace = true;
+        [TextArea(3, 12)] public string RuntimeSummary = string.Empty;
+        [TextArea(3, 12)] public string BootstrapStatus = string.Empty;
+        [TextArea(2, 8)] public string BootstrapLastError = string.Empty;
+
+        public IA_BootstrapStage BootstrapStage { get; private set; }
+
+        public IA_Context Context { get; private set; }
+
+        private IA_CommandQueue _commandQueue;
+        private IA_BackendBridge _backendBridge;
+        private IA_PerformanceScheduler _scheduler;
+        private IA_DebugMonitor _debugMonitor;
+        private IA_WorldState _worldState;
+        private IA_MapAnalyzer _mapAnalyzer;
+        private IA_PlayerProfileMemory _profileMemory;
+        private IA_ThreatAnalyzer _threatAnalyzer;
+        private IA_BuildDirector _buildDirector;
+        private IA_ProductionDirector _productionDirector;
+        private IA_SquadDirector _squadDirector;
+        private IA_TacticalDirector _tacticalDirector;
+        private IA_NavalDirector _navalDirector;
+        private IA_AirDirector _airDirector;
+        private IA_DefenseDirector _defenseDirector;
+
+        private float _incomeTimer;
+        private float _nextRuntimeSummaryTime;
+        private readonly List<MonoBehaviour> _disabledLegacy = new List<MonoBehaviour>();
+        private float _schedulerPhaseOffset;
+        private static int _activeBrainCount;
+        private float _bootstrapStartTime;
+        private float _bootstrapStageStartTime;
+
+        private void OnEnable()
+        {
+            _activeBrainCount++;
+        }
+
+        private void OnDisable()
+        {
+            _activeBrainCount = Mathf.Max(0, _activeBrainCount - 1);
+        }
+
+        private void Awake()
+        {
+            Credits = Mathf.Max(0, InitialCredits);
+
+            _commandQueue = new IA_CommandQueue();
+            _backendBridge = new IA_BackendBridge(TeamId);
+            _worldState = new IA_WorldState(TeamId);
+            _worldState.SetFallbackCenter(transform.position);
+            _mapAnalyzer = new IA_MapAnalyzer(_worldState);
+            _profileMemory = new IA_PlayerProfileMemory(_worldState);
+            _threatAnalyzer = new IA_ThreatAnalyzer(_worldState, _mapAnalyzer);
+            _scheduler = new IA_PerformanceScheduler();
+            _schedulerPhaseOffset = ComputeSchedulerPhaseOffset();
+            _scheduler.PhaseOffsetSeconds = _schedulerPhaseOffset;
+            ConfigureSchedulerBudget();
+
+            Context = new IA_Context
+            {
+                Brain = this,
+                WorldState = _worldState,
+                MapAnalyzer = _mapAnalyzer,
+                PlayerProfileMemory = _profileMemory,
+                ThreatAnalyzer = _threatAnalyzer,
+                CommandQueue = _commandQueue,
+                Backend = _backendBridge,
+                Scheduler = _scheduler
+            };
+
+            _squadDirector = new IA_SquadDirector(Context);
+            _buildDirector = new IA_BuildDirector(Context);
+            _productionDirector = new IA_ProductionDirector(Context);
+            _tacticalDirector = new IA_TacticalDirector(Context);
+            _navalDirector = new IA_NavalDirector(Context);
+            _airDirector = new IA_AirDirector(Context);
+            _defenseDirector = new IA_DefenseDirector(Context);
+
+            Context.SquadDirector = _squadDirector;
+
+            _debugMonitor = new IA_DebugMonitor(this, _worldState, _commandQueue, _scheduler)
+            {
+                VerboseLogs = EnableVerboseLogs
+            };
+            Context.DebugMonitor = _debugMonitor;
+        }
+
+        private void Start()
+        {
+            _backendBridge.RefreshCatalog();
+            InitializeBootstrap();
+            RegisterModules();
+            ApplyIntegrationPolicy();
+        }
+
+        private void Update()
+        {
+            TickEconomy(Time.deltaTime);
+            ConfigureSchedulerBudget();
+            if (_debugMonitor != null) _debugMonitor.VerboseLogs = EnableVerboseLogs;
+            _scheduler.Tick(Time.time, Time.deltaTime);
+            ProcessCommandQueue(Time.time);
+
+            if (Time.unscaledTime >= _nextRuntimeSummaryTime)
+            {
+                RuntimeSummary = _debugMonitor.LastSummary
+                                 + " | Credits=" + Credits
+                                 + " | Bootstrap=" + BootstrapStage
+                                 + " | BootstrapStatus=" + BootstrapStatus
+                                 + (string.IsNullOrEmpty(BootstrapLastError) ? string.Empty : " | BootstrapError=" + BootstrapLastError);
+                _nextRuntimeSummaryTime = Time.unscaledTime + 0.6f;
+            }
+        }
+
+        public bool TrySpend(int amount)
+        {
+            int cost = Mathf.Max(0, amount);
+            if (Credits < cost)
+            {
+                return false;
+            }
+
+            Credits -= cost;
+            return true;
+        }
+
+        public void Refund(int amount)
+        {
+            Credits += Mathf.Max(0, amount);
+        }
+
+        private void TickEconomy(float deltaTime)
+        {
+            _incomeTimer += deltaTime;
+            while (_incomeTimer >= 1f)
+            {
+                Credits += Mathf.Max(0, IncomePerSecond);
+                _incomeTimer -= 1f;
+            }
+        }
+
+        private void RegisterModules()
+        {
+            float now = Time.time;
+            _scheduler.Register(_worldState, now, 0.05f);
+            _scheduler.Register(_mapAnalyzer, now, 0.07f);
+            _scheduler.Register(_profileMemory, now, 0.09f);
+            _scheduler.Register(_threatAnalyzer, now, 0.11f);
+            _scheduler.Register(_buildDirector, now, 0.14f);
+            _scheduler.Register(_productionDirector, now, 0.18f);
+            _scheduler.Register(_squadDirector, now, 0.21f);
+            _scheduler.Register(_tacticalDirector, now, 0.24f);
+            _scheduler.Register(_navalDirector, now, 0.27f);
+            _scheduler.Register(_airDirector, now, 0.30f);
+            _scheduler.Register(_defenseDirector, now, 0.33f);
+            _scheduler.Register(_debugMonitor, now, 0.45f);
+        }
+
+        private void ProcessCommandQueue(float now)
+        {
+            if (IntegrationMode == IA_IntegrationMode.ShadowReadOnly)
+            {
+                return;
+            }
+
+            int maxCommands = ResolveCommandBudget();
+            int executed = 0;
+            while (executed < maxCommands)
+            {
+                IA_CommandRequest request;
+                if (!_commandQueue.TryDequeue(now, out request))
+                {
+                    break;
+                }
+
+                if (!IsCommandAllowedInMode(request.Type))
+                {
+                    _commandQueue.Complete(request, false, now, "bloqueado pelo modo de integracao");
+                    continue;
+                }
+
+                if (!IsCommandAllowedByBootstrap(request))
+                {
+                    _commandQueue.Complete(request, false, now, "bloqueado pelo bootstrap");
+                    TraceCommandExecution(request, false, "bloqueado pelo bootstrap");
+                    continue;
+                }
+
+                string message;
+                bool success = _backendBridge.CommandService.Execute(request, Context, out message);
+                _commandQueue.Complete(request, success, now, message);
+                TraceCommandExecution(request, success, message);
+                executed++;
+            }
+        }
+
+        private bool IsCommandAllowedInMode(IA_CommandType type)
+        {
+            if (IntegrationMode == IA_IntegrationMode.Full)
+            {
+                return true;
+            }
+
+            if (IntegrationMode == IA_IntegrationMode.Hybrid)
+            {
+                return type == IA_CommandType.Build
+                       || type == IA_CommandType.Produce
+                       || type == IA_CommandType.Move
+                       || type == IA_CommandType.Attack
+                       || type == IA_CommandType.Patrol
+                       || type == IA_CommandType.Ability;
+            }
+
+            return false;
+        }
+
+        public bool IsBootstrapActive
+        {
+            get
+            {
+                return UseScriptedBootstrap
+                       && BootstrapStage != IA_BootstrapStage.Disabled
+                       && BootstrapStage != IA_BootstrapStage.Completed;
+            }
+        }
+
+        public float GetBootstrapElapsed(float now)
+        {
+            return Mathf.Max(0f, now - _bootstrapStartTime);
+        }
+
+        public float GetBootstrapStageElapsed(float now)
+        {
+            return Mathf.Max(0f, now - _bootstrapStageStartTime);
+        }
+
+        public void SetBootstrapStage(IA_BootstrapStage stage, string status)
+        {
+            if (!UseScriptedBootstrap)
+            {
+                BootstrapStage = IA_BootstrapStage.Completed;
+                BootstrapStatus = "bootstrap desativado";
+                return;
+            }
+
+            string normalizedStatus = status ?? string.Empty;
+            bool stageChanged = BootstrapStage != stage;
+            bool statusChanged = BootstrapStatus != normalizedStatus;
+            if (stageChanged)
+            {
+                BootstrapStage = stage;
+                _bootstrapStageStartTime = Time.time;
+            }
+
+            BootstrapStatus = normalizedStatus;
+            if (stageChanged)
+            {
+                TraceBootstrapStep("fase -> " + stage + (string.IsNullOrEmpty(normalizedStatus) ? string.Empty : " | " + normalizedStatus));
+            }
+            else if (statusChanged)
+            {
+                TraceBootstrapStep(normalizedStatus);
+            }
+
+            if (stage == IA_BootstrapStage.Completed)
+            {
+                BootstrapLastError = string.Empty;
+            }
+        }
+
+        public void SetBootstrapStatus(string status)
+        {
+            string normalizedStatus = status ?? string.Empty;
+            if (BootstrapStatus == normalizedStatus)
+            {
+                return;
+            }
+
+            BootstrapStatus = normalizedStatus;
+            TraceBootstrapStep(normalizedStatus);
+        }
+
+        public void ReportBootstrapError(string error)
+        {
+            string normalizedError = error ?? string.Empty;
+            if (BootstrapLastError == normalizedError)
+            {
+                return;
+            }
+
+            BootstrapLastError = normalizedError;
+            if (!string.IsNullOrEmpty(normalizedError))
+            {
+                TraceBootstrapStep("erro -> " + normalizedError, true);
+            }
+        }
+
+        private int ResolveCommandBudget()
+        {
+            int activeBrains = Mathf.Max(1, _activeBrainCount);
+            int maxCommands = Mathf.Clamp(MaxCommandsPerFrame, 1, 10);
+            if (IsBootstrapActive)
+            {
+                return 1;
+            }
+
+            if (activeBrains <= 1)
+            {
+                return maxCommands;
+            }
+
+            int scaled = maxCommands - Mathf.Min(3, activeBrains - 1);
+            if (activeBrains >= 3)
+            {
+                scaled = Mathf.Min(scaled, 2);
+            }
+
+            return Mathf.Clamp(scaled, 1, maxCommands);
+        }
+
+        private void ConfigureSchedulerBudget()
+        {
+            if (_scheduler == null)
+            {
+                return;
+            }
+
+            int activeBrains = Mathf.Max(1, _activeBrainCount);
+            bool bootstrapActive = IsBootstrapActive;
+            _scheduler.PhaseOffsetSeconds = _schedulerPhaseOffset;
+
+            if (activeBrains <= 1)
+            {
+                _scheduler.GlobalFrameBudgetMs = bootstrapActive ? 1.35f : 2.15f;
+                _scheduler.MaxModulesPerFrame = bootstrapActive ? 3 : 4;
+                _scheduler.MinBackoffSeconds = bootstrapActive ? 0.08f : 0.06f;
+                return;
+            }
+
+            float budget = bootstrapActive
+                ? ((1.45f / activeBrains) + 0.18f)
+                : ((2.4f / activeBrains) + 0.25f);
+            _scheduler.GlobalFrameBudgetMs = Mathf.Clamp(
+                budget,
+                bootstrapActive ? 0.45f : 0.55f,
+                bootstrapActive ? 1.20f : 1.80f);
+            _scheduler.MaxModulesPerFrame = bootstrapActive
+                ? Mathf.Clamp(4 - (activeBrains - 1), 2, 3)
+                : Mathf.Clamp(5 - (activeBrains - 1), 2, 4);
+            _scheduler.MinBackoffSeconds = bootstrapActive
+                ? (activeBrains >= 3 ? 0.14f : 0.10f)
+                : (activeBrains >= 3 ? 0.10f : 0.07f);
+        }
+
+        private float ComputeSchedulerPhaseOffset()
+        {
+            int seed = Mathf.Abs((TeamId * 31) + (GetInstanceID() * 17));
+            return 0.03f * (seed % 11);
+        }
+
+        public void TraceBootstrapStep(string message, bool warning = false)
+        {
+            if (!EnableBootstrapConsoleTrace || string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            string prefix = "[IA_Bootstrap][Team " + TeamId + "][" + BootstrapStage + "][t="
+                            + GetBootstrapElapsed(Time.time).ToString("0.0") + "s] ";
+            if (warning)
+            {
+                Debug.LogWarning(prefix + message, this);
+            }
+            else
+            {
+                Debug.Log(prefix + message, this);
+            }
+        }
+
+        private void TraceCommandExecution(IA_CommandRequest request, bool success, string message)
+        {
+            if (!EnableBootstrapConsoleTrace || request == null)
+            {
+                return;
+            }
+
+            if (request.Type != IA_CommandType.Build && request.Type != IA_CommandType.Produce)
+            {
+                return;
+            }
+
+            if (!IsBootstrapActive && !EnableVerboseLogs)
+            {
+                return;
+            }
+
+            string descriptor = DescribeCommand(request);
+            string result = success ? "OK" : "FALHA";
+            string text = "cmd " + request.Type + " -> " + descriptor + " => " + result;
+            if (!string.IsNullOrEmpty(message))
+            {
+                text += " | " + message;
+            }
+
+            if (success)
+            {
+                Debug.Log("[IA_Command][Team " + TeamId + "] " + text, this);
+            }
+            else
+            {
+                Debug.LogWarning("[IA_Command][Team " + TeamId + "] " + text, this);
+            }
+        }
+
+        private static string DescribeCommand(IA_CommandRequest request)
+        {
+            if (request == null)
+            {
+                return "desconhecido";
+            }
+
+            IA_BuildOrderData buildData = request.Payload as IA_BuildOrderData;
+            if (buildData != null)
+            {
+                return buildData.ItemKey + " @ " + buildData.Position;
+            }
+
+            IA_ProduceOrderData produceData = request.Payload as IA_ProduceOrderData;
+            if (produceData != null)
+            {
+                return produceData.ItemKey + " x" + Mathf.Max(1, produceData.Quantity);
+            }
+
+            return string.IsNullOrEmpty(request.DedupKey) ? request.Type.ToString() : request.DedupKey;
+        }
+
+        private void InitializeBootstrap()
+        {
+            _bootstrapStartTime = Time.time;
+            _bootstrapStageStartTime = _bootstrapStartTime;
+
+            if (!UseScriptedBootstrap)
+            {
+                BootstrapStage = IA_BootstrapStage.Completed;
+                BootstrapStatus = "bootstrap desativado";
+                BootstrapLastError = string.Empty;
+                return;
+            }
+
+            BootstrapLastError = string.Empty;
+            SetBootstrapStage(IA_BootstrapStage.BuildPrefeitura, "aguardando t=5s para prefeitura");
+        }
+
+        private bool IsCommandAllowedByBootstrap(IA_CommandRequest request)
+        {
+            if (!IsBootstrapActive || request == null)
+            {
+                return true;
+            }
+
+            switch (request.Type)
+            {
+                case IA_CommandType.Build:
+                case IA_CommandType.Produce:
+                    return true;
+                case IA_CommandType.Move:
+                case IA_CommandType.Attack:
+                case IA_CommandType.Patrol:
+                case IA_CommandType.Ability:
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
+        private void ApplyIntegrationPolicy()
+        {
+            if (IntegrationMode != IA_IntegrationMode.Full || !DisableLegacyAIWhenFull)
+            {
+                return;
+            }
+
+            DisableLegacyComponent<IA_Suprema>();
+            DisableLegacyComponent<IA_Dominadora>();
+            DisableLegacyComponent<IA_Comandante>();
+        }
+
+        private void DisableLegacyComponent<T>() where T : MonoBehaviour
+        {
+            T[] components = Object.FindObjectsByType<T>(FindObjectsSortMode.None);
+            for (int i = 0; i < components.Length; i++)
+            {
+                T component = components[i];
+                if (component == null || component.gameObject == gameObject)
+                {
+                    continue;
+                }
+
+                component.enabled = false;
+                _disabledLegacy.Add(component);
+            }
+        }
+    }
+}

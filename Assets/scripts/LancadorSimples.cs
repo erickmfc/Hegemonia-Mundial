@@ -56,6 +56,7 @@ public class LancadorSimples : MonoBehaviour
             Debug.Log($"[LançadorSimples] Encontradas {pontosDeSaida.Length} saídas automaticamente.");
         }
 
+        pontosDeSaida = PontoSaidaUtil.Garantir(transform, pontosDeSaida, "saida", "element", "tube", "tubo", "muzzle", "fire", "spawn");
         if (misselPrefab == null)
         {
             Debug.LogError("[LançadorSimples] ERRO: Nenhum prefab de míssil atribuído! Arraste o míssil no Inspector.");
@@ -118,7 +119,7 @@ public class LancadorSimples : MonoBehaviour
             bool tagValida = false;
             foreach (string tag in tagsInimigas)
             {
-                if (col.CompareTag(tag))
+                if (TagSafe.Matches(col, tag))
                 {
                     tagValida = true;
                     break;
@@ -179,6 +180,7 @@ public class LancadorSimples : MonoBehaviour
     /// </summary>
     void ExecutarRajada(Transform alvo)
     {
+        pontosDeSaida = PontoSaidaUtil.Garantir(transform, pontosDeSaida, "saida", "element", "tube", "tubo", "muzzle", "fire", "spawn");
         if (pontosDeSaida == null || pontosDeSaida.Length == 0)
         {
             Debug.LogError("[LançadorSimples] Nenhum ponto de saída configurado!");

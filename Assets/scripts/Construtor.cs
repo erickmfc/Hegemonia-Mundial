@@ -1,8 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class Construtor : MonoBehaviour
 {
+    public static Construtor Instancia { get; private set; }
+    public static bool EmModoConstrucaoAtivo => Instancia != null && Instancia.modoConstrucao && Instancia.prefabSelecionado != null;
     [Header("Configurações")]
     public LayerMask layerChao; // O que é considerado chão? (Defina no Inspector)
     public float larguraDoMuro = 4.0f; // Tamanho do prefab do Muro (ajuste conforme seu modelo)
@@ -28,10 +31,47 @@ public class Construtor : MonoBehaviour
     
     // FIX: Variável para ignorar o primeiro frame após a seleção, evitando conflito com o clique do botão da UI
     private bool recemSelecionado = false;
+    private Camera cameraPrincipal;
+
+    void Awake()
+    {
+        if (!enabled) return;
+        if (Instancia == null)
+        {
+            Instancia = this;
+        }
+    }
+
+    void OnEnable()
+    {
+        if (!enabled) return;
+        if (Instancia == null)
+        {
+            Instancia = this;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (Instancia == this)
+        {
+            Instancia = null;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (Instancia == this)
+        {
+            Instancia = null;
+        }
+    }
 
     void Update()
     {
         if (!modoConstrucao || prefabSelecionado == null) return;
+        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        if (cameraPrincipal == null) return;
         
         // FIX: Se acabou de selecionar, ignora a checagem da UI neste frame para dar tempo do menu fechar
         if (recemSelecionado)
@@ -59,7 +99,7 @@ public class Construtor : MonoBehaviour
             return;
         }
 
-        Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
         RaycastHit toque;
         bool acertouChao = false;
         Vector3 pontoMouse = Vector3.zero;
@@ -381,7 +421,17 @@ public class Construtor : MonoBehaviour
     void ReativarLogicaUnidade(GameObject unidade)
     {
         MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
-        foreach (var script in scripts) script.enabled = true;
+        foreach (var script in scripts)
+        {
+            if (script == null) continue;
+            if (script is Construtor)
+            {
+                script.enabled = false;
+                continue;
+            }
+
+            script.enabled = true;
+        }
 
         var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent != null) 
@@ -486,13 +536,31 @@ public class Construtor : MonoBehaviour
         if (prefab == null) return null;
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
         EnsureCollider(novoPredio);
-        Debug.Log($"[Construtor IA] Construiu {prefab.name} em {posicao}");
+        Estaleiro estaleiro = novoPredio.GetComponent<Estaleiro>();
+        if (estaleiro != null)
+        {
+            estaleiro.AtualizarReferenciasLitoraneas();
+        }
+        if (!Application.isEditor)
+        {
+            Debug.Log($"[Construtor IA] Construiu {prefab.name} em {posicao}");
+        }
         return novoPredio;
     }
     
     public void SelecionarParaConstruir(GameObject prefab, int custo, DadosConstrucao.CategoriaItem categoria)
     {
-        if (modoConstrucao) CancelarConstrucao(true);
+        if (modoConstrucao)
+        {
+            if (prefabSelecionado == prefab)
+            {
+                recemSelecionado = true;
+                return;
+            }
+
+            CancelarConstrucao(true);
+        }
+        SuspenderInteracoesConcorrentes();
 
         prefabSelecionado = prefab;
         custoAtual = custo; 
@@ -534,6 +602,24 @@ public class Construtor : MonoBehaviour
             if(f != null) Destroy(f);
         }
         fantasmasMuro.Clear();
+    }
+
+    private void SuspenderInteracoesConcorrentes()
+    {
+        MenuMisseis menuMisseis = Object.FindFirstObjectByType<MenuMisseis>();
+        if (menuMisseis != null)
+        {
+            menuMisseis.CancelarLancamento();
+        }
+
+        GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        foreach (GerenciadorAeroporto aeroporto in aeroportos)
+        {
+            if (aeroporto != null)
+            {
+                aeroporto.CancelarInteracaoPorConstrucao();
+            }
+        }
     }
 
     void RemoverColisoresEScripts(GameObject obj)
@@ -593,6 +679,12 @@ public class Construtor : MonoBehaviour
 
     public float ObterAlturaTerreno(Vector3 ponto)
     {
+        float alturaMarcada;
+        if (RegistroSuperficieMapa.TryGetAltura(ponto, TipoSuperficieMapa.Chao, out alturaMarcada))
+        {
+            return alturaMarcada;
+        }
+
         if (Terrain.activeTerrain != null) return Terrain.activeTerrain.SampleHeight(ponto);
         RaycastHit hit;
         if (Physics.Raycast(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, out hit, 1000f))
@@ -604,6 +696,21 @@ public class Construtor : MonoBehaviour
 
     public int VerTipoPonto(Vector3 ponto)
     {
+        ClassificacaoSuperficieMapa classificacaoMarcada;
+        float alturaMarcada;
+        if (RegistroSuperficieMapa.TryClassify(ponto, out classificacaoMarcada, out alturaMarcada))
+        {
+            if (classificacaoMarcada == ClassificacaoSuperficieMapa.Agua || classificacaoMarcada == ClassificacaoSuperficieMapa.Costa)
+            {
+                return 1;
+            }
+
+            if (classificacaoMarcada == ClassificacaoSuperficieMapa.Chao)
+            {
+                return 2;
+            }
+        }
+
         int mascaraGeral = ~(1 << LayerMask.NameToLayer("Ignore Raycast"));
         
         // CORREÇÃO: Aplica a mesma técnica de ignorar os ossos (Bip001) para a verificação de território da IA!
@@ -617,6 +724,12 @@ public class Construtor : MonoBehaviour
             
             if (n.Contains("bip001") || n.Contains("bone") || n.Contains("cube") || n.Contains("finger")) continue;
             if (hit.collider.GetComponentInParent<IdentidadeUnidade>()) continue;
+
+            MarcadorSuperficieMapa marcador = hit.collider.GetComponentInParent<MarcadorSuperficieMapa>();
+            if (marcador != null)
+            {
+                return marcador.TipoSuperficie == TipoSuperficieMapa.Agua ? 1 : 2;
+            }
 
             int l = hit.collider.gameObject.layer;
             if (l == 4 || n.Contains("water") || n.Contains("agua") || n.Contains("ocean") || n.Contains("mar") || n.Contains("sea"))
@@ -648,13 +761,56 @@ public class Construtor : MonoBehaviour
         
         foreach (UnityEngine.EventSystems.RaycastResult result in results)
         {
-            Canvas c = result.gameObject.GetComponentInParent<Canvas>();
-            if (c != null && c.renderMode != RenderMode.WorldSpace)
+            if (result.gameObject == null || !result.gameObject.activeInHierarchy)
             {
-                return true; 
+                continue;
             }
+
+            Canvas c = result.gameObject.GetComponentInParent<Canvas>();
+            if (c == null || c.renderMode == RenderMode.WorldSpace)
+            {
+                continue;
+            }
+
+            if (!UIEstaVisivelEInterativa(result.gameObject))
+            {
+                continue;
+            }
+
+            return true;
         }
         return false; 
+    }
+
+    private static bool UIEstaVisivelEInterativa(GameObject uiObject)
+    {
+        if (uiObject == null || !uiObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        Graphic graphic = uiObject.GetComponent<Graphic>();
+        if (graphic != null && !graphic.raycastTarget)
+        {
+            return false;
+        }
+
+        CanvasGroup[] groups = uiObject.GetComponentsInParent<CanvasGroup>(true);
+        for (int i = 0; i < groups.Length; i++)
+        {
+            CanvasGroup group = groups[i];
+            if (group == null)
+            {
+                continue;
+            }
+
+            if (!group.blocksRaycasts || group.alpha <= 0.05f)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void OnGUI()

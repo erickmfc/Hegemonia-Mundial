@@ -58,7 +58,12 @@ public class MenuGoverno : MonoBehaviour
         if (painelPrincipal != null)
         {
             painelPrincipal.SetActive(false);
-            if (canvasGroupPainel != null) canvasGroupPainel.alpha = 0;
+            if (canvasGroupPainel != null)
+            {
+                canvasGroupPainel.alpha = 0;
+                canvasGroupPainel.blocksRaycasts = false;
+                canvasGroupPainel.interactable = false;
+            }
         }
     }
 
@@ -83,6 +88,25 @@ public class MenuGoverno : MonoBehaviour
         if (painelPrincipal == null) return;
         
         StopAllCoroutines();
+
+        if (abrir)
+        {
+            MenuConstrucao menuCon = Object.FindFirstObjectByType<MenuConstrucao>();
+            if (menuCon != null && MenuConstrucao.EstaAberto) menuCon.AlternarMenu(false);
+
+            MenuPier menuPier = Object.FindFirstObjectByType<MenuPier>();
+            if (menuPier != null && MenuPier.EstaAberto) menuPier.FecharMenu();
+
+            MenuMisseis menuMiss = Object.FindFirstObjectByType<MenuMisseis>();
+            if (menuMiss != null && MenuMisseis.EstaAberto) menuMiss.CancelarLancamento();
+        }
+
+        if (canvasGroupPainel != null)
+        {
+            canvasGroupPainel.blocksRaycasts = abrir;
+            canvasGroupPainel.interactable = abrir;
+        }
+
         StartCoroutine(AnimarMenu(abrir));
     }
 
@@ -141,6 +165,8 @@ public class MenuGoverno : MonoBehaviour
         imgFundo.color = corFundoJanela;
         
         canvasGroupPainel = painelPrincipal.AddComponent<CanvasGroup>();
+        canvasGroupPainel.blocksRaycasts = true;
+        canvasGroupPainel.interactable = true;
         
         // Layout Completo igual 'C'
         RectTransform rtPanel = painelPrincipal.GetComponent<RectTransform>();

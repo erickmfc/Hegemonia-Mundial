@@ -118,7 +118,6 @@ public class NavegacaoInteligenteNaval : MonoBehaviour
         emMarchaRe = false;
 
         // === NOVO: SISTEMA DE EVASÃO DE COLISÃO (DESVIAR DE AMIGOS) ===
-        bool obstaculoFrente = false;
         float multiplicadorEvasao = 1f;
 
         RaycastHit hitObstaculo;
@@ -128,7 +127,6 @@ public class NavegacaoInteligenteNaval : MonoBehaviour
             // Se for outra unidade ou prédio
             if (hitObstaculo.collider.GetComponentInParent<IdentidadeUnidade>() != null || hitObstaculo.collider.CompareTag("Imovel"))
             {
-                obstaculoFrente = true;
                 multiplicadorEvasao = 0.2f; // Reduz motor para não bater forte
                 
                 // Tenta ver para qual lado desviar

@@ -52,6 +52,7 @@ public class LancadorMLRS : MonoBehaviour
     void Start()
     {
         ConfigurarAudio();
+        pontosDeSaida = PontoSaidaUtil.Garantir(transform, pontosDeSaida, "saida", "tube", "tubo", "muzzle", "fire", "spawn", "element");
     }
 
     void Update()
@@ -120,7 +121,7 @@ public class LancadorMLRS : MonoBehaviour
         {
             if (hit.transform.root == transform.root) continue; // Ignora a si mesmo
 
-            if (hit.CompareTag(tagInimiga))
+            if (TagSafe.Matches(hit, tagInimiga))
             {
                 float distancia = Vector3.Distance(transform.position, hit.transform.position);
                 if (distancia < menorDistancia)
@@ -173,6 +174,7 @@ public class LancadorMLRS : MonoBehaviour
 
     void Atirar()
     {
+        pontosDeSaida = PontoSaidaUtil.Garantir(transform, pontosDeSaida, "saida", "tube", "tubo", "muzzle", "fire", "spawn", "element");
         if (missilPrefab == null) 
         {
             Debug.LogError("⛔ LEOPARD ERRO! O campo 'Missil Prefab' está vazio no Inspector!");

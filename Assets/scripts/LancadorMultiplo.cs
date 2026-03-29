@@ -101,6 +101,8 @@ public class LancadorMultiplo : MonoBehaviour
             saidasDeMissel = lista.ToArray();
             Debug.Log($"[LancadorMultiplo] Auto-configuradas {saidasDeMissel.Length} saídas de míssil.");
         }
+
+        saidasDeMissel = PontoSaidaUtil.Garantir(transform, saidasDeMissel, "saida", "element", "tube", "tubo", "muzzle", "fire", "spawn");
     }
 
     void ConfigurarLinhaAlcance()
@@ -232,8 +234,7 @@ public class LancadorMultiplo : MonoBehaviour
             if (hit.transform.root == transform.root) continue;
 
             // 2. Validação Básica: Tem Tag de Alvo OU tem Vida (SistemaDeDanos)?
-            bool tagValida = false;
-            foreach(string t in tagsAlvo) { if (hit.CompareTag(t)) tagValida = true; }
+            bool tagValida = TagSafe.MatchesAny(hit, tagsAlvo);
             
             // "Alvo de Oportunidade": Se tem script de vida, considera alvo mesmo sem tag,
             // desde que passe no teste de IFF (time).

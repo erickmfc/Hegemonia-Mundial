@@ -13,11 +13,15 @@ public class BarraDeVida : MonoBehaviour
 
     private Camera camPrincipal;
     private Canvas canvasLocal;
+    private float ultimaVidaAtual = float.NaN;
+    private float ultimaVidaMaxima = float.NaN;
+    private bool ultimoCanvasHabilitado = true;
 
     void Start()
     {
         camPrincipal = Camera.main;
         canvasLocal = GetComponent<Canvas>();
+        ultimoCanvasHabilitado = canvasLocal == null || canvasLocal.enabled;
 
         // Tenta achar o sistema de danos no pai se não estiver atribuído
         if (sistemaDeDanos == null)
@@ -28,6 +32,10 @@ public class BarraDeVida : MonoBehaviour
 
     void LateUpdate()
     {
+        if (camPrincipal == null)
+        {
+            camPrincipal = Camera.main;
+        }
         // 1. BILLBOARD (Olhar para a câmera)
         if (camPrincipal != null) 
         {
@@ -37,7 +45,15 @@ public class BarraDeVida : MonoBehaviour
         // 2. ATUALIZAR BARRA
         if (sistemaDeDanos != null && barraPreenchimento != null)
         {
-            float pct = (float)sistemaDeDanos.vidaAtual / (float)sistemaDeDanos.vidaMaxima;
+            if (Mathf.Approximately(sistemaDeDanos.vidaAtual, ultimaVidaAtual) &&
+                Mathf.Approximately(sistemaDeDanos.vidaMaxima, ultimaVidaMaxima))
+            {
+                return;
+            }
+
+            ultimaVidaAtual = sistemaDeDanos.vidaAtual;
+            ultimaVidaMaxima = sistemaDeDanos.vidaMaxima;
+            float pct = sistemaDeDanos.vidaMaxima > 0 ? (float)sistemaDeDanos.vidaAtual / (float)sistemaDeDanos.vidaMaxima : 0f;
             barraPreenchimento.fillAmount = pct;
 
             // Cor
@@ -49,7 +65,12 @@ public class BarraDeVida : MonoBehaviour
             // Esconder se 100%
             if(canvasLocal != null && esconderSeCheia)
             {
-                canvasLocal.enabled = (pct < 0.99f && pct > 0);
+                bool deveMostrar = (pct < 0.99f && pct > 0);
+                if (ultimoCanvasHabilitado != deveMostrar)
+                {
+                    canvasLocal.enabled = deveMostrar;
+                    ultimoCanvasHabilitado = deveMostrar;
+                }
             }
         }
     }

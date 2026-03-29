@@ -81,9 +81,6 @@ PrefabInstance:
       addedObject: {fileID: 4297645250895064467}
     - targetCorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7208562522442429970}
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 4868473442556747427}
     - targetCorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       insertIndex: -1
@@ -117,25 +114,6 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
---- !u!114 &7208562522442429970
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5570318996861275845}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8847e03875bd6124798b978dc7987fa2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Construtor
-  layerChao:
-    serializedVersion: 2
-    m_Bits: 0
-  larguraDoMuro: 4
-  prefabSelecionado: {fileID: 5570318996861275845}
-  modoConstrucao: 0
-  alturaDoMar: 0
 --- !u!65 &4868473442556747427
 BoxCollider:
   m_ObjectHideFlags: 0

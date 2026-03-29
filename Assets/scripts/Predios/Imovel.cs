@@ -19,6 +19,9 @@ public class Imovel : MonoBehaviour
     [Tooltip("Quantidade máxima de moradores que cabem neste imóvel")]
     public int capacidade = 10;
 
+    [Header("Debug")]
+    public bool debugLogs = false;
+
     // ═══════════════════════════════════════════════════════════════
     // VALORES INTERNOS (o jogo calcula sozinho)
     // ═══════════════════════════════════════════════════════════════
@@ -75,7 +78,8 @@ public class Imovel : MonoBehaviour
         // Timer randômico para não sincronizar todos os imóveis
         timerCiclo = Random.Range(0f, INTERVALO_CICLO);
 
-        Debug.Log($"[Imovel] {name} construido! Capacidade: {capacidade}");
+        if (debugLogs)
+            Debug.Log($"[Imovel] {name} construido! Capacidade: {capacidade}");
     }
 
     // ═══════════════════════════════════════════════════════════════

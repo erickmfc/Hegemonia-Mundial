@@ -31,6 +31,9 @@ public class PlataformaOffshore : MonoBehaviour
     [Header("Estado")]
     public bool ocupada = false;
 
+    [Header("Debug")]
+    public bool debugLogs = false;
+
     public void TentarOcupar()
     {
         ocupada = true;
@@ -72,7 +75,8 @@ public class PlataformaOffshore : MonoBehaviour
         else qualidadeDoPoco = "Poço RICO! (Ouro Negro)";
 
         AtualizarTextoVisual();
-        Debug.Log($"[Plataforma] Qualidade: {riquezaDoSolo}. Produção: {producaoAtualDestaPlataforma}");
+        if (debugLogs)
+            Debug.Log($"[Plataforma] Qualidade: {riquezaDoSolo}. Produção: {producaoAtualDestaPlataforma}");
     }
 
     IEnumerator CicloDeProducao()

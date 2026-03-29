@@ -12,12 +12,16 @@ public class GerenteSelecao : MonoBehaviour
     [Header("Controle")]
     public float espacamento = 2.5f; // Distância entre soldados na formação
     public List<ControleUnidade> unidadesSelecionadas = new List<ControleUnidade>();
+    private Camera cameraPrincipal;
+    private Construtor construtorCache;
+    private DesenharLinhasOrdem desenhadorOrdensCache;
 
     private Vector2 inicioMouseScreen; // Posição pura do mouse na tela
     private bool arrastando = false;
 
     void Start()
     {
+        cameraPrincipal = Camera.main;
         // Começa desligado e zerado
         if (caixaSelecaoVisual != null)
         {
@@ -28,8 +32,21 @@ public class GerenteSelecao : MonoBehaviour
 
     void Update()
     {
+        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        Construtor construtorObj = ObterConstrutor();
+        if (construtorObj != null && construtorObj.modoConstrucao)
+        {
+            arrastando = false;
+            if (caixaSelecaoVisual != null)
+            {
+                caixaSelecaoVisual.gameObject.SetActive(false);
+                caixaSelecaoVisual.sizeDelta = Vector2.zero;
+            }
+            return;
+        }
         // Se clicar em cima de botões da UI, não faz nada
-        if (EventSystem.current.IsPointerOverGameObject())
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem != null && eventSystem.IsPointerOverGameObject())
         {
             // DEBUG: Se o clique direito foi bloqueado pela UI
             if (Input.GetMouseButtonDown(1))
@@ -42,6 +59,15 @@ public class GerenteSelecao : MonoBehaviour
         // 1. CLICOU (Marca onde começou)
         if (Input.GetMouseButtonDown(0))
         {
+            // ===== CORREÇÃO DEFINITIVA DO BUG DO CONSTRUTOR ABRINDO O MENU SOZINHO =====
+            // Se estou segurando um prédio para colocar no chão, o Gerente ignora esse clique (Não arma o arrasto)
+            Construtor construtorModoClique = ObterConstrutor();
+            if (construtorModoClique != null && construtorModoClique.modoConstrucao)
+            {
+                return;
+            }
+            // ==============================================================================
+
             arrastando = true;
             inicioMouseScreen = Input.mousePosition; 
             DeselecionarTudo();
@@ -64,6 +90,10 @@ public class GerenteSelecao : MonoBehaviour
         // 3. SOLTOU (Calcula quem pegou)
         if (Input.GetMouseButtonUp(0))
         {
+            // Se "arrastando" for FALSO, significa que o MouseDown foi cancelado (ex: pelo Construtor colocando a Fábrica).
+            // Portanto, o MouseUp deve ser ignorado para evitar que chame o CliqueSimples() numa Fábrica recém plantada!
+            if (!arrastando) return; 
+
             if (arrastando && caixaSelecaoVisual.gameObject.activeSelf)
             {
                 SelecionarUnidadesMatematica();
@@ -85,7 +115,7 @@ public class GerenteSelecao : MonoBehaviour
         if (Input.GetMouseButtonDown(1))
         {
             // --- CONEXÃO COM SISTEMA DE ORDENS (PATRULHA/SEGUIR) ---
-            DesenharLinhasOrdem desenhador = FindFirstObjectByType<DesenharLinhasOrdem>();
+            DesenharLinhasOrdem desenhador = ObterDesenhadorOrdens();
             if (desenhador != null && (desenhador.modoPatrulhaAtivo || desenhador.modoSeguirAtivo))
             {
                 return; // Ignora o movimento padrão se estiver gravando patrulha ou seguir
@@ -99,7 +129,8 @@ public class GerenteSelecao : MonoBehaviour
                 // Mas queremos ignorar IgnoreRaycast (2).
                 int layerMaskMove = ~(1 << 2); 
 
-                Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
+                if (cameraPrincipal == null) return;
+                Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
                 RaycastHit hit;
                 Vector3 destino = Vector3.zero;
                 bool encontrouDestino = false;
@@ -140,6 +171,26 @@ public class GerenteSelecao : MonoBehaviour
         }
     }
 
+    Construtor ObterConstrutor()
+    {
+        if (construtorCache == null)
+        {
+            construtorCache = FindFirstObjectByType<Construtor>();
+        }
+
+        return construtorCache;
+    }
+
+    DesenharLinhasOrdem ObterDesenhadorOrdens()
+    {
+        if (desenhadorOrdensCache == null)
+        {
+            desenhadorOrdensCache = FindFirstObjectByType<DesenharLinhasOrdem>();
+        }
+
+        return desenhadorOrdensCache;
+    }
+
     // --- MARCADOR VISUAL DO CLIQUE ---
     void MostrarMarcadorDestino(Vector3 pos)
     {
@@ -168,7 +219,7 @@ public class GerenteSelecao : MonoBehaviour
     }
 
     // --- NOVA LÓGICA DE FORMAÇÃO TÁTICA (MISTA) ---
-    void MoverUnidadesEmGrupo(Vector3 destinoCentral, TorreDeControle torreDestino = null)
+    void MoverUnidadesEmGrupo_OLD(Vector3 destinoCentral, TorreDeControle torreDestino = null)
     {
         unidadesSelecionadas.RemoveAll(u => u == null);
         int totalOriginal = unidadesSelecionadas.Count;
@@ -289,6 +340,259 @@ public class GerenteSelecao : MonoBehaviour
         }
     }
 
+    private struct SlotFormacao
+    {
+        public ControleUnidade unidade;
+        public float largura;
+        public float profundidade;
+    }
+
+    // Formacao considerando tamanho real (BoxCollider/NavMeshAgent)
+    void MoverUnidadesEmGrupo(Vector3 destinoCentral, TorreDeControle torreDestino = null)
+    {
+        unidadesSelecionadas.RemoveAll(u => u == null);
+        if (unidadesSelecionadas.Count == 0) return;
+
+        bool ehGrupoNaval = false;
+        bool temVeiculo = false;
+
+        List<ControleUnidade> infantaria = new List<ControleUnidade>();
+        List<ControleUnidade> veiculos = new List<ControleUnidade>();
+
+        foreach (var unidade in unidadesSelecionadas)
+        {
+            if (unidade == null) continue;
+
+            ControleAviao aviao = unidade.GetComponent<ControleAviao>();
+            Helicoptero heli = unidade.GetComponent<Helicoptero>();
+
+            if (aviao != null)
+            {
+                if (torreDestino != null)
+                {
+                    aviao.ComandoRetornarBase();
+                    Debug.Log($"[GerenteSelecao] Selecionou Retornar pra Base via RMB! ({unidade.name})");
+                }
+                else
+                {
+                    unidade.MoverParaPonto(destinoCentral);
+                }
+                continue;
+            }
+
+            if (heli != null)
+            {
+                Vector3 deslocHeli = new Vector3(Random.Range(-5f, 5f), 0f, Random.Range(-5f, 5f));
+                heli.Decolar(destinoCentral + deslocHeli);
+                continue;
+            }
+
+            if (unidade.GetComponent<IdentidadeNaval>() != null ||
+                unidade.GetComponent<ControleSubmarino>() != null ||
+                unidade.GetComponent<NavegacaoInteligenteNaval>() != null)
+            {
+                ehGrupoNaval = true;
+            }
+
+            string nome = unidade.name.ToLower();
+            bool eVeiculo = nome.Contains("tank") || nome.Contains("tanque") || nome.Contains("blindado") ||
+                            nome.Contains("hammer") || nome.Contains("humvee") || nome.Contains("lancador");
+
+            if (eVeiculo)
+            {
+                temVeiculo = true;
+                veiculos.Add(unidade);
+            }
+            else
+            {
+                infantaria.Add(unidade);
+            }
+        }
+
+        List<ControleUnidade> ordemFormacao = new List<ControleUnidade>();
+        ordemFormacao.AddRange(veiculos);   // Traseira
+        ordemFormacao.AddRange(infantaria); // Frente
+
+        int total = ordemFormacao.Count;
+        if (total == 0) return;
+
+        Vector3 centroGrupo = Vector3.zero;
+        foreach (var u in ordemFormacao) centroGrupo += u.transform.position;
+        centroGrupo /= total;
+
+        Vector3 direcaoMovimento = (destinoCentral - centroGrupo).normalized;
+        if (direcaoMovimento == Vector3.zero) direcaoMovimento = Vector3.forward;
+        Quaternion rotacaoFormacao = Quaternion.LookRotation(direcaoMovimento);
+
+        int colunas = Mathf.CeilToInt(Mathf.Sqrt(total));
+        if (temVeiculo) colunas = Mathf.Clamp(colunas, 2, 6);
+        int linhas = Mathf.CeilToInt((float)total / colunas);
+
+        List<SlotFormacao> slots = new List<SlotFormacao>(total);
+        float somaLargura = 0f;
+        float somaProfundidade = 0f;
+
+        for (int i = 0; i < total; i++)
+        {
+            float largura;
+            float profundidade;
+            ObterPegadaUnidade(ordemFormacao[i], out largura, out profundidade);
+
+            if (ehGrupoNaval)
+            {
+                largura *= 1.25f;
+                profundidade *= 1.25f;
+            }
+
+            slots.Add(new SlotFormacao
+            {
+                unidade = ordemFormacao[i],
+                largura = largura,
+                profundidade = profundidade
+            });
+
+            somaLargura += largura;
+            somaProfundidade += profundidade;
+        }
+
+        float mediaLargura = Mathf.Max(1f, somaLargura / total);
+        float mediaProfundidade = Mathf.Max(1f, somaProfundidade / total);
+
+        float gapX = ehGrupoNaval ? Mathf.Max(6f, mediaLargura * 0.30f) : Mathf.Max(temVeiculo ? 1.7f : 1.0f, mediaLargura * 0.18f);
+        float gapZ = ehGrupoNaval ? Mathf.Max(8f, mediaProfundidade * 0.35f) : Mathf.Max(temVeiculo ? 2.2f : 1.2f, mediaProfundidade * 0.22f);
+
+        float[] larguraColuna = new float[colunas];
+        float[] profundidadeLinha = new float[linhas];
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            int coluna = i % colunas;
+            int linha = i / colunas;
+            larguraColuna[coluna] = Mathf.Max(larguraColuna[coluna], slots[i].largura);
+            profundidadeLinha[linha] = Mathf.Max(profundidadeLinha[linha], slots[i].profundidade);
+        }
+
+        float larguraTotal = 0f;
+        for (int c = 0; c < colunas; c++) larguraTotal += larguraColuna[c];
+        larguraTotal += Mathf.Max(0, colunas - 1) * gapX;
+
+        float profundidadeTotal = 0f;
+        for (int l = 0; l < linhas; l++) profundidadeTotal += profundidadeLinha[l];
+        profundidadeTotal += Mathf.Max(0, linhas - 1) * gapZ;
+
+        float[] centroColuna = new float[colunas];
+        float[] centroLinha = new float[linhas];
+
+        float cursorX = -larguraTotal * 0.5f;
+        for (int c = 0; c < colunas; c++)
+        {
+            centroColuna[c] = cursorX + (larguraColuna[c] * 0.5f);
+            cursorX += larguraColuna[c] + gapX;
+        }
+
+        float cursorZ = -profundidadeTotal * 0.5f;
+        for (int l = 0; l < linhas; l++)
+        {
+            centroLinha[l] = cursorZ + (profundidadeLinha[l] * 0.5f);
+            cursorZ += profundidadeLinha[l] + gapZ;
+        }
+
+        float raioAmostraNavMesh = ehGrupoNaval ? 20f : (temVeiculo ? 8f : 4f);
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            ControleUnidade alvoCtrl = slots[i].unidade;
+            if (alvoCtrl == null) continue;
+
+            LancadorNaval lancador = alvoCtrl.GetComponent<LancadorNaval>();
+            if (lancador != null && lancador.modoAtual == LancadorNaval.ModoOperacao.Manual)
+                continue;
+
+            int coluna = i % colunas;
+            int linha = i / colunas;
+
+            Vector3 posLocal = new Vector3(centroColuna[coluna], 0f, centroLinha[linha]);
+            Vector3 posAlvo = destinoCentral + (rotacaoFormacao * posLocal);
+
+            UnityEngine.AI.NavMeshHit hit;
+            if (UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, UnityEngine.AI.NavMesh.AllAreas))
+            {
+                posAlvo = hit.position;
+            }
+
+            alvoCtrl.MoverParaPonto(posAlvo);
+        }
+    }
+
+    void ObterPegadaUnidade(ControleUnidade unidade, out float largura, out float profundidade)
+    {
+        float minimo = Mathf.Max(1.0f, espacamento * 0.55f);
+        largura = minimo;
+        profundidade = minimo;
+
+        if (unidade == null) return;
+
+        bool temBounds = false;
+        Bounds bounds = new Bounds(unidade.transform.position, Vector3.zero);
+
+        Collider[] colliders = unidade.GetComponentsInChildren<Collider>();
+        foreach (var c in colliders)
+        {
+            if (c == null || !c.enabled || c.isTrigger) continue;
+
+            if (!temBounds)
+            {
+                bounds = c.bounds;
+                temBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(c.bounds);
+            }
+        }
+
+        if (temBounds)
+        {
+            largura = Mathf.Max(largura, bounds.size.x);
+            profundidade = Mathf.Max(profundidade, bounds.size.z);
+        }
+        else
+        {
+            Renderer[] renderers = unidade.GetComponentsInChildren<Renderer>();
+            foreach (var r in renderers)
+            {
+                if (r == null || !r.enabled) continue;
+
+                if (!temBounds)
+                {
+                    bounds = r.bounds;
+                    temBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(r.bounds);
+                }
+            }
+
+            if (temBounds)
+            {
+                largura = Mathf.Max(largura, bounds.size.x * 0.8f);
+                profundidade = Mathf.Max(profundidade, bounds.size.z * 0.8f);
+            }
+        }
+
+        var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (agent != null)
+        {
+            float diametro = Mathf.Max(minimo, agent.radius * 2f);
+            largura = Mathf.Max(largura, diametro);
+            profundidade = Mathf.Max(profundidade, diametro);
+        }
+
+        largura = Mathf.Clamp(largura, minimo, 45f);
+        profundidade = Mathf.Clamp(profundidade, minimo, 45f);
+    }
+
     void AtualizarDesenhoCaixa()
     {
         if (canvasRect == null || caixaSelecaoVisual == null) return;
@@ -332,7 +636,9 @@ public class GerenteSelecao : MonoBehaviour
             if (unidade == null || !unidade.enabled) continue; // Ignora unidades desativadas (como soldados dentro de caminhões)
 
             // Onde o tanque está na tela?
-            Vector3 posTela = Camera.main.WorldToScreenPoint(unidade.transform.position);
+            if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+            if (cameraPrincipal == null) continue;
+            Vector3 posTela = cameraPrincipal.WorldToScreenPoint(unidade.transform.position);
 
             if (posTela.x > minX && posTela.x < maxX && 
                 posTela.y > minY && posTela.y < maxY)
@@ -348,11 +654,36 @@ public class GerenteSelecao : MonoBehaviour
         // Vamos tentar pegar tudo exceto a Ignore Raycast (2).
         int layerMask = ~(1 << 2); 
 
-        Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        if (cameraPrincipal == null) return;
+        Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
         RaycastHit toque;
         
         if (Physics.Raycast(raio, out toque, Mathf.Infinity, layerMask))
         {
+            // === NOVO: VERIFICA SE O JOGADOR CLICOU NA FÁBRICA / CONSTRUTOR DE VEÍCULOS ===
+            var fabrica = toque.transform.GetComponentInParent<Fabrica>();
+            if (fabrica != null)
+            {
+                var id = fabrica.GetComponentInParent<IdentidadeUnidade>();
+                // Certifica se a fábrica pertence ao jogador (TeamID 1)
+                if (id == null || id.teamID == 1) 
+                {
+                    MenuConstrucao menu = Object.FindFirstObjectByType<MenuConstrucao>();
+                    if (menu != null)
+                    {
+                        // Abre o menu na aba do Exército
+                        if (!MenuConstrucao.EstaAberto) menu.AlternarMenu(true);
+                        menu.FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Exercito);
+                        Debug.Log("[GerenteSelecao] Selecionou a Fábrica! Abrindo a aba do Exército.");
+                        
+                        DeselecionarTudo(); // Solta as tropas se for clicar num prédio
+                        return; // Paralisa o código para não selecionar a fábrica como "tropa"
+                    }
+                }
+            }
+            // ==============================================================================
+
             var unidade = toque.transform.GetComponentInParent<ControleUnidade>();
             if (unidade != null) 
             {

@@ -485,21 +485,30 @@ MonoBehaviour:
   anguloMinimo: -90
   anguloMaximo: 90
   tempoEntreTiros: 0.08
-  tamanhoCartucho: 50
+  tamanhoCartucho: 20
   tempoRecarga: 3
   pecaQueGira: {fileID: 0}
+  canosDaTorreta: {fileID: 0}
   locaisDoTiro:
   - {fileID: 4521405786522924042}
   - {fileID: 5512154896003509394}
   municaoPrefab: {fileID: 0}
+  limitarInclinacao: 1
+  elevacaoMinima: -10
+  elevacaoMaxima: 80
   somTiro: {fileID: 8300000, guid: ec9f47083560ce74e87495f678b41437, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
   modoPassivo: 0
+  modoRadar: 0
+  interceptarMisseis: 0
+  usarMisselParaInterceptar: 1
   misselPrefab: {fileID: 0}
   locaisDoMissel: []
   somMissel: {fileID: 0}
   tempoEntreMisseis: 2
+  capacidadeMisseis: 4
+  tempoRecargaMisseis: 10
   municoesPorCano: []
 --- !u!114 &216625474851512048
 MonoBehaviour:
@@ -559,6 +568,7 @@ MonoBehaviour:
   centroDaPatrulha: {x: 0, y: 0, z: 0}
   emAtaqueMergulho: 0
   alvoDoMergulho: {x: 0, y: 0, z: 0}
+  alvoPrioritarioIA: 0
   estaEmModoVooFisico: 0
 --- !u!65 &4505489411028330197
 BoxCollider:
@@ -629,9 +639,8 @@ MonoBehaviour:
   - {fileID: 4521405786522924042}
   - {fileID: 5512154896003509394}
   cadenciaDeTiro: 0.01
-  raioDeVisao: 700
-  coneDeTiroGraus: 20
-  cartuchoMaximo: 100
+  raioDeVisao: 600
+  cartuchoMaximo: 25
   tempoRecarga: 5
 --- !u!1 &4646874998638807707
 GameObject:

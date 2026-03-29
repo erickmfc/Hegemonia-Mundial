@@ -471,7 +471,7 @@ namespace UnityEditor.AI
             }
         }
 
-        [MenuItem("GameObject/AI/NavMesh Surface", false, 2000)]
+        [MenuItem("GameObject/AI/Legacy NavMesh/NavMesh Surface", false, 2000)]
         public static void CreateNavMeshSurface(MenuCommand menuCommand)
         {
             var parent = menuCommand.context as GameObject;

@@ -44,10 +44,12 @@ public class OtimizadorLOD : MonoBehaviour
             return;
         }
 
-        float distancia = Vector3.Distance(transform.position, camTransform.position);
+        float distanciaQuadrada = (transform.position - camTransform.position).sqrMagnitude;
+        float distanciaSumirQuadrada = distanciaSsumir * distanciaSsumir;
+        float distanciaSimplificarQuadrada = distanciaParaSimplificar * distanciaParaSimplificar;
 
         // NÍVEL 2: CULLING (Invisível)
-        if (distanciaSsumir > 0 && distancia > distanciaSsumir)
+        if (distanciaSsumir > 0 && distanciaQuadrada > distanciaSumirQuadrada)
         {
             if (!estaInvisivel) definirVisibilidadeTotal(false);
             return; // Se tá invisível, nem checa o resto
@@ -58,7 +60,7 @@ public class OtimizadorLOD : MonoBehaviour
         }
 
         // NÍVEL 1: SIMPLIFICAÇÃO (Esconder detalhes)
-        if (distancia > distanciaParaSimplificar)
+        if (distanciaQuadrada > distanciaSimplificarQuadrada)
         {
             if (!estaSimplificado) AlternarDetalhes(false);
         }

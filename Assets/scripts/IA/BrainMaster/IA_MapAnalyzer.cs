@@ -1,0 +1,514 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.AI;
+
+namespace Hegemonia.AI.BrainMaster
+{
+    public sealed class IA_MapAnalyzer : IIAUpdateModule
+    {
+        private const int MaxCachedCells = 4096;
+        private readonly IA_WorldState _world;
+        private readonly Dictionary<Vector2Int, IA_MapCell> _cells = new Dictionary<Vector2Int, IA_MapCell>();
+        private readonly Dictionary<int, Vector2> _footprintCache = new Dictionary<int, Vector2>();
+        private readonly Collider[] _obstacleBuffer = new Collider[96];
+        private bool _cachedHasNavMeshData = true;
+        private float _nextNavMeshPresenceCheckTime;
+
+        public float CellSize = 24f;
+
+        public IA_MapAnalyzer(IA_WorldState world)
+        {
+            _world = world;
+        }
+
+        public string Name
+        {
+            get { return "IA_MapAnalyzer"; }
+        }
+
+        public float Interval
+        {
+            get { return 1.75f; }
+        }
+
+        public float BudgetMs
+        {
+            get { return 0.55f; }
+        }
+
+        public void Tick(float now, float deltaTime)
+        {
+            if (_world == null)
+            {
+                return;
+            }
+
+            Vector3 center = _world.BaseCenter;
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int z = -1; z <= 1; z++)
+                {
+                    Vector3 pos = center + new Vector3(x * CellSize, 0f, z * CellSize);
+                    SampleCell(pos);
+                }
+            }
+
+            if (_cells.Count > MaxCachedCells)
+            {
+                _cells.Clear();
+            }
+        }
+
+        public IA_MapCell SampleCell(Vector3 worldPosition)
+        {
+            Vector2Int index = ToIndex(worldPosition);
+            IA_MapCell cell;
+            if (_cells.TryGetValue(index, out cell))
+            {
+                return cell;
+            }
+
+            cell = BuildCell(worldPosition);
+            _cells[index] = cell;
+            return cell;
+        }
+
+        public bool IsZoneCompatible(IA_ZoneType zone, IA_TerrainType terrain, bool naval)
+        {
+            if (naval)
+            {
+                return terrain == IA_TerrainType.Water || terrain == IA_TerrainType.Coast;
+            }
+
+            switch (zone)
+            {
+                case IA_ZoneType.Naval:
+                    return terrain == IA_TerrainType.Coast;
+                case IA_ZoneType.Air:
+                case IA_ZoneType.Core:
+                case IA_ZoneType.Economy:
+                    return terrain != IA_TerrainType.Water && terrain != IA_TerrainType.Coast;
+                case IA_ZoneType.Military:
+                case IA_ZoneType.Frontline:
+                    return terrain != IA_TerrainType.Water && terrain != IA_TerrainType.Coast;
+                case IA_ZoneType.Defense:
+                case IA_ZoneType.Coast:
+                    return terrain != IA_TerrainType.Water;
+                default:
+                    return terrain != IA_TerrainType.Water;
+            }
+        }
+
+        public Vector2 EstimateFootprint(GameObject prefab, float fallback)
+        {
+            if (prefab == null)
+            {
+                return new Vector2(fallback, fallback);
+            }
+
+            int key = prefab.GetInstanceID();
+            Vector2 cached;
+            if (_footprintCache.TryGetValue(key, out cached))
+            {
+                return cached;
+            }
+
+            Renderer[] renderers = prefab.GetComponentsInChildren<Renderer>(true);
+            Bounds bounds = new Bounds(prefab.transform.position, Vector3.zero);
+            bool hasBounds = false;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] == null)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = renderers[i].bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(renderers[i].bounds);
+                }
+            }
+
+            Vector2 result = hasBounds
+                ? new Vector2(Mathf.Max(2f, bounds.extents.x), Mathf.Max(2f, bounds.extents.z))
+                : new Vector2(fallback, fallback);
+
+            _footprintCache[key] = result;
+            return result;
+        }
+
+        public bool WouldBlockRoute(Vector3 position, Vector2 halfExtents, Vector3 baseCenter)
+        {
+            if (baseCenter == Vector3.zero)
+            {
+                return false;
+            }
+
+            if (!HasAnyNavMeshData(Time.time))
+            {
+                return false;
+            }
+
+            if (Vector3.Distance(Flatten(position), Flatten(baseCenter)) > 180f)
+            {
+                return false;
+            }
+
+            if (Mathf.Max(halfExtents.x, halfExtents.y) <= 6f)
+            {
+                return false;
+            }
+
+            float radius = Mathf.Max(halfExtents.x, halfExtents.y) + 8f;
+            Vector3 probeA = position + new Vector3(radius, 0f, 0f);
+            Vector3 probeC = position + new Vector3(0f, 0f, radius);
+            return !HasPath(baseCenter, probeA) && !HasPath(baseCenter, probeC);
+        }
+
+        private bool HasAnyNavMeshData(float now)
+        {
+            if (now < _nextNavMeshPresenceCheckTime)
+            {
+                return _cachedHasNavMeshData;
+            }
+
+            NavMeshTriangulation triangulation = NavMesh.CalculateTriangulation();
+            _cachedHasNavMeshData = triangulation.vertices != null && triangulation.vertices.Length > 0;
+            _nextNavMeshPresenceCheckTime = now + 5f;
+            return _cachedHasNavMeshData;
+        }
+
+        public Vector3 FindPointInTerrain(
+            Vector3 anchor,
+            IA_TerrainType desiredTerrain,
+            float minRadius,
+            float maxRadius,
+            int samples)
+        {
+            int count = Mathf.Clamp(samples, 8, 18);
+            for (int ring = 0; ring < 4; ring++)
+            {
+                float radius = Mathf.Lerp(minRadius, maxRadius, ring / 3f);
+                for (int i = 0; i < count; i++)
+                {
+                    float angle = (360f / count) * i * Mathf.Deg2Rad;
+                    Vector3 test = anchor + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+                    IA_MapCell cell = SampleCell(test);
+                    if (desiredTerrain == IA_TerrainType.Water)
+                    {
+                        if (cell.Terrain == IA_TerrainType.Water || cell.Terrain == IA_TerrainType.Coast)
+                        {
+                            return cell.Center;
+                        }
+                    }
+                    else if (desiredTerrain == IA_TerrainType.Land)
+                    {
+                        if (cell.Terrain != IA_TerrainType.Water && cell.BuildableLand)
+                        {
+                            return cell.Center;
+                        }
+                    }
+                    else
+                    {
+                        if (cell.Terrain == desiredTerrain && cell.BuildableLand)
+                        {
+                            return cell.Center;
+                        }
+                    }
+                }
+            }
+
+            return anchor;
+        }
+
+        private IA_MapCell BuildCell(Vector3 position)
+        {
+            float height;
+            IA_TerrainType terrain = DetectTerrain(position, out height);
+
+            float slope = ComputeSlope(position, height);
+            int hitCount = Physics.OverlapSphereNonAlloc(new Vector3(position.x, height + 1f, position.z), 9f, _obstacleBuffer, ~0, QueryTriggerInteraction.Ignore);
+            float obstacleDensity = Mathf.Clamp01(hitCount / 14f);
+
+            IA_ZoneType zone = InferZone(position, terrain);
+            bool buildableLand = terrain != IA_TerrainType.Water && slope < 28f && obstacleDensity < 0.55f;
+            bool buildableWater = terrain == IA_TerrainType.Water || terrain == IA_TerrainType.Coast;
+
+            return new IA_MapCell
+            {
+                Center = new Vector3(position.x, height, position.z),
+                Terrain = terrain,
+                Height = height,
+                Slope = slope,
+                BuildableLand = buildableLand,
+                BuildableWater = buildableWater,
+                ObstacleDensity = obstacleDensity,
+                Zone = zone
+            };
+        }
+
+        private IA_TerrainType DetectTerrain(Vector3 position, out float height)
+        {
+            ClassificacaoSuperficieMapa superficieMarcada;
+            if (RegistroSuperficieMapa.TryClassify(position, out superficieMarcada, out height))
+            {
+                if (superficieMarcada == ClassificacaoSuperficieMapa.Agua)
+                {
+                    return IA_TerrainType.Water;
+                }
+
+                if (superficieMarcada == ClassificacaoSuperficieMapa.Costa)
+                {
+                    return IA_TerrainType.Coast;
+                }
+
+                if (superficieMarcada == ClassificacaoSuperficieMapa.Chao)
+                {
+                    int urbanHitsMarcado = CountUrbanObjects(position, height);
+                    if (urbanHitsMarcado >= 6)
+                    {
+                        return IA_TerrainType.City;
+                    }
+
+                    if (CountObstacles(position, height) >= 8)
+                    {
+                        return IA_TerrainType.Choke;
+                    }
+
+                    return IA_TerrainType.Open;
+                }
+            }
+
+            height = position.y;
+            RaycastHit[] hits = Physics.RaycastAll(new Vector3(position.x, 1200f, position.z), Vector3.down, 2500f, ~0, QueryTriggerInteraction.Collide);
+            if (hits.Length == 0)
+            {
+                return IA_TerrainType.Unknown;
+            }
+
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            bool seenWater = false;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                Collider col = hits[i].collider;
+                if (col == null)
+                {
+                    continue;
+                }
+
+                MarcadorSuperficieMapa marcador = col.GetComponentInParent<MarcadorSuperficieMapa>();
+                if (marcador != null)
+                {
+                    float alturaMarcador;
+                    if (!marcador.TrySampleSurfaceHeight(position, out alturaMarcador))
+                    {
+                        continue;
+                    }
+
+                    height = alturaMarcador;
+                    if (marcador.TipoSuperficie == TipoSuperficieMapa.Agua)
+                    {
+                        seenWater = true;
+                        continue;
+                    }
+
+                    if (seenWater)
+                    {
+                        return IA_TerrainType.Coast;
+                    }
+
+                    int urbanHitsMarcador = CountUrbanObjects(position, height);
+                    if (urbanHitsMarcador >= 6)
+                    {
+                        return IA_TerrainType.City;
+                    }
+
+                    if (CountObstacles(position, height) >= 8)
+                    {
+                        return IA_TerrainType.Choke;
+                    }
+
+                    return IA_TerrainType.Open;
+                }
+
+                string n = IA_Text.Normalize(col.name);
+                bool water = col.gameObject.layer == 4 || n.Contains("agua") || n.Contains("water") || n.Contains("ocean") || n.Contains("mar");
+                if (water)
+                {
+                    seenWater = true;
+                    height = hits[i].point.y;
+                    continue;
+                }
+
+                if (n.Contains("bip") || n.Contains("bone"))
+                {
+                    continue;
+                }
+
+                height = hits[i].point.y;
+                if (seenWater)
+                {
+                    return IA_TerrainType.Coast;
+                }
+
+                int urbanHits = CountUrbanObjects(position, height);
+                if (urbanHits >= 6)
+                {
+                    return IA_TerrainType.City;
+                }
+
+                if (CountObstacles(position, height) >= 8)
+                {
+                    return IA_TerrainType.Choke;
+                }
+
+                return IA_TerrainType.Open;
+            }
+
+            if (seenWater)
+            {
+                return IA_TerrainType.Water;
+            }
+
+            return IA_TerrainType.Unknown;
+        }
+
+        private float ComputeSlope(Vector3 position, float height)
+        {
+            float sample = 3f;
+            float h0 = height;
+            float hx = SampleHeight(position + new Vector3(sample, 0f, 0f));
+            float hz = SampleHeight(position + new Vector3(0f, 0f, sample));
+            float gradient = Mathf.Abs(hx - h0) + Mathf.Abs(hz - h0);
+            return Mathf.Atan(gradient / Mathf.Max(0.01f, sample)) * Mathf.Rad2Deg;
+        }
+
+        private float SampleHeight(Vector3 position)
+        {
+            float alturaMarcada;
+            if (RegistroSuperficieMapa.TryGetAltura(position, TipoSuperficieMapa.Chao, out alturaMarcada))
+            {
+                return alturaMarcada;
+            }
+
+            RaycastHit hit;
+            if (Physics.Raycast(new Vector3(position.x, 1000f, position.z), Vector3.down, out hit, 2000f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                return hit.point.y;
+            }
+
+            return position.y;
+        }
+
+        private int CountUrbanObjects(Vector3 position, float y)
+        {
+            int count = 0;
+            int total = Physics.OverlapSphereNonAlloc(new Vector3(position.x, y + 1f, position.z), 18f, _obstacleBuffer, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < total; i++)
+            {
+                Collider col = _obstacleBuffer[i];
+                if (col == null)
+                {
+                    continue;
+                }
+
+                if (col.GetComponentInParent<MarcadorSuperficieMapa>() != null)
+                {
+                    continue;
+                }
+
+                string n = IA_Text.Normalize(col.name);
+                if (n.Contains("predio") || n.Contains("building") || n.Contains("casa") || n.Contains("urb"))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private int CountObstacles(Vector3 position, float y)
+        {
+            int count = 0;
+            int total = Physics.OverlapSphereNonAlloc(new Vector3(position.x, y + 1f, position.z), 14f, _obstacleBuffer, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < total; i++)
+            {
+                Collider col = _obstacleBuffer[i];
+                if (col == null || col.isTrigger)
+                {
+                    continue;
+                }
+
+                if (col.GetComponentInParent<MarcadorSuperficieMapa>() != null)
+                {
+                    continue;
+                }
+
+                string n = IA_Text.Normalize(col.name);
+                if (n.Contains("terrain") || n.Contains("terra") || n.Contains("agua") || n.Contains("water"))
+                {
+                    continue;
+                }
+
+                count++;
+            }
+
+            return count;
+        }
+
+        private IA_ZoneType InferZone(Vector3 position, IA_TerrainType terrain)
+        {
+            float distBase = Vector3.Distance(Flatten(position), Flatten(_world.BaseCenter));
+            if (distBase <= 65f)
+            {
+                return IA_ZoneType.Core;
+            }
+
+            if (terrain == IA_TerrainType.Water || terrain == IA_TerrainType.Coast)
+            {
+                return IA_ZoneType.Coast;
+            }
+
+            if (terrain == IA_TerrainType.City)
+            {
+                return IA_ZoneType.Defense;
+            }
+
+            if (distBase <= 150f)
+            {
+                return IA_ZoneType.Economy;
+            }
+
+            if (distBase <= 280f)
+            {
+                return IA_ZoneType.Military;
+            }
+
+            return IA_ZoneType.Frontline;
+        }
+
+        private static bool HasPath(Vector3 from, Vector3 to)
+        {
+            NavMeshPath path = new NavMeshPath();
+            bool calculated = NavMesh.CalculatePath(from, to, NavMesh.AllAreas, path);
+            return calculated && path.status == NavMeshPathStatus.PathComplete;
+        }
+
+        private Vector2Int ToIndex(Vector3 worldPosition)
+        {
+            float size = Mathf.Max(1f, CellSize);
+            return new Vector2Int(Mathf.RoundToInt(worldPosition.x / size), Mathf.RoundToInt(worldPosition.z / size));
+        }
+
+        private static Vector3 Flatten(Vector3 value)
+        {
+            value.y = 0f;
+            return value;
+        }
+    }
+}

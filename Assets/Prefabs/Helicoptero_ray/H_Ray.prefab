@@ -173,10 +173,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b45f7f566e989a54b8b2fbc38d71f9b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Helicoptero
+  debugLogs: 0
   controleSempreAtivo: 0
   selecionado: 1
   raioDoClique: 13
-  altitudeDeVoo: 20
+  altitudeDeVoo: 25
   alturaPouso: 1.33
   velocidadeHelice: 1200
   velocidadeNavegacao: 20
@@ -202,6 +203,8 @@ MonoBehaviour:
   volumeMaximo: 1
   tempoSpinUp: 4
   tempoSpinDown: 6
+  destino: {x: 0, y: 0, z: 0}
+  estaVoando: 0
   nomeHelicoptero: Hay
   custoUpgrade: 200
 --- !u!114 &-3325090875797799037

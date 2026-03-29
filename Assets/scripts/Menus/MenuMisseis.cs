@@ -17,11 +17,15 @@ public class MenuMisseis : MonoBehaviour
     private SiloNuclear siloSlecionado;
     private GameObject misselParaLancar; // Qual míssil foi escolhido
     private bool modoMira = false; // Se estamos esperando clicar no mapa
+    public static bool EstaAberto = false;
+    private Camera cameraPrincipal;
 
     void Start()
     {
+        cameraPrincipal = Camera.main;
         CriarInterface();
         painelMenu.SetActive(false);
+        EstaAberto = false;
     }
 
     void Update()
@@ -42,7 +46,10 @@ public class MenuMisseis : MonoBehaviour
     // --- LÓGICA DE TIRO ---
     void LancarNoAlvo()
     {
-        Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        if (cameraPrincipal == null) return;
+
+        Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
         RaycastHit toque;
 
         // Tenta acertar o chão (use a Layer que você já configurou ou Default)
@@ -66,23 +73,36 @@ public class MenuMisseis : MonoBehaviour
         // Posiciona o menu perto do mouse
         painelMenu.transform.position = Input.mousePosition + new Vector3(20, 20, 0);
         painelMenu.SetActive(true);
+        EstaAberto = true;
+
+        // Fecha os outros
+        MenuConstrucao menuCon = Object.FindFirstObjectByType<MenuConstrucao>();
+        if (menuCon != null && MenuConstrucao.EstaAberto) menuCon.AlternarMenu(false);
+
+        MenuPier menuPier = Object.FindFirstObjectByType<MenuPier>();
+        if (menuPier != null && MenuPier.EstaAberto) menuPier.FecharMenu();
+
+        MenuGoverno menuGov = Object.FindFirstObjectByType<MenuGoverno>();
+        if (menuGov != null && MenuGoverno.EstaAberto) menuGov.AlternarMenu(false);
     }
 
     void SelecionarMissel(GameObject prefab)
     {
         misselParaLancar = prefab;
         painelMenu.SetActive(false); // Fecha o menu
+        EstaAberto = false;
         modoMira = true;
         Debug.Log("Comandante, selecione o alvo no mapa!");
         // Dica: Aqui você mudaria o cursor para uma mira vermelha
     }
 
-    void CancelarLancamento()
+    public void CancelarLancamento()
     {
         modoMira = false;
         siloSlecionado = null;
         misselParaLancar = null;
         painelMenu.SetActive(false);
+        EstaAberto = false;
     }
 
     // --- CRIAÇÃO DA UI VIA SCRIPT (Igual seu Construtor) ---

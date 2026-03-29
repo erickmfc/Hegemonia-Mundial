@@ -27,9 +27,11 @@ public class CentroSuporteAereo : MonoBehaviour
     private float timerSuprimentos = 0f;
     private bool modoMiraAtaque = false;
     private bool modoMiraSuprimentos = false;
+    private Camera cameraPrincipal;
     
     void Update()
     {
+        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
         AtualizarCooldowns();
         ProcessarInput();
     }
@@ -63,7 +65,8 @@ public class CentroSuporteAereo : MonoBehaviour
         {
             if (modoMiraAtaque || modoMiraSuprimentos)
             {
-                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                if (cameraPrincipal == null) return;
+                Ray ray = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
                 RaycastHit hit;
                 
                 if (Physics.Raycast(ray, out hit))

@@ -136,7 +136,7 @@ public class PierMarinha : MonoBehaviour
         {
             yield return new WaitForSeconds(3.0f);
             if(construtorLocal == null)
-                construtorLocal = FindFirstObjectByType<Construtor>();
+                construtorLocal = Construtor.Instancia != null ? Construtor.Instancia : FindFirstObjectByType<Construtor>();
         }
     }
 
@@ -416,31 +416,85 @@ public class PierMarinha : MonoBehaviour
         return candidato;
     }
 
-    public void ConstruirNavio(GameObject prefabNavio)
+    public bool ConstruirNavio(GameObject prefabNavio)
     {
-        if (prefabNavio == null) return;
+        if (prefabNavio == null) return false;
+
+        string validacaoPier;
+        if (!NavalPlacementResolver.IsCurrentStructurePoseValid(gameObject, out validacaoPier))
+        {
+            Debug.LogWarning("[PierMarinha] Construção naval bloqueada: " + validacaoPier);
+            return false;
+        }
+
         Transform pontoSpawn = transform;
         if (pontosDeSaida != null && pontosDeSaida.Length > 0) pontoSpawn = pontosDeSaida[0];
+        Vector3 forwardSpawn = pontoSpawn != null ? pontoSpawn.forward : transform.forward;
+        if (forwardSpawn.sqrMagnitude < 0.01f) forwardSpawn = transform.forward;
+
+        Vector3 posSpawn;
+        float nivelMar;
+        if (!NavalPlacementResolver.TryResolveWaterSpawn(
+            pontoSpawn.position,
+            forwardSpawn,
+            0f,
+            420f,
+            out posSpawn,
+            out nivelMar,
+            out validacaoPier))
+        {
+            Debug.LogWarning("[PierMarinha] Não foi possível achar água para criar o navio: " + validacaoPier);
+            return false;
+        }
+
+        GameObject novoNavio = Instantiate(prefabNavio, posSpawn, pontoSpawn.rotation);
         
-        GameObject novoNavio = Instantiate(prefabNavio, pontoSpawn.position, pontoSpawn.rotation);
-        
+        // CORRECAO DE NOME: Remove (Clone) para que a IA consiga contar na Meta!
+        string nomeLimpo = prefabNavio.name.ToLower();
+        if (nomeLimpo.Contains("sub")) novoNavio.name = "submarino";
+        else novoNavio.name = "navio";
+
         // --- DEFINIR IDENTIDADE ---
         var idPier = GetComponentInParent<IdentidadeUnidade>();
         var idNavio = novoNavio.GetComponent<IdentidadeUnidade>();
+        if (idNavio == null) idNavio = novoNavio.AddComponent<IdentidadeUnidade>();
+
         if (idPier != null && idNavio != null)
         {
             idNavio.teamID = idPier.teamID;
             idNavio.nomeDoPais = idPier.nomeDoPais;
         }
+        else if (idNavio != null)
+        {
+            idNavio.teamID = 1;
+            if (string.IsNullOrEmpty(idNavio.nomeDoPais)) idNavio.nomeDoPais = "Hegemonia";
+        }
 
         IdentidadeNaval idNaval = novoNavio.GetComponent<IdentidadeNaval>();
         if (idNaval != null)
         {
-            if(pontosDeSaida != null && pontosDeSaida.Length > 1) idNaval.MoverPara(pontosDeSaida[1].position); 
-            else idNaval.MoverPara(transform.position + transform.forward * 100f);
+            Vector3 destinoHint = (pontosDeSaida != null && pontosDeSaida.Length > 1 && pontosDeSaida[1] != null)
+                ? pontosDeSaida[1].position
+                : transform.position + (transform.forward * 130f);
+            Vector3 destNaval;
+            string destinoReason;
+            float nivelDestino;
+            if (!NavalPlacementResolver.TryResolveWaterSpawn(
+                destinoHint,
+                transform.forward,
+                20f,
+                220f,
+                out destNaval,
+                out nivelDestino,
+                out destinoReason))
+            {
+                destNaval = posSpawn + (transform.forward.normalized * 130f);
+                destNaval.y = nivelMar;
+            }
+
+            idNaval.MoverPara(destNaval);
         }
 
-        // Registrar no General se for IA
         if (idPier != null && idPier.teamID != 1)
         {
             var commanders = Object.FindObjectsByType<IA_Comandante>(FindObjectsSortMode.None);
@@ -450,6 +504,14 @@ public class PierMarinha : MonoBehaviour
                 myCommander.cerebroGeneral.RegistrarUnidade(novoNavio);
             }
         }
+        
+        Debug.Log($"[PierMarinha] {novoNavio.name} criado em {posSpawn}. Agua confirmada.");
+        return true;
+    }
+
+    bool VerificarSeEhAgua(Vector3 pos)
+    {
+        return NavalPlacementResolver.IsWaterAtPosition(pos);
     }
 
     // --- INTERFACE VISUAL DE REPARO ---

@@ -33,6 +33,9 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     public Transform waypointEntradaElevador;
     public Transform grupoParadas; // NOVO: Grupo com os pontos "parada" do convés
     
+    [Header("=== DEBUG ===")]
+    public bool debugLogs = false;
+    
     private bool _menuCarrierAtivo = false;
     private bool _elevadorOcupado = false;
     private ControleAviao _selecionadoCarrier;
@@ -40,11 +43,18 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     private Vector2 _scrollCarrier;
     private IdentidadeUnidade _idCarrier;
     private ControleUnidade _controleUnidade;
+    private Camera _cameraPrincipal;
 
     [Header("=== RADAR DE CONTROLE AÉREO ===")]
     public float raioRadarResgate = 1500f; // Aumentei um pouco o alcance para facilitar
     private List<ControleAviao> _avioesProximosNoAr = new List<ControleAviao>();
     private float _tempoProximoScan = 0f;
+
+    void LogDebug(string msg)
+    {
+        if (debugLogs)
+            Debug.Log(msg);
+    }
 
     protected override void Awake()
     {
@@ -100,7 +110,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             }).ToList();
             
             
-            Debug.Log($"[Porta-Aviões] Sequência de Pouso: {string.Join(" -> ", waypointsDecida.Select(w => w.name))}");
+            LogDebug($"[Porta-Aviões] Sequência de Pouso: {string.Join(" -> ", waypointsDecida.Select(w => w.name))}");
 
             // --- NOVO: PONTO DE APROXIMAÇÃO REALISTA ---
             // Cria um ponto 600m atrás do navio para o avião alinhar antes de pousar
@@ -125,7 +135,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (wpAnalise == null && waypointEntradaElevador != null) wpAnalise = null; 
     }
 
-    new void Update()
+    void Update()
     {
         // 1. Rotação da Antena
         if (antenaRotativa != null)
@@ -142,7 +152,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 return; // Ignora se não estiver selecionado
             }
 
-            Debug.Log("[Porta-Aviões] Você apertou a tecla O no navio selecionado!");
+            LogDebug("[Porta-Aviões] Você apertou a tecla O no navio selecionado!");
             
             // Tenta achar a Identidade caso tenha falhado no Awake
             if (_idCarrier == null) _idCarrier = GetComponent<IdentidadeUnidade>();
@@ -173,7 +183,9 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         {
             if (UnityEngine.EventSystems.EventSystem.current == null || !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             {
-                Ray raioCamera = Camera.main.ScreenPointToRay(Input.mousePosition);
+                if (_cameraPrincipal == null) _cameraPrincipal = Camera.main;
+                if (_cameraPrincipal == null) return;
+                Ray raioCamera = _cameraPrincipal.ScreenPointToRay(Input.mousePosition);
                 if (Physics.Raycast(raioCamera, out RaycastHit hit))
                 {
                     if (hit.transform == this.transform || hit.transform.IsChildOf(this.transform))
@@ -185,7 +197,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                             return; 
                         }
 
-                        Debug.Log("[Porta-Aviões] Você clicou no navio!");
+                        LogDebug("[Porta-Aviões] Você clicou no navio!");
                         _menuCarrierAtivo = true; // Abre o menu ao clicar
                     }
                 }
@@ -285,7 +297,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
     }
 
-    new void OnGUI()
+    void OnGUI()
     {
         if (!_menuCarrierAtivo) return;
         
@@ -297,11 +309,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         float menuWidth = 380f;
         float menuHeight = 700f; 
         
-        // offsetX movido 7% mais para a direita (De 0.20 -> 0.13, agora está mais perto do canto direito)
+        // offsetX: Base original era 0.20f. Deslocando 7% para a direita = 0.13f
         float offsetX = Screen.width * 0.13f; 
         
-        // Offset Y movido 8% para cima (- Screen.height * 0.08f)
-        float offsetY = Screen.height / 2f - (menuHeight / 2f) - (Screen.height * 0.08f);
+        // offsetY: Subindo exatamente 2% conforme pedido
+        float offsetY = Screen.height / 2f - (menuHeight / 2f) - (Screen.height * 0.02f);
         
         Rect areaMenu = new Rect(Screen.width - menuWidth - 40f - offsetX, offsetY, menuWidth, menuHeight);
         
@@ -398,7 +410,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     if (GUILayout.Button("🔧 REPARAR E REABASTECER", GUILayout.Height(30)))
                     {
                         vidaAviao.vidaAtual = vidaAviao.vidaMaxima;
-                        Debug.Log("[Porta-Aviões] Avião totalmente reparado!");
+                        LogDebug("[Porta-Aviões] Avião totalmente reparado!");
                     }
                 }
             }
@@ -469,7 +481,9 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     {
         if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
         
-        Ray r = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (_cameraPrincipal == null) _cameraPrincipal = Camera.main;
+        if (_cameraPrincipal == null) return;
+        Ray r = _cameraPrincipal.ScreenPointToRay(Input.mousePosition);
         Vector3 pontoAlvo = Vector3.zero;
         
         if (Physics.Raycast(r, out RaycastHit hit))
@@ -485,7 +499,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     if (_selecionadoCarrier.GetComponent<ComportamentoPatrulhaUniversal>()) Destroy(_selecionadoCarrier.GetComponent<ComportamentoPatrulhaUniversal>());
                     var seg = _selecionadoCarrier.gameObject.AddComponent<ComportamentoSeguirUniversal>();
                     seg.Configurar(alvoSeguir.transform);
-                    Debug.Log("🎯 Avião designado para Escolta/Seguir!");
+                    LogDebug("🎯 Avião designado para Escolta/Seguir!");
                 }
                 else
                 {
@@ -528,7 +542,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 linhas.lineRenderer.SetPosition(1, pt2);
             }
             
-            Debug.Log("🛡️ Avião designado para rota de Patrulha (Do Navio até o Ponto)!");
+            LogDebug("🛡️ Avião designado para rota de Patrulha (Do Navio até o Ponto)!");
         }
 
         _selecionadoCarrier.aguardandoCliqueRadar = false;
@@ -553,73 +567,35 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         
         if (subir)
         {
-            avioesNoHangar.Remove(av);
-            
-            // 1. O elevador desce do convés até o hangar interno para buscar o avião
-            yield return StartCoroutine(MoverSuave(plataformaElevador, localConvesEntrada, localHangarFrente, 2.5f));
-            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarFrente, localHangarInterno, 2.5f));
-            
-            av.gameObject.SetActive(true);
-            
-            // 2. O avião estaciona no elevador
-            av.transform.SetParent(plataformaElevador);
-            av.transform.localPosition = Vector3.zero;
-            av.transform.localRotation = Quaternion.identity;
-
-            // 3. Elevador sobe com o avião: Hangar -> Frente -> Convés
-            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarInterno, localHangarFrente, 2.5f));
-            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarFrente, localConvesEntrada, 3.5f));
-
-            av.transform.SetParent(this.transform); // Gruda no navio
-            
             Transform v = ObterPrimeiraVagaLivre();
             if (v != null) 
             {
-                av.vagaRetorno = v;
-                if (!avioesNoPatio.Contains(av)) avioesNoPatio.Add(av);
-                yield return StartCoroutine(av.MoverInterpolado(Vector3.zero, av.velocidadeSolo, true, v));
+                ColocarAviaoInstantaneamenteNoPatio(av, v, true);
             }
             else
             {
-                if (!avioesNoPatio.Contains(av)) avioesNoPatio.Add(av);
+                if (!avioesNoHangar.Contains(av)) avioesNoHangar.Add(av);
             }
-            av.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
         }
         else
         {
-            avioesNoPatio.Remove(av);
-            
-            // 1. Garante que o elevador está paradinho no convés
-            plataformaElevador.localPosition = localConvesEntrada;
-            
-            // 2. Pontinho guia para o avião taxiar e subir no elevador
-            GameObject tempAlvo = new GameObject("TempAlvoElevador");
-            tempAlvo.transform.SetParent(this.transform, false);
-            tempAlvo.transform.localPosition = localConvesEntrada;
-            
-            yield return StartCoroutine(av.MoverInterpolado(Vector3.zero, av.velocidadeSolo, true, tempAlvo.transform));
-            Destroy(tempAlvo);
-            
-            // 3. Centraliza perfeito no elevador e desce
-            av.transform.SetParent(plataformaElevador);
-            av.transform.localPosition = Vector3.zero;
-            av.transform.localRotation = Quaternion.identity;
-            av.vagaRetorno = null;
+            GuardarAviaoNoHangarInstantaneo(av, true);
 
-            // 4. Elevador desce as 3 etapas
-            yield return StartCoroutine(MoverSuave(plataformaElevador, localConvesEntrada, localHangarFrente, 3.5f));
-            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarFrente, localHangarInterno, 2.5f));
-            
-            // 5. Avião guardado, tira ele da memória ativa e do visual
-            av.transform.SetParent(this.transform);
-            av.gameObject.SetActive(false);
-            avioesNoHangar.Add(av);
-            
-            // 6. Elevador retorna VAZIO para fechar o buraco do convés
-            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarInterno, localHangarFrente, 2.5f));
-            yield return StartCoroutine(MoverSuave(plataformaElevador, localHangarFrente, localConvesEntrada, 3.5f));
+            if (av != null)
+            {
+                av.transform.SetParent(this.transform, false);
+                av.transform.localPosition = localHangarInterno;
+                av.transform.localRotation = Quaternion.identity;
+            }
         }
+
+        if (plataformaElevador != null)
+        {
+            plataformaElevador.localPosition = localConvesEntrada;
+        }
+
         _elevadorOcupado = false;
+        yield break;
     }
 
     // Sobrecarga do MoverSuave para aceitar local ou global
@@ -641,3 +617,4 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (av != null) av.transform.SetParent(this.transform);
     }
 }
+

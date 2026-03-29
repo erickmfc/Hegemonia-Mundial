@@ -40,6 +40,7 @@ public class Projetil : MonoBehaviour
     
     // Homing (Perseguição)
     public float curvaDePerseguicao = 0f; // Se maior que zero, é míssil teleguiado (Graus/Seg)
+    public float distanciaDetonacaoProximidade = 6f;
     private Transform alvoPerseguido;
 
     // Zero-alloc Raycasting buffer
@@ -77,12 +78,31 @@ public class Projetil : MonoBehaviour
             if (alvoPerseguido.gameObject.activeInHierarchy)
             {
                 Vector3 pontoAlvo = alvoPerseguido.position + Vector3.up * 1f; // Aponta um pouco acima do centro da base
-                Vector3 direcaoIdeal = (pontoAlvo - transform.position).normalized;
+                Vector3 vetorParaAlvo = pontoAlvo - transform.position;
+                float distanciaAlvo = vetorParaAlvo.magnitude;
+                float fusivelProximidade = Mathf.Max(distanciaDetonacaoProximidade, velocidade * Time.deltaTime * 1.5f);
+
+                if (distanciaAlvo <= fusivelProximidade)
+                {
+                    ProcessarImpacto(alvoPerseguido.gameObject);
+                    return;
+                }
+
+                if (vetorParaAlvo.sqrMagnitude <= 0.0001f)
+                {
+                    ProcessarImpacto(alvoPerseguido.gameObject);
+                    return;
+                }
+
+                Vector3 direcaoIdeal = vetorParaAlvo / distanciaAlvo;
                 
-                Vector3 direcaoAtual = temDirecaoCustom ? direcaoCustom : transform.forward;
+                Vector3 direcaoAtual = (temDirecaoCustom && direcaoCustom.sqrMagnitude > 0.0001f) ? direcaoCustom : transform.forward;
                 Vector3 novaDirecao = Vector3.RotateTowards(direcaoAtual, direcaoIdeal, curvaDePerseguicao * Mathf.Deg2Rad * Time.deltaTime, 0f);
                 
-                SetDirecao(novaDirecao); // Atualiza a direção real do voo
+                if (novaDirecao.sqrMagnitude > 0.0001f)
+                {
+                    SetDirecao(novaDirecao); // Atualiza a direção real do voo
+                }
             }
             else
             {
@@ -186,8 +206,8 @@ public class Projetil : MonoBehaviour
         // Ignora a si mesmo (caso tenha colliders compostos)
         if (alvo == gameObject) return;
 
-        // Ignora outros projéteis para não explodirem no ar
-        if (alvo.GetComponent<Projetil>() != null) return;
+        // Ignora outros projéteis para não explodirem no ar, a menos que seja nosso alvo (interceptor anti-míssil)
+        if (alvo.GetComponent<Projetil>() != null && (alvoPerseguido == null || alvo != alvoPerseguido.gameObject)) return;
 
         jaAcertou = true;
 

@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 public class GerenteDeJogo : MonoBehaviour
 {
+    [Header("Debug")]
+    public bool debugLogs = false;
+
     [Header("Economia - DEPRECATED: Use GerenciadorRecursos.Instancia")]
     [Tooltip("Deprecated: Este campo agora é gerenciado pelo GerenciadorRecursos")]
     public int dinheiroAtual 
@@ -25,6 +28,12 @@ public class GerenteDeJogo : MonoBehaviour
     [Header("Jogadores na Partida")]
     public List<IdentidadeIA> comandantesIA = new List<IdentidadeIA>();
 
+    void LogInfo(string msg)
+    {
+        if (debugLogs)
+            Debug.Log(msg);
+    }
+
     void Awake()
     {
         if (Instancia == null) Instancia = this;
@@ -34,12 +43,12 @@ public class GerenteDeJogo : MonoBehaviour
         if (GetComponent<MenuPier>() == null)
         {
             gameObject.AddComponent<MenuPier>();
-            Debug.Log("[Gerente] MenuPier adicionado automaticamente.");
+            LogInfo("[Gerente] MenuPier adicionado automaticamente.");
         }
         if (GetComponent<MenuGoverno>() == null)
         {
             gameObject.AddComponent<MenuGoverno>();
-            Debug.Log("[Gerente] MenuGoverno adicionado automaticamente.");
+            LogInfo("[Gerente] MenuGoverno adicionado automaticamente.");
         }
 
         // --- AUTOMATIZAÇÃO DE SPAWN POINTS ---
@@ -48,7 +57,7 @@ public class GerenteDeJogo : MonoBehaviour
         {
             var obj = GameObject.Find("Spawn_Soldado");
             if(obj != null) spawnSoldado = obj.transform;
-            else Debug.Log("[Gerente] 'Spawn_Soldado' não encontrado (Normal se não tiver base). Unidades nascerão na câmera.");
+            else LogInfo("[Gerente] 'Spawn_Soldado' não encontrado (Normal se não tiver base). Unidades nascerão na câmera.");
         }
         
         if (saidaSoldado == null) 
@@ -63,7 +72,7 @@ public class GerenteDeJogo : MonoBehaviour
         {
             var obj = GameObject.Find("Spawn_Interno"); // Para veículos/tanques
             if(obj != null) spawnInterno = obj.transform;
-            else Debug.Log("[Gerente] 'Spawn_Interno' não encontrado (Normal se não tiver base). Veículos nascerão na câmera.");
+            else LogInfo("[Gerente] 'Spawn_Interno' não encontrado (Normal se não tiver base). Veículos nascerão na câmera.");
         }
 
         if (pontoSaida == null)
@@ -79,8 +88,8 @@ public class GerenteDeJogo : MonoBehaviour
         if (!comandantesIA.Contains(ia))
         {
             comandantesIA.Add(ia);
-            Debug.Log($"[Gerente] Novo Comandante Registrado: {ia.nomeComandante} (Time {ia.teamID})");
-            Debug.Log($"[Gerente] Autonomia concedida para: {ia.nomeComandante}. A IA agora é reconhecida como Jogador.");
+            LogInfo($"[Gerente] Novo Comandante Registrado: {ia.nomeComandante} (Time {ia.teamID})");
+            LogInfo($"[Gerente] Autonomia concedida para: {ia.nomeComandante}. A IA agora é reconhecida como Jogador.");
         }
     }
 
@@ -92,6 +101,8 @@ public class GerenteDeJogo : MonoBehaviour
 
     [Header("Controle de Tempo")]
     private float _tempoApertandoTab = 0f;
+    private readonly Dictionary<string, int> _slotsSaidaPorPonto = new Dictionary<string, int>();
+    private const int SlotsPorPontoSaida = 9; // 3x3
 
     void Update()
     {
@@ -162,7 +173,7 @@ public class GerenteDeJogo : MonoBehaviour
         
         bool ehSoldado = (nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("person") || nome.Contains("infantry") || nome.Contains("fuzileiro"));
         bool ehPredio = unidadeParaConstruir.CompareTag("Imovel") || nome.Contains("ares") || nome.Contains("torreta") || nome.Contains("missil") || nome.Contains("bunker") || nome.Contains("areas");
-        bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("sub") || nome.Contains("destroier") || nome.Contains("barco") || nome.Contains("lancha") || nome.Contains("transporte"));
+        bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("sub") || nome.Contains("destroier") || nome.Contains("barco") || nome.Contains("lancha") || nome.Contains("transporte") || nome.Contains("leviathan"));
         bool ehCarrier = nome.Contains("porta") || nome.Contains("carrier");
 
         bool ehHelicoptero = (unidadeParaConstruir.GetComponent<Helicoptero>() != null || 
@@ -177,7 +188,7 @@ public class GerenteDeJogo : MonoBehaviour
         // Se for Porta-Aviões, ele conta como Navio para requisitos de Estaleiro
         if (ehCarrier) ehNavio = true;
 
-        Debug.Log($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}, Avião? {ehAviao}");
+        LogInfo($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}, Avião? {ehAviao}");
 
         // 2. Verificar se a FÁBRICA existe (Impedir aparecer na câmera do nada!)
         if (ehSoldado)
@@ -262,7 +273,7 @@ public class GerenteDeJogo : MonoBehaviour
                 filaProducao.Add(novoPedido);
             }
 
-            Debug.Log($"Adicionado à fila: {quantidade}x {unidadeParaConstruir.name}");
+            LogInfo($"Adicionado à fila: {quantidade}x {unidadeParaConstruir.name}");
         }
         else
         {
@@ -300,7 +311,7 @@ public class GerenteDeJogo : MonoBehaviour
 
             if (aeroEscolhido != null)
             {
-                Debug.Log($"[Logística] Avião '{pedido.nomeUnidade}' entregue em: {aeroEscolhido.name}");
+                LogInfo($"[Logística] Avião '{pedido.nomeUnidade}' entregue em: {aeroEscolhido.name}");
                 aeroEscolhido.ComprarAviao(pedido.prefab);
             }
             return; 
@@ -370,7 +381,7 @@ public class GerenteDeJogo : MonoBehaviour
             }
         }
 
-        if(spawnAtual != null) Debug.Log($"SPAWNANDO EM: {spawnAtual.name} (Parente: {spawnAtual.parent?.name ?? "World"})");
+        if(spawnAtual != null) LogInfo($"SPAWNANDO EM: {spawnAtual.name} (Parente: {spawnAtual.parent?.name ?? "World"})");
         else Debug.LogWarning("SPAWNANDO SEM FÁBRICA (NULL)");
 
         if (pedido.prefab == null)
@@ -474,7 +485,7 @@ public class GerenteDeJogo : MonoBehaviour
         if (identidade == null)
         {
             identidade = novaUnidade.AddComponent<IdentidadeUnidade>();
-            Debug.Log($"[Gerente] Adicionei RG na marra em: {novaUnidade.name}");
+            LogInfo($"[Gerente] Adicionei RG na marra em: {novaUnidade.name}");
         }
         
         // Garante que a unidade pertence ao jogador
@@ -508,13 +519,28 @@ public class GerenteDeJogo : MonoBehaviour
         }
         
         // --- CHECAGEM DE SOM ---
-        if (novaUnidade.GetComponent<SomUnidade>() == null)
+        SomUnidade somUnidade = novaUnidade.GetComponent<SomUnidade>();
+        if (somUnidade == null)
         {
-            Debug.LogWarning($"[Audio] Unidade '{novaUnidade.name}' criada sem componente 'SomUnidade' (Gerente Player)! Adicione ao Prefab.");
+            somUnidade = novaUnidade.AddComponent<SomUnidade>();
+
+            string nomeAudio = novaUnidade.name.ToLowerInvariant();
+            if (nomeAudio.Contains("heli") || nomeAudio.Contains("ray") || nomeAudio.Contains("falcon"))
+                somUnidade.tipoUnidade = TipoSomUnidade.Helicoptero;
+            else if (nomeAudio.Contains("a_20") || nomeAudio.Contains("g_18") || nomeAudio.Contains("g15") || nomeAudio.Contains("tuk") || nomeAudio.Contains("aviao"))
+                somUnidade.tipoUnidade = TipoSomUnidade.Aviao;
+            else if (nomeAudio.Contains("tank") || nomeAudio.Contains("tanque"))
+                somUnidade.tipoUnidade = TipoSomUnidade.Tank;
+            else if (nomeAudio.Contains("nav") || nomeAudio.Contains("destroyer") || nomeAudio.Contains("corveta") || nomeAudio.Contains("wall") || nomeAudio.Contains("uss"))
+                somUnidade.tipoUnidade = TipoSomUnidade.Navio;
+            else
+                somUnidade.tipoUnidade = TipoSomUnidade.Carro;
+
+            Debug.LogWarning($"[Audio] Unidade '{novaUnidade.name}' criada sem componente 'SomUnidade'. Fallback automatico aplicado.", novaUnidade);
         }
 
         // DEBUG DE DESTINO
-        // Debug.Log($"DESTINO CALCULADO: {posDestino} (Alvo: {(destinoAtual != null ? destinoAtual.name : "Fallback")})");
+        // LogInfo($"DESTINO CALCULADO: {posDestino} (Alvo: {(destinoAtual != null ? destinoAtual.name : "Fallback")})");
         // Debug.DrawLine(posNascimento, posDestino, Color.yellow, 10.0f); // Desenha linha amarela na Scene por 10s
 
         if(posDestino == Vector3.zero)
@@ -539,18 +565,105 @@ public class GerenteDeJogo : MonoBehaviour
                 }
             }
             
-            // Tenta mover. Se colidir, o NavMeshAgent lida com isso.
+            // Tenta mover para um slot organizado na saida, evitando espalhamento aleatorio.
             // MODIFICAÇÃO: Randomizar levemente o destino para evitar fila indiana perfeita e colisão
-            Vector3 destinoFinal = posDestino;
+            Vector3 destinoFinal = CalcularDestinoSaidaOrganizada(posDestino, destinoAtual, novaUnidade);
             
             // Adiciona variação aleatória de 3m ao redor do ponto de saída
-            Vector2 randomCircle = UnityEngine.Random.insideUnitCircle * 3.0f; 
-            destinoFinal += new Vector3(randomCircle.x, 0, randomCircle.y);
-
             controle.MoverParaPonto(destinoFinal);
         }
 
-        Debug.Log($"SUCESSO: Saiu da fábrica: {pedido.nomeUnidade}");
+        LogInfo($"SUCESSO: Saiu da fábrica: {pedido.nomeUnidade}");
+    }
+
+    Vector3 CalcularDestinoSaidaOrganizada(Vector3 destinoBase, Transform referenciaSaida, GameObject unidade)
+    {
+        string chave = ObterChaveSaida(referenciaSaida, destinoBase);
+        int slotAtual = 0;
+        if (_slotsSaidaPorPonto.ContainsKey(chave))
+        {
+            slotAtual = _slotsSaidaPorPonto[chave];
+        }
+
+        _slotsSaidaPorPonto[chave] = (slotAtual + 1) % SlotsPorPontoSaida;
+
+        const int colunas = 3; // Grade 3x3
+        int coluna = slotAtual % colunas;
+        int linha = slotAtual / colunas;
+
+        float largura;
+        float profundidade;
+        ObterPegadaUnidadeParaSaida(unidade, out largura, out profundidade);
+
+        float passoX = Mathf.Max(2.5f, largura * 1.15f);
+        float passoZ = Mathf.Max(2.5f, profundidade * 1.20f);
+
+        float offsetX = (coluna - 1) * passoX;
+        float offsetZ = (linha + 1) * passoZ;
+
+        Vector3 direita = (referenciaSaida != null) ? referenciaSaida.right : Vector3.right;
+        Vector3 frente = (referenciaSaida != null) ? referenciaSaida.forward : Vector3.forward;
+
+        Vector3 destino = destinoBase + (direita * offsetX) + (frente * offsetZ);
+
+        UnityEngine.AI.NavMeshHit hit;
+        if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hit, 8f, UnityEngine.AI.NavMesh.AllAreas))
+        {
+            destino = hit.position;
+        }
+
+        return destino;
+    }
+
+    string ObterChaveSaida(Transform referenciaSaida, Vector3 destinoBase)
+    {
+        if (referenciaSaida != null)
+            return "saida_" + referenciaSaida.GetInstanceID();
+
+        return "pos_" + Mathf.RoundToInt(destinoBase.x) + "_" + Mathf.RoundToInt(destinoBase.z);
+    }
+
+    void ObterPegadaUnidadeParaSaida(GameObject unidade, out float largura, out float profundidade)
+    {
+        largura = 2.5f;
+        profundidade = 2.5f;
+        if (unidade == null) return;
+
+        bool temBounds = false;
+        Bounds bounds = new Bounds(unidade.transform.position, Vector3.zero);
+
+        Collider[] colliders = unidade.GetComponentsInChildren<Collider>();
+        foreach (var c in colliders)
+        {
+            if (c == null || !c.enabled || c.isTrigger) continue;
+
+            if (!temBounds)
+            {
+                bounds = c.bounds;
+                temBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(c.bounds);
+            }
+        }
+
+        if (temBounds)
+        {
+            largura = Mathf.Max(largura, bounds.size.x);
+            profundidade = Mathf.Max(profundidade, bounds.size.z);
+        }
+
+        var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (agent != null)
+        {
+            float diametro = Mathf.Max(2.5f, agent.radius * 2f);
+            largura = Mathf.Max(largura, diametro);
+            profundidade = Mathf.Max(profundidade, diametro);
+        }
+
+        largura = Mathf.Clamp(largura, 2.5f, 40f);
+        profundidade = Mathf.Clamp(profundidade, 2.5f, 40f);
     }
 
     void OnDrawGizmos()
@@ -614,7 +727,7 @@ public class GerenteDeJogo : MonoBehaviour
         if (!ListaContem(listaQuarteis, nascimento))
         {
             listaQuarteis.Add(new PontoLogistico { spawn = nascimento, saida = saida });
-            Debug.Log($"Logística: Nova TENDA registrada (Total: {listaQuarteis.Count})");
+            LogInfo($"Logística: Nova TENDA registrada (Total: {listaQuarteis.Count})");
         }
     }
 
@@ -628,7 +741,7 @@ public class GerenteDeJogo : MonoBehaviour
         if (!ListaContem(listaHangares, nascimento))
         {
             listaHangares.Add(new PontoLogistico { spawn = nascimento, saida = saida });
-            Debug.Log($"Logística: Novo HANGAR registrado (Total: {listaHangares.Count})");
+            LogInfo($"Logística: Novo HANGAR registrado (Total: {listaHangares.Count})");
         }
     }
 
@@ -637,7 +750,7 @@ public class GerenteDeJogo : MonoBehaviour
         if (!ListaContem(listaEstaleiros, nascimento))
         {
             listaEstaleiros.Add(new PontoLogistico { spawn = nascimento, saida = saida });
-            Debug.Log($"Logística: Novo ESTALEIRO registrado (Total: {listaEstaleiros.Count})");
+            LogInfo($"Logística: Novo ESTALEIRO registrado (Total: {listaEstaleiros.Count})");
         }
     }
 
@@ -651,7 +764,7 @@ public class GerenteDeJogo : MonoBehaviour
         if (!listaHeliportos.Contains(heliporto))
         {
             listaHeliportos.Add(heliporto);
-            Debug.Log($"Logística: Novo HELIPORTO registrado (Total: {listaHeliportos.Count})");
+            LogInfo($"Logística: Novo HELIPORTO registrado (Total: {listaHeliportos.Count})");
         }
     }
 

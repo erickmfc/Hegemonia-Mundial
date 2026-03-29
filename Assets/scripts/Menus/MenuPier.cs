@@ -68,6 +68,16 @@ public class MenuPier : MonoBehaviour
 
         if (menuAberto)
         {
+            // Fecha os outros 
+            MenuConstrucao menuCon = Object.FindFirstObjectByType<MenuConstrucao>();
+            if (menuCon != null && MenuConstrucao.EstaAberto) menuCon.AlternarMenu(false);
+
+            MenuMisseis menuMiss = Object.FindFirstObjectByType<MenuMisseis>();
+            if (menuMiss != null && MenuMisseis.EstaAberto) menuMiss.CancelarLancamento();
+
+            MenuGoverno menuGov = Object.FindFirstObjectByType<MenuGoverno>();
+            if (menuGov != null && MenuGoverno.EstaAberto) menuGov.AlternarMenu(false);
+
             AtualizarListaDeDocas();
             LimparPainelContexto("Selecione uma doca à esquerda...");
         }

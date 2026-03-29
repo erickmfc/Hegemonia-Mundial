@@ -30,6 +30,7 @@ public class ControleUnidade : MonoBehaviour
 
     protected virtual void Awake()
     {
+        SanearBoxCollidersComEscalaNegativa();
         agente = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>(); 
         
@@ -54,6 +55,42 @@ public class ControleUnidade : MonoBehaviour
         if (animator != null)
         {
             animator.applyRootMotion = false;
+        }
+    }
+
+    void SanearBoxCollidersComEscalaNegativa()
+    {
+        BoxCollider[] boxes = GetComponentsInChildren<BoxCollider>(true);
+        for (int i = 0; i < boxes.Length; i++)
+        {
+            BoxCollider box = boxes[i];
+            if (box == null)
+            {
+                continue;
+            }
+
+            Vector3 scale = box.transform.lossyScale;
+            if (scale.x >= 0f && scale.y >= 0f && scale.z >= 0f)
+            {
+                continue;
+            }
+
+            box.enabled = false;
+            GameObject target = box.gameObject;
+            Destroy(box);
+
+            MeshFilter meshFilter = target.GetComponent<MeshFilter>();
+            if (meshFilter == null || meshFilter.sharedMesh == null)
+            {
+                continue;
+            }
+
+            MeshCollider mesh = target.GetComponent<MeshCollider>();
+            if (mesh == null)
+            {
+                mesh = target.AddComponent<MeshCollider>();
+            }
+            mesh.convex = true;
         }
     }
 

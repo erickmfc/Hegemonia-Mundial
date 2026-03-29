@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 
 /// <summary>
-/// Controle do Submarino com sistema de mísseis selecionável
+/// Controle do Submarino USS Leviathan com sistema de mísseis selecionável.
 /// </summary>
 public class ControleSubmarino : MonoBehaviour
 {
@@ -17,12 +17,16 @@ public class ControleSubmarino : MonoBehaviour
     public float velocidadeMovimento = 2f;
     
     [Header("Sistema de Mísseis")]
-    [Tooltip("22 locais de disparo de mísseis")]
+    [Tooltip("Locais de disparo de mísseis (preencha todos no Editor — nulos são ignorados automaticamente)")]
     public Transform[] locaisDisparo = new Transform[22];
     
     [Tooltip("Prefab do míssil submarino")]
     public GameObject prefabMisselSubmarino;
     
+    [Header("Alcance de Ataque")]
+    [Tooltip("Alcance máximo dos mísseis em unidades")]
+    public float alcanceMisseis = 500f;
+
     [Header("Status")]
     public bool estaSubmerso = true;
     public int misseisDisponiveis = 22;
@@ -30,9 +34,13 @@ public class ControleSubmarino : MonoBehaviour
     // Estado interno
     private bool emMovimento = false;
     private float ultimoMovimento = -4f;
-    private bool[] misseisUsados = new bool[22];
+    private bool[] misseisUsados;          // Tamanho dinâmico — inicializado no Start()
+    private int totalLocaisValidos = 0;    // Quantidade de slots não-nulos descoberta no Start()
     private bool modoMira = false;
     private Vector3 pontoAlvoAtual;
+
+    // Cache do ControleUnidade — evita GetComponent todo frame (era o bug #1)
+    private ControleUnidade meuControle;
     
     // --- VARIÁVEIS DE NAVEGAÇÃO REALISTA ---
     [Header("Física de Navegação")]
@@ -42,31 +50,42 @@ public class ControleSubmarino : MonoBehaviour
     public float aceleracao = 1.5f;
     [Tooltip("Inclinação visual nas curvas")]
     public float forcaInclinacao = 3.0f;
-    public Transform modelo3D; // Arraste o visual aqui
+    public Transform modelo3D;
     public TrailRenderer rastroAgua;
 
     private UnityEngine.AI.NavMeshAgent agente;
     private float velocidadeOriginal;
     private float velocidadeAtualSimulada = 0f;
     private float lemeAtual = 0f;
+    private Camera cameraPrincipal;
     
     void Start()
     {
+        cameraPrincipal = Camera.main;
+        // FIX #1 — Cache do ControleUnidade, nunca mais GetComponent no Update
+        meuControle = GetComponent<ControleUnidade>();
+
         agente = GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agente != null)
         {
             velocidadeOriginal = agente.speed;
-            // Configura para movimento manual
             agente.updateRotation = false; 
             agente.acceleration = 9999;
         }
         
         if (rastroAgua == null) rastroAgua = GetComponentInChildren<TrailRenderer>();
 
+        // FIX #3 & #4 — Conta slots válidos e cria array de status com tamanho correto
+        totalLocaisValidos = 0;
+        for (int i = 0; i < locaisDisparo.Length; i++)
+            if (locaisDisparo[i] != null) totalLocaisValidos++;
+
+        misseisUsados = new bool[locaisDisparo.Length]; // Tamanho real do array, sem IndexOutOfRange
+        misseisDisponiveis = totalLocaisValidos;        // Inicia com a contagem real de slots
+        
+        Debug.Log($"[USS Leviathan] {totalLocaisValidos} locais de lançamento detectados.", this);
+
         // Lógica de Inicialização Inteligente (Compatível com Estaleiro)
-        // Se nascer perto da superfície (Y > -5), começa como superfície.
-        // Se nascer fundo, começa submerso.
-        // Se nascer fundo, começa submerso.
         float navMeshY = transform.position.y - (agente != null ? agente.baseOffset : 0f);
 
         if (transform.position.y > -5f)
@@ -79,35 +98,28 @@ public class ControleSubmarino : MonoBehaviour
             estaSubmerso = true;
             if (agente != null) agente.baseOffset = profundidadeSubmersao - navMeshY;
         }
-        
-        // Todos os mísseis disponíveis
-        for (int i = 0; i < 22; i++)
-        {
-            misseisUsados[i] = false;
-        }
     }
     
     void Update()
     {
-        // Verifica se ESTE GameObject está selecionado (não outros)
-        ControleUnidade controle = GetComponent<ControleUnidade>();
-        if (controle == null || !controle.selecionado) 
+        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        // FIX #1 — Usa o cache; nunca busca no mid-frame
+        if (meuControle == null || !meuControle.selecionado)
         {
-            // Se não está selecionado e estava no modo mira, cancela
+            // Se perdeu seleção durante o modo mira, cancela
             if (modoMira)
             {
                 modoMira = false;
                 DesativarCursorMira();
             }
-            return;
+            return; // FIX #5 — teclas NÃO processadas se não selecionado
         }
         
         float tempoDesdeUltimoMovimento = Time.time - ultimoMovimento;
 
-        // --- MOVIMENTO REALISTA (Estilo Liberty) ---
+        // --- MOVIMENTO REALISTA ---
         if (agente != null && agente.enabled)
         {
-            // Se está em modo mira, força parada total
             if (modoMira)
             {
                 velocidadeAtualSimulada = 0f;
@@ -116,109 +128,86 @@ public class ControleSubmarino : MonoBehaviour
             }
             else if (agente.hasPath && agente.remainingDistance > agente.stoppingDistance)
             {
-                // Movimento com física de leme
                 ExecutarMarchaFrenteRealista();
             }
             else
             {
-                // Freio suave (inércia na água)
                 velocidadeAtualSimulada = Mathf.Lerp(velocidadeAtualSimulada, 0f, Time.deltaTime * 0.5f);
                 agente.velocity = transform.forward * velocidadeAtualSimulada;
             }
             
-            // Visual
             AtualizarInclinacaoNavio();
             AtualizarRastroAgua();
         }
         
-        // Tecla U - Subir
+        // FIX #5 — Teclas de controle SÓ respondem para o submarino SELECIONADO
+        // (o early-return acima já garante isso, mas fica explícito aqui)
+
+        // U - Subir
         if (Input.GetKeyDown(KeyCode.U))
         {
             if (tempoDesdeUltimoMovimento >= 4f && !emMovimento)
             {
                 if (estaSubmerso)
-                {
                     StartCoroutine(Subir());
-                }
                 else
-                {
-                    Debug.Log("Submarino já está na superfície!");
-                }
+                    Debug.Log("[USS Leviathan] Já está na superfície!");
             }
             else
             {
-                Debug.Log($"[Submarino] Aguarde {4f - tempoDesdeUltimoMovimento:F1}s antes de mover novamente.");
+                Debug.Log($"[USS Leviathan] Aguarde {(4f - tempoDesdeUltimoMovimento):F1}s antes de mover novamente.");
             }
         }
         
-        // Tecla P - Descer
+        // P - Descer
         if (Input.GetKeyDown(KeyCode.P))
         {
             if (tempoDesdeUltimoMovimento >= 4f && !emMovimento)
             {
                 if (!estaSubmerso)
-                {
                     StartCoroutine(Descer());
-                }
                 else
-                {
-                    Debug.Log("Submarino já está submerso!");
-                }
+                    Debug.Log("[USS Leviathan] Já está submerso!");
             }
             else
             {
-                Debug.Log($"[Submarino] Aguarde {4f - tempoDesdeUltimoMovimento:F1}s antes de mover novamente.");
+                Debug.Log($"[USS Leviathan] Aguarde {(4f - tempoDesdeUltimoMovimento):F1}s antes de mover novamente.");
             }
         }
         
-        // Tecla O - Mostrar ogivas disponíveis
+        // O - Mostrar status de ogivas
         if (Input.GetKeyDown(KeyCode.O))
-        {
             MostrarOgivasDisponiveis();
-        }
         
-        // Tecla I - TOGGLE Modo Mira (Liga/Desliga)
+        // I - Toggle Modo Mira
         if (Input.GetKeyDown(KeyCode.I))
         {
             if (!modoMira && misseisDisponiveis > 0)
-            {
                 IniciarModoMira();
-            }
             else if (modoMira)
-            {
                 CancelarModoMira();
-            }
             else if (misseisDisponiveis <= 0)
-            {
-                Debug.Log("[Submarino] Sem mísseis disponíveis!");
-            }
+                Debug.Log("[USS Leviathan] Sem mísseis disponíveis!");
         }
         
-        // Se está no modo mira, processa
         if (modoMira)
-        {
             ProcessarMira();
-        }
     }
     
     void MostrarOgivasDisponiveis()
     {
         Debug.Log($"╔══════════════════════════════════════╗");
-        Debug.Log($"║  SUBMARINO - STATUS ARMAMENTO       ║");
+        Debug.Log($"║  USS LEVIATHAN - STATUS ARMAMENTO   ║");
         Debug.Log($"╠══════════════════════════════════════╣");
-        Debug.Log($"║  Ogivas Disponíveis: {misseisDisponiveis}/22          ║");
-        Debug.Log($"║  Status: {(estaSubmerso ? "SUBMERSO" : "SUPERFÍCIE")}              ║");
+        Debug.Log($"║  Ogivas Disponíveis: {misseisDisponiveis}/{totalLocaisValidos}              ║");
+        Debug.Log($"║  Status: {(estaSubmerso ? "SUBMERSO   " : "SUPERFÍCIE ")}                 ║");
         Debug.Log($"╚══════════════════════════════════════╝");
-        
-        // Também pode mostrar UI se tiver
-        // Exemplo: UIManager.Instance.MostrarInfoSubmarino(misseisDisponiveis, estaSubmerso);
     }
     
     void IniciarModoMira()
     {
         modoMira = true;
         
-        // Para o submarino imediatamente
         if (agente != null)
         {
             agente.ResetPath();
@@ -227,49 +216,49 @@ public class ControleSubmarino : MonoBehaviour
         velocidadeAtualSimulada = 0f;
         lemeAtual = 0f;
         
-        Debug.Log("[Submarino] 🎯 MODO MIRA ATIVADO - Clique BOTÃO DIREITO para disparar. Aperte 'I' novamente para cancelar.");
+        Debug.Log("[USS Leviathan] 🎯 MODO MIRA ATIVADO — Clique DIREITO para disparar. 'I' para cancelar.");
         AtivarCursorMira();
     }
     
     void CancelarModoMira()
     {
         modoMira = false;
-        Debug.Log("[Submarino] ❌ Modo mira cancelado. Submarino livre para navegar.");
+        Debug.Log("[USS Leviathan] ❌ Modo mira cancelado.");
         DesativarCursorMira();
     }
     
     void AtivarCursorMira()
     {
-        // Ativa visual de mira
         if (VisualMiraSubmarino.Instancia != null)
-        {
             VisualMiraSubmarino.Instancia.AtivarMira();
-        }
     }
     
     void DesativarCursorMira()
     {
-        // Desativa visual de mira
         if (VisualMiraSubmarino.Instancia != null)
-        {
             VisualMiraSubmarino.Instancia.DesativarMira();
-        }
     }
     
     void ProcessarMira()
     {
-        // Detecta clique do BOTÃO DIREITO do mouse (disparo)
         if (Input.GetMouseButtonDown(1))
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (cameraPrincipal == null) return;
+            Ray ray = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             
             if (Physics.Raycast(ray, out hit))
             {
+                // FIX #6 — Valida alcance antes de disparar
+                float distancia = Vector3.Distance(transform.position, hit.point);
+                if (distancia > alcanceMisseis)
+                {
+                    Debug.Log($"[USS Leviathan] ⚠️ Alvo fora de alcance! ({distancia:F0}m / máx {alcanceMisseis:F0}m)");
+                    return; // Não sai do modo mira — deixa o jogador escolher outro ponto
+                }
+
                 pontoAlvoAtual = hit.point;
                 DispararMissel(pontoAlvoAtual);
-                
-                // Após disparar, sai do modo mira automaticamente
                 CancelarModoMira();
             }
         }
@@ -279,35 +268,38 @@ public class ControleSubmarino : MonoBehaviour
     {
         if (misseisDisponiveis <= 0)
         {
-            Debug.Log("[Submarino] Sem mísseis disponíveis!");
+            Debug.Log("[USS Leviathan] Sem mísseis disponíveis!");
             CancelarModoMira();
             return;
         }
         
-        // Encontra o primeiro míssil disponível
-        for (int i = 0; i < 22; i++)
+        if (prefabMisselSubmarino == null)
         {
-            if (!misseisUsados[i] && locaisDisparo[i] != null)
-            {
-                // Cria o míssil
-                GameObject missel = Instantiate(prefabMisselSubmarino, locaisDisparo[i].position, locaisDisparo[i].rotation);
-                
-                // Configura o míssil
-                MisselSubmarino scriptMissel = missel.GetComponent<MisselSubmarino>();
-                if (scriptMissel != null)
-                {
-                    scriptMissel.IniciarLancamento(alvo, estaSubmerso);
-                }
-                
-                // Marca como usado
-                misseisUsados[i] = true;
-                misseisDisponiveis--;
-                
-                Debug.Log($"[Submarino] 🚀 Míssil {i + 1} disparado! ({misseisDisponiveis} restantes)");
-                Debug.Log($"[Submarino] 🎯 Alvo: {alvo}");
-                return;
-            }
+            Debug.LogError("[USS Leviathan] Prefab do míssil não está configurado!", this);
+            return;
         }
+
+        // FIX #3 — Itera apenas sobre slots válidos (não-nulos)
+        for (int i = 0; i < locaisDisparo.Length; i++)
+        {
+            // Pula slots nulos sem errar — FIX #3
+            if (locaisDisparo[i] == null) continue;
+            if (misseisUsados[i]) continue;
+
+            GameObject missel = Instantiate(prefabMisselSubmarino, locaisDisparo[i].position, locaisDisparo[i].rotation);
+            
+            MisselSubmarino scriptMissel = missel.GetComponent<MisselSubmarino>();
+            if (scriptMissel != null)
+                scriptMissel.IniciarLancamento(alvo, estaSubmerso);
+            
+            misseisUsados[i] = true;
+            misseisDisponiveis--;
+            
+            Debug.Log($"[USS Leviathan] 🚀 Míssil do slot {i + 1} disparado! ({misseisDisponiveis} restantes) → Alvo: {alvo}");
+            return;
+        }
+
+        Debug.LogWarning("[USS Leviathan] Nenhum slot de míssil disponível foi encontrado.", this);
     }
     
     IEnumerator Subir()
@@ -315,7 +307,7 @@ public class ControleSubmarino : MonoBehaviour
         emMovimento = true;
         ultimoMovimento = Time.time;
         
-        Debug.Log("[Submarino] Subindo para superfície...");
+        Debug.Log("[USS Leviathan] ⬆️ Subindo para superfície...");
         
         float navMeshY = transform.position.y - (agente != null ? agente.baseOffset : 0f);
         float offsetDesejado = alturaSuperificie - navMeshY;
@@ -330,9 +322,8 @@ public class ControleSubmarino : MonoBehaviour
             while (tempoDecorrido < duracao)
             {
                 tempoDecorrido += Time.deltaTime;
-                float progresso = tempoDecorrido / duracao;
-                
-                if (agente != null) agente.baseOffset = Mathf.Lerp(offsetInicial, offsetDesejado, progresso);
+                if (agente != null)
+                    agente.baseOffset = Mathf.Lerp(offsetInicial, offsetDesejado, tempoDecorrido / duracao);
                 yield return null;
             }
         }
@@ -341,7 +332,7 @@ public class ControleSubmarino : MonoBehaviour
         estaSubmerso = false;
         emMovimento = false;
         
-        Debug.Log("[Submarino] Na superfície!");
+        Debug.Log("[USS Leviathan] 🌊 Na superfície!");
     }
     
     IEnumerator Descer()
@@ -349,7 +340,7 @@ public class ControleSubmarino : MonoBehaviour
         emMovimento = true;
         ultimoMovimento = Time.time;
         
-        Debug.Log("[Submarino] Descendo...");
+        Debug.Log("[USS Leviathan] ⬇️ Descendo...");
         
         float navMeshY = transform.position.y - (agente != null ? agente.baseOffset : 0f);
         float offsetDesejado = profundidadeSubmersao - navMeshY;
@@ -364,9 +355,8 @@ public class ControleSubmarino : MonoBehaviour
             while (tempoDecorrido < duracao)
             {
                 tempoDecorrido += Time.deltaTime;
-                float progresso = tempoDecorrido / duracao;
-                
-                if (agente != null) agente.baseOffset = Mathf.Lerp(offsetInicial, offsetDesejado, progresso);
+                if (agente != null)
+                    agente.baseOffset = Mathf.Lerp(offsetInicial, offsetDesejado, tempoDecorrido / duracao);
                 yield return null;
             }
         }
@@ -375,74 +365,118 @@ public class ControleSubmarino : MonoBehaviour
         estaSubmerso = true;
         emMovimento = false;
         
-        Debug.Log("[Submarino] Submerso!");
+        Debug.Log("[USS Leviathan] 🔵 Submerso!");
     }
     
-    // Método público para UI ou outros scripts verificarem
-    public int GetMisseisDisponiveis()
-    {
-        return misseisDisponiveis;
-    }
-    
-    // Recarregar mísseis (para testes ou quando voltar à base)
+    // --- API PÚBLICA ---
+
+    public int GetMisseisDisponiveis() => misseisDisponiveis;
+    public bool EstaSubmerso()         => estaSubmerso;
+
     [ContextMenu("Recarregar Todos os Mísseis")]
     public void RecarregarMisseis()
     {
-        for (int i = 0; i < 22; i++)
-        {
+        for (int i = 0; i < misseisUsados.Length; i++)
             misseisUsados[i] = false;
+        misseisDisponiveis = totalLocaisValidos;
+        Debug.Log($"[USS Leviathan] ✅ Todos os {totalLocaisValidos} mísseis recarregados!");
+    }
+
+    /// <summary>Recebe destino via clique do jogador ou IA.</summary>
+    public void DefinirDestino(Vector3 destino)
+    {
+        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            agente.SetDestination(destino);
+            agente.isStopped = false;
         }
-        misseisDisponiveis = 22;
-        Debug.Log("[Submarino] Todos os 22 mísseis recarregados!");
+    }
+
+    // --- NAVEGAÇÃO REALISTA ---
+
+    void ExecutarMarchaFrenteRealista()
+    {
+        Vector3 direcaoDesejada = (agente.steeringTarget - transform.position).normalized;
+        direcaoDesejada.y = 0;
+
+        float angulo = Vector3.SignedAngle(transform.forward, direcaoDesejada, Vector3.up);
+        float lemeAlvo = Mathf.Clamp(angulo / 30.0f, -1f, 1f);
+
+        lemeAtual = Mathf.MoveTowards(lemeAtual, lemeAlvo, Time.deltaTime * 2.0f);
+
+        velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, velocidadeOriginal, Time.deltaTime * aceleracao);
+        
+        float fluxoAgua = Mathf.Abs(velocidadeAtualSimulada) + 2f; 
+        float eficienciaLeme = Mathf.Clamp01(fluxoAgua / 2.0f); 
+
+        float giroReal = lemeAtual * velocidadeGiroMax * Time.deltaTime * eficienciaLeme;
+        transform.Rotate(0, giroReal, 0);
+
+        agente.velocity = transform.forward * velocidadeAtualSimulada;
+    }
+
+    void AtualizarInclinacaoNavio()
+    {
+        if (modelo3D == null) return;
+        
+        float giroFrame = lemeAtual * velocidadeGiroMax; 
+        float anguloAlvo = -giroFrame * (forcaInclinacao / 10f); 
+        anguloAlvo = Mathf.Clamp(anguloAlvo, -10f, 10f);
+        
+        Vector3 rotAtual = modelo3D.localEulerAngles;
+        float zAtual = rotAtual.z > 180 ? rotAtual.z - 360f : rotAtual.z;
+        float zNovo = Mathf.Lerp(zAtual, anguloAlvo, Time.deltaTime * 2.0f);
+        modelo3D.localEulerAngles = new Vector3(rotAtual.x, rotAtual.y, zNovo);
     }
     
-    [Header("Alcance de Ataque")]
-    public float alcanceMisseis = 500f; // Alcance máximo dos mísseis
-    
-    // Desenha informações no editor
+    void AtualizarRastroAgua()
+    {
+        if (rastroAgua == null) return;
+        rastroAgua.emitting = !estaSubmerso && velocidadeAtualSimulada > 1.0f;
+    }
+
+    // --- GIZMOS ---
+
     void OnDrawGizmosSelected()
     {
-        // Desenha profundidade
+        // Posição submersa
         Gizmos.color = Color.blue;
         Vector3 posSubmersa = new Vector3(transform.position.x, profundidadeSubmersao, transform.position.z);
         Gizmos.DrawWireSphere(posSubmersa, 2f);
         
-        // Desenha superfície
+        // Posição de superfície
         Gizmos.color = Color.cyan;
         Vector3 posSuperficie = new Vector3(transform.position.x, alturaSuperificie, transform.position.z);
         Gizmos.DrawWireSphere(posSuperficie, 2f);
-        
-        // Linha conectando
         Gizmos.DrawLine(posSubmersa, posSuperficie);
         
-        // Desenha alcance de ataque (círculo vermelho)
+        // Alcance de ataque
         Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
         DrawCircle(transform.position, alcanceMisseis, 100);
         
-        // Desenha locais de disparo
+        // Locais de disparo
         if (locaisDisparo != null)
         {
             for (int i = 0; i < locaisDisparo.Length; i++)
             {
-                if (locaisDisparo[i] != null)
-                {
-                    Gizmos.color = misseisUsados[i] ? Color.red : Color.green;
-                    Gizmos.DrawWireSphere(locaisDisparo[i].position, 0.5f);
-                }
+                if (locaisDisparo[i] == null) continue;
+                bool usado = (misseisUsados != null && i < misseisUsados.Length) ? misseisUsados[i] : false;
+                Gizmos.color = usado ? Color.red : Color.green;
+                Gizmos.DrawWireSphere(locaisDisparo[i].position, 0.5f);
             }
         }
         
-        // Se está em modo mira, desenha linha até o mouse
+        // Linha de mira ativa no editor
         if (modoMira && Camera.main != null)
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
-            
             if (Physics.Raycast(ray, out hit))
             {
-                Gizmos.color = Color.yellow;
+                bool dentroDoAlcance = Vector3.Distance(transform.position, hit.point) <= alcanceMisseis;
+                Gizmos.color = dentroDoAlcance ? Color.yellow : Color.red;
                 Gizmos.DrawLine(transform.position, hit.point);
-                Gizmos.DrawWireSphere(hit.point, 5f);
+                Gizmos.DrawWireSphere(hit.point, dentroDoAlcance ? 5f : 8f);
             }
         }
     }
@@ -451,85 +485,12 @@ public class ControleSubmarino : MonoBehaviour
     {
         float angleStep = 360f / segments;
         Vector3 prevPoint = center + new Vector3(radius, 0, 0);
-        
         for (int i = 1; i <= segments; i++)
         {
             float angle = i * angleStep * Mathf.Deg2Rad;
             Vector3 newPoint = center + new Vector3(Mathf.Cos(angle) * radius, 0, Mathf.Sin(angle) * radius);
             Gizmos.DrawLine(prevPoint, newPoint);
             prevPoint = newPoint;
-        }
-    }
-    // --- MÉTODOS DE NAVEGAÇÃO REALISTA ---
-
-    void ExecutarMarchaFrenteRealista()
-    {
-        Vector3 direcaoDesejada = (agente.steeringTarget - transform.position).normalized;
-        direcaoDesejada.y = 0;
-
-        // O SEGREDO DO "TRILHO" -> Mesma lógica mágica do cruzador
-        float angulo = Vector3.SignedAngle(transform.forward, direcaoDesejada, Vector3.up);
-        float lemeAlvo = Mathf.Clamp(angulo / 30.0f, -1f, 1f);
-
-        // Giro imediato com maciez
-        lemeAtual = Mathf.MoveTowards(lemeAtual, lemeAlvo, Time.deltaTime * 2.0f);
-
-        // Aceleração forçada trancada
-        velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, velocidadeOriginal, Time.deltaTime * aceleracao);
-        
-        // Mantém a inércia do leme
-        float fluxoAgua = Mathf.Abs(velocidadeAtualSimulada) + 2f; 
-        float eficienciaLeme = Mathf.Clamp01(fluxoAgua / 2.0f); 
-
-        // Gira o Submarino (Rotação Pura)
-        float giroReal = lemeAtual * velocidadeGiroMax * Time.deltaTime * eficienciaLeme;
-        transform.Rotate(0, giroReal, 0);
-
-        // Empurra para a frente (A mágica que evita que ele deslize para as laterais)
-        agente.velocity = transform.forward * velocidadeAtualSimulada;
-    }
-
-    void AtualizarInclinacaoNavio()
-    {
-        if (modelo3D == null) return;
-        
-        // Inclinação nas curvas (Banking)
-        float giroFrame = lemeAtual * velocidadeGiroMax; 
-        float anguloAlvo = -giroFrame * (forcaInclinacao / 10f); 
-        anguloAlvo = Mathf.Clamp(anguloAlvo, -10f, 10f);
-        
-        // Mantém a rotação local original do modelo, só mexendo no Z
-        Vector3 rotAtual = modelo3D.localEulerAngles;
-        // Ajuste para lidar com 0-360
-        float zAtual = rotAtual.z;
-        if (zAtual > 180) zAtual -= 360;
-        
-        float zNovo = Mathf.Lerp(zAtual, anguloAlvo, Time.deltaTime * 2.0f);
-        modelo3D.localEulerAngles = new Vector3(rotAtual.x, rotAtual.y, zNovo);
-    }
-    
-    void AtualizarRastroAgua()
-    {
-        if (rastroAgua == null) return;
-        // Só emite rastro se estiver na superfície e andando
-        bool naSuperficie = !estaSubmerso; 
-        bool andando = velocidadeAtualSimulada > 1.0f;
-        
-        rastroAgua.emitting = naSuperficie && andando;
-    }
-
-    /// <summary>
-    /// Método público para receber comando de movimento (via clique/IA)
-    /// </summary>
-    public void DefinirDestino(Vector3 destino)
-    {
-        if (agente != null && agente.enabled)
-        {
-            if (agente.isOnNavMesh)
-            {
-                agente.SetDestination(destino);
-                agente.isStopped = false;
-            }
         }
     }
 }

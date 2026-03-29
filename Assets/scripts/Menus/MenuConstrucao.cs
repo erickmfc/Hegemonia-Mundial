@@ -107,9 +107,6 @@ public class MenuConstrucao : MonoBehaviour
     {
         if (Input.GetKeyDown(teclaAtalho))
         {
-            MenuPier menuPier = Object.FindFirstObjectByType<MenuPier>();
-            if (menuPier != null) menuPier.FecharMenu();
-
             AlternarMenu(!menuAberto);
         }
     }
@@ -125,6 +122,28 @@ public class MenuConstrucao : MonoBehaviour
         if (painelPrincipal == null) return;
         
         StopAllCoroutines(); 
+        
+        if (abrir)
+        {
+            // Fecha todos os outros se for abrir este
+            MenuPier menuPier = Object.FindFirstObjectByType<MenuPier>();
+            if (menuPier != null) menuPier.FecharMenu();
+
+            MenuMisseis menuMiss = Object.FindFirstObjectByType<MenuMisseis>();
+            if (menuMiss != null && MenuMisseis.EstaAberto) menuMiss.CancelarLancamento();
+
+            MenuGoverno menuGov = Object.FindFirstObjectByType<MenuGoverno>();
+            if (menuGov != null && MenuGoverno.EstaAberto) menuGov.AlternarMenu(false);
+
+            GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+            foreach (GerenciadorAeroporto aeroporto in aeroportos)
+            {
+                if (aeroporto != null)
+                {
+                    aeroporto.CancelarInteracaoPorConstrucao();
+                }
+            }
+        }
         
         if (canvasGroupPainel != null)
         {
@@ -192,8 +211,8 @@ public class MenuConstrucao : MonoBehaviour
         canvasGroupPainel.interactable = true;
         
         RectTransform rtPanel = painelPrincipal.GetComponent<RectTransform>();
-        rtPanel.anchorMin = new Vector2(0.13f, 0.15f); // Menu movido 3% pra direita
-        rtPanel.anchorMax = new Vector2(0.93f, 0.85f); // Menu movido 3% pra direita
+        rtPanel.anchorMin = new Vector2(0.13f, 0.15f); // Valores originais restaurados
+        rtPanel.anchorMax = new Vector2(0.93f, 0.85f);
         rtPanel.offsetMin = Vector2.zero;
         rtPanel.offsetMax = Vector2.zero;
         
@@ -632,7 +651,7 @@ public class MenuConstrucao : MonoBehaviour
         bool pareceSerNavio = item.prefabDaUnidade.GetComponent<IdentidadeNaval>() != null 
                             || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
                             || item.prefabDaUnidade.GetComponent<HovercraftTransporte>() != null // Hovercraft = NAVAL!
-                            || item.nomeItem.ToLower().Contains("navio") || item.nomeItem.ToLower().Contains("sub")
+                            || item.nomeItem.ToLower().Contains("navio") || item.nomeItem.ToLower().Contains("sub") || item.nomeItem.ToLower().Contains("leviathan")
                             || item.nomeItem.ToLower().Contains("lancha") || item.nomeItem.ToLower().Contains("corveta")
                             || item.nomeItem.ToLower().Contains("hovercraft") || item.nomeItem.ToLower().Contains("hover")
                             || item.nomeItem.ToLower().Contains("marinha") 
@@ -798,11 +817,22 @@ public class MenuConstrucao : MonoBehaviour
         // Se o código chegou aqui, ele Sabe que é uma Torreta, um Hangar ou um Ares.
         // Ele vai mandar direto para o seu Mouse!
         
-        Construtor construtor = Object.FindFirstObjectByType<Construtor>();
+        Construtor construtor = Construtor.Instancia != null ? Construtor.Instancia : Object.FindFirstObjectByType<Construtor>();
         if (construtor == null)
         {
              Debug.LogWarning("⚠️ Construtor não encontrado na cena! Impossível posicionar a construção.");
              return;
+        }
+
+        if (construtor.modoConstrucao && construtor.prefabSelecionado == item.prefabDaUnidade)
+        {
+            AlternarMenu(false);
+            return;
+        }
+
+        if (construtor.modoConstrucao)
+        {
+            construtor.CancelarConstrucao(true);
         }
 
         if (!gerente.TentarGastarDinheiro(item.preco)) return; 

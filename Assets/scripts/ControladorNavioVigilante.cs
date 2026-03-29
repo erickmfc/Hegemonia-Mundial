@@ -3,23 +3,29 @@ using UnityEngine.AI;
 
 public class ControladorNavioVigilante : MonoBehaviour
 {
-    [Header("Configurações de Combate")]
-    public float alcanceAtaque = 15f; // Alcance curto como solicitado
-    public float cadenciaTiro = 0.5f; // Tiros muito rápidos
-    public GameObject projetilPrefab; // Arraste sua munição neon aqui
-    public Transform[] pontosDisparo; // Agora suporta múltiplos pontos de disparo (3 pontos)
+    [Header("Configuracoes de Combate")]
+    public float alcanceAtaque = 15f;
+    public float cadenciaTiro = 0.5f;
+    public GameObject projetilPrefab;
+    public Transform[] pontosDisparo;
 
     [Header("Estabilidade (Antygaviti)")]
-    public float antygaviti = 5f; // Mantém o navio estável na água
+    public float antygaviti = 5f;
+
+    [Header("Debug")]
+    public bool debugDisparo = false;
 
     private NavMeshAgent agent;
     private float cronometroTiro;
+    private readonly Collider[] bufferRadar = new Collider[32];
+    private Transform alvoAtual;
+    private float proximaBuscaAlvo = 0f;
+    private const float IntervaloBuscaAlvo = 0.2f;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
-        // Garante que o navio esteja no nível da água (Y = 0)
-        transform.position = new Vector3(transform.position.x, 0, transform.position.z);
+        transform.position = new Vector3(transform.position.x, 0f, transform.position.z);
     }
 
     void Update()
@@ -30,11 +36,10 @@ public class ControladorNavioVigilante : MonoBehaviour
 
     void EstabilizarNavio()
     {
-        // Lógica Antygaviti: mantém o navio travado na altura 0 da água
-        if (transform.position.y != 0)
+        if (transform.position.y != 0f)
         {
             Vector3 pos = transform.position;
-            pos.y = Mathf.Lerp(pos.y, 0, Time.deltaTime * antygaviti);
+            pos.y = Mathf.Lerp(pos.y, 0f, Time.deltaTime * antygaviti);
             transform.position = pos;
         }
     }
@@ -42,46 +47,89 @@ public class ControladorNavioVigilante : MonoBehaviour
     void ProcurarEAtacarInimigos()
     {
         cronometroTiro += Time.deltaTime;
+        float alcanceQuadrado = alcanceAtaque * alcanceAtaque;
 
-        // Procura todos os objetos com a Tag "Inimigo"
-        GameObject[] inimigos = GameObject.FindGameObjectsWithTag("Inimigo");
-        GameObject alvoMaisProximo = null;
-        float menorDistancia = alcanceAtaque;
-
-        foreach (GameObject inimigo in inimigos)
+        if (Time.time >= proximaBuscaAlvo)
         {
-            float distancia = Vector3.Distance(transform.position, inimigo.transform.position);
-            if (distancia < menorDistancia)
+            proximaBuscaAlvo = Time.time + IntervaloBuscaAlvo;
+            AtualizarAlvoMaisProximo(alcanceQuadrado);
+        }
+
+        if (alvoAtual != null)
+        {
+            Vector3 delta = alvoAtual.position - transform.position;
+            delta.y = 0f;
+            if (delta.sqrMagnitude > alcanceQuadrado)
             {
-                menorDistancia = distancia;
-                alvoMaisProximo = inimigo;
+                alvoAtual = null;
             }
         }
 
-        // Se achou alguém perto, atira rápido!
-        if (alvoMaisProximo != null && cronometroTiro >= cadenciaTiro)
+        if (alvoAtual != null && cronometroTiro >= cadenciaTiro)
         {
-            Atirar(alvoMaisProximo.transform.position);
-            cronometroTiro = 0;
+            Atirar(alvoAtual.position);
+            cronometroTiro = 0f;
+        }
+    }
+
+    void AtualizarAlvoMaisProximo(float alcanceQuadrado)
+    {
+        alvoAtual = null;
+        float menorDistanciaQuadrada = alcanceQuadrado;
+        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcanceAtaque, bufferRadar);
+
+        for (int i = 0; i < quantidade; i++)
+        {
+            Collider col = bufferRadar[i];
+            if (col == null || !TagSafe.Matches(col, "Inimigo"))
+            {
+                continue;
+            }
+
+            Transform candidato = col.transform.root != null ? col.transform.root : col.transform;
+            if (candidato == transform)
+            {
+                continue;
+            }
+
+            Vector3 delta = candidato.position - transform.position;
+            delta.y = 0f;
+            float distanciaQuadrada = delta.sqrMagnitude;
+            if (distanciaQuadrada < menorDistanciaQuadrada)
+            {
+                menorDistanciaQuadrada = distanciaQuadrada;
+                alvoAtual = candidato;
+            }
         }
     }
 
     void Atirar(Vector3 posicaoAlvo)
     {
-        if (projetilPrefab != null && pontosDisparo != null)
+        if (projetilPrefab == null || pontosDisparo == null)
         {
-            foreach (Transform ponto in pontosDisparo)
+            return;
+        }
+
+        for (int i = 0; i < pontosDisparo.Length; i++)
+        {
+            Transform ponto = pontosDisparo[i];
+            if (ponto == null)
             {
-                if (ponto != null)
-                {
-                    Vector3 direcao = posicaoAlvo - ponto.position;
-                    if (direcao != Vector3.zero)
-                    {
-                        Instantiate(projetilPrefab, ponto.position, Quaternion.LookRotation(direcao));
-                    }
-                }
+                continue;
             }
-            Debug.Log("[Marinha] Navio Vigilante disparando de múltiplos canhões!");
+
+            Vector3 direcao = posicaoAlvo - ponto.position;
+            if (direcao == Vector3.zero)
+            {
+                continue;
+            }
+
+            Instantiate(projetilPrefab, ponto.position, Quaternion.LookRotation(direcao));
+        }
+
+        if (debugDisparo)
+        {
+            Debug.Log("[Marinha] Navio Vigilante disparando de multiplos canhoes!");
         }
     }
 }

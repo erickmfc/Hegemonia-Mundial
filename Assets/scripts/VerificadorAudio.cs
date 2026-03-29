@@ -6,9 +6,13 @@ using UnityEngine;
 /// </summary>
 public class VerificadorAudio : MonoBehaviour
 {
+    public bool executarNoStart = false;
+    public bool permitirTeclaVerificacao = false;
+
     void Start()
     {
-        VerificarSistemaAudio();
+        if (executarNoStart)
+            VerificarSistemaAudio();
     }
 
     void VerificarSistemaAudio()
@@ -67,7 +71,7 @@ public class VerificadorAudio : MonoBehaviour
     // Permite verificar novamente apertando a tecla V
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.V))
+        if (permitirTeclaVerificacao && Input.GetKeyDown(KeyCode.V))
         {
             VerificarSistemaAudio();
         }

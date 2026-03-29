@@ -43,12 +43,17 @@ public class LancadorNaval : MonoBehaviour
     // Timer para atrasar a ativação do modo automático
     private float tempoParaAtivarAutomatico = 0f;
 
+    // Visualizador de Alcance
+    private LineRenderer linhaDeAlcance;
+    private Camera cameraPrincipal;
+
     // --- BANCO DE DADOS GLOBAL DE COMBATE DA FROTA ---
     // Compartilhado estaticamente por TODOS os navios! Impede que 5 navios atirem num barco que já vai morrer.
     private static Dictionary<Transform, float> bancoDanoProjetadoFrotas = new Dictionary<Transform, float>();
 
     void Start()
     {
+        cameraPrincipal = Camera.main;
         // Se Maxima não foi configurada ou menor que total inicial, ajusta
         if (municaoMaxima < municaoTotal) municaoMaxima = municaoTotal;
 
@@ -67,6 +72,47 @@ public class LancadorNaval : MonoBehaviour
         // Cache do ControleUnidade para saber se estou selecionado
         meuControle = GetComponent<ControleUnidade>();
         if (meuControle == null) meuControle = GetComponentInParent<ControleUnidade>();
+
+        CriarVisualizadorAlcance();
+    }
+
+    void CriarVisualizadorAlcance()
+    {
+        GameObject obj = new GameObject("Alcance_MissilNaval_UI");
+        obj.transform.SetParent(transform);
+        obj.transform.localPosition = Vector3.zero;
+        linhaDeAlcance = obj.AddComponent<LineRenderer>();
+        linhaDeAlcance.useWorldSpace = true;
+        
+        Material mat = new Material(Shader.Find("Sprites/Default")); 
+        Color corVermelha = Color.red; corVermelha.a = 0.5f; 
+        linhaDeAlcance.material = mat;
+        linhaDeAlcance.startColor = corVermelha; linhaDeAlcance.endColor = corVermelha;
+        linhaDeAlcance.startWidth = 2.0f; linhaDeAlcance.endWidth = 2.0f;
+        linhaDeAlcance.positionCount = 51;
+        linhaDeAlcance.enabled = false;
+    }
+
+    void AtualizarVisualizadorAlcance()
+    {
+        if (linhaDeAlcance == null) return;
+        
+        bool deveMostrar = (meuControle != null && meuControle.selecionado);
+        linhaDeAlcance.enabled = deveMostrar;
+        
+        if (deveMostrar)
+        {
+            float angulo = 0f;
+            for (int i = 0; i <= 50; i++)
+            {
+                float x = Mathf.Sin(angulo) * alcanceRadar;
+                float z = Mathf.Cos(angulo) * alcanceRadar;
+                // Mantemos Y estático no WorldSpace para a linha não rotacionar com o balanço do barco
+                Vector3 pos = new Vector3(transform.position.x + x, transform.position.y, transform.position.z + z);
+                linhaDeAlcance.SetPosition(i, pos);
+                angulo += (2 * Mathf.PI) / 50;
+            }
+        }
     }
 
     // --- SISTEMA DE RECARGA (USADO PELO PIER) ---
@@ -77,6 +123,9 @@ public class LancadorNaval : MonoBehaviour
 
     void Update()
     {
+        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        AtualizarVisualizadorAlcance();
+
         // Atualiza configurações em tempo real se alteradas no Inspector
         if (audioSource != null)
         {
@@ -140,7 +189,8 @@ public class LancadorNaval : MonoBehaviour
         // Se clicar com botão direito
         if (Input.GetMouseButtonDown(1))
         {
-            Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (cameraPrincipal == null) return;
+            Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
 
             // Raio atinge o chão?
@@ -341,9 +391,14 @@ public class LancadorNaval : MonoBehaviour
         Transform pontoDeSaida = transform; // Fallback
         if (pontosDeSaida != null && pontosDeSaida.Length > 0)
         {
-            pontoDeSaida = pontosDeSaida[indicePontoSaida];
+            if (pontosDeSaida[indicePontoSaida] != null)
+            {
+                pontoDeSaida = pontosDeSaida[indicePontoSaida];
+            }
             indicePontoSaida = (indicePontoSaida + 1) % pontosDeSaida.Length;
         }
+
+        if (prefabMissel == null) return; // Segurança caso prefabMissel também não esteja assinado
 
         // Cria o míssil
         GameObject misselObj = Instantiate(prefabMissel, pontoDeSaida.position, pontoDeSaida.rotation);

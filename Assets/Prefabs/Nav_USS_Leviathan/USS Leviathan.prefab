@@ -47,6 +47,7 @@ GameObject:
   - component: {fileID: 7520479819138951781}
   - component: {fileID: 8014502728833731529}
   - component: {fileID: 3881439562138129166}
+  - component: {fileID: 7520479819138951782}
   m_Layer: 0
   m_Name: USS Leviathan
   m_TagString: Navio
@@ -82,7 +83,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fcbb47f473cee9f4e9ad3e3158f38319, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleSubmarino
-  profundidadeSubmersao: -1
+  profundidadeSubmersao: -15
   alturaSuperificie: 0
   velocidadeMovimento: 2
   locaisDisparo:
@@ -883,3 +884,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2617109060813063789}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+--- !u!114 &7520479819138951782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 790024337851436606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86bf21ae7ce6f5a47b74d272af475dc8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeNaval
+  nomeDoNavio: USS Leviathan
+  categoriaNavio: 2
+  estaAtracado: 0
+  agente: {fileID: 8427076263614432943}
+  velocidadeDeRe: 5
+  velocidadeRotacaoRe: 2

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: FAlcon
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: FA1
+  nomeItem: Vans
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
   prefabDaUnidade: {fileID: 2697658890839971605, guid: f74bee86430b72e4db4ac645d8274d9e, type: 3}

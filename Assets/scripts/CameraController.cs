@@ -8,6 +8,8 @@ public class CameraController : MonoBehaviour
     public float multiplicadorShift = 9.69f; // Velocidade triplicada (Antes 3.23)
 
     private float tempoShiftPressionado = 0f;
+    private GerenteSelecao gerenteSelecaoCache;
+    private float proximaBuscaGerenteSelecao = 0f;
 
     void Update()
     {
@@ -64,19 +66,22 @@ public class CameraController : MonoBehaviour
             zoomInput = Input.GetAxis("Mouse ScrollWheel");
         }
 
-        // Teclas + e - (Teclado Numérico e Alfanumérico)
-        // Adiciona um valor constante por frame enquanto a tecla é segurada
-        if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Plus) || Input.GetKey(KeyCode.Equals))
+        // Teclas + e - (Teclado) com atalhos espelhados em Espaço/Ctrl.
+        if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Plus) || Input.GetKey(KeyCode.Equals) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
         {
-            zoomInput += 0.03f; // Ajuste este valor para controlar a velocidade do teclado
+            zoomInput += 0.03f; // Desce a camera
         }
         if (Input.GetKey(KeyCode.KeypadMinus) || Input.GetKey(KeyCode.Minus))
         {
-            zoomInput -= 0.03f;
+            zoomInput -= 0.08f; // Sobe a camera mais rápido (Antes 0.03)
+        }
+        if (Input.GetKey(KeyCode.Space))
+        {
+            zoomInput -= 0.15f; // Espaço sobe MUITO mais rápido agora (Antes 0.06)
         }
 
         pos.y -= zoomInput * velocidadeZoom * Time.deltaTime;
-        pos.y = Mathf.Clamp(pos.y, 2f, 150f); // Aumentei o limite superior de 70 para 150 para permitir ver mais do mapa
+        pos.y = Mathf.Clamp(pos.y, 2f, 2500f); // Teto aumentado para o atalho do Espaço
 
         transform.position = pos;
 
@@ -87,7 +92,7 @@ public class CameraController : MonoBehaviour
         // Se estiver segurando o Direito, verifica se tem unidades selecionadas (para não conflitar com Mover)
         if (Input.GetMouseButton(1))
         {
-            var gerenteSel = FindFirstObjectByType<GerenteSelecao>();
+            var gerenteSel = ObterGerenteSelecao();
             if (gerenteSel != null && gerenteSel.unidadesSelecionadas.Count > 0)
             {
                 podeRotacionar = false; 
@@ -112,5 +117,15 @@ public class CameraController : MonoBehaviour
             if (Input.GetKey("e")) transform.Rotate(Vector3.up, velocidadeRotacao * Time.deltaTime, Space.World);
         }
     }
-}
 
+    GerenteSelecao ObterGerenteSelecao()
+    {
+        if (gerenteSelecaoCache == null && Time.time >= proximaBuscaGerenteSelecao)
+        {
+            gerenteSelecaoCache = FindFirstObjectByType<GerenteSelecao>();
+            proximaBuscaGerenteSelecao = Time.time + 1f;
+        }
+
+        return gerenteSelecaoCache;
+    }
+}

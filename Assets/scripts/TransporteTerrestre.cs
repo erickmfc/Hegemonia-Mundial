@@ -69,8 +69,8 @@ public class TransporteTerrestre : MonoBehaviour
             {
                 TentarEmbarcar();
             }
-            // U -> UNLOAD / Sair
-            if (Input.GetKeyDown(KeyCode.U))
+            // P -> soltar tropas | U mantido como atalho legado
+            if (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.U))
             {
                 DesembarcarTudo();
             }
@@ -194,15 +194,17 @@ public class TransporteTerrestre : MonoBehaviour
             }
         }
         
-        if (totalEmbarcados == soldadosInternos.Count + ContarVisiveis())
+        if (totalEmbarcados == totalAntes)
         {
-             // Ninguém encontrado — cooldown curto pra não spammar
+             // Ninguém encontrado - cooldown curto pra não spammar
              _cooldownEmbarque = 10f;
+             Debug.Log($"[{gameObject.name}] Nenhum soldado valido encontrado para embarque.");
         }
         else
         {
-             // Embarcou alguém — cooldown de 30s para dar tempo de carregar
+             // Embarcou alguém - cooldown maior para evitar reprocessamento imediato
              _cooldownEmbarque = COOLDOWN_EMBARQUE;
+             Debug.Log($"[{gameObject.name}] Embarque concluido. Total a bordo: {QuantidadePassageiros}/{capacidadeMaxima}.");
         }
     }
 
@@ -361,8 +363,8 @@ public class TransporteTerrestre : MonoBehaviour
         NavMeshAgent agent = unidade.GetComponent<NavMeshAgent>();
         if (agent != null)
         {
-            agent.Warp(posicaoInicial); // Reseta o agente na nova posição
             agent.enabled = true;
+            agent.Warp(posicaoInicial); // Reseta o agente na nova posição
             
             // LÓGICA DE DISPERSÃO: Pequeno movimento para não ficarem entalados
             Vector3 dispersao = Random.insideUnitSphere * 2.0f;

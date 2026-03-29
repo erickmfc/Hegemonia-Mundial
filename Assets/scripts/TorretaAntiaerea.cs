@@ -43,6 +43,25 @@ public class TorretaAntiaerea : MonoBehaviour
     private int indexPontoDisparo = 0;
     // Removido o limite de 50 objetos para permitir que o radar de longo alcance enxergue todos!
 
+    Transform ResolverTransformPrincipal(Transform alvo)
+    {
+        if (alvo == null) return null;
+
+        SistemaDeDanos vida = alvo.GetComponentInParent<SistemaDeDanos>();
+        if (vida != null) return vida.transform;
+
+        ControleAviao aviao = alvo.GetComponentInParent<ControleAviao>();
+        if (aviao != null) return aviao.transform;
+
+        Helicoptero helicoptero = alvo.GetComponentInParent<Helicoptero>();
+        if (helicoptero != null) return helicoptero.transform;
+
+        IdentidadeUnidade identidade = alvo.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade != null) return identidade.transform;
+
+        return alvo.root != null ? alvo.root : alvo;
+    }
+
     void Start()
     {
         // Procura ou cria a identidade do time para não atirar nos próprios aviões
@@ -138,11 +157,12 @@ public class TorretaAntiaerea : MonoBehaviour
             
             if (idAlvo != null && idAlvo.teamID != minhaIdentidade.teamID && idAlvo.teamID != 0)
             {
-                float dist = Vector3.Distance(transform.position, hit.transform.position);
+                Transform alvoPrincipal = ResolverTransformPrincipal(hit.transform);
+                float dist = Vector3.Distance(transform.position, alvoPrincipal.position);
                 if (dist < menorDistancia)
                 {
                     menorDistancia = dist;
-                    melhorAlvo = hit.transform;
+                    melhorAlvo = alvoPrincipal;
                 }
             }
         }
@@ -269,6 +289,7 @@ public class TorretaAntiaerea : MonoBehaviour
         Projetil p = bala.GetComponent<Projetil>();
         if (p == null) p = bala.AddComponent<Projetil>();
 
+        alvoAtual = ResolverTransformPrincipal(alvoAtual);
         p.SetDono(transform.root.gameObject);
         p.velocidade = velocidadeProjetil;
         

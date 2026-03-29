@@ -1,3 +1,4 @@
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class ControleTorreta : MonoBehaviour
@@ -6,36 +7,36 @@ public class ControleTorreta : MonoBehaviour
     [Tooltip("Define qual tag a torreta vai procurar (Ex: 'Inimigo', 'Aereo').")]
     public string etiquetaAlvo = "Aereo"; 
     
-    [Tooltip("Distância máxima que o radar consegue enxergar.")]
+    [Tooltip("DistÃ¢ncia mÃ¡xima que o radar consegue enxergar.")]
     public float alcance = 120f; 
     
-    [Header("Mecânica & Recarga")]
+    [Header("MecÃ¢nica & Recarga")]
     [Tooltip("Velocidade que a torreta gira para acompanhar o alvo.")]
     public float velocidadeGiro = 60f;
     
-    [Header("Limites de Rotação (Anti-Clipping)")]
+    [Header("Limites de RotaÃ§Ã£o (Anti-Clipping)")]
     public bool limitarRotacao = true;
     [Range(-180, 180)] public float anguloMinimo = -90f;
     [Range(-180, 180)] public float anguloMaximo = 90f;
 
-    [Tooltip("Tempo em SEGUNDOS entre cada tiro (Quanto menor, mais rápido).")]
+    [Tooltip("Tempo em SEGUNDOS entre cada tiro (Quanto menor, mais rÃ¡pido).")]
     public float tempoEntreTiros = 0.08f; 
 
-    [Tooltip("Quantidade de tiros até precisar carregar (Ex: 50 balas).")]
+    [Tooltip("Quantidade de tiros atÃ© precisar carregar (Ex: 50 balas).")]
     public int tamanhoCartucho = 50; 
 
     [Tooltip("Tempo inativa recarregando (Segundos).")]
     public float tempoRecarga = 2.0f; 
     
-    // Variáveis internas
+    // VariÃ¡veis internas
     private float contadorTempo = 0f;
     private int balasAtuais;
     private bool estaRecarregando = false;
     
-    // OTIMIZAÇÃO: Buffer reutilizável para evitar Garbage Collection (Lixo de Memória)
+    // OTIMIZAÃ‡ÃƒO: Buffer reutilizÃ¡vel para evitar Garbage Collection â€” PRIVADO por instÃ¢ncia, sem compartilhamento
     private Collider[] bufferColisores = new Collider[40]; 
 
-    [Header("Peças")]
+    [Header("PeÃ§as")]
     [Tooltip("A base que gira para os lados (Eixo Y).")]
     public Transform pecaQueGira; 
     [Tooltip("Opcional: A parte que levanta e abaixa (Eixo X). Deixe vazio para a base inclinar inteira.")]
@@ -43,15 +44,16 @@ public class ControleTorreta : MonoBehaviour
     public Transform[] locaisDoTiro;  
     public GameObject municaoPrefab; 
     
-    [Header("Limites de Rotação Cima/Baixo (Pitch)")]
+    [Header("Limites de RotaÃ§Ã£o Cima/Baixo (Pitch)")]
     public bool limitarInclinacao = true;
-    [Range(-90, 90)] public float elevacaoMinima = -10f; // Abaixo
-    [Range(-90, 90)] public float elevacaoMaxima = 80f;  // Acima
+    [Range(-90, 90)] public float elevacaoMinima = -10f;
+    [Range(-90, 90)] public float elevacaoMaxima = 80f; 
 
     [Header("Efeitos")]
     public AudioClip somTiro;
     public AudioClip somRecarga; 
     public ParticleSystem fogoCano;
+    // Cada torreta tem seu PRÃ“PRIO AudioSource â€” nunca compartilhado com o navio pai
     private AudioSource fonteAudio;
 
     private Transform alvoAtual;
@@ -62,33 +64,293 @@ public class ControleTorreta : MonoBehaviour
     private float rotacaoZOriginal;
     private float giroPitchAlvo = 0f;
 
+    // --- RASTREIO DE VELOCIDADE PARA PREDIÃ‡ÃƒO ---
+    private Transform alvoAnteriorParaCalculo;
+    private Vector3 ultimaPosicaoAlvo;
+    private Vector3 velocidadeCalculadaAlvo;
+
+    // Visualizador de Alcance
+    private LineRenderer linhaDeAlcance;
+    private ControleUnidade meuControle;
+
+    // Cache da identidade do navio dono â€” calculado UMA VEZ no Start para evitar
+    // buscas repetidas em ProcurarAlvo (que roda 2.5x por segundo por torreta)
+    private IdentidadeUnidade minhaIdentidade;
+    private int meuTime = -1;
+
+    // Flags de perfil calculadas UMA VEZ (evita string.Contains() todo frame)
+    private bool souAntiAereo;
+    private bool diagnosticoLocaisDoTiroEmitido;
+
     void Start()
     {
-        balasAtuais = tamanhoCartucho; // Começa com munição cheia
+        // Busca o controle do navio pai
+        meuControle = GetComponentInParent<ControleUnidade>();
+        if (meuControle == null) meuControle = GetComponent<ControleUnidade>();
+
+        // Cache da identidade â€” UMA vez, evita busca em ProcurarAlvo (roda 2.5x/s por torreta)
+        minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
+        meuTime = (minhaIdentidade != null) ? minhaIdentidade.teamID : 1;
+
+        // Perfil anti-aÃ©reo determinado UMA vez
+        souAntiAereo = DeterminarSouAntiAereo();
+
+        balasAtuais = tamanhoCartucho;
         misseisAtuais = capacidadeMisseis;
+
+        // AudioSource DESTA torreta (nÃ£o do navio pai) â€” AddComponent garante independÃªncia
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
         fonteAudio.spatialBlend = 1f;
         
-        // Garante que a referência exista
         if (pecaQueGira == null) pecaQueGira = transform;
         
         rotacaoXOriginal = pecaQueGira.localEulerAngles.x;
         rotacaoYOriginal = pecaQueGira.localEulerAngles.y;
         rotacaoZOriginal = pecaQueGira.localEulerAngles.z;
 
+        // Offset aleatÃ³rio entre 0 e 0.5s â€” evita que todas as torretas disparem e busquem
+        // alvos no mesmo frame exato, distribuindo a carga de CPU
         float inicioAleatorio = Random.Range(0f, 0.5f);
-        InvokeRepeating("ProcurarAlvo", inicioAleatorio, 0.4f);
+        InvokeRepeating(nameof(ProcurarAlvo), inicioAleatorio, 0.4f);
+
+        CriarVisualizadorAlcance();
+
+        GarantirLocaisDeTiro();
     }
 
-    [Header("Comportamento")]
-    [Tooltip("Se ativado, a torreta não ataca automaticamente.")]
+    bool DeterminarSouAntiAereo()
+    {
+        string nomeBase = transform.root.name.ToLower();
+        string nomeObj  = transform.name.ToLower();
+        return etiquetaAlvo.Equals("Aereo", System.StringComparison.OrdinalIgnoreCase) ||
+               etiquetaAlvo.Equals("Areo",  System.StringComparison.OrdinalIgnoreCase) ||
+               nomeBase.Contains("ares")       || nomeBase.Contains("antiaerea") ||
+               nomeBase.Contains("ciws")       || nomeBase.Contains("sam")  ||
+               nomeObj.Contains("ares")        || nomeObj.Contains("antiaerea") ||
+               nomeObj.Contains("ciws")        || nomeObj.Contains("sam");
+    }
+
+    Transform ResolverTransformAlvo(Transform alvo)
+    {
+        if (alvo == null) return null;
+
+        SistemaDeDanos vida = alvo.GetComponentInParent<SistemaDeDanos>();
+        if (vida != null) return vida.transform;
+
+        ControleAviao aviao = alvo.GetComponentInParent<ControleAviao>();
+        if (aviao != null) return aviao.transform;
+
+        Helicoptero helicoptero = alvo.GetComponentInParent<Helicoptero>();
+        if (helicoptero != null) return helicoptero.transform;
+
+        IdentidadeUnidade identidade = alvo.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade != null) return identidade.transform;
+
+        return alvo.root != null ? alvo.root : alvo;
+    }
+
+    Vector3 CalcularVelocidadeInicialMissel(Transform saida, Vector3 posicaoAlvo)
+    {
+        if (saida == null) return transform.forward * 40f;
+
+        Vector3 direcaoInicial = posicaoAlvo - saida.position;
+        if (direcaoInicial.sqrMagnitude <= 0.001f)
+            direcaoInicial = saida.forward.sqrMagnitude > 0.001f ? saida.forward : transform.forward;
+
+        direcaoInicial.Normalize();
+
+        Rigidbody rbLancador = transform.root.GetComponent<Rigidbody>();
+        Vector3 velocidadeBase = (rbLancador != null && !rbLancador.isKinematic) ? rbLancador.linearVelocity : Vector3.zero;
+
+        if (velocidadeBase.sqrMagnitude < 25f)
+            velocidadeBase = direcaoInicial * 40f;
+        else
+            velocidadeBase += direcaoInicial * 25f;
+
+        return velocidadeBase;
+    }
+
+    void ConfigurarProjetilComoMissel(GameObject projetilObj, Transform saida, Transform alvo, Vector3 posicaoAlvo)
+    {
+        if (projetilObj == null || saida == null) return;
+
+        Projetil projetil = projetilObj.GetComponent<Projetil>();
+        if (projetil == null) return;
+
+        Vector3 direcao = posicaoAlvo - saida.position;
+        if (direcao.sqrMagnitude <= 0.001f)
+            direcao = saida.forward.sqrMagnitude > 0.001f ? saida.forward : transform.forward;
+
+        projetil.SetDono(transform.root.gameObject);
+        projetil.SetDirecao(direcao.normalized);
+
+        if (alvo != null)
+        {
+            projetil.SetAlvo(alvo);
+            if (projetil.curvaDePerseguicao <= 0f)
+                projetil.curvaDePerseguicao = 90f;
+        }
+    }
+
+    void GarantirLocaisDeTiro()
+    {
+        locaisDoTiro = FiltrarLocaisValidos(locaisDoTiro);
+        if (locaisDoTiro != null && locaisDoTiro.Length > 0) return;
+
+        locaisDoTiro = DescobrirLocaisDeTiroAutomaticos();
+        if (locaisDoTiro != null && locaisDoTiro.Length > 0)
+        {
+            if (!diagnosticoLocaisDoTiroEmitido)
+            {
+                Debug.LogWarning($"[ControleTorreta] '{gameObject.name}' estava sem locaisDoTiro. Fallback automatico configurado com {locaisDoTiro.Length} ponto(s).", this);
+                diagnosticoLocaisDoTiroEmitido = true;
+            }
+            return;
+        }
+
+        if (!diagnosticoLocaisDoTiroEmitido)
+        {
+            Debug.LogError($"[ControleTorreta] '{gameObject.name}' nao possui locais de tiro designados (locaisDoTiro) e o fallback automatico falhou. A torreta nao vai atirar!", this);
+            diagnosticoLocaisDoTiroEmitido = true;
+        }
+    }
+
+    Transform[] DescobrirLocaisDeTiroAutomaticos()
+    {
+        var encontrados = new List<Transform>();
+
+        if (fogoCano != null)
+        {
+            encontrados.Add(fogoCano.transform);
+        }
+
+        Transform raizBusca = canosDaTorreta != null ? canosDaTorreta : (pecaQueGira != null ? pecaQueGira : transform);
+        foreach (Transform filho in raizBusca.GetComponentsInChildren<Transform>(true))
+        {
+            if (filho == null || filho == raizBusca) continue;
+
+            string nome = NormalizarNome(filho.name);
+            if (nome.Contains("bocadetiro") ||
+                nome.Contains("bocadefogo") ||
+                nome.Contains("muzzle") ||
+                nome.Contains("barrel") ||
+                nome.Contains("cano") ||
+                nome.Contains("tiro") ||
+                nome.Contains("shot") ||
+                nome.Contains("fire") ||
+                nome.Contains("saida") ||
+                nome.Contains("spawn"))
+            {
+                encontrados.Add(filho);
+            }
+        }
+
+        Transform[] validos = FiltrarLocaisValidos(encontrados.ToArray());
+        if (validos != null && validos.Length > 0) return validos;
+
+        Transform referencia = canosDaTorreta != null ? canosDaTorreta : (pecaQueGira != null ? pecaQueGira : transform);
+        Transform fallback = CriarLocalDeTiroFallback(referencia);
+        return fallback != null ? new[] { fallback } : null;
+    }
+
+    Transform CriarLocalDeTiroFallback(Transform referencia)
+    {
+        if (referencia == null) referencia = transform;
+
+        Transform existente = referencia.Find("_AutoLocalTiro");
+        if (existente != null) return existente;
+
+        GameObject marcador = new GameObject("_AutoLocalTiro");
+        Transform ponto = marcador.transform;
+        ponto.SetParent(referencia, false);
+        ponto.localPosition = CalcularOffsetLocalDeTiro(referencia);
+        ponto.localRotation = Quaternion.identity;
+        return ponto;
+    }
+
+    Vector3 CalcularOffsetLocalDeTiro(Transform referencia)
+    {
+        Renderer render = referencia.GetComponentInChildren<Renderer>();
+        if (render != null)
+        {
+            Bounds bounds = render.bounds;
+            float frente = Mathf.Max(1.5f, bounds.extents.z + 0.5f);
+            float altura = Mathf.Max(0.4f, bounds.extents.y * 0.5f);
+            Vector3 mundo = referencia.position + referencia.forward * frente + referencia.up * altura;
+            return referencia.InverseTransformPoint(mundo);
+        }
+
+        return new Vector3(0f, 0.5f, 1.5f);
+    }
+
+    static Transform[] FiltrarLocaisValidos(Transform[] origem)
+    {
+        if (origem == null || origem.Length == 0) return null;
+
+        var validos = new List<Transform>(origem.Length);
+        for (int i = 0; i < origem.Length; i++)
+        {
+            if (origem[i] != null) validos.Add(origem[i]);
+        }
+
+        return validos.Count > 0 ? validos.ToArray() : null;
+    }
+
+    static string NormalizarNome(string valor)
+    {
+        return string.IsNullOrEmpty(valor) ? string.Empty : valor.Replace(" ", string.Empty).ToLowerInvariant();
+    }
+
+    void CriarVisualizadorAlcance()
+    {
+        GameObject obj = new GameObject("Alcance_Torreta_UI");
+        obj.transform.SetParent(transform);
+        obj.transform.localPosition = Vector3.zero;
+        linhaDeAlcance = obj.AddComponent<LineRenderer>();
+        linhaDeAlcance.useWorldSpace = true;
+        
+        Material mat = new Material(Shader.Find("Sprites/Default")); 
+        Color corAmarela = Color.yellow; corAmarela.a = 0.5f; 
+        linhaDeAlcance.material = mat;
+        linhaDeAlcance.startColor = corAmarela; linhaDeAlcance.endColor = corAmarela;
+        linhaDeAlcance.startWidth = 1.0f; linhaDeAlcance.endWidth = 1.0f;
+        linhaDeAlcance.positionCount = 51;
+        linhaDeAlcance.enabled = false;
+    }
+
+    void AtualizarVisualizadorAlcance()
+    {
+        if (linhaDeAlcance == null) return;
+        
+        bool deveMostrar = (meuControle != null && meuControle.selecionado);
+        linhaDeAlcance.enabled = deveMostrar;
+        
+        if (deveMostrar)
+        {
+            float angulo = 0f;
+            for (int i = 0; i <= 50; i++)
+            {
+                float x = Mathf.Sin(angulo) * alcance;
+                float z = Mathf.Cos(angulo) * alcance;
+                Vector3 pos = new Vector3(transform.position.x + x, transform.position.y + 0.5f, transform.position.z + z);
+                linhaDeAlcance.SetPosition(i, pos);
+                angulo += (2 * Mathf.PI) / 50;
+            }
+        }
+    }
+
+    [Tooltip("Se ativado, a torreta nÃ£o ataca automaticamente.")]
     public bool modoPassivo = false;
+
+    [Header("Radar e Ociosidade")]
+    [Tooltip("Se ativado, a torreta fica girando 360Âº quando nÃ£o tem alvos (estilo radar). Se desativado, ela volta para a frente.")]
+    public bool modoRadar = false;
     
-    [Header("Defesa Anti-Míssil")]
-    [Tooltip("Pode interceptar mísseis inimigos no ar?")]
+    [Header("Defesa Anti-MÃ­ssil")]
+    [Tooltip("Pode interceptar mÃ­sseis inimigos no ar?")]
     public bool interceptarMisseis = false;
-    [Tooltip("Se ativado, dispara um míssil (Armamento Secundário) em vez de balas para abater a ameaça.")]
+    [Tooltip("Se ativado, dispara um mÃ­ssil (Armamento SecundÃ¡rio) em vez de balas para abater a ameaÃ§a.")]
     public bool usarMisselParaInterceptar = true;
 
     void ProcurarAlvo()
@@ -103,15 +365,15 @@ public class ControleTorreta : MonoBehaviour
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
 
-        IdentidadeUnidade meuID = GetComponentInParent<IdentidadeUnidade>();
-        int meuTime = (meuID != null) ? meuID.teamID : 1; 
-
+        // Usa o meuTime cacheado no Start â€” sem GetComponentInParent a cada chamada
         for (int i = 0; i < quantidadeEncontrada; i++)
         {
             Collider hit = bufferColisores[i];
             if (hit == null) continue;
 
             Transform alvoTr = hit.transform;
+
+            // Ignora qualquer coisa que seja parte do mesmo navio/veÃ­culo raiz
             if (alvoTr.root == transform.root) continue;
 
             bool ehMissil = alvoTr.GetComponentInParent<MisselCaca>() != null || 
@@ -148,15 +410,7 @@ public class ControleTorreta : MonoBehaviour
 
             if (ehInimigo)
             {
-                string nomeBase = transform.root.name.ToLower();
-                string nomeObj = transform.name.ToLower();
-                bool souAntiAereo = etiquetaAlvo.Equals("Aereo", System.StringComparison.OrdinalIgnoreCase) || 
-                                    etiquetaAlvo.Equals("Areo", System.StringComparison.OrdinalIgnoreCase) ||
-                                    nomeBase.Contains("ares") || nomeBase.Contains("antiaerea") || 
-                                    nomeBase.Contains("ciws") || nomeBase.Contains("sam") || 
-                                    nomeObj.Contains("ares") || nomeObj.Contains("antiaerea") || 
-                                    nomeObj.Contains("ciws") || nomeObj.Contains("sam");
-
+                // Usa o perfil cacheado â€” sem string.Contains() a cada alvo
                 bool alvoAereo = ehMissil ||
                                  alvoTr.position.y > 6f ||
                                  alvoTr.GetComponentInParent<ControleAviao>() != null ||
@@ -168,19 +422,20 @@ public class ControleTorreta : MonoBehaviour
                                  alvoTr.tag == "Aereo";
                 
                 if (souAntiAereo) { if (!alvoAereo) continue; }
-                else { if (alvoAereo) continue; }
+                else              { if (alvoAereo)  continue; }
 
                 Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
                 float dist = Vector3.Distance(transform.position, pontoMaisProximo);
                 if (dist < menorDistancia)
                 {
                     menorDistancia = dist;
-                    melhorAlvo = alvoTr;
+                    melhorAlvo = ResolverTransformAlvo(alvoTr);
                 }
             }
         }
 
-        for(int i=0; i<quantidadeEncontrada; i++) bufferColisores[i] = null;
+        // Limpa o buffer para nÃ£o vazar referÃªncias entre chamadas
+        for (int i = 0; i < quantidadeEncontrada; i++) bufferColisores[i] = null;
         alvoAtual = melhorAlvo;
     }
     
@@ -190,46 +445,62 @@ public class ControleTorreta : MonoBehaviour
         if (modoPassivo) alvoAtual = null;
     }
 
-    Vector3 ObterPosicaoPreditaAlvo()
+    Vector3 ObterPosicaoPreditaAlvo(Transform alvoReferencia = null)
     {
-        if (alvoAtual == null) return transform.position;
-        Vector3 alvoPosicao = alvoAtual.position;
+        Transform alvoRef = alvoReferencia != null ? alvoReferencia : alvoAtual;
+        if (alvoRef == null) return transform.position;
+        Vector3 alvoPosicao = alvoRef.position;
 
         float velBala = 200f; 
         if (municaoPrefab != null)
         {
             Projetil proj = municaoPrefab.GetComponent<Projetil>();
             if (proj != null && proj.velocidade > 0f) velBala = proj.velocidade;
+            
+            if (municoesPorCano != null && indicacaoSeguraDeBala < municoesPorCano.Length)
+            {
+                 if (municoesPorCano[indicacaoSeguraDeBala] != null)
+                 {
+                     Projetil p2 = municoesPorCano[indicacaoSeguraDeBala].GetComponent<Projetil>();
+                     if (p2 != null && p2.velocidade > 0f) velBala = p2.velocidade;
+                 }
+            }
         }
 
-        Vector3 targetVel = Vector3.zero;
-        Rigidbody rb = alvoAtual.GetComponentInParent<Rigidbody>();
-        if (rb != null && !rb.isKinematic) 
+        Vector3 targetVel = velocidadeCalculadaAlvo;
+
+        if (targetVel.magnitude < 0.1f)
         {
-            targetVel = rb.linearVelocity;
-        }
-        else
-        {
-            ControleUnidade cu = alvoAtual.GetComponentInParent<ControleUnidade>();
-            if (cu != null)
+            Rigidbody rb = alvoRef.GetComponentInParent<Rigidbody>();
+            if (rb != null && !rb.isKinematic) 
             {
-                float speed = cu.ObterVelocidadeAtualReal();
-                targetVel = alvoAtual.forward * speed;
+                targetVel = rb.linearVelocity;
             }
         }
 
         if (targetVel.magnitude > 0.5f)
         {
-            float dist = Vector3.Distance(pecaQueGira.position, alvoPosicao);
-            float tempoAteAlvo = dist / velBala;
-            alvoPosicao = alvoPosicao + (targetVel * tempoAteAlvo);
+            float dist1 = Vector3.Distance(pecaQueGira.position, alvoPosicao);
+            float tempoAteAlvo1 = dist1 / velBala;
+            
+            Vector3 predicaoPrimaria = alvoPosicao + (targetVel * tempoAteAlvo1);
+            
+            float dist2 = Vector3.Distance(pecaQueGira.position, predicaoPrimaria);
+            float tempoAteAlvo2 = dist2 / velBala;
+            
+            alvoPosicao = alvoPosicao + (targetVel * tempoAteAlvo2);
         }
 
         return alvoPosicao;
     }
 
+    private int indicacaoSeguraDeBala = 0;
+
     void Update()
     {
+        AtualizarVisualizadorAlcance();
+
+        // --- Recarga de mÃ­sseis ---
         if (estaRecarregandoMisseis)
         {
             contadorRecargaMissel -= Time.deltaTime;
@@ -242,6 +513,7 @@ public class ControleTorreta : MonoBehaviour
         }
         else if (cooldownMissel > 0f) cooldownMissel -= Time.deltaTime; 
 
+        // --- Recarga de balas ---
         if (estaRecarregando)
         {
             contadorTempo -= Time.deltaTime;
@@ -251,123 +523,159 @@ public class ControleTorreta : MonoBehaviour
                 balasAtuais = tamanhoCartucho;
                 contadorTempo = 0f; 
             }
-            return;
+            return; // Durante recarga, nÃ£o mira nem atira
         }
 
         if (alvoAtual != null)
         {
+            // Verifica se o alvo ainda existe (pode ter sido destruÃ­do entre frames)
+            if (!alvoAtual.gameObject.activeInHierarchy)
+            {
+                alvoAtual = null;
+                return;
+            }
+
+            // --- CÃLCULO DA VELOCIDADE DO ALVO (para prediÃ§Ã£o de lead) ---
+            if (alvoAtual != alvoAnteriorParaCalculo)
+            {
+                alvoAnteriorParaCalculo = alvoAtual;
+                ultimaPosicaoAlvo = alvoAtual.position;
+                velocidadeCalculadaAlvo = Vector3.zero;
+            }
+            else if (Time.deltaTime > 0f)
+            {
+                Vector3 velInst = (alvoAtual.position - ultimaPosicaoAlvo) / Time.deltaTime;
+                velocidadeCalculadaAlvo = Vector3.Lerp(velocidadeCalculadaAlvo, velInst, Time.deltaTime * 15f);
+                ultimaPosicaoAlvo = alvoAtual.position;
+            }
+
+            indicacaoSeguraDeBala = indiceBarrilAtual;
+
+            // --- ROTAÃ‡ÃƒO DA TORRETA ---
+            float anguloY = rotacaoYOriginal;
             if (pecaQueGira != null)
             {
                 Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
                 Vector3 direcao = alvoPosicao - pecaQueGira.position;
-                float anguloY = pecaQueGira.localEulerAngles.y;
-                float anguloX = rotacaoXOriginal;
 
-                if (pecaQueGira.parent != null)
+                // Determina o pai de referÃªncia: ou o pai da peÃ§a ou o navio raiz
+                Transform referencia = (pecaQueGira.parent != null) ? pecaQueGira.parent : pecaQueGira;
+                Vector3 localDir = referencia.InverseTransformDirection(direcao);
+
+                // Yaw â€” espaÃ§o local do PAI da peÃ§a que gira (correto para mÃºltiplas torretas em posiÃ§Ãµes diferentes)
+                anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+                if (limitarRotacao) anguloY = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
+
+                // Pitch
+                float distanciaPlana = new Vector2(localDir.x, localDir.z).magnitude;
+                giroPitchAlvo = -Mathf.Atan2(localDir.y, distanciaPlana) * Mathf.Rad2Deg;
+                if (limitarInclinacao) giroPitchAlvo = Mathf.Clamp(giroPitchAlvo, -elevacaoMaxima, -elevacaoMinima);
+
+                if (canosDaTorreta != null)
                 {
-                    Vector3 localDir = pecaQueGira.parent.InverseTransformDirection(direcao);
-                    anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
-                    
-                    if (limitarRotacao) anguloY = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
+                    // Base gira sÃ³ no Yaw
+                    Quaternion rotacaoBase = Quaternion.Euler(0f, anguloY, 0f);
+                    pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoBase, Time.deltaTime * velocidadeGiro);
 
-                    // --- CÁLCULO PITCH (Esquema de Elevação) ---
-                    float distanciaPlana = new Vector2(localDir.x, localDir.z).magnitude;
-                    giroPitchAlvo = -Mathf.Atan2(localDir.y, distanciaPlana) * Mathf.Rad2Deg;
+                    // Cano gira sÃ³ no Pitch (mantÃ©m Y e Z locais zerados)
+                    Quaternion rotacaoCanos = Quaternion.Euler(giroPitchAlvo, 0f, 0f);
+                    canosDaTorreta.localRotation = Quaternion.Lerp(canosDaTorreta.localRotation, rotacaoCanos, Time.deltaTime * velocidadeGiro);
                 }
                 else
                 {
-                    Quaternion olhar = Quaternion.LookRotation(direcao);
-                    anguloY = olhar.eulerAngles.y;
-                    
-                    Vector3 localDir = pecaQueGira.InverseTransformDirection(direcao); 
-                    float distanciaPlana = new Vector2(localDir.x, localDir.z).magnitude;
-                    giroPitchAlvo = -Mathf.Atan2(localDir.y, distanciaPlana) * Mathf.Rad2Deg;
-                }
-
-                if (limitarInclinacao) giroPitchAlvo = Mathf.Clamp(giroPitchAlvo, -elevacaoMaxima, -elevacaoMinima); // Invertido pois -X é para cima na maioria dos modelos
-
-                if (canosDaTorreta != null) // Peças separadas (Gira Base = Yaw, Gira Cano = Pitch)
-                {
-                    Quaternion rotacaoBase = Quaternion.Euler(rotacaoXOriginal, anguloY, rotacaoZOriginal);
-                    pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoBase, Time.deltaTime * velocidadeGiro);
-
-                    Quaternion rotacaoCanos = Quaternion.Euler(giroPitchAlvo, canosDaTorreta.localEulerAngles.y, canosDaTorreta.localEulerAngles.z);
-                    canosDaTorreta.localRotation = Quaternion.Lerp(canosDaTorreta.localRotation, rotacaoCanos, Time.deltaTime * velocidadeGiro);
-                }
-                else // Peça única faz os dois movimentos (Base inclina inteira)
-                {
+                    // PeÃ§a Ãºnica: aplica Yaw + Pitch juntos
                     Quaternion rotacaoTotal = Quaternion.Euler(giroPitchAlvo, anguloY, rotacaoZOriginal);
                     pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoTotal, Time.deltaTime * velocidadeGiro);
                 }
             }
 
-            // MODO TIRO: Atira se der o tempo
+            // --- DISPARO AUTÃ”NOMO ---
+            contadorTempo -= Time.deltaTime;
             if (contadorTempo <= 0f)
             {
-                // Verifica se o ângulo permite atirar (Ignorando a altura "Y" porque tanques/navios não levantam o cano nas configurações básicas)
-                // Se não ignorar o Y, o ângulo para a base da Prefeitura sempre seria > 5 e nunca atiraria.
-                Vector3 alvoPosicao = ObterPosicaoPreditaAlvo(); // Re-obter para garantir que é a mais recente
-                Vector3 dirAlvo = (alvoPosicao - pecaQueGira.position);
-                dirAlvo.y = 0;
-                Vector3 minhaFrente = pecaQueGira.forward;
-                minhaFrente.y = 0;
-                
-                // Tolera o erro de engasgo se for antiaereo contra alvo rapido
-                string nomeB = transform.root.name.ToLower();
-                string nomeO = transform.name.ToLower();
-                bool antiAereo = etiquetaAlvo.Equals("Aereo", System.StringComparison.OrdinalIgnoreCase) || 
-                                 etiquetaAlvo.Equals("Areo", System.StringComparison.OrdinalIgnoreCase) ||
-                                 nomeB.Contains("ares") || nomeB.Contains("antiaerea") || 
-                                 nomeB.Contains("ciws") || nomeB.Contains("sam") || 
-                                 nomeO.Contains("ares") || nomeO.Contains("antiaerea") || 
-                                 nomeO.Contains("ciws") || nomeO.Contains("sam");
-                float anguloMaximo = antiAereo ? 45f : 8f;
+                // Verifica alinhamento em ESPAÃ‡O LOCAL do pai â€” mÃºltiplas torretas no
+                // mesmo navio usam sua prÃ³pria frente local, nÃ£o se confundem entre si
+                bool podeDisparar;
 
-                if(Vector3.Angle(minhaFrente, dirAlvo) < anguloMaximo) // 8 graus para terrestre, 45 graus para aereo
+                if (pecaQueGira != null && pecaQueGira.parent != null)
+                {
+                    // DireÃ§Ã£o ao alvo no espaÃ§o local do pai da torreta
+                    Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
+                    Vector3 dirMundo    = (alvoPosicao - pecaQueGira.position);
+                    Vector3 dirLocal    = pecaQueGira.parent.InverseTransformDirection(dirMundo);
+
+                    // anguloY Ã© a rotaÃ§Ã£o desejada; compara com a rotaÃ§Ã£o atual da peÃ§a
+                    float anguloAtualY  = pecaQueGira.localEulerAngles.y;
+                    // Normaliza para [-180, 180]
+                    if (anguloAtualY > 180f) anguloAtualY -= 360f;
+
+                    float diff = Mathf.Abs(Mathf.DeltaAngle(anguloAtualY, anguloY));
+
+                    // Para anti-aÃ©reo toleramos mais erro (alvo rÃ¡pido); para terrestre menos
+                    float tolerancia = souAntiAereo ? 45f : 8f;
+                    podeDisparar = (diff < tolerancia);
+                }
+                else
+                {
+                    // Fallback: compara frente mundial com direÃ§Ã£o mundial ao alvo
+                    Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
+                    Vector3 dirAlvo = (alvoPosicao - pecaQueGira.position);
+                    dirAlvo.y = 0f;
+                    Vector3 minhaFrente = pecaQueGira.forward;
+                    minhaFrente.y = 0f;
+                    float tolerancia = souAntiAereo ? 45f : 8f;
+                    podeDisparar = Vector3.Angle(minhaFrente, dirAlvo) < tolerancia;
+                }
+
+                if (podeDisparar)
                 {
                     Disparar();
                     if (!estaRecarregando) contadorTempo = tempoEntreTiros;
                 }
             }
-            contadorTempo -= Time.deltaTime;
         }
         else
         {
-            // MODO OCIOSO (Extra): Gira devagarinho como um radar varrendo a área
+            // Modo ocioso â€” gira como radar
             ModoOcioso();
         }
     }
 
     void ModoOcioso()
     {
-        // Gira suavemente no eixo Y (procurando)
-        if (pecaQueGira != null)
+        if (pecaQueGira == null) return;
+
+        if (modoRadar && !limitarRotacao)
         {
-            if (limitarRotacao)
+            // Comportamento de RADAR (Girando 360Âº)
+            float anguloLivre = (Time.time * 20f) % 360f;
+            pecaQueGira.localRotation = Quaternion.Euler(rotacaoXOriginal, anguloLivre, rotacaoZOriginal);
+        }
+        else
+        {
+            // Comportamento de REPOUSO (Retorna para a frente/posiÃ§Ã£o original)
+            // Calculamos a rotaÃ§Ã£o de "descanso" usando os valores originais capturados no Start
+            Quaternion rotacaoDescanso = Quaternion.Euler(rotacaoXOriginal, rotacaoYOriginal, rotacaoZOriginal);
+            pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoDescanso, Time.deltaTime * (velocidadeGiro * 0.5f));
+
+            // Se tiver canos independentes, tambÃ©m volta eles para o horizonte
+            if (canosDaTorreta != null)
             {
-                // Se tem limite, volta para o centro mantendo a inclinação original do modelo 3D
-                Quaternion centro = Quaternion.Euler(rotacaoXOriginal, 0, rotacaoZOriginal);
-                pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, centro, Time.deltaTime * 2f);
-            }
-            else
-            {
-                // Radar girando 360 usando angulo livre protegido
-                float anguloLivre = (Time.time * 20f) % 360f;
-                pecaQueGira.localRotation = Quaternion.Euler(rotacaoXOriginal, anguloLivre, rotacaoZOriginal);
+                canosDaTorreta.localRotation = Quaternion.Lerp(canosDaTorreta.localRotation, Quaternion.identity, Time.deltaTime * (velocidadeGiro * 0.5f));
             }
         }
     }
 
-    [Header("Armamento Secundário (Mísseis)")]
+    [Header("Armamento SecundÃ¡rio (MÃ­sseis)")]
     [Tooltip("Se definido, usa este prefab para disparos especiais ou de longo alcance.")]
     public GameObject misselPrefab;
     public Transform[] locaisDoMissel; 
     public AudioClip somMissel;
     public float tempoEntreMisseis = 2.0f;
     
-    [Tooltip("Quantidade máxima de mísseis antes de precisar recarregar.")]
+    [Tooltip("Quantidade mÃ¡xima de mÃ­sseis antes de precisar recarregar.")]
     public int capacidadeMisseis = 4;
-    [Tooltip("Tempo em segundos para reabastecer os mísseis.")]
+    [Tooltip("Tempo em segundos para reabastecer os mÃ­sseis.")]
     public float tempoRecargaMisseis = 10f;
     
     private int misseisAtuais;
@@ -375,21 +683,24 @@ public class ControleTorreta : MonoBehaviour
     private float contadorRecargaMissel = 0f;
     private float cooldownMissel = 0f;
 
-    [Header("Custumização de Disparo")]
-    [Tooltip("Se quiser munições diferentes para canos diferentes, arraste aqui na ordem dos Locais Do Tiro.")]
+    [Header("CustumizaÃ§Ã£o de Disparo")]
+    [Tooltip("Se quiser muniÃ§Ãµes diferentes para canos diferentes, arraste aqui na ordem dos Locais Do Tiro.")]
     public GameObject[] municoesPorCano; 
 
     void Disparar()
     {
-        bool alvoEhMissil = alvoAtual != null && (alvoAtual.GetComponentInParent<MisselCaca>() != null || alvoAtual.GetComponentInParent<MissilTeleguiado>() != null || alvoAtual.GetComponentInParent<MisselICBM>() != null || alvoAtual.tag == "Missil");
+        bool alvoEhMissil = alvoAtual != null && 
+                            (alvoAtual.GetComponentInParent<MisselCaca>() != null || 
+                             alvoAtual.GetComponentInParent<MissilTeleguiado>() != null || 
+                             alvoAtual.GetComponentInParent<MisselICBM>() != null || 
+                             alvoAtual.tag == "Missil");
 
-        // 1. DISPARO DE MÍSSIL (Arma Pesada ou Interceptador)
+        // 1. DISPARO DE MÃSSIL (Arma Pesada ou Interceptador)
         if (misselPrefab != null && cooldownMissel <= 0f && !estaRecarregandoMisseis && misseisAtuais > 0 && alvoAtual != null)
         {
-            // Se o alvo for míssil, só atira de míssil se 'usarMisselParaInterceptar' for true
             if (!alvoEhMissil || (alvoEhMissil && usarMisselParaInterceptar))
             {
-                DispararMissel();
+                DispararMisselCorrigido();
                 cooldownMissel = tempoEntreMisseis;
                 misseisAtuais--;
 
@@ -397,36 +708,37 @@ public class ControleTorreta : MonoBehaviour
                 {
                     estaRecarregandoMisseis = true;
                     contadorRecargaMissel = tempoRecargaMisseis;
-                    // opcional: som de empty ou recarregando
                 }
                 
-                // Se é um míssil e pedimos pra usar míssil neles, não desperdiça bala agora
                 if (alvoEhMissil && usarMisselParaInterceptar) return;
-                
-                // Se não era míssil inimigo, o return normal do sistema de arma pesada
                 if (!alvoEhMissil) return; 
             }
         }
 
-        // Se o alvo for míssil, e nós NÃO temos missel (ou usarMisselParaInterceptar = false), vamos fuzilar ele com balas!
-        // 2. DISPARO PADRÃO (Metralhadora/Canhão/CIWS)
+        // 2. DISPARO PADRÃƒO (Metralhadora/CanhÃ£o/CIWS)
+        GarantirLocaisDeTiro();
         if (locaisDoTiro != null && locaisDoTiro.Length > 0)
         {
-            // Define qual prefab usar (Padrão ou Específico do Cano)
             GameObject prefabParaUsar = municaoPrefab;
             
-            // Verifica se tem munição específica para este cano (Override)
             if (municoesPorCano != null && indiceBarrilAtual < municoesPorCano.Length)
             {
                 if (municoesPorCano[indiceBarrilAtual] != null)
-                {
                     prefabParaUsar = municoesPorCano[indiceBarrilAtual];
-                }
             }
 
-            if (prefabParaUsar == null) return; // Segurança básica
+            if (prefabParaUsar == null) return;
+            if (indiceBarrilAtual >= locaisDoTiro.Length) indiceBarrilAtual = 0;
 
             Transform barrilDaVez = locaisDoTiro[indiceBarrilAtual];
+
+            if (barrilDaVez == null)
+            {
+                Debug.LogWarning($"[ControleTorreta] O local de tiro no Ã­ndice {indiceBarrilAtual} estÃ¡ nulo em '{gameObject.name}'. Pulando disparo.", this);
+                indiceBarrilAtual = (indiceBarrilAtual + 1) % locaisDoTiro.Length;
+                return;
+            }
+
             GameObject bala = Instantiate(prefabParaUsar, barrilDaVez.position, barrilDaVez.rotation);
             Projetil scriptBala = bala.GetComponent<Projetil>();
             
@@ -438,12 +750,11 @@ public class ControleTorreta : MonoBehaviour
                     Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
                     Vector3 direcao = (alvoPosicao - barrilDaVez.position).normalized;
                     scriptBala.SetDirecao(direcao);
-                    // Se o script da bala não tiver velocidade própria, aplicamos uma padrão
                     if (scriptBala.velocidade == 0) scriptBala.velocidade = 200f; 
                 }
             }
 
-            if (somTiro != null) fonteAudio.PlayOneShot(somTiro);
+            if (somTiro != null && fonteAudio != null) fonteAudio.PlayOneShot(somTiro);
 
             indiceBarrilAtual++;
             if (indiceBarrilAtual >= locaisDoTiro.Length) indiceBarrilAtual = 0;
@@ -453,43 +764,131 @@ public class ControleTorreta : MonoBehaviour
         }
     }
 
-    void DispararMissel()
+    void DispararMisselLegacy()
     {
-        // Usa locais específicos se tiver, senão usa os da metralhadora
         Transform[] saidas = (locaisDoMissel != null && locaisDoMissel.Length > 0) ? locaisDoMissel : locaisDoTiro;
-        if(saidas.Length == 0) return;
+        if (saidas == null || saidas.Length == 0) return;
+        if (indiceBarrilAtual >= saidas.Length) indiceBarrilAtual = 0;
 
-        // Pega um aleatório ou sequencial (vou usar sequencial do indiceBarril pra variar)
-        Transform saida = saidas[indiceBarrilAtual % saidas.Length]; 
+        Transform saida = saidas[indiceBarrilAtual % saidas.Length];
+        if (saida == null)
+        {
+            Debug.LogWarning($"[ControleTorreta] Local de saida do missil nulo em '{gameObject.name}'.", this);
+            return;
+        }
 
         GameObject missel = Instantiate(misselPrefab, saida.position, saida.rotation);
-        
-        // Tenta configurar guiagem (Suporta MissilTeleguiado E MisselICBM)
-        MissilTeleguiado guiado = missel.GetComponent<MissilTeleguiado>();
-        if(guiado != null)
+        Transform alvoResolvido = ResolverTransformAlvo(alvoAtual);
+        Vector3 posicaoPredita = ObterPosicaoPreditaAlvo(alvoResolvido);
+        bool inicializado = false;
+
+        MisselCaca misselCaca = missel.GetComponent<MisselCaca>();
+        if (misselCaca != null)
         {
-            // Usa o método público DefinirAlvo
-            guiado.DefinirAlvo(alvoAtual);
+            misselCaca.IniciarAtaque(posicaoPredita, CalcularVelocidadeInicialMissel(saida, posicaoPredita), alvoResolvido);
+            inicializado = true;
         }
         else
         {
-            // Tenta ICBM (que usa IniciarLancamento em vez de IniciarSequencia)
-            MisselICBM icbm = missel.GetComponent<MisselICBM>();
-            if(icbm != null)
+            MisselNaval misselNaval = missel.GetComponent<MisselNaval>();
+            if (misselNaval != null)
             {
-                 icbm.IniciarLancamento(ObterPosicaoPreditaAlvo());
+                misselNaval.IniciarAtaque(posicaoPredita, alvoResolvido);
+                inicializado = true;
+            }
+            else
+            {
+                MissilTeleguiado guiadoNovo = missel.GetComponent<MissilTeleguiado>();
+                if (guiadoNovo != null)
+                {
+                    guiadoNovo.DefinirAlvo(alvoResolvido);
+                    inicializado = true;
+                }
+                else
+                {
+                    MisselICBM icbmNovo = missel.GetComponent<MisselICBM>();
+                    if (icbmNovo != null)
+                    {
+                        icbmNovo.IniciarLancamento(posicaoPredita);
+                        inicializado = true;
+                    }
+                }
             }
         }
 
-        if (somMissel != null) fonteAudio.PlayOneShot(somMissel);
-        Debug.Log("🚀 Míssil Disparado!");
+        if (!inicializado)
+        {
+            ConfigurarProjetilComoMissel(missel, saida, alvoResolvido, posicaoPredita);
+        }
+
+        if (somMissel != null && fonteAudio != null) fonteAudio.PlayOneShot(somMissel);
+        Debug.Log("[ControleTorreta] Missil disparado.");
+    }
+
+    void DispararMisselCorrigido()
+    {
+        Transform[] saidas = (locaisDoMissel != null && locaisDoMissel.Length > 0) ? locaisDoMissel : locaisDoTiro;
+        if (saidas == null || saidas.Length == 0) return;
+        if (indiceBarrilAtual >= saidas.Length) indiceBarrilAtual = 0;
+
+        Transform saida = saidas[indiceBarrilAtual % saidas.Length];
+        if (saida == null)
+        {
+            Debug.LogWarning($"[ControleTorreta] Local de saida do missil nulo em '{gameObject.name}'.", this);
+            return;
+        }
+
+        GameObject missel = Instantiate(misselPrefab, saida.position, saida.rotation);
+        Transform alvoResolvido = ResolverTransformAlvo(alvoAtual);
+        Vector3 posicaoPredita = ObterPosicaoPreditaAlvo(alvoResolvido);
+        bool inicializado = false;
+
+        MisselCaca misselCaca = missel.GetComponent<MisselCaca>();
+        if (misselCaca != null)
+        {
+            misselCaca.IniciarAtaque(posicaoPredita, CalcularVelocidadeInicialMissel(saida, posicaoPredita), alvoResolvido);
+            inicializado = true;
+        }
+        else
+        {
+            MisselNaval misselNaval = missel.GetComponent<MisselNaval>();
+            if (misselNaval != null)
+            {
+                misselNaval.IniciarAtaque(posicaoPredita, alvoResolvido);
+                inicializado = true;
+            }
+            else
+            {
+                MissilTeleguiado guiado = missel.GetComponent<MissilTeleguiado>();
+                if (guiado != null)
+                {
+                    guiado.DefinirAlvo(alvoResolvido);
+                    inicializado = true;
+                }
+                else
+                {
+                    MisselICBM icbm = missel.GetComponent<MisselICBM>();
+                    if (icbm != null)
+                    {
+                        icbm.IniciarLancamento(posicaoPredita);
+                        inicializado = true;
+                    }
+                }
+            }
+        }
+
+        if (!inicializado)
+            ConfigurarProjetilComoMissel(missel, saida, alvoResolvido, posicaoPredita);
+
+        if (somMissel != null && fonteAudio != null) fonteAudio.PlayOneShot(somMissel);
+        Debug.Log("Missil Disparado!");
     }
 
     void IniciarRecarga()
     {
         estaRecarregando = true;
         contadorTempo = tempoRecarga;
-        if (somRecarga != null) fonteAudio.PlayOneShot(somRecarga);
+        if (somRecarga != null && fonteAudio != null) fonteAudio.PlayOneShot(somRecarga);
     }
 
     void OnDrawGizmosSelected()
@@ -498,3 +897,4 @@ public class ControleTorreta : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position, alcance);
     }
 }
+

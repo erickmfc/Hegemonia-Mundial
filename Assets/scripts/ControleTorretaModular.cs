@@ -137,7 +137,7 @@ public class ControleTorretaModular : MonoBehaviour
                 }
             }
             // Fallback por tag
-            else if (hit.CompareTag(etiquetaAlvo) || hit.CompareTag("Inimigo"))
+            else if (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo"))
             {
                 ehInimigo = true;
             }
