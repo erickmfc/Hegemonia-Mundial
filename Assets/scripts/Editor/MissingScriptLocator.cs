@@ -76,6 +76,79 @@ public static class MissingScriptLocator
         }
     }
 
+    [MenuItem("Tools/Diagnostics/Remove Missing Scripts From Selection")]
+    private static void RemoveMissingScriptsFromSelection()
+    {
+        Object[] selectedObjects = Selection.objects;
+        if (selectedObjects == null || selectedObjects.Length == 0)
+        {
+            Debug.LogWarning("[MissingScriptLocator] Nada selecionado para limpar.");
+            return;
+        }
+
+        int totalRemoved = 0;
+        for (int i = 0; i < selectedObjects.Length; i++)
+        {
+            Object selected = selectedObjects[i];
+            if (selected == null)
+            {
+                continue;
+            }
+
+            GameObject selectedGameObject = selected as GameObject;
+            if (selectedGameObject != null)
+            {
+                totalRemoved += RemoveMissingScriptsRecursive(selectedGameObject);
+                continue;
+            }
+
+            string assetPath = AssetDatabase.GetAssetPath(selected);
+            if (string.IsNullOrEmpty(assetPath))
+            {
+                continue;
+            }
+
+            GameObject prefabRoot = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+            if (prefabRoot != null)
+            {
+                totalRemoved += RemoveMissingScriptsRecursive(prefabRoot);
+            }
+        }
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("[MissingScriptLocator] Scripts faltando removidos da selecao: " + totalRemoved);
+    }
+
+    [MenuItem("Tools/Diagnostics/Remove Missing Scripts From Open Scenes")]
+    private static void RemoveMissingScriptsFromOpenScenes()
+    {
+        int totalRemoved = 0;
+        for (int sceneIndex = 0; sceneIndex < SceneManager.sceneCount; sceneIndex++)
+        {
+            Scene scene = SceneManager.GetSceneAt(sceneIndex);
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                continue;
+            }
+
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                totalRemoved += RemoveMissingScriptsRecursive(roots[i]);
+            }
+        }
+
+        if (totalRemoved > 0)
+        {
+            Debug.LogWarning("[MissingScriptLocator] Scripts faltando removidos das cenas abertas: " + totalRemoved);
+        }
+        else
+        {
+            Debug.Log("[MissingScriptLocator] Nenhum script faltando precisou ser removido das cenas abertas.");
+        }
+    }
+
     private static int ScanHierarchy(string sceneName, GameObject root)
     {
         if (root == null)
@@ -145,5 +218,33 @@ public static class MissingScriptLocator
         }
 
         return path;
+    }
+
+    private static int RemoveMissingScriptsRecursive(GameObject root)
+    {
+        if (root == null)
+        {
+            return 0;
+        }
+
+        int removedHere = GameObjectUtility.RemoveMonoBehavioursWithMissingScript(root);
+        if (removedHere > 0)
+        {
+            Debug.LogWarning(
+                "[MissingScriptLocator] Missing scripts removidos | Objeto=" + GetHierarchyPath(root.transform)
+                + " | Removed=" + removedHere,
+                root);
+
+            EditorUtility.SetDirty(root);
+        }
+
+        int total = removedHere;
+        Transform transform = root.transform;
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            total += RemoveMissingScriptsRecursive(transform.GetChild(i).gameObject);
+        }
+
+        return total;
     }
 }

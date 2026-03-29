@@ -15,6 +15,7 @@ MonoBehaviour:
   nomeItem: USS Sovereign
   descricao: Porta-avioes de classe soberana. Capacidade de projecao de poder naval.
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 0}
+  prefabDaUnidade: {fileID: 8878861334362878399, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
   preco: 5000
   categoria: 1
+  scriptsDeComando: []

@@ -21,8 +21,6 @@ public sealed class MarcadorSuperficieMapa : MonoBehaviour
 {
     [Header("Tipo")]
     [SerializeField] private TipoSuperficieMapa tipoSuperficie = TipoSuperficieMapa.Agua;
-    [Tooltip("Se for global (ex: ociono inteiro), ele será considerado em qualquer ponto X/Z do mapa.")]
-    [SerializeField] public bool eSuperficieGlobal = false;
 
     [Header("Fonte")]
     [SerializeField] private bool usarCollidersDosFilhos = true;
@@ -110,8 +108,6 @@ public sealed class MarcadorSuperficieMapa : MonoBehaviour
 
     public bool ContainsXZ(Vector3 position, float padding = 0f)
     {
-        if (eSuperficieGlobal) return true;
-
         if (!_hasBounds)
         {
             return false;

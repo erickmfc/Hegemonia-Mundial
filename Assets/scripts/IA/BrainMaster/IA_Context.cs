@@ -12,5 +12,10 @@ namespace Hegemonia.AI.BrainMaster
         public IA_PerformanceScheduler Scheduler;
         public IA_DebugMonitor DebugMonitor;
         public IA_SquadDirector SquadDirector;
+        public IA_SemanticMapPlanner SemanticMapPlanner;
+        public IA_ZonePlanner ZonePlanner;
+        public IA_LotPlanner LotPlanner;
+        public IA_UrbanBuildValidator UrbanBuildValidator;
+        public IA_ConstructionPlanner ConstructionPlanner;
     }
 }

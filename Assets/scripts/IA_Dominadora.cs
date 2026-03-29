@@ -2552,126 +2552,6 @@ public class IA_Dominadora : MonoBehaviour
             pedidos.Add(new PedidoProducao { chave = chave, custo = custo, score = score, voa = voa, naval = naval });
     }
 
-        if (n.Contains("prefeitura") || n.Contains("complexo") || n.Contains("governo")) return "prefeitura";
-        if (n.Contains("quartel") || n.Contains("tenda") || n.Contains("barraca")) return "quartel";
-        if (n.Contains("fabrica") || n.Contains("construtor") || n.Contains("hangar")) return "fabrica";
-        if (n.Contains("refinaria") || n.Contains("mina") || n.Contains("petroleo")) return "refinaria";
-        if (n.Contains("torreta") || n.Contains("defesa") || n.Contains("canhao")) return "torreta";
-        if (n.Contains("antiaerea") || n.Contains("ares") || n.Contains("sam") || n.Contains("missil")) return "antiaerea";
-        if (n.Contains("aeroporto") || n.Contains("pista")) return "aeroporto";
-        if (n.Contains("estaleiro") || n.Contains("naval")) return "estaleiro";
-        if (n.Contains("pier") || n.Contains("porto")) return "pier";
-        if (n.Contains("plataforma")) return "plataforma";
-        if (n.Contains("soldado") || n.Contains("infantaria") || n.Contains("fuzileiro") || n.Contains("person")) return "soldado";
-        if (n.Contains("tanque") || n.Contains("tank") || n.Contains("blindado") || n.Contains("leopard")) return "tanque";
-        if (n.Contains("transporte_aereo") || n.Contains("ray") || n.Contains("guincho")) return "transporte_aereo";
-        if (n.Contains("helicoptero") || n.Contains("apache") || n.Contains("cobra") || n.Contains("heli")) return "helicoptero";
-        if (n.Contains("transporte") || n.Contains("caminhao") || n.Contains("truck")) return "transporte";
-        if (n.Contains("caca") || n.Contains("aviao") || n.Contains("jet") || n.Contains("tuk") || n.Contains("super") || n.Contains("g15")) return "caca";
-        if (n.Contains("submarino") || n.Contains("submarine")) return "submarino";
-        if (n.Contains("navio") || n.Contains("corveta") || n.Contains("fragata") || n.Contains("barco") || n.Contains("lancha") || n.Contains("marinha") || n.Contains("hovercraft") || n.Contains("hover") || n.Contains("wall")) return "navio";
-
-        return n.Trim();
-    }
-
-    List<ZonaIA> ObterZonasDeBusca(string chave)
-    {
-        TipoZona preferida = ObterZonaPreferida(chave);
-        List<ZonaIA> resultado = new List<ZonaIA>();
-
-        foreach (var zona in zonas) { if (zona.tipo == preferida) resultado.Add(zona); }
-
-        if (preferida != TipoZona.Naval)
-        {
-            foreach (var zona in zonas) { if (zona.tipo == TipoZona.Expansao && !resultado.Contains(zona)) resultado.Add(zona); }
-        }
-        return resultado;
-    }
-
-    List<PedidoProducao> MontarPedidosProducao()
-    {
-        List<PedidoProducao> pedidos = new List<PedidoProducao>();
-
-        bool temQuartel = Contar("quartel") > 0;
-        bool temFabrica = Contar("fabrica") > 0;
-        bool temAeroporto = Contar("aeroporto") > 0;
-        bool temNaval = EscolherEstruturaNaval() != null;
-
-        float rendaEstimada = rendaBase + Contar("refinaria") * 22f + Contar("plataforma") * 24f;
-        bool economiaFragil = rendaEstimada < 120f || dinheiroIA < 1000f;
-        bool guerraTotal = estadoAtual == EstadoIA.GuerraTotal;
-        bool defesaCritica = estadoAtual == EstadoIA.DefesaDesesperada;
-        float bonusNaval = zonas.Any(z => z.tipo == TipoZona.Naval) ? 45f : 0f;
-
-        int soldados = Contar("soldado");
-        int tanques = Contar("tanque");
-        int helicopteros = Contar("helicoptero");
-        int avioes = ContarAvioes();
-        int transportes = Contar("transporte");
-        int transportesAereos = Contar("transporte_aereo");
-        int navios = ContarNavios();
-        int submarinos = Contar("submarino");
-
-        if (temQuartel)
-        {
-            float scoreSoldado = Mathf.Max(0, metaSoldados - soldados) * 42f;
-            scoreSoldado += defesaCritica ? 110f : (guerraTotal ? 35f : 15f);
-            scoreSoldado += economiaFragil ? 20f : 0f;
-            AdicionarPedido(pedidos, "soldado", 150f, scoreSoldado, false, false);
-        }
-
-        if (temFabrica)
-        {
-            float scoreTanque = Mathf.Max(0, metaTanques - tanques) * 55f;
-            scoreTanque += guerraTotal ? 45f : 10f;
-            scoreTanque -= economiaFragil ? 70f : 0f;
-            AdicionarPedido(pedidos, "tanque", 600f, scoreTanque, false, false);
-
-            float scoreTransporte = transportes < 2 && soldados >= 6 ? 95f - transportes * 25f : 0f;
-            scoreTransporte += guerraTotal ? 10f : 0f;
-            AdicionarPedido(pedidos, "transporte", 400f, scoreTransporte, false, false);
-        }
-
-        if (temAeroporto)
-        {
-            float scoreHelicoptero = Mathf.Max(0, metaHelicopteros - helicopteros) * 45f;
-            scoreHelicoptero += defesaCritica ? 35f : 10f;
-            scoreHelicoptero -= economiaFragil ? 25f : 0f;
-            AdicionarPedido(pedidos, "helicoptero", 900f, scoreHelicoptero, true, false);
-
-            float scoreCaca = Mathf.Max(0, metaCacas - avioes) * 50f;
-            scoreCaca += forcaInimigaAerea * 70f;
-            scoreCaca -= economiaFragil ? 60f : 0f;
-            AdicionarPedido(pedidos, "caca", 1200f, scoreCaca, true, false);
-
-            float scoreTransporteAereo = transportesAereos < 2 && (guerraTotal || alvoJogadorEconomia != null) ? 90f - transportesAereos * 30f : 0f;
-            scoreTransporteAereo -= economiaFragil ? 20f : 0f;
-            AdicionarPedido(pedidos, "transporte_aereo", 400f, scoreTransporteAereo, true, false);
-        }
-
-        if (temNaval)
-        {
-            float scoreNavio = Mathf.Max(0, metaNavios - navios) * 60f + bonusNaval;
-            scoreNavio -= economiaFragil ? 50f : 0f;
-            AdicionarPedido(pedidos, "navio", 1500f, scoreNavio, false, true);
-
-            if (biblioteca.ContainsKey("submarino"))
-            {
-                float scoreSubmarino = Mathf.Max(0, metaSubmarinos - submarinos) * 65f + bonusNaval * 0.8f;
-                scoreSubmarino += guerraTotal ? 15f : 0f;
-                scoreSubmarino -= economiaFragil ? 65f : 0f;
-                AdicionarPedido(pedidos, "submarino", 2000f, scoreSubmarino, false, true);
-            }
-        }
-        return pedidos;
-    }
-
-    void AdicionarPedido(List<PedidoProducao> pedidos, string chave, float custo, float score, bool voa, bool naval)
-    {
-        if (score > 0f && biblioteca.ContainsKey(chave))
-            pedidos.Add(new PedidoProducao { chave = chave, custo = custo, score = score, voa = voa, naval = naval });
-    }
-
     bool ValidarPipelineConstrucao(string chave, Vector3 pos, TipoTerreno terrenoDetectado, float raioObj, out string motivo)
     {
         string chaveNormalizada = NormalizarChave(chave);
@@ -2682,6 +2562,8 @@ public class IA_Dominadora : MonoBehaviour
         bool ehNaval = EhNaval(chaveNormalizada);
         if (ehNaval)
         {
+            if (referenciaAgua != null && Mathf.Abs(pos.y - nivelDoMar) < 1.0f) terrenoDetectado = TipoTerreno.Agua;
+            
             if (terrenoDetectado != TipoTerreno.Agua) { motivo = "terreno invalido: naval fora da agua"; return false; }
             float margemNaval = Mathf.Max(24f, raioObj + 12f);
             if (referenciaAgua == null && !PosicaoNavalProfundaValida(pos, margemNaval)) { motivo = "agua invalida ou perto demais da costa"; return false; }

@@ -52,6 +52,7 @@ namespace Hegemonia.AI.BrainMaster
         [TextArea(3, 12)] public string RuntimeSummary = string.Empty;
         [TextArea(3, 12)] public string BootstrapStatus = string.Empty;
         [TextArea(2, 8)] public string BootstrapLastError = string.Empty;
+        [TextArea(4, 18)] public string NavalDiagnosticSummary = string.Empty;
 
         public IA_BootstrapStage BootstrapStage { get; private set; }
 
@@ -65,6 +66,11 @@ namespace Hegemonia.AI.BrainMaster
         private IA_MapAnalyzer _mapAnalyzer;
         private IA_PlayerProfileMemory _profileMemory;
         private IA_ThreatAnalyzer _threatAnalyzer;
+        private IA_SemanticMapPlanner _semanticMapPlanner;
+        private IA_ZonePlanner _zonePlanner;
+        private IA_LotPlanner _lotPlanner;
+        private IA_UrbanBuildValidator _urbanBuildValidator;
+        private IA_ConstructionPlanner _constructionPlanner;
         private IA_BuildDirector _buildDirector;
         private IA_ProductionDirector _productionDirector;
         private IA_SquadDirector _squadDirector;
@@ -119,6 +125,11 @@ namespace Hegemonia.AI.BrainMaster
                 Scheduler = _scheduler
             };
 
+            _semanticMapPlanner = new IA_SemanticMapPlanner(Context);
+            _zonePlanner = new IA_ZonePlanner(Context);
+            _urbanBuildValidator = new IA_UrbanBuildValidator(Context);
+            _lotPlanner = new IA_LotPlanner(Context);
+            _constructionPlanner = new IA_ConstructionPlanner(Context);
             _squadDirector = new IA_SquadDirector(Context);
             _buildDirector = new IA_BuildDirector(Context);
             _productionDirector = new IA_ProductionDirector(Context);
@@ -128,6 +139,11 @@ namespace Hegemonia.AI.BrainMaster
             _defenseDirector = new IA_DefenseDirector(Context);
 
             Context.SquadDirector = _squadDirector;
+            Context.SemanticMapPlanner = _semanticMapPlanner;
+            Context.ZonePlanner = _zonePlanner;
+            Context.LotPlanner = _lotPlanner;
+            Context.UrbanBuildValidator = _urbanBuildValidator;
+            Context.ConstructionPlanner = _constructionPlanner;
 
             _debugMonitor = new IA_DebugMonitor(this, _worldState, _commandQueue, _scheduler)
             {
@@ -159,8 +175,14 @@ namespace Hegemonia.AI.BrainMaster
                                  + " | Bootstrap=" + BootstrapStage
                                  + " | BootstrapStatus=" + BootstrapStatus
                                  + (string.IsNullOrEmpty(BootstrapLastError) ? string.Empty : " | BootstrapError=" + BootstrapLastError);
+                NavalDiagnosticSummary = IA_NavalBuildDiagnostics.GetInspectorSummary(this);
                 _nextRuntimeSummaryTime = Time.unscaledTime + 0.6f;
             }
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            IA_NavalBuildDiagnostics.DrawGizmos(this);
         }
 
         public bool TrySpend(int amount)
@@ -197,13 +219,17 @@ namespace Hegemonia.AI.BrainMaster
             _scheduler.Register(_mapAnalyzer, now, 0.07f);
             _scheduler.Register(_profileMemory, now, 0.09f);
             _scheduler.Register(_threatAnalyzer, now, 0.11f);
-            _scheduler.Register(_buildDirector, now, 0.14f);
-            _scheduler.Register(_productionDirector, now, 0.18f);
-            _scheduler.Register(_squadDirector, now, 0.21f);
-            _scheduler.Register(_tacticalDirector, now, 0.24f);
-            _scheduler.Register(_navalDirector, now, 0.27f);
-            _scheduler.Register(_airDirector, now, 0.30f);
-            _scheduler.Register(_defenseDirector, now, 0.33f);
+            _scheduler.Register(_semanticMapPlanner, now, 0.125f);
+            _scheduler.Register(_zonePlanner, now, 0.14f);
+            _scheduler.Register(_lotPlanner, now, 0.155f);
+            _scheduler.Register(_constructionPlanner, now, 0.17f);
+            _scheduler.Register(_buildDirector, now, 0.19f);
+            _scheduler.Register(_productionDirector, now, 0.22f);
+            _scheduler.Register(_squadDirector, now, 0.25f);
+            _scheduler.Register(_tacticalDirector, now, 0.28f);
+            _scheduler.Register(_navalDirector, now, 0.31f);
+            _scheduler.Register(_airDirector, now, 0.34f);
+            _scheduler.Register(_defenseDirector, now, 0.37f);
             _scheduler.Register(_debugMonitor, now, 0.45f);
         }
 

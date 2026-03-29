@@ -780,13 +780,7 @@ namespace Hegemonia.AI.BrainMaster
 
             if (IsOffshorePlatform(data) || IsNaval(data) || RequiresCoastalPlacement(data))
             {
-                if (owner != _teamId)
-                {
-                    reason = owner == 0 ? "territorio costeiro nao reivindicado" : "jurisdicao inimiga";
-                    return false;
-                }
-
-                return true;
+                return ValidateCoastalTerritoryRules(position, territory, owner, out reason);
             }
 
             if (owner != _teamId)
@@ -796,6 +790,105 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return true;
+        }
+
+        private bool ValidateCoastalTerritoryRules(
+            Vector3 position,
+            GerenteDeTerritorio territory,
+            int owner,
+            out string reason)
+        {
+            reason = string.Empty;
+
+            if (owner == _teamId)
+            {
+                return true;
+            }
+
+            if (owner != 0)
+            {
+                reason = "jurisdicao inimiga";
+                return false;
+            }
+
+            float nearestFriendlyDistance;
+            float nearestEnemyDistance;
+            bool hasFriendlyTerritory = TryFindNearbyTerritory(territory, position, true, 420f, out nearestFriendlyDistance);
+            bool hasEnemyTerritory = TryFindNearbyTerritory(territory, position, false, 420f, out nearestEnemyDistance);
+
+            if (hasFriendlyTerritory && (!hasEnemyTerritory || nearestFriendlyDistance + 8f < nearestEnemyDistance))
+            {
+                return true;
+            }
+
+            if (hasEnemyTerritory && (!hasFriendlyTerritory || nearestEnemyDistance <= nearestFriendlyDistance + 8f))
+            {
+                reason = "costa sob pressao inimiga | inimigo=" + Mathf.RoundToInt(nearestEnemyDistance) + "m";
+                return false;
+            }
+
+            if (hasFriendlyTerritory)
+            {
+                reason = "costa neutra distante da nossa fronteira | costa_propria=" + Mathf.RoundToInt(nearestFriendlyDistance) + "m";
+                return false;
+            }
+
+            reason = "territorio costeiro nao reivindicado | sem fronteira amiga proxima";
+            return false;
+        }
+
+        private bool TryFindNearbyTerritory(
+            GerenteDeTerritorio territory,
+            Vector3 center,
+            bool friendly,
+            float maxRadius,
+            out float nearestDistance)
+        {
+            nearestDistance = float.MaxValue;
+            if (territory == null)
+            {
+                return false;
+            }
+
+            float[] radii = { 0f, 16f, 32f, 48f, 72f, 96f, 128f, 160f, 192f, 224f, 256f, 320f, 384f, 420f };
+            for (int r = 0; r < radii.Length; r++)
+            {
+                float radius = radii[r];
+                if (radius > maxRadius)
+                {
+                    continue;
+                }
+
+                int samples = radius <= 0.01f ? 1 : 16;
+                for (int i = 0; i < samples; i++)
+                {
+                    Vector3 probe = center;
+                    if (samples > 1)
+                    {
+                        float angle = ((360f / samples) * i) * Mathf.Deg2Rad;
+                        probe += new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+                    }
+
+                    int probeOwner = territory.ObterDonoDoPonto(probe);
+                    bool matches = friendly
+                        ? probeOwner == _teamId
+                        : probeOwner != 0 && probeOwner != _teamId;
+                    if (!matches)
+                    {
+                        continue;
+                    }
+
+                    Vector3 delta = probe - center;
+                    delta.y = 0f;
+                    float distance = delta.magnitude;
+                    if (distance < nearestDistance)
+                    {
+                        nearestDistance = distance;
+                    }
+                }
+            }
+
+            return nearestDistance < float.MaxValue;
         }
 
         private static GerenteDeTerritorio EnsureTerritoryManager()

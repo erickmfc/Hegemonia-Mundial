@@ -3,27 +3,27 @@ using System.Collections.Generic;
 
 public class SistemaAntiMissil : MonoBehaviour
 {
-    [Header("Radar & Alcance (Defesa de Área)")]
-    [Tooltip("Raio de detecção do radar para defender o navio e todos os aliados próximos.")]
+    [Header("Radar & Alcance (Defesa de Area)")]
+    [Tooltip("Raio de deteccao do radar para defender o navio e todos os aliados proximos.")]
     public float alcanceRadar = 180f;
     [Tooltip("Tempo em segundos entre cada checagem do radar (ex: 0.3s)")]
     public float tempoDeEscaneamento = 0.3f;
 
-    [Header("Mecânica da Torreta")]
+    [Header("Mecanica da Torreta")]
     [Tooltip("Base que gira para os lados (Yaw)")]
-    public Transform baseGiratoria; 
-    [Tooltip("Peça que vira para cima/baixo (Pitch)")]
-    public Transform canoElevacao;  
+    public Transform baseGiratoria;
+    [Tooltip("Peca que vira para cima/baixo (Pitch)")]
+    public Transform canoElevacao;
     public float velocidadeGiro = 60f;
 
     [Header("Sistema de Disparo")]
-    [Tooltip("Prefab do míssil que vai abater o outro míssil (Interceptador).")]
+    [Tooltip("Prefab do missil que vai abater o outro missil (Interceptador).")]
     public GameObject prefabIntercepador;
-    [Tooltip("Zonas de onde o míssil interceptador vai sair.")]
+    [Tooltip("Zonas de onde o missil interceptador vai sair.")]
     public Transform[] pontosDeSaida;
-    [Tooltip("Cadência de tiro. Tempo entre disparar um interceptador e outro.")]
+    [Tooltip("Cadencia de tiro. Tempo entre disparar um interceptador e outro.")]
     public float tempoEntreTiros = 0.8f;
-    [Tooltip("Capacidade de Mísseis prontos. Quantidade antes de iniciar a recarga cheia.")]
+    [Tooltip("Capacidade de misseis prontos. Quantidade antes de iniciar a recarga cheia.")]
     public int capacidadeMisseis = 10;
     public float tempoRecargaMisseis = 5f;
 
@@ -32,16 +32,17 @@ public class SistemaAntiMissil : MonoBehaviour
     private AudioSource audioSource;
 
     [Header("Comportamento")]
-    [Tooltip("Se ativado, o sistema não intercepta mísseis automaticamente (modo Ocioso).")]
+    [Tooltip("Se ativado, o sistema nao intercepta misseis automaticamente (modo Ocioso).")]
     public bool modoPassivo = false;
 
-    // Variáveis Internas
     private Transform alvoMissilAtual;
     private IdentidadeUnidade minhaIdentidade;
     private float cooldownDisparo = 0f;
     private int misseisAtuais;
     private bool recarregando = false;
     private int indexSaida = 0;
+    private readonly HashSet<Transform> bufferMisseisUnicos = new HashSet<Transform>();
+    private readonly HashSet<Transform> bufferAliadosUnicos = new HashSet<Transform>();
 
     void Start()
     {
@@ -50,7 +51,6 @@ public class SistemaAntiMissil : MonoBehaviour
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
         if (minhaIdentidade == null)
         {
-            // Cria uma identidade se a torreta não pertencer a ninguém
             minhaIdentidade = gameObject.AddComponent<IdentidadeUnidade>();
             minhaIdentidade.teamID = 1;
         }
@@ -59,13 +59,11 @@ public class SistemaAntiMissil : MonoBehaviour
         if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.spatialBlend = 1f;
 
-        // Começa a varredura do radar de forma otimizada para não travar o jogo
         InvokeRepeating(nameof(ProcurarAmeacaMisseis), Random.Range(0f, 0.5f), tempoDeEscaneamento);
     }
 
     void Update()
     {
-        // Lógica de Recarga
         if (cooldownDisparo > 0f) cooldownDisparo -= Time.deltaTime;
 
         if (recarregando)
@@ -75,23 +73,19 @@ public class SistemaAntiMissil : MonoBehaviour
                 misseisAtuais = capacidadeMisseis;
                 recarregando = false;
             }
-            return; // Espera terminar a recarga sem atirar
+            return;
         }
 
         if (alvoMissilAtual != null)
         {
-            // O alvo explodiu, sumiu ou saiu muito da área? Descarta!
-            if (!alvoMissilAtual.gameObject.activeInHierarchy || 
-                Vector3.Distance(transform.position, alvoMissilAtual.position) > (alcanceRadar * 1.5f))
+            if (!AlvoMissilAtualAindaEhValido())
             {
                 alvoMissilAtual = null;
                 return;
             }
 
-            // Gira no alvo
             Mirar();
 
-            // Atirar se estiver alinhado e arma carregada
             if (cooldownDisparo <= 0f && MirouEmCheio())
             {
                 if (misseisAtuais > 0)
@@ -110,7 +104,6 @@ public class SistemaAntiMissil : MonoBehaviour
         }
         else
         {
-            // Ficar vigiando (Radar)
             ModoOcioso();
         }
     }
@@ -119,18 +112,15 @@ public class SistemaAntiMissil : MonoBehaviour
     {
         if (baseGiratoria != null)
         {
-            baseGiratoria.Rotate(0, 30f * Time.deltaTime, 0, Space.Self);
+            baseGiratoria.Rotate(0f, 30f * Time.deltaTime, 0f, Space.Self);
         }
-        
+
         if (canoElevacao != null)
         {
             canoElevacao.localRotation = Quaternion.Lerp(canoElevacao.localRotation, Quaternion.identity, Time.deltaTime * 5f);
         }
     }
 
-    /// <summary>
-    /// Escaneia a área procurando qualquer objeto que seja um míssil ameaçando a nós ou aos aliados na área de suporte.
-    /// </summary>
     void ProcurarAmeacaMisseis()
     {
         if (modoPassivo)
@@ -139,44 +129,48 @@ public class SistemaAntiMissil : MonoBehaviour
             return;
         }
 
-        // Se a ameaça já for válida, nem gasta CPU procurando mais
-        if (alvoMissilAtual != null && alvoMissilAtual.gameObject.activeInHierarchy) return;
+        if (AlvoMissilAtualAindaEhValido()) return;
+
+        alvoMissilAtual = null;
 
         Collider[] objetosNaArea = Physics.OverlapSphere(transform.position, alcanceRadar);
-        
+
         List<Transform> misseisDetectados = new List<Transform>();
         List<Transform> aliadosNaArea = new List<Transform>();
-        
-        // Garante que a gente também proteja o próprio navio/estrutura
-        aliadosNaArea.Add(transform.root); 
+        bufferMisseisUnicos.Clear();
+        bufferAliadosUnicos.Clear();
 
-        // 1. Separar o que é míssil e o que é alidado protegido
+        Transform minhaRaiz = transform.root != null ? transform.root : transform;
+        aliadosNaArea.Add(minhaRaiz);
+        bufferAliadosUnicos.Add(minhaRaiz);
+
         foreach (Collider col in objetosNaArea)
         {
+            if (col == null) continue;
+
+            Transform tr = ResolverTransformoRaiz(col.transform);
+            if (tr == null) continue;
+
+            if (EhMissil(tr))
+            {
+                if (bufferMisseisUnicos.Add(tr))
+                {
+                    misseisDetectados.Add(tr);
+                }
+                continue;
+            }
+
             if (col.isTrigger) continue;
 
-            Transform tr = col.transform;
+            IdentidadeUnidade id = tr.GetComponentInParent<IdentidadeUnidade>();
+            if (id == null) continue;
 
-            string tagStr = col.tag;
-            string nomeLC = tr.name.ToLower();
-
-            bool ehMissil = tagStr == "Missil" || 
-                            nomeLC.Contains("missil") || 
-                            nomeLC.Contains("projetil") || 
-                            tr.GetComponent<Projetil>() != null || 
-                            tr.GetComponentInParent<Projetil>() != null;
-
-            if (ehMissil)
+            if (id.teamID == minhaIdentidade.teamID || minhaIdentidade.teamID == 0)
             {
-                misseisDetectados.Add(tr);
-            }
-            else
-            {
-                IdentidadeUnidade id = tr.GetComponentInParent<IdentidadeUnidade>();
-                if (id != null && (id.teamID == minhaIdentidade.teamID || minhaIdentidade.teamID == 0))
+                Transform raizAliada = id.transform.root != null ? id.transform.root : id.transform;
+                if (bufferAliadosUnicos.Add(raizAliada))
                 {
-                    if (!aliadosNaArea.Contains(id.transform.root)) 
-                        aliadosNaArea.Add(id.transform.root);
+                    aliadosNaArea.Add(raizAliada);
                 }
             }
         }
@@ -184,59 +178,64 @@ public class SistemaAntiMissil : MonoBehaviour
         float menorDistancia = Mathf.Infinity;
         Transform melhorMissilAlvo = null;
 
-        // 2. Verificar cada míssil detectado se é perigoso (Ameaça)
         foreach (Transform missil in misseisDetectados)
         {
-            Vector3 posMissil = missil.position;
-            Vector3 dirMissil = missil.forward;
+            if (missil == null) continue;
 
-            // (A) Ignorar mísseis "amigos" (Ex: um navio aliado que atirou um míssil e ele ainda tá perto)
-            bool interceptarIgnorarPorSerAliado = false;
+            Vector3 posMissil = missil.position;
+            Vector3 dirMissil = ObterDirecaoMissil(missil);
+
+            bool ignorarPorSerAliado = false;
             foreach (Transform aliado in aliadosNaArea)
             {
                 if (aliado == null) continue;
-                Vector3 dirProAliado = aliado.position - posMissil; 
+
+                Vector3 dirProAliado = aliado.position - posMissil;
                 float distAteAmigo = dirProAliado.magnitude;
-                
-                if (distAteAmigo < 25f) // Nasceu no amigo agora
+
+                if (distAteAmigo < 25f && dirProAliado.sqrMagnitude > 0.001f)
                 {
-                    // Se o míssil foca em afastar do amigo (foi disparado) a gente não deve abater ele
-                    if (Vector3.Dot(dirMissil, dirProAliado.normalized) < -0.3f) 
+                    if (Vector3.Dot(dirMissil, dirProAliado.normalized) < -0.3f)
                     {
-                        interceptarIgnorarPorSerAliado = true;
+                        ignorarPorSerAliado = true;
                         break;
                     }
                 }
             }
 
-            if (interceptarIgnorarPorSerAliado) continue; // Pula este míssil, ele é "dos nossos"
+            if (ignorarPorSerAliado) continue;
 
-            // (B) Este míssil é uma ameaça para a zona de suporte aliados?
-            bool ehAmeaça = false;
+            bool ehAmeaca = false;
             foreach (Transform aliado in aliadosNaArea)
             {
                 if (aliado == null) continue;
-                
-                Vector3 dirProAliado = (aliado.position - posMissil).normalized;
-                
-                // Míssil apontando na direção de algum aliado de perto ou de longe (ângulo de 90°)
+
+                Vector3 vetorParaAliado = aliado.position - posMissil;
+                if (vetorParaAliado.sqrMagnitude <= 0.001f)
+                {
+                    ehAmeaca = true;
+                    break;
+                }
+
+                Vector3 dirProAliado = vetorParaAliado.normalized;
                 if (Vector3.Dot(dirMissil, dirProAliado) > 0.4f)
                 {
-                    ehAmeaça = true;
+                    ehAmeaca = true;
                     break;
                 }
             }
 
-            // Mísseis soltos varrendo a área super próximos também são perigo iminente (raio crítico de 45m)
-            if (!ehAmeaça && Vector3.Distance(transform.position, posMissil) < 45f) ehAmeaça = true;
-
-            if (ehAmeaça)
+            if (!ehAmeaca && Vector3.Distance(transform.position, posMissil) < 45f)
             {
-                float d = Vector3.Distance(transform.position, posMissil);
-                // Dá prioridade pro míssil inimigo mais próximo de mim pra abater logo!
-                if (d < menorDistancia)
+                ehAmeaca = true;
+            }
+
+            if (ehAmeaca)
+            {
+                float distancia = Vector3.Distance(transform.position, posMissil);
+                if (distancia < menorDistancia)
                 {
-                    menorDistancia = d;
+                    menorDistancia = distancia;
                     melhorMissilAlvo = missil;
                 }
             }
@@ -245,30 +244,10 @@ public class SistemaAntiMissil : MonoBehaviour
         alvoMissilAtual = melhorMissilAlvo;
     }
 
-    /// <summary>
-    /// Calcula o ponto imaginário para a torreta já ir virando antes da hora para compensar a velocidade supersônica do míssil
-    /// </summary>
     Vector3 PreverPosicaoAlvoSuperSonia()
     {
         if (alvoMissilAtual == null) return transform.position;
-
-        Rigidbody rb = alvoMissilAtual.GetComponentInParent<Rigidbody>();
-        
-        // Pega velocidade física ou deduz uma bruta (ex 80 m/s)
-        Vector3 velLinear = (rb != null && !rb.isKinematic) ? rb.linearVelocity : (alvoMissilAtual.forward * 80f);
-
-        float d = Vector3.Distance(transform.position, alvoMissilAtual.position);
-        
-        // Simula o tempo que a nossa bala ia levar para acertar a frente
-        float velInterceptador = 150f;
-        if (prefabIntercepador != null)
-        {
-            Projetil proj = prefabIntercepador.GetComponent<Projetil>();
-            if (proj != null && proj.velocidade > 0f) velInterceptador = proj.velocidade;
-        }
-
-        float tempo = d / velInterceptador;
-        return alvoMissilAtual.position + (velLinear * tempo);
+        return ObterPosicaoPreditaIntercepcao(alvoMissilAtual, null);
     }
 
     void Mirar()
@@ -278,7 +257,7 @@ public class SistemaAntiMissil : MonoBehaviour
         if (baseGiratoria != null)
         {
             Vector3 dirBase = posFuturaMortal - baseGiratoria.position;
-            dirBase.y = 0; // Trava o eixo Y nela
+            dirBase.y = 0f;
             if (dirBase != Vector3.zero)
             {
                 Quaternion rotAlvo = Quaternion.LookRotation(dirBase);
@@ -301,20 +280,26 @@ public class SistemaAntiMissil : MonoBehaviour
     {
         Vector3 posFutura = PreverPosicaoAlvoSuperSonia();
 
-        // Tolerâncias altas (ex: 40 graus) pro tiro sair fácil. Mísseis são muito velozes pra torreta cravar no milímetro
         if (baseGiratoria != null)
         {
-            Vector3 dir = (posFutura - baseGiratoria.position);
-            dir.y = 0;
+            Vector3 dir = posFutura - baseGiratoria.position;
+            dir.y = 0f;
             Vector3 frente = baseGiratoria.forward;
-            frente.y = 0;
-            if (Vector3.Angle(frente, dir.normalized) > 40f) return false;
+            frente.y = 0f;
+
+            if (dir.sqrMagnitude > 0.001f && Vector3.Angle(frente, dir.normalized) > 40f)
+            {
+                return false;
+            }
         }
 
         if (canoElevacao != null)
         {
-            Vector3 dir = (posFutura - canoElevacao.position).normalized;
-            if (Vector3.Angle(canoElevacao.forward, dir) > 40f) return false;
+            Vector3 dir = posFutura - canoElevacao.position;
+            if (dir.sqrMagnitude > 0.001f && Vector3.Angle(canoElevacao.forward, dir.normalized) > 40f)
+            {
+                return false;
+            }
         }
 
         return true;
@@ -330,18 +315,92 @@ public class SistemaAntiMissil : MonoBehaviour
         if (saidaDaVez == null) return;
 
         GameObject missilGerado = Instantiate(prefabIntercepador, saidaDaVez.position, saidaDaVez.rotation);
-        
-        Projetil p = missilGerado.GetComponent<Projetil>();
-        if (p != null)
-        {
-            p.SetDono(transform.root.gameObject); // Pra não estourar a gente no ato
-            
-            // Foco 100% no míssil inimigo capturado (Míssil cassando Míssil!)
-            p.SetAlvo(alvoMissilAtual);
+        IgnorarColisaoComOrigem(missilGerado);
 
-            // Um míssil interceptador precisa curvar violento e ser rápido para derrubar outro míssil caindo
-            if (p.curvaDePerseguicao < 90f) p.curvaDePerseguicao = 150f; 
-            if (p.velocidade < 100f) p.velocidade = 200f; // Muito Supersônico
+        Transform alvoResolvido = ResolverTransformAlvo(alvoMissilAtual);
+        Vector3 posicaoPredita = ObterPosicaoPreditaIntercepcao(alvoResolvido, saidaDaVez);
+        bool inicializado = false;
+
+        Projetil projetil = missilGerado.GetComponent<Projetil>();
+        if (projetil != null)
+        {
+            Transform minhaRaiz = transform.root != null ? transform.root : transform;
+            projetil.SetDono(minhaRaiz.gameObject);
+            projetil.SetAlvo(alvoResolvido);
+
+            Vector3 direcaoInicial = posicaoPredita - saidaDaVez.position;
+            if (direcaoInicial.sqrMagnitude > 0.001f)
+            {
+                projetil.SetDirecao(direcaoInicial.normalized);
+            }
+
+            if (projetil.curvaDePerseguicao < 90f) projetil.curvaDePerseguicao = 150f;
+            if (projetil.velocidade < 100f) projetil.velocidade = 200f;
+            inicializado = true;
+        }
+        else
+        {
+            MisselCaca misselCaca = missilGerado.GetComponent<MisselCaca>();
+            if (misselCaca != null)
+            {
+                misselCaca.IniciarAtaque(posicaoPredita, CalcularVelocidadeInicialInterceptador(saidaDaVez, posicaoPredita), alvoResolvido);
+                inicializado = true;
+            }
+            else
+            {
+                MisselNaval misselNaval = missilGerado.GetComponent<MisselNaval>();
+                if (misselNaval != null)
+                {
+                    misselNaval.IniciarAtaque(posicaoPredita, alvoResolvido);
+                    inicializado = true;
+                }
+                else
+                {
+                    MisselSubmarino misselSubmarino = missilGerado.GetComponent<MisselSubmarino>();
+                    if (misselSubmarino != null)
+                    {
+                        bool nasceuSubmerso = missilGerado.transform.position.y < 0f;
+                        misselSubmarino.IniciarLancamento(posicaoPredita, nasceuSubmerso);
+                        inicializado = true;
+                    }
+                    else
+                    {
+                        MisselICBM misselIcbm = missilGerado.GetComponent<MisselICBM>();
+                        if (misselIcbm != null)
+                        {
+                            misselIcbm.IniciarLancamento(posicaoPredita);
+                            inicializado = true;
+                        }
+                        else
+                        {
+                            MissilTeleguiado missilGuiado = missilGerado.GetComponent<MissilTeleguiado>();
+                            if (missilGuiado != null)
+                            {
+                                missilGuiado.DefinirAlvo(alvoResolvido);
+                                inicializado = true;
+                            }
+                            else
+                            {
+                                MisselLeopardAutomatico misselLeopard = missilGerado.GetComponent<MisselLeopardAutomatico>();
+                                if (misselLeopard != null)
+                                {
+                                    misselLeopard.DefinirAlvo(alvoResolvido);
+                                    inicializado = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!inicializado)
+        {
+            Vector3 direcaoFallback = posicaoPredita - saidaDaVez.position;
+            if (direcaoFallback.sqrMagnitude > 0.001f)
+            {
+                missilGerado.transform.rotation = Quaternion.LookRotation(direcaoFallback.normalized);
+            }
         }
 
         if (somDisparo != null && audioSource != null)
@@ -350,15 +409,181 @@ public class SistemaAntiMissil : MonoBehaviour
         }
     }
 
+    bool AlvoMissilAtualAindaEhValido()
+    {
+        if (alvoMissilAtual == null) return false;
+        if (!alvoMissilAtual.gameObject.activeInHierarchy) return false;
+        if (!EhMissil(alvoMissilAtual)) return false;
+        return Vector3.Distance(transform.position, alvoMissilAtual.position) <= (alcanceRadar * 1.5f);
+    }
+
+    Transform ResolverTransformoRaiz(Transform origem)
+    {
+        if (origem == null) return null;
+
+        Rigidbody rb = origem.GetComponentInParent<Rigidbody>();
+        if (rb != null) return rb.transform;
+
+        return origem.root != null ? origem.root : origem;
+    }
+
+    Transform ResolverTransformAlvo(Transform alvo)
+    {
+        if (alvo == null) return null;
+
+        Rigidbody rb = alvo.GetComponentInParent<Rigidbody>();
+        if (rb != null) return rb.transform;
+
+        Projetil projetil = alvo.GetComponentInParent<Projetil>();
+        if (projetil != null) return projetil.transform;
+
+        return alvo.root != null ? alvo.root : alvo;
+    }
+
+    bool EhMissil(Transform tr)
+    {
+        if (tr == null) return false;
+
+        string nomeLC = tr.name.ToLowerInvariant();
+        string tagStr = tr.gameObject.tag;
+
+        if (tagStr == "Missil") return true;
+
+        if (nomeLC.Contains("missil") || nomeLC.Contains("missel") || nomeLC.Contains("projetil"))
+            return true;
+
+        return PossuiScriptDeMissil(tr);
+    }
+
+    bool PossuiScriptDeMissil(Transform tr)
+    {
+        return tr.GetComponentInParent<Projetil>() != null ||
+               tr.GetComponentInParent<MisselNaval>() != null ||
+               tr.GetComponentInParent<MisselCaca>() != null ||
+               tr.GetComponentInParent<MisselSubmarino>() != null ||
+               tr.GetComponentInParent<MisselICBM>() != null ||
+               tr.GetComponentInParent<MisselLeopardAutomatico>() != null ||
+               tr.GetComponentInParent<MissilTeleguiado>() != null;
+    }
+
+    Vector3 ObterDirecaoMissil(Transform missil)
+    {
+        if (missil == null) return transform.forward;
+
+        Rigidbody rb = missil.GetComponentInParent<Rigidbody>();
+        if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
+        {
+            return rb.linearVelocity.normalized;
+        }
+
+        if (missil.forward.sqrMagnitude > 0.01f)
+        {
+            return missil.forward.normalized;
+        }
+
+        Vector3 fallback = transform.position - missil.position;
+        return fallback.sqrMagnitude > 0.01f ? fallback.normalized : transform.forward;
+    }
+
+    float ObterVelocidadeInterceptador()
+    {
+        if (prefabIntercepador == null) return 150f;
+
+        Projetil projetil = prefabIntercepador.GetComponent<Projetil>();
+        if (projetil != null && projetil.velocidade > 0f) return projetil.velocidade;
+
+        MisselNaval misselNaval = prefabIntercepador.GetComponent<MisselNaval>();
+        if (misselNaval != null) return Mathf.Max(misselNaval.velocidadeCruzeiro, misselNaval.velocidadeMergulho);
+
+        MisselCaca misselCaca = prefabIntercepador.GetComponent<MisselCaca>();
+        if (misselCaca != null) return misselCaca.velocidadeMaxima;
+
+        MisselSubmarino misselSubmarino = prefabIntercepador.GetComponent<MisselSubmarino>();
+        if (misselSubmarino != null) return Mathf.Max(misselSubmarino.velocidadeMaxima, misselSubmarino.velocidadeTurbo);
+
+        MisselLeopardAutomatico misselLeopard = prefabIntercepador.GetComponent<MisselLeopardAutomatico>();
+        if (misselLeopard != null) return Mathf.Max(misselLeopard.velocidadeMaxima, misselLeopard.velocidadeTurbo);
+
+        MisselICBM misselIcbm = prefabIntercepador.GetComponent<MisselICBM>();
+        if (misselIcbm != null) return misselIcbm.velocidade;
+
+        MissilTeleguiado missilGuiado = prefabIntercepador.GetComponent<MissilTeleguiado>();
+        if (missilGuiado != null) return missilGuiado.velocidade;
+
+        return 150f;
+    }
+
+    Vector3 ObterPosicaoPreditaIntercepcao(Transform alvo, Transform origemDisparo)
+    {
+        if (alvo == null) return transform.position;
+
+        Vector3 origem = origemDisparo != null ? origemDisparo.position : transform.position;
+        Vector3 velocidadeAlvo;
+
+        Rigidbody rb = alvo.GetComponentInParent<Rigidbody>();
+        if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
+        {
+            velocidadeAlvo = rb.linearVelocity;
+        }
+        else
+        {
+            velocidadeAlvo = ObterDirecaoMissil(alvo) * 80f;
+        }
+
+        float distancia = Vector3.Distance(origem, alvo.position);
+        float velocidadeInterceptador = Mathf.Max(ObterVelocidadeInterceptador(), 1f);
+        float tempoInterceptacao = distancia / velocidadeInterceptador;
+
+        return alvo.position + (velocidadeAlvo * tempoInterceptacao);
+    }
+
+    Vector3 CalcularVelocidadeInicialInterceptador(Transform saida, Vector3 posicaoAlvo)
+    {
+        if (saida == null) return transform.forward * 40f;
+
+        Vector3 direcaoInicial = posicaoAlvo - saida.position;
+        if (direcaoInicial.sqrMagnitude <= 0.001f)
+        {
+            direcaoInicial = saida.forward.sqrMagnitude > 0.001f ? saida.forward : transform.forward;
+        }
+
+        direcaoInicial.Normalize();
+
+        Rigidbody rbOrigem = transform.root != null ? transform.root.GetComponent<Rigidbody>() : null;
+        Vector3 velocidadeOrigem = rbOrigem != null ? rbOrigem.linearVelocity : Vector3.zero;
+        float velocidadeBase = Mathf.Max(ObterVelocidadeInterceptador() * 0.6f, 40f);
+
+        return velocidadeOrigem + (direcaoInicial * velocidadeBase);
+    }
+
+    void IgnorarColisaoComOrigem(GameObject missilGerado)
+    {
+        if (missilGerado == null) return;
+
+        Transform minhaRaiz = transform.root != null ? transform.root : transform;
+        Collider[] collidersOrigem = minhaRaiz.GetComponentsInChildren<Collider>();
+        Collider[] collidersMissil = missilGerado.GetComponentsInChildren<Collider>();
+
+        foreach (Collider colOrigem in collidersOrigem)
+        {
+            if (colOrigem == null) continue;
+
+            foreach (Collider colMissil in collidersMissil)
+            {
+                if (colMissil == null) continue;
+                Physics.IgnoreCollision(colOrigem, colMissil, true);
+            }
+        }
+    }
+
     public void DefinirModoAtivo(bool ativo)
     {
-        modoPassivo = !ativo; 
+        modoPassivo = !ativo;
         if (modoPassivo) alvoMissilAtual = null;
     }
 
     void OnDrawGizmosSelected()
     {
-        // Visualizador no Unity Editor pro Level Designer ver o tamanho da "Bolha de Defesa"
         Gizmos.color = new Color(0f, 0.8f, 1f, 0.2f);
         Gizmos.DrawWireSphere(transform.position, alcanceRadar);
     }

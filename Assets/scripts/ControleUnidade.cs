@@ -426,6 +426,108 @@ public class ControleUnidade : MonoBehaviour
         return 0f;
     }
 
+    public bool EhUnidadeNaval()
+    {
+        return GetComponent<IdentidadeNaval>() != null ||
+               TryGetComponent<ControleNavioRealista>(out _) ||
+               TryGetComponent<NavegacaoInteligenteNaval>(out _) ||
+               TryGetComponent<ControleSubmarino>(out _) ||
+               TryGetComponent<NavioPetroleiro>(out _);
+    }
+
+    public bool DefinirModoCombate(bool ativo)
+    {
+        bool alterouAlgo = false;
+
+        ControleTorreta[] torretas = GetComponentsInChildren<ControleTorreta>(true);
+        for (int i = 0; i < torretas.Length; i++)
+        {
+            ControleTorreta torreta = torretas[i];
+            if (torreta == null) continue;
+            torreta.DefinirModoAtivo(ativo);
+            alterouAlgo = true;
+        }
+
+        ControleTorretaModular[] torretasModulares = GetComponentsInChildren<ControleTorretaModular>(true);
+        for (int i = 0; i < torretasModulares.Length; i++)
+        {
+            ControleTorretaModular torreta = torretasModulares[i];
+            if (torreta == null) continue;
+            torreta.DefinirModoAtivo(ativo);
+            alterouAlgo = true;
+        }
+
+        SistemaAntiMissil[] sistemasAntiMissil = GetComponentsInChildren<SistemaAntiMissil>(true);
+        for (int i = 0; i < sistemasAntiMissil.Length; i++)
+        {
+            SistemaAntiMissil sistema = sistemasAntiMissil[i];
+            if (sistema == null) continue;
+            sistema.DefinirModoAtivo(ativo);
+            alterouAlgo = true;
+        }
+
+        SistemaDeTiro[] sistemasDeTiro = GetComponentsInChildren<SistemaDeTiro>(true);
+        for (int i = 0; i < sistemasDeTiro.Length; i++)
+        {
+            SistemaDeTiro sistema = sistemasDeTiro[i];
+            if (sistema == null) continue;
+            sistema.DefinirModoPassivo(!ativo);
+            alterouAlgo = true;
+        }
+
+        LancadorMultiplo[] lancadoresMultiplos = GetComponentsInChildren<LancadorMultiplo>(true);
+        for (int i = 0; i < lancadoresMultiplos.Length; i++)
+        {
+            LancadorMultiplo lancador = lancadoresMultiplos[i];
+            if (lancador == null) continue;
+            lancador.modoAutomatico = ativo;
+            alterouAlgo = true;
+        }
+
+        LancadorMisselCaca[] lancadoresCaca = GetComponentsInChildren<LancadorMisselCaca>(true);
+        for (int i = 0; i < lancadoresCaca.Length; i++)
+        {
+            LancadorMisselCaca lancador = lancadoresCaca[i];
+            if (lancador == null) continue;
+            lancador.modoPassivo = !ativo;
+            alterouAlgo = true;
+        }
+
+        return alterouAlgo;
+    }
+
+    public bool TryObterEstadoCombate(out bool passivo, out string descricao)
+    {
+        bool encontrou = false;
+        bool estadoInicial = false;
+        bool misto = false;
+
+        RegistrarEstadoCombate(GetComponentsInChildren<ControleTorreta>(true), ref encontrou, ref estadoInicial, ref misto, delegate(ControleTorreta t) { return t != null && t.modoPassivo; });
+        RegistrarEstadoCombate(GetComponentsInChildren<ControleTorretaModular>(true), ref encontrou, ref estadoInicial, ref misto, delegate(ControleTorretaModular t) { return t != null && t.modoPassivo; });
+        RegistrarEstadoCombate(GetComponentsInChildren<SistemaAntiMissil>(true), ref encontrou, ref estadoInicial, ref misto, delegate(SistemaAntiMissil t) { return t != null && t.modoPassivo; });
+        RegistrarEstadoCombate(GetComponentsInChildren<SistemaDeTiro>(true), ref encontrou, ref estadoInicial, ref misto, delegate(SistemaDeTiro t) { return t != null && t.modoPassivo; });
+        RegistrarEstadoCombate(GetComponentsInChildren<LancadorMisselCaca>(true), ref encontrou, ref estadoInicial, ref misto, delegate(LancadorMisselCaca t) { return t != null && t.modoPassivo; });
+        RegistrarEstadoCombate(GetComponentsInChildren<LancadorMultiplo>(true), ref encontrou, ref estadoInicial, ref misto, delegate(LancadorMultiplo t) { return t != null && !t.modoAutomatico; });
+
+        if (!encontrou)
+        {
+            passivo = false;
+            descricao = "--";
+            return false;
+        }
+
+        if (misto)
+        {
+            passivo = false;
+            descricao = "MISTO";
+            return true;
+        }
+
+        passivo = estadoInicial;
+        descricao = passivo ? "PASSIVO" : "ATIVO";
+        return true;
+    }
+
     public void AplicarLimiteVelocidade(float velocidadeAlvo)
     {
         // Salva a original apenas na primeira vez
@@ -457,6 +559,28 @@ public class ControleUnidade : MonoBehaviour
         else if (TryGetComponent<ControleNavioRealista>(out var nav1)) nav1.velocidadeMaxima = v;
         else if (TryGetComponent<NavegacaoInteligenteNaval>(out var nav2)) nav2.velocidadeMaxima = v;
         else if (TryGetComponent<NavMeshAgent>(out var nma)) { if(nma.enabled) nma.speed = v; }
+    }
+
+    private static void RegistrarEstadoCombate<T>(T[] componentes, ref bool encontrou, ref bool estadoInicial, ref bool misto, System.Func<T, bool> leitor)
+    {
+        if (componentes == null) return;
+
+        for (int i = 0; i < componentes.Length; i++)
+        {
+            T componente = componentes[i];
+            if (componente == null) continue;
+
+            bool estado = leitor(componente);
+            if (!encontrou)
+            {
+                encontrou = true;
+                estadoInicial = estado;
+            }
+            else if (estado != estadoInicial)
+            {
+                misto = true;
+            }
+        }
     }
 
     [Header("Visual de Alcance")]

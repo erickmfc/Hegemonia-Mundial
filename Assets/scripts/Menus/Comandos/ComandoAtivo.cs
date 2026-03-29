@@ -12,20 +12,14 @@ namespace Hegemonia.Menus.Comandos
             {
                 if (unidade == null) continue;
 
-                // Tenta encontrar ControleTorreta (usado em navios, helicópteros, torres)
-                ControleTorreta[] torretas = unidade.GetComponentsInChildren<ControleTorreta>();
-                
-                if (torretas != null && torretas.Length > 0)
+                ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
+                if (controle != null && controle.DefinirModoCombate(true))
                 {
-                    foreach (var torreta in torretas)
-                    {
-                        torreta.modoPassivo = false;
-                        Debug.Log($"✅ {unidade.name}: MODO ATIVO ativado (atacará automaticamente)");
-                    }
+                    Debug.Log($"[ComandoAtivo] {unidade.name}: modo ativo ativado");
                 }
                 else
                 {
-                    Debug.LogWarning($"⚠️ {unidade.name} não possui sistema de ataque automático (ControleTorreta)");
+                    Debug.LogWarning($"[ComandoAtivo] {unidade.name} nao possui sistema de combate configurado");
                 }
             }
         }
