@@ -45,13 +45,12 @@ public class GerenteSelecao : MonoBehaviour
             return;
         }
         // Se clicar em cima de botões da UI, não faz nada
-        EventSystem eventSystem = EventSystem.current;
-        if (eventSystem != null && eventSystem.IsPointerOverGameObject())
+        if (IsMouseOverInteractiveUI())
         {
             // DEBUG: Se o clique direito foi bloqueado pela UI
             if (Input.GetMouseButtonDown(1))
             {
-                Debug.LogWarning("[GerenteSelecao] Clique direito BLOQUEADO por UI (IsPointerOverGameObject=true)");
+                Debug.LogWarning("[GerenteSelecao] Clique direito BLOQUEADO por UI interativa");
             }
             return;
         }
@@ -133,26 +132,7 @@ public class GerenteSelecao : MonoBehaviour
                 Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
                 RaycastHit hit;
                 Vector3 destino = Vector3.zero;
-                bool encontrouDestino = false;
-
-                // Tenta acertar um Collider primeiro (terreno, prédios, etc.)
-                if (Physics.Raycast(raio, out hit, Mathf.Infinity, layerMaskMove))
-                {
-                    destino = hit.point;
-                    encontrouDestino = true;
-                }
-                else
-                {
-                    // FALLBACK: Calcula interseção com o plano da água (Y = 0)
-                    // Isso garante que cliques sobre a água (que não tem Collider) funcionem!
-                    UnityEngine.Plane planoAgua = new UnityEngine.Plane(Vector3.up, Vector3.zero); // Plano horizontal em Y=0
-                    float distancia;
-                    if (planoAgua.Raycast(raio, out distancia))
-                    {
-                        destino = raio.GetPoint(distancia);
-                        encontrouDestino = true;
-                    }
-                }
+                bool encontrouDestino = TryResolverDestinoClique(raio, layerMaskMove, out hit, out destino);
 
                 if (encontrouDestino)
                 {
@@ -181,6 +161,49 @@ public class GerenteSelecao : MonoBehaviour
         return construtorCache;
     }
 
+    bool TryResolverDestinoClique(Ray raio, int layerMaskMove, out RaycastHit hitFinal, out Vector3 destino)
+    {
+        hitFinal = new RaycastHit();
+        destino = Vector3.zero;
+
+        RaycastHit[] hits = Physics.RaycastAll(raio, Mathf.Infinity, layerMaskMove);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit hit = hits[i];
+            if (hit.collider == null)
+            {
+                continue;
+            }
+
+            string nomeCollider = hit.collider.name.ToLowerInvariant();
+            if (nomeCollider.Contains("bip001") || nomeCollider.Contains("bone") || nomeCollider.Contains("finger") || nomeCollider.Contains("cube"))
+            {
+                continue;
+            }
+
+            if (hit.collider.GetComponentInParent<ControleUnidade>() != null || hit.collider.GetComponentInParent<UnityEngine.AI.NavMeshAgent>() != null)
+            {
+                continue;
+            }
+
+            hitFinal = hit;
+            destino = hit.point;
+            return true;
+        }
+
+        UnityEngine.Plane planoAgua = new UnityEngine.Plane(Vector3.up, Vector3.zero);
+        float distancia;
+        if (planoAgua.Raycast(raio, out distancia))
+        {
+            destino = raio.GetPoint(distancia);
+            return true;
+        }
+
+        return false;
+    }
+
     DesenharLinhasOrdem ObterDesenhadorOrdens()
     {
         if (desenhadorOrdensCache == null)
@@ -189,6 +212,76 @@ public class GerenteSelecao : MonoBehaviour
         }
 
         return desenhadorOrdensCache;
+    }
+
+    bool IsMouseOverInteractiveUI()
+    {
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem == null)
+        {
+            return false;
+        }
+
+        PointerEventData eventData = new PointerEventData(eventSystem);
+        eventData.position = Input.mousePosition;
+
+        List<RaycastResult> results = new List<RaycastResult>();
+        eventSystem.RaycastAll(eventData, results);
+
+        for (int i = 0; i < results.Count; i++)
+        {
+            GameObject uiObject = results[i].gameObject;
+            if (uiObject == null || !uiObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            Canvas canvas = uiObject.GetComponentInParent<Canvas>();
+            if (canvas == null || canvas.renderMode == RenderMode.WorldSpace)
+            {
+                continue;
+            }
+
+            if (!UIEstaVisivelEInterativa(uiObject))
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    bool UIEstaVisivelEInterativa(GameObject uiObject)
+    {
+        if (uiObject == null || !uiObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        Graphic graphic = uiObject.GetComponent<Graphic>();
+        if (graphic != null && !graphic.raycastTarget)
+        {
+            return false;
+        }
+
+        CanvasGroup[] groups = uiObject.GetComponentsInParent<CanvasGroup>(true);
+        for (int i = 0; i < groups.Length; i++)
+        {
+            CanvasGroup group = groups[i];
+            if (group == null)
+            {
+                continue;
+            }
+
+            if (!group.blocksRaycasts || group.alpha <= 0.05f)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // --- MARCADOR VISUAL DO CLIQUE ---

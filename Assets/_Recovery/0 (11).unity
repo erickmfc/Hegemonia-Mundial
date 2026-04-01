@@ -209,6 +209,59 @@ RectTransform:
   m_AnchoredPosition: {x: -309.229, y: -102.72427}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &59077669
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 59077670}
+  - component: {fileID: 59077671}
+  m_Layer: 0
+  m_Name: prod navio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &59077670
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 59077669}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 466, y: 0, z: 653}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &59077671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 59077669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 'estaleiro '
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 1
+  BootstrapStage: 12
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1001 &59833244
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -920,7 +973,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 192897817}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e968bfc1e1dd7c047bc197b599b3eb5d, type: 3}
+  m_Script: {fileID: 11500000, guid: 3e3c99ed5ea5dd048863ec01545c7fdb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IA_Comandante
   TeamID: 3
@@ -1350,6 +1403,59 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &246379251
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 246379252}
+  - component: {fileID: 246379253}
+  m_Layer: 0
+  m_Name: Aeroporto
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &246379252
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246379251}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 466, y: 0, z: -354}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &246379253
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246379251}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 'estaleiro '
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 1
+  BootstrapStage: 2
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1001 &257300747
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1673,6 +1779,59 @@ MonoBehaviour:
   corDocaLivre: {r: 0.2, g: 0.6, b: 0.3, a: 1}
   corDocaOcupada: {r: 0.7, g: 0.25, b: 0.25, a: 1}
   corBotaoAcao: {r: 0.2, g: 0.5, b: 0.8, a: 1}
+--- !u!1 &301325140
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 301325141}
+  - component: {fileID: 301325142}
+  m_Layer: 0
+  m_Name: Aguard estaleiro
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &301325141
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 301325140}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 466, y: 0, z: 597}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &301325142
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 301325140}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 'estaleiro '
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 1
+  BootstrapStage: 11
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1 &317558217
 GameObject:
   m_ObjectHideFlags: 0
@@ -2487,7 +2646,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2234468026170433557, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 471
+      value: 209
       objectReference: {fileID: 0}
     - target: {fileID: 2234468026170433557, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3111,7 +3270,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &590836159
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3127,14 +3286,15 @@ MonoBehaviour:
   TeamId: 2
   NationName: BrainMaster
   InitialCredits: 30000
-  IncomePerSecond: 90
+  IncomePerSecond: 100
   Credits: 0
-  IntegrationMode: 1
+  IntegrationMode: 2
   DisableLegacyAIWhenFull: 1
-  MaxCommandsPerFrame: 3
+  MaxCommandsPerFrame: 5
   UseScriptedBootstrap: 1
   EnableVerboseLogs: 1
   EnableBootstrapConsoleTrace: 1
+  UseManualBuildPoints: 1
   RuntimeSummary: 
   BootstrapStatus: 
   BootstrapLastError: 
@@ -3147,11 +3307,17 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 590836158}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1923, y: 0, z: -3156}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 908, y: 0, z: -3182.9}
+  m_LocalScale: {x: 1, y: 1, z: 1.2146}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1931904363}
+  - {fileID: 301325141}
+  - {fileID: 59077670}
+  - {fileID: 246379252}
+  - {fileID: 1674770990}
+  - {fileID: 1329596846}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &598190810
@@ -3681,7 +3847,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: f400270515778a24a86f00954af3dc98, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: 159acee6c5dcf1c49a27886d565352a0, type: 2}
   m_BuildHeightMesh: 0
 --- !u!4 &643600141
 Transform:
@@ -6800,7 +6966,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1027576861776745056, guid: 21914d3a6241ff94fb78e9232a6213b1, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 567
+      value: 356
       objectReference: {fileID: 0}
     - target: {fileID: 1027576861776745056, guid: 21914d3a6241ff94fb78e9232a6213b1, type: 3}
       propertyPath: m_LocalPosition.y
@@ -6891,6 +7057,59 @@ MonoBehaviour:
   modoPatrulhaAtivo: 0
   modoSeguirAtivo: 0
   pontosPatrulha: []
+--- !u!1 &1329596845
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1329596846}
+  - component: {fileID: 1329596847}
+  m_Layer: 0
+  m_Name: Analise terr
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1329596846
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1329596845}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 165, y: 0, z: -204}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1329596847
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1329596845}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 'estaleiro '
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 1
+  BootstrapStage: 6
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1001 &1352394427
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8485,6 +8704,59 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
+--- !u!1 &1674770989
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1674770990}
+  - component: {fileID: 1674770991}
+  m_Layer: 0
+  m_Name: Aeroporto const
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1674770990
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1674770989}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 466, y: 0, z: -354}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1674770991
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1674770989}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 'estaleiro '
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 1
+  BootstrapStage: 9
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1 &1677098697
 GameObject:
   m_ObjectHideFlags: 0
@@ -9530,6 +9802,59 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d37774f04da624c9dbca3ede487d363c, type: 3}
+--- !u!1 &1931904362
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1931904363}
+  - component: {fileID: 1931904364}
+  m_Layer: 0
+  m_Name: const estaleiro
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1931904363
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1931904362}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 498, y: 0, z: 517}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1931904364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1931904362}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 'estaleiro '
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 1
+  BootstrapStage: 10
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1 &1959855006
 GameObject:
   m_ObjectHideFlags: 0
@@ -9811,8 +10136,8 @@ Transform:
   m_GameObject: {fileID: 1984084234}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -4829}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -4852.69}
+  m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 362165589}
@@ -9827,7 +10152,7 @@ TerrainCollider:
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -9884,7 +10209,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1984084234}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
   m_Name: 
@@ -9907,7 +10232,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: 5cb0d460da935594f9a0d081e349974e, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: 295b74feffb7d9546948cbb20d7ae265, type: 2}
   m_BuildHeightMesh: 0
 --- !u!114 &1984084239
 MonoBehaviour:
@@ -11080,7 +11405,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2677807945473189951, guid: 2db930539ba30bb40ad3973bda0a87dd, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 701
+      value: 1155
       objectReference: {fileID: 0}
     - target: {fileID: 2677807945473189951, guid: 2db930539ba30bb40ad3973bda0a87dd, type: 3}
       propertyPath: m_LocalPosition.y
@@ -11088,7 +11413,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2677807945473189951, guid: 2db930539ba30bb40ad3973bda0a87dd, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -719
+      value: -653
       objectReference: {fileID: 0}
     - target: {fileID: 2677807945473189951, guid: 2db930539ba30bb40ad3973bda0a87dd, type: 3}
       propertyPath: m_LocalRotation.w

@@ -27,6 +27,8 @@ public class ControleUnidade : MonoBehaviour
     // --- SISTEMA DE VELOCIDADE DINÂMICA (Para Seguir) ---
     private float velocidadeOriginalSalva = -1f;
     private bool limiteVelocidadeAtivo = false;
+    private Vector3 ultimoDestinoOrdenado = Vector3.zero;
+    private bool possuiDestinoOrdenado = false;
 
     protected virtual void Awake()
     {
@@ -262,6 +264,22 @@ public class ControleUnidade : MonoBehaviour
             }
         }
 
+        if (possuiDestinoOrdenado)
+        {
+            float distanciaAoDestino = Vector3.Distance(transform.position, ultimoDestinoOrdenado);
+            float toleranciaChegada = 3f;
+
+            if (agente != null && agente.enabled)
+            {
+                toleranciaChegada = Mathf.Max(toleranciaChegada, agente.stoppingDistance + 1.5f);
+            }
+
+            if (distanciaAoDestino <= toleranciaChegada)
+            {
+                LimparDestinoOrdenado();
+            }
+        }
+
         // 3. Controle de Animação (Genérico)
         if (animator != null && animator.runtimeAnimatorController != null)
         {
@@ -298,6 +316,8 @@ public class ControleUnidade : MonoBehaviour
     // COMANDO AUTOMÁTICO (Usado pela fábrica e IA)
     public void MoverParaPonto(Vector3 destino, bool cancelarComportamentos = true)
     {
+        RegistrarDestinoOrdenado(destino);
+
         if (cancelarComportamentos)
         {
             // Interrompe comportamentos especiais se receber ordem DIRETA do jogador (clique direito)
@@ -405,6 +425,24 @@ public class ControleUnidade : MonoBehaviour
                      // Só dá a ordem se a recuperação funcionou
                      if (agente.isOnNavMesh && agente.isActiveAndEnabled)
                      {
+                         if (TryGetComponent<ControleNavioRealista>(out var controleRealistaRecuperado))
+                         {
+                             controleRealistaRecuperado.DefinirDestino(destino);
+                             return;
+                         }
+
+                         if (TryGetComponent<NavegacaoInteligenteNaval>(out var navegacaoNavalRecuperada))
+                         {
+                             navegacaoNavalRecuperada.DefinirDestino(destino);
+                             return;
+                         }
+
+                         if (TryGetComponent<ControleSubmarino>(out var controleSubRecuperado))
+                         {
+                             controleSubRecuperado.DefinirDestino(destino);
+                             return;
+                         }
+
                          agente.SetDestination(destino);
                          if (agente.isOnNavMesh) agente.isStopped = false;
                      }
@@ -719,10 +757,46 @@ public class ControleUnidade : MonoBehaviour
             }
             if (!linhaCaminho.gameObject.activeSelf) linhaCaminho.gameObject.SetActive(true);
         }
+        else if (TentarDesenharLinhaFallback())
+        {
+            if (!linhaCaminho.gameObject.activeSelf) linhaCaminho.gameObject.SetActive(true);
+        }
         else
         {
             if (linhaCaminho.gameObject.activeSelf) linhaCaminho.gameObject.SetActive(false);
         }
+    }
+
+    void RegistrarDestinoOrdenado(Vector3 destino)
+    {
+        ultimoDestinoOrdenado = destino;
+        possuiDestinoOrdenado = true;
+    }
+
+    void LimparDestinoOrdenado()
+    {
+        possuiDestinoOrdenado = false;
+        ultimoDestinoOrdenado = Vector3.zero;
+    }
+
+    bool TentarDesenharLinhaFallback()
+    {
+        if (!possuiDestinoOrdenado)
+        {
+            return false;
+        }
+
+        float distancia = Vector3.Distance(transform.position, ultimoDestinoOrdenado);
+        if (distancia <= 2.5f)
+        {
+            LimparDestinoOrdenado();
+            return false;
+        }
+
+        linhaCaminho.positionCount = 2;
+        linhaCaminho.SetPosition(0, transform.position + Vector3.up * 0.8f);
+        linhaCaminho.SetPosition(1, ultimoDestinoOrdenado + Vector3.up * 0.8f);
+        return true;
     }
 
     public void DefinirSelecao(bool estado)

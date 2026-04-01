@@ -750,7 +750,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigos
-  alcance: 250
+  alcance: 400
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -980,6 +980,8 @@ MonoBehaviour:
   cooldownFlares: 10
   tagMissil: Missil
   tagInimigo: Inimigo
+  modeloVisual: {fileID: 0}
+  ajusteYawModelo: 0
   flares: []
   helicePrincipal: {fileID: 3532613307683557407}
   heliceTraseira: {fileID: 8675863993214630558}

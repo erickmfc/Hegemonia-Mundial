@@ -73,11 +73,15 @@ public class ControleNavioRealista : MonoBehaviour
     private float offsetOnda;
     private Quaternion rotacaoInicialModelo;
     private IdentidadeNaval identidade;
+    private bool ajusteInicialFlutuacaoVerificado = false;
 
     void Awake()
     {
         agente = GetComponent<NavMeshAgent>();
         rb = GetComponent<Rigidbody>();
+        identidade = GetComponent<IdentidadeNaval>();
+        if (identidade == null)
+            identidade = GetComponentInChildren<IdentidadeNaval>();
 
         // Correção de Robustez: Adiciona Rigidbody se faltar
         if (rb == null)
@@ -124,6 +128,11 @@ public class ControleNavioRealista : MonoBehaviour
     void Update()
     {
         if (agente == null) return;
+
+        if (!AgenteProntoParaLeitura())
+        {
+            return;
+        }
         
         // 0. VERIFICAÇÃO DE ATIVIDADE
         VerificarInatividade();
@@ -167,6 +176,20 @@ public class ControleNavioRealista : MonoBehaviour
 
     void CalcularInputNavegacao()
     {
+        if (!AgenteProntoParaLeitura())
+        {
+            potenciaAlvo = 0f;
+            temDestino = false;
+            anguloLemeAtual = Mathf.MoveTowards(anguloLemeAtual, 0f, Time.deltaTime * velocidadeLeme);
+            return;
+        }
+
+        if (agente.pathPending)
+        {
+            temDestino = true;
+            return;
+        }
+
         if (!agente.hasPath && velocidadeVetorial.magnitude < 0.1f)
         {
             potenciaAlvo = 0f;
@@ -216,6 +239,45 @@ public class ControleNavioRealista : MonoBehaviour
 
         // Movimento do leme hidráulico macio
         anguloLemeAtual = Mathf.MoveTowards(anguloLemeAtual, inputLeme, Time.deltaTime * velocidadeLeme);
+    }
+
+    bool AgenteProntoParaLeitura()
+    {
+        return agente != null
+            && agente.enabled
+            && agente.isActiveAndEnabled
+            && agente.isOnNavMesh;
+    }
+
+    bool TentarPrepararAgenteParaNavegacao()
+    {
+        if (agente == null || !gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (!agente.enabled)
+            {
+                agente.enabled = true;
+            }
+
+            if (!agente.isOnNavMesh)
+            {
+                NavMeshHit hit;
+                if (NavMesh.SamplePosition(transform.position, out hit, 120f, NavMesh.AllAreas))
+                {
+                    agente.Warp(hit.position);
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[ControleNavioRealista] Falha ao preparar NavMeshAgent em {name}: {ex.Message}");
+        }
+
+        return AgenteProntoParaLeitura();
     }
 
     void SimularMotor()
@@ -296,22 +358,97 @@ public class ControleNavioRealista : MonoBehaviour
     
     void agentNextPositionCheck(Vector3 novaPos)
     {
+        float nivelMar = NavalPlacementResolver.ResolveSeaLevel();
+
         // 1. Defina a posição visual do GameObject (Barco/Submarino) na profundidade desejada
         // Soma o offset (configurado no inspector) com a profundidade interna
         float alturaFinal = profundidadeVisual + offsetAlturaAgua;
-        
-        Vector3 posVisual = new Vector3(novaPos.x, alturaFinal, novaPos.z);
+
+        Vector3 posVisual = new Vector3(novaPos.x, nivelMar + alturaFinal, novaPos.z);
         transform.position = posVisual;
 
+        if (!ajusteInicialFlutuacaoVerificado)
+        {
+            ajusteInicialFlutuacaoVerificado = true;
+            if (TentarCorrigirFlutuacaoInicial(nivelMar))
+            {
+                alturaFinal = profundidadeVisual + offsetAlturaAgua;
+                posVisual.y = nivelMar + alturaFinal;
+                transform.position = posVisual;
+            }
+        }
+
         // 2. Informe ao NavMeshAgent que ele "virtualmente" está na superfície (NavMesh)
-        // O NavMesh geralmente está em Y=0 ou Y=NívelDaÁgua. 
-        // Assumimos que a água está perto de 0 ou usamos a altura do NavMesh atual se possível, mas 0 é seguro para o mar.
-        Vector3 posSimulacao = new Vector3(novaPos.x, 0f, novaPos.z); 
+        Vector3 posSimulacao = new Vector3(novaPos.x, nivelMar, novaPos.z);
         agente.nextPosition = posSimulacao; 
 
         // 3. Ajuste o colisor (Cilindro do Agent) para que ele suba até a superfície e não fique afundado junto com o visual
-        // Se o submarino está em -10, o baseOffset tem que ser +10 para o colisor ficar no 0.
-        agente.baseOffset = -alturaFinal;
+        // Mantém o agente "virtual" no nível do mar mesmo com o casco visual abaixo/acima dele.
+        agente.baseOffset = nivelMar - posVisual.y;
+    }
+
+    bool TentarCorrigirFlutuacaoInicial(float nivelMar)
+    {
+        if (identidade != null && identidade.categoriaNavio == IdentidadeNaval.CategoriaNavio.Submarino)
+        {
+            return false;
+        }
+
+        Bounds cascoBounds;
+        if (!TryGetBoundsDoCascoPrincipal(out cascoBounds))
+        {
+            return false;
+        }
+
+        float topoMinimo = nivelMar + Mathf.Max(0.35f, cascoBounds.size.y * 0.08f);
+        if (cascoBounds.max.y >= topoMinimo)
+        {
+            return false;
+        }
+
+        float ajuste = topoMinimo - cascoBounds.max.y;
+        if (ajuste <= 0.01f)
+        {
+            return false;
+        }
+
+        profundidadeVisual += ajuste;
+        Debug.Log($"[ControleNavioRealista] Ajuste automático de flutuação em {name}: +{ajuste:F2}m.");
+        return true;
+    }
+
+    bool TryGetBoundsDoCascoPrincipal(out Bounds cascoBounds)
+    {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        cascoBounds = new Bounds(transform.position, Vector3.zero);
+
+        bool encontrou = false;
+        float melhorScore = 0f;
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer rendererAtual = renderers[i];
+            if (rendererAtual == null || !rendererAtual.enabled)
+            {
+                continue;
+            }
+
+            if (rendererAtual is ParticleSystemRenderer || rendererAtual is TrailRenderer)
+            {
+                continue;
+            }
+
+            Bounds boundsAtual = rendererAtual.bounds;
+            float scoreAtual = boundsAtual.size.x * boundsAtual.size.y * boundsAtual.size.z;
+            if (!encontrou || scoreAtual > melhorScore)
+            {
+                encontrou = true;
+                melhorScore = scoreAtual;
+                cascoBounds = boundsAtual;
+            }
+        }
+
+        return encontrou;
     }
 
     void AtualizarEfeitosVisuais()
@@ -452,22 +589,25 @@ public class ControleNavioRealista : MonoBehaviour
     // Método para integração com ControleUnidade
     public void DefinirDestino(Vector3 destino)
     {
-        if (agente != null && agente.isActiveAndEnabled)
+        if (TentarPrepararAgenteParaNavegacao())
         {
-            if (agente.isOnNavMesh)
-            {
-                agente.SetDestination(destino);
-            }
-            else
-            {
-                Debug.LogWarning($"[ControleNavioRealista] Tentativa de navegar sem estar no NavMesh! ({name})");
-            }
-            
+            destinoAtual = destino;
+            agente.isStopped = false;
+            bool destinoAceito = agente.SetDestination(destino);
+            temDestino = destinoAceito;
+
             // Se receber uma ordem, acorda!
             estaDesligado = false;
             tempoInatividade = 0;
             // Se estiver em modo passivo, ele vai começar a contar o tempo de novo quando parar.
+            if (!destinoAceito)
+            {
+                Debug.LogWarning($"[ControleNavioRealista] NavMesh rejeitou destino para {name} em {destino}.");
+            }
+            return;
         }
+
+        Debug.LogWarning($"[ControleNavioRealista] Tentativa de navegar sem estar no NavMesh! ({name})");
     }
     
     // Gizmos para ver o vetor de movimento vs frente
@@ -481,7 +621,7 @@ public class ControleNavioRealista : MonoBehaviour
         Gizmos.color = Color.yellow; // Vector Drift
         Gizmos.DrawLine(transform.position, transform.position + velocidadeVetorial);
         
-        if (agente != null && agente.hasPath)
+        if (AgenteProntoParaLeitura() && agente.hasPath)
         {
             Gizmos.color = Color.red;
             Gizmos.DrawLine(transform.position, agente.steeringTarget);

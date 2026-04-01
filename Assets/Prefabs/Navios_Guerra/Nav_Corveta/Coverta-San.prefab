@@ -616,6 +616,7 @@ MonoBehaviour:
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
   modoPassivo: 0
+  modoRadar: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
   misselPrefab: {fileID: 5758307721282507023, guid: e4c9c7d1191961041acc6fa85af91e35, type: 3}
@@ -683,8 +684,8 @@ MonoBehaviour:
   tempoDesaceleracao: 5
   tempoParadaEmergencia: 5
   velocidadeMaxima: 15
-  velocidadeLeme: 1
-  curvaMaximaGraus: 10
+  velocidadeLeme: 5
+  curvaMaximaGraus: 20
   coeficienteAderna: 2.5
   alturaOnda: 2
   frequenciaOnda: 1

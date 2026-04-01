@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.AI;
 using System.Linq;
+using Hegemonia.AI.BrainMaster;
 
 public class MenuConstrucao : MonoBehaviour
 {
@@ -667,56 +668,88 @@ public class MenuConstrucao : MonoBehaviour
 
             if (!ehPredioNaval && pareceSerNavio)
             {
-                Estaleiro[] estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
-                Estaleiro estaleiroDisponivel = estaleiros.FirstOrDefault(e => {
-                    if (!e.TemVaga) return false;
-                    IdentidadeUnidade id = e.GetComponent<IdentidadeUnidade>();
-                    if (id == null) id = e.GetComponentInParent<IdentidadeUnidade>();
-                    return (id == null || id.teamID == 1);
-                });
+                bool ehNavioGrande = EhNavioGrande(item.prefabDaUnidade);
+                List<Estaleiro> estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None)
+                    .Where(e => e != null && EhEstruturaDoJogador(e) && EstruturaNavalOperacional(e))
+                    .ToList();
 
-                if (estaleiroDisponivel != null)
-                {
-                    if (!gerente.TentarGastarDinheiro(item.preco * qtdParaConstruir)) return; 
-                    
-                    Debug.Log("⚓ [Construção] Enviando para Estaleiro: " + estaleiroDisponivel.name);
-                    bool sucesso = false;
-                    for(int i=0; i<qtdParaConstruir; i++) 
-                    {
-                        if(estaleiroDisponivel.ConstruirUnidade(item.prefabDaUnidade)) sucesso = true;
-                    }
-                    
-                    if (sucesso)
-                    {
-                        AlternarMenu(false);
-                        return;
-                    }
-                }
-                
-                PierMarinha[] piers = Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None);
-                PierMarinha pierDisponivel = piers.FirstOrDefault(p => {
-                    IdentidadeUnidade id = p.GetComponent<IdentidadeUnidade>();
-                    if (id == null) id = p.GetComponentInParent<IdentidadeUnidade>();
-                    return (id == null || id.teamID == 1);
-                });
+                List<PierMarinha> piers = ehNavioGrande
+                    ? new List<PierMarinha>()
+                    : Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None)
+                        .Where(p => p != null && EhEstruturaDoJogador(p) && EstruturaNavalOperacional(p))
+                        .ToList();
 
-                if (pierDisponivel != null)
+                if (estaleiros.Count == 0 && piers.Count == 0)
                 {
-                    if (!gerente.TentarGastarDinheiro(item.preco * qtdParaConstruir)) return; 
-                    
-                    Debug.Log("⚓ [Construção] Construindo instantaneamente no Píer: " + pierDisponivel.name);
-                    for(int i=0; i<qtdParaConstruir; i++) 
-                    {
-                        pierDisponivel.ConstruirNavio(item.prefabDaUnidade);
-                    }
-                    
-                    AlternarMenu(false);
+                    Debug.LogWarning(ehNavioGrande
+                        ? "❌ BLOQUEADO: construa um ESTALEIRO costeiro válido para produzir esse navio grande."
+                        : "❌ BLOQUEADO: construa um ESTALEIRO ou PIER costeiro válido para produzir navios.");
                     return;
                 }
 
-                Debug.LogWarning("⚓ [Construção] Nenhum prédio naval livre. Jogando para a fila global do GerenteDeJogo...");
-                gerente.ComprarUnidade(item.prefabDaUnidade, item.preco, qtdParaConstruir);
-                AlternarMenu(false);
+                int quantidadeEnfileirada = 0;
+                for (int i = 0; i < qtdParaConstruir; i++)
+                {
+                    if (!gerente.TentarGastarDinheiro(item.preco))
+                    {
+                        break;
+                    }
+
+                    bool sucesso = false;
+
+                    foreach (Estaleiro estaleiro in estaleiros)
+                    {
+                        if (estaleiro == null || !estaleiro.TemVaga || !EstruturaNavalOperacional(estaleiro))
+                        {
+                            continue;
+                        }
+
+                        if (estaleiro.ConstruirUnidade(item.prefabDaUnidade))
+                        {
+                            Debug.Log("⚓ [Construção] Enviando para Estaleiro: " + estaleiro.name);
+                            sucesso = true;
+                            quantidadeEnfileirada++;
+                            break;
+                        }
+                    }
+
+                    if (!sucesso)
+                    {
+                        foreach (PierMarinha pier in piers)
+                        {
+                            if (pier == null || !EstruturaNavalOperacional(pier))
+                            {
+                                continue;
+                            }
+
+                            if (pier.ConstruirNavio(item.prefabDaUnidade))
+                            {
+                                Debug.Log("⚓ [Construção] Construindo no Píer: " + pier.name);
+                                sucesso = true;
+                                quantidadeEnfileirada++;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!sucesso)
+                    {
+                        ReembolsarDinheiro(item.preco);
+                        Debug.LogWarning($"⚓ [Construção] Falha ao produzir '{item.nomeItem}' em estruturas navais válidas.");
+                        break;
+                    }
+                }
+
+                if (quantidadeEnfileirada > 0)
+                {
+                    if (quantidadeEnfileirada < qtdParaConstruir)
+                    {
+                        Debug.LogWarning($"⚓ [Construção] Produção parcial: {quantidadeEnfileirada}/{qtdParaConstruir} navios enviados.");
+                    }
+
+                    AlternarMenu(false);
+                }
+
                 return;
             }
         }
@@ -839,6 +872,91 @@ public class MenuConstrucao : MonoBehaviour
         
         construtor.SelecionarParaConstruir(item.prefabDaUnidade, item.preco, item.categoria);
         AlternarMenu(false); 
+    }
+
+    bool EhEstruturaDoJogador(Component estrutura)
+    {
+        if (estrutura == null)
+        {
+            return false;
+        }
+
+        IdentidadeUnidade id = estrutura.GetComponent<IdentidadeUnidade>();
+        if (id == null)
+        {
+            id = estrutura.GetComponentInParent<IdentidadeUnidade>();
+        }
+
+        return id == null || id.teamID == 1;
+    }
+
+    bool EstruturaNavalOperacional(Component estrutura)
+    {
+        if (estrutura == null || estrutura.gameObject == null)
+        {
+            return false;
+        }
+
+        if (estrutura.GetComponent<IA_ManualPlacementTag>() != null
+            || estrutura.GetComponentInParent<IA_ManualPlacementTag>() != null)
+        {
+            return true;
+        }
+
+        if (estrutura is Estaleiro estaleiro)
+        {
+            string validacao;
+            if (NavalPlacementResolver.IsCurrentStructurePoseValid(estaleiro.gameObject, out validacao))
+            {
+                return true;
+            }
+
+            return estaleiro.EstaNaConstrucaoValida(NavalPlacementResolver.ResolveSeaLevel());
+        }
+
+        if (estrutura is PierMarinha pier)
+        {
+            string validacao;
+            return NavalPlacementResolver.IsCurrentStructurePoseValid(pier.gameObject, out validacao);
+        }
+
+        return true;
+    }
+
+    bool EhNavioGrande(GameObject prefabDoNavio)
+    {
+        if (prefabDoNavio == null)
+        {
+            return false;
+        }
+
+        IdentidadeNaval identidadeNaval = prefabDoNavio.GetComponent<IdentidadeNaval>();
+        if (identidadeNaval == null)
+        {
+            identidadeNaval = prefabDoNavio.GetComponentInChildren<IdentidadeNaval>();
+        }
+
+        if (identidadeNaval != null && identidadeNaval.categoriaNavio == IdentidadeNaval.CategoriaNavio.TransporteGrande)
+        {
+            return true;
+        }
+
+        return prefabDoNavio.GetComponent<NavioPetroleiro>() != null
+            || prefabDoNavio.GetComponent<TransporteAnfibio>() != null
+            || prefabDoNavio.GetComponent<NavioLiberty>() != null;
+    }
+
+    void ReembolsarDinheiro(int valor)
+    {
+        if (valor <= 0)
+        {
+            return;
+        }
+
+        if (GerenciadorRecursos.Instancia != null)
+        {
+            GerenciadorRecursos.Instancia.AdicionarRecursos(addDinheiro: valor);
+        }
     }
 
     IEnumerator FlashCard(Image img)

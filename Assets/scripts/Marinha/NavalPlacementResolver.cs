@@ -32,16 +32,55 @@ public static class NavalPlacementResolver
             : UnityEngine.Object.FindFirstObjectByType<Construtor>();
         if (construtor != null)
         {
-            return construtor.alturaDoMar;
+            float nivel = construtor.alturaDoMar;
+            float referencia;
+            if (TryResolveWaterReferenceHeight(out referencia) && Mathf.Abs(referencia - nivel) > 0.25f)
+            {
+                nivel = referencia;
+            }
+            return nivel;
         }
 
         IA_Suprema iaSuprema = UnityEngine.Object.FindFirstObjectByType<IA_Suprema>();
         if (iaSuprema != null)
         {
-            return iaSuprema.nivelDoMar;
+            float nivel = iaSuprema.nivelDoMar;
+            float referencia;
+            if (TryResolveWaterReferenceHeight(out referencia) && Mathf.Abs(referencia - nivel) > 0.25f)
+            {
+                nivel = referencia;
+            }
+            return nivel;
+        }
+
+        float fallback;
+        if (TryResolveWaterReferenceHeight(out fallback))
+        {
+            return fallback;
         }
 
         return 0f;
+    }
+
+    private static bool TryResolveWaterReferenceHeight(out float height)
+    {
+        height = 0f;
+
+        OceanAdvanced ocean = UnityEngine.Object.FindFirstObjectByType<OceanAdvanced>();
+        if (ocean != null)
+        {
+            height = ocean.transform.position.y;
+            return true;
+        }
+
+        GameObject agua = GameObject.Find("Agua") ?? GameObject.Find("Water") ?? GameObject.Find("Ocean");
+        if (agua != null)
+        {
+            height = agua.transform.position.y;
+            return true;
+        }
+
+        return false;
     }
 
     public static bool IsCurrentStructurePoseValid(GameObject structure, out string reason)
@@ -134,8 +173,10 @@ public static class NavalPlacementResolver
         }
         fallbackForward.Normalize();
 
-        // OTIMIZADO: Menos testes de raio para economizar processamento massivo.
-        float[] radii = { 0f, 20f, 45f };
+        // Busca progressiva: aceita clique um pouco mar adentro e tenta "encaixar" na costa mais próxima.
+        float mediumRadius = Mathf.Max(120f, Mathf.Abs(frontDistance) * 2.1f);
+        float largeRadius = Mathf.Max(220f, Mathf.Abs(frontDistance) * 4.0f);
+        float[] radii = { 0f, 20f, 45f, 70f, mediumRadius, largeRadius };
         bool found = false;
         float bestScore = float.MinValue;
         Vector3 bestPosition = anchor;
@@ -158,9 +199,14 @@ public static class NavalPlacementResolver
                 }
 
                 candidate = SnapToSeaLevel(candidate, pose.SeaLevel);
-                if (!HasWaterNearby(candidate, Mathf.Max(10f, frontDistance * 0.35f), pose.SeaLevel))
+                float nearbyRadius = Mathf.Max(10f, Mathf.Abs(frontDistance) * 0.35f);
+                if (!HasWaterNearby(candidate, nearbyRadius, pose.SeaLevel))
                 {
-                    continue;
+                    float relaxedRadius = Mathf.Max(nearbyRadius + 18f, Mathf.Abs(frontDistance) * 0.85f);
+                    if (!HasWaterNearby(candidate, relaxedRadius, pose.SeaLevel))
+                    {
+                        continue;
+                    }
                 }
 
                 if (TryPromoteBestPose(candidate, fallbackForward, frontDistance, backDistance, pose.SeaLevel, ref found, ref bestScore, ref bestPosition, ref bestRotation, ref bestReason))
@@ -461,17 +507,17 @@ public static class NavalPlacementResolver
             return solidHeight <= effectiveWaterHeight - VisibleWaterDepthTolerance;
         }
 
-        if (HasExplicitWaterSurfaceInScene())
-        {
-            return false;
-        }
-
+        // Se existe água explícita na cena, mas não há colisor de água detectável,
+        // ainda assim precisamos classificar "água" via nível do mar/altura do terreno.
+        // Caso contrário, construções navais/costeiras ficam impossíveis de posicionar.
         if (Terrain.activeTerrain != null)
         {
             return SampleTerrainHeight(position) <= seaLevel + WaterTolerance;
         }
 
-        return false;
+        // Fallback genérico: se o chão estiver abaixo do nível do mar, consideramos água.
+        float alturaChao = SampleGroundHeight(position, seaLevel);
+        return alturaChao <= seaLevel + WaterTolerance;
     }
 
     private static bool HasExplicitWaterSurfaceInScene()
@@ -567,6 +613,7 @@ public static class NavalPlacementResolver
         bool frontIsWater = IsWaterAtPosition(frontProbe, seaLevel);
         bool backIsWater = IsWaterAtPosition(backProbe, seaLevel);
         float backHeight = SampleGroundHeight(backProbe, seaLevel);
+        bool centerIsWater = IsWaterAtPosition(center, seaLevel);
 
         if (!frontIsWater)
         {
@@ -581,8 +628,9 @@ public static class NavalPlacementResolver
             return false;
         }
 
-        float centerBias = IsWaterAtPosition(center, seaLevel) ? 1.5f : 0f;
-        score = ((backHeight - seaLevel) * 2.2f) + centerBias;
+        float centerBias = centerIsWater ? 0.35f : 1.1f;
+        float backBias = backIsWater ? -0.85f : 1.35f;
+        score = ((backHeight - seaLevel) * 2.15f) + centerBias + backBias;
         reason = string.Empty;
         return true;
     }

@@ -422,6 +422,9 @@ namespace Hegemonia.AI.BrainMaster
 
     public sealed class BuildService
     {
+        private const float NavalMinOffshoreDistance = 70f;
+        private const float PlatformMinOffshoreDistance = 300f;
+
         private struct BuildReservation
         {
             public Vector3 Position;
@@ -536,6 +539,16 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
+            float minOffshoreDistance = ResolveMinimumOffshoreDistance(data, zone, isNaval);
+            if (minOffshoreDistance > 0.01f && HasDryLandWithinRadius(position, minOffshoreDistance, map))
+            {
+                int meters = Mathf.RoundToInt(minOffshoreDistance);
+                reason = IsOffshorePlatform(data)
+                    ? ("plataforma muito perto da costa | min=" + meters + "m")
+                    : ("muito perto da terra | min=" + meters + "m");
+                return false;
+            }
+
             Vector2 halfExtents = map.EstimateFootprint(data.prefabDaUnidade, 10f);
             if (!IsFootprintFree(position, halfExtents))
             {
@@ -585,11 +598,87 @@ namespace Hegemonia.AI.BrainMaster
             return true;
         }
 
+        private static float ResolveMinimumOffshoreDistance(DadosConstrucao data, IA_ZoneType zone, bool isNaval)
+        {
+            if (data == null || data.prefabDaUnidade == null)
+            {
+                return 0f;
+            }
+
+            if (zone != IA_ZoneType.Naval || !isNaval)
+            {
+                return 0f;
+            }
+
+            if (IsOffshorePlatform(data))
+            {
+                return PlatformMinOffshoreDistance;
+            }
+
+            // Estaleiro e Pier dependem de costa valida (terra + agua) e nao podem ser "empurrados" por um raio fixo.
+            // Mantemos a regra de afastamento apenas para plataformas offshore.
+            return 0f;
+        }
+
+        private static bool HasDryLandWithinRadius(Vector3 center, float radius, IA_MapAnalyzer map)
+        {
+            if (radius <= 0.01f)
+            {
+                return IsDryLandProbe(center, map);
+            }
+
+            float step = radius <= 100f ? 12f : (radius <= 220f ? 18f : 30f);
+            int rings = Mathf.Clamp(Mathf.CeilToInt(radius / step), 2, 24);
+
+            for (int ring = 0; ring <= rings; ring++)
+            {
+                float ringRadius = ring >= rings ? radius : Mathf.Min(radius, ring * step);
+                int samples = ringRadius <= 0.01f ? 1 : (ringRadius < 140f ? 12 : 16);
+                for (int i = 0; i < samples; i++)
+                {
+                    float angle = (((360f / samples) * i) + (ring * 13f)) * Mathf.Deg2Rad;
+                    Vector3 probe = center + new Vector3(Mathf.Cos(angle) * ringRadius, 0f, Mathf.Sin(angle) * ringRadius);
+                    probe.y = center.y;
+                    if (IsDryLandProbe(probe, map))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsDryLandProbe(Vector3 probe, IA_MapAnalyzer map)
+        {
+            ClassificacaoSuperficieMapa classificacao;
+            float height;
+            if (RegistroSuperficieMapa.TryClassify(probe, out classificacao, out height))
+            {
+                return classificacao == ClassificacaoSuperficieMapa.Chao;
+            }
+
+            if (map == null)
+            {
+                return false;
+            }
+
+            IA_MapCell cell = map.SampleCell(probe);
+            if (cell == null)
+            {
+                return true;
+            }
+
+            return cell.Terrain != IA_TerrainType.Water && cell.Terrain != IA_TerrainType.Coast;
+        }
+
         public bool TryBuild(
             string itemKey,
             Vector3 position,
             Quaternion rotation,
             IA_ZoneType zone,
+            bool forceManualPlacement,
+            string manualPointLabel,
             IA_WorldState world,
             IA_MapAnalyzer map,
             IA_ThreatAnalyzer threat,
@@ -597,6 +686,7 @@ namespace Hegemonia.AI.BrainMaster
             out string reason)
         {
             created = null;
+            reason = string.Empty;
             DadosConstrucao data;
             if (!_bridge.TryResolveItem(itemKey, out data))
             {
@@ -604,7 +694,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (RequiresCoastalPlacement(data))
+            if (!forceManualPlacement && RequiresCoastalPlacement(data))
             {
                 NavalPlacementResolver.StructurePose pose;
                 if (!NavalPlacementResolver.TryResolveStructurePose(data.prefabDaUnidade, position, rotation, out pose))
@@ -617,7 +707,7 @@ namespace Hegemonia.AI.BrainMaster
                 rotation = pose.Rotation;
             }
 
-            if (!ValidatePlacement(itemKey, position, rotation, zone, world, map, threat, out reason))
+            if (!forceManualPlacement && !ValidatePlacement(itemKey, position, rotation, zone, world, map, threat, out reason))
             {
                 return false;
             }
@@ -636,6 +726,17 @@ namespace Hegemonia.AI.BrainMaster
             {
                 reason = "falha ao instanciar";
                 return false;
+            }
+
+            if (forceManualPlacement)
+            {
+                IA_ManualPlacementTag manualTag = created.GetComponent<IA_ManualPlacementTag>();
+                if (manualTag == null)
+                {
+                    manualTag = created.AddComponent<IA_ManualPlacementTag>();
+                }
+
+                manualTag.SourceLabel = manualPointLabel ?? string.Empty;
             }
 
             Estaleiro estaleiro = created.GetComponent<Estaleiro>();
@@ -671,11 +772,15 @@ namespace Hegemonia.AI.BrainMaster
         {
             string joined = IA_Text.Normalize(data.nomeItem + " " + data.prefabDaUnidade.name);
             return data.categoria == DadosConstrucao.CategoriaItem.Marinha
-                   || joined.Contains("nav")
+                   || joined.Contains("navio")
+                   || joined.Contains("naval")
+                   || joined.Contains("nav_")
                    || joined.Contains("sub")
                    || joined.Contains("pier")
                    || joined.Contains("estaleiro")
-                   || joined.Contains("plataforma");
+                   || joined.Contains("plataforma")
+                   || joined.Contains("porta avioes")
+                   || joined.Contains("portaavioes");
         }
 
         private static bool RequiresCoastalPlacement(DadosConstrucao data)
@@ -1729,6 +1834,8 @@ namespace Hegemonia.AI.BrainMaster
                 payload.Position,
                 payload.Rotation,
                 payload.Zone,
+                payload.ForceManualPlacement,
+                payload.ManualPointLabel,
                 context.WorldState,
                 context.MapAnalyzer,
                 context.ThreatAnalyzer,

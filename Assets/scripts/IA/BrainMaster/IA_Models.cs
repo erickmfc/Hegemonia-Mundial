@@ -128,6 +128,8 @@ namespace Hegemonia.AI.BrainMaster
         public Vector3 Position;
         public Quaternion Rotation;
         public IA_ZoneType Zone;
+        public bool ForceManualPlacement;
+        public string ManualPointLabel;
     }
 
     [Serializable]

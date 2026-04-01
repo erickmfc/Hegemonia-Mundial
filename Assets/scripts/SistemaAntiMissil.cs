@@ -43,6 +43,10 @@ public class SistemaAntiMissil : MonoBehaviour
     private int indexSaida = 0;
     private readonly HashSet<Transform> bufferMisseisUnicos = new HashSet<Transform>();
     private readonly HashSet<Transform> bufferAliadosUnicos = new HashSet<Transform>();
+    private const float DOT_APROXIMACAO_AMIGOS = 0.2f;
+    private const float DOT_AFASTANDO_AMIGO = -0.15f;
+    private const float RAIO_IGNORAR_LANCAMENTO_AMIGO = 80f;
+    private const float RAIO_AUTODEFESA = 140f;
 
     void Start()
     {
@@ -193,9 +197,9 @@ public class SistemaAntiMissil : MonoBehaviour
                 Vector3 dirProAliado = aliado.position - posMissil;
                 float distAteAmigo = dirProAliado.magnitude;
 
-                if (distAteAmigo < 25f && dirProAliado.sqrMagnitude > 0.001f)
+                if (distAteAmigo < RAIO_IGNORAR_LANCAMENTO_AMIGO && dirProAliado.sqrMagnitude > 0.001f)
                 {
-                    if (Vector3.Dot(dirMissil, dirProAliado.normalized) < -0.3f)
+                    if (Vector3.Dot(dirMissil, dirProAliado.normalized) < DOT_AFASTANDO_AMIGO)
                     {
                         ignorarPorSerAliado = true;
                         break;
@@ -218,16 +222,25 @@ public class SistemaAntiMissil : MonoBehaviour
                 }
 
                 Vector3 dirProAliado = vetorParaAliado.normalized;
-                if (Vector3.Dot(dirMissil, dirProAliado) > 0.4f)
+                if (Vector3.Dot(dirMissil, dirProAliado) > DOT_APROXIMACAO_AMIGOS)
                 {
                     ehAmeaca = true;
                     break;
                 }
             }
 
-            if (!ehAmeaca && Vector3.Distance(transform.position, posMissil) < 45f)
+            // Fallback de autodefesa: só considera ameaça se estiver realmente se aproximando de nós
+            if (!ehAmeaca)
             {
-                ehAmeaca = true;
+                float distAteMim = Vector3.Distance(transform.position, posMissil);
+                if (distAteMim < RAIO_AUTODEFESA)
+                {
+                    Vector3 vetorParaMim = transform.position - posMissil;
+                    if (vetorParaMim.sqrMagnitude > 0.001f && Vector3.Dot(dirMissil, vetorParaMim.normalized) > DOT_APROXIMACAO_AMIGOS)
+                    {
+                        ehAmeaca = true;
+                    }
+                }
             }
 
             if (ehAmeaca)
@@ -403,6 +416,14 @@ public class SistemaAntiMissil : MonoBehaviour
             }
         }
 
+        // Garantia de "abate": mesmo que o alvo não tenha SistemaDeDanos/Collider, remove o míssil inimigo por proximidade.
+        if (alvoResolvido != null)
+        {
+            AntiMissilDetonadorProximidade detonador = missilGerado.GetComponent<AntiMissilDetonadorProximidade>();
+            if (detonador == null) detonador = missilGerado.AddComponent<AntiMissilDetonadorProximidade>();
+            detonador.alvo = alvoResolvido;
+        }
+
         if (somDisparo != null && audioSource != null)
         {
             audioSource.PlayOneShot(somDisparo, 0.7f);
@@ -444,26 +465,29 @@ public class SistemaAntiMissil : MonoBehaviour
     {
         if (tr == null) return false;
 
-        string nomeLC = tr.name.ToLowerInvariant();
+        // Pedido: só considera míssil se estiver com a TAG correta.
+        // OBS: o projeto usa "Missel" no TagManager. Mantemos "Missil" como compatibilidade.
         string tagStr = tr.gameObject.tag;
-
-        if (tagStr == "Missil") return true;
-
-        if (nomeLC.Contains("missil") || nomeLC.Contains("missel") || nomeLC.Contains("projetil"))
-            return true;
-
-        return PossuiScriptDeMissil(tr);
+        return tagStr == "Missel" || tagStr == "Missil";
     }
 
     bool PossuiScriptDeMissil(Transform tr)
     {
-        return tr.GetComponentInParent<Projetil>() != null ||
-               tr.GetComponentInParent<MisselNaval>() != null ||
+        Projetil proj = tr.GetComponentInParent<Projetil>();
+        if (proj != null)
+        {
+            // Evita "atirar no nada": balas comuns (sem explosão e sem homing) não são consideradas mísseis.
+            if (proj.curvaDePerseguicao > 0f || proj.raioDeExplosao > 0.01f) return true;
+        }
+
+        return tr.GetComponentInParent<MisselNaval>() != null ||
                tr.GetComponentInParent<MisselCaca>() != null ||
                tr.GetComponentInParent<MisselSubmarino>() != null ||
                tr.GetComponentInParent<MisselICBM>() != null ||
+               tr.GetComponentInParent<MisselTatico>() != null ||
                tr.GetComponentInParent<MisselLeopardAutomatico>() != null ||
-               tr.GetComponentInParent<MissilTeleguiado>() != null;
+               tr.GetComponentInParent<MissilTeleguiado>() != null ||
+               tr.GetComponentInParent<InterceptMissile>() != null;
     }
 
     Vector3 ObterDirecaoMissil(Transform missil)
@@ -586,5 +610,12 @@ public class SistemaAntiMissil : MonoBehaviour
     {
         Gizmos.color = new Color(0f, 0.8f, 1f, 0.2f);
         Gizmos.DrawWireSphere(transform.position, alcanceRadar);
+
+        if (alvoMissilAtual != null)
+        {
+            Gizmos.color = new Color(1f, 0.2f, 0.2f, 0.9f);
+            Gizmos.DrawLine(transform.position, alvoMissilAtual.position);
+            Gizmos.DrawSphere(alvoMissilAtual.position, 2.5f);
+        }
     }
 }

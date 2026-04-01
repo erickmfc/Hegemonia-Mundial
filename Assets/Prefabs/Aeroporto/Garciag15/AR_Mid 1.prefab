@@ -54,7 +54,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: m_Name
-      value: AR_Mid
+      value: AR_Mid 1
       objectReference: {fileID: 0}
     - target: {fileID: 6581285286416740336, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: m_Enabled
@@ -134,7 +134,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7578387297454913241, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: dano
-      value: 800
+      value: 550
       objectReference: {fileID: 0}
     - target: {fileID: 7578387297454913241, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: m_Enabled

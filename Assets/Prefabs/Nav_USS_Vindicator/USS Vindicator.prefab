@@ -302,12 +302,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 71303ae0b6f9fa447951fb8acb05aecc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaAntiMissil
-  alcanceRadar: 800
-  tempoDeEscaneamento: 0.7
+  alcanceRadar: 900
+  tempoDeEscaneamento: 0.1
   baseGiratoria: {fileID: 5176564179888039053}
   canoElevacao: {fileID: 5176564179888039055}
   velocidadeGiro: 60
-  prefabIntercepador: {fileID: 6053793194223374486, guid: 40bde17751d496b42a56dc7ae5132e7e, type: 3}
+  prefabIntercepador: {fileID: 6053793194223374486, guid: 28187b8accd16534c9de2bb764f3ada8, type: 3}
   pontosDeSaida:
   - {fileID: 710339387541763032}
   - {fileID: 5722256221834511903}
@@ -316,6 +316,7 @@ MonoBehaviour:
   capacidadeMisseis: 10
   tempoRecargaMisseis: 15
   somDisparo: {fileID: 8300000, guid: 30cc20ef2ed3c4f35af5120b0a841e84, type: 3}
+  modoPassivo: 0
 --- !u!1 &1190417579437578160
 GameObject:
   m_ObjectHideFlags: 0

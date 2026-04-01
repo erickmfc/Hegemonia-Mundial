@@ -6,6 +6,13 @@ namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_BuildDirector : IIAUpdateModule
     {
+        private enum ManualBuildCandidateStatus
+        {
+            None,
+            Found,
+            Blocked
+        }
+
         private const float BootstrapPrefeituraTime = 5f;
         private const float BootstrapAeroportoTime = 10f;
         private const float BootstrapVehicleFactoryTime = 15f;
@@ -31,6 +38,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<string, float> _missingItemCooldownUntil = new Dictionary<string, float>();
         private readonly Dictionary<string, float> _placementRetryCooldownUntil = new Dictionary<string, float>();
         private readonly Dictionary<string, float> _warningCooldownUntil = new Dictionary<string, float>();
+        private IA_ManualBuildPoint _pendingManualBuildPoint;
 
         public IA_BuildDirector(IA_Context context)
         {
@@ -276,8 +284,9 @@ namespace Hegemonia.AI.BrainMaster
             if (coastNeeded && (coastAvailable || estaleiros > 0 || piers > 0))
             {
                 Vector3 coastalBuildAnchor = coastAvailable ? navalAnchor : landAnchor;
-                float platformMaxRadius = coastAvailable ? 260f : 900f;
-                if (plataformas < 1 && QueueBuildAtWater("PLataforma", IA_ZoneType.Naval, coastalBuildAnchor, 35f, platformMaxRadius, 78, 18f))
+                float platformMinRadius = 300f;
+                float platformMaxRadius = coastAvailable ? 900f : 1200f;
+                if (plataformas < 1 && QueueBuildAtWater("PLataforma", IA_ZoneType.Naval, coastalBuildAnchor, platformMinRadius, platformMaxRadius, 78, 18f))
                 {
                     return;
                 }
@@ -313,7 +322,8 @@ namespace Hegemonia.AI.BrainMaster
         private bool QueueBuildAtChoke(string itemKey, Vector3 anchor, int priority, float cooldown)
         {
             float now = Time.time;
-            if (!CanTryBuildItem(itemKey, now) || !CanRetryPlacementSearch(itemKey, IA_TerrainType.Choke, now))
+            bool hasManualOverride = HasManualBuildOverrideForItem(itemKey);
+            if (!CanTryBuildItem(itemKey, now) || (!hasManualOverride && !CanRetryPlacementSearch(itemKey, IA_TerrainType.Choke, now)))
             {
                 return false;
             }
@@ -326,7 +336,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             ClearPlacementSearchFailure(itemKey, IA_TerrainType.Choke);
-            return QueueBuild(itemKey, candidate, IA_ZoneType.Defense, priority, cooldown);
+            IA_ManualBuildPoint manualPoint = ConsumePendingManualBuildPoint();
+            return QueueBuild(itemKey, candidate, IA_ZoneType.Defense, priority, cooldown, manualPoint);
         }
 
         private Vector3 ResolveLandAnchor(Vector3 fallback)
@@ -408,7 +419,8 @@ namespace Hegemonia.AI.BrainMaster
             float cooldown)
         {
             float now = Time.time;
-            if (!CanTryBuildItem(itemKey, now) || !CanRetryPlacementSearch(itemKey, desiredTerrain, now))
+            bool hasManualOverride = HasManualBuildOverrideForItem(itemKey);
+            if (!CanTryBuildItem(itemKey, now) || (!hasManualOverride && !CanRetryPlacementSearch(itemKey, desiredTerrain, now)))
             {
                 return false;
             }
@@ -421,7 +433,124 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             ClearPlacementSearchFailure(itemKey, desiredTerrain);
-            return QueueBuild(itemKey, candidate, zone, priority, cooldown);
+            IA_ManualBuildPoint manualPoint = ConsumePendingManualBuildPoint();
+            return QueueBuild(itemKey, candidate, zone, priority, cooldown, manualPoint);
+        }
+
+        private IA_ManualBuildPoint ConsumePendingManualBuildPoint()
+        {
+            IA_ManualBuildPoint point = _pendingManualBuildPoint;
+            _pendingManualBuildPoint = null;
+            return point;
+        }
+
+        private void ClearPendingManualBuildPoint()
+        {
+            _pendingManualBuildPoint = null;
+        }
+
+        private bool HasManualBuildOverrideForItem(string itemKey)
+        {
+            IA_BrainMaster brain = _context.Brain;
+            if (brain == null || !brain.UseManualBuildPoints)
+            {
+                return false;
+            }
+
+            IA_ManualBuildPoint[] manualPoints = brain.GetComponentsInChildren<IA_ManualBuildPoint>(true);
+            for (int i = 0; i < manualPoints.Length; i++)
+            {
+                IA_ManualBuildPoint point = manualPoints[i];
+                if (point == null || !point.TargetsItem(brain, itemKey))
+                {
+                    continue;
+                }
+
+                if (!point.AllowInactiveObject && (!point.gameObject.activeInHierarchy || !point.enabled))
+                {
+                    continue;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private ManualBuildCandidateStatus TryResolveManualBuildCandidate(
+            string itemKey,
+            Vector3 reference,
+            out Vector3 candidate,
+            out IA_ManualBuildPoint manualPoint,
+            out string reason)
+        {
+            candidate = reference;
+            manualPoint = null;
+            reason = string.Empty;
+
+            IA_BrainMaster brain = _context.Brain;
+            if (brain == null || !brain.UseManualBuildPoints)
+            {
+                return ManualBuildCandidateStatus.None;
+            }
+
+            IA_ManualBuildPoint[] manualPoints = brain.GetComponentsInChildren<IA_ManualBuildPoint>(true);
+            if (manualPoints == null || manualPoints.Length == 0)
+            {
+                return ManualBuildCandidateStatus.None;
+            }
+
+            Vector3 searchReference = reference;
+            if (searchReference == Vector3.zero)
+            {
+                searchReference = brain.transform.position;
+            }
+
+            Vector3 flatReference = Flatten(searchReference);
+            float bestDistance = float.MaxValue;
+            bool hasManualOverride = false;
+            for (int i = 0; i < manualPoints.Length; i++)
+            {
+                IA_ManualBuildPoint point = manualPoints[i];
+                if (point == null || !point.TargetsItem(brain, itemKey))
+                {
+                    continue;
+                }
+
+                if (!point.AllowInactiveObject && (!point.gameObject.activeInHierarchy || !point.enabled))
+                {
+                    continue;
+                }
+
+                hasManualOverride = true;
+                if (!point.IsCurrentlyAvailable(brain, _context.WorldState))
+                {
+                    continue;
+                }
+
+                float distance = Vector3.Distance(flatReference, Flatten(point.transform.position));
+                if (manualPoint != null && distance >= bestDistance)
+                {
+                    continue;
+                }
+
+                bestDistance = distance;
+                manualPoint = point;
+                candidate = point.transform.position;
+            }
+
+            if (manualPoint != null)
+            {
+                return ManualBuildCandidateStatus.Found;
+            }
+
+            if (hasManualOverride)
+            {
+                reason = "ponto manual configurado, mas indisponivel";
+                return ManualBuildCandidateStatus.Blocked;
+            }
+
+            return ManualBuildCandidateStatus.None;
         }
 
         private bool TryFindValidatedCandidate(
@@ -449,10 +578,39 @@ namespace Hegemonia.AI.BrainMaster
         {
             candidate = anchor;
             failureReason = "nenhum ponto valido";
+            ClearPendingManualBuildPoint();
 
             if (anchor == Vector3.zero && _context.Brain != null)
             {
                 anchor = _context.Brain.transform.position;
+            }
+
+            IA_ManualBuildPoint manualPoint;
+            string manualReason;
+            ManualBuildCandidateStatus manualStatus = TryResolveManualBuildCandidate(itemKey, anchor, out candidate, out manualPoint, out manualReason);
+            if (manualStatus == ManualBuildCandidateStatus.Found)
+            {
+                bool trackNavalDiagnostics = ShouldTrackNavalDiagnostic(itemKey, desiredTerrain);
+                if (trackNavalDiagnostics)
+                {
+                    NavalDiagnosticLine("ponto manual | item=" + itemKey + " | marcador=" + manualPoint.GetDisplayLabel());
+                    NavalDiagnosticPoint(candidate, "manual: " + manualPoint.GetDisplayLabel(), new Color(1f, 0.82f, 0.15f, 1f), 3.6f, false);
+                }
+
+                _pendingManualBuildPoint = manualPoint;
+                failureReason = string.Empty;
+                return true;
+            }
+            else if (manualStatus == ManualBuildCandidateStatus.Blocked)
+            {
+                bool trackNavalDiagnostics = ShouldTrackNavalDiagnostic(itemKey, desiredTerrain);
+                if (trackNavalDiagnostics)
+                {
+                    NavalDiagnosticLine("ponto manual bloqueou fallback automatico | item=" + itemKey + " | motivo=" + manualReason);
+                }
+
+                failureReason = manualReason;
+                return false;
             }
 
             string reason;
@@ -613,8 +771,8 @@ namespace Hegemonia.AI.BrainMaster
                         "aeroporto",
                         landAnchor,
                         IA_ZoneType.Air,
-                        240f,
-                        900f,
+                        180f,
+                        1600f,
                         980,
                         4f,
                         "aeroporto",
@@ -1115,8 +1273,21 @@ namespace Hegemonia.AI.BrainMaster
             else
             {
                 Vector3 candidate;
-                if (TryFindDirectNavalCandidate(itemKey, IA_ZoneType.Naval, selectedAnchor, 0f, coastAvailable ? 920f : 2100f, out candidate, out reason)
-                    && QueueBuild(itemKey, candidate, IA_ZoneType.Naval, 996, 4.5f))
+                IA_ManualBuildPoint manualPoint;
+                string manualReason;
+                ManualBuildCandidateStatus manualStatus = TryResolveManualBuildCandidate(itemKey, selectedAnchor, out candidate, out manualPoint, out manualReason);
+                bool queuedManual = manualStatus == ManualBuildCandidateStatus.Found
+                    && QueueBuild(itemKey, candidate, IA_ZoneType.Naval, 996, 4.5f, manualPoint);
+                bool queuedFallback = manualStatus == ManualBuildCandidateStatus.None
+                    && TryFindDirectNavalCandidate(itemKey, IA_ZoneType.Naval, selectedAnchor, 0f, coastAvailable ? 920f : 2100f, out candidate, out reason)
+                    && QueueBuild(itemKey, candidate, IA_ZoneType.Naval, 996, 4.5f);
+
+                if (manualStatus == ManualBuildCandidateStatus.Blocked)
+                {
+                    reason = manualReason;
+                }
+
+                if (queuedManual || queuedFallback)
                 {
                     _nextNavalAttemptTime = now + 4f;
                     _bootstrapNavalNoCoastFailures = 0;
@@ -1342,7 +1513,8 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (!CanRetryPlacementSearch(itemKey, terrain, now))
+            bool hasManualOverride = HasManualBuildOverrideForItem(itemKey);
+            if (!hasManualOverride && !CanRetryPlacementSearch(itemKey, terrain, now))
             {
                 reason = "busca em cooldown";
                 if (trackNavalDiagnostics)
@@ -1366,7 +1538,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             ClearPlacementSearchFailure(itemKey, terrain);
-            if (!QueueBuild(itemKey, candidate, zone, priority, cooldown))
+            IA_ManualBuildPoint manualPoint = ConsumePendingManualBuildPoint();
+            if (!QueueBuild(itemKey, candidate, zone, priority, cooldown, manualPoint))
             {
                 reason = "duplicada em fila";
                 if (trackNavalDiagnostics)
@@ -1497,7 +1670,7 @@ namespace Hegemonia.AI.BrainMaster
             return cell.Terrain == desiredTerrain && cell.BuildableLand;
         }
 
-        private bool QueueBuild(string itemKey, Vector3 candidate, IA_ZoneType zone, int priority, float cooldown)
+        private bool QueueBuild(string itemKey, Vector3 candidate, IA_ZoneType zone, int priority, float cooldown, IA_ManualBuildPoint manualPoint = null)
         {
             bool trackNavalDiagnostics = ShouldTrackNavalDiagnostic(itemKey, zone);
             if (trackNavalDiagnostics)
@@ -1505,9 +1678,10 @@ namespace Hegemonia.AI.BrainMaster
                 NavalDiagnosticPoint(candidate, "fila: candidato bruto", new Color(0.95f, 0.95f, 0.95f, 1f), 2.6f, false);
             }
 
-            Quaternion rotation = Quaternion.identity;
+            bool forceManualPlacement = manualPoint != null && manualPoint.ForceExactPlacement;
+            Quaternion rotation = manualPoint != null ? manualPoint.transform.rotation : Quaternion.identity;
             string reason;
-            if (!TryResolveBuildPose(itemKey, ref candidate, ref rotation, out reason))
+            if (!forceManualPlacement && !TryResolveBuildPose(itemKey, ref candidate, ref rotation, out reason))
             {
                 if (trackNavalDiagnostics)
                 {
@@ -1520,8 +1694,9 @@ namespace Hegemonia.AI.BrainMaster
 
             if (trackNavalDiagnostics)
             {
-                NavalDiagnosticLine("pose resolvida | item=" + itemKey + " | pos=" + candidate);
-                NavalDiagnosticPoint(candidate, "pose resolvida", new Color(0.2f, 0.9f, 1f, 1f), 3f, false);
+                string poseLabel = forceManualPlacement ? "manual exato" : "pose resolvida";
+                NavalDiagnosticLine(poseLabel + " | item=" + itemKey + " | pos=" + candidate);
+                NavalDiagnosticPoint(candidate, poseLabel, new Color(0.2f, 0.9f, 1f, 1f), 3f, false);
             }
 
             IA_BuildOrderData payload = new IA_BuildOrderData
@@ -1529,7 +1704,9 @@ namespace Hegemonia.AI.BrainMaster
                 ItemKey = itemKey,
                 Position = candidate,
                 Rotation = rotation,
-                Zone = zone
+                Zone = zone,
+                ForceManualPlacement = forceManualPlacement,
+                ManualPointLabel = manualPoint != null ? manualPoint.GetDisplayLabel() : string.Empty
             };
 
             IA_CommandRequest request = new IA_CommandRequest
@@ -1710,17 +1887,23 @@ namespace Hegemonia.AI.BrainMaster
 
             Vector3 candidate;
             float boostedMaxRadius = maxRadius + (_recoveryLevel * 45f);
+            bool hasManualOverride = HasManualBuildOverrideForItem(itemKey);
             if (!TryFindValidatedCandidate(itemKey, zone, anchor, terrain, minRadius, boostedMaxRadius, out candidate))
             {
-                return TryLegacyEmergencyBuild(itemKey, anchor, zone, terrain, minRadius, boostedMaxRadius);
+                return hasManualOverride
+                    ? false
+                    : TryLegacyEmergencyBuild(itemKey, anchor, zone, terrain, minRadius, boostedMaxRadius);
             }
 
-            if (ExecuteBuildImmediately(itemKey, candidate, zone))
+            IA_ManualBuildPoint manualPoint = ConsumePendingManualBuildPoint();
+            if (ExecuteBuildImmediately(itemKey, candidate, zone, manualPoint))
             {
                 return true;
             }
 
-            return TryLegacyEmergencyBuild(itemKey, anchor, zone, terrain, minRadius, boostedMaxRadius);
+            return hasManualOverride
+                ? false
+                : TryLegacyEmergencyBuild(itemKey, anchor, zone, terrain, minRadius, boostedMaxRadius);
         }
 
         private string ResolveFirstAvailableKey(params string[] keys)
@@ -1742,16 +1925,17 @@ namespace Hegemonia.AI.BrainMaster
             return null;
         }
 
-        private bool ExecuteBuildImmediately(string itemKey, Vector3 candidate, IA_ZoneType zone)
+        private bool ExecuteBuildImmediately(string itemKey, Vector3 candidate, IA_ZoneType zone, IA_ManualBuildPoint manualPoint = null)
         {
             if (_context.Brain != null && _context.Brain.IntegrationMode == IA_BrainMaster.IA_IntegrationMode.ShadowReadOnly)
             {
                 return false;
             }
 
-            Quaternion rotation = Quaternion.identity;
+            bool forceManualPlacement = manualPoint != null && manualPoint.ForceExactPlacement;
+            Quaternion rotation = manualPoint != null ? manualPoint.transform.rotation : Quaternion.identity;
             string poseReason;
-            if (!TryResolveBuildPose(itemKey, ref candidate, ref rotation, out poseReason))
+            if (!forceManualPlacement && !TryResolveBuildPose(itemKey, ref candidate, ref rotation, out poseReason))
             {
                 return false;
             }
@@ -1761,7 +1945,9 @@ namespace Hegemonia.AI.BrainMaster
                 ItemKey = itemKey,
                 Position = candidate,
                 Rotation = rotation,
-                Zone = zone
+                Zone = zone,
+                ForceManualPlacement = forceManualPlacement,
+                ManualPointLabel = manualPoint != null ? manualPoint.GetDisplayLabel() : string.Empty
             };
 
             IA_CommandRequest request = new IA_CommandRequest
@@ -2867,6 +3053,9 @@ namespace Hegemonia.AI.BrainMaster
             return normalized.Contains("prefeitura")
                    || normalized.Contains("governo")
                    || normalized.Contains("capital")
+                   || normalized.Contains("aeroporto")
+                   || normalized.Contains("airport")
+                   || normalized.Contains("base aerea")
                    || normalized.Contains("quartel general")
                    || normalized.Contains("quartel_general")
                    || normalized == "hq";

@@ -4,6 +4,7 @@ using UnityEngine.UI; // Necessário para a UI
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Hegemonia.AI.BrainMaster;
 
 public class Estaleiro : MonoBehaviour
 {
@@ -50,6 +51,8 @@ public class Estaleiro : MonoBehaviour
     
     void Start()
     {
+        NormalizarSlots();
+        CorrigirPoseCosteiraSeNecessario();
         GarantirSlotsExistentes();
         AtualizarReferenciasLitoraneas();
 
@@ -63,6 +66,8 @@ public class Estaleiro : MonoBehaviour
             return;
         }
 
+        NormalizarSlots();
+        CorrigirPoseCosteiraSeNecessario();
         AtualizarReferenciasLitoraneas();
     }
 
@@ -86,6 +91,40 @@ public class Estaleiro : MonoBehaviour
         }
     }
 
+    bool EstruturaDoJogadorHumano()
+    {
+        IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
+        if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
+        return id == null || id.teamID == 1;
+    }
+
+    bool IgnorarRegrasCosteirasManuais()
+    {
+        return GetComponent<IA_ManualPlacementTag>() != null;
+    }
+
+    void CorrigirPoseCosteiraSeNecessario()
+    {
+        if (EstruturaDoJogadorHumano() || IgnorarRegrasCosteirasManuais())
+        {
+            return;
+        }
+
+        string validacao;
+        if (NavalPlacementResolver.IsCurrentStructurePoseValid(gameObject, out validacao))
+        {
+            return;
+        }
+
+        NavalPlacementResolver.StructurePose pose;
+        if (!NavalPlacementResolver.TryResolveStructurePose(gameObject, transform.position, transform.rotation, out pose))
+        {
+            return;
+        }
+
+        transform.SetPositionAndRotation(pose.Position, pose.Rotation);
+    }
+
     public void GarantirSlotsExistentes()
     {
         // Validação básica: auto-criação de slots se estiver nulo
@@ -93,14 +132,14 @@ public class Estaleiro : MonoBehaviour
         {
             Debug.LogWarning("[Estaleiro] Nenhum slot de construção configurado no Inspector! Criando 3 slots básicos automaticamente.");
             slots = new SlotConstrucao[3];
-            Vector3 waterForward = ObterForwardAgua();
-            Vector3 lateralAxis = Quaternion.LookRotation(waterForward, Vector3.up) * Vector3.right;
+            Vector3 autoWaterForward = ObterForwardAgua();
+            Vector3 autoLateralAxis = Quaternion.LookRotation(autoWaterForward, Vector3.up) * Vector3.right;
             for (int i = 0; i < 3; i++)
             {
                 GameObject novoPonto = new GameObject($"Ponto_Auto_Estaleiro_{i}");
                 novoPonto.transform.SetParent(this.transform);
-                novoPonto.transform.position = transform.position + (waterForward * offsetAguaFrente) + (lateralAxis * (i * 20f - 20f));
-                novoPonto.transform.rotation = Quaternion.LookRotation(waterForward, Vector3.up);
+                novoPonto.transform.position = transform.position + (autoWaterForward * offsetAguaFrente) + (autoLateralAxis * (i * 20f - 20f));
+                novoPonto.transform.rotation = Quaternion.LookRotation(autoWaterForward, Vector3.up);
                 
                 slots[i] = new SlotConstrucao
                 {
@@ -109,6 +148,24 @@ public class Estaleiro : MonoBehaviour
                     estaOcupado = false
                 };
             }
+        }
+
+        NormalizarSlots();
+
+        Vector3 waterForward = ObterForwardAgua();
+        Vector3 lateralAxis = Quaternion.LookRotation(waterForward, Vector3.up) * Vector3.right;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i].pontoDeConstrucao != null)
+            {
+                continue;
+            }
+
+            GameObject novoPonto = new GameObject(slots[i].nomeSlot);
+            novoPonto.transform.SetParent(this.transform);
+            novoPonto.transform.position = transform.position + (waterForward * offsetAguaFrente) + (lateralAxis * (i * 20f - 20f));
+            novoPonto.transform.rotation = Quaternion.LookRotation(waterForward, Vector3.up);
+            slots[i].pontoDeConstrucao = novoPonto.transform;
         }
     }
 
@@ -138,7 +195,7 @@ public class Estaleiro : MonoBehaviour
         string validacaoNaval;
         float nivelAguaAtual = NavalPlacementResolver.ResolveSeaLevel();
         bool poseValida = NavalPlacementResolver.IsCurrentStructurePoseValid(gameObject, out validacaoNaval);
-        if (!poseValida && !EstaNaConstrucaoValida(nivelAguaAtual))
+        if (!IgnorarRegrasCosteirasManuais() && !poseValida && !EstaNaConstrucaoValida(nivelAguaAtual))
         {
             Debug.LogWarning("[Estaleiro] Construção naval bloqueada: " + validacaoNaval);
             return false;
@@ -147,20 +204,19 @@ public class Estaleiro : MonoBehaviour
         SlotConstrucao slotLivre = null;
 
         // REGRA ESPECÍFICA: Navios GRANDES devem procurar o slot "Atracagem_Grande"
-        bool ehNavioGrande = prefabDoNavio.GetComponent<NavioPetroleiro>() != null
-                          || prefabDoNavio.GetComponent<TransporteAnfibio>() != null
-                          || prefabDoNavio.GetComponent<NavioLiberty>() != null;
+        bool ehNavioGrande = EhNavioGrande(prefabDoNavio);
         
         if (ehNavioGrande)
         {
             slotLivre = ObterSlotEspecificoLivre("Atracagem_Grande");
             if (slotLivre == null)
             {
-                Debug.LogWarning("[Estaleiro] Navio grande requer 'Atracagem_Grande', mas está ocupada ou não existe. Tentando outros slots...");
+                Debug.LogWarning("[Estaleiro] Navio grande requer 'Atracagem_Grande', mas ela está ocupada ou não existe.");
+                return false;
             }
         }
 
-        // Se não for petroleiro ou se o slot preferido estiver ocupado, busca qualquer um
+        // Se não for navio grande, busca qualquer slot livre
         if (slotLivre == null)
         {
             slotLivre = ObterSlotLivre();
@@ -176,6 +232,29 @@ public class Estaleiro : MonoBehaviour
             Debug.LogWarning("[Estaleiro] Todos os slots estão ocupados!");
             return false;
         }
+    }
+
+    bool EhNavioGrande(GameObject prefabDoNavio)
+    {
+        if (prefabDoNavio == null)
+        {
+            return false;
+        }
+
+        IdentidadeNaval identidadeNaval = prefabDoNavio.GetComponent<IdentidadeNaval>();
+        if (identidadeNaval == null)
+        {
+            identidadeNaval = prefabDoNavio.GetComponentInChildren<IdentidadeNaval>();
+        }
+
+        if (identidadeNaval != null && identidadeNaval.categoriaNavio == IdentidadeNaval.CategoriaNavio.TransporteGrande)
+        {
+            return true;
+        }
+
+        return prefabDoNavio.GetComponent<NavioPetroleiro>() != null
+            || prefabDoNavio.GetComponent<TransporteAnfibio>() != null
+            || prefabDoNavio.GetComponent<NavioLiberty>() != null;
     }
 
     SlotConstrucao ObterSlotEspecificoLivre(string nomeAlvo)
@@ -284,21 +363,17 @@ public class Estaleiro : MonoBehaviour
 
     void FinalizarConstrucao(SlotConstrucao slot)
     {
+        NormalizarSlots();
         Debug.Log($"[Estaleiro] Construção finalizada no {slot.nomeSlot}! Nascendo 100% puro.");
 
         // Calcula posição de nascimento exata
-        Vector3 posFinal = slot.pontoDeConstrucao.position;
+        Vector3 referenciaLancamento = slot.pontoDeConstrucao != null ? slot.pontoDeConstrucao.position : transform.position;
+        Vector3 posFinal = referenciaLancamento;
+        bool ehNavioGrande = EhNavioGrande(slot.prefabAtual);
         Vector3 waterForward = ObterForwardAgua();
         float nivelAguaAtual = NavalPlacementResolver.ResolveSeaLevel();
         string spawnReason;
-        if (!NavalPlacementResolver.TryResolveWaterSpawn(
-            posFinal,
-            waterForward,
-            0f,
-            Mathf.Max(80f, offsetAguaFrente + 25f),
-            out posFinal,
-            out nivelAguaAtual,
-            out spawnReason))
+        if (!TryResolveLaunchWaterPoint(referenciaLancamento, ehNavioGrande, out posFinal, out nivelAguaAtual, out spawnReason))
         {
             Debug.LogWarning("[Estaleiro] Falha ao localizar água para liberar o navio: " + spawnReason);
 
@@ -352,19 +427,12 @@ public class Estaleiro : MonoBehaviour
         // Ordena que o navio vá para o ponto de saída automaticamente
         Vector3 destinoSaida = pontoDeSaida != null
             ? pontoDeSaida.position
-            : navioPronto.transform.position + (waterForward * Mathf.Max(60f, offsetAguaFrente + 25f));
+            : navioPronto.transform.position + (waterForward * (ehNavioGrande ? Mathf.Max(110f, offsetAguaFrente + 70f) : Mathf.Max(60f, offsetAguaFrente + 25f)));
         string saidaReason;
         float nivelSaida = nivelAguaAtual;
-        if (!NavalPlacementResolver.TryResolveWaterSpawn(
-            destinoSaida,
-            waterForward,
-            0f,
-            Mathf.Max(140f, offsetAguaFrente + 70f),
-            out destinoSaida,
-            out nivelSaida,
-            out saidaReason))
+        if (!TryResolveLaunchWaterPoint(destinoSaida, ehNavioGrande, out destinoSaida, out nivelSaida, out saidaReason))
         {
-            destinoSaida = navioPronto.transform.position + (waterForward * Mathf.Max(60f, offsetAguaFrente + 25f));
+            destinoSaida = navioPronto.transform.position + (waterForward * (ehNavioGrande ? Mathf.Max(110f, offsetAguaFrente + 70f) : Mathf.Max(60f, offsetAguaFrente + 25f)));
             destinoSaida.y = nivelAguaAtual;
         }
 
@@ -385,8 +453,15 @@ public class Estaleiro : MonoBehaviour
                 agenteNovo.Warp(hit.position);
             }
         
-            var navRealista = navioPronto.GetComponent<NavegacaoInteligenteNaval>();
+            var navRealista = navioPronto.GetComponent<ControleNavioRealista>();
+            var navegacaoNaval = navioPronto.GetComponent<NavegacaoInteligenteNaval>();
+            var controleSubmarino = navioPronto.GetComponent<ControleSubmarino>();
+            var identidadeNaval = navioPronto.GetComponent<IdentidadeNaval>();
+
             if (navRealista != null) navRealista.DefinirDestino(destinoSaida);
+            else if (navegacaoNaval != null) navegacaoNaval.DefinirDestino(destinoSaida);
+            else if (controleSubmarino != null) controleSubmarino.DefinirDestino(destinoSaida);
+            else if (identidadeNaval != null) identidadeNaval.MoverPara(destinoSaida);
             else agenteNovo.SetDestination(destinoSaida);
         }
 
@@ -415,8 +490,107 @@ public class Estaleiro : MonoBehaviour
             Instantiate(efeitoConclusao, slot.pontoDeConstrucao.position, Quaternion.identity);
         }
 
+        Debug.Log($"[Estaleiro] Navio liberado: {navioPronto.name} | spawn={navioPronto.transform.position} | saida={destinoSaida}");
+
         // Libera o slot
         LiberarSlot(slot);
+    }
+
+    void NormalizarSlots()
+    {
+        if (slots == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == null)
+            {
+                slots[i] = new SlotConstrucao();
+            }
+
+            if (string.IsNullOrWhiteSpace(slots[i].nomeSlot))
+            {
+                slots[i].nomeSlot = i == 0 ? "Atracagem_Grande" : $"Slot_{i}";
+            }
+
+            if (slots[i].pontoDeConstrucao != null && string.IsNullOrWhiteSpace(slots[i].pontoDeConstrucao.name))
+            {
+                slots[i].pontoDeConstrucao.name = slots[i].nomeSlot;
+            }
+        }
+    }
+
+    bool TryResolveLaunchWaterPoint(Vector3 anchor, bool ehNavioGrande, out Vector3 pontoAgua, out float nivelAgua, out string reason)
+    {
+        pontoAgua = anchor;
+        nivelAgua = NavalPlacementResolver.ResolveSeaLevel();
+        reason = "sem ponto de agua";
+
+        Vector3 waterForward = ObterForwardAgua();
+        var anchors = new List<Vector3>();
+        AddLaunchAnchor(anchors, anchor);
+        if (pontoDeSaida != null)
+        {
+            AddLaunchAnchor(anchors, pontoDeSaida.position);
+        }
+
+        AddLaunchAnchor(anchors, transform.position + (waterForward * Mathf.Max(20f, offsetAguaFrente)));
+        AddLaunchAnchor(anchors, transform.position);
+
+        float raioMinimo = ehNavioGrande ? 20f : 0f;
+        float[] raiosMaximos = ehNavioGrande
+            ? new[] { Mathf.Max(180f, offsetAguaFrente + 110f), 280f, 380f, 520f }
+            : new[] { Mathf.Max(110f, offsetAguaFrente + 40f), 180f, 260f, 360f };
+
+        for (int a = 0; a < anchors.Count; a++)
+        {
+            for (int r = 0; r < raiosMaximos.Length; r++)
+            {
+                string tentativaReason;
+                Vector3 tentativaPonto;
+                float tentativaNivel;
+                if (NavalPlacementResolver.TryResolveWaterSpawn(
+                    anchors[a],
+                    waterForward,
+                    raioMinimo,
+                    raiosMaximos[r],
+                    out tentativaPonto,
+                    out tentativaNivel,
+                    out tentativaReason))
+                {
+                    pontoAgua = tentativaPonto;
+                    nivelAgua = tentativaNivel;
+                    reason = string.Empty;
+                    return true;
+                }
+
+                reason = tentativaReason;
+            }
+        }
+
+        return false;
+    }
+
+    void AddLaunchAnchor(List<Vector3> anchors, Vector3 candidate)
+    {
+        if (anchors == null || candidate == Vector3.zero)
+        {
+            return;
+        }
+
+        Vector3 flatCandidate = new Vector3(candidate.x, 0f, candidate.z);
+        for (int i = 0; i < anchors.Count; i++)
+        {
+            Vector3 flatCurrent = new Vector3(anchors[i].x, 0f, anchors[i].z);
+            if ((flatCurrent - flatCandidate).sqrMagnitude <= 4f)
+            {
+                return;
+            }
+        }
+
+        anchors.Add(candidate);
     }
 
     void LiberarSlot(SlotConstrucao slot)
@@ -507,6 +681,7 @@ public class Estaleiro : MonoBehaviour
 
     public void AtualizarReferenciasLitoraneas()
     {
+        NormalizarSlots();
         if (!autoAlinharComAgua)
         {
             return;
@@ -531,12 +706,16 @@ public class Estaleiro : MonoBehaviour
 
         _ultimoForwardAgua = waterForward;
         Quaternion waterRotation = Quaternion.LookRotation(waterForward, Vector3.up);
+        float distanciaFrontalSlots = Mathf.Max(28f, offsetAguaFrente + (EstruturaDoJogadorHumano() ? 12f : 0f));
+        Vector3 origemSlots = new Vector3(
+            transform.position.x + (waterForward.x * distanciaFrontalSlots),
+            seaLevel,
+            transform.position.z + (waterForward.z * distanciaFrontalSlots));
 
         if (slots != null && slots.Length > 0)
         {
             float lateralSpacing = 20f;
             float lateralStart = -((slots.Length - 1) * lateralSpacing) * 0.5f;
-            Vector3 origemSlots = new Vector3(waterPoint.x, seaLevel, waterPoint.z);
             Vector3 lateralAxis = waterRotation * Vector3.right;
 
             for (int i = 0; i < slots.Length; i++)
@@ -544,6 +723,11 @@ public class Estaleiro : MonoBehaviour
                 if (slots[i] == null)
                 {
                     continue;
+                }
+
+                if (string.IsNullOrEmpty(slots[i].nomeSlot))
+                {
+                    slots[i].nomeSlot = (i == 0) ? "Atracagem_Grande" : $"Slot_{i}";
                 }
 
                 if (slots[i].pontoDeConstrucao == null)
@@ -556,6 +740,7 @@ public class Estaleiro : MonoBehaviour
                 Vector3 lateral = lateralAxis * (lateralStart + (i * lateralSpacing));
                 slots[i].pontoDeConstrucao.position = origemSlots + lateral;
                 slots[i].pontoDeConstrucao.rotation = waterRotation;
+                slots[i].pontoDeConstrucao.name = slots[i].nomeSlot;
             }
         }
 
@@ -567,9 +752,9 @@ public class Estaleiro : MonoBehaviour
         }
 
         pontoDeSaida.position = new Vector3(
-            transform.position.x + (waterForward.x * Mathf.Max(60f, offsetAguaFrente + 40f)),
+            origemSlots.x + (waterForward.x * Mathf.Max(45f, offsetAguaFrente + 35f)),
             seaLevel,
-            transform.position.z + (waterForward.z * Mathf.Max(60f, offsetAguaFrente + 40f)));
+            origemSlots.z + (waterForward.z * Mathf.Max(45f, offsetAguaFrente + 35f)));
         pontoDeSaida.rotation = waterRotation;
         RegistrarNoGerente();
     }

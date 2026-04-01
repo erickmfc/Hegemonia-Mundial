@@ -49,6 +49,8 @@ namespace Hegemonia.AI.BrainMaster
         [Header("Debug")]
         public bool EnableVerboseLogs = false;
         public bool EnableBootstrapConsoleTrace = true;
+        [Header("Manual Build")]
+        public bool UseManualBuildPoints = true;
         [TextArea(3, 12)] public string RuntimeSummary = string.Empty;
         [TextArea(3, 12)] public string BootstrapStatus = string.Empty;
         [TextArea(2, 8)] public string BootstrapLastError = string.Empty;

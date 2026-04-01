@@ -603,6 +603,21 @@ public class GerenteDeJogo : MonoBehaviour
 
         Vector3 direita = (referenciaSaida != null) ? referenciaSaida.right : Vector3.right;
         Vector3 frente = (referenciaSaida != null) ? referenciaSaida.forward : Vector3.forward;
+        direita.y = 0f;
+        frente.y = 0f;
+
+        if (direita.sqrMagnitude < 0.01f) direita = Vector3.right;
+        if (frente.sqrMagnitude < 0.01f) frente = Vector3.forward;
+
+        direita.Normalize();
+        frente.Normalize();
+
+        bool ehHelicoptero = unidade != null && unidade.GetComponent<Helicoptero>() != null;
+        if (ehHelicoptero)
+        {
+            offsetX = 0f;
+            offsetZ = (slotAtual + 1) * passoZ;
+        }
 
         Vector3 destino = destinoBase + (direita * offsetX) + (frente * offsetZ);
 

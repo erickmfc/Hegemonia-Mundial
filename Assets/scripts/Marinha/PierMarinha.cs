@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Hegemonia.AI.BrainMaster;
 
 public class PierMarinha : MonoBehaviour
 {
@@ -104,11 +105,12 @@ public class PierMarinha : MonoBehaviour
 
     void Start()
     {
+        CorrigirPoseCosteiraSeNecessario();
         StartCoroutine(RotinaBuscaConstrucao());
         RegistrarNoGerente();
     }
 
-    void RegistrarNoGerente()
+    public void RegistrarNoGerente()
     {
         GerenteDeJogo gerente = GerenteDeJogo.Instancia;
         if (gerente == null) gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
@@ -128,6 +130,40 @@ public class PierMarinha : MonoBehaviour
                 gerente.AtualizarPontoEstaleiro(spawn, saida);
             }
         }
+    }
+
+    bool EstruturaDoJogadorHumano()
+    {
+        IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
+        if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
+        return id == null || id.teamID == 1;
+    }
+
+    bool IgnorarRegrasCosteirasManuais()
+    {
+        return GetComponent<IA_ManualPlacementTag>() != null;
+    }
+
+    void CorrigirPoseCosteiraSeNecessario()
+    {
+        if (EstruturaDoJogadorHumano() || IgnorarRegrasCosteirasManuais())
+        {
+            return;
+        }
+
+        string validacao;
+        if (NavalPlacementResolver.IsCurrentStructurePoseValid(gameObject, out validacao))
+        {
+            return;
+        }
+
+        NavalPlacementResolver.StructurePose pose;
+        if (!NavalPlacementResolver.TryResolveStructurePose(gameObject, transform.position, transform.rotation, out pose))
+        {
+            return;
+        }
+
+        transform.SetPositionAndRotation(pose.Position, pose.Rotation);
     }
 
     IEnumerator RotinaBuscaConstrucao()
@@ -421,7 +457,7 @@ public class PierMarinha : MonoBehaviour
         if (prefabNavio == null) return false;
 
         string validacaoPier;
-        if (!NavalPlacementResolver.IsCurrentStructurePoseValid(gameObject, out validacaoPier))
+        if (!IgnorarRegrasCosteirasManuais() && !NavalPlacementResolver.IsCurrentStructurePoseValid(gameObject, out validacaoPier))
         {
             Debug.LogWarning("[PierMarinha] Construção naval bloqueada: " + validacaoPier);
             return false;

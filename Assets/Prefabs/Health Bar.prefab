@@ -326,7 +326,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 7531936790979348475}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3bc1d8248dd9bc9428dd04d1e59f1d26, type: 3}
+  m_Script: {fileID: 11500000, guid: c73a4603564553b45add1e35fb09030e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BarraDeVida
   slider: {fileID: 7056082957995329289}
