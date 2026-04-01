@@ -3270,7 +3270,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &590836159
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6013,6 +6013,8 @@ MonoBehaviour:
   prefabSelecionado: {fileID: 0}
   modoConstrucao: 0
   alturaDoMar: 0
+  deslocamentoPadraoEstruturaCosteira: 18
+  distanciaCorrecaoSpawnNaval: 30
 --- !u!114 &1066512839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6047,7 +6049,9 @@ MonoBehaviour:
   filaProducao: []
   listaQuarteis: []
   listaHangares: []
-  listaEstaleiros: []
+  listaEstaleiros:
+  - spawn: {fileID: 0}
+    saida: {fileID: 0}
   listaHeliportos: []
 --- !u!114 &1066512841
 MonoBehaviour:

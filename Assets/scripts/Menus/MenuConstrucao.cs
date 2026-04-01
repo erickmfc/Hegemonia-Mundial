@@ -649,14 +649,27 @@ public class MenuConstrucao : MonoBehaviour
         // ==========================================
         // 1. ROTEAMENTO PARA MARINHA (Navios)
         // ==========================================
+        string nomeItemLower = item.nomeItem.ToLower();
+        string nomePrefabLower = item.prefabDaUnidade.name.ToLower();
+
         bool pareceSerNavio = item.prefabDaUnidade.GetComponent<IdentidadeNaval>() != null 
                             || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
-                            || item.prefabDaUnidade.GetComponent<HovercraftTransporte>() != null // Hovercraft = NAVAL!
-                            || item.nomeItem.ToLower().Contains("navio") || item.nomeItem.ToLower().Contains("sub") || item.nomeItem.ToLower().Contains("leviathan")
-                            || item.nomeItem.ToLower().Contains("lancha") || item.nomeItem.ToLower().Contains("corveta")
-                            || item.nomeItem.ToLower().Contains("hovercraft") || item.nomeItem.ToLower().Contains("hover")
-                            || item.nomeItem.ToLower().Contains("marinha") 
-                            || item.prefabDaUnidade.name.ToLower().Contains("hover") || item.prefabDaUnidade.name.ToLower().Contains("marinha");
+                            || item.prefabDaUnidade.GetComponent<HovercraftTransporte>() != null
+                            || item.prefabDaUnidade.GetComponent<ControleNavioRealista>() != null
+                            || item.prefabDaUnidade.GetComponent<NavegacaoInteligenteNaval>() != null
+                            || nomeItemLower.Contains("navio") || nomeItemLower.Contains("sub")
+                            || nomeItemLower.Contains("leviathan") || nomeItemLower.Contains("lancha")
+                            || nomeItemLower.Contains("corveta") || nomeItemLower.Contains("hovercraft")
+                            || nomeItemLower.Contains("hover") || nomeItemLower.Contains("marinha")
+                            || nomeItemLower.Contains("destroier") || nomeItemLower.Contains("fragata")
+                            || nomeItemLower.Contains("ironclad") || nomeItemLower.Contains("vindicator")
+                            || nomeItemLower.Contains("barco") || nomeItemLower.Contains("carrier")
+                            || nomeItemLower.Contains("porta") || nomeItemLower.Contains("uss")
+                            || nomePrefabLower.Contains("hover") || nomePrefabLower.Contains("marinha")
+                            || nomePrefabLower.Contains("nav_") || nomePrefabLower.Contains("navio")
+                            || nomePrefabLower.Contains("corveta") || nomePrefabLower.Contains("wall")
+                            || nomePrefabLower.Contains("uss") || nomePrefabLower.Contains("ironclad")
+                            || nomePrefabLower.Contains("vindicator") || nomePrefabLower.Contains("destroier");
 
         if (item.categoria == DadosConstrucao.CategoriaItem.Marinha || pareceSerNavio)
         {
@@ -666,7 +679,7 @@ public class MenuConstrucao : MonoBehaviour
                                  item.nomeItem.ToLower().Contains("pier") || 
                                  item.nomeItem.ToLower().Contains("plataforma");
 
-            if (!ehPredioNaval && pareceSerNavio)
+            if (!ehPredioNaval)
             {
                 bool ehNavioGrande = EhNavioGrande(item.prefabDaUnidade);
                 List<Estaleiro> estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None)
@@ -825,7 +838,7 @@ public class MenuConstrucao : MonoBehaviour
                             || item.prefabDaUnidade.GetComponent("Helicoptero") != null; 
 
         // Proteção 1: Se o nome tem "soldado", "tanque", forçamos ser móvel para não colar no mouse
-        if (nomeLower.Contains("soldado") || nomeLower.Contains("tank") || nomeLower.Contains("veiculo") || nomeLower.Contains("infantaria") || nomeLower.Contains("fuzileiro") || item.categoria == DadosConstrucao.CategoriaItem.Exercito || item.categoria == DadosConstrucao.CategoriaItem.Marinha)
+        if (nomeLower.Contains("soldado") || nomeLower.Contains("tank") || nomeLower.Contains("veiculo") || nomeLower.Contains("infantaria") || nomeLower.Contains("fuzileiro") || item.categoria == DadosConstrucao.CategoriaItem.Exercito)
         {
             ehUnidadeMovel = true;
         }

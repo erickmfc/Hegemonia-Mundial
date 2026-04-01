@@ -25,7 +25,7 @@ Transform:
   m_GameObject: {fileID: 1723645642955628407}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.182, y: 0, z: 3.2}
+  m_LocalPosition: {x: -0.182, y: 0, z: 6.89}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -172,7 +172,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Estaleiro
   pontoDeSaida: {fileID: 4309502259949420468}
   slots:
-  - nomeSlot: 
+  - nomeSlot: Atracagem_Grande
     pontoDeConstrucao: {fileID: 1335252138048140245}
     estaOcupado: 0
     visualAtual: {fileID: 0}
@@ -182,7 +182,7 @@ MonoBehaviour:
     barCanvasObj: {fileID: 0}
     barFillImage: {fileID: 0}
     textProgresso: {fileID: 0}
-  - nomeSlot: 
+  - nomeSlot: Slot_1
     pontoDeConstrucao: {fileID: 686588862126957584}
     estaOcupado: 0
     visualAtual: {fileID: 0}
@@ -201,6 +201,7 @@ MonoBehaviour:
   nivelDaAgua: 0
   offsetAltura: 0
   efeitoConclusao: {fileID: 0}
+  autoAlinharComAgua: 1
   offsetAguaFrente: 35
   offsetTerraTras: -15
 --- !u!208 &2620938511765768467
@@ -612,7 +613,7 @@ Transform:
   m_GameObject: {fileID: 7172463333553851576}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.006, y: 0, z: 13.15}
+  m_LocalPosition: {x: 0.006, y: 0, z: 15.59}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
