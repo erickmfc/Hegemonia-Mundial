@@ -235,7 +235,7 @@ MonoBehaviour:
   teamID: 1
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
-  tipoUnidade: 0
+  tipoUnidade: 2
 --- !u!1 &3281884118873610546
 GameObject:
   m_ObjectHideFlags: 0

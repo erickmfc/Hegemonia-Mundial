@@ -319,7 +319,9 @@ namespace Hegemonia.AI.BrainMaster
         {
             List<string> aliases = new List<string>();
             string joined = IA_Text.Normalize(item.nomeItem + " " + item.name + " " + item.prefabDaUnidade.name);
-            bool isAirport = item.prefabDaUnidade.GetComponent<GerenciadorAeroporto>() != null;
+            // Porta-aviões herda de GerenciadorAeroporto — NÃO deve ser tratado como aeroporto!
+            bool isPortaAvioes = item.prefabDaUnidade.GetComponent<GerenciadorPortaAvioes>() != null;
+            bool isAirport = !isPortaAvioes && item.prefabDaUnidade.GetComponent<GerenciadorAeroporto>() != null;
             bool isHeliport = item.prefabDaUnidade.GetComponent<Heliporto>() != null;
 
             if (joined.Contains("prefeitura"))
@@ -390,12 +392,19 @@ namespace Hegemonia.AI.BrainMaster
                 aliases.Add("estaleiro naval");
             }
 
-            if (isAirport || joined.Contains("aeroporto") || joined.Contains("airport") || joined.Contains("pista"))
+            if (!isPortaAvioes && (isAirport || joined.Contains("aeroporto") || joined.Contains("airport") || joined.Contains("pista")))
             {
                 aliases.Add("aeroporto");
                 aliases.Add("airport");
                 aliases.Add("base aerea");
                 aliases.Add("pista");
+            }
+
+            if (isPortaAvioes)
+            {
+                aliases.Add("porta avioes");
+                aliases.Add("carrier");
+                aliases.Add("porta-avioes");
             }
 
             if (isHeliport || joined.Contains("heliporto"))
@@ -1374,6 +1383,12 @@ namespace Hegemonia.AI.BrainMaster
         private static bool IsAirport(DadosConstrucao data, IA_ZoneType zone)
         {
             if (data == null || data.prefabDaUnidade == null)
+            {
+                return false;
+            }
+
+            // Porta-aviões herda de GerenciadorAeroporto mas NÃO é aeroporto terrestre
+            if (data.prefabDaUnidade.GetComponent<GerenciadorPortaAvioes>() != null)
             {
                 return false;
             }
