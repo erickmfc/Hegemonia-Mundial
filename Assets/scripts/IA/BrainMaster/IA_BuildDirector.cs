@@ -759,7 +759,7 @@ namespace Hegemonia.AI.BrainMaster
                         return true;
                     }
 
-                    if (brain.GetBootstrapStageElapsed(now) >= 18f)
+                    if (brain.GetBootstrapStageElapsed(now) >= 30f)
                     {
                         brain.SetBootstrapStage(
                             IA_BrainMaster.IA_BootstrapStage.BuildVehicleFactory,
@@ -771,7 +771,7 @@ namespace Hegemonia.AI.BrainMaster
                         "aeroporto",
                         landAnchor,
                         IA_ZoneType.Air,
-                        180f,
+                        40f,
                         1600f,
                         980,
                         4f,

@@ -569,7 +569,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (IsAirport(data, zone) && !HasAirportClearance(position, world, Mathf.Max(220f, spacingRadius + 60f)))
+            if (IsAirport(data, zone) && !HasAirportClearance(position, world, Mathf.Max(80f, spacingRadius + 30f)))
             {
                 reason = "aeroporto muito perto do nucleo ou de imoveis";
                 return false;
@@ -1362,7 +1362,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 float d = Vector3.Distance(Flatten(imovel.transform.position), Flatten(position));
-                if (d < 200f)
+                if (d < 60f)
                 {
                     return false;
                 }

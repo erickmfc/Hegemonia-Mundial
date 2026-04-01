@@ -594,11 +594,21 @@ public class MenuConstrucao : MonoBehaviour
             return;
         }
         
-        bool temComponentePredio = item.prefabDaUnidade.GetComponent<Fabrica>() != null ||
+        // Porta-aviões (GerenciadorPortaAvioes) tem GerenciadorAeroporto mas é NAVIO, não prédio!
+        bool ehPortaAvioes = item.prefabDaUnidade.GetComponent<GerenciadorPortaAvioes>() != null
+                           || (item.prefabDaUnidade.GetComponent<GerenciadorAeroporto>() != null
+                               && (item.prefabDaUnidade.GetComponent<IdentidadeNaval>() != null
+                                   || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
+                                   || item.nomeItem.ToLower().Contains("uss")
+                                   || item.nomeItem.ToLower().Contains("porta")
+                                   || item.nomeItem.ToLower().Contains("carrier")));
+
+        bool temComponentePredio = !ehPortaAvioes && (
+                                   item.prefabDaUnidade.GetComponent<Fabrica>() != null ||
                                    item.prefabDaUnidade.GetComponent<Estaleiro>() != null ||
                                    item.prefabDaUnidade.GetComponent<Heliporto>() != null ||
                                    item.prefabDaUnidade.GetComponent<GerenciadorAeroporto>() != null ||
-                                   item.prefabDaUnidade.GetComponent<PierMarinha>() != null;
+                                   item.prefabDaUnidade.GetComponent<PierMarinha>() != null);
 
         string nomeLower = (item.prefabDaUnidade.name + "_" + item.nomeItem).ToLower();
 
@@ -673,11 +683,12 @@ public class MenuConstrucao : MonoBehaviour
 
         if (item.categoria == DadosConstrucao.CategoriaItem.Marinha || pareceSerNavio)
         {
-            bool ehPredioNaval = item.prefabDaUnidade.CompareTag("Imovel") ||
+            bool ehPredioNaval = !ehPortaAvioes && (
+                                 item.prefabDaUnidade.CompareTag("Imovel") ||
                                  temComponentePredio ||
                                  item.nomeItem.ToLower().Contains("estaleiro") || 
                                  item.nomeItem.ToLower().Contains("pier") || 
-                                 item.nomeItem.ToLower().Contains("plataforma");
+                                 item.nomeItem.ToLower().Contains("plataforma"));
 
             if (!ehPredioNaval)
             {
