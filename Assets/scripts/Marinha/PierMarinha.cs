@@ -141,6 +141,12 @@ public class PierMarinha : MonoBehaviour
 
     bool IgnorarRegrasCosteirasManuais()
     {
+        // IA já tem pontos manuais predefinidos, não precisa de validação costeira
+        if (!EstruturaDoJogadorHumano())
+        {
+            return true;
+        }
+
         return GetComponent<IA_ManualPlacementTag>() != null;
     }
 
