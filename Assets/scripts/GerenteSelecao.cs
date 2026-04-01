@@ -607,8 +607,10 @@ public class GerenteSelecao : MonoBehaviour
             Vector3 posLocal = new Vector3(centroColuna[coluna], 0f, centroLinha[linha]);
             Vector3 posAlvo = destinoCentral + (rotacaoFormacao * posLocal);
 
+            bool unidadeAnfibia = alvoCtrl.GetComponent<HovercraftTransporte>() != null;
+
             UnityEngine.AI.NavMeshHit hit;
-            if (UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, UnityEngine.AI.NavMesh.AllAreas))
+            if (!unidadeAnfibia && UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, UnityEngine.AI.NavMesh.AllAreas))
             {
                 posAlvo = hit.position;
             }

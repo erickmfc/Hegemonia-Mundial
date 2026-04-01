@@ -60,6 +60,7 @@ public class HovercraftTransporte : MonoBehaviour
         rb.linearDamping = 1f; 
         rb.angularDamping = 2f; 
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        ConfigurarCamadasAnfibias();
 
         if (helices == null || helices.Length == 0)
         {
@@ -105,8 +106,11 @@ public class HovercraftTransporte : MonoBehaviour
                 Ray r = Camera.main.ScreenPointToRay(Input.mousePosition);
                 if (Physics.Raycast(r, out RaycastHit h, 1000f, camadasChao)) 
                 { 
-                    destinoAtual = h.point; 
-                    temDestino = true; 
+                    DefinirDestino(h.point);
+                }
+                else if (Physics.Raycast(r, out RaycastHit hitLivre, 1000f))
+                {
+                    DefinirDestino(hitLivre.point);
                 }
             }
         }
@@ -120,6 +124,12 @@ public class HovercraftTransporte : MonoBehaviour
     { 
         ManterFlutuacao(); 
         MoverParaDestino(); 
+    }
+
+    public void DefinirDestino(Vector3 destino)
+    {
+        destinoAtual = destino;
+        temDestino = true;
     }
 
     void MoverParaDestino() 
@@ -470,5 +480,29 @@ public class HovercraftTransporte : MonoBehaviour
         }
         slotsDeCarga = lista.ToArray();
         AtualizarSlots();
+    }
+
+    void ConfigurarCamadasAnfibias()
+    {
+        camadasChao = AdicionarLayerSeExistir(camadasChao, "Chao");
+        camadasChao = AdicionarLayerSeExistir(camadasChao, "Terrain");
+        camadasChao = AdicionarLayerSeExistir(camadasChao, "Terra");
+        camadasChao = AdicionarLayerSeExistir(camadasChao, "Water");
+        camadasChao = AdicionarLayerSeExistir(camadasChao, "Agua");
+        camadasChao = AdicionarLayerSeExistir(camadasChao, "Mar");
+        camadasChao = AdicionarLayerSeExistir(camadasChao, "Sea");
+
+        if (camadasChao.value == 0)
+        {
+            camadasChao = Physics.DefaultRaycastLayers;
+        }
+    }
+
+    LayerMask AdicionarLayerSeExistir(LayerMask mascara, string nomeLayer)
+    {
+        int indice = LayerMask.NameToLayer(nomeLayer);
+        if (indice < 0) return mascara;
+
+        return mascara | (1 << indice);
     }
 }

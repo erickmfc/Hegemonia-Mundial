@@ -369,6 +369,19 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
+        if (TryGetComponent<HovercraftTransporte>(out var hovercraft))
+        {
+            hovercraft.DefinirDestino(destino);
+
+            if (agente != null && agente.enabled)
+            {
+                if (agente.isOnNavMesh) agente.ResetPath();
+                agente.isStopped = true;
+            }
+
+            return;
+        }
+
         // Segurança: Se o agente não foi pego no Awake (ex: adicionado depois), pega agora.
         if (agente == null) agente = GetComponent<NavMeshAgent>();
 
