@@ -85,6 +85,7 @@ namespace Hegemonia.AI.BrainMaster
         private float _nextRuntimeSummaryTime;
         private readonly List<MonoBehaviour> _disabledLegacy = new List<MonoBehaviour>();
         private float _schedulerPhaseOffset;
+        private bool _modulesRegistered;
         private static int _activeBrainCount;
         private float _bootstrapStartTime;
         private float _bootstrapStageStartTime;
@@ -107,72 +108,29 @@ namespace Hegemonia.AI.BrainMaster
         private void Awake()
         {
             Credits = Mathf.Max(0, InitialCredits);
-
-            _commandQueue = new IA_CommandQueue();
-            _backendBridge = new IA_BackendBridge(TeamId);
-            _worldState = new IA_WorldState(TeamId);
-            _worldState.SetFallbackCenter(transform.position);
-            _mapAnalyzer = new IA_MapAnalyzer(_worldState);
-            _profileMemory = new IA_PlayerProfileMemory(_worldState);
-            _threatAnalyzer = new IA_ThreatAnalyzer(_worldState, _mapAnalyzer);
-            _scheduler = new IA_PerformanceScheduler();
-            _schedulerPhaseOffset = ComputeSchedulerPhaseOffset();
-            _scheduler.PhaseOffsetSeconds = _schedulerPhaseOffset;
-            ConfigureSchedulerBudget();
-
-            Context = new IA_Context
-            {
-                Brain = this,
-                WorldState = _worldState,
-                MapAnalyzer = _mapAnalyzer,
-                PlayerProfileMemory = _profileMemory,
-                ThreatAnalyzer = _threatAnalyzer,
-                CommandQueue = _commandQueue,
-                Backend = _backendBridge,
-                Scheduler = _scheduler
-            };
-
-            _semanticMapPlanner = new IA_SemanticMapPlanner(Context);
-            _zonePlanner = new IA_ZonePlanner(Context);
-            _urbanBuildValidator = new IA_UrbanBuildValidator(Context);
-            _lotPlanner = new IA_LotPlanner(Context);
-            _constructionPlanner = new IA_ConstructionPlanner(Context);
-            _squadDirector = new IA_SquadDirector(Context);
-            _buildDirector = new IA_BuildDirector(Context);
-            _productionDirector = new IA_ProductionDirector(Context);
-            _tacticalDirector = new IA_TacticalDirector(Context);
-            _navalDirector = new IA_NavalDirector(Context);
-            _airDirector = new IA_AirDirector(Context);
-            _defenseDirector = new IA_DefenseDirector(Context);
-
-            Context.SquadDirector = _squadDirector;
-            Context.BuildDirector = _buildDirector;
-            Context.SemanticMapPlanner = _semanticMapPlanner;
-            Context.ZonePlanner = _zonePlanner;
-            Context.LotPlanner = _lotPlanner;
-            Context.UrbanBuildValidator = _urbanBuildValidator;
-            Context.ConstructionPlanner = _constructionPlanner;
-
-            _debugMonitor = new IA_DebugMonitor(this, _worldState, _commandQueue, _scheduler)
-            {
-                VerboseLogs = EnableVerboseLogs
-            };
-            Context.DebugMonitor = _debugMonitor;
+            EnsureRuntimeGraph(false, false);
         }
 
         private void Start()
         {
-            _backendBridge.RefreshCatalog();
-            InitializeBootstrap();
-            RegisterModules();
-            ApplyIntegrationPolicy();
+            EnsureRuntimeOperational(true);
         }
 
         private void Update()
         {
             TickEconomy(Time.deltaTime);
+            if (!EnsureRuntimeOperational(false))
+            {
+                return;
+            }
+
             ConfigureSchedulerBudget();
             if (_debugMonitor != null) _debugMonitor.VerboseLogs = EnableVerboseLogs;
+
+            if (_scheduler == null)
+            {
+                return;
+            }
 
             // Consulta o coordenador global para saber o budget disponivel neste frame
             IA_GlobalBrainCoordinator coordinator = IA_GlobalBrainCoordinator.Instance;
@@ -196,7 +154,7 @@ namespace Hegemonia.AI.BrainMaster
 
             if (Time.unscaledTime >= _nextRuntimeSummaryTime)
             {
-                RuntimeSummary = _debugMonitor.LastSummary
+                RuntimeSummary = (_debugMonitor != null ? _debugMonitor.LastSummary : "monitor indisponivel")
                                  + " | Credits=" + Credits
                                  + " | Bootstrap=" + BootstrapStage
                                  + " | BootstrapStatus=" + BootstrapStatus
@@ -240,6 +198,11 @@ namespace Hegemonia.AI.BrainMaster
 
         private void RegisterModules()
         {
+            if (_scheduler == null)
+            {
+                return;
+            }
+
             float now = Time.time;
             _scheduler.Register(_worldState, now, 0.05f);
             _scheduler.Register(_mapAnalyzer, now, 0.07f);
@@ -257,11 +220,17 @@ namespace Hegemonia.AI.BrainMaster
             _scheduler.Register(_airDirector, now, 0.34f);
             _scheduler.Register(_defenseDirector, now, 0.37f);
             _scheduler.Register(_debugMonitor, now, 0.45f);
+            _modulesRegistered = true;
         }
 
         private void ProcessCommandQueue(float now)
         {
             if (IntegrationMode == IA_IntegrationMode.ShadowReadOnly)
+            {
+                return;
+            }
+
+            if (_commandQueue == null || _backendBridge == null || _backendBridge.CommandService == null || Context == null)
             {
                 return;
             }
@@ -441,6 +410,142 @@ namespace Hegemonia.AI.BrainMaster
             _scheduler.MinBackoffSeconds = bootstrapActive
                 ? Mathf.Clamp(0.06f + (count - 1) * 0.035f, 0.06f, 0.20f)
                 : Mathf.Clamp(0.05f + (count - 1) * 0.025f, 0.05f, 0.15f);
+        }
+
+        private bool HasRuntimeGraph()
+        {
+            return _commandQueue != null
+                   && _backendBridge != null
+                   && _worldState != null
+                   && _mapAnalyzer != null
+                   && _profileMemory != null
+                   && _threatAnalyzer != null
+                   && _scheduler != null
+                   && Context != null
+                   && _semanticMapPlanner != null
+                   && _zonePlanner != null
+                   && _urbanBuildValidator != null
+                   && _lotPlanner != null
+                   && _constructionPlanner != null
+                   && _squadDirector != null
+                   && _buildDirector != null
+                   && _productionDirector != null
+                   && _tacticalDirector != null
+                   && _navalDirector != null
+                   && _airDirector != null
+                   && _defenseDirector != null
+                   && _debugMonitor != null;
+        }
+
+        private void RebuildRuntimeGraph()
+        {
+            _modulesRegistered = false;
+            _commandQueue = new IA_CommandQueue();
+            _backendBridge = new IA_BackendBridge(TeamId);
+            _worldState = new IA_WorldState(TeamId);
+            _worldState.SetFallbackCenter(transform.position);
+            _mapAnalyzer = new IA_MapAnalyzer(_worldState);
+            _profileMemory = new IA_PlayerProfileMemory(_worldState);
+            _threatAnalyzer = new IA_ThreatAnalyzer(_worldState, _mapAnalyzer);
+            _scheduler = new IA_PerformanceScheduler();
+            _schedulerPhaseOffset = ComputeSchedulerPhaseOffset();
+            _scheduler.PhaseOffsetSeconds = _schedulerPhaseOffset;
+            ConfigureSchedulerBudget();
+
+            Context = new IA_Context
+            {
+                Brain = this,
+                WorldState = _worldState,
+                MapAnalyzer = _mapAnalyzer,
+                PlayerProfileMemory = _profileMemory,
+                ThreatAnalyzer = _threatAnalyzer,
+                CommandQueue = _commandQueue,
+                Backend = _backendBridge,
+                Scheduler = _scheduler
+            };
+
+            _semanticMapPlanner = new IA_SemanticMapPlanner(Context);
+            _zonePlanner = new IA_ZonePlanner(Context);
+            _urbanBuildValidator = new IA_UrbanBuildValidator(Context);
+            _lotPlanner = new IA_LotPlanner(Context);
+            _constructionPlanner = new IA_ConstructionPlanner(Context);
+            _squadDirector = new IA_SquadDirector(Context);
+            _buildDirector = new IA_BuildDirector(Context);
+            _productionDirector = new IA_ProductionDirector(Context);
+            _tacticalDirector = new IA_TacticalDirector(Context);
+            _navalDirector = new IA_NavalDirector(Context);
+            _airDirector = new IA_AirDirector(Context);
+            _defenseDirector = new IA_DefenseDirector(Context);
+
+            Context.SquadDirector = _squadDirector;
+            Context.BuildDirector = _buildDirector;
+            Context.SemanticMapPlanner = _semanticMapPlanner;
+            Context.ZonePlanner = _zonePlanner;
+            Context.LotPlanner = _lotPlanner;
+            Context.UrbanBuildValidator = _urbanBuildValidator;
+            Context.ConstructionPlanner = _constructionPlanner;
+
+            _debugMonitor = new IA_DebugMonitor(this, _worldState, _commandQueue, _scheduler)
+            {
+                VerboseLogs = EnableVerboseLogs
+            };
+            Context.DebugMonitor = _debugMonitor;
+        }
+
+        private bool EnsureRuntimeGraph(bool refreshCatalog, bool registerModules)
+        {
+            if (HasRuntimeGraph())
+            {
+                return false;
+            }
+
+            RebuildRuntimeGraph();
+
+            if (refreshCatalog && _backendBridge != null)
+            {
+                _backendBridge.RefreshCatalog();
+            }
+
+            if (registerModules)
+            {
+                RegisterModules();
+            }
+
+            BootstrapLastError = "runtime da IA recomposto apos referencias nulas";
+            RuntimeSummary = "BrainMaster recomposto em runtime.";
+            return true;
+        }
+
+        private bool EnsureRuntimeOperational(bool initializeBootstrapIfNeeded)
+        {
+            bool rebuilt = EnsureRuntimeGraph(false, false);
+            if (!HasRuntimeGraph())
+            {
+                BootstrapLastError = "runtime critico indisponivel";
+                return false;
+            }
+
+            if (rebuilt && _backendBridge != null)
+            {
+                _backendBridge.RefreshCatalog();
+            }
+
+            if (!_modulesRegistered)
+            {
+                RegisterModules();
+            }
+
+            bool bootstrapAindaNaoInicializado = BootstrapStage == IA_BootstrapStage.Disabled
+                                                 && string.IsNullOrEmpty(BootstrapStatus)
+                                                 && string.IsNullOrEmpty(BootstrapLastError);
+
+            if (initializeBootstrapIfNeeded || bootstrapAindaNaoInicializado)
+            {
+                InitializeBootstrap();
+            }
+
+            ApplyIntegrationPolicy();
+            return true;
         }
 
         private float ComputeSchedulerPhaseOffset()

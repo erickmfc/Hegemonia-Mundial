@@ -42,7 +42,8 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     [SerializeField] private bool desligarVolumesGlobaisExtras = true;
     [SerializeField] private bool simplificarTerrenos = true;
     [SerializeField] private bool simplificarAgua = true;
-    [SerializeField] private bool silenciarDiagnosticos = true;
+    [SerializeField] private bool desligarMedidoresFpsLegados = false;
+    [SerializeField] private bool silenciarDiagnosticos = false;
     [SerializeField] private float shadowDistanceGameplay = 32f;
     [SerializeField] private int shadowCascadesGameplay = 2;
     [SerializeField] private float lodBiasGameplay = 1.35f;
@@ -269,6 +270,11 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
             }
         }
 
+        if (!desligarMedidoresFpsLegados)
+        {
+            return;
+        }
+
         guiFPS[] hudsLegados = FindObjectsByType<guiFPS>(FindObjectsSortMode.None);
         for (int i = 0; i < hudsLegados.Length; i++)
         {
@@ -293,7 +299,7 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
         DiagnosticoDesempenhoJogo diagnostico = Object.FindFirstObjectByType<DiagnosticoDesempenhoJogo>();
         if (diagnostico != null)
         {
-            diagnostico.SetCaptureMode(false, false);
+            return;
         }
 
         DiagnosticoHUD[] diagnosticosHud = FindObjectsByType<DiagnosticoHUD>(FindObjectsSortMode.None);

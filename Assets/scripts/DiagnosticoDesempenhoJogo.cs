@@ -55,12 +55,14 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     [SerializeField] [Range(0.5f, 1f)] private float percentualFrameLento = 0.9f;
 
     [Header("Saida")]
-    [SerializeField] private bool exibirOverlay = false;
+    [SerializeField] private bool exibirOverlay = true;
     [SerializeField] private bool gravarCsv = false;
     [SerializeField] private bool persistirEntreCenas = true;
     [SerializeField] private KeyCode teclaAlternarOverlay = KeyCode.F8;
     [SerializeField] private KeyCode teclaAlternarCaptura = KeyCode.F9;
-    [SerializeField] private bool capturaAtivaNoInicio = false;
+    [SerializeField] private bool capturaAtivaNoInicio = true;
+    [SerializeField] private bool ativarAutomaticamenteQuandoPresenteNaCena = true;
+    [SerializeField] private bool mostrarOverlayNaAtivacaoAutomatica = true;
 
     [Header("Eventos")]
     [SerializeField] private bool registrarCarregamentoDeCena = true;
@@ -180,7 +182,13 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         SceneManager.sceneLoaded += OnSceneLoaded;
         Application.lowMemory += OnLowMemory;
         ReiniciarAcumuladores(Time.unscaledTime);
-        _capturaAtiva = capturaAtivaNoInicio;
+        bool ativacaoAutomatica = ativarAutomaticamenteQuandoPresenteNaCena && gameObject.scene.IsValid();
+        _capturaAtiva = capturaAtivaNoInicio || ativacaoAutomatica;
+
+        if (ativacaoAutomatica && !capturaAtivaNoInicio && mostrarOverlayNaAtivacaoAutomatica)
+        {
+            exibirOverlay = true;
+        }
 
         if (_capturaAtiva)
         {
