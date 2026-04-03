@@ -34,7 +34,8 @@ public class GerenteSelecao : MonoBehaviour
     private readonly Dictionary<int, PegadaCache> cachePegadas = new Dictionary<int, PegadaCache>();
     private readonly List<ControleUnidade> bufferControlesSelecionaveis = new List<ControleUnidade>(256);
     private static readonly RaycastHitDistanceComparer ComparadorHits = new RaycastHitDistanceComparer();
-    private const int FramesCachePegada = 300;
+    private const int FramesCachePegada = 1800;
+    private const int LimiteGrupoGrandeParaAmostragemLeve = 12;
 
     private Vector2 inicioMouseScreen; // Posição pura do mouse na tela
     private bool arrastando = false;
@@ -135,6 +136,11 @@ public class GerenteSelecao : MonoBehaviour
                 return; // Ignora o movimento padrão se estiver gravando patrulha ou seguir
             }
             // -----------------------------------------------------
+
+            if (AlgumaUnidadeSelecionadaEmModoManualDeDisparo())
+            {
+                return;
+            }
 
             if(unidadesSelecionadas.Count > 0)
             {
@@ -445,8 +451,7 @@ public class GerenteSelecao : MonoBehaviour
             Vector3 posAlvo = destinoCentral + offsetRodado;
 
             // BLOQUEIO MANUAL
-            LancadorNaval lancador = alvoCtrl.GetComponent<LancadorNaval>();
-            if (lancador != null && lancador.modoAtual == LancadorNaval.ModoOperacao.Manual)
+            if (UnidadeBloqueiaMovimentoManual(alvoCtrl))
                 continue; 
 
             // NAVMESH PREDICTION: Ajuda navios em terreno acidentado / margens
@@ -487,14 +492,15 @@ public class GerenteSelecao : MonoBehaviour
         {
             if (unidade == null) continue;
 
-            ControleAviao aviao = unidade.GetComponent<ControleAviao>();
-            Helicoptero heli = unidade.GetComponent<Helicoptero>();
-
-            if (aviao != null)
+            if (unidade.TemControleAviao)
             {
                 if (torreDestino != null)
                 {
-                    aviao.ComandoRetornarBase();
+                    ControleAviao aviao = unidade.GetComponent<ControleAviao>();
+                    if (aviao != null)
+                    {
+                        aviao.ComandoRetornarBase();
+                    }
                     Debug.Log($"[GerenteSelecao] Selecionou Retornar pra Base via RMB! ({unidade.name})");
                 }
                 else
@@ -504,10 +510,14 @@ public class GerenteSelecao : MonoBehaviour
                 continue;
             }
 
-            if (heli != null)
+            if (unidade.TemHelicopteroExterno)
             {
                 Vector3 deslocHeli = new Vector3(Random.Range(-5f, 5f), 0f, Random.Range(-5f, 5f));
-                heli.Decolar(destinoCentral + deslocHeli);
+                Helicoptero heli = unidade.GetComponent<Helicoptero>();
+                if (heli != null)
+                {
+                    heli.Decolar(destinoCentral + deslocHeli);
+                }
                 continue;
             }
 
@@ -622,14 +632,14 @@ public class GerenteSelecao : MonoBehaviour
         }
 
         float raioAmostraNavMesh = ehGrupoNaval ? 20f : (temVeiculo ? 8f : 4f);
+        bool usarAmostragemLeve = !ehGrupoNaval && total >= LimiteGrupoGrandeParaAmostragemLeve;
 
         for (int i = 0; i < slots.Count; i++)
         {
             ControleUnidade alvoCtrl = slots[i].unidade;
             if (alvoCtrl == null) continue;
 
-            LancadorNaval lancador = alvoCtrl.GetComponent<LancadorNaval>();
-            if (lancador != null && lancador.modoAtual == LancadorNaval.ModoOperacao.Manual)
+            if (UnidadeBloqueiaMovimentoManual(alvoCtrl))
                 continue;
 
             int coluna = i % colunas;
@@ -638,10 +648,10 @@ public class GerenteSelecao : MonoBehaviour
             Vector3 posLocal = new Vector3(centroColuna[coluna], 0f, centroLinha[linha]);
             Vector3 posAlvo = destinoCentral + (rotacaoFormacao * posLocal);
 
-            bool unidadeAnfibia = alvoCtrl.GetComponent<HovercraftTransporte>() != null;
+            bool unidadeAnfibia = alvoCtrl.TemHovercraftTransporte;
 
             UnityEngine.AI.NavMeshHit hit;
-            if (!unidadeAnfibia && UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, UnityEngine.AI.NavMesh.AllAreas))
+            if (!unidadeAnfibia && !usarAmostragemLeve && UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, UnityEngine.AI.NavMesh.AllAreas))
             {
                 posAlvo = hit.position;
             }
@@ -733,6 +743,42 @@ public class GerenteSelecao : MonoBehaviour
             profundidade = profundidade,
             frameAtualizacao = Time.frameCount
         };
+    }
+
+    bool AlgumaUnidadeSelecionadaEmModoManualDeDisparo()
+    {
+        for (int i = 0; i < unidadesSelecionadas.Count; i++)
+        {
+            ControleUnidade unidade = unidadesSelecionadas[i];
+            if (unidade == null)
+            {
+                continue;
+            }
+
+            if (UnidadeBloqueiaMovimentoManual(unidade))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool UnidadeBloqueiaMovimentoManual(ControleUnidade unidade)
+    {
+        if (unidade == null)
+        {
+            return false;
+        }
+
+        LancadorNaval lancador = unidade.GetComponentInChildren<LancadorNaval>(true);
+        if (lancador != null && lancador.modoAtual == LancadorNaval.ModoOperacao.Manual)
+        {
+            return true;
+        }
+
+        ControleSubmarino submarino = unidade.GetComponent<ControleSubmarino>();
+        return submarino != null && submarino.EmModoManualDisparo();
     }
 
     void AtualizarDesenhoCaixa()

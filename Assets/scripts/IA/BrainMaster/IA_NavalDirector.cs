@@ -49,13 +49,23 @@ namespace Hegemonia.AI.BrainMaster
             }
             Transform navalTarget = GetVisibleNavalTarget();
             Vector3 pressureTarget = ResolvePressureTarget(baseCenter, now);
+            Vector3 objective = navalTarget != null ? navalTarget.position : pressureTarget;
+            Vector3 assemblyCenter = ResolveAssemblyPoint(baseCenter, objective);
+            Vector3 escortStage = ResolveStagePoint(assemblyCenter, objective, -95f, 35f);
+            Vector3 heavyStage = ResolveStagePoint(assemblyCenter, objective, 0f, 0f);
+            Vector3 subStage = ResolveStagePoint(assemblyCenter, objective, 100f, 110f);
 
-            DispatchEscort(baseCenter, navalTarget, pressureTarget);
-            DispatchHeavy(baseCenter, navalTarget, pressureTarget);
-            DispatchSubmarine(baseCenter, navalTarget, pressureTarget);
+            IA_SquadData escort = _context.SquadDirector.GetSquad(IA_SquadRole.NavalEscort);
+            IA_SquadData heavy = _context.SquadDirector.GetSquad(IA_SquadRole.NavalHeavy);
+            IA_SquadData submarine = _context.SquadDirector.GetSquad(IA_SquadRole.Submarine);
+            bool holdFormation = !ShouldLaunchNavalStrike(navalTarget, escort, heavy, submarine, assemblyCenter);
+
+            DispatchEscort(navalTarget, pressureTarget, escortStage, holdFormation);
+            DispatchHeavy(navalTarget, pressureTarget, heavyStage, holdFormation);
+            DispatchSubmarine(navalTarget, pressureTarget, subStage, holdFormation);
         }
 
-        private void DispatchEscort(Vector3 baseCenter, Transform target, Vector3 pressureTarget)
+        private void DispatchEscort(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation)
         {
             IA_SquadData squad = _context.SquadDirector.GetSquad(IA_SquadRole.NavalEscort);
             if (!HasUnits(squad))
@@ -63,18 +73,18 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            Vector3 coastPatrol = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Coast, 110f, 320f, 20);
-            if (target != null)
+            if (holdFormation || target == null)
             {
-                QueueAttack("naval_escort", squad.Units, target, coastPatrol, 76, 4.2f);
+                QueueMove("naval_escort_stage", squad.Units, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 78, 3.2f);
             }
             else
             {
-                QueueMove("naval_escort", squad.Units, pressureTarget != Vector3.zero ? pressureTarget : coastPatrol, 76, 3.8f);
+                Vector3 coastPatrol = ResolveAttackPoint(stagePoint, target.position, -65f, 40f);
+                QueueAttack("naval_escort", squad.Units, target, coastPatrol, 80, 4.2f);
             }
         }
 
-        private void DispatchHeavy(Vector3 baseCenter, Transform target, Vector3 pressureTarget)
+        private void DispatchHeavy(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation)
         {
             IA_SquadData squad = _context.SquadDirector.GetSquad(IA_SquadRole.NavalHeavy);
             if (!HasUnits(squad))
@@ -82,18 +92,18 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            Vector3 attackAxis = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Water, 170f, 450f, 26);
-            if (target != null)
+            if (holdFormation || target == null)
             {
-                QueueAttack("naval_heavy", squad.Units, target, attackAxis, 85, 3.8f);
+                QueueMove("naval_heavy_stage", squad.Units, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 84, 3.4f);
             }
             else
             {
-                QueueMove("naval_heavy", squad.Units, pressureTarget != Vector3.zero ? pressureTarget : attackAxis, 81, 3.8f);
+                Vector3 attackAxis = ResolveAttackPoint(stagePoint, target.position, 0f, 20f);
+                QueueAttack("naval_heavy", squad.Units, target, attackAxis, 88, 3.8f);
             }
         }
 
-        private void DispatchSubmarine(Vector3 baseCenter, Transform target, Vector3 pressureTarget)
+        private void DispatchSubmarine(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation)
         {
             IA_SquadData squad = _context.SquadDirector.GetSquad(IA_SquadRole.Submarine);
             if (!HasUnits(squad))
@@ -101,14 +111,14 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            Vector3 flankWater = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Water, 200f, 500f, 32);
-            if (target != null)
+            if (holdFormation || target == null)
             {
-                QueueAttack("submarine", squad.Units, target, flankWater, 88, 5.2f);
+                QueueMove("submarine_stage", squad.Units, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 83, 4.0f);
             }
             else
             {
-                QueueMove("submarine", squad.Units, pressureTarget != Vector3.zero ? pressureTarget : flankWater, 82, 4.2f);
+                Vector3 flankWater = ResolveAttackPoint(stagePoint, target.position, 95f, 120f);
+                QueueAttack("submarine", squad.Units, target, flankWater, 90, 5.2f);
             }
         }
 
@@ -149,6 +159,75 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Water, 220f, 1200f, 28);
+        }
+
+        private bool ShouldLaunchNavalStrike(
+            Transform target,
+            IA_SquadData escort,
+            IA_SquadData heavy,
+            IA_SquadData submarine,
+            Vector3 assemblyCenter)
+        {
+            if (target == null)
+            {
+                return false;
+            }
+
+            int escortCount = CountUnits(escort);
+            int heavyCount = CountUnits(heavy);
+            int subCount = CountUnits(submarine);
+            int combatCount = escortCount + heavyCount + subCount;
+            if (combatCount < 3)
+            {
+                return false;
+            }
+
+            if (heavyCount + subCount <= 0)
+            {
+                return false;
+            }
+
+            int assembled = CountUnitsNear(escort, assemblyCenter, 190f)
+                           + CountUnitsNear(heavy, assemblyCenter, 190f)
+                           + CountUnitsNear(submarine, assemblyCenter, 210f);
+            int required = Mathf.Clamp(combatCount - 1, 2, combatCount);
+            return assembled >= required;
+        }
+
+        private Vector3 ResolveAssemblyPoint(Vector3 baseCenter, Vector3 objective)
+        {
+            Vector3 anchor = objective != Vector3.zero
+                ? Vector3.Lerp(baseCenter, objective, 0.45f)
+                : baseCenter;
+            return _context.MapAnalyzer.FindPointInTerrain(anchor, IA_TerrainType.Water, 70f, 260f, 24);
+        }
+
+        private Vector3 ResolveStagePoint(Vector3 assemblyCenter, Vector3 objective, float lateralOffset, float backOffset)
+        {
+            Vector3 axis = Flatten(objective - assemblyCenter);
+            if (axis.sqrMagnitude < 0.01f)
+            {
+                axis = Vector3.forward;
+            }
+
+            axis.Normalize();
+            Vector3 lateral = Vector3.Cross(Vector3.up, axis).normalized;
+            Vector3 approximate = assemblyCenter + (lateral * lateralOffset) - (axis * backOffset);
+            return _context.MapAnalyzer.FindPointInTerrain(approximate, IA_TerrainType.Water, 20f, 120f, 22);
+        }
+
+        private Vector3 ResolveAttackPoint(Vector3 stagePoint, Vector3 targetPosition, float lateralOffset, float backOffset)
+        {
+            Vector3 axis = Flatten(targetPosition - stagePoint);
+            if (axis.sqrMagnitude < 0.01f)
+            {
+                axis = Vector3.forward;
+            }
+
+            axis.Normalize();
+            Vector3 lateral = Vector3.Cross(Vector3.up, axis).normalized;
+            Vector3 approximate = targetPosition + (lateral * lateralOffset) - (axis * backOffset);
+            return _context.MapAnalyzer.FindPointInTerrain(approximate, IA_TerrainType.Water, 20f, 140f, 24);
         }
 
         private Transform GetVisibleNavalTarget()
@@ -241,6 +320,58 @@ namespace Hegemonia.AI.BrainMaster
         private static bool HasUnits(IA_SquadData squad)
         {
             return squad != null && squad.Units != null && squad.Units.Count > 0;
+        }
+
+        private static int CountUnits(IA_SquadData squad)
+        {
+            if (!HasUnits(squad))
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < squad.Units.Count; i++)
+            {
+                if (squad.Units[i] != null)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountUnitsNear(IA_SquadData squad, Vector3 point, float radius)
+        {
+            if (!HasUnits(squad))
+            {
+                return 0;
+            }
+
+            int count = 0;
+            float radiusSq = radius * radius;
+            for (int i = 0; i < squad.Units.Count; i++)
+            {
+                GameObject unit = squad.Units[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                Vector3 delta = Flatten(unit.transform.position) - Flatten(point);
+                if (delta.sqrMagnitude <= radiusSq)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static Vector3 Flatten(Vector3 value)
+        {
+            value.y = 0f;
+            return value;
         }
     }
 }

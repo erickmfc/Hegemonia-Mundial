@@ -66,6 +66,13 @@ public static class NavalPlacementResolver
     {
         height = 0f;
 
+        Bounds waterBounds;
+        if (RegistroSuperficieMapa.TryGetBounds(TipoSuperficieMapa.Agua, out waterBounds))
+        {
+            height = waterBounds.center.y;
+            return true;
+        }
+
         OceanAdvanced ocean = UnityEngine.Object.FindFirstObjectByType<OceanAdvanced>();
         if (ocean != null)
         {

@@ -114,14 +114,13 @@ namespace Hegemonia.AI.BrainMaster
         private static bool IsReconUnit(GameObject unit)
         {
             string n = IA_Text.Normalize(unit.name);
-            if (IsGroundTransport(unit, n))
+            if (IsGroundTransport(unit, n) || IsHovercraftTransport(unit, n))
             {
                 return false;
             }
 
             return n.Contains("humvee")
                    || n.Contains("hamer")
-                   || n.Contains("hover")
                    || n.Contains("recon")
                    || n.Contains("soldado");
         }
@@ -145,15 +144,14 @@ namespace Hegemonia.AI.BrainMaster
         private static bool IsPatrolUnit(GameObject unit)
         {
             string n = IA_Text.Normalize(unit.name);
-            if (IsGroundTransport(unit, n))
+            if (IsGroundTransport(unit, n) || IsHovercraftTransport(unit, n))
             {
                 return false;
             }
 
             return n.Contains("humvee")
                    || n.Contains("tank")
-                   || n.Contains("soldado")
-                   || n.Contains("hover");
+                   || n.Contains("soldado");
         }
 
         private static bool IsArmoredUnit(GameObject unit)
@@ -176,9 +174,8 @@ namespace Hegemonia.AI.BrainMaster
         private static bool IsAmphibiousUnit(GameObject unit)
         {
             string n = IA_Text.Normalize(unit.name);
-            return n.Contains("hover")
-                   || n.Contains("amphi")
-                   || n.Contains("soldado");
+            return IsHovercraftTransport(unit, n)
+                   || n.Contains("amphi");
         }
 
         private static bool IsNavalEscortUnit(GameObject unit)
@@ -289,6 +286,13 @@ namespace Hegemonia.AI.BrainMaster
                        && !normalizedName.Contains("heli")
                        && !normalizedName.Contains("ray")
                        && !normalizedName.Contains("vans"));
+        }
+
+        private static bool IsHovercraftTransport(GameObject unit, string normalizedName)
+        {
+            return unit.GetComponent<HovercraftTransporte>() != null
+                   || normalizedName.Contains("hovercraft")
+                   || normalizedName.Contains("hover");
         }
     }
 }

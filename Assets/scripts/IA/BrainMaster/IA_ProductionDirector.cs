@@ -88,11 +88,21 @@ namespace Hegemonia.AI.BrainMaster
                 ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 3f), 2, 4)
                 : 0;
             int fighterTarget = hasAirport ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 4f), 2, 5) : 0;
-            int patrolShipTarget = hasNavalBase ? 1 : 0;
-            int navalTarget = hasNavalBase ? 2 : 0;
-            int subTarget = 0;
+            int fleetCombatCount = navalCount + submarineCount;
+            int patrolShipTarget = hasNavalBase ? 2 : 0;
+            int navalTarget = hasNavalBase
+                ? Mathf.Clamp(3 + Mathf.RoundToInt(counter.NavalWeight * 3f), 3, 5)
+                : 0;
+            int subTarget = hasNavalBase && fleetCombatCount >= 2 && (counter.ReinforceCoast || counter.NavalWeight > 0.18f)
+                ? 1
+                : 0;
             int truckTarget = infantryCount >= 8 ? 1 : 0;
-            int hoverTarget = hasNavalBase && (counter.ReinforceCoast || counter.NavalWeight > 0.30f) ? 1 : 0;
+            int hoverTarget = hasNavalBase
+                && fleetCombatCount >= 4
+                && infantryCount >= 14
+                && counter.ReinforceCoast
+                ? 1
+                : 0;
             int armyCount = Mathf.Max(
                 _context.WorldState.OwnCombatUnits.Count,
                 infantryCount + tankCount + artyCount + airCount + navalCount + submarineCount + hoverCount);
@@ -174,7 +184,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (hoverCount < hoverTarget && infantryCount >= 10 && QueueProduceBest(76, 12f, "hover"))
+            if (hoverCount < hoverTarget && infantryCount >= 14 && fleetCombatCount >= 4 && QueueProduceBest(76, 12f, "hover"))
             {
                 return;
             }
@@ -354,12 +364,22 @@ namespace Hegemonia.AI.BrainMaster
         {
             if (navalCount <= 0)
             {
-                return QueueProduceBest(priority, cooldown, "corveta sam", "wall", "navio wall", "uss arrowhead", "arrowhead", "barco ww transporte", "lancha", "ww", "corveta");
+                return QueueProduceBest(priority, cooldown, "corveta sam", "uss arrowhead", "arrowhead", "wall", "navio wall", "lancha", "ww", "corveta");
             }
 
             if (navalCount == 1)
             {
-                return QueueProduceBest(priority, cooldown, "wall", "navio wall", "corveta sam", "uss arrowhead", "arrowhead", "barco ww transporte", "lancha", "ww", "corveta");
+                return QueueProduceBest(priority, cooldown, "wall", "navio wall", "uss arrowhead", "arrowhead", "corveta sam", "destroy", "destroyer", "vindicator", "lancha", "ww", "corveta");
+            }
+
+            if (navalCount == 2)
+            {
+                return QueueProduceBest(priority, cooldown, "uss ironclad", "ironclad", "vindicator", "destroy", "destroyer", "dominion", "liberty");
+            }
+
+            if (navalCount < 5)
+            {
+                return QueueProduceBest(priority, cooldown, "uss ironclad", "ironclad", "dominion", "liberty", "vindicator", "destroy", "destroyer", "porta");
             }
 
             return false;

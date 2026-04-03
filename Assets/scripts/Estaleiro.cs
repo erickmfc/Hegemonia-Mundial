@@ -553,7 +553,11 @@ public class Estaleiro : MonoBehaviour
 
             if (navRealista != null) navRealista.DefinirDestino(destinoSaida);
             else if (navegacaoNaval != null) navegacaoNaval.DefinirDestino(destinoSaida);
-            else if (controleSubmarino != null) controleSubmarino.DefinirDestino(destinoSaida);
+            else if (controleSubmarino != null)
+            {
+                controleSubmarino.ForcarEstadoSuperficieImediato();
+                controleSubmarino.DefinirDestino(destinoSaida);
+            }
             else if (identidadeNaval != null) identidadeNaval.MoverPara(destinoSaida);
             else agenteNovo.SetDestination(destinoSaida);
         }

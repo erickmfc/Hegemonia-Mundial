@@ -171,19 +171,52 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Vector3 coast = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Coast, 120f, 360f, 26);
-            if (visibleEnemy != null)
+            Vector3 loadRally = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 35f, 100f, 18);
+            List<GameObject> loaded = new List<GameObject>();
+            List<GameObject> empty = new List<GameObject>();
+            SplitAmphibiousUnits(squad.Units, loaded, empty);
+
+            if (empty.Count > 0)
             {
-                QueueAttack("amphibious", squad.Units, visibleEnemy, coast, 80, 4.6f);
+                QueueMove("amphibious_load", empty, loadRally, 72, 5.4f);
+
+                for (int i = 0; i < empty.Count && i < 2; i++)
+                {
+                    GameObject transport = empty[i];
+                    if (transport == null || DistanceFlat(transport.transform.position, loadRally) > 85f)
+                    {
+                        continue;
+                    }
+
+                    QueueAbility(
+                        "amphibious_board_" + transport.GetInstanceID(),
+                        transport,
+                        "IniciarEmbarque",
+                        transport.transform.position,
+                        null,
+                        74,
+                        9f);
+                }
+            }
+
+            if (loaded.Count == 0)
+            {
+                return;
+            }
+
+            Vector3 pressureCoast = Vector3.Lerp(coast, strategicObjective, 0.45f);
+            if (pressureCoast == Vector3.zero)
+            {
+                pressureCoast = coast;
+            }
+
+            if (visibleEnemy != null && CountNavalSupportUnits() >= 2)
+            {
+                QueueAttack("amphibious", loaded, visibleEnemy, coast, 80, 5.2f);
             }
             else
             {
-                Vector3 pressureCoast = Vector3.Lerp(coast, strategicObjective, 0.45f);
-                if (pressureCoast == Vector3.zero)
-                {
-                    pressureCoast = coast;
-                }
-
-                QueueMove("amphibious", squad.Units, pressureCoast, 74, 4.6f);
+                QueueMove("amphibious_stage", loaded, pressureCoast, 74, 4.8f);
             }
         }
 
@@ -520,6 +553,64 @@ namespace Hegemonia.AI.BrainMaster
             a.y = 0f;
             b.y = 0f;
             return Vector3.Distance(a, b);
+        }
+
+        private int CountNavalSupportUnits()
+        {
+            return CountSquadUnits(_context.SquadDirector.GetSquad(IA_SquadRole.NavalEscort))
+                   + CountSquadUnits(_context.SquadDirector.GetSquad(IA_SquadRole.NavalHeavy))
+                   + CountSquadUnits(_context.SquadDirector.GetSquad(IA_SquadRole.Submarine));
+        }
+
+        private static int CountSquadUnits(IA_SquadData squad)
+        {
+            if (!HasUnits(squad))
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < squad.Units.Count; i++)
+            {
+                if (squad.Units[i] != null)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static void SplitAmphibiousUnits(List<GameObject> source, List<GameObject> loaded, List<GameObject> empty)
+        {
+            if (source == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < source.Count; i++)
+            {
+                GameObject unit = source[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                HovercraftTransporte hover = unit.GetComponent<HovercraftTransporte>();
+                if (hover == null)
+                {
+                    continue;
+                }
+
+                if (hover.TemCarga())
+                {
+                    loaded.Add(unit);
+                }
+                else
+                {
+                    empty.Add(unit);
+                }
+            }
         }
 
         private void QueueMove(string key, List<GameObject> units, Vector3 destination, int priority, float cooldown)

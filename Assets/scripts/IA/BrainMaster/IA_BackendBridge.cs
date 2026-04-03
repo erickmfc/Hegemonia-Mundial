@@ -1975,6 +1975,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Vector3 target = payload.Target != null ? payload.Target.position : payload.TargetPosition;
+            Vector3 formationAnchor = payload.TargetPosition != Vector3.zero ? payload.TargetPosition : target;
             int moved = 0;
             int total = payload.Units.Count;
             for (int i = 0; i < payload.Units.Count; i++)
@@ -1985,16 +1986,15 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                Vector3 slotDestination = ComputeFormationDestination(unit, target, i, total);
+                Vector3 slotDestination = ComputeAttackFormationDestination(unit, formationAnchor, target, i, total);
                 PrepareUnitForAttack(unit, payload.Target, target);
-                TryIssueMove(unit, slotDestination);
-                SistemaDeTiro weapon = unit.GetComponentInChildren<SistemaDeTiro>();
-                if (weapon != null && payload.Target != null)
-                {
-                    weapon.alvoAtual = payload.Target;
-                }
+                bool issuedMove = TryIssueMove(unit, slotDestination);
+                bool armed = ArmUnitForAttack(unit, payload.Target, target);
 
-                moved++;
+                if (issuedMove || armed)
+                {
+                    moved++;
+                }
             }
 
             message = "atacantes=" + moved;
@@ -2125,6 +2125,62 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
+        private static bool ArmUnitForAttack(GameObject unit, Transform target, Vector3 targetPosition)
+        {
+            if (unit == null)
+            {
+                return false;
+            }
+
+            bool armed = false;
+            ControleUnidade controller = unit.GetComponent<ControleUnidade>();
+            if (controller != null && controller.DefinirModoCombate(true))
+            {
+                armed = true;
+            }
+
+            SistemaDeTiro[] directWeapons = unit.GetComponentsInChildren<SistemaDeTiro>(true);
+            for (int i = 0; i < directWeapons.Length; i++)
+            {
+                SistemaDeTiro weapon = directWeapons[i];
+                if (weapon == null)
+                {
+                    continue;
+                }
+
+                weapon.DefinirModoPassivo(false);
+                if (target != null)
+                {
+                    weapon.alvoAtual = target;
+                }
+
+                armed = true;
+            }
+
+            LancadorNaval[] navalLaunchers = unit.GetComponentsInChildren<LancadorNaval>(true);
+            for (int i = 0; i < navalLaunchers.Length; i++)
+            {
+                LancadorNaval launcher = navalLaunchers[i];
+                if (launcher == null)
+                {
+                    continue;
+                }
+
+                launcher.DefinirModoIA(LancadorNaval.ModoOperacao.Automatico, false);
+                armed = true;
+            }
+
+            ControleSubmarino submarine = unit.GetComponent<ControleSubmarino>();
+            if (submarine != null)
+            {
+                submarine.DefinirModoOperacao(ControleSubmarino.ModoOperacao.Automatico, false);
+                submarine.DispararMisselIA(targetPosition);
+                armed = true;
+            }
+
+            return armed;
+        }
+
         private static bool TryIssueSpecializedMove(GameObject unit, Vector3 destination)
         {
             ControleAviao modernAircraft = unit.GetComponent<ControleAviao>();
@@ -2210,6 +2266,42 @@ namespace Hegemonia.AI.BrainMaster
                 Mathf.Cos(angle * Mathf.Deg2Rad) * radius,
                 0f,
                 Mathf.Sin(angle * Mathf.Deg2Rad) * radius);
+            return anchor + offset;
+        }
+
+        private static Vector3 ComputeAttackFormationDestination(GameObject unit, Vector3 anchor, Vector3 target, int index, int total)
+        {
+            string normalizedName = unit != null ? IA_Text.Normalize(unit.name) : string.Empty;
+            if (unit == null || total <= 1 || !IsNavalUnit(unit, normalizedName))
+            {
+                return ComputeFormationDestination(unit, anchor, index, total);
+            }
+
+            Vector3 flatAnchor = Flatten(anchor);
+            Vector3 flatTarget = Flatten(target);
+            Vector3 axis = flatTarget - flatAnchor;
+            if (axis.sqrMagnitude < 4f)
+            {
+                axis = unit.transform.forward;
+                axis.y = 0f;
+            }
+
+            if (axis.sqrMagnitude < 0.01f)
+            {
+                return ComputeFormationDestination(unit, anchor, index, total);
+            }
+
+            axis.Normalize();
+            Vector3 lateral = Vector3.Cross(Vector3.up, axis).normalized;
+            float spacing = Mathf.Max(20f, GetFormationSpacing(unit) * 1.35f);
+            int columns = Mathf.Clamp(Mathf.CeilToInt(Mathf.Sqrt(total)), 2, 4);
+            int row = index / columns;
+            int column = index % columns;
+            float centeredColumn = column - ((columns - 1) * 0.5f);
+            float stagger = (row % 2 == 0) ? 0f : spacing * 0.5f;
+
+            Vector3 offset = (lateral * ((centeredColumn * spacing) + stagger))
+                - (axis * (row * spacing * 0.9f));
             return anchor + offset;
         }
 
