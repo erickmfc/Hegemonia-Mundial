@@ -205,6 +205,7 @@ public class LancadorMisselCaca : MonoBehaviour
         {
             Vector3 velAtual = (_rb != null) ? _rb.linearVelocity : (transform.forward * 40f); 
             scriptVoo.IniciarAtaque(alvo.position, velAtual, alvo);
+            MissileThreatTracker.RegistrarLancamento(missil, this, alvo.position, alvo, Mathf.Max(velAtual.magnitude, MissileThreatTracker.EstimarVelocidade(missil)));
         }
 
         municaoAtual--;

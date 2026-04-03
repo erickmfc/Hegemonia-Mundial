@@ -13,6 +13,19 @@ namespace Hegemonia.AI.BrainMaster
             Blocked
         }
 
+        private struct CoastalAnchorCacheEntry
+        {
+            public bool Resolved;
+            public Vector3 Anchor;
+            public float ValidUntil;
+        }
+
+        private struct NavalSearchBackoffEntry
+        {
+            public float ValidUntil;
+            public string Reason;
+        }
+
         private const float BootstrapPrefeituraTime = 5f;
         private const float BootstrapAeroportoTime = 10f;
         private const float BootstrapVehicleFactoryTime = 15f;
@@ -22,6 +35,8 @@ namespace Hegemonia.AI.BrainMaster
         private const float BootstrapShipyardHoldDuration = 5f;
         private const float NavalEdgeSafetyMargin = 145f;
         private const float NavalLaunchSafetyMargin = 95f;
+        private const float CoastalAnchorCacheCellSize = 96f;
+        private const int MaxBootstrapAnchorRefinements = 4;
         private readonly IA_Context _context;
         private float _nextDecisionTime;
         private int _lastKnownStructureCount = -1;
@@ -37,8 +52,20 @@ namespace Hegemonia.AI.BrainMaster
         private bool _cachedCoastAvailable;
         private readonly Dictionary<string, float> _missingItemCooldownUntil = new Dictionary<string, float>();
         private readonly Dictionary<string, float> _placementRetryCooldownUntil = new Dictionary<string, float>();
+        private readonly Dictionary<string, float> _profilingCooldownUntil = new Dictionary<string, float>();
         private readonly Dictionary<string, float> _warningCooldownUntil = new Dictionary<string, float>();
+        private readonly Dictionary<string, CoastalAnchorCacheEntry> _coastalAnchorCache = new Dictionary<string, CoastalAnchorCacheEntry>();
+        private readonly Dictionary<string, NavalSearchBackoffEntry> _navalSearchBackoffUntil = new Dictionary<string, NavalSearchBackoffEntry>();
         private IA_ManualBuildPoint _pendingManualBuildPoint;
+        private int _cachedApproxCombatUnitCount = -1;
+        private int _cachedApproxCombatSourceCount = -1;
+        private float _cachedApproxCombatUnitUntil;
+        private bool _cachedTerritoryAnchorResolved;
+        private Vector3 _cachedTerritoryLandAnchor;
+        private Vector3 _cachedTerritoryCoastAnchor;
+        private int _cachedTerritoryStructureCount = -1;
+        private float _cachedTerritoryAnchorsUntil;
+        private string _lastSlowSectionSummary = string.Empty;
 
         public IA_BuildDirector(IA_Context context)
         {
@@ -60,6 +87,46 @@ namespace Hegemonia.AI.BrainMaster
             get { return 0.45f; }
         }
 
+        public string LastProfilingSummary
+        {
+            get { return _lastSlowSectionSummary; }
+        }
+
+        private static long BeginTimingScope()
+        {
+            return System.Diagnostics.Stopwatch.GetTimestamp();
+        }
+
+        private void EndTimingScope(string section, string detail, long startTimestamp, float thresholdMs)
+        {
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs < thresholdMs)
+            {
+                return;
+            }
+
+            _lastSlowSectionSummary = section + "=" + elapsedMs.ToString("0.00") + "ms"
+                + (string.IsNullOrEmpty(detail) ? string.Empty : " | " + detail);
+
+            float now = Time.time;
+            float cooldownSeconds = elapsedMs >= 500f
+                ? 0.10f
+                : (elapsedMs >= 100f ? 0.60f : (elapsedMs >= 20f ? 1.20f : 3.50f));
+            float cooldownUntil;
+            if (elapsedMs < 250f
+                && _profilingCooldownUntil.TryGetValue(section, out cooldownUntil)
+                && cooldownUntil > now)
+            {
+                return;
+            }
+
+            _profilingCooldownUntil[section] = now + cooldownSeconds;
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "IA_BuildDirector",
+                section + " levou " + elapsedMs.ToString("0.00") + " ms"
+                + (string.IsNullOrEmpty(detail) ? string.Empty : " | " + detail));
+        }
+
         public void Tick(float now, float deltaTime)
         {
             if (now < _nextDecisionTime)
@@ -73,21 +140,37 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            int cityHall = CountStructures("prefeitura");
-            int hq = CountStructures("quartel general", "quartel_general");
-            int barracks = CountStructures("tenda", "barraca");
-            int factories = CountStructures("construtor de veiculos", "construtor", "fabrica");
-            int radars = CountStructures("radar");
-            int sentries = CountStructures("torre", "sentinela", "metralh", "torreta");
-            int ciws = CountStructures("ciws", "phalanx", "antia");
-            int airports = CountStructures("aeroporto", "base aerea", "airport", "pista");
-            int heliports = CountStructures("heliporto");
-            int estaleiros = CountStructures("estaleiro");
-            int piers = CountStructures("pier");
-            int plataformas = CountStructures("plataforma");
-            int walls = CountStructures("muro", "wall");
-            int missiles = CountStructures("lancador", "missil", "silo");
-            int warehouses = CountStructures("armazem", "galpao");
+            int cityHall;
+            int hq;
+            int barracks;
+            int factories;
+            int radars;
+            int sentries;
+            int ciws;
+            int airports;
+            int heliports;
+            int estaleiros;
+            int piers;
+            int plataformas;
+            int walls;
+            int missiles;
+            int warehouses;
+            CollectStructureCounts(
+                out cityHall,
+                out hq,
+                out barracks,
+                out factories,
+                out radars,
+                out sentries,
+                out ciws,
+                out airports,
+                out heliports,
+                out estaleiros,
+                out piers,
+                out plataformas,
+                out walls,
+                out missiles,
+                out warehouses);
             UpdateProgressTracker(now);
 
             Vector3 baseCenter = _context.WorldState.BaseCenter;
@@ -95,12 +178,21 @@ namespace Hegemonia.AI.BrainMaster
             {
                 baseCenter = _context.Brain.transform.position;
             }
+            long resolveLandAnchorStart = BeginTimingScope();
             Vector3 landAnchor = ResolveLandAnchor(baseCenter);
+            EndTimingScope("ResolveLandAnchor", "base=" + baseCenter + " | land=" + landAnchor, resolveLandAnchorStart, 1.00f);
+
+            long strategyInputsStart = BeginTimingScope();
             IA_CounterPlan counter = _context.PlayerProfileMemory.BuildCounterPlan();
             float localThreat = _context.ThreatAnalyzer.EvaluateThreat(landAnchor, IA_Domain.Land);
             int visibleEnemies = _context.WorldState.VisibleEnemies.Count;
             int developedStructures = _context.WorldState.OwnStructures.Count;
-            int ownCombatCount = Mathf.Max(_context.WorldState.OwnCombatUnits.Count, CountApproxCombatUnits());
+            int ownCombatCount = Mathf.Max(_context.WorldState.OwnCombatUnits.Count, CountApproxCombatUnits(now));
+            EndTimingScope(
+                "TickStrategyInputs",
+                "threat=" + localThreat.ToString("0.0") + " | enemies=" + visibleEnemies + " | combat=" + ownCombatCount,
+                strategyInputsStart,
+                1.00f);
             bool structuresStableForTimedNaval = now - _lastProgressTime >= 6f;
             bool timedNavalOpening = (now >= 20f && ownCombatCount >= 15 && structuresStableForTimedNaval)
                                      || (now >= 35f && ownCombatCount >= 15);
@@ -115,6 +207,7 @@ namespace Hegemonia.AI.BrainMaster
             {
                 if (now >= _nextCoastScanTime)
                 {
+                    long coastScanStart = BeginTimingScope();
                     _cachedCoastAvailable = TryResolveFriendlyTerritoryCoastalAnchor(landAnchor, out _cachedCoastAnchor);
                     if (!_cachedCoastAvailable)
                     {
@@ -133,14 +226,20 @@ namespace Hegemonia.AI.BrainMaster
                         }
                     }
 
-                    _nextCoastScanTime = now + (_cachedCoastAvailable ? 10f : 14f);
+                    EndTimingScope(
+                        "TickCoastScan",
+                        "found=" + _cachedCoastAvailable + " | anchor=" + _cachedCoastAnchor,
+                        coastScanStart,
+                        2.50f);
+                    _nextCoastScanTime = now + (_cachedCoastAvailable ? 12f : 35f);
                 }
 
                 coastAvailable = _cachedCoastAvailable;
                 navalAnchor = coastAvailable ? _cachedCoastAnchor : landAnchor;
             }
 
-            if (HandleScriptedBootstrap(
+            long bootstrapStart = BeginTimingScope();
+            bool bootstrapHandled = HandleScriptedBootstrap(
                 now,
                 baseCenter,
                 landAnchor,
@@ -153,7 +252,13 @@ namespace Hegemonia.AI.BrainMaster
                 warehouses,
                 barracks,
                 estaleiros,
-                piers))
+                piers);
+            EndTimingScope(
+                "HandleScriptedBootstrap",
+                "handled=" + bootstrapHandled + (_context.Brain != null ? " | stage=" + _context.Brain.BootstrapStage : string.Empty),
+                bootstrapStart,
+                1.50f);
+            if (bootstrapHandled)
             {
                 return;
             }
@@ -309,6 +414,134 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
+        private void CollectStructureCounts(
+            out int cityHall,
+            out int hq,
+            out int barracks,
+            out int factories,
+            out int radars,
+            out int sentries,
+            out int ciws,
+            out int airports,
+            out int heliports,
+            out int estaleiros,
+            out int piers,
+            out int plataformas,
+            out int walls,
+            out int missiles,
+            out int warehouses)
+        {
+            long profileStart = BeginTimingScope();
+
+            cityHall = 0;
+            hq = 0;
+            barracks = 0;
+            factories = 0;
+            radars = 0;
+            sentries = 0;
+            ciws = 0;
+            airports = 0;
+            heliports = 0;
+            estaleiros = 0;
+            piers = 0;
+            plataformas = 0;
+            walls = 0;
+            missiles = 0;
+            warehouses = 0;
+
+            for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
+            {
+                GameObject structure = _context.WorldState.OwnStructures[i];
+                if (structure == null)
+                {
+                    continue;
+                }
+
+                string name = IA_Text.Normalize(structure.name);
+                if (string.IsNullOrEmpty(name))
+                {
+                    continue;
+                }
+
+                if (name.Contains("prefeitura"))
+                {
+                    cityHall++;
+                }
+
+                if (name.Contains("quartel general") || name.Contains("quartel_general"))
+                {
+                    hq++;
+                }
+
+                if (name.Contains("tenda") || name.Contains("barraca"))
+                {
+                    barracks++;
+                }
+
+                if (name.Contains("construtor de veiculos") || name.Contains("construtor") || name.Contains("fabrica"))
+                {
+                    factories++;
+                }
+
+                if (name.Contains("radar"))
+                {
+                    radars++;
+                }
+
+                if (name.Contains("torre") || name.Contains("sentinela") || name.Contains("metralh") || name.Contains("torreta"))
+                {
+                    sentries++;
+                }
+
+                if (name.Contains("ciws") || name.Contains("phalanx") || name.Contains("antia"))
+                {
+                    ciws++;
+                }
+
+                if (name.Contains("aeroporto") || name.Contains("base aerea") || name.Contains("airport") || name.Contains("pista"))
+                {
+                    airports++;
+                }
+
+                if (name.Contains("heliporto"))
+                {
+                    heliports++;
+                }
+
+                if (name.Contains("estaleiro"))
+                {
+                    estaleiros++;
+                }
+
+                if (name.Contains("pier"))
+                {
+                    piers++;
+                }
+
+                if (name.Contains("plataforma"))
+                {
+                    plataformas++;
+                }
+
+                if (name.Contains("muro") || name.Contains("wall"))
+                {
+                    walls++;
+                }
+
+                if (name.Contains("lancador") || name.Contains("missil") || name.Contains("silo"))
+                {
+                    missiles++;
+                }
+
+                if (name.Contains("armazem") || name.Contains("galpao"))
+                {
+                    warehouses++;
+                }
+            }
+
+            EndTimingScope("CollectStructureCounts", "structures=" + _context.WorldState.OwnStructures.Count, profileStart, 0.75f);
+        }
+
         private bool QueueBuildAtLand(string itemKey, IA_ZoneType zone, Vector3 anchor, float minRadius, float maxRadius, int priority, float cooldown)
         {
             return QueueBuildInternal(itemKey, zone, anchor, IA_TerrainType.Land, minRadius, maxRadius, priority, cooldown);
@@ -433,6 +666,11 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             ClearPlacementSearchFailure(itemKey, desiredTerrain);
+            if (desiredTerrain == IA_TerrainType.Water)
+            {
+                ClearNavalSearchBackoff(itemKey, anchor);
+            }
+
             IA_ManualBuildPoint manualPoint = ConsumePendingManualBuildPoint();
             return QueueBuild(itemKey, candidate, zone, priority, cooldown, manualPoint);
         }
@@ -613,6 +851,16 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            if (desiredTerrain == IA_TerrainType.Water)
+            {
+                string navalBackoffReason;
+                if (TryGetNavalSearchBackoff(itemKey, anchor, Time.time, out navalBackoffReason))
+                {
+                    failureReason = navalBackoffReason;
+                    return false;
+                }
+            }
+
             string reason;
             Vector3 seededCandidate = _context.MapAnalyzer.FindPointInTerrain(anchor, desiredTerrain, minRadius, maxRadius, 10);
             if (seededCandidate != anchor
@@ -684,6 +932,11 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             failureReason = reason;
+            if (desiredTerrain == IA_TerrainType.Water)
+            {
+                MarkNavalSearchBackoff(itemKey, anchor, reason, Time.time);
+            }
+
             LogVerboseWarning("candidate:" + IA_Text.Normalize(itemKey) + ":" + desiredTerrain + ":" + reason, "[IA_BuildDirector] Sem ponto valido para " + itemKey + " | motivo=" + reason, desiredTerrain == IA_TerrainType.Water ? 24f : 18f);
 
             return false;
@@ -888,7 +1141,7 @@ namespace Hegemonia.AI.BrainMaster
                         {
                             _cachedCoastAvailable = TryFindCoastalAnchor(landAnchor, out _cachedCoastAnchor);
                         }
-                        _nextCoastScanTime = now + 2.5f;
+                        _nextCoastScanTime = now + (_cachedCoastAvailable ? 15f : 30f);
                     }
 
                     _context.MapAnalyzer.FindPointInTerrain(landAnchor, IA_TerrainType.Land, 20f, 180f, 10);
@@ -1151,7 +1404,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             var refinedAnchors = new List<Vector3>();
-            for (int i = 0; i < anchors.Count; i++)
+            int refinementBudget = Mathf.Min(anchors.Count, MaxBootstrapAnchorRefinements);
+            for (int i = 0; i < refinementBudget; i++)
             {
                 Vector3 refinedAnchor;
                 if (TryFindDirectCoastalAnchor(anchors[i], out refinedAnchor) || TryFindCoastalAnchor(anchors[i], out refinedAnchor))
@@ -1225,7 +1479,8 @@ namespace Hegemonia.AI.BrainMaster
                     return true;
                 }
 
-                _nextNavalAttemptTime = now + 2f;
+                _nextNavalAttemptTime = now + 6f;
+                _nextCoastScanTime = Mathf.Max(_nextCoastScanTime, now + 6f);
                 string territoryDetail = territoryRejects.Count > 0
                     ? " | " + string.Join(" | ", territoryRejects.ToArray())
                     : string.Empty;
@@ -1289,6 +1544,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (queuedManual || queuedFallback)
                 {
+                    ClearNavalSearchBackoff(itemKey, selectedAnchor);
                     _nextNavalAttemptTime = now + 4f;
                     _bootstrapNavalNoCoastFailures = 0;
                     IA_NavalBuildDiagnostics.SetStatus(_context.Brain, "estaleiro enfileirado via fallback direto");
@@ -1299,17 +1555,10 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            float retryDelay = useDirectFallback ? 4.5f : 3.5f;
-            if (reason == "busca em cooldown")
-            {
-                retryDelay = 8.5f;
-            }
-            else if (reason.Contains("costa"))
-            {
-                retryDelay += 1.5f;
-            }
+            float retryDelay = ResolveBootstrapNavalRetryDelay(useDirectFallback, reason);
 
             _nextNavalAttemptTime = now + retryDelay;
+            _nextCoastScanTime = Mathf.Max(_nextCoastScanTime, now + Mathf.Max(6f, retryDelay * 0.55f));
             IA_NavalBuildDiagnostics.SetStatus(_context.Brain, "tentativa naval falhou: " + reason);
             NavalDiagnosticLine("tentativa falhou | motivo=" + reason + " | retry=" + retryDelay.ToString("0.0") + "s");
             _context.Brain.ReportBootstrapError("estaleiro naval: " + reason);
@@ -1538,6 +1787,11 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             ClearPlacementSearchFailure(itemKey, terrain);
+            if (terrain == IA_TerrainType.Water)
+            {
+                ClearNavalSearchBackoff(itemKey, anchor);
+            }
+
             IA_ManualBuildPoint manualPoint = ConsumePendingManualBuildPoint();
             if (!QueueBuild(itemKey, candidate, zone, priority, cooldown, manualPoint))
             {
@@ -1571,9 +1825,14 @@ namespace Hegemonia.AI.BrainMaster
             out Vector3 candidate,
             out string reason)
         {
+            long profileStart = BeginTimingScope();
             candidate = anchor;
             reason = "nenhum ponto valido";
             bool trackNavalDiagnostics = ShouldTrackNavalDiagnostic(itemKey, desiredTerrain);
+            int probes = 0;
+            int terrainRejected = 0;
+            int territoryRejected = 0;
+            int placementRejected = 0;
 
             int totalRings = Mathf.Max(1, rings);
             int totalSamples = Mathf.Max(8, samplesPerRing);
@@ -1589,10 +1848,12 @@ namespace Hegemonia.AI.BrainMaster
                     float angleDeg = baseAngleOffset + ((360f / totalSamples) * i) + (ring * 7f);
                     float angle = angleDeg * Mathf.Deg2Rad;
                     Vector3 probe = anchor + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+                    probes++;
                     IA_MapCell cell = _context.MapAnalyzer.SampleCell(probe);
 
                     if (!IsTerrainCandidateAccepted(cell, desiredTerrain))
                     {
+                        terrainRejected++;
                         continue;
                     }
 
@@ -1614,6 +1875,7 @@ namespace Hegemonia.AI.BrainMaster
 
                     if (!_context.Backend.BuildService.ValidateTerritoryProbe(itemKey, candidatePosition, out reason))
                     {
+                        territoryRejected++;
                         if (trackNavalDiagnostics)
                         {
                             NavalDiagnosticPoint(candidatePosition, "territorio: " + reason, new Color(1f, 0.2f, 0.2f, 1f), 2.4f);
@@ -1637,9 +1899,15 @@ namespace Hegemonia.AI.BrainMaster
                             NavalDiagnosticPoint(candidatePosition, "placement ok", new Color(0.1f, 1f, 0.35f, 1f), 2.2f, false);
                         }
 
+                        EndTimingScope(
+                            "TryFindValidatedCandidateInternal",
+                            "item=" + itemKey + " | terrain=" + desiredTerrain + " | probes=" + probes + " | terrainReject=" + terrainRejected + " | territoryReject=" + territoryRejected + " | placementReject=" + placementRejected + " | success=true",
+                            profileStart,
+                            2.25f);
                         return true;
                     }
 
+                    placementRejected++;
                     if (trackNavalDiagnostics)
                     {
                         NavalDiagnosticPoint(candidatePosition, "placement: " + reason, new Color(1f, 0.55f, 0.1f, 1f), 2.6f);
@@ -1647,6 +1915,11 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
+            EndTimingScope(
+                "TryFindValidatedCandidateInternal",
+                "item=" + itemKey + " | terrain=" + desiredTerrain + " | probes=" + probes + " | terrainReject=" + terrainRejected + " | territoryReject=" + territoryRejected + " | placementReject=" + placementRejected + " | success=false",
+                profileStart,
+                2.25f);
             return false;
         }
 
@@ -1730,6 +2003,11 @@ namespace Hegemonia.AI.BrainMaster
                     !queued);
             }
 
+            if (queued)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarConstrucao(itemKey, candidate);
+            }
+
             return queued;
         }
 
@@ -1799,6 +2077,10 @@ namespace Hegemonia.AI.BrainMaster
                 _lastKnownStructureCount = currentStructures;
                 _lastProgressTime = now;
                 _recoveryLevel = 0;
+                _coastalAnchorCache.Clear();
+                _navalSearchBackoffUntil.Clear();
+                _cachedTerritoryStructureCount = -1;
+                _cachedTerritoryAnchorsUntil = 0f;
             }
         }
 
@@ -1839,6 +2121,7 @@ namespace Hegemonia.AI.BrainMaster
             bool coastAvailable,
             Vector3 navalAnchor)
         {
+            long profileStart = BeginTimingScope();
             _nextRecoveryAttemptTime = now + 5f;
             _recoveryLevel = Mathf.Min(_recoveryLevel + 1, 5);
 
@@ -1868,6 +2151,11 @@ namespace Hegemonia.AI.BrainMaster
                     20f);
             }
 
+            EndTimingScope(
+                "TryEmergencyRecoveryBuild",
+                "built=" + built + " | level=" + _recoveryLevel + " | threat=" + localThreat.ToString("0.0"),
+                profileStart,
+                2.00f);
             return built;
         }
 
@@ -1879,9 +2167,11 @@ namespace Hegemonia.AI.BrainMaster
             float maxRadius,
             params string[] resolveKeys)
         {
+            long profileStart = BeginTimingScope();
             string itemKey = ResolveFirstAvailableKey(resolveKeys);
             if (string.IsNullOrEmpty(itemKey))
             {
+                EndTimingScope("TryEmergencyBuild", "item=<none> | success=false | reason=itemMissing", profileStart, 2.00f);
                 return false;
             }
 
@@ -1890,20 +2180,35 @@ namespace Hegemonia.AI.BrainMaster
             bool hasManualOverride = HasManualBuildOverrideForItem(itemKey);
             if (!TryFindValidatedCandidate(itemKey, zone, anchor, terrain, minRadius, boostedMaxRadius, out candidate))
             {
-                return hasManualOverride
-                    ? false
-                    : TryLegacyEmergencyBuild(itemKey, anchor, zone, terrain, minRadius, boostedMaxRadius);
+                bool legacySuccess = !hasManualOverride
+                    && TryLegacyEmergencyBuild(itemKey, anchor, zone, terrain, minRadius, boostedMaxRadius);
+                EndTimingScope(
+                    "TryEmergencyBuild",
+                    "item=" + itemKey + " | success=" + legacySuccess + " | manual=" + hasManualOverride + " | legacy=true",
+                    profileStart,
+                    2.00f);
+                return legacySuccess;
             }
 
             IA_ManualBuildPoint manualPoint = ConsumePendingManualBuildPoint();
             if (ExecuteBuildImmediately(itemKey, candidate, zone, manualPoint))
             {
+                EndTimingScope(
+                    "TryEmergencyBuild",
+                    "item=" + itemKey + " | success=true | manual=" + (manualPoint != null),
+                    profileStart,
+                    2.00f);
                 return true;
             }
 
-            return hasManualOverride
-                ? false
-                : TryLegacyEmergencyBuild(itemKey, anchor, zone, terrain, minRadius, boostedMaxRadius);
+            bool fallbackSuccess = !hasManualOverride
+                && TryLegacyEmergencyBuild(itemKey, anchor, zone, terrain, minRadius, boostedMaxRadius);
+            EndTimingScope(
+                "TryEmergencyBuild",
+                "item=" + itemKey + " | success=" + fallbackSuccess + " | manual=" + hasManualOverride + " | legacy=true",
+                profileStart,
+                2.00f);
+            return fallbackSuccess;
         }
 
         private string ResolveFirstAvailableKey(params string[] keys)
@@ -1927,8 +2232,10 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool ExecuteBuildImmediately(string itemKey, Vector3 candidate, IA_ZoneType zone, IA_ManualBuildPoint manualPoint = null)
         {
+            long profileStart = BeginTimingScope();
             if (_context.Brain != null && _context.Brain.IntegrationMode == IA_BrainMaster.IA_IntegrationMode.ShadowReadOnly)
             {
+                EndTimingScope("ExecuteBuildImmediately", "item=" + itemKey + " | success=false | mode=ShadowReadOnly", profileStart, 2.00f);
                 return false;
             }
 
@@ -1937,6 +2244,7 @@ namespace Hegemonia.AI.BrainMaster
             string poseReason;
             if (!forceManualPlacement && !TryResolveBuildPose(itemKey, ref candidate, ref rotation, out poseReason))
             {
+                EndTimingScope("ExecuteBuildImmediately", "item=" + itemKey + " | success=false | reason=" + poseReason, profileStart, 2.00f);
                 return false;
             }
 
@@ -1974,6 +2282,11 @@ namespace Hegemonia.AI.BrainMaster
                 LogVerboseWarning("recovery:buildfail:" + IA_Text.Normalize(itemKey) + ":" + message, "[IA_BuildDirector] Recovery build falhou: " + itemKey + " | " + message, 15f);
             }
 
+            EndTimingScope(
+                "ExecuteBuildImmediately",
+                "item=" + itemKey + " | success=" + success + (string.IsNullOrEmpty(message) ? string.Empty : " | msg=" + message),
+                profileStart,
+                2.00f);
             return success;
         }
 
@@ -1985,9 +2298,11 @@ namespace Hegemonia.AI.BrainMaster
             float minRadius,
             float maxRadius)
         {
+            long profileStart = BeginTimingScope();
             DadosConstrucao item;
             if (!_context.Backend.TryResolveItem(itemKey, out item) || item == null || item.prefabDaUnidade == null)
             {
+                EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=false | reason=itemMissing", profileStart, 2.00f);
                 return false;
             }
 
@@ -2000,6 +2315,7 @@ namespace Hegemonia.AI.BrainMaster
                     LogVerboseWarning("legacy:nopoint:" + IA_Text.Normalize(itemKey) + ":" + reason, "[IA_BuildDirector] Legacy recovery sem ponto para " + itemKey + " | " + reason, 18f);
                 }
 
+                EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 2.00f);
                 return false;
             }
 
@@ -2011,6 +2327,7 @@ namespace Hegemonia.AI.BrainMaster
                     LogVerboseWarning("legacy:nopose:" + IA_Text.Normalize(itemKey) + ":" + reason, "[IA_BuildDirector] Legacy recovery sem pose valida para " + itemKey + " | " + reason, 18f);
                 }
 
+                EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 2.00f);
                 return false;
             }
 
@@ -2029,11 +2346,13 @@ namespace Hegemonia.AI.BrainMaster
                     LogVerboseWarning("legacy:rejected:" + IA_Text.Normalize(itemKey) + ":" + reason, "[IA_BuildDirector] Legacy recovery validacao final recusou " + itemKey + " | " + reason, 18f);
                 }
 
+                EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 2.00f);
                 return false;
             }
 
             if (!_context.Brain.TrySpend(item.preco))
             {
+                EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=false | reason=credits", profileStart, 2.00f);
                 return false;
             }
 
@@ -2051,6 +2370,7 @@ namespace Hegemonia.AI.BrainMaster
             if (built == null)
             {
                 _context.Brain.Refund(item.preco);
+                EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=false | reason=instantiateFailed", profileStart, 2.00f);
                 return false;
             }
 
@@ -2063,6 +2383,7 @@ namespace Hegemonia.AI.BrainMaster
                 LogVerboseWarning("legacy:built:" + IA_Text.Normalize(itemKey), "[IA_BuildDirector] Legacy recovery construiu " + itemKey + " em " + candidate, 10f);
             }
 
+            EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=true", profileStart, 2.00f);
             return true;
         }
 
@@ -2075,8 +2396,12 @@ namespace Hegemonia.AI.BrainMaster
             out Vector3 candidate,
             out string reason)
         {
+            long profileStart = BeginTimingScope();
             candidate = anchor;
             reason = "nenhum ponto legado";
+            int probes = 0;
+            int terrainRejected = 0;
+            int spaceRejected = 0;
 
             if (anchor == Vector3.zero && _context.Brain != null)
             {
@@ -2101,10 +2426,12 @@ namespace Hegemonia.AI.BrainMaster
                     float angleDeg = ((360f / samples) * i) + (ring * 11f);
                     float angle = angleDeg * Mathf.Deg2Rad;
                     Vector3 probe = anchor + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+                    probes++;
                     IA_MapCell cell = _context.MapAnalyzer.SampleCell(probe);
 
                     if (!IsTerrainCandidateAccepted(cell, desiredTerrain))
                     {
+                        terrainRejected++;
                         continue;
                     }
 
@@ -2112,6 +2439,7 @@ namespace Hegemonia.AI.BrainMaster
                     if (!LegacySpaceFree(pos, safeRadius))
                     {
                         reason = "espaco legado ocupado";
+                        spaceRejected++;
                         continue;
                     }
 
@@ -2128,10 +2456,20 @@ namespace Hegemonia.AI.BrainMaster
                     }
 
                     candidate = resolved;
+                    EndTimingScope(
+                        "TryFindLegacyCandidate",
+                        "item=" + itemKey + " | terrain=" + desiredTerrain + " | probes=" + probes + " | terrainReject=" + terrainRejected + " | spaceReject=" + spaceRejected + " | success=true",
+                        profileStart,
+                        2.00f);
                     return true;
                 }
             }
 
+            EndTimingScope(
+                "TryFindLegacyCandidate",
+                "item=" + itemKey + " | terrain=" + desiredTerrain + " | probes=" + probes + " | terrainReject=" + terrainRejected + " | spaceReject=" + spaceRejected + " | success=false",
+                profileStart,
+                2.00f);
             return false;
         }
 
@@ -2144,6 +2482,7 @@ namespace Hegemonia.AI.BrainMaster
             out Vector3 candidate,
             out string reason)
         {
+            long profileStart = BeginTimingScope();
             candidate = anchor;
             reason = "nenhum ponto naval direto";
 
@@ -2151,17 +2490,22 @@ namespace Hegemonia.AI.BrainMaster
             if (!_context.Backend.TryResolveItem(itemKey, out data) || data == null || data.prefabDaUnidade == null)
             {
                 reason = "item naval nao encontrado";
+                EndTimingScope("TryFindDirectNavalCandidate", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 2.00f);
                 return false;
             }
 
-            var searchAnchors = new List<Vector3>();
-            AddSearchAnchor(searchAnchors, anchor);
-
-            Vector3 coastalAnchor;
-            if (TryFindDirectCoastalAnchor(anchor, out coastalAnchor))
+            float now = Time.time;
+            string backoffReason;
+            if (TryGetNavalSearchBackoff(itemKey, anchor, now, out backoffReason))
             {
-                AddSearchAnchor(searchAnchors, coastalAnchor);
+                reason = backoffReason;
+                EndTimingScope("TryFindDirectNavalCandidate", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 2.00f);
+                return false;
             }
+
+            bool requiresCoast = NavalPlacementResolver.RequiresCoastalPlacement(data.prefabDaUnidade);
+            var searchAnchors = new List<Vector3>();
+            TryAddNavalSearchAnchor(searchAnchors, anchor, requiresCoast);
 
             for (int i = 0; i < _context.WorldState.OwnStructures.Count && searchAnchors.Count < 3; i++)
             {
@@ -2171,7 +2515,7 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                AddSearchAnchor(searchAnchors, structure.transform.position);
+                TryAddNavalSearchAnchor(searchAnchors, structure.transform.position, requiresCoast);
 
                 if (searchAnchors.Count >= 3)
                 {
@@ -2179,15 +2523,39 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
+            if (searchAnchors.Count == 0)
+            {
+                reason = requiresCoast ? "sem ancora costeira viavel" : "sem ancora naval viavel";
+                MarkNavalSearchBackoff(itemKey, anchor, reason, now);
+                EndTimingScope(
+                    "TryFindDirectNavalCandidate",
+                    "item=" + itemKey + " | anchors=0 | success=false | reason=" + reason,
+                    profileStart,
+                    2.25f);
+                return false;
+            }
+
             for (int i = 0; i < searchAnchors.Count; i++)
             {
                 Vector3 searchAnchor = searchAnchors[i];
                 if (TryFindDirectNavalCandidateFromAnchor(itemKey, data, zone, searchAnchor, minRadius, maxRadius, out candidate, out reason))
                 {
+                    ClearNavalSearchBackoff(itemKey, anchor);
+                    EndTimingScope(
+                        "TryFindDirectNavalCandidate",
+                        "item=" + itemKey + " | anchors=" + searchAnchors.Count + " | success=true",
+                        profileStart,
+                        2.25f);
                     return true;
                 }
             }
 
+            MarkNavalSearchBackoff(itemKey, anchor, reason, now);
+            EndTimingScope(
+                "TryFindDirectNavalCandidate",
+                "item=" + itemKey + " | anchors=" + searchAnchors.Count + " | success=false | reason=" + reason,
+                profileStart,
+                2.25f);
             return false;
         }
 
@@ -2404,17 +2772,20 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool TryResolveBuildPose(string itemKey, ref Vector3 position, ref Quaternion rotation, out string reason)
         {
+            long profileStart = BeginTimingScope();
             reason = string.Empty;
 
             DadosConstrucao data;
             if (!_context.Backend.TryResolveItem(itemKey, out data) || data == null || data.prefabDaUnidade == null)
             {
                 reason = "item nao encontrado";
+                EndTimingScope("TryResolveBuildPose", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 1.50f);
                 return false;
             }
 
             if (!NavalPlacementResolver.RequiresCoastalPlacement(data.prefabDaUnidade))
             {
+                EndTimingScope("TryResolveBuildPose", "item=" + itemKey + " | success=true | coastal=false", profileStart, 1.50f);
                 return true;
             }
 
@@ -2422,11 +2793,13 @@ namespace Hegemonia.AI.BrainMaster
             if (!NavalPlacementResolver.TryResolveStructurePose(data.prefabDaUnidade, position, rotation, out pose))
             {
                 reason = string.IsNullOrEmpty(pose.Reason) ? "costa invalida" : pose.Reason;
+                EndTimingScope("TryResolveBuildPose", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 1.50f);
                 return false;
             }
 
             position = pose.Position;
             rotation = pose.Rotation;
+            EndTimingScope("TryResolveBuildPose", "item=" + itemKey + " | success=true | coastal=true", profileStart, 1.50f);
             return true;
         }
 
@@ -2453,6 +2826,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private List<Vector3> BuildBootstrapLandAnchors(Vector3 primaryAnchor)
         {
+            long profileStart = BeginTimingScope();
             var anchors = new List<Vector3>();
             AddSearchAnchor(anchors, EnsureDryLandAnchor(primaryAnchor));
             AddSearchAnchor(anchors, EnsureDryLandAnchor(_context.WorldState != null ? _context.WorldState.BaseCenter : Vector3.zero));
@@ -2490,11 +2864,23 @@ namespace Hegemonia.AI.BrainMaster
                 AddSearchAnchor(anchors, EnsureDryLandAnchor(structure.transform.position));
             }
 
+            EndTimingScope("BuildBootstrapLandAnchors", "anchors=" + anchors.Count + " | structures=" + _context.WorldState.OwnStructures.Count, profileStart, 1.25f);
             return anchors;
         }
 
         private bool TryResolveFriendlyTerritorySurfaceAnchors(out Vector3 landAnchor, out Vector3 coastAnchor)
         {
+            int structureCount = _context.WorldState != null ? _context.WorldState.OwnStructures.Count : 0;
+            float now = Time.time;
+            if (_cachedTerritoryStructureCount == structureCount
+                && now < _cachedTerritoryAnchorsUntil)
+            {
+                landAnchor = _cachedTerritoryLandAnchor;
+                coastAnchor = _cachedTerritoryCoastAnchor;
+                return _cachedTerritoryAnchorResolved;
+            }
+
+            long profileStart = BeginTimingScope();
             landAnchor = Vector3.zero;
             coastAnchor = Vector3.zero;
 
@@ -2561,16 +2947,30 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            return foundLand || foundCoast;
+            bool resolved = foundLand || foundCoast;
+            _cachedTerritoryStructureCount = structureCount;
+            _cachedTerritoryLandAnchor = landAnchor;
+            _cachedTerritoryCoastAnchor = coastAnchor;
+            _cachedTerritoryAnchorResolved = resolved;
+            _cachedTerritoryAnchorsUntil = now + (resolved ? 4f : 1.5f);
+
+            EndTimingScope(
+                "TryResolveFriendlyTerritorySurfaceAnchors",
+                "structures=" + structureCount + " | foundLand=" + foundLand + " | foundCoast=" + foundCoast,
+                profileStart,
+                1.50f);
+            return resolved;
         }
 
         private bool TryResolveFriendlyTerritoryCoastalAnchor(Vector3 reference, out Vector3 coastalAnchor)
         {
+            long profileStart = BeginTimingScope();
             coastalAnchor = Vector3.zero;
             Vector3 landAnchor;
             bool foundAny = TryResolveFriendlyTerritorySurfaceAnchors(out landAnchor, out coastalAnchor) && coastalAnchor != Vector3.zero;
             if (!foundAny)
             {
+                EndTimingScope("TryResolveFriendlyTerritoryCoastalAnchor", "found=false", profileStart, 1.50f);
                 return false;
             }
 
@@ -2578,6 +2978,7 @@ namespace Hegemonia.AI.BrainMaster
             float bestScore = float.MinValue;
             bool foundBetter = false;
             List<Vector3> anchors = BuildBootstrapLandAnchors(reference != Vector3.zero ? reference : landAnchor);
+            int anchorsTried = 0;
             for (int i = 0; i < anchors.Count; i++)
             {
                 Vector3 candidate;
@@ -2586,6 +2987,7 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
+                anchorsTried++;
                 float score;
                 if (!TryScoreCoastalAnchorCandidate(reference != Vector3.zero ? reference : landAnchor, candidate, candidate - anchors[i], out score))
                 {
@@ -2601,7 +3003,13 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             coastalAnchor = foundBetter ? bestAnchor : coastalAnchor;
-            return coastalAnchor != Vector3.zero;
+            bool resolved = coastalAnchor != Vector3.zero;
+            EndTimingScope(
+                "TryResolveFriendlyTerritoryCoastalAnchor",
+                "anchors=" + anchors.Count + " | tried=" + anchorsTried + " | resolved=" + resolved,
+                profileStart,
+                2.00f);
+            return resolved;
         }
 
         private Vector3 EnsureDryLandAnchor(Vector3 anchor)
@@ -2769,10 +3177,19 @@ namespace Hegemonia.AI.BrainMaster
             return count;
         }
 
-        private int CountApproxCombatUnits()
+        private int CountApproxCombatUnits(float now)
         {
+            int unitCount = _context.WorldState.OwnUnits.Count;
+            if (_cachedApproxCombatUnitCount >= 0
+                && _cachedApproxCombatSourceCount == unitCount
+                && now < _cachedApproxCombatUnitUntil)
+            {
+                return _cachedApproxCombatUnitCount;
+            }
+
+            long profileStart = BeginTimingScope();
             int count = 0;
-            for (int i = 0; i < _context.WorldState.OwnUnits.Count; i++)
+            for (int i = 0; i < unitCount; i++)
             {
                 GameObject unit = _context.WorldState.OwnUnits[i];
                 if (unit == null)
@@ -2836,11 +3253,26 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
+            _cachedApproxCombatUnitCount = count;
+            _cachedApproxCombatSourceCount = unitCount;
+            _cachedApproxCombatUnitUntil = now + 1.5f;
+            EndTimingScope("CountApproxCombatUnits", "units=" + unitCount + " | combat=" + count, profileStart, 1.00f);
             return count;
         }
 
         private bool TryFindCoastalAnchor(Vector3 center, out Vector3 coastalAnchor)
         {
+            float now = Time.time;
+            bool cachedResolved;
+            if (TryGetCachedCoastalAnchor("broad", center, now, out coastalAnchor, out cachedResolved))
+            {
+                return cachedResolved;
+            }
+
+            long profileStart = BeginTimingScope();
+            var watchdog = System.Diagnostics.Stopwatch.StartNew();
+            const float MaxBudgetMs = 25f; // Timeout rígido — jamais deve travar mais do que isso
+
             coastalAnchor = center;
             DadosConstrucao coastalStructure = _context.Backend.FindFirstAvailable("estaleiros navais", "estaleiro naval", "estaleiro", "estaleiros", "pier");
             string coastalKey = coastalStructure != null && coastalStructure.prefabDaUnidade != null
@@ -2849,22 +3281,28 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 reference = ResolveStrategicReference(center);
             bool foundBest = false;
             float bestScore = float.MinValue;
-            float[] radii = { 120f, 240f, 360f, 520f, 680f, 840f };
+            int sampledWaterPoints = 0;
+            int territoryApproved = 0;
+            // Reduzido de 6 raios x 16 amostras para 4 raios x 12 amostras
+            float[] radii = { 120f, 280f, 480f, 680f };
             for (int r = 0; r < radii.Length; r++)
             {
+                if (watchdog.Elapsed.TotalMilliseconds > MaxBudgetMs) { break; }
                 float radius = radii[r];
-                for (int i = 0; i < 16; i++)
+                for (int i = 0; i < 12; i++)
                 {
-                    float angle = (360f / 16f) * i * Mathf.Deg2Rad;
+                    float angle = (360f / 12f) * i * Mathf.Deg2Rad;
                     Vector3 probe = center + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
                     IA_MapCell cell = _context.MapAnalyzer.SampleCell(probe);
                     if (cell != null
                         && (cell.Terrain == IA_TerrainType.Coast || cell.Terrain == IA_TerrainType.Water))
                     {
+                        sampledWaterPoints++;
                         Vector3 candidatePosition = new Vector3(probe.x, cell.Height, probe.z);
                         string territoryReason;
                         if (_context.Backend.BuildService.ValidateTerritoryProbe(coastalKey, candidatePosition, out territoryReason))
                         {
+                            territoryApproved++;
                             TryConsiderCoastalAnchorCandidate(reference, candidatePosition, candidatePosition - center, ref foundBest, ref bestScore, ref coastalAnchor);
                         }
                     }
@@ -2872,80 +3310,92 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Vector3 directAnchor;
-            if (TryFindDirectCoastalAnchor(center, out directAnchor))
+            if (!foundBest && watchdog.Elapsed.TotalMilliseconds < MaxBudgetMs && TryFindDirectCoastalAnchor(center, out directAnchor))
             {
                 TryConsiderCoastalAnchorCandidate(reference, directAnchor, directAnchor - center, ref foundBest, ref bestScore, ref coastalAnchor);
             }
 
-            for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
+            // Scan de estruturas limitado a 5 estruturas e 3 anéis x 12 amostras (era 4 anéis x 20 x N estruturas)
+            int structureLimit = Mathf.Min(_context.WorldState.OwnStructures.Count, 5);
+            for (int i = 0; i < structureLimit; i++)
             {
+                if (watchdog.Elapsed.TotalMilliseconds > MaxBudgetMs) { break; }
                 GameObject structure = _context.WorldState.OwnStructures[i];
-                if (structure == null)
-                {
-                    continue;
-                }
+                if (structure == null) { continue; }
 
                 Vector3 probeCenter = structure.transform.position;
-                for (int ring = 0; ring < 4; ring++)
+                for (int ring = 0; ring < 3; ring++)
                 {
-                    float radius = 180f + (ring * 180f);
-                    for (int sample = 0; sample < 20; sample++)
+                    if (watchdog.Elapsed.TotalMilliseconds > MaxBudgetMs) { break; }
+                    float radius = 180f + (ring * 200f);
+                    for (int sample = 0; sample < 12; sample++)
                     {
-                        float angle = ((360f / 20f) * sample + (ring * 9f)) * Mathf.Deg2Rad;
+                        float angle = ((360f / 12f) * sample + (ring * 15f)) * Mathf.Deg2Rad;
                         Vector3 probe = probeCenter + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
                         IA_MapCell cell = _context.MapAnalyzer.SampleCell(probe);
                         if (cell != null
                             && (cell.Terrain == IA_TerrainType.Coast || cell.Terrain == IA_TerrainType.Water))
                         {
+                            sampledWaterPoints++;
                             Vector3 candidatePosition = new Vector3(probe.x, cell.Height, probe.z);
                             string territoryReason;
                             if (_context.Backend.BuildService.ValidateTerritoryProbe(coastalKey, candidatePosition, out territoryReason))
                             {
+                                territoryApproved++;
                                 TryConsiderCoastalAnchorCandidate(reference, candidatePosition, candidatePosition - probeCenter, ref foundBest, ref bestScore, ref coastalAnchor);
                             }
                         }
                     }
                 }
-
             }
 
-            Vector3 fallback = _context.MapAnalyzer.FindPointInTerrain(center, IA_TerrainType.Water, 40f, 520f, 10);
-            IA_MapCell fallbackCell = _context.MapAnalyzer.SampleCell(fallback);
-            if (fallbackCell != null
-                && (fallbackCell.Terrain == IA_TerrainType.Coast || fallbackCell.Terrain == IA_TerrainType.Water))
-            {
-                Vector3 fallbackPosition = new Vector3(fallback.x, fallbackCell.Height, fallback.z);
-                string fallbackReason;
-                if (_context.Backend.BuildService.ValidateTerritoryProbe(coastalKey, fallbackPosition, out fallbackReason))
-                {
-                    TryConsiderCoastalAnchorCandidate(reference, fallbackPosition, fallbackPosition - center, ref foundBest, ref bestScore, ref coastalAnchor);
-                }
-            }
-
+            CacheCoastalAnchorResult("broad", center, foundBest, coastalAnchor, now);
+            EndTimingScope(
+                "TryFindCoastalAnchor",
+                "sampled=" + sampledWaterPoints + " | territoryOk=" + territoryApproved + " | found=" + foundBest,
+                profileStart,
+                2.25f);
             return foundBest;
         }
 
         private bool TryFindDirectCoastalAnchor(Vector3 center, out Vector3 coastalAnchor)
         {
+            float now = Time.time;
+            bool cachedResolved;
+            if (TryGetCachedCoastalAnchor("direct", center, now, out coastalAnchor, out cachedResolved))
+            {
+                return cachedResolved;
+            }
+
+            long profileStart = BeginTimingScope();
+            var watchdog = System.Diagnostics.Stopwatch.StartNew();
+            const float MaxBudgetMs = 30f; // Timeout rígido — jamais deve travar mais do que isso
+
             coastalAnchor = center;
 
             DadosConstrucao coastalStructure = _context.Backend.FindFirstAvailable("estaleiros navais", "estaleiro naval", "estaleiro", "estaleiros", "pier");
             if (coastalStructure == null || coastalStructure.prefabDaUnidade == null)
             {
+                EndTimingScope("TryFindDirectCoastalAnchor", "itemMissing=true", profileStart, 2.00f);
                 return false;
             }
 
             Vector3 reference = ResolveStrategicReference(center);
             bool foundBest = false;
             float bestScore = float.MinValue;
+            int poseResolved = 0;
+            int territoryApproved = 0;
+            // Reduzido de 8 anéis x 16 amostras para 5 anéis x 8 amostras — de 96 para 40 poses
             const float maxSearchRadius = 900f;
-            const int rings = 8;
+            const int rings = 5;
             for (int r = 0; r < rings; r++)
             {
+                if (watchdog.Elapsed.TotalMilliseconds > MaxBudgetMs) { break; }
                 float radius = rings <= 1 ? 0f : Mathf.Lerp(0f, maxSearchRadius, r / (float)(rings - 1));
-                int samples = radius <= 0.01f ? 1 : (radius < 260f ? 8 : (radius < 1100f ? 12 : 16));
+                int samples = radius <= 0.01f ? 1 : 8;
                 for (int i = 0; i < samples; i++)
                 {
+                    if (watchdog.Elapsed.TotalMilliseconds > MaxBudgetMs) { break; }
                     Vector3 probe = center;
                     if (radius > 0.01f)
                     {
@@ -2963,17 +3413,48 @@ namespace Hegemonia.AI.BrainMaster
                     Quaternion fallbackRotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
                     if (NavalPlacementResolver.TryResolveStructurePose(coastalStructure.prefabDaUnidade, probe, fallbackRotation, out pose))
                     {
+                        poseResolved++;
                         string territoryReason;
                         string probeKey = string.IsNullOrEmpty(coastalStructure.nomeItem) ? coastalStructure.prefabDaUnidade.name : coastalStructure.nomeItem;
                         if (_context.Backend.BuildService.ValidateTerritoryProbe(probeKey, pose.Position, out territoryReason))
                         {
+                            territoryApproved++;
                             TryConsiderCoastalAnchorCandidate(reference, pose.Position, pose.Rotation * Vector3.forward, ref foundBest, ref bestScore, ref coastalAnchor);
                         }
                     }
                 }
             }
 
+            CacheCoastalAnchorResult("direct", center, foundBest, coastalAnchor, now);
+            EndTimingScope(
+                "TryFindDirectCoastalAnchor",
+                "poseOk=" + poseResolved + " | territoryOk=" + territoryApproved + " | found=" + foundBest,
+                profileStart,
+                2.25f);
             return foundBest;
+        }
+
+        private bool TryAddNavalSearchAnchor(List<Vector3> anchors, Vector3 value, bool requiresCoast)
+        {
+            if (value == Vector3.zero)
+            {
+                return false;
+            }
+
+            if (!requiresCoast || HasWaterAround(value))
+            {
+                AddSearchAnchor(anchors, value);
+                return true;
+            }
+
+            Vector3 coastalAnchor;
+            if (TryFindDirectCoastalAnchor(value, out coastalAnchor) || TryFindCoastalAnchor(value, out coastalAnchor))
+            {
+                AddSearchAnchor(anchors, coastalAnchor);
+                return true;
+            }
+
+            return false;
         }
 
         private static void AddSearchAnchor(List<Vector3> anchors, Vector3 value)
@@ -3124,6 +3605,183 @@ namespace Hegemonia.AI.BrainMaster
         private static string BuildPlacementRetryKey(string itemKey, IA_TerrainType desiredTerrain)
         {
             return IA_Text.Normalize(itemKey) + ":" + desiredTerrain;
+        }
+
+        private bool TryGetCachedCoastalAnchor(string scope, Vector3 center, float now, out Vector3 coastalAnchor, out bool resolved)
+        {
+            string key = scope + ":" + BuildAnchorCellKey(center);
+            CoastalAnchorCacheEntry entry;
+            if (_coastalAnchorCache.TryGetValue(key, out entry))
+            {
+                if (entry.ValidUntil > now)
+                {
+                    coastalAnchor = entry.Anchor;
+                    resolved = entry.Resolved;
+                    return true;
+                }
+
+                _coastalAnchorCache.Remove(key);
+            }
+
+            coastalAnchor = center;
+            resolved = false;
+            return false;
+        }
+
+        private void CacheCoastalAnchorResult(string scope, Vector3 center, bool resolved, Vector3 coastalAnchor, float now)
+        {
+            float ttl = resolved
+                ? 9f
+                : (scope == "direct" ? 18f : 24f);
+            _coastalAnchorCache[scope + ":" + BuildAnchorCellKey(center)] = new CoastalAnchorCacheEntry
+            {
+                Resolved = resolved,
+                Anchor = resolved ? coastalAnchor : center,
+                ValidUntil = now + ttl
+            };
+        }
+
+        private bool TryGetNavalSearchBackoff(string itemKey, Vector3 anchor, float now, out string reason)
+        {
+            string normalizedItem = IA_Text.Normalize(itemKey);
+            if (TryGetNavalSearchBackoffInternal(normalizedItem + ":global", now, out reason))
+            {
+                return true;
+            }
+
+            return TryGetNavalSearchBackoffInternal(normalizedItem + ":" + BuildAnchorCellKey(anchor), now, out reason);
+        }
+
+        private bool TryGetNavalSearchBackoffInternal(string key, float now, out string reason)
+        {
+            NavalSearchBackoffEntry entry;
+            if (_navalSearchBackoffUntil.TryGetValue(key, out entry))
+            {
+                if (entry.ValidUntil > now)
+                {
+                    reason = string.IsNullOrEmpty(entry.Reason)
+                        ? "falha naval recente em cooldown"
+                        : "falha naval recente em cooldown | " + entry.Reason;
+                    return true;
+                }
+
+                _navalSearchBackoffUntil.Remove(key);
+            }
+
+            reason = string.Empty;
+            return false;
+        }
+
+        private void MarkNavalSearchBackoff(string itemKey, Vector3 anchor, string reason, float now)
+        {
+            string normalizedReason = IA_Text.Normalize(reason);
+            float cooldownSeconds = ResolveNavalSearchBackoffSeconds(normalizedReason);
+            if (cooldownSeconds <= 0f)
+            {
+                return;
+            }
+
+            string normalizedItem = IA_Text.Normalize(itemKey);
+            string key = normalizedItem + ":" + (IsTerritoryNavalFailureReason(normalizedReason) ? "global" : BuildAnchorCellKey(anchor));
+            _navalSearchBackoffUntil[key] = new NavalSearchBackoffEntry
+            {
+                ValidUntil = now + cooldownSeconds,
+                Reason = reason
+            };
+        }
+
+        private void ClearNavalSearchBackoff(string itemKey, Vector3 anchor)
+        {
+            string normalizedItem = IA_Text.Normalize(itemKey);
+            _navalSearchBackoffUntil.Remove(normalizedItem + ":global");
+            _navalSearchBackoffUntil.Remove(normalizedItem + ":" + BuildAnchorCellKey(anchor));
+        }
+
+        private static float ResolveNavalSearchBackoffSeconds(string normalizedReason)
+        {
+            if (string.IsNullOrEmpty(normalizedReason))
+            {
+                return 0f;
+            }
+
+            if (IsTerritoryNavalFailureReason(normalizedReason))
+            {
+                return 28f;
+            }
+
+            if (normalizedReason.Contains("sem ancora costeira viavel"))
+            {
+                return 18f;
+            }
+
+            if (IsGeometryNavalFailureReason(normalizedReason))
+            {
+                return 20f;
+            }
+
+            return 0f;
+        }
+
+        private static float ResolveBootstrapNavalRetryDelay(bool useDirectFallback, string reason)
+        {
+            string normalizedReason = IA_Text.Normalize(reason);
+            if (normalizedReason == "busca em cooldown")
+            {
+                return 8.5f;
+            }
+
+            if (normalizedReason.Contains("falha naval recente em cooldown"))
+            {
+                return useDirectFallback ? 16f : 12f;
+            }
+
+            if (IsTerritoryNavalFailureReason(normalizedReason))
+            {
+                return useDirectFallback ? 22f : 18f;
+            }
+
+            if (normalizedReason.Contains("sem ancora costeira viavel"))
+            {
+                return useDirectFallback ? 18f : 14f;
+            }
+
+            if (IsGeometryNavalFailureReason(normalizedReason))
+            {
+                return useDirectFallback ? 18f : 14f;
+            }
+
+            float retryDelay = useDirectFallback ? 4.5f : 3.5f;
+            if (normalizedReason.Contains("costa"))
+            {
+                retryDelay += 1.5f;
+            }
+
+            return retryDelay;
+        }
+
+        private static bool IsTerritoryNavalFailureReason(string normalizedReason)
+        {
+            return !string.IsNullOrEmpty(normalizedReason)
+                   && (normalizedReason.Contains("territorio costeiro nao reivindicado")
+                       || normalizedReason.Contains("sem fronteira amiga proxima")
+                       || normalizedReason.Contains("costa neutra distante")
+                       || normalizedReason.Contains("costa sob pressao inimiga"));
+        }
+
+        private static bool IsGeometryNavalFailureReason(string normalizedReason)
+        {
+            return !string.IsNullOrEmpty(normalizedReason)
+                   && (normalizedReason.Contains("sem costa valida")
+                       || normalizedReason.Contains("frente sem agua")
+                       || normalizedReason.Contains("traseira sem terra")
+                       || normalizedReason.Contains("praia muito funda"));
+        }
+
+        private static string BuildAnchorCellKey(Vector3 value)
+        {
+            int x = Mathf.RoundToInt(value.x / CoastalAnchorCacheCellSize);
+            int z = Mathf.RoundToInt(value.z / CoastalAnchorCacheCellSize);
+            return x + ":" + z;
         }
 
         private bool HasWaterAround(Vector3 center)

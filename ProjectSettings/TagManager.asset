@@ -13,6 +13,7 @@ TagManager:
   - Soldado
   - Imovel
   - Aviao
+  - Municao
   layers:
   - Default
   - TransparentFX

@@ -56,6 +56,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: AR_Mid
       objectReference: {fileID: 0}
+    - target: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: m_TagString
+      value: Missel
+      objectReference: {fileID: 0}
     - target: {fileID: 6581285286416740336, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: m_Enabled
       value: 0

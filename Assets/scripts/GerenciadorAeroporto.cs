@@ -107,6 +107,21 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
+    protected virtual void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    protected virtual void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
+    protected virtual void OnDestroy()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
     void Start()
     {
         // Inicia o serviço de reparação automática

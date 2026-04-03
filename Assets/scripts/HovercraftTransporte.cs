@@ -14,6 +14,14 @@ public class HovercraftTransporte : MonoBehaviour
     public float velocidadeRotacao = 1.5f; 
     public float alturaDoChao = 1.5f; 
     public LayerMask camadasChao; 
+
+    [Header("🏖️ Costa / Anti-Encalhe")]
+    public float distanciaSondaFrontal = 7f;
+    public float larguraSonda = 2.5f;
+    public float alturaOrigemSonda = 6f;
+    public float impulsoSubidaPraia = 10f;
+    public float velocidadeMinimaNaCosta = 9f;
+    public float tempoParaDesatolar = 0.75f;
     
     [Header("🎮 Seleção")]
     public bool isSelecionado = false;
@@ -40,6 +48,10 @@ public class HovercraftTransporte : MonoBehaviour
     private Vector3 destinoAtual;
     private bool temDestino = false;
     private bool processoEmbarqueAtivo = false;
+    private bool processoDesembarqueAtivo = false;
+    private Vector3 ultimaPosicaoProgresso;
+    private float tempoSemProgresso = 0f;
+    private bool monitorDeProgressoInicializado = false;
 
     [System.Serializable]
     public class SlotInfo 
@@ -59,6 +71,8 @@ public class HovercraftTransporte : MonoBehaviour
         rb.useGravity = false; rb.isKinematic = false; 
         rb.linearDamping = 1f; 
         rb.angularDamping = 2f; 
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         ConfigurarCamadasAnfibias();
 
@@ -124,37 +138,93 @@ public class HovercraftTransporte : MonoBehaviour
     { 
         ManterFlutuacao(); 
         MoverParaDestino(); 
+        AtualizarAntiEncalhe();
     }
 
     public void DefinirDestino(Vector3 destino)
     {
         destinoAtual = destino;
         temDestino = true;
+        ultimaPosicaoProgresso = PlanoXZ(transform.position);
+        tempoSemProgresso = 0f;
+        monitorDeProgressoInicializado = true;
     }
 
     void MoverParaDestino() 
     { 
         if(!temDestino) return;
 
-        Vector3 dir = destinoAtual - transform.position; dir.y=0;
-        if(dir.magnitude < 8f) { temDestino=false; return; }
+        Vector3 dir = destinoAtual - transform.position;
+        dir.y = 0f;
 
-        Quaternion rotAlvo = Quaternion.LookRotation(dir);
-        rb.MoveRotation(Quaternion.Slerp(transform.rotation, rotAlvo, velocidadeRotacao * Time.fixedDeltaTime));
-        rb.AddForce(transform.forward * velocidade * Time.fixedDeltaTime, ForceMode.Acceleration);
+        float distancia = dir.magnitude;
+        if (distancia < 8f)
+        {
+            temDestino = false;
+            rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, 0.35f);
+            return;
+        }
+
+        Vector3 direcaoDesejada = dir.normalized;
+        float anguloErro = Vector3.SignedAngle(transform.forward, direcaoDesejada, Vector3.up);
+        bool subindoPraia = DetectarSubidaPraia(out float subidaPraia);
+
+        float fatorRotacao = Mathf.Clamp01(Mathf.Abs(anguloErro) / 90f);
+        float velocidadeRotacaoReal = Mathf.Max(velocidadeRotacao, 2f) * Mathf.Lerp(0.75f, 2.2f, fatorRotacao);
+        Quaternion rotAlvo = Quaternion.LookRotation(direcaoDesejada, Vector3.up);
+        Quaternion novaRotacao = Quaternion.RotateTowards(transform.rotation, rotAlvo, velocidadeRotacaoReal * Time.fixedDeltaTime);
+        rb.MoveRotation(novaRotacao);
 
         Vector3 velLocal = transform.InverseTransformDirection(rb.linearVelocity);
-        Vector3 forcaContraDrift = transform.right * -velLocal.x * 800f * Time.fixedDeltaTime;
-        rb.AddForce(forcaContraDrift, ForceMode.Acceleration);
+        velLocal.x = Mathf.Lerp(velLocal.x, 0f, 0.22f);
+
+        float alinhamento = Mathf.Clamp01(Vector3.Dot(transform.forward, direcaoDesejada));
+        float freioPorCurva = Mathf.Clamp01(1f - (Mathf.Abs(anguloErro) / 135f));
+        float freioPorDistancia = Mathf.Clamp01(distancia / 25f);
+        float velocidadeBase = Mathf.Clamp(velocidade * 0.018f, 11f, 30f);
+        float velocidadeAlvo = velocidadeBase
+            * Mathf.Lerp(0.28f, 1f, alinhamento)
+            * Mathf.Lerp(0.30f, 1f, freioPorCurva)
+            * Mathf.Lerp(0.35f, 1f, freioPorDistancia);
+
+        if (subindoPraia && distancia > 14f)
+        {
+            float bonusCosta = Mathf.Clamp(subidaPraia * 3.5f, 0f, velocidadeMinimaNaCosta);
+            velocidadeAlvo = Mathf.Max(velocidadeAlvo, velocidadeMinimaNaCosta + bonusCosta);
+        }
+
+        float taxaAceleracao = Mathf.Clamp(velocidade * 0.08f, 18f, 85f);
+        if (subindoPraia)
+        {
+            taxaAceleracao *= 1.35f;
+        }
+
+        velLocal.z = Mathf.MoveTowards(velLocal.z, velocidadeAlvo, taxaAceleracao * Time.fixedDeltaTime);
+        if (alinhamento < 0.2f)
+        {
+            velLocal.z = Mathf.MoveTowards(velLocal.z, 0f, taxaAceleracao * 1.6f * Time.fixedDeltaTime);
+        }
+
+        Vector3 velocidadeMundo = transform.TransformDirection(velLocal);
+        velocidadeMundo.y = rb.linearVelocity.y;
+        rb.linearVelocity = velocidadeMundo;
     }
 
     void ManterFlutuacao()
     {
-        if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit h, alturaDoChao + 10f, camadasChao))
+        if (TryGetHoverPlaneHeight(out float alturaBase, out bool subindoPraia, out float subidaPraia))
         {
-            float f = (alturaDoChao - h.distance) * 40f; 
-            if(f>0) rb.AddForce(Vector3.up * f, ForceMode.VelocityChange);
-            else rb.AddForce(Vector3.down * 5f, ForceMode.Acceleration);
+            float alturaDesejada = alturaBase + alturaDoChao;
+            float erro = alturaDesejada - transform.position.y;
+            float amortecimentoVertical = rb.linearVelocity.y * 0.65f;
+            float forcaVertical = (erro * 28f) - (amortecimentoVertical * 5.5f);
+
+            if (subindoPraia)
+            {
+                forcaVertical += impulsoSubidaPraia + Mathf.Clamp(subidaPraia * 8f, 0f, impulsoSubidaPraia);
+            }
+
+            rb.AddForce(Vector3.up * forcaVertical, ForceMode.Acceleration);
         }
     }
     
@@ -216,8 +286,21 @@ public class HovercraftTransporte : MonoBehaviour
 
     public void IniciarDesembarque()
     {
-        rampaAberta = !rampaAberta; 
-        if (rampaAberta) StartCoroutine(RotinaDesembarqueSequencial());
+        if (processoDesembarqueAtivo) return;
+
+        if (!TemCarga())
+        {
+            rampaAberta = !rampaAberta;
+            return;
+        }
+
+        rampaAberta = true; 
+        StartCoroutine(RotinaDesembarqueSequencial());
+    }
+
+    public void DesembarcarTudo()
+    {
+        IniciarDesembarque();
     }
 
     public bool TemEspacoLivre()
@@ -305,6 +388,8 @@ public class HovercraftTransporte : MonoBehaviour
 
     IEnumerator RotinaDesembarqueSequencial()
     {
+        processoDesembarqueAtivo = true;
+
         // 1. FREIA
         temDestino = false; 
         Debug.Log("🛑 Freando...");
@@ -341,6 +426,7 @@ public class HovercraftTransporte : MonoBehaviour
         
         yield return new WaitForSeconds(3f);
         rampaAberta = false;
+        processoDesembarqueAtivo = false;
     }
 
     void Ejetar(GameObject u, int idx)
@@ -504,5 +590,119 @@ public class HovercraftTransporte : MonoBehaviour
         if (indice < 0) return mascara;
 
         return mascara | (1 << indice);
+    }
+
+    bool TryGetHoverPlaneHeight(out float alturaBase, out bool subindoPraia, out float subidaPraia)
+    {
+        alturaBase = transform.position.y - alturaDoChao;
+        subindoPraia = false;
+        subidaPraia = 0f;
+
+        Vector3 frente = transform.forward * distanciaSondaFrontal;
+        Vector3 direita = transform.right * larguraSonda;
+        Vector3[] offsets =
+        {
+            Vector3.zero,
+            frente,
+            frente + direita,
+            frente - direita,
+            -frente * 0.45f
+        };
+
+        float maiorAltura = float.MinValue;
+        float alturaCentro = float.MinValue;
+        float alturaFrontal = float.MinValue;
+        bool achouAlgo = false;
+
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            Vector3 origem = transform.position + offsets[i] + (Vector3.up * alturaOrigemSonda);
+            if (!Physics.Raycast(origem, Vector3.down, out RaycastHit hit, alturaOrigemSonda + alturaDoChao + 25f, camadasChao, QueryTriggerInteraction.Ignore))
+                continue;
+
+            achouAlgo = true;
+            maiorAltura = Mathf.Max(maiorAltura, hit.point.y);
+
+            if (i == 0) alturaCentro = hit.point.y;
+            if (i >= 1 && i <= 3) alturaFrontal = Mathf.Max(alturaFrontal, hit.point.y);
+        }
+
+        if (!achouAlgo)
+            return false;
+
+        alturaBase = maiorAltura;
+
+        if (alturaCentro > float.MinValue && alturaFrontal > float.MinValue)
+        {
+            subidaPraia = Mathf.Max(0f, alturaFrontal - alturaCentro);
+            subindoPraia = subidaPraia > 0.25f;
+        }
+
+        return true;
+    }
+
+    bool DetectarSubidaPraia(out float subidaPraia)
+    {
+        if (TryGetHoverPlaneHeight(out _, out bool subindoPraia, out subidaPraia))
+            return subindoPraia;
+
+        subidaPraia = 0f;
+        return false;
+    }
+
+    void AtualizarAntiEncalhe()
+    {
+        if (!temDestino)
+        {
+            tempoSemProgresso = 0f;
+            monitorDeProgressoInicializado = false;
+            return;
+        }
+
+        if (Vector3.Distance(PlanoXZ(transform.position), PlanoXZ(destinoAtual)) < 12f)
+        {
+            tempoSemProgresso = 0f;
+            ultimaPosicaoProgresso = PlanoXZ(transform.position);
+            return;
+        }
+
+        Vector3 posicaoAtual = PlanoXZ(transform.position);
+        if (!monitorDeProgressoInicializado)
+        {
+            ultimaPosicaoProgresso = posicaoAtual;
+            monitorDeProgressoInicializado = true;
+            return;
+        }
+
+        float deslocamento = Vector3.Distance(posicaoAtual, ultimaPosicaoProgresso);
+        Vector3 velocidadeHorizontal = PlanoXZ(rb.linearVelocity);
+        if (deslocamento > 0.4f || velocidadeHorizontal.magnitude > 2.5f)
+        {
+            ultimaPosicaoProgresso = posicaoAtual;
+            tempoSemProgresso = 0f;
+            return;
+        }
+
+        tempoSemProgresso += Time.fixedDeltaTime;
+        if (tempoSemProgresso < tempoParaDesatolar)
+            return;
+
+        Vector3 direcao = destinoAtual - transform.position;
+        direcao.y = 0f;
+        if (direcao.sqrMagnitude < 0.1f)
+        {
+            tempoSemProgresso = 0f;
+            return;
+        }
+
+        Vector3 impulso = (direcao.normalized * 4f) + (Vector3.up * 1.8f);
+        rb.AddForce(impulso, ForceMode.VelocityChange);
+        tempoSemProgresso = tempoParaDesatolar * 0.35f;
+    }
+
+    Vector3 PlanoXZ(Vector3 valor)
+    {
+        valor.y = 0f;
+        return valor;
     }
 }

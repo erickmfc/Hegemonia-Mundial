@@ -167,6 +167,11 @@ public class Projetil : MonoBehaviour
         dono = quemAtirou;
     }
 
+    public GameObject GetDono()
+    {
+        return dono;
+    }
+
     /// <summary>
     /// Define a direção de voo do projétil.
     /// </summary>

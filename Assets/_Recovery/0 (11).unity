@@ -1428,12 +1428,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 246379251}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 466, y: 0, z: -354}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -16, y: 0, z: 24.000046}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 590836160}
+  m_Father: {fileID: 1674770990}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &246379253
 MonoBehaviour:
@@ -1447,7 +1447,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
-  ItemFilters: 'estaleiro '
+  ItemFilters: 'Construir Aeroporto '
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -2646,7 +2646,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2234468026170433557, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 209
+      value: 132.1
       objectReference: {fileID: 0}
     - target: {fileID: 2234468026170433557, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3286,11 +3286,11 @@ MonoBehaviour:
   TeamId: 2
   NationName: BrainMaster
   InitialCredits: 30000
-  IncomePerSecond: 100
+  IncomePerSecond: 50
   Credits: 0
-  IntegrationMode: 2
+  IntegrationMode: 1
   DisableLegacyAIWhenFull: 1
-  MaxCommandsPerFrame: 5
+  MaxCommandsPerFrame: 2
   UseScriptedBootstrap: 1
   EnableVerboseLogs: 1
   EnableBootstrapConsoleTrace: 1
@@ -3315,7 +3315,6 @@ Transform:
   - {fileID: 1931904363}
   - {fileID: 301325141}
   - {fileID: 59077670}
-  - {fileID: 246379252}
   - {fileID: 1674770990}
   - {fileID: 1329596846}
   m_Father: {fileID: 0}
@@ -6970,7 +6969,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1027576861776745056, guid: 21914d3a6241ff94fb78e9232a6213b1, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 356
+      value: 601
       objectReference: {fileID: 0}
     - target: {fileID: 1027576861776745056, guid: 21914d3a6241ff94fb78e9232a6213b1, type: 3}
       propertyPath: m_LocalPosition.y
@@ -7087,7 +7086,7 @@ Transform:
   m_GameObject: {fileID: 1329596845}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 165, y: 0, z: -204}
+  m_LocalPosition: {x: 165, y: 0, z: -77}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8734,10 +8733,11 @@ Transform:
   m_GameObject: {fileID: 1674770989}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 466, y: 0, z: -354}
+  m_LocalPosition: {x: 319, y: 0, z: -175}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 246379252}
   m_Father: {fileID: 590836160}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1674770991
@@ -8752,7 +8752,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
-  ItemFilters: 'estaleiro '
+  ItemFilters: Aeroporto
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -8934,6 +8934,61 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1677098697}
   m_CullTransparentMesh: 1
+--- !u!1 &1678977762
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1678977764}
+  - component: {fileID: 1678977763}
+  m_Layer: 0
+  m_Name: Fps
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1678977763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1678977762}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e7e2cb7e2a84717b5ea4b2ef9c87f73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DiagnosticoDesempenhoJogo
+  fpsAlvo: 60
+  intervaloAmostragemSegundos: 1
+  limiteTravamentoMs: 50
+  percentualFrameLento: 0.9
+  exibirOverlay: 1
+  gravarCsv: 1
+  persistirEntreCenas: 1
+  teclaAlternarOverlay: 289
+  registrarCarregamentoDeCena: 1
+  maxEventosEmMemoria: 512
+  maxEventosNoOverlay: 4
+--- !u!4 &1678977764
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1678977762}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 822, y: 0, z: -796}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1680533525
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9397,7 +9452,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9003660488992670230, guid: 5e87edf62f9c2604aba4d806190464ba, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -551
+      value: -730
       objectReference: {fileID: 0}
     - target: {fileID: 9003660488992670230, guid: 5e87edf62f9c2604aba4d806190464ba, type: 3}
       propertyPath: m_LocalRotation.w
@@ -10213,7 +10268,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1984084234}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
   m_Name: 
@@ -11417,7 +11472,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2677807945473189951, guid: 2db930539ba30bb40ad3973bda0a87dd, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -653
+      value: -521
       objectReference: {fileID: 0}
     - target: {fileID: 2677807945473189951, guid: 2db930539ba30bb40ad3973bda0a87dd, type: 3}
       propertyPath: m_LocalRotation.w
@@ -11993,6 +12048,7 @@ PrefabInstance:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+  - {fileID: 1678977764}
   - {fileID: 1066512837}
   - {fileID: 362165589}
   - {fileID: 600254788}

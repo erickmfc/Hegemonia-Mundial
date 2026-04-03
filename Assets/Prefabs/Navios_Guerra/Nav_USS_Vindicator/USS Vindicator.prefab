@@ -51,6 +51,7 @@ GameObject:
   - component: {fileID: 6063526556936621026}
   - component: {fileID: 6162987001252713015}
   - component: {fileID: 5531175316603253341}
+  - component: {fileID: 3341252268851045335}
   m_Layer: 0
   m_Name: USS Vindicator
   m_TagString: Navio
@@ -201,7 +202,7 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 0
 --- !u!114 &8333206070645621237
@@ -282,8 +283,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 1800
-  vidaAtual: 1800
+  vidaMaxima: 2000
+  vidaAtual: 2000
   unidadeBiologica: 0
   ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
@@ -302,8 +303,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 71303ae0b6f9fa447951fb8acb05aecc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaAntiMissil
-  alcanceRadar: 900
-  tempoDeEscaneamento: 0.1
+  alcanceRadar: 1000
+  tempoDeEscaneamento: 0.01
+  velocidadeMinimaAmeaca: 5
+  dotMinimoAmeaca: 0.4
+  usarRastroLancamento: 1
+  multiplicadorAntecipacaoAlcance: 1.35
+  janelaAntecipacaoSegundos: 6
   baseGiratoria: {fileID: 5176564179888039053}
   canoElevacao: {fileID: 5176564179888039055}
   velocidadeGiro: 60
@@ -312,11 +318,33 @@ MonoBehaviour:
   - {fileID: 710339387541763032}
   - {fileID: 5722256221834511903}
   - {fileID: 8171938014783682215}
-  tempoEntreTiros: 1.5
-  capacidadeMisseis: 10
-  tempoRecargaMisseis: 15
+  tempoEntreTiros: 0.5
+  capacidadeMisseis: 5
+  tempoRecargaMisseis: 25
   somDisparo: {fileID: 8300000, guid: 30cc20ef2ed3c4f35af5120b0a841e84, type: 3}
   modoPassivo: 0
+--- !u!64 &3341252268851045335
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 62525798079713276}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 0
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
 --- !u!1 &1190417579437578160
 GameObject:
   m_ObjectHideFlags: 0
@@ -638,6 +666,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3661810059024156400}
   - component: {fileID: 351392092307442541}
+  - component: {fileID: 4286708217028887886}
   m_Layer: 0
   m_Name: Destroyer_03
   m_TagString: Untagged
@@ -683,6 +712,28 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!64 &4286708217028887886
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5811320930218371423}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 0
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
 --- !u!1 &6751959043141780634
 GameObject:
   m_ObjectHideFlags: 0

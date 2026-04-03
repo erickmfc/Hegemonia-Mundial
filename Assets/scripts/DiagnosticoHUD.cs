@@ -8,6 +8,7 @@ using TMPro;
 /// </summary>
 public class DiagnosticoHUD : MonoBehaviour
 {
+    [SerializeField] private bool habilitadoEmRuntime = false;
     private GerenciadorRecursos gerenciador;
     private PainelRecursos painel;
     private MenuConstrucao menuC;
@@ -15,6 +16,11 @@ public class DiagnosticoHUD : MonoBehaviour
 
     void Start()
     {
+        if (!habilitadoEmRuntime)
+        {
+            return;
+        }
+
         gerenciador = FindFirstObjectByType<GerenciadorRecursos>();
         painel = FindFirstObjectByType<PainelRecursos>();
         menuC = FindFirstObjectByType<MenuConstrucao>();
@@ -29,6 +35,11 @@ public class DiagnosticoHUD : MonoBehaviour
 
     void OnGUI()
     {
+        if (!habilitadoEmRuntime)
+        {
+            return;
+        }
+
         GUI.skin.label.fontSize = 20;
         float y = 10;
 
@@ -71,5 +82,11 @@ public class DiagnosticoHUD : MonoBehaviour
             GUI.color = Color.white;
             GUI.Label(new Rect(10, y + 10, 800, 30), "👉 Use o script 'CriadorHUDRecursos' para consertar HUD.");
         }
+    }
+
+    public void SetRuntimeVisible(bool ativo)
+    {
+        habilitadoEmRuntime = ativo;
+        enabled = ativo;
     }
 }

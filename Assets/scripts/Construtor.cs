@@ -111,20 +111,20 @@ public class Construtor : MonoBehaviour
         int layerIgnore = LayerMask.NameToLayer("Ignore Raycast");
         int mascaraGeral = ~(1 << layerIgnore);
 
-        if (ehConstrucaoNaval && !ehEstruturaCosteira)
+        if (ehConstrucaoNaval)
         {
             acertouChao = TryObterPontoNoPlanoDoMar(raio, out pontoMouse);
 
             if (acertouChao)
             {
-                pontoMouse.y = alturaDoMar;
+                pontoMouse.y = NavalPlacementResolver.ResolveSeaLevel();
 
                 if (ehPlataforma)
                 {
                     pontoMouse.y = 30.0f;
                 }
 
-                if (ExisteTerraAltaNoPontoMaritimo(pontoMouse, mascaraGeral))
+                if (!ehEstruturaCosteira && ExisteTerraAltaNoPontoMaritimo(pontoMouse, mascaraGeral))
                 {
                     acertouChao = false;
                 }
@@ -169,6 +169,7 @@ public class Construtor : MonoBehaviour
     bool TryObterPontoNoPlanoDoMar(Ray raio, out Vector3 ponto)
     {
         ponto = Vector3.zero;
+        float nivelDoMar = NavalPlacementResolver.ResolveSeaLevel();
 
         float denominador = Vector3.Dot(raio.direction, Vector3.up);
         if (Mathf.Abs(denominador) < 0.0001f)
@@ -176,21 +177,22 @@ public class Construtor : MonoBehaviour
             return false;
         }
 
-        float distancia = (alturaDoMar - raio.origin.y) / denominador;
+        float distancia = (nivelDoMar - raio.origin.y) / denominador;
         if (distancia < 0f)
         {
             return false;
         }
 
         ponto = raio.origin + (raio.direction * distancia);
-        ponto.y = alturaDoMar;
+        ponto.y = nivelDoMar;
         return true;
     }
 
     bool ExisteTerraAltaNoPontoMaritimo(Vector3 pontoNoMar, int mascaraGeral)
     {
+        float nivelDoMar = NavalPlacementResolver.ResolveSeaLevel();
         RaycastHit infoTerreno;
-        Vector3 origemCeu = new Vector3(pontoNoMar.x, alturaDoMar + 500f, pontoNoMar.z);
+        Vector3 origemCeu = new Vector3(pontoNoMar.x, nivelDoMar + 500f, pontoNoMar.z);
 
         if (!Physics.Raycast(origemCeu, Vector3.down, out infoTerreno, 1000f, mascaraGeral))
         {
@@ -212,7 +214,7 @@ public class Construtor : MonoBehaviour
             return false;
         }
 
-        return infoTerreno.point.y > alturaDoMar + 1.0f;
+        return infoTerreno.point.y > nivelDoMar + 1.0f;
     }
 
     bool TryObterPontoDeConstrucaoTerrestre(Ray raio, int mascaraGeral, out Vector3 pontoMouse)
@@ -252,10 +254,11 @@ public class Construtor : MonoBehaviour
 
     void LiberarPreviewCosteiroSemRestricao(Vector3 pontoMouse)
     {
+        float nivelDoMar = NavalPlacementResolver.ResolveSeaLevel();
         Quaternion rotacaoBase = fantasmaUnico != null ? fantasmaUnico.transform.rotation : prefabSelecionado.transform.rotation;
 
         posicaoPreviewNaval = pontoMouse;
-        posicaoPreviewNaval.y = alturaDoMar;
+        posicaoPreviewNaval.y = nivelDoMar;
         usarPosicaoPreviewNaval = true;
         previewLocalInvalido = false;
         motivoInvalido = "";

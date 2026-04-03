@@ -233,6 +233,7 @@ public class LancadorMLRS : MonoBehaviour
             if (scriptLeopard != null)
             {
                 scriptLeopard.DefinirAlvo(alvoAtual);
+                MissileThreatTracker.RegistrarLancamento(novoMissil, this, alvoAtual.position, alvoAtual, MissileThreatTracker.EstimarVelocidade(novoMissil));
                 disparoSucesso = true;
             }
             
@@ -244,6 +245,7 @@ public class LancadorMLRS : MonoBehaviour
                 {
                     // Lança mirando na posição atual do alvo
                     scriptSub.IniciarLancamento(alvoAtual.position, false); // false = não submerso
+                    MissileThreatTracker.RegistrarLancamento(novoMissil, this, alvoAtual.position, alvoAtual, MissileThreatTracker.EstimarVelocidade(novoMissil));
                     disparoSucesso = true;
                 }
             }

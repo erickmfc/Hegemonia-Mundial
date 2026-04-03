@@ -7,6 +7,9 @@ namespace Hegemonia.AI.BrainMaster
     {
         private readonly IA_Context _context;
         private readonly Dictionary<IA_SquadRole, IA_SquadData> _byRole = new Dictionary<IA_SquadRole, IA_SquadData>();
+        // Reutilizados entre ticks para evitar alocacoes desnecessarias de GC
+        private readonly List<GameObject> _candidatesBuffer = new List<GameObject>(128);
+        private readonly HashSet<int> _usedBuffer = new HashSet<int>();
 
         public IA_SquadDirector(IA_Context context)
         {
@@ -20,39 +23,40 @@ namespace Hegemonia.AI.BrainMaster
 
         public float Interval
         {
-            get { return 1.00f; }
+            get { return 1.80f; }
         }
 
         public float BudgetMs
         {
-            get { return 0.70f; }
+            get { return 2.20f; }
         }
 
         public void Tick(float now, float deltaTime)
         {
             _context.Backend.SquadService.CleanupDeadUnits();
 
-            List<GameObject> allUnits = new List<GameObject>();
+            // Reutiliza os buffers para evitar alocacoes por tick
+            _candidatesBuffer.Clear();
+            _usedBuffer.Clear();
             for (int i = 0; i < _context.WorldState.OwnUnits.Count; i++)
             {
                 GameObject unit = _context.WorldState.OwnUnits[i];
                 if (unit != null && unit.activeInHierarchy)
                 {
-                    allUnits.Add(unit);
+                    _candidatesBuffer.Add(unit);
                 }
             }
 
-            HashSet<int> used = new HashSet<int>();
-            UpdateRole(IA_SquadRole.Recon, allUnits, used, 4, IsReconUnit);
-            UpdateRole(IA_SquadRole.LocalDefense, allUnits, used, 8, IsLocalDefenseUnit);
-            UpdateRole(IA_SquadRole.BorderPatrol, allUnits, used, 8, IsPatrolUnit);
-            UpdateRole(IA_SquadRole.ArmoredAssault, allUnits, used, 10, IsArmoredUnit);
-            UpdateRole(IA_SquadRole.Amphibious, allUnits, used, 6, IsAmphibiousUnit);
-            UpdateRole(IA_SquadRole.NavalEscort, allUnits, used, 5, IsNavalEscortUnit);
-            UpdateRole(IA_SquadRole.NavalHeavy, allUnits, used, 4, IsNavalHeavyUnit);
-            UpdateRole(IA_SquadRole.Submarine, allUnits, used, 3, IsSubmarineUnit);
-            UpdateRole(IA_SquadRole.AirIntercept, allUnits, used, 6, IsAirInterceptUnit);
-            UpdateRole(IA_SquadRole.AirTacticalTransport, allUnits, used, 4, IsAirTransportUnit);
+            UpdateRole(IA_SquadRole.Recon, _candidatesBuffer, _usedBuffer, 4, IsReconUnit);
+            UpdateRole(IA_SquadRole.LocalDefense, _candidatesBuffer, _usedBuffer, 8, IsLocalDefenseUnit);
+            UpdateRole(IA_SquadRole.BorderPatrol, _candidatesBuffer, _usedBuffer, 8, IsPatrolUnit);
+            UpdateRole(IA_SquadRole.ArmoredAssault, _candidatesBuffer, _usedBuffer, 10, IsArmoredUnit);
+            UpdateRole(IA_SquadRole.Amphibious, _candidatesBuffer, _usedBuffer, 6, IsAmphibiousUnit);
+            UpdateRole(IA_SquadRole.NavalEscort, _candidatesBuffer, _usedBuffer, 5, IsNavalEscortUnit);
+            UpdateRole(IA_SquadRole.NavalHeavy, _candidatesBuffer, _usedBuffer, 4, IsNavalHeavyUnit);
+            UpdateRole(IA_SquadRole.Submarine, _candidatesBuffer, _usedBuffer, 3, IsSubmarineUnit);
+            UpdateRole(IA_SquadRole.AirIntercept, _candidatesBuffer, _usedBuffer, 6, IsAirInterceptUnit);
+            UpdateRole(IA_SquadRole.AirTacticalTransport, _candidatesBuffer, _usedBuffer, 4, IsAirTransportUnit);
         }
 
         public IA_SquadData GetSquad(IA_SquadRole role)

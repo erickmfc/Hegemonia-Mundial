@@ -29,9 +29,16 @@ public class PierMarinha : MonoBehaviour
 
         public bool EstaLivre()
         {
-            if (navioOcupante == null) return true;
+            if (navioOcupante == null)
+            {
+                atracagemCompleta = false;
+                timerRecarga = 0f;
+                return true;
+            }
             if (!navioOcupante.EstaAtracado) {
-                navioOcupante = null; 
+                navioOcupante = null;
+                atracagemCompleta = false;
+                timerRecarga = 0f;
                 return true;
             }
             return false;
@@ -93,6 +100,21 @@ public class PierMarinha : MonoBehaviour
     void Awake()
     {
         // Pontos do Petroleiro removidos conforme solicitado
+    }
+
+    void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
+    void OnDestroy()
+    {
+        RegistroEntidadesJogo.Unregister(this);
     }
 
     Transform CriarPonto(string nome, Vector3 pos)
@@ -185,24 +207,38 @@ public class PierMarinha : MonoBehaviour
     void Update()
     {
         ProcessarManutencao();
+
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            MenuPier.AlternarPorAtalho(this);
+        }
     }
 
     void ProcessarManutencao()
     {
         foreach (var vaga in vagasDisponiveis)
         {
+            IdentidadeNaval navio;
+            if (!TryGetValidDockedShip(vaga, out navio))
+            {
+                continue;
+            }
+
+            try
+            {
+
             // Lógica de reparo funciona se já atracou
-            if (vaga.navioOcupante != null && vaga.atracagemCompleta)
+            if (vaga.atracagemCompleta)
             {
                 // 1. REPARO DE VIDA
-                SistemaDeDanos vida = vaga.navioOcupante.GetComponent<SistemaDeDanos>();
+                SistemaDeDanos vida = navio.GetComponent<SistemaDeDanos>();
                 if (vida != null && vida.vidaAtual < vida.vidaMaxima)
                 {
                     vida.Reparar(reparoPorSegundo * Time.deltaTime);
                 }
 
                 // 2. RECARGA DE MÍSSEIS
-                LancadorNaval lancador = vaga.navioOcupante.GetComponentInChildren<LancadorNaval>();
+                LancadorNaval lancador = navio.GetComponentInChildren<LancadorNaval>();
                 if (lancador != null && lancador.municaoTotal < lancador.municaoMaxima)
                 {
                     vaga.timerRecarga += Time.deltaTime;
@@ -212,6 +248,11 @@ public class PierMarinha : MonoBehaviour
                         vaga.timerRecarga = 0f;
                     }
                 }
+            }
+            }
+            catch (MissingReferenceException)
+            {
+                LimparEstadoDaVaga(vaga, navio);
             }
         }
     }
@@ -271,7 +312,7 @@ public class PierMarinha : MonoBehaviour
 
     public void AtribuirVaga(VagaDeAtracagem vaga, IdentidadeNaval navio)
     {
-        if (navio == null) return;
+        if (vaga == null || navio == null) return;
         
         var agent = navio.GetComponent<NavMeshAgent>();
         if (agent == null) agent = navio.GetComponentInChildren<NavMeshAgent>();
@@ -289,12 +330,32 @@ public class PierMarinha : MonoBehaviour
 
     IEnumerator RotinaDeAtracagem(VagaDeAtracagem vaga, IdentidadeNaval navio)
     {
+        if (vaga == null || navio == null)
+        {
+            yield break;
+        }
+
         NavMeshAgent agent = navio.GetComponent<NavMeshAgent>();
         ControleNavioRealista controleFisico = navio.GetComponent<ControleNavioRealista>();
         
-        if(agent == null) yield break;
+        if (agent == null)
+        {
+            LimparEstadoDaVaga(vaga, navio);
+            yield break;
+        }
 
         float distanciaOriginal = 15f;
+        if (vaga.pontoDeAtracagem == null)
+        {
+            Debug.LogWarning("[Pier] Vaga sem ponto de atracagem configurado. Cancelando atracagem.");
+            LimparEstadoDaVaga(vaga, navio);
+            if (navio != null)
+            {
+                navio.NotificarMovimento();
+            }
+            yield break;
+        }
+
         if (controleFisico != null)
         {
             distanciaOriginal = controleFisico.distanciaChegada;
@@ -308,7 +369,7 @@ public class PierMarinha : MonoBehaviour
         // FASE 1: NAVEGAÇÃO AUTÔNOMA (NAVMESH)
         if (vaga.pontoDeManobra != null)
         {
-            if (agent.isActiveAndEnabled)
+            if (agent != null && agent.isActiveAndEnabled)
             {
                 agent.isStopped = false;
                 // GerenteDeJogo.Instancia.AtualizarPontoEstaleiro(pontosSpawn[0], saidaNavio); // This line was not in the original content, but was in the instruction's context. I will ignore it as per "make the change faithfully and without making any unrelated edits."
@@ -324,7 +385,12 @@ public class PierMarinha : MonoBehaviour
                 // O GerenteDeJogo lida com o registro de tudo que o jogador possui
             }
             float timerChegada = 0f;
-            while (agent.isActiveAndEnabled && navio != null && (agent.pathPending || agent.remainingDistance > 2.5f))
+            while (navio != null
+                && vaga != null
+                && vaga.navioOcupante == navio
+                && agent != null
+                && agent.isActiveAndEnabled
+                && (agent.pathPending || agent.remainingDistance > 2.5f))
             {
                 timerChegada += Time.deltaTime;
                 if (timerChegada > 60f) break; // Timeout generoso
@@ -332,19 +398,36 @@ public class PierMarinha : MonoBehaviour
             }
 
             // Fase manual: Desliga física
+            if (!PodeContinuarAtracagem(vaga, navio))
+            {
+                RestaurarEstadoAposAtracagemCancelada(vaga, navio, controleFisico, distanciaOriginal);
+                yield break;
+            }
+
             if(controleFisico != null) controleFisico.enabled = false;
 
-            if(agent.isActiveAndEnabled) 
+            if(agent != null && agent.isActiveAndEnabled)
             {
                 agent.isStopped = true; 
                 agent.enabled = false; 
             }
 
             // ALINHAMENTO IMPRECISO (Mantém dinâmico)
+            if (vaga.pontoDeManobra == null)
+            {
+                RestaurarEstadoAposAtracagemCancelada(vaga, navio, controleFisico, distanciaOriginal);
+                yield break;
+            }
+
             Quaternion rotacaoAlvo = vaga.pontoDeManobra.rotation;
             float tempoGiro = 0f;
             // Aumentei pra 20s para dar tempo de virar navios pesados
-            while (Quaternion.Angle(navio.transform.rotation, rotacaoAlvo) > 1f && tempoGiro < 20f)
+            while (navio != null
+                && vaga != null
+                && vaga.navioOcupante == navio
+                && vaga.pontoDeManobra != null
+                && Quaternion.Angle(navio.transform.rotation, rotacaoAlvo) > 1f
+                && tempoGiro < 20f)
             {
                 navio.transform.rotation = Quaternion.RotateTowards(navio.transform.rotation, rotacaoAlvo, 40f * Time.deltaTime);
                 navio.transform.position = Vector3.MoveTowards(navio.transform.position, vaga.pontoDeManobra.position, 2f * Time.deltaTime);
@@ -358,7 +441,13 @@ public class PierMarinha : MonoBehaviour
         }
 
         // FASE 2: ENTRADA FINAL NA VAGA
-        if(agent.isActiveAndEnabled) agent.enabled = false;
+        if (!PodeContinuarAtracagem(vaga, navio))
+        {
+            RestaurarEstadoAposAtracagemCancelada(vaga, navio, controleFisico, distanciaOriginal);
+            yield break;
+        }
+
+        if(agent != null && agent.isActiveAndEnabled) agent.enabled = false;
         if(controleFisico != null) controleFisico.enabled = false;
 
         Vector3 posFinal = vaga.pontoDeAtracagem.position;
@@ -366,12 +455,22 @@ public class PierMarinha : MonoBehaviour
 
         float timerEntrada = 0f;
         // Timeout longo (60s) para não teleportar se estiver lento
-        while ((Vector3.Distance(navio.transform.position, posFinal) > 0.05f || Quaternion.Angle(navio.transform.rotation, rotFinal) > 0.5f) && timerEntrada < 60f)
+        while (navio != null
+            && vaga != null
+            && vaga.navioOcupante == navio
+            && (Vector3.Distance(navio.transform.position, posFinal) > 0.05f || Quaternion.Angle(navio.transform.rotation, rotFinal) > 0.5f)
+            && timerEntrada < 60f)
         {
             navio.transform.position = Vector3.MoveTowards(navio.transform.position, posFinal, velocidadeManobra * Time.deltaTime);
             navio.transform.rotation = Quaternion.RotateTowards(navio.transform.rotation, rotFinal, 15f * Time.deltaTime);
             timerEntrada += Time.deltaTime;
             yield return null;
+        }
+
+        if (!PodeContinuarAtracagem(vaga, navio))
+        {
+            RestaurarEstadoAposAtracagemCancelada(vaga, navio, controleFisico, distanciaOriginal);
+            yield break;
         }
 
         // Snap final imperceptível
@@ -405,15 +504,33 @@ public class PierMarinha : MonoBehaviour
 
     public void LiberarVaga(VagaDeAtracagem vaga, Transform saidaDestino = null)
     {
-        if (vaga.navioOcupante == null) return;
+        if (vaga == null) return;
+        if (vaga.navioOcupante == null)
+        {
+            LimparEstadoDaVaga(vaga);
+            return;
+        }
+
         IdentidadeNaval navio = vaga.navioOcupante;
-        if (saidaDestino == null) saidaDestino = GetSaidaMaisProxima(navio.transform.position);
+        if (navio == null)
+        {
+            LimparEstadoDaVaga(vaga);
+            return;
+        }
 
-        if (saidaDestino != null) navio.SairDaDoca(saidaDestino.position);
-        else navio.SairDaDoca(navio.transform.position - (navio.transform.forward * 50f));
+        try
+        {
+            if (saidaDestino == null) saidaDestino = GetSaidaMaisProxima(navio.transform.position);
 
-        vaga.navioOcupante = null; 
-        vaga.atracagemCompleta = false;
+            if (saidaDestino != null) navio.SairDaDoca(saidaDestino.position);
+            else navio.SairDaDoca(navio.transform.position - (navio.transform.forward * 50f));
+
+            LimparEstadoDaVaga(vaga, navio);
+        }
+        catch (MissingReferenceException)
+        {
+            LimparEstadoDaVaga(vaga, navio);
+        }
     }
 
     Transform GetSaidaMaisProxima(Vector3 posicaoNavio)
@@ -534,7 +651,34 @@ public class PierMarinha : MonoBehaviour
                 destNaval.y = nivelMar;
             }
 
-            idNaval.MoverPara(destNaval);
+            Vector3 direcaoSaida = destNaval - novoNavio.transform.position;
+            direcaoSaida.y = 0f;
+            if (direcaoSaida.sqrMagnitude > 0.01f)
+            {
+                novoNavio.transform.rotation = Quaternion.LookRotation(direcaoSaida.normalized, Vector3.up);
+            }
+
+            ControleNavioRealista controleRealista = novoNavio.GetComponent<ControleNavioRealista>();
+            NavegacaoInteligenteNaval navegacaoNaval = novoNavio.GetComponent<NavegacaoInteligenteNaval>();
+            ControleSubmarino controleSubmarino = novoNavio.GetComponent<ControleSubmarino>();
+
+            if (controleRealista != null)
+            {
+                controleRealista.PrepararSaidaInicial(destNaval, 8f);
+                controleRealista.DefinirDestino(destNaval);
+            }
+            else if (navegacaoNaval != null)
+            {
+                navegacaoNaval.DefinirDestino(destNaval);
+            }
+            else if (controleSubmarino != null)
+            {
+                controleSubmarino.DefinirDestino(destNaval);
+            }
+            else
+            {
+                idNaval.MoverPara(destNaval);
+            }
         }
 
         if (idPier != null && idPier.teamID != 1)
@@ -565,10 +709,13 @@ public class PierMarinha : MonoBehaviour
         foreach (var vaga in vagasDisponiveis)
         {
             // MOSTRA SEMPRE QUE ATRACADO (Mesmo 100%)
-            if (vaga.navioOcupante != null && vaga.atracagemCompleta)
+            IdentidadeNaval navio;
+            if (TryGetValidDockedShip(vaga, out navio) && vaga.atracagemCompleta)
             {
                 // Pega posição do navio na tela
-                Vector3 posMundo = vaga.navioOcupante.transform.position + Vector3.up * 8f; 
+                try
+                {
+                    Vector3 posMundo = navio.transform.position + Vector3.up * 8f;
                 Vector3 screenPos = Camera.main.WorldToScreenPoint(posMundo);
                 if (screenPos.z < 0) continue;
 
@@ -577,10 +724,10 @@ public class PierMarinha : MonoBehaviour
                 float pctVida = 1f;
                 int municao = 0, munMax = 0;
 
-                SistemaDeDanos vida = vaga.navioOcupante.GetComponent<SistemaDeDanos>();
+                SistemaDeDanos vida = navio.GetComponent<SistemaDeDanos>();
                 if (vida != null) pctVida = vida.vidaAtual / vida.vidaMaxima;
 
-                LancadorNaval lancador = vaga.navioOcupante.GetComponentInChildren<LancadorNaval>();
+                LancadorNaval lancador = navio.GetComponentInChildren<LancadorNaval>();
                 if (lancador != null) { municao = lancador.municaoTotal; munMax = lancador.municaoMaxima; }
 
                 float boxWidth = 200f;
@@ -616,7 +763,70 @@ public class PierMarinha : MonoBehaviour
                     styleStatus.normal.textColor = Color.Lerp(Color.yellow, Color.cyan, pctMun);
                     GUI.Label(new Rect(screenPos.x - 100, y + 50, 200, 20), txtMun, styleStatus);
                 }
+                }
+                catch (MissingReferenceException)
+                {
+                    LimparEstadoDaVaga(vaga, navio);
+                }
             }
         }
+    }
+
+    bool PodeContinuarAtracagem(VagaDeAtracagem vaga, IdentidadeNaval navio)
+    {
+        return vaga != null
+            && navio != null
+            && vaga.navioOcupante == navio
+            && vaga.pontoDeAtracagem != null;
+    }
+
+    bool TryGetValidDockedShip(VagaDeAtracagem vaga, out IdentidadeNaval navio)
+    {
+        navio = null;
+        if (vaga == null || vaga.EstaLivre())
+        {
+            return false;
+        }
+
+        navio = vaga.navioOcupante;
+        if (navio == null)
+        {
+            LimparEstadoDaVaga(vaga);
+            return false;
+        }
+
+        return true;
+    }
+
+    void RestaurarEstadoAposAtracagemCancelada(VagaDeAtracagem vaga, IdentidadeNaval navio, ControleNavioRealista controleFisico, float distanciaOriginal)
+    {
+        if (controleFisico != null)
+        {
+            controleFisico.distanciaChegada = distanciaOriginal;
+            controleFisico.enabled = true;
+        }
+
+        if (navio != null)
+        {
+            navio.NotificarMovimento();
+        }
+
+        LimparEstadoDaVaga(vaga, navio);
+    }
+
+    void LimparEstadoDaVaga(VagaDeAtracagem vaga, IdentidadeNaval navioEsperado = null)
+    {
+        if (vaga == null)
+        {
+            return;
+        }
+
+        if (navioEsperado == null || vaga.navioOcupante == null || vaga.navioOcupante == navioEsperado)
+        {
+            vaga.navioOcupante = null;
+        }
+
+        vaga.atracagemCompleta = false;
+        vaga.timerRecarga = 0f;
     }
 }

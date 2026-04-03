@@ -68,6 +68,7 @@ public class SiloNuclear : MonoBehaviour
         if (scriptMissel != null)
         {
             scriptMissel.IniciarLancamento(alvo);
+            MissileThreatTracker.RegistrarLancamento(misselInstanciado, this, alvo, null, MissileThreatTracker.EstimarVelocidade(misselInstanciado));
             Debug.Log(nomeDoSilo + ": Lançamento confirmado!");
         }
 

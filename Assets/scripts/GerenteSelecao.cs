@@ -5,6 +5,21 @@ using UnityEngine.EventSystems;
 
 public class GerenteSelecao : MonoBehaviour
 {
+    private struct PegadaCache
+    {
+        public float largura;
+        public float profundidade;
+        public int frameAtualizacao;
+    }
+
+    private sealed class RaycastHitDistanceComparer : IComparer<RaycastHit>
+    {
+        public int Compare(RaycastHit a, RaycastHit b)
+        {
+            return a.distance.CompareTo(b.distance);
+        }
+    }
+
     [Header("Configurações Visuais")]
     public RectTransform caixaSelecaoVisual; // Sua imagem verde
     public RectTransform canvasRect;         // O Pai de todos (Interface/Canvas)
@@ -15,6 +30,11 @@ public class GerenteSelecao : MonoBehaviour
     private Camera cameraPrincipal;
     private Construtor construtorCache;
     private DesenharLinhasOrdem desenhadorOrdensCache;
+    private readonly RaycastHit[] bufferHitsClique = new RaycastHit[64];
+    private readonly Dictionary<int, PegadaCache> cachePegadas = new Dictionary<int, PegadaCache>();
+    private readonly List<ControleUnidade> bufferControlesSelecionaveis = new List<ControleUnidade>(256);
+    private static readonly RaycastHitDistanceComparer ComparadorHits = new RaycastHitDistanceComparer();
+    private const int FramesCachePegada = 300;
 
     private Vector2 inicioMouseScreen; // Posição pura do mouse na tela
     private bool arrastando = false;
@@ -47,11 +67,6 @@ public class GerenteSelecao : MonoBehaviour
         // Se clicar em cima de botões da UI, não faz nada
         if (IsMouseOverInteractiveUI())
         {
-            // DEBUG: Se o clique direito foi bloqueado pela UI
-            if (Input.GetMouseButtonDown(1))
-            {
-                Debug.LogWarning("[GerenteSelecao] Clique direito BLOQUEADO por UI interativa");
-            }
             return;
         }
 
@@ -166,12 +181,28 @@ public class GerenteSelecao : MonoBehaviour
         hitFinal = new RaycastHit();
         destino = Vector3.zero;
 
-        RaycastHit[] hits = Physics.RaycastAll(raio, Mathf.Infinity, layerMaskMove);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        int quantidadeHits = Physics.RaycastNonAlloc(
+            raio,
+            bufferHitsClique,
+            Mathf.Infinity,
+            layerMaskMove,
+            QueryTriggerInteraction.Ignore);
 
-        for (int i = 0; i < hits.Length; i++)
+        RaycastHit[] hitsExtras = null;
+        if (quantidadeHits >= bufferHitsClique.Length)
         {
-            RaycastHit hit = hits[i];
+            hitsExtras = Physics.RaycastAll(raio, Mathf.Infinity, layerMaskMove, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hitsExtras, ComparadorHits);
+            quantidadeHits = hitsExtras.Length;
+        }
+        else
+        {
+            System.Array.Sort(bufferHitsClique, 0, quantidadeHits, ComparadorHits);
+        }
+
+        for (int i = 0; i < quantidadeHits; i++)
+        {
+            RaycastHit hit = hitsExtras != null ? hitsExtras[i] : bufferHitsClique[i];
             if (hit.collider == null)
             {
                 continue;
@@ -627,6 +658,15 @@ public class GerenteSelecao : MonoBehaviour
 
         if (unidade == null) return;
 
+        int idUnidade = unidade.GetInstanceID();
+        PegadaCache cache;
+        if (cachePegadas.TryGetValue(idUnidade, out cache) && Time.frameCount - cache.frameAtualizacao <= FramesCachePegada)
+        {
+            largura = cache.largura;
+            profundidade = cache.profundidade;
+            return;
+        }
+
         bool temBounds = false;
         Bounds bounds = new Bounds(unidade.transform.position, Vector3.zero);
 
@@ -686,6 +726,13 @@ public class GerenteSelecao : MonoBehaviour
 
         largura = Mathf.Clamp(largura, minimo, 45f);
         profundidade = Mathf.Clamp(profundidade, minimo, 45f);
+
+        cachePegadas[idUnidade] = new PegadaCache
+        {
+            largura = largura,
+            profundidade = profundidade,
+            frameAtualizacao = Time.frameCount
+        };
     }
 
     void AtualizarDesenhoCaixa()
@@ -724,15 +771,16 @@ public class GerenteSelecao : MonoBehaviour
         float minY = Mathf.Min(inicioMouseScreen.y, mouseFinal.y);
         float maxY = Mathf.Max(inicioMouseScreen.y, mouseFinal.y);
 
-        var todasUnidades = FindObjectsByType<ControleUnidade>(FindObjectsSortMode.None);
+        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        if (cameraPrincipal == null) return;
 
-        foreach (var unidade in todasUnidades)
+        RegistroEntidadesJogo.FillControlesUnidade(bufferControlesSelecionaveis);
+
+        foreach (var unidade in bufferControlesSelecionaveis)
         {
             if (unidade == null || !unidade.enabled) continue; // Ignora unidades desativadas (como soldados dentro de caminhões)
 
             // Onde o tanque está na tela?
-            if (cameraPrincipal == null) cameraPrincipal = Camera.main;
-            if (cameraPrincipal == null) continue;
             Vector3 posTela = cameraPrincipal.WorldToScreenPoint(unidade.transform.position);
 
             if (posTela.x > minX && posTela.x < maxX && 
@@ -770,7 +818,6 @@ public class GerenteSelecao : MonoBehaviour
                         // Abre o menu na aba do Exército
                         if (!MenuConstrucao.EstaAberto) menu.AlternarMenu(true);
                         menu.FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Exercito);
-                        Debug.Log("[GerenteSelecao] Selecionou a Fábrica! Abrindo a aba do Exército.");
                         
                         DeselecionarTudo(); // Solta as tropas se for clicar num prédio
                         return; // Paralisa o código para não selecionar a fábrica como "tropa"
@@ -791,13 +838,17 @@ public class GerenteSelecao : MonoBehaviour
                 }
 
                 AdicionarSelecao(unidade);
-                Debug.Log($"[GerenteSelecao] Selecionado: {unidade.name}");
             }
         }
     }
 
     void AdicionarSelecao(ControleUnidade unidade)
     {
+        if (unidade == null || unidadesSelecionadas.Contains(unidade))
+        {
+            return;
+        }
+
         // VERIFICA SE É DO MEU TIME
         int teamIdRecuperado = -1;
         
@@ -820,7 +871,13 @@ public class GerenteSelecao : MonoBehaviour
             idU = unidade.gameObject.AddComponent<IdentidadeUnidade>();
             idU.teamID = 1; // Registra como Aliado
             idU.nomeDoPais = "Minha Nação";
-            Debug.Log($"[Sistema] Identidade criada automaticamente para: {unidade.name}");
+            idU.tipoUnidade = unidade.EhUnidadeNaval()
+                ? TipoUnidade.Naval
+                : (unidade.GetComponent<ControleAviao>() != null
+                    || unidade.GetComponent<Helicoptero>() != null
+                    || unidade.GetComponent<VooHelicoptero>() != null
+                    ? TipoUnidade.Aereo
+                    : TipoUnidade.Veiculo);
         }
 
         unidadesSelecionadas.Add(unidade);

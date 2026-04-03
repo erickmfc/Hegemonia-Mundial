@@ -412,6 +412,7 @@ public class LancadorNaval : MonoBehaviour
             
             // Passamos tambem o Transform do alvoFixo para o missel poder perseguir (homing)
             scriptMissel.IniciarAtaque(alvoFinal, alvoFixo);
+            MissileThreatTracker.RegistrarLancamento(misselObj, this, alvoFinal, alvoFixo, MissileThreatTracker.EstimarVelocidade(misselObj));
         }
 
         // Som

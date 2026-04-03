@@ -58,6 +58,16 @@ namespace Hegemonia.AI.BrainMaster
                   .Append(snap.LastCostMs.ToString("0.00")).Append("ms");
             }
 
+            string buildProfile = _brain != null
+                && _brain.Context != null
+                && _brain.Context.BuildDirector != null
+                ? _brain.Context.BuildDirector.LastProfilingSummary
+                : string.Empty;
+            if (!string.IsNullOrEmpty(buildProfile))
+            {
+                sb.Append(" | BuildProfile=").Append(buildProfile);
+            }
+
             LastSummary = sb.ToString();
 
             if (VerboseLogs && now >= _nextVerboseLogTime)

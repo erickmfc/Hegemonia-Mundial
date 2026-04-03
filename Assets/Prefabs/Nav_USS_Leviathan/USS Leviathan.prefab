@@ -84,7 +84,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleSubmarino
   profundidadeSubmersao: -15
-  alturaSuperificie: 0
+  alturaSuperificie: -2
   velocidadeMovimento: 2
   locaisDisparo:
   - {fileID: 2393320628034652989}
@@ -110,6 +110,7 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   prefabMisselSubmarino: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+  alcanceMisseis: 500
   estaSubmerso: 1
   misseisDisponiveis: 22
   velocidadeGiroMax: 15
@@ -117,7 +118,6 @@ MonoBehaviour:
   forcaInclinacao: 3
   modelo3D: {fileID: 0}
   rastroAgua: {fileID: 0}
-  alcanceMisseis: 500
 --- !u!195 &8427076263614432943
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -191,6 +191,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 0}
   selecionado: 0
+  aguardandoVisto: 0
+  vistoAprovado: 0
   velocidadeVoo: 8
   tamanhoSelecao: 2
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
@@ -198,6 +200,8 @@ MonoBehaviour:
   corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
   larguraLinha: 0.15
   segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
 --- !u!114 &8014502728833731529
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -213,6 +217,7 @@ MonoBehaviour:
   vidaMaxima: 800
   vidaAtual: 800
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 3.3
@@ -233,6 +238,23 @@ MonoBehaviour:
   distanciaSsumir: 700
   detalhesPequenos: []
   scriptsDecorativos: []
+--- !u!114 &7520479819138951782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 790024337851436606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86bf21ae7ce6f5a47b74d272af475dc8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeNaval
+  nomeDoNavio: USS Leviathan
+  categoriaNavio: 2
+  estaAtracado: 0
+  velocidadeDeRe: 5
+  velocidadeRotacaoRe: 2
 --- !u!1 &932185402210133216
 GameObject:
   m_ObjectHideFlags: 0
@@ -884,21 +906,3 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2617109060813063789}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
---- !u!114 &7520479819138951782
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 790024337851436606}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 86bf21ae7ce6f5a47b74d272af475dc8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeNaval
-  nomeDoNavio: USS Leviathan
-  categoriaNavio: 2
-  estaAtracado: 0
-  agente: {fileID: 8427076263614432943}
-  velocidadeDeRe: 5
-  velocidadeRotacaoRe: 2

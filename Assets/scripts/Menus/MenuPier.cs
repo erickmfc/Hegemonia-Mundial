@@ -1,10 +1,11 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
-using System.Linq; // Necessário para ordenar listas
 
 public class MenuPier : MonoBehaviour
 {
+    private static int ultimoFrameAtalho = -1;
+
     // --- REFERÊNCIAS ---
     [Header("Conexão")]
     public PierMarinha pierAlvo; // Arraste o objeto Pier aqui no Inspector!
@@ -15,6 +16,7 @@ public class MenuPier : MonoBehaviour
     public Color corDocaLivre = new Color(0.2f, 0.6f, 0.3f);
     public Color corDocaOcupada = new Color(0.7f, 0.25f, 0.25f);
     public Color corBotaoAcao = new Color(0.2f, 0.5f, 0.8f);
+    public bool debugLogs = false;
 
     // --- VARIÁVEIS INTERNAS ---
     private GameObject painelMestre;
@@ -25,15 +27,48 @@ public class MenuPier : MonoBehaviour
     private Transform listaDocasContainer;
     private Transform listaContextoContainer; 
     private Text tituloContexto;
+    private readonly List<IdentidadeNaval> naviosBuffer = new List<IdentidadeNaval>(64);
 
     void Update()
     {
         // Tecla de atalho alterada para 'V' conforme solicitado
         if (Input.GetKeyDown(KeyCode.V))
         {
-            Debug.Log("[MenuPier] Tecla V pressionada."); 
-            AlternarMenu();
+            AlternarPorAtalho(pierAlvo);
         }
+    }
+
+    public static bool AlternarPorAtalho(PierMarinha pierPreferido = null)
+    {
+        if (Time.frameCount == ultimoFrameAtalho)
+        {
+            return false;
+        }
+
+        ultimoFrameAtalho = Time.frameCount;
+
+        MenuPier menu = Object.FindFirstObjectByType<MenuPier>();
+        if (menu == null)
+        {
+            GameObject go = new GameObject("MenuPier_Auto");
+            menu = go.AddComponent<MenuPier>();
+        }
+
+        if (pierPreferido != null)
+        {
+            menu.pierAlvo = pierPreferido;
+        }
+        else if (menu.pierAlvo == null)
+        {
+            menu.pierAlvo = RegistroEntidadesJogo.GetPrimeiroPier();
+            if (menu.pierAlvo == null)
+            {
+                menu.pierAlvo = Object.FindFirstObjectByType<PierMarinha>();
+            }
+        }
+
+        menu.AlternarMenu();
+        return true;
     }
 
     // Método chamado por outros scripts (como MenuConstrucao) para fechar este menu
@@ -48,7 +83,11 @@ public class MenuPier : MonoBehaviour
     public void AlternarMenu()
     {
         // 1. Garante que temos um Pier alvo
-        if (pierAlvo == null) pierAlvo = FindFirstObjectByType<PierMarinha>();
+        if (pierAlvo == null)
+        {
+            pierAlvo = RegistroEntidadesJogo.GetPrimeiroPier();
+            if (pierAlvo == null) pierAlvo = FindFirstObjectByType<PierMarinha>();
+        }
 
         if (pierAlvo == null)
         {
@@ -64,7 +103,10 @@ public class MenuPier : MonoBehaviour
         EstaAberto = menuAberto; // 🔹 Atualiza global
         painelMestre.SetActive(menuAberto);
         
-        Debug.Log($"[MenuPier] Menu alternado. Aberto: {menuAberto}");
+        if (debugLogs)
+        {
+            Debug.Log($"[MenuPier] Menu alternado. Aberto: {menuAberto}");
+        }
 
         if (menuAberto)
         {
@@ -198,19 +240,22 @@ public class MenuPier : MonoBehaviour
     // Função auxiliar para buscar navios
     List<IdentidadeNaval> EncontrarNaviosDisponiveis(IdentidadeNaval.CategoriaNavio categoria)
     {
-        var todosNavios = Object.FindObjectsByType<IdentidadeNaval>(FindObjectsSortMode.None);
         var lista = new List<IdentidadeNaval>();
+        RegistroEntidadesJogo.FillNavios(naviosBuffer);
 
-        Debug.Log($"[MenuPier] Buscando navios da categoria: {categoria}. Total de navios na cena: {todosNavios.Length}");
+        if (debugLogs)
+        {
+            Debug.Log($"[MenuPier] Buscando navios da categoria: {categoria}. Total de navios na cena: {naviosBuffer.Count}");
+        }
 
-        foreach (var navio in todosNavios)
+        foreach (var navio in naviosBuffer)
         {
             if (navio == null) continue;
 
             float distancia = Vector3.Distance(pierAlvo.transform.position, navio.transform.position);
             
             // Debug para entender o que está acontecendo
-            Debug.Log($"[MenuPier] Checando navio: '{navio.nomeDoNavio}' ({navio.name}) | Cat: {navio.categoriaNavio} | Atracado: {navio.EstaAtracado} | Dist: {distancia:F1}m");
+            if (debugLogs) Debug.Log($"[MenuPier] Checando navio: '{navio.nomeDoNavio}' ({navio.name}) | Cat: {navio.categoriaNavio} | Atracado: {navio.EstaAtracado} | Dist: {distancia:F1}m");
 
             // Filtros: Categoria certa + Não está atracado
             bool catCheck = (navio.categoriaNavio == categoria);
@@ -219,19 +264,25 @@ public class MenuPier : MonoBehaviour
             if (catCheck && !navio.EstaAtracado)
             {
                 lista.Add(navio);
-                Debug.Log($"[MenuPier] --> Navio '{navio.nomeDoNavio}' ACEITO!");
+                if (debugLogs) Debug.Log($"[MenuPier] --> Navio '{navio.nomeDoNavio}' ACEITO!");
             }
             else
             {
                 string motivo = !catCheck ? "Categoria diferente" : "Já está atracado";
-                Debug.Log($"[MenuPier] --> Navio '{navio.nomeDoNavio}' REJEITADO. Motivo: {motivo}");
+                if (debugLogs) Debug.Log($"[MenuPier] --> Navio '{navio.nomeDoNavio}' REJEITADO. Motivo: {motivo}");
             }
         }
         
-        Debug.Log($"[MenuPier] Encontrados: {lista.Count} navios compatíveis");
+        if (debugLogs) Debug.Log($"[MenuPier] Encontrados: {lista.Count} navios compatíveis");
 
         // Ordena por distância (mais perto primeiro)
-        return lista.OrderBy(n => Vector3.Distance(pierAlvo.transform.position, n.transform.position)).ToList();
+        lista.Sort((a, b) =>
+        {
+            float distA = Vector3.Distance(pierAlvo.transform.position, a.transform.position);
+            float distB = Vector3.Distance(pierAlvo.transform.position, b.transform.position);
+            return distA.CompareTo(distB);
+        });
+        return lista;
     }
 
     void LimparPainelContexto(string msgPadrao)

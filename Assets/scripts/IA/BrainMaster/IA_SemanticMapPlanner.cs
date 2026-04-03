@@ -8,7 +8,18 @@ namespace Hegemonia.AI.BrainMaster
         private readonly IA_Context _context;
         private readonly Dictionary<Vector2Int, IA_SemanticCell> _cells = new Dictionary<Vector2Int, IA_SemanticCell>();
 
-        public int ScanRadiusInCells = 14;
+        // --- Reconstrucao incremental: processa uma fatia de linhas por tick ---
+        private int _rebuildSliceX = int.MinValue; // coluna atual que esta sendo processada
+        private int _rebuildRadius = 0;
+        private Vector3 _rebuildCenter = Vector3.zero;
+        private float _rebuildCellSize = 24f;
+        private int _occupiedCount = 0;
+
+        // Cache de distância à costa por célula — invalidado quando a estrutura muda
+        private readonly Dictionary<Vector2Int, float> _coastDistanceCache = new Dictionary<Vector2Int, float>();
+        private int _lastStructureVersionForCoastCache = -1;
+
+        public int ScanRadiusInCells = 12; // Reduzido de 14 para 12 → 25x25=625 células em vez de 29x29=841
         public string LastSummary { get; private set; }
 
         public IA_SemanticMapPlanner(IA_Context context)
@@ -21,14 +32,16 @@ namespace Hegemonia.AI.BrainMaster
             get { return "IA_SemanticMapPlanner"; }
         }
 
+        // Intervalo reduzido: reconstrução completa ocorre em fatias, entao pode rodar mais rápido
         public float Interval
         {
-            get { return 5.5f; }
+            get { return 0.35f; }
         }
 
+        // Budget aumentado para refletir custo real da fatia por tick
         public float BudgetMs
         {
-            get { return 0.40f; }
+            get { return 3.50f; }
         }
 
         public IEnumerable<IA_SemanticCell> Cells
@@ -43,7 +56,67 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            RebuildGrid();
+            int structureCount = _context.WorldState.OwnStructures.Count;
+
+            // Invalida cache de costa se estruturas mudaram
+            if (structureCount != _lastStructureVersionForCoastCache)
+            {
+                _coastDistanceCache.Clear();
+                _lastStructureVersionForCoastCache = structureCount;
+            }
+
+            // Inicia nova varredura se terminou a anterior ou mapa mudou
+            Vector3 center = ResolveReferenceCenter();
+            float cellSize = Mathf.Max(8f, _context.MapAnalyzer.CellSize);
+            int radius = Mathf.Clamp(ScanRadiusInCells, 6, 22);
+
+            bool needsReset = _rebuildSliceX == int.MinValue
+                              || _rebuildSliceX > radius
+                              || Mathf.Abs(center.x - _rebuildCenter.x) > cellSize * 3f
+                              || Mathf.Abs(center.z - _rebuildCenter.z) > cellSize * 3f;
+
+            if (needsReset)
+            {
+                _rebuildCenter = center;
+                _rebuildCellSize = cellSize;
+                _rebuildRadius = radius;
+                _rebuildSliceX = -radius;
+                _cells.Clear();
+                _occupiedCount = 0;
+            }
+
+            // Processa uma fatia (uma coluna X) por tick — distribui o custo ao longo do tempo
+            int sliceX = _rebuildSliceX;
+            float cs = _rebuildCellSize;
+            Vector3 rc = _rebuildCenter;
+            int rr = _rebuildRadius;
+
+            for (int z = -rr; z <= rr; z++)
+            {
+                Vector3 position = rc + new Vector3(sliceX * cs, 0f, z * cs);
+                IA_MapCell mapCell = _context.MapAnalyzer.SampleCell(position);
+                if (mapCell == null)
+                {
+                    continue;
+                }
+
+                IA_SemanticCell semanticCell = BuildCell(mapCell, rc, cs);
+                if (semanticCell.Occupied)
+                {
+                    _occupiedCount++;
+                }
+
+                _cells[semanticCell.Index] = semanticCell;
+            }
+
+            _rebuildSliceX++;
+
+            if (_rebuildSliceX > rr)
+            {
+                // Varredura completa
+                LastSummary = "cells=" + _cells.Count + " occupied=" + _occupiedCount + " center=" + rc;
+                _rebuildSliceX = int.MinValue; // Marca para reiniciar na próxima janela
+            }
         }
 
         public bool TryGetCell(Vector3 worldPosition, out IA_SemanticCell cell)
@@ -58,39 +131,6 @@ namespace Hegemonia.AI.BrainMaster
             {
                 cell.Sector = sector;
             }
-        }
-
-        private void RebuildGrid()
-        {
-            _cells.Clear();
-
-            Vector3 center = ResolveReferenceCenter();
-            float cellSize = Mathf.Max(8f, _context.MapAnalyzer.CellSize);
-            int radius = Mathf.Clamp(ScanRadiusInCells, 6, 28);
-            int occupiedCount = 0;
-
-            for (int x = -radius; x <= radius; x++)
-            {
-                for (int z = -radius; z <= radius; z++)
-                {
-                    Vector3 position = center + new Vector3(x * cellSize, 0f, z * cellSize);
-                    IA_MapCell mapCell = _context.MapAnalyzer.SampleCell(position);
-                    if (mapCell == null)
-                    {
-                        continue;
-                    }
-
-                    IA_SemanticCell semanticCell = BuildCell(mapCell, center, cellSize);
-                    if (semanticCell.Occupied)
-                    {
-                        occupiedCount++;
-                    }
-
-                    _cells[semanticCell.Index] = semanticCell;
-                }
-            }
-
-            LastSummary = "cells=" + _cells.Count + " occupied=" + occupiedCount + " center=" + center;
         }
 
         private IA_SemanticCell BuildCell(IA_MapCell mapCell, Vector3 baseCenter, float cellSize)
@@ -115,13 +155,27 @@ namespace Hegemonia.AI.BrainMaster
                 Forbidden = forbidden,
                 Height = mapCell.Height,
                 Slope = mapCell.Slope,
-                Threat = _context.ThreatAnalyzer != null
-                    ? _context.ThreatAnalyzer.EvaluateThreat(position, mapCell.Terrain == IA_TerrainType.Water ? IA_Domain.Naval : IA_Domain.Land)
-                    : 0f,
+                // Threat removido da construcao de celula — avaliado sob demanda por quem precisar
+                Threat = 0f,
                 BaseDistance = Vector3.Distance(Flatten(position), Flatten(baseCenter)),
-                CoastDistance = EstimateCoastDistance(position, cellSize),
+                CoastDistance = EstimateCoastDistanceCached(position, cellSize),
                 Clearance = EstimateClearance(position)
             };
+        }
+
+        // Cache de distância à costa — evita recomputar 48 SampleCell por célula a cada varredura
+        private float EstimateCoastDistanceCached(Vector3 position, float step)
+        {
+            Vector2Int key = ToIndex(position);
+            float cached;
+            if (_coastDistanceCache.TryGetValue(key, out cached))
+            {
+                return cached;
+            }
+
+            float value = EstimateCoastDistance(position, step);
+            _coastDistanceCache[key] = value;
+            return value;
         }
 
         private float EstimateCoastDistance(Vector3 position, float step)
@@ -132,13 +186,14 @@ namespace Hegemonia.AI.BrainMaster
                 return 0f;
             }
 
-            float maxDistance = step * 6f;
-            for (int ring = 1; ring <= 6; ring++)
+            // Reduzido de 6 aneis para 4, mas com 6 probes (era 8) — 24 vs 48 SampleCell
+            float maxDistance = step * 4f;
+            for (int ring = 1; ring <= 4; ring++)
             {
                 float radius = step * ring;
-                for (int i = 0; i < 8; i++)
+                for (int i = 0; i < 6; i++)
                 {
-                    float angle = ((360f / 8f) * i) * Mathf.Deg2Rad;
+                    float angle = ((360f / 6f) * i) * Mathf.Deg2Rad;
                     Vector3 probe = position + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
                     IA_MapCell sample = _context.MapAnalyzer.SampleCell(probe);
                     if (sample != null && (sample.Terrain == IA_TerrainType.Coast || sample.Terrain == IA_TerrainType.Water))
@@ -154,7 +209,9 @@ namespace Hegemonia.AI.BrainMaster
         private float EstimateClearance(Vector3 position)
         {
             float best = 220f;
-            for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
+            // Limitado a 12 estruturas mais próximas para não escalar O(n) com bases grandes
+            int limit = Mathf.Min(_context.WorldState.OwnStructures.Count, 12);
+            for (int i = 0; i < limit; i++)
             {
                 GameObject structure = _context.WorldState.OwnStructures[i];
                 if (structure == null)

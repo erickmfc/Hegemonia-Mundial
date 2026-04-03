@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9091178251609134699}
   - component: {fileID: 19401919453899438}
+  - component: {fileID: 6660474441033038570}
   m_Layer: 0
   m_Name: Destroyer_01
   m_TagString: Untagged
@@ -58,6 +59,28 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!64 &6660474441033038570
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 138684611877338163}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 0
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
 --- !u!1 &719514654258245380
 GameObject:
   m_ObjectHideFlags: 0
@@ -308,6 +331,7 @@ GameObject:
   - component: {fileID: 790862908155505700}
   - component: {fileID: 4703495614372460612}
   - component: {fileID: 5800589680931460302}
+  - component: {fileID: 7461550045062992664}
   m_Layer: 0
   m_Name: USS Ironclad
   m_TagString: Navio
@@ -592,7 +616,7 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 0
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 0
 --- !u!114 &5800589680931460302
@@ -640,6 +664,28 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 10
   municoesPorCano: []
+--- !u!64 &7461550045062992664
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2462426102010119520}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 0
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
 --- !u!1 &2518842337179265909
 GameObject:
   m_ObjectHideFlags: 0
@@ -1620,14 +1666,14 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 5769056671197380213}
   m_SourcePrefab: {fileID: 100100000, guid: 246429016150054488c72ff8fac378f9, type: 3}
---- !u!4 &2170681545728838152 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 4199438625203575823, guid: 246429016150054488c72ff8fac378f9, type: 3}
-  m_PrefabInstance: {fileID: 2619028396851172871}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &2170681545728838154 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4199438625203575821, guid: 246429016150054488c72ff8fac378f9, type: 3}
+  m_PrefabInstance: {fileID: 2619028396851172871}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2170681545728838158 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4199438625203575817, guid: 246429016150054488c72ff8fac378f9, type: 3}
   m_PrefabInstance: {fileID: 2619028396851172871}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &2170681545729136170 stripped
@@ -1649,8 +1695,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SistemaAntiMissil
   alcanceRadar: 900
   tempoDeEscaneamento: 0.3
-  baseGiratoria: {fileID: 2170681545728838152}
-  canoElevacao: {fileID: 0}
+  velocidadeMinimaAmeaca: 5
+  dotMinimoAmeaca: 0.4
+  usarRastroLancamento: 1
+  multiplicadorAntecipacaoAlcance: 1.35
+  janelaAntecipacaoSegundos: 6
+  baseGiratoria: {fileID: 2170681545728838154}
+  canoElevacao: {fileID: 2170681545728838158}
   velocidadeGiro: 60
   prefabIntercepador: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
   pontosDeSaida:

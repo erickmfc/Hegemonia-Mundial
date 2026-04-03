@@ -32,6 +32,21 @@ public class IdentidadeNaval : MonoBehaviour
         }
     }
 
+    void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
+    void OnDestroy()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
     /// <summary>
     /// Chamado pelo Pier para ordenar que este navio atraque
     /// </summary>

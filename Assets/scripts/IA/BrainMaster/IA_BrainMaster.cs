@@ -88,15 +88,20 @@ namespace Hegemonia.AI.BrainMaster
         private static int _activeBrainCount;
         private float _bootstrapStartTime;
         private float _bootstrapStageStartTime;
+        // Slot atribuido pelo coordenador global — determina a ordem de execucao entre IAs
+        private int _coordinatorSlot = 0;
+        private readonly System.Diagnostics.Stopwatch _updateWatch = new System.Diagnostics.Stopwatch();
 
         private void OnEnable()
         {
             _activeBrainCount++;
+            _coordinatorSlot = IA_GlobalBrainCoordinator.Instance.Register(TeamId);
         }
 
         private void OnDisable()
         {
             _activeBrainCount = Mathf.Max(0, _activeBrainCount - 1);
+            IA_GlobalBrainCoordinator.Instance.Unregister(TeamId);
         }
 
         private void Awake()
@@ -141,6 +146,7 @@ namespace Hegemonia.AI.BrainMaster
             _defenseDirector = new IA_DefenseDirector(Context);
 
             Context.SquadDirector = _squadDirector;
+            Context.BuildDirector = _buildDirector;
             Context.SemanticMapPlanner = _semanticMapPlanner;
             Context.ZonePlanner = _zonePlanner;
             Context.LotPlanner = _lotPlanner;
@@ -167,7 +173,25 @@ namespace Hegemonia.AI.BrainMaster
             TickEconomy(Time.deltaTime);
             ConfigureSchedulerBudget();
             if (_debugMonitor != null) _debugMonitor.VerboseLogs = EnableVerboseLogs;
-            _scheduler.Tick(Time.time, Time.deltaTime);
+
+            // Consulta o coordenador global para saber o budget disponivel neste frame
+            IA_GlobalBrainCoordinator coordinator = IA_GlobalBrainCoordinator.Instance;
+            float frameBudget = coordinator.GetBudgetForBrain(_coordinatorSlot);
+            bool canRunHeavy = coordinator.CanRunHeavyModules(_coordinatorSlot);
+
+            // Ajusta o budget do scheduler para o que o coordenador permite
+            if (frameBudget > 0f)
+            {
+                _scheduler.GlobalFrameBudgetMs = frameBudget;
+                _scheduler.HeavyModulesAllowed = canRunHeavy;
+
+                _updateWatch.Restart();
+                _scheduler.Tick(Time.time, Time.deltaTime);
+                _updateWatch.Stop();
+
+                coordinator.ReportFrameCost(_coordinatorSlot, (float)_updateWatch.Elapsed.TotalMilliseconds, canRunHeavy);
+            }
+
             ProcessCommandQueue(Time.time);
 
             if (Time.unscaledTime >= _nextRuntimeSummaryTime)
@@ -404,31 +428,19 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            int activeBrains = Mathf.Max(1, _activeBrainCount);
             bool bootstrapActive = IsBootstrapActive;
             _scheduler.PhaseOffsetSeconds = _schedulerPhaseOffset;
 
-            if (activeBrains <= 1)
-            {
-                _scheduler.GlobalFrameBudgetMs = bootstrapActive ? 1.35f : 2.15f;
-                _scheduler.MaxModulesPerFrame = bootstrapActive ? 3 : 4;
-                _scheduler.MinBackoffSeconds = bootstrapActive ? 0.08f : 0.06f;
-                return;
-            }
+            // Delega ao coordenador global o calculo de budget e modulos por frame
+            IA_GlobalBrainCoordinator coordinator = IA_GlobalBrainCoordinator.Instance;
+            _scheduler.GlobalFrameBudgetMs = coordinator.ComputePerBrainBudgetMs(bootstrapActive);
+            _scheduler.MaxModulesPerFrame = coordinator.ComputeMaxModulesPerFrame(bootstrapActive);
 
-            float budget = bootstrapActive
-                ? ((1.45f / activeBrains) + 0.18f)
-                : ((2.4f / activeBrains) + 0.25f);
-            _scheduler.GlobalFrameBudgetMs = Mathf.Clamp(
-                budget,
-                bootstrapActive ? 0.45f : 0.55f,
-                bootstrapActive ? 1.20f : 1.80f);
-            _scheduler.MaxModulesPerFrame = bootstrapActive
-                ? Mathf.Clamp(4 - (activeBrains - 1), 2, 3)
-                : Mathf.Clamp(5 - (activeBrains - 1), 2, 4);
+            // Backoff: quanto mais IAs, mais espaçado cada modulo roda
+            int count = Mathf.Max(1, coordinator.ActiveCount);
             _scheduler.MinBackoffSeconds = bootstrapActive
-                ? (activeBrains >= 3 ? 0.14f : 0.10f)
-                : (activeBrains >= 3 ? 0.10f : 0.07f);
+                ? Mathf.Clamp(0.06f + (count - 1) * 0.035f, 0.06f, 0.20f)
+                : Mathf.Clamp(0.05f + (count - 1) * 0.025f, 0.05f, 0.15f);
         }
 
         private float ComputeSchedulerPhaseOffset()

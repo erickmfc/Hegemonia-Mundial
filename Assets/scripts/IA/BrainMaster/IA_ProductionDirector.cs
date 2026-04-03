@@ -33,12 +33,12 @@ namespace Hegemonia.AI.BrainMaster
 
         public float Interval
         {
-            get { return 0.75f; }
+            get { return 0.85f; }
         }
 
         public float BudgetMs
         {
-            get { return 0.70f; }
+            get { return 1.50f; }
         }
 
         public void Tick(float now, float deltaTime)
@@ -232,7 +232,13 @@ namespace Hegemonia.AI.BrainMaster
             };
 
             string reason;
-            return _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            bool enqueued = _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            if (enqueued)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarProducao(data.nomeItem);
+            }
+
+            return enqueued;
         }
 
         private bool QueuePreferredAircraft(int priority, float cooldown)
@@ -259,7 +265,13 @@ namespace Hegemonia.AI.BrainMaster
             };
 
             string reason;
-            return _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            bool enqueued = _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            if (enqueued)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarProducao(data.nomeItem, "IA_Prod_Air");
+            }
+
+            return enqueued;
         }
 
         private DadosConstrucao ChoosePreferredAircraftVariant()

@@ -18,6 +18,7 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
 
     [Tooltip("Se marcado, destrói o alvo mesmo se não parecer um míssil.")]
     public bool forcarDestruicao = false;
+    public bool autoDestruirSemAlvo = true;
 
     private Vector3 _ultimaPosicao;
     private bool _inicializado = false;
@@ -31,7 +32,11 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
 
     void Update()
     {
-        if (alvo == null) return;
+        if (alvo == null || !alvo.gameObject.activeInHierarchy)
+        {
+            if (autoDestruirSemAlvo) Destroy(gameObject);
+            return;
+        }
 
         float limite = CalcularLimiteDetonacao();
         float distancia = Vector3.Distance(transform.position, alvo.position);
@@ -86,10 +91,7 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
         if (tr == null) return false;
         // TagManager do projeto usa "Missel". Mantemos "Missil" como compatibilidade.
         string tagStr = tr.gameObject.tag;
-        if (tagStr == "Missel" || tagStr == "Missil") return true;
-
-        string nomeLC = tr.name.ToLowerInvariant();
-        if (nomeLC.Contains("missil") || nomeLC.Contains("missel")) return true;
+        if (tagStr == "Missel" || tagStr == "Missil" || tagStr == "Missile" || tagStr == "Míssil") return true;
 
         // Scripts de míssil / projétil guiado/explosivo
         if (tr.GetComponentInParent<MisselNaval>() != null) return true;
@@ -112,6 +114,12 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
 
     void DetonarSelf()
     {
+        if (forcarDestruicao)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         // Tenta acionar métodos comuns de "explodir" (mesmo que sejam private).
         SendMessage("Explodir", SendMessageOptions.DontRequireReceiver);
         SendMessage("DestroyMissile", SendMessageOptions.DontRequireReceiver);

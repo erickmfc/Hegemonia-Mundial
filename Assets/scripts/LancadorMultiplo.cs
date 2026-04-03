@@ -392,12 +392,14 @@ public class LancadorMultiplo : MonoBehaviour
             Debug.Log("[LancadorMultiplo] Míssil tipo ICBM detectado");
             Vector3 destino = (alvo != null) ? alvo.position : (transform.position + transform.forward * 100f);
             scriptM.IniciarLancamento(destino);
+            MissileThreatTracker.RegistrarLancamento(missel, this, destino, alvo, MissileThreatTracker.EstimarVelocidade(missel));
         }
         else if (scriptT != null)
         {
             Debug.Log("[LancadorMultiplo] Míssil tipo Tático detectado");
             Vector3 destino = (alvo != null) ? alvo.position : (transform.position + transform.forward * 100f);
             scriptT.IniciarLancamento(destino);
+            MissileThreatTracker.RegistrarLancamento(missel, this, destino, alvo, MissileThreatTracker.EstimarVelocidade(missel));
         }
         {
             var projetil = missel.GetComponent<Projetil>();

@@ -223,6 +223,7 @@ public class LancadorSimples : MonoBehaviour
         if (icbm != null)
         {
             icbm.IniciarLancamento(destino);
+            MissileThreatTracker.RegistrarLancamento(missel, this, destino, alvo, MissileThreatTracker.EstimarVelocidade(missel));
             yield break;
         }
 
@@ -230,6 +231,7 @@ public class LancadorSimples : MonoBehaviour
         if (tatico != null)
         {
             tatico.IniciarLancamento(destino);
+            MissileThreatTracker.RegistrarLancamento(missel, this, destino, alvo, MissileThreatTracker.EstimarVelocidade(missel));
             yield break;
         }
 

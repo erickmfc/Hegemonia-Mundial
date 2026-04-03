@@ -252,6 +252,8 @@ namespace Hegemonia.AI.BrainMaster
             };
         }
 
+        private readonly RaycastHit[] _raycastBuffer = new RaycastHit[16];
+
         private IA_TerrainType DetectTerrain(Vector3 position, out float height)
         {
             ClassificacaoSuperficieMapa superficieMarcada;
@@ -285,23 +287,35 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             height = position.y;
-            RaycastHit[] hits = Physics.RaycastAll(new Vector3(position.x, 1200f, position.z), Vector3.down, 2500f, ~0, QueryTriggerInteraction.Collide);
-            if (hits.Length == 0)
+            int hitCount = Physics.RaycastNonAlloc(new Vector3(position.x, 1200f, position.z), Vector3.down, _raycastBuffer, 2500f, ~0, QueryTriggerInteraction.Collide);
+            if (hitCount == 0)
             {
                 return IA_TerrainType.Unknown;
             }
 
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-            bool seenWater = false;
-            for (int i = 0; i < hits.Length; i++)
+            // Ordenação manual simples (Insertion Sort) para evitar alocação de Array.Sort/Lambda
+            for (int i = 1; i < hitCount; i++)
             {
-                Collider col = hits[i].collider;
-                if (col == null)
+                RaycastHit temp = _raycastBuffer[i];
+                int j = i - 1;
+                while (j >= 0 && _raycastBuffer[j].distance > temp.distance)
                 {
-                    continue;
+                    _raycastBuffer[j + 1] = _raycastBuffer[j];
+                    j--;
                 }
+                _raycastBuffer[j + 1] = temp;
+            }
 
-                MarcadorSuperficieMapa marcador = col.GetComponentInParent<MarcadorSuperficieMapa>();
+            bool seenWater = false;
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider col = _raycastBuffer[i].collider;
+                if (col == null) continue;
+
+                // Tenta pegar o marcador sem alocar (GetComponentInParent é moderadamente custoso se chamado muito)
+                MarcadorSuperficieMapa marcador = col.GetComponent<MarcadorSuperficieMapa>();
+                if (marcador == null) marcador = col.GetComponentInParent<MarcadorSuperficieMapa>();
+
                 if (marcador != null)
                 {
                     float alturaMarcador;
@@ -323,15 +337,8 @@ namespace Hegemonia.AI.BrainMaster
                     }
 
                     int urbanHitsMarcador = CountUrbanObjects(position, height);
-                    if (urbanHitsMarcador >= 6)
-                    {
-                        return IA_TerrainType.City;
-                    }
-
-                    if (CountObstacles(position, height) >= 8)
-                    {
-                        return IA_TerrainType.Choke;
-                    }
+                    if (urbanHitsMarcador >= 6) return IA_TerrainType.City;
+                    if (CountObstacles(position, height) >= 8) return IA_TerrainType.Choke;
 
                     return IA_TerrainType.Open;
                 }
@@ -341,7 +348,7 @@ namespace Hegemonia.AI.BrainMaster
                 if (water)
                 {
                     seenWater = true;
-                    height = hits[i].point.y;
+                    height = _raycastBuffer[i].point.y;
                     continue;
                 }
 
@@ -350,22 +357,15 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                height = hits[i].point.y;
+                height = _raycastBuffer[i].point.y;
                 if (seenWater)
                 {
                     return IA_TerrainType.Coast;
                 }
 
                 int urbanHits = CountUrbanObjects(position, height);
-                if (urbanHits >= 6)
-                {
-                    return IA_TerrainType.City;
-                }
-
-                if (CountObstacles(position, height) >= 8)
-                {
-                    return IA_TerrainType.Choke;
-                }
+                if (urbanHits >= 6) return IA_TerrainType.City;
+                if (CountObstacles(position, height) >= 8) return IA_TerrainType.Choke;
 
                 return IA_TerrainType.Open;
             }

@@ -35,6 +35,11 @@ namespace Hegemonia.AI.BrainMaster
         public int MaxModulesPerFrame = 6;
         public float MinBackoffSeconds = 0.05f;
         public float PhaseOffsetSeconds = 0f;
+        /// <summary>
+        /// Quando false, modulos pesados (BuildDirector, SemanticMapPlanner, CoastScan) sao pulados
+        /// neste frame. Definido pelo IA_GlobalBrainCoordinator via round-robin entre IAs.
+        /// </summary>
+        public bool HeavyModulesAllowed = true;
 
         public void Register(IIAUpdateModule module, float now, float startDelay = 0f)
         {
@@ -72,6 +77,15 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 float moduleStart = (float)_timer.Elapsed.TotalMilliseconds;
+
+                // Modules pesados sao pulados quando o heavy token e de outra IA neste frame
+                if (!HeavyModulesAllowed && IsHeavyModule(slot.Module.Name))
+                {
+                    // Postpone levemente para nao tentar de novo no proximo frame
+                    slot.NextTick = now + Mathf.Max(MinBackoffSeconds, slot.Module.Interval * 0.5f);
+                    continue;
+                }
+
                 slot.Module.Tick(now, deltaTime);
                 float moduleEnd = (float)_timer.Elapsed.TotalMilliseconds;
 
@@ -83,6 +97,13 @@ namespace Hegemonia.AI.BrainMaster
                 if (moduleOverBudget)
                 {
                     slot.OverBudgetCount++;
+                    DiagnosticoDesempenhoJogo.RegistrarEvento(
+                        "IA",
+                        string.Format(
+                            "Modulo {0} excedeu o budget: {1:0.00} ms (budget {2:0.00} ms).",
+                            slot.Module.Name,
+                            slot.LastCostMs,
+                            slot.Module.BudgetMs));
                 }
 
                 float interval = Mathf.Max(MinBackoffSeconds, slot.Module.Interval);
@@ -130,6 +151,24 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Retorna true para modulos que realizam operacoes de busca spatial ou varredura de mapa caras.
+        /// Esses modulos serao pulados quando o heavy token for de outra IA no mesmo frame.
+        /// </summary>
+        private static bool IsHeavyModule(string moduleName)
+        {
+            if (string.IsNullOrEmpty(moduleName))
+            {
+                return false;
+            }
+
+            return moduleName == "IA_BuildDirector"
+                   || moduleName == "IA_SemanticMapPlanner"
+                   || moduleName == "IA_NavalDirector"
+                   || moduleName == "IA_ThreatAnalyzer"
+                   || moduleName == "IA_ZonePlanner";
         }
     }
 }

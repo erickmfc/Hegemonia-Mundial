@@ -16,6 +16,21 @@ namespace Hegemonia.AI.BrainMaster
         private Vector3 _fallbackCenter;
         private bool _forceRefresh;
         private float _nextGlobalScanTime;
+        private float _nextCleanupTime;
+
+        // Registro estático para evitar FindObjectsByType (causa de travamentos)
+        private static readonly HashSet<IdentidadeUnidade> _globalRegistry = new HashSet<IdentidadeUnidade>();
+        private static readonly object _registryLock = new object();
+
+        public static void Register(IdentidadeUnidade id)
+        {
+            if (id != null) _globalRegistry.Add(id);
+        }
+
+        public static void Unregister(IdentidadeUnidade id)
+        {
+            if (id != null) _globalRegistry.Remove(id);
+        }
 
         public readonly List<GameObject> OwnUnits = new List<GameObject>();
         public readonly List<GameObject> OwnStructures = new List<GameObject>();
@@ -52,12 +67,18 @@ namespace Hegemonia.AI.BrainMaster
             if (_forceRefresh || now >= _nextGlobalScanTime)
             {
                 RefreshOwnedAndGlobalCache(now);
-                _nextGlobalScanTime = now + 5.75f;
+                _nextGlobalScanTime = now + 8f; // Aumentado: registro estático mantém dados frescos
                 _forceRefresh = false;
             }
 
             RefreshVisibleEnemies(now);
-            CleanupMemory(now, 120f);
+
+            // Cleanup movido para intervalo maior — não precisa ocorrer todo Tick
+            if (now >= _nextCleanupTime)
+            {
+                CleanupMemory(now, 120f);
+                _nextCleanupTime = now + 30f;
+            }
         }
 
         public void MarkDirty()
@@ -215,10 +236,9 @@ namespace Hegemonia.AI.BrainMaster
             int mobileVisibilityBudget = MaxMobileVisibilityProviders;
             int structureVisibilityBudget = MaxStructureVisibilityProviders;
 
-            IdentidadeUnidade[] identities = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-            for (int i = 0; i < identities.Length; i++)
+            // Usa o registro estático em vez de FindObjectsByType (elimina o maior hitch)
+            foreach (IdentidadeUnidade id in _globalRegistry)
             {
-                IdentidadeUnidade id = identities[i];
                 if (id == null || !id.gameObject.activeInHierarchy)
                 {
                     continue;
@@ -255,6 +275,17 @@ namespace Hegemonia.AI.BrainMaster
                     Source = id.transform,
                     Radius = ComputeVisionRadius(id.gameObject, structure)
                 });
+            }
+
+            // Fallback: se o registro estiver vazio (primeiros frames), usa FindObjectsByType uma vez
+            if (_globalIdentityCache.Count == 0)
+            {
+                IdentidadeUnidade[] identities = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+                for (int i = 0; i < identities.Length; i++)
+                {
+                    _globalRegistry.Add(identities[i]);
+                    _globalIdentityCache.Add(identities[i]);
+                }
             }
 
             BaseCenter = ComputeBaseCenter();
@@ -612,21 +643,34 @@ namespace Hegemonia.AI.BrainMaster
             return IA_Domain.Land;
         }
 
+        // Cache de resultados IsStructure para evitar múltiplos GetComponent por objeto
+        private static readonly Dictionary<int, bool> _isStructureCache = new Dictionary<int, bool>();
+
+        public static void InvalidateStructureCache(int instanceId)
+        {
+            _isStructureCache.Remove(instanceId);
+        }
+
         private static bool IsStructure(GameObject obj)
         {
-            if (obj == null)
+            if (obj == null) return false;
+
+            int id = obj.GetInstanceID();
+            bool result;
+            if (_isStructureCache.TryGetValue(id, out result))
             {
-                return false;
+                return result;
             }
 
             string n = IA_Text.Normalize(obj.name);
             bool hasAgent = obj.GetComponent<NavMeshAgent>() != null;
-            bool mobileByScript = obj.GetComponent<ControleAviao>() != null
+            bool mobileByScript = !hasAgent && (
+                                  obj.GetComponent<ControleAviao>() != null
                                   || obj.GetComponent<ControleAviaoCaca>() != null
                                   || obj.GetComponent<Helicoptero>() != null
                                   || obj.GetComponent<ControleNavioRealista>() != null
                                   || obj.GetComponent<ControleSubmarino>() != null
-                                  || obj.GetComponent<ControleUnidade>() != null;
+                                  || obj.GetComponent<ControleUnidade>() != null);
             bool explicitStructure = n.Contains("prefeitura")
                                      || n.Contains("quartel")
                                      || n.Contains("fabrica")
@@ -639,7 +683,9 @@ namespace Hegemonia.AI.BrainMaster
                                      || n.Contains("plataforma")
                                      || n.Contains("aeroporto")
                                      || n.Contains("heliporto");
-            return explicitStructure || (!hasAgent && !mobileByScript);
+            result = explicitStructure || (!hasAgent && !mobileByScript);
+            _isStructureCache[id] = result;
+            return result;
         }
 
         private static bool IsTransport(GameObject obj)

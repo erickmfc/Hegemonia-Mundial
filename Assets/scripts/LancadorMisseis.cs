@@ -294,6 +294,7 @@ public class LancadorMisseis : MonoBehaviour
         if (scriptVoo != null)
         {
             scriptVoo.IniciarLancamento(alvo);
+            MissileThreatTracker.RegistrarLancamento(missil, this, alvo, null, MissileThreatTracker.EstimarVelocidade(missil));
         }
 
         municaoAtual--;

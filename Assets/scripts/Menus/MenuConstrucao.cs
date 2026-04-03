@@ -40,6 +40,7 @@ public class MenuConstrucao : MonoBehaviour
     private bool menuAberto = false;
     private DadosConstrucao.CategoriaItem categoriaAtual = DadosConstrucao.CategoriaItem.Exercito;
     private Dictionary<string, int> quantidadesPorItem = new Dictionary<string, int>();
+    private readonly List<GerenciadorAeroporto> bufferAeroportos = new List<GerenciadorAeroporto>(16);
 
     void Start()
     {
@@ -136,8 +137,8 @@ public class MenuConstrucao : MonoBehaviour
             MenuGoverno menuGov = Object.FindFirstObjectByType<MenuGoverno>();
             if (menuGov != null && MenuGoverno.EstaAberto) menuGov.AlternarMenu(false);
 
-            GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-            foreach (GerenciadorAeroporto aeroporto in aeroportos)
+            RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
+            foreach (GerenciadorAeroporto aeroporto in bufferAeroportos)
             {
                 if (aeroporto != null)
                 {
@@ -795,10 +796,10 @@ public class MenuConstrucao : MonoBehaviour
 
             if (!ehPredioAeronautica && pareceSerAviao)
             {
-                GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+                RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
                 
                 // Filtra apenas aeroportos do jogador (Time 1)
-                var meusAeroportos = aeroportos.Where(a => {
+                var meusAeroportos = bufferAeroportos.Where(a => {
                     IdentidadeUnidade id = a.GetComponent<IdentidadeUnidade>();
                     return id == null || id.teamID == 1;
                 }).ToList();

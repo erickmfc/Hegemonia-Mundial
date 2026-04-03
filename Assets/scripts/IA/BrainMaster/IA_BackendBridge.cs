@@ -427,6 +427,23 @@ namespace Hegemonia.AI.BrainMaster
 
             return aliases.ToArray();
         }
+        // Registro estático para Imovel para evitar FindObjectsByType em HasAirportClearance
+        private static readonly HashSet<Imovel> _imovelRegistry = new HashSet<Imovel>();
+
+        public static void RegisterImovel(Imovel imovel)
+        {
+            if (imovel != null) _imovelRegistry.Add(imovel);
+        }
+
+        public static void UnregisterImovel(Imovel imovel)
+        {
+            if (imovel != null) _imovelRegistry.Remove(imovel);
+        }
+
+        internal static IEnumerable<Imovel> RegisteredImoveis
+        {
+            get { return _imovelRegistry; }
+        }
     }
 
     public sealed class BuildService
@@ -444,6 +461,8 @@ namespace Hegemonia.AI.BrainMaster
         private readonly IA_BackendBridge _bridge;
         private readonly int _teamId;
         private readonly List<BuildReservation> _reservations = new List<BuildReservation>();
+        private readonly Collider[] _footprintBuffer = new Collider[64];
+        private float _nextCleanupTime = 0f;
 
         public BuildService(IA_BackendBridge bridge, int teamId)
         {
@@ -505,7 +524,13 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            CleanupReservations(Time.time);
+            // Cleanup movido para fora do hot-path imediato (roda a cada 5s)
+            float now = Time.time;
+            if (now >= _nextCleanupTime)
+            {
+                CleanupReservations(now);
+                _nextCleanupTime = now + 5f;
+            }
 
             IA_MapCell cell = map.SampleCell(position);
             bool isNaval = IsNaval(data);
@@ -1211,10 +1236,11 @@ namespace Hegemonia.AI.BrainMaster
         private bool IsFootprintFree(Vector3 position, Vector2 halfExtents)
         {
             Vector3 extents = new Vector3(Mathf.Max(2f, halfExtents.x), 10f, Mathf.Max(2f, halfExtents.y));
-            Collider[] hits = Physics.OverlapBox(position, extents, Quaternion.identity, ~0, QueryTriggerInteraction.Collide);
-            for (int i = 0; i < hits.Length; i++)
+            // Substituído OverlapBox por OverlapBoxNonAlloc (elimina alocações de array por chamada)
+            int hitCount = Physics.OverlapBoxNonAlloc(position, extents, _footprintBuffer, Quaternion.identity, ~0, QueryTriggerInteraction.Collide);
+            for (int i = 0; i < hitCount; i++)
             {
-                Collider hit = hits[i];
+                Collider hit = _footprintBuffer[i];
                 if (hit == null || hit.isTrigger)
                 {
                     continue;
@@ -1361,10 +1387,9 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            Imovel[] imoveis = Object.FindObjectsByType<Imovel>(FindObjectsSortMode.None);
-            for (int i = 0; i < imoveis.Length; i++)
+            // Uso do registro estático de Imoveis (elimina FindObjectsByType - hitch gigante)
+            foreach (Imovel imovel in IA_BackendBridge.RegisteredImoveis)
             {
-                Imovel imovel = imoveis[i];
                 if (imovel == null)
                 {
                     continue;

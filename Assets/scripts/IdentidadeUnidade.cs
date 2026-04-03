@@ -1,4 +1,5 @@
 using UnityEngine;
+using Hegemonia.AI.BrainMaster;
 
 public class IdentidadeUnidade : MonoBehaviour
 {
@@ -26,9 +27,26 @@ public class IdentidadeUnidade : MonoBehaviour
         }
     }
 
+    void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+        IA_WorldState.Register(this);
+    }
+
+    void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+        IA_WorldState.Unregister(this);
+        IA_WorldState.InvalidateStructureCache(gameObject.GetInstanceID());
+    }
+
     void OnDestroy()
     {
         // Remove-se do Censo ao morrer
+        RegistroEntidadesJogo.Unregister(this);
+        IA_WorldState.Unregister(this);
+        IA_WorldState.InvalidateStructureCache(gameObject.GetInstanceID());
+
         if (CensoImperial.Instancia != null)
         {
             CensoImperial.Instancia.RemoverUnidade(tipoUnidade, teamID);

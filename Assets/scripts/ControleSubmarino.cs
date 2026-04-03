@@ -290,7 +290,10 @@ public class ControleSubmarino : MonoBehaviour
             
             MisselSubmarino scriptMissel = missel.GetComponent<MisselSubmarino>();
             if (scriptMissel != null)
+            {
                 scriptMissel.IniciarLancamento(alvo, estaSubmerso);
+                MissileThreatTracker.RegistrarLancamento(missel, this, alvo, null, MissileThreatTracker.EstimarVelocidade(missel));
+            }
             
             misseisUsados[i] = true;
             misseisDisponiveis--;

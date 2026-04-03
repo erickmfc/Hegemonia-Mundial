@@ -1,52 +1,73 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
 public class SistemaAntiMissil : MonoBehaviour
 {
-    [Header("Radar & Alcance (Defesa de Area)")]
-    [Tooltip("Raio de deteccao do radar para defender o navio e todos os aliados proximos.")]
+    [Header("Radar & Alcance")]
+    [Tooltip("Raio de deteccao do radar.")]
     public float alcanceRadar = 180f;
-    [Tooltip("Tempo em segundos entre cada checagem do radar (ex: 0.3s)")]
+
+    [Tooltip("Tempo em segundos entre cada varredura.")]
     public float tempoDeEscaneamento = 0.3f;
 
+    [Header("Deteccao Simples")]
+    [Tooltip("Velocidade minima para considerar um objeto como ameaca.")]
+    public float velocidadeMinimaAmeaca = 5f;
+
+    [Tooltip("Dot product minimo para considerar que o objeto esta vindo na nossa direcao.")]
+    public float dotMinimoAmeaca = 0.4f;
+
+    [Header("Antecipacao de Lancamento")]
+    [Tooltip("Usa o rastreador global de misseis para antecipar ameacas antes de entrarem no radar fisico.")]
+    public bool usarRastroLancamento = true;
+
+    [Tooltip("Permite antecipar trajetorias um pouco antes do missil entrar no alcance real.")]
+    public float multiplicadorAntecipacaoAlcance = 1.35f;
+
+    [Tooltip("Janela maxima em segundos para prever se um missil vai cruzar a area defendida.")]
+    public float janelaAntecipacaoSegundos = 6f;
+
     [Header("Mecanica da Torreta")]
-    [Tooltip("Base que gira para os lados (Yaw)")]
+    [Tooltip("Base que gira para os lados (Yaw).")]
     public Transform baseGiratoria;
-    [Tooltip("Peca que vira para cima/baixo (Pitch)")]
+
+    [Tooltip("Peca que vira para cima/baixo (Pitch).")]
     public Transform canoElevacao;
+
     public float velocidadeGiro = 60f;
 
     [Header("Sistema de Disparo")]
-    [Tooltip("Prefab do missil que vai abater o outro missil (Interceptador).")]
+    [Tooltip("Prefab do missil que vai abater o outro missil.")]
     public GameObject prefabIntercepador;
-    [Tooltip("Zonas de onde o missil interceptador vai sair.")]
+
+    [Tooltip("Pontos de onde o interceptador sai.")]
     public Transform[] pontosDeSaida;
-    [Tooltip("Cadencia de tiro. Tempo entre disparar um interceptador e outro.")]
+
+    [Tooltip("Cadencia de tiro entre interceptadores.")]
     public float tempoEntreTiros = 0.8f;
-    [Tooltip("Capacidade de misseis prontos. Quantidade antes de iniciar a recarga cheia.")]
+
+    [Tooltip("Quantidade de misseis prontos antes da recarga.")]
     public int capacidadeMisseis = 10;
+
     public float tempoRecargaMisseis = 5f;
 
     [Header("Efeitos & Sons")]
     public AudioClip somDisparo;
-    private AudioSource audioSource;
 
     [Header("Comportamento")]
-    [Tooltip("Se ativado, o sistema nao intercepta misseis automaticamente (modo Ocioso).")]
+    [Tooltip("Se ativado, o sistema nao intercepta misseis automaticamente.")]
     public bool modoPassivo = false;
 
+    private AudioSource audioSource;
     private Transform alvoMissilAtual;
     private IdentidadeUnidade minhaIdentidade;
     private float cooldownDisparo = 0f;
     private int misseisAtuais;
     private bool recarregando = false;
     private int indexSaida = 0;
-    private readonly HashSet<Transform> bufferMisseisUnicos = new HashSet<Transform>();
-    private readonly HashSet<Transform> bufferAliadosUnicos = new HashSet<Transform>();
-    private const float DOT_APROXIMACAO_AMIGOS = 0.2f;
-    private const float DOT_AFASTANDO_AMIGO = -0.15f;
-    private const float RAIO_IGNORAR_LANCAMENTO_AMIGO = 80f;
-    private const float RAIO_AUTODEFESA = 140f;
+    private readonly Dictionary<Transform, Vector3> ultimasPosicoesAmeaca = new Dictionary<Transform, Vector3>();
+    private readonly List<Transform> chavesAmeacaParaRemover = new List<Transform>();
+    private static readonly Collider[] bufferAliados = new Collider[128];
 
     void Start()
     {
@@ -68,7 +89,10 @@ public class SistemaAntiMissil : MonoBehaviour
 
     void Update()
     {
-        if (cooldownDisparo > 0f) cooldownDisparo -= Time.deltaTime;
+        if (cooldownDisparo > 0f)
+        {
+            cooldownDisparo -= Time.deltaTime;
+        }
 
         if (recarregando)
         {
@@ -90,19 +114,16 @@ public class SistemaAntiMissil : MonoBehaviour
 
             Mirar();
 
-            if (cooldownDisparo <= 0f && MirouEmCheio())
+            if (cooldownDisparo <= 0f && MirouEmCheio() && misseisAtuais > 0)
             {
-                if (misseisAtuais > 0)
-                {
-                    AtirarInterceptador();
-                    misseisAtuais--;
-                    cooldownDisparo = tempoEntreTiros;
+                AtirarInterceptador();
+                misseisAtuais--;
+                cooldownDisparo = tempoEntreTiros;
 
-                    if (misseisAtuais <= 0 && capacidadeMisseis > 0)
-                    {
-                        recarregando = true;
-                        cooldownDisparo = tempoRecargaMisseis;
-                    }
+                if (misseisAtuais <= 0 && capacidadeMisseis > 0)
+                {
+                    recarregando = true;
+                    cooldownDisparo = tempoRecargaMisseis;
                 }
             }
         }
@@ -133,128 +154,242 @@ public class SistemaAntiMissil : MonoBehaviour
             return;
         }
 
+        LimparRastrosInvalidos();
+
         if (AlvoMissilAtualAindaEhValido()) return;
 
         alvoMissilAtual = null;
-
-        Collider[] objetosNaArea = Physics.OverlapSphere(transform.position, alcanceRadar);
-
-        List<Transform> misseisDetectados = new List<Transform>();
-        List<Transform> aliadosNaArea = new List<Transform>();
-        bufferMisseisUnicos.Clear();
-        bufferAliadosUnicos.Clear();
-
         Transform minhaRaiz = transform.root != null ? transform.root : transform;
-        aliadosNaArea.Add(minhaRaiz);
-        bufferAliadosUnicos.Add(minhaRaiz);
+
+        Transform melhorAlvoRegistrado = BuscarAmeacaRegistrada(minhaRaiz);
+        if (melhorAlvoRegistrado != null)
+        {
+            alvoMissilAtual = melhorAlvoRegistrado;
+            return;
+        }
+
+        Collider[] objetosNaArea = Physics.OverlapSphere(
+            transform.position,
+            alcanceRadar,
+            Physics.AllLayers,
+            QueryTriggerInteraction.Collide);
+
+        float menorDistancia = Mathf.Infinity;
+        Transform melhorAlvo = null;
 
         foreach (Collider col in objetosNaArea)
         {
             if (col == null) continue;
 
-            Transform tr = ResolverTransformoRaiz(col.transform);
-            if (tr == null) continue;
+            Transform candidato = ResolverTransformoRaiz(col.transform);
+            if (candidato == null) continue;
+            if (candidato == minhaRaiz) continue;
+            if (candidato.gameObject == gameObject) continue;
 
-            if (EhMissil(tr))
+            if (!EhAmeacaSimples(candidato)) continue;
+
+            float distancia = Vector3.Distance(transform.position, candidato.position);
+            if (distancia < menorDistancia)
             {
-                if (bufferMisseisUnicos.Add(tr))
-                {
-                    misseisDetectados.Add(tr);
-                }
-                continue;
-            }
-
-            if (col.isTrigger) continue;
-
-            IdentidadeUnidade id = tr.GetComponentInParent<IdentidadeUnidade>();
-            if (id == null) continue;
-
-            if (id.teamID == minhaIdentidade.teamID || minhaIdentidade.teamID == 0)
-            {
-                Transform raizAliada = id.transform.root != null ? id.transform.root : id.transform;
-                if (bufferAliadosUnicos.Add(raizAliada))
-                {
-                    aliadosNaArea.Add(raizAliada);
-                }
+                menorDistancia = distancia;
+                melhorAlvo = candidato;
             }
         }
 
-        float menorDistancia = Mathf.Infinity;
-        Transform melhorMissilAlvo = null;
+        alvoMissilAtual = melhorAlvo;
+    }
 
-        foreach (Transform missil in misseisDetectados)
+    Transform BuscarAmeacaRegistrada(Transform minhaRaiz)
+    {
+        if (!usarRastroLancamento) return null;
+
+        int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : -1;
+        Transform candidato = MissileThreatTracker.EncontrarAmeacaMaisProxima(
+            transform.position,
+            alcanceRadar,
+            meuTime,
+            minhaRaiz,
+            multiplicadorAntecipacaoAlcance,
+            janelaAntecipacaoSegundos);
+
+        if (candidato == null) return null;
+        return EhMissilInimigo(candidato) ? candidato : null;
+    }
+
+    // ── NOVO: verifica se o candidato pertence a um time inimigo ──────────────
+    bool EhMissilInimigo(Transform candidato)
+    {
+        // Se o próprio sistema não tem identidade, trata tudo como ameaça
+        if (minhaIdentidade == null) return true;
+
+        // Procura IdentidadeUnidade na hierarquia do candidato
+        IdentidadeUnidade idCandidato = candidato.GetComponentInChildren<IdentidadeUnidade>();
+        if (idCandidato == null)
+            idCandidato = candidato.GetComponentInParent<IdentidadeUnidade>();
+
+        // Sem identidade no míssil → considera ameaça por precaução
+        if (idCandidato == null) return true;
+
+        // Só é inimigo se o teamID for diferente
+        return idCandidato.teamID != minhaIdentidade.teamID;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    bool EhAmeacaSimples(Transform candidato)
+    {
+        if (candidato == null) return false;
+
+        // Precisa ter a tag de míssil
+        if (!PossuiTagMisselNaHierarquia(candidato)) return false;
+
+        // ── NOVO: só mira em mísseis inimigos ────────────────────────────────
+        if (!EhMissilInimigo(candidato)) return false;
+        // ─────────────────────────────────────────────────────────────────────
+
+        Vector3 velocidade = ObterVelocidadeAmeaca(candidato);
+        float moduloVelocidade = velocidade.magnitude;
+        if (moduloVelocidade <= velocidadeMinimaAmeaca)
         {
-            if (missil == null) continue;
+            Vector3 fallbackDirecao = candidato.forward;
+            if (fallbackDirecao.sqrMagnitude <= 0.0001f) return false;
 
-            Vector3 posMissil = missil.position;
-            Vector3 dirMissil = ObterDirecaoMissil(missil);
+            Vector3 vetorFallback = transform.position - candidato.position;
+            if (vetorFallback.sqrMagnitude <= 0.0001f) return true;
 
-            bool ignorarPorSerAliado = false;
-            foreach (Transform aliado in aliadosNaArea)
+            float dotFallback = Vector3.Dot(fallbackDirecao.normalized, vetorFallback.normalized);
+            return dotFallback >= dotMinimoAmeaca;
+        }
+
+        Vector3 direcaoVoo = velocidade / moduloVelocidade;
+        Vector3 vetorParaMim = transform.position - candidato.position;
+        if (vetorParaMim.sqrMagnitude <= 0.0001f) return true;
+
+        float dot = Vector3.Dot(direcaoVoo, vetorParaMim.normalized);
+        return dot >= dotMinimoAmeaca;
+    }
+
+    Vector3 ObterVelocidadeAmeaca(Transform candidato)
+    {
+        if (candidato == null) return Vector3.zero;
+
+        MissileThreatTracker tracker = candidato.GetComponentInParent<MissileThreatTracker>();
+        if (tracker != null)
+        {
+            Vector3 velocidadeTracker = tracker.ObterVelocidadeAtual();
+            if (velocidadeTracker.sqrMagnitude > 0.01f)
             {
-                if (aliado == null) continue;
-
-                Vector3 dirProAliado = aliado.position - posMissil;
-                float distAteAmigo = dirProAliado.magnitude;
-
-                if (distAteAmigo < RAIO_IGNORAR_LANCAMENTO_AMIGO && dirProAliado.sqrMagnitude > 0.001f)
-                {
-                    if (Vector3.Dot(dirMissil, dirProAliado.normalized) < DOT_AFASTANDO_AMIGO)
-                    {
-                        ignorarPorSerAliado = true;
-                        break;
-                    }
-                }
-            }
-
-            if (ignorarPorSerAliado) continue;
-
-            bool ehAmeaca = false;
-            foreach (Transform aliado in aliadosNaArea)
-            {
-                if (aliado == null) continue;
-
-                Vector3 vetorParaAliado = aliado.position - posMissil;
-                if (vetorParaAliado.sqrMagnitude <= 0.001f)
-                {
-                    ehAmeaca = true;
-                    break;
-                }
-
-                Vector3 dirProAliado = vetorParaAliado.normalized;
-                if (Vector3.Dot(dirMissil, dirProAliado) > DOT_APROXIMACAO_AMIGOS)
-                {
-                    ehAmeaca = true;
-                    break;
-                }
-            }
-
-            // Fallback de autodefesa: só considera ameaça se estiver realmente se aproximando de nós
-            if (!ehAmeaca)
-            {
-                float distAteMim = Vector3.Distance(transform.position, posMissil);
-                if (distAteMim < RAIO_AUTODEFESA)
-                {
-                    Vector3 vetorParaMim = transform.position - posMissil;
-                    if (vetorParaMim.sqrMagnitude > 0.001f && Vector3.Dot(dirMissil, vetorParaMim.normalized) > DOT_APROXIMACAO_AMIGOS)
-                    {
-                        ehAmeaca = true;
-                    }
-                }
-            }
-
-            if (ehAmeaca)
-            {
-                float distancia = Vector3.Distance(transform.position, posMissil);
-                if (distancia < menorDistancia)
-                {
-                    menorDistancia = distancia;
-                    melhorMissilAlvo = missil;
-                }
+                ultimasPosicoesAmeaca[candidato] = candidato.position;
+                return velocidadeTracker;
             }
         }
 
-        alvoMissilAtual = melhorMissilAlvo;
+        Rigidbody rb = candidato.GetComponentInParent<Rigidbody>();
+        if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
+        {
+            ultimasPosicoesAmeaca[candidato] = candidato.position;
+            return rb.linearVelocity;
+        }
+
+        Vector3 ultimaPosicao;
+        if (ultimasPosicoesAmeaca.TryGetValue(candidato, out ultimaPosicao))
+        {
+            Vector3 velocidadeAproximada = (candidato.position - ultimaPosicao) / Mathf.Max(tempoDeEscaneamento, 0.02f);
+            ultimasPosicoesAmeaca[candidato] = candidato.position;
+            if (velocidadeAproximada.sqrMagnitude > 0.01f)
+            {
+                return velocidadeAproximada;
+            }
+        }
+        else
+        {
+            ultimasPosicoesAmeaca[candidato] = candidato.position;
+        }
+
+        if (candidato.forward.sqrMagnitude > 0.01f)
+        {
+            return candidato.forward.normalized * Mathf.Max(velocidadeMinimaAmeaca + 1f, 10f);
+        }
+
+        return Vector3.zero;
+    }
+
+    bool PossuiTagMisselNaHierarquia(Transform referencia)
+    {
+        if (referencia == null) return false;
+        if (PareceMissilPorComponente(referencia)) return true;
+
+        Transform atual = referencia;
+        while (atual != null)
+        {
+            string tagAtual = atual.gameObject.tag;
+            if (tagAtual == "Missel" || tagAtual == "Missil")
+            {
+                return true;
+            }
+
+            atual = atual.parent;
+        }
+
+        Transform raiz = ResolverTransformoRaiz(referencia);
+        if (raiz == null) return false;
+
+        Transform[] filhos = raiz.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < filhos.Length; i++)
+        {
+            Transform filho = filhos[i];
+            if (filho == null) continue;
+
+            string tagFilho = filho.gameObject.tag;
+            if (tagFilho == "Missel" || tagFilho == "Missil")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool PareceMissilPorComponente(Transform referencia)
+    {
+        if (referencia == null) return false;
+
+        if (referencia.GetComponentInParent<MissileThreatTracker>() != null) return true;
+        if (referencia.GetComponentInParent<MisselNaval>() != null) return true;
+        if (referencia.GetComponentInParent<MisselCaca>() != null) return true;
+        if (referencia.GetComponentInParent<MisselSubmarino>() != null) return true;
+        if (referencia.GetComponentInParent<MisselICBM>() != null) return true;
+        if (referencia.GetComponentInParent<MisselTatico>() != null) return true;
+        if (referencia.GetComponentInParent<MisselLeopardAutomatico>() != null) return true;
+        if (referencia.GetComponentInParent<MissilTeleguiado>() != null) return true;
+        return false;
+    }
+
+    void LimparRastrosInvalidos()
+    {
+        chavesAmeacaParaRemover.Clear();
+
+        foreach (KeyValuePair<Transform, Vector3> item in ultimasPosicoesAmeaca)
+        {
+            Transform chave = item.Key;
+            if (chave == null || !chave.gameObject.activeInHierarchy)
+            {
+                chavesAmeacaParaRemover.Add(chave);
+            }
+        }
+
+        for (int i = 0; i < chavesAmeacaParaRemover.Count; i++)
+        {
+            ultimasPosicoesAmeaca.Remove(chavesAmeacaParaRemover[i]);
+        }
+    }
+
+    bool AlvoMissilAtualAindaEhValido()
+    {
+        if (alvoMissilAtual == null) return false;
+        if (!alvoMissilAtual.gameObject.activeInHierarchy) return false;
+        if (alvoMissilAtual.GetComponentInParent<MissileThreatTracker>() != null)
+            return EhMissilInimigo(alvoMissilAtual);
+        return EhAmeacaSimples(alvoMissilAtual);
     }
 
     Vector3 PreverPosicaoAlvoSuperSonia()
@@ -265,13 +400,13 @@ public class SistemaAntiMissil : MonoBehaviour
 
     void Mirar()
     {
-        Vector3 posFuturaMortal = PreverPosicaoAlvoSuperSonia();
+        Vector3 posFutura = PreverPosicaoAlvoSuperSonia();
 
         if (baseGiratoria != null)
         {
-            Vector3 dirBase = posFuturaMortal - baseGiratoria.position;
+            Vector3 dirBase = posFutura - baseGiratoria.position;
             dirBase.y = 0f;
-            if (dirBase != Vector3.zero)
+            if (dirBase.sqrMagnitude > 0.0001f)
             {
                 Quaternion rotAlvo = Quaternion.LookRotation(dirBase);
                 baseGiratoria.rotation = Quaternion.Slerp(baseGiratoria.rotation, rotAlvo, Time.deltaTime * velocidadeGiro);
@@ -280,8 +415,8 @@ public class SistemaAntiMissil : MonoBehaviour
 
         if (canoElevacao != null)
         {
-            Vector3 dirCano = posFuturaMortal - canoElevacao.position;
-            if (dirCano != Vector3.zero)
+            Vector3 dirCano = posFutura - canoElevacao.position;
+            if (dirCano.sqrMagnitude > 0.0001f)
             {
                 Quaternion rotCano = Quaternion.LookRotation(dirCano);
                 canoElevacao.rotation = Quaternion.Slerp(canoElevacao.rotation, rotCano, Time.deltaTime * velocidadeGiro);
@@ -329,6 +464,15 @@ public class SistemaAntiMissil : MonoBehaviour
 
         GameObject missilGerado = Instantiate(prefabIntercepador, saidaDaVez.position, saidaDaVez.rotation);
         IgnorarColisaoComOrigem(missilGerado);
+        IgnorarColisaoComAliados(missilGerado);
+
+        // ── NOVO: herda o teamID do navio para não ser interceptado por aliados ──
+        IdentidadeUnidade idInterceptador = missilGerado.GetComponent<IdentidadeUnidade>();
+        if (idInterceptador == null)
+            idInterceptador = missilGerado.AddComponent<IdentidadeUnidade>();
+        if (minhaIdentidade != null)
+            idInterceptador.teamID = minhaIdentidade.teamID;
+        // ─────────────────────────────────────────────────────────────────────────
 
         Transform alvoResolvido = ResolverTransformAlvo(alvoMissilAtual);
         Vector3 posicaoPredita = ObterPosicaoPreditaIntercepcao(alvoResolvido, saidaDaVez);
@@ -416,26 +560,27 @@ public class SistemaAntiMissil : MonoBehaviour
             }
         }
 
-        // Garantia de "abate": mesmo que o alvo não tenha SistemaDeDanos/Collider, remove o míssil inimigo por proximidade.
         if (alvoResolvido != null)
         {
+            MissileThreatTracker.RegistrarLancamento(
+                missilGerado,
+                this,
+                posicaoPredita,
+                alvoResolvido,
+                ObterVelocidadeInterceptador(),
+                true);
+
             AntiMissilDetonadorProximidade detonador = missilGerado.GetComponent<AntiMissilDetonadorProximidade>();
             if (detonador == null) detonador = missilGerado.AddComponent<AntiMissilDetonadorProximidade>();
             detonador.alvo = alvoResolvido;
+            detonador.forcarDestruicao = true;
+            detonador.distanciaBaseIntercepcao = Mathf.Max(detonador.distanciaBaseIntercepcao, 8f);
         }
 
         if (somDisparo != null && audioSource != null)
         {
             audioSource.PlayOneShot(somDisparo, 0.7f);
         }
-    }
-
-    bool AlvoMissilAtualAindaEhValido()
-    {
-        if (alvoMissilAtual == null) return false;
-        if (!alvoMissilAtual.gameObject.activeInHierarchy) return false;
-        if (!EhMissil(alvoMissilAtual)) return false;
-        return Vector3.Distance(transform.position, alvoMissilAtual.position) <= (alcanceRadar * 1.5f);
     }
 
     Transform ResolverTransformoRaiz(Transform origem)
@@ -461,43 +606,18 @@ public class SistemaAntiMissil : MonoBehaviour
         return alvo.root != null ? alvo.root : alvo;
     }
 
-    bool EhMissil(Transform tr)
-    {
-        if (tr == null) return false;
-
-        // Pedido: só considera míssil se estiver com a TAG correta.
-        // OBS: o projeto usa "Missel" no TagManager. Mantemos "Missil" como compatibilidade.
-        string tagStr = tr.gameObject.tag;
-        return tagStr == "Missel" || tagStr == "Missil";
-    }
-
-    bool PossuiScriptDeMissil(Transform tr)
-    {
-        Projetil proj = tr.GetComponentInParent<Projetil>();
-        if (proj != null)
-        {
-            // Evita "atirar no nada": balas comuns (sem explosão e sem homing) não são consideradas mísseis.
-            if (proj.curvaDePerseguicao > 0f || proj.raioDeExplosao > 0.01f) return true;
-        }
-
-        return tr.GetComponentInParent<MisselNaval>() != null ||
-               tr.GetComponentInParent<MisselCaca>() != null ||
-               tr.GetComponentInParent<MisselSubmarino>() != null ||
-               tr.GetComponentInParent<MisselICBM>() != null ||
-               tr.GetComponentInParent<MisselTatico>() != null ||
-               tr.GetComponentInParent<MisselLeopardAutomatico>() != null ||
-               tr.GetComponentInParent<MissilTeleguiado>() != null ||
-               tr.GetComponentInParent<InterceptMissile>() != null;
-    }
-
     Vector3 ObterDirecaoMissil(Transform missil)
     {
         if (missil == null) return transform.forward;
 
         Rigidbody rb = missil.GetComponentInParent<Rigidbody>();
-        if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
+        if (rb != null && rb.linearVelocity.sqrMagnitude > 25f)
         {
-            return rb.linearVelocity.normalized;
+            Vector3 velNorm = rb.linearVelocity.normalized;
+            if (Mathf.Abs(velNorm.y) < 0.8f)
+            {
+                return velNorm;
+            }
         }
 
         if (missil.forward.sqrMagnitude > 0.01f)
@@ -542,23 +662,24 @@ public class SistemaAntiMissil : MonoBehaviour
         if (alvo == null) return transform.position;
 
         Vector3 origem = origemDisparo != null ? origemDisparo.position : transform.position;
-        Vector3 velocidadeAlvo;
+        Vector3 velocidadeAlvo = ObterVelocidadeAmeaca(alvo);
 
-        Rigidbody rb = alvo.GetComponentInParent<Rigidbody>();
-        if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
-        {
-            velocidadeAlvo = rb.linearVelocity;
-        }
-        else
+        if (velocidadeAlvo.sqrMagnitude <= 0.01f)
         {
             velocidadeAlvo = ObterDirecaoMissil(alvo) * 80f;
         }
 
-        float distancia = Vector3.Distance(origem, alvo.position);
         float velocidadeInterceptador = Mathf.Max(ObterVelocidadeInterceptador(), 1f);
-        float tempoInterceptacao = distancia / velocidadeInterceptador;
+        Vector3 posicaoPrevista = alvo.position;
 
-        return alvo.position + (velocidadeAlvo * tempoInterceptacao);
+        for (int i = 0; i < 3; i++)
+        {
+            float distancia = Vector3.Distance(origem, posicaoPrevista);
+            float tempoInterceptacao = distancia / velocidadeInterceptador;
+            posicaoPrevista = alvo.position + (velocidadeAlvo * tempoInterceptacao);
+        }
+
+        return posicaoPrevista;
     }
 
     Vector3 CalcularVelocidadeInicialInterceptador(Transform saida, Vector3 posicaoAlvo)
@@ -598,6 +719,34 @@ public class SistemaAntiMissil : MonoBehaviour
                 Physics.IgnoreCollision(colOrigem, colMissil, true);
             }
         }
+    }
+
+    void IgnorarColisaoComAliados(GameObject missilGerado)
+    {
+        if (missilGerado == null || minhaIdentidade == null) return;
+
+        Collider[] collidersMissil = missilGerado.GetComponentsInChildren<Collider>();
+        if (collidersMissil == null || collidersMissil.Length == 0) return;
+
+        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, bufferAliados, Physics.AllLayers, QueryTriggerInteraction.Collide);
+        for (int i = 0; i < quantidade; i++)
+        {
+            Collider colAliado = bufferAliados[i];
+            if (colAliado == null) continue;
+            if (colAliado.transform.root == transform.root) continue;
+
+            IdentidadeUnidade identidadeAliada = colAliado.GetComponentInParent<IdentidadeUnidade>();
+            if (identidadeAliada == null || identidadeAliada.teamID != minhaIdentidade.teamID) continue;
+
+            for (int j = 0; j < collidersMissil.Length; j++)
+            {
+                Collider colMissil = collidersMissil[j];
+                if (colMissil == null) continue;
+                Physics.IgnoreCollision(colAliado, colMissil, true);
+            }
+        }
+
+        for (int i = 0; i < quantidade; i++) bufferAliados[i] = null;
     }
 
     public void DefinirModoAtivo(bool ativo)

@@ -63,6 +63,12 @@ public class IA_Suprema : MonoBehaviour
     private List<GameObject> minhasTropas = new List<GameObject>();
     private List<GameObject> meusTransportes = new List<GameObject>();
     private List<GameObject> meusNavios = new List<GameObject>();
+    private readonly List<Imovel> bufferImoveisRegistrados = new List<Imovel>(128);
+    private readonly List<IdentidadeUnidade> bufferUnidadesRegistradas = new List<IdentidadeUnidade>(256);
+    private readonly List<ControleAviao> bufferAvioesRegistrados = new List<ControleAviao>(64);
+    private readonly RaycastHit[] bufferRaycastTerreno = new RaycastHit[128];
+    private readonly Collider[] bufferOcupacao = new Collider[128];
+    private readonly Collider[] bufferInvasao = new Collider[128];
     
     private Transform alvoJogadorBase;
     private Transform alvoJogadorEconomia;
@@ -441,10 +447,10 @@ public class IA_Suprema : MonoBehaviour
     float DistanciaParaImovelMaisProximo(Vector3 pos)
     {
         float menor = float.MaxValue;
-        Imovel[] imoveis = FindObjectsByType<Imovel>(FindObjectsSortMode.None);
-        for (int i = 0; i < imoveis.Length; i++)
+        RegistroEntidadesJogo.FillImoveis(bufferImoveisRegistrados);
+        for (int i = 0; i < bufferImoveisRegistrados.Count; i++)
         {
-            Imovel imovel = imoveis[i];
+            Imovel imovel = bufferImoveisRegistrados[i];
             if (imovel == null) continue;
 
             float distancia = Vector3.Distance(new Vector3(pos.x, 0f, pos.z), new Vector3(imovel.transform.position.x, 0f, imovel.transform.position.z));
@@ -550,13 +556,14 @@ public class IA_Suprema : MonoBehaviour
         }
 
         int mask = ~0; 
-        RaycastHit[] hits = Physics.RaycastAll(new Vector3(p.x, 1000f, p.z), Vector3.down, 2000f, mask, QueryTriggerInteraction.Ignore);
+        int totalHits = Physics.RaycastNonAlloc(new Ray(new Vector3(p.x, 1000f, p.z), Vector3.down), bufferRaycastTerreno, 2000f, mask, QueryTriggerInteraction.Ignore);
         
         float maiorAlturaChao = -9999f;
         bool achouChao = false;
 
-        foreach (var hit in hits)
+        for (int i = 0; i < totalHits; i++)
         {
+            RaycastHit hit = bufferRaycastTerreno[i];
             if (hit.collider == null) continue;
             MarcadorSuperficieMapa marcador = hit.collider.GetComponentInParent<MarcadorSuperficieMapa>();
             if (marcador != null)
@@ -613,10 +620,11 @@ public class IA_Suprema : MonoBehaviour
         bool achouAgua = false;
 
         int mask = ~0; 
-        RaycastHit[] hits = Physics.RaycastAll(new Vector3(ponto.x, 1000f, ponto.z), Vector3.down, 2000f, mask, QueryTriggerInteraction.Collide);
+        int totalHits = Physics.RaycastNonAlloc(new Ray(new Vector3(ponto.x, 1000f, ponto.z), Vector3.down), bufferRaycastTerreno, 2000f, mask, QueryTriggerInteraction.Collide);
 
-        foreach (var hit in hits)
+        for (int i = 0; i < totalHits; i++)
         {
+            RaycastHit hit = bufferRaycastTerreno[i];
             if (hit.collider == null) continue;
             MarcadorSuperficieMapa marcador = hit.collider.GetComponentInParent<MarcadorSuperficieMapa>();
             if (marcador != null)
@@ -697,8 +705,8 @@ public class IA_Suprema : MonoBehaviour
             if (Vector3.Distance(p, predio.transform.position) < (raioNecessario + raioDoOutro)) return true; 
         }
 
-        var outrasEstruturas = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        foreach(var est in outrasEstruturas)
+        RegistroEntidadesJogo.FillUnidades(bufferUnidadesRegistradas);
+        foreach (var est in bufferUnidadesRegistradas)
         {
             if (est == null || est.teamID == this.teamID) continue;
             var agent = est.GetComponent<NavMeshAgent>();
@@ -708,9 +716,11 @@ public class IA_Suprema : MonoBehaviour
             if (Vector3.Distance(p, est.transform.position) < (raioNecessario + raioDoOutro)) return true;
         }
 
-        Collider[] hits = Physics.OverlapSphere(p, raioNecessario * 0.7f); 
-        foreach (var h in hits) 
+        int totalColisoes = Physics.OverlapSphereNonAlloc(p, raioNecessario * 0.7f, bufferOcupacao, ~0, QueryTriggerInteraction.Collide);
+        for (int i = 0; i < totalColisoes; i++)
         { 
+            Collider h = bufferOcupacao[i];
+            if (h == null) continue;
             string nomeDoCollider = h.gameObject.name.ToLower();
             
             if (nomeDoCollider == "agua" || nomeDoCollider == "terra" || h.GetComponent("SinalizadorIA") != null || h.GetComponent("OceanAdvanced") != null || h.GetComponentInParent<MarcadorSuperficieMapa>() != null) 
@@ -765,20 +775,54 @@ public class IA_Suprema : MonoBehaviour
         meusNavios.RemoveAll(x => x == null);
         if (meusNavios.Count == 0) return;
 
+        Vector3 pontoCargaNaval = ObterPontoCargaNaval();
+
         if (estadoAtual == EstadoIA.GuerraTotal && alvoJogadorBase != null)
         {
             Vector3 alvoCosteiro = EncontrarAguaPertoDoAlvo(alvoJogadorBase.position);
             if (alvoCosteiro != Vector3.zero)
             {
+                Vector3 pontoCarrier = ObterPontoLancamentoPortaAvioes(alvoCosteiro);
+                Vector3 pontoDesembarque = ObterPontoDesembarqueNaval(alvoCosteiro);
+                Vector3 alvoAereo = (alvoJogadorEconomia != null) ? alvoJogadorEconomia.position : alvoJogadorBase.position;
                 int idx = 0;
                 foreach (var navio in meusNavios)
                 {
                     if (navio == null) continue;
                     float angForm = idx * 30f * Mathf.Deg2Rad;
-                    Vector3 offset = new Vector3(Mathf.Cos(angForm) * 40f, 0, Mathf.Sin(angForm) * 40f);
-                    Vector3 dest = alvoCosteiro + offset;
-                    dest.y = nivelDoMar;
-                    MoverNavio(navio, dest);
+
+                    if (EhPortaAvioes(navio))
+                    {
+                        Vector3 destCarrier = pontoCarrier + new Vector3(Mathf.Cos(angForm) * 70f, 0f, Mathf.Sin(angForm) * 70f);
+                        destCarrier.y = nivelDoMar;
+                        MoverNavio(navio, destCarrier);
+
+                        if (Vector3.Distance(PlanoXZ(navio.transform.position), PlanoXZ(pontoCarrier)) <= 260f)
+                            LancarAvioesDoPortaAvioes(navio, alvoAereo);
+                    }
+                    else if (EhTransporteNaval(navio))
+                    {
+                        bool carregado = TransporteNavalTemCarga(navio);
+                        Vector3 destinoTransporte = carregado
+                            ? pontoDesembarque + new Vector3(Mathf.Cos(angForm) * 22f, 0f, Mathf.Sin(angForm) * 22f)
+                            : pontoCargaNaval + new Vector3(Mathf.Cos(angForm) * 18f, 0f, Mathf.Sin(angForm) * 18f);
+                        destinoTransporte.y = nivelDoMar;
+                        MoverNavio(navio, destinoTransporte);
+
+                        if (!carregado && Vector3.Distance(PlanoXZ(navio.transform.position), PlanoXZ(pontoCargaNaval)) <= 90f)
+                            IniciarCargaNaval(navio);
+                        else if (carregado && Vector3.Distance(PlanoXZ(navio.transform.position), PlanoXZ(pontoDesembarque)) <= 120f)
+                            IniciarDescargaNaval(navio);
+                    }
+                    else
+                    {
+                        Vector3 referenciaEscolta = ExistePortaAvioesOuTransporteNaval() ? pontoCarrier : alvoCosteiro;
+                        float raioEscolta = EhSubmarino(navio) ? 110f : 40f;
+                        Vector3 dest = referenciaEscolta + new Vector3(Mathf.Cos(angForm) * raioEscolta, 0f, Mathf.Sin(angForm) * raioEscolta);
+                        dest.y = nivelDoMar;
+                        MoverNavio(navio, dest);
+                    }
+
                     idx++;
                 }
             }
@@ -902,12 +946,262 @@ public class IA_Suprema : MonoBehaviour
         if (navio == null) return;
         destino.y = nivelDoMar;
         navio.SendMessage("MoverParaPonto", destino, SendMessageOptions.DontRequireReceiver);
+        navio.SendMessage("DefinirDestino", destino, SendMessageOptions.DontRequireReceiver);
         var nav = navio.GetComponent<NavMeshAgent>();
         if (nav != null && nav.isOnNavMesh)
         {
             nav.SetDestination(destino);
             nav.isStopped = false;
         }
+    }
+
+    bool NomeContemTrecho(string nome, params string[] trechos)
+    {
+        if (string.IsNullOrEmpty(nome)) return false;
+        string n = nome.ToLower();
+        for (int i = 0; i < trechos.Length; i++)
+        {
+            if (n.Contains(trechos[i])) return true;
+        }
+        return false;
+    }
+
+    bool EhPortaAvioesNome(string nome)
+    {
+        string n = string.IsNullOrEmpty(nome) ? string.Empty : nome.ToLower();
+        return (n.Contains("porta") && n.Contains("avio")) || n.Contains("porta_avio") || n.Contains("porta-avio") || n.Contains("carrier");
+    }
+
+    bool EhSubmarinoNome(string nome)
+    {
+        return NomeContemTrecho(nome, "submarino", "submarine");
+    }
+
+    bool EhTransporteNavalNome(string nome)
+    {
+        string n = string.IsNullOrEmpty(nome) ? string.Empty : nome.ToLower();
+        if (EhPortaAvioesNome(n) || EhSubmarinoNome(n)) return false;
+
+        return n.Contains("hovercraft")
+            || n.Contains("hover")
+            || n.Contains("liberty")
+            || n.Contains("anfib")
+            || n.Contains("landing")
+            || n.Contains("lst")
+            || (n.Contains("transporte") && (n.Contains("nav") || n.Contains("mar") || n.Contains("praia")));
+    }
+
+    bool EhNavioCombateNome(string nome)
+    {
+        string n = string.IsNullOrEmpty(nome) ? string.Empty : nome.ToLower();
+        if (EhPortaAvioesNome(n) || EhTransporteNavalNome(n) || EhSubmarinoNome(n)) return false;
+
+        return n.Contains("navio")
+            || n.Contains("wall")
+            || n.Contains("corveta")
+            || n.Contains("fragata")
+            || n.Contains("destroyer")
+            || n.Contains("cruzador")
+            || n.Contains("barco")
+            || n.Contains("lancha")
+            || n.Contains("marinha")
+            || n.Contains("encoura");
+    }
+
+    bool EhPortaAvioes(GameObject navio)
+    {
+        return navio != null && (navio.GetComponent<GerenciadorPortaAvioes>() != null || EhPortaAvioesNome(navio.name));
+    }
+
+    bool EhSubmarino(GameObject navio)
+    {
+        return navio != null && EhSubmarinoNome(navio.name);
+    }
+
+    bool EhTransporteNaval(GameObject navio)
+    {
+        return navio != null && (navio.GetComponent<HovercraftTransporte>() != null
+            || navio.GetComponent<TransporteAnfibio>() != null
+            || navio.GetComponent<NavioLiberty>() != null
+            || EhTransporteNavalNome(navio.name));
+    }
+
+    bool ExistePortaAvioesOuTransporteNaval()
+    {
+        for (int i = 0; i < meusNavios.Count; i++)
+        {
+            GameObject navio = meusNavios[i];
+            if (navio == null) continue;
+            if (EhPortaAvioes(navio) || EhTransporteNaval(navio)) return true;
+        }
+        return false;
+    }
+
+    bool TransporteNavalTemCarga(GameObject navio)
+    {
+        if (navio == null) return false;
+
+        HovercraftTransporte hover = navio.GetComponent<HovercraftTransporte>();
+        if (hover != null) return hover.TemCarga();
+
+        TransporteAnfibio anfibio = navio.GetComponent<TransporteAnfibio>();
+        if (anfibio != null) return anfibio.unidadesGuardadas != null && anfibio.unidadesGuardadas.Count > 0;
+
+        return false;
+    }
+
+    void IniciarCargaNaval(GameObject navio)
+    {
+        if (navio == null) return;
+
+        HovercraftTransporte hover = navio.GetComponent<HovercraftTransporte>();
+        if (hover != null)
+        {
+            hover.IniciarEmbarque();
+            return;
+        }
+
+        navio.SendMessage("ChamarReforcos", SendMessageOptions.DontRequireReceiver);
+        navio.SendMessage("IniciarEmbarque", SendMessageOptions.DontRequireReceiver);
+        navio.SendMessage("TentarEmbarcar", SendMessageOptions.DontRequireReceiver);
+    }
+
+    void IniciarDescargaNaval(GameObject navio)
+    {
+        if (navio == null) return;
+
+        HovercraftTransporte hover = navio.GetComponent<HovercraftTransporte>();
+        if (hover != null)
+        {
+            hover.DesembarcarTudo();
+            return;
+        }
+
+        TransporteAnfibio anfibio = navio.GetComponent<TransporteAnfibio>();
+        if (anfibio != null)
+        {
+            navio.SendMessage("CicloFecharDesembarcar", SendMessageOptions.DontRequireReceiver);
+            return;
+        }
+
+        navio.SendMessage("DesembarcarTudo", SendMessageOptions.DontRequireReceiver);
+    }
+
+    Vector3 ObterPontoCargaNaval()
+    {
+        Vector3 aguaBase = EncontrarAguaPertoDoAlvo(transform.position);
+        if (aguaBase != Vector3.zero)
+        {
+            aguaBase.y = nivelDoMar;
+            return aguaBase;
+        }
+
+        Vector3 ancora = ObterAncoraNavalSegura();
+        if (ancora != Vector3.zero)
+        {
+            ancora.y = nivelDoMar;
+            return ancora;
+        }
+
+        Vector3 centro = transform.position;
+        centro.y = nivelDoMar;
+        return centro;
+    }
+
+    Vector3 ObterPontoDesembarqueNaval(Vector3 alvoAgua)
+    {
+        if (alvoAgua != Vector3.zero)
+        {
+            alvoAgua.y = nivelDoMar;
+            return alvoAgua;
+        }
+
+        Vector3 fallback = EncontrarAguaPertoDoAlvo(alvoJogadorBase != null ? alvoJogadorBase.position : transform.position);
+        if (fallback != Vector3.zero)
+        {
+            fallback.y = nivelDoMar;
+            return fallback;
+        }
+
+        return ObterPontoCargaNaval();
+    }
+
+    Vector3 ObterPontoLancamentoPortaAvioes(Vector3 alvoAgua)
+    {
+        if (alvoJogadorBase == null) return alvoAgua;
+
+        Vector3 direcaoRetaguarda = PlanoXZ(alvoAgua) - PlanoXZ(alvoJogadorBase.position);
+        if (direcaoRetaguarda.sqrMagnitude < 1f)
+            direcaoRetaguarda = PlanoXZ(alvoAgua) - PlanoXZ(transform.position);
+        if (direcaoRetaguarda.sqrMagnitude < 1f)
+            direcaoRetaguarda = Vector3.forward;
+
+        direcaoRetaguarda.Normalize();
+        Vector3 ponto = alvoAgua + direcaoRetaguarda * 220f;
+        ponto.y = nivelDoMar;
+
+        float altura;
+        bool ehAgua;
+        ObterInfoTerrenoFisico(ponto, out altura, out ehAgua);
+        return ehAgua ? ponto : alvoAgua;
+    }
+
+    void LancarAvioesDoPortaAvioes(GameObject navio, Vector3 alvoAereo)
+    {
+        if (navio == null) return;
+
+        GerenciadorPortaAvioes carrier = navio.GetComponent<GerenciadorPortaAvioes>();
+        if (carrier == null) return;
+
+        if (carrier.avioesNoPatio.Count == 0 && carrier.avioesNoHangar.Count > 0)
+            carrier.LiberarTodosDoHangar();
+
+        for (int i = 0; i < carrier.avioesNoPatio.Count; i++)
+        {
+            ControleAviao aviao = carrier.avioesNoPatio[i];
+            if (aviao == null) continue;
+            if (aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio) continue;
+            aviao.IniciarMissaoCompleta(alvoAereo);
+        }
+    }
+
+    void ObterResumoFrotaNaval(out int portaAvioes, out int transportesNavais, out int submarinos, out int escoltas)
+    {
+        portaAvioes = 0;
+        transportesNavais = 0;
+        submarinos = 0;
+        escoltas = 0;
+
+        for (int i = 0; i < meusNavios.Count; i++)
+        {
+            GameObject navio = meusNavios[i];
+            if (navio == null) continue;
+
+            if (EhPortaAvioes(navio)) portaAvioes++;
+            else if (EhTransporteNaval(navio)) transportesNavais++;
+            else if (EhSubmarino(navio)) submarinos++;
+            else escoltas++;
+        }
+    }
+
+    int ContarTropasTerrestresDisponiveis()
+    {
+        int total = 0;
+        for (int i = 0; i < minhasTropas.Count; i++)
+        {
+            GameObject tropa = minhasTropas[i];
+            if (tropa == null || tropa.transform.parent != null) continue;
+            string nome = tropa.name.ToLower();
+            if (nome == "helicoptero" || nome.Contains("caca") || nome.Contains("aviao")) continue;
+            total++;
+        }
+        return total;
+    }
+
+    Vector3 PlanoXZ(Vector3 pos)
+    {
+        pos.y = 0f;
+        return pos;
     }
 
     void DefinirPosturaGlobal()
@@ -949,9 +1243,11 @@ public class IA_Suprema : MonoBehaviour
 
     bool InimigoNoPortao()
     {
-        Collider[] invasoes = Physics.OverlapSphere(transform.position, 150f);
-        foreach (var i in invasoes)
+        int totalInvasoes = Physics.OverlapSphereNonAlloc(transform.position, 150f, bufferInvasao, ~0, QueryTriggerInteraction.Collide);
+        for (int idx = 0; idx < totalInvasoes; idx++)
         {
+            Collider i = bufferInvasao[idx];
+            if (i == null) continue;
             IdentidadeUnidade id = i.GetComponentInParent<IdentidadeUnidade>();
             if (id != null && id.teamID == 1 && !i.name.ToLower().Contains("aviao")) return true; 
         }
@@ -968,6 +1264,14 @@ public class IA_Suprema : MonoBehaviour
         bool temAereo = Contar("aeroporto") > 0 || Contar("heliporto") > 0 || (!biblioteca.ContainsKey("aeroporto") && !biblioteca.ContainsKey("heliporto"));
         bool temPista = Contar("aeroporto") > 0;
         bool temNaval = Contar("estaleiro") > 0 || Contar("pier") > 0 || Contar("plataforma") > 0 || !biblioteca.ContainsKey("estaleiro");
+        int tropasTerrestres = ContarTropasTerrestresDisponiveis();
+        int portaAvioes;
+        int transportesNavais;
+        int submarinos;
+        int escoltas;
+        ObterResumoFrotaNaval(out portaAvioes, out transportesNavais, out submarinos, out escoltas);
+        int frotaSuperficie = portaAvioes + transportesNavais + escoltas;
+        bool temPistaCaca = temPista || portaAvioes > 0;
 
         if (temQuartel && Contar("soldado") < metaSoldados) TreinarTropa("soldado", 150);
         if (temFabrica && Contar("tanque") < metaTanques) TreinarTropa("tanque", 600);
@@ -977,15 +1281,21 @@ public class IA_Suprema : MonoBehaviour
 
         if (temAereo && Contar("helicoptero") < metaAereo) TreinarTropa("helicoptero", 900, true);
 
-        if (temPista && ContarAvioes() < metaCacas)
+        if (temPistaCaca && ContarAvioes() < metaCacas)
         {
             TreinarAviao("caca", 1200);
         }
 
-        if (permitirMarinha && temNaval && ContarNavios() < metaNaval) 
+        if (permitirMarinha && temNaval && biblioteca.ContainsKey("porta_avioes") && portaAvioes == 0)
+            TreinarTropa("porta_avioes", 2600, false, true);
+
+        if (permitirMarinha && temNaval && biblioteca.ContainsKey("navio_transporte") && estadoAtual == EstadoIA.GuerraTotal && tropasTerrestres >= 8 && transportesNavais < 2)
+            TreinarTropa("navio_transporte", 1800, false, true);
+
+        if (permitirMarinha && temNaval && frotaSuperficie < metaNaval) 
             TreinarTropa("navio", 1500, false, true);
 
-        if (permitirMarinha && temNaval && biblioteca.ContainsKey("submarino") && Contar("submarino") < metaSubmarinos)
+        if (permitirMarinha && temNaval && biblioteca.ContainsKey("submarino") && submarinos < metaSubmarinos)
             TreinarTropa("submarino", 2000, false, true);
     }
 
@@ -993,7 +1303,9 @@ public class IA_Suprema : MonoBehaviour
     {
         if (!biblioteca.ContainsKey(chave) || dinheiroIA < custo) return;
 
-        var aero = meusPredios.FirstOrDefault(p => p != null && p.name.Contains("aeroporto"));
+        GameObject aero = meusNavios.FirstOrDefault(n => n != null && EhPortaAvioes(n));
+        if (aero == null)
+            aero = meusPredios.FirstOrDefault(p => p != null && p.name.ToLower().Contains("aeroporto"));
         if (aero != null)
         {
             var scriptAero = aero.GetComponent<GerenciadorAeroporto>();
@@ -1008,9 +1320,10 @@ public class IA_Suprema : MonoBehaviour
     int ContarAvioes()
     {
         int count = 0;
-        var avioes = FindObjectsByType<ControleAviao>(FindObjectsSortMode.None);
-        foreach(var a in avioes)
+        RegistroEntidadesJogo.FillAvioes(bufferAvioesRegistrados);
+        foreach (var a in bufferAvioesRegistrados)
         {
+            if (a == null) continue;
             var id = a.GetComponent<IdentidadeUnidade>();
             if (id != null && id.teamID == this.teamID) count++;
         }
@@ -1191,6 +1504,24 @@ public class IA_Suprema : MonoBehaviour
         {
             if (veiculo == null) continue;
 
+            if (EhTransporteNaval(veiculo))
+            {
+                Vector3 pontoCargaNaval = ObterPontoCargaNaval();
+                Vector3 pontoDesembarqueNaval = ObterPontoDesembarqueNaval(EncontrarAguaPertoDoAlvo(alvoJogadorBase.position));
+                bool carregado = TransporteNavalTemCarga(veiculo);
+                Vector3 destinoNaval = carregado ? pontoDesembarqueNaval : pontoCargaNaval;
+                destinoNaval.y = nivelDoMar;
+
+                MoverNavio(veiculo, destinoNaval);
+
+                if (!carregado && Vector3.Distance(PlanoXZ(veiculo.transform.position), PlanoXZ(pontoCargaNaval)) <= 90f)
+                    IniciarCargaNaval(veiculo);
+                else if (carregado && Vector3.Distance(PlanoXZ(veiculo.transform.position), PlanoXZ(pontoDesembarqueNaval)) <= 120f)
+                    IniciarDescargaNaval(veiculo);
+
+                continue;
+            }
+
             bool voa = veiculo.name == "transporte_aereo";
 
             float distAlvo = Vector3.Distance(veiculo.transform.position, alvoJogadorBase.position);
@@ -1341,14 +1672,16 @@ public class IA_Suprema : MonoBehaviour
     // ==============================================================
     void AnalisarOponente()
     {
-        var unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None).Where(u => u.teamID == 1).ToList();
-        if (unidades.Count == 0) return;
+        RegistroEntidadesJogo.FillUnidades(bufferUnidadesRegistradas);
+        if (bufferUnidadesRegistradas.Count == 0) return;
 
+        alvoJogadorBase = null;
         alvoJogadorEconomia = null; 
 
-        foreach (var u in unidades)
+        for (int i = 0; i < bufferUnidadesRegistradas.Count; i++)
         {
-            if (u == null) continue;
+            IdentidadeUnidade u = bufferUnidadesRegistradas[i];
+            if (u == null || u.teamID != 1) continue;
             string n = u.name.ToLower();
             if (n.Contains("prefeitura") || n.Contains("complexo")) alvoJogadorBase = u.transform;
             
@@ -1358,7 +1691,18 @@ public class IA_Suprema : MonoBehaviour
             }
         }
         
-        if (alvoJogadorBase == null && unidades.Count > 0) alvoJogadorBase = unidades[0].transform;
+        if (alvoJogadorBase == null)
+        {
+            for (int i = 0; i < bufferUnidadesRegistradas.Count; i++)
+            {
+                IdentidadeUnidade unidade = bufferUnidadesRegistradas[i];
+                if (unidade != null && unidade.teamID == 1)
+                {
+                    alvoJogadorBase = unidade.transform;
+                    break;
+                }
+            }
+        }
     }
 
     void SpawnarObjeto(GameObject prefab, Vector3 pos, string nome, Quaternion rot = default)
@@ -1511,13 +1855,23 @@ public class IA_Suprema : MonoBehaviour
         else if (n.Contains("pier") || n.Contains("porto")) AddLib("pier", obj); 
         else if (n.Contains("soldado") || n.Contains("infantaria") || n.Contains("fuzileiro") || n.Contains("person")) AddLib("soldado", obj);
         else if (n.Contains("tanque") || n.Contains("tank") || n.Contains("leopard") || n.Contains("blindado")) AddLib("tanque", obj);
+        else if (EhPortaAvioesNome(n))
+        {
+            AddLib("porta_avioes", obj);
+            AddLib("navio", obj);
+        }
+        else if (EhTransporteNavalNome(n))
+        {
+            AddLib("navio_transporte", obj);
+            AddLib("navio", obj);
+        }
         else if (n.Contains("ray") || n.Contains("guincho")) AddLib("transporte_aereo", obj);
         else if (n.Contains("heli") || n.Contains("apache") || n.Contains("cobra")) AddLib("helicoptero", obj);
         else if (n.Contains("transporte") || n.Contains("caminhao") || n.Contains("truck")) AddLib("transporte", obj);
         else if (n.Contains("caca") || n.Contains("aviao") || n.Contains("jet") || n.Contains("tuk") || n.Contains("super") || n.Contains("g15")) AddLib("caca", obj);
         else if (n.Contains("submarino") || n.Contains("submarine")) AddLib("submarino", obj);
         // MENTOR FIX: Inclusão explícita da palavra 'wall' para garantir que seu Navio_Wall seja reconhecido!
-        else if (n.Contains("navio") || n.Contains("wall") || n.Contains("corveta") || n.Contains("fragata") || n.Contains("barco") || n.Contains("lancha") || n.Contains("marinha") || n.Contains("hovercraft") || n.Contains("hover")) AddLib("navio", obj); 
+        else if (EhNavioCombateNome(n)) AddLib("navio", obj); 
     }
 
     void AddLib(string k, GameObject o) 
@@ -1558,14 +1912,15 @@ public class IA_Suprema : MonoBehaviour
     IEnumerator RegistrarNaviosNovos()
     {
         yield return new WaitForSeconds(3f);
-        var todas = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        foreach (var u in todas)
+        RegistroEntidadesJogo.FillUnidades(bufferUnidadesRegistradas);
+        foreach (var u in bufferUnidadesRegistradas)
         {
             if (u == null || u.teamID != this.teamID) continue;
             string n = u.name.ToLower();
-            bool ehNavio = n.Contains("navio") || n.Contains("corveta") || n.Contains("fragata") || 
-                           n.Contains("barco") || n.Contains("lancha") || n.Contains("sub") || 
-                           n.Contains("hovercraft") || n.Contains("hover") || n.Contains("marinha");
+            bool ehNavio = EhNavioCombateNome(n)
+                           || EhPortaAvioesNome(n)
+                           || EhTransporteNavalNome(n)
+                           || EhSubmarinoNome(n);
             if (!ehNavio) continue;
             if (meusNavios.Contains(u.gameObject)) continue;
             meusNavios.Add(u.gameObject);

@@ -150,6 +150,42 @@ public class ControleTorreta : MonoBehaviour
         return alvo.root != null ? alvo.root : alvo;
     }
 
+    bool EhMissilReal(Transform alvo)
+    {
+        if (alvo == null) return false;
+        string tagAtual = alvo.gameObject.tag;
+
+        if (alvo.GetComponentInParent<MissileThreatTracker>() != null) return true;
+        if (alvo.GetComponentInParent<MisselCaca>() != null) return true;
+        if (alvo.GetComponentInParent<MissilTeleguiado>() != null) return true;
+        if (alvo.GetComponentInParent<MisselICBM>() != null) return true;
+        if (alvo.GetComponentInParent<MisselNaval>() != null) return true;
+        if (alvo.GetComponentInParent<MisselSubmarino>() != null) return true;
+        if (alvo.GetComponentInParent<MisselTatico>() != null) return true;
+        if (alvo.GetComponentInParent<MisselLeopardAutomatico>() != null) return true;
+        return tagAtual == "Missil" || tagAtual == "Missel";
+    }
+
+    Transform ResolverAtiradorAereoDeProjetil(Collider hit)
+    {
+        if (hit == null) return null;
+
+        Projetil projetil = hit.GetComponentInParent<Projetil>();
+        if (projetil == null) return null;
+        if (EhMissilReal(projetil.transform)) return null;
+
+        GameObject donoProjetil = projetil.GetDono();
+        if (donoProjetil == null) return null;
+
+        ControleAviao aviao = donoProjetil.GetComponentInParent<ControleAviao>();
+        if (aviao != null) return aviao.transform;
+
+        Helicoptero helicoptero = donoProjetil.GetComponentInParent<Helicoptero>();
+        if (helicoptero != null) return helicoptero.transform;
+
+        return null;
+    }
+
     Vector3 CalcularVelocidadeInicialMissel(Transform saida, Vector3 posicaoAlvo)
     {
         if (saida == null) return transform.forward * 40f;
@@ -372,14 +408,13 @@ public class ControleTorreta : MonoBehaviour
             if (hit == null) continue;
 
             Transform alvoTr = hit.transform;
+            Transform alvoSubstitutoAereo = ResolverAtiradorAereoDeProjetil(hit);
+            if (alvoSubstitutoAereo != null) alvoTr = alvoSubstitutoAereo;
 
             // Ignora qualquer coisa que seja parte do mesmo navio/veÃ­culo raiz
             if (alvoTr.root == transform.root) continue;
 
-            bool ehMissil = alvoTr.GetComponentInParent<MisselCaca>() != null || 
-                            alvoTr.GetComponentInParent<MissilTeleguiado>() != null || 
-                            alvoTr.GetComponentInParent<MisselICBM>() != null || 
-                            hit.tag == "Missil";
+            bool ehMissil = EhMissilReal(alvoTr);
 
             bool ehInimigo = false;
 
@@ -689,11 +724,7 @@ public class ControleTorreta : MonoBehaviour
 
     void Disparar()
     {
-        bool alvoEhMissil = alvoAtual != null && 
-                            (alvoAtual.GetComponentInParent<MisselCaca>() != null || 
-                             alvoAtual.GetComponentInParent<MissilTeleguiado>() != null || 
-                             alvoAtual.GetComponentInParent<MisselICBM>() != null || 
-                             alvoAtual.tag == "Missil");
+        bool alvoEhMissil = EhMissilReal(alvoAtual);
 
         // 1. DISPARO DE MÃSSIL (Arma Pesada ou Interceptador)
         if (misselPrefab != null && cooldownMissel <= 0f && !estaRecarregandoMisseis && misseisAtuais > 0 && alvoAtual != null)
@@ -821,6 +852,17 @@ public class ControleTorreta : MonoBehaviour
             ConfigurarProjetilComoMissel(missel, saida, alvoResolvido, posicaoPredita);
         }
 
+        if (alvoResolvido != null && EhMissilReal(alvoResolvido))
+        {
+            AntiMissilDetonadorProximidade detonador = missel.GetComponent<AntiMissilDetonadorProximidade>();
+            if (detonador == null) detonador = missel.AddComponent<AntiMissilDetonadorProximidade>();
+            detonador.alvo = alvoResolvido;
+            detonador.forcarDestruicao = true;
+            detonador.distanciaBaseIntercepcao = Mathf.Max(detonador.distanciaBaseIntercepcao, 8f);
+        }
+
+        MissileThreatTracker.RegistrarLancamento(missel, this, posicaoPredita, alvoResolvido, MissileThreatTracker.EstimarVelocidade(missel));
+
         if (somMissel != null && fonteAudio != null) fonteAudio.PlayOneShot(somMissel);
         Debug.Log("[ControleTorreta] Missil disparado.");
     }
@@ -879,6 +921,17 @@ public class ControleTorreta : MonoBehaviour
 
         if (!inicializado)
             ConfigurarProjetilComoMissel(missel, saida, alvoResolvido, posicaoPredita);
+
+        if (alvoResolvido != null && EhMissilReal(alvoResolvido))
+        {
+            AntiMissilDetonadorProximidade detonador = missel.GetComponent<AntiMissilDetonadorProximidade>();
+            if (detonador == null) detonador = missel.AddComponent<AntiMissilDetonadorProximidade>();
+            detonador.alvo = alvoResolvido;
+            detonador.forcarDestruicao = true;
+            detonador.distanciaBaseIntercepcao = Mathf.Max(detonador.distanciaBaseIntercepcao, 8f);
+        }
+
+        MissileThreatTracker.RegistrarLancamento(missel, this, posicaoPredita, alvoResolvido, MissileThreatTracker.EstimarVelocidade(missel));
 
         if (somMissel != null && fonteAudio != null) fonteAudio.PlayOneShot(somMissel);
         Debug.Log("Missil Disparado!");

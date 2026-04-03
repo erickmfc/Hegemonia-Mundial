@@ -531,6 +531,12 @@ public class Estaleiro : MonoBehaviour
             navioPronto.transform.rotation = Quaternion.LookRotation(direcaoSaida.normalized, Vector3.up);
         }
 
+        var navRealistaSaida = navioPronto.GetComponent<ControleNavioRealista>();
+        if (navRealistaSaida != null)
+        {
+            navRealistaSaida.PrepararSaidaInicial(destinoSaida, 8f);
+        }
+
         var agenteNovo = navioPronto.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agenteNovo != null)
         {

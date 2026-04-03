@@ -74,6 +74,8 @@ public class ControleNavioRealista : MonoBehaviour
     private Quaternion rotacaoInicialModelo;
     private IdentidadeNaval identidade;
     private bool ajusteInicialFlutuacaoVerificado = false;
+    private float tempoAssistenciaSaida = 0f;
+    private Vector3 destinoAssistenciaSaida = Vector3.zero;
 
     void Awake()
     {
@@ -128,6 +130,15 @@ public class ControleNavioRealista : MonoBehaviour
     void Update()
     {
         if (agente == null) return;
+
+        if (tempoAssistenciaSaida > 0f)
+        {
+            tempoAssistenciaSaida = Mathf.Max(0f, tempoAssistenciaSaida - Time.deltaTime);
+            if (tempoAssistenciaSaida <= 0f)
+            {
+                destinoAssistenciaSaida = Vector3.zero;
+            }
+        }
 
         if (!AgenteProntoParaLeitura())
         {
@@ -210,8 +221,29 @@ public class ControleNavioRealista : MonoBehaviour
         temDestino = true;
         
         // Alvo no horizonte (Navigation Waypoint)
-        Vector3 direcaoAlvo = (agente.steeringTarget - transform.position).normalized;
-        direcaoAlvo.y = 0;
+        Vector3 direcaoAlvo = agente.steeringTarget - transform.position;
+        direcaoAlvo.y = 0f;
+        if (direcaoAlvo.sqrMagnitude < 0.001f && destinoAtual != Vector3.zero)
+        {
+            direcaoAlvo = destinoAtual - transform.position;
+            direcaoAlvo.y = 0f;
+        }
+
+        if (direcaoAlvo.sqrMagnitude > 0.001f)
+        {
+            direcaoAlvo.Normalize();
+        }
+
+        if (tempoAssistenciaSaida > 0f && destinoAssistenciaSaida != Vector3.zero)
+        {
+            Vector3 direcaoSaida = destinoAssistenciaSaida - transform.position;
+            direcaoSaida.y = 0f;
+            if (direcaoSaida.sqrMagnitude > 1f)
+            {
+                direcaoSaida.Normalize();
+                direcaoAlvo = Vector3.Slerp(direcaoAlvo, direcaoSaida, 0.8f).normalized;
+            }
+        }
 
         float angulo = Vector3.SignedAngle(transform.forward, direcaoAlvo, Vector3.up);
         float velReal = velocidadeVetorial.magnitude;
@@ -231,7 +263,7 @@ public class ControleNavioRealista : MonoBehaviour
         }
 
         // Caso excepcional: Navio 100% PARADO e alvo muito atrás dele -> Dá ré curta pra manobrar (não desvia do realismo de peso)
-        if (Mathf.Abs(angulo) > 120f && velReal < 1.0f && distancia > 20f)
+        if (tempoAssistenciaSaida <= 0f && Mathf.Abs(angulo) > 120f && velReal < 1.0f && distancia > 20f)
         {
             inputLeme = -Mathf.Clamp(angulo / 30.0f, -1f, 1f); // Reverte o leme na ré
             potenciaAlvo = -0.5f; // Dá ré devagar para não engasgar
@@ -608,6 +640,22 @@ public class ControleNavioRealista : MonoBehaviour
         }
 
         Debug.LogWarning($"[ControleNavioRealista] Tentativa de navegar sem estar no NavMesh! ({name})");
+    }
+
+    public void PrepararSaidaInicial(Vector3 destinoSaida, float duracaoAssistencia = 8f)
+    {
+        destinoAssistenciaSaida = destinoSaida;
+        tempoAssistenciaSaida = Mathf.Max(tempoAssistenciaSaida, Mathf.Max(1.5f, duracaoAssistencia));
+
+        Vector3 direcaoSaida = destinoSaida - transform.position;
+        direcaoSaida.y = 0f;
+        if (direcaoSaida.sqrMagnitude > 0.01f)
+        {
+            transform.rotation = Quaternion.LookRotation(direcaoSaida.normalized, Vector3.up);
+        }
+
+        estaDesligado = false;
+        tempoInatividade = 0f;
     }
     
     // Gizmos para ver o vetor de movimento vs frente

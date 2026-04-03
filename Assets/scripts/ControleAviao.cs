@@ -83,6 +83,21 @@ public class ControleAviao : MonoBehaviour
         AbaixarRodas(); 
     }
 
+    void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
+    void OnDestroy()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
     void Update()
     {
         if (!estaEmModoVooFisico) return;

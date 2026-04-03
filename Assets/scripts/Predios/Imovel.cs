@@ -1,4 +1,5 @@
 using UnityEngine;
+using Hegemonia.AI.BrainMaster;
 
 /// <summary>
 /// Sistema de Imóveis — Casas, Prédios e Apartamentos.
@@ -80,6 +81,18 @@ public class Imovel : MonoBehaviour
 
         if (debugLogs)
             Debug.Log($"[Imovel] {name} construido! Capacidade: {capacidade}");
+    }
+
+    void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+        IA_BackendBridge.RegisterImovel(this);
+    }
+
+    void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+        IA_BackendBridge.UnregisterImovel(this);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -215,6 +228,7 @@ public class Imovel : MonoBehaviour
 
     void OnDestroy()
     {
+        RegistroEntidadesJogo.Unregister(this);
         if (!registrado) return;
 
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;

@@ -208,11 +208,20 @@ namespace Hegemonia.AI.BrainMaster
 
     public static class IA_Text
     {
+        private static readonly Dictionary<string, string> _normalizeCache = new Dictionary<string, string>();
+        private const int MaxCacheSize = 512;
+
         public static string Normalize(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
             {
                 return string.Empty;
+            }
+
+            string result;
+            if (_normalizeCache.TryGetValue(value, out result))
+            {
+                return result;
             }
 
             string normalized = value.Trim().ToLowerInvariant().Replace('_', ' ').Replace('-', ' ');
@@ -238,6 +247,12 @@ namespace Hegemonia.AI.BrainMaster
                 normalized = normalized.Replace("  ", " ");
             }
 
+            if (_normalizeCache.Count >= MaxCacheSize)
+            {
+                _normalizeCache.Clear(); // Simples flush quando lotar
+            }
+
+            _normalizeCache[value] = normalized;
             return normalized;
         }
     }
