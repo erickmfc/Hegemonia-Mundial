@@ -812,7 +812,7 @@ GameObject:
   - component: {fileID: 349124250350881786}
   m_Layer: 0
   m_Name: Hover
-  m_TagString: Navio
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -894,6 +894,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 5
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 2.5
+  atrasoPosAfundamento: 0.6
 --- !u!65 &5491944846478979342
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -935,7 +939,7 @@ NavMeshAgent:
   m_AutoRepath: 1
   m_Height: 2
   m_BaseOffset: 0
-  m_WalkableMask: 9
+  m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
 --- !u!114 &-8005589641839002669
 MonoBehaviour:
@@ -955,6 +959,15 @@ MonoBehaviour:
   camadasChao:
     serializedVersion: 2
     m_Bits: 64
+  distanciaSondaFrontal: 7
+  larguraSonda: 2.5
+  alturaOrigemSonda: 6
+  impulsoSubidaPraia: 10
+  velocidadeMinimaNaCosta: 9
+  tempoParaDesatolar: 0.75
+  suavizacaoAlturaCosta: 0.35
+  impulsoTravessiaAguaTerra: 1.2
+  tempoMaximoTravessia: 12
   isSelecionado: 0
   portaRampa: {fileID: 3345625160462930024}
   anguloAberto: 110

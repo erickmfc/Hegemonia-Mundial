@@ -45,6 +45,7 @@ namespace Hegemonia.AI.BrainMaster
         private float _nextCoastScanTime;
         private float _nextNavalAttemptTime;
         private float _nextNavalExpansionAttemptTime;
+        private float _nextRareNavalExpansionWindowTime;
         private int _recoveryLevel;
         private int _bootstrapNavalAttemptCursor;
         private int _bootstrapNavalNoCoastFailures;
@@ -56,6 +57,10 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<string, float> _warningCooldownUntil = new Dictionary<string, float>();
         private readonly Dictionary<string, CoastalAnchorCacheEntry> _coastalAnchorCache = new Dictionary<string, CoastalAnchorCacheEntry>();
         private readonly Dictionary<string, NavalSearchBackoffEntry> _navalSearchBackoffUntil = new Dictionary<string, NavalSearchBackoffEntry>();
+        private readonly Dictionary<string, int> _placementFailureStreakByKey = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _navalFailureStreakByKey = new Dictionary<string, int>();
+        private readonly Dictionary<string, string> _navalFailureLastReasonByKey = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> _navalAutoPlacementDisabledReasonByItem = new Dictionary<string, string>();
         private IA_ManualBuildPoint _pendingManualBuildPoint;
         private int _cachedApproxCombatUnitCount = -1;
         private int _cachedApproxCombatSourceCount = -1;
@@ -92,6 +97,22 @@ namespace Hegemonia.AI.BrainMaster
             get { return _lastSlowSectionSummary; }
         }
 
+        public float LastNavalFailureTime { get; private set; }
+
+        public float LastNavalRetryDelaySeconds { get; private set; }
+
+        public bool CombatNavalBuildLocked { get; private set; }
+
+        public string CombatNavalBuildLockReason { get; private set; }
+
+        public bool NavalAutoPlacementDisabled { get; private set; }
+
+        public string NavalAutoPlacementDisabledReason { get; private set; }
+
+        public string LastNavalGeometryFailureReason { get; private set; }
+
+        public int LastNavalGeometryFailureCount { get; private set; }
+
         private static long BeginTimingScope()
         {
             return System.Diagnostics.Stopwatch.GetTimestamp();
@@ -100,6 +121,16 @@ namespace Hegemonia.AI.BrainMaster
         private void EndTimingScope(string section, string detail, long startTimestamp, float thresholdMs)
         {
             float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (section == "TryFindDirectNavalCandidate")
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("naval_candidate_ms", elapsedMs);
+            }
+            else if (section == "TryResolveFriendlyTerritoryCoastalAnchor"
+                     || section == "TryFindDirectCoastalAnchor")
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("coast_scan_ms", elapsedMs);
+            }
+
             if (elapsedMs < thresholdMs)
             {
                 return;
@@ -127,6 +158,147 @@ namespace Hegemonia.AI.BrainMaster
                 + (string.IsNullOrEmpty(detail) ? string.Empty : " | " + detail));
         }
 
+        private float ResolveDecisionDelay()
+        {
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            if (pressure == null)
+            {
+                return 0.95f;
+            }
+
+            switch (pressure.Estado)
+            {
+                case EstadoCargaIA.Saturado:
+                    return 1.85f;
+                case EstadoCargaIA.EmCombate:
+                    return 1.35f;
+                default:
+                    return 0.95f;
+            }
+        }
+
+        private bool ShouldLockHeavyNavalBuild(float now, out string reason)
+        {
+            reason = string.Empty;
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            if (pressure == null)
+            {
+                return false;
+            }
+
+            if (pressure.Estado == EstadoCargaIA.Saturado)
+            {
+                reason = "combate saturado";
+                return true;
+            }
+
+            if (pressure.EnemyVisible && pressure.HasMixedNavalAirLoad())
+            {
+                reason = "combate naval e aereo ativo";
+                return true;
+            }
+
+            if (pressure.IsCombatRecent(35f) && (pressure.ActiveMissiles >= 6 || pressure.ActiveProjectiles >= 28))
+            {
+                reason = "janela calma ainda nao atingida";
+                return true;
+            }
+
+            return false;
+        }
+
+        private float GetCombatLockCooldownSeconds()
+        {
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            if (pressure == null)
+            {
+                return 30f;
+            }
+
+            return pressure.Estado == EstadoCargaIA.Saturado ? 45f : 30f;
+        }
+
+        private bool ShouldAllowAutomaticNavalExpansion(float now, int estaleiros, int piers)
+        {
+            if (estaleiros + piers <= 0)
+            {
+                return true;
+            }
+
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            if (pressure == null)
+            {
+                return now >= _nextRareNavalExpansionWindowTime;
+            }
+
+            if (pressure.Estado != EstadoCargaIA.Normal
+                || pressure.EnemyVisible
+                || pressure.IsCombatRecent(45f)
+                || _context.CommandQueue.PendingCount > 4)
+            {
+                return false;
+            }
+
+            return now >= _nextRareNavalExpansionWindowTime;
+        }
+
+        private bool IsNavalAutoPlacementDisabledForItem(string itemKey, out string reason)
+        {
+            reason = string.Empty;
+            string normalized = IA_Text.Normalize(itemKey);
+            if (string.IsNullOrEmpty(normalized))
+            {
+                return false;
+            }
+
+            if (_navalAutoPlacementDisabledReasonByItem.TryGetValue(normalized, out reason))
+            {
+                NavalAutoPlacementDisabled = true;
+                NavalAutoPlacementDisabledReason = reason;
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("naval_auto_disabled_reason", reason);
+                return true;
+            }
+
+            NavalAutoPlacementDisabled = false;
+            NavalAutoPlacementDisabledReason = string.Empty;
+            return false;
+        }
+
+        private static bool IsHeavyAutomaticNavalItem(string itemKey)
+        {
+            string normalized = IA_Text.Normalize(itemKey);
+            return normalized.Contains("estaleiro")
+                   || normalized.Contains("pier")
+                   || normalized.Contains("plataforma");
+        }
+
+        private bool CanUseDirectNavalFallback(string itemKey, float now)
+        {
+            if (HasManualBuildOverrideForItem(itemKey))
+            {
+                return false;
+            }
+
+            string disabledReason;
+            if (IsNavalAutoPlacementDisabledForItem(itemKey, out disabledReason))
+            {
+                return false;
+            }
+
+            IA_BrainMaster brain = _context.Brain;
+            if (brain != null
+                && brain.IsBootstrapActive
+                && brain.BootstrapStage == IA_BrainMaster.IA_BootstrapStage.BuildShipyard)
+            {
+                return true;
+            }
+
+            return now >= _nextRareNavalExpansionWindowTime
+                   && _context.CommandQueue.PendingCount <= 4
+                   && !ShouldLockHeavyNavalBuild(now, out disabledReason)
+                   && (_context.CombatPressure == null || _context.CombatPressure.IsCombatRecent(45f) == false);
+        }
+
         public void Tick(float now, float deltaTime)
         {
             if (now < _nextDecisionTime)
@@ -134,7 +306,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            _nextDecisionTime = now + 0.95f;
+            _nextDecisionTime = now + ResolveDecisionDelay();
             if (_context.CommandQueue.PendingCount > 8)
             {
                 return;
@@ -196,14 +368,26 @@ namespace Hegemonia.AI.BrainMaster
             bool structuresStableForTimedNaval = now - _lastProgressTime >= 6f;
             bool timedNavalOpening = (now >= 20f && ownCombatCount >= 15 && structuresStableForTimedNaval)
                                      || (now >= 35f && ownCombatCount >= 15);
+            bool estaleiroManualOverride = estaleiros < 1 && HasManualBuildOverrideForItem("Estaleiro Naval");
+            bool pierManualOverride = piers < 1 && HasManualBuildOverrideForItem("pier");
+            bool plataformaManualOverride = plataformas < 1 && HasManualBuildOverrideForItem("PLataforma");
+            string navalCombatLockReason;
+            bool combatLocksHeavyNaval = ShouldLockHeavyNavalBuild(now, out navalCombatLockReason);
+            bool allowAutomaticNavalExpansion = ShouldAllowAutomaticNavalExpansion(now, estaleiros, piers);
+            CombatNavalBuildLocked = combatLocksHeavyNaval;
+            CombatNavalBuildLockReason = combatLocksHeavyNaval ? navalCombatLockReason : string.Empty;
             Vector3 navalAnchor = landAnchor;
             bool coastAvailable = false;
-            bool needCoastScan = estaleiros < 1
-                                 || piers < 1
-                                 || plataformas < 1
+            bool needCoastScan = (estaleiros < 1 && !estaleiroManualOverride)
+                                 || (piers < 1 && !pierManualOverride)
+                                 || (plataformas < 1 && !plataformaManualOverride)
                                  || counter.ReinforceCoast
                                  || counter.NavalWeight > 0.20f;
-            if (needCoastScan)
+            if (!allowAutomaticNavalExpansion && estaleiros + piers > 0 && !estaleiroManualOverride && !pierManualOverride && !plataformaManualOverride)
+            {
+                needCoastScan = false;
+            }
+            if (needCoastScan && !combatLocksHeavyNaval)
             {
                 if (now >= _nextCoastScanTime)
                 {
@@ -234,6 +418,12 @@ namespace Hegemonia.AI.BrainMaster
                     _nextCoastScanTime = now + (_cachedCoastAvailable ? 12f : 35f);
                 }
 
+                coastAvailable = _cachedCoastAvailable;
+                navalAnchor = coastAvailable ? _cachedCoastAnchor : landAnchor;
+            }
+            else if (needCoastScan)
+            {
+                _nextCoastScanTime = Mathf.Max(_nextCoastScanTime, now + GetCombatLockCooldownSeconds());
                 coastAvailable = _cachedCoastAvailable;
                 navalAnchor = coastAvailable ? _cachedCoastAnchor : landAnchor;
             }
@@ -303,47 +493,65 @@ namespace Hegemonia.AI.BrainMaster
             bool earlyNavalOpening = factories > 0
                                      && (barracks > 0 || developedStructures >= 3)
                                      && (coastAvailable || now >= 12f);
-            bool shouldOpenNaval = earlyNavalOpening
+            bool shouldOpenNaval = (estaleiros + piers <= 0 || allowAutomaticNavalExpansion || estaleiroManualOverride || pierManualOverride)
+                                   && (earlyNavalOpening
                                    || timedNavalOpening
                                    || (factories > 0
                                    && (developedStructures >= 4
                                        || counter.ReinforceCoast
-                                       || counter.NavalWeight > 0.10f));
+                                       || counter.NavalWeight > 0.10f)));
             if (shouldOpenNaval && now >= _nextNavalAttemptTime)
             {
-                if (!coastAvailable && estaleiros < 1 && piers < 1)
+                if (combatLocksHeavyNaval)
                 {
-                    _nextNavalAttemptTime = now + 16f;
+                    _nextNavalAttemptTime = now + GetCombatLockCooldownSeconds();
                 }
                 else
                 {
-                    Vector3 navalSearchAnchor = coastAvailable ? navalAnchor : landAnchor;
-                    float navalMinRadius = coastAvailable
-                        ? (earlyNavalOpening ? 8f : 12f)
-                        : (timedNavalOpening ? 45f : 75f);
-                    float navalMaxRadius = coastAvailable
-                        ? (earlyNavalOpening ? 320f : (timedNavalOpening ? 360f : 280f))
-                        : (timedNavalOpening ? 1600f : 1200f);
-                    int estaleiroPriority = earlyNavalOpening ? 97 : (timedNavalOpening ? 98 : 91);
-                    int pierPriority = timedNavalOpening ? 96 : 88;
-                    bool shouldBuildPierNow = timedNavalOpening
-                                              || airports > 0
-                                              || (estaleiros > 0 && now >= 18f)
-                                              || counter.ReinforceCoast
-                                              || counter.NavalWeight > 0.18f;
-
-                    if (estaleiros < 1)
+                    if (!coastAvailable && estaleiros < 1 && piers < 1 && !estaleiroManualOverride && !pierManualOverride)
                     {
-                        bool queuedEstaleiro = QueueBuildAtWater("Estaleiro Naval", IA_ZoneType.Naval, navalSearchAnchor, navalMinRadius, navalMaxRadius, estaleiroPriority, earlyNavalOpening ? 8f : 14f);
-                        _nextNavalAttemptTime = now + (queuedEstaleiro ? 8f : (coastAvailable ? 12f : 18f));
-                        return;
+                        _nextNavalAttemptTime = now + 16f;
                     }
-
-                    if (piers < 1 && shouldBuildPierNow)
+                    else
                     {
-                        bool queuedPier = QueueBuildAtWater("pier", IA_ZoneType.Naval, navalSearchAnchor, Mathf.Max(20f, navalMinRadius - 24f), navalMaxRadius, pierPriority, 16f);
-                        _nextNavalAttemptTime = now + (queuedPier ? 10f : 16f);
-                        return;
+                        Vector3 navalSearchAnchor = coastAvailable ? navalAnchor : landAnchor;
+                        float navalMinRadius = coastAvailable
+                            ? (earlyNavalOpening ? 8f : 12f)
+                            : (timedNavalOpening ? 45f : 75f);
+                        float navalMaxRadius = coastAvailable
+                            ? (earlyNavalOpening ? 320f : (timedNavalOpening ? 360f : 280f))
+                            : (timedNavalOpening ? 1600f : 1200f);
+                        int estaleiroPriority = earlyNavalOpening ? 97 : (timedNavalOpening ? 98 : 91);
+                        int pierPriority = timedNavalOpening ? 96 : 88;
+                        bool shouldBuildPierNow = timedNavalOpening
+                                                  || airports > 0
+                                                  || (estaleiros > 0 && now >= 18f)
+                                                  || counter.ReinforceCoast
+                                                  || counter.NavalWeight > 0.18f;
+                        if (estaleiros < 1 && !IsNavalAutoPlacementDisabledForItem("Estaleiro Naval", out navalCombatLockReason))
+                        {
+                            bool queuedEstaleiro = QueueBuildAtWater("Estaleiro Naval", IA_ZoneType.Naval, navalSearchAnchor, navalMinRadius, navalMaxRadius, estaleiroPriority, earlyNavalOpening ? 8f : 14f);
+                            _nextNavalAttemptTime = now + (queuedEstaleiro ? 8f : (coastAvailable ? 12f : 18f));
+                            if (allowAutomaticNavalExpansion && estaleiros + piers > 0)
+                            {
+                                _nextRareNavalExpansionWindowTime = now + 90f;
+                            }
+                            return;
+                        }
+
+                        if (piers < 1
+                            && shouldBuildPierNow
+                            && (coastAvailable || pierManualOverride || estaleiros > 0)
+                            && !IsNavalAutoPlacementDisabledForItem("pier", out navalCombatLockReason))
+                        {
+                            bool queuedPier = QueueBuildAtWater("pier", IA_ZoneType.Naval, navalSearchAnchor, Mathf.Max(20f, navalMinRadius - 24f), navalMaxRadius, pierPriority, 16f);
+                            _nextNavalAttemptTime = now + (queuedPier ? 10f : 16f);
+                            if (allowAutomaticNavalExpansion && estaleiros + piers > 0)
+                            {
+                                _nextRareNavalExpansionWindowTime = now + 90f;
+                            }
+                            return;
+                        }
                     }
                 }
             }
@@ -386,13 +594,21 @@ namespace Hegemonia.AI.BrainMaster
                                || counter.ReinforceCoast
                                || counter.NavalWeight > 0.20f
                                || (developedStructures >= 6 && factories > 0);
-            if (coastNeeded && (coastAvailable || estaleiros > 0 || piers > 0))
+            if (!combatLocksHeavyNaval
+                && allowAutomaticNavalExpansion
+                && coastNeeded
+                && (coastAvailable || estaleiros > 0 || piers > 0 || plataformaManualOverride)
+                && !IsNavalAutoPlacementDisabledForItem("PLataforma", out navalCombatLockReason))
             {
                 Vector3 coastalBuildAnchor = coastAvailable ? navalAnchor : landAnchor;
                 float platformMinRadius = 300f;
                 float platformMaxRadius = coastAvailable ? 900f : 1200f;
                 if (plataformas < 1 && QueueBuildAtWater("PLataforma", IA_ZoneType.Naval, coastalBuildAnchor, platformMinRadius, platformMaxRadius, 78, 18f))
                 {
+                    if (estaleiros + piers > 0)
+                    {
+                        _nextRareNavalExpansionWindowTime = now + 90f;
+                    }
                     return;
                 }
             }
@@ -876,7 +1092,7 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            if (desiredTerrain == IA_TerrainType.Water)
+            if (desiredTerrain == IA_TerrainType.Water && CanUseDirectNavalFallback(itemKey, Time.time))
             {
                 float directMax = Mathf.Max(maxRadius + 240f, minRadius + 120f);
                 if (TryFindDirectNavalCandidate(itemKey, zone, anchor, minRadius, directMax, out candidate, out reason))
@@ -904,7 +1120,8 @@ namespace Hegemonia.AI.BrainMaster
                     return true;
                 }
 
-                if (TryFindDirectNavalCandidate(itemKey, zone, anchor, waterMin, waterMax, out candidate, out reason))
+                if (CanUseDirectNavalFallback(itemKey, Time.time)
+                    && TryFindDirectNavalCandidate(itemKey, zone, anchor, waterMin, waterMax, out candidate, out reason))
                 {
                     failureReason = string.Empty;
                     return true;
@@ -1556,6 +1773,10 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             float retryDelay = ResolveBootstrapNavalRetryDelay(useDirectFallback, reason);
+            if (_bootstrapNavalAttemptCursor >= 1)
+            {
+                retryDelay = Mathf.Max(retryDelay, 120f);
+            }
 
             _nextNavalAttemptTime = now + retryDelay;
             _nextCoastScanTime = Mathf.Max(_nextCoastScanTime, now + Mathf.Max(6f, retryDelay * 0.55f));
@@ -2486,6 +2707,16 @@ namespace Hegemonia.AI.BrainMaster
             candidate = anchor;
             reason = "nenhum ponto naval direto";
 
+            string disabledReason;
+            if (IsHeavyAutomaticNavalItem(itemKey)
+                && IsNavalAutoPlacementDisabledForItem(itemKey, out disabledReason)
+                && !HasManualBuildOverrideForItem(itemKey))
+            {
+                reason = disabledReason;
+                EndTimingScope("TryFindDirectNavalCandidate", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 2.00f);
+                return false;
+            }
+
             DadosConstrucao data;
             if (!_context.Backend.TryResolveItem(itemKey, out data) || data == null || data.prefabDaUnidade == null)
             {
@@ -2495,6 +2726,14 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             float now = Time.time;
+            if (!(_context.Brain != null
+                && _context.Brain.IsBootstrapActive
+                && _context.Brain.BootstrapStage == IA_BrainMaster.IA_BootstrapStage.BuildShipyard)
+                && IsHeavyAutomaticNavalItem(itemKey))
+            {
+                _nextRareNavalExpansionWindowTime = Mathf.Max(_nextRareNavalExpansionWindowTime, now + 90f);
+            }
+
             string backoffReason;
             if (TryGetNavalSearchBackoff(itemKey, anchor, now, out backoffReason))
             {
@@ -2507,7 +2746,7 @@ namespace Hegemonia.AI.BrainMaster
             var searchAnchors = new List<Vector3>();
             TryAddNavalSearchAnchor(searchAnchors, anchor, requiresCoast);
 
-            for (int i = 0; i < _context.WorldState.OwnStructures.Count && searchAnchors.Count < 3; i++)
+            for (int i = 0; i < _context.WorldState.OwnStructures.Count && searchAnchors.Count < 2; i++)
             {
                 GameObject structure = _context.WorldState.OwnStructures[i];
                 if (structure == null)
@@ -2517,7 +2756,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 TryAddNavalSearchAnchor(searchAnchors, structure.transform.position, requiresCoast);
 
-                if (searchAnchors.Count >= 3)
+                if (searchAnchors.Count >= 2)
                 {
                     break;
                 }
@@ -2575,27 +2814,33 @@ namespace Hegemonia.AI.BrainMaster
             bool requiresCoast = NavalPlacementResolver.RequiresCoastalPlacement(data.prefabDaUnidade);
             float startRadius = Mathf.Max(0f, minRadius);
             float endRadius = Mathf.Max(startRadius + 24f, maxRadius);
+            
+            // REDUZIDO: Limite agressivo de anéis para mitigar lags
             int rings = requiresCoast
-                ? Mathf.Clamp(Mathf.CeilToInt((endRadius - startRadius) / 180f) + 2, 5, 16)
-                : Mathf.Clamp(Mathf.CeilToInt((endRadius - startRadius) / 220f) + 2, 4, 12);
-            float coastRadiusStep = Mathf.Clamp((endRadius - startRadius) / 18f, 24f, 72f);
+                ? Mathf.Clamp(Mathf.CeilToInt((endRadius - startRadius) / 250f) + 1, 4, 10)
+                : Mathf.Clamp(Mathf.CeilToInt((endRadius - startRadius) / 300f) + 1, 3, 8);
+            float coastRadiusStep = Mathf.Clamp((endRadius - startRadius) / 10f, 40f, 95f);
 
             for (int ring = 0; ring < rings; ring++)
             {
                 float t = rings <= 1 ? 0f : ring / (float)(rings - 1);
                 float radius = Mathf.Lerp(startRadius, endRadius, t);
+                
+                // REDUZIDO: Menos subdivisões angulares de busca para evitar 2000ms+ de CPU
                 int samplesPerRing = radius <= 0.01f
                     ? 1
                     : (requiresCoast
-                        ? (radius < 280f ? 10 : (radius < 900f ? 14 : 18))
-                        : (radius < 360f ? 8 : 12));
+                        ? (radius < 400f ? 8 : 12)
+                        : (radius < 400f ? 6 : 9));
 
                 for (int i = 0; i < samplesPerRing; i++)
                 {
                     float angleDeg = ((360f / samplesPerRing) * i) + (ring * 11f);
                     float angle = angleDeg * Mathf.Deg2Rad;
                     Vector3 direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-                    int passes = requiresCoast && radius > 48f ? 3 : 1;
+                    
+                    // REDUZIDO: de 3 passos radiais concêntricos para apenas 1 por ângulo
+                    int passes = 1;
                     for (int pass = 0; pass < passes; pass++)
                     {
                         float radiusOffset = 0f;
@@ -3593,13 +3838,23 @@ namespace Hegemonia.AI.BrainMaster
 
         private void MarkPlacementSearchFailure(string itemKey, IA_TerrainType desiredTerrain, float now)
         {
-            float retryDelay = desiredTerrain == IA_TerrainType.Water ? 12f : 7f;
-            _placementRetryCooldownUntil[BuildPlacementRetryKey(itemKey, desiredTerrain)] = now + retryDelay;
+            string retryKey = BuildPlacementRetryKey(itemKey, desiredTerrain);
+            int streak = 0;
+            _placementFailureStreakByKey.TryGetValue(retryKey, out streak);
+            streak++;
+            _placementFailureStreakByKey[retryKey] = streak;
+
+            float retryDelay = desiredTerrain == IA_TerrainType.Water
+                ? ResolveEscalatedRetryDelay(streak)
+                : 7f;
+            _placementRetryCooldownUntil[retryKey] = now + retryDelay;
         }
 
         private void ClearPlacementSearchFailure(string itemKey, IA_TerrainType desiredTerrain)
         {
-            _placementRetryCooldownUntil.Remove(BuildPlacementRetryKey(itemKey, desiredTerrain));
+            string retryKey = BuildPlacementRetryKey(itemKey, desiredTerrain);
+            _placementRetryCooldownUntil.Remove(retryKey);
+            _placementFailureStreakByKey.Remove(retryKey);
         }
 
         private static string BuildPlacementRetryKey(string itemKey, IA_TerrainType desiredTerrain)
@@ -3676,25 +3931,68 @@ namespace Hegemonia.AI.BrainMaster
         {
             string normalizedReason = IA_Text.Normalize(reason);
             float cooldownSeconds = ResolveNavalSearchBackoffSeconds(normalizedReason);
-            if (cooldownSeconds <= 0f)
+            string normalizedItem = IA_Text.Normalize(itemKey);
+            string key = normalizedItem + ":" + (IsTerritoryNavalFailureReason(normalizedReason) ? "global" : BuildAnchorCellKey(anchor));
+            int streak = 0;
+            _navalFailureStreakByKey.TryGetValue(key, out streak);
+            string lastReason;
+            if (_navalFailureLastReasonByKey.TryGetValue(key, out lastReason) && lastReason == normalizedReason)
+            {
+                streak++;
+            }
+            else
+            {
+                streak = 1;
+            }
+            _navalFailureStreakByKey[key] = streak;
+            _navalFailureLastReasonByKey[key] = normalizedReason;
+            LastNavalGeometryFailureReason = normalizedReason;
+            LastNavalGeometryFailureCount = streak;
+
+            if (IsHeavyAutomaticNavalItem(itemKey)
+                && IsGeometryNavalFailureReason(normalizedReason)
+                && streak >= 3
+                && !HasManualBuildOverrideForItem(itemKey))
+            {
+                string disableReason = "auto-placement naval desativado: " + reason;
+                _navalAutoPlacementDisabledReasonByItem[normalizedItem] = disableReason;
+                NavalAutoPlacementDisabled = true;
+                NavalAutoPlacementDisabledReason = disableReason;
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("naval_auto_disabled_reason", disableReason);
+                DiagnosticoDesempenhoJogo.RegistrarEvento("IA_BuildDirector", normalizedItem + " auto-placement desativado | motivo=" + reason);
+            }
+
+            float escalatedDelay = ResolveEscalatedRetryDelay(streak);
+            if (cooldownSeconds > 0f)
+            {
+                escalatedDelay = Mathf.Max(escalatedDelay, cooldownSeconds);
+            }
+
+            if (escalatedDelay <= 0f)
             {
                 return;
             }
 
-            string normalizedItem = IA_Text.Normalize(itemKey);
-            string key = normalizedItem + ":" + (IsTerritoryNavalFailureReason(normalizedReason) ? "global" : BuildAnchorCellKey(anchor));
             _navalSearchBackoffUntil[key] = new NavalSearchBackoffEntry
             {
-                ValidUntil = now + cooldownSeconds,
+                ValidUntil = now + escalatedDelay,
                 Reason = reason
             };
+            LastNavalFailureTime = now;
+            LastNavalRetryDelaySeconds = escalatedDelay;
         }
 
         private void ClearNavalSearchBackoff(string itemKey, Vector3 anchor)
         {
             string normalizedItem = IA_Text.Normalize(itemKey);
-            _navalSearchBackoffUntil.Remove(normalizedItem + ":global");
-            _navalSearchBackoffUntil.Remove(normalizedItem + ":" + BuildAnchorCellKey(anchor));
+            string globalKey = normalizedItem + ":global";
+            string localKey = normalizedItem + ":" + BuildAnchorCellKey(anchor);
+            _navalSearchBackoffUntil.Remove(globalKey);
+            _navalSearchBackoffUntil.Remove(localKey);
+            _navalFailureStreakByKey.Remove(globalKey);
+            _navalFailureStreakByKey.Remove(localKey);
+            _navalFailureLastReasonByKey.Remove(globalKey);
+            _navalFailureLastReasonByKey.Remove(localKey);
         }
 
         private static float ResolveNavalSearchBackoffSeconds(string normalizedReason)
@@ -3720,6 +4018,28 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return 0f;
+        }
+
+        private float ResolveEscalatedRetryDelay(int streak)
+        {
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            bool underCombatPressure = pressure != null && pressure.Estado != EstadoCargaIA.Normal;
+            if (!underCombatPressure)
+            {
+                return streak <= 1 ? 12f : (streak == 2 ? 18f : 30f);
+            }
+
+            if (streak <= 1)
+            {
+                return 15f;
+            }
+
+            if (streak == 2)
+            {
+                return 30f;
+            }
+
+            return 60f;
         }
 
         private static float ResolveBootstrapNavalRetryDelay(bool useDirectFallback, string reason)

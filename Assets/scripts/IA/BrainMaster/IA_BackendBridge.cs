@@ -1482,6 +1482,11 @@ namespace Hegemonia.AI.BrainMaster
     {
         private readonly IA_BackendBridge _bridge;
         private readonly int _teamId;
+        private readonly List<Fabrica> _factoryBuffer = new List<Fabrica>(16);
+        private readonly List<Estaleiro> _shipyardBuffer = new List<Estaleiro>(8);
+        private readonly List<PierMarinha> _pierBuffer = new List<PierMarinha>(8);
+        private readonly List<GerenciadorAeroporto> _airportBuffer = new List<GerenciadorAeroporto>(8);
+        private readonly List<Heliporto> _heliportBuffer = new List<Heliporto>(8);
 
         public ProductionService(IA_BackendBridge bridge, int teamId)
         {
@@ -1554,12 +1559,12 @@ namespace Hegemonia.AI.BrainMaster
         private GameObject ProduceLandUnit(DadosConstrucao data, out string reason)
         {
             reason = string.Empty;
-            Fabrica[] factories = Object.FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
             bool needsBarracks = IsInfantry(data);
+            RegistroEntidadesJogo.FillFabricas(_factoryBuffer);
 
-            for (int i = 0; i < factories.Length; i++)
+            for (int i = 0; i < _factoryBuffer.Count; i++)
             {
-                Fabrica factory = factories[i];
+                Fabrica factory = _factoryBuffer[i];
                 if (factory == null || !_bridge.BelongsToTeam(factory))
                 {
                     continue;
@@ -1586,10 +1591,10 @@ namespace Hegemonia.AI.BrainMaster
         {
             reason = string.Empty;
             string lastReason = "estaleiro/pier indisponivel";
-            Estaleiro[] estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
-            for (int i = 0; i < estaleiros.Length; i++)
+            RegistroEntidadesJogo.FillEstaleiros(_shipyardBuffer);
+            for (int i = 0; i < _shipyardBuffer.Count; i++)
             {
-                Estaleiro e = estaleiros[i];
+                Estaleiro e = _shipyardBuffer[i];
                 if (e == null || !_bridge.BelongsToTeam(e))
                 {
                     continue;
@@ -1603,10 +1608,10 @@ namespace Hegemonia.AI.BrainMaster
                 lastReason = "estaleiro sem agua, sem costa ou sem vaga";
             }
 
-            PierMarinha[] piers = Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None);
-            for (int i = 0; i < piers.Length; i++)
+            RegistroEntidadesJogo.FillPiers(_pierBuffer);
+            for (int i = 0; i < _pierBuffer.Count; i++)
             {
-                PierMarinha p = piers[i];
+                PierMarinha p = _pierBuffer[i];
                 if (p == null || !_bridge.BelongsToTeam(p))
                 {
                     continue;
@@ -1627,10 +1632,10 @@ namespace Hegemonia.AI.BrainMaster
         private GameObject ProduceAircraft(DadosConstrucao data, out string reason)
         {
             reason = string.Empty;
-            GerenciadorAeroporto[] airports = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-            for (int i = 0; i < airports.Length; i++)
+            RegistroEntidadesJogo.FillAeroportos(_airportBuffer);
+            for (int i = 0; i < _airportBuffer.Count; i++)
             {
-                GerenciadorAeroporto airport = airports[i];
+                GerenciadorAeroporto airport = _airportBuffer[i];
                 if (airport == null || !_bridge.BelongsToTeam(airport))
                 {
                     continue;
@@ -1647,10 +1652,10 @@ namespace Hegemonia.AI.BrainMaster
         private GameObject ProduceHelicopter(DadosConstrucao data, out string reason)
         {
             reason = string.Empty;
-            Heliporto[] heliports = Object.FindObjectsByType<Heliporto>(FindObjectsSortMode.None);
-            for (int i = 0; i < heliports.Length; i++)
+            RegistroEntidadesJogo.FillHeliportos(_heliportBuffer);
+            for (int i = 0; i < _heliportBuffer.Count; i++)
             {
-                Heliporto heliport = heliports[i];
+                Heliporto heliport = _heliportBuffer[i];
                 if (heliport == null || !_bridge.BelongsToTeam(heliport))
                 {
                     continue;
@@ -1729,6 +1734,7 @@ namespace Hegemonia.AI.BrainMaster
     public sealed class SquadService
     {
         private readonly Dictionary<string, IA_SquadData> _squads = new Dictionary<string, IA_SquadData>();
+        private readonly HashSet<int> _dedupeBuffer = new HashSet<int>();
 
         public IA_SquadData UpsertSquad(string squadId, IA_SquadRole role, List<GameObject> units)
         {
@@ -1745,12 +1751,13 @@ namespace Hegemonia.AI.BrainMaster
 
             squad.Role = role;
             squad.Units.Clear();
+            _dedupeBuffer.Clear();
             if (units != null)
             {
                 for (int i = 0; i < units.Count; i++)
                 {
                     GameObject unit = units[i];
-                    if (unit != null && !squad.Units.Contains(unit))
+                    if (unit != null && _dedupeBuffer.Add(unit.GetInstanceID()))
                     {
                         squad.Units.Add(unit);
                     }
@@ -1808,9 +1815,23 @@ namespace Hegemonia.AI.BrainMaster
 
     public sealed class CommandService
     {
+        private sealed class AttackSystemsCacheEntry
+        {
+            public ControleUnidade Controller;
+            public LancadorMisselCaca AirLauncher;
+            public Helicoptero Helicopter;
+            public ControleAviao ModernAircraft;
+            public ControleSubmarino Submarine;
+            public SistemaDeTiro[] DirectWeapons = new SistemaDeTiro[0];
+            public LancadorNaval[] NavalLaunchers = new LancadorNaval[0];
+        }
+
         private readonly IA_BackendBridge _bridge;
         private readonly Dictionary<int, Vector3> _lastDestinationByUnit = new Dictionary<int, Vector3>();
         private readonly Dictionary<int, float> _lastOrderTimeByUnit = new Dictionary<int, float>();
+        private readonly Dictionary<int, AttackSystemsCacheEntry> _attackSystemsByUnit = new Dictionary<int, AttackSystemsCacheEntry>();
+        private readonly Dictionary<int, Vector3> _lastAttackAimByUnit = new Dictionary<int, Vector3>();
+        private readonly Dictionary<int, float> _lastAttackArmTimeByUnit = new Dictionary<int, float>();
 
         public CommandService(IA_BackendBridge bridge)
         {
@@ -1986,7 +2007,7 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                Vector3 slotDestination = ComputeAttackFormationDestination(unit, formationAnchor, target, i, total);
+                Vector3 slotDestination = ComputeAttackFormationDestination(unit, payload.Units, formationAnchor, target, i, total);
                 PrepareUnitForAttack(unit, payload.Target, target);
                 bool issuedMove = TryIssueMove(unit, slotDestination);
                 bool armed = ArmUnitForAttack(unit, payload.Target, target);
@@ -2090,7 +2111,7 @@ namespace Hegemonia.AI.BrainMaster
             return true;
         }
 
-        private static void PrepareUnitForAttack(GameObject unit, Transform target, Vector3 targetPosition)
+        private void PrepareUnitForAttack(GameObject unit, Transform target, Vector3 targetPosition)
         {
             if (unit == null)
             {
@@ -2098,20 +2119,20 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Vector3 desired = target != null ? target.position : targetPosition;
-
-            LancadorMisselCaca airLauncher = unit.GetComponent<LancadorMisselCaca>();
+            AttackSystemsCacheEntry cache = GetOrBuildAttackCache(unit);
+            LancadorMisselCaca airLauncher = cache.AirLauncher;
             if (airLauncher != null)
             {
                 airLauncher.modoPassivo = false;
             }
 
-            Helicoptero helicopter = unit.GetComponent<Helicoptero>();
+            Helicoptero helicopter = cache.Helicopter;
             if (helicopter != null)
             {
                 helicopter.modoCombateAtivo = true;
             }
 
-            ControleAviao modernAircraft = unit.GetComponent<ControleAviao>();
+            ControleAviao modernAircraft = cache.ModernAircraft;
             if (modernAircraft != null)
             {
                 if (desired.y < 60f)
@@ -2125,21 +2146,36 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
-        private static bool ArmUnitForAttack(GameObject unit, Transform target, Vector3 targetPosition)
+        private bool ArmUnitForAttack(GameObject unit, Transform target, Vector3 targetPosition)
         {
             if (unit == null)
             {
                 return false;
             }
 
+            int id = unit.GetInstanceID();
+            float now = Time.time;
+            Vector3 flatTarget = Flatten(targetPosition);
+            Vector3 lastAim;
+            float lastArmTime;
+            bool targetRecentlyArmed = _lastAttackAimByUnit.TryGetValue(id, out lastAim)
+                                       && _lastAttackArmTimeByUnit.TryGetValue(id, out lastArmTime)
+                                       && now - lastArmTime <= 1.25f
+                                       && Vector3.Distance(Flatten(lastAim), flatTarget) <= Mathf.Max(8f, GetNearThreshold(unit) * 1.5f);
+            if (targetRecentlyArmed)
+            {
+                return false;
+            }
+
             bool armed = false;
-            ControleUnidade controller = unit.GetComponent<ControleUnidade>();
+            AttackSystemsCacheEntry cache = GetOrBuildAttackCache(unit);
+            ControleUnidade controller = cache.Controller;
             if (controller != null && controller.DefinirModoCombate(true))
             {
                 armed = true;
             }
 
-            SistemaDeTiro[] directWeapons = unit.GetComponentsInChildren<SistemaDeTiro>(true);
+            SistemaDeTiro[] directWeapons = cache.DirectWeapons;
             for (int i = 0; i < directWeapons.Length; i++)
             {
                 SistemaDeTiro weapon = directWeapons[i];
@@ -2157,7 +2193,7 @@ namespace Hegemonia.AI.BrainMaster
                 armed = true;
             }
 
-            LancadorNaval[] navalLaunchers = unit.GetComponentsInChildren<LancadorNaval>(true);
+            LancadorNaval[] navalLaunchers = cache.NavalLaunchers;
             for (int i = 0; i < navalLaunchers.Length; i++)
             {
                 LancadorNaval launcher = navalLaunchers[i];
@@ -2170,15 +2206,75 @@ namespace Hegemonia.AI.BrainMaster
                 armed = true;
             }
 
-            ControleSubmarino submarine = unit.GetComponent<ControleSubmarino>();
+            ControleSubmarino submarine = cache.Submarine;
             if (submarine != null)
             {
                 submarine.DefinirModoOperacao(ControleSubmarino.ModoOperacao.Automatico, false);
-                submarine.DispararMisselIA(targetPosition);
-                armed = true;
+                if (submarine.PodeAtacarIA())
+                {
+                    submarine.DispararMisselIA(targetPosition);
+                    armed = true;
+                }
             }
 
+            _lastAttackAimByUnit[id] = targetPosition;
+            _lastAttackArmTimeByUnit[id] = now;
             return armed;
+        }
+
+        private AttackSystemsCacheEntry GetOrBuildAttackCache(GameObject unit)
+        {
+            int id = unit.GetInstanceID();
+            AttackSystemsCacheEntry cache;
+            if (_attackSystemsByUnit.TryGetValue(id, out cache) && !NeedsAttackCacheRefresh(cache))
+            {
+                return cache;
+            }
+
+            cache = new AttackSystemsCacheEntry
+            {
+                Controller = unit.GetComponent<ControleUnidade>(),
+                AirLauncher = unit.GetComponent<LancadorMisselCaca>(),
+                Helicopter = unit.GetComponent<Helicoptero>(),
+                ModernAircraft = unit.GetComponent<ControleAviao>(),
+                Submarine = unit.GetComponent<ControleSubmarino>(),
+                DirectWeapons = unit.GetComponentsInChildren<SistemaDeTiro>(true),
+                NavalLaunchers = unit.GetComponentsInChildren<LancadorNaval>(true)
+            };
+
+            _attackSystemsByUnit[id] = cache;
+            return cache;
+        }
+
+        private static bool NeedsAttackCacheRefresh(AttackSystemsCacheEntry cache)
+        {
+            if (cache == null)
+            {
+                return true;
+            }
+
+            if (cache.DirectWeapons == null || cache.NavalLaunchers == null)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < cache.DirectWeapons.Length; i++)
+            {
+                if (cache.DirectWeapons[i] == null)
+                {
+                    return true;
+                }
+            }
+
+            for (int i = 0; i < cache.NavalLaunchers.Length; i++)
+            {
+                if (cache.NavalLaunchers[i] == null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool TryIssueSpecializedMove(GameObject unit, Vector3 destination)
@@ -2269,7 +2365,7 @@ namespace Hegemonia.AI.BrainMaster
             return anchor + offset;
         }
 
-        private static Vector3 ComputeAttackFormationDestination(GameObject unit, Vector3 anchor, Vector3 target, int index, int total)
+        private static Vector3 ComputeAttackFormationDestination(GameObject unit, List<GameObject> fleet, Vector3 anchor, Vector3 target, int index, int total)
         {
             string normalizedName = unit != null ? IA_Text.Normalize(unit.name) : string.Empty;
             if (unit == null || total <= 1 || !IsNavalUnit(unit, normalizedName))
@@ -2293,16 +2389,88 @@ namespace Hegemonia.AI.BrainMaster
 
             axis.Normalize();
             Vector3 lateral = Vector3.Cross(Vector3.up, axis).normalized;
-            float spacing = Mathf.Max(20f, GetFormationSpacing(unit) * 1.35f);
-            int columns = Mathf.Clamp(Mathf.CeilToInt(Mathf.Sqrt(total)), 2, 4);
-            int row = index / columns;
-            int column = index % columns;
-            float centeredColumn = column - ((columns - 1) * 0.5f);
-            float stagger = (row % 2 == 0) ? 0f : spacing * 0.5f;
+            int flagshipIndex = FindFleetFlagshipIndex(fleet);
+            bool hasFlagship = flagshipIndex >= 0 && flagshipIndex < total;
+            float spacing = 150f;
 
-            Vector3 offset = (lateral * ((centeredColumn * spacing) + stagger))
-                - (axis * (row * spacing * 0.9f));
+            if (hasFlagship)
+            {
+                if (index == flagshipIndex)
+                {
+                    return anchor;
+                }
+
+                int escortIndex = index > flagshipIndex ? index - 1 : index;
+                int escortTotal = Mathf.Max(1, total - 1);
+                if (escortTotal <= 2)
+                {
+                    float side = escortIndex == 0 ? -1f : 1f;
+                    return anchor + (lateral * side * spacing);
+                }
+
+                int ring = 1;
+                int slotInRing = escortIndex;
+                int capacity = 6;
+                while (slotInRing >= capacity)
+                {
+                    slotInRing -= capacity;
+                    ring++;
+                    capacity = ring * 6;
+                }
+
+                float angleStep = 360f / Mathf.Max(1, capacity);
+                float angle = (slotInRing * angleStep) + (ring % 2 == 0 ? angleStep * 0.5f : 0f);
+                Vector3 radial = (lateral * Mathf.Cos(angle * Mathf.Deg2Rad)) + (axis * Mathf.Sin(angle * Mathf.Deg2Rad));
+                return anchor + (radial.normalized * spacing * ring);
+            }
+
+            int center = (total - 1) / 2;
+            float centeredIndex = index - ((total - 1) * 0.5f);
+            Vector3 offset = lateral * (centeredIndex * spacing);
+            if (total > 5)
+            {
+                int row = Mathf.Abs(index - center) / 3;
+                offset -= axis * (row * 55f);
+            }
             return anchor + offset;
+        }
+
+        private static int FindFleetFlagshipIndex(List<GameObject> fleet)
+        {
+            if (fleet == null)
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < fleet.Count; i++)
+            {
+                if (IsFleetFlagship(fleet[i]))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private static bool IsFleetFlagship(GameObject unit)
+        {
+            if (unit == null)
+            {
+                return false;
+            }
+
+            if (unit.GetComponent<GerenciadorPortaAvioes>() != null)
+            {
+                return true;
+            }
+
+            string n = IA_Text.Normalize(unit.name);
+            return n.Contains("sovereign")
+                   || n.Contains("porta avioes")
+                   || n.Contains("porta-avioes")
+                   || n.Contains("portaavioes")
+                   || n.Contains("carrier");
         }
 
         private static float GetFormationSpacing(GameObject unit)
@@ -2315,7 +2483,7 @@ namespace Hegemonia.AI.BrainMaster
 
             if (IsNavalUnit(unit, n))
             {
-                return 24f;
+                return 42f;
             }
 
             if (n.Contains("truck") || n.Contains("caminhao") || n.Contains("transporte") || n.Contains("hover"))
@@ -2341,7 +2509,7 @@ namespace Hegemonia.AI.BrainMaster
 
             if (IsNavalUnit(unit, n))
             {
-                return 18f;
+                return 60f;
             }
 
             if (n.Contains("truck") || n.Contains("caminhao") || n.Contains("transporte") || n.Contains("hover"))
@@ -2374,12 +2542,20 @@ namespace Hegemonia.AI.BrainMaster
         {
             return unit.GetComponent<ControleNavioRealista>() != null
                    || unit.GetComponent<ControleSubmarino>() != null
+                   || unit.GetComponent<GerenciadorPortaAvioes>() != null
                    || normalizedName.Contains("navio")
                    || normalizedName.Contains("sub")
                    || normalizedName.Contains("corveta")
                    || normalizedName.Contains("destroy")
                    || normalizedName.Contains("lancha")
-                   || normalizedName.Contains("arrowhead");
+                   || normalizedName.Contains("arrowhead")
+                   || normalizedName.Contains("ironclad")
+                   || normalizedName.Contains("vindicator")
+                   || normalizedName.Contains("dominion")
+                   || normalizedName.Contains("liberty")
+                   || normalizedName.Contains("sovereign")
+                   || normalizedName.Contains("carrier")
+                   || normalizedName.Contains("porta");
         }
 
         private static Vector3 Flatten(Vector3 value)

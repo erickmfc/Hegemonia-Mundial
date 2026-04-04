@@ -96,7 +96,7 @@ public class Torreta : MonoBehaviour
         // Proteção extra: Só atira se tiver munição carregada
         if(prefabProjetil == null) return;
 
-        GameObject bala = Instantiate(prefabProjetil, pontoTiro.position, pontoTiro.rotation);
+        GameObject bala = PoolDeObjetosCombate.Spawn(prefabProjetil, pontoTiro.position, pontoTiro.rotation);
         
         // Verifica e adiciona componente Projetil se faltar
         Projetil scriptBala = bala.GetComponent<Projetil>();

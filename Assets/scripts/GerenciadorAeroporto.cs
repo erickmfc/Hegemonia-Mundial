@@ -20,6 +20,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     [Header("Gestão de Frota e Status")]
     public List<ControleAviao> avioesNoPatio = new List<ControleAviao>();
     public List<ControleAviao> avioesNoHangar = new List<ControleAviao>();
+    public List<C700TransporteAereo> transportesC700NoPatio = new List<C700TransporteAereo>();
 
     [Header("Interface (UI)")]
     public GameObject menuAeroportoUI;
@@ -28,7 +29,9 @@ public class GerenciadorAeroporto : MonoBehaviour
     private int abaAtual = 0; 
     private Vector2 scrollPosFrota;
     private Vector2 scrollPosHangar;
+    private Vector2 scrollPosC700;
     [HideInInspector] public ControleAviao aviaoSelecionadoParaMissao;
+    [HideInInspector] public C700TransporteAereo c700SelecionadoParaMissao;
 
     // Listas internas de Waypoints lidas no Awake
     [HideInInspector] public List<Transform> waypointsPatio = new List<Transform>();
@@ -166,14 +169,13 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (Construtor.EmModoConstrucaoAtivo)
         {
-            if (menuAtivo || aviaoSelecionadoParaMissao != null)
+            if (menuAtivo || aviaoSelecionadoParaMissao != null || c700SelecionadoParaMissao != null)
             {
                 CancelarInteracaoPorConstrucao();
             }
             return;
         }
 
-        // TECLA DE ATALHO: Abre e Fecha o Centro de Controle (Apenas Toggle)
         if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Alpha7))
         {
             if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
@@ -181,34 +183,60 @@ public class GerenciadorAeroporto : MonoBehaviour
 
             menuAtivo = !menuAtivo;
             if (menuAeroportoUI != null) menuAeroportoUI.SetActive(menuAtivo);
-            
             Debug.Log("[Aeroporto] Centro de Controle " + (menuAtivo ? "ABERTO" : "FECHADO"));
         }
 
-        // Aguarda clique no MAPA para mandar o avião (Radar)
+        if (c700SelecionadoParaMissao != null)
+        {
+            if (c700SelecionadoParaMissao.AguardandoDestinoAereo && Input.GetMouseButtonDown(1))
+            {
+                if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+
+                if (cameraPrincipal == null) return;
+                Ray rC700 = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
+                Vector3 pontoAlvoC700 = Vector3.zero;
+
+                if (Physics.Raycast(rC700, out RaycastHit hitC700, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                {
+                    pontoAlvoC700 = hitC700.point;
+                }
+                else
+                {
+                    UnityEngine.Plane plano = new UnityEngine.Plane(Vector3.up, Vector3.zero);
+                    if (plano.Raycast(rC700, out float distC700))
+                    {
+                        pontoAlvoC700 = rC700.GetPoint(distC700);
+                    }
+                }
+
+                if (pontoAlvoC700 != Vector3.zero)
+                {
+                    c700SelecionadoParaMissao.ReceberOrdemMover(pontoAlvoC700);
+                    CriarSinalizador(pontoAlvoC700, c700SelecionadoParaMissao);
+                    c700SelecionadoParaMissao = null;
+                }
+            }
+        }
+
         if (aviaoSelecionadoParaMissao == null) return;
-        
+
         bool esperandoAutorizacao = aviaoSelecionadoParaMissao.aguardandoCliqueRadar;
         bool emVooConstante = (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao);
 
         if (!esperandoAutorizacao && !emVooConstante) return;
         if (!Input.GetMouseButtonDown(1)) return;
-        
-        // Tenta impedir clique se mouse estiver em cima de UI nativa da engine
         if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
 
         if (cameraPrincipal == null) return;
         Ray r = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
         Vector3 pontoAlvo = Vector3.zero;
 
-        // Tenta Raycast físico primeiro (para pegar ilhas, navios, etc.)
         if (Physics.Raycast(r, out RaycastHit hit, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
         {
             pontoAlvo = hit.point;
         }
         else
         {
-            // FALLBACK PARA MAR ABERTO: Se não bateu em nada físico, assume que clicou no mar (Plano Y=0)
             UnityEngine.Plane marPlano = new UnityEngine.Plane(Vector3.up, Vector3.zero);
             float distanciaIntersecao;
             if (marPlano.Raycast(r, out distanciaIntersecao))
@@ -217,7 +245,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
             else
             {
-                return; // Realmente não clicou em lugar nenhum válido
+                return;
             }
         }
 
@@ -230,17 +258,14 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
         else
         {
-            // Apenas atualiza o GPS do voo ao vivo!
             aviaoSelecionadoParaMissao.centroDaPatrulha = pontoAlvo;
             aviaoSelecionadoParaMissao.alvoGPSVoo = pontoAlvo;
             CacaVooRealista cv = aviaoSelecionadoParaMissao.GetComponent<CacaVooRealista>();
             if (cv != null) cv.alvoGPS = pontoAlvo;
             Debug.Log($"[Aeroporto] Rota Alterada! {aviaoSelecionadoParaMissao.gameObject.name} mudando curso para: {pontoAlvo}");
         }
-        
+
         CriarSinalizador(pontoAlvo, aviaoSelecionadoParaMissao);
-        
-        // Limpa a seleção para não combar acidentalmente depois
         aviaoSelecionadoParaMissao = null;
     }
 
@@ -251,7 +276,13 @@ public class GerenciadorAeroporto : MonoBehaviour
             aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
         }
 
+        if (c700SelecionadoParaMissao != null)
+        {
+            c700SelecionadoParaMissao.CancelarModoAereo();
+        }
+
         aviaoSelecionadoParaMissao = null;
+        c700SelecionadoParaMissao = null;
         menuAtivo = false;
 
         if (menuAeroportoUI != null)
@@ -260,7 +291,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
-    private void CriarSinalizador(Vector3 pos, ControleAviao aviao)
+    private void CriarSinalizador(Vector3 pos, Component aviao)
     {
         // Cria um feixe/pilar de cristal alto indicando o ponto ordenado
         GameObject sinal = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -270,8 +301,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         
         // Pinta da cor do esquadrão ou de Turquesa 
         Color c = new Color(0, 1, 1, 0.4f);
-        ControleAviaoCaca cc = aviao.GetComponent<ControleAviaoCaca>();
-        if (cc != null) c = new Color(cc.corIdentificacao.r, cc.corIdentificacao.g, cc.corIdentificacao.b, 0.4f);
+        if (aviao != null)
+        {
+            ControleAviaoCaca cc = aviao.GetComponent<ControleAviaoCaca>();
+            if (cc != null) c = new Color(cc.corIdentificacao.r, cc.corIdentificacao.g, cc.corIdentificacao.b, 0.4f);
+        }
         
         Renderer rend = sinal.GetComponent<Renderer>();
         if (rend != null)
@@ -326,35 +360,22 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (idAviao.teamID > 1) 
             {
                 // Busca o general correto que comanda este time específico
-                IA_General_Pro[] todosGenerais = UnityEngine.Object.FindObjectsByType<IA_General_Pro>(FindObjectsSortMode.None);
-                for (int i = 0, count = todosGenerais.Length; i < count; i++)
+                IA_General_Pro gen = IA_ComandanteRegistry.GetGeneralByTeam(idAviao.teamID);
+                if (gen != null)
                 {
-                    IA_General_Pro gen = todosGenerais[i];
-                    if (gen == null) continue;
-
-                    int teamIDDoGeneral = -1;
-                    
-                    IdentidadeUnidade genIdU = gen.GetComponent<IdentidadeUnidade>();
-                    if (genIdU == null) genIdU = gen.GetComponentInParent<IdentidadeUnidade>();
-                    
-                    if (genIdU != null) 
-                    {
-                        teamIDDoGeneral = genIdU.teamID;
-                    }
-                    else
-                    {
-                        IdentidadeIA genIdIA = gen.GetComponent<IdentidadeIA>();
-                        if (genIdIA == null) genIdIA = gen.GetComponentInParent<IdentidadeIA>();
-                        if (genIdIA != null) teamIDDoGeneral = genIdIA.teamID;
-                    }
-
-                    if (teamIDDoGeneral == idAviao.teamID)
-                    {
-                        gen.RegistrarUnidade(aeronaveNascente);
-                        break; 
-                    }
+                    gen.RegistrarUnidade(aeronaveNascente);
                 }
+
+                DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
             }
+        }
+
+        C700TransporteAereo c700 = aeronaveNascente.GetComponent<C700TransporteAereo>();
+        if (c700 != null)
+        {
+            c700.DefinirAeroportoOrigem(this);
+            StartCoroutine(RotinaRecebimentoC700(c700));
+            return;
         }
 
         ControleAviao controleDaNave = aeronaveNascente.GetComponent<ControleAviao>();
@@ -394,6 +415,49 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
+    private IEnumerator RotinaRecebimentoC700(C700TransporteAereo aviao)
+    {
+        if (aviao == null)
+        {
+            yield break;
+        }
+
+        if (wpPronto != null)
+        {
+            yield return StartCoroutine(aviao.TaxiarAteTransform(wpPronto));
+        }
+
+        if (aviao == null)
+        {
+            yield break;
+        }
+
+        Transform paradaGrande = ObterParadaGrandePreferencial(false);
+        if (paradaGrande == null)
+        {
+            paradaGrande = ObterPrimeiraVagaLivre();
+        }
+        if (paradaGrande == null)
+        {
+            paradaGrande = ObterParadaGrandePreferencial(true);
+        }
+
+        if (paradaGrande != null)
+        {
+            aviao.RegistrarPontoEstacionamento(paradaGrande);
+            if (!transportesC700NoPatio.Contains(aviao)) transportesC700NoPatio.Add(aviao);
+            yield return StartCoroutine(aviao.TaxiarAteTransform(paradaGrande));
+            aviao.FinalizarPosicionamentoNoPatio(paradaGrande);
+        }
+        else
+        {
+            aviao.transform.position = (wpPronto != null) ? wpPronto.position : transform.position;
+            aviao.transform.rotation = (wpPronto != null) ? wpPronto.rotation : transform.rotation;
+            if (!transportesC700NoPatio.Contains(aviao)) transportesC700NoPatio.Add(aviao);
+            aviao.FinalizarPosicionamentoNoPatio((wpPronto != null) ? wpPronto : transform);
+        }
+    }
+
     public Transform ObterPrimeiraVagaLivre()
     {
         if (waypointsPatio == null || waypointsPatio.Count == 0) return null;
@@ -409,9 +473,83 @@ public class GerenciadorAeroporto : MonoBehaviour
         for (int i = 0, count = waypointsPatio.Count; i < count; i++)
         {
             Transform wp = waypointsPatio[i];
-            if (wp != null && !_vagasOcupadas.Contains(wp)) return wp;
+            if (wp == null || _vagasOcupadas.Contains(wp)) continue;
+
+            bool ocupadoPorC700 = false;
+            Collider[] hits = Physics.OverlapSphere(wp.position, 10f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            for (int h = 0; h < hits.Length; h++)
+            {
+                if (hits[h] == null) continue;
+
+                C700TransporteAereo transporte = hits[h].GetComponentInParent<C700TransporteAereo>();
+                if (transporte != null)
+                {
+                    ocupadoPorC700 = true;
+                    break;
+                }
+            }
+
+            if (!ocupadoPorC700) return wp;
         }
         return null;
+    }
+
+    public Transform ObterParadaGrandePreferencial(bool aceitarOcupada = false)
+    {
+        Transform encontrada = null;
+
+        if (waypointsPatio != null)
+        {
+            for (int i = 0; i < waypointsPatio.Count; i++)
+            {
+                Transform wp = waypointsPatio[i];
+                if (wp != null && wp.name.ToLowerInvariant().Contains("parada_grande"))
+                {
+                    encontrada = wp;
+                    break;
+                }
+            }
+        }
+
+        if (encontrada == null)
+        {
+            Transform[] filhos = GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < filhos.Length; i++)
+            {
+                if (filhos[i] != null && filhos[i].name.ToLowerInvariant().Contains("parada_grande"))
+                {
+                    encontrada = filhos[i];
+                    break;
+                }
+            }
+        }
+
+        if (encontrada == null)
+        {
+            return null;
+        }
+
+        if (aceitarOcupada)
+        {
+            return encontrada;
+        }
+
+        Collider[] hits = Physics.OverlapSphere(encontrada.position, 10f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            if (hits[i] == null)
+            {
+                continue;
+            }
+
+            C700TransporteAereo transporte = hits[i].GetComponentInParent<C700TransporteAereo>();
+            if (transporte != null)
+            {
+                return null;
+            }
+        }
+
+        return encontrada;
     }
 
     // --- HELPER: Extrai texto formatado de um avião para OnGUI (evita código repetido) ---
@@ -447,6 +585,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         // --- SISTEMA DE FAXINA (Fix para os fantasmas no pátio) ---
         avioesNoPatio.RemoveAll(a => a == null);
         avioesNoHangar.RemoveAll(a => a == null);
+        transportesC700NoPatio.RemoveAll(a => a == null);
 
         float xMenu = (Screen.width / 2f) - 350f - (Screen.width * 0.1f);
         if (xMenu < 10f) xMenu = 10f;
@@ -495,7 +634,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         // === COLUNA ESQUERDA: FROTA ATIVA ===
         GUILayout.BeginVertical("box", GUILayout.Width(320));
-        GUILayout.Label($"<b>FROTA ATIVA ({avioesNoPatio.Count})</b>");
+        GUILayout.Label($"<b>FROTA ATIVA ({avioesNoPatio.Count + transportesC700NoPatio.Count})</b>");
         
         scrollPosFrota = GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(200));
         for (int i = 0, count = avioesNoPatio.Count; i < count; i++)
@@ -659,6 +798,208 @@ public class GerenciadorAeroporto : MonoBehaviour
                  GUI.enabled = true;
             }
         }
+
+        DesenharPainelC700();
+    }
+
+    private void DesenharPainelC700()
+    {
+        if (transportesC700NoPatio.Count == 0)
+        {
+            return;
+        }
+
+        if (c700SelecionadoParaMissao == null && transportesC700NoPatio.Count == 1)
+        {
+            c700SelecionadoParaMissao = transportesC700NoPatio[0];
+        }
+
+        GUILayout.Space(12);
+        GUILayout.BeginVertical("box");
+        GUILayout.Label("<b>TRANSPORTE C700</b>");
+        scrollPosC700 = GUILayout.BeginScrollView(scrollPosC700, GUILayout.Height(300));
+
+        for (int i = 0; i < transportesC700NoPatio.Count; i++)
+        {
+            C700TransporteAereo transporte = transportesC700NoPatio[i];
+            if (transporte == null) continue;
+
+            string nomeLimpo = ObterInfoAviao(transporte, out string corCristal, out string vidaStr);
+            string corEstado = transporte.EstaNoSolo ? "green" : "orange";
+            if (GUILayout.Button($"<color={corCristal}>■</color> {nomeLimpo}{vidaStr} [<color={corEstado}>{transporte.estadoAtual}</color>]", GUILayout.Height(28)))
+            {
+                c700SelecionadoParaMissao = transporte;
+                aviaoSelecionadoParaMissao = null;
+            }
+        }
+
+        if (c700SelecionadoParaMissao != null && transportesC700NoPatio.Contains(c700SelecionadoParaMissao))
+        {
+            GUILayout.Space(8);
+            string nomeSelecionado = ObterInfoAviao(c700SelecionadoParaMissao, out string corCristalSelecionado, out string vidaSelecionada);
+            GUILayout.Label($"<b>SELECIONADO:</b> <color={corCristalSelecionado}>■</color> {nomeSelecionado}{vidaSelecionada}");
+
+            GUILayout.Label($"Estado: {c700SelecionadoParaMissao.estadoAtual}");
+            GUILayout.Label($"Carga real: {c700SelecionadoParaMissao.QuantidadeCargaAtual}/{c700SelecionadoParaMissao.CapacidadeCargaAtual} | Manifesto: {c700SelecionadoParaMissao.QuantidadeManifestoTotal}");
+
+            if (c700SelecionadoParaMissao.TemDestinoVisual)
+            {
+                Vector3 destinoAtual = c700SelecionadoParaMissao.DestinoVisualAtual;
+                GUILayout.Label($"Destino: X {destinoAtual.x:0} / Z {destinoAtual.z:0}");
+            }
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Selecionar no mapa", GUILayout.Height(30)))
+            {
+                SelecionarTransporteNoMapa(c700SelecionadoParaMissao);
+            }
+
+            GUI.enabled = c700SelecionadoParaMissao.EstaNoSolo;
+            if (GUILayout.Button("Puxar tropas", GUILayout.Height(30)))
+            {
+                c700SelecionadoParaMissao.PuxarUnidadesProximas();
+            }
+            GUI.enabled = true;
+            GUILayout.EndHorizontal();
+
+            if (c700SelecionadoParaMissao.EstaNoSolo)
+            {
+                if (c700SelecionadoParaMissao.AguardandoDestinoAereo)
+                {
+                    GUILayout.Label("<color=yellow>MODO AEREO ATIVO. FECHE O MENU E CLIQUE COM O BOTAO DIREITO NO MAPA.</color>");
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Cancelar ordem", GUILayout.Height(34)))
+                    {
+                        c700SelecionadoParaMissao.CancelarModoAereo();
+                        c700SelecionadoParaMissao = null;
+                    }
+                    if (GUILayout.Button("Fechar menu", GUILayout.Height(34)))
+                    {
+                        menuAtivo = false;
+                        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                    }
+                    GUILayout.EndHorizontal();
+                }
+                else
+                {
+                    if (GUILayout.Button("Preparar decolagem / destino", GUILayout.Height(40)))
+                    {
+                        c700SelecionadoParaMissao.PrepararMissaoAerea();
+                        SelecionarTransporteNoMapa(c700SelecionadoParaMissao);
+                        menuAtivo = false;
+                        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                    }
+                }
+
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Desembarcar carga", GUILayout.Height(34)))
+                {
+                    c700SelecionadoParaMissao.DesembarcarTudo();
+                }
+                if (GUILayout.Button("Desembarcar manifesto", GUILayout.Height(34)))
+                {
+                    c700SelecionadoParaMissao.DesembarcarManifestoConfigurado();
+                }
+                GUILayout.EndHorizontal();
+
+                if (GUILayout.Button("Limpar manifesto", GUILayout.Height(30)))
+                {
+                    c700SelecionadoParaMissao.LimparManifestoConfigurado();
+                }
+            }
+            else
+            {
+                GUILayout.Label("<color=cyan>C700 em voo ou manobra.</color>");
+                if (GUILayout.Button("Mandar retornar", GUILayout.Height(40)))
+                {
+                    c700SelecionadoParaMissao.OrdenarRetornoAoAeroporto();
+                    c700SelecionadoParaMissao = null;
+                    menuAtivo = false;
+                    if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                }
+            }
+
+            DesenharManifestoC700(c700SelecionadoParaMissao);
+        }
+
+        GUILayout.EndScrollView();
+        GUILayout.EndVertical();
+    }
+
+    private void DesenharManifestoC700(C700TransporteAereo transporte)
+    {
+        if (transporte == null || transporte.ManifestoConfigurado == null || transporte.ManifestoConfigurado.Count == 0)
+        {
+            return;
+        }
+
+        GUILayout.Space(8);
+        GUILayout.Label("<b>MANIFESTO CONFIGURAVEL</b>");
+
+        for (int i = 0; i < transporte.ManifestoConfigurado.Count; i++)
+        {
+            C700TransporteAereo.EntradaManifesto entrada = transporte.ManifestoConfigurado[i];
+            if (entrada == null)
+            {
+                continue;
+            }
+
+            int ajusteRapido = Mathf.Max(1, entrada.ajusteRapido);
+            int ajustePesado = Mathf.Max(ajusteRapido, entrada.ajustePesado);
+
+            GUILayout.BeginVertical("box");
+            GUILayout.Label($"{entrada.nome}: {entrada.quantidade}");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("-" + ajustePesado, GUILayout.Height(24)))
+            {
+                transporte.AjustarManifesto(i, -ajustePesado);
+            }
+            if (GUILayout.Button("-" + ajusteRapido, GUILayout.Height(24)))
+            {
+                transporte.AjustarManifesto(i, -ajusteRapido);
+            }
+            if (GUILayout.Button("+" + ajusteRapido, GUILayout.Height(24)))
+            {
+                transporte.AjustarManifesto(i, ajusteRapido);
+            }
+            if (GUILayout.Button("+" + ajustePesado, GUILayout.Height(24)))
+            {
+                transporte.AjustarManifesto(i, ajustePesado);
+            }
+            GUILayout.EndHorizontal();
+
+            if (entrada.prefabDesembarque == null)
+            {
+                GUILayout.Label("Prefab de desembarque nao configurado.");
+            }
+            GUILayout.EndVertical();
+        }
+    }
+
+    private void SelecionarTransporteNoMapa(C700TransporteAereo transporte)
+    {
+        if (transporte == null)
+        {
+            return;
+        }
+
+        ControleUnidade controle = transporte.GetComponent<ControleUnidade>();
+        if (controle == null)
+        {
+            return;
+        }
+
+        GerenteSelecao gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
+        if (gerenteSelecao != null)
+        {
+            gerenteSelecao.DeselecionarTudo();
+            if (!gerenteSelecao.unidadesSelecionadas.Contains(controle))
+            {
+                gerenteSelecao.unidadesSelecionadas.Add(controle);
+            }
+        }
+
+        controle.DefinirSelecao(true);
     }
 
     private void ExecutarModoRadar(bool deveSerPassivo)

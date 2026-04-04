@@ -1,97 +1,120 @@
+using System.Collections.Generic;
+using Hegemonia.AI.BrainMaster;
 using UnityEngine;
 
 public class MissilTeleguiado : MonoBehaviour
 {
+    private static readonly List<ControleAviao> bufferAvioes = new List<ControleAviao>(64);
+
     private Transform alvo;
-    public float velocidade = 80f; // Aumentado de 50 para 80
+    public float velocidade = 80f;
     public int dano = 20;
-    public float distanciaDeImpacto = 2f; // Distância considerada como "acertou"
+    public float distanciaDeImpacto = 2f;
+    public float tempoDeVida = 15f;
+    private float tempoExpirar;
+
+    void OnEnable()
+    {
+        IA_CombatTelemetry.RegisterMissile();
+        alvo = null;
+        tempoExpirar = Time.time + tempoDeVida;
+    }
+
+    void OnDisable()
+    {
+        IA_CombatTelemetry.UnregisterMissile();
+        alvo = null;
+    }
 
     public void DefinirAlvo(Transform novoAlvo)
     {
-        alvo = novoAlvo;
-        Destroy(gameObject, 15f); // Aumentado de 5s para 15s (tempo suficiente)
+        alvo = ControleSubmarino.PodeSerAlvoConvencional(novoAlvo) ? novoAlvo : null;
+        tempoExpirar = Time.time + tempoDeVida;
     }
 
     void Update()
     {
-        // Se perdeu o alvo, tenta encontrar outro
-        if (alvo == null)
+        if (Time.time >= tempoExpirar)
         {
+            Liberar();
+            return;
+        }
+
+        if (alvo == null || !ControleSubmarino.PodeSerAlvoConvencional(alvo))
+        {
+            alvo = null;
             BuscarNovoAlvo();
-            
-            // Se ainda não tem alvo, destrói o míssil
+
             if (alvo == null)
             {
-                Destroy(gameObject);
+                Liberar();
                 return;
             }
         }
 
-        // Voar até o alvo
         Vector3 direcao = alvo.position - transform.position;
         float distancia = direcao.magnitude;
         float distanciaFrame = velocidade * Time.deltaTime;
 
-        // Verifica se chegou perto o suficiente para causar dano
         if (distancia <= distanciaDeImpacto)
         {
-            // Bateu no alvo! Causa dano
             AplicarDano();
-            Destroy(gameObject);
+            Liberar();
             return;
         }
 
-        // Move o míssil em direção ao alvo
         transform.Translate(direcao.normalized * distanciaFrame, Space.World);
         transform.LookAt(alvo);
     }
 
     void BuscarNovoAlvo()
     {
-        // Procura inimigos próximos
-        GameObject[] inimigos = GameObject.FindGameObjectsWithTag("Aereo");
-        
-        float menorDistancia = 100f; // Busca apenas em 100 unidades de raio
-        GameObject novoInimigo = null;
+        bufferAvioes.Clear();
+        RegistroEntidadesJogo.FillAvioes(bufferAvioes);
 
-        foreach (GameObject inimigo in inimigos)
+        float menorDistancia = 100f;
+        Transform novoAlvo = null;
+
+        for (int i = 0; i < bufferAvioes.Count; i++)
         {
-            float dist = Vector3.Distance(transform.position, inimigo.transform.position);
+            ControleAviao aviao = bufferAvioes[i];
+            if (aviao == null || !aviao.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            Transform candidato = aviao.transform;
+            if (!ControleSubmarino.PodeSerAlvoConvencional(candidato))
+            {
+                continue;
+            }
+
+            float dist = Vector3.Distance(transform.position, candidato.position);
             if (dist < menorDistancia)
             {
                 menorDistancia = dist;
-                novoInimigo = inimigo;
+                novoAlvo = candidato;
             }
         }
 
-        if (novoInimigo != null)
-        {
-            alvo = novoInimigo.transform;
-            Debug.Log($"Míssil redirecionado para {alvo.name}!");
-        }
+        alvo = novoAlvo;
     }
 
     void AplicarDano()
     {
         if (alvo == null) return;
 
-        // PRIORIDADE 1: Tenta causar dano em unidades (com SistemaDeDanos)
         SistemaDeDanos sistemaDanos = alvo.GetComponent<SistemaDeDanos>();
         if (sistemaDanos != null)
         {
             sistemaDanos.ReceberDano(dano);
-            Debug.Log($"Míssil causou {dano} de dano em {alvo.name}!");
             return;
         }
 
-        // PRIORIDADE 2: Tenta causar dano em prédios (com script "AtributosPredio")
         AtributosPredio predioAtrib = alvo.GetComponent<AtributosPredio>();
         if (predioAtrib != null)
         {
             predioAtrib.vidaAtual -= dano;
-            Debug.Log($"Míssil causou {dano} de dano no prédio {alvo.name}!");
-            
             if (predioAtrib.vidaAtual <= 0)
             {
                 Destroy(alvo.gameObject);
@@ -99,11 +122,14 @@ public class MissilTeleguiado : MonoBehaviour
             return;
         }
 
-        // FALLBACK: Destrói diretamente
         if (alvo.CompareTag("Aereo") || alvo.CompareTag("Inimigo"))
         {
             Destroy(alvo.gameObject);
-            Debug.Log($"{alvo.name} foi destruído pelo míssil!");
         }
+    }
+
+    private void Liberar()
+    {
+        PoolDeObjetosCombate.Release(gameObject);
     }
 }

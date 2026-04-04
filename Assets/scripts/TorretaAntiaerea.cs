@@ -283,7 +283,7 @@ public class TorretaAntiaerea : MonoBehaviour
         }
 
         // Cria a bala
-        GameObject bala = Instantiate(prefabProjetil, pontoSaida.position, pontoSaida.rotation);
+        GameObject bala = PoolDeObjetosCombate.Spawn(prefabProjetil, pontoSaida.position, pontoSaida.rotation);
         
         // Adiciona as leis da física no tiro
         Projetil p = bala.GetComponent<Projetil>();

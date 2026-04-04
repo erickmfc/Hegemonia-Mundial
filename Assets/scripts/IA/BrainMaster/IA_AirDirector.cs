@@ -7,6 +7,7 @@ namespace Hegemonia.AI.BrainMaster
     {
         private const float ForcedAirStrikeStartSeconds = 60f;
         private readonly IA_Context _context;
+        private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
         private float _nextDecisionTime;
 
         public IA_AirDirector(IA_Context context)
@@ -41,7 +42,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            _nextDecisionTime = now + 1.05f;
+            _nextDecisionTime = now + ResolveDecisionDelay();
             Vector3 baseCenter = _context.WorldState.BaseCenter;
             if (baseCenter == Vector3.zero && _context.Brain != null)
             {
@@ -53,6 +54,25 @@ namespace Hegemonia.AI.BrainMaster
 
             DispatchAirIntercept(baseCenter, airEnemy, groundEnemy, pressureTarget);
             DispatchAirTransport(baseCenter, groundEnemy, pressureTarget, now);
+        }
+
+        private float ResolveDecisionDelay()
+        {
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            if (pressure == null)
+            {
+                return 1.05f;
+            }
+
+            switch (pressure.Estado)
+            {
+                case EstadoCargaIA.Saturado:
+                    return 1.55f;
+                case EstadoCargaIA.EmCombate:
+                    return 1.20f;
+                default:
+                    return 1.05f;
+            }
         }
 
         private void DispatchAirIntercept(Vector3 baseCenter, Transform airEnemy, Transform fallbackEnemy, Vector3 pressureTarget)
@@ -84,12 +104,12 @@ namespace Hegemonia.AI.BrainMaster
                 return hiddenEnemyAnchor;
             }
 
-            List<IA_EnemyObservation> memory = _context.WorldState.GetEnemyMemory(240f);
+            _context.WorldState.FillEnemyMemory(_enemyMemoryBuffer, 240f);
             IA_EnemyObservation best = null;
             float bestScore = float.MinValue;
-            for (int i = 0; i < memory.Count; i++)
+            for (int i = 0; i < _enemyMemoryBuffer.Count; i++)
             {
-                IA_EnemyObservation obs = memory[i];
+                IA_EnemyObservation obs = _enemyMemoryBuffer[i];
                 if (obs == null)
                 {
                     continue;
@@ -237,7 +257,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private static List<GameObject> CloneUnits(List<GameObject> source)
         {
-            var output = new List<GameObject>();
+            var output = source != null ? new List<GameObject>(source.Count) : new List<GameObject>();
             if (source == null)
             {
                 return output;

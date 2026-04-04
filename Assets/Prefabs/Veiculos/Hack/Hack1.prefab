@@ -1049,17 +1049,26 @@ MonoBehaviour:
   tamanhoCartucho: 7
   tempoRecarga: 6
   pecaQueGira: {fileID: 3040230736758447579}
+  canosDaTorreta: {fileID: 0}
   locaisDoTiro:
   - {fileID: 3934974917953374098}
   municaoPrefab: {fileID: 5058724136885039853, guid: 4af361d2ac0c92d43be46d3fdf308162, type: 3}
+  limitarInclinacao: 1
+  elevacaoMinima: -10
+  elevacaoMaxima: 80
   somTiro: {fileID: 8300000, guid: 1f5d14f7476b211498beb3c81883de6e, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
   modoPassivo: 0
+  modoRadar: 0
+  interceptarMisseis: 0
+  usarMisselParaInterceptar: 1
   misselPrefab: {fileID: 0}
   locaisDoMissel: []
   somMissel: {fileID: 0}
   tempoEntreMisseis: 2
+  capacidadeMisseis: 4
+  tempoRecargaMisseis: 10
   municoesPorCano: []
 --- !u!114 &3939550485034843597
 MonoBehaviour:
@@ -1075,6 +1084,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 0}
   selecionado: 0
+  aguardandoVisto: 0
+  vistoAprovado: 0
   velocidadeVoo: 8
   tamanhoSelecao: 2
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
@@ -1082,6 +1093,8 @@ MonoBehaviour:
   corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
   larguraLinha: 0.15
   segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
 --- !u!114 &3790904453063897792
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1097,10 +1110,15 @@ MonoBehaviour:
   vidaMaxima: 1200
   vidaAtual: 1200
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 5134492438154011774, guid: 8e9771c9a19d6f64587fb1735f710a09, type: 3}
   somExplosaoExclusivo: {fileID: 8300000, guid: 1fd31868d68903d4f9e2c4a3b7ef98f3, type: 3}
   tamanhoDoEfeito: 2.2
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 0
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 2.5
+  atrasoPosAfundamento: 0.6
 --- !u!65 &192331024596534504
 BoxCollider:
   m_ObjectHideFlags: 0

@@ -6,10 +6,17 @@ namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_MapAnalyzer : IIAUpdateModule
     {
+        private struct TerrainQueryCacheEntry
+        {
+            public Vector3 Result;
+            public float ValidUntil;
+        }
+
         private const int MaxCachedCells = 4096;
         private readonly IA_WorldState _world;
         private readonly Dictionary<Vector2Int, IA_MapCell> _cells = new Dictionary<Vector2Int, IA_MapCell>();
         private readonly Dictionary<int, Vector2> _footprintCache = new Dictionary<int, Vector2>();
+        private readonly Dictionary<string, TerrainQueryCacheEntry> _terrainQueryCache = new Dictionary<string, TerrainQueryCacheEntry>();
         private readonly Collider[] _obstacleBuffer = new Collider[96];
         private bool _cachedHasNavMeshData = true;
         private float _nextNavMeshPresenceCheckTime;
@@ -190,6 +197,15 @@ namespace Hegemonia.AI.BrainMaster
             float maxRadius,
             int samples)
         {
+            float now = Time.time;
+            string queryKey = BuildTerrainQueryKey(anchor, desiredTerrain, minRadius, maxRadius, samples);
+            TerrainQueryCacheEntry cached;
+            if (_terrainQueryCache.TryGetValue(queryKey, out cached) && cached.ValidUntil > now)
+            {
+                return cached.Result;
+            }
+
+            Vector3 result = anchor;
             int count = Mathf.Clamp(samples, 8, 18);
             for (int ring = 0; ring < 4; ring++)
             {
@@ -203,27 +219,58 @@ namespace Hegemonia.AI.BrainMaster
                     {
                         if (cell.Terrain == IA_TerrainType.Water || cell.Terrain == IA_TerrainType.Coast)
                         {
-                            return cell.Center;
+                            result = cell.Center;
+                            CacheTerrainQueryResult(queryKey, result, now, true);
+                            return result;
                         }
                     }
                     else if (desiredTerrain == IA_TerrainType.Land)
                     {
                         if (cell.Terrain != IA_TerrainType.Water && cell.BuildableLand)
                         {
-                            return cell.Center;
+                            result = cell.Center;
+                            CacheTerrainQueryResult(queryKey, result, now, true);
+                            return result;
                         }
                     }
                     else
                     {
                         if (cell.Terrain == desiredTerrain && cell.BuildableLand)
                         {
-                            return cell.Center;
+                            result = cell.Center;
+                            CacheTerrainQueryResult(queryKey, result, now, true);
+                            return result;
                         }
                     }
                 }
             }
 
+            CacheTerrainQueryResult(queryKey, anchor, now, false);
             return anchor;
+        }
+
+        private string BuildTerrainQueryKey(Vector3 anchor, IA_TerrainType desiredTerrain, float minRadius, float maxRadius, int samples)
+        {
+            int cellX = Mathf.RoundToInt(anchor.x / Mathf.Max(1f, CellSize * 2f));
+            int cellZ = Mathf.RoundToInt(anchor.z / Mathf.Max(1f, CellSize * 2f));
+            int minBucket = Mathf.RoundToInt(minRadius / 20f);
+            int maxBucket = Mathf.RoundToInt(maxRadius / 20f);
+            int sampleBucket = Mathf.Clamp(samples, 8, 32);
+            return desiredTerrain + ":" + cellX + ":" + cellZ + ":" + minBucket + ":" + maxBucket + ":" + sampleBucket;
+        }
+
+        private void CacheTerrainQueryResult(string key, Vector3 result, float now, bool success)
+        {
+            if (_terrainQueryCache.Count > 256)
+            {
+                _terrainQueryCache.Clear();
+            }
+
+            _terrainQueryCache[key] = new TerrainQueryCacheEntry
+            {
+                Result = result,
+                ValidUntil = now + (success ? 12f : 4f)
+            };
         }
 
         private IA_MapCell BuildCell(Vector3 position)

@@ -373,7 +373,7 @@ NavMeshAgent:
   m_AgentTypeID: 0
   m_Radius: 2
   m_Speed: 20
-  m_Acceleration: 6
+  m_Acceleration: 8
   avoidancePriority: 19
   m_AngularSpeed: 60
   m_StoppingDistance: 0
@@ -436,9 +436,9 @@ MonoBehaviour:
   tempoAceleracao: 5
   tempoDesaceleracao: 4
   tempoParadaEmergencia: 3
-  velocidadeMaxima: 30
-  velocidadeLeme: 5
-  curvaMaximaGraus: 10
+  velocidadeMaxima: 50
+  velocidadeLeme: 6
+  curvaMaximaGraus: 13
   coeficienteAderna: 2
   alturaOnda: 2
   frequenciaOnda: 1.5
@@ -537,7 +537,7 @@ MonoBehaviour:
   canosDaTorreta: {fileID: 0}
   locaisDoTiro:
   - {fileID: 5119925076795480047}
-  municaoPrefab: {fileID: 4904590025691999903, guid: 08e9d536354a0c649a7f67a606438415, type: 3}
+  municaoPrefab: {fileID: 5864298406509392469, guid: 86603804cd9519b49a44cb6206957548, type: 3}
   limitarInclinacao: 1
   elevacaoMinima: -10
   elevacaoMaxima: 80
@@ -575,6 +575,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 4.3
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 8
+  atrasoPosAfundamento: 0.6
 --- !u!114 &790862908155505700
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1708,8 +1712,14 @@ MonoBehaviour:
   - {fileID: 4468056716456000646}
   - {fileID: 2093729349287552178}
   tempoEntreTiros: 1
-  capacidadeMisseis: 10
-  tempoRecargaMisseis: 15
+  capacidadeMisseis: 5
+  tempoRecargaMisseis: 20
+  cartuchosMaximos: 3
+  quantidadePorCartucho: 5
+  tempoTrocaCartucho: 20
+  maximoPorSalva: 2
+  anguloMinimoNovaDirecao: 35
+  intervaloReengajamentoAmeaca: 1.2
   somDisparo: {fileID: 8300000, guid: 30cc20ef2ed3c4f35af5120b0a841e84, type: 3}
   modoPassivo: 0
 --- !u!1001 &3835509689968589595

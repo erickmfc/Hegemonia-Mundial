@@ -22,6 +22,9 @@ public class HovercraftTransporte : MonoBehaviour
     public float impulsoSubidaPraia = 10f;
     public float velocidadeMinimaNaCosta = 9f;
     public float tempoParaDesatolar = 0.75f;
+    [Range(0.01f, 1f)] public float suavizacaoAlturaCosta = 0.35f;
+    public float impulsoTravessiaAguaTerra = 1.2f;
+    public float tempoMaximoTravessia = 12f;
     
     [Header("🎮 Seleção")]
     public bool isSelecionado = false;
@@ -52,6 +55,12 @@ public class HovercraftTransporte : MonoBehaviour
     private Vector3 ultimaPosicaoProgresso;
     private float tempoSemProgresso = 0f;
     private bool monitorDeProgressoInicializado = false;
+    private bool travessiaAnfibiaAtiva = false;
+    private float tempoTravessiaAnfibia = 0f;
+    private ClassificacaoSuperficieMapa classificacaoOrigemTravessia = ClassificacaoSuperficieMapa.Desconhecida;
+    private ClassificacaoSuperficieMapa classificacaoDestinoTravessia = ClassificacaoSuperficieMapa.Desconhecida;
+    private float alturaClassificadaSuavizada = 0f;
+    private bool alturaClassificadaInicializada = false;
 
     [System.Serializable]
     public class SlotInfo 
@@ -143,7 +152,13 @@ public class HovercraftTransporte : MonoBehaviour
 
     public void DefinirDestino(Vector3 destino)
     {
-        destinoAtual = destino;
+        destinoAtual = NormalizarDestinoAnfibio(destino, out classificacaoDestinoTravessia);
+        bool origemClassificada = TryClassificarSuperficie(transform.position, out classificacaoOrigemTravessia, out _);
+        bool destinoClassificado = classificacaoDestinoTravessia != ClassificacaoSuperficieMapa.Desconhecida;
+        travessiaAnfibiaAtiva = origemClassificada
+            && destinoClassificado
+            && SuperficiesSaoDiferentes(classificacaoOrigemTravessia, classificacaoDestinoTravessia);
+        tempoTravessiaAnfibia = 0f;
         temDestino = true;
         ultimaPosicaoProgresso = PlanoXZ(transform.position);
         tempoSemProgresso = 0f;
@@ -153,6 +168,8 @@ public class HovercraftTransporte : MonoBehaviour
     void MoverParaDestino() 
     { 
         if(!temDestino) return;
+
+        AtualizarEstadoTravessiaAnfibia();
 
         Vector3 dir = destinoAtual - transform.position;
         dir.y = 0f;
@@ -168,6 +185,7 @@ public class HovercraftTransporte : MonoBehaviour
         Vector3 direcaoDesejada = dir.normalized;
         float anguloErro = Vector3.SignedAngle(transform.forward, direcaoDesejada, Vector3.up);
         bool subindoPraia = DetectarSubidaPraia(out float subidaPraia);
+        bool emTravessiaAnfibia = travessiaAnfibiaAtiva && tempoTravessiaAnfibia < tempoMaximoTravessia;
 
         float fatorRotacao = Mathf.Clamp01(Mathf.Abs(anguloErro) / 90f);
         float velocidadeRotacaoReal = Mathf.Max(velocidadeRotacao, 2f) * Mathf.Lerp(0.75f, 2.2f, fatorRotacao);
@@ -193,27 +211,63 @@ public class HovercraftTransporte : MonoBehaviour
             velocidadeAlvo = Mathf.Max(velocidadeAlvo, velocidadeMinimaNaCosta + bonusCosta);
         }
 
+        if (emTravessiaAnfibia)
+        {
+            float velocidadeTravessia = velocidadeMinimaNaCosta * Mathf.Max(impulsoTravessiaAguaTerra, 1f);
+            velocidadeAlvo = Mathf.Max(velocidadeAlvo, velocidadeTravessia);
+        }
+
         float taxaAceleracao = Mathf.Clamp(velocidade * 0.08f, 18f, 85f);
         if (subindoPraia)
         {
             taxaAceleracao *= 1.35f;
         }
 
+        if (emTravessiaAnfibia)
+        {
+            taxaAceleracao *= 1.25f;
+        }
+
         velLocal.z = Mathf.MoveTowards(velLocal.z, velocidadeAlvo, taxaAceleracao * Time.fixedDeltaTime);
         if (alinhamento < 0.2f)
         {
-            velLocal.z = Mathf.MoveTowards(velLocal.z, 0f, taxaAceleracao * 1.6f * Time.fixedDeltaTime);
+            float fatorFreioCurva = emTravessiaAnfibia ? 0.75f : 1.6f;
+            velLocal.z = Mathf.MoveTowards(velLocal.z, 0f, taxaAceleracao * fatorFreioCurva * Time.fixedDeltaTime);
         }
 
         Vector3 velocidadeMundo = transform.TransformDirection(velLocal);
         velocidadeMundo.y = rb.linearVelocity.y;
         rb.linearVelocity = velocidadeMundo;
+
+        if (emTravessiaAnfibia)
+        {
+            tempoTravessiaAnfibia += Time.fixedDeltaTime;
+        }
     }
 
     void ManterFlutuacao()
     {
         if (TryGetHoverPlaneHeight(out float alturaBase, out bool subindoPraia, out float subidaPraia))
         {
+            if (TryClassificarSuperficie(transform.position, out ClassificacaoSuperficieMapa classificacaoAtual, out float alturaClassificada))
+            {
+                if (!alturaClassificadaInicializada)
+                {
+                    alturaClassificadaSuavizada = alturaClassificada;
+                    alturaClassificadaInicializada = true;
+                }
+
+                float interpolacaoCosta = classificacaoAtual == ClassificacaoSuperficieMapa.Costa ? Mathf.Clamp01(suavizacaoAlturaCosta) : 1f;
+                alturaClassificadaSuavizada = Mathf.Lerp(alturaClassificadaSuavizada, alturaClassificada, interpolacaoCosta);
+
+                float pesoAlturaClassificada = classificacaoAtual == ClassificacaoSuperficieMapa.Costa ? 0.85f : 0.45f;
+                alturaBase = Mathf.Lerp(alturaBase, alturaClassificadaSuavizada, pesoAlturaClassificada);
+            }
+            else
+            {
+                alturaClassificadaInicializada = false;
+            }
+
             float alturaDesejada = alturaBase + alturaDoChao;
             float erro = alturaDesejada - transform.position.y;
             float amortecimentoVertical = rb.linearVelocity.y * 0.65f;
@@ -222,6 +276,10 @@ public class HovercraftTransporte : MonoBehaviour
             if (subindoPraia)
             {
                 forcaVertical += impulsoSubidaPraia + Mathf.Clamp(subidaPraia * 8f, 0f, impulsoSubidaPraia);
+            }
+            else if (travessiaAnfibiaAtiva)
+            {
+                forcaVertical += impulsoSubidaPraia * 0.35f;
             }
 
             rb.AddForce(Vector3.up * forcaVertical, ForceMode.Acceleration);
@@ -621,10 +679,16 @@ public class HovercraftTransporte : MonoBehaviour
                 continue;
 
             achouAlgo = true;
-            maiorAltura = Mathf.Max(maiorAltura, hit.point.y);
+            float alturaDetectada = hit.point.y;
+            if (TryClassificarSuperficie(hit.point, out _, out float alturaClassificada))
+            {
+                alturaDetectada = Mathf.Max(alturaDetectada, alturaClassificada);
+            }
 
-            if (i == 0) alturaCentro = hit.point.y;
-            if (i >= 1 && i <= 3) alturaFrontal = Mathf.Max(alturaFrontal, hit.point.y);
+            maiorAltura = Mathf.Max(maiorAltura, alturaDetectada);
+
+            if (i == 0) alturaCentro = alturaDetectada;
+            if (i >= 1 && i <= 3) alturaFrontal = Mathf.Max(alturaFrontal, alturaDetectada);
         }
 
         if (!achouAlgo)
@@ -648,6 +712,96 @@ public class HovercraftTransporte : MonoBehaviour
 
         subidaPraia = 0f;
         return false;
+    }
+
+    Vector3 NormalizarDestinoAnfibio(Vector3 destinoBruto, out ClassificacaoSuperficieMapa classificacaoDestino)
+    {
+        classificacaoDestino = ClassificacaoSuperficieMapa.Desconhecida;
+
+        if (RegistroSuperficieMapa.TryClassify(destinoBruto, out classificacaoDestino, out float alturaMarcada, 1.5f, 1f))
+        {
+            destinoBruto.y = alturaMarcada + alturaDoChao;
+            return destinoBruto;
+        }
+
+        Vector3 origemRay = destinoBruto + (Vector3.up * (alturaOrigemSonda + 15f));
+        if (Physics.Raycast(origemRay, Vector3.down, out RaycastHit hit, alturaOrigemSonda + alturaDoChao + 50f, camadasChao, QueryTriggerInteraction.Ignore))
+        {
+            destinoBruto.y = hit.point.y + alturaDoChao;
+        }
+
+        return destinoBruto;
+    }
+
+    bool TryClassificarSuperficie(Vector3 posicao, out ClassificacaoSuperficieMapa classificacao, out float altura)
+    {
+        if (RegistroSuperficieMapa.TryClassify(posicao, out classificacao, out altura, 1.5f, 0.75f))
+        {
+            return true;
+        }
+
+        classificacao = ClassificacaoSuperficieMapa.Desconhecida;
+        altura = posicao.y - alturaDoChao;
+        return false;
+    }
+
+    bool SuperficiesSaoDiferentes(ClassificacaoSuperficieMapa origem, ClassificacaoSuperficieMapa destino)
+    {
+        if (origem == ClassificacaoSuperficieMapa.Desconhecida || destino == ClassificacaoSuperficieMapa.Desconhecida)
+        {
+            return false;
+        }
+
+        if (origem == destino)
+        {
+            return false;
+        }
+
+        // Costa representa transicao; tratamos como troca valida entre agua e terra.
+        if (origem == ClassificacaoSuperficieMapa.Costa || destino == ClassificacaoSuperficieMapa.Costa)
+        {
+            return true;
+        }
+
+        return true;
+    }
+
+    void AtualizarEstadoTravessiaAnfibia()
+    {
+        if (!travessiaAnfibiaAtiva)
+        {
+            return;
+        }
+
+        if (tempoTravessiaAnfibia >= tempoMaximoTravessia)
+        {
+            travessiaAnfibiaAtiva = false;
+            return;
+        }
+
+        if (!TryClassificarSuperficie(transform.position, out ClassificacaoSuperficieMapa classificacaoAtual, out _))
+        {
+            return;
+        }
+
+        if (classificacaoAtual == ClassificacaoSuperficieMapa.Costa)
+        {
+            return;
+        }
+
+        if (classificacaoDestinoTravessia == ClassificacaoSuperficieMapa.Costa)
+        {
+            if (Vector3.Distance(PlanoXZ(transform.position), PlanoXZ(destinoAtual)) < 18f)
+            {
+                travessiaAnfibiaAtiva = false;
+            }
+            return;
+        }
+
+        if (classificacaoAtual == classificacaoDestinoTravessia)
+        {
+            travessiaAnfibiaAtiva = false;
+        }
     }
 
     void AtualizarAntiEncalhe()

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Hegemonia.AI.BrainMaster;
 
 public class LancadorNaval : MonoBehaviour
 {
@@ -19,6 +20,9 @@ public class LancadorNaval : MonoBehaviour
     public float intervaloEntreTiros = 0.5f; // Tempo entre mísseis da mesma salva
     public float tempoRecargaSalva = 5.0f; // Tempo entre salvas
     public float alcanceRadar = 500f;
+    public float intervaloVarreduraAutomatica = 0.45f;
+    public int maxMisseisSimultaneosPorAlvo = 6;
+    public float cooldownAutorizacaoAlvo = 1.4f;
     public AudioClip somDisparo;
 
     [Header("Configurações de Áudio")]
@@ -50,10 +54,16 @@ public class LancadorNaval : MonoBehaviour
     // --- BANCO DE DADOS GLOBAL DE COMBATE DA FROTA ---
     // Compartilhado estaticamente por TODOS os navios! Impede que 5 navios atirem num barco que já vai morrer.
     private static Dictionary<Transform, float> bancoDanoProjetadoFrotas = new Dictionary<Transform, float>();
+    private static readonly Dictionary<Transform, float> expiracaoDanoProjetadoFrotas = new Dictionary<Transform, float>();
+    private static readonly Dictionary<int, float> cooldownAutorizacaoPorAlvo = new Dictionary<int, float>();
+    private static readonly Collider[] radarBuffer = new Collider[128];
+    private readonly List<Transform> bufferAlvosValidos = new List<Transform>(32);
+    private float proximaVarreduraAutomatica = 0f;
 
     void Start()
     {
         cameraPrincipal = Camera.main;
+        PoolDeObjetosCombate.Prewarm(prefabMissel, Mathf.Clamp(tirosPorSalva + 2, 4, 8));
         // Se Maxima não foi configurada ou menor que total inicial, ajusta
         if (municaoMaxima < municaoTotal) municaoMaxima = municaoTotal;
 
@@ -119,6 +129,22 @@ public class LancadorNaval : MonoBehaviour
     public void Recarregar(int quantidade)
     {
         municaoTotal = Mathf.Min(municaoTotal + quantidade, municaoMaxima);
+    }
+
+    public void DefinirModoIA(ModoOperacao novoModo, bool usarDelay = true)
+    {
+        if (modoAtual == novoModo) return;
+
+        if (novoModo == ModoOperacao.Automatico)
+        {
+            tempoParaAtivarAutomatico = usarDelay ? Time.time + 1.5f : Time.time;
+        }
+        else
+        {
+            tempoParaAtivarAutomatico = 0f;
+        }
+
+        modoAtual = novoModo;
     }
 
     void Update()
@@ -222,7 +248,8 @@ public class LancadorNaval : MonoBehaviour
     // --- MODO AUTOMÁTICO (Radar Inteligente) ---
     void ComportamentoAutomatico()
     {
-        if (!PodeAtirar()) return;
+        if (!PodeAtirar() || Time.time < proximaVarreduraAutomatica) return;
+        proximaVarreduraAutomatica = Time.time + Mathf.Max(0.20f, intervaloVarreduraAutomatica);
 
         // 1. Escaneia a área em busca de TODOS os alvos válidos
         List<Transform> alvosValidos = BuscarTodosInimigos();
@@ -242,13 +269,21 @@ public class LancadorNaval : MonoBehaviour
     // Retorna lista de inimigos ordenados por proximidade
     List<Transform> BuscarTodosInimigos()
     {
-        Collider[] hits = Physics.OverlapSphere(transform.position, alcanceRadar);
+        LimparDanoProjetadoExpirado();
+        LimparCooldownAutorizacaoExpirado();
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, radarBuffer, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         int meuTime = (minhaIdentidade != null) ? minhaIdentidade.teamID : 1; 
 
-        List<Transform> listaInimigos = new List<Transform>();
+        bufferAlvosValidos.Clear();
 
-        foreach (var hit in hits)
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider hit = radarBuffer[i];
+            if (hit == null)
+            {
+                continue;
+            }
+
             if (hit.transform == transform || hit.transform.IsChildOf(transform)) continue;
             
             bool ehInimigo = false;
@@ -275,15 +310,57 @@ public class LancadorNaval : MonoBehaviour
                 // Só adiciona se tem sistema de danos e vida > 0
                 if (vida != null && vida.vidaAtual > 0)
                 {
-                    listaInimigos.Add(hit.transform);
+                    if (!bufferAlvosValidos.Contains(hit.transform))
+                    {
+                        bufferAlvosValidos.Add(hit.transform);
+                    }
                 }
             }
         }
         
         // Ordena por distância (mais perto primeiro)
-        listaInimigos.Sort((a, b) => Vector3.Distance(transform.position, a.position).CompareTo(Vector3.Distance(transform.position, b.position)));
+        bufferAlvosValidos.Sort((a, b) => (a.position - transform.position).sqrMagnitude.CompareTo((b.position - transform.position).sqrMagnitude));
         
-        return listaInimigos;
+        for (int i = 0; i < hitCount; i++)
+        {
+            radarBuffer[i] = null;
+        }
+
+        return bufferAlvosValidos;
+    }
+
+    void LimparDanoProjetadoExpirado()
+    {
+        if (expiracaoDanoProjetadoFrotas.Count == 0)
+        {
+            return;
+        }
+
+        List<Transform> expirados = null;
+        foreach (var entry in expiracaoDanoProjetadoFrotas)
+        {
+            if (entry.Key == null || entry.Value <= Time.time)
+            {
+                if (expirados == null)
+                {
+                    expirados = new List<Transform>();
+                }
+
+                expirados.Add(entry.Key);
+            }
+        }
+
+        if (expirados == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < expirados.Count; i++)
+        {
+            Transform alvo = expirados[i];
+            bancoDanoProjetadoFrotas.Remove(alvo);
+            expiracaoDanoProjetadoFrotas.Remove(alvo);
+        }
     }
 
     void RegistrarDanoProjetado(Transform alvo, float dano)
@@ -294,16 +371,38 @@ public class LancadorNaval : MonoBehaviour
         bancoDanoProjetadoFrotas[alvo] += dano;
         
         // O míssil expira da conta após 15 segundos se não acertar (Segurança)
-        StartCoroutine(DecairDanoProjetado(alvo, dano, 15f));
+        expiracaoDanoProjetadoFrotas[alvo] = Time.time + 15f;
     }
 
-    IEnumerator DecairDanoProjetado(Transform alvo, float dano, float tempo)
+    void LimparCooldownAutorizacaoExpirado()
     {
-        yield return new WaitForSeconds(tempo);
-        if (alvo != null && bancoDanoProjetadoFrotas.ContainsKey(alvo))
+        if (cooldownAutorizacaoPorAlvo.Count == 0)
         {
-            bancoDanoProjetadoFrotas[alvo] -= dano;
-            if (bancoDanoProjetadoFrotas[alvo] < 0) bancoDanoProjetadoFrotas[alvo] = 0;
+            return;
+        }
+
+        List<int> expirados = null;
+        foreach (var entry in cooldownAutorizacaoPorAlvo)
+        {
+            if (entry.Value <= Time.time)
+            {
+                if (expirados == null)
+                {
+                    expirados = new List<int>();
+                }
+
+                expirados.Add(entry.Key);
+            }
+        }
+
+        if (expirados == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < expirados.Count; i++)
+        {
+            cooldownAutorizacaoPorAlvo.Remove(expirados[i]);
         }
     }
 
@@ -339,6 +438,19 @@ public class LancadorNaval : MonoBehaviour
                         danoFuturo = bancoDanoProjetadoFrotas[potencialAlvo];
                     }
 
+                    int alvoId = potencialAlvo.GetInstanceID();
+                    float cooldownAte;
+                    if (cooldownAutorizacaoPorAlvo.TryGetValue(alvoId, out cooldownAte) && cooldownAte > Time.time)
+                    {
+                        continue;
+                    }
+
+                    int misseisEstimadosNoAlvo = Mathf.CeilToInt(danoFuturo / Mathf.Max(1f, danoMissel));
+                    if (misseisEstimadosNoAlvo >= Mathf.Max(1, maxMisseisSimultaneosPorAlvo))
+                    {
+                        continue;
+                    }
+
                     // Verifica: A vida real dele é MAIOR que os mísseis que já estão voando pra cabeça dele?
                     if (vidaScript.vidaAtual > danoFuturo)
                     {
@@ -347,6 +459,7 @@ public class LancadorNaval : MonoBehaviour
                         
                         // Agenda o dano na nuvem militar para outros não focarem atoa
                         RegistrarDanoProjetado(potencialAlvo, danoMissel);
+                        cooldownAutorizacaoPorAlvo[alvoId] = Time.time + Mathf.Max(0.1f, cooldownAutorizacaoAlvo);
                         break;
                     }
                 }
@@ -401,7 +514,7 @@ public class LancadorNaval : MonoBehaviour
         if (prefabMissel == null) return; // Segurança caso prefabMissel também não esteja assinado
 
         // Cria o míssil
-        GameObject misselObj = Instantiate(prefabMissel, pontoDeSaida.position, pontoDeSaida.rotation);
+        GameObject misselObj = PoolDeObjetosCombate.Spawn(prefabMissel, pontoDeSaida.position, pontoDeSaida.rotation);
         
         // Configura o míssil
         MisselNaval scriptMissel = misselObj.GetComponent<MisselNaval>();

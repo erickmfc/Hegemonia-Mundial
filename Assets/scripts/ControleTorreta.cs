@@ -397,7 +397,7 @@ public class ControleTorreta : MonoBehaviour
             return;
         }
 
-        int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferColisores);
+        int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferColisores, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
 
@@ -410,6 +410,7 @@ public class ControleTorreta : MonoBehaviour
             Transform alvoTr = hit.transform;
             Transform alvoSubstitutoAereo = ResolverAtiradorAereoDeProjetil(hit);
             if (alvoSubstitutoAereo != null) alvoTr = alvoSubstitutoAereo;
+            if (!ControleSubmarino.PodeSerAlvoConvencional(alvoTr)) continue;
 
             // Ignora qualquer coisa que seja parte do mesmo navio/veÃ­culo raiz
             if (alvoTr.root == transform.root) continue;
@@ -460,7 +461,7 @@ public class ControleTorreta : MonoBehaviour
                 else              { if (alvoAereo)  continue; }
 
                 Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
-                float dist = Vector3.Distance(transform.position, pontoMaisProximo);
+                float dist = (transform.position - pontoMaisProximo).sqrMagnitude;
                 if (dist < menorDistancia)
                 {
                     menorDistancia = dist;
@@ -564,7 +565,7 @@ public class ControleTorreta : MonoBehaviour
         if (alvoAtual != null)
         {
             // Verifica se o alvo ainda existe (pode ter sido destruÃ­do entre frames)
-            if (!alvoAtual.gameObject.activeInHierarchy)
+            if (!alvoAtual.gameObject.activeInHierarchy || !ControleSubmarino.PodeSerAlvoConvencional(alvoAtual))
             {
                 alvoAtual = null;
                 return;
@@ -808,7 +809,7 @@ public class ControleTorreta : MonoBehaviour
             return;
         }
 
-        GameObject missel = Instantiate(misselPrefab, saida.position, saida.rotation);
+        GameObject missel = PoolDeObjetosCombate.Spawn(misselPrefab, saida.position, saida.rotation);
         Transform alvoResolvido = ResolverTransformAlvo(alvoAtual);
         Vector3 posicaoPredita = ObterPosicaoPreditaAlvo(alvoResolvido);
         bool inicializado = false;
@@ -880,7 +881,7 @@ public class ControleTorreta : MonoBehaviour
             return;
         }
 
-        GameObject missel = Instantiate(misselPrefab, saida.position, saida.rotation);
+        GameObject missel = PoolDeObjetosCombate.Spawn(misselPrefab, saida.position, saida.rotation);
         Transform alvoResolvido = ResolverTransformAlvo(alvoAtual);
         Vector3 posicaoPredita = ObterPosicaoPreditaAlvo(alvoResolvido);
         bool inicializado = false;

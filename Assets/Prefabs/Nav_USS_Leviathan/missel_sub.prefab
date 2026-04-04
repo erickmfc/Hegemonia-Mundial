@@ -195,12 +195,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8d353e7bb924b44c89a20b0bfeefc6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MisselSubmarino
-  velocidadeMaxima: 50
-  velocidadeTurbo: 100
+  velocidadeMaxima: 300
+  velocidadeTurbo: 400
   aceleracao: 5
   aceleracaoTurbo: 60
-  delayParaTurbo: 4
-  alturaVoo: 70
+  delayParaTurbo: 5
+  alturaVoo: 30
   distanciaInicioMergulho: 100
   forcaRotacao: 2
   dano: 750

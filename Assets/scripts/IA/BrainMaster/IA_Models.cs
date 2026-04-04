@@ -70,6 +70,13 @@ namespace Hegemonia.AI.BrainMaster
         Coast
     }
 
+    public enum EstadoCargaIA
+    {
+        Normal,
+        EmCombate,
+        Saturado
+    }
+
     public interface IIAUpdateModule
     {
         string Name { get; }
@@ -204,6 +211,99 @@ namespace Hegemonia.AI.BrainMaster
         public bool ReinforceCoast;
         public bool ReinforceCenter;
         public bool ReinforceFlanks;
+    }
+
+    [Serializable]
+    public sealed class IA_CombatPressure
+    {
+        public EstadoCargaIA Estado = EstadoCargaIA.Normal;
+        public bool EnemyVisible;
+        public int NavalUnitsActive;
+        public int AirUnitsActive;
+        public float RecentCombatSeconds = 999f;
+        public int ActiveMissiles;
+        public int ActiveProjectiles;
+        public float LastUpdatedTime;
+
+        public bool IsCombatRecent(float calmWindowSeconds)
+        {
+            return RecentCombatSeconds <= Mathf.Max(1f, calmWindowSeconds);
+        }
+
+        public bool HasMixedNavalAirLoad()
+        {
+            return NavalUnitsActive > 0 && AirUnitsActive > 0;
+        }
+    }
+
+    [Serializable]
+    public sealed class IA_ForceSnapshot
+    {
+        public float LastUpdatedTime;
+        public int TotalOwnUnits;
+        public int TotalOwnStructures;
+        public int TotalCombatUnits;
+        public int InfantryUnits;
+        public int TankUnits;
+        public int ArtilleryUnits;
+        public int Helicopters;
+        public int FixedWingAircraft;
+        public int AirUnits;
+        public int NavalUnits;
+        public int Submarines;
+        public int GroundTransports;
+        public int HoverTransports;
+        public int NavalTransports;
+        public int VisibleEnemies;
+        public int VisibleEnemyStructures;
+        public int ActiveMissiles;
+        public int ActiveProjectiles;
+        public int BarracksCount;
+        public int FactoryCount;
+        public int AirportCount;
+        public int HeliportCount;
+        public int ShipyardCount;
+        public int PierCount;
+        public int PlatformCount;
+        public int WarehouseCount;
+        public int RadarCount;
+        public bool EnemyVisible;
+        public float RecentCombatSeconds = 999f;
+
+        public bool HasBarracks
+        {
+            get { return BarracksCount > 0; }
+        }
+
+        public bool HasFactory
+        {
+            get { return FactoryCount > 0; }
+        }
+
+        public bool HasAirport
+        {
+            get { return AirportCount > 0; }
+        }
+
+        public bool HasHeliport
+        {
+            get { return HeliportCount > 0; }
+        }
+
+        public bool HasNavalBase
+        {
+            get { return ShipyardCount > 0 || PierCount > 0; }
+        }
+
+        public bool HasOperationalNavalBase
+        {
+            get { return HasNavalBase; }
+        }
+
+        public int FleetCombatCount
+        {
+            get { return NavalUnits + Submarines; }
+        }
     }
 
     public static class IA_Text

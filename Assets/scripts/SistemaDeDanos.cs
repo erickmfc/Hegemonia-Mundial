@@ -24,6 +24,11 @@ public class SistemaDeDanos : MonoBehaviour
     [Range(0.1f, 10f)]
     public float tamanhoDoEfeito = 1.0f; // 1 = Soldado, 5 = Tanque, 10 = Porta-aviões
     public Vector3 ajusteDePosicao = Vector3.zero; // Para subir ou descer o fogo
+    [Header("Afundamento Naval")]
+    public bool habilitarAfundamentoNaval = true;
+    public float anguloAfundamentoX = -46f;
+    [Min(0.1f)] public float duracaoAfundamento = 7f;
+    [Min(0f)] public float atrasoPosAfundamento = 0.6f;
 
     // Referências aos efeitos ativos (para poder desligar depois/trocar)
     private GameObject fxFumacaLeve;
@@ -338,6 +343,11 @@ public class SistemaDeDanos : MonoBehaviour
 
         yield return new WaitForSeconds(0.5f); // Breve momento de colapso
 
+        if (DeveAfundarComoEmbarcacao())
+        {
+            yield return StartCoroutine(RotinaAfundamentoNaval());
+        }
+
         // 4. Explosão Final (+30%)
         ExplodirFinal();
 
@@ -354,6 +364,58 @@ public class SistemaDeDanos : MonoBehaviour
 
         // 6. Remove a unidade
         Destroy(gameObject);
+    }
+
+    bool DeveAfundarComoEmbarcacao()
+    {
+        if (!habilitarAfundamentoNaval || unidadeBiologica || ehEstrutura)
+        {
+            return false;
+        }
+
+        if (GetComponent<HovercraftTransporte>() != null
+            || GetComponent<ControleNavioRealista>() != null
+            || GetComponent<NavegacaoInteligenteNaval>() != null
+            || GetComponent<ControleSubmarino>() != null
+            || GetComponent<IdentidadeNaval>() != null)
+        {
+            return true;
+        }
+
+        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        return identidade != null && identidade.tipoUnidade == TipoUnidade.Naval;
+    }
+
+    IEnumerator RotinaAfundamentoNaval()
+    {
+        float tempo = 0f;
+        float duracao = Mathf.Max(0.1f, duracaoAfundamento);
+        Quaternion rotacaoInicial = transform.rotation;
+        Vector3 eulerAtual = transform.eulerAngles;
+        Quaternion rotacaoFinal = Quaternion.Euler(anguloAfundamentoX, eulerAtual.y, eulerAtual.z);
+
+        Rigidbody corpo = GetComponent<Rigidbody>();
+        if (corpo != null)
+        {
+            corpo.linearVelocity = Vector3.zero;
+            corpo.angularVelocity = Vector3.zero;
+            corpo.isKinematic = true;
+        }
+
+        while (tempo < duracao)
+        {
+            float t = Mathf.Clamp01(tempo / duracao);
+            transform.rotation = Quaternion.Slerp(rotacaoInicial, rotacaoFinal, t);
+            tempo += Time.deltaTime;
+            yield return null;
+        }
+
+        transform.rotation = rotacaoFinal;
+
+        if (atrasoPosAfundamento > 0f)
+        {
+            yield return new WaitForSeconds(atrasoPosAfundamento);
+        }
     }
 
     void LimparDestroco(GameObject obj)

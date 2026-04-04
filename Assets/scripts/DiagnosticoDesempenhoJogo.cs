@@ -22,6 +22,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public string Cena;
         public float Inicio;
         public float Fim;
+        public bool EmWarmup;
         public float FpsMedio;
         public float FpsMinimo;
         public float FpsMaximo;
@@ -42,6 +43,17 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public float PressaoCpuPercentual;
         public float PressaoGpuPercentual;
         public float FolgaGpuPercentual;
+        public float CoastScanMs;
+        public float NavalCandidateMs;
+        public float WorldRefreshMs;
+        public float VisibleEnemyMs;
+        public float ProductionMs;
+        public int OrdersEmitted;
+        public int PoolHits;
+        public int PoolMisses;
+        public int SpawnRegistrations;
+        public string NavalAutoDisabledReason;
+        public string TopOffenders;
         public string CausaProvavel;
         public string Detalhes;
     }
@@ -53,6 +65,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     [SerializeField] private float intervaloAmostragemSegundos = 1f;
     [SerializeField] private float limiteTravamentoMs = 50f;
     [SerializeField] [Range(0.5f, 1f)] private float percentualFrameLento = 0.9f;
+    [SerializeField] private float warmupInicialSegundos = 20f;
 
     [Header("Saida")]
     [SerializeField] private bool exibirOverlay = true;
@@ -71,9 +84,14 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
     private readonly List<EventoRuntime> _eventos = new List<EventoRuntime>(128);
     private readonly FrameTiming[] _frameTimings = new FrameTiming[1];
+    private readonly Dictionary<string, float> _metricasTempoAcumuladas = new Dictionary<string, float>(16);
+    private readonly Dictionary<string, int> _metricasContagem = new Dictionary<string, int>(16);
+    private readonly Dictionary<string, string> _metricasTexto = new Dictionary<string, string>(8);
+    private readonly StringBuilder _csvBuilder = new StringBuilder(1024);
 
     private StreamWriter _csvWriter;
     private string _csvPath = string.Empty;
+    private float _tempoInicioCaptura;
     private float _tempoNoSegundo;
     private float _inicioSegundoAtual;
     private int _framesNoSegundo;
@@ -120,6 +138,36 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         }
 
         _instancia.RegistrarEventoInterno(Time.unscaledTime, categoria, descricao);
+    }
+
+    public static void RegistrarMetricaTempo(string nome, float valorMs)
+    {
+        if (_instancia == null || !_instancia._capturaAtiva || string.IsNullOrWhiteSpace(nome) || valorMs <= 0f)
+        {
+            return;
+        }
+
+        _instancia.RegistrarMetricaTempoInterna(nome, valorMs);
+    }
+
+    public static void IncrementarContadorMetrica(string nome, int delta = 1)
+    {
+        if (_instancia == null || !_instancia._capturaAtiva || string.IsNullOrWhiteSpace(nome) || delta == 0)
+        {
+            return;
+        }
+
+        _instancia.IncrementarContadorMetricaInterna(nome, delta);
+    }
+
+    public static void RegistrarTextoMetrica(string nome, string valor)
+    {
+        if (_instancia == null || !_instancia._capturaAtiva || string.IsNullOrWhiteSpace(nome) || string.IsNullOrWhiteSpace(valor))
+        {
+            return;
+        }
+
+        _instancia.RegistrarTextoMetricaInterna(nome, valor);
     }
 
     // Atalho para producao da IA (chamado pelo ProductionDirector)
@@ -192,6 +240,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         if (_capturaAtiva)
         {
+            _tempoInicioCaptura = Time.unscaledTime;
             PrepararCsv();
             RegistrarEventoInterno(Time.unscaledTime, "Sistema", "Diagnostico de desempenho iniciado.");
         }
@@ -325,12 +374,13 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         _overlayLine1 = string.Format(
             CultureInfo.InvariantCulture,
-            "Cena: {0} | FPS medio: {1:0.0} | Min: {2:0.0} | Max: {3:0.0} | Travadas: {4}",
+            "Cena: {0} | FPS medio: {1:0.0} | Min: {2:0.0} | Max: {3:0.0} | Travadas: {4} | Warm-up: {5}",
             cena,
             _ultimoResumo.FpsMedio,
             _ultimoResumo.FpsMinimo,
             _ultimoResumo.FpsMaximo,
-            _ultimoResumo.Travadas);
+            _ultimoResumo.Travadas,
+            _ultimoResumo.EmWarmup ? "sim" : "nao");
 
         _overlayLine2 = string.Format(
             CultureInfo.InvariantCulture,
@@ -353,11 +403,22 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             ? "Aguardando dados..."
             : _ultimoResumo.CausaProvavel);
 
-        _overlayLine5 = "Detalhes: " + (string.IsNullOrEmpty(_ultimoResumo.Detalhes)
-            ? "Sem detalhes."
-            : _ultimoResumo.Detalhes);
+        _overlayLine5 = string.Format(
+            CultureInfo.InvariantCulture,
+            "IA ms: coast {0:0.0} | naval {1:0.0} | world {2:0.0} | vis {3:0.0} | prod {4:0.0} | ordens {5} | pool {6}/{7} | spawn {8}",
+            _ultimoResumo.CoastScanMs,
+            _ultimoResumo.NavalCandidateMs,
+            _ultimoResumo.WorldRefreshMs,
+            _ultimoResumo.VisibleEnemyMs,
+            _ultimoResumo.ProductionMs,
+            _ultimoResumo.OrdersEmitted,
+            _ultimoResumo.PoolHits,
+            _ultimoResumo.PoolMisses,
+            _ultimoResumo.SpawnRegistrations);
 
-        _overlayLine6 = "Eventos recentes: " + _ultimoBlocoEventos;
+        string ofensores = string.IsNullOrEmpty(_ultimoResumo.TopOffenders) ? "sem ofensores fortes" : _ultimoResumo.TopOffenders;
+        string navalLock = string.IsNullOrEmpty(_ultimoResumo.NavalAutoDisabledReason) ? string.Empty : " | navalLock: " + _ultimoResumo.NavalAutoDisabledReason;
+        _overlayLine6 = "Top offenders: " + ofensores + navalLock + " | Eventos: " + _ultimoBlocoEventos;
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -385,6 +446,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         if (_capturaAtiva)
         {
+            _tempoInicioCaptura = Time.unscaledTime;
             ReiniciarAcumuladores(Time.unscaledTime);
             PrepararCsv();
             RegistrarEventoInterno(Time.unscaledTime, "Sistema", "Captura de desempenho ativada.");
@@ -418,12 +480,25 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         // FIX: extrai eventos ANTES de qualquer limpeza
         string eventosDoSegundo = ExtrairEventosDoIntervalo(_inicioSegundoAtual, tempoFim);
         LimparEventosAntigos(_inicioSegundoAtual);
+        bool emWarmup = tempoFim - _tempoInicioCaptura < Mathf.Max(0f, warmupInicialSegundos);
+        float coastScanMs = ObterTempoMetrica("coast_scan_ms");
+        float navalCandidateMs = ObterTempoMetrica("naval_candidate_ms");
+        float worldRefreshMs = ObterTempoMetrica("world_refresh_ms");
+        float visibleEnemyMs = ObterTempoMetrica("visible_enemy_ms");
+        float productionMs = ObterTempoMetrica("production_ms");
+        int ordersEmitted = ObterContadorMetrica("orders_emitted");
+        int poolHits = ObterContadorMetrica("pool_hits");
+        int poolMisses = ObterContadorMetrica("pool_misses");
+        int spawnRegistrations = ObterContadorMetrica("spawn_registrations");
+        string navalAutoDisabledReason = ObterTextoMetrica("naval_auto_disabled_reason");
+        string topOffenders = MontarResumoTopOffenders();
 
         ResumoSegundo resumo = new ResumoSegundo
         {
             Cena = SceneManager.GetActiveScene().name,
             Inicio = _inicioSegundoAtual,
             Fim = tempoFim,
+            EmWarmup = emWarmup,
             FpsMedio = fpsMedio,
             FpsMinimo = _fpsMinimo == float.MaxValue ? 0f : _fpsMinimo,
             FpsMaximo = _fpsMaximo,
@@ -444,6 +519,17 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             PressaoCpuPercentual = CalcularPressaoPercentual(Mathf.Max(cpuMainMs, cpuRenderMs), orcamentoMs),
             PressaoGpuPercentual = CalcularPressaoPercentual(gpuMs, orcamentoMs),
             FolgaGpuPercentual = Mathf.Clamp(100f - CalcularPressaoPercentual(gpuMs, orcamentoMs), 0f, 100f),
+            CoastScanMs = coastScanMs,
+            NavalCandidateMs = navalCandidateMs,
+            WorldRefreshMs = worldRefreshMs,
+            VisibleEnemyMs = visibleEnemyMs,
+            ProductionMs = productionMs,
+            OrdersEmitted = ordersEmitted,
+            PoolHits = poolHits,
+            PoolMisses = poolMisses,
+            SpawnRegistrations = spawnRegistrations,
+            NavalAutoDisabledReason = navalAutoDisabledReason,
+            TopOffenders = topOffenders,
             Detalhes = eventosDoSegundo
         };
 
@@ -478,6 +564,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         _gcGen0Inicial = GC.CollectionCount(0);
         _gcGen1Inicial = GC.CollectionCount(1);
         _gcGen2Inicial = GC.CollectionCount(2);
+        LimparMetricasAcumuladas();
     }
 
     private void CapturarFrameTiming()
@@ -526,6 +613,11 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                          && Mathf.Abs(resumo.FpsMedio - fpsAlvo) < 1.5f
                          && resumo.CpuMainMs < orcamentoMs * 0.75f
                          && (resumo.GpuMs <= 0f || resumo.GpuMs < orcamentoMs * 0.75f);
+
+        if (resumo.EmWarmup)
+        {
+            resumo.Detalhes = AcrescentarDetalhe(resumo.Detalhes, "Warm-up ativo: nao usar este segundo como baseline final.");
+        }
 
         // Acumular detalhes sem sobrescrever — cada causa contribui para o campo
         if (houveGcGrave || houveGcLeve)
@@ -681,6 +773,99 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         }
     }
 
+    private void RegistrarMetricaTempoInterna(string nome, float valorMs)
+    {
+        string chave = NormalizarCampoLivre(nome).ToLowerInvariant();
+        float atual;
+        _metricasTempoAcumuladas.TryGetValue(chave, out atual);
+        _metricasTempoAcumuladas[chave] = atual + Mathf.Max(0f, valorMs);
+    }
+
+    private void IncrementarContadorMetricaInterna(string nome, int delta)
+    {
+        string chave = NormalizarCampoLivre(nome).ToLowerInvariant();
+        int atual;
+        _metricasContagem.TryGetValue(chave, out atual);
+        _metricasContagem[chave] = atual + delta;
+    }
+
+    private void RegistrarTextoMetricaInterna(string nome, string valor)
+    {
+        string chave = NormalizarCampoLivre(nome).ToLowerInvariant();
+        _metricasTexto[chave] = NormalizarCampoLivre(valor);
+    }
+
+    private float ObterTempoMetrica(string nome)
+    {
+        float valor;
+        return _metricasTempoAcumuladas.TryGetValue(NormalizarCampoLivre(nome).ToLowerInvariant(), out valor) ? valor : 0f;
+    }
+
+    private int ObterContadorMetrica(string nome)
+    {
+        int valor;
+        return _metricasContagem.TryGetValue(NormalizarCampoLivre(nome).ToLowerInvariant(), out valor) ? valor : 0;
+    }
+
+    private string ObterTextoMetrica(string nome)
+    {
+        string valor;
+        return _metricasTexto.TryGetValue(NormalizarCampoLivre(nome).ToLowerInvariant(), out valor) ? valor : string.Empty;
+    }
+
+    private string MontarResumoTopOffenders()
+    {
+        if (_metricasTempoAcumuladas.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        KeyValuePair<string, float> top1 = default(KeyValuePair<string, float>);
+        KeyValuePair<string, float> top2 = default(KeyValuePair<string, float>);
+
+        foreach (KeyValuePair<string, float> pair in _metricasTempoAcumuladas)
+        {
+            if (pair.Value <= 0.01f)
+            {
+                continue;
+            }
+
+            if (pair.Value > top1.Value)
+            {
+                top2 = top1;
+                top1 = pair;
+            }
+            else if (pair.Value > top2.Value)
+            {
+                top2 = pair;
+            }
+        }
+
+        if (top1.Value <= 0.01f)
+        {
+            return string.Empty;
+        }
+
+        if (top2.Value <= 0.01f)
+        {
+            return FormatarTopOffender(top1);
+        }
+
+        return FormatarTopOffender(top1) + " | " + FormatarTopOffender(top2);
+    }
+
+    private static string FormatarTopOffender(KeyValuePair<string, float> pair)
+    {
+        return pair.Key + "=" + pair.Value.ToString("0.0", CultureInfo.InvariantCulture) + "ms";
+    }
+
+    private void LimparMetricasAcumuladas()
+    {
+        _metricasTempoAcumuladas.Clear();
+        _metricasContagem.Clear();
+        _metricasTexto.Clear();
+    }
+
     private void RegistrarEventoInterno(float tempo, string categoria, string descricao)
     {
         if (string.IsNullOrWhiteSpace(descricao))
@@ -714,7 +899,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             pasta,
             "desempenho_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture) + ".csv");
         _csvWriter = new StreamWriter(_csvPath, false, new UTF8Encoding(true));
-        _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;pior_frame_ms;frames_lentos;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;causa;detalhes");
+        _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;pior_frame_ms;frames_lentos;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;orders_emitted;pool_hits;pool_misses;spawn_registrations;naval_auto_disabled_reason;top_offenders;causa;detalhes");
         _csvWriter.Flush();
     }
 
@@ -725,39 +910,47 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             return;
         }
 
-        string linha = string.Join(
-            ";",
-            new[]
-            {
-                DateTimeOffset.Now.ToString("O", CultureInfo.InvariantCulture),
-                resumo.Inicio.ToString("0.000", CultureInfo.InvariantCulture),
-                resumo.Fim.ToString("0.000", CultureInfo.InvariantCulture),
-                SanearCsv(resumo.Cena),
-                resumo.FpsMedio.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.FpsMinimo.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.FpsMaximo.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.FrameMsMedio.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.PiorFrameMs.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.FramesLentos.ToString(CultureInfo.InvariantCulture),
-                resumo.Travadas.ToString(CultureInfo.InvariantCulture),
-                resumo.CpuMainMs.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.CpuRenderMs.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.GpuMs.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.PressaoCpuPercentual.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.PressaoGpuPercentual.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.FolgaGpuPercentual.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.GcGen0.ToString(CultureInfo.InvariantCulture),
-                resumo.GcGen1.ToString(CultureInfo.InvariantCulture),
-                resumo.GcGen2.ToString(CultureInfo.InvariantCulture),
-                resumo.MemoriaGerenciadaMb.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.DeltaMemoriaGerenciadaMb.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.MemoriaAlocadaMb.ToString("0.00", CultureInfo.InvariantCulture),
-                resumo.MemoriaReservadaMb.ToString("0.00", CultureInfo.InvariantCulture),
-                SanearCsv(resumo.CausaProvavel),
-                SanearCsv(resumo.Detalhes)
-            });
+        _csvBuilder.Length = 0;
+        _csvBuilder.Append(DateTimeOffset.Now.ToString("O", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.Inicio.ToString("0.000", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.Fim.ToString("0.000", CultureInfo.InvariantCulture)).Append(';')
+            .Append(SanearCsv(resumo.Cena)).Append(';')
+            .Append(resumo.EmWarmup ? "1" : "0").Append(';')
+            .Append(resumo.FpsMedio.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.FpsMinimo.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.FpsMaximo.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.FrameMsMedio.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.PiorFrameMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.FramesLentos.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.Travadas.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CpuMainMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CpuRenderMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.GpuMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.PressaoCpuPercentual.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.PressaoGpuPercentual.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.FolgaGpuPercentual.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.GcGen0.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.GcGen1.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.GcGen2.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.MemoriaGerenciadaMb.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.DeltaMemoriaGerenciadaMb.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.MemoriaAlocadaMb.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.MemoriaReservadaMb.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CoastScanMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.NavalCandidateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.WorldRefreshMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.VisibleEnemyMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.ProductionMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.OrdersEmitted.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.PoolHits.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.PoolMisses.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.SpawnRegistrations.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(SanearCsv(resumo.NavalAutoDisabledReason)).Append(';')
+            .Append(SanearCsv(resumo.TopOffenders)).Append(';')
+            .Append(SanearCsv(resumo.CausaProvavel)).Append(';')
+            .Append(SanearCsv(resumo.Detalhes));
 
-        _csvWriter.WriteLine(linha);
+        _csvWriter.WriteLine(_csvBuilder.ToString());
         _csvWriter.Flush();
     }
 
@@ -818,7 +1011,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
     private static string NormalizarCampoLivre(string valor)
     {
-        return valor.Replace('\n', ' ').Replace('\r', ' ').Trim();
+        if (string.IsNullOrEmpty(valor)) return string.Empty;
+        bool hasNewline = valor.IndexOf('\n') >= 0 || valor.IndexOf('\r') >= 0;
+        if (hasNewline) valor = valor.Replace('\n', ' ').Replace('\r', ' ');
+        return valor.Trim();
     }
 
     private static string SanearCsv(string valor)

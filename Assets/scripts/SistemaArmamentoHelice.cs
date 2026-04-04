@@ -34,6 +34,7 @@ public class SistemaArmamentoHelice : MonoBehaviour
     private int meuTime = 1;
     private float cronometroScan = 0f;
     private Transform alvoAtualGuardado;
+    private readonly Collider[] bufferBuscaAerea = new Collider[64];
 
     // === NOVA MÁQUINA DE ESTADOS DO SUPER TUCANO ===
     private enum EstadoCombate { Patrulha, Afastamento, Mergulho_Subir, Mergulho_Atacar, Evasao }
@@ -46,6 +47,7 @@ public class SistemaArmamentoHelice : MonoBehaviour
     {
         balasAtuais = cartuchoMaximo;
         controleAviao = GetComponent<ControleAviao>();
+        PoolDeObjetosCombate.Prewarm(prefabProjetilTrassante, Mathf.Clamp(canosDeTiro != null ? canosDeTiro.Length * 2 : 4, 4, 10));
         
         IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
         if (id != null) meuTime = id.teamID;
@@ -123,22 +125,37 @@ public class SistemaArmamentoHelice : MonoBehaviour
         // Se já temos um alvo e ele está vivo, não precisa procurar outro agora
         if (alvoAtualGuardado != null && alvoAtualGuardado.gameObject.activeInHierarchy)
         {
-            SistemaDeDanos vidaAtual = alvoAtualGuardado.GetComponentInParent<SistemaDeDanos>();
-            if (vidaAtual != null && vidaAtual.vidaAtual > 0) return; 
+            if (!ControleSubmarino.PodeSerAlvoConvencional(alvoAtualGuardado))
+            {
+                alvoAtualGuardado = null;
+            }
+            else
+            {
+                SistemaDeDanos vidaAtual = alvoAtualGuardado.GetComponentInParent<SistemaDeDanos>();
+                if (vidaAtual != null && vidaAtual.vidaAtual > 0) return;
+            }
         }
 
-        Collider[] vizinhos = Physics.OverlapSphere(transform.position, raioDeVisao);
+        int vizinhos = Physics.OverlapSphereNonAlloc(transform.position, raioDeVisao, bufferBuscaAerea, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         Transform alvoMaisProximoScanner = null;
         float menorDistancia = Mathf.Infinity;
 
-        foreach (var col in vizinhos)
+        for (int i = 0; i < vizinhos; i++)
         {
+            Collider col = bufferBuscaAerea[i];
+            if (col == null)
+            {
+                continue;
+            }
+
             IdentidadeUnidade id = col.GetComponentInParent<IdentidadeUnidade>();
             if (id != null && id.teamID != meuTime && id.teamID != 0) 
             {
                 SistemaDeDanos vida = col.GetComponentInParent<SistemaDeDanos>();
                 if (vida != null && vida.vidaAtual > 0)
                 {
+                    if (!ControleSubmarino.PodeSerAlvoConvencional(vida.transform)) continue;
+
                     float dist = Vector3.Distance(transform.position, vida.transform.position);
                     if (dist < menorDistancia)
                     {
@@ -147,12 +164,19 @@ public class SistemaArmamentoHelice : MonoBehaviour
                     }
                 }
             }
+
+            bufferBuscaAerea[i] = null;
         }
         alvoAtualGuardado = alvoMaisProximoScanner;
     }
 
     void ExecutarManobrasDeCombate()
     {
+        if (alvoAtualGuardado != null && !ControleSubmarino.PodeSerAlvoConvencional(alvoAtualGuardado))
+        {
+            alvoAtualGuardado = null;
+        }
+
         if (alvoAtualGuardado == null) 
         {
             estadoAtualAtaque = EstadoCombate.Patrulha;
@@ -263,7 +287,7 @@ public class SistemaArmamentoHelice : MonoBehaviour
             direcaoFinal += new Vector3(Random.Range(-0.015f, 0.015f), Random.Range(-0.02f, 0.02f), Random.Range(-0.015f, 0.015f));
             direcaoFinal.Normalize();
 
-            GameObject bala = Instantiate(prefabProjetilTrassante, cano.position, Quaternion.LookRotation(direcaoFinal));
+            GameObject bala = PoolDeObjetosCombate.Spawn(prefabProjetilTrassante, cano.position, Quaternion.LookRotation(direcaoFinal));
             Projetil scriptProj = bala.GetComponent<Projetil>();
             
             if (scriptProj != null)

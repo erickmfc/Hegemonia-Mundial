@@ -48,6 +48,16 @@ public class Estaleiro : MonoBehaviour
 
     [Header("Efeitos Visuais")]
     public ParticleSystem efeitoConclusao; 
+
+    void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
     
     void Start()
     {
@@ -565,12 +575,13 @@ public class Estaleiro : MonoBehaviour
         // Registrar no General se for IA
         if (idNavio.teamID != 1)
         {
-            var commanders = Object.FindObjectsByType<IA_Comandante>(FindObjectsSortMode.None);
-            var myCommander = commanders.FirstOrDefault(c => c.identidade != null && c.identidade.teamID == idNavio.teamID);
+            var myCommander = IA_ComandanteRegistry.GetCommanderByTeam(idNavio.teamID);
             if (myCommander != null && myCommander.cerebroGeneral != null)
             {
                 myCommander.cerebroGeneral.RegistrarUnidade(navioPronto);
             }
+
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
         }
 
         // --- LÓGICA ESPECÍFICA PARA PETROLEIRO ---

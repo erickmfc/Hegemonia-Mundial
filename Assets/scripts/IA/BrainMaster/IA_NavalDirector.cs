@@ -7,6 +7,7 @@ namespace Hegemonia.AI.BrainMaster
     {
         private const float ForcedNavalStrikeStartSeconds = 60f;
         private readonly IA_Context _context;
+        private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
         private float _nextDecisionTime;
 
         public IA_NavalDirector(IA_Context context)
@@ -41,7 +42,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            _nextDecisionTime = now + 1.05f;
+            _nextDecisionTime = now + ResolveDecisionDelay();
             Vector3 baseCenter = _context.WorldState.BaseCenter;
             if (baseCenter == Vector3.zero && _context.Brain != null)
             {
@@ -51,9 +52,9 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 pressureTarget = ResolvePressureTarget(baseCenter, now);
             Vector3 objective = navalTarget != null ? navalTarget.position : pressureTarget;
             Vector3 assemblyCenter = ResolveAssemblyPoint(baseCenter, objective);
-            Vector3 escortStage = ResolveStagePoint(assemblyCenter, objective, -95f, 35f);
-            Vector3 heavyStage = ResolveStagePoint(assemblyCenter, objective, 0f, 0f);
-            Vector3 subStage = ResolveStagePoint(assemblyCenter, objective, 100f, 110f);
+            Vector3 escortStage = ResolveStagePoint(assemblyCenter, objective, -180f, 140f);
+            Vector3 heavyStage = ResolveStagePoint(assemblyCenter, objective, 0f, 170f);
+            Vector3 subStage = ResolveStagePoint(assemblyCenter, objective, 180f, 260f);
 
             IA_SquadData escort = _context.SquadDirector.GetSquad(IA_SquadRole.NavalEscort);
             IA_SquadData heavy = _context.SquadDirector.GetSquad(IA_SquadRole.NavalHeavy);
@@ -63,6 +64,25 @@ namespace Hegemonia.AI.BrainMaster
             DispatchEscort(navalTarget, pressureTarget, escortStage, holdFormation);
             DispatchHeavy(navalTarget, pressureTarget, heavyStage, holdFormation);
             DispatchSubmarine(navalTarget, pressureTarget, subStage, holdFormation);
+        }
+
+        private float ResolveDecisionDelay()
+        {
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            if (pressure == null)
+            {
+                return 1.05f;
+            }
+
+            switch (pressure.Estado)
+            {
+                case EstadoCargaIA.Saturado:
+                    return 1.55f;
+                case EstadoCargaIA.EmCombate:
+                    return 1.20f;
+                default:
+                    return 1.05f;
+            }
         }
 
         private void DispatchEscort(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation)
@@ -79,7 +99,7 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
-                Vector3 coastPatrol = ResolveAttackPoint(stagePoint, target.position, -65f, 40f);
+                Vector3 coastPatrol = ResolveAttackPoint(stagePoint, target.position, -150f, 260f);
                 QueueAttack("naval_escort", squad.Units, target, coastPatrol, 80, 4.2f);
             }
         }
@@ -98,7 +118,7 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
-                Vector3 attackAxis = ResolveAttackPoint(stagePoint, target.position, 0f, 20f);
+                Vector3 attackAxis = ResolveAttackPoint(stagePoint, target.position, 0f, 320f);
                 QueueAttack("naval_heavy", squad.Units, target, attackAxis, 88, 3.8f);
             }
         }
@@ -117,7 +137,7 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
-                Vector3 flankWater = ResolveAttackPoint(stagePoint, target.position, 95f, 120f);
+                Vector3 flankWater = ResolveAttackPoint(stagePoint, target.position, 220f, 340f);
                 QueueAttack("submarine", squad.Units, target, flankWater, 90, 5.2f);
             }
         }
@@ -130,12 +150,12 @@ namespace Hegemonia.AI.BrainMaster
                 return hiddenEnemyAnchor;
             }
 
-            List<IA_EnemyObservation> memory = _context.WorldState.GetEnemyMemory(300f);
+            _context.WorldState.FillEnemyMemory(_enemyMemoryBuffer, 300f);
             IA_EnemyObservation best = null;
             float bestScore = float.MinValue;
-            for (int i = 0; i < memory.Count; i++)
+            for (int i = 0; i < _enemyMemoryBuffer.Count; i++)
             {
-                IA_EnemyObservation obs = memory[i];
+                IA_EnemyObservation obs = _enemyMemoryBuffer[i];
                 if (obs == null)
                 {
                     continue;
@@ -187,9 +207,9 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            int assembled = CountUnitsNear(escort, assemblyCenter, 190f)
-                           + CountUnitsNear(heavy, assemblyCenter, 190f)
-                           + CountUnitsNear(submarine, assemblyCenter, 210f);
+            int assembled = CountUnitsNear(escort, assemblyCenter, 420f)
+                           + CountUnitsNear(heavy, assemblyCenter, 420f)
+                           + CountUnitsNear(submarine, assemblyCenter, 460f);
             int required = Mathf.Clamp(combatCount - 1, 2, combatCount);
             return assembled >= required;
         }
@@ -299,7 +319,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private static List<GameObject> CloneUnits(List<GameObject> source)
         {
-            var output = new List<GameObject>();
+            var output = source != null ? new List<GameObject>(source.Count) : new List<GameObject>();
             if (source == null)
             {
                 return output;

@@ -55,6 +55,7 @@ namespace Hegemonia.AI.BrainMaster
         [TextArea(3, 12)] public string BootstrapStatus = string.Empty;
         [TextArea(2, 8)] public string BootstrapLastError = string.Empty;
         [TextArea(4, 18)] public string NavalDiagnosticSummary = string.Empty;
+        [TextArea(2, 8)] public string CombatPressureSummary = string.Empty;
 
         public IA_BootstrapStage BootstrapStage { get; private set; }
 
@@ -93,6 +94,17 @@ namespace Hegemonia.AI.BrainMaster
         private int _coordinatorSlot = 0;
         private readonly System.Diagnostics.Stopwatch _updateWatch = new System.Diagnostics.Stopwatch();
 
+        private enum IA_CommandLane
+        {
+            Tactical,
+            Naval,
+            Air,
+            Production,
+            BuildLight,
+            BuildHeavy,
+            Other
+        }
+
         private void OnEnable()
         {
             _activeBrainCount++;
@@ -126,6 +138,10 @@ namespace Hegemonia.AI.BrainMaster
 
             ConfigureSchedulerBudget();
             if (_debugMonitor != null) _debugMonitor.VerboseLogs = EnableVerboseLogs;
+            if (Context != null && _worldState != null)
+            {
+                Context.CombatPressure = _worldState.CombatPressure;
+            }
 
             if (_scheduler == null)
             {
@@ -160,6 +176,7 @@ namespace Hegemonia.AI.BrainMaster
                                  + " | BootstrapStatus=" + BootstrapStatus
                                  + (string.IsNullOrEmpty(BootstrapLastError) ? string.Empty : " | BootstrapError=" + BootstrapLastError);
                 NavalDiagnosticSummary = IA_NavalBuildDiagnostics.GetInspectorSummary(this);
+                CombatPressureSummary = BuildCombatPressureSummary();
                 _nextRuntimeSummaryTime = Time.unscaledTime + 0.6f;
             }
         }
@@ -236,6 +253,12 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             int maxCommands = ResolveCommandBudget();
+            IA_CombatPressure pressure = Context.CombatPressure;
+            int tacticalExecuted = 0;
+            int navalExecuted = 0;
+            int airExecuted = 0;
+            int productionExecuted = 0;
+            int buildExecuted = 0;
             int executed = 0;
             while (executed < maxCommands)
             {
@@ -255,6 +278,20 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     _commandQueue.Complete(request, false, now, "bloqueado pelo bootstrap");
                     TraceCommandExecution(request, false, "bloqueado pelo bootstrap");
+                    continue;
+                }
+
+                if (!TryConsumeCommandQuota(
+                        request,
+                        pressure,
+                        ref tacticalExecuted,
+                        ref navalExecuted,
+                        ref airExecuted,
+                        ref productionExecuted,
+                        ref buildExecuted))
+                {
+                    _commandQueue.Complete(request, false, now, "adiado por quota de combate");
+                    TraceCommandExecution(request, false, "adiado por quota de combate");
                     continue;
                 }
 
@@ -284,6 +321,137 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return false;
+        }
+
+        private bool TryConsumeCommandQuota(
+            IA_CommandRequest request,
+            IA_CombatPressure pressure,
+            ref int tacticalExecuted,
+            ref int navalExecuted,
+            ref int airExecuted,
+            ref int productionExecuted,
+            ref int buildExecuted)
+        {
+            if (request == null || pressure == null)
+            {
+                return true;
+            }
+
+            bool queuePressured = _commandQueue != null && _commandQueue.PendingCount > 4;
+            if (pressure.Estado == EstadoCargaIA.Normal && !queuePressured)
+            {
+                return true;
+            }
+
+            IA_CommandLane lane = ClassifyCommandLane(request);
+            switch (lane)
+            {
+                case IA_CommandLane.BuildHeavy:
+                    return false;
+                case IA_CommandLane.BuildLight:
+                    if (pressure.Estado == EstadoCargaIA.Saturado || queuePressured)
+                    {
+                        return false;
+                    }
+
+                    if (buildExecuted >= 1)
+                    {
+                        return false;
+                    }
+
+                    buildExecuted++;
+                    return true;
+                case IA_CommandLane.Production:
+                    if (productionExecuted >= 1)
+                    {
+                        return false;
+                    }
+
+                    productionExecuted++;
+                    return true;
+                case IA_CommandLane.Naval:
+                    if (navalExecuted >= 1)
+                    {
+                        return false;
+                    }
+
+                    navalExecuted++;
+                    return true;
+                case IA_CommandLane.Air:
+                    if (airExecuted >= 1)
+                    {
+                        return false;
+                    }
+
+                    airExecuted++;
+                    return true;
+                case IA_CommandLane.Tactical:
+                    if (tacticalExecuted >= 2)
+                    {
+                        return false;
+                    }
+
+                    tacticalExecuted++;
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        private static IA_CommandLane ClassifyCommandLane(IA_CommandRequest request)
+        {
+            if (request == null)
+            {
+                return IA_CommandLane.Other;
+            }
+
+            if (request.Type == IA_CommandType.Produce)
+            {
+                return IA_CommandLane.Production;
+            }
+
+            if (request.Type == IA_CommandType.Build)
+            {
+                IA_BuildOrderData build = request.Payload as IA_BuildOrderData;
+                string buildKey = IA_Text.Normalize(build != null ? build.ItemKey : request.DedupKey);
+                return IsHeavyBuildItem(buildKey) ? IA_CommandLane.BuildHeavy : IA_CommandLane.BuildLight;
+            }
+
+            string dedup = IA_Text.Normalize(request.DedupKey);
+            if (dedup.Contains("naval")
+                || dedup.Contains("fleet")
+                || dedup.Contains("submarine")
+                || dedup.Contains("carrier")
+                || dedup.Contains("amphibious"))
+            {
+                return IA_CommandLane.Naval;
+            }
+
+            if (dedup.Contains("air")
+                || dedup.Contains("fighter")
+                || dedup.Contains("helic")
+                || dedup.Contains("caca"))
+            {
+                return IA_CommandLane.Air;
+            }
+
+            if (request.Type == IA_CommandType.Move
+                || request.Type == IA_CommandType.Attack
+                || request.Type == IA_CommandType.Patrol
+                || request.Type == IA_CommandType.Ability)
+            {
+                return IA_CommandLane.Tactical;
+            }
+
+            return IA_CommandLane.Other;
+        }
+
+        private static bool IsHeavyBuildItem(string normalizedItemKey)
+        {
+            return !string.IsNullOrEmpty(normalizedItemKey)
+                   && (normalizedItemKey.Contains("estaleiro")
+                       || normalizedItemKey.Contains("pier")
+                       || normalizedItemKey.Contains("plataforma"));
         }
 
         public bool IsBootstrapActive
@@ -378,6 +546,17 @@ namespace Hegemonia.AI.BrainMaster
 
             if (activeBrains <= 1)
             {
+                IA_CombatPressure pressure = _worldState != null ? _worldState.CombatPressure : null;
+                if (pressure != null && pressure.Estado == EstadoCargaIA.Saturado)
+                {
+                    return Mathf.Clamp(maxCommands - 2, 1, maxCommands);
+                }
+
+                if (pressure != null && pressure.Estado == EstadoCargaIA.EmCombate)
+                {
+                    return Mathf.Clamp(maxCommands - 1, 1, maxCommands);
+                }
+
                 return maxCommands;
             }
 
@@ -404,6 +583,18 @@ namespace Hegemonia.AI.BrainMaster
             IA_GlobalBrainCoordinator coordinator = IA_GlobalBrainCoordinator.Instance;
             _scheduler.GlobalFrameBudgetMs = coordinator.ComputePerBrainBudgetMs(bootstrapActive);
             _scheduler.MaxModulesPerFrame = coordinator.ComputeMaxModulesPerFrame(bootstrapActive);
+            IA_CombatPressure pressure = _worldState != null ? _worldState.CombatPressure : null;
+            if (pressure != null)
+            {
+                if (pressure.Estado == EstadoCargaIA.Saturado)
+                {
+                    _scheduler.MaxModulesPerFrame = Mathf.Min(_scheduler.MaxModulesPerFrame, 3);
+                }
+                else if (pressure.Estado == EstadoCargaIA.EmCombate)
+                {
+                    _scheduler.MaxModulesPerFrame = Mathf.Min(_scheduler.MaxModulesPerFrame, 4);
+                }
+            }
 
             // Backoff: quanto mais IAs, mais espaçado cada modulo roda
             int count = Mathf.Max(1, coordinator.ActiveCount);
@@ -461,7 +652,9 @@ namespace Hegemonia.AI.BrainMaster
                 ThreatAnalyzer = _threatAnalyzer,
                 CommandQueue = _commandQueue,
                 Backend = _backendBridge,
-                Scheduler = _scheduler
+                Scheduler = _scheduler,
+                CombatPressure = _worldState.CombatPressure,
+                ForceSnapshot = _worldState.ForceSnapshot
             };
 
             _semanticMapPlanner = new IA_SemanticMapPlanner(Context);
@@ -490,6 +683,26 @@ namespace Hegemonia.AI.BrainMaster
                 VerboseLogs = EnableVerboseLogs
             };
             Context.DebugMonitor = _debugMonitor;
+        }
+
+        private string BuildCombatPressureSummary()
+        {
+            IA_CombatPressure pressure = _worldState != null ? _worldState.CombatPressure : null;
+            if (pressure == null)
+            {
+                return "combat pressure indisponivel";
+            }
+
+            return "Estado=" + pressure.Estado
+                   + " | enemy=" + pressure.EnemyVisible
+                   + " | naval=" + pressure.NavalUnitsActive
+                   + " | air=" + pressure.AirUnitsActive
+                   + " | recente=" + pressure.RecentCombatSeconds.ToString("0.0") + "s"
+                   + " | misseis=" + pressure.ActiveMissiles
+                   + " | projeteis=" + pressure.ActiveProjectiles
+                   + (_buildDirector != null && _buildDirector.CombatNavalBuildLocked
+                       ? " | navalBuildLock=" + _buildDirector.CombatNavalBuildLockReason
+                       : string.Empty);
         }
 
         private bool EnsureRuntimeGraph(bool refreshCatalog, bool registerModules)

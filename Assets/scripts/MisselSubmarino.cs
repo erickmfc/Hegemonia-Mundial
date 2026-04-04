@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Hegemonia.AI.BrainMaster;
 
 public class MisselSubmarino : MonoBehaviour
 {
@@ -36,6 +37,7 @@ public class MisselSubmarino : MonoBehaviour
     [Header("Efeitos")]
     [Tooltip("Rastro de fumaça do míssil")]
     public ParticleSystem sistemaFumaca;
+    public float tempoMaximoVida = 28f;
     
     // Estado
     private Vector3 pontoAlvo;
@@ -47,12 +49,48 @@ public class MisselSubmarino : MonoBehaviour
     private float tempoDesdeSuperficie = 0f;
     private bool naSuperficie = false;
     private Rigidbody rb;
+    private static readonly Collider[] bufferExplosao = new Collider[48];
+    private bool jaExplodiu = false;
+    private float tempoExpirar;
+
+    void OnEnable()
+    {
+        IA_CombatTelemetry.RegisterMissile();
+        ResetarEstado();
+        tempoExpirar = Time.time + tempoMaximoVida;
+    }
+
+    void OnDisable()
+    {
+        IA_CombatTelemetry.UnregisterMissile();
+        StopAllCoroutines();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (sistemaFumaca != null)
+        {
+            sistemaFumaca.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+    }
+
+    void Awake()
+    {
+        GarantirComponentes();
+    }
     
     public void IniciarLancamento(Vector3 alvo, bool submarinSubmerso)
     {
+        GarantirComponentes();
+        StopAllCoroutines();
+        ResetarEstado();
+
         pontoAlvo = alvo;
         estaSubmerso = submarinSubmerso;
         lancado = true;
+        tempoExpirar = Time.time + tempoMaximoVida;
         
         // Força rotação para cima no início
         transform.rotation = Quaternion.LookRotation(Vector3.up);
@@ -63,22 +101,28 @@ public class MisselSubmarino : MonoBehaviour
     
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        GarantirComponentes();
+    }
+
+    void GarantirComponentes()
+    {
+        if (rb == null)
+        {
+            rb = GetComponent<Rigidbody>();
+        }
+
         if (rb == null)
         {
             rb = gameObject.AddComponent<Rigidbody>();
         }
-        
+
         rb.useGravity = false;
         rb.isKinematic = false;
-        
-        // TRAVA ROTAÇÃO - Só o script pode girar o míssil
         rb.constraints = RigidbodyConstraints.FreezeRotation;
-        
-        // Desativa fumaça no início
-        if (sistemaFumaca != null)
+
+        if (sistemaFumaca != null && sistemaFumaca.isPlaying)
         {
-            sistemaFumaca.Stop();
+            sistemaFumaca.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
     }
     
@@ -108,6 +152,11 @@ public class MisselSubmarino : MonoBehaviour
     IEnumerator SubirParaSuperficie()
     {
         Debug.Log("Míssil saindo da água...");
+
+        if (rb == null)
+        {
+            GarantirComponentes();
+        }
         
         float tempoSubidaReta = 3.0f; // Sobe reto por um tempo (efeito dramático)
         float velocidadeInicial = 8f; 
@@ -138,6 +187,11 @@ public class MisselSubmarino : MonoBehaviour
     IEnumerator SubirParaAltura()
     {
         Debug.Log("Míssil subindo para altitude de cruzeiro...");
+
+        if (rb == null)
+        {
+            GarantirComponentes();
+        }
         
         // Continua subindo até atingir a altura configurada
         // Nota: O FixedUpdate já vai começar a contar o tempo para o Turbo
@@ -182,6 +236,18 @@ public class MisselSubmarino : MonoBehaviour
     void FixedUpdate()
     {
         if (!lancado) return;
+
+        if (Time.time >= tempoExpirar)
+        {
+            Explodir();
+            return;
+        }
+
+        if (rb == null)
+        {
+            GarantirComponentes();
+            if (rb == null) return;
+        }
         
         // Timer do turbo
         if (naSuperficie && !modoTurboAtivo && !atingiuAlturaVoo)
@@ -280,6 +346,13 @@ public class MisselSubmarino : MonoBehaviour
     
     void Explodir()
     {
+        if (jaExplodiu)
+        {
+            return;
+        }
+
+        jaExplodiu = true;
+
         // Debug eliminado para performance se necessário, mas mantido por enquanto
         // Debug.Log("Míssil explodiu!");
         
@@ -294,9 +367,12 @@ public class MisselSubmarino : MonoBehaviour
             {
                 if (prefabFx != null)
                 {
-                    GameObject fx = Instantiate(prefabFx, transform.position, Quaternion.identity);
-                    fx.transform.localScale = Vector3.one * escalaVisualExplosao;
-                    Destroy(fx, tempoDuracaoExplosao);
+                    PoolDeObjetosCombate.SpawnTemporario(
+                        prefabFx,
+                        transform.position,
+                        Quaternion.identity,
+                        tempoDuracaoExplosao,
+                        Vector3.one * escalaVisualExplosao);
                 }
             }
         }
@@ -321,9 +397,15 @@ public class MisselSubmarino : MonoBehaviour
         }
         
         // 3. Aplica dano
-        Collider[] objetosNaArea = Physics.OverlapSphere(transform.position, raioExplosao);
-        foreach (Collider obj in objetosNaArea)
+        int objetosNaArea = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, bufferExplosao);
+        for (int i = 0; i < objetosNaArea; i++)
         {
+            Collider obj = bufferExplosao[i];
+            if (obj == null)
+            {
+                continue;
+            }
+
             SistemaDeDanos sistemaDano = obj.GetComponent<SistemaDeDanos>();
             if (sistemaDano != null)
             {
@@ -337,9 +419,24 @@ public class MisselSubmarino : MonoBehaviour
             {
                  rbAlvo.AddExplosionForce(2000f, transform.position, raioExplosao);
             }
+
+            bufferExplosao[i] = null;
         }
         
-        Destroy(gameObject);
+        PoolDeObjetosCombate.Release(gameObject);
+    }
+
+    private void ResetarEstado()
+    {
+        pontoAlvo = Vector3.zero;
+        estaSubmerso = true;
+        velocidadeAtual = 0f;
+        atingiuAlturaVoo = false;
+        lancado = false;
+        modoTurboAtivo = false;
+        tempoDesdeSuperficie = 0f;
+        naSuperficie = false;
+        jaExplodiu = false;
     }
     
     void OnDrawGizmosSelected()

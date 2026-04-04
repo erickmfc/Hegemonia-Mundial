@@ -17,6 +17,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly IA_WorldState _world;
         private readonly List<Sample> _samples = new List<Sample>();
         private readonly HashSet<int> _seenThisTick = new HashSet<int>();
+        private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(48);
 
         private float _landUsage;
         private float _navalUsage;
@@ -236,17 +237,17 @@ namespace Hegemonia.AI.BrainMaster
 
         private Vector3 GetEnemyAxis(Vector3 baseCenter)
         {
-            List<IA_EnemyObservation> memory = _world.GetEnemyMemory(80f);
-            if (memory.Count == 0)
+            _world.FillEnemyMemory(_enemyMemoryBuffer, 80f);
+            if (_enemyMemoryBuffer.Count == 0)
             {
                 return Vector3.forward;
             }
 
             Vector3 sum = Vector3.zero;
             int count = 0;
-            for (int i = 0; i < memory.Count; i++)
+            for (int i = 0; i < _enemyMemoryBuffer.Count; i++)
             {
-                IA_EnemyObservation obs = memory[i];
+                IA_EnemyObservation obs = _enemyMemoryBuffer[i];
                 if (obs == null)
                 {
                     continue;

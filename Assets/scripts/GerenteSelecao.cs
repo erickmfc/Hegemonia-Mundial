@@ -492,6 +492,12 @@ public class GerenteSelecao : MonoBehaviour
         {
             if (unidade == null) continue;
 
+            if (unidade.TemC700TransporteAereo)
+            {
+                unidade.MoverParaPonto(destinoCentral);
+                continue;
+            }
+
             if (unidade.TemControleAviao)
             {
                 if (torreDestino != null)
@@ -913,15 +919,21 @@ public class GerenteSelecao : MonoBehaviour
         }
         else
         {
+            if (unidade.GetComponent<GerenciadorPortaAvioes>() != null)
+            {
+                return;
+            }
+
             // --- CORREÇÃO AUTOMÁTICA (APENAS SE NÃO TIVER NENHUM SCRIPT DE IDENTIDADE) ---
             idU = unidade.gameObject.AddComponent<IdentidadeUnidade>();
             idU.teamID = 1; // Registra como Aliado
             idU.nomeDoPais = "Minha Nação";
             idU.tipoUnidade = unidade.EhUnidadeNaval()
                 ? TipoUnidade.Naval
-                : (unidade.GetComponent<ControleAviao>() != null
+                : (((!unidade.TemC700TransporteAereo) && (
+                    unidade.GetComponent<ControleAviao>() != null
                     || unidade.GetComponent<Helicoptero>() != null
-                    || unidade.GetComponent<VooHelicoptero>() != null
+                    || unidade.GetComponent<VooHelicoptero>() != null))
                     ? TipoUnidade.Aereo
                     : TipoUnidade.Veiculo);
         }

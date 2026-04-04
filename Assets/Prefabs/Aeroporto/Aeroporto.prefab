@@ -201,6 +201,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 8.2
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!114 &6373279800350143844
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -244,8 +248,10 @@ MonoBehaviour:
   - {fileID: 0}
   avioesNoHangar:
   - {fileID: 0}
+  transportesC700NoPatio: []
   menuAeroportoUI: {fileID: 0}
   aviaoSelecionadoParaMissao: {fileID: 0}
+  c700SelecionadoParaMissao: {fileID: 0}
   waypointsPatio: []
   wpPreparacao: {fileID: 0}
   wpPronto: {fileID: 0}
@@ -297,7 +303,7 @@ NavMeshObstacle:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1032297418132470704}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Shape: 1
   m_Extents: {x: 39.7, y: 0.5, z: 88.565}
@@ -416,7 +422,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8261122646047302772}
   m_Layer: 0
-  m_Name: Parada
+  m_Name: Parada_grande
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -431,7 +437,7 @@ Transform:
   m_GameObject: {fileID: 2332810746605339681}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 10.6, y: -0.15, z: -0.7}
+  m_LocalPosition: {x: 4.48, y: -0.15, z: -4.23}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1003,7 +1009,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4225985240550498662}
   m_Layer: 0
-  m_Name: 'Radar_Prefeb Variant (Missing Prefab with guid: 9481bfaa626f51b428df15c949c896e7)'
+  m_Name: Radar_Prefeb Variant
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1111,7 +1117,7 @@ Transform:
   m_GameObject: {fileID: 5301485555043311514}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.1, y: 2, z: 51.6}
+  m_LocalPosition: {x: 0.1, y: 2, z: 31.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1615,7 +1621,7 @@ Transform:
   m_GameObject: {fileID: 9127882827902701470}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.8, y: 0.7, z: 6.66}
+  m_LocalPosition: {x: 0.5, y: 0.7, z: 6.66}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4189,7 +4195,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 487926, guid: f12b80ee355514fe5854ba0b1641e27a, type: 3}
       propertyPath: m_LocalScale.x
-      value: 4.75
+      value: 8.6
       objectReference: {fileID: 0}
     - target: {fileID: 487926, guid: f12b80ee355514fe5854ba0b1641e27a, type: 3}
       propertyPath: m_LocalScale.y
@@ -4201,7 +4207,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 487926, guid: f12b80ee355514fe5854ba0b1641e27a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 15.58
+      value: 11.55
       objectReference: {fileID: 0}
     - target: {fileID: 487926, guid: f12b80ee355514fe5854ba0b1641e27a, type: 3}
       propertyPath: m_LocalPosition.y
@@ -4485,6 +4491,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3995878500618963171}
     m_Modifications:
+    - target: {fileID: 35673777277073736, guid: 62bad61520bb55f45aa8fc398f8aa03f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 3.87
+      objectReference: {fileID: 0}
+    - target: {fileID: 35673777277073736, guid: 62bad61520bb55f45aa8fc398f8aa03f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0
+      objectReference: {fileID: 0}
     - target: {fileID: 1953035126549250441, guid: 62bad61520bb55f45aa8fc398f8aa03f, type: 3}
       propertyPath: m_Name
       value: Predio

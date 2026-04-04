@@ -220,7 +220,7 @@ MonoBehaviour:
   tempoAceleracao: 5
   tempoDesaceleracao: 5
   tempoParadaEmergencia: 5
-  velocidadeMaxima: 45
+  velocidadeMaxima: 55
   velocidadeLeme: 5
   curvaMaximaGraus: 10
   coeficienteAderna: 2.5
@@ -291,6 +291,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 4.6
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 10
+  atrasoPosAfundamento: 0.6
 --- !u!114 &5531175316603253341
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -929,11 +933,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3575391994411543336, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.144
+      value: 0.1463
       objectReference: {fileID: 0}
     - target: {fileID: 3575391994411543336, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3575391994411543338, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
       propertyPath: m_LocalScale.x

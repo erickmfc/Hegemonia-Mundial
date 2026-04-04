@@ -56,7 +56,7 @@ public class SiloNuclear : MonoBehaviour
         // 1. INSTANCIA O MÍSSIL (Aparece no jogo, mas parado)
         // Ele vai nascer exatamente na posição e rotação do 'pontoDeSaida' do Silo.
         // DICA: Ajuste o 'pontoDeSaida' para ficar na base do silo, e o Pivot do Míssil para ser na cauda.
-        GameObject misselInstanciado = Instantiate(prefabMissel, pontoDeSaida.position, pontoDeSaida.rotation);
+        GameObject misselInstanciado = PoolDeObjetosCombate.Spawn(prefabMissel, pontoDeSaida.position, pontoDeSaida.rotation);
         
         Debug.Log(nomeDoSilo + ": Portas abertas. Míssil posicionado. Ignição em " + tempoDePreparacao + "s...");
 

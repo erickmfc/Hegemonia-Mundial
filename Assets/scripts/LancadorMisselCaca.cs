@@ -61,6 +61,7 @@ public class LancadorMisselCaca : MonoBehaviour
         _sistemaDanos = GetComponent<SistemaDeDanos>();
         _rb = GetComponent<Rigidbody>();
         _audioSource = GetComponent<AudioSource>();
+        PoolDeObjetosCombate.Prewarm(missilCacaPrefab, Mathf.Clamp(municaoMaxima, 2, 6));
         
         _meuTime = GetComponent<IdentidadeIA>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 1;
     }
@@ -198,7 +199,7 @@ public class LancadorMisselCaca : MonoBehaviour
             indiceCano = (indiceCano + 1) % pontosDeSaida.Length;
         }
 
-        GameObject missil = Instantiate(missilCacaPrefab, saida.position, saida.rotation);
+        GameObject missil = PoolDeObjetosCombate.Spawn(missilCacaPrefab, saida.position, saida.rotation);
         
         MisselCaca scriptVoo = missil.GetComponent<MisselCaca>();
         if (scriptVoo != null)

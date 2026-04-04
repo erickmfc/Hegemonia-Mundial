@@ -213,7 +213,7 @@ public class LancadorSimples : MonoBehaviour
         if (ponto == null || misselPrefab == null) yield break;
 
         // Instancia o míssil
-        GameObject missel = Instantiate(misselPrefab, ponto.position, ponto.rotation);
+        GameObject missel = PoolDeObjetosCombate.Spawn(misselPrefab, ponto.position, ponto.rotation);
 
         // Calcula o destino (posição atual do alvo + previsão de movimento)
         Vector3 destino = alvo != null ? alvo.position : (transform.position + transform.forward * 100f);

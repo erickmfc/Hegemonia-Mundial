@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using Hegemonia.AI.BrainMaster;
 
 public class MisselCaca : MonoBehaviour
 {
@@ -21,6 +22,7 @@ public class MisselCaca : MonoBehaviour
     public float volumeSom = 1.0f;
     public GameObject efeitoExplosaoPrefab;
     public AudioClip somExplosao;
+    public float tempoMaximoVida = 18f;
 
     private Vector3 pontoAlvo;
     private Transform alvoTransform;
@@ -34,6 +36,30 @@ public class MisselCaca : MonoBehaviour
     private static readonly Collider[] _explosaoBuffer = new Collider[32];
     // --- CACHE: WaitForSeconds reutilizável ---
     private WaitForSeconds _esperaQuedaLivre;
+    private float _tempoExpirar;
+
+    void OnEnable()
+    {
+        IA_CombatTelemetry.RegisterMissile();
+        ResetarEstado();
+        _tempoExpirar = Time.time + tempoMaximoVida;
+    }
+
+    void OnDisable()
+    {
+        IA_CombatTelemetry.UnregisterMissile();
+        StopAllCoroutines();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (sistemaFumaca != null)
+        {
+            sistemaFumaca.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+    }
 
     void Awake()
     {
@@ -51,9 +77,13 @@ public class MisselCaca : MonoBehaviour
 
     public void IniciarAtaque(Vector3 alvo, Vector3 velocidadeInicialAviao, Transform alvoT = null)
     {
+        StopAllCoroutines();
         pontoAlvo = alvo;
         alvoTransform = alvoT;
         lancado = true;
+        jaExplodiu = false;
+        motorLigado = false;
+        _tempoExpirar = Time.time + tempoMaximoVida;
         
         velocidadeAtual = velocidadeInicialAviao.magnitude;
         rb.linearVelocity = velocidadeInicialAviao;
@@ -78,6 +108,12 @@ public class MisselCaca : MonoBehaviour
     void FixedUpdate()
     {
         if (!lancado) return;
+
+        if (Time.time >= _tempoExpirar)
+        {
+            Explodir();
+            return;
+        }
 
         if (alvoTransform != null) pontoAlvo = alvoTransform.position;
 
@@ -119,9 +155,12 @@ public class MisselCaca : MonoBehaviour
 
         if (efeitoExplosaoPrefab != null)
         {
-            GameObject fx = Instantiate(efeitoExplosaoPrefab, transform.position, Quaternion.identity);
-            fx.transform.localScale = Vector3.one * escalaVisualExplosao;
-            Destroy(fx, 5f); 
+            PoolDeObjetosCombate.SpawnTemporario(
+                efeitoExplosaoPrefab,
+                transform.position,
+                Quaternion.identity,
+                5f,
+                Vector3.one * escalaVisualExplosao);
         }
 
         if (somExplosao != null)
@@ -149,6 +188,17 @@ public class MisselCaca : MonoBehaviour
                 alvoVida.ReceberDano(dano);
         }
 
-        Destroy(gameObject);
+        PoolDeObjetosCombate.Release(gameObject);
+    }
+
+    private void ResetarEstado()
+    {
+        pontoAlvo = Vector3.zero;
+        alvoTransform = null;
+        lancado = false;
+        motorLigado = false;
+        velocidadeAtual = 0f;
+        jaExplodiu = false;
+        _esperaQuedaLivre = new WaitForSeconds(tempoQuedaLivre);
     }
 }

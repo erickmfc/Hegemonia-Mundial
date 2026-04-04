@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Hegemonia.AI.BrainMaster;
 
 /// <summary>
 /// Classe de Projétil genérico (Bala, Canhão, etc.).
@@ -45,6 +46,30 @@ public class Projetil : MonoBehaviour
 
     // Zero-alloc Raycasting buffer
     private static RaycastHit[] bufferTiros = new RaycastHit[10];
+    private static readonly Collider[] bufferExplosao = new Collider[32];
+    private readonly List<SistemaDeDanos> alvosExplosao = new List<SistemaDeDanos>(16);
+    private float tempoExpirar;
+
+    void OnEnable()
+    {
+        IA_CombatTelemetry.RegisterProjectile();
+        jaAcertou = false;
+        dono = null;
+        alvoPerseguido = null;
+        direcaoCustom = Vector3.zero;
+        temDirecaoCustom = false;
+        tempoExpirar = Time.time + tempoDeVida;
+    }
+
+    void OnDisable()
+    {
+        IA_CombatTelemetry.UnregisterProjectile();
+        jaAcertou = false;
+        alvoPerseguido = null;
+        dono = null;
+        temDirecaoCustom = false;
+        direcaoCustom = Vector3.zero;
+    }
 
     void Start()
     {
@@ -57,9 +82,6 @@ public class Projetil : MonoBehaviour
             a.minDistance = 10f;
             a.maxDistance = 300f;
         }
-
-        // Auto-destrói depois de X segundos para não poluir a cena
-        Destroy(gameObject, tempoDeVida);
     }
 
     /// <summary>
@@ -67,15 +89,21 @@ public class Projetil : MonoBehaviour
     /// </summary>
     public void SetAlvo(Transform alvo)
     {
-        alvoPerseguido = alvo;
+        alvoPerseguido = ControleSubmarino.PodeSerAlvoConvencional(alvo) ? alvo : null;
     }
 
     void Update()
     {
+        if (Time.time >= tempoExpirar)
+        {
+            Liberar();
+            return;
+        }
+
         // --- HOMING (MÍSSIL TELEGUIADO) ---
         if (alvoPerseguido != null && curvaDePerseguicao > 0f)
         {
-            if (alvoPerseguido.gameObject.activeInHierarchy)
+            if (alvoPerseguido.gameObject.activeInHierarchy && ControleSubmarino.PodeSerAlvoConvencional(alvoPerseguido))
             {
                 Vector3 pontoAlvo = alvoPerseguido.position + Vector3.up * 1f; // Aponta um pouco acima do centro da base
                 Vector3 vetorParaAlvo = pontoAlvo - transform.position;
@@ -247,7 +275,17 @@ public class Projetil : MonoBehaviour
         // Efeito de impacto específico deste projétil (opcional, se configurado no Inspector)
         if (efeitoImpacto != null)
         {
-            GameObject fx = Instantiate(efeitoImpacto, transform.position, Quaternion.identity);
+            GameObject fx = PoolDeObjetosCombate.SpawnTemporario(
+                efeitoImpacto,
+                transform.position,
+                Quaternion.identity,
+                2f,
+                raioDeExplosao > 0f ? (Vector3?) (Vector3.one * Mathf.Max(1.0f, raioDeExplosao * 0.8f)) : null);
+            if (fx == null)
+            {
+                Liberar();
+                return;
+            }
             
             // Garante que o som de impacto também fique 3D
             AudioSource[] audiosImpacto = fx.GetComponentsInChildren<AudioSource>();
@@ -259,35 +297,27 @@ public class Projetil : MonoBehaviour
                 a.maxDistance = 600f;
             }
 
-            // Se for explosão, escala o efeito também
-            if (raioDeExplosao > 0f)
-            {
-                 fx.transform.localScale = Vector3.one * Mathf.Max(1.0f, raioDeExplosao * 0.8f);
-            }
-
-            Destroy(fx, 2f);
         }
 
         // Destrói o projétil imediatamente
-        Destroy(gameObject);
+        Liberar();
     }
 
     void Explodir(SistemaDeDanos alvoDiretoIgnorar)
     {
         int danoReal = (danoExplosao > 0) ? danoExplosao : dano;
-        Collider[] atingidos = Physics.OverlapSphere(transform.position, raioDeExplosao);
-        
-        // HashSet para garantir que cada entidade receba dano apenas uma vez (mesmo tendo vários colliders)
-        HashSet<SistemaDeDanos> unicosAtingidos = new HashSet<SistemaDeDanos>();
+        int atingidos = Physics.OverlapSphereNonAlloc(transform.position, raioDeExplosao, bufferExplosao);
+        alvosExplosao.Clear();
 
         // Se já demos dano direto, adiciona à lista de 'já atingidos' para não tomar dano dobrado
         if (alvoDiretoIgnorar != null)
         {
-            unicosAtingidos.Add(alvoDiretoIgnorar);
+            alvosExplosao.Add(alvoDiretoIgnorar);
         }
 
-        foreach (Collider hit in atingidos)
+        for (int i = 0; i < atingidos; i++)
         {
+            Collider hit = bufferExplosao[i];
             if (hit == null || hit.isTrigger) continue;
 
             GameObject obj = hit.gameObject;
@@ -299,11 +329,18 @@ public class Projetil : MonoBehaviour
             SistemaDeDanos vida = obj.GetComponent<SistemaDeDanos>();
             if (vida == null) vida = obj.GetComponentInParent<SistemaDeDanos>();
 
-            if (vida != null && !unicosAtingidos.Contains(vida))
+            if (vida != null && !alvosExplosao.Contains(vida))
             {
                 vida.ReceberDano(danoReal);
-                unicosAtingidos.Add(vida);
+                alvosExplosao.Add(vida);
             }
+
+            bufferExplosao[i] = null;
         }
+    }
+
+    private void Liberar()
+    {
+        PoolDeObjetosCombate.Release(gameObject);
     }
 }

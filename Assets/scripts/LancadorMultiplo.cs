@@ -374,7 +374,7 @@ public class LancadorMultiplo : MonoBehaviour
         }
 
         Debug.Log($"[LancadorMultiplo] Instanciando {misselPrefab.name} em {pontoSaida.position}");
-        GameObject missel = Instantiate(misselPrefab, pontoSaida.position, pontoSaida.rotation);
+        GameObject missel = PoolDeObjetosCombate.Spawn(misselPrefab, pontoSaida.position, pontoSaida.rotation);
         
         if (missel == null)
         {

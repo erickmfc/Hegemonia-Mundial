@@ -55,6 +55,8 @@ public class ControleTorretaModular : MonoBehaviour
     private Transform alvoAtual;
     private Collider[] bufferColisores = new Collider[40];
     private int indiceArmaAlternada = 0;
+    private int meuTime = 1;
+    private Transform minhaRaiz;
     
     void Start()
     {
@@ -70,6 +72,9 @@ public class ControleTorretaModular : MonoBehaviour
         }
         
         // Garante referência da torre
+        IdentidadeUnidade meuID = GetComponentInParent<IdentidadeUnidade>();
+        meuTime = (meuID != null) ? meuID.teamID : 1;
+        minhaRaiz = transform.root;
         if (pecaQueGira == null) pecaQueGira = transform;
         
         // Inicia busca de alvos
@@ -87,6 +92,12 @@ public class ControleTorretaModular : MonoBehaviour
         
         if (alvoAtual != null)
         {
+            if (!alvoAtual.gameObject.activeInHierarchy || !ControleSubmarino.PodeSerAlvoConvencional(alvoAtual))
+            {
+                alvoAtual = null;
+                return;
+            }
+
             // Mira no alvo
             RotacionarParaAlvo();
             
@@ -108,14 +119,10 @@ public class ControleTorretaModular : MonoBehaviour
             return;
         }
         
-        int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, bufferColisores);
+        int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, bufferColisores, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
-        
-        // Busca meu teamID
-        IdentidadeUnidade meuID = GetComponentInParent<IdentidadeUnidade>();
-        int meuTime = (meuID != null) ? meuID.teamID : 1;
         
         for (int i = 0; i < quantidadeEncontrada; i++)
         {
@@ -123,7 +130,8 @@ public class ControleTorretaModular : MonoBehaviour
             if (hit == null) continue;
             
             Transform alvoTr = hit.transform;
-            if (alvoTr.root == transform.root) continue;
+            if (alvoTr.root == minhaRaiz) continue;
+            if (!ControleSubmarino.PodeSerAlvoConvencional(alvoTr)) continue;
             
             bool ehInimigo = false;
             
@@ -145,7 +153,7 @@ public class ControleTorretaModular : MonoBehaviour
             if (ehInimigo)
             {
                 Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
-                float dist = Vector3.Distance(transform.position, pontoMaisProximo);
+                float dist = (transform.position - pontoMaisProximo).sqrMagnitude;
                 if (dist < menorDistancia)
                 {
                     menorDistancia = dist;

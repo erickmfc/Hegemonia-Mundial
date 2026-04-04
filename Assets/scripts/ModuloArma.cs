@@ -103,6 +103,11 @@ public class ModuloArma
     
     public void Disparar(Transform torreMira, Transform alvo, GameObject torreDono, AudioSource fonte)
     {
+        if (!ControleSubmarino.PodeSerAlvoConvencional(alvo))
+        {
+            return;
+        }
+
         if (municaoPrefab == null || pontosDisparo == null || pontosDisparo.Length == 0) return;
         
         // Seleciona barril
@@ -110,7 +115,7 @@ public class ModuloArma
         indiceBarrilAtual = (indiceBarrilAtual + 1) % pontosDisparo.Length;
         
         // Cria projétil
-        GameObject proj = Object.Instantiate(municaoPrefab, barril.position, barril.rotation);
+        GameObject proj = PoolDeObjetosCombate.Spawn(municaoPrefab, barril.position, barril.rotation);
         
         // Configura direção (com dispersão opcional)
         Vector3 direcao = (alvo.position - barril.position).normalized;

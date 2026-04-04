@@ -665,6 +665,7 @@ GameObject:
   - component: {fileID: 9035103337520596398}
   - component: {fileID: 5685576029661716178}
   - component: {fileID: 4532009745570917375}
+  - component: {fileID: 7940018349858558916}
   m_Layer: 0
   m_Name: USS Liberty Prime
   m_TagString: Player
@@ -745,6 +746,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 0}
   selecionado: 0
+  aguardandoVisto: 0
+  vistoAprovado: 0
   velocidadeVoo: 8
   tamanhoSelecao: 0
   corSelecao: {r: 0.4646837, g: 0.9150943, b: 0.056114297, a: 0.40392157}
@@ -752,6 +755,8 @@ MonoBehaviour:
   corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
   larguraLinha: 0.15
   segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
 --- !u!114 &183548932973335129
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -823,17 +828,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3a9c47149e9ed940b8eed13c0f7213c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NavegacaoInteligenteNaval
-  anguloParaMarchaRe: 90
+  forcaMotor: 1000
+  tempoAceleracaoMotor: 8
+  forcaLeme: 800
+  velocidadeMaxima: 15
+  arrastoFrontal: 1.5
+  aderenciaAguaLateral: 8
   distanciaMaximaRe: 154
-  velocidadeRe: 0.876
-  velocidadeGiroMax: 10
-  aceleracao: 2
+  multiplicadorForcaRe: 0.6
   rastroAgua: {fileID: 0}
   modelo3D: {fileID: 0}
   forcaInclinacao: 3
-  mostrarDebugVisual: 1
-  corSetaFrente: {r: 0, g: 1, b: 0, a: 1}
-  corSetaRe: {r: 1, g: 0, b: 0, a: 1}
+  distanciaRadarObstaculo: 40
+  margemDesvioLateral: 15
 --- !u!114 &4532009745570917375
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -851,6 +858,33 @@ MonoBehaviour:
   estaAtracado: 0
   velocidadeDeRe: 5
   velocidadeRotacaoRe: 2
+--- !u!54 &7940018349858558916
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8070944300659616728}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 0
+  m_Interpolate: 1
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!1001 &5707866236530597251
 PrefabInstance:
   m_ObjectHideFlags: 0

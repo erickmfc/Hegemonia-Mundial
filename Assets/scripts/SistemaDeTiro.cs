@@ -37,6 +37,9 @@ public class SistemaDeTiro : MonoBehaviour
 
     private ControleUnidade selecao; 
     private IdentidadeUnidade minhaIdentidade;
+    private Transform minhaRaiz;
+    private bool souSoldadoLeve;
+    private float alcanceComMargemSqr;
 
     // OTIMIZAÇÃO: Buffer de colisão para evitar GC
     private Collider[] bufferColisores = new Collider[50];
@@ -53,7 +56,7 @@ public class SistemaDeTiro : MonoBehaviour
         if (alvoAtual != null)
         {
             // Validação de segurança: Alvo foi destruído?
-            if (alvoAtual == null || !alvoAtual.gameObject.activeInHierarchy)
+            if (alvoAtual == null || !alvoAtual.gameObject.activeInHierarchy || !ControleSubmarino.PodeSerAlvoConvencional(alvoAtual))
             {
                 alvoAtual = null;
                 return;
@@ -63,8 +66,8 @@ public class SistemaDeTiro : MonoBehaviour
             Collider colInimigo = alvoAtual.GetComponentInChildren<Collider>();
             Vector3 alvoPosicaoReal = (colInimigo != null) ? colInimigo.ClosestPoint(transform.position) : alvoAtual.position;
             
-            float dist = Vector3.Distance(transform.position, alvoPosicaoReal);
-            if (dist > alcanceTiro + 3f) // Margem de 3 metros pra nao perder o alvo bobamente ao parar
+            float distSqr = (transform.position - alvoPosicaoReal).sqrMagnitude;
+            if (distSqr > alcanceComMargemSqr) // Margem de 3 metros pra nao perder o alvo bobamente ao parar
             {
                 alvoAtual = null; // Perde o alvo se sair do alcance
                 return;
@@ -161,6 +164,8 @@ public class SistemaDeTiro : MonoBehaviour
         balasAtuais = capacidadePente; 
         selecao = GetComponentInParent<ControleUnidade>();
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
+        minhaRaiz = transform.root;
+        PoolDeObjetosCombate.Prewarm(prefabProjetil, Mathf.Clamp(capacidadePente > 0 ? 6 : 4, 2, 8));
 
         // Cache para performance (evita GetComponent a cada tiro)
         somUnidadeCached = GetComponentInParent<SomUnidade>();
@@ -174,6 +179,11 @@ public class SistemaDeTiro : MonoBehaviour
             minhaIdentidade.teamID = 1; 
             minhaIdentidade.nomeDoPais = "Minha Nação";
         }
+
+        string meuNomeTag = minhaRaiz != null ? minhaRaiz.name.ToLowerInvariant() : name.ToLowerInvariant();
+        souSoldadoLeve = meuNomeTag.Contains("soldado") || meuNomeTag.Contains("infantaria") || meuNomeTag.Contains("rifle") || meuNomeTag.Contains("jipe");
+        float alcanceComMargem = alcanceTiro + 3f;
+        alcanceComMargemSqr = alcanceComMargem * alcanceComMargem;
 
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
@@ -192,28 +202,25 @@ public class SistemaDeTiro : MonoBehaviour
         {
              Collider col = alvoAtual.GetComponentInChildren<Collider>();
              Vector3 alvoPosReal = (col != null) ? col.ClosestPoint(transform.position) : alvoAtual.position;
-             float dist = Vector3.Distance(transform.position, alvoPosReal);
-             if (dist <= alcanceTiro + 3f) return; 
+             float distSqr = (transform.position - alvoPosReal).sqrMagnitude;
+             if (distSqr <= alcanceComMargemSqr) return;
         }
 
         alvoAtual = null; // Reseta para buscar o mais próximo
 
         // Busca nova lista de alvos potenciais usando buffer para ZERO alocação de memória (GC Free)
-        int naviosNaArea = Physics.OverlapSphereNonAlloc(transform.position, alcanceTiro, bufferColisores);
+        int naviosNaArea = Physics.OverlapSphereNonAlloc(transform.position, alcanceTiro, bufferColisores, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         
         float menorDistancia = Mathf.Infinity;
         Transform candidato = null;
 
         // Calcula quem eu sou FORA DO LOOP para não gastar processamento (String manipulation pesada)
         string meuNomeTag = transform.root.name.ToLower();
-        bool euSouTanque = meuNomeTag.Contains("tank") || 
-                           meuNomeTag.Contains("tanque") ||
-                           meuNomeTag.Contains("blindado");
-
         for (int i = 0; i < naviosNaArea; i++)
         {
             Collider hit = bufferColisores[i];
-            if (hit == null || hit.transform.root == transform.root) continue;
+            if (hit == null || hit.transform.root == minhaRaiz) continue;
+            if (!ControleSubmarino.PodeSerAlvoConvencional(hit.transform)) continue;
 
             // Busca IdentidadeUnidade (Componente que define time)
             IdentidadeUnidade idAlvo = hit.GetComponent<IdentidadeUnidade>();
@@ -236,13 +243,13 @@ public class SistemaDeTiro : MonoBehaviour
                                      hit.name.Contains("caca");
 
                     // Apenas INFANTARIA (Soldados) ou Jipes com metralhadora muito leves podem tentar atirar com suas mãos em alvos aéreos
-                    bool souSoldado = meuNomeTag.Contains("soldado") || meuNomeTag.Contains("infantaria") || meuNomeTag.Contains("rifle") || meuNomeTag.Contains("jipe");
+                    bool souSoldado = souSoldadoLeve;
                     
                     if (alvoAereo && !souSoldado) continue; // Tanques e caminhões cegos para os céus!
 
                     // Prioriza o mais próximo usando o transform
                     Vector3 alvoHitCenter = hit.transform.position;
-                    float d = Vector3.Distance(transform.position, alvoHitCenter);
+                    float d = (transform.position - alvoHitCenter).sqrMagnitude;
                     
                     if (d < menorDistancia)
                     {
@@ -268,7 +275,7 @@ public class SistemaDeTiro : MonoBehaviour
         // Se a boca do cano não estiver definida, usa a posição do próprio objeto
         Transform origem = (bocaDoCano != null) ? bocaDoCano : transform;
 
-        GameObject bala = Instantiate(prefabProjetil, origem.position, origem.rotation);
+        GameObject bala = PoolDeObjetosCombate.Spawn(prefabProjetil, origem.position, origem.rotation);
         
         // --- CORREÇÃO DE SEGURANÇA ---
         Projetil scriptBala = bala.GetComponent<Projetil>();

@@ -10,6 +10,9 @@ public static class RegistroEntidadesJogo
     private static readonly HashSet<GerenciadorAeroporto> Aeroportos = new HashSet<GerenciadorAeroporto>();
     private static readonly HashSet<ControleAviao> Avioes = new HashSet<ControleAviao>();
     private static readonly HashSet<PierMarinha> Piers = new HashSet<PierMarinha>();
+    private static readonly HashSet<Fabrica> Fabricas = new HashSet<Fabrica>();
+    private static readonly HashSet<Estaleiro> Estaleiros = new HashSet<Estaleiro>();
+    private static readonly HashSet<Heliporto> Heliportos = new HashSet<Heliporto>();
 
     public static void Register(IdentidadeUnidade unidade)
     {
@@ -123,6 +126,54 @@ public static class RegistroEntidadesJogo
         }
     }
 
+    public static void Register(Fabrica fabrica)
+    {
+        if (fabrica != null)
+        {
+            Fabricas.Add(fabrica);
+        }
+    }
+
+    public static void Unregister(Fabrica fabrica)
+    {
+        if (fabrica != null)
+        {
+            Fabricas.Remove(fabrica);
+        }
+    }
+
+    public static void Register(Estaleiro estaleiro)
+    {
+        if (estaleiro != null)
+        {
+            Estaleiros.Add(estaleiro);
+        }
+    }
+
+    public static void Unregister(Estaleiro estaleiro)
+    {
+        if (estaleiro != null)
+        {
+            Estaleiros.Remove(estaleiro);
+        }
+    }
+
+    public static void Register(Heliporto heliporto)
+    {
+        if (heliporto != null)
+        {
+            Heliportos.Add(heliporto);
+        }
+    }
+
+    public static void Unregister(Heliporto heliporto)
+    {
+        if (heliporto != null)
+        {
+            Heliportos.Remove(heliporto);
+        }
+    }
+
     public static void FillUnidades(List<IdentidadeUnidade> destino)
     {
         Fill(Unidades, destino);
@@ -146,6 +197,26 @@ public static class RegistroEntidadesJogo
     public static void FillAeroportos(List<GerenciadorAeroporto> destino)
     {
         Fill(Aeroportos, destino);
+    }
+
+    public static void FillPiers(List<PierMarinha> destino)
+    {
+        Fill(Piers, destino);
+    }
+
+    public static void FillFabricas(List<Fabrica> destino)
+    {
+        Fill(Fabricas, destino);
+    }
+
+    public static void FillEstaleiros(List<Estaleiro> destino)
+    {
+        Fill(Estaleiros, destino);
+    }
+
+    public static void FillHeliportos(List<Heliporto> destino)
+    {
+        Fill(Heliportos, destino);
     }
 
     public static void FillAvioes(List<ControleAviao> destino)

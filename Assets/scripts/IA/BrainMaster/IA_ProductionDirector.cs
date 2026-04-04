@@ -48,38 +48,40 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            _nextDecisionTime = now + 0.32f;
+            _nextDecisionTime = now + ResolveDecisionDelay();
             if (_context.CommandQueue.PendingCount > 14)
             {
                 return;
             }
 
-            if (TickBootstrapProduction(now))
+            long profileStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            try
             {
-                return;
-            }
+                if (TickBootstrapProduction(now))
+                {
+                    return;
+                }
 
-            IA_CounterPlan counter = _context.PlayerProfileMemory.BuildCounterPlan();
+                IA_CounterPlan counter = _context.PlayerProfileMemory.BuildCounterPlan();
+                IA_ForceSnapshot snapshot = GetSnapshot();
 
-            int infantryCount = CountUnits("sold", "rifle", "infan");
-            int tankCount = CountUnits("tank", "mbt", "south", "arthur", "c1");
-            int artyCount = CountUnits("artilh", "hack");
-            int helicopterCount = CountHelicopters();
-            int fighterCount = CountFixedWingAircraft();
-            int airCount = helicopterCount + fighterCount;
-            int navalCount = CountNavalShips();
-            int submarineCount = CountSubmarines();
-            int truckCount = CountGroundTransports();
-            int hoverCount = CountUnits("hover");
-            bool hasBarracks = CountStructures("tenda", "barraca") > 0;
-            bool hasFactory = CountStructures("construtor de veiculos", "construtor", "fabrica") > 0;
-            bool hasAirport = HasOwnedStructureComponent<GerenciadorAeroporto>() || CountStructures("aeroporto", "base aerea", "airport", "pista") > 0;
-            bool hasHeliport = HasOwnedStructureComponent<Heliporto>() || CountStructures("heliporto") > 0;
-            bool hasNavalBase = HasOwnedStructureComponent<Estaleiro>()
-                                || HasOwnedStructureComponent<PierMarinha>()
-                                || CountStructures("estaleiro", "pier") > 0;
-            int structureCount = _context.WorldState.OwnStructures.Count;
-            UpdateStructureTracker(now, structureCount);
+                int infantryCount = snapshot.InfantryUnits;
+                int tankCount = snapshot.TankUnits;
+                int artyCount = snapshot.ArtilleryUnits;
+                int helicopterCount = snapshot.Helicopters;
+                int fighterCount = snapshot.FixedWingAircraft;
+                int airCount = helicopterCount + fighterCount;
+                int navalCount = snapshot.NavalUnits;
+                int submarineCount = snapshot.Submarines;
+                int truckCount = snapshot.GroundTransports;
+                int hoverCount = snapshot.HoverTransports;
+                bool hasBarracks = snapshot.HasBarracks;
+                bool hasFactory = snapshot.HasFactory;
+                bool hasAirport = snapshot.HasAirport;
+                bool hasHeliport = snapshot.HasHeliport;
+                bool hasNavalBase = snapshot.HasNavalBase;
+                int structureCount = snapshot.TotalOwnStructures;
+                UpdateStructureTracker(now, structureCount);
 
             int infantryTarget = 16 + (counter.AntiRush ? 10 : 0) + Mathf.RoundToInt(counter.LandWeight * 7f);
             int tankTarget = 7 + Mathf.RoundToInt(counter.LandWeight * 7f);
@@ -104,7 +106,7 @@ namespace Hegemonia.AI.BrainMaster
                 ? 1
                 : 0;
             int armyCount = Mathf.Max(
-                _context.WorldState.OwnCombatUnits.Count,
+                snapshot.TotalCombatUnits,
                 infantryCount + tankCount + artyCount + airCount + navalCount + submarineCount + hoverCount);
             bool structuresStable = now - _lastStructureChangeTime >= StructureStabilitySeconds;
 
@@ -199,22 +201,46 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (hasNavalBase)
+                if (hasNavalBase)
+                {
+                    if (navalCount < patrolShipTarget && QueueSurfaceFleetStep(navalCount, 85, 7f))
+                    {
+                        return;
+                    }
+
+                    if (submarineCount < subTarget && QueueProduceBest(84, 14f, "uss mako", "submarino", "uss wraith", "uss leviathan"))
+                    {
+                        return;
+                    }
+
+                    if (navalCount < navalTarget && QueueSurfaceFleetStep(navalCount, 80, 7f))
+                    {
+                        return;
+                    }
+                }
+            }
+            finally
             {
-                if (navalCount < patrolShipTarget && QueueSurfaceFleetStep(navalCount, 85, 7f))
-                {
-                    return;
-                }
+                RegistrarTempoProducao(profileStart);
+            }
+        }
 
-                if (submarineCount < subTarget && QueueProduceBest(84, 14f, "uss mako", "submarino", "uss wraith", "uss leviathan"))
-                {
-                    return;
-                }
+        private float ResolveDecisionDelay()
+        {
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            if (pressure == null)
+            {
+                return 0.75f;
+            }
 
-                if (navalCount < navalTarget && QueueSurfaceFleetStep(navalCount, 80, 7f))
-                {
-                    return;
-                }
+            switch (pressure.Estado)
+            {
+                case EstadoCargaIA.Saturado:
+                    return 4.00f;
+                case EstadoCargaIA.EmCombate:
+                    return 2.00f;
+                default:
+                    return 0.75f;
             }
         }
 
@@ -374,12 +400,12 @@ namespace Hegemonia.AI.BrainMaster
 
             if (navalCount == 2)
             {
-                return QueueProduceBest(priority, cooldown, "uss ironclad", "ironclad", "vindicator", "destroy", "destroyer", "dominion", "liberty");
+                return QueueProduceBest(priority, cooldown, "uss ironclad", "ironclad", "uss sovereign", "sovereign", "vindicator", "destroy", "destroyer", "dominion", "liberty");
             }
 
             if (navalCount < 5)
             {
-                return QueueProduceBest(priority, cooldown, "uss ironclad", "ironclad", "dominion", "liberty", "vindicator", "destroy", "destroyer", "porta");
+                return QueueProduceBest(priority, cooldown, "uss sovereign", "sovereign", "uss ironclad", "ironclad", "dominion", "liberty", "vindicator", "destroy", "destroyer", "porta");
             }
 
             return false;
@@ -401,21 +427,20 @@ namespace Hegemonia.AI.BrainMaster
                 _lastBootstrapStage = stage;
                 if (stage == IA_BrainMaster.IA_BootstrapStage.ProduceShip)
                 {
-                    _bootstrapShipGoalCount = CountNavalShips() + 1;
+                    _bootstrapShipGoalCount = GetSnapshot().NavalUnits + 1;
                 }
             }
 
-            int infantryCount = CountUnits("sold", "rifle", "infan");
-            int tankCount = CountUnits("tank", "mbt", "south", "arthur", "c1");
-            int artyCount = CountUnits("artilh", "hack");
-            int fighterCount = CountFixedWingAircraft();
-            int navalCount = CountNavalShips();
-            bool hasBarracks = CountStructures("tenda", "barraca") > 0;
-            bool hasFactory = CountStructures("construtor de veiculos", "construtor", "fabrica") > 0;
-            bool hasAirport = HasOwnedStructureComponent<GerenciadorAeroporto>() || CountStructures("aeroporto", "base aerea", "airport", "pista") > 0;
-            bool hasNavalBase = HasOwnedStructureComponent<Estaleiro>()
-                                || HasOwnedStructureComponent<PierMarinha>()
-                                || CountStructures("estaleiro", "pier") > 0;
+            IA_ForceSnapshot snapshot = GetSnapshot();
+            int infantryCount = snapshot.InfantryUnits;
+            int tankCount = snapshot.TankUnits;
+            int artyCount = snapshot.ArtilleryUnits;
+            int fighterCount = snapshot.FixedWingAircraft;
+            int navalCount = snapshot.NavalUnits;
+            bool hasBarracks = snapshot.HasBarracks;
+            bool hasFactory = snapshot.HasFactory;
+            bool hasAirport = snapshot.HasAirport;
+            bool hasNavalBase = snapshot.HasNavalBase;
 
             switch (stage)
             {
@@ -512,6 +537,30 @@ namespace Hegemonia.AI.BrainMaster
 
                 default:
                     return true;
+            }
+        }
+
+        private IA_ForceSnapshot GetSnapshot()
+        {
+            if (_context != null && _context.ForceSnapshot != null)
+            {
+                return _context.ForceSnapshot;
+            }
+
+            if (_context != null && _context.WorldState != null && _context.WorldState.ForceSnapshot != null)
+            {
+                return _context.WorldState.ForceSnapshot;
+            }
+
+            return new IA_ForceSnapshot();
+        }
+
+        private static void RegistrarTempoProducao(long profileStart)
+        {
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - profileStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("production_ms", elapsedMs);
             }
         }
 

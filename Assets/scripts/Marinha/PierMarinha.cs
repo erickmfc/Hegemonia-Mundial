@@ -25,6 +25,7 @@ public class PierMarinha : MonoBehaviour
 
         // Controle de Manutenção Interno
         [System.NonSerialized] public float timerRecarga = 0f;
+        [System.NonSerialized] public float timerRecargaContramedidas = 0f;
         [System.NonSerialized] public bool atracagemCompleta = false; 
 
         public bool EstaLivre()
@@ -33,12 +34,14 @@ public class PierMarinha : MonoBehaviour
             {
                 atracagemCompleta = false;
                 timerRecarga = 0f;
+                timerRecargaContramedidas = 0f;
                 return true;
             }
             if (!navioOcupante.EstaAtracado) {
                 navioOcupante = null;
                 atracagemCompleta = false;
                 timerRecarga = 0f;
+                timerRecargaContramedidas = 0f;
                 return true;
             }
             return false;
@@ -81,6 +84,7 @@ public class PierMarinha : MonoBehaviour
     [Header("Manutenção e Reparo")]
     public float reparoPorSegundo = 10f; // Cura 10HP/s
     public float intervaloRecargaMissel = 1.0f; // 1 Míssil por segundo
+    public float intervaloRecargaContramedidas = 2.0f; // 1 cartucho/manutencao por ciclo
     
     [Header("Configuração de Saída")]
     public Transform[] pontosDeSaida;
@@ -247,6 +251,43 @@ public class PierMarinha : MonoBehaviour
                         lancador.Recarregar(1);
                         vaga.timerRecarga = 0f;
                     }
+                }
+                else
+                {
+                    vaga.timerRecarga = 0f;
+                }
+
+                // 3. REABASTECIMENTO DE CONTRAMEDIDAS
+                SistemaAntiMissil[] sistemasAntiMissil = navio.GetComponentsInChildren<SistemaAntiMissil>(true);
+                bool precisaContramedida = false;
+                for (int i = 0; i < sistemasAntiMissil.Length; i++)
+                {
+                    SistemaAntiMissil sistema = sistemasAntiMissil[i];
+                    if (sistema != null && sistema.PrecisaReabastecimentoPier())
+                    {
+                        precisaContramedida = true;
+                        break;
+                    }
+                }
+
+                if (precisaContramedida)
+                {
+                    vaga.timerRecargaContramedidas += Time.deltaTime;
+                    if (vaga.timerRecargaContramedidas >= intervaloRecargaContramedidas)
+                    {
+                        for (int i = 0; i < sistemasAntiMissil.Length; i++)
+                        {
+                            SistemaAntiMissil sistema = sistemasAntiMissil[i];
+                            if (sistema == null) continue;
+                            sistema.ReabastecerNoPier(1);
+                        }
+
+                        vaga.timerRecargaContramedidas = 0f;
+                    }
+                }
+                else
+                {
+                    vaga.timerRecargaContramedidas = 0f;
                 }
             }
             }
@@ -683,12 +724,13 @@ public class PierMarinha : MonoBehaviour
 
         if (idPier != null && idPier.teamID != 1)
         {
-            var commanders = Object.FindObjectsByType<IA_Comandante>(FindObjectsSortMode.None);
-            var myCommander = commanders.FirstOrDefault(c => c.identidade != null && c.identidade.teamID == idPier.teamID);
+            var myCommander = IA_ComandanteRegistry.GetCommanderByTeam(idPier.teamID);
             if (myCommander != null && myCommander.cerebroGeneral != null)
             {
                 myCommander.cerebroGeneral.RegistrarUnidade(novoNavio);
             }
+
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
         }
         
         Debug.Log($"[PierMarinha] {novoNavio.name} criado em {posSpawn}. Agua confirmada.");
@@ -828,5 +870,6 @@ public class PierMarinha : MonoBehaviour
 
         vaga.atracagemCompleta = false;
         vaga.timerRecarga = 0f;
+        vaga.timerRecargaContramedidas = 0f;
     }
 }

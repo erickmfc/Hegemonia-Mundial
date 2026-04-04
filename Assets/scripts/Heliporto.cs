@@ -28,6 +28,16 @@ public class Heliporto : MonoBehaviour
     private Animator anim;
     private IdentidadeUnidade identidade;
 
+    void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
     void Start()
     {
         identidade = GetComponent<IdentidadeUnidade>();

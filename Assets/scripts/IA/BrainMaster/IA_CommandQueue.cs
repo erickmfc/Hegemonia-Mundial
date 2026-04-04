@@ -61,6 +61,7 @@ namespace Hegemonia.AI.BrainMaster
 
             _statusById[request.Id] = IA_CommandStatus.Queued;
             PushHistory(request, IA_CommandStatus.Queued, now, "enfileirado");
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
             return true;
         }
 

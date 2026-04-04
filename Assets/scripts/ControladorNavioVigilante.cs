@@ -57,6 +57,12 @@ public class ControladorNavioVigilante : MonoBehaviour
 
         if (alvoAtual != null)
         {
+            if (!alvoAtual.gameObject.activeInHierarchy || !ControleSubmarino.PodeSerAlvoConvencional(alvoAtual))
+            {
+                alvoAtual = null;
+                return;
+            }
+
             Vector3 delta = alvoAtual.position - transform.position;
             delta.y = 0f;
             if (delta.sqrMagnitude > alcanceQuadrado)
@@ -88,6 +94,11 @@ public class ControladorNavioVigilante : MonoBehaviour
 
             Transform candidato = col.transform.root != null ? col.transform.root : col.transform;
             if (candidato == transform)
+            {
+                continue;
+            }
+
+            if (!ControleSubmarino.PodeSerAlvoConvencional(candidato))
             {
                 continue;
             }

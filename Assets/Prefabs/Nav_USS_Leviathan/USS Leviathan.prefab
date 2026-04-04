@@ -64,8 +64,8 @@ Transform:
   m_GameObject: {fileID: 790024337851436606}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 227.24, y: -0.26, z: 73.38}
-  m_LocalScale: {x: 1.5, y: 1.3, z: 2.4}
+  m_LocalPosition: {x: 227.24, y: -2.18, z: 73.38}
+  m_LocalScale: {x: 2.6, y: 1.9, z: 3.5}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2617109060813063789}
@@ -83,8 +83,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fcbb47f473cee9f4e9ad3e3158f38319, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleSubmarino
-  profundidadeSubmersao: -15
-  alturaSuperificie: -2
+  iniciarNaSuperficie: 1
+  profundidadeSubmersao: -10
+  alturaSuperificie: 0
+  offsetAlturaAgua: 0
+  calibrarAlturaAutomaticamente: 1
+  percentualCascoSubmersoNaSuperficie: 0.58
+  margemTopoCascoAcimaDaAgua: 0.35
   velocidadeMovimento: 2
   locaisDisparo:
   - {fileID: 2393320628034652989}
@@ -110,9 +115,17 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   prefabMisselSubmarino: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
-  alcanceMisseis: 500
+  alcanceMisseis: 1000
+  modoAtual: 0
+  intervaloBuscaAutomatica: 0.75
   estaSubmerso: 1
   misseisDisponiveis: 22
+  cooldownAtaqueIA: 20
+  gerarCristalIdentificacao: 1
+  mostrarCristalSomenteParaJogador: 1
+  alturaCristalSobreAgua: 10
+  escalaCristal: {x: 1.1, y: 1.1, z: 1.1}
+  corCristal: {r: 0.1, g: 0.95, b: 1, a: 0.92}
   velocidadeGiroMax: 15
   aceleracao: 1.5
   forcaInclinacao: 3
@@ -222,6 +235,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 3.3
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 2.5
+  atrasoPosAfundamento: 0.6
 --- !u!114 &3881439562138129166
 MonoBehaviour:
   m_ObjectHideFlags: 0

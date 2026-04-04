@@ -44,12 +44,32 @@ public class SistemaAntiMissil : MonoBehaviour
     public Transform[] pontosDeSaida;
 
     [Tooltip("Cadencia de tiro entre interceptadores.")]
-    public float tempoEntreTiros = 0.8f;
+    public float tempoEntreTiros = 1f;
 
-    [Tooltip("Quantidade de misseis prontos antes da recarga.")]
-    public int capacidadeMisseis = 10;
+    [Tooltip("Compatibilidade antiga: usado como referencia para estimar o tamanho do paiol se os novos campos de cartucho ficarem zerados.")]
+    public int capacidadeMisseis = 5;
 
-    public float tempoRecargaMisseis = 5f;
+    [Tooltip("Compatibilidade antiga: usado como fallback do tempo de troca de cartucho.")]
+    public float tempoRecargaMisseis = 20f;
+
+    [Header("Cartuchos & Logistica")]
+    [Tooltip("Numero total de cartuchos que o sistema leva a bordo, contando o cartucho atual.")]
+    public int cartuchosMaximos = 3;
+
+    [Tooltip("Quantidade de contramedidas/interceptadores em cada cartucho.")]
+    public int quantidadePorCartucho = 5;
+
+    [Tooltip("Tempo para trocar para o proximo cartucho que ja esta a bordo.")]
+    public float tempoTrocaCartucho = 20f;
+
+    [Tooltip("Numero maximo de contramedidas liberadas em uma unica resposta defensiva.")]
+    public int maximoPorSalva = 2;
+
+    [Tooltip("A salva tenta cobrir primeiro ameacas que chegam por direcoes diferentes.")]
+    public float anguloMinimoNovaDirecao = 35f;
+
+    [Tooltip("Evita desperdiçar duas respostas seguidas na mesma ameaca em janela muito curta.")]
+    public float intervaloReengajamentoAmeaca = 1.2f;
 
     [Header("Efeitos & Sons")]
     public AudioClip somDisparo;
@@ -63,15 +83,23 @@ public class SistemaAntiMissil : MonoBehaviour
     private IdentidadeUnidade minhaIdentidade;
     private float cooldownDisparo = 0f;
     private int misseisAtuais;
+    private int cartuchosReserva;
     private bool recarregando = false;
+    private bool aguardandoReabastecimentoPier = false;
     private int indexSaida = 0;
     private readonly Dictionary<Transform, Vector3> ultimasPosicoesAmeaca = new Dictionary<Transform, Vector3>();
     private readonly List<Transform> chavesAmeacaParaRemover = new List<Transform>();
+    private readonly Dictionary<Transform, float> ultimoEngajamentoPorAmeaca = new Dictionary<Transform, float>();
+    private readonly List<Transform> chavesEngajamentoParaRemover = new List<Transform>();
+    private readonly List<Transform> ameacasOrdenadas = new List<Transform>();
+    private readonly List<Transform> ameacasSalva = new List<Transform>();
+    private readonly List<Vector3> direcoesSalva = new List<Vector3>();
+    private readonly Collider[] bufferAmeacas = new Collider[128];
     private static readonly Collider[] bufferAliados = new Collider[128];
 
     void Start()
     {
-        misseisAtuais = capacidadeMisseis;
+        InicializarPaiol();
 
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
         if (minhaIdentidade == null)
@@ -98,8 +126,7 @@ public class SistemaAntiMissil : MonoBehaviour
         {
             if (cooldownDisparo <= 0f)
             {
-                misseisAtuais = capacidadeMisseis;
-                recarregando = false;
+                FinalizarTrocaCartucho();
             }
             return;
         }
@@ -108,22 +135,21 @@ public class SistemaAntiMissil : MonoBehaviour
         {
             if (!AlvoMissilAtualAindaEhValido())
             {
-                alvoMissilAtual = null;
-                return;
+                ProcurarAmeacaMisseis();
+                if (alvoMissilAtual == null)
+                {
+                    return;
+                }
             }
 
             Mirar();
 
             if (cooldownDisparo <= 0f && MirouEmCheio() && misseisAtuais > 0)
             {
-                AtirarInterceptador();
-                misseisAtuais--;
-                cooldownDisparo = tempoEntreTiros;
-
-                if (misseisAtuais <= 0 && capacidadeMisseis > 0)
+                int disparosEfetuados = DispararSalvaDefensiva();
+                if (disparosEfetuados > 0)
                 {
-                    recarregando = true;
-                    cooldownDisparo = tempoRecargaMisseis;
+                    cooldownDisparo = tempoEntreTiros;
                 }
             }
         }
@@ -146,57 +172,275 @@ public class SistemaAntiMissil : MonoBehaviour
         }
     }
 
+    int ObterQuantidadePorCartuchoEfetiva()
+    {
+        if (quantidadePorCartucho > 0)
+        {
+            return Mathf.Max(1, quantidadePorCartucho);
+        }
+
+        return Mathf.Clamp(capacidadeMisseis, 1, 6);
+    }
+
+    int ObterCartuchosMaximosEfetivos()
+    {
+        if (cartuchosMaximos > 0)
+        {
+            return Mathf.Max(1, cartuchosMaximos);
+        }
+
+        int porCartucho = ObterQuantidadePorCartuchoEfetiva();
+        return Mathf.Max(1, Mathf.CeilToInt(Mathf.Max(1, capacidadeMisseis) / (float)porCartucho));
+    }
+
+    float ObterTempoTrocaCartuchoEfetivo()
+    {
+        if (tempoTrocaCartucho > 0f)
+        {
+            return tempoTrocaCartucho;
+        }
+
+        return Mathf.Max(tempoRecargaMisseis, 0.2f);
+    }
+
+    void InicializarPaiol()
+    {
+        misseisAtuais = ObterQuantidadePorCartuchoEfetiva();
+        cartuchosReserva = Mathf.Max(0, ObterCartuchosMaximosEfetivos() - 1);
+        recarregando = false;
+        aguardandoReabastecimentoPier = false;
+    }
+
+    void FinalizarTrocaCartucho()
+    {
+        if (cartuchosReserva > 0)
+        {
+            cartuchosReserva--;
+            misseisAtuais = ObterQuantidadePorCartuchoEfetiva();
+            recarregando = false;
+            aguardandoReabastecimentoPier = false;
+            return;
+        }
+
+        misseisAtuais = 0;
+        recarregando = false;
+        aguardandoReabastecimentoPier = true;
+        alvoMissilAtual = null;
+    }
+
+    void IniciarTrocaCartucho()
+    {
+        if (misseisAtuais > 0)
+        {
+            return;
+        }
+
+        if (cartuchosReserva <= 0)
+        {
+            aguardandoReabastecimentoPier = true;
+            recarregando = false;
+            return;
+        }
+
+        recarregando = true;
+        cooldownDisparo = ObterTempoTrocaCartuchoEfetivo();
+    }
+
+    void RegistrarAmeacaCandidata(Transform candidato, Transform minhaRaiz)
+    {
+        if (candidato == null) return;
+        if (candidato == minhaRaiz) return;
+        if (candidato.gameObject == gameObject) return;
+        if (!EhAmeacaSimples(candidato)) return;
+        if (ameacasOrdenadas.Contains(candidato)) return;
+
+        ameacasOrdenadas.Add(candidato);
+    }
+
+    int CompararPrioridadeAmeaca(Transform a, Transform b)
+    {
+        float scoreA = CalcularPrioridadeAmeaca(a);
+        float scoreB = CalcularPrioridadeAmeaca(b);
+        return scoreA.CompareTo(scoreB);
+    }
+
+    float CalcularPrioridadeAmeaca(Transform ameaca)
+    {
+        if (ameaca == null)
+        {
+            return float.MaxValue;
+        }
+
+        float distancia = Vector3.Distance(transform.position, ameaca.position);
+        Vector3 direcaoAmeaca = ObterDirecaoMissil(ameaca);
+        Vector3 direcaoParaMim = transform.position - ameaca.position;
+        float alinhamento = 0f;
+        if (direcaoParaMim.sqrMagnitude > 0.001f)
+        {
+            alinhamento = Vector3.Dot(direcaoAmeaca.normalized, direcaoParaMim.normalized);
+        }
+
+        float bonusRastro = ameaca.GetComponentInParent<MissileThreatTracker>() != null ? 35f : 0f;
+        return distancia - (alinhamento * 60f) - bonusRastro;
+    }
+
+    int DispararSalvaDefensiva()
+    {
+        if (misseisAtuais <= 0)
+        {
+            IniciarTrocaCartucho();
+            return 0;
+        }
+
+        PrepararAmeacasDaSalva();
+        if (ameacasSalva.Count <= 0)
+        {
+            return 0;
+        }
+
+        int disparos = Mathf.Min(ameacasSalva.Count, misseisAtuais);
+        for (int i = 0; i < disparos; i++)
+        {
+            Transform alvo = ameacasSalva[i];
+            if (alvo == null) continue;
+
+            AtirarInterceptador(alvo);
+            misseisAtuais--;
+            ultimoEngajamentoPorAmeaca[alvo] = Time.time;
+        }
+
+        if (misseisAtuais <= 0)
+        {
+            IniciarTrocaCartucho();
+        }
+
+        return disparos;
+    }
+
+    void PrepararAmeacasDaSalva()
+    {
+        ameacasSalva.Clear();
+        direcoesSalva.Clear();
+
+        if (ameacasOrdenadas.Count <= 0)
+        {
+            if (alvoMissilAtual != null && AlvoMissilAtualAindaEhValido())
+            {
+                ameacasOrdenadas.Add(alvoMissilAtual);
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        int limiteSalva = Mathf.Min(Mathf.Max(1, maximoPorSalva), misseisAtuais);
+        for (int etapa = 0; etapa < 2 && ameacasSalva.Count < limiteSalva; etapa++)
+        {
+            for (int i = 0; i < ameacasOrdenadas.Count && ameacasSalva.Count < limiteSalva; i++)
+            {
+                Transform ameaca = ameacasOrdenadas[i];
+                if (!PodeResponderContraAmeaca(ameaca)) continue;
+                if (ameacasSalva.Contains(ameaca)) continue;
+
+                Vector3 direcaoHorizontal = ameaca.position - transform.position;
+                direcaoHorizontal.y = 0f;
+                bool direcaoNova = DirecaoEhNovaNaSalva(direcaoHorizontal);
+
+                if (etapa == 0 && !direcaoNova && ameacasSalva.Count > 0) continue;
+                if (direcaoHorizontal.sqrMagnitude > 0.001f && direcaoNova)
+                {
+                    direcoesSalva.Add(direcaoHorizontal.normalized);
+                }
+
+                ameacasSalva.Add(ameaca);
+            }
+        }
+    }
+
+    bool PodeResponderContraAmeaca(Transform ameaca)
+    {
+        if (ameaca == null || !ameaca.gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        if (!EhAmeacaSimples(ameaca))
+        {
+            return false;
+        }
+
+        float ultimoTempo;
+        if (ultimoEngajamentoPorAmeaca.TryGetValue(ameaca, out ultimoTempo))
+        {
+            if (Time.time - ultimoTempo < Mathf.Max(0.1f, intervaloReengajamentoAmeaca))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool DirecaoEhNovaNaSalva(Vector3 direcaoHorizontal)
+    {
+        if (direcaoHorizontal.sqrMagnitude <= 0.001f)
+        {
+            return false;
+        }
+
+        Vector3 direcaoNormalizada = direcaoHorizontal.normalized;
+        for (int i = 0; i < direcoesSalva.Count; i++)
+        {
+            if (Vector3.Angle(direcaoNormalizada, direcoesSalva[i]) < Mathf.Max(5f, anguloMinimoNovaDirecao))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     void ProcurarAmeacaMisseis()
     {
         if (modoPassivo)
         {
+            ameacasOrdenadas.Clear();
             alvoMissilAtual = null;
             return;
         }
 
         LimparRastrosInvalidos();
-
-        if (AlvoMissilAtualAindaEhValido()) return;
-
+        ameacasOrdenadas.Clear();
         alvoMissilAtual = null;
         Transform minhaRaiz = transform.root != null ? transform.root : transform;
 
-        Transform melhorAlvoRegistrado = BuscarAmeacaRegistrada(minhaRaiz);
-        if (melhorAlvoRegistrado != null)
-        {
-            alvoMissilAtual = melhorAlvoRegistrado;
-            return;
-        }
+        RegistrarAmeacaCandidata(BuscarAmeacaRegistrada(minhaRaiz), minhaRaiz);
 
-        Collider[] objetosNaArea = Physics.OverlapSphere(
+        int quantidadeObjetos = Physics.OverlapSphereNonAlloc(
             transform.position,
             alcanceRadar,
+            bufferAmeacas,
             Physics.AllLayers,
             QueryTriggerInteraction.Collide);
 
-        float menorDistancia = Mathf.Infinity;
-        Transform melhorAlvo = null;
-
-        foreach (Collider col in objetosNaArea)
+        for (int i = 0; i < quantidadeObjetos; i++)
         {
+            Collider col = bufferAmeacas[i];
             if (col == null) continue;
 
             Transform candidato = ResolverTransformoRaiz(col.transform);
-            if (candidato == null) continue;
-            if (candidato == minhaRaiz) continue;
-            if (candidato.gameObject == gameObject) continue;
-
-            if (!EhAmeacaSimples(candidato)) continue;
-
-            float distancia = Vector3.Distance(transform.position, candidato.position);
-            if (distancia < menorDistancia)
-            {
-                menorDistancia = distancia;
-                melhorAlvo = candidato;
-            }
+            RegistrarAmeacaCandidata(candidato, minhaRaiz);
         }
 
-        alvoMissilAtual = melhorAlvo;
+        for (int i = 0; i < quantidadeObjetos; i++) bufferAmeacas[i] = null;
+
+        if (ameacasOrdenadas.Count > 1)
+        {
+            ameacasOrdenadas.Sort(CompararPrioridadeAmeaca);
+        }
+
+        alvoMissilAtual = ameacasOrdenadas.Count > 0 ? ameacasOrdenadas[0] : null;
     }
 
     Transform BuscarAmeacaRegistrada(Transform minhaRaiz)
@@ -367,6 +611,7 @@ public class SistemaAntiMissil : MonoBehaviour
     void LimparRastrosInvalidos()
     {
         chavesAmeacaParaRemover.Clear();
+        chavesEngajamentoParaRemover.Clear();
 
         foreach (KeyValuePair<Transform, Vector3> item in ultimasPosicoesAmeaca)
         {
@@ -380,6 +625,20 @@ public class SistemaAntiMissil : MonoBehaviour
         for (int i = 0; i < chavesAmeacaParaRemover.Count; i++)
         {
             ultimasPosicoesAmeaca.Remove(chavesAmeacaParaRemover[i]);
+        }
+
+        foreach (KeyValuePair<Transform, float> item in ultimoEngajamentoPorAmeaca)
+        {
+            Transform chave = item.Key;
+            if (chave == null || !chave.gameObject.activeInHierarchy)
+            {
+                chavesEngajamentoParaRemover.Add(chave);
+            }
+        }
+
+        for (int i = 0; i < chavesEngajamentoParaRemover.Count; i++)
+        {
+            ultimoEngajamentoPorAmeaca.Remove(chavesEngajamentoParaRemover[i]);
         }
     }
 
@@ -453,7 +712,7 @@ public class SistemaAntiMissil : MonoBehaviour
         return true;
     }
 
-    void AtirarInterceptador()
+    void AtirarInterceptador(Transform alvoDesignado)
     {
         if (prefabIntercepador == null || pontosDeSaida == null || pontosDeSaida.Length == 0) return;
 
@@ -462,7 +721,7 @@ public class SistemaAntiMissil : MonoBehaviour
 
         if (saidaDaVez == null) return;
 
-        GameObject missilGerado = Instantiate(prefabIntercepador, saidaDaVez.position, saidaDaVez.rotation);
+        GameObject missilGerado = PoolDeObjetosCombate.Spawn(prefabIntercepador, saidaDaVez.position, saidaDaVez.rotation);
         IgnorarColisaoComOrigem(missilGerado);
         IgnorarColisaoComAliados(missilGerado);
 
@@ -474,7 +733,7 @@ public class SistemaAntiMissil : MonoBehaviour
             idInterceptador.teamID = minhaIdentidade.teamID;
         // ─────────────────────────────────────────────────────────────────────────
 
-        Transform alvoResolvido = ResolverTransformAlvo(alvoMissilAtual);
+        Transform alvoResolvido = ResolverTransformAlvo(alvoDesignado != null ? alvoDesignado : alvoMissilAtual);
         Vector3 posicaoPredita = ObterPosicaoPreditaIntercepcao(alvoResolvido, saidaDaVez);
         bool inicializado = false;
 
@@ -753,6 +1012,82 @@ public class SistemaAntiMissil : MonoBehaviour
     {
         modoPassivo = !ativo;
         if (modoPassivo) alvoMissilAtual = null;
+    }
+
+    public int ObterCartuchosMaximos()
+    {
+        return ObterCartuchosMaximosEfetivos();
+    }
+
+    public int ObterCartuchosRestantes()
+    {
+        int cartuchoAtual = misseisAtuais > 0 ? 1 : 0;
+        if (recarregando && cartuchosReserva > 0)
+        {
+            cartuchoAtual = 0;
+        }
+
+        return cartuchosReserva + cartuchoAtual;
+    }
+
+    public int ObterQuantidadeAtualNoCartucho()
+    {
+        return Mathf.Max(0, misseisAtuais);
+    }
+
+    public bool PrecisaReabastecimentoPier()
+    {
+        if (ObterCartuchosRestantes() < ObterCartuchosMaximos())
+        {
+            return true;
+        }
+
+        return misseisAtuais < ObterQuantidadePorCartuchoEfetiva();
+    }
+
+    public bool ReabastecerNoPier(int quantidadeCartuchos)
+    {
+        if (quantidadeCartuchos <= 0)
+        {
+            return false;
+        }
+
+        bool alterou = false;
+        int maxCartuchos = ObterCartuchosMaximos();
+        for (int i = 0; i < quantidadeCartuchos; i++)
+        {
+            if (misseisAtuais <= 0)
+            {
+                misseisAtuais = ObterQuantidadePorCartuchoEfetiva();
+                aguardandoReabastecimentoPier = false;
+                recarregando = false;
+                cooldownDisparo = Mathf.Min(cooldownDisparo, tempoEntreTiros);
+                alterou = true;
+                continue;
+            }
+
+            if (misseisAtuais < ObterQuantidadePorCartuchoEfetiva())
+            {
+                misseisAtuais = ObterQuantidadePorCartuchoEfetiva();
+                alterou = true;
+                continue;
+            }
+
+            if (ObterCartuchosRestantes() >= maxCartuchos)
+            {
+                break;
+            }
+
+            cartuchosReserva++;
+            alterou = true;
+        }
+
+        if (alterou)
+        {
+            aguardandoReabastecimentoPier = false;
+        }
+
+        return alterou;
     }
 
     void OnDrawGizmosSelected()

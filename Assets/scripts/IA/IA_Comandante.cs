@@ -63,6 +63,17 @@ public class IA_Comandante : MonoBehaviour
         // Fallback: se não tiver no objeto, adiciona
         if(identidade == null) identidade = gameObject.AddComponent<IdentidadeIA>();
         identidade.teamID = TeamID;
+        IA_ComandanteRegistry.Register(this);
+    }
+
+    void OnEnable()
+    {
+        IA_ComandanteRegistry.Register(this);
+    }
+
+    void OnDisable()
+    {
+        IA_ComandanteRegistry.Unregister(this);
     }
 
     void Start()
@@ -84,6 +95,7 @@ public class IA_Comandante : MonoBehaviour
         if(minhasBases.Count > 0) basePrincipal = minhasBases[0].transform;
 
         // Inicia o Cérebro
+        IA_ComandanteRegistry.Register(this);
         StartCoroutine(CicloDeDecisao());
         StartCoroutine(RendaPassiva());
     }

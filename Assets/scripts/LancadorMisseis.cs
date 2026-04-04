@@ -287,7 +287,7 @@ public class LancadorMisseis : MonoBehaviour
         }
 
         // Instancia o míssil respeitando a rotação do ponto de saída (cano)
-        GameObject missil = Instantiate(missilPrefab, saida.position, saida.rotation);
+            GameObject missil = PoolDeObjetosCombate.Spawn(missilPrefab, saida.position, saida.rotation);
         
         // Passa o alvo para o script de voo (MisselICBM)
         MisselICBM scriptVoo = missil.GetComponent<MisselICBM>();

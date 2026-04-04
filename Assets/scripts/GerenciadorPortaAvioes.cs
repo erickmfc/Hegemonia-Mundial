@@ -61,6 +61,17 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         base.Awake(); // Inicializa lógica base do Aeroporto
         
         _idCarrier = GetComponent<IdentidadeUnidade>();
+        if (_idCarrier == null)
+        {
+            IdentidadeIA identidadeIA = GetComponent<IdentidadeIA>();
+            if (identidadeIA != null)
+            {
+                _idCarrier = gameObject.AddComponent<IdentidadeUnidade>();
+                _idCarrier.teamID = identidadeIA.teamID;
+                _idCarrier.nomeDoPais = identidadeIA.nomeComandante;
+            }
+        }
+
         _controleUnidade = GetComponent<ControleUnidade>();
         
         // 1. Mapeia o Pátio Aberto (Prioriza o grupoParadas se existir)
@@ -157,23 +168,13 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             // Tenta achar a Identidade caso tenha falhado no Awake
             if (_idCarrier == null) _idCarrier = GetComponent<IdentidadeUnidade>();
 
-            if (_idCarrier != null)
+            if (_idCarrier == null || _idCarrier.teamID != 1)
             {
-                if (_idCarrier.teamID == 1) 
-                {
-                    _menuCarrierAtivo = !_menuCarrierAtivo; // Abre/Fecha normal
-                }
-                else
-                {
-                    Debug.LogWarning("[Porta-Aviões] ATENÇÃO: O Team ID do navio não é 1! O valor atual é: " + _idCarrier.teamID + ". Estou forçando o menu a abrir para você testar.");
-                    _menuCarrierAtivo = !_menuCarrierAtivo; // Força abrir
-                }
+                _menuCarrierAtivo = false;
+                return;
             }
-            else
-            {
-                Debug.LogWarning("[Porta-Aviões] ERRO: Falta o script 'IdentidadeUnidade' no Porta-Aviões! Forçando o menu a abrir.");
-                _menuCarrierAtivo = !_menuCarrierAtivo; // Força abrir
-            }
+
+            _menuCarrierAtivo = !_menuCarrierAtivo;
         }
 
         // ==========================================
@@ -191,9 +192,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     if (hit.transform == this.transform || hit.transform.IsChildOf(this.transform))
                     {
                         if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
-                        if (_identidadeCacheada != null && _identidadeCacheada.teamID != 1 && _identidadeCacheada.teamID != 0) 
+                        if (_identidadeCacheada == null || _identidadeCacheada.teamID != 1)
                         {
-                            Debug.LogWarning("[Porta-Aviões] Navio inimigo. Acesso Negado!");
                             return; 
                         }
 

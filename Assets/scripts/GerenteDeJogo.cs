@@ -621,6 +621,13 @@ public class GerenteDeJogo : MonoBehaviour
 
         Vector3 destino = destinoBase + (direita * offsetX) + (frente * offsetZ);
 
+        if (EhUnidadeNavalParaSaida(unidade))
+        {
+            // Evita "snap" de destino naval para navmesh terrestre (topo do estaleiro/pier).
+            destino.y = NavalPlacementResolver.ResolveSeaLevel();
+            return destino;
+        }
+
         UnityEngine.AI.NavMeshHit hit;
         if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hit, 8f, UnityEngine.AI.NavMesh.AllAreas))
         {
@@ -628,6 +635,27 @@ public class GerenteDeJogo : MonoBehaviour
         }
 
         return destino;
+    }
+
+    bool EhUnidadeNavalParaSaida(GameObject unidade)
+    {
+        if (unidade == null)
+        {
+            return false;
+        }
+
+        if (unidade.GetComponent<IdentidadeNaval>() != null
+            || unidade.GetComponent<ControleNavioRealista>() != null
+            || unidade.GetComponent<NavegacaoInteligenteNaval>() != null
+            || unidade.GetComponent<ControleSubmarino>() != null
+            || unidade.GetComponent<NavioPetroleiro>() != null
+            || unidade.GetComponent<HovercraftTransporte>() != null)
+        {
+            return true;
+        }
+
+        IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
+        return identidade != null && identidade.tipoUnidade == TipoUnidade.Naval;
     }
 
     string ObterChaveSaida(Transform referenciaSaida, Vector3 destinoBase)
@@ -762,6 +790,22 @@ public class GerenteDeJogo : MonoBehaviour
 
     public void AtualizarPontoEstaleiro(Transform nascimento, Transform saida)
     {
+        if (nascimento == null)
+        {
+            return;
+        }
+
+        PontoLogistico existente = listaEstaleiros.Find(x => x != null && x.spawn == nascimento);
+        if (existente != null)
+        {
+            // Se o estaleiro jÃ¡ existia, atualiza a saida para nÃ£o ficar preso em valor antigo/null.
+            if (saida != null)
+            {
+                existente.saida = saida;
+            }
+            return;
+        }
+
         if (!ListaContem(listaEstaleiros, nascimento))
         {
             listaEstaleiros.Add(new PontoLogistico { spawn = nascimento, saida = saida });

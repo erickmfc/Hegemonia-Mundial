@@ -209,7 +209,7 @@ public class LancadorMLRS : MonoBehaviour
 
         if (pontoDeDisparoAtual != null)
         {
-            GameObject novoMissil = Instantiate(missilPrefab, pontoDeDisparoAtual.position, pontoDeDisparoAtual.rotation);
+        GameObject novoMissil = PoolDeObjetosCombate.Spawn(missilPrefab, pontoDeDisparoAtual.position, pontoDeDisparoAtual.rotation);
 
             // --- SEGURANÇA: IGNORAR COLISÃO COM O PRÓPRIO TANQUE ---
             Collider[] tankColliders = GetComponentsInChildren<Collider>();

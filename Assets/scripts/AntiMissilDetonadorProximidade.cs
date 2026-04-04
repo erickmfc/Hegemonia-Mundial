@@ -1,40 +1,45 @@
+using System;
+using System.Reflection;
 using UnityEngine;
 
 /// <summary>
-/// Componente de segurança para interceptação:
-/// - Quando o interceptador chega perto do alvo, destrói o míssil alvo mesmo que ele não tenha Collider/SistemaDeDanos.
-/// - Em seguida tenta disparar a explosão do próprio interceptador (se existir) e destrói o GameObject.
+/// Fusivel de proximidade usado pelos interceptadores.
+/// Quando entra no raio do alvo, tenta acionar a explosao real do missil inimigo
+/// antes de remove-lo para evitar que ele simplesmente suma sem impacto visual.
 /// </summary>
 public class AntiMissilDetonadorProximidade : MonoBehaviour
 {
     [Tooltip("Alvo que deve ser neutralizado pelo interceptador.")]
     public Transform alvo;
 
-    [Tooltip("Distância base para considerar que houve interceptação.")]
+    [Tooltip("Distancia base para considerar que houve interceptacao.")]
     public float distanciaBaseIntercepcao = 10f;
 
-    [Tooltip("Fator de segurança para não \"pular\" o alvo em alta velocidade (distância mínima = velocidade*deltaTime*fator).")]
+    [Tooltip("Fator de seguranca para nao pular o alvo em alta velocidade.")]
     public float fatorSegurancaFrame = 2.2f;
 
-    [Tooltip("Se marcado, destrói o alvo mesmo se não parecer um míssil.")]
+    [Tooltip("Se marcado, destroi o alvo mesmo se nao parecer um missil.")]
     public bool forcarDestruicao = false;
     public bool autoDestruirSemAlvo = true;
 
-    private Vector3 _ultimaPosicao;
-    private bool _inicializado = false;
-    private float _velocidadeAproximada = 0f;
+    private Vector3 ultimaPosicao;
+    private bool inicializado = false;
+    private float velocidadeAproximada = 0f;
 
     void OnEnable()
     {
-        _ultimaPosicao = transform.position;
-        _inicializado = true;
+        ultimaPosicao = transform.position;
+        inicializado = true;
     }
 
     void Update()
     {
         if (alvo == null || !alvo.gameObject.activeInHierarchy)
         {
-            if (autoDestruirSemAlvo) Destroy(gameObject);
+            if (autoDestruirSemAlvo)
+            {
+                RemoverObjeto(gameObject);
+            }
             return;
         }
 
@@ -57,14 +62,17 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
         {
             velocidade = rb.linearVelocity.magnitude;
         }
-        else if (_inicializado)
+        else if (inicializado)
         {
-            Vector3 delta = (transform.position - _ultimaPosicao);
-            _velocidadeAproximada = Mathf.Lerp(_velocidadeAproximada, delta.magnitude / Mathf.Max(Time.deltaTime, 0.0001f), 0.35f);
-            velocidade = _velocidadeAproximada;
+            Vector3 delta = transform.position - ultimaPosicao;
+            velocidadeAproximada = Mathf.Lerp(
+                velocidadeAproximada,
+                delta.magnitude / Mathf.Max(Time.deltaTime, 0.0001f),
+                0.35f);
+            velocidade = velocidadeAproximada;
         }
 
-        _ultimaPosicao = transform.position;
+        ultimaPosicao = transform.position;
 
         float limiteFrame = velocidade * Time.deltaTime * fatorSegurancaFrame;
         return Mathf.Max(distanciaBaseIntercepcao, limiteFrame);
@@ -74,26 +82,30 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
     {
         if (alvo == null) return;
 
-        Transform raiz = alvo;
-        Rigidbody rbAlvo = alvo.GetComponentInParent<Rigidbody>();
-        if (rbAlvo != null) raiz = rbAlvo.transform;
-        else if (alvo.root != null) raiz = alvo.root;
-
+        Transform raiz = ResolverRaiz(alvo);
         if (raiz == null) return;
 
         if (!forcarDestruicao && !PareceMissil(raiz)) return;
 
-        Destroy(raiz.gameObject);
+        if (TentarDetonarMissil(raiz.gameObject, raiz.position))
+        {
+            return;
+        }
+
+        CriarEfeitoFallback(raiz.position, 1.1f);
+        RemoverObjeto(raiz.gameObject);
     }
 
     bool PareceMissil(Transform tr)
     {
         if (tr == null) return false;
-        // TagManager do projeto usa "Missel". Mantemos "Missil" como compatibilidade.
-        string tagStr = tr.gameObject.tag;
-        if (tagStr == "Missel" || tagStr == "Missil" || tagStr == "Missile" || tagStr == "Míssil") return true;
 
-        // Scripts de míssil / projétil guiado/explosivo
+        string tagStr = tr.gameObject.tag;
+        if (tagStr == "Missel" || tagStr == "Missil" || tagStr == "Missile" || tagStr == "Missil")
+        {
+            return true;
+        }
+
         if (tr.GetComponentInParent<MisselNaval>() != null) return true;
         if (tr.GetComponentInParent<MisselCaca>() != null) return true;
         if (tr.GetComponentInParent<MisselSubmarino>() != null) return true;
@@ -104,27 +116,152 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
         if (tr.GetComponentInParent<InterceptMissile>() != null) return true;
 
         Projetil proj = tr.GetComponentInParent<Projetil>();
-        if (proj != null)
+        return proj != null && (proj.curvaDePerseguicao > 0f || proj.raioDeExplosao > 0.01f);
+    }
+
+    void DetonarSelf()
+    {
+        if (TentarDetonarMissil(gameObject, transform.position))
         {
-            if (proj.curvaDePerseguicao > 0f || proj.raioDeExplosao > 0.01f) return true;
+            return;
+        }
+
+        CriarEfeitoFallback(transform.position, 0.75f);
+        RemoverObjeto(gameObject);
+    }
+
+    Transform ResolverRaiz(Transform origem)
+    {
+        if (origem == null) return null;
+
+        Rigidbody rbAlvo = origem.GetComponentInParent<Rigidbody>();
+        if (rbAlvo != null)
+        {
+            return rbAlvo.transform;
+        }
+
+        return origem.root != null ? origem.root : origem;
+    }
+
+    bool TentarDetonarMissil(GameObject objeto, Vector3 posicaoImpacto)
+    {
+        if (objeto == null) return false;
+
+        if (TentarInvocarMetodoSemArgumentos<MisselNaval>(objeto, "Explodir")) return true;
+        if (TentarInvocarMetodoSemArgumentos<MisselCaca>(objeto, "Explodir")) return true;
+        if (TentarInvocarMetodoSemArgumentos<MisselSubmarino>(objeto, "Explodir")) return true;
+        if (TentarInvocarMetodoSemArgumentos<MisselICBM>(objeto, "Explodir")) return true;
+        if (TentarInvocarMetodoSemArgumentos<MisselTatico>(objeto, "Explodir")) return true;
+        if (TentarInvocarMetodoSemArgumentos<MisselLeopardAutomatico>(objeto, "Explodir")) return true;
+
+        if (objeto.GetComponentInParent<MissilTeleguiado>() != null)
+        {
+            CriarEfeitoFallback(posicaoImpacto, 0.9f);
+            if (TentarInvocarMetodoSemArgumentos<MissilTeleguiado>(objeto, "Liberar"))
+            {
+                return true;
+            }
+        }
+
+        Projetil projetil = objeto.GetComponentInParent<Projetil>();
+        if (projetil != null)
+        {
+            CriarImpactoDeProjetil(projetil, posicaoImpacto);
+            if (TentarInvocarMetodoSemArgumentos<Projetil>(objeto, "Liberar"))
+            {
+                return true;
+            }
+        }
+
+        if (TentarInvocarMetodoSemArgumentosEmHierarquia(objeto, "Explodir")) return true;
+        if (TentarInvocarMetodoSemArgumentosEmHierarquia(objeto, "DestroyMissile")) return true;
+        if (TentarInvocarMetodoSemArgumentosEmHierarquia(objeto, "Liberar")) return true;
+
+        return false;
+    }
+
+    void CriarImpactoDeProjetil(Projetil projetil, Vector3 posicaoImpacto)
+    {
+        if (projetil == null) return;
+
+        if (projetil.efeitoImpacto != null)
+        {
+            float escala = projetil.raioDeExplosao > 0f ? Mathf.Max(1f, projetil.raioDeExplosao * 0.8f) : 1f;
+            PoolDeObjetosCombate.SpawnTemporario(
+                projetil.efeitoImpacto,
+                posicaoImpacto,
+                Quaternion.identity,
+                2f,
+                Vector3.one * escala);
+            return;
+        }
+
+        CriarEfeitoFallback(posicaoImpacto, Mathf.Max(0.75f, projetil.raioDeExplosao * 0.5f));
+    }
+
+    bool TentarInvocarMetodoSemArgumentos<T>(GameObject objeto, string nomeMetodo) where T : Component
+    {
+        T componente = objeto.GetComponentInParent<T>();
+        if (componente == null) return false;
+        return TentarInvocarMetodoSemArgumentos(componente, nomeMetodo);
+    }
+
+    bool TentarInvocarMetodoSemArgumentosEmHierarquia(GameObject objeto, string nomeMetodo)
+    {
+        if (objeto == null) return false;
+
+        MonoBehaviour[] componentes = objeto.GetComponentsInChildren<MonoBehaviour>(true);
+        for (int i = 0; i < componentes.Length; i++)
+        {
+            if (TentarInvocarMetodoSemArgumentos(componentes[i], nomeMetodo))
+            {
+                return true;
+            }
         }
 
         return false;
     }
 
-    void DetonarSelf()
+    bool TentarInvocarMetodoSemArgumentos(Component componente, string nomeMetodo)
     {
-        if (forcarDestruicao)
+        if (componente == null) return false;
+
+        MethodInfo metodo = componente.GetType().GetMethod(
+            nomeMetodo,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            null,
+            Type.EmptyTypes,
+            null);
+
+        if (metodo == null) return false;
+
+        try
         {
-            Destroy(gameObject);
-            return;
+            metodo.Invoke(componente, null);
+            return true;
         }
+        catch
+        {
+            return false;
+        }
+    }
 
-        // Tenta acionar métodos comuns de "explodir" (mesmo que sejam private).
-        SendMessage("Explodir", SendMessageOptions.DontRequireReceiver);
-        SendMessage("DestroyMissile", SendMessageOptions.DontRequireReceiver);
+    void CriarEfeitoFallback(Vector3 posicao, float escala)
+    {
+        if (GerenciadorFXGlobal.Instancia != null)
+        {
+            GerenciadorFXGlobal.Instancia.TocarEfeito("Explosao", posicao, Mathf.Max(0.5f, escala));
+        }
+    }
 
-        // Fallback: remove o interceptador.
-        Destroy(gameObject);
+    void RemoverObjeto(GameObject objeto)
+    {
+        if (objeto == null) return;
+
+        PoolDeObjetosCombate.Release(objeto);
+        if (objeto != null && objeto.activeInHierarchy)
+        {
+            Destroy(objeto);
+        }
     }
 }

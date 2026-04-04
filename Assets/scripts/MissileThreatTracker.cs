@@ -112,11 +112,13 @@ public class MissileThreatTracker : MonoBehaviour
 
     void OnDisable()
     {
+        CancelInvoke(nameof(ExpirarMissil));
         RemoverRegistro();
     }
 
     void OnDestroy()
     {
+        CancelInvoke(nameof(ExpirarMissil));
         RemoverRegistro();
     }
 
@@ -212,7 +214,18 @@ public class MissileThreatTracker : MonoBehaviour
     void ExpirarMissil()
     {
         Transform raiz = RaizMissil;
-        if (raiz != null) Destroy(raiz.gameObject);
+        if (raiz == null)
+        {
+            return;
+        }
+
+        if (raiz.GetComponent<PoolDeObjetoCombateLink>() != null)
+        {
+            PoolDeObjetosCombate.Release(raiz.gameObject);
+            return;
+        }
+
+        Destroy(raiz.gameObject);
     }
 
     static int ResolverTeam(Component origem, Transform raizMissil)

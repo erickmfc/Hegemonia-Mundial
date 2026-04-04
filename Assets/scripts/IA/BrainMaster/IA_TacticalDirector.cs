@@ -7,6 +7,11 @@ namespace Hegemonia.AI.BrainMaster
     {
         private const float ForcedAssaultStartSeconds = 60f;
         private readonly IA_Context _context;
+        private readonly List<GameObject> _loadedAmphibiousBuffer = new List<GameObject>(16);
+        private readonly List<GameObject> _emptyAmphibiousBuffer = new List<GameObject>(16);
+        private readonly List<GameObject> _emptyGroundTransportBuffer = new List<GameObject>(16);
+        private readonly List<GameObject> _assaultUnitsBuffer = new List<GameObject>(48);
+        private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
         private float _nextDecisionTime;
         private float _nextAssaultWaveTime;
         private float _lastEnemySeenTime = -999f;
@@ -45,7 +50,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            _nextDecisionTime = now + 0.60f;
+            _nextDecisionTime = now + ResolveDecisionDelay();
             Vector3 baseCenter = _context.WorldState.BaseCenter;
             if (baseCenter == Vector3.zero && _context.Brain != null)
             {
@@ -74,6 +79,25 @@ namespace Hegemonia.AI.BrainMaster
             DispatchAmphibious(baseCenter, priorityEnemy, strategicObjective);
             DispatchGroundLogistics(baseCenter);
             DispatchOffensiveWave(now, baseCenter, priorityEnemy, strategicObjective);
+        }
+
+        private float ResolveDecisionDelay()
+        {
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            if (pressure == null)
+            {
+                return 0.60f;
+            }
+
+            switch (pressure.Estado)
+            {
+                case EstadoCargaIA.Saturado:
+                    return 1.40f;
+                case EstadoCargaIA.EmCombate:
+                    return 0.95f;
+                default:
+                    return 0.60f;
+            }
         }
 
         private void DispatchRecon(Vector3 baseCenter, Transform visibleEnemy, Vector3 strategicObjective)
@@ -172,17 +196,15 @@ namespace Hegemonia.AI.BrainMaster
 
             Vector3 coast = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Coast, 120f, 360f, 26);
             Vector3 loadRally = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 35f, 100f, 18);
-            List<GameObject> loaded = new List<GameObject>();
-            List<GameObject> empty = new List<GameObject>();
-            SplitAmphibiousUnits(squad.Units, loaded, empty);
+            SplitAmphibiousUnits(squad.Units, _loadedAmphibiousBuffer, _emptyAmphibiousBuffer);
 
-            if (empty.Count > 0)
+            if (_emptyAmphibiousBuffer.Count > 0)
             {
-                QueueMove("amphibious_load", empty, loadRally, 72, 5.4f);
+                QueueMove("amphibious_load", _emptyAmphibiousBuffer, loadRally, 72, 5.4f);
 
-                for (int i = 0; i < empty.Count && i < 2; i++)
+                for (int i = 0; i < _emptyAmphibiousBuffer.Count && i < 2; i++)
                 {
-                    GameObject transport = empty[i];
+                    GameObject transport = _emptyAmphibiousBuffer[i];
                     if (transport == null || DistanceFlat(transport.transform.position, loadRally) > 85f)
                     {
                         continue;
@@ -199,7 +221,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            if (loaded.Count == 0)
+            if (_loadedAmphibiousBuffer.Count == 0)
             {
                 return;
             }
@@ -212,17 +234,17 @@ namespace Hegemonia.AI.BrainMaster
 
             if (visibleEnemy != null && CountNavalSupportUnits() >= 2)
             {
-                QueueAttack("amphibious", loaded, visibleEnemy, coast, 80, 5.2f);
+                QueueAttack("amphibious", _loadedAmphibiousBuffer, visibleEnemy, coast, 80, 5.2f);
             }
             else
             {
-                QueueMove("amphibious_stage", loaded, pressureCoast, 74, 4.8f);
+                QueueMove("amphibious_stage", _loadedAmphibiousBuffer, pressureCoast, 74, 4.8f);
             }
         }
 
         private void DispatchGroundLogistics(Vector3 baseCenter)
         {
-            List<GameObject> emptyTransports = new List<GameObject>();
+            _emptyGroundTransportBuffer.Clear();
             for (int i = 0; i < _context.WorldState.OwnUnits.Count; i++)
             {
                 GameObject unit = _context.WorldState.OwnUnits[i];
@@ -239,26 +261,26 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (transport.QuantidadePassageiros <= 0)
                 {
-                    emptyTransports.Add(unit);
+                    _emptyGroundTransportBuffer.Add(unit);
                 }
             }
 
-            if (emptyTransports.Count == 0)
+            if (_emptyGroundTransportBuffer.Count == 0)
             {
                 return;
             }
 
             Vector3 rally = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 35f, 110f, 18);
-            QueueMove("logistics_idle", emptyTransports, rally, 64, 5.6f);
+            QueueMove("logistics_idle", _emptyGroundTransportBuffer, rally, 64, 5.6f);
 
             if (_context.Brain == null || _context.Brain.IntegrationMode != IA_BrainMaster.IA_IntegrationMode.Full)
             {
                 return;
             }
 
-            for (int i = 0; i < emptyTransports.Count && i < 2; i++)
+            for (int i = 0; i < _emptyGroundTransportBuffer.Count && i < 2; i++)
             {
-                GameObject transport = emptyTransports[i];
+                GameObject transport = _emptyGroundTransportBuffer[i];
                 if (transport == null || Vector3.Distance(transport.transform.position, baseCenter) > 80f)
                 {
                     continue;
@@ -317,12 +339,12 @@ namespace Hegemonia.AI.BrainMaster
                 return _lastStrategicObjective;
             }
 
-            List<IA_EnemyObservation> memory = _context.WorldState.GetEnemyMemory(220f);
+            _context.WorldState.FillEnemyMemory(_enemyMemoryBuffer, 220f);
             IA_EnemyObservation best = null;
             float bestScore = float.MinValue;
-            for (int i = 0; i < memory.Count; i++)
+            for (int i = 0; i < _enemyMemoryBuffer.Count; i++)
             {
-                IA_EnemyObservation obs = memory[i];
+                IA_EnemyObservation obs = _enemyMemoryBuffer[i];
                 if (obs == null)
                 {
                     continue;
@@ -415,7 +437,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private List<GameObject> CollectGroundAssaultUnits(int limit)
         {
-            List<GameObject> selected = new List<GameObject>();
+            _assaultUnitsBuffer.Clear();
             int max = Mathf.Clamp(limit, 6, 48);
 
             for (int i = 0; i < _context.WorldState.OwnCombatUnits.Count; i++)
@@ -450,14 +472,14 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                selected.Add(unit);
-                if (selected.Count >= max)
+                _assaultUnitsBuffer.Add(unit);
+                if (_assaultUnitsBuffer.Count >= max)
                 {
                     break;
                 }
             }
 
-            return selected;
+            return _assaultUnitsBuffer;
         }
 
         private Vector3 BlendObjective(Vector3 baseCenter, Vector3 strategicObjective, float t, float fallbackMinRadius, float fallbackMaxRadius)
@@ -585,7 +607,19 @@ namespace Hegemonia.AI.BrainMaster
         {
             if (source == null)
             {
+                if (loaded != null) loaded.Clear();
+                if (empty != null) empty.Clear();
                 return;
+            }
+
+            if (loaded != null)
+            {
+                loaded.Clear();
+            }
+
+            if (empty != null)
+            {
+                empty.Clear();
             }
 
             for (int i = 0; i < source.Count; i++)
@@ -686,7 +720,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private static List<GameObject> CloneUnits(List<GameObject> source)
         {
-            var output = new List<GameObject>();
+            var output = source != null ? new List<GameObject>(source.Count) : new List<GameObject>();
             if (source == null)
             {
                 return output;

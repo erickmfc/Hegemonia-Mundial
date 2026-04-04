@@ -133,6 +133,8 @@ public class ControleSubmarino : MonoBehaviour
             }
         }
 
+        PoolDeObjetosCombate.Prewarm(prefabMisselSubmarino, Mathf.Clamp(totalLocaisValidos > 0 ? totalLocaisValidos / 2 : 2, 2, 6));
+
         misseisUsados = new bool[locaisDisparo.Length];
         misseisDisponiveis = totalLocaisValidos;
 
@@ -507,7 +509,7 @@ public class ControleSubmarino : MonoBehaviour
                 continue;
             }
 
-            GameObject missel = Instantiate(prefabMisselSubmarino, locaisDisparo[i].position, locaisDisparo[i].rotation);
+            GameObject missel = PoolDeObjetosCombate.Spawn(prefabMisselSubmarino, locaisDisparo[i].position, locaisDisparo[i].rotation);
             MisselSubmarino scriptMissel = missel.GetComponent<MisselSubmarino>();
             if (scriptMissel != null)
             {
@@ -709,6 +711,34 @@ public class ControleSubmarino : MonoBehaviour
     public bool EstaSubmerso()
     {
         return estaSubmerso;
+    }
+
+    public static ControleSubmarino ObterSubmarinoDoAlvo(Transform alvo)
+    {
+        if (alvo == null)
+        {
+            return null;
+        }
+
+        ControleSubmarino submarino = alvo.GetComponentInParent<ControleSubmarino>();
+        if (submarino != null)
+        {
+            return submarino;
+        }
+
+        Transform raiz = alvo.root != null ? alvo.root : alvo;
+        return raiz != null ? raiz.GetComponent<ControleSubmarino>() : null;
+    }
+
+    public static bool EstaOcultoParaCombateConvencional(Transform alvo)
+    {
+        ControleSubmarino submarino = ObterSubmarinoDoAlvo(alvo);
+        return submarino != null && submarino.EstaSubmerso();
+    }
+
+    public static bool PodeSerAlvoConvencional(Transform alvo)
+    {
+        return alvo != null && !EstaOcultoParaCombateConvencional(alvo);
     }
 
     public bool PodeAtacarIA()

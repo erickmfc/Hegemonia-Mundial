@@ -46,6 +46,7 @@ GameObject:
   - component: {fileID: 8023363927540313036}
   - component: {fileID: 2620938511765768467}
   - component: {fileID: 3003515292386049680}
+  - component: {fileID: 8913026166836606737}
   m_Layer: 0
   m_Name: Estaleiros navais
   m_TagString: Imovel
@@ -236,6 +237,28 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 2
+--- !u!64 &8913026166836606737
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3091952298521144747}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &3281884118873610546
 GameObject:
   m_ObjectHideFlags: 0

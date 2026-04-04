@@ -17,6 +17,16 @@ public class Fabrica : MonoBehaviour
     public List<Transform> pontosSaidaExtras = new List<Transform>();
     private int indiceSaidaGlobal = 0;
 
+    void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
     void Start()
     {
         // Busca automática de pontos de saída se não houver nenhum configurado
@@ -107,9 +117,9 @@ public class Fabrica : MonoBehaviour
         // Registro IA
         if (idU != null && idU.teamID != 1)
         {
-            var commanders = Object.FindObjectsByType<IA_Comandante>(FindObjectsSortMode.None);
-            var myCommander = commanders.FirstOrDefault(c => c.identidade != null && c.identidade.teamID == idU.teamID);
+            var myCommander = IA_ComandanteRegistry.GetCommanderByTeam(idU.teamID);
             if (myCommander != null && myCommander.cerebroGeneral != null) myCommander.cerebroGeneral.RegistrarUnidade(unidade);
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
         }
 
         return unidade;

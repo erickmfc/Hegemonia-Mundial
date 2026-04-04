@@ -9,7 +9,9 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<IA_SquadRole, IA_SquadData> _byRole = new Dictionary<IA_SquadRole, IA_SquadData>();
         // Reutilizados entre ticks para evitar alocacoes desnecessarias de GC
         private readonly List<GameObject> _candidatesBuffer = new List<GameObject>(128);
+        private readonly List<GameObject> _selectedBuffer = new List<GameObject>(32);
         private readonly HashSet<int> _usedBuffer = new HashSet<int>();
+        private float _nextDecisionTime;
 
         public IA_SquadDirector(IA_Context context)
         {
@@ -33,6 +35,12 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
+            if (now < _nextDecisionTime)
+            {
+                return;
+            }
+
+            _nextDecisionTime = now + ResolveDecisionDelay();
             _context.Backend.SquadService.CleanupDeadUnits();
 
             // Reutiliza os buffers para evitar alocacoes por tick
@@ -78,7 +86,7 @@ namespace Hegemonia.AI.BrainMaster
             int targetSize,
             System.Func<GameObject, bool> predicate)
         {
-            List<GameObject> selected = new List<GameObject>();
+            _selectedBuffer.Clear();
             for (int i = 0; i < candidates.Count; i++)
             {
                 GameObject unit = candidates[i];
@@ -98,17 +106,36 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                selected.Add(unit);
+                _selectedBuffer.Add(unit);
                 used.Add(id);
-                if (selected.Count >= targetSize)
+                if (_selectedBuffer.Count >= targetSize)
                 {
                     break;
                 }
             }
 
             string squadId = "squad_" + role;
-            IA_SquadData squad = _context.Backend.SquadService.UpsertSquad(squadId, role, selected);
+            IA_SquadData squad = _context.Backend.SquadService.UpsertSquad(squadId, role, _selectedBuffer);
             _byRole[role] = squad;
+        }
+
+        private float ResolveDecisionDelay()
+        {
+            IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
+            if (pressure == null)
+            {
+                return 1.80f;
+            }
+
+            switch (pressure.Estado)
+            {
+                case EstadoCargaIA.Saturado:
+                    return 3.40f;
+                case EstadoCargaIA.EmCombate:
+                    return 2.40f;
+                default:
+                    return 1.80f;
+            }
         }
 
         private static bool IsReconUnit(GameObject unit)

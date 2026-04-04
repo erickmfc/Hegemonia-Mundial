@@ -23,6 +23,13 @@ public class ControleUnidade : MonoBehaviour
 
     // --- DETECÇÃO DE CONFLITO ---
     private Helicoptero helicopteroExterno;
+    private ControleAviao controleAviao;
+    private ControleAviaoCaca controleAviaoCaca;
+    private C700TransporteAereo c700TransporteAereo;
+    private HovercraftTransporte hovercraftTransporte;
+    private ControleNavioRealista controleNavioRealista;
+    private NavegacaoInteligenteNaval navegacaoInteligenteNaval;
+    private ControleSubmarino controleSubmarino;
 
     // --- SISTEMA DE VELOCIDADE DINÂMICA (Para Seguir) ---
     private float velocidadeOriginalSalva = -1f;
@@ -45,10 +52,17 @@ public class ControleUnidade : MonoBehaviour
         
         // Verifica controladores externos
         helicopteroExterno = GetComponent<Helicoptero>();
+        controleAviao = GetComponent<ControleAviao>();
+        controleAviaoCaca = GetComponent<ControleAviaoCaca>();
+        c700TransporteAereo = GetComponent<C700TransporteAereo>();
+        hovercraftTransporte = GetComponent<HovercraftTransporte>();
+        controleNavioRealista = GetComponent<ControleNavioRealista>();
+        navegacaoInteligenteNaval = GetComponent<NavegacaoInteligenteNaval>();
+        controleSubmarino = GetComponent<ControleSubmarino>();
         
         // Verifica se é uma unidade aérea (GENÉRICA)
         scriptVoo = GetComponent<VooHelicoptero>();
-        bool temScriptAviao = GetComponent<ControleAviao>() != null || GetComponent<ControleAviaoCaca>() != null;
+        bool temScriptAviao = c700TransporteAereo == null && (controleAviao != null || controleAviaoCaca != null);
 
         if (scriptVoo != null || helicopteroExterno != null || temScriptAviao)
         {
@@ -143,6 +157,12 @@ public class ControleUnidade : MonoBehaviour
     {
         cacheCombateSujo = true;
     }
+
+    public bool TemControleAviao => controleAviao != null && c700TransporteAereo == null;
+    public bool TemControleAviaoCaca => controleAviaoCaca != null;
+    public bool TemHelicopteroExterno => helicopteroExterno != null;
+    public bool TemHovercraftTransporte => hovercraftTransporte != null;
+    public bool TemC700TransporteAereo => c700TransporteAereo != null;
 
     [Header("Visual")]
     public float tamanhoSelecao = 0f; // 0 = Automatico
@@ -369,23 +389,30 @@ public class ControleUnidade : MonoBehaviour
         // Debug.Log($"[ControleUnidade] {name} recebeu MoverParaPonto({destino})...");
 
         // Caça Militar Aéreo
-        if (TryGetComponent<ControleAviaoCaca>(out var caca))
+        if (controleAviaoCaca != null)
         {
-            caca.DefinirDestino(destino);
+            controleAviaoCaca.DefinirDestino(destino);
             return;
         }
 
         // Avião de Passageiros / Cargueiro (Sistema de Aeroporto)
-        if (TryGetComponent<ControleAviao>(out var aviao))
+        if (c700TransporteAereo != null)
         {
-            if (aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+            c700TransporteAereo.ReceberOrdemMover(destino);
+            return;
+        }
+
+        // Avião de Passageiros / Cargueiro (Sistema de Aeroporto)
+        if (controleAviao != null)
+        {
+            if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
             {
-                aviao.IniciarMissaoCompleta(destino);
+                controleAviao.IniciarMissaoCompleta(destino);
             }
-            else if (aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao || aviao.estadoAtual == ControleAviao.EstadoAviao.Decolando)
+            else if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao || controleAviao.estadoAtual == ControleAviao.EstadoAviao.Decolando)
             {
                 // Se já estiver voando, apenas muda a coordenada do GPS
-                aviao.alvoGPSVoo = destino;
+                controleAviao.alvoGPSVoo = destino;
             }
             return;
         }
@@ -397,9 +424,9 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
-        if (TryGetComponent<HovercraftTransporte>(out var hovercraft))
+        if (hovercraftTransporte != null)
         {
-            hovercraft.DefinirDestino(destino);
+            hovercraftTransporte.DefinirDestino(destino);
 
             if (agente != null && agente.enabled)
             {
@@ -418,26 +445,26 @@ public class ControleUnidade : MonoBehaviour
             if (agente.isOnNavMesh && agente.isActiveAndEnabled)
             {
                 // ✨ SISTEMA DE NAVEGAÇÃO NAVAL REALISTA OU INTELIGENTE ✨
-                if (TryGetComponent<ControleNavioRealista>(out var controleRealista))
+                if (controleNavioRealista != null)
                 {
-                    controleRealista.DefinirDestino(destino);
+                    controleNavioRealista.DefinirDestino(destino);
                     // Debug.Log($"[Navegação] {name} usando Física Realista.");
                     return;
                 }
 
                 // Verifica se esta unidade tem navegação naval inteligente (marcha à ré automática)
-                if (TryGetComponent<NavegacaoInteligenteNaval>(out var navegacaoNaval))
+                if (navegacaoInteligenteNaval != null)
                 {
                     // Usa o sistema inteligente que decide automaticamente se vai de frente ou de ré
-                    navegacaoNaval.DefinirDestino(destino);
+                    navegacaoInteligenteNaval.DefinirDestino(destino);
                     // Debug.Log($"[Navegação] {name} usando sistema naval inteligente.");
                     return;
                 }
 
                 // Verifica se é Submarino
-                if (TryGetComponent<ControleSubmarino>(out var controleSub))
+                if (controleSubmarino != null)
                 {
-                    controleSub.DefinirDestino(destino);
+                    controleSubmarino.DefinirDestino(destino);
                     return;
                 }
 
@@ -466,21 +493,21 @@ public class ControleUnidade : MonoBehaviour
                      // Só dá a ordem se a recuperação funcionou
                      if (agente.isOnNavMesh && agente.isActiveAndEnabled)
                      {
-                         if (TryGetComponent<ControleNavioRealista>(out var controleRealistaRecuperado))
+                         if (controleNavioRealista != null)
                          {
-                             controleRealistaRecuperado.DefinirDestino(destino);
+                             controleNavioRealista.DefinirDestino(destino);
                              return;
                          }
 
-                         if (TryGetComponent<NavegacaoInteligenteNaval>(out var navegacaoNavalRecuperada))
+                         if (navegacaoInteligenteNaval != null)
                          {
-                             navegacaoNavalRecuperada.DefinirDestino(destino);
+                             navegacaoInteligenteNaval.DefinirDestino(destino);
                              return;
                          }
 
-                         if (TryGetComponent<ControleSubmarino>(out var controleSubRecuperado))
+                         if (controleSubmarino != null)
                          {
-                             controleSubRecuperado.DefinirDestino(destino);
+                             controleSubmarino.DefinirDestino(destino);
                              return;
                          }
 
@@ -508,9 +535,9 @@ public class ControleUnidade : MonoBehaviour
     public bool EhUnidadeNaval()
     {
         return GetComponent<IdentidadeNaval>() != null ||
-               TryGetComponent<ControleNavioRealista>(out _) ||
-               TryGetComponent<NavegacaoInteligenteNaval>(out _) ||
-               TryGetComponent<ControleSubmarino>(out _) ||
+               controleNavioRealista != null ||
+               navegacaoInteligenteNaval != null ||
+               controleSubmarino != null ||
                TryGetComponent<NavioPetroleiro>(out _);
     }
 
@@ -771,6 +798,15 @@ public class ControleUnidade : MonoBehaviour
             metaLinha = helicopteroExterno.destino; 
             if (helicopteroExterno.estaVoando && Vector3.Distance(transform.position, metaLinha) > 2f) 
                 tentarDesenharReta = true;
+        }
+
+        if (c700TransporteAereo != null && c700TransporteAereo.TemDestinoVisual)
+        {
+            metaLinha = c700TransporteAereo.DestinoVisualAtual;
+            if (Vector3.Distance(transform.position, metaLinha) > 2f)
+            {
+                tentarDesenharReta = true;
+            }
         }
 
         ControleAviao aviao = GetComponent<ControleAviao>();
