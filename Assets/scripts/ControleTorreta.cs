@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class ControleTorreta : MonoBehaviour
@@ -446,14 +446,18 @@ public class ControleTorreta : MonoBehaviour
 
             if (ehInimigo)
             {
-                // Usa o perfil cacheado â€” sem string.Contains() a cada alvo
+                IdentidadeUnidade idAlvo = alvoTr.GetComponentInParent<IdentidadeUnidade>();
+                // Usa o perfil cacheado — sem string.Contains() a cada alvo
                 bool alvoAereo = ehMissil ||
                                  alvoTr.position.y > 6f ||
                                  alvoTr.GetComponentInParent<ControleAviao>() != null ||
                                  alvoTr.GetComponentInParent<Helicoptero>() != null ||
+                                 (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
                                  alvoTr.name.ToLower().Contains("aviao") || 
                                  alvoTr.name.ToLower().Contains("heli") || 
                                  alvoTr.name.ToLower().Contains("caca") ||
+                                 alvoTr.name.ToLower().Contains("drone") ||
+                                 alvoTr.name.ToLower().Contains("vap") ||
                                  alvoTr.tag == "Areo" || 
                                  alvoTr.tag == "Aereo";
                 

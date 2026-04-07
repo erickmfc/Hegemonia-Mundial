@@ -72,6 +72,14 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6592064819215676958, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.572
+      objectReference: {fileID: 0}
+    - target: {fileID: 6592064819215676958, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0
+      objectReference: {fileID: 0}
     - target: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: looping
       value: 0
@@ -106,7 +114,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: looping
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: lengthInSec
@@ -114,19 +122,39 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: ShapeModule.type
-      value: 18
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: ShapeModule.angle
-      value: 47.04
+      value: 48.92
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: startDelay.scalar
       value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: ShapeModule.m_Scale.y
+      propertyPath: InitialModule.size3D
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: ShapeModule.m_Scale.x
+      value: 1.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: ShapeModule.m_Scale.y
+      value: 0.35
+      objectReference: {fileID: 0}
+    - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: ShapeModule.m_Scale.z
+      value: 4.91
+      objectReference: {fileID: 0}
+    - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: ShapeModule.m_Rotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: ShapeModule.radius.value
+      value: 0.6
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: ShapeModule.radiusThickness
@@ -134,15 +162,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: InitialModule.maxNumParticles
-      value: 1000
+      value: 500
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: InitialModule.startSizeY.scalar
-      value: 0.49
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: InitialModule.startSizeZ.scalar
       value: 0.17
+      objectReference: {fileID: 0}
+    - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: InitialModule.startSpeed.scalar
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7154886398415273985, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: EmissionModule.rateOverTime.scalar
+      value: 81.88
       objectReference: {fileID: 0}
     - target: {fileID: 7578387297454913241, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: dano
@@ -192,9 +228,15 @@ PrefabInstance:
       propertyPath: forcaRotacaoMergulho
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 8064889982703888016, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: m_NormalDirection
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 443299249219380017, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+    - {fileID: 7267936980735913140, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+    - {fileID: 162338076548706659, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
@@ -222,14 +264,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
   vidaMaxima: 100
-  vidaAtual: 0
+  vidaAtual: 100
   unidadeBiologica: 0
   ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
-  habilitarAfundamentoNaval: 1
+  habilitarAfundamentoNaval: 0
   anguloAfundamentoX: -46
   duracaoAfundamento: 7
   atrasoPosAfundamento: 0.6
@@ -250,15 +292,11 @@ MonoBehaviour:
   aceleracaoBoost: 100
   velocidadeMaxima: 120
   forcaRotacao: 5
-  sistemaFumaca: {fileID: 2931052983890345434}
-  dano: 750
+  sistemaFumaca: {fileID: 0}
+  dano: 450
   raioExplosao: 50
   escalaVisualExplosao: 6
   volumeSom: 1
   efeitoExplosaoPrefab: {fileID: 100002, guid: 6ecf76dc4f268d340b2666896a954bcc, type: 3}
   somExplosao: {fileID: 8300000, guid: 986d6b30567e30e428f3f21373fe45ca, type: 3}
---- !u!198 &2931052983890345434 stripped
-ParticleSystem:
-  m_CorrespondingSourceObject: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-  m_PrefabInstance: {fileID: 8499349853847881992}
-  m_PrefabAsset: {fileID: 0}
+  tempoMaximoVida: 10

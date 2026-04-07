@@ -984,9 +984,13 @@ namespace Hegemonia.AI.BrainMaster
                                      || n.Contains("aeroporto")
                                      || n.Contains("heliporto")
                                      || n.Contains("armazem");
+            IdentidadeUnidade idComp = obj.GetComponent<IdentidadeUnidade>();
+            bool isAereoFromComp = idComp != null && idComp.tipoUnidade == TipoUnidade.Aereo;
+            bool isDrone = n.Contains("drone") || n.Contains("vap");
+
             bool isStructure = explicitStructure || (!hasAgent && !mobileByScript);
             IA_Domain domain = IA_Domain.Land;
-            if (hasAircraft || hasHelicopter || n.Contains("heli") || n.Contains("aviao") || n.Contains("fa1") || n.Contains("g15") || n.Contains("a_20") || n.Contains("super tuk"))
+            if (isAereoFromComp || hasAircraft || hasHelicopter || n.Contains("heli") || n.Contains("aviao") || n.Contains("fa1") || n.Contains("g15") || n.Contains("a_20") || n.Contains("super tuk") || isDrone)
             {
                 domain = IA_Domain.Air;
             }
@@ -1016,10 +1020,10 @@ namespace Hegemonia.AI.BrainMaster
                 IsTank = n.Contains("tank") || n.Contains("mbt") || n.Contains("south") || n.Contains("arthur") || n.Contains("c1"),
                 IsArtillery = n.Contains("artilh") || n.Contains("hack") || n.Contains("mlrs") || n.Contains("lancador"),
                 IsHelicopter = hasHelicopter || n.Contains("heli") || n.Contains("ray") || n.Contains("vans"),
-                IsFixedWing = hasAircraft || n.Contains("fa1") || n.Contains("jet") || n.Contains("aviao") || n.Contains("g15") || n.Contains("a_20") || n.Contains("super tuk") || n.Contains("supertuk"),
+                IsFixedWing = isAereoFromComp || hasAircraft || n.Contains("fa1") || n.Contains("jet") || n.Contains("aviao") || n.Contains("g15") || n.Contains("a_20") || n.Contains("super tuk") || n.Contains("supertuk") || isDrone,
                 IsRadar = n.Contains("radar"),
-                IsHighValueMobile = hasAircraft || hasHelicopter || hasNaval || hasSubmarine,
-                VisionRadius = ResolveVisionRadius(n, isStructure, hasAircraft, hasHelicopter, hasNaval || hasSubmarine)
+                IsHighValueMobile = isAereoFromComp || hasAircraft || hasHelicopter || hasNaval || hasSubmarine || isDrone,
+                VisionRadius = ResolveVisionRadius(n, isStructure, hasAircraft || isAereoFromComp || isDrone, hasHelicopter, hasNaval || hasSubmarine)
             };
 
             _entityRuntimeCache[id] = entry;
@@ -1077,7 +1081,7 @@ namespace Hegemonia.AI.BrainMaster
             {
                 value += 35f;
             }
-            if (name.Contains("fa1") || name.Contains("caca"))
+            if (name.Contains("fa1") || name.Contains("caca") || name.Contains("vap") || name.Contains("drone"))
             {
                 value += 28f;
             }

@@ -19465,22 +19465,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 925a9b2131ca4e047b4ae9fa4be17cf9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MisselNaval
-  velocidadeEjecao: 7
-  tempoEjecao: 3
+  velocidadeEjecao: 10
+  tempoEjecao: 2
   tempoBoostVertical: 5
-  aceleracaoBoost: 50
+  aceleracaoBoost: 65
   sistemaFumaca: {fileID: 0}
-  velocidadeCruzeiro: 250
+  velocidadeCruzeiro: 300
   velocidadeMergulho: 350
   distanciaInicioMergulho: 100
   forcaRotacaoCruzeiro: 2
   forcaRotacaoMergulho: 5
   dano: 650
   raioExplosao: 65
-  escalaVisualExplosao: 6
+  escalaVisualExplosao: 8.65
   volumeSom: 1
   efeitoExplosaoPrefab: {fileID: 100002, guid: 6ecf76dc4f268d340b2666896a954bcc, type: 3}
   somExplosao: {fileID: 8300000, guid: 61fa60782469a2f458cf3b6dc5cfc8d5, type: 3}
+  tempoMaximoVida: 24
   corFumaca: {r: 0.8, g: 0.8, b: 0.8, a: 0.5}
   tamanhoFumaca: 1.5
 --- !u!136 &6581285286416740336

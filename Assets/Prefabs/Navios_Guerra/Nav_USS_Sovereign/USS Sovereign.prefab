@@ -1653,8 +1653,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 5.2
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 2.5
+  anguloAfundamentoX: -49
+  duracaoAfundamento: 17
   atrasoPosAfundamento: 0.6
 --- !u!54 &3194567982492468067
 Rigidbody:
@@ -1733,8 +1733,12 @@ MonoBehaviour:
   decida: {fileID: 2858708022539486034}
   avioesNoPatio: []
   avioesNoHangar: []
+  transportesC700NoPatio: []
+  prefabDroneKamikaze: {fileID: 0}
+  precoDroneKamikaze: 1500
   menuAeroportoUI: {fileID: 0}
   aviaoSelecionadoParaMissao: {fileID: 0}
+  c700SelecionadoParaMissao: {fileID: 0}
   waypointsPatio: []
   wpPreparacao: {fileID: 0}
   wpPronto: {fileID: 0}
@@ -1742,6 +1746,8 @@ MonoBehaviour:
   waypointsDecida: []
   wpAndadar: {fileID: 0}
   wpAnalise: {fileID: 0}
+  esperandoCliqueMassa: 0
+  qtdMassaDrone: 1
   antenaRotativa: {fileID: 4807448831659357542}
   velGiroAntena: 45
   plataformaElevador: {fileID: 4938211382628822949}

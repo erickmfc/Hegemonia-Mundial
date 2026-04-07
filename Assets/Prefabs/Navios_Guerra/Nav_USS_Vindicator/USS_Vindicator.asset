@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: USS Vindicator
   descricao: Destroyer de escolta. Especializado em defesa anti-aerea.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: de6918707248d6542a608dd8feb18bb5, type: 3}
   prefabDaUnidade: {fileID: 62525798079713276, guid: 21914d3a6241ff94fb78e9232a6213b1, type: 3}
   preco: 2500
   categoria: 1

@@ -258,9 +258,12 @@ MonoBehaviour:
   municaoTotal: 12
   municaoMaxima: 12
   tirosPorSalva: 1
-  intervaloEntreTiros: 2
+  intervaloEntreTiros: 0.5
   tempoRecargaSalva: 5
   alcanceRadar: 1500
+  intervaloVarreduraAutomatica: 0.45
+  maxMisseisSimultaneosPorAlvo: 2
+  cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
   volumeSom: 1
   pitchSom: 1
@@ -325,6 +328,12 @@ MonoBehaviour:
   tempoEntreTiros: 0.5
   capacidadeMisseis: 5
   tempoRecargaMisseis: 25
+  cartuchosMaximos: 3
+  quantidadePorCartucho: 5
+  tempoTrocaCartucho: 20
+  maximoPorSalva: 2
+  anguloMinimoNovaDirecao: 35
+  intervaloReengajamentoAmeaca: 1.2
   somDisparo: {fileID: 8300000, guid: 30cc20ef2ed3c4f35af5120b0a841e84, type: 3}
   modoPassivo: 0
 --- !u!64 &3341252268851045335

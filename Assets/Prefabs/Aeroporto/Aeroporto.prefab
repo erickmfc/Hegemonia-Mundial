@@ -249,6 +249,8 @@ MonoBehaviour:
   avioesNoHangar:
   - {fileID: 0}
   transportesC700NoPatio: []
+  prefabDroneKamikaze: {fileID: 0}
+  precoDroneKamikaze: 1500
   menuAeroportoUI: {fileID: 0}
   aviaoSelecionadoParaMissao: {fileID: 0}
   c700SelecionadoParaMissao: {fileID: 0}
@@ -259,6 +261,8 @@ MonoBehaviour:
   waypointsDecida: []
   wpAndadar: {fileID: 0}
   wpAnalise: {fileID: 0}
+  esperandoCliqueMassa: 0
+  qtdMassaDrone: 1
 --- !u!114 &2719733930215495805
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -369,7 +373,7 @@ Transform:
   m_GameObject: {fileID: 1488244985795252962}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0, y: 3, z: 81}
+  m_LocalPosition: {x: -0, y: 3.17, z: 102.42}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -468,7 +472,7 @@ Transform:
   m_GameObject: {fileID: 2338294868440622397}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3, y: 0, z: 16.12}
+  m_LocalPosition: {x: -2.3, y: 0, z: 16.12}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -851,7 +855,7 @@ Transform:
   m_GameObject: {fileID: 4908702663837199755}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.6, y: 9, z: 188.7}
+  m_LocalPosition: {x: -2.6, y: 19.5, z: 235.87}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1117,7 +1121,7 @@ Transform:
   m_GameObject: {fileID: 5301485555043311514}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.1, y: 2, z: 31.6}
+  m_LocalPosition: {x: -0.6, y: 2, z: 31.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1179,7 +1183,7 @@ Transform:
   m_GameObject: {fileID: 5340267220066388419}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.4, y: 0.7, z: 18}
+  m_LocalPosition: {x: -0.1, y: 0.7, z: 18}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1528,7 +1532,7 @@ Transform:
   m_GameObject: {fileID: 8610979113497829327}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3, y: 5, z: 146.6}
+  m_LocalPosition: {x: 3, y: 7.2, z: 171.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1621,7 +1625,7 @@ Transform:
   m_GameObject: {fileID: 9127882827902701470}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.5, y: 0.7, z: 6.66}
+  m_LocalPosition: {x: -0.3, y: 0.7, z: 12}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

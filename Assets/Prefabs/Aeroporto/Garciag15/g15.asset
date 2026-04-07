@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: g15
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: G15
+  nomeItem: Garcia G15
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 21300000, guid: f193fbc96de63f94b837e1f4a735f68d, type: 3}
   prefabDaUnidade: {fileID: 5614758741420790710, guid: bd63e50046f40bf4e95d5620c8ce98bc, type: 3}

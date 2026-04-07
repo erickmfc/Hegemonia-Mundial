@@ -234,13 +234,21 @@ public class SistemaDeTiro : MonoBehaviour
                     // NÃO ATIRA EM ALVOS AÉREOS A NÃO SER QUE SEJA UM SOLDADO
                     // Tenta otimizar checando o eixo Y antes para evitar ler strings atoa
                     bool podeSerAereo = hit.transform.position.y > 6f;
+                    string nomeBaixo = hit.name.ToLower();
                     
                     bool alvoAereo = podeSerAereo ||
                                      hit.GetComponentInParent<Helicoptero>() != null ||
                                      hit.GetComponentInParent<ControleAviao>() != null ||
-                                     hit.name.Contains("Aviao") || 
-                                     hit.name.Contains("Heli") ||
-                                     hit.name.Contains("caca");
+                                     (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
+                                     nomeBaixo.Contains("aviao") || 
+                                     nomeBaixo.Contains("heli") ||
+                                     nomeBaixo.Contains("caca") ||
+                                     nomeBaixo.Contains("caça") ||
+                                     nomeBaixo.Contains("jato") ||
+                                     nomeBaixo.Contains("drone") ||
+                                     nomeBaixo.Contains("vap") ||
+                                     hit.tag == "Areo" || 
+                                     hit.tag == "Aereo";
 
                     // Apenas INFANTARIA (Soldados) ou Jipes com metralhadora muito leves podem tentar atirar com suas mãos em alvos aéreos
                     bool souSoldado = souSoldadoLeve;

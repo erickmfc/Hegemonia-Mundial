@@ -41,6 +41,7 @@ public class ControleAviao : MonoBehaviour
     [HideInInspector] public bool emAtaqueMergulho = false;
     [HideInInspector] public Vector3 alvoDoMergulho;
     [HideInInspector] public bool alvoPrioritarioIA = false; 
+    public Vector3 alvoEstrategico; // Armazena a coordenada real (com Y exato do chão)
 
     public bool estaEmModoVooFisico = false;
     private float giroLateralRoll = 0f; 
@@ -112,7 +113,9 @@ public class ControleAviao : MonoBehaviour
             if (pctVida < 0.25f)
             {
                 multiplicadorDanos = 0.5f;
-                if (estadoAtual == EstadoAviao.EmMissao && !ordemParaRetorno)
+                // Drones Kamikaze não retornam à base por danos, eles continuam até o fim
+                bool isKamikaze = GetComponent<KamikazeDrone>() != null;
+                if (estadoAtual == EstadoAviao.EmMissao && !ordemParaRetorno && !isKamikaze)
                 {
                     Debug.Log($"<color=red>[{gameObject.name}] DANOS CRÍTICOS ({Mathf.RoundToInt(pctVida*100)}%)! Retornando base.</color>");
                     ComandoRetornarBase();
@@ -150,7 +153,11 @@ public class ControleAviao : MonoBehaviour
         float velFinal = (velocidadeMaximaVoo * multiplicadorVelocidadeTurbo) * multDano;
         Vector3 novaPos = transform.position + transform.forward * (velFinal * dt);
 
-        if (novaPos.y < 15f)
+        bool isKamikazeDiving = false;
+        KamikazeDrone kd = GetComponent<KamikazeDrone>();
+        if (kd != null && kd.kamikazeAtivo) isKamikazeDiving = true;
+
+        if (novaPos.y < 15f && !isKamikazeDiving)
         {
             novaPos.y = 15f;
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, transform.eulerAngles.y, 0), 30f * dt);
@@ -235,7 +242,26 @@ public class ControleAviao : MonoBehaviour
             yield return StartCoroutine(MoverInterpolado(Vector3.zero, velAtual, i == totalWaypoints - 1, caminho[i], aceleracaoGradativa));
             
             if (caminho[i] != null && caminho[i].name.ToLower().Contains("alinhamento")) 
-                yield return new WaitForSeconds(2.5f);
+            {
+                // Parada exigida de forma realista antes de decolar (ou no pouso)
+                yield return new WaitForSeconds(2f);
+
+                // Rotaciona para o EXATO próximo ponto antes de ser empurrado pela próxima chamada interpolada
+                if (i + 1 < totalWaypoints && caminho[i + 1] != null)
+                {
+                    Vector3 dir = caminho[i + 1].position - transform.position;
+                    dir.y = 0;
+                    if (dir.sqrMagnitude > 0.05f)
+                    {
+                        Quaternion rotAlvo = Quaternion.LookRotation(dir.normalized);
+                        while (Quaternion.Angle(transform.rotation, rotAlvo) > 1.5f)
+                        {
+                            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, 60f * Time.deltaTime);
+                            yield return null;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -243,6 +269,7 @@ public class ControleAviao : MonoBehaviour
     {
         if (estadoAtual == EstadoAviao.ProntoNoPatio)
         {
+            alvoEstrategico = alvoFinalGPS;
             alvoGPSVoo = alvoFinalGPS;
             StartCoroutine(SequenciaDeVooEPouso());
         }
@@ -283,9 +310,17 @@ public class ControleAviao : MonoBehaviour
         }
 
         // Loop de patrulha
+        KamikazeDrone droneScript = GetComponent<KamikazeDrone>();
+        
         while (!ordemParaRetorno)
         {
-            if (emAtaqueMergulho) 
+            if (droneScript != null)
+            {
+                // Drones kamikaze não fazem patrulha: miram 100% no alvo definido
+                if (!droneScript.kamikazeAtivo) alvoGPSVoo = centroDaPatrulha;
+                else alvoGPSVoo = alvoEstrategico;
+            }
+            else if (emAtaqueMergulho) 
             {
                 alvoGPSVoo = alvoDoMergulho;
             }

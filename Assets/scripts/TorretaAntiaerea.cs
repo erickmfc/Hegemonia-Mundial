@@ -41,7 +41,6 @@ public class TorretaAntiaerea : MonoBehaviour
     private bool atirando = false;
     private AudioSource audioSource;
     private int indexPontoDisparo = 0;
-    // Removido o limite de 50 objetos para permitir que o radar de longo alcance enxergue todos!
 
     Transform ResolverTransformPrincipal(Transform alvo)
     {
@@ -125,36 +124,36 @@ public class TorretaAntiaerea : MonoBehaviour
 
         alvoAtual = null;
 
-        // Pega TUDO na área sem limite de memória. Se usar NonAlloc com 50 de limite e raio de 900, 
-        // o radar enche com 50 pedras/prédios e fica cego para os aviões inimigos!
+        // Pega TUDO na área sem limite de memória.
         Collider[] todosAlvosNaArea = Physics.OverlapSphere(transform.position, alcanceArea);
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
 
         foreach (Collider hit in todosAlvosNaArea)
         {
-            
+            // Busca IdentidadeUnidade (Componente que define time)
+            IdentidadeUnidade idAlvo = hit.GetComponent<IdentidadeUnidade>();
+            if (idAlvo == null) idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
+
             // Filtro Principal: É uma aeronave? 
-            // Retiramos a verificação de "altura" solta, pois algumas estruturas (como a Prefeitura) ou unidades 
-            // terrestres altas possuíam a posição Y maior que a altura mínima, fazendo o Ares atirar no chão!
             string nomeBaixo = hit.name.ToLower();
             
             bool ehAereo = hit.GetComponentInParent<Helicoptero>() != null || 
                            hit.GetComponentInParent<ControleAviao>() != null ||
+                           (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
                            nomeBaixo.Contains("aviao") || 
                            nomeBaixo.Contains("heli") ||
                            nomeBaixo.Contains("caca") ||
                            nomeBaixo.Contains("caça") ||
                            nomeBaixo.Contains("jato") ||
+                           nomeBaixo.Contains("drone") ||
+                           nomeBaixo.Contains("vap") ||
                            hit.tag == "Areo" || 
                            hit.tag == "Aereo";
 
             if (!ehAereo) continue; // Pula unidades terrestres e prédios altos
 
             // Filtro Secundário: Fogo Amigo
-            IdentidadeUnidade idAlvo = hit.GetComponent<IdentidadeUnidade>();
-            if (idAlvo == null) idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
-            
             if (idAlvo != null && idAlvo.teamID != minhaIdentidade.teamID && idAlvo.teamID != 0)
             {
                 Transform alvoPrincipal = ResolverTransformPrincipal(hit.transform);
@@ -203,9 +202,6 @@ public class TorretaAntiaerea : MonoBehaviour
 
     bool MirouComAcerto()
     {
-        // SE FOR UM MÍSSIL GUIADO (ARES), BURLA A MIRA PERFEITA!
-        // Como jatos a 150km/h quebram a matemática do Vector3.Lerp, nós trapaceamos
-        // dando na Bateria Antiaerea permissão pra atirar de "olho fechado" logo que chegar perto angularmente.
         if (alvoAtual == null) return false;
         
         // 1. Verifica se a base horizontal chegou o suficiente na rotação
@@ -228,9 +224,7 @@ public class TorretaAntiaerea : MonoBehaviour
         // 2. Verifica se o cano vertical levantou o suficiente
         if (canoElevacao != null)
         {
-            // O canoElevacao.forward é EXATAMENTE para onde o tiro vai sair
             Vector3 direcaoCanoIdeal = (alvoAtual.position - canoElevacao.position).normalized;
-            
             // Tolerância gigante no cano também (45 graus)
             if (Vector3.Angle(canoElevacao.forward, direcaoCanoIdeal) > 45f) return false;
         }
@@ -242,13 +236,11 @@ public class TorretaAntiaerea : MonoBehaviour
     {
         atirando = true;
         
-        // Calcula o delay matemático em relação aos tiros por segundo. Ex: 5 tiros por segundo = 0.2s de intervalo
         float tempoEntreTiros = 1f / tirosPorSegundo;
         int disparosFeitos = 0;
 
         while (disparosFeitos < quantidadeDeDisparo && alvoAtual != null)
         {
-            // Se o avião dar uma manobra brusca e escapar da mira, ele PAUSA a rajada esperando o cano virar e alinhar de novo
             while (alvoAtual != null && !MirouComAcerto())
             {
                 yield return null;
@@ -262,7 +254,6 @@ public class TorretaAntiaerea : MonoBehaviour
             yield return new WaitForSeconds(tempoEntreTiros);
         }
 
-        // Tempo de pausa para a torreta respirar (Cooldown da Rajada)
         yield return new WaitForSeconds(tempoPausaRajada);
         atirando = false;
     }
@@ -271,7 +262,6 @@ public class TorretaAntiaerea : MonoBehaviour
     {
         if (prefabProjetil == null) return;
 
-        // Decide de qual cano a bala vai sair alternadamente
         Transform pontoSaida = transform;
         if (pontosDeDisparo != null && pontosDeDisparo.Length > 0)
         {
@@ -279,13 +269,11 @@ public class TorretaAntiaerea : MonoBehaviour
             {
                 pontoSaida = pontosDeDisparo[indexPontoDisparo];
             }
-            indexPontoDisparo = (indexPontoDisparo + 1) % pontosDeDisparo.Length; // Alterna os canos cíclicamente
+            indexPontoDisparo = (indexPontoDisparo + 1) % pontosDeDisparo.Length; 
         }
 
-        // Cria a bala
         GameObject bala = PoolDeObjetosCombate.Spawn(prefabProjetil, pontoSaida.position, pontoSaida.rotation);
         
-        // Adiciona as leis da física no tiro
         Projetil p = bala.GetComponent<Projetil>();
         if (p == null) p = bala.AddComponent<Projetil>();
 
@@ -293,32 +281,28 @@ public class TorretaAntiaerea : MonoBehaviour
         p.SetDono(transform.root.gameObject);
         p.velocidade = velocidadeProjetil;
         
-        // Aponta a bala EXATAMENTE para alvo (Mira Teleguiada)
         if (alvoAtual != null)
         {
             Vector3 direcao = (alvoAtual.position - pontoSaida.position).normalized;
             p.SetDirecao(direcao);
             
-            // Ativa o modo Perseguidora Míssil!
             p.SetAlvo(alvoAtual);
-            p.curvaDePerseguicao = 90f; // O míssil vira até 90 graus por segundo cassando o alvo alvo
+            p.curvaDePerseguicao = 90f; 
         }
         else
         {
             p.SetDirecao(pontoSaida.forward);
         }
 
-        // Efeito sonoro
         if (somDisparo != null && audioSource != null)
         {
-            audioSource.pitch = Random.Range(0.9f, 1.1f); // Um leve randomizador para não ficar robótico
+            audioSource.pitch = Random.Range(0.9f, 1.1f);
             audioSource.PlayOneShot(somDisparo, 0.8f);
         }
     }
 
     void OnDrawGizmosSelected()
     {
-        // Pinta a área do radar de Ciano para o level designer enxergar
         Gizmos.color = new Color(0, 1, 1, 0.3f);
         Gizmos.DrawWireSphere(transform.position, alcanceArea);
     }

@@ -507,6 +507,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 6
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 10
+  atrasoPosAfundamento: 0.6
 --- !u!65 &2692021071491291594
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -603,7 +607,7 @@ MonoBehaviour:
   anguloMaximo: 90
   tempoEntreTiros: 1
   tamanhoCartucho: 30
-  tempoRecarga: 4
+  tempoRecarga: 6
   pecaQueGira: {fileID: 4339595795715030261}
   canosDaTorreta: {fileID: 0}
   locaisDoTiro:
@@ -708,7 +712,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1839352793183847460}
   serializedVersion: 5
-  m_Mass: 100
+  m_Mass: 20
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -751,11 +755,14 @@ MonoBehaviour:
   - {fileID: 2705970646538616859}
   prefabMissel: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
   municaoTotal: 7
-  municaoMaxima: 32
+  municaoMaxima: 7
   tirosPorSalva: 1
   intervaloEntreTiros: 0.1
   tempoRecargaSalva: 1
   alcanceRadar: 500
+  intervaloVarreduraAutomatica: 0.45
+  maxMisseisSimultaneosPorAlvo: 6
+  cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 80c0b6ef6e76cb34587ea0a341c31aba, type: 3}
   volumeSom: 1
   pitchSom: 1

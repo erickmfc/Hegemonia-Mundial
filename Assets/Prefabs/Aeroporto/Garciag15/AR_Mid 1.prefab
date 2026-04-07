@@ -229,7 +229,7 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
-  habilitarAfundamentoNaval: 1
+  habilitarAfundamentoNaval: 0
   anguloAfundamentoX: -46
   duracaoAfundamento: 7
   atrasoPosAfundamento: 0.6
@@ -251,12 +251,13 @@ MonoBehaviour:
   velocidadeMaxima: 120
   forcaRotacao: 5
   sistemaFumaca: {fileID: 2931052983890345434}
-  dano: 750
+  dano: 450
   raioExplosao: 50
   escalaVisualExplosao: 6
   volumeSom: 1
   efeitoExplosaoPrefab: {fileID: 100002, guid: 6ecf76dc4f268d340b2666896a954bcc, type: 3}
   somExplosao: {fileID: 8300000, guid: 986d6b30567e30e428f3f21373fe45ca, type: 3}
+  tempoMaximoVida: 10
 --- !u!198 &2931052983890345434 stripped
 ParticleSystem:
   m_CorrespondingSourceObject: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}

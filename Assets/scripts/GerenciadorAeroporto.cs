@@ -22,6 +22,10 @@ public class GerenciadorAeroporto : MonoBehaviour
     public List<ControleAviao> avioesNoHangar = new List<ControleAviao>();
     public List<C700TransporteAereo> transportesC700NoPatio = new List<C700TransporteAereo>();
 
+    [Header("Drone Kamikaze")]
+    public GameObject prefabDroneKamikaze;
+    public int precoDroneKamikaze = 1500;
+
     [Header("Interface (UI)")]
     public GameObject menuAeroportoUI;
     
@@ -42,6 +46,9 @@ public class GerenciadorAeroporto : MonoBehaviour
     
     [HideInInspector] public Transform wpAndadar;
     [HideInInspector] public Transform wpAnalise;
+
+    [HideInInspector] public bool esperandoCliqueMassa = false;
+    [HideInInspector] public int qtdMassaDrone = 1;
 
     // --- CACHE DE COMPONENTES (Evita GetComponent repetido) ---
     protected IdentidadeUnidade _identidadeCacheada;
@@ -251,7 +258,12 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
 
-        if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+        if (esperandoCliqueMassa)
+        {
+            esperandoCliqueMassa = false;
+            StartCoroutine(RotinaLancarMissaoEmMassa(pontoAlvo, qtdMassaDrone));
+        }
+        else if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
         {
             aviaoSelecionadoParaMissao.IniciarMissaoCompleta(pontoAlvo);
             Debug.Log($"[Aeroporto] Coordenadas recebidas! {aviaoSelecionadoParaMissao.gameObject.name} decolando para: {pontoAlvo}");
@@ -284,6 +296,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         aviaoSelecionadoParaMissao = null;
         c700SelecionadoParaMissao = null;
         menuAtivo = false;
+        esperandoCliqueMassa = false;
 
         if (menuAeroportoUI != null)
         {
@@ -455,6 +468,49 @@ public class GerenciadorAeroporto : MonoBehaviour
             aviao.transform.rotation = (wpPronto != null) ? wpPronto.rotation : transform.rotation;
             if (!transportesC700NoPatio.Contains(aviao)) transportesC700NoPatio.Add(aviao);
             aviao.FinalizarPosicionamentoNoPatio((wpPronto != null) ? wpPronto : transform);
+        }
+    }
+
+    public IEnumerator RotinaLancarMissaoEmMassa(Vector3 alvo, int quantidade)
+    {
+        int lancados = 0;
+        
+        while (lancados < quantidade)
+        {
+            ControleAviao proximo = avioesNoPatio.Find(a => a != null && a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio && a.GetComponent<KamikazeDrone>() != null);
+            
+            if (proximo == null)
+            {
+                proximo = avioesNoHangar.Find(a => a != null && a.GetComponent<KamikazeDrone>() != null);
+                if (proximo != null)
+                {
+                    avioesNoHangar.Remove(proximo);
+                    avioesNoPatio.Add(proximo);
+                    proximo.gameObject.SetActive(true);
+                    
+                    if (wpPronto != null)
+                    {
+                        proximo.transform.position = wpPronto.position;
+                        proximo.transform.rotation = wpPronto.rotation;
+                    }
+                    else
+                    {
+                        proximo.transform.position = transform.position;
+                    }
+                    proximo.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
+                }
+            }
+
+            if (proximo == null)
+            {
+                Debug.LogWarning("[Ataque Massa] Sem kamikazes suficientes na reserva ou pátio!");
+                break;
+            }
+
+            proximo.IniciarMissaoCompleta(alvo);
+            lancados++;
+            
+            if (lancados < quantidade) yield return new WaitForSeconds(5f);
         }
     }
 
@@ -630,6 +686,30 @@ public class GerenciadorAeroporto : MonoBehaviour
     private void DesenharAbaMilitar()
     {
         GUILayout.Label("<size=18><b>FROTA AÉREA E TÁTICA</b></size>");
+        
+        // Botão de compra para o Drone Kamikaze
+        if (prefabDroneKamikaze != null)
+        {
+            if (GUILayout.Button($"🧨 COMPRAR DRONE KAMIKAZE (${precoDroneKamikaze})", GUILayout.Height(40)))
+            {
+                if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoDroneKamikaze)
+                {
+                    GerenciadorRecursos.Instancia.dinheiro -= precoDroneKamikaze;
+                    ComprarAviao(prefabDroneKamikaze);
+                }
+                else
+                {
+                    Debug.LogWarning("[Aeroporto] Dinheiro insuficiente para Drone Kamikaze!");
+                }
+            }
+        }
+        else
+        {
+            GUI.enabled = false;
+            GUILayout.Button("🧨 DRONE KAMIKAZE (Prefab não vinculado)", GUILayout.Height(40));
+            GUI.enabled = true;
+        }
+
         GUILayout.BeginHorizontal();
 
         // === COLUNA ESQUERDA: FROTA ATIVA ===
@@ -752,7 +832,17 @@ public class GerenciadorAeroporto : MonoBehaviour
                         if (pontoAlvo != Vector3.zero)
                         {
                             aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
-                            aviaoSelecionadoParaMissao.IniciarMissaoCompleta(pontoAlvo);
+                            
+                            if (esperandoCliqueMassa)
+                            {
+                                esperandoCliqueMassa = false;
+                                StartCoroutine(RotinaLancarMissaoEmMassa(pontoAlvo, qtdMassaDrone));
+                            }
+                            else
+                            {
+                                aviaoSelecionadoParaMissao.IniciarMissaoCompleta(pontoAlvo);
+                            }
+                            
                             menuAtivo = false; 
                             if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
                         }
@@ -760,16 +850,68 @@ public class GerenciadorAeroporto : MonoBehaviour
                     if (GUILayout.Button("❌ Cancelar Ordem", GUILayout.Height(30)))
                     {
                         aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
+                        esperandoCliqueMassa = false;
                     }
                 }
-                else
-                {
-                    GUILayout.BeginHorizontal();
-                    if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(40))) ExecutarModoRadar(true);
-                    if (GUILayout.Button("🛡️ Patrulha Aérea", GUILayout.Height(40))) ExecutarModoRadar(false);
-                    if (GUILayout.Button("💣 Ataque Solo", GUILayout.Height(40))) ExecutarModoRadar(false);
-                    GUILayout.EndHorizontal();
-                }
+                    bool isKamikaze = aviaoSelecionadoParaMissao.GetComponent<KamikazeDrone>() != null;
+                    bool isBombardeiro = aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>() != null;
+
+                    if (isKamikaze)
+                    {
+                        GUILayout.BeginHorizontal();
+                        GUILayout.Label($"<b>Qtd. P/ Ataque:</b> {qtdMassaDrone}");
+                        if (GUILayout.Button("-", GUILayout.Width(35), GUILayout.Height(30))) qtdMassaDrone = Mathf.Max(1, qtdMassaDrone - 1);
+                        if (GUILayout.Button("+", GUILayout.Width(35), GUILayout.Height(30))) qtdMassaDrone++;
+                        if (GUILayout.Button("Todos", GUILayout.Width(60), GUILayout.Height(30))) 
+                        {
+                            int totais = 0;
+                            foreach(var a in avioesNoPatio) if (a != null && a.GetComponent<KamikazeDrone>() != null) totais++;
+                            foreach(var a in avioesNoHangar) if (a != null && a.GetComponent<KamikazeDrone>() != null) totais++;
+                            qtdMassaDrone = totais;
+                        }
+                        GUILayout.EndHorizontal();
+
+                        GUILayout.BeginHorizontal();
+                        if (GUILayout.Button("🚀 ATAQUE EM MASSA", GUILayout.Height(40))) 
+                        {
+                            aviaoSelecionadoParaMissao.aguardandoCliqueRadar = true;
+                            esperandoCliqueMassa = true;
+                        }
+                        if (GUILayout.Button("💣 Ataque Solo", GUILayout.Height(40))) 
+                        {
+                            ExecutarModoRadar(false);
+                            esperandoCliqueMassa = false;
+                        }
+                        GUILayout.EndHorizontal();
+                    }
+                    else if (isBombardeiro)
+                    {
+                        GUILayout.BeginHorizontal();
+                        if (GUILayout.Button("💣 Ataque Área (Tapete)", GUILayout.Height(40))) 
+                        {
+                            aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.AtaqueAoSolo;
+                            ExecutarModoRadar(false);
+                        }
+                        if (GUILayout.Button("🛡️ Radar (Móvel)", GUILayout.Height(40))) 
+                        {
+                            aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.Patrulha;
+                            ExecutarModoRadar(false);
+                        }
+                        if (GUILayout.Button("🚀 Ataque em Massa", GUILayout.Height(40))) 
+                        {
+                            aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.AtaqueEmMassa;
+                            ExecutarModoRadar(false);
+                        }
+                        GUILayout.EndHorizontal();
+                    }
+                    else
+                    {
+                        GUILayout.BeginHorizontal();
+                        if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(40))) ExecutarModoRadar(true);
+                        if (GUILayout.Button("🛡️ Patrulha Aérea", GUILayout.Height(40))) ExecutarModoRadar(false);
+                        if (GUILayout.Button("💣 Ataque Solo", GUILayout.Height(40))) ExecutarModoRadar(false);
+                        GUILayout.EndHorizontal();
+                    }
             }
             else if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
             {

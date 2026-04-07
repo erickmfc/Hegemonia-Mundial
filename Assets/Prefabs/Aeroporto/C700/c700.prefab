@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: 3363487500830176677}
   m_Layer: 0
   m_Name: c700
-  m_TagString: Untagged
+  m_TagString: Aereo
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -152,6 +152,7 @@ MonoBehaviour:
   emAtaqueMergulho: 0
   alvoDoMergulho: {x: 0, y: 0, z: 0}
   alvoPrioritarioIA: 0
+  alvoEstrategico: {x: 0, y: 0, z: 0}
   estaEmModoVooFisico: 0
 --- !u!114 &3363487500830176677
 MonoBehaviour:
@@ -181,7 +182,7 @@ MonoBehaviour:
   velocidadeCruzeiro: 70
   aceleracaoVoo: 42
   giroVoo: 65
-  altitudeCruzeiro: 85
+  altitudeCruzeiro: 150
   distanciaAproximacao: 220
   distanciaDescida: 90
   distanciaRolagem: 45

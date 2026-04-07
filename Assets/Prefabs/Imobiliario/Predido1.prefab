@@ -1552,7 +1552,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 370d63f90b709ba458d6dd28aa2be0ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Imovel
-  capacidade: 1000
+  capacidade: 100
+  debugLogs: 0
 --- !u!114 &8051842144925750592
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1573,6 +1574,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 2.6
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 2.5
+  atrasoPosAfundamento: 0.6
 --- !u!1001 &8327702766965525400
 PrefabInstance:
   m_ObjectHideFlags: 0

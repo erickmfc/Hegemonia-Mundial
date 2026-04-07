@@ -547,13 +547,30 @@ public class C700TransporteAereo : MonoBehaviour
             yield return StartCoroutine(RotinaDecolagem());
         }
 
-        Vector3 direcaoAproximacao = destinoSolo - transform.position;
-        direcaoAproximacao.y = 0f;
-        if (direcaoAproximacao.sqrMagnitude < 4f)
+        Vector3 direcaoParaAlvo = destinoSolo - transform.position;
+        direcaoParaAlvo.y = 0f;
+        float distAtualSqr = direcaoParaAlvo.sqrMagnitude;
+
+        if (distAtualSqr < 400f) // Muito perto (20m)
+        {
+            direcaoParaAlvo = transform.forward;
+        }
+
+        direcaoParaAlvo.Normalize();
+
+        Vector3 direcaoAproximacao;
+        
+        // Se a distância total for MENOR do que a pista de pouso exige, ele alinha baseado na direção do próprio nariz para dar a volta, em vez de frear seco
+        if (distAtualSqr < distanciaAproximacao * distanciaAproximacao)
         {
             direcaoAproximacao = transform.forward;
+            direcaoAproximacao.y = 0;
+            direcaoAproximacao.Normalize();
         }
-        direcaoAproximacao.Normalize();
+        else
+        {
+            direcaoAproximacao = direcaoParaAlvo;
+        }
 
         float alturaAproximacao = Mathf.Max(altitudeCruzeiro * 0.45f, 32f);
         Vector3 pontoAlto = destinoSolo - direcaoAproximacao * distanciaAproximacao + Vector3.up * alturaAproximacao;
@@ -644,6 +661,29 @@ public class C700TransporteAereo : MonoBehaviour
             }
 
             yield return StartCoroutine(TaxiarAtePosicao(wpTaxi.position, velocidadeTaxi + (i * 3f), -1f, false));
+
+            if (wpTaxi.name.ToLowerInvariant().Contains("alinhamento"))
+            {
+                yield return new WaitForSeconds(2f);
+                if (i + 1 <= indiceVoo)
+                {
+                    Transform proxWp = aeroportoOrigem.waypointsDecolagem[i + 1];
+                    if (proxWp != null)
+                    {
+                        Vector3 dir = proxWp.position - transform.position;
+                        dir.y = 0f;
+                        if (dir.sqrMagnitude > 0.05f)
+                        {
+                            Quaternion rotAlvo = Quaternion.LookRotation(dir.normalized);
+                            while (Quaternion.Angle(transform.rotation, rotAlvo) > 1.5f)
+                            {
+                                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, giroSolo * Time.deltaTime);
+                                yield return null;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         Transform wpVoo = aeroportoOrigem.waypointsDecolagem[indiceVoo];
@@ -710,6 +750,29 @@ public class C700TransporteAereo : MonoBehaviour
                         }
 
                         yield return StartCoroutine(TaxiarAtePosicao(wpTaxi.position, velocidadeTaxi + (i * 3f), -1f, false));
+
+                        if (wpTaxi.name.ToLowerInvariant().Contains("alinhamento"))
+                        {
+                            yield return new WaitForSeconds(2f);
+                            if (i + 1 <= indiceVoo)
+                            {
+                                Transform proxWp = aeroportoOrigem.waypointsDecolagem[i + 1];
+                                if (proxWp != null)
+                                {
+                                    Vector3 dir = proxWp.position - transform.position;
+                                    dir.y = 0f;
+                                    if (dir.sqrMagnitude > 0.05f)
+                                    {
+                                        Quaternion rotAlvo = Quaternion.LookRotation(dir.normalized);
+                                        while (Quaternion.Angle(transform.rotation, rotAlvo) > 1.5f)
+                                        {
+                                            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, giroSolo * Time.deltaTime);
+                                            yield return null;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -728,6 +791,18 @@ public class C700TransporteAereo : MonoBehaviour
         }
 
         estadoAtual = EstadoC700.EmVoo;
+
+        // IMPORTANTE: Continua a missão aérea (se existir) após decolar! (corrige bug de ficar voando solto)
+        if (temDestinoMissaoProgramado)
+        {
+            Vector3 destinoAuto = destinoMissaoProgramado;
+            bool retornoAuto = retornoMissaoProgramado;
+            LimparMissaoProgramada();
+            aguardandoDestinoAereo = false;
+            yield return StartCoroutine(RotinaMissaoAerea(destinoAuto, retornoAuto));
+        }
+
+        rotinaMovimento = null;
     }
 
     private IEnumerator CorridaDecolagemPara(Vector3 destinoSolo)

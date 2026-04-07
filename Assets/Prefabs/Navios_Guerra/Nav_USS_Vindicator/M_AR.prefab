@@ -9790,7 +9790,7 @@ MonoBehaviour:
   velocidadeEjecao: 20
   tempoEjecao: 0.5
   tempoBoostVertical: 0.5
-  aceleracaoBoost: 50
+  aceleracaoBoost: 70
   sistemaFumaca: {fileID: 0}
   velocidadeCruzeiro: 200
   velocidadeMergulho: 200
@@ -9803,6 +9803,7 @@ MonoBehaviour:
   volumeSom: 1
   efeitoExplosaoPrefab: {fileID: 100002, guid: 6ecf76dc4f268d340b2666896a954bcc, type: 3}
   somExplosao: {fileID: 8300000, guid: 61fa60782469a2f458cf3b6dc5cfc8d5, type: 3}
+  tempoMaximoVida: 24
   corFumaca: {r: 0.8, g: 0.8, b: 0.8, a: 0.5}
   tamanhoFumaca: 1.5
 --- !u!136 &6581285286416740336

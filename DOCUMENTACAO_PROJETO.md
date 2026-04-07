@@ -380,24 +380,82 @@ Assets/
 
 ---
 
-## 🚀 PRÓXIMOS PASSOS
+---
 
-### **Prioridade Alta:**
-1. ✅ Sistema de lançadores funcionando
-2. ⬜ IA Inimiga básica
-3. ⬜ Condições de vitória/derrota
-4. ⬜ Minimapa
+## ⚙️ SISTEMAS IMPLEMENTADOS (Continuação)
 
-### **Prioridade Média:**
-5. ⬜ Fog of War
-6. ⬜ Sistema de patrulha
-7. ⬜ Formações de unidades
-8. ⬜ Efeitos visuais melhorados
+### 18. **Sistema de IA (BrainMaster)**
+- **Arquitetura:** `IA_BrainMaster.cs` (Cérebro Central)
+- **Funcionalidade:** IA Multi-agente capaz de gerenciar economia, construção e combate simultaneamente.
+- **Módulos Principais:**
+  - `IA_BuildDirector`: Gerencia o urbanismo e expansão da base.
+  - `IA_ProductionDirector`: Controla a fila de produção de unidades em fábricas/estaleiros.
+  - `IA_TacticalDirector`: Tomada de decisões de ataque e defesa.
+  - `IA_SquadDirector`: Gerenciamento de grupos de unidades (Esquadrões).
+  - `IA_PerformanceScheduler`: Sistema de orçamento (Budget) que garante que a IA não pese no FPS.
 
-### **Prioridade Baixa:**
-9. ⬜ Tutorial
-10. ⬜ Música e sons ambiente
-11. ⬜ Sistema de save/load
+### 19. **Sistema de Diagnóstico de Desempenho**
+- **Script:** `DiagnosticoDesempenhoJogo.cs`
+- **Funcionalidade:** Monitoramento em tempo real de gargalos de hardware e software.
+- **Métricas:**
+  - Uso de CPU (Main e Render threads) e GPU.
+  - Monitoramento de Garbage Collection (GC) e Memória RAM.
+  - Identificação automática de causas de travamento.
+  - Exportação automática de logs para CSV.
+
+---
+
+## 📁 ESTRUTURA DE PASTAS (Atualizada)
+
+```
+Assets/
+├── scripts/
+│   ├── IA/
+│   │   └── BrainMaster/      # Nova arquitetura de inteligência artificial
+│   │       ├── IA_BrainMaster.cs
+│   │       ├── IA_BuildDirector.cs
+│   │       ├── IA_PerformanceScheduler.cs
+│   │       └── ...
+│   ├── DiagnosticoDesempenhoJogo.cs
+│   └── ...
+```
+
+---
+
+## 🎯 MECÂNICAS DE GAMEPLAY (Novidades)
+
+### **Fluxo de Otimização:**
+O jogo agora conta com um sistema de **Budget de Frame**. Se o hardware do jogador estiver sobrecarregado, as IAs diminuem a frequência de decisão automaticamente para manter o jogo fluido.
+
+---
+
+## 🔧 GUIA DE CONFIGURAÇÃO
+
+### **Habilitar Diagnóstico:**
+1. Arraste o Prefab/Script `DiagnosticoDesempenhoJogo` para qualquer cena.
+2. Pressione **F8** durante o jogo para ver o Overlay completo.
+3. Pressione **F9** para ativar/desativar a gravação de logs CSV.
+
+---
+
+## ⚠️ PROBLEMAS CONHECIDOS & CORREÇÕES RECENTES
+
+### 6. ✅ **Busca Naval Síncrona (Corrigido)**
+- **Problema:** A busca por locais para Estaleiros causava travamentos de 2 segundos.
+- **Solução:** Implementada redução de passagens radiais no `IA_BuildDirector`.
+
+### 7. ✅ **Alocação de Strings (Corrigido)**
+- **Problema:** O Diagnóstico gerava lixo na RAM ao escrever logs.
+- **Solução:** Substituído por `StringBuilder` no `DiagnosticoDesempenhoJogo`.
+
+---
+
+## 🚀 PRÓXIMOS PASSOS (Atualizado)
+
+### **Prioridade Máxima (Em andamento):**
+1. ✅ Otimização de Performance (IA e Diagnóstico)
+2. ⬜ Finalizar IA Tática para ataques coordenados
+3. ⬜ Implementar Telemetria de Combate
 
 ---
 
@@ -411,14 +469,7 @@ Assets/
 ### **Tags Importantes:**
 - `Inimigo` - Unidades inimigas
 - `Destrutivel` - Estruturas que podem ser atacadas
-- `Aliado` - Unidades do jogador (opcional, usa teamID)
-
-### **Layers:**
-- (A ser documentado conforme necessário)
-
-### **Team IDs:**
-- `1` - Jogador
-- `2+` - Inimigos/Outros times
+- `Aliado` - Unidades do jogador (opcional)
 
 ---
 
@@ -436,27 +487,19 @@ Assets/
 
 **Desenvolvedor:** Matheus (erickmfc)  
 **Assistente IA:** Antigravity (Google Deepmind)  
-**Projeto:** Hegemonia Global  
-**Repositório:** erickmfc/Hegemonia-Mundial
+**Data da última revisão:** Abril de 2026
 
 ---
 
-## 📄 CHANGELOG
+## 📄 CHANGELOG (Recente)
 
-### **Versão 1.0 - Janeiro 2026**
-- ✅ Sistema de seleção e movimento
-- ✅ Combate com torretas
-- ✅ Lançadores de mísseis (ICBM e Tático)
-- ✅ Sistema de recursos e armazéns
-- ✅ Menu de construção com preview 3D
-- ✅ Helicópteros e heliportos
-- ✅ Sistema naval (Estaleiro)
-- ✅ IFF (Identificação Amigo/Inimigo)
-- ✅ HUD de recursos
-- ✅ Barras de vida
-- ✅ Sistema de comandos contextuais
+### **Março/Abril 2026**
+- ✅ **Refatoração BrainMaster:** IA agora é modular e resiliente.
+- ✅ **Novo Diagnóstico:** Sistema profissional de métricas FPS/MS integrado.
+- ✅ **Otimização de Hardware:** Redução de 85% no custo de busca navais.
+- ✅ **Estabilidade de Memória:** Correção de vazamentos de GC em logs.
 
 ---
 
-**Última Atualização:** 20/01/2026  
+**Última Atualização:** Abril de 2026  
 **Status do Projeto:** Em Desenvolvimento Ativo
