@@ -25,6 +25,14 @@ public class ControleAviao : MonoBehaviour
     public float velocidadeMaximaVoo = 180f; 
     public float taxaDeGiroLeme = 120f;    
 
+    [Header("=== ÓRBITA DA MISSÃO ===")]
+    [Tooltip("Raio horizontal da órbita em torno da área ordenada.")]
+    public float raioOrbitaMissao = 85f;
+    [Tooltip("Velocidade angular da órbita em torno do alvo/patrulha.")]
+    public float velocidadeOrbitaMissao = 0.9f;
+    [Tooltip("Distância para considerar que chegou ao centro inicial da missão.")]
+    public float margemChegadaMissao = 65f;
+
     [Header("=== ANIMAÇÃO VISUAL ===")]
     public Transform modeloMecanicoVisual; 
     public float asaBankingMaximo = 75f; 
@@ -48,6 +56,8 @@ public class ControleAviao : MonoBehaviour
     private float empinadaPitch = 0f;   
     private float multiplicadorVelocidadeTurbo = 1f;
     private float tempoSegurandoTab = 0f;
+    private float anguloOrbitaAtual = 0f;
+    private int sentidoOrbita = 1;
 
     // --- CACHE DE COMPONENTES (evita GetComponent no Update) ---
     private ControleUnidade _controleUnidade;
@@ -163,7 +173,7 @@ public class ControleAviao : MonoBehaviour
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, transform.eulerAngles.y, 0), 30f * dt);
         }
         
-        if (Mathf.Abs(novaPos.x) > 1800f || Mathf.Abs(novaPos.z) > 1800f)
+        if (Mathf.Abs(novaPos.x) > 10000f || Mathf.Abs(novaPos.z) > 10000f)
         {
              Vector3 centroDoMap = new Vector3(0, novaPos.y, 0);
              alvoGPSVoo = centroDoMap;
@@ -271,6 +281,18 @@ public class ControleAviao : MonoBehaviour
         {
             alvoEstrategico = alvoFinalGPS;
             alvoGPSVoo = alvoFinalGPS;
+            Vector3 deslocamentoInicial = transform.position - alvoFinalGPS;
+            deslocamentoInicial.y = 0f;
+            if (deslocamentoInicial.sqrMagnitude > 1f)
+            {
+                anguloOrbitaAtual = Mathf.Atan2(deslocamentoInicial.z, deslocamentoInicial.x);
+            }
+            else
+            {
+                anguloOrbitaAtual = Random.Range(0f, Mathf.PI * 2f);
+            }
+
+            sentidoOrbita = Random.value >= 0.5f ? 1 : -1;
             StartCoroutine(SequenciaDeVooEPouso());
         }
     }
@@ -300,10 +322,11 @@ public class ControleAviao : MonoBehaviour
         StartCoroutine(RecolherRodas(3f));
 
         // Voa até o centro da patrulha
+        float margemChegadaSqr = Mathf.Max(20f, margemChegadaMissao) * Mathf.Max(20f, margemChegadaMissao);
         while (true)
         {
             Vector3 diff = new Vector3(transform.position.x - centroDaPatrulha.x, 0, transform.position.z - centroDaPatrulha.z);
-            if (diff.sqrMagnitude <= 10000f) break; // 100² = 10000
+            if (diff.sqrMagnitude <= margemChegadaSqr) break;
             if (ordemParaRetorno) break;
             alvoGPSVoo = centroDaPatrulha; 
             yield return null;
@@ -326,11 +349,18 @@ public class ControleAviao : MonoBehaviour
             }
             else if (!alvoPrioritarioIA)
             {
-                alvoGPSVoo = transform.position + (transform.right * 150f) + (transform.forward * 100f);
-                alvoGPSVoo.y = centroDaPatrulha.y;
-                
+                anguloOrbitaAtual += Time.deltaTime * velocidadeOrbitaMissao * sentidoOrbita;
+                Vector3 offsetOrbita = new Vector3(
+                    Mathf.Cos(anguloOrbitaAtual),
+                    0f,
+                    Mathf.Sin(anguloOrbitaAtual)) * Mathf.Max(25f, raioOrbitaMissao);
+
+                alvoGPSVoo = centroDaPatrulha + offsetOrbita;
+                alvoGPSVoo.y = Mathf.Max(centroDaPatrulha.y, 60f);
+
                 Vector3 diffPatrulha = new Vector3(transform.position.x - centroDaPatrulha.x, 0, transform.position.z - centroDaPatrulha.z);
-                if (diffPatrulha.sqrMagnitude > 62500f) alvoGPSVoo = centroDaPatrulha; // 250² = 62500
+                float raioSeguranca = Mathf.Max(raioOrbitaMissao * 2.5f, 160f);
+                if (diffPatrulha.sqrMagnitude > raioSeguranca * raioSeguranca) alvoGPSVoo = centroDaPatrulha;
             }
             yield return null;
         }
