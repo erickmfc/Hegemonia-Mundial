@@ -6,10 +6,26 @@ public class CameraController : MonoBehaviour
     public float velocidadeZoom = 4000f;
     public float velocidadeRotacao = 100f;
     public float multiplicadorShift = 9.69f; // Velocidade triplicada (Antes 3.23)
+    [Header("Visão da Câmera")]
+    public float campoDeVisaoBase = 75f;
+    public float campoDeVisaoMin = 65f;
+    public float campoDeVisaoMax = 85f;
+    public float alturaMinParaFov = 2f;
+    public float alturaMaxParaFov = 2500f;
 
     private float tempoShiftPressionado = 0f;
     private GerenteSelecao gerenteSelecaoCache;
     private float proximaBuscaGerenteSelecao = 0f;
+    private Camera cameraPrincipal;
+
+    void Start()
+    {
+        cameraPrincipal = GetComponent<Camera>();
+        if (cameraPrincipal != null)
+        {
+            cameraPrincipal.fieldOfView = campoDeVisaoBase;
+        }
+    }
 
     void Update()
     {
@@ -84,6 +100,17 @@ public class CameraController : MonoBehaviour
         pos.y = Mathf.Clamp(pos.y, 2f, 2500f); // Teto aumentado para o atalho do Espaço
 
         transform.position = pos;
+
+        if (cameraPrincipal == null)
+        {
+            cameraPrincipal = GetComponent<Camera>();
+        }
+
+        if (cameraPrincipal != null)
+        {
+            float tAltura = Mathf.InverseLerp(alturaMinParaFov, alturaMaxParaFov, pos.y);
+            cameraPrincipal.fieldOfView = Mathf.Lerp(campoDeVisaoMin, campoDeVisaoMax, tAltura);
+        }
 
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---

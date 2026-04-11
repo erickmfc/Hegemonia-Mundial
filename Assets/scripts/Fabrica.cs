@@ -35,7 +35,8 @@ public class Fabrica : MonoBehaviour
             pontosSaidaExtras = new List<Transform>();
             foreach (Transform filho in transform)
             {
-                if (filho.name.Contains("Ponto_Saida"))
+                string nomeFilho = filho.name.Trim();
+                if (nomeFilho.Contains("Ponto_Saida") || nomeFilho.Contains("Saida_Soldado") || nomeFilho.Contains("Saida"))
                     pontosSaidaExtras.Add(filho);
             }
         }
@@ -89,13 +90,29 @@ public class Fabrica : MonoBehaviour
 
         if (saidaAlvo == null) saidaAlvo = transform;
 
+        float espacamento = CalcularEspacamentoSaida(prefab);
+        Vector3 baseSaida = saidaAlvo.position;
+        Vector3 direcaoSaida = saidaAlvo.forward;
+
+        // Se a saída estiver muito próxima do nascimento, força um ponto externo à tenda.
+        float distanciaSaida = Vector3.Distance(spawn.position, baseSaida);
+        if (distanciaSaida < 4f)
+        {
+            Vector3 frenteFallback = transform.forward;
+            frenteFallback.y = 0f;
+            if (frenteFallback.sqrMagnitude < 0.01f) frenteFallback = Vector3.forward;
+            frenteFallback.Normalize();
+
+            baseSaida = spawn.position + (frenteFallback * 12f);
+            direcaoSaida = frenteFallback;
+        }
+
         // Calcula slot na fila para o ponto escolhido
         if (!_contadorSlot.ContainsKey(saidaAlvo)) _contadorSlot[saidaAlvo] = 0;
         _contadorSlot[saidaAlvo]++;
         int slotIdx = _contadorSlot[saidaAlvo] - 1;
 
-        float espacamento = CalcularEspacamentoSaida(prefab);
-        Vector3 posSlot = saidaAlvo.position + (saidaAlvo.forward * (5f + slotIdx * espacamento));
+        Vector3 posSlot = baseSaida + (direcaoSaida * (5f + slotIdx * espacamento));
 
         // Validação NavMesh para Spawn
         Vector3 posSpawnFinal = spawn.position;
@@ -131,13 +148,46 @@ public class Fabrica : MonoBehaviour
 
         if (unidade != null)
         {
+            UnityEngine.AI.NavMeshHit hitDestino;
+            if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hitDestino, 6f, UnityEngine.AI.NavMesh.AllAreas))
+            {
+                destino = hitDestino.position;
+            }
+
             var controle = unidade.GetComponent<ControleUnidade>();
             if (controle != null)
+            {
+                var agente = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                if (agente != null && !agente.isOnNavMesh)
+                {
+                    UnityEngine.AI.NavMeshHit hitSpawn;
+                    if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hitSpawn, 10f, UnityEngine.AI.NavMesh.AllAreas))
+                    {
+                        agente.Warp(hitSpawn.position);
+                    }
+                }
                 controle.MoverParaPonto(destino);
+            }
             else
             {
                 var nav = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
-                if (nav != null && nav.isOnNavMesh) nav.SetDestination(destino);
+                if (nav != null)
+                {
+                    if (!nav.isOnNavMesh)
+                    {
+                        UnityEngine.AI.NavMeshHit hitSpawn;
+                        if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hitSpawn, 10f, UnityEngine.AI.NavMesh.AllAreas))
+                        {
+                            nav.Warp(hitSpawn.position);
+                        }
+                    }
+
+                    if (nav.isOnNavMesh)
+                    {
+                        nav.SetDestination(destino);
+                        nav.isStopped = false;
+                    }
+                }
             }
         }
     }

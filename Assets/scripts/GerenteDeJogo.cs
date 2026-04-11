@@ -171,7 +171,13 @@ public class GerenteDeJogo : MonoBehaviour
         // 1. Identificar Tipo
         string nome = unidadeParaConstruir.name.ToLower();
         
-        bool ehSoldado = (nome.Contains("soldado") || nome.Contains("soldier") || nome.Contains("person") || nome.Contains("infantry") || nome.Contains("fuzileiro"));
+        bool temTagSoldado = unidadeParaConstruir.CompareTag("Soldado");
+        bool ehSoldado = temTagSoldado ||
+                         nome.Contains("soldado") ||
+                         nome.Contains("soldier") ||
+                         nome.Contains("person") ||
+                         nome.Contains("infantry") ||
+                         nome.Contains("fuzileiro");
         bool ehPredio = unidadeParaConstruir.CompareTag("Imovel") || nome.Contains("ares") || nome.Contains("torreta") || nome.Contains("missil") || nome.Contains("bunker") || nome.Contains("areas");
         bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("sub") || nome.Contains("destroier") || nome.Contains("barco") || nome.Contains("lancha") || nome.Contains("transporte") || nome.Contains("leviathan"));
         bool ehCarrier = nome.Contains("porta") || nome.Contains("carrier");
@@ -431,6 +437,20 @@ public class GerenteDeJogo : MonoBehaviour
         if(destinoAtual != null) posDestino = destinoAtual.position;
         else posDestino = posNascimento + new Vector3(2, 0, 2);
 
+        if (pedido.ehSoldado && spawnAtual != null)
+        {
+            Vector3 frenteSaida = destinoAtual != null ? destinoAtual.forward : spawnAtual.forward;
+            frenteSaida.y = 0f;
+            if (frenteSaida.sqrMagnitude < 0.01f) frenteSaida = Vector3.forward;
+            frenteSaida.Normalize();
+
+            float distanciaSaida = Vector3.Distance(posNascimento, posDestino);
+            if (distanciaSaida < 4f)
+            {
+                posDestino = posNascimento + (frenteSaida * 12f);
+            }
+        }
+
 
         // CORREÇÃO DE ALTURA (Spawn Height Check)
         if (pedido.ehHelicoptero)
@@ -462,6 +482,15 @@ public class GerenteDeJogo : MonoBehaviour
                  if (UnityEngine.AI.NavMesh.SamplePosition(posNascimento, out hitNav, 10.0f, UnityEngine.AI.NavMesh.AllAreas))
                  {
                      posNascimento = hitNav.position;
+                 }
+             }
+
+             if (pedido.ehSoldado)
+             {
+                 UnityEngine.AI.NavMeshHit hitDestinoSoldado;
+                 if (UnityEngine.AI.NavMesh.SamplePosition(posDestino, out hitDestinoSoldado, 10.0f, UnityEngine.AI.NavMesh.AllAreas))
+                 {
+                     posDestino = hitDestinoSoldado.position;
                  }
              }
         }

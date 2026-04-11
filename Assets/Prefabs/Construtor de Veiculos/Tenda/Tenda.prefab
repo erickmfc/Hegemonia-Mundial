@@ -25,7 +25,7 @@ Transform:
   m_GameObject: {fileID: 3063385674183138616}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.01, y: 0, z: 0.81}
+  m_LocalPosition: {x: -0.01, y: 0.05, z: 5.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -48,7 +48,7 @@ GameObject:
   - component: {fileID: -1388966740957006117}
   m_Layer: 0
   m_Name: Tenda
-  m_TagString: Untagged
+  m_TagString: Imovel
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -63,7 +63,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 62.090443, y: 0.13429922, z: 49.719505}
-  m_LocalScale: {x: 1.3, y: 1.3, z: 1.1}
+  m_LocalScale: {x: 1.98, y: 2.42, z: 1.58}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7554629095557107911}
@@ -163,6 +163,7 @@ MonoBehaviour:
   ehQuartel: 1
   pontoNascimento: {fileID: 7554629095557107911}
   pontoSaida: {fileID: 6942773638968286771}
+  pontosSaidaExtras: []
 --- !u!114 &298163651065655966
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,6 +184,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 8300000, guid: 19b4017f0a123f9408be4ebffcecdf49, type: 3}
   tamanhoDoEfeito: 4.8
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!114 &-1388966740957006117
 MonoBehaviour:
   m_ObjectHideFlags: 0
