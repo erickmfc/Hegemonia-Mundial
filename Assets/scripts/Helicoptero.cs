@@ -45,7 +45,7 @@ public class Helicoptero : MonoBehaviour
 
     [Header("--- VISUAL ---")]
     public Transform modeloVisual;
-    public float ajusteYawModelo = 0f;
+    public float ajusteYawModelo = 0f; [Tooltip("Marque se voa de costas")] public bool modeloInvertido180 = false;
     public ParticleSystem[] flares;
     public Transform helicePrincipal;
     public Transform heliceTraseira;
@@ -317,7 +317,7 @@ public class Helicoptero : MonoBehaviour
             }
         }
 
-        modeloVisual.localRotation = rotacaoLocalModeloBase * Quaternion.Euler(0f, ajusteYawModelo, 0f);
+        if (modeloInvertido180) ajusteYawModelo += 180f; modeloVisual.localRotation = rotacaoLocalModeloBase * Quaternion.Euler(0f, ajusteYawModelo, 0f);
     }
 
     IEnumerator RadarDeAmeacas()
@@ -788,3 +788,5 @@ public class Helicoptero : MonoBehaviour
     public void ChamarParaHeliporto(Heliporto h) { Decolar(h.transform.position); }
     public void ChamarParaHeliporto(GameObject g) { Decolar(g.transform.position); }
 }
+
+

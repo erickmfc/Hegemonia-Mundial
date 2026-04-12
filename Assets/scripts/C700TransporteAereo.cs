@@ -69,6 +69,8 @@ public class C700TransporteAereo : MonoBehaviour
     public float bankMaximo = 28f;
     public float pitchMaximo = 14f;
     public float suavizacaoVisual = 3.5f;
+    [Tooltip("Marque se o modelo 3D foi importado invertido (de costas)")]
+    public bool modeloInvertido180 = false;
 
     [Header("Carga")]
     public Transform[] pontosCarga;
@@ -1169,7 +1171,9 @@ public class C700TransporteAereo : MonoBehaviour
 
         rollVisualAtual = Mathf.Lerp(rollVisualAtual, rollAlvo, Time.deltaTime * suavizacaoVisual);
         pitchVisualAtual = Mathf.Lerp(pitchVisualAtual, pitchAlvo, Time.deltaTime * suavizacaoVisual);
-        modeloVisual.localRotation = rotacaoModeloBase * Quaternion.Euler(pitchVisualAtual, 0f, rollVisualAtual);
+        
+        float extraYaw = modeloInvertido180 ? 180f : 0f;
+        modeloVisual.localRotation = rotacaoModeloBase * Quaternion.Euler(pitchVisualAtual, extraYaw, rollVisualAtual);
     }
 
     private void DesabilitarComponentesDeCombate()
