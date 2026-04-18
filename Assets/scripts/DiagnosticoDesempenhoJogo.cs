@@ -48,17 +48,30 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public float WorldRefreshMs;
         public float VisibleEnemyMs;
         public float ProductionMs;
+        public float BuildExecuteMs;
+        public float ProduceExecuteMs;
+        public float SpawnStructureMs;
+        public float SpawnLandMs;
+        public float SpawnNavalMs;
+        public float SpawnAirMs;
+        public float NavmeshSpawnMs;
+        public float PrefabInitMs;
         public int OrdersEmitted;
         public int PoolHits;
         public int PoolMisses;
         public int SpawnRegistrations;
         public string NavalAutoDisabledReason;
+        public string SpawnPrefabName;
         public string TopOffenders;
         public string CausaProvavel;
         public string Detalhes;
     }
 
     private static DiagnosticoDesempenhoJogo _instancia;
+    private static float _runtimeOverloadUntil;
+    private static float _runtimeSevereUntil;
+    private static int _runtimePressureConsecutiveSeconds;
+    private static string _runtimeLockReason = string.Empty;
 
     [Header("Captura")]
     [SerializeField] private int fpsAlvo = 60;
@@ -168,6 +181,27 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         }
 
         _instancia.RegistrarTextoMetricaInterna(nome, valor);
+    }
+
+    public static bool RuntimeSobPressao()
+    {
+        return _instancia != null
+               && _instancia._capturaAtiva
+               && Application.isPlaying
+               && Time.unscaledTime <= _runtimeOverloadUntil;
+    }
+
+    public static bool RuntimeSaturado()
+    {
+        return _instancia != null
+               && _instancia._capturaAtiva
+               && Application.isPlaying
+               && Time.unscaledTime <= _runtimeSevereUntil;
+    }
+
+    public static string ObterRazaoLockRuntime()
+    {
+        return _runtimeLockReason ?? string.Empty;
     }
 
     // Atalho para producao da IA (chamado pelo ProductionDirector)
@@ -486,11 +520,20 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         float worldRefreshMs = ObterTempoMetrica("world_refresh_ms");
         float visibleEnemyMs = ObterTempoMetrica("visible_enemy_ms");
         float productionMs = ObterTempoMetrica("production_ms");
+        float buildExecuteMs = ObterTempoMetrica("build_execute_ms");
+        float produceExecuteMs = ObterTempoMetrica("produce_execute_ms");
+        float spawnStructureMs = ObterTempoMetrica("spawn_structure_ms");
+        float spawnLandMs = ObterTempoMetrica("spawn_land_ms");
+        float spawnNavalMs = ObterTempoMetrica("spawn_naval_ms");
+        float spawnAirMs = ObterTempoMetrica("spawn_air_ms");
+        float navmeshSpawnMs = ObterTempoMetrica("navmesh_spawn_ms");
+        float prefabInitMs = ObterTempoMetrica("prefab_init_ms");
         int ordersEmitted = ObterContadorMetrica("orders_emitted");
         int poolHits = ObterContadorMetrica("pool_hits");
         int poolMisses = ObterContadorMetrica("pool_misses");
         int spawnRegistrations = ObterContadorMetrica("spawn_registrations");
         string navalAutoDisabledReason = ObterTextoMetrica("naval_auto_disabled_reason");
+        string spawnPrefabName = ObterTextoMetrica("spawn_prefab_name");
         string topOffenders = MontarResumoTopOffenders();
 
         ResumoSegundo resumo = new ResumoSegundo
@@ -524,16 +567,26 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             WorldRefreshMs = worldRefreshMs,
             VisibleEnemyMs = visibleEnemyMs,
             ProductionMs = productionMs,
+            BuildExecuteMs = buildExecuteMs,
+            ProduceExecuteMs = produceExecuteMs,
+            SpawnStructureMs = spawnStructureMs,
+            SpawnLandMs = spawnLandMs,
+            SpawnNavalMs = spawnNavalMs,
+            SpawnAirMs = spawnAirMs,
+            NavmeshSpawnMs = navmeshSpawnMs,
+            PrefabInitMs = prefabInitMs,
             OrdersEmitted = ordersEmitted,
             PoolHits = poolHits,
             PoolMisses = poolMisses,
             SpawnRegistrations = spawnRegistrations,
             NavalAutoDisabledReason = navalAutoDisabledReason,
+            SpawnPrefabName = spawnPrefabName,
             TopOffenders = topOffenders,
             Detalhes = eventosDoSegundo
         };
 
         resumo.CausaProvavel = DiagnosticarCausa(ref resumo);
+        AtualizarSinalSobrecargaRuntime(resumo);
         _ultimoResumo = resumo;
         _ultimoBlocoEventos = LimitarTexto(eventosDoSegundo, maxEventosNoOverlay);
 
@@ -597,6 +650,14 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     private string DiagnosticarCausa(ref ResumoSegundo resumo)
     {
         float orcamentoMs = ObterOrcamentoFrameMs();
+        float spawnRuntimeMs = resumo.BuildExecuteMs
+                               + resumo.ProduceExecuteMs
+                               + resumo.SpawnStructureMs
+                               + resumo.SpawnLandMs
+                               + resumo.SpawnNavalMs
+                               + resumo.SpawnAirMs
+                               + resumo.NavmeshSpawnMs
+                               + resumo.PrefabInitMs;
 
         bool houveGcLeve = resumo.GcGen0 > 0 && resumo.GcGen1 == 0 && resumo.GcGen2 == 0 && resumo.DeltaMemoriaGerenciadaMb < 8f;
         bool houveGcGrave = resumo.GcGen1 > 0 || resumo.GcGen2 > 0 || resumo.DeltaMemoriaGerenciadaMb >= 8f;
@@ -609,6 +670,15 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                              && resumo.CpuRenderMs >= resumo.CpuMainMs * 0.9f;
         bool travamentoPontual = resumo.Travadas > 0
                                  && resumo.PiorFrameMs >= Mathf.Max(limiteTravamentoMs, orcamentoMs * 1.8f);
+        bool gargaloSpawnRuntime = spawnRuntimeMs >= 8f
+                                   || resumo.BuildExecuteMs >= 4f
+                                   || resumo.ProduceExecuteMs >= 4f
+                                   || resumo.SpawnStructureMs >= 4f
+                                   || resumo.SpawnLandMs >= 4f
+                                   || resumo.SpawnNavalMs >= 4f
+                                   || resumo.SpawnAirMs >= 4f
+                                   || resumo.NavmeshSpawnMs >= 3f
+                                   || resumo.PrefabInitMs >= 4f;
         bool fpsCapado = resumo.FpsMedio > 0f
                          && Mathf.Abs(resumo.FpsMedio - fpsAlvo) < 1.5f
                          && resumo.CpuMainMs < orcamentoMs * 0.75f
@@ -629,6 +699,24 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                     "GC: G0={0} G1={1} G2={2} | deltaMem={3:+0.0;-0.0;0.0} MB",
                     resumo.GcGen0, resumo.GcGen1, resumo.GcGen2,
                     resumo.DeltaMemoriaGerenciadaMb));
+        }
+
+        if (gargaloSpawnRuntime)
+        {
+            resumo.Detalhes = AcrescentarDetalhe(
+                resumo.Detalhes,
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Spawn runtime: buildExec={0:0.0} | produceExec={1:0.0} | struct={2:0.0} | land={3:0.0} | naval={4:0.0} | air={5:0.0} | navmesh={6:0.0} | init={7:0.0} | prefab={8}",
+                    resumo.BuildExecuteMs,
+                    resumo.ProduceExecuteMs,
+                    resumo.SpawnStructureMs,
+                    resumo.SpawnLandMs,
+                    resumo.SpawnNavalMs,
+                    resumo.SpawnAirMs,
+                    resumo.NavmeshSpawnMs,
+                    resumo.PrefabInitMs,
+                    string.IsNullOrEmpty(resumo.SpawnPrefabName) ? "n/d" : resumo.SpawnPrefabName));
         }
 
         if (gargaloGpu)
@@ -670,6 +758,13 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         // Escolhe a causa mais grave (prioridade: CPU > GPU > travamento > GC grave > GC leve)
         if (gargaloCpuMain)
         {
+            if (gargaloSpawnRuntime)
+            {
+                return houveGcGrave
+                    ? "Build/Produce/Spawn runtime pesado + GC grave"
+                    : "Build/Produce/Spawn runtime pesado";
+            }
+
             return houveGcGrave
                 ? "Gargalo de CPU na main thread + GC grave"
                 : "Gargalo de CPU na main thread";
@@ -716,6 +811,61 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         resumo.Detalhes = AcrescentarDetalhe(resumo.Detalhes, "Carga mista: sem causa unica clara, revisar eventos do segundo.");
         return "Carga mista ou causa nao instrumentada";
+    }
+
+    private static void AtualizarSinalSobrecargaRuntime(ResumoSegundo resumo)
+    {
+        if (resumo.EmWarmup)
+        {
+            _runtimePressureConsecutiveSeconds = 0;
+            return;
+        }
+
+        float agora = Time.unscaledTime;
+        bool gcGrave = resumo.GcGen1 > 0 || resumo.GcGen2 > 0 || resumo.DeltaMemoriaGerenciadaMb >= 32f;
+        bool severe = resumo.CpuMainMs >= 100f || resumo.PiorFrameMs >= 600f || gcGrave;
+        bool overload = resumo.CpuMainMs >= 40f || resumo.PiorFrameMs >= 250f || resumo.Travadas > 0;
+
+        if (severe)
+        {
+            _runtimePressureConsecutiveSeconds = Mathf.Max(_runtimePressureConsecutiveSeconds, 2);
+            _runtimeSevereUntil = Mathf.Max(_runtimeSevereUntil, agora + 30f);
+            _runtimeOverloadUntil = Mathf.Max(_runtimeOverloadUntil, agora + 30f);
+            _runtimeLockReason = MontarRazaoLockRuntime(resumo, true);
+            return;
+        }
+
+        if (overload)
+        {
+            _runtimePressureConsecutiveSeconds++;
+            if (_runtimePressureConsecutiveSeconds >= 2 || resumo.PiorFrameMs >= 250f)
+            {
+                _runtimeOverloadUntil = Mathf.Max(_runtimeOverloadUntil, agora + 22f);
+                _runtimeLockReason = MontarRazaoLockRuntime(resumo, false);
+            }
+        }
+        else if (agora > _runtimeOverloadUntil)
+        {
+            _runtimePressureConsecutiveSeconds = 0;
+            if (agora > _runtimeSevereUntil)
+            {
+                _runtimeLockReason = string.Empty;
+            }
+        }
+    }
+
+    private static string MontarRazaoLockRuntime(ResumoSegundo resumo, bool severe)
+    {
+        string prefix = severe ? "runtime saturado" : "runtime sob pressao";
+        string prefab = string.IsNullOrEmpty(resumo.SpawnPrefabName) ? "n/d" : resumo.SpawnPrefabName;
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} | cpu={1:0.0}ms | pior={2:0.0}ms | deltaMem={3:+0.0;-0.0;0.0}MB | prefab={4}",
+            prefix,
+            resumo.CpuMainMs,
+            resumo.PiorFrameMs,
+            resumo.DeltaMemoriaGerenciadaMb,
+            prefab);
     }
 
     // FIX: extrai eventos sem remover — a limpeza e feita separado, apos a extracao
@@ -899,7 +1049,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             pasta,
             "desempenho_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture) + ".csv");
         _csvWriter = new StreamWriter(_csvPath, false, new UTF8Encoding(true));
-        _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;pior_frame_ms;frames_lentos;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;orders_emitted;pool_hits;pool_misses;spawn_registrations;naval_auto_disabled_reason;top_offenders;causa;detalhes");
+        _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;pior_frame_ms;frames_lentos;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;orders_emitted;pool_hits;pool_misses;spawn_registrations;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes");
         _csvWriter.Flush();
     }
 
@@ -941,10 +1091,19 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             .Append(resumo.WorldRefreshMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.VisibleEnemyMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.ProductionMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.BuildExecuteMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.ProduceExecuteMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.SpawnStructureMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.SpawnLandMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.SpawnNavalMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.SpawnAirMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.NavmeshSpawnMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.PrefabInitMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.OrdersEmitted.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PoolHits.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PoolMisses.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.SpawnRegistrations.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(SanearCsv(resumo.SpawnPrefabName)).Append(';')
             .Append(SanearCsv(resumo.NavalAutoDisabledReason)).Append(';')
             .Append(SanearCsv(resumo.TopOffenders)).Append(';')
             .Append(SanearCsv(resumo.CausaProvavel)).Append(';')

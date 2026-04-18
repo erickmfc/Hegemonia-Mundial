@@ -4,6 +4,14 @@ using System.Collections.Generic;
 
 public class GerenciadorAeroporto : MonoBehaviour
 {
+    private enum ModoOrdemHelicoptero
+    {
+        Nenhum,
+        Reconhecimento,
+        Patrulha,
+        AtaqueLocal
+    }
+
     [Header("Hierarquia do Aeroporto (Vincular do Inspector)")]
     [Tooltip("Grupo pai contendo as marcações 'Parada' a 'Parada 4'")]
     public Transform patio;
@@ -21,10 +29,15 @@ public class GerenciadorAeroporto : MonoBehaviour
     public List<ControleAviao> avioesNoPatio = new List<ControleAviao>();
     public List<ControleAviao> avioesNoHangar = new List<ControleAviao>();
     public List<C700TransporteAereo> transportesC700NoPatio = new List<C700TransporteAereo>();
+    public List<Helicoptero> helicopterosDoAeroporto = new List<Helicoptero>();
 
     [Header("Drone Kamikaze")]
     public GameObject prefabDroneKamikaze;
     public int precoDroneKamikaze = 1500;
+
+    [Header("Marcadores")]
+    public GameObject prefabMarcadorPatrulhaAviao; // Marker 5 Circle Loop
+    public GameObject prefabMarcadorBombardeiro; // Marker 7 Danger zone Loop
 
     [Header("Interface (UI)")]
     public GameObject menuAeroportoUI;
@@ -34,8 +47,10 @@ public class GerenciadorAeroporto : MonoBehaviour
     private Vector2 scrollPosFrota;
     private Vector2 scrollPosHangar;
     private Vector2 scrollPosC700;
+    private Vector2 scrollPosAbaMilitar;
     [HideInInspector] public ControleAviao aviaoSelecionadoParaMissao;
     [HideInInspector] public C700TransporteAereo c700SelecionadoParaMissao;
+    [HideInInspector] public Helicoptero helicopteroSelecionadoParaMissao;
 
     // Listas internas de Waypoints lidas no Awake
     [HideInInspector] public List<Transform> waypointsPatio = new List<Transform>();
@@ -49,6 +64,8 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     [HideInInspector] public bool esperandoCliqueMassa = false;
     [HideInInspector] public int qtdMassaDrone = 1;
+    [HideInInspector] public bool esperandoCliquePatrulhaGrupo = false;
+    [HideInInspector] public int qtdPatrulhaGrupo = 1;
 
     // --- CACHE DE COMPONENTES (Evita GetComponent repetido) ---
     protected IdentidadeUnidade _identidadeCacheada;
@@ -56,10 +73,19 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     // --- CACHE PARA OnGUI (Evita alocações repetidas) ---
     private readonly HashSet<Transform> _vagasOcupadas = new HashSet<Transform>();
+    private readonly List<Vector3> _rotaPatrulhaHelicoptero = new List<Vector3>();
     private Camera cameraPrincipal;
+    private ModoOrdemHelicoptero _modoOrdemHelicoptero = ModoOrdemHelicoptero.Nenhum;
+    private string _modeloPatrulhaGrupo = string.Empty;
+    private string _ultimoModeloPainelPatrulha = string.Empty;
+    private bool _usarMarcadorPatrulhaAviaoNoProximoClique = false;
 
     protected virtual void Awake()
     {
+#if UNITY_EDITOR
+        GarantirPrefabsMarcadoresNoEditor();
+#endif
+
         // Cache da identidade do aeroporto
         _identidadeCacheada = GetComponent<IdentidadeUnidade>();
         _identidadeVerificada = true;
@@ -173,15 +199,18 @@ public class GerenciadorAeroporto : MonoBehaviour
     void Update()
     {
         if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        helicopterosDoAeroporto.RemoveAll(h => h == null);
 
         if (Construtor.EmModoConstrucaoAtivo)
         {
-            if (menuAtivo || aviaoSelecionadoParaMissao != null || c700SelecionadoParaMissao != null)
+            if (menuAtivo || aviaoSelecionadoParaMissao != null || c700SelecionadoParaMissao != null || helicopteroSelecionadoParaMissao != null)
             {
                 CancelarInteracaoPorConstrucao();
             }
             return;
         }
+
+        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
 
         if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Alpha7))
         {
@@ -225,6 +254,11 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
         }
 
+        if (_modoOrdemHelicoptero != ModoOrdemHelicoptero.Nenhum && helicopteroSelecionadoParaMissao != null)
+        {
+            ProcessarOrdemHelicoptero();
+        }
+
         if (aviaoSelecionadoParaMissao == null) return;
 
         bool esperandoAutorizacao = aviaoSelecionadoParaMissao.aguardandoCliqueRadar;
@@ -256,12 +290,22 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
         }
 
+        bool usarMarcadorPatrulhaNoClique = _usarMarcadorPatrulhaAviaoNoProximoClique;
+
         aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
 
         if (esperandoCliqueMassa)
         {
-            esperandoCliqueMassa = false;
-            StartCoroutine(RotinaLancarMissaoEmMassa(pontoAlvo, qtdMassaDrone));
+            int quantidadeMassa = qtdMassaDrone;
+            LimparModoMassaAereo();
+            StartCoroutine(RotinaLancarMissaoEmMassa(pontoAlvo, quantidadeMassa));
+        }
+        else if (esperandoCliquePatrulhaGrupo)
+        {
+            int quantidadeGrupo = qtdPatrulhaGrupo;
+            string modeloGrupo = _modeloPatrulhaGrupo;
+            LimparModoMassaAereo();
+            StartCoroutine(RotinaLancarPatrulhaMesmoModelo(pontoAlvo, modeloGrupo, quantidadeGrupo));
         }
         else if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
         {
@@ -277,7 +321,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             Debug.Log($"[Aeroporto] Rota Alterada! {aviaoSelecionadoParaMissao.gameObject.name} mudando curso para: {pontoAlvo}");
         }
 
-        CriarSinalizador(pontoAlvo, aviaoSelecionadoParaMissao);
+        CriarSinalizadorAereoNoAlvo(pontoAlvo, aviaoSelecionadoParaMissao, usarMarcadorPatrulhaNoClique);
         aviaoSelecionadoParaMissao = null;
     }
 
@@ -288,6 +332,11 @@ public class GerenciadorAeroporto : MonoBehaviour
             aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
         }
 
+        if (helicopteroSelecionadoParaMissao != null)
+        {
+            CancelarModoHelicoptero();
+        }
+
         if (c700SelecionadoParaMissao != null)
         {
             c700SelecionadoParaMissao.CancelarModoAereo();
@@ -295,8 +344,11 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         aviaoSelecionadoParaMissao = null;
         c700SelecionadoParaMissao = null;
+        helicopteroSelecionadoParaMissao = null;
+        _modoOrdemHelicoptero = ModoOrdemHelicoptero.Nenhum;
+        _rotaPatrulhaHelicoptero.Clear();
         menuAtivo = false;
-        esperandoCliqueMassa = false;
+        LimparModoMassaAereo();
 
         if (menuAeroportoUI != null)
         {
@@ -304,8 +356,160 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
-    private void CriarSinalizador(Vector3 pos, Component aviao)
+    private void ProcessarOrdemHelicoptero()
     {
+        if (cameraPrincipal == null || helicopteroSelecionadoParaMissao == null)
+        {
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            CancelarModoHelicoptero();
+            return;
+        }
+
+        if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Patrulha)
+        {
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                EncerrarModoHelicoptero();
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Backspace) && _rotaPatrulhaHelicoptero.Count > 0)
+            {
+                _rotaPatrulhaHelicoptero.RemoveAt(_rotaPatrulhaHelicoptero.Count - 1);
+                if (_rotaPatrulhaHelicoptero.Count > 0)
+                {
+                    helicopteroSelecionadoParaMissao.IniciarPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
+                }
+                else
+                {
+                    helicopteroSelecionadoParaMissao.CancelarMissaoAeroporto();
+                }
+                return;
+            }
+        }
+
+        if (!Input.GetMouseButtonDown(1)) return;
+        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+
+        if (!TryResolverPontoMapa(out Vector3 pontoAlvo))
+        {
+            return;
+        }
+
+        if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Patrulha)
+        {
+            _rotaPatrulhaHelicoptero.Add(pontoAlvo);
+            helicopteroSelecionadoParaMissao.IniciarPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
+            CriarSinalizador(pontoAlvo, helicopteroSelecionadoParaMissao);
+            Debug.Log($"[Aeroporto] Patrulha atualizada com {_rotaPatrulhaHelicoptero.Count} ponto(s). Clique direito adiciona mais, ENTER encerra edição.");
+            return;
+        }
+
+        if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Reconhecimento)
+        {
+            helicopteroSelecionadoParaMissao.IniciarReconhecimentoAeroporto(pontoAlvo);
+        }
+        else if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.AtaqueLocal)
+        {
+            helicopteroSelecionadoParaMissao.IniciarAtaqueLocalAeroporto(pontoAlvo);
+        }
+
+        CriarSinalizador(pontoAlvo, helicopteroSelecionadoParaMissao);
+        EncerrarModoHelicoptero();
+    }
+
+    private bool TryResolverPontoMapa(out Vector3 pontoAlvo)
+    {
+        pontoAlvo = Vector3.zero;
+        if (cameraPrincipal == null)
+        {
+            return false;
+        }
+
+        Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(raio, out RaycastHit hit, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+        {
+            pontoAlvo = hit.point;
+            return true;
+        }
+
+        UnityEngine.Plane plano = new UnityEngine.Plane(Vector3.up, Vector3.zero);
+        if (plano.Raycast(raio, out float distancia))
+        {
+            pontoAlvo = raio.GetPoint(distancia);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void IniciarModoHelicoptero(Helicoptero helicoptero, ModoOrdemHelicoptero modo)
+    {
+        if (helicoptero == null)
+        {
+            return;
+        }
+
+        helicopteroSelecionadoParaMissao = helicoptero;
+        _modoOrdemHelicoptero = modo;
+        _rotaPatrulhaHelicoptero.Clear();
+        aviaoSelecionadoParaMissao = null;
+        c700SelecionadoParaMissao = null;
+
+        if (modo == ModoOrdemHelicoptero.Patrulha)
+        {
+            Debug.Log("[Aeroporto] Patrulha armada. O primeiro clique direito já inicia; cliques seguintes expandem a rota. ENTER encerra edição.");
+        }
+        else
+        {
+            string textoModo = modo == ModoOrdemHelicoptero.Reconhecimento ? "Reconhecimento" : "Ataque local";
+            Debug.Log($"[Aeroporto] {textoModo} armado para o helicóptero. Clique com o botão direito no destino.");
+        }
+
+        menuAtivo = false;
+        if (menuAeroportoUI != null)
+        {
+            menuAeroportoUI.SetActive(false);
+        }
+    }
+
+    private void CancelarModoHelicoptero()
+    {
+        _rotaPatrulhaHelicoptero.Clear();
+        _modoOrdemHelicoptero = ModoOrdemHelicoptero.Nenhum;
+        helicopteroSelecionadoParaMissao = null;
+    }
+
+    private void EncerrarModoHelicoptero()
+    {
+        _rotaPatrulhaHelicoptero.Clear();
+        _modoOrdemHelicoptero = ModoOrdemHelicoptero.Nenhum;
+        helicopteroSelecionadoParaMissao = null;
+    }
+
+    protected void CriarSinalizador(Vector3 pos, Component aviao)
+    {
+        bool ehBombardeiroOuKamikaze = false;
+        if (aviao != null) 
+        {
+            ehBombardeiroOuKamikaze = (aviao.GetComponent<AviaoBombardeiro>() != null || aviao.GetComponent<KamikazeDrone>() != null);
+        }
+
+        if (ehBombardeiroOuKamikaze && prefabMarcadorBombardeiro != null)
+        {
+            GameObject marcadorBombardeiro = InstanciarMarcadorSeguro(prefabMarcadorBombardeiro, pos, Quaternion.identity);
+            if (marcadorBombardeiro != null)
+            {
+                marcadorBombardeiro.transform.localScale = new Vector3(40f, 40f, 40f);
+                Destroy(marcadorBombardeiro, 4f);
+                return;
+            }
+        }
+
         // Cria um feixe/pilar de cristal alto indicando o ponto ordenado
         GameObject sinal = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         Destroy(sinal.GetComponent<Collider>()); // Remover colisão para não ferrar física
@@ -329,6 +533,46 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         // Animação e Fade suave
         StartCoroutine(AnimarSinalizador(sinal, c));
+    }
+
+    private void CriarSinalizadorAereoNoAlvo(Vector3 pos, Component aviao, bool forcarMarcadorPatrulha = false)
+    {
+        bool usarMarcadorPatrulha = forcarMarcadorPatrulha || _usarMarcadorPatrulhaAviaoNoProximoClique;
+        _usarMarcadorPatrulhaAviaoNoProximoClique = false;
+
+        if (usarMarcadorPatrulha && prefabMarcadorPatrulhaAviao != null)
+        {
+            GameObject marcadorPatrulha = InstanciarMarcadorSeguro(prefabMarcadorPatrulhaAviao, pos + Vector3.up * 0.1f, Quaternion.identity);
+            if (marcadorPatrulha != null)
+            {
+                Destroy(marcadorPatrulha, 4f);
+                return;
+            }
+        }
+
+        CriarSinalizador(pos, aviao);
+    }
+
+    private GameObject InstanciarMarcadorSeguro(UnityEngine.Object prefab, Vector3 posicao, Quaternion rotacao)
+    {
+        if (prefab == null)
+        {
+            return null;
+        }
+
+        UnityEngine.Object instancia = Instantiate(prefab, posicao, rotacao);
+        if (instancia is GameObject go)
+        {
+            return go;
+        }
+
+        if (instancia is Component componente)
+        {
+            return componente.gameObject;
+        }
+
+        Debug.LogWarning($"[Aeroporto] Marcador instanciado com tipo inesperado: {instancia.GetType().Name}");
+        return null;
     }
 
     private IEnumerator AnimarSinalizador(GameObject sinal, Color baseColor)
@@ -355,8 +599,15 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     public void ComprarAviao(GameObject prefabDeAeronave)
     {
+        if (prefabDeAeronave == null)
+        {
+            return;
+        }
+
+        DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefabDeAeronave.name);
         Vector3 posSpawn = (wpPreparacao != null) ? wpPreparacao.position : transform.position;
         GameObject aeronaveNascente = Instantiate(prefabDeAeronave, posSpawn, Quaternion.identity);
+        long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
 
         // --- SISTEMA DE IDENTIDADE (HERANÇA DO AEROPORTO) ---
         if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
@@ -388,6 +639,15 @@ public class GerenciadorAeroporto : MonoBehaviour
         {
             c700.DefinirAeroportoOrigem(this);
             StartCoroutine(RotinaRecebimentoC700(c700));
+            RegistrarTempoDiagnostico("prefab_init_ms", initStart);
+            return;
+        }
+
+        Helicoptero helicoptero = aeronaveNascente.GetComponent<Helicoptero>();
+        if (helicoptero != null)
+        {
+            StartCoroutine(RotinaRecebimentoHelicoptero(helicoptero));
+            RegistrarTempoDiagnostico("prefab_init_ms", initStart);
             return;
         }
 
@@ -396,6 +656,16 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         controleDaNave.aeroportoOrigem = this;
         StartCoroutine(RotinaRecebimento(controleDaNave));
+        RegistrarTempoDiagnostico("prefab_init_ms", initStart);
+    }
+
+    private static void RegistrarTempoDiagnostico(string chave, long inicio)
+    {
+        float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+        if (elapsedMs > 0f)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
+        }
     }
 
     private IEnumerator RotinaRecebimento(ControleAviao aviao)
@@ -425,6 +695,38 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (!avioesNoHangar.Contains(aviao)) avioesNoHangar.Add(aviao);
             aviao.estadoAtual = ControleAviao.EstadoAviao.ReservaHangar;
             aviao.gameObject.SetActive(false); 
+        }
+    }
+
+    private IEnumerator RotinaRecebimentoHelicoptero(Helicoptero helicoptero)
+    {
+        if (helicoptero == null)
+        {
+            yield break;
+        }
+
+        yield return null;
+
+        Transform vagaHelicoptero = ObterVagaHelicopteroPreferencial(false);
+        if (vagaHelicoptero == null)
+        {
+            vagaHelicoptero = ObterPrimeiraVagaLivre();
+        }
+        if (vagaHelicoptero == null)
+        {
+            vagaHelicoptero = ObterVagaHelicopteroPreferencial(true);
+        }
+        if (vagaHelicoptero == null)
+        {
+            vagaHelicoptero = (wpPronto != null) ? wpPronto : transform;
+        }
+
+        helicoptero.VincularAoAeroporto(this, vagaHelicoptero);
+        helicoptero.PosicionarNaVagaAeroporto(vagaHelicoptero);
+
+        if (!helicopterosDoAeroporto.Contains(helicoptero))
+        {
+            helicopterosDoAeroporto.Add(helicoptero);
         }
     }
 
@@ -474,6 +776,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     public IEnumerator RotinaLancarMissaoEmMassa(Vector3 alvo, int quantidade)
     {
         int lancados = 0;
+        quantidade = Mathf.Max(1, quantidade);
         
         while (lancados < quantidade)
         {
@@ -484,20 +787,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                 proximo = avioesNoHangar.Find(a => a != null && a.GetComponent<KamikazeDrone>() != null);
                 if (proximo != null)
                 {
-                    avioesNoHangar.Remove(proximo);
-                    avioesNoPatio.Add(proximo);
-                    proximo.gameObject.SetActive(true);
-                    
-                    if (wpPronto != null)
-                    {
-                        proximo.transform.position = wpPronto.position;
-                        proximo.transform.rotation = wpPronto.rotation;
-                    }
-                    else
-                    {
-                        proximo.transform.position = transform.position;
-                    }
-                    proximo.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
+                    PrepararAviaoReservaParaLancamento(proximo);
                 }
             }
 
@@ -511,6 +801,49 @@ public class GerenciadorAeroporto : MonoBehaviour
             lancados++;
             
             if (lancados < quantidade) yield return new WaitForSeconds(5f);
+        }
+    }
+
+    private IEnumerator RotinaLancarPatrulhaMesmoModelo(Vector3 alvo, string modelo, int quantidade)
+    {
+        if (string.IsNullOrEmpty(modelo))
+        {
+            yield break;
+        }
+
+        int lancados = 0;
+        quantidade = Mathf.Max(1, quantidade);
+
+        while (lancados < quantidade)
+        {
+            ControleAviao proximo = avioesNoPatio.Find(a =>
+                a != null &&
+                a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio &&
+                EhMesmoModelo(a, modelo));
+
+            if (proximo == null)
+            {
+                proximo = avioesNoHangar.Find(a => a != null && EhMesmoModelo(a, modelo));
+                if (proximo != null)
+                {
+                    PrepararAviaoReservaParaLancamento(proximo);
+                }
+            }
+
+            if (proximo == null)
+            {
+                Debug.LogWarning($"[Patrulha Grupo] Sem aeronaves suficientes do modelo {modelo} no pátio ou hangar.");
+                yield break;
+            }
+
+            ConfigurarAviaoParaPatrulhaEmGrupo(proximo);
+            proximo.IniciarMissaoCompleta(alvo);
+            lancados++;
+
+            if (lancados < quantidade)
+            {
+                yield return new WaitForSeconds(5f);
+            }
         }
     }
 
@@ -548,6 +881,87 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (!ocupadoPorC700) return wp;
         }
         return null;
+    }
+
+    public Transform ObterVagaHelicopteroPreferencial(bool aceitarOcupada = false)
+    {
+        Transform vagaEncontrada = ProcurarVagaHelicopteroEmRaiz(patio != null ? patio : transform);
+        if (vagaEncontrada == null && patio != transform)
+        {
+            vagaEncontrada = ProcurarVagaHelicopteroEmRaiz(transform);
+        }
+
+        if (vagaEncontrada == null)
+        {
+            return null;
+        }
+
+        if (aceitarOcupada || !VagaHelicopteroOcupada(vagaEncontrada))
+        {
+            return vagaEncontrada;
+        }
+
+        return null;
+    }
+
+    private Transform ProcurarVagaHelicopteroEmRaiz(Transform raizBusca)
+    {
+        if (raizBusca == null)
+        {
+            return null;
+        }
+
+        Transform[] filhos = raizBusca.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < filhos.Length; i++)
+        {
+            Transform candidato = filhos[i];
+            if (candidato == null) continue;
+
+            string nome = candidato.name.ToLowerInvariant();
+            if (nome == "h" || nome == "vaga_h" || nome.StartsWith("vaga_h_"))
+            {
+                return candidato;
+            }
+        }
+
+        return null;
+    }
+
+    private bool VagaHelicopteroOcupada(Transform vaga)
+    {
+        if (vaga == null)
+        {
+            return false;
+        }
+
+        for (int i = helicopterosDoAeroporto.Count - 1; i >= 0; i--)
+        {
+            Helicoptero heli = helicopterosDoAeroporto[i];
+            if (heli == null)
+            {
+                helicopterosDoAeroporto.RemoveAt(i);
+                continue;
+            }
+
+            if (!heli.EstaEstacionadoNoAeroporto())
+            {
+                continue;
+            }
+
+            if (heli.ObterVagaAeroporto() == vaga)
+            {
+                return true;
+            }
+
+            Vector3 diff = heli.transform.position - vaga.position;
+            diff.y = 0f;
+            if (diff.sqrMagnitude <= 36f)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public Transform ObterParadaGrandePreferencial(bool aceitarOcupada = false)
@@ -632,6 +1046,153 @@ public class GerenciadorAeroporto : MonoBehaviour
         return nomeLimpo;
     }
 
+    private string ObterChaveModeloAviao(ControleAviao aviao)
+    {
+        if (aviao == null)
+        {
+            return string.Empty;
+        }
+
+        return aviao.gameObject.name.Replace("(Clone)", "").Trim();
+    }
+
+    private bool EhMesmoModelo(ControleAviao aviao, string modelo)
+    {
+        return aviao != null && !string.IsNullOrEmpty(modelo) && ObterChaveModeloAviao(aviao) == modelo;
+    }
+
+    private int ContarAvioesDisponiveisMesmoModelo(ControleAviao aviaoBase)
+    {
+        return ContarAvioesDisponiveisMesmoModelo(ObterChaveModeloAviao(aviaoBase));
+    }
+
+    private int ContarAvioesDisponiveisMesmoModelo(string modelo)
+    {
+        if (string.IsNullOrEmpty(modelo))
+        {
+            return 0;
+        }
+
+        int total = 0;
+
+        for (int i = 0; i < avioesNoPatio.Count; i++)
+        {
+            ControleAviao aviao = avioesNoPatio[i];
+            if (aviao == null || aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio)
+            {
+                continue;
+            }
+
+            if (EhMesmoModelo(aviao, modelo))
+            {
+                total++;
+            }
+        }
+
+        for (int i = 0; i < avioesNoHangar.Count; i++)
+        {
+            ControleAviao aviao = avioesNoHangar[i];
+            if (EhMesmoModelo(aviao, modelo))
+            {
+                total++;
+            }
+        }
+
+        return total;
+    }
+
+    private void PrepararAviaoReservaParaLancamento(ControleAviao aviao)
+    {
+        if (aviao == null)
+        {
+            return;
+        }
+
+        avioesNoHangar.Remove(aviao);
+        if (!avioesNoPatio.Contains(aviao))
+        {
+            avioesNoPatio.Add(aviao);
+        }
+
+        aviao.gameObject.SetActive(true);
+
+        if (wpPronto != null)
+        {
+            aviao.transform.position = wpPronto.position;
+            aviao.transform.rotation = wpPronto.rotation;
+        }
+        else
+        {
+            aviao.transform.position = transform.position;
+            aviao.transform.rotation = transform.rotation;
+        }
+
+        aviao.vagaRetorno = null;
+        aviao.aguardandoCliqueRadar = false;
+        aviao.ordemParaRetorno = false;
+        aviao.estaEmModoVooFisico = false;
+        aviao.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
+    }
+
+    private void ConfigurarAviaoParaPatrulhaEmGrupo(ControleAviao aviao)
+    {
+        if (aviao == null)
+        {
+            return;
+        }
+
+        LancadorMisselCaca missilScript = aviao.GetComponent<LancadorMisselCaca>();
+        if (missilScript != null)
+        {
+            missilScript.modoPassivo = false;
+        }
+
+        AviaoBombardeiro bombardeiro = aviao.GetComponent<AviaoBombardeiro>();
+        if (bombardeiro != null)
+        {
+            bombardeiro.modoDeAtaque = AviaoBombardeiro.ModoAtaque.Patrulha;
+        }
+    }
+
+    private void PrepararPatrulhaEmGrupo()
+    {
+        if (aviaoSelecionadoParaMissao == null)
+        {
+            return;
+        }
+
+        LimparModoMassaAereo();
+        _modeloPatrulhaGrupo = ObterChaveModeloAviao(aviaoSelecionadoParaMissao);
+        esperandoCliquePatrulhaGrupo = !string.IsNullOrEmpty(_modeloPatrulhaGrupo);
+        aviaoSelecionadoParaMissao.aguardandoCliqueRadar = esperandoCliquePatrulhaGrupo;
+        _usarMarcadorPatrulhaAviaoNoProximoClique = esperandoCliquePatrulhaGrupo;
+    }
+
+    private void LimparModoMassaAereo()
+    {
+        esperandoCliqueMassa = false;
+        esperandoCliquePatrulhaGrupo = false;
+        _modeloPatrulhaGrupo = string.Empty;
+        _usarMarcadorPatrulhaAviaoNoProximoClique = false;
+    }
+
+#if UNITY_EDITOR
+    private void GarantirPrefabsMarcadoresNoEditor()
+    {
+        if (prefabMarcadorPatrulhaAviao == null)
+        {
+            prefabMarcadorPatrulhaAviao = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/animacao click/Map track markers VFX/Prefabs/Marker 5 Circle Loop.prefab");
+        }
+
+        if (prefabMarcadorBombardeiro == null)
+        {
+            prefabMarcadorBombardeiro = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/animacao click/Map track markers VFX/Prefabs/Marker 7 Danger zone Loop.prefab");
+        }
+    }
+#endif
+
     void OnGUI()
     {
         if (Construtor.EmModoConstrucaoAtivo) return;
@@ -642,11 +1203,12 @@ public class GerenciadorAeroporto : MonoBehaviour
         avioesNoPatio.RemoveAll(a => a == null);
         avioesNoHangar.RemoveAll(a => a == null);
         transportesC700NoPatio.RemoveAll(a => a == null);
+        helicopterosDoAeroporto.RemoveAll(h => h == null);
 
         float xMenu = (Screen.width / 2f) - 350f - (Screen.width * 0.1f);
         if (xMenu < 10f) xMenu = 10f;
         
-        Rect telaDeMenu = new Rect(xMenu, Screen.height / 2f - 300f, 700f, 600f);
+        Rect telaDeMenu = new Rect(xMenu, Screen.height / 2f - 420f, 700f, 840f);
         GUI.Box(telaDeMenu, "CENTRO DE CONTROLE TÁTICO & AEROPORTO");
 
         // --- BOTÃO DE FECHAR (X) ---
@@ -659,8 +1221,8 @@ public class GerenciadorAeroporto : MonoBehaviour
         GUILayout.BeginArea(new Rect(telaDeMenu.x + 15, telaDeMenu.y + 35, telaDeMenu.width - 30, telaDeMenu.height - 45));
         
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("✈️ Aba Comercial", GUILayout.Height(35))) { abaAtual = 0; aviaoSelecionadoParaMissao = null; }
-        if (GUILayout.Button("🎖️ Aba Militar", GUILayout.Height(35))) { abaAtual = 1; aviaoSelecionadoParaMissao = null; }
+        if (GUILayout.Button("✈️ Aba Comercial", GUILayout.Height(35))) { abaAtual = 0; aviaoSelecionadoParaMissao = null; c700SelecionadoParaMissao = null; helicopteroSelecionadoParaMissao = null; }
+        if (GUILayout.Button("🎖️ Aba Militar", GUILayout.Height(35))) { abaAtual = 1; aviaoSelecionadoParaMissao = null; c700SelecionadoParaMissao = null; helicopteroSelecionadoParaMissao = null; }
         GUILayout.EndHorizontal();
 
         GUILayout.Space(25);
@@ -678,7 +1240,9 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
         else if (abaAtual == 1)
         {
+            scrollPosAbaMilitar = GUILayout.BeginScrollView(scrollPosAbaMilitar);
             DesenharAbaMilitar();
+            GUILayout.EndScrollView();
         }
         GUILayout.EndArea();
     }
@@ -714,9 +1278,9 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         // === COLUNA ESQUERDA: FROTA ATIVA ===
         GUILayout.BeginVertical("box", GUILayout.Width(320));
-        GUILayout.Label($"<b>FROTA ATIVA ({avioesNoPatio.Count + transportesC700NoPatio.Count})</b>");
+        GUILayout.Label($"<b>FROTA ATIVA ({avioesNoPatio.Count + transportesC700NoPatio.Count + helicopterosDoAeroporto.Count})</b>");
         
-        scrollPosFrota = GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(200));
+        scrollPosFrota = GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(280));
         for (int i = 0, count = avioesNoPatio.Count; i < count; i++)
         {
             ControleAviao a = avioesNoPatio[i];
@@ -726,7 +1290,28 @@ public class GerenciadorAeroporto : MonoBehaviour
             string corEst = (a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio) ? "green" : "red";
 
             if (GUILayout.Button($"<color={corCristal}>■</color> ✈️ {nomeLimpo}{vidaStr} [<color={corEst}>{a.estadoAtual}</color>]", GUILayout.Height(30)))
+            {
                 aviaoSelecionadoParaMissao = a;
+                c700SelecionadoParaMissao = null;
+                helicopteroSelecionadoParaMissao = null;
+            }
+        }
+
+        for (int i = 0; i < helicopterosDoAeroporto.Count; i++)
+        {
+            Helicoptero heli = helicopterosDoAeroporto[i];
+            if (heli == null) continue;
+
+            string nomeHeli = heli.name.Replace("(Clone)", "").Trim();
+            string estadoHeli = heli.ObterEstadoOperacionalAeroporto();
+            string corEstadoHeli = heli.EstaEstacionadoNoAeroporto() ? "green" : "orange";
+
+            if (GUILayout.Button($"🚁 {nomeHeli} [<color={corEstadoHeli}>{estadoHeli}</color>]", GUILayout.Height(30)))
+            {
+                helicopteroSelecionadoParaMissao = heli;
+                aviaoSelecionadoParaMissao = null;
+                c700SelecionadoParaMissao = null;
+            }
         }
         GUILayout.EndScrollView();
         GUILayout.EndVertical();
@@ -741,7 +1326,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
         GUILayout.EndHorizontal();
 
-        scrollPosHangar = GUILayout.BeginScrollView(scrollPosHangar, GUILayout.Height(200));
+        scrollPosHangar = GUILayout.BeginScrollView(scrollPosHangar, GUILayout.Height(280));
         for (int i = avioesNoHangar.Count - 1; i >= 0; i--)
         {
             ControleAviao h = avioesNoHangar[i];
@@ -831,17 +1416,28 @@ public class GerenciadorAeroporto : MonoBehaviour
 
                         if (pontoAlvo != Vector3.zero)
                         {
+                            bool usarMarcadorPatrulhaNoClique = _usarMarcadorPatrulhaAviaoNoProximoClique;
                             aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
                             
                             if (esperandoCliqueMassa)
                             {
-                                esperandoCliqueMassa = false;
-                                StartCoroutine(RotinaLancarMissaoEmMassa(pontoAlvo, qtdMassaDrone));
+                                int quantidadeMassa = qtdMassaDrone;
+                                LimparModoMassaAereo();
+                                StartCoroutine(RotinaLancarMissaoEmMassa(pontoAlvo, quantidadeMassa));
+                            }
+                            else if (esperandoCliquePatrulhaGrupo)
+                            {
+                                int quantidadeGrupo = qtdPatrulhaGrupo;
+                                string modeloGrupo = _modeloPatrulhaGrupo;
+                                LimparModoMassaAereo();
+                                StartCoroutine(RotinaLancarPatrulhaMesmoModelo(pontoAlvo, modeloGrupo, quantidadeGrupo));
                             }
                             else
                             {
                                 aviaoSelecionadoParaMissao.IniciarMissaoCompleta(pontoAlvo);
                             }
+
+                            CriarSinalizadorAereoNoAlvo(pontoAlvo, aviaoSelecionadoParaMissao, usarMarcadorPatrulhaNoClique);
                             
                             menuAtivo = false; 
                             if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
@@ -850,11 +1446,38 @@ public class GerenciadorAeroporto : MonoBehaviour
                     if (GUILayout.Button("❌ Cancelar Ordem", GUILayout.Height(30)))
                     {
                         aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
-                        esperandoCliqueMassa = false;
+                        LimparModoMassaAereo();
                     }
                 }
                     bool isKamikaze = aviaoSelecionadoParaMissao.GetComponent<KamikazeDrone>() != null;
                     bool isBombardeiro = aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>() != null;
+                    int totalMesmoModelo = 0;
+
+                    if (!isKamikaze)
+                    {
+                        string modeloPainel = ObterChaveModeloAviao(aviaoSelecionadoParaMissao);
+                        if (_ultimoModeloPainelPatrulha != modeloPainel)
+                        {
+                            _ultimoModeloPainelPatrulha = modeloPainel;
+                            qtdPatrulhaGrupo = 1;
+                        }
+
+                        totalMesmoModelo = ContarAvioesDisponiveisMesmoModelo(aviaoSelecionadoParaMissao);
+                        if (totalMesmoModelo < 3)
+                        {
+                            qtdPatrulhaGrupo = 1;
+                        }
+                        else
+                        {
+                            qtdPatrulhaGrupo = Mathf.Clamp(qtdPatrulhaGrupo, 1, totalMesmoModelo);
+                            GUILayout.BeginHorizontal();
+                            GUILayout.Label($"<b>Qtd. P/ Patrulha:</b> {qtdPatrulhaGrupo}/{totalMesmoModelo}");
+                            if (GUILayout.Button("-", GUILayout.Width(35), GUILayout.Height(30))) qtdPatrulhaGrupo = Mathf.Max(1, qtdPatrulhaGrupo - 1);
+                            if (GUILayout.Button("+", GUILayout.Width(35), GUILayout.Height(30))) qtdPatrulhaGrupo = Mathf.Min(totalMesmoModelo, qtdPatrulhaGrupo + 1);
+                            if (GUILayout.Button("Todos", GUILayout.Width(60), GUILayout.Height(30))) qtdPatrulhaGrupo = totalMesmoModelo;
+                            GUILayout.EndHorizontal();
+                        }
+                    }
 
                     if (isKamikaze)
                     {
@@ -874,6 +1497,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                         GUILayout.BeginHorizontal();
                         if (GUILayout.Button("🚀 ATAQUE EM MASSA", GUILayout.Height(40))) 
                         {
+                            LimparModoMassaAereo();
                             aviaoSelecionadoParaMissao.aguardandoCliqueRadar = true;
                             esperandoCliqueMassa = true;
                         }
@@ -892,10 +1516,20 @@ public class GerenciadorAeroporto : MonoBehaviour
                             aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.AtaqueAoSolo;
                             ExecutarModoRadar(false);
                         }
-                        if (GUILayout.Button("🛡️ Radar (Móvel)", GUILayout.Height(40))) 
+                        string textoPatrulhaBombardeiro = (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
+                            ? $"🛡️ Radar (Móvel) x{qtdPatrulhaGrupo}"
+                            : "🛡️ Radar (Móvel)";
+                        if (GUILayout.Button(textoPatrulhaBombardeiro, GUILayout.Height(40))) 
                         {
                             aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.Patrulha;
-                            ExecutarModoRadar(false);
+                            if (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
+                            {
+                                PrepararPatrulhaEmGrupo();
+                            }
+                            else
+                            {
+                                ExecutarModoRadar(false, true);
+                            }
                         }
                         if (GUILayout.Button("🚀 Ataque em Massa", GUILayout.Height(40))) 
                         {
@@ -908,7 +1542,20 @@ public class GerenciadorAeroporto : MonoBehaviour
                     {
                         GUILayout.BeginHorizontal();
                         if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(40))) ExecutarModoRadar(true);
-                        if (GUILayout.Button("🛡️ Patrulha Aérea", GUILayout.Height(40))) ExecutarModoRadar(false);
+                        string textoPatrulhaGrupo = (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
+                            ? $"🛡️ Patrulha Aérea x{qtdPatrulhaGrupo}"
+                            : "🛡️ Patrulha Aérea";
+                        if (GUILayout.Button(textoPatrulhaGrupo, GUILayout.Height(40)))
+                        {
+                            if (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
+                            {
+                                PrepararPatrulhaEmGrupo();
+                            }
+                            else
+                            {
+                                ExecutarModoRadar(false, true);
+                            }
+                        }
                         if (GUILayout.Button("💣 Ataque Solo", GUILayout.Height(40))) ExecutarModoRadar(false);
                         GUILayout.EndHorizontal();
                     }
@@ -941,7 +1588,68 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
         }
 
+        DesenharPainelHelicoptero();
+
         DesenharPainelC700();
+    }
+
+    private void DesenharPainelHelicoptero()
+    {
+        if (helicopteroSelecionadoParaMissao == null || !helicopterosDoAeroporto.Contains(helicopteroSelecionadoParaMissao))
+        {
+            return;
+        }
+
+        GUILayout.Space(12);
+        GUILayout.BeginVertical("box");
+        string nomeHeliSelecionado = helicopteroSelecionadoParaMissao.name.Replace("(Clone)", "").Trim();
+        GUILayout.Label($"<b>PAINEL DE ORDENS: 🚁 {nomeHeliSelecionado}</b>");
+        GUILayout.Label($"<color=cyan>{helicopteroSelecionadoParaMissao.ObterEstadoOperacionalAeroporto()}</color>");
+
+        if (_modoOrdemHelicoptero != ModoOrdemHelicoptero.Nenhum)
+        {
+            if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Patrulha)
+            {
+                GUILayout.Label($"<color=yellow>PATRULHA ATIVA: clique direito adiciona e já aplica ponto ({_rotaPatrulhaHelicoptero.Count}). ENTER encerra edição, BACKSPACE desfaz, ESC cancela.</color>");
+            }
+            else
+            {
+                string modoTexto = _modoOrdemHelicoptero == ModoOrdemHelicoptero.Reconhecimento ? "RECONHECIMENTO" : "ATAQUE LOCAL";
+                GUILayout.Label($"<color=yellow>{modoTexto} ATIVO: clique com botão direito no mapa. ESC cancela.</color>");
+            }
+
+            if (GUILayout.Button("❌ Cancelar Ordem Helicóptero", GUILayout.Height(30)))
+            {
+                CancelarModoHelicoptero();
+            }
+        }
+        else
+        {
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(38)))
+            {
+                IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.Reconhecimento);
+            }
+            if (GUILayout.Button("🛡️ Patrulha", GUILayout.Height(38)))
+            {
+                IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.Patrulha);
+            }
+            if (GUILayout.Button("💥 Ataque local", GUILayout.Height(38)))
+            {
+                IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.AtaqueLocal);
+            }
+            GUILayout.EndHorizontal();
+
+            if (!helicopteroSelecionadoParaMissao.EstaEstacionadoNoAeroporto())
+            {
+                if (GUILayout.Button("🔙 Retornar para vaga H", GUILayout.Height(32)))
+                {
+                    helicopteroSelecionadoParaMissao.RetornarParaVagaAeroporto();
+                }
+            }
+        }
+
+        GUILayout.EndVertical();
     }
 
     private void DesenharPainelC700()
@@ -959,7 +1667,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         GUILayout.Space(12);
         GUILayout.BeginVertical("box");
         GUILayout.Label("<b>TRANSPORTE C700</b>");
-        scrollPosC700 = GUILayout.BeginScrollView(scrollPosC700, GUILayout.Height(300));
+        scrollPosC700 = GUILayout.BeginScrollView(scrollPosC700, GUILayout.Height(380));
 
         for (int i = 0; i < transportesC700NoPatio.Count; i++)
         {
@@ -972,6 +1680,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             {
                 c700SelecionadoParaMissao = transporte;
                 aviaoSelecionadoParaMissao = null;
+                helicopteroSelecionadoParaMissao = null;
             }
         }
 
@@ -990,19 +1699,12 @@ public class GerenciadorAeroporto : MonoBehaviour
                 GUILayout.Label($"Destino: X {destinoAtual.x:0} / Z {destinoAtual.z:0}");
             }
 
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Selecionar no mapa", GUILayout.Height(30)))
-            {
-                SelecionarTransporteNoMapa(c700SelecionadoParaMissao);
-            }
-
             GUI.enabled = c700SelecionadoParaMissao.EstaNoSolo;
             if (GUILayout.Button("Puxar tropas", GUILayout.Height(30)))
             {
                 c700SelecionadoParaMissao.PuxarUnidadesProximas();
             }
             GUI.enabled = true;
-            GUILayout.EndHorizontal();
 
             if (c700SelecionadoParaMissao.EstaNoSolo)
             {
@@ -1024,35 +1726,31 @@ public class GerenciadorAeroporto : MonoBehaviour
                 }
                 else
                 {
+                    GUILayout.BeginHorizontal();
                     if (GUILayout.Button("Preparar decolagem / destino", GUILayout.Height(40)))
                     {
                         c700SelecionadoParaMissao.PrepararMissaoAerea();
-                        SelecionarTransporteNoMapa(c700SelecionadoParaMissao);
                         menuAtivo = false;
                         if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
                     }
+                    if (GUILayout.Button("Voltar para aeroporto", GUILayout.Height(40)))
+                    {
+                        c700SelecionadoParaMissao.OrdenarRetornoAoAeroporto();
+                        c700SelecionadoParaMissao = null;
+                        menuAtivo = false;
+                        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                    }
+                    GUILayout.EndHorizontal();
                 }
 
-                GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Desembarcar carga", GUILayout.Height(34)))
                 {
                     c700SelecionadoParaMissao.DesembarcarTudo();
                 }
-                if (GUILayout.Button("Desembarcar manifesto", GUILayout.Height(34)))
-                {
-                    c700SelecionadoParaMissao.DesembarcarManifestoConfigurado();
-                }
-                GUILayout.EndHorizontal();
-
-                if (GUILayout.Button("Limpar manifesto", GUILayout.Height(30)))
-                {
-                    c700SelecionadoParaMissao.LimparManifestoConfigurado();
-                }
             }
             else
             {
-                GUILayout.Label("<color=cyan>C700 em voo ou manobra.</color>");
-                if (GUILayout.Button("Mandar retornar", GUILayout.Height(40)))
+                if (GUILayout.Button("Retornar a base", GUILayout.Height(40)))
                 {
                     c700SelecionadoParaMissao.OrdenarRetornoAoAeroporto();
                     c700SelecionadoParaMissao = null;
@@ -1061,61 +1759,10 @@ public class GerenciadorAeroporto : MonoBehaviour
                 }
             }
 
-            DesenharManifestoC700(c700SelecionadoParaMissao);
         }
 
         GUILayout.EndScrollView();
         GUILayout.EndVertical();
-    }
-
-    private void DesenharManifestoC700(C700TransporteAereo transporte)
-    {
-        if (transporte == null || transporte.ManifestoConfigurado == null || transporte.ManifestoConfigurado.Count == 0)
-        {
-            return;
-        }
-
-        GUILayout.Space(8);
-        GUILayout.Label("<b>MANIFESTO CONFIGURAVEL</b>");
-
-        for (int i = 0; i < transporte.ManifestoConfigurado.Count; i++)
-        {
-            C700TransporteAereo.EntradaManifesto entrada = transporte.ManifestoConfigurado[i];
-            if (entrada == null)
-            {
-                continue;
-            }
-
-            int ajusteRapido = Mathf.Max(1, entrada.ajusteRapido);
-            int ajustePesado = Mathf.Max(ajusteRapido, entrada.ajustePesado);
-
-            GUILayout.BeginVertical("box");
-            GUILayout.Label($"{entrada.nome}: {entrada.quantidade}");
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("-" + ajustePesado, GUILayout.Height(24)))
-            {
-                transporte.AjustarManifesto(i, -ajustePesado);
-            }
-            if (GUILayout.Button("-" + ajusteRapido, GUILayout.Height(24)))
-            {
-                transporte.AjustarManifesto(i, -ajusteRapido);
-            }
-            if (GUILayout.Button("+" + ajusteRapido, GUILayout.Height(24)))
-            {
-                transporte.AjustarManifesto(i, ajusteRapido);
-            }
-            if (GUILayout.Button("+" + ajustePesado, GUILayout.Height(24)))
-            {
-                transporte.AjustarManifesto(i, ajustePesado);
-            }
-            GUILayout.EndHorizontal();
-
-            if (entrada.prefabDesembarque == null)
-            {
-                GUILayout.Label("Prefab de desembarque nao configurado.");
-            }
-            GUILayout.EndVertical();
-        }
     }
 
     private void SelecionarTransporteNoMapa(C700TransporteAereo transporte)
@@ -1144,9 +1791,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         controle.DefinirSelecao(true);
     }
 
-    private void ExecutarModoRadar(bool deveSerPassivo)
+    private void ExecutarModoRadar(bool deveSerPassivo, bool usarMarcadorPatrulhaAviao = false)
     {
         if (aviaoSelecionadoParaMissao == null) return;
+        LimparModoMassaAereo();
+        _usarMarcadorPatrulhaAviaoNoProximoClique = usarMarcadorPatrulhaAviao;
         
         // Tenta forçar o modo no script de Missil, caso exista
         LancadorMisselCaca missilScript = aviaoSelecionadoParaMissao.GetComponent<LancadorMisselCaca>();

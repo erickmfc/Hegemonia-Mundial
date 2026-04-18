@@ -284,6 +284,11 @@ public class Estaleiro : MonoBehaviour
 
     public bool ConstruirUnidade(GameObject prefabDoNavio)
     {
+        if (prefabDoNavio != null)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefabDoNavio.name);
+        }
+
         GarantirSlotsExistentes();
         AtualizarReferenciasLitoraneas();
 
@@ -319,13 +324,24 @@ public class Estaleiro : MonoBehaviour
 
         if (slotLivre != null)
         {
+            long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
             IniciarConstrucao(slotLivre, prefabDoNavio);
+            RegistrarTempoDiagnostico("prefab_init_ms", initStart);
             return true;
         }
         else
         {
             Debug.LogWarning("[Estaleiro] Todos os slots estão ocupados!");
             return false;
+        }
+    }
+
+    private static void RegistrarTempoDiagnostico(string chave, long inicio)
+    {
+        float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+        if (elapsedMs > 0f)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
         }
     }
 

@@ -148,6 +148,7 @@ public class TorretaAntiaerea : MonoBehaviour
                            nomeBaixo.Contains("jato") ||
                            nomeBaixo.Contains("drone") ||
                            nomeBaixo.Contains("vap") ||
+                           nomeBaixo.Contains("bombard") || // Bombardeiros também entram aqui!
                            hit.tag == "Areo" || 
                            hit.tag == "Aereo";
 

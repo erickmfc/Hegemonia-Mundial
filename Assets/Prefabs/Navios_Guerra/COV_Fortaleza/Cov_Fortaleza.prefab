@@ -34,7 +34,7 @@ Transform:
   m_GameObject: {fileID: 108590380420570160}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 134.74341, y: -0.5, z: -38.7}
+  m_LocalPosition: {x: 134.74341, y: -1.1, z: -38.7}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -51,8 +51,8 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 5
-  m_Speed: 16
-  m_Acceleration: 8
+  m_Speed: 25
+  m_Acceleration: 2
   avoidancePriority: 50
   m_AngularSpeed: 80
   m_StoppingDistance: 0
@@ -139,12 +139,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
-  tempoAceleracao: 5
+  tempoAceleracao: 3
   tempoDesaceleracao: 2
   tempoParadaEmergencia: 1
-  velocidadeMaxima: 22
+  velocidadeMaxima: 25
   velocidadeLeme: 5
-  curvaMaximaGraus: 15
+  curvaMaximaGraus: 17
   coeficienteAderna: 2
   alturaOnda: 2.2
   frequenciaOnda: 1.5
@@ -200,12 +200,15 @@ MonoBehaviour:
   cabecaRotativa: {fileID: 0}
   pontosDeSaida: []
   prefabMissel: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-  municaoTotal: 32
-  municaoMaxima: 32
-  tirosPorSalva: 4
-  intervaloEntreTiros: 0.5
+  municaoTotal: 20
+  municaoMaxima: 20
+  tirosPorSalva: 1
+  intervaloEntreTiros: 1
   tempoRecargaSalva: 5
   alcanceRadar: 1200
+  intervaloVarreduraAutomatica: 0.45
+  maxMisseisSimultaneosPorAlvo: 6
+  cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
   volumeSom: 0.67
   pitchSom: 1
@@ -236,6 +239,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 4.9
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!114 &967750548195217611
 MonoBehaviour:
   m_ObjectHideFlags: 0

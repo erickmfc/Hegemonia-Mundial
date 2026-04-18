@@ -364,6 +364,11 @@ public class ControleUnidade : MonoBehaviour
     // COMANDO AUTOMÁTICO (Usado pela fábrica e IA)
     public void MoverParaPonto(Vector3 destino, bool cancelarComportamentos = true)
     {
+        if (helicopteroExterno != null && helicopteroExterno.EstaSobControleDoAeroporto())
+        {
+            return;
+        }
+
         RegistrarDestinoOrdenado(destino);
 
         if (cancelarComportamentos)

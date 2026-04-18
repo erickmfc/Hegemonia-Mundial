@@ -332,6 +332,13 @@ namespace Hegemonia.AI.BrainMaster
             ref int productionExecuted,
             ref int buildExecuted)
         {
+            if (request != null
+                && IsBootstrapActive
+                && (request.Type == IA_CommandType.Build || request.Type == IA_CommandType.Produce))
+            {
+                return true;
+            }
+
             if (request == null || pressure == null)
             {
                 return true;

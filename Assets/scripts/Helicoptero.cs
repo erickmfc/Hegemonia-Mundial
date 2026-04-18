@@ -45,7 +45,7 @@ public class Helicoptero : MonoBehaviour
 
     [Header("--- VISUAL ---")]
     public Transform modeloVisual;
-    public float ajusteYawModelo = 0f; [Tooltip("Marque se voa de costas")] public bool modeloInvertido180 = false;
+    public float ajusteYawModelo = 0f;
     public ParticleSystem[] flares;
     public Transform helicePrincipal;
     public Transform heliceTraseira;
@@ -317,7 +317,7 @@ public class Helicoptero : MonoBehaviour
             }
         }
 
-        if (modeloInvertido180) ajusteYawModelo += 180f; modeloVisual.localRotation = rotacaoLocalModeloBase * Quaternion.Euler(0f, ajusteYawModelo, 0f);
+        modeloVisual.localRotation = rotacaoLocalModeloBase * Quaternion.Euler(0f, ajusteYawModelo, 0f);
     }
 
     IEnumerator RadarDeAmeacas()
@@ -787,6 +787,22 @@ public class Helicoptero : MonoBehaviour
     public void ChamarParaHeliporto(Transform t) { Decolar(t.position); }
     public void ChamarParaHeliporto(Heliporto h) { Decolar(h.transform.position); }
     public void ChamarParaHeliporto(GameObject g) { Decolar(g.transform.position); }
+
+    // --- MÉTODOS DE COMPATIBILIDADE DO AEROPORTO ---
+    public bool controladoPeloAeroporto = false;
+    public bool estacionadoNoAeroporto = false;
+    public Transform vagaAeroporto;
+    public int missaoAtualAeroporto = 0; // 0 = Nenhuma
+
+    public bool EstaSobControleDoAeroporto() { return controladoPeloAeroporto; }
+    public string ObterEstadoOperacionalAeroporto() { if (estacionadoNoAeroporto) return "Estacionado"; return missaoAtualAeroporto != 0 ? "Em Missão" : "Sobrevoando"; }
+    public bool EstaEstacionadoNoAeroporto() { return estacionadoNoAeroporto; }
+    public Transform ObterVagaAeroporto() { return vagaAeroporto; }
+    public void IniciarPatrulhaAeroporto(List<Vector3> wp) { if(wp != null && wp.Count > 0) Decolar(wp[0]); missaoAtualAeroporto = 3; }
+    public void CancelarMissaoAeroporto() { missaoAtualAeroporto = 0; }
+    public void IniciarReconhecimentoAeroporto(Vector3 wp) { missaoAtualAeroporto = 1; Decolar(wp); }
+    public void IniciarAtaqueLocalAeroporto(Vector3 wp) { missaoAtualAeroporto = 2; Decolar(wp); }
+    public void VincularAoAeroporto(GerenciadorAeroporto aeroporto, Transform vagaPreferencial) { controladoPeloAeroporto = true; vagaAeroporto = vagaPreferencial; }
+    public void PosicionarNaVagaAeroporto(Transform vaga) { estacionadoNoAeroporto = true; vagaAeroporto = vaga; transform.position = vaga.position; estaVoando = false; estaPousando = false; motorLigado = false; }
+    public void RetornarParaVagaAeroporto() { if (vagaAeroporto != null) { Decolar(vagaAeroporto.position); estacionadoNoAeroporto = false; missaoAtualAeroporto = 0; } }
 }
-
-

@@ -61,6 +61,8 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<string, int> _navalFailureStreakByKey = new Dictionary<string, int>();
         private readonly Dictionary<string, string> _navalFailureLastReasonByKey = new Dictionary<string, string>();
         private readonly Dictionary<string, string> _navalAutoPlacementDisabledReasonByItem = new Dictionary<string, string>();
+        private readonly List<Estaleiro> _registeredShipyardBuffer = new List<Estaleiro>();
+        private readonly List<PierMarinha> _registeredPierBuffer = new List<PierMarinha>();
         private IA_ManualBuildPoint _pendingManualBuildPoint;
         private int _cachedApproxCombatUnitCount = -1;
         private int _cachedApproxCombatSourceCount = -1;
@@ -160,6 +162,16 @@ namespace Hegemonia.AI.BrainMaster
 
         private float ResolveDecisionDelay()
         {
+            if (ShouldRespectRuntimeLock() && DiagnosticoDesempenhoJogo.RuntimeSaturado())
+            {
+                return 3.60f;
+            }
+
+            if (ShouldRespectRuntimeLock() && DiagnosticoDesempenhoJogo.RuntimeSobPressao())
+            {
+                return 2.20f;
+            }
+
             IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
             if (pressure == null)
             {
@@ -205,6 +217,25 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return false;
+        }
+
+        private bool ShouldLockNonEssentialRuntimeBuild(out string reason)
+        {
+            reason = string.Empty;
+            if (!ShouldRespectRuntimeLock() || !DiagnosticoDesempenhoJogo.RuntimeSobPressao())
+            {
+                return false;
+            }
+
+            reason = DiagnosticoDesempenhoJogo.ObterRazaoLockRuntime();
+            if (string.IsNullOrEmpty(reason))
+            {
+                reason = DiagnosticoDesempenhoJogo.RuntimeSaturado()
+                    ? "runtime saturado"
+                    : "runtime sob pressao";
+            }
+
+            return true;
         }
 
         private float GetCombatLockCooldownSeconds()
@@ -373,6 +404,7 @@ namespace Hegemonia.AI.BrainMaster
             bool plataformaManualOverride = plataformas < 1 && HasManualBuildOverrideForItem("PLataforma");
             string navalCombatLockReason;
             bool combatLocksHeavyNaval = ShouldLockHeavyNavalBuild(now, out navalCombatLockReason);
+            bool runtimeLocksNonEssentialBuild = ShouldLockNonEssentialRuntimeBuild(out _);
             bool allowAutomaticNavalExpansion = ShouldAllowAutomaticNavalExpansion(now, estaleiros, piers);
             CombatNavalBuildLocked = combatLocksHeavyNaval;
             CombatNavalBuildLockReason = combatLocksHeavyNaval ? navalCombatLockReason : string.Empty;
@@ -386,6 +418,11 @@ namespace Hegemonia.AI.BrainMaster
             if (!allowAutomaticNavalExpansion && estaleiros + piers > 0 && !estaleiroManualOverride && !pierManualOverride && !plataformaManualOverride)
             {
                 needCoastScan = false;
+            }
+            if (runtimeLocksNonEssentialBuild)
+            {
+                needCoastScan = false;
+                _nextCoastScanTime = Mathf.Max(_nextCoastScanTime, now + 22f);
             }
             if (needCoastScan && !combatLocksHeavyNaval)
             {
@@ -755,7 +792,44 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
+            // O registro vivo de estruturas fica disponível antes do próximo snapshot do WorldState.
+            // Isso evita a IA "não enxergar" o estaleiro/pier recém-criado e travar a fase naval.
+            estaleiros = Mathf.Max(estaleiros, CountRegisteredShipyards());
+            piers = Mathf.Max(piers, CountRegisteredPiers());
+
             EndTimingScope("CollectStructureCounts", "structures=" + _context.WorldState.OwnStructures.Count, profileStart, 0.75f);
+        }
+
+        private int CountRegisteredShipyards()
+        {
+            RegistroEntidadesJogo.FillEstaleiros(_registeredShipyardBuffer);
+            int count = 0;
+            for (int i = 0; i < _registeredShipyardBuffer.Count; i++)
+            {
+                Estaleiro estaleiro = _registeredShipyardBuffer[i];
+                if (estaleiro != null && _context.Backend.BelongsToTeam(estaleiro))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private int CountRegisteredPiers()
+        {
+            RegistroEntidadesJogo.FillPiers(_registeredPierBuffer);
+            int count = 0;
+            for (int i = 0; i < _registeredPierBuffer.Count; i++)
+            {
+                PierMarinha pier = _registeredPierBuffer[i];
+                if (pier != null && _context.Backend.BelongsToTeam(pier))
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private bool QueueBuildAtLand(string itemKey, IA_ZoneType zone, Vector3 anchor, float minRadius, float maxRadius, int priority, float cooldown)
@@ -1000,8 +1074,11 @@ namespace Hegemonia.AI.BrainMaster
 
             if (hasManualOverride)
             {
-                reason = "ponto manual configurado, mas indisponivel";
-                return ManualBuildCandidateStatus.Blocked;
+                // Se encontrou que devia usar manual, mas não estava livre (por colisão com torre, etc.), 
+                // é melhor não travar a IA de vez (Blocked), mas sim tentar de novo (fallback automático) para se salvar.
+                // Mas repassa o "reason" em caso de log
+                reason = "ponto manual configurado, mas área estava bloqueada";
+                return ManualBuildCandidateStatus.None;
             }
 
             return ManualBuildCandidateStatus.None;
@@ -1581,6 +1658,50 @@ namespace Hegemonia.AI.BrainMaster
             NavalDiagnosticLine("item resolvido=" + itemKey);
 
             string reason = "nenhuma tentativa executada";
+            if (HasManualBuildOverrideForItem(itemKey))
+            {
+                Vector3 manualReference = navalAnchor != Vector3.zero ? navalAnchor : landAnchor;
+                Vector3 manualCandidate;
+                IA_ManualBuildPoint manualPoint;
+                string manualReason;
+                ManualBuildCandidateStatus manualStatus = TryResolveManualBuildCandidate(itemKey, manualReference, out manualCandidate, out manualPoint, out manualReason);
+
+                if (manualStatus == ManualBuildCandidateStatus.Found && manualPoint != null)
+                {
+                    NavalDiagnosticLine("ponto manual do estaleiro encontrado; pulando busca costeira");
+                    NavalDiagnosticPoint(manualCandidate, "manual bootstrap: " + manualPoint.GetDisplayLabel(), new Color(1f, 0.82f, 0.15f, 1f), 4f, false);
+
+                    if (ExecuteBuildImmediately(itemKey, manualCandidate, IA_ZoneType.Naval, manualPoint))
+                    {
+                        _nextNavalAttemptTime = now + 4f;
+                        _bootstrapNavalNoCoastFailures = 0;
+                        IA_NavalBuildDiagnostics.SetStatus(_context.Brain, "estaleiro construido imediatamente no ponto manual");
+                        _context.Brain.ReportBootstrapError(string.Empty);
+                        _context.Brain.SetBootstrapStage(
+                            IA_BrainMaster.IA_BootstrapStage.HoldShipyard,
+                            "estaleiro naval construido imediatamente no ponto manual; aguardando 5s antes do navio");
+                        return true;
+                    }
+
+                    reason = "falha ao executar construcao imediata no ponto manual";
+                    _nextNavalAttemptTime = now + 2f;
+                    IA_NavalBuildDiagnostics.SetStatus(_context.Brain, reason);
+                    _context.Brain.ReportBootstrapError("estaleiro naval: " + reason);
+                    _context.Brain.SetBootstrapStatus("repetindo estaleiro no ponto manual");
+                    return true;
+                }
+
+                reason = string.IsNullOrEmpty(manualReason)
+                    ? "ponto manual do estaleiro indisponivel"
+                    : manualReason;
+                _nextNavalAttemptTime = now + 3.5f;
+                IA_NavalBuildDiagnostics.SetStatus(_context.Brain, "ponto manual indisponivel: " + reason);
+                NavalDiagnosticLine("ponto manual existe; busca costeira pulada | motivo=" + reason);
+                _context.Brain.ReportBootstrapError("estaleiro naval: " + reason);
+                _context.Brain.SetBootstrapStatus("aguardando ponto manual do estaleiro | motivo=" + reason);
+                return true;
+            }
+
             var anchors = new List<Vector3>();
             AddSearchAnchor(anchors, navalAnchor);
             AddSearchAnchor(anchors, landAnchor);
@@ -1772,11 +1893,10 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
+            // O bootstrap do estaleiro tem uma janela curta (18s). Se a primeira falha
+            // empurrar a proxima tentativa para 120s, a IA sai dessa fase antes de tentar
+            // outro ponto costeiro e parece "parar" de construir o estaleiro.
             float retryDelay = ResolveBootstrapNavalRetryDelay(useDirectFallback, reason);
-            if (_bootstrapNavalAttemptCursor >= 1)
-            {
-                retryDelay = Mathf.Max(retryDelay, 120f);
-            }
 
             _nextNavalAttemptTime = now + retryDelay;
             _nextCoastScanTime = Mathf.Max(_nextCoastScanTime, now + Mathf.Max(6f, retryDelay * 0.55f));
@@ -3790,6 +3910,15 @@ namespace Hegemonia.AI.BrainMaster
         private bool CanTryBuildItem(string itemKey, float now)
         {
             string normalized = IA_Text.Normalize(itemKey);
+            bool bootstrapActive = _context != null && _context.Brain != null && _context.Brain.IsBootstrapActive;
+            if (!bootstrapActive
+                && ShouldRespectRuntimeLock()
+                && DiagnosticoDesempenhoJogo.RuntimeSobPressao()
+                && IsHeavyNonEssentialRuntimeBuild(normalized))
+            {
+                return false;
+            }
+
             float cooldownUntil;
             if (_missingItemCooldownUntil.TryGetValue(normalized, out cooldownUntil) && cooldownUntil > now)
             {
@@ -3805,6 +3934,32 @@ namespace Hegemonia.AI.BrainMaster
 
             _missingItemCooldownUntil[normalized] = now + 60f;
             return false;
+        }
+
+        private static bool IsHeavyNonEssentialRuntimeBuild(string normalizedItemKey)
+        {
+            if (string.IsNullOrEmpty(normalizedItemKey))
+            {
+                return false;
+            }
+
+            return normalizedItemKey.Contains("quartel general")
+                   || normalizedItemKey.Contains("quartel_general")
+                   || normalizedItemKey == "hq"
+                   || normalizedItemKey.Contains("radar")
+                   || normalizedItemKey.Contains("plataforma")
+                   || normalizedItemKey.Contains("fabrica")
+                   || normalizedItemKey.Contains("aeroporto")
+                   || normalizedItemKey.Contains("airport")
+                   || normalizedItemKey.Contains("heliporto")
+                   || normalizedItemKey.Contains("armazem")
+                   || normalizedItemKey.Contains("estaleiro")
+                   || normalizedItemKey.Contains("pier");
+        }
+
+        private static bool ShouldRespectRuntimeLock()
+        {
+            return Application.isPlaying && Time.timeSinceLevelLoad >= 20f;
         }
 
         private void LogVerboseWarning(string key, string message, float cooldownSeconds)

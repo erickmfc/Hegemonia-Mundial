@@ -89,10 +89,14 @@ MonoBehaviour:
   vidaAtual: 650
   unidadeBiologica: 0
   ehEstrutura: 0
-  prefabDestrocos: {fileID: 0}
+  prefabDestrocos: {fileID: 5856478735962788406, guid: 6d4a32397e3f7714db0a2bb124b42180, type: 3}
   somExplosaoExclusivo: {fileID: 0}
-  tamanhoDoEfeito: 3.6
+  tamanhoDoEfeito: 2.6
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 0
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!114 &5229590516880372388
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,6 +187,9 @@ MonoBehaviour:
   velocidadeSolo: 8
   velocidadeMaximaVoo: 95
   taxaDeGiroLeme: 90
+  raioOrbitaMissao: 85
+  velocidadeOrbitaMissao: 0.9
+  margemChegadaMissao: 65
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -193,6 +200,7 @@ MonoBehaviour:
   emAtaqueMergulho: 0
   alvoDoMergulho: {x: 0, y: 0, z: 0}
   alvoPrioritarioIA: 0
+  alvoEstrategico: {x: 0, y: 0, z: 0}
   estaEmModoVooFisico: 0
 --- !u!65 &-6006337848943342141
 BoxCollider:

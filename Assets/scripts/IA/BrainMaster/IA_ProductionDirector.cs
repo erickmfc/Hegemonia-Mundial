@@ -20,6 +20,9 @@ namespace Hegemonia.AI.BrainMaster
         private string _lastPreferredAircraftVariant = string.Empty;
         private IA_BrainMaster.IA_BootstrapStage _lastBootstrapStage = IA_BrainMaster.IA_BootstrapStage.Disabled;
         private int _bootstrapShipGoalCount = -1;
+        private float _nextRuntimeProductionQueueTime;
+        private readonly List<Estaleiro> _registeredShipyardBuffer = new List<Estaleiro>();
+        private readonly List<PierMarinha> _registeredPierBuffer = new List<PierMarinha>();
 
         public IA_ProductionDirector(IA_Context context)
         {
@@ -54,6 +57,12 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            IA_BrainMaster brain = _context.Brain;
+            if (ShouldHoldForRuntimePressure(now) && (brain == null || !brain.IsBootstrapActive))
+            {
+                return;
+            }
+
             long profileStart = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
@@ -79,7 +88,7 @@ namespace Hegemonia.AI.BrainMaster
                 bool hasFactory = snapshot.HasFactory;
                 bool hasAirport = snapshot.HasAirport;
                 bool hasHeliport = snapshot.HasHeliport;
-                bool hasNavalBase = snapshot.HasNavalBase;
+                bool hasNavalBase = snapshot.HasNavalBase || HasImmediateNavalBase();
                 int structureCount = snapshot.TotalOwnStructures;
                 UpdateStructureTracker(now, structureCount);
 
@@ -227,6 +236,16 @@ namespace Hegemonia.AI.BrainMaster
 
         private float ResolveDecisionDelay()
         {
+            if (ShouldRespectRuntimeLock() && DiagnosticoDesempenhoJogo.RuntimeSaturado())
+            {
+                return 4.00f;
+            }
+
+            if (ShouldRespectRuntimeLock() && DiagnosticoDesempenhoJogo.RuntimeSobPressao())
+            {
+                return 2.00f;
+            }
+
             IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
             if (pressure == null)
             {
@@ -272,6 +291,7 @@ namespace Hegemonia.AI.BrainMaster
             if (enqueued)
             {
                 DiagnosticoDesempenhoJogo.RegistrarProducao(data.nomeItem);
+                ArmRuntimeQueueCooldown();
             }
 
             return enqueued;
@@ -305,6 +325,7 @@ namespace Hegemonia.AI.BrainMaster
             if (enqueued)
             {
                 DiagnosticoDesempenhoJogo.RegistrarProducao(data.nomeItem, "IA_Prod_Air");
+                ArmRuntimeQueueCooldown();
             }
 
             return enqueued;
@@ -440,7 +461,7 @@ namespace Hegemonia.AI.BrainMaster
             bool hasBarracks = snapshot.HasBarracks;
             bool hasFactory = snapshot.HasFactory;
             bool hasAirport = snapshot.HasAirport;
-            bool hasNavalBase = snapshot.HasNavalBase;
+            bool hasNavalBase = snapshot.HasNavalBase || HasImmediateNavalBase();
 
             switch (stage)
             {
@@ -555,6 +576,35 @@ namespace Hegemonia.AI.BrainMaster
             return new IA_ForceSnapshot();
         }
 
+        private bool ShouldHoldForRuntimePressure(float now)
+        {
+            return ShouldRespectRuntimeLock()
+                   && DiagnosticoDesempenhoJogo.RuntimeSobPressao()
+                   && now < _nextRuntimeProductionQueueTime;
+        }
+
+        private void ArmRuntimeQueueCooldown()
+        {
+            if (!ShouldRespectRuntimeLock())
+            {
+                return;
+            }
+
+            float now = Time.time;
+            float cooldown = DiagnosticoDesempenhoJogo.RuntimeSaturado()
+                ? 4f
+                : (DiagnosticoDesempenhoJogo.RuntimeSobPressao() ? 2f : 0f);
+            if (cooldown > 0f)
+            {
+                _nextRuntimeProductionQueueTime = Mathf.Max(_nextRuntimeProductionQueueTime, now + cooldown);
+            }
+        }
+
+        private static bool ShouldRespectRuntimeLock()
+        {
+            return Application.isPlaying && Time.timeSinceLevelLoad >= 20f;
+        }
+
         private static void RegistrarTempoProducao(long profileStart)
         {
             float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - profileStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
@@ -562,6 +612,31 @@ namespace Hegemonia.AI.BrainMaster
             {
                 DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("production_ms", elapsedMs);
             }
+        }
+
+        private bool HasImmediateNavalBase()
+        {
+            RegistroEntidadesJogo.FillEstaleiros(_registeredShipyardBuffer);
+            for (int i = 0; i < _registeredShipyardBuffer.Count; i++)
+            {
+                Estaleiro estaleiro = _registeredShipyardBuffer[i];
+                if (estaleiro != null && _context.Backend.BelongsToTeam(estaleiro))
+                {
+                    return true;
+                }
+            }
+
+            RegistroEntidadesJogo.FillPiers(_registeredPierBuffer);
+            for (int i = 0; i < _registeredPierBuffer.Count; i++)
+            {
+                PierMarinha pier = _registeredPierBuffer[i];
+                if (pier != null && _context.Backend.BelongsToTeam(pier))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private int CountUnits(params string[] hints)

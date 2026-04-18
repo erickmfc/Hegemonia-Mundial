@@ -619,6 +619,7 @@ public class PierMarinha : MonoBehaviour
     public bool ConstruirNavio(GameObject prefabNavio)
     {
         if (prefabNavio == null) return false;
+        DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefabNavio.name);
 
         string validacaoPier;
         if (!IgnorarRegrasCosteirasManuais() && !NavalPlacementResolver.IsCurrentStructurePoseValid(gameObject, out validacaoPier))
@@ -648,6 +649,7 @@ public class PierMarinha : MonoBehaviour
         }
 
         GameObject novoNavio = Instantiate(prefabNavio, posSpawn, pontoSpawn.rotation);
+        long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
         
         // CORRECAO DE NOME: Remove (Clone) para que a IA consiga contar na Meta!
         string nomeLimpo = prefabNavio.name.ToLower();
@@ -734,7 +736,17 @@ public class PierMarinha : MonoBehaviour
         }
         
         Debug.Log($"[PierMarinha] {novoNavio.name} criado em {posSpawn}. Agua confirmada.");
+        RegistrarTempoDiagnostico("prefab_init_ms", initStart);
         return true;
+    }
+
+    private static void RegistrarTempoDiagnostico(string chave, long inicio)
+    {
+        float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+        if (elapsedMs > 0f)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
+        }
     }
 
     bool VerificarSeEhAgua(Vector3 pos)

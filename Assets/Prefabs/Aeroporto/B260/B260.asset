@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: B260
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 199801282bd4b9e4f9fc7efc53a0df67, type: 3}
   prefabDaUnidade: {fileID: 8988326293356594916, guid: 26fbc85c103b85643a9d996646ebb414, type: 3}
   preco: 100
   categoria: 2

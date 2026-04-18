@@ -170,14 +170,8 @@ public class GerenteDeJogo : MonoBehaviour
     {
         // 1. Identificar Tipo
         string nome = unidadeParaConstruir.name.ToLower();
-        
-        bool temTagSoldado = unidadeParaConstruir.CompareTag("Soldado");
-        bool ehSoldado = temTagSoldado ||
-                         nome.Contains("soldado") ||
-                         nome.Contains("soldier") ||
-                         nome.Contains("person") ||
-                         nome.Contains("infantry") ||
-                         nome.Contains("fuzileiro");
+
+        bool ehSoldado = EhSoldadoOuInfantaria(unidadeParaConstruir, nome);
         bool ehPredio = unidadeParaConstruir.CompareTag("Imovel") || nome.Contains("ares") || nome.Contains("torreta") || nome.Contains("missil") || nome.Contains("bunker") || nome.Contains("areas");
         bool ehNavio = (nome.Contains("navio") || nome.Contains("corveta") || nome.Contains("fragata") || nome.Contains("submarino") || nome.Contains("sub") || nome.Contains("destroier") || nome.Contains("barco") || nome.Contains("lancha") || nome.Contains("transporte") || nome.Contains("leviathan"));
         bool ehCarrier = nome.Contains("porta") || nome.Contains("carrier");
@@ -191,61 +185,12 @@ public class GerenteDeJogo : MonoBehaviour
                         nome.Contains("aviao") || nome.Contains("caca") || nome.Contains("g15") || 
                         nome.Contains("jet") || nome.Contains("bomb") || nome.Contains("fighter") || nome.Contains("falcon"));
 
-        // Se for Porta-Aviões, ele conta como Navio para requisitos de Estaleiro
         if (ehCarrier) ehNavio = true;
 
         LogInfo($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}, Avião? {ehAviao}");
 
-        // 2. Verificar se a FÁBRICA existe (Impedir aparecer na câmera do nada!)
-        if (ehSoldado)
-        {
-            listaQuarteis.RemoveAll(q => q.spawn == null);
-            if (listaQuarteis.Count == 0 && spawnSoldado == null)
-            {
-                Debug.LogWarning("PROIBIDO: Você precisa construir uma TENDA/QUARTEL antes de treinar soldados!");
-                return; // Cancela compra e não gasta o dinheiro
-            }
-        }
-        if (ehNavio)
-        {
-            listaEstaleiros.RemoveAll(e => e.spawn == null);
-            if (listaEstaleiros.Count == 0)
-            {
-                Debug.LogWarning("PROIBIDO: Você precisa construir um ESTALEIRO NAVAL antes de fabricar navios!");
-                return; 
-            }
-        }
-        else if (ehAviao)
-        {
-            if (Object.FindAnyObjectByType<GerenciadorAeroporto>() == null)
-            {
-                Debug.LogWarning("PROIBIDO: Você precisa possuir o AEROPORTO ou PORTA-AVIÕES antes de comprar aeronaves!");
-                return;
-            }
-        }
-        else if (ehHelicoptero)
-        {
-            listaHeliportos.RemoveAll(h => h == null);
-            if (listaHeliportos.Count == 0)
-            {
-                Debug.LogWarning("PROIBIDO: Você precisa construir um HELIPORTO antes de fabricar Helicópteros!");
-                return;
-            }
-        }
-        else // Veículo Terrestre
-        {
-            listaHangares.RemoveAll(h => h.spawn == null);
-            if (listaHangares.Count == 0 && spawnInterno == null)
-            {
-                Debug.LogWarning("PROIBIDO: Você precisa construir um HANGAR/FÁBRICA antes de fabricar blindados!");
-                return;
-            }
-        }
-
-        // 3. Verifica Dinheiro Total
         int custoTotal = preco * quantidade;
 
-        // Usa o novo sistema de recursos
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (recursos == null)
         {
@@ -255,24 +200,18 @@ public class GerenteDeJogo : MonoBehaviour
 
         if (recursos.TentarGastar(custoDinheiro: custoTotal))
         {
-            // 4. Adiciona na Fila (Um pedido para cada unidade)
             for (int i = 0; i < quantidade; i++)
             {
                 PedidoDeProducao novoPedido = new PedidoDeProducao();
                 novoPedido.nomeUnidade = unidadeParaConstruir.name;
                 novoPedido.prefab = unidadeParaConstruir;
                 novoPedido.ehSoldado = ehSoldado;
-                
-                novoPedido.ehSoldado = ehSoldado;
                 novoPedido.ehHelicoptero = ehHelicoptero;
                 novoPedido.ehNavio = ehNavio;
                 novoPedido.ehAviao = ehAviao;
                 novoPedido.ehCarrier = ehCarrier;
                 
-                // Tempo de Produção: 0s para Soldado (Instantâneo), 2s para Tanque/Heli
                 float tempoBase = ehSoldado ? 0f : 2.0f;
-                // Se for helicóptero, pode ter um tempo diferente se quiser
-                
                 novoPedido.tempoTotal = tempoBase;
                 novoPedido.tempoRestante = novoPedido.tempoTotal;
 
@@ -287,9 +226,61 @@ public class GerenteDeJogo : MonoBehaviour
         }
     }
 
+    bool EhSoldadoOuInfantaria(GameObject unidadeParaConstruir, string nomeNormalizado = null)
+    {
+        if (unidadeParaConstruir == null)
+        {
+            return false;
+        }
+
+        string nome = string.IsNullOrEmpty(nomeNormalizado)
+            ? unidadeParaConstruir.name.ToLowerInvariant()
+            : nomeNormalizado;
+
+        if (unidadeParaConstruir.CompareTag("Soldado"))
+        {
+            return true;
+        }
+
+        if (nome.Contains("soldado") ||
+            nome.Contains("soldier") ||
+            nome.Contains("person") ||
+            nome.Contains("infantry") ||
+            nome.Contains("fuzileiro") ||
+            nome.Contains("rifle"))
+        {
+            return true;
+        }
+
+        if (unidadeParaConstruir.GetComponent<AnimacoesSoldado>() != null ||
+            unidadeParaConstruir.GetComponentInChildren<AnimacoesSoldado>(true) != null)
+        {
+            return true;
+        }
+
+        SistemaDeDanos danos = unidadeParaConstruir.GetComponent<SistemaDeDanos>();
+        if (danos == null)
+        {
+            danos = unidadeParaConstruir.GetComponentInChildren<SistemaDeDanos>(true);
+        }
+
+        if (danos != null && danos.unidadeBiologica)
+        {
+            return true;
+        }
+
+        IdentidadeUnidade identidade = unidadeParaConstruir.GetComponent<IdentidadeUnidade>();
+        if (identidade == null)
+        {
+            identidade = unidadeParaConstruir.GetComponentInChildren<IdentidadeUnidade>(true);
+        }
+
+        return identidade != null && identidade.tipoUnidade == TipoUnidade.Infantaria;
+    }
+
     void FinalizarProducao(PedidoDeProducao pedido)
     {
-        if (pedido.ehAviao)
+        if (pedido.ehAviao || pedido.ehHelicoptero)
         {
             // Busca o MELHOR aeroporto (um que não esteja lotado e seja do jogador)
             GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
@@ -307,7 +298,11 @@ public class GerenteDeJogo : MonoBehaviour
                 
                 if (ehCarrier || ehTransporte || ehNaval || ehCarrierNome) continue;
 
-                if (a.ObterPrimeiraVagaLivre() != null)
+                bool temVagaAerea = pedido.ehHelicoptero
+                    ? (a.ObterVagaHelicopteroPreferencial(false) != null || a.ObterPrimeiraVagaLivre() != null || a.ObterVagaHelicopteroPreferencial(true) != null)
+                    : (a.ObterPrimeiraVagaLivre() != null);
+
+                if (temVagaAerea)
                 {
                     aeroEscolhido = a;
                     break;
@@ -317,7 +312,8 @@ public class GerenteDeJogo : MonoBehaviour
 
             if (aeroEscolhido != null)
             {
-                LogInfo($"[Logística] Avião '{pedido.nomeUnidade}' entregue em: {aeroEscolhido.name}");
+                string tipoEntrega = pedido.ehHelicoptero ? "Helicóptero" : "Avião";
+                LogInfo($"[Logística] {tipoEntrega} '{pedido.nomeUnidade}' entregue em: {aeroEscolhido.name}");
                 aeroEscolhido.ComprarAviao(pedido.prefab);
             }
             return; 

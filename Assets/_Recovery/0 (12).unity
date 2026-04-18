@@ -1,4 +1,4 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!29 &1
 OcclusionCullingSettings:
@@ -302,8 +302,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 11.535, y: -25}
-  m_SizeDelta: {x: 23.07, y: 50}
+  m_AnchoredPosition: {x: 10, y: -25}
+  m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &69202935
 MonoBehaviour:
@@ -359,7 +359,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Part 0"
+  m_text: Part 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1141,8 +1141,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 11.535, y: -25}
-  m_SizeDelta: {x: 23.07, y: 50}
+  m_AnchoredPosition: {x: 10, y: -25}
+  m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &224024901
 MonoBehaviour:
@@ -1198,7 +1198,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Oil 0"
+  m_text: Oil 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1673,6 +1673,7 @@ MonoBehaviour:
   corDocaLivre: {r: 0.2, g: 0.6, b: 0.3, a: 1}
   corDocaOcupada: {r: 0.7, g: 0.25, b: 0.25, a: 1}
   corBotaoAcao: {r: 0.2, g: 0.5, b: 0.8, a: 1}
+  debugLogs: 0
 --- !u!1 &317558217
 GameObject:
   m_ObjectHideFlags: 0
@@ -1809,7 +1810,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 31.07, y: -25}
+  m_AnchoredPosition: {x: 28, y: -25}
   m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &329787970
@@ -2081,6 +2082,11 @@ MonoBehaviour:
   velocidadeZoom: 1000
   velocidadeRotacao: 100
   multiplicadorShift: 2.5
+  campoDeVisaoBase: 75
+  campoDeVisaoMin: 65
+  campoDeVisaoMax: 85
+  alturaMinParaFov: 2
+  alturaMaxParaFov: 2500
 --- !u!114 &330585549
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2487,11 +2493,23 @@ MonoBehaviour:
   intervaloAtualizacaoGrid: 10
   cooldownProducaoPadrao: 4
   maxProducoesPorCiclo: 2
+  tickSchedulerIA: 0.25
+  intervaloPosturaTatica: 0.6
+  intervaloProducaoTatica: 1.1
+  intervaloTransportesTatico: 0.55
+  intervaloNavalTatico: 0.8
+  intervaloCombateTatico: 0.35
+  maxTropasProcessadasPorCiclo: 18
+  maxTransportesProcessadosPorCiclo: 6
+  maxNaviosProcessadosPorCiclo: 6
+  maxAvioesPatioPorCiclo: 4
   maxCandidatosPorBusca: 96
   maxCandidatosDoGrid: 18
   cooldownFalhaConstrucao: 8
   intervaloResumoRejeicoes: 2
   maxMotivosResumoRejeicoes: 3
+  debugPerformance: 0
+  resumoPerformance: 
   estadoAtual: 0
 --- !u!4 &442326500
 Transform:
@@ -3657,7 +3675,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 31.07, y: -25}
+  m_AnchoredPosition: {x: 28, y: -25}
   m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &713795714
@@ -3873,7 +3891,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 31.07, y: -25}
+  m_AnchoredPosition: {x: 28, y: -25}
   m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &761207218
@@ -4193,8 +4211,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 11.535, y: -25}
-  m_SizeDelta: {x: 23.07, y: 50}
+  m_AnchoredPosition: {x: 10, y: -25}
+  m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &802470692
 MonoBehaviour:
@@ -4250,7 +4268,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Pop 0"
+  m_text: Pop 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -5303,8 +5321,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 11.535, y: -25}
-  m_SizeDelta: {x: 23.07, y: 50}
+  m_AnchoredPosition: {x: 10, y: -25}
+  m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1063712046
 MonoBehaviour:
@@ -5360,7 +5378,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Pwr 0"
+  m_text: Pwr 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -5516,6 +5534,8 @@ MonoBehaviour:
   prefabSelecionado: {fileID: 0}
   modoConstrucao: 0
   alturaDoMar: 0
+  deslocamentoPadraoEstruturaCosteira: 18
+  distanciaCorrecaoSpawnNaval: 30
 --- !u!114 &1066512839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5653,6 +5673,7 @@ MonoBehaviour:
   corDocaLivre: {r: 0.2, g: 0.6, b: 0.3, a: 1}
   corDocaOcupada: {r: 0.7, g: 0.25, b: 0.25, a: 1}
   corBotaoAcao: {r: 0.1, g: 0.6, b: 0.8, a: 1}
+  debugLogs: 0
 --- !u!1001 &1066842979
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5753,7 +5774,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 31.07, y: -25}
+  m_AnchoredPosition: {x: 28, y: -25}
   m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1073633950
@@ -5949,6 +5970,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 4.8
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!54 &1145148827
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -6905,8 +6930,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 11.535, y: -25}
-  m_SizeDelta: {x: 23.07, y: 50}
+  m_AnchoredPosition: {x: 10, y: -25}
+  m_SizeDelta: {x: 20, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1525119797
 MonoBehaviour:
@@ -6962,7 +6987,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Mat 0"
+  m_text: Mat 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -7191,7 +7216,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 31.07, y: -25}
+  m_AnchoredPosition: {x: 28, y: -25}
   m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1551578177
@@ -7455,7 +7480,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 31.07, y: -25}
+  m_AnchoredPosition: {x: 28, y: -25}
   m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1580802877
@@ -7607,7 +7632,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 31.07, y: -25}
+  m_AnchoredPosition: {x: 28, y: -25}
   m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1609732825
@@ -7995,8 +8020,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 11.535, y: -25}
-  m_SizeDelta: {x: 23.07, y: 50}
+  m_AnchoredPosition: {x: 10, y: -25}
+  m_SizeDelta: {x: 20, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1677098699
 MonoBehaviour:
@@ -8052,7 +8077,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Milit 0"
+  m_text: Milit 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -9097,8 +9122,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 11.535, y: -25}
-  m_SizeDelta: {x: 23.07, y: 50}
+  m_AnchoredPosition: {x: 10, y: -25}
+  m_SizeDelta: {x: 20, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1959855008
 MonoBehaviour:
@@ -9154,7 +9179,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "$ 0"
+  m_text: $ 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -11236,4 +11261,3 @@ SceneRoots:
   - {fileID: 1688972103}
   - {fileID: 1808198153}
   - {fileID: 75456070}
-

@@ -23,6 +23,8 @@ public class GerenteSelecao : MonoBehaviour
     [Header("Configurações Visuais")]
     public RectTransform caixaSelecaoVisual; // Sua imagem verde
     public RectTransform canvasRect;         // O Pai de todos (Interface/Canvas)
+    public GameObject prefabMarcadorDestino; // Prefab do marcador normal
+    public GameObject prefabMarcadorBombardeiro; // Prefab Marker 7 (Para bombardeiros)
 
     [Header("Controle")]
     public float espacamento = 2.5f; // Distância entre soldados na formação
@@ -324,17 +326,48 @@ public class GerenteSelecao : MonoBehaviour
     // --- MARCADOR VISUAL DO CLIQUE ---
     void MostrarMarcadorDestino(Vector3 pos)
     {
-        GameObject marcador = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        Destroy(marcador.GetComponent<Collider>());
-        marcador.transform.position = pos + Vector3.up * 0.1f;
-        marcador.transform.localScale = new Vector3(2f, 0.05f, 2f);
-        
-        Renderer r = marcador.GetComponent<Renderer>();
-        r.material = new Material(Shader.Find("Sprites/Default"));
-        r.material.color = new Color(0f, 1f, 0.5f, 0.6f); // Verde neon
-        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        
-        marcador.AddComponent<AnimadorMarcador>();
+        bool temBombardeiro = false;
+        foreach(var u in unidadesSelecionadas) 
+        {
+            if (u != null && u.GetComponent<AviaoBombardeiro>() != null) 
+            { 
+                temBombardeiro = true; 
+                break; 
+            }
+        }
+
+        if (temBombardeiro && prefabMarcadorBombardeiro != null)
+        {
+            GameObject marcador = Instantiate(prefabMarcadorBombardeiro, pos + Vector3.up * 0.1f, Quaternion.identity);
+            marcador.transform.localScale = new Vector3(40f, 40f, 40f);
+            Destroy(marcador, 4f);
+        }
+        else if (prefabMarcadorDestino != null)
+        {
+            // Instancia o novo efeito de partícula (Marker 1 arrows Loop)
+            GameObject marcador = Instantiate(prefabMarcadorDestino, pos + Vector3.up * 0.1f, Quaternion.identity);
+            
+            // Aumenta o tamanho da animação para 10 vezes maior
+            marcador.transform.localScale = new Vector3(10f, 10f, 10f);
+            
+            // Como é um loop, vamos destruí-lo após 2 segundos para não ficar no mapa para sempre
+            Destroy(marcador, 2f); 
+        }
+        else
+        {
+            // Fallback caso não tenha prefab associado
+            GameObject marcador = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            Destroy(marcador.GetComponent<Collider>());
+            marcador.transform.position = pos + Vector3.up * 0.1f;
+            marcador.transform.localScale = new Vector3(2f, 0.05f, 2f);
+            
+            Renderer r = marcador.GetComponent<Renderer>();
+            r.material = new Material(Shader.Find("Sprites/Default"));
+            r.material.color = new Color(0f, 1f, 0.5f, 0.6f); // Verde neon
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            
+            marcador.AddComponent<AnimadorMarcador>();
+        }
     }
 
     public class AnimadorMarcador : MonoBehaviour
@@ -522,6 +555,10 @@ public class GerenteSelecao : MonoBehaviour
                 Helicoptero heli = unidade.GetComponent<Helicoptero>();
                 if (heli != null)
                 {
+                    if (heli.EstaSobControleDoAeroporto())
+                    {
+                        continue;
+                    }
                     heli.Decolar(destinoCentral + deslocHeli);
                 }
                 continue;

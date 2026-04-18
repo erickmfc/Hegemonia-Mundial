@@ -604,6 +604,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         // Dispara o avião pro ar
         if (pontoAlvo != Vector3.zero)
         {
+            CriarSinalizador(pontoAlvo, _selecionadoCarrier);
+
             if (esperandoCliqueMassa)
             {
                 esperandoCliqueMassa = false;

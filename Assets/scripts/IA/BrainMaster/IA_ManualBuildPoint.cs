@@ -69,7 +69,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Vector3 flatPoint = Flatten(transform.position);
-            float minDistance = Mathf.Max(OccupiedRadius, 1f);
+            // Para navios e estaleiros é normal ter coisas em volta (como defesas). Diminuimos o raio ocupado mínimo sugerido de 18 para algo que evite bugs.
+            float minDistance = ReusePoint ? 1f : Mathf.Max(OccupiedRadius * 0.5f, 1f);
             for (int i = 0; i < worldState.OwnStructures.Count; i++)
             {
                 GameObject structure = worldState.OwnStructures[i];
@@ -170,7 +171,12 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                if (normalizedItem.Contains(filter) || filter.Contains(normalizedItem))
+                // Corrige problemas quando o objeto tem sufixos no nome, tipo "Estaleiro_Team2" 
+                // Se o nome contiver "estaleiro" e o itemKey for "estaleiro naval", agora ele entende e aceita.
+                if (normalizedItem.Contains(filter) || filter.Contains(normalizedItem) || 
+                    (normalizedItem.Contains("estaleiro") && filter.Contains("estaleiro")) ||
+                    (normalizedItem.Contains("pier") && filter.Contains("pier")) ||
+                    (normalizedItem.Contains("quartel general") && filter.Contains("quartel general")))
                 {
                     return true;
                 }

@@ -38,6 +38,16 @@ public class ControleNavioRealista : MonoBehaviour
     // Mantido para compatibilidade interna, mas agora somado ao offset
     [HideInInspector] public float profundidadeVisual = 0f;
 
+    [Header("Manobra de Ré")]
+    [Tooltip("Ângulo mínimo para entrar em manobra de ré quando o alvo está muito atrás.")]
+    public float anguloEntradaManobraRe = 120f;
+    [Tooltip("Ângulo em que a manobra de ré é encerrada e o navio volta a avançar.")]
+    public float anguloSaidaManobraRe = 70f;
+    [Tooltip("Tempo máximo da manobra de ré antes de forçar retorno à navegação frontal.")]
+    public float duracaoMaximaManobraRe = 2.5f;
+    [Tooltip("Potência aplicada durante a manobra de ré.")]
+    public float potenciaManobraRe = -0.5f;
+
     [Header("Referências Visuais")]
     public ParticleSystem bigodeiraProa; // Espuma na frente
     public TrailRenderer rastroEsteira;  // Rastro longo
@@ -76,6 +86,8 @@ public class ControleNavioRealista : MonoBehaviour
     private bool ajusteInicialFlutuacaoVerificado = false;
     private float tempoAssistenciaSaida = 0f;
     private Vector3 destinoAssistenciaSaida = Vector3.zero;
+    private bool manobraReAtiva = false;
+    private float tempoRestanteManobraRe = 0f;
 
     void Awake()
     {
@@ -191,6 +203,8 @@ public class ControleNavioRealista : MonoBehaviour
         {
             potenciaAlvo = 0f;
             temDestino = false;
+            manobraReAtiva = false;
+            tempoRestanteManobraRe = 0f;
             anguloLemeAtual = Mathf.MoveTowards(anguloLemeAtual, 0f, Time.deltaTime * velocidadeLeme);
             return;
         }
@@ -205,6 +219,8 @@ public class ControleNavioRealista : MonoBehaviour
         {
             potenciaAlvo = 0f;
             temDestino = false;
+            manobraReAtiva = false;
+            tempoRestanteManobraRe = 0f;
             return;
         }
 
@@ -215,6 +231,8 @@ public class ControleNavioRealista : MonoBehaviour
         {
             potenciaAlvo = 0f;
             temDestino = false;
+            manobraReAtiva = false;
+            tempoRestanteManobraRe = 0f;
             return;
         }
 
@@ -246,7 +264,8 @@ public class ControleNavioRealista : MonoBehaviour
         }
 
         float angulo = Vector3.SignedAngle(transform.forward, direcaoAlvo, Vector3.up);
-        float velReal = velocidadeVetorial.magnitude;
+        float velocidadeLongitudinal = Vector3.Dot(velocidadeVetorial, transform.forward);
+        float velocidadeAbsoluta = Mathf.Abs(velocidadeLongitudinal);
 
         // O LEME vira proporcional ao angulo (30 graus é o suficiente pra dar leme máximo)
         float inputLeme = Mathf.Clamp(angulo / 30.0f, -1f, 1f);
@@ -262,11 +281,33 @@ public class ControleNavioRealista : MonoBehaviour
             potenciaAlvo = 1.0f; // Força total em frente, desenhando o arco gigantesco característico de navios!
         }
 
-        // Caso excepcional: Navio 100% PARADO e alvo muito atrás dele -> Dá ré curta pra manobrar (não desvia do realismo de peso)
-        if (tempoAssistenciaSaida <= 0f && Mathf.Abs(angulo) > 120f && velReal < 1.0f && distancia > 20f)
+        bool podeEntrarManobraRe = tempoAssistenciaSaida <= 0f
+            && Mathf.Abs(angulo) >= anguloEntradaManobraRe
+            && velocidadeAbsoluta < 1.0f
+            && distancia > 20f;
+
+        if (!manobraReAtiva && podeEntrarManobraRe)
         {
-            inputLeme = -Mathf.Clamp(angulo / 30.0f, -1f, 1f); // Reverte o leme na ré
-            potenciaAlvo = -0.5f; // Dá ré devagar para não engasgar
+            manobraReAtiva = true;
+            tempoRestanteManobraRe = Mathf.Max(0.5f, duracaoMaximaManobraRe);
+        }
+
+        if (manobraReAtiva)
+        {
+            tempoRestanteManobraRe = Mathf.Max(0f, tempoRestanteManobraRe - Time.deltaTime);
+            inputLeme = -Mathf.Clamp(angulo / 30.0f, -1f, 1f);
+            potenciaAlvo = potenciaManobraRe;
+
+            bool podeSairDaManobraRe = Mathf.Abs(angulo) <= anguloSaidaManobraRe
+                || distancia <= 20f
+                || tempoRestanteManobraRe <= 0f
+                || velocidadeLongitudinal > 1.5f;
+
+            if (podeSairDaManobraRe)
+            {
+                manobraReAtiva = false;
+                tempoRestanteManobraRe = 0f;
+            }
         }
 
         // Movimento do leme hidráulico macio
@@ -625,6 +666,8 @@ public class ControleNavioRealista : MonoBehaviour
         {
             destinoAtual = destino;
             agente.isStopped = false;
+            manobraReAtiva = false;
+            tempoRestanteManobraRe = 0f;
             bool destinoAceito = agente.SetDestination(destino);
             temDestino = destinoAceito;
 

@@ -249,11 +249,15 @@ MonoBehaviour:
   avioesNoHangar:
   - {fileID: 0}
   transportesC700NoPatio: []
+  helicopterosDoAeroporto: []
   prefabDroneKamikaze: {fileID: 0}
   precoDroneKamikaze: 1500
+  prefabMarcadorPatrulhaAviao: {fileID: 100100000, guid: 34dfcaa6bb3c3cd4da2080dc3fac234b, type: 3}
+  prefabMarcadorBombardeiro: {fileID: 100100000, guid: 8df1e45cda2d3fe408e1644747052e0e, type: 3}
   menuAeroportoUI: {fileID: 0}
   aviaoSelecionadoParaMissao: {fileID: 0}
   c700SelecionadoParaMissao: {fileID: 0}
+  helicopteroSelecionadoParaMissao: {fileID: 0}
   waypointsPatio: []
   wpPreparacao: {fileID: 0}
   wpPronto: {fileID: 0}
@@ -584,7 +588,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6596676186815640331}
   m_Layer: 0
-  m_Name: Parada (1)
+  m_Name: H
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -599,7 +603,7 @@ Transform:
   m_GameObject: {fileID: 2732642439269110338}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 19.5, y: -0.15, z: 1.5}
+  m_LocalPosition: {x: 19.5, y: -0.43, z: 1.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -725,7 +729,7 @@ Transform:
   m_GameObject: {fileID: 4007743661336223027}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 26.54, y: -0.15, z: 1.5}
+  m_LocalPosition: {x: 26.5, y: -0.15, z: -1.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -809,7 +813,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3182528716269658439}
   m_Layer: 0
-  m_Name: Parada (5)
+  m_Name: q
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -824,7 +828,7 @@ Transform:
   m_GameObject: {fileID: 4473071245863776096}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 59.6, y: -0.15, z: 2.3}
+  m_LocalPosition: {x: 59.6, y: -0.28, z: 2.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -889,7 +893,7 @@ Transform:
   m_GameObject: {fileID: 4962884928479857304}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.2, y: 0, z: 68.8}
+  m_LocalPosition: {x: -0.9, y: 0, z: 68.8}
   m_LocalScale: {x: 78.10264, y: 0.1, z: 152.7}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -997,7 +1001,7 @@ Transform:
   m_GameObject: {fileID: 5069743514796966969}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 15.2, y: -0.15, z: 3.2}
+  m_LocalPosition: {x: 15.2, y: -0.15, z: 0.56}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1044,7 +1048,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5397247607687017520}
   m_Layer: 0
-  m_Name: Parada (3)
+  m_Name: k
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1075,7 +1079,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3162522347704044393}
   m_Layer: 0
-  m_Name: Parada (4)
+  m_Name: l
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1090,7 +1094,7 @@ Transform:
   m_GameObject: {fileID: 5282762709131609524}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 49.8, y: -0.15, z: 2.3}
+  m_LocalPosition: {x: 49.8, y: -0.37, z: 2.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1137,7 +1141,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2734333609672328880}
   m_Layer: 0
-  m_Name: Parada (2)
+  m_Name: j
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1152,7 +1156,7 @@ Transform:
   m_GameObject: {fileID: 5339522786208864364}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 30.8, y: -0.15, z: 2}
+  m_LocalPosition: {x: 30.8, y: -0.43, z: 2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

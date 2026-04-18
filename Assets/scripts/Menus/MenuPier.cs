@@ -31,6 +31,13 @@ public class MenuPier : MonoBehaviour
 
     void Update()
     {
+        if (UnityEngine.EventSystems.EventSystem.current != null && 
+            UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null &&
+            UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<InputField>() != null)
+        {
+            return;
+        }
+
         // Tecla de atalho alterada para 'V' conforme solicitado
         if (Input.GetKeyDown(KeyCode.V))
         {

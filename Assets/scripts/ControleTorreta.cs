@@ -458,6 +458,7 @@ public class ControleTorreta : MonoBehaviour
                                  alvoTr.name.ToLower().Contains("caca") ||
                                  alvoTr.name.ToLower().Contains("drone") ||
                                  alvoTr.name.ToLower().Contains("vap") ||
+                                 alvoTr.name.ToLower().Contains("bombard") ||
                                  alvoTr.tag == "Areo" || 
                                  alvoTr.tag == "Aereo";
                 

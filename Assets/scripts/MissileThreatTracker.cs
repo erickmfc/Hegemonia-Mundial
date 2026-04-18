@@ -12,6 +12,7 @@ public class MissileThreatTracker : MonoBehaviour
     [SerializeField] private float velocidadeEstimada = 80f;
     [SerializeField] private Vector3 ultimoAlvoConhecido;
     [SerializeField] private float tempoDeVidaInicial = 10f;
+    [SerializeField] private bool destruirMissilAoExpirar = true;
 
     private Transform alvoTransform;
     private Transform raizMissil;
@@ -133,8 +134,12 @@ public class MissileThreatTracker : MonoBehaviour
         interceptor = ehInterceptador;
         velocidadeEstimada = Mathf.Max(velocidade, EstimarVelocidade(raizMissil.gameObject), 1f);
         teamOrigem = ResolverTeam(origem, raizMissil);
+        float tempoVidaRastreamento = ResolverTempoVidaRastreamento(
+            raizMissil != null ? raizMissil.gameObject : gameObject,
+            tempoDeVidaInicial,
+            out destruirMissilAoExpirar);
         CancelInvoke(nameof(ExpirarMissil));
-        Invoke(nameof(ExpirarMissil), tempoDeVidaInicial);
+        Invoke(nameof(ExpirarMissil), tempoVidaRastreamento);
 
         if (teamOrigem != -1)
         {
@@ -213,6 +218,13 @@ public class MissileThreatTracker : MonoBehaviour
 
     void ExpirarMissil()
     {
+        RemoverRegistro();
+
+        if (!destruirMissilAoExpirar)
+        {
+            return;
+        }
+
         Transform raiz = RaizMissil;
         if (raiz == null)
         {
@@ -226,6 +238,80 @@ public class MissileThreatTracker : MonoBehaviour
         }
 
         Destroy(raiz.gameObject);
+    }
+
+    static float ResolverTempoVidaRastreamento(GameObject missil, float fallback, out bool destruirAoExpirar)
+    {
+        destruirAoExpirar = true;
+        float tempoFallback = Mathf.Max(0.5f, fallback);
+
+        if (missil == null)
+        {
+            return tempoFallback;
+        }
+
+        MisselNaval misselNaval = missil.GetComponent<MisselNaval>();
+        if (misselNaval != null)
+        {
+            destruirAoExpirar = false;
+            return Mathf.Max(0.5f, misselNaval.tempoMaximoVida + 0.5f);
+        }
+
+        MisselCaca misselCaca = missil.GetComponent<MisselCaca>();
+        if (misselCaca != null)
+        {
+            destruirAoExpirar = false;
+            return Mathf.Max(0.5f, misselCaca.tempoMaximoVida + 0.5f);
+        }
+
+        MisselSubmarino misselSubmarino = missil.GetComponent<MisselSubmarino>();
+        if (misselSubmarino != null)
+        {
+            destruirAoExpirar = false;
+            return Mathf.Max(0.5f, misselSubmarino.tempoMaximoVida + 0.5f);
+        }
+
+        MisselBombardeiro misselBombardeiro = missil.GetComponent<MisselBombardeiro>();
+        if (misselBombardeiro != null)
+        {
+            destruirAoExpirar = false;
+            return Mathf.Max(0.5f, misselBombardeiro.tempoDeVida + 0.5f);
+        }
+
+        MissilTeleguiado missilTeleguiado = missil.GetComponent<MissilTeleguiado>();
+        if (missilTeleguiado != null)
+        {
+            destruirAoExpirar = false;
+            return Mathf.Max(0.5f, missilTeleguiado.tempoDeVida + 0.5f);
+        }
+
+        Projetil projetil = missil.GetComponent<Projetil>();
+        if (projetil != null)
+        {
+            destruirAoExpirar = false;
+            return Mathf.Max(0.5f, projetil.tempoDeVida + 0.5f);
+        }
+
+        MisselTatico misselTatico = missil.GetComponent<MisselTatico>();
+        if (misselTatico != null)
+        {
+            destruirAoExpirar = false;
+            return 15.5f;
+        }
+
+        MisselICBM misselIcbm = missil.GetComponent<MisselICBM>();
+        if (misselIcbm != null)
+        {
+            return Mathf.Max(tempoFallback, 30f);
+        }
+
+        MisselLeopardAutomatico misselLeopard = missil.GetComponent<MisselLeopardAutomatico>();
+        if (misselLeopard != null)
+        {
+            return Mathf.Max(tempoFallback, 20f);
+        }
+
+        return tempoFallback;
     }
 
     static int ResolverTeam(Component origem, Transform raizMissil)

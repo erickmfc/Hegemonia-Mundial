@@ -140,6 +140,24 @@ public class IA_Suprema : MonoBehaviour
     private Vector3 ultimoPontoDesembarqueNaval;
     private Vector3 ultimoPontoCarrierNaval;
 
+    [Header("Otimização da IA")]
+    [Tooltip("Tempo minimo entre a reconstrução do resumo interno de tropas e predios.")]
+    public float intervaloResumoOperacional = 2f;
+    [Tooltip("Tempo minimo entre scans completos do oponente.")]
+    public float intervaloAnaliseOponente = 6f;
+    [Tooltip("Tempo minimo entre consultas completas de rota terrestre para invasão naval.")]
+    public float intervaloConsultaRotaTerrestre = 10f;
+    [Tooltip("Ative apenas para depurar a IA. Desligado reduz spam no console em runtime.")]
+    public bool logsDetalhados = false;
+
+    private readonly Dictionary<string, int> resumoOperacional = new Dictionary<string, int>();
+    private float proximaAtualizacaoResumoOperacional = -1f;
+    private float proximaAnaliseOponentePermitida = -1f;
+    private float proximaConsultaRotaTerrestre = -1f;
+    private bool cacheTemRotaTerrestre = true;
+    private Vector3 ultimaOrigemConsultaRota = Vector3.positiveInfinity;
+    private Vector3 ultimoDestinoConsultaRota = Vector3.positiveInfinity;
+
     // ==============================================================
     // 🚀 INICIALIZAÇÃO E BUSCA GLOBAL
     // ==============================================================
@@ -227,7 +245,7 @@ public class IA_Suprema : MonoBehaviour
         {
             yield return new WaitForSeconds(1f);
             float ganho = rendaBase * (1f + (nivelDificuldade * 0.1f));
-            int prediosVivos = meusPredios.Count(p => p != null);
+            int prediosVivos = ContarObjetosVivos(meusPredios);
             
             int geradoresRenda = Contar("refinaria") + Contar("plataforma");
             
@@ -311,6 +329,7 @@ public class IA_Suprema : MonoBehaviour
         while (true)
         {
             LimparMortos();
+            AtualizarResumoOperacional();
             AnalisarOponente();
 
             if (sinalizadorAgua != null) nivelDoMar = sinalizadorAgua.position.y;
@@ -332,7 +351,7 @@ public class IA_Suprema : MonoBehaviour
 
             if (fezObra)
             {
-                Debug.Log($"[IA Suprema] Obra erguida! Pausa logística ({cooldownConstrucao}s).");
+                LogDetalhado($"[IA Suprema] Obra erguida! Pausa logística ({cooldownConstrucao}s).");
                 yield return new WaitForSeconds(cooldownConstrucao);
             }
             else
@@ -496,7 +515,7 @@ public class IA_Suprema : MonoBehaviour
                 {
                     dinheiroIA -= custo;
                     SpawnarObjeto(prefab, posTeste, chave);
-                    Debug.Log($"[IA Suprema] Construiu Sistema Antiaéreo (Ares) na posição {posTeste}");
+                    LogDetalhado($"[IA Suprema] Construiu Sistema Antiaéreo (Ares) na posição {posTeste}");
                     return true;
                 }
             }
@@ -605,12 +624,12 @@ public class IA_Suprema : MonoBehaviour
                 if(dirParaBase == Vector3.zero) dirParaBase = Vector3.forward;
                 
                 SpawnarObjeto(ObterPrefab(chave), posTesteAbsoluta, chave, Quaternion.LookRotation(dirParaBase));
-                Debug.Log($"[IA Suprema] ⚓ ORDEM CUMPRIDA: '{chave}' construído estritamente na ÁGUA a {distanciaNavalDaCosta}m da terra!");
+                LogDetalhado($"[IA Suprema] ⚓ ORDEM CUMPRIDA: '{chave}' construído estritamente na ÁGUA a {distanciaNavalDaCosta}m da terra!");
                 return true;
             }
         }
             
-        Debug.LogWarning($"[IA Suprema] AVISO: A zona naval está LOTADA ou sem espaço na água! Não faremos nada.");
+        LogDetalhadoAviso("[IA Suprema] AVISO: A zona naval está LOTADA ou sem espaço na água! Não faremos nada.");
         return false; 
     }
 
@@ -815,6 +834,7 @@ public class IA_Suprema : MonoBehaviour
             if (prefeituraPronta)
             {
                 LimparMortos(); 
+                AtualizarResumoOperacional();
                 DefinirPosturaGlobal();
                 GerenciarProducaoTropas();
                 GerenciarLogisticaTransporte();
@@ -992,15 +1012,41 @@ public class IA_Suprema : MonoBehaviour
         if (alvoJogadorBase == null) return true;
         if (bufferCaminhoTerrestre == null) bufferCaminhoTerrestre = new NavMeshPath();
 
+        Vector3 origemConsulta = ObterCentroBaseNavalIA();
+        Vector3 destinoConsulta = alvoJogadorBase.position;
+        bool cacheValida = Time.time < proximaConsultaRotaTerrestre
+            && (origemConsulta - ultimaOrigemConsultaRota).sqrMagnitude <= 900f
+            && (destinoConsulta - ultimoDestinoConsultaRota).sqrMagnitude <= 2500f;
+
+        if (cacheValida)
+            return cacheTemRotaTerrestre;
+
         NavMeshHit origem;
         NavMeshHit destino;
-        if (!NavMesh.SamplePosition(ObterCentroBaseNavalIA(), out origem, 80f, NavMesh.AllAreas)) return false;
-        if (!NavMesh.SamplePosition(alvoJogadorBase.position, out destino, 120f, NavMesh.AllAreas)) return false;
-        if (!NavMesh.CalculatePath(origem.position, destino.position, NavMesh.AllAreas, bufferCaminhoTerrestre)) return false;
+        if (!NavMesh.SamplePosition(origemConsulta, out origem, 80f, NavMesh.AllAreas))
+        {
+            AtualizarCacheRotaTerrestre(false, origemConsulta, destinoConsulta);
+            return false;
+        }
 
-        return bufferCaminhoTerrestre.status == NavMeshPathStatus.PathComplete
+        if (!NavMesh.SamplePosition(destinoConsulta, out destino, 120f, NavMesh.AllAreas))
+        {
+            AtualizarCacheRotaTerrestre(false, origemConsulta, destinoConsulta);
+            return false;
+        }
+
+        if (!NavMesh.CalculatePath(origem.position, destino.position, NavMesh.AllAreas, bufferCaminhoTerrestre))
+        {
+            AtualizarCacheRotaTerrestre(false, origemConsulta, destinoConsulta);
+            return false;
+        }
+
+        bool temRota = bufferCaminhoTerrestre.status == NavMeshPathStatus.PathComplete
             && bufferCaminhoTerrestre.corners != null
             && bufferCaminhoTerrestre.corners.Length > 1;
+
+        AtualizarCacheRotaTerrestre(temRota, origemConsulta, destinoConsulta);
+        return temRota;
     }
 
     Vector3 ObterPontoReuniaoTerrestreNaval(Vector3 pontoCarga)
@@ -1763,7 +1809,7 @@ public class IA_Suprema : MonoBehaviour
 
     void GerenciarProducaoTropas()
     {
-        int qtdTropasVivas = minhasTropas.Count(t => t != null);
+        int qtdTropasVivas = ContarObjetosVivos(minhasTropas);
         if (qtdTropasVivas > 120) return; 
 
         bool temQuartel = Contar("quartel") > 0 || !biblioteca.ContainsKey("quartel");
@@ -1791,9 +1837,22 @@ public class IA_Suprema : MonoBehaviour
 
         if (temAereo && Contar("helicoptero") < metaAereo) TreinarTropa("helicoptero", 900, true);
 
-        if (temPistaCaca && ContarAvioes() < metaCacas)
+        int limiteAvioes = metaCacas + 4; // Expansão do limite pra comportar a esquadra mista
+        if (temPistaCaca && ContarAvioes() < limiteAvioes)
         {
-            TreinarAviao("caca", 1200);
+            float sorteio = Random.value;
+            if (sorteio < 0.25f && biblioteca.ContainsKey("bombardeiro"))
+            {
+                TreinarAviao("bombardeiro", 2000);
+            }
+            else if (sorteio >= 0.25f && sorteio < 0.40f && biblioteca.ContainsKey("transporte_aereo_pesado"))
+            {
+                TreinarAviao("transporte_aereo_pesado", 1500);
+            }
+            else
+            {
+                TreinarAviao("caca", 1200);
+            }
         }
 
         if (permitirMarinha && temNaval && biblioteca.ContainsKey("porta_avioes") && portaAvioes == 0 && (estadoAtual == EstadoIA.GuerraTotal || prepararInvasaoAnfibia))
@@ -1880,6 +1939,8 @@ public class IA_Suprema : MonoBehaviour
                      GameObject novoNavio = fabricaNaval.ProduzirUnidade(ObterPrefab(chave));
                      if (novoNavio != null) 
                      {
+                         novoNavio.name = chave;
+                         ConfigurarObjeto(novoNavio, false);
                          // MENTOR FIX: Se a Fábrica colocou ele na terra por acidente, puxa para a água na marra!
                          if (posAguaGarantida != Vector3.zero)
                          {
@@ -1888,6 +1949,7 @@ public class IA_Suprema : MonoBehaviour
                              if(navAg != null) navAg.Warp(posAguaGarantida);
                          }
                          meusNavios.Add(novoNavio);
+                         MarcarResumoOperacionalComoSujo();
                      }
                 }
                 else
@@ -1906,6 +1968,7 @@ public class IA_Suprema : MonoBehaviour
                     navio.name = chave;
                     ConfigurarObjeto(navio, false);
                     meusNavios.Add(navio);
+                    MarcarResumoOperacionalComoSujo();
                 }
             }
             return;
@@ -1942,6 +2005,11 @@ public class IA_Suprema : MonoBehaviour
         if (fabricaComponente != null)
         {
             nova = fabricaComponente.ProduzirUnidade(ObterPrefab(chave));
+            if (nova != null)
+            {
+                nova.name = chave;
+                ConfigurarObjeto(nova, false);
+            }
         }
         else
         {
@@ -1954,6 +2022,7 @@ public class IA_Suprema : MonoBehaviour
 
         if (chave == "transporte" || chave == "transporte_aereo") meusTransportes.Add(nova);
         else minhasTropas.Add(nova);
+        MarcarResumoOperacionalComoSujo();
 
         Vector3[] pontosFronteira = ObterPontosDeFronteira();
         Vector3 rallyPoint = pontosFronteira[Random.Range(0, 3)] + new Vector3(Random.Range(-15,15), 0, Random.Range(-15,15));
@@ -2173,17 +2242,23 @@ public class IA_Suprema : MonoBehaviour
     // ==============================================================
     void AnalisarOponente()
     {
+        if (Time.time < proximaAnaliseOponentePermitida) return;
+        proximaAnaliseOponentePermitida = Time.time + Mathf.Max(1f, intervaloAnaliseOponente);
+
         RegistroEntidadesJogo.FillUnidades(bufferUnidadesRegistradas);
         if (bufferUnidadesRegistradas.Count == 0) return;
 
         alvoJogadorBase = null;
         alvoJogadorEconomia = null; 
+        forcaInimigaAerea = 0;
 
         for (int i = 0; i < bufferUnidadesRegistradas.Count; i++)
         {
             IdentidadeUnidade u = bufferUnidadesRegistradas[i];
             if (u == null || u.teamID != 1) continue;
             string n = u.name.ToLower();
+            if (NomeContemTrecho(n, "helicoptero", "transporte_aereo", "caca", "aviao", "jet", "bombardeiro", "bomber"))
+                forcaInimigaAerea++;
             if (n.Contains("prefeitura") || n.Contains("complexo")) alvoJogadorBase = u.transform;
             
             if (n.Contains("refinaria") || n.Contains("mina") || n.Contains("petroleo") || n.Contains("armazem"))
@@ -2243,6 +2318,7 @@ public class IA_Suprema : MonoBehaviour
         novo.name = nome;
         ConfigurarObjeto(novo, true);
         meusPredios.Add(novo);
+        MarcarResumoOperacionalComoSujo();
     }
 
     Vector3 EncontrarPontoNaAgua()
@@ -2377,8 +2453,10 @@ public class IA_Suprema : MonoBehaviour
             AddLib("navio_transporte", obj);
             AddLib("navio", obj);
         }
-        else if (n.Contains("ray") || n.Contains("guincho")) AddLib("transporte_aereo", obj);
+        else if (n.Contains("ray") || n.Contains("guincho") || n.Contains("transporte_aereo_leve")) AddLib("transporte_aereo", obj);
         else if (n.Contains("heli") || n.Contains("apache") || n.Contains("cobra")) AddLib("helicoptero", obj);
+        else if (n.Contains("c700") || n.Contains("cargo") || (n.Contains("transporte") && n.Contains("aviao"))) AddLib("transporte_aereo_pesado", obj);
+        else if (n.Contains("bombardeiro") || n.Contains("bomber") || n.Contains("b52") || n.Contains("b2")) AddLib("bombardeiro", obj);
         else if (n.Contains("transporte") || n.Contains("caminhao") || n.Contains("truck")) AddLib("transporte", obj);
         else if (n.Contains("caca") || n.Contains("aviao") || n.Contains("jet") || n.Contains("tuk") || n.Contains("super") || n.Contains("g15")) AddLib("caca", obj);
         else if (ehSubmarinoPrefab || EhSubmarinoNome(n)) AddLib("submarino", obj);
@@ -2402,18 +2480,154 @@ public class IA_Suprema : MonoBehaviour
     }
     
     void LimparMortos() 
-    { 
-        meusPredios.RemoveAll(x => x == null); 
-        minhasTropas.RemoveAll(x => x == null); 
-        meusTransportes.RemoveAll(x => x == null);
-        meusNavios.RemoveAll(x => x == null);
+    {
+        int removidos = 0;
+        removidos += meusPredios.RemoveAll(x => x == null);
+        removidos += minhasTropas.RemoveAll(x => x == null);
+        removidos += meusTransportes.RemoveAll(x => x == null);
+        removidos += meusNavios.RemoveAll(x => x == null);
+
+        if (removidos > 0)
+            MarcarResumoOperacionalComoSujo();
+    }
+
+    void MarcarResumoOperacionalComoSujo()
+    {
+        proximaAtualizacaoResumoOperacional = -1f;
+    }
+
+    void AtualizarResumoOperacional(bool forcar = false)
+    {
+        if (!forcar && Time.time < proximaAtualizacaoResumoOperacional) return;
+
+        resumoOperacional.Clear();
+        SomarResumoOperacional(meusPredios, true, false);
+        SomarResumoOperacional(minhasTropas, false, false);
+        SomarResumoOperacional(meusTransportes, false, false);
+        SomarResumoOperacional(meusNavios, false, true);
+        proximaAtualizacaoResumoOperacional = Time.time + Mathf.Max(0.5f, intervaloResumoOperacional);
+    }
+
+    void SomarResumoOperacional(List<GameObject> origem, bool ehPredio, bool ehNavio)
+    {
+        for (int i = 0; i < origem.Count; i++)
+        {
+            AcumularResumoOperacional(origem[i], ehPredio, ehNavio);
+        }
+    }
+
+    void AcumularResumoOperacional(GameObject obj, bool ehPredio, bool ehNavio)
+    {
+        if (obj == null) return;
+
+        string nome = NormalizarNomeContagem(obj.name);
+        if (string.IsNullOrEmpty(nome)) return;
+
+        if (ehPredio)
+        {
+            if (NomeContemTrecho(nome, "prefeitura", "complexo", "governo")) { IncrementarResumoOperacional("prefeitura"); return; }
+            if (NomeContemTrecho(nome, "quartel", "tenda", "barraca")) { IncrementarResumoOperacional("quartel"); return; }
+            if (NomeContemTrecho(nome, "heliporto", "helipad")) { IncrementarResumoOperacional("heliporto"); return; }
+            if (NomeContemTrecho(nome, "fabrica", "construtor", "hangar", "veiculo")) { IncrementarResumoOperacional("fabrica"); return; }
+            if (NomeContemTrecho(nome, "plataforma", "platform")) { IncrementarResumoOperacional("plataforma"); return; }
+            if (NomeContemTrecho(nome, "refinaria", "petroleo", "mina")) { IncrementarResumoOperacional("refinaria"); return; }
+            if (NomeContemTrecho(nome, "antiaerea", "ares", "sam", "missil")) { IncrementarResumoOperacional("antiaerea"); return; }
+            if (NomeContemTrecho(nome, "torreta", "defesa", "canhao")) { IncrementarResumoOperacional("torreta"); return; }
+            if (NomeContemTrecho(nome, "aeroporto", "airport", "pista")) { IncrementarResumoOperacional("aeroporto"); return; }
+            if (nome.Contains("estaleiro")) { IncrementarResumoOperacional("estaleiro"); return; }
+            if (NomeContemTrecho(nome, "pier", "porto")) { IncrementarResumoOperacional("pier"); return; }
+            return;
+        }
+
+        if (ehNavio)
+        {
+            if (EhPortaAvioesNome(nome))
+            {
+                IncrementarResumoOperacional("porta_avioes");
+                IncrementarResumoOperacional("navio");
+                return;
+            }
+
+            if (EhTransporteNavalNome(nome))
+            {
+                IncrementarResumoOperacional("navio_transporte");
+                IncrementarResumoOperacional("navio");
+                return;
+            }
+
+            if (EhSubmarinoNome(nome))
+            {
+                IncrementarResumoOperacional("submarino");
+                return;
+            }
+
+            if (EhNavioCombateNome(nome))
+            {
+                IncrementarResumoOperacional("navio");
+                return;
+            }
+        }
+
+        if (NomeContemTrecho(nome, "soldado", "infantaria", "fuzileiro", "person")) { IncrementarResumoOperacional("soldado"); return; }
+        if (NomeContemTrecho(nome, "tanque", "tank", "leopard", "blindado")) { IncrementarResumoOperacional("tanque"); return; }
+        if (NomeContemTrecho(nome, "c700", "cargo", "transporte_aereo_pesado")) { IncrementarResumoOperacional("transporte_aereo_pesado"); return; }
+        if (NomeContemTrecho(nome, "ray", "guincho", "transporte_aereo_leve", "transporte_aereo")) { IncrementarResumoOperacional("transporte_aereo"); return; }
+        if (NomeContemTrecho(nome, "helicoptero", "heli", "apache", "cobra")) { IncrementarResumoOperacional("helicoptero"); return; }
+        if (NomeContemTrecho(nome, "bombardeiro", "bomber", "b52", "b2")) { IncrementarResumoOperacional("bombardeiro"); return; }
+        if (NomeContemTrecho(nome, "transporte", "caminhao", "truck")) { IncrementarResumoOperacional("transporte"); return; }
+        if (NomeContemTrecho(nome, "caca", "aviao", "jet", "tuk", "super", "g15", "a10")) { IncrementarResumoOperacional("caca"); return; }
+    }
+
+    void IncrementarResumoOperacional(string chave)
+    {
+        if (string.IsNullOrEmpty(chave)) return;
+
+        if (resumoOperacional.ContainsKey(chave)) resumoOperacional[chave]++;
+        else resumoOperacional[chave] = 1;
+    }
+
+    string NormalizarNomeContagem(string nome)
+    {
+        if (string.IsNullOrEmpty(nome)) return string.Empty;
+        return nome.Replace("(Clone)", string.Empty).Replace("(clone)", string.Empty).Trim().ToLower();
+    }
+
+    int ContarObjetosVivos(List<GameObject> objetos)
+    {
+        int total = 0;
+        for (int i = 0; i < objetos.Count; i++)
+        {
+            if (objetos[i] != null) total++;
+        }
+        return total;
+    }
+
+    void AtualizarCacheRotaTerrestre(bool valor, Vector3 origem, Vector3 destino)
+    {
+        cacheTemRotaTerrestre = valor;
+        ultimaOrigemConsultaRota = origem;
+        ultimoDestinoConsultaRota = destino;
+        proximaConsultaRotaTerrestre = Time.time + Mathf.Max(1f, intervaloConsultaRotaTerrestre);
+    }
+
+    void LogDetalhado(string mensagem)
+    {
+        if (logsDetalhados) Debug.Log(mensagem);
+    }
+
+    void LogDetalhadoAviso(string mensagem)
+    {
+        if (logsDetalhados) Debug.LogWarning(mensagem);
     }
     
-    int Contar(string k) => 
-        (meusPredios.Count(x => x != null && x.name == k)) + 
-        (minhasTropas.Count(x => x != null && x.name == k)) + 
-        (meusTransportes.Count(x => x != null && x.name == k)) +
-        (meusNavios.Count(x => x != null && x.name == k));
+    int Contar(string k)
+    {
+        AtualizarResumoOperacional();
+        if (string.IsNullOrEmpty(k)) return 0;
+
+        int total;
+        return resumoOperacional.TryGetValue(k.ToLower(), out total) ? total : 0;
+    }
 
     int ContarNavios()
     {
@@ -2435,6 +2649,7 @@ public class IA_Suprema : MonoBehaviour
     {
         yield return new WaitForSeconds(3f);
         RegistroEntidadesJogo.FillUnidades(bufferUnidadesRegistradas);
+        bool houveRegistro = false;
         foreach (var u in bufferUnidadesRegistradas)
         {
             if (u == null || u.teamID != this.teamID) continue;
@@ -2446,7 +2661,10 @@ public class IA_Suprema : MonoBehaviour
             if (!ehNavio) continue;
             if (meusNavios.Contains(u.gameObject)) continue;
             meusNavios.Add(u.gameObject);
+            houveRegistro = true;
         }
+
+        if (houveRegistro) MarcarResumoOperacionalComoSujo();
     }
     
     // ==============================================================

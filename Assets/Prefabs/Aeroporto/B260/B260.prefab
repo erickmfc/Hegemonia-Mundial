@@ -24,12 +24,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1791518756617654695}
   serializedVersion: 2
-  m_LocalRotation: {x: -6.123234e-17, y: -1, z: 6.123234e-17, w: 1.6081226e-16}
-  m_LocalPosition: {x: -0.0036399632, y: -0.16450045, z: -0.09021077}
-  m_LocalScale: {x: 0.03125, y: 0.03125, z: 0.03125}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.022880554, y: -1.0369964, z: -1.3416862}
+  m_LocalScale: {x: 0.25, y: 0.25, z: 0.25}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2323724990640279425}
+  m_Father: {fileID: 7533997389712867606}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5776870554562238510
 GameObject:
@@ -61,6 +61,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 9069516014634279153}
   - {fileID: 2323724990640279425}
   m_Father: {fileID: 3379953765730057900}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -72,7 +73,7 @@ Animator:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5776870554562238510}
-  m_Enabled: 1
+  m_Enabled: 0
   m_Avatar: {fileID: 9000000, guid: c5604dbcc2b0749d5ae26ecd0c80fdca, type: 3}
   m_Controller: {fileID: 0}
   m_CullingMode: 0
@@ -118,7 +119,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8293001923244726674}
-  - {fileID: 9069516014634279153}
   m_Father: {fileID: 7533997389712867606}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &3025153335059201419
@@ -191,7 +191,6 @@ GameObject:
   - component: {fileID: 4675291909303280190}
   - component: {fileID: 528291891322567192}
   - component: {fileID: 7923779498511352763}
-  - component: {fileID: 2828128422371994570}
   m_Layer: 0
   m_Name: B260
   m_TagString: Aereo
@@ -300,6 +299,9 @@ MonoBehaviour:
   velocidadeSolo: 10
   velocidadeMaximaVoo: 90
   taxaDeGiroLeme: 60
+  raioOrbitaMissao: 85
+  velocidadeOrbitaMissao: 0.9
+  margemChegadaMissao: 65
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -325,7 +327,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AviaoBombardeiro
   modoDeAtaque: 0
-  altitudeDeVoo: 350
+  altitudeDeVoo: 300
   projetilPrefab: {fileID: 3328076729220811044, guid: dbebd4d27cec9d5489b2a750959bdb87, type: 3}
   comportasDeBomba:
   - {fileID: 9069516014634279153}
@@ -336,42 +338,10 @@ MonoBehaviour:
   raioVisaoPatrulha: 150
   layerInimigos:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   alvoMassa1: {x: 0, y: 0, z: 0}
   alvoMassa2: {x: 0, y: 0, z: 0}
   quantidadePorAlvoMassa: 5
---- !u!114 &2828128422371994570
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8988326293356594916}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b80ba453cfb99ed4f879383f9daf5583, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ControleAviao
-  estadoAtual: 0
-  aeroportoOrigem: {fileID: 0}
-  vagaRetorno: {fileID: 0}
-  aguardandoCliqueRadar: 0
-  ordemParaRetorno: 0
-  velocidadeSolo: 8
-  velocidadeMaximaVoo: 100
-  taxaDeGiroLeme: 50
-  modeloMecanicoVisual: {fileID: 0}
-  asaBankingMaximo: 75
-  arfagemPitchMaxima: 30
-  rodas:
-  - {fileID: 8293001923244726674}
-  alvoGPSVoo: {x: 0, y: 0, z: 0}
-  centroDaPatrulha: {x: 0, y: 0, z: 0}
-  emAtaqueMergulho: 0
-  alvoDoMergulho: {x: 0, y: 0, z: 0}
-  alvoPrioritarioIA: 0
-  alvoEstrategico: {x: 0, y: 0, z: 0}
-  estaEmModoVooFisico: 0
 --- !u!1001 &5687982260204838665
 PrefabInstance:
   m_ObjectHideFlags: 0

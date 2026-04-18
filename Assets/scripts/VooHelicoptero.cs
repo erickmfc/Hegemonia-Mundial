@@ -13,6 +13,8 @@ public class VooHelicoptero : MonoBehaviour
     public float inclinacaoFrente = 15f; 
 
     private NavMeshAgent agente;
+    private Quaternion rotacaoBaseLocal = Quaternion.identity;
+    private bool rotacaoBaseDefinida = false;
 
     void Start()
     {
@@ -23,6 +25,12 @@ public class VooHelicoptero : MonoBehaviour
         {
             modeloVisual = transform.GetChild(0);
         }
+
+        if (modeloVisual != null)
+        {
+            rotacaoBaseLocal = modeloVisual.localRotation;
+            rotacaoBaseDefinida = true;
+        }
     }
 
     // Variável para receber velocidade do ControleUnidade 
@@ -31,6 +39,12 @@ public class VooHelicoptero : MonoBehaviour
     public void SetVelocidadeAtual(float v)
     {
         velocidadeExterna = v;
+    }
+
+    public void DefinirRotacaoBase(Quaternion baseRotation)
+    {
+        rotacaoBaseLocal = baseRotation;
+        rotacaoBaseDefinida = true;
     }
 
     void Update()
@@ -59,10 +73,13 @@ public class VooHelicoptero : MonoBehaviour
             anguloAlvo = inclinacaoFrente;
         }
 
-        // Aplica a rotação (Mantendo a rotação Y original do modelo se houver, mas geralmente local é 0)
-        // Cuidado: Quaternion.Euler(x, y, z) substitui tudo.
-        // Vamos manter o Y local atual caso ele tenha animações girando, mas geralmente o Pai gira.
-        Quaternion rotacaoAlvo = Quaternion.Euler(anguloAlvo, 0, 0); // Local rotation assumindo frente Z
+        if (!rotacaoBaseDefinida)
+        {
+            rotacaoBaseLocal = modeloVisual.localRotation;
+            rotacaoBaseDefinida = true;
+        }
+
+        Quaternion rotacaoAlvo = rotacaoBaseLocal * Quaternion.Euler(anguloAlvo, 0, 0);
         
         modeloVisual.localRotation = Quaternion.Slerp(modeloVisual.localRotation, rotacaoAlvo, Time.deltaTime * suavidade);
     }

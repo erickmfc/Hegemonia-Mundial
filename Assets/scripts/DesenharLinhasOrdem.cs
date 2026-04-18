@@ -7,6 +7,9 @@ public class DesenharLinhasOrdem : MonoBehaviour
     public LineRenderer lineRenderer;
     private GerenteSelecao gerenteSelecao;
 
+    [Header("Marcadores")]
+    public GameObject prefabMarcadorPatrulha;
+
     [Header("Estados Atuais")]
     public bool modoPatrulhaAtivo = false;
     public bool modoSeguirAtivo = false;
@@ -63,6 +66,14 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 pontosPatrulha.Add(pontoPatrulha);
                 AtualizarLinhaVisualPatrulha();
                 AplicarOrdemPatrulha();
+                
+                // Mostrar a marcação de patrulha
+                if (prefabMarcadorPatrulha != null)
+                {
+                    GameObject marcador = Instantiate(prefabMarcadorPatrulha, pontoPatrulha + Vector3.up * 0.1f, Quaternion.identity);
+                    marcador.transform.localScale = new Vector3(11f, 11f, 11f);
+                    Destroy(marcador, 3.0f);
+                }
             }
         }
 
@@ -247,6 +258,8 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
 {
     private List<Vector3> pontos;
     private int indiceAtual = 0;
+    private int indiceDesignado = -1;
+    private float tempoUltimoComando = 0f;
     private ControleUnidade controle;
     private NavMeshAgent agente;
     private bool ehNaval;
@@ -255,6 +268,7 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
     {
         pontos = new List<Vector3>(novosPontos);
         indiceAtual = 0;
+        indiceDesignado = -1;
         controle = GetComponent<ControleUnidade>();
         agente = GetComponent<NavMeshAgent>();
         ehNaval = controle != null && controle.EhUnidadeNaval();
@@ -268,8 +282,13 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
         }
 
         Vector3 alvo = pontos[indiceAtual];
-        float distancia = Vector3.Distance(transform.position, alvo);
-        float margem = ehNaval ? 20f : ((agente != null && agente.enabled && !agente.updatePosition) ? 15f : 5f);
+        
+        // Verifica distância no plano 2D para evitar que subidas curtas façam o carro engasgar
+        Vector3 posPlano = new Vector3(transform.position.x, 0, transform.position.z);
+        Vector3 alvoPlano = new Vector3(alvo.x, 0, alvo.z);
+        float distancia = Vector3.Distance(posPlano, alvoPlano);
+        
+        float margem = ehNaval ? 20f : ((agente != null && agente.enabled && !agente.updatePosition) ? 15f : 6f);
 
         if (distancia < margem)
         {
@@ -278,10 +297,16 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
             {
                 indiceAtual = 0;
             }
-            return;
+            return; // Espera o próximo frame para comandar ir para o novo ponto
         }
 
-        controle.MoverParaPonto(alvo, false);
+        // Manda ir para o ponto APENAS se o alvo mudou (evita recalculo de rota todo frame e engasgos curtos)
+        if (indiceDesignado != indiceAtual || Time.time - tempoUltimoComando > 2f)
+        {
+            indiceDesignado = indiceAtual;
+            tempoUltimoComando = Time.time;
+            controle.MoverParaPonto(alvo, false);
+        }
     }
 }
 

@@ -1,0 +1,653 @@
+commit 2befaa9cbed70ba6c272a7230995cdf013f38cab
+Author: Erick <erickmfc@users.noreply.github.com>
+Date:   Sat Apr 11 23:02:26 2026 -0300
+
+    Fix mode invertido 180 graus (Voando de Costas) para C700 e Helicopteros
+
+diff --git a/Assets/scripts/Helicoptero.cs b/Assets/scripts/Helicoptero.cs
+index 83f8ae3..ec979bc 100644
+--- a/Assets/scripts/Helicoptero.cs
++++ b/Assets/scripts/Helicoptero.cs
+@@ -45,7 +45,7 @@ public class Helicoptero : MonoBehaviour
+ 
+     [Header("--- VISUAL ---")]
+     public Transform modeloVisual;
+-    public float ajusteYawModelo = 0f;
++    public float ajusteYawModelo = 0f; [Tooltip("Marque se voa de costas")] public bool modeloInvertido180 = false;
+     public ParticleSystem[] flares;
+     public Transform helicePrincipal;
+     public Transform heliceTraseira;
+@@ -317,7 +317,7 @@ public class Helicoptero : MonoBehaviour
+             }
+         }
+ 
+-        modeloVisual.localRotation = rotacaoLocalModeloBase * Quaternion.Euler(0f, ajusteYawModelo, 0f);
++        if (modeloInvertido180) ajusteYawModelo += 180f; modeloVisual.localRotation = rotacaoLocalModeloBase * Quaternion.Euler(0f, ajusteYawModelo, 0f);
+     }
+ 
+     IEnumerator RadarDeAmeacas()
+@@ -788,3 +788,5 @@ public class Helicoptero : MonoBehaviour
+     public void ChamarParaHeliporto(Heliporto h) { Decolar(h.transform.position); }
+     public void ChamarParaHeliporto(GameObject g) { Decolar(g.transform.position); }
+ }
++
++
+
+commit ac90408518778c4676b56d869c843543cfd2fbff
+Author: Erick <erickmfc@users.noreply.github.com>
+Date:   Sun Mar 29 13:12:35 2026 -0300
+
+    Refatore a IA e reorganize prefabs e sistemas navais
+
+diff --git a/Assets/scripts/Helicoptero.cs b/Assets/scripts/Helicoptero.cs
+index 86022f2..83f8ae3 100644
+--- a/Assets/scripts/Helicoptero.cs
++++ b/Assets/scripts/Helicoptero.cs
+@@ -9,6 +9,9 @@ using System.Collections.Generic;
+ 
+ public class Helicoptero : MonoBehaviour
+ {
++    [Header("--- DEBUG ---")]
++    public bool debugLogs = false;
++
+     [Header("--- CONTROLES ---")]
+     public bool controleSempreAtivo = false; 
+ 
+@@ -41,6 +44,8 @@ public class Helicoptero : MonoBehaviour
+     public string tagInimigo = "Inimigo"; 
+ 
+     [Header("--- VISUAL ---")]
++    public Transform modeloVisual;
++    public float ajusteYawModelo = 0f;
+     public ParticleSystem[] flares;
+     public Transform helicePrincipal;
+     public Transform heliceTraseira;
+@@ -67,10 +72,17 @@ public class Helicoptero : MonoBehaviour
+     [HideInInspector] public int custoUpgrade = 800;  
+     private bool disponivelParaPatrulha = true; 
+     private IdentidadeUnidade identidade;
++    private Quaternion rotacaoLocalModeloBase = Quaternion.identity;
+ 
+     // OTIMIZAÇÃO DE PERFORMANCE: Cache global dos helicópteros vivos
+     private static List<Helicoptero> todosHelicopteros = new List<Helicoptero>();
+ 
++    void LogDebug(string msg)
++    {
++        if (debugLogs)
++            Debug.Log(msg);
++    }
++
+     void OnEnable() { if(!todosHelicopteros.Contains(this)) todosHelicopteros.Add(this); }
+     void OnDisable() { todosHelicopteros.Remove(this); }
+ 
+@@ -90,7 +102,8 @@ public class Helicoptero : MonoBehaviour
+     void Start()
+     {
+         // --- LOG DE VIDA ---
+-        Debug.Log($"🚁 SISTEMA DO HELICÓPTERO INICIADO NO OBJETO: {name}");
++        if (debugLogs)
++            LogDebug($"🚁 SISTEMA DO HELICÓPTERO INICIADO NO OBJETO: {name}");
+         // -------------------
+ 
+         identidade = GetComponent<IdentidadeUnidade>();
+@@ -100,8 +113,9 @@ public class Helicoptero : MonoBehaviour
+         controleSempreAtivo = false;
+         destino = transform.position;
+         
+-        if(!helicePrincipal) helicePrincipal = transform.Find("helice_principal") ?? transform.Find("MainRotor");
+-        if(!heliceTraseira) heliceTraseira = transform.Find("helice_traseira") ?? transform.Find("TailRotor");
++        if(!helicePrincipal) helicePrincipal = transform.Find("helice_principal") ?? transform.Find("MainRotor") ?? transform.Find("helice") ?? EncontrarFilhoPorNomeParcial("mainpropel") ?? EncontrarFilhoPorNomeParcial("helice");
++        if(!heliceTraseira) heliceTraseira = transform.Find("helice_traseira") ?? transform.Find("TailRotor") ?? transform.Find("helice_atras") ?? EncontrarFilhoPorNomeParcial("tail") ?? EncontrarFilhoPorNomeParcial("helice_atras");
++        ConfigurarModeloVisual();
+ 
+         if(!audioMotor) audioMotor = GetComponent<AudioSource>();
+         if(audioMotor)
+@@ -163,6 +177,7 @@ public class Helicoptero : MonoBehaviour
+     {
+         // Se for da IA, não permite controle do jogador
+         if (identidade != null && identidade.teamID != 1 && !controleSempreAtivo) return;
++        if (Construtor.EmModoConstrucaoAtivo) return;
+ 
+         // 1. CLIQUE ESQUERDO (Seleção)
+         if (Input.GetMouseButtonDown(0))
+@@ -182,12 +197,12 @@ public class Helicoptero : MonoBehaviour
+                     if (distanciaDoCentro <= raioDoClique)
+                     {
+                         selecionado = true;
+-                        Debug.Log($"✅ {name} SELECIONADO.");
++                        LogDebug($"✅ {name} SELECIONADO.");
+                     }
+                     else
+                     {
+                         selecionado = false;
+-                        Debug.Log($"🚫 Ignorado (Muito longe: {distanciaDoCentro:F1}m)");
++                        LogDebug($"🚫 Ignorado (Muito longe: {distanciaDoCentro:F1}m)");
+                     }
+                 }
+                 else
+@@ -195,7 +210,7 @@ public class Helicoptero : MonoBehaviour
+                     if(selecionado)
+                     {
+                         selecionado = false;
+-                        Debug.Log("🚫 Deselecionado.");
++                        LogDebug("🚫 Deselecionado.");
+                     }
+                 }
+             }
+@@ -215,13 +230,13 @@ public class Helicoptero : MonoBehaviour
+             if (Physics.Raycast(r, out RaycastHit h, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) 
+             {
+                 Decolar(h.point);
+-                Debug.Log($"🖱️ [CLIQUE DIREITO] Movendo para {h.point}");
++                LogDebug($"🖱️ [CLIQUE DIREITO] Movendo para {h.point}");
+ 
+                 if (modoCombateAtivo)
+                 {
+                     try 
+                     {
+-                        if (h.collider.CompareTag(tagInimigo) || h.collider.name.ToLower().Contains("inimigo"))
++                        if (SafeCompareTag(h.collider, tagInimigo) || h.collider.name.ToLower().Contains("inimigo"))
+                         {
+                             TentativaDisparoAutomatico();
+                         }
+@@ -235,13 +250,13 @@ public class Helicoptero : MonoBehaviour
+         {
+             if (estaVoando) 
+             {
+-                Debug.Log("⌨️ [TECLA I] Baixando aeronave para buscar tropas...");
++                LogDebug("⌨️ [TECLA I] Baixando aeronave para buscar tropas...");
+                 estaPousando = true; 
+                 destino = transform.position; 
+             }
+             else
+             {
+-                Debug.Log("⌨️ [TECLA I] Chamando soldados para embarque...");
++                LogDebug("⌨️ [TECLA I] Chamando soldados para embarque...");
+                 ChamarReforcos();
+             }
+         }
+@@ -249,20 +264,62 @@ public class Helicoptero : MonoBehaviour
+         // TECLA P (Desembarque / Pousar para Desembarcar)
+         if (Input.GetKeyDown(KeyCode.P)) 
+         {
+-            Debug.Log("⌨️ [TECLA P] Ordem de Pouso/Desembarque...");
++            LogDebug("⌨️ [TECLA P] Ordem de Pouso/Desembarque...");
+             OrdemPousoOuDesembarque();
+         }
+ 
+         // TECLA O (Flares)
+         if (Input.GetKeyDown(KeyCode.O)) 
+         {
+-            Debug.Log("⌨️ [TECLA O] Tentando disparar Flares...");
++            LogDebug("⌨️ [TECLA O] Tentando disparar Flares...");
+             DispararFlaresManual(); 
+         }
+     }
+ 
+     // ... (Resto do código igual) ...
+ 
++    private Transform EncontrarFilhoPorNomeParcial(string trechoNome)
++    {
++        if (string.IsNullOrEmpty(trechoNome)) return null;
++
++        string trechoNormalizado = trechoNome.ToLowerInvariant();
++        Transform[] filhos = GetComponentsInChildren<Transform>(true);
++        foreach (Transform filho in filhos)
++        {
++            if (filho == null || filho == transform) continue;
++            if (filho.name.ToLowerInvariant().Contains(trechoNormalizado))
++            {
++                return filho;
++            }
++        }
++
++        return null;
++    }
++
++    private void ConfigurarModeloVisual()
++    {
++        if (modeloVisual == null)
++        {
++            modeloVisual = transform.Find("Chopper_01") ?? EncontrarFilhoPorNomeParcial("chopper_01");
++        }
++
++        if (modeloVisual == null) return;
++
++        rotacaoLocalModeloBase = modeloVisual.localRotation;
++
++        if (Mathf.Approximately(ajusteYawModelo, 0f))
++        {
++            string nomeHeli = name.ToLowerInvariant();
++            string nomeModelo = modeloVisual.name.ToLowerInvariant();
++            if (nomeHeli.Contains("vans") || nomeModelo.Contains("chopper"))
++            {
++                ajusteYawModelo = -90f;
++            }
++        }
++
++        modeloVisual.localRotation = rotacaoLocalModeloBase * Quaternion.Euler(0f, ajusteYawModelo, 0f);
++    }
++
+     IEnumerator RadarDeAmeacas()
+     {
+         while (true)
+@@ -272,7 +329,7 @@ public class Helicoptero : MonoBehaviour
+                 Collider[] hits = Physics.OverlapSphere(transform.position, raioRadarMissil);
+                 foreach (var h in hits)
+                 {
+-                    if (h.CompareTag(tagMissil) || h.name.ToLower().Contains("missil"))
++                    if (SafeCompareTag(h, tagMissil) || h.name.ToLower().Contains("missil"))
+                     {
+                         TentativaDisparoAutomatico();
+                         break; 
+@@ -288,6 +345,23 @@ public class Helicoptero : MonoBehaviour
+         if (timerRecargaFlares <= 0) DispararFlaresManual();
+     }
+ 
++    private static bool SafeCompareTag(Component component, string tagName)
++    {
++        if (component == null || string.IsNullOrEmpty(tagName))
++        {
++            return false;
++        }
++
++        try
++        {
++            return string.Equals(component.tag, tagName, System.StringComparison.Ordinal);
++        }
++        catch
++        {
++            return false;
++        }
++    }
++
+     public void Decolar(Vector3 novoDestino)
+     {
+         destino = novoDestino;
+@@ -347,7 +421,7 @@ public class Helicoptero : MonoBehaviour
+             transform.position = pos;
+             estaVoando = false;
+             estaPousando = false;
+-            Debug.Log("🚁 Helicóptero pousou taticamente.");
++            LogDebug("🚁 Helicóptero pousou taticamente.");
+             if(soldadosEmbarcados.Count > 0) EjetarTodos();
+             disponivelParaPatrulha = true; 
+         }
+@@ -385,7 +459,7 @@ public class Helicoptero : MonoBehaviour
+         // Se estiver voando e não for processo de pouso, não pode puxar ninguém!
+         if (estaVoando && !estaPousando)
+         {
+-            if(selecionado) Debug.Log("❌ Helicóptero está voando e não pode embarcar ninguém agora!");
++            if(selecionado) LogDebug("❌ Helicóptero está voando e não pode embarcar ninguém agora!");
+             return;
+         }
+ 
+@@ -396,7 +470,7 @@ public class Helicoptero : MonoBehaviour
+ 
+         if(espacoLivre <= 0) 
+         {
+-            if(selecionado) Debug.Log("❌ Helicóptero cheio ou já com carga total a caminho!");
++            if(selecionado) LogDebug("❌ Helicóptero cheio ou já com carga total a caminho!");
+             return; // Já está cheio ou com gente suficiente a caminho
+         }
+ 
+@@ -404,7 +478,7 @@ public class Helicoptero : MonoBehaviour
+         Collider[] hits = Physics.OverlapSphere(transform.position, distanciaBusca * 3.0f);
+         bool encontrouAlguem = false;
+ 
+-        if(selecionado) Debug.Log($"🔍 Procurando soldados em raio expansivo de {distanciaBusca * 3.0f}m...");
++        if(selecionado) LogDebug($"🔍 Procurando soldados em raio expansivo de {distanciaBusca * 3.0f}m...");
+ 
+         foreach(var h in hits)
+         {
+@@ -430,24 +504,23 @@ public class Helicoptero : MonoBehaviour
+                 // Isso evita que unidades recém-criadas do Player (Time 0) sejam ignoradas.
+                 if (idSoldado.teamID > 0 && identidade.teamID > 0 && idSoldado.teamID != identidade.teamID) 
+                 {
+-                    if (selecionado) Debug.Log($"❌ Rejeitado [{s.name}]: RG diz que é do time inimigo ({idSoldado.teamID}). Nosso time é {identidade.teamID}");
++                    if (selecionado) LogDebug($"❌ Rejeitado [{s.name}]: RG diz que é do time inimigo ({idSoldado.teamID}). Nosso time é {identidade.teamID}");
+                     continue; 
+                 }
+             }
+             else if (identidade != null && idSoldado == null)
+             {
+-                if (selecionado) Debug.Log($"⚠️ Atenção [{s.name}]: Não tem IdentidadeUnidade! Aceitando como neutro/nosso.");
++                if (selecionado) LogDebug($"⚠️ Atenção [{s.name}]: Não tem IdentidadeUnidade! Aceitando como neutro/nosso.");
+             }
+ 
+-            bool tagCorreta = false;
+-            try { if(s.CompareTag(tagAlvo)) tagCorreta = true; } catch { }
++            bool tagCorreta = TagSafe.Matches(s, tagAlvo);
+             if(!tagCorreta && (s.name.ToLower().Contains("soldado") || s.name.ToLower().Contains("infant"))) tagCorreta = true;
+ 
+             if(!tagCorreta)
+             {
+                 if (selecionado && !s.name.ToLower().Contains("tanque") && !s.name.ToLower().Contains("heli") && !s.name.ToLower().Contains("carro")) 
+                 {
+-                    Debug.Log($"❌ Rejeitado [{s.name}]: Não tem a Tag '{tagAlvo}' nem nome de soldado.");
++                    LogDebug($"❌ Rejeitado [{s.name}]: Não tem a Tag '{tagAlvo}' nem nome de soldado.");
+                 }
+                 continue; // Pula os tanques
+             }
+@@ -456,7 +529,7 @@ public class Helicoptero : MonoBehaviour
+             {
+                 encontrouAlguem = true;
+                 soldadosChamados.Add(s);
+-                Debug.Log($"[Soldado] [{s.name}] ACEITO! Ordenando correr para o helicoptero!");
++                LogDebug($"[Soldado] [{s.name}] ACEITO! Ordenando correr para o helicoptero!");
+                 StartCoroutine(RotinaEmbarque(s, nav));
+ 
+                 espacoLivre--;
+@@ -464,14 +537,14 @@ public class Helicoptero : MonoBehaviour
+             }
+         }
+ 
+-        if(!encontrouAlguem && soldadosChamados.Count == 0 && selecionado) Debug.Log($"❌ Busca concluída: ZERO soldados livres e detectáveis no raio perto ({distanciaBusca}m).");
++        if(!encontrouAlguem && soldadosChamados.Count == 0 && selecionado) LogDebug($"❌ Busca concluída: ZERO soldados livres e detectáveis no raio perto ({distanciaBusca}m).");
+     }
+ 
+     IEnumerator RotinaEmbarque(GameObject s, NavMeshAgent nav)
+     {
+         if(s == null || nav == null) yield break;
+ 
+-        Debug.Log($"[Helicoptero] Iniciando embarque de {s.name}...");
++        LogDebug($"[Helicoptero] Iniciando embarque de {s.name}...");
+         if (nav.isOnNavMesh) nav.isStopped = false; 
+         nav.speed = 12f; // Acelera o soldado para correr até o heli (Opcional, mas ajuda no gameplay)
+ 
+@@ -490,7 +563,7 @@ public class Helicoptero : MonoBehaviour
+         {
+             if (estaVoando && !estaPousando) 
+             {
+-                Debug.Log($"[Helicoptero] {name} decolou! Cancelando embarque de {s.name}.");
++                LogDebug($"[Helicoptero] {name} decolou! Cancelando embarque de {s.name}.");
+                 break;
+             }
+ 
+@@ -540,12 +613,12 @@ public class Helicoptero : MonoBehaviour
+             if (pertoBastante && soldadosEmbarcados.Count < capacidadeMaxima && (!estaVoando || estaPousando))
+             {
+                 soldadosEmbarcados.Add(s);
+-                s.SetActive(false); 
+-                Debug.Log($"[Helicoptero] {s.name} embarcou com sucesso! (Dist: {distFinal:F1}m)");
++                EsconderSoldado(s); // Esconde sem desativar o GameObject (mantém NavMeshAgent no NavMesh)
++                LogDebug($"[Helicoptero] {s.name} embarcou com sucesso! (Dist: {distFinal:F1}m)");
+             }
+             else
+             {
+-                Debug.Log($"[Helicoptero] {s.name} falhou em embarcar (Dist: {distFinal:F1}m). Perto o bastante: {pertoBastante}, Voando: {estaVoando}");
++                LogDebug($"[Helicoptero] {s.name} falhou em embarcar (Dist: {distFinal:F1}m). Perto o bastante: {pertoBastante}, Voando: {estaVoando}");
+             }
+         }
+         
+@@ -559,61 +632,135 @@ public class Helicoptero : MonoBehaviour
+         { 
+             estaPousando = true; 
+             destino = transform.position; 
+-            Debug.Log("📉 Iniciando sequência de pouso...");
++            LogDebug("📉 Iniciando sequência de pouso...");
+         }
+         else if(soldadosEmbarcados.Count > 0) 
+         {
+-            Debug.Log("🚪 No chão. Ejetando soldados...");
++            LogDebug("🚪 No chão. Ejetando soldados...");
+             EjetarTodos();
+         }
+         else
+         {
+-            Debug.Log("⚠️ Já está no chão e vazio. Nada a fazer.");
++            LogDebug("⚠️ Já está no chão e vazio. Nada a fazer.");
+         }
+     }
+ 
+-    void EjetarTodos()
++    // -----------------------------------------------------------------------
++    // EMBARQUE/DESEMBARQUE: Esconde o soldado SEM desativar o GameObject.
++    // Isso mantém o NavMeshAgent sempre registrado no NavMesh, eliminando
++    // a race-condition que causava o erro "ResetPath on inactive agent".
++    // -----------------------------------------------------------------------
++
++    /// <summary>Esconde o soldado dentro do helicóptero sem desativar o GameObject.</summary>
++    private void EsconderSoldado(GameObject s)
+     {
+-        int i = 0;
+-        foreach(var s in soldadosEmbarcados)
++        if (s == null) return;
++
++        // Para o agente no lugar (não precisa ir a lugar nenhum enquanto dentro do heli)
++        NavMeshAgent nav = s.GetComponent<NavMeshAgent>();
++        if (nav != null && nav.isActiveAndEnabled && nav.isOnNavMesh)
+         {
+-            if(s)
++            nav.isStopped = true;
++            nav.ResetPath();
++        }
++
++        // Desliga renderers e colliders para sumir visualmente
++        foreach (var r in s.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
++        foreach (var c in s.GetComponentsInChildren<Collider>(true))  c.enabled = false;
++
++        // Desativa scripts de comportamento (IA, controle, etc.) MAS NÃO o NavMeshAgent
++        foreach (var mb in s.GetComponentsInChildren<MonoBehaviour>(true))
++        {
++            if (mb == null)         continue;
++            mb.enabled = false;
++        }
++    }
++
++    /// <summary>Reposiciona e mostra o soldado usando Warp (método seguro do Unity).</summary>
++    private void MostrarSoldado(GameObject s, Vector3 posicao)
++    {
++        if (s == null) return;
++
++        // Reativa scripts de comportamento
++        foreach (var mb in s.GetComponentsInChildren<MonoBehaviour>(true))
++        {
++            if (mb == null) continue;
++            mb.enabled = true;
++        }
++
++        // Religa renderers e colliders
++        foreach (var r in s.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
++        foreach (var c in s.GetComponentsInChildren<Collider>(true))  c.enabled = true;
++
++        // Usa Warp — método OFICIAL do Unity para teletransportar NavMeshAgent com segurança.
++        // Warp encontra o ponto mais próximo no NavMesh automaticamente e nunca lança exceção.
++        NavMeshAgent nav = s.GetComponent<NavMeshAgent>();
++        if (nav != null && nav.isActiveAndEnabled)
++        {
++            if (nav.isOnNavMesh)
+             {
+-                s.SetActive(true);
+-                float angulo = i * (360f / Mathf.Max(1, soldadosEmbarcados.Count));
+-                
+-                Vector3 posDesejada = transform.position + Quaternion.Euler(0, angulo, 0) * (transform.right * 6f);
+-                Vector3 posFinal = posDesejada;
+-                
+-                NavMeshHit hit;
+-                if (NavMesh.SamplePosition(posDesejada, out hit, 3.0f, NavMesh.AllAreas)) posFinal = hit.position; 
+-                else posFinal.y = Mathf.Max(0, transform.position.y - alturaPouso + 0.1f); 
++                nav.Warp(posicao);
++                nav.isStopped = false;
++            }
++            else
++            {
++                // Agente perdeu o NavMesh de alguma forma: reposiciona via transform e retoma
++                s.transform.position = posicao;
++                nav.isStopped = false;
++            }
++        }
++        else
++        {
++            s.transform.position = posicao;
++        }
+ 
+-                s.transform.position = posFinal;
+-                if(s.GetComponent<NavMeshAgent>()) 
+-                {
+-                    s.GetComponent<NavMeshAgent>().Warp(posFinal); 
+-                    s.GetComponent<NavMeshAgent>().ResetPath(); 
+-                }
++        LogDebug($"[Helicoptero] {s.name} desembarcou em {posicao}.");
++    }
++
++    void EjetarTodos()
++    {
++        int totalSoldados = soldadosEmbarcados.Count;
++        for (int i = 0; i < totalSoldados; i++)
++        {
++            GameObject s = soldadosEmbarcados[i];
++            if (s == null) continue;
++
++            float angulo = i * (360f / Mathf.Max(1, totalSoldados));
++            Vector3 posDesejada = transform.position + Quaternion.Euler(0, angulo, 0) * (transform.right * 6f);
++
++            // Busca o ponto válido no NavMesh com raio generoso
++            NavMeshHit hit;
++            if (!NavMesh.SamplePosition(posDesejada, out hit, 20f, NavMesh.AllAreas))
++            {
++                // Fallback: tenta direto abaixo do helicóptero com raio máximo
++                posDesejada.y = Mathf.Max(0f, transform.position.y - alturaPouso);
++                NavMesh.SamplePosition(posDesejada, out hit, 50f, NavMesh.AllAreas);
+             }
+-            i++;
++
++            Vector3 posFinal = hit.position != Vector3.zero ? hit.position : posDesejada;
++
++            MostrarSoldado(s, posFinal);
+         }
++
+         soldadosEmbarcados.Clear();
+-        Debug.Log("✅ Todos desembarcados.");
++        LogDebug("✅ Todos desembarcados.");
+     }
+ 
++
++
++
+     void DispararFlaresManual()
+     {
+         if(flares != null && flares.Length > 0)
+         {
+             timerRecargaFlares = cooldownFlares;
+             foreach(var f in flares) if(f) f.Play();
+-            Debug.Log("✨ Flares disparados!");
++            LogDebug("✨ Flares disparados!");
+             Invoke("PararFlares", 4f);
+         }
+         else
+         {
+-            Debug.Log("⚠️ Erro: Nenhum Particle System de Flares atribuído no Inspector!");
++            LogDebug("⚠️ Erro: Nenhum Particle System de Flares atribuído no Inspector!");
+         }
+     }
+ 
+@@ -640,4 +787,4 @@ public class Helicoptero : MonoBehaviour
+     public void ChamarParaHeliporto(Transform t) { Decolar(t.position); }
+     public void ChamarParaHeliporto(Heliporto h) { Decolar(h.transform.position); }
+     public void ChamarParaHeliporto(GameObject g) { Decolar(g.transform.position); }
+-}
+\ No newline at end of file
++}
+
+commit fd6b8b78295622fe192755095da7dc258443ccbe
+Author: Erick <erickmfc@users.noreply.github.com>
+Date:   Thu Mar 19 22:40:17 2026 -0300
+
+    Renomeia cena para Atualizacao e inclui modificacoes de torretas, porta-avioes e IA
+
+diff --git a/Assets/scripts/Helicoptero.cs b/Assets/scripts/Helicoptero.cs
+index b73caa0..86022f2 100644
+--- a/Assets/scripts/Helicoptero.cs
++++ b/Assets/scripts/Helicoptero.cs
+@@ -305,7 +305,22 @@ public class Helicoptero : MonoBehaviour
+ 
+     void ProcessarMovimento()
+     {
+-        float alturaAlvo = estaPousando ? alturaPouso : altitudeDeVoo;
++        // 1. Descobrir a altura real do chão ou obstáculo (prédios) debaixo do helicóptero
++        float alturaChaoTarget = 0f;
++        
++        // Dispara raios de cima pra baixo (sempre usa transform.position para evitar saltos bruscos se o destino mudar rápido)
++        Vector3 pontoBuscaOrigem = transform.position;
++        pontoBuscaOrigem.y = 800f; // Bem alto
++
++        RaycastHit[] hits = Physics.RaycastAll(pontoBuscaOrigem, Vector3.down, 1000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
++        foreach (var h in hits)
++        {
++            if (h.collider.transform.root == transform.root) continue; // Ignora o próprio helicóptero
++            if (h.point.y > alturaChaoTarget) alturaChaoTarget = h.point.y;
++        }
++
++        // Se estiver voando ele voa sempre X metros ALÉM DO TETO. Se pousando, pouse no teto suavemente.
++        float alturaAlvo = estaPousando ? (alturaChaoTarget + alturaPouso) : Mathf.Max(altitudeDeVoo, alturaChaoTarget + altitudeDeVoo);
+         
+         Vector3 meta = new Vector3(
+             estaPousando ? transform.position.x : destino.x, 
+@@ -314,24 +329,25 @@ public class Helicoptero : MonoBehaviour
+         );
+ 
+         float vel = estaPousando ? velocidadePouso : velocidadeNavegacao;
++        
++        // Para subir/descer na vertical (Teto do prédio é dinâmico), suaviza só esse eixo Y se for a única diferença
+         transform.position = Vector3.MoveTowards(transform.position, meta, vel * Time.deltaTime);
+ 
+         if (!estaPousando && Vector3.Distance(transform.position, meta) > 2f)
+         {
+-            Vector3 dir = (meta - transform.position).normalized;
+-            dir.y = 0; 
++            Vector3 dir = (new Vector3(meta.x, transform.position.y, meta.z) - transform.position).normalized;
+             if (dir != Vector3.zero)
+                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 3f);
+         }
+ 
+-        if (estaPousando && Mathf.Abs(transform.position.y - alturaPouso) < 0.1f)
++        if (estaPousando && Mathf.Abs(transform.position.y - alturaAlvo) < 0.2f)
+         {
+             Vector3 pos = transform.position; 
+-            pos.y = alturaPouso; 
++            pos.y = alturaAlvo; 
+             transform.position = pos;
+             estaVoando = false;
+             estaPousando = false;
+-            Debug.Log("🚁 Helicóptero pousou.");
++            Debug.Log("🚁 Helicóptero pousou taticamente.");
+             if(soldadosEmbarcados.Count > 0) EjetarTodos();
+             disponivelParaPatrulha = true; 
+         }
+@@ -366,6 +382,13 @@ public class Helicoptero : MonoBehaviour
+ 
+     public void ChamarReforcos()
+     {
++        // Se estiver voando e não for processo de pouso, não pode puxar ninguém!
++        if (estaVoando && !estaPousando)
++        {
++            if(selecionado) Debug.Log("❌ Helicóptero está voando e não pode embarcar ninguém agora!");
++            return;
++        }
++
+         // Limpa soldados chamados que foram destruídos ou já embarcaram ou desistiram
+         soldadosChamados.RemoveAll(s => s == null || !s.activeInHierarchy || soldadosEmbarcados.Contains(s));
+ 
+@@ -511,10 +534,10 @@ public class Helicoptero : MonoBehaviour
+                 new Vector2(transform.position.x, transform.position.z)
+             );
+ 
+-            // Proteção Final: Se o soldado chegou perto (15m), ele entra, mesmo que o heli tenha acabado de decolar
++            // Proteção Final: Se o soldado chegou perto, ele entra, APENAS se o helicóptero ainda estiver no solo!
+             bool pertoBastante = distFinal <= 15f; 
+ 
+-            if (pertoBastante && soldadosEmbarcados.Count < capacidadeMaxima)
++            if (pertoBastante && soldadosEmbarcados.Count < capacidadeMaxima && (!estaVoando || estaPousando))
+             {
+                 soldadosEmbarcados.Add(s);
+                 s.SetActive(false); 
+@@ -522,7 +545,7 @@ public class Helicoptero : MonoBehaviour
+             }
+             else
+             {
+-                Debug.Log($"[Helicoptero] {s.name} falhou em embarcar (Dist: {distFinal:F1}m).");
++                Debug.Log($"[Helicoptero] {s.name} falhou em embarcar (Dist: {distFinal:F1}m). Perto o bastante: {pertoBastante}, Voando: {estaVoando}");
+             }
+         }
+         

@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: -5381591977502983394}
   - component: {fileID: -7549261984178204853}
   - component: {fileID: 3363487500830176677}
+  - component: {fileID: 163897241717511559}
   m_Layer: 0
   m_Name: c700
   m_TagString: Aereo
@@ -137,9 +138,12 @@ MonoBehaviour:
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
-  velocidadeSolo: 5
+  velocidadeSolo: 8
   velocidadeMaximaVoo: 70
   taxaDeGiroLeme: 90
+  raioOrbitaMissao: 85
+  velocidadeOrbitaMissao: 0.9
+  margemChegadaMissao: 65
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -171,7 +175,7 @@ MonoBehaviour:
   aeroportoOrigem: {fileID: 0}
   pontoEstacionamentoPreferencial: {fileID: 0}
   nomePontoParadaGrande: Parada_grande
-  velocidadeTaxi: 5
+  velocidadeTaxi: 8
   aceleracaoSolo: 20
   desaceleracaoSolo: 28
   giroSolo: 90
@@ -192,6 +196,7 @@ MonoBehaviour:
   bankMaximo: 28
   pitchMaximo: 14
   suavizacaoVisual: 3.5
+  modeloInvertido180: 0
   pontosCarga: []
   capacidadeMaxima: 10
   ocultarCargaInterna: 1
@@ -219,6 +224,27 @@ MonoBehaviour:
   spawnsPorQuadroManifesto: 8
   pausaEntreLotesManifesto: 0.02
   desabilitarArmasAoIniciar: 1
+--- !u!65 &163897241717511559
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 508363159047402675}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 53.1, y: 16.73, z: 84.037415}
+  m_Center: {x: 0, y: 5.4825296, z: -19.539932}
 --- !u!1001 &4004041267334629408
 PrefabInstance:
   m_ObjectHideFlags: 0

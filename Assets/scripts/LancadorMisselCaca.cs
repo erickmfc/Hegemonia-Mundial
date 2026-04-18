@@ -39,6 +39,8 @@ public class LancadorMisselCaca : MonoBehaviour
         public Transform transform;
         public string nome;
         public float distancia;
+        public int prioridade;
+        public bool ehAereo;
     }
     private List<AlvoDetectado> inimigosNaArea = new List<AlvoDetectado>();
     private float tempoUltimoScan = 0f;
@@ -49,13 +51,13 @@ public class LancadorMisselCaca : MonoBehaviour
     private bool radarFechado = false;
     private bool ultimoEstadoRadar = false;
 
-    // --- CACHE: Collider[] reutilizável para OverlapSphere (reduz GC) ---
-    private readonly Collider[] _hitBuffer = new Collider[64];
-    // --- CACHE: HashSet para deduplicação O(1) no scan ---
+    // --- CACHE: Busca O(1) de unidades ---
+    private static readonly List<IdentidadeUnidade> _bufferGlobais = new List<IdentidadeUnidade>(512);
     private readonly HashSet<Transform> _alvosJaVistos = new HashSet<Transform>();
 
     void Start()
     {
+        if (raioDeDeteccao < 1500f) raioDeDeteccao = 1500f; // Garante que alcance bombardeiros muito altos
         _unidadeBase = GetComponent<ControleUnidade>();
         _vooModerno = GetComponent<ControleAviao>();
         _sistemaDanos = GetComponent<SistemaDeDanos>();
@@ -143,43 +145,89 @@ public class LancadorMisselCaca : MonoBehaviour
         }
     }
 
+    bool EhAlvoAereo(Transform alvoTransform, IdentidadeUnidade idUnidade)
+    {
+        if (alvoTransform == null) return false;
+
+        string nomeAlvo = alvoTransform.name.ToLowerInvariant();
+
+        return alvoTransform.position.y > 15f ||
+               alvoTransform.GetComponentInParent<ControleAviao>() != null ||
+               alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null ||
+               alvoTransform.GetComponentInParent<AviaoBombardeiro>() != null ||
+               alvoTransform.GetComponentInParent<Helicoptero>() != null ||
+               (idUnidade != null && idUnidade.tipoUnidade == TipoUnidade.Aereo) ||
+               nomeAlvo.Contains("aviao") ||
+               nomeAlvo.Contains("caca") ||
+               nomeAlvo.Contains("jato") ||
+               nomeAlvo.Contains("heli") ||
+               nomeAlvo.Contains("drone") ||
+               nomeAlvo.Contains("vap") ||
+               nomeAlvo.Contains("bombard") ||
+               nomeAlvo.Contains("bombardeiro") ||
+               nomeAlvo.Contains("bomber") ||
+               alvoTransform.tag == "Areo" ||
+               alvoTransform.tag == "Aereo";
+    }
+
+    int ObterPrioridadeAlvo(Transform alvoTransform, IdentidadeUnidade idUnidade)
+    {
+        if (alvoTransform == null) return int.MaxValue;
+
+        string nomeAlvo = alvoTransform.name.ToLowerInvariant();
+        bool ehBombardeiro = alvoTransform.GetComponentInParent<AviaoBombardeiro>() != null ||
+                             nomeAlvo.Contains("bombard") ||
+                             nomeAlvo.Contains("bombardeiro") ||
+                             nomeAlvo.Contains("bomber");
+
+        if (ehBombardeiro) return 0;
+        if (alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null || nomeAlvo.Contains("caca") || nomeAlvo.Contains("jato")) return 1;
+        if (EhAlvoAereo(alvoTransform, idUnidade)) return 2;
+        return 3;
+    }
+
     void EscanearArea()
     {
         inimigosNaArea.Clear();
         _alvosJaVistos.Clear();
 
-        // OverlapSphereNonAlloc: Reutiliza buffer, zero alocação GC
-        int numHits = Physics.OverlapSphereNonAlloc(transform.position, raioDeDeteccao, _hitBuffer);
+        // OTIMIZAÇÃO MAXIMA: Ao invés de usar a Física da Unity (OverlapSphere) que pesa a CPU em raios gigantes,
+        // agora buscamos direto na memória do jogo apenas o que de fato é Unidade Militar.
+        RegistroEntidadesJogo.FillUnidades(_bufferGlobais);
+        float raioSqr = raioDeDeteccao * raioDeDeteccao;
 
-        for (int i = 0; i < numHits; i++)
+        for (int i = 0; i < _bufferGlobais.Count; i++)
         {
-            Collider col = _hitBuffer[i];
-            if (col == null) continue;
+            IdentidadeUnidade idAlvo = _bufferGlobais[i];
+            if (idAlvo == null || idAlvo.teamID == _meuTime) continue;
+            if (!ControleSubmarino.PodeSerAlvoConvencional(idAlvo.transform)) continue;
 
-            IdentidadeIA idIA = col.GetComponentInParent<IdentidadeIA>();
-            IdentidadeUnidade idUnidade = (idIA == null) ? col.GetComponentInParent<IdentidadeUnidade>() : null;
-            
-            int teamDele = idIA != null ? idIA.teamID : (idUnidade != null ? idUnidade.teamID : -1);
-
-            if (teamDele == _meuTime) continue;
-
-            SistemaDeDanos alvoDanos = col.GetComponentInParent<SistemaDeDanos>();
+            SistemaDeDanos alvoDanos = idAlvo.GetComponent<SistemaDeDanos>();
             if (alvoDanos == null || alvoDanos.vidaAtual <= 0) continue;
 
             Transform alvoTransform = alvoDanos.transform;
             
-            // HashSet.Add retorna false se já existia — O(1) ao invés de foreach
+            float distSqr = (transform.position - alvoTransform.position).sqrMagnitude;
+            if (distSqr > raioSqr) continue;
+
             if (!_alvosJaVistos.Add(alvoTransform)) continue;
 
             AlvoDetectado novo = new AlvoDetectado();
             novo.transform = alvoTransform;
             novo.nome = alvoTransform.name.Replace("(Clone)", ""); 
-            novo.distancia = Vector3.Distance(transform.position, alvoTransform.position);
+            novo.distancia = Mathf.Sqrt(distSqr);
+            novo.ehAereo = EhAlvoAereo(alvoTransform, idAlvo);
+            novo.prioridade = ObterPrioridadeAlvo(alvoTransform, idAlvo);
             inimigosNaArea.Add(novo);
         }
         
-        // Ordena por distância (Mais próximos primeiro)
-        inimigosNaArea.Sort((a, b) => a.distancia.CompareTo(b.distancia));
+        // Bombardeiros e outras aeronaves entram na frente, mantendo os mais próximos no desempate.
+        inimigosNaArea.Sort((a, b) =>
+        {
+            int comparacaoPrioridade = a.prioridade.CompareTo(b.prioridade);
+            if (comparacaoPrioridade != 0) return comparacaoPrioridade;
+            return a.distancia.CompareTo(b.distancia);
+        });
     }
 
     void Disparar(Transform alvo)

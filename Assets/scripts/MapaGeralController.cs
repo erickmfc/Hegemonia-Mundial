@@ -55,6 +55,7 @@ public class MapaGeralController : MonoBehaviour
 
     void Update()
     {
+        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
         if (Input.GetKeyDown(KeyCode.M))
         {
             mapaAtivo = !mapaAtivo;

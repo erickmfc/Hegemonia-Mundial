@@ -747,13 +747,17 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Construtor construtor = Construtor.Instancia != null ? Construtor.Instancia : Object.FindFirstObjectByType<Construtor>();
+            bool rawInstantiate = false;
             if (construtor != null)
             {
                 created = construtor.ConstruirEstruturaIA(data.prefabDaUnidade, position, rotation);
             }
             else
             {
+                rawInstantiate = true;
+                long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
                 created = Object.Instantiate(data.prefabDaUnidade, position, rotation);
+                RegistrarTempoDiagnostico("spawn_structure_ms", instantiateStart);
             }
 
             if (created == null)
@@ -762,6 +766,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            long initStart = rawInstantiate ? System.Diagnostics.Stopwatch.GetTimestamp() : 0L;
             if (forceManualPlacement)
             {
                 IA_ManualPlacementTag manualTag = created.GetComponent<IA_ManualPlacementTag>();
@@ -773,18 +778,22 @@ namespace Hegemonia.AI.BrainMaster
                 manualTag.SourceLabel = manualPointLabel ?? string.Empty;
             }
 
+            _bridge.EnsureIdentity(created);
             Estaleiro estaleiro = created.GetComponent<Estaleiro>();
             if (estaleiro != null)
             {
                 estaleiro.AtualizarReferenciasLitoraneas();
             }
 
-            _bridge.EnsureIdentity(created);
             float reserveRadius = Mathf.Max(
                 map.EstimateFootprint(data.prefabDaUnidade, 12f).magnitude,
                 GetMinimumStructureSpacing(data, zone));
             Reserve(position, reserveRadius, Time.time + 20f);
             world.MarkDirty();
+            if (rawInstantiate)
+            {
+                RegistrarTempoDiagnostico("prefab_init_ms", initStart);
+            }
             return true;
         }
 
@@ -1476,6 +1485,15 @@ namespace Hegemonia.AI.BrainMaster
             value.y = 0f;
             return value;
         }
+
+        private static void RegistrarTempoDiagnostico(string chave, long inicio)
+        {
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
+            }
+        }
     }
 
     public sealed class ProductionService
@@ -1591,6 +1609,11 @@ namespace Hegemonia.AI.BrainMaster
         {
             reason = string.Empty;
             string lastReason = "estaleiro/pier indisponivel";
+            long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (data != null && data.prefabDaUnidade != null)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", data.prefabDaUnidade.name);
+            }
             RegistroEntidadesJogo.FillEstaleiros(_shipyardBuffer);
             for (int i = 0; i < _shipyardBuffer.Count; i++)
             {
@@ -1602,6 +1625,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (e.ConstruirUnidade(data.prefabDaUnidade))
                 {
+                    RegistrarTempoDiagnostico("spawn_naval_ms", spawnStart);
                     return data.prefabDaUnidade;
                 }
 
@@ -1619,6 +1643,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (p.ConstruirNavio(data.prefabDaUnidade))
                 {
+                    RegistrarTempoDiagnostico("spawn_naval_ms", spawnStart);
                     return data.prefabDaUnidade;
                 }
 
@@ -1632,6 +1657,11 @@ namespace Hegemonia.AI.BrainMaster
         private GameObject ProduceAircraft(DadosConstrucao data, out string reason)
         {
             reason = string.Empty;
+            long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (data != null && data.prefabDaUnidade != null)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", data.prefabDaUnidade.name);
+            }
             RegistroEntidadesJogo.FillAeroportos(_airportBuffer);
             for (int i = 0; i < _airportBuffer.Count; i++)
             {
@@ -1642,6 +1672,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 airport.ComprarAviao(data.prefabDaUnidade);
+                RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
                 return data.prefabDaUnidade;
             }
 
@@ -1652,6 +1683,11 @@ namespace Hegemonia.AI.BrainMaster
         private GameObject ProduceHelicopter(DadosConstrucao data, out string reason)
         {
             reason = string.Empty;
+            long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (data != null && data.prefabDaUnidade != null)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", data.prefabDaUnidade.name);
+            }
             RegistroEntidadesJogo.FillHeliportos(_heliportBuffer);
             for (int i = 0; i < _heliportBuffer.Count; i++)
             {
@@ -1667,7 +1703,10 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 GameObject unit = Object.Instantiate(data.prefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
+                long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
                 _bridge.EnsureIdentity(unit);
+                RegistrarTempoDiagnostico("prefab_init_ms", initStart);
+                RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
                 return unit;
             }
 
@@ -1728,6 +1767,15 @@ namespace Hegemonia.AI.BrainMaster
                    || n.Contains("infan")
                    || n.Contains("rifle")
                    || n.Contains("fuzil");
+        }
+
+        private static void RegistrarTempoDiagnostico(string chave, long inicio)
+        {
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
+            }
         }
     }
 
@@ -1832,6 +1880,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<int, AttackSystemsCacheEntry> _attackSystemsByUnit = new Dictionary<int, AttackSystemsCacheEntry>();
         private readonly Dictionary<int, Vector3> _lastAttackAimByUnit = new Dictionary<int, Vector3>();
         private readonly Dictionary<int, float> _lastAttackArmTimeByUnit = new Dictionary<int, float>();
+        private float _nextRuntimeProduceAllowedTime;
 
         public CommandService(IA_BackendBridge bridge)
         {
@@ -1883,32 +1932,56 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            string runtimeBuildReason;
+            if (ShouldFreezeNonEssentialBuild(context, item, payload.ItemKey, out runtimeBuildReason))
+            {
+                message = "build pausado: " + runtimeBuildReason;
+                return false;
+            }
+
             if (!context.Brain.TrySpend(item.preco))
             {
                 message = "credito insuficiente";
                 return false;
             }
 
-            GameObject built;
-            bool ok = _bridge.BuildService.TryBuild(
-                payload.ItemKey,
-                payload.Position,
-                payload.Rotation,
-                payload.Zone,
-                payload.ForceManualPlacement,
-                payload.ManualPointLabel,
-                context.WorldState,
-                context.MapAnalyzer,
-                context.ThreatAnalyzer,
-                out built,
-                out message);
-
-            if (!ok)
+            if (item.prefabDaUnidade != null)
             {
-                context.Brain.Refund(item.preco);
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", item.prefabDaUnidade.name);
             }
 
-            return ok;
+            long metricStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            try
+            {
+                GameObject built;
+                bool ok = _bridge.BuildService.TryBuild(
+                    payload.ItemKey,
+                    payload.Position,
+                    payload.Rotation,
+                    payload.Zone,
+                    payload.ForceManualPlacement,
+                    payload.ManualPointLabel,
+                    context.WorldState,
+                    context.MapAnalyzer,
+                    context.ThreatAnalyzer,
+                    out built,
+                    out message);
+
+                if (!ok)
+                {
+                    context.Brain.Refund(item.preco);
+                }
+                else
+                {
+                    ArmRuntimeProduceCooldown();
+                }
+
+                return ok;
+            }
+            finally
+            {
+                RegistrarTempoDiagnostico("build_execute_ms", metricStart);
+            }
         }
 
         private bool ExecuteProduce(IA_CommandRequest request, IA_Context context, out string message)
@@ -1927,6 +2000,13 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            string runtimeProduceReason;
+            if (ShouldThrottleProduceRuntime(out runtimeProduceReason))
+            {
+                message = "producao pausada: " + runtimeProduceReason;
+                return false;
+            }
+
             int amount = Mathf.Max(1, payload.Quantity);
             int totalCost = item.preco * amount;
             if (!context.Brain.TrySpend(totalCost))
@@ -1935,22 +2015,149 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            int produced;
-            bool ok = _bridge.ProductionService.TryProduce(payload.ItemKey, payload.Quantity, context.WorldState, out produced, out message);
-            if (!ok || produced <= 0)
+            if (item.prefabDaUnidade != null)
             {
-                context.Brain.Refund(totalCost);
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", item.prefabDaUnidade.name);
+            }
+
+            long metricStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            try
+            {
+                int produced;
+                bool ok = _bridge.ProductionService.TryProduce(payload.ItemKey, payload.Quantity, context.WorldState, out produced, out message);
+                if (!ok || produced <= 0)
+                {
+                    context.Brain.Refund(totalCost);
+                    return false;
+                }
+
+                if (produced < amount)
+                {
+                    int refund = (amount - produced) * item.preco;
+                    context.Brain.Refund(refund);
+                }
+
+                ArmRuntimeProduceCooldown();
+                message = "produzido=" + produced;
+                return true;
+            }
+            finally
+            {
+                RegistrarTempoDiagnostico("produce_execute_ms", metricStart);
+            }
+        }
+
+        private bool ShouldFreezeNonEssentialBuild(IA_Context context, DadosConstrucao data, string itemKey, out string reason)
+        {
+            reason = string.Empty;
+            if (context != null && context.Brain != null && context.Brain.IsBootstrapActive)
+            {
                 return false;
             }
 
-            if (produced < amount)
+            if (!ShouldRespectRuntimeLock() || !DiagnosticoDesempenhoJogo.RuntimeSobPressao())
             {
-                int refund = (amount - produced) * item.preco;
-                context.Brain.Refund(refund);
+                return false;
             }
 
-            message = "produzido=" + produced;
+            if (!IsHeavyNonEssentialBuild(data, itemKey))
+            {
+                return false;
+            }
+
+            reason = DiagnosticoDesempenhoJogo.ObterRazaoLockRuntime();
+            if (string.IsNullOrEmpty(reason))
+            {
+                reason = "runtime sob pressao";
+            }
+
             return true;
+        }
+
+        private bool ShouldThrottleProduceRuntime(out string reason)
+        {
+            reason = string.Empty;
+            if (!ShouldRespectRuntimeLock())
+            {
+                return false;
+            }
+
+            if (!DiagnosticoDesempenhoJogo.RuntimeSobPressao())
+            {
+                return false;
+            }
+
+            float now = Time.time;
+            if (now >= _nextRuntimeProduceAllowedTime)
+            {
+                return false;
+            }
+
+            reason = DiagnosticoDesempenhoJogo.ObterRazaoLockRuntime();
+            if (string.IsNullOrEmpty(reason))
+            {
+                reason = DiagnosticoDesempenhoJogo.RuntimeSaturado()
+                    ? "runtime saturado, aguardando cooldown de spawn"
+                    : "runtime sob pressao, aguardando cooldown de spawn";
+            }
+            else
+            {
+                reason += " | cooldown de spawn";
+            }
+
+            return true;
+        }
+
+        private void ArmRuntimeProduceCooldown()
+        {
+            if (!ShouldRespectRuntimeLock())
+            {
+                return;
+            }
+
+            float now = Time.time;
+            float cooldown = DiagnosticoDesempenhoJogo.RuntimeSaturado()
+                ? 4f
+                : (DiagnosticoDesempenhoJogo.RuntimeSobPressao() ? 2f : 0f);
+            if (cooldown > 0f)
+            {
+                _nextRuntimeProduceAllowedTime = Mathf.Max(_nextRuntimeProduceAllowedTime, now + cooldown);
+            }
+        }
+
+        private static bool ShouldRespectRuntimeLock()
+        {
+            return Application.isPlaying && Time.timeSinceLevelLoad >= 20f;
+        }
+
+        private static bool IsHeavyNonEssentialBuild(DadosConstrucao data, string itemKey)
+        {
+            string normalized = IA_Text.Normalize(
+                (itemKey ?? string.Empty) + " "
+                + (data != null ? data.nomeItem : string.Empty) + " "
+                + (data != null && data.prefabDaUnidade != null ? data.prefabDaUnidade.name : string.Empty));
+
+            return normalized.Contains("quartel general")
+                   || normalized.Contains("quartel_general")
+                   || normalized == "hq"
+                   || normalized.Contains("radar")
+                   || normalized.Contains("plataforma")
+                   || normalized.Contains("fabrica")
+                   || normalized.Contains("aeroporto")
+                   || normalized.Contains("airport")
+                   || normalized.Contains("heliporto")
+                   || normalized.Contains("armazem")
+                   || normalized.Contains("estaleiro")
+                   || normalized.Contains("pier");
+        }
+
+        private static void RegistrarTempoDiagnostico(string chave, long inicio)
+        {
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
+            }
         }
 
         private bool ExecuteMove(IA_CommandRequest request, out string message)

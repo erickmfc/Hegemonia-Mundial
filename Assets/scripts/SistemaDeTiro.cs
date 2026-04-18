@@ -42,7 +42,7 @@ public class SistemaDeTiro : MonoBehaviour
     private float alcanceComMargemSqr;
 
     // OTIMIZAÇÃO: Buffer de colisão para evitar GC
-    private Collider[] bufferColisores = new Collider[50];
+    private Collider[] bufferColisores = new Collider[512];
 
     void Update()
     {

@@ -29,6 +29,14 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
+        // Bloqueia movimento se estivermos digitando no menu
+        if (UnityEngine.EventSystems.EventSystem.current != null 
+            && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null
+            && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null)
+        {
+            return;
+        }
+
         // Força a substituição do Inspector se estiver salvo um valor muito baixo
         if (multiplicadorShift < 12f) multiplicadorShift = 12f;
 
@@ -75,7 +83,7 @@ public class CameraController : MonoBehaviour
         
         // Bloqueia Zoom se estiver sobre UI ou com Menus Abertos
         bool mouseEmCimaDeUI = UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
-        bool menusAbertos = MenuConstrucao.EstaAberto || MenuPier.EstaAberto;
+        bool menusAbertos = MenuConstrucao.EstaAberto || MenuPier.EstaAberto || Fazenda.QualquerFazendaAberta;
 
         if (!mouseEmCimaDeUI && !menusAbertos)
         {
@@ -156,3 +164,4 @@ public class CameraController : MonoBehaviour
         return gerenteSelecaoCache;
     }
 }
+

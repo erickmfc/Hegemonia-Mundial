@@ -265,6 +265,70 @@ public class LancadorNaval : MonoBehaviour
     {
         return Time.time > tempoUltimoDisparo + tempoRecargaSalva && municaoTotal > 0;
     }
+
+    Transform ResolverTransformAlvo(Transform alvo)
+    {
+        if (alvo == null) return null;
+
+        SistemaDeDanos vida = alvo.GetComponentInParent<SistemaDeDanos>();
+        if (vida != null) return vida.transform;
+
+        ControleAviao aviao = alvo.GetComponentInParent<ControleAviao>();
+        if (aviao != null) return aviao.transform;
+
+        Helicoptero helicoptero = alvo.GetComponentInParent<Helicoptero>();
+        if (helicoptero != null) return helicoptero.transform;
+
+        IdentidadeUnidade identidade = alvo.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade != null) return identidade.transform;
+
+        return alvo.root != null ? alvo.root : alvo;
+    }
+
+    bool EhAlvoAereo(Transform alvo, IdentidadeUnidade identidade)
+    {
+        if (alvo == null) return false;
+
+        string nomeAlvo = alvo.name.ToLowerInvariant();
+
+        return alvo.position.y > 8f
+               || alvo.GetComponentInParent<ControleAviao>() != null
+               || alvo.GetComponentInParent<ControleAviaoCaca>() != null
+               || alvo.GetComponentInParent<AviaoBombardeiro>() != null
+               || alvo.GetComponentInParent<Helicoptero>() != null
+               || (identidade != null && identidade.tipoUnidade == TipoUnidade.Aereo)
+               || nomeAlvo.Contains("aviao")
+               || nomeAlvo.Contains("heli")
+               || nomeAlvo.Contains("caca")
+               || nomeAlvo.Contains("jato")
+               || nomeAlvo.Contains("drone")
+               || nomeAlvo.Contains("bombard")
+               || nomeAlvo.Contains("bombardeiro")
+               || nomeAlvo.Contains("bomber")
+               || alvo.tag == "Areo"
+               || alvo.tag == "Aereo";
+    }
+
+    bool EhBombardeiro(Transform alvo)
+    {
+        if (alvo == null) return false;
+
+        string nomeAlvo = alvo.name.ToLowerInvariant();
+        return alvo.GetComponentInParent<AviaoBombardeiro>() != null
+               || nomeAlvo.Contains("bombard")
+               || nomeAlvo.Contains("bombardeiro")
+               || nomeAlvo.Contains("bomber")
+               || nomeAlvo.Contains("b52")
+               || nomeAlvo.Contains("b2");
+    }
+
+    int ObterPrioridadeAlvo(Transform alvo)
+    {
+        IdentidadeUnidade identidade = alvo != null ? alvo.GetComponentInParent<IdentidadeUnidade>() : null;
+        if (EhBombardeiro(alvo)) return 0;
+        if (EhAlvoAereo(alvo, identidade)) return 1;
+        return 2;
+    }
     
     // Retorna lista de inimigos ordenados por proximidade
     List<Transform> BuscarTodosInimigos()
@@ -304,22 +368,35 @@ public class LancadorNaval : MonoBehaviour
 
             if (ehInimigo)
             {
-                SistemaDeDanos vida = hit.GetComponent<SistemaDeDanos>();
-                if (vida == null) vida = hit.GetComponentInParent<SistemaDeDanos>();
+                Transform alvoResolvido = ResolverTransformAlvo(hit.transform);
+                if (alvoResolvido == null || alvoResolvido == transform || alvoResolvido.IsChildOf(transform))
+                {
+                    continue;
+                }
+
+                SistemaDeDanos vida = alvoResolvido.GetComponentInParent<SistemaDeDanos>();
                 
                 // Só adiciona se tem sistema de danos e vida > 0
                 if (vida != null && vida.vidaAtual > 0)
                 {
-                    if (!bufferAlvosValidos.Contains(hit.transform))
+                    if (!bufferAlvosValidos.Contains(alvoResolvido))
                     {
-                        bufferAlvosValidos.Add(hit.transform);
+                        bufferAlvosValidos.Add(alvoResolvido);
                     }
                 }
             }
         }
         
-        // Ordena por distância (mais perto primeiro)
-        bufferAlvosValidos.Sort((a, b) => (a.position - transform.position).sqrMagnitude.CompareTo((b.position - transform.position).sqrMagnitude));
+        // Prioriza bombardeiros, depois demais alvos aéreos, e por fim proximidade.
+        bufferAlvosValidos.Sort((a, b) =>
+        {
+            int prioridade = ObterPrioridadeAlvo(a).CompareTo(ObterPrioridadeAlvo(b));
+            if (prioridade != 0) return prioridade;
+
+            float distanciaA = (a.position - transform.position).sqrMagnitude;
+            float distanciaB = (b.position - transform.position).sqrMagnitude;
+            return distanciaA.CompareTo(distanciaB);
+        });
         
         for (int i = 0; i < hitCount; i++)
         {

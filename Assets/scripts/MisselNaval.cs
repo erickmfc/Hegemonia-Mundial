@@ -20,6 +20,13 @@ public class MisselNaval : MonoBehaviour
     public float forcaRotacaoCruzeiro = 1.5f;
     public float forcaRotacaoMergulho = 5.0f;
 
+    [Header("Engajamento Aéreo")]
+    public float distanciaInicioPerseguicaoAerea = 260f;
+    public float margemAltitudeAlvoAereo = 30f;
+    public float raioDetonacaoProximidadeAerea = 18f;
+    public float multiplicadorRotacaoAerea = 1.65f;
+    public float multiplicadorVelocidadeAerea = 1.15f;
+
     [Header("Explosao")]
     public float dano = 200f;
     public float raioExplosao = 20f;
@@ -43,6 +50,7 @@ public class MisselNaval : MonoBehaviour
     private Rigidbody rb;
     private bool jaExplodiu = false;
     private float tempoExpirar;
+    private bool alvoEhAereo = false;
 
     void OnEnable()
     {
@@ -93,6 +101,7 @@ public class MisselNaval : MonoBehaviour
         StopAllCoroutines();
         pontoAlvo = alvo;
         alvoTransform = alvoT;
+        alvoEhAereo = DetectarAlvoAereo(alvoT, alvo);
         lancado = true;
         jaExplodiu = false;
         emNavegacao = false;
@@ -160,8 +169,19 @@ public class MisselNaval : MonoBehaviour
             new Vector2(transform.position.x, transform.position.z),
             new Vector2(pontoAlvo.x, pontoAlvo.z));
         float distanciaTotal = vetorParaAlvo.magnitude;
+        bool alvoAlto = pontoAlvo.y > transform.position.y + margemAltitudeAlvoAereo;
+        bool perseguirComoAereo = alvoEhAereo || alvoAlto;
 
-        if (distanciaHorizontal > distanciaInicioMergulho)
+        if (perseguirComoAereo && distanciaHorizontal > distanciaInicioMergulho)
+        {
+            Vector3 direcaoAerea = vetorParaAlvo.normalized;
+            GirarPara(direcaoAerea, forcaRotacaoMergulho * multiplicadorRotacaoAerea);
+            velocidadeAtual = Mathf.Lerp(
+                velocidadeAtual,
+                velocidadeMergulho * multiplicadorVelocidadeAerea,
+                Time.fixedDeltaTime * 2.5f);
+        }
+        else if (distanciaHorizontal > Mathf.Max(distanciaInicioMergulho, distanciaInicioPerseguicaoAerea))
         {
             Vector3 direcaoHorizontal = new Vector3(vetorParaAlvo.x, 0f, vetorParaAlvo.z).normalized;
             Vector3 direcaoDesejada = direcaoHorizontal;
@@ -182,7 +202,11 @@ public class MisselNaval : MonoBehaviour
 
         rb.linearVelocity = transform.forward * velocidadeAtual;
 
-        if (distanciaTotal < 10f)
+        float distanciaDetonacao = perseguirComoAereo
+            ? Mathf.Max(10f, raioDetonacaoProximidadeAerea)
+            : 10f;
+
+        if (distanciaTotal < distanciaDetonacao)
         {
             Explodir();
         }
@@ -206,7 +230,7 @@ public class MisselNaval : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (DeveIgnorarTrigger(other))
         {
             return;
         }
@@ -268,13 +292,66 @@ public class MisselNaval : MonoBehaviour
         PoolDeObjetosCombate.Release(gameObject);
     }
 
+    bool DeveIgnorarTrigger(Collider other)
+    {
+        if (other == null)
+        {
+            return true;
+        }
+
+        if (other.CompareTag("Player"))
+        {
+            return true;
+        }
+
+        if (other.isTrigger)
+        {
+            return true;
+        }
+
+        Transform raizOutro = other.transform.root != null ? other.transform.root : other.transform;
+        Transform raizMinha = transform.root != null ? transform.root : transform;
+
+        if (raizOutro == raizMinha)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     private void ResetarEstado()
     {
         pontoAlvo = Vector3.zero;
         alvoTransform = null;
+        alvoEhAereo = false;
         lancado = false;
         emNavegacao = false;
         velocidadeAtual = 0f;
         jaExplodiu = false;
+    }
+
+    private bool DetectarAlvoAereo(Transform alvo, Vector3 pontoFallback)
+    {
+        if (alvo == null)
+        {
+            return pontoFallback.y > 35f;
+        }
+
+        IdentidadeUnidade identidade = alvo.GetComponentInParent<IdentidadeUnidade>();
+        string nome = alvo.name.ToLowerInvariant();
+
+        return alvo.position.y > 8f
+               || alvo.GetComponentInParent<ControleAviao>() != null
+               || alvo.GetComponentInParent<ControleAviaoCaca>() != null
+               || alvo.GetComponentInParent<AviaoBombardeiro>() != null
+               || alvo.GetComponentInParent<Helicoptero>() != null
+               || (identidade != null && identidade.tipoUnidade == TipoUnidade.Aereo)
+               || nome.Contains("aviao")
+               || nome.Contains("heli")
+               || nome.Contains("caca")
+               || nome.Contains("bombard")
+               || nome.Contains("bombardeiro")
+               || nome.Contains("bomber");
     }
 }

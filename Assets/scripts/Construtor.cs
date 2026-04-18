@@ -733,8 +733,12 @@ public class Construtor : MonoBehaviour
     public GameObject ConstruirEstruturaIA(GameObject prefab, Vector3 posicao, Quaternion rotacao)
     {
         if (prefab == null) return null;
+        DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefab.name);
 
+        long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
+        RegistrarTempoDiagnostico("spawn_structure_ms", instantiateStart);
+        long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
         EnsureCollider(novoPredio);
 
         Estaleiro estaleiro = novoPredio.GetComponent<Estaleiro>();
@@ -755,6 +759,8 @@ public class Construtor : MonoBehaviour
         {
             Debug.Log($"[Construtor IA] Construiu {prefab.name} em {posicao}");
         }
+
+        RegistrarTempoDiagnostico("prefab_init_ms", initStart);
 
         return novoPredio;
     }
@@ -894,6 +900,15 @@ public class Construtor : MonoBehaviour
             {
                 target.AddComponent<BoxCollider>();
             }
+        }
+    }
+
+    private static void RegistrarTempoDiagnostico(string chave, long inicio)
+    {
+        float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+        if (elapsedMs > 0f)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
         }
     }
 

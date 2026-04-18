@@ -230,6 +230,10 @@ MonoBehaviour:
   distanciaChegada: 15
   offsetAlturaAgua: 4
   profundidadeVisual: 0
+  anguloEntradaManobraRe: 130
+  anguloSaidaManobraRe: 75
+  duracaoMaximaManobraRe: 3.5
+  potenciaManobraRe: -0.35
   bigodeiraProa: {fileID: 0}
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}

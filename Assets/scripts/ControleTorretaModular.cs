@@ -57,6 +57,7 @@ public class ControleTorretaModular : MonoBehaviour
     private int indiceArmaAlternada = 0;
     private int meuTime = 1;
     private Transform minhaRaiz;
+    private bool souAntiAereo;
     
     void Start()
     {
@@ -76,10 +77,86 @@ public class ControleTorretaModular : MonoBehaviour
         meuTime = (meuID != null) ? meuID.teamID : 1;
         minhaRaiz = transform.root;
         if (pecaQueGira == null) pecaQueGira = transform;
+        souAntiAereo = DeterminarSouAntiAereo();
         
         // Inicia busca de alvos
         float offset = Random.Range(0f, 0.5f);
         InvokeRepeating("ProcurarAlvo", offset, 0.4f);
+    }
+
+    bool DeterminarSouAntiAereo()
+    {
+        string nomeBase = minhaRaiz != null ? minhaRaiz.name.ToLowerInvariant() : transform.root.name.ToLowerInvariant();
+        string nomeObj = transform.name.ToLowerInvariant();
+        string etiqueta = etiquetaAlvo ?? string.Empty;
+
+        return etiqueta.Equals("Aereo", System.StringComparison.OrdinalIgnoreCase) ||
+               etiqueta.Equals("Areo", System.StringComparison.OrdinalIgnoreCase) ||
+               nomeBase.Contains("ares") || nomeBase.Contains("antiaerea") || nomeBase.Contains("anti-aerea") ||
+               nomeBase.Contains("ciws") || nomeBase.Contains("sam") ||
+               nomeObj.Contains("ares") || nomeObj.Contains("antiaerea") || nomeObj.Contains("anti-aerea") ||
+               nomeObj.Contains("ciws") || nomeObj.Contains("sam");
+    }
+
+    Transform ResolverTransformAlvo(Transform alvo)
+    {
+        if (alvo == null) return null;
+
+        SistemaDeDanos vida = alvo.GetComponentInParent<SistemaDeDanos>();
+        if (vida != null) return vida.transform;
+
+        ControleAviao aviao = alvo.GetComponentInParent<ControleAviao>();
+        if (aviao != null) return aviao.transform;
+
+        Helicoptero helicoptero = alvo.GetComponentInParent<Helicoptero>();
+        if (helicoptero != null) return helicoptero.transform;
+
+        IdentidadeUnidade identidade = alvo.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade != null) return identidade.transform;
+
+        return alvo.root != null ? alvo.root : alvo;
+    }
+
+    bool EhMissilReal(Transform alvo)
+    {
+        if (alvo == null) return false;
+        string tagAtual = alvo.gameObject.tag;
+
+        if (alvo.GetComponentInParent<MissileThreatTracker>() != null) return true;
+        if (alvo.GetComponentInParent<MisselCaca>() != null) return true;
+        if (alvo.GetComponentInParent<MissilTeleguiado>() != null) return true;
+        if (alvo.GetComponentInParent<MisselICBM>() != null) return true;
+        if (alvo.GetComponentInParent<MisselNaval>() != null) return true;
+        if (alvo.GetComponentInParent<MisselSubmarino>() != null) return true;
+        if (alvo.GetComponentInParent<MisselTatico>() != null) return true;
+        if (alvo.GetComponentInParent<MisselLeopardAutomatico>() != null) return true;
+
+        return tagAtual == "Missil" || tagAtual == "Missel";
+    }
+
+    bool EhAlvoAereo(Transform alvo, IdentidadeUnidade identidade)
+    {
+        if (alvo == null) return false;
+
+        string nomeAlvo = alvo.name.ToLowerInvariant();
+
+        return alvo.position.y > 6f ||
+               alvo.GetComponentInParent<ControleAviao>() != null ||
+               alvo.GetComponentInParent<ControleAviaoCaca>() != null ||
+               alvo.GetComponentInParent<AviaoBombardeiro>() != null ||
+               alvo.GetComponentInParent<Helicoptero>() != null ||
+               (identidade != null && identidade.tipoUnidade == TipoUnidade.Aereo) ||
+               nomeAlvo.Contains("aviao") ||
+               nomeAlvo.Contains("heli") ||
+               nomeAlvo.Contains("caca") ||
+               nomeAlvo.Contains("jato") ||
+               nomeAlvo.Contains("drone") ||
+               nomeAlvo.Contains("vap") ||
+               nomeAlvo.Contains("bombard") ||
+               nomeAlvo.Contains("bombardeiro") ||
+               nomeAlvo.Contains("bomber") ||
+               alvo.tag == "Areo" ||
+               alvo.tag == "Aereo";
     }
     
     void Update()
@@ -152,12 +229,28 @@ public class ControleTorretaModular : MonoBehaviour
             
             if (ehInimigo)
             {
+                Transform alvoPrincipal = ResolverTransformAlvo(alvoTr);
+                IdentidadeUnidade idAlvoPrincipal = alvoPrincipal != null
+                    ? alvoPrincipal.GetComponentInParent<IdentidadeUnidade>()
+                    : idAlvo;
+                bool ehMissil = EhMissilReal(alvoPrincipal != null ? alvoPrincipal : alvoTr);
+                bool alvoAereo = ehMissil || EhAlvoAereo(alvoPrincipal != null ? alvoPrincipal : alvoTr, idAlvoPrincipal);
+
+                if (souAntiAereo)
+                {
+                    if (!alvoAereo) continue;
+                }
+                else
+                {
+                    if (alvoAereo) continue;
+                }
+
                 Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
                 float dist = (transform.position - pontoMaisProximo).sqrMagnitude;
                 if (dist < menorDistancia)
                 {
                     menorDistancia = dist;
-                    melhorAlvo = alvoTr;
+                    melhorAlvo = alvoPrincipal != null ? alvoPrincipal : alvoTr;
                 }
             }
         }

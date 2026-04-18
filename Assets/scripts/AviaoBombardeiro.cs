@@ -66,6 +66,7 @@ public class AviaoBombardeiro : MonoBehaviour
     // Estado de Voo
     private Vector3 direcaoPassagemFixa = Vector3.zero;
     private bool travouDirecao = false;
+    private bool avisoSemArmamentoEmitido = false;
 
     void Start()
     {
@@ -89,6 +90,7 @@ public class AviaoBombardeiro : MonoBehaviour
         if (controleAviao != null && controleAviao.estaEmModoVooFisico)
         {
             Vector3 destinoForcado = controleAviao.alvoGPSVoo;
+            float distanciaPreparacao = ObterDistanciaPreparacaoAtaque();
             
             if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
             {
@@ -98,7 +100,7 @@ public class AviaoBombardeiro : MonoBehaviour
                     paraAlvo.y = 0;
                     float distSqr = paraAlvo.sqrMagnitude;
 
-                    if (distSqr > 40000f) // Longe (>200m): Navega para o alvo
+                    if (distSqr > distanciaPreparacao * distanciaPreparacao)
                     {
                         destinoForcado = alvoAreaSolo;
                         travouDirecao = false;
@@ -122,7 +124,7 @@ public class AviaoBombardeiro : MonoBehaviour
                     Vector3 paraMeio = meio - transform.position;
                     paraMeio.y = 0;
                     
-                    if (paraMeio.sqrMagnitude > 40000f)
+                    if (paraMeio.sqrMagnitude > distanciaPreparacao * distanciaPreparacao)
                     {
                         destinoForcado = meio;
                         travouDirecao = false;
@@ -270,9 +272,9 @@ public class AviaoBombardeiro : MonoBehaviour
         if (alvoAreaSolo == Vector3.zero) return;
         
         Vector3 distParaAlvo = new Vector3(transform.position.x - alvoAreaSolo.x, 0, transform.position.z - alvoAreaSolo.z);
+        float distanciaAtaque = ObterDistanciaAcionamentoAtaque();
         
-        // Dispara quando estiver chegando perto (ex: 280 metros) para o tapete cobrir o alvo no movimento
-        if (distParaAlvo.sqrMagnitude < 78400f) // 280 * 280 = 78400
+        if (distParaAlvo.sqrMagnitude < distanciaAtaque * distanciaAtaque)
         {
             StartCoroutine(AtaqueTapeteArea());
         }
@@ -371,12 +373,64 @@ public class AviaoBombardeiro : MonoBehaviour
         
         Vector3 distA1 = new Vector3(transform.position.x - alvoMassa1.x, 0, transform.position.z - alvoMassa1.z);
         Vector3 distA2 = new Vector3(transform.position.x - alvoMassa2.x, 0, transform.position.z - alvoMassa2.z);
+        float distanciaAtaque = ObterDistanciaAcionamentoAtaque();
 
-        // Dispara se estiver chegando (< 280m) de qualquer um dos focos
-        if (distA1.sqrMagnitude < 78400f || distA2.sqrMagnitude < 78400f)
+        if (distA1.sqrMagnitude < distanciaAtaque * distanciaAtaque || distA2.sqrMagnitude < distanciaAtaque * distanciaAtaque)
         {
             StartCoroutine(AtaqueDestruicaoEmMassa());
         }
+    }
+
+    private float ObterDistanciaPreparacaoAtaque()
+    {
+        return Mathf.Max(ObterDistanciaAcionamentoAtaque() + 70f, 140f);
+    }
+
+    private float ObterDistanciaAcionamentoAtaque()
+    {
+        if (projetilPrefab == null)
+        {
+            return 180f;
+        }
+
+        MisselBombardeiro misselBombardeiro = projetilPrefab.GetComponent<MisselBombardeiro>();
+        if (misselBombardeiro != null)
+        {
+            return Mathf.Clamp(
+                Mathf.Max(110f, misselBombardeiro.distanciaMergulho * 0.65f),
+                120f,
+                220f);
+        }
+
+        BombaBombardeiro bomba = projetilPrefab.GetComponent<BombaBombardeiro>();
+        if (bomba != null)
+        {
+            float altura = Mathf.Max(40f, altitudeDeVoo);
+            float gravidade = Mathf.Max(0.1f, Physics.gravity.magnitude * Mathf.Max(0.1f, bomba.multiplicadorGravidade));
+            float tempoQueda = Mathf.Sqrt((2f * altura) / gravidade);
+            float velocidadeHorizontal = controleAviao != null ? Mathf.Max(40f, controleAviao.velocidadeMaximaVoo) : 90f;
+            return Mathf.Clamp((velocidadeHorizontal * tempoQueda) * 0.85f, 140f, 700f);
+        }
+
+        MisselTatico misselTatico = projetilPrefab.GetComponent<MisselTatico>();
+        if (misselTatico != null)
+        {
+            return 170f;
+        }
+
+        MisselICBM misselIcbm = projetilPrefab.GetComponent<MisselICBM>();
+        if (misselIcbm != null)
+        {
+            return 220f;
+        }
+
+        Projetil projetil = projetilPrefab.GetComponent<Projetil>();
+        if (projetil != null)
+        {
+            return Mathf.Clamp(projetil.velocidade * 1.8f, 120f, 260f);
+        }
+
+        return 180f;
     }
 
     private IEnumerator AtaqueDestruicaoEmMassa()
@@ -421,10 +475,19 @@ public class AviaoBombardeiro : MonoBehaviour
     /// </summary>
     private void Lancamento(Vector3 pontoFinalExato, Transform alvoMovelRef)
     {
-        if (projetilPrefab == null) return;
+        if (projetilPrefab == null)
+        {
+            if (!avisoSemArmamentoEmitido)
+            {
+                Debug.LogWarning($"[Bombardeiro] {name} está sem projetilPrefab configurado e não consegue atacar.");
+                avisoSemArmamentoEmitido = true;
+            }
+            return;
+        }
         
         Transform comporta = comportasDeBomba[indiceSaida];
         indiceSaida = (indiceSaida + 1) % comportasDeBomba.Length;
+        avisoSemArmamentoEmitido = false;
 
         GameObject objArma = PoolDeObjetosCombate.Spawn(projetilPrefab, comporta.position, comporta.rotation);
 

@@ -228,7 +228,7 @@ public class C700TransporteAereo : MonoBehaviour
             return;
         }
 
-        Rect area = new Rect(Screen.width - 430f, Screen.height * 0.08f, 400f, 650f);
+        Rect area = new Rect(Screen.width - 430f - (Screen.width * 0.20f), Screen.height * 0.08f, 400f, 650f);
         GUI.Box(area, "C700 - Transporte");
         GUILayout.BeginArea(new Rect(area.x + 12f, area.y + 28f, area.width - 24f, area.height - 40f));
         scrollMenuCarga = GUILayout.BeginScrollView(scrollMenuCarga);
@@ -261,21 +261,9 @@ public class C700TransporteAereo : MonoBehaviour
         }
 
         GUI.enabled = EstaNoSolo;
-        GUILayout.BeginHorizontal();
         if (GUILayout.Button("Desembarcar carga", GUILayout.Height(32f)))
         {
             DesembarcarTudo();
-        }
-        if (GUILayout.Button("Desembarcar manifesto", GUILayout.Height(32f)))
-        {
-            DesembarcarManifestoConfigurado();
-        }
-        GUILayout.EndHorizontal();
-
-        GUI.enabled = EstaNoSolo;
-        if (GUILayout.Button("Limpar manifesto", GUILayout.Height(30f)))
-        {
-            LimparManifestoConfigurado();
         }
 
         GUI.enabled = aeroportoOrigem != null;
@@ -313,10 +301,6 @@ public class C700TransporteAereo : MonoBehaviour
         {
             GUILayout.Label("Sem unidades embarcadas.");
         }
-
-        GUILayout.Space(10f);
-        GUILayout.Label("Manifesto configuravel");
-        DesenharManifestoConfiguravel();
 
         GUILayout.EndScrollView();
         GUILayout.EndArea();
@@ -444,6 +428,14 @@ public class C700TransporteAereo : MonoBehaviour
         LimparDestinoVisual();
         MostrarMensagem("Ordem aerea cancelada.");
 
+        // Garantir que a selecao nao fique presa neste avião ao cancelar por UI do aeroporto
+        GerenteSelecao gerenteSelecao = Object.FindFirstObjectByType<GerenteSelecao>();
+        ControleUnidade meuControle = GetComponent<ControleUnidade>();
+        if (gerenteSelecao != null && meuControle != null && gerenteSelecao.unidadesSelecionadas.Contains(meuControle))
+        {
+            gerenteSelecao.DeselecionarTudo();
+        }
+
         if (EstaNoSolo && rotinaMovimento != null)
         {
             Vector3 retorno = ObterDestinoDeRetorno();
@@ -474,7 +466,6 @@ public class C700TransporteAereo : MonoBehaviour
         prontoParaDecolarNaPista = false;
         LimparMissaoProgramada();
         MostrarMensagem("Missao armada. Clique com o botao direito no destino.");
-        IniciarRotinaMovimento(RotinaPreparacaoParaDecolagem());
     }
 
     public void PuxarUnidadesProximas()
@@ -515,15 +506,6 @@ public class C700TransporteAereo : MonoBehaviour
         aguardandoDestinoAereo = false;
         RegistrarDestinoVisual(destinoFinal);
 
-        if (EstaNoSolo && rotinaMovimento != null && !prontoParaDecolarNaPista)
-        {
-            destinoMissaoProgramado = destinoFinal;
-            temDestinoMissaoProgramado = true;
-            retornoMissaoProgramado = retornoAoAeroporto;
-            MostrarMensagem("Destino confirmado. Taxiando para decolar.");
-            return;
-        }
-
         LimparMissaoProgramada();
         IniciarRotinaMovimento(RotinaMissaoAerea(destinoFinal, retornoAoAeroporto));
     }
@@ -563,7 +545,7 @@ public class C700TransporteAereo : MonoBehaviour
         Vector3 direcaoAproximacao;
         
         // Se a distância total for MENOR do que a pista de pouso exige, ele alinha baseado na direção do próprio nariz para dar a volta, em vez de frear seco
-        if (distAtualSqr < distanciaAproximacao * distanciaAproximacao)
+        if (distAtualSqr < 150f * 150f)
         {
             direcaoAproximacao = transform.forward;
             direcaoAproximacao.y = 0;
@@ -574,22 +556,23 @@ public class C700TransporteAereo : MonoBehaviour
             direcaoAproximacao = direcaoParaAlvo;
         }
 
-        float alturaAproximacao = Mathf.Max(altitudeCruzeiro * 0.45f, 32f);
-        Vector3 pontoAlto = destinoSolo - direcaoAproximacao * distanciaAproximacao + Vector3.up * alturaAproximacao;
-        Vector3 pontoBaixo = destinoSolo - direcaoAproximacao * distanciaDescida + Vector3.up * Mathf.Max(alturaToqueSolo + 6f, 12f);
-        Vector3 pontoToque = destinoSolo - direcaoAproximacao * distanciaRolagem + Vector3.up * alturaToqueSolo;
+        // Desce reto e devagar a partir dos 150m, e toca no chao exatos 70m antes do alvo!
+        Vector3 pontoInicioDescida = destinoSolo - direcaoAproximacao * 150f + Vector3.up * altitudeCruzeiro;
+        Vector3 pontoToque = destinoSolo - direcaoAproximacao * 70f + Vector3.up * alturaToqueSolo;
 
         estadoAtual = EstadoC700.EmVoo;
-        yield return StartCoroutine(VoarAtePonto(pontoAlto, velocidadeCruzeiro, 18f));
+        // Voa em linha reta ate o comeco da rampa de descida
+        yield return StartCoroutine(VoarAtePonto(pontoInicioDescida, velocidadeCruzeiro, 25f));
 
         estadoAtual = EstadoC700.Aproximando;
-        yield return StartCoroutine(VoarAtePonto(pontoBaixo, velocidadeCruzeiro * 0.72f, 12f));
+        // Faz a rampa de descida gradual dos 150m aos 70m sem embicar abruptamente na vertical
         yield return StartCoroutine(VoarAtePonto(pontoToque, velocidadeDecolagem * 0.95f, 5.5f));
 
         estadoAtual = EstadoC700.Pousando;
         transform.position = new Vector3(transform.position.x, destinoSolo.y + alturaToqueSolo, transform.position.z);
         velocidadeSoloAtual = Mathf.Max(velocidadeTaxi * 1.8f, velocidadeDecolagem * 0.85f);
 
+        // Taxia andando fofinho pelo chao nos ultimos 70m ate o exato ponto clicado
         yield return StartCoroutine(TaxiarAtePosicao(destinoSolo, velocidadeTaxi, velocidadeSoloAtual, retornoAoAeroporto));
 
         if (retornoAoAeroporto && pontoEstacionamentoPreferencial != null)
@@ -719,7 +702,17 @@ public class C700TransporteAereo : MonoBehaviour
     private IEnumerator RotinaDecolagem()
     {
         bool usouPistaDoAeroporto = false;
+        bool pertoDaPista = false;
+        
         if (aeroportoOrigem != null && aeroportoOrigem.waypointsDecolagem != null && aeroportoOrigem.waypointsDecolagem.Count > 0)
+        {
+            if (Vector3.Distance(transform.position, aeroportoOrigem.waypointsDecolagem[0].position) < 350f)
+            {
+                pertoDaPista = true;
+            }
+        }
+
+        if (pertoDaPista)
         {
             int indiceVoo = -1;
             for (int i = 0; i < aeroportoOrigem.waypointsDecolagem.Count; i++)
@@ -789,7 +782,7 @@ public class C700TransporteAereo : MonoBehaviour
         prontoParaDecolarNaPista = false;
         if (!usouPistaDoAeroporto)
         {
-            yield return StartCoroutine(CorridaDecolagemPara(transform.position + transform.forward * distanciaCorridaDecolagem));
+            yield return StartCoroutine(CorridaDecolagemTempoParaLocalAberto());
         }
 
         estadoAtual = EstadoC700.EmVoo;
@@ -805,6 +798,37 @@ public class C700TransporteAereo : MonoBehaviour
         }
 
         rotinaMovimento = null;
+    }
+
+    private IEnumerator CorridaDecolagemTempoParaLocalAberto()
+    {
+        estadoAtual = EstadoC700.Decolando;
+        Vector3 inicioCorrida = transform.position;
+        Vector3 direcaoSaidaCerta = transform.forward;
+        direcaoSaidaCerta.y = 0f;
+        if (direcaoSaidaCerta.sqrMagnitude < 0.05f) direcaoSaidaCerta = Vector3.forward;
+        direcaoSaidaCerta.Normalize();
+
+        float tempoT = 0f;
+        while (tempoT < 7f)
+        {
+            tempoT += Time.deltaTime;
+            velocidadeAereaAtual = Mathf.MoveTowards(velocidadeAereaAtual, velocidadeDecolagem, aceleracaoVoo * Time.deltaTime);
+            transform.position += direcaoSaidaCerta * velocidadeAereaAtual * Time.deltaTime;
+            AderirAoSolo();
+            yield return null;
+        }
+
+        float distanciaHorizontal = 0f;
+        float alturaAlvo = Mathf.Max(altitudeCruzeiro, transform.position.y + 45f);
+        
+        while (transform.position.y < alturaAlvo - 1f || distanciaHorizontal < 65f)
+        {
+            Vector3 alvoSubida = transform.position + direcaoSaidaCerta * 85f + Vector3.up * 25f;
+            AtualizarMovimentoAereo(alvoSubida, velocidadeCruzeiro * 0.72f);
+            distanciaHorizontal = Vector3.Distance(new Vector3(inicioCorrida.x, 0f, inicioCorrida.z), new Vector3(transform.position.x, 0f, transform.position.z));
+            yield return null;
+        }
     }
 
     private IEnumerator CorridaDecolagemPara(Vector3 destinoSolo)
@@ -837,9 +861,15 @@ public class C700TransporteAereo : MonoBehaviour
 
         float distanciaHorizontal = 0f;
         float alturaAlvo = Mathf.Max(altitudeCruzeiro, transform.position.y + 45f);
+        Vector3 direcaoSaidaCerta = transform.forward;
+        direcaoSaidaCerta.y = 0f;
+        if (direcaoSaidaCerta.sqrMagnitude < 0.05f) direcaoSaidaCerta = Vector3.forward;
+        direcaoSaidaCerta.Normalize();
+
         while (transform.position.y < alturaAlvo - 1f || distanciaHorizontal < 65f)
         {
-            Vector3 alvoSubida = transform.position + transform.forward * 85f + Vector3.up * 40f;
+            // Substituimos o transform.forward que criava feedback loop por uma direcao fixa horizontal.
+            Vector3 alvoSubida = transform.position + direcaoSaidaCerta * 85f + Vector3.up * 25f;
             AtualizarMovimentoAereo(alvoSubida, velocidadeCruzeiro * 0.72f);
             distanciaHorizontal = Vector3.Distance(new Vector3(inicioCorrida.x, 0f, inicioCorrida.z), new Vector3(transform.position.x, 0f, transform.position.z));
             yield return null;

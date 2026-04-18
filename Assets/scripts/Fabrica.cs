@@ -77,6 +77,8 @@ public class Fabrica : MonoBehaviour
     public GameObject ProduzirUnidade(GameObject prefab)
     {
         if (prefab == null) return null;
+        long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefab.name);
 
         Transform spawn = (pontoNascimento != null) ? pontoNascimento : transform;
         
@@ -113,15 +115,31 @@ public class Fabrica : MonoBehaviour
         int slotIdx = _contadorSlot[saidaAlvo] - 1;
 
         Vector3 posSlot = baseSaida + (direcaoSaida * (5f + slotIdx * espacamento));
+        bool destinoValidado = false;
+        long navmeshDestinoStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        UnityEngine.AI.NavMeshHit hitDestino;
+        if (UnityEngine.AI.NavMesh.SamplePosition(posSlot, out hitDestino, 6f, UnityEngine.AI.NavMesh.AllAreas))
+        {
+            posSlot = hitDestino.position;
+            destinoValidado = true;
+        }
+        RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshDestinoStart);
 
         // Validação NavMesh para Spawn
         Vector3 posSpawnFinal = spawn.position;
+        bool spawnValidado = false;
         UnityEngine.AI.NavMeshHit nh;
+        long navmeshSpawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
         if (UnityEngine.AI.NavMesh.SamplePosition(spawn.position, out nh, 10f, UnityEngine.AI.NavMesh.AllAreas))
+        {
             posSpawnFinal = nh.position;
+            spawnValidado = true;
+        }
+        RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
 
         // Instancia no spawn interno
         GameObject unidade = Instantiate(prefab, posSpawnFinal, spawn.rotation);
+        long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
 
         // Identidade
         var idF = GetComponentInParent<IdentidadeUnidade>();
@@ -129,7 +147,7 @@ public class Fabrica : MonoBehaviour
         if (idF != null && idU != null) { idU.teamID = idF.teamID; idU.nomeDoPais = idF.nomeDoPais; }
 
         // EXCLUSIVO: Corotina para delay de 1 segundo antes de sair
-        StartCoroutine(MoverParaSaidaComDelay(unidade, posSlot, 1.0f));
+        StartCoroutine(MoverParaSaidaComDelay(unidade, posSlot, posSpawnFinal, spawnValidado, destinoValidado, 1.0f));
 
         // Registro IA
         if (idU != null && idU.teamID != 1)
@@ -139,19 +157,27 @@ public class Fabrica : MonoBehaviour
             DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
         }
 
+        RegistrarTempoDiagnostico("prefab_init_ms", initStart);
+        RegistrarTempoDiagnostico("spawn_land_ms", spawnStart);
+
         return unidade;
     }
 
-    IEnumerator MoverParaSaidaComDelay(GameObject unidade, Vector3 destino, float delay)
+    IEnumerator MoverParaSaidaComDelay(GameObject unidade, Vector3 destino, Vector3 spawnValidadoPosicao, bool spawnJaValidado, bool destinoJaValidado, float delay)
     {
         yield return new WaitForSeconds(delay);
 
         if (unidade != null)
         {
-            UnityEngine.AI.NavMeshHit hitDestino;
-            if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hitDestino, 6f, UnityEngine.AI.NavMesh.AllAreas))
+            if (!destinoJaValidado)
             {
-                destino = hitDestino.position;
+                long navmeshDestinoStart = System.Diagnostics.Stopwatch.GetTimestamp();
+                UnityEngine.AI.NavMeshHit hitDestino;
+                if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hitDestino, 6f, UnityEngine.AI.NavMesh.AllAreas))
+                {
+                    destino = hitDestino.position;
+                }
+                RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshDestinoStart);
             }
 
             var controle = unidade.GetComponent<ControleUnidade>();
@@ -160,10 +186,19 @@ public class Fabrica : MonoBehaviour
                 var agente = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
                 if (agente != null && !agente.isOnNavMesh)
                 {
-                    UnityEngine.AI.NavMeshHit hitSpawn;
-                    if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hitSpawn, 10f, UnityEngine.AI.NavMesh.AllAreas))
+                    if (spawnJaValidado)
                     {
-                        agente.Warp(hitSpawn.position);
+                        agente.Warp(spawnValidadoPosicao);
+                    }
+                    else
+                    {
+                        long navmeshSpawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
+                        UnityEngine.AI.NavMeshHit hitSpawn;
+                        if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hitSpawn, 10f, UnityEngine.AI.NavMesh.AllAreas))
+                        {
+                            agente.Warp(hitSpawn.position);
+                        }
+                        RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
                     }
                 }
                 controle.MoverParaPonto(destino);
@@ -175,10 +210,19 @@ public class Fabrica : MonoBehaviour
                 {
                     if (!nav.isOnNavMesh)
                     {
-                        UnityEngine.AI.NavMeshHit hitSpawn;
-                        if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hitSpawn, 10f, UnityEngine.AI.NavMesh.AllAreas))
+                        if (spawnJaValidado)
                         {
-                            nav.Warp(hitSpawn.position);
+                            nav.Warp(spawnValidadoPosicao);
+                        }
+                        else
+                        {
+                            long navmeshSpawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
+                            UnityEngine.AI.NavMeshHit hitSpawn;
+                            if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hitSpawn, 10f, UnityEngine.AI.NavMesh.AllAreas))
+                            {
+                                nav.Warp(hitSpawn.position);
+                            }
+                            RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
                         }
                     }
 
@@ -189,6 +233,15 @@ public class Fabrica : MonoBehaviour
                     }
                 }
             }
+        }
+    }
+
+    private static void RegistrarTempoDiagnostico(string chave, long inicio)
+    {
+        float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+        if (elapsedMs > 0f)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
         }
     }
 

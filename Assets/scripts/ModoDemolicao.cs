@@ -87,6 +87,7 @@ public class ModoDemolicao : MonoBehaviour
     // ─── Update principal ─────────────────────────────────────────
     void Update()
     {
+        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
         // Atalho: T ou Delete
         if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Delete))
             AlternarModo(!ativo);

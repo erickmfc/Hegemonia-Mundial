@@ -1,4 +1,4 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!29 &1
 OcclusionCullingSettings:
@@ -160,6 +160,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!114 &40515246
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -475,7 +479,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Part 0"
+  m_text: Part 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -738,6 +742,16 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4da7c696355760b4b8075b1b183b561c, type: 3}
+--- !u!4 &128404811 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1335252138048140245, guid: 4da7c696355760b4b8075b1b183b561c, type: 3}
+  m_PrefabInstance: {fileID: 128404810}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &128404812 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4309502259949420468, guid: 4da7c696355760b4b8075b1b183b561c, type: 3}
+  m_PrefabInstance: {fileID: 128404810}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &156145809
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1068,8 +1082,6 @@ MonoBehaviour:
   basePrincipal: {fileID: 0}
   cerebroGeneral: {fileID: 0}
   cerebroArquiteto: {fileID: 0}
-  cerebroEconomico: {fileID: 0}
-  cerebroCombate: {fileID: 0}
 --- !u!114 &192897821
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1114,8 +1126,6 @@ MonoBehaviour:
   basePrincipal: {fileID: 0}
   cerebroGeneral: {fileID: 0}
   cerebroArquiteto: {fileID: 0}
-  cerebroEconomico: {fileID: 0}
-  cerebroCombate: {fileID: 0}
 --- !u!1 &215529935
 GameObject:
   m_ObjectHideFlags: 0
@@ -1273,7 +1283,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Oil 0"
+  m_text: Oil 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1693,6 +1703,7 @@ MonoBehaviour:
   corDocaLivre: {r: 0.2, g: 0.6, b: 0.3, a: 1}
   corDocaOcupada: {r: 0.7, g: 0.25, b: 0.25, a: 1}
   corBotaoAcao: {r: 0.2, g: 0.5, b: 0.8, a: 1}
+  debugLogs: 0
 --- !u!1001 &321799691
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2206,6 +2217,11 @@ MonoBehaviour:
   velocidadeZoom: 1000
   velocidadeRotacao: 100
   multiplicadorShift: 2.5
+  campoDeVisaoBase: 75
+  campoDeVisaoMin: 65
+  campoDeVisaoMax: 85
+  alturaMinParaFov: 2
+  alturaMaxParaFov: 2500
 --- !u!114 &330585549
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2218,6 +2234,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a3d951024223d944ab18d7c73d2c51c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VerificadorAudio
+  executarNoStart: 0
+  permitirTeclaVerificacao: 0
 --- !u!1001 &351101317
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3465,11 +3483,15 @@ MonoBehaviour:
   helicopterosDesejados: 1
   naviosDesejados: 2
   transportesDesejados: 2
+  avioesDesejados: 4
   minimoParaAtacar: 3
   intervaloAtaque: 15
+  usarInteligenciaAdaptativa: 1
+  relatorioInimigo: "Coletando informa\xE7\xF5es..."
   minhasFabricas: []
   meusEstaleiros: []
   meusHeliportos: []
+  meusAeroportos: []
 --- !u!4 &697574929
 Transform:
   m_ObjectHideFlags: 0
@@ -4167,7 +4189,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Pop 0"
+  m_text: Pop 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -5039,7 +5061,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Pwr 0"
+  m_text: Pwr 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -5195,6 +5217,8 @@ MonoBehaviour:
   prefabSelecionado: {fileID: 0}
   modoConstrucao: 0
   alturaDoMar: 0
+  deslocamentoPadraoEstruturaCosteira: 18
+  distanciaCorrecaoSpawnNaval: 30
 --- !u!114 &1066512839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5220,6 +5244,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0febc203b7ee4664d810cd7efd77ebd7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GerenteDeJogo
+  debugLogs: 0
   spawnInterno: {fileID: 0}
   pontoSaida: {fileID: 0}
   spawnSoldado: {fileID: 0}
@@ -5228,7 +5253,9 @@ MonoBehaviour:
   filaProducao: []
   listaQuarteis: []
   listaHangares: []
-  listaEstaleiros: []
+  listaEstaleiros:
+  - spawn: {fileID: 128404811}
+    saida: {fileID: 128404812}
   listaHeliportos: []
 --- !u!114 &1066512841
 MonoBehaviour:
@@ -5311,6 +5338,8 @@ MonoBehaviour:
   corFundo: {r: 0, g: 0, b: 0, a: 0.6509804}
   corBotaoAtivo: {r: 0.8, g: 0, b: 0, a: 0.7176471}
   corBotaoPassivo: {r: 0, g: 0.5, b: 1, a: 0.80784315}
+  corBotaoPatrulha: {r: 0.8, g: 0.5, b: 0, a: 1}
+  corBotaoSeguir: {r: 0.5, g: 0, b: 0.5, a: 1}
   fonteUI: {fileID: 0}
 --- !u!114 &1066512846
 MonoBehaviour:
@@ -5329,6 +5358,7 @@ MonoBehaviour:
   corDocaLivre: {r: 0.2, g: 0.6, b: 0.3, a: 1}
   corDocaOcupada: {r: 0.7, g: 0.25, b: 0.25, a: 1}
   corBotaoAcao: {r: 0.1, g: 0.6, b: 0.8, a: 1}
+  debugLogs: 0
 --- !u!1 &1073633948
 GameObject:
   m_ObjectHideFlags: 0
@@ -6661,7 +6691,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Mat 0"
+  m_text: Mat 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -7698,7 +7728,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Milit 0"
+  m_text: Milit 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -8166,8 +8196,6 @@ MonoBehaviour:
   basePrincipal: {fileID: 0}
   cerebroGeneral: {fileID: 697574928}
   cerebroArquiteto: {fileID: 1889415619}
-  cerebroEconomico: {fileID: 1140810510}
-  cerebroCombate: {fileID: 849671795}
 --- !u!4 &1846054609
 Transform:
   m_ObjectHideFlags: 0
@@ -8356,8 +8384,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b557cf8f79fb124abc42fb556d888ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IA_Arquiteto_Pro
-  espacamentoEdificios: 20
   nivelDoMar: 0
+  aprenderComJogador: 1
 --- !u!4 &1889415620
 Transform:
   m_ObjectHideFlags: 0
@@ -8523,7 +8551,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "$ 0"
+  m_text: $ 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -10398,4 +10426,3 @@ SceneRoots:
   - {fileID: 841327839}
   - {fileID: 1731219499}
   - {fileID: 1538918415}
-
