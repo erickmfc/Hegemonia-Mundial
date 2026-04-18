@@ -79,6 +79,9 @@ public class ControleSubmarino : MonoBehaviour
     public Transform modelo3D;
     public TrailRenderer rastroAgua;
 
+    [Header("Debug")]
+    public bool mostrarLogsNoConsole = false;
+
     private bool emMovimento = false;
     private float ultimoMovimento = -4f;
     private bool[] misseisUsados;
@@ -143,7 +146,10 @@ public class ControleSubmarino : MonoBehaviour
         AtualizarCristalIdentificacao(true);
         AtualizarCursorMira(false);
 
-        Debug.Log($"[USS Leviathan] {totalLocaisValidos} locais de lancamento detectados.", this);
+        if (mostrarLogsNoConsole)
+        {
+            Debug.Log($"[USS Leviathan] {totalLocaisValidos} locais de lancamento detectados.", this);
+        }
     }
 
     void Update()

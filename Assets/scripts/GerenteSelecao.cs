@@ -95,12 +95,12 @@ public class GerenteSelecao : MonoBehaviour
         {
             // Só mostra o verde se moveu um pouco o mouse (evita piscar)
             // Aumentei tolerância para 20 pixels para evitar "arrastar sem querer"
-            if(Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 20)
+            if(caixaSelecaoVisual != null && Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 20)
             {
                 caixaSelecaoVisual.gameObject.SetActive(true);
             }
             
-            if (caixaSelecaoVisual.gameObject.activeSelf)
+            if (caixaSelecaoVisual != null && caixaSelecaoVisual.gameObject.activeSelf)
                 AtualizarDesenhoCaixa();
         }
 
@@ -111,7 +111,7 @@ public class GerenteSelecao : MonoBehaviour
             // Portanto, o MouseUp deve ser ignorado para evitar que chame o CliqueSimples() numa Fábrica recém plantada!
             if (!arrastando) return; 
 
-            if (arrastando && caixaSelecaoVisual.gameObject.activeSelf)
+            if (arrastando && caixaSelecaoVisual != null && caixaSelecaoVisual.gameObject.activeSelf)
             {
                 SelecionarUnidadesMatematica();
             }

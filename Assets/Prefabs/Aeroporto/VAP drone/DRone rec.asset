@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: DRone rec
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: Nome da Unidade
-  descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 0}
-  preco: 100
-  categoria: 0
+  nomeItem: Drone Veloster
+  descricao: 'Drone rapido '
+  icone: {fileID: 21300000, guid: 4674f08757ebfd44db894efb2d8658e8, type: 3}
+  prefabDaUnidade: {fileID: 4352203740637700005, guid: 12eb61a8379b6dc40b281a6a223dfc93, type: 3}
+  preco: 300
+  categoria: 2
   scriptsDeComando: []

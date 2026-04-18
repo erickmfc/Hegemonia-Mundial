@@ -106,6 +106,12 @@ public class GerenteDeJogo : MonoBehaviour
 
     void Update()
     {
+        if (MenuPausaController.EstaPausado)
+        {
+            _tempoApertandoTab = 0f;
+            return;
+        }
+
         // FAST-FORWARD: Acelera o tempo do jogo x2 se o usuário segurar o TAB por 2 segundos.
         if (Input.GetKey(KeyCode.Tab))
         {
