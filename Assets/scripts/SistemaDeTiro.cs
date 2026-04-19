@@ -234,21 +234,25 @@ public class SistemaDeTiro : MonoBehaviour
                     // NÃO ATIRA EM ALVOS AÉREOS A NÃO SER QUE SEJA UM SOLDADO
                     // Tenta otimizar checando o eixo Y antes para evitar ler strings atoa
                     bool podeSerAereo = hit.transform.position.y > 6f;
-                    string nomeBaixo = hit.name.ToLower();
                     
                     bool alvoAereo = podeSerAereo ||
-                                     hit.GetComponentInParent<Helicoptero>() != null ||
-                                     hit.GetComponentInParent<ControleAviao>() != null ||
                                      (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
-                                     nomeBaixo.Contains("aviao") || 
-                                     nomeBaixo.Contains("heli") ||
-                                     nomeBaixo.Contains("caca") ||
-                                     nomeBaixo.Contains("caça") ||
-                                     nomeBaixo.Contains("jato") ||
-                                     nomeBaixo.Contains("drone") ||
-                                     nomeBaixo.Contains("vap") ||
-                                     hit.tag == "Areo" || 
-                                     hit.tag == "Aereo";
+                                     hit.CompareTag("Aereo") || 
+                                     hit.CompareTag("Areo") ||
+                                     hit.GetComponentInParent<Helicoptero>() != null ||
+                                     hit.GetComponentInParent<ControleAviao>() != null;
+
+                    if (!alvoAereo)
+                    {
+                        string nm = hit.name;
+                        alvoAereo = nm.IndexOf("aviao", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    nm.IndexOf("heli", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    nm.IndexOf("caca", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    nm.IndexOf("caça", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    nm.IndexOf("jato", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    nm.IndexOf("drone", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    nm.IndexOf("vap", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                    }
 
                     // Apenas INFANTARIA (Soldados) ou Jipes com metralhadora muito leves podem tentar atirar com suas mãos em alvos aéreos
                     bool souSoldado = souSoldadoLeve;

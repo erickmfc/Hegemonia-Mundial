@@ -136,21 +136,24 @@ public class TorretaAntiaerea : MonoBehaviour
             if (idAlvo == null) idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
 
             // Filtro Principal: É uma aeronave? 
-            string nomeBaixo = hit.name.ToLower();
-            
             bool ehAereo = hit.GetComponentInParent<Helicoptero>() != null || 
                            hit.GetComponentInParent<ControleAviao>() != null ||
                            (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
-                           nomeBaixo.Contains("aviao") || 
-                           nomeBaixo.Contains("heli") ||
-                           nomeBaixo.Contains("caca") ||
-                           nomeBaixo.Contains("caça") ||
-                           nomeBaixo.Contains("jato") ||
-                           nomeBaixo.Contains("drone") ||
-                           nomeBaixo.Contains("vap") ||
-                           nomeBaixo.Contains("bombard") || // Bombardeiros também entram aqui!
-                           hit.tag == "Areo" || 
-                           hit.tag == "Aereo";
+                           hit.CompareTag("Areo") || 
+                           hit.CompareTag("Aereo");
+
+            if (!ehAereo)
+            {
+                string nm = hit.name;
+                ehAereo = nm.IndexOf("aviao", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          nm.IndexOf("heli", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          nm.IndexOf("caca", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          nm.IndexOf("caça", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          nm.IndexOf("jato", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          nm.IndexOf("drone", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          nm.IndexOf("vap", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          nm.IndexOf("bombard", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            }
 
             if (!ehAereo) continue; // Pula unidades terrestres e prédios altos
 

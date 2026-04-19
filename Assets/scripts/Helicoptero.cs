@@ -236,7 +236,7 @@ public class Helicoptero : MonoBehaviour
                 {
                     try 
                     {
-                        if (SafeCompareTag(h.collider, tagInimigo) || h.collider.name.ToLower().Contains("inimigo"))
+                        if (SafeCompareTag(h.collider, tagInimigo) || h.collider.name.IndexOf("inimigo", System.StringComparison.OrdinalIgnoreCase) >= 0)
                         {
                             TentativaDisparoAutomatico();
                         }
@@ -329,7 +329,7 @@ public class Helicoptero : MonoBehaviour
                 Collider[] hits = Physics.OverlapSphere(transform.position, raioRadarMissil);
                 foreach (var h in hits)
                 {
-                    if (SafeCompareTag(h, tagMissil) || h.name.ToLower().Contains("missil"))
+                    if (SafeCompareTag(h, tagMissil) || h.name.IndexOf("missil", System.StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         TentativaDisparoAutomatico();
                         break; 
@@ -514,11 +514,12 @@ public class Helicoptero : MonoBehaviour
             }
 
             bool tagCorreta = TagSafe.Matches(s, tagAlvo);
-            if(!tagCorreta && (s.name.ToLower().Contains("soldado") || s.name.ToLower().Contains("infant"))) tagCorreta = true;
+            string nm = s.name;
+            if(!tagCorreta && (nm.IndexOf("soldado", System.StringComparison.OrdinalIgnoreCase) >= 0 || nm.IndexOf("infant", System.StringComparison.OrdinalIgnoreCase) >= 0)) tagCorreta = true;
 
             if(!tagCorreta)
             {
-                if (selecionado && !s.name.ToLower().Contains("tanque") && !s.name.ToLower().Contains("heli") && !s.name.ToLower().Contains("carro")) 
+                if (selecionado && nm.IndexOf("tanque", System.StringComparison.OrdinalIgnoreCase) < 0 && nm.IndexOf("heli", System.StringComparison.OrdinalIgnoreCase) < 0 && nm.IndexOf("carro", System.StringComparison.OrdinalIgnoreCase) < 0) 
                 {
                     LogDebug($"❌ Rejeitado [{s.name}]: Não tem a Tag '{tagAlvo}' nem nome de soldado.");
                 }

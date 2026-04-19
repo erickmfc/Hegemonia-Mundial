@@ -55,7 +55,10 @@ public class GerenteSelecao : MonoBehaviour
 
     void Update()
     {
-        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        if (cameraPrincipal == null || !cameraPrincipal.gameObject.activeInHierarchy)
+        {
+            cameraPrincipal = ObterCameraForte();
+        }
         Construtor construtorObj = ObterConstrutor();
         if (construtorObj != null && construtorObj.modoConstrucao)
         {
@@ -151,8 +154,9 @@ public class GerenteSelecao : MonoBehaviour
                 // Mas queremos ignorar IgnoreRaycast (2).
                 int layerMaskMove = ~(1 << 2); 
 
-                if (cameraPrincipal == null) return;
-                Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
+                Camera cam = cameraPrincipal != null ? cameraPrincipal : ObterCameraForte();
+                if (cam == null) return;
+                Ray raio = cam.ScreenPointToRay(Input.mousePosition);
                 RaycastHit hit;
                 Vector3 destino = Vector3.zero;
                 bool encontrouDestino = TryResolverDestinoClique(raio, layerMaskMove, out hit, out destino);
@@ -178,10 +182,19 @@ public class GerenteSelecao : MonoBehaviour
     {
         if (construtorCache == null)
         {
-            construtorCache = FindFirstObjectByType<Construtor>();
+            construtorCache = Object.FindFirstObjectByType<Construtor>();
         }
 
         return construtorCache;
+    }
+
+    Camera ObterCameraForte()
+    {
+        if (cameraPrincipal != null && cameraPrincipal.gameObject.activeInHierarchy) return cameraPrincipal;
+        cameraPrincipal = Camera.main;
+        if (cameraPrincipal != null) return cameraPrincipal;
+        cameraPrincipal = Object.FindFirstObjectByType<Camera>();
+        return cameraPrincipal;
     }
 
     bool TryResolverDestinoClique(Ray raio, int layerMaskMove, out RaycastHit hitFinal, out Vector3 destino)
@@ -860,8 +873,8 @@ public class GerenteSelecao : MonoBehaviour
         float minY = Mathf.Min(inicioMouseScreen.y, mouseFinal.y);
         float maxY = Mathf.Max(inicioMouseScreen.y, mouseFinal.y);
 
-        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
-        if (cameraPrincipal == null) return;
+        Camera cam = cameraPrincipal != null ? cameraPrincipal : ObterCameraForte();
+        if (cam == null) return;
 
         RegistroEntidadesJogo.FillControlesUnidade(bufferControlesSelecionaveis);
 
@@ -870,7 +883,7 @@ public class GerenteSelecao : MonoBehaviour
             if (unidade == null || !unidade.enabled) continue; // Ignora unidades desativadas (como soldados dentro de caminhões)
 
             // Onde o tanque está na tela?
-            Vector3 posTela = cameraPrincipal.WorldToScreenPoint(unidade.transform.position);
+            Vector3 posTela = cam.WorldToScreenPoint(unidade.transform.position);
 
             if (posTela.x > minX && posTela.x < maxX && 
                 posTela.y > minY && posTela.y < maxY)
@@ -886,9 +899,9 @@ public class GerenteSelecao : MonoBehaviour
         // Vamos tentar pegar tudo exceto a Ignore Raycast (2).
         int layerMask = ~(1 << 2); 
 
-        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
-        if (cameraPrincipal == null) return;
-        Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
+        Camera cam = cameraPrincipal != null ? cameraPrincipal : ObterCameraForte();
+        if (cam == null) return;
+        Ray raio = cam.ScreenPointToRay(Input.mousePosition);
         RaycastHit toque;
         
         if (Physics.Raycast(raio, out toque, Mathf.Infinity, layerMask))
