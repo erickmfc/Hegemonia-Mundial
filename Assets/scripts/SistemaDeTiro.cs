@@ -237,8 +237,6 @@ public class SistemaDeTiro : MonoBehaviour
                     
                     bool alvoAereo = podeSerAereo ||
                                      (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
-                                     hit.CompareTag("Aereo") || 
-                                     hit.CompareTag("Areo") ||
                                      hit.GetComponentInParent<Helicoptero>() != null ||
                                      hit.GetComponentInParent<ControleAviao>() != null;
 

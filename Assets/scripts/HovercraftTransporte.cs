@@ -604,6 +604,14 @@ public class HovercraftTransporte : MonoBehaviour
             Gizmos.color = Color.cyan;
             foreach(var t in slotsDeCarga) if(t) Gizmos.DrawWireCube(t.position, new Vector3(2.5f, 0.1f, 4f));
         }
+
+        // Raio de captação (Embarque)
+        Gizmos.color = new Color(1f, 0.9f, 0f, 0.5f);
+        Gizmos.DrawWireSphere(transform.position, distanciaParaEmbarque);
+
+        // Raio base de desembarque em leque
+        Gizmos.color = new Color(0f, 0.8f, 1f, 0.4f);
+        Gizmos.DrawWireSphere(transform.position, distanciaDescarga);
     }
     void CriarSlotsPadrao()
     {

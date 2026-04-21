@@ -120,7 +120,7 @@ public class ControleTorretaModular : MonoBehaviour
     bool EhMissilReal(Transform alvo)
     {
         if (alvo == null) return false;
-        string tagAtual = alvo.gameObject.tag;
+        if (TagSafe.Matches(alvo.gameObject, "Missil")) return true;
 
         if (alvo.GetComponentInParent<MissileThreatTracker>() != null) return true;
         if (alvo.GetComponentInParent<MisselCaca>() != null) return true;
@@ -131,7 +131,7 @@ public class ControleTorretaModular : MonoBehaviour
         if (alvo.GetComponentInParent<MisselTatico>() != null) return true;
         if (alvo.GetComponentInParent<MisselLeopardAutomatico>() != null) return true;
 
-        return tagAtual == "Missil" || tagAtual == "Missel";
+        return false;
     }
 
     bool EhAlvoAereo(Transform alvo, IdentidadeUnidade identidade)
@@ -155,8 +155,8 @@ public class ControleTorretaModular : MonoBehaviour
                nomeAlvo.Contains("bombard") ||
                nomeAlvo.Contains("bombardeiro") ||
                nomeAlvo.Contains("bomber") ||
-               alvo.tag == "Areo" ||
-               alvo.tag == "Aereo";
+               TagSafe.Matches(alvo, "Areo") ||
+               TagSafe.Matches(alvo, "Aereo");
     }
     
     void Update()

@@ -85,6 +85,10 @@ namespace Hegemonia.AI.BrainMaster
         private float _incomeTimer;
         private float _nextRuntimeSummaryTime;
         private readonly List<MonoBehaviour> _disabledLegacy = new List<MonoBehaviour>();
+        private bool _legacyPolicyApplied;
+        private int _legacyPolicyAppliedTeamId = -1;
+        private IA_IntegrationMode _legacyPolicyAppliedMode = IA_IntegrationMode.ShadowReadOnly;
+        private float _nextLegacyPolicyScanUnscaledTime = -1f;
         private float _schedulerPhaseOffset;
         private bool _modulesRegistered;
         private static int _activeBrainCount;
@@ -136,12 +140,19 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            ConfigureSchedulerBudget();
-            if (_debugMonitor != null) _debugMonitor.VerboseLogs = EnableVerboseLogs;
+            IA_GlobalBrainCoordinator coordinator = IA_GlobalBrainCoordinator.Instance;
             if (Context != null && _worldState != null)
             {
                 Context.CombatPressure = _worldState.CombatPressure;
+                Context.ForceSnapshot = _worldState.ForceSnapshot;
+                Context.PerformanceGovernorState = coordinator.GetGovernorStateSnapshot();
+                Context.BattleDecision = coordinator.BuildBattleDecision();
+                Context.EngagementBudget = coordinator.BuildEngagementBudget();
+                Context.TransportPlan = Context.TransportPlan ?? new IA_TransportPlan();
             }
+
+            ConfigureSchedulerBudget();
+            if (_debugMonitor != null) _debugMonitor.VerboseLogs = EnableVerboseLogs;
 
             if (_scheduler == null)
             {
@@ -149,7 +160,6 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             // Consulta o coordenador global para saber o budget disponivel neste frame
-            IA_GlobalBrainCoordinator coordinator = IA_GlobalBrainCoordinator.Instance;
             float frameBudget = coordinator.GetBudgetForBrain(_coordinatorSlot);
             bool canRunHeavy = coordinator.CanRunHeavyModules(_coordinatorSlot);
 
@@ -174,6 +184,9 @@ namespace Hegemonia.AI.BrainMaster
                                  + " | Credits=" + Credits
                                  + " | Bootstrap=" + BootstrapStage
                                  + " | BootstrapStatus=" + BootstrapStatus
+                                 + " | Governor=" + (Context != null && Context.PerformanceGovernorState != null
+                                     ? Context.PerformanceGovernorState.Band.ToString()
+                                     : "n/d")
                                  + (string.IsNullOrEmpty(BootstrapLastError) ? string.Empty : " | BootstrapError=" + BootstrapLastError);
                 NavalDiagnosticSummary = IA_NavalBuildDiagnostics.GetInspectorSummary(this);
                 CombatPressureSummary = BuildCombatPressureSummary();
@@ -344,8 +357,11 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
+            IA_BattleGovernorDecision decision = Context != null ? Context.BattleDecision : null;
             bool queuePressured = _commandQueue != null && _commandQueue.PendingCount > 4;
-            if (pressure.Estado == EstadoCargaIA.Normal && !queuePressured)
+            if ((decision == null || decision.Band == IA_PerformanceGovernorBand.Saudavel)
+                && pressure.Estado == EstadoCargaIA.Normal
+                && !queuePressured)
             {
                 return true;
             }
@@ -354,9 +370,11 @@ namespace Hegemonia.AI.BrainMaster
             switch (lane)
             {
                 case IA_CommandLane.BuildHeavy:
-                    return false;
+                    return decision == null || decision.AllowHeavyBuild;
                 case IA_CommandLane.BuildLight:
-                    if (pressure.Estado == EstadoCargaIA.Saturado || queuePressured)
+                    if ((decision != null && !decision.AllowBuild)
+                        || pressure.Estado == EstadoCargaIA.Saturado
+                        || queuePressured)
                     {
                         return false;
                     }
@@ -369,7 +387,15 @@ namespace Hegemonia.AI.BrainMaster
                     buildExecuted++;
                     return true;
                 case IA_CommandLane.Production:
-                    if (productionExecuted >= 1)
+                    if (decision != null && !decision.AllowProduce)
+                    {
+                        return false;
+                    }
+
+                    int maxProduction = decision != null
+                        ? Mathf.Clamp(decision.MaxProductionCommandsPerCycle, 1, 2)
+                        : 1;
+                    if (productionExecuted >= maxProduction)
                     {
                         return false;
                     }
@@ -393,7 +419,8 @@ namespace Hegemonia.AI.BrainMaster
                     airExecuted++;
                     return true;
                 case IA_CommandLane.Tactical:
-                    if (tacticalExecuted >= 2)
+                    int tacticalLimit = decision != null && decision.Band == IA_PerformanceGovernorBand.Critico ? 1 : 2;
+                    if (tacticalExecuted >= tacticalLimit)
                     {
                         return false;
                     }
@@ -546,9 +573,23 @@ namespace Hegemonia.AI.BrainMaster
         {
             int activeBrains = Mathf.Max(1, _activeBrainCount);
             int maxCommands = Mathf.Clamp(MaxCommandsPerFrame, 1, 10);
+            IA_BattleGovernorDecision decision = Context != null ? Context.BattleDecision : null;
             if (IsBootstrapActive)
             {
                 return 1;
+            }
+
+            if (decision != null)
+            {
+                switch (decision.Band)
+                {
+                    case IA_PerformanceGovernorBand.Critico:
+                        maxCommands = Mathf.Min(maxCommands, 1);
+                        break;
+                    case IA_PerformanceGovernorBand.Pressao:
+                        maxCommands = Mathf.Min(maxCommands, 2);
+                        break;
+                }
             }
 
             if (activeBrains <= 1)
@@ -590,6 +631,7 @@ namespace Hegemonia.AI.BrainMaster
             IA_GlobalBrainCoordinator coordinator = IA_GlobalBrainCoordinator.Instance;
             _scheduler.GlobalFrameBudgetMs = coordinator.ComputePerBrainBudgetMs(bootstrapActive);
             _scheduler.MaxModulesPerFrame = coordinator.ComputeMaxModulesPerFrame(bootstrapActive);
+            IA_BattleGovernorDecision decision = Context != null ? Context.BattleDecision : null;
             IA_CombatPressure pressure = _worldState != null ? _worldState.CombatPressure : null;
             if (pressure != null)
             {
@@ -600,6 +642,18 @@ namespace Hegemonia.AI.BrainMaster
                 else if (pressure.Estado == EstadoCargaIA.EmCombate)
                 {
                     _scheduler.MaxModulesPerFrame = Mathf.Min(_scheduler.MaxModulesPerFrame, 4);
+                }
+            }
+
+            if (decision != null)
+            {
+                if (decision.Band == IA_PerformanceGovernorBand.Critico)
+                {
+                    _scheduler.MaxModulesPerFrame = Mathf.Min(_scheduler.MaxModulesPerFrame, 2);
+                }
+                else if (decision.Band == IA_PerformanceGovernorBand.Pressao)
+                {
+                    _scheduler.MaxModulesPerFrame = Mathf.Min(_scheduler.MaxModulesPerFrame, 3);
                 }
             }
 
@@ -661,7 +715,11 @@ namespace Hegemonia.AI.BrainMaster
                 Backend = _backendBridge,
                 Scheduler = _scheduler,
                 CombatPressure = _worldState.CombatPressure,
-                ForceSnapshot = _worldState.ForceSnapshot
+                ForceSnapshot = _worldState.ForceSnapshot,
+                PerformanceGovernorState = IA_GlobalBrainCoordinator.Instance.GetGovernorStateSnapshot(),
+                EngagementBudget = IA_GlobalBrainCoordinator.Instance.BuildEngagementBudget(),
+                TransportPlan = new IA_TransportPlan(),
+                BattleDecision = IA_GlobalBrainCoordinator.Instance.BuildBattleDecision()
             };
 
             _semanticMapPlanner = new IA_SemanticMapPlanner(Context);
@@ -704,6 +762,9 @@ namespace Hegemonia.AI.BrainMaster
                    + " | enemy=" + pressure.EnemyVisible
                    + " | naval=" + pressure.NavalUnitsActive
                    + " | air=" + pressure.AirUnitsActive
+                   + " | governor=" + (Context != null && Context.PerformanceGovernorState != null
+                       ? Context.PerformanceGovernorState.Band.ToString()
+                       : "n/d")
                    + " | recente=" + pressure.RecentCombatSeconds.ToString("0.0") + "s"
                    + " | misseis=" + pressure.ActiveMissiles
                    + " | projeteis=" + pressure.ActiveProjectiles
@@ -893,12 +954,31 @@ namespace Hegemonia.AI.BrainMaster
         {
             if (IntegrationMode != IA_IntegrationMode.Full || !DisableLegacyAIWhenFull)
             {
+                _legacyPolicyApplied = false;
+                _legacyPolicyAppliedTeamId = -1;
+                _legacyPolicyAppliedMode = IntegrationMode;
+                _nextLegacyPolicyScanUnscaledTime = -1f;
+                return;
+            }
+
+            bool needsScan = !_legacyPolicyApplied
+                             || _legacyPolicyAppliedTeamId != TeamId
+                             || _legacyPolicyAppliedMode != IntegrationMode
+                             || Time.unscaledTime >= _nextLegacyPolicyScanUnscaledTime;
+
+            if (!needsScan)
+            {
                 return;
             }
 
             DisableLegacyComponent<IA_Suprema>();
             DisableLegacyComponent<IA_Dominadora>();
             DisableLegacyComponent<IA_Comandante>();
+
+            _legacyPolicyApplied = true;
+            _legacyPolicyAppliedTeamId = TeamId;
+            _legacyPolicyAppliedMode = IntegrationMode;
+            _nextLegacyPolicyScanUnscaledTime = Time.unscaledTime + 10f;
         }
 
         private void DisableLegacyComponent<T>() where T : MonoBehaviour
@@ -907,14 +987,52 @@ namespace Hegemonia.AI.BrainMaster
             for (int i = 0; i < components.Length; i++)
             {
                 T component = components[i];
-                if (component == null || component.gameObject == gameObject)
+                if (component == null
+                    || component.gameObject == gameObject
+                    || !ComponentBelongsToSameTeam(component))
+                {
+                    continue;
+                }
+
+                if (!component.enabled)
                 {
                     continue;
                 }
 
                 component.enabled = false;
-                _disabledLegacy.Add(component);
+                if (!_disabledLegacy.Contains(component))
+                {
+                    _disabledLegacy.Add(component);
+                }
             }
+        }
+
+        private bool ComponentBelongsToSameTeam(MonoBehaviour component)
+        {
+            if (component == null)
+            {
+                return false;
+            }
+
+            IA_Suprema suprema = component as IA_Suprema;
+            if (suprema != null)
+            {
+                return suprema.teamID == TeamId;
+            }
+
+            IA_Dominadora dominadora = component as IA_Dominadora;
+            if (dominadora != null)
+            {
+                return dominadora.teamID == TeamId;
+            }
+
+            IA_Comandante comandante = component as IA_Comandante;
+            if (comandante != null)
+            {
+                return comandante.TeamID == TeamId;
+            }
+
+            return false;
         }
     }
 }

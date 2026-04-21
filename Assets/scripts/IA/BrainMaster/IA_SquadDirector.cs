@@ -35,6 +35,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
+            long tickStart = System.Diagnostics.Stopwatch.GetTimestamp();
             if (now < _nextDecisionTime)
             {
                 return;
@@ -55,16 +56,23 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            UpdateRole(IA_SquadRole.Recon, _candidatesBuffer, _usedBuffer, 4, IsReconUnit);
-            UpdateRole(IA_SquadRole.LocalDefense, _candidatesBuffer, _usedBuffer, 8, IsLocalDefenseUnit);
-            UpdateRole(IA_SquadRole.BorderPatrol, _candidatesBuffer, _usedBuffer, 8, IsPatrolUnit);
-            UpdateRole(IA_SquadRole.ArmoredAssault, _candidatesBuffer, _usedBuffer, 10, IsArmoredUnit);
-            UpdateRole(IA_SquadRole.Amphibious, _candidatesBuffer, _usedBuffer, 6, IsAmphibiousUnit);
-            UpdateRole(IA_SquadRole.NavalEscort, _candidatesBuffer, _usedBuffer, 5, IsNavalEscortUnit);
-            UpdateRole(IA_SquadRole.NavalHeavy, _candidatesBuffer, _usedBuffer, 4, IsNavalHeavyUnit);
-            UpdateRole(IA_SquadRole.Submarine, _candidatesBuffer, _usedBuffer, 3, IsSubmarineUnit);
-            UpdateRole(IA_SquadRole.AirIntercept, _candidatesBuffer, _usedBuffer, 6, IsAirInterceptUnit);
-            UpdateRole(IA_SquadRole.AirTacticalTransport, _candidatesBuffer, _usedBuffer, 4, IsAirTransportUnit);
+            UpdateRole(IA_SquadRole.Recon, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.Recon, 4), IsReconUnit);
+            UpdateRole(IA_SquadRole.LocalDefense, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.LocalDefense, 8), IsLocalDefenseUnit);
+            UpdateRole(IA_SquadRole.BorderPatrol, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.BorderPatrol, 8), IsPatrolUnit);
+            UpdateRole(IA_SquadRole.ArmoredAssault, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.ArmoredAssault, 10), IsArmoredUnit);
+            UpdateRole(IA_SquadRole.Amphibious, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.Amphibious, 6), IsAmphibiousUnit);
+            UpdateRole(IA_SquadRole.NavalEscort, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.NavalEscort, 5), IsNavalEscortUnit);
+            UpdateRole(IA_SquadRole.NavalHeavy, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.NavalHeavy, 4), IsNavalHeavyUnit);
+            UpdateRole(IA_SquadRole.Submarine, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.Submarine, 3), IsSubmarineUnit);
+            UpdateRole(IA_SquadRole.AirIntercept, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.AirIntercept, 6), IsAirInterceptUnit);
+            UpdateRole(IA_SquadRole.AirTacticalTransport, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.AirTacticalTransport, 4), IsAirTransportUnit);
+            PublishSquadMetrics();
+
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("formation_update_ms", elapsedMs);
+            }
         }
 
         public IA_SquadData GetSquad(IA_SquadRole role)
@@ -116,7 +124,114 @@ namespace Hegemonia.AI.BrainMaster
 
             string squadId = "squad_" + role;
             IA_SquadData squad = _context.Backend.SquadService.UpsertSquad(squadId, role, _selectedBuffer);
+            squad.Tier = ResolveTier(role);
+            squad.EngagementCost = EstimateSquadCost(squad.Units);
             _byRole[role] = squad;
+        }
+
+        private int ResolveTargetSize(IA_SquadRole role, int baseSize)
+        {
+            IA_BattleGovernorDecision decision = _context != null ? _context.BattleDecision : null;
+            if (decision == null)
+            {
+                return baseSize;
+            }
+
+            bool offensiveRole = role == IA_SquadRole.ArmoredAssault
+                                 || role == IA_SquadRole.NavalEscort
+                                 || role == IA_SquadRole.NavalHeavy
+                                 || role == IA_SquadRole.Submarine
+                                 || role == IA_SquadRole.AirIntercept;
+            switch (decision.Band)
+            {
+                case IA_PerformanceGovernorBand.Critico:
+                    return offensiveRole
+                        ? Mathf.Clamp(Mathf.CeilToInt(baseSize * 0.35f), 1, baseSize)
+                        : Mathf.Clamp(Mathf.CeilToInt(baseSize * 0.50f), 1, baseSize);
+                case IA_PerformanceGovernorBand.Pressao:
+                    return offensiveRole
+                        ? Mathf.Clamp(Mathf.CeilToInt(baseSize * 0.60f), 1, baseSize)
+                        : Mathf.Clamp(Mathf.CeilToInt(baseSize * 0.75f), 1, baseSize);
+                default:
+                    return baseSize;
+            }
+        }
+
+        private IA_SimulationTier ResolveTier(IA_SquadRole role)
+        {
+            switch (role)
+            {
+                case IA_SquadRole.ArmoredAssault:
+                case IA_SquadRole.NavalEscort:
+                case IA_SquadRole.NavalHeavy:
+                case IA_SquadRole.Submarine:
+                case IA_SquadRole.AirIntercept:
+                    return IA_SimulationTier.Combat;
+                case IA_SquadRole.Amphibious:
+                case IA_SquadRole.AirTacticalTransport:
+                case IA_SquadRole.LocalDefense:
+                case IA_SquadRole.BorderPatrol:
+                case IA_SquadRole.Recon:
+                    return IA_SimulationTier.Support;
+                default:
+                    return IA_SimulationTier.Reserve;
+            }
+        }
+
+        private static int EstimateSquadCost(List<GameObject> units)
+        {
+            int total = 0;
+            if (units == null)
+            {
+                return total;
+            }
+
+            for (int i = 0; i < units.Count; i++)
+            {
+                total += IA_BattleGovernorUtils.GetEngagementCost(units[i]);
+            }
+
+            return total;
+        }
+
+        private void PublishSquadMetrics()
+        {
+            int engagedUnits = CountRoleUnits(
+                IA_SquadRole.ArmoredAssault,
+                IA_SquadRole.NavalEscort,
+                IA_SquadRole.NavalHeavy,
+                IA_SquadRole.Submarine,
+                IA_SquadRole.AirIntercept);
+            int supportUnits = CountRoleUnits(
+                IA_SquadRole.Recon,
+                IA_SquadRole.LocalDefense,
+                IA_SquadRole.BorderPatrol,
+                IA_SquadRole.Amphibious,
+                IA_SquadRole.AirTacticalTransport);
+            int reserveUnits = Mathf.Max(0, _context.WorldState.OwnCombatUnits.Count - engagedUnits - supportUnits);
+
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("engaged_units", engagedUnits);
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("support_units", supportUnits);
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("reserve_units", reserveUnits);
+            if (_context != null && _context.PerformanceGovernorState != null)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("governor_band", _context.PerformanceGovernorState.Band.ToString());
+            }
+        }
+
+        private int CountRoleUnits(params IA_SquadRole[] roles)
+        {
+            int count = 0;
+            for (int i = 0; i < roles.Length; i++)
+            {
+                IA_SquadData squad;
+                if (_byRole.TryGetValue(roles[i], out squad) && squad != null && squad.Units != null)
+                {
+                    count += squad.Units.Count;
+                }
+            }
+
+            return count;
         }
 
         private float ResolveDecisionDelay()

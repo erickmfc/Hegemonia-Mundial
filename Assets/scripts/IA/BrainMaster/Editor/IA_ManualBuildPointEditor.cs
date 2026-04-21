@@ -8,6 +8,7 @@ namespace Hegemonia.AI.BrainMaster
     public sealed class IA_ManualBuildPointEditor : Editor
     {
         private SerializedProperty _itemFilters;
+        private SerializedProperty _manualRole;
         private SerializedProperty _allowInactiveObject;
         private SerializedProperty _forceExactPlacement;
         private SerializedProperty _reusePoint;
@@ -20,6 +21,7 @@ namespace Hegemonia.AI.BrainMaster
         private void OnEnable()
         {
             _itemFilters = serializedObject.FindProperty("ItemFilters");
+            _manualRole = serializedObject.FindProperty("ManualRole");
             _allowInactiveObject = serializedObject.FindProperty("AllowInactiveObject");
             _forceExactPlacement = serializedObject.FindProperty("ForceExactPlacement");
             _reusePoint = serializedObject.FindProperty("ReusePoint");
@@ -35,6 +37,7 @@ namespace Hegemonia.AI.BrainMaster
             serializedObject.Update();
 
             EditorGUILayout.LabelField("Manual Build", EditorStyles.boldLabel);
+            DrawRolePopup();
             EditorGUILayout.PropertyField(_itemFilters);
             EditorGUILayout.PropertyField(_allowInactiveObject);
             EditorGUILayout.PropertyField(_forceExactPlacement);
@@ -50,6 +53,24 @@ namespace Hegemonia.AI.BrainMaster
             EditorGUILayout.PropertyField(_gizmoRadius);
 
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private void DrawRolePopup()
+        {
+            IA_ManualBuildPoint.OperationalRole[] values = (IA_ManualBuildPoint.OperationalRole[])Enum.GetValues(typeof(IA_ManualBuildPoint.OperationalRole));
+            string[] labels = new string[values.Length];
+            int currentIndex = 0;
+            for (int i = 0; i < values.Length; i++)
+            {
+                labels[i] = IA_ManualBuildPoint.GetPortugueseOperationalRoleLabel(values[i]);
+                if ((int)values[i] == _manualRole.intValue)
+                {
+                    currentIndex = i;
+                }
+            }
+
+            int nextIndex = EditorGUILayout.Popup("Papel do ponto", currentIndex, labels);
+            _manualRole.intValue = (int)values[Mathf.Clamp(nextIndex, 0, values.Length - 1)];
         }
 
         private void DrawBootstrapStagePopup()
@@ -73,13 +94,21 @@ namespace Hegemonia.AI.BrainMaster
         private void DrawResolutionHelp()
         {
             IA_ManualBuildPoint point = (IA_ManualBuildPoint)target;
+            string defaultRoleFilters = IA_ManualBuildPoint.GetDefaultFiltersForRole(point.ManualRole);
             string defaultFilters = IA_ManualBuildPoint.GetDefaultFiltersForStage(point.BootstrapStage);
             bool hasExplicitFilters = !string.IsNullOrWhiteSpace(point.ItemFilters);
+            bool hasRoleFilters = !string.IsNullOrWhiteSpace(defaultRoleFilters);
             bool hasStageFilters = !string.IsNullOrWhiteSpace(defaultFilters);
 
             if (hasExplicitFilters)
             {
                 EditorGUILayout.HelpBox("Este marcador vai casar pelo Item Filters.", MessageType.Info);
+                return;
+            }
+
+            if (hasRoleFilters)
+            {
+                EditorGUILayout.HelpBox("Sem Item Filters, este marcador vai usar o papel '" + IA_ManualBuildPoint.GetPortugueseOperationalRoleLabel(point.ManualRole) + "': " + defaultRoleFilters, MessageType.Info);
                 return;
             }
 

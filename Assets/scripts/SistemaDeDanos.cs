@@ -397,8 +397,11 @@ public class SistemaDeDanos : MonoBehaviour
         Rigidbody corpo = GetComponent<Rigidbody>();
         if (corpo != null)
         {
-            corpo.linearVelocity = Vector3.zero;
-            corpo.angularVelocity = Vector3.zero;
+            if (!corpo.isKinematic)
+            {
+                corpo.linearVelocity = Vector3.zero;
+                corpo.angularVelocity = Vector3.zero;
+            }
             corpo.isKinematic = true;
         }
 

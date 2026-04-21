@@ -73,6 +73,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 IA_CounterPlan counter = _context.PlayerProfileMemory.BuildCounterPlan();
                 IA_ForceSnapshot snapshot = GetSnapshot();
+                IA_BattleGovernorDecision decision = GetBattleDecision();
 
                 int infantryCount = snapshot.InfantryUnits;
                 int tankCount = snapshot.TankUnits;
@@ -90,125 +91,216 @@ namespace Hegemonia.AI.BrainMaster
                 bool hasHeliport = snapshot.HasHeliport;
                 bool hasNavalBase = snapshot.HasNavalBase || HasImmediateNavalBase();
                 int structureCount = snapshot.TotalOwnStructures;
+                int fleetCombatCount = navalCount + submarineCount;
                 UpdateStructureTracker(now, structureCount);
 
-            int infantryTarget = 16 + (counter.AntiRush ? 10 : 0) + Mathf.RoundToInt(counter.LandWeight * 7f);
-            int tankTarget = 7 + Mathf.RoundToInt(counter.LandWeight * 7f);
-            int artyTarget = 2 + (counter.ReinforceCenter ? 1 : 0);
-            int helicopterTarget = EnableHelicopterProduction && hasHeliport
-                ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 3f), 2, 4)
-                : 0;
-            int fighterTarget = hasAirport ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 4f), 2, 5) : 0;
-            int fleetCombatCount = navalCount + submarineCount;
-            int patrolShipTarget = hasNavalBase ? 2 : 0;
-            int navalTarget = hasNavalBase
-                ? Mathf.Clamp(3 + Mathf.RoundToInt(counter.NavalWeight * 3f), 3, 5)
-                : 0;
-            int subTarget = hasNavalBase && fleetCombatCount >= 2 && (counter.ReinforceCoast || counter.NavalWeight > 0.18f)
-                ? 1
-                : 0;
-            int truckTarget = infantryCount >= 8 ? 1 : 0;
-            int hoverTarget = hasNavalBase
-                && fleetCombatCount >= 4
-                && infantryCount >= 14
-                && counter.ReinforceCoast
-                ? 1
-                : 0;
-            int armyCount = Mathf.Max(
-                snapshot.TotalCombatUnits,
-                infantryCount + tankCount + artyCount + airCount + navalCount + submarineCount + hoverCount);
-            bool structuresStable = now - _lastStructureChangeTime >= StructureStabilitySeconds;
+                Vector3 baseCenter = ResolveBaseCenter();
+                IA_TransportPlan transportPlan = BuildTransportPlan(
+                    now,
+                    snapshot,
+                    baseCenter,
+                    infantryCount,
+                    tankCount,
+                    artyCount,
+                    helicopterCount,
+                    fighterCount,
+                    fleetCombatCount);
+                _context.TransportPlan = transportPlan;
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
+                    "transport_capacity_ready",
+                    transportPlan != null && transportPlan.Ready ? transportPlan.AvailableCapacity : 0);
 
-            if (!_timedAirKickoffTriggered && now >= TimedAirKickoffSeconds && hasAirport && fighterCount >= TimedAirKickoffTarget)
-            {
-                _timedAirKickoffTriggered = true;
-            }
+                bool suppressExpansion = decision != null && decision.SuppressEconomicExpansion;
+                bool mustPrepareTransport = transportPlan != null && !transportPlan.HasLandRoute && !transportPlan.Ready;
+                bool shouldPauseGroundMass = ShouldPauseOffensiveGroundMass(transportPlan, infantryCount, tankCount, artyCount, decision);
 
-            if (!_timedNavalKickoffTriggered && now >= TimedNavalKickoffSeconds && navalCount >= 1)
-            {
-                _timedNavalKickoffTriggered = true;
-            }
+                int infantryTarget = 16 + (counter.AntiRush ? 10 : 0) + Mathf.RoundToInt(counter.LandWeight * 7f);
+                int tankTarget = 7 + Mathf.RoundToInt(counter.LandWeight * 7f);
+                int artyTarget = 2 + (counter.ReinforceCenter ? 1 : 0);
+                int helicopterTarget = EnableHelicopterProduction && hasHeliport
+                    ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 3f), 2, 4)
+                    : 0;
+                int fighterTarget = hasAirport ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 4f), 2, 5) : 0;
+                int patrolShipTarget = hasNavalBase ? 1 : 0;
+                int navalTarget = hasNavalBase
+                    ? Mathf.Clamp(1 + Mathf.RoundToInt(counter.NavalWeight * 2f), 1, 3)
+                    : 0;
+                int subTarget = hasNavalBase && fleetCombatCount >= 1 && (counter.ReinforceCoast || counter.NavalWeight > 0.18f)
+                    ? 1
+                    : 0;
+                int truckTarget = infantryCount >= 8 ? 1 : 0;
+                int hoverTarget = hasNavalBase
+                    && fleetCombatCount >= 2
+                    && infantryCount >= 10
+                    && counter.ReinforceCoast
+                    ? 1
+                    : 0;
+                int armyCount = Mathf.Max(
+                    snapshot.TotalCombatUnits,
+                    infantryCount + tankCount + artyCount + airCount + navalCount + submarineCount + hoverCount);
+                bool structuresStable = now - _lastStructureChangeTime >= StructureStabilitySeconds;
 
-            if (!_timedAirKickoffTriggered
-                && now >= TimedAirKickoffSeconds
-                && hasAirport
-                && fighterCount < TimedAirKickoffTarget
-                && QueuePreferredAircraft(99, 2.5f))
-            {
-                return;
-            }
+                if (suppressExpansion)
+                {
+                    infantryTarget = Mathf.Min(infantryTarget, 10);
+                    tankTarget = Mathf.Min(tankTarget, 3);
+                    artyTarget = Mathf.Min(artyTarget, 1);
+                    helicopterTarget = Mathf.Min(helicopterTarget, hasHeliport ? 1 : 0);
+                    fighterTarget = Mathf.Min(fighterTarget, hasAirport ? 2 : 0);
+                    navalTarget = Mathf.Min(navalTarget, hasNavalBase ? 3 : 0);
+                }
 
-            if (!_timedNavalKickoffTriggered
-                && now >= TimedNavalKickoffSeconds
-                && hasNavalBase
-                && structuresStable
-                && armyCount >= TimedNavalMinArmy
-                && navalCount < 1
-                && QueueSurfaceFleetStep(navalCount, 98, 4.5f))
-            {
-                _timedNavalKickoffTriggered = true;
-                return;
-            }
+                if (mustPrepareTransport)
+                {
+                    infantryTarget = Mathf.Min(infantryTarget, Mathf.Max(6, transportPlan.AvailableCapacity + 2));
+                    tankTarget = Mathf.Min(tankTarget, transportPlan.AvailableCapacity >= 8 ? 2 : 1);
+                    artyTarget = Mathf.Min(artyTarget, transportPlan.AvailableCapacity >= 10 ? 1 : 0);
+                }
 
-            if (hasNavalBase && navalCount < 1 && QueueSurfaceFleetStep(navalCount, 93, 5.5f))
-            {
-                return;
-            }
+                if (!_timedAirKickoffTriggered && now >= TimedAirKickoffSeconds && hasAirport && fighterCount >= TimedAirKickoffTarget)
+                {
+                    _timedAirKickoffTriggered = true;
+                }
 
-            if (hasBarracks && infantryCount < 4 && QueueProduceBest(94, 5f, "soldado rifle", "soldado", "infantaria", "rifle"))
-            {
-                return;
-            }
+                if (!_timedNavalKickoffTriggered && now >= TimedNavalKickoffSeconds && navalCount >= 1)
+                {
+                    _timedNavalKickoffTriggered = true;
+                }
 
-            if (hasAirport && fighterCount == 0 && QueuePreferredAircraft(92, 5.5f))
-            {
-                return;
-            }
+                if (!_timedAirKickoffTriggered
+                    && now >= TimedAirKickoffSeconds
+                    && hasAirport
+                    && fighterCount < TimedAirKickoffTarget
+                    && QueuePreferredAircraft(99, 2.5f))
+                {
+                    return;
+                }
 
-            if (hasNavalBase && navalCount < 2 && QueueSurfaceFleetStep(navalCount, 91, 6.5f))
-            {
-                return;
-            }
+                if (!_timedNavalKickoffTriggered
+                    && now >= TimedNavalKickoffSeconds
+                    && hasNavalBase
+                    && structuresStable
+                    && armyCount >= TimedNavalMinArmy
+                    && navalCount < 1
+                    && QueueSurfaceFleetStep(navalCount, 98, 4.5f))
+                {
+                    _timedNavalKickoffTriggered = true;
+                    return;
+                }
 
-            if (hasAirport && fighterCount < 2 && QueuePreferredAircraft(91, 4f))
-            {
-                return;
-            }
+                if (mustPrepareTransport)
+                {
+                    if (hasNavalBase && !transportPlan.EscortReady && QueueSurfaceFleetStep(navalCount, 97, 6.5f))
+                    {
+                        return;
+                    }
 
-            if (hasBarracks && infantryCount < infantryTarget && QueueProduceBest(90, 4f, "soldado rifle", "soldado", "infantaria", "rifle"))
-            {
-                return;
-            }
+                    if (!transportPlan.AirCoverReady)
+                    {
+                        if (hasAirport && fighterCount < Mathf.Max(2, fighterTarget) && QueuePreferredAircraft(96, 5.5f))
+                        {
+                            return;
+                        }
 
-            if (hasFactory && tankCount < tankTarget && QueueProduceBest(86, 5f, "tank mbt", "mbt", "tank south", "tank c1", "tank arthur"))
-            {
-                return;
-            }
+                        if (EnableHelicopterProduction
+                            && hasHeliport
+                            && helicopterCount < Mathf.Max(1, helicopterTarget)
+                            && QueueProduceBest(95, 6f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
+                        {
+                            return;
+                        }
+                    }
 
-            if (hasFactory && artyCount < artyTarget && QueueProduceBest(82, 6f, "hack", "artilharia", "lancador"))
-            {
-                return;
-            }
+                    if (hasNavalBase
+                        && transportPlan.AvailableCapacity < transportPlan.RequiredCapacity
+                        && QueueTransportLift(94, 10f))
+                    {
+                        return;
+                    }
+                }
 
-            if (truckCount < truckTarget && infantryCount >= 8 && hasFactory && QueueProduceBest(77, 10f, "caminhao de transporte", "transporte", "truck"))
-            {
-                return;
-            }
+                if (hasNavalBase && navalCount < 1 && QueueSurfaceFleetStep(navalCount, 93, 5.5f))
+                {
+                    return;
+                }
 
-            if (hoverCount < hoverTarget && infantryCount >= 14 && fleetCombatCount >= 4 && QueueProduceBest(76, 12f, "hover"))
-            {
-                return;
-            }
+                if (hasBarracks && infantryCount < 4 && QueueProduceBest(94, 5f, "soldado rifle", "soldado", "infantaria", "rifle"))
+                {
+                    return;
+                }
 
-            if (EnableHelicopterProduction && hasHeliport && helicopterCount < helicopterTarget && QueueProduceBest(83, 6f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
-            {
-                return;
-            }
+                if (hasAirport && fighterCount == 0 && QueuePreferredAircraft(92, 5.5f))
+                {
+                    return;
+                }
 
-            if (hasAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && counter.AirWeight > 0.20f && QueuePreferredAircraft(88, 7f))
-            {
-                return;
-            }
+                if (hasNavalBase && navalCount < 2 && QueueSurfaceFleetStep(navalCount, 91, 6.5f))
+                {
+                    return;
+                }
+
+                if (mustPrepareTransport)
+                {
+                    return;
+                }
+
+                if (hasAirport && fighterCount < 2 && QueuePreferredAircraft(91, 4f))
+                {
+                    return;
+                }
+
+                if (shouldPauseGroundMass)
+                {
+                    if (truckCount < truckTarget && hasFactory && QueueProduceBest(80, 10f, "caminhao de transporte", "transporte", "truck"))
+                    {
+                        return;
+                    }
+
+                    return;
+                }
+
+                if (hasBarracks && infantryCount < infantryTarget && QueueProduceBest(90, 4f, "soldado rifle", "soldado", "infantaria", "rifle"))
+                {
+                    return;
+                }
+
+                if (hasFactory && tankCount < tankTarget && QueueProduceBest(86, 5f, "tank mbt", "mbt", "tank south", "tank c1", "tank arthur"))
+                {
+                    return;
+                }
+
+                if (hasFactory && artyCount < artyTarget && QueueProduceBest(82, 6f, "hack", "artilharia", "lancador"))
+                {
+                    return;
+                }
+
+                if (truckCount < truckTarget && infantryCount >= 8 && hasFactory && QueueProduceBest(77, 10f, "caminhao de transporte", "transporte", "truck"))
+                {
+                    return;
+                }
+
+                if (hasNavalBase
+                    && transportPlan != null
+                    && transportPlan.AvailableCapacity < transportPlan.RequiredCapacity
+                    && QueueTransportLift(76, 12f))
+                {
+                    return;
+                }
+
+                if (hoverCount < hoverTarget && infantryCount >= 14 && fleetCombatCount >= 4 && QueueProduceBest(76, 12f, "hover"))
+                {
+                    return;
+                }
+
+                if (EnableHelicopterProduction && hasHeliport && helicopterCount < helicopterTarget && QueueProduceBest(83, 6f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
+                {
+                    return;
+                }
+
+                if (hasAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && counter.AirWeight > 0.20f && QueuePreferredAircraft(88, 7f))
+                {
+                    return;
+                }
 
                 if (hasNavalBase)
                 {
@@ -222,7 +314,7 @@ namespace Hegemonia.AI.BrainMaster
                         return;
                     }
 
-                    if (navalCount < navalTarget && QueueSurfaceFleetStep(navalCount, 80, 7f))
+                    if (!suppressExpansion && navalCount < navalTarget && QueueSurfaceFleetStep(navalCount, 80, 7f))
                     {
                         return;
                     }
@@ -236,30 +328,37 @@ namespace Hegemonia.AI.BrainMaster
 
         private float ResolveDecisionDelay()
         {
+            float governorDelay = 0f;
+            IA_BattleGovernorDecision decision = GetBattleDecision();
+            if (decision != null && decision.ProductionCooldownSeconds > 0f)
+            {
+                governorDelay = decision.ProductionCooldownSeconds * 0.65f;
+            }
+
             if (ShouldRespectRuntimeLock() && DiagnosticoDesempenhoJogo.RuntimeSaturado())
             {
-                return 4.00f;
+                return Mathf.Max(4.00f, governorDelay);
             }
 
             if (ShouldRespectRuntimeLock() && DiagnosticoDesempenhoJogo.RuntimeSobPressao())
             {
-                return 2.00f;
+                return Mathf.Max(2.00f, governorDelay);
             }
 
             IA_CombatPressure pressure = _context != null ? _context.CombatPressure : null;
             if (pressure == null)
             {
-                return 0.75f;
+                return Mathf.Max(0.75f, governorDelay);
             }
 
             switch (pressure.Estado)
             {
                 case EstadoCargaIA.Saturado:
-                    return 4.00f;
+                    return Mathf.Max(4.00f, governorDelay);
                 case EstadoCargaIA.EmCombate:
-                    return 2.00f;
+                    return Mathf.Max(2.00f, governorDelay);
                 default:
-                    return 0.75f;
+                    return Mathf.Max(0.75f, governorDelay);
             }
         }
 
@@ -576,10 +675,219 @@ namespace Hegemonia.AI.BrainMaster
             return new IA_ForceSnapshot();
         }
 
+        private IA_BattleGovernorDecision GetBattleDecision()
+        {
+            if (_context != null && _context.BattleDecision != null)
+            {
+                return _context.BattleDecision;
+            }
+
+            return new IA_BattleGovernorDecision();
+        }
+
+        private Vector3 ResolveBaseCenter()
+        {
+            if (_context != null && _context.WorldState != null)
+            {
+                Vector3 baseCenter = _context.WorldState.BaseCenter;
+                if (baseCenter != Vector3.zero)
+                {
+                    return baseCenter;
+                }
+            }
+
+            if (_context != null && _context.Brain != null)
+            {
+                return _context.Brain.transform.position;
+            }
+
+            return Vector3.zero;
+        }
+
+        private IA_TransportPlan BuildTransportPlan(
+            float now,
+            IA_ForceSnapshot snapshot,
+            Vector3 baseCenter,
+            int infantryCount,
+            int tankCount,
+            int artyCount,
+            int helicopterCount,
+            int fighterCount,
+            int fleetCombatCount)
+        {
+            IA_TransportPlan plan = _context != null && _context.TransportPlan != null
+                ? _context.TransportPlan
+                : new IA_TransportPlan();
+
+            plan.LastUpdatedTime = now;
+            plan.TargetAnchor = Vector3.zero;
+            plan.HasLandRoute = true;
+            plan.RequiredCapacity = 0;
+            plan.AvailableCapacity = CountStrategicTransportCapacity();
+            plan.EscortReady = fleetCombatCount >= 2;
+            plan.AirCoverReady = (helicopterCount + fighterCount) >= 2;
+
+            if (_context == null || _context.WorldState == null || _context.MapAnalyzer == null || baseCenter == Vector3.zero)
+            {
+                return plan;
+            }
+
+            Vector3 enemyAnchor;
+            if (!_context.WorldState.TryGetEnemyStrategicAnchor(baseCenter, out enemyAnchor))
+            {
+                return plan;
+            }
+
+            plan.TargetAnchor = enemyAnchor;
+            plan.HasLandRoute = _context.MapAnalyzer.HasLandRouteCached(baseCenter, enemyAnchor, 12f);
+            if (plan.HasLandRoute)
+            {
+                plan.EscortReady = true;
+                plan.AirCoverReady = true;
+                return plan;
+            }
+
+            int offensiveGroundStrength = Mathf.Max(0, infantryCount + (tankCount * 2) + (artyCount * 2));
+            if (offensiveGroundStrength <= 0)
+            {
+                return plan;
+            }
+
+            int desiredAssaultCapacity = offensiveGroundStrength < 6
+                ? offensiveGroundStrength
+                : Mathf.Clamp(8 + Mathf.Clamp((offensiveGroundStrength - 6) / 4, 0, 6), 8, 14);
+            plan.RequiredCapacity = desiredAssaultCapacity;
+
+            int transportLiftUnits = CountStrategicTransportUnits();
+            int requiredEscorts = transportLiftUnits > 0
+                ? Mathf.Clamp(Mathf.CeilToInt(transportLiftUnits * 0.8f), 1, 3)
+                : 1;
+
+            plan.EscortReady = fleetCombatCount >= requiredEscorts;
+            plan.AirCoverReady = (helicopterCount + fighterCount) >= (transportLiftUnits > 0 ? 1 : 0);
+            return plan;
+        }
+
+        private int CountStrategicTransportCapacity()
+        {
+            if (_context == null || _context.WorldState == null)
+            {
+                return 0;
+            }
+
+            int total = 0;
+            for (int i = 0; i < _context.WorldState.OwnUnits.Count; i++)
+            {
+                GameObject unit = _context.WorldState.OwnUnits[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                string normalized = IA_Text.Normalize(unit.name);
+                if (!IA_BattleGovernorUtils.IsNavalTransport(unit, normalized)
+                    && !IA_BattleGovernorUtils.IsHoverTransport(unit, normalized)
+                    && !IsStrategicAirLift(unit, normalized))
+                {
+                    continue;
+                }
+
+                total += IA_BattleGovernorUtils.EstimateTransportCapacity(unit);
+            }
+
+            return total;
+        }
+
+        private int CountStrategicTransportUnits()
+        {
+            if (_context == null || _context.WorldState == null)
+            {
+                return 0;
+            }
+
+            int total = 0;
+            for (int i = 0; i < _context.WorldState.OwnUnits.Count; i++)
+            {
+                GameObject unit = _context.WorldState.OwnUnits[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                string normalized = IA_Text.Normalize(unit.name);
+                if (IA_BattleGovernorUtils.IsNavalTransport(unit, normalized)
+                    || IA_BattleGovernorUtils.IsHoverTransport(unit, normalized)
+                    || IsStrategicAirLift(unit, normalized))
+                {
+                    total++;
+                }
+            }
+
+            return total;
+        }
+
+        private static bool IsStrategicAirLift(GameObject unit, string normalized)
+        {
+            if (!IA_BattleGovernorUtils.IsAirTransport(unit, normalized))
+            {
+                return false;
+            }
+
+            return normalized.Contains("transport")
+                   || normalized.Contains("transporte")
+                   || normalized.Contains("cargo")
+                   || normalized.Contains("vans");
+        }
+
+        private bool QueueTransportLift(int priority, float cooldown)
+        {
+            if (QueueProduceBest(priority, cooldown, "uss liberty prime", "liberty", "barco ww transporte", "navio transporte", "transporte anfibio"))
+            {
+                return true;
+            }
+
+            return QueueProduceBest(priority, cooldown + 1.5f, "hover", "houver");
+        }
+
+        private bool ShouldPauseOffensiveGroundMass(
+            IA_TransportPlan transportPlan,
+            int infantryCount,
+            int tankCount,
+            int artyCount,
+            IA_BattleGovernorDecision decision)
+        {
+            int offensiveGroundStrength = Mathf.Max(0, infantryCount + (tankCount * 2) + (artyCount * 2));
+            if (decision != null
+                && decision.Band == IA_PerformanceGovernorBand.Critico
+                && offensiveGroundStrength >= 8)
+            {
+                return true;
+            }
+
+            if (transportPlan == null || transportPlan.HasLandRoute || transportPlan.Ready)
+            {
+                return false;
+            }
+
+            return offensiveGroundStrength >= Mathf.Max(6, transportPlan.AvailableCapacity + 2);
+        }
+
         private bool ShouldHoldForRuntimePressure(float now)
         {
-            return ShouldRespectRuntimeLock()
-                   && DiagnosticoDesempenhoJogo.RuntimeSobPressao()
+            if (!ShouldRespectRuntimeLock())
+            {
+                return false;
+            }
+
+            IA_BattleGovernorDecision decision = GetBattleDecision();
+            if (decision != null
+                && decision.ProductionCooldownSeconds > 0f
+                && now < _nextRuntimeProductionQueueTime)
+            {
+                return true;
+            }
+
+            return DiagnosticoDesempenhoJogo.RuntimeSobPressao()
                    && now < _nextRuntimeProductionQueueTime;
         }
 
@@ -594,6 +902,12 @@ namespace Hegemonia.AI.BrainMaster
             float cooldown = DiagnosticoDesempenhoJogo.RuntimeSaturado()
                 ? 4f
                 : (DiagnosticoDesempenhoJogo.RuntimeSobPressao() ? 2f : 0f);
+            IA_BattleGovernorDecision decision = GetBattleDecision();
+            if (decision != null && decision.ProductionCooldownSeconds > 0f)
+            {
+                cooldown = Mathf.Max(cooldown, decision.ProductionCooldownSeconds);
+            }
+
             if (cooldown > 0f)
             {
                 _nextRuntimeProductionQueueTime = Mathf.Max(_nextRuntimeProductionQueueTime, now + cooldown);

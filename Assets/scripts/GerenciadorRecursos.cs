@@ -48,6 +48,18 @@ public class GerenciadorRecursos : MonoBehaviour
         petroleoPorSegundo = 0f; 
     }
 
+    void Start()
+    {
+        if (SistemaSaveGame.Instancia != null && SistemaSaveGame.Instancia.carregouDeSave && SistemaSaveGame.Instancia.dadosAtuais != null)
+        {
+            dinheiro = SistemaSaveGame.Instancia.dadosAtuais.creditosJogador;
+            petroleo = SistemaSaveGame.Instancia.dadosAtuais.petroleoJogador;
+            aco = SistemaSaveGame.Instancia.dadosAtuais.acoJogador;
+            energia = SistemaSaveGame.Instancia.dadosAtuais.energiaJogador;
+            NotificarAtualizacao();
+        }
+    }
+
     void Update()
     {
         if (ativarGanhosAutomaticos)

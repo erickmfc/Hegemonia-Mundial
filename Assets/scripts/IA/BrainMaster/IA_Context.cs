@@ -13,6 +13,10 @@ namespace Hegemonia.AI.BrainMaster
         public IA_DebugMonitor DebugMonitor;
         public IA_CombatPressure CombatPressure;
         public IA_ForceSnapshot ForceSnapshot;
+        public IA_PerformanceGovernorState PerformanceGovernorState;
+        public IA_EngagementBudget EngagementBudget;
+        public IA_TransportPlan TransportPlan;
+        public IA_BattleGovernorDecision BattleDecision;
         public IA_BuildDirector BuildDirector;
         public IA_SquadDirector SquadDirector;
         public IA_SemanticMapPlanner SemanticMapPlanner;

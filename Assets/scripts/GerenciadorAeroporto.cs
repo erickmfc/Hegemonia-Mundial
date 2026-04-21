@@ -74,11 +74,33 @@ public class GerenciadorAeroporto : MonoBehaviour
     // --- CACHE PARA OnGUI (Evita alocações repetidas) ---
     private readonly HashSet<Transform> _vagasOcupadas = new HashSet<Transform>();
     private readonly List<Vector3> _rotaPatrulhaHelicoptero = new List<Vector3>();
+    private readonly List<ControleAviao> _bufferSortidaAereaIA = new List<ControleAviao>(24);
     private Camera cameraPrincipal;
     private ModoOrdemHelicoptero _modoOrdemHelicoptero = ModoOrdemHelicoptero.Nenhum;
     private string _modeloPatrulhaGrupo = string.Empty;
     private string _ultimoModeloPainelPatrulha = string.Empty;
     private bool _usarMarcadorPatrulhaAviaoNoProximoClique = false;
+    private float _proximaSortidaIA = -999f;
+
+    protected static int RemoveNulls<T>(List<T> lista) where T : class
+    {
+        if (lista == null)
+        {
+            return 0;
+        }
+
+        int removidos = 0;
+        for (int i = lista.Count - 1; i >= 0; i--)
+        {
+            if (lista[i] == null)
+            {
+                lista.RemoveAt(i);
+                removidos++;
+            }
+        }
+
+        return removidos;
+    }
 
     protected virtual void Awake()
     {
@@ -199,7 +221,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     void Update()
     {
         if (cameraPrincipal == null) cameraPrincipal = Camera.main;
-        helicopterosDoAeroporto.RemoveAll(h => h == null);
+        RemoveNulls(helicopterosDoAeroporto);
 
         if (Construtor.EmModoConstrucaoAtivo)
         {
@@ -657,6 +679,55 @@ public class GerenciadorAeroporto : MonoBehaviour
         controleDaNave.aeroportoOrigem = this;
         StartCoroutine(RotinaRecebimento(controleDaNave));
         RegistrarTempoDiagnostico("prefab_init_ms", initStart);
+    }
+
+    public int ExecutarSortidaIA(Vector3 alvoReconhecimento, Vector3 alvoPatrulha, Vector3 alvoAtaque, int quantidadeMaxima = 5)
+    {
+        if (Time.time < _proximaSortidaIA)
+        {
+            return 0;
+        }
+
+        if (quantidadeMaxima <= 0)
+        {
+            quantidadeMaxima = 1;
+        }
+
+        ReporPatioComAvioesDoHangar();
+        _bufferSortidaAereaIA.Clear();
+        ColetarAeronavesProntas(_bufferSortidaAereaIA);
+        if (_bufferSortidaAereaIA.Count == 0)
+        {
+            _proximaSortidaIA = Time.time + 20f;
+            return 0;
+        }
+
+        int lote = Random.Range(1, Mathf.Min(5, quantidadeMaxima) + 1);
+        lote = Mathf.Min(lote, _bufferSortidaAereaIA.Count);
+        int lancados = 0;
+
+        for (int i = 0; i < lote && _bufferSortidaAereaIA.Count > 0; i++)
+        {
+            int indice = Random.Range(0, _bufferSortidaAereaIA.Count);
+            ControleAviao aviao = _bufferSortidaAereaIA[indice];
+            _bufferSortidaAereaIA.RemoveAt(indice);
+            if (LancarAeronaveIA(aviao, alvoReconhecimento, alvoPatrulha, alvoAtaque))
+            {
+                lancados++;
+            }
+        }
+
+        if (lancados > 0)
+        {
+            _proximaSortidaIA = Time.time + 60f;
+            ReporPatioComAvioesDoHangar();
+        }
+        else
+        {
+            _proximaSortidaIA = Time.time + 15f;
+        }
+
+        return lancados;
     }
 
     private static void RegistrarTempoDiagnostico(string chave, long inicio)
@@ -1200,10 +1271,10 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (menuAeroportoUI != null && menuAeroportoUI.activeInHierarchy) return;
 
         // --- SISTEMA DE FAXINA (Fix para os fantasmas no pátio) ---
-        avioesNoPatio.RemoveAll(a => a == null);
-        avioesNoHangar.RemoveAll(a => a == null);
-        transportesC700NoPatio.RemoveAll(a => a == null);
-        helicopterosDoAeroporto.RemoveAll(h => h == null);
+        RemoveNulls(avioesNoPatio);
+        RemoveNulls(avioesNoHangar);
+        RemoveNulls(transportesC700NoPatio);
+        RemoveNulls(helicopterosDoAeroporto);
 
         float xMenu = (Screen.width / 2f) - 350f - (Screen.width * 0.1f);
         if (xMenu < 10f) xMenu = 10f;
@@ -1915,6 +1986,86 @@ public class GerenciadorAeroporto : MonoBehaviour
         aviao.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
 
         if (!avioesNoPatio.Contains(aviao)) avioesNoPatio.Add(aviao);
+        return true;
+    }
+
+    private void ReporPatioComAvioesDoHangar()
+    {
+        for (int i = avioesNoHangar.Count - 1; i >= 0 && ObterPrimeiraVagaLivre() != null; i--)
+        {
+            ControleAviao aviaoDoHangar = avioesNoHangar[i];
+            if (aviaoDoHangar == null)
+            {
+                avioesNoHangar.RemoveAt(i);
+                continue;
+            }
+
+            LiberarAviaoParaPatio(aviaoDoHangar);
+        }
+    }
+
+    private void ColetarAeronavesProntas(List<ControleAviao> destino)
+    {
+        destino.Clear();
+        for (int i = 0; i < avioesNoPatio.Count; i++)
+        {
+            ControleAviao aviao = avioesNoPatio[i];
+            if (aviao != null && aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+            {
+                destino.Add(aviao);
+            }
+        }
+    }
+
+    private bool LancarAeronaveIA(ControleAviao aviao, Vector3 alvoReconhecimento, Vector3 alvoPatrulha, Vector3 alvoAtaque)
+    {
+        if (aviao == null || aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio)
+        {
+            return false;
+        }
+
+        Vector3 alvo;
+        int missao = Random.Range(0, 3);
+        switch (missao)
+        {
+            case 0:
+                alvo = alvoReconhecimento != Vector3.zero ? alvoReconhecimento : transform.position + transform.forward * 700f;
+                break;
+            case 1:
+                alvo = alvoPatrulha != Vector3.zero ? alvoPatrulha : transform.position + transform.right * 350f;
+                break;
+            default:
+                alvo = alvoAtaque != Vector3.zero ? alvoAtaque : transform.position + transform.forward * 1100f;
+                break;
+        }
+
+        alvo.y = Mathf.Max(alvo.y, 60f);
+        aviao.aguardandoCliqueRadar = false;
+        aviao.alvoPrioritarioIA = missao == 2;
+        aviao.centroDaPatrulha = alvo;
+        aviao.alvoGPSVoo = alvo;
+
+        AviaoBombardeiro bombardeiro = aviao.GetComponent<AviaoBombardeiro>();
+        if (bombardeiro != null)
+        {
+            bombardeiro.modoDeAtaque = missao == 2
+                ? (Random.value > 0.45f ? AviaoBombardeiro.ModoAtaque.AtaqueAoSolo : AviaoBombardeiro.ModoAtaque.AtaqueEmMassa)
+                : AviaoBombardeiro.ModoAtaque.Patrulha;
+        }
+
+        CacaVooRealista vooRealista = aviao.GetComponent<CacaVooRealista>();
+        if (vooRealista != null)
+        {
+            vooRealista.alvoGPS = alvo;
+        }
+
+        LancadorMisselCaca lancadorCaca = aviao.GetComponent<LancadorMisselCaca>();
+        if (lancadorCaca != null)
+        {
+            lancadorCaca.modoPassivo = missao != 2;
+        }
+
+        aviao.IniciarMissaoCompleta(alvo);
         return true;
     }
 }

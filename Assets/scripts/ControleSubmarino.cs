@@ -431,7 +431,7 @@ public class ControleSubmarino : MonoBehaviour
         Transform alvo = EncontrarMelhorAlvoAutomatico();
         if (alvo != null)
         {
-            DispararMisselIA(alvo.position);
+            DispararMisselIA(alvo.position, alvo);
         }
     }
 
@@ -494,7 +494,7 @@ public class ControleSubmarino : MonoBehaviour
         return melhor;
     }
 
-    private void DispararMissel(Vector3 alvo)
+    private void DispararMissel(Vector3 alvo, Transform alvoT = null)
     {
         if (misseisDisponiveis <= 0)
         {
@@ -519,8 +519,8 @@ public class ControleSubmarino : MonoBehaviour
             MisselSubmarino scriptMissel = missel.GetComponent<MisselSubmarino>();
             if (scriptMissel != null)
             {
-                scriptMissel.IniciarLancamento(alvo, estaSubmerso);
-                MissileThreatTracker.RegistrarLancamento(missel, this, alvo, null, MissileThreatTracker.EstimarVelocidade(missel));
+                scriptMissel.IniciarLancamento(alvo, estaSubmerso, alvoT);
+                MissileThreatTracker.RegistrarLancamento(missel, this, alvo, alvoT, MissileThreatTracker.EstimarVelocidade(missel));
             }
 
             misseisUsados[i] = true;
@@ -764,7 +764,7 @@ public class ControleSubmarino : MonoBehaviour
         AplicarEstadoProfundidade(false, true);
     }
 
-    public void DispararMisselIA(Vector3 alvo)
+    public void DispararMisselIA(Vector3 alvo, Transform alvoT = null)
     {
         if (!PodeAtacarIA())
         {
@@ -778,7 +778,7 @@ public class ControleSubmarino : MonoBehaviour
         }
 
         proximoAtaqueIA = Time.time + Mathf.Max(2f, cooldownAtaqueIA);
-        DispararMissel(alvo);
+        DispararMissel(alvo, alvoT);
     }
 
     [ContextMenu("Recarregar Todos os Misseis")]

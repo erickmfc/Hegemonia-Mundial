@@ -8,6 +8,8 @@ namespace Hegemonia.AI.BrainMaster
         private const float ForcedAirStrikeStartSeconds = 60f;
         private readonly IA_Context _context;
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
+        private readonly List<GameObject> _activeAirUnitsBuffer = new List<GameObject>(12);
+        private readonly List<GameObject> _activeAirTransportBuffer = new List<GameObject>(8);
         private float _nextDecisionTime;
 
         public IA_AirDirector(IA_Context context)
@@ -32,6 +34,9 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
+            long tickStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            _activeAirUnitsBuffer.Clear();
+            _activeAirTransportBuffer.Clear();
             if (_context.Brain != null && _context.Brain.IsBootstrapActive)
             {
                 return;
@@ -48,12 +53,27 @@ namespace Hegemonia.AI.BrainMaster
             {
                 baseCenter = _context.Brain.transform.position;
             }
+            long sensorStart = System.Diagnostics.Stopwatch.GetTimestamp();
             Transform airEnemy = GetVisibleAirEnemy();
             Transform groundEnemy = _context.WorldState.GetNearestVisibleEnemy(baseCenter, IA_Domain.Land);
             Vector3 pressureTarget = ResolvePressureTarget(baseCenter, now);
+            float sensorMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - sensorStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (sensorMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("sensor_update_ms", sensorMs);
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", sensorMs);
+            }
 
             DispatchAirIntercept(baseCenter, airEnemy, groundEnemy, pressureTarget);
             DispatchAirTransport(baseCenter, groundEnemy, pressureTarget, now);
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
+                "active_air_wings",
+                (_activeAirUnitsBuffer.Count + _activeAirTransportBuffer.Count) > 0 ? 1 : 0);
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("air_unit_update_ms", elapsedMs);
+            }
         }
 
         private float ResolveDecisionDelay()
@@ -83,16 +103,21 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            if (!TrySelectActiveAirUnits(squad.Units, _activeAirUnitsBuffer, false))
+            {
+                return;
+            }
+
             Transform target = airEnemy != null ? airEnemy : fallbackEnemy;
             Vector3 patrol = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 120f, 330f, 20);
             if (target != null)
             {
-                QueueAttack("air_intercept", squad.Units, target, patrol, 87, 2.9f);
+                QueueAttack("air_intercept", _activeAirUnitsBuffer, target, patrol, 87, 2.9f);
             }
             else
             {
                 Vector3 fallback = pressureTarget != Vector3.zero ? pressureTarget : patrol;
-                QueueMove("air_intercept", squad.Units, fallback + Vector3.up * 20f, 80, 3.1f);
+                QueueMove("air_intercept", _activeAirUnitsBuffer, fallback + Vector3.up * 20f, 80, 3.1f);
             }
         }
 
@@ -140,8 +165,20 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            if (!TrySelectActiveAirUnits(squad.Units, _activeAirTransportBuffer, true))
+            {
+                return;
+            }
+
+            IA_TransportPlan plan = _context != null ? _context.TransportPlan : null;
+            bool canProjectDrop = plan == null || plan.HasLandRoute || plan.Ready;
+
             Vector3 insertion = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.City, 90f, 260f, 22);
-            if (target != null)
+            if (!canProjectDrop)
+            {
+                insertion = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 40f, 120f, 18);
+            }
+            else if (target != null)
             {
                 insertion = target.position + Vector3.up * 6f;
             }
@@ -150,12 +187,17 @@ namespace Hegemonia.AI.BrainMaster
                 insertion = pressureTarget + Vector3.up * 6f;
             }
 
-            QueueMove("air_transport", squad.Units, insertion, 78, 4.2f);
+            QueueMove("air_transport", _activeAirTransportBuffer, insertion, 78, 4.2f);
+
+            if (!canProjectDrop)
+            {
+                return;
+            }
 
             // Trigger tactical drop behavior when close enough.
-            for (int i = 0; i < squad.Units.Count; i++)
+            for (int i = 0; i < _activeAirTransportBuffer.Count; i++)
             {
-                GameObject unit = squad.Units[i];
+                GameObject unit = _activeAirTransportBuffer[i];
                 if (unit == null)
                 {
                     continue;
@@ -278,6 +320,31 @@ namespace Hegemonia.AI.BrainMaster
         private static bool HasUnits(IA_SquadData squad)
         {
             return squad != null && squad.Units != null && squad.Units.Count > 0;
+        }
+
+        private bool TrySelectActiveAirUnits(List<GameObject> source, List<GameObject> destination, bool transportWing)
+        {
+            destination.Clear();
+            if (source == null || source.Count == 0)
+            {
+                return false;
+            }
+
+            IA_BattleGovernorDecision decision = _context != null ? _context.BattleDecision : null;
+            int limit = decision != null
+                ? Mathf.Max(1, transportWing ? Mathf.Max(1, decision.MaxAirAttackers / 2) : decision.MaxAirAttackers)
+                : source.Count;
+
+            for (int i = 0; i < source.Count && destination.Count < limit; i++)
+            {
+                GameObject unit = source[i];
+                if (unit != null)
+                {
+                    destination.Add(unit);
+                }
+            }
+
+            return destination.Count > 0;
         }
     }
 }

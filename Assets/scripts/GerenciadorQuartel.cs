@@ -101,13 +101,13 @@ public class GerenciadorQuartel : MonoBehaviour
     private void FecharOutrosMenus()
     {
         if (MenuGoverno.Instancia != null) MenuGoverno.Instancia.AlternarMenu(false);
-        var construtor = FindObjectOfType<MenuConstrucao>();
+        var construtor = Object.FindFirstObjectByType<MenuConstrucao>();
         if (construtor != null && MenuConstrucao.EstaAberto) construtor.AlternarMenu(false);
     }
 
     private void ChecarInvasaoEAcordarBase()
     {
-        IdentidadeUnidade[] todas = FindObjectsOfType<IdentidadeUnidade>();
+        IdentidadeUnidade[] todas = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
         bool inimigoProximo = false;
 
         foreach (var id in todas)
@@ -134,7 +134,7 @@ public class GerenciadorQuartel : MonoBehaviour
     {
         if (Time.frameCount % 90 != 0) return;
 
-        IdentidadeUnidade[] todasUnidades = FindObjectsOfType<IdentidadeUnidade>();
+        IdentidadeUnidade[] todasUnidades = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
         
         foreach (var id in todasUnidades)
         {
@@ -254,7 +254,7 @@ public class GerenciadorQuartel : MonoBehaviour
         List<ControleUnidade> soldadosAvulsos = new List<ControleUnidade>();
         List<ControleUnidade> veiculosAvulsos = new List<ControleUnidade>();
 
-        foreach (var id in FindObjectsOfType<IdentidadeUnidade>())
+        foreach (var id in Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None))
         {
             if (id.teamID == 1)
             {
@@ -278,7 +278,7 @@ public class GerenciadorQuartel : MonoBehaviour
 
         if (GUILayout.Button("CONVOCAR: OS SELECIONADOS NO MAPA", estiloBotao, GUILayout.Height(40)))
         {
-            foreach (var u in FindObjectsOfType<ControleUnidade>())
+            foreach (var u in Object.FindObjectsByType<ControleUnidade>(FindObjectsSortMode.None))
                 if (u.selecionado && u.GetComponent<IdentidadeUnidade>()?.teamID == 1)
                 {
                     u.selecionado = false;
@@ -462,7 +462,7 @@ public class GerenciadorQuartel : MonoBehaviour
     void AtualizarDadosInimigos()
     {
         infoInimigos.Clear();
-        IdentidadeUnidade[] todas = FindObjectsOfType<IdentidadeUnidade>();
+        IdentidadeUnidade[] todas = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
         
         foreach (var id in todas)
         {

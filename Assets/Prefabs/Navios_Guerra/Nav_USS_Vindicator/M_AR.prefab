@@ -17,7 +17,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1504830468305212134
 Transform:
   m_ObjectHideFlags: 0
@@ -9797,6 +9797,11 @@ MonoBehaviour:
   distanciaInicioMergulho: 100
   forcaRotacaoCruzeiro: 2
   forcaRotacaoMergulho: 5
+  distanciaInicioPerseguicaoAerea: 260
+  margemAltitudeAlvoAereo: 30
+  raioDetonacaoProximidadeAerea: 18
+  multiplicadorRotacaoAerea: 1.65
+  multiplicadorVelocidadeAerea: 1.15
   dano: 30
   raioExplosao: 65
   escalaVisualExplosao: 3

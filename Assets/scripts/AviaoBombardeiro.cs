@@ -308,16 +308,19 @@ public class AviaoBombardeiro : MonoBehaviour
     /// <summary>
     /// Modo 2: Radar procurará autonomamente o inimigo e atirará de forma precisa em alvos únicos e móveis
     /// </summary>
+    private static readonly Collider[] bufferRadar = new Collider[64];
+
     private void ChecarAtaquePatrulha()
     {
         // Detecção 3D (leva a altitude em conta para o range que é bem longo)
-        Collider[] objetosNoRadar = Physics.OverlapSphere(transform.position, raioVisaoPatrulha, layerInimigos != 0 ? layerInimigos.value : Physics.DefaultRaycastLayers);
+        int numObjetos = Physics.OverlapSphereNonAlloc(transform.position, raioVisaoPatrulha, bufferRadar, layerInimigos != 0 ? layerInimigos.value : Physics.DefaultRaycastLayers);
         
         Transform melhorAlvo = null;
         float menorDistancia = Mathf.Infinity;
 
-        foreach (var col in objetosNoRadar)
+        for (int i = 0; i < numObjetos; i++)
         {
+            var col = bufferRadar[i];
             if (col.isTrigger) continue; // Ignora visualizadores
 
             // Validações de tiro amigável e IFF
@@ -340,6 +343,8 @@ public class AviaoBombardeiro : MonoBehaviour
                 melhorAlvo = col.transform;
             }
         }
+        
+        for (int i = 0; i < numObjetos; i++) bufferRadar[i] = null;
 
         if (melhorAlvo != null)
         {

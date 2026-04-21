@@ -138,7 +138,10 @@ public class IA_Suprema : MonoBehaviour
     private Vector3 ultimoPontoReuniaoNaval;
     private Vector3 ultimoPontoCargaNaval;
     private Vector3 ultimoPontoDesembarqueNaval;
+    private Vector3 ultimoPontoDesembarqueAnfibio;
     private Vector3 ultimoPontoCarrierNaval;
+    private float _nextNavalTacticTime = -999f;
+    private float _nextSortidaAereaTime = -999f;
 
     [Header("Otimização da IA")]
     [Tooltip("Tempo minimo entre a reconstrução do resumo interno de tropas e predios.")]
@@ -260,7 +263,8 @@ public class IA_Suprema : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(5f);
+            EstadoCargaSuprema carga = ObterEstadoCargaSuprema();
+            yield return new WaitForSeconds(5f * ResolverMultiplicadorThrottle(carga));
             
             if (dinheiroIA > 1000f) 
             {
@@ -352,11 +356,13 @@ public class IA_Suprema : MonoBehaviour
             if (fezObra)
             {
                 LogDetalhado($"[IA Suprema] Obra erguida! Pausa logística ({cooldownConstrucao}s).");
-                yield return new WaitForSeconds(cooldownConstrucao);
+                EstadoCargaSuprema carga = ObterEstadoCargaSuprema();
+                yield return new WaitForSeconds(cooldownConstrucao * ResolverMultiplicadorThrottle(carga));
             }
             else
             {
-                yield return new WaitForSeconds(3f); 
+                EstadoCargaSuprema carga = ObterEstadoCargaSuprema();
+                yield return new WaitForSeconds(3f * ResolverMultiplicadorThrottle(carga));
             }
         }
     }
@@ -831,6 +837,9 @@ public class IA_Suprema : MonoBehaviour
     {
         while (true)
         {
+            EstadoCargaSuprema carga = ObterEstadoCargaSuprema();
+            float throttleMultiplier = ResolverMultiplicadorThrottle(carga);
+            float navalInterval = ResolverIntervaloTaticaNaval(carga);
             if (prefeituraPronta)
             {
                 LimparMortos(); 
@@ -838,7 +847,12 @@ public class IA_Suprema : MonoBehaviour
                 DefinirPosturaGlobal();
                 GerenciarProducaoTropas();
                 GerenciarLogisticaTransporte();
-                GerenciarTaticaNaval();
+                GerenciarSortidasAereas(carga);
+                if (Time.time >= _nextNavalTacticTime)
+                {
+                    GerenciarTaticaNaval();
+                    _nextNavalTacticTime = Time.time + navalInterval;
+                }
                 
                 if (estadoAtual == EstadoIA.GuerraTotal)
                 {
@@ -853,7 +867,46 @@ public class IA_Suprema : MonoBehaviour
                     RecuarParaDefesa();
                 }
             }
-            yield return new WaitForSeconds(4f);
+            yield return new WaitForSeconds(4f * throttleMultiplier);
+        }
+    }
+
+    void GerenciarSortidasAereas(EstadoCargaSuprema carga)
+    {
+        if (Time.time < _nextSortidaAereaTime)
+        {
+            return;
+        }
+
+        _nextSortidaAereaTime = Time.time + ResolverIntervaloSortidaAerea(carga);
+
+        if (alvoJogadorBase == null && alvoJogadorEconomia == null)
+        {
+            return;
+        }
+
+        Vector3 alvoAtaque = alvoJogadorBase != null
+            ? alvoJogadorBase.position
+            : (alvoJogadorEconomia != null ? alvoJogadorEconomia.position : Vector3.zero);
+
+        Vector3 alvoReconhecimento = alvoJogadorEconomia != null ? alvoJogadorEconomia.position : alvoAtaque;
+        Vector3 alvoPatrulha = Vector3.zero;
+        int sortidas = 0;
+
+        for (int i = 0; i < meusPredios.Count; i++)
+        {
+            GameObject predio = meusPredios[i];
+            if (predio == null) continue;
+
+            GerenciadorAeroporto aeroporto = predio.GetComponent<GerenciadorAeroporto>();
+            if (aeroporto == null || aeroporto is GerenciadorPortaAvioes) continue;
+
+            sortidas += ExecutarSortidaAerea(aeroporto, alvoReconhecimento, alvoPatrulha, alvoAtaque);
+        }
+
+        if (sortidas > 0)
+        {
+            LogDetalhado($"[IA Suprema] Sortidas aereas iniciadas: {sortidas}");
         }
     }
 
@@ -1129,12 +1182,20 @@ public class IA_Suprema : MonoBehaviour
     int ContarTransportesComCargaMinima(GrupoNavalIA grupo)
     {
         int total = 0;
+        int hoversContados = 0;
         for (int i = 0; i < grupo.transportes.Count; i++)
         {
             GameObject navio = grupo.transportes[i];
             if (navio == null) continue;
 
-            float minimo = EhHoverNaval(navio) ? 0.2f : 0.6f;
+            bool ehHover = EhHoverNaval(navio);
+            if (ehHover)
+            {
+                if (hoversContados >= 2) continue;
+                hoversContados++;
+            }
+
+            float minimo = ehHover ? 0.2f : 0.6f;
             if (ObterPercentualCargaNaval(navio) >= minimo) total++;
         }
         return total;
@@ -1143,10 +1204,18 @@ public class IA_Suprema : MonoBehaviour
     int ContarUnidadesEmbarcadas(GrupoNavalIA grupo)
     {
         int total = 0;
+        int hoversContados = 0;
         for (int i = 0; i < grupo.transportes.Count; i++)
         {
             GameObject navio = grupo.transportes[i];
             if (navio == null) continue;
+
+            bool ehHover = EhHoverNaval(navio);
+            if (ehHover)
+            {
+                if (hoversContados >= 2) continue;
+                hoversContados++;
+            }
 
             HovercraftTransporte hover = navio.GetComponent<HovercraftTransporte>();
             if (hover != null)
@@ -1171,8 +1240,14 @@ public class IA_Suprema : MonoBehaviour
 
         for (int i = 0; i < grupo.transportes.Count; i++)
         {
-            if (EhHoverNaval(grupo.transportes[i])) hovers++;
-            else grandes++;
+            if (EhHoverNaval(grupo.transportes[i]))
+            {
+                if (hovers < 2) hovers++;
+            }
+            else
+            {
+                grandes++;
+            }
         }
 
         return grandes * 2 + hovers;
@@ -1259,23 +1334,43 @@ public class IA_Suprema : MonoBehaviour
     int MoverTransportesNavais(GrupoNavalIA grupo, bool comboioPronto, int tropasReunidas)
     {
         int processados = 0;
+        int hoversAtivos = 0;
 
         for (int i = 0; i < grupo.transportes.Count; i++)
         {
             GameObject navio = grupo.transportes[i];
             if (navio == null) continue;
 
+            bool ehHover = EhHoverNaval(navio);
+            if (ehHover)
+            {
+                if (hoversAtivos >= 2)
+                {
+                    MoverNavio(navio, ultimoPontoCargaNaval);
+                    if (TransporteNavalTemCarga(navio))
+                    {
+                        IniciarDescargaNaval(navio);
+                    }
+                    continue;
+                }
+
+                hoversAtivos++;
+            }
+
             bool carregado = TransporteNavalTemCarga(navio);
-            Vector3 ancora = comboioPronto && carregado ? ultimoPontoDesembarqueNaval : ultimoPontoCargaNaval;
+            Vector3 pontoDesembarque = ehHover && ultimoPontoDesembarqueAnfibio != Vector3.zero
+                ? ultimoPontoDesembarqueAnfibio
+                : ultimoPontoDesembarqueNaval;
+            Vector3 ancora = comboioPronto && carregado ? pontoDesembarque : ultimoPontoCargaNaval;
             float avancar = comboioPronto && carregado ? -20f : -70f;
             if (!comboioPronto && carregado) avancar = -110f;
 
-            Vector3 destino = CalcularSlotNaval(ancora, comboioPronto ? ultimoPontoDesembarqueNaval : ultimoPontoCargaNaval, avancar, 36f, 28f, i, true, 4f);
+            Vector3 destino = CalcularSlotNaval(ancora, comboioPronto ? pontoDesembarque : ultimoPontoCargaNaval, avancar, 36f, 28f, i, true, 4f);
             MoverNavio(navio, destino);
 
             if (!carregado && tropasReunidas > 0 && Vector3.Distance(PlanoXZ(navio.transform.position), PlanoXZ(ultimoPontoCargaNaval)) <= 95f)
                 IniciarCargaNaval(navio);
-            else if (comboioPronto && carregado && Vector3.Distance(PlanoXZ(navio.transform.position), PlanoXZ(ultimoPontoDesembarqueNaval)) <= 130f)
+            else if (comboioPronto && carregado && Vector3.Distance(PlanoXZ(navio.transform.position), PlanoXZ(pontoDesembarque)) <= 130f)
                 IniciarDescargaNaval(navio);
 
             processados++;
@@ -1295,6 +1390,7 @@ public class IA_Suprema : MonoBehaviour
 
         ultimoPontoCargaNaval = ObterPontoCargaNaval();
         ultimoPontoDesembarqueNaval = ObterPontoDesembarqueNaval(alvoCosteiro);
+        ultimoPontoDesembarqueAnfibio = ObterPontoReuniaoTerrestreNaval(ultimoPontoDesembarqueNaval);
         ultimoPontoCarrierNaval = ObterPontoLancamentoPortaAvioes(ultimoPontoDesembarqueNaval);
         ultimoPontoReuniaoNaval = ObterPontoReuniaoTerrestreNaval(ultimoPontoCargaNaval);
 
@@ -1340,7 +1436,10 @@ public class IA_Suprema : MonoBehaviour
     void ExecutarAtaqueNaval(GrupoNavalIA grupo, Vector3 alvoCosteiro, Vector3 alvoAereo, bool contatoAtivo)
     {
         ultimoPontoCargaNaval = ObterPontoCargaNaval();
+        ultimoPontoDesembarqueNaval = ObterPontoDesembarqueNaval(alvoCosteiro);
+        ultimoPontoDesembarqueAnfibio = ObterPontoReuniaoTerrestreNaval(ultimoPontoDesembarqueNaval);
         ultimoPontoCarrierNaval = ObterPontoLancamentoPortaAvioes(alvoCosteiro);
+        ultimoPontoReuniaoNaval = ObterPontoReuniaoTerrestreNaval(ultimoPontoCargaNaval);
         estadoPlanoNaval = contatoAtivo ? EstadoPlanoNaval.ContatoNaval : EstadoPlanoNaval.ConcentracaoNaval;
         inicioPreparacaoAnfibia = -999f;
 
@@ -1350,7 +1449,9 @@ public class IA_Suprema : MonoBehaviour
         MoverListaNavalFormacao(grupo.escoltasMissil, alvoCosteiro, alvoJogadorBase.position, 40f, 120f, 40f, true);
         MoverListaNavalFormacao(grupo.submarinos, alvoCosteiro, alvoJogadorBase.position, -10f, 210f, 30f, false);
         MoverListaNavalFormacao(grupo.logisticos, ultimoPontoCargaNaval, alvoCosteiro, -140f, 90f, 35f, true);
-        MoverListaNavalFormacao(grupo.transportes, ultimoPontoCargaNaval, ultimoPontoCargaNaval, -70f, 34f, 25f, true);
+        int tropasReunidas = ReunirTropasParaInvasao(ultimoPontoReuniaoNaval);
+        bool comboioPronto = PodePartirComboio(grupo);
+        MoverTransportesNavais(grupo, comboioPronto, tropasReunidas);
 
         bool carrierEmSuporte = CarrierPodeLancar(grupo, contatoAtivo, false);
         if (carrierEmSuporte) estadoPlanoNaval = EstadoPlanoNaval.SuportePortaAvioes;
@@ -1397,7 +1498,7 @@ public class IA_Suprema : MonoBehaviour
 
     void GerenciarTaticaNaval()
     {
-        meusNavios.RemoveAll(x => x == null);
+        RemoveNulls(meusNavios);
         if (meusNavios.Count == 0) return;
 
         MontarGrupoNaval(grupoNavalPlanejado);
@@ -1454,15 +1555,11 @@ public class IA_Suprema : MonoBehaviour
         float melhorDist = float.MaxValue;
         Vector3 melhorPos = Vector3.zero;
 
-        List<Vector3> direcoesDeBusca = new List<Vector3>();
         for (int i = 0; i < 24; i++)
         {
             float ang = i * 15f * Mathf.Deg2Rad;
-            direcoesDeBusca.Add(new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang)));
-        }
+            Vector3 dir = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang));
 
-        foreach (Vector3 dir in direcoesDeBusca)
-        {
             for (float d = 50f; d < 1500f; d += 60f)
             {
                 Vector3 teste = alvo + dir * d;
@@ -1703,19 +1800,11 @@ public class IA_Suprema : MonoBehaviour
     {
         if (navio == null) return;
 
-        GerenciadorPortaAvioes carrier = navio.GetComponent<GerenciadorPortaAvioes>();
+        GerenciadorAeroporto carrier = navio.GetComponent<GerenciadorAeroporto>();
         if (carrier == null) return;
 
-        if (carrier.avioesNoPatio.Count == 0 && carrier.avioesNoHangar.Count > 0)
-            carrier.LiberarTodosDoHangar();
-
-        for (int i = 0; i < carrier.avioesNoPatio.Count; i++)
-        {
-            ControleAviao aviao = carrier.avioesNoPatio[i];
-            if (aviao == null) continue;
-            if (aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio) continue;
-            aviao.IniciarMissaoCompleta(alvoAereo);
-        }
+        Vector3 alvoReconhecimento = alvoJogadorEconomia != null ? alvoJogadorEconomia.position : alvoAereo;
+        ExecutarSortidaAerea(carrier, alvoReconhecimento, Vector3.zero, alvoAereo);
     }
 
     void ObterResumoFrotaNaval(out int portaAvioes, out int transportesNavais, out int submarinos, out int escoltas)
@@ -1837,7 +1926,8 @@ public class IA_Suprema : MonoBehaviour
 
         if (temAereo && Contar("helicoptero") < metaAereo) TreinarTropa("helicoptero", 900, true);
 
-        int limiteAvioes = metaCacas + 4; // Expansão do limite pra comportar a esquadra mista
+        int capacidadeAereaPatio = ContarCapacidadePatioAerea();
+        int limiteAvioes = Mathf.Max(metaCacas + 4, capacidadeAereaPatio); // Usa a capacidade real dos aeroportos sem lotar de uma vez
         if (temPistaCaca && ContarAvioes() < limiteAvioes)
         {
             float sorteio = Random.value;
@@ -1900,6 +1990,35 @@ public class IA_Suprema : MonoBehaviour
             if (id != null && id.teamID == this.teamID) count++;
         }
         return count;
+    }
+
+    int ContarCapacidadePatioAerea()
+    {
+        int capacidade = 0;
+
+        for (int i = 0; i < meusPredios.Count; i++)
+        {
+            GameObject predio = meusPredios[i];
+            if (predio == null) continue;
+
+            GerenciadorAeroporto aeroporto = predio.GetComponent<GerenciadorAeroporto>();
+            if (aeroporto == null) continue;
+
+            capacidade += Mathf.Max(1, aeroporto.waypointsPatio != null ? aeroporto.waypointsPatio.Count : 0);
+        }
+
+        for (int i = 0; i < meusNavios.Count; i++)
+        {
+            GameObject navio = meusNavios[i];
+            if (navio == null) continue;
+
+            GerenciadorAeroporto aeroporto = navio.GetComponent<GerenciadorAeroporto>();
+            if (aeroporto == null) continue;
+
+            capacidade += Mathf.Max(1, aeroporto.waypointsPatio != null ? aeroporto.waypointsPatio.Count : 0);
+        }
+
+        return capacidade;
     }
 
     void TreinarTropa(string chave, float custo, bool voa = false, bool naval = false)
@@ -2180,24 +2299,6 @@ public class IA_Suprema : MonoBehaviour
             Vector3 alvoLocal = alvoTropa + new Vector3(Random.Range(-120f, 120f), 0, Random.Range(-120f, 120f));
             Mover(t, alvoLocal);
         }
-
-        foreach (var predio in meusPredios)
-        {
-            if (predio == null || !predio.name.Contains("aeroporto")) continue;
-            
-            var aero = predio.GetComponent<GerenciadorAeroporto>();
-            if (aero != null)
-            {
-                Vector3 alvoAereo = (alvoJogadorEconomia != null) ? alvoJogadorEconomia.position : alvoJogadorBase.position;
-                foreach(var aviao in aero.avioesNoPatio)
-                {
-                    if (aviao != null && aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
-                    {
-                        aviao.IniciarMissaoCompleta(alvoAereo);
-                    }
-                }
-            }
-        }
     }
 
     void PatrulharBordasDaBase()
@@ -2337,15 +2438,11 @@ public class IA_Suprema : MonoBehaviour
             }
         }
 
-        List<Vector3> direcoesDeBusca = new List<Vector3>();
-        for (int i = 0; i < 24; i++) 
+        for (int i = 0; i < 24; i++)
         {
             float ang = i * 15f * Mathf.Deg2Rad;
-            direcoesDeBusca.Add(new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang)));
-        }
+            Vector3 dir = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang));
 
-        foreach (Vector3 dir in direcoesDeBusca)
-        {
             for (float d = 50f; d < 3000f; d += 80f)
             {
                 Vector3 teste = transform.position + dir * d;
@@ -2482,10 +2579,10 @@ public class IA_Suprema : MonoBehaviour
     void LimparMortos() 
     {
         int removidos = 0;
-        removidos += meusPredios.RemoveAll(x => x == null);
-        removidos += minhasTropas.RemoveAll(x => x == null);
-        removidos += meusTransportes.RemoveAll(x => x == null);
-        removidos += meusNavios.RemoveAll(x => x == null);
+        removidos += RemoveNulls(meusPredios);
+        removidos += RemoveNulls(minhasTropas);
+        removidos += RemoveNulls(meusTransportes);
+        removidos += RemoveNulls(meusNavios);
 
         if (removidos > 0)
             MarcarResumoOperacionalComoSujo();
@@ -2602,12 +2699,114 @@ public class IA_Suprema : MonoBehaviour
         return total;
     }
 
+    private static float ResolverIntervaloSortidaAerea(EstadoCargaSuprema carga)
+    {
+        switch (carga)
+        {
+            case EstadoCargaSuprema.Saturado:
+                return 30f;
+            case EstadoCargaSuprema.SobPressao:
+                return 20f;
+            default:
+                return 15f;
+        }
+    }
+
+    private static int ExecutarSortidaAerea(GerenciadorAeroporto aeroporto, Vector3 alvoReconhecimento, Vector3 alvoPatrulha, Vector3 alvoAtaque)
+    {
+        if (aeroporto == null || !aeroporto.isActiveAndEnabled || !aeroporto.gameObject.activeInHierarchy)
+        {
+            return 0;
+        }
+
+        return aeroporto.ExecutarSortidaIA(alvoReconhecimento, alvoPatrulha, alvoAtaque, 5);
+    }
+
     void AtualizarCacheRotaTerrestre(bool valor, Vector3 origem, Vector3 destino)
     {
         cacheTemRotaTerrestre = valor;
         ultimaOrigemConsultaRota = origem;
         ultimoDestinoConsultaRota = destino;
         proximaConsultaRotaTerrestre = Time.time + Mathf.Max(1f, intervaloConsultaRotaTerrestre);
+    }
+
+    private enum EstadoCargaSuprema
+    {
+        Normal,
+        SobPressao,
+        Saturado
+    }
+
+    private EstadoCargaSuprema ObterEstadoCargaSuprema()
+    {
+        if (DiagnosticoDesempenhoJogo.RuntimeSaturado())
+        {
+            return EstadoCargaSuprema.Saturado;
+        }
+
+        if (DiagnosticoDesempenhoJogo.RuntimeSobPressao())
+        {
+            return EstadoCargaSuprema.SobPressao;
+        }
+
+        float fps = 1f / Mathf.Max(0.0001f, Time.unscaledDeltaTime);
+        if (fps < 20f)
+        {
+            return EstadoCargaSuprema.Saturado;
+        }
+
+        if (fps < 35f)
+        {
+            return EstadoCargaSuprema.SobPressao;
+        }
+
+        return EstadoCargaSuprema.Normal;
+    }
+
+    private static float ResolverMultiplicadorThrottle(EstadoCargaSuprema carga)
+    {
+        switch (carga)
+        {
+            case EstadoCargaSuprema.Saturado:
+                return 1.5f;
+            case EstadoCargaSuprema.SobPressao:
+                return 1.25f;
+            default:
+                return 1f;
+        }
+    }
+
+    private static float ResolverIntervaloTaticaNaval(EstadoCargaSuprema carga)
+    {
+        switch (carga)
+        {
+            case EstadoCargaSuprema.Saturado:
+                return 12f;
+            case EstadoCargaSuprema.SobPressao:
+                return 8f;
+            default:
+                return 4f;
+        }
+    }
+
+    private static int RemoveNulls(List<GameObject> list)
+    {
+        if (list == null)
+        {
+            return 0;
+        }
+
+        int removedCount = 0;
+        for (int i = list.Count - 1; i >= 0; i--)
+        {
+            if (list[i] == null)
+            {
+                list.RemoveAt(i);
+                removedCount++;
+            }
+        }
+
+        return removedCount;
     }
 
     void LogDetalhado(string mensagem)
@@ -2631,7 +2830,7 @@ public class IA_Suprema : MonoBehaviour
 
     int ContarNavios()
     {
-        meusNavios.RemoveAll(x => x == null);
+        RemoveNulls(meusNavios);
         return meusNavios.Count;
     }
 

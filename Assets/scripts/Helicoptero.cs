@@ -322,13 +322,16 @@ public class Helicoptero : MonoBehaviour
 
     IEnumerator RadarDeAmeacas()
     {
+        Collider[] buffer = new Collider[48];
         while (true)
         {
             if (estaVoando && modoCombateAtivo && timerRecargaFlares <= 0)
             {
-                Collider[] hits = Physics.OverlapSphere(transform.position, raioRadarMissil);
-                foreach (var h in hits)
+                int hitCount = Physics.OverlapSphereNonAlloc(transform.position, raioRadarMissil, buffer, ~0, QueryTriggerInteraction.UseGlobal);
+                for (int i = 0; i < hitCount; i++)
                 {
+                    Collider h = buffer[i];
+                    if (h == null) continue;
                     if (SafeCompareTag(h, tagMissil) || h.name.IndexOf("missil", System.StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         TentativaDisparoAutomatico();

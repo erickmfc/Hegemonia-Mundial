@@ -56,6 +56,7 @@ namespace Hegemonia.AI.BrainMaster
         private int _frameHeavyCount;
         private int _heavySlotIndex; // qual slot ganhou o heavy token este frame
         private int _lastFrameCount = -1;
+        private readonly IA_PerformanceGovernor _performanceGovernor = new IA_PerformanceGovernor();
 
         // -----------------------------------------------------------------------
         // API pública
@@ -80,6 +81,21 @@ namespace Hegemonia.AI.BrainMaster
         public int ActiveCount
         {
             get { return _registeredTeamIds.Count; }
+        }
+
+        public IA_PerformanceGovernorState GetGovernorStateSnapshot()
+        {
+            return _performanceGovernor.CreateStateSnapshot();
+        }
+
+        public IA_BattleGovernorDecision BuildBattleDecision()
+        {
+            return _performanceGovernor.CreateBattleDecision(ActiveCount);
+        }
+
+        public IA_EngagementBudget BuildEngagementBudget()
+        {
+            return _performanceGovernor.CreateEngagementBudget();
         }
 
         /// <summary>
@@ -114,7 +130,13 @@ namespace Hegemonia.AI.BrainMaster
         {
             EnsureFrameReset();
 
-            if (_frameHeavyCount >= _heavySlotsPerFrame)
+            int effectiveHeavySlots = _performanceGovernor.GetHeavySlotsCap(_heavySlotsPerFrame);
+            if (effectiveHeavySlots <= 0)
+            {
+                return false;
+            }
+
+            if (_frameHeavyCount >= effectiveHeavySlots)
             {
                 return false;
             }
@@ -139,7 +161,7 @@ namespace Hegemonia.AI.BrainMaster
         public float ComputePerBrainBudgetMs(bool bootstrapActive)
         {
             int count = Mathf.Max(1, _registeredTeamIds.Count);
-            float total = _globalBudgetMs;
+            float total = _globalBudgetMs * _performanceGovernor.GetBudgetMultiplier();
 
             if (bootstrapActive)
             {
@@ -158,14 +180,17 @@ namespace Hegemonia.AI.BrainMaster
         public int ComputeMaxModulesPerFrame(bool bootstrapActive)
         {
             int count = Mathf.Max(1, _registeredTeamIds.Count);
+            int baseValue;
 
             if (bootstrapActive)
             {
-                return Mathf.Clamp(4 - (count - 1), 1, 3);
+                baseValue = Mathf.Clamp(4 - (count - 1), 1, 3);
+                return _performanceGovernor.AdjustModuleBudget(baseValue);
             }
 
             // Com muitas IAs ativas, reduz módulos por frame de cada uma
-            return Mathf.Clamp(5 - (count - 1), 1, 4);
+            baseValue = Mathf.Clamp(5 - (count - 1), 1, 4);
+            return _performanceGovernor.AdjustModuleBudget(baseValue);
         }
 
         // -----------------------------------------------------------------------
@@ -203,6 +228,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             _lastFrameCount = frame;
+            _performanceGovernor.RefreshFromRuntime();
             _frameAccumulatedMs = 0d;
             _frameHeavyCount = 0;
 

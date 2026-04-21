@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public class MenuComportamento : MonoBehaviour
 {
@@ -19,6 +20,12 @@ public class MenuComportamento : MonoBehaviour
 
     void Start()
     {
+        if (SceneManager.GetActiveScene().name == "Menu cena" || SceneManager.GetActiveScene().name == "MenuPrincipal")
+        {
+            enabled = false;
+            return;
+        }
+
         gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
         CriarInterface();
         painelMenu.SetActive(false);

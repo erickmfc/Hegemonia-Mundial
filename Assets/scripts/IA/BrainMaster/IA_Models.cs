@@ -77,6 +77,20 @@ namespace Hegemonia.AI.BrainMaster
         Saturado
     }
 
+    public enum IA_PerformanceGovernorBand
+    {
+        Saudavel,
+        Pressao,
+        Critico
+    }
+
+    public enum IA_SimulationTier
+    {
+        Combat,
+        Support,
+        Reserve
+    }
+
     public interface IIAUpdateModule
     {
         string Name { get; }
@@ -197,6 +211,8 @@ namespace Hegemonia.AI.BrainMaster
         public string Id;
         public IA_SquadRole Role;
         public readonly List<GameObject> Units = new List<GameObject>();
+        public IA_SimulationTier Tier = IA_SimulationTier.Support;
+        public int EngagementCost;
         public Vector3 LastObjective;
         public float LastCommandTime;
     }
@@ -234,6 +250,155 @@ namespace Hegemonia.AI.BrainMaster
         {
             return NavalUnitsActive > 0 && AirUnitsActive > 0;
         }
+    }
+
+    [Serializable]
+    public sealed class IA_PerformanceGovernorState
+    {
+        public float FpsSmoothed = 60f;
+        public float CpuMainSmoothed;
+        public bool GcPressure;
+        public IA_PerformanceGovernorBand Band = IA_PerformanceGovernorBand.Saudavel;
+        public float StableHealthySeconds;
+        public float LastUpdatedTime;
+
+        public IA_PerformanceGovernorState Clone()
+        {
+            return new IA_PerformanceGovernorState
+            {
+                FpsSmoothed = FpsSmoothed,
+                CpuMainSmoothed = CpuMainSmoothed,
+                GcPressure = GcPressure,
+                Band = Band,
+                StableHealthySeconds = StableHealthySeconds,
+                LastUpdatedTime = LastUpdatedTime
+            };
+        }
+    }
+
+    [Serializable]
+    public sealed class IA_EngagementBudget
+    {
+        public int TotalPoints;
+        public int UsedPoints;
+        public int LandPoints;
+        public int AirPoints;
+        public int NavalPoints;
+        public int LandUsed;
+        public int AirUsed;
+        public int NavalUsed;
+
+        public void ResetUsage()
+        {
+            UsedPoints = 0;
+            LandUsed = 0;
+            AirUsed = 0;
+            NavalUsed = 0;
+        }
+
+        public IA_EngagementBudget Clone()
+        {
+            return new IA_EngagementBudget
+            {
+                TotalPoints = TotalPoints,
+                UsedPoints = UsedPoints,
+                LandPoints = LandPoints,
+                AirPoints = AirPoints,
+                NavalPoints = NavalPoints,
+                LandUsed = LandUsed,
+                AirUsed = AirUsed,
+                NavalUsed = NavalUsed
+            };
+        }
+
+        public bool TryAllocate(IA_Domain domain, int cost)
+        {
+            int normalizedCost = Mathf.Max(0, cost);
+            if (normalizedCost <= 0)
+            {
+                return true;
+            }
+
+            if (UsedPoints + normalizedCost > Mathf.Max(1, TotalPoints))
+            {
+                return false;
+            }
+
+            switch (domain)
+            {
+                case IA_Domain.Air:
+                    if (AirUsed + normalizedCost > Mathf.Max(1, AirPoints))
+                    {
+                        return false;
+                    }
+
+                    AirUsed += normalizedCost;
+                    break;
+                case IA_Domain.Naval:
+                    if (NavalUsed + normalizedCost > Mathf.Max(1, NavalPoints))
+                    {
+                        return false;
+                    }
+
+                    NavalUsed += normalizedCost;
+                    break;
+                default:
+                    if (LandUsed + normalizedCost > Mathf.Max(1, LandPoints))
+                    {
+                        return false;
+                    }
+
+                    LandUsed += normalizedCost;
+                    break;
+            }
+
+            UsedPoints += normalizedCost;
+            return true;
+        }
+    }
+
+    [Serializable]
+    public sealed class IA_TransportPlan
+    {
+        public bool HasLandRoute = true;
+        public int RequiredCapacity;
+        public int AvailableCapacity;
+        public bool EscortReady;
+        public bool AirCoverReady;
+        public float LastUpdatedTime;
+        public Vector3 TargetAnchor;
+
+        public bool Ready
+        {
+            get
+            {
+                return HasLandRoute
+                       || (RequiredCapacity > 0
+                           && AvailableCapacity >= RequiredCapacity
+                           && EscortReady
+                           && AirCoverReady);
+            }
+        }
+    }
+
+    [Serializable]
+    public sealed class IA_BattleGovernorDecision
+    {
+        public IA_PerformanceGovernorBand Band = IA_PerformanceGovernorBand.Saudavel;
+        public bool AllowBuild = true;
+        public bool AllowProduce = true;
+        public bool AllowHeavyBuild = true;
+        public bool SuppressEconomicExpansion;
+        public int MaxActiveFronts = 2;
+        public int MaxAirPackages = 2;
+        public int MaxNavalPackages = 2;
+        public int MaxLandAttackers = 24;
+        public int MaxAirAttackers = 8;
+        public int MaxNavalAttackers = 6;
+        public int MaxProductionCommandsPerCycle = 1;
+        public float ProductionCooldownSeconds;
+        public float RetargetCooldownMultiplier = 1f;
+        public float PathReplanCooldownMultiplier = 1f;
     }
 
     [Serializable]

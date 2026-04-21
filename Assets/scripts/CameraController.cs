@@ -1,8 +1,10 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class CameraController : MonoBehaviour
 {
     public float velocidade = 20f;
+    public float velocidadeMenu = 5f;
     public float velocidadeZoom = 4000f;
     public float velocidadeRotacao = 100f;
     public float multiplicadorShift = 9.69f; // Velocidade triplicada (Antes 3.23)
@@ -34,6 +36,12 @@ public class CameraController : MonoBehaviour
             && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null
             && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null)
         {
+            return;
+        }
+
+        if (SceneManager.GetActiveScene().name == "Menu cena" && gameObject.name == "Camera cena menu")
+        {
+            transform.Translate(Vector3.forward * velocidadeMenu * Time.deltaTime, Space.Self);
             return;
         }
 

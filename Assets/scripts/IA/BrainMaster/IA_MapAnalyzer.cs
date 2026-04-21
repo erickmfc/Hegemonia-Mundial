@@ -12,12 +12,20 @@ namespace Hegemonia.AI.BrainMaster
             public float ValidUntil;
         }
 
+        private struct LandRouteCacheEntry
+        {
+            public bool Result;
+            public float ValidUntil;
+        }
+
         private const int MaxCachedCells = 4096;
         private readonly IA_WorldState _world;
         private readonly Dictionary<Vector2Int, IA_MapCell> _cells = new Dictionary<Vector2Int, IA_MapCell>();
         private readonly Dictionary<int, Vector2> _footprintCache = new Dictionary<int, Vector2>();
         private readonly Dictionary<string, TerrainQueryCacheEntry> _terrainQueryCache = new Dictionary<string, TerrainQueryCacheEntry>();
+        private readonly Dictionary<string, LandRouteCacheEntry> _landRouteCache = new Dictionary<string, LandRouteCacheEntry>();
         private readonly Collider[] _obstacleBuffer = new Collider[96];
+        private readonly NavMeshPath _sharedPath = new NavMeshPath();
         private bool _cachedHasNavMeshData = true;
         private float _nextNavMeshPresenceCheckTime;
 
@@ -156,7 +164,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (!HasAnyNavMeshData(Time.time))
+            if (!HasAnyNavMeshData(Time.time, baseCenter))
             {
                 return false;
             }
@@ -177,15 +185,66 @@ namespace Hegemonia.AI.BrainMaster
             return !HasPath(baseCenter, probeA) && !HasPath(baseCenter, probeC);
         }
 
-        private bool HasAnyNavMeshData(float now)
+        private bool HasAnyNavMeshData(float now, Vector3 baseCenter)
         {
             if (now < _nextNavMeshPresenceCheckTime)
             {
                 return _cachedHasNavMeshData;
             }
 
-            NavMeshTriangulation triangulation = NavMesh.CalculateTriangulation();
-            _cachedHasNavMeshData = triangulation.vertices != null && triangulation.vertices.Length > 0;
+            Vector3 center = baseCenter;
+            if (center == Vector3.zero && _world != null)
+            {
+                center = _world.BaseCenter;
+            }
+
+            bool found = false;
+            NavMeshHit hit;
+            const float sampleRadius = 60f;
+            const float probeDistance = 80f;
+
+            if (center != Vector3.zero && NavMesh.SamplePosition(center, out hit, sampleRadius, NavMesh.AllAreas))
+            {
+                found = true;
+            }
+            else
+            {
+                Vector3 probe = center;
+                probe.x += probeDistance;
+                if (NavMesh.SamplePosition(probe, out hit, sampleRadius, NavMesh.AllAreas))
+                {
+                    found = true;
+                }
+                else
+                {
+                    probe = center;
+                    probe.x -= probeDistance;
+                    if (NavMesh.SamplePosition(probe, out hit, sampleRadius, NavMesh.AllAreas))
+                    {
+                        found = true;
+                    }
+                    else
+                    {
+                        probe = center;
+                        probe.z += probeDistance;
+                        if (NavMesh.SamplePosition(probe, out hit, sampleRadius, NavMesh.AllAreas))
+                        {
+                            found = true;
+                        }
+                        else
+                        {
+                            probe = center;
+                            probe.z -= probeDistance;
+                            if (NavMesh.SamplePosition(probe, out hit, sampleRadius, NavMesh.AllAreas))
+                            {
+                                found = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            _cachedHasNavMeshData = found;
             _nextNavMeshPresenceCheckTime = now + 5f;
             return _cachedHasNavMeshData;
         }
@@ -247,6 +306,32 @@ namespace Hegemonia.AI.BrainMaster
 
             CacheTerrainQueryResult(queryKey, anchor, now, false);
             return anchor;
+        }
+
+        public bool HasLandRouteCached(Vector3 from, Vector3 to, float ttlSeconds)
+        {
+            float now = Time.time;
+            string key = BuildLandRouteCacheKey(from, to);
+            LandRouteCacheEntry cached;
+            if (_landRouteCache.TryGetValue(key, out cached) && cached.ValidUntil > now)
+            {
+                return cached.Result;
+            }
+
+            long start = System.Diagnostics.Stopwatch.GetTimestamp();
+            bool result = HasPath(from, to);
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - start) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("pathfinding_ms", elapsedMs);
+            }
+
+            _landRouteCache[key] = new LandRouteCacheEntry
+            {
+                Result = result,
+                ValidUntil = now + Mathf.Clamp(ttlSeconds, 2f, 20f)
+            };
+            return result;
         }
 
         private string BuildTerrainQueryKey(Vector3 anchor, IA_TerrainType desiredTerrain, float minRadius, float maxRadius, int samples)
@@ -539,11 +624,19 @@ namespace Hegemonia.AI.BrainMaster
             return IA_ZoneType.Frontline;
         }
 
-        private static bool HasPath(Vector3 from, Vector3 to)
+        private bool HasPath(Vector3 from, Vector3 to)
         {
-            NavMeshPath path = new NavMeshPath();
-            bool calculated = NavMesh.CalculatePath(from, to, NavMesh.AllAreas, path);
-            return calculated && path.status == NavMeshPathStatus.PathComplete;
+            bool calculated = NavMesh.CalculatePath(from, to, NavMesh.AllAreas, _sharedPath);
+            return calculated && _sharedPath.status == NavMeshPathStatus.PathComplete;
+        }
+
+        private string BuildLandRouteCacheKey(Vector3 from, Vector3 to)
+        {
+            int fromX = Mathf.RoundToInt(from.x / 40f);
+            int fromZ = Mathf.RoundToInt(from.z / 40f);
+            int toX = Mathf.RoundToInt(to.x / 40f);
+            int toZ = Mathf.RoundToInt(to.z / 40f);
+            return fromX + ":" + fromZ + ">" + toX + ":" + toZ;
         }
 
         private Vector2Int ToIndex(Vector3 worldPosition)

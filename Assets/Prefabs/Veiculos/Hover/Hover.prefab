@@ -958,13 +958,13 @@ MonoBehaviour:
   alturaDoChao: 1.5
   camadasChao:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 4294967295
   distanciaSondaFrontal: 7
   larguraSonda: 2.5
   alturaOrigemSonda: 6
   impulsoSubidaPraia: 10
   velocidadeMinimaNaCosta: 9
-  tempoParaDesatolar: 0.75
+  tempoParaDesatolar: 1.24
   suavizacaoAlturaCosta: 0.35
   impulsoTravessiaAguaTerra: 1.2
   tempoMaximoTravessia: 12

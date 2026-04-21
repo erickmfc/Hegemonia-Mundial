@@ -1973,7 +1973,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
                 else
                 {
-                    ArmRuntimeProduceCooldown();
+                    ArmRuntimeProduceCooldown(context);
                 }
 
                 return ok;
@@ -2001,7 +2001,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             string runtimeProduceReason;
-            if (ShouldThrottleProduceRuntime(out runtimeProduceReason))
+            if (ShouldThrottleProduceRuntime(context, item, out runtimeProduceReason))
             {
                 message = "producao pausada: " + runtimeProduceReason;
                 return false;
@@ -2037,7 +2037,7 @@ namespace Hegemonia.AI.BrainMaster
                     context.Brain.Refund(refund);
                 }
 
-                ArmRuntimeProduceCooldown();
+                ArmRuntimeProduceCooldown(context);
                 message = "produzido=" + produced;
                 return true;
             }
@@ -2053,6 +2053,19 @@ namespace Hegemonia.AI.BrainMaster
             if (context != null && context.Brain != null && context.Brain.IsBootstrapActive)
             {
                 return false;
+            }
+
+            IA_BattleGovernorDecision decision = context != null ? context.BattleDecision : null;
+            if (decision != null && !decision.AllowBuild && !IsEmergencyDefensiveBuild(data, itemKey))
+            {
+                reason = "governador de performance suspendeu build nao essencial";
+                return true;
+            }
+
+            if (decision != null && !decision.AllowHeavyBuild && IsHeavyNonEssentialBuild(data, itemKey))
+            {
+                reason = "build pesado pausado pelo governador";
+                return true;
             }
 
             if (!ShouldRespectRuntimeLock() || !DiagnosticoDesempenhoJogo.RuntimeSobPressao())
@@ -2074,12 +2087,31 @@ namespace Hegemonia.AI.BrainMaster
             return true;
         }
 
-        private bool ShouldThrottleProduceRuntime(out string reason)
+        private bool ShouldThrottleProduceRuntime(IA_Context context, DadosConstrucao data, out string reason)
         {
             reason = string.Empty;
+            if (context != null && context.Brain != null && context.Brain.IsBootstrapActive)
+            {
+                return false;
+            }
+
+            IA_BattleGovernorDecision decision = context != null ? context.BattleDecision : null;
+            if (decision != null && !decision.AllowProduce && !IsEssentialRuntimeProduction(data))
+            {
+                reason = "governador de performance suspendeu producao nao essencial";
+                return true;
+            }
+
             if (!ShouldRespectRuntimeLock())
             {
                 return false;
+            }
+
+            float now = Time.time;
+            if (decision != null && decision.ProductionCooldownSeconds > 0f && now < _nextRuntimeProduceAllowedTime)
+            {
+                reason = "cooldown adaptativo de producao";
+                return true;
             }
 
             if (!DiagnosticoDesempenhoJogo.RuntimeSobPressao())
@@ -2087,7 +2119,6 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            float now = Time.time;
             if (now >= _nextRuntimeProduceAllowedTime)
             {
                 return false;
@@ -2108,7 +2139,7 @@ namespace Hegemonia.AI.BrainMaster
             return true;
         }
 
-        private void ArmRuntimeProduceCooldown()
+        private void ArmRuntimeProduceCooldown(IA_Context context)
         {
             if (!ShouldRespectRuntimeLock())
             {
@@ -2119,6 +2150,12 @@ namespace Hegemonia.AI.BrainMaster
             float cooldown = DiagnosticoDesempenhoJogo.RuntimeSaturado()
                 ? 4f
                 : (DiagnosticoDesempenhoJogo.RuntimeSobPressao() ? 2f : 0f);
+            IA_BattleGovernorDecision decision = context != null ? context.BattleDecision : null;
+            if (decision != null && decision.ProductionCooldownSeconds > 0f)
+            {
+                cooldown = Mathf.Max(cooldown, decision.ProductionCooldownSeconds);
+            }
+
             if (cooldown > 0f)
             {
                 _nextRuntimeProduceAllowedTime = Mathf.Max(_nextRuntimeProduceAllowedTime, now + cooldown);
@@ -2149,6 +2186,47 @@ namespace Hegemonia.AI.BrainMaster
                    || normalized.Contains("armazem")
                    || normalized.Contains("estaleiro")
                    || normalized.Contains("pier");
+        }
+
+        private static bool IsEmergencyDefensiveBuild(DadosConstrucao data, string itemKey)
+        {
+            string normalized = IA_Text.Normalize(
+                (itemKey ?? string.Empty) + " "
+                + (data != null ? data.nomeItem : string.Empty) + " "
+                + (data != null && data.prefabDaUnidade != null ? data.prefabDaUnidade.name : string.Empty));
+
+            return normalized.Contains("torreta")
+                   || normalized.Contains("sentinela")
+                   || normalized.Contains("ciws");
+        }
+
+        private static bool IsEssentialRuntimeProduction(DadosConstrucao data)
+        {
+            string normalized = IA_Text.Normalize(
+                (data != null ? data.nomeItem : string.Empty) + " "
+                + (data != null ? data.name : string.Empty) + " "
+                + (data != null && data.prefabDaUnidade != null ? data.prefabDaUnidade.name : string.Empty));
+
+            return normalized.Contains("soldado")
+                   || normalized.Contains("rifle")
+                   || normalized.Contains("tank")
+                   || normalized.Contains("mbt")
+                   || normalized.Contains("artilh")
+                   || normalized.Contains("hack")
+                   || normalized.Contains("aviao")
+                   || normalized.Contains("caca")
+                   || normalized.Contains("fa1")
+                   || normalized.Contains("g15")
+                   || normalized.Contains("a_20")
+                   || normalized.Contains("super tuk")
+                   || normalized.Contains("helicoptero")
+                   || normalized.Contains("hover")
+                   || normalized.Contains("transporte")
+                   || normalized.Contains("liberty")
+                   || normalized.Contains("corveta")
+                   || normalized.Contains("destroy")
+                   || normalized.Contains("submarino")
+                   || normalized.Contains("leviathan");
         }
 
         private static void RegistrarTempoDiagnostico(string chave, long inicio)
@@ -2195,6 +2273,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool ExecuteAttack(IA_CommandRequest request, out string message)
         {
+            long metricStart = System.Diagnostics.Stopwatch.GetTimestamp();
             IA_AttackOrderData payload = request.Payload as IA_AttackOrderData;
             if (payload == null || payload.Units.Count == 0)
             {
@@ -2226,6 +2305,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             message = "atacantes=" + moved;
+            RegistrarTempoDiagnostico("weapon_update_ms", metricStart);
             return moved > 0;
         }
 
@@ -2331,6 +2411,7 @@ namespace Hegemonia.AI.BrainMaster
             if (airLauncher != null)
             {
                 airLauncher.modoPassivo = false;
+                airLauncher.DefinirAlvoIA(target, desired, 4f);
             }
 
             Helicoptero helicopter = cache.Helicopter;
@@ -2598,7 +2679,8 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 lateral = Vector3.Cross(Vector3.up, axis).normalized;
             int flagshipIndex = FindFleetFlagshipIndex(fleet);
             bool hasFlagship = flagshipIndex >= 0 && flagshipIndex < total;
-            float spacing = 150f;
+            float spacing = Mathf.Max(135f, GetFormationSpacing(unit));
+            bool isFlagship = IsFleetFlagship(unit);
 
             if (hasFlagship)
             {
@@ -2607,12 +2689,20 @@ namespace Hegemonia.AI.BrainMaster
                     return anchor;
                 }
 
+                if (isFlagship)
+                {
+                    int carrierEscortIndex = index > flagshipIndex ? index - 1 : index;
+                    float side = carrierEscortIndex % 2 == 0 ? -1f : 1f;
+                    float flankDepth = Mathf.Max(170f, spacing * 0.85f);
+                    return anchor - (axis * (spacing * 1.15f)) + (lateral * side * flankDepth);
+                }
+
                 int escortIndex = index > flagshipIndex ? index - 1 : index;
                 int escortTotal = Mathf.Max(1, total - 1);
                 if (escortTotal <= 2)
                 {
                     float side = escortIndex == 0 ? -1f : 1f;
-                    return anchor + (lateral * side * spacing);
+                    return anchor + (lateral * side * spacing) - (axis * (spacing * 0.35f));
                 }
 
                 int ring = 1;
@@ -2628,7 +2718,7 @@ namespace Hegemonia.AI.BrainMaster
                 float angleStep = 360f / Mathf.Max(1, capacity);
                 float angle = (slotInRing * angleStep) + (ring % 2 == 0 ? angleStep * 0.5f : 0f);
                 Vector3 radial = (lateral * Mathf.Cos(angle * Mathf.Deg2Rad)) + (axis * Mathf.Sin(angle * Mathf.Deg2Rad));
-                return anchor + (radial.normalized * spacing * ring);
+                return anchor + (radial.normalized * spacing * (0.9f + ring));
             }
 
             int center = (total - 1) / 2;
@@ -2637,7 +2727,7 @@ namespace Hegemonia.AI.BrainMaster
             if (total > 5)
             {
                 int row = Mathf.Abs(index - center) / 3;
-                offset -= axis * (row * 55f);
+                offset -= axis * (row * Mathf.Max(75f, spacing * 0.7f));
             }
             return anchor + offset;
         }
@@ -2690,7 +2780,32 @@ namespace Hegemonia.AI.BrainMaster
 
             if (IsNavalUnit(unit, n))
             {
-                return 42f;
+                if (IsFleetFlagship(unit))
+                {
+                    return 260f;
+                }
+
+                if (unit.GetComponent<ControleSubmarino>() != null || n.Contains("sub"))
+                {
+                    return 180f;
+                }
+
+                if (n.Contains("hover"))
+                {
+                    return 130f;
+                }
+
+                if (n.Contains("transporte") || n.Contains("liberty") || n.Contains("petroleiro"))
+                {
+                    return 170f;
+                }
+
+                if (n.Contains("corveta") || n.Contains("destroy") || n.Contains("ironclad") || n.Contains("vindicator") || n.Contains("dominion") || n.Contains("navio") || n.Contains("carrier"))
+                {
+                    return 150f;
+                }
+
+                return 140f;
             }
 
             if (n.Contains("truck") || n.Contains("caminhao") || n.Contains("transporte") || n.Contains("hover"))
@@ -2716,7 +2831,27 @@ namespace Hegemonia.AI.BrainMaster
 
             if (IsNavalUnit(unit, n))
             {
-                return 60f;
+                if (IsFleetFlagship(unit))
+                {
+                    return 180f;
+                }
+
+                if (unit.GetComponent<ControleSubmarino>() != null || n.Contains("sub"))
+                {
+                    return 120f;
+                }
+
+                if (n.Contains("hover"))
+                {
+                    return 90f;
+                }
+
+                if (n.Contains("transporte") || n.Contains("liberty") || n.Contains("petroleiro"))
+                {
+                    return 130f;
+                }
+
+                return 105f;
             }
 
             if (n.Contains("truck") || n.Contains("caminhao") || n.Contains("transporte") || n.Contains("hover"))

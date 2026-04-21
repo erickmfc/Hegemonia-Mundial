@@ -254,6 +254,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'estaleiro '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -1391,6 +1392,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'Construir Aeroporto '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -1444,6 +1446,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'estaleiro '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -1514,6 +1517,60 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5390122096497819642, guid: f6f4236f904e0244b97d896a6186a714, type: 3}
   m_PrefabInstance: {fileID: 4447534628143555477}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &261169693
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 261169694}
+  - component: {fileID: 261169695}
+  m_Layer: 0
+  m_Name: GameObject (4)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &261169694
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 261169693}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &261169695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 261169693}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 0
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1 &282494937
 GameObject:
   m_ObjectHideFlags: 0
@@ -1766,6 +1823,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'estaleiro '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -1785,7 +1843,7 @@ GameObject:
   - component: {fileID: 315418779}
   - component: {fileID: 315418780}
   m_Layer: 0
-  m_Name: GameObject (2)
+  m_Name: patrulha naval
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1800,7 +1858,7 @@ Transform:
   m_GameObject: {fileID: 315418778}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -396, y: 0, z: 1130}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1819,6 +1877,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 
+  ManualRole: 2
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -2168,13 +2227,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.031476337, y: 0.964869, z: -0.2221368, w: 0.13672}
-  m_LocalPosition: {x: 349.1, y: 54.1, z: 83.8}
+  m_LocalRotation: {x: -0.15697992, y: -0.68556654, z: 0.15512784, w: -0.6937516}
+  m_LocalPosition: {x: 680, y: 66.2, z: -22}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 25.93, y: 163.87, z: 0}
+  m_LocalEulerAnglesHint: {x: 25.5, y: 449.32, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2232,6 +2291,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
   velocidade: 20
+  velocidadeMenu: 5
   velocidadeZoom: 1000
   velocidadeRotacao: 100
   multiplicadorShift: 2.5
@@ -2436,7 +2496,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: f5d748311324fca47a7f548c46d42902, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: 14f565d7d6692ed458b3f8a2aac4b006, type: 2}
   m_BuildHeightMesh: 0
 --- !u!114 &362165591
 MonoBehaviour:
@@ -2630,6 +2690,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'Construir Aeroporto '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -2706,7 +2767,7 @@ GameObject:
   - component: {fileID: 416799592}
   - component: {fileID: 416799593}
   m_Layer: 0
-  m_Name: GameObject
+  m_Name: estacionamento naval
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2721,7 +2782,7 @@ Transform:
   m_GameObject: {fileID: 416799591}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -250, y: 0, z: 619}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2740,6 +2801,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 
+  ManualRole: 1
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -2779,6 +2841,7 @@ Transform:
   m_Children:
   - {fileID: 696969173}
   - {fileID: 1968926787}
+  - {fileID: 1984084235}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &459453654
@@ -2841,7 +2904,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2234468026170433557, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 505.1
+      value: 194
       objectReference: {fileID: 0}
     - target: {fileID: 2234468026170433557, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2849,7 +2912,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2234468026170433557, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -434.2
+      value: -621
       objectReference: {fileID: 0}
     - target: {fileID: 2234468026170433557, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
       propertyPath: m_LocalRotation.w
@@ -2899,6 +2962,60 @@ PrefabInstance:
       addedObject: {fileID: 1984119298}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 73a02a6f1f818b84480c5f49936c6fc7, type: 3}
+--- !u!1 &461569555
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 461569556}
+  - component: {fileID: 461569557}
+  m_Layer: 0
+  m_Name: GameObject (5)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &461569556
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 461569555}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &461569557
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 461569555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 0
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1 &475589930
 GameObject:
   m_ObjectHideFlags: 0
@@ -3057,7 +3174,7 @@ Transform:
   m_GameObject: {fileID: 497995963}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1419, y: 0, z: -3019}
+  m_LocalPosition: {x: 401, y: 0, z: -3019}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3447,6 +3564,60 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::IdentidadeTerreno
   istoE_Agua: 1
   istoE_Terra: 0
+--- !u!1 &581416637
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 581416638}
+  - component: {fileID: 581416639}
+  m_Layer: 0
+  m_Name: mobilizacao terrestre
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &581416638
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 581416637}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 206}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &581416639
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 581416637}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 4
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1 &590836158
 GameObject:
   m_ObjectHideFlags: 0
@@ -3478,7 +3649,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_BrainMaster
   TeamId: 2
   NationName: BrainMaster
-  InitialCredits: 20000
+  InitialCredits: 1000
   IncomePerSecond: 60
   Credits: 0
   IntegrationMode: 1
@@ -3502,7 +3673,7 @@ Transform:
   m_GameObject: {fileID: 590836158}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 665, y: 0, z: -3182.9}
+  m_LocalPosition: {x: 2207, y: 0, z: -3182.9}
   m_LocalScale: {x: 1, y: 1, z: 1.2146}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3512,6 +3683,11 @@ Transform:
   - {fileID: 416799592}
   - {fileID: 315418779}
   - {fileID: 937212823}
+  - {fileID: 581416638}
+  - {fileID: 786020116}
+  - {fileID: 2011353080}
+  - {fileID: 261169694}
+  - {fileID: 461569556}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &598190810
@@ -4145,6 +4321,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'estaleiro '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -4178,7 +4355,7 @@ Transform:
   m_GameObject: {fileID: 696969172}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 47, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4703,6 +4880,60 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 761207216}
   m_CullTransparentMesh: 1
+--- !u!1 &786020115
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 786020116}
+  - component: {fileID: 786020117}
+  m_Layer: 0
+  m_Name: patrulha aerea
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &786020116
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 786020115}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 1059}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &786020117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 786020115}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 6
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1 &794068154
 GameObject:
   m_ObjectHideFlags: 0
@@ -5301,6 +5532,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: Aeroporto
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -5480,7 +5712,7 @@ GameObject:
   - component: {fileID: 937212823}
   - component: {fileID: 937212824}
   m_Layer: 0
-  m_Name: GameObject (1)
+  m_Name: Tranporte terrestre
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5495,7 +5727,7 @@ Transform:
   m_GameObject: {fileID: 937212822}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 247}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5514,6 +5746,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 
+  ManualRole: 3
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -6293,7 +6526,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 911
+      value: 574.6
       objectReference: {fileID: 0}
     - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
       propertyPath: m_LocalPosition.y
@@ -6301,7 +6534,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 448.128
+      value: 545
       objectReference: {fileID: 0}
     - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
       propertyPath: m_LocalRotation.w
@@ -7105,7 +7338,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 105.0836
+      value: 223.5
       objectReference: {fileID: 0}
     - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
       propertyPath: m_LocalPosition.y
@@ -7170,7 +7403,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1027576861776745056, guid: 21914d3a6241ff94fb78e9232a6213b1, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 601
+      value: 639.7
       objectReference: {fileID: 0}
     - target: {fileID: 1027576861776745056, guid: 21914d3a6241ff94fb78e9232a6213b1, type: 3}
       propertyPath: m_LocalPosition.y
@@ -7307,6 +7540,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'estaleiro '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -7436,6 +7670,75 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1001 &1363981474
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 114078, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_Name
+      value: Protector_01_Prefeb (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 912.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -50.24608
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 430052, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 4dead50b249eb4bd4b4d1c40ddba9b8a, type: 3}
 --- !u!1 &1368458216
 GameObject:
   m_ObjectHideFlags: 0
@@ -7481,6 +7784,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'estaleiro '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -9012,6 +9316,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: Aeroporto
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -9928,19 +10233,19 @@ MonoBehaviour:
   distanciaNavalDaCosta: 200
   sinalizadorAgua: {fileID: 542295136}
   sinalizadorTerra: {fileID: 902067811}
-  tempoDePazInicial: 5
+  tempoDePazInicial: 10
   distanciaDesembarque: 150
-  metaSoldados: 20
+  metaSoldados: 10
   metaTanques: 10
   metaAereo: 5
-  metaCacas: 3
-  metaNaval: 3
+  metaCacas: 8
+  metaNaval: 5
   metaSubmarinos: 2
   estadoAtual: 0
   intervaloResumoOperacional: 2
   intervaloAnaliseOponente: 6
   intervaloConsultaRotaTerrestre: 10
-  logsDetalhados: 0
+  logsDetalhados: 1
 --- !u!4 &1891898161
 Transform:
   m_ObjectHideFlags: 0
@@ -9950,7 +10255,7 @@ Transform:
   m_GameObject: {fileID: 1891898159}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2577, y: 0, z: -3108.1}
+  m_LocalPosition: {x: 2345, y: 0, z: -3215}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -10060,6 +10365,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'estaleiro '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -10270,7 +10576,7 @@ Transform:
   m_GameObject: {fileID: 1968926786}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -3819.39, y: 0, z: 793.03}
+  m_LocalPosition: {x: -3821, y: 0, z: 792.92}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10326,7 +10632,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: f5d748311324fca47a7f548c46d42902, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: c74fe44ccc10d2746ab93bd54d1b22af, type: 2}
   m_BuildHeightMesh: 0
 --- !u!154 &1968926790
 TerrainCollider:
@@ -10481,7 +10787,7 @@ GameObject:
   - component: {fileID: 1984084238}
   - component: {fileID: 1984084239}
   m_Layer: 6
-  m_Name: Mapa2
+  m_Name: Mapa inimigo
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -10496,11 +10802,11 @@ Transform:
   m_GameObject: {fileID: 1984084234}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -4852.69}
+  m_LocalPosition: {x: -822, y: 0, z: -4056.69}
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 446168071}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!154 &1984084236
 TerrainCollider:
@@ -10549,7 +10855,7 @@ Terrain:
   m_StaticShadowCaster: 0
   m_IgnoreQualitySettings: 0
   m_ReflectionProbeUsage: 1
-  m_MaterialTemplate: {fileID: 2100000, guid: f34bb93b7929c42cfb73f355831913fb, type: 2}
+  m_MaterialTemplate: {fileID: 2100000, guid: c58bd0583d851a5458be397186ae8949, type: 2}
   m_BakeLightProbesForTrees: 1
   m_PreserveTreePrototypeLayers: 0
   m_DeringLightProbesForTrees: 1
@@ -10592,7 +10898,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: 295b74feffb7d9546948cbb20d7ae265, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: 956fbb6620eab0e47ae0d2b9bc2e0037, type: 2}
   m_BuildHeightMesh: 0
 --- !u!114 &1984084239
 MonoBehaviour:
@@ -10709,6 +11015,129 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1001 &2005376314
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1024233693627392, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_Name
+      value: BattleShip_01_Prefeb
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 941.97766
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 2.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -83.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4547425078511076, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 263b05cd98ea4e14596f85c8a811508c, type: 3}
+--- !u!1 &2011353079
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2011353080}
+  - component: {fileID: 2011353081}
+  m_Layer: 0
+  m_Name: patrulha aerea (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2011353080
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2011353079}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -908, y: 0, z: 540}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2011353081
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2011353079}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 6
+  AllowInactiveObject: 0
+  ForceExactPlacement: 1
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1001 &2012580658
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11170,6 +11599,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
   ItemFilters: 'estaleiro '
+  ManualRole: 0
   AllowInactiveObject: 0
   ForceExactPlacement: 1
   ReusePoint: 0
@@ -11527,6 +11957,91 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 51c0af94f1fbcdf4baaa5f1f989685aa, type: 3}
+--- !u!1001 &2012503567618500827
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2972839992480705651, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_Mass
+      value: 500
+      objectReference: {fileID: 0}
+    - target: {fileID: 3076978023032189417, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: velocidadeLeme
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3076978023032189417, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: tempoAceleracao
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 3076978023032189417, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: curvaMaximaGraus
+      value: 19
+      objectReference: {fileID: 0}
+    - target: {fileID: 3076978023032189417, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: offsetAlturaAgua
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3076978023032189417, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: velocidadeMaxima
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 3076978023032189417, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: tempoParadaEmergencia
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 4357442004992980676, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_Name
+      value: HelicopterAircraftCarrier_01_Prefeb
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 821.9
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 13.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -101.38791
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5332752902395603898, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
 --- !u!1001 &2042880774569341242
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11781,7 +12296,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2677807945473189951, guid: 2db930539ba30bb40ad3973bda0a87dd, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -1364
+      value: -582
       objectReference: {fileID: 0}
     - target: {fileID: 2677807945473189951, guid: 2db930539ba30bb40ad3973bda0a87dd, type: 3}
       propertyPath: m_LocalRotation.w
@@ -12125,6 +12640,63 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6ca2cee69450f204c872432921b90362, type: 3}
+--- !u!1001 &8731397254719837909
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1512120321346815742, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_Name
+      value: F35 (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 229.14
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000076293945
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 104.13
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3138647696343125993, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: a8780eee9cea64549be3a0525623f4f5, type: 3}
 --- !u!1001 &8925027082900925960
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -12189,7 +12761,6 @@ SceneRoots:
   - {fileID: 1678977764}
   - {fileID: 446168071}
   - {fileID: 1066512837}
-  - {fileID: 1984084235}
   - {fileID: 362165589}
   - {fileID: 600254788}
   - {fileID: 330585546}
@@ -12272,6 +12843,7 @@ SceneRoots:
   - {fileID: 95151047}
   - {fileID: 1546645802}
   - {fileID: 1709674306}
+  - {fileID: 8731397254719837909}
   - {fileID: 2132792861}
   - {fileID: 1023194172}
   - {fileID: 1808198153}
@@ -12285,3 +12857,6 @@ SceneRoots:
   - {fileID: 1093027066}
   - {fileID: 414201344}
   - {fileID: 2054849876}
+  - {fileID: 1363981474}
+  - {fileID: 2005376314}
+  - {fileID: 2012503567618500827}

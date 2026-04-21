@@ -39,7 +39,7 @@ public class LancadorMLRS : MonoBehaviour
 
     [Header("--- Debug (Modo Detetive) ---")]
     [Tooltip("Marque isso se o tanque não estiver atirando para saber o motivo no Console")]
-    public bool mostrarLogsDeBusca = true;
+    public bool mostrarLogsDeBusca = false;
 
     // Variáveis internas
     private float cronometroDisparo;
@@ -48,6 +48,7 @@ public class LancadorMLRS : MonoBehaviour
     private AudioSource audioSourceDisparo;
     private AudioSource audioSourceMotor;
     private float timerDebug = 0f; 
+    private Collider[] _bufferOverlaps = new Collider[128];
 
     void Start()
     {
@@ -113,12 +114,20 @@ public class LancadorMLRS : MonoBehaviour
         if (timerDebug > 0) return;
         timerDebug = 0.5f; // Busca a cada 0.5s
 
-        Collider[] hitColliders = Physics.OverlapSphere(transform.position, alcanceDoRadar);
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceDoRadar, _bufferOverlaps, ~0, QueryTriggerInteraction.UseGlobal);
+        if (hitCount >= _bufferOverlaps.Length)
+        {
+            _bufferOverlaps = new Collider[Mathf.Min(_bufferOverlaps.Length * 2, 2048)];
+            hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceDoRadar, _bufferOverlaps, ~0, QueryTriggerInteraction.UseGlobal);
+        }
+
         float menorDistancia = Mathf.Infinity;
         Transform candidato = null;
 
-        foreach (var hit in hitColliders)
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider hit = _bufferOverlaps[i];
+            if (hit == null) continue;
             if (hit.transform.root == transform.root) continue; // Ignora a si mesmo
 
             if (TagSafe.Matches(hit, tagInimiga))

@@ -41,6 +41,8 @@ public class MisselSubmarino : MonoBehaviour
     
     // Estado
     private Vector3 pontoAlvo;
+    private Transform alvoTransform; // Seguimento em tempo real
+    private float tempoLancamento;
     private bool estaSubmerso = true;
     private float velocidadeAtual = 0f;
     private bool atingiuAlturaVoo = false;
@@ -81,15 +83,17 @@ public class MisselSubmarino : MonoBehaviour
         GarantirComponentes();
     }
     
-    public void IniciarLancamento(Vector3 alvo, bool submarinSubmerso)
+    public void IniciarLancamento(Vector3 alvo, bool submarinSubmerso, Transform alvoT = null)
     {
         GarantirComponentes();
         StopAllCoroutines();
         ResetarEstado();
 
         pontoAlvo = alvo;
+        alvoTransform = alvoT;
         estaSubmerso = submarinSubmerso;
         lancado = true;
+        tempoLancamento = Time.time;
         tempoExpirar = Time.time + tempoMaximoVida;
         
         // Força rotação para cima no início
@@ -248,6 +252,8 @@ public class MisselSubmarino : MonoBehaviour
             GarantirComponentes();
             if (rb == null) return;
         }
+
+        if (alvoTransform != null) pontoAlvo = alvoTransform.position;
         
         // Timer do turbo
         if (naSuperficie && !modoTurboAtivo && !atingiuAlturaVoo)
@@ -291,12 +297,15 @@ public class MisselSubmarino : MonoBehaviour
             // 2. MODO CRUZEIRO
             else
             {
-                Vector3 destinoCruzeiro = new Vector3(pontoAlvo.x, alturaVoo, pontoAlvo.z);
+                // Ajuste inteligente: se o alvo é aéreo e muito mais alto que a altura de voo padrão, o míssil já sobe direto para ele.
+                float alturaCruzeiroReal = Mathf.Max(alturaVoo, pontoAlvo.y);
+                
+                Vector3 destinoCruzeiro = new Vector3(pontoAlvo.x, alturaCruzeiroReal, pontoAlvo.z);
                 Vector3 vetorCruzeiro = destinoCruzeiro - transform.position;
                 direcaoDesejada = vetorCruzeiro.normalized;
                 
-                // Mantém rotação suave no cruzeiro
-                forcaRotacaoAtual = forcaRotacao;
+                // Mantém rotação firme para não perder alvos ágeis
+                forcaRotacaoAtual = forcaRotacao * 3f;
             }
 
             // Aplica Rotação usando RotateTowards para controle preciso de graus/segundo
@@ -328,11 +337,20 @@ public class MisselSubmarino : MonoBehaviour
     
     void OnCollisionEnter(Collision collision)
     {
+        if (Time.time < tempoLancamento + 1.2f) return; // Delay de armamento para evitar explosão na ponta do cano
+        if (collision.collider.CompareTag("Missel")) return;
+
         Explodir();
     }
     
     void OnTriggerEnter(Collider other)
     {
+        if (Time.time < tempoLancamento + 1.2f) return;
+        if (other.isTrigger) return;
+        
+        string strTag = other.tag;
+        if (strTag == "Player" || strTag == "Missel" || strTag == "IgnorarExplosao") return;
+
         Explodir();
     }
     
@@ -429,6 +447,7 @@ public class MisselSubmarino : MonoBehaviour
     private void ResetarEstado()
     {
         pontoAlvo = Vector3.zero;
+        alvoTransform = null;
         estaSubmerso = true;
         velocidadeAtual = 0f;
         atingiuAlturaVoo = false;

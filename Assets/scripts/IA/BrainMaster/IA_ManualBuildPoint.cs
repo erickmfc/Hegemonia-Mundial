@@ -7,9 +7,24 @@ namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_ManualBuildPoint : MonoBehaviour
     {
+        public enum OperationalRole
+        {
+            Nenhum,
+            EstacionamentoNaval,
+            PatrulhaNaval,
+            TransporteTerrestre,
+            MobilizacaoTerrestre,
+            SortidaAerea,
+            PatrulhaAerea,
+            ReconAereo,
+            AtaqueAereo
+        }
+
         [Header("Manual Build")]
         [Tooltip("Se vazio, usa o nome do objeto. Aceita varios filtros separados por virgula, ; ou quebra de linha.")]
         [TextArea(1, 3)] public string ItemFilters = string.Empty;
+        [Tooltip("Papel estrategico do ponto no mapa. Se ItemFilters estiver vazio, este papel define os filtros default.")]
+        public OperationalRole ManualRole = OperationalRole.Nenhum;
         [Tooltip("Quando desligado, o ponto so e usado se o GameObject estiver ativo na cena.")]
         public bool AllowInactiveObject = false;
         [Tooltip("Quando ligado, a IA tenta construir exatamente nesta posicao/rotacao em vez de resolver outro ponto sozinha.")]
@@ -43,6 +58,22 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             if (!MatchesItem(itemKey))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool IsUsableAsAnchor(IA_BrainMaster brain)
+        {
+            if (!AllowInactiveObject && (!gameObject.activeInHierarchy || !enabled))
+            {
+                return false;
+            }
+
+            if (RestrictToBootstrapStage
+                && (brain == null || brain.BootstrapStage != BootstrapStage))
             {
                 return false;
             }
@@ -91,9 +122,20 @@ namespace Hegemonia.AI.BrainMaster
         public string GetDisplayLabel()
         {
             string source = GetEffectiveFilterSource();
+            string roleLabel = GetPortugueseOperationalRoleLabel(ManualRole);
             if (!string.IsNullOrWhiteSpace(source))
             {
+                if (ManualRole != OperationalRole.Nenhum)
+                {
+                    return roleLabel + ": " + source.Trim();
+                }
+
                 return source.Trim();
+            }
+
+            if (ManualRole != OperationalRole.Nenhum)
+            {
+                return roleLabel;
             }
 
             if (BootstrapStage != IA_BrainMaster.IA_BootstrapStage.Disabled)
@@ -148,6 +190,47 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
+        public static string GetPortugueseOperationalRoleLabel(OperationalRole role)
+        {
+            switch (role)
+            {
+                case OperationalRole.EstacionamentoNaval: return "Estacionamento Naval";
+                case OperationalRole.PatrulhaNaval: return "Patrulha Naval";
+                case OperationalRole.TransporteTerrestre: return "Transporte Terrestre";
+                case OperationalRole.MobilizacaoTerrestre: return "Mobilizacao Terrestre";
+                case OperationalRole.SortidaAerea: return "Sortida Aerea";
+                case OperationalRole.PatrulhaAerea: return "Patrulha Aerea";
+                case OperationalRole.ReconAereo: return "Reconhecimento Aereo";
+                case OperationalRole.AtaqueAereo: return "Ataque Aereo";
+                default: return "Sem papel";
+            }
+        }
+
+        public static string GetDefaultFiltersForRole(OperationalRole role)
+        {
+            switch (role)
+            {
+                case OperationalRole.EstacionamentoNaval:
+                    return "estaleiro, pier, porto, plataforma, navio transporte, transporte naval, hovercraft, liberty";
+                case OperationalRole.PatrulhaNaval:
+                    return "navio, escolta, submarino, patrulha, destroyer, fragata, corveta, ironclad, vindicator";
+                case OperationalRole.TransporteTerrestre:
+                    return "transporte, caminhao, truck, transporte terrestre";
+                case OperationalRole.MobilizacaoTerrestre:
+                    return "quartel, fabrica, soldado, tanque, mobilizacao, concentracao";
+                case OperationalRole.SortidaAerea:
+                    return "aeroporto, airport, pista, hangar";
+                case OperationalRole.PatrulhaAerea:
+                    return "aeroporto, airport, caca, aviao, patrulha";
+                case OperationalRole.ReconAereo:
+                    return "aeroporto, airport, caca, aviao, recon, reconhecimento";
+                case OperationalRole.AtaqueAereo:
+                    return "aeroporto, airport, bombardeiro, bomber, ataque";
+                default:
+                    return string.Empty;
+            }
+        }
+
         private bool MatchesItem(string itemKey)
         {
             string normalizedItem = IA_Text.Normalize(itemKey);
@@ -190,6 +273,12 @@ namespace Hegemonia.AI.BrainMaster
             if (!string.IsNullOrWhiteSpace(ItemFilters))
             {
                 return ItemFilters;
+            }
+
+            string roleFilters = GetDefaultFiltersForRole(ManualRole);
+            if (!string.IsNullOrWhiteSpace(roleFilters))
+            {
+                return roleFilters;
             }
 
             string normalizedObjectName = IA_Text.Normalize(gameObject.name);

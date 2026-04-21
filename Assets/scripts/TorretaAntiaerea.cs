@@ -41,6 +41,7 @@ public class TorretaAntiaerea : MonoBehaviour
     private bool atirando = false;
     private AudioSource audioSource;
     private int indexPontoDisparo = 0;
+    private Collider[] _bufferOverlaps = new Collider[96];
 
     Transform ResolverTransformPrincipal(Transform alvo)
     {
@@ -124,13 +125,30 @@ public class TorretaAntiaerea : MonoBehaviour
 
         alvoAtual = null;
 
-        // Pega TUDO na área sem limite de memória.
-        Collider[] todosAlvosNaArea = Physics.OverlapSphere(transform.position, alcanceArea);
+        // NonAlloc: evita alocacao/GC quando houver muitos coliders (ex.: misseis no ar).
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceArea, _bufferOverlaps, ~0, QueryTriggerInteraction.UseGlobal);
+        if (hitCount >= _bufferOverlaps.Length)
+        {
+            // Cresce o buffer (sem fazer isso todo frame) caso a area esteja muito densa.
+            _bufferOverlaps = new Collider[Mathf.Min(_bufferOverlaps.Length * 2, 1024)];
+            hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceArea, _bufferOverlaps, ~0, QueryTriggerInteraction.UseGlobal);
+        }
+
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
 
-        foreach (Collider hit in todosAlvosNaArea)
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider hit = _bufferOverlaps[i];
+            if (hit == null) continue;
+
+            // Ignora projeteis/misseis para nao inflar o radar antiaereo.
+            if (hit.GetComponentInParent<Projetil>() != null) continue;
+            if (hit.GetComponentInParent<MisselCaca>() != null) continue;
+            if (hit.GetComponentInParent<MisselNaval>() != null) continue;
+            if (hit.GetComponentInParent<MisselSubmarino>() != null) continue;
+            if (hit.GetComponentInParent<MissilTeleguiado>() != null) continue;
+
             // Busca IdentidadeUnidade (Componente que define time)
             IdentidadeUnidade idAlvo = hit.GetComponent<IdentidadeUnidade>();
             if (idAlvo == null) idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
@@ -138,9 +156,7 @@ public class TorretaAntiaerea : MonoBehaviour
             // Filtro Principal: É uma aeronave? 
             bool ehAereo = hit.GetComponentInParent<Helicoptero>() != null || 
                            hit.GetComponentInParent<ControleAviao>() != null ||
-                           (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
-                           hit.CompareTag("Areo") || 
-                           hit.CompareTag("Aereo");
+                           (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo);
 
             if (!ehAereo)
             {

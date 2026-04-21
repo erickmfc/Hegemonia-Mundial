@@ -1,0 +1,216 @@
+commit f899acc9270811bb17d53ba984984b459d850201
+Author: Erick <erickmfc@users.noreply.github.com>
+Date:   Sat Apr 18 22:01:12 2026 -0300
+
+    Optimize combat targeting scripts to fix GC allocation stutters
+
+diff --git a/Assets/scripts/GerenteSelecao.cs b/Assets/scripts/GerenteSelecao.cs
+index cda0591..970e3b1 100644
+--- a/Assets/scripts/GerenteSelecao.cs
++++ b/Assets/scripts/GerenteSelecao.cs
+@@ -55,7 +55,10 @@ public class GerenteSelecao : MonoBehaviour
+ 
+     void Update()
+     {
+-        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
++        if (cameraPrincipal == null || !cameraPrincipal.gameObject.activeInHierarchy)
++        {
++            cameraPrincipal = ObterCameraForte();
++        }
+         Construtor construtorObj = ObterConstrutor();
+         if (construtorObj != null && construtorObj.modoConstrucao)
+         {
+@@ -151,8 +154,9 @@ public class GerenteSelecao : MonoBehaviour
+                 // Mas queremos ignorar IgnoreRaycast (2).
+                 int layerMaskMove = ~(1 << 2); 
+ 
+-                if (cameraPrincipal == null) return;
+-                Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
++                Camera cam = cameraPrincipal != null ? cameraPrincipal : ObterCameraForte();
++                if (cam == null) return;
++                Ray raio = cam.ScreenPointToRay(Input.mousePosition);
+                 RaycastHit hit;
+                 Vector3 destino = Vector3.zero;
+                 bool encontrouDestino = TryResolverDestinoClique(raio, layerMaskMove, out hit, out destino);
+@@ -178,12 +182,21 @@ public class GerenteSelecao : MonoBehaviour
+     {
+         if (construtorCache == null)
+         {
+-            construtorCache = FindFirstObjectByType<Construtor>();
++            construtorCache = Object.FindFirstObjectByType<Construtor>();
+         }
+ 
+         return construtorCache;
+     }
+ 
++    Camera ObterCameraForte()
++    {
++        if (cameraPrincipal != null && cameraPrincipal.gameObject.activeInHierarchy) return cameraPrincipal;
++        cameraPrincipal = Camera.main;
++        if (cameraPrincipal != null) return cameraPrincipal;
++        cameraPrincipal = Object.FindFirstObjectByType<Camera>();
++        return cameraPrincipal;
++    }
++
+     bool TryResolverDestinoClique(Ray raio, int layerMaskMove, out RaycastHit hitFinal, out Vector3 destino)
+     {
+         hitFinal = new RaycastHit();
+@@ -860,8 +873,8 @@ public class GerenteSelecao : MonoBehaviour
+         float minY = Mathf.Min(inicioMouseScreen.y, mouseFinal.y);
+         float maxY = Mathf.Max(inicioMouseScreen.y, mouseFinal.y);
+ 
+-        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+-        if (cameraPrincipal == null) return;
++        Camera cam = cameraPrincipal != null ? cameraPrincipal : ObterCameraForte();
++        if (cam == null) return;
+ 
+         RegistroEntidadesJogo.FillControlesUnidade(bufferControlesSelecionaveis);
+ 
+@@ -870,7 +883,7 @@ public class GerenteSelecao : MonoBehaviour
+             if (unidade == null || !unidade.enabled) continue; // Ignora unidades desativadas (como soldados dentro de caminhões)
+ 
+             // Onde o tanque está na tela?
+-            Vector3 posTela = cameraPrincipal.WorldToScreenPoint(unidade.transform.position);
++            Vector3 posTela = cam.WorldToScreenPoint(unidade.transform.position);
+ 
+             if (posTela.x > minX && posTela.x < maxX && 
+                 posTela.y > minY && posTela.y < maxY)
+@@ -886,9 +899,9 @@ public class GerenteSelecao : MonoBehaviour
+         // Vamos tentar pegar tudo exceto a Ignore Raycast (2).
+         int layerMask = ~(1 << 2); 
+ 
+-        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+-        if (cameraPrincipal == null) return;
+-        Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
++        Camera cam = cameraPrincipal != null ? cameraPrincipal : ObterCameraForte();
++        if (cam == null) return;
++        Ray raio = cam.ScreenPointToRay(Input.mousePosition);
+         RaycastHit toque;
+         
+         if (Physics.Raycast(raio, out toque, Mathf.Infinity, layerMask))
+
+commit 6827ae68ca064899ddfeb0d00688c66f94c71c1c
+Author: Erick <erickmfc@users.noreply.github.com>
+Date:   Sat Apr 18 20:37:58 2026 -0300
+
+    feat: Adiciona Military Base Pack, Sistema de Save e Menu de Pausa
+
+diff --git a/Assets/scripts/GerenteSelecao.cs b/Assets/scripts/GerenteSelecao.cs
+index bc944c7..cda0591 100644
+--- a/Assets/scripts/GerenteSelecao.cs
++++ b/Assets/scripts/GerenteSelecao.cs
+@@ -95,12 +95,12 @@ public class GerenteSelecao : MonoBehaviour
+         {
+             // Só mostra o verde se moveu um pouco o mouse (evita piscar)
+             // Aumentei tolerância para 20 pixels para evitar "arrastar sem querer"
+-            if(Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 20)
++            if(caixaSelecaoVisual != null && Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 20)
+             {
+                 caixaSelecaoVisual.gameObject.SetActive(true);
+             }
+             
+-            if (caixaSelecaoVisual.gameObject.activeSelf)
++            if (caixaSelecaoVisual != null && caixaSelecaoVisual.gameObject.activeSelf)
+                 AtualizarDesenhoCaixa();
+         }
+ 
+@@ -111,7 +111,7 @@ public class GerenteSelecao : MonoBehaviour
+             // Portanto, o MouseUp deve ser ignorado para evitar que chame o CliqueSimples() numa Fábrica recém plantada!
+             if (!arrastando) return; 
+ 
+-            if (arrastando && caixaSelecaoVisual.gameObject.activeSelf)
++            if (arrastando && caixaSelecaoVisual != null && caixaSelecaoVisual.gameObject.activeSelf)
+             {
+                 SelecionarUnidadesMatematica();
+             }
+
+commit 6a47c401c34140366a8cbe0304df6328ae21cf68
+Author: Erick <erickmfc@users.noreply.github.com>
+Date:   Fri Apr 17 23:34:05 2026 -0300
+
+    Atualizações no projeto (scripts e assets)
+
+diff --git a/Assets/scripts/GerenteSelecao.cs b/Assets/scripts/GerenteSelecao.cs
+index 73553d3..bc944c7 100644
+--- a/Assets/scripts/GerenteSelecao.cs
++++ b/Assets/scripts/GerenteSelecao.cs
+@@ -23,6 +23,8 @@ public class GerenteSelecao : MonoBehaviour
+     [Header("Configurações Visuais")]
+     public RectTransform caixaSelecaoVisual; // Sua imagem verde
+     public RectTransform canvasRect;         // O Pai de todos (Interface/Canvas)
++    public GameObject prefabMarcadorDestino; // Prefab do marcador normal
++    public GameObject prefabMarcadorBombardeiro; // Prefab Marker 7 (Para bombardeiros)
+ 
+     [Header("Controle")]
+     public float espacamento = 2.5f; // Distância entre soldados na formação
+@@ -324,17 +326,48 @@ public class GerenteSelecao : MonoBehaviour
+     // --- MARCADOR VISUAL DO CLIQUE ---
+     void MostrarMarcadorDestino(Vector3 pos)
+     {
+-        GameObject marcador = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+-        Destroy(marcador.GetComponent<Collider>());
+-        marcador.transform.position = pos + Vector3.up * 0.1f;
+-        marcador.transform.localScale = new Vector3(2f, 0.05f, 2f);
+-        
+-        Renderer r = marcador.GetComponent<Renderer>();
+-        r.material = new Material(Shader.Find("Sprites/Default"));
+-        r.material.color = new Color(0f, 1f, 0.5f, 0.6f); // Verde neon
+-        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+-        
+-        marcador.AddComponent<AnimadorMarcador>();
++        bool temBombardeiro = false;
++        foreach(var u in unidadesSelecionadas) 
++        {
++            if (u != null && u.GetComponent<AviaoBombardeiro>() != null) 
++            { 
++                temBombardeiro = true; 
++                break; 
++            }
++        }
++
++        if (temBombardeiro && prefabMarcadorBombardeiro != null)
++        {
++            GameObject marcador = Instantiate(prefabMarcadorBombardeiro, pos + Vector3.up * 0.1f, Quaternion.identity);
++            marcador.transform.localScale = new Vector3(40f, 40f, 40f);
++            Destroy(marcador, 4f);
++        }
++        else if (prefabMarcadorDestino != null)
++        {
++            // Instancia o novo efeito de partícula (Marker 1 arrows Loop)
++            GameObject marcador = Instantiate(prefabMarcadorDestino, pos + Vector3.up * 0.1f, Quaternion.identity);
++            
++            // Aumenta o tamanho da animação para 10 vezes maior
++            marcador.transform.localScale = new Vector3(10f, 10f, 10f);
++            
++            // Como é um loop, vamos destruí-lo após 2 segundos para não ficar no mapa para sempre
++            Destroy(marcador, 2f); 
++        }
++        else
++        {
++            // Fallback caso não tenha prefab associado
++            GameObject marcador = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
++            Destroy(marcador.GetComponent<Collider>());
++            marcador.transform.position = pos + Vector3.up * 0.1f;
++            marcador.transform.localScale = new Vector3(2f, 0.05f, 2f);
++            
++            Renderer r = marcador.GetComponent<Renderer>();
++            r.material = new Material(Shader.Find("Sprites/Default"));
++            r.material.color = new Color(0f, 1f, 0.5f, 0.6f); // Verde neon
++            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
++            
++            marcador.AddComponent<AnimadorMarcador>();
++        }
+     }
+ 
+     public class AnimadorMarcador : MonoBehaviour
+@@ -522,6 +555,10 @@ public class GerenteSelecao : MonoBehaviour
+                 Helicoptero heli = unidade.GetComponent<Helicoptero>();
+                 if (heli != null)
+                 {
++                    if (heli.EstaSobControleDoAeroporto())
++                    {
++                        continue;
++                    }
+                     heli.Decolar(destinoCentral + deslocHeli);
+                 }
+                 continue;

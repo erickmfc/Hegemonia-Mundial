@@ -28,10 +28,14 @@ public class LancadorSimples : MonoBehaviour
     [Tooltip("Tags que o radar considera como inimigos")]
     public string[] tagsInimigas = { "Inimigo", "Destrutivel" };
 
+    [Header("Debug")]
+    public bool debugLogs = false;
+
     // Internas
     private float proximoDisparoPermitido = 0f;
     private IdentidadeUnidade meuID;
     private float ultimoLog = 0f;
+    private Collider[] _bufferOverlaps = new Collider[128];
 
     void Start()
     {
@@ -40,7 +44,7 @@ public class LancadorSimples : MonoBehaviour
         // Auto-configuração: Busca saídas automaticamente se não foram atribuídas
         if (pontosDeSaida == null || pontosDeSaida.Length == 0)
         {
-            Debug.Log("[LançadorSimples] Buscando pontos de saída automaticamente...");
+            if (debugLogs) Debug.Log("[LançadorSimples] Buscando pontos de saída automaticamente...");
             var filhos = GetComponentsInChildren<Transform>();
             var lista = new System.Collections.Generic.List<Transform>();
             
@@ -53,7 +57,7 @@ public class LancadorSimples : MonoBehaviour
             }
             
             pontosDeSaida = lista.ToArray();
-            Debug.Log($"[LançadorSimples] Encontradas {pontosDeSaida.Length} saídas automaticamente.");
+            if (debugLogs) Debug.Log($"[LançadorSimples] Encontradas {pontosDeSaida.Length} saídas automaticamente.");
         }
 
         pontosDeSaida = PontoSaidaUtil.Garantir(transform, pontosDeSaida, "saida", "element", "tube", "tubo", "muzzle", "fire", "spawn");
@@ -63,14 +67,14 @@ public class LancadorSimples : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[LançadorSimples] Prefab configurado: {misselPrefab.name}");
+            if (debugLogs) Debug.Log($"[LançadorSimples] Prefab configurado: {misselPrefab.name}");
         }
     }
 
     void Update()
     {
         // LOG DE DIAGNÓSTICO (a cada 2 segundos)
-        if (Time.time - ultimoLog > 2.0f)
+        if (debugLogs && Time.time - ultimoLog > 2.0f)
         {
             ultimoLog = Time.time;
             bool podeAtirar = Time.time >= proximoDisparoPermitido;
@@ -85,7 +89,7 @@ public class LancadorSimples : MonoBehaviour
             
             if (alvo != null)
             {
-                Debug.LogWarning($"[LançadorSimples] ⚠️ ALVO DETECTADO: {alvo.name}! Iniciando rajada!");
+                if (debugLogs) Debug.LogWarning($"[LançadorSimples] ⚠️ ALVO DETECTADO: {alvo.name}! Iniciando rajada!");
                 ExecutarRajada(alvo);
             }
         }
@@ -96,18 +100,27 @@ public class LancadorSimples : MonoBehaviour
     /// </summary>
     Transform BuscarAlvoMaisProximo()
     {
-        Collider[] objetosNoRadar = Physics.OverlapSphere(transform.position, alcanceRadar);
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, _bufferOverlaps, ~0, QueryTriggerInteraction.UseGlobal);
+        if (hitCount >= _bufferOverlaps.Length)
+        {
+            _bufferOverlaps = new Collider[Mathf.Min(_bufferOverlaps.Length * 2, 2048)];
+            hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, _bufferOverlaps, ~0, QueryTriggerInteraction.UseGlobal);
+        }
+
         Transform melhorAlvo = null;
         float menorDistancia = Mathf.Infinity;
 
-        int totalDetectado = objetosNoRadar.Length;
+        int totalDetectado = hitCount;
         int ignoradosPorRoot = 0;
         int ignoradosPorTag = 0;
         int ignoradosPorTime = 0;
         int alvosValidos = 0;
 
-        foreach (var col in objetosNoRadar)
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider col = _bufferOverlaps[i];
+            if (col == null) continue;
+
             // 1. Ignora a si mesmo
             if (col.transform.root == transform.root)
             {
@@ -160,7 +173,7 @@ public class LancadorSimples : MonoBehaviour
         }
 
         // LOG DETALHADO
-        if (Time.time - ultimoLog > 2.0f)
+        if (debugLogs && Time.time - ultimoLog > 2.0f)
         {
             if (totalDetectado == 0)
             {
@@ -200,7 +213,7 @@ public class LancadorSimples : MonoBehaviour
             }
         }
 
-        Debug.Log($"[LançadorSimples] Rajada de {pontosDeSaida.Length} mísseis iniciada! Recarga: {tempoDeRecarga}s");
+        if (debugLogs) Debug.Log($"[LançadorSimples] Rajada de {pontosDeSaida.Length} mísseis iniciada! Recarga: {tempoDeRecarga}s");
     }
 
     /// <summary>

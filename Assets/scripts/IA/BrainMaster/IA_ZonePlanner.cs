@@ -99,6 +99,27 @@ namespace Hegemonia.AI.BrainMaster
             _anchors[IA_UrbanSectorType.Industrial] = SelectBestAnchor(baseCenter, IA_UrbanSectorType.Industrial, industrialDirection, 120f, 300f);
             _anchors[IA_UrbanSectorType.Logistics] = SelectBestAnchor(baseCenter, IA_UrbanSectorType.Logistics, industrialDirection, 90f, 220f);
 
+            Vector3 manualAnchor;
+            if (TryResolveManualAnchor(baseCenter, out manualAnchor, IA_ManualBuildPoint.OperationalRole.EstacionamentoNaval, IA_ManualBuildPoint.OperationalRole.PatrulhaNaval))
+            {
+                _anchors[IA_UrbanSectorType.Naval] = manualAnchor;
+            }
+
+            if (TryResolveManualAnchor(baseCenter, out manualAnchor, IA_ManualBuildPoint.OperationalRole.SortidaAerea, IA_ManualBuildPoint.OperationalRole.PatrulhaAerea, IA_ManualBuildPoint.OperationalRole.ReconAereo, IA_ManualBuildPoint.OperationalRole.AtaqueAereo))
+            {
+                _anchors[IA_UrbanSectorType.Airfield] = manualAnchor;
+            }
+
+            if (TryResolveManualAnchor(baseCenter, out manualAnchor, IA_ManualBuildPoint.OperationalRole.MobilizacaoTerrestre))
+            {
+                _anchors[IA_UrbanSectorType.Military] = manualAnchor;
+            }
+
+            if (TryResolveManualAnchor(baseCenter, out manualAnchor, IA_ManualBuildPoint.OperationalRole.TransporteTerrestre))
+            {
+                _anchors[IA_UrbanSectorType.Logistics] = manualAnchor;
+            }
+
             foreach (IA_SemanticCell cell in _context.SemanticMapPlanner.Cells)
             {
                 if (cell == null)
@@ -280,6 +301,58 @@ namespace Hegemonia.AI.BrainMaster
         {
             Vector3 anchor;
             return TryGetAnchor(sector, out anchor) ? anchor.ToString() : "none";
+        }
+
+        private bool TryResolveManualAnchor(Vector3 baseCenter, out Vector3 anchor, params IA_ManualBuildPoint.OperationalRole[] roles)
+        {
+            anchor = Vector3.zero;
+            if (_context == null || _context.Brain == null || !_context.Brain.UseManualBuildPoints || roles == null || roles.Length == 0)
+            {
+                return false;
+            }
+
+            IA_ManualBuildPoint[] manualPoints = _context.Brain.GetComponentsInChildren<IA_ManualBuildPoint>(true);
+            float bestDistance = float.MaxValue;
+            bool found = false;
+
+            for (int i = 0; i < manualPoints.Length; i++)
+            {
+                IA_ManualBuildPoint point = manualPoints[i];
+                if (point == null || !point.IsUsableAsAnchor(_context.Brain))
+                {
+                    continue;
+                }
+
+                if (!MatchesRole(point.ManualRole, roles))
+                {
+                    continue;
+                }
+
+                float distance = Vector3.Distance(Flatten(point.transform.position), Flatten(baseCenter));
+                if (found && distance >= bestDistance)
+                {
+                    continue;
+                }
+
+                bestDistance = distance;
+                anchor = point.transform.position;
+                found = true;
+            }
+
+            return found;
+        }
+
+        private static bool MatchesRole(IA_ManualBuildPoint.OperationalRole role, IA_ManualBuildPoint.OperationalRole[] roles)
+        {
+            for (int i = 0; i < roles.Length; i++)
+            {
+                if (role == roles[i])
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static Vector3 Flatten(Vector3 value)

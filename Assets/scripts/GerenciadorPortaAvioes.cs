@@ -228,8 +228,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     void GerenciarParentescoAeronaves()
     {
         // Limpa listas de nulos primeiro
-        avioesNoPatio.RemoveAll(a => a == null);
-        avioesNoHangar.RemoveAll(a => a == null);
+        RemoveNulls(avioesNoPatio);
+        RemoveNulls(avioesNoHangar);
 
         // Processa aviões no pátio
         foreach (var av in avioesNoPatio)
@@ -302,8 +302,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (!_menuCarrierAtivo) return;
         
         // 1. LIMPEZA DE LISTAS
-        avioesNoPatio.RemoveAll(a => a == null);
-        avioesNoHangar.RemoveAll(a => a == null);
+        RemoveNulls(avioesNoPatio);
+        RemoveNulls(avioesNoHangar);
 
         // 2. POSICIONAMENTO (20% para a esquerda do canto direito)
         float menuWidth = 380f;

@@ -32,6 +32,9 @@ public class LancadorMisselCaca : MonoBehaviour
     public bool modoPassivo = false;
     private Vector3 pontoPatrulha;
     private bool voltandoParaBase = false;
+    private Transform _alvoIAForcado;
+    private Vector3 _ultimoPontoAlvoIA;
+    private float _tempoValidadeAlvoIA = -1f;
 
     // Detecção
     public class AlvoDetectado 
@@ -66,17 +69,30 @@ public class LancadorMisselCaca : MonoBehaviour
         PoolDeObjetosCombate.Prewarm(missilCacaPrefab, Mathf.Clamp(municaoMaxima, 2, 6));
         
         _meuTime = GetComponent<IdentidadeIA>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 1;
+        // Evita que todos os caças escaneiem e disparem no mesmo frame.
+        tempoUltimoScan = Time.time + Random.Range(0.05f, 0.85f);
     }
 
     void Update()
     {
         if (cronometroRecarga > 0) cronometroRecarga -= Time.deltaTime;
 
+        bool radarAtivoVisualmente = false;
+        if (_unidadeBase != null && _unidadeBase.selecionado) radarAtivoVisualmente = true;
+        if (!radarAtivoVisualmente && _vooModerno != null && _vooModerno.aeroportoOrigem != null)
+        {
+            if (_vooModerno.aeroportoOrigem.aviaoSelecionadoParaMissao == _vooModerno) radarAtivoVisualmente = true;
+        }
+
+        bool alvoIAAtivo = _alvoIAForcado != null && Time.time <= _tempoValidadeAlvoIA;
+        bool emMissao = _vooModerno != null && _vooModerno.estadoAtual == ControleAviao.EstadoAviao.EmMissao;
+        bool deveEscanear = radarAtivoVisualmente || emMissao || alvoIAAtivo;
+
         // Detecção de Inimigos (Radar) — Apenas a cada 1 segundo pra não pesar
-        if (Time.time > tempoUltimoScan + 1.0f)
+        if (deveEscanear && Time.time > tempoUltimoScan + 1.0f)
         {
             tempoUltimoScan = Time.time;
-            EscanearArea();
+            EscanearArea(radarAtivoVisualmente);
             ProcessarPatrulhaAutomatica();
         }
 
@@ -128,6 +144,11 @@ public class LancadorMisselCaca : MonoBehaviour
         if (voltandoParaBase) return;
         if (modoPassivo) return;
 
+        if (TentarDisparoContraAlvoIA())
+        {
+            return;
+        }
+
         if (municaoAtual > 0 && cronometroRecarga <= 0 && inimigosNaArea.Count > 0)
         {
             AlvoDetectado alvo = inimigosNaArea[0];
@@ -143,6 +164,48 @@ public class LancadorMisselCaca : MonoBehaviour
             _vooModerno.ComandoRetornarBase();
             Debug.Log($"✈️ [Radar] {gameObject.name} sem munição! Retornando para a base via Aeroporto.");
         }
+    }
+
+    public void DefinirAlvoIA(Transform alvo, Vector3 alvoFallback, float duracaoSegundos = 4f)
+    {
+        _alvoIAForcado = alvo;
+        _ultimoPontoAlvoIA = alvo != null ? alvo.position : alvoFallback;
+        _tempoValidadeAlvoIA = Time.time + Mathf.Max(1.5f, duracaoSegundos);
+        modoPassivo = false;
+
+        if (_vooModerno != null && _vooModerno.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+        {
+            Vector3 foco = _ultimoPontoAlvoIA;
+            if (foco.y < 60f) foco.y = 60f;
+            _vooModerno.alvoPrioritarioIA = true;
+            _vooModerno.centroDaPatrulha = foco;
+            _vooModerno.alvoGPSVoo = foco;
+        }
+    }
+
+    public bool TentarDisparoIA(Transform alvo, Vector3 alvoFallback, float duracaoSegundos = 4f)
+    {
+        DefinirAlvoIA(alvo, alvoFallback, duracaoSegundos);
+        return TentarDisparoContraAlvoIA();
+    }
+
+    bool TentarDisparoContraAlvoIA()
+    {
+        if (_alvoIAForcado == null || Time.time > _tempoValidadeAlvoIA) return false;
+        if (_vooModerno == null || _vooModerno.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return false;
+        if (voltandoParaBase || modoPassivo) return false;
+        if (municaoAtual <= 0 || cronometroRecarga > 0f) return false;
+
+        float alcanceMaximo = Mathf.Max(raioDeDeteccao, 1500f) * 1.2f;
+        if ((_alvoIAForcado.position - transform.position).sqrMagnitude > alcanceMaximo * alcanceMaximo)
+        {
+            return false;
+        }
+
+        Disparar(_alvoIAForcado);
+        _ultimoPontoAlvoIA = _alvoIAForcado.position;
+        _tempoValidadeAlvoIA = Time.time + 1.5f;
+        return true;
     }
 
     bool EhAlvoAereo(Transform alvoTransform, IdentidadeUnidade idUnidade)
@@ -186,7 +249,7 @@ public class LancadorMisselCaca : MonoBehaviour
         return 3;
     }
 
-    void EscanearArea()
+    void EscanearArea(bool radarAtivoVisualmente)
     {
         inimigosNaArea.Clear();
         _alvosJaVistos.Clear();
@@ -214,7 +277,8 @@ public class LancadorMisselCaca : MonoBehaviour
 
             AlvoDetectado novo = new AlvoDetectado();
             novo.transform = alvoTransform;
-            novo.nome = alvoTransform.name.Replace("(Clone)", ""); 
+            // Cria string apenas se o menu visual estiver ativo para salvar GC
+            if (radarAtivoVisualmente) novo.nome = (alvoTransform.name.Contains("(Clone)")) ? alvoTransform.name.Replace("(Clone)", "") : alvoTransform.name;
             novo.distancia = Mathf.Sqrt(distSqr);
             novo.ehAereo = EhAlvoAereo(alvoTransform, idAlvo);
             novo.prioridade = ObterPrioridadeAlvo(alvoTransform, idAlvo);

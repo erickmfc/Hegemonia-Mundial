@@ -320,7 +320,7 @@ MonoBehaviour:
   dotMinimoAmeaca: 0.4
   usarRastroLancamento: 1
   multiplicadorAntecipacaoAlcance: 1.35
-  janelaAntecipacaoSegundos: 6
+  janelaAntecipacaoSegundos: 2
   baseGiratoria: {fileID: 5176564179888039053}
   canoElevacao: {fileID: 5176564179888039055}
   velocidadeGiro: 60
@@ -329,7 +329,7 @@ MonoBehaviour:
   - {fileID: 710339387541763032}
   - {fileID: 5722256221834511903}
   - {fileID: 8171938014783682215}
-  tempoEntreTiros: 0.5
+  tempoEntreTiros: 2
   capacidadeMisseis: 5
   tempoRecargaMisseis: 25
   cartuchosMaximos: 3

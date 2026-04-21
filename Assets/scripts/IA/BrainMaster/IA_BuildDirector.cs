@@ -63,6 +63,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<string, string> _navalAutoPlacementDisabledReasonByItem = new Dictionary<string, string>();
         private readonly List<Estaleiro> _registeredShipyardBuffer = new List<Estaleiro>();
         private readonly List<PierMarinha> _registeredPierBuffer = new List<PierMarinha>();
+        private readonly Collider[] _legacySpaceHits = new Collider[128];
         private IA_ManualBuildPoint _pendingManualBuildPoint;
         private int _cachedApproxCombatUnitCount = -1;
         private int _cachedApproxCombatSourceCount = -1;
@@ -3045,10 +3046,21 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            Collider[] hits = Physics.OverlapSphere(position, Mathf.Max(10f, radius * 0.75f), ~0, QueryTriggerInteraction.Collide);
-            for (int i = 0; i < hits.Length; i++)
+            int hitCount = Physics.OverlapSphereNonAlloc(
+                position,
+                Mathf.Max(10f, radius * 0.75f),
+                _legacySpaceHits,
+                ~0,
+                QueryTriggerInteraction.Collide);
+
+            if (hitCount >= _legacySpaceHits.Length)
             {
-                Collider hit = hits[i];
+                return false;
+            }
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider hit = _legacySpaceHits[i];
                 if (hit == null || hit.isTrigger)
                 {
                     continue;

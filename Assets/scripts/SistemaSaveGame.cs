@@ -10,6 +10,10 @@ using UnityEngine.SceneManagement;
 public class DadosDoJogo
 {
     public int creditosJogador;
+    public int petroleoJogador;
+    public int acoJogador;
+    public int energiaJogador;
+
     public string mapaAtual;
     
     // Você pode armazenar desbloqueios, lista de unidades, etc.
@@ -24,7 +28,10 @@ public class DadosDoJogo
     // Construtor inicial (O que acontece quando o cara inicia do ZERO)
     public DadosDoJogo()
     {
-        creditosJogador = 5000; // Começa com 5000 por exemplo
+        creditosJogador = 5000;
+        petroleoJogador = 500;
+        acoJogador = 300;
+        energiaJogador = 100;
         mapaAtual = "Mapa_1";
         itensDesbloqueados = new List<string>();
     }
@@ -95,10 +102,20 @@ public class SistemaSaveGame : MonoBehaviour
 
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
 
+        if (GerenciadorRecursos.Instancia != null)
+        {
+            dadosAtuais.creditosJogador = GerenciadorRecursos.Instancia.dinheiro;
+            dadosAtuais.petroleoJogador = GerenciadorRecursos.Instancia.petroleo;
+            dadosAtuais.acoJogador = GerenciadorRecursos.Instancia.aco;
+            dadosAtuais.energiaJogador = GerenciadorRecursos.Instancia.energia;
+        }
+
         string json = JsonUtility.ToJson(dadosAtuais, true);
         File.WriteAllText(caminhoDoArquivo, json);
         LogInfo("💾 Jogo salvo com sucesso em: " + caminhoDoArquivo);
     }
+
+    public bool carregouDeSave = false;
 
     public void CarregarJogo()
     {
@@ -109,18 +126,33 @@ public class SistemaSaveGame : MonoBehaviour
             if (dadosAtuais == null)
             {
                 dadosAtuais = new DadosDoJogo();
+                carregouDeSave = false;
+            }
+            else
+            {
+                carregouDeSave = true;
             }
             LogInfo("📂 Jogo carregado com sucesso!");
+
+            if (GerenciadorRecursos.Instancia != null)
+            {
+                GerenciadorRecursos.Instancia.dinheiro = dadosAtuais.creditosJogador;
+                GerenciadorRecursos.Instancia.petroleo = dadosAtuais.petroleoJogador;
+                GerenciadorRecursos.Instancia.aco = dadosAtuais.acoJogador;
+                GerenciadorRecursos.Instancia.energia = dadosAtuais.energiaJogador;
+            }
         }
         else
         {
             dadosAtuais = new DadosDoJogo();
+            carregouDeSave = false;
         }
     }
 
     public void IniciarNovoJogo(string cenaInicial = null)
     {
         dadosAtuais = new DadosDoJogo();
+        carregouDeSave = false;
         RegistrarCenaAtual(string.IsNullOrWhiteSpace(cenaInicial) ? dadosAtuais.mapaAtual : cenaInicial);
         LogInfo("🆕 Novo jogo iniciado com dados reiniciados.");
     }

@@ -8,6 +8,9 @@ namespace Hegemonia.AI.BrainMaster
         private const float ForcedNavalStrikeStartSeconds = 60f;
         private readonly IA_Context _context;
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
+        private readonly List<GameObject> _escortActiveBuffer = new List<GameObject>(8);
+        private readonly List<GameObject> _heavyActiveBuffer = new List<GameObject>(8);
+        private readonly List<GameObject> _subActiveBuffer = new List<GameObject>(4);
         private float _nextDecisionTime;
 
         public IA_NavalDirector(IA_Context context)
@@ -32,6 +35,10 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
+            long tickStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            _escortActiveBuffer.Clear();
+            _heavyActiveBuffer.Clear();
+            _subActiveBuffer.Clear();
             if (_context.Brain != null && _context.Brain.IsBootstrapActive)
             {
                 return;
@@ -48,8 +55,15 @@ namespace Hegemonia.AI.BrainMaster
             {
                 baseCenter = _context.Brain.transform.position;
             }
+            long targetStart = System.Diagnostics.Stopwatch.GetTimestamp();
             Transform navalTarget = GetVisibleNavalTarget();
             Vector3 pressureTarget = ResolvePressureTarget(baseCenter, now);
+            float targetMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - targetStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (targetMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("sensor_update_ms", targetMs);
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", targetMs);
+            }
             Vector3 objective = navalTarget != null ? navalTarget.position : pressureTarget;
             Vector3 assemblyCenter = ResolveAssemblyPoint(baseCenter, objective);
             Vector3 escortStage = ResolveStagePoint(assemblyCenter, objective, -180f, 140f);
@@ -64,6 +78,14 @@ namespace Hegemonia.AI.BrainMaster
             DispatchEscort(navalTarget, pressureTarget, escortStage, holdFormation);
             DispatchHeavy(navalTarget, pressureTarget, heavyStage, holdFormation);
             DispatchSubmarine(navalTarget, pressureTarget, subStage, holdFormation);
+            int activeTaskforces = (_escortActiveBuffer.Count + _heavyActiveBuffer.Count + _subActiveBuffer.Count) > 0 ? 1 : 0;
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("active_naval_taskforces", activeTaskforces);
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("naval_unit_update_ms", elapsedMs);
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("formation_update_ms", elapsedMs * 0.45f);
+            }
         }
 
         private float ResolveDecisionDelay()
@@ -93,14 +115,19 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            if (!TrySelectNavalUnits(squad.Units, _escortActiveBuffer, 0.45f))
+            {
+                return;
+            }
+
             if (holdFormation || target == null)
             {
-                QueueMove("naval_escort_stage", squad.Units, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 78, 3.2f);
+                QueueMove("naval_escort_stage", _escortActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 78, 3.2f);
             }
             else
             {
                 Vector3 coastPatrol = ResolveAttackPoint(stagePoint, target.position, -150f, 260f);
-                QueueAttack("naval_escort", squad.Units, target, coastPatrol, 80, 4.2f);
+                QueueAttack("naval_escort", _escortActiveBuffer, target, coastPatrol, 80, 4.2f);
             }
         }
 
@@ -112,14 +139,19 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            if (!TrySelectNavalUnits(squad.Units, _heavyActiveBuffer, 0.40f))
+            {
+                return;
+            }
+
             if (holdFormation || target == null)
             {
-                QueueMove("naval_heavy_stage", squad.Units, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 84, 3.4f);
+                QueueMove("naval_heavy_stage", _heavyActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 84, 3.4f);
             }
             else
             {
                 Vector3 attackAxis = ResolveAttackPoint(stagePoint, target.position, 0f, 320f);
-                QueueAttack("naval_heavy", squad.Units, target, attackAxis, 88, 3.8f);
+                QueueAttack("naval_heavy", _heavyActiveBuffer, target, attackAxis, 88, 3.8f);
             }
         }
 
@@ -131,14 +163,19 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            if (!TrySelectNavalUnits(squad.Units, _subActiveBuffer, 0.20f))
+            {
+                return;
+            }
+
             if (holdFormation || target == null)
             {
-                QueueMove("submarine_stage", squad.Units, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 83, 4.0f);
+                QueueMove("submarine_stage", _subActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 83, 4.0f);
             }
             else
             {
                 Vector3 flankWater = ResolveAttackPoint(stagePoint, target.position, 220f, 340f);
-                QueueAttack("submarine", squad.Units, target, flankWater, 90, 5.2f);
+                QueueAttack("submarine", _subActiveBuffer, target, flankWater, 90, 5.2f);
             }
         }
 
@@ -386,6 +423,33 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return count;
+        }
+
+        private bool TrySelectNavalUnits(List<GameObject> source, List<GameObject> destination, float budgetShare)
+        {
+            destination.Clear();
+            if (source == null || source.Count == 0)
+            {
+                return false;
+            }
+
+            IA_BattleGovernorDecision decision = _context != null ? _context.BattleDecision : null;
+            int limit = source.Count;
+            if (decision != null)
+            {
+                limit = Mathf.Max(1, Mathf.CeilToInt(decision.MaxNavalAttackers * Mathf.Clamp01(budgetShare)));
+            }
+
+            for (int i = 0; i < source.Count && destination.Count < limit; i++)
+            {
+                GameObject unit = source[i];
+                if (unit != null)
+                {
+                    destination.Add(unit);
+                }
+            }
+
+            return destination.Count > 0;
         }
 
         private static Vector3 Flatten(Vector3 value)

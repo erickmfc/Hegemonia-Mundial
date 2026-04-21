@@ -1644,8 +1644,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 2300
-  vidaAtual: 2300
+  vidaMaxima: 2500
+  vidaAtual: 2500
   unidadeBiologica: 0
   ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
@@ -1708,6 +1708,10 @@ MonoBehaviour:
   distanciaChegada: 15
   offsetAlturaAgua: 0
   profundidadeVisual: 0
+  anguloEntradaManobraRe: 120
+  anguloSaidaManobraRe: 70
+  duracaoMaximaManobraRe: 2.5
+  potenciaManobraRe: -0.5
   bigodeiraProa: {fileID: 0}
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
@@ -1737,6 +1741,8 @@ MonoBehaviour:
   helicopterosDoAeroporto: []
   prefabDroneKamikaze: {fileID: 0}
   precoDroneKamikaze: 1500
+  prefabMarcadorPatrulhaAviao: {fileID: 0}
+  prefabMarcadorBombardeiro: {fileID: 0}
   menuAeroportoUI: {fileID: 0}
   aviaoSelecionadoParaMissao: {fileID: 0}
   c700SelecionadoParaMissao: {fileID: 0}
@@ -1750,6 +1756,8 @@ MonoBehaviour:
   wpAnalise: {fileID: 0}
   esperandoCliqueMassa: 0
   qtdMassaDrone: 1
+  esperandoCliquePatrulhaGrupo: 0
+  qtdPatrulhaGrupo: 1
   antenaRotativa: {fileID: 4807448831659357542}
   velGiroAntena: 45
   plataformaElevador: {fileID: 4938211382628822949}

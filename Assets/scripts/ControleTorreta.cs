@@ -153,7 +153,7 @@ public class ControleTorreta : MonoBehaviour
     bool EhMissilReal(Transform alvo)
     {
         if (alvo == null) return false;
-        string tagAtual = alvo.gameObject.tag;
+        if (TagSafe.Matches(alvo.gameObject, "Missil")) return true;
 
         if (alvo.GetComponentInParent<MissileThreatTracker>() != null) return true;
         if (alvo.GetComponentInParent<MisselCaca>() != null) return true;
@@ -163,7 +163,7 @@ public class ControleTorreta : MonoBehaviour
         if (alvo.GetComponentInParent<MisselSubmarino>() != null) return true;
         if (alvo.GetComponentInParent<MisselTatico>() != null) return true;
         if (alvo.GetComponentInParent<MisselLeopardAutomatico>() != null) return true;
-        return tagAtual == "Missil" || tagAtual == "Missel";
+        return false;
     }
 
     Transform ResolverAtiradorAereoDeProjetil(Collider hit)
@@ -439,7 +439,7 @@ public class ControleTorreta : MonoBehaviour
                 }
                 else 
                 {
-                    if ((hit.tag == etiquetaAlvo) || (hit.tag == "Inimigo"))
+                    if (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo"))
                         ehInimigo = true;
                 }
             }
@@ -447,20 +447,26 @@ public class ControleTorreta : MonoBehaviour
             if (ehInimigo)
             {
                 IdentidadeUnidade idAlvo = alvoTr.GetComponentInParent<IdentidadeUnidade>();
-                // Usa o perfil cacheado — sem string.Contains() a cada alvo
+                
                 bool alvoAereo = ehMissil ||
                                  alvoTr.position.y > 6f ||
-                                 alvoTr.GetComponentInParent<ControleAviao>() != null ||
-                                 alvoTr.GetComponentInParent<Helicoptero>() != null ||
                                  (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
-                                 alvoTr.name.ToLower().Contains("aviao") || 
-                                 alvoTr.name.ToLower().Contains("heli") || 
-                                 alvoTr.name.ToLower().Contains("caca") ||
-                                 alvoTr.name.ToLower().Contains("drone") ||
-                                 alvoTr.name.ToLower().Contains("vap") ||
-                                 alvoTr.name.ToLower().Contains("bombard") ||
-                                 alvoTr.tag == "Areo" || 
-                                 alvoTr.tag == "Aereo";
+                                 TagSafe.Matches(alvoTr, "Aereo") || 
+                                 TagSafe.Matches(alvoTr, "Areo") ||
+                                 alvoTr.GetComponentInParent<ControleAviao>() != null ||
+                                 alvoTr.GetComponentInParent<Helicoptero>() != null;
+
+                if (!alvoAereo)
+                {
+                    // Evitar criar string .name repetidamente se possível, usando Contains ordinal para maior rapidez
+                    string nm = alvoTr.name;
+                    alvoAereo = nm.Contains("aviao", System.StringComparison.OrdinalIgnoreCase) || 
+                                nm.Contains("heli", System.StringComparison.OrdinalIgnoreCase) || 
+                                nm.Contains("caca", System.StringComparison.OrdinalIgnoreCase) ||
+                                nm.Contains("drone", System.StringComparison.OrdinalIgnoreCase) ||
+                                nm.Contains("vap", System.StringComparison.OrdinalIgnoreCase) ||
+                                nm.Contains("bombard", System.StringComparison.OrdinalIgnoreCase);
+                }
                 
                 if (souAntiAereo) { if (!alvoAereo) continue; }
                 else              { if (alvoAereo)  continue; }

@@ -96,9 +96,9 @@ public class GerenteSelecao : MonoBehaviour
         // 2. ARRASTANDO (Desenha a caixa)
         if (Input.GetMouseButton(0) && arrastando)
         {
-            // Só mostra o verde se moveu um pouco o mouse (evita piscar)
-            // Aumentei tolerância para 20 pixels para evitar "arrastar sem querer"
-            if(caixaSelecaoVisual != null && Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 20)
+            if (caixaSelecaoVisual == null) GarantirCaixaVisual();
+
+            if(caixaSelecaoVisual != null && Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 10f)
             {
                 caixaSelecaoVisual.gameObject.SetActive(true);
             }
@@ -110,11 +110,11 @@ public class GerenteSelecao : MonoBehaviour
         // 3. SOLTOU (Calcula quem pegou)
         if (Input.GetMouseButtonUp(0))
         {
-            // Se "arrastando" for FALSO, significa que o MouseDown foi cancelado (ex: pelo Construtor colocando a Fábrica).
-            // Portanto, o MouseUp deve ser ignorado para evitar que chame o CliqueSimples() numa Fábrica recém plantada!
             if (!arrastando) return; 
 
-            if (arrastando && caixaSelecaoVisual != null && caixaSelecaoVisual.gameObject.activeSelf)
+            bool arrastouBastante = Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 10f;
+
+            if (arrastouBastante)
             {
                 SelecionarUnidadesMatematica();
             }
@@ -126,7 +126,6 @@ public class GerenteSelecao : MonoBehaviour
 
             // Limpeza
             arrastando = false;
-            // Desativa imediatamente para não ficar visualmente preso
             if(caixaSelecaoVisual != null)
                 caixaSelecaoVisual.gameObject.SetActive(false);
         }
@@ -835,6 +834,44 @@ public class GerenteSelecao : MonoBehaviour
 
         ControleSubmarino submarino = unidade.GetComponent<ControleSubmarino>();
         return submarino != null && submarino.EmModoManualDisparo();
+    }
+
+    void GarantirCaixaVisual()
+    {
+        if (caixaSelecaoVisual != null && canvasRect != null) return;
+
+        GameObject existente = GameObject.Find("CaixaSelecao");
+        if (existente != null)
+        {
+            caixaSelecaoVisual = existente.GetComponent<RectTransform>();
+            Canvas c = existente.GetComponentInParent<Canvas>();
+            if (c != null) canvasRect = c.GetComponent<RectTransform>();
+            return;
+        }
+
+        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        if (canvas != null)
+        {
+            canvasRect = canvas.GetComponent<RectTransform>();
+            GameObject novaCaixa = new GameObject("CaixaSelecao");
+            novaCaixa.transform.SetParent(canvas.transform, false);
+            caixaSelecaoVisual = novaCaixa.AddComponent<RectTransform>();
+            novaCaixa.transform.SetAsFirstSibling(); 
+            
+            Image img = novaCaixa.AddComponent<Image>();
+            img.color = new Color(0.2f, 0.8f, 0.2f, 0.3f);
+            img.raycastTarget = false;
+            
+            Outline outline = novaCaixa.AddComponent<Outline>();
+            outline.effectColor = new Color(0.1f, 1f, 0.1f, 0.8f);
+            outline.effectDistance = new Vector2(2, 2);
+
+            caixaSelecaoVisual.pivot = new Vector2(0, 0); 
+            caixaSelecaoVisual.anchorMin = new Vector2(0.5f, 0.5f);
+            caixaSelecaoVisual.anchorMax = new Vector2(0.5f, 0.5f);
+            
+            caixaSelecaoVisual.gameObject.SetActive(false);
+        }
     }
 
     void AtualizarDesenhoCaixa()

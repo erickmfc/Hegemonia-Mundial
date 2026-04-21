@@ -138,12 +138,19 @@ public class MisselCaca : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
+        if (!lancado || !motorLigado) return; // Apenas arma após a queda livre
+        if (collision.collider.CompareTag("Missel")) return;
         Explodir();
     }
 
     void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player")) return; 
+        if (!lancado || !motorLigado) return; // Apenas arma após a queda livre
+        if (other.isTrigger) return;          // Ignora colisores de radar/áreas
+        
+        string strTag = other.tag;
+        if (strTag == "Player" || strTag == "Missel" || strTag == "IgnorarExplosao") return; 
+
         Explodir();
     }
 
@@ -163,21 +170,26 @@ public class MisselCaca : MonoBehaviour
                 Vector3.one * escalaVisualExplosao);
         }
 
-        if (somExplosao != null)
+        if (somExplosao != null && Camera.main != null)
         {
-            GameObject audioObj = new GameObject("SomExplosaoMissilCaca");
-            audioObj.transform.position = transform.position;
-            AudioSource source = audioObj.AddComponent<AudioSource>();
-            source.clip = somExplosao;
-            source.volume = volumeSom;
-            source.spatialBlend = 1f; 
-            source.minDistance = 20f;
-            source.maxDistance = 500f; 
-            source.Play();
-            Destroy(audioObj, somExplosao.length + 0.5f);
+            float distCamSqr = (transform.position - Camera.main.transform.position).sqrMagnitude;
+            if (distCamSqr < 40000f) // Não cria áudio pesadíssimo se estiver mt longe (>200m)
+            {
+                GameObject audioObj = new GameObject("SomExplosaoCaca");
+                audioObj.transform.position = transform.position;
+                AudioSource source = audioObj.AddComponent<AudioSource>();
+                source.clip = somExplosao;
+                source.volume = volumeSom;
+                source.spatialBlend = 1f; 
+                source.minDistance = 20f;
+                source.maxDistance = 500f; 
+                source.Play();
+                Destroy(audioObj, somExplosao.length + 0.1f);
+            }
         }
 
-        // OverlapSphereNonAlloc: Reutiliza buffer estático, zero GC
+        // OverlapSphereNonAlloc: O(1) em GC
+
         int numHits = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, _explosaoBuffer);
         for (int i = 0; i < numHits; i++)
         {
@@ -199,6 +211,6 @@ public class MisselCaca : MonoBehaviour
         motorLigado = false;
         velocidadeAtual = 0f;
         jaExplodiu = false;
-        _esperaQuedaLivre = new WaitForSeconds(tempoQuedaLivre);
+        // Removido o new WaitForSeconds aqui para zerar alocações (GC) - Já é cacheado no Awake.
     }
 }

@@ -1482,7 +1482,11 @@ public class IA_Dominadora : MonoBehaviour
     // =========================================================
     void GerenciarProducaoTropas()
     {
-        int totalTropas = minhasTropas.Count(t => t != null) + meusTransportes.Count(t => t != null) + meusNavios.Count(t => t != null);
+        int totalTropas = 0;
+        for (int i = 0; i < minhasTropas.Count; i++) if(minhasTropas[i] != null) totalTropas++;
+        for (int i = 0; i < meusTransportes.Count; i++) if(meusTransportes[i] != null) totalTropas++;
+        for (int i = 0; i < meusNavios.Count; i++) if(meusNavios[i] != null) totalTropas++;
+
         if (totalTropas >= maxTropasTotais)
         {
             ultimoPedidosProduzidos = 0;
@@ -1762,8 +1766,8 @@ public class IA_Dominadora : MonoBehaviour
             IdentidadeUnidade u = bufferUnidadesRegistradas[i];
             if (u == null) continue;
 
-            string nomeNormalizado = u.name.ToLower();
-            bool ehAereo = u.GetComponent<ControleAviao>() != null || nomeNormalizado.Contains("helicoptero") || nomeNormalizado.Contains("aviao") || nomeNormalizado.Contains("caca") || nomeNormalizado.Contains("jet");
+            string fn = NormalizarChave(u.name);
+            bool ehAereo = u.GetComponent<ControleAviao>() != null || fn == "helicoptero" || fn == "caca" || fn == "transporte_aereo" || u.name.IndexOf("aviao", System.StringComparison.OrdinalIgnoreCase) >= 0 || u.name.IndexOf("jet", System.StringComparison.OrdinalIgnoreCase) >= 0;
 
             if (u.teamID == teamID)
             {
@@ -1773,10 +1777,10 @@ public class IA_Dominadora : MonoBehaviour
 
             inimigosConhecidos.Add(u);
 
-            if (nomeNormalizado.Contains("prefeitura") || nomeNormalizado.Contains("complexo") || nomeNormalizado.Contains("governo"))
+            if (fn == "prefeitura" || u.name.IndexOf("governo", System.StringComparison.OrdinalIgnoreCase) >= 0 || u.name.IndexOf("complexo", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 basesInimigasConhecidas.Add(u.transform);
 
-            if (nomeNormalizado.Contains("refinaria") || nomeNormalizado.Contains("mina") || nomeNormalizado.Contains("petroleo") || nomeNormalizado.Contains("armazem"))
+            if (fn == "refinaria" || u.name.IndexOf("armazem", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 economiasInimigasConhecidas.Add(u.transform);
 
             if (ehAereo) forcaInimigaAerea++;
@@ -3223,8 +3227,8 @@ public class IA_Dominadora : MonoBehaviour
 
     bool EhObjetoAereo(string nome)
     {
-        string n = nome.ToLower();
-        return n.Contains("helicoptero") || n.Contains("transporte_aereo") || n.Contains("caca") || n.Contains("aviao") || n.Contains("jet");
+        string n = NormalizarChave(nome);
+        return n == "helicoptero" || n == "caca" || n == "transporte_aereo" || nome.IndexOf("aviao", System.StringComparison.OrdinalIgnoreCase) >= 0 || nome.IndexOf("jet", System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     Transform PrimeiroTransformValido(List<Transform> lista)
@@ -3271,32 +3275,38 @@ public class IA_Dominadora : MonoBehaviour
         resumoPerformance = sb.ToString();
     }
 
+    private System.Collections.Generic.Dictionary<string, string> _cacheNormalizarChave = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase);
+
     string NormalizarChave(string n)
     {
         if (string.IsNullOrEmpty(n)) return string.Empty;
-        n = n.ToLower();
+        if (_cacheNormalizarChave.TryGetValue(n, out string cached)) return cached;
 
-        if (n.Contains("prefeitura") || n.Contains("complexo") || n.Contains("governo")) return "prefeitura";
-        if (n.Contains("quartel") || n.Contains("tenda") || n.Contains("barraca")) return "quartel";
-        if (n.Contains("fabrica") || n.Contains("construtor") || n.Contains("hangar")) return "fabrica";
-        if (n.Contains("refinaria") || n.Contains("mina") || n.Contains("petroleo")) return "refinaria";
-        if (n.Contains("torreta") || n.Contains("defesa") || n.Contains("canhao")) return "torreta";
-        if (n.Contains("antiaerea") || n.Contains("ares") || n.Contains("sam") || n.Contains("missil")) return "antiaerea";
-        if (n.Contains("aeroporto") || n.Contains("pista")) return "aeroporto";
-        if (n.Contains("estaleiro") || n.Contains("naval")) return "estaleiro";
-        if (n.Contains("pier") || n.Contains("porto")) return "pier";
-        if (n.Contains("plataforma")) return "plataforma";
-        if (n.Contains("soldado") || n.Contains("infantaria") || n.Contains("fuzileiro") || n.Contains("person")) return "soldado";
-        if (n.Contains("tanque") || n.Contains("tank") || n.Contains("blindado") || n.Contains("leopard")) return "tanque";
-        if (EhPortaAvioesNome(n) || EhTransporteNavalNome(n)) return "navio";
-        if (n.Contains("transporte_aereo") || n.Contains("ray") || n.Contains("guincho")) return "transporte_aereo";
-        if (n.Contains("helicoptero") || n.Contains("apache") || n.Contains("cobra") || n.Contains("heli")) return "helicoptero";
-        if (n.Contains("transporte") || n.Contains("caminhao") || n.Contains("truck")) return "transporte";
-        if (n.Contains("caca") || n.Contains("aviao") || n.Contains("jet") || n.Contains("tuk") || n.Contains("super") || n.Contains("g15")) return "caca";
-        if (n.Contains("submarino") || n.Contains("submarine")) return "submarino";
-        if (EhNavioCombateNome(n)) return "navio";
+        string nLower = n.ToLower();
+        string result = nLower.Trim();
 
-        return n.Trim();
+        if (nLower.Contains("prefeitura") || nLower.Contains("complexo") || nLower.Contains("governo")) result = "prefeitura";
+        else if (nLower.Contains("quartel") || nLower.Contains("tenda") || nLower.Contains("barraca")) result = "quartel";
+        else if (nLower.Contains("fabrica") || nLower.Contains("construtor") || nLower.Contains("hangar")) result = "fabrica";
+        else if (nLower.Contains("refinaria") || nLower.Contains("mina") || nLower.Contains("petroleo")) result = "refinaria";
+        else if (nLower.Contains("torreta") || nLower.Contains("defesa") || nLower.Contains("canhao")) result = "torreta";
+        else if (nLower.Contains("antiaerea") || nLower.Contains("ares") || nLower.Contains("sam") || nLower.Contains("missil")) result = "antiaerea";
+        else if (nLower.Contains("aeroporto") || nLower.Contains("pista")) result = "aeroporto";
+        else if (nLower.Contains("estaleiro") || nLower.Contains("naval")) result = "estaleiro";
+        else if (nLower.Contains("pier") || nLower.Contains("porto")) result = "pier";
+        else if (nLower.Contains("plataforma")) result = "plataforma";
+        else if (nLower.Contains("soldado") || nLower.Contains("infantaria") || nLower.Contains("fuzileiro") || nLower.Contains("person")) result = "soldado";
+        else if (nLower.Contains("tanque") || nLower.Contains("tank") || nLower.Contains("blindado") || nLower.Contains("leopard")) result = "tanque";
+        else if (EhPortaAvioesNome(nLower) || EhTransporteNavalNome(nLower)) result = "navio";
+        else if (nLower.Contains("transporte_aereo") || nLower.Contains("ray") || nLower.Contains("guincho")) result = "transporte_aereo";
+        else if (nLower.Contains("helicoptero") || nLower.Contains("apache") || nLower.Contains("cobra") || nLower.Contains("heli")) result = "helicoptero";
+        else if (nLower.Contains("transporte") || nLower.Contains("caminhao") || nLower.Contains("truck")) result = "transporte";
+        else if (nLower.Contains("caca") || nLower.Contains("aviao") || nLower.Contains("jet") || nLower.Contains("tuk") || nLower.Contains("super") || nLower.Contains("g15")) result = "caca";
+        else if (nLower.Contains("submarino") || nLower.Contains("submarine")) result = "submarino";
+        else if (EhNavioCombateNome(nLower)) result = "navio";
+
+        _cacheNormalizarChave[n] = result;
+        return result;
     }
 
     List<ZonaIA> ObterZonasDeBusca(string chave)
@@ -3880,4 +3890,8 @@ public class IA_Dominadora : MonoBehaviour
         }
     }
 }
+
+
+
+
 

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: USS Sovereign
   descricao: Porta-avioes de classe soberana. Capacidade de projecao de poder naval.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 5731aecdb0c13764482016a18234ed89, type: 3}
   prefabDaUnidade: {fileID: 8878861334362878399, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
   preco: 5000
   categoria: 1

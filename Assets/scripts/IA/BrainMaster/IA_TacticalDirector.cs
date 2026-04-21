@@ -11,12 +11,16 @@ namespace Hegemonia.AI.BrainMaster
         private readonly List<GameObject> _emptyAmphibiousBuffer = new List<GameObject>(16);
         private readonly List<GameObject> _emptyGroundTransportBuffer = new List<GameObject>(16);
         private readonly List<GameObject> _assaultUnitsBuffer = new List<GameObject>(48);
+        private readonly List<GameObject> _activeGroundUnitsBuffer = new List<GameObject>(32);
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
         private float _nextDecisionTime;
         private float _nextAssaultWaveTime;
         private float _lastEnemySeenTime = -999f;
         private float _exploreAngleDeg;
         private Vector3 _lastStrategicObjective;
+        private int _landAttackersCommittedThisTick;
+        private int _landPointsCommittedThisTick;
+        private int _activeLandFrontsThisTick;
 
         public IA_TacticalDirector(IA_Context context)
         {
@@ -40,6 +44,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
+            long tickStart = System.Diagnostics.Stopwatch.GetTimestamp();
             if (_context.Brain != null && _context.Brain.IsBootstrapActive)
             {
                 return;
@@ -51,17 +56,27 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             _nextDecisionTime = now + ResolveDecisionDelay();
+            _landAttackersCommittedThisTick = 0;
+            _landPointsCommittedThisTick = 0;
+            _activeLandFrontsThisTick = 0;
             Vector3 baseCenter = _context.WorldState.BaseCenter;
             if (baseCenter == Vector3.zero && _context.Brain != null)
             {
                 baseCenter = _context.Brain.transform.position;
             }
+            long sensorStart = System.Diagnostics.Stopwatch.GetTimestamp();
             Transform priorityEnemy = _context.WorldState.GetNearestVisibleEnemy(baseCenter, IA_Domain.Land);
             if (priorityEnemy != null)
             {
                 _lastEnemySeenTime = now;
             }
             Vector3 strategicObjective = ResolveStrategicObjective(baseCenter, priorityEnemy, now);
+            float sensorMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - sensorStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (sensorMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("sensor_update_ms", sensorMs);
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", sensorMs);
+            }
             Vector3 hiddenEnemyAnchor;
             if (priorityEnemy == null
                 && now >= ForcedAssaultStartSeconds
@@ -79,6 +94,13 @@ namespace Hegemonia.AI.BrainMaster
             DispatchAmphibious(baseCenter, priorityEnemy, strategicObjective);
             DispatchGroundLogistics(baseCenter);
             DispatchOffensiveWave(now, baseCenter, priorityEnemy, strategicObjective);
+
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("active_land_fronts", _activeLandFrontsThisTick);
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            if (elapsedMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("land_unit_update_ms", elapsedMs);
+            }
         }
 
         private float ResolveDecisionDelay()
@@ -175,13 +197,21 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Vector3 openApproach = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 150f, 320f, 26);
+            if (!TrySelectActiveGroundUnits(squad.Units, _activeGroundUnitsBuffer, 10))
+            {
+                return;
+            }
+
             if (visibleEnemy != null)
             {
-                QueueAttack("armored", squad.Units, visibleEnemy, openApproach, 89, 3.2f);
+                QueueAttack("armored", _activeGroundUnitsBuffer, visibleEnemy, openApproach, 89, 3.2f);
+                _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
             }
             else
             {
-                Vector3 pressurePoint = BlendObjective(baseCenter, strategicObjective, 0.78f, 210f, 520f);
+                Vector3 pressurePoint = CanProjectGroundOffense()
+                    ? BlendObjective(baseCenter, strategicObjective, 0.78f, 210f, 520f)
+                    : _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 40f, 140f, 18);
                 QueueMove("armored", squad.Units, pressurePoint, 84, 3.6f);
             }
         }
@@ -232,9 +262,10 @@ namespace Hegemonia.AI.BrainMaster
                 pressureCoast = coast;
             }
 
-            if (visibleEnemy != null && CountNavalSupportUnits() >= 2)
+            if (CanProjectGroundOffense() && visibleEnemy != null && CountNavalSupportUnits() >= 2)
             {
                 QueueAttack("amphibious", _loadedAmphibiousBuffer, visibleEnemy, coast, 80, 5.2f);
+                _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
             }
             else
             {
@@ -304,11 +335,25 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            IA_BattleGovernorDecision decision = GetBattleDecision();
+            if (decision != null && decision.MaxActiveFronts <= 0)
+            {
+                return;
+            }
+
+            if (!CanProjectGroundOffense())
+            {
+                return;
+            }
+
             bool forcedAssault = now >= ForcedAssaultStartSeconds;
             Vector3 forcedTarget = strategicObjective;
             bool hasForcedTarget = forcedAssault && _context.WorldState.TryGetEnemyStrategicAnchor(baseCenter, out forcedTarget);
 
-            List<GameObject> assaultUnits = CollectGroundAssaultUnits(forcedAssault ? 40 : 24);
+            int maxAttackers = decision != null
+                ? Mathf.Max(4, decision.MaxLandAttackers)
+                : (forcedAssault ? 40 : 24);
+            List<GameObject> assaultUnits = CollectGroundAssaultUnits(Mathf.Min(forcedAssault ? 40 : 24, maxAttackers));
             if (assaultUnits.Count < (forcedAssault ? 2 : 3))
             {
                 return;
@@ -318,6 +363,7 @@ namespace Hegemonia.AI.BrainMaster
             {
                 QueueAttack("assault_wave", assaultUnits, visibleEnemy, strategicObjective, 93, 4.2f);
                 _nextAssaultWaveTime = now + 4.5f;
+                _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
                 return;
             }
 
@@ -329,6 +375,7 @@ namespace Hegemonia.AI.BrainMaster
 
             QueueMove("assault_wave", assaultUnits, fallbackTarget, forcedAssault ? 96 : 90, forcedAssault ? 2.2f : 3.2f);
             _nextAssaultWaveTime = now + (forcedAssault ? 3.0f : 5.5f);
+            _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
         }
 
         private Vector3 ResolveStrategicObjective(Vector3 baseCenter, Transform visibleEnemy, float now)
@@ -439,6 +486,16 @@ namespace Hegemonia.AI.BrainMaster
         {
             _assaultUnitsBuffer.Clear();
             int max = Mathf.Clamp(limit, 6, 48);
+            int maxPoints = _context != null && _context.EngagementBudget != null
+                ? Mathf.Max(4, _context.EngagementBudget.LandPoints)
+                : max * 2;
+            int remainingUnits = Mathf.Max(0, max - _landAttackersCommittedThisTick);
+            int remainingPoints = Mathf.Max(0, maxPoints - _landPointsCommittedThisTick);
+            int initialPoints = remainingPoints;
+            if (remainingUnits <= 0 || remainingPoints <= 0)
+            {
+                return _assaultUnitsBuffer;
+            }
 
             for (int i = 0; i < _context.WorldState.OwnCombatUnits.Count; i++)
             {
@@ -472,14 +529,82 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
+                int cost = IA_BattleGovernorUtils.GetEngagementCost(unit);
+                if (cost > remainingPoints)
+                {
+                    continue;
+                }
+
                 _assaultUnitsBuffer.Add(unit);
-                if (_assaultUnitsBuffer.Count >= max)
+                remainingPoints -= cost;
+                if (_assaultUnitsBuffer.Count >= remainingUnits)
                 {
                     break;
                 }
             }
 
+            _landAttackersCommittedThisTick += _assaultUnitsBuffer.Count;
+            _landPointsCommittedThisTick += Mathf.Max(0, initialPoints - remainingPoints);
             return _assaultUnitsBuffer;
+        }
+
+        private IA_BattleGovernorDecision GetBattleDecision()
+        {
+            return _context != null ? _context.BattleDecision : null;
+        }
+
+        private bool CanProjectGroundOffense()
+        {
+            IA_TransportPlan plan = _context != null ? _context.TransportPlan : null;
+            return plan == null || plan.HasLandRoute || plan.Ready;
+        }
+
+        private bool TrySelectActiveGroundUnits(List<GameObject> source, List<GameObject> destination, int requestedLimit)
+        {
+            destination.Clear();
+            if (source == null || source.Count == 0)
+            {
+                return false;
+            }
+
+            IA_BattleGovernorDecision decision = GetBattleDecision();
+            int limit = decision != null
+                ? Mathf.Min(requestedLimit, Mathf.Max(1, decision.MaxLandAttackers - _landAttackersCommittedThisTick))
+                : requestedLimit;
+            int remainingPoints = _context != null && _context.EngagementBudget != null
+                ? Mathf.Max(0, _context.EngagementBudget.LandPoints - _landPointsCommittedThisTick)
+                : limit * 2;
+            int initialPoints = remainingPoints;
+            if (limit <= 0 || remainingPoints <= 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < source.Count; i++)
+            {
+                GameObject unit = source[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                int cost = IA_BattleGovernorUtils.GetEngagementCost(unit);
+                if (cost > remainingPoints)
+                {
+                    continue;
+                }
+
+                destination.Add(unit);
+                remainingPoints -= cost;
+                if (destination.Count >= limit)
+                {
+                    break;
+                }
+            }
+
+            _landAttackersCommittedThisTick += destination.Count;
+            _landPointsCommittedThisTick += Mathf.Max(0, initialPoints - remainingPoints);
+            return destination.Count > 0;
         }
 
         private Vector3 BlendObjective(Vector3 baseCenter, Vector3 strategicObjective, float t, float fallbackMinRadius, float fallbackMaxRadius)

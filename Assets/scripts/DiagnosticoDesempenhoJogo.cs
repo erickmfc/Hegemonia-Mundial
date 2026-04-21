@@ -56,12 +56,28 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public float SpawnAirMs;
         public float NavmeshSpawnMs;
         public float PrefabInitMs;
+        public float AirUnitUpdateMs;
+        public float NavalUnitUpdateMs;
+        public float LandUnitUpdateMs;
+        public float SensorUpdateMs;
+        public float TargetingMs;
+        public float PathfindingMs;
+        public float WeaponUpdateMs;
+        public float FormationUpdateMs;
         public int OrdersEmitted;
         public int PoolHits;
         public int PoolMisses;
         public int SpawnRegistrations;
+        public int EngagedUnits;
+        public int SupportUnits;
+        public int ReserveUnits;
+        public int TransportCapacityReady;
+        public int ActiveAirWings;
+        public int ActiveNavalTaskforces;
+        public int ActiveLandFronts;
         public string NavalAutoDisabledReason;
         public string SpawnPrefabName;
+        public string GovernorBand;
         public string TopOffenders;
         public string CausaProvavel;
         public string Detalhes;
@@ -173,6 +189,16 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         _instancia.IncrementarContadorMetricaInterna(nome, delta);
     }
 
+    public static void DefinirContadorMetrica(string nome, int valor)
+    {
+        if (_instancia == null || !_instancia._capturaAtiva || string.IsNullOrWhiteSpace(nome))
+        {
+            return;
+        }
+
+        _instancia.DefinirContadorMetricaInterna(nome, valor);
+    }
+
     public static void RegistrarTextoMetrica(string nome, string valor)
     {
         if (_instancia == null || !_instancia._capturaAtiva || string.IsNullOrWhiteSpace(nome) || string.IsNullOrWhiteSpace(valor))
@@ -202,6 +228,31 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     public static string ObterRazaoLockRuntime()
     {
         return _runtimeLockReason ?? string.Empty;
+    }
+
+    public static bool TryObterSnapshotRuntime(out float fpsMedio, out float cpuMainMs, out bool gcPressure, out bool warmup)
+    {
+        fpsMedio = 0f;
+        cpuMainMs = 0f;
+        gcPressure = false;
+        warmup = false;
+
+        if (_instancia == null || !_instancia._capturaAtiva)
+        {
+            return false;
+        }
+
+        ResumoSegundo resumo = _instancia._ultimoResumo;
+        if (resumo.Fim <= 0f)
+        {
+            return false;
+        }
+
+        fpsMedio = resumo.FpsMedio;
+        cpuMainMs = resumo.CpuMainMs;
+        gcPressure = resumo.GcGen1 > 0 || resumo.GcGen2 > 0 || resumo.DeltaMemoriaGerenciadaMb >= 32f;
+        warmup = resumo.EmWarmup;
+        return true;
     }
 
     // Atalho para producao da IA (chamado pelo ProductionDirector)
@@ -439,20 +490,34 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         _overlayLine5 = string.Format(
             CultureInfo.InvariantCulture,
-            "IA ms: coast {0:0.0} | naval {1:0.0} | world {2:0.0} | vis {3:0.0} | prod {4:0.0} | ordens {5} | pool {6}/{7} | spawn {8}",
+            "IA ms: coast {0:0.0} | naval {1:0.0} | world {2:0.0} | vis {3:0.0} | prod {4:0.0} | land/air/naval {5:0.0}/{6:0.0}/{7:0.0}",
             _ultimoResumo.CoastScanMs,
             _ultimoResumo.NavalCandidateMs,
             _ultimoResumo.WorldRefreshMs,
             _ultimoResumo.VisibleEnemyMs,
             _ultimoResumo.ProductionMs,
-            _ultimoResumo.OrdersEmitted,
-            _ultimoResumo.PoolHits,
-            _ultimoResumo.PoolMisses,
-            _ultimoResumo.SpawnRegistrations);
+            _ultimoResumo.LandUnitUpdateMs,
+            _ultimoResumo.AirUnitUpdateMs,
+            _ultimoResumo.NavalUnitUpdateMs);
 
         string ofensores = string.IsNullOrEmpty(_ultimoResumo.TopOffenders) ? "sem ofensores fortes" : _ultimoResumo.TopOffenders;
         string navalLock = string.IsNullOrEmpty(_ultimoResumo.NavalAutoDisabledReason) ? string.Empty : " | navalLock: " + _ultimoResumo.NavalAutoDisabledReason;
-        _overlayLine6 = "Top offenders: " + ofensores + navalLock + " | Eventos: " + _ultimoBlocoEventos;
+        _overlayLine6 = string.Format(
+            CultureInfo.InvariantCulture,
+            "Governor: {0} | fronts/air/naval {1}/{2}/{3} | tiers {4}/{5}/{6} | ordens {7} | pool {8}/{9} | spawn {10} | lock {11} | Eventos: {12}",
+            string.IsNullOrEmpty(_ultimoResumo.GovernorBand) ? "n/d" : _ultimoResumo.GovernorBand,
+            _ultimoResumo.ActiveLandFronts,
+            _ultimoResumo.ActiveAirWings,
+            _ultimoResumo.ActiveNavalTaskforces,
+            _ultimoResumo.EngagedUnits,
+            _ultimoResumo.SupportUnits,
+            _ultimoResumo.ReserveUnits,
+            _ultimoResumo.OrdersEmitted,
+            _ultimoResumo.PoolHits,
+            _ultimoResumo.PoolMisses,
+            _ultimoResumo.SpawnRegistrations,
+            ofensores + navalLock,
+            _ultimoBlocoEventos);
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -528,12 +593,28 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         float spawnAirMs = ObterTempoMetrica("spawn_air_ms");
         float navmeshSpawnMs = ObterTempoMetrica("navmesh_spawn_ms");
         float prefabInitMs = ObterTempoMetrica("prefab_init_ms");
+        float airUnitUpdateMs = ObterTempoMetrica("air_unit_update_ms");
+        float navalUnitUpdateMs = ObterTempoMetrica("naval_unit_update_ms");
+        float landUnitUpdateMs = ObterTempoMetrica("land_unit_update_ms");
+        float sensorUpdateMs = ObterTempoMetrica("sensor_update_ms");
+        float targetingMs = ObterTempoMetrica("targeting_ms");
+        float pathfindingMs = ObterTempoMetrica("pathfinding_ms");
+        float weaponUpdateMs = ObterTempoMetrica("weapon_update_ms");
+        float formationUpdateMs = ObterTempoMetrica("formation_update_ms");
         int ordersEmitted = ObterContadorMetrica("orders_emitted");
         int poolHits = ObterContadorMetrica("pool_hits");
         int poolMisses = ObterContadorMetrica("pool_misses");
         int spawnRegistrations = ObterContadorMetrica("spawn_registrations");
+        int engagedUnits = ObterContadorMetrica("engaged_units");
+        int supportUnits = ObterContadorMetrica("support_units");
+        int reserveUnits = ObterContadorMetrica("reserve_units");
+        int transportCapacityReady = ObterContadorMetrica("transport_capacity_ready");
+        int activeAirWings = ObterContadorMetrica("active_air_wings");
+        int activeNavalTaskforces = ObterContadorMetrica("active_naval_taskforces");
+        int activeLandFronts = ObterContadorMetrica("active_land_fronts");
         string navalAutoDisabledReason = ObterTextoMetrica("naval_auto_disabled_reason");
         string spawnPrefabName = ObterTextoMetrica("spawn_prefab_name");
+        string governorBand = ObterTextoMetrica("governor_band");
         string topOffenders = MontarResumoTopOffenders();
 
         ResumoSegundo resumo = new ResumoSegundo
@@ -575,12 +656,28 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             SpawnAirMs = spawnAirMs,
             NavmeshSpawnMs = navmeshSpawnMs,
             PrefabInitMs = prefabInitMs,
+            AirUnitUpdateMs = airUnitUpdateMs,
+            NavalUnitUpdateMs = navalUnitUpdateMs,
+            LandUnitUpdateMs = landUnitUpdateMs,
+            SensorUpdateMs = sensorUpdateMs,
+            TargetingMs = targetingMs,
+            PathfindingMs = pathfindingMs,
+            WeaponUpdateMs = weaponUpdateMs,
+            FormationUpdateMs = formationUpdateMs,
             OrdersEmitted = ordersEmitted,
             PoolHits = poolHits,
             PoolMisses = poolMisses,
             SpawnRegistrations = spawnRegistrations,
+            EngagedUnits = engagedUnits,
+            SupportUnits = supportUnits,
+            ReserveUnits = reserveUnits,
+            TransportCapacityReady = transportCapacityReady,
+            ActiveAirWings = activeAirWings,
+            ActiveNavalTaskforces = activeNavalTaskforces,
+            ActiveLandFronts = activeLandFronts,
             NavalAutoDisabledReason = navalAutoDisabledReason,
             SpawnPrefabName = spawnPrefabName,
+            GovernorBand = governorBand,
             TopOffenders = topOffenders,
             Detalhes = eventosDoSegundo
         };
@@ -823,8 +920,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         float agora = Time.unscaledTime;
         bool gcGrave = resumo.GcGen1 > 0 || resumo.GcGen2 > 0 || resumo.DeltaMemoriaGerenciadaMb >= 32f;
-        bool severe = resumo.CpuMainMs >= 100f || resumo.PiorFrameMs >= 600f || gcGrave;
-        bool overload = resumo.CpuMainMs >= 40f || resumo.PiorFrameMs >= 250f || resumo.Travadas > 0;
+        // Auto-Trava do usuario: FPS caindo pra <= 15 aciona SEVERE. FPS <= 22 aciona PRESSAO.
+        bool fpsCritico = resumo.FpsMedio > 0f && resumo.FpsMedio <= 15.5f;
+        bool fpsBaixo = resumo.FpsMedio > 0f && resumo.FpsMedio <= 22.0f;
+
+        bool severe = resumo.CpuMainMs >= 100f || resumo.PiorFrameMs >= 600f || gcGrave || fpsCritico;
+        bool overload = resumo.CpuMainMs >= 40f || resumo.PiorFrameMs >= 250f || resumo.Travadas > 0 || fpsBaixo;
 
         if (severe)
         {
@@ -939,6 +1040,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         _metricasContagem[chave] = atual + delta;
     }
 
+    private void DefinirContadorMetricaInterna(string nome, int valor)
+    {
+        string chave = NormalizarCampoLivre(nome).ToLowerInvariant();
+        _metricasContagem[chave] = valor;
+    }
+
     private void RegistrarTextoMetricaInterna(string nome, string valor)
     {
         string chave = NormalizarCampoLivre(nome).ToLowerInvariant();
@@ -1049,7 +1156,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             pasta,
             "desempenho_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture) + ".csv");
         _csvWriter = new StreamWriter(_csvPath, false, new UTF8Encoding(true));
-        _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;pior_frame_ms;frames_lentos;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;orders_emitted;pool_hits;pool_misses;spawn_registrations;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes");
+        _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;pior_frame_ms;frames_lentos;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes");
         _csvWriter.Flush();
     }
 
@@ -1099,10 +1206,26 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             .Append(resumo.SpawnAirMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.NavmeshSpawnMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PrefabInitMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.AirUnitUpdateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.NavalUnitUpdateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.LandUnitUpdateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.SensorUpdateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.TargetingMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.PathfindingMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.WeaponUpdateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.FormationUpdateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.OrdersEmitted.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PoolHits.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PoolMisses.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.SpawnRegistrations.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.EngagedUnits.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.SupportUnits.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.ReserveUnits.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.TransportCapacityReady.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.ActiveAirWings.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.ActiveNavalTaskforces.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.ActiveLandFronts.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(SanearCsv(resumo.GovernorBand)).Append(';')
             .Append(SanearCsv(resumo.SpawnPrefabName)).Append(';')
             .Append(SanearCsv(resumo.NavalAutoDisabledReason)).Append(';')
             .Append(SanearCsv(resumo.TopOffenders)).Append(';')

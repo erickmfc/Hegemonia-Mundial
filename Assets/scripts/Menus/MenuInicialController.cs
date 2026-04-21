@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using UnityEngine.AI;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -13,12 +14,13 @@ public class MenuInicialController : MonoBehaviour
     private const string CenaMenuPrincipal = "Menu cena";
     private const string CenaMenuFallback = "MenuPrincipal";
     private const string CenaCampanhaPadrao = "cena19)";
+    private const string CenaTutorialPadrao = "tutorial";
     private const float VelocidadeRotacaoPlataforma = 6.5f;
+    private const float VelocidadePasseAviao = 14f;
+    private const float DistanciaPasseAviao = 85f;
     private const float VelocidadeJato = 0.24f;
     private const float VelocidadeNavio = 0.38f;
     private const float IntervaloDisparoTorreta = 1.2f;
-
-    private static bool bootstrapCenaMenuCriado;
 
     private readonly Color corPainel = new Color(0.03f, 0.08f, 0.12f, 0.92f);
     private readonly Color corPainelTopo = new Color(0.08f, 0.16f, 0.2f, 0.88f);
@@ -46,6 +48,7 @@ public class MenuInicialController : MonoBehaviour
     private Font fontePadrao;
     private Text statusText;
     private Button botaoCarregar;
+    private Canvas canvasMenuPrincipal;
 
     private Transform plataformaGiratoria;
     private Transform jatoPassando;
@@ -55,10 +58,14 @@ public class MenuInicialController : MonoBehaviour
     private Transform bocaTorreta;
     private Light flashTorreta;
     private LineRenderer linhaDisparo;
+    private readonly List<Transform> avioesG18 = new List<Transform>();
+    private readonly List<Vector3> posicoesOriginaisG18 = new List<Vector3>();
+    private readonly List<WindZone> zonasVento = new List<WindZone>();
     private Vector3 inicioJatoAtual;
     private Vector3 fimJatoAtual;
     private Vector3 baseNavioAtual;
     private bool usarCenaDeFundoExistente;
+    private float ventoBase;
 
     private float progressoJato;
     private float faseNavio;
@@ -91,20 +98,21 @@ public class MenuInicialController : MonoBehaviour
             return;
         }
 
-        bootstrapCenaMenuCriado = true;
         usarCenaDeFundoExistente = cenaAtiva.name == CenaMenuPrincipal;
         sistemaSave = SistemaSaveGame.GarantirInstancia();
         fontePadrao = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
-        AudioListener.pause = usarCenaDeFundoExistente;
-        Time.timeScale = usarCenaDeFundoExistente ? 0f : 1f;
+        AudioListener.pause = false;
+        Time.timeScale = 1f;
 
         if (usarCenaDeFundoExistente)
         {
+            InicializarAnimacaoCenaExistente();
             DesativarAgentesDaCenaMenu();
             DesativarScriptsDaCenaMenu();
+            RemoverMenusDeComportamentoDaCenaMenu();
             DesativarCanvasesDaCenaMenu();
         }
     }
@@ -121,7 +129,6 @@ public class MenuInicialController : MonoBehaviour
         if (usarCenaDeFundoExistente)
         {
             GarantirCameraExistente();
-            ConstruirDecoracaoLeve();
         }
         else
         {
@@ -142,10 +149,11 @@ public class MenuInicialController : MonoBehaviour
             return;
         }
 
-        AnimarPlataforma();
-        AnimarJato();
-        AnimarNavio();
-        AnimarTorreta();
+        if (usarCenaDeFundoExistente)
+        {
+            LimparCanvasesEstranhosDaCenaMenu();
+            AnimarCenaExistente();
+        }
     }
 
     private void OnDestroy()
@@ -157,7 +165,6 @@ public class MenuInicialController : MonoBehaviour
 
         Time.timeScale = 1f;
         AudioListener.pause = false;
-        bootstrapCenaMenuCriado = false;
     }
 
     public void Btn_NovaCampanha()
@@ -165,6 +172,13 @@ public class MenuInicialController : MonoBehaviour
         sistemaSave.IniciarNovoJogo(CenaCampanhaPadrao);
         DefinirStatus("Iniciando campanha em cena19)...", false);
         CarregarCena(CenaCampanhaPadrao);
+    }
+
+    public void Btn_Tutorial()
+    {
+        sistemaSave.IniciarNovoJogo(CenaTutorialPadrao);
+        DefinirStatus("Iniciando tutorial...", false);
+        CarregarCena(CenaTutorialPadrao);
     }
 
     public void Btn_CarregarJogo()
@@ -229,7 +243,7 @@ public class MenuInicialController : MonoBehaviour
 
     private void GarantirCameraExistente()
     {
-        cameraDiorama = Camera.main;
+        cameraDiorama = ObterCameraDaCena();
 
         if (cameraDiorama == null)
         {
@@ -237,14 +251,12 @@ public class MenuInicialController : MonoBehaviour
             cameraObject.tag = "MainCamera";
             cameraDiorama = cameraObject.AddComponent<Camera>();
             cameraObject.AddComponent<AudioListener>();
-            cameraDiorama.transform.position = posicaoCameraFallback;
-            cameraDiorama.transform.rotation = Quaternion.LookRotation((alvoCameraFallback - posicaoCameraFallback).normalized);
         }
     }
 
     private void GarantirCameraFallback()
     {
-        cameraDiorama = Camera.main;
+        cameraDiorama = ObterCameraDaCena();
 
         if (cameraDiorama == null)
         {
@@ -253,12 +265,6 @@ public class MenuInicialController : MonoBehaviour
             cameraDiorama = cameraObject.AddComponent<Camera>();
             cameraObject.AddComponent<AudioListener>();
         }
-
-        cameraDiorama.clearFlags = CameraClearFlags.SolidColor;
-        cameraDiorama.backgroundColor = new Color(0.62f, 0.75f, 0.88f, 1f);
-        cameraDiorama.fieldOfView = 43f;
-        cameraDiorama.transform.position = posicaoCameraFallback;
-        cameraDiorama.transform.rotation = Quaternion.LookRotation((alvoCameraFallback - posicaoCameraFallback).normalized);
     }
 
     private void ConfigurarIluminacaoFallback()
@@ -345,36 +351,175 @@ public class MenuInicialController : MonoBehaviour
         }
     }
 
+    private void RemoverMenusDeComportamentoDaCenaMenu()
+    {
+        Scene cenaAtiva = SceneManager.GetActiveScene();
+        MenuComportamento[] menus = FindObjectsByType<MenuComportamento>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < menus.Length; i++)
+        {
+            MenuComportamento menu = menus[i];
+            if (menu == null || menu.gameObject.scene != cenaAtiva)
+            {
+                continue;
+            }
+
+            Object.Destroy(menu.gameObject);
+        }
+
+        GameObject painelComportamento = GameObject.Find("Painel_Comportamento");
+        if (painelComportamento != null && painelComportamento.scene == cenaAtiva)
+        {
+            Object.Destroy(painelComportamento);
+        }
+    }
+
+    private Camera ObterCameraDaCena()
+    {
+        Scene cenaAtiva = SceneManager.GetActiveScene();
+        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        Camera primeiraCamera = null;
+
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            Camera camera = cameras[i];
+            if (camera == null || camera.gameObject.scene != cenaAtiva)
+            {
+                continue;
+            }
+
+            if (primeiraCamera == null)
+            {
+                primeiraCamera = camera;
+            }
+
+            if (camera.CompareTag("MainCamera"))
+            {
+                return camera;
+            }
+        }
+
+        return primeiraCamera;
+    }
+
+    private void InicializarAnimacaoCenaExistente()
+    {
+        avioesG18.Clear();
+        posicoesOriginaisG18.Clear();
+        zonasVento.Clear();
+
+        Transform[] todos = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < todos.Length; i++)
+        {
+            Transform transform = todos[i];
+            if (transform == null)
+            {
+                continue;
+            }
+
+            string nome = transform.name.ToLowerInvariant();
+            if (nome.Contains("g18"))
+            {
+                avioesG18.Add(transform);
+                posicoesOriginaisG18.Add(transform.position);
+            }
+        }
+
+        WindZone[] ventos = FindObjectsByType<WindZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < ventos.Length; i++)
+        {
+            WindZone vento = ventos[i];
+            if (vento != null)
+            {
+                zonasVento.Add(vento);
+            }
+        }
+
+        if (zonasVento.Count == 0)
+        {
+            GameObject ventoGo = new GameObject("MenuWindZone");
+            ventoGo.transform.SetParent(null, false);
+            WindZone vento = ventoGo.AddComponent<WindZone>();
+            vento.mode = WindZoneMode.Directional;
+            vento.windMain = 0.16f;
+            vento.windTurbulence = 0.14f;
+            vento.windPulseMagnitude = 0.05f;
+            vento.windPulseFrequency = 0.08f;
+            vento.transform.rotation = Quaternion.Euler(0f, 60f, 0f);
+            zonasVento.Add(vento);
+        }
+
+        ventoBase = 0.16f;
+    }
+
+    private void AnimarCenaExistente()
+    {
+        float tempo = Time.unscaledTime;
+        Camera cameraAtual = cameraDiorama != null ? cameraDiorama : ObterCameraDaCena();
+        Vector3 forwardCamera = cameraAtual != null ? cameraAtual.transform.forward : Vector3.forward;
+        forwardCamera.y = 0f;
+        if (forwardCamera.sqrMagnitude < 0.001f)
+        {
+            forwardCamera = Vector3.forward;
+        }
+        forwardCamera.Normalize();
+
+        Vector3 rightCamera = cameraAtual != null ? cameraAtual.transform.right : Vector3.right;
+        rightCamera.y = 0f;
+        if (rightCamera.sqrMagnitude < 0.001f)
+        {
+            rightCamera = Vector3.right;
+        }
+        rightCamera.Normalize();
+        Vector3 cameraPos = cameraAtual != null ? cameraAtual.transform.position : Vector3.zero;
+
+        for (int i = 0; i < avioesG18.Count; i++)
+        {
+            Transform aviao = avioesG18[i];
+            if (aviao == null)
+            {
+                continue;
+            }
+
+            Vector3 basePos = i < posicoesOriginaisG18.Count ? posicoesOriginaisG18[i] : aviao.position;
+            float lateral = Vector3.Dot(basePos - cameraPos, rightCamera);
+            float altura = basePos.y;
+            float ciclo = Mathf.Repeat(tempo * (VelocidadePasseAviao / (DistanciaPasseAviao * 2f)) + i * 0.2f, 1f);
+            Vector3 pontoInicial = cameraPos + forwardCamera * DistanciaPasseAviao + rightCamera * lateral;
+            Vector3 pontoFinal = cameraPos - forwardCamera * DistanciaPasseAviao + rightCamera * lateral;
+            pontoInicial.y = altura;
+            pontoFinal.y = altura;
+            aviao.position = Vector3.Lerp(pontoInicial, pontoFinal, ciclo);
+
+            Vector3 direcao = pontoFinal - pontoInicial;
+            if (direcao.sqrMagnitude > 0.001f)
+            {
+                aviao.rotation = Quaternion.LookRotation(direcao.normalized) * Quaternion.Euler(0f, -90f, 0f);
+            }
+        }
+
+        float ventoAtual = ventoBase + Mathf.Sin(tempo * 0.45f) * 0.05f;
+        for (int i = 0; i < zonasVento.Count; i++)
+        {
+            WindZone vento = zonasVento[i];
+            if (vento == null)
+            {
+                continue;
+            }
+
+            vento.windMain = ventoAtual;
+            vento.windTurbulence = 0.12f + Mathf.Sin(tempo * 0.33f) * 0.03f;
+            vento.windPulseMagnitude = 0.03f + Mathf.Sin(tempo * 0.5f) * 0.01f;
+        }
+    }
+
     private void ConstruirDecoracaoLeve()
     {
-        Transform raiz = new GameObject("MenuDecoracaoLeve").transform;
-        inicioJatoAtual = inicioJatoCenaMenu;
-        fimJatoAtual = fimJatoCenaMenu;
-        baseNavioAtual = baseNavioCenaMenu;
-
-        CriarBloco(raiz, "TabladoMenu", new Vector3(7.5f, 0.08f, 14.2f), new Vector3(8.6f, 0.16f, 6.8f), new Color(0.37f, 0.39f, 0.44f, 0.92f));
-        CriarBloco(raiz, "PassarelaMenu", new Vector3(13.8f, 0.07f, 17.4f), new Vector3(8.2f, 0.12f, 1.8f), new Color(0.44f, 0.46f, 0.5f, 0.92f));
-        CriarBloco(raiz, "AguaDistante", new Vector3(18.5f, -0.02f, 30.5f), new Vector3(20f, 0.05f, 10f), new Color(0.15f, 0.28f, 0.37f, 0.95f));
-
-        CriarJatoPassando(raiz);
-        CriarTorreta(raiz, new Vector3(8.1f, 0.22f, 12.8f));
-        CriarAguaEBarco(raiz);
+        return;
     }
 
     private void ConstruirDioramaFallback()
     {
-        Transform raiz = new GameObject("MenuDiorama").transform;
-        inicioJatoAtual = inicioJatoFallback;
-        fimJatoAtual = fimJatoFallback;
-        baseNavioAtual = baseNavioFallback;
-
-        CriarPiso(raiz);
-        CriarAguaEBarco(raiz);
-        CriarPlataformaETanque(raiz);
-        CriarHangar(raiz, new Vector3(18f, 0f, 11f), new Vector3(6.4f, 3.2f, 4.5f));
-        CriarTorreControle(raiz, new Vector3(24f, 0f, 8f));
-        CriarJatoPassando(raiz);
-        CriarTorreta(raiz, new Vector3(21f, 0.2f, 5f));
+        return;
     }
 
     private void CriarPiso(Transform parent)
@@ -513,23 +658,23 @@ public class MenuInicialController : MonoBehaviour
 
     private void ConstruirInterface()
     {
-        Canvas canvasMenu = new GameObject("CanvasMenuPrincipal").AddComponent<Canvas>();
-        canvasMenu.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvasMenu.sortingOrder = 5000;
+        canvasMenuPrincipal = new GameObject("CanvasMenuPrincipal").AddComponent<Canvas>();
+        canvasMenuPrincipal.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvasMenuPrincipal.sortingOrder = 5000;
 
-        CanvasScaler scaler = canvasMenu.gameObject.AddComponent<CanvasScaler>();
+        CanvasScaler scaler = canvasMenuPrincipal.gameObject.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
         scaler.matchWidthOrHeight = 0.5f;
 
-        canvasMenu.gameObject.AddComponent<GraphicRaycaster>();
+        canvasMenuPrincipal.gameObject.AddComponent<GraphicRaycaster>();
 
-        RectTransform vinheta = CriarPainel("Vinheta", canvasMenu.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Color(0f, 0f, 0f, 0.16f));
+        RectTransform vinheta = CriarPainel("Vinheta", canvasMenuPrincipal.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Color(0f, 0f, 0f, 0.16f));
         vinheta.offsetMin = Vector2.zero;
         vinheta.offsetMax = Vector2.zero;
 
-        RectTransform painel = CriarPainel("PainelLateral", canvasMenu.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(354f, 0f), corPainel);
+        RectTransform painel = CriarPainel("PainelLateral", canvasMenuPrincipal.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(354f, 0f), corPainel);
         CriarPainel("FaixaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -18f), new Vector2(0f, 122f), corPainelTopo);
         CriarPainel("BrilhoBorda", painel, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(-2f, 0f), new Vector2(3f, 0f), corBorda);
 
@@ -553,6 +698,7 @@ public class MenuInicialController : MonoBehaviour
 
         float posicaoY = 0f;
         CriarBotao(grupoBotoes, "Nova Campanha", "CP", corBotaoDestaque, true, Btn_NovaCampanha, ref posicaoY);
+        CriarBotao(grupoBotoes, "Tutorial", "TR", corBotao, true, Btn_Tutorial, ref posicaoY);
         CriarBotao(grupoBotoes, "Escaramuca", "SK", corBotao, false, () => Btn_ModoIndisponivel("Escaramuca"), ref posicaoY);
         CriarBotao(grupoBotoes, "Multijogador", "MP", corBotao, false, () => Btn_ModoIndisponivel("Multijogador"), ref posicaoY);
         botaoCarregar = CriarBotao(grupoBotoes, "Carregar Jogo", "LD", corBotao, true, Btn_CarregarJogo, ref posicaoY);
@@ -810,6 +956,35 @@ public class MenuInicialController : MonoBehaviour
         for (int i = 0; i < textos.Length; i++)
         {
             textos[i].color = possuiSave ? corTexto : corTextoDesabilitado;
+        }
+    }
+
+    private void LimparCanvasesEstranhosDaCenaMenu()
+    {
+        if (canvasMenuPrincipal == null)
+        {
+            return;
+        }
+
+        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            Canvas canvas = canvases[i];
+            if (canvas == null || canvas == canvasMenuPrincipal)
+            {
+                continue;
+            }
+
+            if (canvas.gameObject == null)
+            {
+                continue;
+            }
+
+            string nomeCanvas = canvas.gameObject.name.ToLowerInvariant();
+            if (nomeCanvas.Contains("menu") || nomeCanvas.Contains("hud") || nomeCanvas.Contains("diagnostico") || nomeCanvas.Contains("estado"))
+            {
+                Object.Destroy(canvas.gameObject);
+            }
         }
     }
 
