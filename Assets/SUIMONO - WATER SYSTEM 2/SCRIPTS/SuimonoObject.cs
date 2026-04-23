@@ -368,7 +368,7 @@ namespace Suimono.Core
 			//get Suimono objects
 			if (GameObject.Find("SUIMONO_Module") != null){
 
-				moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 				//moduleObject = GameObject.Find("SUIMONO_Module").GetComponent<Suimono.Core.SuimonoModule>() as Suimono.Core.SuimonoModule;
 				if (moduleObject != null) suimonoModuleLibrary = moduleObject.GetComponent<Suimono.Core.SuimonoModuleLib>() as Suimono.Core.SuimonoModuleLib;
 			}
@@ -459,7 +459,7 @@ namespace Suimono.Core
 	    {
 	    	if (Application.isPlaying){
 		    	if (moduleObject == null){
-		    		moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 		    	}
 		    	if (moduleObject != null){
 		        	moduleObject.RegisterSurface(this);
@@ -471,7 +471,7 @@ namespace Suimono.Core
 	    {
 	    	if (Application.isPlaying){
 		    	if (moduleObject == null){
-		    		moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 		    	}
 		    	if (moduleObject != null){
 		        	moduleObject.DeregisterSurface(this);

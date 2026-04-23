@@ -79,6 +79,17 @@ public class GerenteSelecao : MonoBehaviour
         // 1. CLICOU (Marca onde começou)
         if (Input.GetMouseButtonDown(0))
         {
+            if (CapturaCliqueOrdensManuais.EstaAtiva())
+            {
+                return;
+            }
+
+            DesenharLinhasOrdem desenhadorAtivo = ObterDesenhadorOrdens();
+            if (desenhadorAtivo != null && (desenhadorAtivo.modoPatrulhaAtivo || desenhadorAtivo.modoSeguirAtivo))
+            {
+                return;
+            }
+
             // ===== CORREÇÃO DEFINITIVA DO BUG DO CONSTRUTOR ABRINDO O MENU SOZINHO =====
             // Se estou segurando um prédio para colocar no chão, o Gerente ignora esse clique (Não arma o arrasto)
             Construtor construtorModoClique = ObterConstrutor();
@@ -96,6 +107,17 @@ public class GerenteSelecao : MonoBehaviour
         // 2. ARRASTANDO (Desenha a caixa)
         if (Input.GetMouseButton(0) && arrastando)
         {
+            if (CapturaCliqueOrdensManuais.EstaAtiva())
+            {
+                arrastando = false;
+                if (caixaSelecaoVisual != null)
+                {
+                    caixaSelecaoVisual.gameObject.SetActive(false);
+                    caixaSelecaoVisual.sizeDelta = Vector2.zero;
+                }
+                return;
+            }
+
             if (caixaSelecaoVisual == null) GarantirCaixaVisual();
 
             if(caixaSelecaoVisual != null && Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 10f)
@@ -110,6 +132,14 @@ public class GerenteSelecao : MonoBehaviour
         // 3. SOLTOU (Calcula quem pegou)
         if (Input.GetMouseButtonUp(0))
         {
+            if (CapturaCliqueOrdensManuais.EstaAtiva())
+            {
+                arrastando = false;
+                if(caixaSelecaoVisual != null)
+                    caixaSelecaoVisual.gameObject.SetActive(false);
+                return;
+            }
+
             if (!arrastando) return; 
 
             bool arrastouBastante = Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 10f;
@@ -133,6 +163,11 @@ public class GerenteSelecao : MonoBehaviour
         // 4. MOVIMENTO EM GRUPO (Botão Direito)
         if (Input.GetMouseButtonDown(1))
         {
+            if (CapturaCliqueOrdensManuais.EstaAtiva())
+            {
+                return;
+            }
+
             // --- CONEXÃO COM SISTEMA DE ORDENS (PATRULHA/SEGUIR) ---
             DesenharLinhasOrdem desenhador = ObterDesenhadorOrdens();
             if (desenhador != null && (desenhador.modoPatrulhaAtivo || desenhador.modoSeguirAtivo))
@@ -166,12 +201,14 @@ public class GerenteSelecao : MonoBehaviour
 
                     // VERIFICA SE CLICOU EM UM AEROPORTO PARA OS AVIÕES POUSAREM (Abastecimento Manual)
                     TorreDeControle torre = null;
+                    GerenciadorPortaAvioes portaAvioes = null;
                     if (hit.collider != null)
                     {
                          torre = hit.collider.GetComponentInParent<TorreDeControle>();
+                         portaAvioes = hit.collider.GetComponentInParent<GerenciadorPortaAvioes>();
                     }
 
-                    MoverUnidadesEmGrupo(destino, torre);
+                    MoverUnidadesEmGrupo(destino, torre, portaAvioes);
                 }
             }
         }
@@ -234,7 +271,10 @@ public class GerenteSelecao : MonoBehaviour
                 continue;
             }
 
-            if (hit.collider.GetComponentInParent<ControleUnidade>() != null || hit.collider.GetComponentInParent<UnityEngine.AI.NavMeshAgent>() != null)
+            bool ehPortaAvioes = hit.collider.GetComponentInParent<GerenciadorPortaAvioes>() != null;
+            bool temUnidadeOuNavAgent = hit.collider.GetComponentInParent<ControleUnidade>() != null ||
+                                        hit.collider.GetComponentInParent<UnityEngine.AI.NavMeshAgent>() != null;
+            if (temUnidadeOuNavAgent && !ehPortaAvioes)
             {
                 continue;
             }
@@ -522,7 +562,7 @@ public class GerenteSelecao : MonoBehaviour
     }
 
     // Formacao considerando tamanho real (BoxCollider/NavMeshAgent)
-    void MoverUnidadesEmGrupo(Vector3 destinoCentral, TorreDeControle torreDestino = null)
+    void MoverUnidadesEmGrupo(Vector3 destinoCentral, TorreDeControle torreDestino = null, GerenciadorPortaAvioes portaAvioesDestino = null)
     {
         unidadesSelecionadas.RemoveAll(u => u == null);
         if (unidadesSelecionadas.Count == 0) return;
@@ -545,13 +585,21 @@ public class GerenteSelecao : MonoBehaviour
 
             if (unidade.TemControleAviao)
             {
-                if (torreDestino != null)
+                ControleAviao aviao = unidade.GetComponent<ControleAviao>();
+                if (aviao == null)
                 {
-                    ControleAviao aviao = unidade.GetComponent<ControleAviao>();
-                    if (aviao != null)
-                    {
-                        aviao.ComandoRetornarBase();
-                    }
+                    unidade.MoverParaPonto(destinoCentral);
+                    continue;
+                }
+
+                if (portaAvioesDestino != null)
+                {
+                    aviao.DefinirBaseAlternativaEIniciarRetorno(portaAvioesDestino);
+                    Debug.Log($"[GerenteSelecao] {unidade.name} redirecionado para pousar no porta-avioes {portaAvioesDestino.name}.");
+                }
+                else if (torreDestino != null)
+                {
+                    aviao.ComandoRetornarBase();
                     Debug.Log($"[GerenteSelecao] Selecionou Retornar pra Base via RMB! ({unidade.name})");
                 }
                 else

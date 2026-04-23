@@ -368,8 +368,7 @@ namespace UnityEngine.AI
                 return false;
 
             // Prefab parent owns the asset reference
-            var prefabType = UnityEditor.PrefabUtility.GetPrefabType(this);
-            if (prefabType == UnityEditor.PrefabType.Prefab)
+            if (UnityEditor.PrefabUtility.IsPartOfPrefabAsset(this))
                 return false;
 
             // An instance can share asset reference only with its prefab parent

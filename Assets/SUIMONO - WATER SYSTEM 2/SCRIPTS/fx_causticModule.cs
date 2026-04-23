@@ -30,7 +30,7 @@ namespace Suimono.Core
 
 		void Start () {
 			//get master objects
-			moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 			lightObject = transform.Find("mainCausticObject").gameObject;
 		}
 		

@@ -39,7 +39,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
         modoSeguirAtivo = false;
         pontosPatrulha.Clear();
         lineRenderer.positionCount = 0;
-        Debug.Log("MODO PATRULHA: clique com o botao direito no chao ou na agua.");
+        Debug.Log("MODO PATRULHA: clique com o botao direito para marcar pontos. ENTER confirma, BACKSPACE desfaz e ESC cancela.");
     }
 
     public void IniciarModoSeguir()
@@ -65,7 +65,6 @@ public class DesenharLinhasOrdem : MonoBehaviour
             {
                 pontosPatrulha.Add(pontoPatrulha);
                 AtualizarLinhaVisualPatrulha();
-                AplicarOrdemPatrulha();
                 
                 // Mostrar a marcação de patrulha
                 if (prefabMarcadorPatrulha != null)
@@ -75,6 +74,27 @@ public class DesenharLinhasOrdem : MonoBehaviour
                     Destroy(marcador, 3.0f);
                 }
             }
+        }
+
+        if (modoPatrulhaAtivo && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)))
+        {
+            if (pontosPatrulha.Count >= 2)
+            {
+                AplicarOrdemPatrulha();
+                Debug.Log("Patrulha confirmada e iniciada.");
+            }
+            else
+            {
+                Debug.LogWarning("Patrulha precisa de pelo menos 2 pontos.");
+            }
+
+            modoPatrulhaAtivo = false;
+        }
+
+        if (modoPatrulhaAtivo && Input.GetKeyDown(KeyCode.Backspace) && pontosPatrulha.Count > 0)
+        {
+            pontosPatrulha.RemoveAt(pontosPatrulha.Count - 1);
+            AtualizarLinhaVisualPatrulha();
         }
 
         if (modoSeguirAtivo && Input.GetMouseButtonDown(1))
@@ -325,9 +345,9 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         alvoSeguido = novoAlvo;
         controle = GetComponent<ControleUnidade>();
         ehNaval = controle != null && controle.EhUnidadeNaval();
-        distanciaIdeal = ehNaval ? 70f : 45f;
+        distanciaIdeal = ehNaval ? 170f : 45f;
         intervaloAtualizacao = ehNaval ? 0.2f : 0.5f;
-        offsetLateralNaval = ehNaval ? (((GetInstanceID() & 1) == 0) ? 10f : -10f) : 0f;
+        offsetLateralNaval = ehNaval ? (((GetInstanceID() & 1) == 0) ? 50f : -50f) : 0f;
     }
 
     void Update()
@@ -432,7 +452,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         float distanciaDestino = PlanarDistance(transform.position, destinoEscolta);
         bool estaNaFrente = Vector3.Dot(Flatten(transform.position - alvoSeguido.position), frenteLider) > 0f;
 
-        if (estaNaFrente || distanciaLider < 55f)
+        if (estaNaFrente || distanciaLider < 75f)
         {
             float velocidadeFreio = velocidadeLider > 0.5f ? Mathf.Max(0.5f, velocidadeLider * 0.65f) : 0.1f;
             controle.AplicarLimiteVelocidade(velocidadeFreio);

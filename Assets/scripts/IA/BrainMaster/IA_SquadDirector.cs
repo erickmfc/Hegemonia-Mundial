@@ -393,6 +393,7 @@ namespace Hegemonia.AI.BrainMaster
                    || n.Contains("g_18m")
                    || n.Contains("g18m")
                    || n.Contains("g15")
+                   || n.Contains("su11")
                    || n.Contains("super tuk")
                    || n.Contains("supertuk");
         }

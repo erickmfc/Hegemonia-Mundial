@@ -466,6 +466,13 @@ public class SistemaAntiMissil : MonoBehaviour
         // Se o próprio sistema não tem identidade, trata tudo como ameaça
         if (minhaIdentidade == null) return true;
 
+        // Preferir MissileThreatTracker para IFF (evita precisar adicionar IdentidadeUnidade em mísseis/interceptadores).
+        MissileThreatTracker tracker = candidato != null ? candidato.GetComponentInParent<MissileThreatTracker>() : null;
+        if (tracker != null && tracker.TeamOrigem != -1)
+        {
+            return tracker.TeamOrigem != minhaIdentidade.teamID;
+        }
+
         // Procura IdentidadeUnidade na hierarquia do candidato
         IdentidadeUnidade idCandidato = candidato.GetComponentInChildren<IdentidadeUnidade>();
         if (idCandidato == null)
@@ -724,14 +731,6 @@ public class SistemaAntiMissil : MonoBehaviour
         GameObject missilGerado = PoolDeObjetosCombate.Spawn(prefabIntercepador, saidaDaVez.position, saidaDaVez.rotation);
         IgnorarColisaoComOrigem(missilGerado);
         IgnorarColisaoComAliados(missilGerado);
-
-        // ── NOVO: herda o teamID do navio para não ser interceptado por aliados ──
-        IdentidadeUnidade idInterceptador = missilGerado.GetComponent<IdentidadeUnidade>();
-        if (idInterceptador == null)
-            idInterceptador = missilGerado.AddComponent<IdentidadeUnidade>();
-        if (minhaIdentidade != null)
-            idInterceptador.teamID = minhaIdentidade.teamID;
-        // ─────────────────────────────────────────────────────────────────────────
 
         Transform alvoResolvido = ResolverTransformAlvo(alvoDesignado != null ? alvoDesignado : alvoMissilAtual);
         Vector3 posicaoPredita = ObterPosicaoPreditaIntercepcao(alvoResolvido, saidaDaVez);

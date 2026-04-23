@@ -15,6 +15,8 @@ GameObject:
   - component: {fileID: -7549261984178204853}
   - component: {fileID: 3363487500830176677}
   - component: {fileID: 163897241717511559}
+  - component: {fileID: -2520532916029920953}
+  - component: {fileID: -4392586327668773366}
   m_Layer: 0
   m_Name: c700
   m_TagString: Aereo
@@ -198,11 +200,11 @@ MonoBehaviour:
   suavizacaoVisual: 3.5
   modeloInvertido180: 0
   pontosCarga: []
-  capacidadeMaxima: 10
+  capacidadeMaxima: 30
   ocultarCargaInterna: 1
-  raioBuscaCarga: 75.6
-  atrasoEntreEmbarques: 0.25
-  distanciaDesembarque: 18.6
+  raioBuscaCarga: 100
+  atrasoEntreEmbarques: 0.75
+  distanciaDesembarque: 50
   raioBloqueioPortaAvioes: 25
   manifestoConfigurado:
   - nome: Soldados
@@ -245,6 +247,47 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 53.1, y: 16.73, z: 84.037415}
   m_Center: {x: 0, y: 5.4825296, z: -19.539932}
+--- !u!114 &-2520532916029920953
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 508363159047402675}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe7ada6d5ebbb7c4f8886344a18c955e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DestrocosEmChamas
+  tamanhoFogo: 1
+  iniciarNoStart: 1
+  causarExplosoes: 1
+  qtdExplosoes: 3
+  vidaUtil: 15
+--- !u!114 &-4392586327668773366
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 508363159047402675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 900
+  vidaAtual: 900
+  unidadeBiologica: 0
+  ehEstrutura: 0
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 1.86
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 0
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!1001 &4004041267334629408
 PrefabInstance:
   m_ObjectHideFlags: 0

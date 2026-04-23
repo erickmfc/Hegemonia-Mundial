@@ -369,6 +369,18 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
+        // --- BLOQUEIO DE ÁGUA PARA UNIDADES TERRESTRES ---
+        // Verifica se o destino é água e se a unidade tem permissão para entrar
+        if (RegistroSuperficieMapa.TryClassify(destino, out ClassificacaoSuperficieMapa classe, out _))
+        {
+            bool ehTerrestre = !EhUnidadeNaval() && !ehAereo && hovercraftTransporte == null && c700TransporteAereo == null;
+            if (ehTerrestre && classe == ClassificacaoSuperficieMapa.Agua)
+            {
+                // Debug.Log($"[Bloqueio] {name} recusou mover para Água profunda.");
+                return; 
+            }
+        }
+
         RegistrarDestinoOrdenado(destino);
 
         if (cancelarComportamentos)

@@ -89,7 +89,7 @@ namespace Suimono.Core
 
 			//get main object
 			if (GameObject.Find("SUIMONO_Module") != null){
-				moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 				suimonoVersionNumber = moduleObject.suimonoVersionNumber;
 			}
 

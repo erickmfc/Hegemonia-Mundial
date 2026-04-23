@@ -11,10 +11,6 @@ using UnityEditor;
 [DefaultExecutionOrder(-10000)]
 public class MenuInicialController : MonoBehaviour
 {
-    private const string CenaMenuPrincipal = "Menu cena";
-    private const string CenaMenuFallback = "MenuPrincipal";
-    private const string CenaCampanhaPadrao = "cena19)";
-    private const string CenaTutorialPadrao = "tutorial";
     private const float VelocidadeRotacaoPlataforma = 6.5f;
     private const float VelocidadePasseAviao = 14f;
     private const float DistanciaPasseAviao = 85f;
@@ -76,7 +72,7 @@ public class MenuInicialController : MonoBehaviour
     private static void CriarBootstrapMenu()
     {
         Scene cenaAtiva = SceneManager.GetActiveScene();
-        if (!EhCenaDeMenu(cenaAtiva.name))
+        if (!ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtiva.name))
         {
             return;
         }
@@ -92,13 +88,13 @@ public class MenuInicialController : MonoBehaviour
     private void Awake()
     {
         Scene cenaAtiva = SceneManager.GetActiveScene();
-        if (!EhCenaDeMenu(cenaAtiva.name))
+        if (!ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtiva.name))
         {
             enabled = false;
             return;
         }
 
-        usarCenaDeFundoExistente = cenaAtiva.name == CenaMenuPrincipal;
+        usarCenaDeFundoExistente = cenaAtiva.name == ConfiguracaoCenasJogo.CenaMenuPrincipalCanonica;
         sistemaSave = SistemaSaveGame.GarantirInstancia();
         fontePadrao = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
@@ -158,7 +154,7 @@ public class MenuInicialController : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (!EhCenaDeMenu(SceneManager.GetActiveScene().name))
+        if (!ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
         {
             return;
         }
@@ -169,16 +165,18 @@ public class MenuInicialController : MonoBehaviour
 
     public void Btn_NovaCampanha()
     {
-        sistemaSave.IniciarNovoJogo(CenaCampanhaPadrao);
-        DefinirStatus("Iniciando campanha em cena19)...", false);
-        CarregarCena(CenaCampanhaPadrao);
+        string cenaCampanha = ConfiguracaoCenasJogo.ResolverCenaCampanhaPadrao();
+        sistemaSave.IniciarNovoJogo(cenaCampanha);
+        DefinirStatus("Iniciando campanha principal...", false);
+        CarregarCena(cenaCampanha);
     }
 
     public void Btn_Tutorial()
     {
-        sistemaSave.IniciarNovoJogo(CenaTutorialPadrao);
+        string cenaTutorial = ConfiguracaoCenasJogo.ResolverCenaTutorial();
+        sistemaSave.IniciarNovoJogo(cenaTutorial);
         DefinirStatus("Iniciando tutorial...", false);
-        CarregarCena(CenaTutorialPadrao);
+        CarregarCena(cenaTutorial);
     }
 
     public void Btn_CarregarJogo()
@@ -190,7 +188,7 @@ public class MenuInicialController : MonoBehaviour
             return;
         }
 
-        string cenaDestino = sistemaSave.ObterCenaSalvaOuPadrao(CenaCampanhaPadrao);
+        string cenaDestino = sistemaSave.ObterCenaSalvaOuPadrao(ConfiguracaoCenasJogo.ResolverCenaCampanhaPadrao());
         DefinirStatus("Carregando campanha salva...", false);
         CarregarCena(cenaDestino);
     }
@@ -209,17 +207,12 @@ public class MenuInicialController : MonoBehaviour
 #endif
     }
 
-    private static bool EhCenaDeMenu(string nomeCena)
-    {
-        return nomeCena == CenaMenuPrincipal || nomeCena == CenaMenuFallback;
-    }
-
     private void CarregarCena(string nomeCena)
     {
         Time.timeScale = 1f;
         AudioListener.pause = false;
 
-        if (!Application.CanStreamedLevelBeLoaded(nomeCena))
+        if (!ConfiguracaoCenasJogo.CenaExiste(nomeCena))
         {
             DefinirStatus("A cena '" + nomeCena + "' nao esta no Build Settings.", true);
             return;
@@ -706,7 +699,7 @@ public class MenuInicialController : MonoBehaviour
         CriarBotao(grupoBotoes, "Sair", "EX", corBotaoSair, true, Btn_Sair, ref posicaoY);
 
         statusText = CriarTexto("Status", coluna, string.Empty, 15, FontStyle.Bold, TextAnchor.LowerLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 96f), new Vector2(0f, 34f));
-        CriarTexto("Rodape", coluna, "O jogo abre em Menu cena.\nNova campanha entra em cena19).\nESC abre o menu de pausa durante a partida.", 13, FontStyle.Normal, TextAnchor.LowerLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 14f), new Vector2(0f, 78f));
+        CriarTexto("Rodape", coluna, "O jogo abre pelo menu principal.\nCampanha e tutorial usam cenas canonicas do bootstrap.\nESC pausa e F1 abre ajuda durante a partida.", 13, FontStyle.Normal, TextAnchor.LowerLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 14f), new Vector2(0f, 78f));
     }
 
     private RectTransform CriarPainel(string nome, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPosition, Vector2 sizeDelta, Color cor)

@@ -408,6 +408,20 @@ public class C700TransporteAereo : MonoBehaviour
             return;
         }
 
+        if (EstaNoSolo)
+        {
+            float distanciaRetorno = Vector3.Distance(AjustarPosicaoAoSolo(transform.position), AjustarPosicaoAoSolo(destinoRetorno));
+            if (distanciaRetorno <= 350f)
+            {
+                prontoParaDecolarNaPista = false;
+                LimparMissaoProgramada();
+                RegistrarDestinoVisual(destinoRetorno);
+                IniciarRotinaMovimento(TaxiarAtePosicao(destinoRetorno, velocidadeTaxi, -1f, true));
+                MostrarMensagem("Taxiando de volta ao aeroporto.");
+                return;
+            }
+        }
+
         OrdenarVoo(destinoRetorno, true);
     }
 
@@ -475,6 +489,15 @@ public class C700TransporteAereo : MonoBehaviour
             return;
         }
 
+        if (aguardandoDestinoAereo || temDestinoMissaoProgramado)
+        {
+            aguardandoDestinoAereo = false;
+            prontoParaDecolarNaPista = false;
+            LimparMissaoProgramada();
+            LimparDestinoVisual();
+            MostrarMensagem("Embarque iniciado. Missao aerea cancelada.");
+        }
+
         rotinaCarga = StartCoroutine(RotinaPuxarUnidades());
     }
 
@@ -533,46 +556,68 @@ public class C700TransporteAereo : MonoBehaviour
 
         Vector3 direcaoParaAlvo = destinoSolo - transform.position;
         direcaoParaAlvo.y = 0f;
-        float distAtualSqr = direcaoParaAlvo.sqrMagnitude;
+        float distAtualHorizontalSqr = direcaoParaAlvo.sqrMagnitude;
 
-        if (distAtualSqr < 400f) // Muito perto (20m)
+        if (distAtualHorizontalSqr < 100f) // Muito perto pra calcular vetor (10m)
         {
             direcaoParaAlvo = transform.forward;
+            direcaoParaAlvo.y = 0f;
         }
 
         direcaoParaAlvo.Normalize();
+        Vector3 direcaoRetaPouso = direcaoParaAlvo;
 
-        Vector3 direcaoAproximacao;
+        // Se estiver pousando no aeroporto, pega o angulo da pista para alinhar o bico certinho no asfalto
+        if (retornoAoAeroporto && aeroportoOrigem != null && aeroportoOrigem.waypointsDecida != null && aeroportoOrigem.waypointsDecida.Count > 1)
+        {
+            Vector3 vp = aeroportoOrigem.waypointsDecida[0].position - aeroportoOrigem.waypointsDecida[aeroportoOrigem.waypointsDecida.Count - 1].position;
+            vp.y = 0;
+            if (vp.sqrMagnitude > 1f)
+            {
+                direcaoRetaPouso = vp.normalized;
+            }
+        }
+
+        // --- ILS GLIDESLOPE (SISTEMA DE POUSO INSTRUMENTAL REALISTA) ---
+        // Ponto 1: Início da Aproximação (1000 metros do alvo alinhado na reta da pista, a 100m de altura)
+        Vector3 pontoIaf1000m = destinoSolo - direcaoRetaPouso * 1000f + Vector3.up * Mathf.Max(100f, altitudeCruzeiro);
         
-        // Se a distância total for MENOR do que a pista de pouso exige, ele alinha baseado na direção do próprio nariz para dar a volta, em vez de frear seco
-        if (distAtualSqr < 150f * 150f)
-        {
-            direcaoAproximacao = transform.forward;
-            direcaoAproximacao.y = 0;
-            direcaoAproximacao.Normalize();
-        }
-        else
-        {
-            direcaoAproximacao = direcaoParaAlvo;
-        }
-
-        // Desce reto e devagar a partir dos 150m, e toca no chao exatos 70m antes do alvo!
-        Vector3 pontoInicioDescida = destinoSolo - direcaoAproximacao * 150f + Vector3.up * altitudeCruzeiro;
-        Vector3 pontoToque = destinoSolo - direcaoAproximacao * 70f + Vector3.up * alturaToqueSolo;
+        // Ponto 2: Reta Final (100 metros do alvo, 10m de altura descendo rasante)
+        Vector3 pontoFa100m = destinoSolo - direcaoRetaPouso * 100f + Vector3.up * 10f;
+        
+        // Ponto 3: Toque na Rampa
+        Vector3 pontoTouchdown = destinoSolo - direcaoRetaPouso * 10f + Vector3.up * alturaToqueSolo;
 
         estadoAtual = EstadoC700.EmVoo;
-        // Voa em linha reta ate o comeco da rampa de descida
-        yield return StartCoroutine(VoarAtePonto(pontoInicioDescida, velocidadeCruzeiro, 25f));
+
+        // SE ELE ESTIVER MUITO PERTO DO DESTINO, TEM QUE SE AFASTAR PRIMEIRO PARA NAO CAIR DE BICO GIRANDO
+        // Se a distância for menor que 1500m, ele não tem rampa pra fazer os 1000m de linha reta
+        if (distAtualHorizontalSqr < 1500f * 1500f)
+        {
+            // Dá um balão pra fora usando a diagonal direita
+            Vector3 vetorFuga = (transform.right + transform.forward).normalized;
+            Vector3 pontoBalao = transform.position + vetorFuga * 1200f + Vector3.up * Mathf.Max(100f, altitudeCruzeiro);
+            yield return StartCoroutine(VoarAtePonto(pontoBalao, velocidadeCruzeiro, 60f));
+        }
+
+        // 1. Voa rápido até o Inicio da Aproximação (1000m afastado do destino)
+        yield return StartCoroutine(VoarAtePonto(pontoIaf1000m, velocidadeCruzeiro, 50f));
 
         estadoAtual = EstadoC700.Aproximando;
-        // Faz a rampa de descida gradual dos 150m aos 70m sem embicar abruptamente na vertical
-        yield return StartCoroutine(VoarAtePonto(pontoToque, velocidadeDecolagem * 0.95f, 5.5f));
+        
+        // 2. Desce o plano inclinado em linha reta perdendo 10 metros de altura a cada 100m andados
+        yield return StartCoroutine(VoarAtePonto(pontoFa100m, velocidadeCruzeiro * 0.75f, 25f));
 
         estadoAtual = EstadoC700.Pousando;
-        transform.position = new Vector3(transform.position.x, destinoSolo.y + alturaToqueSolo, transform.position.z);
-        velocidadeSoloAtual = Mathf.Max(velocidadeTaxi * 1.8f, velocidadeDecolagem * 0.85f);
+        
+        // 3. Flare (Ultimos 100m até tocar com as rodas)
+        yield return StartCoroutine(VoarAtePonto(pontoTouchdown, velocidadeDecolagem * 0.9f, 6f));
 
-        // Taxia andando fofinho pelo chao nos ultimos 70m ate o exato ponto clicado
+        // 4. Cola no chão fisicamente no final do toque
+        transform.position = new Vector3(transform.position.x, destinoSolo.y + alturaToqueSolo, transform.position.z);
+        velocidadeSoloAtual = Mathf.Max(velocidadeTaxi * 2f, velocidadeDecolagem * 0.85f);
+
+        // Taxia os ultimos 10 metros suave pelo asfalto ate o ponto especifico que vc clicou
         yield return StartCoroutine(TaxiarAtePosicao(destinoSolo, velocidadeTaxi, velocidadeSoloAtual, retornoAoAeroporto));
 
         if (retornoAoAeroporto && pontoEstacionamentoPreferencial != null)
@@ -637,7 +682,30 @@ public class C700TransporteAereo : MonoBehaviour
             yield break;
         }
 
+        // Otimização inteligente: Em vez de voltar pro waypoint 0, procura de qual waypoint está mais perto
+        int indiceInicial = 0;
+        float menorDistancia = float.MaxValue;
+        
         for (int i = 0; i < indiceVoo; i++)
+        {
+            if (aeroportoOrigem.waypointsDecolagem[i] != null)
+            {
+                float dist = Vector3.Distance(transform.position, aeroportoOrigem.waypointsDecolagem[i].position);
+                if (dist < menorDistancia)
+                {
+                    menorDistancia = dist;
+                    indiceInicial = i;
+                }
+            }
+        }
+
+        // Se ele passar do waypoint mais próximo mas ainda não chegou no próximo (ex: tá entre o 2 e o 3), vai direto pro 3
+        if (indiceInicial < indiceVoo - 1 && menorDistancia < 15f)
+        {
+            indiceInicial++;
+        }
+
+        for (int i = indiceInicial; i < indiceVoo; i++)
         {
             Transform wpTaxi = aeroportoOrigem.waypointsDecolagem[i];
             if (wpTaxi == null)
@@ -671,17 +739,8 @@ public class C700TransporteAereo : MonoBehaviour
             }
         }
 
-        Transform wpVoo = aeroportoOrigem.waypointsDecolagem[indiceVoo];
-        if (wpVoo != null)
-        {
-            Vector3 direcao = wpVoo.position - transform.position;
-            direcao.y = 0f;
-            if (direcao.sqrMagnitude > 0.2f)
-            {
-                transform.rotation = Quaternion.LookRotation(direcao.normalized, Vector3.up);
-            }
-        }
-
+        // REMOVIDO SNAP ESTÁTICO DE ROTAÇÃO E ROBÓTICO. Deixa o avião virar realisticamente de onde estiver!
+        
         estadoAtual = EstadoC700.Solo;
         aguardandoDestinoAereo = true;
         prontoParaDecolarNaPista = true;
@@ -736,7 +795,23 @@ public class C700TransporteAereo : MonoBehaviour
                 usouPistaDoAeroporto = true;
                 if (!prontoParaDecolarNaPista)
                 {
+                    int indiceInicialTaxi = 0;
+                    float menorTaxDist = float.MaxValue;
                     for (int i = 0; i < indiceVoo; i++)
+                    {
+                        if (aeroportoOrigem.waypointsDecolagem[i] != null)
+                        {
+                            float d = Vector3.Distance(transform.position, aeroportoOrigem.waypointsDecolagem[i].position);
+                            if (d < menorTaxDist)
+                            {
+                                menorTaxDist = d;
+                                indiceInicialTaxi = i;
+                            }
+                        }
+                    }
+                    if (indiceInicialTaxi < indiceVoo - 1 && menorTaxDist < 15f) indiceInicialTaxi++;
+
+                    for (int i = indiceInicialTaxi; i < indiceVoo; i++)
                     {
                         Transform wpTaxi = aeroportoOrigem.waypointsDecolagem[i];
                         if (wpTaxi == null)
@@ -897,6 +972,21 @@ public class C700TransporteAereo : MonoBehaviour
         Vector3 direcao = alvo - transform.position;
         if (direcao.sqrMagnitude > 0.05f)
         {
+            // --- BLOQUEIO DE MERGULHO (NOSEDIVE) ---
+            // Limita o nariz do avião para ele nunca embicar 90 graus p/ baixo
+            Vector3 direcaoH = new Vector3(direcao.x, 0f, direcao.z);
+            if (direcaoH.sqrMagnitude > 0.01f)
+            {
+                float inclincacaoMax = direcaoH.magnitude * 0.45f; // Limita a ~24 graus
+                direcao.y = Mathf.Clamp(direcao.y, -inclincacaoMax, inclincacaoMax);
+            }
+            else
+            {
+                // Se estiver exatamente em cima do alvo, o aviao continua voando rasante pra frente p/ fazer a curva suave
+                direcao = transform.forward;
+                direcao.y = -0.45f; // Descida suave constante
+            }
+
             Quaternion rotAlvo = Quaternion.LookRotation(direcao.normalized, Vector3.up);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, giroVoo * Time.deltaTime);
         }

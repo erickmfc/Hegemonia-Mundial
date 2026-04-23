@@ -153,7 +153,7 @@ namespace Suimono.Core
 			// Object References
 			transf = this.transform;
 			if (GameObject.Find("SUIMONO_Module")){
-				moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 				if (moduleObject != null) fxObject = moduleObject.suimonoModuleLibrary.fxObject;
 			}
 

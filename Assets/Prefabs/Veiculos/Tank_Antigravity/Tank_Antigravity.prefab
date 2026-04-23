@@ -1704,7 +1704,7 @@ MonoBehaviour:
   teamID: 1
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
-  tipoUnidade: 0
+  tipoUnidade: 1
 --- !u!114 &1690393396988138426
 MonoBehaviour:
   m_ObjectHideFlags: 0

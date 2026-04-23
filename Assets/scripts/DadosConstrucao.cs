@@ -31,6 +31,9 @@ public class DadosConstrucao : ScriptableObject
     [Header("Classificação")]
     public CategoriaItem categoria;
 
+    [Header("Balanceamento em Dados")]
+    public DadosBalanceamentoUnidade balanceamento;
+
     [Header("Comportamentos e Menu")]
     [Tooltip("Scripts de ação que aparecerão no menu quando esta unidade for selecionada")]
     public List<ComandoMenu> scriptsDeComando;

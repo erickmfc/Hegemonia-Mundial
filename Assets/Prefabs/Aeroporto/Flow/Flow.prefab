@@ -1,0 +1,313 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4254692362102392128
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1631742965838884853}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1631742965838884853
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4254692362102392128}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5150904027917649938}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &144426499010765576
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -5716681864270162303, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -5716681864270162303, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_PlayAutomatically
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.0076359
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.00403867
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.0045559015
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 729.50305
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 22.854864
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -6.381195
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.722545
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.6913239
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -87.47
+      objectReference: {fileID: 0}
+    - target: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3123083221778523169, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.79618
+      objectReference: {fileID: 0}
+    - target: {fileID: -3123083221778523169, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.81583
+      objectReference: {fileID: 0}
+    - target: {fileID: -1504981713932161579, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 7e4a4ebc64a26f649b7d893da3e9d915, type: 2}
+    - target: {fileID: -1411598168497347358, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.67341
+      objectReference: {fileID: 0}
+    - target: {fileID: -1411598168497347358, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.69861
+      objectReference: {fileID: 0}
+    - target: {fileID: -927199367670048503, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_Name
+      value: Flow
+      objectReference: {fileID: 0}
+    - target: {fileID: -927199367670048503, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      propertyPath: m_TagString
+      value: Aereo
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      insertIndex: 0
+      addedObject: {fileID: 1631742965838884853}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -927199367670048503, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7405988611164565996}
+    - targetCorrespondingSourceObject: {fileID: -927199367670048503, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6331871673299581610}
+    - targetCorrespondingSourceObject: {fileID: -927199367670048503, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5355930185995376036}
+    - targetCorrespondingSourceObject: {fileID: -927199367670048503, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9094763604816164930}
+    - targetCorrespondingSourceObject: {fileID: -927199367670048503, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5014879036598603675}
+  m_SourcePrefab: {fileID: 100100000, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+--- !u!4 &5150904027917649938 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -4216859302048453862, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+  m_PrefabInstance: {fileID: 144426499010765576}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &8151786032359012865 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -927199367670048503, guid: 212fe7d5bf39d1545907252344f60357, type: 3}
+  m_PrefabInstance: {fileID: 144426499010765576}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7405988611164565996
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8151786032359012865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b45f7f566e989a54b8b2fbc38d71f9b0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Helicoptero
+  corrigirRotacao: 0
+  modeloVisual: {fileID: 0}
+  debugLogs: 0
+  controleSempreAtivo: 0
+  selecionado: 0
+  raioDoClique: 7
+  altitudeDeVoo: 50
+  alturaPouso: 1.33
+  velocidadeHelice: 1200
+  velocidadeNavegacao: 45
+  velocidadePouso: 4
+  velocidadeSubidaVertical: 6.5
+  velocidadeDescidaVertical: 5
+  alturaSubidaInicial: 25
+  ajusteAlturaEstacionado: 2.1
+  distanciaBusca: 120
+  distanciaEmbarque: 10
+  capacidadeMaxima: 35
+  tagAlvo: Soldado
+  soldadosEmbarcados: []
+  modoCombateAtivo: 0
+  raioRadarMissil: 60
+  cooldownFlares: 10
+  tagMissil: Missil
+  tagInimigo: Inimigo
+  flares: []
+  helicePrincipal: {fileID: 0}
+  heliceTraseira: {fileID: 0}
+  eixoRotacaoHeliceTraseira: 1
+  usarRotacaoHorizontalNaHeliceTraseira: 1
+  audioMotor: {fileID: 0}
+  pitchMinimo: 0.5
+  pitchMaximo: 1.2
+  volumeMaximo: 1
+  tempoSpinUp: 1.8
+  tempoSpinDown: 6
+  usarAnimacaoAntesDeVoar: 1
+  nomeAnimacaoDecolagem: Fly
+  tempoPreparacaoDecolagem: 1.1
+  helicopteroTransporte: 1
+  pousarNoDestinoTatico: 1
+  desembarcarAutomaticamenteAoPousar: 1
+  raioTransferenciaNavio: 35
+  destino: {x: 0, y: 0, z: 0}
+  estaVoando: 0
+  nomeHelicoptero: Flow
+  custoUpgrade: 800
+  controladoPeloAeroporto: 0
+  estacionadoNoAeroporto: 0
+  vagaAeroporto: {fileID: 0}
+  missaoAtualAeroporto: 0
+--- !u!65 &6331871673299581610
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8151786032359012865}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 804.5996, y: 1124.1073, z: 3174.0498}
+  m_Center: {x: 0.24591064, y: -62.621445, z: 98.415764}
+--- !u!114 &5355930185995376036
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8151786032359012865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 390
+  vidaAtual: 390
+  unidadeBiologica: 0
+  ehEstrutura: 0
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 1.57
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 0
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
+--- !u!114 &9094763604816164930
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8151786032359012865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 3
+--- !u!54 &5014879036598603675
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8151786032359012865}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0

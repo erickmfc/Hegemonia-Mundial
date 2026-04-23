@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class Torreta : MonoBehaviour
 {
@@ -16,6 +17,7 @@ public class Torreta : MonoBehaviour
     [Header("Radar")]
     public string tagInimigo = "Inimigo"; 
     private Transform alvoAtual;
+    private static readonly List<IdentidadeUnidade> _bufferUnidades = new List<IdentidadeUnidade>(512);
 
     void Start()
     {
@@ -24,28 +26,30 @@ public class Torreta : MonoBehaviour
 
     void AtualizarAlvo()
     {
-        GameObject[] inimigos = GameObject.FindGameObjectsWithTag(tagInimigo);
-        float distanciaMaisCurta = Mathf.Infinity;
-        GameObject inimigoMaisPerto = null;
+        float alcanceSqr = alcance * alcance;
+        float menorDistanciaSqr = float.PositiveInfinity;
+        Transform melhor = null;
 
-        foreach (GameObject inimigo in inimigos)
+        RegistroEntidadesJogo.FillUnidades(_bufferUnidades);
+        for (int i = 0; i < _bufferUnidades.Count; i++)
         {
-            float distanciaParaInimigo = Vector3.Distance(transform.position, inimigo.transform.position);
-            if (distanciaParaInimigo < distanciaMaisCurta)
-            {
-                distanciaMaisCurta = distanciaParaInimigo;
-                inimigoMaisPerto = inimigo;
-            }
+            IdentidadeUnidade idAlvo = _bufferUnidades[i];
+            if (idAlvo == null) continue;
+            if (meuID != null && idAlvo.teamID == meuID.teamID) continue;
+
+            SistemaDeDanos vida = idAlvo.GetComponent<SistemaDeDanos>();
+            if (vida == null || vida.vidaAtual <= 0) continue;
+
+            Transform alvo = vida.transform;
+            float distSqr = (alvo.position - transform.position).sqrMagnitude;
+            if (distSqr > alcanceSqr) continue;
+            if (distSqr >= menorDistanciaSqr) continue;
+
+            menorDistanciaSqr = distSqr;
+            melhor = alvo;
         }
 
-        if (inimigoMaisPerto != null && distanciaMaisCurta <= alcance)
-        {
-            alvoAtual = inimigoMaisPerto.transform;
-        }
-        else
-        {
-            alvoAtual = null;
-        }
+        alvoAtual = melhor;
     }
 
     void Update()

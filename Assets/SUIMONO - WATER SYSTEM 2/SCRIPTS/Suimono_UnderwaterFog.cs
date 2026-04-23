@@ -87,8 +87,8 @@ namespace Suimono.Core
 			camtr = cam.transform;
 
 			if (GameObject.Find("SUIMONO_Module") != null){
-				moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
-				moduleLibrary = (SuimonoModuleLib) FindObjectOfType(typeof(SuimonoModuleLib));
+				moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
+				moduleLibrary = FindFirstObjectByType<SuimonoModuleLib>();
 			    //moduleLibrary = GameObject.Find("SUIMONO_Module").GetComponent<SuimonoModuleLib>();
 			}
 			

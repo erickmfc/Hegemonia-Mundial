@@ -99,7 +99,7 @@ namespace Suimono.Core
 		void Start () {
 
 			//Get object references
-			suimonoModuleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			suimonoModuleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 
 
 			if (cameraType != suiCamToolType.localReflection){

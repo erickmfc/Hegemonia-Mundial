@@ -134,7 +134,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b88a9faebd1739d46a0e8d64db7f05aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CacaVooRealista
-  velocidadeMaxima: 160
+  velocidadeMaxima: 100
   aceleracaoMotor: 45
   taxaDeGiroLeme: 60
   modeloMecanicoVisual: {fileID: 0}
@@ -259,8 +259,11 @@ MonoBehaviour:
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
   velocidadeSolo: 10
-  velocidadeMaximaVoo: 180
+  velocidadeMaximaVoo: 100
   taxaDeGiroLeme: 120
+  raioOrbitaMissao: 85
+  velocidadeOrbitaMissao: 0.9
+  margemChegadaMissao: 65
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -270,6 +273,7 @@ MonoBehaviour:
   emAtaqueMergulho: 0
   alvoDoMergulho: {x: 0, y: 0, z: 0}
   alvoPrioritarioIA: 0
+  alvoEstrategico: {x: 0, y: 0, z: 0}
   estaEmModoVooFisico: 0
 --- !u!114 &4845286106728112725
 MonoBehaviour:
@@ -287,7 +291,7 @@ MonoBehaviour:
   municaoMaxima: 3
   pontosDeSaida: []
   missilCacaPrefab: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-  tempoRecarga: 1.5
+  tempoRecarga: 6
   raioDeDeteccao: 600
   modoPassivo: 0
 --- !u!1 &4857591987287079291

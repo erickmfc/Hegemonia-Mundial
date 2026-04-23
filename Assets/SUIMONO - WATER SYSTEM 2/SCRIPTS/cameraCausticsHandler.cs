@@ -25,7 +25,7 @@ namespace Suimono.Core
 
 		void Start () {
 			//get master object
-			moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+				moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 
 			//get caustic light object
 			if (moduleObject != null){

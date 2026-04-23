@@ -68,7 +68,7 @@ namespace Suimono.Core
 	
 			//set objects
 			fxParentObject = this.transform.Find("_particle_effects");
-			moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 			
 			//instantiate systems
 			if (Application.isPlaying){

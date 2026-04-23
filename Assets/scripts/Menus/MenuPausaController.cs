@@ -6,9 +6,6 @@ using UnityEngine.UI;
 [DefaultExecutionOrder(12000)]
 public class MenuPausaController : MonoBehaviour
 {
-    private const string CenaMenuPrincipal = "Menu cena";
-    private const string CenaMenuFallback = "MenuPrincipal";
-
     public static bool EstaPausado { get; private set; }
 
     private readonly Color corOverlay = new Color(0f, 0f, 0f, 0.45f);
@@ -33,7 +30,7 @@ public class MenuPausaController : MonoBehaviour
     private static void CriarBootstrap()
     {
         Scene cenaAtiva = SceneManager.GetActiveScene();
-        if (cenaAtiva.name == CenaMenuPrincipal || cenaAtiva.name == CenaMenuFallback)
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtiva.name))
         {
             return;
         }
@@ -49,7 +46,7 @@ public class MenuPausaController : MonoBehaviour
     private void Awake()
     {
         Scene cenaAtiva = SceneManager.GetActiveScene();
-        if (cenaAtiva.name == CenaMenuPrincipal || cenaAtiva.name == CenaMenuFallback)
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtiva.name))
         {
             enabled = false;
             Destroy(gameObject);
@@ -171,7 +168,7 @@ public class MenuPausaController : MonoBehaviour
     private void SairParaMenuPrincipal()
     {
         RestaurarFluxoNormal();
-        SceneManager.LoadScene(CenaMenuPrincipal);
+        SceneManager.LoadScene(ConfiguracaoCenasJogo.ResolverCenaMenuPrincipal());
     }
 
     private void GarantirEventSystem()

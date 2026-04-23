@@ -1714,6 +1714,11 @@ public class MenuConstrucao : MonoBehaviour
             return "--";
         }
 
+        if (item.balanceamento != null && !string.IsNullOrWhiteSpace(item.balanceamento.rotuloTipo))
+        {
+            return item.balanceamento.rotuloTipo.Trim();
+        }
+
         if (item.categoria == DadosConstrucao.CategoriaItem.Tecnologia)
         {
             return "Pesquisa";
@@ -1757,6 +1762,11 @@ public class MenuConstrucao : MonoBehaviour
         if (item == null || item.prefabDaUnidade == null)
         {
             return "--";
+        }
+
+        if (item.balanceamento != null && !string.IsNullOrWhiteSpace(item.balanceamento.velocidadeExibida))
+        {
+            return item.balanceamento.velocidadeExibida.Trim();
         }
 
         float velocidade = -1f;
@@ -1824,6 +1834,10 @@ public class MenuConstrucao : MonoBehaviour
     string ObterTextoVidaItem(DadosConstrucao item)
     {
         if (item == null || item.prefabDaUnidade == null) return "--";
+        if (item.balanceamento != null && !string.IsNullOrWhiteSpace(item.balanceamento.blindagemExibida))
+        {
+            return item.balanceamento.blindagemExibida.Trim();
+        }
         SistemaDeDanos sys = item.prefabDaUnidade.GetComponent<SistemaDeDanos>();
         if (sys == null) sys = item.prefabDaUnidade.GetComponentInChildren<SistemaDeDanos>(true);
 
@@ -1837,6 +1851,10 @@ public class MenuConstrucao : MonoBehaviour
     string ObterTextoPoderFogoItem(DadosConstrucao item)
     {
         if (item == null || item.prefabDaUnidade == null) return "--";
+        if (item.balanceamento != null && !string.IsNullOrWhiteSpace(item.balanceamento.poderOfensivoExibido))
+        {
+            return item.balanceamento.poderOfensivoExibido.Trim();
+        }
         var comps = item.prefabDaUnidade.GetComponentsInChildren<Component>(true);
         foreach (var c in comps)
         {
@@ -1852,6 +1870,16 @@ public class MenuConstrucao : MonoBehaviour
         if (item == null)
         {
             return string.Empty;
+        }
+
+        if (item.balanceamento != null && !string.IsNullOrWhiteSpace(item.balanceamento.descricaoTatica))
+        {
+            string descricaoBalanceamento = item.balanceamento.descricaoTatica.Trim();
+            if (item.balanceamento.limiteEmCampo > 0)
+            {
+                descricaoBalanceamento += $"\nLimite recomendado em campo: {item.balanceamento.limiteEmCampo}.";
+            }
+            return descricaoBalanceamento;
         }
 
         if (!string.IsNullOrWhiteSpace(item.descricao))
@@ -2027,6 +2055,18 @@ public class MenuConstrucao : MonoBehaviour
         int custoTotal = item.preco * qtd;
         int qtdParaConstruir = qtd;
 
+        string motivoGovernanca;
+        if (!GovernadorGameplayRTS.PermitirProducao(item, qtdParaConstruir, out motivoGovernanca))
+        {
+            if (cardImage != null)
+            {
+                StartCoroutine(FlashCardErro(cardImage));
+            }
+
+            EmitirAvisoJogador(motivoGovernanca);
+            return;
+        }
+
         bool temDinheiro = false;
         if (GerenciadorRecursos.Instancia != null)
         {
@@ -2041,7 +2081,7 @@ public class MenuConstrucao : MonoBehaviour
         else if (!temDinheiro && cardImage != null) 
         {
             StartCoroutine(FlashCardErro(cardImage));
-            Debug.LogWarning($"💰 Fundos insuficientes para comprar {item.nomeItem}!");
+            EmitirAvisoJogador($"Fundos insuficientes para comprar {item.nomeItem}.");
             return; 
         }
 
@@ -2094,7 +2134,7 @@ public class MenuConstrucao : MonoBehaviour
 
                 if (estaleiros.Count == 0 && piers.Count == 0)
                 {
-                    Debug.LogWarning(ehNavioGrande
+                    EmitirAvisoJogador(ehNavioGrande
                         ? "❌ BLOQUEADO: construa um ESTALEIRO costeiro válido para produzir esse navio grande."
                         : "❌ BLOQUEADO: construa um ESTALEIRO ou PIER costeiro válido para produzir navios.");
                     return;
@@ -2148,7 +2188,7 @@ public class MenuConstrucao : MonoBehaviour
                     if (!sucesso)
                     {
                         ReembolsarDinheiro(item.preco);
-                        Debug.LogWarning($"⚓ [Construção] Falha ao produzir '{item.nomeItem}' em estruturas navais válidas.");
+                        EmitirAvisoJogador($"Falha ao produzir '{item.nomeItem}' em estruturas navais validas.");
                         break;
                     }
                 }
@@ -2194,7 +2234,7 @@ public class MenuConstrucao : MonoBehaviour
 
                 if (meusAeroportos.Count == 0)
                 {
-                    Debug.LogWarning("❌ BLOQUEADO: Você precisa construir um AEROPORTO primeiro para comprar aviões!");
+                    EmitirAvisoJogador("Bloqueado: voce precisa construir um AEROPORTO primeiro para comprar avioes.");
                     return;
                 }
 
@@ -2222,7 +2262,7 @@ public class MenuConstrucao : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogWarning("❌ ERRO: Nenhum aeroporto válido encontrado!");
+                    EmitirAvisoJogador("Erro: nenhum aeroporto valido encontrado para entregar esta aeronave.");
                     return;
                 }
             }
@@ -2266,7 +2306,7 @@ public class MenuConstrucao : MonoBehaviour
         Construtor construtor = Construtor.Instancia != null ? Construtor.Instancia : Object.FindFirstObjectByType<Construtor>();
         if (construtor == null)
         {
-             Debug.LogWarning("⚠️ Construtor não encontrado na cena! Impossível posicionar a construção.");
+             EmitirAvisoJogador("Construtor nao encontrado na cena. Impossivel posicionar a estrutura.");
              return;
         }
 
@@ -2285,6 +2325,17 @@ public class MenuConstrucao : MonoBehaviour
         
         construtor.SelecionarParaConstruir(item.prefabDaUnidade, item.preco, item.categoria);
         AlternarMenu(false); 
+    }
+
+    void EmitirAvisoJogador(string mensagem)
+    {
+        if (string.IsNullOrWhiteSpace(mensagem))
+        {
+            return;
+        }
+
+        Debug.LogWarning(mensagem);
+        HUDAjudaRTS.MostrarMensagemTemporaria(mensagem, 3.6f);
     }
 
     bool EhEstruturaDoJogador(Component estrutura)

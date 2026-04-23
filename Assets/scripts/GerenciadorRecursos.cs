@@ -41,7 +41,26 @@ public class GerenciadorRecursos : MonoBehaviour
         }
         else
         {
+            // CORREÇÃO: Se já existe um gerente (veio do Menu) mas estamos iniciando do zero (Jogo Novo/Tutorial),
+            // fazemos com que o gerente antigo herde os valores que você digitou no Inspector DESTA cena atual.
+            if (SistemaSaveGame.Instancia != null && !SistemaSaveGame.Instancia.carregouDeSave)
+            {
+                Instancia.dinheiro = this.dinheiro;
+                Instancia.petroleo = this.petroleo;
+                Instancia.aco = this.aco;
+                Instancia.energia = this.energia;
+                Instancia.populacaoAtual = this.populacaoAtual;
+                Instancia.populacaoMaxima = this.populacaoMaxima;
+                
+                // Sincroniza ganhos passivos também
+                Instancia.dinheiroPorSegundo = this.dinheiroPorSegundo;
+                Instancia.acoPorSegundo = this.acoPorSegundo;
+                
+                Instancia.NotificarAtualizacao();
+            }
+
             Destroy(gameObject);
+            return;
         }
 
         // CORREÇÃO: Zera ganhos passivos que agora dependem de logística

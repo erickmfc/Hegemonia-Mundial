@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,6 +40,8 @@ public class NavioTransporteTropas : MonoBehaviour
     [Header("Helicópteros (auto)")]
     [Tooltip("Auto-detect: Pista")]
     public Transform pista;
+    [Tooltip("Auto-detect: Pista/Pouso/decolagem")]
+    public Transform pontoPousoDecolagemHeli;
     [Tooltip("Auto-detect: Pista/Parada* (ordenado)")]
     public Transform[] paradasHeli;
     [Tooltip("Auto-detect: Saida do hangar aereo/Stop")]
@@ -74,6 +77,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private Transform _containerCarga;
     private bool _menuAberto;
+    private Vector2 _scrollMenuGeral;
     private Vector2 _scrollVeiculos;
     private Vector2 _scrollSoldados;
     private Vector2 _scrollHelis;
@@ -90,6 +94,8 @@ public class NavioTransporteTropas : MonoBehaviour
     private float _mensagemAte = 0f;
 
     private int _alternanciaStop = 0;
+    private float _proximoScanHeli = 0f;
+    private readonly List<Helicoptero> _helisProximosCache = new List<Helicoptero>();
 
     private enum CategoriaSelecao
     {
@@ -103,6 +109,19 @@ public class NavioTransporteTropas : MonoBehaviour
     private int _indiceSelecionadoVeiculo = -1;
     private int _indiceSelecionadoSoldado = -1;
     private int _indiceSelecionadoHeli = -1;
+    private Helicoptero _helicopteroSelecionadoParaMissao;
+    private readonly List<Vector3> _rotaPatrulhaHelicoptero = new List<Vector3>();
+
+    private enum ModoOrdemHelicopteroNavio
+    {
+        Nenhum,
+        Reconhecimento,
+        Patrulha,
+        AtaqueLocal,
+        Transporte
+    }
+
+    private ModoOrdemHelicopteroNavio _modoOrdemHelicoptero = ModoOrdemHelicopteroNavio.Nenhum;
 
     [System.Serializable]
     private class CargaTerrestre
@@ -128,6 +147,8 @@ public class NavioTransporteTropas : MonoBehaviour
     private readonly List<CargaTerrestre> _veiculosCarregados = new List<CargaTerrestre>();
     private readonly List<CargaTerrestre> _soldadosCarregados = new List<CargaTerrestre>();
     private readonly List<CargaHeli> _helisCarregados = new List<CargaHeli>();
+    private readonly Dictionary<int, Coroutine> _rotinasEntradaHeli = new Dictionary<int, Coroutine>();
+    private readonly Dictionary<int, Coroutine> _rotinasSaidaHeli = new Dictionary<int, Coroutine>();
 
     // ======================================================
     // API Pública (IA / Debug)
@@ -222,6 +243,15 @@ public class NavioTransporteTropas : MonoBehaviour
         {
             ProcessarInputMenu();
         }
+        if (_menuAberto && Time.time >= _proximoScanHeli)
+        {
+            AtualizarCacheHelisProximos();
+            _proximoScanHeli = Time.time + 1f;
+        }
+        if (_modoOrdemHelicoptero != ModoOrdemHelicopteroNavio.Nenhum && _helicopteroSelecionadoParaMissao != null)
+        {
+            ProcessarOrdemHelicopteroNavio();
+        }
         ManterHelisNoNavio();
         LimparNulos();
     }
@@ -231,15 +261,38 @@ public class NavioTransporteTropas : MonoBehaviour
         if (!_menuAberto) return;
         if (_idNavio != null && _idNavio.teamID != 1) return;
 
+        int oldLabelFont = GUI.skin.label.fontSize;
+        int oldButtonFont = GUI.skin.button.fontSize;
+        int oldBoxFont = GUI.skin.box.fontSize;
+        bool oldButtonRichText = GUI.skin.button.richText;
         GUI.skin.label.richText = true;
         GUI.skin.box.richText = true;
+        GUI.skin.button.richText = true;
+        GUI.skin.label.fontSize = 11;
+        GUI.skin.button.fontSize = 10;
+        GUI.skin.box.fontSize = 12;
 
-        float menuWidth = 410f;
-        float menuHeight = 720f;
-        float offsetX = Screen.width * 0.13f;
-        float offsetY = Screen.height / 2f - (menuHeight / 2f) - (Screen.height * 0.02f);
+        GUIStyle linhaCompacta = new GUIStyle(GUI.skin.button);
+        linhaCompacta.alignment = TextAnchor.MiddleLeft;
+        linhaCompacta.wordWrap = false;
+        linhaCompacta.clipping = TextClipping.Clip;
+        linhaCompacta.fontSize = 10;
+        linhaCompacta.padding = new RectOffset(6, 4, 2, 2);
 
-        Rect areaMenu = new Rect(Screen.width - menuWidth - 40f - offsetX, offsetY, menuWidth, menuHeight);
+        GUIStyle labelCompacta = new GUIStyle(GUI.skin.label);
+        labelCompacta.richText = true;
+        labelCompacta.wordWrap = false;
+        labelCompacta.clipping = TextClipping.Clip;
+        labelCompacta.fontSize = 10;
+
+        GUIStyle labelWrap = new GUIStyle(GUI.skin.label);
+        labelWrap.richText = true;
+        labelWrap.wordWrap = true;
+        labelWrap.fontSize = 11;
+
+        float menuWidth = Mathf.Clamp(Screen.width * 0.32f, 430f, 560f);
+        float menuHeight = Mathf.Min(Screen.height - 8f, 1100f);
+        Rect areaMenu = new Rect(Screen.width - menuWidth - 16f, 10f, menuWidth, menuHeight);
         GUI.Box(areaMenu, "<b>🚢 COMANDO - NAVIO TRANSPORTE DE TROPAS</b>");
 
         GUILayout.BeginArea(new Rect(areaMenu.x + 10f, areaMenu.y + 25f, areaMenu.width - 20f, areaMenu.height - 35f));
@@ -247,7 +300,7 @@ public class NavioTransporteTropas : MonoBehaviour
         string nome = (_idNavio != null && !string.IsNullOrEmpty(_idNavio.nomeDoPais)) ? _idNavio.nomeDoPais : "Navio";
         GUILayout.BeginHorizontal();
         GUILayout.Label($"<b>⚓ Status:</b> <color=cyan>{nome}</color>", GUILayout.ExpandWidth(true));
-        if (GUILayout.Button("Fechar", GUILayout.Width(80f), GUILayout.Height(24f))) _menuAberto = false;
+        if (GUILayout.Button("Fechar", GUILayout.Width(72f), GUILayout.Height(22f))) _menuAberto = false;
         GUILayout.EndHorizontal();
 
         GUILayout.Space(4);
@@ -255,10 +308,13 @@ public class NavioTransporteTropas : MonoBehaviour
         GUILayout.Label($"<b>🪖 Soldados:</b> <color=yellow>{SoldadosAtual}</color> / {capacidadeMaxSoldados}");
         GUILayout.Label($"<b>🚁 Helicópteros:</b> <color=yellow>{AereosAtual}</color> / {capacidadeMaxAereos}");
 
+        float alturaScrollMenu = Mathf.Max(320f, areaMenu.height - 68f);
+        _scrollMenuGeral = GUILayout.BeginScrollView(_scrollMenuGeral, false, true, GUILayout.Height(alturaScrollMenu));
+
         bool temTerra = TemPontoEmTerra();
         if (!temTerra)
         {
-            GUILayout.Label("<color=red><b>⚠️ Operação terrestre BLOQUEADA:</b> nenhum 'saida/entrada' está em terra.</color>");
+            GUILayout.Label("<color=red><b>⚠️ Operação terrestre BLOQUEADA:</b> nenhum 'saida/entrada' está em terra.</color>", labelWrap);
         }
 
         GUILayout.Space(6);
@@ -266,16 +322,15 @@ public class NavioTransporteTropas : MonoBehaviour
         // Quantidade //
         GUILayout.BeginHorizontal("box");
         GUILayout.Label($"<b>Qtd:</b> {_qtdOperacao}", GUILayout.Width(90f));
-        if (GUILayout.Button("-", GUILayout.Width(35f), GUILayout.Height(24f))) _qtdOperacao = Mathf.Max(1, _qtdOperacao - 1);
-        if (GUILayout.Button("+", GUILayout.Width(35f), GUILayout.Height(24f))) _qtdOperacao = Mathf.Min(9999, _qtdOperacao - 1); // wait, it was +1. But now the user specifically said they have a "Todos" button for this! Let's assure "+".
-        if (GUILayout.Button("+", GUILayout.Width(35f), GUILayout.Height(24f))) _qtdOperacao = Mathf.Min(9999, _qtdOperacao + 1); // correcting
-        if (GUILayout.Button("Todos", GUILayout.Width(70f), GUILayout.Height(24f))) _qtdOperacao = 9999;
+        if (GUILayout.Button("-", GUILayout.Width(32f), GUILayout.Height(22f))) _qtdOperacao = Mathf.Max(1, _qtdOperacao - 1);
+        if (GUILayout.Button("+", GUILayout.Width(32f), GUILayout.Height(22f))) _qtdOperacao = Mathf.Min(9999, _qtdOperacao + 1);
+        if (GUILayout.Button("Todos", GUILayout.Width(64f), GUILayout.Height(22f))) _qtdOperacao = 9999;
         GUILayout.EndHorizontal();
 
         if (_operacaoTerrestreAtiva || _operacaoHeliAtiva)
         {
             GUI.backgroundColor = Color.red;
-            if (GUILayout.Button("❌ CANCELAR TODAS AS OPERAÇÕES", GUILayout.Height(35f)))
+            if (GUILayout.Button("❌ CANCELAR TODAS AS OPERAÇÕES", GUILayout.Height(26f)))
             {
                 _operacaoTerrestreAtiva = false;
                 _operacaoHeliAtiva = false;
@@ -290,78 +345,120 @@ public class NavioTransporteTropas : MonoBehaviour
         GUILayout.BeginVertical("box");
         GUILayout.Label("<b>📥 EMBARQUE TERRESTRE</b>");
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Puxar Veículos", GUILayout.Height(30f))) IniciarEmbarqueTerrestre(ModoOperacaoTerrestre.Veiculos, _qtdOperacao);
-        if (GUILayout.Button("Puxar Soldados", GUILayout.Height(30f))) IniciarEmbarqueTerrestre(ModoOperacaoTerrestre.Soldados, _qtdOperacao);
+        if (GUILayout.Button("Puxar Veículos", GUILayout.Height(24f))) IniciarEmbarqueTerrestre(ModoOperacaoTerrestre.Veiculos, _qtdOperacao);
+        if (GUILayout.Button("Puxar Soldados", GUILayout.Height(24f))) IniciarEmbarqueTerrestre(ModoOperacaoTerrestre.Soldados, _qtdOperacao);
         GUILayout.EndHorizontal();
-        if (GUILayout.Button("Puxar Terrestres (Todos)", GUILayout.Height(28f))) IniciarEmbarqueTerrestre(ModoOperacaoTerrestre.Todos, _qtdOperacao);
+        if (GUILayout.Button("Puxar Terrestres (Todos)", GUILayout.Height(24f))) IniciarEmbarqueTerrestre(ModoOperacaoTerrestre.Todos, _qtdOperacao);
         GUILayout.EndVertical();
 
         GUILayout.Space(6);
 
         // Listas
         GUILayout.Label($"<color=cyan><b>🚚 VEÍCULOS A BORDO ({VeiculosAtual}/{capacidadeMaxVeiculos})</b></color>");
-        _scrollVeiculos = GUILayout.BeginScrollView(_scrollVeiculos, GUILayout.Height(110f));
+        _scrollVeiculos = GUILayout.BeginScrollView(_scrollVeiculos, GUILayout.Height(100f));
         for (int i = 0; i < _veiculosCarregados.Count; i++)
         {
             var u = _veiculosCarregados[i]?.unidade;
             if (u == null) continue;
             string pfx = (_categoriaSelecionada == CategoriaSelecao.Veiculo && _indiceSelecionadoVeiculo == i) ? "► " : "";
-            if (GUILayout.Button($"{pfx}🚚 {LimparClone(u.name)}", GUILayout.Height(26f)))
+            if (GUILayout.Button($"{pfx}🚚 {CompactarTextoMenu(LimparClone(u.name), 30)}", linhaCompacta, GUILayout.Height(22f)))
             {
                 _categoriaSelecionada = CategoriaSelecao.Veiculo;
                 _indiceSelecionadoVeiculo = i;
                 _indiceSelecionadoSoldado = -1;
                 _indiceSelecionadoHeli = -1;
+                _helicopteroSelecionadoParaMissao = null;
             }
         }
         GUILayout.EndScrollView();
 
         GUILayout.Space(4);
         GUILayout.Label($"<color=lime><b>🪖 SOLDADOS A BORDO ({SoldadosAtual}/{capacidadeMaxSoldados})</b></color>");
-        _scrollSoldados = GUILayout.BeginScrollView(_scrollSoldados, GUILayout.Height(110f));
+        _scrollSoldados = GUILayout.BeginScrollView(_scrollSoldados, GUILayout.Height(100f));
         for (int i = 0; i < _soldadosCarregados.Count; i++)
         {
             var u = _soldadosCarregados[i]?.unidade;
             if (u == null) continue;
             string pfx = (_categoriaSelecionada == CategoriaSelecao.Soldado && _indiceSelecionadoSoldado == i) ? "► " : "";
-            if (GUILayout.Button($"{pfx}🪖 {LimparClone(u.name)}", GUILayout.Height(26f)))
+            if (GUILayout.Button($"{pfx}🪖 {CompactarTextoMenu(LimparClone(u.name), 30)}", linhaCompacta, GUILayout.Height(22f)))
             {
                 _categoriaSelecionada = CategoriaSelecao.Soldado;
                 _indiceSelecionadoSoldado = i;
                 _indiceSelecionadoVeiculo = -1;
                 _indiceSelecionadoHeli = -1;
+                _helicopteroSelecionadoParaMissao = null;
             }
         }
         GUILayout.EndScrollView();
 
         GUILayout.Space(4);
-        GUILayout.Label($"<color=orange><b>🚁 HELICÓPTEROS NO CONVÉS ({AereosAtual}/{capacidadeMaxAereos})</b></color>");
-        _scrollHelis = GUILayout.BeginScrollView(_scrollHelis, GUILayout.Height(110f));
+        GUILayout.Label($"<color=orange><b>🚁 HELICÓPTEROS NO CONVÉS / APROXIMAÇÃO ({AereosAtual}/{capacidadeMaxAereos})</b></color>");
+        _scrollHelis = GUILayout.BeginScrollView(_scrollHelis, GUILayout.Height(100f));
         for (int i = 0; i < _helisCarregados.Count; i++)
         {
             var h = _helisCarregados[i]?.heli;
             if (h == null) continue;
-            string status = _helisCarregados[i].emSaida ? " (STOP)" : (_helisCarregados[i].paradaAtual != null ? $" ({_helisCarregados[i].paradaAtual.name})" : "");
+            bool aproximando = HelicopteroEstaEmAproximacaoParaConves(h);
+            string status = aproximando
+                ? " (aproximando)"
+                : _helisCarregados[i].paradaAtual != null
+                    ? $" ({CompactarTextoMenu(_helisCarregados[i].paradaAtual.name, 12)})"
+                    : (_helisCarregados[i].emSaida ? " (saída)" : "");
             string pfx = (_categoriaSelecionada == CategoriaSelecao.Heli && _indiceSelecionadoHeli == i) ? "► " : "";
-            if (GUILayout.Button($"{pfx}🚁 {LimparClone(h.name)}{status}", GUILayout.Height(26f)))
+            if (GUILayout.Button($"{pfx}🚁 {CompactarTextoMenu(h.ObterRotuloExibicao(), 24)}{status}", linhaCompacta, GUILayout.Height(22f)))
             {
                 _categoriaSelecionada = CategoriaSelecao.Heli;
                 _indiceSelecionadoHeli = i;
                 _indiceSelecionadoVeiculo = -1;
                 _indiceSelecionadoSoldado = -1;
+                _helicopteroSelecionadoParaMissao = h;
             }
         }
         GUILayout.EndScrollView();
 
         GUILayout.Space(6);
 
+        GUILayout.BeginVertical("box");
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"<b>📡 HELICÓPTEROS ALIADOS PRÓXIMOS ({_helisProximosCache.Count})</b>", GUILayout.ExpandWidth(true));
+        if (GUILayout.Button("Atualizar", GUILayout.Width(82f), GUILayout.Height(22f)))
+        {
+            AtualizarCacheHelisProximos();
+        }
+        GUILayout.EndHorizontal();
+
+        if (_helisProximosCache.Count == 0)
+        {
+            GUILayout.Label($"<color=grey>Nenhum helicóptero aliado detectado no alcance ({ObterRaioBuscaHelisEfetivo():F0}m).</color>");
+        }
+        else
+        {
+            int limiteHelisProximos = Mathf.Min(4, _helisProximosCache.Count);
+            for (int i = 0; i < limiteHelisProximos; i++)
+            {
+                Helicoptero heliProximo = _helisProximosCache[i];
+                if (heliProximo == null) continue;
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"🚁 {CompactarTextoMenu(heliProximo.ObterRotuloExibicao(), 24)}", labelCompacta, GUILayout.Width(270f));
+                GUILayout.EndHorizontal();
+            }
+
+            if (_helisProximosCache.Count > limiteHelisProximos)
+            {
+                GUILayout.Label($"<color=grey>+{_helisProximosCache.Count - limiteHelisProximos} helicóptero(s) no alcance.</color>");
+            }
+        }
+        GUILayout.EndVertical();
         GUILayout.Space(6);
 
         // Embarque de Helicópteros Isolado
         GUILayout.BeginVertical("box");
         GUILayout.Label("<b>🚁 EMBARQUE DE HELICÓPTEROS</b>");
-        if (GUILayout.Button($"Puxar Helicópteros Próximos ({_qtdOperacao})", GUILayout.Height(30f))) IniciarPuxarHelicopteros(_qtdOperacao);
+        if (GUILayout.Button($"Puxar Helicópteros Próximos ({_qtdOperacao})", GUILayout.Height(24f))) IniciarPuxarHelicopteros(_qtdOperacao);
         GUILayout.EndVertical();
+
+        DesenharPainelHelicopteroNavio();
 
         GUILayout.Space(6);
 
@@ -371,11 +468,11 @@ public class NavioTransporteTropas : MonoBehaviour
 
         string infoSelecao = ObterDescricaoSelecaoAtual();
         if (!string.IsNullOrEmpty(infoSelecao))
-            GUILayout.Label($"Selecionado: <color=yellow>{infoSelecao}</color>");
+            GUILayout.Label($"Selecionado: <color=yellow>{CompactarTextoMenu(infoSelecao, 48)}</color>", labelWrap);
         else
             GUILayout.Label("Selecionado: NENHUM");
 
-        if (GUILayout.Button("Desembarcar SÓ O SELECIONADO", GUILayout.Height(30f)))
+        if (GUILayout.Button("Desembarcar SÓ O SELECIONADO", GUILayout.Height(24f)))
         {
             DispararDesembarquePeloMenu(1);
         }
@@ -383,13 +480,13 @@ public class NavioTransporteTropas : MonoBehaviour
         GUILayout.Space(4);
         GUILayout.Label("<b>Desembarcar por Categoria:</b>");
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Todos Soldados", GUILayout.Height(28f))) IniciarDesembarqueTerrestre(ModoOperacaoTerrestre.Soldados, int.MaxValue, 0);
-        if (GUILayout.Button("Todos Veículos", GUILayout.Height(28f))) IniciarDesembarqueTerrestre(ModoOperacaoTerrestre.Veiculos, int.MaxValue, 0);
+        if (GUILayout.Button("Todos Soldados", GUILayout.Height(24f))) IniciarDesembarqueTerrestre(ModoOperacaoTerrestre.Soldados, int.MaxValue, 0);
+        if (GUILayout.Button("Todos Veículos", GUILayout.Height(24f))) IniciarDesembarqueTerrestre(ModoOperacaoTerrestre.Veiculos, int.MaxValue, 0);
         GUILayout.EndHorizontal();
-        if (GUILayout.Button("Todos Helicópteros", GUILayout.Height(28f))) IniciarLiberarHelicopteros(int.MaxValue, 0);
+        if (GUILayout.Button("Todos Helicópteros", GUILayout.Height(24f))) IniciarLiberarHelicopteros(int.MaxValue, 0);
 
         GUILayout.Space(6);
-        if (GUILayout.Button("🔴 RETIRAR TODAS AS UNIDADES (TUDO) 🔴", GUILayout.Height(32f)))
+        if (GUILayout.Button("🔴 RETIRAR TODAS AS UNIDADES (TUDO) 🔴", GUILayout.Height(26f)))
         {
             IniciarDesembarqueTerrestre(ModoOperacaoTerrestre.Todos, int.MaxValue, 0);
             IniciarLiberarHelicopteros(int.MaxValue, 0);
@@ -402,7 +499,13 @@ public class NavioTransporteTropas : MonoBehaviour
             GUILayout.Label($"<color=yellow>{_mensagemHUD}</color>");
         }
 
+        GUILayout.EndScrollView();
         GUILayout.EndArea();
+
+        GUI.skin.label.fontSize = oldLabelFont;
+        GUI.skin.button.fontSize = oldButtonFont;
+        GUI.skin.box.fontSize = oldBoxFont;
+        GUI.skin.button.richText = oldButtonRichText;
     }
 
     // ======================================================
@@ -504,7 +607,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
         if (!temReferenciasHeli())
         {
-            MostrarMensagem("❌ ERRO: faltam referências de helicópteros (Paradas/Stop).");
+            MostrarMensagem("❌ ERRO: faltam referências de helicópteros (Pouso/decolagem + Paradas).");
             return;
         }
 
@@ -527,9 +630,9 @@ public class NavioTransporteTropas : MonoBehaviour
             return;
         }
 
-        if (stop0 == null && stop1 == null)
+        if (!temReferenciasHeli())
         {
-            MostrarMensagem("❌ ERRO: faltam pontos Stop/Stop (1).");
+            MostrarMensagem("❌ ERRO: faltam referências de helicópteros (Pouso/decolagem + Paradas).");
             return;
         }
 
@@ -779,19 +882,17 @@ public class NavioTransporteTropas : MonoBehaviour
                 break;
             }
 
-            var carga = new CargaHeli { heli = h, paradaAtual = paradaLivre, emSaida = false };
-            _helisCarregados.Add(carga);
+            if (!EstacionarHelicopteroNoNavio(h, paradaLivre, false))
+            {
+                continue;
+            }
 
-            h.PosicionarNaVagaAeroporto(paradaLivre);
-            h.transform.SetParent(transform, true);
-            h.transform.position = paradaLivre.position;
-            h.transform.rotation = transform.rotation;
-
-            MostrarMensagem($"✅ {LimparClone(h.name)} estacionado em {paradaLivre.name}.");
+            MostrarMensagem($"➡️ {h.ObterRotuloExibicao()} alinhando em Pouso/decolagem para depois pousar em {paradaLivre.name}.");
             puxados++;
             yield return new WaitForSeconds(delayEntreUnidades);
         }
 
+        AtualizarCacheHelisProximos();
         _operacaoHeliAtiva = false;
         MostrarMensagem("✅ Operação de helicópteros concluída.");
     }
@@ -811,28 +912,21 @@ public class NavioTransporteTropas : MonoBehaviour
             if (carga == null || carga.heli == null) continue;
             if (carga.emSaida) continue;
 
-            Transform stop = ObterStopAlternado();
-            if (stop == null)
+            if (!IniciarSaidaHelicopteroDoNavio(
+                carga.heli,
+                heliLiberado => heliLiberado.RetornarParaVagaAeroporto(),
+                "retornando ao aeroporto"))
             {
-                MostrarMensagem("❌ ERRO: Stop/Stop (1) não configurado.");
-                break;
+                continue;
             }
 
-            carga.emSaida = true;
-            carga.paradaAtual = null; // libera vaga
-
-            carga.heli.PosicionarNaVagaAeroporto(stop);
-            carga.heli.transform.SetParent(transform, true);
-            carga.heli.transform.position = stop.position;
-            carga.heli.transform.rotation = transform.rotation;
-
-            MostrarMensagem($"➡️ {LimparClone(carga.heli.name)} movido para {stop.name} (pronto p/ voo).");
+            MostrarMensagem($"➡️ {carga.heli.ObterRotuloExibicao()} saiu da vaga e vai para Pouso/decolagem.");
             liberados++;
             yield return new WaitForSeconds(delayEntreUnidades);
         }
 
         _operacaoHeliAtiva = false;
-        MostrarMensagem("✅ Helicópteros liberados (aguardando decolagem).");
+        MostrarMensagem("✅ Helicópteros liberados pelo corredor aéreo do navio.");
     }
 
     // ======================================================
@@ -870,6 +964,128 @@ public class NavioTransporteTropas : MonoBehaviour
         if (carga == null) return;
         _veiculosCarregados.Remove(carga);
         _soldadosCarregados.Remove(carga);
+    }
+
+    public int TransferirSoldadosParaHelicoptero(Helicoptero heli, int quantidadeMax = int.MaxValue)
+    {
+        if (heli == null || quantidadeMax <= 0)
+        {
+            return 0;
+        }
+
+        int transferidos = 0;
+        for (int i = _soldadosCarregados.Count - 1; i >= 0 && transferidos < quantidadeMax; i--)
+        {
+            CargaTerrestre carga = _soldadosCarregados[i];
+            if (carga == null || carga.unidade == null)
+            {
+                _soldadosCarregados.RemoveAt(i);
+                continue;
+            }
+
+            if (!heli.EmbarcarSoldadoTransferido(carga.unidade))
+            {
+                continue;
+            }
+
+            RemoverCargaTerrestre(carga);
+            transferidos++;
+        }
+
+        return transferidos;
+    }
+
+    public bool EmbarcarSoldadoTransferidoDoHelicoptero(GameObject soldado)
+    {
+        if (soldado == null || SoldadosAtual >= capacidadeMaxSoldados)
+        {
+            return false;
+        }
+
+        if (_containerCarga == null)
+        {
+            GarantirContainerCarga();
+        }
+
+        CargaTerrestre carga = PrepararSoldadoTransferidoDoHelicoptero(soldado);
+        soldado.transform.SetParent(_containerCarga, true);
+
+        if (chegada != null)
+        {
+            soldado.transform.localPosition = _containerCarga.InverseTransformPoint(chegada.position);
+            soldado.transform.rotation = transform.rotation;
+        }
+
+        soldado.SetActive(false);
+        _soldadosCarregados.Add(carga);
+        return true;
+    }
+
+    public int TransferirSoldadosDoHelicopteroParaNavio(Helicoptero heli, int quantidadeMax = int.MaxValue)
+    {
+        if (heli == null || quantidadeMax <= 0)
+        {
+            return 0;
+        }
+
+        return heli.TransferirSoldadosParaNavio(this, quantidadeMax);
+    }
+
+    private CargaTerrestre PrepararSoldadoTransferidoDoHelicoptero(GameObject unidade)
+    {
+        var carga = new CargaTerrestre { unidade = unidade, parentOriginal = unidade.transform.parent };
+
+        var ctrl = unidade.GetComponent<ControleUnidade>();
+        if (ctrl != null)
+        {
+            carga.controleEnabledAntes = true;
+            try { ctrl.DefinirSelecao(false); } catch { }
+            ctrl.enabled = false;
+        }
+        else
+        {
+            carga.controleEnabledAntes = false;
+        }
+
+        var nav = unidade.GetComponent<NavMeshAgent>();
+        if (nav != null)
+        {
+            carga.navAgentEnabledAntes = true;
+            try
+            {
+                if (nav.enabled && nav.isOnNavMesh)
+                {
+                    nav.ResetPath();
+                }
+                nav.isStopped = true;
+            }
+            catch { }
+            nav.enabled = false;
+        }
+        else
+        {
+            carga.navAgentEnabledAntes = false;
+        }
+
+        var rb = unidade.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            carga.rbExiste = true;
+            carga.rbKinematicAntes = rb.isKinematic;
+            carga.rbUseGravityAntes = rb.useGravity;
+            carga.rbDetectCollisionsAntes = rb.detectCollisions;
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            rb.detectCollisions = false;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+        else
+        {
+            carga.rbExiste = false;
+        }
+
+        return carga;
     }
 
     private void RestaurarUnidadeTerrestre(GameObject u, CargaTerrestre carga, Vector3 destinoFinal)
@@ -1018,27 +1234,315 @@ public class NavioTransporteTropas : MonoBehaviour
         if (_controleUnidade != null && _controleUnidade.selecionado && Input.GetKeyDown(KeyCode.O))
         {
             _menuAberto = !_menuAberto;
+            if (_menuAberto)
+            {
+                AtualizarCacheHelisProximos();
+                _proximoScanHeli = Time.time + 1f;
+            }
+        }
+    }
+
+    public bool PossuiOrdemManualAtiva()
+    {
+        return _modoOrdemHelicoptero != ModoOrdemHelicopteroNavio.Nenhum && _helicopteroSelecionadoParaMissao != null;
+    }
+
+    private Helicoptero ObterHelicopteroSelecionadoNoNavio()
+    {
+        if (_helicopteroSelecionadoParaMissao != null && JaTenhoHeli(_helicopteroSelecionadoParaMissao))
+        {
+            return _helicopteroSelecionadoParaMissao;
         }
 
-        if (Input.GetMouseButtonDown(0))
+        if (_categoriaSelecionada == CategoriaSelecao.Heli && _indiceSelecionadoHeli >= 0 && _indiceSelecionadoHeli < _helisCarregados.Count)
         {
-            if (UnityEngine.EventSystems.EventSystem.current != null &&
-                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            Helicoptero heli = _helisCarregados[_indiceSelecionadoHeli]?.heli;
+            if (heli != null)
             {
+                _helicopteroSelecionadoParaMissao = heli;
+                return heli;
+            }
+        }
+
+        return null;
+    }
+
+    private bool TryResolverPontoMapaNavio(out Vector3 pontoAlvo)
+    {
+        pontoAlvo = Vector3.zero;
+        if (_cameraPrincipal == null) _cameraPrincipal = Camera.main;
+        if (_cameraPrincipal == null) return false;
+
+        Ray raio = _cameraPrincipal.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(raio, out RaycastHit hit, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+        {
+            pontoAlvo = hit.point;
+            return true;
+        }
+
+        UnityEngine.Plane plano = new UnityEngine.Plane(Vector3.up, Vector3.zero);
+        if (plano.Raycast(raio, out float distancia))
+        {
+            pontoAlvo = raio.GetPoint(distancia);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void IniciarModoHelicopteroNavio(Helicoptero heli, ModoOrdemHelicopteroNavio modo)
+    {
+        if (heli == null) return;
+
+        _helicopteroSelecionadoParaMissao = heli;
+        _modoOrdemHelicoptero = modo;
+        _rotaPatrulhaHelicoptero.Clear();
+        _menuAberto = false;
+    }
+
+    private void EncerrarModoHelicopteroNavio()
+    {
+        _rotaPatrulhaHelicoptero.Clear();
+        _modoOrdemHelicoptero = ModoOrdemHelicopteroNavio.Nenhum;
+        _helicopteroSelecionadoParaMissao = null;
+    }
+
+    private void ProcessarOrdemHelicopteroNavio()
+    {
+        if (_helicopteroSelecionadoParaMissao == null)
+        {
+            EncerrarModoHelicopteroNavio();
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            EncerrarModoHelicopteroNavio();
+            return;
+        }
+
+        if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Patrulha)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                EncerrarModoHelicopteroNavio();
                 return;
             }
 
-            if (_cameraPrincipal == null) _cameraPrincipal = Camera.main;
-            if (_cameraPrincipal == null) return;
-            Ray r = _cameraPrincipal.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(r, out RaycastHit hit))
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             {
-                if (hit.transform == transform || hit.transform.IsChildOf(transform))
+                EncerrarModoHelicopteroNavio();
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Backspace) && _rotaPatrulhaHelicoptero.Count > 0)
+            {
+                _rotaPatrulhaHelicoptero.RemoveAt(_rotaPatrulhaHelicoptero.Count - 1);
+                if (_rotaPatrulhaHelicoptero.Count > 0)
                 {
-                    _menuAberto = true;
+                    if (!JaTenhoHeli(_helicopteroSelecionadoParaMissao) && !HelicopteroEstaEmSaidaDoConves(_helicopteroSelecionadoParaMissao))
+                    {
+                        _helicopteroSelecionadoParaMissao.IniciarPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
+                    }
+                }
+                else
+                {
+                    _helicopteroSelecionadoParaMissao.CancelarMissaoAeroporto();
+                }
+                return;
+            }
+        }
+
+        if (!Input.GetMouseButtonDown(1)) return;
+        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+        if (!TryResolverPontoMapaNavio(out Vector3 pontoAlvo)) return;
+
+        if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Patrulha)
+        {
+            _rotaPatrulhaHelicoptero.Add(pontoAlvo);
+            if (JaTenhoHeli(_helicopteroSelecionadoParaMissao))
+            {
+                IniciarSaidaHelicopteroDoNavio(
+                    _helicopteroSelecionadoParaMissao,
+                    heliLiberado =>
+                    {
+                        if (_rotaPatrulhaHelicoptero.Count > 0)
+                        {
+                            heliLiberado.IniciarPatrulhaAeroporto(new List<Vector3>(_rotaPatrulhaHelicoptero));
+                        }
+                        else
+                        {
+                            heliLiberado.RetornarParaVagaAeroporto();
+                        }
+                    },
+                    "iniciando patrulha");
+            }
+            else
+            {
+                _helicopteroSelecionadoParaMissao.IniciarPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
+            }
+            return;
+        }
+
+        if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Reconhecimento)
+        {
+            if (JaTenhoHeli(_helicopteroSelecionadoParaMissao))
+            {
+                IniciarSaidaHelicopteroDoNavio(
+                    _helicopteroSelecionadoParaMissao,
+                    heliLiberado => heliLiberado.IniciarReconhecimentoAeroporto(pontoAlvo),
+                    "indo para reconhecimento");
+            }
+            else
+            {
+                _helicopteroSelecionadoParaMissao.IniciarReconhecimentoAeroporto(pontoAlvo);
+            }
+        }
+        else if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.AtaqueLocal)
+        {
+            if (JaTenhoHeli(_helicopteroSelecionadoParaMissao))
+            {
+                IniciarSaidaHelicopteroDoNavio(
+                    _helicopteroSelecionadoParaMissao,
+                    heliLiberado => heliLiberado.IniciarAtaqueLocalAeroporto(pontoAlvo),
+                    "indo para ataque local");
+            }
+            else
+            {
+                _helicopteroSelecionadoParaMissao.IniciarAtaqueLocalAeroporto(pontoAlvo);
+            }
+        }
+        else if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Transporte)
+        {
+            if (JaTenhoHeli(_helicopteroSelecionadoParaMissao))
+            {
+                IniciarSaidaHelicopteroDoNavio(
+                    _helicopteroSelecionadoParaMissao,
+                    heliLiberado => heliLiberado.IniciarTransporteAeroporto(pontoAlvo),
+                    "indo para transporte");
+            }
+            else
+            {
+                _helicopteroSelecionadoParaMissao.IniciarTransporteAeroporto(pontoAlvo);
+            }
+        }
+
+        EncerrarModoHelicopteroNavio();
+    }
+
+    private void DesenharPainelHelicopteroNavio()
+    {
+        Helicoptero heli = ObterHelicopteroSelecionadoNoNavio();
+        if (heli == null) return;
+        bool heliProntoNoConves = HelicopteroPodeTransferirNoConves(heli);
+        int qtdTransferencia = ObterQuantidadeOperacaoAtual();
+
+        GUILayout.Space(6);
+        GUILayout.BeginVertical("box");
+        string nomeHeli = CompactarTextoMenu(heli.ObterRotuloExibicao(), 28);
+        GUILayout.Label($"<b>ORDENS DO HELICÓPTERO: 🚁 {nomeHeli}</b>");
+        GUILayout.Label($"<color=cyan>{heli.ObterEstadoOperacionalAeroporto()}</color>");
+
+        if (_modoOrdemHelicoptero != ModoOrdemHelicopteroNavio.Nenhum)
+        {
+            if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Patrulha)
+            {
+                GUILayout.Label($"<color=yellow>PATRULHA ATIVA: clique direito adiciona pontos ({_rotaPatrulhaHelicoptero.Count}). ENTER encerra, BACKSPACE desfaz, ESC cancela.</color>");
+            }
+            else
+            {
+                string textoModo = "ATAQUE LOCAL";
+                if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Reconhecimento) textoModo = "RECONHECIMENTO";
+                else if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Transporte) textoModo = "TRANSPORTE";
+                GUILayout.Label($"<color=yellow>{textoModo} ATIVO: clique direito no mapa. ESC cancela.</color>");
+            }
+
+            if (GUILayout.Button("❌ Cancelar Ordem Helicóptero", GUILayout.Height(24f)))
+            {
+                EncerrarModoHelicopteroNavio();
+            }
+        }
+        else
+        {
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(28f)))
+            {
+                IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Reconhecimento);
+            }
+            if (GUILayout.Button("🛡️ Patrulha", GUILayout.Height(28f)))
+            {
+                IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Patrulha);
+            }
+            if (GUILayout.Button("💥 Ataque local", GUILayout.Height(28f)))
+            {
+                IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.AtaqueLocal);
+            }
+            GUILayout.EndHorizontal();
+
+            if (heli.EhHelicopteroTransporte())
+            {
+                GUILayout.Space(4f);
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("🛬 Transporte", GUILayout.Height(26f)))
+                {
+                    IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Transporte);
+                }
+                GUILayout.Label($"Tropas: {heli.soldadosEmbarcados.Count}/{heli.capacidadeMaxima}", GUILayout.Width(120f));
+                GUILayout.EndHorizontal();
+
+                if (heli.PodeOperarTropasNoMenu())
+                {
+                    GUILayout.BeginHorizontal();
+                    GUI.enabled = heli.TemEspaco() > 0;
+                    if (GUILayout.Button("📥 Recolher tropas", GUILayout.Height(24f)))
+                    {
+                        int recolhidas = heli.RecolherTropasPeloMenu();
+                        MostrarMensagem(recolhidas > 0
+                            ? $"📥 {heli.ObterRotuloExibicao()} recolheu {recolhidas} tropa(s)."
+                            : $"⚠️ {heli.ObterRotuloExibicao()} não encontrou tropas para recolher.");
+                    }
+                    GUI.enabled = heli.TemSoldados();
+                    if (GUILayout.Button("📤 Desembarcar", GUILayout.Height(24f)))
+                    {
+                        int desembarcadas = heli.DesembarcarTropasNoLocalAtual();
+                        MostrarMensagem(desembarcadas > 0
+                            ? $"📤 {heli.ObterRotuloExibicao()} desembarcou {desembarcadas} tropa(s)."
+                            : $"⚠️ {heli.ObterRotuloExibicao()} está sem tropas para desembarcar.");
+                    }
+                    GUI.enabled = true;
+                    GUILayout.EndHorizontal();
+
+                    GUILayout.Space(4f);
+                    GUILayout.Label($"Navio: {SoldadosAtual}/{capacidadeMaxSoldados} | Helicóptero: {heli.soldadosEmbarcados.Count}/{heli.capacidadeMaxima}");
+                    GUILayout.BeginHorizontal();
+                    GUI.enabled = heliProntoNoConves && SoldadosAtual > 0 && heli.TemEspaco() > 0;
+                    if (GUILayout.Button($"⬆️ Navio -> Heli ({_qtdOperacao})", GUILayout.Height(24f)))
+                    {
+                        int transferidos = TransferirSoldadosParaHelicoptero(heli, qtdTransferencia);
+                        MostrarMensagem(transferidos > 0
+                            ? $"⬆️ {transferidos} soldado(s) transferidos do navio para {heli.ObterRotuloExibicao()}."
+                            : $"⚠️ Não foi possível transferir soldados do navio para {heli.ObterRotuloExibicao()}.");
+                    }
+                    GUI.enabled = heliProntoNoConves && heli.TemSoldados() && SoldadosAtual < capacidadeMaxSoldados;
+                    if (GUILayout.Button($"⬇️ Heli -> Navio ({_qtdOperacao})", GUILayout.Height(24f)))
+                    {
+                        int transferidos = TransferirSoldadosDoHelicopteroParaNavio(heli, qtdTransferencia);
+                        MostrarMensagem(transferidos > 0
+                            ? $"⬇️ {transferidos} soldado(s) transferidos de {heli.ObterRotuloExibicao()} para o navio."
+                            : $"⚠️ Não foi possível transferir soldados de {heli.ObterRotuloExibicao()} para o navio.");
+                    }
+                    GUI.enabled = true;
+                    GUILayout.EndHorizontal();
+
+                    if (!heliProntoNoConves)
+                    {
+                        GUILayout.Label("<color=grey>Transferência direta disponível quando o helicóptero estiver parado no convés.</color>");
+                    }
                 }
             }
         }
+
+        GUILayout.EndVertical();
     }
 
     private string ObterDescricaoSelecaoAtual()
@@ -1098,6 +1602,10 @@ public class NavioTransporteTropas : MonoBehaviour
         }
 
         if (forcar || pista == null) pista = EncontrarPorNome("Pista");
+        if (pista != null && (forcar || pontoPousoDecolagemHeli == null))
+        {
+            pontoPousoDecolagemHeli = EncontrarPontoPousoDecolagemHeli();
+        }
         if (pista != null && (forcar || paradasHeli == null || paradasHeli.Length == 0))
         {
             List<Transform> listaParadas = new List<Transform>();
@@ -1147,6 +1655,36 @@ public class NavioTransporteTropas : MonoBehaviour
         return null;
     }
 
+    private Transform EncontrarPontoPousoDecolagemHeli()
+    {
+        if (pista == null)
+        {
+            return null;
+        }
+
+        Transform exato = EncontrarFilhoPorNome(pista, "Pouso/decolagem");
+        if (exato != null)
+        {
+            return exato;
+        }
+
+        foreach (Transform t in pista.GetComponentsInChildren<Transform>(true))
+        {
+            if (t == null || t == pista)
+            {
+                continue;
+            }
+
+            string nome = NomeNormalizado(t.name);
+            if (nome.Contains("pouso/decolagem") || (nome.Contains("pouso") && nome.Contains("decolagem")))
+            {
+                return t;
+            }
+        }
+
+        return null;
+    }
+
     private string NomeNormalizado(string valor)
     {
         return string.IsNullOrEmpty(valor)
@@ -1181,6 +1719,21 @@ public class NavioTransporteTropas : MonoBehaviour
         return string.IsNullOrEmpty(nome) ? string.Empty : nome.Replace("(Clone)", "").Trim();
     }
 
+    private static string CompactarTextoMenu(string texto, int maxChars)
+    {
+        if (string.IsNullOrEmpty(texto) || maxChars <= 0 || texto.Length <= maxChars)
+        {
+            return texto;
+        }
+
+        if (maxChars <= 3)
+        {
+            return texto.Substring(0, maxChars);
+        }
+
+        return texto.Substring(0, maxChars - 3) + "...";
+    }
+
     private bool temReferenciasTerrestres()
     {
         return corredor1 != null && chegada != null && pontosSaidaEntrada != null && pontosSaidaEntrada.Length > 0;
@@ -1188,7 +1741,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private bool temReferenciasHeli()
     {
-        return paradasHeli != null && paradasHeli.Length > 0;
+        return pontoPousoDecolagemHeli != null && paradasHeli != null && paradasHeli.Length > 0;
     }
 
     private void GarantirContainerCarga()
@@ -1291,6 +1844,25 @@ public class NavioTransporteTropas : MonoBehaviour
         }
 
         return false;
+    }
+
+    private bool HelicopteroPodeTransferirNoConves(Helicoptero heli)
+    {
+        if (heli == null)
+        {
+            return false;
+        }
+
+        return JaTenhoHeli(heli)
+            && HelicopteroPertenceAEsteNavio(heli)
+            && !heli.estaVoando
+            && !heli.EstaEmPreparacaoDecolagem()
+            && !HelicopteroEstaEmAproximacaoParaConves(heli);
+    }
+
+    private int ObterQuantidadeOperacaoAtual()
+    {
+        return _qtdOperacao >= 9999 ? int.MaxValue : Mathf.Max(1, _qtdOperacao);
     }
 
     private bool EhAgua(Collider col)
@@ -1488,11 +2060,12 @@ public class NavioTransporteTropas : MonoBehaviour
     private List<Helicoptero> ColetarHelisProximos()
     {
         int meuTime = _idNavio != null ? _idNavio.teamID : 1;
+        float raioBuscaEfetivo = ObterRaioBuscaHelisEfetivo();
 
         List<Helicoptero> helis = new List<Helicoptero>();
         HashSet<int> vistos = new HashSet<int>();
 
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioBuscaHelis, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        Collider[] hits = Physics.OverlapSphere(transform.position, raioBuscaEfetivo, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < hits.Length; i++)
         {
             if (hits[i] == null) continue;
@@ -1503,13 +2076,15 @@ public class NavioTransporteTropas : MonoBehaviour
             vistos.Add(id);
 
             if (JaTenhoHeli(h)) continue;
+            if (HelicopteroPertenceAEsteNavio(h)) continue;
+            if (!h.estaVoando && !h.EstaEmPreparacaoDecolagem()) continue;
 
             IdentidadeUnidade idU = h.GetComponent<IdentidadeUnidade>();
             if (idU == null) idU = h.GetComponentInParent<IdentidadeUnidade>();
             if (idU != null && meuTime > 0 && idU.teamID > 0 && idU.teamID != meuTime) continue;
 
             float dist = (h.transform.position - transform.position).sqrMagnitude;
-            if (dist > raioBuscaHelis * raioBuscaHelis) continue;
+            if (dist > raioBuscaEfetivo * raioBuscaEfetivo) continue;
 
             helis.Add(h);
         }
@@ -1517,20 +2092,54 @@ public class NavioTransporteTropas : MonoBehaviour
         if (helis.Count == 0)
         {
             // Fallback: busca global
-            var todos = Object.FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
+            var todos = UnityEngine.Object.FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
             for (int i = 0; i < todos.Length; i++)
             {
                 Helicoptero h = todos[i];
                 if (h == null) continue;
                 int id = h.GetInstanceID();
                 if (vistos.Contains(id)) continue;
+                if (JaTenhoHeli(h)) continue;
+                if (HelicopteroPertenceAEsteNavio(h)) continue;
+                if (!h.estaVoando && !h.EstaEmPreparacaoDecolagem()) continue;
+
+                IdentidadeUnidade idU = h.GetComponent<IdentidadeUnidade>();
+                if (idU == null) idU = h.GetComponentInParent<IdentidadeUnidade>();
+                if (idU != null && meuTime > 0 && idU.teamID > 0 && idU.teamID != meuTime) continue;
+
                 float dist = (h.transform.position - transform.position).sqrMagnitude;
-                if (dist > raioBuscaHelis * raioBuscaHelis) continue;
+                if (dist > raioBuscaEfetivo * raioBuscaEfetivo) continue;
                 helis.Add(h);
             }
         }
 
         return helis.OrderBy(h => (h.transform.position - transform.position).sqrMagnitude).ToList();
+    }
+
+    private float ObterRaioBuscaHelisEfetivo()
+    {
+        return Mathf.Max(raioBuscaHelis, 600f);
+    }
+
+    private void AtualizarCacheHelisProximos()
+    {
+        SanearHelicopterosCarregados();
+        _helisProximosCache.Clear();
+        List<Helicoptero> candidatos = ColetarHelisProximos();
+        HashSet<int> vistos = new HashSet<int>();
+        for (int i = 0; i < candidatos.Count; i++)
+        {
+            Helicoptero heli = candidatos[i];
+            if (heli == null || JaTenhoHeli(heli))
+            {
+                continue;
+            }
+
+            if (vistos.Add(heli.GetInstanceID()))
+            {
+                _helisProximosCache.Add(heli);
+            }
+        }
     }
 
     private bool JaTenhoHeli(Helicoptero h)
@@ -1544,8 +2153,64 @@ public class NavioTransporteTropas : MonoBehaviour
         return false;
     }
 
+    private bool HelicopteroEstaEmAproximacaoParaConves(Helicoptero heli)
+    {
+        if (heli == null)
+        {
+            return false;
+        }
+
+        return _rotinasEntradaHeli.ContainsKey(heli.GetInstanceID());
+    }
+
+    private bool HelicopteroEstaEmSaidaDoConves(Helicoptero heli)
+    {
+        if (heli == null)
+        {
+            return false;
+        }
+
+        return _rotinasSaidaHeli.ContainsKey(heli.GetInstanceID());
+    }
+
+    private Vector3 ObterDestinoAereoPontoPousoDecolagem()
+    {
+        if (pontoPousoDecolagemHeli == null)
+        {
+            return transform.position + Vector3.up * 12f;
+        }
+
+        Vector3 destinoAereo = pontoPousoDecolagemHeli.position;
+        destinoAereo.y = Mathf.Max(
+            destinoAereo.y + 2.5f,
+            pontoPousoDecolagemHeli.position.y + 2.5f
+        );
+        return destinoAereo;
+    }
+
+    private IEnumerator EsperarHelicopteroAlcancarPonto(Helicoptero heli, Vector3 ponto, float timeout, float distanciaAceita)
+    {
+        float tempo = 0f;
+        float distanciaLimite = Mathf.Max(1.5f, distanciaAceita);
+
+        while (tempo < timeout && heli != null)
+        {
+            tempo += Time.deltaTime;
+
+            Vector2 heliXZ = new Vector2(heli.transform.position.x, heli.transform.position.z);
+            Vector2 pontoXZ = new Vector2(ponto.x, ponto.z);
+            if (Vector2.Distance(heliXZ, pontoXZ) <= distanciaLimite)
+            {
+                yield break;
+            }
+
+            yield return null;
+        }
+    }
+
     private Transform ObterProximaParadaLivre()
     {
+        SanearHelicopterosCarregados();
         if (paradasHeli == null || paradasHeli.Length == 0) return null;
 
         for (int i = 0; i < paradasHeli.Length; i++)
@@ -1580,32 +2245,383 @@ public class NavioTransporteTropas : MonoBehaviour
         return escolhido ?? a ?? b;
     }
 
+    private bool HelicopteroPertenceAEsteNavio(Helicoptero h)
+    {
+        if (h == null)
+        {
+            return false;
+        }
+
+        Transform vagaAtual = h.ObterVagaAeroporto();
+        return vagaAtual != null && (vagaAtual == transform || vagaAtual.IsChildOf(transform));
+    }
+
+    private bool EstacionarHelicopteroNoNavio(Helicoptero h, Transform vaga, bool emSaida)
+    {
+        if (h == null || vaga == null)
+        {
+            return false;
+        }
+
+        SanearHelicopterosCarregados();
+
+        CargaHeli carga = null;
+        for (int i = 0; i < _helisCarregados.Count; i++)
+        {
+            if (_helisCarregados[i] != null && _helisCarregados[i].heli == h)
+            {
+                carga = _helisCarregados[i];
+                break;
+            }
+        }
+
+        if (carga == null)
+        {
+            carga = new CargaHeli { heli = h };
+            _helisCarregados.Add(carga);
+        }
+
+        carga.paradaAtual = vaga;
+        carga.emSaida = emSaida;
+
+        h.CancelarMissaoAeroporto();
+        h.VincularTemporariamenteAoNavio(vaga);
+
+        if (emSaida)
+        {
+            h.transform.SetParent(transform, true);
+            h.PosicionarInstantaneamenteNaVagaAeroporto(vaga);
+            h.transform.position = h.ObterPosicaoEstacionadaNaVaga(vaga);
+            h.transform.rotation = vaga.rotation;
+        }
+        else
+        {
+            IniciarAnimacaoEntradaHeliNoConves(h, vaga);
+        }
+
+        _categoriaSelecionada = CategoriaSelecao.Heli;
+        _indiceSelecionadoHeli = _helisCarregados.IndexOf(carga);
+        _indiceSelecionadoVeiculo = -1;
+        _indiceSelecionadoSoldado = -1;
+        _helicopteroSelecionadoParaMissao = h;
+        return true;
+    }
+
+    private void IniciarAnimacaoEntradaHeliNoConves(Helicoptero heli, Transform vaga)
+    {
+        if (heli == null || vaga == null) return;
+
+        int id = heli.GetInstanceID();
+        if (_rotinasEntradaHeli.TryGetValue(id, out Coroutine antiga) && antiga != null)
+        {
+            StopCoroutine(antiga);
+        }
+
+        Coroutine nova = StartCoroutine(RotinaAnimarEntradaHeliNoConves(heli, vaga, id));
+        _rotinasEntradaHeli[id] = nova;
+    }
+
+    private IEnumerator RotinaAnimarEntradaHeliNoConves(Helicoptero heli, Transform vaga, int heliId)
+    {
+        if (heli == null || vaga == null)
+        {
+            _rotinasEntradaHeli.Remove(heliId);
+            yield break;
+        }
+
+        // Entrada em duas etapas:
+        // 1) aproxima pelo ponto "Pouso/decolagem"
+        // 2) escolhe a vaga/Parada e pousa nela.
+        heli.transform.SetParent(null, true);
+        heli.CancelarMissaoAeroporto();
+        heli.VincularTemporariamenteAoNavio(vaga);
+        heli.Decolar(ObterDestinoAereoPontoPousoDecolagem());
+
+        if (pontoPousoDecolagemHeli != null)
+        {
+            yield return EsperarHelicopteroAlcancarPonto(heli, pontoPousoDecolagemHeli.position, 20f, 4f);
+        }
+
+        if (heli != null && vaga != null)
+        {
+            heli.PosicionarNaVagaAeroporto(vaga);
+        }
+
+        float timeout = 25f;
+        float tempo = 0f;
+        while (tempo < timeout && heli != null && vaga != null)
+        {
+            tempo += Time.deltaTime;
+            if (!heli.estaVoando && !heli.EstaEmPreparacaoDecolagem())
+            {
+                break;
+            }
+            yield return null;
+        }
+
+        if (heli != null && vaga != null)
+        {
+            heli.transform.SetParent(transform, true);
+            heli.PosicionarInstantaneamenteNaVagaAeroporto(vaga);
+            heli.transform.position = heli.ObterPosicaoEstacionadaNaVaga(vaga);
+            heli.transform.rotation = vaga.rotation;
+        }
+
+        _rotinasEntradaHeli.Remove(heliId);
+    }
+
+    private bool IniciarSaidaHelicopteroDoNavio(Helicoptero heli, Action<Helicoptero> aoLiberar, string descricaoOperacao)
+    {
+        if (heli == null)
+        {
+            return false;
+        }
+
+        SanearHelicopterosCarregados();
+
+        CargaHeli carga = null;
+        for (int i = 0; i < _helisCarregados.Count; i++)
+        {
+            if (_helisCarregados[i] != null && _helisCarregados[i].heli == heli)
+            {
+                carga = _helisCarregados[i];
+                break;
+            }
+        }
+
+        if (carga == null)
+        {
+            aoLiberar?.Invoke(heli);
+            return true;
+        }
+
+        int heliId = heli.GetInstanceID();
+        if (_rotinasSaidaHeli.TryGetValue(heliId, out Coroutine rotinaExistente) && rotinaExistente != null)
+        {
+            return false;
+        }
+
+        carga.emSaida = true;
+        Coroutine rotinaNova = StartCoroutine(RotinaLancarHelicopteroDoNavio(heli, heliId, aoLiberar, descricaoOperacao));
+        _rotinasSaidaHeli[heliId] = rotinaNova;
+        return true;
+    }
+
+    private IEnumerator RotinaLancarHelicopteroDoNavio(Helicoptero heli, int heliId, Action<Helicoptero> aoLiberar, string descricaoOperacao)
+    {
+        if (heli == null)
+        {
+            _rotinasSaidaHeli.Remove(heliId);
+            yield break;
+        }
+
+        heli.transform.SetParent(null, true);
+        heli.CancelarMissaoAeroporto();
+        heli.Decolar(ObterDestinoAereoPontoPousoDecolagem());
+
+        if (pontoPousoDecolagemHeli != null)
+        {
+            yield return EsperarHelicopteroAlcancarPonto(heli, pontoPousoDecolagemHeli.position, 18f, 5f);
+        }
+
+        if (heli != null)
+        {
+            heli.RestaurarControleDoAeroportoOrigem();
+            DesvincularHelicopteroDoNavio(heli);
+            aoLiberar?.Invoke(heli);
+
+            if (!string.IsNullOrEmpty(descricaoOperacao))
+            {
+                MostrarMensagem($"🛫 {heli.ObterRotuloExibicao()} liberado do navio, {descricaoOperacao}.");
+            }
+        }
+
+        _rotinasSaidaHeli.Remove(heliId);
+        AtualizarCacheHelisProximos();
+    }
+
+    private void DesvincularHelicopteroDoNavio(Helicoptero heli)
+    {
+        if (heli == null)
+        {
+            return;
+        }
+
+        int heliId = heli.GetInstanceID();
+        _rotinasEntradaHeli.Remove(heliId);
+        _rotinasSaidaHeli.Remove(heliId);
+
+        for (int i = _helisCarregados.Count - 1; i >= 0; i--)
+        {
+            CargaHeli carga = _helisCarregados[i];
+            if (carga == null || carga.heli == null)
+            {
+                _helisCarregados.RemoveAt(i);
+                continue;
+            }
+
+            if (carga.heli == heli)
+            {
+                _helisCarregados.RemoveAt(i);
+                break;
+            }
+        }
+
+        if (_helicopteroSelecionadoParaMissao == heli && _modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Nenhum)
+        {
+            _helicopteroSelecionadoParaMissao = null;
+        }
+
+        if (heli.transform.parent == transform)
+        {
+            heli.transform.SetParent(null, true);
+        }
+
+        if (_indiceSelecionadoHeli >= _helisCarregados.Count)
+        {
+            _indiceSelecionadoHeli = _helisCarregados.Count - 1;
+        }
+    }
+
+    private bool ChamarHelicopteroParaConves(Helicoptero h)
+    {
+        if (h == null || JaTenhoHeli(h))
+        {
+            return false;
+        }
+
+        Transform paradaLivre = ObterProximaParadaLivre();
+        if (paradaLivre == null)
+        {
+            return false;
+        }
+
+        bool estacionou = EstacionarHelicopteroNoNavio(h, paradaLivre, false);
+        if (estacionou)
+        {
+            _helisProximosCache.RemoveAll(heli => heli == null || heli == h);
+            AtualizarCacheHelisProximos();
+        }
+
+        return estacionou;
+    }
+
     private void ManterHelisNoNavio()
     {
+        SanearHelicopterosCarregados();
+
         // Se um heli decolar, solta e remove da lista (libera capacidade)
         for (int i = _helisCarregados.Count - 1; i >= 0; i--)
         {
             var c = _helisCarregados[i];
             if (c == null || c.heli == null)
             {
+                if (c != null && c.heli != null)
+                {
+                    _rotinasEntradaHeli.Remove(c.heli.GetInstanceID());
+                    _rotinasSaidaHeli.Remove(c.heli.GetInstanceID());
+                }
                 _helisCarregados.RemoveAt(i);
                 continue;
             }
 
             Helicoptero h = c.heli;
+            int heliId = h.GetInstanceID();
+            bool entradaEmAndamento = _rotinasEntradaHeli.ContainsKey(heliId);
+            bool saidaEmAndamento = _rotinasSaidaHeli.ContainsKey(heliId);
 
             if (h.estaVoando)
             {
+                if (entradaEmAndamento || saidaEmAndamento)
+                {
+                    continue;
+                }
+                _rotinasEntradaHeli.Remove(h.GetInstanceID());
+                _rotinasSaidaHeli.Remove(h.GetInstanceID());
                 if (h.transform.parent == transform) h.transform.SetParent(null, true);
+                if (_helicopteroSelecionadoParaMissao == h && _modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Nenhum)
+                {
+                    _helicopteroSelecionadoParaMissao = null;
+                }
                 _helisCarregados.RemoveAt(i);
                 continue;
             }
 
-            // Se estiver parado e perto do navio, gruda
-            if (!h.estaVoando && h.transform.parent != transform)
+            if (!HelicopteroPertenceAEsteNavio(h))
             {
+                if (saidaEmAndamento)
+                {
+                    continue;
+                }
+                _rotinasEntradaHeli.Remove(h.GetInstanceID());
+                _rotinasSaidaHeli.Remove(h.GetInstanceID());
+                if (h.transform.parent == transform) h.transform.SetParent(null, true);
+                if (_helicopteroSelecionadoParaMissao == h && _modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Nenhum)
+                {
+                    _helicopteroSelecionadoParaMissao = null;
+                }
+                _helisCarregados.RemoveAt(i);
+                continue;
+            }
+
+            if (h.transform.parent != transform)
+            {
+                if (entradaEmAndamento || saidaEmAndamento)
+                {
+                    continue;
+                }
                 h.transform.SetParent(transform, true);
             }
+
+            if (c.paradaAtual != null)
+            {
+                if (_rotinasEntradaHeli.ContainsKey(h.GetInstanceID()))
+                {
+                    continue;
+                }
+                if (_rotinasSaidaHeli.ContainsKey(h.GetInstanceID()))
+                {
+                    continue;
+                }
+                h.transform.position = h.ObterPosicaoEstacionadaNaVaga(c.paradaAtual);
+                h.transform.rotation = c.paradaAtual.rotation;
+            }
+        }
+    }
+
+    private void SanearHelicopterosCarregados()
+    {
+        HashSet<int> vistos = new HashSet<int>();
+        for (int i = _helisCarregados.Count - 1; i >= 0; i--)
+        {
+            CargaHeli carga = _helisCarregados[i];
+            if (carga == null || carga.heli == null)
+            {
+                if (carga != null && carga.heli != null)
+                {
+                    _rotinasEntradaHeli.Remove(carga.heli.GetInstanceID());
+                    _rotinasSaidaHeli.Remove(carga.heli.GetInstanceID());
+                }
+                _helisCarregados.RemoveAt(i);
+                continue;
+            }
+
+            if (!vistos.Add(carga.heli.GetInstanceID()))
+            {
+                _rotinasEntradaHeli.Remove(carga.heli.GetInstanceID());
+                _rotinasSaidaHeli.Remove(carga.heli.GetInstanceID());
+                if (_helicopteroSelecionadoParaMissao == carga.heli && _indiceSelecionadoHeli == i)
+                {
+                    _helicopteroSelecionadoParaMissao = null;
+                }
+
+                _helisCarregados.RemoveAt(i);
+            }
+        }
+
+        if (_indiceSelecionadoHeli >= _helisCarregados.Count)
+        {
+            _indiceSelecionadoHeli = _helisCarregados.Count - 1;
         }
     }
 
@@ -1665,8 +2681,8 @@ FLUXO INTERNO (organizado / em ordem):
 - SAIR: unidade aparece em 'chegada' -> anda até Corredor1 -> sai por um 'saida/entrada' em terra -> volta ao jogo.
 
 HELICÓPTEROS:
-- Puxar: helicópteros próximos são posicionados em uma 'Parada' da Pista e ficam no convés (parentados ao navio).
-- Liberar: helicóptero selecionado vai para Stop ou Stop (1) (alternando) e fica pronto para decolar (ao decolar é removido da lista).
+- Entrada: helicópteros próximos primeiro alinham no ponto 'Pouso/decolagem' e só depois escolhem uma 'Parada' da Pista para pousar.
+- Saída: helicóptero sobe da 'Parada', cruza novamente por 'Pouso/decolagem' e então é liberado do navio, devolvendo o controle ao aeroporto de origem.
 
 MENU (tecla O no navio selecionado):
 - Lista veículos/soldados/helis carregados.

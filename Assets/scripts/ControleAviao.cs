@@ -58,6 +58,7 @@ public class ControleAviao : MonoBehaviour
     private float tempoSegurandoTab = 0f;
     private float anguloOrbitaAtual = 0f;
     private int sentidoOrbita = 1;
+    private bool retornoAutomaticoAposChegadaCentro = false;
 
     // --- CACHE DE COMPONENTES (evita GetComponent no Update) ---
     private ControleUnidade _controleUnidade;
@@ -241,22 +242,59 @@ public class ControleAviao : MonoBehaviour
     public IEnumerator SeguirCaminhoDeWaypoints(List<Transform> caminho, float velInicial, float velFinal, bool aceleracaoGradativa = false)
     {
         int totalWaypoints = caminho.Count;
-        float divisor = (totalWaypoints > 1) ? (float)(totalWaypoints - 1) : 1f; // Pré-calcula divisor
-        
+
+        // Otimização: Não volta pro waypoint [0] se o avião já estiver na frente (ex: decolando do meio da pista)
+        int indiceInicial = 0;
+        float menorDist = float.MaxValue;
         for (int i = 0; i < totalWaypoints; i++)
         {
+            if (caminho[i] != null)
+            {
+                float d = Vector3.Distance(transform.position, caminho[i].position);
+                if (d < menorDist)
+                {
+                    menorDist = d;
+                    indiceInicial = i;
+                }
+            }
+        }
+        if (indiceInicial < totalWaypoints - 1 && menorDist < 10f) indiceInicial++;
+
+        // Aceleração gradativa começa apenas no final do percurso (Pista de decolagem)
+        int indiceCorridaPista = indiceInicial;
+        if (aceleracaoGradativa)
+        {
+            for (int i = totalWaypoints - 1; i >= indiceInicial; i--)
+            {
+                if (caminho[i] != null && caminho[i].name.ToLower().Contains("alinhamento"))
+                {
+                    indiceCorridaPista = i;
+                    break;
+                }
+            }
+        }
+
+        float divisorPista = (totalWaypoints - indiceCorridaPista) > 1 ? (totalWaypoints - indiceCorridaPista - 1) : 1f;
+        
+        for (int i = indiceInicial; i < totalWaypoints; i++)
+        {
             if (caminho[i] == null) continue;
-            float velAtual = aceleracaoGradativa ? Mathf.Lerp(velInicial, velFinal, i / divisor) : velInicial;
+            
+            float velAtual = velInicial;
+            if (aceleracaoGradativa && i >= indiceCorridaPista)
+            {
+                velAtual = Mathf.Lerp(velInicial, velFinal, (i - indiceCorridaPista) / divisorPista);
+            }
             
             // Segurança: O waypoint pode ser destruído durante o percurso
-            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velAtual, i == totalWaypoints - 1, caminho[i], aceleracaoGradativa));
+            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velAtual, i == totalWaypoints - 1, caminho[i], aceleracaoGradativa && i >= indiceCorridaPista));
             
             if (caminho[i] != null && caminho[i].name.ToLower().Contains("alinhamento")) 
             {
                 // Parada exigida de forma realista antes de decolar (ou no pouso)
                 yield return new WaitForSeconds(2f);
 
-                // Rotaciona para o EXATO próximo ponto antes de ser empurrado pela próxima chamada interpolada
+                // Rotaciona para o próximo ponto antes de acelerar livremente
                 if (i + 1 < totalWaypoints && caminho[i + 1] != null)
                 {
                     Vector3 dir = caminho[i + 1].position - transform.position;
@@ -266,7 +304,7 @@ public class ControleAviao : MonoBehaviour
                         Quaternion rotAlvo = Quaternion.LookRotation(dir.normalized);
                         while (Quaternion.Angle(transform.rotation, rotAlvo) > 1.5f)
                         {
-                            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, 60f * Time.deltaTime);
+                            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, 90f * Time.deltaTime);
                             yield return null;
                         }
                     }
@@ -302,6 +340,49 @@ public class ControleAviao : MonoBehaviour
         if (estadoAtual == EstadoAviao.EmMissao) ordemParaRetorno = true;
     }
 
+    public void DefinirBaseAlternativaEIniciarRetorno(GerenciadorAeroporto novaBase)
+    {
+        if (novaBase == null)
+        {
+            return;
+        }
+
+        aeroportoOrigem = novaBase;
+
+        if (estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Pousando || estadoAtual == EstadoAviao.Decolando)
+        {
+            ComandoRetornarBase();
+            return;
+        }
+
+        if (estadoAtual == EstadoAviao.ProntoNoPatio || estadoAtual == EstadoAviao.Taxiando || estadoAtual == EstadoAviao.ReservaHangar || estadoAtual == EstadoAviao.RetornandoPraVaga)
+        {
+            retornoAutomaticoAposChegadaCentro = true;
+            Vector3 pontoAproximacaoBase = ObterPontoAproximacaoDaBase(novaBase);
+            IniciarMissaoCompleta(pontoAproximacaoBase);
+        }
+    }
+
+    private static Vector3 ObterPontoAproximacaoDaBase(GerenciadorAeroporto baseDestino)
+    {
+        if (baseDestino == null)
+        {
+            return Vector3.zero;
+        }
+
+        if (baseDestino.waypointsDecida != null && baseDestino.waypointsDecida.Count > 0 && baseDestino.waypointsDecida[0] != null)
+        {
+            return baseDestino.waypointsDecida[0].position;
+        }
+
+        if (baseDestino.wpPronto != null)
+        {
+            return baseDestino.wpPronto.position;
+        }
+
+        return baseDestino.transform.position;
+    }
+
     private IEnumerator SequenciaDeVooEPouso()
     {
         if (aeroportoOrigem == null) 
@@ -330,6 +411,12 @@ public class ControleAviao : MonoBehaviour
             if (ordemParaRetorno) break;
             alvoGPSVoo = centroDaPatrulha; 
             yield return null;
+        }
+
+        if (retornoAutomaticoAposChegadaCentro)
+        {
+            retornoAutomaticoAposChegadaCentro = false;
+            ordemParaRetorno = true;
         }
 
         // Loop de patrulha
@@ -367,6 +454,7 @@ public class ControleAviao : MonoBehaviour
 
         // --- RETORNO À BASE ---
         ordemParaRetorno = false;
+        retornoAutomaticoAposChegadaCentro = false;
         estadoAtual = EstadoAviao.Pousando;
 
         if (aeroportoOrigem == null || aeroportoOrigem.waypointsDecida == null || aeroportoOrigem.waypointsDecida.Count == 0)

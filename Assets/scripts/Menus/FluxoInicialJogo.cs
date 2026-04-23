@@ -3,9 +3,6 @@ using UnityEngine.SceneManagement;
 
 public static class FluxoInicialJogo
 {
-    private const string CenaMenuPrincipal = "Menu cena";
-    private const string CenaMenuFallback = "MenuPrincipal";
-
     private static string cenaAutorizada;
     private static bool callbacksRegistrados;
 
@@ -19,7 +16,7 @@ public static class FluxoInicialJogo
         }
 
         string cenaAtual = SceneManager.GetActiveScene().name;
-        if (string.IsNullOrWhiteSpace(cenaAtual) || EhCenaDeMenu(cenaAtual))
+        if (string.IsNullOrWhiteSpace(cenaAtual) || ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtual))
         {
             return;
         }
@@ -29,11 +26,9 @@ public static class FluxoInicialJogo
             return;
         }
 
-        string cenaMenu = Application.CanStreamedLevelBeLoaded(CenaMenuPrincipal)
-            ? CenaMenuPrincipal
-            : CenaMenuFallback;
+        string cenaMenu = ConfiguracaoCenasJogo.ResolverCenaMenuPrincipal();
 
-        if (Application.CanStreamedLevelBeLoaded(cenaMenu))
+        if (ConfiguracaoCenasJogo.CenaExiste(cenaMenu))
         {
             SceneManager.LoadScene(cenaMenu);
         }
@@ -46,7 +41,7 @@ public static class FluxoInicialJogo
 
     private static void AoCarregarCena(Scene cena, LoadSceneMode modo)
     {
-        if (EhCenaDeMenu(cena.name))
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(cena.name))
         {
             if (Object.FindFirstObjectByType<MenuInicialController>() == null)
             {
@@ -76,10 +71,5 @@ public static class FluxoInicialJogo
 
         cenaAutorizada = null;
         return true;
-    }
-
-    private static bool EhCenaDeMenu(string nomeCena)
-    {
-        return nomeCena == CenaMenuPrincipal || nomeCena == CenaMenuFallback;
     }
 }

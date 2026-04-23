@@ -54,7 +54,7 @@ namespace Suimono.Core
 		void Start () {
 			//get objects
 			if (GameObject.Find("SUIMONO_Module") != null){
-				suimonoModule = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			suimonoModule = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 			}
 			trailRenderer = this.gameObject.GetComponent<Renderer>();
 		}

@@ -9,7 +9,8 @@ public class GerenciadorAeroporto : MonoBehaviour
         Nenhum,
         Reconhecimento,
         Patrulha,
-        AtaqueLocal
+        AtaqueLocal,
+        Transporte
     }
 
     [Header("Hierarquia do Aeroporto (Vincular do Inspector)")]
@@ -34,6 +35,10 @@ public class GerenciadorAeroporto : MonoBehaviour
     [Header("Drone Kamikaze")]
     public GameObject prefabDroneKamikaze;
     public int precoDroneKamikaze = 1500;
+
+    [Header("Su-11")]
+    public GameObject prefabSu11;
+    public int precoSu11 = 2500;
 
     [Header("Marcadores")]
     public GameObject prefabMarcadorPatrulhaAviao; // Marker 5 Circle Loop
@@ -222,6 +227,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     {
         if (cameraPrincipal == null) cameraPrincipal = Camera.main;
         RemoveNulls(helicopterosDoAeroporto);
+        LimparHelicopterosTransferidos();
 
         if (Construtor.EmModoConstrucaoAtivo)
         {
@@ -378,6 +384,14 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
+    public virtual bool PossuiOrdemManualAtiva()
+    {
+        bool aviaoAguardandoClique = aviaoSelecionadoParaMissao != null && aviaoSelecionadoParaMissao.aguardandoCliqueRadar;
+        bool c700AguardandoClique = c700SelecionadoParaMissao != null && c700SelecionadoParaMissao.AguardandoDestinoAereo;
+        bool helicopteroAguardandoClique = _modoOrdemHelicoptero != ModoOrdemHelicoptero.Nenhum && helicopteroSelecionadoParaMissao != null;
+        return aviaoAguardandoClique || c700AguardandoClique || helicopteroAguardandoClique || esperandoCliqueMassa || esperandoCliquePatrulhaGrupo;
+    }
+
     private void ProcessarOrdemHelicoptero()
     {
         if (cameraPrincipal == null || helicopteroSelecionadoParaMissao == null)
@@ -393,6 +407,12 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Patrulha)
         {
+            if (Input.GetMouseButtonDown(0))
+            {
+                CancelarModoHelicoptero();
+                return;
+            }
+
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             {
                 EncerrarModoHelicoptero();
@@ -438,6 +458,10 @@ public class GerenciadorAeroporto : MonoBehaviour
         else if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.AtaqueLocal)
         {
             helicopteroSelecionadoParaMissao.IniciarAtaqueLocalAeroporto(pontoAlvo);
+        }
+        else if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Transporte)
+        {
+            helicopteroSelecionadoParaMissao.IniciarTransporteAeroporto(pontoAlvo);
         }
 
         CriarSinalizador(pontoAlvo, helicopteroSelecionadoParaMissao);
@@ -488,7 +512,9 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
         else
         {
-            string textoModo = modo == ModoOrdemHelicoptero.Reconhecimento ? "Reconhecimento" : "Ataque local";
+            string textoModo = "Ataque local";
+            if (modo == ModoOrdemHelicoptero.Reconhecimento) textoModo = "Reconhecimento";
+            else if (modo == ModoOrdemHelicoptero.Transporte) textoModo = "Transporte tático";
             Debug.Log($"[Aeroporto] {textoModo} armado para o helicóptero. Clique com o botão direito no destino.");
         }
 
@@ -776,24 +802,27 @@ public class GerenciadorAeroporto : MonoBehaviour
             yield break;
         }
 
-        yield return null;
-
         Transform vagaHelicoptero = ObterVagaHelicopteroPreferencial(false);
-        if (vagaHelicoptero == null)
-        {
-            vagaHelicoptero = ObterPrimeiraVagaLivre();
-        }
-        if (vagaHelicoptero == null)
-        {
-            vagaHelicoptero = ObterVagaHelicopteroPreferencial(true);
-        }
         if (vagaHelicoptero == null)
         {
             vagaHelicoptero = (wpPronto != null) ? wpPronto : transform;
         }
 
         helicoptero.VincularAoAeroporto(this, vagaHelicoptero);
-        helicoptero.PosicionarNaVagaAeroporto(vagaHelicoptero);
+        helicoptero.PosicionarInstantaneamenteNaVagaAeroporto(vagaHelicoptero);
+
+        if (!helicopterosDoAeroporto.Contains(helicoptero))
+        {
+            helicopterosDoAeroporto.Add(helicoptero);
+        }
+    }
+
+    public virtual void RegistrarHelicopteroControlado(Helicoptero helicoptero)
+    {
+        if (helicoptero == null)
+        {
+            return;
+        }
 
         if (!helicopterosDoAeroporto.Contains(helicoptero))
         {
@@ -930,6 +959,22 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (av.vagaRetorno != null) _vagasOcupadas.Add(av.vagaRetorno);
         }
 
+        for (int i = helicopterosDoAeroporto.Count - 1; i >= 0; i--)
+        {
+            Helicoptero heli = helicopterosDoAeroporto[i];
+            if (heli == null)
+            {
+                helicopterosDoAeroporto.RemoveAt(i);
+                continue;
+            }
+
+            Transform vagaHeli = heli.ObterVagaAeroporto();
+            if (vagaHeli != null && heli.EstaEstacionadoNoAeroporto())
+            {
+                _vagasOcupadas.Add(vagaHeli);
+            }
+        }
+
         for (int i = 0, count = waypointsPatio.Count; i < count; i++)
         {
             Transform wp = waypointsPatio[i];
@@ -956,26 +1001,52 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     public Transform ObterVagaHelicopteroPreferencial(bool aceitarOcupada = false)
     {
-        Transform vagaEncontrada = ProcurarVagaHelicopteroEmRaiz(patio != null ? patio : transform);
+        Transform vagaEncontrada = ProcurarVagaHelicopteroEmRaiz(patio != null ? patio : transform, aceitarOcupada);
         if (vagaEncontrada == null && patio != transform)
         {
-            vagaEncontrada = ProcurarVagaHelicopteroEmRaiz(transform);
+            vagaEncontrada = ProcurarVagaHelicopteroEmRaiz(transform, aceitarOcupada);
         }
 
-        if (vagaEncontrada == null)
-        {
-            return null;
-        }
-
-        if (aceitarOcupada || !VagaHelicopteroOcupada(vagaEncontrada))
-        {
-            return vagaEncontrada;
-        }
-
-        return null;
+        return vagaEncontrada;
     }
 
-    private Transform ProcurarVagaHelicopteroEmRaiz(Transform raizBusca)
+    protected bool HelicopteroPertenceAEstaBase(Helicoptero heli)
+    {
+        if (heli == null)
+        {
+            return false;
+        }
+
+        Transform vaga = heli.ObterVagaAeroporto();
+        return vaga != null && (vaga == transform || vaga.IsChildOf(transform));
+    }
+
+    protected void LimparHelicopterosTransferidos()
+    {
+        for (int i = helicopterosDoAeroporto.Count - 1; i >= 0; i--)
+        {
+            Helicoptero heli = helicopterosDoAeroporto[i];
+            if (heli == null)
+            {
+                helicopterosDoAeroporto.RemoveAt(i);
+                continue;
+            }
+
+            if (HelicopteroPertenceAEstaBase(heli))
+            {
+                continue;
+            }
+
+            if (helicopteroSelecionadoParaMissao == heli)
+            {
+                helicopteroSelecionadoParaMissao = null;
+            }
+
+            helicopterosDoAeroporto.RemoveAt(i);
+        }
+    }
+
+    private Transform ProcurarVagaHelicopteroEmRaiz(Transform raizBusca, bool aceitarOcupada)
     {
         if (raizBusca == null)
         {
@@ -983,19 +1054,123 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
 
         Transform[] filhos = raizBusca.GetComponentsInChildren<Transform>(true);
+        List<Transform> vagasPatioMilitar = new List<Transform>();
+        List<Transform> vagasGerais = new List<Transform>();
+
         for (int i = 0; i < filhos.Length; i++)
         {
             Transform candidato = filhos[i];
             if (candidato == null) continue;
 
             string nome = candidato.name.ToLowerInvariant();
-            if (nome == "h" || nome == "vaga_h" || nome.StartsWith("vaga_h_"))
+            if (!NomeEhVagaHelicopteroMilitar(nome)) continue;
+
+            Transform pai = candidato.parent;
+            if (pai != null && pai.name.ToLowerInvariant().Contains("patio_militar"))
             {
-                return candidato;
+                vagasPatioMilitar.Add(candidato);
+            }
+            else
+            {
+                vagasGerais.Add(candidato);
+            }
+        }
+
+        vagasPatioMilitar.Sort(CompararVagasHelicopteroMilitar);
+        vagasGerais.Sort(CompararVagasHelicopteroMilitar);
+
+        Transform vagaLivrePatio = EncontrarPrimeiraVagaHelicoptero(vagasPatioMilitar, aceitarOcupada);
+        if (vagaLivrePatio != null)
+        {
+            return vagaLivrePatio;
+        }
+
+        return EncontrarPrimeiraVagaHelicoptero(vagasGerais, aceitarOcupada);
+    }
+
+    private static bool NomeEhVagaHelicopteroMilitar(string nome)
+    {
+        if (string.IsNullOrEmpty(nome))
+        {
+            return false;
+        }
+
+        return nome == "h" || nome == "i" || nome == "j" || nome == "k" || nome == "l" || nome == "q"
+            || nome == "vaga_h" || nome == "vaga_i" || nome == "vaga_j" || nome == "vaga_k" || nome == "vaga_l" || nome == "vaga_q"
+            || nome.StartsWith("vaga_h_") || nome.StartsWith("vaga_i_") || nome.StartsWith("vaga_j_")
+            || nome.StartsWith("vaga_k_") || nome.StartsWith("vaga_l_") || nome.StartsWith("vaga_q_");
+    }
+
+    private Transform EncontrarPrimeiraVagaHelicoptero(List<Transform> vagas, bool aceitarOcupada)
+    {
+        if (vagas == null || vagas.Count == 0)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < vagas.Count; i++)
+        {
+            Transform vaga = vagas[i];
+            if (vaga == null)
+            {
+                continue;
+            }
+
+            if (aceitarOcupada || !VagaHelicopteroOcupada(vaga))
+            {
+                return vaga;
             }
         }
 
         return null;
+    }
+
+    private static int CompararVagasHelicopteroMilitar(Transform a, Transform b)
+    {
+        int ordemA = OrdemVagaHelicopteroMilitar(a != null ? a.name : string.Empty);
+        int ordemB = OrdemVagaHelicopteroMilitar(b != null ? b.name : string.Empty);
+        if (ordemA != ordemB)
+        {
+            return ordemA.CompareTo(ordemB);
+        }
+
+        string nomeA = a != null ? a.name : string.Empty;
+        string nomeB = b != null ? b.name : string.Empty;
+        return string.Compare(nomeA, nomeB, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int OrdemVagaHelicopteroMilitar(string nomeOriginal)
+    {
+        string nome = string.IsNullOrEmpty(nomeOriginal) ? string.Empty : nomeOriginal.ToLowerInvariant();
+        switch (nome)
+        {
+            case "h":
+            case "vaga_h":
+                return 0;
+            case "i":
+            case "vaga_i":
+                return 1;
+            case "j":
+            case "vaga_j":
+                return 2;
+            case "k":
+            case "vaga_k":
+                return 3;
+            case "l":
+            case "vaga_l":
+                return 4;
+            case "q":
+            case "vaga_q":
+                return 5;
+            default:
+                if (nome.StartsWith("vaga_h_")) return 0;
+                if (nome.StartsWith("vaga_i_")) return 1;
+                if (nome.StartsWith("vaga_j_")) return 2;
+                if (nome.StartsWith("vaga_k_")) return 3;
+                if (nome.StartsWith("vaga_l_")) return 4;
+                if (nome.StartsWith("vaga_q_")) return 5;
+                return 99;
+        }
     }
 
     private bool VagaHelicopteroOcupada(Transform vaga)
@@ -1345,6 +1520,29 @@ public class GerenciadorAeroporto : MonoBehaviour
             GUI.enabled = true;
         }
 
+        // Botão de compra para o Su-11
+        if (prefabSu11 != null)
+        {
+            if (GUILayout.Button($"✈️ COMPRAR SU-11 (${precoSu11})", GUILayout.Height(40)))
+            {
+                if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoSu11)
+                {
+                    GerenciadorRecursos.Instancia.dinheiro -= precoSu11;
+                    ComprarAviao(prefabSu11);
+                }
+                else
+                {
+                    Debug.LogWarning("[Aeroporto] Dinheiro insuficiente para Su-11!");
+                }
+            }
+        }
+        else
+        {
+            GUI.enabled = false;
+            GUILayout.Button("✈️ SU-11 (Prefab não vinculado)", GUILayout.Height(40));
+            GUI.enabled = true;
+        }
+
         GUILayout.BeginHorizontal();
 
         // === COLUNA ESQUERDA: FROTA ATIVA ===
@@ -1373,7 +1571,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             Helicoptero heli = helicopterosDoAeroporto[i];
             if (heli == null) continue;
 
-            string nomeHeli = heli.name.Replace("(Clone)", "").Trim();
+            string nomeHeli = heli.ObterRotuloExibicao();
             string estadoHeli = heli.ObterEstadoOperacionalAeroporto();
             string corEstadoHeli = heli.EstaEstacionadoNoAeroporto() ? "green" : "orange";
 
@@ -1673,7 +1871,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         GUILayout.Space(12);
         GUILayout.BeginVertical("box");
-        string nomeHeliSelecionado = helicopteroSelecionadoParaMissao.name.Replace("(Clone)", "").Trim();
+        string nomeHeliSelecionado = helicopteroSelecionadoParaMissao.ObterRotuloExibicao();
         GUILayout.Label($"<b>PAINEL DE ORDENS: 🚁 {nomeHeliSelecionado}</b>");
         GUILayout.Label($"<color=cyan>{helicopteroSelecionadoParaMissao.ObterEstadoOperacionalAeroporto()}</color>");
 
@@ -1685,7 +1883,9 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
             else
             {
-                string modoTexto = _modoOrdemHelicoptero == ModoOrdemHelicoptero.Reconhecimento ? "RECONHECIMENTO" : "ATAQUE LOCAL";
+                string modoTexto = "ATAQUE LOCAL";
+                if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Reconhecimento) modoTexto = "RECONHECIMENTO";
+                else if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Transporte) modoTexto = "TRANSPORTE";
                 GUILayout.Label($"<color=yellow>{modoTexto} ATIVO: clique com botão direito no mapa. ESC cancela.</color>");
             }
 
@@ -1710,6 +1910,39 @@ public class GerenciadorAeroporto : MonoBehaviour
                 IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.AtaqueLocal);
             }
             GUILayout.EndHorizontal();
+
+            if (helicopteroSelecionadoParaMissao.EhHelicopteroTransporte())
+            {
+                GUILayout.Space(4);
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("🛬 Transporte", GUILayout.Height(34)))
+                {
+                    IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.Transporte);
+                }
+                GUILayout.Label($"Tropas: {helicopteroSelecionadoParaMissao.soldadosEmbarcados.Count}/{helicopteroSelecionadoParaMissao.capacidadeMaxima}", GUILayout.Width(150));
+                GUILayout.EndHorizontal();
+
+                bool podeOperarTropas = helicopteroSelecionadoParaMissao.PodeOperarTropasNoMenu();
+                bool pousadoForaDaBase = podeOperarTropas && !helicopteroSelecionadoParaMissao.EstaEstacionadoNoAeroporto();
+                if (podeOperarTropas && (pousadoForaDaBase || helicopteroSelecionadoParaMissao.TemSoldados()))
+                {
+                    GUILayout.BeginHorizontal();
+                    GUI.enabled = pousadoForaDaBase && helicopteroSelecionadoParaMissao.TemEspaco() > 0;
+                    if (GUILayout.Button("📥 Recolher tropas", GUILayout.Height(32)))
+                    {
+                        int recolhidos = helicopteroSelecionadoParaMissao.RecolherTropasPeloMenu();
+                        Debug.Log($"[Aeroporto] Helicóptero recolheu {recolhidos} tropa(s).");
+                    }
+                    GUI.enabled = podeOperarTropas && helicopteroSelecionadoParaMissao.TemSoldados();
+                    if (GUILayout.Button("📤 Desembarcar", GUILayout.Height(32)))
+                    {
+                        int desembarcados = helicopteroSelecionadoParaMissao.DesembarcarTropasNoLocalAtual();
+                        Debug.Log($"[Aeroporto] Helicóptero desembarcou {desembarcados} tropa(s).");
+                    }
+                    GUI.enabled = true;
+                    GUILayout.EndHorizontal();
+                }
+            }
 
             if (!helicopteroSelecionadoParaMissao.EstaEstacionadoNoAeroporto())
             {

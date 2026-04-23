@@ -81,6 +81,7 @@ public class ControleTorreta : MonoBehaviour
     // Flags de perfil calculadas UMA VEZ (evita string.Contains() todo frame)
     private bool souAntiAereo;
     private bool diagnosticoLocaisDoTiroEmitido;
+    private bool bloquearRotacaoAutomatica;
 
     void Start()
     {
@@ -103,6 +104,12 @@ public class ControleTorreta : MonoBehaviour
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
         fonteAudio.spatialBlend = 1f;
         
+        Helicoptero helicopteroPai = GetComponentInParent<Helicoptero>();
+        if (helicopteroPai != null && pecaQueGira == null && canosDaTorreta == null)
+        {
+            bloquearRotacaoAutomatica = true;
+        }
+
         if (pecaQueGira == null) pecaQueGira = transform;
         
         rotacaoXOriginal = pecaQueGira.localEulerAngles.x;
@@ -600,7 +607,7 @@ public class ControleTorreta : MonoBehaviour
 
             // --- ROTAÃ‡ÃƒO DA TORRETA ---
             float anguloY = rotacaoYOriginal;
-            if (pecaQueGira != null)
+            if (pecaQueGira != null && !bloquearRotacaoAutomatica)
             {
                 Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
                 Vector3 direcao = alvoPosicao - pecaQueGira.position;
@@ -690,7 +697,7 @@ public class ControleTorreta : MonoBehaviour
 
     void ModoOcioso()
     {
-        if (pecaQueGira == null) return;
+        if (pecaQueGira == null || bloquearRotacaoAutomatica) return;
 
         if (modoRadar && !limitarRotacao)
         {

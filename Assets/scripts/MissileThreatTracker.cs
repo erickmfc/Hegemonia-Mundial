@@ -141,13 +141,6 @@ public class MissileThreatTracker : MonoBehaviour
         CancelInvoke(nameof(ExpirarMissil));
         Invoke(nameof(ExpirarMissil), tempoVidaRastreamento);
 
-        if (teamOrigem != -1)
-        {
-            IdentidadeUnidade identidade = raizMissil.GetComponent<IdentidadeUnidade>();
-            if (identidade == null) identidade = raizMissil.gameObject.AddComponent<IdentidadeUnidade>();
-            identidade.teamID = teamOrigem;
-        }
-
         if (!registrado)
         {
             ameacasAtivas.Add(this);

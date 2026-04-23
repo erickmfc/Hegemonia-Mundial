@@ -29,7 +29,7 @@ public class utility_ConvertToSurface : MonoBehaviour {
 
 	void Start () {
 		#if UNITY_EDITOR
-			moduleObject = (Suimono.Core.SuimonoModule) FindObjectOfType(typeof(Suimono.Core.SuimonoModule));
+			moduleObject = FindFirstObjectByType<Suimono.Core.SuimonoModule>();
 		#endif
 	}
 	

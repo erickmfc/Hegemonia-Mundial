@@ -112,6 +112,23 @@ public class GerenteDeJogo : MonoBehaviour
             return;
         }
 
+        string motivoBloqueioTempo;
+        if (GovernadorGameplayRTS.BloquearAceleracaoTempo(out motivoBloqueioTempo))
+        {
+            if (Time.timeScale > 1f)
+            {
+                Time.timeScale = 1f;
+            }
+
+            if (Input.GetKey(KeyCode.Tab))
+            {
+                _tempoApertandoTab = 0f;
+                HUDAjudaRTS.MostrarMensagemTemporaria(motivoBloqueioTempo, 2.8f);
+            }
+
+            return;
+        }
+
         // FAST-FORWARD: Acelera o tempo do jogo x2 se o usuário segurar o TAB por 2 segundos.
         if (Input.GetKey(KeyCode.Tab))
         {
@@ -189,7 +206,7 @@ public class GerenteDeJogo : MonoBehaviour
 
         bool ehAviao = (unidadeParaConstruir.GetComponent<ControleAviao>() != null || 
                         nome.Contains("aviao") || nome.Contains("caca") || nome.Contains("g15") || 
-                        nome.Contains("jet") || nome.Contains("bomb") || nome.Contains("fighter") || nome.Contains("falcon"));
+                        nome.Contains("jet") || nome.Contains("bomb") || nome.Contains("fighter") || nome.Contains("falcon") || nome.Contains("su11"));
 
         if (ehCarrier) ehNavio = true;
 
@@ -305,7 +322,7 @@ public class GerenteDeJogo : MonoBehaviour
                 if (ehCarrier || ehTransporte || ehNaval || ehCarrierNome) continue;
 
                 bool temVagaAerea = pedido.ehHelicoptero
-                    ? (a.ObterVagaHelicopteroPreferencial(false) != null || a.ObterPrimeiraVagaLivre() != null || a.ObterVagaHelicopteroPreferencial(true) != null)
+                    ? (a.ObterVagaHelicopteroPreferencial(false) != null)
                     : (a.ObterPrimeiraVagaLivre() != null);
 
                 if (temVagaAerea)
@@ -313,7 +330,7 @@ public class GerenteDeJogo : MonoBehaviour
                     aeroEscolhido = a;
                     break;
                 }
-                if (aeroEscolhido == null) aeroEscolhido = a;
+                if (!pedido.ehHelicoptero && aeroEscolhido == null) aeroEscolhido = a;
             }
 
             if (aeroEscolhido != null)
@@ -321,6 +338,10 @@ public class GerenteDeJogo : MonoBehaviour
                 string tipoEntrega = pedido.ehHelicoptero ? "Helicóptero" : "Avião";
                 LogInfo($"[Logística] {tipoEntrega} '{pedido.nomeUnidade}' entregue em: {aeroEscolhido.name}");
                 aeroEscolhido.ComprarAviao(pedido.prefab);
+            }
+            else if (pedido.ehHelicoptero)
+            {
+                Debug.LogWarning($"[Logística] Helicóptero '{pedido.nomeUnidade}' sem vaga militar livre em aeroporto. Produção aguardando vaga.");
             }
             return; 
         }
@@ -558,7 +579,7 @@ public class GerenteDeJogo : MonoBehaviour
             string nomeAudio = novaUnidade.name.ToLowerInvariant();
             if (nomeAudio.Contains("heli") || nomeAudio.Contains("ray") || nomeAudio.Contains("falcon"))
                 somUnidade.tipoUnidade = TipoSomUnidade.Helicoptero;
-            else if (nomeAudio.Contains("a_20") || nomeAudio.Contains("g_18") || nomeAudio.Contains("g15") || nomeAudio.Contains("tuk") || nomeAudio.Contains("aviao"))
+            else if (nomeAudio.Contains("a_20") || nomeAudio.Contains("g_18") || nomeAudio.Contains("g15") || nomeAudio.Contains("tuk") || nomeAudio.Contains("aviao") || nomeAudio.Contains("su11"))
                 somUnidade.tipoUnidade = TipoSomUnidade.Aviao;
             else if (nomeAudio.Contains("tank") || nomeAudio.Contains("tanque"))
                 somUnidade.tipoUnidade = TipoSomUnidade.Tank;

@@ -282,7 +282,7 @@ MonoBehaviour:
   atrasoParaVirar: 1.5
   efeitoExplosao: {fileID: 0}
   somExplosao: {fileID: 0}
-  raioDeDano: 20
+  raioDeDano: 35
   escalaExplosao: 8
   distanciaSom: 500
 --- !u!114 &7642978235071116871

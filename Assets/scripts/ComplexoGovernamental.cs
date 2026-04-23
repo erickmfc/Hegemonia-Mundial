@@ -22,6 +22,7 @@ public class ComplexoGovernamental : MonoBehaviour
 
     private IdentidadeUnidade identidade;
     private SistemaDeDanos sistemaDano;
+    private ObjetivoFinalJogo objetivoFinal;
     private bool jaDerrotado = false;
 
     void Start()
@@ -35,11 +36,38 @@ public class ComplexoGovernamental : MonoBehaviour
             ehDoJogador = (identidade.teamID == 1);
         }
 
+        objetivoFinal = GetComponent<ObjetivoFinalJogo>();
+        if (objetivoFinal == null)
+        {
+            objetivoFinal = gameObject.AddComponent<ObjetivoFinalJogo>();
+        }
+
+        objetivoFinal.Configurar(
+            TipoObjetivoFinal.Prefeitura,
+            ehDoJogador,
+            nomeDoPais,
+            "Prefeitura",
+            false);
+
+        if (sistemaDano != null)
+        {
+            sistemaDano.OnMorte -= DecretarQuedaDoGoverno;
+            sistemaDano.OnMorte += DecretarQuedaDoGoverno;
+        }
+
         // --- SISTEMA DE CORREDOR NULO (ALFÂNDEGA) ---
         // Apenas a base central do jogador precisará exibir o PopUp de Imigração
         if (ehDoJogador && SistemaConsulado.Instancia == null)
         {
             gameObject.AddComponent<SistemaConsulado>();
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (sistemaDano != null)
+        {
+            sistemaDano.OnMorte -= DecretarQuedaDoGoverno;
         }
     }
 
@@ -96,6 +124,19 @@ public class ComplexoGovernamental : MonoBehaviour
 
         Debug.LogWarning($"[ALERTA MAXIMO] O Complexo Governamental da {nomeDoPais} caiu! O governo ruiu!");
         aoSerDestruido?.Invoke();
+
+        if (objetivoFinal != null)
+        {
+            objetivoFinal.RegistrarDestruicao();
+        }
+        else
+        {
+            SistemaFimDeJogo.RegistrarResultado(
+                TipoObjetivoFinal.Prefeitura,
+                ehDoJogador,
+                nomeDoPais,
+                "Prefeitura");
+        }
 
         if (ehDoJogador)
         {
