@@ -2385,12 +2385,21 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            unit.SendMessage("MoverParaPonto", destination, SendMessageOptions.DontRequireReceiver);
+            ControleUnidade controleUnidade = unit.GetComponent<ControleUnidade>();
+            if (controleUnidade != null)
+            {
+                controleUnidade.EmitirOrdemMover(destination);
+            }
+            else
+            {
+                unit.SendMessage("MoverParaPonto", destination, SendMessageOptions.DontRequireReceiver);
+            }
+
             NavMeshAgent nav = unit.GetComponent<NavMeshAgent>();
-            if (nav != null && nav.enabled && nav.isOnNavMesh)
+            if (controleUnidade == null && nav != null && nav.enabled && nav.isOnNavMesh)
             {
                 nav.isStopped = false;
-                nav.SetDestination(destination);
+                nav.SetDestination(destination); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             }
 
             _lastDestinationByUnit[id] = destination;

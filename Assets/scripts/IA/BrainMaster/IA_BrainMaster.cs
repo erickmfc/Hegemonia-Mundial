@@ -81,6 +81,7 @@ namespace Hegemonia.AI.BrainMaster
         private IA_NavalDirector _navalDirector;
         private IA_AirDirector _airDirector;
         private IA_DefenseDirector _defenseDirector;
+        private readonly List<IdentidadeUnidade> _backendUnitBuffer = new List<IdentidadeUnidade>(128);
 
         private float _incomeTimer;
         private float _nextRuntimeSummaryTime;
@@ -216,6 +217,176 @@ namespace Hegemonia.AI.BrainMaster
             Credits += Mathf.Max(0, amount);
         }
 
+        // Ponte de compatibilidade usada pelo IA_CommandExecutor (NovaIA).
+        public bool TryQueueBuild(int teamId, string itemKey, Vector3 worldPoint, int priority)
+        {
+            if (teamId != TeamId || !EnsureRuntimeOperational(false) || _commandQueue == null)
+            {
+                return false;
+            }
+
+            IA_CommandRequest request = new IA_CommandRequest
+            {
+                Type = IA_CommandType.Build,
+                Priority = Mathf.Clamp(priority, 1, 1000),
+                DedupKey = "compat:build:" + IA_Text.Normalize(itemKey),
+                CooldownSeconds = 0.45f,
+                Payload = new IA_BuildOrderData
+                {
+                    ItemKey = itemKey,
+                    Position = ResolveBackendPoint(worldPoint),
+                    Rotation = Quaternion.identity,
+                    Zone = ResolveBuildZone(itemKey),
+                    ForceManualPlacement = false,
+                    ManualPointLabel = string.Empty
+                }
+            };
+
+            string reason;
+            return _commandQueue.Enqueue(request, Time.time, out reason);
+        }
+
+        public bool QueueBuild(string itemKey, Vector3 worldPoint, int priority)
+        {
+            return TryQueueBuild(TeamId, itemKey, worldPoint, priority);
+        }
+
+        public bool IA_QueueBuild(string itemKey, Vector3 worldPoint, int priority)
+        {
+            return TryQueueBuild(TeamId, itemKey, worldPoint, priority);
+        }
+
+        public bool TryQueueProduction(int teamId, string itemKey, int priority)
+        {
+            if (teamId != TeamId || !EnsureRuntimeOperational(false) || _commandQueue == null)
+            {
+                return false;
+            }
+
+            IA_CommandRequest request = new IA_CommandRequest
+            {
+                Type = IA_CommandType.Produce,
+                Priority = Mathf.Clamp(priority, 1, 1000),
+                DedupKey = "compat:produce:" + IA_Text.Normalize(itemKey),
+                CooldownSeconds = 0.35f,
+                Payload = new IA_ProduceOrderData
+                {
+                    ItemKey = itemKey,
+                    Quantity = 1
+                }
+            };
+
+            string reason;
+            return _commandQueue.Enqueue(request, Time.time, out reason);
+        }
+
+        public bool QueueProduction(string itemKey, int priority)
+        {
+            return TryQueueProduction(TeamId, itemKey, priority);
+        }
+
+        public bool IA_QueueProduction(string itemKey, int priority)
+        {
+            return TryQueueProduction(TeamId, itemKey, priority);
+        }
+
+        public bool TryIssueMovePackage(int teamId, string packageTag, Vector3 worldPoint, int priority)
+        {
+            if (teamId != TeamId || !EnsureRuntimeOperational(false) || _commandQueue == null)
+            {
+                return false;
+            }
+
+            IA_MoveOrderData move = new IA_MoveOrderData
+            {
+                Destination = ResolveBackendPoint(worldPoint)
+            };
+            FillTeamUnitsForBackend(move.Units);
+            if (move.Units.Count == 0)
+            {
+                return false;
+            }
+
+            IA_CommandRequest request = new IA_CommandRequest
+            {
+                Type = IA_CommandType.Move,
+                Priority = Mathf.Clamp(priority, 1, 1000),
+                DedupKey = "compat:move:" + IA_Text.Normalize(packageTag),
+                CooldownSeconds = 0.2f,
+                Payload = move
+            };
+
+            string reason;
+            return _commandQueue.Enqueue(request, Time.time, out reason);
+        }
+
+        public bool IssueMovePackage(string packageTag, Vector3 worldPoint, int priority)
+        {
+            return TryIssueMovePackage(TeamId, packageTag, worldPoint, priority);
+        }
+
+        public bool IA_IssueMovePackage(string packageTag, Vector3 worldPoint, int priority)
+        {
+            return TryIssueMovePackage(TeamId, packageTag, worldPoint, priority);
+        }
+
+        public bool TryIssueAttack(int teamId, string attackTag, Vector3 worldPoint, int priority)
+        {
+            if (teamId != TeamId || !EnsureRuntimeOperational(false) || _commandQueue == null)
+            {
+                return false;
+            }
+
+            IA_AttackOrderData attack = new IA_AttackOrderData
+            {
+                TargetPosition = ResolveBackendPoint(worldPoint),
+                Target = null
+            };
+            FillTeamUnitsForBackend(attack.Units);
+            if (attack.Units.Count == 0)
+            {
+                return false;
+            }
+
+            IA_CommandRequest request = new IA_CommandRequest
+            {
+                Type = IA_CommandType.Attack,
+                Priority = Mathf.Clamp(priority, 1, 1000),
+                DedupKey = "compat:attack:" + IA_Text.Normalize(attackTag),
+                CooldownSeconds = 0.2f,
+                Payload = attack
+            };
+
+            string reason;
+            return _commandQueue.Enqueue(request, Time.time, out reason);
+        }
+
+        public bool IssueAttack(string attackTag, Vector3 worldPoint, int priority)
+        {
+            return TryIssueAttack(TeamId, attackTag, worldPoint, priority);
+        }
+
+        public bool IA_IssueAttack(string attackTag, Vector3 worldPoint, int priority)
+        {
+            return TryIssueAttack(TeamId, attackTag, worldPoint, priority);
+        }
+
+        public bool TryIssueUnload(int teamId, string tag, Vector3 worldPoint, int priority)
+        {
+            // No pipeline atual, unload usa a mesma trilha de deslocamento tático.
+            return TryIssueMovePackage(teamId, tag, worldPoint, priority);
+        }
+
+        public bool IssueUnload(string tag, Vector3 worldPoint, int priority)
+        {
+            return TryIssueUnload(TeamId, tag, worldPoint, priority);
+        }
+
+        public bool IA_IssueUnload(string tag, Vector3 worldPoint, int priority)
+        {
+            return TryIssueUnload(TeamId, tag, worldPoint, priority);
+        }
+
         private void TickEconomy(float deltaTime)
         {
             _incomeTimer += deltaTime;
@@ -223,6 +394,77 @@ namespace Hegemonia.AI.BrainMaster
             {
                 Credits += Mathf.Max(0, IncomePerSecond);
                 _incomeTimer -= 1f;
+            }
+        }
+
+        private IA_ZoneType ResolveBuildZone(string itemKey)
+        {
+            string key = IA_Text.Normalize(itemKey);
+            if (key.Contains("estaleiro") || key.Contains("pier") || key.Contains("plataforma"))
+            {
+                return IA_ZoneType.Naval;
+            }
+            if (key.Contains("aeroporto") || key.Contains("heliporto"))
+            {
+                return IA_ZoneType.Air;
+            }
+            if (key.Contains("torreta") || key.Contains("radar") || key.Contains("ciws") || key.Contains("muro") || key.Contains("missil"))
+            {
+                return IA_ZoneType.Defense;
+            }
+            if (key.Contains("prefeitura") || key.Contains("quartel general") || key.Contains("quartel_general") || key == "hq")
+            {
+                return IA_ZoneType.Core;
+            }
+            if (key.Contains("armazem"))
+            {
+                return IA_ZoneType.Economy;
+            }
+            if (key.Contains("fabrica") || key.Contains("quartel") || key.Contains("tenda"))
+            {
+                return IA_ZoneType.Military;
+            }
+
+            return IA_ZoneType.Core;
+        }
+
+        private Vector3 ResolveBackendPoint(Vector3 candidate)
+        {
+            if (candidate.sqrMagnitude > 1f)
+            {
+                return candidate;
+            }
+
+            if (_worldState != null)
+            {
+                Vector3 center = _worldState.BaseCenter;
+                if (center.sqrMagnitude > 1f)
+                {
+                    return center;
+                }
+            }
+
+            return transform.position;
+        }
+
+        private void FillTeamUnitsForBackend(List<GameObject> destination)
+        {
+            if (destination == null)
+            {
+                return;
+            }
+
+            destination.Clear();
+            RegistroEntidadesJogo.FillUnidades(_backendUnitBuffer);
+            for (int i = 0; i < _backendUnitBuffer.Count; i++)
+            {
+                IdentidadeUnidade unit = _backendUnitBuffer[i];
+                if (unit == null || unit.teamID != TeamId || unit.tipoUnidade == TipoUnidade.Estrutura)
+                {
+                    continue;
+                }
+
+                destination.Add(unit.gameObject);
             }
         }
 

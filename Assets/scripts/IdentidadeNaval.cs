@@ -52,12 +52,27 @@ public class IdentidadeNaval : MonoBehaviour
     /// </summary>
     public void ReceberOrdemDeAtracagem(Transform destino)
     {
-        if (agente != null && destino != null)
+        if (destino == null)
+        {
+            return;
+        }
+
+        ControleUnidade controle = GetComponent<ControleUnidade>();
+        if (controle != null)
+        {
+            estaAtracado = true;
+            manobrandoDeRe = false;
+            controle.EmitirOrdemMover(destino.position);
+            Debug.Log($"{nomeDoNavio} ({categoriaNavio}) indo atracar em {destino.name}");
+            return;
+        }
+
+        if (agente != null)
         {
             estaAtracado = true;
             manobrandoDeRe = false; // Garante que não está fazendo ré
             agente.enabled = true;  // Reativa o navmesh se estiver desligado
-            agente.SetDestination(destino.position);
+            agente.SetDestination(destino.position); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             Debug.Log($"{nomeDoNavio} ({categoriaNavio}) indo atracar em {destino.name}");
         }
     }
@@ -148,6 +163,13 @@ public class IdentidadeNaval : MonoBehaviour
     public void MoverPara(Vector3 destino)
     {
         NotificarMovimento();
+
+        ControleUnidade controle = GetComponent<ControleUnidade>();
+        if (controle != null)
+        {
+            controle.EmitirOrdemMover(destino);
+            return;
+        }
         
         if (agente == null) agente = GetComponent<NavMeshAgent>();
         
@@ -166,7 +188,7 @@ public class IdentidadeNaval : MonoBehaviour
 
             agente.enabled = true;
             agente.isStopped = false;
-            agente.SetDestination(destino);
+            agente.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
         }
         else
         {

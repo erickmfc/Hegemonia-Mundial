@@ -375,8 +375,8 @@ public class SistemaDeDanos : MonoBehaviour
 
         if (GetComponent<HovercraftTransporte>() != null
             || GetComponent<ControleNavioRealista>() != null
-            || GetComponent<NavegacaoInteligenteNaval>() != null
             || GetComponent<ControleSubmarino>() != null
+            || GetComponent<NavioPetroleiro>() != null
             || GetComponent<IdentidadeNaval>() != null)
         {
             return true;

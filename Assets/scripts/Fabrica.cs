@@ -201,7 +201,7 @@ public class Fabrica : MonoBehaviour
                         RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
                     }
                 }
-                controle.MoverParaPonto(destino);
+                controle.EmitirOrdemMover(destino);
             }
             else
             {
@@ -228,7 +228,7 @@ public class Fabrica : MonoBehaviour
 
                     if (nav.isOnNavMesh)
                     {
-                        nav.SetDestination(destino);
+                        nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
                         nav.isStopped = false;
                     }
                 }

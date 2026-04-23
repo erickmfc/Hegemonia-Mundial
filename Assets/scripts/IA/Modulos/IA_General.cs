@@ -436,9 +436,9 @@ public class IA_General : MonoBehaviour
     {
         if (unidade == null) return;
         var controle = unidade.GetComponent<ControleUnidade>();
-        if (controle != null) { controle.MoverParaPonto(destino); return; }
+        if (controle != null) { controle.EmitirOrdemMover(destino); return; }
         var nav = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
-        if (nav != null && nav.isOnNavMesh) { nav.SetDestination(destino); nav.isStopped = false; }
+        if (nav != null && nav.isOnNavMesh) { nav.SetDestination(destino); nav.isStopped = false; } // CONTROL_PATH_TRANSITIONAL_FALLBACK
     }
     
     void MoverGrupoPara(List<GameObject> grupo, Vector3 destino)

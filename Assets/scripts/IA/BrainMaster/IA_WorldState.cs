@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -9,6 +8,7 @@ namespace Hegemonia.AI.BrainMaster
     {
         private const int MaxMobileVisibilityProviders = 24;
         private const int MaxStructureVisibilityProviders = 8;
+        private const float GlobalRegistryCleanupInterval = 12f;
 
         private struct EntityRuntimeCacheEntry
         {
@@ -29,11 +29,24 @@ namespace Hegemonia.AI.BrainMaster
             public bool IsHighValueMobile;
             public float VisionRadius;
         }
+
+        private struct RegistrySnapshotEntry
+        {
+            public IdentidadeUnidade Identity;
+            public GameObject GameObject;
+            public Transform Transform;
+            public int TeamId;
+            public int InstanceId;
+            public EntityRuntimeCacheEntry Cache;
+        }
+
         private readonly int _teamId;
-        private readonly List<IdentidadeUnidade> _globalIdentityCache = new List<IdentidadeUnidade>();
-        private readonly Dictionary<int, IA_EnemyObservation> _enemyMemoryById = new Dictionary<int, IA_EnemyObservation>();
+        private readonly List<IdentidadeUnidade> _globalIdentityCache = new List<IdentidadeUnidade>(256);
+        private readonly List<RegistrySnapshotEntry> _registrySnapshot = new List<RegistrySnapshotEntry>(256);
+        private readonly Dictionary<int, IA_EnemyObservation> _enemyMemoryById = new Dictionary<int, IA_EnemyObservation>(256);
         private readonly IA_ForceSnapshot _forceSnapshot = new IA_ForceSnapshot();
         private readonly List<int> _staleEnemyIds = new List<int>(64);
+
         private Transform _baseProbe;
         private Vector3 _fallbackCenter;
         private bool _forceRefresh;
@@ -41,31 +54,29 @@ namespace Hegemonia.AI.BrainMaster
         private float _nextVisibleRefreshTime;
         private float _nextCleanupTime;
         private float _lastCombatSeenTime = -999f;
+        private float _nextRegistryCleanupTime;
 
-        // Registro estático para evitar FindObjectsByType (causa de travamentos)
+        private int _lastSeenRegistryVersion = -1;
+        private bool _snapshotDirty = true;
+
         private static readonly HashSet<IdentidadeUnidade> _globalRegistry = new HashSet<IdentidadeUnidade>();
-        private static readonly object _registryLock = new object();
-        private static readonly Dictionary<int, EntityRuntimeCacheEntry> _entityRuntimeCache = new Dictionary<int, EntityRuntimeCacheEntry>();
+        private static readonly List<IdentidadeUnidade> _registryScratch = new List<IdentidadeUnidade>(512);
+        private static readonly Dictionary<int, EntityRuntimeCacheEntry> _entityRuntimeCache = new Dictionary<int, EntityRuntimeCacheEntry>(1024);
+        private static readonly Dictionary<int, bool> _isStructureCache = new Dictionary<int, bool>(1024);
 
-        public static void Register(IdentidadeUnidade id)
-        {
-            if (id != null) _globalRegistry.Add(id);
-        }
+        private static int _registryVersion = 1;
+        private static float _nextFindFallbackAllowedTime = -999f;
 
-        public static void Unregister(IdentidadeUnidade id)
-        {
-            if (id != null) _globalRegistry.Remove(id);
-        }
-
-        public readonly List<GameObject> OwnUnits = new List<GameObject>();
-        public readonly List<GameObject> OwnStructures = new List<GameObject>();
-        public readonly List<GameObject> OwnCombatUnits = new List<GameObject>();
-        public readonly List<IA_VisibilityProvider> VisibilityProviders = new List<IA_VisibilityProvider>();
-        public readonly List<IA_EnemyObservation> VisibleEnemies = new List<IA_EnemyObservation>();
+        public readonly List<GameObject> OwnUnits = new List<GameObject>(128);
+        public readonly List<GameObject> OwnStructures = new List<GameObject>(128);
+        public readonly List<GameObject> OwnCombatUnits = new List<GameObject>(128);
+        public readonly List<IA_VisibilityProvider> VisibilityProviders = new List<IA_VisibilityProvider>(48);
+        public readonly List<IA_EnemyObservation> VisibleEnemies = new List<IA_EnemyObservation>(128);
 
         public Vector3 BaseCenter { get; private set; }
         public float LastScanTime { get; private set; }
         public IA_CombatPressure CombatPressure { get; private set; }
+
         public IA_ForceSnapshot ForceSnapshot
         {
             get { return _forceSnapshot; }
@@ -93,16 +104,66 @@ namespace Hegemonia.AI.BrainMaster
             get { return 0.60f; }
         }
 
+        public static void Register(IdentidadeUnidade id)
+        {
+            if (id == null)
+            {
+                return;
+            }
+
+            if (_globalRegistry.Add(id))
+            {
+                _registryVersion++;
+            }
+        }
+
+        public static void Unregister(IdentidadeUnidade id)
+        {
+            if (id == null)
+            {
+                return;
+            }
+
+            if (_globalRegistry.Remove(id))
+            {
+                int instanceId = id.GetInstanceID();
+                _entityRuntimeCache.Remove(instanceId);
+                _isStructureCache.Remove(instanceId);
+                _registryVersion++;
+            }
+        }
+
+        public static void NotifyEntityChanged(IdentidadeUnidade id)
+        {
+            if (id == null)
+            {
+                return;
+            }
+
+            int instanceId = id.GetInstanceID();
+            _entityRuntimeCache.Remove(instanceId);
+            _isStructureCache.Remove(instanceId);
+            _registryVersion++;
+        }
+
+        public static void InvalidateStructureCache(int instanceId)
+        {
+            _isStructureCache.Remove(instanceId);
+            _entityRuntimeCache.Remove(instanceId);
+            _registryVersion++;
+        }
+
         public void Tick(float now, float deltaTime)
         {
-            if (_forceRefresh || now >= _nextGlobalScanTime)
+            if (_forceRefresh || now >= _nextGlobalScanTime || _snapshotDirty || _lastSeenRegistryVersion != _registryVersion)
             {
                 long refreshStart = System.Diagnostics.Stopwatch.GetTimestamp();
                 RefreshOwnedAndGlobalCache(now);
                 RegistrarMetricaTempo(
                     "world_refresh_ms",
                     (float)((System.Diagnostics.Stopwatch.GetTimestamp() - refreshStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency));
-                _nextGlobalScanTime = now + 8f; // Aumentado: registro estático mantém dados frescos
+
+                _nextGlobalScanTime = now + 8f;
                 _nextVisibleRefreshTime = 0f;
                 _forceRefresh = false;
             }
@@ -115,15 +176,410 @@ namespace Hegemonia.AI.BrainMaster
                 RegistrarMetricaTempo(
                     "visible_enemy_ms",
                     (float)((System.Diagnostics.Stopwatch.GetTimestamp() - visibleStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency));
+
                 _nextVisibleRefreshTime = now + ResolveVisibleRefreshInterval();
             }
 
-            // Cleanup movido para intervalo maior — não precisa ocorrer todo Tick
             if (now >= _nextCleanupTime)
             {
                 CleanupMemory(now, 120f);
                 _nextCleanupTime = now + 30f;
             }
+
+            if (now >= _nextRegistryCleanupTime)
+            {
+                CleanupDeadRegistryEntries();
+                _nextRegistryCleanupTime = now + GlobalRegistryCleanupInterval;
+            }
+        }
+
+        public void MarkDirty()
+        {
+            _forceRefresh = true;
+            _snapshotDirty = true;
+        }
+
+        public void SetFallbackCenter(Vector3 center)
+        {
+            _fallbackCenter = center;
+        }
+
+        public List<IA_EnemyObservation> GetEnemyMemory(float maxAgeSeconds)
+        {
+            var output = new List<IA_EnemyObservation>(_enemyMemoryById.Count);
+            FillEnemyMemory(output, maxAgeSeconds);
+            return output;
+        }
+
+        public void FillEnemyMemory(List<IA_EnemyObservation> destination, float maxAgeSeconds)
+        {
+            if (destination == null)
+            {
+                return;
+            }
+
+            destination.Clear();
+            float now = Time.time;
+
+            foreach (var pair in _enemyMemoryById)
+            {
+                IA_EnemyObservation obs = pair.Value;
+                if (obs != null && now - obs.LastSeenTime <= maxAgeSeconds)
+                {
+                    destination.Add(obs);
+                }
+            }
+        }
+
+        public Transform GetNearestVisibleEnemy(Vector3 fromPosition, IA_Domain preferredDomain)
+        {
+            float bestDistance = float.MaxValue;
+            Transform best = null;
+            Vector3 flatFrom = Flatten(fromPosition);
+
+            for (int i = 0; i < VisibleEnemies.Count; i++)
+            {
+                IA_EnemyObservation obs = VisibleEnemies[i];
+                if (obs == null || obs.Transform == null)
+                {
+                    continue;
+                }
+
+                float scoreDistance = Vector3.Distance(flatFrom, Flatten(obs.Position));
+                if (preferredDomain != obs.Domain)
+                {
+                    scoreDistance *= 1.15f;
+                }
+
+                if (scoreDistance < bestDistance)
+                {
+                    bestDistance = scoreDistance;
+                    best = obs.Transform;
+                }
+            }
+
+            return best;
+        }
+
+        public bool TryGetEnemyStrategicAnchor(Vector3 fromPosition, out Vector3 position)
+        {
+            position = Vector3.zero;
+            float bestScore = float.MinValue;
+            Vector3 flatFrom = Flatten(fromPosition);
+
+            for (int i = 0; i < _registrySnapshot.Count; i++)
+            {
+                RegistrySnapshotEntry snap = _registrySnapshot[i];
+                if (snap.Identity == null || snap.GameObject == null || !snap.GameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (snap.TeamId == 0 || snap.TeamId == _teamId)
+                {
+                    continue;
+                }
+
+                string name = snap.Cache.NormalizedName;
+                float distance = Vector3.Distance(flatFrom, Flatten(snap.Transform.position));
+
+                float score = snap.Cache.IsStructure ? 120f : 35f;
+                if (snap.Cache.Domain == IA_Domain.Land)
+                {
+                    score += 10f;
+                }
+
+                if (name.Contains("prefeitura") || name.Contains("capital") || name.Contains("governo"))
+                {
+                    score += 180f;
+                }
+                else if (name.Contains("quartel general") || name.Contains("quartel_general") || name.Contains("hq"))
+                {
+                    score += 120f;
+                }
+                else if (name.Contains("aeroporto") || name.Contains("airport") || name.Contains("fabrica") || name.Contains("construtor") || name.Contains("estaleiro") || name.Contains("pier"))
+                {
+                    score += 70f;
+                }
+
+                score -= distance * 0.015f;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    position = snap.Transform.position;
+                }
+            }
+
+            return bestScore > float.MinValue;
+        }
+
+        public int CountOwnByHint(params string[] hints)
+        {
+            if (hints == null || hints.Length == 0)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < OwnUnits.Count; i++)
+            {
+                GameObject unit = OwnUnits[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                string name = GetEntityCache(unit).NormalizedName;
+                bool matched = false;
+
+                for (int h = 0; h < hints.Length; h++)
+                {
+                    string hint = IA_Text.Normalize(hints[h]);
+                    if (!string.IsNullOrEmpty(hint) && name.Contains(hint))
+                    {
+                        matched = true;
+                        break;
+                    }
+                }
+
+                if (matched)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private void RefreshOwnedAndGlobalCache(float now)
+        {
+            RebuildRegistrySnapshotIfNeeded(now);
+
+            OwnUnits.Clear();
+            OwnStructures.Clear();
+            OwnCombatUnits.Clear();
+            VisibilityProviders.Clear();
+            ResetForceSnapshot();
+
+            int mobileVisibilityBudget = MaxMobileVisibilityProviders;
+            int structureVisibilityBudget = MaxStructureVisibilityProviders;
+
+            for (int i = 0; i < _registrySnapshot.Count; i++)
+            {
+                RegistrySnapshotEntry snap = _registrySnapshot[i];
+                if (snap.Identity == null || snap.GameObject == null || !snap.GameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (snap.TeamId != _teamId)
+                {
+                    continue;
+                }
+
+                if (snap.Cache.IsStructure)
+                {
+                    OwnStructures.Add(snap.GameObject);
+                    AccumulateStructureSnapshot(snap.Cache);
+                }
+                else
+                {
+                    OwnUnits.Add(snap.GameObject);
+                    AccumulateUnitSnapshot(snap.Cache);
+                    if (!snap.Cache.IsTransport)
+                    {
+                        OwnCombatUnits.Add(snap.GameObject);
+                    }
+                }
+
+                if (!ShouldRegisterVisibilityProvider(snap.Cache, snap.Cache.IsStructure, ref mobileVisibilityBudget, ref structureVisibilityBudget))
+                {
+                    continue;
+                }
+
+                VisibilityProviders.Add(new IA_VisibilityProvider
+                {
+                    Source = snap.Transform,
+                    Radius = snap.Cache.VisionRadius
+                });
+            }
+
+            BaseCenter = ComputeBaseCenter();
+
+            if (_baseProbe == null)
+            {
+                _baseProbe = CreateVirtualBaseProbe();
+            }
+
+            _baseProbe.position = BaseCenter;
+            VisibilityProviders.Add(new IA_VisibilityProvider
+            {
+                Source = _baseProbe,
+                Radius = 260f
+            });
+
+            LastScanTime = now;
+        }
+
+        private void RebuildRegistrySnapshotIfNeeded(float now)
+        {
+            if (!_snapshotDirty && _lastSeenRegistryVersion == _registryVersion)
+            {
+                return;
+            }
+
+            _registrySnapshot.Clear();
+            _globalIdentityCache.Clear();
+
+            if (_globalRegistry.Count == 0 && now >= _nextFindFallbackAllowedTime)
+            {
+                IdentidadeUnidade[] identities = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+                for (int i = 0; i < identities.Length; i++)
+                {
+                    Register(identities[i]);
+                }
+
+                _nextFindFallbackAllowedTime = now + 20f;
+            }
+
+            _registryScratch.Clear();
+            foreach (IdentidadeUnidade id in _globalRegistry)
+            {
+                _registryScratch.Add(id);
+            }
+
+            for (int i = _registryScratch.Count - 1; i >= 0; i--)
+            {
+                IdentidadeUnidade id = _registryScratch[i];
+                if (id == null)
+                {
+                    continue;
+                }
+
+                GameObject go = id.gameObject;
+                if (go == null)
+                {
+                    continue;
+                }
+
+                EntityRuntimeCacheEntry cache = GetEntityCache(go);
+
+                _globalIdentityCache.Add(id);
+                _registrySnapshot.Add(new RegistrySnapshotEntry
+                {
+                    Identity = id,
+                    GameObject = go,
+                    Transform = id.transform,
+                    TeamId = id.teamID,
+                    InstanceId = id.GetInstanceID(),
+                    Cache = cache
+                });
+            }
+
+            _lastSeenRegistryVersion = _registryVersion;
+            _snapshotDirty = false;
+        }
+
+        private void RefreshVisibleEnemies(float now)
+        {
+            VisibleEnemies.Clear();
+            if (VisibilityProviders.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _registrySnapshot.Count; i++)
+            {
+                RegistrySnapshotEntry snap = _registrySnapshot[i];
+                if (snap.Identity == null || snap.GameObject == null || !snap.GameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (snap.TeamId == 0 || snap.TeamId == _teamId)
+                {
+                    continue;
+                }
+
+                if (!IsVisible(snap.Transform.position))
+                {
+                    continue;
+                }
+
+                IA_EnemyObservation obs;
+                if (!_enemyMemoryById.TryGetValue(snap.InstanceId, out obs))
+                {
+                    obs = new IA_EnemyObservation
+                    {
+                        InstanceId = snap.InstanceId
+                    };
+                    _enemyMemoryById.Add(snap.InstanceId, obs);
+                }
+
+                obs.Transform = snap.Transform;
+                obs.Position = snap.Transform.position;
+                obs.UnitName = snap.Identity.name;
+                obs.Domain = snap.Cache.Domain;
+                obs.IsStructure = snap.Cache.IsStructure;
+                obs.ThreatScore = EstimateThreat(obs.UnitName, obs.Domain, obs.IsStructure);
+                obs.LastSeenTime = now;
+
+                VisibleEnemies.Add(obs);
+
+                if (obs.IsStructure)
+                {
+                    _forceSnapshot.VisibleEnemyStructures++;
+                }
+            }
+        }
+
+        private void CleanupMemory(float now, float maxAge)
+        {
+            _staleEnemyIds.Clear();
+
+            foreach (var pair in _enemyMemoryById)
+            {
+                IA_EnemyObservation obs = pair.Value;
+                if (obs == null || obs.Transform == null || now - obs.LastSeenTime > maxAge)
+                {
+                    _staleEnemyIds.Add(pair.Key);
+                }
+            }
+
+            for (int i = 0; i < _staleEnemyIds.Count; i++)
+            {
+                _enemyMemoryById.Remove(_staleEnemyIds[i]);
+            }
+        }
+
+        private void CleanupDeadRegistryEntries()
+        {
+            if (_globalRegistry.Count == 0)
+            {
+                return;
+            }
+
+            _registryScratch.Clear();
+            foreach (IdentidadeUnidade id in _globalRegistry)
+            {
+                if (id == null || id.gameObject == null)
+                {
+                    _registryScratch.Add(id);
+                }
+            }
+
+            if (_registryScratch.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _registryScratch.Count; i++)
+            {
+                _globalRegistry.Remove(_registryScratch[i]);
+            }
+
+            _registryVersion++;
+            _snapshotDirty = true;
         }
 
         private void UpdateCombatPressure(float now)
@@ -138,6 +594,7 @@ namespace Hegemonia.AI.BrainMaster
             bool enemyVisible = VisibleEnemies.Count > 0;
             int activeMissiles = IA_CombatTelemetry.ActiveMissiles;
             int activeProjectiles = IA_CombatTelemetry.ActiveProjectiles;
+
             if (enemyVisible && (navalUnits > 0 || airUnits > 0 || activeMissiles > 0 || activeProjectiles > 0))
             {
                 _lastCombatSeenTime = now;
@@ -149,6 +606,7 @@ namespace Hegemonia.AI.BrainMaster
 
             EstadoCargaIA estado = EstadoCargaIA.Normal;
             bool mixedFleet = navalUnits >= 3 && airUnits >= 3;
+
             if ((enemyVisible && mixedFleet)
                 || activeMissiles >= 16
                 || activeProjectiles >= 90
@@ -183,318 +641,10 @@ namespace Hegemonia.AI.BrainMaster
             _forceSnapshot.RecentCombatSeconds = recentCombatSeconds;
         }
 
-        public void MarkDirty()
-        {
-            _forceRefresh = true;
-        }
-
-        public void SetFallbackCenter(Vector3 center)
-        {
-            _fallbackCenter = center;
-        }
-
-        public List<IA_EnemyObservation> GetEnemyMemory(float maxAgeSeconds)
-        {
-            var output = new List<IA_EnemyObservation>(_enemyMemoryById.Count);
-            FillEnemyMemory(output, maxAgeSeconds);
-            return output;
-        }
-
-        public void FillEnemyMemory(List<IA_EnemyObservation> destination, float maxAgeSeconds)
-        {
-            if (destination == null)
-            {
-                return;
-            }
-
-            destination.Clear();
-            float now = Time.time;
-            foreach (var pair in _enemyMemoryById)
-            {
-                IA_EnemyObservation obs = pair.Value;
-                if (obs != null && now - obs.LastSeenTime <= maxAgeSeconds)
-                {
-                    destination.Add(obs);
-                }
-            }
-        }
-
-        public Transform GetNearestVisibleEnemy(Vector3 fromPosition, IA_Domain preferredDomain)
-        {
-            float bestDistance = float.MaxValue;
-            Transform best = null;
-            for (int i = 0; i < VisibleEnemies.Count; i++)
-            {
-                IA_EnemyObservation obs = VisibleEnemies[i];
-                if (obs == null || obs.Transform == null)
-                {
-                    continue;
-                }
-
-                float scoreDistance = Vector3.Distance(Flatten(fromPosition), Flatten(obs.Position));
-                if (preferredDomain != obs.Domain)
-                {
-                    scoreDistance *= 1.15f;
-                }
-
-                if (scoreDistance < bestDistance)
-                {
-                    bestDistance = scoreDistance;
-                    best = obs.Transform;
-                }
-            }
-
-            return best;
-        }
-
-        public bool TryGetEnemyStrategicAnchor(Vector3 fromPosition, out Vector3 position)
-        {
-            position = Vector3.zero;
-            float bestScore = float.MinValue;
-
-            for (int i = 0; i < _globalIdentityCache.Count; i++)
-            {
-                IdentidadeUnidade id = _globalIdentityCache[i];
-                if (id == null || !id.gameObject.activeInHierarchy)
-                {
-                    continue;
-                }
-
-                if (id.teamID == 0 || id.teamID == _teamId)
-                {
-                    continue;
-                }
-
-                GameObject obj = id.gameObject;
-                EntityRuntimeCacheEntry entry = GetEntityCache(obj);
-                bool isStructure = entry.IsStructure;
-                IA_Domain domain = entry.Domain;
-                string name = entry.NormalizedName;
-                float distance = Vector3.Distance(Flatten(fromPosition), Flatten(obj.transform.position));
-
-                float score = isStructure ? 120f : 35f;
-                if (domain == IA_Domain.Land)
-                {
-                    score += 10f;
-                }
-
-                if (name.Contains("prefeitura") || name.Contains("capital") || name.Contains("governo"))
-                {
-                    score += 180f;
-                }
-                else if (name.Contains("quartel general") || name.Contains("quartel_general") || name.Contains("hq"))
-                {
-                    score += 120f;
-                }
-                else if (name.Contains("aeroporto") || name.Contains("airport") || name.Contains("fabrica") || name.Contains("construtor") || name.Contains("estaleiro") || name.Contains("pier"))
-                {
-                    score += 70f;
-                }
-
-                score -= distance * 0.015f;
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    position = obj.transform.position;
-                }
-            }
-
-            return bestScore > float.MinValue;
-        }
-
-        public int CountOwnByHint(params string[] hints)
-        {
-            if (hints == null || hints.Length == 0)
-            {
-                return 0;
-            }
-
-            int count = 0;
-            for (int i = 0; i < OwnUnits.Count; i++)
-            {
-                GameObject unit = OwnUnits[i];
-                if (unit == null)
-                {
-                    continue;
-                }
-
-                EntityRuntimeCacheEntry entry = GetEntityCache(unit);
-                string name = entry.NormalizedName;
-                bool matched = false;
-                for (int h = 0; h < hints.Length; h++)
-                {
-                    string hint = IA_Text.Normalize(hints[h]);
-                    if (!string.IsNullOrEmpty(hint) && name.Contains(hint))
-                    {
-                        matched = true;
-                        break;
-                    }
-                }
-
-                if (matched)
-                {
-                    count++;
-                }
-            }
-
-            return count;
-        }
-
-        private void RefreshOwnedAndGlobalCache(float now)
-        {
-            OwnUnits.Clear();
-            OwnStructures.Clear();
-            OwnCombatUnits.Clear();
-            VisibilityProviders.Clear();
-            _globalIdentityCache.Clear();
-            ResetForceSnapshot();
-            int mobileVisibilityBudget = MaxMobileVisibilityProviders;
-            int structureVisibilityBudget = MaxStructureVisibilityProviders;
-
-            // Usa o registro estático em vez de FindObjectsByType (elimina o maior hitch)
-            foreach (IdentidadeUnidade id in _globalRegistry)
-            {
-                if (id == null || !id.gameObject.activeInHierarchy)
-                {
-                    continue;
-                }
-
-                _globalIdentityCache.Add(id);
-
-                if (id.teamID != _teamId)
-                {
-                    continue;
-                }
-
-                EntityRuntimeCacheEntry entry = GetEntityCache(id.gameObject);
-                bool structure = entry.IsStructure;
-                if (structure)
-                {
-                    OwnStructures.Add(id.gameObject);
-                    AccumulateStructureSnapshot(entry);
-                }
-                else
-                {
-                    OwnUnits.Add(id.gameObject);
-                    AccumulateUnitSnapshot(entry);
-                    if (!entry.IsTransport)
-                    {
-                        OwnCombatUnits.Add(id.gameObject);
-                    }
-                }
-
-                if (!ShouldRegisterVisibilityProvider(entry, structure, ref mobileVisibilityBudget, ref structureVisibilityBudget))
-                {
-                    continue;
-                }
-
-                VisibilityProviders.Add(new IA_VisibilityProvider
-                {
-                    Source = id.transform,
-                    Radius = entry.VisionRadius
-                });
-            }
-
-            // Fallback: se o registro estiver vazio (primeiros frames), usa FindObjectsByType uma vez
-            if (_globalIdentityCache.Count == 0)
-            {
-                IdentidadeUnidade[] identities = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-                for (int i = 0; i < identities.Length; i++)
-                {
-                    _globalRegistry.Add(identities[i]);
-                    _globalIdentityCache.Add(identities[i]);
-                }
-            }
-
-            BaseCenter = ComputeBaseCenter();
-            if (_baseProbe == null)
-            {
-                _baseProbe = CreateVirtualBaseProbe();
-            }
-            _baseProbe.position = BaseCenter;
-            VisibilityProviders.Add(new IA_VisibilityProvider { Source = _baseProbe, Radius = 260f });
-
-            LastScanTime = now;
-        }
-
-        private void RefreshVisibleEnemies(float now)
-        {
-            VisibleEnemies.Clear();
-            if (VisibilityProviders.Count == 0)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _globalIdentityCache.Count; i++)
-            {
-                IdentidadeUnidade id = _globalIdentityCache[i];
-                if (id == null || !id.gameObject.activeInHierarchy)
-                {
-                    continue;
-                }
-
-                if (id.teamID == 0 || id.teamID == _teamId)
-                {
-                    continue;
-                }
-
-                if (!IsVisible(id.transform.position))
-                {
-                    continue;
-                }
-
-                int instanceId = id.GetInstanceID();
-                IA_EnemyObservation obs;
-                if (!_enemyMemoryById.TryGetValue(instanceId, out obs))
-                {
-                    obs = new IA_EnemyObservation
-                    {
-                        InstanceId = instanceId
-                    };
-                    _enemyMemoryById.Add(instanceId, obs);
-                }
-
-                obs.Transform = id.transform;
-                obs.Position = id.transform.position;
-                obs.UnitName = id.name;
-                EntityRuntimeCacheEntry entry = GetEntityCache(id.gameObject);
-                obs.Domain = entry.Domain;
-                obs.IsStructure = entry.IsStructure;
-                obs.ThreatScore = EstimateThreat(obs.UnitName, obs.Domain, obs.IsStructure);
-                obs.LastSeenTime = now;
-                VisibleEnemies.Add(obs);
-                if (obs.IsStructure)
-                {
-                    _forceSnapshot.VisibleEnemyStructures++;
-                }
-            }
-        }
-
-        private void CleanupMemory(float now, float maxAge)
-        {
-            _staleEnemyIds.Clear();
-            foreach (var pair in _enemyMemoryById)
-            {
-                if (now - pair.Value.LastSeenTime > maxAge)
-                {
-                    _staleEnemyIds.Add(pair.Key);
-                }
-            }
-
-            if (_staleEnemyIds.Count == 0)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _staleEnemyIds.Count; i++)
-            {
-                _enemyMemoryById.Remove(_staleEnemyIds[i]);
-            }
-        }
-
         private bool IsVisible(Vector3 position)
         {
             Vector3 flatTarget = Flatten(position);
+
             for (int i = 0; i < VisibilityProviders.Count; i++)
             {
                 IA_VisibilityProvider provider = VisibilityProviders[i];
@@ -577,6 +727,7 @@ namespace Hegemonia.AI.BrainMaster
 
             Vector3 sum = Vector3.zero;
             int count = 0;
+
             for (int i = 0; i < OwnStructures.Count; i++)
             {
                 GameObject structure = OwnStructures[i];
@@ -603,6 +754,7 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 reference = GetAnchorReference();
             float best = float.MaxValue;
             bool found = false;
+            Vector3 flatReference = Flatten(reference);
 
             for (int i = 0; i < OwnStructures.Count; i++)
             {
@@ -614,6 +766,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 string n = GetEntityCache(structure).NormalizedName;
                 bool match = false;
+
                 for (int h = 0; h < hints.Length; h++)
                 {
                     string hint = IA_Text.Normalize(hints[h]);
@@ -629,7 +782,7 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                float dist = (Flatten(structure.transform.position) - Flatten(reference)).sqrMagnitude;
+                float dist = (Flatten(structure.transform.position) - flatReference).sqrMagnitude;
                 if (!found || dist < best)
                 {
                     best = dist;
@@ -644,6 +797,7 @@ namespace Hegemonia.AI.BrainMaster
         private Vector3 ComputeClusterCenter(Vector3 anchor, float radius)
         {
             float radiusSqr = radius * radius;
+            Vector3 flatAnchor = Flatten(anchor);
             Vector3 sum = Vector3.zero;
             int count = 0;
 
@@ -656,7 +810,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 Vector3 pos = structure.transform.position;
-                if ((Flatten(pos) - Flatten(anchor)).sqrMagnitude > radiusSqr)
+                if ((Flatten(pos) - flatAnchor).sqrMagnitude > radiusSqr)
                 {
                     continue;
                 }
@@ -701,104 +855,6 @@ namespace Hegemonia.AI.BrainMaster
             return holder.transform;
         }
 
-        private static IA_Domain ClassifyDomain(GameObject obj)
-        {
-            string n = IA_Text.Normalize(obj.name);
-            if (obj.GetComponent<ControleAviao>() != null || obj.GetComponent<ControleAviaoCaca>() != null || obj.GetComponent<Helicoptero>() != null || n.Contains("heli") || n.Contains("aviao") || n.Contains("fa1"))
-            {
-                return IA_Domain.Air;
-            }
-
-            if (obj.GetComponent<ControleNavioRealista>() != null || obj.GetComponent<ControleSubmarino>() != null || n.Contains("navio") || n.Contains("sub") || n.Contains("corveta"))
-            {
-                return IA_Domain.Naval;
-            }
-
-            return IA_Domain.Land;
-        }
-
-        // Cache de resultados IsStructure para evitar múltiplos GetComponent por objeto
-        private static readonly Dictionary<int, bool> _isStructureCache = new Dictionary<int, bool>();
-
-        public static void InvalidateStructureCache(int instanceId)
-        {
-            _isStructureCache.Remove(instanceId);
-            _entityRuntimeCache.Remove(instanceId);
-        }
-
-        private static bool IsStructure(GameObject obj)
-        {
-            if (obj == null) return false;
-
-            int id = obj.GetInstanceID();
-            bool result;
-            if (_isStructureCache.TryGetValue(id, out result))
-            {
-                return result;
-            }
-
-            string n = IA_Text.Normalize(obj.name);
-            bool hasAgent = obj.GetComponent<NavMeshAgent>() != null;
-            bool mobileByScript = !hasAgent && (
-                                  obj.GetComponent<ControleAviao>() != null
-                                  || obj.GetComponent<ControleAviaoCaca>() != null
-                                  || obj.GetComponent<Helicoptero>() != null
-                                  || obj.GetComponent<ControleNavioRealista>() != null
-                                  || obj.GetComponent<ControleSubmarino>() != null
-                                  || obj.GetComponent<ControleUnidade>() != null);
-            bool explicitStructure = n.Contains("prefeitura")
-                                     || n.Contains("quartel")
-                                     || n.Contains("fabrica")
-                                     || n.Contains("refinaria")
-                                     || n.Contains("torre")
-                                     || n.Contains("radar")
-                                     || n.Contains("muro")
-                                     || n.Contains("estaleiro")
-                                     || n.Contains("pier")
-                                     || n.Contains("plataforma")
-                                     || n.Contains("aeroporto")
-                                     || n.Contains("heliporto");
-            result = explicitStructure || (!hasAgent && !mobileByScript);
-            _isStructureCache[id] = result;
-            return result;
-        }
-
-        private static bool IsTransport(GameObject obj)
-        {
-            string n = IA_Text.Normalize(obj.name);
-            return n.Contains("transporte")
-                   || n.Contains("truck")
-                   || n.Contains("caminhao")
-                   || n.Contains("hover");
-        }
-
-        private static void RegistrarMetricaTempo(string nome, float valor)
-        {
-            if (valor > 0f)
-            {
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(nome, valor);
-            }
-        }
-
-        private float ResolveVisibleRefreshInterval()
-        {
-            IA_CombatPressure pressure = CombatPressure;
-            if (pressure == null)
-            {
-                return 0.45f;
-            }
-
-            switch (pressure.Estado)
-            {
-                case EstadoCargaIA.Saturado:
-                    return 0.25f;
-                case EstadoCargaIA.EmCombate:
-                    return 0.35f;
-                default:
-                    return 0.60f;
-            }
-        }
-
         private void ResetForceSnapshot()
         {
             _forceSnapshot.LastUpdatedTime = Time.time;
@@ -835,6 +891,7 @@ namespace Hegemonia.AI.BrainMaster
         private void AccumulateUnitSnapshot(EntityRuntimeCacheEntry entry)
         {
             _forceSnapshot.TotalOwnUnits++;
+
             if (!entry.IsTransport)
             {
                 _forceSnapshot.TotalCombatUnits++;
@@ -899,6 +956,7 @@ namespace Hegemonia.AI.BrainMaster
         {
             string n = entry.NormalizedName;
             _forceSnapshot.TotalOwnStructures++;
+
             if (n.Contains("tenda") || n.Contains("barraca") || n.Contains("quartel"))
             {
                 _forceSnapshot.BarracksCount++;
@@ -971,6 +1029,7 @@ namespace Hegemonia.AI.BrainMaster
                                       || hasNaval
                                       || hasSubmarine
                                       || obj.GetComponent<ControleUnidade>() != null);
+
             bool explicitStructure = n.Contains("prefeitura")
                                      || n.Contains("quartel")
                                      || n.Contains("fabrica")
@@ -984,12 +1043,14 @@ namespace Hegemonia.AI.BrainMaster
                                      || n.Contains("aeroporto")
                                      || n.Contains("heliporto")
                                      || n.Contains("armazem");
+
             IdentidadeUnidade idComp = obj.GetComponent<IdentidadeUnidade>();
             bool isAereoFromComp = idComp != null && idComp.tipoUnidade == TipoUnidade.Aereo;
             bool isDrone = n.Contains("drone") || n.Contains("vap");
 
             bool isStructure = explicitStructure || (!hasAgent && !mobileByScript);
             IA_Domain domain = IA_Domain.Land;
+
             if (isAereoFromComp || hasAircraft || hasHelicopter || n.Contains("heli") || n.Contains("aviao") || n.Contains("fa1") || n.Contains("g15") || n.Contains("a_20") || n.Contains("super tuk") || isDrone)
             {
                 domain = IA_Domain.Air;
@@ -1069,18 +1130,22 @@ namespace Hegemonia.AI.BrainMaster
             {
                 value += 30f;
             }
+
             if (name.Contains("artilh") || name.Contains("hack"))
             {
                 value += 25f;
             }
+
             if (name.Contains("destroy") || name.Contains("ironclad") || name.Contains("vindicator"))
             {
                 value += 40f;
             }
+
             if (name.Contains("sub"))
             {
                 value += 35f;
             }
+
             if (name.Contains("fa1") || name.Contains("caca") || name.Contains("vap") || name.Contains("drone"))
             {
                 value += 28f;
@@ -1096,6 +1161,84 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return value;
+        }
+
+        private static bool IsStructure(GameObject obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            int id = obj.GetInstanceID();
+            bool result;
+            if (_isStructureCache.TryGetValue(id, out result))
+            {
+                return result;
+            }
+
+            string n = IA_Text.Normalize(obj.name);
+            bool hasAgent = obj.GetComponent<NavMeshAgent>() != null;
+            bool mobileByScript = !hasAgent && (
+                                  obj.GetComponent<ControleAviao>() != null
+                                  || obj.GetComponent<ControleAviaoCaca>() != null
+                                  || obj.GetComponent<Helicoptero>() != null
+                                  || obj.GetComponent<ControleNavioRealista>() != null
+                                  || obj.GetComponent<ControleSubmarino>() != null
+                                  || obj.GetComponent<ControleUnidade>() != null);
+
+            bool explicitStructure = n.Contains("prefeitura")
+                                     || n.Contains("quartel")
+                                     || n.Contains("fabrica")
+                                     || n.Contains("refinaria")
+                                     || n.Contains("torre")
+                                     || n.Contains("radar")
+                                     || n.Contains("muro")
+                                     || n.Contains("estaleiro")
+                                     || n.Contains("pier")
+                                     || n.Contains("plataforma")
+                                     || n.Contains("aeroporto")
+                                     || n.Contains("heliporto");
+
+            result = explicitStructure || (!hasAgent && !mobileByScript);
+            _isStructureCache[id] = result;
+            return result;
+        }
+
+        private static bool IsTransport(GameObject obj)
+        {
+            string n = IA_Text.Normalize(obj.name);
+            return n.Contains("transporte")
+                   || n.Contains("truck")
+                   || n.Contains("caminhao")
+                   || n.Contains("hover");
+        }
+
+        private static void RegistrarMetricaTempo(string nome, float valor)
+        {
+            if (valor > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(nome, valor);
+            }
+        }
+
+        private float ResolveVisibleRefreshInterval()
+        {
+            IA_CombatPressure pressure = CombatPressure;
+            if (pressure == null)
+            {
+                return 0.45f;
+            }
+
+            switch (pressure.Estado)
+            {
+                case EstadoCargaIA.Saturado:
+                    return 0.25f;
+                case EstadoCargaIA.EmCombate:
+                    return 0.35f;
+                default:
+                    return 0.60f;
+            }
         }
 
         private static Vector3 Flatten(Vector3 value)

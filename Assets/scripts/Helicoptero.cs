@@ -130,6 +130,9 @@ public class Helicoptero : MonoBehaviour
     private float _proximaAtualizacaoAlturaSolo = 0f;
     private TextMesh _etiquetaFlutuante;
     private string _textoEtiquetaAtual = string.Empty;
+    // Cache de renderers: evita GetComponentsInChildren toda chamada de ObterAlturaEstacionamentoTotal
+    private Renderer[] _renderersCache;
+    private bool _renderersCacheValido = false;
 
     void LogDebug(string msg) { if (debugLogs) Debug.Log(msg); }
     void OnEnable() { if(!todosHelicopteros.Contains(this)) todosHelicopteros.Add(this); }
@@ -637,7 +640,13 @@ public class Helicoptero : MonoBehaviour
     public float ObterAlturaEstacionamentoTotal()
     {
         float alturaBase = Mathf.Max(0.05f, alturaPouso + Mathf.Max(0f, ajusteAlturaEstacionado));
-        Renderer[] renderizadores = GetComponentsInChildren<Renderer>(true);
+        // OTIMIZAÇÃO: usa cache de renderers (calculado no Start) em vez de GetComponentsInChildren repetido
+        if (!_renderersCacheValido)
+        {
+            _renderersCache = GetComponentsInChildren<Renderer>(true);
+            _renderersCacheValido = true;
+        }
+        Renderer[] renderizadores = _renderersCache;
         if (renderizadores == null || renderizadores.Length == 0)
         {
             return alturaBase;

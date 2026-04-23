@@ -237,29 +237,37 @@ public class TransporteAnfibio : MonoBehaviour
         {
             if (unidade == null || !unidade.activeInHierarchy) continue;
             
-            // Move para a entrada
-            NavMeshAgent nav = unidade.GetComponent<NavMeshAgent>();
-            if (nav != null && nav.isActiveAndEnabled) 
-            { 
-                 if(nav.isOnNavMesh)
-                 {
-                    nav.SetDestination(pontoDeEntrada.position); 
-                    nav.isStopped = false; 
-                 }
-                 else
-                 {
-                     Debug.LogWarning($"[Transporte] Unidade {unidade.name} tem NavMeshAgent mas não está no NavMesh. Tentando Warp...");
-                     if(nav.Warp(unidade.transform.position))
-                     {
-                         nav.SetDestination(pontoDeEntrada.position);
-                     }
-                 }
+            ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
+            if (controle != null)
+            {
+                controle.EmitirOrdemMover(pontoDeEntrada.position);
             }
             else
             {
-                 // Tenta mover helis por comando
-                 Helicoptero heli = unidade.GetComponent<Helicoptero>();
-                 if(heli) heli.Decolar(pontoDeEntrada.position);
+            // Move para a entrada
+                NavMeshAgent nav = unidade.GetComponent<NavMeshAgent>();
+                if (nav != null && nav.isActiveAndEnabled) 
+                { 
+                     if(nav.isOnNavMesh)
+                     {
+                        nav.SetDestination(pontoDeEntrada.position); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+                        nav.isStopped = false; 
+                     }
+                     else
+                     {
+                         Debug.LogWarning($"[Transporte] Unidade {unidade.name} tem NavMeshAgent mas não está no NavMesh. Tentando Warp...");
+                         if(nav.Warp(unidade.transform.position))
+                         {
+                             nav.SetDestination(pontoDeEntrada.position); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+                         }
+                     }
+                }
+                else
+                {
+                     // Tenta mover helis por comando
+                     Helicoptero heli = unidade.GetComponent<Helicoptero>();
+                     if(heli) heli.Decolar(pontoDeEntrada.position);
+                }
             }
 
             yield return new WaitForSeconds(0.5f);
@@ -398,7 +406,15 @@ public class TransporteAnfibio : MonoBehaviour
                         Vector3 destinoFinal = posicaoAlvo + (transform.forward * 20f);
                         if (NavMesh.SamplePosition(destinoFinal, out NavMeshHit hitDestino, 5f, NavMesh.AllAreas))
                         {
-                            nav.SetDestination(hitDestino.position);
+                            ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
+                            if (controle != null)
+                            {
+                                controle.EmitirOrdemMover(hitDestino.position);
+                            }
+                            else
+                            {
+                                nav.SetDestination(hitDestino.position); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+                            }
                         }
                         
                         Debug.Log($"✅ Desembarcado: {unidade.name} em posição válida do NavMesh");

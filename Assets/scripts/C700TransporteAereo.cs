@@ -1789,27 +1789,24 @@ public class C700TransporteAereo : MonoBehaviour
 
     private void RemoverComportamentosSeguir(GameObject unidade)
     {
-        ComportamentoSeguir seguir = unidade.GetComponent<ComportamentoSeguir>();
-        if (seguir != null)
+        ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
+        if (controle != null)
         {
-            Destroy(seguir);
+            controle.CancelarOrdemEspecial();
+            return;
         }
 
         ComportamentoSeguirUniversal seguirUniversal = unidade.GetComponent<ComportamentoSeguirUniversal>();
         if (seguirUniversal != null)
         {
+            seguirUniversal.enabled = false;
             Destroy(seguirUniversal);
-        }
-
-        ComportamentoPatrulha patrulha = unidade.GetComponent<ComportamentoPatrulha>();
-        if (patrulha != null)
-        {
-            Destroy(patrulha);
         }
 
         ComportamentoPatrulhaUniversal patrulhaUniversal = unidade.GetComponent<ComportamentoPatrulhaUniversal>();
         if (patrulhaUniversal != null)
         {
+            patrulhaUniversal.enabled = false;
             Destroy(patrulhaUniversal);
         }
     }

@@ -493,18 +493,24 @@ public class IA_Dominadora : MonoBehaviour
     }
 
     // =========================================================
-    // CICLOS (LÃ³gica intacta)
+    // CICLOS (cache de WaitForSeconds para zero alloc por iteração)
     // =========================================================
     IEnumerator CicloEconomico()
     {
+        // Cache: reutiliza o mesmo objeto a cada itéração em vez de alocar new WaitForSeconds
+        WaitForSeconds _espera = new WaitForSeconds(intervaloEconomia);
         while (true)
         {
-            yield return new WaitForSeconds(intervaloEconomia);
+            yield return _espera;
             float inicio = Time.realtimeSinceStartup;
             LimparMortos();
 
             float ganho = rendaBase * (1f + nivelDificuldade * 0.12f);
-            ganho += meusPredios.Count(p => p != null) * 4f;
+            // OTIMIZAÇÃO: loop manual evita alocação do enumerador LINQ toda execução
+            int prediosVivos = 0;
+            for (int _i = 0; _i < meusPredios.Count; _i++)
+                if (meusPredios[_i] != null) prediosVivos++;
+            ganho += prediosVivos * 4f;
             ganho += Contar("refinaria") * 22f;
             ganho += Contar("plataforma") * 24f;
 
@@ -517,9 +523,11 @@ public class IA_Dominadora : MonoBehaviour
 
     IEnumerator CicloManutencao()
     {
+        // Cache: reutiliza o mesmo WaitForSeconds a cada iteração
+        WaitForSeconds _espera = new WaitForSeconds(intervaloManutencao);
         while (true)
         {
-            yield return new WaitForSeconds(intervaloManutencao);
+            yield return _espera;
             float inicio = Time.realtimeSinceStartup;
             LimparMortos();
             LimparRejeicoesAntigas();
@@ -531,10 +539,12 @@ public class IA_Dominadora : MonoBehaviour
                 continue;
             }
 
-            foreach (var predio in meusPredios)
+            // OTIMIZAÇÃO: for indexado evita enumerador do foreach em List<T>
+            for (int _i = 0; _i < meusPredios.Count; _i++)
             {
+                GameObject predio = meusPredios[_i];
                 if (predio == null) continue;
-                var dmg = predio.GetComponent<SistemaDeDanos>();
+                SistemaDeDanos dmg = predio.GetComponent<SistemaDeDanos>();
                 if (dmg == null) continue;
                 if (dmg.vidaAtual >= dmg.vidaMaxima) continue;
 
@@ -550,6 +560,9 @@ public class IA_Dominadora : MonoBehaviour
 
     IEnumerator CicloLogistico()
     {
+        // Caches: reutiliza WaitForSeconds em vez de alocar new por iteração
+        WaitForSeconds _esperaObra     = new WaitForSeconds(cooldownConstrucao);
+        WaitForSeconds _esperaPadrao   = new WaitForSeconds(intervaloLogistica);
         while (true)
         {
             float inicio = Time.realtimeSinceStartup;
@@ -583,13 +596,15 @@ public class IA_Dominadora : MonoBehaviour
             RegistrarTempoModulo(ref custoLogisticaMs, ref picoLogisticaMs, inicio);
             AtualizarResumoPerformance();
 
-            if (fezObra) yield return new WaitForSeconds(cooldownConstrucao);
-            else yield return new WaitForSeconds(intervaloLogistica);
+            if (fezObra) yield return _esperaObra;
+            else yield return _esperaPadrao;
         }
     }
 
     IEnumerator CicloTatico()
     {
+        // Cache: reutiliza WaitForSeconds (valor fixo de tickSchedulerIA)
+        WaitForSeconds _esperaTick = new WaitForSeconds(Mathf.Max(0.1f, tickSchedulerIA));
         while (true)
         {
             float inicio = Time.realtimeSinceStartup;
@@ -645,7 +660,7 @@ public class IA_Dominadora : MonoBehaviour
 
             RegistrarTempoModulo(ref custoTaticaMs, ref picoTaticaMs, inicio);
             AtualizarResumoPerformance();
-            yield return new WaitForSeconds(Mathf.Max(0.1f, tickSchedulerIA));
+            yield return _esperaTick;
         }
     }
 
@@ -751,8 +766,12 @@ public class IA_Dominadora : MonoBehaviour
     {
         if (TemPrefeitura())
         {
-            GameObject pref = meusPredios.FirstOrDefault(p => p != null && EhCategoria(p.name, "prefeitura"));
-            if (pref != null) return pref.transform.position;
+            // OTIMIZAÇÃO: loop manual — FirstOrDefault aloca enumerador no heap
+            for (int _i = 0; _i < meusPredios.Count; _i++)
+            {
+                GameObject p = meusPredios[_i];
+                if (p != null && EhCategoria(p.name, "prefeitura")) return p.transform.position;
+            }
         }
         if (referenciaCapitalInicial != null) return referenciaCapitalInicial.position;
         if (referenciaTerra != null) return referenciaTerra.position;
@@ -761,15 +780,17 @@ public class IA_Dominadora : MonoBehaviour
 
     Vector3 ObterCentroZona(TipoZona tipo)
     {
-        ZonaIA z = zonas.FirstOrDefault(x => x.tipo == tipo);
-        if (z != null) return z.centro;
+        // OTIMIZAÇÃO: loop manual — FirstOrDefault aloca enumerador
+        for (int _i = 0; _i < zonas.Count; _i++)
+            if (zonas[_i] != null && zonas[_i].tipo == tipo) return zonas[_i].centro;
         return ObterCentroBase();
     }
 
     float ObterRaioZona(TipoZona tipo)
     {
-        ZonaIA z = zonas.FirstOrDefault(x => x.tipo == tipo);
-        if (z != null) return z.raio;
+        // OTIMIZAÇÃO: loop manual — FirstOrDefault aloca enumerador
+        for (int _i = 0; _i < zonas.Count; _i++)
+            if (zonas[_i] != null && zonas[_i].tipo == tipo) return zonas[_i].raio;
         return 100f;
     }
 
@@ -1514,7 +1535,10 @@ public class IA_Dominadora : MonoBehaviour
     {
         if (!biblioteca.ContainsKey(chave) || dinheiroIA < custo) return false;
 
-        GameObject aeroporto = meusPredios.FirstOrDefault(p => p != null && EhCategoria(p.name, "aeroporto"));
+        // OTIMIZAÇÃO: loop manual em vez de FirstOrDefault (sem alocação de enumerador)
+        GameObject aeroporto = null;
+        for (int _i = 0; _i < meusPredios.Count; _i++)
+            if (meusPredios[_i] != null && EhCategoria(meusPredios[_i].name, "aeroporto")) { aeroporto = meusPredios[_i]; break; }
         if (aeroporto == null || !PodeUsarEstruturaParaProducao(aeroporto)) return false;
 
         GerenciadorAeroporto aero = aeroporto.GetComponent<GerenciadorAeroporto>();
@@ -1653,30 +1677,36 @@ public class IA_Dominadora : MonoBehaviour
 
     GameObject EscolherEstruturaDeProducao(string chave, bool voa)
     {
+        // OTIMIZAÇÃO: todos os FirstOrDefault substituídos por loops manuais (zero heap alloc)
         if (voa)
         {
             if (chave == "caca")
             {
-                var carrier = meusNavios.FirstOrDefault(n => n != null && EhPortaAvioes(n));
-                if (carrier != null) return carrier;
+                for (int _i = 0; _i < meusNavios.Count; _i++)
+                    if (meusNavios[_i] != null && EhPortaAvioes(meusNavios[_i])) return meusNavios[_i];
             }
-
-            var aeroporto = meusPredios.FirstOrDefault(p => p != null && EhCategoria(p.name, "aeroporto"));
-            if (aeroporto != null) return aeroporto;
+            for (int _i = 0; _i < meusPredios.Count; _i++)
+                if (meusPredios[_i] != null && EhCategoria(meusPredios[_i].name, "aeroporto")) return meusPredios[_i];
         }
 
-        var fabrica = meusPredios.FirstOrDefault(p => p != null && EhCategoria(p.name, "fabrica"));
-        if (fabrica != null) return fabrica;
-
-        var quartel = meusPredios.FirstOrDefault(p => p != null && EhCategoria(p.name, "quartel"));
-        if (quartel != null) return quartel;
-
+        for (int _i = 0; _i < meusPredios.Count; _i++)
+            if (meusPredios[_i] != null && EhCategoria(meusPredios[_i].name, "fabrica")) return meusPredios[_i];
+        for (int _i = 0; _i < meusPredios.Count; _i++)
+            if (meusPredios[_i] != null && EhCategoria(meusPredios[_i].name, "quartel")) return meusPredios[_i];
         return null;
     }
 
     GameObject EscolherEstruturaNaval()
     {
-        return meusPredios.FirstOrDefault(p => p != null && (EhCategoria(p.name, "estaleiro") || EhCategoria(p.name, "pier") || EhCategoria(p.name, "plataforma")));
+        // OTIMIZAÇÃO: loop manual — sem alocação de enumerador LINQ
+        for (int _i = 0; _i < meusPredios.Count; _i++)
+        {
+            if (meusPredios[_i] == null) continue;
+            string _n = meusPredios[_i].name;
+            if (EhCategoria(_n, "estaleiro") || EhCategoria(_n, "pier") || EhCategoria(_n, "plataforma"))
+                return meusPredios[_i];
+        }
+        return null;
     }
 
     bool ObterSpawnTerrestreOuAereo(GameObject origem, bool voa, out Vector3 spawn)
@@ -2634,6 +2664,14 @@ public class IA_Dominadora : MonoBehaviour
     {
         if (navio == null) return;
         destino.y = nivelDoMar;
+        var controle = navio.GetComponent<ControleUnidade>();
+        if (controle != null)
+        {
+            controle.EmitirOrdemMover(destino);
+            navio.SendMessage("DefinirDestino", destino, SendMessageOptions.DontRequireReceiver);
+            return;
+        }
+
         navio.SendMessage("MoverParaPonto", destino, SendMessageOptions.DontRequireReceiver);
         navio.SendMessage("DefinirDestino", destino, SendMessageOptions.DontRequireReceiver);
 
@@ -2641,7 +2679,7 @@ public class IA_Dominadora : MonoBehaviour
         if (nav != null && nav.enabled && nav.isOnNavMesh)
         {
             nav.isStopped = false;
-            nav.SetDestination(destino);
+            nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
         }
     }
 
@@ -3016,13 +3054,20 @@ public class IA_Dominadora : MonoBehaviour
             if (NavMesh.SamplePosition(destino, out hit, 30f, NavMesh.AllAreas)) destino = hit.position;
         }
 
+        ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
+        if (controle != null)
+        {
+            controle.EmitirOrdemMover(destino);
+            return;
+        }
+
         unidade.SendMessage("MoverParaPonto", destino, SendMessageOptions.DontRequireReceiver);
 
         NavMeshAgent nav = unidade.GetComponent<NavMeshAgent>();
         if (nav != null && nav.enabled && nav.isOnNavMesh)
         {
             nav.isStopped = false;
-            nav.SetDestination(destino);
+            nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
         }
     }
 

@@ -1,5 +1,37 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+
+public enum DominioControleUnidade
+{
+    Terrestre,
+    NavalSuperficie,
+    NavalSubmerso,
+    Aereo
+}
+
+public enum OrdemControleUnidade
+{
+    Ociosa,
+    Movendo,
+    Parada,
+    Recuando,
+    Patrulhando,
+    Seguindo
+}
+
+[System.Serializable]
+public struct EstadoControleUnidadeSnapshot
+{
+    public DominioControleUnidade dominio;
+    public OrdemControleUnidade ordemAtual;
+    public bool modoCombateAtivo;
+    public string executorAtivo;
+    public bool bloqueada;
+    public string motivoBloqueio;
+    public bool possuiDestinoOrdenado;
+    public Vector3 ultimoDestino;
+}
 
 public class ControleUnidade : MonoBehaviour
 {
@@ -44,6 +76,14 @@ public class ControleUnidade : MonoBehaviour
     private LancadorMultiplo[] cacheLancadoresMultiplos = System.Array.Empty<LancadorMultiplo>();
     private LancadorMisselCaca[] cacheLancadoresCaca = System.Array.Empty<LancadorMisselCaca>();
 
+    [Header("Trilha Oficial")]
+    [SerializeField] private DominioControleUnidade dominioControleAtual = DominioControleUnidade.Terrestre;
+    [SerializeField] private OrdemControleUnidade ordemControleAtual = OrdemControleUnidade.Ociosa;
+    [SerializeField] private bool modoCombateOficialAtivo = true;
+    [SerializeField] private string executorControleAtual = "NavMeshAgent";
+    [SerializeField] private bool bloqueioControleAtivo = false;
+    [SerializeField] private string motivoBloqueioControle = string.Empty;
+
     protected virtual void Awake()
     {
         SanearBoxCollidersComEscalaNegativa();
@@ -59,6 +99,11 @@ public class ControleUnidade : MonoBehaviour
         controleNavioRealista = GetComponent<ControleNavioRealista>();
         navegacaoInteligenteNaval = GetComponent<NavegacaoInteligenteNaval>();
         controleSubmarino = GetComponent<ControleSubmarino>();
+
+        if (navegacaoInteligenteNaval != null)
+        {
+            navegacaoInteligenteNaval.enabled = false;
+        }
         
         // Verifica se é uma unidade aérea (GENÉRICA)
         scriptVoo = GetComponent<VooHelicoptero>();
@@ -79,6 +124,10 @@ public class ControleUnidade : MonoBehaviour
         {
             animator.applyRootMotion = false;
         }
+
+        AtualizarTrilhaOficial();
+        ValidarConflitosDeControle();
+        SincronizarModoCombateOficial();
     }
 
     void SanearBoxCollidersComEscalaNegativa()
@@ -141,6 +190,14 @@ public class ControleUnidade : MonoBehaviour
     {
         RegistroEntidadesJogo.Register(this);
         cacheCombateSujo = true;
+
+        if (navegacaoInteligenteNaval != null)
+        {
+            navegacaoInteligenteNaval.enabled = false;
+        }
+
+        AtualizarTrilhaOficial();
+        SincronizarModoCombateOficial();
     }
 
     protected virtual void OnDisable()
@@ -163,6 +220,9 @@ public class ControleUnidade : MonoBehaviour
     public bool TemHelicopteroExterno => helicopteroExterno != null;
     public bool TemHovercraftTransporte => hovercraftTransporte != null;
     public bool TemC700TransporteAereo => c700TransporteAereo != null;
+    public DominioControleUnidade DominioAtual => dominioControleAtual;
+    public OrdemControleUnidade OrdemAtual => ordemControleAtual;
+    public string ExecutorAtual => executorControleAtual;
 
     [Header("Visual")]
     public float tamanhoSelecao = 0f; // 0 = Automatico
@@ -358,11 +418,196 @@ public class ControleUnidade : MonoBehaviour
     // Sobrecarga para SendMessage da IA (que não suporta parâmetros opcionais)
     public void MoverParaPonto(Vector3 destino)
     {
-        MoverParaPonto(destino, true);
+        EmitirOrdemMover(destino, true);
     }
 
     // COMANDO AUTOMÁTICO (Usado pela fábrica e IA)
     public void MoverParaPonto(Vector3 destino, bool cancelarComportamentos = true)
+    {
+        EmitirOrdemMover(destino, cancelarComportamentos);
+    }
+
+    public bool EmitirOrdemMover(Vector3 destino, bool cancelarComportamentos = true)
+    {
+        AtualizarTrilhaOficial();
+        AtualizarEstadoDeBloqueio();
+        if (bloqueioControleAtivo)
+        {
+            return false;
+        }
+
+        if (cancelarComportamentos || (ordemControleAtual != OrdemControleUnidade.Patrulhando && ordemControleAtual != OrdemControleUnidade.Seguindo))
+        {
+            ordemControleAtual = OrdemControleUnidade.Movendo;
+        }
+
+        ExecutarMoverParaPonto(destino, cancelarComportamentos);
+        return true;
+    }
+
+    public bool EmitirOrdemParar()
+    {
+        AtualizarTrilhaOficial();
+        AtualizarEstadoDeBloqueio();
+        CancelarOrdemEspecial(false);
+
+        bool alterouAlgo = false;
+
+        if (ehAereo)
+        {
+            voando = false;
+            alterouAlgo = true;
+        }
+
+        if (c700TransporteAereo != null)
+        {
+            c700TransporteAereo.CancelarModoAereo();
+            alterouAlgo = true;
+        }
+
+        if (controleAviao != null)
+        {
+            controleAviao.ordemParaRetorno = true;
+            alterouAlgo = true;
+        }
+
+        if (helicopteroExterno != null)
+        {
+            helicopteroExterno.destino = transform.position;
+            alterouAlgo = true;
+        }
+
+        if (controleAviaoCaca != null)
+        {
+            controleAviaoCaca.DefinirDestino(transform.position + transform.forward * 250f);
+            alterouAlgo = true;
+        }
+
+        if (agente == null)
+        {
+            agente = GetComponent<NavMeshAgent>();
+        }
+
+        if (agente != null && agente.enabled)
+        {
+            if (agente.isOnNavMesh)
+            {
+                agente.ResetPath();
+                agente.isStopped = true;
+            }
+
+            alterouAlgo = true;
+        }
+
+        LimparDestinoOrdenado();
+        ordemControleAtual = OrdemControleUnidade.Parada;
+        return alterouAlgo;
+    }
+
+    public bool EmitirOrdemRecuar(Vector3 origemAmeaca, float distancia = 40f, bool cancelarComportamentos = true)
+    {
+        Vector3 direcaoRecuo = transform.position - origemAmeaca;
+        direcaoRecuo.y = 0f;
+
+        if (direcaoRecuo.sqrMagnitude < 0.01f)
+        {
+            direcaoRecuo = -transform.forward;
+            direcaoRecuo.y = 0f;
+        }
+
+        Vector3 destinoRecuo = transform.position + direcaoRecuo.normalized * Mathf.Max(5f, distancia);
+        bool emitiu = EmitirOrdemMover(destinoRecuo, cancelarComportamentos);
+        if (emitiu)
+        {
+            ordemControleAtual = OrdemControleUnidade.Recuando;
+        }
+
+        return emitiu;
+    }
+
+    public bool EmitirOrdemPatrulha(IList<Vector3> pontosPatrulha)
+    {
+        if (pontosPatrulha == null || pontosPatrulha.Count == 0)
+        {
+            return false;
+        }
+
+        AtualizarTrilhaOficial();
+        AtualizarEstadoDeBloqueio();
+        if (bloqueioControleAtivo)
+        {
+            return false;
+        }
+
+        CancelarOrdemEspecial(false);
+
+        List<Vector3> rotaFinal = new List<Vector3>(pontosPatrulha);
+        if (rotaFinal.Count == 1)
+        {
+            rotaFinal.Insert(0, transform.position);
+        }
+
+        ComportamentoPatrulhaUniversal patrulha = GetComponent<ComportamentoPatrulhaUniversal>();
+        if (patrulha == null)
+        {
+            patrulha = gameObject.AddComponent<ComportamentoPatrulhaUniversal>();
+        }
+
+        patrulha.Configurar(rotaFinal);
+        ordemControleAtual = OrdemControleUnidade.Patrulhando;
+        return true;
+    }
+
+    public bool EmitirOrdemSeguir(Transform alvo)
+    {
+        if (alvo == null)
+        {
+            return false;
+        }
+
+        AtualizarTrilhaOficial();
+        AtualizarEstadoDeBloqueio();
+        if (bloqueioControleAtivo)
+        {
+            return false;
+        }
+
+        CancelarOrdemEspecial(false);
+
+        ComportamentoSeguirUniversal seguir = GetComponent<ComportamentoSeguirUniversal>();
+        if (seguir == null)
+        {
+            seguir = gameObject.AddComponent<ComportamentoSeguirUniversal>();
+        }
+
+        seguir.Configurar(alvo);
+        ordemControleAtual = OrdemControleUnidade.Seguindo;
+        return true;
+    }
+
+    public void CancelarOrdemEspecial()
+    {
+        CancelarOrdemEspecial(true);
+    }
+
+    public EstadoControleUnidadeSnapshot ObterEstadoControle()
+    {
+        AtualizarTrilhaOficial();
+        AtualizarEstadoDeBloqueio();
+        return new EstadoControleUnidadeSnapshot
+        {
+            dominio = dominioControleAtual,
+            ordemAtual = ordemControleAtual,
+            modoCombateAtivo = modoCombateOficialAtivo,
+            executorAtivo = executorControleAtual,
+            bloqueada = bloqueioControleAtivo,
+            motivoBloqueio = motivoBloqueioControle,
+            possuiDestinoOrdenado = possuiDestinoOrdenado,
+            ultimoDestino = ultimoDestinoOrdenado
+        };
+    }
+
+    private void ExecutarMoverParaPonto(Vector3 destino, bool cancelarComportamentos = true)
     {
         if (helicopteroExterno != null && helicopteroExterno.EstaSobControleDoAeroporto())
         {
@@ -385,22 +630,7 @@ public class ControleUnidade : MonoBehaviour
 
         if (cancelarComportamentos)
         {
-            // Interrompe comportamentos especiais se receber ordem DIRETA do jogador (clique direito)
-            var patCaminho = GetComponent<ComportamentoPatrulhaCaminho>();
-            if (patCaminho != null) Destroy(patCaminho);
-            
-            var seg = GetComponent<ComportamentoSeguir>();
-            if (seg != null) Destroy(seg);
-            
-            var patUniv = GetComponent<ComportamentoPatrulhaUniversal>();
-            if (patUniv != null) Destroy(patUniv);
-            
-            var segUniv = GetComponent<ComportamentoSeguirUniversal>();
-            if (segUniv != null) 
-            {
-                Destroy(segUniv);
-                RestaurarVelocidadeOriginal();
-            }
+            CancelarOrdemEspecial(false);
         }
 
         // Debug.Log($"[ControleUnidade] {name} recebeu MoverParaPonto({destino})...");
@@ -469,15 +699,6 @@ public class ControleUnidade : MonoBehaviour
                     return;
                 }
 
-                // Verifica se esta unidade tem navegação naval inteligente (marcha à ré automática)
-                if (navegacaoInteligenteNaval != null)
-                {
-                    // Usa o sistema inteligente que decide automaticamente se vai de frente ou de ré
-                    navegacaoInteligenteNaval.DefinirDestino(destino);
-                    // Debug.Log($"[Navegação] {name} usando sistema naval inteligente.");
-                    return;
-                }
-
                 // Verifica se é Submarino
                 if (controleSubmarino != null)
                 {
@@ -516,15 +737,9 @@ public class ControleUnidade : MonoBehaviour
                              return;
                          }
 
-                         if (navegacaoInteligenteNaval != null)
-                         {
-                             navegacaoInteligenteNaval.DefinirDestino(destino);
-                             return;
-                         }
-
-                         if (controleSubmarino != null)
-                         {
-                             controleSubmarino.DefinirDestino(destino);
+                        if (controleSubmarino != null)
+                        {
+                            controleSubmarino.DefinirDestino(destino);
                              return;
                          }
 
@@ -553,7 +768,6 @@ public class ControleUnidade : MonoBehaviour
     {
         return GetComponent<IdentidadeNaval>() != null ||
                controleNavioRealista != null ||
-               navegacaoInteligenteNaval != null ||
                controleSubmarino != null ||
                TryGetComponent<NavioPetroleiro>(out _);
     }
@@ -562,6 +776,7 @@ public class ControleUnidade : MonoBehaviour
     {
         GarantirCacheCombate();
         bool alterouAlgo = false;
+        modoCombateOficialAtivo = ativo;
 
         for (int i = 0; i < cacheTorretas.Length; i++)
         {
@@ -630,9 +845,9 @@ public class ControleUnidade : MonoBehaviour
 
         if (!encontrou)
         {
-            passivo = false;
-            descricao = "--";
-            return false;
+            passivo = !modoCombateOficialAtivo;
+            descricao = modoCombateOficialAtivo ? "ATIVO" : "PASSIVO";
+            return true;
         }
 
         if (misto)
@@ -643,6 +858,7 @@ public class ControleUnidade : MonoBehaviour
         }
 
         passivo = estadoInicial;
+        modoCombateOficialAtivo = !passivo;
         descricao = passivo ? "PASSIVO" : "ATIVO";
         return true;
     }
@@ -654,7 +870,6 @@ public class ControleUnidade : MonoBehaviour
         {
             if (TryGetComponent<ControleAviao>(out var aviao)) velocidadeOriginalSalva = aviao.velocidadeMaximaVoo;
             else if (TryGetComponent<ControleNavioRealista>(out var nav1)) velocidadeOriginalSalva = nav1.velocidadeMaxima;
-            else if (TryGetComponent<NavegacaoInteligenteNaval>(out var nav2)) velocidadeOriginalSalva = nav2.velocidadeMaxima;
             else if (TryGetComponent<NavMeshAgent>(out var nma)) velocidadeOriginalSalva = nma.speed;
             else velocidadeOriginalSalva = 0f;
         }
@@ -676,7 +891,6 @@ public class ControleUnidade : MonoBehaviour
     {
         if (TryGetComponent<ControleAviao>(out var aviao)) aviao.velocidadeMaximaVoo = Mathf.Max(v, aviao.velocidadeSolo * 2.5f); // Avião não pode parar no ar
         else if (TryGetComponent<ControleNavioRealista>(out var nav1)) nav1.velocidadeMaxima = v;
-        else if (TryGetComponent<NavegacaoInteligenteNaval>(out var nav2)) nav2.velocidadeMaxima = v;
         else if (TryGetComponent<NavMeshAgent>(out var nma)) { if(nma.enabled) nma.speed = v; }
     }
 
@@ -883,6 +1097,10 @@ public class ControleUnidade : MonoBehaviour
     {
         possuiDestinoOrdenado = false;
         ultimoDestinoOrdenado = Vector3.zero;
+        if (ordemControleAtual == OrdemControleUnidade.Movendo || ordemControleAtual == OrdemControleUnidade.Recuando)
+        {
+            ordemControleAtual = OrdemControleUnidade.Ociosa;
+        }
     }
 
     bool TentarDesenharLinhaFallback()
@@ -922,6 +1140,110 @@ public class ControleUnidade : MonoBehaviour
         {
             if (linhaAlcance != null) linhaAlcance.gameObject.SetActive(false);
             if (linhaCaminho != null) linhaCaminho.gameObject.SetActive(false);
+        }
+    }
+
+    private void CancelarOrdemEspecial(bool redefinirEstado)
+    {
+        ComportamentoPatrulhaUniversal patrulhaUniversal = GetComponent<ComportamentoPatrulhaUniversal>();
+        if (patrulhaUniversal != null)
+        {
+            patrulhaUniversal.enabled = false;
+            Destroy(patrulhaUniversal);
+        }
+
+        ComportamentoSeguirUniversal seguirUniversal = GetComponent<ComportamentoSeguirUniversal>();
+        if (seguirUniversal != null)
+        {
+            seguirUniversal.enabled = false;
+            Destroy(seguirUniversal);
+        }
+
+        RestaurarVelocidadeOriginal();
+
+        if (redefinirEstado && (ordemControleAtual == OrdemControleUnidade.Patrulhando || ordemControleAtual == OrdemControleUnidade.Seguindo))
+        {
+            ordemControleAtual = OrdemControleUnidade.Ociosa;
+        }
+    }
+
+    private void AtualizarTrilhaOficial()
+    {
+        if (controleSubmarino != null)
+        {
+            dominioControleAtual = DominioControleUnidade.NavalSubmerso;
+            executorControleAtual = nameof(ControleSubmarino);
+            return;
+        }
+
+        if (helicopteroExterno != null || c700TransporteAereo != null || controleAviao != null || controleAviaoCaca != null || scriptVoo != null || ehAereo)
+        {
+            dominioControleAtual = DominioControleUnidade.Aereo;
+
+            if (c700TransporteAereo != null) executorControleAtual = nameof(C700TransporteAereo);
+            else if (helicopteroExterno != null) executorControleAtual = nameof(Helicoptero);
+            else if (controleAviao != null) executorControleAtual = nameof(ControleAviao);
+            else if (controleAviaoCaca != null) executorControleAtual = nameof(ControleAviaoCaca);
+            else if (scriptVoo != null) executorControleAtual = nameof(VooHelicoptero);
+            else executorControleAtual = "MovimentoAereoGenerico";
+
+            return;
+        }
+
+        if (controleNavioRealista != null || GetComponent<IdentidadeNaval>() != null || TryGetComponent<NavioPetroleiro>(out _))
+        {
+            dominioControleAtual = DominioControleUnidade.NavalSuperficie;
+            executorControleAtual = controleNavioRealista != null ? nameof(ControleNavioRealista) : "NavalAuxiliar";
+            return;
+        }
+
+        dominioControleAtual = DominioControleUnidade.Terrestre;
+        executorControleAtual = TryGetComponent<MovimentoRealTerrestre>(out _) ? nameof(MovimentoRealTerrestre) : nameof(NavMeshAgent);
+    }
+
+    private void AtualizarEstadoDeBloqueio()
+    {
+        bloqueioControleAtivo = false;
+        motivoBloqueioControle = string.Empty;
+
+        if (helicopteroExterno != null && helicopteroExterno.EstaSobControleDoAeroporto())
+        {
+            bloqueioControleAtivo = true;
+            motivoBloqueioControle = "Helicoptero sob controle do aeroporto";
+        }
+    }
+
+    private void ValidarConflitosDeControle()
+    {
+        if (controleNavioRealista != null && navegacaoInteligenteNaval != null)
+        {
+            navegacaoInteligenteNaval.enabled = false;
+            Debug.LogWarning($"[ControleUnidade] {name} ainda possui NavegacaoInteligenteNaval, mas essa trilha foi desativada. Remova o componente legado do objeto.", this);
+        }
+
+        if (controleSubmarino != null && controleNavioRealista != null)
+        {
+            Debug.LogError($"[ControleUnidade] {name} mistura executor submarino com executor naval de superficie. Essa unidade precisa de uma unica autoridade naval.", this);
+        }
+
+        if (helicopteroExterno != null && (controleAviao != null || c700TransporteAereo != null))
+        {
+            Debug.LogError($"[ControleUnidade] {name} mistura Helicoptero com controladores aereos de aviao/transporte. Essa combinacao nao e suportada na trilha oficial.", this);
+        }
+
+        if (c700TransporteAereo != null && controleAviao == null)
+        {
+            Debug.LogWarning($"[ControleUnidade] {name} possui C700TransporteAereo sem ControleAviao. Revise o prefab antes da migracao final.", this);
+        }
+    }
+
+    private void SincronizarModoCombateOficial()
+    {
+        bool passivo;
+        string descricao;
+        if (TryObterEstadoCombate(out passivo, out descricao))
+        {
+            modoCombateOficialAtivo = !passivo;
         }
     }
 }

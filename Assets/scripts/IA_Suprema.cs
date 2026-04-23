@@ -1586,12 +1586,20 @@ public class IA_Suprema : MonoBehaviour
     {
         if (navio == null) return;
         destino.y = nivelDoMar;
+        var controle = navio.GetComponent<ControleUnidade>();
+        if (controle != null)
+        {
+            controle.EmitirOrdemMover(destino);
+            navio.SendMessage("DefinirDestino", destino, SendMessageOptions.DontRequireReceiver);
+            return;
+        }
+
         navio.SendMessage("MoverParaPonto", destino, SendMessageOptions.DontRequireReceiver);
         navio.SendMessage("DefinirDestino", destino, SendMessageOptions.DontRequireReceiver);
         var nav = navio.GetComponent<NavMeshAgent>();
         if (nav != null && nav.isOnNavMesh)
         {
-            nav.SetDestination(destino);
+            nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             nav.isStopped = false;
         }
     }
@@ -2889,10 +2897,17 @@ public class IA_Suprema : MonoBehaviour
  
         d = DesviarDePrediosAliados(d);
 
+        var controle = u.GetComponent<ControleUnidade>();
+        if (controle != null)
+        {
+            controle.EmitirOrdemMover(d);
+            return;
+        }
+
         var nav = u.GetComponent<NavMeshAgent>(); 
         if (nav && nav.isOnNavMesh) 
         {
-            nav.SetDestination(d); 
+            nav.SetDestination(d); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             nav.isStopped = false;
         } 
         else 

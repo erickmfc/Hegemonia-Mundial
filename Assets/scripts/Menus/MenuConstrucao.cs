@@ -2095,7 +2095,8 @@ public class MenuConstrucao : MonoBehaviour
                             || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
                             || item.prefabDaUnidade.GetComponent<HovercraftTransporte>() != null
                             || item.prefabDaUnidade.GetComponent<ControleNavioRealista>() != null
-                            || item.prefabDaUnidade.GetComponent<NavegacaoInteligenteNaval>() != null
+                            || item.prefabDaUnidade.GetComponent<ControleSubmarino>() != null
+                            || item.prefabDaUnidade.GetComponent<NavioPetroleiro>() != null
                             || nomeItemLower.Contains("navio") || nomeItemLower.Contains("sub")
                             || nomeItemLower.Contains("leviathan") || nomeItemLower.Contains("lancha")
                             || nomeItemLower.Contains("corveta") || nomeItemLower.Contains("hovercraft")

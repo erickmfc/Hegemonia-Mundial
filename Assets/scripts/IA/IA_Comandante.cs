@@ -282,8 +282,8 @@ public class IA_Comandante : MonoBehaviour
         {
             // Caminho livre! Vai andando.
             ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
-            if (controle) controle.MoverParaPonto(destinoFinal);
-            else agente.SetDestination(destinoFinal);
+            if (controle) controle.EmitirOrdemMover(destinoFinal);
+            else agente.SetDestination(destinoFinal); // CONTROL_PATH_TRANSITIONAL_FALLBACK
         }
         else
         {
@@ -321,7 +321,7 @@ public class IA_Comandante : MonoBehaviour
     void MoverPara(GameObject unidade, Vector3 pos)
     {
         var ctrl = unidade.GetComponent<ControleUnidade>();
-        if (ctrl) ctrl.MoverParaPonto(pos);
+        if (ctrl) ctrl.EmitirOrdemMover(pos);
     }
 
     void MoverConstrutorPara(Vector3 pos)

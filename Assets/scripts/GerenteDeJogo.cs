@@ -316,7 +316,12 @@ public class GerenteDeJogo : MonoBehaviour
                 // EXCLUSÃO TOTAL: Aviões novos NUNCA vão para Navios (Porta-Aviões, Transportes, Hovercrafts)
                 bool ehCarrier = (a is GerenciadorPortaAvioes) || (a.GetComponent<GerenciadorPortaAvioes>() != null);
                 bool ehTransporte = (a.GetComponentInParent<TransporteAnfibio>() != null) || (a.GetComponentInParent<HovercraftTransporte>() != null);
-                bool ehNaval = (a.GetComponentInParent<NavegacaoInteligenteNaval>() != null) || (a.GetComponentInParent<ControleNavioRealista>() != null);
+                ControleUnidade controlePai = a.GetComponentInParent<ControleUnidade>();
+                bool ehNaval = (controlePai != null && controlePai.EhUnidadeNaval())
+                    || (a.GetComponentInParent<ControleNavioRealista>() != null)
+                    || (a.GetComponentInParent<ControleSubmarino>() != null)
+                    || (a.GetComponentInParent<IdentidadeNaval>() != null)
+                    || (a.GetComponentInParent<NavioPetroleiro>() != null);
                 bool ehCarrierNome = a.name.ToLower().Contains("carrier") || a.name.ToLower().Contains("porta") || a.name.ToLower().Contains("navio") || a.name.ToLower().Contains("ship");
                 
                 if (ehCarrier || ehTransporte || ehNaval || ehCarrierNome) continue;
@@ -622,7 +627,7 @@ public class GerenteDeJogo : MonoBehaviour
             Vector3 destinoFinal = CalcularDestinoSaidaOrganizada(posDestino, destinoAtual, novaUnidade);
             
             // Adiciona variação aleatória de 3m ao redor do ponto de saída
-            controle.MoverParaPonto(destinoFinal);
+            controle.EmitirOrdemMover(destinoFinal);
         }
 
         LogInfo($"SUCESSO: Saiu da fábrica: {pedido.nomeUnidade}");
@@ -698,7 +703,6 @@ public class GerenteDeJogo : MonoBehaviour
 
         if (unidade.GetComponent<IdentidadeNaval>() != null
             || unidade.GetComponent<ControleNavioRealista>() != null
-            || unidade.GetComponent<NavegacaoInteligenteNaval>() != null
             || unidade.GetComponent<ControleSubmarino>() != null
             || unidade.GetComponent<NavioPetroleiro>() != null
             || unidade.GetComponent<HovercraftTransporte>() != null)

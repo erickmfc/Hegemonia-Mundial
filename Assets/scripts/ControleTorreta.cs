@@ -124,6 +124,15 @@ public class ControleTorreta : MonoBehaviour
         CriarVisualizadorAlcance();
 
         GarantirLocaisDeTiro();
+
+        // Prewarm do pool de balas: agora que usamos Spawn em vez de Instantiate,
+        // precisamos garantir que o pool tenha objetos prontos para evitar spike no 1° disparo
+        if (municaoPrefab != null)
+            PoolDeObjetosCombate.Prewarm(municaoPrefab, Mathf.Clamp(tamanhoCartucho / 5, 4, 12));
+        if (municoesPorCano != null)
+            for (int _pi = 0; _pi < municoesPorCano.Length; _pi++)
+                if (municoesPorCano[_pi] != null && municoesPorCano[_pi] != municaoPrefab)
+                    PoolDeObjetosCombate.Prewarm(municoesPorCano[_pi], 4);
     }
 
     bool DeterminarSouAntiAereo()
@@ -789,8 +798,10 @@ public class ControleTorreta : MonoBehaviour
                 return;
             }
 
-            GameObject bala = Instantiate(prefabParaUsar, barrilDaVez.position, barrilDaVez.rotation);
-            Projetil scriptBala = bala.GetComponent<Projetil>();
+            // OTIMIZAÇÃO CRÍTICA: Usa Pool em vez de Instantiate para eliminar spikes de GC
+            // A metralhadora disparava Instantiate+Destroy a até 12x/s — maior causa de travadas
+            GameObject bala = PoolDeObjetosCombate.Spawn(prefabParaUsar, barrilDaVez.position, barrilDaVez.rotation);
+            Projetil scriptBala = bala != null ? bala.GetComponent<Projetil>() : null;
             
             if (scriptBala != null)
             {

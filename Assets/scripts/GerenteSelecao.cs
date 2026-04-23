@@ -463,7 +463,7 @@ public class GerenteSelecao : MonoBehaviour
                 }
                 else
                 {
-                    u.MoverParaPonto(destinoCentral);
+                    u.EmitirOrdemMover(destinoCentral);
                 }
                 continue; // Avião resolvido
             }
@@ -476,9 +476,7 @@ public class GerenteSelecao : MonoBehaviour
             }
 
             // Checagem Naval
-            if (u.GetComponent<IdentidadeNaval>() != null || 
-                u.GetComponent<ControleSubmarino>() != null ||
-                u.GetComponent<NavegacaoInteligenteNaval>() != null)
+            if (u.EhUnidadeNaval())
             {
                 ehGrupoNaval = true;
             }
@@ -550,7 +548,7 @@ public class GerenteSelecao : MonoBehaviour
             }
 
             // Envia Comando
-            alvoCtrl.MoverParaPonto(posAlvo);
+            alvoCtrl.EmitirOrdemMover(posAlvo);
         }
     }
 
@@ -579,7 +577,7 @@ public class GerenteSelecao : MonoBehaviour
 
             if (unidade.TemC700TransporteAereo)
             {
-                unidade.MoverParaPonto(destinoCentral);
+                unidade.EmitirOrdemMover(destinoCentral);
                 continue;
             }
 
@@ -588,7 +586,7 @@ public class GerenteSelecao : MonoBehaviour
                 ControleAviao aviao = unidade.GetComponent<ControleAviao>();
                 if (aviao == null)
                 {
-                    unidade.MoverParaPonto(destinoCentral);
+                    unidade.EmitirOrdemMover(destinoCentral);
                     continue;
                 }
 
@@ -604,7 +602,7 @@ public class GerenteSelecao : MonoBehaviour
                 }
                 else
                 {
-                    unidade.MoverParaPonto(destinoCentral);
+                    unidade.EmitirOrdemMover(destinoCentral);
                 }
                 continue;
             }
@@ -624,9 +622,7 @@ public class GerenteSelecao : MonoBehaviour
                 continue;
             }
 
-            if (unidade.GetComponent<IdentidadeNaval>() != null ||
-                unidade.GetComponent<ControleSubmarino>() != null ||
-                unidade.GetComponent<NavegacaoInteligenteNaval>() != null)
+            if (unidade.EhUnidadeNaval())
             {
                 ehGrupoNaval = true;
             }
@@ -759,7 +755,7 @@ public class GerenteSelecao : MonoBehaviour
                 posAlvo = hit.position;
             }
 
-            alvoCtrl.MoverParaPonto(posAlvo);
+            alvoCtrl.EmitirOrdemMover(posAlvo);
         }
     }
 

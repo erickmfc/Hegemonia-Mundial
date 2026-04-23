@@ -61,7 +61,7 @@ public class IA_CerebroPelotao : MonoBehaviour
     {
         if (u == null) return;
         var ctrl = u.GetComponent<ControleUnidade>();
-        if (ctrl) ctrl.MoverParaPonto(pontoDeEncontro + new Vector3(Random.Range(-5f, 5f), 0, Random.Range(-5f, 5f)));
+        if (ctrl) ctrl.EmitirOrdemMover(pontoDeEncontro + new Vector3(Random.Range(-5f, 5f), 0, Random.Range(-5f, 5f)));
     }
 
     IEnumerator CicloDeDecisao()
@@ -244,7 +244,7 @@ public class IA_CerebroPelotao : MonoBehaviour
                 if (Vector3.Distance(m.transform.position, posicaoNaGrade) > 4f)
                 {
                     var ctrl = m.GetComponent<ControleUnidade>();
-                    if (ctrl) ctrl.MoverParaPonto(posicaoNaGrade);
+                    if (ctrl) ctrl.EmitirOrdemMover(posicaoNaGrade);
                 }
             }
         }
@@ -253,7 +253,7 @@ public class IA_CerebroPelotao : MonoBehaviour
         if (!esperandoNaEmboscada)
         {
             var liderCtrl = lider.GetComponent<ControleUnidade>();
-            if (liderCtrl) liderCtrl.MoverParaPonto(destinoMovel);
+            if (liderCtrl) liderCtrl.EmitirOrdemMover(destinoMovel);
         }
     }
 
@@ -354,7 +354,7 @@ public class IA_CerebroPelotao : MonoBehaviour
             if (m == null) continue;
             Vector3 passinhoLateral = new Vector3(Random.Range(-4f, 4f), 0, Random.Range(-4f, 4f));
             var ctrl = m.GetComponent<ControleUnidade>();
-            if (ctrl) ctrl.MoverParaPonto(m.transform.position + passinhoLateral);
+            if (ctrl) ctrl.EmitirOrdemMover(m.transform.position + passinhoLateral);
         }
     }
 }

@@ -75,9 +75,23 @@ namespace Hegemonia.AI.BrainMaster
         private float _cachedTerritoryAnchorsUntil;
         private string _lastSlowSectionSummary = string.Empty;
 
+        private static bool _navalFieldConfigured;
+
         public IA_BuildDirector(IA_Context context)
         {
             _context = context;
+
+            if (!_navalFieldConfigured)
+            {
+                IA_NavalPlacementField.Configure(
+                    LayerMask.GetMask("Water"),
+                    LayerMask.GetMask("Default", "Building", "Obstacle"),
+                    48f,
+                    384f,
+                    3.5f
+                );
+                _navalFieldConfigured = true;
+            }
         }
 
         public string Name
@@ -333,6 +347,8 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
+            IA_NavalPlacementField.BeginFrame();
+
             if (now < _nextDecisionTime)
             {
                 return;
@@ -1147,6 +1163,29 @@ namespace Hegemonia.AI.BrainMaster
 
             if (desiredTerrain == IA_TerrainType.Water)
             {
+                IA_NavalPlacementFastResolver.ResolveResult fast;
+                string normalizedItem = IA_Text.Normalize(itemKey);
+
+                if (normalizedItem.Contains("pier"))
+                {
+                    fast = IA_NavalPlacementFastResolver.TryResolvePier(_context, itemKey, anchor, minRadius, maxRadius);
+                }
+                else if (normalizedItem.Contains("plataforma"))
+                {
+                    fast = IA_NavalPlacementFastResolver.TryResolvePlatform(_context, itemKey, anchor, minRadius, maxRadius);
+                }
+                else
+                {
+                    fast = IA_NavalPlacementFastResolver.TryResolveShipyard(_context, itemKey, anchor, minRadius, maxRadius);
+                }
+
+                if (fast.Success)
+                {
+                    candidate = fast.Position;
+                    failureReason = string.Empty;
+                    return true;
+                }
+
                 string navalBackoffReason;
                 if (TryGetNavalSearchBackoff(itemKey, anchor, Time.time, out navalBackoffReason))
                 {
@@ -2304,6 +2343,11 @@ namespace Hegemonia.AI.BrainMaster
                     NavalDiagnosticPoint(candidate, "pose falhou: " + reason, new Color(1f, 0.25f, 0.25f, 1f), 4.4f);
                 }
 
+                if (zone == IA_ZoneType.Naval || itemKey.ToLower().Contains("estaleiro") || itemKey.ToLower().Contains("pier"))
+                {
+                    IA_NavalPlacementField.MarkCellTemporarilyBlocked(candidate, "pose:" + reason, 45f);
+                }
+
                 return false;
             }
 
@@ -2423,6 +2467,8 @@ namespace Hegemonia.AI.BrainMaster
                 _navalSearchBackoffUntil.Clear();
                 _cachedTerritoryStructureCount = -1;
                 _cachedTerritoryAnchorsUntil = 0f;
+
+                IA_NavalPlacementField.InvalidateAll();
             }
         }
 

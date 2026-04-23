@@ -98,13 +98,21 @@ public class ExemploUsoNavegacaoNaval : MonoBehaviour
     /// </summary>
     void MostrarEstadoAtual()
     {
-        if (navegacao.EstaEmMarchaRe())
+        Rigidbody rb = navio != null ? navio.GetComponent<Rigidbody>() : null;
+        bool emMovimento = rb != null && rb.linearVelocity.sqrMagnitude > 0.05f;
+        bool marchaReAproximada = false;
+        if (emMovimento && rb != null && navio != null)
+        {
+            marchaReAproximada = Vector3.Dot(navio.transform.forward, rb.linearVelocity.normalized) < -0.15f;
+        }
+
+        if (marchaReAproximada)
         {
             Debug.Log("⚠️ NAVIO EM MARCHA À RÉ!");
         }
         else
         {
-            Debug.Log("✅ Navio em marcha à frente (normal)");
+            Debug.Log("✅ Navio em marcha à frente (ou parado)");
         }
     }
     

@@ -572,20 +572,30 @@ public class Estaleiro : MonoBehaviour
                 agenteNovo.Warp(hit.position);
             }
 
+            var controleUnidade = navioPronto.GetComponent<ControleUnidade>();
             var navRealista = navioPronto.GetComponent<ControleNavioRealista>();
-            var navegacaoNaval = navioPronto.GetComponent<NavegacaoInteligenteNaval>();
             var controleSubmarino = navioPronto.GetComponent<ControleSubmarino>();
             var identidadeNaval = navioPronto.GetComponent<IdentidadeNaval>();
+            bool movimentoDelegado = false;
 
-            if (navRealista != null) navRealista.DefinirDestino(destinoSaida);
-            else if (navegacaoNaval != null) navegacaoNaval.DefinirDestino(destinoSaida);
-            else if (controleSubmarino != null)
+            if (controleUnidade != null)
+            {
+                if (controleSubmarino != null)
+                {
+                    controleSubmarino.ForcarEstadoSuperficieImediato();
+                }
+
+                movimentoDelegado = controleUnidade.EmitirOrdemMover(destinoSaida);
+            }
+
+            if (!movimentoDelegado && navRealista != null) navRealista.DefinirDestino(destinoSaida);
+            else if (!movimentoDelegado && controleSubmarino != null)
             {
                 controleSubmarino.ForcarEstadoSuperficieImediato();
                 controleSubmarino.DefinirDestino(destinoSaida);
             }
-            else if (identidadeNaval != null) identidadeNaval.MoverPara(destinoSaida);
-            else agenteNovo.SetDestination(destinoSaida);
+            else if (!movimentoDelegado && identidadeNaval != null) identidadeNaval.MoverPara(destinoSaida);
+            else if (!movimentoDelegado) agenteNovo.SetDestination(destinoSaida); // CONTROL_PATH_TRANSITIONAL_FALLBACK
         }
 
         // Registrar no General se for IA

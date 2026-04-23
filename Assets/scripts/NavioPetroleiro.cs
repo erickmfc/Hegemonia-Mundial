@@ -417,10 +417,15 @@ public class NavioPetroleiro : ControleUnidade
 
     void ConfigurarNavMesh(Vector3 destino)
     {
+        if (EmitirOrdemMover(destino, false))
+        {
+            return;
+        }
+
         AtivarNavMeshNoLocal();
         if (agenteNav.enabled)
         {
-            agenteNav.SetDestination(destino);
+            agenteNav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             agenteNav.isStopped = false;
         }
     }

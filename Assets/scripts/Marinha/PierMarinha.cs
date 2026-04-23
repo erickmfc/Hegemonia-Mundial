@@ -701,24 +701,35 @@ public class PierMarinha : MonoBehaviour
                 novoNavio.transform.rotation = Quaternion.LookRotation(direcaoSaida.normalized, Vector3.up);
             }
 
+            ControleUnidade controleUnidade = novoNavio.GetComponent<ControleUnidade>();
             ControleNavioRealista controleRealista = novoNavio.GetComponent<ControleNavioRealista>();
-            NavegacaoInteligenteNaval navegacaoNaval = novoNavio.GetComponent<NavegacaoInteligenteNaval>();
             ControleSubmarino controleSubmarino = novoNavio.GetComponent<ControleSubmarino>();
+            bool movimentoDelegado = false;
 
             if (controleRealista != null)
             {
                 controleRealista.PrepararSaidaInicial(destNaval, 8f);
+            }
+
+            if (controleSubmarino != null)
+            {
+                controleSubmarino.ForcarEstadoSuperficieImediato();
+            }
+
+            if (controleUnidade != null)
+            {
+                movimentoDelegado = controleUnidade.EmitirOrdemMover(destNaval);
+            }
+
+            if (!movimentoDelegado && controleRealista != null)
+            {
                 controleRealista.DefinirDestino(destNaval);
             }
-            else if (navegacaoNaval != null)
-            {
-                navegacaoNaval.DefinirDestino(destNaval);
-            }
-            else if (controleSubmarino != null)
+            else if (!movimentoDelegado && controleSubmarino != null)
             {
                 controleSubmarino.DefinirDestino(destNaval);
             }
-            else
+            else if (!movimentoDelegado)
             {
                 idNaval.MoverPara(destNaval);
             }

@@ -251,7 +251,7 @@ public class IA_General_Pro : MonoBehaviour
                         if (Vector3.Distance(transp.transform.position, alvo.position) < 80f)
                             transp.DesembarcarTudo();
                         else
-                            transp.GetComponent<ControleUnidade>()?.MoverParaPonto(alvo.position);
+                            transp.GetComponent<ControleUnidade>()?.EmitirOrdemMover(alvo.position);
                     }
                 }
                 else if (transp.TemPassageiros && alvo != null && Vector3.Distance(transp.transform.position, alvo.position) < 80f)
@@ -260,7 +260,7 @@ public class IA_General_Pro : MonoBehaviour
                 }
                 else if (!transp.TemPassageiros && Vector3.Distance(transp.transform.position, centro) > 150f)
                 {
-                    transp.GetComponent<ControleUnidade>()?.MoverParaPonto(centro);
+                    transp.GetComponent<ControleUnidade>()?.EmitirOrdemMover(centro);
                 }
                 else if (!transp.EstaCheio() && !transp.EmCooldown() && Vector3.Distance(transp.transform.position, centro) < 100f)
                 {
@@ -851,10 +851,10 @@ public class IA_General_Pro : MonoBehaviour
             destino = navHit.position;
 
         var ctrl = u.GetComponent<ControleUnidade>();
-        if (ctrl) { ctrl.MoverParaPonto(destino); return; }
+        if (ctrl) { ctrl.EmitirOrdemMover(destino); return; }
 
         var nav = u.GetComponent<UnityEngine.AI.NavMeshAgent>();
-        if (nav && nav.isOnNavMesh) { nav.SetDestination(destino); nav.isStopped = false; }
+        if (nav && nav.isOnNavMesh) { nav.SetDestination(destino); nav.isStopped = false; } // CONTROL_PATH_TRANSITIONAL_FALLBACK
     }
 
     public Transform BuscarAlvo()

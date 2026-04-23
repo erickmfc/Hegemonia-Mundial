@@ -151,11 +151,27 @@ public class NavioTransporteTropas : MonoBehaviour
     private readonly Dictionary<int, Coroutine> _rotinasSaidaHeli = new Dictionary<int, Coroutine>();
 
     // ======================================================
+    // Cache UI (evita queda grande de FPS ao abrir o menu com muita carga)
+    // ======================================================
+    private int _veiculosAtualCache;
+    private int _soldadosAtualCache;
+    private int _aereosAtualCache;
+    private bool _contagemCargaSuja = true;
+
+    private bool _uiMostrarListaCompleta = false;
+    private const int UI_MAX_ITENS_LISTA_RESUMIDA = 28;
+
+    private GUISkin _skinCache;
+    private GUIStyle _uiLinhaCompacta;
+    private GUIStyle _uiLabelCompacta;
+    private GUIStyle _uiLabelWrap;
+
+    // ======================================================
     // API Pública (IA / Debug)
     // ======================================================
-    public int VeiculosAtual => _veiculosCarregados.Count(c => c != null && c.unidade != null);
-    public int SoldadosAtual => _soldadosCarregados.Count(c => c != null && c.unidade != null);
-    public int AereosAtual => _helisCarregados.Count(c => c != null && c.heli != null);
+    public int VeiculosAtual => _veiculosAtualCache;
+    public int SoldadosAtual => _soldadosAtualCache;
+    public int AereosAtual => _aereosAtualCache;
 
     public int VeiculosMax => capacidadeMaxVeiculos;
     public int SoldadosMax => capacidadeMaxSoldados;
@@ -254,6 +270,10 @@ public class NavioTransporteTropas : MonoBehaviour
         }
         ManterHelisNoNavio();
         LimparNulos();
+        if (_menuAberto)
+        {
+            AtualizarContagemCargaSeNecessario();
+        }
     }
 
     private void OnGUI()
@@ -272,23 +292,7 @@ public class NavioTransporteTropas : MonoBehaviour
         GUI.skin.button.fontSize = 10;
         GUI.skin.box.fontSize = 12;
 
-        GUIStyle linhaCompacta = new GUIStyle(GUI.skin.button);
-        linhaCompacta.alignment = TextAnchor.MiddleLeft;
-        linhaCompacta.wordWrap = false;
-        linhaCompacta.clipping = TextClipping.Clip;
-        linhaCompacta.fontSize = 10;
-        linhaCompacta.padding = new RectOffset(6, 4, 2, 2);
-
-        GUIStyle labelCompacta = new GUIStyle(GUI.skin.label);
-        labelCompacta.richText = true;
-        labelCompacta.wordWrap = false;
-        labelCompacta.clipping = TextClipping.Clip;
-        labelCompacta.fontSize = 10;
-
-        GUIStyle labelWrap = new GUIStyle(GUI.skin.label);
-        labelWrap.richText = true;
-        labelWrap.wordWrap = true;
-        labelWrap.fontSize = 11;
+        PrepararEstilosUISeNecessario();
 
         float menuWidth = Mathf.Clamp(Screen.width * 0.32f, 430f, 560f);
         float menuHeight = Mathf.Min(Screen.height - 8f, 1100f);
@@ -304,9 +308,10 @@ public class NavioTransporteTropas : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.Space(4);
-        GUILayout.Label($"<b>🚚 Veículos:</b> <color=yellow>{VeiculosAtual}</color> / {capacidadeMaxVeiculos}");
-        GUILayout.Label($"<b>🪖 Soldados:</b> <color=yellow>{SoldadosAtual}</color> / {capacidadeMaxSoldados}");
-        GUILayout.Label($"<b>🚁 Helicópteros:</b> <color=yellow>{AereosAtual}</color> / {capacidadeMaxAereos}");
+        AtualizarContagemCargaSeNecessario();
+        GUILayout.Label($"<b>🚚 Veículos:</b> <color=yellow>{_veiculosAtualCache}</color> / {capacidadeMaxVeiculos}");
+        GUILayout.Label($"<b>🪖 Soldados:</b> <color=yellow>{_soldadosAtualCache}</color> / {capacidadeMaxSoldados}");
+        GUILayout.Label($"<b>🚁 Helicópteros:</b> <color=yellow>{_aereosAtualCache}</color> / {capacidadeMaxAereos}");
 
         float alturaScrollMenu = Mathf.Max(320f, areaMenu.height - 68f);
         _scrollMenuGeral = GUILayout.BeginScrollView(_scrollMenuGeral, false, true, GUILayout.Height(alturaScrollMenu));
@@ -314,7 +319,7 @@ public class NavioTransporteTropas : MonoBehaviour
         bool temTerra = TemPontoEmTerra();
         if (!temTerra)
         {
-            GUILayout.Label("<color=red><b>⚠️ Operação terrestre BLOQUEADA:</b> nenhum 'saida/entrada' está em terra.</color>", labelWrap);
+            GUILayout.Label("<color=red><b>⚠️ Operação terrestre BLOQUEADA:</b> nenhum 'saida/entrada' está em terra.</color>", _uiLabelWrap);
         }
 
         GUILayout.Space(6);
@@ -353,15 +358,24 @@ public class NavioTransporteTropas : MonoBehaviour
 
         GUILayout.Space(6);
 
+        // Renderização de listas grandes em IMGUI derruba FPS. Por padrão, mostramos uma lista resumida.
+        GUILayout.BeginHorizontal("box");
+        GUILayout.Label("<b>Lista:</b>", GUILayout.Width(52f));
+        _uiMostrarListaCompleta = GUILayout.Toggle(_uiMostrarListaCompleta, "mostrar completa (pode pesar)");
+        GUILayout.EndHorizontal();
+        GUILayout.Space(2);
+
         // Listas
-        GUILayout.Label($"<color=cyan><b>🚚 VEÍCULOS A BORDO ({VeiculosAtual}/{capacidadeMaxVeiculos})</b></color>");
+        GUILayout.Label($"<color=cyan><b>🚚 VEÍCULOS A BORDO ({_veiculosAtualCache}/{capacidadeMaxVeiculos})</b></color>");
         _scrollVeiculos = GUILayout.BeginScrollView(_scrollVeiculos, GUILayout.Height(100f));
-        for (int i = 0; i < _veiculosCarregados.Count; i++)
+        int totalVeiculos = _veiculosCarregados.Count;
+        int limiteVeiculos = _uiMostrarListaCompleta ? totalVeiculos : Mathf.Min(UI_MAX_ITENS_LISTA_RESUMIDA, totalVeiculos);
+        for (int i = 0; i < limiteVeiculos; i++)
         {
             var u = _veiculosCarregados[i]?.unidade;
             if (u == null) continue;
             string pfx = (_categoriaSelecionada == CategoriaSelecao.Veiculo && _indiceSelecionadoVeiculo == i) ? "► " : "";
-            if (GUILayout.Button($"{pfx}🚚 {CompactarTextoMenu(LimparClone(u.name), 30)}", linhaCompacta, GUILayout.Height(22f)))
+            if (GUILayout.Button($"{pfx}🚚 {CompactarTextoMenu(LimparClone(u.name), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
             {
                 _categoriaSelecionada = CategoriaSelecao.Veiculo;
                 _indiceSelecionadoVeiculo = i;
@@ -370,17 +384,23 @@ public class NavioTransporteTropas : MonoBehaviour
                 _helicopteroSelecionadoParaMissao = null;
             }
         }
+        if (!_uiMostrarListaCompleta && totalVeiculos > limiteVeiculos)
+        {
+            GUILayout.Label($"<color=grey>+{totalVeiculos - limiteVeiculos} veículo(s) ocultos (ative lista completa).</color>", _uiLabelCompacta);
+        }
         GUILayout.EndScrollView();
 
         GUILayout.Space(4);
-        GUILayout.Label($"<color=lime><b>🪖 SOLDADOS A BORDO ({SoldadosAtual}/{capacidadeMaxSoldados})</b></color>");
+        GUILayout.Label($"<color=lime><b>🪖 SOLDADOS A BORDO ({_soldadosAtualCache}/{capacidadeMaxSoldados})</b></color>");
         _scrollSoldados = GUILayout.BeginScrollView(_scrollSoldados, GUILayout.Height(100f));
-        for (int i = 0; i < _soldadosCarregados.Count; i++)
+        int totalSoldados = _soldadosCarregados.Count;
+        int limiteSoldados = _uiMostrarListaCompleta ? totalSoldados : Mathf.Min(UI_MAX_ITENS_LISTA_RESUMIDA, totalSoldados);
+        for (int i = 0; i < limiteSoldados; i++)
         {
             var u = _soldadosCarregados[i]?.unidade;
             if (u == null) continue;
             string pfx = (_categoriaSelecionada == CategoriaSelecao.Soldado && _indiceSelecionadoSoldado == i) ? "► " : "";
-            if (GUILayout.Button($"{pfx}🪖 {CompactarTextoMenu(LimparClone(u.name), 30)}", linhaCompacta, GUILayout.Height(22f)))
+            if (GUILayout.Button($"{pfx}🪖 {CompactarTextoMenu(LimparClone(u.name), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
             {
                 _categoriaSelecionada = CategoriaSelecao.Soldado;
                 _indiceSelecionadoSoldado = i;
@@ -389,12 +409,18 @@ public class NavioTransporteTropas : MonoBehaviour
                 _helicopteroSelecionadoParaMissao = null;
             }
         }
+        if (!_uiMostrarListaCompleta && totalSoldados > limiteSoldados)
+        {
+            GUILayout.Label($"<color=grey>+{totalSoldados - limiteSoldados} soldado(s) ocultos (ative lista completa).</color>", _uiLabelCompacta);
+        }
         GUILayout.EndScrollView();
 
         GUILayout.Space(4);
-        GUILayout.Label($"<color=orange><b>🚁 HELICÓPTEROS NO CONVÉS / APROXIMAÇÃO ({AereosAtual}/{capacidadeMaxAereos})</b></color>");
+        GUILayout.Label($"<color=orange><b>🚁 HELICÓPTEROS NO CONVÉS / APROXIMAÇÃO ({_aereosAtualCache}/{capacidadeMaxAereos})</b></color>");
         _scrollHelis = GUILayout.BeginScrollView(_scrollHelis, GUILayout.Height(100f));
-        for (int i = 0; i < _helisCarregados.Count; i++)
+        int totalHelis = _helisCarregados.Count;
+        int limiteHelis = _uiMostrarListaCompleta ? totalHelis : Mathf.Min(UI_MAX_ITENS_LISTA_RESUMIDA, totalHelis);
+        for (int i = 0; i < limiteHelis; i++)
         {
             var h = _helisCarregados[i]?.heli;
             if (h == null) continue;
@@ -405,7 +431,7 @@ public class NavioTransporteTropas : MonoBehaviour
                     ? $" ({CompactarTextoMenu(_helisCarregados[i].paradaAtual.name, 12)})"
                     : (_helisCarregados[i].emSaida ? " (saída)" : "");
             string pfx = (_categoriaSelecionada == CategoriaSelecao.Heli && _indiceSelecionadoHeli == i) ? "► " : "";
-            if (GUILayout.Button($"{pfx}🚁 {CompactarTextoMenu(h.ObterRotuloExibicao(), 24)}{status}", linhaCompacta, GUILayout.Height(22f)))
+            if (GUILayout.Button($"{pfx}🚁 {CompactarTextoMenu(h.ObterRotuloExibicao(), 24)}{status}", _uiLinhaCompacta, GUILayout.Height(22f)))
             {
                 _categoriaSelecionada = CategoriaSelecao.Heli;
                 _indiceSelecionadoHeli = i;
@@ -413,6 +439,10 @@ public class NavioTransporteTropas : MonoBehaviour
                 _indiceSelecionadoSoldado = -1;
                 _helicopteroSelecionadoParaMissao = h;
             }
+        }
+        if (!_uiMostrarListaCompleta && totalHelis > limiteHelis)
+        {
+            GUILayout.Label($"<color=grey>+{totalHelis - limiteHelis} helicóptero(s) ocultos (ative lista completa).</color>", _uiLabelCompacta);
         }
         GUILayout.EndScrollView();
 
@@ -440,7 +470,7 @@ public class NavioTransporteTropas : MonoBehaviour
                 if (heliProximo == null) continue;
 
                 GUILayout.BeginHorizontal();
-                GUILayout.Label($"🚁 {CompactarTextoMenu(heliProximo.ObterRotuloExibicao(), 24)}", labelCompacta, GUILayout.Width(270f));
+                GUILayout.Label($"🚁 {CompactarTextoMenu(heliProximo.ObterRotuloExibicao(), 24)}", _uiLabelCompacta, GUILayout.Width(270f));
                 GUILayout.EndHorizontal();
             }
 
@@ -468,7 +498,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
         string infoSelecao = ObterDescricaoSelecaoAtual();
         if (!string.IsNullOrEmpty(infoSelecao))
-            GUILayout.Label($"Selecionado: <color=yellow>{CompactarTextoMenu(infoSelecao, 48)}</color>", labelWrap);
+            GUILayout.Label($"Selecionado: <color=yellow>{CompactarTextoMenu(infoSelecao, 48)}</color>", _uiLabelWrap);
         else
             GUILayout.Label("Selecionado: NENHUM");
 
@@ -954,6 +984,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
         if (ehSoldado) _soldadosCarregados.Add(carga);
         else _veiculosCarregados.Add(carga);
+        _contagemCargaSuja = true;
 
         // Esconde a unidade (mas continua parentada para acompanhar o navio)
         u.SetActive(false);
@@ -964,6 +995,7 @@ public class NavioTransporteTropas : MonoBehaviour
         if (carga == null) return;
         _veiculosCarregados.Remove(carga);
         _soldadosCarregados.Remove(carga);
+        _contagemCargaSuja = true;
     }
 
     public int TransferirSoldadosParaHelicoptero(Helicoptero heli, int quantidadeMax = int.MaxValue)
@@ -980,6 +1012,7 @@ public class NavioTransporteTropas : MonoBehaviour
             if (carga == null || carga.unidade == null)
             {
                 _soldadosCarregados.RemoveAt(i);
+                _contagemCargaSuja = true;
                 continue;
             }
 
@@ -1018,6 +1051,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
         soldado.SetActive(false);
         _soldadosCarregados.Add(carga);
+        _contagemCargaSuja = true;
         return true;
     }
 
@@ -1797,9 +1831,74 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private void LimparNulos()
     {
+        int antesV = _veiculosCarregados.Count;
+        int antesS = _soldadosCarregados.Count;
+        int antesH = _helisCarregados.Count;
+
         _veiculosCarregados.RemoveAll(c => c == null || c.unidade == null);
         _soldadosCarregados.RemoveAll(c => c == null || c.unidade == null);
         _helisCarregados.RemoveAll(c => c == null || c.heli == null);
+
+        if (antesV != _veiculosCarregados.Count || antesS != _soldadosCarregados.Count || antesH != _helisCarregados.Count)
+        {
+            _contagemCargaSuja = true;
+        }
+    }
+
+    private void AtualizarContagemCargaSeNecessario()
+    {
+        if (!_contagemCargaSuja) return;
+
+        int v = 0;
+        for (int i = 0; i < _veiculosCarregados.Count; i++)
+        {
+            if (_veiculosCarregados[i] != null && _veiculosCarregados[i].unidade != null) v++;
+        }
+
+        int s = 0;
+        for (int i = 0; i < _soldadosCarregados.Count; i++)
+        {
+            if (_soldadosCarregados[i] != null && _soldadosCarregados[i].unidade != null) s++;
+        }
+
+        int h = 0;
+        for (int i = 0; i < _helisCarregados.Count; i++)
+        {
+            if (_helisCarregados[i] != null && _helisCarregados[i].heli != null) h++;
+        }
+
+        _veiculosAtualCache = v;
+        _soldadosAtualCache = s;
+        _aereosAtualCache = h;
+        _contagemCargaSuja = false;
+    }
+
+    private void PrepararEstilosUISeNecessario()
+    {
+        if (_skinCache == GUI.skin && _uiLinhaCompacta != null && _uiLabelCompacta != null && _uiLabelWrap != null)
+        {
+            return;
+        }
+
+        _skinCache = GUI.skin;
+
+        _uiLinhaCompacta = new GUIStyle(GUI.skin.button);
+        _uiLinhaCompacta.alignment = TextAnchor.MiddleLeft;
+        _uiLinhaCompacta.wordWrap = false;
+        _uiLinhaCompacta.clipping = TextClipping.Clip;
+        _uiLinhaCompacta.fontSize = 10;
+        _uiLinhaCompacta.padding = new RectOffset(6, 4, 2, 2);
+
+        _uiLabelCompacta = new GUIStyle(GUI.skin.label);
+        _uiLabelCompacta.richText = true;
+        _uiLabelCompacta.wordWrap = false;
+        _uiLabelCompacta.clipping = TextClipping.Clip;
+        _uiLabelCompacta.fontSize = 10;
+
+        _uiLabelWrap = new GUIStyle(GUI.skin.label);
+        _uiLabelWrap.richText = true;
+        _uiLabelWrap.wordWrap = true;
+        _uiLabelWrap.fontSize = 11;
     }
 
     private void MostrarMensagem(string msg, float duracao = 4f)
@@ -1913,7 +2012,7 @@ public class NavioTransporteTropas : MonoBehaviour
         var ctrl = u.GetComponent<ControleUnidade>();
         if (ctrl != null)
         {
-            ctrl.MoverParaPonto(destino);
+            ctrl.EmitirOrdemMover(destino);
             return;
         }
 
@@ -1930,7 +2029,7 @@ public class NavioTransporteTropas : MonoBehaviour
                     }
                 }
                 nav.isStopped = false;
-                nav.SetDestination(destino);
+                nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             }
             catch { }
         }
@@ -2279,6 +2378,7 @@ public class NavioTransporteTropas : MonoBehaviour
         {
             carga = new CargaHeli { heli = h };
             _helisCarregados.Add(carga);
+            _contagemCargaSuja = true;
         }
 
         carga.paradaAtual = vaga;
@@ -2457,12 +2557,14 @@ public class NavioTransporteTropas : MonoBehaviour
             if (carga == null || carga.heli == null)
             {
                 _helisCarregados.RemoveAt(i);
+                _contagemCargaSuja = true;
                 continue;
             }
 
             if (carga.heli == heli)
             {
                 _helisCarregados.RemoveAt(i);
+                _contagemCargaSuja = true;
                 break;
             }
         }

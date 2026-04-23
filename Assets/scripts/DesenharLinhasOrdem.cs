@@ -39,7 +39,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
         modoSeguirAtivo = false;
         pontosPatrulha.Clear();
         lineRenderer.positionCount = 0;
-        Debug.Log("MODO PATRULHA: clique com o botao direito para marcar pontos. ENTER confirma, BACKSPACE desfaz e ESC cancela.");
+        Debug.Log("MODO PATRULHA: clique com o botao esquerdo para iniciar. SHIFT + clique esquerdo adiciona pontos extras. ENTER confirma rota multipla. BOTAO DIREITO ou ESC cancelam.");
     }
 
     public void IniciarModoSeguir()
@@ -47,7 +47,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
         modoSeguirAtivo = true;
         modoPatrulhaAtivo = false;
         lineRenderer.positionCount = 0;
-        Debug.Log("MODO SEGUIR: clique com o botao direito em uma unidade aliada.");
+        Debug.Log("MODO SEGUIR: clique com o botao esquerdo em uma unidade aliada. BOTAO DIREITO ou ESC cancelam.");
     }
 
     void Update()
@@ -58,37 +58,47 @@ public class DesenharLinhasOrdem : MonoBehaviour
             return;
         }
 
-        if (modoPatrulhaAtivo && Input.GetMouseButtonDown(1))
+        if (modoPatrulhaAtivo && Input.GetMouseButtonDown(0))
         {
             Vector3 pontoPatrulha;
             if (TryObterPontoPatrulha(out pontoPatrulha))
             {
                 pontosPatrulha.Add(pontoPatrulha);
                 AtualizarLinhaVisualPatrulha();
-                
-                // Mostrar a marcação de patrulha
-                if (prefabMarcadorPatrulha != null)
+                MostrarMarcadorPatrulha(pontoPatrulha);
+
+                bool adicionandoRotaMultipla = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                if (!adicionandoRotaMultipla)
                 {
-                    GameObject marcador = Instantiate(prefabMarcadorPatrulha, pontoPatrulha + Vector3.up * 0.1f, Quaternion.identity);
-                    marcador.transform.localScale = new Vector3(11f, 11f, 11f);
-                    Destroy(marcador, 3.0f);
+                    AplicarOrdemPatrulha();
+                    Debug.Log("Patrulha iniciada.");
+                    LimparTudo();
+                    return;
                 }
             }
         }
 
+        if (modoPatrulhaAtivo && Input.GetMouseButtonDown(1))
+        {
+            Debug.Log("Modo patrulha cancelado.");
+            LimparTudo();
+            return;
+        }
+
         if (modoPatrulhaAtivo && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)))
         {
-            if (pontosPatrulha.Count >= 2)
+            if (pontosPatrulha.Count >= 1)
             {
                 AplicarOrdemPatrulha();
                 Debug.Log("Patrulha confirmada e iniciada.");
             }
             else
             {
-                Debug.LogWarning("Patrulha precisa de pelo menos 2 pontos.");
+                Debug.LogWarning("Patrulha precisa de pelo menos 1 ponto.");
             }
 
-            modoPatrulhaAtivo = false;
+            LimparTudo();
+            return;
         }
 
         if (modoPatrulhaAtivo && Input.GetKeyDown(KeyCode.Backspace) && pontosPatrulha.Count > 0)
@@ -98,6 +108,13 @@ public class DesenharLinhasOrdem : MonoBehaviour
         }
 
         if (modoSeguirAtivo && Input.GetMouseButtonDown(1))
+        {
+            Debug.Log("Modo seguir cancelado.");
+            LimparTudo();
+            return;
+        }
+
+        if (modoSeguirAtivo && Input.GetMouseButtonDown(0))
         {
             if (Camera.main == null)
             {
@@ -113,7 +130,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 {
                     AplicarOrdemSeguir(alvo.transform);
                     Debug.Log("Ordem de SEGUIR confirmada.");
-                    modoSeguirAtivo = false;
+                    LimparTudo();
                 }
                 else
                 {
@@ -134,6 +151,18 @@ public class DesenharLinhasOrdem : MonoBehaviour
         modoSeguirAtivo = false;
         pontosPatrulha.Clear();
         lineRenderer.positionCount = 0;
+    }
+
+    void MostrarMarcadorPatrulha(Vector3 pontoPatrulha)
+    {
+        if (prefabMarcadorPatrulha == null)
+        {
+            return;
+        }
+
+        GameObject marcador = Instantiate(prefabMarcadorPatrulha, pontoPatrulha + Vector3.up * 0.1f, Quaternion.identity);
+        marcador.transform.localScale = new Vector3(11f, 11f, 11f);
+        Destroy(marcador, 3.0f);
     }
 
     bool TryObterPontoPatrulha(out Vector3 ponto)
@@ -214,15 +243,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 continue;
             }
 
-            LimparComportamentosDeOrdem(unidade, true, false);
-
-            ComportamentoPatrulhaUniversal pat = unidade.GetComponent<ComportamentoPatrulhaUniversal>();
-            if (pat == null)
-            {
-                pat = unidade.gameObject.AddComponent<ComportamentoPatrulhaUniversal>();
-            }
-
-            pat.Configurar(pontosPatrulha);
+            unidade.EmitirOrdemPatrulha(pontosPatrulha);
         }
     }
 
@@ -235,43 +256,10 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 continue;
             }
 
-            LimparComportamentosDeOrdem(unidade, false, true);
-
-            ComportamentoSeguirUniversal seg = unidade.GetComponent<ComportamentoSeguirUniversal>();
-            if (seg == null)
-            {
-                seg = unidade.gameObject.AddComponent<ComportamentoSeguirUniversal>();
-            }
-
-            seg.Configurar(alvo);
+            unidade.EmitirOrdemSeguir(alvo);
         }
     }
 
-    void LimparComportamentosDeOrdem(ControleUnidade unidade, bool manterPatrulhaUniversal, bool manterSeguirUniversal)
-    {
-        ComportamentoSeguir legacySeguir = unidade.GetComponent<ComportamentoSeguir>();
-        if (legacySeguir != null) Destroy(legacySeguir);
-
-        ComportamentoPatrulha legacyPatrulha = unidade.GetComponent<ComportamentoPatrulha>();
-        if (legacyPatrulha != null) Destroy(legacyPatrulha);
-
-        ComportamentoPatrulhaCaminho legacyPatrulhaCaminho = unidade.GetComponent<ComportamentoPatrulhaCaminho>();
-        if (legacyPatrulhaCaminho != null) Destroy(legacyPatrulhaCaminho);
-
-        if (!manterPatrulhaUniversal)
-        {
-            ComportamentoPatrulhaUniversal pat = unidade.GetComponent<ComportamentoPatrulhaUniversal>();
-            if (pat != null) Destroy(pat);
-        }
-
-        if (!manterSeguirUniversal)
-        {
-            ComportamentoSeguirUniversal seg = unidade.GetComponent<ComportamentoSeguirUniversal>();
-            if (seg != null) Destroy(seg);
-        }
-
-        unidade.RestaurarVelocidadeOriginal();
-    }
 }
 
 public class ComportamentoPatrulhaUniversal : MonoBehaviour
@@ -301,6 +289,13 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
             return;
         }
 
+        if (controle.OrdemAtual != OrdemControleUnidade.Patrulhando)
+        {
+            enabled = false;
+            Destroy(this);
+            return;
+        }
+
         Vector3 alvo = pontos[indiceAtual];
         
         // Verifica distância no plano 2D para evitar que subidas curtas façam o carro engasgar
@@ -325,7 +320,7 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
         {
             indiceDesignado = indiceAtual;
             tempoUltimoComando = Time.time;
-            controle.MoverParaPonto(alvo, false);
+            controle.EmitirOrdemMover(alvo, false);
         }
     }
 }
@@ -354,6 +349,13 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
     {
         if (alvoSeguido == null || controle == null)
         {
+            Destroy(this);
+            return;
+        }
+
+        if (controle.OrdemAtual != OrdemControleUnidade.Seguindo)
+        {
+            enabled = false;
             Destroy(this);
             return;
         }
@@ -390,7 +392,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         if (distancia > distanciaIdeal)
         {
             Vector3 posicaoEscolta = alvoSeguido.position - (alvoSeguido.forward * (distanciaIdeal * 0.8f));
-            controle.MoverParaPonto(posicaoEscolta, false);
+            controle.EmitirOrdemMover(posicaoEscolta, false);
 
             if (distancia < distanciaIdeal + 40f)
             {
@@ -419,7 +421,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
             if (distancia < distanciaIdeal * 0.6f)
             {
                 controle.AplicarLimiteVelocidade(0.1f);
-                controle.MoverParaPonto(transform.position, false);
+                controle.EmitirOrdemMover(transform.position, false);
             }
             else if (controleLider != null)
             {
@@ -456,13 +458,13 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         {
             float velocidadeFreio = velocidadeLider > 0.5f ? Mathf.Max(0.5f, velocidadeLider * 0.65f) : 0.1f;
             controle.AplicarLimiteVelocidade(velocidadeFreio);
-            controle.MoverParaPonto(destinoEscolta, false);
+            controle.EmitirOrdemMover(destinoEscolta, false);
             return;
         }
 
         if (distanciaDestino > 18f)
         {
-            controle.MoverParaPonto(destinoEscolta, false);
+            controle.EmitirOrdemMover(destinoEscolta, false);
 
             if (distanciaLider > 140f)
             {
@@ -485,12 +487,12 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         if (velocidadeLider > 0.5f)
         {
             controle.AplicarLimiteVelocidade(velocidadeLider);
-            controle.MoverParaPonto(destinoEscolta, false);
+            controle.EmitirOrdemMover(destinoEscolta, false);
         }
         else
         {
             controle.AplicarLimiteVelocidade(0.1f);
-            controle.MoverParaPonto(transform.position, false);
+            controle.EmitirOrdemMover(transform.position, false);
         }
     }
 

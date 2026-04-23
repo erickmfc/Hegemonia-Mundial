@@ -9,19 +9,14 @@ namespace Hegemonia.Menus.Comandos
         public override void Executar(List<GameObject> unidadesSelecionadas)
         {
             Debug.Log($"Iniciando Protocolo de Patrulha em {unidadesSelecionadas.Count} unidades.");
-
-            foreach(var unit in unidadesSelecionadas)
+            DesenharLinhasOrdem desenhador = Object.FindFirstObjectByType<DesenharLinhasOrdem>();
+            if (desenhador == null)
             {
-                // Verifica se já tem o script para não duplicar
-                ComportamentoPatrulha patrulha = unit.GetComponent<ComportamentoPatrulha>();
-                if (patrulha == null)
-                {
-                    patrulha = unit.AddComponent<ComportamentoPatrulha>();
-                }
-                
-                // Reinicia a patrulha (redefine centro etc)
-                patrulha.enabled = true;
+                Debug.LogWarning("DesenharLinhasOrdem nao encontrado na cena. Nao foi possivel entrar no modo patrulha.");
+                return;
             }
+
+            desenhador.IniciarModoPatrulha();
         }
     }
 }

@@ -531,7 +531,7 @@ public class GerenciadorQuartel : MonoBehaviour
         Transform destino = transform; 
         if (dormitorios.Count > 0) destino = dormitorios[Random.Range(0, dormitorios.Count)];
 
-        soldado.MoverParaPonto(destino.position);
+        soldado.EmitirOrdemMover(destino.position);
 
         while (soldado != null && soldado.gameObject.activeInHierarchy)
         {
@@ -559,7 +559,7 @@ public class GerenciadorQuartel : MonoBehaviour
         {
             if (veiculo == null) yield break;
             Transform wp = waypointsEntradaEstacionamento[i];
-            veiculo.MoverParaPonto(wp.position);
+            veiculo.EmitirOrdemMover(wp.position);
             while (veiculo != null)
             {
                 if (Vector3.Distance(veiculo.transform.position, wp.position) < 5f) break;
@@ -582,7 +582,7 @@ public class GerenciadorQuartel : MonoBehaviour
         if (vagaEscolhida != null)
         {
             vagasOcupadas.Add(vagaEscolhida);
-            veiculo.MoverParaPonto(vagaEscolhida.position);
+            veiculo.EmitirOrdemMover(vagaEscolhida.position);
             while (veiculo != null)
             {
                 if (Vector3.Distance(veiculo.transform.position, vagaEscolhida.position) < 3.5f) break;
@@ -629,7 +629,7 @@ public class GerenciadorQuartel : MonoBehaviour
                 var danos = soldado.GetComponent<SistemaDeDanos>();
                 if (danos != null) danos.Reparar(9999f); 
 
-                soldado.MoverParaPonto(pontoSaida);
+                soldado.EmitirOrdemMover(pontoSaida);
                 liberados++;
             }
         }
@@ -661,7 +661,7 @@ public class GerenciadorQuartel : MonoBehaviour
             }
 
             Vector3 pontoSaida = waypointsEntradaEstacionamento.Count > 0 ? waypointsEntradaEstacionamento[0].position : transform.position + (transform.forward * 20f);
-            veiculoEspecifico.MoverParaPonto(pontoSaida);
+            veiculoEspecifico.EmitirOrdemMover(pontoSaida);
         }
     }
 }

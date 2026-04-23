@@ -44,7 +44,8 @@ public class LancadorMisselCaca : MonoBehaviour
     private float _tempoValidadeAlvoIA = -1f;
 
     // Detecção
-    public class AlvoDetectado 
+    // Struct: vive na stack, zero alocação por scan (antes era class = heap alloc por cada alvo detectado)
+    public struct AlvoDetectado 
     {
         public Transform transform;
         public string nome;
@@ -191,7 +192,7 @@ public class LancadorMisselCaca : MonoBehaviour
             if (inimigosNaArea.Count == 0) return;
 
             AlvoDetectado candidato = inimigosNaArea[0];
-            if (candidato == null || candidato.transform == null) return;
+            if (candidato.transform == null) return;
 
             // Em modo passivo, reage defensivamente: ameaça aérea ou muito perto.
             if (!candidato.ehAereo && candidato.distancia > 450f) return;
@@ -200,7 +201,7 @@ public class LancadorMisselCaca : MonoBehaviour
         if (municaoAtual > 0 && cronometroRecarga <= 0 && inimigosNaArea.Count > 0)
         {
             AlvoDetectado alvo = inimigosNaArea[0];
-            if (alvo != null && alvo.transform != null)
+            if (alvo.transform != null)
                 Disparar(alvo.transform);
         }
 

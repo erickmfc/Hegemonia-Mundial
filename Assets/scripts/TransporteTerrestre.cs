@@ -369,7 +369,14 @@ public class TransporteTerrestre : MonoBehaviour
             // LÓGICA DE DISPERSÃO: Pequeno movimento para não ficarem entalados
             Vector3 dispersao = Random.insideUnitSphere * 2.0f;
             dispersao.y = 0;
-            agent.SetDestination(posicaoInicial + dispersao);
+            if (ctrl != null)
+            {
+                ctrl.EmitirOrdemMover(posicaoInicial + dispersao);
+            }
+            else
+            {
+                agent.SetDestination(posicaoInicial + dispersao); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+            }
         }
          
         Rigidbody rb = unidade.GetComponent<Rigidbody>();

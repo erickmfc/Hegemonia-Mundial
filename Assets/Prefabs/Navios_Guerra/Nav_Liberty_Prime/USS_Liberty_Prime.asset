@@ -12,10 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: USS_Liberty_Prime
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: USS Liberty Prime
+  nomeItem: Liberty Prime
   descricao: Transport aereo e terrestre. Versatil e bem armada.
   icone: {fileID: 21300000, guid: 89d40556283770c4ca13a3005ecf98dc, type: 3}
   prefabDaUnidade: {fileID: 4357442004992980676, guid: 28bfd92441e8e9c40a5f7099077e221b, type: 3}
   preco: 5000
   categoria: 1
+  balanceamento: {fileID: 0}
   scriptsDeComando: []
