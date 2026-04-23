@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -16,6 +17,9 @@ public class LancadorMisselCaca : MonoBehaviour
     public GameObject missilCacaPrefab; 
     public float tempoRecarga = 2.0f;
     public float raioDeDeteccao = 600f;
+
+    [Header("Debug")]
+    [SerializeField] private bool debugLogs = false;
     
     private float cronometroRecarga = 0f;
     private int indiceCano = 0;
@@ -27,6 +31,9 @@ public class LancadorMisselCaca : MonoBehaviour
     // --- CACHE: Rigidbody e AudioSource (evita GetComponent repetido) ---
     private Rigidbody _rb;
     private AudioSource _audioSource;
+
+    // Cache por ponto de saida (evita GetComponentsInChildren em cada recarga/disparo).
+    private Renderer[][] _renderersPorSaida;
 
     // Patrulha e Comportamento
     public bool modoPassivo = false;
@@ -67,10 +74,20 @@ public class LancadorMisselCaca : MonoBehaviour
         _rb = GetComponent<Rigidbody>();
         _audioSource = GetComponent<AudioSource>();
         PoolDeObjetosCombate.Prewarm(missilCacaPrefab, Mathf.Clamp(municaoMaxima, 2, 6));
+
+        if (pontosDeSaida != null && pontosDeSaida.Length > 0)
+        {
+            _renderersPorSaida = new Renderer[pontosDeSaida.Length][];
+            for (int i = 0; i < pontosDeSaida.Length; i++)
+            {
+                Transform saida = pontosDeSaida[i];
+                _renderersPorSaida[i] = saida != null ? saida.GetComponentsInChildren<Renderer>(true) : null;
+            }
+        }
         
         _meuTime = GetComponent<IdentidadeIA>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 1;
         // Evita que todos os caças escaneiem e disparem no mesmo frame.
-        tempoUltimoScan = Time.time + Random.Range(0.05f, 0.85f);
+        tempoUltimoScan = Time.time + UnityEngine.Random.Range(0.05f, 0.85f);
     }
 
     void Update()
@@ -106,19 +123,36 @@ public class LancadorMisselCaca : MonoBehaviour
                 indiceCano = 0;
                 
                 // Reativa mesh dos mísseis em reserva
-                if (pontosDeSaida != null)
+                if (_renderersPorSaida != null && _renderersPorSaida.Length > 0)
+                {
+                    for (int i = 0, count = _renderersPorSaida.Length; i < count; i++)
+                    {
+                        Renderer[] renderers = _renderersPorSaida[i];
+                        if (renderers == null) continue;
+                        for (int j = 0, jCount = renderers.Length; j < jCount; j++)
+                        {
+                            if (renderers[j] != null) renderers[j].enabled = true;
+                        }
+                    }
+                }
+                else if (pontosDeSaida != null)
                 {
                     for (int i = 0, count = pontosDeSaida.Length; i < count; i++)
                     {
                         Transform tf = pontosDeSaida[i];
                         if (tf == null) continue;
-                        Renderer[] renderers = tf.GetComponentsInChildren<Renderer>();
+                        Renderer[] renderers = tf.GetComponentsInChildren<Renderer>(true);
                         for (int j = 0, jCount = renderers.Length; j < jCount; j++)
-                            renderers[j].enabled = true;
+                        {
+                            if (renderers[j] != null) renderers[j].enabled = true;
+                        }
                     }
                 }
                 
-                Debug.Log($"✈️ [Base] {gameObject.name} recarregou mísseis no Hangar/Porta-Aviões!");
+                if (debugLogs)
+                {
+                    Debug.Log($"[Base] {gameObject.name} recarregou mísseis no Hangar/Porta-Avioes.");
+                }
 
                 if (voltandoParaBase)
                 {
@@ -126,27 +160,41 @@ public class LancadorMisselCaca : MonoBehaviour
                     if (_vooModerno.aeroportoOrigem != null)
                     {
                         _vooModerno.IniciarMissaoCompleta(pontoPatrulha);
-                        Debug.Log($"✈️ [Base] {gameObject.name} voltando para a patrulha automática!");
+                        if (debugLogs)
+                        {
+                            Debug.Log($"[Base] {gameObject.name} voltando para a patrulha automatica.");
+                        }
                     }
                 }
             }
             if (_sistemaDanos.vidaAtual < _sistemaDanos.vidaMaxima)
             {
                 _sistemaDanos.Reparar(_sistemaDanos.vidaMaxima);
-                Debug.Log($"✈️ [Base] {gameObject.name} foi totalmente reparado!");
+                if (debugLogs)
+                {
+                    Debug.Log($"[Base] {gameObject.name} foi totalmente reparado.");
+                }
             }
         }
     }
 
     void ProcessarPatrulhaAutomatica()
     {
-        if (_vooModerno.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return;
+        if (_vooModerno == null || _vooModerno.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return;
         if (voltandoParaBase) return;
-        if (modoPassivo) return;
 
-        if (TentarDisparoContraAlvoIA())
+        // Alvo IA forçado sempre tem prioridade, mesmo se estiver em patrulha/recon.
+        if (TentarDisparoContraAlvoIA()) return;
+
+        if (modoPassivo)
         {
-            return;
+            if (inimigosNaArea.Count == 0) return;
+
+            AlvoDetectado candidato = inimigosNaArea[0];
+            if (candidato == null || candidato.transform == null) return;
+
+            // Em modo passivo, reage defensivamente: ameaça aérea ou muito perto.
+            if (!candidato.ehAereo && candidato.distancia > 450f) return;
         }
 
         if (municaoAtual > 0 && cronometroRecarga <= 0 && inimigosNaArea.Count > 0)
@@ -162,7 +210,10 @@ public class LancadorMisselCaca : MonoBehaviour
             pontoPatrulha = _vooModerno.alvoGPSVoo;
             voltandoParaBase = true;
             _vooModerno.ComandoRetornarBase();
-            Debug.Log($"✈️ [Radar] {gameObject.name} sem munição! Retornando para a base via Aeroporto.");
+            if (debugLogs)
+            {
+                Debug.Log($"[Radar] {gameObject.name} sem municao. Retornando para a base via Aeroporto.");
+            }
         }
     }
 
@@ -212,7 +263,7 @@ public class LancadorMisselCaca : MonoBehaviour
     {
         if (alvoTransform == null) return false;
 
-        string nomeAlvo = alvoTransform.name.ToLowerInvariant();
+        string nomeAlvo = alvoTransform.name;
 
         return alvoTransform.position.y > 15f ||
                alvoTransform.GetComponentInParent<ControleAviao>() != null ||
@@ -220,15 +271,15 @@ public class LancadorMisselCaca : MonoBehaviour
                alvoTransform.GetComponentInParent<AviaoBombardeiro>() != null ||
                alvoTransform.GetComponentInParent<Helicoptero>() != null ||
                (idUnidade != null && idUnidade.tipoUnidade == TipoUnidade.Aereo) ||
-               nomeAlvo.Contains("aviao") ||
-               nomeAlvo.Contains("caca") ||
-               nomeAlvo.Contains("jato") ||
-               nomeAlvo.Contains("heli") ||
-               nomeAlvo.Contains("drone") ||
-               nomeAlvo.Contains("vap") ||
-               nomeAlvo.Contains("bombard") ||
-               nomeAlvo.Contains("bombardeiro") ||
-               nomeAlvo.Contains("bomber") ||
+               NomeContem(nomeAlvo, "aviao") ||
+               NomeContem(nomeAlvo, "caca") ||
+               NomeContem(nomeAlvo, "jato") ||
+               NomeContem(nomeAlvo, "heli") ||
+               NomeContem(nomeAlvo, "drone") ||
+               NomeContem(nomeAlvo, "vap") ||
+               NomeContem(nomeAlvo, "bombard") ||
+               NomeContem(nomeAlvo, "bombardeiro") ||
+               NomeContem(nomeAlvo, "bomber") ||
                alvoTransform.tag == "Areo" ||
                alvoTransform.tag == "Aereo";
     }
@@ -237,14 +288,14 @@ public class LancadorMisselCaca : MonoBehaviour
     {
         if (alvoTransform == null) return int.MaxValue;
 
-        string nomeAlvo = alvoTransform.name.ToLowerInvariant();
+        string nomeAlvo = alvoTransform.name;
         bool ehBombardeiro = alvoTransform.GetComponentInParent<AviaoBombardeiro>() != null ||
-                             nomeAlvo.Contains("bombard") ||
-                             nomeAlvo.Contains("bombardeiro") ||
-                             nomeAlvo.Contains("bomber");
+                             NomeContem(nomeAlvo, "bombard") ||
+                             NomeContem(nomeAlvo, "bombardeiro") ||
+                             NomeContem(nomeAlvo, "bomber");
 
         if (ehBombardeiro) return 0;
-        if (alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null || nomeAlvo.Contains("caca") || nomeAlvo.Contains("jato")) return 1;
+        if (alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null || NomeContem(nomeAlvo, "caca") || NomeContem(nomeAlvo, "jato")) return 1;
         if (EhAlvoAereo(alvoTransform, idUnidade)) return 2;
         return 3;
     }
@@ -301,12 +352,23 @@ public class LancadorMisselCaca : MonoBehaviour
         Transform saida = transform;
         if (pontosDeSaida != null && pontosDeSaida.Length > 0)
         {
-            saida = pontosDeSaida[indiceCano];
+            int indiceAtual = Mathf.Clamp(indiceCano, 0, pontosDeSaida.Length - 1);
+            saida = pontosDeSaida[indiceAtual] != null ? pontosDeSaida[indiceAtual] : transform;
             
             // Oculta mesh do míssil gasto
-            Renderer[] renderers = saida.GetComponentsInChildren<Renderer>();
-            for (int i = 0, count = renderers.Length; i < count; i++)
-                renderers[i].enabled = false;
+            Renderer[] renderers = (_renderersPorSaida != null && indiceAtual < _renderersPorSaida.Length) ? _renderersPorSaida[indiceAtual] : null;
+            if (renderers == null && saida != null)
+            {
+                renderers = saida.GetComponentsInChildren<Renderer>(true);
+            }
+
+            if (renderers != null)
+            {
+                for (int i = 0, count = renderers.Length; i < count; i++)
+                {
+                    if (renderers[i] != null) renderers[i].enabled = false;
+                }
+            }
 
             indiceCano = (indiceCano + 1) % pontosDeSaida.Length;
         }
@@ -325,6 +387,13 @@ public class LancadorMisselCaca : MonoBehaviour
         cronometroRecarga = tempoRecarga;
         
         if (_audioSource != null) _audioSource.Play();
+    }
+
+    private static bool NomeContem(string texto, string termo)
+    {
+        return !string.IsNullOrEmpty(texto)
+               && !string.IsNullOrEmpty(termo)
+               && texto.IndexOf(termo, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     void OnGUI()

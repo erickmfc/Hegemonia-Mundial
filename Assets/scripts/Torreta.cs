@@ -17,10 +17,12 @@ public class Torreta : MonoBehaviour
     [Header("Radar")]
     public string tagInimigo = "Inimigo"; 
     private Transform alvoAtual;
+    private int _meuTime;
     private static readonly List<IdentidadeUnidade> _bufferUnidades = new List<IdentidadeUnidade>(512);
 
     void Start()
     {
+        _meuTime = GetComponentInParent<IdentidadeUnidade>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 1;
         InvokeRepeating("AtualizarAlvo", 0f, 0.5f);
     }
 
@@ -35,7 +37,7 @@ public class Torreta : MonoBehaviour
         {
             IdentidadeUnidade idAlvo = _bufferUnidades[i];
             if (idAlvo == null) continue;
-            if (meuID != null && idAlvo.teamID == meuID.teamID) continue;
+            if (idAlvo.teamID == _meuTime) continue;
 
             SistemaDeDanos vida = idAlvo.GetComponent<SistemaDeDanos>();
             if (vida == null || vida.vidaAtual <= 0) continue;

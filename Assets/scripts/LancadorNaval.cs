@@ -33,6 +33,9 @@ public class LancadorNaval : MonoBehaviour
 
     [Header("Tags de Alvos")]
     public List<string> tagsInimigas = new List<string> { "Inimigo", "Destrutivel" };
+
+    [Header("Debug")]
+    [SerializeField] private bool debugLogs = false;
     
     // Estado interno
     private float tempoUltimoDisparo = 0f;
@@ -201,8 +204,11 @@ public class LancadorNaval : MonoBehaviour
             }
             
             modoAtual = novoModo;
-            
-            Debug.Log($"<color=cyan>[LANÇADOR]</color> Modo alterado para: {modoAtual}");
+
+            if (debugLogs)
+            {
+                Debug.Log($"<color=cyan>[LANÇADOR]</color> Modo alterado para: {modoAtual}");
+            }
         }
     }
 
@@ -225,7 +231,10 @@ public class LancadorNaval : MonoBehaviour
                 // Verifica se tem munição e se o tempo de recarga passou
                 if (PodeAtirar())
                 {
-                    Debug.Log($"[MANUAL] Disparando em coordenadas: {hit.point}");
+                    if (debugLogs)
+                    {
+                        Debug.Log($"[MANUAL] Disparando em coordenadas: {hit.point}");
+                    }
                     // Cria uma lista falsa com 1 posição nula para indicar disparo no chão
                     StartCoroutine(DispararSalvaManual(hit.point));
                 }
@@ -545,7 +554,10 @@ public class LancadorNaval : MonoBehaviour
             // Se varremos TUDO e não tem mais alvo sobrando, ou todo mundo já está "Virtualmente morto"
             if (alvoDaVez == null)
             {
-                Debug.Log($"<color=green>[LANÇADOR]</color> Inimigos já possuem mísseis letais a caminho. Parando a salva para economizar munição.");
+                if (debugLogs)
+                {
+                    Debug.Log($"<color=green>[LANÇADOR]</color> Inimigos já possuem mísseis letais a caminho. Parando a salva para economizar munição.");
+                }
                 break; // Cancela o resto da salva!
             }
 

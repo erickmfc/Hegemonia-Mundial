@@ -87,6 +87,15 @@ public class GerenciadorAeroporto : MonoBehaviour
     private bool _usarMarcadorPatrulhaAviaoNoProximoClique = false;
     private float _proximaSortidaIA = -999f;
 
+    [Header("Spawn IA (Antitravada)")]
+    [Tooltip("Quando ativo, compras de aeronaves da IA entram em fila e sao instanciadas aos poucos para evitar queda brutal de FPS/GC.")]
+    [SerializeField] private bool usarFilaSpawnAereoIA = true;
+    [SerializeField] private float intervaloSpawnIaSaudavel = 0.55f;
+    [SerializeField] private float intervaloSpawnIaPressao = 1.7f;
+    [SerializeField] private float intervaloSpawnIaCritico = 3.5f;
+    private readonly Queue<GameObject> _filaSpawnAeronavesIA = new Queue<GameObject>();
+    private float _proximoSpawnAeronaveIA = -999f;
+
     protected static int RemoveNulls<T>(List<T> lista) where T : class
     {
         if (lista == null)
@@ -223,8 +232,31 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
+    private void ProcessarFilaCompraAeronavesIA()
+    {
+        if (!usarFilaSpawnAereoIA) return;
+        if (_filaSpawnAeronavesIA == null || _filaSpawnAeronavesIA.Count == 0) return;
+        if (Time.unscaledTime < _proximoSpawnAeronaveIA) return;
+
+        if (DiagnosticoDesempenhoJogo.RuntimeSaturado())
+        {
+            _proximoSpawnAeronaveIA = Time.unscaledTime + Mathf.Max(0.2f, intervaloSpawnIaCritico);
+            return;
+        }
+
+        GameObject prefab = _filaSpawnAeronavesIA.Dequeue();
+        if (prefab != null) ComprarAviaoImediato(prefab);
+
+        float cooldown = intervaloSpawnIaSaudavel;
+        if (DiagnosticoDesempenhoJogo.RuntimeSaturado()) cooldown = intervaloSpawnIaCritico;
+        else if (DiagnosticoDesempenhoJogo.RuntimeSobPressao()) cooldown = intervaloSpawnIaPressao;
+
+        _proximoSpawnAeronaveIA = Time.unscaledTime + Mathf.Max(0.05f, cooldown);
+    }
+
     void Update()
     {
+        ProcessarFilaCompraAeronavesIA();
         if (cameraPrincipal == null) cameraPrincipal = Camera.main;
         RemoveNulls(helicopterosDoAeroporto);
         LimparHelicopterosTransferidos();
@@ -652,24 +684,60 @@ public class GerenciadorAeroporto : MonoBehaviour
             return;
         }
 
+        // --- SISTEMA DE IDENTIDADE (HERANÇA DO AEROPORTO) ---
+        if (!_identidadeVerificada)
+        {
+            _identidadeCacheada = GetComponent<IdentidadeUnidade>();
+            _identidadeVerificada = true;
+        }
+
+        bool aeroportoEhIA = _identidadeCacheada != null && _identidadeCacheada.teamID > 1;
+
+        // Para IA, enfileira para não spawnar vários aviões no mesmo segundo e travar o jogo.
+        if (aeroportoEhIA && usarFilaSpawnAereoIA)
+        {
+            _filaSpawnAeronavesIA.Enqueue(prefabDeAeronave);
+            ProcessarFilaCompraAeronavesIA();
+            return;
+        }
+
+        ComprarAviaoImediato(prefabDeAeronave);
+    }
+
+
+    private void ComprarAviaoImediato(GameObject prefabDeAeronave)
+    {
+        if (prefabDeAeronave == null)
+        {
+            return;
+        }
+
+        long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
+
         DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefabDeAeronave.name);
         Vector3 posSpawn = (wpPreparacao != null) ? wpPreparacao.position : transform.position;
         GameObject aeronaveNascente = Instantiate(prefabDeAeronave, posSpawn, Quaternion.identity);
+
+        // Mede init pós-instantiate (o custo total do spawn fica em spawn_air_ms).
         long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
 
         // --- SISTEMA DE IDENTIDADE (HERANÇA DO AEROPORTO) ---
-        if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
-        
-        IdentidadeUnidade idAviao = aeronaveNascente.GetComponent<IdentidadeUnidade>();
-        if (idAviao == null) idAviao = aeronaveNascente.AddComponent<IdentidadeUnidade>();
-        
-        if (_identidadeCacheada != null)
+        if (!_identidadeVerificada)
+        {
+            _identidadeCacheada = GetComponent<IdentidadeUnidade>();
+            _identidadeVerificada = true;
+        }
+
+        IdentidadeUnidade idAviao = aeronaveNascente != null ? aeronaveNascente.GetComponent<IdentidadeUnidade>() : null;
+        if (aeronaveNascente != null && idAviao == null) idAviao = aeronaveNascente.AddComponent<IdentidadeUnidade>();
+
+        if (_identidadeCacheada != null && idAviao != null)
         {
             idAviao.teamID = _identidadeCacheada.teamID;
             idAviao.nomeDoPais = _identidadeCacheada.nomeDoPais;
 
             // Se pertencer à IA (Time 2 ou maior), empurra o avião pra mente dela
-            if (idAviao.teamID > 1) 
+            if (idAviao.teamID > 1)
             {
                 // Busca o general correto que comanda este time específico
                 IA_General_Pro gen = IA_ComandanteRegistry.GetGeneralByTeam(idAviao.teamID);
@@ -682,29 +750,36 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
         }
 
-        C700TransporteAereo c700 = aeronaveNascente.GetComponent<C700TransporteAereo>();
+        C700TransporteAereo c700 = aeronaveNascente != null ? aeronaveNascente.GetComponent<C700TransporteAereo>() : null;
         if (c700 != null)
         {
             c700.DefinirAeroportoOrigem(this);
             StartCoroutine(RotinaRecebimentoC700(c700));
             RegistrarTempoDiagnostico("prefab_init_ms", initStart);
+            RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
             return;
         }
 
-        Helicoptero helicoptero = aeronaveNascente.GetComponent<Helicoptero>();
+        Helicoptero helicoptero = aeronaveNascente != null ? aeronaveNascente.GetComponent<Helicoptero>() : null;
         if (helicoptero != null)
         {
             StartCoroutine(RotinaRecebimentoHelicoptero(helicoptero));
             RegistrarTempoDiagnostico("prefab_init_ms", initStart);
+            RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
             return;
         }
 
-        ControleAviao controleDaNave = aeronaveNascente.GetComponent<ControleAviao>();
-        if (controleDaNave == null) controleDaNave = aeronaveNascente.AddComponent<ControleAviao>();
+        ControleAviao controleDaNave = aeronaveNascente != null ? aeronaveNascente.GetComponent<ControleAviao>() : null;
+        if (aeronaveNascente != null && controleDaNave == null) controleDaNave = aeronaveNascente.AddComponent<ControleAviao>();
 
-        controleDaNave.aeroportoOrigem = this;
-        StartCoroutine(RotinaRecebimento(controleDaNave));
+        if (controleDaNave != null)
+        {
+            controleDaNave.aeroportoOrigem = this;
+            StartCoroutine(RotinaRecebimento(controleDaNave));
+        }
+
         RegistrarTempoDiagnostico("prefab_init_ms", initStart);
+        RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
     }
 
     public int ExecutarSortidaIA(Vector3 alvoReconhecimento, Vector3 alvoPatrulha, Vector3 alvoAtaque, int quantidadeMaxima = 5)

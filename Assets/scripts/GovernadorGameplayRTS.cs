@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -36,6 +38,8 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
     private float proximoRefresh;
     private ContagemCampo contagem;
 
+    private static readonly List<IdentidadeUnidade> _bufferUnidades = new List<IdentidadeUnidade>(2048);
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
@@ -45,7 +49,7 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
             return;
         }
 
-        if (Object.FindFirstObjectByType<GovernadorGameplayRTS>() != null)
+        if (UnityEngine.Object.FindFirstObjectByType<GovernadorGameplayRTS>() != null)
         {
             return;
         }
@@ -198,10 +202,10 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
         proximoRefresh = Time.unscaledTime + Mathf.Max(0.2f, intervaloRefresh);
         contagem = new ContagemCampo();
 
-        IdentidadeUnidade[] identidades = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        for (int i = 0; i < identidades.Length; i++)
+        RegistroEntidadesJogo.FillUnidades(_bufferUnidades);
+        for (int i = 0; i < _bufferUnidades.Count; i++)
         {
-            IdentidadeUnidade identidade = identidades[i];
+            IdentidadeUnidade identidade = _bufferUnidades[i];
             if (identidade == null || identidade.teamID != 1)
             {
                 continue;
@@ -290,19 +294,20 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
         }
 
         string nomePrefab = item.prefabDaUnidade.name;
-        IdentidadeUnidade[] identidades = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
         int total = 0;
 
-        for (int i = 0; i < identidades.Length; i++)
+        RegistroEntidadesJogo.FillUnidades(_bufferUnidades);
+
+        for (int i = 0; i < _bufferUnidades.Count; i++)
         {
-            IdentidadeUnidade identidade = identidades[i];
+            IdentidadeUnidade identidade = _bufferUnidades[i];
             if (identidade == null || identidade.teamID != 1 || identidade.gameObject == null)
             {
                 continue;
             }
 
             string nomeInstancia = identidade.gameObject.name;
-            if (nomeInstancia.StartsWith(nomePrefab))
+            if (nomeInstancia != null && nomeInstancia.StartsWith(nomePrefab, StringComparison.Ordinal))
             {
                 total++;
             }

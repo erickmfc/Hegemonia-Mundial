@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -43,6 +44,9 @@ public class ControleAviao : MonoBehaviour
     private List<Quaternion> rotacoesOriginaisRodas = new List<Quaternion>();
     private bool rodasRecolhidas = false;
 
+    // Cache por tipo de aeronave: evita varrer toda a hierarquia em TODO spawn.
+    private static readonly Dictionary<string, string[]> CacheCaminhosRodasPorPrefab = new Dictionary<string, string[]>();
+
     // Variáveis internas
     public Vector3 alvoGPSVoo;
     public Vector3 centroDaPatrulha; 
@@ -76,23 +80,91 @@ public class ControleAviao : MonoBehaviour
         if (rodas == null) rodas = new List<Transform>();
         if (rodas.Count == 0)
         {
-            Transform[] filhos = GetComponentsInChildren<Transform>(true);
-            for (int i = 0, count = filhos.Length; i < count; i++)
+            string chave = NormalizarChavePrefab(gameObject.name);
+            if (!string.IsNullOrEmpty(chave)
+                && CacheCaminhosRodasPorPrefab.TryGetValue(chave, out string[] caminhos)
+                && caminhos != null
+                && caminhos.Length > 0)
             {
-                Transform f = filhos[i];
-                if (f == null) continue; // Added null check
-                if (f == transform) continue;
-                string n = f.name.ToLower();
-                if (n.Contains("wheel") || n.Contains("roda") || n.Contains("gear") || n.Contains("pneu") || n.Contains("tremdepouso"))
-                    rodas.Add(f); 
+                for (int i = 0; i < caminhos.Length; i++)
+                {
+                    if (string.IsNullOrEmpty(caminhos[i])) continue;
+                    Transform roda = transform.Find(caminhos[i]);
+                    if (roda != null) rodas.Add(roda);
+                }
+            }
+
+            if (rodas.Count == 0)
+            {
+                Transform[] filhos = GetComponentsInChildren<Transform>(true);
+                List<string> caminhosRodas = null;
+                for (int i = 0, count = filhos.Length; i < count; i++)
+                {
+                    Transform f = filhos[i];
+                    if (f == null) continue;
+                    if (f == transform) continue;
+                    string n = f.name;
+                    if (ContemIgnoreCase(n, "wheel")
+                        || ContemIgnoreCase(n, "roda")
+                        || ContemIgnoreCase(n, "gear")
+                        || ContemIgnoreCase(n, "pneu")
+                        || ContemIgnoreCase(n, "tremdepouso"))
+                    {
+                        rodas.Add(f);
+                        if (caminhosRodas == null) caminhosRodas = new List<string>(8);
+                        caminhosRodas.Add(ObterCaminhoRelativo(f, transform));
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(chave) && caminhosRodas != null && caminhosRodas.Count > 0)
+                {
+                    CacheCaminhosRodasPorPrefab[chave] = caminhosRodas.ToArray();
+                }
             }
         }
 
+        rotacoesOriginaisRodas.Clear();
         for (int i = 0, count = rodas.Count; i < count; i++)
         {
             rotacoesOriginaisRodas.Add(rodas[i] != null ? rodas[i].localRotation : Quaternion.identity);
         }
         AbaixarRodas(); 
+    }
+
+    private static string NormalizarChavePrefab(string nome)
+    {
+        if (string.IsNullOrEmpty(nome)) return string.Empty;
+        int idx = nome.IndexOf("(Clone)", StringComparison.Ordinal);
+        if (idx >= 0) nome = nome.Substring(0, idx);
+        return nome.Trim();
+    }
+
+    private static bool ContemIgnoreCase(string texto, string termo)
+    {
+        return !string.IsNullOrEmpty(texto)
+               && !string.IsNullOrEmpty(termo)
+               && texto.IndexOf(termo, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static string ObterCaminhoRelativo(Transform alvo, Transform raiz)
+    {
+        if (alvo == null || raiz == null || alvo == raiz) return string.Empty;
+
+        List<string> partes = new List<string>(8);
+        Transform atual = alvo;
+        while (atual != null && atual != raiz)
+        {
+            partes.Add(atual.name);
+            atual = atual.parent;
+        }
+
+        if (atual != raiz)
+        {
+            return alvo.name;
+        }
+
+        partes.Reverse();
+        return string.Join("/", partes);
     }
 
     void OnEnable()
@@ -128,7 +200,10 @@ public class ControleAviao : MonoBehaviour
                 bool isKamikaze = GetComponent<KamikazeDrone>() != null;
                 if (estadoAtual == EstadoAviao.EmMissao && !ordemParaRetorno && !isKamikaze)
                 {
-                    Debug.Log($"<color=red>[{gameObject.name}] DANOS CRÍTICOS ({Mathf.RoundToInt(pctVida*100)}%)! Retornando base.</color>");
+                    if (selecionado)
+                    {
+                        Debug.Log($"<color=red>[{gameObject.name}] DANOS CRÍTICOS ({Mathf.RoundToInt(pctVida*100)}%)! Retornando base.</color>");
+                    }
                     ComandoRetornarBase();
                 }
             }
@@ -266,7 +341,7 @@ public class ControleAviao : MonoBehaviour
         {
             for (int i = totalWaypoints - 1; i >= indiceInicial; i--)
             {
-                if (caminho[i] != null && caminho[i].name.ToLower().Contains("alinhamento"))
+                if (caminho[i] != null && caminho[i].name.IndexOf("alinhamento", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     indiceCorridaPista = i;
                     break;
@@ -289,7 +364,7 @@ public class ControleAviao : MonoBehaviour
             // Segurança: O waypoint pode ser destruído durante o percurso
             yield return StartCoroutine(MoverInterpolado(Vector3.zero, velAtual, i == totalWaypoints - 1, caminho[i], aceleracaoGradativa && i >= indiceCorridaPista));
             
-            if (caminho[i] != null && caminho[i].name.ToLower().Contains("alinhamento")) 
+            if (caminho[i] != null && caminho[i].name.IndexOf("alinhamento", StringComparison.OrdinalIgnoreCase) >= 0) 
             {
                 // Parada exigida de forma realista antes de decolar (ou no pouso)
                 yield return new WaitForSeconds(2f);
@@ -327,10 +402,10 @@ public class ControleAviao : MonoBehaviour
             }
             else
             {
-                anguloOrbitaAtual = Random.Range(0f, Mathf.PI * 2f);
+                anguloOrbitaAtual = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
             }
 
-            sentidoOrbita = Random.value >= 0.5f ? 1 : -1;
+            sentidoOrbita = UnityEngine.Random.value >= 0.5f ? 1 : -1;
             StartCoroutine(SequenciaDeVooEPouso());
         }
     }

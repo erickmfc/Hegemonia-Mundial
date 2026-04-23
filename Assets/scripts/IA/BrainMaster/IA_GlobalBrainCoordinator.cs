@@ -57,6 +57,7 @@ namespace Hegemonia.AI.BrainMaster
         private int _heavySlotIndex; // qual slot ganhou o heavy token este frame
         private int _lastFrameCount = -1;
         private readonly IA_PerformanceGovernor _performanceGovernor = new IA_PerformanceGovernor();
+        private IA_PerformanceGovernorBand _lastReportedBand = (IA_PerformanceGovernorBand)(-1);
 
         // -----------------------------------------------------------------------
         // API pública
@@ -229,12 +230,33 @@ namespace Hegemonia.AI.BrainMaster
 
             _lastFrameCount = frame;
             _performanceGovernor.RefreshFromRuntime();
+
+            IA_PerformanceGovernorBand band = _performanceGovernor.State.Band;
+            if (band != _lastReportedBand)
+            {
+                _lastReportedBand = band;
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("governor_band", BandToLabel(band));
+            }
+
             _frameAccumulatedMs = 0d;
             _frameHeavyCount = 0;
 
             // Avança o heavy slot para o próximo brain no round-robin
             int count = Mathf.Max(1, _registeredTeamIds.Count);
             _heavySlotIndex = (_heavySlotIndex + 1) % count;
+        }
+
+        private static string BandToLabel(IA_PerformanceGovernorBand band)
+        {
+            switch (band)
+            {
+                case IA_PerformanceGovernorBand.Critico:
+                    return "Critico";
+                case IA_PerformanceGovernorBand.Pressao:
+                    return "Pressao";
+                default:
+                    return "Saudavel";
+            }
         }
     }
 }
