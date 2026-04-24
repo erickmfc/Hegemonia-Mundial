@@ -111,7 +111,12 @@ namespace Hegemonia.AI.BrainMaster
                     transportPlan != null && transportPlan.Ready ? transportPlan.AvailableCapacity : 0);
 
                 bool suppressExpansion = decision != null && decision.SuppressEconomicExpansion;
-                bool mustPrepareTransport = transportPlan != null && !transportPlan.HasLandRoute && !transportPlan.Ready;
+                // Só vira "obrigatório" preparar transporte quando existe uma invasão real para fazer.
+                // Caso contrário, a IA pode continuar evoluindo normalmente (sem travar a produção).
+                bool mustPrepareTransport = transportPlan != null
+                                           && !transportPlan.HasLandRoute
+                                           && !transportPlan.Ready
+                                           && transportPlan.RequiredCapacity >= 8;
                 bool shouldPauseGroundMass = ShouldPauseOffensiveGroundMass(transportPlan, infantryCount, tankCount, artyCount, decision);
 
                 int infantryTarget = 16 + (counter.AntiRush ? 10 : 0) + Mathf.RoundToInt(counter.LandWeight * 7f);
@@ -239,7 +244,9 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (mustPrepareTransport)
+                // Se não temos base naval ainda, não pode travar o resto da produção:
+                // a preparação de invasão depende do BuildDirector criar a infraestrutura primeiro.
+                if (mustPrepareTransport && hasNavalBase)
                 {
                     return;
                 }

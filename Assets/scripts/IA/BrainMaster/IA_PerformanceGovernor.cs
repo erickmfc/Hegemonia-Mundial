@@ -156,7 +156,9 @@ namespace Hegemonia.AI.BrainMaster
                     break;
 
                 case IA_PerformanceGovernorBand.Pressao:
-                    decision.AllowBuild = false;
+                    // Em pressão, ainda permitimos builds leves/essenciais; o que trava o jogo é build pesado
+                    // e spam de expansão no meio da batalha.
+                    decision.AllowBuild = true;
                     decision.AllowProduce = true;
                     decision.AllowHeavyBuild = false;
                     decision.SuppressEconomicExpansion = true;
@@ -167,7 +169,7 @@ namespace Hegemonia.AI.BrainMaster
                     decision.MaxAirAttackers = 4;
                     decision.MaxNavalAttackers = 3;
                     decision.MaxProductionCommandsPerCycle = 1;
-                    decision.ProductionCooldownSeconds = 2.5f;
+                    decision.ProductionCooldownSeconds = 1.5f;
                     decision.RetargetCooldownMultiplier = 1.45f;
                     decision.PathReplanCooldownMultiplier = 1.5f;
                     break;
