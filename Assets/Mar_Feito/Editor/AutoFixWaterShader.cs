@@ -11,7 +11,7 @@ public class AutoFixWaterShader : EditorWindow
         {
             // Try finding by tag or loosely
             Debug.LogWarning("GameObject 'Agua' not found in the active scene. Searching for any object with Ocean material...");
-            Renderer[] renderers = FindObjectsOfType<Renderer>();
+            Renderer[] renderers = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
             foreach (Renderer r in renderers)
             {
                 if (r.sharedMaterial != null && (r.sharedMaterial.shader.name.Contains("Ocean") || r.sharedMaterial.name.Contains("Sea")))

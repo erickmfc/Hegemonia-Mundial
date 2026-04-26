@@ -50,7 +50,7 @@ public class NavegacaoInteligenteNaval : MonoBehaviour
         if (agente != null && agente.enabled && agente.isOnNavMesh)
         {
             agente.isStopped = false;
-            agente.SetDestination(novoDestino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+            agente.SetDestination(novoDestino);
         }
     }
 

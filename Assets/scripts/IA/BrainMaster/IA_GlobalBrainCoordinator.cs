@@ -84,7 +84,7 @@ namespace Hegemonia.AI.BrainMaster
             get { return _registeredTeamIds.Count; }
         }
 
-        public IA_PerformanceGovernorState GetGovernorStateSnapshot()
+        public IA_PerformanceStateData GetGovernorStateSnapshot()
         {
             return _performanceGovernor.CreateStateSnapshot();
         }

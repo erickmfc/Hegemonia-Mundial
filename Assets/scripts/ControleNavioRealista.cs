@@ -339,7 +339,18 @@ public class ControleNavioRealista : MonoBehaviour
             if (!agente.isOnNavMesh)
             {
                 NavMeshHit hit;
-                if (NavMesh.SamplePosition(transform.position, out hit, 120f, NavMesh.AllAreas))
+                int areaMask = agente.areaMask;
+                if (areaMask == 0)
+                {
+                    areaMask = NavMesh.AllAreas;
+                }
+
+                if (!NavMesh.SamplePosition(transform.position, out hit, 120f, areaMask))
+                {
+                    NavMesh.SamplePosition(transform.position, out hit, 120f, NavMesh.AllAreas);
+                }
+
+                if (hit.hit)
                 {
                     agente.Warp(hit.position);
                 }
@@ -664,12 +675,37 @@ public class ControleNavioRealista : MonoBehaviour
     {
         if (TentarPrepararAgenteParaNavegacao())
         {
+            // Guarda: se o destino é praticamente o mesmo e já temos um path ativo,
+            // não interrompe a navegação (evita engasgamento durante patrulha).
+            if (Vector3.Distance(destinoAtual, destino) < 2f
+                && agente.isOnNavMesh
+                && (agente.hasPath || agente.pathPending))
+            {
+                return;
+            }
+
             destinoAtual = destino;
             agente.isStopped = false;
             manobraReAtiva = false;
             tempoRestanteManobraRe = 0f;
             bool destinoAceito = agente.SetDestination(destino);
             temDestino = destinoAceito;
+
+            if (!destinoAceito)
+            {
+                NavMeshHit hitDestino;
+                int areaMask = agente.areaMask == 0 ? NavMesh.AllAreas : agente.areaMask;
+                if (!NavMesh.SamplePosition(destino, out hitDestino, 180f, areaMask))
+                {
+                    NavMesh.SamplePosition(destino, out hitDestino, 180f, NavMesh.AllAreas);
+                }
+
+                if (hitDestino.hit)
+                {
+                    destinoAceito = agente.SetDestination(hitDestino.position);
+                    temDestino = destinoAceito;
+                }
+            }
 
             // Se receber uma ordem, acorda!
             estaDesligado = false;

@@ -4,6 +4,11 @@ public static class CapturaCliqueOrdensManuais
 {
     public static bool EstaAtiva()
     {
+        if (DesenharLinhasOrdem.ConsumiuCliqueEsteFrame())
+        {
+            return true;
+        }
+
         GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
         for (int i = 0; i < aeroportos.Length; i++)
         {

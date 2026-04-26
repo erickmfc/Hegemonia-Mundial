@@ -664,6 +664,13 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
+        if (helicopteroExterno != null)
+        {
+            helicopteroExterno.CancelarMissaoAeroporto();
+            helicopteroExterno.Decolar(destino);
+            return;
+        }
+
         if (ehAereo)
         {
             destinoAereo = destino;
@@ -769,7 +776,9 @@ public class ControleUnidade : MonoBehaviour
         return GetComponent<IdentidadeNaval>() != null ||
                controleNavioRealista != null ||
                controleSubmarino != null ||
-               TryGetComponent<NavioPetroleiro>(out _);
+               TryGetComponent<NavioPetroleiro>(out _) ||
+               TryGetComponent<NavioTransporteTropas>(out _) ||
+               TryGetComponent<GerenciadorPortaAvioes>(out _);
     }
 
     public bool DefinirModoCombate(bool ativo)
@@ -826,6 +835,28 @@ public class ControleUnidade : MonoBehaviour
             alterouAlgo = true;
         }
 
+        if (controleNavioRealista != null)
+        {
+            controleNavioRealista.modoOperacao = ativo
+                ? ControleNavioRealista.ModoOperacao.Ativo
+                : ControleNavioRealista.ModoOperacao.Passivo;
+            alterouAlgo = true;
+        }
+
+        if (controleSubmarino != null)
+        {
+            controleSubmarino.DefinirModoOperacao(
+                ativo ? ControleSubmarino.ModoOperacao.Automatico : ControleSubmarino.ModoOperacao.Passivo,
+                false);
+            alterouAlgo = true;
+        }
+
+        if (helicopteroExterno != null)
+        {
+            helicopteroExterno.modoCombateAtivo = ativo;
+            alterouAlgo = true;
+        }
+
         return alterouAlgo;
     }
 
@@ -842,6 +873,9 @@ public class ControleUnidade : MonoBehaviour
         RegistrarEstadoCombate(cacheSistemasDeTiro, ref encontrou, ref estadoInicial, ref misto, delegate(SistemaDeTiro t) { return t != null && t.modoPassivo; });
         RegistrarEstadoCombate(cacheLancadoresCaca, ref encontrou, ref estadoInicial, ref misto, delegate(LancadorMisselCaca t) { return t != null && t.modoPassivo; });
         RegistrarEstadoCombate(cacheLancadoresMultiplos, ref encontrou, ref estadoInicial, ref misto, delegate(LancadorMultiplo t) { return t != null && !t.modoAutomatico; });
+        RegistrarEstadoCombateValor(controleNavioRealista != null, controleNavioRealista != null && controleNavioRealista.modoOperacao == ControleNavioRealista.ModoOperacao.Passivo, ref encontrou, ref estadoInicial, ref misto);
+        RegistrarEstadoCombateValor(controleSubmarino != null, controleSubmarino != null && controleSubmarino.modoAtual == ControleSubmarino.ModoOperacao.Passivo, ref encontrou, ref estadoInicial, ref misto);
+        RegistrarEstadoCombateValor(helicopteroExterno != null, helicopteroExterno != null && !helicopteroExterno.modoCombateAtivo, ref encontrou, ref estadoInicial, ref misto);
 
         if (!encontrou)
         {
@@ -869,6 +903,8 @@ public class ControleUnidade : MonoBehaviour
         if (velocidadeOriginalSalva < 0f)
         {
             if (TryGetComponent<ControleAviao>(out var aviao)) velocidadeOriginalSalva = aviao.velocidadeMaximaVoo;
+            else if (TryGetComponent<ControleAviaoCaca>(out var caca)) velocidadeOriginalSalva = caca.velocidadeCruzeiro;
+            else if (TryGetComponent<Helicoptero>(out var helicoptero)) velocidadeOriginalSalva = helicoptero.velocidadeNavegacao;
             else if (TryGetComponent<ControleNavioRealista>(out var nav1)) velocidadeOriginalSalva = nav1.velocidadeMaxima;
             else if (TryGetComponent<NavMeshAgent>(out var nma)) velocidadeOriginalSalva = nma.speed;
             else velocidadeOriginalSalva = 0f;
@@ -890,8 +926,34 @@ public class ControleUnidade : MonoBehaviour
     private void ModificarVelocidadeInterna(float v)
     {
         if (TryGetComponent<ControleAviao>(out var aviao)) aviao.velocidadeMaximaVoo = Mathf.Max(v, aviao.velocidadeSolo * 2.5f); // Avião não pode parar no ar
+        else if (TryGetComponent<ControleAviaoCaca>(out var caca))
+        {
+            caca.velocidadeCruzeiro = Mathf.Max(v, caca.velocidadeTaxi * 2.5f);
+            caca.velocidadeAtaque = Mathf.Max(caca.velocidadeCruzeiro, v * 1.4f);
+        }
+        else if (TryGetComponent<Helicoptero>(out var helicoptero)) helicoptero.velocidadeNavegacao = Mathf.Max(0.1f, v);
         else if (TryGetComponent<ControleNavioRealista>(out var nav1)) nav1.velocidadeMaxima = v;
         else if (TryGetComponent<NavMeshAgent>(out var nma)) { if(nma.enabled) nma.speed = v; }
+    }
+
+    private void RegistrarEstadoCombateValor(bool valido, bool passivoAtual, ref bool encontrou, ref bool estadoInicial, ref bool misto)
+    {
+        if (!valido || misto)
+        {
+            return;
+        }
+
+        if (!encontrou)
+        {
+            estadoInicial = passivoAtual;
+            encontrou = true;
+            return;
+        }
+
+        if (estadoInicial != passivoAtual)
+        {
+            misto = true;
+        }
     }
 
     private static void RegistrarEstadoCombate<T>(T[] componentes, ref bool encontrou, ref bool estadoInicial, ref bool misto, System.Func<T, bool> leitor)

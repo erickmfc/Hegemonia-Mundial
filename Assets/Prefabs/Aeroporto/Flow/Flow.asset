@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Flow
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 345f6e2e95b223c40a48d922f06edb7d, type: 3}
   prefabDaUnidade: {fileID: 8151786032359012865, guid: 0e2e8c8eaeb452a41972f3d40172a578, type: 3}
   preco: 100
   categoria: 2

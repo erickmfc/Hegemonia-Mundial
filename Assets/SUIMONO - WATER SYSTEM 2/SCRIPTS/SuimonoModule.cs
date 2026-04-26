@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -817,7 +817,7 @@ namespace Suimono.Core
 				if (setCameraComponent.actualRenderingPath == RenderingPath.DeferredShading){
 					setCameraComponent.depthTextureMode = DepthTextureMode.Depth;
 					
-				} else if (setCameraComponent.actualRenderingPath == RenderingPath.DeferredLighting){
+				} else if (setCameraComponent.actualRenderingPath == RenderingPath.DeferredShading){
 					setCameraComponent.depthTextureMode = DepthTextureMode.Depth;
 
 				} else {

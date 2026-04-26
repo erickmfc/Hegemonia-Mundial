@@ -187,6 +187,7 @@ MonoBehaviour:
   velocidadeDescidaVertical: 5
   alturaSubidaInicial: 25
   ajusteAlturaEstacionado: 2.1
+  raioInicioDescida: 18
   distanciaBusca: 120
   distanciaEmbarque: 10
   capacidadeMaxima: 35
@@ -215,10 +216,12 @@ MonoBehaviour:
   pousarNoDestinoTatico: 1
   desembarcarAutomaticamenteAoPousar: 1
   raioTransferenciaNavio: 35
+  mostrarIdentificacaoFlutuante: 1
   destino: {x: 0, y: 0, z: 0}
   estaVoando: 0
   nomeHelicoptero: Flow
   custoUpgrade: 800
+  idExibicao: 0
   controladoPeloAeroporto: 0
   estacionadoNoAeroporto: 0
   vagaAeroporto: {fileID: 0}

@@ -1599,8 +1599,8 @@ public class IA_Suprema : MonoBehaviour
         var nav = navio.GetComponent<NavMeshAgent>();
         if (nav != null && nav.isOnNavMesh)
         {
-            nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             nav.isStopped = false;
+            MovimentoFallbackTransicional.TrySetNavDestination(navio, destino);
         }
     }
 
@@ -2907,9 +2907,9 @@ public class IA_Suprema : MonoBehaviour
         var nav = u.GetComponent<NavMeshAgent>(); 
         if (nav && nav.isOnNavMesh) 
         {
-            nav.SetDestination(d); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             nav.isStopped = false;
-        } 
+            MovimentoFallbackTransicional.TrySetNavDestination(u, d);
+        }
         else 
         {
             u.SendMessage("MoverParaPonto", d, SendMessageOptions.DontRequireReceiver);

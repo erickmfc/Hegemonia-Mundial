@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -10,11 +11,11 @@ public class SistemaFimDeJogo : MonoBehaviour
     public static bool PartidaEncerrada { get; private set; }
     public static SistemaFimDeJogo Instancia { get; private set; }
 
-    private readonly Color corOverlayPadrao = new Color(0f, 0f, 0f, 0.72f);
-    private readonly Color corPainelBase = new Color(0.06f, 0.09f, 0.12f, 0.96f);
-    private readonly Color corPainelTopoBase = new Color(0.08f, 0.14f, 0.18f, 0.98f);
-    private readonly Color corTextoPrincipal = new Color(0.94f, 0.98f, 1f, 1f);
-    private readonly Color corTextoSuave = new Color(0.76f, 0.85f, 0.92f, 1f);
+    private readonly Color corOverlayPadrao = new Color(0.05f, 0.05f, 0.08f, 0.88f);
+    private readonly Color corPainelBase = new Color(0.11f, 0.13f, 0.16f, 0.98f);
+    private readonly Color corPainelTopoBase = new Color(0.07f, 0.09f, 0.11f, 0.98f);
+    private readonly Color corTextoPrincipal = new Color(0.96f, 0.98f, 1f, 1f);
+    private readonly Color corTextoSuave = new Color(0.82f, 0.88f, 0.94f, 1f);
 
     private Font fontePadrao;
     private Canvas canvas;
@@ -30,8 +31,10 @@ public class SistemaFimDeJogo : MonoBehaviour
     private Text textoRodape;
     private Button botaoReiniciar;
     private Button botaoMenuPrincipal;
+    private Button botaoContinuar;
     private Coroutine animacaoEntrada;
     private bool interfaceConstruida;
+    private readonly List<MonoBehaviour> comportamentosDesativados = new List<MonoBehaviour>();
     private Color corAcentoAtual = new Color(0.22f, 0.82f, 0.62f, 1f);
     private Color corAcentoSecundaria = new Color(0.12f, 0.36f, 0.3f, 1f);
 
@@ -168,6 +171,7 @@ public class SistemaFimDeJogo : MonoBehaviour
         PrepararVisual(tipoObjetivo, alvoPertenceAoJogador, nomeDaNacao, nomeObjetivo);
         AplicarCoresResultado(alvoPertenceAoJogador);
         TornarInterfaceVisivel();
+        comportamentosDesativados.Clear();
         CongelarGameplay();
 
         if (animacaoEntrada != null)
@@ -247,6 +251,12 @@ public class SistemaFimDeJogo : MonoBehaviour
         {
             botaoMenuPrincipal.GetComponentInChildren<Text>(true).text = "MENU PRINCIPAL";
         }
+
+        if (botaoContinuar != null)
+        {
+            botaoContinuar.gameObject.SetActive(vitoria);
+            botaoContinuar.GetComponentInChildren<Text>(true).text = "CONTINUAR JOGO";
+        }
     }
 
     private void CongelarGameplay()
@@ -271,14 +281,16 @@ public class SistemaFimDeJogo : MonoBehaviour
                 continue;
             }
 
-            if (EhParteDaInterfaceFinal(comportamento))
+            if (EhParteDaInterfaceFinal(comportamento) || comportamento is EventSystem || comportamento is BaseInputModule)
             {
                 continue;
             }
 
-            comportamento.CancelInvoke();
-            comportamento.StopAllCoroutines();
-            comportamento.enabled = false;
+            if (comportamento.enabled)
+            {
+                comportamentosDesativados.Add(comportamento);
+                comportamento.enabled = false;
+            }
         }
     }
 
@@ -451,9 +463,9 @@ public class SistemaFimDeJogo : MonoBehaviour
         fundoOverlay.rectTransform.offsetMin = Vector2.zero;
         fundoOverlay.rectTransform.offsetMax = Vector2.zero;
 
-        painelPrincipal = CriarPainel("PainelPrincipal", raizInterface.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760f, 460f), corPainelBase).rectTransform;
-        painelPrincipal.anchoredPosition = new Vector2(0f, -34f);
-        painelPrincipal.localScale = Vector3.one * 0.84f;
+        painelPrincipal = CriarPainel("PainelPrincipal", raizInterface.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(840f, 520f), corPainelBase).rectTransform;
+        painelPrincipal.anchoredPosition = new Vector2(0f, 0f);
+        painelPrincipal.localScale = Vector3.one * 0.9f;
 
         Image imagemPainel = painelPrincipal.GetComponent<Image>();
         if (imagemPainel != null)
@@ -462,31 +474,31 @@ public class SistemaFimDeJogo : MonoBehaviour
         }
 
         Outline outline = painelPrincipal.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(corAcentoAtual.r, corAcentoAtual.g, corAcentoAtual.b, 0.3f);
-        outline.effectDistance = new Vector2(2f, -2f);
+        outline.effectColor = new Color(corAcentoAtual.r, corAcentoAtual.g, corAcentoAtual.b, 0.5f);
+        outline.effectDistance = new Vector2(1f, -1f);
 
         Shadow shadow = painelPrincipal.gameObject.AddComponent<Shadow>();
-        shadow.effectColor = new Color(0f, 0f, 0f, 0.32f);
-        shadow.effectDistance = new Vector2(0f, -6f);
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.6f);
+        shadow.effectDistance = new Vector2(0f, -8f);
 
-        faixaTopo = CriarPainel("FaixaTopo", painelPrincipal.transform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -18f), new Vector2(0f, 120f), corPainelTopoBase);
+        faixaTopo = CriarPainel("FaixaTopo", painelPrincipal.transform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -4f), new Vector2(0f, 10f), corPainelTopoBase);
 
-        textoCabecalho = CriarTexto("Cabecalho", painelPrincipal, "HEGEMONIA GLOBAL", 22, FontStyle.Bold, TextAnchor.UpperCenter, corAcentoAtual, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -26f), new Vector2(0f, 36f));
-        textoResultado = CriarTexto("Resultado", painelPrincipal, "FIM DA PARTIDA", 56, FontStyle.Bold, TextAnchor.UpperCenter, corTextoPrincipal, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -112f), new Vector2(0f, 58f));
-        textoObjetivo = CriarTexto("Objetivo", painelPrincipal, "OBJETIVO", 24, FontStyle.Bold, TextAnchor.UpperCenter, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -172f), new Vector2(0f, 30f));
-        textoDetalhe = CriarTexto("Detalhe", painelPrincipal, "Aguardando o desfecho da batalha.", 18, FontStyle.Normal, TextAnchor.MiddleCenter, corTextoPrincipal, new Vector2(0.08f, 1f), new Vector2(0.92f, 1f), new Vector2(0f, -240f), new Vector2(0f, 82f));
+        textoCabecalho = CriarTexto("Cabecalho", painelPrincipal, "HEGEMONIA GLOBAL", 28, FontStyle.Bold, TextAnchor.UpperCenter, corAcentoAtual, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -40f), new Vector2(0f, 40f));
+        textoResultado = CriarTexto("Resultado", painelPrincipal, "FIM DA PARTIDA", 64, FontStyle.Bold, TextAnchor.UpperCenter, corTextoPrincipal, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -100f), new Vector2(0f, 75f));
+        textoObjetivo = CriarTexto("Objetivo", painelPrincipal, "OBJETIVO", 22, FontStyle.Bold, TextAnchor.UpperCenter, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -180f), new Vector2(0f, 30f));
+        textoDetalhe = CriarTexto("Detalhe", painelPrincipal, "Aguardando o desfecho da batalha.", 20, FontStyle.Normal, TextAnchor.MiddleCenter, corTextoPrincipal, new Vector2(0.05f, 1f), new Vector2(0.95f, 1f), new Vector2(0f, -250f), new Vector2(0f, 90f));
         textoDetalhe.horizontalOverflow = HorizontalWrapMode.Wrap;
         textoDetalhe.verticalOverflow = VerticalWrapMode.Overflow;
 
-        textoRodape = CriarTexto("Rodape", painelPrincipal, "A partida terminou.", 16, FontStyle.Italic, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 18f), new Vector2(0f, 24f));
+        textoRodape = CriarTexto("Rodape", painelPrincipal, "A partida terminou.", 16, FontStyle.Italic, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 25f), new Vector2(0f, 24f));
 
         RectTransform botoesContainer = new GameObject("Botoes").AddComponent<RectTransform>();
         botoesContainer.SetParent(painelPrincipal, false);
         botoesContainer.anchorMin = new Vector2(0.5f, 0f);
         botoesContainer.anchorMax = new Vector2(0.5f, 0f);
         botoesContainer.pivot = new Vector2(0.5f, 0f);
-        botoesContainer.anchoredPosition = new Vector2(0f, 54f);
-        botoesContainer.sizeDelta = new Vector2(620f, 68f);
+        botoesContainer.anchoredPosition = new Vector2(0f, 65f);
+        botoesContainer.sizeDelta = new Vector2(760f, 75f);
 
         HorizontalLayoutGroup layoutBotoes = botoesContainer.gameObject.AddComponent<HorizontalLayoutGroup>();
         layoutBotoes.childAlignment = TextAnchor.MiddleCenter;
@@ -494,23 +506,24 @@ public class SistemaFimDeJogo : MonoBehaviour
         layoutBotoes.childControlHeight = true;
         layoutBotoes.childForceExpandWidth = false;
         layoutBotoes.childForceExpandHeight = true;
-        layoutBotoes.spacing = 16f;
+        layoutBotoes.spacing = 25f;
 
-        botaoReiniciar = CriarBotao("Reiniciar", botoesContainer, "REINICIAR", new Color(0.18f, 0.45f, 0.58f, 0.96f), ReiniciarPartida);
-        botaoMenuPrincipal = CriarBotao("MenuPrincipal", botoesContainer, "MENU PRINCIPAL", new Color(0.35f, 0.18f, 0.18f, 0.96f), RetornarAoMenuPrincipal);
+        botaoReiniciar = CriarBotao("Reiniciar", botoesContainer, "REINICIAR", new Color(0.12f, 0.40f, 0.65f, 0.98f), ReiniciarPartida);
+        botaoContinuar = CriarBotao("Continuar", botoesContainer, "CONTINUAR", new Color(0.12f, 0.50f, 0.35f, 0.98f), ContinuarJogo);
+        botaoMenuPrincipal = CriarBotao("MenuPrincipal", botoesContainer, "MENU PRINCIPAL", new Color(0.65f, 0.20f, 0.20f, 0.98f), RetornarAoMenuPrincipal);
 
         LayoutElement leRestart = botaoReiniciar.gameObject.GetComponent<LayoutElement>();
         if (leRestart != null)
         {
-            leRestart.preferredWidth = 250f;
-            leRestart.preferredHeight = 56f;
+            leRestart.preferredWidth = 220f;
+            leRestart.preferredHeight = 65f;
         }
 
         LayoutElement leMenu = botaoMenuPrincipal.gameObject.GetComponent<LayoutElement>();
         if (leMenu != null)
         {
-            leMenu.preferredWidth = 250f;
-            leMenu.preferredHeight = 56f;
+            leMenu.preferredWidth = 220f;
+            leMenu.preferredHeight = 65f;
         }
     }
 
@@ -573,28 +586,28 @@ public class SistemaFimDeJogo : MonoBehaviour
         objeto.transform.SetParent(parent, false);
 
         RectTransform rect = objeto.GetComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(250f, 56f);
+        rect.sizeDelta = new Vector2(220f, 65f);
 
         Image imagem = objeto.GetComponent<Image>();
         imagem.color = cor;
 
         Outline outline = objeto.AddComponent<Outline>();
-        outline.effectColor = new Color(1f, 1f, 1f, 0.14f);
-        outline.effectDistance = new Vector2(1f, -1f);
+        outline.effectColor = new Color(0f, 0f, 0f, 0.4f);
+        outline.effectDistance = new Vector2(1f, -2f);
 
         Button botao = objeto.GetComponent<Button>();
         ColorBlock cores = botao.colors;
         cores.normalColor = cor;
-        cores.highlightedColor = new Color(cor.r * 1.12f, cor.g * 1.12f, cor.b * 1.12f, cor.a);
-        cores.pressedColor = new Color(cor.r * 0.82f, cor.g * 0.82f, cor.b * 0.82f, cor.a);
+        cores.highlightedColor = new Color(cor.r + 0.15f, cor.g + 0.15f, cor.b + 0.15f, cor.a);
+        cores.pressedColor = new Color(cor.r - 0.15f, cor.g - 0.15f, cor.b - 0.15f, cor.a);
         cores.selectedColor = cores.highlightedColor;
-        cores.disabledColor = cor;
-        cores.fadeDuration = 0.08f;
+        cores.disabledColor = new Color(cor.r, cor.g, cor.b, 0.5f);
+        cores.fadeDuration = 0.1f;
         botao.colors = cores;
         botao.transition = Selectable.Transition.ColorTint;
         botao.onClick.AddListener(acao);
 
-        Text textoBotao = CriarTexto("Texto", objeto.transform, texto, 18, FontStyle.Bold, TextAnchor.MiddleCenter, corTextoPrincipal, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        Text textoBotao = CriarTexto("Texto", objeto.transform, texto, 20, FontStyle.Bold, TextAnchor.MiddleCenter, corTextoPrincipal, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
         textoBotao.raycastTarget = false;
         RectTransform rectTexto = textoBotao.GetComponent<RectTransform>();
         rectTexto.anchorMin = Vector2.zero;
@@ -603,10 +616,10 @@ public class SistemaFimDeJogo : MonoBehaviour
         rectTexto.offsetMax = Vector2.zero;
 
         LayoutElement le = objeto.GetComponent<LayoutElement>();
-        le.preferredWidth = 250f;
-        le.preferredHeight = 56f;
-        le.minWidth = 240f;
-        le.minHeight = 54f;
+        le.preferredWidth = 220f;
+        le.preferredHeight = 65f;
+        le.minWidth = 200f;
+        le.minHeight = 60f;
 
         return botao;
     }
@@ -637,6 +650,28 @@ public class SistemaFimDeJogo : MonoBehaviour
         RestaurarFluxoNormal();
         FluxoInicialJogo.AutorizarCarga(cenaAtual);
         SceneManager.LoadScene(cenaAtual);
+    }
+
+    private void ContinuarJogo()
+    {
+        PartidaEncerrada = false;
+        RestaurarFluxoNormal();
+
+        foreach (var comp in comportamentosDesativados)
+        {
+            if (comp != null)
+            {
+                comp.enabled = true;
+            }
+        }
+        comportamentosDesativados.Clear();
+
+        if (canvas != null)
+        {
+            Destroy(canvas.gameObject);
+        }
+        
+        interfaceConstruida = false;
     }
 
     private void RetornarAoMenuPrincipal()

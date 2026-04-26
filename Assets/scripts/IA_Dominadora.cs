@@ -2679,7 +2679,7 @@ public class IA_Dominadora : MonoBehaviour
         if (nav != null && nav.enabled && nav.isOnNavMesh)
         {
             nav.isStopped = false;
-            nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+            MovimentoFallbackTransicional.TrySetNavDestination(navio, destino);
         }
     }
 
@@ -3067,7 +3067,7 @@ public class IA_Dominadora : MonoBehaviour
         if (nav != null && nav.enabled && nav.isOnNavMesh)
         {
             nav.isStopped = false;
-            nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+            MovimentoFallbackTransicional.TrySetNavDestination(unidade, destino);
         }
     }
 

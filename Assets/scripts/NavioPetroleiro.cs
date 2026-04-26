@@ -425,8 +425,8 @@ public class NavioPetroleiro : ControleUnidade
         AtivarNavMeshNoLocal();
         if (agenteNav.enabled)
         {
-            agenteNav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             agenteNav.isStopped = false;
+            MovimentoFallbackTransicional.TrySetNavDestination(gameObject, destino);
         }
     }
 

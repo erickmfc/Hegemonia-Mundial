@@ -83,6 +83,51 @@ public class ControleTorreta : MonoBehaviour
     private bool diagnosticoLocaisDoTiroEmitido;
     private bool bloquearRotacaoAutomatica;
 
+    [Header("Sistema de Desdobramento (MLRS/Lançador)")]
+    [Tooltip("Se ativado, a torreta precisa 'abrir' ou 'levantar' antes de disparar.")]
+    public bool usarSistemaDesdobramento = false;
+    [Tooltip("A peça específica que será movida/rotacionada (ex: MissilePort).")]
+    public Transform pecaParaDesdobrar;
+    public float tempoParaDesdobrar = 2.0f;
+    
+    public Vector3 posRepouso = new Vector3(3.9434f, 1.26f, -1.36f);
+    public Vector3 posDisparo = new Vector3(3.9434f, 3.21f, -4.29f);
+    
+    public Vector3 rotRepouso = new Vector3(0, 90, 0);
+    public Vector3 rotDisparo = new Vector3(0, 90, -86.14f);
+
+    [Tooltip("Se ativado, pega as coordenadas de Repouso de onde a peça parar no Start (ignorando os números de Repouso acima).")]
+    public bool autoConfigurarRepousoNoStart = true;
+
+    private float progressoDesdobramento = 0f;
+    private bool estaProntoParaAtirar = true; // Se não usar sistema, ja começa pronto
+
+    [Header("Busca de Pontos por Tag")]
+    [Tooltip("Se definido, buscará objetos com esta TAG para usar como locais de lançamento de mísseis.")]
+    public string tagPontoMissel = "";
+
+    [ContextMenu("Salvar Atual como REPOUSO")]
+    void SalvarAtualComoRepouso()
+    {
+        if (pecaParaDesdobrar != null)
+        {
+            posRepouso = pecaParaDesdobrar.localPosition;
+            rotRepouso = pecaParaDesdobrar.localEulerAngles;
+            Debug.Log("Posição e Rotação de REPOUSO salvas com sucesso!");
+        }
+    }
+
+    [ContextMenu("Salvar Atual como DISPARO")]
+    void SalvarAtualComoDisparo()
+    {
+        if (pecaParaDesdobrar != null)
+        {
+            posDisparo = pecaParaDesdobrar.localPosition;
+            rotDisparo = pecaParaDesdobrar.localEulerAngles;
+            Debug.Log("Posição e Rotação de DISPARO salvas com sucesso!");
+        }
+    }
+
     void Start()
     {
         // Busca o controle do navio pai
@@ -99,10 +144,47 @@ public class ControleTorreta : MonoBehaviour
         balasAtuais = tamanhoCartucho;
         misseisAtuais = capacidadeMisseis;
 
-        // AudioSource DESTA torreta (nÃ£o do navio pai) â€” AddComponent garante independÃªncia
+        // AudioSource DESTA torreta (não do navio pai) — AddComponent garante independência
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
         fonteAudio.spatialBlend = 1f;
+
+        if (usarSistemaDesdobramento)
+        {
+            estaProntoParaAtirar = false;
+            progressoDesdobramento = 0f;
+            if (pecaParaDesdobrar != null)
+            {
+                if (autoConfigurarRepousoNoStart)
+                {
+                    posRepouso = pecaParaDesdobrar.localPosition;
+                    rotRepouso = pecaParaDesdobrar.localEulerAngles;
+                }
+                else
+                {
+                    pecaParaDesdobrar.localPosition = posRepouso;
+                    pecaParaDesdobrar.localRotation = Quaternion.Euler(rotRepouso);
+                }
+            }
+        }
+        else
+        {
+            estaProntoParaAtirar = true;
+        }
+
+        // Busca automática de locais de missel por Tag
+        if (locaisDoMissel == null || locaisDoMissel.Length == 0)
+        {
+            if (!string.IsNullOrEmpty(tagPontoMissel))
+            {
+                List<Transform> encontrados = new List<Transform>();
+                foreach (Transform t in GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.CompareTag(tagPontoMissel)) encontrados.Add(t);
+                }
+                if (encontrados.Count > 0) locaisDoMissel = encontrados.ToArray();
+            }
+        }
         
         Helicoptero helicopteroPai = GetComponentInParent<Helicoptero>();
         if (helicopteroPai != null && pecaQueGira == null && canosDaTorreta == null)
@@ -110,11 +192,24 @@ public class ControleTorreta : MonoBehaviour
             bloquearRotacaoAutomatica = true;
         }
 
-        if (pecaQueGira == null) pecaQueGira = transform;
+        // PREVENÇÃO DE BUG CRÍTICO: "O Carro anda de lado / Afunda".
+        // Se pecaQueGira não foi definida no Inspector, NÃO use o Transform do veículo inteiro!
+        // Isso forçava o Rigidbody e NavMeshAgent do próprio veículo a rodar sozinho, bugando o movimento.
+        if (pecaQueGira == null) 
+        {
+            // Tenta achar um filho natural para ser a base. Se não tiver, desabilita rotação.
+            if (transform.childCount > 0)
+                pecaQueGira = transform.GetChild(0); 
+            else
+                bloquearRotacaoAutomatica = true; 
+        }
         
-        rotacaoXOriginal = pecaQueGira.localEulerAngles.x;
-        rotacaoYOriginal = pecaQueGira.localEulerAngles.y;
-        rotacaoZOriginal = pecaQueGira.localEulerAngles.z;
+        if (pecaQueGira != null)
+        {
+            rotacaoXOriginal = pecaQueGira.localEulerAngles.x;
+            rotacaoYOriginal = pecaQueGira.localEulerAngles.y;
+            rotacaoZOriginal = pecaQueGira.localEulerAngles.z;
+        }
 
         // Offset aleatÃ³rio entre 0 e 0.5s â€” evita que todas as torretas disparem e busquem
         // alvos no mesmo frame exato, distribuindo a carga de CPU
@@ -591,6 +686,22 @@ public class ControleTorreta : MonoBehaviour
 
         if (alvoAtual != null)
         {
+            // --- Logica de Desdobramento ---
+            if (usarSistemaDesdobramento)
+            {
+                if (progressoDesdobramento < 1f)
+                {
+                    progressoDesdobramento += Time.deltaTime / tempoParaDesdobrar;
+                    if (pecaParaDesdobrar != null)
+                    {
+                        pecaParaDesdobrar.localPosition = Vector3.Lerp(posRepouso, posDisparo, progressoDesdobramento);
+                        pecaParaDesdobrar.localRotation = Quaternion.Lerp(Quaternion.Euler(rotRepouso), Quaternion.Euler(rotDisparo), progressoDesdobramento);
+                    }
+                    
+                    if (progressoDesdobramento >= 1f) estaProntoParaAtirar = true;
+                }
+            }
+
             // Verifica se o alvo ainda existe (pode ter sido destruÃ­do entre frames)
             if (!alvoAtual.gameObject.activeInHierarchy || !ControleSubmarino.PodeSerAlvoConvencional(alvoAtual))
             {
@@ -634,7 +745,7 @@ public class ControleTorreta : MonoBehaviour
                 giroPitchAlvo = -Mathf.Atan2(localDir.y, distanciaPlana) * Mathf.Rad2Deg;
                 if (limitarInclinacao) giroPitchAlvo = Mathf.Clamp(giroPitchAlvo, -elevacaoMaxima, -elevacaoMinima);
 
-                if (canosDaTorreta != null)
+                if (canosDaTorreta != null && canosDaTorreta != pecaParaDesdobrar)
                 {
                     // Base gira sÃ³ no Yaw
                     Quaternion rotacaoBase = Quaternion.Euler(0f, anguloY, 0f);
@@ -644,10 +755,11 @@ public class ControleTorreta : MonoBehaviour
                     Quaternion rotacaoCanos = Quaternion.Euler(giroPitchAlvo, 0f, 0f);
                     canosDaTorreta.localRotation = Quaternion.Lerp(canosDaTorreta.localRotation, rotacaoCanos, Time.deltaTime * velocidadeGiro);
                 }
-                else
+                else if (canosDaTorreta == null || canosDaTorreta == pecaParaDesdobrar)
                 {
-                    // PeÃ§a Ãºnica: aplica Yaw + Pitch juntos
-                    Quaternion rotacaoTotal = Quaternion.Euler(giroPitchAlvo, anguloY, rotacaoZOriginal);
+                    // Se a peça de desdobramento é a mesma dos canos (ou não tem canos), 
+                    // apenas gira a base (Yaw), pois o Pitch (levantar) é feito pela animação de desdobramento
+                    Quaternion rotacaoTotal = Quaternion.Euler(pecaQueGira.localEulerAngles.x, anguloY, pecaQueGira.localEulerAngles.z);
                     pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoTotal, Time.deltaTime * velocidadeGiro);
                 }
             }
@@ -690,7 +802,7 @@ public class ControleTorreta : MonoBehaviour
                     podeDisparar = Vector3.Angle(minhaFrente, dirAlvo) < tolerancia;
                 }
 
-                if (podeDisparar)
+                if (podeDisparar && estaProntoParaAtirar)
                 {
                     Disparar();
                     if (!estaRecarregando) contadorTempo = tempoEntreTiros;
@@ -699,7 +811,19 @@ public class ControleTorreta : MonoBehaviour
         }
         else
         {
-            // Modo ocioso â€” gira como radar
+            // --- Logica de Recolhimento ---
+            if (usarSistemaDesdobramento && progressoDesdobramento > 0f)
+            {
+                progressoDesdobramento -= Time.deltaTime / tempoParaDesdobrar;
+                estaProntoParaAtirar = false;
+                if (pecaParaDesdobrar != null)
+                {
+                    pecaParaDesdobrar.localPosition = Vector3.Lerp(posRepouso, posDisparo, progressoDesdobramento);
+                    pecaParaDesdobrar.localRotation = Quaternion.Lerp(Quaternion.Euler(rotRepouso), Quaternion.Euler(rotDisparo), progressoDesdobramento);
+                }
+            }
+
+            // Modo ocioso — gira como radar
             ModoOcioso();
         }
     }

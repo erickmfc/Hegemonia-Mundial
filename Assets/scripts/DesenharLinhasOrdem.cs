@@ -1,9 +1,22 @@
 using UnityEngine;
 using UnityEngine.AI;
 using System.Collections.Generic;
+using UnityEngine.EventSystems;
 
 public class DesenharLinhasOrdem : MonoBehaviour
 {
+    private static int frameCliqueConsumido = -1;
+
+    public static bool ConsumiuCliqueEsteFrame()
+    {
+        return frameCliqueConsumido == Time.frameCount;
+    }
+
+    private static void ConsumirCliqueNoFrame()
+    {
+        frameCliqueConsumido = Time.frameCount;
+    }
+
     public LineRenderer lineRenderer;
     private GerenteSelecao gerenteSelecao;
 
@@ -28,8 +41,8 @@ public class DesenharLinhasOrdem : MonoBehaviour
         lineRenderer.startWidth = 0.5f;
         lineRenderer.endWidth = 0.5f;
         lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
-        lineRenderer.startColor = Color.green;
-        lineRenderer.endColor = Color.green;
+        lineRenderer.startColor = new Color(1f, 0.85f, 0f, 0.6f); // Amarelo/Dourado semi-transparente
+        lineRenderer.endColor = new Color(1f, 0.85f, 0f, 0.6f);
         lineRenderer.positionCount = 0;
     }
 
@@ -39,7 +52,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
         modoSeguirAtivo = false;
         pontosPatrulha.Clear();
         lineRenderer.positionCount = 0;
-        Debug.Log("MODO PATRULHA: clique com o botao esquerdo para iniciar. SHIFT + clique esquerdo adiciona pontos extras. ENTER confirma rota multipla. BOTAO DIREITO ou ESC cancelam.");
+        Debug.Log("MODO PATRULHA: Clique com o botão direito para marcar caminho inicial e continue clicando para adicionar mais pontos de patrulha. ESC ou ENTER para finalizar os desenhos.");
     }
 
     public void IniciarModoSeguir()
@@ -47,7 +60,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
         modoSeguirAtivo = true;
         modoPatrulhaAtivo = false;
         lineRenderer.positionCount = 0;
-        Debug.Log("MODO SEGUIR: clique com o botao esquerdo em uma unidade aliada. BOTAO DIREITO ou ESC cancelam.");
+        Debug.Log("MODO SEGUIR: clique com o botao direito em uma unidade aliada. ESC cancela.");
     }
 
     void Update()
@@ -58,31 +71,26 @@ public class DesenharLinhasOrdem : MonoBehaviour
             return;
         }
 
-        if (modoPatrulhaAtivo && Input.GetMouseButtonDown(0))
+        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
         {
-            Vector3 pontoPatrulha;
-            if (TryObterPontoPatrulha(out pontoPatrulha))
-            {
-                pontosPatrulha.Add(pontoPatrulha);
-                AtualizarLinhaVisualPatrulha();
-                MostrarMarcadorPatrulha(pontoPatrulha);
-
-                bool adicionandoRotaMultipla = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                if (!adicionandoRotaMultipla)
-                {
-                    AplicarOrdemPatrulha();
-                    Debug.Log("Patrulha iniciada.");
-                    LimparTudo();
-                    return;
-                }
-            }
+            return;
         }
 
         if (modoPatrulhaAtivo && Input.GetMouseButtonDown(1))
         {
-            Debug.Log("Modo patrulha cancelado.");
-            LimparTudo();
-            return;
+            Vector3 pontoPatrulha;
+            if (TryObterPontoPatrulha(out pontoPatrulha))
+            {
+                ConsumirCliqueNoFrame();
+                pontosPatrulha.Add(pontoPatrulha);
+                AtualizarLinhaVisualPatrulha();
+                MostrarMarcadorPatrulha(pontoPatrulha);
+
+                // Aplica a ordem em tempo real para as unidades já iniciarem a navegação da patrulha
+                AplicarOrdemPatrulha();
+                
+                // Removemos a exigência de segurar SHIFT, agora todo clique adiciona um ponto na rota livremente
+            }
         }
 
         if (modoPatrulhaAtivo && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)))
@@ -109,18 +117,12 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
         if (modoSeguirAtivo && Input.GetMouseButtonDown(1))
         {
-            Debug.Log("Modo seguir cancelado.");
-            LimparTudo();
-            return;
-        }
-
-        if (modoSeguirAtivo && Input.GetMouseButtonDown(0))
-        {
             if (Camera.main == null)
             {
                 return;
             }
 
+            ConsumirCliqueNoFrame();
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit))
@@ -129,6 +131,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 if (alvo != null)
                 {
                     AplicarOrdemSeguir(alvo.transform);
+                    MostrarMarcadorPatrulha(alvo.transform.position, new Color(0.2f, 0.85f, 1f, 0.95f), 14f, 2.2f);
                     Debug.Log("Ordem de SEGUIR confirmada.");
                     LimparTudo();
                 }
@@ -153,16 +156,88 @@ public class DesenharLinhasOrdem : MonoBehaviour
         lineRenderer.positionCount = 0;
     }
 
+    /// <summary>Cancela o modo patrulha ou seguir sem confirmar a ordem. Chamado pelo clique esquerdo.</summary>
+    public void CancelarModo()
+    {
+        LimparTudo();
+    }
+
     void MostrarMarcadorPatrulha(Vector3 pontoPatrulha)
     {
-        if (prefabMarcadorPatrulha == null)
+        // Cor Amarela/Dourada padrão para patrulha
+        MostrarMarcadorPatrulha(pontoPatrulha, new Color(1f, 0.85f, 0f, 0.95f), 11f, 3f);
+    }
+
+    void MostrarMarcadorPatrulha(Vector3 pontoPatrulha, Color cor, float escala, float tempoVida)
+    {
+        // Prioridade 1: prefab dedicado neste componente
+        if (prefabMarcadorPatrulha != null)
+        {
+            GameObject marcador = Instantiate(prefabMarcadorPatrulha, pontoPatrulha + Vector3.up * 0.1f, Quaternion.identity);
+            marcador.transform.localScale = new Vector3(escala, escala, escala);
+            // REMOVIDO: AplicarCorMarcador - Mantém as cores originais da animação amarela
+            Destroy(marcador, tempoVida);
+            return;
+        }
+
+        // Prioridade 2: prefab de patrulha configurado no GerenteSelecao
+        if (gerenteSelecao != null && gerenteSelecao.prefabMarcadorPatrulha != null)
+        {
+            GameObject marcador = Instantiate(gerenteSelecao.prefabMarcadorPatrulha, pontoPatrulha + Vector3.up * 0.1f, Quaternion.identity);
+            marcador.transform.localScale = new Vector3(escala * 1.5f, escala * 1.5f, escala * 1.5f);
+            // REMOVIDO: AplicarCorMarcador - Mantém as cores originais da animação amarela
+            Destroy(marcador, tempoVida);
+            return;
+        }
+
+        // Prioridade 3: fallback geométrico (aqui sim pintamos de amarelo via script)
+        CriarMarcadorFallback(pontoPatrulha, cor, escala, tempoVida);
+    }
+
+    void CriarMarcadorFallback(Vector3 pontoPatrulha, Color cor, float escala, float tempoVida)
+    {
+        GameObject raiz = new GameObject("MarcadorOrdemFallback");
+        raiz.transform.position = pontoPatrulha + Vector3.up * 0.12f;
+
+        GameObject disco = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        disco.name = "Disco";
+        disco.transform.SetParent(raiz.transform, false);
+        disco.transform.localScale = new Vector3(escala * 0.09f, 0.03f, escala * 0.09f);
+        Destroy(disco.GetComponent<Collider>());
+
+        GameObject farol = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        farol.name = "Farol";
+        farol.transform.SetParent(raiz.transform, false);
+        farol.transform.localPosition = new Vector3(0f, 0.6f, 0f);
+        farol.transform.localScale = Vector3.one * Mathf.Max(0.6f, escala * 0.08f);
+        Destroy(farol.GetComponent<Collider>());
+
+        AplicarCorMarcador(raiz, cor);
+        Destroy(raiz, tempoVida);
+    }
+
+    void AplicarCorMarcador(GameObject marcador, Color cor)
+    {
+        if (marcador == null)
         {
             return;
         }
 
-        GameObject marcador = Instantiate(prefabMarcadorPatrulha, pontoPatrulha + Vector3.up * 0.1f, Quaternion.identity);
-        marcador.transform.localScale = new Vector3(11f, 11f, 11f);
-        Destroy(marcador, 3.0f);
+        Renderer[] renderers = marcador.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer rendererAtual = renderers[i];
+            if (rendererAtual == null)
+            {
+                continue;
+            }
+
+            // Usando Sprites/Default assegura que não fica com shader de erro rosa independente do URP
+            Material materialInstancia = new Material(Shader.Find("Sprites/Default"));
+            materialInstancia.color = cor;
+            rendererAtual.material = materialInstancia;
+            rendererAtual.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
     }
 
     bool TryObterPontoPatrulha(out Vector3 ponto)
@@ -221,17 +296,28 @@ public class DesenharLinhasOrdem : MonoBehaviour
     {
         if (pontosPatrulha.Count == 0 || gerenteSelecao.unidadesSelecionadas.Count == 0)
         {
+            lineRenderer.positionCount = 0;
             return;
         }
 
+        // Exibe loop completo: unidade → p0 → p1 → ... → pN → unidade (fecha o ciclo)
+        const float alturaLinha = 3f;
         Vector3 posInicial = gerenteSelecao.unidadesSelecionadas[0].transform.position;
-        lineRenderer.positionCount = pontosPatrulha.Count + 1;
-        lineRenderer.SetPosition(0, posInicial + Vector3.up * 2f);
+        posInicial.y += alturaLinha;
+
+        int totalPontos = pontosPatrulha.Count + 2; // +1 início, +1 fecha o loop
+        lineRenderer.positionCount = totalPontos;
+        lineRenderer.SetPosition(0, posInicial);
 
         for (int i = 0; i < pontosPatrulha.Count; i++)
         {
-            lineRenderer.SetPosition(i + 1, pontosPatrulha[i] + Vector3.up * 2f);
+            Vector3 p = pontosPatrulha[i];
+            p.y += alturaLinha;
+            lineRenderer.SetPosition(i + 1, p);
         }
+
+        // Fecha o loop voltando ao ponto inicial (cria o circuito de patrulha visualmente)
+        lineRenderer.SetPosition(totalPontos - 1, posInicial);
     }
 
     void AplicarOrdemPatrulha()
@@ -249,6 +335,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
     void AplicarOrdemSeguir(Transform alvo)
     {
+        ControleUnidade unidadeAlvo = alvo != null ? alvo.GetComponent<ControleUnidade>() : null;
         foreach (ControleUnidade unidade in gerenteSelecao.unidadesSelecionadas)
         {
             if (unidade == null || unidade.transform == alvo)
@@ -256,8 +343,31 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 continue;
             }
 
+            if (unidadeAlvo != null && !PodeSeguirAlvo(unidade, unidadeAlvo))
+            {
+                Debug.LogWarning($"[{unidade.name}] ignorou SEGUIR porque o alvo nao e aliado.");
+                continue;
+            }
+
             unidade.EmitirOrdemSeguir(alvo);
         }
+    }
+
+    bool PodeSeguirAlvo(ControleUnidade seguidor, ControleUnidade alvo)
+    {
+        if (seguidor == null || alvo == null)
+        {
+            return false;
+        }
+
+        IdentidadeUnidade idSeguidor = seguidor.GetComponent<IdentidadeUnidade>();
+        IdentidadeUnidade idAlvo = alvo.GetComponent<IdentidadeUnidade>();
+        if (idSeguidor == null || idAlvo == null)
+        {
+            return true;
+        }
+
+        return idSeguidor.teamID == idAlvo.teamID;
     }
 
 }
@@ -270,7 +380,9 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
     private float tempoUltimoComando = 0f;
     private ControleUnidade controle;
     private NavMeshAgent agente;
+    private ControleNavioRealista navioRealista;
     private bool ehNaval;
+    private bool ehAereo;
 
     public void Configurar(List<Vector3> novosPontos)
     {
@@ -279,7 +391,9 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
         indiceDesignado = -1;
         controle = GetComponent<ControleUnidade>();
         agente = GetComponent<NavMeshAgent>();
+        navioRealista = GetComponent<ControleNavioRealista>();
         ehNaval = controle != null && controle.EhUnidadeNaval();
+        ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
     }
 
     void Update()
@@ -303,7 +417,28 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
         Vector3 alvoPlano = new Vector3(alvo.x, 0, alvo.z);
         float distancia = Vector3.Distance(posPlano, alvoPlano);
         
-        float margem = ehNaval ? 20f : ((agente != null && agente.enabled && !agente.updatePosition) ? 15f : 6f);
+        // Margem de chegada: navios com ControleNavioRealista usam distanciaChegada própria
+        float margem;
+        if (ehAereo)
+        {
+            margem = 45f;
+        }
+        else if (ehNaval && navioRealista != null)
+        {
+            margem = navioRealista.distanciaChegada + 5f;
+        }
+        else if (ehNaval)
+        {
+            margem = 25f;
+        }
+        else if (agente != null && agente.enabled && !agente.updatePosition)
+        {
+            margem = 15f;
+        }
+        else
+        {
+            margem = 6f;
+        }
 
         if (distancia < margem)
         {
@@ -312,11 +447,26 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
             {
                 indiceAtual = 0;
             }
-            return; // Espera o próximo frame para comandar ir para o novo ponto
+            // Reseta para forçar emissão imediata pro novo ponto
+            indiceDesignado = -1;
+            return;
         }
 
-        // Manda ir para o ponto APENAS se o alvo mudou (evita recalculo de rota todo frame e engasgos curtos)
-        if (indiceDesignado != indiceAtual || Time.time - tempoUltimoComando > 2f)
+        // Guarda Global: Se o destino já foi designado e a unidade já está navegando para ele,
+        // NÃO re-emite o comando (isso evita o "hiccup" de recalcular path a cada 3 segundos).
+        bool agenteTemRotaAtiva = agente != null && agente.enabled && agente.isOnNavMesh
+                                  && (agente.hasPath || agente.pathPending);
+        
+        if (indiceDesignado == indiceAtual && agenteTemRotaAtiva)
+        {
+            return; 
+        }
+
+        // Intervalo de segurança (caso a unidade se perca ou pare por colisão externa)
+        float intervaloSeguranca = ehNaval ? 10f : 5f;
+
+
+        if (indiceDesignado != indiceAtual || Time.time - tempoUltimoComando > intervaloSeguranca)
         {
             indiceDesignado = indiceAtual;
             tempoUltimoComando = Time.time;
@@ -332,6 +482,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
     private float distanciaIdeal = 45f;
     private float tempoProximaAtualizacao = 0f;
     private bool ehNaval;
+    private bool ehAereo;
     private float intervaloAtualizacao = 0.5f;
     private float offsetLateralNaval = 0f;
 
@@ -340,8 +491,9 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         alvoSeguido = novoAlvo;
         controle = GetComponent<ControleUnidade>();
         ehNaval = controle != null && controle.EhUnidadeNaval();
-        distanciaIdeal = ehNaval ? 170f : 45f;
-        intervaloAtualizacao = ehNaval ? 0.2f : 0.5f;
+        ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
+        distanciaIdeal = ehNaval ? 170f : (ehAereo ? (controle != null && controle.TemHelicopteroExterno ? 60f : 140f) : 45f);
+        intervaloAtualizacao = ehNaval ? 0.2f : (ehAereo ? 0.25f : 0.5f);
         offsetLateralNaval = ehNaval ? (((GetInstanceID() & 1) == 0) ? 50f : -50f) : 0f;
     }
 
@@ -368,6 +520,10 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         if (ehNaval)
         {
             AtualizarSeguimentoNaval();
+        }
+        else if (ehAereo)
+        {
+            AtualizarSeguimentoAereo();
         }
         else
         {
@@ -426,6 +582,57 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
             else if (controleLider != null)
             {
                 controle.AplicarLimiteVelocidade(controleLider.ObterVelocidadeAtualReal());
+            }
+        }
+    }
+
+    void AtualizarSeguimentoAereo()
+    {
+        ControleUnidade controleLider = alvoSeguido.GetComponent<ControleUnidade>();
+        float velocidadeLider = controleLider != null ? controleLider.ObterVelocidadeAtualReal() : 0f;
+
+        Vector3 frenteLider = Flatten(alvoSeguido.forward);
+        if (frenteLider.sqrMagnitude < 0.01f)
+        {
+            frenteLider = Flatten(alvoSeguido.position - transform.position);
+            if (frenteLider.sqrMagnitude < 0.01f)
+            {
+                frenteLider = Vector3.forward;
+            }
+        }
+        frenteLider.Normalize();
+
+        float offsetLateral = controle != null && controle.TemHelicopteroExterno ? 18f : 55f;
+        if ((GetInstanceID() & 1) != 0)
+        {
+            offsetLateral *= -1f;
+        }
+
+        float altitudeOffset = controle != null && controle.TemHelicopteroExterno ? 18f : 70f;
+        Vector3 direitaLider = new Vector3(frenteLider.z, 0f, -frenteLider.x);
+        Vector3 destinoEscolta = alvoSeguido.position - (frenteLider * distanciaIdeal) + (direitaLider * offsetLateral);
+        destinoEscolta.y = Mathf.Max(alvoSeguido.position.y + altitudeOffset, transform.position.y);
+
+        float distanciaAtual = Vector3.Distance(transform.position, destinoEscolta);
+        if (distanciaAtual > 18f)
+        {
+            controle.EmitirOrdemMover(destinoEscolta, false);
+        }
+
+        if (controleLider != null)
+        {
+            if (velocidadeLider > 0.5f)
+            {
+                float multiplicador = controle.TemHelicopteroExterno ? 1.05f : 1.1f;
+                controle.AplicarLimiteVelocidade(Mathf.Max(velocidadeLider * multiplicador, 3f));
+            }
+            else if (controle.TemHelicopteroExterno)
+            {
+                controle.AplicarLimiteVelocidade(3f);
+            }
+            else
+            {
+                controle.RestaurarVelocidadeOriginal();
             }
         }
     }

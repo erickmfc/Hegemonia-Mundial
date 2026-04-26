@@ -253,7 +253,7 @@ namespace Hegemonia.AI.BrainMaster
     }
 
     [Serializable]
-    public sealed class IA_PerformanceGovernorState
+    public sealed class IA_PerformanceStateData
     {
         public float FpsSmoothed = 60f;
         public float CpuMainSmoothed;
@@ -262,9 +262,9 @@ namespace Hegemonia.AI.BrainMaster
         public float StableHealthySeconds;
         public float LastUpdatedTime;
 
-        public IA_PerformanceGovernorState Clone()
+        public IA_PerformanceStateData Clone()
         {
-            return new IA_PerformanceGovernorState
+            return new IA_PerformanceStateData
             {
                 FpsSmoothed = FpsSmoothed,
                 CpuMainSmoothed = CpuMainSmoothed,

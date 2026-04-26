@@ -14,6 +14,7 @@ public static class AuditoriaTrilhaControleUnidades
         "Assets/scripts/ControleSubmarino.cs",
         "Assets/scripts/C700TransporteAereo.cs",
         "Assets/scripts/Helicoptero.cs",
+        "Assets/scripts/MovimentoFallbackTransicional.cs",
         "Assets/scripts/NavegacaoInteligenteNaval.cs"
     };
 
@@ -31,6 +32,25 @@ public static class AuditoriaTrilhaControleUnidades
         {
             Debug.Log("[AuditoriaTrilhaControleUnidades] Nenhum problema encontrado na auditoria completa.");
         }
+    }
+
+    // Entry-point para rodar via linha de comando:
+    // Unity.exe -batchmode -quit -projectPath <path> -executeMethod AuditoriaTrilhaControleUnidades.RunScanAllCli -logFile <file>
+    public static void RunScanAllCli()
+    {
+        int problemas = ScanAllPrefabsInternal();
+        problemas += ScanAllScriptsInternal();
+
+        if (problemas > 0)
+        {
+            Debug.LogWarning("[AuditoriaTrilhaControleUnidades] Problemas encontrados na trilha de controle: " + problemas);
+        }
+        else
+        {
+            Debug.Log("[AuditoriaTrilhaControleUnidades] Nenhum problema encontrado na auditoria completa.");
+        }
+
+        EditorApplication.Exit(problemas > 0 ? 1 : 0);
     }
 
     [MenuItem("Tools/Diagnostics/Control Path/Scan Prefabs")]
@@ -228,6 +248,11 @@ public static class AuditoriaTrilhaControleUnidades
 
     private static int ScanScriptAtPath(string assetPath)
     {
+        if (assetPath.Contains("/Editor/") || assetPath.Contains("\\Editor\\"))
+        {
+            return 0;
+        }
+
         if (ArquivosAutorizadosSetDestination.Contains(assetPath))
         {
             return 0;

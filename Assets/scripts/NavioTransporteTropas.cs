@@ -62,6 +62,10 @@ public class NavioTransporteTropas : MonoBehaviour
     public float timeoutMoverAteFila = 20f;
     public float timeoutMoverInterno = 12f;
 
+    [Header("Otimização de FPS")]
+    [Tooltip("Limita drasticamente a renderização de botões na interface para evitar queda de FPS quando há muitas unidades.")]
+    public bool modoDesempenhoUI = true;
+
     [Header("UI / Debug")]
     public bool debugLogs = false;
 
@@ -159,7 +163,8 @@ public class NavioTransporteTropas : MonoBehaviour
     private bool _contagemCargaSuja = true;
 
     private bool _uiMostrarListaCompleta = false;
-    private const int UI_MAX_ITENS_LISTA_RESUMIDA = 28;
+    // OTIMIZAÇÃO: Reduzido de 28 para 4 itens visíveis por padrão.
+    private const int UI_MAX_ITENS_LISTA_RESUMIDA = 4;
 
     private GUISkin _skinCache;
     private GUIStyle _uiLinhaCompacta;
@@ -358,95 +363,121 @@ public class NavioTransporteTropas : MonoBehaviour
 
         GUILayout.Space(6);
 
-        // Renderização de listas grandes em IMGUI derruba FPS. Por padrão, mostramos uma lista resumida.
-        GUILayout.BeginHorizontal("box");
-        GUILayout.Label("<b>Lista:</b>", GUILayout.Width(52f));
-        _uiMostrarListaCompleta = GUILayout.Toggle(_uiMostrarListaCompleta, "mostrar completa (pode pesar)");
-        GUILayout.EndHorizontal();
-        GUILayout.Space(2);
-
-        // Listas
-        GUILayout.Label($"<color=cyan><b>🚚 VEÍCULOS A BORDO ({_veiculosAtualCache}/{capacidadeMaxVeiculos})</b></color>");
-        _scrollVeiculos = GUILayout.BeginScrollView(_scrollVeiculos, GUILayout.Height(100f));
-        int totalVeiculos = _veiculosCarregados.Count;
-        int limiteVeiculos = _uiMostrarListaCompleta ? totalVeiculos : Mathf.Min(UI_MAX_ITENS_LISTA_RESUMIDA, totalVeiculos);
-        for (int i = 0; i < limiteVeiculos; i++)
+        // Renderização Otimizada para FPS
+        if (modoDesempenhoUI)
         {
-            var u = _veiculosCarregados[i]?.unidade;
-            if (u == null) continue;
-            string pfx = (_categoriaSelecionada == CategoriaSelecao.Veiculo && _indiceSelecionadoVeiculo == i) ? "► " : "";
-            if (GUILayout.Button($"{pfx}🚚 {CompactarTextoMenu(LimparClone(u.name), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
+            GUILayout.BeginHorizontal("box");
+            GUILayout.Label("<color=lime><b>⚡ MODO DESEMPENHO ATIVO:</b> Listas ocultadas para poupar FPS.</color>");
+            GUILayout.EndHorizontal();
+            GUILayout.Space(4);
+        }
+        else
+        {
+            GUILayout.BeginHorizontal("box");
+            GUILayout.Label("<b>Lista:</b>", GUILayout.Width(52f));
+            _uiMostrarListaCompleta = GUILayout.Toggle(_uiMostrarListaCompleta, "mostrar completa (MUITO PESADO)");
+            GUILayout.EndHorizontal();
+            GUILayout.Space(2);
+        }
+
+        // Listas (Ocultadas ou reduzidas se modoDesempenhoUI estiver ativo)
+        int maxItensPermitido = modoDesempenhoUI ? 2 : ( _uiMostrarListaCompleta ? 999 : UI_MAX_ITENS_LISTA_RESUMIDA );
+
+        // VEÍCULOS
+        if (_veiculosAtualCache > 0)
+        {
+            GUILayout.Label($"<color=cyan><b>🚚 VEÍCULOS A BORDO ({_veiculosAtualCache}/{capacidadeMaxVeiculos})</b></color>");
+            _scrollVeiculos = GUILayout.BeginScrollView(_scrollVeiculos, GUILayout.Height(modoDesempenhoUI ? 50f : 100f));
+            int totalVeiculos = _veiculosCarregados.Count;
+            int limiteVeiculos = Mathf.Min(maxItensPermitido, totalVeiculos);
+            
+            for (int i = 0; i < limiteVeiculos; i++)
             {
-                _categoriaSelecionada = CategoriaSelecao.Veiculo;
-                _indiceSelecionadoVeiculo = i;
-                _indiceSelecionadoSoldado = -1;
-                _indiceSelecionadoHeli = -1;
-                _helicopteroSelecionadoParaMissao = null;
+                var u = _veiculosCarregados[i]?.unidade;
+                if (u == null) continue;
+                string pfx = (_categoriaSelecionada == CategoriaSelecao.Veiculo && _indiceSelecionadoVeiculo == i) ? "► " : "";
+                if (GUILayout.Button($"{pfx}🚚 {CompactarTextoMenu(LimparClone(u.name), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
+                {
+                    _categoriaSelecionada = CategoriaSelecao.Veiculo;
+                    _indiceSelecionadoVeiculo = i;
+                    _indiceSelecionadoSoldado = -1;
+                    _indiceSelecionadoHeli = -1;
+                    _helicopteroSelecionadoParaMissao = null;
+                }
             }
-        }
-        if (!_uiMostrarListaCompleta && totalVeiculos > limiteVeiculos)
-        {
-            GUILayout.Label($"<color=grey>+{totalVeiculos - limiteVeiculos} veículo(s) ocultos (ative lista completa).</color>", _uiLabelCompacta);
-        }
-        GUILayout.EndScrollView();
-
-        GUILayout.Space(4);
-        GUILayout.Label($"<color=lime><b>🪖 SOLDADOS A BORDO ({_soldadosAtualCache}/{capacidadeMaxSoldados})</b></color>");
-        _scrollSoldados = GUILayout.BeginScrollView(_scrollSoldados, GUILayout.Height(100f));
-        int totalSoldados = _soldadosCarregados.Count;
-        int limiteSoldados = _uiMostrarListaCompleta ? totalSoldados : Mathf.Min(UI_MAX_ITENS_LISTA_RESUMIDA, totalSoldados);
-        for (int i = 0; i < limiteSoldados; i++)
-        {
-            var u = _soldadosCarregados[i]?.unidade;
-            if (u == null) continue;
-            string pfx = (_categoriaSelecionada == CategoriaSelecao.Soldado && _indiceSelecionadoSoldado == i) ? "► " : "";
-            if (GUILayout.Button($"{pfx}🪖 {CompactarTextoMenu(LimparClone(u.name), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
+            if (totalVeiculos > limiteVeiculos)
             {
-                _categoriaSelecionada = CategoriaSelecao.Soldado;
-                _indiceSelecionadoSoldado = i;
-                _indiceSelecionadoVeiculo = -1;
-                _indiceSelecionadoHeli = -1;
-                _helicopteroSelecionadoParaMissao = null;
+                GUILayout.Label($"<color=grey>+{totalVeiculos - limiteVeiculos} veículos na garagem.</color>", _uiLabelCompacta);
             }
+            GUILayout.EndScrollView();
+            GUILayout.Space(4);
         }
-        if (!_uiMostrarListaCompleta && totalSoldados > limiteSoldados)
-        {
-            GUILayout.Label($"<color=grey>+{totalSoldados - limiteSoldados} soldado(s) ocultos (ative lista completa).</color>", _uiLabelCompacta);
-        }
-        GUILayout.EndScrollView();
 
-        GUILayout.Space(4);
-        GUILayout.Label($"<color=orange><b>🚁 HELICÓPTEROS NO CONVÉS / APROXIMAÇÃO ({_aereosAtualCache}/{capacidadeMaxAereos})</b></color>");
-        _scrollHelis = GUILayout.BeginScrollView(_scrollHelis, GUILayout.Height(100f));
-        int totalHelis = _helisCarregados.Count;
-        int limiteHelis = _uiMostrarListaCompleta ? totalHelis : Mathf.Min(UI_MAX_ITENS_LISTA_RESUMIDA, totalHelis);
-        for (int i = 0; i < limiteHelis; i++)
+        // SOLDADOS
+        if (_soldadosAtualCache > 0)
         {
-            var h = _helisCarregados[i]?.heli;
-            if (h == null) continue;
-            bool aproximando = HelicopteroEstaEmAproximacaoParaConves(h);
-            string status = aproximando
-                ? " (aproximando)"
-                : _helisCarregados[i].paradaAtual != null
-                    ? $" ({CompactarTextoMenu(_helisCarregados[i].paradaAtual.name, 12)})"
-                    : (_helisCarregados[i].emSaida ? " (saída)" : "");
-            string pfx = (_categoriaSelecionada == CategoriaSelecao.Heli && _indiceSelecionadoHeli == i) ? "► " : "";
-            if (GUILayout.Button($"{pfx}🚁 {CompactarTextoMenu(h.ObterRotuloExibicao(), 24)}{status}", _uiLinhaCompacta, GUILayout.Height(22f)))
+            GUILayout.Label($"<color=lime><b>🪖 SOLDADOS A BORDO ({_soldadosAtualCache}/{capacidadeMaxSoldados})</b></color>");
+            _scrollSoldados = GUILayout.BeginScrollView(_scrollSoldados, GUILayout.Height(modoDesempenhoUI ? 50f : 100f));
+            int totalSoldados = _soldadosCarregados.Count;
+            int limiteSoldados = Mathf.Min(maxItensPermitido, totalSoldados);
+            
+            for (int i = 0; i < limiteSoldados; i++)
             {
-                _categoriaSelecionada = CategoriaSelecao.Heli;
-                _indiceSelecionadoHeli = i;
-                _indiceSelecionadoVeiculo = -1;
-                _indiceSelecionadoSoldado = -1;
-                _helicopteroSelecionadoParaMissao = h;
+                var u = _soldadosCarregados[i]?.unidade;
+                if (u == null) continue;
+                string pfx = (_categoriaSelecionada == CategoriaSelecao.Soldado && _indiceSelecionadoSoldado == i) ? "► " : "";
+                if (GUILayout.Button($"{pfx}🪖 {CompactarTextoMenu(LimparClone(u.name), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
+                {
+                    _categoriaSelecionada = CategoriaSelecao.Soldado;
+                    _indiceSelecionadoSoldado = i;
+                    _indiceSelecionadoVeiculo = -1;
+                    _indiceSelecionadoHeli = -1;
+                    _helicopteroSelecionadoParaMissao = null;
+                }
             }
+            if (totalSoldados > limiteSoldados)
+            {
+                GUILayout.Label($"<color=grey>+{totalSoldados - limiteSoldados} soldados no alojamento.</color>", _uiLabelCompacta);
+            }
+            GUILayout.EndScrollView();
+            GUILayout.Space(4);
         }
-        if (!_uiMostrarListaCompleta && totalHelis > limiteHelis)
-        {
-            GUILayout.Label($"<color=grey>+{totalHelis - limiteHelis} helicóptero(s) ocultos (ative lista completa).</color>", _uiLabelCompacta);
-        }
-        GUILayout.EndScrollView();
 
-        GUILayout.Space(6);
+        // HELICÓPTEROS (Deixamos um limite um pouco maior pois são poucos)
+        if (_aereosAtualCache > 0)
+        {
+            GUILayout.Label($"<color=orange><b>🚁 HELICÓPTEROS NO CONVÉS / APROXIMAÇÃO ({_aereosAtualCache}/{capacidadeMaxAereos})</b></color>");
+            _scrollHelis = GUILayout.BeginScrollView(_scrollHelis, GUILayout.Height(80f));
+            int totalHelis = _helisCarregados.Count;
+            int limiteHelis = Mathf.Min(modoDesempenhoUI ? 4 : maxItensPermitido, totalHelis);
+            
+            for (int i = 0; i < limiteHelis; i++)
+            {
+                var h = _helisCarregados[i]?.heli;
+                if (h == null) continue;
+                bool aproximando = HelicopteroEstaEmAproximacaoParaConves(h);
+                string status = aproximando
+                    ? " (aproximando)"
+                    : _helisCarregados[i].paradaAtual != null
+                        ? $" ({CompactarTextoMenu(_helisCarregados[i].paradaAtual.name, 12)})"
+                        : (_helisCarregados[i].emSaida ? " (saída)" : "");
+                string pfx = (_categoriaSelecionada == CategoriaSelecao.Heli && _indiceSelecionadoHeli == i) ? "► " : "";
+                if (GUILayout.Button($"{pfx}🚁 {CompactarTextoMenu(h.ObterRotuloExibicao(), 24)}{status}", _uiLinhaCompacta, GUILayout.Height(22f)))
+                {
+                    _categoriaSelecionada = CategoriaSelecao.Heli;
+                    _indiceSelecionadoHeli = i;
+                    _indiceSelecionadoVeiculo = -1;
+                    _indiceSelecionadoSoldado = -1;
+                    _helicopteroSelecionadoParaMissao = h;
+                }
+            }
+            if (totalHelis > limiteHelis)
+            {
+                GUILayout.Label($"<color=grey>+{totalHelis - limiteHelis} helicóptero(s) ocultos.</color>", _uiLabelCompacta);
+            }
+            GUILayout.EndScrollView();
+            GUILayout.Space(6);
+        }
 
         GUILayout.BeginVertical("box");
         GUILayout.BeginHorizontal();
@@ -459,11 +490,11 @@ public class NavioTransporteTropas : MonoBehaviour
 
         if (_helisProximosCache.Count == 0)
         {
-            GUILayout.Label($"<color=grey>Nenhum helicóptero aliado detectado no alcance ({ObterRaioBuscaHelisEfetivo():F0}m).</color>");
+            GUILayout.Label($"<color=grey>Nenhum helicóptero detectado no alcance ({ObterRaioBuscaHelisEfetivo():F0}m).</color>");
         }
         else
         {
-            int limiteHelisProximos = Mathf.Min(4, _helisProximosCache.Count);
+            int limiteHelisProximos = Mathf.Min(modoDesempenhoUI ? 2 : 4, _helisProximosCache.Count);
             for (int i = 0; i < limiteHelisProximos; i++)
             {
                 Helicoptero heliProximo = _helisProximosCache[i];
@@ -473,7 +504,6 @@ public class NavioTransporteTropas : MonoBehaviour
                 GUILayout.Label($"🚁 {CompactarTextoMenu(heliProximo.ObterRotuloExibicao(), 24)}", _uiLabelCompacta, GUILayout.Width(270f));
                 GUILayout.EndHorizontal();
             }
-
             if (_helisProximosCache.Count > limiteHelisProximos)
             {
                 GUILayout.Label($"<color=grey>+{_helisProximosCache.Count - limiteHelisProximos} helicóptero(s) no alcance.</color>");
@@ -494,26 +524,27 @@ public class NavioTransporteTropas : MonoBehaviour
 
         // Desembarque e Liberação Unificado
         GUILayout.BeginVertical("box");
-        GUILayout.Label("<b>📤 SAÍDA / DESEMBARQUE</b>");
+        GUILayout.Label("<b>📤 SAÍDA / DESEMBARQUE RÁPIDO</b>");
 
         string infoSelecao = ObterDescricaoSelecaoAtual();
-        if (!string.IsNullOrEmpty(infoSelecao))
+        if (!string.IsNullOrEmpty(infoSelecao) && !modoDesempenhoUI)
             GUILayout.Label($"Selecionado: <color=yellow>{CompactarTextoMenu(infoSelecao, 48)}</color>", _uiLabelWrap);
-        else
-            GUILayout.Label("Selecionado: NENHUM");
-
-        if (GUILayout.Button("Desembarcar SÓ O SELECIONADO", GUILayout.Height(24f)))
+        
+        if (!modoDesempenhoUI && !string.IsNullOrEmpty(infoSelecao))
         {
-            DispararDesembarquePeloMenu(1);
+            if (GUILayout.Button("Desembarcar SÓ O SELECIONADO", GUILayout.Height(24f)))
+            {
+                DispararDesembarquePeloMenu(1);
+            }
+            GUILayout.Space(4);
         }
 
-        GUILayout.Space(4);
-        GUILayout.Label("<b>Desembarcar por Categoria:</b>");
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Todos Soldados", GUILayout.Height(24f))) IniciarDesembarqueTerrestre(ModoOperacaoTerrestre.Soldados, int.MaxValue, 0);
-        if (GUILayout.Button("Todos Veículos", GUILayout.Height(24f))) IniciarDesembarqueTerrestre(ModoOperacaoTerrestre.Veiculos, int.MaxValue, 0);
+        if (GUILayout.Button($"Desembarcar {_qtdOperacao} Soldado(s)", GUILayout.Height(24f))) IniciarDesembarqueTerrestre(ModoOperacaoTerrestre.Soldados, _qtdOperacao, 0);
+        if (GUILayout.Button($"Desembarcar {_qtdOperacao} Veículo(s)", GUILayout.Height(24f))) IniciarDesembarqueTerrestre(ModoOperacaoTerrestre.Veiculos, _qtdOperacao, 0);
         GUILayout.EndHorizontal();
-        if (GUILayout.Button("Todos Helicópteros", GUILayout.Height(24f))) IniciarLiberarHelicopteros(int.MaxValue, 0);
+        
+        if (GUILayout.Button($"Desembarcar {_qtdOperacao} Helicóptero(s)", GUILayout.Height(24f))) IniciarLiberarHelicopteros(_qtdOperacao, 0);
 
         GUILayout.Space(6);
         if (GUILayout.Button("🔴 RETIRAR TODAS AS UNIDADES (TUDO) 🔴", GUILayout.Height(26f)))
@@ -536,6 +567,40 @@ public class NavioTransporteTropas : MonoBehaviour
         GUI.skin.button.fontSize = oldButtonFont;
         GUI.skin.box.fontSize = oldBoxFont;
         GUI.skin.button.richText = oldButtonRichText;
+    }
+
+    private void PrepararEstilosUISeNecessario()
+    {
+        if (_skinCache == GUI.skin && _uiLinhaCompacta != null) return;
+
+        _skinCache = GUI.skin;
+        _uiLinhaCompacta = new GUIStyle(GUI.skin.button)
+        {
+            alignment = TextAnchor.MiddleLeft,
+            margin = new RectOffset(2, 2, 1, 1),
+            padding = new RectOffset(6, 4, 2, 2)
+        };
+
+        _uiLabelCompacta = new GUIStyle(GUI.skin.label)
+        {
+            margin = new RectOffset(2, 2, 1, 1),
+            padding = new RectOffset(2, 2, 0, 0)
+        };
+
+        _uiLabelWrap = new GUIStyle(GUI.skin.label)
+        {
+            wordWrap = true
+        };
+    }
+
+    private void AtualizarContagemCargaSeNecessario()
+    {
+        if (!_contagemCargaSuja && Time.frameCount % 10 != 0) return;
+        _contagemCargaSuja = false;
+
+        _veiculosAtualCache = _veiculosCarregados.Count;
+        _soldadosAtualCache = _soldadosCarregados.Count;
+        _aereosAtualCache = _helisCarregados.Count;
     }
 
     // ======================================================
@@ -685,7 +750,6 @@ public class NavioTransporteTropas : MonoBehaviour
             Vector3 posDiff = u.transform.position - pontoFila.position;
             posDiff.y = 0f;
 
-            // Raio super permissivo para absorver a fila caso o NavMesh deles seja grosseiro
             if (posDiff.magnitude <= raioPuxarAbsoluto)
             {
                 chegou = true;
@@ -695,7 +759,6 @@ public class NavioTransporteTropas : MonoBehaviour
             var nav = u.GetComponent<NavMeshAgent>();
             if (nav != null && nav.enabled && nav.isOnNavMesh && !nav.pathPending)
             {
-                // Se ele parou (bateu no limite de caminhada possível) e está a menos do raio máximo, puxa ele.
                 if (nav.remainingDistance <= nav.stoppingDistance + 1f && posDiff.magnitude <= raioPuxarPresoNavMesh)
                 {
                     chegou = true;
@@ -764,9 +827,9 @@ public class NavioTransporteTropas : MonoBehaviour
             MostrarMensagem($"➡️ Chamando {LimparClone(u.name)}...");
             OrdenarIrPara(u, pontoFila.position);
 
-            // Delega o monitoramento de chegada para uma Rotina Paralela que vai resolver ela mesma.
             StartCoroutine(MonitorarEEmbarcarIndividual(u, ehSoldado, pontoFila));
             embarcados++;
+            _contagemCargaSuja = true;
 
             float tempoEspera = ehSoldado ? 2f : 7f;
             float timerEsp = 0f;
@@ -777,7 +840,6 @@ public class NavioTransporteTropas : MonoBehaviour
             }
         }
 
-        // Aguarda todos chegarem no seu próprio tempo limite, ou o botão de cancelar ser tocado
         while (_caminhantesPendentes > 0 && _operacaoTerrestreAtiva)
         {
             yield return null;
@@ -857,6 +919,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
             RestaurarUnidadeTerrestre(u, carga, destino);
             RemoverCargaTerrestre(carga);
+            _contagemCargaSuja = true;
 
             float tempoEspera = EhSoldado(u) ? 2f : 7f;
             float timerEsp = 0f;
@@ -919,6 +982,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
             MostrarMensagem($"➡️ {h.ObterRotuloExibicao()} alinhando em Pouso/decolagem para depois pousar em {paradaLivre.name}.");
             puxados++;
+            _contagemCargaSuja = true;
             yield return new WaitForSeconds(delayEntreUnidades);
         }
 
@@ -952,6 +1016,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
             MostrarMensagem($"➡️ {carga.heli.ObterRotuloExibicao()} saiu da vaga e vai para Pouso/decolagem.");
             liberados++;
+            _contagemCargaSuja = true;
             yield return new WaitForSeconds(delayEntreUnidades);
         }
 
@@ -968,7 +1033,6 @@ public class NavioTransporteTropas : MonoBehaviour
         if (u == null) yield break;
         if (_containerCarga == null) GarantirContainerCarga();
 
-        // Preparar (desliga nav/controle pra não brigar com o movimento interno)
         var carga = PrepararUnidadeParaCarga(u);
         carga.parentOriginal = u.transform.parent;
 
@@ -979,15 +1043,13 @@ public class NavioTransporteTropas : MonoBehaviour
         u.transform.localPosition = localCorredor;
         u.transform.rotation = transform.rotation;
 
-        // Move interno Corredor1 -> chegada
         yield return StartCoroutine(MoverLocalAte(u.transform, localChegada, velocidadeMovimentoInterno, timeoutMoverInterno));
 
         if (ehSoldado) _soldadosCarregados.Add(carga);
         else _veiculosCarregados.Add(carga);
-        _contagemCargaSuja = true;
 
-        // Esconde a unidade (mas continua parentada para acompanhar o navio)
         u.SetActive(false);
+        _contagemCargaSuja = true;
     }
 
     private void RemoverCargaTerrestre(CargaTerrestre carga)
@@ -1000,10 +1062,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     public int TransferirSoldadosParaHelicoptero(Helicoptero heli, int quantidadeMax = int.MaxValue)
     {
-        if (heli == null || quantidadeMax <= 0)
-        {
-            return 0;
-        }
+        if (heli == null || quantidadeMax <= 0) return 0;
 
         int transferidos = 0;
         for (int i = _soldadosCarregados.Count - 1; i >= 0 && transferidos < quantidadeMax; i--)
@@ -1012,33 +1071,19 @@ public class NavioTransporteTropas : MonoBehaviour
             if (carga == null || carga.unidade == null)
             {
                 _soldadosCarregados.RemoveAt(i);
-                _contagemCargaSuja = true;
                 continue;
             }
-
-            if (!heli.EmbarcarSoldadoTransferido(carga.unidade))
-            {
-                continue;
-            }
-
+            if (!heli.EmbarcarSoldadoTransferido(carga.unidade)) continue;
             RemoverCargaTerrestre(carga);
             transferidos++;
         }
-
         return transferidos;
     }
 
     public bool EmbarcarSoldadoTransferidoDoHelicoptero(GameObject soldado)
     {
-        if (soldado == null || SoldadosAtual >= capacidadeMaxSoldados)
-        {
-            return false;
-        }
-
-        if (_containerCarga == null)
-        {
-            GarantirContainerCarga();
-        }
+        if (soldado == null || SoldadosAtual >= capacidadeMaxSoldados) return false;
+        if (_containerCarga == null) GarantirContainerCarga();
 
         CargaTerrestre carga = PrepararSoldadoTransferidoDoHelicoptero(soldado);
         soldado.transform.SetParent(_containerCarga, true);
@@ -1057,18 +1102,13 @@ public class NavioTransporteTropas : MonoBehaviour
 
     public int TransferirSoldadosDoHelicopteroParaNavio(Helicoptero heli, int quantidadeMax = int.MaxValue)
     {
-        if (heli == null || quantidadeMax <= 0)
-        {
-            return 0;
-        }
-
+        if (heli == null || quantidadeMax <= 0) return 0;
         return heli.TransferirSoldadosParaNavio(this, quantidadeMax);
     }
 
     private CargaTerrestre PrepararSoldadoTransferidoDoHelicoptero(GameObject unidade)
     {
         var carga = new CargaTerrestre { unidade = unidade, parentOriginal = unidade.transform.parent };
-
         var ctrl = unidade.GetComponent<ControleUnidade>();
         if (ctrl != null)
         {
@@ -1076,30 +1116,16 @@ public class NavioTransporteTropas : MonoBehaviour
             try { ctrl.DefinirSelecao(false); } catch { }
             ctrl.enabled = false;
         }
-        else
-        {
-            carga.controleEnabledAntes = false;
-        }
+        else carga.controleEnabledAntes = false;
 
         var nav = unidade.GetComponent<NavMeshAgent>();
         if (nav != null)
         {
             carga.navAgentEnabledAntes = true;
-            try
-            {
-                if (nav.enabled && nav.isOnNavMesh)
-                {
-                    nav.ResetPath();
-                }
-                nav.isStopped = true;
-            }
-            catch { }
+            try { if (nav.enabled && nav.isOnNavMesh) nav.ResetPath(); nav.isStopped = true; } catch { }
             nav.enabled = false;
         }
-        else
-        {
-            carga.navAgentEnabledAntes = false;
-        }
+        else carga.navAgentEnabledAntes = false;
 
         var rb = unidade.GetComponent<Rigidbody>();
         if (rb != null)
@@ -1114,10 +1140,7 @@ public class NavioTransporteTropas : MonoBehaviour
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
-        else
-        {
-            carga.rbExiste = false;
-        }
+        else carga.rbExiste = false;
 
         return carga;
     }
@@ -1126,7 +1149,6 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         if (u == null || carga == null) return;
 
-        // Restaura ControleUnidade (se existir)
         var ctrl = u.GetComponent<ControleUnidade>();
         if (ctrl != null)
         {
@@ -1134,7 +1156,6 @@ public class NavioTransporteTropas : MonoBehaviour
             ctrl.enabled = carga.controleEnabledAntes;
         }
 
-        // Restaura Rigidbody (se existir)
         var rb = u.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -1145,7 +1166,6 @@ public class NavioTransporteTropas : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
         }
 
-        // Restaura NavMeshAgent (se existir)
         var nav = u.GetComponent<NavMeshAgent>();
         if (nav != null)
         {
@@ -1157,12 +1177,7 @@ public class NavioTransporteTropas : MonoBehaviour
                 {
                     alvo = hit.position;
                 }
-                try
-                {
-                    nav.Warp(alvo);
-                    nav.isStopped = false;
-                }
-                catch { }
+                try { nav.Warp(alvo); nav.isStopped = false; } catch { }
             }
         }
     }
@@ -1171,7 +1186,6 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         var carga = new CargaTerrestre { unidade = u };
 
-        // Desseleciona se estiver selecionado
         var ctrl = u.GetComponent<ControleUnidade>();
         if (ctrl != null)
         {
@@ -1179,33 +1193,17 @@ public class NavioTransporteTropas : MonoBehaviour
             try { ctrl.DefinirSelecao(false); } catch { }
             ctrl.enabled = false;
         }
-        else
-        {
-            carga.controleEnabledAntes = false;
-        }
+        else carga.controleEnabledAntes = false;
 
-        // Para NavMeshAgent (desliga para poder andar dentro do navio)
         var nav = u.GetComponent<NavMeshAgent>();
         if (nav != null)
         {
             carga.navAgentEnabledAntes = nav.enabled;
-            try
-            {
-                if (nav.enabled)
-                {
-                    if (nav.isOnNavMesh) nav.ResetPath();
-                    nav.isStopped = true;
-                }
-            }
-            catch { }
+            try { if (nav.enabled) { if (nav.isOnNavMesh) nav.ResetPath(); nav.isStopped = true; } } catch { }
             nav.enabled = false;
         }
-        else
-        {
-            carga.navAgentEnabledAntes = false;
-        }
+        else carga.navAgentEnabledAntes = false;
 
-        // Rigidbody: deixa kinematic pra não brigar com o MoveTowards manual
         var rb = u.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -1219,10 +1217,7 @@ public class NavioTransporteTropas : MonoBehaviour
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
-        else
-        {
-            carga.rbExiste = false;
-        }
+        else carga.rbExiste = false;
 
         return carga;
     }
@@ -1235,7 +1230,6 @@ public class NavioTransporteTropas : MonoBehaviour
         while (timer < timeout)
         {
             timer += Time.deltaTime;
-
             Vector3 atual = obj.localPosition;
             Vector3 prox = Vector3.MoveTowards(atual, destinoLocal, velocidade * Time.deltaTime);
             obj.localPosition = prox;
@@ -1297,7 +1291,6 @@ public class NavioTransporteTropas : MonoBehaviour
                 return heli;
             }
         }
-
         return null;
     }
 
@@ -1320,14 +1313,12 @@ public class NavioTransporteTropas : MonoBehaviour
             pontoAlvo = raio.GetPoint(distancia);
             return true;
         }
-
         return false;
     }
 
     private void IniciarModoHelicopteroNavio(Helicoptero heli, ModoOrdemHelicopteroNavio modo)
     {
         if (heli == null) return;
-
         _helicopteroSelecionadoParaMissao = heli;
         _modoOrdemHelicoptero = modo;
         _rotaPatrulhaHelicoptero.Clear();
@@ -1357,13 +1348,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
         if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Patrulha)
         {
-            if (Input.GetMouseButtonDown(0))
-            {
-                EncerrarModoHelicopteroNavio();
-                return;
-            }
-
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             {
                 EncerrarModoHelicopteroNavio();
                 return;
@@ -1401,13 +1386,9 @@ public class NavioTransporteTropas : MonoBehaviour
                     heliLiberado =>
                     {
                         if (_rotaPatrulhaHelicoptero.Count > 0)
-                        {
                             heliLiberado.IniciarPatrulhaAeroporto(new List<Vector3>(_rotaPatrulhaHelicoptero));
-                        }
                         else
-                        {
                             heliLiberado.RetornarParaVagaAeroporto();
-                        }
                     },
                     "iniciando patrulha");
             }
@@ -1427,10 +1408,7 @@ public class NavioTransporteTropas : MonoBehaviour
                     heliLiberado => heliLiberado.IniciarReconhecimentoAeroporto(pontoAlvo),
                     "indo para reconhecimento");
             }
-            else
-            {
-                _helicopteroSelecionadoParaMissao.IniciarReconhecimentoAeroporto(pontoAlvo);
-            }
+            else _helicopteroSelecionadoParaMissao.IniciarReconhecimentoAeroporto(pontoAlvo);
         }
         else if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.AtaqueLocal)
         {
@@ -1441,10 +1419,7 @@ public class NavioTransporteTropas : MonoBehaviour
                     heliLiberado => heliLiberado.IniciarAtaqueLocalAeroporto(pontoAlvo),
                     "indo para ataque local");
             }
-            else
-            {
-                _helicopteroSelecionadoParaMissao.IniciarAtaqueLocalAeroporto(pontoAlvo);
-            }
+            else _helicopteroSelecionadoParaMissao.IniciarAtaqueLocalAeroporto(pontoAlvo);
         }
         else if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Transporte)
         {
@@ -1455,10 +1430,7 @@ public class NavioTransporteTropas : MonoBehaviour
                     heliLiberado => heliLiberado.IniciarTransporteAeroporto(pontoAlvo),
                     "indo para transporte");
             }
-            else
-            {
-                _helicopteroSelecionadoParaMissao.IniciarTransporteAeroporto(pontoAlvo);
-            }
+            else _helicopteroSelecionadoParaMissao.IniciarTransporteAeroporto(pontoAlvo);
         }
 
         EncerrarModoHelicopteroNavio();
@@ -1480,9 +1452,7 @@ public class NavioTransporteTropas : MonoBehaviour
         if (_modoOrdemHelicoptero != ModoOrdemHelicopteroNavio.Nenhum)
         {
             if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Patrulha)
-            {
                 GUILayout.Label($"<color=yellow>PATRULHA ATIVA: clique direito adiciona pontos ({_rotaPatrulhaHelicoptero.Count}). ENTER encerra, BACKSPACE desfaz, ESC cancela.</color>");
-            }
             else
             {
                 string textoModo = "ATAQUE LOCAL";
@@ -1492,35 +1462,21 @@ public class NavioTransporteTropas : MonoBehaviour
             }
 
             if (GUILayout.Button("❌ Cancelar Ordem Helicóptero", GUILayout.Height(24f)))
-            {
                 EncerrarModoHelicopteroNavio();
-            }
         }
         else
         {
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(28f)))
-            {
-                IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Reconhecimento);
-            }
-            if (GUILayout.Button("🛡️ Patrulha", GUILayout.Height(28f)))
-            {
-                IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Patrulha);
-            }
-            if (GUILayout.Button("💥 Ataque local", GUILayout.Height(28f)))
-            {
-                IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.AtaqueLocal);
-            }
+            if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(28f))) IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Reconhecimento);
+            if (GUILayout.Button("🛡️ Patrulha", GUILayout.Height(28f))) IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Patrulha);
+            if (GUILayout.Button("💥 Ataque local", GUILayout.Height(28f))) IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.AtaqueLocal);
             GUILayout.EndHorizontal();
 
             if (heli.EhHelicopteroTransporte())
             {
                 GUILayout.Space(4f);
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("🛬 Transporte", GUILayout.Height(26f)))
-                {
-                    IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Transporte);
-                }
+                if (GUILayout.Button("🛬 Transporte", GUILayout.Height(26f))) IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Transporte);
                 GUILayout.Label($"Tropas: {heli.soldadosEmbarcados.Count}/{heli.capacidadeMaxima}", GUILayout.Width(120f));
                 GUILayout.EndHorizontal();
 
@@ -1531,17 +1487,13 @@ public class NavioTransporteTropas : MonoBehaviour
                     if (GUILayout.Button("📥 Recolher tropas", GUILayout.Height(24f)))
                     {
                         int recolhidas = heli.RecolherTropasPeloMenu();
-                        MostrarMensagem(recolhidas > 0
-                            ? $"📥 {heli.ObterRotuloExibicao()} recolheu {recolhidas} tropa(s)."
-                            : $"⚠️ {heli.ObterRotuloExibicao()} não encontrou tropas para recolher.");
+                        MostrarMensagem(recolhidas > 0 ? $"📥 {heli.ObterRotuloExibicao()} recolheu {recolhidas} tropa(s)." : $"⚠️ Sem tropas para recolher.");
                     }
                     GUI.enabled = heli.TemSoldados();
                     if (GUILayout.Button("📤 Desembarcar", GUILayout.Height(24f)))
                     {
                         int desembarcadas = heli.DesembarcarTropasNoLocalAtual();
-                        MostrarMensagem(desembarcadas > 0
-                            ? $"📤 {heli.ObterRotuloExibicao()} desembarcou {desembarcadas} tropa(s)."
-                            : $"⚠️ {heli.ObterRotuloExibicao()} está sem tropas para desembarcar.");
+                        MostrarMensagem(desembarcadas > 0 ? $"📤 {heli.ObterRotuloExibicao()} desembarcou {desembarcadas} tropa(s)." : $"⚠️ Sem tropas para desembarcar.");
                     }
                     GUI.enabled = true;
                     GUILayout.EndHorizontal();
@@ -1553,29 +1505,21 @@ public class NavioTransporteTropas : MonoBehaviour
                     if (GUILayout.Button($"⬆️ Navio -> Heli ({_qtdOperacao})", GUILayout.Height(24f)))
                     {
                         int transferidos = TransferirSoldadosParaHelicoptero(heli, qtdTransferencia);
-                        MostrarMensagem(transferidos > 0
-                            ? $"⬆️ {transferidos} soldado(s) transferidos do navio para {heli.ObterRotuloExibicao()}."
-                            : $"⚠️ Não foi possível transferir soldados do navio para {heli.ObterRotuloExibicao()}.");
+                        MostrarMensagem(transferidos > 0 ? $"⬆️ {transferidos} soldado(s) transferidos." : $"⚠️ Falha na transferência.");
                     }
                     GUI.enabled = heliProntoNoConves && heli.TemSoldados() && SoldadosAtual < capacidadeMaxSoldados;
                     if (GUILayout.Button($"⬇️ Heli -> Navio ({_qtdOperacao})", GUILayout.Height(24f)))
                     {
                         int transferidos = TransferirSoldadosDoHelicopteroParaNavio(heli, qtdTransferencia);
-                        MostrarMensagem(transferidos > 0
-                            ? $"⬇️ {transferidos} soldado(s) transferidos de {heli.ObterRotuloExibicao()} para o navio."
-                            : $"⚠️ Não foi possível transferir soldados de {heli.ObterRotuloExibicao()} para o navio.");
+                        MostrarMensagem(transferidos > 0 ? $"⬇️ {transferidos} soldado(s) transferidos." : $"⚠️ Falha na transferência.");
                     }
                     GUI.enabled = true;
                     GUILayout.EndHorizontal();
 
-                    if (!heliProntoNoConves)
-                    {
-                        GUILayout.Label("<color=grey>Transferência direta disponível quando o helicóptero estiver parado no convés.</color>");
-                    }
+                    if (!heliProntoNoConves) GUILayout.Label("<color=grey>Transferência direta só no convés.</color>");
                 }
             }
         }
-
         GUILayout.EndVertical();
     }
 
@@ -1598,7 +1542,6 @@ public class NavioTransporteTropas : MonoBehaviour
             var h = _helisCarregados[_indiceSelecionadoHeli]?.heli;
             return h != null ? LimparClone(h.name) : string.Empty;
         }
-
         return string.Empty;
     }
 
@@ -1658,10 +1601,7 @@ public class NavioTransporteTropas : MonoBehaviour
             if (forcar || stop1 == null) stop1 = EncontrarFilhoPorNome(saidaHangar, "Stop (1)");
         }
 
-        if (string.IsNullOrEmpty(descricaoParaIA))
-        {
-            PreencherDescricaoPadrao();
-        }
+        if (string.IsNullOrEmpty(descricaoParaIA)) PreencherDescricaoPadrao();
     }
 
     private Transform EncontrarPorNome(string nome)
@@ -1691,53 +1631,25 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private Transform EncontrarPontoPousoDecolagemHeli()
     {
-        if (pista == null)
-        {
-            return null;
-        }
-
+        if (pista == null) return null;
         Transform exato = EncontrarFilhoPorNome(pista, "Pouso/decolagem");
-        if (exato != null)
-        {
-            return exato;
-        }
-
+        if (exato != null) return exato;
         foreach (Transform t in pista.GetComponentsInChildren<Transform>(true))
         {
-            if (t == null || t == pista)
-            {
-                continue;
-            }
-
+            if (t == null || t == pista) continue;
             string nome = NomeNormalizado(t.name);
-            if (nome.Contains("pouso/decolagem") || (nome.Contains("pouso") && nome.Contains("decolagem")))
-            {
-                return t;
-            }
+            if (nome.Contains("pouso/decolagem") || (nome.Contains("pouso") && nome.Contains("decolagem"))) return t;
         }
-
         return null;
     }
 
-    private string NomeNormalizado(string valor)
-    {
-        return string.IsNullOrEmpty(valor)
-            ? string.Empty
-            : valor.Replace(" ", string.Empty).ToLowerInvariant();
-    }
+    private string NomeNormalizado(string valor) => string.IsNullOrEmpty(valor) ? string.Empty : valor.Replace(" ", string.Empty).ToLowerInvariant();
 
-    private List<Transform> OrdenarPorIndiceParenteses(List<Transform> pontos)
-    {
-        return pontos
-            .Where(p => p != null)
-            .OrderBy(p => ExtrairIndiceParentesesOuZero(p.name))
-            .ToList();
-    }
+    private List<Transform> OrdenarPorIndiceParenteses(List<Transform> pontos) => pontos.Where(p => p != null).OrderBy(p => ExtrairIndiceParentesesOuZero(p.name)).ToList();
 
     private int ExtrairIndiceParentesesOuZero(string nome)
     {
         if (string.IsNullOrEmpty(nome)) return 0;
-
         int a = nome.IndexOf('(');
         int b = nome.IndexOf(')');
         if (a >= 0 && b > a)
@@ -1748,40 +1660,22 @@ public class NavioTransporteTropas : MonoBehaviour
         return 0;
     }
 
-    private string LimparClone(string nome)
-    {
-        return string.IsNullOrEmpty(nome) ? string.Empty : nome.Replace("(Clone)", "").Trim();
-    }
+    private string LimparClone(string nome) => string.IsNullOrEmpty(nome) ? string.Empty : nome.Replace("(Clone)", "").Trim();
 
     private static string CompactarTextoMenu(string texto, int maxChars)
     {
-        if (string.IsNullOrEmpty(texto) || maxChars <= 0 || texto.Length <= maxChars)
-        {
-            return texto;
-        }
-
-        if (maxChars <= 3)
-        {
-            return texto.Substring(0, maxChars);
-        }
-
+        if (string.IsNullOrEmpty(texto) || maxChars <= 0 || texto.Length <= maxChars) return texto;
+        if (maxChars <= 3) return texto.Substring(0, maxChars);
         return texto.Substring(0, maxChars - 3) + "...";
     }
 
-    private bool temReferenciasTerrestres()
-    {
-        return corredor1 != null && chegada != null && pontosSaidaEntrada != null && pontosSaidaEntrada.Length > 0;
-    }
+    private bool temReferenciasTerrestres() => corredor1 != null && chegada != null && pontosSaidaEntrada != null && pontosSaidaEntrada.Length > 0;
 
-    private bool temReferenciasHeli()
-    {
-        return pontoPousoDecolagemHeli != null && paradasHeli != null && paradasHeli.Length > 0;
-    }
+    private bool temReferenciasHeli() => pontoPousoDecolagemHeli != null && paradasHeli != null && paradasHeli.Length > 0;
 
     private void GarantirContainerCarga()
     {
         if (_containerCarga != null) return;
-
         Transform existente = transform.Find("_CargaInterna");
         if (existente == null)
         {
@@ -1798,7 +1692,6 @@ public class NavioTransporteTropas : MonoBehaviour
     private void PrepararPorta()
     {
         if (portaTerrestre == null) return;
-
         Vector3 euler = portaTerrestre.localEulerAngles;
         _portaRotX = euler.x;
         _portaRotY = euler.y;
@@ -1811,19 +1704,14 @@ public class NavioTransporteTropas : MonoBehaviour
         _portaZAtual = Mathf.Repeat(portaTerrestre.localEulerAngles.z, 360f);
     }
 
-    private void FecharPortaTerrestre()
-    {
-        // só muda o alvo (anima em Update)
-    }
+    private void FecharPortaTerrestre() { }
 
     private void AtualizarAnimacaoPorta()
     {
         if (portaTerrestre == null) return;
-
         float alvoZ = _operacaoTerrestreAtiva ? portaZAberta : portaZFechada;
         float alvoZN = Mathf.Repeat(alvoZ, 360f);
         float atualZN = Mathf.Repeat(_portaZAtual, 360f);
-
         atualZN = Mathf.LerpAngle(atualZN, alvoZN, Time.deltaTime * Mathf.Max(0.01f, velocidadeAnimacaoPorta));
         _portaZAtual = atualZN;
         portaTerrestre.localEulerAngles = new Vector3(_portaRotX, _portaRotY, atualZN);
@@ -1831,74 +1719,9 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private void LimparNulos()
     {
-        int antesV = _veiculosCarregados.Count;
-        int antesS = _soldadosCarregados.Count;
-        int antesH = _helisCarregados.Count;
-
         _veiculosCarregados.RemoveAll(c => c == null || c.unidade == null);
         _soldadosCarregados.RemoveAll(c => c == null || c.unidade == null);
         _helisCarregados.RemoveAll(c => c == null || c.heli == null);
-
-        if (antesV != _veiculosCarregados.Count || antesS != _soldadosCarregados.Count || antesH != _helisCarregados.Count)
-        {
-            _contagemCargaSuja = true;
-        }
-    }
-
-    private void AtualizarContagemCargaSeNecessario()
-    {
-        if (!_contagemCargaSuja) return;
-
-        int v = 0;
-        for (int i = 0; i < _veiculosCarregados.Count; i++)
-        {
-            if (_veiculosCarregados[i] != null && _veiculosCarregados[i].unidade != null) v++;
-        }
-
-        int s = 0;
-        for (int i = 0; i < _soldadosCarregados.Count; i++)
-        {
-            if (_soldadosCarregados[i] != null && _soldadosCarregados[i].unidade != null) s++;
-        }
-
-        int h = 0;
-        for (int i = 0; i < _helisCarregados.Count; i++)
-        {
-            if (_helisCarregados[i] != null && _helisCarregados[i].heli != null) h++;
-        }
-
-        _veiculosAtualCache = v;
-        _soldadosAtualCache = s;
-        _aereosAtualCache = h;
-        _contagemCargaSuja = false;
-    }
-
-    private void PrepararEstilosUISeNecessario()
-    {
-        if (_skinCache == GUI.skin && _uiLinhaCompacta != null && _uiLabelCompacta != null && _uiLabelWrap != null)
-        {
-            return;
-        }
-
-        _skinCache = GUI.skin;
-
-        _uiLinhaCompacta = new GUIStyle(GUI.skin.button);
-        _uiLinhaCompacta.alignment = TextAnchor.MiddleLeft;
-        _uiLinhaCompacta.wordWrap = false;
-        _uiLinhaCompacta.clipping = TextClipping.Clip;
-        _uiLinhaCompacta.fontSize = 10;
-        _uiLinhaCompacta.padding = new RectOffset(6, 4, 2, 2);
-
-        _uiLabelCompacta = new GUIStyle(GUI.skin.label);
-        _uiLabelCompacta.richText = true;
-        _uiLabelCompacta.wordWrap = false;
-        _uiLabelCompacta.clipping = TextClipping.Clip;
-        _uiLabelCompacta.fontSize = 10;
-
-        _uiLabelWrap = new GUIStyle(GUI.skin.label);
-        _uiLabelWrap.richText = true;
-        _uiLabelWrap.wordWrap = true;
-        _uiLabelWrap.fontSize = 11;
     }
 
     private void MostrarMensagem(string msg, float duracao = 4f)
@@ -1912,7 +1735,6 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         List<Transform> lista = new List<Transform>();
         if (pontosSaidaEntrada == null) return lista;
-
         for (int i = 0; i < pontosSaidaEntrada.Length; i++)
         {
             Transform p = pontosSaidaEntrada[i];
@@ -1929,7 +1751,6 @@ public class NavioTransporteTropas : MonoBehaviour
             return classificacao == ClassificacaoSuperficieMapa.Chao || classificacao == ClassificacaoSuperficieMapa.Costa;
         }
 
-        // Fallback: raycast vertical ignorando coliders do próprio navio
         Vector3 origem = new Vector3(pos.x, pos.y + 600f, pos.z);
         RaycastHit[] hits = Physics.RaycastAll(origem, Vector3.down, 1200f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         if (hits == null || hits.Length == 0) return false;
@@ -1941,48 +1762,30 @@ public class NavioTransporteTropas : MonoBehaviour
             if (hits[i].collider.transform.IsChildOf(transform)) continue;
             return !EhAgua(hits[i].collider);
         }
-
         return false;
     }
 
     private bool HelicopteroPodeTransferirNoConves(Helicoptero heli)
     {
-        if (heli == null)
-        {
-            return false;
-        }
-
-        return JaTenhoHeli(heli)
-            && HelicopteroPertenceAEsteNavio(heli)
-            && !heli.estaVoando
-            && !heli.EstaEmPreparacaoDecolagem()
-            && !HelicopteroEstaEmAproximacaoParaConves(heli);
+        if (heli == null) return false;
+        return JaTenhoHeli(heli) && HelicopteroPertenceAEsteNavio(heli) && !heli.estaVoando && !heli.EstaEmPreparacaoDecolagem() && !HelicopteroEstaEmAproximacaoParaConves(heli);
     }
 
-    private int ObterQuantidadeOperacaoAtual()
-    {
-        return _qtdOperacao >= 9999 ? int.MaxValue : Mathf.Max(1, _qtdOperacao);
-    }
+    private int ObterQuantidadeOperacaoAtual() => _qtdOperacao >= 9999 ? int.MaxValue : Mathf.Max(1, _qtdOperacao);
 
     private bool EhAgua(Collider col)
     {
         if (col == null) return false;
-
         string nome = col.name.ToLowerInvariant();
-        if (nome.Contains("agua") || nome.Contains("water") || nome.Contains("ocean") || nome.Contains("sea") || nome.Contains("mar"))
-            return true;
-
+        if (nome.Contains("agua") || nome.Contains("water") || nome.Contains("ocean") || nome.Contains("sea") || nome.Contains("mar")) return true;
         string layerName = LayerMask.LayerToName(col.gameObject.layer).ToLowerInvariant();
-        if (layerName.Contains("agua") || layerName.Contains("water") || layerName.Contains("ocean") || layerName.Contains("sea") || layerName.Contains("mar"))
-            return true;
-
+        if (layerName.Contains("agua") || layerName.Contains("water") || layerName.Contains("ocean") || layerName.Contains("sea") || layerName.Contains("mar")) return true;
         return false;
     }
 
     private Transform EscolherPontoFilaMaisProximo(Vector3 posUnidade, List<Transform> pontosTerra)
     {
         if (pontosTerra == null || pontosTerra.Count == 0) return null;
-
         Transform melhor = null;
         float melhorDist = float.MaxValue;
         for (int i = 0; i < pontosTerra.Count; i++)
@@ -1999,16 +1802,11 @@ public class NavioTransporteTropas : MonoBehaviour
         return melhor;
     }
 
-    private Transform EscolherPontoSaidaMaisProximo(Vector3 posRef, List<Transform> pontosTerra)
-    {
-        // mesma lógica, mas a referência normalmente é o corredor
-        return EscolherPontoFilaMaisProximo(posRef, pontosTerra);
-    }
+    private Transform EscolherPontoSaidaMaisProximo(Vector3 posRef, List<Transform> pontosTerra) => EscolherPontoFilaMaisProximo(posRef, pontosTerra);
 
     private void OrdenarIrPara(GameObject u, Vector3 destino)
     {
         if (u == null) return;
-
         var ctrl = u.GetComponent<ControleUnidade>();
         if (ctrl != null)
         {
@@ -2023,13 +1821,11 @@ public class NavioTransporteTropas : MonoBehaviour
             {
                 if (!nav.isOnNavMesh)
                 {
-                    if (NavMesh.SamplePosition(u.transform.position, out NavMeshHit hit, 25f, NavMesh.AllAreas))
-                    {
-                        nav.Warp(hit.position);
-                    }
+                    if (NavMesh.SamplePosition(u.transform.position, out NavMeshHit hit, 25f, NavMesh.AllAreas)) nav.Warp(hit.position);
                 }
                 nav.isStopped = false;
-                nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+                // Transicao: evita SetDestination direto. Se a unidade nao tem facade, preferimos detectar e corrigir prefab.
+                u.SendMessage("MoverParaPonto", destino, SendMessageOptions.DontRequireReceiver);
             }
             catch { }
         }
@@ -2038,7 +1834,6 @@ public class NavioTransporteTropas : MonoBehaviour
     private List<GameObject> ColetarTerrestresProximos(ModoOperacaoTerrestre modo)
     {
         int meuTime = _idNavio != null ? _idNavio.teamID : 1;
-
         Collider[] hits = Physics.OverlapSphere(transform.position, raioBuscaTerrestres, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         List<GameObject> lista = new List<GameObject>();
         HashSet<int> vistos = new HashSet<int>();
@@ -2055,19 +1850,16 @@ public class NavioTransporteTropas : MonoBehaviour
             if (!raiz.activeInHierarchy) continue;
             if (JaCarregado(raiz)) continue;
 
-            // Filtro de time
             IdentidadeUnidade idU = raiz.GetComponent<IdentidadeUnidade>();
             if (idU == null) idU = raiz.GetComponentInChildren<IdentidadeUnidade>();
             if (idU != null && meuTime > 0 && idU.teamID > 0 && idU.teamID != meuTime) continue;
 
-            // Só terrestre
             if (idU != null)
             {
                 if (idU.tipoUnidade != TipoUnidade.Infantaria && idU.tipoUnidade != TipoUnidade.Veiculo) continue;
             }
             else
             {
-                // Heurística: ignora naval/aéreo/estrutura se possível
                 if (raiz.GetComponent<Helicoptero>() != null) continue;
                 if (raiz.GetComponent<ControleAviao>() != null) continue;
                 if (raiz.GetComponent<IdentidadeNaval>() != null) continue;
@@ -2080,7 +1872,6 @@ public class NavioTransporteTropas : MonoBehaviour
             lista.Add(raiz);
         }
 
-        // Ordena por proximidade do navio (organizado)
         lista = lista.OrderBy(u => (u.transform.position - transform.position).sqrMagnitude).ToList();
         return lista;
     }
@@ -2088,7 +1879,6 @@ public class NavioTransporteTropas : MonoBehaviour
     private bool EhSoldado(GameObject obj)
     {
         if (obj == null) return false;
-
         IdentidadeUnidade id = obj.GetComponent<IdentidadeUnidade>();
         if (id == null) id = obj.GetComponentInChildren<IdentidadeUnidade>();
         if (id != null) return id.tipoUnidade == TipoUnidade.Infantaria;
@@ -2124,14 +1914,10 @@ public class NavioTransporteTropas : MonoBehaviour
     private void AdicionarTerrestresParaSaida(List<CargaTerrestre> destino, List<CargaTerrestre> origem, int startIndex, int qtd)
     {
         if (origem == null || origem.Count == 0) return;
-
         if (qtd == int.MaxValue)
         {
-            for (int i = startIndex; i < origem.Count; i++)
-                if (origem[i] != null && origem[i].unidade != null) destino.Add(origem[i]);
-            // pega os anteriores (para manter ordem circular) apenas quando startIndex > 0 e "tudo"
-            for (int i = 0; i < startIndex; i++)
-                if (origem[i] != null && origem[i].unidade != null) destino.Add(origem[i]);
+            for (int i = startIndex; i < origem.Count; i++) if (origem[i] != null && origem[i].unidade != null) destino.Add(origem[i]);
+            for (int i = 0; i < startIndex; i++) if (origem[i] != null && origem[i].unidade != null) destino.Add(origem[i]);
             return;
         }
 
@@ -2146,10 +1932,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private Vector3 AjustarParaNavMeshSePossivel(Vector3 destinoBruto)
     {
-        if (NavMesh.SamplePosition(destinoBruto, out NavMeshHit hit, 18f, NavMesh.AllAreas))
-        {
-            return hit.position;
-        }
+        if (NavMesh.SamplePosition(destinoBruto, out NavMeshHit hit, 18f, NavMesh.AllAreas)) return hit.position;
         return destinoBruto;
     }
 
@@ -2160,7 +1943,6 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         int meuTime = _idNavio != null ? _idNavio.teamID : 1;
         float raioBuscaEfetivo = ObterRaioBuscaHelisEfetivo();
-
         List<Helicoptero> helis = new List<Helicoptero>();
         HashSet<int> vistos = new HashSet<int>();
 
@@ -2190,7 +1972,6 @@ public class NavioTransporteTropas : MonoBehaviour
 
         if (helis.Count == 0)
         {
-            // Fallback: busca global
             var todos = UnityEngine.Object.FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
             for (int i = 0; i < todos.Length; i++)
             {
@@ -2215,10 +1996,7 @@ public class NavioTransporteTropas : MonoBehaviour
         return helis.OrderBy(h => (h.transform.position - transform.position).sqrMagnitude).ToList();
     }
 
-    private float ObterRaioBuscaHelisEfetivo()
-    {
-        return Mathf.Max(raioBuscaHelis, 600f);
-    }
+    private float ObterRaioBuscaHelisEfetivo() => Mathf.Max(raioBuscaHelis, 600f);
 
     private void AtualizarCacheHelisProximos()
     {
@@ -2229,15 +2007,8 @@ public class NavioTransporteTropas : MonoBehaviour
         for (int i = 0; i < candidatos.Count; i++)
         {
             Helicoptero heli = candidatos[i];
-            if (heli == null || JaTenhoHeli(heli))
-            {
-                continue;
-            }
-
-            if (vistos.Add(heli.GetInstanceID()))
-            {
-                _helisProximosCache.Add(heli);
-            }
+            if (heli == null || JaTenhoHeli(heli)) continue;
+            if (vistos.Add(heli.GetInstanceID())) _helisProximosCache.Add(heli);
         }
     }
 
@@ -2252,38 +2023,15 @@ public class NavioTransporteTropas : MonoBehaviour
         return false;
     }
 
-    private bool HelicopteroEstaEmAproximacaoParaConves(Helicoptero heli)
-    {
-        if (heli == null)
-        {
-            return false;
-        }
+    private bool HelicopteroEstaEmAproximacaoParaConves(Helicoptero heli) => heli != null && _rotinasEntradaHeli.ContainsKey(heli.GetInstanceID());
 
-        return _rotinasEntradaHeli.ContainsKey(heli.GetInstanceID());
-    }
-
-    private bool HelicopteroEstaEmSaidaDoConves(Helicoptero heli)
-    {
-        if (heli == null)
-        {
-            return false;
-        }
-
-        return _rotinasSaidaHeli.ContainsKey(heli.GetInstanceID());
-    }
+    private bool HelicopteroEstaEmSaidaDoConves(Helicoptero heli) => heli != null && _rotinasSaidaHeli.ContainsKey(heli.GetInstanceID());
 
     private Vector3 ObterDestinoAereoPontoPousoDecolagem()
     {
-        if (pontoPousoDecolagemHeli == null)
-        {
-            return transform.position + Vector3.up * 12f;
-        }
-
+        if (pontoPousoDecolagemHeli == null) return transform.position + Vector3.up * 12f;
         Vector3 destinoAereo = pontoPousoDecolagemHeli.position;
-        destinoAereo.y = Mathf.Max(
-            destinoAereo.y + 2.5f,
-            pontoPousoDecolagemHeli.position.y + 2.5f
-        );
+        destinoAereo.y = Mathf.Max(destinoAereo.y + 2.5f, pontoPousoDecolagemHeli.position.y + 2.5f);
         return destinoAereo;
     }
 
@@ -2291,18 +2039,12 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         float tempo = 0f;
         float distanciaLimite = Mathf.Max(1.5f, distanciaAceita);
-
         while (tempo < timeout && heli != null)
         {
             tempo += Time.deltaTime;
-
             Vector2 heliXZ = new Vector2(heli.transform.position.x, heli.transform.position.z);
             Vector2 pontoXZ = new Vector2(ponto.x, ponto.z);
-            if (Vector2.Distance(heliXZ, pontoXZ) <= distanciaLimite)
-            {
-                yield break;
-            }
-
+            if (Vector2.Distance(heliXZ, pontoXZ) <= distanciaLimite) yield break;
             yield return null;
         }
     }
@@ -2329,7 +2071,6 @@ public class NavioTransporteTropas : MonoBehaviour
             }
             if (!ocupada) return p;
         }
-
         return null;
     }
 
@@ -2338,7 +2079,6 @@ public class NavioTransporteTropas : MonoBehaviour
         Transform a = stop0 != null ? stop0 : stop1;
         Transform b = stop1 != null ? stop1 : stop0;
         if (a == null && b == null) return null;
-
         Transform escolhido = (_alternanciaStop % 2 == 0) ? a : b;
         _alternanciaStop++;
         return escolhido ?? a ?? b;
@@ -2346,22 +2086,14 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private bool HelicopteroPertenceAEsteNavio(Helicoptero h)
     {
-        if (h == null)
-        {
-            return false;
-        }
-
+        if (h == null) return false;
         Transform vagaAtual = h.ObterVagaAeroporto();
         return vagaAtual != null && (vagaAtual == transform || vagaAtual.IsChildOf(transform));
     }
 
     private bool EstacionarHelicopteroNoNavio(Helicoptero h, Transform vaga, bool emSaida)
     {
-        if (h == null || vaga == null)
-        {
-            return false;
-        }
-
+        if (h == null || vaga == null) return false;
         SanearHelicopterosCarregados();
 
         CargaHeli carga = null;
@@ -2410,13 +2142,8 @@ public class NavioTransporteTropas : MonoBehaviour
     private void IniciarAnimacaoEntradaHeliNoConves(Helicoptero heli, Transform vaga)
     {
         if (heli == null || vaga == null) return;
-
         int id = heli.GetInstanceID();
-        if (_rotinasEntradaHeli.TryGetValue(id, out Coroutine antiga) && antiga != null)
-        {
-            StopCoroutine(antiga);
-        }
-
+        if (_rotinasEntradaHeli.TryGetValue(id, out Coroutine antiga) && antiga != null) StopCoroutine(antiga);
         Coroutine nova = StartCoroutine(RotinaAnimarEntradaHeliNoConves(heli, vaga, id));
         _rotinasEntradaHeli[id] = nova;
     }
@@ -2429,33 +2156,21 @@ public class NavioTransporteTropas : MonoBehaviour
             yield break;
         }
 
-        // Entrada em duas etapas:
-        // 1) aproxima pelo ponto "Pouso/decolagem"
-        // 2) escolhe a vaga/Parada e pousa nela.
         heli.transform.SetParent(null, true);
         heli.CancelarMissaoAeroporto();
         heli.VincularTemporariamenteAoNavio(vaga);
         heli.Decolar(ObterDestinoAereoPontoPousoDecolagem());
 
-        if (pontoPousoDecolagemHeli != null)
-        {
-            yield return EsperarHelicopteroAlcancarPonto(heli, pontoPousoDecolagemHeli.position, 20f, 4f);
-        }
+        if (pontoPousoDecolagemHeli != null) yield return EsperarHelicopteroAlcancarPonto(heli, pontoPousoDecolagemHeli.position, 20f, 4f);
 
-        if (heli != null && vaga != null)
-        {
-            heli.PosicionarNaVagaAeroporto(vaga);
-        }
+        if (heli != null && vaga != null) heli.PosicionarNaVagaAeroporto(vaga);
 
         float timeout = 25f;
         float tempo = 0f;
         while (tempo < timeout && heli != null && vaga != null)
         {
             tempo += Time.deltaTime;
-            if (!heli.estaVoando && !heli.EstaEmPreparacaoDecolagem())
-            {
-                break;
-            }
+            if (!heli.estaVoando && !heli.EstaEmPreparacaoDecolagem()) break;
             yield return null;
         }
 
@@ -2472,11 +2187,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private bool IniciarSaidaHelicopteroDoNavio(Helicoptero heli, Action<Helicoptero> aoLiberar, string descricaoOperacao)
     {
-        if (heli == null)
-        {
-            return false;
-        }
-
+        if (heli == null) return false;
         SanearHelicopterosCarregados();
 
         CargaHeli carga = null;
@@ -2496,10 +2207,7 @@ public class NavioTransporteTropas : MonoBehaviour
         }
 
         int heliId = heli.GetInstanceID();
-        if (_rotinasSaidaHeli.TryGetValue(heliId, out Coroutine rotinaExistente) && rotinaExistente != null)
-        {
-            return false;
-        }
+        if (_rotinasSaidaHeli.TryGetValue(heliId, out Coroutine rotinaExistente) && rotinaExistente != null) return false;
 
         carga.emSaida = true;
         Coroutine rotinaNova = StartCoroutine(RotinaLancarHelicopteroDoNavio(heli, heliId, aoLiberar, descricaoOperacao));
@@ -2519,10 +2227,7 @@ public class NavioTransporteTropas : MonoBehaviour
         heli.CancelarMissaoAeroporto();
         heli.Decolar(ObterDestinoAereoPontoPousoDecolagem());
 
-        if (pontoPousoDecolagemHeli != null)
-        {
-            yield return EsperarHelicopteroAlcancarPonto(heli, pontoPousoDecolagemHeli.position, 18f, 5f);
-        }
+        if (pontoPousoDecolagemHeli != null) yield return EsperarHelicopteroAlcancarPonto(heli, pontoPousoDecolagemHeli.position, 18f, 5f);
 
         if (heli != null)
         {
@@ -2542,10 +2247,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private void DesvincularHelicopteroDoNavio(Helicoptero heli)
     {
-        if (heli == null)
-        {
-            return;
-        }
+        if (heli == null) return;
 
         int heliId = heli.GetInstanceID();
         _rotinasEntradaHeli.Remove(heliId);
@@ -2557,7 +2259,6 @@ public class NavioTransporteTropas : MonoBehaviour
             if (carga == null || carga.heli == null)
             {
                 _helisCarregados.RemoveAt(i);
-                _contagemCargaSuja = true;
                 continue;
             }
 
@@ -2574,29 +2275,16 @@ public class NavioTransporteTropas : MonoBehaviour
             _helicopteroSelecionadoParaMissao = null;
         }
 
-        if (heli.transform.parent == transform)
-        {
-            heli.transform.SetParent(null, true);
-        }
+        if (heli.transform.parent == transform) heli.transform.SetParent(null, true);
 
-        if (_indiceSelecionadoHeli >= _helisCarregados.Count)
-        {
-            _indiceSelecionadoHeli = _helisCarregados.Count - 1;
-        }
+        if (_indiceSelecionadoHeli >= _helisCarregados.Count) _indiceSelecionadoHeli = _helisCarregados.Count - 1;
     }
 
     private bool ChamarHelicopteroParaConves(Helicoptero h)
     {
-        if (h == null || JaTenhoHeli(h))
-        {
-            return false;
-        }
-
+        if (h == null || JaTenhoHeli(h)) return false;
         Transform paradaLivre = ObterProximaParadaLivre();
-        if (paradaLivre == null)
-        {
-            return false;
-        }
+        if (paradaLivre == null) return false;
 
         bool estacionou = EstacionarHelicopteroNoNavio(h, paradaLivre, false);
         if (estacionou)
@@ -2604,7 +2292,6 @@ public class NavioTransporteTropas : MonoBehaviour
             _helisProximosCache.RemoveAll(heli => heli == null || heli == h);
             AtualizarCacheHelisProximos();
         }
-
         return estacionou;
     }
 
@@ -2612,7 +2299,6 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         SanearHelicopterosCarregados();
 
-        // Se um heli decolar, solta e remove da lista (libera capacidade)
         for (int i = _helisCarregados.Count - 1; i >= 0; i--)
         {
             var c = _helisCarregados[i];
@@ -2624,6 +2310,7 @@ public class NavioTransporteTropas : MonoBehaviour
                     _rotinasSaidaHeli.Remove(c.heli.GetInstanceID());
                 }
                 _helisCarregados.RemoveAt(i);
+                _contagemCargaSuja = true;
                 continue;
             }
 
@@ -2634,57 +2321,38 @@ public class NavioTransporteTropas : MonoBehaviour
 
             if (h.estaVoando)
             {
-                if (entradaEmAndamento || saidaEmAndamento)
-                {
-                    continue;
-                }
+                if (entradaEmAndamento || saidaEmAndamento) continue;
                 _rotinasEntradaHeli.Remove(h.GetInstanceID());
                 _rotinasSaidaHeli.Remove(h.GetInstanceID());
                 if (h.transform.parent == transform) h.transform.SetParent(null, true);
-                if (_helicopteroSelecionadoParaMissao == h && _modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Nenhum)
-                {
-                    _helicopteroSelecionadoParaMissao = null;
-                }
+                if (_helicopteroSelecionadoParaMissao == h && _modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Nenhum) _helicopteroSelecionadoParaMissao = null;
                 _helisCarregados.RemoveAt(i);
+                _contagemCargaSuja = true;
                 continue;
             }
 
             if (!HelicopteroPertenceAEsteNavio(h))
             {
-                if (saidaEmAndamento)
-                {
-                    continue;
-                }
+                if (saidaEmAndamento) continue;
                 _rotinasEntradaHeli.Remove(h.GetInstanceID());
                 _rotinasSaidaHeli.Remove(h.GetInstanceID());
                 if (h.transform.parent == transform) h.transform.SetParent(null, true);
-                if (_helicopteroSelecionadoParaMissao == h && _modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Nenhum)
-                {
-                    _helicopteroSelecionadoParaMissao = null;
-                }
+                if (_helicopteroSelecionadoParaMissao == h && _modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Nenhum) _helicopteroSelecionadoParaMissao = null;
                 _helisCarregados.RemoveAt(i);
+                _contagemCargaSuja = true;
                 continue;
             }
 
             if (h.transform.parent != transform)
             {
-                if (entradaEmAndamento || saidaEmAndamento)
-                {
-                    continue;
-                }
+                if (entradaEmAndamento || saidaEmAndamento) continue;
                 h.transform.SetParent(transform, true);
             }
 
             if (c.paradaAtual != null)
             {
-                if (_rotinasEntradaHeli.ContainsKey(h.GetInstanceID()))
-                {
-                    continue;
-                }
-                if (_rotinasSaidaHeli.ContainsKey(h.GetInstanceID()))
-                {
-                    continue;
-                }
+                if (_rotinasEntradaHeli.ContainsKey(h.GetInstanceID())) continue;
+                if (_rotinasSaidaHeli.ContainsKey(h.GetInstanceID())) continue;
                 h.transform.position = h.ObterPosicaoEstacionadaNaVaga(c.paradaAtual);
                 h.transform.rotation = c.paradaAtual.rotation;
             }
@@ -2705,6 +2373,7 @@ public class NavioTransporteTropas : MonoBehaviour
                     _rotinasSaidaHeli.Remove(carga.heli.GetInstanceID());
                 }
                 _helisCarregados.RemoveAt(i);
+                _contagemCargaSuja = true;
                 continue;
             }
 
@@ -2712,19 +2381,13 @@ public class NavioTransporteTropas : MonoBehaviour
             {
                 _rotinasEntradaHeli.Remove(carga.heli.GetInstanceID());
                 _rotinasSaidaHeli.Remove(carga.heli.GetInstanceID());
-                if (_helicopteroSelecionadoParaMissao == carga.heli && _indiceSelecionadoHeli == i)
-                {
-                    _helicopteroSelecionadoParaMissao = null;
-                }
-
+                if (_helicopteroSelecionadoParaMissao == carga.heli && _indiceSelecionadoHeli == i) _helicopteroSelecionadoParaMissao = null;
                 _helisCarregados.RemoveAt(i);
+                _contagemCargaSuja = true;
             }
         }
 
-        if (_indiceSelecionadoHeli >= _helisCarregados.Count)
-        {
-            _indiceSelecionadoHeli = _helisCarregados.Count - 1;
-        }
+        if (_indiceSelecionadoHeli >= _helisCarregados.Count) _indiceSelecionadoHeli = _helisCarregados.Count - 1;
     }
 
     // ======================================================
@@ -2732,26 +2395,19 @@ public class NavioTransporteTropas : MonoBehaviour
     // ======================================================
     private void OnDrawGizmos()
     {
-        // Raio de busca global de terrestres (onde ele detecta que pode mandar pras filas)
         Gizmos.color = new Color(0.2f, 1f, 0.2f, 0.4f);
         Gizmos.DrawWireSphere(transform.position, raioBuscaTerrestres);
 
-        // Raio de busca global de Helis
         Gizmos.color = new Color(0.2f, 0.5f, 1f, 0.4f);
         Gizmos.DrawWireSphere(transform.position, raioBuscaHelis);
 
-        // Raio de "Sucção" da fila
         if (pontosSaidaEntrada != null)
         {
             foreach (Transform t in pontosSaidaEntrada)
             {
                 if (t == null) continue;
-
-                // Suave: Puxa absoluto (onde teletransporta pra fila imediatamente ao tocar o perímetro)
                 Gizmos.color = new Color(1f, 0.9f, 0f, 0.6f);
                 Gizmos.DrawWireSphere(t.position, raioPuxarAbsoluto);
-
-                // Limite NavMesh preso: Puxa se a unidade travou a caminhada dentro desse anel
                 Gizmos.color = new Color(1f, 0.3f, 0f, 0.4f);
                 Gizmos.DrawWireSphere(t.position, raioPuxarPresoNavMesh);
             }
@@ -2770,24 +2426,11 @@ CAPACIDADES (separadas):
 
 PORTA TERRESTRE:
 - Durante operações terrestres a porta abre/fecha animando a rotação local Z.
-- Fechada: Z = 5
-- Aberta:  Z = -186.855
 
 PONTOS TERRESTRES (fila):
-- Existem 4 pontos ao redor do navio (saida/entrada, saida/entrada (1..3)) dentro do objeto 'fila'.
-- Unidades terrestres sempre vão para o ponto em TERRA mais próximo (Chao/Costa).
-- Se nenhum ponto estiver em terra, embarque/desembarque terrestre é bloqueado.
+- Existem 4 pontos ao redor do navio.
+- Unidades terrestres sempre vão para o ponto em TERRA mais próximo.
 
-FLUXO INTERNO (organizado / em ordem):
-- ENTRAR: unidade vai até um 'saida/entrada' -> aparece em Corredor1 -> anda até 'chegada' -> é desativada e guardada.
-- SAIR: unidade aparece em 'chegada' -> anda até Corredor1 -> sai por um 'saida/entrada' em terra -> volta ao jogo.
-
-HELICÓPTEROS:
-- Entrada: helicópteros próximos primeiro alinham no ponto 'Pouso/decolagem' e só depois escolhem uma 'Parada' da Pista para pousar.
-- Saída: helicóptero sobe da 'Parada', cruza novamente por 'Pouso/decolagem' e então é liberado do navio, devolvendo o controle ao aeroporto de origem.
-
-MENU (tecla O no navio selecionado):
-- Lista veículos/soldados/helis carregados.
-- Permite escolher unidade e quantidade para puxar/soltar, com botões sempre disponíveis.";
-    }
+MENU:
+- Lista veículos/soldados/helis carregados (agora com Modo Desempenho para FPS).";   }
 }

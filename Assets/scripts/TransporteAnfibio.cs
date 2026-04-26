@@ -250,15 +250,15 @@ public class TransporteAnfibio : MonoBehaviour
                 { 
                      if(nav.isOnNavMesh)
                      {
-                        nav.SetDestination(pontoDeEntrada.position); // CONTROL_PATH_TRANSITIONAL_FALLBACK
                         nav.isStopped = false; 
+                        MovimentoFallbackTransicional.TrySetNavDestination(unidade, pontoDeEntrada.position);
                      }
                      else
                      {
                          Debug.LogWarning($"[Transporte] Unidade {unidade.name} tem NavMeshAgent mas não está no NavMesh. Tentando Warp...");
                          if(nav.Warp(unidade.transform.position))
                          {
-                             nav.SetDestination(pontoDeEntrada.position); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+                             MovimentoFallbackTransicional.TrySetNavDestination(unidade, pontoDeEntrada.position);
                          }
                      }
                 }
@@ -413,7 +413,7 @@ public class TransporteAnfibio : MonoBehaviour
                             }
                             else
                             {
-                                nav.SetDestination(hitDestino.position); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+                                MovimentoFallbackTransicional.TrySetNavDestination(unidade, hitDestino.position);
                             }
                         }
                         

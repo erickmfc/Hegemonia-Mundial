@@ -1,20 +1,24 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// O coração da nação. A Prefeitura ou Complexo Governamental.
-/// A destruição deste complexo deve resultar no fim do jogo (derrota para o jogador, ou eliminação da IA).
-/// Será anexado ao prédio principal da cidade.
+/// A destruição deste complexo deve resultar no fim do jogo.
+/// Este script deve ser anexado ao prédio principal da cidade.
 /// </summary>
 public class ComplexoGovernamental : MonoBehaviour
 {
     [Header("Informações do Estado")]
     public string nomeDoPais = "República Federativa";
-    public bool ehDoJogador = true; // Se false, é o complexo central de um inimigo
-    
+    public bool ehDoJogador = true;
+
     [Header("Sistema de Estado")]
     [Tooltip("Nível de Influência e Poder do Governo")]
     public int nivelDoGoverno = 1;
+
+    [Header("Atalho")]
+    public KeyCode teclaAbrirGoverno = KeyCode.X;
 
     [Header("Eventos")]
     public UnityEvent aoSerDestruido;
@@ -23,20 +27,22 @@ public class ComplexoGovernamental : MonoBehaviour
     private IdentidadeUnidade identidade;
     private SistemaDeDanos sistemaDano;
     private ObjetivoFinalJogo objetivoFinal;
-    private bool jaDerrotado = false;
 
-    void Start()
+    private bool jaDerrotado = false;
+    private int ultimoFrameAbertura = -1;
+
+    private void Start()
     {
         identidade = GetComponent<IdentidadeUnidade>();
         sistemaDano = GetComponent<SistemaDeDanos>();
 
-        // Registra automaticamente a identidade se houver
         if (identidade != null)
         {
-            ehDoJogador = (identidade.teamID == 1);
+            ehDoJogador = identidade.teamID == 1;
         }
 
         objetivoFinal = GetComponent<ObjetivoFinalJogo>();
+
         if (objetivoFinal == null)
         {
             objetivoFinal = gameObject.AddComponent<ObjetivoFinalJogo>();
@@ -47,7 +53,8 @@ public class ComplexoGovernamental : MonoBehaviour
             ehDoJogador,
             nomeDoPais,
             "Prefeitura",
-            false);
+            false
+        );
 
         if (sistemaDano != null)
         {
@@ -55,15 +62,18 @@ public class ComplexoGovernamental : MonoBehaviour
             sistemaDano.OnMorte += DecretarQuedaDoGoverno;
         }
 
-        // --- SISTEMA DE CORREDOR NULO (ALFÂNDEGA) ---
-        // Apenas a base central do jogador precisará exibir o PopUp de Imigração
         if (ehDoJogador && SistemaConsulado.Instancia == null)
         {
             gameObject.AddComponent<SistemaConsulado>();
         }
+
+        if (ehDoJogador)
+        {
+            MenuGoverno.GarantirInstancia();
+        }
     }
 
-    void OnDestroy()
+    private void OnDestroy()
     {
         if (sistemaDano != null)
         {
@@ -71,30 +81,26 @@ public class ComplexoGovernamental : MonoBehaviour
         }
     }
 
-    void Update()
+    private void Update()
     {
-        // Segurança: Constantemente verifica se o prédio foi destruído (vida zerada).
-        // Assim, se uma bomba cair e o SistemaDeDanos destruir o prédio, nós captamos isso.
+        if (ehDoJogador && !jaDerrotado && Input.GetKeyDown(teclaAbrirGoverno))
+        {
+            AbrirMenuGestaoDeEstado();
+        }
+
         if (!jaDerrotado && sistemaDano != null && sistemaDano.vidaAtual <= 0)
         {
             DecretarQuedaDoGoverno();
         }
     }
 
-    /// <summary>
-    /// Detecta o clique do mouse no prédio 3D para abrir o Menu de Gestão de Estado.
-    /// Futuramente, este menu permitirá controlar taxas de juros, diplomacia e decretos.
-    /// </summary>
-    void OnMouseDown()
+    private void OnMouseDown()
     {
-        // IGNORA O CLIQUE NO PRÉDIO 3D SE O MOUSE ESTIVER EM CIMA DE UMA TELA DE UI (Ex: Menu de Construção)
-        if (UnityEngine.EventSystems.EventSystem.current != null && 
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
         {
             return;
         }
 
-        // Evita abrir o menu do inimigo, a menos que tenhamos um modo "espião"
         if (ehDoJogador && !jaDerrotado)
         {
             AbrirMenuGestaoDeEstado();
@@ -103,27 +109,74 @@ public class ComplexoGovernamental : MonoBehaviour
 
     public void AbrirMenuGestaoDeEstado()
     {
+        if (ultimoFrameAbertura == Time.frameCount)
+        {
+            return;
+        }
+
+        ultimoFrameAbertura = Time.frameCount;
+
+        if (!ehDoJogador || jaDerrotado)
+        {
+            return;
+        }
+
         Debug.Log($"[Complexo Governamental] Abrindo o painel central da {nomeDoPais}!");
+
+        MenuGoverno.GarantirInstancia();
+
         aoAbrirMenuGestao?.Invoke();
-        
-        // Em vez de Consulado Backend, abre a Interface Moderna de Abas.
+
+        if (MenuGoverno.Instancia != null)
+        {
+            MenuGoverno.Instancia.AlternarMenu(true);
+        }
+        else
+        {
+            Debug.LogWarning("[Complexo Governamental] Não foi possível encontrar ou criar o MenuGoverno.");
+        }
+    }
+
+    public void FecharMenuGestaoDeEstado()
+    {
+        if (MenuGoverno.Instancia != null)
+        {
+            MenuGoverno.Instancia.AlternarMenu(false);
+        }
+    }
+
+    public void AlternarMenuGestaoDeEstado()
+    {
+        if (!ehDoJogador || jaDerrotado)
+        {
+            return;
+        }
+
+        MenuGoverno.GarantirInstancia();
+
         if (MenuGoverno.Instancia != null)
         {
             MenuGoverno.Instancia.AlternarMenu(!MenuGoverno.EstaAberto);
         }
     }
 
-    /// <summary>
-    /// Método chamado no momento em que a vida do prédio chega a zero.
-    /// Declara a perda do jogo se for o jogador, ou vitória local se for o inimigo.
-    /// </summary>
     public void DecretarQuedaDoGoverno()
     {
-        if (jaDerrotado) return;
+        if (jaDerrotado)
+        {
+            return;
+        }
+
         jaDerrotado = true;
 
         Debug.LogWarning($"[ALERTA MAXIMO] O Complexo Governamental da {nomeDoPais} caiu! O governo ruiu!");
+
         aoSerDestruido?.Invoke();
+
+        if (MenuGoverno.Instancia != null && ehDoJogador)
+        {
+            MenuGoverno.Instancia.AlternarMenu(false);
+        }
 
         if (objetivoFinal != null)
         {
@@ -135,20 +188,17 @@ public class ComplexoGovernamental : MonoBehaviour
                 TipoObjetivoFinal.Prefeitura,
                 ehDoJogador,
                 nomeDoPais,
-                "Prefeitura");
+                "Prefeitura"
+            );
         }
 
         if (ehDoJogador)
         {
-            // O jogador perdeu a capital. Encerra o jogo.
             Debug.LogError("GAME OVER: Você perdeu sua prefeitura principal!");
-            // TODO: Integrar com a tela de Game Over do GerenteDeJogo.
         }
         else
         {
-            // O jogador conquistou/destruiu a capital inimiga.
             Debug.Log("VITÓRIA: Um governo inimigo foi neutralizado!");
-            // TODO: Adicionar bônus de recursos, anexação ou tela de vitória local.
         }
     }
 }

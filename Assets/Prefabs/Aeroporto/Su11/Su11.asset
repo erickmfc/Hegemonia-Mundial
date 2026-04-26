@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Su11
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 97e3ede489375af489148a419c006142, type: 3}
   prefabDaUnidade: {fileID: 2470324322742162747, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
   preco: 100
   categoria: 2

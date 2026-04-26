@@ -123,9 +123,9 @@ namespace Hegemonia.AI.BrainMaster
                 int tankTarget = 7 + Mathf.RoundToInt(counter.LandWeight * 7f);
                 int artyTarget = 2 + (counter.ReinforceCenter ? 1 : 0);
                 int helicopterTarget = EnableHelicopterProduction && hasHeliport
-                    ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 3f), 2, 4)
+                    ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 3f), 2, 5)
                     : 0;
-                int fighterTarget = hasAirport ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 4f), 2, 5) : 0;
+                int fighterTarget = hasAirport ? Mathf.Clamp(4 + Mathf.RoundToInt(counter.AirWeight * 4f), 4, 8) : 0;
                 int patrolShipTarget = hasNavalBase ? 1 : 0;
                 int navalTarget = hasNavalBase
                     ? Mathf.Clamp(1 + Mathf.RoundToInt(counter.NavalWeight * 2f), 1, 3)
@@ -150,8 +150,8 @@ namespace Hegemonia.AI.BrainMaster
                     infantryTarget = Mathf.Min(infantryTarget, 10);
                     tankTarget = Mathf.Min(tankTarget, 3);
                     artyTarget = Mathf.Min(artyTarget, 1);
-                    helicopterTarget = Mathf.Min(helicopterTarget, hasHeliport ? 1 : 0);
-                    fighterTarget = Mathf.Min(fighterTarget, hasAirport ? 2 : 0);
+                    helicopterTarget = Mathf.Min(helicopterTarget, hasHeliport ? 2 : 0);
+                    fighterTarget = Mathf.Min(fighterTarget, hasAirport ? 4 : 0);
                     navalTarget = Mathf.Min(navalTarget, hasNavalBase ? 3 : 0);
                 }
 
@@ -234,7 +234,7 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (hasAirport && fighterCount == 0 && QueuePreferredAircraft(92, 5.5f))
+                if (hasAirport && fighterCount < 2 && QueuePreferredAircraft(92, 5.5f))
                 {
                     return;
                 }
@@ -251,7 +251,8 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (hasAirport && fighterCount < 2 && QueuePreferredAircraft(91, 4f))
+                // Garante que o aeroporto NUNCA fique vazio, reposição constante com alta prioridade
+                if (hasAirport && fighterCount < 4 && QueuePreferredAircraft(91, 4f))
                 {
                     return;
                 }
@@ -304,7 +305,8 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (hasAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && counter.AirWeight > 0.20f && QueuePreferredAircraft(88, 7f))
+                // Mantém a produção rodando até bater o teto dinâmico (buffer extra), não mais bloqueado por AirWeight
+                if (hasAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && QueuePreferredAircraft(88, 5f))
                 {
                     return;
                 }

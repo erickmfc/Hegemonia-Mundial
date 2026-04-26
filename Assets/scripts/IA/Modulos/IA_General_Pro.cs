@@ -853,8 +853,8 @@ public class IA_General_Pro : MonoBehaviour
         var ctrl = u.GetComponent<ControleUnidade>();
         if (ctrl) { ctrl.EmitirOrdemMover(destino); return; }
 
-        var nav = u.GetComponent<UnityEngine.AI.NavMeshAgent>();
-        if (nav && nav.isOnNavMesh) { nav.SetDestination(destino); nav.isStopped = false; } // CONTROL_PATH_TRANSITIONAL_FALLBACK
+        // Transicao: evita SetDestination direto. Se a unidade nao tem facade, preferimos detectar e corrigir prefab.
+        u.SendMessage("MoverParaPonto", destino, SendMessageOptions.DontRequireReceiver);
     }
 
     public Transform BuscarAlvo()

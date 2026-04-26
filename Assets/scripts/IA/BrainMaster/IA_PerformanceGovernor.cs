@@ -4,11 +4,11 @@ namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_PerformanceGovernor
     {
-        private readonly IA_PerformanceGovernorState _state = new IA_PerformanceGovernorState();
+        private readonly IA_PerformanceStateData _state = new IA_PerformanceStateData();
         private int _criticalConsecutiveSeconds;
         private int _healthyConsecutiveSeconds;
 
-        public IA_PerformanceGovernorState State
+        public IA_PerformanceStateData State
         {
             get { return _state; }
         }
@@ -93,7 +93,7 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
-        public IA_PerformanceGovernorState CreateStateSnapshot()
+        public IA_PerformanceStateData CreateStateSnapshot()
         {
             return _state.Clone();
         }

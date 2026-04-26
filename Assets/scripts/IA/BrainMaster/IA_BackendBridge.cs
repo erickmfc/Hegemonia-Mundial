@@ -2398,8 +2398,8 @@ namespace Hegemonia.AI.BrainMaster
             NavMeshAgent nav = unit.GetComponent<NavMeshAgent>();
             if (controleUnidade == null && nav != null && nav.enabled && nav.isOnNavMesh)
             {
+                // Transicao: nao force SetDestination aqui. Se a unidade nao tem facade, preferimos revelar isso.
                 nav.isStopped = false;
-                nav.SetDestination(destination); // CONTROL_PATH_TRANSITIONAL_FALLBACK
             }
 
             _lastDestinationByUnit[id] = destination;

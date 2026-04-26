@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 #if UNITY_5_4_OR_NEWER
@@ -276,7 +276,7 @@ namespace Suimono.Core
 						//specific settings for transparent camera
 						if (cameraType == suiCamToolType.transparent){
 							if (copyCam.renderingPath == RenderingPath.Forward){
-								usePath = RenderingPath.DeferredLighting;
+								usePath = RenderingPath.DeferredShading;
 							} else {
 								usePath = copyCam.renderingPath;
 							}
@@ -286,7 +286,7 @@ namespace Suimono.Core
 						usePath = RenderingPath.DeferredShading;
 
 					} else if (renderType == suiCamToolRender.deferredLighting){
-						usePath = RenderingPath.DeferredLighting;
+						usePath = RenderingPath.DeferredShading;
 
 					} else if (renderType == suiCamToolRender.forward){
 						usePath = RenderingPath.Forward;

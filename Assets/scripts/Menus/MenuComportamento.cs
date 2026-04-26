@@ -57,26 +57,54 @@ public class MenuComportamento : MonoBehaviour
             return;
         }
 
-        ControleUnidade unidade = gerenteSelecao.unidadesSelecionadas[0];
-        if (unidade == null)
+        bool encontrou = false;
+        bool estadoBase = false;
+        bool misto = false;
+
+        for (int i = 0; i < gerenteSelecao.unidadesSelecionadas.Count; i++)
         {
-            txtEstadoAtual.text = "ESTADO: --";
-            return;
+            ControleUnidade unidade = gerenteSelecao.unidadesSelecionadas[i];
+            if (unidade == null)
+            {
+                continue;
+            }
+
+            bool passivoUnidade;
+            string descricaoUnidade;
+            if (!unidade.TryObterEstadoCombate(out passivoUnidade, out descricaoUnidade))
+            {
+                continue;
+            }
+
+            if (descricaoUnidade == "MISTO")
+            {
+                misto = true;
+                break;
+            }
+
+            if (!encontrou)
+            {
+                encontrou = true;
+                estadoBase = passivoUnidade;
+                continue;
+            }
+
+            if (estadoBase != passivoUnidade)
+            {
+                misto = true;
+                break;
+            }
         }
 
-        bool passivo;
-        string descricao;
-        if (!unidade.TryObterEstadoCombate(out passivo, out descricao))
+        if (!encontrou)
         {
             txtEstadoAtual.text = "ESTADO: --";
-            return;
         }
-
-        if (descricao == "MISTO")
+        else if (misto)
         {
             txtEstadoAtual.text = "ESTADO: <color=#ffd966>MISTO</color>";
         }
-        else if (passivo)
+        else if (estadoBase)
         {
             txtEstadoAtual.text = "ESTADO: <color=#88ffff>PASSIVO</color>";
         }

@@ -595,7 +595,11 @@ public class Estaleiro : MonoBehaviour
                 controleSubmarino.DefinirDestino(destinoSaida);
             }
             else if (!movimentoDelegado && identidadeNaval != null) identidadeNaval.MoverPara(destinoSaida);
-            else if (!movimentoDelegado) agenteNovo.SetDestination(destinoSaida); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+            else if (!movimentoDelegado)
+            {
+                agenteNovo.isStopped = false;
+                navioPronto.SendMessage("MoverParaPonto", destinoSaida, SendMessageOptions.DontRequireReceiver);
+            }
         }
 
         // Registrar no General se for IA

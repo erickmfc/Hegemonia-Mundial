@@ -2213,11 +2213,16 @@ public class MenuConstrucao : MonoBehaviour
         // ==========================================
         if (item.categoria == DadosConstrucao.CategoriaItem.Aeronautica)
         {
-            bool pareceSerAviao = item.prefabDaUnidade.GetComponent<ControleAviao>() != null 
-                                || item.nomeItem.ToLower().Contains("caca") 
-                                || item.nomeItem.ToLower().Contains("avi") 
+            bool pareceSerAviao = item.prefabDaUnidade.GetComponent<ControleAviao>() != null
+                                || item.prefabDaUnidade.GetComponent<Helicoptero>() != null
+                                || item.prefabDaUnidade.GetComponentInChildren<Helicoptero>(true) != null
+                                || item.nomeItem.ToLower().Contains("caca")
+                                || item.nomeItem.ToLower().Contains("avi")
                                 || item.nomeItem.ToLower().Contains("tuk")
-                                || item.nomeItem.ToLower().Contains("g15");
+                                || item.nomeItem.ToLower().Contains("g15")
+                                || item.nomeItem.ToLower().Contains("heli")
+                                || item.nomeItem.ToLower().Contains("flow")
+                                || item.nomeItem.ToLower().Contains("ray");
                                 
             bool ehPredioAeronautica = item.prefabDaUnidade.CompareTag("Imovel") || temComponentePredio
                                     || item.nomeItem.ToLower().Contains("aeroporto") 

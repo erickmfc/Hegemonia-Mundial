@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Vans falcon
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 287111d3a34a1624bbdc34ff1a955911, type: 3}
   prefabDaUnidade: {fileID: 2697658890839971605, guid: ee14de5e63a47a8449bbe7257ee16353, type: 3}
   preco: 100
   categoria: 2
+  balanceamento: {fileID: 0}
   scriptsDeComando: []

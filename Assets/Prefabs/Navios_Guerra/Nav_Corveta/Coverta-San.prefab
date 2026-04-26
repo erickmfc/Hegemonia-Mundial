@@ -480,7 +480,7 @@ Transform:
   m_GameObject: {fileID: 1839352793183847460}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 272.9, y: -2, z: 55.415337}
+  m_LocalPosition: {x: 272.9, y: -3.66, z: 55.415337}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -542,7 +542,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 11.67
-  m_Speed: 13
+  m_Speed: 18
   m_Acceleration: 5
   avoidancePriority: 20
   m_AngularSpeed: 100
@@ -600,7 +600,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigo
-  alcance: 350
+  alcance: 900
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -611,8 +611,8 @@ MonoBehaviour:
   pecaQueGira: {fileID: 4339595795715030261}
   canosDaTorreta: {fileID: 0}
   locaisDoTiro:
-  - {fileID: 8331481112212213166}
-  municaoPrefab: {fileID: 4904590025691999903, guid: 08e9d536354a0c649a7f67a606438415, type: 3}
+  - {fileID: 4764418103014529857}
+  municaoPrefab: {fileID: 5864298406509392469, guid: 7d63fada631986340b6342d8658a8c17, type: 3}
   limitarInclinacao: 1
   elevacaoMinima: -10
   elevacaoMaxima: 80
@@ -622,7 +622,7 @@ MonoBehaviour:
   modoPassivo: 0
   modoRadar: 0
   interceptarMisseis: 0
-  usarMisselParaInterceptar: 1
+  usarMisselParaInterceptar: 0
   misselPrefab: {fileID: 5758307721282507023, guid: e4c9c7d1191961041acc6fa85af91e35, type: 3}
   locaisDoMissel:
   - {fileID: 3511596786014645580}
@@ -649,6 +649,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: -2.56
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -684,10 +690,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
-  tempoAceleracao: 7
+  tempoAceleracao: 6
   tempoDesaceleracao: 5
   tempoParadaEmergencia: 5
-  velocidadeMaxima: 15
+  velocidadeMaxima: 25
   velocidadeLeme: 5
   curvaMaximaGraus: 20
   coeficienteAderna: 2.5
@@ -697,6 +703,10 @@ MonoBehaviour:
   distanciaChegada: 15
   offsetAlturaAgua: -3
   profundidadeVisual: 0
+  anguloEntradaManobraRe: 120
+  anguloSaidaManobraRe: 70
+  duracaoMaximaManobraRe: 2.5
+  potenciaManobraRe: -0.5
   bigodeiraProa: {fileID: 0}
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
@@ -759,19 +769,20 @@ MonoBehaviour:
   tirosPorSalva: 1
   intervaloEntreTiros: 0.1
   tempoRecargaSalva: 1
-  alcanceRadar: 500
+  alcanceRadar: 1200
   intervaloVarreduraAutomatica: 0.45
-  maxMisseisSimultaneosPorAlvo: 6
+  maxMisseisSimultaneosPorAlvo: 2
   cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 80c0b6ef6e76cb34587ea0a341c31aba, type: 3}
   volumeSom: 1
   pitchSom: 1
-  distanciaSomMinima: 10
-  distanciaSomMaxima: 50
+  distanciaSomMinima: 50
+  distanciaSomMaxima: 70
   tagsInimigas:
   - Inimigo
   - Destrutivel
   - Aereo
+  debugLogs: 0
 --- !u!1 &1851640937854473842
 GameObject:
   m_ObjectHideFlags: 0
@@ -2770,37 +2781,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &6260176507376228509
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8331481112212213166}
-  m_Layer: 0
-  m_Name: cano
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &8331481112212213166
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6260176507376228509}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0, y: 0.02, z: 2.6047}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4339595795715062149}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6338115876355588030
 GameObject:
   m_ObjectHideFlags: 0
@@ -4144,10 +4124,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 440256, guid: 93fb1e0c7b60b4aeeb3f18228a0eb03f, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 8331481112212213166}
+    m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 93fb1e0c7b60b4aeeb3f18228a0eb03f, type: 3}
 --- !u!4 &4339595795715030261 stripped
@@ -4155,9 +4132,9 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 406192, guid: 93fb1e0c7b60b4aeeb3f18228a0eb03f, type: 3}
   m_PrefabInstance: {fileID: 4339595795714625093}
   m_PrefabAsset: {fileID: 0}
---- !u!4 &4339595795715062149 stripped
+--- !u!4 &4764418103014529857 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 440256, guid: 93fb1e0c7b60b4aeeb3f18228a0eb03f, type: 3}
+  m_CorrespondingSourceObject: {fileID: 9090456920355394820, guid: 93fb1e0c7b60b4aeeb3f18228a0eb03f, type: 3}
   m_PrefabInstance: {fileID: 4339595795714625093}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &4713274397372632303

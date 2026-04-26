@@ -72,7 +72,7 @@ public class IdentidadeNaval : MonoBehaviour
             estaAtracado = true;
             manobrandoDeRe = false; // Garante que não está fazendo ré
             agente.enabled = true;  // Reativa o navmesh se estiver desligado
-            agente.SetDestination(destino.position); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+            MovimentoFallbackTransicional.TrySetNavDestination(gameObject, destino.position);
             Debug.Log($"{nomeDoNavio} ({categoriaNavio}) indo atracar em {destino.name}");
         }
     }
@@ -188,7 +188,7 @@ public class IdentidadeNaval : MonoBehaviour
 
             agente.enabled = true;
             agente.isStopped = false;
-            agente.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+            MovimentoFallbackTransicional.TrySetNavDestination(gameObject, destino);
         }
         else
         {

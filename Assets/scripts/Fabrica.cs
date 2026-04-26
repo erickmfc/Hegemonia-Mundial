@@ -228,8 +228,8 @@ public class Fabrica : MonoBehaviour
 
                     if (nav.isOnNavMesh)
                     {
-                        nav.SetDestination(destino); // CONTROL_PATH_TRANSITIONAL_FALLBACK
                         nav.isStopped = false;
+                        unidade.SendMessage("MoverParaPonto", destino, SendMessageOptions.DontRequireReceiver);
                     }
                 }
             }

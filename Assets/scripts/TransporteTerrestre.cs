@@ -375,7 +375,7 @@ public class TransporteTerrestre : MonoBehaviour
             }
             else
             {
-                agent.SetDestination(posicaoInicial + dispersao); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+                unidade.SendMessage("MoverParaPonto", posicaoInicial + dispersao, SendMessageOptions.DontRequireReceiver);
             }
         }
          

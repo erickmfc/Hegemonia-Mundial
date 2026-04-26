@@ -1,0 +1,23 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.4/staging' branch; Version is '6000.4.2f1 (7a4c1aeef971) revision 8014874'; Using compiler version '194234433'; Build Type 'Release'
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Mathe" at "2026-04-24T11:14:45.1875167Z"
+OS: 'Windows 11  (10.0.26200) Professional' Language: 'pt' Physical Memory: 16315 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+System  architecture: x64
+Process architecture: x64
+Date: 2026-04-24T11:14:45Z
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.4.2f1\Editor\Unity.exe
+-batchmode
+-nographics
+-quit
+-projectPath
+C:\Users\Mathe\Downloads\Hegemonia-Mundial-main\Hegemonia-Mundial-main
+-executeMethod
+AuditoriaTrilhaControleUnidades.RunScanAllCli
+-logFile
+C:\Users\Mathe\Downloads\Hegemonia-Mundial-main\Hegemonia-Mundial-main\scan_control_path.log
+Successfully changed project path to: C:\Users\Mathe\Downloads\Hegemonia-Mundial-main\Hegemonia-Mundial-main
+C:/Users/Mathe/Downloads/Hegemonia-Mundial-main/Hegemonia-Mundial-main
+Exiting without the bug reporter. Application will terminate with return code 1

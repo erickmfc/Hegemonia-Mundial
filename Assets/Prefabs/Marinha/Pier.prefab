@@ -618,7 +618,7 @@ Transform:
   m_GameObject: {fileID: 3926016737208201099}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.604, y: 0, z: -12.6}
+  m_LocalPosition: {x: 0.764, y: 0, z: -12.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1415,6 +1415,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 6.6
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!114 &7156981930185589485
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1465,6 +1469,7 @@ MonoBehaviour:
   velocidadeManobra: 5
   reparoPorSegundo: 10
   intervaloRecargaMissel: 1
+  intervaloRecargaContramedidas: 2
   pontosDeSaida:
   - {fileID: 1901419655587657849}
   - {fileID: 3987429640973148773}

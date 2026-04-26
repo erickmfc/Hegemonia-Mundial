@@ -14,9 +14,11 @@ namespace Hegemonia.AI.Master
 
         [SerializeField] private AIStackMode _mode = AIStackMode.NovaIA;
         [SerializeField] private bool _applyOnAwake = true;
-        [SerializeField] private bool _logChanges = true;
+        [SerializeField] private bool _logChanges = false;
 
         private static bool _appliedOnce;
+        private static IA_ModeSwitch _instance;
+        private bool _hasAppliedLocally;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsureDefaultModeSwitch()
@@ -24,18 +26,25 @@ namespace Hegemonia.AI.Master
             IA_ModeSwitch existing = Object.FindFirstObjectByType<IA_ModeSwitch>();
             if (existing != null)
             {
-                existing.ApplyMode();
                 return;
             }
 
             GameObject root = new GameObject("IA_ModeSwitch_Auto");
-            IA_ModeSwitch modeSwitch = root.AddComponent<IA_ModeSwitch>();
-            modeSwitch.ApplyMode();
             Object.DontDestroyOnLoad(root);
+            root.AddComponent<IA_ModeSwitch>();
         }
 
         private void Awake()
         {
+            if (_instance != null && _instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            _instance = this;
+            DontDestroyOnLoad(gameObject);
+
             if (_applyOnAwake)
             {
                 ApplyMode();
@@ -45,11 +54,12 @@ namespace Hegemonia.AI.Master
         [ContextMenu("Apply Mode")]
         public void ApplyMode()
         {
-            if (_appliedOnce && !Application.isEditor)
+            if (_hasAppliedLocally)
             {
                 return;
             }
 
+            _hasAppliedLocally = true;
             _appliedOnce = true;
             switch (_mode)
             {
@@ -110,6 +120,11 @@ namespace Hegemonia.AI.Master
                     continue;
                 }
 
+                if (mb.enabled == enabledValue)
+                {
+                    continue;
+                }
+
                 mb.enabled = enabledValue;
                 if (_logChanges)
                 {
@@ -131,6 +146,11 @@ namespace Hegemonia.AI.Master
 
                 string typeName = mb.GetType().Name;
                 if (typeName.IndexOf(typeNameContains, System.StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    continue;
+                }
+
+                if (mb.enabled == enabledValue)
                 {
                     continue;
                 }

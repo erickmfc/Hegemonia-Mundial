@@ -107,11 +107,11 @@ public class GerenteDeTerritorio : MonoBehaviour
 
                 // Tenta calcular um caminho de NavMesh entre a tentativa do mouse e a Prefeitura anterior...
                 NavMeshPath caminho = new NavMeshPath();
-                if (NavMesh.CalculatePath(ponto, m.transform.position, NavMesh.AllAreas, caminho))
+                if (NavMesh.CalculatePath(ponto, m.transform.position, 1, caminho))
                 {
                     if (caminho.status == NavMeshPathStatus.PathComplete)
                     {
-                        // Estão conectados na mesma faixa de terra/ilha do mapa e tem passagem de andada pra eles
+                        // Estões conectados na mesma faixa de terra/ilha do mapa e tem passagem de andada pra eles
                         return false;
                     }
                 }

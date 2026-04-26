@@ -709,8 +709,8 @@ namespace Hegemonia.AI.Master
                 NavMeshAgent nav = go.GetComponent<NavMeshAgent>();
                 if (nav != null && nav.enabled && nav.isOnNavMesh)
                 {
+                    // Transicao: nao force SetDestination aqui. Se a unidade nao tem facade, preferimos revelar isso.
                     nav.isStopped = false;
-                    nav.SetDestination(worldPoint); // CONTROL_PATH_TRANSITIONAL_FALLBACK
                 }
 
                 moved++;

@@ -283,7 +283,7 @@ public class IA_Comandante : MonoBehaviour
             // Caminho livre! Vai andando.
             ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
             if (controle) controle.EmitirOrdemMover(destinoFinal);
-            else agente.SetDestination(destinoFinal); // CONTROL_PATH_TRANSITIONAL_FALLBACK
+            else unidade.SendMessage("MoverParaPonto", destinoFinal, SendMessageOptions.DontRequireReceiver);
         }
         else
         {

@@ -408,7 +408,7 @@ namespace Hegemonia.AI.BrainMaster
             {
                 return IA_ZoneType.Air;
             }
-            if (key.Contains("torreta") || key.Contains("radar") || key.Contains("ciws") || key.Contains("muro") || key.Contains("missil"))
+            if (key.Contains("torreta") || key.Contains("radar") || key.Contains("ciws") || key.Contains("muro") || key.Contains("missil") || key.Contains("ares") || key.Contains("antiaereo"))
             {
                 return IA_ZoneType.Defense;
             }

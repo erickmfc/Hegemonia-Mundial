@@ -23,8 +23,9 @@ public class GerenteSelecao : MonoBehaviour
     [Header("Configurações Visuais")]
     public RectTransform caixaSelecaoVisual; // Sua imagem verde
     public RectTransform canvasRect;         // O Pai de todos (Interface/Canvas)
-    public GameObject prefabMarcadorDestino; // Prefab do marcador normal
+    public GameObject prefabMarcadorDestino;     // Prefab do marcador normal
     public GameObject prefabMarcadorBombardeiro; // Prefab Marker 7 (Para bombardeiros)
+    public GameObject prefabMarcadorPatrulha;    // Prefab do marcador de patrulha (ex: Marker 2 Pointer Loop)
 
     [Header("Controle")]
     public float espacamento = 2.5f; // Distância entre soldados na formação
@@ -84,9 +85,12 @@ public class GerenteSelecao : MonoBehaviour
                 return;
             }
 
+            // Clique esquerdo CANCELA o modo patrulha/seguir (sai do modo ao invés de ignorar o clique)
             DesenharLinhasOrdem desenhadorAtivo = ObterDesenhadorOrdens();
             if (desenhadorAtivo != null && (desenhadorAtivo.modoPatrulhaAtivo || desenhadorAtivo.modoSeguirAtivo))
             {
+                desenhadorAtivo.CancelarModo();
+                DeselecionarTudo(); // Deseleciona unidades para limpar o estado visual
                 return;
             }
 
