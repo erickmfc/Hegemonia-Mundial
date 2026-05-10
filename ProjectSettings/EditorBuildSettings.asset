@@ -9,17 +9,11 @@ EditorBuildSettings:
     path: Assets/_Recovery/Menu/Menu cena.unity
     guid: cdc6581a785a2db40a66cb6f40c6a693
   - enabled: 1
-    path: Assets/_Recovery/cena19).unity
-    guid: 5e537796d7585f2429ab8507dabef8df
-  - enabled: 1
-    path: Assets/_Recovery/Tutorial/tutorial.unity
-    guid: 8ccc7b72ec3af724d8518f2ab8d982fd
-  - enabled: 1
     path: Assets/Scenes/MenuPrincipal.unity
     guid: 3a88c56fcb634bf08710f4e00d94a471
   - enabled: 1
-    path: Assets/_Recovery/Atualizacao.unity
-    guid: fed7f94fd793d954ba19fb5a17ea973f
+    path: Assets/_Recovery/cena19).unity
+    guid: 5e537796d7585f2429ab8507dabef8df
   - enabled: 1
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05

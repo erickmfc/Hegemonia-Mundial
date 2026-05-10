@@ -12,6 +12,12 @@ TagManager:
   - Navio
   - Soldado
   - Imovel
+  - Casa
+  - Industria
+  - Petroleo
+  - Comercio
+  - Farm
+  - Energia
   - Aviao
   - Municao
   layers:
