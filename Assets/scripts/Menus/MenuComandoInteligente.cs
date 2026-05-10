@@ -10,9 +10,11 @@ public class MenuComandoInteligente : MonoBehaviour
     public List<ComandoMenu> comandosGlobais = new List<ComandoMenu>();
 
     private readonly List<ComandoMenu> comandosAtuais = new List<ComandoMenu>();
-    private readonly List<Helicoptero> helicopterosCache = new List<Helicoptero>();
+    private readonly List<BotaoSlot> botoes = new List<BotaoSlot>(16);
+    private readonly List<int> bufferAssinatura = new List<int>(64);
 
     private GameObject painelMestre;
+    private Text textoEstado;
     public List<GameObject> selecionados = new List<GameObject>();
 
     [Header("Configuração de Voo")]
@@ -21,7 +23,17 @@ public class MenuComandoInteligente : MonoBehaviour
     private int lastSelectionSignature = int.MinValue;
     private GerenciadorDePartida gerenciador;
     private GerenteSelecao gerenteSelecao;
-    private float proximaBuscaHelicopteros = -1f;
+    private bool rebuildPendente;
+    private int assinaturaPendente;
+
+    public enum ComandoInterno
+    {
+        Nenhum,
+        Passivo,
+        Ativo,
+        Patrulhar,
+        Seguir
+    }
 
     void Start()
     {
@@ -35,6 +47,11 @@ public class MenuComandoInteligente : MonoBehaviour
                 typeof(UnityEngine.EventSystems.StandaloneInputModule));
         }
 
+        if (GerenciadorHelicopteros.Instancia == null)
+        {
+            new GameObject("GerenciadorHelicopteros_Auto", typeof(GerenciadorHelicopteros));
+        }
+
         CriarPainelBase();
     }
 
@@ -42,19 +59,41 @@ public class MenuComandoInteligente : MonoBehaviour
     {
         DetectarSelecao();
 
-        int assinaturaSelecaoAtual = CalcularAssinaturaSelecao();
+        int assinaturaSelecaoAtual = CalcularAssinaturaSelecaoEstavel();
         if (assinaturaSelecaoAtual != lastSelectionSignature)
         {
-            lastSelectionSignature = assinaturaSelecaoAtual;
+            assinaturaPendente = assinaturaSelecaoAtual;
+            rebuildPendente = true;
+        }
+
+        if (rebuildPendente && !DeveAdiarRebuildUi())
+        {
+            rebuildPendente = false;
+            lastSelectionSignature = assinaturaPendente;
             AtualizarListaDeComandos();
             ReconstruirBotoes();
         }
 
         if (painelMestre != null)
         {
-            bool deveExibir = selecionados.Count > 0 && comandosAtuais.Count > 0;
+            bool deveExibir = selecionados.Count > 0 && (comandosAtuais.Count > 0 || TemComandosInternos());
             painelMestre.SetActive(deveExibir);
         }
+    }
+
+    bool DeveAdiarRebuildUi()
+    {
+        if (!Input.GetMouseButton(0))
+        {
+            return false;
+        }
+
+        if (UnityEngine.EventSystems.EventSystem.current == null)
+        {
+            return false;
+        }
+
+        return UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
     }
 
     void DetectarSelecao()
@@ -78,10 +117,16 @@ public class MenuComandoInteligente : MonoBehaviour
             }
         }
 
-        AtualizarCacheHelicopterosSeNecessario();
-        for (int i = 0; i < helicopterosCache.Count; i++)
+        GerenciadorHelicopteros gerenciadorHelicopteros = GerenciadorHelicopteros.Instancia;
+        if (gerenciadorHelicopteros == null)
         {
-            Helicoptero heli = helicopterosCache[i];
+            return;
+        }
+
+        List<Helicoptero> helis = gerenciadorHelicopteros.helicopterosRegistrados;
+        for (int i = 0; i < helis.Count; i++)
+        {
+            Helicoptero heli = helis[i];
             if (heli == null || !heli.selecionado)
             {
                 continue;
@@ -94,35 +139,26 @@ public class MenuComandoInteligente : MonoBehaviour
         }
     }
 
-    void AtualizarCacheHelicopterosSeNecessario()
+    int CalcularAssinaturaSelecaoEstavel()
     {
-        if (Time.time < proximaBuscaHelicopteros)
+        bufferAssinatura.Clear();
+        for (int i = 0; i < selecionados.Count; i++)
         {
-            return;
-        }
-
-        proximaBuscaHelicopteros = Time.time + 0.35f;
-        helicopterosCache.Clear();
-
-        Helicoptero[] todosHelis = FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
-        for (int i = 0; i < todosHelis.Length; i++)
-        {
-            if (todosHelis[i] != null)
+            GameObject selecionado = selecionados[i];
+            if (selecionado != null)
             {
-                helicopterosCache.Add(todosHelis[i]);
+                bufferAssinatura.Add(selecionado.GetInstanceID());
             }
         }
-    }
 
-    int CalcularAssinaturaSelecao()
-    {
+        bufferAssinatura.Sort();
+
         unchecked
         {
             int assinatura = 17;
-            for (int i = 0; i < selecionados.Count; i++)
+            for (int i = 0; i < bufferAssinatura.Count; i++)
             {
-                GameObject selecionado = selecionados[i];
-                assinatura = (assinatura * 31) + (selecionado != null ? selecionado.GetInstanceID() : 0);
+                assinatura = (assinatura * 31) + bufferAssinatura[i];
             }
 
             return assinatura;
@@ -132,24 +168,43 @@ public class MenuComandoInteligente : MonoBehaviour
     void AtualizarListaDeComandos()
     {
         comandosAtuais.Clear();
-        comandosAtuais.AddRange(comandosGlobais);
-
-        foreach (GameObject unit in selecionados)
+        for (int i = 0; i < comandosGlobais.Count; i++)
         {
+            ComandoMenu comandoGlobal = comandosGlobais[i];
+            if (comandoGlobal != null && !ComandoEhCobertoPorInterno(comandoGlobal))
+            {
+                comandosAtuais.Add(comandoGlobal);
+            }
+        }
+
+        for (int i = 0; i < selecionados.Count; i++)
+        {
+            GameObject unit = selecionados[i];
+            if (unit == null)
+            {
+                continue;
+            }
+
             UnidadeComandos cmds = unit.GetComponent<UnidadeComandos>();
             if (cmds == null)
             {
                 continue;
             }
 
-            foreach (ComandoMenu cmd in cmds.comandosDestaUnidade)
+            for (int j = 0; j < cmds.comandosDestaUnidade.Count; j++)
             {
-                if (cmd != null && !comandosAtuais.Contains(cmd))
+                ComandoMenu cmd = cmds.comandosDestaUnidade[j];
+                if (cmd != null && !comandosAtuais.Contains(cmd) && !ComandoEhCobertoPorInterno(cmd))
                 {
                     comandosAtuais.Add(cmd);
                 }
             }
         }
+    }
+
+    bool TemComandosInternos()
+    {
+        return selecionados.Count > 0;
     }
 
     void CriarPainelBase()
@@ -184,6 +239,7 @@ public class MenuComandoInteligente : MonoBehaviour
         vlg.childForceExpandHeight = false;
 
         painelMestre.SetActive(false);
+        GarantirTextoEstado();
     }
 
     void ReconstruirBotoes()
@@ -193,73 +249,125 @@ public class MenuComandoInteligente : MonoBehaviour
             return;
         }
 
-        foreach (Transform child in painelMestre.transform)
+        float inicio = Time.realtimeSinceStartup;
+
+        string textoEstadoValor = ResolverTextoEstado();
+        if (textoEstado != null)
         {
-            Destroy(child.gameObject);
+            textoEstado.text = textoEstadoValor;
         }
 
-        string textoEstado = "ESTADO: --";
-        if (selecionados.Count > 0)
+        int qtd = TemComandosInternos() ? 4 : 0;
+        for (int i = 0; i < comandosAtuais.Count; i++)
         {
-            LancadorMLRS mlrs = selecionados[0].GetComponent<LancadorMLRS>();
-            if (mlrs != null)
+            if (comandosAtuais[i] != null)
             {
-                textoEstado = mlrs.modoCombateAtivo ? "ESTADO: ATIVO" : "ESTADO: PASSIVO";
+                qtd++;
             }
         }
-        CriarTextoAviso(textoEstado);
 
-        int qtd = comandosAtuais.Count;
         RectTransform rt = painelMestre.GetComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(180, 50 + (qtd * 45));
+        rt.sizeDelta = new Vector2(190, 50 + (qtd * 45));
 
-        foreach (ComandoMenu comando in comandosAtuais)
+        int slotIndex = 0;
+        if (TemComandosInternos())
         {
-            CriarBotao(comando);
+            GarantirSlot(slotIndex);
+            AtualizarSlotInterno(botoes[slotIndex], ComandoInterno.Passivo, "PASSIVO", new Color(0f, 0.5f, 1f, 1f));
+            slotIndex++;
+
+            GarantirSlot(slotIndex);
+            AtualizarSlotInterno(botoes[slotIndex], ComandoInterno.Ativo, "ATIVO", new Color(0.8f, 0f, 0f, 1f));
+            slotIndex++;
+
+            GarantirSlot(slotIndex);
+            AtualizarSlotInterno(botoes[slotIndex], ComandoInterno.Patrulhar, "PATRULHAR", new Color(0.8f, 0.5f, 0f, 1f));
+            slotIndex++;
+
+            GarantirSlot(slotIndex);
+            AtualizarSlotInterno(botoes[slotIndex], ComandoInterno.Seguir, "SEGUIR", new Color(0.5f, 0f, 0.5f, 1f));
+            slotIndex++;
         }
+
+        for (int i = 0; i < comandosAtuais.Count; i++)
+        {
+            ComandoMenu comando = comandosAtuais[i];
+            if (comando == null)
+            {
+                continue;
+            }
+
+            GarantirSlot(slotIndex);
+            AtualizarSlot(botoes[slotIndex], comando);
+            slotIndex++;
+        }
+
+        for (int i = slotIndex; i < botoes.Count; i++)
+        {
+            if (botoes[i].Raiz != null)
+            {
+                botoes[i].Raiz.SetActive(false);
+            }
+        }
+
+        DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("ui_rebuild_ms", (Time.realtimeSinceStartup - inicio) * 1000f);
     }
 
-    void CriarTextoAviso(string msg)
+    void GarantirTextoEstado()
     {
+        if (painelMestre == null || textoEstado != null)
+        {
+            return;
+        }
+
         GameObject txtObj = new GameObject("Texto_Aviso");
-        txtObj.transform.SetParent(painelMestre.transform);
+        txtObj.transform.SetParent(painelMestre.transform, false);
 
         LayoutElement le = txtObj.AddComponent<LayoutElement>();
         le.minHeight = 30;
 
-        Text t = txtObj.AddComponent<Text>();
-        t.text = msg;
+        textoEstado = txtObj.AddComponent<Text>();
 
         Font fonte = null;
         try { fonte = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
         if (fonte == null) fonte = Font.CreateDynamicFontFromOSFont("Arial", 12);
-        t.font = fonte;
+        textoEstado.font = fonte;
 
-        t.alignment = TextAnchor.MiddleCenter;
-        t.color = Color.gray;
-        t.fontSize = 12;
+        textoEstado.alignment = TextAnchor.MiddleCenter;
+        textoEstado.color = Color.gray;
+        textoEstado.fontSize = 12;
     }
 
-    void CriarBotao(ComandoMenu comando)
+    void GarantirSlot(int index)
     {
-        GameObject btnObj = new GameObject("Btn_" + comando.tituloBotao);
-        btnObj.transform.SetParent(painelMestre.transform);
+        while (botoes.Count <= index)
+        {
+            botoes.Add(CriarSlot());
+        }
+    }
 
-        btnObj.AddComponent<RectTransform>();
+    BotaoSlot CriarSlot()
+    {
+        GameObject btnObj = new GameObject("Btn_Comando");
+        btnObj.transform.SetParent(painelMestre.transform, false);
 
         LayoutElement le = btnObj.AddComponent<LayoutElement>();
         le.minHeight = 40;
         le.preferredHeight = 40;
         le.flexibleWidth = 1;
 
-        btnObj.AddComponent<Image>().color = new Color(0.2f, 0.35f, 0.65f);
+        Image img = btnObj.AddComponent<Image>();
+        img.color = new Color(0.2f, 0.35f, 0.65f);
+
         Button btn = btnObj.AddComponent<Button>();
+        MenuComandoInteligenteBotaoBinding binding = btnObj.AddComponent<MenuComandoInteligenteBotaoBinding>();
+        binding.menu = this;
+        btn.onClick.AddListener(binding.Executar);
 
         GameObject txtObj = new GameObject("Texto");
-        txtObj.transform.SetParent(btnObj.transform);
+        txtObj.transform.SetParent(btnObj.transform, false);
 
         Text t = txtObj.AddComponent<Text>();
-        t.text = comando.tituloBotao;
 
         Font fonte = null;
         try { fonte = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
@@ -276,12 +384,272 @@ public class MenuComandoInteligente : MonoBehaviour
         rtTxt.offsetMin = Vector2.zero;
         rtTxt.offsetMax = Vector2.zero;
 
-        btn.onClick.AddListener(() =>
+        return new BotaoSlot
         {
-            if (selecionados.Count > 0)
-            {
-                comando.Executar(selecionados);
-            }
-        });
+            Raiz = btnObj,
+            Botao = btn,
+            Imagem = img,
+            Texto = t,
+            Binding = binding
+        };
     }
+
+    void AtualizarSlot(BotaoSlot slot, ComandoMenu comando)
+    {
+        if (slot == null || slot.Raiz == null)
+        {
+            return;
+        }
+
+        slot.Raiz.SetActive(true);
+        slot.Binding.comando = comando;
+        slot.Binding.comandoInterno = ComandoInterno.Nenhum;
+        slot.Binding.comandoLabel = ResolverTextoComando(comando);
+        slot.Texto.text = slot.Binding.comandoLabel;
+        slot.Raiz.name = "Btn_" + slot.Binding.comandoLabel;
+        if (slot.Imagem != null)
+        {
+            slot.Imagem.color = new Color(0.2f, 0.35f, 0.65f);
+        }
+    }
+
+    void AtualizarSlotInterno(BotaoSlot slot, ComandoInterno comandoInterno, string label, Color cor)
+    {
+        if (slot == null || slot.Raiz == null)
+        {
+            return;
+        }
+
+        slot.Raiz.SetActive(true);
+        slot.Binding.comando = null;
+        slot.Binding.comandoInterno = comandoInterno;
+        slot.Binding.comandoLabel = label;
+        slot.Texto.text = label;
+        slot.Raiz.name = "Btn_" + label;
+        if (slot.Imagem != null)
+        {
+            slot.Imagem.color = cor;
+        }
+    }
+
+    string ResolverTextoComando(ComandoMenu comando)
+    {
+        if (comando == null)
+        {
+            return "--";
+        }
+
+        string titulo = comando.tituloBotao;
+        if (string.IsNullOrWhiteSpace(titulo) || titulo.Trim() == "Novo Comando")
+        {
+            return comando.name;
+        }
+
+        return titulo;
+    }
+
+    string ResolverTextoEstado()
+    {
+        bool encontrou = false;
+        bool estadoBasePassivo = false;
+        bool misto = false;
+
+        for (int i = 0; i < selecionados.Count; i++)
+        {
+            GameObject selecionado = selecionados[i];
+            if (selecionado == null)
+            {
+                continue;
+            }
+
+            ControleUnidade controle = selecionado.GetComponent<ControleUnidade>();
+            bool passivo;
+            string descricao;
+            if (controle != null && controle.TryObterEstadoCombate(out passivo, out descricao))
+            {
+                if (descricao == "MISTO")
+                {
+                    misto = true;
+                    break;
+                }
+
+                if (!encontrou)
+                {
+                    encontrou = true;
+                    estadoBasePassivo = passivo;
+                    continue;
+                }
+
+                if (estadoBasePassivo != passivo)
+                {
+                    misto = true;
+                    break;
+                }
+            }
+        }
+
+        if (!encontrou)
+        {
+            return "ESTADO: --";
+        }
+
+        if (misto)
+        {
+            return "ESTADO: MISTO";
+        }
+
+        return estadoBasePassivo ? "ESTADO: PASSIVO" : "ESTADO: ATIVO";
+    }
+
+    bool ComandoEhCobertoPorInterno(ComandoMenu comando)
+    {
+        if (comando == null)
+        {
+            return false;
+        }
+
+        string texto = (" " + ResolverTextoComando(comando) + " " + comando.name + " ")
+            .ToLowerInvariant()
+            .Replace("_", " ")
+            .Replace("-", " ");
+        return texto.Contains("passivo")
+            || texto.Contains(" ativo ")
+            || texto.Contains("comandoativo")
+            || texto.Contains("patrul")
+            || texto.Contains("seguir");
+    }
+
+    internal void ExecutarComandoInterno(ComandoInterno comandoInterno, string label, List<GameObject> snapshot)
+    {
+        if (snapshot == null || snapshot.Count == 0)
+        {
+            return;
+        }
+
+        DiagnosticoDesempenhoJogo.RegistrarEvento("UI", "Click comando: " + label);
+
+        switch (comandoInterno)
+        {
+            case ComandoInterno.Passivo:
+                DefinirModoCombate(snapshot, false);
+                break;
+            case ComandoInterno.Ativo:
+                DefinirModoCombate(snapshot, true);
+                break;
+            case ComandoInterno.Patrulhar:
+                IniciarModoPatrulha(snapshot);
+                break;
+            case ComandoInterno.Seguir:
+                IniciarModoSeguir(snapshot);
+                break;
+        }
+    }
+
+    void DefinirModoCombate(List<GameObject> snapshot, bool ativo)
+    {
+        int aplicados = 0;
+        for (int i = 0; i < snapshot.Count; i++)
+        {
+            GameObject unidade = snapshot[i];
+            if (unidade == null)
+            {
+                continue;
+            }
+
+            ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
+            if (controle != null && controle.DefinirModoCombate(ativo))
+            {
+                aplicados++;
+                continue;
+            }
+
+            Helicoptero helicoptero = unidade.GetComponent<Helicoptero>();
+            if (helicoptero != null)
+            {
+                helicoptero.modoCombateAtivo = ativo;
+                aplicados++;
+            }
+        }
+
+        Debug.Log($"[MenuComandoInteligente] Modo {(ativo ? "ATIVO" : "PASSIVO")} aplicado a {aplicados} unidades.");
+    }
+
+    void IniciarModoPatrulha(List<GameObject> snapshot)
+    {
+        DesenharLinhasOrdem desenhador = Object.FindFirstObjectByType<DesenharLinhasOrdem>();
+        if (desenhador == null)
+        {
+            Debug.LogWarning("DesenharLinhasOrdem nao encontrado na cena. Nao foi possivel entrar no modo patrulha.");
+            return;
+        }
+
+        desenhador.IniciarModoPatrulha(snapshot);
+    }
+
+    void IniciarModoSeguir(List<GameObject> snapshot)
+    {
+        DesenharLinhasOrdem desenhador = Object.FindFirstObjectByType<DesenharLinhasOrdem>();
+        if (desenhador == null)
+        {
+            Debug.LogWarning("DesenharLinhasOrdem nao encontrado na cena. Nao foi possivel entrar no modo seguir.");
+            return;
+        }
+
+        desenhador.IniciarModoSeguir(snapshot);
+    }
+
+    internal List<GameObject> CriarSnapshotSelecao()
+    {
+        List<GameObject> snapshot = new List<GameObject>(selecionados.Count);
+        for (int i = 0; i < selecionados.Count; i++)
+        {
+            GameObject go = selecionados[i];
+            if (go != null)
+            {
+                snapshot.Add(go);
+            }
+        }
+
+        return snapshot;
+    }
+}
+
+public sealed class MenuComandoInteligenteBotaoBinding : MonoBehaviour
+{
+    public MenuComandoInteligente menu;
+    public ComandoMenu comando;
+    public MenuComandoInteligente.ComandoInterno comandoInterno;
+    public string comandoLabel;
+
+    public void Executar()
+    {
+        if (menu == null)
+        {
+            return;
+        }
+
+        List<GameObject> snapshot = menu.CriarSnapshotSelecao();
+        if (snapshot.Count == 0)
+        {
+            return;
+        }
+
+        if (comando != null)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("UI", "Click comando: " + (string.IsNullOrWhiteSpace(comandoLabel) ? comando.name : comandoLabel));
+            comando.Executar(snapshot);
+            return;
+        }
+
+        menu.ExecutarComandoInterno(comandoInterno, comandoLabel, snapshot);
+    }
+}
+
+internal sealed class BotaoSlot
+{
+    public GameObject Raiz;
+    public Button Botao;
+    public Image Imagem;
+    public Text Texto;
+    public MenuComandoInteligenteBotaoBinding Binding;
 }

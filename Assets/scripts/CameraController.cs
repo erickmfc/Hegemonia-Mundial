@@ -39,9 +39,9 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        if (SceneManager.GetActiveScene().name == "Menu cena" && gameObject.name == "Camera cena menu")
+        // Na cena de menu, a câmera fica parada para não atravessar o solo
+        if (SceneManager.GetActiveScene().name == "Menu cena")
         {
-            transform.Translate(Vector3.forward * velocidadeMenu * Time.deltaTime, Space.Self);
             return;
         }
 
@@ -131,15 +131,10 @@ public class CameraController : MonoBehaviour
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
         bool podeRotacionar = true;
-
-        // Se estiver segurando o Direito, verifica se tem unidades selecionadas (para não conflitar com Mover)
-        if (Input.GetMouseButton(1))
+        InteractionModeSnapshot snapshotInteracao = InteractionModeService.CurrentSnapshot();
+        if (snapshotInteracao.Policy.bloqueiaRotacaoCamera)
         {
-            var gerenteSel = ObterGerenteSelecao();
-            if (gerenteSel != null && gerenteSel.unidadesSelecionadas.Count > 0)
-            {
-                podeRotacionar = false; 
-            }
+            podeRotacionar = false;
         }
 
         if (podeRotacionar && (Input.GetMouseButton(1) || Input.GetMouseButton(2)))
@@ -172,4 +167,3 @@ public class CameraController : MonoBehaviour
         return gerenteSelecaoCache;
     }
 }
-

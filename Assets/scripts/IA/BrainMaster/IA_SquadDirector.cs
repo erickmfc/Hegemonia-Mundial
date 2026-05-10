@@ -66,6 +66,7 @@ namespace Hegemonia.AI.BrainMaster
             UpdateRole(IA_SquadRole.Submarine, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.Submarine, 3), IsSubmarineUnit);
             UpdateRole(IA_SquadRole.AirIntercept, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.AirIntercept, 6), IsAirInterceptUnit);
             UpdateRole(IA_SquadRole.AirTacticalTransport, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.AirTacticalTransport, 4), IsAirTransportUnit);
+            UpdateRole(IA_SquadRole.NavalTransport, _candidatesBuffer, _usedBuffer, ResolveTargetSize(IA_SquadRole.NavalTransport, 3), IsNavalTransportUnit);
             PublishSquadMetrics();
 
             float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
@@ -436,6 +437,17 @@ namespace Hegemonia.AI.BrainMaster
             return unit.GetComponent<HovercraftTransporte>() != null
                    || normalizedName.Contains("hovercraft")
                    || normalizedName.Contains("hover");
+        }
+
+        private static bool IsNavalTransportUnit(GameObject unit)
+        {
+            if (unit.GetComponent<NavioTransporteTropas>() != null)
+            {
+                return true;
+            }
+
+            string n = IA_Text.Normalize(unit.name);
+            return n.Contains("transporte") && (n.Contains("navio") || n.Contains("mar") || n.Contains("ship"));
         }
     }
 }

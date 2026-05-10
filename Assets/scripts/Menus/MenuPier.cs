@@ -158,7 +158,8 @@ public class MenuPier : MonoBehaviour
             
             // Texto do botão
             string nomeNavio = livre ? "-- Vazia --" : (vaga.navioOcupante != null ? vaga.navioOcupante.nomeDoNavio : "Erro: Navio Nulo");
-            string txtStatus = $"<b>{vaga.nomeDaVaga}</b>\n<size=12>{vaga.categoriaAceita}</size>\n<color={(livre?"#aaffaa":"#ffaaaa")}>{nomeNavio}</color>";
+            string combustivelNavio = livre ? "" : FormatarCombustivelNavio(vaga.navioOcupante);
+            string txtStatus = $"<b>{vaga.nomeDaVaga}</b>\n<size=12>{vaga.categoriaAceita}</size>\n<color={(livre?"#aaffaa":"#ffaaaa")}>{nomeNavio}</color>{combustivelNavio}";
 
             // Cria o botão da doca na lista da esquerda
             CriarBotaoLista(listaDocasContainer, txtStatus, corStatus, () => {
@@ -209,6 +210,12 @@ public class MenuPier : MonoBehaviour
             string nome = vaga.navioOcupante != null ? vaga.navioOcupante.nomeDoNavio : "Desconhecido";
             tituloContexto.text = $"GERENCIAR: {nome}\n<size=12>Escolha o destino de saída:</size>";
             tituloContexto.color = Color.yellow;
+
+            string statusCombustivel = FormatarCombustivelNavio(vaga.navioOcupante);
+            if (!string.IsNullOrEmpty(statusCombustivel))
+            {
+                CriarTextoLista(listaContextoContainer, $"<b>Combustivel</b>{statusCombustivel}");
+            }
 
             // Opção 1: Saída Automática (Padrão)
             CriarBotaoLista(listaContextoContainer, "SAÍDA AUTOMÁTICA\n(Mais Próxima)", Color.red, () => {
@@ -290,6 +297,24 @@ public class MenuPier : MonoBehaviour
             return distA.CompareTo(distB);
         });
         return lista;
+    }
+
+    string FormatarCombustivelNavio(IdentidadeNaval navio)
+    {
+        if (navio == null)
+        {
+            return "";
+        }
+
+        CombustivelUnidade combustivel = navio.GetComponent<CombustivelUnidade>();
+        if (combustivel == null || !combustivel.usaCombustivel)
+        {
+            return "";
+        }
+
+        int pct = Mathf.RoundToInt(combustivel.Percentual * 100f);
+        string cor = pct > 50 ? "#99ddff" : (pct > 25 ? "#ffe066" : "#ff7777");
+        return $"\n<size=11><color={cor}>Comb: {pct}% ({combustivel.CombustivelAtual:0}/{combustivel.Capacidade:0})</color></size>";
     }
 
     void LimparPainelContexto(string msgPadrao)

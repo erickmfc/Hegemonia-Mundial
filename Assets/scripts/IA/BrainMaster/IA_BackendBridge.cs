@@ -138,6 +138,12 @@ namespace Hegemonia.AI.BrainMaster
             return false;
         }
 
+        public string ResolveBuildKey(params string[] hints)
+        {
+            DadosConstrucao data = FindFirstAvailable(hints);
+            return data != null ? data.nomeItem : string.Empty;
+        }
+
         public DadosConstrucao FindFirstAvailable(params string[] keys)
         {
             if (keys == null)
@@ -274,7 +280,7 @@ namespace Hegemonia.AI.BrainMaster
                 return "torreta";
             }
 
-            if (normalized.Contains("ciws") || normalized.Contains("phalanx") || normalized.Contains("antia"))
+            if (normalized.Contains("ciws") || normalized.Contains("phalanx") || normalized.Contains("antia") || normalized.Contains("ares"))
             {
                 return "ciws";
             }
@@ -305,6 +311,14 @@ namespace Hegemonia.AI.BrainMaster
             if (normalized.Contains("plataforma"))
             {
                 return "plataforma";
+            }
+
+            if (normalized.Contains("petroleiro")
+                || normalized.Contains("petrolifero")
+                || normalized.Contains("oil tanker")
+                || normalized.Contains("tanker"))
+            {
+                return "petroleiro";
             }
 
             if (normalized.Contains("lancador") || normalized.Contains("missil") || normalized.Contains("silo"))
@@ -372,11 +386,12 @@ namespace Hegemonia.AI.BrainMaster
                 aliases.Add("sentinela");
             }
 
-            if (joined.Contains("ciws"))
+            if (joined.Contains("ciws") || joined.Contains("ares") || joined.Contains("antia"))
             {
                 aliases.Add("ciws");
                 aliases.Add("phalanx");
                 aliases.Add("antia");
+                aliases.Add("ares");
             }
 
             if (joined.Contains("muro"))
@@ -415,6 +430,15 @@ namespace Hegemonia.AI.BrainMaster
             if (joined.Contains("plataforma"))
             {
                 aliases.Add("plataforma");
+            }
+
+            if (joined.Contains("petroleiro") || joined.Contains("petrolifero") || joined.Contains("tanker"))
+            {
+                aliases.Add("petroleiro");
+                aliases.Add("navio petroleiro");
+                aliases.Add("navio petrolifero");
+                aliases.Add("oil tanker");
+                aliases.Add("tanker");
             }
 
             if (joined.Contains("lancador") || joined.Contains("misseis"))
@@ -1324,6 +1348,17 @@ namespace Hegemonia.AI.BrainMaster
                             return false;
                         }
 
+                        // Protecao Extra: Verifica a classificacao real da superficie
+                        ClassificacaoSuperficieMapa classificacao;
+                        float altura;
+                        if (RegistroSuperficieMapa.TryClassify(samplePosition, out classificacao, out altura))
+                        {
+                            if (classificacao == ClassificacaoSuperficieMapa.Agua)
+                            {
+                                return false;
+                            }
+                        }
+
                         if (rejectCoast && sample.Terrain == IA_TerrainType.Coast)
                         {
                             return false;
@@ -1757,6 +1792,16 @@ namespace Hegemonia.AI.BrainMaster
                    || n.Contains("caca")
                    || n.Contains("fa1")
                    || n.Contains("jet")
+                   || n.Contains("b260")
+                   || n.Contains("b-260")
+                   || n.Contains("supra")
+                   || n.Contains("su11")
+                   || n.Contains("g15")
+                   || n.Contains("a_20")
+                   || n.Contains("a20")
+                   || n.Contains("g18m")
+                   || n.Contains("super tuk")
+                   || n.Contains("supertuk")
                    || n.Contains("aviao");
         }
 
@@ -1869,9 +1914,11 @@ namespace Hegemonia.AI.BrainMaster
             public LancadorMisselCaca AirLauncher;
             public Helicoptero Helicopter;
             public ControleAviao ModernAircraft;
+            public AviaoBombardeiro Bomber;
             public ControleSubmarino Submarine;
             public SistemaDeTiro[] DirectWeapons = new SistemaDeTiro[0];
             public LancadorNaval[] NavalLaunchers = new LancadorNaval[0];
+            public ControleTorreta[] Turrets = new ControleTorreta[0];
         }
 
         private readonly IA_BackendBridge _bridge;
@@ -2218,7 +2265,14 @@ namespace Hegemonia.AI.BrainMaster
                    || normalized.Contains("fa1")
                    || normalized.Contains("g15")
                    || normalized.Contains("a_20")
+                   || normalized.Contains("a20")
+                   || normalized.Contains("b260")
+                   || normalized.Contains("b-260")
+                   || normalized.Contains("supra")
+                   || normalized.Contains("su11")
+                   || normalized.Contains("g18m")
                    || normalized.Contains("super tuk")
+                   || normalized.Contains("supertuk")
                    || normalized.Contains("helicoptero")
                    || normalized.Contains("hover")
                    || normalized.Contains("transporte")
@@ -2294,8 +2348,9 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 Vector3 slotDestination = ComputeAttackFormationDestination(unit, payload.Units, formationAnchor, target, i, total);
+                Vector3 movementDestination = unit.GetComponent<AviaoBombardeiro>() != null ? target : slotDestination;
                 PrepareUnitForAttack(unit, payload.Target, target);
-                bool issuedMove = TryIssueMove(unit, slotDestination);
+                bool issuedMove = TryIssueMove(unit, movementDestination);
                 bool armed = ArmUnitForAttack(unit, payload.Target, target);
 
                 if (issuedMove || armed)
@@ -2414,7 +2469,8 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            Vector3 desired = target != null ? target.position : targetPosition;
+            Vector3 strategicTarget = target != null ? target.position : targetPosition;
+            Vector3 desired = strategicTarget;
             AttackSystemsCacheEntry cache = GetOrBuildAttackCache(unit);
             LancadorMisselCaca airLauncher = cache.AirLauncher;
             if (airLauncher != null)
@@ -2429,6 +2485,22 @@ namespace Hegemonia.AI.BrainMaster
                 helicopter.modoCombateAtivo = true;
             }
 
+            AviaoBombardeiro bomber = cache.Bomber;
+            if (bomber != null)
+            {
+                bool targetIsAir = IsLikelyAirTarget(target);
+                if (!targetIsAir && strategicTarget != Vector3.zero)
+                {
+                    bomber.alvoAreaSolo = strategicTarget;
+                    bomber.alvoMassa1 = strategicTarget + new Vector3(-35f, 0f, -10f);
+                    bomber.alvoMassa2 = strategicTarget + new Vector3(35f, 0f, 10f);
+                }
+
+                bomber.modoDeAtaque = targetIsAir
+                    ? AviaoBombardeiro.ModoAtaque.Patrulha
+                    : (Random.value < 0.35f ? AviaoBombardeiro.ModoAtaque.AtaqueEmMassa : AviaoBombardeiro.ModoAtaque.AtaqueAoSolo);
+            }
+
             ControleAviao modernAircraft = cache.ModernAircraft;
             if (modernAircraft != null)
             {
@@ -2438,6 +2510,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 modernAircraft.alvoPrioritarioIA = true;
+                modernAircraft.alvoEstrategico = strategicTarget != Vector3.zero ? strategicTarget : desired;
                 modernAircraft.centroDaPatrulha = desired;
                 modernAircraft.alvoGPSVoo = desired;
             }
@@ -2469,6 +2542,24 @@ namespace Hegemonia.AI.BrainMaster
             ControleUnidade controller = cache.Controller;
             if (controller != null && controller.DefinirModoCombate(true))
             {
+                armed = true;
+            }
+
+            ControleTorreta[] turrets = cache.Turrets;
+            for (int i = 0; i < turrets.Length; i++)
+            {
+                ControleTorreta turret = turrets[i];
+                if (turret == null)
+                {
+                    continue;
+                }
+
+                turret.DefinirModoAtivo(true);
+                if (target != null)
+                {
+                    turret.DefinirAlvo(target);
+                }
+
                 armed = true;
             }
 
@@ -2534,9 +2625,11 @@ namespace Hegemonia.AI.BrainMaster
                 AirLauncher = unit.GetComponent<LancadorMisselCaca>(),
                 Helicopter = unit.GetComponent<Helicoptero>(),
                 ModernAircraft = unit.GetComponent<ControleAviao>(),
+                Bomber = unit.GetComponent<AviaoBombardeiro>(),
                 Submarine = unit.GetComponent<ControleSubmarino>(),
                 DirectWeapons = unit.GetComponentsInChildren<SistemaDeTiro>(true),
-                NavalLaunchers = unit.GetComponentsInChildren<LancadorNaval>(true)
+                NavalLaunchers = unit.GetComponentsInChildren<LancadorNaval>(true),
+                Turrets = unit.GetComponentsInChildren<ControleTorreta>(true)
             };
 
             _attackSystemsByUnit[id] = cache;
@@ -2550,7 +2643,7 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            if (cache.DirectWeapons == null || cache.NavalLaunchers == null)
+            if (cache.DirectWeapons == null || cache.NavalLaunchers == null || cache.Turrets == null)
             {
                 return true;
             }
@@ -2566,6 +2659,14 @@ namespace Hegemonia.AI.BrainMaster
             for (int i = 0; i < cache.NavalLaunchers.Length; i++)
             {
                 if (cache.NavalLaunchers[i] == null)
+                {
+                    return true;
+                }
+            }
+
+            for (int i = 0; i < cache.Turrets.Length; i++)
+            {
+                if (cache.Turrets[i] == null)
                 {
                     return true;
                 }
@@ -2587,12 +2688,13 @@ namespace Hegemonia.AI.BrainMaster
 
                 modernAircraft.aguardandoCliqueRadar = false;
                 modernAircraft.alvoPrioritarioIA = true;
+                modernAircraft.alvoEstrategico = destination;
                 modernAircraft.centroDaPatrulha = airDestination;
                 modernAircraft.alvoGPSVoo = airDestination;
 
                 if (modernAircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
                 {
-                    modernAircraft.IniciarMissaoCompleta(airDestination);
+                    modernAircraft.IniciarMissaoCompleta(destination);
                 }
 
                 LancadorMisselCaca airLauncher = unit.GetComponent<LancadorMisselCaca>();
@@ -2601,6 +2703,13 @@ namespace Hegemonia.AI.BrainMaster
                     airLauncher.modoPassivo = false;
                 }
 
+                return true;
+            }
+
+            HovercraftTransporte hovercraft = unit.GetComponent<HovercraftTransporte>();
+            if (hovercraft != null)
+            {
+                hovercraft.DefinirDestino(destination);
                 return true;
             }
 
@@ -2626,6 +2735,24 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return false;
+        }
+
+        private static bool IsLikelyAirTarget(Transform target)
+        {
+            if (target == null)
+            {
+                return false;
+            }
+
+            if (target.position.y > 25f)
+            {
+                return true;
+            }
+
+            return target.GetComponentInParent<ControleAviao>() != null
+                   || target.GetComponentInParent<ControleAviaoCaca>() != null
+                   || target.GetComponentInParent<Helicoptero>() != null
+                   || target.GetComponentInParent<AviaoBombardeiro>() != null;
         }
 
         private static Vector3 ComputeFormationDestination(GameObject unit, Vector3 anchor, int index, int total)

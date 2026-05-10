@@ -82,6 +82,7 @@ public class BombaBombardeiro : MonoBehaviour
     private GameObject dono;
     private float penetracaoPercorrida = 0f;
     private bool emPenetracao = false;
+    private readonly Collider[] bufferExplosao = new Collider[96];
 
     // ──────────────────────────────────────────────────────────
     //  API PÚBLICA
@@ -101,6 +102,11 @@ public class BombaBombardeiro : MonoBehaviour
         alvoFinal = pontoAlvo;
         dono      = quemSoltou;
         ativa     = true;
+        explodiu  = false;
+        emPenetracao = false;
+        penetracaoPercorrida = 0f;
+        CancelInvoke(nameof(AtivarColisao));
+        CancelInvoke(nameof(AutodestruirPorTempo));
 
         // Separa do pai (o avião) para cair livremente
         transform.SetParent(null);
@@ -113,7 +119,7 @@ public class BombaBombardeiro : MonoBehaviour
         Invoke(nameof(AtivarColisao), 0.5f);
 
         // Autodestruição de segurança: se cair no mar ou falhar, some em 30s
-        Destroy(gameObject, 30f);
+        Invoke(nameof(AutodestruirPorTempo), 30f);
     }
 
     /// <summary>
@@ -224,15 +230,19 @@ public class BombaBombardeiro : MonoBehaviour
         if (explodiu) return;
         explodiu = true;
         ativa    = false;
+        CancelInvoke(nameof(AutodestruirPorTempo));
 
         if (fumaçaDeQueda != null) fumaçaDeQueda.Stop();
 
         // Efeito Visual
         if (efeitoExplosao != null)
         {
-            GameObject fx = Instantiate(efeitoExplosao, transform.position, Quaternion.identity);
-            fx.transform.localScale = Vector3.one * escalaVisualExplosao;
-            Destroy(fx, 5f);
+            PoolDeObjetosCombate.SpawnTemporario(
+                efeitoExplosao,
+                transform.position,
+                Quaternion.identity,
+                5f,
+                Vector3.one * escalaVisualExplosao);
         }
         else if (GerenciadorFXGlobal.Instancia != null)
         {
@@ -244,9 +254,10 @@ public class BombaBombardeiro : MonoBehaviour
             AudioSource.PlayClipAtPoint(somExplosao, transform.position);
 
         // Dano em área
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioExplosao);
-        foreach (var h in hits)
+        int hits = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < hits; i++)
         {
+            Collider h = bufferExplosao[i];
             if (h == null || h.isTrigger) continue;
             if (dono != null && h.transform.IsChildOf(dono.transform)) continue;
 
@@ -268,6 +279,15 @@ public class BombaBombardeiro : MonoBehaviour
                 rb.AddExplosionForce(danoMaximo * 3f, transform.position, raioExplosao, 2f);
         }
 
-        Destroy(gameObject);
+        PoolDeObjetosCombate.Release(gameObject);
+    }
+
+    private void AutodestruirPorTempo()
+    {
+        if (explodiu) return;
+        explodiu = true;
+        ativa = false;
+        if (fumaçaDeQueda != null) fumaçaDeQueda.Stop();
+        PoolDeObjetosCombate.Release(gameObject);
     }
 }

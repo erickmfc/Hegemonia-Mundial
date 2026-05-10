@@ -13,6 +13,11 @@ public class MapaGeralController : MonoBehaviour
     private Camera cameraPrincipal;
     private Camera cameraMapa;
     private bool mapaAtivo = false;
+    private bool fogOriginal;
+    private Color fogColorOriginal;
+    private float fogStartOriginal;
+    private float fogEndOriginal;
+    private FogMode fogModeOriginal;
 
     [Header("Configurações do Mapa")]
     public float velocidadeMover  = 120f;
@@ -43,14 +48,21 @@ public class MapaGeralController : MonoBehaviour
         cameraMapa = camObj.AddComponent<Camera>();
 
         cameraMapa.orthographic     = true;
-        cameraMapa.orthographicSize = 200f;
+        cameraMapa.orthographicSize = 260f;
         cameraMapa.clearFlags       = CameraClearFlags.SolidColor;
         cameraMapa.backgroundColor  = corFundoMar; // Fundo azul oceano!
         cameraMapa.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
         cameraMapa.cullingMask      = ~0; // Vê tudo inicialmente
         cameraMapa.depth            = 100;
-        cameraMapa.farClipPlane     = 2000f;
+        cameraMapa.nearClipPlane    = 0.3f;
+        cameraMapa.farClipPlane     = 6000f;
         cameraMapa.gameObject.SetActive(false);
+
+        fogOriginal = RenderSettings.fog;
+        fogColorOriginal = RenderSettings.fogColor;
+        fogStartOriginal = RenderSettings.fogStartDistance;
+        fogEndOriginal = RenderSettings.fogEndDistance;
+        fogModeOriginal = RenderSettings.fogMode;
     }
 
     void Update()
@@ -60,11 +72,12 @@ public class MapaGeralController : MonoBehaviour
         {
             mapaAtivo = !mapaAtivo;
             cameraMapa.gameObject.SetActive(mapaAtivo);
+            AplicarModoMapa(mapaAtivo);
 
             if (mapaAtivo && cameraPrincipal != null)
             {
                 Vector3 p = cameraPrincipal.transform.position;
-                cameraMapa.transform.position = new Vector3(p.x, 1200f, p.z);
+                cameraMapa.transform.position = new Vector3(p.x, 1350f, p.z);
                 AudioListener.volume = 0.3f;
                 RefreshCache();
             }
@@ -85,6 +98,11 @@ public class MapaGeralController : MonoBehaviour
                 _tempoRefreshCache = Time.time + 2f;
             }
         }
+    }
+
+    private void OnDisable()
+    {
+        AplicarModoMapa(false);
     }
 
     void RefreshCache()
@@ -120,6 +138,26 @@ public class MapaGeralController : MonoBehaviour
         }
     }
 
+    private void AplicarModoMapa(bool ativo)
+    {
+        if (ativo)
+        {
+            fogOriginal = RenderSettings.fog;
+            fogColorOriginal = RenderSettings.fogColor;
+            fogStartOriginal = RenderSettings.fogStartDistance;
+            fogEndOriginal = RenderSettings.fogEndDistance;
+            fogModeOriginal = RenderSettings.fogMode;
+            RenderSettings.fog = false;
+            return;
+        }
+
+        RenderSettings.fog = fogOriginal;
+        RenderSettings.fogColor = fogColorOriginal;
+        RenderSettings.fogStartDistance = fogStartOriginal;
+        RenderSettings.fogEndDistance = fogEndOriginal;
+        RenderSettings.fogMode = fogModeOriginal;
+    }
+
     // ================================================================
     // OVERLAY DE INTERFACE DO MAPA (desenhado quando mapa está ativo)
     // ================================================================
@@ -140,7 +178,7 @@ public class MapaGeralController : MonoBehaviour
             fontStyle  = FontStyle.Bold,
             normal     = { textColor = Color.cyan }
         };
-        GUI.Label(new Rect(0, 0, Screen.width, barH), "⬛ MAPA ESTRATÉGICO GLOBAL   [WASD / Scroll para navegar]   [M para fechar]", titleStyle);
+        GUI.Label(new Rect(0, 0, Screen.width, barH), "MAPA ESTRATEGICO  [WASD mover] [Scroll zoom] [M fechar]", titleStyle);
 
         // --- Legenda no canto inferior esquerdo ---
         float legX = 12f, legY = Screen.height - 100f;

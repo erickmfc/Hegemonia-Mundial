@@ -522,7 +522,21 @@ namespace Hegemonia.AI.Master
 
             string n = Normalize(go.name);
             bool hasAgent = go.GetComponent<NavMeshAgent>() != null;
-            bool isAircraft = n.Contains("aviao") || n.Contains("caca") || n.Contains("jet") || n.Contains("drone") || n.Contains("heli");
+            bool isAircraft = n.Contains("aviao")
+                              || n.Contains("caca")
+                              || n.Contains("jet")
+                              || n.Contains("drone")
+                              || n.Contains("heli")
+                              || n.Contains("b260")
+                              || n.Contains("b-260")
+                              || n.Contains("supra")
+                              || n.Contains("su11")
+                              || n.Contains("g15")
+                              || n.Contains("a_20")
+                              || n.Contains("a20")
+                              || n.Contains("g18m")
+                              || n.Contains("super tuk")
+                              || n.Contains("supertuk");
             bool isNaval = n.Contains("navio") || n.Contains("sub") || n.Contains("corveta") || n.Contains("destroy") || n.Contains("porta");
             bool isStructure = n.Contains("prefeitura")
                                || n.Contains("quartel")

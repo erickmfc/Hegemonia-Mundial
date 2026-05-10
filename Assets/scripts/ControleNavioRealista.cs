@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -5,6 +6,9 @@ using UnityEngine.AI;
 [RequireComponent(typeof(Rigidbody))]
 public class ControleNavioRealista : MonoBehaviour
 {
+    private const float RaioPreparacaoNavMesh = 45f;
+    private const float RaioDestinoNavMesh = 90f;
+
     [Header("Configurações Físicas (Hardcore)")]
     [Tooltip("Tempo em segundos para ir de 0% a 100% de potência.")]
     public float tempoAceleracao = 8.0f; // Demorado, como pedido
@@ -53,6 +57,10 @@ public class ControleNavioRealista : MonoBehaviour
     public TrailRenderer rastroEsteira;  // Rastro longo
     public ParticleSystem turbulenciaPopa; // Cavitação atrás
     public Transform modelo3D; // O casco visual para rotacionar
+    [Tooltip("Antena ou radar que gira em sentido horizontal.")]
+    public Transform antenaRadar;
+    [Tooltip("Velocidade de rotação da antena em graus por segundo.")]
+    public float velocidadeAntena = 60f;
 
     [Header("Áudio e Energia")]
     public ModoOperacao modoOperacao = ModoOperacao.Ativo;
@@ -61,6 +69,26 @@ public class ControleNavioRealista : MonoBehaviour
     private AudioSource fonteAudio;
     private float tempoInatividade = 0f;
     private bool estaDesligado = false;
+
+    [Header("Sistema de Torpedos")]
+    [Tooltip("Se true, este navio pode lançar torpedos.")]
+    public bool possuiTorpedos = false;
+    [Tooltip("Locais de lançamento de torpedos.")]
+    public Transform[] tubosTorpedo = new Transform[2];
+    [Tooltip("Prefab do torpedo.")]
+    public GameObject prefabTorpedo;
+    [Tooltip("Número de torpedos disponíveis.")]
+    public int torpedosDisponiveis = 4;
+    [Tooltip("Alcance máximo dos torpedos.")]
+    public float alcanceTorpedos = 600f;
+    [Tooltip("Cooldown entre lançamentos.")]
+    public float cooldownTorpedo = 5f;
+    [Tooltip("Ângulo máximo para lançar torpedo (em relação à frente do navio).")]
+    public float anguloMaximoLancamento = 90f;
+    [Tooltip("Se true, torpedos disparam automaticamente contra alvos navais quando o comando ATIVO estiver ligado.")]
+    public bool torpedosNoModoAtivo = true;
+    [Tooltip("Intervalo de busca de alvos para torpedos no modo ativo.")]
+    public float intervaloBuscaTorpedoAtivo = 0.75f;
 
     public enum ModoOperacao
     {
@@ -88,6 +116,16 @@ public class ControleNavioRealista : MonoBehaviour
     private Vector3 destinoAssistenciaSaida = Vector3.zero;
     private bool manobraReAtiva = false;
     private float tempoRestanteManobraRe = 0f;
+    
+    // Estado dos torpedos
+    private bool[] tubosTorpedoUsados;
+    private int totalTubosValidos = 0;
+    private float proximoLancamentoTorpedo = 0f;
+    private float proximaBuscaTorpedoAtivo = 0f;
+    private bool modoCombateTorpedosAtivo = true;
+    private IdentidadeUnidade minhaIdentidade;
+    private static readonly Collider[] bufferAlvosTorpedo = new Collider[96];
+    private static readonly List<IdentidadeUnidade> unidadesRegistradasTorpedo = new List<IdentidadeUnidade>(256);
 
     void Awake()
     {
@@ -137,6 +175,19 @@ public class ControleNavioRealista : MonoBehaviour
         // Garante que os efeitos começam desligados
         if(bigodeiraProa) bigodeiraProa.Stop();
         if(turbulenciaPopa) turbulenciaPopa.Stop();
+
+        // Inicializar sistema de torpedos
+        minhaIdentidade = GetComponent<IdentidadeUnidade>();
+        if (possuiTorpedos && prefabTorpedo != null)
+        {
+            totalTubosValidos = 0;
+            for (int i = 0; i < tubosTorpedo.Length; i++)
+            {
+                if (tubosTorpedo[i] != null) totalTubosValidos++;
+            }
+            tubosTorpedoUsados = new bool[tubosTorpedo.Length];
+            PoolDeObjetosCombate.Prewarm(prefabTorpedo, Mathf.Clamp(totalTubosValidos > 0 ? totalTubosValidos : 2, 2, 4));
+        }
     }
 
     void Update()
@@ -154,6 +205,14 @@ public class ControleNavioRealista : MonoBehaviour
 
         if (!AgenteProntoParaLeitura())
         {
+            return;
+        }
+
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            AtualizarEfeitosVisuais();
+            AtualizarAudio();
             return;
         }
         
@@ -174,6 +233,8 @@ public class ControleNavioRealista : MonoBehaviour
 
         // 5. AUDIO
         AtualizarAudio();
+
+        TentarAtaqueTorpedoModoAtivo();
     }
 
     void VerificarInatividade()
@@ -345,9 +406,9 @@ public class ControleNavioRealista : MonoBehaviour
                     areaMask = NavMesh.AllAreas;
                 }
 
-                if (!NavMesh.SamplePosition(transform.position, out hit, 120f, areaMask))
+                if (!NavMesh.SamplePosition(transform.position, out hit, RaioPreparacaoNavMesh, areaMask))
                 {
-                    NavMesh.SamplePosition(transform.position, out hit, 120f, NavMesh.AllAreas);
+                    NavMesh.SamplePosition(transform.position, out hit, RaioPreparacaoNavMesh, NavMesh.AllAreas);
                 }
 
                 if (hit.hit)
@@ -537,6 +598,11 @@ public class ControleNavioRealista : MonoBehaviour
 
     void AtualizarEfeitosVisuais()
     {
+        if (antenaRadar != null)
+        {
+            antenaRadar.Rotate(Vector3.up, velocidadeAntena * Time.deltaTime, Space.Self);
+        }
+
         if (modelo3D == null) return;
 
         // Se estiver desligado (Economia de Energia / Stealth), corta efeitos
@@ -673,6 +739,12 @@ public class ControleNavioRealista : MonoBehaviour
     // Método para integração com ControleUnidade
     public void DefinirDestino(Vector3 destino)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         if (TentarPrepararAgenteParaNavegacao())
         {
             // Guarda: se o destino é praticamente o mesmo e já temos um path ativo,
@@ -695,9 +767,9 @@ public class ControleNavioRealista : MonoBehaviour
             {
                 NavMeshHit hitDestino;
                 int areaMask = agente.areaMask == 0 ? NavMesh.AllAreas : agente.areaMask;
-                if (!NavMesh.SamplePosition(destino, out hitDestino, 180f, areaMask))
+                if (!NavMesh.SamplePosition(destino, out hitDestino, RaioDestinoNavMesh, areaMask))
                 {
-                    NavMesh.SamplePosition(destino, out hitDestino, 180f, NavMesh.AllAreas);
+                    NavMesh.SamplePosition(destino, out hitDestino, RaioDestinoNavMesh, NavMesh.AllAreas);
                 }
 
                 if (hitDestino.hit)
@@ -721,6 +793,30 @@ public class ControleNavioRealista : MonoBehaviour
         Debug.LogWarning($"[ControleNavioRealista] Tentativa de navegar sem estar no NavMesh! ({name})");
     }
 
+    public void PararPorFaltaDeCombustivel()
+    {
+        potenciaAlvo = 0f;
+        potenciaAtual = 0f;
+        anguloLemeAtual = 0f;
+        velocidadeVetorial = Vector3.zero;
+        temDestino = false;
+        manobraReAtiva = false;
+        tempoRestanteManobraRe = 0f;
+
+        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            agente.ResetPath();
+            agente.isStopped = true;
+            agente.velocity = Vector3.zero;
+        }
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+    }
+
     public void PrepararSaidaInicial(Vector3 destinoSaida, float duracaoAssistencia = 8f)
     {
         destinoAssistenciaSaida = destinoSaida;
@@ -736,7 +832,258 @@ public class ControleNavioRealista : MonoBehaviour
         estaDesligado = false;
         tempoInatividade = 0f;
     }
-    
+
+    // === SISTEMA DE TORPEDOS ===
+
+    public bool PodeLancarTorpedo()
+    {
+        return possuiTorpedos && torpedosDisponiveis > 0 && Time.time >= proximoLancamentoTorpedo && totalTubosValidos > 0;
+    }
+
+    public void DefinirModoCombateTorpedos(bool ativo)
+    {
+        modoCombateTorpedosAtivo = ativo;
+        if (ativo)
+        {
+            proximaBuscaTorpedoAtivo = 0f;
+        }
+    }
+
+    public bool ModoCombateTorpedosAtivo()
+    {
+        return modoCombateTorpedosAtivo;
+    }
+
+    public bool TemSistemaTorpedosConfigurado()
+    {
+        return possuiTorpedos;
+    }
+
+    private void TentarAtaqueTorpedoModoAtivo()
+    {
+        if (!torpedosNoModoAtivo || !modoCombateTorpedosAtivo || Time.time < proximaBuscaTorpedoAtivo)
+        {
+            return;
+        }
+
+        proximaBuscaTorpedoAtivo = Time.time + Mathf.Max(0.15f, intervaloBuscaTorpedoAtivo);
+        if (!PodeLancarTorpedo())
+        {
+            return;
+        }
+
+        Transform alvo = EncontrarAlvoNavalParaTorpedo();
+        if (alvo != null)
+        {
+            LancarTorpedo(alvo.position, alvo);
+        }
+    }
+
+    private Transform EncontrarAlvoNavalParaTorpedo()
+    {
+        int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : 1;
+        Transform melhorAlvo = null;
+        float melhorDistanciaSqr = float.MaxValue;
+        float alcanceSqr = alcanceTorpedos * alcanceTorpedos;
+
+        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcanceTorpedos, bufferAlvosTorpedo, Physics.AllLayers, QueryTriggerInteraction.Collide);
+        for (int i = 0; i < quantidade; i++)
+        {
+            Collider col = bufferAlvosTorpedo[i];
+            if (col != null)
+            {
+                AvaliarCandidatoTorpedo(col.transform, meuTime, alcanceSqr, ref melhorAlvo, ref melhorDistanciaSqr);
+            }
+
+            bufferAlvosTorpedo[i] = null;
+        }
+
+        RegistroEntidadesJogo.FillUnidades(unidadesRegistradasTorpedo);
+        for (int i = 0; i < unidadesRegistradasTorpedo.Count; i++)
+        {
+            IdentidadeUnidade unidade = unidadesRegistradasTorpedo[i];
+            if (unidade != null && unidade.gameObject.activeInHierarchy)
+            {
+                AvaliarCandidatoTorpedo(unidade.transform, meuTime, alcanceSqr, ref melhorAlvo, ref melhorDistanciaSqr);
+            }
+        }
+        unidadesRegistradasTorpedo.Clear();
+
+        return melhorAlvo;
+    }
+
+    private void AvaliarCandidatoTorpedo(Transform candidato, int meuTime, float alcanceSqr, ref Transform melhorAlvo, ref float melhorDistanciaSqr)
+    {
+        if (candidato == null)
+        {
+            return;
+        }
+
+        Transform minhaRaiz = transform.root != null ? transform.root : transform;
+        if (candidato == minhaRaiz || candidato.IsChildOf(minhaRaiz))
+        {
+            return;
+        }
+
+        IdentidadeUnidade idAlvo = candidato.GetComponentInParent<IdentidadeUnidade>();
+        if (idAlvo == null) idAlvo = candidato.GetComponentInChildren<IdentidadeUnidade>();
+        if (idAlvo == null || idAlvo.teamID == 0 || idAlvo.teamID == meuTime)
+        {
+            return;
+        }
+
+        Transform alvoResolvido = ResolverRaizAlvoTorpedo(idAlvo.transform);
+        if (alvoResolvido == null || alvoResolvido == minhaRaiz || alvoResolvido.IsChildOf(minhaRaiz))
+        {
+            return;
+        }
+
+        if (!EhAlvoNavalParaTorpedo(alvoResolvido))
+        {
+            return;
+        }
+
+        SistemaDeDanos danos = alvoResolvido.GetComponentInParent<SistemaDeDanos>();
+        if (danos == null) danos = alvoResolvido.GetComponentInChildren<SistemaDeDanos>();
+        if (danos != null)
+        {
+            if (danos.vidaAtual <= 0f)
+            {
+                return;
+            }
+
+            alvoResolvido = ResolverRaizAlvoTorpedo(danos.transform);
+        }
+
+        float distanciaSqr = (alvoResolvido.position - transform.position).sqrMagnitude;
+        if (distanciaSqr > alcanceSqr || distanciaSqr >= melhorDistanciaSqr || !PodeLancarTorpedoEmAlvo(alvoResolvido.position))
+        {
+            return;
+        }
+
+        melhorAlvo = alvoResolvido;
+        melhorDistanciaSqr = distanciaSqr;
+    }
+
+    private Transform ResolverRaizAlvoTorpedo(Transform candidato)
+    {
+        if (candidato == null)
+        {
+            return null;
+        }
+
+        ControleNavioRealista navio = candidato.GetComponentInParent<ControleNavioRealista>();
+        if (navio == null) navio = candidato.GetComponentInChildren<ControleNavioRealista>();
+        if (navio != null) return navio.transform;
+
+        ControleSubmarino submarino = candidato.GetComponentInParent<ControleSubmarino>();
+        if (submarino == null) submarino = candidato.GetComponentInChildren<ControleSubmarino>();
+        if (submarino != null) return submarino.transform;
+
+        SistemaDeDanos danos = candidato.GetComponentInParent<SistemaDeDanos>();
+        if (danos == null) danos = candidato.GetComponentInChildren<SistemaDeDanos>();
+        if (danos != null) return danos.transform;
+
+        return candidato.root != null ? candidato.root : candidato;
+    }
+
+    private bool EhAlvoNavalParaTorpedo(Transform alvo)
+    {
+        if (alvo == null)
+        {
+            return false;
+        }
+
+        return alvo.GetComponentInParent<ControleNavioRealista>() != null
+               || alvo.GetComponentInChildren<ControleNavioRealista>() != null
+               || alvo.GetComponentInParent<ControleSubmarino>() != null
+               || alvo.GetComponentInChildren<ControleSubmarino>() != null
+               || TagSafe.Matches(alvo, "Navio")
+               || TagSafe.Matches(alvo, "Submarino");
+    }
+
+    public bool PodeLancarTorpedoEmAlvo(Vector3 posicaoAlvo)
+    {
+        if (!PodeLancarTorpedo()) return false;
+
+        // Verificar ângulo (navios só lançam torpedos nas laterais)
+        Vector3 direcaoParaAlvo = posicaoAlvo - transform.position;
+        direcaoParaAlvo.y = 0;
+        float angulo = Vector3.Angle(transform.forward, direcaoParaAlvo);
+        return angulo >= (90f - anguloMaximoLancamento) && angulo <= (90f + anguloMaximoLancamento);
+    }
+
+    public void LancarTorpedo(Vector3 alvo, Transform alvoT = null)
+    {
+        if (!PodeLancarTorpedo())
+        {
+            Debug.Log($"[{name}] Torpedo nao pronto (cooldown ou sem municao).", this);
+            return;
+        }
+
+        if (prefabTorpedo == null)
+        {
+            Debug.LogError($"[{name}] Prefab do torpedo nao configurado!", this);
+            return;
+        }
+
+        // Verificar ângulo para lançamento
+        if (!PodeLancarTorpedoEmAlvo(alvo))
+        {
+            Debug.Log($"[{name}] Alvo fora do arco de lançamento de torpedos (laterais).", this);
+            return;
+        }
+
+        // Encontrar tubo livre
+        for (int i = 0; i < tubosTorpedo.Length; i++)
+        {
+            if (tubosTorpedo[i] == null || tubosTorpedoUsados[i]) continue;
+
+            Vector3 posicaoLancamento = tubosTorpedo[i].position;
+            Quaternion rotacaoLancamento = tubosTorpedo[i].rotation;
+
+            GameObject torpedo = PoolDeObjetosCombate.Spawn(prefabTorpedo, posicaoLancamento, rotacaoLancamento);
+            Torpedo scriptTorpedo = torpedo.GetComponent<Torpedo>();
+            if (scriptTorpedo != null)
+            {
+                scriptTorpedo.DefinirAlvo(alvoT);
+                int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : -1;
+                scriptTorpedo.DefinirLancador(transform, meuTime);
+
+                // Registrar ameaça para sistemas de defesa
+                MissileThreatTracker.RegistrarLancamento(torpedo, this, alvo, alvoT, scriptTorpedo.velocidade);
+            }
+
+            tubosTorpedoUsados[i] = true;
+            torpedosDisponiveis--;
+            proximoLancamentoTorpedo = Time.time + cooldownTorpedo;
+
+            // Efeito visual/som de lançamento
+            if (turbulenciaPopa != null)
+            {
+                turbulenciaPopa.Emit(20);
+            }
+
+            Debug.Log($"[{name}] Torpedo lancado do tubo {i + 1}! ({torpedosDisponiveis} restantes)", this);
+            return;
+        }
+
+        Debug.LogWarning($"[{name}] Nenhum tubo de torpedo disponivel.", this);
+    }
+
+    public void RecarregarTorpedos()
+    {
+        if (!possuiTorpedos) return;
+
+        for (int i = 0; i < tubosTorpedoUsados.Length; i++)
+        {
+            tubosTorpedoUsados[i] = false;
+        }
+        int maxTorpedos = totalTubosValidos * 2;
+        torpedosDisponiveis = maxTorpedos;
+        Debug.Log($"[{name}] Torpedos recarregados! {torpedosDisponiveis} disponiveis.", this);
+    }
+
     // Gizmos para ver o vetor de movimento vs frente
     void OnDrawGizmos()
     {

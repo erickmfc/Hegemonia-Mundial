@@ -2689,6 +2689,7 @@ MonoBehaviour:
   - categoria: 6
     icone: {fileID: 0}
     glifoFallback: U
+  construtorCena: {fileID: 1066512838}
   autoCarregarFichas: 1
   catalogo:
   - {fileID: 11400000, guid: 80d62c9132dade74889dc96868aceeb3, type: 2}
@@ -2709,6 +2710,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e88a0d4e34d60964fbeab45a370beb7d, type: 2}
   - {fileID: 11400000, guid: c6e5bcf065ceb814faa72126dbbc601b, type: 2}
   - {fileID: 11400000, guid: 67f78e06014bf0746bf59dc44dda8e15, type: 2}
+  - {fileID: 11400000, guid: 0152c59ae4134a240917abe0ffb421c1, type: 2}
   - {fileID: 11400000, guid: ce324888b5c490045a163c66f203dc0e, type: 2}
   - {fileID: 11400000, guid: 8f54ef04a8bb03043b0d443c96a3c5bc, type: 2}
   - {fileID: 11400000, guid: 6340e3e8b62ec034ea788a546357492d, type: 2}

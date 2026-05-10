@@ -63,6 +63,7 @@ public class C700TransporteAereo : MonoBehaviour
     public float distanciaRolagem = 45f;
     public float alturaToqueSolo = 1.6f;
     public float distanciaCorridaDecolagem = 90f;
+    [Range(0.12f, 0.50f)] public float reservaRetornoPercentual = 0.30f;
 
     [Header("Visual")]
     public Transform modeloVisual;
@@ -170,6 +171,16 @@ public class C700TransporteAereo : MonoBehaviour
 
     private void Update()
     {
+        AvaliarRetornoSeguro();
+
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            AtualizarVisualVoo();
+            FixarCargaVisivel();
+            return;
+        }
+
         AtualizarVisualVoo();
         FixarCargaVisivel();
 
@@ -370,6 +381,12 @@ public class C700TransporteAereo : MonoBehaviour
 
     public void ReceberOrdemMover(Vector3 destino)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         if (aguardandoDestinoAereo)
         {
             OrdenarVoo(destino, false);
@@ -387,6 +404,12 @@ public class C700TransporteAereo : MonoBehaviour
 
     public void OrdenarTaxiSolo(Vector3 destino)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         if (!EstaNoSolo)
         {
             return;
@@ -519,6 +542,12 @@ public class C700TransporteAereo : MonoBehaviour
 
     private void OrdenarVoo(Vector3 destinoFinal, bool retornoAoAeroporto)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         if (DestinoEmPortaAvioes(destinoFinal))
         {
             MostrarMensagem("Destino invalido: porta-avioes bloqueado.");
@@ -956,6 +985,12 @@ public class C700TransporteAereo : MonoBehaviour
         float distanciaParadaSqr = distanciaParada * distanciaParada;
         while (true)
         {
+            if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+            {
+                PararPorFaltaDeCombustivel();
+                yield break;
+            }
+
             Vector3 dif = alvo - transform.position;
             if (dif.sqrMagnitude <= distanciaParadaSqr)
             {
@@ -1008,6 +1043,12 @@ public class C700TransporteAereo : MonoBehaviour
 
         while (true)
         {
+            if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+            {
+                PararPorFaltaDeCombustivel();
+                yield break;
+            }
+
             destinoSolo = AjustarPosicaoAoSolo(destino);
             Vector3 dif = destinoSolo - transform.position;
             dif.y = 0f;
@@ -1055,6 +1096,59 @@ public class C700TransporteAereo : MonoBehaviour
             {
                 transform.rotation = pontoEstacionamentoPreferencial.rotation;
             }
+        }
+    }
+
+    public void PararPorFaltaDeCombustivel()
+    {
+        if (rotinaMovimento != null)
+        {
+            StopCoroutine(rotinaMovimento);
+            rotinaMovimento = null;
+        }
+
+        velocidadeSoloAtual = 0f;
+        velocidadeAereaAtual = 0f;
+        aguardandoDestinoAereo = false;
+        prontoParaDecolarNaPista = false;
+        LimparMissaoProgramada();
+
+        if (EstaNoSolo)
+        {
+            estadoAtual = EstadoC700.Solo;
+            AderirAoSolo();
+            return;
+        }
+
+        FalhaAereaFisica.Ativar(gameObject, rb, Mathf.Max(velocidadeCruzeiro, velocidadeDecolagem) * 0.55f, 4.5f, false);
+    }
+
+    private void AvaliarRetornoSeguro()
+    {
+        if (estadoAtual != EstadoC700.EmVoo || aeroportoOrigem == null)
+        {
+            return;
+        }
+
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null || !combustivel.usaCombustivel)
+        {
+            return;
+        }
+
+        Vector3 retorno = ObterDestinoDeRetorno();
+        if (retorno == Vector3.zero)
+        {
+            return;
+        }
+
+        float distancia = Vector3.Distance(transform.position, retorno);
+        float consumoRetorno = combustivel.EstimarConsumoParaDistancia(distancia, Mathf.Max(45f, velocidadeCruzeiro));
+        float reserva = Mathf.Max(combustivel.Capacidade * reservaRetornoPercentual, consumoRetorno * 0.40f);
+
+        if (combustivel.CombustivelAtual <= consumoRetorno + reserva)
+        {
+            OrdenarRetornoAoAeroporto();
         }
     }
 

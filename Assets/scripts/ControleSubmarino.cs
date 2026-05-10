@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -46,6 +47,18 @@ public class ControleSubmarino : MonoBehaviour
     [Tooltip("Prefab do missil submarino.")]
     public GameObject prefabMisselSubmarino;
 
+    [Header("Sistema de Torpedos")]
+    [Tooltip("Locais de lançamento de torpedos (tubes).")]
+    public Transform[] tubosTorpedo = new Transform[4];
+    [Tooltip("Prefab do torpedo.")]
+    public GameObject prefabTorpedo;
+    [Tooltip("Número de torpedos disponíveis.")]
+    public int torpedosDisponiveis = 8;
+    [Tooltip("Alcance máximo dos torpedos em unidades.")]
+    public float alcanceTorpedos = 800f;
+    [Tooltip("Cooldown entre lançamentos de torpedo.")]
+    public float cooldownTorpedo = 3f;
+
     [Header("Alcance de Ataque")]
     [Tooltip("Alcance maximo dos misseis em unidades.")]
     public float alcanceMisseis = 500f;
@@ -87,6 +100,9 @@ public class ControleSubmarino : MonoBehaviour
     private bool[] misseisUsados;
     private int totalLocaisValidos = 0;
     private Vector3 pontoAlvoAtual;
+    private bool[] tubosTorpedoUsados;
+    private int totalTubosValidos = 0;
+    private float proximoLancamentoTorpedo = 0f;
 
     private ControleUnidade meuControle;
     private IdentidadeUnidade minhaIdentidade;
@@ -102,7 +118,11 @@ public class ControleSubmarino : MonoBehaviour
 
     private GameObject cristalIdentificacao;
     private Renderer cristalRenderer;
-    private readonly Collider[] bufferAlvos = new Collider[64];
+    private readonly Collider[] bufferAlvos = new Collider[128];
+    private readonly List<Transform> alvosAutomaticos = new List<Transform>(32);
+    private static readonly List<IdentidadeUnidade> unidadesRegistradasRadar = new List<IdentidadeUnidade>(256);
+    private static MiniMapa miniMapaCache;
+    private static float proximaBuscaMiniMapa;
 
     void Start()
     {
@@ -140,6 +160,16 @@ public class ControleSubmarino : MonoBehaviour
 
         misseisUsados = new bool[locaisDisparo.Length];
         misseisDisponiveis = totalLocaisValidos;
+
+        // Inicializar tubos de torpedo
+        totalTubosValidos = 0;
+        for (int i = 0; i < tubosTorpedo.Length; i++)
+        {
+            if (tubosTorpedo[i] != null) totalTubosValidos++;
+        }
+        tubosTorpedoUsados = new bool[tubosTorpedo.Length];
+        if (prefabTorpedo != null)
+            PoolDeObjetosCombate.Prewarm(prefabTorpedo, Mathf.Clamp(totalTubosValidos > 0 ? totalTubosValidos : 2, 2, 4));
 
         CriarCristalIdentificacao();
         AplicarEstadoInicial();
@@ -247,6 +277,12 @@ public class ControleSubmarino : MonoBehaviour
     {
         if (agente == null || !agente.enabled)
         {
+            return;
+        }
+
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
             return;
         }
 
@@ -437,11 +473,10 @@ public class ControleSubmarino : MonoBehaviour
 
     private Transform EncontrarMelhorAlvoAutomatico()
     {
-        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcanceMisseis, bufferAlvos);
-        float melhorDistancia = float.MaxValue;
-        Transform melhor = null;
         int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : 1;
+        alvosAutomaticos.Clear();
 
+        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcanceMisseis, bufferAlvos, Physics.AllLayers, QueryTriggerInteraction.Collide);
         for (int i = 0; i < quantidade; i++)
         {
             Collider col = bufferAlvos[i];
@@ -450,48 +485,243 @@ public class ControleSubmarino : MonoBehaviour
                 continue;
             }
 
-            Transform alvo = col.transform.root;
-            if (alvo == null || alvo == transform.root)
-            {
-                bufferAlvos[i] = null;
-                continue;
-            }
-
-            IdentidadeUnidade idAlvo = alvo.GetComponent<IdentidadeUnidade>();
-            if (idAlvo == null)
-            {
-                idAlvo = alvo.GetComponentInParent<IdentidadeUnidade>();
-            }
-
-            if (idAlvo == null || idAlvo.teamID == 0 || idAlvo.teamID == meuTime)
-            {
-                bufferAlvos[i] = null;
-                continue;
-            }
-
-            SistemaDeDanos danos = alvo.GetComponent<SistemaDeDanos>();
-            if (danos == null)
-            {
-                danos = alvo.GetComponentInChildren<SistemaDeDanos>();
-            }
-
-            if (danos != null && danos.vidaAtual <= 0f)
-            {
-                bufferAlvos[i] = null;
-                continue;
-            }
-
-            float dist = Vector3.Distance(transform.position, alvo.position);
-            if (dist < melhorDistancia)
-            {
-                melhorDistancia = dist;
-                melhor = alvo;
-            }
-
+            TentarRegistrarAlvoAutomatico(col.transform, meuTime);
             bufferAlvos[i] = null;
         }
 
-        return melhor;
+        RegistrarAlvosDoRegistroGlobal(meuTime);
+
+        Transform melhorAlvo = null;
+        int melhorPrioridade = int.MaxValue;
+        float melhorDistanciaSqr = float.MaxValue;
+
+        for (int i = 0; i < alvosAutomaticos.Count; i++)
+        {
+            Transform alvo = alvosAutomaticos[i];
+            if (alvo == null)
+            {
+                continue;
+            }
+
+            int prioridade = ObterPrioridadeAlvo(alvo);
+            float distanciaSqr = (alvo.position - transform.position).sqrMagnitude;
+            if (prioridade < melhorPrioridade || (prioridade == melhorPrioridade && distanciaSqr < melhorDistanciaSqr))
+            {
+                melhorPrioridade = prioridade;
+                melhorDistanciaSqr = distanciaSqr;
+                melhorAlvo = alvo;
+            }
+        }
+
+        return melhorAlvo;
+    }
+
+    private bool TentarRegistrarAlvoAutomatico(Transform candidato, int meuTime)
+    {
+        if (candidato == null)
+        {
+            return false;
+        }
+
+        Transform minhaRaiz = transform.root != null ? transform.root : transform;
+        if (candidato == minhaRaiz || candidato.IsChildOf(minhaRaiz))
+        {
+            return false;
+        }
+
+        IdentidadeUnidade idAlvo = candidato.GetComponentInParent<IdentidadeUnidade>();
+        if (idAlvo == null) idAlvo = candidato.GetComponentInChildren<IdentidadeUnidade>();
+        if (idAlvo == null || idAlvo.teamID == 0 || idAlvo.teamID == meuTime)
+        {
+            return false;
+        }
+
+        Transform alvoResolvido = ResolverTransformAlvo(idAlvo.transform);
+        if (alvoResolvido == null || alvoResolvido == minhaRaiz || alvoResolvido.IsChildOf(minhaRaiz))
+        {
+            return false;
+        }
+
+        float distanciaSqr = (alvoResolvido.position - transform.position).sqrMagnitude;
+        if (distanciaSqr > alcanceMisseis * alcanceMisseis)
+        {
+            return false;
+        }
+
+        SistemaDeDanos danos = ObterSistemaDeDanos(alvoResolvido);
+        if (danos != null && danos.vidaAtual <= 0f)
+        {
+            return false;
+        }
+
+        if (danos != null)
+        {
+            alvoResolvido = ResolverTransformAlvo(danos.transform);
+        }
+
+        if (alvoResolvido == null || alvosAutomaticos.Contains(alvoResolvido))
+        {
+            return false;
+        }
+
+        alvosAutomaticos.Add(alvoResolvido);
+        RegistrarAlvoNoMiniMapa(alvoResolvido);
+        return true;
+    }
+
+    private Transform ResolverTransformAlvo(Transform candidato)
+    {
+        if (candidato == null)
+        {
+            return null;
+        }
+
+        SistemaDeDanos danos = candidato.GetComponentInParent<SistemaDeDanos>();
+        if (danos == null) danos = candidato.GetComponentInChildren<SistemaDeDanos>();
+        if (danos != null) return danos.transform;
+
+        ControleAviao aviao = candidato.GetComponentInParent<ControleAviao>();
+        if (aviao == null) aviao = candidato.GetComponentInChildren<ControleAviao>();
+        if (aviao != null) return aviao.transform;
+
+        ControleAviaoCaca caca = candidato.GetComponentInParent<ControleAviaoCaca>();
+        if (caca == null) caca = candidato.GetComponentInChildren<ControleAviaoCaca>();
+        if (caca != null) return caca.transform;
+
+        AviaoBombardeiro bombardeiro = candidato.GetComponentInParent<AviaoBombardeiro>();
+        if (bombardeiro == null) bombardeiro = candidato.GetComponentInChildren<AviaoBombardeiro>();
+        if (bombardeiro != null) return bombardeiro.transform;
+
+        Helicoptero helicoptero = candidato.GetComponentInParent<Helicoptero>();
+        if (helicoptero == null) helicoptero = candidato.GetComponentInChildren<Helicoptero>();
+        if (helicoptero != null) return helicoptero.transform;
+
+        IdentidadeUnidade identidade = candidato.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade == null) identidade = candidato.GetComponentInChildren<IdentidadeUnidade>();
+        if (identidade != null) return identidade.transform;
+
+        return candidato.root != null ? candidato.root : candidato;
+    }
+
+    private SistemaDeDanos ObterSistemaDeDanos(Transform alvo)
+    {
+        if (alvo == null)
+        {
+            return null;
+        }
+
+        SistemaDeDanos danos = alvo.GetComponentInParent<SistemaDeDanos>();
+        if (danos == null) danos = alvo.GetComponentInChildren<SistemaDeDanos>();
+        return danos;
+    }
+
+    private int ObterPrioridadeAlvo(Transform alvo)
+    {
+        if (EhBombardeiro(alvo))
+        {
+            return 0;
+        }
+
+        if (EhAlvoAereo(alvo))
+        {
+            return 1;
+        }
+
+        return 2;
+    }
+
+    private bool EhBombardeiro(Transform alvo)
+    {
+        if (alvo == null)
+        {
+            return false;
+        }
+
+        string nomeAlvo = alvo.name.ToLowerInvariant();
+        return alvo.GetComponentInParent<AviaoBombardeiro>() != null
+               || nomeAlvo.Contains("bombard")
+               || nomeAlvo.Contains("bombardeiro")
+               || nomeAlvo.Contains("bomber")
+               || nomeAlvo.Contains("b52")
+               || nomeAlvo.Contains("b2");
+    }
+
+    private bool EhAlvoAereo(Transform alvo)
+    {
+        if (alvo == null)
+        {
+            return false;
+        }
+
+        IdentidadeUnidade identidade = alvo.GetComponentInParent<IdentidadeUnidade>();
+        string nomeAlvo = alvo.name.ToLowerInvariant();
+
+        return alvo.position.y > 8f
+               || alvo.GetComponentInParent<ControleAviao>() != null
+               || alvo.GetComponentInParent<ControleAviaoCaca>() != null
+               || alvo.GetComponentInParent<AviaoBombardeiro>() != null
+               || alvo.GetComponentInParent<Helicoptero>() != null
+               || (identidade != null && identidade.tipoUnidade == TipoUnidade.Aereo)
+               || nomeAlvo.Contains("aviao")
+               || nomeAlvo.Contains("heli")
+               || nomeAlvo.Contains("caca")
+               || nomeAlvo.Contains("jato")
+               || nomeAlvo.Contains("drone")
+               || nomeAlvo.Contains("bombard")
+               || nomeAlvo.Contains("bombardeiro")
+               || nomeAlvo.Contains("bomber")
+               || TagSafe.Matches(alvo, "Areo")
+               || TagSafe.Matches(alvo, "Aereo");
+    }
+
+    private void RegistrarAlvosDoRegistroGlobal(int meuTime)
+    {
+        RegistroEntidadesJogo.FillUnidades(unidadesRegistradasRadar);
+        float alcanceSqr = alcanceMisseis * alcanceMisseis;
+
+        for (int i = 0; i < unidadesRegistradasRadar.Count; i++)
+        {
+            IdentidadeUnidade unidade = unidadesRegistradasRadar[i];
+            if (unidade == null || !unidade.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            if ((unidade.transform.position - transform.position).sqrMagnitude > alcanceSqr)
+            {
+                continue;
+            }
+
+            TentarRegistrarAlvoAutomatico(unidade.transform, meuTime);
+        }
+
+        unidadesRegistradasRadar.Clear();
+    }
+
+    private void RegistrarAlvoNoMiniMapa(Transform alvo)
+    {
+        MiniMapa miniMapa = ObterMiniMapa();
+        if (miniMapa != null && miniMapa.mostrarInimigos)
+        {
+            miniMapa.RegistrarUnidadeNoMapa(alvo, true);
+        }
+    }
+
+    private static MiniMapa ObterMiniMapa()
+    {
+        if (miniMapaCache != null)
+        {
+            return miniMapaCache;
+        }
+
+        if (Time.time < proximaBuscaMiniMapa)
+        {
+            return null;
+        }
+
+        proximaBuscaMiniMapa = Time.time + 1f;
+        miniMapaCache = UnityEngine.Object.FindFirstObjectByType<MiniMapa>();
+        return miniMapaCache;
     }
 
     private void DispararMissel(Vector3 alvo, Transform alvoT = null)
@@ -530,6 +760,64 @@ public class ControleSubmarino : MonoBehaviour
         }
 
         Debug.LogWarning("[USS Leviathan] Nenhum slot de missil disponivel foi encontrado.", this);
+    }
+
+    public bool PodeLancarTorpedo()
+    {
+        return torpedosDisponiveis > 0 && Time.time >= proximoLancamentoTorpedo && totalTubosValidos > 0;
+    }
+
+    public void LancarTorpedo(Vector3 alvo, Transform alvoT = null)
+    {
+        if (!PodeLancarTorpedo())
+        {
+            Debug.Log("[USS Leviathan] Torpedo nao pronto para lancamento (cooldown ou sem municao).", this);
+            return;
+        }
+
+        if (prefabTorpedo == null)
+        {
+            Debug.LogError("[USS Leviathan] Prefab do torpedo nao esta configurado!", this);
+            return;
+        }
+
+        // Encontrar tubo livre
+        for (int i = 0; i < tubosTorpedo.Length; i++)
+        {
+            if (tubosTorpedo[i] == null || tubosTorpedoUsados[i]) continue;
+
+            GameObject torpedo = PoolDeObjetosCombate.Spawn(prefabTorpedo, tubosTorpedo[i].position, tubosTorpedo[i].rotation);
+            Torpedo scriptTorpedo = torpedo.GetComponent<Torpedo>();
+            if (scriptTorpedo != null)
+            {
+                scriptTorpedo.DefinirAlvo(alvoT);
+                int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : -1;
+                scriptTorpedo.DefinirLancador(transform, meuTime);
+                
+                // Registrar ameaça para sistemas de defesa
+                MissileThreatTracker.RegistrarLancamento(torpedo, this, alvo, alvoT, scriptTorpedo.velocidade);
+            }
+
+            tubosTorpedoUsados[i] = true;
+            torpedosDisponiveis--;
+            proximoLancamentoTorpedo = Time.time + cooldownTorpedo;
+            
+            Debug.Log($"[USS Leviathan] Torpedo lancado do tubo {i + 1}! ({torpedosDisponiveis} restantes) -> Alvo: {alvo}", this);
+            return;
+        }
+
+        Debug.LogWarning("[USS Leviathan] Nenhum tubo de torpedo disponivel.", this);
+    }
+
+    public void RecarregarTorpedos()
+    {
+        for (int i = 0; i < tubosTorpedoUsados.Length; i++)
+        {
+            tubosTorpedoUsados[i] = false;
+        }
+        int maxTorpedos = totalTubosValidos * 2; // 2 torpedos por tubo
+        torpedosDisponiveis = maxTorpedos;
+        Debug.Log($"[USS Leviathan] Torpedos recarregados! {torpedosDisponiveis} disponiveis.", this);
     }
 
     private IEnumerator Subir()
@@ -796,10 +1084,30 @@ public class ControleSubmarino : MonoBehaviour
     /// <summary>Recebe destino via clique do jogador ou IA.</summary>
     public void DefinirDestino(Vector3 destino)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         if (agente != null && agente.enabled && agente.isOnNavMesh)
         {
             agente.SetDestination(destino);
             agente.isStopped = false;
+        }
+    }
+
+    public void PararPorFaltaDeCombustivel()
+    {
+        velocidadeAtualSimulada = 0f;
+        lemeAtual = 0f;
+        emMovimento = false;
+
+        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            agente.ResetPath();
+            agente.isStopped = true;
+            agente.velocity = Vector3.zero;
         }
     }
 

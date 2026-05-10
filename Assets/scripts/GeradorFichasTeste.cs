@@ -1,8 +1,8 @@
 using UnityEngine;
-using UnityEditor; 
 using System.IO;
 
 #if UNITY_EDITOR
+using UnityEditor;
 public class GeradorFichasTeste : MonoBehaviour
 {
     // Adiciona um botão no menu do topo do Unity: "Hegemonia"

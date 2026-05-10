@@ -53,10 +53,6 @@ public class AutoFixShaderProperties
             Debug.Log($"[AutoFixShaderProperties] Fixed {fixedMats.Count} materials: \n" + string.Join("\n", fixedMats));
             AssetDatabase.SaveAssets();
         }
-        else
-        {
-            Debug.Log("[AutoFixShaderProperties] No materials needed fixing.");
-        }
     }
 
     [MenuItem("Tools/Fix Shader Properties")]

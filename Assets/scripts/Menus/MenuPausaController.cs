@@ -101,7 +101,7 @@ public class MenuPausaController : MonoBehaviour
         Cursor.visible = true;
         EstaPausado = true;
         raizMenu.SetActive(true);
-        AtualizarStatus("Partida pausada.", false);
+        AtualizarStatus(LocalizationManager.T("pause.status", "Partida pausada."), false);
     }
 
     private void FecharMenuVisual()
@@ -125,23 +125,38 @@ public class MenuPausaController : MonoBehaviour
         RestaurarFluxoNormal();
     }
 
-    private void AbrirConfiguracoes()
+    private void AlternarIdioma()
     {
-        AtualizarStatus("Configuracoes entram na proxima etapa.", true);
+        LocalizationManager.Instancia.ProximoIdioma();
+        RecriarInterface();
+        raizMenu.SetActive(true);
+        AtualizarStatus(string.Format(LocalizationManager.T("pause.settings_language", "Idioma: {0}"), LocalizationManager.Instancia.NomeIdiomaAtual()), false);
+    }
+
+    private void AlternarDificuldade()
+    {
+        GameDifficultyManager.Instancia.ProximaDificuldade();
+        RecriarInterface();
+        raizMenu.SetActive(true);
+        AtualizarStatus(
+            string.Format(
+                LocalizationManager.T("pause.settings_difficulty", "Dificuldade: {0}"),
+                GameDifficultyManager.Instancia.NomeDificuldadeAtual()),
+            false);
     }
 
     private void SalvarJogo()
     {
         sistemaSave.RegistrarCenaAtual(SceneManager.GetActiveScene().name);
         sistemaSave.SalvarJogo();
-        AtualizarStatus("Jogo salvo com sucesso.", false);
+        AtualizarStatus(LocalizationManager.T("pause.saved", "Jogo salvo com sucesso."), false);
     }
 
     private void CarregarJogo()
     {
         if (!sistemaSave.TentarCarregarJogo())
         {
-            AtualizarStatus("Nenhum save encontrado para carregar.", true);
+            AtualizarStatus(LocalizationManager.T("pause.no_save", "Nenhum save encontrado para carregar."), true);
             return;
         }
 
@@ -229,28 +244,47 @@ public class MenuPausaController : MonoBehaviour
         outline.effectColor = corBorda;
         outline.effectDistance = new Vector2(2f, -2f);
 
-        CriarTexto("Cabecalho", painel, "HEGEMONIA GLOBAL", 22, FontStyle.Bold, TextAnchor.UpperCenter, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -28f), new Vector2(0f, 36f));
-        CriarTexto("Titulo", painel, "PAUSADO", 52, FontStyle.Bold, TextAnchor.UpperCenter, new Color(0.43f, 0.93f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -120f), new Vector2(0f, 56f));
-        CriarTexto("Subtitulo", painel, "HEGEMONIA GLOBAL", 24, FontStyle.Bold, TextAnchor.UpperCenter, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -180f), new Vector2(0f, 30f));
+        CriarTexto("Cabecalho", painel, LocalizationManager.T("pause.header", "HEGEMONIA GLOBAL"), 22, FontStyle.Bold, TextAnchor.UpperCenter, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -28f), new Vector2(0f, 36f));
+        CriarTexto("Titulo", painel, LocalizationManager.T("pause.title", "PAUSADO"), 52, FontStyle.Bold, TextAnchor.UpperCenter, new Color(0.43f, 0.93f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -120f), new Vector2(0f, 56f));
+        CriarTexto("Subtitulo", painel, LocalizationManager.T("pause.header", "HEGEMONIA GLOBAL"), 24, FontStyle.Bold, TextAnchor.UpperCenter, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -180f), new Vector2(0f, 30f));
 
         RectTransform botoes = new GameObject("BotoesMenuPausa").AddComponent<RectTransform>();
         botoes.SetParent(painel, false);
         botoes.anchorMin = new Vector2(0.5f, 1f);
         botoes.anchorMax = new Vector2(0.5f, 1f);
         botoes.pivot = new Vector2(0.5f, 1f);
-        botoes.anchoredPosition = new Vector2(0f, -278f);
-        botoes.sizeDelta = new Vector2(340f, 360f);
+        botoes.anchoredPosition = new Vector2(0f, -250f);
+        botoes.sizeDelta = new Vector2(340f, 470f);
 
         float posicaoY = 0f;
-        CriarBotao(botoes, "Retomar Jogo", "GO", corBotaoDestaque, RetomarJogo, ref posicaoY);
-        CriarBotao(botoes, "Configuracoes", "CF", corBotao, AbrirConfiguracoes, ref posicaoY);
-        CriarBotao(botoes, "Carregar Jogo", "LD", corBotao, CarregarJogo, ref posicaoY);
-        CriarBotao(botoes, "Salvar Jogo", "SV", corBotao, SalvarJogo, ref posicaoY);
-        CriarBotao(botoes, "Reiniciar Partida", "RE", corBotao, ReiniciarPartida, ref posicaoY);
-        CriarBotao(botoes, "Sair para Menu Principal", "EX", corBotaoSair, SairParaMenuPrincipal, ref posicaoY);
+        CriarBotao(botoes, LocalizationManager.T("pause.resume", "Retomar Jogo"), "GO", corBotaoDestaque, RetomarJogo, ref posicaoY);
+        CriarBotao(botoes, string.Format(LocalizationManager.T("pause.settings_language", "Idioma: {0}"), LocalizationManager.Instancia.NomeIdiomaAtual()), "LG", corBotao, AlternarIdioma, ref posicaoY);
+        CriarBotao(botoes, string.Format(LocalizationManager.T("pause.settings_difficulty", "Dificuldade: {0}"), GameDifficultyManager.Instancia.NomeDificuldadeAtual()), "DF", corBotao, AlternarDificuldade, ref posicaoY);
+        CriarBotao(botoes, LocalizationManager.T("pause.load", "Carregar Jogo"), "LD", corBotao, CarregarJogo, ref posicaoY);
+        CriarBotao(botoes, LocalizationManager.T("pause.save", "Salvar Jogo"), "SV", corBotao, SalvarJogo, ref posicaoY);
+        CriarBotao(botoes, LocalizationManager.T("pause.restart", "Reiniciar Partida"), "RE", corBotao, ReiniciarPartida, ref posicaoY);
+        CriarBotao(botoes, LocalizationManager.T("pause.exit_menu", "Sair para Menu Principal"), "EX", corBotaoSair, SairParaMenuPrincipal, ref posicaoY);
 
         statusText = CriarTexto("Status", painel, string.Empty, 16, FontStyle.Bold, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 36f), new Vector2(-40f, 30f));
-        CriarTexto("Rodape", painel, "ESC retoma a partida.", 14, FontStyle.Normal, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 14f), new Vector2(-40f, 20f));
+        CriarTexto("Rodape", painel, LocalizationManager.T("pause.footer", "ESC retoma a partida."), 14, FontStyle.Normal, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 14f), new Vector2(-40f, 20f));
+    }
+
+    private void RecriarInterface()
+    {
+        bool estavaAberto = raizMenu != null && raizMenu.activeSelf;
+        if (canvasMenu != null)
+        {
+            Destroy(canvasMenu.gameObject);
+            canvasMenu = null;
+            raizMenu = null;
+            statusText = null;
+        }
+
+        ConstruirInterface();
+        if (!estavaAberto)
+        {
+            FecharMenuVisual();
+        }
     }
 
     private RectTransform CriarPainel(string nome, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPosition, Vector2 sizeDelta, Color cor)

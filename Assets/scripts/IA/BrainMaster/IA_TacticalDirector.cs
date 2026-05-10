@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Hegemonia.AI.BrainMaster
 {
@@ -12,6 +13,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly List<GameObject> _emptyGroundTransportBuffer = new List<GameObject>(16);
         private readonly List<GameObject> _assaultUnitsBuffer = new List<GameObject>(48);
         private readonly List<GameObject> _activeGroundUnitsBuffer = new List<GameObject>(32);
+        private readonly List<GameObject> _boardingUnitsBuffer = new List<GameObject>(24);
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
         private float _nextDecisionTime;
         private float _nextAssaultWaveTime;
@@ -225,17 +227,33 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Vector3 coast = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Coast, 120f, 360f, 26);
+            if (coast == Vector3.zero)
+            {
+                coast = baseCenter;
+            }
+
             Vector3 loadRally = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 35f, 100f, 18);
+            if (loadRally == Vector3.zero)
+            {
+                loadRally = baseCenter;
+            }
+
+            Vector3 landingPoint = ResolveEnemyLandingPoint(baseCenter, strategicObjective);
             SplitAmphibiousUnits(squad.Units, _loadedAmphibiousBuffer, _emptyAmphibiousBuffer);
 
             if (_emptyAmphibiousBuffer.Count > 0)
             {
-                QueueMove("amphibious_load", _emptyAmphibiousBuffer, loadRally, 72, 5.4f);
+                QueueMove("amphibious_load", _emptyAmphibiousBuffer, loadRally, 76, 4.2f);
+                CollectBoardingUnits(loadRally, Mathf.Clamp(_emptyAmphibiousBuffer.Count * 6, 6, 18), _boardingUnitsBuffer);
+                if (_boardingUnitsBuffer.Count > 0)
+                {
+                    QueueMove("amphibious_boarding_units", _boardingUnitsBuffer, loadRally, 79, 3.6f);
+                }
 
-                for (int i = 0; i < _emptyAmphibiousBuffer.Count && i < 2; i++)
+                for (int i = 0; i < _emptyAmphibiousBuffer.Count && i < 3; i++)
                 {
                     GameObject transport = _emptyAmphibiousBuffer[i];
-                    if (transport == null || DistanceFlat(transport.transform.position, loadRally) > 85f)
+                    if (transport == null || DistanceFlat(transport.transform.position, loadRally) > 95f)
                     {
                         continue;
                     }
@@ -246,8 +264,8 @@ namespace Hegemonia.AI.BrainMaster
                         "IniciarEmbarque",
                         transport.transform.position,
                         null,
-                        74,
-                        9f);
+                        82,
+                        6f);
                 }
             }
 
@@ -256,20 +274,35 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            Vector3 pressureCoast = Vector3.Lerp(coast, strategicObjective, 0.45f);
-            if (pressureCoast == Vector3.zero)
+            if (landingPoint == Vector3.zero)
             {
-                pressureCoast = coast;
+                landingPoint = Vector3.Lerp(coast, strategicObjective, 0.65f);
             }
 
-            if (CanProjectGroundOffense() && visibleEnemy != null && CountNavalSupportUnits() >= 2)
+            if (landingPoint == Vector3.zero || DistanceFlat(landingPoint, baseCenter) < 120f)
             {
-                QueueAttack("amphibious", _loadedAmphibiousBuffer, visibleEnemy, coast, 80, 5.2f);
-                _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
+                landingPoint = strategicObjective != Vector3.zero ? strategicObjective : coast;
             }
-            else
+
+            QueueMove("amphibious_landing", _loadedAmphibiousBuffer, landingPoint, 84, 4.0f);
+
+            for (int i = 0; i < _loadedAmphibiousBuffer.Count && i < 3; i++)
             {
-                QueueMove("amphibious_stage", _loadedAmphibiousBuffer, pressureCoast, 74, 4.8f);
+                GameObject transport = _loadedAmphibiousBuffer[i];
+                if (transport == null || DistanceFlat(transport.transform.position, landingPoint) > 115f)
+                {
+                    continue;
+                }
+
+                QueueAbility(
+                    "amphibious_unload_" + transport.GetInstanceID(),
+                    transport,
+                    "DesembarcarTudo",
+                    landingPoint,
+                    visibleEnemy,
+                    88,
+                    8f);
+                _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
             }
         }
 
@@ -557,6 +590,104 @@ namespace Hegemonia.AI.BrainMaster
         {
             IA_TransportPlan plan = _context != null ? _context.TransportPlan : null;
             return plan == null || plan.HasLandRoute || plan.Ready;
+        }
+
+        private Vector3 ResolveEnemyLandingPoint(Vector3 baseCenter, Vector3 strategicObjective)
+        {
+            Vector3 anchor = strategicObjective;
+            if (anchor == Vector3.zero || DistanceFlat(baseCenter, anchor) < 180f)
+            {
+                Vector3 enemyAnchor;
+                if (_context.WorldState.TryGetEnemyStrategicAnchor(baseCenter, out enemyAnchor))
+                {
+                    anchor = enemyAnchor;
+                }
+            }
+
+            if (anchor == Vector3.zero)
+            {
+                return Vector3.zero;
+            }
+
+            Vector3 coast = _context.MapAnalyzer.FindPointInTerrain(anchor, IA_TerrainType.Coast, 40f, 320f, 32);
+            if (coast == Vector3.zero || DistanceFlat(coast, baseCenter) < 140f)
+            {
+                coast = _context.MapAnalyzer.FindPointInTerrain(anchor, IA_TerrainType.Land, 60f, 280f, 28);
+            }
+
+            return coast;
+        }
+
+        private void CollectBoardingUnits(Vector3 loadRally, int limit, List<GameObject> output)
+        {
+            output.Clear();
+            if (_context == null || _context.WorldState == null || _context.WorldState.OwnCombatUnits == null || limit <= 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _context.WorldState.OwnCombatUnits.Count && output.Count < limit; i++)
+            {
+                GameObject unit = _context.WorldState.OwnCombatUnits[i];
+                if (unit == null || !unit.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (DistanceFlat(unit.transform.position, loadRally) > 650f || !IsBoardingCandidate(unit))
+                {
+                    continue;
+                }
+
+                output.Add(unit);
+            }
+        }
+
+        private static bool IsBoardingCandidate(GameObject unit)
+        {
+            if (unit == null)
+            {
+                return false;
+            }
+
+            if (unit.GetComponent<HovercraftTransporte>() != null
+                || unit.GetComponent<TransporteTerrestre>() != null
+                || unit.GetComponent<TransporteAnfibio>() != null
+                || unit.GetComponent<ControleNavioRealista>() != null
+                || unit.GetComponent<ControleSubmarino>() != null
+                || unit.GetComponent<ControleAviao>() != null
+                || unit.GetComponent<ControleAviaoCaca>() != null
+                || unit.GetComponent<Helicoptero>() != null)
+            {
+                return false;
+            }
+
+            string n = IA_Text.Normalize(unit.name);
+            if (n.Contains("transporte")
+                || n.Contains("truck")
+                || n.Contains("caminhao")
+                || n.Contains("hover")
+                || n.Contains("houver"))
+            {
+                return false;
+            }
+
+            if (n.Contains("soldado")
+                || n.Contains("infant")
+                || n.Contains("rifle")
+                || n.Contains("sniper")
+                || n.Contains("tank")
+                || n.Contains("mbt")
+                || n.Contains("arthur")
+                || n.Contains("south")
+                || n.Contains("c1")
+                || n.Contains("hack")
+                || n.Contains("artilh"))
+            {
+                return true;
+            }
+
+            return unit.GetComponent<NavMeshAgent>() != null && unit.GetComponent<SistemaDeDanos>() != null;
         }
 
         private bool TrySelectActiveGroundUnits(List<GameObject> source, List<GameObject> destination, int requestedLimit)

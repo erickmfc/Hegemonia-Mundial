@@ -53,6 +53,19 @@ public class MovimentoRealTerrestre : MonoBehaviour
     {
         if (agente == null) return;
 
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            if (agente.enabled && agente.isOnNavMesh)
+            {
+                agente.ResetPath();
+                agente.isStopped = true;
+            }
+
+            velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, 0f, desaceleracao * Time.deltaTime);
+            AnimarRodas(0f);
+            return;
+        }
+
         // 1. Sincronia Agente <> Veículo
         // Mantém o agente preso ao carro para calcular caminhos a partir da posição real
         agente.nextPosition = transform.position;

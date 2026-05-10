@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
@@ -25,6 +26,8 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
     private Vector3 ultimaPosicao;
     private bool inicializado = false;
     private float velocidadeAproximada = 0f;
+    private readonly List<MonoBehaviour> componentesBuffer = new List<MonoBehaviour>(16);
+    private static readonly Dictionary<string, MethodInfo> cacheMetodosSemArgumentos = new Dictionary<string, MethodInfo>(128);
 
     void OnEnable()
     {
@@ -210,15 +213,18 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
     {
         if (objeto == null) return false;
 
-        MonoBehaviour[] componentes = objeto.GetComponentsInChildren<MonoBehaviour>(true);
-        for (int i = 0; i < componentes.Length; i++)
+        componentesBuffer.Clear();
+        objeto.GetComponentsInChildren<MonoBehaviour>(true, componentesBuffer);
+        for (int i = 0; i < componentesBuffer.Count; i++)
         {
-            if (TentarInvocarMetodoSemArgumentos(componentes[i], nomeMetodo))
+            if (TentarInvocarMetodoSemArgumentos(componentesBuffer[i], nomeMetodo))
             {
+                componentesBuffer.Clear();
                 return true;
             }
         }
 
+        componentesBuffer.Clear();
         return false;
     }
 
@@ -226,12 +232,19 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
     {
         if (componente == null) return false;
 
-        MethodInfo metodo = componente.GetType().GetMethod(
-            nomeMetodo,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            null,
-            Type.EmptyTypes,
-            null);
+        Type tipo = componente.GetType();
+        string chaveCache = tipo.FullName + "::" + nomeMetodo;
+        MethodInfo metodo;
+        if (!cacheMetodosSemArgumentos.TryGetValue(chaveCache, out metodo))
+        {
+            metodo = tipo.GetMethod(
+                nomeMetodo,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                Type.EmptyTypes,
+                null);
+            cacheMetodosSemArgumentos[chaveCache] = metodo;
+        }
 
         if (metodo == null) return false;
 

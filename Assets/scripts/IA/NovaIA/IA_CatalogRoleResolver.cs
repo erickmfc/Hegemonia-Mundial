@@ -77,7 +77,7 @@ namespace Hegemonia.AI.Master
             ResolveRole(IA_CatalogRole.Platform, "plataforma", "plataforma petrolifera");
             ResolveRole(IA_CatalogRole.NavalTransport, "navio transporte", "transporte naval");
             ResolveRole(IA_CatalogRole.Carrier, "porta avioes", "carrier");
-            ResolveRole(IA_CatalogRole.Fighter, "caca", "aviao de caca", "fighter");
+            ResolveRole(IA_CatalogRole.Fighter, "b260", "supra", "su11", "caca", "aviao de caca", "fighter");
             ResolveRole(IA_CatalogRole.OilShip, "navio petrolifero", "petroleiro");
         }
 

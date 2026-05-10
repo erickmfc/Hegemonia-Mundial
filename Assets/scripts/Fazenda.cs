@@ -6,6 +6,20 @@ public class Fazenda : MonoBehaviour
 {
     public static Fazenda FazendaAtiva; // Para fechar outras ao abrir
     public static bool QualquerFazendaAberta = false; // Pro CameraController
+    private static int frameCliqueProcessado = -1;
+    private static bool cliqueSobreUIProcessado;
+    private static bool houveHitCliqueProcessado;
+    private static RaycastHit hitCliqueProcessado;
+    private static Texture2D texturaBotaoNormal;
+    private static Texture2D texturaBotaoHover;
+    private static Texture2D texturaJanela;
+    private static Texture2D texturaBotaoFechar;
+    private static GUIStyle estiloSementeCompartilhado;
+    private static GUIStyle estiloStatusCompartilhado;
+    private static GUIStyle estiloBotaoCompartilhado;
+    private static GUIStyle estiloAvisoCompartilhado;
+    private static GUIStyle estiloJanelaAgricolaCompartilhado;
+    private static GUIStyle estiloXBotaoCompartilhado;
 
     public enum SementeAgricola { Nenhum, Milho, Trigo, Soja, CanaDeAcucar, Feijao, Arroz, Algodao, Cafe, Batata, Cacau }
 
@@ -22,6 +36,8 @@ public class Fazenda : MonoBehaviour
     [Header("Configurações da Fazenda")]
     public List<RegistoColheita> catalogoAgricola = new List<RegistoColheita>();
     public string nomeFazenda = "Fazenda Nacional";
+    public bool mostrarLogs = false;
+    public float intervaloProducaoSegundos = 1f;
 
     [Header("Lote de Produção 1")]
     public bool lote1Ocupado = false;
@@ -54,26 +70,25 @@ public class Fazenda : MonoBehaviour
     private GUIStyle estiloJanelaAgricola;
     private GUIStyle estiloXBotao;
     private bool estilosProntos = false;
+    private WaitForSeconds esperaProducao;
 
     void Awake()
     {
+        if (Construtor.CriandoPreviewConstrucao)
+        {
+            enabled = false;
+            return;
+        }
+
         identidade = GetComponent<IdentidadeUnidade>();
+        GarantirEstruturaEconomica();
+        esperaProducao = new WaitForSeconds(Mathf.Max(1.5f, intervaloProducaoSegundos));
         
         // Menu 20% maior (840x600)
         janelaRetangulo = new Rect(Screen.width / 2f - 420f, Screen.height / 2f - 300f, 840f, 600f);
 
-        // Popula as opções (Tempo maior e diferenciado para cada uma)
-        catalogoAgricola.Add(new RegistoColheita { nome = "-", semente = SementeAgricola.Nenhum });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Milho", semente = SementeAgricola.Milho, lucroGerado = 300, tempoCrescimento = 90f, custoSemente = 50 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Batata", semente = SementeAgricola.Batata, lucroGerado = 280, tempoCrescimento = 100f, custoSemente = 40 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Feijão", semente = SementeAgricola.Feijao, lucroGerado = 250, tempoCrescimento = 120f, custoSemente = 35 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Trigo", semente = SementeAgricola.Trigo, lucroGerado = 360, tempoCrescimento = 180f, custoSemente = 65 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Arroz", semente = SementeAgricola.Arroz, lucroGerado = 400, tempoCrescimento = 210f, custoSemente = 70 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Cana-de-Açúcar", semente = SementeAgricola.CanaDeAcucar, lucroGerado = 550, tempoCrescimento = 300f, custoSemente = 100 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Algodão", semente = SementeAgricola.Algodao, lucroGerado = 650, tempoCrescimento = 360f, custoSemente = 120 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Soja", semente = SementeAgricola.Soja, lucroGerado = 800, tempoCrescimento = 420f, custoSemente = 150 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Café", semente = SementeAgricola.Cafe, lucroGerado = 1100, tempoCrescimento = 600f, custoSemente = 250 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Cacau", semente = SementeAgricola.Cacau, lucroGerado = 1500, tempoCrescimento = 800f, custoSemente = 350 });
+        PopularCatalogoSeNecessario();
+        StartCoroutine(RotinaProducaoAgricola());
     }
 
     void OnDestroy()
@@ -88,50 +103,94 @@ public class Fazenda : MonoBehaviour
     void Update()
     {
         // Interação de Clique na Fazenda
-        if (Input.GetMouseButtonDown(0))
+        if (!Input.GetMouseButtonDown(0))
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            bool clicouNaUI = UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
-            
-            if (!clicouNaUI && Physics.Raycast(ray, out RaycastHit hit, 5000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-            {
-                if (hit.transform == transform || hit.transform.IsChildOf(transform))
-                {
-                    // Apenas dono do time abrem o menu (0 ou 1 costuma ser Player)
-                    if (identidade == null || identidade.teamID == 1 || identidade.teamID == 0)
-                    {
-                        if (MenuGoverno.Instancia != null) MenuGoverno.Instancia.AlternarMenu(false);
-                        
-                        // Fecha outra fazenda que estiver aberta
-                        if (FazendaAtiva != null && FazendaAtiva != this) FazendaAtiva.FecharMenu();
+            return;
+        }
 
-                        menuAberto = true;
-                        FazendaAtiva = this;
-                        QualquerFazendaAberta = true;
-                        janelaRetangulo.position = new Vector2(Screen.width / 2f - 420f, Screen.height / 2f - 300f);
-                        Debug.Log("✅ [FAZENDA] Você abriu o terminal da Fazenda!");
-                    }
-                    else
-                    {
-                        Debug.Log("❌ [FAZENDA] Você não é dono desta fazenda! (Time do prédio: " + identidade.teamID + ")");
-                    }
+        ProcessarCliqueCompartilhado();
+
+        if (cliqueSobreUIProcessado)
+        {
+            return;
+        }
+
+        if (houveHitCliqueProcessado)
+        {
+            Transform alvoClique = hitCliqueProcessado.transform;
+            if (alvoClique == transform || alvoClique.IsChildOf(transform))
+            {
+                // Apenas dono do time abrem o menu (0 ou 1 costuma ser Player)
+                if (identidade == null || identidade.teamID == 1 || identidade.teamID == 0)
+                {
+                    if (MenuGoverno.Instancia != null) MenuGoverno.Instancia.AlternarMenu(false);
+
+                    // Fecha outra fazenda que estiver aberta
+                    if (FazendaAtiva != null && FazendaAtiva != this) FazendaAtiva.FecharMenu();
+
+                    menuAberto = true;
+                    FazendaAtiva = this;
+                    QualquerFazendaAberta = true;
+                    janelaRetangulo.position = new Vector2(Screen.width / 2f - 420f, Screen.height / 2f - 300f);
+                    LogFarm("Terminal da fazenda aberto.");
                 }
                 else
                 {
-                    // Clicou fora => Fecha menu
-                    Rect bounds = new Rect(janelaRetangulo.x, Screen.height - janelaRetangulo.y - janelaRetangulo.height, janelaRetangulo.width, janelaRetangulo.height);
-                    if (menuAberto && !bounds.Contains(Input.mousePosition))
-                    {
-                        FecharMenu();
-                    }
+                    LogFarm("Clique ignorado: fazenda pertence ao time " + identidade.teamID + ".");
                 }
             }
+            else
+            {
+                FecharSeCliqueFora();
+            }
+        }
+        else
+        {
+            FecharSeCliqueFora();
+        }
+    }
+
+    private static void ProcessarCliqueCompartilhado()
+    {
+        if (frameCliqueProcessado == Time.frameCount)
+        {
+            return;
         }
 
-        // Relógio de Produção Agrícola (Auto-Replant)
-        FazerTerrenoCrescer(1, ref lote1Ocupado, ref lote1Progresso, ref lote1SementeIndex);
-        FazerTerrenoCrescer(2, ref lote2Ocupado, ref lote2Progresso, ref lote2SementeIndex);
-        FazerTerrenoCrescer(3, ref lote3Ocupado, ref lote3Progresso, ref lote3SementeIndex);
+        frameCliqueProcessado = Time.frameCount;
+        cliqueSobreUIProcessado = UnityEngine.EventSystems.EventSystem.current != null
+            && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+
+        houveHitCliqueProcessado = false;
+        if (cliqueSobreUIProcessado || Camera.main == null)
+        {
+            return;
+        }
+
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        houveHitCliqueProcessado = Physics.Raycast(ray, out hitCliqueProcessado, 5000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+    }
+
+    private void FecharSeCliqueFora()
+    {
+        Rect bounds = new Rect(janelaRetangulo.x, Screen.height - janelaRetangulo.y - janelaRetangulo.height, janelaRetangulo.width, janelaRetangulo.height);
+        if (menuAberto && !bounds.Contains(Input.mousePosition))
+        {
+            FecharMenu();
+        }
+    }
+
+    private System.Collections.IEnumerator RotinaProducaoAgricola()
+    {
+        while (true)
+        {
+            yield return esperaProducao;
+            float delta = Mathf.Max(0.5f, intervaloProducaoSegundos);
+            
+            FazerTerrenoCrescer(1, ref lote1Ocupado, ref lote1Progresso, ref lote1SementeIndex, delta);
+            FazerTerrenoCrescer(2, ref lote2Ocupado, ref lote2Progresso, ref lote2SementeIndex, delta);
+            FazerTerrenoCrescer(3, ref lote3Ocupado, ref lote3Progresso, ref lote3SementeIndex, delta);
+        }
     }
 
     public void FecharMenu()
@@ -144,27 +203,27 @@ public class Fazenda : MonoBehaviour
         }
     }
 
-    private void FazerTerrenoCrescer(int numeroLote, ref bool ocupado, ref float progresso, ref int sementeIndex)
+    private void FazerTerrenoCrescer(int numeroLote, ref bool ocupado, ref float progresso, ref int sementeIndex, float deltaTimeAtualizado)
     {
         if (ocupado && sementeIndex > 0 && sementeIndex < catalogoAgricola.Count)
         {
             RegistoColheita cultivo = catalogoAgricola[sementeIndex];
             
-            progresso += Time.deltaTime;
+            progresso += deltaTimeAtualizado;
             
             // Fim da Estação de Colheita
             if (progresso >= cultivo.tempoCrescimento)
             {
                 if (GerenciadorRecursos.Instancia != null)
                 {
-                    GerenciadorRecursos.Instancia.dinheiro += cultivo.lucroGerado;
-                    Debug.Log($"🌾 [FAZENDA] Colheita de {cultivo.nome} efetuada! +${cultivo.lucroGerado} ao Fundo do País.");
+                    GerenciadorRecursos.Instancia.AdicionarRecurso("Comida", cultivo.lucroGerado);
+                    LogFarm($"Colheita de {cultivo.nome}: +{cultivo.lucroGerado} comida.");
                     
                     // Tenta replantar automaticamente
                     if (GerenciadorRecursos.Instancia.TentarGastarDinheiro(cultivo.custoSemente))
                     {
                         progresso = 0f; // Reinicia o ciclo
-                        Debug.Log($"🌾 [FAZENDA] Replantio Automático de {cultivo.nome} efetuado. Custo: -${cultivo.custoSemente}");
+                        LogFarm($"Replantio automatico de {cultivo.nome}. Custo: -${cultivo.custoSemente}");
                     }
                     else
                     {
@@ -172,7 +231,7 @@ public class Fazenda : MonoBehaviour
                         ocupado = false;
                         progresso = 0f;
                         sementeIndex = 0;
-                        Debug.Log($"🌾 [FAZENDA] Replantio FALHOU. Dinheiro insuficiente. Terreno desocupado.");
+                        LogFarm("Replantio falhou por dinheiro insuficiente. Terreno desocupado.");
                     }
                 }
                 else
@@ -197,36 +256,66 @@ public class Fazenda : MonoBehaviour
     {
         if (estilosProntos) return;
 
-        estiloBotao = new GUIStyle(GUI.skin.button);
-        estiloBotao.normal.background = CriarTextura(new Color(0.2f, 0.4f, 0.2f, 0.95f)); 
-        estiloBotao.hover.background = CriarTextura(new Color(0.3f, 0.6f, 0.3f, 1f)); 
-        estiloBotao.normal.textColor = Color.white;
-        estiloBotao.hover.textColor = Color.yellow;
-        estiloBotao.fontStyle = FontStyle.Bold;
-        estiloBotao.fontSize = 16; // Aumentado um pouco
+        if (texturaBotaoNormal == null) texturaBotaoNormal = CriarTextura(new Color(0.2f, 0.4f, 0.2f, 0.95f));
+        if (texturaBotaoHover == null) texturaBotaoHover = CriarTextura(new Color(0.3f, 0.6f, 0.3f, 1f));
+        if (texturaJanela == null) texturaJanela = CriarTextura(new Color(0.18f, 0.15f, 0.12f, 0.98f));
+        if (texturaBotaoFechar == null) texturaBotaoFechar = CriarTextura(new Color(0.8f, 0.2f, 0.2f, 0.9f));
 
-        estiloSemente = new GUIStyle(GUI.skin.label);
-        estiloSemente.normal.textColor = new Color(0.9f, 0.9f, 0.7f, 1f);
-        estiloSemente.fontStyle = FontStyle.Bold;
-        estiloSemente.fontSize = 16;
+        if (estiloBotaoCompartilhado == null)
+        {
+            estiloBotaoCompartilhado = new GUIStyle(GUI.skin.button);
+            estiloBotaoCompartilhado.normal.background = texturaBotaoNormal;
+            estiloBotaoCompartilhado.hover.background = texturaBotaoHover;
+            estiloBotaoCompartilhado.normal.textColor = Color.white;
+            estiloBotaoCompartilhado.hover.textColor = Color.yellow;
+            estiloBotaoCompartilhado.fontStyle = FontStyle.Bold;
+            estiloBotaoCompartilhado.fontSize = 16;
+        }
 
-        estiloStatus = new GUIStyle(GUI.skin.label);
-        estiloStatus.normal.textColor = new Color(0.8f, 1f, 0.8f, 1f);
-        estiloStatus.fontSize = 15;
+        if (estiloSementeCompartilhado == null)
+        {
+            estiloSementeCompartilhado = new GUIStyle(GUI.skin.label);
+            estiloSementeCompartilhado.normal.textColor = new Color(0.9f, 0.9f, 0.7f, 1f);
+            estiloSementeCompartilhado.fontStyle = FontStyle.Bold;
+            estiloSementeCompartilhado.fontSize = 16;
+        }
 
-        estiloAviso = new GUIStyle(GUI.skin.label);
-        estiloAviso.normal.textColor = new Color(1f, 0.6f, 0.6f, 1f);
-        estiloAviso.fontStyle = FontStyle.Italic;
-        estiloAviso.fontSize = 14;
+        if (estiloStatusCompartilhado == null)
+        {
+            estiloStatusCompartilhado = new GUIStyle(GUI.skin.label);
+            estiloStatusCompartilhado.normal.textColor = new Color(0.8f, 1f, 0.8f, 1f);
+            estiloStatusCompartilhado.fontSize = 15;
+        }
 
-        estiloJanelaAgricola = new GUIStyle(GUI.skin.window);
-        estiloJanelaAgricola.normal.background = CriarTextura(new Color(0.18f, 0.15f, 0.12f, 0.98f)); 
-        estiloJanelaAgricola.normal.textColor = new Color(0.9f, 0.9f, 0.8f);
-        estiloJanelaAgricola.fontStyle = FontStyle.Bold;
-        estiloJanelaAgricola.fontSize = 16;
+        if (estiloAvisoCompartilhado == null)
+        {
+            estiloAvisoCompartilhado = new GUIStyle(GUI.skin.label);
+            estiloAvisoCompartilhado.normal.textColor = new Color(1f, 0.6f, 0.6f, 1f);
+            estiloAvisoCompartilhado.fontStyle = FontStyle.Italic;
+            estiloAvisoCompartilhado.fontSize = 14;
+        }
 
-        estiloXBotao = new GUIStyle(estiloBotao);
-        estiloXBotao.normal.background = CriarTextura(new Color(0.8f, 0.2f, 0.2f, 0.9f));
+        if (estiloJanelaAgricolaCompartilhado == null)
+        {
+            estiloJanelaAgricolaCompartilhado = new GUIStyle(GUI.skin.window);
+            estiloJanelaAgricolaCompartilhado.normal.background = texturaJanela;
+            estiloJanelaAgricolaCompartilhado.normal.textColor = new Color(0.9f, 0.9f, 0.8f);
+            estiloJanelaAgricolaCompartilhado.fontStyle = FontStyle.Bold;
+            estiloJanelaAgricolaCompartilhado.fontSize = 16;
+        }
+
+        if (estiloXBotaoCompartilhado == null)
+        {
+            estiloXBotaoCompartilhado = new GUIStyle(estiloBotaoCompartilhado);
+            estiloXBotaoCompartilhado.normal.background = texturaBotaoFechar;
+        }
+
+        estiloBotao = estiloBotaoCompartilhado;
+        estiloSemente = estiloSementeCompartilhado;
+        estiloStatus = estiloStatusCompartilhado;
+        estiloAviso = estiloAvisoCompartilhado;
+        estiloJanelaAgricola = estiloJanelaAgricolaCompartilhado;
+        estiloXBotao = estiloXBotaoCompartilhado;
 
         estilosProntos = true;
     }
@@ -303,7 +392,7 @@ public class Fazenda : MonoBehaviour
             GUILayout.BeginVertical(GUILayout.Width(220));
             GUILayout.Label($"🌱 {cultura.nome}", estiloSemente);
             GUILayout.Label($"Cresce em: {cultura.tempoCrescimento}s", estiloStatus);
-            GUILayout.Label($"Lucro no Armazém: +${cultura.lucroGerado}", estiloStatus);
+            GUILayout.Label($"Produção: +{cultura.lucroGerado} Comida", estiloStatus);
             GUILayout.Label($"Semente Custa: -${cultura.custoSemente}", estiloAviso);
             GUILayout.EndVertical();
             
@@ -346,7 +435,7 @@ public class Fazenda : MonoBehaviour
             float porcentagem = (progressoAtual / colheita.tempoCrescimento) * 100f;
             
             GUILayout.Label($"Cultura: {colheita.nome}", estiloStatus);
-            GUILayout.Label($"Gerando Fundo: ${colheita.lucroGerado}", estiloStatus);
+            GUILayout.Label($"Produção: +{colheita.lucroGerado} Comida", estiloStatus);
             GUILayout.Label($"Amadurecendo: {porcentagem:F1}%", estiloAviso);
             GUILayout.Space(5);
 
@@ -391,11 +480,11 @@ public class Fazenda : MonoBehaviour
                 lote3SementeIndex = sementeId;
                 lote3Progresso = 0f;
             }
-            Debug.Log($"Trabalhadores da fazenda plantaram sementes de {novaSemente.nome}.");
+            LogFarm($"Trabalhadores plantaram sementes de {novaSemente.nome}.");
         }
         else
         {
-            Debug.Log("Dinheiro insuficiente para comprar sementes de " + novaSemente.nome);
+            LogFarm("Dinheiro insuficiente para comprar sementes de " + novaSemente.nome);
         }
     }
 
@@ -423,4 +512,45 @@ public class Fazenda : MonoBehaviour
 
     // Salvar Dados Básicos (Se tiver sistema de save unificado, aqui ficam as propriedades para ele varrer)
     // As propriedades lote1Ocupado e afins já são públicas, sendo fácil de serializar no JSON/PlayerPrefs global!
+    private void GarantirEstruturaEconomica()
+    {
+        EstruturaEconomica estrutura = GetComponent<EstruturaEconomica>();
+        if (estrutura == null)
+            estrutura = gameObject.AddComponent<EstruturaEconomica>();
+
+        estrutura.tipo = TipoEstruturaEconomica.Farm;
+        estrutura.InferirTeamId();
+        estrutura.AplicarPadraoPorTipo();
+    }
+
+    private void PopularCatalogoSeNecessario()
+    {
+        if (catalogoAgricola == null)
+            catalogoAgricola = new List<RegistoColheita>();
+
+        if (catalogoAgricola.Count > 0)
+            return;
+
+        catalogoAgricola.Add(new RegistoColheita { nome = "-", semente = SementeAgricola.Nenhum });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Milho", semente = SementeAgricola.Milho, lucroGerado = 300, tempoCrescimento = 90f, custoSemente = 50 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Batata", semente = SementeAgricola.Batata, lucroGerado = 280, tempoCrescimento = 100f, custoSemente = 40 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Feijao", semente = SementeAgricola.Feijao, lucroGerado = 250, tempoCrescimento = 120f, custoSemente = 35 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Trigo", semente = SementeAgricola.Trigo, lucroGerado = 360, tempoCrescimento = 180f, custoSemente = 65 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Arroz", semente = SementeAgricola.Arroz, lucroGerado = 400, tempoCrescimento = 210f, custoSemente = 70 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Cana-de-Acucar", semente = SementeAgricola.CanaDeAcucar, lucroGerado = 550, tempoCrescimento = 300f, custoSemente = 100 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Algodao", semente = SementeAgricola.Algodao, lucroGerado = 650, tempoCrescimento = 360f, custoSemente = 120 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Soja", semente = SementeAgricola.Soja, lucroGerado = 800, tempoCrescimento = 420f, custoSemente = 150 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Cafe", semente = SementeAgricola.Cafe, lucroGerado = 1100, tempoCrescimento = 600f, custoSemente = 250 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Cacau", semente = SementeAgricola.Cacau, lucroGerado = 1500, tempoCrescimento = 800f, custoSemente = 350 });
+    }
+
+    private void LogFarm(string mensagem)
+    {
+        if (!mostrarLogs)
+        {
+            return;
+        }
+
+        Debug.Log("[FAZENDA] " + mensagem, this);
+    }
 }

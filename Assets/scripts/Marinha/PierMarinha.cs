@@ -26,6 +26,7 @@ public class PierMarinha : MonoBehaviour
         // Controle de Manutenção Interno
         [System.NonSerialized] public float timerRecarga = 0f;
         [System.NonSerialized] public float timerRecargaContramedidas = 0f;
+        [System.NonSerialized] public float timerRecargaCombustivel = 0f;
         [System.NonSerialized] public bool atracagemCompleta = false; 
 
         public bool EstaLivre()
@@ -35,6 +36,7 @@ public class PierMarinha : MonoBehaviour
                 atracagemCompleta = false;
                 timerRecarga = 0f;
                 timerRecargaContramedidas = 0f;
+                timerRecargaCombustivel = 0f;
                 return true;
             }
             if (!navioOcupante.EstaAtracado) {
@@ -42,6 +44,7 @@ public class PierMarinha : MonoBehaviour
                 atracagemCompleta = false;
                 timerRecarga = 0f;
                 timerRecargaContramedidas = 0f;
+                timerRecargaCombustivel = 0f;
                 return true;
             }
             return false;
@@ -57,10 +60,25 @@ public class PierMarinha : MonoBehaviour
 
     [Header("Estado")]
     public bool ocupada = false;
+    private NavioPetroleiro _petroleiroReservado;
+    private NavioPetroleiro _petroleiroOcupanteLogistica;
+    private float _reservaPetroleiroAte;
 
     public void TentarOcupar()
     {
         ocupada = true;
+    }
+
+    public bool TentarOcuparLogistica(NavioPetroleiro petroleiro)
+    {
+        if (petroleiro == null || (_petroleiroOcupanteLogistica != null && _petroleiroOcupanteLogistica != petroleiro))
+        {
+            return false;
+        }
+
+        _petroleiroOcupanteLogistica = petroleiro;
+        ocupada = true;
+        return true;
     }
 
     public void Liberar()
@@ -68,12 +86,61 @@ public class PierMarinha : MonoBehaviour
         ocupada = false;
     }
 
+    public void LiberarLogistica(NavioPetroleiro petroleiro)
+    {
+        if (_petroleiroOcupanteLogistica == petroleiro)
+        {
+            _petroleiroOcupanteLogistica = null;
+            ocupada = false;
+        }
+    }
+
+    public bool EstaReservadoPorOutro(NavioPetroleiro petroleiro)
+    {
+        if (_petroleiroReservado == null || _petroleiroReservado == petroleiro)
+        {
+            return false;
+        }
+
+        if (Time.time > _reservaPetroleiroAte)
+        {
+            _petroleiroReservado = null;
+            _reservaPetroleiroAte = 0f;
+            return false;
+        }
+
+        return true;
+    }
+
+    public bool TentarReservarLogistica(NavioPetroleiro petroleiro, float duracaoSegundos = 90f)
+    {
+        if (petroleiro == null || EstaReservadoPorOutro(petroleiro))
+        {
+            return false;
+        }
+
+        _petroleiroReservado = petroleiro;
+        _reservaPetroleiroAte = Time.time + Mathf.Max(5f, duracaoSegundos);
+        return true;
+    }
+
+    public void LiberarReservaLogistica(NavioPetroleiro petroleiro)
+    {
+        if (_petroleiroReservado == petroleiro)
+        {
+            _petroleiroReservado = null;
+            _reservaPetroleiroAte = 0f;
+        }
+    }
+
     public void ReceberPetroleo(int quantidade)
     {
-        if (GerenciadorRecursos.Instancia != null)
+        int recebido = RecursosPorTime.ReceberPetroleoNoPier(this, quantidade);
+        if (recebido > 0)
         {
-            GerenciadorRecursos.Instancia.AdicionarRecursos(addPetroleo: quantidade);
-            // Opcional: Mostrar feedback flutuante (não implementado aqui)
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "Petroleo",
+                "Pier time " + RecursosPorTime.ObterTeamId(this) + " recebeu " + recebido);
         }
     }
 
@@ -85,6 +152,8 @@ public class PierMarinha : MonoBehaviour
     public float reparoPorSegundo = 10f; // Cura 10HP/s
     public float intervaloRecargaMissel = 1.0f; // 1 Míssil por segundo
     public float intervaloRecargaContramedidas = 2.0f; // 1 cartucho/manutencao por ciclo
+    public float reabastecimentoCombustivelPorSegundo = 45f;
+    public float intervaloReabastecimentoCombustivel = 0.5f;
     
     [Header("Configuração de Saída")]
     public Transform[] pontosDeSaida;
@@ -131,9 +200,15 @@ public class PierMarinha : MonoBehaviour
 
     void Start()
     {
+        SincronizarPerfilCosteiro();
         CorrigirPoseCosteiraSeNecessario();
         StartCoroutine(RotinaBuscaConstrucao());
         RegistrarNoGerente();
+    }
+
+    void OnValidate()
+    {
+        SincronizarPerfilCosteiro();
     }
 
     public void RegistrarNoGerente()
@@ -289,6 +364,28 @@ public class PierMarinha : MonoBehaviour
                 {
                     vaga.timerRecargaContramedidas = 0f;
                 }
+
+                // 4. COMBUSTIVEL NAVAL
+                CombustivelUnidade combustivel = navio.GetComponent<CombustivelUnidade>();
+                if (combustivel == null)
+                {
+                    combustivel = CombustivelUnidade.Garantir(navio.gameObject, false);
+                }
+
+                if (combustivel != null && combustivel.CombustivelAtual < combustivel.Capacidade)
+                {
+                    vaga.timerRecargaCombustivel += Time.deltaTime;
+                    if (vaga.timerRecargaCombustivel >= intervaloReabastecimentoCombustivel)
+                    {
+                        float quantidade = reabastecimentoCombustivelPorSegundo * vaga.timerRecargaCombustivel;
+                        ServicoAbastecimento.TentarAbastecer(combustivel, quantidade, out _);
+                        vaga.timerRecargaCombustivel = 0f;
+                    }
+                }
+                else
+                {
+                    vaga.timerRecargaCombustivel = 0f;
+                }
             }
             }
             catch (MissingReferenceException)
@@ -312,8 +409,20 @@ public class PierMarinha : MonoBehaviour
     }
 
     [Header("Indicadores Litorâneos (Terra/Água)")]
+    public CoastalPlacementProfile perfilColocacaoCosteira = new CoastalPlacementProfile();
     public float offsetAguaFrente = 35f; 
     public float offsetTerraTras = -15f; 
+
+    void SincronizarPerfilCosteiro()
+    {
+        if (perfilColocacaoCosteira == null)
+        {
+            perfilColocacaoCosteira = new CoastalPlacementProfile();
+        }
+
+        perfilColocacaoCosteira.offsetAguaFrente = Mathf.Abs(offsetAguaFrente);
+        perfilColocacaoCosteira.offsetTerraTras = offsetTerraTras;
+    }
 
     // --- VISUALIZAÇÃO NO EDITOR ---
     void OnDrawGizmos()
@@ -410,10 +519,9 @@ public class PierMarinha : MonoBehaviour
         // FASE 1: NAVEGAÇÃO AUTÔNOMA (NAVMESH)
         if (vaga.pontoDeManobra != null)
         {
-            if (agent != null && agent.isActiveAndEnabled)
+            if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
             {
                 agent.isStopped = false;
-                // GerenteDeJogo.Instancia.AtualizarPontoEstaleiro(pontosSpawn[0], saidaNavio); // This line was not in the original content, but was in the instruction's context. I will ignore it as per "make the change faithfully and without making any unrelated edits."
             }
             
             // Registra em todos os menus e no gerente
@@ -431,6 +539,7 @@ public class PierMarinha : MonoBehaviour
                 && vaga.navioOcupante == navio
                 && agent != null
                 && agent.isActiveAndEnabled
+                && agent.isOnNavMesh
                 && (agent.pathPending || agent.remainingDistance > 2.5f))
             {
                 timerChegada += Time.deltaTime;
@@ -493,18 +602,42 @@ public class PierMarinha : MonoBehaviour
 
         Vector3 posFinal = vaga.pontoDeAtracagem.position;
         Quaternion rotFinal = vaga.pontoDeAtracagem.rotation;
+        Vector3 direcaoEntrada = posFinal - navio.transform.position;
+        direcaoEntrada.y = 0f;
+        if (direcaoEntrada.sqrMagnitude > 0.25f)
+        {
+            Quaternion rotEntrada = Quaternion.LookRotation(direcaoEntrada.normalized, Vector3.up);
+            float timerAlinhamentoEntrada = 0f;
+            while (PodeContinuarAtracagem(vaga, navio)
+                && Quaternion.Angle(navio.transform.rotation, rotEntrada) > 1f
+                && timerAlinhamentoEntrada < 12f)
+            {
+                navio.transform.rotation = Quaternion.RotateTowards(navio.transform.rotation, rotEntrada, 35f * Time.deltaTime);
+                timerAlinhamentoEntrada += Time.deltaTime;
+                yield return null;
+            }
+        }
 
         float timerEntrada = 0f;
         // Timeout longo (60s) para não teleportar se estiver lento
         while (navio != null
             && vaga != null
             && vaga.navioOcupante == navio
-            && (Vector3.Distance(navio.transform.position, posFinal) > 0.05f || Quaternion.Angle(navio.transform.rotation, rotFinal) > 0.5f)
+            && Vector3.Distance(navio.transform.position, posFinal) > 0.05f
             && timerEntrada < 60f)
         {
             navio.transform.position = Vector3.MoveTowards(navio.transform.position, posFinal, velocidadeManobra * Time.deltaTime);
-            navio.transform.rotation = Quaternion.RotateTowards(navio.transform.rotation, rotFinal, 15f * Time.deltaTime);
             timerEntrada += Time.deltaTime;
+            yield return null;
+        }
+
+        float timerRotacaoFinal = 0f;
+        while (PodeContinuarAtracagem(vaga, navio)
+            && Quaternion.Angle(navio.transform.rotation, rotFinal) > 0.5f
+            && timerRotacaoFinal < 10f)
+        {
+            navio.transform.rotation = Quaternion.RotateTowards(navio.transform.rotation, rotFinal, 25f * Time.deltaTime);
+            timerRotacaoFinal += Time.deltaTime;
             yield return null;
         }
 
@@ -522,7 +655,7 @@ public class PierMarinha : MonoBehaviour
         {
             agent.enabled = true;
             agent.Warp(posFinal);
-            agent.isStopped = true;
+            if (agent.isActiveAndEnabled && agent.isOnNavMesh) agent.isStopped = true;
         }
 
         if (controleFisico != null)
@@ -648,8 +781,11 @@ public class PierMarinha : MonoBehaviour
             return false;
         }
 
+        long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
         GameObject novoNavio = Instantiate(prefabNavio, posSpawn, pontoSpawn.rotation);
+        RegistrarTempoDiagnostico("naval_instantiate_ms", instantiateStart);
         long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Spawn", "Navio criado: " + prefabNavio.name);
         
         // CORRECAO DE NOME: Remove (Clone) para que a IA consiga contar na Meta!
         string nomeLimpo = prefabNavio.name.ToLower();
@@ -670,6 +806,11 @@ public class PierMarinha : MonoBehaviour
         {
             idNavio.teamID = 1;
             if (string.IsNullOrEmpty(idNavio.nomeDoPais)) idNavio.nomeDoPais = "Hegemonia";
+        }
+
+        if (idNavio != null)
+        {
+            idNavio.tipoUnidade = TipoUnidade.Naval;
         }
 
         IdentidadeNaval idNaval = novoNavio.GetComponent<IdentidadeNaval>();
@@ -702,6 +843,15 @@ public class PierMarinha : MonoBehaviour
             }
 
             ControleUnidade controleUnidade = novoNavio.GetComponent<ControleUnidade>();
+            if (controleUnidade == null)
+            {
+                controleUnidade = novoNavio.AddComponent<ControleUnidade>();
+            }
+            else if (!controleUnidade.enabled)
+            {
+                controleUnidade.enabled = true;
+            }
+
             ControleNavioRealista controleRealista = novoNavio.GetComponent<ControleNavioRealista>();
             ControleSubmarino controleSubmarino = novoNavio.GetComponent<ControleSubmarino>();
             bool movimentoDelegado = false;
@@ -788,6 +938,7 @@ public class PierMarinha : MonoBehaviour
 
                 float pctVida = 1f;
                 int municao = 0, munMax = 0;
+                CombustivelUnidade combustivel = navio.GetComponent<CombustivelUnidade>();
 
                 SistemaDeDanos vida = navio.GetComponent<SistemaDeDanos>();
                 if (vida != null) pctVida = vida.vidaAtual / vida.vidaMaxima;
@@ -796,7 +947,7 @@ public class PierMarinha : MonoBehaviour
                 if (lancador != null) { municao = lancador.municaoTotal; munMax = lancador.municaoMaxima; }
 
                 float boxWidth = 200f;
-                float boxHeight = (munMax > 0) ? 80f : 50f;
+                float boxHeight = (munMax > 0) ? 100f : 70f;
                 Rect boxRect = new Rect(screenPos.x - boxWidth/2, y, boxWidth, boxHeight);
                 
                 Color oldColor = GUI.color;
@@ -827,6 +978,13 @@ public class PierMarinha : MonoBehaviour
                     float pctMun = (float)municao / munMax;
                     styleStatus.normal.textColor = Color.Lerp(Color.yellow, Color.cyan, pctMun);
                     GUI.Label(new Rect(screenPos.x - 100, y + 50, 200, 20), txtMun, styleStatus);
+                }
+
+                if (combustivel != null && combustivel.usaCombustivel)
+                {
+                    string txtComb = $"COMB: {combustivel.Percentual:P0}";
+                    styleStatus.normal.textColor = Color.Lerp(Color.red, Color.cyan, combustivel.Percentual);
+                    GUI.Label(new Rect(screenPos.x - 100, y + (munMax > 0 ? 72 : 50), 200, 20), txtComb, styleStatus);
                 }
                 }
                 catch (MissingReferenceException)
@@ -894,5 +1052,6 @@ public class PierMarinha : MonoBehaviour
         vaga.atracagemCompleta = false;
         vaga.timerRecarga = 0f;
         vaga.timerRecargaContramedidas = 0f;
+        vaga.timerRecargaCombustivel = 0f;
     }
 }

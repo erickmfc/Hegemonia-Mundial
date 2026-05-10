@@ -19,6 +19,15 @@ namespace Hegemonia.AI.BrainMaster
         public IA_BattleGovernorDecision BattleDecision;
         public IA_BuildDirector BuildDirector;
         public IA_SquadDirector SquadDirector;
+        public IA_NationalDecisionState NationalDecisionState;
+        public IA_GrandStrategy GrandStrategy;
+        public IA_EconomyDirector EconomyDirector;
+        public IA_LawDirector LawDirector;
+        public IA_DiplomacyDirector DiplomacyDirector;
+        public IA_MarketDirector MarketDirector;
+        public IA_LogisticsDirector LogisticsDirector;
+        public IA_WarDirector WarDirector;
+        public IA_SyncNetwork SyncNetwork;
         public IA_SemanticMapPlanner SemanticMapPlanner;
         public IA_ZonePlanner ZonePlanner;
         public IA_LotPlanner LotPlanner;

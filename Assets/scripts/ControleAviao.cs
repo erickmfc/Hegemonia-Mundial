@@ -18,6 +18,8 @@ public class ControleAviao : MonoBehaviour
     [HideInInspector] public bool aguardandoCliqueRadar = false;
     [Header("=== MISSÃO ===")]
     public bool ordemParaRetorno = false;
+    [Range(0.08f, 0.45f)] public float reservaMinimaRetornoPercentual = 0.22f;
+    [Range(0.15f, 0.60f)] public float reservaRetornoComDanosPercentual = 0.34f;
 
     [Header("=== FÍSICA E VELOCIDADES ===")]
     [Tooltip("Velocidade rígida no chão para não fazer zig-zag")]
@@ -47,6 +49,10 @@ public class ControleAviao : MonoBehaviour
     // Cache por tipo de aeronave: evita varrer toda a hierarquia em TODO spawn.
     private static readonly Dictionary<string, string[]> CacheCaminhosRodasPorPrefab = new Dictionary<string, string[]>();
 
+    [Tooltip("Ajuste extra de altura quando estacionado no convés/pátio (positivo = mais alto).")]
+    public float ajusteAlturaEstacionado = 0f;
+    private float _alturaEstacionamentoCache = -1f;
+
     // Variáveis internas
     public Vector3 alvoGPSVoo;
     public Vector3 centroDaPatrulha; 
@@ -63,6 +69,11 @@ public class ControleAviao : MonoBehaviour
     private float anguloOrbitaAtual = 0f;
     private int sentidoOrbita = 1;
     private bool retornoAutomaticoAposChegadaCentro = false;
+    private readonly List<Vector3> rotaPatrulhaSalva = new List<Vector3>();
+    private Vector3 ultimoObjetivoMissao = Vector3.zero;
+    private bool retomarMissaoAposAbastecer = false;
+    private string ultimoMotivoRetorno = string.Empty;
+    private Coroutine rotinaRetomadaMissao;
 
     // --- CACHE DE COMPONENTES (evita GetComponent no Update) ---
     private ControleUnidade _controleUnidade;
@@ -128,7 +139,34 @@ public class ControleAviao : MonoBehaviour
         {
             rotacoesOriginaisRodas.Add(rodas[i] != null ? rodas[i].localRotation : Quaternion.identity);
         }
-        AbaixarRodas(); 
+        AbaixarRodas();
+
+        // Cacheia altura de estacionamento para uso no pátio do porta-aviões
+        _alturaEstacionamentoCache = ObterAlturaEstacionamento();
+    }
+
+    public float ObterAlturaEstacionamento()
+    {
+        if (_alturaEstacionamentoCache > 0f) return _alturaEstacionamentoCache;
+
+        float alturaBase = Mathf.Max(0.05f, ajusteAlturaEstacionado);
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        if (renderers == null || renderers.Length == 0) return alturaBase;
+
+        bool hasBounds = false;
+        Bounds bounds = new Bounds(transform.position, Vector3.zero);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer r = renderers[i];
+            if (r == null) continue;
+            if (!hasBounds) { bounds = r.bounds; hasBounds = true; }
+            else bounds.Encapsulate(r.bounds);
+        }
+        if (!hasBounds) return alturaBase;
+
+        float offset = transform.position.y - bounds.min.y + 0.05f;
+        if (float.IsNaN(offset) || float.IsInfinity(offset)) return alturaBase;
+        return Mathf.Max(alturaBase, offset);
     }
 
     private static string NormalizarChavePrefab(string nome)
@@ -186,6 +224,14 @@ public class ControleAviao : MonoBehaviour
     {
         if (!estaEmModoVooFisico) return;
 
+        AvaliarRetornoSeguroAutomatico();
+
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         float dt = Time.deltaTime;
         bool selecionado = (_controleUnidade != null && _controleUnidade.selecionado);
 
@@ -204,7 +250,7 @@ public class ControleAviao : MonoBehaviour
                     {
                         Debug.Log($"<color=red>[{gameObject.name}] DANOS CRÍTICOS ({Mathf.RoundToInt(pctVida*100)}%)! Retornando base.</color>");
                     }
-                    ComandoRetornarBase();
+                    PrepararRetornoSeguro(EncontrarMelhorBaseRetorno(), "danos criticos");
                 }
             }
         }
@@ -274,16 +320,30 @@ public class ControleAviao : MonoBehaviour
     {
         float raioDeAceitacao = pontoFinal ? 0.5f : 3.5f; // Aumentado para não engasgar em waypoints muito próximos
         float raioSqr = raioDeAceitacao * raioDeAceitacao;
-        
+
+        bool alvoMovelFornecido = (alvoMovel != null);
+
         while (true)
         {
-            Vector3 destinoAlvo = (alvoMovel != null) ? alvoMovel.position : destinoFixo;
-            
-            // Se destinoFixo for zero mas temos um alvoMovel, não devemos considerar a distância até o zero
+            if (alvoMovelFornecido && alvoMovel == null) break; // O alvo (ex: vaga ou aeroporto) foi destruído no caminho
+
+            if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+            {
+                PararPorFaltaDeCombustivel();
+                yield break;
+            }
+
             Vector3 meuPos = transform.position;
-            Vector3 diff = (alvoMovel != null) ? 
-                new Vector3(alvoMovel.position.x - meuPos.x, 0, alvoMovel.position.z - meuPos.z) : 
-                new Vector3(destinoFixo.x - meuPos.x, 0, destinoFixo.z - meuPos.z);
+            Vector3 diff;
+
+            if (alvoMovel != null)
+            {
+                diff = new Vector3(alvoMovel.position.x - meuPos.x, 0, alvoMovel.position.z - meuPos.z);
+            }
+            else
+            {
+                diff = new Vector3(destinoFixo.x - meuPos.x, 0, destinoFixo.z - meuPos.z);
+            }
 
             if (diff.sqrMagnitude <= raioSqr) break; 
 
@@ -390,8 +450,23 @@ public class ControleAviao : MonoBehaviour
 
     public void IniciarMissaoCompleta(Vector3 alvoFinalGPS)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         if (estadoAtual == EstadoAviao.ProntoNoPatio)
         {
+            bool emPatrulhaSalva = _controleUnidade != null && _controleUnidade.OrdemAtual == OrdemControleUnidade.Patrulhando && rotaPatrulhaSalva.Count > 1;
+            if (!emPatrulhaSalva)
+            {
+                RegistrarMissaoManual(alvoFinalGPS);
+            }
+            else if (ultimoObjetivoMissao == Vector3.zero)
+            {
+                ultimoObjetivoMissao = alvoFinalGPS;
+            }
             alvoEstrategico = alvoFinalGPS;
             alvoGPSVoo = alvoFinalGPS;
             Vector3 deslocamentoInicial = transform.position - alvoFinalGPS;
@@ -412,7 +487,40 @@ public class ControleAviao : MonoBehaviour
 
     public void ComandoRetornarBase()
     {
-        if (estadoAtual == EstadoAviao.EmMissao) ordemParaRetorno = true;
+        if (estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Decolando)
+        {
+            ordemParaRetorno = true;
+        }
+    }
+
+    public void PararPorFaltaDeCombustivel()
+    {
+        bool falhaDurantePousoOuDecolagem = (estadoAtual == EstadoAviao.Pousando || estadoAtual == EstadoAviao.Decolando || estadoAtual == EstadoAviao.EmMissao)
+            && transform.position.y > 4f;
+
+        if (!estaEmModoVooFisico && !falhaDurantePousoOuDecolagem)
+        {
+            ordemParaRetorno = false;
+            aguardandoCliqueRadar = false;
+            multiplicadorVelocidadeTurbo = 1f;
+
+            if (modeloMecanicoVisual != null)
+            {
+                modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.identity, 0.45f);
+            }
+            return;
+        }
+
+        estaEmModoVooFisico = false;
+        ordemParaRetorno = false;
+        aguardandoCliqueRadar = false;
+        multiplicadorVelocidadeTurbo = 1f;
+
+        if (transform.position.y > 5f)
+        {
+            Rigidbody rb = GetComponent<Rigidbody>();
+            FalhaAereaFisica.Ativar(gameObject, rb, velocidadeMaximaVoo * 0.4f, 5f, false, _sistemaDanos);
+        }
     }
 
     public void DefinirBaseAlternativaEIniciarRetorno(GerenciadorAeroporto novaBase)
@@ -436,6 +544,230 @@ public class ControleAviao : MonoBehaviour
             Vector3 pontoAproximacaoBase = ObterPontoAproximacaoDaBase(novaBase);
             IniciarMissaoCompleta(pontoAproximacaoBase);
         }
+    }
+
+    public void RegistrarMissaoManual(Vector3 destino)
+    {
+        ultimoObjetivoMissao = destino;
+        if (ultimoObjetivoMissao.y < 60f)
+        {
+            ultimoObjetivoMissao.y = 60f;
+        }
+
+        if (rotaPatrulhaSalva.Count > 0)
+        {
+            rotaPatrulhaSalva.Clear();
+        }
+    }
+
+    public void RegistrarPatrulha(IList<Vector3> rota)
+    {
+        rotaPatrulhaSalva.Clear();
+        if (rota == null || rota.Count == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < rota.Count; i++)
+        {
+            Vector3 ponto = rota[i];
+            if (ponto.y < 60f)
+            {
+                ponto.y = 60f;
+            }
+            rotaPatrulhaSalva.Add(ponto);
+        }
+
+        ultimoObjetivoMissao = rotaPatrulhaSalva[rotaPatrulhaSalva.Count - 1];
+    }
+
+    public void AtualizarDestinoPatrulha(Vector3 destino)
+    {
+        if (destino.y < 60f)
+        {
+            destino.y = 60f;
+        }
+
+        centroDaPatrulha = destino;
+        alvoGPSVoo = destino;
+        ultimoObjetivoMissao = destino;
+        alvoPrioritarioIA = false;
+    }
+
+    private void AvaliarRetornoSeguroAutomatico()
+    {
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null || !combustivel.usaCombustivel || estadoAtual != EstadoAviao.EmMissao || ordemParaRetorno)
+        {
+            return;
+        }
+
+        GerenciadorAeroporto baseSegura = EncontrarMelhorBaseRetorno();
+        if (DeveRetornarAgora(combustivel, baseSegura))
+        {
+            PrepararRetornoSeguro(baseSegura, "combustivel");
+        }
+    }
+
+    private bool DeveRetornarAgora(CombustivelUnidade combustivel, GerenciadorAeroporto baseSegura)
+    {
+        if (combustivel == null)
+        {
+            return false;
+        }
+
+        float percentualVida = 1f;
+        if (_sistemaDanos != null && _sistemaDanos.vidaMaxima > 0f)
+        {
+            percentualVida = Mathf.Clamp01(_sistemaDanos.vidaAtual / _sistemaDanos.vidaMaxima);
+        }
+
+        if (percentualVida <= 0.22f)
+        {
+            return true;
+        }
+
+        float distancia = DistanciaAteBase(baseSegura);
+        float consumoRetorno = combustivel.EstimarConsumoParaDistancia(distancia, Mathf.Max(60f, velocidadeMaximaVoo));
+        float reservaPercentual = percentualVida < 0.55f ? reservaRetornoComDanosPercentual : reservaMinimaRetornoPercentual;
+        float reservaCombustivel = Mathf.Max(combustivel.Capacidade * reservaPercentual, consumoRetorno * 0.45f);
+
+        if (percentualVida < 0.40f)
+        {
+            reservaCombustivel += combustivel.Capacidade * 0.08f;
+        }
+
+        float minimoSeguro = consumoRetorno + reservaCombustivel;
+        if (combustivel.CombustivelAtual <= minimoSeguro)
+        {
+            return true;
+        }
+
+        return combustivel.Percentual <= 0.12f;
+    }
+
+    private void PrepararRetornoSeguro(GerenciadorAeroporto baseSegura, string motivo)
+    {
+        ultimoMotivoRetorno = motivo;
+        retomarMissaoAposAbastecer = EhCacaOperacional() && motivo == "combustivel";
+
+        if (baseSegura != null && baseSegura != aeroportoOrigem)
+        {
+            aeroportoOrigem = baseSegura;
+        }
+
+        ComandoRetornarBase();
+    }
+
+    private GerenciadorAeroporto EncontrarMelhorBaseRetorno()
+    {
+        GerenciadorAeroporto melhorBase = aeroportoOrigem;
+        float melhorDistancia = DistanciaAteBase(melhorBase);
+
+        if (!EhCacaOperacional())
+        {
+            return melhorBase;
+        }
+
+        int meuTime = ObterTeamId();
+        GerenciadorPortaAvioes[] carriers = FindObjectsByType<GerenciadorPortaAvioes>(FindObjectsSortMode.None);
+        for (int i = 0; i < carriers.Length; i++)
+        {
+            GerenciadorPortaAvioes carrier = carriers[i];
+            if (carrier == null || !PertenceAoMesmoTime(carrier, meuTime))
+            {
+                continue;
+            }
+
+            float distancia = DistanciaAteBase(carrier);
+            if (distancia < melhorDistancia)
+            {
+                melhorDistancia = distancia;
+                melhorBase = carrier;
+            }
+        }
+
+        return melhorBase;
+    }
+
+    private float DistanciaAteBase(GerenciadorAeroporto baseDestino)
+    {
+        if (baseDestino == null)
+        {
+            return 999999f;
+        }
+
+        Vector3 alvoBase = ObterPontoAproximacaoDaBase(baseDestino);
+        alvoBase.y = transform.position.y;
+        return Vector3.Distance(transform.position, alvoBase);
+    }
+
+    private int ObterTeamId()
+    {
+        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        return identidade != null ? identidade.teamID : 0;
+    }
+
+    private bool PertenceAoMesmoTime(Component componente, int meuTime)
+    {
+        if (componente == null || meuTime <= 0)
+        {
+            return true;
+        }
+
+        IdentidadeUnidade identidade = componente.GetComponent<IdentidadeUnidade>();
+        if (identidade == null)
+        {
+            identidade = componente.GetComponentInParent<IdentidadeUnidade>();
+        }
+
+        return identidade == null || identidade.teamID <= 0 || identidade.teamID == meuTime;
+    }
+
+    private bool EhCacaOperacional()
+    {
+        return GetComponent<LancadorMisselCaca>() != null
+            || GetComponent<ControleAviaoCaca>() != null
+            || gameObject.name.IndexOf("caca", StringComparison.OrdinalIgnoreCase) >= 0
+            || gameObject.name.IndexOf("fighter", StringComparison.OrdinalIgnoreCase) >= 0
+            || gameObject.name.IndexOf("jet", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private void ProcessarRetomadaAposReabastecimento()
+    {
+        if (!retomarMissaoAposAbastecer || estadoAtual != EstadoAviao.ProntoNoPatio)
+        {
+            return;
+        }
+
+        retomarMissaoAposAbastecer = false;
+        if (rotinaRetomadaMissao != null)
+        {
+            StopCoroutine(rotinaRetomadaMissao);
+        }
+        rotinaRetomadaMissao = StartCoroutine(RotinaRetomarMissaoAposReabastecimento());
+    }
+
+    private IEnumerator RotinaRetomarMissaoAposReabastecimento()
+    {
+        yield return new WaitForSeconds(0.35f);
+
+        if (estadoAtual != EstadoAviao.ProntoNoPatio)
+        {
+            rotinaRetomadaMissao = null;
+            yield break;
+        }
+
+        if (_controleUnidade != null && rotaPatrulhaSalva.Count > 1)
+        {
+            _controleUnidade.EmitirOrdemPatrulha(new List<Vector3>(rotaPatrulhaSalva));
+        }
+        else if (ultimoObjetivoMissao != Vector3.zero)
+        {
+            IniciarMissaoCompleta(ultimoObjetivoMissao);
+        }
+
+        rotinaRetomadaMissao = null;
     }
 
     private static Vector3 ObterPontoAproximacaoDaBase(GerenciadorAeroporto baseDestino)
@@ -576,6 +908,7 @@ public class ControleAviao : MonoBehaviour
             
             // REPARO AO CHEGAR: Restaura 100% da vida no ponto de análise
             if (_sistemaDanos != null) _sistemaDanos.Reparar(_sistemaDanos.vidaMaxima);
+            ProcessarServicoDeBaseAposPouso();
             
             estadoAtual = EstadoAviao.ProntoNoPatio; 
             yield return new WaitForSeconds(3f);
@@ -590,10 +923,18 @@ public class ControleAviao : MonoBehaviour
              vagaRetorno = vagaSegura;
              // Registro imediato para evitar que outros aviões pousem na mesma vaga
              if (!aeroportoOrigem.avioesNoPatio.Contains(this)) aeroportoOrigem.avioesNoPatio.Add(this);
+              yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, vagaRetorno));
              
-             yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, vagaRetorno));
+             // Segurança: A vaga ou o aeroporto podem ter sido destruídos durante o taxiamento (yield acima)
+             if (vagaRetorno == null) yield break;
+
              estadoAtual = EstadoAviao.ProntoNoPatio;
+             // Offset de altura para o avião ficar em cima do convés, não dentro da mesh
+             float alturaOffset = ObterAlturaEstacionamento();
+             transform.position = vagaRetorno.position + (vagaRetorno.up * alturaOffset);
              transform.rotation = vagaRetorno.rotation; 
+             ProcessarServicoDeBaseAposPouso();
+             ProcessarRetomadaAposReabastecimento();
         }
         else
         {
@@ -601,7 +942,33 @@ public class ControleAviao : MonoBehaviour
              {
                  yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, aeroportoOrigem.wpPronto));
              }
+             ProcessarServicoDeBaseAposPouso();
              if (aeroportoOrigem != null) aeroportoOrigem.GuardarNoHangarAutomatico(this);
+        }
+    }
+
+    private void ProcessarServicoDeBaseAposPouso()
+    {
+        if (aeroportoOrigem is GerenciadorPortaAvioes)
+        {
+            GerenciadorPortaAvioes.ReabastecerAeronaveCarrier(this, false);
+            return;
+        }
+
+        ReabastecerSeAbaixoDe(0.50f);
+    }
+
+    public void ReabastecerSeAbaixoDe(float percentualMinimo)
+    {
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null || !combustivel.usaCombustivel || combustivel.Capacidade <= 0f)
+        {
+            return;
+        }
+
+        if (combustivel.Percentual <= Mathf.Clamp01(percentualMinimo))
+        {
+            combustivel.PreencherSemCusto();
         }
     }
 

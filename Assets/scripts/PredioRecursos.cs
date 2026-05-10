@@ -35,6 +35,10 @@ public class PredioRecursos : MonoBehaviour
     [Tooltip("Partículas ou efeito visual quando está produzindo")]
     public GameObject efeitoProducao;
 
+    [Header("Debug")]
+    [Tooltip("Exibe logs de produção no Console")]
+    public bool mostrarLogs = false;
+
     private bool jaRegistrado = false;
     private float tempoDecorrido = 0f;
 
@@ -75,7 +79,7 @@ public class PredioRecursos : MonoBehaviour
     {
         if (jaRegistrado)
         {
-            Debug.LogWarning($"[{gameObject.name}] Produção já estava ativa!");
+            if (mostrarLogs) Debug.LogWarning($"[{gameObject.name}] Produção já estava ativa!");
             return;
         }
 
@@ -92,8 +96,11 @@ public class PredioRecursos : MonoBehaviour
             jaRegistrado = true;
             estaProduzindo = true;
 
-            Debug.Log($"[OK] [{gameObject.name}] Producao ativada! " +
-                      $"$+{producaoDinheiro}/s | P+{producaoPetroleo}/s | A+{producaoAco}/s | E+{producaoEnergia}/s");
+            if (mostrarLogs)
+            {
+                Debug.Log($"[OK] [{gameObject.name}] Producao ativada! " +
+                          $"$+{producaoDinheiro}/s | P+{producaoPetroleo}/s | A+{producaoAco}/s | E+{producaoEnergia}/s");
+            }
         }
         else
         {
@@ -108,7 +115,7 @@ public class PredioRecursos : MonoBehaviour
     {
         if (!jaRegistrado)
         {
-            Debug.LogWarning($"[{gameObject.name}] Produção já estava inativa!");
+            if (mostrarLogs) Debug.LogWarning($"[{gameObject.name}] Produção já estava inativa!");
             return;
         }
 
@@ -126,7 +133,7 @@ public class PredioRecursos : MonoBehaviour
             jaRegistrado = false;
             estaProduzindo = false;
 
-            Debug.Log($"[PAUSA] [{gameObject.name}] Producao desativada!");
+            if (mostrarLogs) Debug.Log($"[PAUSA] [{gameObject.name}] Producao desativada!");
         }
     }
 
@@ -149,7 +156,7 @@ public class PredioRecursos : MonoBehaviour
         // Reativa com novos valores
         AtivarProducao();
 
-        Debug.Log($"[UP] [{gameObject.name}] Producao aumentada {multiplicador}x!");
+        if (mostrarLogs) Debug.Log($"[UP] [{gameObject.name}] Producao aumentada {multiplicador}x!");
     }
 
     protected virtual void OnDestroy()
@@ -158,7 +165,7 @@ public class PredioRecursos : MonoBehaviour
         if (jaRegistrado)
         {
             DesativarProducao();
-            Debug.Log($"[DES] [{gameObject.name}] Predio destruido. Producao removida.");
+            if (mostrarLogs) Debug.Log($"[DES] [{gameObject.name}] Predio destruido. Producao removida.");
         }
     }
 

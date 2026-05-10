@@ -68,13 +68,20 @@ public class ControleUnidade : MonoBehaviour
     private bool limiteVelocidadeAtivo = false;
     private Vector3 ultimoDestinoOrdenado = Vector3.zero;
     private bool possuiDestinoOrdenado = false;
+    private Vector3 posicaoWatchdogAnterior;
+    private float tempoSemProgressoOrdem;
+    private float proximoWatchdogOrdem;
+    private float proximoRelatorioWatchdogBloqueado;
+    private int reemissoesWatchdogOrdem;
+    private const float IntervaloWatchdogOrdem = 1.25f;
+    private const float TempoMaximoSemProgresso = 7.5f;
+    private const float IntervaloRelatorioWatchdogBloqueado = 8f;
+    private const int MaxReemissoesWatchdogOrdem = 2;
     private bool cacheCombateSujo = true;
     private ControleTorreta[] cacheTorretas = System.Array.Empty<ControleTorreta>();
     private ControleTorretaModular[] cacheTorretasModulares = System.Array.Empty<ControleTorretaModular>();
-    private SistemaAntiMissil[] cacheSistemasAntiMissil = System.Array.Empty<SistemaAntiMissil>();
     private SistemaDeTiro[] cacheSistemasDeTiro = System.Array.Empty<SistemaDeTiro>();
-    private LancadorMultiplo[] cacheLancadoresMultiplos = System.Array.Empty<LancadorMultiplo>();
-    private LancadorMisselCaca[] cacheLancadoresCaca = System.Array.Empty<LancadorMisselCaca>();
+    private ControleNavioRealista[] cacheNaviosRealistas = System.Array.Empty<ControleNavioRealista>();
 
     [Header("Trilha Oficial")]
     [SerializeField] private DominioControleUnidade dominioControleAtual = DominioControleUnidade.Terrestre;
@@ -128,6 +135,7 @@ public class ControleUnidade : MonoBehaviour
         AtualizarTrilhaOficial();
         ValidarConflitosDeControle();
         SincronizarModoCombateOficial();
+        CombustivelUnidade.Garantir(gameObject);
     }
 
     void SanearBoxCollidersComEscalaNegativa()
@@ -170,6 +178,7 @@ public class ControleUnidade : MonoBehaviour
     {
         CriarSelecaoVisual();
         if(anelSelecao != null) anelSelecao.SetActive(selecionado);
+        posicaoWatchdogAnterior = transform.position;
 
         // --- CORREÇÃO DE RESPONSIVIDADE (SOLDADOS) ---
         // Se for uma unidade simples (sem scripts complexos de movimento), aplica configurações ágeis
@@ -388,6 +397,8 @@ public class ControleUnidade : MonoBehaviour
             }
         }
 
+        AtualizarWatchdogOrdem();
+
         // 3. Controle de Animação (Genérico)
         if (animator != null && animator.runtimeAnimatorController != null)
         {
@@ -433,6 +444,7 @@ public class ControleUnidade : MonoBehaviour
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo)
         {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: mover bloqueado ({motivoBloqueioControle})");
             return false;
         }
 
@@ -442,6 +454,7 @@ public class ControleUnidade : MonoBehaviour
         }
 
         ExecutarMoverParaPonto(destino, cancelarComportamentos);
+        DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
         return true;
     }
 
@@ -536,6 +549,7 @@ public class ControleUnidade : MonoBehaviour
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo)
         {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: patrulha bloqueada ({motivoBloqueioControle})");
             return false;
         }
 
@@ -554,7 +568,12 @@ public class ControleUnidade : MonoBehaviour
         }
 
         patrulha.Configurar(rotaFinal);
+        if (controleAviao != null)
+        {
+            controleAviao.RegistrarPatrulha(rotaFinal);
+        }
         ordemControleAtual = OrdemControleUnidade.Patrulhando;
+        DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
         return true;
     }
 
@@ -569,6 +588,7 @@ public class ControleUnidade : MonoBehaviour
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo)
         {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: seguir bloqueado ({motivoBloqueioControle})");
             return false;
         }
 
@@ -582,6 +602,7 @@ public class ControleUnidade : MonoBehaviour
 
         seguir.Configurar(alvo);
         ordemControleAtual = OrdemControleUnidade.Seguindo;
+        DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
         return true;
     }
 
@@ -611,6 +632,16 @@ public class ControleUnidade : MonoBehaviour
     {
         if (helicopteroExterno != null && helicopteroExterno.EstaSobControleDoAeroporto())
         {
+            return;
+        }
+
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+            if (combustivel != null)
+            {
+                combustivel.PararPorFaltaDeCombustivel();
+            }
             return;
         }
 
@@ -652,6 +683,16 @@ public class ControleUnidade : MonoBehaviour
         // Avião de Passageiros / Cargueiro (Sistema de Aeroporto)
         if (controleAviao != null)
         {
+            bool atualizacaoDePatrulhaAerea = ordemControleAtual == OrdemControleUnidade.Patrulhando && !cancelarComportamentos;
+            if (atualizacaoDePatrulhaAerea)
+            {
+                controleAviao.AtualizarDestinoPatrulha(destino);
+            }
+            else
+            {
+                controleAviao.RegistrarMissaoManual(destino);
+            }
+
             if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
             {
                 controleAviao.IniciarMissaoCompleta(destino);
@@ -688,6 +729,18 @@ public class ControleUnidade : MonoBehaviour
                 agente.isStopped = true;
             }
 
+            return;
+        }
+
+        if (controleNavioRealista != null)
+        {
+            controleNavioRealista.DefinirDestino(destino);
+            return;
+        }
+
+        if (controleSubmarino != null)
+        {
+            controleSubmarino.DefinirDestino(destino);
             return;
         }
 
@@ -781,9 +834,21 @@ public class ControleUnidade : MonoBehaviour
                TryGetComponent<GerenciadorPortaAvioes>(out _);
     }
 
+    private bool EhNavioSuperficie()
+    {
+        return controleSubmarino == null && (
+               GetComponent<IdentidadeNaval>() != null ||
+               controleNavioRealista != null ||
+               TryGetComponent<NavioPetroleiro>(out _) ||
+               TryGetComponent<NavioTransporteTropas>(out _) ||
+               TryGetComponent<GerenciadorPortaAvioes>(out _));
+    }
+
     public bool DefinirModoCombate(bool ativo)
     {
         GarantirCacheCombate();
+        AtualizarTrilhaOficial();
+
         bool alterouAlgo = false;
         modoCombateOficialAtivo = ativo;
 
@@ -803,14 +868,6 @@ public class ControleUnidade : MonoBehaviour
             alterouAlgo = true;
         }
 
-        for (int i = 0; i < cacheSistemasAntiMissil.Length; i++)
-        {
-            SistemaAntiMissil sistema = cacheSistemasAntiMissil[i];
-            if (sistema == null) continue;
-            sistema.DefinirModoAtivo(ativo);
-            alterouAlgo = true;
-        }
-
         for (int i = 0; i < cacheSistemasDeTiro.Length; i++)
         {
             SistemaDeTiro sistema = cacheSistemasDeTiro[i];
@@ -819,41 +876,11 @@ public class ControleUnidade : MonoBehaviour
             alterouAlgo = true;
         }
 
-        for (int i = 0; i < cacheLancadoresMultiplos.Length; i++)
+        for (int i = 0; i < cacheNaviosRealistas.Length; i++)
         {
-            LancadorMultiplo lancador = cacheLancadoresMultiplos[i];
-            if (lancador == null) continue;
-            lancador.modoAutomatico = ativo;
-            alterouAlgo = true;
-        }
-
-        for (int i = 0; i < cacheLancadoresCaca.Length; i++)
-        {
-            LancadorMisselCaca lancador = cacheLancadoresCaca[i];
-            if (lancador == null) continue;
-            lancador.modoPassivo = !ativo;
-            alterouAlgo = true;
-        }
-
-        if (controleNavioRealista != null)
-        {
-            controleNavioRealista.modoOperacao = ativo
-                ? ControleNavioRealista.ModoOperacao.Ativo
-                : ControleNavioRealista.ModoOperacao.Passivo;
-            alterouAlgo = true;
-        }
-
-        if (controleSubmarino != null)
-        {
-            controleSubmarino.DefinirModoOperacao(
-                ativo ? ControleSubmarino.ModoOperacao.Automatico : ControleSubmarino.ModoOperacao.Passivo,
-                false);
-            alterouAlgo = true;
-        }
-
-        if (helicopteroExterno != null)
-        {
-            helicopteroExterno.modoCombateAtivo = ativo;
+            ControleNavioRealista navio = cacheNaviosRealistas[i];
+            if (navio == null || !navio.TemSistemaTorpedosConfigurado()) continue;
+            navio.DefinirModoCombateTorpedos(ativo);
             alterouAlgo = true;
         }
 
@@ -863,19 +890,16 @@ public class ControleUnidade : MonoBehaviour
     public bool TryObterEstadoCombate(out bool passivo, out string descricao)
     {
         GarantirCacheCombate();
+        AtualizarTrilhaOficial();
+
         bool encontrou = false;
         bool estadoInicial = false;
         bool misto = false;
 
         RegistrarEstadoCombate(cacheTorretas, ref encontrou, ref estadoInicial, ref misto, delegate(ControleTorreta t) { return t != null && t.modoPassivo; });
         RegistrarEstadoCombate(cacheTorretasModulares, ref encontrou, ref estadoInicial, ref misto, delegate(ControleTorretaModular t) { return t != null && t.modoPassivo; });
-        RegistrarEstadoCombate(cacheSistemasAntiMissil, ref encontrou, ref estadoInicial, ref misto, delegate(SistemaAntiMissil t) { return t != null && t.modoPassivo; });
         RegistrarEstadoCombate(cacheSistemasDeTiro, ref encontrou, ref estadoInicial, ref misto, delegate(SistemaDeTiro t) { return t != null && t.modoPassivo; });
-        RegistrarEstadoCombate(cacheLancadoresCaca, ref encontrou, ref estadoInicial, ref misto, delegate(LancadorMisselCaca t) { return t != null && t.modoPassivo; });
-        RegistrarEstadoCombate(cacheLancadoresMultiplos, ref encontrou, ref estadoInicial, ref misto, delegate(LancadorMultiplo t) { return t != null && !t.modoAutomatico; });
-        RegistrarEstadoCombateValor(controleNavioRealista != null, controleNavioRealista != null && controleNavioRealista.modoOperacao == ControleNavioRealista.ModoOperacao.Passivo, ref encontrou, ref estadoInicial, ref misto);
-        RegistrarEstadoCombateValor(controleSubmarino != null, controleSubmarino != null && controleSubmarino.modoAtual == ControleSubmarino.ModoOperacao.Passivo, ref encontrou, ref estadoInicial, ref misto);
-        RegistrarEstadoCombateValor(helicopteroExterno != null, helicopteroExterno != null && !helicopteroExterno.modoCombateAtivo, ref encontrou, ref estadoInicial, ref misto);
+        RegistrarEstadoCombateNavios(cacheNaviosRealistas, ref encontrou, ref estadoInicial, ref misto);
 
         if (!encontrou)
         {
@@ -978,6 +1002,31 @@ public class ControleUnidade : MonoBehaviour
         }
     }
 
+    private static void RegistrarEstadoCombateNavios(ControleNavioRealista[] navios, ref bool encontrou, ref bool estadoInicial, ref bool misto)
+    {
+        if (navios == null) return;
+
+        for (int i = 0; i < navios.Length; i++)
+        {
+            ControleNavioRealista navio = navios[i];
+            if (navio == null || !navio.TemSistemaTorpedosConfigurado())
+            {
+                continue;
+            }
+
+            bool passivoAtual = !navio.ModoCombateTorpedosAtivo();
+            if (!encontrou)
+            {
+                encontrou = true;
+                estadoInicial = passivoAtual;
+            }
+            else if (estadoInicial != passivoAtual)
+            {
+                misto = true;
+            }
+        }
+    }
+
     private void GarantirCacheCombate()
     {
         if (!cacheCombateSujo)
@@ -987,10 +1036,8 @@ public class ControleUnidade : MonoBehaviour
 
         cacheTorretas = GetComponentsInChildren<ControleTorreta>(true);
         cacheTorretasModulares = GetComponentsInChildren<ControleTorretaModular>(true);
-        cacheSistemasAntiMissil = GetComponentsInChildren<SistemaAntiMissil>(true);
         cacheSistemasDeTiro = GetComponentsInChildren<SistemaDeTiro>(true);
-        cacheLancadoresMultiplos = GetComponentsInChildren<LancadorMultiplo>(true);
-        cacheLancadoresCaca = GetComponentsInChildren<LancadorMisselCaca>(true);
+        cacheNaviosRealistas = GetComponentsInChildren<ControleNavioRealista>(true);
         cacheCombateSujo = false;
     }
 
@@ -1153,12 +1200,188 @@ public class ControleUnidade : MonoBehaviour
     {
         ultimoDestinoOrdenado = destino;
         possuiDestinoOrdenado = true;
+        tempoSemProgressoOrdem = 0f;
+        reemissoesWatchdogOrdem = 0;
+        posicaoWatchdogAnterior = transform.position;
+    }
+
+    private void AtualizarWatchdogOrdem()
+    {
+        if (!Application.isPlaying || !possuiDestinoOrdenado)
+        {
+            posicaoWatchdogAnterior = transform.position;
+            tempoSemProgressoOrdem = 0f;
+            reemissoesWatchdogOrdem = 0;
+            return;
+        }
+
+        if (Time.unscaledTime < proximoWatchdogOrdem)
+        {
+            return;
+        }
+
+        proximoWatchdogOrdem = Time.unscaledTime + IntervaloWatchdogOrdem;
+        float distanciaMovida = Vector3.Distance(
+            new Vector3(transform.position.x, 0f, transform.position.z),
+            new Vector3(posicaoWatchdogAnterior.x, 0f, posicaoWatchdogAnterior.z));
+        posicaoWatchdogAnterior = transform.position;
+
+        AtualizarEstadoDeBloqueio();
+        if (distanciaMovida > 0.45f || ordemControleAtual == OrdemControleUnidade.Parada)
+        {
+            tempoSemProgressoOrdem = 0f;
+            reemissoesWatchdogOrdem = 0;
+            return;
+        }
+
+        if (bloqueioControleAtivo)
+        {
+            RegistrarWatchdogBloqueado(string.IsNullOrEmpty(motivoBloqueioControle) ? "Bloqueio de controle ativo" : motivoBloqueioControle);
+            tempoSemProgressoOrdem = 0f;
+            return;
+        }
+
+        tempoSemProgressoOrdem += IntervaloWatchdogOrdem;
+        if (tempoSemProgressoOrdem < TempoMaximoSemProgresso)
+        {
+            return;
+        }
+
+        string causa = DiagnosticarCausaOrdemTravada();
+        bool podeReemitir = PodeReemitirOrdemTravada(causa);
+        if (!podeReemitir || reemissoesWatchdogOrdem >= MaxReemissoesWatchdogOrdem)
+        {
+            RegistrarWatchdogBloqueado(causa);
+            tempoSemProgressoOrdem = Mathf.Max(0f, TempoMaximoSemProgresso - (IntervaloWatchdogOrdem * 2f));
+            return;
+        }
+
+        tempoSemProgressoOrdem = 0f;
+        reemissoesWatchdogOrdem++;
+        DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemTravada", $"{name}: reemitindo destino ativo ({ordemControleAtual}) tentativa {reemissoesWatchdogOrdem}/{MaxReemissoesWatchdogOrdem} causa={causa}");
+        if (ordemControleAtual == OrdemControleUnidade.Movendo
+            || ordemControleAtual == OrdemControleUnidade.Recuando
+            || ordemControleAtual == OrdemControleUnidade.Patrulhando
+            || ordemControleAtual == OrdemControleUnidade.Seguindo)
+        {
+            ExecutarMoverParaPonto(ultimoDestinoOrdenado, false);
+        }
+    }
+
+    private string DiagnosticarCausaOrdemTravada()
+    {
+        if (bloqueioControleAtivo && !string.IsNullOrWhiteSpace(motivoBloqueioControle))
+        {
+            return motivoBloqueioControle;
+        }
+
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            return "Sem combustivel";
+        }
+
+        if (helicopteroExterno != null && helicopteroExterno.EstaSobControleDoAeroporto())
+        {
+            return "Helicoptero sob controle do aeroporto";
+        }
+
+        if (agente != null)
+        {
+            if (!agente.enabled)
+            {
+                return "NavMeshAgent desativado";
+            }
+
+            if (!agente.isOnNavMesh)
+            {
+                return "NavMeshAgent fora do NavMesh";
+            }
+
+            if (agente.pathPending)
+            {
+                return "NavMeshAgent calculando caminho";
+            }
+
+            if (agente.pathStatus == NavMeshPathStatus.PathInvalid)
+            {
+                return "NavMeshAgent com caminho invalido";
+            }
+
+            if (agente.pathStatus == NavMeshPathStatus.PathPartial)
+            {
+                return "NavMeshAgent com caminho parcial";
+            }
+
+            if (agente.isStopped)
+            {
+                return "NavMeshAgent parado";
+            }
+
+            if (!agente.hasPath && Vector3.Distance(transform.position, ultimoDestinoOrdenado) > 2.5f)
+            {
+                return "NavMeshAgent sem caminho";
+            }
+        }
+
+        if (controleNavioRealista != null)
+        {
+            return "Executor naval sem progresso";
+        }
+
+        if (controleSubmarino != null)
+        {
+            return "Executor submarino sem progresso";
+        }
+
+        if (controleAviaoCaca != null || controleAviao != null || helicopteroExterno != null || c700TransporteAereo != null)
+        {
+            return "Executor aereo sem progresso";
+        }
+
+        return string.IsNullOrEmpty(executorControleAtual) ? "Sem executor de movimento" : "Sem progresso no executor " + executorControleAtual;
+    }
+
+    private bool PodeReemitirOrdemTravada(string causa)
+    {
+        if (string.IsNullOrEmpty(causa))
+        {
+            return true;
+        }
+
+        return !TextoContem(causa, "Sem combustivel")
+               && !TextoContem(causa, "fora do NavMesh")
+               && !TextoContem(causa, "desativado")
+               && !TextoContem(causa, "aeroporto")
+               && !TextoContem(causa, "Sem executor")
+               && !TextoContem(causa, "caminho invalido");
+    }
+
+    private bool TextoContem(string texto, string trecho)
+    {
+        return !string.IsNullOrEmpty(texto)
+               && !string.IsNullOrEmpty(trecho)
+               && texto.IndexOf(trecho, System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private void RegistrarWatchdogBloqueado(string causa)
+    {
+        if (Time.unscaledTime < proximoRelatorioWatchdogBloqueado)
+        {
+            return;
+        }
+
+        proximoRelatorioWatchdogBloqueado = Time.unscaledTime + IntervaloRelatorioWatchdogBloqueado;
+        string motivo = string.IsNullOrEmpty(causa) ? "causa nao identificada" : causa;
+        DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_stuck_blocked");
+        DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemBloqueada", $"{name}: {ordemControleAtual} sem progresso; motivo={motivo}; tentativas={reemissoesWatchdogOrdem}; destino={ultimoDestinoOrdenado}");
     }
 
     void LimparDestinoOrdenado()
     {
         possuiDestinoOrdenado = false;
         ultimoDestinoOrdenado = Vector3.zero;
+        tempoSemProgressoOrdem = 0f;
+        reemissoesWatchdogOrdem = 0;
         if (ordemControleAtual == OrdemControleUnidade.Movendo || ordemControleAtual == OrdemControleUnidade.Recuando)
         {
             ordemControleAtual = OrdemControleUnidade.Ociosa;
@@ -1267,6 +1490,13 @@ public class ControleUnidade : MonoBehaviour
     {
         bloqueioControleAtivo = false;
         motivoBloqueioControle = string.Empty;
+
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            bloqueioControleAtivo = true;
+            motivoBloqueioControle = "Sem combustivel";
+            return;
+        }
 
         if (helicopteroExterno != null && helicopteroExterno.EstaSobControleDoAeroporto())
         {

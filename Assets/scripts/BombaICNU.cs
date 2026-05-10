@@ -7,6 +7,14 @@ public class BombaICNU : MonoBehaviour
     public float forcaDoVento = 2000f; // A força do impacto "physics"
     public GameObject efeitoVisualExplosao; // Aqui colocaremos a partícula (War FX)
 
+    private readonly Collider[] bufferExplosao = new Collider[128];
+    private bool explodiu;
+
+    private void OnEnable()
+    {
+        explodiu = false;
+    }
+
     // Quando a bomba toca em algo (Chão ou Inimigo)
     void OnCollisionEnter(Collision collision)
     {
@@ -15,17 +23,35 @@ public class BombaICNU : MonoBehaviour
 
     void Explodir()
     {
+        if (explodiu)
+        {
+            return;
+        }
+
+        explodiu = true;
+
         // 1. Criar o efeito visual (Fogo/Fumaça) no local da batida
         if (efeitoVisualExplosao != null)
         {
-            Instantiate(efeitoVisualExplosao, transform.position, transform.rotation);
+            PoolDeObjetosCombate.SpawnTemporario(efeitoVisualExplosao, transform.position, transform.rotation, 5f);
         }
 
         // 2. Detectar tudo o que está dentro do raio da esfera de explosão
-        Collider[] objetosAtingidos = Physics.OverlapSphere(transform.position, raioDaExplosao);
+        int objetosAtingidos = Physics.OverlapSphereNonAlloc(
+            transform.position,
+            raioDaExplosao,
+            bufferExplosao,
+            Physics.AllLayers,
+            QueryTriggerInteraction.Ignore);
 
-        foreach (Collider objeto in objetosAtingidos)
+        for (int i = 0; i < objetosAtingidos; i++)
         {
+            Collider objeto = bufferExplosao[i];
+            if (objeto == null)
+            {
+                continue;
+            }
+
             // A. EMPURRAR (O Vento do Impacto)
             Rigidbody rb = objeto.GetComponent<Rigidbody>();
             if (rb != null)
@@ -44,6 +70,6 @@ public class BombaICNU : MonoBehaviour
         }
 
         // 3. Destruir a própria bomba para ela não ficar no cenário
-        Destroy(gameObject);
+        PoolDeObjetosCombate.Release(gameObject);
     }
 }

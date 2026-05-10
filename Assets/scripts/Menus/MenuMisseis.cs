@@ -30,6 +30,8 @@ public class MenuMisseis : MonoBehaviour
 
     void Update()
     {
+        AtualizarModoManualDeMira();
+
         // MODO MIRA: Se escolheu o míssil, espera clicar no chão ou apertar SPACE
         if (modoMira && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space)))
         {
@@ -92,6 +94,7 @@ public class MenuMisseis : MonoBehaviour
         painelMenu.SetActive(false); // Fecha o menu
         EstaAberto = false;
         modoMira = true;
+        AtualizarModoManualDeMira();
         Debug.Log("Comandante, selecione o alvo no mapa!");
         // Dica: Aqui você mudaria o cursor para uma mira vermelha
     }
@@ -103,6 +106,38 @@ public class MenuMisseis : MonoBehaviour
         misselParaLancar = null;
         painelMenu.SetActive(false);
         EstaAberto = false;
+        AtualizarModoManualDeMira();
+    }
+
+    void OnDisable()
+    {
+        InteractionModeService.Release(this, InteractionOwner.ManualFire);
+    }
+
+    void AtualizarModoManualDeMira()
+    {
+        if (modoMira)
+        {
+            if (!InteractionModeService.IsActive(this, InteractionOwner.ManualFire))
+            {
+                InteractionModeService.Request(
+                    this,
+                    InteractionOwner.ManualFire,
+                    new InteractionPolicy
+                    {
+                        bloqueiaSelecao = true,
+                        bloqueiaOrdemMundo = true,
+                        bloqueiaRotacaoCamera = true,
+                        consomeLMB = true,
+                        consomeRMB = true
+                    },
+                    "Mira de míssil ativa");
+            }
+        }
+        else
+        {
+            InteractionModeService.Release(this, InteractionOwner.ManualFire);
+        }
     }
 
     // --- CRIAÇÃO DA UI VIA SCRIPT (Igual seu Construtor) ---

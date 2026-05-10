@@ -20,6 +20,14 @@ public class Imovel : MonoBehaviour
     [Tooltip("Quantidade máxima de moradores que cabem neste imóvel")]
     public int capacidade = 10;
 
+    [Header("🏘️ Conexão de Quarteirão (Grudar Imóveis)")]
+    [Tooltip("Distância do centro até as laterais (usado para calcular a conexão)")]
+    public float distanciaConexao = 8f;
+    [Tooltip("Opcional: Ponto exato do lado esquerdo. Se nulo, usará a distânciaConexao.")]
+    public Transform ladoEsquerdo;
+    [Tooltip("Opcional: Ponto exato do lado direito. Se nulo, usará a distânciaConexao.")]
+    public Transform ladoDireito;
+
     [Header("Debug")]
     public bool debugLogs = false;
 
@@ -39,6 +47,10 @@ public class Imovel : MonoBehaviour
 
     // Controle interno
     private float timerCiclo = 0f;
+    [Header("⚡ Energia")]
+    public bool semEnergia = false;
+    private float timerSaidaEnergia = 0f;
+    
     private float timerRenda = 0f;
     private bool registrado = false;
     private int limitePopulacaoAdicionado = 0;
@@ -55,6 +67,26 @@ public class Imovel : MonoBehaviour
     public float TaxaOcupacao => capacidade > 0 ? (float)moradoresAtuais / capacidade : 0f;
     public float RendaAtual => rendaTotal;
     public int QualidadeAtual => qualidadeAtual;
+
+    public Vector3 ObterPontoEsquerdo()
+    {
+        if (ladoEsquerdo != null) return ladoEsquerdo.position;
+        return transform.position - transform.right * distanciaConexao;
+    }
+
+    public Vector3 ObterPontoDireito()
+    {
+        if (ladoDireito != null) return ladoDireito.position;
+        return transform.position + transform.right * distanciaConexao;
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(ObterPontoEsquerdo(), 1f);
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawWireSphere(ObterPontoDireito(), 1f);
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // INICIALIZAÇÃO
@@ -105,6 +137,17 @@ public class Imovel : MonoBehaviour
 
         // Ciclo de moradores
         timerCiclo += Time.deltaTime;
+        
+        if (semEnergia)
+        {
+            timerSaidaEnergia += Time.deltaTime;
+            if (timerSaidaEnergia >= 15f) // Perde qualidade se sem energia
+            {
+                ModificarQualidade(-4);
+                timerSaidaEnergia = 0f;
+            }
+        }
+
         if (timerCiclo >= INTERVALO_CICLO)
         {
             ProcessarCicloMoradores();
@@ -203,6 +246,16 @@ public class Imovel : MonoBehaviour
     public void ModificarQualidade(int delta)
     {
         qualidadeAtual = Mathf.Clamp(qualidadeAtual + delta, 0, 100);
+    }
+
+    public void SetarSemEnergia(bool status)
+    {
+        if (semEnergia == status) return;
+        semEnergia = status;
+        if (semEnergia)
+        {
+            Debug.Log($"[ENERGIA] {name} está sem energia! Moradores começarão a sair em breve.");
+        }
     }
 
     public void SetarQualidade(int novaQualidade)

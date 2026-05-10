@@ -7,6 +7,7 @@ namespace Hegemonia.AI.BrainMaster
     {
         private readonly IA_Context _context;
         private readonly Dictionary<IA_UrbanSectorType, Vector3> _anchors = new Dictionary<IA_UrbanSectorType, Vector3>();
+        private readonly List<IA_ManualBuildPoint> _manualPointsBuffer = new List<IA_ManualBuildPoint>(64);
 
         public string LastSummary { get; private set; }
 
@@ -37,7 +38,14 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            float inicio = Time.realtimeSinceStartup;
             RebuildZones();
+            float duracaoMs = (Time.realtimeSinceStartup - inicio) * 1000f;
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("zone_planner_ms", duracaoMs);
+            if (duracaoMs > BudgetMs)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarEvento("IA_ZonePlanner", $"Tick excedeu budget: {duracaoMs:0.00}ms (budget {BudgetMs:0.00}ms)");
+            }
         }
 
         public IA_UrbanSectorType ResolveSector(IA_ZoneType zone)
@@ -92,12 +100,152 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 industrialDirection = Quaternion.Euler(0f, 90f, 0f) * frontlineDirection;
 
             _anchors[IA_UrbanSectorType.Command] = baseCenter;
-            _anchors[IA_UrbanSectorType.Naval] = SelectBestAnchor(baseCenter, IA_UrbanSectorType.Naval, frontlineDirection, 80f, 320f);
-            _anchors[IA_UrbanSectorType.Airfield] = SelectBestAnchor(baseCenter, IA_UrbanSectorType.Airfield, -frontlineDirection, 220f, 460f);
-            _anchors[IA_UrbanSectorType.Military] = SelectBestAnchor(baseCenter, IA_UrbanSectorType.Military, frontlineDirection, 140f, 320f);
-            _anchors[IA_UrbanSectorType.Civil] = SelectBestAnchor(baseCenter, IA_UrbanSectorType.Civil, civilDirection, 120f, 260f);
-            _anchors[IA_UrbanSectorType.Industrial] = SelectBestAnchor(baseCenter, IA_UrbanSectorType.Industrial, industrialDirection, 120f, 300f);
-            _anchors[IA_UrbanSectorType.Logistics] = SelectBestAnchor(baseCenter, IA_UrbanSectorType.Logistics, industrialDirection, 90f, 220f);
+
+            Vector3 baseFlat = Flatten(baseCenter);
+            Vector3 bestNaval = Vector3.zero;
+            Vector3 bestAir = Vector3.zero;
+            Vector3 bestMilitary = Vector3.zero;
+            Vector3 bestCivil = Vector3.zero;
+            Vector3 bestIndustrial = Vector3.zero;
+            Vector3 bestLogistics = Vector3.zero;
+            float bestNavalScore = float.MinValue;
+            float bestAirScore = float.MinValue;
+            float bestMilitaryScore = float.MinValue;
+            float bestCivilScore = float.MinValue;
+            float bestIndustrialScore = float.MinValue;
+            float bestLogisticsScore = float.MinValue;
+
+            Vector3 preferredFront = frontlineDirection;
+            preferredFront.y = 0f;
+            preferredFront = preferredFront.sqrMagnitude < 0.01f ? Vector3.forward : preferredFront.normalized;
+
+            Vector3 preferredBack = -preferredFront;
+            Vector3 preferredCivil = civilDirection;
+            preferredCivil.y = 0f;
+            preferredCivil = preferredCivil.sqrMagnitude < 0.01f ? Vector3.right : preferredCivil.normalized;
+
+            Vector3 preferredIndustrial = industrialDirection;
+            preferredIndustrial.y = 0f;
+            preferredIndustrial = preferredIndustrial.sqrMagnitude < 0.01f ? Vector3.left : preferredIndustrial.normalized;
+
+            const float navalMinSqr = 80f * 80f;
+            const float navalMaxSqr = 320f * 320f;
+            const float airMinSqr = 220f * 220f;
+            const float airMaxSqr = 460f * 460f;
+            const float militaryMinSqr = 140f * 140f;
+            const float militaryMaxSqr = 320f * 320f;
+            const float civilMinSqr = 120f * 120f;
+            const float civilMaxSqr = 260f * 260f;
+            const float industrialMinSqr = 120f * 120f;
+            const float industrialMaxSqr = 300f * 300f;
+            const float logisticsMinSqr = 90f * 90f;
+            const float logisticsMaxSqr = 220f * 220f;
+
+            foreach (IA_SemanticCell cell in _context.SemanticMapPlanner.Cells)
+            {
+                if (cell == null || cell.Forbidden)
+                {
+                    continue;
+                }
+
+                Vector3 cellFlat = Flatten(cell.Center);
+                Vector3 offset = cellFlat - baseFlat;
+                float sqrDist = offset.sqrMagnitude;
+                if (sqrDist < 0.01f)
+                {
+                    continue;
+                }
+
+                float distance = Mathf.Sqrt(sqrDist);
+                Vector3 dir = offset / distance;
+
+                float distancePenalty = distance * 0.18f;
+                float baseClearance = Mathf.Clamp(cell.Clearance, 0f, 90f) * 0.35f;
+                float threatPenalty = cell.Threat * 0.20f;
+
+                bool navalCandidate = cell.Terrain == IA_TerrainType.Coast || cell.Terrain == IA_TerrainType.Water;
+                bool buildCandidate = cell.Buildable && !cell.Occupied && !cell.Reserved;
+
+                if (navalCandidate && sqrDist >= navalMinSqr && sqrDist <= navalMaxSqr)
+                {
+                    float alignment = Vector3.Dot(preferredFront, dir);
+                    float score = (alignment * 90f) - distancePenalty + baseClearance - threatPenalty;
+                    score += Mathf.Max(0f, 110f - cell.CoastDistance);
+                    if (score > bestNavalScore)
+                    {
+                        bestNavalScore = score;
+                        bestNaval = cell.Center;
+                    }
+                }
+
+                if (buildCandidate && sqrDist >= airMinSqr && sqrDist <= airMaxSqr)
+                {
+                    float alignment = Vector3.Dot(preferredBack, dir);
+                    float score = (alignment * 90f) - distancePenalty + baseClearance - threatPenalty;
+                    score += Mathf.Max(0f, 18f - cell.Slope) * 5f;
+                    score += Mathf.Clamp(cell.Clearance, 0f, 140f) * 0.45f;
+                    if (score > bestAirScore)
+                    {
+                        bestAirScore = score;
+                        bestAir = cell.Center;
+                    }
+                }
+
+                if (buildCandidate && sqrDist >= militaryMinSqr && sqrDist <= militaryMaxSqr)
+                {
+                    float alignment = Vector3.Dot(preferredFront, dir);
+                    float score = (alignment * 90f) - distancePenalty + baseClearance - threatPenalty;
+                    score += cell.Threat * 0.10f;
+                    if (score > bestMilitaryScore)
+                    {
+                        bestMilitaryScore = score;
+                        bestMilitary = cell.Center;
+                    }
+                }
+
+                if (buildCandidate && sqrDist >= civilMinSqr && sqrDist <= civilMaxSqr)
+                {
+                    float alignment = Vector3.Dot(preferredCivil, dir);
+                    float score = (alignment * 90f) - distancePenalty + baseClearance - threatPenalty;
+                    score += Mathf.Clamp(cell.Clearance, 0f, 70f) * 0.20f;
+                    if (score > bestCivilScore)
+                    {
+                        bestCivilScore = score;
+                        bestCivil = cell.Center;
+                    }
+                }
+
+                if (buildCandidate && sqrDist >= industrialMinSqr && sqrDist <= industrialMaxSqr)
+                {
+                    float alignment = Vector3.Dot(preferredIndustrial, dir);
+                    float score = (alignment * 90f) - distancePenalty + baseClearance - threatPenalty;
+                    score += Mathf.Clamp(cell.Clearance, 0f, 90f) * 0.30f;
+                    if (score > bestIndustrialScore)
+                    {
+                        bestIndustrialScore = score;
+                        bestIndustrial = cell.Center;
+                    }
+                }
+
+                if (buildCandidate && sqrDist >= logisticsMinSqr && sqrDist <= logisticsMaxSqr)
+                {
+                    float alignment = Vector3.Dot(preferredIndustrial, dir);
+                    float score = (alignment * 90f) - distancePenalty + baseClearance - threatPenalty;
+                    score += Mathf.Clamp(cell.Clearance, 0f, 90f) * 0.30f;
+                    if (score > bestLogisticsScore)
+                    {
+                        bestLogisticsScore = score;
+                        bestLogistics = cell.Center;
+                    }
+                }
+            }
+
+            _anchors[IA_UrbanSectorType.Naval] = bestNaval;
+            _anchors[IA_UrbanSectorType.Airfield] = bestAir;
+            _anchors[IA_UrbanSectorType.Military] = bestMilitary;
+            _anchors[IA_UrbanSectorType.Civil] = bestCivil;
+            _anchors[IA_UrbanSectorType.Industrial] = bestIndustrial;
+            _anchors[IA_UrbanSectorType.Logistics] = bestLogistics;
 
             Vector3 manualAnchor;
             if (TryResolveManualAnchor(baseCenter, out manualAnchor, IA_ManualBuildPoint.OperationalRole.EstacionamentoNaval, IA_ManualBuildPoint.OperationalRole.PatrulhaNaval))
@@ -311,13 +459,14 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            IA_ManualBuildPoint[] manualPoints = _context.Brain.GetComponentsInChildren<IA_ManualBuildPoint>(true);
+            _manualPointsBuffer.Clear();
+            _context.Brain.GetComponentsInChildren(true, _manualPointsBuffer);
             float bestDistance = float.MaxValue;
             bool found = false;
 
-            for (int i = 0; i < manualPoints.Length; i++)
+            for (int i = 0; i < _manualPointsBuffer.Count; i++)
             {
-                IA_ManualBuildPoint point = manualPoints[i];
+                IA_ManualBuildPoint point = _manualPointsBuffer[i];
                 if (point == null || !point.IsUsableAsAnchor(_context.Brain))
                 {
                     continue;

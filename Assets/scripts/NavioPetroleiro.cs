@@ -38,6 +38,7 @@ public class NavioPetroleiro : ControleUnidade
 
     // Componentes
     private NavMeshAgent agenteNav;
+    private IdentidadeUnidade identidadeCache;
     private float timerEstado = 0f;
 
     // Alvos
@@ -53,6 +54,11 @@ public class NavioPetroleiro : ControleUnidade
     {
         base.Awake();
         agenteNav = GetComponent<NavMeshAgent>();
+        identidadeCache = GetComponent<IdentidadeUnidade>();
+        if (identidadeCache == null)
+        {
+            identidadeCache = GetComponentInParent<IdentidadeUnidade>();
+        }
     }
 
     protected override void Start()
@@ -135,7 +141,7 @@ public class NavioPetroleiro : ControleUnidade
                 break;
 
             case EstadoPetroleiro.RE_DO_PIER:
-                ExecutarManobraRe(6.0f, EstadoPetroleiro.INDO_PLATAFORMA, false, velocidadeManobra);
+                ExecutarReAteSaidaDoPier();
                 break;
         }
     }
@@ -146,17 +152,13 @@ public class NavioPetroleiro : ControleUnidade
     // ===================================================
     void VerificarEAtivarServico()
     {
-        if (plataformaAlvo == null)
-            plataformaAlvo = Object.FindFirstObjectByType<PlataformaOffshore>();
-
-        if (pierAlvo == null)
-            pierAlvo = Object.FindFirstObjectByType<PierMarinha>();
+        SelecionarAlvosLogisticos(true);
 
         // Só ativa se ambos existirem
         if (plataformaAlvo != null && pierAlvo != null)
         {
-            statusDebug = "Infraestrutura encontrada! Iniciando serviço de logística.";
-            Debug.Log("[Navio Petroleiro] Plataforma e Pier detectados! Saindo para trabalhar.");
+            statusDebug = "Infraestrutura do time encontrada! Iniciando serviço de logística.";
+            Debug.Log("[Navio Petroleiro] Plataforma e Pier do proprio time detectados! Saindo para trabalhar.");
             MudarEstado(EstadoPetroleiro.SAINDO_ESTALEIRO);
         }
         else
@@ -171,6 +173,7 @@ public class NavioPetroleiro : ControleUnidade
 
     void MudarEstado(EstadoPetroleiro novo)
     {
+        EstadoPetroleiro anterior = estadoAtual;
         estadoAtual = novo;
         timerEstado = 0f;
         statusDebug = "Iniciando: " + novo.ToString();
@@ -179,26 +182,75 @@ public class NavioPetroleiro : ControleUnidade
         switch (novo)
         {
             case EstadoPetroleiro.INDO_PLATAFORMA:
-                BuscarPlataforma();
+                LiberarReservas();
+                if (!SelecionarAlvosLogisticos(true))
+                {
+                    statusDebug = "Sem rota logistica livre para o time " + TeamIdAtual;
+                    MudarEstado(EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA);
+                    break;
+                }
                 if (plataformaAlvo != null && plataformaAlvo.pontoChegada != null)
+                {
                     ConfigurarNavMesh(plataformaAlvo.pontoChegada.position);
+                }
+                else
+                {
+                    MudarEstado(EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA);
+                }
                 break;
 
             case EstadoPetroleiro.INDO_PIER:
-                BuscarPier(); 
+                if (plataformaAlvo != null)
+                {
+                    plataformaAlvo.Liberar(this);
+                    plataformaAlvo.LiberarReserva(this);
+                }
+
+                if (pierAlvo == null || !PertenceAoMesmoTime(pierAlvo) || pierAlvo.EstaReservadoPorOutro(this))
+                {
+                    BuscarPier();
+                }
+
                 if (pierAlvo != null && pierAlvo.saida_petro != null)
+                {
                     ConfigurarNavMesh(pierAlvo.saida_petro.position);
+                }
                 else
-                    Debug.LogError("[Navio] ERRO CRÍTICO: Não achei o Pier ou o ponto 'saida_petro' está vazio!");
+                {
+                    statusDebug = "Pier do time ausente ou sem saida_petro.";
+                    Debug.LogError("[Navio] ERRO CRITICO: Nao achei o Pier do time ou o ponto 'saida_petro' esta vazio!");
+                    MudarEstado(EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA);
+                }
                 break;
 
             case EstadoPetroleiro.ACOPLANDO_PLATAFORMA:
+                if (plataformaAlvo != null)
+                {
+                    plataformaAlvo.TentarOcupar(this);
+                    plataformaAlvo.TentarReservar(this, 90f);
+                }
+                DesligarNavMesh();
+                break;
+
             case EstadoPetroleiro.ACOPLANDO_PIER:
+                if (pierAlvo != null)
+                {
+                    pierAlvo.TentarOcuparLogistica(this);
+                    pierAlvo.TentarReservarLogistica(this, 90f);
+                }
+                DesligarNavMesh();
+                break;
+
             case EstadoPetroleiro.SAINDO_ESTALEIRO:
             case EstadoPetroleiro.RE_DO_PIER:
             case EstadoPetroleiro.SAINDO_PLATAFORMA:
                 DesligarNavMesh(); // Manobras finas são manuais
                 break;
+        }
+
+        if (novo == EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA && anterior != EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA)
+        {
+            LiberarReservas();
         }
     }
 
@@ -237,6 +289,34 @@ public class NavioPetroleiro : ControleUnidade
         }
     }
 
+    void ExecutarReAteSaidaDoPier()
+    {
+        timerEstado += Time.deltaTime;
+
+        if (pierAlvo == null || pierAlvo.saida_petro == null)
+        {
+            ExecutarManobraRe(6.0f, EstadoPetroleiro.INDO_PLATAFORMA, false, velocidadeManobra);
+            return;
+        }
+
+        Vector3 destino = pierAlvo.saida_petro.position;
+        destino.y = transform.position.y;
+
+        transform.position = Vector3.MoveTowards(transform.position, destino, velocidadeManobra * Time.deltaTime);
+        transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+
+        Debug.DrawLine(transform.position, destino, Color.yellow);
+
+        float distH = Vector2.Distance(
+            new Vector2(transform.position.x, transform.position.z),
+            new Vector2(destino.x, destino.z));
+
+        if (distH < 2.5f || timerEstado > 30.0f)
+        {
+            MudarEstado(EstadoPetroleiro.INDO_PLATAFORMA);
+        }
+    }
+
     void ExecutarViagemNavMesh(System.Action aoChegar)
     {
         if (!agenteNav.enabled || !agenteNav.isOnNavMesh)
@@ -272,6 +352,21 @@ public class NavioPetroleiro : ControleUnidade
         
         Vector3 destino = alvo.position;
         destino.y = transform.position.y;
+
+        Vector3 dirInicial = destino - transform.position;
+        dirInicial.y = 0f;
+        if (dirInicial.sqrMagnitude > 4f)
+        {
+            Quaternion rotEntrada = Quaternion.LookRotation(dirInicial.normalized);
+            float anguloEntrada = Quaternion.Angle(transform.rotation, rotEntrada);
+            if (anguloEntrada > 10f)
+            {
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotEntrada, 60f * Time.deltaTime);
+                transform.rotation = Quaternion.Euler(0, transform.rotation.eulerAngles.y, 0);
+                Debug.DrawLine(transform.position, destino, Color.cyan);
+                return;
+            }
+        }
 
         // VELOCIDADE RÁPIDA: Usa a velocidade de acoplagem específica (12.0f)
         float velAtual = velocidadeAcoplagem; 
@@ -357,6 +452,13 @@ public class NavioPetroleiro : ControleUnidade
         
         if (carregando)
         {
+            if (plataformaAlvo == null || !PertenceAoMesmoTime(plataformaAlvo))
+            {
+                statusDebug = "Plataforma perdida ou de outro time.";
+                MudarEstado(EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA);
+                return;
+            }
+
             if (plataformaAlvo != null)
             {
                 // Só carrega se couber no navio E se a plataforma tiver
@@ -395,6 +497,13 @@ public class NavioPetroleiro : ControleUnidade
         else
         {
             // DESCARREGANDO
+            if (pierAlvo == null || !PertenceAoMesmoTime(pierAlvo))
+            {
+                statusDebug = "Pier perdido ou de outro time.";
+                MudarEstado(EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA);
+                return;
+            }
+
             if (pierAlvo != null && petroleoCarregado > 0)
             {
                 int aEntregar = Mathf.Min(qtdPorFrame, petroleoCarregado);
@@ -460,13 +569,184 @@ public class NavioPetroleiro : ControleUnidade
 
     void BuscarPlataforma()
     {
-        plataformaAlvo = Object.FindFirstObjectByType<PlataformaOffshore>();
-        if (plataformaAlvo == null) Debug.LogError("[Navio] Nenhuma PlataformaOffshore na cena!");
+        plataformaAlvo = EncontrarMelhorPlataformaDoTime();
+        if (plataformaAlvo == null) Debug.LogError("[Navio] Nenhuma PlataformaOffshore do time " + TeamIdAtual + " na cena!");
     }
 
     void BuscarPier()
     {
-        pierAlvo = Object.FindFirstObjectByType<PierMarinha>();
-        if (pierAlvo == null) Debug.LogError("[Navio] Nenhum PierMarinha na cena!");
+        pierAlvo = EncontrarMelhorPierDoTime();
+        if (pierAlvo == null) Debug.LogError("[Navio] Nenhum PierMarinha do time " + TeamIdAtual + " na cena!");
+    }
+
+    private int TeamIdAtual
+    {
+        get
+        {
+            if (identidadeCache == null)
+            {
+                identidadeCache = GetComponent<IdentidadeUnidade>();
+                if (identidadeCache == null)
+                {
+                    identidadeCache = GetComponentInParent<IdentidadeUnidade>();
+                }
+            }
+
+            return identidadeCache != null && identidadeCache.teamID > 0
+                ? identidadeCache.teamID
+                : RecursosPorTime.ObterTeamId(this);
+        }
+    }
+
+    private bool PertenceAoMesmoTime(Component componente)
+    {
+        return componente != null && RecursosPorTime.ObterTeamId(componente) == TeamIdAtual;
+    }
+
+    private bool SelecionarAlvosLogisticos(bool reservar)
+    {
+        PlataformaOffshore plataforma = EncontrarMelhorPlataformaDoTime();
+        PierMarinha pier = EncontrarMelhorPierDoTime();
+        if (plataforma == null || pier == null)
+        {
+            plataformaAlvo = plataforma;
+            pierAlvo = pier;
+            return false;
+        }
+
+        if (reservar)
+        {
+            if (!plataforma.TentarReservar(this, 90f))
+            {
+                return false;
+            }
+
+            if (!pier.TentarReservarLogistica(this, 90f))
+            {
+                plataforma.LiberarReserva(this);
+                return false;
+            }
+        }
+
+        plataformaAlvo = plataforma;
+        pierAlvo = pier;
+        return true;
+    }
+
+    private PlataformaOffshore EncontrarMelhorPlataformaDoTime()
+    {
+        PlataformaOffshore[] plataformas = Object.FindObjectsByType<PlataformaOffshore>(FindObjectsSortMode.None);
+        PlataformaOffshore melhor = null;
+        float melhorScore = float.MaxValue;
+        int teamId = TeamIdAtual;
+
+        for (int i = 0; i < plataformas.Length; i++)
+        {
+            PlataformaOffshore plataforma = plataformas[i];
+            if (plataforma == null || !plataforma.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            if (RecursosPorTime.ObterTeamId(plataforma) != teamId)
+            {
+                continue;
+            }
+
+            if (plataforma.pontoChegada == null || plataforma.pontoAbastecer == null || plataforma.pontoSaida == null)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("petroleiro_plataforma_invalida", plataforma.name);
+                continue;
+            }
+
+            if (plataforma.ocupada && plataforma != plataformaAlvo)
+            {
+                continue;
+            }
+
+            if (plataforma.EstaReservadaPorOutro(this))
+            {
+                continue;
+            }
+
+            float distancia = Vector3.Distance(transform.position, plataforma.transform.position);
+            float bonusEstoque = Mathf.Clamp(plataforma.petroleoArmazenado / 1000f, 0f, 40f);
+            float score = distancia - bonusEstoque;
+            if (score < melhorScore)
+            {
+                melhorScore = score;
+                melhor = plataforma;
+            }
+        }
+
+        return melhor;
+    }
+
+    private PierMarinha EncontrarMelhorPierDoTime()
+    {
+        PierMarinha[] piers = Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None);
+        PierMarinha melhor = null;
+        float melhorScore = float.MaxValue;
+        int teamId = TeamIdAtual;
+
+        for (int i = 0; i < piers.Length; i++)
+        {
+            PierMarinha pier = piers[i];
+            if (pier == null || !pier.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            if (RecursosPorTime.ObterTeamId(pier) != teamId)
+            {
+                continue;
+            }
+
+            if (pier.saida_petro == null || pier.Atraca_petro == null)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("petroleiro_pier_invalido", pier.name);
+                continue;
+            }
+
+            if (pier.ocupada && pier != pierAlvo)
+            {
+                continue;
+            }
+
+            if (pier.EstaReservadoPorOutro(this))
+            {
+                continue;
+            }
+
+            float score = Vector3.Distance(transform.position, pier.transform.position);
+            if (score < melhorScore)
+            {
+                melhorScore = score;
+                melhor = pier;
+            }
+        }
+
+        return melhor;
+    }
+
+    private void LiberarReservas()
+    {
+        if (plataformaAlvo != null)
+        {
+            plataformaAlvo.Liberar(this);
+            plataformaAlvo.LiberarReserva(this);
+        }
+
+        if (pierAlvo != null)
+        {
+            pierAlvo.LiberarLogistica(this);
+            pierAlvo.LiberarReservaLogistica(this);
+        }
+    }
+
+    protected override void OnDisable()
+    {
+        LiberarReservas();
+        base.OnDisable();
     }
 }

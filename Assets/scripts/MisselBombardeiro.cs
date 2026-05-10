@@ -91,6 +91,7 @@ public class MisselBombardeiro : MonoBehaviour
     private float velocidadeAtual;
     private bool emArco = true;    // Fase 1: subir no arco
     private GameObject dono;
+    private readonly Collider[] bufferExplosao = new Collider[96];
 
     // ──────────────────────────────────────────────────────────
     //  API PÚBLICA (chamada pelo AviaoBombardeiro)
@@ -120,6 +121,8 @@ public class MisselBombardeiro : MonoBehaviour
 
     private void IniciarVoo()
     {
+        StopAllCoroutines();
+        CancelInvoke(nameof(AutodestruirPorTempo));
         velocidadeAtual = velocidadeInicial;
         lancado         = true;
         tempoVivo       = 0f;
@@ -136,7 +139,7 @@ public class MisselBombardeiro : MonoBehaviour
         // Registra no tracker de ameaças do jogo base (se existir)
         MissileThreatTracker.RegistrarLancamento(gameObject, this, alvoFixo, alvoMovel, velocidadeMaxima);
 
-        Destroy(gameObject, tempoDeVida);
+        Invoke(nameof(AutodestruirPorTempo), tempoDeVida);
     }
 
     private IEnumerator ReativarColisao(float delay)
@@ -228,13 +231,17 @@ public class MisselBombardeiro : MonoBehaviour
     {
         if (!lancado) return;
         lancado = false;
+        CancelInvoke(nameof(AutodestruirPorTempo));
 
         // Efeito visual
         if (efeitoExplosao != null)
         {
-            GameObject fx = Instantiate(efeitoExplosao, transform.position, Quaternion.identity);
-            fx.transform.localScale = Vector3.one * escalaVisualExplosao;
-            Destroy(fx, 4f);
+            PoolDeObjetosCombate.SpawnTemporario(
+                efeitoExplosao,
+                transform.position,
+                Quaternion.identity,
+                4f,
+                Vector3.one * escalaVisualExplosao);
         }
         else if (GerenciadorFXGlobal.Instancia != null)
         {
@@ -246,9 +253,10 @@ public class MisselBombardeiro : MonoBehaviour
             AudioSource.PlayClipAtPoint(somExplosao, transform.position);
 
         // Dano em área
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioExplosao);
-        foreach (var h in hits)
+        int hits = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < hits; i++)
         {
+            Collider h = bufferExplosao[i];
             if (h == null || h.isTrigger) continue;
             if (dono != null && h.transform.IsChildOf(dono.transform)) continue;
 
@@ -271,6 +279,13 @@ public class MisselBombardeiro : MonoBehaviour
                 rb.AddExplosionForce(danoMaximo * 2f, transform.position, raioExplosao, 1f);
         }
 
-        Destroy(gameObject);
+        PoolDeObjetosCombate.Release(gameObject);
+    }
+
+    private void AutodestruirPorTempo()
+    {
+        if (!lancado) return;
+        lancado = false;
+        PoolDeObjetosCombate.Release(gameObject);
     }
 }

@@ -204,9 +204,9 @@ MonoBehaviour:
   distanciaInicioMergulho: 100
   forcaRotacao: 2
   dano: 750
-  raioExplosao: 70
+  raioExplosao: 75
   sistemaFumaca: {fileID: 0}
-  tempoMaximoVida: 28
+  tempoMaximoVida: 30
   efeitoVisualExplosao: {fileID: 100002, guid: 4bf22a1d8d9e7724b9af67921436851d, type: 3}
   efeitosVisuaisExtras:
   - {fileID: 100006, guid: a2b9ce854d0a5004cba27ab45cbfe205, type: 3}

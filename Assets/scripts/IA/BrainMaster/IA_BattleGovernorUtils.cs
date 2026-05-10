@@ -188,6 +188,16 @@ namespace Hegemonia.AI.BrainMaster
 
             return unit.GetComponent<ControleAviao>() != null
                    || unit.GetComponent<ControleAviaoCaca>() != null
+                   || normalizedName.Contains("b260")
+                   || normalizedName.Contains("b-260")
+                   || normalizedName.Contains("supra")
+                   || normalizedName.Contains("su11")
+                   || normalizedName.Contains("g15")
+                   || normalizedName.Contains("a_20")
+                   || normalizedName.Contains("a20")
+                   || normalizedName.Contains("g18m")
+                   || normalizedName.Contains("super tuk")
+                   || normalizedName.Contains("supertuk")
                    || (unit.GetComponent<Helicoptero>() != null && !IsAirTransport(unit, normalizedName));
         }
 

@@ -152,6 +152,12 @@ public class HovercraftTransporte : MonoBehaviour
 
     public void DefinirDestino(Vector3 destino)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         destinoAtual = NormalizarDestinoAnfibio(destino, out classificacaoDestinoTravessia);
         bool origemClassificada = TryClassificarSuperficie(transform.position, out classificacaoOrigemTravessia, out _);
         bool destinoClassificado = classificacaoDestinoTravessia != ClassificacaoSuperficieMapa.Desconhecida;
@@ -168,6 +174,12 @@ public class HovercraftTransporte : MonoBehaviour
     void MoverParaDestino() 
     { 
         if(!temDestino) return;
+
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
 
         AtualizarEstadoTravessiaAnfibia();
 
@@ -242,6 +254,22 @@ public class HovercraftTransporte : MonoBehaviour
         if (emTravessiaAnfibia)
         {
             tempoTravessiaAnfibia += Time.fixedDeltaTime;
+        }
+    }
+
+    public void PararPorFaltaDeCombustivel()
+    {
+        temDestino = false;
+        processoEmbarqueAtivo = false;
+        processoDesembarqueAtivo = false;
+        travessiaAnfibiaAtiva = false;
+        tempoTravessiaAnfibia = 0f;
+        monitorDeProgressoInicializado = false;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
         }
     }
 

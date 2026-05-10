@@ -47,8 +47,8 @@ public class GerenteDeJogo : MonoBehaviour
         }
         if (GetComponent<MenuGoverno>() == null)
         {
-            gameObject.AddComponent<MenuGoverno>();
-            LogInfo("[Gerente] MenuGoverno adicionado automaticamente.");
+            MenuGoverno.GarantirInstancia();
+            LogInfo("[Gerente] MenuGoverno garantido automaticamente.");
         }
 
         // --- AUTOMATIZAÇÃO DE SPAWN POINTS ---
@@ -791,8 +791,8 @@ public class GerenteDeJogo : MonoBehaviour
         }
         
         // Fallback se o GerenciadorRecursos não existir
-        Debug.LogWarning("⚠️ GerenciadorRecursos não encontrado! Usando sistema legado.");
-        return false;
+        Debug.LogWarning("⚠️ GerenciadorRecursos não encontrado! Aprovando transação em modo legado para evitar travamento da UI.");
+        return true;
     }
 
     // --- MÉTODOS DE REGISTRO (Chamados pelo script Fabrica.cs dos prédios) ---

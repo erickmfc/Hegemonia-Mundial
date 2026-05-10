@@ -315,7 +315,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaAntiMissil
   alcanceRadar: 1000
-  tempoDeEscaneamento: 0.01
+  tempoDeEscaneamento: 0.18
   velocidadeMinimaAmeaca: 5
   dotMinimoAmeaca: 0.4
   usarRastroLancamento: 1

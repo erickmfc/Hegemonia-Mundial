@@ -14,19 +14,24 @@ public class GestorDeConsumo : MonoBehaviour
     public int custoInfantariaDinheiro = 1; 
     
     // Quanto cada veículo custa por segundo
-    public int custoVeiculoPetroleo = 2;
+    public int custoVeiculoPetroleo = 1;
     public int custoVeiculoPeca = 1; // Aço/Peça
 
     // Quanto cada navio custa
-    public int custoNavalPetroleo = 5;
+    public int custoNavalPetroleo = 2;
     public int custoNavalDinheiro = 10;
 
     // Quanto cada aeronave custa
-    public int custoAereoPetroleo = 8;
+    public int custoAereoPetroleo = 4;
     public int custoAereoDinheiro = 5;
 
     // Quanto cada prédio custa
     public int custoEstruturaEnergia = 2;
+    public int custoExtraCasaEnergia = 3; // Casas gastam +3
+    public int custoExtraPesquisaMilitarEnergia = 10; // Pesquisas gastam +10
+
+    [Header("Combustivel")]
+    public bool usarCombustivelPorUnidade = true;
 
     [Header("Status (Apenas Leitura)")]
     public int totalConsumoDinheiro;
@@ -77,20 +82,27 @@ public class GestorDeConsumo : MonoBehaviour
         // Infantaria: Gasta Dinheiro (Salário/Comida)
         totalConsumoDinheiro += censo.infantaria * custoInfantariaDinheiro;
 
-        // Veículos: Gastam Petróleo e Peças
-        totalConsumoPetroleo += censo.veiculos * custoVeiculoPetroleo;
+        // Veículos: agora gastam combustivel do tanque individual; mantem pecas.
+        if (!usarCombustivelPorUnidade)
+            totalConsumoPetroleo += censo.veiculos * custoVeiculoPetroleo;
         totalConsumoAco += censo.veiculos * custoVeiculoPeca;
 
-        // Naval: Gasta muito Petróleo e Dinheiro
-        totalConsumoPetroleo += censo.naval * custoNavalPetroleo;
+        // Naval: combustivel por unidade; mantem dinheiro de manutencao.
+        if (!usarCombustivelPorUnidade)
+            totalConsumoPetroleo += censo.naval * custoNavalPetroleo;
         totalConsumoDinheiro += censo.naval * custoNavalDinheiro;
 
-        // Aéreo: Gasta muito Petróleo
-        totalConsumoPetroleo += censo.aereo * custoAereoPetroleo;
+        // Aereo: combustivel por unidade; mantem dinheiro de manutencao.
+        if (!usarCombustivelPorUnidade)
+            totalConsumoPetroleo += censo.aereo * custoAereoPetroleo;
         totalConsumoDinheiro += censo.aereo * custoAereoDinheiro;
 
         // Estruturas: Gastam Energia
         totalConsumoEnergia += censo.estruturas * custoEstruturaEnergia;
+        
+        // Adicionais especificos (conforme pedido)
+        totalConsumoEnergia += censo.casas * custoExtraCasaEnergia;
+        totalConsumoEnergia += censo.pesquisasMilitares * custoExtraPesquisaMilitarEnergia;
 
         // 3. Aplica a cobrança (Remove do banco)
         if (totalConsumoDinheiro > 0) banco.RemoverRecurso("Dinheiro", totalConsumoDinheiro);

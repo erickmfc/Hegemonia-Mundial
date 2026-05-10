@@ -61,11 +61,19 @@ public class Estaleiro : MonoBehaviour
     
     void Start()
     {
+        SincronizarPerfilCosteiro();
         AutoDetectarFilhosDaCena();
         NormalizarSlots();
         CorrigirPoseCosteiraSeNecessario();
         GarantirSlotsExistentes();
         AtualizarReferenciasLitoraneas();
+
+        if (GetComponent<SistemaDeDanos>() == null)
+        {
+            var dano = gameObject.AddComponent<SistemaDeDanos>();
+            dano.vidaMaxima = 3000f;
+            dano.vidaAtual = 3000f;
+        }
 
         RegistrarNoGerente();
     }
@@ -155,6 +163,7 @@ public class Estaleiro : MonoBehaviour
             return;
         }
 
+        SincronizarPerfilCosteiro();
         NormalizarSlots();
         CorrigirPoseCosteiraSeNecessario();
         AtualizarReferenciasLitoraneas();
@@ -503,7 +512,14 @@ public class Estaleiro : MonoBehaviour
         Quaternion rotacaoNaval = Quaternion.LookRotation(waterForward, Vector3.up);
 
         // 1. INSTANCIA O PREFAB CRU E INTACTO!
+        long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
         GameObject navioPronto = Instantiate(slot.prefabAtual, posFinal, rotacaoNaval);
+        RegistrarTempoDiagnostico("naval_instantiate_ms", instantiateStart);
+        long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (slot.prefabAtual != null)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("Spawn", "Navio criado: " + slot.prefabAtual.name);
+        }
         navioPronto.transform.SetParent(null);
 
         // Destroi a barra
@@ -531,8 +547,18 @@ public class Estaleiro : MonoBehaviour
             idNavio.nomeDoPais = "Hegemonia";
         }
 
+        idNavio.tipoUnidade = TipoUnidade.Naval;
+        CombustivelUnidade.Garantir(navioPronto, true);
+
         var ctrl = navioPronto.GetComponent<ControleUnidade>();
-        if (ctrl == null) navioPronto.AddComponent<ControleUnidade>();
+        if (ctrl == null)
+        {
+            ctrl = navioPronto.AddComponent<ControleUnidade>();
+        }
+        else if (!ctrl.enabled)
+        {
+            ctrl.enabled = true;
+        }
 
         // Calcula destino de saída: usa o pontoDeSaida do estaleiro ou avança na direção da água
         Vector3 destinoSaida;
@@ -628,6 +654,7 @@ public class Estaleiro : MonoBehaviour
         }
 
         Debug.Log($"[Estaleiro] Navio liberado: {navioPronto.name} | atracagem={slot.nomeSlot} | spawn={navioPronto.transform.position} | saida={destinoSaida}");
+        RegistrarTempoDiagnostico("naval_spawn_init_ms", initStart);
 
         // Libera o slot
         LiberarSlot(slot);
@@ -748,8 +775,20 @@ public class Estaleiro : MonoBehaviour
 
     [Header("Indicadores Litorâneos (Terra/Água)")]
     public bool autoAlinharComAgua = true;
+    public CoastalPlacementProfile perfilColocacaoCosteira = new CoastalPlacementProfile();
     public float offsetAguaFrente = 35f; 
     public float offsetTerraTras = -15f; 
+
+    void SincronizarPerfilCosteiro()
+    {
+        if (perfilColocacaoCosteira == null)
+        {
+            perfilColocacaoCosteira = new CoastalPlacementProfile();
+        }
+
+        perfilColocacaoCosteira.offsetAguaFrente = Mathf.Abs(offsetAguaFrente);
+        perfilColocacaoCosteira.offsetTerraTras = offsetTerraTras;
+    }
 
     public bool EstaNaConstrucaoValida(float nivelAgua = 0f)
     {

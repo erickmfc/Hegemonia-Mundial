@@ -8,8 +8,13 @@ namespace Hegemonia.AI.BrainMaster
         private const float ForcedAirStrikeStartSeconds = 60f;
         private readonly IA_Context _context;
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
+        private readonly List<IA_StrategicTargetData> _strategicTargetsBuffer = new List<IA_StrategicTargetData>(6);
         private readonly List<GameObject> _activeAirUnitsBuffer = new List<GameObject>(12);
         private readonly List<GameObject> _activeAirTransportBuffer = new List<GameObject>(8);
+        private readonly List<GameObject> _airRaidA = new List<GameObject>(4);
+        private readonly List<GameObject> _airRaidB = new List<GameObject>(4);
+        private readonly List<GameObject> _airRaidC = new List<GameObject>(4);
+        private readonly Dictionary<GerenciadorAeroporto, int> _readyAircraftByAirport = new Dictionary<GerenciadorAeroporto, int>(8);
         private float _nextDecisionTime;
 
         public IA_AirDirector(IA_Context context)
@@ -37,7 +42,7 @@ namespace Hegemonia.AI.BrainMaster
             long tickStart = System.Diagnostics.Stopwatch.GetTimestamp();
             _activeAirUnitsBuffer.Clear();
             _activeAirTransportBuffer.Clear();
-            if (_context.Brain != null && _context.Brain.IsBootstrapActive)
+            if (_context.Brain != null && _context.Brain.IsBootstrapActive && (int)_context.Brain.BootstrapStage < (int)IA_BrainMaster.IA_BootstrapStage.ProduceAircraft)
             {
                 return;
             }
@@ -103,7 +108,13 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (!TrySelectActiveAirUnits(squad.Units, _activeAirUnitsBuffer, false))
+            bool includeBombers = airEnemy == null;
+            if (!TrySelectActiveAirUnits(squad.Units, _activeAirUnitsBuffer, false, includeBombers))
+            {
+                return;
+            }
+
+            if (TryDispatchEconomicAirRaids(baseCenter, _activeAirUnitsBuffer))
             {
                 return;
             }
@@ -117,8 +128,78 @@ namespace Hegemonia.AI.BrainMaster
             else
             {
                 Vector3 fallback = pressureTarget != Vector3.zero ? pressureTarget : patrol;
-                QueueMove("air_intercept", _activeAirUnitsBuffer, fallback + Vector3.up * 20f, 80, 3.1f);
+                QueueAttack("air_intercept", _activeAirUnitsBuffer, null, fallback + Vector3.up * 20f, 80, 3.1f);
             }
+        }
+
+        private bool TryDispatchEconomicAirRaids(Vector3 baseCenter, List<GameObject> source)
+        {
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            // Reduzido threshold de 6 para 4 avioes para permitir raids mais cedo
+            if (brain == null || brain.StrategicPhase < IA_StrategicPhase.PressaoEconomica || source == null || source.Count < 4)
+            {
+                return false;
+            }
+
+            int targetCount = _context.WorldState.FillEnemyStrategicTargets(_strategicTargetsBuffer, baseCenter, 6);
+            if (targetCount < 2)
+            {
+                return false;
+            }
+
+            _airRaidA.Clear();
+            _airRaidB.Clear();
+            _airRaidC.Clear();
+
+            int groups = Mathf.Min(3, Mathf.Min(targetCount, Mathf.Max(2, source.Count / 2)));
+            for (int i = 0; i < source.Count; i++)
+            {
+                GameObject unit = source[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                int bucket = i % groups;
+                if (bucket == 0)
+                {
+                    _airRaidA.Add(unit);
+                }
+                else if (bucket == 1)
+                {
+                    _airRaidB.Add(unit);
+                }
+                else
+                {
+                    _airRaidC.Add(unit);
+                }
+            }
+
+            int launched = 0;
+            launched += QueueEconomicRaidIfReady("oil_or_port", _airRaidA, _strategicTargetsBuffer[0], 92, 5.0f) ? 1 : 0;
+            launched += QueueEconomicRaidIfReady("air_or_shipyard", _airRaidB, _strategicTargetsBuffer[1], 89, 5.4f) ? 1 : 0;
+            if (groups >= 3 && _strategicTargetsBuffer.Count > 2)
+            {
+                launched += QueueEconomicRaidIfReady("third_axis", _airRaidC, _strategicTargetsBuffer[2], 86, 5.8f) ? 1 : 0;
+            }
+
+            if (launched > 0)
+            {
+                brain.ReportStrategicTarget("ataque aereo multi-alvo x" + launched + " alvo0=" + _strategicTargetsBuffer[0].Kind);
+            }
+
+            return launched > 0;
+        }
+
+        private bool QueueEconomicRaidIfReady(string key, List<GameObject> units, IA_StrategicTargetData target, int priority, float cooldown)
+        {
+            if (units == null || units.Count == 0 || target == null || target.Transform == null)
+            {
+                return false;
+            }
+
+            QueueAttack("air_raid_" + key + "_" + target.Kind, units, target.Transform, target.Position + Vector3.up * 20f, priority, cooldown);
+            return true;
         }
 
         private Vector3 ResolvePressureTarget(Vector3 baseCenter, float now)
@@ -165,7 +246,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (!TrySelectActiveAirUnits(squad.Units, _activeAirTransportBuffer, true))
+            if (!TrySelectActiveAirUnits(squad.Units, _activeAirTransportBuffer, true, true))
             {
                 return;
             }
@@ -322,7 +403,7 @@ namespace Hegemonia.AI.BrainMaster
             return squad != null && squad.Units != null && squad.Units.Count > 0;
         }
 
-        private bool TrySelectActiveAirUnits(List<GameObject> source, List<GameObject> destination, bool transportWing)
+        private bool TrySelectActiveAirUnits(List<GameObject> source, List<GameObject> destination, bool transportWing, bool includeBombers)
         {
             destination.Clear();
             if (source == null || source.Count == 0)
@@ -330,21 +411,126 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            RebuildReadyAircraftReserve();
             IA_BattleGovernorDecision decision = _context != null ? _context.BattleDecision : null;
-            int limit = decision != null
+            int hardLimit = decision != null
                 ? Mathf.Max(1, transportWing ? Mathf.Max(1, decision.MaxAirAttackers / 2) : decision.MaxAirAttackers)
                 : source.Count;
+            int limit = transportWing
+                ? Mathf.Min(2, hardLimit)
+                : ResolveAirPackageSize(Mathf.Min(hardLimit, source.Count));
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            bool pressurePhase = brain != null && brain.StrategicPhase >= IA_StrategicPhase.PressaoEconomica;
+            if (!transportWing && pressurePhase && source.Count >= 6)
+            {
+                limit = Mathf.Min(Mathf.Max(limit, 6), Mathf.Min(hardLimit, source.Count));
+            }
 
             for (int i = 0; i < source.Count && destination.Count < limit; i++)
             {
                 GameObject unit = source[i];
-                if (unit != null)
+                if (unit == null)
                 {
-                    destination.Add(unit);
+                    continue;
                 }
+
+                if (!includeBombers && IsBomber(unit))
+                {
+                    continue;
+                }
+
+                ControleAviao aircraft = unit.GetComponent<ControleAviao>();
+                if (aircraft != null && !TrySpendReadyAircraftForLaunch(aircraft))
+                {
+                    continue;
+                }
+
+                destination.Add(unit);
             }
 
             return destination.Count > 0;
+        }
+
+        private void RebuildReadyAircraftReserve()
+        {
+            _readyAircraftByAirport.Clear();
+            if (_context == null || _context.WorldState == null || _context.WorldState.OwnUnits == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _context.WorldState.OwnUnits.Count; i++)
+            {
+                GameObject unit = _context.WorldState.OwnUnits[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                ControleAviao aircraft = unit.GetComponent<ControleAviao>();
+                if (aircraft == null
+                    || aircraft.aeroportoOrigem == null
+                    || aircraft.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio)
+                {
+                    continue;
+                }
+
+                int count;
+                _readyAircraftByAirport.TryGetValue(aircraft.aeroportoOrigem, out count);
+                _readyAircraftByAirport[aircraft.aeroportoOrigem] = count + 1;
+            }
+        }
+
+        private bool TrySpendReadyAircraftForLaunch(ControleAviao aircraft)
+        {
+            if (aircraft == null
+                || aircraft.aeroportoOrigem == null
+                || aircraft.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio)
+            {
+                return true;
+            }
+
+            int readyCount;
+            if (!_readyAircraftByAirport.TryGetValue(aircraft.aeroportoOrigem, out readyCount))
+            {
+                return true;
+            }
+
+            if (readyCount <= 1)
+            {
+                return false;
+            }
+
+            _readyAircraftByAirport[aircraft.aeroportoOrigem] = readyCount - 1;
+            return true;
+        }
+
+        private static int ResolveAirPackageSize(int max)
+        {
+            if (max <= 1)
+            {
+                return max;
+            }
+
+            if (Random.value < 0.45f)
+            {
+                return Random.Range(2, Mathf.Min(4, max) + 1);
+            }
+
+            return 1;
+        }
+
+        private static bool IsBomber(GameObject unit)
+        {
+            if (unit == null)
+            {
+                return false;
+            }
+
+            string normalizedName = IA_Text.Normalize(unit.name);
+            return unit.GetComponent<AviaoBombardeiro>() != null
+                   || normalizedName.Contains("b260")
+                   || normalizedName.Contains("bomb");
         }
     }
 }

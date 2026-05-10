@@ -1,5 +1,7 @@
-﻿using UnityEngine;
+using UnityEngine;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 
 public class PropellerBoats : MonoBehaviour
 {
@@ -78,8 +80,10 @@ public class PropellerBoats : MonoBehaviour
     angle = Mathf.Clamp(angle, -90F, 90F);
   }
 
+#if UNITY_EDITOR
   void OnDrawGizmos()
   {
     Handles.Label(propellers[0].position, engine_rpm.ToString());
   }
+#endif
 }

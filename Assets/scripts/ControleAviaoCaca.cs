@@ -124,6 +124,12 @@ public class ControleAviaoCaca : MonoBehaviour
         // Se o ControleAviao (Moderno) existir, desliga TUDO do script velho — o moderno assume
         if (_temControleModerno) return;
 
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         AtualizarLogicaEstado();
         MoverAviao();
         AnimarTremDePouso();
@@ -158,10 +164,33 @@ public class ControleAviaoCaca : MonoBehaviour
 
     public void DefinirDestino(Vector3 novoDestino)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         destinoAtual = novoDestino;
         if (estadoAtual == EstadoVoo.Voando)
             destinoAtual.y = altitudeCruzeiro;
         temDestino = true;
+    }
+
+    public void PararPorFaltaDeCombustivel()
+    {
+        if (estadoAtual != EstadoVoo.NoChao && transform.position.y > 5f)
+        {
+            Rigidbody rb = GetComponent<Rigidbody>();
+            SistemaDeDanos danos = GetComponent<SistemaDeDanos>();
+            FalhaAereaFisica.Ativar(gameObject, rb, Mathf.Max(velocidadeCruzeiro, velocidadeAtaque) * 0.8f, 4.5f, false, danos);
+            temDestino = false;
+            ControlarEfeitosMotor(false);
+            return;
+        }
+
+        temDestino = false;
+        velocidadeAtual = 0f;
+        ControlarEfeitosMotor(false);
     }
 
     void AtualizarLogicaEstado()

@@ -16,6 +16,7 @@ namespace Hegemonia.AI.BrainMaster
             public IA_Domain Domain;
             public bool IsStructure;
             public bool IsTransport;
+            public bool IsOilTanker;
             public bool IsGroundTransport;
             public bool IsHoverTransport;
             public bool IsNavalTransport;
@@ -289,17 +290,29 @@ namespace Hegemonia.AI.BrainMaster
                     score += 10f;
                 }
 
-                if (name.Contains("prefeitura") || name.Contains("capital") || name.Contains("governo"))
+                if (name.Contains("plataforma") || name.Contains("petroleiro") || name.Contains("petrolifero") || name.Contains("tanker"))
                 {
-                    score += 180f;
+                    score += 170f;
+                }
+                else if (name.Contains("pier") || name.Contains("estaleiro"))
+                {
+                    score += 150f;
+                }
+                else if (name.Contains("aeroporto") || name.Contains("airport"))
+                {
+                    score += 135f;
+                }
+                else if (name.Contains("fabrica") || name.Contains("construtor"))
+                {
+                    score += 110f;
+                }
+                else if (name.Contains("prefeitura") || name.Contains("capital") || name.Contains("governo"))
+                {
+                    score += 95f;
                 }
                 else if (name.Contains("quartel general") || name.Contains("quartel_general") || name.Contains("hq"))
                 {
                     score += 120f;
-                }
-                else if (name.Contains("aeroporto") || name.Contains("airport") || name.Contains("fabrica") || name.Contains("construtor") || name.Contains("estaleiro") || name.Contains("pier"))
-                {
-                    score += 70f;
                 }
 
                 score -= distance * 0.015f;
@@ -311,6 +324,187 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return bestScore > float.MinValue;
+        }
+
+        public int FillEnemyStrategicTargets(List<IA_StrategicTargetData> output, Vector3 fromPosition, int maxTargets)
+        {
+            if (output == null)
+            {
+                return 0;
+            }
+
+            output.Clear();
+            if (maxTargets <= 0)
+            {
+                return 0;
+            }
+
+            Vector3 flatFrom = Flatten(fromPosition);
+            for (int i = 0; i < _registrySnapshot.Count; i++)
+            {
+                RegistrySnapshotEntry snap = _registrySnapshot[i];
+                if (snap.Identity == null || snap.GameObject == null || snap.Transform == null || !snap.GameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (snap.TeamId == 0 || snap.TeamId == _teamId)
+                {
+                    continue;
+                }
+
+                IA_StrategicTargetKind kind = ResolveStrategicTargetKind(snap.Cache, snap.GameObject);
+                if (kind == IA_StrategicTargetKind.None)
+                {
+                    continue;
+                }
+
+                float distance = Vector3.Distance(flatFrom, Flatten(snap.Transform.position));
+                float score = ScoreStrategicTarget(kind, snap.Cache, distance);
+                IA_StrategicTargetData target = new IA_StrategicTargetData
+                {
+                    Kind = kind,
+                    Transform = snap.Transform,
+                    Position = snap.Transform.position,
+                    Score = score,
+                    Label = snap.Cache.NormalizedName
+                };
+
+                InsertStrategicTarget(output, target, maxTargets);
+            }
+
+            return output.Count;
+        }
+
+        private static IA_StrategicTargetKind ResolveStrategicTargetKind(EntityRuntimeCacheEntry cache, GameObject obj)
+        {
+            string name = cache.NormalizedName;
+            if (name.Contains("plataforma"))
+            {
+                return IA_StrategicTargetKind.OilPlatform;
+            }
+
+            if (cache.IsOilTanker || name.Contains("petroleiro") || name.Contains("petrolifero") || name.Contains("tanker"))
+            {
+                return IA_StrategicTargetKind.OilTanker;
+            }
+
+            if (name.Contains("pier"))
+            {
+                return IA_StrategicTargetKind.Pier;
+            }
+
+            if (name.Contains("estaleiro"))
+            {
+                return IA_StrategicTargetKind.Shipyard;
+            }
+
+            if (name.Contains("aeroporto") || name.Contains("airport") || name.Contains("base aerea") || name.Contains("pista"))
+            {
+                return IA_StrategicTargetKind.Airport;
+            }
+
+            ControleAviao aircraft = obj != null ? obj.GetComponent<ControleAviao>() : null;
+            if (aircraft != null && aircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+            {
+                return IA_StrategicTargetKind.ReadyAircraft;
+            }
+
+            if (!cache.IsStructure && (cache.IsFixedWing || cache.Domain == IA_Domain.Air))
+            {
+                return IA_StrategicTargetKind.ReadyAircraft;
+            }
+
+            if (!cache.IsStructure && cache.Domain == IA_Domain.Naval && !cache.IsOilTanker && !cache.IsNavalTransport)
+            {
+                return IA_StrategicTargetKind.NavalPatrol;
+            }
+
+            if (name.Contains("fabrica") || name.Contains("construtor"))
+            {
+                return IA_StrategicTargetKind.Factory;
+            }
+
+            if (name.Contains("prefeitura") || name.Contains("capital") || name.Contains("governo"))
+            {
+                return IA_StrategicTargetKind.CityHall;
+            }
+
+            return IA_StrategicTargetKind.None;
+        }
+
+        private static float ScoreStrategicTarget(IA_StrategicTargetKind kind, EntityRuntimeCacheEntry cache, float distance)
+        {
+            float score;
+            switch (kind)
+            {
+                case IA_StrategicTargetKind.OilPlatform:
+                    score = 330f;
+                    break;
+                case IA_StrategicTargetKind.OilTanker:
+                    score = 315f;
+                    break;
+                case IA_StrategicTargetKind.Pier:
+                    score = 285f;
+                    break;
+                case IA_StrategicTargetKind.Shipyard:
+                    score = 275f;
+                    break;
+                case IA_StrategicTargetKind.Airport:
+                    score = 260f;
+                    break;
+                case IA_StrategicTargetKind.ReadyAircraft:
+                    score = 235f;
+                    break;
+                case IA_StrategicTargetKind.NavalPatrol:
+                    score = 220f;
+                    break;
+                case IA_StrategicTargetKind.Factory:
+                    score = 170f;
+                    break;
+                case IA_StrategicTargetKind.CityHall:
+                    score = 135f;
+                    break;
+                default:
+                    score = 0f;
+                    break;
+            }
+
+            if (cache.IsStructure)
+            {
+                score += 35f;
+            }
+
+            return score - distance * 0.012f;
+        }
+
+        private static void InsertStrategicTarget(List<IA_StrategicTargetData> output, IA_StrategicTargetData target, int maxTargets)
+        {
+            for (int i = 0; i < output.Count; i++)
+            {
+                if (output[i] != null && output[i].Kind == target.Kind)
+                {
+                    if (target.Score <= output[i].Score)
+                    {
+                        return;
+                    }
+
+                    output.RemoveAt(i);
+                    break;
+                }
+            }
+
+            int index = 0;
+            while (index < output.Count && output[index] != null && output[index].Score >= target.Score)
+            {
+                index++;
+            }
+
+            output.Insert(index, target);
+            if (output.Count > maxTargets)
+            {
+                output.RemoveAt(output.Count - 1);
+            }
         }
 
         public int CountOwnByHint(params string[] hints)
@@ -866,9 +1060,13 @@ namespace Hegemonia.AI.BrainMaster
             _forceSnapshot.ArtilleryUnits = 0;
             _forceSnapshot.Helicopters = 0;
             _forceSnapshot.FixedWingAircraft = 0;
+            _forceSnapshot.ReadyAircraft = 0;
             _forceSnapshot.AirUnits = 0;
             _forceSnapshot.NavalUnits = 0;
             _forceSnapshot.Submarines = 0;
+            _forceSnapshot.OilTankers = 0;
+            _forceSnapshot.CoastalDefenseShips = 0;
+            _forceSnapshot.AttackFleetShips = 0;
             _forceSnapshot.GroundTransports = 0;
             _forceSnapshot.HoverTransports = 0;
             _forceSnapshot.NavalTransports = 0;
@@ -897,9 +1095,22 @@ namespace Hegemonia.AI.BrainMaster
                 _forceSnapshot.TotalCombatUnits++;
             }
 
-            if (entry.Domain == IA_Domain.Naval && !entry.IsSubmarine)
+            if (entry.IsOilTanker)
+            {
+                _forceSnapshot.OilTankers++;
+            }
+
+            if (entry.Domain == IA_Domain.Naval && !entry.IsSubmarine && !entry.IsOilTanker && !entry.IsNavalTransport)
             {
                 _forceSnapshot.NavalUnits++;
+                if (entry.IsHighValueMobile)
+                {
+                    _forceSnapshot.AttackFleetShips++;
+                }
+                else
+                {
+                    _forceSnapshot.CoastalDefenseShips++;
+                }
             }
             else if (entry.Domain == IA_Domain.Air)
             {
@@ -934,6 +1145,12 @@ namespace Hegemonia.AI.BrainMaster
             if (entry.IsFixedWing)
             {
                 _forceSnapshot.FixedWingAircraft++;
+                _forceSnapshot.ReadyAircraft++;
+            }
+
+            if (entry.IsNavalTransport)
+            {
+                _forceSnapshot.NavalTransports++;
             }
 
             if (entry.IsGroundTransport)
@@ -945,6 +1162,8 @@ namespace Hegemonia.AI.BrainMaster
             {
                 _forceSnapshot.HoverTransports++;
             }
+
+
 
             if (entry.IsNavalTransport)
             {
@@ -1021,7 +1240,9 @@ namespace Hegemonia.AI.BrainMaster
             bool hasAircraft = obj.GetComponent<ControleAviao>() != null || obj.GetComponent<ControleAviaoCaca>() != null;
             bool hasHelicopter = obj.GetComponent<Helicoptero>() != null;
             bool hasSubmarine = obj.GetComponent<ControleSubmarino>() != null || n.Contains("leviathan") || n.Contains("wraith") || n.Contains("mako");
-            bool hasNaval = obj.GetComponent<ControleNavioRealista>() != null || n.Contains("navio") || n.Contains("corveta") || n.Contains("destroy") || n.Contains("ironclad") || n.Contains("sovereign") || n.Contains("vindicator") || n.Contains("arrowhead");
+            bool isOilTanker = obj.GetComponent<NavioPetroleiro>() != null || n.Contains("petroleiro") || n.Contains("petrolifero") || n.Contains("tanker");
+            bool isNavalTransportComp = obj.GetComponent<NavioTransporteTropas>() != null;
+            bool hasNaval = obj.GetComponent<ControleNavioRealista>() != null || isOilTanker || isNavalTransportComp || n.Contains("navio") || n.Contains("corveta") || n.Contains("destroy") || n.Contains("ironclad") || n.Contains("sovereign") || n.Contains("vindicator") || n.Contains("arrowhead");
             bool hasAgent = obj.GetComponent<NavMeshAgent>() != null;
             bool mobileByScript = !hasAgent
                                   && (hasAircraft
@@ -1047,11 +1268,12 @@ namespace Hegemonia.AI.BrainMaster
             IdentidadeUnidade idComp = obj.GetComponent<IdentidadeUnidade>();
             bool isAereoFromComp = idComp != null && idComp.tipoUnidade == TipoUnidade.Aereo;
             bool isDrone = n.Contains("drone") || n.Contains("vap");
+            bool isFixedWingByName = IsFixedWingAircraftName(n);
 
             bool isStructure = explicitStructure || (!hasAgent && !mobileByScript);
             IA_Domain domain = IA_Domain.Land;
 
-            if (isAereoFromComp || hasAircraft || hasHelicopter || n.Contains("heli") || n.Contains("aviao") || n.Contains("fa1") || n.Contains("g15") || n.Contains("a_20") || n.Contains("super tuk") || isDrone)
+            if (isAereoFromComp || hasAircraft || hasHelicopter || n.Contains("heli") || n.Contains("aviao") || isFixedWingByName || isDrone)
             {
                 domain = IA_Domain.Air;
             }
@@ -1061,7 +1283,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             bool isHover = n.Contains("hover") || n.Contains("houver");
-            bool isTransport = n.Contains("transporte")
+            bool isTransport = isOilTanker
+                               || n.Contains("transporte")
                                || n.Contains("truck")
                                || n.Contains("caminhao")
                                || isHover
@@ -1073,22 +1296,39 @@ namespace Hegemonia.AI.BrainMaster
                 Domain = domain,
                 IsStructure = isStructure,
                 IsTransport = isTransport,
+                IsOilTanker = isOilTanker,
                 IsGroundTransport = (n.Contains("truck") || n.Contains("caminhao") || n.Contains("transporte")) && domain == IA_Domain.Land,
                 IsHoverTransport = isHover,
-                IsNavalTransport = domain == IA_Domain.Naval && (n.Contains("liberty") || n.Contains("transporte") || isHover || n.Contains("ww")),
+                IsNavalTransport = domain == IA_Domain.Naval && (isOilTanker || isNavalTransportComp || n.Contains("liberty") || n.Contains("transporte") || isHover || n.Contains("ww")),
                 IsSubmarine = hasSubmarine || n.Contains("sub"),
                 IsInfantry = n.Contains("sold") || n.Contains("rifle") || n.Contains("infan"),
                 IsTank = n.Contains("tank") || n.Contains("mbt") || n.Contains("south") || n.Contains("arthur") || n.Contains("c1"),
                 IsArtillery = n.Contains("artilh") || n.Contains("hack") || n.Contains("mlrs") || n.Contains("lancador"),
                 IsHelicopter = hasHelicopter || n.Contains("heli") || n.Contains("ray") || n.Contains("vans"),
-                IsFixedWing = isAereoFromComp || hasAircraft || n.Contains("fa1") || n.Contains("jet") || n.Contains("aviao") || n.Contains("g15") || n.Contains("a_20") || n.Contains("super tuk") || n.Contains("supertuk") || isDrone,
+                IsFixedWing = isAereoFromComp || hasAircraft || isFixedWingByName || n.Contains("jet") || n.Contains("aviao") || isDrone,
                 IsRadar = n.Contains("radar"),
-                IsHighValueMobile = isAereoFromComp || hasAircraft || hasHelicopter || hasNaval || hasSubmarine || isDrone,
-                VisionRadius = ResolveVisionRadius(n, isStructure, hasAircraft || isAereoFromComp || isDrone, hasHelicopter, hasNaval || hasSubmarine)
+                IsHighValueMobile = isAereoFromComp || hasAircraft || isFixedWingByName || hasHelicopter || hasNaval || hasSubmarine || isDrone,
+                VisionRadius = ResolveVisionRadius(n, isStructure, hasAircraft || isAereoFromComp || isFixedWingByName || isDrone, hasHelicopter, hasNaval || hasSubmarine)
             };
 
             _entityRuntimeCache[id] = entry;
             return entry;
+        }
+
+        private static bool IsFixedWingAircraftName(string normalizedName)
+        {
+            return normalizedName.Contains("fa1")
+                   || normalizedName.Contains("g15")
+                   || normalizedName.Contains("a_20")
+                   || normalizedName.Contains("a20")
+                   || normalizedName.Contains("b260")
+                   || normalizedName.Contains("b-260")
+                   || normalizedName.Contains("supra")
+                   || normalizedName.Contains("su11")
+                   || normalizedName.Contains("g_18m")
+                   || normalizedName.Contains("g18m")
+                   || normalizedName.Contains("super tuk")
+                   || normalizedName.Contains("supertuk");
         }
 
         private static float ResolveVisionRadius(string normalizedName, bool structure, bool hasAircraft, bool hasHelicopter, bool hasNaval)

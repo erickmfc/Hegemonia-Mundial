@@ -150,7 +150,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53ca19d366f8d9f44a936127b47853ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projetil
-  velocidade: 90
+  velocidade: 120
   dano: 2
   tempoDeVida: 10
   raioDeExplosao: 0

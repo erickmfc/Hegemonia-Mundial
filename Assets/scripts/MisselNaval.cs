@@ -96,9 +96,12 @@ public class MisselNaval : MonoBehaviour
         }
     }
 
-    public void IniciarAtaque(Vector3 alvo, Transform alvoT = null)
+    private Transform lancador;
+
+    public void IniciarAtaque(Vector3 alvo, Transform alvoT = null, Transform lancadorRef = null)
     {
         StopAllCoroutines();
+        lancador = lancadorRef != null ? lancadorRef.root : null;
         pontoAlvo = alvo;
         alvoTransform = alvoT;
         alvoEhAereo = DetectarAlvoAereo(alvoT, alvo);
@@ -225,6 +228,7 @@ public class MisselNaval : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
+        if (DeveIgnorarTrigger(collision.collider)) return;
         Explodir();
     }
 
@@ -294,28 +298,18 @@ public class MisselNaval : MonoBehaviour
 
     bool DeveIgnorarTrigger(Collider other)
     {
-        if (other == null)
-        {
-            return true;
-        }
-
-        if (other.CompareTag("Player"))
-        {
-            return true;
-        }
-
-        if (other.isTrigger)
-        {
-            return true;
-        }
+        if (other == null) return true;
+        if (other.CompareTag("Player")) return true;
+        if (other.isTrigger) return true;
 
         Transform raizOutro = other.transform.root != null ? other.transform.root : other.transform;
         Transform raizMinha = transform.root != null ? transform.root : transform;
 
-        if (raizOutro == raizMinha)
-        {
-            return true;
-        }
+        // 1. Evita atirar na própria pool
+        if (raizOutro == raizMinha) return true;
+        
+        // 2. Evita explodir em quem atirou!
+        if (lancador != null && raizOutro == lancador) return true;
 
         return false;
     }

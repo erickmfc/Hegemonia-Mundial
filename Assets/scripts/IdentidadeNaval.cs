@@ -91,6 +91,7 @@ public class IdentidadeNaval : MonoBehaviour
         
         targetSaida = pontoDeSaida;
         manobrandoDeRe = true;
+        rotacaoReInicial = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
         Debug.Log($"{nomeDoNavio} saindo da doca em marcha ré.");
     }
 
@@ -100,6 +101,7 @@ public class IdentidadeNaval : MonoBehaviour
     
     private bool manobrandoDeRe = false;
     private Vector3 targetSaida;
+    private Quaternion rotacaoReInicial;
 
     void Update()
     {
@@ -111,7 +113,7 @@ public class IdentidadeNaval : MonoBehaviour
 
         // Opcional: Se o jogador mover o navio manualmente (clicando no mapa), 
         // precisamos detectar que ele não está mais "querendo atracar" ou "atracado".
-        if (estaAtracado && agente != null && agente.enabled && !agente.pathPending)
+        if (estaAtracado && agente != null && agente.isActiveAndEnabled && agente.isOnNavMesh && !agente.pathPending)
         {
             // Se já chegou (ou está muito perto)
             if (agente.remainingDistance <= agente.stoppingDistance)
@@ -139,22 +141,9 @@ public class IdentidadeNaval : MonoBehaviour
             return;
         }
 
-        // MOVER: Move para trás (na verdade, move em direção ao alvo, mas de costas)
-        // Lógica: Queremos que a TRASEIRA aponte para o Alvo.
-        // Vetor Direção = Destino - Eu
-        Vector3 direcaoParaSaida = (targetSaida - transform.position).normalized;
-
-        // Mover o navio na direção da saída
-        // Nota: Não usamos transform.forward negativo cegamente, nós movemos 'Towards' o ponto
+        // Mantem o casco alinhado durante a re; o controle normal volta depois da vaga.
         transform.position = Vector3.MoveTowards(transform.position, targetSaida, velocidadeDeRe * Time.deltaTime);
-
-        // ROTACIONAR: Queremos que nosso 'Back' (-Forward) olhe para o target
-        // Ou seja, nosso Forward deve olhar para o oposto da direção (-direcaoParaSaida)
-        if (direcaoParaSaida != Vector3.zero)
-        {
-            Quaternion rotacaoAlvo = Quaternion.LookRotation(-direcaoParaSaida);
-            transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, Time.deltaTime * velocidadeRotacaoRe);
-        }
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, rotacaoReInicial, velocidadeRotacaoRe * 45f * Time.deltaTime);
     }
 
     /// <summary>
@@ -187,7 +176,7 @@ public class IdentidadeNaval : MonoBehaviour
             }
 
             agente.enabled = true;
-            agente.isStopped = false;
+            if (agente.isActiveAndEnabled && agente.isOnNavMesh) agente.isStopped = false;
             MovimentoFallbackTransicional.TrySetNavDestination(gameObject, destino);
         }
         else
@@ -210,7 +199,7 @@ public class IdentidadeNaval : MonoBehaviour
         if (agente != null)
         {
             agente.enabled = true;
-            agente.isStopped = false;
+            if (agente.isActiveAndEnabled && agente.isOnNavMesh) agente.isStopped = false;
         }
     }
 }

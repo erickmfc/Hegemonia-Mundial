@@ -825,7 +825,7 @@ Transform:
   m_GameObject: {fileID: 6190994431199513893}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1.9234443, y: 0, z: -0.47261783}
+  m_LocalPosition: {x: 1.92, y: 0, z: -0.502}
   m_LocalScale: {x: 3.1792462, y: 1, z: 0.048573267}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1044,7 +1044,7 @@ Transform:
   m_GameObject: {fileID: 6576635959124183918}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 4.37, y: 0, z: -0.134}
+  m_LocalPosition: {x: 5.55, y: 0, z: -0.134}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1470,6 +1470,8 @@ MonoBehaviour:
   reparoPorSegundo: 10
   intervaloRecargaMissel: 1
   intervaloRecargaContramedidas: 2
+  reabastecimentoCombustivelPorSegundo: 45
+  intervaloReabastecimentoCombustivel: 0.5
   pontosDeSaida:
   - {fileID: 1901419655587657849}
   - {fileID: 3987429640973148773}
@@ -1477,6 +1479,14 @@ MonoBehaviour:
   pontoEntrada: {fileID: 3064646619704684095}
   pontoAcoplagem: {fileID: 4246964438323260673}
   pontoSaidaNavio: {fileID: 3064646619704684095}
+  perfilColocacaoCosteira:
+    offsetAguaFrente: 35
+    offsetTerraTras: -15
+    raioMinimoSonda: 8
+    raioMaximoSonda: 180
+    empurraoPreview: 14
+    empurraoCommit: 18
+    usarValidacaoRapidaNoPreview: 1
   offsetAguaFrente: 35
   offsetTerraTras: -15
 --- !u!114 &-2325198407568977890
@@ -1841,7 +1851,7 @@ Transform:
   m_GameObject: {fileID: 8645346965862590042}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 4.37, y: 0, z: -0.134}
+  m_LocalPosition: {x: 5.93, y: 0, z: -0.134}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

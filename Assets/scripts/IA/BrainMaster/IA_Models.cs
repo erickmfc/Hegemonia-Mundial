@@ -55,7 +55,8 @@ namespace Hegemonia.AI.BrainMaster
         NavalHeavy,
         Submarine,
         AirIntercept,
-        AirTacticalTransport
+        AirTacticalTransport,
+        NavalTransport
     }
 
     public enum IA_ZoneType
@@ -89,6 +90,30 @@ namespace Hegemonia.AI.BrainMaster
         Combat,
         Support,
         Reserve
+    }
+
+    public enum IA_StrategicPhase
+    {
+        Abertura,
+        LogisticaPetroleo,
+        DefesaCosteira,
+        Expansao,
+        PressaoEconomica,
+        Dominacao
+    }
+
+    public enum IA_StrategicTargetKind
+    {
+        None,
+        OilPlatform,
+        OilTanker,
+        Pier,
+        Shipyard,
+        Airport,
+        ReadyAircraft,
+        NavalPatrol,
+        Factory,
+        CityHall
     }
 
     public interface IIAUpdateModule
@@ -133,6 +158,15 @@ namespace Hegemonia.AI.BrainMaster
         public float ThreatScore;
         public float LastSeenTime;
         public bool IsStructure;
+    }
+
+    public sealed class IA_StrategicTargetData
+    {
+        public IA_StrategicTargetKind Kind;
+        public Transform Transform;
+        public Vector3 Position;
+        public float Score;
+        public string Label;
     }
 
     [Serializable]
@@ -413,9 +447,13 @@ namespace Hegemonia.AI.BrainMaster
         public int ArtilleryUnits;
         public int Helicopters;
         public int FixedWingAircraft;
+        public int ReadyAircraft;
         public int AirUnits;
         public int NavalUnits;
         public int Submarines;
+        public int OilTankers;
+        public int CoastalDefenseShips;
+        public int AttackFleetShips;
         public int GroundTransports;
         public int HoverTransports;
         public int NavalTransports;

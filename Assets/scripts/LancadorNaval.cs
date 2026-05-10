@@ -12,10 +12,15 @@ public class LancadorNaval : MonoBehaviour
     public Transform cabecaRotativa; // Parte que gira (se houver)
     public Transform[] pontosDeSaida; // Onde os mísseis nascem (bocas do VLS)
     public GameObject prefabMissel; // O prefab que tem o script MisselNaval
+    public GameObject prefabTorpedo; // NOVO: Prefab do torpedo/missil anti-navio
+    [Tooltip("Se ativo, torpedos ficam reservados para o comando ATIVO do navio e nao saem pelo automatico da tecla I.")]
+    public bool torpedosSomenteNoModoAtivo = true;
 
     [Header("Configurações de Combate")]
     public int municaoTotal = 32;
     public int municaoMaxima = 32; // Limite para recarga
+    public int torpedosTotal = 8; // NOVO: limite para torpedos
+    public int torpedosMaximos = 8;
     public int tirosPorSalva = 4; // Quantos mísseis saem de uma vez
     public float intervaloEntreTiros = 0.5f; // Tempo entre mísseis da mesma salva
     public float tempoRecargaSalva = 5.0f; // Tempo entre salvas
@@ -24,6 +29,7 @@ public class LancadorNaval : MonoBehaviour
     public int maxMisseisSimultaneosPorAlvo = 6;
     public float cooldownAutorizacaoAlvo = 1.4f;
     public AudioClip somDisparo;
+    public bool preaquecerMisseisNoStart = false;
 
     [Header("Configurações de Áudio")]
     [Range(0f, 1f)] public float volumeSom = 1.0f;
@@ -59,14 +65,22 @@ public class LancadorNaval : MonoBehaviour
     private static Dictionary<Transform, float> bancoDanoProjetadoFrotas = new Dictionary<Transform, float>();
     private static readonly Dictionary<Transform, float> expiracaoDanoProjetadoFrotas = new Dictionary<Transform, float>();
     private static readonly Dictionary<int, float> cooldownAutorizacaoPorAlvo = new Dictionary<int, float>();
+    private static readonly HashSet<int> prefabsPreaquecidos = new HashSet<int>();
+    private static readonly HashSet<int> prefabsEmPreaquecimento = new HashSet<int>();
     private static readonly Collider[] radarBuffer = new Collider[128];
+    private static readonly List<IdentidadeUnidade> unidadesRegistradasRadar = new List<IdentidadeUnidade>(256);
+    private static MiniMapa miniMapaCache;
+    private static float proximaBuscaMiniMapa;
     private readonly List<Transform> bufferAlvosValidos = new List<Transform>(32);
     private float proximaVarreduraAutomatica = 0f;
 
     void Start()
     {
         cameraPrincipal = Camera.main;
-        PoolDeObjetosCombate.Prewarm(prefabMissel, Mathf.Clamp(tirosPorSalva + 2, 4, 8));
+        if (preaquecerMisseisNoStart)
+        {
+            StartCoroutine(PreaquecerMisseisSemTravada());
+        }
         // Se Maxima não foi configurada ou menor que total inicial, ajusta
         if (municaoMaxima < municaoTotal) municaoMaxima = municaoTotal;
 
@@ -87,6 +101,31 @@ public class LancadorNaval : MonoBehaviour
         if (meuControle == null) meuControle = GetComponentInParent<ControleUnidade>();
 
         CriarVisualizadorAlcance();
+    }
+
+    IEnumerator PreaquecerMisseisSemTravada()
+    {
+        if (prefabMissel == null)
+        {
+            yield break;
+        }
+
+        int prefabId = prefabMissel.GetInstanceID();
+        int quantidade = Mathf.Clamp(tirosPorSalva + 2, 4, 8);
+        if (prefabsPreaquecidos.Contains(prefabId)
+            || prefabsEmPreaquecimento.Contains(prefabId)
+            || PoolDeObjetosCombate.ObterQuantidadePreaquecida(prefabMissel) >= quantidade)
+        {
+            yield break;
+        }
+
+        prefabsEmPreaquecimento.Add(prefabId);
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Pool", "Prewarm naval agendado: " + prefabMissel.name);
+        yield return new WaitForSeconds(1.5f);
+        yield return PoolDeObjetosCombate.PrewarmIncremental(prefabMissel, quantidade, 1);
+        prefabsEmPreaquecimento.Remove(prefabId);
+        prefabsPreaquecidos.Add(prefabId);
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Pool", "Prewarm naval concluido: " + prefabMissel.name);
     }
 
     void CriarVisualizadorAlcance()
@@ -132,6 +171,7 @@ public class LancadorNaval : MonoBehaviour
     public void Recarregar(int quantidade)
     {
         municaoTotal = Mathf.Min(municaoTotal + quantidade, municaoMaxima);
+        torpedosTotal = Mathf.Min(torpedosTotal + (quantidade / 4), torpedosMaximos);
     }
 
     public void DefinirModoIA(ModoOperacao novoModo, bool usarDelay = true)
@@ -272,7 +312,7 @@ public class LancadorNaval : MonoBehaviour
 
     bool PodeAtirar()
     {
-        return Time.time > tempoUltimoDisparo + tempoRecargaSalva && municaoTotal > 0;
+        return Time.time > tempoUltimoDisparo + tempoRecargaSalva && (municaoTotal > 0 || torpedosTotal > 0);
     }
 
     Transform ResolverTransformAlvo(Transform alvo)
@@ -280,15 +320,19 @@ public class LancadorNaval : MonoBehaviour
         if (alvo == null) return null;
 
         SistemaDeDanos vida = alvo.GetComponentInParent<SistemaDeDanos>();
+        if (vida == null) vida = alvo.GetComponentInChildren<SistemaDeDanos>();
         if (vida != null) return vida.transform;
 
         ControleAviao aviao = alvo.GetComponentInParent<ControleAviao>();
+        if (aviao == null) aviao = alvo.GetComponentInChildren<ControleAviao>();
         if (aviao != null) return aviao.transform;
 
         Helicoptero helicoptero = alvo.GetComponentInParent<Helicoptero>();
+        if (helicoptero == null) helicoptero = alvo.GetComponentInChildren<Helicoptero>();
         if (helicoptero != null) return helicoptero.transform;
 
         IdentidadeUnidade identidade = alvo.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade == null) identidade = alvo.GetComponentInChildren<IdentidadeUnidade>();
         if (identidade != null) return identidade.transform;
 
         return alvo.root != null ? alvo.root : alvo;
@@ -314,8 +358,9 @@ public class LancadorNaval : MonoBehaviour
                || nomeAlvo.Contains("bombard")
                || nomeAlvo.Contains("bombardeiro")
                || nomeAlvo.Contains("bomber")
-               || alvo.tag == "Areo"
-               || alvo.tag == "Aereo";
+               || nomeAlvo.Contains("b260")
+               || TagSafe.Matches(alvo, "Areo")
+               || TagSafe.Matches(alvo, "Aereo");
     }
 
     bool EhBombardeiro(Transform alvo)
@@ -328,6 +373,7 @@ public class LancadorNaval : MonoBehaviour
                || nomeAlvo.Contains("bombardeiro")
                || nomeAlvo.Contains("bomber")
                || nomeAlvo.Contains("b52")
+               || nomeAlvo.Contains("b260")
                || nomeAlvo.Contains("b2");
     }
 
@@ -338,13 +384,107 @@ public class LancadorNaval : MonoBehaviour
         if (EhAlvoAereo(alvo, identidade)) return 1;
         return 2;
     }
+
+    bool TentarRegistrarAlvoDetectado(Transform candidato, int meuTime)
+    {
+        if (candidato == null)
+        {
+            return false;
+        }
+
+        Transform minhaRaiz = transform.root != null ? transform.root : transform;
+        if (candidato == minhaRaiz || candidato.IsChildOf(minhaRaiz))
+        {
+            return false;
+        }
+
+        IdentidadeUnidade idAlvo = candidato.GetComponentInParent<IdentidadeUnidade>();
+        if (idAlvo == null) idAlvo = candidato.GetComponentInChildren<IdentidadeUnidade>();
+        if (idAlvo == null || idAlvo.teamID == 0 || idAlvo.teamID == meuTime)
+        {
+            return false;
+        }
+
+        Transform alvoResolvido = ResolverTransformAlvo(idAlvo.transform);
+        if (alvoResolvido == null || alvoResolvido == minhaRaiz || alvoResolvido.IsChildOf(minhaRaiz))
+        {
+            return false;
+        }
+
+        SistemaDeDanos vida = alvoResolvido.GetComponentInParent<SistemaDeDanos>();
+        if (vida == null) vida = alvoResolvido.GetComponentInChildren<SistemaDeDanos>();
+        if (vida == null || vida.vidaAtual <= 0f)
+        {
+            return false;
+        }
+
+        Transform alvoFinal = ResolverTransformAlvo(vida.transform);
+        if (alvoFinal == null || bufferAlvosValidos.Contains(alvoFinal))
+        {
+            return false;
+        }
+
+        bufferAlvosValidos.Add(alvoFinal);
+        RegistrarAlvoNoMiniMapa(alvoFinal);
+        return true;
+    }
+
+    void RegistrarAlvosDoRegistroGlobal(int meuTime)
+    {
+        RegistroEntidadesJogo.FillUnidades(unidadesRegistradasRadar);
+        float alcanceSqr = alcanceRadar * alcanceRadar;
+
+        for (int i = 0; i < unidadesRegistradasRadar.Count; i++)
+        {
+            IdentidadeUnidade unidade = unidadesRegistradasRadar[i];
+            if (unidade == null || !unidade.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            if ((unidade.transform.position - transform.position).sqrMagnitude > alcanceSqr)
+            {
+                continue;
+            }
+
+            TentarRegistrarAlvoDetectado(unidade.transform, meuTime);
+        }
+
+        unidadesRegistradasRadar.Clear();
+    }
+
+    void RegistrarAlvoNoMiniMapa(Transform alvo)
+    {
+        MiniMapa miniMapa = ObterMiniMapa();
+        if (miniMapa != null && miniMapa.mostrarInimigos)
+        {
+            miniMapa.RegistrarUnidadeNoMapa(alvo, true);
+        }
+    }
+
+    static MiniMapa ObterMiniMapa()
+    {
+        if (miniMapaCache != null)
+        {
+            return miniMapaCache;
+        }
+
+        if (Time.time < proximaBuscaMiniMapa)
+        {
+            return null;
+        }
+
+        proximaBuscaMiniMapa = Time.time + 1f;
+        miniMapaCache = UnityEngine.Object.FindFirstObjectByType<MiniMapa>();
+        return miniMapaCache;
+    }
     
     // Retorna lista de inimigos ordenados por proximidade
     List<Transform> BuscarTodosInimigos()
     {
         LimparDanoProjetadoExpirado();
         LimparCooldownAutorizacaoExpirado();
-        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, radarBuffer, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, radarBuffer, Physics.AllLayers, QueryTriggerInteraction.Collide);
         int meuTime = (minhaIdentidade != null) ? minhaIdentidade.teamID : 1; 
 
         bufferAlvosValidos.Clear();
@@ -358,43 +498,10 @@ public class LancadorNaval : MonoBehaviour
             }
 
             if (hit.transform == transform || hit.transform.IsChildOf(transform)) continue;
-            
-            bool ehInimigo = false;
-
-            IdentidadeUnidade idAlvo = hit.GetComponent<IdentidadeUnidade>();
-            if (idAlvo == null) idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
-
-            if (idAlvo != null)
-            {
-                if (idAlvo.teamID != 0 && idAlvo.teamID != meuTime) ehInimigo = true;
-            }
-            else
-            {
-                // Sem identidade, ignoramos.
-                // O sistema de tags estava causando erros pois as tags não existem no projeto.
-                // Agora confiamos 100% no componente IdentidadeUnidade adicionado pelo AnalistaExecutivo.
-            }
-
-            if (ehInimigo)
-            {
-                Transform alvoResolvido = ResolverTransformAlvo(hit.transform);
-                if (alvoResolvido == null || alvoResolvido == transform || alvoResolvido.IsChildOf(transform))
-                {
-                    continue;
-                }
-
-                SistemaDeDanos vida = alvoResolvido.GetComponentInParent<SistemaDeDanos>();
-                
-                // Só adiciona se tem sistema de danos e vida > 0
-                if (vida != null && vida.vidaAtual > 0)
-                {
-                    if (!bufferAlvosValidos.Contains(alvoResolvido))
-                    {
-                        bufferAlvosValidos.Add(alvoResolvido);
-                    }
-                }
-            }
+            TentarRegistrarAlvoDetectado(hit.transform, meuTime);
         }
+
+        RegistrarAlvosDoRegistroGlobal(meuTime);
         
         // Prioriza bombardeiros, depois demais alvos aéreos, e por fim proximidade.
         bufferAlvosValidos.Sort((a, b) =>
@@ -586,8 +693,8 @@ public class LancadorNaval : MonoBehaviour
 
     void DispararUnico(Vector3 destino, Transform alvoFixo)
     {
-        if (municaoTotal <= 0) return;
-        municaoTotal--;
+        // Vai checar limites depois de decidir qual disparar
+
 
         // Pega o próximo ponto de saída (rodízio entre os tubos)
         Transform pontoDeSaida = transform; // Fallback
@@ -600,21 +707,63 @@ public class LancadorNaval : MonoBehaviour
             indicePontoSaida = (indicePontoSaida + 1) % pontosDeSaida.Length;
         }
 
-        if (prefabMissel == null) return; // Segurança caso prefabMissel também não esteja assinado
+        if (prefabMissel == null && prefabTorpedo == null) return; // Segurança
 
-        // Cria o míssil
-        GameObject misselObj = PoolDeObjetosCombate.Spawn(prefabMissel, pontoDeSaida.position, pontoDeSaida.rotation);
+        bool alvoNavalOuSubmarino = false;
+        if (alvoFixo != null)
+        {
+            alvoNavalOuSubmarino = alvoFixo.GetComponentInParent<ControleNavioRealista>() != null || 
+                                   alvoFixo.GetComponentInChildren<ControleNavioRealista>() != null ||
+                                   alvoFixo.GetComponentInParent<ControleSubmarino>() != null || 
+                                   alvoFixo.GetComponentInChildren<ControleSubmarino>() != null ||
+                                   TagSafe.Matches(alvoFixo, "Navio") || TagSafe.Matches(alvoFixo, "Submarino");
+        }
+
+        GameObject prefabASpawnar = prefabMissel;
+        bool podeUsarTorpedoNesteLancador = !torpedosSomenteNoModoAtivo;
+        if (alvoNavalOuSubmarino && podeUsarTorpedoNesteLancador && prefabTorpedo != null && torpedosTotal > 0)
+        {
+            prefabASpawnar = prefabTorpedo;
+        }
+        else if (prefabASpawnar == null && podeUsarTorpedoNesteLancador && torpedosTotal > 0)
+        {
+            prefabASpawnar = prefabTorpedo; // Fallback se não houver missil mas tiver torpedo
+        }
+        else if (municaoTotal <= 0)
+        {
+            // Se nao decidiu usar torpedo e ta sem missil normal
+            if (podeUsarTorpedoNesteLancador && torpedosTotal > 0 && prefabTorpedo != null) prefabASpawnar = prefabTorpedo;
+            else return; // Sem municao disponivel
+        }
+
+        if (prefabASpawnar == null) return;
         
-        // Configura o míssil
+        if (prefabASpawnar == prefabTorpedo) torpedosTotal--;
+        else municaoTotal--;
+
+        // Cria o projétil (míssil ou torpedo)
+        GameObject misselObj = PoolDeObjetosCombate.Spawn(prefabASpawnar, pontoDeSaida.position, pontoDeSaida.rotation);
+        
+        // Se tivermos um alvo fixo (Auto), atualizamos a posição, senão vai no chão (Manual)
+        Vector3 alvoFinal = alvoFixo != null ? alvoFixo.position : destino;
+        
+        // Configura o míssil ou torpedo
         MisselNaval scriptMissel = misselObj.GetComponent<MisselNaval>();
         if (scriptMissel != null)
         {
-            // Se tivermos um alvo fixo (Auto), atualizamos a posição, senão vai no chão (Manual)
-            Vector3 alvoFinal = alvoFixo != null ? alvoFixo.position : destino;
-            
-            // Passamos tambem o Transform do alvoFixo para o missel poder perseguir (homing)
-            scriptMissel.IniciarAtaque(alvoFinal, alvoFixo);
+            scriptMissel.IniciarAtaque(alvoFinal, alvoFixo, transform);
             MissileThreatTracker.RegistrarLancamento(misselObj, this, alvoFinal, alvoFixo, MissileThreatTracker.EstimarVelocidade(misselObj));
+        }
+        else
+        {
+            Torpedo scriptTorpedo = misselObj.GetComponent<Torpedo>();
+            if (scriptTorpedo != null)
+            {
+                scriptTorpedo.DefinirAlvo(alvoFixo);
+                int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : -1;
+                scriptTorpedo.DefinirLancador(transform, meuTime);
+                MissileThreatTracker.RegistrarLancamento(misselObj, this, alvoFinal, alvoFixo, MissileThreatTracker.EstimarVelocidade(misselObj));
+            }
         }
 
         // Som
@@ -636,6 +785,13 @@ public class LancadorNaval : MonoBehaviour
 
     void OnGUI()
     {
+        CombustivelUnidade indicadorCompartilhado = GetComponent<CombustivelUnidade>();
+        if (indicadorCompartilhado == null) indicadorCompartilhado = GetComponentInParent<CombustivelUnidade>();
+        if (indicadorCompartilhado != null && indicadorCompartilhado.mostrarIndicadorMundo)
+        {
+            return;
+        }
+
         // 1. Só mostra se estiver selecionado!
         if (meuControle == null || !meuControle.selecionado) return;
         
@@ -665,11 +821,11 @@ public class LancadorNaval : MonoBehaviour
             {
                 case ModoOperacao.Passivo: 
                     style.normal.textColor = Color.gray; 
-                    texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}";
+                    texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}\nTorpedos: {torpedosTotal}/{torpedosMaximos}";
                     break;
                 case ModoOperacao.Manual: 
                     style.normal.textColor = Color.yellow; 
-                    texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}";
+                    texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}\nTorpedos: {torpedosTotal}/{torpedosMaximos}";
                     break;
                 case ModoOperacao.Automatico: 
                     style.normal.textColor = Color.red;
@@ -677,12 +833,12 @@ public class LancadorNaval : MonoBehaviour
                     if (Time.time < tempoParaAtivarAutomatico)
                     {
                         float restante = tempoParaAtivarAutomatico - Time.time;
-                        texto = $"[ARMANDO {restante:F1}s]\nMísseis: {municaoTotal}/{municaoMaxima}";
+                        texto = $"[ARMANDO {restante:F1}s]\nMísseis: {municaoTotal}/{municaoMaxima}\nTorpedos: {torpedosTotal}/{torpedosMaximos}";
                         style.normal.textColor = Color.Lerp(Color.yellow, Color.red, Mathf.PingPong(Time.time * 5f, 1f));
                     }
                     else
                     {
-                        texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}";
+                        texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}\nTorpedos: {torpedosTotal}/{torpedosMaximos}";
                     }
                     break;
             }

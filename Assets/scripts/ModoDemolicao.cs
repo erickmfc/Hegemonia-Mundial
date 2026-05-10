@@ -6,6 +6,7 @@ using System.Collections;
 public class ModoDemolicao : MonoBehaviour
 {
     public static ModoDemolicao Instancia;
+    public static bool TemModoAtivo => Instancia != null && Instancia.ativo;
 
     [Header("Configuração")]
     public Texture2D cursorDemolicao;           // Ícone opcional para o cursor
@@ -13,6 +14,7 @@ public class ModoDemolicao : MonoBehaviour
 
     private bool ativo = false;
     private GameObject alvoAtual;
+    public bool EstaAtivo => ativo;
 
     // Cursor animado
     private GameObject cursorAnimadoObj;
@@ -23,6 +25,21 @@ public class ModoDemolicao : MonoBehaviour
     {
         if (Instancia == null) Instancia = this;
         else Destroy(gameObject);
+    }
+
+    void OnEnable()
+    {
+        if (Instancia == null) Instancia = this;
+    }
+
+    void OnDisable()
+    {
+        if (Instancia == this) Instancia = null;
+    }
+
+    void OnDestroy()
+    {
+        if (Instancia == this) Instancia = null;
     }
 
     void Start()
@@ -75,6 +92,25 @@ public class ModoDemolicao : MonoBehaviour
     {
         ativo = estado;
 
+        if (ativo)
+        {
+            InteractionModeService.Request(
+                InteractionOwner.Demolition,
+                new InteractionPolicy
+                {
+                    bloqueiaSelecao = true,
+                    bloqueiaOrdemMundo = true,
+                    bloqueiaRotacaoCamera = true,
+                    consomeLMB = true,
+                    consomeRMB = true
+                },
+                "Demolição ativa");
+        }
+        else
+        {
+            InteractionModeService.Release(InteractionOwner.Demolition);
+        }
+
         if (cursorAnimadoObj != null)
             cursorAnimadoObj.SetActive(ativo);
 
@@ -88,11 +124,26 @@ public class ModoDemolicao : MonoBehaviour
     void Update()
     {
         if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
+
+        if (Construtor.EmModoConstrucaoAtivo)
+        {
+            if (ativo)
+            {
+                AlternarModo(false);
+            }
+
+            return;
+        }
+
         // Atalho: T ou Delete
         if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Delete))
             AlternarModo(!ativo);
 
         if (!ativo) return;
+        if (!InteractionModeService.IsActive(InteractionOwner.Demolition))
+        {
+            return;
+        }
 
         // Anima cursor
         if (cursorRect != null)
@@ -116,7 +167,13 @@ public class ModoDemolicao : MonoBehaviour
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
                 return;
 
-            Ray raio = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Camera cameraPrincipal = Camera.main;
+            if (cameraPrincipal == null)
+            {
+                return;
+            }
+
+            Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
             RaycastHit toque;
             int mascara = ~(1 << 2); // tudo menos IgnoreRaycast
 
@@ -129,27 +186,159 @@ public class ModoDemolicao : MonoBehaviour
                 if (obj.name.ToLower().Contains("terreno")) return;
                 if (obj.layer == LayerMask.NameToLayer("Water")) return;
 
-                // Descobre a raiz lógica do objeto
-                GameObject raiz = EncontrarRaiz(obj);
+                SistemaDeDanos alvoComVida;
+                if (TryEncontrarSistemaDeDanos(obj, out alvoComVida))
+                {
+                    ExplodirPorDano(alvoComVida);
+                    return;
+                }
 
-                Debug.Log($"[Demolição] Demolindo instantaneamente: {raiz.name}");
-                Destroy(raiz);
+                GameObject raiz;
+                if (TryEncontrarAlvoDemolivel(obj, out raiz) || TryEncontrarAlvoUnidade(obj, out raiz))
+                {
+                    ExplodirSemSistemaDeDanos(raiz);
+                    return;
+                }
             }
         }
     }
 
-    // ─── Encontra o objeto "raiz" que deve ser demolido ───────────
-    GameObject EncontrarRaiz(GameObject obj)
+    bool TryEncontrarSistemaDeDanos(GameObject obj, out SistemaDeDanos alvo)
     {
+        alvo = null;
+        if (obj == null)
+        {
+            return false;
+        }
+
+        alvo = obj.GetComponent<SistemaDeDanos>();
+        if (alvo != null)
+        {
+            return true;
+        }
+
+        alvo = obj.GetComponentInParent<SistemaDeDanos>();
+        if (alvo != null)
+        {
+            return true;
+        }
+
         Transform t = obj.transform;
         while (t != null)
         {
-            if (t.GetComponent<IdentidadeUnidade>() != null) return t.gameObject;
-            if (t.GetComponent<AtributosPredio>()   != null) return t.gameObject;
-            if (t.GetComponent<Edificio>()           != null) return t.gameObject;
+            alvo = t.GetComponentInChildren<SistemaDeDanos>(true);
+            if (alvo != null)
+            {
+                return true;
+            }
+
             t = t.parent;
         }
-        // Fallback: pai imediato ou o próprio objeto
-        return obj.transform.parent != null ? obj.transform.parent.gameObject : obj;
+
+        return false;
+    }
+
+    void ExplodirPorDano(SistemaDeDanos alvo)
+    {
+        if (alvo == null)
+        {
+            return;
+        }
+
+        float danoFatal = Mathf.Max(alvo.vidaAtual, alvo.vidaMaxima, 1f) + 999999f;
+        Debug.Log($"[Demolição] Explodindo por T: {alvo.gameObject.name}");
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Demolition", "Explodir T: " + alvo.gameObject.name);
+        alvo.ReceberDano(danoFatal);
+    }
+
+    void ExplodirSemSistemaDeDanos(GameObject raiz)
+    {
+        if (raiz == null)
+        {
+            return;
+        }
+
+        Debug.Log($"[Demolição] Explodindo instantaneamente: {raiz.name}");
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Demolition", "Explodir T sem SistemaDeDanos: " + raiz.name);
+        if (GerenciadorFXGlobal.Instancia != null)
+        {
+            GerenciadorFXGlobal.Instancia.TocarEfeito("Explosao", raiz.transform.position, 1.5f);
+        }
+
+        Destroy(raiz);
+    }
+
+    bool TryEncontrarAlvoUnidade(GameObject obj, out GameObject raiz)
+    {
+        raiz = null;
+        Transform t = obj != null ? obj.transform : null;
+        while (t != null)
+        {
+            GameObject atual = t.gameObject;
+            if (atual.GetComponent<IdentidadeUnidade>() != null
+                || atual.GetComponent<ControleUnidade>() != null
+                || atual.GetComponent<ControleNavioRealista>() != null
+                || atual.GetComponent<ControleSubmarino>() != null
+                || atual.GetComponent<ControleAviao>() != null
+                || atual.GetComponent<ControleAviaoCaca>() != null
+                || atual.GetComponent<Helicoptero>() != null)
+            {
+                raiz = atual;
+                return true;
+            }
+
+            t = t.parent;
+        }
+
+        return false;
+    }
+
+    // ─── Encontra uma estrutura válida que pode ser demolida ──────
+    bool TryEncontrarAlvoDemolivel(GameObject obj, out GameObject raiz)
+    {
+        raiz = null;
+        Transform t = obj.transform;
+        while (t != null)
+        {
+            GameObject atual = t.gameObject;
+            if (EhEstruturaDemolivel(atual))
+            {
+                raiz = atual;
+                return true;
+            }
+
+            t = t.parent;
+        }
+
+        return false;
+    }
+
+    bool EhEstruturaDemolivel(GameObject obj)
+    {
+        if (obj == null)
+        {
+            return false;
+        }
+
+        if (obj.CompareTag("Imovel"))
+        {
+            return true;
+        }
+
+        if (obj.GetComponent<AtributosPredio>() != null || obj.GetComponent<Edificio>() != null)
+        {
+            return true;
+        }
+
+        if (obj.GetComponent<Estaleiro>() != null
+            || obj.GetComponent<PierMarinha>() != null
+            || obj.GetComponent<Fabrica>() != null
+            || obj.GetComponent<GerenciadorAeroporto>() != null
+            || obj.GetComponent<GerenciadorPortaAvioes>() != null)
+        {
+            return true;
+        }
+
+        return false;
     }
 }

@@ -162,11 +162,12 @@ namespace Hegemonia.AI.BrainMaster
                 case IA_BrainMaster.IA_BootstrapStage.ProduceAircraft: return "Produzir Aeronaves";
                 case IA_BrainMaster.IA_BootstrapStage.BuildShipyard: return "Construir Estaleiro";
                 case IA_BrainMaster.IA_BootstrapStage.HoldShipyard: return "Aguardar Estaleiro";
-                case IA_BrainMaster.IA_BootstrapStage.ProduceShip: return "Produzir Navio";
-                case IA_BrainMaster.IA_BootstrapStage.HoldShipLaunch: return "Aguardar Lancamento Naval";
-                case IA_BrainMaster.IA_BootstrapStage.Completed: return "Concluido";
-                default: return stage.ToString();
-            }
+            case IA_BrainMaster.IA_BootstrapStage.ProduceShip: return "Produzir Navio";
+            case IA_BrainMaster.IA_BootstrapStage.HoldShipLaunch: return "Aguardar Lancamento Naval";
+            case IA_BrainMaster.IA_BootstrapStage.Completed: return "Concluido";
+            case IA_BrainMaster.IA_BootstrapStage.MobilizeBase: return "Mobilizacao Defensiva";
+            default: return stage.ToString();
+        }
         }
 
         public static string GetDefaultFiltersForStage(IA_BrainMaster.IA_BootstrapStage stage)
@@ -309,6 +310,7 @@ namespace Hegemonia.AI.BrainMaster
             return value;
         }
 
+#if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             Gizmos.color = GizmoColor;
@@ -316,10 +318,9 @@ namespace Hegemonia.AI.BrainMaster
             Gizmos.DrawWireSphere(drawPosition, Mathf.Max(1f, GizmoRadius));
             Gizmos.DrawLine(transform.position, drawPosition);
 
-#if UNITY_EDITOR
             Handles.color = GizmoColor;
             Handles.Label(drawPosition + Vector3.up * 0.75f, "IA Manual: " + GetDisplayLabel());
-#endif
         }
+#endif
     }
 }

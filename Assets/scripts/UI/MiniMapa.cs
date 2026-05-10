@@ -45,7 +45,13 @@ public class MiniMapa : MonoBehaviour
     private Canvas _canvas;
     private RawImage _imagemMapa;
     private RectTransform _containerCirculo;
+    private GameObject _containerObj;
     private GameObject _trianguloJogador;
+    private GameObject _camObj;
+    private GameObject _canvasObj;
+    private bool _inicializado;
+    private bool _camObjCriadaPorEsteComponente;
+    private bool _canvasObjCriadaPorEsteComponente;
 
     // Ícones de unidades
     private List<MapaIcone> _icones = new List<MapaIcone>();
@@ -61,19 +67,32 @@ public class MiniMapa : MonoBehaviour
     // =========================================================
     void Start()
     {
-        if (alvoJogador == null)
-        {
-            // Tenta achar o jogador automaticamente
-            var cam = Camera.main;
-            if (cam != null) alvoJogador = cam.transform;
-        }
+        InicializarSeNecessario();
+    }
 
-        CriarCameraMapa();
-        CriarUI();
+    void OnEnable()
+    {
+        InicializarSeNecessario();
+        DefinirAtivoRuntime(true);
+    }
+
+    void OnDisable()
+    {
+        DefinirAtivoRuntime(false);
     }
 
     void LateUpdate()
     {
+        if (!_inicializado)
+        {
+            InicializarSeNecessario();
+        }
+
+        if (alvoJogador == null)
+        {
+            TentarResolverAlvoJogador();
+        }
+
         if (_camMapa == null || alvoJogador == null) return;
 
         // Segue o jogador de cima
@@ -95,18 +114,75 @@ public class MiniMapa : MonoBehaviour
         AtualizarIcones();
     }
 
+    void InicializarSeNecessario()
+    {
+        if (_inicializado) return;
+
+        TentarResolverAlvoJogador();
+        CriarCameraMapa();
+        CriarUI();
+
+        _inicializado = true;
+        DefinirAtivoRuntime(isActiveAndEnabled);
+    }
+
+    void TentarResolverAlvoJogador()
+    {
+        if (alvoJogador != null) return;
+
+        // Preferência: MainCamera
+        Camera cam = Camera.main;
+        if (cam != null)
+        {
+            alvoJogador = cam.transform;
+            return;
+        }
+
+        // Fallback: primeira câmera ativa que não seja a do minimapa
+        Camera[] cams = Camera.allCameras;
+        for (int i = 0; i < cams.Length; i++)
+        {
+            Camera c = cams[i];
+            if (c == null || !c.isActiveAndEnabled) continue;
+            if (_camMapa != null && c == _camMapa) continue;
+            alvoJogador = c.transform;
+            return;
+        }
+    }
+
+    void DefinirAtivoRuntime(bool ativo)
+    {
+        if (_camObj != null) _camObj.SetActive(ativo);
+        if (_canvasObj != null) _canvasObj.SetActive(ativo);
+    }
+
     // =========================================================
     // CRIAÇÃO DA CÂMERA DO MAPA
     // =========================================================
     void CriarCameraMapa()
     {
+        if (_camMapa != null) return;
+
+        _camObj = GameObject.Find("Cam_MiniMapa");
+        if (_camObj != null)
+        {
+            _camMapa = _camObj.GetComponent<Camera>();
+        }
+
+        if (_camMapa == null)
+        {
+            _camObj = new GameObject("Cam_MiniMapa");
+            _camMapa = _camObj.AddComponent<Camera>();
+            _camObjCriadaPorEsteComponente = true;
+        }
+
+        // Importante: não parentear a câmera sob UI/RectTransforms (pode ter escala 0 e travar a movimentação).
+        _camObj.transform.SetParent(null);
+        _camObj.transform.localScale = Vector3.one;
+
         _rt = new RenderTexture(512, 512, 16, RenderTextureFormat.ARGB32);
         _rt.name = "RT_MiniMapa";
         _rt.Create();
-
-        GameObject camObj = new GameObject("Cam_MiniMapa");
-        camObj.transform.SetParent(transform);
-        _camMapa = camObj.AddComponent<Camera>();
 
         _camMapa.orthographic = true;
         _camMapa.orthographicSize = tamanhoOrtografico;
@@ -118,7 +194,11 @@ public class MiniMapa : MonoBehaviour
         _camMapa.farClipPlane = 3000f;
 
         // Exclui camada de UI para não renderizar na câmera do mapa
-        _camMapa.cullingMask &= ~(1 << LayerMask.NameToLayer("UI"));
+        int camadaUI = LayerMask.NameToLayer("UI");
+        if (camadaUI >= 0)
+        {
+            _camMapa.cullingMask &= ~(1 << camadaUI);
+        }
     }
 
     // =========================================================
@@ -126,18 +206,48 @@ public class MiniMapa : MonoBehaviour
     // =========================================================
     void CriarUI()
     {
-        // Canvas dedicado ao mini-mapa
-        GameObject canvasObj = new GameObject("Canvas_MiniMapa");
-        _canvas = canvasObj.AddComponent<Canvas>();
-        _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        _canvas.sortingOrder = 50;
-        canvasObj.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
-        canvasObj.AddComponent<GraphicRaycaster>();
+        if (_canvas != null) return;
+
+        _canvasObj = GameObject.Find("Canvas_MiniMapa");
+        if (_canvasObj != null)
+        {
+            _canvas = _canvasObj.GetComponent<Canvas>();
+        }
+
+        if (_canvas == null)
+        {
+            // Canvas dedicado ao mini-mapa
+            _canvasObj = new GameObject("Canvas_MiniMapa");
+            _canvas = _canvasObj.AddComponent<Canvas>();
+            _canvasObjCriadaPorEsteComponente = true;
+            _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            _canvas.sortingOrder = 50;
+            _canvasObj.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+            _canvasObj.AddComponent<GraphicRaycaster>();
+        }
+        else
+        {
+            // Garante as configs esperadas
+            _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            _canvas.sortingOrder = 50;
+            if (_canvasObj.GetComponent<CanvasScaler>() == null)
+            {
+                _canvasObj.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+            }
+            if (_canvasObj.GetComponent<GraphicRaycaster>() == null)
+            {
+                _canvasObj.AddComponent<GraphicRaycaster>();
+            }
+        }
+
+        // Mantém Canvas Overlay no topo da hierarquia (recomendação do Unity) e imune a escala/rotação de pais.
+        _canvasObj.transform.SetParent(null);
+        _canvasObj.transform.localScale = Vector3.one;
 
         // --- Container principal (ancora canto inferior direito) ---
-        GameObject containerObj = new GameObject("MiniMapa_Container");
-        containerObj.transform.SetParent(canvasObj.transform, false);
-        _containerCirculo = containerObj.AddComponent<RectTransform>();
+        _containerObj = new GameObject("MiniMapa_Container");
+        _containerObj.transform.SetParent(_canvasObj.transform, false);
+        _containerCirculo = _containerObj.AddComponent<RectTransform>();
 
         _containerCirculo.anchorMin = new Vector2(1f, 0f);
         _containerCirculo.anchorMax = new Vector2(1f, 0f);
@@ -146,7 +256,7 @@ public class MiniMapa : MonoBehaviour
         _containerCirculo.sizeDelta = new Vector2(tamanhoUI, tamanhoUI);
 
         // --- Borda circular (usa imagem com máscara circular) ---
-        GameObject bordaObj = CriarCirculo("Borda", containerObj.transform, corBorda,
+        GameObject bordaObj = CriarCirculo("Borda", _containerObj.transform, corBorda,
             new Vector2(tamanhoUI, tamanhoUI));
 
         // --- Imagem do mapa dentro da borda ---
@@ -321,6 +431,41 @@ public class MiniMapa : MonoBehaviour
 
     void OnDestroy()
     {
-        if (_rt != null) { _rt.Release(); Destroy(_rt); }
+        if (_camMapa != null && _camMapa.targetTexture == _rt)
+        {
+            _camMapa.targetTexture = null;
+        }
+
+        if (_rt != null)
+        {
+            _rt.Release();
+            Destroy(_rt);
+            _rt = null;
+        }
+
+        if (_canvasObjCriadaPorEsteComponente)
+        {
+            DestruirObjetoSeguro(_canvasObj);
+        }
+        else
+        {
+            DestruirObjetoSeguro(_containerObj);
+        }
+
+        if (_camObjCriadaPorEsteComponente)
+        {
+            DestruirObjetoSeguro(_camObj);
+        }
+    }
+
+    static void DestruirObjetoSeguro(GameObject obj)
+    {
+        if (obj == null) return;
+
+#if UNITY_EDITOR
+        UnityEditor.Selection.activeObject = null;
+#endif
+
+        Destroy(obj);
     }
 }

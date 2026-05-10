@@ -39,6 +39,9 @@ public class MenuConstrucao : MonoBehaviour
     [Header("Abas de Categoria")]
     public List<ConfigVisualCategoria> aparenciasCategorias = new List<ConfigVisualCategoria>();
 
+    [Header("Dependencias")]
+    public Construtor construtorCena;
+
     [Header("Sistema")]
     public bool autoCarregarFichas = false;
     public List<DadosConstrucao> catalogo = new List<DadosConstrucao>();
@@ -73,6 +76,8 @@ public class MenuConstrucao : MonoBehaviour
     private Dictionary<string, int> quantidadesPorItem = new Dictionary<string, int>();
     private readonly List<GerenciadorAeroporto> bufferAeroportos = new List<GerenciadorAeroporto>(16);
     private readonly Dictionary<DadosConstrucao.CategoriaItem, ConfigVisualCategoria> lookupVisualCategorias = new Dictionary<DadosConstrucao.CategoriaItem, ConfigVisualCategoria>();
+    private readonly Dictionary<int, Sprite> cacheIconesResolvidos = new Dictionary<int, Sprite>();
+    private Sprite iconePlaceholderRuntime;
 
     void Start()
     {
@@ -102,9 +107,13 @@ public class MenuConstrucao : MonoBehaviour
     void CarregarTodasAsFichas()
     {
         if (catalogo == null) catalogo = new List<DadosConstrucao>();
+        List<DadosConstrucao> fichasConfiguradasNaCena = catalogo
+            .Where(ficha => ficha != null)
+            .ToList();
+
         catalogo.Clear();
         
-        List<DadosConstrucao> fichasEncontradas = new List<DadosConstrucao>();
+        List<DadosConstrucao> fichasEncontradas = new List<DadosConstrucao>(fichasConfiguradasNaCena);
 
 #if UNITY_EDITOR
         string[] guids = UnityEditor.AssetDatabase.FindAssets("t:DadosConstrucao");
@@ -114,11 +123,13 @@ public class MenuConstrucao : MonoBehaviour
             DadosConstrucao asset = UnityEditor.AssetDatabase.LoadAssetAtPath<DadosConstrucao>(path);
             if (asset != null) fichasEncontradas.Add(asset);
         }
+
+        // AdicionarPrefabsImobiliariosSemFicha(fichasEncontradas); // Desativado para evitar criação automática sem pedido
 #else
         fichasEncontradas.AddRange(Resources.FindObjectsOfTypeAll<DadosConstrucao>());
 #endif
 
-        foreach (var ficha in fichasEncontradas)
+        foreach (var ficha in fichasEncontradas.Distinct())
         {
             if (ficha != null && ficha.prefabDaUnidade != null && !string.IsNullOrEmpty(ficha.nomeItem))
             {
@@ -137,6 +148,59 @@ public class MenuConstrucao : MonoBehaviour
         catalogo = catalogo.OrderBy(f => (int)f.categoria).ThenBy(f => f.nomeItem).ToList();
         catalogoGlobal = new List<DadosConstrucao>(catalogo);
     }
+
+#if UNITY_EDITOR
+    void AdicionarPrefabsImobiliariosSemFicha(List<DadosConstrucao> fichasEncontradas)
+    {
+        if (fichasEncontradas == null)
+        {
+            return;
+        }
+
+        const string pastaImobiliario = "Assets/Prefabs/Imobiliario";
+        string[] guidsPrefabs = UnityEditor.AssetDatabase.FindAssets("t:Prefab", new[] { pastaImobiliario });
+        foreach (string guidPrefab in guidsPrefabs)
+        {
+            string pathPrefab = UnityEditor.AssetDatabase.GUIDToAssetPath(guidPrefab);
+            GameObject prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(pathPrefab);
+            if (prefab == null)
+            {
+                continue;
+            }
+
+            bool jaTemFicha = fichasEncontradas.Any(ficha => ficha != null && ficha.prefabDaUnidade == prefab);
+            if (jaTemFicha)
+            {
+                continue;
+            }
+
+            DadosConstrucao fichaTemporaria = ScriptableObject.CreateInstance<DadosConstrucao>();
+            fichaTemporaria.name = prefab.name;
+            fichaTemporaria.nomeItem = NomeAmigavelDoPrefab(prefab.name);
+            fichaTemporaria.descricao = "Imovel urbano.";
+            fichaTemporaria.prefabDaUnidade = prefab;
+            fichaTemporaria.preco = 100;
+            fichaTemporaria.categoria = DadosConstrucao.CategoriaItem.Urbana;
+            fichasEncontradas.Add(fichaTemporaria);
+        }
+    }
+
+    string NomeAmigavelDoPrefab(string nomePrefab)
+    {
+        if (string.IsNullOrWhiteSpace(nomePrefab))
+        {
+            return "Imovel";
+        }
+
+        string nome = nomePrefab.Replace("_", " ").Replace("-", " ");
+        while (nome.Contains("  "))
+        {
+            nome = nome.Replace("  ", " ");
+        }
+
+        return nome.Trim();
+    }
+#endif
 
     void GarantirCatalogoValido()
     {
@@ -232,15 +296,19 @@ public class MenuConstrucao : MonoBehaviour
 
     void Update()
     {
-        if (EventSystem.current != null
-            && EventSystem.current.currentSelectedGameObject != null
-            && EventSystem.current.currentSelectedGameObject.GetComponent<InputField>() != null)
+        if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null)
         {
-            return;
+            var selected = EventSystem.current.currentSelectedGameObject;
+            if (selected.GetComponent<InputField>() != null || 
+                selected.GetComponent<TMPro.TMP_InputField>() != null)
+            {
+                return;
+            }
         }
 
-        if (Input.GetKeyDown(teclaAtalho))
+        if (Input.GetKeyDown(KeyCode.C) || Input.GetKeyDown(teclaAtalho))
         {
+            Debug.Log("[MenuConstrucao] Tecla de atalho pressionada (C). Alternando menu...");
             AlternarMenu(!menuAberto);
         }
     }
@@ -253,29 +321,39 @@ public class MenuConstrucao : MonoBehaviour
 
     public void AlternarMenu(bool abrir)
     {
-        if (painelPrincipal == null) return;
+        if (painelPrincipal == null) 
+        {
+            Debug.LogWarning("[MenuConstrucao] painelPrincipal é nulo! Não foi possível abrir o menu.");
+            return;
+        }
         
         StopAllCoroutines(); 
         
         if (abrir)
         {
-            // Fecha todos os outros se for abrir este
-            MenuPier menuPier = Object.FindFirstObjectByType<MenuPier>();
-            if (menuPier != null) menuPier.FecharMenu();
-
-            MenuMisseis menuMiss = Object.FindFirstObjectByType<MenuMisseis>();
-            if (menuMiss != null && MenuMisseis.EstaAberto) menuMiss.CancelarLancamento();
-
-            MenuGoverno menuGov = Object.FindFirstObjectByType<MenuGoverno>();
-            if (menuGov != null && MenuGoverno.EstaAberto) menuGov.AlternarMenu(false);
-
-            RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
-            foreach (GerenciadorAeroporto aeroporto in bufferAeroportos)
+            try
             {
-                if (aeroporto != null)
+                MenuPier menuPier = Object.FindFirstObjectByType<MenuPier>();
+                if (menuPier != null) menuPier.FecharMenu();
+
+                MenuMisseis menuMiss = Object.FindFirstObjectByType<MenuMisseis>();
+                if (menuMiss != null && MenuMisseis.EstaAberto) menuMiss.CancelarLancamento();
+
+                MenuGoverno menuGov = Object.FindFirstObjectByType<MenuGoverno>();
+                if (menuGov != null && MenuGoverno.EstaAberto) menuGov.AlternarMenu(false);
+
+                RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
+                foreach (GerenciadorAeroporto aeroporto in bufferAeroportos)
                 {
-                    aeroporto.CancelarInteracaoPorConstrucao();
+                    if (aeroporto != null)
+                    {
+                        aeroporto.CancelarInteracaoPorConstrucao();
+                    }
                 }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MenuConstrucao] Erro ao fechar outros menus: {ex.Message}");
             }
 
             GarantirCatalogoValido();
@@ -296,6 +374,76 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         StartCoroutine(AnimarMenu(abrir));
+        EsconderHUD(abrir);
+    }
+
+    private void EsconderHUD(bool esconder)
+    {
+        // MiniMapa
+        MiniMapa mm = UnityEngine.Object.FindFirstObjectByType<MiniMapa>();
+        if (mm != null)
+        {
+            Transform canvasMM = mm.transform.root.Find("Canvas_MiniMapa");
+            if (canvasMM != null) canvasMM.gameObject.SetActive(!esconder);
+            mm.gameObject.SetActive(!esconder);
+        }
+
+        // Menu de Comportamento (Estado: Passivo/Ativo)
+        MenuComportamento mcomp = AcharComponenteMesmoInativo<MenuComportamento>();
+        if (mcomp != null)
+        {
+            DefinirVisibilidadeComponenteOuObjeto(mcomp, !esconder);
+        }
+
+        // Menu de Governo (se estiver aberto, fecha)
+        if (esconder)
+        {
+            MenuGoverno mg = AcharComponenteMesmoInativo<MenuGoverno>();
+            if (mg != null && MenuGoverno.EstaAberto) mg.AlternarMenu(false);
+        }
+    }
+
+    private static T AcharComponenteMesmoInativo<T>() where T : MonoBehaviour
+    {
+#if UNITY_2023_1_OR_NEWER
+        T ativo = Object.FindFirstObjectByType<T>();
+        if (ativo != null) return ativo;
+
+        T[] encontrados = Object.FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        return encontrados.FirstOrDefault();
+#else
+        return Object.FindObjectOfType<T>(true);
+#endif
+    }
+
+    private void DefinirVisibilidadeComponenteOuObjeto(MonoBehaviour componente, bool visivel)
+    {
+        if (componente == null) return;
+
+        MenuComportamento menuComportamento = componente as MenuComportamento;
+        if (menuComportamento != null)
+        {
+            menuComportamento.DefinirVisibilidadeHud(visivel);
+            return;
+        }
+
+        if (PodeDesativarObjetoDeHud(componente.gameObject))
+        {
+            componente.gameObject.SetActive(visivel);
+        }
+        else
+        {
+            componente.enabled = visivel;
+        }
+    }
+
+    private bool PodeDesativarObjetoDeHud(GameObject alvo)
+    {
+        if (alvo == null || alvo == gameObject) return false;
+        if (alvo.GetComponent<GerenteDeJogo>() != null) return false;
+        if (alvo.GetComponent<Construtor>() != null) return false;
+        if (alvo.GetComponent<MenuGoverno>() != null) return false;
+        return true;
     }
 
     IEnumerator AnimarMenu(bool abrir)
@@ -355,8 +503,8 @@ public class MenuConstrucao : MonoBehaviour
         canvasGroupPainel.interactable = true;
 
         RectTransform rtPanel = painelPrincipal.GetComponent<RectTransform>();
-        rtPanel.anchorMin = new Vector2(0.13f, 0.22f);
-        rtPanel.anchorMax = new Vector2(0.93f, 0.92f);
+        rtPanel.anchorMin = new Vector2(0.18f, 0.25f);
+        rtPanel.anchorMax = new Vector2(0.98f, 0.95f);
         rtPanel.offsetMin = Vector2.zero;
         rtPanel.offsetMax = Vector2.zero;
 
@@ -1076,14 +1224,15 @@ public class MenuConstrucao : MonoBehaviour
 
         if (imagemDetalheIcone != null)
         {
-            imagemDetalheIcone.sprite = item.icone;
-            imagemDetalheIcone.color = item.icone != null ? Color.white : Color.clear;
+            Sprite iconeItem = ObterIconeItem(item);
+            imagemDetalheIcone.sprite = iconeItem;
+            imagemDetalheIcone.color = iconeItem != null ? Color.white : Color.clear;
         }
 
         if (textoDetalheIconeFallback != null)
         {
             ConfigVisualCategoria config = ObterConfigVisualCategoria(item.categoria);
-            textoDetalheIconeFallback.text = item.icone == null
+            textoDetalheIconeFallback.text = ObterIconeItem(item) == null
                 ? (config != null ? config.glifoFallback : ObterGlifoPadrao(item.categoria))
                 : string.Empty;
         }
@@ -1227,16 +1376,9 @@ public class MenuConstrucao : MonoBehaviour
         btn.onClick.AddListener(() => 
         {
             if(ModoDemolicao.Instancia) ModoDemolicao.Instancia.AlternarModo(false); 
-            
-            if (menuAberto && categoriaAtual == categoria)
-            {
-                AlternarMenu(false); // Clicou na mesma aba, fecha o menu.
-            }
-            else
-            {
-                if (!menuAberto) AlternarMenu(true); // Se tiver fechado, abre.
-                FiltrarPorCategoria(categoria);
-            }
+
+            if (!menuAberto) AlternarMenu(true);
+            FiltrarPorCategoria(categoria);
         });
     }
 
@@ -1393,9 +1535,10 @@ public class MenuConstrucao : MonoBehaviour
         Image imgIcon = iconHolder.AddComponent<Image>();
         imgIcon.raycastTarget = false;
 
-        if (item.icone != null)
+        Sprite iconeItem = ObterIconeItem(item);
+        if (iconeItem != null)
         {
-            imgIcon.sprite = item.icone;
+            imgIcon.sprite = iconeItem;
             imgIcon.preserveAspect = true;
             imgIcon.color = Color.white;
         }
@@ -1526,7 +1669,7 @@ public class MenuConstrucao : MonoBehaviour
 
         GameObject txtCompObj = CriarRetangulo("TxtComp", btnComprarObj.transform);
         Text tComp = txtCompObj.AddComponent<Text>();
-        tComp.text = "COMPRAR";
+        tComp.text = ClassificarFluxo(item) == TipoFluxoConstrucao.Estrutura ? "CONSTRUIR" : "COMPRAR";
         tComp.font = ObterFontePadrao();
         tComp.alignment = TextAnchor.MiddleCenter;
         tComp.color = Color.white;
@@ -1698,6 +1841,145 @@ public class MenuConstrucao : MonoBehaviour
     {
         return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
     }
+
+    Sprite ObterIconeItem(DadosConstrucao item)
+    {
+        if (item == null)
+        {
+            return null;
+        }
+
+        if (item.icone != null)
+        {
+            return item.icone;
+        }
+
+        int chave = item.GetInstanceID();
+        Sprite iconeResolvido;
+        if (cacheIconesResolvidos.TryGetValue(chave, out iconeResolvido))
+        {
+            return iconeResolvido;
+        }
+
+#if UNITY_EDITOR
+        iconeResolvido = ProcurarSpriteEditor(item);
+        if (iconeResolvido == null && item.prefabDaUnidade != null)
+        {
+            Texture2D preview = UnityEditor.AssetPreview.GetAssetPreview(item.prefabDaUnidade)
+                ?? UnityEditor.AssetPreview.GetMiniThumbnail(item.prefabDaUnidade);
+            if (preview != null)
+            {
+                iconeResolvido = Sprite.Create(preview, new Rect(0, 0, preview.width, preview.height), new Vector2(0.5f, 0.5f));
+            }
+        }
+#endif
+
+        if (iconeResolvido == null)
+        {
+            ConfigVisualCategoria config = ObterConfigVisualCategoria(item.categoria);
+            if (config != null && config.icone != null)
+            {
+                iconeResolvido = config.icone;
+            }
+        }
+
+        if (iconeResolvido == null)
+        {
+            iconeResolvido = ObterPlaceholderRuntimeIcone();
+        }
+
+        cacheIconesResolvidos[chave] = iconeResolvido;
+
+        return iconeResolvido;
+    }
+
+    Sprite ObterPlaceholderRuntimeIcone()
+    {
+        if (iconePlaceholderRuntime != null)
+        {
+            return iconePlaceholderRuntime;
+        }
+
+        const int tamanho = 24;
+        Texture2D textura = new Texture2D(tamanho, tamanho, TextureFormat.RGBA32, false);
+        textura.filterMode = FilterMode.Bilinear;
+        textura.wrapMode = TextureWrapMode.Clamp;
+
+        Color32 fundo = new Color32(36, 48, 61, 255);
+        Color32 borda = new Color32(124, 164, 196, 255);
+        Color32 brilho = new Color32(200, 230, 255, 255);
+
+        for (int y = 0; y < tamanho; y++)
+        {
+            for (int x = 0; x < tamanho; x++)
+            {
+                bool ehBorda = x <= 1 || y <= 1 || x >= tamanho - 2 || y >= tamanho - 2;
+                bool ehDiagonal = Mathf.Abs(x - y) <= 1 || Mathf.Abs((tamanho - 1 - x) - y) <= 1;
+                textura.SetPixel(x, y, ehBorda ? borda : (ehDiagonal ? brilho : fundo));
+            }
+        }
+
+        textura.Apply(false, false);
+        textura.hideFlags = HideFlags.HideAndDontSave;
+        iconePlaceholderRuntime = Sprite.Create(textura, new Rect(0f, 0f, tamanho, tamanho), new Vector2(0.5f, 0.5f), tamanho);
+        return iconePlaceholderRuntime;
+    }
+
+#if UNITY_EDITOR
+    Sprite ProcurarSpriteEditor(DadosConstrucao item)
+    {
+        if (item == null)
+        {
+            return null;
+        }
+
+        string nomeItem = NormalizarTextoBuscaIcone(item.nomeItem);
+        string nomePrefab = item.prefabDaUnidade != null ? NormalizarTextoBuscaIcone(item.prefabDaUnidade.name) : string.Empty;
+        string[] guids = UnityEditor.AssetDatabase.FindAssets("t:Sprite", new[] { "Assets" });
+
+        foreach (string guid in guids)
+        {
+            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+            string nomeAsset = NormalizarTextoBuscaIcone(System.IO.Path.GetFileNameWithoutExtension(path));
+            if (string.IsNullOrEmpty(nomeAsset))
+            {
+                continue;
+            }
+
+            bool pareceMesmoItem = (!string.IsNullOrEmpty(nomeItem) && (nomeAsset.Contains(nomeItem) || nomeItem.Contains(nomeAsset)))
+                || (!string.IsNullOrEmpty(nomePrefab) && (nomeAsset.Contains(nomePrefab) || nomePrefab.Contains(nomeAsset)));
+
+            if (!pareceMesmoItem)
+            {
+                continue;
+            }
+
+            Sprite sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite != null)
+            {
+                return sprite;
+            }
+        }
+
+        return null;
+    }
+
+    string NormalizarTextoBuscaIcone(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            return string.Empty;
+        }
+
+        string normalizado = texto.ToLowerInvariant()
+            .Replace(" ", string.Empty)
+            .Replace("_", string.Empty)
+            .Replace("-", string.Empty)
+            .Replace("(", string.Empty)
+            .Replace(")", string.Empty);
+        return normalizado;
+    }
+#endif
 
     void EsticarRectTransform(RectTransform rectTransform)
     {
@@ -1956,8 +2238,20 @@ public class MenuConstrucao : MonoBehaviour
             || prefab.GetComponentInChildren<IdentidadeNaval>(true) != null
             || prefab.GetComponent<ControleNavioRealista>() != null
             || prefab.GetComponentInChildren<ControleNavioRealista>(true) != null
+            || prefab.GetComponent<ControleSubmarino>() != null
+            || prefab.GetComponentInChildren<ControleSubmarino>(true) != null
+            || prefab.GetComponent<ControladorNavioVigilante>() != null
+            || prefab.GetComponentInChildren<ControladorNavioVigilante>(true) != null
             || prefab.GetComponent<HovercraftTransporte>() != null
-            || prefab.GetComponentInChildren<HovercraftTransporte>(true) != null;
+            || prefab.GetComponentInChildren<HovercraftTransporte>(true) != null
+            || prefab.GetComponent<NavioTransporteTropas>() != null
+            || prefab.GetComponentInChildren<NavioTransporteTropas>(true) != null
+            || prefab.GetComponent<NavioPetroleiro>() != null
+            || prefab.GetComponentInChildren<NavioPetroleiro>(true) != null
+            || prefab.GetComponent<NavioLiberty>() != null
+            || prefab.GetComponentInChildren<NavioLiberty>(true) != null
+            || prefab.GetComponent<TransporteAnfibio>() != null
+            || prefab.GetComponentInChildren<TransporteAnfibio>(true) != null;
     }
 
     bool EhUnidadeAerea(DadosConstrucao item)
@@ -2000,320 +2294,271 @@ public class MenuConstrucao : MonoBehaviour
         }
     }
 
+    enum TipoFluxoConstrucao
+    {
+        Estrutura,
+        UnidadeTerrestre,
+        UnidadeAerea,
+        UnidadeNaval
+    }
+
+    TipoFluxoConstrucao ClassificarFluxo(DadosConstrucao item)
+    {
+        if (EhUnidadeAerea(item) && !EhEstruturaAereaPosicionavel(item))
+        {
+            return TipoFluxoConstrucao.UnidadeAerea;
+        }
+
+        if (EhUnidadeNaval(item) && !EhEstruturaNavalPosicionavel(item))
+        {
+            return TipoFluxoConstrucao.UnidadeNaval;
+        }
+
+        if (EhEstruturaPosicionavel(item))
+        {
+            return TipoFluxoConstrucao.Estrutura;
+        }
+
+        return TipoFluxoConstrucao.UnidadeTerrestre;
+    }
+
+    bool EhEstruturaAereaPosicionavel(DadosConstrucao item)
+    {
+        if (item == null || item.prefabDaUnidade == null)
+        {
+            return false;
+        }
+
+        GameObject prefab = item.prefabDaUnidade;
+        string nome = (prefab.name + "_" + item.nomeItem).ToLowerInvariant();
+
+        return prefab.GetComponent<GerenciadorAeroporto>() != null
+            || prefab.GetComponentInChildren<GerenciadorAeroporto>(true) != null
+            || prefab.GetComponent<Heliporto>() != null
+            || prefab.GetComponentInChildren<Heliporto>(true) != null
+            || nome.Contains("aeroporto")
+            || nome.Contains("heliporto")
+            || nome.Contains("hangar")
+            || nome.Contains("pista")
+            || nome.Contains("airfield");
+    }
+
+    bool EhEstruturaNavalPosicionavel(DadosConstrucao item)
+    {
+        if (item == null || item.prefabDaUnidade == null)
+        {
+            return false;
+        }
+
+        GameObject prefab = item.prefabDaUnidade;
+        string nome = (prefab.name + "_" + item.nomeItem).ToLowerInvariant();
+
+        return prefab.GetComponent<Estaleiro>() != null
+            || prefab.GetComponentInChildren<Estaleiro>(true) != null
+            || prefab.GetComponent<PierMarinha>() != null
+            || prefab.GetComponentInChildren<PierMarinha>(true) != null
+            || nome.Contains("estaleiro")
+            || nome.Contains("pier")
+            || nome.Contains("plataforma")
+            || nome.Contains("doca")
+            || nome.Contains("cais")
+            || nome.Contains("porto");
+    }
+
+    bool EhEstruturaPosicionavel(DadosConstrucao item)
+    {
+        if (item == null || item.prefabDaUnidade == null)
+        {
+            return false;
+        }
+
+        GameObject prefab = item.prefabDaUnidade;
+        string nome = (prefab.name + "_" + item.nomeItem).ToLowerInvariant();
+
+        if (item.categoria == DadosConstrucao.CategoriaItem.Urbana
+            || item.categoria == DadosConstrucao.CategoriaItem.Infraestrutura
+            || item.categoria == DadosConstrucao.CategoriaItem.Energia
+            || item.categoria == DadosConstrucao.CategoriaItem.Tecnologia)
+        {
+            return true;
+        }
+
+        if (prefab.CompareTag("Imovel")
+            || prefab.GetComponent<Imovel>() != null
+            || prefab.GetComponentInChildren<Imovel>(true) != null
+            || prefab.GetComponent<Fabrica>() != null
+            || prefab.GetComponent<Estaleiro>() != null
+            || prefab.GetComponent<Heliporto>() != null
+            || prefab.GetComponent<GerenciadorAeroporto>() != null
+            || prefab.GetComponent<PierMarinha>() != null
+            || prefab.GetComponent<ComplexoGovernamental>() != null
+            || prefab.GetComponent<MarcadorTerritorio>() != null)
+        {
+            return true;
+        }
+
+        string[] termosEstrutura = {
+            "imovel", "imóvel", "predio", "prédio", "edificio", "edifício", "apartamento",
+            "fabrica", "fábrica", "fazenda", "farm", "prefeitura", "fronteira", "bandeira",
+            "hangar", "aeroporto", "heliporto", "pista", "quartel", "tenda", "silo",
+            "torre", "torreta", "muro", "wall", "bunker", "defesa", "antiaerea", "antiaérea",
+            "missil", "míssil", "canhao", "canhão", "metralhadora", "plataforma",
+            "estaleiro", "pier", "centro", "base", "guarita", "trincheira", "forte",
+            "barricada", "fortaleza", "acampamento", "posto", "radar", "artilharia",
+            "bateria", "gerador", "mina", "coletor", "construtor", "refinaria", "building"
+        };
+
+        return termosEstrutura.Any(termo => nome.Contains(termo));
+    }
+
+    int ObterQuantidadeParaCompra(DadosConstrucao item, bool forcarUm)
+    {
+        if (item == null || string.IsNullOrEmpty(item.nomeItem) || forcarUm)
+        {
+            return 1;
+        }
+
+        return quantidadesPorItem.ContainsKey(item.nomeItem) ? Mathf.Max(1, quantidadesPorItem[item.nomeItem]) : 1;
+    }
+
+    bool TemDinheiroPara(int custo)
+    {
+        if (custo <= 0)
+        {
+            return true;
+        }
+
+        if (GerenciadorRecursos.Instancia != null)
+        {
+            return GerenciadorRecursos.Instancia.dinheiro >= custo;
+        }
+
+        if (gerente == null) gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
+        return gerente != null && gerente.dinheiroAtual >= custo;
+    }
+
     void ConstruirItem(DadosConstrucao item, Image cardImage = null)
     {
+        if (item == null)
+        {
+            EmitirAvisoJogador(LocalizationManager.T("build.invalid_item", "Item de construcao invalido."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", "Item nulo");
+            return;
+        }
+
         if (gerente == null) gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
-        if (gerente == null) return;
+        if (gerente == null)
+        {
+            EmitirAvisoJogador(LocalizationManager.T("build.no_manager", "Gerente de jogo nao encontrado. Nao foi possivel iniciar a construcao."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": gerente ausente");
+            return;
+        }
 
         if (item.prefabDaUnidade == null)
         {
             Debug.LogError($"[MenuConstrucao] Prefab '{item.nomeItem}' faltando!");
+            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.missing_prefab", "Prefab faltando para {0}."), item.nomeItem));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": prefab faltando");
             return;
         }
-        
-        // Porta-aviões (GerenciadorPortaAvioes) tem GerenciadorAeroporto mas é NAVIO, não prédio!
-        bool ehPortaAvioes = item.prefabDaUnidade.GetComponent<GerenciadorPortaAvioes>() != null
-                           || (item.prefabDaUnidade.GetComponent<GerenciadorAeroporto>() != null
-                               && (item.prefabDaUnidade.GetComponent<IdentidadeNaval>() != null
-                                   || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
-                                   || item.nomeItem.ToLower().Contains("uss")
-                                   || item.nomeItem.ToLower().Contains("porta")
-                                   || item.nomeItem.ToLower().Contains("carrier")));
 
-        bool temComponentePredio = !ehPortaAvioes && (
-                                   item.prefabDaUnidade.GetComponent<Fabrica>() != null ||
-                                   item.prefabDaUnidade.GetComponent<Estaleiro>() != null ||
-                                   item.prefabDaUnidade.GetComponent<Heliporto>() != null ||
-                                   item.prefabDaUnidade.GetComponent<GerenciadorAeroporto>() != null ||
-                                   item.prefabDaUnidade.GetComponent<PierMarinha>() != null);
-
-        string nomeLower = (item.prefabDaUnidade.name + "_" + item.nomeItem).ToLower();
-
-        // Lista de segurança para garantir que certos itens sejam lidos como prédios
-        bool ehPredioExplícito = item.prefabDaUnidade.CompareTag("Imovel") || 
-                                 temComponentePredio || 
-                                 nomeLower.Contains("hangar") || nomeLower.Contains("fabrica") || nomeLower.Contains("construtor") || nomeLower.Contains("refinaria") || 
-                                 nomeLower.Contains("quartel") || nomeLower.Contains("tenda") || nomeLower.Contains("silo") ||
-                                 nomeLower.Contains("torre") || nomeLower.Contains("muro") || nomeLower.Contains("wall") ||
-                                 nomeLower.Contains("aeroporto") || nomeLower.Contains("heliporto") || nomeLower.Contains("pista") ||
-                                 nomeLower.Contains("ares") || nomeLower.Contains("area") || 
-                                 nomeLower.Contains("antiaerea") || nomeLower.Contains("missil") ||
-                                 nomeLower.Contains("bunker") || nomeLower.Contains("defesa") || 
-                                 nomeLower.Contains("torreta") || 
-                                 nomeLower.Contains("canhao") || nomeLower.Contains("metralhadora") || nomeLower.Contains("plataforma") || 
-                                 nomeLower.Contains("estaleiro") || nomeLower.Contains("pier") ||
-                                 item.categoria == DadosConstrucao.CategoriaItem.Infraestrutura || item.categoria == DadosConstrucao.CategoriaItem.Energia || item.categoria == DadosConstrucao.CategoriaItem.Urbana ||
-                                 item.categoria == DadosConstrucao.CategoriaItem.Tecnologia;
-
-        int qtd = quantidadesPorItem.ContainsKey(item.nomeItem) ? quantidadesPorItem[item.nomeItem] : 1;
-        
-        if (ehPredioExplícito || item.categoria == DadosConstrucao.CategoriaItem.Infraestrutura || item.categoria == DadosConstrucao.CategoriaItem.Energia || item.categoria == DadosConstrucao.CategoriaItem.Urbana)
-        {
-             qtd = 1; 
-        }
-
-        int custoTotal = item.preco * qtd;
-        int qtdParaConstruir = qtd;
+        TipoFluxoConstrucao fluxo = ClassificarFluxo(item);
+        int quantidade = ObterQuantidadeParaCompra(item, fluxo == TipoFluxoConstrucao.Estrutura);
+        int custoTotal = Mathf.Max(0, item.preco) * quantidade;
 
         string motivoGovernanca;
-        if (!GovernadorGameplayRTS.PermitirProducao(item, qtdParaConstruir, out motivoGovernanca))
+        if (!GovernadorGameplayRTS.PermitirProducao(item, quantidade, out motivoGovernanca))
         {
-            if (cardImage != null)
-            {
-                StartCoroutine(FlashCardErro(cardImage));
-            }
-
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
             EmitirAvisoJogador(motivoGovernanca);
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": " + motivoGovernanca);
             return;
         }
 
-        bool temDinheiro = false;
-        if (GerenciadorRecursos.Instancia != null)
+        if (fluxo != TipoFluxoConstrucao.Estrutura && !TemDinheiroPara(custoTotal))
         {
-            if (GerenciadorRecursos.Instancia.dinheiro >= custoTotal) temDinheiro = true;
-        }
-        else
-        {
-            if (gerente.dinheiroAtual >= custoTotal) temDinheiro = true;
-        }
-
-        if (temDinheiro && cardImage != null) StartCoroutine(FlashCard(cardImage));
-        else if (!temDinheiro && cardImage != null) 
-        {
-            StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador($"Fundos insuficientes para comprar {item.nomeItem}.");
-            return; 
-        }
-
-        // ==========================================
-        // 1. ROTEAMENTO PARA MARINHA (Navios)
-        // ==========================================
-        string nomeItemLower = item.nomeItem.ToLower();
-        string nomePrefabLower = item.prefabDaUnidade.name.ToLower();
-
-        bool pareceSerNavio = item.prefabDaUnidade.GetComponent<IdentidadeNaval>() != null 
-                            || item.prefabDaUnidade.GetComponentInChildren<IdentidadeNaval>() != null
-                            || item.prefabDaUnidade.GetComponent<HovercraftTransporte>() != null
-                            || item.prefabDaUnidade.GetComponent<ControleNavioRealista>() != null
-                            || item.prefabDaUnidade.GetComponent<ControleSubmarino>() != null
-                            || item.prefabDaUnidade.GetComponent<NavioPetroleiro>() != null
-                            || nomeItemLower.Contains("navio") || nomeItemLower.Contains("sub")
-                            || nomeItemLower.Contains("leviathan") || nomeItemLower.Contains("lancha")
-                            || nomeItemLower.Contains("corveta") || nomeItemLower.Contains("hovercraft")
-                            || nomeItemLower.Contains("hover") || nomeItemLower.Contains("marinha")
-                            || nomeItemLower.Contains("destroier") || nomeItemLower.Contains("fragata")
-                            || nomeItemLower.Contains("ironclad") || nomeItemLower.Contains("vindicator")
-                            || nomeItemLower.Contains("barco") || nomeItemLower.Contains("carrier")
-                            || nomeItemLower.Contains("porta") || nomeItemLower.Contains("uss")
-                            || nomePrefabLower.Contains("hover") || nomePrefabLower.Contains("marinha")
-                            || nomePrefabLower.Contains("nav_") || nomePrefabLower.Contains("navio")
-                            || nomePrefabLower.Contains("corveta") || nomePrefabLower.Contains("wall")
-                            || nomePrefabLower.Contains("uss") || nomePrefabLower.Contains("ironclad")
-                            || nomePrefabLower.Contains("vindicator") || nomePrefabLower.Contains("destroier");
-
-        if (item.categoria == DadosConstrucao.CategoriaItem.Marinha || pareceSerNavio)
-        {
-            bool ehPredioNaval = !ehPortaAvioes && (
-                                 item.prefabDaUnidade.CompareTag("Imovel") ||
-                                 temComponentePredio ||
-                                 item.nomeItem.ToLower().Contains("estaleiro") || 
-                                 item.nomeItem.ToLower().Contains("pier") || 
-                                 item.nomeItem.ToLower().Contains("plataforma"));
-
-            if (!ehPredioNaval)
-            {
-                bool ehNavioGrande = EhNavioGrande(item.prefabDaUnidade);
-                List<Estaleiro> estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None)
-                    .Where(e => e != null && EhEstruturaDoJogador(e) && EstruturaNavalOperacional(e))
-                    .ToList();
-
-                List<PierMarinha> piers = ehNavioGrande
-                    ? new List<PierMarinha>()
-                    : Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None)
-                        .Where(p => p != null && EhEstruturaDoJogador(p) && EstruturaNavalOperacional(p))
-                        .ToList();
-
-                if (estaleiros.Count == 0 && piers.Count == 0)
-                {
-                    EmitirAvisoJogador(ehNavioGrande
-                        ? "❌ BLOQUEADO: construa um ESTALEIRO costeiro válido para produzir esse navio grande."
-                        : "❌ BLOQUEADO: construa um ESTALEIRO ou PIER costeiro válido para produzir navios.");
-                    return;
-                }
-
-                int quantidadeEnfileirada = 0;
-                for (int i = 0; i < qtdParaConstruir; i++)
-                {
-                    if (!gerente.TentarGastarDinheiro(item.preco))
-                    {
-                        break;
-                    }
-
-                    bool sucesso = false;
-
-                    foreach (Estaleiro estaleiro in estaleiros)
-                    {
-                        if (estaleiro == null || !estaleiro.TemVaga || !EstruturaNavalOperacional(estaleiro))
-                        {
-                            continue;
-                        }
-
-                        if (estaleiro.ConstruirUnidade(item.prefabDaUnidade))
-                        {
-                            Debug.Log("⚓ [Construção] Enviando para Estaleiro: " + estaleiro.name);
-                            sucesso = true;
-                            quantidadeEnfileirada++;
-                            break;
-                        }
-                    }
-
-                    if (!sucesso)
-                    {
-                        foreach (PierMarinha pier in piers)
-                        {
-                            if (pier == null || !EstruturaNavalOperacional(pier))
-                            {
-                                continue;
-                            }
-
-                            if (pier.ConstruirNavio(item.prefabDaUnidade))
-                            {
-                                Debug.Log("⚓ [Construção] Construindo no Píer: " + pier.name);
-                                sucesso = true;
-                                quantidadeEnfileirada++;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!sucesso)
-                    {
-                        ReembolsarDinheiro(item.preco);
-                        EmitirAvisoJogador($"Falha ao produzir '{item.nomeItem}' em estruturas navais validas.");
-                        break;
-                    }
-                }
-
-                if (quantidadeEnfileirada > 0)
-                {
-                    if (quantidadeEnfileirada < qtdParaConstruir)
-                    {
-                        Debug.LogWarning($"⚓ [Construção] Produção parcial: {quantidadeEnfileirada}/{qtdParaConstruir} navios enviados.");
-                    }
-
-                    AlternarMenu(false);
-                }
-
-                return;
-            }
-        }
-
-        // ==========================================
-        // 2. ROTEAMENTO PARA AERONÁUTICA (Aviões) - MANTIDO INTACTO!
-        // ==========================================
-        if (item.categoria == DadosConstrucao.CategoriaItem.Aeronautica)
-        {
-            bool pareceSerAviao = item.prefabDaUnidade.GetComponent<ControleAviao>() != null
-                                || item.prefabDaUnidade.GetComponent<Helicoptero>() != null
-                                || item.prefabDaUnidade.GetComponentInChildren<Helicoptero>(true) != null
-                                || item.nomeItem.ToLower().Contains("caca")
-                                || item.nomeItem.ToLower().Contains("avi")
-                                || item.nomeItem.ToLower().Contains("tuk")
-                                || item.nomeItem.ToLower().Contains("g15")
-                                || item.nomeItem.ToLower().Contains("heli")
-                                || item.nomeItem.ToLower().Contains("flow")
-                                || item.nomeItem.ToLower().Contains("ray");
-                                
-            bool ehPredioAeronautica = item.prefabDaUnidade.CompareTag("Imovel") || temComponentePredio
-                                    || item.nomeItem.ToLower().Contains("aeroporto") 
-                                    || item.nomeItem.ToLower().Contains("pista");
-
-            if (!ehPredioAeronautica && pareceSerAviao)
-            {
-                RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
-                
-                // Filtra apenas aeroportos do jogador (Time 1)
-                var meusAeroportos = bufferAeroportos.Where(a => {
-                    IdentidadeUnidade id = a.GetComponent<IdentidadeUnidade>();
-                    return id == null || id.teamID == 1;
-                }).ToList();
-
-                if (meusAeroportos.Count == 0)
-                {
-                    EmitirAvisoJogador("Bloqueado: voce precisa construir um AEROPORTO primeiro para comprar avioes.");
-                    return;
-                }
-
-                // Tenta encontrar o melhor aeroporto:
-                // 1. Prioriza o que NÃO é um Porta-Aviões (se houver um aeroporto terrestre disponível)
-                // 2. Prioriza o que tem vaga no pátio
-                GerenciadorAeroporto meuAero = meusAeroportos.OrderByDescending(a => {
-                    int score = 0;
-                    // Se não for porta-aviões, ganha pontos (aviões terrestres devem preferir bases terrestres)
-                    if (a.GetType() != typeof(GerenciadorPortaAvioes)) score += 100;
-                    
-                    // Se tem vaga no pátio, ganha pontos
-                    if (a.ObterPrimeiraVagaLivre() != null) score += 50;
-                    
-                    return score;
-                }).FirstOrDefault();
-
-                if (meuAero != null)
-                {
-                    if (!gerente.TentarGastarDinheiro(item.preco * qtdParaConstruir)) return; 
-                    Debug.Log($"✈️ [Construção] Fabricando {qtdParaConstruir}x aviões no Aeroporto: {meuAero.name}");
-                    for(int i=0; i<qtdParaConstruir; i++) meuAero.ComprarAviao(item.prefabDaUnidade);
-                    AlternarMenu(false);
-                    return;
-                }
-                else
-                {
-                    EmitirAvisoJogador("Erro: nenhum aeroporto valido encontrado para entregar esta aeronave.");
-                    return;
-                }
-            }
-        }
-
-        // ==========================================
-        // 3. IDENTIFICAÇÃO CORRETA: É PRÉDIO OU UNIDADE MÓVEL?
-        // ==========================================
-        // Lógica simplificada e segura: Se tem motor/pernas, é veículo. Se não tem, é prédio!
-        
-        bool ehUnidadeMovel = item.prefabDaUnidade.GetComponent<UnityEngine.AI.NavMeshAgent>() != null 
-                            || item.prefabDaUnidade.GetComponent<ControleUnidade>() != null
-                            || item.prefabDaUnidade.GetComponent("Helicoptero") != null; 
-
-        // Proteção 1: Se o nome tem "soldado", "tanque", forçamos ser móvel para não colar no mouse
-        if (nomeLower.Contains("soldado") || nomeLower.Contains("tank") || nomeLower.Contains("veiculo") || nomeLower.Contains("infantaria") || nomeLower.Contains("fuzileiro") || item.categoria == DadosConstrucao.CategoriaItem.Exercito)
-        {
-            ehUnidadeMovel = true;
-        }
-
-        // Proteção 2: Se sabemos com certeza que é prédio (Tag Imovel, Torreta, Hangar), NUNCA será unidade móvel!
-        if (ehPredioExplícito || temComponentePredio || item.prefabDaUnidade.CompareTag("Imovel"))
-        {
-            ehUnidadeMovel = false; 
-        }
-
-        // Se for Unidade Móvel (Tanque, Soldado), vai pro Quartel/Gerente
-        if (ehUnidadeMovel)
-        {
-            gerente.ComprarUnidade(item.prefabDaUnidade, item.preco, qtdParaConstruir);
-            AlternarMenu(false); 
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.no_money", "Fundos insuficientes para comprar {0}."), item.nomeItem));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": fundos insuficientes");
             return;
         }
 
-        // ==========================================
-        // 4. CONSTRUÇÃO FINAL (O ITEM É UM PRÉDIO/ESTRUTURA)
-        // ==========================================
-        // Se o código chegou aqui, ele Sabe que é uma Torreta, um Hangar ou um Ares.
-        // Ele vai mandar direto para o seu Mouse!
-        
-        Construtor construtor = Construtor.Instancia != null ? Construtor.Instancia : Object.FindFirstObjectByType<Construtor>();
+        DesligarModoDemolicaoSeAtivo();
+
+        switch (fluxo)
+        {
+            case TipoFluxoConstrucao.Estrutura:
+                IniciarConstrucaoFantasma(item, cardImage);
+                break;
+            case TipoFluxoConstrucao.UnidadeAerea:
+                ProduzirUnidadeAerea(item, quantidade, cardImage);
+                break;
+            case TipoFluxoConstrucao.UnidadeNaval:
+                ProduzirUnidadeNaval(item, quantidade, cardImage);
+                break;
+            default:
+                ProduzirUnidadeTerrestre(item, quantidade, cardImage);
+                break;
+        }
+    }
+
+    Construtor ObterOuCriarConstrutor()
+    {
+        if (construtorCena != null)
+        {
+            if (!construtorCena.gameObject.activeSelf)
+            {
+                construtorCena.gameObject.SetActive(true);
+            }
+
+            construtorCena.enabled = true;
+            return construtorCena;
+        }
+
+        if (Construtor.Instancia != null && Construtor.Instancia.enabled && Construtor.Instancia.gameObject.activeInHierarchy)
+        {
+            construtorCena = Construtor.Instancia;
+            return Construtor.Instancia;
+        }
+
+        Construtor construtor = Object.FindFirstObjectByType<Construtor>();
+        if (construtor != null)
+        {
+            construtorCena = construtor;
+            return construtor;
+        }
+
+        Construtor[] construtoresInativos = Object.FindObjectsByType<Construtor>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Construtor existente in construtoresInativos)
+        {
+            if (existente == null) continue;
+
+            if (!existente.gameObject.activeSelf)
+            {
+                existente.gameObject.SetActive(true);
+            }
+
+            existente.enabled = true;
+            construtorCena = existente;
+            return existente;
+        }
+
+        GameObject obj = new GameObject("Construtor_Manager");
+        construtor = obj.AddComponent<Construtor>();
+        construtorCena = construtor;
+        Debug.LogWarning("[MenuConstrucao] Nenhum Construtor estava ativo na cena. Criando Construtor_Manager automaticamente.");
+        return construtor;
+    }
+
+    void IniciarConstrucaoFantasma(DadosConstrucao item, Image cardImage)
+    {
+        Construtor construtor = ObterOuCriarConstrutor();
         if (construtor == null)
         {
-             EmitirAvisoJogador("Construtor nao encontrado na cena. Impossivel posicionar a estrutura.");
-             return;
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            EmitirAvisoJogador(LocalizationManager.T("build.no_constructor", "Construtor nao encontrado na cena. Impossivel posicionar a estrutura."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": construtor ausente");
+            return;
         }
 
         if (construtor.modoConstrucao && construtor.prefabSelecionado == item.prefabDaUnidade)
@@ -2324,13 +2569,181 @@ public class MenuConstrucao : MonoBehaviour
 
         if (construtor.modoConstrucao)
         {
-            construtor.CancelarConstrucao(true);
+            construtor.CancelarConstrucao(false);
         }
 
-        if (!gerente.TentarGastarDinheiro(item.preco)) return; 
-        
-        construtor.SelecionarParaConstruir(item.prefabDaUnidade, item.preco, item.categoria);
-        AlternarMenu(false); 
+        if (cardImage != null) StartCoroutine(FlashCard(cardImage));
+        construtor.SelecionarParaConstruir(item.prefabDaUnidade, Mathf.Max(0, item.preco), item.categoria);
+        AlternarMenu(false);
+    }
+
+    void ProduzirUnidadeTerrestre(DadosConstrucao item, int quantidade, Image cardImage)
+    {
+        gerente.ComprarUnidade(item.prefabDaUnidade, item.preco, quantidade);
+        if (cardImage != null) StartCoroutine(FlashCard(cardImage));
+        AlternarMenu(false);
+    }
+
+    void ProduzirUnidadeAerea(DadosConstrucao item, int quantidade, Image cardImage)
+    {
+        RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
+
+        List<GerenciadorAeroporto> meusAeroportos = bufferAeroportos
+            .Where(a =>
+            {
+                if (a == null) return false;
+                IdentidadeUnidade id = a.GetComponent<IdentidadeUnidade>();
+                return id == null || id.teamID == 1;
+            })
+            .ToList();
+
+        if (meusAeroportos.Count == 0)
+        {
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            EmitirAvisoJogador(LocalizationManager.T("build.need_airport", "Bloqueado: voce precisa construir um AEROPORTO ou HELIPORTO primeiro para comprar aeronaves."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem aeroporto");
+            return;
+        }
+
+        GerenciadorAeroporto aeroporto = meusAeroportos
+            .OrderByDescending(a =>
+            {
+                int score = 0;
+                if (a.GetType() != typeof(GerenciadorPortaAvioes)) score += 100;
+                if (a.ObterPrimeiraVagaLivre() != null) score += 50;
+                return score;
+            })
+            .FirstOrDefault();
+
+        if (aeroporto == null)
+        {
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            EmitirAvisoJogador(LocalizationManager.T("build.no_airport", "Erro: nenhum aeroporto valido encontrado para entregar esta aeronave."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": aeroporto invalido");
+            return;
+        }
+
+        int comprados = 0;
+        for (int i = 0; i < quantidade; i++)
+        {
+            if (!gerente.TentarGastarDinheiro(item.preco))
+            {
+                break;
+            }
+
+            aeroporto.ComprarAviao(item.prefabDaUnidade);
+            comprados++;
+        }
+
+        if (comprados <= 0)
+        {
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.no_money", "Fundos insuficientes para comprar {0}."), item.nomeItem));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": fundos insuficientes");
+            return;
+        }
+
+        if (cardImage != null) StartCoroutine(FlashCard(cardImage));
+        AlternarMenu(false);
+    }
+
+    void ProduzirUnidadeNaval(DadosConstrucao item, int quantidade, Image cardImage)
+    {
+        bool ehNavioGrande = EhNavioGrande(item.prefabDaUnidade);
+        List<Estaleiro> estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None)
+            .Where(e => e != null && EhEstruturaDoJogador(e) && EstruturaNavalOperacional(e))
+            .ToList();
+
+        List<PierMarinha> piers = ehNavioGrande
+            ? new List<PierMarinha>()
+            : Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None)
+                .Where(p => p != null && EhEstruturaDoJogador(p) && EstruturaNavalOperacional(p))
+                .ToList();
+
+        if (estaleiros.Count == 0 && piers.Count == 0)
+        {
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            EmitirAvisoJogador(ehNavioGrande
+                ? LocalizationManager.T("build.need_shipyard_big", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir esse navio grande.")
+                : LocalizationManager.T("build.need_shipyard", "Bloqueado: construa um ESTALEIRO ou PIER costeiro valido para produzir navios."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem estrutura naval");
+            return;
+        }
+
+        int enfileirados = 0;
+        for (int i = 0; i < quantidade; i++)
+        {
+            if (!gerente.TentarGastarDinheiro(item.preco))
+            {
+                break;
+            }
+
+            bool sucesso = false;
+            foreach (Estaleiro estaleiro in estaleiros)
+            {
+                if (estaleiro == null || !estaleiro.TemVaga || !EstruturaNavalOperacional(estaleiro))
+                {
+                    continue;
+                }
+
+                if (estaleiro.ConstruirUnidade(item.prefabDaUnidade))
+                {
+                    sucesso = true;
+                    enfileirados++;
+                    break;
+                }
+            }
+
+            if (!sucesso)
+            {
+                foreach (PierMarinha pier in piers)
+                {
+                    if (pier == null || !EstruturaNavalOperacional(pier))
+                    {
+                        continue;
+                    }
+
+                    if (pier.ConstruirNavio(item.prefabDaUnidade))
+                    {
+                        sucesso = true;
+                        enfileirados++;
+                        break;
+                    }
+                }
+            }
+
+            if (!sucesso)
+            {
+                ReembolsarDinheiro(item.preco);
+                EmitirAvisoJogador(string.Format(LocalizationManager.T("build.naval_fail", "Falha ao produzir '{0}' em estruturas navais validas."), item.nomeItem));
+                DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": estrutura naval recusou");
+                break;
+            }
+        }
+
+        if (enfileirados <= 0)
+        {
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.naval_none", "Nao foi possivel produzir {0}."), item.nomeItem));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": nenhum enfileirado");
+            return;
+        }
+
+        if (cardImage != null) StartCoroutine(FlashCard(cardImage));
+        if (enfileirados < quantidade)
+        {
+            Debug.LogWarning($"[MenuConstrucao] Producao naval parcial: {enfileirados}/{quantidade}.");
+        }
+
+        AlternarMenu(false);
+    }
+
+    void DesligarModoDemolicaoSeAtivo()
+    {
+        if (ModoDemolicao.TemModoAtivo)
+        {
+            ModoDemolicao.Instancia.AlternarModo(false);
+        }
     }
 
     void EmitirAvisoJogador(string mensagem)

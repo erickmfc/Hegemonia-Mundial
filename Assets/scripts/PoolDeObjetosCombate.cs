@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -67,6 +68,7 @@ public static class PoolDeObjetosCombate
         int alvo = Mathf.Max(quantidadeAtual, quantidade);
         for (int i = quantidadeAtual; i < alvo; i++)
         {
+            long inicioInstancia = System.Diagnostics.Stopwatch.GetTimestamp();
             GameObject instancia = Object.Instantiate(prefab);
             GarantirLink(instancia, prefab);
             PoolDeObjetoCombateLink link = instancia.GetComponent<PoolDeObjetoCombateLink>();
@@ -78,9 +80,70 @@ public static class PoolDeObjetosCombate
             instancia.transform.SetParent(GetRaizPool(), false);
             instancia.SetActive(false);
             fila.Enqueue(instancia);
+            RegistrarTempoPrewarmItem(inicioInstancia);
         }
 
         PrewarmPorPrefab[prefabId] = alvo;
+    }
+
+    public static int ObterQuantidadePreaquecida(GameObject prefab)
+    {
+        if (prefab == null)
+        {
+            return 0;
+        }
+
+        int quantidadeAtual;
+        return PrewarmPorPrefab.TryGetValue(prefab.GetInstanceID(), out quantidadeAtual)
+            ? quantidadeAtual
+            : 0;
+    }
+
+    public static IEnumerator PrewarmIncremental(GameObject prefab, int quantidade, int instanciasPorFrame = 1)
+    {
+        if (prefab == null || quantidade <= 0)
+        {
+            yield break;
+        }
+
+        int prefabId = prefab.GetInstanceID();
+        Queue<GameObject> fila;
+        if (!PoolPorPrefab.TryGetValue(prefabId, out fila))
+        {
+            fila = new Queue<GameObject>();
+            PoolPorPrefab[prefabId] = fila;
+        }
+
+        int quantidadeAtual;
+        PrewarmPorPrefab.TryGetValue(prefabId, out quantidadeAtual);
+        int alvo = Mathf.Max(quantidadeAtual, quantidade);
+        int limitePorFrame = Mathf.Max(1, instanciasPorFrame);
+        int criadasNoFrame = 0;
+
+        for (int i = quantidadeAtual; i < alvo; i++)
+        {
+            long inicioInstancia = System.Diagnostics.Stopwatch.GetTimestamp();
+            GameObject instancia = Object.Instantiate(prefab);
+            GarantirLink(instancia, prefab);
+            PoolDeObjetoCombateLink link = instancia.GetComponent<PoolDeObjetoCombateLink>();
+            if (link != null)
+            {
+                link.EstaNoPool = true;
+            }
+
+            instancia.transform.SetParent(GetRaizPool(), false);
+            instancia.SetActive(false);
+            fila.Enqueue(instancia);
+            PrewarmPorPrefab[prefabId] = i + 1;
+            RegistrarTempoPrewarmItem(inicioInstancia);
+
+            criadasNoFrame++;
+            if (criadasNoFrame >= limitePorFrame)
+            {
+                criadasNoFrame = 0;
+                yield return null;
+            }
+        }
     }
 
     public static void Release(GameObject instancia)
@@ -155,6 +218,15 @@ public static class PoolDeObjetosCombate
 
         link.Configurar(prefab);
         link.EstaNoPool = false;
+    }
+
+    private static void RegistrarTempoPrewarmItem(long inicioInstancia)
+    {
+        float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicioInstancia) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+        if (elapsedMs > 0f)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("pool_prewarm_item_ms", elapsedMs);
+        }
     }
 
     private static Transform GetRaizPool()

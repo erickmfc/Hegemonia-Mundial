@@ -191,6 +191,7 @@ GameObject:
   - component: {fileID: 4675291909303280190}
   - component: {fileID: 528291891322567192}
   - component: {fileID: 7923779498511352763}
+  - component: {fileID: 6432776805775185723}
   m_Layer: 0
   m_Name: B260
   m_TagString: Aereo
@@ -231,6 +232,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -296,6 +303,8 @@ MonoBehaviour:
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
+  reservaMinimaRetornoPercentual: 0.22
+  reservaRetornoComDanosPercentual: 0.34
   velocidadeSolo: 10
   velocidadeMaximaVoo: 90
   taxaDeGiroLeme: 60
@@ -307,6 +316,7 @@ MonoBehaviour:
   arfagemPitchMaxima: 30
   rodas:
   - {fileID: 8293001923244726674}
+  ajusteAlturaEstacionado: 0
   alvoGPSVoo: {x: 0, y: 0, z: 0}
   centroDaPatrulha: {x: 0, y: 0, z: 0}
   emAtaqueMergulho: 0
@@ -342,6 +352,27 @@ MonoBehaviour:
   alvoMassa1: {x: 0, y: 0, z: 0}
   alvoMassa2: {x: 0, y: 0, z: 0}
   quantidadePorAlvoMassa: 5
+--- !u!65 &6432776805775185723
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8988326293356594916}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 3.76, y: 1.3, z: 9.69}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1001 &5687982260204838665
 PrefabInstance:
   m_ObjectHideFlags: 0

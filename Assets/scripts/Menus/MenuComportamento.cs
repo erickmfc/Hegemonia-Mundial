@@ -26,6 +26,13 @@ public class MenuComportamento : MonoBehaviour
             return;
         }
 
+        // UI unificada: se existir MenuComandoInteligente, este HUD legado nao deve criar painel sobreposto.
+        if (FindFirstObjectByType<MenuComandoInteligente>() != null)
+        {
+            enabled = false;
+            return;
+        }
+
         gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
         CriarInterface();
         painelMenu.SetActive(false);
@@ -112,6 +119,25 @@ public class MenuComportamento : MonoBehaviour
         {
             txtEstadoAtual.text = "ESTADO: <color=#ff8888>ATIVO</color>";
         }
+    }
+
+    public void DefinirVisibilidadeHud(bool visivel)
+    {
+        enabled = visivel;
+
+        if (painelMenu == null)
+        {
+            return;
+        }
+
+        if (!visivel)
+        {
+            painelMenu.SetActive(false);
+            return;
+        }
+
+        bool temSelecao = gerenteSelecao != null && gerenteSelecao.unidadesSelecionadas.Count > 0;
+        painelMenu.SetActive(temSelecao);
     }
 
     public void DefinirComportamento(bool passivo)

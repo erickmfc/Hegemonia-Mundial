@@ -1,85 +1,71 @@
-using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Hegemonia.AI.BrainMaster;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class MenuGoverno : MonoBehaviour
 {
     [Header("Atalho")]
     public KeyCode teclaAtalho = KeyCode.X;
 
-    [Header("Layout 16:9")]
-    [Range(0.40f, 0.95f)] public float larguraTela = 0.90f;
-    [Range(0.40f, 0.98f)] public float alturaTela = 0.91f;
-    [Range(-0.25f, 0.25f)] public float deslocamentoVertical = 0.025f;
-
-    [Header("Medidas Fixas")]
-    public float larguraSidebar = 214f;
-    public float larguraPainelDireito = 360f;
-    public float alturaCabecalho = 78f;
-    public float alturaRecursos = 56f;
+    [Header("Layout RTS")]
+    [Range(0.40f, 0.92f)] public float larguraTela = 0.84f;
+    [Range(0.40f, 0.90f)] public float alturaTela = 0.80f;
+    [Range(-0.18f, 0.18f)] public float deslocamentoVertical = 0.01f;
+    public float larguraSidebar = 198f;
+    public float larguraPainelDireito = 300f;
+    public float alturaCabecalho = 70f;
+    public float alturaRecursos = 48f;
     public float alturaSubAbas = 40f;
-    public float alturaRodape = 148f;
-    public float alturaDica = 30f;
-    public float espacamento = 9f;
+    public float alturaRodape = 34f;
+    public float alturaDica = 28f;
+    public float espacamento = 10f;
 
-    [Header("Animação")]
-    public float duracaoAnimacaoMenu = 0.18f;
-    public float duracaoAnimacaoAba = 0.11f;
+    [Header("Animacao")]
+    public float duracaoAnimacaoMenu = 0.12f;
+    public float duracaoAnimacaoAba = 0.06f;
 
-    [Header("Fontes / Emojis")]
+    [Header("Fontes")]
     public Font fonteEmoji;
     public Font fonteTexto;
-    public bool usarFonteEmoji = true;
-    public bool mostrarAvisoEmojiNoRodape = true;
+    public bool usarFonteEmoji = false;
+    public bool mostrarAvisoEmojiNoRodape = false;
 
-    [Header("Cores - Hegemonia Global")]
-    public Color corFundoJanela = new Color(0.010f, 0.026f, 0.038f, 0.985f);
-    public Color corFundoEscuro = new Color(0.006f, 0.018f, 0.027f, 0.98f);
-    public Color corPainel = new Color(0.026f, 0.078f, 0.105f, 0.97f);
-    public Color corPainel2 = new Color(0.040f, 0.105f, 0.138f, 0.96f);
-    public Color corCard = new Color(0.055f, 0.125f, 0.160f, 0.95f);
-    public Color corCardClara = new Color(0.078f, 0.155f, 0.195f, 0.94f);
-    public Color corLinha = new Color(0.000f, 0.720f, 1.000f, 0.70f);
-    public Color corLinhaFraca = new Color(0.340f, 0.640f, 0.780f, 0.34f);
-    public Color corDestaque = new Color(0.000f, 0.730f, 1.000f, 1.00f);
-    public Color corAzulBotao = new Color(0.020f, 0.270f, 0.455f, 1.00f);
-    public Color corAbaAtiva = new Color(0.000f, 0.345f, 0.560f, 0.98f);
-    public Color corVerde = new Color(0.330f, 0.950f, 0.250f, 1.00f);
-    public Color corAmarelo = new Color(1.000f, 0.650f, 0.100f, 1.00f);
-    public Color corLaranja = new Color(1.000f, 0.330f, 0.080f, 1.00f);
-    public Color corVermelho = new Color(0.950f, 0.120f, 0.080f, 1.00f);
-    public Color corRoxo = new Color(0.700f, 0.360f, 1.000f, 1.00f);
-    public Color corTextoPrimario = new Color(0.915f, 0.970f, 1.000f, 1.00f);
-    public Color corTextoSecundario = new Color(0.720f, 0.835f, 0.910f, 1.00f);
-    public Color corTextoApagado = new Color(0.560f, 0.660f, 0.740f, 1.00f);
+    [Header("Cores - RTS Moderno")]
+    public Color corFundoJanela = new Color(0.020f, 0.026f, 0.032f, 0.985f);
+    public Color corFundoEscuro = new Color(0.012f, 0.016f, 0.020f, 0.98f);
+    public Color corPainel = new Color(0.043f, 0.055f, 0.066f, 0.96f);
+    public Color corPainel2 = new Color(0.060f, 0.075f, 0.090f, 0.96f);
+    public Color corCard = new Color(0.074f, 0.086f, 0.098f, 0.94f);
+    public Color corCardClara = new Color(0.100f, 0.114f, 0.128f, 0.94f);
+    public Color corLinha = new Color(0.180f, 0.640f, 0.900f, 0.92f);
+    public Color corLinhaFraca = new Color(0.310f, 0.420f, 0.500f, 0.28f);
+    public Color corDestaque = new Color(0.220f, 0.720f, 0.940f, 1f);
+    public Color corAzulBotao = new Color(0.075f, 0.245f, 0.360f, 1f);
+    public Color corAbaAtiva = new Color(0.090f, 0.230f, 0.320f, 0.98f);
+    public Color corVerde = new Color(0.220f, 0.790f, 0.390f, 1f);
+    public Color corAmarelo = new Color(0.950f, 0.720f, 0.280f, 1f);
+    public Color corLaranja = new Color(0.950f, 0.450f, 0.180f, 1f);
+    public Color corVermelho = new Color(0.900f, 0.180f, 0.140f, 1f);
+    public Color corRoxo = new Color(0.610f, 0.430f, 0.900f, 1f);
+    public Color corTextoPrimario = new Color(0.930f, 0.965f, 0.990f, 1f);
+    public Color corTextoSecundario = new Color(0.690f, 0.775f, 0.840f, 1f);
+    public Color corTextoApagado = new Color(0.500f, 0.560f, 0.620f, 1f);
+
+    [Header("Sistema")]
+    public int paisJogadorId = 1;
+    public float intervaloTickGoverno = 1.00f;
+
+    public List<PaisGoverno> paises = new List<PaisGoverno>();
+    public List<RelacaoDiplomatica> relacoes = new List<RelacaoDiplomatica>();
+    public List<NotificacaoGoverno> notificacoes = new List<NotificacaoGoverno>();
 
     public static MenuGoverno Instancia;
     public static bool EstaAberto;
-
-    private static Font fontePadraoCache;
-
-    private GameObject canvasObj;
-    private GameObject painelPrincipal;
-    private CanvasGroup canvasGroupPainel;
-
-    private Transform headerRoot;
-    private Transform barraRecursos;
-    private Transform sidebarRoot;
-    private Transform subAbasRoot;
-    private Transform conteudoCentral;
-    private Transform painelDireito;
-    private Transform rodapeEsquerdo;
-    private Transform rodapeMeio;
-    private Transform rodapeDireito;
-    private Transform barraDica;
-
-    private Coroutine animacaoMenuAtual;
-    private Coroutine animacaoConteudoAtual;
-    private bool menuAberto;
 
     public enum CategoriaGoverno
     {
@@ -114,14 +100,14 @@ public class MenuGoverno : MonoBehaviour
         public int populacaoAtual = 110;
         public int populacaoMaximaPorCasas = 200;
         public int quarteis = 2;
-        public int militaresDisponiveis = 0;
+        public int militaresDisponiveis;
         public int militaresAtivos = 3250;
         public int dinheiro = 39534;
         public int comida = 500;
         public int petroleo = 3830;
         public int aco = 100;
         public int armamentos = 500;
-        public int uranio = 0;
+        public int uranio;
     }
 
     [Serializable]
@@ -149,27 +135,81 @@ public class MenuGoverno : MonoBehaviour
         public Color cor;
     }
 
-    [Header("Sistema")]
-    public int paisJogadorId = 1;
-    public float intervaloTickGoverno = 5f;
+    private const string RootName = "Painel_Governo_RTS_Leve";
+    private const float DynamicRefreshMinInterval = 0.20f;
 
-    public List<PaisGoverno> paises = new List<PaisGoverno>();
-    public List<RelacaoDiplomatica> relacoes = new List<RelacaoDiplomatica>();
-    public List<NotificacaoGoverno> notificacoes = new List<NotificacaoGoverno>();
+    private static Font fontePadraoCache;
+    private static readonly CategoriaGoverno[] Categorias = (CategoriaGoverno[])Enum.GetValues(typeof(CategoriaGoverno));
+    private static readonly string[] SubRelacoes = { "Resumo", "Nacoes", "Tratados", "Crises" };
+    private static readonly string[] SubAliancas = { "Blocos", "Pactos", "Operacoes", "Pedidos" };
+    private static readonly string[] SubSancoes = { "Visao Geral", "Aplicadas", "Tipos", "Historico" };
+    private static readonly string[] SubEconomia = { "Tesouro", "Orcamento", "Producao", "Impostos" };
+    private static readonly string[] SubMercado = { "Comprar", "Vender", "Precos", "Rotas" };
+    private static readonly string[] SubInterior = { "Populacao", "Infra", "Bem-estar", "Projetos" };
+    private static readonly string[] SubDefesa = { "Comando", "Exercito", "Marinha", "Aerea", "Alertas" };
+    private static readonly string[] SubCiencia = { "Projetos", "Tecnologias", "Labs", "Fila" };
+    private static readonly string[] SubTrabalho = { "Empregos", "Setores", "Formacao", "Politicas" };
 
-    private float proximoTickGoverno;
-    private CategoriaGoverno abaAtual = CategoriaGoverno.RelacoesExteriores;
-    private int subAbaAtualIndex = 0;
+    private readonly Dictionary<CategoriaGoverno, NavButtonView> navButtons = new Dictionary<CategoriaGoverno, NavButtonView>();
+    private readonly List<SubTabView> subTabViews = new List<SubTabView>();
+    private readonly Dictionary<string, PageView> centerPages = new Dictionary<string, PageView>();
+    private readonly Dictionary<string, PageView> rightPages = new Dictionary<string, PageView>();
+    private readonly Dictionary<string, float> centerScrollByPage = new Dictionary<string, float>();
+    private readonly Dictionary<string, float> rightScrollByPage = new Dictionary<string, float>();
+    private readonly Dictionary<string, ResourceTopView> resourceViews = new Dictionary<string, ResourceTopView>();
+    private readonly Dictionary<string, MarketSellRow> sellRows = new Dictionary<string, MarketSellRow>();
+    private readonly Dictionary<string, MarketBuyRow> buyRows = new Dictionary<string, MarketBuyRow>();
+    private readonly Dictionary<string, MarketPriceRow> priceRows = new Dictionary<string, MarketPriceRow>();
+    private readonly List<RouteRow> routeRows = new List<RouteRow>();
+
+    private GameObject canvasObj;
+    private GameObject painelPrincipal;
+    private CanvasGroup canvasGroupPainel;
+    private RectTransform painelRect;
+    private Transform resourceRoot;
+    private Transform sidebarRoot;
+    private Transform subTabsRoot;
+    private Transform centerContentRoot;
+    private Transform rightContentRoot;
+    private ScrollRect centerScroll;
+    private ScrollRect rightScroll;
+    private Text titleText;
+    private Text subtitleText;
+    private Text footerLeftText;
+    private Text footerRightText;
+    private InputField campoNomePais;
+    private InputField campoNomePresidente;
+    private InputField campoNomeMoeda;
+    private Coroutine menuAnimation;
+    private CategoriaGoverno categoriaAtual = CategoriaGoverno.RelacoesExteriores;
+    private int subAbaAtualIndex;
+    private string activePageKey = string.Empty;
+    private string cachedSceneName;
+    private bool shellBuilt;
+    private bool eventsConnected;
+    private bool dynamicDirty;
+    private float nextDynamicRefresh;
+    private float nextPeriodicRefresh;
     private int paisSelecionadoId = 2;
+
+    private bool hudCached;
+    private MiniMapa cachedMiniMapa;
+    private MenuComportamento cachedMenuComportamento;
+    private MenuConstrucao cachedMenuConstrucao;
 
     public static void GarantirInstancia()
     {
-        if (Instancia != null) return;
+        if (Instancia != null)
+        {
+            GarantirAtivo(Instancia);
+            return;
+        }
 
-        MenuGoverno existente = Achar<MenuGoverno>();
+        MenuGoverno existente = AcharComponenteMesmoInativo<MenuGoverno>();
         if (existente != null)
         {
             Instancia = existente;
+            GarantirAtivo(Instancia);
             return;
         }
 
@@ -178,53 +218,32 @@ public class MenuGoverno : MonoBehaviour
         DontDestroyOnLoad(go);
     }
 
-    private static T Achar<T>() where T : UnityEngine.Object
+    private static void GarantirAtivo(MenuGoverno menu)
     {
-#if UNITY_2023_1_OR_NEWER
-        return FindFirstObjectByType<T>();
-#else
-        return FindObjectOfType<T>();
-#endif
-    }
-
-    private static Font ObterFontePadrao()
-    {
-        if (fontePadraoCache != null) return fontePadraoCache;
-
-        fontePadraoCache = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-
-        if (fontePadraoCache == null)
-            fontePadraoCache = Font.CreateDynamicFontFromOSFont("Arial", 14);
-
-        if (fontePadraoCache == null)
-            fontePadraoCache = Font.CreateDynamicFontFromOSFont("Liberation Sans", 14);
-
-        return fontePadraoCache;
-    }
-
-    private Font ObterFonteParaTexto(string texto)
-    {
-        if (usarFonteEmoji && fonteEmoji != null && ContemEmojiOuSimbolo(texto))
-            return fonteEmoji;
-
-        if (fonteTexto != null)
-            return fonteTexto;
-
-        return ObterFontePadrao();
-    }
-
-    private bool ContemEmojiOuSimbolo(string texto)
-    {
-        if (string.IsNullOrEmpty(texto)) return false;
-
-        for (int i = 0; i < texto.Length; i++)
+        if (menu == null) return;
+        Transform t = menu.transform;
+        while (t != null)
         {
-            int code = char.ConvertToUtf32(texto, i);
-            if (code > 255) return true;
-            if (char.IsSurrogate(texto[i])) i++;
+            if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+            t = t.parent;
         }
+        menu.enabled = true;
+    }
 
-        return false;
+    private void AplicarLayoutGovernamentalAtual()
+    {
+        larguraTela = Mathf.Clamp(larguraTela, 0.72f, 0.86f);
+        alturaTela = Mathf.Clamp(alturaTela, 0.62f, 0.84f);
+        deslocamentoVertical = Mathf.Clamp(deslocamentoVertical, -0.08f, 0.08f);
+        larguraSidebar = Mathf.Clamp(larguraSidebar, 178f, 208f);
+        larguraPainelDireito = Mathf.Clamp(larguraPainelDireito, 260f, 320f);
+        alturaCabecalho = Mathf.Clamp(alturaCabecalho, 62f, 76f);
+        alturaRecursos = Mathf.Clamp(alturaRecursos, 42f, 50f);
+        alturaSubAbas = Mathf.Clamp(alturaSubAbas, 36f, 42f);
+        alturaRodape = Mathf.Clamp(alturaRodape, 30f, 36f);
+        alturaDica = Mathf.Clamp(alturaDica, 22f, 28f);
+        espacamento = Mathf.Clamp(espacamento, 6f, 9f);
+        intervaloTickGoverno = Mathf.Clamp(intervaloTickGoverno, 0.75f, 2f);
     }
 
     private void Awake()
@@ -237,1614 +256,2190 @@ public class MenuGoverno : MonoBehaviour
 
         Instancia = this;
         EstaAberto = false;
+        AplicarLayoutGovernamentalAtual();
         DontDestroyOnLoad(gameObject);
 
-        InicializarDadosDoMundo();
-        GarantirCanvasEEventSystem();
-        GerarInterfaceCompleta();
-        FecharImediato();
+        cachedSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        UnityEngine.SceneManagement.SceneManager.activeSceneChanged += AoMudarCena;
+
+        SistemaGovernoMundial.GarantirInstancia();
+        BuildShell();
+        painelPrincipal.SetActive(false);
+    }
+
+    private void OnEnable()
+    {
+        ConnectEvents();
+    }
+
+    private void OnDisable()
+    {
+        DisconnectEvents();
+    }
+
+    private void OnDestroy()
+    {
+        UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= AoMudarCena;
+        DisconnectEvents();
+        if (Instancia == this)
+        {
+            Instancia = null;
+            EstaAberto = false;
+        }
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(teclaAtalho)) AlternarMenu(!EstaAberto);
+        if (!string.IsNullOrEmpty(cachedSceneName) && ConfiguracaoCenasJogo.EhCenaDeMenu(cachedSceneName))
+            return;
 
-        if (EstaAberto && Time.unscaledTime >= proximoTickGoverno)
+        if (Input.GetKeyDown(teclaAtalho))
+            AlternarMenu(!EstaAberto);
+
+        if (!EstaAberto)
+            return;
+
+        if (dynamicDirty && Time.unscaledTime >= nextDynamicRefresh)
         {
-            proximoTickGoverno = Time.unscaledTime + 1.0f;
-            
-            // Verifica se os objetos ainda existem antes de atualizar
-            if (painelPrincipal != null)
-            {
-                AtualizarBarraRecursos(); // Atualiza os números no topo
-                GerarPainelDireito();      // Atualiza o painel da lateral direita
-            }
-            else
-            {
-                // Se o menu deveria estar aberto mas o painel sumiu, força regeneração
-                GerarInterfaceCompleta();
-            }
+            dynamicDirty = false;
+            nextDynamicRefresh = Time.unscaledTime + DynamicRefreshMinInterval;
+            RefreshDynamicData(false);
+        }
+
+        if (Time.unscaledTime >= nextPeriodicRefresh)
+        {
+            nextPeriodicRefresh = Time.unscaledTime + Mathf.Max(0.2f, intervaloTickGoverno);
+            RefreshDynamicData(false);
         }
     }
 
     public void AlternarMenu(bool abrir)
     {
-        // Se já estiver no estado desejado, não faz nada
-        if (abrir == EstaAberto) return;
+        GarantirAtivo(this);
+        BuildShell();
+
+        if (abrir == EstaAberto && painelPrincipal.activeSelf == abrir)
+            return;
 
         if (abrir)
         {
-            GerarInterfaceCompleta();
-            if (animacaoMenuAtual != null) StopCoroutine(animacaoMenuAtual);
-            animacaoMenuAtual = StartCoroutine(AnimarMenu(true));
+            SistemaGovernoMundial.GarantirInstancia();
+            ShowCurrentPage();
+            RefreshDynamicData(false);
             EsconderHUD(true);
         }
         else
         {
-            if (animacaoMenuAtual != null) StopCoroutine(animacaoMenuAtual);
-            animacaoMenuAtual = StartCoroutine(AnimarMenu(false));
+            SaveScrollPositions();
             EsconderHUD(false);
         }
+
+        if (menuAnimation != null) StopCoroutine(menuAnimation);
+        menuAnimation = StartCoroutine(AnimateMenu(abrir));
     }
 
-    private void EsconderHUD(bool esconder)
+    private IEnumerator AnimateMenu(bool abrir)
     {
-        // MiniMapa
-        MiniMapa mm = UnityEngine.Object.FindFirstObjectByType<MiniMapa>();
-        if (mm != null)
-        {
-            Transform canvasMM = mm.transform.root.Find("Canvas_MiniMapa");
-            if (canvasMM != null) canvasMM.gameObject.SetActive(!esconder);
-            mm.gameObject.SetActive(!esconder);
-        }
-
-        // Menu de Construção / Lateral
-        MenuConstrucao mc = UnityEngine.Object.FindFirstObjectByType<MenuConstrucao>();
-        if (mc != null)
-        {
-            if (esconder)
-            {
-                if (MenuConstrucao.EstaAberto) mc.AlternarMenu(false);
-                mc.gameObject.SetActive(false);
-            }
-            else
-            {
-                mc.gameObject.SetActive(true);
-            }
-        }
-    }
-
-    private IEnumerator AnimarMenu(bool abrir)
-    {
-        menuAberto = abrir;
         EstaAberto = abrir;
-
-        if (painelPrincipal == null) GerarInterfaceCompleta();
-        if (painelPrincipal == null) yield break; // Falha ao criar
-
         painelPrincipal.SetActive(true);
-        if (abrir) AtualizarInterfaceCompleta();
-
-        canvasGroupPainel.interactable = abrir;
         canvasGroupPainel.blocksRaycasts = abrir;
+        canvasGroupPainel.interactable = abrir;
 
-        float inicioAlpha = canvasGroupPainel.alpha;
-        float fimAlpha = abrir ? 1f : 0f;
-        Vector3 inicioScale = abrir ? new Vector3(0.965f, 0.965f, 1f) : painelPrincipal.transform.localScale;
-        Vector3 fimScale = abrir ? Vector3.one : new Vector3(0.965f, 0.965f, 1f);
-
-        if (abrir) painelPrincipal.transform.localScale = inicioScale;
+        float startAlpha = canvasGroupPainel.alpha;
+        float endAlpha = abrir ? 1f : 0f;
+        Vector2 startPos = painelRect.anchoredPosition;
+        Vector2 endPos = new Vector2(0f, abrir ? 0f : -16f);
+        if (abrir)
+        {
+            painelRect.anchoredPosition = new Vector2(0f, -16f);
+            startPos = painelRect.anchoredPosition;
+            endPos = Vector2.zero;
+        }
 
         float t = 0f;
-        while (t < duracaoAnimacaoMenu)
+        float duration = Mathf.Max(0.01f, duracaoAnimacaoMenu);
+        while (t < duration)
         {
             t += Time.unscaledDeltaTime;
-            float p = Mathf.Clamp01(t / Mathf.Max(0.01f, duracaoAnimacaoMenu));
-            p = 1f - Mathf.Pow(1f - p, 3f);
-            canvasGroupPainel.alpha = Mathf.Lerp(inicioAlpha, fimAlpha, p);
-            painelPrincipal.transform.localScale = Vector3.Lerp(inicioScale, fimScale, p);
+            float p = Mathf.Clamp01(t / duration);
+            p = 1f - Mathf.Pow(1f - p, 2f);
+            canvasGroupPainel.alpha = Mathf.Lerp(startAlpha, endAlpha, p);
+            painelRect.anchoredPosition = Vector2.Lerp(startPos, endPos, p);
             yield return null;
         }
 
-        canvasGroupPainel.alpha = fimAlpha;
-        painelPrincipal.transform.localScale = fimScale;
+        canvasGroupPainel.alpha = endAlpha;
+        painelRect.anchoredPosition = endPos;
+        if (!abrir) painelPrincipal.SetActive(false);
+        menuAnimation = null;
+    }
 
-        if (!abrir)
+    private void AoMudarCena(UnityEngine.SceneManagement.Scene antiga, UnityEngine.SceneManagement.Scene nova)
+    {
+        cachedSceneName = nova.name;
+        hudCached = false;
+    }
+
+    private void ConnectEvents()
+    {
+        if (eventsConnected) return;
+        SistemaGovernoMundial.GarantirInstancia();
+
+        if (SistemaGovernoMundial.Instancia != null)
         {
-            painelPrincipal.SetActive(false);
-            canvasGroupPainel.interactable = false;
-            canvasGroupPainel.blocksRaycasts = false;
+            SistemaGovernoMundial.Instancia.OnGovernoAtualizado += MarkDynamicDirty;
+            SistemaGovernoMundial.Instancia.OnNoticia += OnGovernmentNews;
+            SistemaGovernoMundial.Instancia.OnPropostaCriada += OnProposalCreated;
+        }
+
+        if (SistemaMercadoGlobal.Instancia != null)
+        {
+            SistemaMercadoGlobal.Instancia.OnMercadoAtualizado += MarkDynamicDirty;
+            SistemaMercadoGlobal.Instancia.OnTransacaoExecutada += OnMarketTransaction;
+        }
+
+        if (GerenciadorRecursos.Instancia != null)
+            GerenciadorRecursos.Instancia.OnRecursosAtualizados += MarkDynamicDirty;
+
+        eventsConnected = true;
+    }
+
+    private void DisconnectEvents()
+    {
+        if (!eventsConnected) return;
+
+        if (SistemaGovernoMundial.Instancia != null)
+        {
+            SistemaGovernoMundial.Instancia.OnGovernoAtualizado -= MarkDynamicDirty;
+            SistemaGovernoMundial.Instancia.OnNoticia -= OnGovernmentNews;
+            SistemaGovernoMundial.Instancia.OnPropostaCriada -= OnProposalCreated;
+        }
+
+        if (SistemaMercadoGlobal.Instancia != null)
+        {
+            SistemaMercadoGlobal.Instancia.OnMercadoAtualizado -= MarkDynamicDirty;
+            SistemaMercadoGlobal.Instancia.OnTransacaoExecutada -= OnMarketTransaction;
+        }
+
+        if (GerenciadorRecursos.Instancia != null)
+            GerenciadorRecursos.Instancia.OnRecursosAtualizados -= MarkDynamicDirty;
+
+        eventsConnected = false;
+    }
+
+    private void MarkDynamicDirty()
+    {
+        dynamicDirty = true;
+        if (!EstaAberto) return;
+        if (Time.unscaledTime >= nextDynamicRefresh)
+        {
+            dynamicDirty = false;
+            nextDynamicRefresh = Time.unscaledTime + DynamicRefreshMinInterval;
+            RefreshDynamicData(false);
         }
     }
 
-    private void FecharImediato()
+    private void OnGovernmentNews(string mensagem)
     {
-        menuAberto = false;
-        EstaAberto = false;
-        if (painelPrincipal != null) painelPrincipal.SetActive(false);
-        if (canvasGroupPainel != null)
-        {
-            canvasGroupPainel.alpha = 0f;
-            canvasGroupPainel.interactable = false;
-            canvasGroupPainel.blocksRaycasts = false;
-        }
+        Notificar("Governo", mensagem);
     }
 
-    private void GarantirCanvasEEventSystem()
+    private void OnProposalCreated(PropostaInternacional proposta)
     {
-        Canvas canvasExistente = Achar<Canvas>();
-        if (canvasExistente != null)
-        {
-            canvasObj = canvasExistente.gameObject;
-            canvasExistente.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasExistente.sortingOrder = Mathf.Max(canvasExistente.sortingOrder, 6000);
-
-            if (canvasObj.GetComponent<CanvasScaler>() == null)
-            {
-                CanvasScaler scalerExistente = canvasObj.AddComponent<CanvasScaler>();
-                scalerExistente.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scalerExistente.referenceResolution = new Vector2(1920, 1080);
-                scalerExistente.matchWidthOrHeight = 0.5f;
-            }
-
-            if (canvasObj.GetComponent<GraphicRaycaster>() == null) canvasObj.AddComponent<GraphicRaycaster>();
-        }
-        else
-        {
-            canvasObj = new GameObject("Canvas_Interface_Hegemonia");
-            Canvas canvas = canvasObj.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 6000;
-
-            CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
-            scaler.matchWidthOrHeight = 0.5f;
-
-            canvasObj.AddComponent<GraphicRaycaster>();
-            DontDestroyOnLoad(canvasObj);
-        }
-
-        if (Achar<EventSystem>() == null)
-        {
-            GameObject eventObj = new GameObject("EventSystem_Auto");
-            eventObj.AddComponent<EventSystem>();
-            eventObj.AddComponent<StandaloneInputModule>();
-            DontDestroyOnLoad(eventObj);
-        }
+        if (proposta != null && proposta.alvoTeamId == paisJogadorId)
+            Notificar("Proposta", proposta.motivo);
     }
 
-    private void GerarInterfaceCompleta()
+    private void OnMarketTransaction(TransacaoMercado transacao)
     {
-        // Garante que o Canvas existe antes de prosseguir
-        if (canvasObj == null) GarantirCanvasEEventSystem();
+        if (transacao != null)
+            Notificar("Mercado", transacao.mensagem);
+    }
 
-        // Se ainda for nulo (falha catastrófica), aborta
-        if (canvasObj == null) return;
+    private void BuildShell()
+    {
+        if (shellBuilt && painelPrincipal != null) return;
+        AplicarLayoutGovernamentalAtual();
 
-        Transform antigo = canvasObj.transform.Find("Painel_Governo_Hegemonia_Refeito");
+        GarantirCanvasEEventSystem();
+        Transform antigo = canvasObj.transform.Find(RootName);
         if (antigo != null) Destroy(antigo.gameObject);
 
-        painelPrincipal = CriarUIObjeto("Painel_Governo_Hegemonia_Refeito", canvasObj.transform);
-        RectTransform rt = painelPrincipal.GetComponent<RectTransform>();
-        float meiaLargura = Mathf.Clamp01(larguraTela) * 0.5f;
-        float meiaAltura = Mathf.Clamp01(alturaTela) * 0.5f;
-        rt.anchorMin = new Vector2(0.5f - meiaLargura, 0.5f - meiaAltura + deslocamentoVertical);
-        rt.anchorMax = new Vector2(0.5f + meiaLargura, 0.5f + meiaAltura + deslocamentoVertical);
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
+        painelPrincipal = CreateUIObject(RootName, canvasObj.transform);
+        painelRect = painelPrincipal.GetComponent<RectTransform>();
+        float halfW = Mathf.Clamp01(larguraTela) * 0.5f;
+        float halfH = Mathf.Clamp01(alturaTela) * 0.5f;
+        painelRect.anchorMin = new Vector2(0.5f - halfW, 0.5f - halfH + deslocamentoVertical);
+        painelRect.anchorMax = new Vector2(0.5f + halfW, 0.5f + halfH + deslocamentoVertical);
+        painelRect.offsetMin = Vector2.zero;
+        painelRect.offsetMax = Vector2.zero;
 
         Image bg = painelPrincipal.AddComponent<Image>();
         bg.color = corFundoJanela;
-        AddOutline(painelPrincipal, corLinha, 2f);
         canvasGroupPainel = painelPrincipal.AddComponent<CanvasGroup>();
+        canvasGroupPainel.alpha = 0f;
+        canvasGroupPainel.blocksRaycasts = false;
+        canvasGroupPainel.interactable = false;
 
-        VerticalLayoutGroup raiz = painelPrincipal.AddComponent<VerticalLayoutGroup>();
-        raiz.spacing = 0;
-        raiz.padding = new RectOffset(0, 0, 0, 0);
-        raiz.childControlWidth = true;
-        raiz.childControlHeight = true;
-        raiz.childForceExpandWidth = true;
-        raiz.childForceExpandHeight = false;
+        VerticalLayoutGroup root = painelPrincipal.AddComponent<VerticalLayoutGroup>();
+        root.spacing = 0;
+        root.childControlWidth = true;
+        root.childControlHeight = true;
+        root.childForceExpandWidth = true;
+        root.childForceExpandHeight = false;
 
-        CriarCabecalho(painelPrincipal.transform);
-        CriarBarraRecursosSuperior(painelPrincipal.transform);
-        CriarCorpoPrincipal(painelPrincipal.transform);
-        CriarRodapePrincipal(painelPrincipal.transform);
-        CriarBarraInferiorDica(painelPrincipal.transform);
+        BuildHeader(painelPrincipal.transform);
+        BuildResourceBar(painelPrincipal.transform);
+        BuildMainArea(painelPrincipal.transform);
+        BuildFooter(painelPrincipal.transform);
 
-        AtualizarInterfaceCompleta();
+        shellBuilt = true;
+        RefreshStaticNavigation();
+        ShowCurrentPage();
     }
 
-    private void CriarCabecalho(Transform parent)
+    private void BuildHeader(Transform parent)
     {
-        GameObject topo = CriarCardBase(parent, alturaCabecalho, new Color(0.007f, 0.033f, 0.050f, 0.985f));
-        topo.name = "Header";
-        headerRoot = topo.transform;
-        AddOutline(topo, corLinhaFraca, 1f);
-
-        HorizontalLayoutGroup h = topo.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(16, 16, 8, 8);
+        GameObject header = CreatePanel("Header", parent, alturaCabecalho, new Color(0.016f, 0.022f, 0.028f, 0.98f));
+        HorizontalLayoutGroup h = header.AddComponent<HorizontalLayoutGroup>();
+        h.padding = new RectOffset(16, 14, 10, 10);
         h.spacing = 12;
         h.childControlWidth = true;
         h.childControlHeight = true;
-        h.childForceExpandWidth = false;
         h.childForceExpandHeight = true;
 
-        GameObject identidade = CriarCardBase(topo.transform, 0, new Color(0.025f, 0.078f, 0.110f, 0.86f));
-        identidade.name = "IdentidadeNacional";
-        identidade.GetComponent<LayoutElement>().preferredWidth = 324f;
-        identidade.GetComponent<LayoutElement>().flexibleWidth = 0f;
+        GameObject idBox = CreatePanel("Identidade", header.transform, 0f, corPainel);
+        LayoutElement idLe = idBox.GetComponent<LayoutElement>();
+        idLe.preferredWidth = 300f;
+        idLe.minWidth = 260f;
+        idLe.flexibleWidth = 0f;
+        VerticalLayoutGroup idV = idBox.AddComponent<VerticalLayoutGroup>();
+        idV.padding = new RectOffset(14, 12, 8, 6);
+        idV.spacing = 2;
+        titleText = CreateLayoutText(idBox.transform, "GOVERNO", 20, corTextoPrimario, TextAnchor.LowerLeft, FontStyle.Bold, 28f);
+        subtitleText = CreateLayoutText(idBox.transform, "Painel nacional", 11, corTextoSecundario, TextAnchor.UpperLeft, FontStyle.Normal, 18f);
 
-        HorizontalLayoutGroup idH = identidade.AddComponent<HorizontalLayoutGroup>();
-        idH.padding = new RectOffset(10, 10, 8, 8);
-        idH.spacing = 10;
-        idH.childControlHeight = true;
+        GameObject center = CreateUIObject("TituloCentral", header.transform);
+        center.AddComponent<LayoutElement>().flexibleWidth = 1f;
+        CreateFreeText(center.transform, "HEGEMONIA", 25, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold);
 
-        GameObject bandeira = CriarCardBase(identidade.transform, 0, new Color(0.018f, 0.315f, 0.580f, 1f));
-        bandeira.GetComponent<LayoutElement>().preferredWidth = 78f;
-        CriarTextoLivre(bandeira.transform, "✦  ✦\n✦ ✦ ✦", 15, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+        GameObject identidadeEditor = CreatePanel("EditorIdentidade", header.transform, 0f, corPainel2);
+        LayoutElement editorLe = identidadeEditor.GetComponent<LayoutElement>();
+        editorLe.preferredWidth = 460f;
+        editorLe.minWidth = 420f;
+        editorLe.flexibleWidth = 0f;
 
-        GameObject textos = CriarUIObjeto("TextosPais", identidade.transform);
-        textos.AddComponent<LayoutElement>().flexibleWidth = 1f;
-        VerticalLayoutGroup v = textos.AddComponent<VerticalLayoutGroup>();
-        v.childAlignment = TextAnchor.MiddleLeft;
-        v.spacing = 1;
-        CriarTextoLayout(textos.transform, ObterPais(paisJogadorId).nome.ToUpper(), 17, corTextoPrimario, TextAnchor.LowerLeft, FontStyle.Bold, 26);
-        CriarTextoLayout(textos.transform, "ID 01  |  Governo Nacional", 11, corTextoSecundario, TextAnchor.UpperLeft, FontStyle.Normal, 20);
+        VerticalLayoutGroup editorLayout = identidadeEditor.AddComponent<VerticalLayoutGroup>();
+        editorLayout.padding = new RectOffset(10, 10, 8, 8);
+        editorLayout.spacing = 6;
+        editorLayout.childControlWidth = true;
+        editorLayout.childControlHeight = true;
+        editorLayout.childForceExpandHeight = false;
 
-        GameObject titulo = CriarUIObjeto("TituloCentral", topo.transform);
-        titulo.AddComponent<LayoutElement>().flexibleWidth = 1f;
-        CriarTextoLivre(titulo.transform, "GABINETE GOVERNAMENTAL — HEGEMONIA GLOBAL", 25, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold);
-        GameObject subtitulo = CriarUIObjeto("Subtitulo", titulo.transform);
-        RectTransform subRt = subtitulo.GetComponent<RectTransform>();
-        subRt.anchorMin = new Vector2(0f, 0f);
-        subRt.anchorMax = new Vector2(1f, 0.35f);
-        subRt.offsetMin = new Vector2(0, 0);
-        subRt.offsetMax = new Vector2(0, 0);
-        CriarTextoLivre(subtitulo.transform, "diplomacia • economia • defesa • ciência • trabalho", 11, corTextoSecundario, TextAnchor.MiddleCenter, FontStyle.Bold);
+        GameObject linhaSuperior = CreateUIObject("LinhaSuperior", identidadeEditor.transform);
+        HorizontalLayoutGroup linhaSuperiorLayout = linhaSuperior.AddComponent<HorizontalLayoutGroup>();
+        linhaSuperiorLayout.spacing = 6;
+        linhaSuperiorLayout.childControlWidth = true;
+        linhaSuperiorLayout.childControlHeight = true;
+        linhaSuperiorLayout.childForceExpandWidth = true;
+        linhaSuperiorLayout.childForceExpandHeight = true;
+        linhaSuperior.AddComponent<LayoutElement>().preferredHeight = 30f;
 
-        Button fechar = CriarBotao(topo.transform, "X", new Color(0.245f, 0.030f, 0.030f, 1f), () => AlternarMenu(false));
-        LayoutElement fecharLe = fechar.gameObject.GetComponent<LayoutElement>();
-        fecharLe.preferredWidth = 54f;
-        fecharLe.minWidth = 54f;
+        campoNomePais = CreateCompactInput(linhaSuperior.transform, "Pais");
+        campoNomePais.GetComponent<LayoutElement>().flexibleWidth = 1f;
+        campoNomePresidente = CreateCompactInput(linhaSuperior.transform, "Presidente");
+        campoNomePresidente.GetComponent<LayoutElement>().flexibleWidth = 1f;
+
+        GameObject linhaInferior = CreateUIObject("LinhaInferior", identidadeEditor.transform);
+        HorizontalLayoutGroup linhaInferiorLayout = linhaInferior.AddComponent<HorizontalLayoutGroup>();
+        linhaInferiorLayout.spacing = 6;
+        linhaInferiorLayout.childControlWidth = true;
+        linhaInferiorLayout.childControlHeight = true;
+        linhaInferiorLayout.childForceExpandWidth = true;
+        linhaInferiorLayout.childForceExpandHeight = true;
+        linhaInferior.AddComponent<LayoutElement>().preferredHeight = 34f;
+
+        campoNomeMoeda = CreateCompactInput(linhaInferior.transform, "Moeda");
+        campoNomeMoeda.GetComponent<LayoutElement>().flexibleWidth = 1f;
+        Button aplicar = CreateMiniActionButton(linhaInferior.transform, "Aplicar identidade", corAzulBotao, AplicarIdentidadeNacional);
+        LayoutElement aplicarLe = aplicar.GetComponent<LayoutElement>();
+        aplicarLe.flexibleWidth = 1f;
+        aplicarLe.minWidth = 150f;
+
+        Button close = CreateButton(header.transform, "X", new Color(0.300f, 0.060f, 0.055f, 1f), () => AlternarMenu(false));
+        LayoutElement closeLe = close.GetComponent<LayoutElement>();
+        closeLe.preferredWidth = 84f;
+        closeLe.minWidth = 72f;
+        closeLe.preferredHeight = 52f;
     }
 
-    private void CriarBarraRecursosSuperior(Transform parent)
+    private void BuildResourceBar(Transform parent)
     {
-        GameObject barra = CriarCardBase(parent, alturaRecursos, new Color(0.006f, 0.022f, 0.032f, 0.98f));
-        barra.name = "BarraRecursos";
-        barraRecursos = barra.transform;
-        AddOutline(barra, corLinhaFraca, 1f);
-
-        HorizontalLayoutGroup h = barra.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(12, 12, 6, 6);
-        h.spacing = 5;
+        GameObject bar = CreatePanel("Recursos", parent, alturaRecursos, new Color(0.014f, 0.020f, 0.025f, 0.98f));
+        resourceRoot = bar.transform;
+        HorizontalLayoutGroup h = bar.AddComponent<HorizontalLayoutGroup>();
+        h.padding = new RectOffset(10, 10, 6, 6);
+        h.spacing = 6;
         h.childControlWidth = true;
         h.childControlHeight = true;
         h.childForceExpandWidth = true;
-        h.childForceExpandHeight = true;
+
+        CreateResourceView("DINHEIRO", "$", corVerde);
+        CreateResourceView("PETROLEO", "OIL", corDestaque);
+        CreateResourceView("ACO", "ACO", corAmarelo);
+        CreateResourceView("COMIDA", "FOOD", corVerde);
+        CreateResourceView("POP", "POP", corTextoSecundario);
+        CreateResourceView("ESTAB", "EST", corDestaque);
+        CreateResourceView("STATUS", "STS", corTextoSecundario);
     }
 
-    private void CriarCorpoPrincipal(Transform parent)
+    private void BuildMainArea(Transform parent)
     {
-        GameObject corpo = CriarUIObjeto("Corpo", parent);
-        LayoutElement le = corpo.AddComponent<LayoutElement>();
-        le.flexibleHeight = 1f;
-        le.minHeight = 440f;
+        GameObject body = CreateUIObject("Corpo", parent);
+        LayoutElement bodyLe = body.AddComponent<LayoutElement>();
+        bodyLe.flexibleHeight = 1f;
+        bodyLe.minHeight = 360f;
 
-        HorizontalLayoutGroup h = corpo.AddComponent<HorizontalLayoutGroup>();
+        HorizontalLayoutGroup h = body.AddComponent<HorizontalLayoutGroup>();
+        h.padding = new RectOffset(12, 12, 10, 10);
         h.spacing = espacamento;
-        h.padding = new RectOffset(12, 12, 10, 8);
         h.childControlWidth = true;
         h.childControlHeight = true;
         h.childForceExpandHeight = true;
         h.childForceExpandWidth = false;
 
-        CriarSidebar(corpo.transform);
-        CriarAreaConteudo(corpo.transform);
+        BuildSidebar(body.transform);
+        BuildContentArea(body.transform);
     }
 
-    private void CriarSidebar(Transform parent)
+    private void BuildSidebar(Transform parent)
     {
-        GameObject side = CriarCardBase(parent, 0, new Color(0.014f, 0.046f, 0.066f, 0.96f));
-        side.name = "Sidebar";
+        GameObject side = CreatePanel("Sidebar", parent, 0f, new Color(0.026f, 0.034f, 0.041f, 0.98f));
         sidebarRoot = side.transform;
         LayoutElement le = side.GetComponent<LayoutElement>();
         le.preferredWidth = larguraSidebar;
-        le.minWidth = larguraSidebar;
+        le.minWidth = Mathf.Min(200f, larguraSidebar);
         le.flexibleWidth = 0f;
-        AddOutline(side, corLinhaFraca, 1f);
 
         VerticalLayoutGroup v = side.AddComponent<VerticalLayoutGroup>();
-        v.padding = new RectOffset(0, 0, 0, 0);
-        v.spacing = 0;
+        v.padding = new RectOffset(6, 6, 6, 6);
+        v.spacing = 5;
         v.childControlWidth = true;
         v.childControlHeight = true;
         v.childForceExpandHeight = false;
 
-        foreach (CategoriaGoverno cat in Enum.GetValues(typeof(CategoriaGoverno))) CriarBotaoAbaLateral(cat);
-    }
-
-    private void CriarBotaoAbaLateral(CategoriaGoverno cat)
-    {
-        GameObject btn = CriarUIObjeto("Aba_" + cat, sidebarRoot);
-        LayoutElement le = btn.AddComponent<LayoutElement>();
-        le.preferredHeight = 48f;
-        le.minHeight = 48f;
-
-        Image img = btn.AddComponent<Image>();
-        img.color = Color.clear;
-        AddOutline(btn, corLinhaFraca, 1f);
-
-        GameObject brilho = CriarUIObjeto("Brilho", btn.transform);
-        Esticar(brilho.GetComponent<RectTransform>(), 0, 0, 0, 0);
-        Image brilhoImg = brilho.AddComponent<Image>();
-        brilhoImg.color = Color.clear;
-        brilhoImg.raycastTarget = false;
-
-        GameObject linha = CriarUIObjeto("LinhaAtiva", btn.transform);
-        RectTransform lRt = linha.GetComponent<RectTransform>();
-        lRt.anchorMin = new Vector2(0, 0);
-        lRt.anchorMax = new Vector2(0, 1);
-        lRt.offsetMin = new Vector2(0, 0);
-        lRt.offsetMax = new Vector2(5, 0);
-        Image linhaImg = linha.AddComponent<Image>();
-        linhaImg.color = Color.clear;
-        linhaImg.raycastTarget = false;
-
-        HorizontalLayoutGroup h = btn.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(15, 8, 0, 0);
-        h.spacing = 10;
-        h.childControlHeight = true;
-        h.childForceExpandHeight = true;
-        h.childControlWidth = true;
-
-        Text icone = CriarTextoLayout(btn.transform, IconeAba(cat), 22, corTextoSecundario, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
-        icone.name = "Icone";
-        icone.GetComponent<LayoutElement>().preferredWidth = 32f;
-
-        Text titulo = CriarTextoLayout(btn.transform, NomeAba(cat).ToUpper(), 13, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Bold, 48);
-        titulo.name = "Titulo";
-        titulo.GetComponent<LayoutElement>().flexibleWidth = 1f;
-
-        Button b = btn.AddComponent<Button>();
-        b.targetGraphic = img;
-        b.onClick.AddListener(() =>
+        foreach (CategoriaGoverno categoria in Categorias)
         {
-            if (abaAtual == cat) return;
-            abaAtual = cat;
-            subAbaAtualIndex = 0;
-            AtualizarInterfaceCompleta();
-        });
+            CreateNavButton(categoria);
+        }
     }
 
-    private void CriarAreaConteudo(Transform parent)
+    private void BuildContentArea(Transform parent)
     {
-        GameObject area = CriarUIObjeto("AreaConteudo", parent);
+        GameObject area = CreateUIObject("AreaConteudo", parent);
         area.AddComponent<LayoutElement>().flexibleWidth = 1f;
-
         VerticalLayoutGroup v = area.AddComponent<VerticalLayoutGroup>();
         v.spacing = 8f;
         v.childControlWidth = true;
         v.childControlHeight = true;
         v.childForceExpandHeight = false;
 
-        GameObject sub = CriarCardBase(area.transform, alturaSubAbas, new Color(0.010f, 0.034f, 0.048f, 0.96f));
-        sub.name = "SubAbas";
-        subAbasRoot = sub.transform;
-        AddOutline(sub, corLinhaFraca, 1f);
+        GameObject sub = CreatePanel("SubAbas", area.transform, alturaSubAbas, new Color(0.020f, 0.027f, 0.034f, 0.98f));
+        subTabsRoot = sub.transform;
         HorizontalLayoutGroup subH = sub.AddComponent<HorizontalLayoutGroup>();
-        subH.padding = new RectOffset(9, 9, 7, 7);
-        subH.spacing = 7;
+        subH.padding = new RectOffset(8, 8, 6, 6);
+        subH.spacing = 6;
         subH.childControlWidth = false;
         subH.childControlHeight = true;
         subH.childForceExpandWidth = false;
 
-        GameObject split = CriarUIObjeto("SplitConteudo", area.transform);
-        LayoutElement spLe = split.AddComponent<LayoutElement>();
-        spLe.flexibleHeight = 1f;
-        spLe.minHeight = 260f;
-        HorizontalLayoutGroup spH = split.AddComponent<HorizontalLayoutGroup>();
-        spH.spacing = espacamento;
-        spH.childControlWidth = true;
-        spH.childControlHeight = true;
-        spH.childForceExpandHeight = true;
-        spH.childForceExpandWidth = false;
+        GameObject split = CreateUIObject("Split", area.transform);
+        LayoutElement splitLe = split.AddComponent<LayoutElement>();
+        splitLe.flexibleHeight = 1f;
+        splitLe.minHeight = 280f;
 
-        CriarScrollPanel(split.transform, "CentroScroll", new Color(0.008f, 0.030f, 0.043f, 0.91f), 0f, 0f, 1f, out conteudoCentral);
-        CriarScrollPanel(split.transform, "PainelDireitoScroll", new Color(0.014f, 0.050f, 0.070f, 0.965f), larguraPainelDireito, larguraPainelDireito, 0f, out painelDireito);
+        HorizontalLayoutGroup splitH = split.AddComponent<HorizontalLayoutGroup>();
+        splitH.spacing = espacamento;
+        splitH.childControlWidth = true;
+        splitH.childControlHeight = true;
+        splitH.childForceExpandHeight = true;
+        splitH.childForceExpandWidth = false;
+
+        centerScroll = CreateScrollPanel(split.transform, "CentroScroll", 0f, 0f, 1f, out centerContentRoot);
+        rightScroll = CreateScrollPanel(split.transform, "AcoesScroll", larguraPainelDireito, Mathf.Min(320f, larguraPainelDireito), 0f, out rightContentRoot);
     }
 
-    private void CriarRodapePrincipal(Transform parent)
+    private void BuildFooter(Transform parent)
     {
-        GameObject rodape = CriarUIObjeto("Rodape", parent);
-        LayoutElement le = rodape.AddComponent<LayoutElement>();
-        le.preferredHeight = alturaRodape;
-        le.minHeight = alturaRodape;
-
-        HorizontalLayoutGroup h = rodape.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(12, 12, 0, 0);
-        h.spacing = espacamento;
+        GameObject footer = CreatePanel("FooterCompacto", parent, alturaRodape, new Color(0.014f, 0.020f, 0.025f, 0.98f));
+        HorizontalLayoutGroup h = footer.AddComponent<HorizontalLayoutGroup>();
+        h.padding = new RectOffset(14, 14, 6, 6);
+        h.spacing = 10;
         h.childControlWidth = true;
         h.childControlHeight = true;
-        h.childForceExpandHeight = true;
 
-        rodapeEsquerdo = CriarCardBase(rodape.transform, 0, corPainel).transform;
-        rodapeMeio = CriarCardBase(rodape.transform, 0, corPainel).transform;
-        rodapeDireito = CriarCardBase(rodape.transform, 0, corPainel).transform;
-
-        rodapeEsquerdo.GetComponent<LayoutElement>().flexibleWidth = 1.05f;
-        rodapeMeio.GetComponent<LayoutElement>().flexibleWidth = 1.10f;
-        rodapeDireito.GetComponent<LayoutElement>().flexibleWidth = 1.35f;
-
-        AddVertical(rodapeEsquerdo.gameObject, 10, 8, 7);
-        AddVertical(rodapeMeio.gameObject, 10, 8, 7);
-        AddVertical(rodapeDireito.gameObject, 10, 8, 7);
+        footerLeftText = CreateLayoutText(footer.transform, "Sistema pronto", 12, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 28f);
+        footerLeftText.GetComponent<LayoutElement>().flexibleWidth = 1f;
+        footerRightText = CreateLayoutText(footer.transform, "Resumo operacional", 11, corTextoApagado, TextAnchor.MiddleRight, FontStyle.Normal, 28f);
+        footerRightText.GetComponent<LayoutElement>().preferredWidth = 340f;
     }
 
-    private void CriarBarraInferiorDica(Transform parent)
+    private void RefreshStaticNavigation()
     {
-        GameObject barra = CriarCardBase(parent, alturaDica, new Color(0.006f, 0.025f, 0.035f, 0.98f));
-        barra.name = "BarraDica";
-        barraDica = barra.transform;
-        HorizontalLayoutGroup h = barra.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(16, 16, 0, 0);
-        h.childControlWidth = true;
+        foreach (KeyValuePair<CategoriaGoverno, NavButtonView> pair in navButtons)
+        {
+            bool active = pair.Key == categoriaAtual;
+            pair.Value.Background.color = active ? corAbaAtiva : new Color(0.038f, 0.047f, 0.056f, 0.88f);
+            pair.Value.Accent.color = active ? corDestaque : Color.clear;
+            pair.Value.Text.color = active ? Color.white : corTextoSecundario;
+        }
+
+        string[] subtabs = GetSubTabs(categoriaAtual);
+        if (subAbaAtualIndex < 0 || subAbaAtualIndex >= subtabs.Length) subAbaAtualIndex = 0;
+
+        EnsureSubTabButtons(subtabs);
+        for (int i = 0; i < subTabViews.Count; i++)
+        {
+            bool visible = i < subtabs.Length;
+            subTabViews[i].Root.SetActive(visible);
+            if (!visible) continue;
+
+            bool active = i == subAbaAtualIndex;
+            subTabViews[i].Label.text = subtabs[i].ToUpperInvariant();
+            subTabViews[i].Background.color = active ? corAbaAtiva : new Color(0.045f, 0.056f, 0.067f, 0.94f);
+            subTabViews[i].Label.color = active ? Color.white : corTextoSecundario;
+            subTabViews[i].Accent.color = active ? corDestaque : Color.clear;
+        }
+
+        DadosPaisGoverno jogador = GetPlayerGov();
+        if (titleText != null) titleText.text = jogador != null ? jogador.nomePais.ToUpperInvariant() : "GOVERNO";
+        if (subtitleText != null)
+        {
+            string presidente = jogador != null && !string.IsNullOrWhiteSpace(jogador.nomePresidente)
+                ? jogador.nomePresidente
+                : "Sem presidente";
+            string cambio = jogador != null ? " | 1 " + jogador.nomeMoeda + " = " + jogador.cambioComLider.ToString("0.00") + " " + jogador.moedaLiderReferencia : string.Empty;
+            subtitleText.text = GetCategoryTitle(categoriaAtual) + " | " + presidente + cambio;
+        }
+    }
+
+    private void ShowCurrentPage()
+    {
+        BuildShell();
+        SaveScrollPositions();
+
+        string key = CurrentPageKey();
+        activePageKey = key;
+
+        foreach (PageView page in centerPages.Values)
+            page.Root.SetActive(page.Key == key);
+        foreach (PageView page in rightPages.Values)
+            page.Root.SetActive(page.Key == key);
+
+        PageView center = EnsureCenterPage(key);
+        PageView right = EnsureRightPage(key);
+        center.Root.SetActive(true);
+        right.Root.SetActive(true);
+        center.Refresh?.Invoke();
+        right.Refresh?.Invoke();
+        RefreshStaticNavigation();
+        RestoreScrollPositions();
+    }
+
+    private PageView EnsureCenterPage(string key)
+    {
+        PageView view;
+        if (centerPages.TryGetValue(key, out view)) return view;
+
+        GameObject root = CreatePageRoot("Centro_" + key, centerContentRoot);
+        view = new PageView { Key = key, Root = root };
+        centerPages[key] = view;
+        BuildCenterPage(view);
+        return view;
+    }
+
+    private PageView EnsureRightPage(string key)
+    {
+        PageView view;
+        if (rightPages.TryGetValue(key, out view)) return view;
+
+        GameObject root = CreatePageRoot("Acoes_" + key, rightContentRoot);
+        view = new PageView { Key = key, Root = root };
+        rightPages[key] = view;
+        BuildRightPage(view);
+        return view;
+    }
+
+    private void BuildCenterPage(PageView page)
+    {
+        switch (categoriaAtual)
+        {
+            case CategoriaGoverno.MercadoGlobal:
+                BuildMarketCenterPage(page);
+                break;
+            case CategoriaGoverno.RelacoesExteriores:
+                BuildRelationsPage(page);
+                break;
+            case CategoriaGoverno.Aliancas:
+                BuildAlliancePage(page);
+                break;
+            case CategoriaGoverno.Sancoes:
+                BuildSanctionsPage(page);
+                break;
+            case CategoriaGoverno.Economia:
+                BuildEconomyPage(page);
+                break;
+            case CategoriaGoverno.Interior:
+                BuildInteriorPage(page);
+                break;
+            case CategoriaGoverno.Defesa:
+                BuildDefensePage(page);
+                break;
+            case CategoriaGoverno.Ciencia:
+                BuildSciencePage(page);
+                break;
+            case CategoriaGoverno.Trabalho:
+                BuildWorkPage(page);
+                break;
+        }
+    }
+
+    private void BuildRightPage(PageView page)
+    {
+        switch (categoriaAtual)
+        {
+            case CategoriaGoverno.MercadoGlobal:
+                BuildMarketActionsPage(page);
+                break;
+            case CategoriaGoverno.Sancoes:
+                BuildSanctionActionsPage(page);
+                break;
+            case CategoriaGoverno.Economia:
+                BuildEconomyActionsPage(page);
+                break;
+            case CategoriaGoverno.Interior:
+                BuildInteriorActionsPage(page);
+                break;
+            case CategoriaGoverno.Defesa:
+                BuildDefenseActionsPage(page);
+                break;
+            case CategoriaGoverno.Ciencia:
+                BuildScienceActionsPage(page);
+                break;
+            case CategoriaGoverno.Trabalho:
+                BuildWorkActionsPage(page);
+                break;
+            default:
+                BuildDiplomacyActionsPage(page);
+                break;
+        }
+    }
+
+    private void RefreshDynamicData(bool preserveScroll)
+    {
+        if (!shellBuilt) return;
+        SaveScrollPositions();
+
+        RefreshResourceBar();
+        RefreshFooter();
+        RefreshIdentityFields();
+        RefreshStaticNavigation();
+
+        if (preserveScroll)
+        {
+            PageView center;
+            if (centerPages.TryGetValue(CurrentPageKey(), out center))
+                center.Refresh?.Invoke();
+
+            PageView right;
+            if (rightPages.TryGetValue(CurrentPageKey(), out right))
+                right.Refresh?.Invoke();
+        }
+
+        RestoreScrollPositions();
+    }
+
+    private void BuildMarketCenterPage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        if (tab == 1)
+        {
+            BuildMarketSellPage(page);
+            return;
+        }
+
+        if (tab == 2)
+        {
+            BuildMarketPricesPage(page);
+            return;
+        }
+
+        if (tab == 3)
+        {
+            BuildMarketRoutesPage(page);
+            return;
+        }
+
+        BuildMarketBuyPage(page);
+    }
+
+    private void BuildMarketBuyPage(PageView page)
+    {
+        CreateSectionTitle(page.Root.transform, "Comprar recursos");
+        CreateDescription(page.Root.transform, "Ofertas compactas com parceiro recomendado, preco atual e compra em lote.");
+        CreateHeaderRow(page.Root.transform, new[] { "RECURSO", "ESTOQUE", "PRECO", "PARCEIRO", "ACAO" }, new[] { 1.25f, 0.8f, 0.8f, 1.2f, 1.0f });
+
+        page.Refresh = () =>
+        {
+            SistemaMercadoGlobal mercado = Market();
+            if (mercado == null) return;
+            foreach (DadosItemMercado item in mercado.ItensOrdenados().Where(i => i.podeComprar).Take(12))
+            {
+                if (!buyRows.ContainsKey(item.id))
+                    buyRows[item.id] = CreateBuyRow(page.Root.transform, item);
+                buyRows[item.id].Refresh(item);
+            }
+        };
+        page.Refresh();
+    }
+
+    private void BuildMarketSellPage(PageView page)
+    {
+        CreateSectionTitle(page.Root.transform, "Vender recursos reais");
+        CreateDescription(page.Root.transform, "Acoes de venda atualizam somente as linhas e mantem a posicao do scroll.");
+        CreateHeaderRow(page.Root.transform, new[] { "RECURSO", "ESTOQUE", "PRECO", "AUTO", "VENDA" }, new[] { 1.1f, 0.8f, 0.8f, 1.1f, 1.6f });
+
+        string[] ids = { "petroleo", "aco", "energia", "comida" };
+        for (int i = 0; i < ids.Length; i++)
+        {
+            if (!sellRows.ContainsKey(ids[i]))
+                sellRows[ids[i]] = CreateSellRow(page.Root.transform, ids[i]);
+        }
+
+        page.Refresh = () =>
+        {
+            foreach (string id in ids)
+            {
+                MarketSellRow row;
+                if (sellRows.TryGetValue(id, out row)) row.Refresh();
+            }
+        };
+        page.Refresh();
+    }
+
+    private void BuildMarketPricesPage(PageView page)
+    {
+        CreateSectionTitle(page.Root.transform, "Precos globais");
+        CreateDescription(page.Root.transform, "Tabela leve para comparar preco, variacao, oferta, demanda e estoque.");
+        CreateHeaderRow(page.Root.transform, new[] { "ITEM", "PRECO", "VAR", "OFERTA", "DEMANDA", "ESTOQUE" }, new[] { 1.25f, 0.8f, 0.6f, 0.75f, 0.75f, 0.9f });
+
+        page.Refresh = () =>
+        {
+            SistemaMercadoGlobal mercado = Market();
+            if (mercado == null) return;
+            foreach (DadosItemMercado item in mercado.ItensOrdenados().Take(14))
+            {
+                if (!priceRows.ContainsKey(item.id))
+                    priceRows[item.id] = CreatePriceRow(page.Root.transform, item);
+                priceRows[item.id].Refresh(item);
+            }
+        };
+        page.Refresh();
+    }
+
+    private void BuildMarketRoutesPage(PageView page)
+    {
+        CreateSectionTitle(page.Root.transform, "Rotas e historico");
+        CreateDescription(page.Root.transform, "Resumo dos parceiros mais provaveis e ultimas transacoes do mercado.");
+        for (int i = 0; i < 10; i++)
+            routeRows.Add(CreateRouteRow(page.Root.transform));
+
+        page.Refresh = () =>
+        {
+            SistemaMercadoGlobal mercado = Market();
+            SistemaGovernoMundial gov = Government();
+            if (mercado == null || gov == null) return;
+
+            List<string> lines = new List<string>();
+            foreach (DadosItemMercado item in mercado.ItensOrdenados().Take(5))
+            {
+                DadosPaisGoverno seller = ChooseMarketPartner(gov, item, false);
+                lines.Add(item.nome + "  |  " + (seller != null ? seller.nomePais : "sem rota") + "  |  $" + FormatNumber(item.precoAtual));
+            }
+
+            foreach (TransacaoMercado t in mercado.historico.Take(5))
+            {
+                if (t != null) lines.Add("Historico  |  " + t.mensagem + "  |  $" + FormatNumber(t.total));
+            }
+
+            for (int i = 0; i < routeRows.Count; i++)
+            {
+                bool active = i < lines.Count;
+                routeRows[i].Root.SetActive(active);
+                if (active) routeRows[i].Text.text = lines[i];
+            }
+        };
+        page.Refresh();
+    }
+
+    private void BuildMarketActionsPage(PageView page)
+    {
+        CreateSectionTitle(page.Root.transform, "Acoes rapidas");
+        Text summary = CreateInfoBlock(page.Root.transform, "Mercado carregando...");
+        Button buy = CreateActionButton(page.Root.transform, "COMPRAR MELHOR OFERTA", corAzulBotao, BuyBestOffer);
+        Button sell = CreateActionButton(page.Root.transform, "VENDER LOTE RECOMENDADO", corPainel2, SellRecommendedLot);
+        Button simulate = CreateActionButton(page.Root.transform, "ATUALIZAR PRECOS", new Color(0.120f, 0.170f, 0.210f, 1f), () =>
+        {
+            Market()?.SimularMercado();
+            Notificar("Mercado", "Precos atualizados.");
+            RefreshDynamicData(true);
+        });
+
+        page.Refresh = () =>
+        {
+            SistemaMercadoGlobal mercado = Market();
+            if (mercado == null)
+            {
+                summary.text = "Sistema de mercado indisponivel.";
+                buy.interactable = false;
+                sell.interactable = false;
+                simulate.interactable = false;
+                return;
+            }
+
+            DadosItemMercado best = mercado.MelhorCompra() ?? mercado.ItensOrdenados().FirstOrDefault();
+            DadosItemMercado risk = mercado.MaiorRisco();
+            summary.text = "Melhor compra: " + (best != null ? best.nome + " $" + FormatNumber(best.precoAtual) : "nenhuma")
+                + "\nMaior risco: " + (risk != null ? risk.nome + " " + SignedPercent(risk.variacaoPercentual) : "nenhum")
+                + "\nHistorico: " + mercado.historico.Count + " transacoes";
+            buy.interactable = best != null;
+            sell.interactable = best != null;
+            simulate.interactable = true;
+        };
+        page.Refresh();
+    }
+
+    private void BuildRelationsPage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            switch (tab)
+            {
+                case 1:
+                    CreateSectionTitle(page.Root.transform, "Nacoes monitoradas");
+                    CreateDescription(page.Root.transform, "Panorama dos paises ativos com status politico, bloco e economia.");
+                    BuildNationOverviewRows(page.Root.transform, OrderedCountries(false));
+                    break;
+                case 2:
+                    CreateSectionTitle(page.Root.transform, "Tratados ativos");
+                    CreateDescription(page.Root.transform, "Acordos comerciais, pactos militares e afinidade entre paises.");
+                    BuildTreatyRows(page.Root.transform, false);
+                    break;
+                case 3:
+                    CreateSectionTitle(page.Root.transform, "Crises e atritos");
+                    CreateDescription(page.Root.transform, "Focos de guerra, sancoes, tensao diplomatica e baixa estabilidade.");
+                    BuildCrisisRows(page.Root.transform);
+                    break;
+                default:
+                    CreateSectionTitle(page.Root.transform, "Relacoes exteriores");
+                    CreateDescription(page.Root.transform, "Visao compacta de paises, relacao, status e tratados.");
+                    CreateHeaderRow(page.Root.transform, new[] { "PAIS", "BLOCO", "REL", "STATUS" }, new[] { 1.35f, 0.95f, 0.45f, 0.75f });
+                    RebuildSimpleCountryRows(page.Root.transform, "Relacao");
+                    break;
+            }
+        };
+        page.Refresh();
+    }
+
+    private void BuildAlliancePage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            switch (tab)
+            {
+                case 1:
+                    CreateSectionTitle(page.Root.transform, "Pactos militares");
+                    CreateDescription(page.Root.transform, "Aliados com pacto ativo ou negociacao militar em andamento.");
+                    BuildTreatyRows(page.Root.transform, true);
+                    break;
+                case 2:
+                    CreateSectionTitle(page.Root.transform, "Operacoes conjuntas");
+                    CreateDescription(page.Root.transform, "Prioridades da IA parceira, excedentes e necessidades para cooperacao.");
+                    BuildAllianceOperationRows(page.Root.transform);
+                    break;
+                case 3:
+                    CreateSectionTitle(page.Root.transform, "Pedidos diplomáticos");
+                    CreateDescription(page.Root.transform, "Propostas recebidas da IA: aceitar, negociar ou recusar.");
+                    BuildPendingProposalRows(page.Root.transform, true);
+                    break;
+                default:
+                    CreateSectionTitle(page.Root.transform, "Aliancas e blocos");
+                    CreateDescription(page.Root.transform, "Blocos geopoliticos, afinidade e parceiros prioritarios.");
+                    CreateHeaderRow(page.Root.transform, new[] { "PAIS", "BLOCO", "REL", "STATUS" }, new[] { 1.35f, 0.95f, 0.45f, 0.75f });
+                    RebuildSimpleCountryRows(page.Root.transform, "Alianca");
+                    break;
+            }
+        };
+        page.Refresh();
+    }
+
+    private void BuildSanctionsPage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            switch (tab)
+            {
+                case 1:
+                    CreateSectionTitle(page.Root.transform, "Sancoes aplicadas");
+                    CreateDescription(page.Root.transform, "Paises atualmente sancionados e o impacto politico observado.");
+                    BuildSanctionRows(page.Root.transform, true);
+                    break;
+                case 2:
+                    CreateSectionTitle(page.Root.transform, "Doutrina de sancoes");
+                    CreateDescription(page.Root.transform, "Leituras taticas para embargo comercial, pressao militar e isolamento.");
+                    BuildSanctionTypeNotes(page.Root.transform);
+                    break;
+                case 3:
+                    CreateSectionTitle(page.Root.transform, "Historico de crises");
+                    CreateDescription(page.Root.transform, "Ultimas noticias politicas e comerciais registradas pelo governo.");
+                    BuildNewsRows(page.Root.transform);
+                    break;
+                default:
+                    CreateSectionTitle(page.Root.transform, "Sancoes");
+                    CreateDescription(page.Root.transform, "Controle rapido de sancoes e crises comerciais.");
+                    CreateHeaderRow(page.Root.transform, new[] { "PAIS", "BLOCO", "REL", "STATUS" }, new[] { 1.35f, 0.95f, 0.45f, 0.75f });
+                    RebuildSimpleCountryRows(page.Root.transform, "Sancao");
+                    break;
+            }
+        };
+        page.Refresh();
+    }
+
+    private void BuildEconomyPage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            DadosPaisGoverno p = GetPlayerGov();
+            DadosEconomiaPais economia = PlayerEconomy();
+            if (p == null)
+            {
+                CreateSectionTitle(page.Root.transform, "Economia nacional");
+                CreateInfoBlock(page.Root.transform, "Dados economicos indisponiveis.");
+                return;
+            }
+
+            if (tab == 1)
+            {
+                CreateSectionTitle(page.Root.transform, "Orcamento nacional");
+                CreateDescription(page.Root.transform, "Receitas reais por setor, manutencao e saldo operacional.");
+                CreateEconomyBudgetRows(page.Root.transform, p);
+            }
+            else if (tab == 2)
+            {
+                CreateSectionTitle(page.Root.transform, "Producao e capacidade");
+                CreateDescription(page.Root.transform, "Oferta industrial, energia, alimentos, gargalos e infraestrutura.");
+                CreateEconomyProductionRows(page.Root.transform, p, economia);
+            }
+            else if (tab == 3)
+            {
+                CreateSectionTitle(page.Root.transform, "Politica fiscal");
+                CreateDescription(page.Root.transform, "Aliquotas atuais, pressao fiscal e impacto esperado em estabilidade.");
+                CreateTaxOverviewRows(page.Root.transform, p);
+            }
+            else
+            {
+                CreateSectionTitle(page.Root.transform, "Tesouro nacional");
+                CreateDescription(page.Root.transform, "Saldo, poder de compra, comercio exterior e pulso economico do pais.");
+                Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
+                stats.text = "Saldo: $" + FormatNumber(p.saldo)
+                    + "\nRenda bruta: +" + Mathf.RoundToInt(p.rendaPorSegundo) + "/s"
+                    + "\nGastos: -" + Mathf.RoundToInt(p.gastosPorSegundo) + "/s"
+                    + "\nSaldo operacional: " + SignedRate(p.saldoOperacional)
+                    + "\nPoder de compra: " + p.PoderDeCompra.ToString("0.00")
+                    + "\nMoeda: 1 " + p.nomeMoeda + " = " + p.cambioComLider.ToString("0.00") + " " + p.moedaLiderReferencia
+                    + "\nOuro/reserva: " + p.reservaOuro.ToString("0")
+                    + "\nInflacao: " + p.inflacao.ToString("0.0") + "%"
+                    + "\nExportacao: " + p.exportacaoTotal.ToString("0.0")
+                    + "\nImportacao: " + p.importacaoTotal.ToString("0.0")
+                    + "\nDeficit principal: " + MainDeficit(p);
+            }
+        };
+        page.Refresh();
+    }
+
+    private void BuildInteriorPage(PageView page)
+    {
+        CreateSectionTitle(page.Root.transform, "Interior");
+        Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
+        page.Refresh = () =>
+        {
+            DadosPaisGoverno p = GetPlayerGov();
+            stats.text = p == null
+                ? "Dados internos indisponiveis."
+                : "Populacao: " + FormatNumber(p.populacao) + " / " + FormatNumber(p.populacaoMaxima)
+                  + "\nEmprego: " + p.emprego.ToString("0") + "%"
+                  + "\nMoradia: " + p.moradia.ToString("0") + "%"
+                  + "\nQualidade de vida: " + p.qualidadeVida.ToString("0") + "%"
+                  + "\nDeficit principal: " + MainDeficit(p);
+        };
+        page.Refresh();
+    }
+
+    private void BuildDefensePage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            SistemaGovernoMundial gov = Government();
+            DadosPaisGoverno p = GetPlayerGov();
+            int wars = gov != null ? gov.Paises.Count(x => x != null && x.emGuerra) : 0;
+            CreateSectionTitle(page.Root.transform, "Defesa");
+            if (p == null)
+            {
+                CreateInfoBlock(page.Root.transform, "Comando indisponivel.");
+                return;
+            }
+
+            if (tab == 4)
+            {
+                CreateDescription(page.Root.transform, "Alertas militares, pressao global de guerra e pedidos de apoio.");
+                BuildDefenseAlertRows(page.Root.transform, p, gov, wars);
+                return;
+            }
+
+            string ramo = tab == 1 ? "Exercito" : tab == 2 ? "Marinha" : tab == 3 ? "Aerea" : "Comando";
+            Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
+            stats.text = ramo
+                + "\nArmamentos: " + FormatNumber(p.armamentos)
+                + "\nUranio: " + FormatNumber(p.uranio)
+                + "\nPressao de guerra: " + (gov != null ? (gov.PressaoGlobalGuerra() * 100f).ToString("0") + "%" : "n/d")
+                + "\nPaises em guerra: " + wars
+                + "\nPlano atual: " + p.planoEstrategico;
+        };
+        page.Refresh();
+    }
+
+    private void BuildSciencePage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            DadosPaisGoverno p = GetPlayerGov();
+            CreateSectionTitle(page.Root.transform, "Ciencia");
+            if (p == null)
+            {
+                CreateInfoBlock(page.Root.transform, "Pesquisa indisponivel.");
+                return;
+            }
+
+            string sugestao = p.deficitEnergia > 0f ? "Energia" : p.nivelIndustrial < p.nivelMilitar ? "Industria" : "Diplomacia";
+            Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
+            stats.text = (tab == 1 ? "Tecnologias" : tab == 2 ? "Laboratorios" : tab == 3 ? "Fila de pesquisa" : "Projetos")
+                + "\nNivel industrial: " + p.nivelIndustrial
+                + "\nNivel diplomatico: " + p.nivelDiplomatico
+                + "\nNivel militar: " + p.nivelMilitar
+                + "\nPlano nacional: " + p.planoEstrategico
+                + "\nPrioridade sugerida: " + sugestao;
+        };
+        page.Refresh();
+    }
+
+    private void BuildWorkPage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            DadosPaisGoverno p = GetPlayerGov();
+            CreateSectionTitle(page.Root.transform, "Trabalho");
+            if (p == null)
+            {
+                CreateInfoBlock(page.Root.transform, "Mercado de trabalho indisponivel.");
+                return;
+            }
+
+            string foco = tab == 1 ? "Setores produtivos" : tab == 2 ? "Formacao" : tab == 3 ? "Politicas" : "Empregos";
+            Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
+            stats.text = foco
+                + "\nEmprego: " + p.emprego.ToString("0") + "%"
+                + "\nProducao: " + p.producao.ToString("0") + "%"
+                + "\nPeso industria: " + (p.pesoIndustria * 100f).ToString("0") + "%"
+                + "\nMoradia: " + p.moradia.ToString("0") + "%"
+                + "\nPlano atual: " + p.planoEstrategico;
+        };
+        page.Refresh();
+    }
+
+    private void BuildDiplomacyActionsPage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            CreateSectionTitle(page.Root.transform, "Diplomacia");
+            Text selected = CreateInfoBlock(page.Root.transform, string.Empty);
+            CreateCountrySelector(page.Root.transform);
+            DadosPaisGoverno p = Government()?.ObterPais(paisSelecionadoId);
+            RelacaoPaisGoverno r = Government()?.ObterRelacao(paisJogadorId, paisSelecionadoId);
+            selected.text = p == null
+                ? "Selecione um pais."
+                : p.nomePais + "\nRelacao: " + (r != null ? r.valor.ToString() : "0")
+                  + "\nBloco: " + p.bloco
+                  + "\nStatus: " + StatusGov(p)
+                  + "\nPlano IA: " + p.planoEstrategico;
+
+            if (tab == 3)
+            {
+                PropostaInternacional proposta = PendingPlayerProposalList().FirstOrDefault();
+                if (proposta != null)
+                {
+                    CreateActionButton(page.Root.transform, "ACEITAR PEDIDO", corVerde, () => ResolverPropostaUI(proposta.id, StatusPropostaInternacional.Aceita, "Proposta"));
+                    CreateActionButton(page.Root.transform, "ENVIAR CONTRAOFERTA", corAzulBotao, () => ResolverPropostaUI(proposta.id, StatusPropostaInternacional.Negociando, "Proposta"));
+                    CreateActionButton(page.Root.transform, "RECUSAR PEDIDO", corVermelho, () => ResolverPropostaUI(proposta.id, StatusPropostaInternacional.Recusada, "Proposta"));
+                }
+                else
+                {
+                    CreateInfoBlock(page.Root.transform, "Nenhum pedido pendente para resposta imediata.");
+                }
+                return;
+            }
+
+            CreateActionButton(page.Root.transform, "PROPOR ALIANCA", corAzulBotao, () =>
+            {
+                Government()?.ProporAlianca(paisSelecionadoId);
+                Notificar("Diplomacia", "Alianca proposta para " + CountryName(paisSelecionadoId) + ".");
+                RefreshDynamicData(true);
+            });
+            CreateActionButton(page.Root.transform, "PACTO DEFENSIVO", corPainel2, () =>
+            {
+                bool ok = Government() != null && Government().CriarPropostaJogador(paisSelecionadoId, TipoPropostaInternacional.PactoDefensivo, RecursoMercado.Armamentos, 40, 1, "Pacto defensivo solicitado.");
+                Notificar("Diplomacia", ok ? "Pacto defensivo enviado para analise." : "Ja existe negociacao parecida em andamento.");
+                RefreshDynamicData(true);
+            });
+            CreateActionButton(page.Root.transform, "PEDIR AJUDA", corVerde, () =>
+            {
+                EnviarPropostaRecurso(paisSelecionadoId, TipoPropostaInternacional.PedidoAjuda, RecursoMercado.Comida, 120, "Pedido de ajuda humanitaria");
+            });
+            CreateActionButton(page.Root.transform, "OFERECER COMIDA", new Color(0.120f, 0.220f, 0.150f, 1f), () =>
+            {
+                EnviarPropostaRecurso(paisSelecionadoId, TipoPropostaInternacional.Venda, RecursoMercado.Comida, 100, "Oferta de comida no corredor aliado");
+            });
+            CreateActionButton(page.Root.transform, "ROMPER ALIANCA", new Color(0.330f, 0.080f, 0.070f, 1f), () =>
+            {
+                Government()?.RomperAlianca(paisSelecionadoId);
+                Notificar("Diplomacia", "Alianca rompida.");
+                RefreshDynamicData(true);
+            });
+        };
+        page.Refresh();
+    }
+
+    private void BuildSanctionActionsPage(PageView page)
+    {
+        CreateSectionTitle(page.Root.transform, "Sancoes");
+        Text selected = CreateInfoBlock(page.Root.transform, string.Empty);
+        CreateCountrySelector(page.Root.transform);
+        CreateActionButton(page.Root.transform, "APLICAR SANCAO", new Color(0.420f, 0.120f, 0.080f, 1f), () =>
+        {
+            Government()?.AplicarSancao(paisSelecionadoId);
+            Notificar("Sancoes", "Sancao aplicada.");
+            RefreshDynamicData(true);
+        });
+        CreateActionButton(page.Root.transform, "REMOVER SANCAO", corAzulBotao, () =>
+        {
+            Government()?.RemoverSancao(paisSelecionadoId);
+            Notificar("Sancoes", "Sancao removida.");
+            RefreshDynamicData(true);
+        });
+        page.Refresh = () =>
+        {
+            DadosPaisGoverno p = Government()?.ObterPais(paisSelecionadoId);
+            selected.text = p == null ? "Nenhum alvo." : p.nomePais + "\nStatus: " + StatusGov(p) + "\nSancionado: " + (p.sancionado ? "sim" : "nao");
+        };
+        page.Refresh();
+    }
+
+    private void BuildEconomyActionsPage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            CreateSectionTitle(page.Root.transform, "Economia");
+            DadosPaisGoverno p = GetPlayerGov();
+            Text info = CreateInfoBlock(page.Root.transform, p == null ? "Tesouro indisponivel." : "Poder de compra: " + p.PoderDeCompra.ToString("0.00") + "\nEstabilidade: " + p.estabilidade.ToString("0") + "%\nSaldo operacional: " + SignedRate(p.saldoOperacional));
+            if (tab == 3)
+            {
+                CreateActionButton(page.Root.transform, "MORADIA -5%", corPainel2, () => AjustarImpostoUI("moradia", -1));
+                CreateActionButton(page.Root.transform, "MORADIA +5%", corAzulBotao, () => AjustarImpostoUI("moradia", 1));
+                CreateActionButton(page.Root.transform, "INDUSTRIA -5%", corPainel2, () => AjustarImpostoUI("industria", -1));
+                CreateActionButton(page.Root.transform, "INDUSTRIA +5%", corAzulBotao, () => AjustarImpostoUI("industria", 1));
+                CreateActionButton(page.Root.transform, "COMERCIO -5%", corPainel2, () => AjustarImpostoUI("comercio", -1));
+                CreateActionButton(page.Root.transform, "COMERCIO +5%", corAzulBotao, () => AjustarImpostoUI("comercio", 1));
+                return;
+            }
+
+            CreateActionButton(page.Root.transform, "GERAR EMPREGOS", corAzulBotao, () =>
+            {
+                Government()?.AlterarEmprego(paisJogadorId, 4f);
+                Notificar("Economia", "Programa de emprego ativado.");
+                RefreshDynamicData(true);
+            });
+            CreateActionButton(page.Root.transform, "INVESTIR EM MORADIA", corPainel2, () =>
+            {
+                Government()?.AlterarMoradia(paisJogadorId, 4f);
+                Notificar("Economia", "Investimento em moradia aplicado.");
+                RefreshDynamicData(true);
+            });
+            CreateActionButton(page.Root.transform, "VENDER ENERGIA (EXCESSO)", corVerde, () => SellRealResource("energia", 50));
+            CreateActionButton(page.Root.transform, "COMPRAR ENERGIA (EMERGENCIA)", corVermelho, () => ExecuteBuy("energia"));
+        };
+        page.Refresh();
+    }
+
+    private void BuildInteriorActionsPage(PageView page)
+    {
+        CreateSectionTitle(page.Root.transform, "Interior");
+        Text info = CreateInfoBlock(page.Root.transform, "Acoes civis de baixo custo visual.");
+        CreateActionButton(page.Root.transform, "MELHORAR MORADIA", corAzulBotao, () =>
+        {
+            Government()?.AlterarMoradia(paisJogadorId, 3f);
+            Notificar("Interior", "Moradia melhorada.");
+            RefreshDynamicData(true);
+        });
+        CreateActionButton(page.Root.transform, "MUTIRAO DE EMPREGOS", corPainel2, () =>
+        {
+            Government()?.AlterarEmprego(paisJogadorId, 3f);
+            Notificar("Interior", "Empregos estimulados.");
+            RefreshDynamicData(true);
+        });
+        page.Refresh = () => { if (info != null) info.text = "Foco atual: " + MainDeficit(GetPlayerGov()); };
+        page.Refresh();
+    }
+
+    private void BuildDefenseActionsPage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            CreateSectionTitle(page.Root.transform, "Comando");
+            CreateInfoBlock(page.Root.transform, "Acoes militares conectadas ao estado geopolitico e aos pedidos da IA.");
+            CreateCountrySelector(page.Root.transform);
+            CreateActionButton(page.Root.transform, "DECLARAR ALERTA", new Color(0.420f, 0.150f, 0.080f, 1f), () =>
+            {
+                Government()?.NotificarGuerra(paisSelecionadoId);
+                Notificar("Defesa", "Alerta militar emitido.");
+                RefreshDynamicData(true);
+            });
+            if (tab == 4 || tab == 0)
+            {
+                CreateActionButton(page.Root.transform, "PEDIR APOIO MILITAR", corAzulBotao, () =>
+                {
+                    EnviarPropostaRecurso(paisSelecionadoId, TipoPropostaInternacional.PedidoAjuda, RecursoMercado.Armamentos, 80, "Pedido de apoio militar");
+                });
+            }
+            CreateActionButton(page.Root.transform, "PACTO DEFENSIVO DIRETO", corPainel2, () =>
+            {
+                bool ok = Government() != null && Government().CriarPropostaJogador(paisSelecionadoId, TipoPropostaInternacional.PactoDefensivo, RecursoMercado.Armamentos, 30, 1, "Solicitacao de pacto defensivo.");
+                Notificar("Defesa", ok ? "Pedido de pacto enviado." : "Ja existe proposta militar semelhante.");
+                RefreshDynamicData(true);
+            });
+        };
+        page.Refresh();
+    }
+
+    private void BuildScienceActionsPage(PageView page)
+    {
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            CreateSectionTitle(page.Root.transform, "Pesquisa");
+            CreateInfoBlock(page.Root.transform, "Cada acao reposiciona o foco nacional e aparece nas leituras do governo.");
+            CreateActionButton(page.Root.transform, "PRIORIZAR ENERGIA", corAzulBotao, () => DefinirPlanoUI("Energia"));
+            CreateActionButton(page.Root.transform, "PRIORIZAR INDUSTRIA", corPainel2, () => DefinirPlanoUI("Industria"));
+            CreateActionButton(page.Root.transform, "PRIORIZAR DIPLOMACIA", new Color(0.110f, 0.200f, 0.280f, 1f), () => DefinirPlanoUI("Diplomacia"));
+            CreateActionButton(page.Root.transform, "PRIORIZAR DEFESA", new Color(0.280f, 0.130f, 0.120f, 1f), () => DefinirPlanoUI("Defesa"));
+        };
+        page.Refresh();
+    }
+
+    private void BuildWorkActionsPage(PageView page)
+    {
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            CreateSectionTitle(page.Root.transform, "Trabalho");
+            CreateInfoBlock(page.Root.transform, "Politicas ligadas a emprego, moradia e foco produtivo.");
+            CreateActionButton(page.Root.transform, "CAPACITACAO", corAzulBotao, () =>
+            {
+                Government()?.AlterarEmprego(paisJogadorId, 2.5f);
+                DefinirPlanoUI("Capacitacao");
+            });
+            CreateActionButton(page.Root.transform, "POLITICA INDUSTRIAL", corPainel2, () =>
+            {
+                Government()?.AlterarEmprego(paisJogadorId, 1.5f);
+                DefinirPlanoUI("Industria");
+            });
+            CreateActionButton(page.Root.transform, "MORADIA OPERARIA", new Color(0.120f, 0.200f, 0.160f, 1f), () =>
+            {
+                Government()?.AlterarMoradia(paisJogadorId, 2f);
+                DefinirPlanoUI("Moradia");
+            });
+            CreateActionButton(page.Root.transform, "MOBILIZAR SETORES", new Color(0.280f, 0.130f, 0.120f, 1f), () =>
+            {
+                Government()?.AlterarEmprego(paisJogadorId, 1f);
+                Government()?.AlterarMoradia(paisJogadorId, -0.5f);
+                DefinirPlanoUI("Mobilizacao");
+            });
+        };
+        page.Refresh();
+    }
+
+    private void CreateCountrySelector(Transform parent)
+    {
+        List<DadosPaisGoverno> paisesOrdenados = OrderedCountries(false);
+        if (paisesOrdenados.Count == 0) return;
+        if (paisesOrdenados.All(p => p.teamId != paisSelecionadoId))
+            paisSelecionadoId = paisesOrdenados[0].teamId;
+
+        Transform content;
+        ScrollRect scroll = CreateScrollPanel(parent, "SeletorPais", 0f, 0f, 1f, out content);
+        scroll.GetComponent<LayoutElement>().minHeight = 150f;
+        scroll.GetComponent<Image>().color = corCard;
+
+        foreach (DadosPaisGoverno pais in paisesOrdenados)
+        {
+            int id = pais.teamId;
+            RelacaoPaisGoverno rel = Government()?.ObterRelacao(paisJogadorId, id);
+            Button b = CreateActionButton(content, pais.nomePais.ToUpperInvariant() + " | " + (rel != null ? rel.valor.ToString() : "0"), id == paisSelecionadoId ? corAbaAtiva : corPainel2, () =>
+            {
+                paisSelecionadoId = id;
+                RefreshDynamicData(true);
+            });
+            b.GetComponent<LayoutElement>().preferredHeight = 34f;
+        }
+    }
+
+    private void RebuildSimpleCountryRows(Transform parent, string mode)
+    {
+        Transform list = parent.Find("ListaPaises");
+        if (list == null)
+        {
+            GameObject root = CreateUIObject("ListaPaises", parent);
+            root.AddComponent<LayoutElement>().flexibleWidth = 1f;
+            VerticalLayoutGroup v = root.AddComponent<VerticalLayoutGroup>();
+            v.spacing = 6;
+            v.childControlWidth = true;
+            v.childControlHeight = true;
+            v.childForceExpandHeight = false;
+            list = root.transform;
+        }
+
+        ClearChildren(list);
+        SistemaGovernoMundial gov = Government();
+        if (gov == null) return;
+
+        foreach (DadosPaisGoverno p in OrderedCountries(false).Take(12))
+        {
+            RelacaoPaisGoverno r = gov.ObterRelacao(paisJogadorId, p.teamId);
+            GameObject row = CreatePanel("Pais_" + p.teamId, list, 44f, p.teamId == paisSelecionadoId ? corAbaAtiva : corCard);
+            HorizontalLayoutGroup h = row.AddComponent<HorizontalLayoutGroup>();
+            h.padding = new RectOffset(10, 10, 5, 5);
+            h.spacing = 8;
+            h.childControlHeight = true;
+            h.childControlWidth = true;
+            CreateFlexText(row.transform, p.nomePais, 13, corTextoPrimario, 1.35f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, mode == "Sancao" ? (p.sancionado ? "SANCIONADO" : "LIVRE") : p.bloco, 11, StatusColor(p), 0.9f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, r != null ? r.valor.ToString() : "-", 12, r != null ? RelationColor(r.valor) : corTextoSecundario, 0.45f, TextAnchor.MiddleCenter);
+            CreateFlexText(row.transform, StatusGov(p), 11, StatusColor(p), 0.75f, TextAnchor.MiddleRight);
+            int id = p.teamId;
+            Button b = row.AddComponent<Button>();
+            b.onClick.AddListener(() =>
+            {
+                paisSelecionadoId = id;
+                RefreshDynamicData(true);
+            });
+        }
+    }
+
+    private List<DadosPaisGoverno> OrderedCountries(bool includePlayer)
+    {
+        SistemaGovernoMundial gov = Government();
+        if (gov == null) return new List<DadosPaisGoverno>();
+
+        IEnumerable<DadosPaisGoverno> query = gov.Paises
+            .Where(p => p != null && (includePlayer || p.teamId != paisJogadorId))
+            .GroupBy(p => p.teamId)
+            .Select(g => g.First());
+
+        return query
+            .OrderByDescending(p =>
+            {
+                if (p.teamId == paisJogadorId) return 101;
+                RelacaoPaisGoverno rel = gov.ObterRelacao(paisJogadorId, p.teamId);
+                return rel != null ? rel.valor : -999;
+            })
+            .ThenByDescending(p => p.estabilidade)
+            .ThenBy(p => p.nomePais)
+            .ToList();
+    }
+
+    private DadosEconomiaPais PlayerEconomy()
+    {
+        return SistemaEconomiaImoveis.Instancia != null ? SistemaEconomiaImoveis.Instancia.ObterEconomia(paisJogadorId) : null;
+    }
+
+    private IEnumerable<PropostaInternacional> PendingPlayerProposalList()
+    {
+        SistemaGovernoMundial gov = Government();
+        return gov != null
+            ? gov.ObterPropostasPendentesPara(paisJogadorId).OrderByDescending(p => p.prioridade).ThenByDescending(p => p.criadaEm)
+            : Enumerable.Empty<PropostaInternacional>();
+    }
+
+    private void BuildNationOverviewRows(Transform parent, IEnumerable<DadosPaisGoverno> countries)
+    {
+        foreach (DadosPaisGoverno p in countries.Take(10))
+        {
+            GameObject row = CreateRow(parent, "Nacao_" + p.teamId, 54f);
+            SetupRow(row);
+            CreateFlexText(row.transform, p.nomePais, 12, corTextoPrimario, 1.15f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, p.bloco, 10, corTextoSecundario, 0.95f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, "Eco " + p.PontuacaoEconomica().ToString("0"), 11, corDestaque, 0.55f, TextAnchor.MiddleCenter);
+            CreateFlexText(row.transform, "Est. " + p.estabilidade.ToString("0") + "%", 11, StatusColor(p), 0.65f, TextAnchor.MiddleCenter);
+            CreateFlexText(row.transform, StatusGov(p), 11, StatusColor(p), 0.7f, TextAnchor.MiddleRight);
+        }
+    }
+
+    private void BuildTreatyRows(Transform parent, bool allianceOnly)
+    {
+        SistemaGovernoMundial gov = Government();
+        if (gov == null) return;
+        CreateHeaderRow(parent, new[] { "PAIS", "PACTO", "COMERCIO", "REL", "STATUS" }, new[] { 1.2f, 0.85f, 0.8f, 0.45f, 0.65f });
+        foreach (DadosPaisGoverno p in OrderedCountries(false))
+        {
+            RelacaoPaisGoverno rel = gov.ObterRelacao(paisJogadorId, p.teamId);
+            if (rel == null) continue;
+            if (allianceOnly && !rel.pactoMilitar && !rel.pedidoPendente) continue;
+            if (!allianceOnly && !rel.tratadoComercial && !rel.pactoMilitar) continue;
+
+            GameObject row = CreateRow(parent, "Tratado_" + p.teamId, 42f);
+            SetupRow(row);
+            CreateFlexText(row.transform, p.nomePais, 12, corTextoPrimario, 1.2f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, rel.pactoMilitar ? "Ativo" : rel.pedidoPendente ? "Pedido" : "-", 11, rel.pactoMilitar ? corVerde : corAmarelo, 0.85f, TextAnchor.MiddleCenter);
+            CreateFlexText(row.transform, rel.tratadoComercial ? "Aberto" : "Suspenso", 11, rel.tratadoComercial ? corDestaque : corVermelho, 0.8f, TextAnchor.MiddleCenter);
+            CreateFlexText(row.transform, rel.valor.ToString(), 11, RelationColor(rel.valor), 0.45f, TextAnchor.MiddleCenter);
+            CreateFlexText(row.transform, StatusGov(p), 11, StatusColor(p), 0.65f, TextAnchor.MiddleRight);
+        }
+    }
+
+    private void BuildCrisisRows(Transform parent)
+    {
+        SistemaGovernoMundial gov = Government();
+        if (gov == null) return;
+        foreach (DadosPaisGoverno p in OrderedCountries(true).Where(x => x.emGuerra || x.sancionado || x.estabilidade < 55f))
+        {
+            RelacaoPaisGoverno rel = p.teamId != paisJogadorId ? gov.ObterRelacao(paisJogadorId, p.teamId) : null;
+            Text box = CreateInfoBlock(parent,
+                p.nomePais
+                + "\nStatus: " + StatusGov(p)
+                + "\nEstabilidade: " + p.estabilidade.ToString("0") + "%"
+                + "\nRelacao: " + (rel != null ? rel.valor.ToString() : "-")
+                + "\nDeficit: " + MainDeficit(p));
+            box.color = corTextoPrimario;
+        }
+    }
+
+    private void BuildAllianceOperationRows(Transform parent)
+    {
+        SistemaGovernoMundial gov = Government();
+        if (gov == null) return;
+        CreateHeaderRow(parent, new[] { "PAIS", "PLANO IA", "NECESSIDADE", "EXCEDENTE" }, new[] { 1.15f, 1.1f, 0.8f, 0.8f });
+        foreach (DadosPaisGoverno p in OrderedCountries(false).Take(8))
+        {
+            GameObject row = CreateRow(parent, "Operacao_" + p.teamId, 44f);
+            SetupRow(row);
+            CreateFlexText(row.transform, p.nomePais, 12, corTextoPrimario, 1.15f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, p.planoEstrategico, 11, corTextoSecundario, 1.1f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, IA_EconomyDirector.ResolveCriticalNeed(p).ToString(), 11, corAmarelo, 0.8f, TextAnchor.MiddleCenter);
+            CreateFlexText(row.transform, IA_EconomyDirector.ResolveBestSurplus(p).ToString(), 11, corVerde, 0.8f, TextAnchor.MiddleCenter);
+        }
+    }
+
+    private void BuildPendingProposalRows(Transform parent, bool includeActions)
+    {
+        List<PropostaInternacional> propostas = PendingPlayerProposalList().ToList();
+        if (propostas.Count == 0)
+        {
+            CreateInfoBlock(parent, "Nenhuma proposta pendente no momento.");
+            return;
+        }
+
+        foreach (PropostaInternacional proposta in propostas.Take(8))
+        {
+            GameObject row = CreateRow(parent, "Proposta_" + proposta.id, includeActions ? 74f : 48f);
+            VerticalLayoutGroup v = row.AddComponent<VerticalLayoutGroup>();
+            v.padding = new RectOffset(10, 10, 6, 6);
+            v.spacing = 4;
+            v.childControlWidth = true;
+            v.childControlHeight = true;
+            CreateLayoutText(row.transform, CountryName(proposta.origemTeamId).ToUpperInvariant() + " | " + proposta.tipo.ToString().ToUpperInvariant(), 11, corTextoPrimario, TextAnchor.MiddleLeft, FontStyle.Bold, 18f);
+            CreateLayoutText(row.transform, proposta.motivo + " | " + proposta.quantidade + " " + proposta.recurso + " | $" + FormatNumber(proposta.precoUnitario), 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 18f);
+
+            if (!includeActions) continue;
+
+            GameObject actions = CreateUIObject("AcoesProposta", row.transform);
+            HorizontalLayoutGroup h = actions.AddComponent<HorizontalLayoutGroup>();
+            h.spacing = 4;
+            h.childControlWidth = true;
+            h.childControlHeight = true;
+            h.childForceExpandWidth = true;
+            CreateSmallButton(actions.transform, "Aceitar", corVerde, () => ResolverPropostaUI(proposta.id, StatusPropostaInternacional.Aceita, "Proposta"));
+            CreateSmallButton(actions.transform, "Negociar", corAzulBotao, () => ResolverPropostaUI(proposta.id, StatusPropostaInternacional.Negociando, "Proposta"));
+            CreateSmallButton(actions.transform, "Recusar", corVermelho, () => ResolverPropostaUI(proposta.id, StatusPropostaInternacional.Recusada, "Proposta"));
+        }
+    }
+
+    private void BuildSanctionRows(Transform parent, bool onlySanctioned)
+    {
+        IEnumerable<DadosPaisGoverno> paisesAlvo = OrderedCountries(true).Where(p => !onlySanctioned || p.sancionado);
+        foreach (DadosPaisGoverno p in paisesAlvo.Take(10))
+        {
+            Text box = CreateInfoBlock(parent,
+                p.nomePais
+                + "\nStatus: " + StatusGov(p)
+                + "\nEstabilidade: " + p.estabilidade.ToString("0") + "%"
+                + "\nComercio: " + (p.sancionado ? "Travado" : "Monitorado"));
+            box.color = p.sancionado ? corVermelho : corTextoSecundario;
+        }
+    }
+
+    private void BuildSanctionTypeNotes(Transform parent)
+    {
+        CreateInfoBlock(parent, "Embargo comercial: reduz troca e piora a relacao diplomatica.");
+        CreateInfoBlock(parent, "Pressao energetica: util quando o alvo depende de importacao ou esta com baixa estabilidade.");
+        CreateInfoBlock(parent, "Isolamento militar: combina melhor com paises ja em tensao ou guerra.");
+    }
+
+    private void BuildNewsRows(Transform parent)
+    {
+        SistemaGovernoMundial gov = Government();
+        if (gov == null || gov.noticias.Count == 0)
+        {
+            CreateInfoBlock(parent, "Sem historico recente.");
+            return;
+        }
+
+        foreach (string noticia in gov.noticias.Take(8))
+            CreateInfoBlock(parent, noticia);
+    }
+
+    private void CreateEconomyBudgetRows(Transform parent, DadosPaisGoverno p)
+    {
+        CreateInfoBlock(parent,
+            "Moradia: +" + Mathf.RoundToInt(p.receitaMoradia) + "/s\n"
+            + "Industria: +" + Mathf.RoundToInt(p.receitaIndustria) + "/s\n"
+            + "Comercio: +" + Mathf.RoundToInt(p.receitaComercio) + "/s\n"
+            + "Energia: +" + Mathf.RoundToInt(p.receitaEnergia) + "/s");
+        CreateInfoBlock(parent,
+            "Manutencao: -" + Mathf.RoundToInt(p.custoManutencao) + "/s\n"
+            + "Saldo operacional: " + SignedRate(p.saldoOperacional) + "\n"
+            + "Divida: $" + FormatNumber(Mathf.RoundToInt(p.divida)));
+    }
+
+    private void CreateEconomyProductionRows(Transform parent, DadosPaisGoverno p, DadosEconomiaPais economia)
+    {
+        if (economia == null)
+        {
+            CreateInfoBlock(parent, "Snapshot economico indisponivel.");
+            return;
+        }
+
+        CreateInfoBlock(parent,
+            "Comida: " + economia.comidaProduzida.ToString("0.0")
+            + "\nPetroleo: " + economia.petroleoProduzido.ToString("0.0")
+            + "\nAco: " + economia.industriaProduzida.ToString("0.0")
+            + "\nDeficit principal: " + economia.DeficitPrincipal);
+        CreateInfoBlock(parent,
+            "Energia gerada: " + p.energiaProduzida.ToString("0.0") + " MW"
+            + "\nEnergia consumida: " + p.energiaConsumida.ToString("0.0") + " MW"
+            + "\nPredios sem energia: " + p.estruturasSemEnergia
+            + "\nQualidade de vida: " + p.qualidadeVida.ToString("0") + "%");
+    }
+
+    private void CreateTaxOverviewRows(Transform parent, DadosPaisGoverno p)
+    {
+        float cargaMedia = (p.impostoMoradia + p.impostoIndustria + p.impostoComercio) / 3f;
+        CreateInfoBlock(parent,
+            "Moradia: " + p.impostoMoradia + "%\n"
+            + "Industria: " + p.impostoIndustria + "%\n"
+            + "Comercio: " + p.impostoComercio + "%");
+        CreateInfoBlock(parent,
+            "Receita prevista: +" + Mathf.RoundToInt(p.rendaPorSegundo) + "/s\n"
+            + "Carga fiscal media: " + cargaMedia.ToString("0") + "%\n"
+            + "Cambio: 1 " + p.nomeMoeda + " = " + p.cambioComLider.ToString("0.00") + " " + p.moedaLiderReferencia + "\n"
+            + "Impacto em estabilidade: " + (cargaMedia > 18f ? "pressao crescente" : "controlado"));
+    }
+
+    private void BuildDefenseAlertRows(Transform parent, DadosPaisGoverno p, SistemaGovernoMundial gov, int wars)
+    {
+        CreateInfoBlock(parent,
+            "Armamentos: " + FormatNumber(p.armamentos)
+            + "\nUranio: " + FormatNumber(p.uranio)
+            + "\nPressao global: " + (gov != null ? (gov.PressaoGlobalGuerra() * 100f).ToString("0") + "%" : "n/d"));
+        CreateInfoBlock(parent,
+            "Paises em guerra: " + wars
+            + "\nPedidos pendentes: " + PendingPlayerProposalList().Count()
+            + "\nPlano atual: " + p.planoEstrategico);
+    }
+
+    private void ResolverPropostaUI(string propostaId, StatusPropostaInternacional status, string contexto)
+    {
+        if (Government() == null || string.IsNullOrEmpty(propostaId))
+        {
+            Notificar(contexto, "Sistema de governo indisponivel.");
+            return;
+        }
+
+        string mensagem;
+        bool ok = Government().ResolverProposta(propostaId, status, out mensagem);
+        Notificar(contexto, ok ? mensagem : "Falha ao resolver proposta.");
+        RefreshDynamicData(true);
+    }
+
+    private void EnviarPropostaRecurso(int alvoId, TipoPropostaInternacional tipo, RecursoMercado recurso, int quantidade, string motivo)
+    {
+        if (alvoId <= 0 || alvoId == paisJogadorId)
+        {
+            Notificar("Diplomacia", "Escolha um pais valido para negociar.");
+            return;
+        }
+
+        SistemaMercadoGlobal mercado = Market();
+        DadosItemMercado item = mercado != null ? mercado.ObterItem(SistemaGovernoMundial.IdRecurso(recurso)) : null;
+        int preco = item != null ? Mathf.RoundToInt(item.precoAtual * (tipo == TipoPropostaInternacional.PedidoAjuda ? 1f : 0.94f)) : 1;
+        bool ok = Government() != null && Government().CriarPropostaJogador(alvoId, tipo, recurso, quantidade, preco, motivo);
+        Notificar("Diplomacia", ok ? motivo + "." : "Ja existe proposta semelhante em andamento.");
+        RefreshDynamicData(true);
+    }
+
+    private void DefinirPlanoUI(string plano)
+    {
+        if (Government() == null)
+        {
+            Notificar("Plano nacional", "Sistema de governo indisponivel.");
+            return;
+        }
+
+        bool mudou = Government().DefinirPlanoEstrategico(paisJogadorId, plano);
+        Notificar("Plano nacional", mudou ? plano + " priorizado." : "Esse foco ja esta ativo.");
+        RefreshDynamicData(true);
+    }
+
+    private void AjustarImpostoUI(string categoria, int delta)
+    {
+        if (Government() == null)
+        {
+            Notificar("Impostos", "Sistema de governo indisponivel.");
+            return;
+        }
+
+        bool mudou = Government().AjustarImposto(paisJogadorId, categoria, delta);
+        Notificar("Impostos", mudou ? categoria + " ajustado em " + (delta > 0 ? "+5%" : "-5%") + "." : "Esse imposto ja esta no limite.");
+        RefreshDynamicData(true);
+    }
+
+    private MarketBuyRow CreateBuyRow(Transform parent, DadosItemMercado item)
+    {
+        GameObject row = CreateRow(parent, "Comprar_" + item.id, 42f);
+        MarketBuyRow view = new MarketBuyRow { Root = row, Menu = this, ItemId = item.id };
+        HorizontalLayoutGroup h = SetupRow(row);
+        view.Name = CreateFlexText(row.transform, item.nome, 12, corTextoPrimario, 1.25f, TextAnchor.MiddleLeft);
+        view.Stock = CreateFlexText(row.transform, string.Empty, 12, corTextoSecundario, 0.8f, TextAnchor.MiddleRight);
+        view.Price = CreateFlexText(row.transform, string.Empty, 12, corVerde, 0.8f, TextAnchor.MiddleRight);
+        view.Partner = CreateFlexText(row.transform, string.Empty, 11, corTextoSecundario, 1.2f, TextAnchor.MiddleLeft);
+        view.Action = CreateSmallButton(row.transform, "Comprar", corAzulBotao, () => ExecuteBuy(view.ItemId));
+        view.Action.GetComponent<LayoutElement>().flexibleWidth = 1f;
+        h.enabled = true;
+        return view;
+    }
+
+    private MarketSellRow CreateSellRow(Transform parent, string itemId)
+    {
+        GameObject row = CreateRow(parent, "Vender_" + itemId, 54f);
+        MarketSellRow view = new MarketSellRow { Root = row, Menu = this, ItemId = itemId };
+        HorizontalLayoutGroup h = SetupRow(row);
+        view.Name = CreateFlexText(row.transform, DisplayItemName(itemId), 12, corTextoPrimario, 1.1f, TextAnchor.MiddleLeft);
+        view.Stock = CreateFlexText(row.transform, string.Empty, 12, corTextoSecundario, 0.8f, TextAnchor.MiddleRight);
+        view.Price = CreateFlexText(row.transform, string.Empty, 12, corVerde, 0.8f, TextAnchor.MiddleRight);
+        view.Auto = CreateSmallButton(row.transform, "Auto", corPainel2, () => ToggleAutoSell(itemId));
+        view.AutoText = view.Auto.transform.Find("Label").GetComponent<Text>();
+        view.Auto.GetComponent<LayoutElement>().flexibleWidth = 1.1f;
+        GameObject actions = CreateUIObject("Acoes", row.transform);
+        actions.AddComponent<LayoutElement>().flexibleWidth = 1.6f;
+        HorizontalLayoutGroup ah = actions.AddComponent<HorizontalLayoutGroup>();
+        ah.spacing = 4;
+        ah.childControlWidth = true;
+        ah.childControlHeight = true;
+        ah.childForceExpandWidth = true;
+        view.Sell50 = CreateSmallButton(actions.transform, "50", corAzulBotao, () => SellRealResource(itemId, 50));
+        view.Sell200 = CreateSmallButton(actions.transform, "200", corAzulBotao, () => SellRealResource(itemId, 200));
+        view.SellAll = CreateSmallButton(actions.transform, "Tudo", new Color(0.360f, 0.100f, 0.070f, 1f), () => SellAllRealResource(itemId));
+        h.enabled = true;
+        return view;
+    }
+
+    private MarketPriceRow CreatePriceRow(Transform parent, DadosItemMercado item)
+    {
+        GameObject row = CreateRow(parent, "Preco_" + item.id, 38f);
+        MarketPriceRow view = new MarketPriceRow { Root = row };
+        SetupRow(row);
+        view.Name = CreateFlexText(row.transform, item.nome, 12, corTextoPrimario, 1.25f, TextAnchor.MiddleLeft);
+        view.Price = CreateFlexText(row.transform, string.Empty, 12, corVerde, 0.8f, TextAnchor.MiddleRight);
+        view.Var = CreateFlexText(row.transform, string.Empty, 12, corTextoSecundario, 0.6f, TextAnchor.MiddleRight);
+        view.Offer = CreateFlexText(row.transform, string.Empty, 11, corTextoSecundario, 0.75f, TextAnchor.MiddleRight);
+        view.Demand = CreateFlexText(row.transform, string.Empty, 11, corTextoSecundario, 0.75f, TextAnchor.MiddleRight);
+        view.Stock = CreateFlexText(row.transform, string.Empty, 11, corTextoSecundario, 0.9f, TextAnchor.MiddleRight);
+        return view;
+    }
+
+    private RouteRow CreateRouteRow(Transform parent)
+    {
+        GameObject row = CreatePanel("Rota", parent, 34f, corCard);
+        HorizontalLayoutGroup h = row.AddComponent<HorizontalLayoutGroup>();
+        h.padding = new RectOffset(10, 10, 4, 4);
+        RouteRow view = new RouteRow { Root = row, Text = CreateLayoutText(row.transform, string.Empty, 11, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 26f) };
+        view.Text.GetComponent<LayoutElement>().flexibleWidth = 1f;
+        return view;
+    }
+
+    private void RefreshResourceBar()
+    {
+        DadosPaisGoverno p = GetPlayerGov();
+        GerenciadorRecursos gr = GerenciadorRecursos.Instancia;
+
+        if (p != null && gr != null)
+        {
+            p.saldo = gr.dinheiro;
+            p.petroleo = gr.petroleo;
+            p.aco = gr.aco;
+            p.populacao = gr.populacaoAtual;
+            p.populacaoMaxima = gr.populacaoMaxima;
+        }
+
+        SetResource("DINHEIRO", p != null ? "$" + FormatNumber(p.saldo) : gr != null ? "$" + FormatNumber(gr.dinheiro) : "n/d", p != null ? SignedRate(p.rendaPorSegundo) : string.Empty, corVerde);
+        SetResource("PETROLEO", p != null ? FormatNumber(p.petroleo) : gr != null ? FormatNumber(gr.petroleo) : "0", gr != null ? SignedRate(gr.petroleoPorSegundo) : string.Empty, gr == null || gr.petroleoPorSegundo >= 0f ? corVerde : corVermelho);
+        SetResource("ACO", p != null ? FormatNumber(p.aco) : gr != null ? FormatNumber(gr.aco) : "0", gr != null ? SignedRate(gr.acoPorSegundo) : string.Empty, gr == null || gr.acoPorSegundo >= 0f ? corVerde : corVermelho);
+        SetResource("COMIDA", p != null ? FormatNumber(p.comida) : gr != null ? FormatNumber(gr.comida) : "0", string.Empty, corVerde);
+        SetResource("POP", p != null ? FormatNumber(p.populacao) + "/" + FormatNumber(p.populacaoMaxima) : gr != null ? gr.populacaoAtual + "/" + gr.populacaoMaxima : "0", string.Empty, corTextoSecundario);
+        SetResource("ESTAB", p != null ? p.estabilidade.ToString("0") + "%" : "n/d", p != null ? "Infl. " + p.inflacao.ToString("0.0") + "%" : string.Empty, p != null ? StatusColor(p) : corTextoSecundario);
+        SetResource("STATUS", p != null ? StatusGov(p).ToUpperInvariant() : "OK", string.Empty, p != null ? StatusColor(p) : corTextoSecundario);
+    }
+
+    private void RefreshFooter()
+    {
+        if (footerLeftText == null) return;
+        int pendentes = Government() != null ? Government().ObterPropostasPendentesPara(paisJogadorId).Count() : 0;
+
+        if (notificacoes.Count > 0)
+        {
+            NotificacaoGoverno n = notificacoes[0];
+            footerLeftText.text = n.titulo + ": " + n.mensagem;
+            footerLeftText.color = n.cor;
+        }
+        else
+        {
+            footerLeftText.text = pendentes > 0 ? "Diplomacia ativa. Ha " + pendentes + " pedido(s) aguardando decisao." : "Governo ativo. Nenhuma pendencia critica no momento.";
+            footerLeftText.color = corTextoSecundario;
+        }
+
+        if (footerRightText != null)
+            footerRightText.text = GetCategoryTitle(categoriaAtual) + " / " + GetSubTabs(categoriaAtual)[subAbaAtualIndex] + " | Pedidos: " + pendentes;
+    }
+
+    private void ExecuteBuy(string itemId)
+    {
+        SistemaMercadoGlobal mercado = Market();
+        SistemaGovernoMundial gov = Government();
+        DadosItemMercado item = mercado != null ? mercado.ObterItem(itemId) : null;
+        DadosPaisGoverno partner = item != null ? ChooseMarketPartner(gov, item, false) : null;
+        if (mercado == null || item == null || partner == null)
+        {
+            Notificar("Mercado", "Sem oferta disponivel.");
+            return;
+        }
+
+        string msg;
+        int quantity = item.CalcularQuantidadePadrao();
+        if (mercado.Comprar(paisJogadorId, partner.teamId, item.id, quantity, out msg))
+            Notificar("Compra", msg);
+        else
+            Notificar("Compra", msg);
+
+        RefreshDynamicData(true);
+    }
+
+    private void BuyBestOffer()
+    {
+        DadosItemMercado item = Market()?.MelhorCompra() ?? Market()?.ItensOrdenados().FirstOrDefault();
+        if (item == null)
+        {
+            Notificar("Mercado", "Sem oferta disponivel.");
+            return;
+        }
+        ExecuteBuy(item.id);
+    }
+
+    private void SellRecommendedLot()
+    {
+        SistemaMercadoGlobal mercado = Market();
+        DadosItemMercado item = mercado != null ? mercado.MelhorCompra() ?? mercado.ObterItem("petroleo") : null;
+        if (item == null)
+        {
+            Notificar("Mercado", "Sem item para venda.");
+            return;
+        }
+
+        string id = item.id == "energia" || item.id == "comida" || item.id == "aco" || item.id == "petroleo" ? item.id : "petroleo";
+        SellRealResource(id, 50);
+    }
+
+    private void SellRealResource(string itemId, int quantity)
+    {
+        SistemaMercadoGlobal mercado = Market();
+        if (mercado == null)
+        {
+            Notificar("Venda", "Sistema de mercado indisponivel.");
+            return;
+        }
+
+        string msg;
+        int gain;
+        if (mercado.VenderRecursoReal(itemId, quantity, out msg, out gain))
+            Notificar("Venda", msg + " (+$" + FormatNumber(gain) + ")");
+        else
+            Notificar("Venda", msg);
+
+        RefreshDynamicData(true);
+    }
+
+    private void SellAllRealResource(string itemId)
+    {
+        int stock = RealStock(itemId);
+        if (stock <= 0)
+        {
+            Notificar("Venda", "Sem estoque para vender.");
+            return;
+        }
+        SellRealResource(itemId, stock);
+    }
+
+    private void ToggleAutoSell(string itemId)
+    {
+        SistemaMercadoGlobal mercado = Market();
+        if (mercado == null) return;
+
+        if (itemId == "petroleo") mercado.autoVenderPetroleo = !mercado.autoVenderPetroleo;
+        else if (itemId == "aco") mercado.autoVenderAco = !mercado.autoVenderAco;
+        else if (itemId == "energia") mercado.autoVenderEnergia = !mercado.autoVenderEnergia;
+        else if (itemId == "comida") mercado.autoVenderComida = !mercado.autoVenderComida;
+
+        Notificar("Auto-venda", DisplayItemName(itemId) + " " + (AutoSellEnabled(itemId) ? "ativada." : "desativada."));
+        RefreshDynamicData(true);
+    }
+
+    private void CreateNavButton(CategoriaGoverno categoria)
+    {
+        GameObject root = CreatePanel("Aba_" + categoria, sidebarRoot, 44f, corPainel);
+        HorizontalLayoutGroup h = root.AddComponent<HorizontalLayoutGroup>();
+        h.padding = new RectOffset(0, 10, 0, 0);
+        h.spacing = 8;
         h.childControlHeight = true;
-        h.childForceExpandWidth = false;
+        h.childControlWidth = true;
+
+        GameObject accent = CreateUIObject("Accent", root.transform);
+        LayoutElement accentLe = accent.AddComponent<LayoutElement>();
+        accentLe.preferredWidth = 4f;
+        accentLe.minWidth = 4f;
+        Image accentImage = accent.AddComponent<Image>();
+        accentImage.raycastTarget = false;
+
+        Text text = CreateLayoutText(root.transform, GetShortCategoryName(categoria).ToUpperInvariant(), 12, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Bold, 42f);
+        text.GetComponent<LayoutElement>().flexibleWidth = 1f;
+
+        Image bg = root.GetComponent<Image>();
+        Button button = root.AddComponent<Button>();
+        button.targetGraphic = bg;
+        button.onClick.AddListener(() =>
+        {
+            if (categoriaAtual == categoria) return;
+            SaveScrollPositions();
+            categoriaAtual = categoria;
+            subAbaAtualIndex = 0;
+            RefreshStaticNavigation();
+            ShowCurrentPage();
+        });
+
+        navButtons[categoria] = new NavButtonView { Root = root, Background = bg, Accent = accentImage, Text = text };
     }
 
-    private void CriarScrollPanel(Transform parent, string nome, Color cor, float preferredWidth, float minWidth, float flexWidth, out Transform contentTransform)
+    private void EnsureSubTabButtons(string[] labels)
     {
-        GameObject box = CriarCardBase(parent, 0, cor);
-        box.name = nome;
+        while (subTabViews.Count < labels.Length)
+        {
+            int index = subTabViews.Count;
+            GameObject root = CreatePanel("SubAba_" + index, subTabsRoot, 0f, corPainel2);
+            LayoutElement le = root.GetComponent<LayoutElement>();
+            le.preferredWidth = 132f;
+            le.minWidth = 102f;
+            le.flexibleWidth = 0f;
+            HorizontalLayoutGroup h = root.AddComponent<HorizontalLayoutGroup>();
+            h.padding = new RectOffset(0, 10, 0, 0);
+            h.spacing = 6;
+            h.childControlHeight = true;
+
+            GameObject accent = CreateUIObject("Accent", root.transform);
+            LayoutElement aLe = accent.AddComponent<LayoutElement>();
+            aLe.preferredWidth = 3f;
+            aLe.minWidth = 3f;
+            Image accentImage = accent.AddComponent<Image>();
+            accentImage.raycastTarget = false;
+
+            Text text = CreateLayoutText(root.transform, "", 11, corTextoSecundario, TextAnchor.MiddleCenter, FontStyle.Bold, 34f);
+            text.GetComponent<LayoutElement>().flexibleWidth = 1f;
+
+            Image bg = root.GetComponent<Image>();
+            Button button = root.AddComponent<Button>();
+            button.targetGraphic = bg;
+            button.onClick.AddListener(() =>
+            {
+                if (subAbaAtualIndex == index) return;
+                SaveScrollPositions();
+                subAbaAtualIndex = index;
+                RefreshStaticNavigation();
+                ShowCurrentPage();
+            });
+
+            subTabViews.Add(new SubTabView { Root = root, Background = bg, Accent = accentImage, Label = text });
+        }
+    }
+
+    private void CreateResourceView(string id, string label, Color accentColor)
+    {
+        GameObject box = CreatePanel("Recurso_" + id, resourceRoot, 0f, corPainel);
+        box.GetComponent<LayoutElement>().flexibleWidth = 1f;
+        HorizontalLayoutGroup h = box.AddComponent<HorizontalLayoutGroup>();
+        h.padding = new RectOffset(8, 8, 4, 4);
+        h.spacing = 6;
+        h.childControlHeight = true;
+        h.childControlWidth = true;
+
+        Text tag = CreateLayoutText(box.transform, label, 10, accentColor, TextAnchor.MiddleCenter, FontStyle.Bold, 42f);
+        tag.GetComponent<LayoutElement>().preferredWidth = 40f;
+
+        GameObject texts = CreateUIObject("Textos", box.transform);
+        texts.AddComponent<LayoutElement>().flexibleWidth = 1f;
+        VerticalLayoutGroup v = texts.AddComponent<VerticalLayoutGroup>();
+        v.spacing = -2;
+        v.childControlWidth = true;
+        v.childControlHeight = true;
+        v.childForceExpandHeight = false;
+
+        Text value = CreateLayoutText(texts.transform, "-", 12, corTextoPrimario, TextAnchor.LowerLeft, FontStyle.Bold, 20f);
+        Text delta = CreateLayoutText(texts.transform, "", 8, corTextoApagado, TextAnchor.UpperLeft, FontStyle.Normal, 14f);
+        resourceViews[id] = new ResourceTopView { Value = value, Delta = delta };
+    }
+
+    private ScrollRect CreateScrollPanel(Transform parent, string name, float preferredWidth, float minWidth, float flexibleWidth, out Transform content)
+    {
+        GameObject box = CreatePanel(name, parent, 0f, new Color(0.018f, 0.025f, 0.031f, 0.96f));
         LayoutElement le = box.GetComponent<LayoutElement>();
         le.preferredWidth = preferredWidth;
         le.minWidth = minWidth;
-        le.flexibleWidth = flexWidth;
-        AddOutline(box, corLinhaFraca, 1f);
+        le.flexibleWidth = flexibleWidth;
 
         ScrollRect scroll = box.AddComponent<ScrollRect>();
         scroll.horizontal = false;
         scroll.vertical = true;
-        scroll.scrollSensitivity = 34f;
+        scroll.scrollSensitivity = 32f;
         scroll.movementType = ScrollRect.MovementType.Clamped;
 
-        GameObject viewport = CriarUIObjeto("Viewport", box.transform);
-        Esticar(viewport.GetComponent<RectTransform>(), 10, 10, 10, 10);
-        Image vpImg = viewport.AddComponent<Image>();
-        vpImg.color = Color.clear;
+        GameObject viewport = CreateUIObject("Viewport", box.transform);
+        Stretch(viewport.GetComponent<RectTransform>(), 8, 8, 8, 8);
+        viewport.AddComponent<Image>().color = Color.clear;
         viewport.AddComponent<RectMask2D>();
 
-        GameObject content = CriarUIObjeto("Content", viewport.transform);
-        RectTransform cRt = content.GetComponent<RectTransform>();
-        cRt.anchorMin = new Vector2(0, 1);
-        cRt.anchorMax = new Vector2(1, 1);
+        GameObject c = CreateUIObject("Content", viewport.transform);
+        RectTransform cRt = c.GetComponent<RectTransform>();
+        cRt.anchorMin = new Vector2(0f, 1f);
+        cRt.anchorMax = new Vector2(1f, 1f);
         cRt.pivot = new Vector2(0.5f, 1f);
         cRt.offsetMin = Vector2.zero;
         cRt.offsetMax = Vector2.zero;
 
-        VerticalLayoutGroup cv = content.AddComponent<VerticalLayoutGroup>();
-        cv.padding = new RectOffset(0, 0, 0, 0);
-        cv.spacing = 9;
-        cv.childControlWidth = true;
-        cv.childControlHeight = true;
-        cv.childForceExpandHeight = false;
+        VerticalLayoutGroup v = c.AddComponent<VerticalLayoutGroup>();
+        v.spacing = 7;
+        v.childControlWidth = true;
+        v.childControlHeight = true;
+        v.childForceExpandHeight = false;
 
-        ContentSizeFitter fitter = content.AddComponent<ContentSizeFitter>();
+        ContentSizeFitter fitter = c.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         scroll.viewport = viewport.GetComponent<RectTransform>();
         scroll.content = cRt;
-        contentTransform = content.transform;
+        content = c.transform;
+        return scroll;
     }
 
-    private void AtualizarInterfaceCompleta()
+    private GameObject CreatePageRoot(string name, Transform parent)
     {
-        AtualizarSidebar();
-        AtualizarBarraRecursos();
-        GerarSubAbas();
-        AtualizarConteudoComAnimacao();
-        AtualizarRodape();
-        AtualizarDica();
+        GameObject root = CreateUIObject(name, parent);
+        root.AddComponent<LayoutElement>().flexibleWidth = 1f;
+        VerticalLayoutGroup v = root.AddComponent<VerticalLayoutGroup>();
+        v.spacing = 7;
+        v.childControlWidth = true;
+        v.childControlHeight = true;
+        v.childForceExpandHeight = false;
+        root.SetActive(false);
+        return root;
     }
 
-    private void AtualizarConteudoComAnimacao()
+    private GameObject CreatePanel(string name, Transform parent, float height, Color color)
     {
-        if (animacaoConteudoAtual != null) StopCoroutine(animacaoConteudoAtual);
-        animacaoConteudoAtual = StartCoroutine(AnimarTrocaConteudo());
-    }
-
-    private IEnumerator AnimarTrocaConteudo()
-    {
-        CanvasGroup cgCentro = GarantirCanvasGroup(conteudoCentral.gameObject);
-        CanvasGroup cgDireito = GarantirCanvasGroup(painelDireito.gameObject);
-
-        cgCentro.alpha = 0f;
-        cgDireito.alpha = 0f;
-        conteudoCentral.localPosition = new Vector3(0, -8, 0);
-        painelDireito.localPosition = new Vector3(8, 0, 0);
-
-        GerarConteudoCentral();
-        GerarPainelDireito();
-
-        float t = 0f;
-        while (t < duracaoAnimacaoAba)
-        {
-            t += Time.unscaledDeltaTime;
-            float p = Mathf.Clamp01(t / Mathf.Max(0.01f, duracaoAnimacaoAba));
-            p = 1f - Mathf.Pow(1f - p, 2f);
-
-            if (cgCentro == null || cgDireito == null || conteudoCentral == null || painelDireito == null) yield break;
-
-            cgCentro.alpha = p;
-            cgDireito.alpha = p;
-            conteudoCentral.localPosition = Vector3.Lerp(new Vector3(0, -8, 0), Vector3.zero, p);
-            painelDireito.localPosition = Vector3.Lerp(new Vector3(8, 0, 0), Vector3.zero, p);
-            yield return null;
-        }
-
-        if (cgCentro != null) cgCentro.alpha = 1f;
-        if (cgDireito != null) cgDireito.alpha = 1f;
-        if (conteudoCentral != null) conteudoCentral.localPosition = Vector3.zero;
-        if (painelDireito != null) painelDireito.localPosition = Vector3.zero;
-    }
-
-    private void AtualizarSidebar()
-    {
-        foreach (Transform child in sidebarRoot)
-        {
-            if (!child.name.StartsWith("Aba_")) continue;
-            bool ativo = child.name == "Aba_" + abaAtual;
-            Image bg = child.GetComponent<Image>();
-            Transform brilho = child.Find("Brilho");
-            Transform linha = child.Find("LinhaAtiva");
-            Transform icone = child.Find("Icone");
-            Transform titulo = child.Find("Titulo");
-
-            if (bg != null) bg.color = ativo ? corAbaAtiva : new Color(0.026f, 0.078f, 0.104f, 0.82f);
-            if (brilho != null) brilho.GetComponent<Image>().color = ativo ? new Color(corDestaque.r, corDestaque.g, corDestaque.b, 0.20f) : new Color(corDestaque.r, corDestaque.g, corDestaque.b, 0.035f);
-            if (linha != null) linha.GetComponent<Image>().color = ativo ? corDestaque : new Color(corLinha.r, corLinha.g, corLinha.b, 0.16f);
-            if (icone != null) icone.GetComponent<Text>().color = ativo ? Color.white : new Color(0.760f, 0.900f, 0.980f, 1f);
-            if (titulo != null) titulo.GetComponent<Text>().color = ativo ? Color.white : new Color(0.760f, 0.870f, 0.940f, 1f);
-        }
-    }
-
-    private void AtualizarBarraRecursos()
-    {
-        if (barraRecursos == null || !EstaAberto) return;
-        LimparFilhos(barraRecursos);
-
-        PaisGoverno p = ObterPais(paisJogadorId);
-        GerenciadorRecursos gr = GerenciadorRecursos.Instancia;
-
-        if (gr != null && p != null)
-        {
-            // Sincroniza dados do objeto PaisGoverno com os dados REAIS do sistema de recursos
-            p.dinheiro = gr.dinheiro;
-            p.petroleo = gr.petroleo;
-            p.aco = gr.aco;
-            p.populacaoAtual = gr.populacaoAtual;
-            p.populacaoMaximaPorCasas = gr.populacaoMaxima;
-
-            CriarRecursoTopo("▣", "DINHEIRO", "$" + FormatNumero(gr.dinheiro), (gr.dinheiroPorSegundo >= 0 ? "+" : "") + (int)gr.dinheiroPorSegundo + "/s", gr.dinheiroPorSegundo >= 0 ? corVerde : corVermelho);
-            CriarRecursoTopo("≋", "COMIDA", p.comida.ToString(), "+5/s", corVerde);
-            CriarRecursoTopo("💧", "PETRÓLEO", FormatNumero(gr.petroleo), (gr.petroleoPorSegundo >= 0 ? "+" : "") + (int)gr.petroleoPorSegundo + "/s", gr.petroleoPorSegundo >= 0 ? corVerde : corVermelho);
-            CriarRecursoTopo("▰", "AÇO", FormatNumero(gr.aco), (gr.acoPorSegundo >= 0 ? "+" : "") + (int)gr.acoPorSegundo + "/s", gr.acoPorSegundo >= 0 ? corVerde : corVermelho);
-            CriarRecursoTopo("▥", "ARMAMENTOS", p.armamentos.ToString(), "+3/s", corVerde);
-            CriarRecursoTopo("♟", "POPULAÇÃO", gr.populacaoAtual + " / " + gr.populacaoMaxima, "", corTextoSecundario);
-            CriarRecursoTopo("⚔", "MILITARES", FormatNumero(p.militaresAtivos), "", corTextoSecundario);
-            CriarRecursoTopo("◈", "STATUS", NomeStatus(p.status).ToUpper(), "", CorStatus(p.status));
-        }
-        else if (p != null)
-        {
-            CriarRecursoTopo("▣", "DINHEIRO", "$" + FormatNumero(p.dinheiro), "+60/s", corVerde);
-            CriarRecursoTopo("≋", "COMIDA", p.comida.ToString(), "+5/s", corVerde);
-            CriarRecursoTopo("💧", "PETRÓLEO", FormatNumero(p.petroleo), "+5/s", corVerde);
-            CriarRecursoTopo("▰", "AÇO", p.aco.ToString(), "+2/s", corVerde);
-            CriarRecursoTopo("▥", "ARMAMENTOS", p.armamentos.ToString(), "+3/s", corVerde);
-            CriarRecursoTopo("♟", "POPULAÇÃO", p.populacaoAtual + " / " + p.populacaoMaximaPorCasas, "", corTextoSecundario);
-            CriarRecursoTopo("⚔", "MILITARES", FormatNumero(p.militaresAtivos), "", corTextoSecundario);
-            CriarRecursoTopo("◈", "STATUS", NomeStatus(p.status).ToUpper(), "", CorStatus(p.status));
-        }
-    }
-
-    private void CriarRecursoTopo(string icone, string nome, string valor, string ganho, Color corGanho)
-    {
-        GameObject box = CriarCardBase(barraRecursos, 0, new Color(0.018f, 0.055f, 0.074f, 0.82f));
-        box.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        HorizontalLayoutGroup h = box.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(8, 8, 3, 3);
-        h.spacing = 6;
-        h.childControlHeight = true;
-        h.childControlWidth = true;
-
-        Text ic = CriarTextoLayout(box.transform, icone, 20, corAmarelo, TextAnchor.MiddleCenter, FontStyle.Bold, 46);
-        ic.GetComponent<LayoutElement>().preferredWidth = 24f;
-
-        GameObject textos = CriarUIObjeto("Textos", box.transform);
-        textos.AddComponent<LayoutElement>().flexibleWidth = 1f;
-        VerticalLayoutGroup v = textos.AddComponent<VerticalLayoutGroup>();
-        v.childAlignment = TextAnchor.MiddleLeft;
-        v.spacing = -1;
-        CriarTextoLayout(textos.transform, nome, 8, corTextoSecundario, TextAnchor.LowerLeft, FontStyle.Bold, 18);
-
-        GameObject linhaValor = CriarUIObjeto("Valor", textos.transform);
-        linhaValor.AddComponent<LayoutElement>().preferredHeight = 22f;
-        HorizontalLayoutGroup hv = linhaValor.AddComponent<HorizontalLayoutGroup>();
-        hv.spacing = 4;
-        hv.childControlWidth = true;
-        hv.childForceExpandWidth = false;
-        CriarTextoLayout(linhaValor.transform, valor, 14, corTextoPrimario, TextAnchor.MiddleLeft, FontStyle.Bold, 22);
-        if (!string.IsNullOrEmpty(ganho)) CriarTextoLayout(linhaValor.transform, "(" + ganho + ")", 9, corGanho, TextAnchor.MiddleLeft, FontStyle.Bold, 22);
-    }
-
-    private void GerarSubAbas()
-    {
-        LimparFilhos(subAbasRoot);
-        List<string> abas = ObterSubAbas(abaAtual);
-
-        for (int i = 0; i < abas.Count; i++)
-        {
-            int index = i;
-            bool ativo = index == subAbaAtualIndex;
-            GameObject btn = CriarBotaoBloco(subAbasRoot, abas[i], ativo ? corAbaAtiva : new Color(0.035f, 0.075f, 0.100f, 0.92f), () =>
-            {
-                subAbaAtualIndex = index;
-                AtualizarInterfaceCompleta();
-            });
-
-            LayoutElement le = btn.GetComponent<LayoutElement>();
-            le.preferredWidth = Mathf.Clamp(abas[i].Length * 11 + 38, 104, 190);
-            le.minWidth = 96;
-            le.flexibleWidth = 0f;
-            le.preferredHeight = 30f;
-            le.minHeight = 28f;
-
-            Transform t = btn.transform.Find("TextoBotao");
-            if (t != null) t.GetComponent<Text>().color = ativo ? Color.white : corTextoSecundario;
-
-            GameObject linha = CriarUIObjeto("LinhaInferior", btn.transform);
-            RectTransform rt = linha.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0, 0);
-            rt.anchorMax = new Vector2(1, 0);
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = new Vector2(0, 3);
-            Image img = linha.AddComponent<Image>();
-            img.color = ativo ? corDestaque : Color.clear;
-            img.raycastTarget = false;
-        }
-    }
-
-    private void GerarConteudoCentral()
-    {
-        LimparFilhos(conteudoCentral);
-
-        switch (abaAtual)
-        {
-            case CategoriaGoverno.RelacoesExteriores: ExibirRelacoesExteriores(); break;
-            case CategoriaGoverno.Aliancas: ExibirAliancas(); break;
-            case CategoriaGoverno.Sancoes: ExibirSancoes(); break;
-            case CategoriaGoverno.Economia: ExibirEconomia(); break;
-            case CategoriaGoverno.MercadoGlobal: ExibirMercadoGlobal(); break;
-            case CategoriaGoverno.Interior: ExibirInterior(); break;
-            case CategoriaGoverno.Defesa: ExibirDefesa(); break;
-            case CategoriaGoverno.Ciencia: ExibirCiencia(); break;
-            case CategoriaGoverno.Trabalho: ExibirTrabalho(); break;
-        }
-    }
-
-    private void GerarPainelDireito()
-    {
-        LimparFilhos(painelDireito);
-
-        switch (abaAtual)
-        {
-            case CategoriaGoverno.Sancoes: PainelNovaSancao(); break;
-            case CategoriaGoverno.MercadoGlobal: PainelMercado(); break;
-            case CategoriaGoverno.Interior: PainelInterior(); break;
-            case CategoriaGoverno.Defesa: PainelDefesa(); break;
-            case CategoriaGoverno.Ciencia: PainelCiencia(); break;
-            case CategoriaGoverno.Trabalho: PainelTrabalho(); break;
-            case CategoriaGoverno.Economia: PainelEconomia(); break;
-            case CategoriaGoverno.Aliancas: PainelAliancas(); break;
-            default: PainelFichaDiplomatica(); break;
-        }
-    }
-
-    private void ExibirRelacoesExteriores()
-    {
-        PaisGoverno jogador = ObterPais(paisJogadorId);
-        CriarTituloSecao("RESUMO DO ESTADO NACIONAL", conteudoCentral);
-
-        GameObject grid = CriarLinha(conteudoCentral, 120, 10);
-        CriarCardBrasao(grid.transform, jogador.nome.ToUpper(), "⚜");
-        CriarMetricCard(grid.transform, "♟", "POPULAÇÃO", jogador.populacaoAtual + " / " + jogador.populacaoMaximaPorCasas, "Capacidade nacional", corDestaque, 0.55f);
-        CriarMetricCard(grid.transform, "⌂", "CASAS", jogador.casas + " / 10", "Cap. por casa: " + jogador.capacidadePorCasa, corDestaque, 0.40f);
-        CriarMetricCard(grid.transform, "▥", "QUARTÉIS", jogador.quarteis + " / 10", "Reserva militar", corDestaque, 0.20f);
-
-        GameObject status = CriarLinha(conteudoCentral, 74, 10);
-        CriarMiniStatus(status.transform, "◈", "STATUS GEOPOLÍTICO", NomeStatus(jogador.status), CorStatus(jogador.status));
-        CriarMiniStatus(status.transform, "⚑", "BLOCO ATUAL", NomeBloco(jogador.bloco), corDestaque);
-        CriarMiniStatus(status.transform, "🤝", "ALIADO PRIORITÁRIO", NomePais(jogador.aliadoPrioritarioId), corDestaque);
-        CriarMiniStatus(status.transform, "⌖", "RIVAL ESTRATÉGICO", NomePais(jogador.rivalEstrategicoId), corVermelho);
-
-        CriarTituloSecao("RELAÇÕES DIPLOMÁTICAS", conteudoCentral);
-        foreach (PaisGoverno p in paises.Where(x => x.id != paisJogadorId)) CriarCardPaisDiplomacia(conteudoCentral, p, ObterRelacao(paisJogadorId, p.id));
-    }
-
-    private void ExibirAliancas()
-    {
-        CriarTituloSecao("ALIANÇAS E BLOCOS MILITARES", conteudoCentral);
-        CriarDescricao("Gerencie acordos estratégicos, coalizões militares e tratados de proteção entre nações.");
-
-        GameObject grid = CriarLinha(conteudoCentral, 96, 10);
-        CriarResumoCard(grid.transform, "ALIADOS ATIVOS", "2", "Nações com pacto", corVerde);
-        CriarResumoCard(grid.transform, "FORÇA DO BLOCO", "7.850", "Poder combinado", corDestaque);
-        CriarResumoCard(grid.transform, "CONFIANÇA", "82%", "Estabilidade", corVerde);
-        CriarResumoCard(grid.transform, "RISCO DE TRAIÇÃO", "Baixo", "Acordos estáveis", corAmarelo);
-
-        CriarTituloSecao("MEMBROS DO BLOCO ORDEM ATLAS", conteudoCentral);
-        GameObject table = CriarTabela(conteudoCentral, new string[] { "PAÍS", "RELAÇÃO", "CONTRIBUIÇÃO", "PACTO", "AÇÃO" }, 40);
-        CriarLinhaTabela(table.transform, new string[] { "República Boreal", "+75", "Naval / Petróleo", "Ativo", "Gerenciar" }, new Color[] { corTextoPrimario, corVerde, corDestaque, corVerde, corDestaque });
-        CriarLinhaTabela(table.transform, new string[] { "Federação Alvorada", "+58", "Comida / Indústria", "Ativo", "Gerenciar" }, new Color[] { corTextoPrimario, corVerde, corAmarelo, corVerde, corDestaque });
-        CriarLinhaTabela(table.transform, new string[] { "Confederação Oriental", "+21", "Tecnologia", "Pendente", "Convidar" }, new Color[] { corTextoPrimario, corAmarelo, corRoxo, corAmarelo, corDestaque });
-
-        CriarTituloSecao("AÇÕES DE ALIANÇA", conteudoCentral);
-        GameObject acoes = CriarLinha(conteudoCentral, 100, 10);
-        CriarAcaoCard(acoes.transform, "🤝", "PROPOR ALIANÇA", "$2.000", corDestaque);
-        CriarAcaoCard(acoes.transform, "🛡", "PACTO DEFENSIVO", "$4.000", corVerde);
-        CriarAcaoCard(acoes.transform, "⚔", "OPERAÇÃO CONJUNTA", "$8.000", corAmarelo);
-        CriarAcaoCard(acoes.transform, "📡", "COMPARTILHAR INTEL", "$3.000", corRoxo);
-    }
-
-    private void ExibirSancoes()
-    {
-        CriarTituloSecao("VISÃO GERAL DE SANÇÕES", conteudoCentral);
-        CriarDescricao("Imponha restrições econômicas, tecnológicas e militares contra nações hostis sem cobrir a ficha lateral.");
-
-        GameObject grid = CriarLinha(conteudoCentral, 96, 10);
-        CriarResumoCard(grid.transform, "PAÍSES SANCIONADOS", "3", "Alvos ativos", corVermelho);
-        CriarResumoCard(grid.transform, "IMPACTO ECONÔMICO", "-18%", "Média nos alvos", corAmarelo);
-        CriarResumoCard(grid.transform, "DURAÇÃO MÉDIA", "8 meses", "Tempo médio", corDestaque);
-        CriarResumoCard(grid.transform, "APOIO GLOBAL", "72%", "Conformidade", corVerde);
-
-        CriarTituloSecao("PAÍSES SANCIONADOS", conteudoCentral);
-        GameObject table = CriarTabela(conteudoCentral, new string[] { "PAÍS ALVO", "STATUS", "SANÇÕES", "IMPACTO", "DURAÇÃO", "APOIO", "AÇÃO" }, 46);
-        CriarLinhaTabela(table.transform, new string[] { "União Carmesim", "Crise", "Comida / Petróleo / Tecnologia", "-25%", "6 meses", "68%", "Revisar" }, new Color[] { corTextoPrimario, corVermelho, corAmarelo, corVermelho, corTextoSecundario, corVerde, corDestaque });
-        CriarLinhaTabela(table.transform, new string[] { "Domínio Valerian", "Sanções", "Comida / Aço / Armamentos", "-15%", "4 meses", "52%", "Revisar" }, new Color[] { corTextoPrimario, corLaranja, corAmarelo, corVermelho, corTextoSecundario, corAmarelo, corDestaque });
-        CriarLinhaTabela(table.transform, new string[] { "República Boreal", "Tensão", "Petróleo", "-8%", "2 meses", "35%", "Encerrar" }, new Color[] { corTextoPrimario, corAmarelo, corDestaque, corAmarelo, corTextoSecundario, corTextoSecundario, corDestaque });
-
-        CriarTituloSecao("TIPOS DE SANÇÕES DISPONÍVEIS", conteudoCentral);
-        GameObject tipos1 = CriarLinha(conteudoCentral, 82, 8);
-        CriarTipoSancao(tipos1.transform, "🌾", "Embargo\nde Comida");
-        CriarTipoSancao(tipos1.transform, "💧", "Embargo de\nPetróleo");
-        CriarTipoSancao(tipos1.transform, "▰", "Embargo\nde Aço");
-        CriarTipoSancao(tipos1.transform, "▥", "Embargo de\nArmamentos");
-
-        GameObject tipos2 = CriarLinha(conteudoCentral, 82, 8);
-        CriarTipoSancao(tipos2.transform, "⚛", "Bloqueio\nTecnológico");
-        CriarTipoSancao(tipos2.transform, "✈", "Bloqueio\nMilitar");
-        CriarTipoSancao(tipos2.transform, "⌖", "Restrição\nComercial Total");
-        CriarTipoSancao(tipos2.transform, "+", "Criar nova\nmedida");
-    }
-
-    private void ExibirEconomia()
-    {
-        CriarTituloSecao("VISÃO GERAL DA ECONOMIA", conteudoCentral);
-        CriarDescricao("Controle orçamento, impostos, produção nacional, inflação e investimento estratégico.");
-
-        GameObject grid = CriarLinha(conteudoCentral, 110, 10);
-        CriarMetricCard(grid.transform, "▣", "TESOURO", "$39.534", "+$60/s", corVerde, 0.72f);
-        CriarMetricCard(grid.transform, "📈", "CRESCIMENTO", "+4.8%", "Expansão", corVerde, 0.64f);
-        CriarMetricCard(grid.transform, "⚖", "INFLAÇÃO", "3.2%", "Risco baixo", corAmarelo, 0.32f);
-        CriarMetricCard(grid.transform, "🏭", "PRODUÇÃO", "78%", "Capacidade", corDestaque, 0.78f);
-
-        CriarTituloSecao("ORÇAMENTO NACIONAL", conteudoCentral);
-        GameObject orcamento = CriarLinha(conteudoCentral, 168, 10);
-        CriarBudgetCard(orcamento.transform, "DEFESA", "32%", "$12.650", corVermelho);
-        CriarBudgetCard(orcamento.transform, "INTERIOR", "24%", "$9.420", corDestaque);
-        CriarBudgetCard(orcamento.transform, "CIÊNCIA", "18%", "$7.080", corRoxo);
-        CriarBudgetCard(orcamento.transform, "TRABALHO", "16%", "$6.320", corVerde);
-        CriarBudgetCard(orcamento.transform, "RESERVA", "10%", "$4.064", corAmarelo);
-
-        CriarTituloSecao("SETOR PRODUTIVO", conteudoCentral);
-        GameObject table = CriarTabela(conteudoCentral, new string[] { "SETOR", "PRODUÇÃO", "RECEITA", "CUSTO", "TENDÊNCIA" }, 40);
-        CriarLinhaTabela(table.transform, new string[] { "Indústria pesada", "84%", "$8.400", "$3.100", "↑" }, new Color[] { corTextoPrimario, corVerde, corVerde, corAmarelo, corVerde });
-        CriarLinhaTabela(table.transform, new string[] { "Agricultura", "72%", "$5.900", "$1.600", "↑" }, new Color[] { corTextoPrimario, corVerde, corVerde, corAmarelo, corVerde });
-        CriarLinhaTabela(table.transform, new string[] { "Serviços", "68%", "$4.700", "$1.200", "→" }, new Color[] { corTextoPrimario, corAmarelo, corVerde, corAmarelo, corAmarelo });
-    }
-
-    private void ExibirMercadoGlobal()
-    {
-        CriarTituloSecao("MERCADO GLOBAL", conteudoCentral);
-        CriarDescricao("Compre e venda recursos no mercado internacional. Preços flutuam conforme oferta, demanda e relações diplomáticas.");
-
-        CriarTituloSecao("RECURSOS DISPONÍVEIS", conteudoCentral);
-        GameObject recursos1 = CriarLinha(conteudoCentral, 140, 8);
-        CriarMercadoRecurso(recursos1.transform, "🌾", "COMIDA", "24.850", "$120 / un", "+1.2%", corVerde);
-        CriarMercadoRecurso(recursos1.transform, "💧", "PETRÓLEO", "18.340", "$185 / un", "-2.4%", corVermelho);
-        CriarMercadoRecurso(recursos1.transform, "▰", "AÇO", "31.760", "$95 / un", "-0.8%", corVerde);
-        CriarMercadoRecurso(recursos1.transform, "▥", "ARMAMENTOS", "7.420", "$420 / un", "+3.7%", corVermelho);
-
-        CriarTituloSecao("OFERTAS ATUAIS DO MERCADO", conteudoCentral);
-        GameObject table = CriarTabela(conteudoCentral, new string[] { "VENDEDOR", "RECURSO", "QUANT.", "PREÇO", "TOTAL", "RELAÇÃO", "ENTREGA", "AÇÃO" }, 40);
-        CriarLinhaTabela(table.transform, new string[] { "União Carmesim", "Petróleo", "5.000", "$172", "$860.000", "-40", "2 turnos", "Comprar" }, new Color[] { corTextoPrimario, corTextoPrimario, corTextoPrimario, corAmarelo, corVerde, corVermelho, corTextoSecundario, corDestaque });
-        CriarLinhaTabela(table.transform, new string[] { "República Boreal", "Aço", "8.000", "$92", "$736.000", "+75", "1 turno", "Comprar" }, new Color[] { corTextoPrimario, corTextoPrimario, corTextoPrimario, corAmarelo, corVerde, corVerde, corTextoSecundario, corDestaque });
-        CriarLinhaTabela(table.transform, new string[] { "Federação Alvorada", "Comida", "10.000", "$118", "$1.180.000", "+10", "1 turno", "Comprar" }, new Color[] { corTextoPrimario, corTextoPrimario, corTextoPrimario, corAmarelo, corVerde, corVerde, corTextoSecundario, corDestaque });
-    }
-
-    private void ExibirInterior()
-    {
-        CriarTituloSecao("VISÃO GERAL DO INTERIOR", conteudoCentral);
-        GameObject cards = CriarLinha(conteudoCentral, 128, 10);
-        CriarMetricCard(cards.transform, "♟", "POPULAÇÃO", "110 / 200", "Crescimento +5", corDestaque, 0.55f);
-        CriarMetricCard(cards.transform, "♥", "BEM-ESTAR", "68%", "Estável", corVerde, 0.68f);
-        CriarMetricCard(cards.transform, "◈", "ESTABILIDADE", "62%", "Política", corVerde, 0.62f);
-        CriarMetricCard(cards.transform, "🏭", "PRODUTIVIDADE", "1.24", "Moderada", corAmarelo, 0.58f);
-
-        CriarTituloSecao("INFRAESTRUTURA NACIONAL", conteudoCentral);
-        GameObject infra1 = CriarLinha(conteudoCentral, 142, 8);
-        CriarInfraCard(infra1.transform, "⌂", "HABITAÇÃO", "4 / 10", "Capacidade por casa: 250", "$2.000");
-        CriarInfraCard(infra1.transform, "+", "SAÚDE", "1 / 5", "Eficiência: 60%", "$2.500");
-        CriarInfraCard(infra1.transform, "▣", "EDUCAÇÃO", "1 / 5", "Eficiência: 58%", "$1.800");
-
-        GameObject infra2 = CriarLinha(conteudoCentral, 142, 8);
-        CriarInfraCard(infra2.transform, "⚡", "ENERGIA", "2 / 5", "Eficiência: 70%", "$2.800");
-        CriarInfraCard(infra2.transform, "◊", "ÁGUA", "1 / 5", "Eficiência: 65%", "$2.500");
-        CriarInfraCard(infra2.transform, "♨", "SANEAMENTO", "1 / 5", "Eficiência: 60%", "$1.500");
-    }
-
-    private void ExibirDefesa()
-    {
-        CriarTituloSecao("VISÃO GERAL DA DEFESA", conteudoCentral);
-        GameObject top = CriarLinha(conteudoCentral, 116, 10);
-        CriarMetricCard(top.transform, "♟", "PODER MILITAR", "3.250", "Força 62%", corDestaque, 0.62f);
-        CriarMetricCard(top.transform, "●", "PRONTIDÃO", "78%", "Operacional", corVerde, 0.78f);
-        CriarMetricCard(top.transform, "$", "GASTO MILITAR", "$2.450", "por turno", corAmarelo, 0.48f);
-        CriarMetricCard(top.transform, "⚗", "PESQUISAS", "3", "em andamento", corRoxo, 0.60f);
-
-        CriarTituloSecao("COMPOSIÇÃO DAS FORÇAS", conteudoCentral);
-        GameObject forcas1 = CriarLinha(conteudoCentral, 190, 10);
-        CriarForcaCard(forcas1.transform, "▱", "EXÉRCITO", "1.250", new string[] { "Tanques 350", "Blindados 620", "Artilharia 180", "Infantaria 100" }, 0.62f);
-        CriarForcaCard(forcas1.transform, "▰", "MARINHA", "850", new string[] { "Navios 18", "Submarinos 6", "Porta-Aviões 1", "Apoio 7" }, 0.71f);
-
-        GameObject forcas2 = CriarLinha(conteudoCentral, 190, 10);
-        CriarForcaCard(forcas2.transform, "✈", "FORÇA AÉREA", "950", new string[] { "Caças 68", "Bombardeiros 12", "Helicópteros 26", "Drones 124" }, 0.80f);
-        CriarForcaCard(forcas2.transform, "⌖", "DEFESA ANTIAÉREA", "200", new string[] { "SAM 28", "Baterias 64", "Radares 35", "Interceptadores 73" }, 0.60f);
-    }
-
-    private void ExibirCiencia()
-    {
-        CriarTituloSecao("VISÃO GERAL DA CIÊNCIA", conteudoCentral);
-        GameObject top = CriarLinha(conteudoCentral, 112, 10);
-        CriarMetricCard(top.transform, "⚗", "INVESTIMENTO", "2.45%", "do PIB", corVerde, 0.49f);
-        CriarMetricCard(top.transform, "🧠", "PESQUISA", "1.250", "+45 / turno", corRoxo, 0.70f);
-        CriarMetricCard(top.transform, "♟", "CIENTISTAS", "128 / 150", "Ocupação 85%", corDestaque, 0.85f);
-        CriarMetricCard(top.transform, "⚜", "NÍVEL TEC.", "III", "Avançado", corAmarelo, 0.66f);
-
-        CriarTituloSecao("PESQUISAS EM ANDAMENTO", conteudoCentral);
-        GameObject table = CriarTabela(conteudoCentral, new string[] { "PROJETO", "CATEGORIA", "PROGRESSO", "TEMPO", "AÇÃO" }, 40);
-        CriarLinhaPesquisa(table.transform, "Motores de Fusão Compactos", "Energia", 0.62f, "3 turnos");
-        CriarLinhaPesquisa(table.transform, "Mísseis Hipersônicos", "Defesa", 0.48f, "4 turnos");
-        CriarLinhaPesquisa(table.transform, "IA Tática Avançada", "Tecnologia", 0.71f, "2 turnos");
-        CriarLinhaPesquisa(table.transform, "Blindagem Reativa Avançada", "Defesa", 0.35f, "5 turnos");
-    }
-
-    private void ExibirTrabalho()
-    {
-        CriarTituloSecao("VISÃO GERAL DO TRABALHO", conteudoCentral);
-        GameObject top = CriarLinha(conteudoCentral, 126, 10);
-        CriarMetricCard(top.transform, "♟", "POPULAÇÃO", "110 / 200", "Capacidade", corDestaque, 0.55f);
-        CriarMetricCard(top.transform, "♙", "ATIVA", "88 / 110", "80%", corDestaque, 0.80f);
-        CriarMetricCard(top.transform, "▣", "EMPREGADOS", "82 / 88", "93%", corVerde, 0.93f);
-        CriarMetricCard(top.transform, "📈", "PRODUTIVIDADE", "1.24", "Moderada", corVerde, 0.62f);
-
-        CriarTituloSecao("DISTRIBUIÇÃO DA FORÇA DE TRABALHO", conteudoCentral);
-        GameObject dist = CriarLinha(conteudoCentral, 230, 10);
-        CriarGraficoDonutFake(dist.transform);
-        CriarSetorResumo(dist.transform);
-
-        CriarTituloSecao("FORMAÇÃO PROFISSIONAL", conteudoCentral);
-        GameObject form = CriarLinha(conteudoCentral, 110, 8);
-        CriarFormacaoCard(form.transform, "🏭", "Técnico Industrial", "Formando: 12", "2 turnos", 0.68f);
-        CriarFormacaoCard(form.transform, "⚙", "Engenheiro", "Formando: 8", "3 turnos", 0.40f);
-        CriarFormacaoCard(form.transform, "</>", "Programador", "Formando: 6", "2 turnos", 0.30f);
-        CriarFormacaoCard(form.transform, "🌿", "Téc. Agrícola", "Formando: 10", "1 turno", 0.80f);
-    }
-
-    private void PainelFichaDiplomatica()
-    {
-        PaisGoverno alvo = ObterPais(paisSelecionadoId) ?? paises.FirstOrDefault(p => p.id != paisJogadorId);
-        if (alvo == null) return;
-
-        RelacaoDiplomatica r = ObterRelacao(paisJogadorId, alvo.id);
-        if (r == null) r = new RelacaoDiplomatica { paisA = paisJogadorId, paisB = alvo.id, valor = 0 };
-
-        CriarTituloSecao("FICHA DIPLOMÁTICA", painelDireito);
-
-        GameObject head = CriarCardBase(painelDireito, 86, new Color(0.020f, 0.080f, 0.100f, 0.96f));
-        HorizontalLayoutGroup h = head.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(10, 10, 8, 8);
-        h.spacing = 10;
-
-        Text brasao = CriarTextoLayout(head.transform, "✦", 28, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, 70);
-        brasao.GetComponent<LayoutElement>().preferredWidth = 54f;
-
-        GameObject tx = CriarUIObjeto("TextoPais", head.transform);
-        tx.AddComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(tx, 0, 0, 0);
-        CriarTextoLayout(tx.transform, alvo.nome.ToUpper(), 16, corTextoPrimario, TextAnchor.LowerLeft, FontStyle.Bold, 32);
-        CriarTextoLayout(tx.transform, NomeBloco(alvo.bloco).ToUpper(), 10, corTextoSecundario, TextAnchor.UpperLeft, FontStyle.Bold, 22);
-
-        CriarTituloSecao("INFORMAÇÕES", painelDireito);
-        CriarLinhaInfo("BLOCO", NomeBloco(alvo.bloco), corDestaque);
-        CriarLinhaInfo("RELAÇÃO", (r.valor > 0 ? "+" : "") + r.valor, CorRelacao(r.valor));
-        CriarLinhaInfo("ESTADO", NomeEstadoRelacao(r.estado), CorRelacao(r.valor));
-        CriarLinhaInfo("STATUS", NomeStatus(alvo.status), CorStatus(alvo.status));
-        CriarLinhaInfo("TRATADO COMERCIAL", r.tratadoComercial ? "Ativo" : "Inativo", r.tratadoComercial ? corVerde : corVermelho);
-        CriarLinhaInfo("PACTO MILITAR", r.pactoMilitar ? "Ativo" : "Inativo", r.pactoMilitar ? corVerde : corVermelho);
-
-        CriarTituloSecao("RECURSOS PRINCIPAIS", painelDireito);
-        CriarLinhaInfo("🌾 Comida", alvo.comida.ToString(), corVerde);
-        CriarLinhaInfo("💧 Petróleo", alvo.petroleo.ToString(), corDestaque);
-        CriarLinhaInfo("▰ Aço", alvo.aco.ToString(), corAmarelo);
-        CriarLinhaInfo("▥ Armamentos", alvo.armamentos.ToString(), corVermelho);
-
-        CriarTituloSecao("AÇÕES RÁPIDAS", painelDireito);
-        CriarBotaoBloco(painelDireito, "ABRIR PERFIL COMPLETO", corAzulBotao, () => Notificar("Perfil", "Perfil diplomático aberto.")).GetComponent<LayoutElement>().preferredHeight = 40;
-        CriarBotaoBloco(painelDireito, "ENVIAR PROPOSTA", corPainel2, () => Notificar("Diplomacia", "Proposta diplomática enviada.")).GetComponent<LayoutElement>().preferredHeight = 40;
-        CriarBotaoBloco(painelDireito, "DECLARAR CRISE", new Color(0.260f, 0.070f, 0.055f, 1f), () => Notificar("Crise", "Crise diplomática registrada.")).GetComponent<LayoutElement>().preferredHeight = 40;
-    }
-
-    private void PainelNovaSancao()
-    {
-        CriarTituloSecao("NOVA SANÇÃO", painelDireito);
-        CriarDescricaoNoPainel("A ficha lateral não ocupa mais o centro. As ações ficam presas nesta coluna fixa.");
-        CriarTituloSecao("PAÍS ALVO", painelDireito);
-        foreach (PaisGoverno p in paises.Where(x => x.id != paisJogadorId).Take(4))
-        {
-            CriarBotaoBloco(painelDireito, p.nome, p.id == paisSelecionadoId ? corAbaAtiva : corPainel2, () =>
-            {
-                paisSelecionadoId = p.id;
-                AtualizarInterfaceCompleta();
-            }).GetComponent<LayoutElement>().preferredHeight = 38;
-        }
-
-        CriarTituloSecao("TIPO", painelDireito);
-        CriarCheckSancao("🌾", "Embargo de Comida", "Reduz produção e estabilidade");
-        CriarCheckSancao("💧", "Embargo de Petróleo", "Afeta veículos e indústria");
-        CriarCheckSancao("⚛", "Bloqueio Tecnológico", "Trava pesquisas avançadas");
-        CriarCheckSancao("⌖", "Restrição Comercial", "Corta rotas comerciais");
-
-        CriarTituloSecao("DURAÇÃO", painelDireito);
-        GameObject dur = CriarLinha(painelDireito, 34, 6);
-        CriarBotaoBloco(dur.transform, "1 Mês", corPainel2, null);
-        CriarBotaoBloco(dur.transform, "3 Meses", corPainel2, null);
-        CriarBotaoBloco(dur.transform, "6 Meses", corAbaAtiva, null);
-        CriarBotaoBloco(dur.transform, "1 Ano", corPainel2, null);
-        CriarBotaoBloco(painelDireito, "APLICAR SANÇÃO", new Color(0.34f, 0.100f, 0.080f, 1f), () => Notificar("Sanção", "Sanção aplicada contra " + NomePais(paisSelecionadoId) + ".")).GetComponent<LayoutElement>().preferredHeight = 42;
-    }
-
-    private void PainelAliancas()
-    {
-        CriarTituloSecao("CONSELHO DE ALIANÇAS", painelDireito);
-        CriarInfoCard("Tratado atual", "Ordem Atlas", corDestaque);
-        CriarInfoCard("Confiança do bloco", "82%", corVerde);
-        CriarInfoCard("Operações conjuntas", "3 ativas", corAmarelo);
-        CriarTituloSecao("PEDIDOS PENDENTES", painelDireito);
-        CriarLinhaInfo("Federação Alvorada", "Entrada no bloco", corDestaque);
-        CriarLinhaInfo("República Boreal", "Apoio naval", corVerde);
-        CriarBotaoBloco(painelDireito, "ABRIR CONSELHO", corAzulBotao, () => Notificar("Alianças", "Conselho aberto.")).GetComponent<LayoutElement>().preferredHeight = 42;
-    }
-
-    private void PainelEconomia()
-    {
-        CriarTituloSecao("DETALHES ECONÔMICOS", painelDireito);
-        CriarLinhaInfo("Receita por turno", "+$7.250", corVerde);
-        CriarLinhaInfo("Gastos por turno", "-$4.800", corVermelho);
-        CriarLinhaInfo("Saldo líquido", "+$2.450", corVerde);
-        CriarLinhaInfo("Dívida nacional", "$0", corVerde);
-        CriarTituloSecao("POLÍTICAS FISCAIS", painelDireito);
-        CriarCheckSancao("📈", "Incentivo à indústria", "+10% produção industrial");
-        CriarCheckSancao("🏦", "Controle de inflação", "Reduz instabilidade");
-        CriarCheckSancao("🚚", "Subsídio logístico", "Melhora mercado global");
-        CriarBotaoBloco(painelDireito, "GERENCIAR ECONOMIA", corAzulBotao, null).GetComponent<LayoutElement>().preferredHeight = 42;
-    }
-
-    private void PainelMercado()
-    {
-        CriarTituloSecao("RESUMO DO MERCADO", painelDireito);
-        GameObject graf = CriarCardBase(painelDireito, 118, corCard);
-        CriarTextoLivre(graf.transform, "╱╲╱╲╲╱╲╱\nComida  Petróleo  Aço\nArmamentos  Urânio", 13, corDestaque, TextAnchor.MiddleCenter, FontStyle.Bold);
-        CriarLinhaInfo("Tendência geral", "Volátil", corAmarelo);
-        CriarLinhaInfo("Melhor compra", "Aço", corVerde);
-        CriarLinhaInfo("Maior risco", "Petróleo", corVermelho);
-        CriarBotaoBloco(painelDireito, "CRIAR ORDEM DE COMPRA", corAzulBotao, null).GetComponent<LayoutElement>().preferredHeight = 42;
-    }
-
-    private void PainelInterior()
-    {
-        CriarTituloSecao("PLANEJAMENTO INTERNO", painelDireito);
-        CriarInfoCard("Moradias", "4 / 10", corDestaque);
-        CriarInfoCard("Bem-estar", "68%", corVerde);
-        CriarInfoCard("Estabilidade", "62%", corVerde);
-        CriarTituloSecao("PRIORIDADES", painelDireito);
-        CriarCheckSancao("⌂", "Habitação Popular", "+250 capacidade");
-        CriarCheckSancao("+", "Saúde Pública", "+8% bem-estar");
-        CriarCheckSancao("⚡", "Rede de Energia", "+10% indústria");
-        CriarBotaoBloco(painelDireito, "INVESTIR NO INTERIOR", corAzulBotao, null).GetComponent<LayoutElement>().preferredHeight = 42;
-    }
-
-    private void PainelDefesa()
-    {
-        CriarTituloSecao("COMANDO DE DEFESA", painelDireito);
-        CriarInfoCard("Prontidão", "78%", corVerde);
-        CriarInfoCard("Ameaça aérea", "Alta", corVermelho);
-        CriarInfoCard("Ameaça naval", "Moderada", corAmarelo);
-        CriarTituloSecao("ORDENS", painelDireito);
-        CriarCheckSancao("✈", "Alerta aéreo", "Caças em prontidão");
-        CriarCheckSancao("▰", "Patrulha naval", "Rotas costeiras");
-        CriarCheckSancao("⌖", "Defesa antiaérea", "Radares ativos");
-        CriarBotaoBloco(painelDireito, "ABRIR COMANDO MILITAR", corAzulBotao, null).GetComponent<LayoutElement>().preferredHeight = 42;
-    }
-
-    private void PainelCiencia()
-    {
-        CriarTituloSecao("PROJETO SELECIONADO", painelDireito);
-        CriarInfoCard("Mísseis Hipersônicos", "48%", corRoxo);
-        CriarDescricaoNoPainel("Desbloqueia armas de alta velocidade para ataques estratégicos e defesa avançada.");
-        CriarLinhaInfo("Categoria", "Defesa", corTextoPrimario);
-        CriarLinhaInfo("Nível", "III - Avançado", corTextoPrimario);
-        CriarLinhaInfo("Custo", "1.800", corAmarelo);
-        CriarTituloSecao("REQUISITOS", painelDireito);
-        CriarLinhaInfo("Propulsão avançada", "✓", corVerde);
-        CriarLinhaInfo("Materiais compostos II", "✓", corVerde);
-        CriarBotaoBloco(painelDireito, "VER ÁRVORE TECNOLÓGICA", corAzulBotao, null).GetComponent<LayoutElement>().preferredHeight = 42;
-    }
-
-    private void PainelTrabalho()
-    {
-        CriarTituloSecao("POLÍTICAS TRABALHISTAS", painelDireito);
-        CriarCheckSancao("♟", "Geração de Emprego", "+5% empregos");
-        CriarCheckSancao("🌿", "Indústria Nacional", "+10% produtividade");
-        CriarCheckSancao("♟", "Redução de Jornada", "+8% satisfação");
-        CriarCheckSancao("🛡", "Salário Mínimo", "+8% estabilidade");
-        CriarBotaoBloco(painelDireito, "GERENCIAR POLÍTICAS", corAzulBotao, null).GetComponent<LayoutElement>().preferredHeight = 42;
-        CriarTituloSecao("ALERTAS", painelDireito);
-        CriarLinhaInfo("Desemprego acima do ideal", "6.8%", corAmarelo);
-        CriarLinhaInfo("Produtividade agrícola baixa", "1.10", corAmarelo);
-        CriarLinhaInfo("Satisfação em queda", "-2%", corVermelho);
-    }
-
-    private void AtualizarRodape()
-    {
-        LimparFilhos(rodapeEsquerdo);
-        LimparFilhos(rodapeMeio);
-        LimparFilhos(rodapeDireito);
-
-        CriarTituloSecao("NOTIFICAÇÕES E EVENTOS", rodapeEsquerdo);
-        if (notificacoes.Count == 0)
-        {
-            CriarLinhaRodape(rodapeEsquerdo, "✓", "Sistema", "Nenhuma notificação crítica.", corVerde);
-        }
-        else
-        {
-            foreach (NotificacaoGoverno n in notificacoes.Take(2)) CriarLinhaRodape(rodapeEsquerdo, n.icone, n.titulo, n.mensagem, n.cor);
-        }
-        CriarLinhaRodape(rodapeEsquerdo, "◈", "Mercado", "Petróleo caiu 2.4% no último ciclo.", corAmarelo);
-
-        CriarTituloSecao("SITUAÇÃO GLOBAL", rodapeMeio);
-        CriarLinhaRodape(rodapeMeio, "△", "Defesa", "Atividade aérea hostil detectada.", corVermelho);
-        CriarLinhaRodape(rodapeMeio, "⚑", "Diplomacia", "Boreal reforçou pacto militar.", corDestaque);
-        CriarLinhaRodape(rodapeMeio, "▣", "Economia", "Indústria pesada acima de 80%.", corVerde);
-
-        CriarTituloSecao("AÇÕES RÁPIDAS", rodapeDireito);
-        CriarBotaoBloco(rodapeDireito, "ABRIR RELATÓRIO NACIONAL", corAzulBotao, () => Notificar("Relatório", "Relatório nacional aberto.")).GetComponent<LayoutElement>().preferredHeight = 32;
-        CriarBotaoBloco(rodapeDireito, "CONVOCAR CONSELHO", corPainel2, () => Notificar("Conselho", "Conselho governamental convocado.")).GetComponent<LayoutElement>().preferredHeight = 32;
-        CriarBotaoBloco(rodapeDireito, "EMITIR ALERTA GLOBAL", new Color(0.270f, 0.070f, 0.055f, 1f), () => Notificar("Alerta", "Alerta global emitido.")).GetComponent<LayoutElement>().preferredHeight = 32;
-    }
-
-    private void AtualizarDica()
-    {
-        LimparFilhos(barraDica);
-        string dicaEmoji = mostrarAvisoEmojiNoRodape ? "  •  F9 testa emojis se o GerenciadorEmojis estiver na cena" : "";
-        CriarTextoLayout(barraDica, "ATALHO: X abre/fecha  •  Layout 16:9  •  Ficha fixa na direita  •  Centro e ficha com scroll" + dicaEmoji, 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Bold, alturaDica);
-    }
-
-    private void CriarTituloSecao(string titulo, Transform parent)
-    {
-        GameObject box = CriarUIObjeto("Titulo_" + titulo, parent);
-        LayoutElement le = box.AddComponent<LayoutElement>();
-        le.preferredHeight = 24f;
-        le.minHeight = 24f;
-
-        HorizontalLayoutGroup h = box.AddComponent<HorizontalLayoutGroup>();
-        h.spacing = 7;
-        h.childControlWidth = true;
-        h.childControlHeight = true;
-        h.childForceExpandWidth = false;
-        h.childAlignment = TextAnchor.MiddleLeft;
-
-        GameObject linha = CriarUIObjeto("LinhaFina", box.transform);
-        LayoutElement linhaLe = linha.AddComponent<LayoutElement>();
-        linhaLe.preferredWidth = 3f;
-        linhaLe.minWidth = 3f;
-        linhaLe.flexibleWidth = 0f;
-        Image img = linha.AddComponent<Image>();
-        img.color = new Color(corDestaque.r, corDestaque.g, corDestaque.b, 0.88f);
-
-        Text tituloTxt = CriarTextoLayout(box.transform, titulo, 12, corTextoPrimario, TextAnchor.MiddleLeft, FontStyle.Bold, 24);
-        tituloTxt.GetComponent<LayoutElement>().flexibleWidth = 1f;
-    }
-
-    private void CriarDescricao(string texto)
-    {
-        CriarDescricaoNo(conteudoCentral, texto);
-    }
-
-    private void CriarDescricaoNoPainel(string texto)
-    {
-        CriarDescricaoNo(painelDireito, texto);
-    }
-
-    private void CriarDescricaoNo(Transform parent, string texto)
-    {
-        GameObject card = CriarCardBase(parent, 54, new Color(0.020f, 0.060f, 0.078f, 0.82f));
-        CriarTextoLivre(card.transform, texto, 12, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 12, 8, 12, 8);
-    }
-
-    private GameObject CriarLinha(Transform parent, float altura, float spacing)
-    {
-        GameObject row = CriarUIObjeto("Linha", parent);
-        LayoutElement le = row.AddComponent<LayoutElement>();
-        le.preferredHeight = altura;
-        le.minHeight = altura;
-        HorizontalLayoutGroup h = row.AddComponent<HorizontalLayoutGroup>();
-        h.spacing = spacing;
-        h.childControlWidth = true;
-        h.childControlHeight = true;
-        h.childForceExpandWidth = true;
-        h.childForceExpandHeight = true;
-        return row;
-    }
-
-    private void CriarCardBrasao(Transform parent, string titulo, string icone)
-    {
-        GameObject card = CriarCardBase(parent, 0, new Color(0.020f, 0.092f, 0.130f, 0.96f));
-        card.GetComponent<LayoutElement>().flexibleWidth = 1.2f;
-        AddVertical(card, 10, 10, 8);
-        CriarTextoLayout(card.transform, icone, 30, corAmarelo, TextAnchor.MiddleCenter, FontStyle.Bold, 38);
-        CriarTextoLayout(card.transform, titulo, 15, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold, 24);
-        CriarTextoLayout(card.transform, "Governo nacional", 10, corTextoSecundario, TextAnchor.MiddleCenter, FontStyle.Normal, 18);
-    }
-
-    private void CriarMetricCard(Transform parent, string icone, string titulo, string valor, string subtitulo, Color cor, float progresso)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(card, 9, 8, 7);
-        CriarTextoLayout(card.transform, icone, 22, cor, TextAnchor.MiddleLeft, FontStyle.Bold, 24);
-        CriarTextoLayout(card.transform, titulo, 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Bold, 18);
-        CriarTextoLayout(card.transform, valor, 19, corTextoPrimario, TextAnchor.MiddleLeft, FontStyle.Bold, 28);
-        CriarTextoLayout(card.transform, subtitulo, 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 18);
-        CriarBarraProgresso(card.transform, progresso, cor, 6);
-    }
-
-    private void CriarMiniStatus(Transform parent, string icone, string titulo, string valor, Color cor)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        HorizontalLayoutGroup h = card.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(10, 10, 6, 6);
-        h.spacing = 8;
-        CriarTextoLayout(card.transform, icone, 21, cor, TextAnchor.MiddleCenter, FontStyle.Bold, 62).GetComponent<LayoutElement>().preferredWidth = 30;
-        GameObject tx = CriarUIObjeto("Textos", card.transform);
-        tx.AddComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(tx, 0, 0, 0);
-        CriarTextoLayout(tx.transform, titulo, 9, corTextoSecundario, TextAnchor.LowerLeft, FontStyle.Bold, 24);
-        CriarTextoLayout(tx.transform, valor, 14, cor, TextAnchor.UpperLeft, FontStyle.Bold, 26);
-    }
-
-    private void CriarResumoCard(Transform parent, string titulo, string valor, string subtitulo, Color cor)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(card, 10, 9, 7);
-        CriarTextoLayout(card.transform, titulo, 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Bold, 20);
-        CriarTextoLayout(card.transform, valor, 22, cor, TextAnchor.MiddleLeft, FontStyle.Bold, 34);
-        CriarTextoLayout(card.transform, subtitulo, 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 22);
-    }
-
-    private void CriarCardPaisDiplomacia(Transform parent, PaisGoverno pais, RelacaoDiplomatica rel)
-    {
-        GameObject card = CriarCardBase(parent, 86, pais.id == paisSelecionadoId ? new Color(0.030f, 0.115f, 0.155f, 0.96f) : corCard);
-        HorizontalLayoutGroup h = card.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(12, 12, 8, 8);
-        h.spacing = 10;
-
-        CriarTextoLayout(card.transform, "✦", 26, corAmarelo, TextAnchor.MiddleCenter, FontStyle.Bold, 70).GetComponent<LayoutElement>().preferredWidth = 50;
-
-        GameObject tx = CriarUIObjeto("Textos", card.transform);
-        tx.AddComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(tx, 0, 0, 0);
-        CriarTextoLayout(tx.transform, pais.nome.ToUpper(), 14, corTextoPrimario, TextAnchor.LowerLeft, FontStyle.Bold, 28);
-        CriarTextoLayout(tx.transform, NomeBloco(pais.bloco) + "  •  " + NomeStatus(pais.status), 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 22);
-        int valor = rel != null ? rel.valor : 0;
-        CriarTextoLayout(tx.transform, "Relação: " + (valor > 0 ? "+" : "") + valor + "  •  " + (rel != null ? NomeEstadoRelacao(rel.estado) : "Neutro"), 11, CorRelacao(valor), TextAnchor.UpperLeft, FontStyle.Bold, 24);
-
-        GameObject areaBtn = CriarUIObjeto("Acoes", card.transform);
-        areaBtn.GetComponent<RectTransform>();
-        areaBtn.AddComponent<LayoutElement>().preferredWidth = 120;
-        AddVertical(areaBtn, 0, 0, 0);
-        CriarBotaoBloco(areaBtn.transform, "SELECIONAR", pais.id == paisSelecionadoId ? corAbaAtiva : corAzulBotao, () =>
-        {
-            paisSelecionadoId = pais.id;
-            AtualizarInterfaceCompleta();
-        }).GetComponent<LayoutElement>().preferredHeight = 36;
-    }
-
-    private void CriarAcaoCard(Transform parent, string icone, string titulo, string custo, Color cor)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(card, 10, 8, 8);
-        CriarTextoLayout(card.transform, icone, 22, cor, TextAnchor.MiddleCenter, FontStyle.Bold, 28);
-        CriarTextoLayout(card.transform, titulo, 11, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold, 30);
-        CriarTextoLayout(card.transform, custo, 12, cor, TextAnchor.MiddleCenter, FontStyle.Bold, 22);
-    }
-
-    private void CriarTipoSancao(Transform parent, string icone, string titulo)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(card, 6, 6, 4);
-        CriarTextoLayout(card.transform, icone, 22, corAmarelo, TextAnchor.MiddleCenter, FontStyle.Bold, 28);
-        CriarTextoLayout(card.transform, titulo, 10, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold, 42);
-    }
-
-    private void CriarBudgetCard(Transform parent, string titulo, string percentual, string valor, Color cor)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(card, 8, 8, 8);
-        CriarTextoLayout(card.transform, titulo, 11, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold, 24);
-        CriarTextoLayout(card.transform, percentual, 22, cor, TextAnchor.MiddleCenter, FontStyle.Bold, 34);
-        CriarBarraProgresso(card.transform, Mathf.Clamp01(float.Parse(percentual.Replace("%", "")) / 100f), cor, 8);
-        CriarTextoLayout(card.transform, valor, 12, corTextoSecundario, TextAnchor.MiddleCenter, FontStyle.Bold, 24);
-    }
-
-    private void CriarMercadoRecurso(Transform parent, string icone, string nome, string estoque, string preco, string variacao, Color cor)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(card, 9, 8, 7);
-        CriarTextoLayout(card.transform, icone, 24, corAmarelo, TextAnchor.MiddleCenter, FontStyle.Bold, 30);
-        CriarTextoLayout(card.transform, nome, 12, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold, 22);
-        CriarTextoLayout(card.transform, estoque, 16, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold, 26);
-        CriarTextoLayout(card.transform, preco, 11, corTextoSecundario, TextAnchor.MiddleCenter, FontStyle.Normal, 20);
-        CriarTextoLayout(card.transform, variacao, 12, cor, TextAnchor.MiddleCenter, FontStyle.Bold, 20);
-    }
-
-    private void CriarInfraCard(Transform parent, string icone, string nome, string nivel, string desc, string custo)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(card, 8, 8, 7);
-        CriarTextoLayout(card.transform, icone, 22, corDestaque, TextAnchor.MiddleCenter, FontStyle.Bold, 28);
-        CriarTextoLayout(card.transform, nome, 12, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold, 24);
-        CriarTextoLayout(card.transform, nivel, 16, corAmarelo, TextAnchor.MiddleCenter, FontStyle.Bold, 28);
-        CriarTextoLayout(card.transform, desc, 9, corTextoSecundario, TextAnchor.MiddleCenter, FontStyle.Normal, 24);
-        CriarTextoLayout(card.transform, custo, 11, corVerde, TextAnchor.MiddleCenter, FontStyle.Bold, 20);
-    }
-
-    private void CriarForcaCard(Transform parent, string icone, string nome, string total, string[] linhas, float prontidao)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(card, 9, 8, 7);
-        CriarTextoLayout(card.transform, icone + "  " + nome, 13, corTextoPrimario, TextAnchor.MiddleLeft, FontStyle.Bold, 24);
-        CriarTextoLayout(card.transform, total + " unidades", 20, corDestaque, TextAnchor.MiddleLeft, FontStyle.Bold, 28);
-        foreach (string s in linhas) CriarTextoLayout(card.transform, "• " + s, 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 18);
-        CriarBarraProgresso(card.transform, prontidao, prontidao > 0.7f ? corVerde : corAmarelo, 7);
-    }
-
-    private void CriarLinhaPesquisa(Transform parent, string projeto, string categoria, float progresso, string tempo)
-    {
-        GameObject row = CriarLinhaTabelaBase(parent, 40);
-        CriarCelula(row.transform, projeto, corTextoPrimario, 1.8f, FontStyle.Bold);
-        CriarCelula(row.transform, categoria, corRoxo, 1.0f, FontStyle.Bold);
-        GameObject cel = CriarUIObjeto("CelulaProgresso", row.transform);
-        cel.AddComponent<LayoutElement>().flexibleWidth = 1.2f;
-        AddVertical(cel, 8, 8, 0);
-        CriarBarraProgresso(cel.transform, progresso, corDestaque, 8);
-        CriarCelula(row.transform, tempo, corAmarelo, 1.0f, FontStyle.Normal);
-        CriarCelula(row.transform, "Detalhes", corDestaque, 0.9f, FontStyle.Bold);
-    }
-
-    private void CriarGraficoDonutFake(Transform parent)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 0.9f;
-        CriarTextoLivre(card.transform, "      ████\n   ██      ██\n ██   46%   ██\n   ██      ██\n      ████\n\nINDÚSTRIA", 16, corDestaque, TextAnchor.MiddleCenter, FontStyle.Bold);
-    }
-
-    private void CriarSetorResumo(Transform parent)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1.3f;
-        AddVertical(card, 12, 10, 9);
-        CriarTextoLayout(card.transform, "SETORES", 13, corTextoPrimario, TextAnchor.MiddleLeft, FontStyle.Bold, 26);
-        CriarLinhaInfoNo(card.transform, "Indústria", "46%", corDestaque);
-        CriarLinhaInfoNo(card.transform, "Serviços", "28%", corVerde);
-        CriarLinhaInfoNo(card.transform, "Agricultura", "16%", corAmarelo);
-        CriarLinhaInfoNo(card.transform, "Ciência", "10%", corRoxo);
-    }
-
-    private void CriarFormacaoCard(Transform parent, string icone, string nome, string formando, string tempo, float progresso)
-    {
-        GameObject card = CriarCardBase(parent, 0, corCard);
-        card.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(card, 8, 8, 7);
-        CriarTextoLayout(card.transform, icone, 20, corAmarelo, TextAnchor.MiddleCenter, FontStyle.Bold, 24);
-        CriarTextoLayout(card.transform, nome, 11, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold, 24);
-        CriarTextoLayout(card.transform, formando, 10, corTextoSecundario, TextAnchor.MiddleCenter, FontStyle.Normal, 18);
-        CriarTextoLayout(card.transform, tempo, 10, corTextoSecundario, TextAnchor.MiddleCenter, FontStyle.Normal, 18);
-        CriarBarraProgresso(card.transform, progresso, corVerde, 6);
-    }
-
-    private GameObject CriarTabela(Transform parent, string[] headers, float alturaLinha)
-    {
-        GameObject table = CriarCardBase(parent, 0, new Color(0.014f, 0.043f, 0.060f, 0.94f));
-        VerticalLayoutGroup v = table.AddComponent<VerticalLayoutGroup>();
-        v.padding = new RectOffset(0, 0, 0, 0);
-        v.spacing = 1;
-        table.GetComponent<LayoutElement>().minHeight = alturaLinha * 2f;
-        table.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        GameObject head = CriarLinhaTabelaBase(table.transform, 34);
-        head.GetComponent<Image>().color = new Color(0.000f, 0.255f, 0.390f, 0.96f);
-        foreach (string h in headers) CriarCelula(head.transform, h, Color.white, 1f, FontStyle.Bold);
-        return table;
-    }
-
-    private void CriarLinhaTabela(Transform parent, string[] valores, Color[] cores)
-    {
-        GameObject row = CriarLinhaTabelaBase(parent, 40);
-        for (int i = 0; i < valores.Length; i++)
-        {
-            CriarCelula(row.transform, valores[i], i < cores.Length ? cores[i] : corTextoPrimario, 1f, i == 0 ? FontStyle.Bold : FontStyle.Normal);
-        }
-    }
-
-    private GameObject CriarLinhaTabelaBase(Transform parent, float altura)
-    {
-        GameObject row = CriarUIObjeto("LinhaTabela", parent);
-        LayoutElement le = row.AddComponent<LayoutElement>();
-        le.preferredHeight = altura;
-        le.minHeight = altura;
-        Image img = row.AddComponent<Image>();
-        img.color = new Color(0.024f, 0.073f, 0.095f, 0.82f);
-        HorizontalLayoutGroup h = row.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(8, 8, 0, 0);
-        h.spacing = 4;
-        h.childControlWidth = true;
-        h.childControlHeight = true;
-        h.childForceExpandWidth = true;
-        return row;
-    }
-
-    private void CriarCelula(Transform parent, string texto, Color cor, float flex, FontStyle style)
-    {
-        Text t = CriarTextoLayout(parent, texto, 10, cor, TextAnchor.MiddleCenter, style, 40);
-        t.GetComponent<LayoutElement>().flexibleWidth = flex;
-    }
-
-    private void CriarLinhaInfo(string label, string valor, Color corValor)
-    {
-        CriarLinhaInfoNo(painelDireito, label, valor, corValor);
-    }
-
-    private void CriarLinhaInfoNo(Transform parent, string label, string valor, Color corValor)
-    {
-        GameObject row = CriarCardBase(parent, 32, new Color(0.018f, 0.054f, 0.072f, 0.82f));
-        HorizontalLayoutGroup h = row.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(10, 10, 0, 0);
-        h.spacing = 6;
-        Text a = CriarTextoLayout(row.transform, label, 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Bold, 32);
-        a.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        Text b = CriarTextoLayout(row.transform, valor, 11, corValor, TextAnchor.MiddleRight, FontStyle.Bold, 32);
-        b.GetComponent<LayoutElement>().flexibleWidth = 1f;
-    }
-
-    private void CriarInfoCard(string titulo, string valor, Color cor)
-    {
-        GameObject card = CriarCardBase(painelDireito, 58, corCard);
-        AddVertical(card, 10, 7, 7);
-        CriarTextoLayout(card.transform, titulo.ToUpper(), 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Bold, 18);
-        CriarTextoLayout(card.transform, valor, 18, cor, TextAnchor.MiddleLeft, FontStyle.Bold, 28);
-    }
-
-    private void CriarCheckSancao(string icone, string titulo, string desc)
-    {
-        GameObject card = CriarCardBase(painelDireito, 56, corCard);
-        HorizontalLayoutGroup h = card.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(10, 10, 6, 6);
-        h.spacing = 9;
-        CriarTextoLayout(card.transform, icone, 19, corAmarelo, TextAnchor.MiddleCenter, FontStyle.Bold, 44).GetComponent<LayoutElement>().preferredWidth = 32;
-        GameObject tx = CriarUIObjeto("Textos", card.transform);
-        tx.AddComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(tx, 0, 0, 0);
-        CriarTextoLayout(tx.transform, titulo, 11, corTextoPrimario, TextAnchor.LowerLeft, FontStyle.Bold, 24);
-        CriarTextoLayout(tx.transform, desc, 9, corTextoSecundario, TextAnchor.UpperLeft, FontStyle.Normal, 20);
-    }
-
-    private void CriarLinhaRodape(Transform parent, string icone, string titulo, string mensagem, Color cor)
-    {
-        GameObject row = CriarCardBase(parent, 36, new Color(0.018f, 0.055f, 0.072f, 0.80f));
-        HorizontalLayoutGroup h = row.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(8, 8, 3, 3);
-        h.spacing = 8;
-        CriarTextoLayout(row.transform, icone, 15, cor, TextAnchor.MiddleCenter, FontStyle.Bold, 32).GetComponent<LayoutElement>().preferredWidth = 26;
-        GameObject tx = CriarUIObjeto("Textos", row.transform);
-        tx.AddComponent<LayoutElement>().flexibleWidth = 1f;
-        AddVertical(tx, 0, 0, 0);
-        CriarTextoLayout(tx.transform, titulo, 10, cor, TextAnchor.LowerLeft, FontStyle.Bold, 17);
-        CriarTextoLayout(tx.transform, mensagem, 9, corTextoSecundario, TextAnchor.UpperLeft, FontStyle.Normal, 17);
-    }
-
-    private void CriarBarraProgresso(Transform parent, float valor, Color cor, float altura)
-    {
-        GameObject bg = CriarUIObjeto("BarraProgresso", parent);
-        LayoutElement le = bg.AddComponent<LayoutElement>();
-        le.preferredHeight = altura;
-        le.minHeight = altura;
-        Image bgImg = bg.AddComponent<Image>();
-        bgImg.color = new Color(0f, 0f, 0f, 0.28f);
-
-        GameObject fill = CriarUIObjeto("Fill", bg.transform);
-        RectTransform rt = fill.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0, 0);
-        rt.anchorMax = new Vector2(Mathf.Clamp01(valor), 1);
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
-        Image fImg = fill.AddComponent<Image>();
-        fImg.color = cor;
-        fImg.raycastTarget = false;
-    }
-
-    private GameObject CriarBotaoBloco(Transform parent, string texto, Color cor, Action onClick)
-    {
-        GameObject btn = CriarUIObjeto("Botao_" + texto, parent);
-        LayoutElement le = btn.AddComponent<LayoutElement>();
-        le.preferredHeight = 34f;
-        le.minHeight = 30f;
-        le.flexibleWidth = 1f;
-
-        Image img = btn.AddComponent<Image>();
-        img.color = cor;
-        AddOutline(btn, new Color(corLinha.r, corLinha.g, corLinha.b, 0.22f), 1f);
-
-        Button b = btn.AddComponent<Button>();
-        b.targetGraphic = img;
-        if (onClick != null) b.onClick.AddListener(() => onClick());
-
-        Text t = CriarTextoLivre(btn.transform, texto, 11, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold);
-        t.name = "TextoBotao";
-        return btn;
-    }
-
-    private Button CriarBotao(Transform parent, string texto, Color cor, Action onClick)
-    {
-        GameObject btn = CriarUIObjeto("Botao_" + texto, parent);
-        LayoutElement le = btn.AddComponent<LayoutElement>();
-        le.preferredHeight = 50f;
-        le.minHeight = 40f;
-        le.flexibleWidth = 0f;
-
-        Image img = btn.AddComponent<Image>();
-        img.color = cor;
-        AddOutline(btn, new Color(1f, 1f, 1f, 0.12f), 1f);
-
-        Button b = btn.AddComponent<Button>();
-        b.targetGraphic = img;
-        ColorBlock cb = b.colors;
-        cb.normalColor = cor;
-        cb.highlightedColor = Color.Lerp(cor, Color.white, 0.18f);
-        cb.pressedColor = Color.Lerp(cor, Color.black, 0.24f);
-        cb.selectedColor = cb.highlightedColor;
-        b.colors = cb;
-        if (onClick != null) b.onClick.AddListener(() => onClick());
-
-        CriarTextoLivre(btn.transform, texto, 18, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-        return b;
-    }
-
-    private GameObject CriarCardBase(Transform parent, float altura, Color cor)
-    {
-        GameObject go = CriarUIObjeto("Card", parent);
+        GameObject go = CreateUIObject(name, parent);
         LayoutElement le = go.AddComponent<LayoutElement>();
-        if (altura > 0)
+        if (height > 0f)
         {
-            le.preferredHeight = altura;
-            le.minHeight = altura;
+            le.preferredHeight = height;
+            le.minHeight = Mathf.Min(height, 34f);
         }
         else
         {
             le.flexibleHeight = 1f;
         }
-        le.flexibleWidth = 1f;
 
-        Image img = go.AddComponent<Image>();
-        img.color = cor;
-        AddOutline(go, new Color(corLinha.r, corLinha.g, corLinha.b, 0.14f), 1f);
+        Image image = go.AddComponent<Image>();
+        image.color = color;
         return go;
     }
 
-    private Text CriarTextoLayout(Transform parent, string texto, int tamanho, Color cor, TextAnchor anchor, FontStyle style, float altura)
+    private GameObject CreateRow(Transform parent, string name, float height)
     {
-        GameObject go = CriarUIObjeto("Texto", parent);
+        return CreatePanel(name, parent, height, corCard);
+    }
+
+    private HorizontalLayoutGroup SetupRow(GameObject row)
+    {
+        HorizontalLayoutGroup h = row.AddComponent<HorizontalLayoutGroup>();
+        h.padding = new RectOffset(9, 9, 4, 4);
+        h.spacing = 7;
+        h.childControlHeight = true;
+        h.childControlWidth = true;
+        h.childForceExpandWidth = false;
+        return h;
+    }
+
+    private void CreateSectionTitle(Transform parent, string title)
+    {
+        Text t = CreateLayoutText(parent, title.ToUpperInvariant(), 16, corTextoPrimario, TextAnchor.MiddleLeft, FontStyle.Bold, 28f);
+        t.GetComponent<LayoutElement>().flexibleWidth = 1f;
+    }
+
+    private void CreateDescription(Transform parent, string text)
+    {
+        Text t = CreateLayoutText(parent, text, 11, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 34f);
+        t.GetComponent<LayoutElement>().flexibleWidth = 1f;
+    }
+
+    private Text CreateInfoBlock(Transform parent, string text)
+    {
+        GameObject box = CreatePanel("Info", parent, 0f, corCard);
+        box.GetComponent<LayoutElement>().minHeight = 96f;
+        Text t = CreateFreeText(box.transform, text, 12, corTextoSecundario, TextAnchor.UpperLeft, FontStyle.Normal, 10, 8, 10, 8);
+        return t;
+    }
+
+    private void CreateHeaderRow(Transform parent, string[] labels, float[] widths)
+    {
+        GameObject row = CreatePanel("HeaderRow", parent, 28f, new Color(0.026f, 0.034f, 0.042f, 0.98f));
+        HorizontalLayoutGroup h = SetupRow(row);
+        h.padding = new RectOffset(9, 9, 2, 2);
+        for (int i = 0; i < labels.Length; i++)
+        {
+            float flex = i < widths.Length ? widths[i] : 1f;
+            Text text = CreateFlexText(row.transform, labels[i], 9, corTextoApagado, flex, TextAnchor.MiddleLeft);
+            text.fontStyle = FontStyle.Bold;
+        }
+    }
+
+    private Button CreateActionButton(Transform parent, string label, Color color, Action onClick)
+    {
+        Button button = CreateButton(parent, label, color, onClick);
+        LayoutElement le = button.GetComponent<LayoutElement>();
+        le.preferredHeight = 40f;
+        le.minHeight = 36f;
+        le.flexibleWidth = 1f;
+        Transform t = button.transform.Find("Label");
+        if (t != null) t.GetComponent<Text>().fontSize = 12;
+        return button;
+    }
+
+    private Button CreateMiniActionButton(Transform parent, string label, Color color, Action onClick)
+    {
+        Button button = CreateButton(parent, label, color, onClick);
+        LayoutElement le = button.GetComponent<LayoutElement>();
+        le.preferredHeight = 32f;
+        le.minHeight = 30f;
+        Transform t = button.transform.Find("Label");
+        if (t != null) t.GetComponent<Text>().fontSize = 10;
+        return button;
+    }
+
+    private Button CreateSmallButton(Transform parent, string label, Color color, Action onClick)
+    {
+        Button button = CreateButton(parent, label, color, onClick);
+        LayoutElement le = button.GetComponent<LayoutElement>();
+        le.preferredHeight = 34f;
+        le.minHeight = 30f;
+        le.flexibleWidth = 1f;
+        Transform t = button.transform.Find("Label");
+        if (t != null) t.GetComponent<Text>().fontSize = 11;
+        return button;
+    }
+
+    private Button CreateButton(Transform parent, string label, Color color, Action onClick)
+    {
+        GameObject go = CreatePanel("Btn_" + label, parent, 38f, color);
+        Image img = go.GetComponent<Image>();
+        Button button = go.AddComponent<Button>();
+        button.targetGraphic = img;
+        ColorBlock cb = button.colors;
+        cb.normalColor = color;
+        cb.highlightedColor = Color.Lerp(color, Color.white, 0.14f);
+        cb.pressedColor = Color.Lerp(color, Color.black, 0.22f);
+        cb.selectedColor = cb.highlightedColor;
+        button.colors = cb;
+        if (onClick != null) button.onClick.AddListener(() => onClick());
+
+        Text text = CreateFreeText(go.transform, label, 11, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+        text.name = "Label";
+        text.resizeTextForBestFit = true;
+        text.resizeTextMinSize = 9;
+        text.resizeTextMaxSize = 12;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        return button;
+    }
+
+    private InputField CreateCompactInput(Transform parent, string placeholderText)
+    {
+        GameObject go = CreatePanel("Input_" + placeholderText, parent, 30f, new Color(0.018f, 0.024f, 0.030f, 0.98f));
+        Image img = go.GetComponent<Image>();
+        img.raycastTarget = true;
+
+        InputField input = go.AddComponent<InputField>();
+        input.lineType = InputField.LineType.SingleLine;
+        input.targetGraphic = img;
+
+        GameObject textObj = CreateUIObject("Text", go.transform);
+        Stretch(textObj.GetComponent<RectTransform>(), 8, 3, 8, 3);
+        Text text = textObj.AddComponent<Text>();
+        text.font = GetFont(placeholderText);
+        text.fontSize = 11;
+        text.color = corTextoPrimario;
+        text.alignment = TextAnchor.MiddleLeft;
+        text.supportRichText = false;
+        text.resizeTextForBestFit = true;
+        text.resizeTextMinSize = 10;
+        text.resizeTextMaxSize = 12;
+        text.raycastTarget = false;
+
+        GameObject placeholderObj = CreateUIObject("Placeholder", go.transform);
+        Stretch(placeholderObj.GetComponent<RectTransform>(), 8, 3, 8, 3);
+        Text placeholder = placeholderObj.AddComponent<Text>();
+        placeholder.text = placeholderText;
+        placeholder.font = GetFont(placeholderText);
+        placeholder.fontSize = 11;
+        placeholder.color = corTextoApagado;
+        placeholder.alignment = TextAnchor.MiddleLeft;
+        placeholder.resizeTextForBestFit = true;
+        placeholder.resizeTextMinSize = 10;
+        placeholder.resizeTextMaxSize = 12;
+        placeholder.raycastTarget = false;
+
+        input.textComponent = text;
+        input.placeholder = placeholder;
+        return input;
+    }
+
+    private Text CreateFlexText(Transform parent, string text, int size, Color color, float flex, TextAnchor anchor)
+    {
+        Text t = CreateLayoutText(parent, text, size, color, anchor, FontStyle.Normal, 30f);
+        t.GetComponent<LayoutElement>().flexibleWidth = flex;
+        return t;
+    }
+
+    private Text CreateLayoutText(Transform parent, string text, int size, Color color, TextAnchor anchor, FontStyle style, float height)
+    {
+        GameObject go = CreateUIObject("Text", parent);
         LayoutElement le = go.AddComponent<LayoutElement>();
-        le.preferredHeight = altura;
-        le.minHeight = Mathf.Min(altura, 18f);
-
+        le.preferredHeight = height;
+        le.minHeight = Mathf.Min(height, 14f);
         Text t = go.AddComponent<Text>();
-        t.text = texto;
-        t.font = ObterFonteParaTexto(texto);
-        t.fontSize = tamanho;
-        t.color = cor;
+        t.text = text;
+        t.font = GetFont(text);
+        t.fontSize = size;
+        t.color = color;
         t.alignment = anchor;
         t.fontStyle = style;
         t.horizontalOverflow = HorizontalWrapMode.Wrap;
         t.verticalOverflow = VerticalWrapMode.Truncate;
+        t.resizeTextForBestFit = true;
+        t.resizeTextMinSize = Mathf.Max(8, size - 2);
+        t.resizeTextMaxSize = size;
         t.raycastTarget = false;
         return t;
     }
 
-    private Text CriarTextoLivre(Transform parent, string texto, int tamanho, Color cor, TextAnchor anchor, FontStyle style)
+    private Text CreateFreeText(Transform parent, string text, int size, Color color, TextAnchor anchor, FontStyle style)
     {
-        return CriarTextoLivre(parent, texto, tamanho, cor, anchor, style, 0, 0, 0, 0);
+        return CreateFreeText(parent, text, size, color, anchor, style, 0, 0, 0, 0);
     }
 
-    private Text CriarTextoLivre(Transform parent, string texto, int tamanho, Color cor, TextAnchor anchor, FontStyle style, float left, float top, float right, float bottom)
+    private Text CreateFreeText(Transform parent, string text, int size, Color color, TextAnchor anchor, FontStyle style, float left, float top, float right, float bottom)
     {
-        GameObject go = CriarUIObjeto("TextoLivre", parent);
-        RectTransform rt = go.GetComponent<RectTransform>();
-        Esticar(rt, left, top, right, bottom);
-
+        GameObject go = CreateUIObject("TextFree", parent);
+        Stretch(go.GetComponent<RectTransform>(), left, top, right, bottom);
         Text t = go.AddComponent<Text>();
-        t.text = texto;
-        t.font = ObterFonteParaTexto(texto);
-        t.fontSize = tamanho;
-        t.color = cor;
+        t.text = text;
+        t.font = GetFont(text);
+        t.fontSize = size;
+        t.color = color;
         t.alignment = anchor;
         t.fontStyle = style;
         t.horizontalOverflow = HorizontalWrapMode.Wrap;
         t.verticalOverflow = VerticalWrapMode.Truncate;
+        t.resizeTextForBestFit = true;
+        t.resizeTextMinSize = Mathf.Max(8, size - 2);
+        t.resizeTextMaxSize = size;
         t.raycastTarget = false;
         return t;
     }
 
-    private void AddVertical(GameObject go, int left, int right, int topBottom)
+    private GameObject CreateUIObject(string name, Transform parent)
     {
-        AddVertical(go, left, right, topBottom, topBottom);
-    }
-
-    private void AddVertical(GameObject go, int left, int right, int top, int bottom)
-    {
-        VerticalLayoutGroup v = go.AddComponent<VerticalLayoutGroup>();
-        v.padding = new RectOffset(left, right, top, bottom);
-        v.spacing = 3;
-        v.childControlWidth = true;
-        v.childControlHeight = true;
-        v.childForceExpandWidth = true;
-        v.childForceExpandHeight = false;
-    }
-
-    private GameObject CriarUIObjeto(string nome, Transform parent)
-    {
-        GameObject go = new GameObject(nome, typeof(RectTransform));
+        GameObject go = new GameObject(name, typeof(RectTransform));
         go.transform.SetParent(parent, false);
         RectTransform rt = go.GetComponent<RectTransform>();
         rt.localScale = Vector3.one;
@@ -1853,7 +2448,7 @@ public class MenuGoverno : MonoBehaviour
         return go;
     }
 
-    private void Esticar(RectTransform rt, float left, float top, float right, float bottom)
+    private void Stretch(RectTransform rt, float left, float top, float right, float bottom)
     {
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
@@ -1861,163 +2456,499 @@ public class MenuGoverno : MonoBehaviour
         rt.offsetMax = new Vector2(-right, -top);
     }
 
-    private void AddOutline(GameObject go, Color cor, float distancia)
+    private void ClearChildren(Transform parent)
     {
-        Outline outline = go.GetComponent<Outline>();
-        if (outline == null) outline = go.AddComponent<Outline>();
-        outline.effectColor = cor;
-        outline.effectDistance = new Vector2(distancia, -distancia);
+        if (parent == null) return;
+        for (int i = parent.childCount - 1; i >= 0; i--)
+            Destroy(parent.GetChild(i).gameObject);
     }
 
-    private CanvasGroup GarantirCanvasGroup(GameObject go)
+    private void SaveScrollPositions()
     {
-        CanvasGroup cg = go.GetComponent<CanvasGroup>();
-        if (cg == null) cg = go.AddComponent<CanvasGroup>();
-        return cg;
+        string key = string.IsNullOrEmpty(activePageKey) ? CurrentPageKey() : activePageKey;
+        if (centerScroll != null) centerScrollByPage[key] = centerScroll.verticalNormalizedPosition;
+        if (rightScroll != null) rightScrollByPage[key] = rightScroll.verticalNormalizedPosition;
     }
 
-    private void LimparFilhos(Transform t)
+    private void RestoreScrollPositions()
     {
-        if (t == null) return;
-        for (int i = t.childCount - 1; i >= 0; i--) Destroy(t.GetChild(i).gameObject);
+        string key = CurrentPageKey();
+        float value;
+        Canvas.ForceUpdateCanvases();
+        if (centerScroll != null && centerScrollByPage.TryGetValue(key, out value))
+            centerScroll.verticalNormalizedPosition = value;
+        if (rightScroll != null && rightScrollByPage.TryGetValue(key, out value))
+            rightScroll.verticalNormalizedPosition = value;
     }
 
-    private void InicializarDadosDoMundo()
+    private void GarantirCanvasEEventSystem()
     {
-        if (paises.Count == 0)
+        if (canvasObj != null) return;
+
+        GameObject existing = GameObject.Find("Canvas_MenuGoverno_RTS");
+        if (existing != null)
         {
-            paises.Add(new PaisGoverno { id = 1, nome = "República Atlas", jogador = true, bloco = BlocoGlobal.OrdemAtlas, aliadoPrioritarioId = 2, rivalEstrategicoId = 3, status = StatusGeopolitico.Paz, dinheiro = 39534, comida = 500, petroleo = 3830, aco = 100, armamentos = 500, militaresAtivos = 3250 });
-            paises.Add(new PaisGoverno { id = 2, nome = "República Boreal", bloco = BlocoGlobal.OrdemAtlas, status = StatusGeopolitico.Paz, comida = 1800, petroleo = 2600, aco = 700, armamentos = 900, militaresAtivos = 2850 });
-            paises.Add(new PaisGoverno { id = 3, nome = "União Carmesim", bloco = BlocoGlobal.PactoSolaris, status = StatusGeopolitico.Crise, comida = 900, petroleo = 4800, aco = 1200, armamentos = 1600, militaresAtivos = 5100 });
-            paises.Add(new PaisGoverno { id = 4, nome = "Domínio Valerian", bloco = BlocoGlobal.LigaContinental, status = StatusGeopolitico.Sancoes, comida = 600, petroleo = 900, aco = 1800, armamentos = 2100, militaresAtivos = 3900 });
-            paises.Add(new PaisGoverno { id = 5, nome = "Federação Alvorada", bloco = BlocoGlobal.Nenhum, status = StatusGeopolitico.Tensao, comida = 3400, petroleo = 600, aco = 500, armamentos = 350, militaresAtivos = 1700 });
+            canvasObj = existing;
+            return;
         }
 
-        if (relacoes.Count == 0)
-        {
-            relacoes.Add(new RelacaoDiplomatica { paisA = 1, paisB = 2, valor = 75, estado = EstadoRelacao.AliancaEstrategica, status = StatusGeopolitico.Paz, tratadoComercial = true, pactoMilitar = true });
-            relacoes.Add(new RelacaoDiplomatica { paisA = 1, paisB = 3, valor = -82, estado = EstadoRelacao.CriseMilitar, status = StatusGeopolitico.Crise, tratadoComercial = false, pactoMilitar = false, sancoesAContraB = new List<TipoSancao> { TipoSancao.EmbargoPetroleo, TipoSancao.BloqueioTecnologico } });
-            relacoes.Add(new RelacaoDiplomatica { paisA = 1, paisB = 4, valor = -55, estado = EstadoRelacao.Hostilidade, status = StatusGeopolitico.Sancoes, tratadoComercial = false, pactoMilitar = false, sancoesAContraB = new List<TipoSancao> { TipoSancao.EmbargoArmamentos } });
-            relacoes.Add(new RelacaoDiplomatica { paisA = 1, paisB = 5, valor = 28, estado = EstadoRelacao.ParceiroComercial, status = StatusGeopolitico.Tensao, tratadoComercial = true, pactoMilitar = false });
-        }
+        canvasObj = new GameObject("Canvas_MenuGoverno_RTS");
+        Canvas canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 9200;
 
-        if (notificacoes.Count == 0)
+        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        canvasObj.AddComponent<GraphicRaycaster>();
+        DontDestroyOnLoad(canvasObj);
+
+        if (EventSystem.current == null && Achar<EventSystem>() == null)
         {
-            notificacoes.Add(new NotificacaoGoverno { icone = "⚑", titulo = "Diplomacia", mensagem = "Boreal aceitou cooperação naval.", hora = "Agora", cor = corDestaque });
-            notificacoes.Add(new NotificacaoGoverno { icone = "△", titulo = "Sanções", mensagem = "Carmesim sofre impacto econômico.", hora = "Agora", cor = corVermelho });
+            GameObject eventObj = new GameObject("EventSystem_Auto_Governo");
+            eventObj.AddComponent<EventSystem>();
+            eventObj.AddComponent<StandaloneInputModule>();
+            DontDestroyOnLoad(eventObj);
         }
     }
 
-    private void Notificar(string titulo, string mensagem)
+    private void EsconderHUD(bool esconder)
     {
+        CacheHUDComponents();
+
+        if (cachedMiniMapa != null)
+        {
+            Transform canvasMM = cachedMiniMapa.transform.root.Find("Canvas_MiniMapa");
+            if (canvasMM != null) canvasMM.gameObject.SetActive(!esconder);
+            cachedMiniMapa.gameObject.SetActive(!esconder);
+        }
+
+        if (cachedMenuComportamento != null)
+            SetHudComponentVisibility(cachedMenuComportamento, !esconder);
+
+        if (cachedMenuConstrucao != null)
+        {
+            if (esconder && MenuConstrucao.EstaAberto) cachedMenuConstrucao.AlternarMenu(false);
+            SetHudComponentVisibility(cachedMenuConstrucao, !esconder);
+        }
+    }
+
+    private void CacheHUDComponents()
+    {
+        if (hudCached) return;
+        cachedMiniMapa = Achar<MiniMapa>();
+        cachedMenuComportamento = AcharComponenteMesmoInativo<MenuComportamento>();
+        cachedMenuConstrucao = AcharComponenteMesmoInativo<MenuConstrucao>();
+        hudCached = true;
+    }
+
+    private void SetHudComponentVisibility(MonoBehaviour component, bool visible)
+    {
+        if (component == null) return;
+
+        MenuComportamento comportamento = component as MenuComportamento;
+        if (comportamento != null)
+        {
+            comportamento.DefinirVisibilidadeHud(visible);
+            return;
+        }
+
+        if (component.gameObject == gameObject || component.GetComponent<MenuGoverno>() != null || component.GetComponent<GerenteDeJogo>() != null)
+            component.enabled = visible;
+        else
+            component.gameObject.SetActive(visible);
+    }
+
+    private void Notificar(string title, string message)
+    {
+        if (string.IsNullOrEmpty(message)) message = "Acao executada.";
         notificacoes.Insert(0, new NotificacaoGoverno
         {
-            icone = "◈",
-            titulo = titulo,
-            mensagem = mensagem,
+            icone = "!",
+            titulo = title,
+            mensagem = message,
             hora = "Agora",
-            cor = corDestaque
+            cor = title == "Venda" || title == "Compra" || title == "Mercado" ? corVerde : corDestaque
         });
         while (notificacoes.Count > 8) notificacoes.RemoveAt(notificacoes.Count - 1);
-        AtualizarRodape();
+        RefreshFooter();
     }
 
-    private PaisGoverno ObterPais(int id) { return paises.FirstOrDefault(p => p.id == id); }
-    private RelacaoDiplomatica ObterRelacao(int a, int b) { return relacoes.FirstOrDefault(r => (r.paisA == a && r.paisB == b) || (r.paisA == b && r.paisB == a)); }
-    private string NomePais(int id) { PaisGoverno p = ObterPais(id); return p != null ? p.nome : "Nenhum"; }
-
-    private string NomeBloco(BlocoGlobal bloco)
+    private string CurrentPageKey()
     {
-        if (bloco == BlocoGlobal.OrdemAtlas) return "Ordem Atlas";
-        if (bloco == BlocoGlobal.PactoSolaris) return "Pacto Solaris";
-        if (bloco == BlocoGlobal.LigaContinental) return "Liga Continental";
-        return "Nenhum";
+        return categoriaAtual + ":" + subAbaAtualIndex;
     }
 
-    private string NomeStatus(StatusGeopolitico s)
+    private string[] GetSubTabs(CategoriaGoverno categoria)
     {
-        if (s == StatusGeopolitico.Paz) return "Paz";
-        if (s == StatusGeopolitico.Tensao) return "Tensão";
-        if (s == StatusGeopolitico.Crise) return "Crise";
-        if (s == StatusGeopolitico.Sancoes) return "Sanções";
-        if (s == StatusGeopolitico.ConflitoLimitado) return "Conflito Limitado";
-        if (s == StatusGeopolitico.GuerraAberta) return "Guerra Aberta";
-        return s.ToString();
+        switch (categoria)
+        {
+            case CategoriaGoverno.RelacoesExteriores: return SubRelacoes;
+            case CategoriaGoverno.Aliancas: return SubAliancas;
+            case CategoriaGoverno.Sancoes: return SubSancoes;
+            case CategoriaGoverno.Economia: return SubEconomia;
+            case CategoriaGoverno.MercadoGlobal: return SubMercado;
+            case CategoriaGoverno.Interior: return SubInterior;
+            case CategoriaGoverno.Defesa: return SubDefesa;
+            case CategoriaGoverno.Ciencia: return SubCiencia;
+            case CategoriaGoverno.Trabalho: return SubTrabalho;
+            default: return new[] { "Geral" };
+        }
     }
 
-    private string NomeEstadoRelacao(EstadoRelacao e)
+    private string GetShortCategoryName(CategoriaGoverno categoria)
     {
-        if (e == EstadoRelacao.AliancaEstrategica) return "Aliado Estratégico";
-        if (e == EstadoRelacao.ParceiroMilitar) return "Parceiro Militar";
-        if (e == EstadoRelacao.ParceiroComercial) return "Parceiro Comercial";
-        if (e == EstadoRelacao.CriseMilitar) return "Crise Militar";
-        return e.ToString();
+        switch (categoria)
+        {
+            case CategoriaGoverno.RelacoesExteriores: return "Relacoes";
+            case CategoriaGoverno.MercadoGlobal: return "Mercado";
+            default: return categoria.ToString();
+        }
     }
 
-    private string NomeAba(CategoriaGoverno cat)
+    private string GetCategoryTitle(CategoriaGoverno categoria)
     {
-        if (cat == CategoriaGoverno.RelacoesExteriores) return "Relações\nExteriores";
-        if (cat == CategoriaGoverno.Aliancas) return "Alianças";
-        if (cat == CategoriaGoverno.Sancoes) return "Sanções";
-        if (cat == CategoriaGoverno.Economia) return "Economia";
-        if (cat == CategoriaGoverno.MercadoGlobal) return "Mercado\nGlobal";
-        if (cat == CategoriaGoverno.Interior) return "Interior";
-        if (cat == CategoriaGoverno.Defesa) return "Defesa";
-        if (cat == CategoriaGoverno.Ciencia) return "Ciência";
-        if (cat == CategoriaGoverno.Trabalho) return "Trabalho";
-        return cat.ToString();
+        switch (categoria)
+        {
+            case CategoriaGoverno.RelacoesExteriores: return "Relacoes Exteriores";
+            case CategoriaGoverno.MercadoGlobal: return "Mercado Global";
+            default: return GetShortCategoryName(categoria);
+        }
     }
 
-    private string IconeAba(CategoriaGoverno cat)
+    private SistemaGovernoMundial Government()
     {
-        if (cat == CategoriaGoverno.RelacoesExteriores) return "🤝";
-        if (cat == CategoriaGoverno.Aliancas) return "⚑";
-        if (cat == CategoriaGoverno.Sancoes) return "⚖";
-        if (cat == CategoriaGoverno.Economia) return "▣";
-        if (cat == CategoriaGoverno.MercadoGlobal) return "⇄";
-        if (cat == CategoriaGoverno.Interior) return "⌂";
-        if (cat == CategoriaGoverno.Defesa) return "🛡";
-        if (cat == CategoriaGoverno.Ciencia) return "⚗";
-        if (cat == CategoriaGoverno.Trabalho) return "♟";
-        return "•";
+        SistemaGovernoMundial.GarantirInstancia();
+        return SistemaGovernoMundial.Instancia;
     }
 
-    private List<string> ObterSubAbas(CategoriaGoverno cat)
+    private SistemaMercadoGlobal Market()
     {
-        if (cat == CategoriaGoverno.RelacoesExteriores) return new List<string> { "Resumo", "Nações", "Tratados", "Crises" };
-        if (cat == CategoriaGoverno.Aliancas) return new List<string> { "Blocos", "Pactos", "Operações", "Pedidos" };
-        if (cat == CategoriaGoverno.Sancoes) return new List<string> { "Visão Geral", "Aplicadas", "Tipos", "Histórico" };
-        if (cat == CategoriaGoverno.Economia) return new List<string> { "Tesouro", "Orçamento", "Produção", "Impostos" };
-        if (cat == CategoriaGoverno.MercadoGlobal) return new List<string> { "Comprar", "Vender", "Preços", "Rotas" };
-        if (cat == CategoriaGoverno.Interior) return new List<string> { "População", "Infraestrutura", "Bem-estar", "Projetos" };
-        if (cat == CategoriaGoverno.Defesa) return new List<string> { "Comando", "Exército", "Marinha", "Força Aérea", "Alertas" };
-        if (cat == CategoriaGoverno.Ciencia) return new List<string> { "Projetos", "Tecnologias", "Laboratórios", "Fila" };
-        if (cat == CategoriaGoverno.Trabalho) return new List<string> { "Empregos", "Setores", "Formação", "Políticas" };
-        return new List<string> { "Geral" };
+        SistemaGovernoMundial.GarantirInstancia();
+        return SistemaMercadoGlobal.Instancia;
     }
 
-    private Color CorRelacao(int valor)
+    private void AplicarIdentidadeNacional()
     {
-        if (valor >= 55) return corVerde;
-        if (valor >= 15) return corDestaque;
-        if (valor > -20) return corAmarelo;
-        if (valor > -60) return corLaranja;
+        SistemaGovernoMundial gov = Government();
+        if (gov == null) return;
+
+        gov.AtualizarIdentidadeNacional(
+            paisJogadorId,
+            campoNomePais != null ? campoNomePais.text : string.Empty,
+            campoNomePresidente != null ? campoNomePresidente.text : string.Empty,
+            campoNomeMoeda != null ? campoNomeMoeda.text : string.Empty);
+
+        RefreshIdentityFields();
+        RefreshStaticNavigation();
+        RefreshDynamicData(true);
+        Notificar("Governo", "Identidade nacional atualizada.");
+    }
+
+    private void RefreshIdentityFields()
+    {
+        DadosPaisGoverno jogador = GetPlayerGov();
+        if (jogador == null) return;
+
+        if (campoNomePais != null && !campoNomePais.isFocused)
+            campoNomePais.text = jogador.nomePais ?? string.Empty;
+        if (campoNomePresidente != null && !campoNomePresidente.isFocused)
+            campoNomePresidente.text = jogador.nomePresidente ?? string.Empty;
+        if (campoNomeMoeda != null && !campoNomeMoeda.isFocused)
+            campoNomeMoeda.text = jogador.nomeMoeda ?? string.Empty;
+    }
+
+    private DadosPaisGoverno GetPlayerGov()
+    {
+        SistemaGovernoMundial gov = Government();
+        return gov != null ? gov.ObterPais(paisJogadorId) : null;
+    }
+
+    private string CountryName(int teamId)
+    {
+        SistemaGovernoMundial gov = Government();
+        return gov != null ? gov.NomePais(teamId) : "Pais " + teamId;
+    }
+
+    private DadosPaisGoverno ChooseMarketPartner(SistemaGovernoMundial gov, DadosItemMercado item, bool buyer)
+    {
+        if (gov == null || item == null) return null;
+        IEnumerable<DadosPaisGoverno> candidates = gov.Paises.Where(p => p != null && p.teamId != paisJogadorId);
+        if (buyer)
+        {
+            return candidates
+                .Where(p => p.saldo >= item.precoAtual * item.CalcularQuantidadePadrao())
+                .OrderByDescending(p => gov.ObterRelacao(paisJogadorId, p.teamId).valor)
+                .FirstOrDefault();
+        }
+
+        return candidates
+            .Where(p => gov.ObterEstoque(p.teamId, item.recurso) >= item.CalcularQuantidadePadrao())
+            .OrderByDescending(p => gov.ObterRelacao(paisJogadorId, p.teamId).valor)
+            .FirstOrDefault();
+    }
+
+    private int RealStock(string itemId)
+    {
+        GerenciadorRecursos gr = GerenciadorRecursos.Instancia;
+        if (gr == null) return 0;
+        if (itemId == "petroleo") return gr.petroleo;
+        if (itemId == "aco") return gr.aco;
+        if (itemId == "energia") return gr.energia;
+        if (itemId == "comida") return gr.comida;
+        return 0;
+    }
+
+    private bool AutoSellEnabled(string itemId)
+    {
+        SistemaMercadoGlobal m = Market();
+        if (m == null) return false;
+        if (itemId == "petroleo") return m.autoVenderPetroleo;
+        if (itemId == "aco") return m.autoVenderAco;
+        if (itemId == "energia") return m.autoVenderEnergia;
+        if (itemId == "comida") return m.autoVenderComida;
+        return false;
+    }
+
+    private int AutoSellAmount(string itemId)
+    {
+        SistemaMercadoGlobal m = Market();
+        if (m == null) return 0;
+        if (itemId == "petroleo") return m.autoVendaQuantidadePetroleo;
+        if (itemId == "aco") return m.autoVendaQuantidadeAco;
+        if (itemId == "energia") return m.autoVendaQuantidadeEnergia;
+        if (itemId == "comida") return m.autoVendaQuantidadeComida;
+        return 0;
+    }
+
+    private string DisplayItemName(string itemId)
+    {
+        if (itemId == "petroleo") return "PETROLEO";
+        if (itemId == "aco") return "ACO";
+        if (itemId == "energia") return "ENERGIA";
+        if (itemId == "comida") return "COMIDA";
+        DadosItemMercado item = Market()?.ObterItem(itemId);
+        return item != null ? item.nome.ToUpperInvariant() : itemId.ToUpperInvariant();
+    }
+
+    private void SetResource(string id, string value, string delta, Color deltaColor)
+    {
+        ResourceTopView view;
+        if (!resourceViews.TryGetValue(id, out view)) return;
+        view.Value.text = value;
+        view.Delta.text = delta;
+        view.Delta.color = deltaColor;
+        view.Delta.gameObject.SetActive(!string.IsNullOrEmpty(delta));
+    }
+
+    private string StatusGov(DadosPaisGoverno p)
+    {
+        if (p == null) return "Desconhecido";
+        if (p.emGuerra) return "Guerra";
+        if (p.sancionado) return "Sancoes";
+        if (p.estabilidade < 35f) return "Crise";
+        if (p.estabilidade < 55f) return "Tensao";
+        return "Paz";
+    }
+
+    private Color StatusColor(DadosPaisGoverno p)
+    {
+        if (p == null) return corTextoSecundario;
+        if (p.emGuerra || p.sancionado || p.estabilidade < 35f) return corVermelho;
+        if (p.estabilidade < 55f) return corAmarelo;
+        return corVerde;
+    }
+
+    private Color RelationColor(int value)
+    {
+        if (value >= 55) return corVerde;
+        if (value >= 10) return corDestaque;
+        if (value > -25) return corAmarelo;
+        if (value > -60) return corLaranja;
         return corVermelho;
     }
 
-    private Color CorStatus(StatusGeopolitico s)
+    private string MainDeficit(DadosPaisGoverno p)
     {
-        if (s == StatusGeopolitico.Paz) return corVerde;
-        if (s == StatusGeopolitico.Tensao) return corAmarelo;
-        if (s == StatusGeopolitico.Crise) return corLaranja;
-        if (s == StatusGeopolitico.Sancoes) return corVermelho;
-        if (s == StatusGeopolitico.ConflitoLimitado) return corVermelho;
-        if (s == StatusGeopolitico.GuerraAberta) return corVermelho;
-        return corTextoPrimario;
+        if (p == null) return "Nenhum";
+        if (p.deficitEnergia > 0.5f) return "Energia";
+        if (p.deficitComida > 0.5f) return "Comida";
+        if (p.deficitPetroleo > 0.5f) return "Petroleo";
+        return "Nenhum";
     }
 
-    private string FormatNumero(int n)
+    private string FormatNumber(int number)
     {
-        return n.ToString("N0").Replace(",", ".");
+        return number.ToString("N0").Replace(",", ".");
+    }
+
+    private string SignedRate(float value)
+    {
+        return (value >= 0f ? "+" : "") + Mathf.RoundToInt(value) + "/s";
+    }
+
+    private string SignedPercent(float value)
+    {
+        return (value >= 0f ? "+" : "") + value.ToString("0.0") + "%";
+    }
+
+    private Font GetFont(string text)
+    {
+        if (usarFonteEmoji && fonteEmoji != null && ContainsNonAscii(text)) return fonteEmoji;
+        if (fonteTexto != null) return fonteTexto;
+        if (fontePadraoCache == null)
+        {
+            fontePadraoCache = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (fontePadraoCache == null) fontePadraoCache = Font.CreateDynamicFontFromOSFont("Arial", 14);
+        }
+        return fontePadraoCache;
+    }
+
+    private bool ContainsNonAscii(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] > 255) return true;
+        }
+        return false;
+    }
+
+    private static T Achar<T>() where T : UnityEngine.Object
+    {
+#if UNITY_2023_1_OR_NEWER
+        return FindFirstObjectByType<T>();
+#else
+        return FindObjectOfType<T>();
+#endif
+    }
+
+    private static T AcharComponenteMesmoInativo<T>() where T : MonoBehaviour
+    {
+#if UNITY_2023_1_OR_NEWER
+        T ativo = FindFirstObjectByType<T>();
+        if (ativo != null) return ativo;
+        T[] encontrados = FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        return encontrados.FirstOrDefault();
+#else
+        return FindObjectOfType<T>(true);
+#endif
+    }
+
+    private class PageView
+    {
+        public string Key;
+        public GameObject Root;
+        public Action Refresh;
+    }
+
+    private class NavButtonView
+    {
+        public GameObject Root;
+        public Image Background;
+        public Image Accent;
+        public Text Text;
+    }
+
+    private class SubTabView
+    {
+        public GameObject Root;
+        public Image Background;
+        public Image Accent;
+        public Text Label;
+    }
+
+    private class ResourceTopView
+    {
+        public Text Value;
+        public Text Delta;
+    }
+
+    private class MarketBuyRow
+    {
+        public MenuGoverno Menu;
+        public GameObject Root;
+        public string ItemId;
+        public Text Name;
+        public Text Stock;
+        public Text Price;
+        public Text Partner;
+        public Button Action;
+
+        public void Refresh(DadosItemMercado item)
+        {
+            SistemaGovernoMundial gov = Menu.Government();
+            DadosPaisGoverno partner = Menu.ChooseMarketPartner(gov, item, false);
+            ItemId = item.id;
+            Name.text = item.nome.ToUpperInvariant();
+            Stock.text = Menu.FormatNumber(item.estoqueGlobal);
+            Price.text = "$" + Menu.FormatNumber(item.precoAtual);
+            Price.color = item.variacaoPercentual >= 0f ? Menu.corVerde : Menu.corVermelho;
+            Partner.text = partner != null ? partner.nomePais : "sem oferta";
+            Action.interactable = partner != null && item.estoqueGlobal > 0;
+        }
+    }
+
+    private class MarketSellRow
+    {
+        public MenuGoverno Menu;
+        public GameObject Root;
+        public string ItemId;
+        public Text Name;
+        public Text Stock;
+        public Text Price;
+        public Button Auto;
+        public Text AutoText;
+        public Button Sell50;
+        public Button Sell200;
+        public Button SellAll;
+
+        public void Refresh()
+        {
+            SistemaMercadoGlobal market = Menu.Market();
+            DadosItemMercado item = market != null ? market.ObterItem(ItemId) : null;
+            int stock = Menu.RealStock(ItemId);
+            bool auto = Menu.AutoSellEnabled(ItemId);
+            int autoAmount = Menu.AutoSellAmount(ItemId);
+
+            Name.text = Menu.DisplayItemName(ItemId);
+            Stock.text = Menu.FormatNumber(stock);
+            Price.text = item != null ? "$" + Menu.FormatNumber(item.precoAtual) : "$0";
+            AutoText.text = auto ? "Auto " + autoAmount : "Auto off";
+            Auto.GetComponent<Image>().color = auto ? new Color(0.070f, 0.290f, 0.130f, 1f) : Menu.corPainel2;
+            Sell50.interactable = stock >= 50;
+            Sell200.interactable = stock >= 200;
+            SellAll.interactable = stock > 0;
+        }
+    }
+
+    private class MarketPriceRow
+    {
+        public GameObject Root;
+        public Text Name;
+        public Text Price;
+        public Text Var;
+        public Text Offer;
+        public Text Demand;
+        public Text Stock;
+
+        public void Refresh(DadosItemMercado item)
+        {
+            Name.text = item.nome.ToUpperInvariant();
+            Price.text = "$" + item.precoAtual.ToString("N0").Replace(",", ".");
+            Var.text = (item.variacaoPercentual >= 0f ? "+" : "") + item.variacaoPercentual.ToString("0.0") + "%";
+            Var.color = item.variacaoPercentual >= 0f ? new Color(0.220f, 0.790f, 0.390f, 1f) : new Color(0.900f, 0.180f, 0.140f, 1f);
+            Offer.text = item.oferta.ToString("0");
+            Demand.text = item.demanda.ToString("0");
+            Stock.text = item.estoqueGlobal.ToString("N0").Replace(",", ".");
+        }
+    }
+
+    private class RouteRow
+    {
+        public GameObject Root;
+        public Text Text;
     }
 }

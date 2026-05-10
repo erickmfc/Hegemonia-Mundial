@@ -195,11 +195,6 @@ public static class AuditoriaTrilhaControleUnidades
             problemas += RegistrarProblema(assetPath, go, "Prefab mistura Helicoptero com controlador aereo de aviao/transporte.");
         }
 
-        if (temControleAviaoCaca && !temControleAviao)
-        {
-            problemas += RegistrarProblema(assetPath, go, "ControleAviaoCaca encontrado sem ControleAviao no mesmo objeto.");
-        }
-
         if (temC700 && !temControleAviao)
         {
             problemas += RegistrarProblema(assetPath, go, "C700TransporteAereo encontrado sem ControleAviao no mesmo objeto.");

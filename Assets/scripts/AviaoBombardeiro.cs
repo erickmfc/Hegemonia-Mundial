@@ -7,6 +7,7 @@ using System.Collections.Generic;
 /// Permite voar alto e soltar bombas/mísseis com precisão em três formas de ataque.
 /// </summary>
 [RequireComponent(typeof(ControleAviao))]
+[RequireComponent(typeof(SistemaDeDanos))]
 public class AviaoBombardeiro : MonoBehaviour
 {
     public enum ModoAtaque { AtaqueAoSolo, Patrulha, AtaqueEmMassa }
@@ -55,6 +56,7 @@ public class AviaoBombardeiro : MonoBehaviour
     // --- Internas ---
     private ControleAviao controleAviao;
     private IdentidadeUnidade meuID;
+    private SistemaDeDanos sistemaDanos;
     private bool emProcessoDeAtaque = false;
     private int indiceSaida = 0;
     
@@ -72,6 +74,19 @@ public class AviaoBombardeiro : MonoBehaviour
     {
         controleAviao = GetComponent<ControleAviao>();
         meuID = GetComponent<IdentidadeUnidade>();
+        sistemaDanos = GetComponent<SistemaDeDanos>();
+        if (sistemaDanos == null)
+        {
+            sistemaDanos = gameObject.AddComponent<SistemaDeDanos>();
+        }
+        if (sistemaDanos.vidaMaxima <= 0f)
+        {
+            sistemaDanos.vidaMaxima = 100f;
+        }
+        if (sistemaDanos.vidaAtual <= 0f)
+        {
+            sistemaDanos.vidaAtual = sistemaDanos.vidaMaxima;
+        }
 
         if (comportasDeBomba == null || comportasDeBomba.Length == 0)
         {
@@ -367,6 +382,12 @@ public class AviaoBombardeiro : MonoBehaviour
 
         yield return new WaitForSeconds(4f);
         emProcessoDeAtaque = false;
+
+        if (controleAviao != null && PertenceAIA())
+        {
+            controleAviao.ordemParaRetorno = true;
+            Debug.Log("[Bombardeiro] Rajada de patrulha concluida pela IA. Retornando para o aeroporto.");
+        }
     }
 
     /// <summary>
@@ -542,5 +563,15 @@ public class AviaoBombardeiro : MonoBehaviour
             Vector3 direcaoPrecisa = (pontoFinalExato - comporta.position).normalized;
             p.SetDirecao(direcaoPrecisa);
         }
+    }
+
+    private bool PertenceAIA()
+    {
+        if (meuID == null)
+        {
+            meuID = GetComponent<IdentidadeUnidade>();
+        }
+
+        return meuID != null && meuID.teamID > 1;
     }
 }

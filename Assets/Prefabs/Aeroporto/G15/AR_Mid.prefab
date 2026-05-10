@@ -299,4 +299,4 @@ MonoBehaviour:
   volumeSom: 1
   efeitoExplosaoPrefab: {fileID: 100002, guid: 6ecf76dc4f268d340b2666896a954bcc, type: 3}
   somExplosao: {fileID: 8300000, guid: 986d6b30567e30e428f3f21373fe45ca, type: 3}
-  tempoMaximoVida: 10
+  tempoMaximoVida: 15

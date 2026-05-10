@@ -56,6 +56,7 @@ public class Helicoptero : MonoBehaviour
     public float velocidadeDescidaVertical = 5f;
     public float alturaSubidaInicial = 10f;
     public float ajusteAlturaEstacionado = 0f;
+    [Range(0.12f, 0.55f)] public float reservaRetornoPercentual = 0.32f;
     [Tooltip("Distância horizontal em que o helicóptero começa a baixar de verdade para pouso.")]
     public float raioInicioDescida = 18f;
     
@@ -133,6 +134,7 @@ public class Helicoptero : MonoBehaviour
     // Cache de renderers: evita GetComponentsInChildren toda chamada de ObterAlturaEstacionamentoTotal
     private Renderer[] _renderersCache;
     private bool _renderersCacheValido = false;
+    private float _alturaEstacionamentoCache = -1f;
 
     void LogDebug(string msg) { if (debugLogs) Debug.Log(msg); }
     void OnEnable() { if(!todosHelicopteros.Contains(this)) todosHelicopteros.Add(this); }
@@ -209,6 +211,11 @@ public class Helicoptero : MonoBehaviour
         GarantirIdentificacaoUnica();
         ConfigurarEtiquetaFlutuante();
 
+        // Cacheia altura de estacionamento no Start (helicóptero plano) para evitar oscilação quando o navio balança
+        _renderersCache = GetComponentsInChildren<Renderer>(true);
+        _renderersCacheValido = true;
+        _alturaEstacionamentoCache = ObterAlturaEstacionamentoTotal();
+
         StartCoroutine(RadarDeAmeacas());
     }
 
@@ -216,6 +223,11 @@ public class Helicoptero : MonoBehaviour
     {
         if (timerRecargaFlares > 0) timerRecargaFlares -= Time.deltaTime;
         GestaoDeInput(); 
+        AvaliarRetornoSeguro();
+        if (estaVoando && !CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+        }
         if (estaVoando) ProcessarMovimento();
         ControlarMotorEHelices();
         VerificarInatividade();
@@ -639,6 +651,12 @@ public class Helicoptero : MonoBehaviour
 
     public float ObterAlturaEstacionamentoTotal()
     {
+        // Se já cacheamos a altura no Start, usa o valor fixo para evitar oscilação quando o navio balança
+        if (_alturaEstacionamentoCache > 0f)
+        {
+            return _alturaEstacionamentoCache;
+        }
+
         float alturaBase = Mathf.Max(0.05f, alturaPouso + Mathf.Max(0f, ajusteAlturaEstacionado));
         // OTIMIZAÇÃO: usa cache de renderers (calculado no Start) em vez de GetComponentsInChildren repetido
         if (!_renderersCacheValido)
@@ -795,6 +813,12 @@ public class Helicoptero : MonoBehaviour
 
     public void Decolar(Vector3 novoDestino, bool limitarAltitudeCruzeiro)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         bool estavaEstacionado = !estaVoando && !preparandoDecolagem;
         aplicarAltitudeCruzeiroNaDecolagem = limitarAltitudeCruzeiro;
         destino = novoDestino;
@@ -803,6 +827,7 @@ public class Helicoptero : MonoBehaviour
         timerInatividade = 0f;
         disponivelParaPatrulha = false;
         estacionadoNoAeroporto = false;
+        if (rb != null) rb.interpolation = RigidbodyInterpolation.Interpolate;
 
         if (limitarAltitudeCruzeiro && destino.y < altitudeDeVoo)
         {
@@ -832,10 +857,46 @@ public class Helicoptero : MonoBehaviour
 
     public void VoarEPousar(Vector3 alvo)
     {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
         Vector3 alvoPouso = AjustarDestinoParaPouso(alvo);
         Decolar(alvoPouso, false);
         if (rotinaPousoAuto != null) StopCoroutine(rotinaPousoAuto);
         rotinaPousoAuto = StartCoroutine(RotinaVoarEPousar(alvoPouso));
+    }
+
+    public void PararPorFaltaDeCombustivel()
+    {
+        if (rotinaPreparacaoDecolagem != null)
+        {
+            StopCoroutine(rotinaPreparacaoDecolagem);
+            rotinaPreparacaoDecolagem = null;
+        }
+
+        if (rotinaPousoAuto != null)
+        {
+            StopCoroutine(rotinaPousoAuto);
+            rotinaPousoAuto = null;
+        }
+
+        bool emFalhaNoAr = (estaVoando || preparandoDecolagem) && transform.position.y > Mathf.Max(alturaPouso + 1.5f, 4f);
+
+        estaVoando = false;
+        estaPousando = false;
+        preparandoDecolagem = false;
+        subidaInicialDecolagem = false;
+        motorLigado = false;
+        destino = transform.position;
+        PararAnimacaoDecolagem();
+
+        if (emFalhaNoAr)
+        {
+            FalhaAereaFisica.Ativar(gameObject, rb, Mathf.Max(velocidadeNavegacao, velocidadePouso) * 0.85f, 4f, true);
+        }
     }
 
     private IEnumerator RotinaVoarEPousar(Vector3 alvo)
@@ -884,10 +945,6 @@ public class Helicoptero : MonoBehaviour
         }
 
         float velocidadeHorizontal = estaPousando ? velocidadePouso : velocidadeNavegacao;
-        if (subidaInicialDecolagem && !estaPousando)
-        {
-            velocidadeHorizontal *= 0.55f;
-        }
 
         Vector3 posHorizontalAtual = new Vector3(posAtual.x, 0f, posAtual.z);
         Vector3 posHorizontalMeta = new Vector3(destino.x, 0f, destino.z);
@@ -927,6 +984,39 @@ public class Helicoptero : MonoBehaviour
             subidaInicialDecolagem = false;
             motorLigado = false; 
             bool pousouEmVagaRegistrada = DestinoCorrespondeAVagaAeroporto(destino);
+            
+            if (pousouEmVagaRegistrada && vagaAeroporto != null)
+            {
+                // Agora não exigimos ser um porta-aviões, qualquer vaga registrada (como de aeroporto/heliporto) serve.
+                CombustivelUnidade comb = GetComponent<CombustivelUnidade>();
+                if (comb != null) comb.PreencherSemCusto();
+
+                SistemaDeDanos dano = GetComponent<SistemaDeDanos>();
+                if (dano != null) dano.vidaAtual = dano.vidaMaxima;
+
+                // Recarrega todos os sistemas de armas que possam estar acoplados no helicóptero
+                foreach (var lancador in GetComponentsInChildren<LancadorMisseis>())
+                {
+                    lancador.municaoAtual = lancador.municaoMaxima;
+                }
+                foreach (var lancadorCaca in GetComponentsInChildren<LancadorMisselCaca>())
+                {
+                    lancadorCaca.RecarregarCompletoNaBase();
+                }
+                foreach (var moduloArma in GetComponentsInChildren<ModuloArma>())
+                {
+                    moduloArma.municaoAtual = moduloArma.tamanhoCartucho;
+                }
+
+                foreach (GameObject s in soldadosEmbarcados)
+                {
+                    if (s == null) continue;
+                    SistemaDeDanos sd = s.GetComponent<SistemaDeDanos>();
+                    if (sd != null) sd.vidaAtual = sd.vidaMaxima;
+                    CombustivelUnidade sc = s.GetComponent<CombustivelUnidade>();
+                    if (sc != null) sc.PreencherSemCusto();
+                }
+            }
             if(soldadosEmbarcados.Count > 0 && desembarcarAutomaticamenteAoPousar && !pousouEmVagaRegistrada) EjetarTodos();
             disponivelParaPatrulha = true; 
         }
@@ -1253,6 +1343,124 @@ public class Helicoptero : MonoBehaviour
     public bool EstaEstacionadoNoAeroporto() { return estacionadoNoAeroporto; }
     public Transform ObterVagaAeroporto() { return vagaAeroporto; }
     public Transform ObterVagaOrigemAeroporto() { return vagaOrigemAeroporto != null ? vagaOrigemAeroporto : vagaAeroporto; }
+    public bool EstaAncoradoEmRaizMovel(Transform raizMovel)
+    {
+        if (raizMovel == null || transform.parent == null)
+        {
+            return false;
+        }
+
+        return transform.parent == raizMovel || transform.parent.IsChildOf(raizMovel);
+    }
+
+    public void DesancorarDeRaizMovel(Transform raizMovel)
+    {
+        if (transform.parent == null)
+        {
+            return;
+        }
+
+        if (raizMovel == null || transform.parent == raizMovel || transform.parent.IsChildOf(raizMovel))
+        {
+            transform.SetParent(null, true);
+        }
+    }
+
+    public void IniciarPousoEmVagaMovel(Transform vaga)
+    {
+        if (vaga == null)
+        {
+            return;
+        }
+
+        vagaAeroporto = vaga;
+        Vector3 alvo = ObterPosicaoEstacionadaNaVaga(vaga);
+
+        if (rotinaPousoAuto != null)
+        {
+            StopCoroutine(rotinaPousoAuto);
+            rotinaPousoAuto = null;
+        }
+
+        Decolar(alvo, false);
+        destino = alvo;
+    }
+
+    public void AtualizarPousoEmVagaMovel(Transform vaga)
+    {
+        if (vaga == null)
+        {
+            return;
+        }
+
+        vagaAeroporto = vaga;
+        Vector3 alvo = ObterPosicaoEstacionadaNaVaga(vaga);
+        destino = alvo;
+
+        if (!estaVoando || preparandoDecolagem)
+        {
+            return;
+        }
+
+        Vector2 atualXZ = new Vector2(transform.position.x, transform.position.z);
+        Vector2 alvoXZ = new Vector2(alvo.x, alvo.z);
+        float distanciaHorizontal = Vector2.Distance(atualXZ, alvoXZ);
+        if (distanciaHorizontal <= Mathf.Max(raioInicioDescida, 8f))
+        {
+            estaPousando = true;
+            subidaInicialDecolagem = false;
+        }
+    }
+
+    public void FixarEmVagaMovel(Transform vaga, Transform raizMovel)
+    {
+        if (vaga == null || estaVoando || preparandoDecolagem)
+        {
+            return;
+        }
+
+        if (rotinaPousoAuto != null)
+        {
+            StopCoroutine(rotinaPousoAuto);
+            rotinaPousoAuto = null;
+        }
+
+        estacionadoNoAeroporto = true;
+        vagaAeroporto = vaga;
+        destino = ObterPosicaoEstacionadaNaVaga(vaga);
+        estaPousando = false;
+        subidaInicialDecolagem = false;
+        motorLigado = false;
+        velocidadeAtualHelice = 0f;
+        disponivelParaPatrulha = true;
+        CancelarMissaoAeroporto();
+
+        Transform paiMovel = vaga != transform ? vaga : raizMovel;
+        if (paiMovel == null)
+        {
+            paiMovel = raizMovel;
+        }
+
+        if (paiMovel != null && transform.parent != paiMovel)
+        {
+            transform.SetParent(paiMovel, true);
+        }
+
+        transform.position = destino;
+        transform.rotation = vaga.rotation;
+
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.interpolation = RigidbodyInterpolation.None;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (audioMotor) audioMotor.Stop();
+        PararAnimacaoDecolagem();
+    }
+
     public bool TemOrigemAeroportoRegistrada() { return aeroportoOrigem != null && vagaOrigemAeroporto != null; }
     public void IniciarPatrulhaAeroporto(List<Vector3> wp)
     {
@@ -1332,6 +1540,7 @@ public class Helicoptero : MonoBehaviour
         subidaInicialDecolagem = false;
         motorLigado = false;
         velocidadeAtualHelice = 0f;
+        if (rb != null) rb.interpolation = RigidbodyInterpolation.None;
         if (audioMotor) audioMotor.Stop();
         PararAnimacaoDecolagem();
         CancelarMissaoAeroporto();
@@ -1361,6 +1570,35 @@ public class Helicoptero : MonoBehaviour
             CancelarMissaoAeroporto();
             VoarEPousar(vagaRetorno.position);
             estacionadoNoAeroporto = false;
+        }
+    }
+
+    private void AvaliarRetornoSeguro()
+    {
+        if (!estaVoando || estaPousando)
+        {
+            return;
+        }
+
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null || !combustivel.usaCombustivel)
+        {
+            return;
+        }
+
+        Transform vagaRetorno = vagaOrigemAeroporto != null ? vagaOrigemAeroporto : vagaAeroporto;
+        if (vagaRetorno == null)
+        {
+            return;
+        }
+
+        float distancia = Vector3.Distance(transform.position, vagaRetorno.position);
+        float consumoRetorno = combustivel.EstimarConsumoParaDistancia(distancia, Mathf.Max(8f, velocidadeNavegacao));
+        float reserva = Mathf.Max(combustivel.Capacidade * reservaRetornoPercentual, consumoRetorno * 0.45f);
+
+        if (combustivel.CombustivelAtual <= consumoRetorno + reserva)
+        {
+            RetornarParaVagaAeroporto();
         }
     }
 }

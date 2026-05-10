@@ -25,6 +25,8 @@ public class MisselTatico : MonoBehaviour
     private float tempoDeVida = 0;
     private Quaternion rotacaoAlvo;
     private bool temAlvo = false;
+    private bool explodiu = false;
+    private readonly Collider[] bufferExplosao = new Collider[96];
 
     // Configura o alvo e inicia
     public void IniciarLancamento(Vector3 pontoAlvo)
@@ -32,7 +34,10 @@ public class MisselTatico : MonoBehaviour
         alvo = pontoAlvo;
         lancado = true;
         temAlvo = true;
+        explodiu = false;
         tempoDeVida = 0;
+        CancelInvoke(nameof(ReativarColisao));
+        CancelInvoke(nameof(AutodestruirPorTempo));
 
         // Se usar rotação inicial, NÃO mexemos na rotação (confia no Instantiate do Lançador).
         // Se NÃO usar (ex: silo vertical), força pra cima.
@@ -47,7 +52,7 @@ public class MisselTatico : MonoBehaviour
         PrepararFisica();
         
         // Destroi automaticamente se ficar voando pra sempre
-        Destroy(gameObject, 15f); 
+        Invoke(nameof(AutodestruirPorTempo), 15f);
     }
 
     void PrepararFisica()
@@ -119,12 +124,24 @@ public class MisselTatico : MonoBehaviour
 
     void Explodir()
     {
+        if (explodiu)
+        {
+            return;
+        }
+
+        explodiu = true;
+        lancado = false;
+        CancelInvoke(nameof(AutodestruirPorTempo));
+
         // Visual
         if (efeitoExplosao != null)
         {
-            GameObject fx = Instantiate(efeitoExplosao, transform.position, Quaternion.identity);
-            fx.transform.localScale = Vector3.one * escalaExplosao;
-            Destroy(fx, 3f);
+            PoolDeObjetosCombate.SpawnTemporario(
+                efeitoExplosao,
+                transform.position,
+                Quaternion.identity,
+                3f,
+                Vector3.one * escalaExplosao);
         }
 
         // Som
@@ -134,9 +151,15 @@ public class MisselTatico : MonoBehaviour
         }
         
         // Dano em Área
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioDeDano);
-        foreach(var h in hits)
+        int hits = Physics.OverlapSphereNonAlloc(transform.position, raioDeDano, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < hits; i++)
         {
+            Collider h = bufferExplosao[i];
+            if (h == null)
+            {
+                continue;
+            }
+
             // Causa Dano
             SistemaDeDanos vida = h.GetComponent<SistemaDeDanos>();
             if (vida != null)
@@ -152,6 +175,18 @@ public class MisselTatico : MonoBehaviour
             }
         }
 
-        Destroy(gameObject);
+        PoolDeObjetosCombate.Release(gameObject);
+    }
+
+    private void AutodestruirPorTempo()
+    {
+        if (explodiu)
+        {
+            return;
+        }
+
+        explodiu = true;
+        lancado = false;
+        PoolDeObjetosCombate.Release(gameObject);
     }
 }

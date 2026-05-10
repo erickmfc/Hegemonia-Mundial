@@ -28,11 +28,12 @@ public class DesenharLinhasOrdem : MonoBehaviour
     public bool modoSeguirAtivo = false;
 
     public List<Vector3> pontosPatrulha = new List<Vector3>();
+    private readonly List<GameObject> _alvosModo = new List<GameObject>(32);
 
     void Start()
     {
         gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
-        CriarLineRenderer();
+        GarantirLineRenderer();
     }
 
     void CriarLineRenderer()
@@ -46,27 +47,91 @@ public class DesenharLinhasOrdem : MonoBehaviour
         lineRenderer.positionCount = 0;
     }
 
+    void GarantirLineRenderer()
+    {
+        if (lineRenderer == null)
+        {
+            CriarLineRenderer();
+        }
+    }
+
     public void IniciarModoPatrulha()
     {
+        IniciarModoPatrulha(null);
+    }
+
+    public void IniciarModoPatrulha(List<GameObject> selecionadosSnapshot)
+    {
+        DefinirAlvosModo(selecionadosSnapshot);
+        if (!ValidarAlvosModo())
+        {
+            Debug.LogWarning("MODO PATRULHA: nenhuma unidade valida selecionada.");
+            return;
+        }
+
         modoPatrulhaAtivo = true;
         modoSeguirAtivo = false;
         pontosPatrulha.Clear();
+        GarantirLineRenderer();
         lineRenderer.positionCount = 0;
+        InteractionModeService.Request(
+            InteractionOwner.Patrol,
+            new InteractionPolicy
+            {
+                bloqueiaSelecao = true,
+                bloqueiaOrdemMundo = true,
+                bloqueiaRotacaoCamera = true,
+                consomeLMB = true,
+                consomeRMB = true
+            },
+            "Patrulha em edição");
+        DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha iniciada (alvos=" + _alvosModo.Count + ")");
         Debug.Log("MODO PATRULHA: Clique com o botão direito para marcar caminho inicial e continue clicando para adicionar mais pontos de patrulha. ESC ou ENTER para finalizar os desenhos.");
     }
 
     public void IniciarModoSeguir()
     {
+        IniciarModoSeguir(null);
+    }
+
+    public void IniciarModoSeguir(List<GameObject> selecionadosSnapshot)
+    {
+        DefinirAlvosModo(selecionadosSnapshot);
+        if (!ValidarAlvosModo())
+        {
+            Debug.LogWarning("MODO SEGUIR: nenhuma unidade valida selecionada.");
+            return;
+        }
+
         modoSeguirAtivo = true;
         modoPatrulhaAtivo = false;
+        GarantirLineRenderer();
         lineRenderer.positionCount = 0;
+        InteractionModeService.Request(
+            InteractionOwner.Follow,
+            new InteractionPolicy
+            {
+                bloqueiaSelecao = true,
+                bloqueiaOrdemMundo = true,
+                bloqueiaRotacaoCamera = true,
+                consomeLMB = true,
+                consomeRMB = true
+            },
+            "Seguir em edição");
+        DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Seguir iniciado (alvos=" + _alvosModo.Count + ")");
         Debug.Log("MODO SEGUIR: clique com o botao direito em uma unidade aliada. ESC cancela.");
     }
 
     void Update()
     {
-        if (gerenteSelecao == null || gerenteSelecao.unidadesSelecionadas.Count == 0)
+        if (!modoPatrulhaAtivo && !modoSeguirAtivo)
         {
+            return;
+        }
+
+        if (!ValidarAlvosModo())
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Modo cancelado (alvos invalidos/vazios).");
             LimparTudo();
             return;
         }
@@ -98,6 +163,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
             if (pontosPatrulha.Count >= 1)
             {
                 AplicarOrdemPatrulha();
+                DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha confirmada (pontos=" + pontosPatrulha.Count + ", alvos=" + _alvosModo.Count + ")");
                 Debug.Log("Patrulha confirmada e iniciada.");
             }
             else
@@ -132,6 +198,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 {
                     AplicarOrdemSeguir(alvo.transform);
                     MostrarMarcadorPatrulha(alvo.transform.position, new Color(0.2f, 0.85f, 1f, 0.95f), 14f, 2.2f);
+                    DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Seguir confirmado (alvos=" + _alvosModo.Count + ")");
                     Debug.Log("Ordem de SEGUIR confirmada.");
                     LimparTudo();
                 }
@@ -144,6 +211,15 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
+            if (modoPatrulhaAtivo)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha cancelada (esc).");
+            }
+            else if (modoSeguirAtivo)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Seguir cancelado (esc).");
+            }
+
             LimparTudo();
         }
     }
@@ -153,7 +229,76 @@ public class DesenharLinhasOrdem : MonoBehaviour
         modoPatrulhaAtivo = false;
         modoSeguirAtivo = false;
         pontosPatrulha.Clear();
+        _alvosModo.Clear();
+        GarantirLineRenderer();
         lineRenderer.positionCount = 0;
+        InteractionModeService.Release(InteractionOwner.Patrol);
+        InteractionModeService.Release(InteractionOwner.Follow);
+    }
+
+    private void DefinirAlvosModo(List<GameObject> selecionadosSnapshot)
+    {
+        _alvosModo.Clear();
+
+        if (selecionadosSnapshot != null)
+        {
+            for (int i = 0; i < selecionadosSnapshot.Count; i++)
+            {
+                GameObject alvo = selecionadosSnapshot[i];
+                if (alvo != null)
+                {
+                    _alvosModo.Add(alvo);
+                }
+            }
+
+            return;
+        }
+
+        if (gerenteSelecao == null)
+        {
+            gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
+        }
+
+        if (gerenteSelecao == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < gerenteSelecao.unidadesSelecionadas.Count; i++)
+        {
+            ControleUnidade unidade = gerenteSelecao.unidadesSelecionadas[i];
+            if (unidade != null)
+            {
+                _alvosModo.Add(unidade.gameObject);
+            }
+        }
+    }
+
+    private bool ValidarAlvosModo()
+    {
+        for (int i = _alvosModo.Count - 1; i >= 0; i--)
+        {
+            if (_alvosModo[i] == null)
+            {
+                _alvosModo.RemoveAt(i);
+            }
+        }
+
+        return _alvosModo.Count > 0;
+    }
+
+    private Transform ObterTransformOrigemLinha()
+    {
+        for (int i = 0; i < _alvosModo.Count; i++)
+        {
+            GameObject alvo = _alvosModo[i];
+            if (alvo != null)
+            {
+                return alvo.transform;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>Cancela o modo patrulha ou seguir sem confirmar a ordem. Chamado pelo clique esquerdo.</summary>
@@ -275,17 +420,30 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
     bool SelecaoContemUnidadeNaval()
     {
-        if (gerenteSelecao == null)
+        for (int i = 0; i < _alvosModo.Count; i++)
         {
-            return false;
-        }
+            GameObject alvo = _alvosModo[i];
+            if (alvo == null)
+            {
+                continue;
+            }
 
-        for (int i = 0; i < gerenteSelecao.unidadesSelecionadas.Count; i++)
-        {
-            ControleUnidade unidade = gerenteSelecao.unidadesSelecionadas[i];
+            ControleUnidade unidade = alvo.GetComponent<ControleUnidade>();
             if (unidade != null && unidade.EhUnidadeNaval())
             {
                 return true;
+            }
+        }
+
+        if (gerenteSelecao != null)
+        {
+            for (int i = 0; i < gerenteSelecao.unidadesSelecionadas.Count; i++)
+            {
+                ControleUnidade unidade = gerenteSelecao.unidadesSelecionadas[i];
+                if (unidade != null && unidade.EhUnidadeNaval())
+                {
+                    return true;
+                }
             }
         }
 
@@ -294,7 +452,14 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
     void AtualizarLinhaVisualPatrulha()
     {
-        if (pontosPatrulha.Count == 0 || gerenteSelecao.unidadesSelecionadas.Count == 0)
+        if (pontosPatrulha.Count == 0)
+        {
+            lineRenderer.positionCount = 0;
+            return;
+        }
+
+        Transform origem = ObterTransformOrigemLinha();
+        if (origem == null)
         {
             lineRenderer.positionCount = 0;
             return;
@@ -302,7 +467,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
         // Exibe loop completo: unidade → p0 → p1 → ... → pN → unidade (fecha o ciclo)
         const float alturaLinha = 3f;
-        Vector3 posInicial = gerenteSelecao.unidadesSelecionadas[0].transform.position;
+        Vector3 posInicial = origem.position;
         posInicial.y += alturaLinha;
 
         int totalPontos = pontosPatrulha.Count + 2; // +1 início, +1 fecha o loop
@@ -322,22 +487,41 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
     void AplicarOrdemPatrulha()
     {
-        foreach (ControleUnidade unidade in gerenteSelecao.unidadesSelecionadas)
+        for (int i = 0; i < _alvosModo.Count; i++)
         {
-            if (unidade == null)
+            GameObject alvo = _alvosModo[i];
+            if (alvo == null)
             {
                 continue;
             }
 
-            unidade.EmitirOrdemPatrulha(pontosPatrulha);
+            ControleUnidade unidade = alvo.GetComponent<ControleUnidade>();
+            if (unidade != null)
+            {
+                unidade.EmitirOrdemPatrulha(pontosPatrulha);
+                continue;
+            }
+
+            Helicoptero helicoptero = alvo.GetComponent<Helicoptero>();
+            if (helicoptero != null)
+            {
+                helicoptero.IniciarPatrulhaAeroporto(new List<Vector3>(pontosPatrulha));
+            }
         }
     }
 
     void AplicarOrdemSeguir(Transform alvo)
     {
         ControleUnidade unidadeAlvo = alvo != null ? alvo.GetComponent<ControleUnidade>() : null;
-        foreach (ControleUnidade unidade in gerenteSelecao.unidadesSelecionadas)
+        for (int i = 0; i < _alvosModo.Count; i++)
         {
+            GameObject candidato = _alvosModo[i];
+            if (candidato == null)
+            {
+                continue;
+            }
+
+            ControleUnidade unidade = candidato.GetComponent<ControleUnidade>();
             if (unidade == null || unidade.transform == alvo)
             {
                 continue;
@@ -374,15 +558,35 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
 public class ComportamentoPatrulhaUniversal : MonoBehaviour
 {
-    private List<Vector3> pontos;
-    private int indiceAtual = 0;
-    private int indiceDesignado = -1;
+    [SerializeField] private List<Vector3> pontos;
+    [SerializeField] private int indiceAtual = 0;
+    [SerializeField] private int indiceDesignado = -1;
     private float tempoUltimoComando = 0f;
     private ControleUnidade controle;
     private NavMeshAgent agente;
     private ControleNavioRealista navioRealista;
     private bool ehNaval;
     private bool ehAereo;
+
+    public int IndiceAtual => indiceAtual;
+
+    public IReadOnlyList<Vector3> ObterPontos()
+    {
+        return pontos ?? (IReadOnlyList<Vector3>)System.Array.Empty<Vector3>();
+    }
+
+    public void DefinirIndiceAtual(int indice)
+    {
+        if (pontos == null || pontos.Count == 0)
+        {
+            indiceAtual = 0;
+            indiceDesignado = -1;
+            return;
+        }
+
+        indiceAtual = Mathf.Clamp(indice, 0, pontos.Count - 1);
+        indiceDesignado = -1;
+    }
 
     public void Configurar(List<Vector3> novosPontos)
     {
@@ -392,6 +596,15 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
         controle = GetComponent<ControleUnidade>();
         agente = GetComponent<NavMeshAgent>();
         navioRealista = GetComponent<ControleNavioRealista>();
+        ehNaval = controle != null && controle.EhUnidadeNaval();
+        ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
+    }
+
+    private void OnEnable()
+    {
+        if (controle == null) controle = GetComponent<ControleUnidade>();
+        if (agente == null) agente = GetComponent<NavMeshAgent>();
+        if (navioRealista == null) navioRealista = GetComponent<ControleNavioRealista>();
         ehNaval = controle != null && controle.EhUnidadeNaval();
         ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
     }
@@ -485,6 +698,8 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
     private bool ehAereo;
     private float intervaloAtualizacao = 0.5f;
     private float offsetLateralNaval = 0f;
+
+    public Transform AlvoSeguido => alvoSeguido;
 
     public void Configurar(Transform novoAlvo)
     {

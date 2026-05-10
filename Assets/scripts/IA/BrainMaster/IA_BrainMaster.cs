@@ -7,21 +7,25 @@ namespace Hegemonia.AI.BrainMaster
     {
         public enum IA_BootstrapStage
         {
-            Disabled,
-            BuildPrefeitura,
-            BuildAeroporto,
-            BuildVehicleFactory,
-            BuildSupportHangar,
-            BuildTent,
-            AnalyzeTerrain,
-            ProduceGroundUnits,
-            HoldGroundUnits,
-            ProduceAircraft,
-            BuildShipyard,
-            HoldShipyard,
-            ProduceShip,
-            HoldShipLaunch,
-            Completed
+            Disabled = 0,
+            BuildPrefeitura = 1,
+            BuildAeroporto = 2,
+            BuildVehicleFactory = 3,
+            BuildSupportHangar = 4,
+            BuildTent = 5,
+            AnalyzeTerrain = 6,
+            ProduceGroundUnits = 7,
+            HoldGroundUnits = 8,
+            ProduceAircraft = 9,
+            BuildShipyard = 10,
+            HoldShipyard = 11,
+            BuildPier = 12,
+            ProduceOilTanker = 13,
+            ProduceShip = 14,
+            HoldShipLaunch = 15,
+            InvasionPrep = 16,
+            Completed = 17,
+            MobilizeBase = 18
         }
 
         public enum IA_IntegrationMode
@@ -34,6 +38,23 @@ namespace Hegemonia.AI.BrainMaster
         [Header("Identity")]
         public int TeamId = 2;
         public string NationName = "BrainMaster";
+        public string CurrencyName = "Moeda IA";
+        public string CurrencySymbol = "IA$";
+        public PerfilPaisIA NationProfile = PerfilPaisIA.Neutro;
+        public ModoInicialPaisIA InitialNationMode = ModoInicialPaisIA.Crescimento;
+
+        [Header("National Personality")]
+        [Range(0f, 1f)] public float DiplomacyWeight = 0.50f;
+        [Range(0f, 1f)] public float TradeWeight = 0.55f;
+        [Range(0f, 1f)] public float IndustryWeight = 0.50f;
+        [Range(0f, 1f)] public float MilitarismWeight = 0.45f;
+        [Range(0f, 1f)] public float AggressionWeight = 0.35f;
+        [Range(0f, 1f)] public float ExternalDependencyWeight = 0.45f;
+        [Range(0f, 1f)] public float SelfSufficiencyWeight = 0.45f;
+        [Range(0f, 1f)] public float EconomicRiskWeight = 0.35f;
+        [Range(0f, 1f)] public float StockControlWeight = 0.55f;
+        [Range(0f, 1f)] public float AllyLoyaltyWeight = 0.55f;
+        [Range(0f, 1f)] public float RivalHatredWeight = 0.45f;
 
         [Header("Economy")]
         public int InitialCredits = 30000;
@@ -45,6 +66,8 @@ namespace Hegemonia.AI.BrainMaster
         public bool DisableLegacyAIWhenFull = true;
         public int MaxCommandsPerFrame = 4;
         public bool UseScriptedBootstrap = true;
+        [Tooltip("Tempo minimo em segundos que a IA usa para estruturar base e produzir tropas sem atacar.")]
+        public float BootstrapMobilizationSeconds = 300f;
 
         [Header("Debug")]
         public bool EnableVerboseLogs = false;
@@ -56,6 +79,25 @@ namespace Hegemonia.AI.BrainMaster
         [TextArea(2, 8)] public string BootstrapLastError = string.Empty;
         [TextArea(4, 18)] public string NavalDiagnosticSummary = string.Empty;
         [TextArea(2, 8)] public string CombatPressureSummary = string.Empty;
+
+        [Header("Imperial AI")]
+        public IA_StrategicPhase StrategicPhase = IA_StrategicPhase.Abertura;
+        public string ActiveImperialPlan = "abertura";
+        public string ImperialLastFailure = string.Empty;
+        public int TargetFleet = 4;
+        public int TargetAircraft = 6;
+        public int TargetOilTankers = 2;
+        public int TargetPlatforms = 2;
+        public int TargetPiers = 2;
+        public int TargetShipyards = 1;
+        public int TargetCoastalDefenseShips = 3;
+        public int TargetRadars = 1;
+        public int TargetCiws = 1;
+        public int PlayerFleetEstimate;
+        public int PlayerAircraftEstimate;
+        public bool WeakEmpireRecoveryActive;
+        public string ActiveStrategicTarget = string.Empty;
+        [TextArea(3, 10)] public string ImperialPlanSummary = string.Empty;
 
         public IA_BootstrapStage BootstrapStage { get; private set; }
 
@@ -74,6 +116,15 @@ namespace Hegemonia.AI.BrainMaster
         private IA_LotPlanner _lotPlanner;
         private IA_UrbanBuildValidator _urbanBuildValidator;
         private IA_ConstructionPlanner _constructionPlanner;
+        private IA_NationalDecisionState _nationalDecisionState;
+        private IA_GrandStrategy _grandStrategy;
+        private IA_EconomyDirector _economyDirector;
+        private IA_LawDirector _lawDirector;
+        private IA_DiplomacyDirector _diplomacyDirector;
+        private IA_MarketDirector _marketDirector;
+        private IA_LogisticsDirector _logisticsDirector;
+        private IA_WarDirector _warDirector;
+        private IA_SyncNetwork _syncNetwork;
         private IA_BuildDirector _buildDirector;
         private IA_ProductionDirector _productionDirector;
         private IA_SquadDirector _squadDirector;
@@ -95,6 +146,10 @@ namespace Hegemonia.AI.BrainMaster
         private static int _activeBrainCount;
         private float _bootstrapStartTime;
         private float _bootstrapStageStartTime;
+        private float _nextImperialPlanUpdateTime;
+        private bool _imperialReport10;
+        private bool _imperialReport20;
+        private bool _imperialReport30;
         // Slot atribuido pelo coordenador global — determina a ordem de execucao entre IAs
         private int _coordinatorSlot = 0;
         private readonly System.Diagnostics.Stopwatch _updateWatch = new System.Diagnostics.Stopwatch();
@@ -144,6 +199,7 @@ namespace Hegemonia.AI.BrainMaster
             IA_GlobalBrainCoordinator coordinator = IA_GlobalBrainCoordinator.Instance;
             if (Context != null && _worldState != null)
             {
+                SyncNationStateWithGovernment();
                 Context.CombatPressure = _worldState.CombatPressure;
                 Context.ForceSnapshot = _worldState.ForceSnapshot;
                 Context.PerformanceGovernorState = coordinator.GetGovernorStateSnapshot();
@@ -151,6 +207,8 @@ namespace Hegemonia.AI.BrainMaster
                 Context.EngagementBudget = coordinator.BuildEngagementBudget();
                 Context.TransportPlan = Context.TransportPlan ?? new IA_TransportPlan();
             }
+
+            UpdateImperialPlanState();
 
             ConfigureSchedulerBudget();
             if (_debugMonitor != null) _debugMonitor.VerboseLogs = EnableVerboseLogs;
@@ -183,6 +241,9 @@ namespace Hegemonia.AI.BrainMaster
             {
                 RuntimeSummary = (_debugMonitor != null ? _debugMonitor.LastSummary : "monitor indisponivel")
                                  + " | Credits=" + Credits
+                                 + " | Dificuldade=" + GameDifficultyManager.PerfilAtual.Codigo
+                                 + BuildNationalSummary()
+                                 + " | Imperial=" + StrategicPhase + " " + ActiveImperialPlan
                                  + " | Bootstrap=" + BootstrapStage
                                  + " | BootstrapStatus=" + BootstrapStatus
                                  + " | Governor=" + (Context != null && Context.PerformanceGovernorState != null
@@ -193,6 +254,197 @@ namespace Hegemonia.AI.BrainMaster
                 CombatPressureSummary = BuildCombatPressureSummary();
                 _nextRuntimeSummaryTime = Time.unscaledTime + 0.6f;
             }
+        }
+
+        private void UpdateImperialPlanState()
+        {
+            if (Context == null || _worldState == null || Time.time < _nextImperialPlanUpdateTime)
+            {
+                return;
+            }
+
+            _nextImperialPlanUpdateTime = Time.time + 4f;
+            IA_ForceSnapshot snapshot = Context.ForceSnapshot ?? _worldState.ForceSnapshot;
+            if (snapshot == null)
+            {
+                return;
+            }
+
+            CountPlayerForces(out PlayerFleetEstimate, out PlayerAircraftEstimate);
+
+            float elapsed = Time.timeSinceLevelLoad;
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            int basePlatforms = elapsed >= 1800f ? 3 : (elapsed >= 900f ? 2 : 1);
+            int baseTankers = elapsed >= 1800f ? 3 : (elapsed >= 900f ? 2 : 1);
+            int baseCoastalDefense = elapsed >= 900f ? 3 : 2;
+            TargetShipyards = perfil.Dificuldade == DificuldadeJogo.Imperial && elapsed >= 1800f ? 2 : 1;
+            TargetPiers = perfil.Dificuldade == DificuldadeJogo.Imperial && elapsed >= 1800f ? 2 : 1;
+            TargetPlatforms = perfil.AjustarMeta(basePlatforms, 1);
+            TargetOilTankers = perfil.AjustarMeta(baseTankers, 1);
+            TargetCoastalDefenseShips = perfil.AjustarMeta(baseCoastalDefense, 1);
+            TargetRadars = perfil.AjustarMeta(1, 1);
+            TargetCiws = elapsed >= 900f ? perfil.AjustarMeta(1, 0) : 0;
+
+            int baseFleet = elapsed < 300f ? 4 : (elapsed < 600f ? 10 : (elapsed < 1200f ? 18 : 30));
+            int baseAir = elapsed < 300f ? 4 : (elapsed < 600f ? 10 : (elapsed < 1200f ? 16 : 24));
+            int metaFrotaPorJogador = perfil.AjustarMetaContraJogador(PlayerFleetEstimate, 1.22f, TargetCoastalDefenseShips + 1);
+            int metaArPorJogador = perfil.AjustarMetaContraJogador(PlayerAircraftEstimate, 1.28f, 2);
+            TargetFleet = Mathf.Max(perfil.AjustarMeta(baseFleet, 1), metaFrotaPorJogador, TargetCoastalDefenseShips + 2);
+            TargetAircraft = Mathf.Max(perfil.AjustarMeta(baseAir, 1), metaArPorJogador);
+
+            bool oilGap = snapshot.PlatformCount < TargetPlatforms
+                          || snapshot.PierCount < TargetPiers
+                          || snapshot.ShipyardCount < TargetShipyards
+                          || snapshot.OilTankers < TargetOilTankers;
+            bool defenseGap = snapshot.NavalUnits < TargetCoastalDefenseShips
+                              || snapshot.FixedWingAircraft < 2
+                              || snapshot.RadarCount < TargetRadars
+                              || (TargetCiws > 0 && CountOwnByHintFast("ciws", "phalanx", "antia") < TargetCiws);
+            bool forceGap = snapshot.NavalUnits < TargetFleet || snapshot.FixedWingAircraft < TargetAircraft;
+            WeakEmpireRecoveryActive = elapsed >= 900f
+                                       && (snapshot.PlatformCount < 1
+                                           || snapshot.PierCount < 1
+                                           || snapshot.OilTankers < 1
+                                           || snapshot.NavalUnits < Mathf.Min(6, TargetFleet)
+                                           || snapshot.FixedWingAircraft < Mathf.Min(6, TargetAircraft)
+                                           || snapshot.RadarCount < TargetRadars
+                                           || (TargetCiws > 0 && CountOwnByHintFast("ciws", "phalanx", "antia") < TargetCiws));
+
+            if (elapsed < 180f)
+            {
+                StrategicPhase = IA_StrategicPhase.Abertura;
+                ActiveImperialPlan = "abrir base e cadeia militar";
+            }
+            else if (oilGap)
+            {
+                StrategicPhase = IA_StrategicPhase.LogisticaPetroleo;
+                ActiveImperialPlan = "fechar plataforma-pier-petroleiro";
+            }
+            else if (defenseGap)
+            {
+                StrategicPhase = IA_StrategicPhase.DefesaCosteira;
+                ActiveImperialPlan = "patrulha costeira e cobertura aerea";
+            }
+            else if (elapsed < 900f || forceGap)
+            {
+                StrategicPhase = IA_StrategicPhase.Expansao;
+                ActiveImperialPlan = "crescer acima do jogador";
+            }
+            else if (elapsed < 1800f)
+            {
+                StrategicPhase = IA_StrategicPhase.PressaoEconomica;
+                ActiveImperialPlan = "raides contra petroleo, pier e aeroporto";
+            }
+            else
+            {
+                StrategicPhase = IA_StrategicPhase.Dominacao;
+                ActiveImperialPlan = "enfraquecer economia e finalizar prefeitura";
+            }
+
+            if (WeakEmpireRecoveryActive)
+            {
+                ActiveImperialPlan = "recuperacao imperial: " + ActiveImperialPlan;
+            }
+
+            ImperialPlanSummary = "fase=" + StrategicPhase
+                                  + " | dificuldade=" + perfil.Codigo
+                                  + " | plano=" + ActiveImperialPlan
+                                  + " | alvo estrategico=" + (string.IsNullOrWhiteSpace(ActiveStrategicTarget) ? "n/d" : ActiveStrategicTarget)
+                                  + " | alvos frota/ar/petroleiro/plataforma/radar/ciws="
+                                  + TargetFleet + "/" + TargetAircraft + "/" + TargetOilTankers + "/" + TargetPlatforms + "/" + TargetRadars + "/" + TargetCiws
+                                  + " | atual frota/ar/petroleiro/plataforma/radar="
+                                  + snapshot.NavalUnits + "/" + snapshot.FixedWingAircraft + "/" + snapshot.OilTankers + "/" + snapshot.PlatformCount + "/" + snapshot.RadarCount
+                                  + " | jogador frota/ar=" + PlayerFleetEstimate + "/" + PlayerAircraftEstimate;
+
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_fase_" + TeamId, StrategicPhase.ToString());
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_dificuldade_" + TeamId, perfil.Codigo);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_metas_" + TeamId, ImperialPlanSummary);
+            RegistrarRelatorioImperialPorTempo(elapsed, snapshot);
+        }
+
+        private void CountPlayerForces(out int naval, out int aircraft)
+        {
+            naval = 0;
+            aircraft = 0;
+            _backendUnitBuffer.Clear();
+            RegistroEntidadesJogo.FillUnidades(_backendUnitBuffer);
+
+            for (int i = 0; i < _backendUnitBuffer.Count; i++)
+            {
+                IdentidadeUnidade unidade = _backendUnitBuffer[i];
+                if (unidade == null || unidade.teamID != 1 || !unidade.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (unidade.tipoUnidade == TipoUnidade.Naval)
+                {
+                    string nome = IA_Text.Normalize(unidade.name);
+                    if (!nome.Contains("petroleiro") && !nome.Contains("petrolifero") && !nome.Contains("tanker"))
+                    {
+                        naval++;
+                    }
+                }
+                else if (unidade.tipoUnidade == TipoUnidade.Aereo)
+                {
+                    aircraft++;
+                }
+            }
+        }
+
+        private int CountOwnByHintFast(params string[] hints)
+        {
+            return _worldState != null ? _worldState.CountOwnByHint(hints) : 0;
+        }
+
+        public void ReportStrategicTarget(string summary)
+        {
+            if (string.IsNullOrWhiteSpace(summary))
+            {
+                return;
+            }
+
+            ActiveStrategicTarget = summary;
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_alvo_estrategico_" + TeamId, ActiveStrategicTarget);
+        }
+
+        private void RegistrarRelatorioImperialPorTempo(float elapsed, IA_ForceSnapshot snapshot)
+        {
+            if (!_imperialReport10 && elapsed >= 600f)
+            {
+                _imperialReport10 = true;
+                RegistrarMarcoImperial("10min", snapshot);
+            }
+
+            if (!_imperialReport20 && elapsed >= 1200f)
+            {
+                _imperialReport20 = true;
+                RegistrarMarcoImperial("20min", snapshot);
+            }
+
+            if (!_imperialReport30 && elapsed >= 1800f)
+            {
+                _imperialReport30 = true;
+                RegistrarMarcoImperial("30min", snapshot);
+            }
+        }
+
+        private void RegistrarMarcoImperial(string marco, IA_ForceSnapshot snapshot)
+        {
+            string resumo = marco
+                            + " team=" + TeamId
+                            + " dificuldade=" + GameDifficultyManager.PerfilAtual.Codigo
+                            + " fase=" + StrategicPhase
+                            + " frota=" + snapshot.NavalUnits + "/" + TargetFleet
+                            + " ar=" + snapshot.FixedWingAircraft + "/" + TargetAircraft
+                            + " petroleiros=" + snapshot.OilTankers + "/" + TargetOilTankers
+                            + " plataformas=" + snapshot.PlatformCount + "/" + TargetPlatforms
+                            + " piers=" + snapshot.PierCount + "/" + TargetPiers
+                            + " radar=" + snapshot.RadarCount + "/" + TargetRadars
+                            + " ciws=" + CountOwnByHintFast("ciws", "phalanx", "antia") + "/" + TargetCiws
+                            + " recuperacao=" + WeakEmpireRecoveryActive;
+            DiagnosticoDesempenhoJogo.RegistrarEvento("IA_Imperial", resumo);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_relatorio_" + marco + "_" + TeamId, resumo);
         }
 
         private void OnDrawGizmosSelected()
@@ -392,7 +644,7 @@ namespace Hegemonia.AI.BrainMaster
             _incomeTimer += deltaTime;
             while (_incomeTimer >= 1f)
             {
-                Credits += Mathf.Max(0, IncomePerSecond);
+                Credits += Mathf.Max(0, Mathf.RoundToInt(IncomePerSecond * GameDifficultyManager.PerfilAtual.MultiplicadorEconomiaIA));
                 _incomeTimer -= 1f;
             }
         }
@@ -484,6 +736,14 @@ namespace Hegemonia.AI.BrainMaster
             _scheduler.Register(_zonePlanner, now, 0.14f);
             _scheduler.Register(_lotPlanner, now, 0.155f);
             _scheduler.Register(_constructionPlanner, now, 0.17f);
+            _scheduler.Register(_grandStrategy, now, 0.18f);
+            _scheduler.Register(_economyDirector, now, 0.185f);
+            _scheduler.Register(_syncNetwork, now, 0.20f);
+            _scheduler.Register(_marketDirector, now, 0.205f);
+            _scheduler.Register(_diplomacyDirector, now, 0.215f);
+            _scheduler.Register(_lawDirector, now, 0.225f);
+            _scheduler.Register(_logisticsDirector, now, 0.235f);
+            _scheduler.Register(_warDirector, now, 0.245f);
             _scheduler.Register(_buildDirector, now, 0.19f);
             _scheduler.Register(_productionDirector, now, 0.22f);
             _scheduler.Register(_squadDirector, now, 0.25f);
@@ -750,6 +1010,11 @@ namespace Hegemonia.AI.BrainMaster
             return Mathf.Max(0f, now - _bootstrapStageStartTime);
         }
 
+        public float GetBootstrapMobilizationSeconds()
+        {
+            return Mathf.Clamp(BootstrapMobilizationSeconds, 60f, 600f);
+        }
+
         public void SetBootstrapStage(IA_BootstrapStage stage, string status)
         {
             if (!UseScriptedBootstrap)
@@ -814,11 +1079,12 @@ namespace Hegemonia.AI.BrainMaster
         private int ResolveCommandBudget()
         {
             int activeBrains = Mathf.Max(1, _activeBrainCount);
-            int maxCommands = Mathf.Clamp(MaxCommandsPerFrame, 1, 10);
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            int maxCommands = perfil.AjustarComandos(Mathf.Clamp(MaxCommandsPerFrame, 1, 10));
             IA_BattleGovernorDecision decision = Context != null ? Context.BattleDecision : null;
             if (IsBootstrapActive)
             {
-                return 1;
+                return Mathf.Clamp(perfil.AjustarComandos(2), 2, 3);
             }
 
             if (decision != null)
@@ -901,9 +1167,14 @@ namespace Hegemonia.AI.BrainMaster
 
             // Backoff: quanto mais IAs, mais espaçado cada modulo roda
             int count = Mathf.Max(1, coordinator.ActiveCount);
-            _scheduler.MinBackoffSeconds = bootstrapActive
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            float multiplicadorBackoff = perfil.Dificuldade == DificuldadeJogo.Facil
+                ? 1.25f
+                : (perfil.Dificuldade == DificuldadeJogo.Imperial ? 0.85f : 1f);
+            float backoffBase = bootstrapActive
                 ? Mathf.Clamp(0.06f + (count - 1) * 0.035f, 0.06f, 0.20f)
                 : Mathf.Clamp(0.05f + (count - 1) * 0.025f, 0.05f, 0.15f);
+            _scheduler.MinBackoffSeconds = Mathf.Clamp(backoffBase * multiplicadorBackoff, 0.04f, 0.25f);
         }
 
         private bool HasRuntimeGraph()
@@ -969,6 +1240,15 @@ namespace Hegemonia.AI.BrainMaster
             _urbanBuildValidator = new IA_UrbanBuildValidator(Context);
             _lotPlanner = new IA_LotPlanner(Context);
             _constructionPlanner = new IA_ConstructionPlanner(Context);
+            _nationalDecisionState = new IA_NationalDecisionState();
+            _grandStrategy = new IA_GrandStrategy(Context, _nationalDecisionState);
+            _economyDirector = new IA_EconomyDirector(Context, _nationalDecisionState);
+            _lawDirector = new IA_LawDirector(Context);
+            _diplomacyDirector = new IA_DiplomacyDirector(Context, _nationalDecisionState);
+            _marketDirector = new IA_MarketDirector(Context, _nationalDecisionState);
+            _logisticsDirector = new IA_LogisticsDirector(Context);
+            _warDirector = new IA_WarDirector(Context, _nationalDecisionState);
+            _syncNetwork = new IA_SyncNetwork(Context, _nationalDecisionState);
             _squadDirector = new IA_SquadDirector(Context);
             _buildDirector = new IA_BuildDirector(Context);
             _productionDirector = new IA_ProductionDirector(Context);
@@ -979,6 +1259,15 @@ namespace Hegemonia.AI.BrainMaster
 
             Context.SquadDirector = _squadDirector;
             Context.BuildDirector = _buildDirector;
+            Context.NationalDecisionState = _nationalDecisionState;
+            Context.GrandStrategy = _grandStrategy;
+            Context.EconomyDirector = _economyDirector;
+            Context.LawDirector = _lawDirector;
+            Context.DiplomacyDirector = _diplomacyDirector;
+            Context.MarketDirector = _marketDirector;
+            Context.LogisticsDirector = _logisticsDirector;
+            Context.WarDirector = _warDirector;
+            Context.SyncNetwork = _syncNetwork;
             Context.SemanticMapPlanner = _semanticMapPlanner;
             Context.ZonePlanner = _zonePlanner;
             Context.LotPlanner = _lotPlanner;
@@ -990,6 +1279,55 @@ namespace Hegemonia.AI.BrainMaster
                 VerboseLogs = EnableVerboseLogs
             };
             Context.DebugMonitor = _debugMonitor;
+            SyncNationStateWithGovernment();
+        }
+
+        private void SyncNationStateWithGovernment()
+        {
+            SistemaGovernoMundial.GarantirInstancia();
+            SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
+            if (gov == null)
+            {
+                return;
+            }
+
+            gov.GarantirPaisIA(TeamId, NationName, CurrencyName, CurrencySymbol, NationProfile, InitialNationMode);
+            DadosPaisGoverno pais = gov.ObterPais(TeamId);
+            if (pais == null)
+            {
+                return;
+            }
+
+            pais.pesoDiplomacia = DiplomacyWeight;
+            pais.pesoComercio = TradeWeight;
+            pais.pesoIndustria = IndustryWeight;
+            pais.pesoMilitarismo = MilitarismWeight;
+            pais.pesoAgressividade = AggressionWeight;
+            pais.pesoDependenciaExterna = ExternalDependencyWeight;
+            pais.pesoAutossuficiencia = SelfSufficiencyWeight;
+            pais.pesoRiscoEconomico = EconomicRiskWeight;
+            pais.pesoControleEstoque = StockControlWeight;
+            pais.pesoLealdadeAliados = AllyLoyaltyWeight;
+            pais.pesoOdioRivais = RivalHatredWeight;
+        }
+
+        private string BuildNationalSummary()
+        {
+            if (_nationalDecisionState == null)
+            {
+                return string.Empty;
+            }
+
+            return " | PlanoPais=" + _nationalDecisionState.StrategicPlan
+                   + " | Need=" + _nationalDecisionState.CriticalNeed
+                   + " | Surplus=" + _nationalDecisionState.BestSurplus
+                   + " | QV=" + _nationalDecisionState.QualityOfLife.ToString("0")
+                   + " | DeficitEco=" + _nationalDecisionState.MainEconomicDeficit
+                   + " | ProdEco=" + _nationalDecisionState.MainProduction
+                   + " | PressPop=" + _nationalDecisionState.PopulationPressure.ToString("0.00")
+                   + " | Propostas=" + _nationalDecisionState.PendingProposals
+                   + " | Ofertas=" + _nationalDecisionState.ActiveOffers
+                   + " | BloqMercado=" + _nationalDecisionState.BlockedDecisions;
         }
 
         private string BuildCombatPressureSummary()

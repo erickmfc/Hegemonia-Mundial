@@ -70,7 +70,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3487907865821181564, guid: 08e9d536354a0c649a7f67a606438415, type: 3}
       propertyPath: velocidade
-      value: 250
+      value: 400
       objectReference: {fileID: 0}
     - target: {fileID: 3487907865821181564, guid: 08e9d536354a0c649a7f67a606438415, type: 3}
       propertyPath: danoExplosao

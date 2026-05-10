@@ -20,14 +20,18 @@ public class MisselICBM : MonoBehaviour
     // Internas
     private Vector3 alvo;
     private bool lancado = false;
+    private bool explodiu = false;
     private float tempoDeVida = 0;
     private Quaternion rotacaoAlvo;
+    private readonly Collider[] bufferExplosao = new Collider[160];
 
     public void IniciarLancamento(Vector3 pontoAlvo)
     {
         alvo = pontoAlvo;
         lancado = true;
+        explodiu = false;
         tempoDeVida = 0;
+        CancelInvoke(nameof(ReativarColisao));
 
         // 1. Aponta o míssil para CIMA imediatamente ao nascer
         transform.rotation = Quaternion.LookRotation(Vector3.up);
@@ -114,11 +118,23 @@ public class MisselICBM : MonoBehaviour
 
     void Explodir()
     {
+        if (explodiu)
+        {
+            return;
+        }
+
+        explodiu = true;
+        lancado = false;
+
         // 1. Cria o Visual
         if (efeitoExplosao != null)
         {
-            GameObject fx = Instantiate(efeitoExplosao, transform.position, Quaternion.identity);
-            fx.transform.localScale = Vector3.one * escalaExplosao;
+            PoolDeObjetosCombate.SpawnTemporario(
+                efeitoExplosao,
+                transform.position,
+                Quaternion.identity,
+                8f,
+                Vector3.one * escalaExplosao);
         }
 
         // 2. Cria o Som
@@ -140,11 +156,18 @@ public class MisselICBM : MonoBehaviour
         }
         
         // 3. Aplica Dano e Física (O Melhor dos Dois Mundos)
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioDeDano);
-        foreach(var h in hits)
+        int hits = Physics.OverlapSphereNonAlloc(transform.position, raioDeDano, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < hits; i++)
         {
+            Collider h = bufferExplosao[i];
+            if (h == null)
+            {
+                continue;
+            }
+
             // A. Dano no Sistema (Unidades/Prédios)
-            h.GetComponent<SistemaDeDanos>()?.ReceberDano(9999);
+            SistemaDeDanos vida = h.GetComponent<SistemaDeDanos>();
+            vida?.ReceberDano(9999);
 
             // B. Física de Explosão (Empurrar Destroços/Unidades)
             Rigidbody rb = h.GetComponent<Rigidbody>();
@@ -154,13 +177,13 @@ public class MisselICBM : MonoBehaviour
                 rb.AddExplosionForce(2000f, transform.position, raioDeDano, 3.0f);
 
                 // C. Destruir objetos de cenário "soltos" que não tenham script de vida
-                if (h.GetComponent<SistemaDeDanos>() == null)
+                if (vida == null)
                 {
                     Destroy(h.gameObject, 0.5f); // Dá meio segundo para voar com o impacto antes de sumir
                 }
             }
         }
 
-        Destroy(gameObject);
+        PoolDeObjetosCombate.Release(gameObject);
     }
 }

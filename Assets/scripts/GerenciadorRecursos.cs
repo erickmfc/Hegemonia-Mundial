@@ -16,6 +16,7 @@ public class GerenciadorRecursos : MonoBehaviour
     public int populacaoAtual = 10;
     public int populacaoMaxima = 100;
     public int energia = 100;
+    public int comida = 100;
 
     [Header("📈 Ganhos Passivos (Base)")]
     public float dinheiroPorSegundo = 10f;
@@ -131,6 +132,9 @@ public class GerenciadorRecursos : MonoBehaviour
             case "Energia":
                 energia += quantidade;
                 break;
+            case "Comida":
+                comida += quantidade;
+                break;
         }
         NotificarAtualizacao();
     }
@@ -151,6 +155,12 @@ public class GerenciadorRecursos : MonoBehaviour
             case "Aco":
                 aco -= quantidade;
                 break;
+            case "Energia":
+                energia -= quantidade;
+                break;
+            case "Comida":
+                comida -= quantidade;
+                break;
         }
 
         ValidarLimites(); // Garante que não fique negativo
@@ -164,6 +174,7 @@ public class GerenciadorRecursos : MonoBehaviour
         petroleo = Mathf.Max(0, petroleo);
         aco = Mathf.Max(0, aco);
         energia = Mathf.Max(0, energia);
+        comida = Mathf.Max(0, comida);
     }
 
     // ==============================================================================

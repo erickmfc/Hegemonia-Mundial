@@ -115,9 +115,18 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   prefabMisselSubmarino: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+  tubosTorpedo:
+  - {fileID: 9093263892314878603}
+  - {fileID: 3077606024826021794}
+  - {fileID: 0}
+  - {fileID: 0}
+  prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+  torpedosDisponiveis: 8
+  alcanceTorpedos: 1200
+  cooldownTorpedo: 5
   alcanceMisseis: 1300
   modoAtual: 0
-  intervaloBuscaAutomatica: 0.75
+  intervaloBuscaAutomatica: 2
   estaSubmerso: 1
   misseisDisponiveis: 22
   cooldownAtaqueIA: 20
@@ -131,6 +140,7 @@ MonoBehaviour:
   forcaInclinacao: 3
   modelo3D: {fileID: 0}
   rastroAgua: {fileID: 0}
+  mostrarLogsNoConsole: 0
 --- !u!195 &8427076263614432943
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -207,6 +217,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 2
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -349,6 +365,7 @@ Transform:
   - {fileID: 9047537491899650337}
   - {fileID: 1475517570908620687}
   - {fileID: 4423505691802241165}
+  - {fileID: 541809007261116070}
   m_Father: {fileID: 1178363281057117577}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!95 &7760185638159843486
@@ -404,6 +421,39 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2617109060813063789}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+--- !u!1 &1603200274658757867
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 541809007261116070}
+  m_Layer: 0
+  m_Name: Lancadores de torp
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &541809007261116070
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1603200274658757867}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 9093263892314878603}
+  - {fileID: 3077606024826021794}
+  m_Father: {fileID: 2617109060813063789}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1629359928788026574
 GameObject:
   m_ObjectHideFlags: 0
@@ -617,6 +667,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2617109060813063789}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+--- !u!1 &3446017616451804453
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9093263892314878603}
+  m_Layer: 0
+  m_Name: torpedo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9093263892314878603
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3446017616451804453}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.341, y: 0.72, z: 8.253}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 541809007261116070}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4054090348571947983
 GameObject:
   m_ObjectHideFlags: 0
@@ -830,6 +911,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2617109060813063789}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+--- !u!1 &7032823889601962757
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3077606024826021794}
+  m_Layer: 0
+  m_Name: torpedo (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3077606024826021794
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7032823889601962757}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.4, y: 0.72, z: 8.253}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 541809007261116070}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7295882997389156643
 GameObject:
   m_ObjectHideFlags: 0

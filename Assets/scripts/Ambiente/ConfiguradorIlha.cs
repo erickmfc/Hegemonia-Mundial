@@ -19,7 +19,7 @@ public class ConfiguradorIlha : MonoBehaviour
 {
     [Header("Diagnóstico em Runtime")]
     [Tooltip("Ativa logs de diagnóstico no Console durante o jogo")]
-    public bool modoDiagnostico = true;
+    public bool modoDiagnostico = false;
 
     [Header("Auto-Correção de Unidades")]
     [Tooltip("Tenta mover unidades presas fora do NavMesh de volta para dentro")]

@@ -29,6 +29,13 @@ public class TransporteAnfibio : MonoBehaviour
     [Header("Interface (Menu 'O')")]
     public GameObject prefabMenuCarga; // VAZIO = Usa menu padrão automático
     private bool menuAberto = false;
+    private ControleUnidade controleUnidadeCache;
+    private GUISkin skinMenuCache;
+    private GUIStyle estiloTituloMenu;
+    private GUIStyle estiloTextoMenu;
+    private GUIStyle estiloBotaoMenu;
+    private Collider[] bufferCaptura = new Collider[128];
+    private readonly HashSet<IdentidadeUnidade> processadosCaptura = new HashSet<IdentidadeUnidade>(128);
 
     // Estados
     private enum Estado { Navegando, AbrindoParaEmbarque, Embarcando, Fechando, NavegandoParaTerra, Desembarcando }
@@ -36,6 +43,8 @@ public class TransporteAnfibio : MonoBehaviour
     
     void Start()
     {
+        controleUnidadeCache = GetComponent<ControleUnidade>();
+
         // 1. CAPTURA CRÍTICA DE ROTAÇÃO
         // Salva com qual ângulo a porta começou (geralmente Y=-180 ou Y=0)
         // Para nunca perder essa referência durante a animação
@@ -58,8 +67,7 @@ public class TransporteAnfibio : MonoBehaviour
     void Update()
     {
         // Só processa comandos se estiver selecionado
-        var controle = GetComponent<ControleUnidade>();
-        if (controle != null && controle.selecionado)
+        if (controleUnidadeCache != null && controleUnidadeCache.selecionado)
         {
             if (Input.GetKeyDown(KeyCode.O)) AlternarMenuCarga();
             
@@ -155,16 +163,19 @@ public class TransporteAnfibio : MonoBehaviour
         estadoAtual = Estado.Embarcando;
 
         // USA OverlapSphere PARA ENCONTRAR UNIDADES PRÓXIMAS
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioDeCaptura);
+        int totalHits = CapturarCollidersProximos();
         
         // Limpa fila antiga para recalcular quem está perto e válido agorar
         unidadesNaFila.Clear(); 
         
         // Lista auxiliar de Identidades já processadas para evitar duplicatas (vários colliders na mesma unidade)
-        HashSet<IdentidadeUnidade> processados = new HashSet<IdentidadeUnidade>();
+        processadosCaptura.Clear();
 
-        foreach (var hit in hits)
+        for (int i = 0; i < totalHits; i++)
         {
+            Collider hit = bufferCaptura[i];
+            if (hit == null) continue;
+
             // Pega a unidade real (quem tem a identidade), subindo a hierarquia a partir do colisor
             IdentidadeUnidade id = hit.GetComponentInParent<IdentidadeUnidade>();
             
@@ -172,8 +183,8 @@ public class TransporteAnfibio : MonoBehaviour
             if (id == null) continue;
 
             // Se já processamos essa identidade (outro collider do mesmo tanque), pula
-            if (processados.Contains(id)) continue;
-            processados.Add(id);
+            if (processadosCaptura.Contains(id)) continue;
+            processadosCaptura.Add(id);
 
             GameObject unidadeObj = id.gameObject;
 
@@ -207,8 +218,10 @@ public class TransporteAnfibio : MonoBehaviour
             }
 
             // 3. PROTEÇÃO POR NOME (Fallback final)
-            string nomeLower = unidadeObj.name.ToLower();
-            if (nomeLower.Contains("uss ") || nomeLower.Contains("navio") || nomeLower.Contains("ship"))
+            string nomeUnidade = unidadeObj.name;
+            if (nomeUnidade.IndexOf("uss ", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                nomeUnidade.IndexOf("navio", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                nomeUnidade.IndexOf("ship", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 Debug.LogWarning($"⚠️ [Transporte] Ignorando {unidadeObj.name} pelo nome (parece navio).");
                 continue;
@@ -285,6 +298,12 @@ public class TransporteAnfibio : MonoBehaviour
                 // Suga para dentro
                 unidade.SetActive(false);
                 unidadesGuardadas.Add(unidade);
+
+                // Recarregar vida e combustível
+                SistemaDeDanos dano = unidade.GetComponent<SistemaDeDanos>();
+                if (dano != null) dano.vidaAtual = dano.vidaMaxima;
+                CombustivelUnidade comb = unidade.GetComponent<CombustivelUnidade>();
+                if (comb != null) comb.PreencherSemCusto();
             }
         }
         
@@ -453,58 +472,110 @@ public class TransporteAnfibio : MonoBehaviour
 
     void AlternarMenuCarga() { menuAberto = !menuAberto; }
 
+    private int CapturarCollidersProximos()
+    {
+        int totalHits = Physics.OverlapSphereNonAlloc(transform.position, raioDeCaptura, bufferCaptura);
+        while (totalHits >= bufferCaptura.Length && bufferCaptura.Length < 1024)
+        {
+            bufferCaptura = new Collider[bufferCaptura.Length * 2];
+            totalHits = Physics.OverlapSphereNonAlloc(transform.position, raioDeCaptura, bufferCaptura);
+        }
+
+        return totalHits;
+    }
+
     void OnGUI()
     {
         if (!menuAberto) return;
+        PrepararEstilosMenuSeNecessario();
 
         // MENU REDUZIDO (80% do tamanho original) e MOVIDO 10% PARA CIMA (agora em 10% da tela)
         float largura = 200f;  
         float altura = 320f;   
         float posY = Screen.height * 0.10f; // Subiu 10% (era 0.20f)
         float posX = Screen.width - largura + 35f; // Movido 55 para a direita (era - 20, agora -20 + 55 = +35)
-        float fontSize = 13;   
-        
-        GUIStyle titulo = new GUIStyle(GUI.skin.label) { 
-            fontSize = (int)fontSize, 
-            fontStyle = FontStyle.Bold, 
-            alignment = TextAnchor.MiddleCenter 
-        };
-        
-        GUIStyle textoNormal = new GUIStyle(GUI.skin.label) { fontSize = 11 };
-        GUIStyle botao = new GUIStyle(GUI.skin.button) { fontSize = 10 };
-        
         GUI.Box(new Rect(posX, posY, largura, altura), "");
-        GUI.Label(new Rect(posX, posY + 10, largura, 25), "📦 MANIFESTO DE CARGA", titulo);
+        GUI.Label(new Rect(posX, posY + 10, largura, 25), "📦 MANIFESTO DE CARGA", estiloTituloMenu);
 
         float y = posY + 40;
         if (unidadesGuardadas.Count == 0)
         {
-            GUI.Label(new Rect(posX + 10, y, largura - 20, 18), "Nenhuma unidade a bordo.", textoNormal);
+            GUI.Label(new Rect(posX + 10, y, largura - 20, 18), "Nenhuma unidade a bordo.", estiloTextoMenu);
         }
         else
         {
-            var lista = new List<GameObject>(unidadesGuardadas);
-            foreach (var u in lista)
+            int maxLinhas = Mathf.Max(1, Mathf.FloorToInt((altura - 92f) / 20f));
+            int limite = Mathf.Min(maxLinhas, unidadesGuardadas.Count);
+            for (int i = 0; i < limite; i++)
             {
+                GameObject u = unidadesGuardadas[i];
                 if (u == null) continue;
-                GUI.Label(new Rect(posX + 10, y, 120, 18), u.name, textoNormal);
+                GUI.Label(new Rect(posX + 10, y, 120, 18), CompactarTextoMenu(u.name, 18), estiloTextoMenu);
 
                 bool ehAereo = (u.GetComponent<Helicoptero>() != null);
                 
                 if (ehAereo)
                 {
-                    if (GUI.Button(new Rect(posX + largura - 75, y, 65, 18), "DECOLAR", botao)) LancarUnidadeAerea(u);
+                    if (GUI.Button(new Rect(posX + largura - 75, y, 65, 18), "DECOLAR", estiloBotaoMenu))
+                    {
+                        LancarUnidadeAerea(u);
+                        break;
+                    }
                 }
                 else
                 {
-                    GUI.Label(new Rect(posX + largura - 75, y, 65, 18), "[Porão]", textoNormal);
+                    GUI.Label(new Rect(posX + largura - 75, y, 65, 18), "[Porão]", estiloTextoMenu);
                 }
                 y += 20;
+            }
+
+            if (unidadesGuardadas.Count > limite)
+            {
+                GUI.Label(new Rect(posX + 10, y, largura - 20, 18), "+" + (unidadesGuardadas.Count - limite) + " carga(s) a bordo", estiloTextoMenu);
             }
         }
 
         y = posY + altura - 45;
-        GUI.Label(new Rect(posX + 10, y, largura - 20, 18), $"Status: {estadoAtual}", textoNormal);
-        GUI.Label(new Rect(posX + 10, y+20, largura - 20, 18), $"[U] Embarcar  |  [P] Fechar/Sair", textoNormal);
+        GUI.Label(new Rect(posX + 10, y, largura - 20, 18), $"Status: {estadoAtual}", estiloTextoMenu);
+        GUI.Label(new Rect(posX + 10, y+20, largura - 20, 18), $"[U] Embarcar  |  [P] Fechar/Sair", estiloTextoMenu);
+    }
+
+    private void PrepararEstilosMenuSeNecessario()
+    {
+        if (skinMenuCache == GUI.skin && estiloTituloMenu != null)
+        {
+            return;
+        }
+
+        skinMenuCache = GUI.skin;
+        estiloTituloMenu = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 13,
+            fontStyle = FontStyle.Bold,
+            alignment = TextAnchor.MiddleCenter
+        };
+        estiloTextoMenu = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 11
+        };
+        estiloBotaoMenu = new GUIStyle(GUI.skin.button)
+        {
+            fontSize = 10
+        };
+    }
+
+    private static string CompactarTextoMenu(string texto, int maxChars)
+    {
+        if (string.IsNullOrEmpty(texto) || maxChars <= 0 || texto.Length <= maxChars)
+        {
+            return texto;
+        }
+
+        if (maxChars <= 3)
+        {
+            return texto.Substring(0, maxChars);
+        }
+
+        return texto.Substring(0, maxChars - 3) + "...";
     }
 }

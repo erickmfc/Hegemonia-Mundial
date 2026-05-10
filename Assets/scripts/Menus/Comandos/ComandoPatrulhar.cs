@@ -8,6 +8,12 @@ namespace Hegemonia.Menus.Comandos
     {
         public override void Executar(List<GameObject> unidadesSelecionadas)
         {
+            if (unidadesSelecionadas == null || unidadesSelecionadas.Count == 0)
+            {
+                Debug.LogWarning("Patrulhar ignorado: nenhuma unidade selecionada.");
+                return;
+            }
+
             Debug.Log($"Iniciando Protocolo de Patrulha em {unidadesSelecionadas.Count} unidades.");
             DesenharLinhasOrdem desenhador = Object.FindFirstObjectByType<DesenharLinhasOrdem>();
             if (desenhador == null)
@@ -16,7 +22,7 @@ namespace Hegemonia.Menus.Comandos
                 return;
             }
 
-            desenhador.IniciarModoPatrulha();
+            desenhador.IniciarModoPatrulha(unidadesSelecionadas);
         }
     }
 }

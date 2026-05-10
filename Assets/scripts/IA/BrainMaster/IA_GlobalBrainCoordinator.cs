@@ -91,12 +91,36 @@ namespace Hegemonia.AI.BrainMaster
 
         public IA_BattleGovernorDecision BuildBattleDecision()
         {
-            return _performanceGovernor.CreateBattleDecision(ActiveCount);
+            IA_BattleGovernorDecision decision = _performanceGovernor.CreateBattleDecision(ActiveCount);
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            if (perfil != null)
+            {
+                decision.MaxLandAttackers = Mathf.Max(1, Mathf.RoundToInt(decision.MaxLandAttackers * perfil.MultiplicadorEngajamentoIA));
+                decision.MaxAirAttackers = Mathf.Max(1, Mathf.RoundToInt(decision.MaxAirAttackers * perfil.MultiplicadorEngajamentoIA));
+                decision.MaxNavalAttackers = Mathf.Max(1, Mathf.RoundToInt(decision.MaxNavalAttackers * perfil.MultiplicadorEngajamentoIA));
+                decision.MaxProductionCommandsPerCycle = perfil.AjustarComandos(decision.MaxProductionCommandsPerCycle);
+                decision.ProductionCooldownSeconds = Mathf.Max(0f, decision.ProductionCooldownSeconds * perfil.MultiplicadorCooldownProducaoIA);
+                decision.MaxActiveFronts = Mathf.Clamp(decision.MaxActiveFronts + Mathf.Max(0, perfil.BonusComandosIA), 1, 4);
+                decision.MaxAirPackages = Mathf.Clamp(decision.MaxAirPackages + Mathf.Max(0, perfil.BonusComandosIA), 1, 4);
+                decision.MaxNavalPackages = Mathf.Clamp(decision.MaxNavalPackages + Mathf.Max(0, perfil.BonusComandosIA), 1, 4);
+            }
+
+            return decision;
         }
 
         public IA_EngagementBudget BuildEngagementBudget()
         {
-            return _performanceGovernor.CreateEngagementBudget();
+            IA_EngagementBudget budget = _performanceGovernor.CreateEngagementBudget();
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            if (perfil != null)
+            {
+                budget.TotalPoints = Mathf.Max(1, Mathf.RoundToInt(budget.TotalPoints * perfil.MultiplicadorEngajamentoIA));
+                budget.LandPoints = Mathf.Max(1, Mathf.RoundToInt(budget.LandPoints * perfil.MultiplicadorEngajamentoIA));
+                budget.AirPoints = Mathf.Max(1, Mathf.RoundToInt(budget.AirPoints * perfil.MultiplicadorEngajamentoIA));
+                budget.NavalPoints = Mathf.Max(1, Mathf.RoundToInt(budget.NavalPoints * perfil.MultiplicadorEngajamentoIA));
+            }
+
+            return budget;
         }
 
         /// <summary>
@@ -111,7 +135,9 @@ namespace Hegemonia.AI.BrainMaster
             int count = Mathf.Max(1, _registeredTeamIds.Count);
 
             // Budget restante disponível para esta IA
-            double remaining = _globalBudgetMs - _frameAccumulatedMs;
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            float budgetGlobal = _globalBudgetMs * (perfil != null ? perfil.MultiplicadorOrcamentoIA : 1f);
+            double remaining = budgetGlobal - _frameAccumulatedMs;
             if (remaining <= 0.05)
             {
                 return 0f;
@@ -131,7 +157,9 @@ namespace Hegemonia.AI.BrainMaster
         {
             EnsureFrameReset();
 
-            int effectiveHeavySlots = _performanceGovernor.GetHeavySlotsCap(_heavySlotsPerFrame);
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            int configuredHeavySlots = perfil != null ? perfil.AjustarHeavySlots(_heavySlotsPerFrame) : _heavySlotsPerFrame;
+            int effectiveHeavySlots = _performanceGovernor.GetHeavySlotsCap(configuredHeavySlots);
             if (effectiveHeavySlots <= 0)
             {
                 return false;
@@ -162,7 +190,10 @@ namespace Hegemonia.AI.BrainMaster
         public float ComputePerBrainBudgetMs(bool bootstrapActive)
         {
             int count = Mathf.Max(1, _registeredTeamIds.Count);
-            float total = _globalBudgetMs * _performanceGovernor.GetBudgetMultiplier();
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            float total = _globalBudgetMs
+                          * _performanceGovernor.GetBudgetMultiplier()
+                          * (perfil != null ? perfil.MultiplicadorOrcamentoIA : 1f);
 
             if (bootstrapActive)
             {
@@ -186,12 +217,16 @@ namespace Hegemonia.AI.BrainMaster
             if (bootstrapActive)
             {
                 baseValue = Mathf.Clamp(4 - (count - 1), 1, 3);
-                return _performanceGovernor.AdjustModuleBudget(baseValue);
+                int adjusted = _performanceGovernor.AdjustModuleBudget(baseValue);
+                PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+                return perfil != null ? perfil.AjustarModulosPorFrame(adjusted) : adjusted;
             }
 
             // Com muitas IAs ativas, reduz módulos por frame de cada uma
             baseValue = Mathf.Clamp(5 - (count - 1), 1, 4);
-            return _performanceGovernor.AdjustModuleBudget(baseValue);
+            int adjustedNormal = _performanceGovernor.AdjustModuleBudget(baseValue);
+            PerfilDificuldadeJogo perfilNormal = GameDifficultyManager.PerfilAtual;
+            return perfilNormal != null ? perfilNormal.AjustarModulosPorFrame(adjustedNormal) : adjustedNormal;
         }
 
         // -----------------------------------------------------------------------
@@ -236,6 +271,13 @@ namespace Hegemonia.AI.BrainMaster
             {
                 _lastReportedBand = band;
                 DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("governor_band", BandToLabel(band));
+            }
+
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            if (perfil != null)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("dificuldade", perfil.Codigo);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("difficulty_stability_target_min", perfil.MetaEstabilidadeMinutos);
             }
 
             _frameAccumulatedMs = 0d;

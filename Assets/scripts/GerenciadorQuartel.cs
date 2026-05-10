@@ -40,6 +40,10 @@ public class GerenciadorQuartel : MonoBehaviour
     private Vector2 scrollTropas;
     private Vector2 scrollInteligencia;
     private Vector2 scrollConvocar;
+    private Vector2 scrollArsenal;
+    private readonly List<ControleUnidade> soldadosAvulsosCache = new List<ControleUnidade>();
+    private readonly List<ControleUnidade> veiculosAvulsosCache = new List<ControleUnidade>();
+    private float proximaAtualizacaoCacheCampo;
     
     private GUIStyle estiloJanela;
     private GUIStyle estiloBotao;
@@ -63,7 +67,7 @@ public class GerenciadorQuartel : MonoBehaviour
     {
         MapearDormitorios();
         MapearEstacionamento();
-        janelaRetangulo = new Rect(Screen.width / 2f - 450f, Screen.height / 2f - 325f, 950f, 650f);
+        AtualizarRetanguloJanela(true);
     }
 
     void Update()
@@ -77,7 +81,7 @@ public class GerenciadorQuartel : MonoBehaviour
                 FecharOutrosMenus();
                 InterfaceAberta = true;
                 menuAberto = true;
-                janelaRetangulo.position = new Vector2(Screen.width / 2f - 450f, Screen.height / 2f - 325f);
+                AtualizarRetanguloJanela(true);
             }
             else
             {
@@ -103,6 +107,25 @@ public class GerenciadorQuartel : MonoBehaviour
         if (MenuGoverno.Instancia != null) MenuGoverno.Instancia.AlternarMenu(false);
         var construtor = Object.FindFirstObjectByType<MenuConstrucao>();
         if (construtor != null && MenuConstrucao.EstaAberto) construtor.AlternarMenu(false);
+    }
+
+    private void AtualizarRetanguloJanela(bool centralizar)
+    {
+        float larguraMaxima = Mathf.Max(760f, Screen.width - 340f);
+        float larguraMinima = Mathf.Min(1040f, larguraMaxima);
+        float alturaMaxima = Mathf.Max(560f, Screen.height - 80f);
+        float alturaMinima = Mathf.Min(660f, alturaMaxima);
+        float largura = Mathf.Clamp(Screen.width * 0.66f, larguraMinima, larguraMaxima);
+        float altura = Mathf.Clamp(Screen.height * 0.78f, alturaMinima, alturaMaxima);
+
+        janelaRetangulo.width = largura;
+        janelaRetangulo.height = altura;
+
+        if (centralizar)
+        {
+            janelaRetangulo.x = Mathf.Max(280f, (Screen.width - largura) * 0.5f);
+            janelaRetangulo.y = Mathf.Max(32f, (Screen.height - altura) * 0.5f);
+        }
     }
 
     private void ChecarInvasaoEAcordarBase()
@@ -241,40 +264,45 @@ public class GerenciadorQuartel : MonoBehaviour
         GUI.DragWindow();
     }
 
+    private void AtualizarCacheUnidadesCampo(bool forcar)
+    {
+        if (!forcar && Time.unscaledTime < proximaAtualizacaoCacheCampo)
+        {
+            return;
+        }
+
+        proximaAtualizacaoCacheCampo = Time.unscaledTime + 0.75f;
+        soldadosAvulsosCache.Clear();
+        veiculosAvulsosCache.Clear();
+
+        IdentidadeUnidade[] todas = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        float raioSqr = raioDeCobertura * raioDeCobertura;
+
+        foreach (var id in todas)
+        {
+            if (id == null || id.teamID != 1) continue;
+
+            ControleUnidade u = id.GetComponent<ControleUnidade>();
+            if (u == null || !u.gameObject.activeInHierarchy) continue;
+            if (u.TemControleAviao || u.TemControleAviaoCaca || id.tipoUnidade == TipoUnidade.Naval || id.tipoUnidade == TipoUnidade.Estrutura || id.tipoUnidade == TipoUnidade.Aereo) continue;
+            if (veiculosNoQuartel.Contains(u) || soldadosNoDormitorio.Contains(u)) continue;
+            if ((u.transform.position - transform.position).sqrMagnitude > raioSqr) continue;
+
+            SistemaDeDanos dmg = u.GetComponent<SistemaDeDanos>();
+            if (dmg != null && dmg.unidadeBiologica) soldadosAvulsosCache.Add(u);
+            else veiculosAvulsosCache.Add(u);
+        }
+    }
+
     void DesenharAbaTropas()
     {
+        AtualizarCacheUnidadesCampo(false);
         GUILayout.BeginHorizontal();
 
         // ======= COLUNA ESQUERDA (Recolher do Mapa) ======
         GUILayout.BeginVertical("box", GUILayout.Width(janelaRetangulo.width / 2f - 20));
         GUILayout.Label(">>> LISTA DE EFETIVOS EM CAMPO (Recolher)", estiloTexto);
         GUILayout.Space(5);
-
-        // Varre quais unidades estão no mapa dando sopa
-        List<ControleUnidade> soldadosAvulsos = new List<ControleUnidade>();
-        List<ControleUnidade> veiculosAvulsos = new List<ControleUnidade>();
-
-        foreach (var id in Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None))
-        {
-            if (id.teamID == 1)
-            {
-                ControleUnidade u = id.GetComponent<ControleUnidade>();
-                if (u == null || !u.gameObject.activeInHierarchy) continue;
-                if (u.TemControleAviao || u.TemControleAviaoCaca || id.tipoUnidade == TipoUnidade.Naval || id.tipoUnidade == TipoUnidade.Estrutura || id.tipoUnidade == TipoUnidade.Aereo) continue;
-
-                // Não lista que já tá hibernando
-                if (!veiculosNoQuartel.Contains(u) && !soldadosNoDormitorio.Contains(u))
-                {
-                    // Apenas se estiver dentro da área de rádio
-                    if (Vector3.Distance(u.transform.position, transform.position) <= raioDeCobertura)
-                    {
-                        var dmg = u.GetComponent<SistemaDeDanos>();
-                        if (dmg != null && dmg.unidadeBiologica) soldadosAvulsos.Add(u);
-                        else veiculosAvulsos.Add(u);
-                    }
-                }
-            }
-        }
 
         if (GUILayout.Button("CONVOCAR: OS SELECIONADOS NO MAPA", estiloBotao, GUILayout.Height(40)))
         {
@@ -288,13 +316,13 @@ public class GerenciadorQuartel : MonoBehaviour
         
         GUILayout.Space(5);
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button($"CHAMAR TODOS SOLDADOS ({soldadosAvulsos.Count})", estiloBotao, GUILayout.Height(35)))
+        if (GUILayout.Button($"CHAMAR TODOS SOLDADOS ({soldadosAvulsosCache.Count})", estiloBotao, GUILayout.Height(35)))
         {
-            foreach (var u in soldadosAvulsos) ReceberUnidade(u);
+            foreach (var u in soldadosAvulsosCache) ReceberUnidade(u);
         }
-        if (GUILayout.Button($"CHAMAR TODOS VEÍCULOS ({veiculosAvulsos.Count})", estiloBotao, GUILayout.Height(35)))
+        if (GUILayout.Button($"CHAMAR TODOS VEICULOS ({veiculosAvulsosCache.Count})", estiloBotao, GUILayout.Height(35)))
         {
-            foreach (var u in veiculosAvulsos) ReceberUnidade(u);
+            foreach (var u in veiculosAvulsosCache) ReceberUnidade(u);
         }
         GUILayout.EndHorizontal();
 
@@ -302,10 +330,10 @@ public class GerenciadorQuartel : MonoBehaviour
         scrollConvocar = GUILayout.BeginScrollView(scrollConvocar, GUILayout.Height(380));
         
         // Soldados Espalhados
-        if (soldadosAvulsos.Count > 0)
+        if (soldadosAvulsosCache.Count > 0)
         {
-            GUILayout.Label($"- INFANTARIA LIVRE ({soldadosAvulsos.Count}) -", estiloTexto);
-            foreach (var s in soldadosAvulsos)
+            GUILayout.Label($"- INFANTARIA LIVRE ({soldadosAvulsosCache.Count}) -", estiloTexto);
+            foreach (var s in soldadosAvulsosCache)
             {
                 GUILayout.BeginHorizontal("box");
                 GUILayout.Label(s.name, estiloTexto, GUILayout.Width(220));
@@ -316,10 +344,10 @@ public class GerenciadorQuartel : MonoBehaviour
         }
 
         // Veículos Espalhados
-        if (veiculosAvulsos.Count > 0)
+        if (veiculosAvulsosCache.Count > 0)
         {
-            GUILayout.Label($"- VEÍCULOS LIVRES ({veiculosAvulsos.Count}) -", estiloTexto);
-            foreach (var v in veiculosAvulsos)
+            GUILayout.Label($"- VEICULOS LIVRES ({veiculosAvulsosCache.Count}) -", estiloTexto);
+            foreach (var v in veiculosAvulsosCache)
             {
                 GUILayout.BeginHorizontal("box");
                 GUILayout.Label(v.name, estiloTexto, GUILayout.Width(220));
@@ -328,7 +356,7 @@ public class GerenciadorQuartel : MonoBehaviour
             }
         }
         
-        if (soldadosAvulsos.Count == 0 && veiculosAvulsos.Count == 0)
+        if (soldadosAvulsosCache.Count == 0 && veiculosAvulsosCache.Count == 0)
         {
             GUILayout.Label("Nenhuma unidade encontrada solta no Raio do Quartel.", estiloTexto);
         }
@@ -386,6 +414,7 @@ public class GerenciadorQuartel : MonoBehaviour
 
     void DesenharAbaArsenal()
     {
+        scrollArsenal = GUILayout.BeginScrollView(scrollArsenal);
         GUILayout.Label(">>> PROTOCOLOS DA BASE", estiloTexto);
         recolhimentoAutomatico = GUILayout.Toggle(recolhimentoAutomatico, " RECOLHIMENTO AUTOMÁTICO (Chama por rádio as unidades)", estiloTexto);
         
@@ -405,6 +434,34 @@ public class GerenciadorQuartel : MonoBehaviour
         GUILayout.Label($"Pacotes de Munição (Balas): {municaoArmazenada}", estiloTexto);
 
         GUILayout.Space(15);
+        GUILayout.Label(">>> LOGÍSTICA TERRESTRE (CAMINHÕES DE ABASTECIMENTO)", estiloTexto);
+        CaminhaoCombustivel.AbastecimentoAutomaticoGlobal = GUILayout.Toggle(CaminhaoCombustivel.AbastecimentoAutomaticoGlobal, " ABASTECIMENTO AUTOMÁTICO (Caminhões Track buscam unidades secas)", estiloTexto);
+        
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("CARREGAR TRACKS NESTE QUARTEL", estiloBotao, GUILayout.Height(38)))
+        {
+            foreach (var c in Object.FindObjectsByType<CaminhaoCombustivel>(FindObjectsSortMode.None))
+            {
+                if (c == null) continue;
+                c.ForcarRecarregarNoQuartel(this);
+            }
+        }
+
+        if (GUILayout.Button("FORCAR RECARGA / RETORNO", estiloBotao, GUILayout.Height(38)))
+        {
+            var caminhoes = Object.FindObjectsByType<CaminhaoCombustivel>(FindObjectsSortMode.None);
+            foreach(var c in caminhoes)
+            {
+                if (c == null) continue;
+                c.DefinirQuartelPreferencial(this);
+                c.ForcarRetornoBase();
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Label("Tracks atendem somente a area do QG/centro definido, abastecem abaixo de 20%, reparam e recarregam em quartel ou fila de terra do Liberty.", estiloTexto);
+
+        GUILayout.Space(15);
         if (GerenciadorRecursos.Instancia != null)
         {
             GUILayout.Label($"Fundo Nacional Atual: ${GerenciadorRecursos.Instancia.dinheiro}", estiloTexto);
@@ -421,6 +478,8 @@ public class GerenciadorQuartel : MonoBehaviour
             }
             GUILayout.EndHorizontal();
         }
+
+        GUILayout.EndScrollView();
     }
 
     void DesenharAbaInteligencia()

@@ -58,6 +58,7 @@ public class ControleTorretaModular : MonoBehaviour
     private int meuTime = 1;
     private Transform minhaRaiz;
     private bool souAntiAereo;
+    private static readonly List<IdentidadeUnidade> unidadesRegistroRadar = new List<IdentidadeUnidade>(256);
     
     void Start()
     {
@@ -255,10 +256,50 @@ public class ControleTorretaModular : MonoBehaviour
             }
         }
         
+        if (melhorAlvo == null)
+        {
+            melhorAlvo = ProcurarAlvoNoRegistroGlobal();
+        }
+
         // Limpa buffer
         for (int i = 0; i < quantidadeEncontrada; i++) bufferColisores[i] = null;
         
         alvoAtual = melhorAlvo;
+    }
+
+    private Transform ProcurarAlvoNoRegistroGlobal()
+    {
+        RegistroEntidadesJogo.FillUnidades(unidadesRegistroRadar);
+        float alcanceSqr = alcanceRadar * alcanceRadar;
+        float menorDistancia = Mathf.Infinity;
+        Transform melhorAlvo = null;
+
+        for (int i = 0; i < unidadesRegistroRadar.Count; i++)
+        {
+            IdentidadeUnidade idAlvo = unidadesRegistroRadar[i];
+            if (idAlvo == null || !idAlvo.gameObject.activeInHierarchy) continue;
+            if (idAlvo.teamID == 0 || idAlvo.teamID == meuTime) continue;
+
+            Transform alvoTr = ResolverTransformAlvo(idAlvo.transform);
+            if (alvoTr == null || alvoTr.root == minhaRaiz) continue;
+            if (!ControleSubmarino.PodeSerAlvoConvencional(alvoTr)) continue;
+
+            float distSqr = (alvoTr.position - transform.position).sqrMagnitude;
+            if (distSqr > alcanceSqr) continue;
+
+            bool alvoAereo = EhAlvoAereo(alvoTr, idAlvo);
+            if (souAntiAereo && !alvoAereo) continue;
+            if (!souAntiAereo && alvoAereo) continue;
+
+            if (distSqr < menorDistancia)
+            {
+                menorDistancia = distSqr;
+                melhorAlvo = alvoTr;
+            }
+        }
+
+        unidadesRegistroRadar.Clear();
+        return melhorAlvo;
     }
     
     void RotacionarParaAlvo()

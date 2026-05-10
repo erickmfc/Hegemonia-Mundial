@@ -155,6 +155,16 @@ public class LancadorMisselCaca : MonoBehaviour
                     Debug.Log($"[Base] {gameObject.name} recarregou mísseis no Hangar/Porta-Avioes.");
                 }
 
+                CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+                if (combustivel != null && combustivel.usaCombustivel && combustivel.Percentual <= 0.50f)
+                {
+                    combustivel.PreencherSemCusto();
+                    if (_vooModerno != null)
+                    {
+                        _vooModerno.ReabastecerSeAbaixoDe(0.50f);
+                    }
+                }
+
                 if (voltandoParaBase)
                 {
                     voltandoParaBase = false;
@@ -388,6 +398,38 @@ public class LancadorMisselCaca : MonoBehaviour
         cronometroRecarga = tempoRecarga;
         
         if (_audioSource != null) _audioSource.Play();
+    }
+
+    public void RecarregarCompletoNaBase()
+    {
+        municaoAtual = municaoMaxima;
+        indiceCano = 0;
+
+        if (_renderersPorSaida != null && _renderersPorSaida.Length > 0)
+        {
+            for (int i = 0, count = _renderersPorSaida.Length; i < count; i++)
+            {
+                Renderer[] renderers = _renderersPorSaida[i];
+                if (renderers == null) continue;
+                for (int j = 0, jCount = renderers.Length; j < jCount; j++)
+                {
+                    if (renderers[j] != null) renderers[j].enabled = true;
+                }
+            }
+        }
+        else if (pontosDeSaida != null)
+        {
+            for (int i = 0, count = pontosDeSaida.Length; i < count; i++)
+            {
+                Transform tf = pontosDeSaida[i];
+                if (tf == null) continue;
+                Renderer[] renderers = tf.GetComponentsInChildren<Renderer>(true);
+                for (int j = 0, jCount = renderers.Length; j < jCount; j++)
+                {
+                    if (renderers[j] != null) renderers[j].enabled = true;
+                }
+            }
+        }
     }
 
     private static bool NomeContem(string texto, string termo)

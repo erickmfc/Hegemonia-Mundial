@@ -83,10 +83,8 @@ public class ComplexoGovernamental : MonoBehaviour
 
     private void Update()
     {
-        if (ehDoJogador && !jaDerrotado && Input.GetKeyDown(teclaAbrirGoverno))
-        {
-            AbrirMenuGestaoDeEstado();
-        }
+        // Nota: a tecla X é tratada globalmente pelo MenuGoverno.Update()
+        // Não duplicar aqui para evitar abrir e fechar no mesmo frame
 
         if (!jaDerrotado && sistemaDano != null && sistemaDano.vidaAtual <= 0)
         {

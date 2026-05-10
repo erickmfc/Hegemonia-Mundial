@@ -173,7 +173,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Estaleiro
   pontoDeSaida: {fileID: 4309502259949420468}
   slots:
-  - nomeSlot: Atracagem_Grande
+  - nomeSlot: Atracagem
     pontoDeConstrucao: {fileID: 1335252138048140245}
     estaOcupado: 0
     visualAtual: {fileID: 0}
@@ -183,7 +183,7 @@ MonoBehaviour:
     barCanvasObj: {fileID: 0}
     barFillImage: {fileID: 0}
     textProgresso: {fileID: 0}
-  - nomeSlot: Slot_1
+  - nomeSlot: Atracagem_Grande
     pontoDeConstrucao: {fileID: 686588862126957584}
     estaOcupado: 0
     visualAtual: {fileID: 0}

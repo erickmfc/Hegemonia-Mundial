@@ -104,24 +104,24 @@ namespace Hegemonia.AI.BrainMaster
             switch (_state.Band)
             {
                 case IA_PerformanceGovernorBand.Critico:
-                    budget.TotalPoints = 10;
-                    budget.LandPoints = 6;
-                    budget.AirPoints = 4;
-                    budget.NavalPoints = 4;
-                    break;
-
-                case IA_PerformanceGovernorBand.Pressao:
-                    budget.TotalPoints = 18;
-                    budget.LandPoints = 10;
-                    budget.AirPoints = 7;
+                    budget.TotalPoints = 20;
+                    budget.LandPoints = 12;
+                    budget.AirPoints = 8;
                     budget.NavalPoints = 8;
                     break;
 
+                case IA_PerformanceGovernorBand.Pressao:
+                    budget.TotalPoints = 36;
+                    budget.LandPoints = 20;
+                    budget.AirPoints = 14;
+                    budget.NavalPoints = 16;
+                    break;
+
                 default:
-                    budget.TotalPoints = 28;
-                    budget.LandPoints = 16;
-                    budget.AirPoints = 10;
-                    budget.NavalPoints = 12;
+                    budget.TotalPoints = 56;
+                    budget.LandPoints = 32;
+                    budget.AirPoints = 20;
+                    budget.NavalPoints = 24;
                     break;
             }
 
@@ -146,9 +146,9 @@ namespace Hegemonia.AI.BrainMaster
                     decision.MaxActiveFronts = 1;
                     decision.MaxAirPackages = 1;
                     decision.MaxNavalPackages = 1;
-                    decision.MaxLandAttackers = 8;
-                    decision.MaxAirAttackers = 3;
-                    decision.MaxNavalAttackers = 2;
+                    decision.MaxLandAttackers = 16;
+                    decision.MaxAirAttackers = 6;
+                    decision.MaxNavalAttackers = 4;
                     decision.MaxProductionCommandsPerCycle = 1;
                     decision.ProductionCooldownSeconds = 4f;
                     decision.RetargetCooldownMultiplier = 2f;
@@ -165,9 +165,9 @@ namespace Hegemonia.AI.BrainMaster
                     decision.MaxActiveFronts = 1;
                     decision.MaxAirPackages = 1;
                     decision.MaxNavalPackages = 1;
-                    decision.MaxLandAttackers = 12;
-                    decision.MaxAirAttackers = 4;
-                    decision.MaxNavalAttackers = 3;
+                    decision.MaxLandAttackers = 24;
+                    decision.MaxAirAttackers = 8;
+                    decision.MaxNavalAttackers = 6;
                     decision.MaxProductionCommandsPerCycle = 1;
                     decision.ProductionCooldownSeconds = 1.5f;
                     decision.RetargetCooldownMultiplier = 1.45f;
@@ -182,9 +182,9 @@ namespace Hegemonia.AI.BrainMaster
                     decision.MaxActiveFronts = activeBrains >= 4 ? 1 : 2;
                     decision.MaxAirPackages = activeBrains >= 5 ? 1 : 2;
                     decision.MaxNavalPackages = activeBrains >= 5 ? 1 : 2;
-                    decision.MaxLandAttackers = 24;
-                    decision.MaxAirAttackers = 8;
-                    decision.MaxNavalAttackers = 6;
+                    decision.MaxLandAttackers = 48;
+                    decision.MaxAirAttackers = 16;
+                    decision.MaxNavalAttackers = 12;
                     decision.MaxProductionCommandsPerCycle = 2;
                     decision.ProductionCooldownSeconds = 0f;
                     decision.RetargetCooldownMultiplier = 1f;

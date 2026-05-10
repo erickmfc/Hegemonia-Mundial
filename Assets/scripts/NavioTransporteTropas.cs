@@ -100,6 +100,8 @@ public class NavioTransporteTropas : MonoBehaviour
     private int _alternanciaStop = 0;
     private float _proximoScanHeli = 0f;
     private readonly List<Helicoptero> _helisProximosCache = new List<Helicoptero>();
+    private readonly List<Helicoptero> _helisCandidatosOperacao = new List<Helicoptero>(32);
+    private bool _interacaoHeliSolicitada;
 
     private enum CategoriaSelecao
     {
@@ -170,6 +172,15 @@ public class NavioTransporteTropas : MonoBehaviour
     private GUIStyle _uiLinhaCompacta;
     private GUIStyle _uiLabelCompacta;
     private GUIStyle _uiLabelWrap;
+    private bool _temPontoTerraCache;
+    private float _proximaAtualizacaoTemTerra;
+    private readonly RaycastHit[] _hitsTerraBuffer = new RaycastHit[32];
+    private Collider[] _hitsHeliBuffer = new Collider[128];
+    private readonly HashSet<int> _vistosHelisBusca = new HashSet<int>(64);
+    private readonly HashSet<int> _vistosSanearHelis = new HashSet<int>(32);
+    private Collider[] _hitsTerrestresBuffer = new Collider[256];
+    private readonly List<GameObject> _candidatosTerrestresOperacao = new List<GameObject>(128);
+    private readonly HashSet<int> _vistosTerrestresBusca = new HashSet<int>(128);
 
     // ======================================================
     // API Pública (IA / Debug)
@@ -184,7 +195,8 @@ public class NavioTransporteTropas : MonoBehaviour
 
     public bool TemPontoEmTerra()
     {
-        return ObterPontosSaidaEmTerra().Count > 0;
+        AtualizarTemPontoEmTerraCache(false);
+        return _temPontoTerraCache;
     }
 
     public bool TemEspaco(TipoUnidade tipo)
@@ -257,6 +269,11 @@ public class NavioTransporteTropas : MonoBehaviour
             {
                 _menuAberto = false;
             }
+
+            if (PossuiOrdemManualAtiva())
+            {
+                CancelarInteracaoPorConstrucao();
+            }
         }
 
         AtualizarAnimacaoPorta();
@@ -264,6 +281,7 @@ public class NavioTransporteTropas : MonoBehaviour
         {
             ProcessarInputMenu();
         }
+        AtualizarModoInteracaoHelicopteroNavio();
         if (_menuAberto && Time.time >= _proximoScanHeli)
         {
             AtualizarCacheHelisProximos();
@@ -281,6 +299,15 @@ public class NavioTransporteTropas : MonoBehaviour
         }
     }
 
+    private void OnDisable()
+    {
+        if (_interacaoHeliSolicitada)
+        {
+            InteractionModeService.Release(this, InteractionOwner.CarrierOrder);
+            _interacaoHeliSolicitada = false;
+        }
+    }
+
     private void OnGUI()
     {
         if (!_menuAberto) return;
@@ -289,6 +316,8 @@ public class NavioTransporteTropas : MonoBehaviour
         int oldLabelFont = GUI.skin.label.fontSize;
         int oldButtonFont = GUI.skin.button.fontSize;
         int oldBoxFont = GUI.skin.box.fontSize;
+        bool oldLabelRichText = GUI.skin.label.richText;
+        bool oldBoxRichText = GUI.skin.box.richText;
         bool oldButtonRichText = GUI.skin.button.richText;
         GUI.skin.label.richText = true;
         GUI.skin.box.richText = true;
@@ -566,6 +595,8 @@ public class NavioTransporteTropas : MonoBehaviour
         GUI.skin.label.fontSize = oldLabelFont;
         GUI.skin.button.fontSize = oldButtonFont;
         GUI.skin.box.fontSize = oldBoxFont;
+        GUI.skin.label.richText = oldLabelRichText;
+        GUI.skin.box.richText = oldBoxRichText;
         GUI.skin.button.richText = oldButtonRichText;
     }
 
@@ -950,7 +981,9 @@ public class NavioTransporteTropas : MonoBehaviour
             yield break;
         }
 
-        List<Helicoptero> candidatos = ColetarHelisProximos();
+        _helisCandidatosOperacao.Clear();
+        ColetarHelisProximos(_helisCandidatosOperacao);
+        List<Helicoptero> candidatos = _helisCandidatosOperacao;
         if (candidatos.Count == 0)
         {
             MostrarMensagem("⚠️ Nenhum helicóptero próximo.");
@@ -1048,6 +1081,12 @@ public class NavioTransporteTropas : MonoBehaviour
         if (ehSoldado) _soldadosCarregados.Add(carga);
         else _veiculosCarregados.Add(carga);
 
+        // Recarregar vida e combustível
+        SistemaDeDanos dano = u.GetComponent<SistemaDeDanos>();
+        if (dano != null) dano.vidaAtual = dano.vidaMaxima;
+        CombustivelUnidade comb = u.GetComponent<CombustivelUnidade>();
+        if (comb != null) comb.PreencherSemCusto();
+
         u.SetActive(false);
         _contagemCargaSuja = true;
     }
@@ -1093,6 +1132,12 @@ public class NavioTransporteTropas : MonoBehaviour
             soldado.transform.localPosition = _containerCarga.InverseTransformPoint(chegada.position);
             soldado.transform.rotation = transform.rotation;
         }
+
+        // Recarregar vida e combustível
+        SistemaDeDanos dano = soldado.GetComponent<SistemaDeDanos>();
+        if (dano != null) dano.vidaAtual = dano.vidaMaxima;
+        CombustivelUnidade comb = soldado.GetComponent<CombustivelUnidade>();
+        if (comb != null) comb.PreencherSemCusto();
 
         soldado.SetActive(false);
         _soldadosCarregados.Add(carga);
@@ -1275,6 +1320,13 @@ public class NavioTransporteTropas : MonoBehaviour
         return _modoOrdemHelicoptero != ModoOrdemHelicopteroNavio.Nenhum && _helicopteroSelecionadoParaMissao != null;
     }
 
+    public void CancelarInteracaoPorConstrucao()
+    {
+        EncerrarModoHelicopteroNavio();
+        _menuAberto = false;
+        AtualizarModoInteracaoHelicopteroNavio();
+    }
+
     private Helicoptero ObterHelicopteroSelecionadoNoNavio()
     {
         if (_helicopteroSelecionadoParaMissao != null && JaTenhoHeli(_helicopteroSelecionadoParaMissao))
@@ -1323,6 +1375,7 @@ public class NavioTransporteTropas : MonoBehaviour
         _modoOrdemHelicoptero = modo;
         _rotaPatrulhaHelicoptero.Clear();
         _menuAberto = false;
+        AtualizarModoInteracaoHelicopteroNavio();
     }
 
     private void EncerrarModoHelicopteroNavio()
@@ -1330,6 +1383,35 @@ public class NavioTransporteTropas : MonoBehaviour
         _rotaPatrulhaHelicoptero.Clear();
         _modoOrdemHelicoptero = ModoOrdemHelicopteroNavio.Nenhum;
         _helicopteroSelecionadoParaMissao = null;
+        AtualizarModoInteracaoHelicopteroNavio();
+    }
+
+    private void AtualizarModoInteracaoHelicopteroNavio()
+    {
+        if (PossuiOrdemManualAtiva())
+        {
+            if (!_interacaoHeliSolicitada || !InteractionModeService.IsActive(this, InteractionOwner.CarrierOrder))
+            {
+                InteractionModeService.Request(
+                    this,
+                    InteractionOwner.CarrierOrder,
+                    new InteractionPolicy
+                    {
+                        bloqueiaSelecao = true,
+                        bloqueiaOrdemMundo = true,
+                        bloqueiaRotacaoCamera = true,
+                        consomeLMB = false,
+                        consomeRMB = true
+                    },
+                    "Ordem manual de helicóptero naval aguardando clique");
+            }
+            _interacaoHeliSolicitada = true;
+        }
+        else if (_interacaoHeliSolicitada)
+        {
+            InteractionModeService.Release(this, InteractionOwner.CarrierOrder);
+            _interacaoHeliSolicitada = false;
+        }
     }
 
     private void ProcessarOrdemHelicopteroNavio()
@@ -1717,11 +1799,27 @@ public class NavioTransporteTropas : MonoBehaviour
         portaTerrestre.localEulerAngles = new Vector3(_portaRotX, _portaRotY, atualZN);
     }
 
+    private float _proximoLimparNulos = 0f;
     private void LimparNulos()
     {
-        _veiculosCarregados.RemoveAll(c => c == null || c.unidade == null);
-        _soldadosCarregados.RemoveAll(c => c == null || c.unidade == null);
-        _helisCarregados.RemoveAll(c => c == null || c.heli == null);
+        if (Time.time < _proximoLimparNulos) return;
+        _proximoLimparNulos = Time.time + 1.0f;
+
+        for (int i = _veiculosCarregados.Count - 1; i >= 0; i--)
+        {
+            if (_veiculosCarregados[i] == null || _veiculosCarregados[i].unidade == null)
+                _veiculosCarregados.RemoveAt(i);
+        }
+        for (int i = _soldadosCarregados.Count - 1; i >= 0; i--)
+        {
+            if (_soldadosCarregados[i] == null || _soldadosCarregados[i].unidade == null)
+                _soldadosCarregados.RemoveAt(i);
+        }
+        for (int i = _helisCarregados.Count - 1; i >= 0; i--)
+        {
+            if (_helisCarregados[i] == null || _helisCarregados[i].heli == null)
+                _helisCarregados.RemoveAt(i);
+        }
     }
 
     private void MostrarMensagem(string msg, float duracao = 4f)
@@ -1744,6 +1842,36 @@ public class NavioTransporteTropas : MonoBehaviour
         return lista;
     }
 
+    private void AtualizarTemPontoEmTerraCache(bool forcar)
+    {
+        if (!forcar && Time.time < _proximaAtualizacaoTemTerra)
+        {
+            return;
+        }
+
+        _proximaAtualizacaoTemTerra = Time.time + 0.35f;
+        _temPontoTerraCache = false;
+        if (pontosSaidaEntrada == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < pontosSaidaEntrada.Length; i++)
+        {
+            Transform p = pontosSaidaEntrada[i];
+            if (p == null)
+            {
+                continue;
+            }
+
+            if (PontoTemTerra(p.position))
+            {
+                _temPontoTerraCache = true;
+                return;
+            }
+        }
+    }
+
     private bool PontoTemTerra(Vector3 pos)
     {
         if (RegistroSuperficieMapa.TryClassify(pos, out ClassificacaoSuperficieMapa classificacao, out _, 1.75f, 0.5f))
@@ -1752,16 +1880,28 @@ public class NavioTransporteTropas : MonoBehaviour
         }
 
         Vector3 origem = new Vector3(pos.x, pos.y + 600f, pos.z);
-        RaycastHit[] hits = Physics.RaycastAll(origem, Vector3.down, 1200f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-        if (hits == null || hits.Length == 0) return false;
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        int totalHits = Physics.RaycastNonAlloc(origem, Vector3.down, _hitsTerraBuffer, 1200f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        if (totalHits <= 0) return false;
 
-        for (int i = 0; i < hits.Length; i++)
+        int melhorIndice = -1;
+        float melhorDistancia = float.MaxValue;
+        for (int i = 0; i < totalHits; i++)
         {
-            if (hits[i].collider == null) continue;
-            if (hits[i].collider.transform.IsChildOf(transform)) continue;
-            return !EhAgua(hits[i].collider);
+            Collider col = _hitsTerraBuffer[i].collider;
+            if (col == null) continue;
+            if (col.transform.IsChildOf(transform)) continue;
+            if (_hitsTerraBuffer[i].distance < melhorDistancia)
+            {
+                melhorDistancia = _hitsTerraBuffer[i].distance;
+                melhorIndice = i;
+            }
         }
+
+        if (melhorIndice >= 0)
+        {
+            return !EhAgua(_hitsTerraBuffer[melhorIndice].collider);
+        }
+
         return false;
     }
 
@@ -1776,11 +1916,21 @@ public class NavioTransporteTropas : MonoBehaviour
     private bool EhAgua(Collider col)
     {
         if (col == null) return false;
-        string nome = col.name.ToLowerInvariant();
-        if (nome.Contains("agua") || nome.Contains("water") || nome.Contains("ocean") || nome.Contains("sea") || nome.Contains("mar")) return true;
-        string layerName = LayerMask.LayerToName(col.gameObject.layer).ToLowerInvariant();
-        if (layerName.Contains("agua") || layerName.Contains("water") || layerName.Contains("ocean") || layerName.Contains("sea") || layerName.Contains("mar")) return true;
+        string nome = col.name;
+        if (ContemTermoAgua(nome)) return true;
+        string layerName = LayerMask.LayerToName(col.gameObject.layer);
+        if (ContemTermoAgua(layerName)) return true;
         return false;
+    }
+
+    private static bool ContemTermoAgua(string texto)
+    {
+        return !string.IsNullOrEmpty(texto)
+               && (texto.IndexOf("agua", StringComparison.OrdinalIgnoreCase) >= 0
+                   || texto.IndexOf("water", StringComparison.OrdinalIgnoreCase) >= 0
+                   || texto.IndexOf("ocean", StringComparison.OrdinalIgnoreCase) >= 0
+                   || texto.IndexOf("sea", StringComparison.OrdinalIgnoreCase) >= 0
+                   || texto.IndexOf("mar", StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
     private Transform EscolherPontoFilaMaisProximo(Vector3 posUnidade, List<Transform> pontosTerra)
@@ -1834,18 +1984,19 @@ public class NavioTransporteTropas : MonoBehaviour
     private List<GameObject> ColetarTerrestresProximos(ModoOperacaoTerrestre modo)
     {
         int meuTime = _idNavio != null ? _idNavio.teamID : 1;
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioBuscaTerrestres, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-        List<GameObject> lista = new List<GameObject>();
-        HashSet<int> vistos = new HashSet<int>();
+        int totalHits = CapturarCollidersTerrestres();
+        List<GameObject> lista = _candidatosTerrestresOperacao;
+        lista.Clear();
+        _vistosTerrestresBusca.Clear();
 
-        for (int i = 0; i < hits.Length; i++)
+        for (int i = 0; i < totalHits; i++)
         {
-            if (hits[i] == null) continue;
-            GameObject raiz = ResolverUnidadeLogica(hits[i].gameObject);
+            Collider hit = _hitsTerrestresBuffer[i];
+            if (hit == null) continue;
+            GameObject raiz = ResolverUnidadeLogica(hit.gameObject);
             if (raiz == null || raiz == gameObject) continue;
             int id = raiz.GetInstanceID();
-            if (vistos.Contains(id)) continue;
-            vistos.Add(id);
+            if (!_vistosTerrestresBusca.Add(id)) continue;
 
             if (!raiz.activeInHierarchy) continue;
             if (JaCarregado(raiz)) continue;
@@ -1872,8 +2023,31 @@ public class NavioTransporteTropas : MonoBehaviour
             lista.Add(raiz);
         }
 
-        lista = lista.OrderBy(u => (u.transform.position - transform.position).sqrMagnitude).ToList();
+        lista.Sort(CompararGameObjectsPorDistancia);
         return lista;
+    }
+
+    private int CapturarCollidersTerrestres()
+    {
+        int totalHits = Physics.OverlapSphereNonAlloc(transform.position, raioBuscaTerrestres, _hitsTerrestresBuffer, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        while (totalHits >= _hitsTerrestresBuffer.Length && _hitsTerrestresBuffer.Length < 2048)
+        {
+            _hitsTerrestresBuffer = new Collider[_hitsTerrestresBuffer.Length * 2];
+            totalHits = Physics.OverlapSphereNonAlloc(transform.position, raioBuscaTerrestres, _hitsTerrestresBuffer, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        }
+
+        return totalHits;
+    }
+
+    private int CompararGameObjectsPorDistancia(GameObject a, GameObject b)
+    {
+        if (a == b) return 0;
+        if (a == null) return 1;
+        if (b == null) return -1;
+
+        float da = (a.transform.position - transform.position).sqrMagnitude;
+        float db = (b.transform.position - transform.position).sqrMagnitude;
+        return da.CompareTo(db);
     }
 
     private bool EhSoldado(GameObject obj)
@@ -1939,61 +2113,79 @@ public class NavioTransporteTropas : MonoBehaviour
     // ======================================================
     // Helicópteros Helpers
     // ======================================================
-    private List<Helicoptero> ColetarHelisProximos()
+    private void ColetarHelisProximos(List<Helicoptero> destino)
     {
-        int meuTime = _idNavio != null ? _idNavio.teamID : 1;
-        float raioBuscaEfetivo = ObterRaioBuscaHelisEfetivo();
-        List<Helicoptero> helis = new List<Helicoptero>();
-        HashSet<int> vistos = new HashSet<int>();
-
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioBuscaEfetivo, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-        for (int i = 0; i < hits.Length; i++)
+        if (destino == null)
         {
-            if (hits[i] == null) continue;
-            Helicoptero h = hits[i].GetComponentInParent<Helicoptero>();
-            if (h == null) continue;
-            int id = h.GetInstanceID();
-            if (vistos.Contains(id)) continue;
-            vistos.Add(id);
-
-            if (JaTenhoHeli(h)) continue;
-            if (HelicopteroPertenceAEsteNavio(h)) continue;
-            if (!h.estaVoando && !h.EstaEmPreparacaoDecolagem()) continue;
-
-            IdentidadeUnidade idU = h.GetComponent<IdentidadeUnidade>();
-            if (idU == null) idU = h.GetComponentInParent<IdentidadeUnidade>();
-            if (idU != null && meuTime > 0 && idU.teamID > 0 && idU.teamID != meuTime) continue;
-
-            float dist = (h.transform.position - transform.position).sqrMagnitude;
-            if (dist > raioBuscaEfetivo * raioBuscaEfetivo) continue;
-
-            helis.Add(h);
+            return;
         }
 
-        if (helis.Count == 0)
+        int meuTime = _idNavio != null ? _idNavio.teamID : 1;
+        float raioBuscaEfetivo = ObterRaioBuscaHelisEfetivo();
+        float raioSqr = raioBuscaEfetivo * raioBuscaEfetivo;
+        _vistosHelisBusca.Clear();
+
+        int totalHits = CapturarCollidersHelis(raioBuscaEfetivo);
+        for (int i = 0; i < totalHits; i++)
+        {
+            Collider hit = _hitsHeliBuffer[i];
+            if (hit == null) continue;
+            TentarAdicionarHeliProximo(hit.GetComponentInParent<Helicoptero>(), meuTime, raioSqr, destino);
+        }
+
+        if (destino.Count == 0)
         {
             var todos = UnityEngine.Object.FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
             for (int i = 0; i < todos.Length; i++)
             {
-                Helicoptero h = todos[i];
-                if (h == null) continue;
-                int id = h.GetInstanceID();
-                if (vistos.Contains(id)) continue;
-                if (JaTenhoHeli(h)) continue;
-                if (HelicopteroPertenceAEsteNavio(h)) continue;
-                if (!h.estaVoando && !h.EstaEmPreparacaoDecolagem()) continue;
-
-                IdentidadeUnidade idU = h.GetComponent<IdentidadeUnidade>();
-                if (idU == null) idU = h.GetComponentInParent<IdentidadeUnidade>();
-                if (idU != null && meuTime > 0 && idU.teamID > 0 && idU.teamID != meuTime) continue;
-
-                float dist = (h.transform.position - transform.position).sqrMagnitude;
-                if (dist > raioBuscaEfetivo * raioBuscaEfetivo) continue;
-                helis.Add(h);
+                TentarAdicionarHeliProximo(todos[i], meuTime, raioSqr, destino);
             }
         }
 
-        return helis.OrderBy(h => (h.transform.position - transform.position).sqrMagnitude).ToList();
+        destino.Sort(CompararHelisPorDistancia);
+    }
+
+    private int CapturarCollidersHelis(float raioBuscaEfetivo)
+    {
+        int totalHits = Physics.OverlapSphereNonAlloc(transform.position, raioBuscaEfetivo, _hitsHeliBuffer, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        while (totalHits >= _hitsHeliBuffer.Length && _hitsHeliBuffer.Length < 1024)
+        {
+            _hitsHeliBuffer = new Collider[_hitsHeliBuffer.Length * 2];
+            totalHits = Physics.OverlapSphereNonAlloc(transform.position, raioBuscaEfetivo, _hitsHeliBuffer, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        }
+
+        return totalHits;
+    }
+
+    private bool TentarAdicionarHeliProximo(Helicoptero h, int meuTime, float raioSqr, List<Helicoptero> destino)
+    {
+        if (h == null) return false;
+        int id = h.GetInstanceID();
+        if (!_vistosHelisBusca.Add(id)) return false;
+        if (JaTenhoHeli(h)) return false;
+        if (HelicopteroPertenceAEsteNavio(h)) return false;
+        if (!h.estaVoando && !h.EstaEmPreparacaoDecolagem()) return false;
+
+        IdentidadeUnidade idU = h.GetComponent<IdentidadeUnidade>();
+        if (idU == null) idU = h.GetComponentInParent<IdentidadeUnidade>();
+        if (idU != null && meuTime > 0 && idU.teamID > 0 && idU.teamID != meuTime) return false;
+
+        float dist = (h.transform.position - transform.position).sqrMagnitude;
+        if (dist > raioSqr) return false;
+
+        destino.Add(h);
+        return true;
+    }
+
+    private int CompararHelisPorDistancia(Helicoptero a, Helicoptero b)
+    {
+        if (a == b) return 0;
+        if (a == null) return 1;
+        if (b == null) return -1;
+
+        float da = (a.transform.position - transform.position).sqrMagnitude;
+        float db = (b.transform.position - transform.position).sqrMagnitude;
+        return da.CompareTo(db);
     }
 
     private float ObterRaioBuscaHelisEfetivo() => Mathf.Max(raioBuscaHelis, 600f);
@@ -2002,14 +2194,7 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         SanearHelicopterosCarregados();
         _helisProximosCache.Clear();
-        List<Helicoptero> candidatos = ColetarHelisProximos();
-        HashSet<int> vistos = new HashSet<int>();
-        for (int i = 0; i < candidatos.Count; i++)
-        {
-            Helicoptero heli = candidatos[i];
-            if (heli == null || JaTenhoHeli(heli)) continue;
-            if (vistos.Add(heli.GetInstanceID())) _helisProximosCache.Add(heli);
-        }
+        ColetarHelisProximos(_helisProximosCache);
     }
 
     private bool JaTenhoHeli(Helicoptero h)
@@ -2361,7 +2546,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private void SanearHelicopterosCarregados()
     {
-        HashSet<int> vistos = new HashSet<int>();
+        _vistosSanearHelis.Clear();
         for (int i = _helisCarregados.Count - 1; i >= 0; i--)
         {
             CargaHeli carga = _helisCarregados[i];
@@ -2377,7 +2562,7 @@ public class NavioTransporteTropas : MonoBehaviour
                 continue;
             }
 
-            if (!vistos.Add(carga.heli.GetInstanceID()))
+            if (!_vistosSanearHelis.Add(carga.heli.GetInstanceID()))
             {
                 _rotinasEntradaHeli.Remove(carga.heli.GetInstanceID());
                 _rotinasSaidaHeli.Remove(carga.heli.GetInstanceID());

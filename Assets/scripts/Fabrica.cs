@@ -145,6 +145,15 @@ public class Fabrica : MonoBehaviour
         var idF = GetComponentInParent<IdentidadeUnidade>();
         var idU = unidade.GetComponent<IdentidadeUnidade>();
         if (idF != null && idU != null) { idU.teamID = idF.teamID; idU.nomeDoPais = idF.nomeDoPais; }
+        if (idU != null
+            && idU.tipoUnidade == TipoUnidade.Infantaria
+            && (unidade.GetComponent<MovimentoRealTerrestre>() != null
+                || unidade.GetComponent<CaminhaoTanqueAbastecimento>() != null))
+        {
+            idU.tipoUnidade = TipoUnidade.Veiculo;
+        }
+
+        CombustivelUnidade.Garantir(unidade, true);
 
         // EXCLUSIVO: Corotina para delay de 1 segundo antes de sair
         StartCoroutine(MoverParaSaidaComDelay(unidade, posSlot, posSpawnFinal, spawnValidado, destinoValidado, 1.0f));

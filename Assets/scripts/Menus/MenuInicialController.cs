@@ -38,6 +38,7 @@ public class MenuInicialController : MonoBehaviour
     private readonly Vector3 fimJatoCenaMenu = new Vector3(18f, 9.2f, 10f);
     private readonly Vector3 baseNavioFallback = new Vector3(24f, 0.55f, 28f);
     private readonly Vector3 baseNavioCenaMenu = new Vector3(16.4f, 0.2f, 30f);
+    private const float CampoDeVisaoMenuPadrao = 60f;
 
     private Camera cameraDiorama;
     private SistemaSaveGame sistemaSave;
@@ -105,11 +106,12 @@ public class MenuInicialController : MonoBehaviour
 
         if (usarCenaDeFundoExistente)
         {
+            DesativarControladoresCameraDaCenaMenu();
             InicializarAnimacaoCenaExistente();
             DesativarAgentesDaCenaMenu();
-            DesativarScriptsDaCenaMenu();
-            RemoverMenusDeComportamentoDaCenaMenu();
-            DesativarCanvasesDaCenaMenu();
+            // DesativarScriptsDaCenaMenu();
+            // RemoverMenusDeComportamentoDaCenaMenu();
+            // DesativarCanvasesDaCenaMenu();
         }
     }
 
@@ -135,7 +137,7 @@ public class MenuInicialController : MonoBehaviour
 
         ConstruirInterface();
         AtualizarEstadoDoSave();
-        DefinirStatus("Campanha pronta para iniciar.", false);
+        DefinirStatus(LocalizationManager.T("menu.main.ready", "Campanha pronta para iniciar."), false);
     }
 
     private void Update()
@@ -167,7 +169,7 @@ public class MenuInicialController : MonoBehaviour
     {
         string cenaCampanha = ConfiguracaoCenasJogo.ResolverCenaCampanhaPadrao();
         sistemaSave.IniciarNovoJogo(cenaCampanha);
-        DefinirStatus("Iniciando campanha principal...", false);
+        DefinirStatus(LocalizationManager.T("menu.main.loading_new", "Iniciando campanha principal..."), false);
         CarregarCena(cenaCampanha);
     }
 
@@ -175,7 +177,7 @@ public class MenuInicialController : MonoBehaviour
     {
         string cenaTutorial = ConfiguracaoCenasJogo.ResolverCenaTutorial();
         sistemaSave.IniciarNovoJogo(cenaTutorial);
-        DefinirStatus("Iniciando tutorial...", false);
+        DefinirStatus(LocalizationManager.T("menu.main.loading_tutorial", "Iniciando tutorial..."), false);
         CarregarCena(cenaTutorial);
     }
 
@@ -184,13 +186,33 @@ public class MenuInicialController : MonoBehaviour
         if (!sistemaSave.TentarCarregarJogo())
         {
             AtualizarEstadoDoSave();
-            DefinirStatus("Nenhum save encontrado para carregar.", true);
+            DefinirStatus(LocalizationManager.T("menu.main.no_save", "Nenhum save encontrado para carregar."), true);
             return;
         }
 
         string cenaDestino = sistemaSave.ObterCenaSalvaOuPadrao(ConfiguracaoCenasJogo.ResolverCenaCampanhaPadrao());
-        DefinirStatus("Carregando campanha salva...", false);
+        DefinirStatus(LocalizationManager.T("menu.main.loading_save", "Carregando campanha salva..."), false);
         CarregarCena(cenaDestino);
+    }
+
+    public void Btn_AlternarIdioma()
+    {
+        LocalizationManager.Instancia.ProximoIdioma();
+        RecriarInterface();
+        AtualizarEstadoDoSave();
+        DefinirStatus(LocalizationManager.T("menu.main.ready", "Campanha pronta para iniciar."), false);
+    }
+
+    public void Btn_AlternarDificuldade()
+    {
+        GameDifficultyManager.Instancia.ProximaDificuldade();
+        RecriarInterface();
+        AtualizarEstadoDoSave();
+        DefinirStatus(
+            string.Format(
+                LocalizationManager.T("menu.main.difficulty_status", "Dificuldade: {0}"),
+                GameDifficultyManager.Instancia.NomeDificuldadeAtual()),
+            false);
     }
 
     public void Btn_ModoIndisponivel(string nomeModo)
@@ -245,6 +267,8 @@ public class MenuInicialController : MonoBehaviour
             cameraDiorama = cameraObject.AddComponent<Camera>();
             cameraObject.AddComponent<AudioListener>();
         }
+
+        AplicarConfiguracaoCameraMenu(cameraDiorama);
     }
 
     private void GarantirCameraFallback()
@@ -328,6 +352,57 @@ public class MenuInicialController : MonoBehaviour
         }
     }
 
+    private void DesativarControladoresCameraDaCenaMenu()
+    {
+        Scene cenaAtiva = SceneManager.GetActiveScene();
+        CameraController[] controladores = FindObjectsByType<CameraController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < controladores.Length; i++)
+        {
+            CameraController controlador = controladores[i];
+            if (controlador != null && controlador.gameObject.scene == cenaAtiva)
+            {
+                controlador.enabled = false;
+            }
+        }
+    }
+
+    private void AplicarConfiguracaoCameraMenu(Camera cameraMenu)
+    {
+        if (cameraMenu == null)
+        {
+            return;
+        }
+
+        Scene cenaAtiva = SceneManager.GetActiveScene();
+        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            Camera camera = cameras[i];
+            if (camera == null || camera.gameObject.scene != cenaAtiva)
+            {
+                continue;
+            }
+
+            bool cameraEscolhida = camera == cameraMenu;
+            camera.enabled = cameraEscolhida;
+
+            AudioListener listener = camera.GetComponent<AudioListener>();
+            if (listener != null)
+            {
+                listener.enabled = cameraEscolhida;
+            }
+        }
+
+        cameraMenu.tag = "MainCamera";
+        cameraMenu.targetDisplay = 0;
+        cameraMenu.depth = 0f;
+
+        if (cameraMenu.fieldOfView < 35f || cameraMenu.fieldOfView > 95f)
+        {
+            cameraMenu.fieldOfView = CampoDeVisaoMenuPadrao;
+        }
+    }
+
     private void DesativarCanvasesDaCenaMenu()
     {
         Scene cenaAtiva = SceneManager.GetActiveScene();
@@ -371,6 +446,8 @@ public class MenuInicialController : MonoBehaviour
         Scene cenaAtiva = SceneManager.GetActiveScene();
         Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         Camera primeiraCamera = null;
+        Camera cameraCenaMenu = null;
+        Camera cameraMainTag = null;
 
         for (int i = 0; i < cameras.Length; i++)
         {
@@ -385,13 +462,20 @@ public class MenuInicialController : MonoBehaviour
                 primeiraCamera = camera;
             }
 
+            // Prioridade máxima: a câmera da cena de menu pelo nome
+            if (camera.gameObject.name == "Camera cena menu" || camera.gameObject.name.ToLower().Contains("cena menu"))
+            {
+                cameraCenaMenu = camera;
+            }
+
             if (camera.CompareTag("MainCamera"))
             {
-                return camera;
+                cameraMainTag = camera;
             }
         }
 
-        return primeiraCamera;
+        // Ordem de preferência: nome específico > tag MainCamera > primeira encontrada
+        return cameraCenaMenu ?? cameraMainTag ?? primeiraCamera;
     }
 
     private void InicializarAnimacaoCenaExistente()
@@ -679,7 +763,7 @@ public class MenuInicialController : MonoBehaviour
         coluna.offsetMax = new Vector2(-22f, -24f);
 
         CriarTexto("Titulo", coluna, "HEGEMONIA\nGLOBAL", 38, FontStyle.Bold, TextAnchor.UpperLeft, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -8f), new Vector2(0f, 92f));
-        CriarTexto("Subtitulo", coluna, "Nova campanha e carregar jogo", 16, FontStyle.Normal, TextAnchor.UpperLeft, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -94f), new Vector2(0f, 24f));
+        CriarTexto("Subtitulo", coluna, LocalizationManager.T("menu.main.subtitle", "Nova campanha e carregar jogo"), 16, FontStyle.Normal, TextAnchor.UpperLeft, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -94f), new Vector2(0f, 24f));
 
         RectTransform grupoBotoes = new GameObject("GrupoBotoes").AddComponent<RectTransform>();
         grupoBotoes.SetParent(coluna, false);
@@ -690,16 +774,30 @@ public class MenuInicialController : MonoBehaviour
         grupoBotoes.sizeDelta = new Vector2(0f, 420f);
 
         float posicaoY = 0f;
-        CriarBotao(grupoBotoes, "Nova Campanha", "CP", corBotaoDestaque, true, Btn_NovaCampanha, ref posicaoY);
-        CriarBotao(grupoBotoes, "Tutorial", "TR", corBotao, true, Btn_Tutorial, ref posicaoY);
+        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.new", "Nova Campanha"), "CP", corBotaoDestaque, true, Btn_NovaCampanha, ref posicaoY);
+        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.tutorial", "Tutorial"), "TR", corBotao, true, Btn_Tutorial, ref posicaoY);
         CriarBotao(grupoBotoes, "Escaramuca", "SK", corBotao, false, () => Btn_ModoIndisponivel("Escaramuca"), ref posicaoY);
         CriarBotao(grupoBotoes, "Multijogador", "MP", corBotao, false, () => Btn_ModoIndisponivel("Multijogador"), ref posicaoY);
-        botaoCarregar = CriarBotao(grupoBotoes, "Carregar Jogo", "LD", corBotao, true, Btn_CarregarJogo, ref posicaoY);
-        CriarBotao(grupoBotoes, "Configuracoes", "CF", corBotao, false, () => Btn_ModoIndisponivel("Configuracoes"), ref posicaoY);
-        CriarBotao(grupoBotoes, "Sair", "EX", corBotaoSair, true, Btn_Sair, ref posicaoY);
+        botaoCarregar = CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.load", "Carregar Jogo"), "LD", corBotao, true, Btn_CarregarJogo, ref posicaoY);
+        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.language", "Idioma") + ": " + LocalizationManager.Instancia.NomeIdiomaAtual(), "LG", corBotao, true, Btn_AlternarIdioma, ref posicaoY);
+        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.difficulty", "Dificuldade") + ": " + GameDifficultyManager.Instancia.NomeDificuldadeAtual(), "DF", corBotao, true, Btn_AlternarDificuldade, ref posicaoY);
+        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.exit", "Sair"), "EX", corBotaoSair, true, Btn_Sair, ref posicaoY);
 
         statusText = CriarTexto("Status", coluna, string.Empty, 15, FontStyle.Bold, TextAnchor.LowerLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 96f), new Vector2(0f, 34f));
         CriarTexto("Rodape", coluna, "O jogo abre pelo menu principal.\nCampanha e tutorial usam cenas canonicas do bootstrap.\nESC pausa e F1 abre ajuda durante a partida.", 13, FontStyle.Normal, TextAnchor.LowerLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 14f), new Vector2(0f, 78f));
+    }
+
+    private void RecriarInterface()
+    {
+        if (canvasMenuPrincipal != null)
+        {
+            Destroy(canvasMenuPrincipal.gameObject);
+            canvasMenuPrincipal = null;
+            botaoCarregar = null;
+            statusText = null;
+        }
+
+        ConstruirInterface();
     }
 
     private RectTransform CriarPainel(string nome, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPosition, Vector2 sizeDelta, Color cor)
@@ -954,31 +1052,7 @@ public class MenuInicialController : MonoBehaviour
 
     private void LimparCanvasesEstranhosDaCenaMenu()
     {
-        if (canvasMenuPrincipal == null)
-        {
-            return;
-        }
-
-        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        for (int i = 0; i < canvases.Length; i++)
-        {
-            Canvas canvas = canvases[i];
-            if (canvas == null || canvas == canvasMenuPrincipal)
-            {
-                continue;
-            }
-
-            if (canvas.gameObject == null)
-            {
-                continue;
-            }
-
-            string nomeCanvas = canvas.gameObject.name.ToLowerInvariant();
-            if (nomeCanvas.Contains("menu") || nomeCanvas.Contains("hud") || nomeCanvas.Contains("diagnostico") || nomeCanvas.Contains("estado"))
-            {
-                Object.Destroy(canvas.gameObject);
-            }
-        }
+        return;
     }
 
     private void DefinirStatus(string mensagem, bool alerta)

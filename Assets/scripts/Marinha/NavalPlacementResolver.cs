@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -11,10 +13,89 @@ public static class NavalPlacementResolver
         public string Reason;
     }
 
+    public struct PlacementContext
+    {
+        public float SeaLevel;
+        public Vector3 PreferredForward;
+        public float FrontDistance;
+        public float BackDistance;
+        public float MinProbeRadius;
+        public float MaxProbeRadius;
+        public float PreviewPushDistance;
+        public float CommitPushDistance;
+        public bool PreviewMode;
+    }
+
+    private struct ProbeCacheKey : IEquatable<ProbeCacheKey>
+    {
+        public int PrefabId;
+        public int CellX;
+        public int CellZ;
+        public int MinRadius;
+        public int MaxRadius;
+        public int PreviewMode;
+
+        public bool Equals(ProbeCacheKey other)
+        {
+            return PrefabId == other.PrefabId
+                   && CellX == other.CellX
+                   && CellZ == other.CellZ
+                   && MinRadius == other.MinRadius
+                   && MaxRadius == other.MaxRadius
+                   && PreviewMode == other.PreviewMode;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ProbeCacheKey other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = PrefabId;
+                hash = (hash * 397) ^ CellX;
+                hash = (hash * 397) ^ CellZ;
+                hash = (hash * 397) ^ MinRadius;
+                hash = (hash * 397) ^ MaxRadius;
+                hash = (hash * 397) ^ PreviewMode;
+                return hash;
+            }
+        }
+    }
+
+    private struct WaterDirectionCacheEntry
+    {
+        public bool Found;
+        public Vector3 Direction;
+        public Vector3 Point;
+        public float SeaLevel;
+        public float Timestamp;
+    }
+
+    private struct PreviewPoseCacheEntry
+    {
+        public bool Found;
+        public StructurePose Pose;
+        public string Reason;
+        public float Timestamp;
+    }
+
     private const float WaterTolerance = 1.15f;
     private const float VisibleWaterDepthTolerance = 0.05f;
+    private const float SeaLevelCacheTtl = 0.35f;
+    private const float ProbeCacheTtl = 0.18f;
+    private const float CacheCellSize = 4f;
+    private const int MaxProbeCacheEntries = 64;
     private static float _nextExplicitWaterProbeTime = -1f;
     private static bool _hasExplicitWaterSurface;
+    private static float _cachedSeaLevel;
+    private static float _cachedSeaLevelUntil = -1f;
+    private static Construtor _cachedConstrutor;
+    private static IA_Suprema _cachedIaSuprema;
+    private static readonly Dictionary<ProbeCacheKey, WaterDirectionCacheEntry> WaterDirectionCache = new Dictionary<ProbeCacheKey, WaterDirectionCacheEntry>(32);
+    private static readonly Dictionary<ProbeCacheKey, PreviewPoseCacheEntry> PreviewPoseCache = new Dictionary<ProbeCacheKey, PreviewPoseCacheEntry>(32);
 
     public static bool RequiresCoastalPlacement(GameObject target)
     {
@@ -27,28 +108,48 @@ public static class NavalPlacementResolver
 
     public static float ResolveSeaLevel()
     {
+        float now = Application.isPlaying ? Time.unscaledTime : -1f;
+        if (Application.isPlaying && _cachedSeaLevelUntil >= 0f && now <= _cachedSeaLevelUntil)
+        {
+            return _cachedSeaLevel;
+        }
+
         Construtor construtor = Construtor.Instancia != null
             ? Construtor.Instancia
-            : UnityEngine.Object.FindFirstObjectByType<Construtor>();
+            : (_cachedConstrutor != null ? _cachedConstrutor : UnityEngine.Object.FindFirstObjectByType<Construtor>());
         if (construtor != null)
         {
+            _cachedConstrutor = construtor;
             float nivel = construtor.alturaDoMar;
             float referencia;
             if (TryResolveWaterReferenceHeight(out referencia) && Mathf.Abs(referencia - nivel) > 0.25f)
             {
                 nivel = referencia;
             }
+
+            if (Application.isPlaying)
+            {
+                _cachedSeaLevel = nivel;
+                _cachedSeaLevelUntil = now + SeaLevelCacheTtl;
+            }
             return nivel;
         }
 
-        IA_Suprema iaSuprema = UnityEngine.Object.FindFirstObjectByType<IA_Suprema>();
+        IA_Suprema iaSuprema = _cachedIaSuprema != null ? _cachedIaSuprema : UnityEngine.Object.FindFirstObjectByType<IA_Suprema>();
         if (iaSuprema != null)
         {
+            _cachedIaSuprema = iaSuprema;
             float nivel = iaSuprema.nivelDoMar;
             float referencia;
             if (TryResolveWaterReferenceHeight(out referencia) && Mathf.Abs(referencia - nivel) > 0.25f)
             {
                 nivel = referencia;
+            }
+
+            if (Application.isPlaying)
+            {
+                _cachedSeaLevel = nivel;
+                _cachedSeaLevelUntil = now + SeaLevelCacheTtl;
             }
             return nivel;
         }
@@ -56,10 +157,57 @@ public static class NavalPlacementResolver
         float fallback;
         if (TryResolveWaterReferenceHeight(out fallback))
         {
+            if (Application.isPlaying)
+            {
+                _cachedSeaLevel = fallback;
+                _cachedSeaLevelUntil = now + SeaLevelCacheTtl;
+            }
             return fallback;
         }
 
         return 0f;
+    }
+
+    public static PlacementContext BuildPlacementContext(GameObject target, Quaternion fallbackRotation, bool previewMode)
+    {
+        float frontDistance;
+        float backDistance;
+        ResolveCoastalOffsets(target, out frontDistance, out backDistance);
+
+        Vector3 preferredForward = fallbackRotation * Vector3.forward;
+        preferredForward.y = 0f;
+        if (preferredForward.sqrMagnitude < 0.01f)
+        {
+            preferredForward = Vector3.forward;
+        }
+        preferredForward.Normalize();
+
+        CoastalPlacementProfile profile = GetCoastalProfile(target);
+        float minProbeRadius = profile != null
+            ? Mathf.Max(4f, profile.raioMinimoSonda)
+            : Mathf.Max(8f, Mathf.Abs(frontDistance) * 0.35f);
+        float maxProbeRadius = profile != null
+            ? Mathf.Max(minProbeRadius + 16f, profile.raioMaximoSonda)
+            : Mathf.Max(140f, Mathf.Abs(frontDistance) + 80f);
+        float previewPushDistance = profile != null
+            ? Mathf.Max(8f, profile.empurraoPreview)
+            : Mathf.Clamp(Mathf.Abs(frontDistance) * 0.35f, 8f, 24f);
+        float commitPushDistance = profile != null
+            ? Mathf.Max(previewPushDistance, profile.empurraoCommit)
+            : Mathf.Clamp(Mathf.Abs(frontDistance) * 0.45f, 10f, 28f);
+
+        return new PlacementContext
+        {
+            SeaLevel = ResolveSeaLevel(),
+            PreferredForward = preferredForward,
+            FrontDistance = frontDistance,
+            BackDistance = backDistance,
+            MinProbeRadius = minProbeRadius,
+            MaxProbeRadius = maxProbeRadius,
+            PreviewPushDistance = previewPushDistance,
+            CommitPushDistance = commitPushDistance,
+            PreviewMode = previewMode
+        };
     }
 
     private static bool TryResolveWaterReferenceHeight(out float height)
@@ -146,11 +294,17 @@ public static class NavalPlacementResolver
 
     public static bool TryResolveStructurePose(GameObject target, Vector3 anchor, Quaternion fallbackRotation, out StructurePose pose)
     {
+        PlacementContext context = BuildPlacementContext(target, fallbackRotation, false);
+        return TryResolveStructurePose(target, anchor, context, out pose);
+    }
+
+    public static bool TryResolveStructurePose(GameObject target, Vector3 anchor, PlacementContext context, out StructurePose pose)
+    {
         pose = new StructurePose
         {
             Position = anchor,
-            Rotation = fallbackRotation,
-            SeaLevel = ResolveSeaLevel(),
+            Rotation = Quaternion.LookRotation(context.PreferredForward.sqrMagnitude >= 0.01f ? context.PreferredForward : Vector3.forward, Vector3.up),
+            SeaLevel = context.SeaLevel,
             Reason = string.Empty
         };
 
@@ -165,24 +319,20 @@ public static class NavalPlacementResolver
         if (!RequiresCoastalPlacement(target))
         {
             pose.Position = anchor;
-            pose.Rotation = fallbackRotation;
             return true;
         }
 
-        float frontDistance;
-        float backDistance;
-        ResolveCoastalOffsets(target, out frontDistance, out backDistance);
-
-        Vector3 fallbackForward = fallbackRotation * Vector3.forward;
+        float frontDistance = context.FrontDistance;
+        float backDistance = context.BackDistance;
+        Vector3 fallbackForward = context.PreferredForward;
         if (fallbackForward.sqrMagnitude < 0.01f)
         {
             fallbackForward = Vector3.forward;
         }
         fallbackForward.Normalize();
 
-        // Busca progressiva: aceita clique um pouco mar adentro e tenta "encaixar" na costa mais próxima.
-        float mediumRadius = Mathf.Max(120f, Mathf.Abs(frontDistance) * 2.1f);
-        float largeRadius = Mathf.Max(220f, Mathf.Abs(frontDistance) * 4.0f);
+        float mediumRadius = Mathf.Max(context.MaxProbeRadius, Mathf.Abs(frontDistance) * 2.1f);
+        float largeRadius = Mathf.Max(context.MaxProbeRadius + 40f, Mathf.Abs(frontDistance) * 4.0f);
         float[] radii = { 0f, 20f, 45f, 70f, mediumRadius, largeRadius };
         bool found = false;
         float bestScore = float.MinValue;
@@ -193,7 +343,6 @@ public static class NavalPlacementResolver
         for (int r = 0; r < radii.Length; r++)
         {
             float radius = radii[r];
-            // OTIMIZADO: Testando no máximo 6 posições per raio, não 10.
             int positionSamples = radius <= 0.01f ? 1 : 6;
 
             for (int p = 0; p < positionSamples; p++)
@@ -206,7 +355,7 @@ public static class NavalPlacementResolver
                 }
 
                 candidate = SnapToSeaLevel(candidate, pose.SeaLevel);
-                float nearbyRadius = Mathf.Max(10f, Mathf.Abs(frontDistance) * 0.35f);
+                float nearbyRadius = Mathf.Max(context.MinProbeRadius, Mathf.Abs(frontDistance) * 0.35f);
                 if (!HasWaterNearby(candidate, nearbyRadius, pose.SeaLevel))
                 {
                     float relaxedRadius = Mathf.Max(nearbyRadius + 18f, Mathf.Abs(frontDistance) * 0.85f);
@@ -221,7 +370,6 @@ public static class NavalPlacementResolver
                     continue;
                 }
 
-                // OTIMIZADO: Reduzido de 12 rotações para apenas 8 para aliviar CPU.
                 for (int d = 0; d < 8; d++)
                 {
                     float angle = ((360f / 8f) * d) * Mathf.Deg2Rad;
@@ -230,7 +378,6 @@ public static class NavalPlacementResolver
                 }
             }
 
-            // OTIMIZADO: Se encontrar um bom posto próximo já na primeira ou segunda volta, desiste de varrer mais longe!
             if (found && bestScore > 0f)
             {
                 break;
@@ -246,6 +393,84 @@ public static class NavalPlacementResolver
         pose.Position = bestPosition;
         pose.Rotation = bestRotation;
         pose.Reason = string.Empty;
+        return true;
+    }
+
+    public static bool TryResolvePreviewPose(GameObject target, Vector3 anchor, PlacementContext context, out StructurePose pose)
+    {
+        pose = new StructurePose
+        {
+            Position = SnapToSeaLevel(anchor, context.SeaLevel),
+            Rotation = Quaternion.LookRotation(context.PreferredForward.sqrMagnitude >= 0.01f ? context.PreferredForward : Vector3.forward, Vector3.up),
+            SeaLevel = context.SeaLevel,
+            Reason = "sem costa valida"
+        };
+
+        if (target == null)
+        {
+            pose.Reason = "prefab naval invalido";
+            return false;
+        }
+
+        if (!RequiresCoastalPlacement(target))
+        {
+            pose.Reason = string.Empty;
+            return true;
+        }
+
+        ProbeCacheKey cacheKey = BuildCacheKey(target, anchor, context.MinProbeRadius, context.MaxProbeRadius, true);
+        if (TryGetPreviewPoseCache(cacheKey, out pose))
+        {
+            return string.IsNullOrEmpty(pose.Reason);
+        }
+
+        Vector3 waterDirection;
+        Vector3 waterPoint;
+        float seaLevel;
+        if (!TryResolveWaterDirectionInternal(
+                anchor,
+                target.GetInstanceID(),
+                context.PreferredForward,
+                context.MinProbeRadius,
+                context.MaxProbeRadius,
+                context.SeaLevel,
+                true,
+                out waterDirection,
+                out waterPoint,
+                out seaLevel))
+        {
+            pose.Reason = "sem agua proxima";
+            StorePreviewPoseCache(cacheKey, pose, false);
+            return false;
+        }
+
+        Vector3 basePosition = SnapToSeaLevel(anchor, seaLevel);
+        Vector3 frontProbe = basePosition + (waterDirection * Mathf.Max(10f, Mathf.Abs(context.FrontDistance) * 0.5f));
+        Vector3 backProbe = basePosition - (waterDirection * Mathf.Max(8f, Mathf.Abs(context.BackDistance) * 0.6f));
+        bool frontIsWater = IsWaterAtPosition(frontProbe, seaLevel);
+        bool backIsWater = IsWaterAtPosition(backProbe, seaLevel);
+
+        if (!frontIsWater)
+        {
+            pose.Reason = "frente sem agua";
+            StorePreviewPoseCache(cacheKey, pose, false);
+            return false;
+        }
+
+        if (backIsWater)
+        {
+            pose.Reason = "traseira sem terra";
+            StorePreviewPoseCache(cacheKey, pose, false);
+            return false;
+        }
+
+        Vector3 previewPosition = basePosition + (waterDirection * context.PreviewPushDistance);
+        previewPosition.y = seaLevel;
+        pose.Position = previewPosition;
+        pose.Rotation = Quaternion.LookRotation(waterDirection.normalized, Vector3.up);
+        pose.SeaLevel = seaLevel;
+        pose.Reason = string.Empty;
+        StorePreviewPoseCache(cacheKey, pose, true);
         return true;
     }
 
@@ -315,67 +540,17 @@ public static class NavalPlacementResolver
         out Vector3 waterPoint,
         out float seaLevel)
     {
-        seaLevel = ResolveSeaLevel();
-        waterDirection = fallbackForward;
-        waterPoint = SnapToSeaLevel(center, seaLevel);
-
-        fallbackForward.y = 0f;
-        if (fallbackForward.sqrMagnitude < 0.01f)
-        {
-            fallbackForward = Vector3.forward;
-        }
-        fallbackForward.Normalize();
-
-        float startRadius = Mathf.Max(8f, minRadius);
-        float endRadius = Mathf.Max(startRadius + 12f, maxRadius);
-        bool found = false;
-        float bestScore = float.MinValue;
-
-        for (float radius = startRadius; radius <= endRadius; radius += (endRadius > 220f ? 20f : 12f))
-        {
-            int samples = radius < 120f ? 12 : 16;
-            for (int i = 0; i < samples; i++)
-            {
-                float signedAngle = ((360f / samples) * i) - 180f;
-                Vector3 direction = Quaternion.AngleAxis(signedAngle, Vector3.up) * fallbackForward;
-                Vector3 probe = SnapToSeaLevel(center + (direction * radius), seaLevel);
-                if (!IsWaterAtPosition(probe, seaLevel))
-                {
-                    continue;
-                }
-
-                float alignment = Vector3.Dot(fallbackForward, direction.normalized);
-                float score = (alignment * 0.75f) - (radius * 0.01f);
-                if (!found || score > bestScore)
-                {
-                    found = true;
-                    bestScore = score;
-                    waterPoint = probe;
-                    waterDirection = direction.normalized;
-                }
-            }
-        }
-
-        if (!found)
-        {
-            string ignoredReason;
-            Vector3 fallbackPoint;
-            if (TryResolveWaterSpawn(center, fallbackForward, startRadius, endRadius, out fallbackPoint, out seaLevel, out ignoredReason))
-            {
-                Vector3 direction = fallbackPoint - center;
-                direction.y = 0f;
-                if (direction.sqrMagnitude >= 0.01f)
-                {
-                    waterPoint = fallbackPoint;
-                    waterDirection = direction.normalized;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        return true;
+        return TryResolveWaterDirectionInternal(
+            center,
+            0,
+            fallbackForward,
+            minRadius,
+            maxRadius,
+            ResolveSeaLevel(),
+            false,
+            out waterDirection,
+            out waterPoint,
+            out seaLevel);
     }
 
     public static float DistanceToMapEdge(Vector3 position)
@@ -684,6 +859,112 @@ public static class NavalPlacementResolver
         }
     }
 
+    private static bool TryResolveWaterDirectionInternal(
+        Vector3 center,
+        int prefabId,
+        Vector3 fallbackForward,
+        float minRadius,
+        float maxRadius,
+        float inputSeaLevel,
+        bool previewMode,
+        out Vector3 waterDirection,
+        out Vector3 waterPoint,
+        out float seaLevel)
+    {
+        seaLevel = inputSeaLevel > -999f ? inputSeaLevel : ResolveSeaLevel();
+        ProbeCacheKey cacheKey = BuildCacheKey(prefabId, center, minRadius, maxRadius, previewMode);
+        WaterDirectionCacheEntry cachedEntry;
+        if (TryGetWaterDirectionCache(cacheKey, out cachedEntry))
+        {
+            waterDirection = cachedEntry.Direction;
+            waterPoint = cachedEntry.Point;
+            seaLevel = cachedEntry.SeaLevel;
+            return cachedEntry.Found;
+        }
+
+        waterDirection = fallbackForward;
+        waterPoint = SnapToSeaLevel(center, seaLevel);
+
+        fallbackForward.y = 0f;
+        if (fallbackForward.sqrMagnitude < 0.01f)
+        {
+            fallbackForward = Vector3.forward;
+        }
+        fallbackForward.Normalize();
+
+        float startRadius = Mathf.Max(8f, minRadius);
+        float endRadius = Mathf.Max(startRadius + 12f, maxRadius);
+        bool found = false;
+        float bestScore = float.MinValue;
+
+        for (float radius = startRadius; radius <= endRadius; radius += (endRadius > 220f ? 20f : 12f))
+        {
+            int samples = radius < 120f ? 12 : 16;
+            for (int i = 0; i < samples; i++)
+            {
+                float signedAngle = ((360f / samples) * i) - 180f;
+                Vector3 direction = Quaternion.AngleAxis(signedAngle, Vector3.up) * fallbackForward;
+                Vector3 probe = SnapToSeaLevel(center + (direction * radius), seaLevel);
+                if (!IsWaterAtPosition(probe, seaLevel))
+                {
+                    continue;
+                }
+
+                float alignment = Vector3.Dot(fallbackForward, direction.normalized);
+                float score = (alignment * 0.75f) - (radius * 0.01f);
+                if (!found || score > bestScore)
+                {
+                    found = true;
+                    bestScore = score;
+                    waterPoint = probe;
+                    waterDirection = direction.normalized;
+                }
+            }
+        }
+
+        if (!found)
+        {
+            string ignoredReason;
+            Vector3 fallbackPoint;
+            if (TryResolveWaterSpawn(center, fallbackForward, startRadius, endRadius, out fallbackPoint, out seaLevel, out ignoredReason))
+            {
+                Vector3 direction = fallbackPoint - center;
+                direction.y = 0f;
+                if (direction.sqrMagnitude >= 0.01f)
+                {
+                    waterPoint = fallbackPoint;
+                    waterDirection = direction.normalized;
+                    found = true;
+                }
+            }
+        }
+
+        StoreWaterDirectionCache(cacheKey, found, waterDirection, waterPoint, seaLevel);
+        return found;
+    }
+
+    private static CoastalPlacementProfile GetCoastalProfile(GameObject target)
+    {
+        if (target == null)
+        {
+            return null;
+        }
+
+        Estaleiro estaleiro = target.GetComponent<Estaleiro>();
+        if (estaleiro != null)
+        {
+            return estaleiro.perfilColocacaoCosteira;
+        }
+
+        PierMarinha pier = target.GetComponent<PierMarinha>();
+        if (pier != null)
+        {
+            return pier.perfilColocacaoCosteira;
+        }
+
+        return null;
+    }
+
     private static float SampleGroundHeight(Vector3 position, float fallback)
     {
         float alturaMarcada;
@@ -808,5 +1089,94 @@ public static class NavalPlacementResolver
     private static string Normalize(string value)
     {
         return string.IsNullOrEmpty(value) ? string.Empty : value.ToLowerInvariant();
+    }
+
+    private static ProbeCacheKey BuildCacheKey(GameObject target, Vector3 center, float minRadius, float maxRadius, bool previewMode)
+    {
+        return BuildCacheKey(target != null ? target.GetInstanceID() : 0, center, minRadius, maxRadius, previewMode);
+    }
+
+    private static ProbeCacheKey BuildCacheKey(int prefabId, Vector3 center, float minRadius, float maxRadius, bool previewMode)
+    {
+        return new ProbeCacheKey
+        {
+            PrefabId = prefabId,
+            CellX = Mathf.RoundToInt(center.x / CacheCellSize),
+            CellZ = Mathf.RoundToInt(center.z / CacheCellSize),
+            MinRadius = Mathf.RoundToInt(minRadius),
+            MaxRadius = Mathf.RoundToInt(maxRadius),
+            PreviewMode = previewMode ? 1 : 0
+        };
+    }
+
+    private static bool TryGetWaterDirectionCache(ProbeCacheKey key, out WaterDirectionCacheEntry entry)
+    {
+        entry = default(WaterDirectionCacheEntry);
+        if (!WaterDirectionCache.TryGetValue(key, out entry))
+        {
+            return false;
+        }
+
+        if (Application.isPlaying && Time.unscaledTime - entry.Timestamp > ProbeCacheTtl)
+        {
+            WaterDirectionCache.Remove(key);
+            entry = default(WaterDirectionCacheEntry);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static void StoreWaterDirectionCache(ProbeCacheKey key, bool found, Vector3 direction, Vector3 point, float seaLevel)
+    {
+        if (WaterDirectionCache.Count >= MaxProbeCacheEntries)
+        {
+            WaterDirectionCache.Clear();
+        }
+
+        WaterDirectionCache[key] = new WaterDirectionCacheEntry
+        {
+            Found = found,
+            Direction = direction,
+            Point = point,
+            SeaLevel = seaLevel,
+            Timestamp = Application.isPlaying ? Time.unscaledTime : 0f
+        };
+    }
+
+    private static bool TryGetPreviewPoseCache(ProbeCacheKey key, out StructurePose pose)
+    {
+        pose = default(StructurePose);
+        PreviewPoseCacheEntry entry;
+        if (!PreviewPoseCache.TryGetValue(key, out entry))
+        {
+            return false;
+        }
+
+        if (Application.isPlaying && Time.unscaledTime - entry.Timestamp > ProbeCacheTtl)
+        {
+            PreviewPoseCache.Remove(key);
+            return false;
+        }
+
+        pose = entry.Pose;
+        pose.Reason = entry.Reason;
+        return true;
+    }
+
+    private static void StorePreviewPoseCache(ProbeCacheKey key, StructurePose pose, bool found)
+    {
+        if (PreviewPoseCache.Count >= MaxProbeCacheEntries)
+        {
+            PreviewPoseCache.Clear();
+        }
+
+        PreviewPoseCache[key] = new PreviewPoseCacheEntry
+        {
+            Found = found,
+            Pose = pose,
+            Reason = pose.Reason,
+            Timestamp = Application.isPlaying ? Time.unscaledTime : 0f
+        };
     }
 }

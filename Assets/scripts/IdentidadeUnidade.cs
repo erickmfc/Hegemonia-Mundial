@@ -23,7 +23,7 @@ public class IdentidadeUnidade : MonoBehaviour
         // Registra-se no Censo ao nascer
         if (CensoImperial.Instancia != null)
         {
-            CensoImperial.Instancia.RegistrarUnidade(tipoUnidade, teamID);
+            CensoImperial.Instancia.RegistrarUnidade(tipoUnidade, teamID, gameObject);
         }
     }
 
@@ -49,7 +49,7 @@ public class IdentidadeUnidade : MonoBehaviour
 
         if (CensoImperial.Instancia != null)
         {
-            CensoImperial.Instancia.RemoverUnidade(tipoUnidade, teamID);
+            CensoImperial.Instancia.RemoverUnidade(tipoUnidade, teamID, gameObject);
         }
     }
 }

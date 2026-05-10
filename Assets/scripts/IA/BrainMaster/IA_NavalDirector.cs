@@ -8,9 +8,13 @@ namespace Hegemonia.AI.BrainMaster
         private const float ForcedNavalStrikeStartSeconds = 60f;
         private readonly IA_Context _context;
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
+        private readonly List<IA_StrategicTargetData> _strategicTargetsBuffer = new List<IA_StrategicTargetData>(6);
         private readonly List<GameObject> _escortActiveBuffer = new List<GameObject>(8);
         private readonly List<GameObject> _heavyActiveBuffer = new List<GameObject>(8);
         private readonly List<GameObject> _subActiveBuffer = new List<GameObject>(4);
+        private readonly List<GameObject> _coastalGuardBuffer = new List<GameObject>(2);
+        private Vector3 _coastalGuardPoint;
+        private float _nextCoastalGuardRefreshTime;
         private float _nextDecisionTime;
 
         public IA_NavalDirector(IA_Context context)
@@ -39,7 +43,8 @@ namespace Hegemonia.AI.BrainMaster
             _escortActiveBuffer.Clear();
             _heavyActiveBuffer.Clear();
             _subActiveBuffer.Clear();
-            if (_context.Brain != null && _context.Brain.IsBootstrapActive)
+            _coastalGuardBuffer.Clear();
+            if (_context.Brain != null && _context.Brain.IsBootstrapActive && (int)_context.Brain.BootstrapStage < (int)IA_BrainMaster.IA_BootstrapStage.ProduceShip)
             {
                 return;
             }
@@ -58,27 +63,74 @@ namespace Hegemonia.AI.BrainMaster
             long targetStart = System.Diagnostics.Stopwatch.GetTimestamp();
             Transform navalTarget = GetVisibleNavalTarget();
             Vector3 pressureTarget = ResolvePressureTarget(baseCenter, now);
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            bool pressurePhase = brain != null && brain.StrategicPhase >= IA_StrategicPhase.PressaoEconomica;
+            int strategicTargetCount = pressurePhase
+                ? _context.WorldState.FillEnemyStrategicTargets(_strategicTargetsBuffer, baseCenter, 4)
+                : 0;
+            Transform escortTarget = navalTarget;
+            Vector3 escortPressureTarget = pressureTarget;
+            Transform heavyTarget = navalTarget;
+            Vector3 heavyPressureTarget = pressureTarget;
+            Transform subTarget = navalTarget;
+            Vector3 subPressureTarget = pressureTarget;
+
+            if (strategicTargetCount > 0)
+            {
+                IA_StrategicTargetData primary = _strategicTargetsBuffer[0];
+                heavyTarget = primary.Transform;
+                heavyPressureTarget = primary.Position;
+                pressureTarget = primary.Position;
+                if (strategicTargetCount > 1)
+                {
+                    IA_StrategicTargetData secondary = _strategicTargetsBuffer[1];
+                    subTarget = secondary.Transform;
+                    subPressureTarget = secondary.Position;
+                }
+
+                if (strategicTargetCount > 2)
+                {
+                    IA_StrategicTargetData tertiary = _strategicTargetsBuffer[2];
+                    escortTarget = tertiary.Transform;
+                    escortPressureTarget = tertiary.Position;
+                }
+                else
+                {
+                    escortTarget = primary.Transform;
+                    escortPressureTarget = primary.Position;
+                }
+
+                if (brain != null)
+                {
+                    brain.ReportStrategicTarget("naval multi-alvo x" + strategicTargetCount + " principal=" + primary.Kind);
+                }
+            }
+
             float targetMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - targetStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
             if (targetMs > 0f)
             {
                 DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("sensor_update_ms", targetMs);
                 DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", targetMs);
             }
-            Vector3 objective = navalTarget != null ? navalTarget.position : pressureTarget;
+            Vector3 objective = heavyTarget != null ? heavyTarget.position : pressureTarget;
             Vector3 assemblyCenter = ResolveAssemblyPoint(baseCenter, objective);
-            Vector3 escortStage = ResolveStagePoint(assemblyCenter, objective, -180f, 140f);
-            Vector3 heavyStage = ResolveStagePoint(assemblyCenter, objective, 0f, 170f);
-            Vector3 subStage = ResolveStagePoint(assemblyCenter, objective, 180f, 260f);
+            Vector3 escortStage = ResolveStagePoint(assemblyCenter, objective, -320f, 240f);
+            Vector3 heavyStage = ResolveStagePoint(assemblyCenter, objective, 0f, 360f);
+            Vector3 subStage = ResolveStagePoint(assemblyCenter, objective, 340f, 520f);
 
             IA_SquadData escort = _context.SquadDirector.GetSquad(IA_SquadRole.NavalEscort);
             IA_SquadData heavy = _context.SquadDirector.GetSquad(IA_SquadRole.NavalHeavy);
             IA_SquadData submarine = _context.SquadDirector.GetSquad(IA_SquadRole.Submarine);
-            bool holdFormation = !ShouldLaunchNavalStrike(navalTarget, escort, heavy, submarine, assemblyCenter);
+            bool holdFormation = !ShouldLaunchNavalStrike(heavyTarget, escort, heavy, submarine, assemblyCenter);
 
-            DispatchEscort(navalTarget, pressureTarget, escortStage, holdFormation);
-            DispatchHeavy(navalTarget, pressureTarget, heavyStage, holdFormation);
-            DispatchSubmarine(navalTarget, pressureTarget, subStage, holdFormation);
-            int activeTaskforces = (_escortActiveBuffer.Count + _heavyActiveBuffer.Count + _subActiveBuffer.Count) > 0 ? 1 : 0;
+            DispatchEscort(escortTarget, escortPressureTarget, escortStage, holdFormation, baseCenter, now);
+            DispatchHeavy(heavyTarget, heavyPressureTarget, heavyStage, holdFormation);
+            DispatchSubmarine(subTarget, subPressureTarget, subStage, holdFormation);
+            int activeTaskforces = 0;
+            if (_coastalGuardBuffer.Count > 0) activeTaskforces++;
+            if (_escortActiveBuffer.Count > 0) activeTaskforces++;
+            if (_heavyActiveBuffer.Count > 0) activeTaskforces++;
+            if (_subActiveBuffer.Count > 0) activeTaskforces++;
             DiagnosticoDesempenhoJogo.DefinirContadorMetrica("active_naval_taskforces", activeTaskforces);
             float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
             if (elapsedMs > 0f)
@@ -107,7 +159,7 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
-        private void DispatchEscort(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation)
+        private void DispatchEscort(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation, Vector3 baseCenter, float now)
         {
             IA_SquadData squad = _context.SquadDirector.GetSquad(IA_SquadRole.NavalEscort);
             if (!HasUnits(squad))
@@ -120,13 +172,25 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            if (_escortActiveBuffer.Count > 1)
+            {
+                _coastalGuardBuffer.Add(_escortActiveBuffer[0]);
+                _escortActiveBuffer.RemoveAt(0);
+                QueueMove("naval_coastal_guard", _coastalGuardBuffer, ResolveCoastalGuardPoint(baseCenter, now), 86, 5.0f);
+            }
+
+            if (_escortActiveBuffer.Count == 0)
+            {
+                return;
+            }
+
             if (holdFormation || target == null)
             {
                 QueueMove("naval_escort_stage", _escortActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 78, 3.2f);
             }
             else
             {
-                Vector3 coastPatrol = ResolveAttackPoint(stagePoint, target.position, -150f, 260f);
+                Vector3 coastPatrol = ResolveAttackPoint(stagePoint, target.position, -260f, 420f);
                 QueueAttack("naval_escort", _escortActiveBuffer, target, coastPatrol, 80, 4.2f);
             }
         }
@@ -150,7 +214,7 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
-                Vector3 attackAxis = ResolveAttackPoint(stagePoint, target.position, 0f, 320f);
+                Vector3 attackAxis = ResolveAttackPoint(stagePoint, target.position, 0f, 520f);
                 QueueAttack("naval_heavy", _heavyActiveBuffer, target, attackAxis, 88, 3.8f);
             }
         }
@@ -174,7 +238,7 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
-                Vector3 flankWater = ResolveAttackPoint(stagePoint, target.position, 220f, 340f);
+                Vector3 flankWater = ResolveAttackPoint(stagePoint, target.position, 360f, 620f);
                 QueueAttack("submarine", _subActiveBuffer, target, flankWater, 90, 5.2f);
             }
         }
@@ -234,7 +298,8 @@ namespace Hegemonia.AI.BrainMaster
             int heavyCount = CountUnits(heavy);
             int subCount = CountUnits(submarine);
             int combatCount = escortCount + heavyCount + subCount;
-            if (combatCount < 3)
+            int minCombat = _context.Brain != null && (int)_context.Brain.StrategicPhase >= (int)IA_StrategicPhase.PressaoEconomica ? 5 : 4;
+            if (combatCount < minCombat)
             {
                 return false;
             }
@@ -257,6 +322,54 @@ namespace Hegemonia.AI.BrainMaster
                 ? Vector3.Lerp(baseCenter, objective, 0.45f)
                 : baseCenter;
             return _context.MapAnalyzer.FindPointInTerrain(anchor, IA_TerrainType.Water, 70f, 260f, 24);
+        }
+
+        private Vector3 ResolveCoastalGuardPoint(Vector3 baseCenter, float now)
+        {
+            if (_coastalGuardPoint != Vector3.zero && now < _nextCoastalGuardRefreshTime)
+            {
+                return _coastalGuardPoint;
+            }
+
+            Vector3 anchor;
+            if (!TryFindOwnStructureAnchor(out anchor, "plataforma", "pier", "estaleiro"))
+            {
+                anchor = baseCenter;
+            }
+
+            _coastalGuardPoint = _context.MapAnalyzer.FindPointInTerrain(anchor, IA_TerrainType.Water, 120f, 320f, 26);
+            _nextCoastalGuardRefreshTime = now + 28f;
+            return _coastalGuardPoint;
+        }
+
+        private bool TryFindOwnStructureAnchor(out Vector3 anchor, params string[] hints)
+        {
+            anchor = Vector3.zero;
+            if (_context == null || _context.WorldState == null || _context.WorldState.OwnStructures == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
+            {
+                GameObject structure = _context.WorldState.OwnStructures[i];
+                if (structure == null)
+                {
+                    continue;
+                }
+
+                string name = IA_Text.Normalize(structure.name);
+                for (int h = 0; h < hints.Length; h++)
+                {
+                    if (!string.IsNullOrEmpty(hints[h]) && name.Contains(hints[h]))
+                    {
+                        anchor = structure.transform.position;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private Vector3 ResolveStagePoint(Vector3 assemblyCenter, Vector3 objective, float lateralOffset, float backOffset)

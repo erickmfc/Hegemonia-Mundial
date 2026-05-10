@@ -34,9 +34,16 @@ public class GerenteSelecao : MonoBehaviour
     private Construtor construtorCache;
     private DesenharLinhasOrdem desenhadorOrdensCache;
     private readonly RaycastHit[] bufferHitsClique = new RaycastHit[64];
+    private readonly List<RaycastResult> bufferRaycastUI = new List<RaycastResult>(16);
     private readonly Dictionary<int, PegadaCache> cachePegadas = new Dictionary<int, PegadaCache>();
     private readonly List<ControleUnidade> bufferControlesSelecionaveis = new List<ControleUnidade>(256);
+    private readonly List<ControleUnidade> bufferInfantaria = new List<ControleUnidade>(64);
+    private readonly List<ControleUnidade> bufferVeiculos = new List<ControleUnidade>(32);
+    private readonly List<ControleUnidade> bufferOrdemFormacao = new List<ControleUnidade>(96);
+    private readonly List<SlotFormacao> bufferSlotsFormacao = new List<SlotFormacao>(96);
     private static readonly RaycastHitDistanceComparer ComparadorHits = new RaycastHitDistanceComparer();
+    private PointerEventData pointerEventDataUI;
+    private EventSystem eventSystemUI;
     private const int FramesCachePegada = 1800;
     private const int LimiteGrupoGrandeParaAmostragemLeve = 12;
 
@@ -61,9 +68,10 @@ public class GerenteSelecao : MonoBehaviour
             cameraPrincipal = ObterCameraForte();
         }
         Construtor construtorObj = ObterConstrutor();
-        if (construtorObj != null && construtorObj.modoConstrucao)
+        if (Construtor.EmModoConstrucaoAtivo)
         {
             arrastando = false;
+            LiberarModoCaixaSelecao();
             if (caixaSelecaoVisual != null)
             {
                 caixaSelecaoVisual.gameObject.SetActive(false);
@@ -71,26 +79,30 @@ public class GerenteSelecao : MonoBehaviour
             }
             return;
         }
-        // Se clicar em cima de botões da UI, não faz nada
-        if (IsMouseOverInteractiveUI())
-        {
-            return;
-        }
-
         // 1. CLICOU (Marca onde começou)
         if (Input.GetMouseButtonDown(0))
         {
+            // Se clicar em cima de botões da UI, não começa seleção nem limpa a seleção atual.
+            if (IsMouseOverInteractiveUI())
+            {
+                return;
+            }
+
+            // Clique esquerdo CANCELA o modo patrulha/seguir (sai do modo ao invés de ignorar o clique) PRIMEIRAMENTE
+            DesenharLinhasOrdem desenhadorAtivo = ObterDesenhadorOrdens();
+            if (desenhadorAtivo != null && (desenhadorAtivo.modoPatrulhaAtivo || desenhadorAtivo.modoSeguirAtivo))
+            {
+                desenhadorAtivo.CancelarModo();
+                return;
+            }
+
             if (CapturaCliqueOrdensManuais.EstaAtiva())
             {
                 return;
             }
 
-            // Clique esquerdo CANCELA o modo patrulha/seguir (sai do modo ao invés de ignorar o clique)
-            DesenharLinhasOrdem desenhadorAtivo = ObterDesenhadorOrdens();
-            if (desenhadorAtivo != null && (desenhadorAtivo.modoPatrulhaAtivo || desenhadorAtivo.modoSeguirAtivo))
+            if (SelecaoBloqueadaPorModoAtual("Seleção bloqueada por modo ativo"))
             {
-                desenhadorAtivo.CancelarModo();
-                DeselecionarTudo(); // Deseleciona unidades para limpar o estado visual
                 return;
             }
 
@@ -105,7 +117,7 @@ public class GerenteSelecao : MonoBehaviour
 
             arrastando = true;
             inicioMouseScreen = Input.mousePosition; 
-            DeselecionarTudo();
+            AtivarModoCaixaSelecao();
         }
 
         // 2. ARRASTANDO (Desenha a caixa)
@@ -114,6 +126,19 @@ public class GerenteSelecao : MonoBehaviour
             if (CapturaCliqueOrdensManuais.EstaAtiva())
             {
                 arrastando = false;
+                LiberarModoCaixaSelecao();
+                if (caixaSelecaoVisual != null)
+                {
+                    caixaSelecaoVisual.gameObject.SetActive(false);
+                    caixaSelecaoVisual.sizeDelta = Vector2.zero;
+                }
+                return;
+            }
+
+            if (SelecaoBloqueadaPorModoAtual("Arrasto interrompido por modo ativo"))
+            {
+                arrastando = false;
+                LiberarModoCaixaSelecao();
                 if (caixaSelecaoVisual != null)
                 {
                     caixaSelecaoVisual.gameObject.SetActive(false);
@@ -139,17 +164,23 @@ public class GerenteSelecao : MonoBehaviour
             if (CapturaCliqueOrdensManuais.EstaAtiva())
             {
                 arrastando = false;
+                LiberarModoCaixaSelecao();
                 if(caixaSelecaoVisual != null)
                     caixaSelecaoVisual.gameObject.SetActive(false);
                 return;
             }
 
-            if (!arrastando) return; 
+            if (!arrastando)
+            {
+                LiberarModoCaixaSelecao();
+                return;
+            }
 
             bool arrastouBastante = Vector2.Distance(inicioMouseScreen, Input.mousePosition) > 10f;
 
             if (arrastouBastante)
             {
+                DeselecionarTudo();
                 SelecionarUnidadesMatematica();
             }
             else
@@ -160,6 +191,7 @@ public class GerenteSelecao : MonoBehaviour
 
             // Limpeza
             arrastando = false;
+            LiberarModoCaixaSelecao();
             if(caixaSelecaoVisual != null)
                 caixaSelecaoVisual.gameObject.SetActive(false);
         }
@@ -168,6 +200,11 @@ public class GerenteSelecao : MonoBehaviour
         if (Input.GetMouseButtonDown(1))
         {
             if (CapturaCliqueOrdensManuais.EstaAtiva())
+            {
+                return;
+            }
+
+            if (OrdemMundoBloqueadaPorModoAtual("Ordem de movimento bloqueada por modo ativo"))
             {
                 return;
             }
@@ -283,6 +320,16 @@ public class GerenteSelecao : MonoBehaviour
                 continue;
             }
 
+            bool ehEstrutura = hit.collider.GetComponentInParent<Estaleiro>() != null
+                               || hit.collider.GetComponentInParent<PierMarinha>() != null
+                               || hit.collider.GetComponentInParent<Fabrica>() != null
+                               || hit.collider.GetComponentInParent<AtributosPredio>() != null
+                               || hit.collider.GetComponentInParent<Edificio>() != null;
+            if (ehEstrutura)
+            {
+                continue;
+            }
+
             hitFinal = hit;
             destino = hit.point;
             return true;
@@ -297,6 +344,62 @@ public class GerenteSelecao : MonoBehaviour
         }
 
         return false;
+    }
+
+    void AtivarModoCaixaSelecao()
+    {
+        InteractionModeService.Request(
+            InteractionOwner.SelectionBox,
+            new InteractionPolicy
+            {
+                bloqueiaSelecao = false,
+                bloqueiaOrdemMundo = true,
+                bloqueiaRotacaoCamera = true,
+                consomeLMB = true,
+                consomeRMB = false
+            },
+            "Caixa de seleção ativa");
+    }
+
+    void LiberarModoCaixaSelecao()
+    {
+        InteractionModeService.Release(InteractionOwner.SelectionBox);
+    }
+
+    bool SelecaoBloqueadaPorModoAtual(string descricao)
+    {
+        InteractionModeSnapshot snapshot = InteractionModeService.CurrentSnapshot();
+        if (snapshot.Owner == InteractionOwner.None || snapshot.Owner == InteractionOwner.SelectionBox)
+        {
+            return false;
+        }
+
+        if (!snapshot.Policy.bloqueiaSelecao)
+        {
+            return false;
+        }
+
+        string detalhe = string.IsNullOrWhiteSpace(snapshot.Reason) ? snapshot.Owner.ToString() : snapshot.Reason;
+        InteractionModeService.ReportBlockedInput(descricao + ": " + detalhe);
+        return true;
+    }
+
+    bool OrdemMundoBloqueadaPorModoAtual(string descricao)
+    {
+        InteractionModeSnapshot snapshot = InteractionModeService.CurrentSnapshot();
+        if (snapshot.Owner == InteractionOwner.None || snapshot.Owner == InteractionOwner.SelectionBox)
+        {
+            return false;
+        }
+
+        if (!snapshot.Policy.bloqueiaOrdemMundo)
+        {
+            return false;
+        }
+
+        string detalhe = string.IsNullOrWhiteSpace(snapshot.Reason) ? snapshot.Owner.ToString() : snapshot.Reason;
+        InteractionModeService.ReportBlockedInput(descricao + ": " + detalhe);
+        return true;
     }
 
     DesenharLinhasOrdem ObterDesenhadorOrdens()
@@ -317,15 +420,20 @@ public class GerenteSelecao : MonoBehaviour
             return false;
         }
 
-        PointerEventData eventData = new PointerEventData(eventSystem);
-        eventData.position = Input.mousePosition;
-
-        List<RaycastResult> results = new List<RaycastResult>();
-        eventSystem.RaycastAll(eventData, results);
-
-        for (int i = 0; i < results.Count; i++)
+        if (pointerEventDataUI == null || eventSystemUI != eventSystem)
         {
-            GameObject uiObject = results[i].gameObject;
+            pointerEventDataUI = new PointerEventData(eventSystem);
+            eventSystemUI = eventSystem;
+        }
+
+        pointerEventDataUI.Reset();
+        pointerEventDataUI.position = Input.mousePosition;
+        bufferRaycastUI.Clear();
+        eventSystem.RaycastAll(pointerEventDataUI, bufferRaycastUI);
+
+        for (int i = 0; i < bufferRaycastUI.Count; i++)
+        {
+            GameObject uiObject = bufferRaycastUI[i].gameObject;
             if (uiObject == null || !uiObject.activeInHierarchy)
             {
                 continue;
@@ -376,7 +484,40 @@ public class GerenteSelecao : MonoBehaviour
             }
         }
 
-        return true;
+        return UIObjetoBloqueiaCliqueMundo(uiObject);
+    }
+
+    bool UIObjetoBloqueiaCliqueMundo(GameObject uiObject)
+    {
+        if (uiObject == null)
+        {
+            return false;
+        }
+
+        if (uiObject.GetComponentInParent<Selectable>() != null
+            || uiObject.GetComponentInParent<ScrollRect>() != null
+            || uiObject.GetComponentInParent<EventTrigger>() != null)
+        {
+            return true;
+        }
+
+        Transform atual = uiObject.transform;
+        while (atual != null)
+        {
+            string nome = atual.name;
+            if (nome.Contains("Painel_Construcao")
+                || nome.Contains("Painel_Governo")
+                || nome.Contains("Menu")
+                || nome.Contains("Popup")
+                || nome.Contains("Modal"))
+            {
+                return true;
+            }
+
+            atual = atual.parent;
+        }
+
+        return false;
     }
 
     // --- MARCADOR VISUAL DO CLIQUE ---
@@ -448,9 +589,12 @@ public class GerenteSelecao : MonoBehaviour
         bool ehGrupoNaval = false;
         bool temVeiculo = false;
 
-        List<ControleUnidade> infantaria = new List<ControleUnidade>();
-        List<ControleUnidade> veiculos = new List<ControleUnidade>();
-        List<ControleUnidade> aereos = new List<ControleUnidade>();
+        bufferInfantaria.Clear();
+        bufferVeiculos.Clear();
+        bufferOrdemFormacao.Clear();
+        bufferSlotsFormacao.Clear();
+        List<ControleUnidade> infantaria = bufferInfantaria;
+        List<ControleUnidade> veiculos = bufferVeiculos;
 
         foreach (var u in unidadesSelecionadas)
         {
@@ -572,8 +716,10 @@ public class GerenteSelecao : MonoBehaviour
         bool ehGrupoNaval = false;
         bool temVeiculo = false;
 
-        List<ControleUnidade> infantaria = new List<ControleUnidade>();
-        List<ControleUnidade> veiculos = new List<ControleUnidade>();
+        bufferInfantaria.Clear();
+        bufferVeiculos.Clear();
+        bufferOrdemFormacao.Clear();
+        bufferSlotsFormacao.Clear();
 
         foreach (var unidade in unidadesSelecionadas)
         {
@@ -638,23 +784,22 @@ public class GerenteSelecao : MonoBehaviour
             if (eVeiculo)
             {
                 temVeiculo = true;
-                veiculos.Add(unidade);
+                bufferVeiculos.Add(unidade);
             }
             else
             {
-                infantaria.Add(unidade);
+                bufferInfantaria.Add(unidade);
             }
         }
 
-        List<ControleUnidade> ordemFormacao = new List<ControleUnidade>();
-        ordemFormacao.AddRange(veiculos);   // Traseira
-        ordemFormacao.AddRange(infantaria); // Frente
+        bufferOrdemFormacao.AddRange(bufferVeiculos);   // Traseira
+        bufferOrdemFormacao.AddRange(bufferInfantaria); // Frente
 
-        int total = ordemFormacao.Count;
+        int total = bufferOrdemFormacao.Count;
         if (total == 0) return;
 
         Vector3 centroGrupo = Vector3.zero;
-        foreach (var u in ordemFormacao) centroGrupo += u.transform.position;
+        foreach (var u in bufferOrdemFormacao) centroGrupo += u.transform.position;
         centroGrupo /= total;
 
         Vector3 direcaoMovimento = (destinoCentral - centroGrupo).normalized;
@@ -665,7 +810,6 @@ public class GerenteSelecao : MonoBehaviour
         if (temVeiculo) colunas = Mathf.Clamp(colunas, 2, 6);
         int linhas = Mathf.CeilToInt((float)total / colunas);
 
-        List<SlotFormacao> slots = new List<SlotFormacao>(total);
         float somaLargura = 0f;
         float somaProfundidade = 0f;
 
@@ -673,7 +817,7 @@ public class GerenteSelecao : MonoBehaviour
         {
             float largura;
             float profundidade;
-            ObterPegadaUnidade(ordemFormacao[i], out largura, out profundidade);
+            ObterPegadaUnidade(bufferOrdemFormacao[i], out largura, out profundidade);
 
             if (ehGrupoNaval)
             {
@@ -681,9 +825,9 @@ public class GerenteSelecao : MonoBehaviour
                 profundidade *= 1.25f;
             }
 
-            slots.Add(new SlotFormacao
+            bufferSlotsFormacao.Add(new SlotFormacao
             {
-                unidade = ordemFormacao[i],
+                unidade = bufferOrdemFormacao[i],
                 largura = largura,
                 profundidade = profundidade
             });
@@ -701,12 +845,12 @@ public class GerenteSelecao : MonoBehaviour
         float[] larguraColuna = new float[colunas];
         float[] profundidadeLinha = new float[linhas];
 
-        for (int i = 0; i < slots.Count; i++)
+        for (int i = 0; i < bufferSlotsFormacao.Count; i++)
         {
             int coluna = i % colunas;
             int linha = i / colunas;
-            larguraColuna[coluna] = Mathf.Max(larguraColuna[coluna], slots[i].largura);
-            profundidadeLinha[linha] = Mathf.Max(profundidadeLinha[linha], slots[i].profundidade);
+            larguraColuna[coluna] = Mathf.Max(larguraColuna[coluna], bufferSlotsFormacao[i].largura);
+            profundidadeLinha[linha] = Mathf.Max(profundidadeLinha[linha], bufferSlotsFormacao[i].profundidade);
         }
 
         float larguraTotal = 0f;
@@ -737,9 +881,9 @@ public class GerenteSelecao : MonoBehaviour
         float raioAmostraNavMesh = ehGrupoNaval ? 20f : (temVeiculo ? 8f : 4f);
         bool usarAmostragemLeve = !ehGrupoNaval && total >= LimiteGrupoGrandeParaAmostragemLeve;
 
-        for (int i = 0; i < slots.Count; i++)
+        for (int i = 0; i < bufferSlotsFormacao.Count; i++)
         {
-            ControleUnidade alvoCtrl = slots[i].unidade;
+            ControleUnidade alvoCtrl = bufferSlotsFormacao[i].unidade;
             if (alvoCtrl == null) continue;
 
             if (UnidadeBloqueiaMovimentoManual(alvoCtrl))
@@ -978,6 +1122,39 @@ public class GerenteSelecao : MonoBehaviour
         }
     }
 
+    ControleUnidade ResolverControleSelecionavel(Transform origem)
+    {
+        if (origem == null)
+        {
+            return null;
+        }
+
+        ControleUnidade unidade = origem.GetComponentInParent<ControleUnidade>();
+        if (unidade != null)
+        {
+            return unidade;
+        }
+
+        IdentidadeNaval identidadeNaval = origem.GetComponentInParent<IdentidadeNaval>();
+        if (identidadeNaval == null)
+        {
+            return null;
+        }
+
+        unidade = identidadeNaval.GetComponent<ControleUnidade>();
+        if (unidade == null)
+        {
+            unidade = identidadeNaval.gameObject.AddComponent<ControleUnidade>();
+        }
+
+        if (!unidade.enabled)
+        {
+            unidade.enabled = true;
+        }
+
+        return unidade;
+    }
+
     void CliqueSimples()
     {
         // Se usar ~0 (Tudo), pega até triggers que não deveria.
@@ -987,10 +1164,44 @@ public class GerenteSelecao : MonoBehaviour
         Camera cam = cameraPrincipal != null ? cameraPrincipal : ObterCameraForte();
         if (cam == null) return;
         Ray raio = cam.ScreenPointToRay(Input.mousePosition);
-        RaycastHit toque;
-        
-        if (Physics.Raycast(raio, out toque, Mathf.Infinity, layerMask))
+        int quantidadeHits = Physics.RaycastNonAlloc(raio, bufferHitsClique, Mathf.Infinity, layerMask, QueryTriggerInteraction.Ignore);
+        RaycastHit[] hitsExtras = null;
+        if (quantidadeHits >= bufferHitsClique.Length)
         {
+            hitsExtras = Physics.RaycastAll(raio, Mathf.Infinity, layerMask, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hitsExtras, ComparadorHits);
+            quantidadeHits = hitsExtras.Length;
+        }
+        else
+        {
+            System.Array.Sort(bufferHitsClique, 0, quantidadeHits, ComparadorHits);
+        }
+
+        for (int i = 0; i < quantidadeHits; i++)
+        {
+            RaycastHit toque = hitsExtras != null ? hitsExtras[i] : bufferHitsClique[i];
+            if (toque.collider == null) continue;
+
+            ControleUnidade unidade = ResolverControleSelecionavel(toque.transform);
+            if (unidade == null) continue;
+
+            if (!unidade.enabled)
+            {
+                var transportePai = unidade.transform.parent?.GetComponentInParent<ControleUnidade>();
+                if (transportePai != null && transportePai.enabled) unidade = transportePai;
+                else continue;
+            }
+
+            DeselecionarTudo();
+            AdicionarSelecao(unidade);
+            return;
+        }
+
+        for (int i = 0; i < quantidadeHits; i++)
+        {
+            RaycastHit toque = hitsExtras != null ? hitsExtras[i] : bufferHitsClique[i];
+            if (toque.collider == null) continue;
+
             // === NOVO: VERIFICA SE O JOGADOR CLICOU NA FÁBRICA / CONSTRUTOR DE VEÍCULOS ===
             var fabrica = toque.transform.GetComponentInParent<Fabrica>();
             if (fabrica != null)
@@ -1006,26 +1217,30 @@ public class GerenteSelecao : MonoBehaviour
                         if (!MenuConstrucao.EstaAberto) menu.AlternarMenu(true);
                         menu.FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Exercito);
                         
-                        DeselecionarTudo(); // Solta as tropas se for clicar num prédio
                         return; // Paralisa o código para não selecionar a fábrica como "tropa"
                     }
                 }
             }
             // ==============================================================================
 
-            var unidade = toque.transform.GetComponentInParent<ControleUnidade>();
-            if (unidade != null) 
+            // === VERIFICA SE O JOGADOR CLICOU NO ESTALEIRO / PIER ===
+            var estaleiro = toque.transform.GetComponentInParent<Estaleiro>();
+            if (estaleiro != null)
             {
-                // Se acertou num passageiro (visível mas não clicável), repassa pro caminhão (pai)
-                if (!unidade.enabled)
+                var idEstaleiro = estaleiro.GetComponentInParent<IdentidadeUnidade>();
+                if (idEstaleiro == null || idEstaleiro.teamID == 1)
                 {
-                    var transporte_pai = unidade.transform.parent?.GetComponentInParent<ControleUnidade>();
-                    if (transporte_pai != null && transporte_pai.enabled) unidade = transporte_pai;
-                    else return; // Se não tem pai ativo, ignora o clique
-                }
+                    MenuConstrucao menu = Object.FindFirstObjectByType<MenuConstrucao>();
+                    if (menu != null)
+                    {
+                        if (!MenuConstrucao.EstaAberto) menu.AlternarMenu(true);
+                        menu.FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Marinha);
 
-                AdicionarSelecao(unidade);
+                        return;
+                    }
+                }
             }
+            // ==============================================================================
         }
     }
 
