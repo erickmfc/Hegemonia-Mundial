@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.DEUSA;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
@@ -11,7 +12,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 4;
+    public int saveVersion = 7;
     public int creditosJogador = 5000;
     public int petroleoJogador = 500;
     public int acoJogador = 300;
@@ -26,6 +27,7 @@ public class DadosDoJogo
     public List<SaveEntityData> entidades = new List<SaveEntityData>();
     public List<SaveProductionOrderData> filaProducao = new List<SaveProductionOrderData>();
     public List<SaveAiStrategicStateData> estadosIA = new List<SaveAiStrategicStateData>();
+    public List<SaveDeusaStateData> estadosDeusa = new List<SaveDeusaStateData>();
     public float qgPosX;
     public float qgPosY;
     public float qgPosZ;
@@ -138,6 +140,27 @@ public class SaveAiStrategicStateData
     public bool weakEmpireRecoveryActive;
 }
 
+[Serializable]
+public class SaveDeusaStateData
+{
+    public int teamID;
+    public int personalidade;
+    public int modoInicial;
+    public int estagioAtual;
+    public bool travarEstagio;
+    public bool modoObservadorDebug;
+    public bool bloquearFilaBrainMasterEmObservador;
+    public bool usarEspionagemJusta;
+    public bool permitirComercioComJogador;
+    public bool permitirComercioComOutrasIAs;
+    public bool permitirSancoes;
+    public bool permitirGuerraTotal;
+    public string nomePais;
+    public string nomePresidente;
+    public string nomeMoeda;
+    public string resumoNacional;
+}
+
 public class SistemaSaveGame : MonoBehaviour
 {
     public static SistemaSaveGame Instancia;
@@ -214,7 +237,7 @@ public class SistemaSaveGame : MonoBehaviour
             dadosAtuais = new DadosDoJogo();
         }
 
-        dadosAtuais.saveVersion = 4;
+        dadosAtuais.saveVersion = 7;
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
         CapturarRecursos();
         CapturarCamera();
@@ -222,6 +245,7 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarDificuldade();
         CapturarFilaProducao();
         CapturarEstadoIAImperial();
+        CapturarEstadoDeusa();
         CapturarEntidades();
 
         string json = JsonUtility.ToJson(dadosAtuais, true);
@@ -358,6 +382,7 @@ public class SistemaSaveGame : MonoBehaviour
 
         RestaurarFilaProducao();
         AplicarEstadoIAImperial();
+        AplicarEstadoDeusa();
         AplicarCameraSalva();
         AplicarRecursosSalvos();
         DiagnosticoDesempenhoJogo.RegistrarEvento("Save", "Mundo restaurado (entidades=" + (dadosAtuais.entidades != null ? dadosAtuais.entidades.Count : 0) + ")");
@@ -507,6 +532,49 @@ public class SistemaSaveGame : MonoBehaviour
         }
     }
 
+    private void CapturarEstadoDeusa()
+    {
+        if (dadosAtuais.estadosDeusa == null)
+        {
+            dadosAtuais.estadosDeusa = new List<SaveDeusaStateData>();
+        }
+
+        dadosAtuais.estadosDeusa.Clear();
+#if UNITY_2023_1_OR_NEWER
+        IA_DeusaBrain[] deuses = UnityEngine.Object.FindObjectsByType<IA_DeusaBrain>(FindObjectsSortMode.None);
+#else
+        IA_DeusaBrain[] deuses = UnityEngine.Object.FindObjectsOfType<IA_DeusaBrain>();
+#endif
+        for (int i = 0; i < deuses.Length; i++)
+        {
+            IA_DeusaBrain deusa = deuses[i];
+            if (deusa == null || deusa.identidade == null || deusa.config == null)
+            {
+                continue;
+            }
+
+            dadosAtuais.estadosDeusa.Add(new SaveDeusaStateData
+            {
+                teamID = deusa.identidade.teamID > 0 ? deusa.identidade.teamID : (deusa.GetComponent<IA_BrainMaster>() != null ? deusa.GetComponent<IA_BrainMaster>().TeamId : 0),
+                personalidade = (int)deusa.config.personalidade,
+                modoInicial = (int)deusa.config.modoInicial,
+                estagioAtual = (int)deusa.identidade.estagioAtual,
+                travarEstagio = deusa.config.travarEstagio,
+                modoObservadorDebug = deusa.config.modoObservadorDebug,
+                bloquearFilaBrainMasterEmObservador = deusa.config.bloquearFilaBrainMasterEmObservador,
+                usarEspionagemJusta = deusa.config.usarEspionagemJusta,
+                permitirComercioComJogador = deusa.config.permitirComercioComJogador,
+                permitirComercioComOutrasIAs = deusa.config.permitirComercioComOutrasIAs,
+                permitirSancoes = deusa.config.permitirSancoes,
+                permitirGuerraTotal = deusa.config.permitirGuerraTotal,
+                nomePais = deusa.identidade.nomePais,
+                nomePresidente = deusa.identidade.nomePresidente,
+                nomeMoeda = deusa.identidade.nomeMoeda,
+                resumoNacional = deusa.ResumoSalvavel()
+            });
+        }
+    }
+
     private void AplicarEstadoIAImperial()
     {
         if (dadosAtuais == null || dadosAtuais.estadosIA == null || dadosAtuais.estadosIA.Count == 0)
@@ -545,6 +613,55 @@ public class SistemaSaveGame : MonoBehaviour
             brain.PlayerFleetEstimate = Mathf.Max(0, salvo.playerFleetEstimate);
             brain.PlayerAircraftEstimate = Mathf.Max(0, salvo.playerAircraftEstimate);
             brain.WeakEmpireRecoveryActive = salvo.weakEmpireRecoveryActive;
+        }
+    }
+
+    private void AplicarEstadoDeusa()
+    {
+        if (dadosAtuais == null || dadosAtuais.estadosDeusa == null || dadosAtuais.estadosDeusa.Count == 0)
+        {
+            return;
+        }
+
+#if UNITY_2023_1_OR_NEWER
+        IA_DeusaBrain[] deuses = UnityEngine.Object.FindObjectsByType<IA_DeusaBrain>(FindObjectsSortMode.None);
+#else
+        IA_DeusaBrain[] deuses = UnityEngine.Object.FindObjectsOfType<IA_DeusaBrain>();
+#endif
+        for (int i = 0; i < deuses.Length; i++)
+        {
+            IA_DeusaBrain deusa = deuses[i];
+            if (deusa == null)
+            {
+                continue;
+            }
+
+            IA_BrainMaster brain = deusa.GetComponent<IA_BrainMaster>();
+            int teamId = deusa.identidade != null && deusa.identidade.teamID > 0
+                ? deusa.identidade.teamID
+                : (brain != null ? brain.TeamId : 0);
+            SaveDeusaStateData salvo = dadosAtuais.estadosDeusa.FirstOrDefault(e => e != null && e.teamID == teamId);
+            if (salvo == null)
+            {
+                continue;
+            }
+
+            deusa.AplicarEstadoSalvo(
+                salvo.personalidade,
+                salvo.modoInicial,
+                salvo.estagioAtual,
+                salvo.travarEstagio,
+                dadosAtuais.saveVersion >= 6 ? salvo.modoObservadorDebug : (deusa.config != null ? deusa.config.modoObservadorDebug : true),
+                dadosAtuais.saveVersion >= 7 ? salvo.bloquearFilaBrainMasterEmObservador : (deusa.config != null && deusa.config.bloquearFilaBrainMasterEmObservador),
+                salvo.usarEspionagemJusta,
+                salvo.permitirComercioComJogador,
+                salvo.permitirComercioComOutrasIAs,
+                salvo.permitirSancoes,
+                salvo.permitirGuerraTotal,
+                salvo.nomePais,
+                salvo.nomePresidente,
+                salvo.nomeMoeda,
+                salvo.resumoNacional);
         }
     }
 

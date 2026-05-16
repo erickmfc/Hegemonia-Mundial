@@ -15,6 +15,6 @@ MonoBehaviour:
   nomeItem: USS Wraith
   descricao: Submarino furtivo de elite. Invisivel ao sonar inimigo.
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 0}
+  prefabDaUnidade: {fileID: 64862046604293881, guid: 709fb83da762fa443be49125ea941eee, type: 3}
   preco: 3800
   categoria: 1

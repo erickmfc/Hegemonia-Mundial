@@ -105,14 +105,20 @@ namespace Hegemonia.AI.BrainMaster
     public enum IA_StrategicTargetKind
     {
         None,
+        Radar,
+        Energy,
         OilPlatform,
         OilTanker,
         Pier,
         Shipyard,
         Airport,
         ReadyAircraft,
+        Barracks,
         NavalPatrol,
         Factory,
+        Industry,
+        Farm,
+        Defense,
         CityHall
     }
 

@@ -43,7 +43,10 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            var fallback = Resources.FindObjectsOfTypeAll<DadosConstrucao>();
+            // Resources.FindObjectsOfTypeAll encontra apenas assets JA carregados na RAM.
+            // Em builds de producao isso e quase sempre vazio. Usamos Resources.LoadAll
+            // que carrega do disco qualquer asset dentro de Assets/Resources/.
+            var fallback = Resources.LoadAll<DadosConstrucao>(string.Empty);
             for (int i = 0; i < fallback.Length; i++)
             {
                 AddCatalogItem(fallback[i]);
@@ -77,7 +80,14 @@ namespace Hegemonia.AI.BrainMaster
 
             if (_catalog.Count == 0)
             {
-                Debug.LogWarning("[IA_BackendBridge] Catalogo de DadosConstrucao vazio. A IA nao conseguira construir nem produzir.");
+                Debug.LogWarning("[IA_BackendBridge] CATALOGO VAZIO em build de producao! " +
+                    "Para corrigir: 1) Mova os assets DadosConstrucao para Assets/Resources/ " +
+                    "OU 2) Adicione todos manualmente na lista 'catalogo' do componente MenuConstrucao no Inspector. " +
+                    "Sem isso a IA nao constroi nada alem da Prefeitura.");
+            }
+            else
+            {
+                Debug.Log("[IA_BackendBridge] Catalogo carregado: " + _catalog.Count + " itens disponíveis para a IA.");
             }
         }
 

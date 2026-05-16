@@ -9,6 +9,20 @@ using UnityEngine.EventSystems;
 /// </summary>
 public class ComplexoGovernamental : MonoBehaviour
 {
+    private static readonly string[] TermosInvalidosInfraestrutura =
+    {
+        "plataforma",
+        "platform",
+        "offshore",
+        "petroleo",
+        "oil",
+        "pier",
+        "porto",
+        "dock",
+        "estaleiro",
+        "shipyard"
+    };
+
     [Header("Informações do Estado")]
     public string nomeDoPais = "República Federativa";
     public bool ehDoJogador = true;
@@ -24,11 +38,18 @@ public class ComplexoGovernamental : MonoBehaviour
     public UnityEvent aoSerDestruido;
     public UnityEvent aoAbrirMenuGestao;
 
+    [Header("Validação da Sede")]
+    [Tooltip("Se ativo, o script recusa decretar queda do governo quando estiver anexado em infraestrutura como Plataforma, Pier ou Estaleiro.")]
+    public bool validarEstruturaGovernamental = true;
+    [Tooltip("Permite forçar este objeto como sede oficial mesmo que o nome pareça genérico.")]
+    public bool forcarComoSedeGovernamental = false;
+
     private IdentidadeUnidade identidade;
     private SistemaDeDanos sistemaDano;
     private ObjetivoFinalJogo objetivoFinal;
 
     private bool jaDerrotado = false;
+    private bool podeDecretarQuedaDoGoverno = true;
     private int ultimoFrameAbertura = -1;
 
     private void Start()
@@ -41,33 +62,14 @@ public class ComplexoGovernamental : MonoBehaviour
             ehDoJogador = identidade.teamID == 1;
         }
 
-        objetivoFinal = GetComponent<ObjetivoFinalJogo>();
+        AtualizarValidacaoGovernamental();
 
-        if (objetivoFinal == null)
-        {
-            objetivoFinal = gameObject.AddComponent<ObjetivoFinalJogo>();
-        }
-
-        objetivoFinal.Configurar(
-            TipoObjetivoFinal.Prefeitura,
-            ehDoJogador,
-            nomeDoPais,
-            "Prefeitura",
-            false
-        );
-
-        if (sistemaDano != null)
-        {
-            sistemaDano.OnMorte -= DecretarQuedaDoGoverno;
-            sistemaDano.OnMorte += DecretarQuedaDoGoverno;
-        }
-
-        if (ehDoJogador && SistemaConsulado.Instancia == null)
+        if (podeDecretarQuedaDoGoverno && ehDoJogador && SistemaConsulado.Instancia == null)
         {
             gameObject.AddComponent<SistemaConsulado>();
         }
 
-        if (ehDoJogador)
+        if (podeDecretarQuedaDoGoverno && ehDoJogador)
         {
             MenuGoverno.GarantirInstancia();
         }
@@ -86,7 +88,7 @@ public class ComplexoGovernamental : MonoBehaviour
         // Nota: a tecla X é tratada globalmente pelo MenuGoverno.Update()
         // Não duplicar aqui para evitar abrir e fechar no mesmo frame
 
-        if (!jaDerrotado && sistemaDano != null && sistemaDano.vidaAtual <= 0)
+        if (!jaDerrotado && podeDecretarQuedaDoGoverno && sistemaDano != null && sistemaDano.vidaAtual <= 0)
         {
             DecretarQuedaDoGoverno();
         }
@@ -99,7 +101,7 @@ public class ComplexoGovernamental : MonoBehaviour
             return;
         }
 
-        if (ehDoJogador && !jaDerrotado)
+        if (podeDecretarQuedaDoGoverno && ehDoJogador && !jaDerrotado)
         {
             AbrirMenuGestaoDeEstado();
         }
@@ -114,7 +116,7 @@ public class ComplexoGovernamental : MonoBehaviour
 
         ultimoFrameAbertura = Time.frameCount;
 
-        if (!ehDoJogador || jaDerrotado)
+        if (!podeDecretarQuedaDoGoverno || !ehDoJogador || jaDerrotado)
         {
             return;
         }
@@ -145,7 +147,7 @@ public class ComplexoGovernamental : MonoBehaviour
 
     public void AlternarMenuGestaoDeEstado()
     {
-        if (!ehDoJogador || jaDerrotado)
+        if (!podeDecretarQuedaDoGoverno || !ehDoJogador || jaDerrotado)
         {
             return;
         }
@@ -165,9 +167,15 @@ public class ComplexoGovernamental : MonoBehaviour
             return;
         }
 
+        if (!podeDecretarQuedaDoGoverno)
+        {
+            Debug.LogWarning($"[Complexo Governamental] Ignorando queda do governo em '{gameObject.name}' porque o objeto foi classificado como infraestrutura nao governamental.", this);
+            return;
+        }
+
         jaDerrotado = true;
 
-        Debug.LogWarning($"[ALERTA MAXIMO] O Complexo Governamental da {nomeDoPais} caiu! O governo ruiu!");
+        Debug.LogWarning($"[ALERTA MAXIMO] O Complexo Governamental da {nomeDoPais} caiu! Objeto='{gameObject.name}' team={(identidade != null ? identidade.teamID : -1)} vida={(sistemaDano != null ? sistemaDano.vidaAtual.ToString("0.0") : "n/d")}");
 
         aoSerDestruido?.Invoke();
 
@@ -198,5 +206,60 @@ public class ComplexoGovernamental : MonoBehaviour
         {
             Debug.Log("VITÓRIA: Um governo inimigo foi neutralizado!");
         }
+    }
+
+    private void AtualizarValidacaoGovernamental()
+    {
+        podeDecretarQuedaDoGoverno = ResolverSePodeDecretarQuedaDoGoverno();
+
+        objetivoFinal = GetComponent<ObjetivoFinalJogo>();
+        if (podeDecretarQuedaDoGoverno)
+        {
+            if (objetivoFinal == null)
+            {
+                objetivoFinal = gameObject.AddComponent<ObjetivoFinalJogo>();
+            }
+
+            objetivoFinal.Configurar(
+                TipoObjetivoFinal.Prefeitura,
+                ehDoJogador,
+                nomeDoPais,
+                "Prefeitura",
+                false
+            );
+        }
+
+        if (sistemaDano != null)
+        {
+            sistemaDano.OnMorte -= DecretarQuedaDoGoverno;
+            if (podeDecretarQuedaDoGoverno)
+            {
+                sistemaDano.OnMorte += DecretarQuedaDoGoverno;
+            }
+        }
+
+        if (!podeDecretarQuedaDoGoverno)
+        {
+            Debug.LogError($"[Complexo Governamental] '{gameObject.name}' recebeu o componente, mas foi bloqueado como sede governamental. Plataforma, Pier e Estaleiro nao podem decretar vitoria/derrota.", this);
+        }
+    }
+
+    private bool ResolverSePodeDecretarQuedaDoGoverno()
+    {
+        if (forcarComoSedeGovernamental || !validarEstruturaGovernamental)
+        {
+            return true;
+        }
+
+        string nomeNormalizado = (gameObject.name + " " + nomeDoPais).ToLowerInvariant();
+        for (int i = 0; i < TermosInvalidosInfraestrutura.Length; i++)
+        {
+            if (nomeNormalizado.Contains(TermosInvalidosInfraestrutura[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

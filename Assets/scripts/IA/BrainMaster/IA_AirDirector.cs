@@ -135,8 +135,8 @@ namespace Hegemonia.AI.BrainMaster
         private bool TryDispatchEconomicAirRaids(Vector3 baseCenter, List<GameObject> source)
         {
             IA_BrainMaster brain = _context != null ? _context.Brain : null;
-            // Reduzido threshold de 6 para 4 avioes para permitir raids mais cedo
-            if (brain == null || brain.StrategicPhase < IA_StrategicPhase.PressaoEconomica || source == null || source.Count < 4)
+            // Threshold reduzido para 3 avioes para permitir raids mais cedo
+            if (brain == null || brain.StrategicPhase < IA_StrategicPhase.PressaoEconomica || source == null || source.Count < 3)
             {
                 return false;
             }
@@ -496,7 +496,8 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            if (readyCount <= 1)
+            // Permite lancar mesmo com 1 aviao disponivel — reserva 0 no patio
+            if (readyCount <= 0)
             {
                 return false;
             }

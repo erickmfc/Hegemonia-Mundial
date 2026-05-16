@@ -116,6 +116,9 @@ public class ControleNavioRealista : MonoBehaviour
     private Vector3 destinoAssistenciaSaida = Vector3.zero;
     private bool manobraReAtiva = false;
     private float tempoRestanteManobraRe = 0f;
+    private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
+    private float proximoReplanDestino;
+    private Vector3 ultimoDestinoAplicado = Vector3.zero;
     
     // Estado dos torpedos
     private bool[] tubosTorpedoUsados;
@@ -192,49 +195,78 @@ public class ControleNavioRealista : MonoBehaviour
 
     void Update()
     {
-        if (agente == null) return;
-
-        if (tempoAssistenciaSaida > 0f)
+        long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
+        try
         {
-            tempoAssistenciaSaida = Mathf.Max(0f, tempoAssistenciaSaida - Time.deltaTime);
-            if (tempoAssistenciaSaida <= 0f)
+            AtualizarEstadoOtimizacao();
+            if (agente == null) return;
+
+            if (tempoAssistenciaSaida > 0f)
             {
-                destinoAssistenciaSaida = Vector3.zero;
+                tempoAssistenciaSaida = Mathf.Max(0f, tempoAssistenciaSaida - Time.deltaTime);
+                if (tempoAssistenciaSaida <= 0f)
+                {
+                    destinoAssistenciaSaida = Vector3.zero;
+                }
+            }
+
+            if (!AgenteProntoParaLeitura())
+            {
+                return;
+            }
+
+            if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+            {
+                PararPorFaltaDeCombustivel();
+                AtualizarEfeitosVisuais();
+                AtualizarAudio();
+                return;
+            }
+
+            // 0. VERIFICAÇÃO DE ATIVIDADE
+            float intervaloLogica = InfraPerformanceGameplay.ResolverIntervalo(0.25f, estadoOtimizacao, true, true);
+            if (InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickLogica, intervaloLogica))
+            {
+                long inicioLogica = InfraPerformanceGameplay.MarcarInicioMedicao();
+                VerificarInatividade();
+                InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Logistica, inicioLogica);
+            }
+
+            // 1. INPUT (IA ou Player via NavMesh)
+            CalcularInputNavegacao();
+
+            // 2. SIMULAÇÃO DE MOTOR E HELICE
+            SimularMotor();
+
+            // 3. DIN MICA DE MOVIMENTO (Inércia e Drift)
+            SimularFisicaMovimento();
+
+            // 4. VISUAIS
+            AtualizarEfeitosVisuais();
+
+            // 5. AUDIO
+            AtualizarAudio();
+
+            float intervaloArma = InfraPerformanceGameplay.ResolverIntervalo(0.22f, estadoOtimizacao, true, true);
+            if (InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickSensor, intervaloArma))
+            {
+                long inicioArma = InfraPerformanceGameplay.MarcarInicioMedicao();
+                TentarAtaqueTorpedoModoAtivo();
+                InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Arma, inicioArma);
             }
         }
-
-        if (!AgenteProntoParaLeitura())
+        finally
         {
-            return;
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Naval, inicioUpdate);
         }
+    }
 
-        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
-        {
-            PararPorFaltaDeCombustivel();
-            AtualizarEfeitosVisuais();
-            AtualizarAudio();
-            return;
-        }
-        
-        // 0. VERIFICAÇÃO DE ATIVIDADE
-        VerificarInatividade();
-        
-        // 1. INPUT (IA ou Player via NavMesh)
-        CalcularInputNavegacao();
-
-        // 2. SIMULAÇÃO DE MOTOR E HELICE
-        SimularMotor();
-
-        // 3. DIN MICA DE MOVIMENTO (Inércia e Drift)
-        SimularFisicaMovimento();
-
-        // 4. VISUAIS
-        AtualizarEfeitosVisuais();
-
-        // 5. AUDIO
-        AtualizarAudio();
-
-        TentarAtaqueTorpedoModoAtivo();
+    private void AtualizarEstadoOtimizacao()
+    {
+        ControleUnidade controle = GetComponent<ControleUnidade>();
+        bool selecionado = controle != null && controle.selecionado;
+        bool engajado = temDestino || Mathf.Abs(potenciaAtual) > 0.05f || velocidadeVetorial.sqrMagnitude > 0.25f;
+        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, true, 220f, 520f);
     }
 
     void VerificarInatividade()
@@ -747,6 +779,13 @@ public class ControleNavioRealista : MonoBehaviour
 
         if (TentarPrepararAgenteParaNavegacao())
         {
+            float cooldown = InfraPerformanceGameplay.ResolverIntervalo(1.10f, estadoOtimizacao, true, true);
+            if (!InfraPerformanceGameplay.DeveAplicarReplan(destino, ref ultimoDestinoAplicado, ref proximoReplanDestino, cooldown, 6f))
+            {
+                agente.isStopped = false;
+                return;
+            }
+
             // Guarda: se o destino é praticamente o mesmo e já temos um path ativo,
             // não interrompe a navegação (evita engasgamento durante patrulha).
             if (Vector3.Distance(destinoAtual, destino) < 2f
@@ -760,6 +799,7 @@ public class ControleNavioRealista : MonoBehaviour
             agente.isStopped = false;
             manobraReAtiva = false;
             tempoRestanteManobraRe = 0f;
+            long inicioPath = InfraPerformanceGameplay.MarcarInicioMedicao();
             bool destinoAceito = agente.SetDestination(destino);
             temDestino = destinoAceito;
 
@@ -778,6 +818,7 @@ public class ControleNavioRealista : MonoBehaviour
                     temDestino = destinoAceito;
                 }
             }
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Pathfinding, inicioPath);
 
             // Se receber uma ordem, acorda!
             estaDesligado = false;

@@ -15,6 +15,6 @@ MonoBehaviour:
   nomeItem: Artilharia
   descricao: "Ataque de longa dist\xE2ncia."
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 5363587327516491999, guid: 80e5ae66464a0674a92cf275c3e23ca8, type: 3}
+  prefabDaUnidade: {fileID: 861696503367353079, guid: d29c5d27a37b58348985ca6f91f76a90, type: 3}
   preco: 700
   categoria: 0

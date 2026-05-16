@@ -15,6 +15,6 @@ MonoBehaviour:
   nomeItem: USS Arrowhead
   descricao: Lancha de patrulha rapida. Alta velocidade e agilidade.
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 0}
+  prefabDaUnidade: {fileID: 107713940851074736, guid: 875ae30843755264a835df7e748ac582, type: 3}
   preco: 1200
   categoria: 1

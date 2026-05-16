@@ -15,7 +15,7 @@ MonoBehaviour:
   nomeItem: Centro de construcao
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 9169285423872042855, guid: cebac71f72bf84b46a6d0c43e0a0bc18, type: 3}
+  prefabDaUnidade: {fileID: 3550197537909507791, guid: de1399e2c962362479dda709fd9b10f1, type: 3}
   preco: 100
   categoria: 6
   scriptsDeComando: []

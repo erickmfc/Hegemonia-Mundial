@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Hegemonia.AI.DEUSA;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -360,7 +361,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 float distance = Vector3.Distance(flatFrom, Flatten(snap.Transform.position));
-                float score = ScoreStrategicTarget(kind, snap.Cache, distance);
+                float score = ScoreStrategicTarget(_teamId, kind, snap.Cache, distance);
                 IA_StrategicTargetData target = new IA_StrategicTargetData
                 {
                     Kind = kind,
@@ -379,6 +380,16 @@ namespace Hegemonia.AI.BrainMaster
         private static IA_StrategicTargetKind ResolveStrategicTargetKind(EntityRuntimeCacheEntry cache, GameObject obj)
         {
             string name = cache.NormalizedName;
+            if (cache.IsRadar || name.Contains("radar"))
+            {
+                return IA_StrategicTargetKind.Radar;
+            }
+
+            if (name.Contains("energia") || name.Contains("gerador") || name.Contains("usina") || name.Contains("solar"))
+            {
+                return IA_StrategicTargetKind.Energy;
+            }
+
             if (name.Contains("plataforma"))
             {
                 return IA_StrategicTargetKind.OilPlatform;
@@ -404,6 +415,11 @@ namespace Hegemonia.AI.BrainMaster
                 return IA_StrategicTargetKind.Airport;
             }
 
+            if (name.Contains("quartel") || name.Contains("barracks") || name.Contains("tenda militar"))
+            {
+                return IA_StrategicTargetKind.Barracks;
+            }
+
             ControleAviao aircraft = obj != null ? obj.GetComponent<ControleAviao>() : null;
             if (aircraft != null && aircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
             {
@@ -425,6 +441,27 @@ namespace Hegemonia.AI.BrainMaster
                 return IA_StrategicTargetKind.Factory;
             }
 
+            if (name.Contains("industria") || name.Contains("industrial") || name.Contains("refinaria") || name.Contains("refinery"))
+            {
+                return IA_StrategicTargetKind.Industry;
+            }
+
+            if (name.Contains("fazenda") || name.Contains("farm"))
+            {
+                return IA_StrategicTargetKind.Farm;
+            }
+
+            if (name.Contains("torreta")
+                || name.Contains("phalanx")
+                || name.Contains("ciws")
+                || name.Contains("defesa")
+                || name.Contains("antia")
+                || name.Contains("muro")
+                || name.Contains("sentinela"))
+            {
+                return IA_StrategicTargetKind.Defense;
+            }
+
             if (name.Contains("prefeitura") || name.Contains("capital") || name.Contains("governo"))
             {
                 return IA_StrategicTargetKind.CityHall;
@@ -433,37 +470,55 @@ namespace Hegemonia.AI.BrainMaster
             return IA_StrategicTargetKind.None;
         }
 
-        private static float ScoreStrategicTarget(IA_StrategicTargetKind kind, EntityRuntimeCacheEntry cache, float distance)
+        private static float ScoreStrategicTarget(int attackerTeamId, IA_StrategicTargetKind kind, EntityRuntimeCacheEntry cache, float distance)
         {
             float score;
             switch (kind)
             {
+                case IA_StrategicTargetKind.Radar:
+                    score = 420f;
+                    break;
+                case IA_StrategicTargetKind.Energy:
+                    score = 395f;
+                    break;
                 case IA_StrategicTargetKind.OilPlatform:
-                    score = 330f;
+                    score = 380f;
                     break;
                 case IA_StrategicTargetKind.OilTanker:
-                    score = 315f;
+                    score = 365f;
                     break;
                 case IA_StrategicTargetKind.Pier:
-                    score = 285f;
+                    score = 330f;
                     break;
                 case IA_StrategicTargetKind.Shipyard:
-                    score = 275f;
+                    score = 340f;
                     break;
                 case IA_StrategicTargetKind.Airport:
-                    score = 260f;
+                    score = 350f;
                     break;
                 case IA_StrategicTargetKind.ReadyAircraft:
-                    score = 235f;
+                    score = 310f;
+                    break;
+                case IA_StrategicTargetKind.Barracks:
+                    score = 320f;
                     break;
                 case IA_StrategicTargetKind.NavalPatrol:
-                    score = 220f;
+                    score = 235f;
                     break;
                 case IA_StrategicTargetKind.Factory:
-                    score = 170f;
+                    score = 305f;
+                    break;
+                case IA_StrategicTargetKind.Industry:
+                    score = 285f;
+                    break;
+                case IA_StrategicTargetKind.Farm:
+                    score = 245f;
+                    break;
+                case IA_StrategicTargetKind.Defense:
+                    score = 220f;
                     break;
                 case IA_StrategicTargetKind.CityHall:
-                    score = 135f;
+                    score = 120f;
                     break;
                 default:
                     score = 0f;
@@ -475,6 +530,7 @@ namespace Hegemonia.AI.BrainMaster
                 score += 35f;
             }
 
+            score = IA_DeusaTargetRegistry.ResolverPrioridade(attackerTeamId, kind, score);
             return score - distance * 0.012f;
         }
 

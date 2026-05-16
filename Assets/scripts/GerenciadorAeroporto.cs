@@ -16,6 +16,9 @@ public class GerenciadorAeroporto : MonoBehaviour
     [Header("Hierarquia do Aeroporto (Vincular do Inspector)")]
     [Tooltip("Grupo pai contendo as marcações 'Parada' a 'Parada 4'")]
     public Transform patio;
+
+    [Tooltip("Grupo adicional de vagas extras, como Patio_Militar.")]
+    public Transform patioMilitar;
     
     [Tooltip("Grupo contendo 'Preparacao' e 'Pronto'")]
     public Transform hangarAviao;
@@ -123,14 +126,33 @@ public class GerenciadorAeroporto : MonoBehaviour
         GarantirPrefabsMarcadoresNoEditor();
 #endif
 
+        if (prefabMarcadorPatrulhaAviao != null)
+        {
+            PoolDeObjetosCombate.Prewarm(prefabMarcadorPatrulhaAviao, 2);
+        }
+
+        if (prefabMarcadorBombardeiro != null)
+        {
+            PoolDeObjetosCombate.Prewarm(prefabMarcadorBombardeiro, 2);
+        }
+
         // Cache da identidade do aeroporto
         _identidadeCacheada = GetComponent<IdentidadeUnidade>();
         _identidadeVerificada = true;
 
         if (patio != null)
         {
-            foreach (Transform filho in patio)
-                if (filho.name.ToLower().Contains("parada")) waypointsPatio.Add(filho);
+            RegistrarWaypointsPatio(patio);
+        }
+
+        if (patioMilitar == null)
+        {
+            patioMilitar = EncontrarGrupoPatioMilitar();
+        }
+
+        if (patioMilitar != null && patioMilitar != patio)
+        {
+            RegistrarWaypointsPatio(patioMilitar);
         }
 
         if (hangarAviao != null)
@@ -152,7 +174,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             for (int i = 0; i < vagasFaltantes; i++)
             {
                 GameObject vagaAuto = new GameObject($"Vaga_Auto_{i}");
-                vagaAuto.transform.SetParent(this.transform);
+                vagaAuto.transform.SetParent(patio != null ? patio : this.transform);
                 float ang = i * anguloStep;
                 vagaAuto.transform.localPosition = new Vector3(Mathf.Cos(ang) * 65f, 0, Mathf.Sin(ang) * 65f);
                 waypointsPatio.Add(vagaAuto.transform);
@@ -186,6 +208,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     protected virtual void OnDisable()
     {
+        GestorMenusExclusivos.Fechar(this);
         if (_interacaoManualSolicitada)
         {
             InteractionModeService.Release(this, ObterDonoInteracaoManual());
@@ -196,6 +219,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     protected virtual void OnDestroy()
     {
+        GestorMenusExclusivos.Fechar(this);
         if (_interacaoManualSolicitada)
         {
             InteractionModeService.Release(this, ObterDonoInteracaoManual());
@@ -333,16 +357,32 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
             if (_identidadeCacheada != null && _identidadeCacheada.teamID != 1 && _identidadeCacheada.teamID != 0) return;
 
-            menuAtivo = !menuAtivo;
+            bool novoEstadoMenu = !menuAtivo;
+            if (novoEstadoMenu)
+            {
+                GestorMenusExclusivos.Abrir(this);
+            }
+            else
+            {
+                GestorMenusExclusivos.Fechar(this);
+            }
+
+            menuAtivo = novoEstadoMenu;
             if (menuAeroportoUI != null) menuAeroportoUI.SetActive(menuAtivo);
             Debug.Log("[Aeroporto] Centro de Controle " + (menuAtivo ? "ABERTO" : "FECHADO"));
+        }
+
+        if (menuAtivo && !GestorMenusExclusivos.EstaAtivo(this))
+        {
+            menuAtivo = false;
+            if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
         }
 
         if (c700SelecionadoParaMissao != null)
         {
             if (c700SelecionadoParaMissao.AguardandoDestinoAereo && Input.GetMouseButtonDown(1))
             {
-                if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+                if (GestorMenusExclusivos.CliqueBloqueadoPelaUI()) return;
 
                 if (cameraPrincipal == null) return;
                 Ray rC700 = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
@@ -390,7 +430,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             return;
         }
         if (!Input.GetMouseButtonDown(1)) return;
-        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+        if (GestorMenusExclusivos.CliqueBloqueadoPelaUI()) return;
 
         if (cameraPrincipal == null) return;
         Ray r = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
@@ -571,7 +611,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
 
         if (!Input.GetMouseButtonDown(1)) return;
-        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+        if (GestorMenusExclusivos.CliqueBloqueadoPelaUI()) return;
 
         if (!TryResolverPontoMapa(out Vector3 pontoAlvo))
         {
@@ -693,7 +733,6 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (marcadorBombardeiro != null)
             {
                 marcadorBombardeiro.transform.localScale = new Vector3(40f, 40f, 40f);
-                Destroy(marcadorBombardeiro, 4f);
                 return;
             }
         }
@@ -733,7 +772,6 @@ public class GerenciadorAeroporto : MonoBehaviour
             GameObject marcadorPatrulha = InstanciarMarcadorSeguro(prefabMarcadorPatrulhaAviao, pos + Vector3.up * 0.1f, Quaternion.identity);
             if (marcadorPatrulha != null)
             {
-                Destroy(marcadorPatrulha, 4f);
                 return;
             }
         }
@@ -746,6 +784,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (prefab == null)
         {
             return null;
+        }
+
+        if (prefab is GameObject prefabGo)
+        {
+            return PoolDeObjetosCombate.SpawnTemporario(prefabGo, posicao, rotacao, 4f);
         }
 
         UnityEngine.Object instancia = Instantiate(prefab, posicao, rotacao);
@@ -1417,6 +1460,72 @@ public class GerenciadorAeroporto : MonoBehaviour
         return false;
     }
 
+    private void RegistrarWaypointsPatio(Transform grupo)
+    {
+        if (grupo == null)
+        {
+            return;
+        }
+
+        foreach (Transform filho in grupo)
+        {
+            if (filho == null)
+            {
+                continue;
+            }
+
+            string nome = filho.name.ToLowerInvariant();
+            if (!NomeEhVagaAviaoExtra(nome))
+            {
+                continue;
+            }
+
+            if (!waypointsPatio.Contains(filho))
+            {
+                waypointsPatio.Add(filho);
+            }
+        }
+    }
+
+    private Transform EncontrarGrupoPatioMilitar()
+    {
+        Transform[] todos = GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < todos.Length; i++)
+        {
+            Transform candidato = todos[i];
+            if (candidato == null)
+            {
+                continue;
+            }
+
+            string nome = candidato.name.ToLowerInvariant().Replace(" ", string.Empty);
+            if (nome.Contains("patio_militar") || nome.Contains("patiomilitar"))
+            {
+                return candidato;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool NomeEhVagaAviaoExtra(string nome)
+    {
+        if (string.IsNullOrEmpty(nome))
+        {
+            return false;
+        }
+
+        if (nome.Contains("parada"))
+        {
+            return true;
+        }
+
+        return nome == "h" || nome == "i" || nome == "j" || nome == "k" || nome == "l" || nome == "q"
+            || nome == "vaga_h" || nome == "vaga_i" || nome == "vaga_j" || nome == "vaga_k" || nome == "vaga_l" || nome == "vaga_q"
+            || nome.StartsWith("vaga_h_") || nome.StartsWith("vaga_i_") || nome.StartsWith("vaga_j_")
+            || nome.StartsWith("vaga_k_") || nome.StartsWith("vaga_l_") || nome.StartsWith("vaga_q_");
+    }
+
     public Transform ObterParadaGrandePreferencial(bool aceitarOcupada = false)
     {
         Transform encontrada = null;
@@ -1658,6 +1767,11 @@ public class GerenciadorAeroporto : MonoBehaviour
     {
         if (Construtor.EmModoConstrucaoAtivo) return;
         if (!menuAtivo) return;
+        if (!GestorMenusExclusivos.EstaAtivo(this))
+        {
+            menuAtivo = false;
+            return;
+        }
         if (menuAeroportoUI != null && menuAeroportoUI.activeInHierarchy) return;
 
         // --- SISTEMA DE FAXINA (Fix para os fantasmas no pátio) ---
@@ -1670,12 +1784,14 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (xMenu < 10f) xMenu = 10f;
         
         Rect telaDeMenu = new Rect(xMenu, Screen.height / 2f - 420f, 700f, 840f);
+        GestorMenusExclusivos.RegistrarAreaBloqueio(this, telaDeMenu);
         GUI.Box(telaDeMenu, "CENTRO DE CONTROLE TÁTICO & AEROPORTO");
 
         // --- BOTÃO DE FECHAR (X) ---
         if (GUI.Button(new Rect(telaDeMenu.xMax - 35, telaDeMenu.y + 5, 30, 25), "<b>X</b>"))
         {
             menuAtivo = false;
+            GestorMenusExclusivos.Fechar(this);
             if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
         }
 

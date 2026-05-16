@@ -1011,6 +1011,163 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: aafd5d0a6203e4b8cbd63fce4b04c98f, type: 3}
+--- !u!1 &231584107
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 231584108}
+  - component: {fileID: 231584110}
+  - component: {fileID: 231584109}
+  m_Layer: 0
+  m_Name: IA_DeusaBrain
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &231584108
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 231584107}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -1.864685, y: 0.00003, z: 3.1396976}
+  m_LocalScale: {x: 1, y: 1, z: 0.82331634}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 590836160}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &231584109
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 231584107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1cda7836f2ccd84fa4d48d4ae18aed5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.DEUSA.IA_DeusaBrain
+  ativarDEUSA: 1
+  config:
+    modoObservadorDebug: 1
+    bloquearFilaBrainMasterEmObservador: 0
+    modoInicial: 1
+    estagioInicialManual: 1
+    travarEstagio: 0
+    personalidade: 7
+    dificuldade: 1
+    vantagemInicial: 0
+    usarEspionagemJusta: 1
+    permitirComercioComJogador: 1
+    permitirComercioComOutrasIAs: 1
+    permitirSancoes: 1
+    permitirGuerraTotal: 1
+  identidade:
+    nomePais: 
+    nomePresidente: 
+    nomeMoeda: 
+    teamID: 0
+    personalidade: 1
+    modoInicial: 1
+    estagioAtual: 0
+  politicaNacional:
+    estagioAtual: 0
+    focoEconomia: 0
+    focoMilitar: 0
+    focoExpansao: 0
+    focoDiplomacia: 0
+    focoDefesa: 0
+    focoAtaque: 0
+    permitirGuerra: 0
+    permitirSancoes: 0
+    permitirComercio: 0
+    permitirExpansao: 0
+    modoObservador: 0
+    metaMinimaSoldados: 0
+    metaMinimaTanques: 0
+    metaMinimaAvioes: 0
+    metaMinimaNavios: 0
+    alvoPrioritario: Nenhum
+    proximaConstrucao: Nenhuma
+    origemDaDecisao: Aguardando
+  prioridadesAtuais: []
+  resumoDeusa: DEUSA aguardando bind
+  resumoEconomia: 
+  resumoMilitar: 
+  resumoEspionagem: 
+  resumoMapa: 
+  resumoPrioridades: 
+--- !u!114 &231584110
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 231584107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d446d4bc7cb9bfb40ae76cb333a69e3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_BrainMaster
+  TeamId: 2
+  NationName: BrainMaster
+  CurrencyName: Moeda IA
+  CurrencySymbol: IA$
+  NationProfile: 4
+  InitialNationMode: 3
+  DiplomacyWeight: 0.5
+  TradeWeight: 0.55
+  IndustryWeight: 0.5
+  MilitarismWeight: 0.45
+  AggressionWeight: 0.35
+  ExternalDependencyWeight: 0.45
+  SelfSufficiencyWeight: 0.45
+  EconomicRiskWeight: 0.35
+  StockControlWeight: 0.55
+  AllyLoyaltyWeight: 0.55
+  RivalHatredWeight: 0.45
+  InitialCredits: 30000
+  IncomePerSecond: 60
+  Credits: 0
+  IntegrationMode: 1
+  DisableLegacyAIWhenFull: 1
+  MaxCommandsPerFrame: 4
+  UseScriptedBootstrap: 1
+  BootstrapMobilizationSeconds: 300
+  EnableVerboseLogs: 0
+  EnableBootstrapConsoleTrace: 0
+  UseManualBuildPoints: 1
+  RuntimeSummary: 
+  BootstrapStatus: 
+  BootstrapLastError: 
+  NavalDiagnosticSummary: 
+  CombatPressureSummary: 
+  StrategicPhase: 0
+  ActiveImperialPlan: abertura
+  ImperialLastFailure: 
+  TargetFleet: 4
+  TargetAircraft: 6
+  TargetOilTankers: 2
+  TargetPlatforms: 2
+  TargetPiers: 2
+  TargetShipyards: 1
+  TargetCoastalDefenseShips: 3
+  TargetRadars: 1
+  TargetCiws: 1
+  PlayerFleetEstimate: 0
+  PlayerAircraftEstimate: 0
+  WeakEmpireRecoveryActive: 0
+  ActiveStrategicTarget: 
+  ImperialPlanSummary: 
 --- !u!1 &234943285
 GameObject:
   m_ObjectHideFlags: 0
@@ -2528,63 +2685,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VerificadorAudio
   executarNoStart: 0
   permitirTeclaVerificacao: 0
---- !u!1001 &351101317
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 16.275032
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.4875181
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 96.43101
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223275190, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      propertyPath: m_Name
-      value: M_1
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
 --- !u!1001 &362063677
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4296,7 +4396,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 060d1954fe5a40d44b6d0d18f6b8fc4c, type: 2}
   - {fileID: 11400000, guid: d845d5010ae02d349aec41435d88c422, type: 2}
   - {fileID: 11400000, guid: a390fca24fa5f6942b18a2959b1df013, type: 2}
-  - {fileID: 0}
+  - {fileID: 11400000, guid: 0152c59ae4134a240917abe0ffb421c1, type: 2}
   - {fileID: 11400000, guid: c6e5bcf065ceb814faa72126dbbc601b, type: 2}
   - {fileID: 11400000, guid: 67f78e06014bf0746bf59dc44dda8e15, type: 2}
   - {fileID: 11400000, guid: ce324888b5c490045a163c66f203dc0e, type: 2}
@@ -4669,24 +4769,25 @@ MonoBehaviour:
   CurrencySymbol: IA$
   NationProfile: 4
   InitialNationMode: 6
-  DiplomacyWeight: 0.5
+  DiplomacyWeight: 0.25
   TradeWeight: 0.55
   IndustryWeight: 0.5
-  MilitarismWeight: 0.45
-  AggressionWeight: 0.35
+  MilitarismWeight: 0.75
+  AggressionWeight: 0.64
   ExternalDependencyWeight: 0.45
   SelfSufficiencyWeight: 0.45
   EconomicRiskWeight: 0.35
   StockControlWeight: 0.55
   AllyLoyaltyWeight: 0.55
   RivalHatredWeight: 0.45
-  InitialCredits: 30000
+  InitialCredits: 50000
   IncomePerSecond: 90
   Credits: 0
   IntegrationMode: 1
   DisableLegacyAIWhenFull: 1
   MaxCommandsPerFrame: 18
   UseScriptedBootstrap: 1
+  BootstrapMobilizationSeconds: 300
   EnableVerboseLogs: 0
   EnableBootstrapConsoleTrace: 0
   UseManualBuildPoints: 1
@@ -4695,6 +4796,23 @@ MonoBehaviour:
   BootstrapLastError: 
   NavalDiagnosticSummary: 
   CombatPressureSummary: 
+  StrategicPhase: 3
+  ActiveImperialPlan: abertura
+  ImperialLastFailure: 
+  TargetFleet: 4
+  TargetAircraft: 9
+  TargetOilTankers: 2
+  TargetPlatforms: 1
+  TargetPiers: 2
+  TargetShipyards: 1
+  TargetCoastalDefenseShips: 3
+  TargetRadars: 1
+  TargetCiws: 1
+  PlayerFleetEstimate: 0
+  PlayerAircraftEstimate: 0
+  WeakEmpireRecoveryActive: 0
+  ActiveStrategicTarget: 
+  ImperialPlanSummary: 
 --- !u!4 &590836160
 Transform:
   m_ObjectHideFlags: 0
@@ -4719,6 +4837,7 @@ Transform:
   - {fileID: 2011353080}
   - {fileID: 261169694}
   - {fileID: 461569556}
+  - {fileID: 231584108}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &597961670
@@ -6422,7 +6541,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &830235470
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6459,6 +6578,7 @@ MonoBehaviour:
   DisableLegacyAIWhenFull: 1
   MaxCommandsPerFrame: 18
   UseScriptedBootstrap: 1
+  BootstrapMobilizationSeconds: 300
   EnableVerboseLogs: 0
   EnableBootstrapConsoleTrace: 0
   UseManualBuildPoints: 1
@@ -6467,6 +6587,23 @@ MonoBehaviour:
   BootstrapLastError: 
   NavalDiagnosticSummary: 
   CombatPressureSummary: 
+  StrategicPhase: 0
+  ActiveImperialPlan: abertura
+  ImperialLastFailure: 
+  TargetFleet: 4
+  TargetAircraft: 6
+  TargetOilTankers: 2
+  TargetPlatforms: 2
+  TargetPiers: 2
+  TargetShipyards: 1
+  TargetCoastalDefenseShips: 3
+  TargetRadars: 1
+  TargetCiws: 1
+  PlayerFleetEstimate: 0
+  PlayerAircraftEstimate: 0
+  WeakEmpireRecoveryActive: 0
+  ActiveStrategicTarget: 
+  ImperialPlanSummary: 
 --- !u!4 &830235471
 Transform:
   m_ObjectHideFlags: 0
@@ -6579,6 +6716,7 @@ MonoBehaviour:
   textoPopulacao: {fileID: 1202148355}
   textoPais: {fileID: 0}
   textoMoeda: {fileID: 0}
+  textoOuro: {fileID: 0}
   ganhoTextoDinheiro: {fileID: 680759425}
   ganhoTextoPetroleo: {fileID: 301230246}
   ganhoTextoAco: {fileID: 292912732}
@@ -13673,63 +13811,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6ca2cee69450f204c872432921b90362, type: 3}
---- !u!1001 &8925027082900925960
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_Name
-      value: M_1 (1)
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 16.275032
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.4875181
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 96.43101
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2445636553566062014, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -13787,8 +13868,6 @@ SceneRoots:
   - {fileID: 1680533525}
   - {fileID: 59833244}
   - {fileID: 286080667}
-  - {fileID: 351101317}
-  - {fileID: 8925027082900925960}
   - {fileID: 1642139190}
   - {fileID: 632054429}
   - {fileID: 1873717619}

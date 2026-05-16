@@ -69,6 +69,7 @@ public class ControleAviao : MonoBehaviour
     private float anguloOrbitaAtual = 0f;
     private int sentidoOrbita = 1;
     private bool retornoAutomaticoAposChegadaCentro = false;
+    private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
     private readonly List<Vector3> rotaPatrulhaSalva = new List<Vector3>();
     private Vector3 ultimoObjetivoMissao = Vector3.zero;
     private bool retomarMissaoAposAbastecer = false;
@@ -223,8 +224,18 @@ public class ControleAviao : MonoBehaviour
     void Update()
     {
         if (!estaEmModoVooFisico) return;
+        long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
+        AtualizarEstadoOtimizacao();
 
-        AvaliarRetornoSeguroAutomatico();
+        float intervaloLogica = InfraPerformanceGameplay.ResolverIntervalo(0.18f, estadoOtimizacao, true, true);
+        bool executarLogica = InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickLogica, intervaloLogica);
+
+        if (executarLogica)
+        {
+            long inicioLogica = InfraPerformanceGameplay.MarcarInicioMedicao();
+            AvaliarRetornoSeguroAutomatico();
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Logistica, inicioLogica);
+        }
 
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
@@ -236,7 +247,7 @@ public class ControleAviao : MonoBehaviour
         bool selecionado = (_controleUnidade != null && _controleUnidade.selecionado);
 
         float multiplicadorDanos = 1f;
-        if (_sistemaDanos != null && _sistemaDanos.vidaMaxima > 0)
+        if (executarLogica && _sistemaDanos != null && _sistemaDanos.vidaMaxima > 0)
         {
             float pctVida = _sistemaDanos.vidaAtual / _sistemaDanos.vidaMaxima;
             if (pctVida < 0.25f)
@@ -272,6 +283,18 @@ public class ControleAviao : MonoBehaviour
         }
 
         ManobraVooRealista(multiplicadorDanos);
+        InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Aereo, inicioUpdate);
+    }
+
+    private void AtualizarEstadoOtimizacao()
+    {
+        bool selecionado = (_controleUnidade != null && _controleUnidade.selecionado);
+        bool engajado = estadoAtual == EstadoAviao.EmMissao
+            || estadoAtual == EstadoAviao.Decolando
+            || estadoAtual == EstadoAviao.Pousando
+            || ordemParaRetorno;
+        bool heroico = GetComponent<KamikazeDrone>() == null;
+        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, heroico, 180f, 420f);
     }
 
     private void ManobraVooRealista(float multDano = 1f)

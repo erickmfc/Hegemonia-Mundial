@@ -126,7 +126,7 @@ namespace Hegemonia.AI.BrainMaster
                 int helicopterTarget = EnableHelicopterProduction && hasHeliport
                     ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 3f), 2, 5)
                     : 0;
-                int fighterTarget = hasAirport ? Mathf.Clamp(5 + Mathf.RoundToInt(counter.AirWeight * 6f) + (int)(now / 90f), 5, 30) : 0;
+                int fighterTarget = hasAirport ? Mathf.Clamp(8 + Mathf.RoundToInt(counter.AirWeight * 8f) + (int)(now / 60f), 8, 40) : 0;
                 int patrolShipTarget = hasNavalBase ? 1 : 0;
                 int navalTarget = hasNavalBase
                     ? Mathf.Clamp(3 + Mathf.RoundToInt(counter.NavalWeight * 5f), 3, 12)
@@ -247,12 +247,13 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (hasBarracks && infantryCount < 4 && QueueProduceBest(94, 5f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
+                // Avioes tem prioridade quando a frota aerea esta abaixo do minimo
+                if (hasAirport && fighterCount < 6 && QueuePreferredAircraft(95, 3.5f))
                 {
                     return;
                 }
 
-                if (hasAirport && fighterCount < 2 && QueuePreferredAircraft(92, 5.5f))
+                if (hasBarracks && infantryCount < 4 && QueueProduceBest(94, 5f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
                 {
                     return;
                 }
@@ -270,7 +271,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 // Garante que o aeroporto NUNCA fique vazio, reposição constante com alta prioridade
-                if (hasAirport && fighterCount < 5 && QueuePreferredAircraft(91, 4f))
+                if (hasAirport && fighterCount < 8 && QueuePreferredAircraft(93, 3.0f))
                 {
                     return;
                 }
@@ -331,7 +332,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 // Mantém a produção rodando até bater o teto dinâmico (buffer extra), não mais bloqueado por AirWeight
-                if (hasAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && QueuePreferredAircraft(88, 5f))
+                if (hasAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && QueuePreferredAircraft(89, 3.5f))
                 {
                     return;
                 }
@@ -794,7 +795,7 @@ namespace Hegemonia.AI.BrainMaster
             int infantryTarget = Mathf.Clamp(10 + Mathf.FloorToInt(elapsed / 30f) * 3, 10, 32);
             int tankTarget = hasFactory ? Mathf.Clamp(3 + Mathf.FloorToInt(elapsed / 60f) * 2, 3, 10) : 0;
             int artyTarget = hasFactory ? Mathf.Clamp(1 + Mathf.FloorToInt(elapsed / 90f), 1, 4) : 0;
-            int fighterTarget = hasAirport ? Mathf.Clamp(2 + Mathf.FloorToInt(elapsed / 75f), 2, 6) : 0;
+            int fighterTarget = hasAirport ? Mathf.Clamp(4 + Mathf.FloorToInt(elapsed / 45f), 4, 12) : 0;
             int navalTarget = hasNavalBase ? Mathf.Clamp(1 + Mathf.FloorToInt(elapsed / 90f), 1, 4) : 0;
 
             brain.SetBootstrapStatus(
@@ -818,7 +819,7 @@ namespace Hegemonia.AI.BrainMaster
 
             if (hasAirport
                 && snapshot.FixedWingAircraft < fighterTarget
-                && QueuePreferredAircraft(997, 5.5f))
+                && QueuePreferredAircraft(997, 3.0f))
             {
                 return true;
             }

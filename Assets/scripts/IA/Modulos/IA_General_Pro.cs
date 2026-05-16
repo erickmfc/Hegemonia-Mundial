@@ -51,6 +51,8 @@ public class IA_General_Pro : MonoBehaviour
     private float _timerRayTransporte = 0f; 
     private float _timerDespachoAviao = 30f; 
     private bool jaAtacou = false;
+    private float _proximoTickCompat;
+    private float _ultimoTempoCompat;
 
     public void Inicializar(IA_Comandante comandante)
     {
@@ -67,10 +69,19 @@ public class IA_General_Pro : MonoBehaviour
     void Update()
     {
         if (chefe == null) return;
+        float intervalo = InfraPerformanceGameplay.ResolverIntervalo(0.25f, null, true, false);
+        if (!InfraPerformanceGameplay.DeveExecutar(this, ref _proximoTickCompat, intervalo))
+        {
+            return;
+        }
+
+        float agora = Time.unscaledTime;
+        float deltaCompat = _ultimoTempoCompat > 0f ? Mathf.Max(0.05f, agora - _ultimoTempoCompat) : intervalo;
+        _ultimoTempoCompat = agora;
 
         if (usarInteligenciaAdaptativa)
         {
-            _timerEspionagem += Time.deltaTime;
+            _timerEspionagem += deltaCompat;
             if (_timerEspionagem >= 20f) 
             {
                 _timerEspionagem = 0;
@@ -78,14 +89,14 @@ public class IA_General_Pro : MonoBehaviour
             }
         }
 
-        _timerRecrutamento += Time.deltaTime;
+        _timerRecrutamento += deltaCompat;
         if (_timerRecrutamento >= 2.5f) 
         {
             _timerRecrutamento = 0;
             TentarRecrutar();
         }
 
-        _timerReorganizar += Time.deltaTime;
+        _timerReorganizar += deltaCompat;
         if (_timerReorganizar >= 5.0f)
         {
             _timerReorganizar = 0;
@@ -93,35 +104,35 @@ public class IA_General_Pro : MonoBehaviour
             if (!jaAtacou) MoverTropasParaPontoDeEncontro();
         }
 
-        _timerAtaque += Time.deltaTime;
+        _timerAtaque += deltaCompat;
         if (_timerAtaque >= intervaloAtaque)
         {
             _timerAtaque = 0;
             AvaliarCombate();
         }
 
-        _timerTransporte += Time.deltaTime;
+        _timerTransporte += deltaCompat;
         if (_timerTransporte >= 3.0f)
         {
             _timerTransporte = 0;
             GerenciarTransportes();
         }
 
-        _timerCompraAviao += Time.deltaTime;
+        _timerCompraAviao += deltaCompat;
         if (_timerCompraAviao >= 300f)
         {
             _timerCompraAviao = 0;
             TentarComprarAviaoPeriodicamentre();
         }
 
-        _timerRayTransporte += Time.deltaTime;
+        _timerRayTransporte += deltaCompat;
         if (_timerRayTransporte >= 45f)
         {
             _timerRayTransporte = 0;
             GerenciarTransporteRay();
         }
 
-        _timerDespachoAviao += Time.deltaTime;
+        _timerDespachoAviao += deltaCompat;
         if (_timerDespachoAviao >= 60f)
         {
             _timerDespachoAviao = 0;

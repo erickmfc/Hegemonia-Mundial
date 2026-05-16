@@ -34,7 +34,7 @@ public class SistemaArmamentoHelice : MonoBehaviour
     private int meuTime = 1;
     private float cronometroScan = 0f;
     private Transform alvoAtualGuardado;
-    private readonly Collider[] bufferBuscaAerea = new Collider[64];
+    private readonly List<Transform> bufferPercepcaoTatica = new List<Transform>(12);
 
     // === NOVA MÁQUINA DE ESTADOS DO SUPER TUCANO ===
     private enum EstadoCombate { Patrulha, Afastamento, Mergulho_Subir, Mergulho_Atacar, Evasao }
@@ -136,36 +136,31 @@ public class SistemaArmamentoHelice : MonoBehaviour
             }
         }
 
-        int vizinhos = Physics.OverlapSphereNonAlloc(transform.position, raioDeVisao, bufferBuscaAerea, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         Transform alvoMaisProximoScanner = null;
-        float menorDistancia = Mathf.Infinity;
+        float menorDistanciaSqr = Mathf.Infinity;
 
-        for (int i = 0; i < vizinhos; i++)
+        InfraPerformanceGameplay.ObterInimigosProximos(transform.position, raioDeVisao, meuTime, bufferPercepcaoTatica, 12);
+
+        for (int i = 0; i < bufferPercepcaoTatica.Count; i++)
         {
-            Collider col = bufferBuscaAerea[i];
-            if (col == null)
+            Transform candidato = bufferPercepcaoTatica[i];
+            if (candidato == null)
             {
                 continue;
             }
 
-            IdentidadeUnidade id = col.GetComponentInParent<IdentidadeUnidade>();
-            if (id != null && id.teamID != meuTime && id.teamID != 0) 
+            SistemaDeDanos vida = candidato.GetComponentInParent<SistemaDeDanos>();
+            if (vida != null && vida.vidaAtual > 0)
             {
-                SistemaDeDanos vida = col.GetComponentInParent<SistemaDeDanos>();
-                if (vida != null && vida.vidaAtual > 0)
-                {
-                    if (!ControleSubmarino.PodeSerAlvoConvencional(vida.transform)) continue;
+                if (!ControleSubmarino.PodeSerAlvoConvencional(vida.transform)) continue;
 
-                    float dist = Vector3.Distance(transform.position, vida.transform.position);
-                    if (dist < menorDistancia)
-                    {
-                        menorDistancia = dist;
-                        alvoMaisProximoScanner = vida.transform;
-                    }
+                float distSqr = (transform.position - vida.transform.position).sqrMagnitude;
+                if (distSqr < menorDistanciaSqr)
+                {
+                    menorDistanciaSqr = distSqr;
+                    alvoMaisProximoScanner = vida.transform;
                 }
             }
-
-            bufferBuscaAerea[i] = null;
         }
         alvoAtualGuardado = alvoMaisProximoScanner;
     }

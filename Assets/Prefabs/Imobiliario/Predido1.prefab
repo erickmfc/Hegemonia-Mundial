@@ -1529,6 +1529,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 267885964637212137, guid: 85938fd8fc1494c4f814bbc8350987ba, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8051842144925750592}
+    - targetCorrespondingSourceObject: {fileID: 267885964637212137, guid: 85938fd8fc1494c4f814bbc8350987ba, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4662998045733901430}
+    - targetCorrespondingSourceObject: {fileID: 267885964637212137, guid: 85938fd8fc1494c4f814bbc8350987ba, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4775579198438753096}
   m_SourcePrefab: {fileID: 100100000, guid: 85938fd8fc1494c4f814bbc8350987ba, type: 3}
 --- !u!4 &4976671168999312526 stripped
 Transform:
@@ -1553,7 +1559,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Imovel
   capacidade: 100
+  distanciaConexao: 8
+  ladoEsquerdo: {fileID: 0}
+  ladoDireito: {fileID: 0}
   debugLogs: 0
+  semEnergia: 0
 --- !u!114 &8051842144925750592
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1578,6 +1588,43 @@ MonoBehaviour:
   anguloAfundamentoX: -46
   duracaoAfundamento: 2.5
   atrasoPosAfundamento: 0.6
+--- !u!65 &4662998045733901430
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8307991048982314653}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 18.23, y: 31.78, z: 10.44}
+  m_Center: {x: 0, y: 16.21, z: 0}
+--- !u!208 &4775579198438753096
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8307991048982314653}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 9, y: 15.5, z: 5}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 16, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1001 &8327702766965525400
 PrefabInstance:
   m_ObjectHideFlags: 0

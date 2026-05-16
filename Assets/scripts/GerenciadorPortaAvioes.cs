@@ -441,10 +441,14 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             if (_idCarrier == null || _idCarrier.teamID != 1)
             {
                 _menuCarrierAtivo = false;
+                GestorMenusExclusivos.Fechar(this);
                 return;
             }
 
-            _menuCarrierAtivo = !_menuCarrierAtivo;
+            bool novoEstado = !_menuCarrierAtivo;
+            if (novoEstado) GestorMenusExclusivos.Abrir(this);
+            else GestorMenusExclusivos.Fechar(this);
+            _menuCarrierAtivo = novoEstado;
         }
 
         // ==========================================
@@ -452,7 +456,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         // ==========================================
         if (abrirMenuAoCliqueNoNavio && Input.GetMouseButtonDown(0)) 
         {
-            if (UnityEngine.EventSystems.EventSystem.current == null || !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            if (!GestorMenusExclusivos.CliqueBloqueadoPelaUI())
             {
                 if (_cameraPrincipal == null) _cameraPrincipal = Camera.main;
                 if (_cameraPrincipal == null) return;
@@ -468,10 +472,16 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                         }
 
                         LogDebug("[Porta-Aviões] Você clicou no navio!");
+                        GestorMenusExclusivos.Abrir(this);
                         _menuCarrierAtivo = true; // Abre o menu ao clicar
                     }
                 }
             }
+        }
+
+        if (_menuCarrierAtivo && !GestorMenusExclusivos.EstaAtivo(this))
+        {
+            _menuCarrierAtivo = false;
         }
 
         // 4. Scan de Aviões Próximos no Céu
@@ -655,6 +665,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     void OnGUI()
     {
         if (!_menuCarrierAtivo) return;
+        if (!GestorMenusExclusivos.EstaAtivo(this))
+        {
+            _menuCarrierAtivo = false;
+            return;
+        }
 
         int oldLabelFont = GUI.skin.label.fontSize;
         int oldButtonFont = GUI.skin.button.fontSize;
@@ -674,6 +689,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         float menuWidth = Mathf.Clamp(Screen.width * 0.31f, 430f, 540f);
         float menuHeight = Mathf.Min(Screen.height - 20f, 960f);
         Rect areaMenu = new Rect(Screen.width - menuWidth - 16f, 10f, menuWidth, menuHeight);
+        GestorMenusExclusivos.RegistrarAreaBloqueio(this, areaMenu);
         
         GUI.Box(areaMenu, "<b>⚓ COMANDO DE OPERAÇÕES NAVAIS</b>");
 
@@ -684,6 +700,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (GUILayout.Button("Fechar", GUILayout.Width(72f), GUILayout.Height(22f)))
         {
             _menuCarrierAtivo = false;
+            GestorMenusExclusivos.Fechar(this);
         }
         GUILayout.EndHorizontal();
 
@@ -1018,7 +1035,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         GUILayout.EndScrollView();
 
         GUILayout.Space(6);
-        if (GUILayout.Button("Fechar (O)", GUILayout.Height(24))) _menuCarrierAtivo = false;
+        if (GUILayout.Button("Fechar (O)", GUILayout.Height(24)))
+        {
+            _menuCarrierAtivo = false;
+            GestorMenusExclusivos.Fechar(this);
+        }
         GUILayout.EndArea();
 
         GUI.skin.label.fontSize = oldLabelFont;
@@ -1092,7 +1113,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     private void ProcessarCliqueOrdemRadar()
     {
-        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+        if (GestorMenusExclusivos.CliqueBloqueadoPelaUI()) return;
         
         if (_cameraPrincipal == null) _cameraPrincipal = Camera.main;
         if (_cameraPrincipal == null) return;
@@ -1414,7 +1435,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
 
         if (!Input.GetMouseButtonDown(1)) return;
-        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+        if (GestorMenusExclusivos.CliqueBloqueadoPelaUI()) return;
         if (!TryResolverPontoMapaCarrier(out Vector3 pontoAlvo)) return;
 
         if (_modoOrdemHelicopteroCarrier == ModoOrdemHelicopteroCarrier.Patrulha)

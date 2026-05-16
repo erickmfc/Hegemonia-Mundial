@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: Track Combustivel
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: Nome da Unidade
-  descricao: "Descri\xE7\xE3o curta..."
+  nomeItem: Track Combustivel
+  descricao: Caminhão de reabastecimento de combustível para unidades no campo.
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 0}
+  prefabDaUnidade: {fileID: 2122963518820336875, guid: 220ee2fb38e34184b902c047d721d9ff, type: 3}
   preco: 100
   categoria: 0
   balanceamento: {fileID: 0}

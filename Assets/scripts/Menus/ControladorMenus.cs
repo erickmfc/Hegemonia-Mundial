@@ -4,6 +4,14 @@ public class ControladorMenus : MonoBehaviour
 {
     public GameObject janelaMercado; // Aqui vamos colocar sua janela azul
 
+    private void Update()
+    {
+        if (janelaMercado != null && janelaMercado.activeSelf && !GestorMenusExclusivos.EstaAtivo(this))
+        {
+            janelaMercado.SetActive(false);
+        }
+    }
+
     // Essa função será chamada pelo BOTÃO MERCADO
     public void AbrirFecharMercado()
     {
@@ -11,6 +19,9 @@ public class ControladorMenus : MonoBehaviour
         bool estaAberta = janelaMercado.activeSelf;
 
         // Inverte o estado (Se aberta -> fecha. Se fechada -> abre)
-        janelaMercado.SetActive(!estaAberta);
+        bool novoEstado = !estaAberta;
+        if (novoEstado) GestorMenusExclusivos.Abrir(this);
+        else GestorMenusExclusivos.Fechar(this);
+        janelaMercado.SetActive(novoEstado);
     }
 }

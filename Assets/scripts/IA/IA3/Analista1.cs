@@ -8,6 +8,7 @@ public class Analista1 : MonoBehaviour
     private RecebedorIA recebedor;
     private Analista2 analistaEstrategia;
     private CerebroIA cerebro;
+    private float proximoTickAnalise;
 
     // Conecta as peças
     void Start()
@@ -19,6 +20,12 @@ public class Analista1 : MonoBehaviour
 
     void Update()
     {
+        float intervalo = InfraPerformanceGameplay.ResolverIntervalo(0.10f, null, false, true);
+        if (!InfraPerformanceGameplay.DeveExecutar(this, ref proximoTickAnalise, intervalo))
+        {
+            return;
+        }
+
         // Se o Recebedor tem algo, eu puxo
         if (recebedor != null && recebedor.TemPedidos())
         {

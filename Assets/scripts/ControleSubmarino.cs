@@ -226,39 +226,41 @@ public class ControleSubmarino : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.U))
         {
-            if (tempoDesdeUltimoMovimento >= 4f && !emMovimento)
+            if (emMovimento)
             {
-                if (estaSubmerso)
-                {
-                    StartCoroutine(Subir());
-                }
-                else
-                {
-                    Debug.Log("[USS Leviathan] Ja esta na superficie!");
-                }
+                Debug.Log("[USS Leviathan] Manobra em curso, aguarde...");
+            }
+            else if (tempoDesdeUltimoMovimento < 4f)
+            {
+                Debug.Log($"[USS Leviathan] Sistemas de pressao recarregando. Aguarde {(4f - tempoDesdeUltimoMovimento):F1}s.");
+            }
+            else if (estaSubmerso)
+            {
+                StartCoroutine(Subir());
             }
             else
             {
-                Debug.Log($"[USS Leviathan] Aguarde {(4f - tempoDesdeUltimoMovimento):F1}s antes de mover novamente.");
+                Debug.Log("[USS Leviathan] Ja esta na superficie!");
             }
         }
 
         if (Input.GetKeyDown(KeyCode.P))
         {
-            if (tempoDesdeUltimoMovimento >= 4f && !emMovimento)
+            if (emMovimento)
             {
-                if (!estaSubmerso)
-                {
-                    StartCoroutine(Descer());
-                }
-                else
-                {
-                    Debug.Log("[USS Leviathan] Ja esta submerso!");
-                }
+                Debug.Log("[USS Leviathan] Manobra em curso, aguarde...");
+            }
+            else if (tempoDesdeUltimoMovimento < 4f)
+            {
+                Debug.Log($"[USS Leviathan] Sistemas de pressao recarregando. Aguarde {(4f - tempoDesdeUltimoMovimento):F1}s.");
+            }
+            else if (!estaSubmerso)
+            {
+                StartCoroutine(Descer());
             }
             else
             {
-                Debug.Log($"[USS Leviathan] Aguarde {(4f - tempoDesdeUltimoMovimento):F1}s antes de mover novamente.");
+                Debug.Log("[USS Leviathan] Ja esta submerso!");
             }
         }
 
@@ -856,22 +858,42 @@ public class ControleSubmarino : MonoBehaviour
         float offsetInicial = agente.baseOffset;
         float offsetDesejado = CalcularOffsetParaEstado(submerso, navMeshY);
         float distancia = Mathf.Abs(offsetDesejado - offsetInicial);
-        float duracao = velocidadeMovimento > 0.01f ? distancia / velocidadeMovimento : 0f;
+        float duracao = velocidadeMovimento > 0.01f ? distancia / velocidadeMovimento : 0.1f;
         float tempoDecorrido = 0f;
 
-        if (duracao > 0.1f)
+        if (duracao > 0.05f)
         {
             while (tempoDecorrido < duracao)
             {
                 tempoDecorrido += Time.deltaTime;
-                agente.baseOffset = Mathf.Lerp(offsetInicial, offsetDesejado, tempoDecorrido / duracao);
-                AtualizarTransformY(navMeshY + agente.baseOffset);
+                float t = Mathf.Clamp01(tempoDecorrido / duracao);
+                float smoothT = Mathf.SmoothStep(0f, 1f, t);
+
+                // Recalcular navMeshY dinamicamente caso o submarino esteja se movendo
+                float currentNavMeshY = transform.position.y - agente.baseOffset;
+                float currentOffsetDesejado = ResolverAlturaMundo(submerso) - currentNavMeshY;
+
+                agente.baseOffset = Mathf.Lerp(offsetInicial, currentOffsetDesejado, smoothT);
+                AtualizarTransformY(currentNavMeshY + agente.baseOffset);
+
+                // Atualizar estado lógico 'estaSubmerso' no meio da transição para sistemas de combate
+                if (submerso && !estaSubmerso && t > 0.5f)
+                {
+                    estaSubmerso = true;
+                }
+                else if (!submerso && estaSubmerso && t > 0.7f)
+                {
+                    estaSubmerso = false;
+                }
+
                 yield return null;
             }
         }
 
-        agente.baseOffset = offsetDesejado;
-        AtualizarTransformY(navMeshY + agente.baseOffset);
+        // Garantir posição final exata
+        float finalNavMeshY = transform.position.y - agente.baseOffset;
+        agente.baseOffset = CalcularOffsetParaEstado(submerso, finalNavMeshY);
+        AtualizarTransformY(finalNavMeshY + agente.baseOffset);
         estaSubmerso = submerso;
     }
 
@@ -1157,7 +1179,11 @@ public class ControleSubmarino : MonoBehaviour
             return;
         }
 
-        rastroAgua.emitting = !estaSubmerso && velocidadeAtualSimulada > 1.0f;
+        float nivelAgua = ResolverNivelAgua();
+        // O rastro so deve aparecer se o casco estiver cortando a superficie
+        // Usamos uma margem para que o rastro suma logo que o topo do submarino mergulha
+        bool naSuperficie = transform.position.y > nivelAgua - 2.0f;
+        rastroAgua.emitting = naSuperficie && velocidadeAtualSimulada > 1.0f;
     }
 
     // --- GIZMOS ---

@@ -275,6 +275,11 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         return true;
     }
 
+    public static float ObterOrcamentoCategoriaMs(CategoriaBudgetGameplay categoria)
+    {
+        return InfraPerformanceGameplay.ObterBudgetMs(categoria);
+    }
+
     // Atalho para producao da IA (chamado pelo ProductionDirector)
     public static void RegistrarProducao(string itemKey, string categoria = "IA_Prod")
     {
@@ -523,6 +528,19 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         _overlayLine5 = string.Format(
             CultureInfo.InvariantCulture,
+            "Units ms T/N/A {0:0.0}/{1:0.0}/{2:0.0} | Sensor/Path/Arma {3:0.0}/{4:0.0}/{5:0.0} | Budgets {6:0.0}/{7:0.0}/{8:0.0}",
+            _ultimoResumo.LandUnitUpdateMs,
+            _ultimoResumo.NavalUnitUpdateMs,
+            _ultimoResumo.AirUnitUpdateMs,
+            _ultimoResumo.SensorUpdateMs,
+            _ultimoResumo.PathfindingMs,
+            _ultimoResumo.WeaponUpdateMs,
+            ObterOrcamentoCategoriaMs(CategoriaBudgetGameplay.Terra),
+            ObterOrcamentoCategoriaMs(CategoriaBudgetGameplay.Naval),
+            ObterOrcamentoCategoriaMs(CategoriaBudgetGameplay.Aereo));
+
+        string linhaIa = string.Format(
+            CultureInfo.InvariantCulture,
             "IA ms: coast {0:0.0} | naval {1:0.0} | world {2:0.0} | vis {3:0.0} | prev/conf {4:0.0}/{5:0.0} | naval prev/commit {6:0.0}/{7:0.0}",
             _ultimoResumo.CoastScanMs,
             _ultimoResumo.NavalCandidateMs,
@@ -539,7 +557,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         string inputReason = string.IsNullOrEmpty(_ultimoResumo.InputLockReason) ? string.Empty : " | motivo: " + _ultimoResumo.InputLockReason;
         _overlayLine6 = string.Format(
             CultureInfo.InvariantCulture,
-            "Governor: {0} | fronts/air/naval {1}/{2}/{3} | tiers {4}/{5}/{6} | ordens {7} | pool {8}/{9} | overflow {10} | input {11}{12} | lock {13} | Eventos: {14}",
+            "Governor: {0} | fronts/air/naval {1}/{2}/{3} | tiers {4}/{5}/{6} | ordens {7} | pool {8}/{9} | input {10}{11} | {12} | lock {13} | Eventos: {14}",
             string.IsNullOrEmpty(_ultimoResumo.GovernorBand) ? "n/d" : _ultimoResumo.GovernorBand,
             _ultimoResumo.ActiveLandFronts,
             _ultimoResumo.ActiveAirWings,
@@ -550,9 +568,9 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             _ultimoResumo.OrdersEmitted,
             _ultimoResumo.PoolHits,
             _ultimoResumo.PoolMisses,
-            _ultimoResumo.PreviewOverflowCount,
             inputOwner,
             inputReason,
+            linhaIa,
             ofensores + navalLock,
             _ultimoBlocoEventos);
     }

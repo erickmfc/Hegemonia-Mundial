@@ -68,11 +68,15 @@ public class ControleUnidade : MonoBehaviour
     private bool limiteVelocidadeAtivo = false;
     private Vector3 ultimoDestinoOrdenado = Vector3.zero;
     private bool possuiDestinoOrdenado = false;
+    private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
     private Vector3 posicaoWatchdogAnterior;
     private float tempoSemProgressoOrdem;
     private float proximoWatchdogOrdem;
     private float proximoRelatorioWatchdogBloqueado;
     private int reemissoesWatchdogOrdem;
+    private float proximoRefreshVisualCaminho;
+    private float proximoReplanNavMesh;
+    private Vector3 ultimoDestinoReplanNavMesh;
     private const float IntervaloWatchdogOrdem = 1.25f;
     private const float TempoMaximoSemProgresso = 7.5f;
     private const float IntervaloRelatorioWatchdogBloqueado = 8f;
@@ -295,8 +299,14 @@ public class ControleUnidade : MonoBehaviour
 
     void Update()
     {
+        long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
+        AtualizarEstadoOtimizacao();
+
         // 0. Desenha a linha de caminho (Rota) se estiver selecionado, para todos os tipos (Terra/Ar/Mar)
-        AtualizarVisualCaminho();
+        if (selecionado || InfraPerformanceGameplay.DeveExecutar(this, ref proximoRefreshVisualCaminho, InfraPerformanceGameplay.ResolverIntervalo(0.10f, estadoOtimizacao, false, true)))
+        {
+            AtualizarVisualCaminho();
+        }
 
         // SE TIVER HELICOPTER CONTROLLER: NÃO FAZ NADA DE MOVIMENTO AQUI
         // Deixa o outro script cuidar de tudo, este fica só para Seleção/Identidade
@@ -383,7 +393,7 @@ public class ControleUnidade : MonoBehaviour
 
         if (possuiDestinoOrdenado)
         {
-            float distanciaAoDestino = Vector3.Distance(transform.position, ultimoDestinoOrdenado);
+            float distanciaAoDestino = (transform.position - ultimoDestinoOrdenado).magnitude;
             float toleranciaChegada = 3f;
 
             if (agente != null && agente.enabled)
@@ -397,7 +407,13 @@ public class ControleUnidade : MonoBehaviour
             }
         }
 
-        AtualizarWatchdogOrdem();
+        float intervaloWatchdog = InfraPerformanceGameplay.ResolverIntervalo(IntervaloWatchdogOrdem, estadoOtimizacao, false, true);
+        if (InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickWatchdog, intervaloWatchdog))
+        {
+            long inicioWatchdog = InfraPerformanceGameplay.MarcarInicioMedicao();
+            AtualizarWatchdogOrdem();
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Formacao, inicioWatchdog);
+        }
 
         // 3. Controle de Animação (Genérico)
         if (animator != null && animator.runtimeAnimatorController != null)
@@ -413,6 +429,8 @@ public class ControleUnidade : MonoBehaviour
             MoverParaMouse();
         }
         */
+
+        InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Terra, inicioUpdate);
     }
 
     void MoverParaMouse()
@@ -767,8 +785,7 @@ public class ControleUnidade : MonoBehaviour
                 }
 
                 // Navegação normal (terrestre ou navio sem o sistema inteligente)
-                agente.SetDestination(destino);
-                if (agente.isOnNavMesh) agente.isStopped = false;
+                AplicarDestinoNavMeshComCooldown(destino, false);
             }
             else
             {
@@ -803,8 +820,7 @@ public class ControleUnidade : MonoBehaviour
                              return;
                          }
 
-                         agente.SetDestination(destino);
-                         if (agente.isOnNavMesh) agente.isStopped = false;
+                         AplicarDestinoNavMeshComCooldown(destino, true);
                      }
                  }
                  catch (System.Exception ex)
@@ -813,6 +829,46 @@ public class ControleUnidade : MonoBehaviour
                  }
             }
         }
+    }
+
+    private void AtualizarEstadoOtimizacao()
+    {
+        bool engajada = possuiDestinoOrdenado
+            || ordemControleAtual == OrdemControleUnidade.Movendo
+            || ordemControleAtual == OrdemControleUnidade.Patrulhando
+            || ordemControleAtual == OrdemControleUnidade.Seguindo
+            || ordemControleAtual == OrdemControleUnidade.Recuando;
+
+        bool heroica = ehAereo || EhUnidadeNaval();
+        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajada, heroica);
+    }
+
+    private void AplicarDestinoNavMeshComCooldown(Vector3 destino, bool forcar)
+    {
+        if (agente == null || !agente.enabled || !agente.isActiveAndEnabled || !agente.isOnNavMesh)
+        {
+            return;
+        }
+
+        float cooldownBase = EhUnidadeNaval() ? 1.10f : 0.80f;
+        float cooldown = InfraPerformanceGameplay.ResolverIntervalo(cooldownBase, estadoOtimizacao, true, true);
+        float tolerancia = EhUnidadeNaval() ? 8f : 4.5f;
+        if (!InfraPerformanceGameplay.DeveAplicarReplan(destino, ref ultimoDestinoReplanNavMesh, ref proximoReplanNavMesh, cooldown, tolerancia, forcar))
+        {
+            if (agente.isOnNavMesh)
+            {
+                agente.isStopped = false;
+            }
+            return;
+        }
+
+        long inicioPath = InfraPerformanceGameplay.MarcarInicioMedicao();
+        agente.SetDestination(destino);
+        if (agente.isOnNavMesh)
+        {
+            agente.isStopped = false;
+        }
+        InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Pathfinding, inicioPath);
     }
 
     public float ObterVelocidadeAtualReal()

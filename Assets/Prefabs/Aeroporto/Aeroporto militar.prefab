@@ -129,7 +129,7 @@ GameObject:
   - component: {fileID: 786684129391100217}
   - component: {fileID: 7500092410658312816}
   m_Layer: 0
-  m_Name: Aeroporto
+  m_Name: Aeroporto militar
   m_TagString: Imovel
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

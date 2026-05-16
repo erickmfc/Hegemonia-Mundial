@@ -28,9 +28,15 @@ public class MovimentoRealTerrestre : MonoBehaviour
     private NavMeshAgent agente;
     private float velocidadeAtual = 0f;
     private float anguloVolanteAtual = 0f;
+    private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
     
     // Controle de rotação das rodas (para não bugar o Euler)
     private float giroAcomuladoRodas = 0f; 
+    private Vector3 steeringTargetCache;
+    private float remainingDistanceCache;
+    private bool hasPathCache;
+    private bool pathPendingCache;
+    private bool agenteLeituraValidaCache;
 
     void Start()
     {
@@ -51,7 +57,10 @@ public class MovimentoRealTerrestre : MonoBehaviour
 
     void Update()
     {
+        long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         if (agente == null) return;
+        AtualizarEstadoOtimizacao();
+        AtualizarCacheNavMeshSeNecessario();
 
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
@@ -71,20 +80,20 @@ public class MovimentoRealTerrestre : MonoBehaviour
         agente.nextPosition = transform.position;
 
         // 2. Cálculo de Destino
-        Vector3 proximoPonto = agente.steeringTarget;
+        Vector3 proximoPonto = steeringTargetCache;
         Vector3 vetorDirecao = (proximoPonto - transform.position);
         vetorDirecao.y = 0; // Ignora altura (terreno plano)
 
         float distanciaAteAlvo = vetorDirecao.magnitude;
         
         // Verifica se realmente tem que andar
-        bool temCaminho = agente.hasPath && distanciaAteAlvo > distanciaParada;
+        bool temCaminho = hasPathCache && distanciaAteAlvo > distanciaParada;
         
         // Correção de bug do NavMesh (às vezes ele acha que tem caminho mas já está lá)
         // PROTEÇÃO: Só verifica remainingDistance se estiver no NavMesh e Ativo
-        if (agente.isOnNavMesh && agente.isActiveAndEnabled)
+        if (agenteLeituraValidaCache)
         {
-            if (agente.remainingDistance <= distanciaParada && !agente.pathPending)
+            if (remainingDistanceCache <= distanciaParada && !pathPendingCache)
             {
                 temCaminho = false; 
             }
@@ -147,6 +156,43 @@ public class MovimentoRealTerrestre : MonoBehaviour
 
         // --- ANIMAÇÃO DAS RODAS ---
         AnimarRodas(velocidadeAtual);
+        InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Terra, inicioUpdate);
+    }
+
+    private void AtualizarEstadoOtimizacao()
+    {
+        ControleUnidade controle = GetComponent<ControleUnidade>();
+        bool selecionado = controle != null && controle.selecionado;
+        bool engajado = agente != null && agente.enabled && (agente.hasPath || agente.velocity.sqrMagnitude > 0.1f);
+        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, false, 140f, 320f);
+    }
+
+    private void AtualizarCacheNavMeshSeNecessario()
+    {
+        float intervalo = InfraPerformanceGameplay.ResolverIntervalo(0.12f, estadoOtimizacao, true, true);
+        if (!InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickPath, intervalo) && agenteLeituraValidaCache)
+        {
+            return;
+        }
+
+        long inicioPath = InfraPerformanceGameplay.MarcarInicioMedicao();
+        agenteLeituraValidaCache = agente != null && agente.enabled && agente.isActiveAndEnabled && agente.isOnNavMesh;
+        if (agenteLeituraValidaCache)
+        {
+            steeringTargetCache = agente.steeringTarget;
+            remainingDistanceCache = agente.remainingDistance;
+            hasPathCache = agente.hasPath;
+            pathPendingCache = agente.pathPending;
+        }
+        else
+        {
+            steeringTargetCache = transform.position;
+            remainingDistanceCache = 0f;
+            hasPathCache = false;
+            pathPendingCache = false;
+        }
+
+        InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Pathfinding, inicioPath);
     }
 
     void AnimarRodas(float velocidade)

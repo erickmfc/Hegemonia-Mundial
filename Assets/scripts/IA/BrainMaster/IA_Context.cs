@@ -1,8 +1,16 @@
+using Hegemonia.AI.DEUSA;
+
 namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_Context
     {
         public IA_BrainMaster Brain;
+        public IA_DeusaBrain Deusa;
+        public IA_DeusaPoliticaNacional DeusaPolitica
+        {
+            get { return Deusa != null ? Deusa.PoliticaNacional : null; }
+        }
+
         public IA_WorldState WorldState;
         public IA_MapAnalyzer MapAnalyzer;
         public IA_PlayerProfileMemory PlayerProfileMemory;

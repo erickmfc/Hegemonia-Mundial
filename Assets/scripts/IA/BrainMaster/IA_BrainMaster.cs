@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Hegemonia.AI.DEUSA;
 using UnityEngine;
 
 namespace Hegemonia.AI.BrainMaster
@@ -102,6 +103,10 @@ namespace Hegemonia.AI.BrainMaster
         public IA_BootstrapStage BootstrapStage { get; private set; }
 
         public IA_Context Context { get; private set; }
+        public IA_DeusaPoliticaNacional PoliticaDeusaAtual
+        {
+            get { return _deusaBrain != null ? _deusaBrain.PoliticaNacional : null; }
+        }
 
         private IA_CommandQueue _commandQueue;
         private IA_BackendBridge _backendBridge;
@@ -132,6 +137,7 @@ namespace Hegemonia.AI.BrainMaster
         private IA_NavalDirector _navalDirector;
         private IA_AirDirector _airDirector;
         private IA_DefenseDirector _defenseDirector;
+        private IA_DeusaBrain _deusaBrain;
         private readonly List<IdentidadeUnidade> _backendUnitBuffer = new List<IdentidadeUnidade>(128);
 
         private float _incomeTimer;
@@ -153,6 +159,7 @@ namespace Hegemonia.AI.BrainMaster
         // Slot atribuido pelo coordenador global — determina a ordem de execucao entre IAs
         private int _coordinatorSlot = 0;
         private readonly System.Diagnostics.Stopwatch _updateWatch = new System.Diagnostics.Stopwatch();
+        private float _nextObserverQueueLogTime = -1f;
 
         private enum IA_CommandLane
         {
@@ -243,6 +250,10 @@ namespace Hegemonia.AI.BrainMaster
                                  + " | Credits=" + Credits
                                  + " | Dificuldade=" + GameDifficultyManager.PerfilAtual.Codigo
                                  + BuildNationalSummary()
+                                 + (_deusaBrain != null
+                                     ? " | DEUSA=" + _deusaBrain.EstagioAtual + (_deusaBrain.ModoObservadorAtivo ? "(Obs)" : string.Empty)
+                                     : string.Empty)
+                                 + (_deusaBrain != null && _deusaBrain.ModoObservadorAtivo ? " | ObsScope=" + _deusaBrain.EscopoObservador : string.Empty)
                                  + " | Imperial=" + StrategicPhase + " " + ActiveImperialPlan
                                  + " | Bootstrap=" + BootstrapStage
                                  + " | BootstrapStatus=" + BootstrapStatus
@@ -737,6 +748,10 @@ namespace Hegemonia.AI.BrainMaster
             _scheduler.Register(_lotPlanner, now, 0.155f);
             _scheduler.Register(_constructionPlanner, now, 0.17f);
             _scheduler.Register(_grandStrategy, now, 0.18f);
+            if (_deusaBrain != null)
+            {
+                _scheduler.Register(_deusaBrain, now, 0.182f);
+            }
             _scheduler.Register(_economyDirector, now, 0.185f);
             _scheduler.Register(_syncNetwork, now, 0.20f);
             _scheduler.Register(_marketDirector, now, 0.205f);
@@ -757,6 +772,12 @@ namespace Hegemonia.AI.BrainMaster
 
         private void ProcessCommandQueue(float now)
         {
+            if (ShouldBlockCommandQueueByDeusaObserver())
+            {
+                DrainCommandQueueBlockedByDeusa(now);
+                return;
+            }
+
             if (IntegrationMode == IA_IntegrationMode.ShadowReadOnly)
             {
                 return;
@@ -815,6 +836,45 @@ namespace Hegemonia.AI.BrainMaster
                 _commandQueue.Complete(request, success, now, message);
                 TraceCommandExecution(request, success, message);
                 executed++;
+            }
+        }
+
+        private bool ShouldBlockCommandQueueByDeusaObserver()
+        {
+            return _deusaBrain != null && _deusaBrain.BloquearFilaBrainMasterEmObservador;
+        }
+
+        private void DrainCommandQueueBlockedByDeusa(float now)
+        {
+            if (_commandQueue == null)
+            {
+                return;
+            }
+
+            int maxCommands = Mathf.Max(1, ResolveCommandBudget());
+            int blocked = 0;
+            while (blocked < maxCommands)
+            {
+                IA_CommandRequest request;
+                if (!_commandQueue.TryDequeue(now, out request))
+                {
+                    break;
+                }
+
+                const string reason = "bloqueado pelo modo observador da DEUSA";
+                _commandQueue.Complete(request, false, now, reason);
+                TraceCommandExecution(request, false, reason);
+                blocked++;
+            }
+
+            if (blocked > 0 || Time.unscaledTime >= _nextObserverQueueLogTime)
+            {
+                Debug.Log(
+                    "[DEUSA][Team " + TeamId + "] modo observador bloqueou "
+                    + blocked + " comando(s) da fila do BrainMaster"
+                    + (_deusaBrain != null ? " | escopo=" + _deusaBrain.EscopoObservador : string.Empty),
+                    this);
+                _nextObserverQueueLogTime = Time.unscaledTime + 5f;
             }
         }
 
@@ -1235,6 +1295,14 @@ namespace Hegemonia.AI.BrainMaster
                 BattleDecision = IA_GlobalBrainCoordinator.Instance.BuildBattleDecision()
             };
 
+            _deusaBrain = GetComponent<IA_DeusaBrain>();
+            if (_deusaBrain == null)
+            {
+                _deusaBrain = gameObject.AddComponent<IA_DeusaBrain>();
+            }
+
+            Context.Deusa = _deusaBrain;
+
             _semanticMapPlanner = new IA_SemanticMapPlanner(Context);
             _zonePlanner = new IA_ZonePlanner(Context);
             _urbanBuildValidator = new IA_UrbanBuildValidator(Context);
@@ -1279,6 +1347,11 @@ namespace Hegemonia.AI.BrainMaster
                 VerboseLogs = EnableVerboseLogs
             };
             Context.DebugMonitor = _debugMonitor;
+            if (_deusaBrain != null)
+            {
+                _deusaBrain.BindRuntime(this, Context);
+            }
+
             SyncNationStateWithGovernment();
         }
 

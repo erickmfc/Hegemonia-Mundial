@@ -42,7 +42,12 @@ public static class PoolDeObjetosCombate
             }
         }
 
-        GameObject criada = Object.Instantiate(prefab, position, rotation);
+        GameObject criada = CriarInstancia(prefab, position, rotation);
+        if (criada == null)
+        {
+            return null;
+        }
+
         GarantirLink(criada, prefab);
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("pool_misses");
         return criada;
@@ -66,10 +71,16 @@ public static class PoolDeObjetosCombate
         int quantidadeAtual;
         PrewarmPorPrefab.TryGetValue(prefabId, out quantidadeAtual);
         int alvo = Mathf.Max(quantidadeAtual, quantidade);
+        int criadasComSucesso = quantidadeAtual;
         for (int i = quantidadeAtual; i < alvo; i++)
         {
             long inicioInstancia = System.Diagnostics.Stopwatch.GetTimestamp();
-            GameObject instancia = Object.Instantiate(prefab);
+            GameObject instancia = CriarInstancia(prefab, Vector3.zero, Quaternion.identity);
+            if (instancia == null)
+            {
+                break;
+            }
+
             GarantirLink(instancia, prefab);
             PoolDeObjetoCombateLink link = instancia.GetComponent<PoolDeObjetoCombateLink>();
             if (link != null)
@@ -80,10 +91,11 @@ public static class PoolDeObjetosCombate
             instancia.transform.SetParent(GetRaizPool(), false);
             instancia.SetActive(false);
             fila.Enqueue(instancia);
+            criadasComSucesso = i + 1;
             RegistrarTempoPrewarmItem(inicioInstancia);
         }
 
-        PrewarmPorPrefab[prefabId] = alvo;
+        PrewarmPorPrefab[prefabId] = criadasComSucesso;
     }
 
     public static int ObterQuantidadePreaquecida(GameObject prefab)
@@ -123,7 +135,12 @@ public static class PoolDeObjetosCombate
         for (int i = quantidadeAtual; i < alvo; i++)
         {
             long inicioInstancia = System.Diagnostics.Stopwatch.GetTimestamp();
-            GameObject instancia = Object.Instantiate(prefab);
+            GameObject instancia = CriarInstancia(prefab, Vector3.zero, Quaternion.identity);
+            if (instancia == null)
+            {
+                yield break;
+            }
+
             GarantirLink(instancia, prefab);
             PoolDeObjetoCombateLink link = instancia.GetComponent<PoolDeObjetoCombateLink>();
             if (link != null)
@@ -218,6 +235,43 @@ public static class PoolDeObjetosCombate
 
         link.Configurar(prefab);
         link.EstaNoPool = false;
+    }
+
+    private static GameObject CriarInstancia(GameObject prefab, Vector3 position, Quaternion rotation)
+    {
+        if (prefab == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            Object instanciaObj = Object.Instantiate((Object)prefab, position, rotation);
+            GameObject instancia = instanciaObj as GameObject;
+            if (instancia != null)
+            {
+                return instancia;
+            }
+
+            Component componente = instanciaObj as Component;
+            if (componente != null)
+            {
+                return componente.gameObject;
+            }
+
+            if (instanciaObj != null)
+            {
+                Debug.LogWarning($"[PoolDeObjetosCombate] Prefab {prefab.name} instanciou como {instanciaObj.GetType().Name}, nao como GameObject.");
+                Object.Destroy(instanciaObj);
+            }
+        }
+        catch (System.InvalidCastException ex)
+        {
+            Debug.LogWarning($"[PoolDeObjetosCombate] Falha ao instanciar prefab {prefab.name}: {ex.Message}");
+        }
+
+        DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("pool_misses");
+        return null;
     }
 
     private static void RegistrarTempoPrewarmItem(long inicioInstancia)

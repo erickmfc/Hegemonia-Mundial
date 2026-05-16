@@ -297,10 +297,16 @@ public class NavioTransporteTropas : MonoBehaviour
         {
             AtualizarContagemCargaSeNecessario();
         }
+
+        if (_menuAberto && !GestorMenusExclusivos.EstaAtivo(this))
+        {
+            _menuAberto = false;
+        }
     }
 
     private void OnDisable()
     {
+        GestorMenusExclusivos.Fechar(this);
         if (_interacaoHeliSolicitada)
         {
             InteractionModeService.Release(this, InteractionOwner.CarrierOrder);
@@ -311,6 +317,11 @@ public class NavioTransporteTropas : MonoBehaviour
     private void OnGUI()
     {
         if (!_menuAberto) return;
+        if (!GestorMenusExclusivos.EstaAtivo(this))
+        {
+            _menuAberto = false;
+            return;
+        }
         if (_idNavio != null && _idNavio.teamID != 1) return;
 
         int oldLabelFont = GUI.skin.label.fontSize;
@@ -331,6 +342,7 @@ public class NavioTransporteTropas : MonoBehaviour
         float menuWidth = Mathf.Clamp(Screen.width * 0.32f, 430f, 560f);
         float menuHeight = Mathf.Min(Screen.height - 8f, 1100f);
         Rect areaMenu = new Rect(Screen.width - menuWidth - 16f, 10f, menuWidth, menuHeight);
+        GestorMenusExclusivos.RegistrarAreaBloqueio(this, areaMenu);
         GUI.Box(areaMenu, "<b>🚢 COMANDO - NAVIO TRANSPORTE DE TROPAS</b>");
 
         GUILayout.BeginArea(new Rect(areaMenu.x + 10f, areaMenu.y + 25f, areaMenu.width - 20f, areaMenu.height - 35f));
@@ -338,7 +350,11 @@ public class NavioTransporteTropas : MonoBehaviour
         string nome = (_idNavio != null && !string.IsNullOrEmpty(_idNavio.nomeDoPais)) ? _idNavio.nomeDoPais : "Navio";
         GUILayout.BeginHorizontal();
         GUILayout.Label($"<b>⚓ Status:</b> <color=cyan>{nome}</color>", GUILayout.ExpandWidth(true));
-        if (GUILayout.Button("Fechar", GUILayout.Width(72f), GUILayout.Height(22f))) _menuAberto = false;
+        if (GUILayout.Button("Fechar", GUILayout.Width(72f), GUILayout.Height(22f)))
+        {
+            _menuAberto = false;
+            GestorMenusExclusivos.Fechar(this);
+        }
         GUILayout.EndHorizontal();
 
         GUILayout.Space(4);
@@ -1306,7 +1322,17 @@ public class NavioTransporteTropas : MonoBehaviour
 
         if (_controleUnidade != null && _controleUnidade.selecionado && Input.GetKeyDown(KeyCode.O))
         {
-            _menuAberto = !_menuAberto;
+            bool novoEstado = !_menuAberto;
+            if (novoEstado)
+            {
+                GestorMenusExclusivos.Abrir(this);
+            }
+            else
+            {
+                GestorMenusExclusivos.Fechar(this);
+            }
+
+            _menuAberto = novoEstado;
             if (_menuAberto)
             {
                 AtualizarCacheHelisProximos();
@@ -1455,7 +1481,7 @@ public class NavioTransporteTropas : MonoBehaviour
         }
 
         if (!Input.GetMouseButtonDown(1)) return;
-        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+        if (GestorMenusExclusivos.CliqueBloqueadoPelaUI()) return;
         if (!TryResolverPontoMapaNavio(out Vector3 pontoAlvo)) return;
 
         if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Patrulha)
@@ -1468,7 +1494,10 @@ public class NavioTransporteTropas : MonoBehaviour
                     heliLiberado =>
                     {
                         if (_rotaPatrulhaHelicoptero.Count > 0)
+                        {
+                            PrepararHelicopteroParaPatrulhaCombate(heliLiberado);
                             heliLiberado.IniciarPatrulhaAeroporto(new List<Vector3>(_rotaPatrulhaHelicoptero));
+                        }
                         else
                             heliLiberado.RetornarParaVagaAeroporto();
                     },
@@ -1476,6 +1505,7 @@ public class NavioTransporteTropas : MonoBehaviour
             }
             else
             {
+                PrepararHelicopteroParaPatrulhaCombate(_helicopteroSelecionadoParaMissao);
                 _helicopteroSelecionadoParaMissao.IniciarPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
             }
             return;
@@ -2302,7 +2332,7 @@ public class NavioTransporteTropas : MonoBehaviour
         carga.emSaida = emSaida;
 
         h.CancelarMissaoAeroporto();
-        h.VincularTemporariamenteAoNavio(vaga);
+        h.TornarNavioBasePermanente(vaga);
 
         if (emSaida)
         {
@@ -2343,7 +2373,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
         heli.transform.SetParent(null, true);
         heli.CancelarMissaoAeroporto();
-        heli.VincularTemporariamenteAoNavio(vaga);
+        heli.TornarNavioBasePermanente(vaga);
         heli.Decolar(ObterDestinoAereoPontoPousoDecolagem());
 
         if (pontoPousoDecolagemHeli != null) yield return EsperarHelicopteroAlcancarPonto(heli, pontoPousoDecolagemHeli.position, 20f, 4f);
@@ -2416,7 +2446,6 @@ public class NavioTransporteTropas : MonoBehaviour
 
         if (heli != null)
         {
-            heli.RestaurarControleDoAeroportoOrigem();
             DesvincularHelicopteroDoNavio(heli);
             aoLiberar?.Invoke(heli);
 
@@ -2478,6 +2507,16 @@ public class NavioTransporteTropas : MonoBehaviour
             AtualizarCacheHelisProximos();
         }
         return estacionou;
+    }
+
+    private void PrepararHelicopteroParaPatrulhaCombate(Helicoptero heli)
+    {
+        if (heli == null)
+        {
+            return;
+        }
+
+        heli.DefinirModoCombateAtivo(true);
     }
 
     private void ManterHelisNoNavio()

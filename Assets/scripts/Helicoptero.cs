@@ -135,6 +135,7 @@ public class Helicoptero : MonoBehaviour
     private Renderer[] _renderersCache;
     private bool _renderersCacheValido = false;
     private float _alturaEstacionamentoCache = -1f;
+    private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
 
     void LogDebug(string msg) { if (debugLogs) Debug.Log(msg); }
     void OnEnable() { if(!todosHelicopteros.Contains(this)) todosHelicopteros.Add(this); }
@@ -221,17 +222,26 @@ public class Helicoptero : MonoBehaviour
 
     void Update()
     {
+        long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
+        AtualizarEstadoOtimizacao();
         if (timerRecargaFlares > 0) timerRecargaFlares -= Time.deltaTime;
         GestaoDeInput(); 
-        AvaliarRetornoSeguro();
+        float intervaloLogica = InfraPerformanceGameplay.ResolverIntervalo(0.20f, estadoOtimizacao, true, true);
+        if (InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickLogica, intervaloLogica))
+        {
+            long inicioLogica = InfraPerformanceGameplay.MarcarInicioMedicao();
+            AvaliarRetornoSeguro();
+            VerificarInatividade();
+            AtualizarEtiquetaFlutuante();
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Logistica, inicioLogica);
+        }
         if (estaVoando && !CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
         }
         if (estaVoando) ProcessarMovimento();
         ControlarMotorEHelices();
-        VerificarInatividade();
-        AtualizarEtiquetaFlutuante();
+        InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Aereo, inicioUpdate);
     }
 
     private void LateUpdate()
@@ -477,8 +487,15 @@ public class Helicoptero : MonoBehaviour
                     }
                 }
             }
-            yield return new WaitForSeconds(0.5f); 
+            float espera = InfraPerformanceGameplay.ResolverIntervalo(0.50f, estadoOtimizacao, true, true);
+            yield return new WaitForSeconds(espera);
         }
+    }
+
+    private void AtualizarEstadoOtimizacao()
+    {
+        bool engajado = estaVoando || preparandoDecolagem || estaPousando || missaoAtualAeroporto != 0;
+        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, true, 160f, 360f);
     }
 
     private static bool SafeCompareTag(Component component, string tagName)
@@ -1493,6 +1510,37 @@ public class Helicoptero : MonoBehaviour
         controladoPeloAeroporto = false;
         estacionadoNoAeroporto = false;
         usandoVagaTemporariaNavio = true;
+    }
+
+    public void TornarNavioBasePermanente(Transform vagaBase, GerenciadorAeroporto novaBase = null)
+    {
+        if (vagaBase == null)
+        {
+            return;
+        }
+
+        aeroportoOrigem = novaBase;
+        vagaOrigemAeroporto = vagaBase;
+        vagaAeroporto = vagaBase;
+        controladoPeloAeroporto = novaBase != null;
+        estacionadoNoAeroporto = false;
+        usandoVagaTemporariaNavio = true;
+    }
+
+    public void DefinirModoCombateAtivo(bool ativo)
+    {
+        modoCombateAtivo = ativo;
+
+        ControleUnidade controle = GetComponent<ControleUnidade>();
+        if (controle == null)
+        {
+            controle = GetComponentInParent<ControleUnidade>();
+        }
+
+        if (controle != null)
+        {
+            controle.DefinirModoCombate(ativo);
+        }
     }
 
     public void RestaurarControleDoAeroportoOrigem()
