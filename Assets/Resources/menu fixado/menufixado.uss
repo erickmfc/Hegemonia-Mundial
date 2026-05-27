@@ -1,0 +1,89 @@
+/* StyleSheet for Colony Status Bar UI */
+
+.colony-status-container {
+    width: 100%;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 8px;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.status-bar-panel {
+    width: 98%;
+    height: 48px;
+    background-color: rgba(9, 12, 9, 0.85); /* Cores milsim */
+    border-width: 1px;
+    border-color: #162416;
+    border-radius: 4px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 16px;
+    padding-right: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.status-title-group {
+    flex-direction: row;
+    align-items: center;
+}
+
+.status-title {
+    color: #90b870;
+    font-size: 13px;
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    margin-right: 12px;
+}
+
+.resources-group {
+    flex-direction: row;
+    align-items: center;
+    flex-grow: 1;
+    justify-content: space-around;
+}
+
+.resource-item {
+    flex-direction: row;
+    align-items: center;
+    margin-left: 8px;
+    margin-right: 8px;
+}
+
+.country-item {
+    background-color: rgba(22, 36, 22, 0.4);
+    padding: 3px 8px;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: rgba(144, 184, 112, 0.2);
+}
+
+.country-text {
+    color: #e2e8f0;
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+/* Emoji Icons */
+.resource-emoji {
+    font-size: 16px;
+    margin-right: 4px;
+    -unity-text-align: middle-center;
+}
+
+/* Value Labels */
+.resource-base-value {
+    color: #f1f5f9;
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.resource-bonus-value {
+    color: #22c55e;
+    font-size: 10px;
+    margin-left: 2px;
+    -unity-font-style: bold;
+}
