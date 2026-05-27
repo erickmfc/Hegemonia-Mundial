@@ -1,0 +1,634 @@
+﻿===============================================================================
+             UNIDADES E ESTRUTURAS DISPONÍVEIS - HEGEMONIA MUNDIAL             
+===============================================================================
+Data de Geração: 26/05/2026 23:47:19
+Total de itens catalogados: 76
+
+-------------------------------------------------------------------------------
+ CATEGORIA: Exército (Terrestre) (18 itens)
+-------------------------------------------------------------------------------
+Nome:        Ares Ar
+Preço:       $ 100
+Descrição:   Missel de antiaereo
+Vida/Blind:  100
+Velocidade:  Desconhecido
+Prefab 3D:   Ares_Ar.prefab
+Arquivo:     Assets\Prefabs\Artilharia\Ares.asset
+
+Nome:        Artilharia
+Preço:       $ 700
+Descrição:   Ataque de longa distância.
+Vida/Blind:  100
+Velocidade:  Desconhecido
+Prefab 3D:   Torre_Sentinela Variant.prefab
+Arquivo:     Assets\Prefabs\Torre_Sentinela\Artilharia.asset
+
+Nome:        Artilharia
+Preço:       $ 700
+Descrição:   Ataque de longa distância.
+Vida/Blind:  100
+Velocidade:  3.6 km/h (NavMeshAgent)
+Prefab 3D:   Ares_MI.prefab
+Arquivo:     Assets\Prefabs\Artilharia\Artilharia_ar.asset
+
+Nome:        Caminhao de transporte
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  200
+Velocidade:  28.8 km/h (NavMeshAgent)
+Prefab 3D:   Caoc1.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Caoc1\NovaConstrucao.asset
+
+Nome:        Hack
+Preço:       $ 100
+Descrição:   Ubuzeiro movel
+Vida/Blind:  1200
+Velocidade:  18 km/h (NavMeshAgent)
+Prefab 3D:   Hack1.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Hack\Hack.asset
+
+Nome:        Hamer carro
+Preço:       $ 200
+Descrição:   Descrição curta...
+Vida/Blind:  300
+Velocidade:  39.6 km/h (NavMeshAgent)
+Prefab 3D:   Hamer.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Hamer\hamer.asset
+
+Nome:        HG Ar
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  250
+Velocidade:  18 km/h (NavMeshAgent)
+Prefab 3D:   HG_Ar.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Lopard\HG_Ar.asset
+
+Nome:        Leonc1
+Preço:       $ 100
+Descrição:   Unidade de tiro curto
+Vida/Blind:  850
+Velocidade:  23.4 km/h (NavMeshAgent)
+Prefab 3D:   Leon_c1.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Leon_c1\Leonc1.asset
+
+Nome:        Nome da Unidade
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   Nenhum
+Arquivo:     Assets\Ficha de Construcao.asset
+
+Nome:        Quartel General
+Preço:       $ 100
+Descrição:   Centro de comando.
+Vida/Blind:  700
+Velocidade:  Desconhecido
+Prefab 3D:   Quartel.prefab
+Arquivo:     Assets\Prefabs\Quartel_General\Quartel_General.asset
+
+Nome:        Soldado Rifle
+Preço:       $ 50
+Descrição:   Unidade de infantaria leve. Ideal para reconhecimento.
+Vida/Blind:  50
+Velocidade:  12.6 km/h (NavMeshAgent)
+Prefab 3D:   Soldier.prefab
+Arquivo:     Assets\Prefabs\Soldado_Rifle\Soldado_Rifle.asset
+
+Nome:        Tank Arthur
+Preço:       $ 100
+Descrição:   Tank leve e rapido disparo
+Vida/Blind:  1400
+Velocidade:  21.6 km/h (NavMeshAgent)
+Prefab 3D:   Tank_Arthur.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Tank_Arthur\Tank_Arthur.asset
+
+Nome:        Tank C1 camuflado
+Preço:       $ 150
+Descrição:   Tank rapido e leve
+Vida/Blind:  1500
+Velocidade:  21.6 km/h (NavMeshAgent)
+Prefab 3D:   C! 1.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Tank_C1\tankc1 camuflado.asset
+
+Nome:        Tank C1 Verde
+Preço:       $ 100
+Descrição:   Tank rapido e leve
+Vida/Blind:  1700
+Velocidade:  20.5199993133545 km/h (NavMeshAgent)
+Prefab 3D:   C!.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Tank_C1\tankc1.asset
+
+Nome:        Tank_Antigravity
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  2100
+Velocidade:  28.8 km/h (NavMeshAgent)
+Prefab 3D:   Tank_Antigravity.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Tank_Antigravity\Tank_Antigravity.asset
+
+Nome:        TAnk_South
+Preço:       $ 500
+Descrição:   Tank pesado e rigido, forte e armado
+Vida/Blind:  1800
+Velocidade:  18 km/h (NavMeshAgent)
+Prefab 3D:   Tank_Unity.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Tank_South\Tank_South.asset
+
+Nome:        Tank_UBU
+Preço:       $ 100
+Descrição:   Ubu um tank de longo alcance
+Vida/Blind:  1000
+Velocidade:  14.4 km/h (NavMeshAgent)
+Prefab 3D:   Ubu.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Tank_Ubu\ubu.asset
+
+Nome:        Track Combustivel
+Preço:       $ 100
+Descrição:   Caminhão de reabastecimento de combustível para unidades no campo.
+Vida/Blind:  Desconhecido
+Velocidade:  32.4 km/h (NavMeshAgent)
+Prefab 3D:   Track Combustivel.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Track\Track Combustivel.asset
+
+-------------------------------------------------------------------------------
+ CATEGORIA: Marinha (Naval) (22 itens)
+-------------------------------------------------------------------------------
+Nome:        Barco WW Transporte
+Preço:       $ 100
+Descrição:   Barco Para 4 pessoas
+Vida/Blind:  100
+Velocidade:  90 km/h (NavMeshAgent)
+Prefab 3D:   Barco_S1 Variant.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_Corveta\Barco_WW.asset
+
+Nome:        Corveta Fortaleza
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  1200
+Velocidade:  90 km/h (NavMeshAgent)
+Prefab 3D:   Cov_Fortaleza.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\COV_Fortaleza\Corveta.asset
+
+Nome:        Corveta sam
+Preço:       $ 200
+Descrição:   Descrição curta...
+Vida/Blind:  1450
+Velocidade:  64.8 km/h (NavMeshAgent)
+Prefab 3D:   Coverta-San.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_Corveta\Corveta_Sam.asset
+
+Nome:        Estaleiro Naval
+Preço:       $ 2500
+Descrição:   Base de construcao e manutencao de navios. Necessario para produzir
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   Estaleiros navais.prefab
+Arquivo:     Assets\Prefabs\Estaleiro Marinho\Estaleiro_Naval.asset
+
+Nome:        F200
+Preço:       $ 100
+Descrição:   Fragata tecnologica
+Vida/Blind:  1200
+Velocidade:  72 km/h (NavMeshAgent)
+Prefab 3D:   F200.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Frag_F200\F200.asset
+
+Nome:        Houver
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  900
+Velocidade:  25.2 km/h (NavMeshAgent)
+Prefab 3D:   Hover.prefab
+Arquivo:     Assets\Prefabs\Veiculos\Hover\houver.asset
+
+Nome:        Liberty Prime
+Preço:       $ 5000
+Descrição:   Transport aereo e terrestre. Versatil e bem armada.
+Vida/Blind:  2300
+Velocidade:  39.6 km/h (NavMeshAgent)
+Prefab 3D:   Liberty Prime .prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_Liberty_Prime\USS_Liberty_Prime.asset
+
+Nome:        Marinha
+Preço:       $ 2000
+Descrição:   Doca onde atraca navio
+Vida/Blind:  500
+Velocidade:  Desconhecido
+Prefab 3D:   Pier.prefab
+Arquivo:     Assets\Prefabs\Marinha\Pier_marinha.asset
+
+Nome:        Nav_Think
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  350
+Velocidade:  90 km/h (NavMeshAgent)
+Prefab 3D:   Nav_Think.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_Vigia\Think.asset
+
+Nome:        Nav_tropa
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  1560
+Velocidade:  3.6 km/h (NavMeshAgent)
+Prefab 3D:   Nav_Tropas.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_Tropa\Nav- tropa.asset
+
+Nome:        Nav_Vigia
+Preço:       $ 100
+Descrição:   Navio pequeno de patrulha
+Vida/Blind:  350
+Velocidade:  90 km/h (NavMeshAgent)
+Prefab 3D:   Nav_Vigia.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_Vigia\Nav_VIgia.asset
+
+Nome:        Navio_Wall
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  1700
+Velocidade:  3.6 km/h (NavMeshAgent)
+Prefab 3D:   Navio_Wall.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Destroier_Wall\Navio_Wall.asset
+
+Nome:        Petroleiro
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  500
+Velocidade:  72 km/h (NavMeshAgent)
+Prefab 3D:   Navio Petroleiro.prefab
+Arquivo:     Assets\Prefabs\Marinha\Nac_Petroleo.asset
+
+Nome:        USS Arrowhead
+Preço:       $ 1200
+Descrição:   Lancha de patrulha rapida. Alta velocidade e agilidade.
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   USS Arrowhead.prefab
+Arquivo:     Assets\Prefabs\Nav_USS_Arrowhead\USS_Arrowhead.asset
+
+Nome:        USS Dominion
+Preço:       $ 3500
+Descrição:   Cruzador de batalha pesado. Alto poder de fogo e blindagem.
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   USS Dominion.prefab
+Arquivo:     Assets\Prefabs\Nav_USS_Dominion\USS_Dominion.asset
+
+Nome:        USS Ironclad
+Preço:       $ 1000
+Descrição:   Encouracado blindado. Extremamente resistente a danos.
+Vida/Blind:  1500
+Velocidade:  72 km/h (NavMeshAgent)
+Prefab 3D:   USS Ironclad.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_USS_Ironclad\USS_Ironclad.asset
+
+Nome:        USS Ironclad
+Preço:       $ 1000
+Descrição:   Encouracado blindado. Extremamente resistente a danos.
+Vida/Blind:  1500
+Velocidade:  72 km/h (NavMeshAgent)
+Prefab 3D:   USS Ironclad.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_UIronclad\USS_Ironclad.asset
+
+Nome:        USS Leviathan
+Preço:       $ 4500
+Descrição:   Submarino nuclear estrategico. Capacidade de lancamento de misseis.
+Vida/Blind:  800
+Velocidade:  32.4 km/h (NavMeshAgent)
+Prefab 3D:   USS Leviathan.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Leviathan\USS_Leviathan.asset
+
+Nome:        USS Mako
+Preço:       $ 3000
+Descrição:   Submarino de ataque classe Mako. Furtivo e letal.
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   USS Mako.prefab
+Arquivo:     Assets\Prefabs\Nav_USS_Mako\USS_Mako.asset
+
+Nome:        USS Sovereign
+Preço:       $ 5000
+Descrição:   Porta-avioes de classe soberana. Capacidade de projecao de poder naval.
+Vida/Blind:  2500
+Velocidade:  25.2 km/h (NavMeshAgent)
+Prefab 3D:   USS Sovereign.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_Sovereign\USS_Sovereign.asset
+
+Nome:        USS Vindicator
+Preço:       $ 2500
+Descrição:   Destroyer de escolta. Especializado em defesa anti-aerea.
+Vida/Blind:  2000
+Velocidade:  90 km/h (NavMeshAgent)
+Prefab 3D:   USS Vindicator.prefab
+Arquivo:     Assets\Prefabs\Navios_Guerra\Nav_USS_Vindicator\USS_Vindicator.asset
+
+Nome:        USS Wraith
+Preço:       $ 3800
+Descrição:   Submarino furtivo de elite. Invisivel ao sonar inimigo.
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   USS Wraith.prefab
+Arquivo:     Assets\Prefabs\Nav_USS_Wraith\USS_Wraith.asset
+
+-------------------------------------------------------------------------------
+ CATEGORIA: Aeronáutica (Aéreo) (16 itens)
+-------------------------------------------------------------------------------
+Nome:        A_20
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  650
+Velocidade:  342 km/h (Voo)
+Prefab 3D:   A10.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\A_20\A_20.asset
+
+Nome:        Aeroporto
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  2200
+Velocidade:  Desconhecido
+Prefab 3D:   Aeroporto militar.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\Aeroporto.asset
+
+Nome:        B260
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  1200
+Velocidade:  324 km/h (Voo)
+Prefab 3D:   B260.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\B260\B260.asset
+
+Nome:        C700 Transporte
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  900
+Velocidade:  252 km/h (Voo)
+Prefab 3D:   c700.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\C700\c700.asset
+
+Nome:        DH Hasaf
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  320
+Velocidade:  180 km/h (Voo)
+Prefab 3D:   DH_Hasaf.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\Drone Hasaf\Dh Hasaf.asset
+
+Nome:        Drone Veloster
+Preço:       $ 300
+Descrição:   Drone rapido
+Vida/Blind:  100
+Velocidade:  432 km/h (Voo)
+Prefab 3D:   Drone Rec.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\VAP drone\DRone rec.asset
+
+Nome:        Flow
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  390
+Velocidade:  Desconhecido
+Prefab 3D:   Flow.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\Flow\Flow.asset
+
+Nome:        G_18M
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  550
+Velocidade:  3.6 km/h (NavMeshAgent)
+Prefab 3D:   G18M.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\G18\G_18.asset
+
+Nome:        Garcia G15
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  500
+Velocidade:  3.6 km/h (NavMeshAgent)
+Prefab 3D:   G15.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\G15\g15.asset
+
+Nome:        Helicóptero Ray
+Preço:       $ 850
+Descrição:   Transporte Aéreo Tático.\nCapacidade: 8 Unidades.\nAlta mobilidade
+    para deslocamento de tropas.
+Vida/Blind:  450
+Velocidade:  3.6 km/h (NavMeshAgent)
+Prefab 3D:   H_Ray.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\Helicoptero_ray\Dados_Helicoptero_Ray.asset
+
+Nome:        Su11
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  500
+Velocidade:  396 km/h (ControleNavio/Aviao)
+Prefab 3D:   Su11.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\Su11\Su11.asset
+
+Nome:        Super Tuk
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  600
+Velocidade:  324 km/h (Voo)
+Prefab 3D:   Super_Tuk.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\Super_Tuk\Super_Tuk.asset
+
+Nome:        Supra
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  350
+Velocidade:  Desconhecido
+Prefab 3D:   Supra.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\Supra\Supra.asset
+
+Nome:        Vans falcon
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  350
+Velocidade:  Desconhecido
+Prefab 3D:   Vans.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\Falcon\FAlcon.asset
+
+Nome:        Vans falcon
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  350
+Velocidade:  Desconhecido
+Prefab 3D:   Vans.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\vans\FAlcon.asset
+
+Nome:        VAP Drone
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  100
+Velocidade:  288 km/h (Voo)
+Prefab 3D:   VAP.prefab
+Arquivo:     Assets\Prefabs\Aeroporto\VAP drone\VAP Drone.asset
+
+-------------------------------------------------------------------------------
+ CATEGORIA: Tecnologia (2 itens)
+-------------------------------------------------------------------------------
+Nome:        Energia
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   Energia.prefab
+Arquivo:     Assets\Prefabs\Energia\Energia.asset
+
+Nome:        PLataforma
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  300
+Velocidade:  12.6 km/h (NavMeshAgent)
+Prefab 3D:   Plataforma de petroleo.prefab
+Arquivo:     Assets\Prefabs\Marinha\PLataforma.asset
+
+-------------------------------------------------------------------------------
+ CATEGORIA: Infraestrutura (14 itens)
+-------------------------------------------------------------------------------
+Nome:        Armazem
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  100
+Velocidade:  Desconhecido
+Prefab 3D:   Armazem_Recursos.prefab
+Arquivo:     Assets\Prefabs\Recursos\Armazens\Armazem.asset
+
+Nome:        Armazem Militar
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  100
+Velocidade:  Desconhecido
+Prefab 3D:   Armazem_Militar.prefab
+Arquivo:     Assets\Prefabs\Recursos\Armazens\Armazem_militar.asset
+
+Nome:        Construtor de Veiculos
+Preço:       $ 2000
+Descrição:   Hangar avancado para producao e manutencao de veiculos pesados.
+Vida/Blind:  500
+Velocidade:  Desconhecido
+Prefab 3D:   Construtor de Veiculos.prefab
+Arquivo:     Assets\Prefabs\Construtor de Veiculos\Construtor de Veiculos.asset
+
+Nome:        Farm
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  100
+Velocidade:  Desconhecido
+Prefab 3D:   Farm.prefab
+Arquivo:     Assets\Prefabs\Imobiliario\Farm\Farm.asset
+
+Nome:        Heliporto
+Preço:       $ 500
+Descrição:   Base para operações aéreas. Permite compra e reabastecimento
+    de helicópteros.
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   HeliPad_Prefeb.prefab
+Arquivo:     Assets\Prefabs\Heliporto\Dados_Heliporto.asset
+
+Nome:        Lancador de Misseis
+Preço:       $ 3000
+Descrição:   Base de lancamento de misseis balisticos. Permite ataques de longo alcance
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   MissilePort.prefab
+Arquivo:     Assets\Prefabs\Lancador\Lancador_Misseis.asset
+
+Nome:        Muro de Concreto
+Preço:       $ 50
+Descrição:   Barreira fortificada para impedir o avanço inimigo.
+Vida/Blind:  100
+Velocidade:  Desconhecido
+Prefab 3D:   Muro_Reto.prefab
+Arquivo:     Assets\Prefabs\Muro_Reto\Muro_Reto.asset
+
+Nome:        Muro lateral
+Preço:       $ 50
+Descrição:   Proteção passiva.
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   Muro_Lateral.prefab
+Arquivo:     Assets\Prefabs\Muro_Lateral\Muro_Lateral.asset
+
+Nome:        Tenda Militar
+Preço:       $ 300
+Descrição:   Alojamento para soldados. Permite recrutar infantaria.
+Vida/Blind:  150
+Velocidade:  Desconhecido
+Prefab 3D:   Tenda.prefab
+Arquivo:     Assets\Prefabs\Torre_Sentinela\Dados_TorreSentinela.asset
+
+Nome:        Tenda Militar
+Preço:       $ 300
+Descrição:   Alojamento para soldados. Permite recrutar infantaria.
+Vida/Blind:  150
+Velocidade:  Desconhecido
+Prefab 3D:   Tenda.prefab
+Arquivo:     Assets\Prefabs\Unidade_Vigia\Dados_Vigia.asset
+
+Nome:        Tenda Militar
+Preço:       $ 300
+Descrição:   Alojamento para soldados. Permite recrutar infantaria.
+Vida/Blind:  150
+Velocidade:  Desconhecido
+Prefab 3D:   Tenda.prefab
+Arquivo:     Assets\Prefabs\Construtor de Veiculos\Tenda\Construcao_Tenda.asset
+
+Nome:        Tenda Militar
+Preço:       $ 300
+Descrição:   Alojamento para soldados. Permite recrutar infantaria.
+Vida/Blind:  150
+Velocidade:  Desconhecido
+Prefab 3D:   Tenda.prefab
+Arquivo:     Assets\Prefabs\Defesa_Torreta\Dados_Torreta.asset
+
+Nome:        Tenda Militar
+Preço:       $ 300
+Descrição:   Alojamento para soldados. Permite recrutar infantaria.
+Vida/Blind:  150
+Velocidade:  Desconhecido
+Prefab 3D:   Tenda.prefab
+Arquivo:     Assets\Prefabs\Defesa_CIWS\Dados_CIWS.asset
+
+Nome:        Torre de Radar
+Preço:       $ 400
+Descrição:   Revela inimigos no mapa.
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   Radar.prefab
+Arquivo:     Assets\Prefabs\Torre_Radar\Torre_de_Radar.asset
+
+-------------------------------------------------------------------------------
+ CATEGORIA: Urbana (4 itens)
+-------------------------------------------------------------------------------
+Nome:        Centro de construcao
+Preço:       $ 100
+Descrição:   Descrição curta...
+Vida/Blind:  500
+Velocidade:  Desconhecido
+Prefab 3D:   Construtor de Veiculos.prefab
+Arquivo:     Assets\Prefabs\Demolicao\Centro de construcao.asset
+
+Nome:        Fronteira
+Preço:       $ 1000
+Descrição:   Descrição curta...
+Vida/Blind:  250
+Velocidade:  Desconhecido
+Prefab 3D:   Flag.prefab
+Arquivo:     Assets\Prefabs\Imobiliario\Prefeitura\Fronteira.asset
+
+Nome:        Mini Predio
+Preço:       $ 100
+Descrição:   Edifício urbanístico simples para crescimento populacional.
+Vida/Blind:  Desconhecido
+Velocidade:  Desconhecido
+Prefab 3D:   building12_Var2 1.prefab
+Arquivo:     Assets\Prefabs\Imobiliario\home\Mini Predio.asset
+
+Nome:        Prefeitura
+Preço:       $ 5000
+Descrição:   Descrição curta...
+Vida/Blind:  5000
+Velocidade:  Desconhecido
+Prefab 3D:   Prefeitura.prefab
+Arquivo:     Assets\Prefabs\Imobiliario\Prefeitura\Prefeitura.asset
+

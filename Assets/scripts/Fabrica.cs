@@ -141,10 +141,37 @@ public class Fabrica : MonoBehaviour
         GameObject unidade = Instantiate(prefab, posSpawnFinal, spawn.rotation);
         long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
 
-        // Identidade
+        // Identidade e Logistica GDD
         var idF = GetComponentInParent<IdentidadeUnidade>();
         var idU = unidade.GetComponent<IdentidadeUnidade>();
-        if (idF != null && idU != null) { idU.teamID = idF.teamID; idU.nomeDoPais = idF.nomeDoPais; }
+        if (idF != null && idU != null) 
+        { 
+            idU.teamID = idF.teamID; 
+            idU.nomeDoPais = idF.nomeDoPais; 
+            
+            // Consumo de população
+            if (idU.militaresConsumidos > 0 && SistemaGovernoMundial.Instancia != null)
+            {
+                var pais = SistemaGovernoMundial.Instancia.ObterPais(idF.teamID);
+                if (pais != null)
+                {
+                    // Usa alistáveis primeiro, depois civis
+                    int falta = idU.militaresConsumidos;
+                    if (pais.alistaveis >= falta)
+                    {
+                        pais.alistaveis -= falta;
+                    }
+                    else
+                    {
+                        int doAlistamento = pais.alistaveis;
+                        falta -= doAlistamento;
+                        pais.alistaveis = 0;
+                        pais.populacaoCivil = Mathf.Max(0, pais.populacaoCivil - falta);
+                    }
+                    pais.populacaoMilitarAtiva += idU.militaresConsumidos;
+                }
+            }
+        }
         if (idU != null
             && idU.tipoUnidade == TipoUnidade.Infantaria
             && (unidade.GetComponent<MovimentoRealTerrestre>() != null
@@ -207,6 +234,18 @@ public class Fabrica : MonoBehaviour
                         {
                             agente.Warp(hitSpawn.position);
                         }
+                        else
+                        {
+                            UnityEngine.AI.NavMeshHit hitDest;
+                            if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hitDest, 15.0f, UnityEngine.AI.NavMesh.AllAreas))
+                            {
+                                agente.Warp(hitDest.position);
+                            }
+                            else
+                            {
+                                agente.Warp(destino);
+                            }
+                        }
                         RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
                     }
                 }
@@ -230,6 +269,18 @@ public class Fabrica : MonoBehaviour
                             if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hitSpawn, 10f, UnityEngine.AI.NavMesh.AllAreas))
                             {
                                 nav.Warp(hitSpawn.position);
+                            }
+                            else
+                            {
+                                UnityEngine.AI.NavMeshHit hitDest;
+                                if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hitDest, 15.0f, UnityEngine.AI.NavMesh.AllAreas))
+                                {
+                                    nav.Warp(hitDest.position);
+                                }
+                                else
+                                {
+                                    nav.Warp(destino);
+                                }
                             }
                             RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
                         }

@@ -69,8 +69,18 @@ public class DadosPaisGoverno
     public float moradia = 70f;
     public float estabilidade = 70f;
     public float producao = 70f;
-    public int populacao = 110;
-    public int populacaoMaxima = 200;
+    
+    [Header("Demografia")]
+    public int populacao = 5000;
+    public int populacaoMaxima = 5000;
+    public int populacaoCivil = 5000;
+    public int populacaoMilitarAtiva = 0;
+    public int reservistas = 0;
+    public int alistaveis = 0;
+    [Range(0f, 100f)] public float felicidade = 70f;
+    public float mortalidade = 1f;
+    public float natalidade = 1.2f;
+
     public int saldo = 5000;
     public float rendaPorSegundo = 10f;
     public float gastosPorSegundo = 4f;

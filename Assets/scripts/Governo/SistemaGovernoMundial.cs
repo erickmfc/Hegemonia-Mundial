@@ -191,6 +191,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             {
                 AplicarEconomiaImoveis(pais, economia);
                 SistemaPopulacao.Processar(pais, economia);
+                SistemaMilitar.Processar(pais, economia);
             }
 
             pais.estabilidade += pais.emprego > 70f ? 0.25f : -0.35f;

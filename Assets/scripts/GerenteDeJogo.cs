@@ -615,9 +615,22 @@ public class GerenteDeJogo : MonoBehaviour
                 if (agent.isActiveAndEnabled && !agent.isOnNavMesh)
                 {
                     UnityEngine.AI.NavMeshHit hitWarp;
-                    if (UnityEngine.AI.NavMesh.SamplePosition(novaUnidade.transform.position, out hitWarp, 3.0f, UnityEngine.AI.NavMesh.AllAreas))
+                    if (UnityEngine.AI.NavMesh.SamplePosition(novaUnidade.transform.position, out hitWarp, 15.0f, UnityEngine.AI.NavMesh.AllAreas))
                     {
                         agent.Warp(hitWarp.position);
+                    }
+                    else
+                    {
+                        // Fallback: Se não achar NavMesh perto do nascimento, warp para a saída
+                        UnityEngine.AI.NavMeshHit hitDest;
+                        if (UnityEngine.AI.NavMesh.SamplePosition(posDestino, out hitDest, 15.0f, UnityEngine.AI.NavMesh.AllAreas))
+                        {
+                            agent.Warp(hitDest.position);
+                        }
+                        else
+                        {
+                            agent.Warp(posDestino);
+                        }
                     }
                 }
             }

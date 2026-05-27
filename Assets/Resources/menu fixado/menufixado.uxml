@@ -24,6 +24,12 @@
             <!-- Right Side: Resource Indicators -->
             <ui:VisualElement class="resources-group">
                 
+                <!-- Data (Date) -->
+                <ui:VisualElement class="resource-item">
+                    <ui:Label text="📅" class="resource-emoji" />
+                    <ui:Label text="01/01/2000" name="lbl-date-val" class="resource-base-value" />
+                </ui:VisualElement>
+
                 <!-- Dinheiro (Money) -->
                 <ui:VisualElement class="resource-item">
                     <ui:Label text="💵" class="resource-emoji" />
@@ -43,7 +49,13 @@
                     <ui:Label text="0" name="lbl-gold-val" class="resource-base-value" />
                 </ui:VisualElement>
 
-                <!-- População (Population) -->
+                <!-- Felicidade (Happiness) -->
+                <ui:VisualElement class="resource-item">
+                    <ui:Label text="😃" class="resource-emoji" />
+                    <ui:Label text="100%" name="lbl-happy-val" class="resource-base-value" />
+                </ui:VisualElement>
+
+                <!-- População Civil -->
                 <ui:VisualElement class="resource-item">
                     <ui:Label text="👥" class="resource-emoji" />
                     <ui:Label text="0/0" name="lbl-pop-val" class="resource-base-value" />

@@ -6359,8 +6359,8 @@ MonoBehaviour:
   dinheiro: 10000
   petroleo: 500
   aco: 300
-  populacaoAtual: 10
-  populacaoMaxima: 100
+  populacaoAtual: 5000
+  populacaoMaxima: 5000
   energia: 100
   dinheiroPorSegundo: 10
   petroleoPorSegundo: 5

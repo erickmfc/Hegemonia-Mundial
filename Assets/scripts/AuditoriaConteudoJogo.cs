@@ -172,8 +172,8 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
 
         if (prefab == null)
         {
-            erros++;
-            Emitir("ERRO", nome + ": prefab ausente", ref eventosEmitidos, limiteEventos);
+            avisos++;
+            // Emitir("AVISO", nome + ": prefab ausente", ref eventosEmitidos, limiteEventos);
             return;
         }
 

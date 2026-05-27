@@ -503,8 +503,8 @@ public class MenuConstrucao : MonoBehaviour
         canvasGroupPainel.interactable = true;
 
         RectTransform rtPanel = painelPrincipal.GetComponent<RectTransform>();
-        rtPanel.anchorMin = new Vector2(0.18f, 0.25f);
-        rtPanel.anchorMax = new Vector2(0.98f, 0.95f);
+        rtPanel.anchorMin = new Vector2(0.18f, 0.20f);
+        rtPanel.anchorMax = new Vector2(0.98f, 0.90f);
         rtPanel.offsetMin = Vector2.zero;
         rtPanel.offsetMax = Vector2.zero;
 

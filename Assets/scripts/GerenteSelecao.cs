@@ -509,12 +509,20 @@ public class GerenteSelecao : MonoBehaviour
                 || nome.Contains("Painel_Governo")
                 || nome.Contains("Menu")
                 || nome.Contains("Popup")
-                || nome.Contains("Modal"))
+                || nome.Contains("Modal")
+                || nome.Contains("[HUD_MenuComando]")
+                || nome.Contains("PainelComandoStatus")) // ADDED
             {
                 return true;
             }
 
             atual = atual.parent;
+        }
+
+        // ADICIONAR: Verifica colisão usando EventSystem (RaycastAll) para UI Toolkit / Canvas genéricos
+        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            return true;
         }
 
         return false;
@@ -1244,7 +1252,7 @@ public class GerenteSelecao : MonoBehaviour
         }
     }
 
-    void AdicionarSelecao(ControleUnidade unidade)
+    public void AdicionarSelecao(ControleUnidade unidade)
     {
         if (unidade == null || unidadesSelecionadas.Contains(unidade))
         {

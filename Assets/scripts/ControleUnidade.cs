@@ -1178,6 +1178,12 @@ public class ControleUnidade : MonoBehaviour
 
     void AtualizarVisualCaminho()
     {
+        if (linhaCaminho != null && linhaCaminho.gameObject.activeSelf)
+        {
+            linhaCaminho.gameObject.SetActive(false);
+        }
+        return;
+        // Desenho da linha verde desativado conforme solicitado
         if (!selecionado || linhaCaminho == null) return;
 
         Vector3 metaLinha = Vector3.zero;

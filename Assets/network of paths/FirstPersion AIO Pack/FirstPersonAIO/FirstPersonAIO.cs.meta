@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: bf1a5ad4f9ffb154ca7813fdad11017a
+timeCreated: 1505782333
+licenseType: Store
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181968
+  packageName: Untitled
+  packageVersion: 1.0
+  assetPath: Assets/network of paths/FirstPersion AIO Pack/FirstPersonAIO/FirstPersonAIO.cs
+  uploadId: 398001

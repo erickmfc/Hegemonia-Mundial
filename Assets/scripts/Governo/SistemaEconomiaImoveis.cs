@@ -119,9 +119,17 @@ public class SistemaEconomiaImoveis : MonoBehaviour
                 {
                     energiaDisponivel -= est.energiaConsumida;
                     if (est.status == StatusEstruturaEconomica.SemEnergia) est.status = StatusEstruturaEconomica.Ativa;
+                    est.eficiencia = 1f;
+                }
+                else if (energiaDisponivel > 0)
+                {
+                    est.eficiencia = energiaDisponivel / est.energiaConsumida; // Falta parcial de energia
+                    energiaDisponivel = 0;
+                    if (est.status == StatusEstruturaEconomica.SemEnergia) est.status = StatusEstruturaEconomica.Ativa;
                 }
                 else
                 {
+                    est.eficiencia = 0f;
                     est.status = StatusEstruturaEconomica.SemEnergia;
                     economia.estruturasSemEnergia++;
                 }
@@ -227,6 +235,8 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         economia.industriaProduzida += estrutura.industriaProduzida * eficiencia;
         economia.energiaProduzida += estrutura.energiaProduzida * eficiencia;
         economia.energiaConsumida += estrutura.energiaConsumida;
+        economia.combustivelConsumido += estrutura.combustivelConsumido;
+        economia.militaresNecessarios += estrutura.militaresNecessarios;
         RegistrarFluxoEconomico(economia, estrutura.tipo, estrutura.dinheiroGerado * eficiencia);
         RegistrarFluxoEconomico(economia, TipoEstruturaEconomica.Casa, estrutura.populacaoAtual * rendaPorPopulacao);
         economia.eficienciaMedia += eficiencia;
@@ -335,12 +345,11 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             economia.empregosOcupados = Mathf.Min(economia.populacaoTotal, economia.empregosDisponiveis);
             economia.deficitEmprego = Mathf.Max(0, economia.populacaoTotal - economia.empregosDisponiveis);
             economia.deficitEnergia = Mathf.Max(0f, economia.energiaConsumida - economia.energiaProduzida);
-            economia.deficitComida = Mathf.Max(0f, economia.populacaoTotal * comidaConsumidaPorPopulacao - economia.comidaProduzida);
-            economia.deficitPetroleo = Mathf.Max(0f, economia.industriaProduzida * petroleoConsumidoPorIndustria - economia.petroleoProduzido);
             economia.pressaoPopulacional = economia.moradiaTotal <= 0 ? 1f : Mathf.Clamp01(economia.populacaoTotal / (float)economia.moradiaTotal);
+            economia.deficitPetroleo = Mathf.Max(0f, economia.industriaProduzida * petroleoConsumidoPorIndustria - economia.petroleoProduzido);
             economia.eficienciaMedia = economia.estruturasContadas > 0 ? Mathf.Clamp01(economia.eficienciaMedia / economia.estruturasContadas) : 1f;
             economia.exportacaoTotal = economia.comidaProduzida + economia.petroleoProduzido + economia.industriaProduzida;
-            economia.importacaoTotal = economia.deficitComida + economia.deficitEnergia + economia.deficitPetroleo;
+            economia.importacaoTotal = economia.deficitEnergia + economia.deficitPetroleo;
             economia.qualidadeVida = CalcularQualidadeVida(economia);
             economia.saldoOperacional = economia.ReceitaBruta - economia.custoManutencao;
             economia.dinheiroGerado = economia.saldoOperacional;

@@ -17,6 +17,11 @@ public class IdentidadeUnidade : MonoBehaviour
 
     [Header("Classificação Militar")]
     public TipoUnidade tipoUnidade = TipoUnidade.Infantaria;
+    
+    [Header("Logistica (GDD)")]
+    public int militaresConsumidos;
+    public float combustivelPorHora;
+    public float energiaConsumida;
 
     void Start()
     {

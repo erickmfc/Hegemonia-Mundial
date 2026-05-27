@@ -4,7 +4,7 @@
     width: 100%;
     align-items: center;
     justify-content: flex-start;
-    padding-top: 8px;
+    padding-top: 12px;
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     position: absolute;
     top: 0;
@@ -13,17 +13,23 @@
 
 .status-bar-panel {
     width: 98%;
-    height: 48px;
-    background-color: rgba(9, 12, 9, 0.85); /* Cores milsim */
-    border-width: 1px;
-    border-color: #162416;
-    border-radius: 4px;
+    max-width: 1600px;
+    height: 52px;
+    background-color: rgba(7, 24, 39, 0.72); /* Cor anterior azul escuro */
+    border-width: 1.5px;
+    border-color: rgba(0, 195, 255, 0.4); /* Borda azul anterior */
+    border-radius: 8px;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
     padding-left: 16px;
     padding-right: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    
+    /* Glow effect anterior */
+    border-left-color: rgba(0, 195, 255, 0.55);
+    border-right-color: rgba(0, 195, 255, 0.55);
+    border-top-color: rgba(0, 195, 255, 0.55);
+    border-bottom-color: rgba(0, 195, 255, 0.55);
 }
 
 .status-title-group {
@@ -32,10 +38,10 @@
 }
 
 .status-title {
-    color: #90b870;
-    font-size: 13px;
+    color: rgb(160, 220, 245); /* Cor azul claro anterior */
+    font-size: 14px;
     -unity-font-style: bold;
-    letter-spacing: 2px;
+    letter-spacing: 1.5px;
     margin-right: 12px;
 }
 
@@ -49,16 +55,16 @@
 .resource-item {
     flex-direction: row;
     align-items: center;
-    margin-left: 8px;
-    margin-right: 8px;
+    margin-left: 6px;
+    margin-right: 6px;
 }
 
 .country-item {
-    background-color: rgba(22, 36, 22, 0.4);
+    background-color: rgba(0, 195, 255, 0.15);
     padding: 3px 8px;
-    border-radius: 3px;
+    border-radius: 4px;
     border-width: 1px;
-    border-color: rgba(144, 184, 112, 0.2);
+    border-color: rgba(0, 195, 255, 0.3);
 }
 
 .country-text {
@@ -76,7 +82,7 @@
 
 /* Value Labels */
 .resource-base-value {
-    color: #f1f5f9;
+    color: rgb(240, 248, 255); /* Azul/branco anterior */
     font-size: 12px;
     -unity-font-style: bold;
 }

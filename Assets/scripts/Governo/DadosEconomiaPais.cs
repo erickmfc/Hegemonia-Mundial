@@ -10,7 +10,25 @@ public enum TipoEstruturaEconomica
     Farm,
     Energia,
     PesquisaMilitar,
-    UsinaSolar
+    UsinaSolar,
+    CasaPopular,
+    PredioResidencial,
+    ComercioPequeno,
+    Shopping,
+    IndustriaLeve,
+    IndustriaPesada,
+    Refinaria,
+    PortoComercial,
+    AeroportoCivil,
+    UsinaTermicaPequena,
+    UsinaTermicaGrande,
+    UsinaNuclear,
+    UsinaHidreletrica,
+    BaseMilitarPequena,
+    BaseMilitarMedia,
+    GrandeBaseMilitar,
+    BaseAerea,
+    BaseNaval
 }
 
 public enum StatusEstruturaEconomica
@@ -46,6 +64,8 @@ public class DadosEconomiaPais
     public float industriaProduzida;
     public float energiaProduzida;
     public float energiaConsumida;
+    public float combustivelConsumido;
+    public int militaresNecessarios;
     public float dinheiroGerado;
     public float receitaMoradia;
     public float receitaIndustria;

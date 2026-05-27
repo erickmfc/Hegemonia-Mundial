@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 26fdb586e7fba584083162e3daa3a3a0
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181968
+  packageName: Untitled
+  packageVersion: 1.0
+  assetPath: Assets/network of paths/Shaders/UniversalRenderPipelineAsset.asset
+  uploadId: 398001
