@@ -576,15 +576,6 @@ public class MenuDeComandoController : MonoBehaviour, IMenuJogo
     // ─────────────────────────────────────────────────────────
     private void ToggleMinimapa(bool exibir)
     {
-        // Opção A: se o seu minimapa é um UIDocument separado, encontre-o e toggle.
-        // Substitua "MinimapController" pelo nome real da sua classe.
-        MonoBehaviour minimapCtrl = FindObjectOfType<MinimapController>() as MonoBehaviour;
-        if (minimapCtrl != null)
-        {
-            minimapCtrl.enabled = exibir;
-            return;
-        }
-
         // Opção B: se o minimapa é um GameObject com uma câmera e um Canvas/UI,
         // encontre pelo nome e ative/desative.
         GameObject minimapGO = GameObject.Find("Minimapa") ??
@@ -606,7 +597,7 @@ public class MenuDeComandoController : MonoBehaviour, IMenuJogo
         GerenciadorQuartel gq = FindObjectOfType<GerenciadorQuartel>();
         if (gq != null)
         {
-            tamanhoTerrenoTatico = gq.tamanhoTerrenoTatico;
+            tamanhoTerrenoTatico = gq.raioDeCobertura * 2f;
             cameraMapaTatico.transform.position = new Vector3(
                 gq.transform.position.x, 1500f, gq.transform.position.z);
         }
