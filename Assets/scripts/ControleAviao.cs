@@ -1161,7 +1161,7 @@ public class ControleAviao : MonoBehaviour
                 // Reduz a velocidade quando estiver a 100 metros (10000 = 100^2)
                 if (diffTD.sqrMagnitude <= 10000f)
                 {
-                    velocidadeMaximaVoo = velocidadeSolo * 1.2f;
+                    velocidadeMaximaVoo = velocidadeSolo * 2.4f;
                 }
 
                 if (diffTD.sqrMagnitude <= 900f) break; // 30 m do 1º waypoint real

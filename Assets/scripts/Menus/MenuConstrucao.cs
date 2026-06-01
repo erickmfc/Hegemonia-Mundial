@@ -2269,7 +2269,9 @@ public class MenuConstrucao : MonoBehaviour
             || prefab.GetComponent<C700TransporteAereo>() != null
             || prefab.GetComponentInChildren<C700TransporteAereo>(true) != null
             || prefab.GetComponent<CacaVooRealista>() != null
-            || prefab.GetComponentInChildren<CacaVooRealista>(true) != null;
+            || prefab.GetComponentInChildren<CacaVooRealista>(true) != null
+            || prefab.GetComponent<Helicoptero>() != null
+            || prefab.GetComponentInChildren<Helicoptero>(true) != null;
     }
 
     string ObterDescricaoFallback(DadosConstrucao.CategoriaItem categoria)
@@ -2585,8 +2587,24 @@ public class MenuConstrucao : MonoBehaviour
         AlternarMenu(false);
     }
 
+    bool HeliportoSemEnergia(Heliporto h)
+    {
+        if (h == null) return false;
+        Imovel im = h.GetComponent<Imovel>();
+        if (im == null) im = h.GetComponentInParent<Imovel>();
+        if (im != null) return im.semEnergia;
+        return false;
+    }
+
     void ProduzirUnidadeAerea(DadosConstrucao item, int quantidade, Image cardImage)
     {
+        bool isHelicopter = false;
+        if (item != null && item.prefabDaUnidade != null)
+        {
+            isHelicopter = item.prefabDaUnidade.GetComponent<Helicoptero>() != null || 
+                           item.prefabDaUnidade.GetComponentInChildren<Helicoptero>(true) != null;
+        }
+
         RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
 
         List<GerenciadorAeroporto> meusAeroportos = bufferAeroportos
@@ -2598,29 +2616,127 @@ public class MenuConstrucao : MonoBehaviour
             })
             .ToList();
 
-        if (meusAeroportos.Count == 0)
+        List<Heliporto> meusHeliportos = new List<Heliporto>();
+        if (isHelicopter)
+        {
+            List<Heliporto> tempHeli = new List<Heliporto>();
+            RegistroEntidadesJogo.FillHeliportos(tempHeli);
+            meusHeliportos = tempHeli
+                .Where(h =>
+                {
+                    if (h == null) return false;
+                    IdentidadeUnidade id = h.GetComponent<IdentidadeUnidade>();
+                    if (id == null) id = h.GetComponentInParent<IdentidadeUnidade>();
+                    return id == null || id.teamID == 1;
+                })
+                .ToList();
+        }
+
+        if (meusAeroportos.Count == 0 && meusHeliportos.Count == 0)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(LocalizationManager.T("build.need_airport", "Bloqueado: voce precisa construir um AEROPORTO ou HELIPORTO primeiro para comprar aeronaves."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem aeroporto");
+            string erroMsg = isHelicopter 
+                ? LocalizationManager.T("build.need_airport_or_heliport", "Bloqueado: voce precisa construir um AEROPORTO ou HELIPORTO primeiro para comprar aeronaves.")
+                : LocalizationManager.T("build.need_airport", "Bloqueado: voce precisa construir um AEROPORTO primeiro para comprar aeronaves.");
+            EmitirAvisoJogador(erroMsg);
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem aeroporto ou heliporto");
             return;
         }
 
-        GerenciadorAeroporto aeroporto = meusAeroportos
-            .OrderByDescending(a =>
-            {
-                int score = 0;
-                if (a.GetType() != typeof(GerenciadorPortaAvioes)) score += 100;
-                if (a.ObterPrimeiraVagaLivre() != null) score += 50;
-                return score;
-            })
-            .FirstOrDefault();
+        Heliporto targetHeliporto = null;
+        GerenciadorAeroporto targetAeroporto = null;
 
-        if (aeroporto == null)
+        if (isHelicopter)
+        {
+            // Prefer heliports with space and energy
+            targetHeliporto = meusHeliportos
+                .Where(h => h.TemEspacoParaPousar() && !HeliportoSemEnergia(h))
+                .FirstOrDefault();
+
+            if (targetHeliporto == null)
+            {
+                targetHeliporto = meusHeliportos
+                    .Where(h => h.TemEspacoParaPousar())
+                    .FirstOrDefault();
+            }
+
+            if (targetHeliporto == null)
+            {
+                targetAeroporto = meusAeroportos
+                    .Where(a => !a.semEnergia)
+                    .OrderByDescending(a =>
+                    {
+                        int score = 0;
+                        if (a.GetType() != typeof(GerenciadorPortaAvioes)) score += 100;
+                        if (a.ObterPrimeiraVagaLivre() != null) score += 50;
+                        return score;
+                    })
+                    .FirstOrDefault();
+
+                if (targetAeroporto == null)
+                {
+                    targetAeroporto = meusAeroportos
+                        .OrderByDescending(a =>
+                        {
+                            int score = 0;
+                            if (a.GetType() != typeof(GerenciadorPortaAvioes)) score += 100;
+                            if (a.ObterPrimeiraVagaLivre() != null) score += 50;
+                            return score;
+                        })
+                        .FirstOrDefault();
+                }
+            }
+        }
+        else
+        {
+            targetAeroporto = meusAeroportos
+                .Where(a => !a.semEnergia)
+                .OrderByDescending(a =>
+                {
+                    int score = 0;
+                    if (a.GetType() != typeof(GerenciadorPortaAvioes)) score += 100;
+                    if (a.ObterPrimeiraVagaLivre() != null) score += 50;
+                    return score;
+                })
+                .FirstOrDefault();
+
+            if (targetAeroporto == null)
+            {
+                targetAeroporto = meusAeroportos
+                    .OrderByDescending(a =>
+                    {
+                        int score = 0;
+                        if (a.GetType() != typeof(GerenciadorPortaAvioes)) score += 100;
+                        if (a.ObterPrimeiraVagaLivre() != null) score += 50;
+                        return score;
+                    })
+                    .FirstOrDefault();
+            }
+        }
+
+        bool targetIsPowerless = false;
+        if (targetHeliporto != null)
+        {
+            targetIsPowerless = HeliportoSemEnergia(targetHeliporto);
+        }
+        else if (targetAeroporto != null)
+        {
+            targetIsPowerless = targetAeroporto.semEnergia;
+        }
+
+        if (targetIsPowerless)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(LocalizationManager.T("build.no_airport", "Erro: nenhum aeroporto valido encontrado para entregar esta aeronave."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": aeroporto invalido");
+            EmitirAvisoJogador(LocalizationManager.T("build.destination_no_power", "Bloqueado: o aeroporto ou heliporto de destino esta sem energia."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem energia");
+            return;
+        }
+
+        if (targetHeliporto == null && targetAeroporto == null)
+        {
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            EmitirAvisoJogador(LocalizationManager.T("build.no_airport", "Erro: nenhum aeroporto ou heliporto valido encontrado para entregar esta aeronave."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": aeroporto/heliporto invalido");
             return;
         }
 
@@ -2632,8 +2748,32 @@ public class MenuConstrucao : MonoBehaviour
                 break;
             }
 
-            aeroporto.ComprarAviao(item.prefabDaUnidade);
-            comprados++;
+            if (targetHeliporto != null)
+            {
+                Vector3 spawnPos = targetHeliporto.ObterPontoDePousoMundial();
+                GameObject heliObj = Instantiate(item.prefabDaUnidade, spawnPos, targetHeliporto.transform.rotation);
+                
+                IdentidadeUnidade id = heliObj.GetComponent<IdentidadeUnidade>();
+                if (id == null) id = heliObj.AddComponent<IdentidadeUnidade>();
+                id.teamID = 1;
+                id.nomeDoPais = "Hegemonia";
+
+                ControleUnidade controle = heliObj.GetComponent<ControleUnidade>();
+                if (controle == null) controle = heliObj.AddComponent<ControleUnidade>();
+
+                Helicoptero heli = heliObj.GetComponent<Helicoptero>();
+                if (heli == null) heli = heliObj.GetComponentInChildren<Helicoptero>(true);
+                if (heli != null)
+                {
+                    targetHeliporto.HelicopteroPousou(heli);
+                }
+                comprados++;
+            }
+            else if (targetAeroporto != null)
+            {
+                targetAeroporto.ComprarAviao(item.prefabDaUnidade);
+                comprados++;
+            }
         }
 
         if (comprados <= 0)

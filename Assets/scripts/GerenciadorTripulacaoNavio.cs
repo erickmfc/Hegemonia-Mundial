@@ -22,6 +22,7 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
         public bool temParametroVelocidade;
         /// <summary>Nome real do parâmetro de velocidade encontrado no Animator (ex: "Speed", "Velocidade", "Walk").</summary>
         public string nomeParametroVelocidadeEncontrado;
+        public bool isBoolParameter;
     }
 
     [Header("=== PREFABS DA TRIPULAÇÃO ===")]
@@ -234,10 +235,7 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
             membro.andando = true;
             membro.tempoEsperaRestante = 0f;
 
-            if (membro.animator != null && membro.temParametroVelocidade && _animatorAtivoLOD)
-            {
-                membro.animator.SetFloat(membro.nomeParametroVelocidadeEncontrado, 1.0f);
-            }
+            SetAnimadorVelocidade(membro, 1.0f);
         }
         else
         {
@@ -246,10 +244,7 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
             membro.andando = false;
             membro.tempoEsperaRestante = Random.Range(1.5f, 3.0f);
 
-            if (membro.animator != null && membro.temParametroVelocidade && _animatorAtivoLOD)
-            {
-                membro.animator.SetFloat(membro.nomeParametroVelocidadeEncontrado, 0.0f);
-            }
+            SetAnimadorVelocidade(membro, 0.0f);
         }
     }
 
@@ -289,27 +284,48 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
             "MoveSpeed",
             "Forward",
             "forward",
-            "Blend"
+            "Blend",
+            "andando",
+            "isWalking",
+            "Walking",
+            "walking"
         };
 
         foreach (AnimatorControllerParameter param in membro.animator.parameters)
         {
-            if (param.type != UnityEngine.AnimatorControllerParameterType.Float)
+            if (param.type != UnityEngine.AnimatorControllerParameterType.Float && 
+                param.type != UnityEngine.AnimatorControllerParameterType.Bool)
                 continue;
 
             foreach (string candidato in candidatos)
             {
                 if (string.IsNullOrEmpty(candidato)) continue;
-                if (string.Equals(param.name, candidato, System.StringComparison.Ordinal))
+                if (string.Equals(param.name, candidato, System.StringComparison.OrdinalIgnoreCase))
                 {
                     membro.temParametroVelocidade = true;
                     membro.nomeParametroVelocidadeEncontrado = param.name;
+                    membro.isBoolParameter = (param.type == UnityEngine.AnimatorControllerParameterType.Bool);
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    private void SetAnimadorVelocidade(MembroTripulacao membro, float valor)
+    {
+        if (membro == null || membro.animator == null || !membro.temParametroVelocidade || !_animatorAtivoLOD)
+            return;
+
+        if (membro.isBoolParameter)
+        {
+            membro.animator.SetBool(membro.nomeParametroVelocidadeEncontrado, valor > 0.1f);
+        }
+        else
+        {
+            membro.animator.SetFloat(membro.nomeParametroVelocidadeEncontrado, valor);
+        }
     }
 
     private void AtualizarMovimentacaoTripulacao()
@@ -364,10 +380,7 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
                     membro.andando = false;
                     membro.tempoEsperaRestante = Random.Range(tempoEsperaMin, tempoEsperaMax);
 
-                    if (membro.animator != null && membro.temParametroVelocidade && _animatorAtivoLOD)
-                    {
-                        membro.animator.SetFloat(membro.nomeParametroVelocidadeEncontrado, 0.0f);
-                    }
+                    SetAnimadorVelocidade(membro, 0.0f);
                 }
             }
             else

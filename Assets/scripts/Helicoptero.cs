@@ -797,6 +797,13 @@ public class Helicoptero : MonoBehaviour
         {
             destino.y = altitudeDeVoo;
         }
+
+        // Notificar heliportos sobre a decolagem
+        Heliporto[] heliportos = Object.FindObjectsByType<Heliporto>(FindObjectsSortMode.None);
+        foreach (var h in heliportos)
+        {
+            if (h != null) h.HelicopteroDecolou(this);
+        }
     }
 
     private IEnumerator RotinaPreparacaoDecolagem()
@@ -1002,6 +1009,18 @@ public class Helicoptero : MonoBehaviour
             estaPousando = false;
             subidaInicialDecolagem = false;
             motorLigado = false; 
+
+            // Se pousou perto de um Heliporto, registra nele
+            Heliporto[] heliportos = Object.FindObjectsByType<Heliporto>(FindObjectsSortMode.None);
+            foreach (var h in heliportos)
+            {
+                if (h != null && Vector3.Distance(new Vector3(h.ObterPontoDePousoMundial().x, 0, h.ObterPontoDePousoMundial().z), new Vector3(pos.x, 0, pos.z)) <= 6f)
+                {
+                    h.HelicopteroPousou(this);
+                    break;
+                }
+            }
+
             bool pousouEmVagaRegistrada = DestinoCorrespondeAVagaAeroporto(destino);
             
             if (pousouEmVagaRegistrada && vagaAeroporto != null)
