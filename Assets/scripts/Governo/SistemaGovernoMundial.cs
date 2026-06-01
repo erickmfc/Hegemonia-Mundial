@@ -262,6 +262,9 @@ public class SistemaGovernoMundial : MonoBehaviour
             jogador.rendaPorSegundo = gr.dinheiroPorSegundo;
             jogador.producao = Mathf.Clamp(55f + gr.acoPorSegundo * 3f + gr.petroleoPorSegundo * 2f, 10f, 100f);
         }
+
+        // CORREÇÃO: Sincronizar a população civil do jogador também, já que a UI lê jogador.populacaoCivil
+        jogador.populacaoCivil = Mathf.Max(0, jogador.populacao - jogador.populacaoMilitarAtiva - jogador.reservistas - jogador.alistaveis);
     }
 
     public void AtualizarIdentidadeNacional(int teamId, string nomePais, string nomePresidente, string nomeMoeda)
@@ -912,13 +915,8 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     private void DescobrirIAsDaCena()
     {
-#if UNITY_2023_1_OR_NEWER
-        IA_Comandante[] comandantes = FindObjectsByType<IA_Comandante>(FindObjectsSortMode.None);
-        IdentidadeIA[] identidades = FindObjectsByType<IdentidadeIA>(FindObjectsSortMode.None);
-#else
-        IA_Comandante[] comandantes = FindObjectsOfType<IA_Comandante>();
-        IdentidadeIA[] identidades = FindObjectsOfType<IdentidadeIA>();
-#endif
+        IEnumerable<IA_Comandante> comandantes = IA_ComandanteRegistry.AllCommanders;
+        IEnumerable<IdentidadeIA> identidades = IdentidadeIA.TodasIdentidades;
         foreach (IA_Comandante comandante in comandantes)
         {
             if (comandante == null || comandante.TeamID <= 1 || ObterPais(comandante.TeamID) != null) continue;

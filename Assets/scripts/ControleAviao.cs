@@ -26,11 +26,11 @@ public class ControleAviao : MonoBehaviour
     public float velocidadeSolo = 10f; 
     [Tooltip("Velocidade de voo nas nuvens")]
     public float velocidadeMaximaVoo = 180f; 
-    public float taxaDeGiroLeme = 120f;    
+    public float taxaDeGiroLeme = 35f;    
 
     [Header("=== ÓRBITA DA MISSÃO ===")]
     [Tooltip("Raio horizontal da órbita em torno da área ordenada.")]
-    public float raioOrbitaMissao = 85f;
+    public float raioOrbitaMissao = 350f;
     [Tooltip("Velocidade angular da órbita em torno do alvo/patrulha.")]
     public float velocidadeOrbitaMissao = 0.9f;
     [Tooltip("Distância para considerar que chegou ao centro inicial da missão.")]
@@ -38,8 +38,8 @@ public class ControleAviao : MonoBehaviour
 
     [Header("=== ANIMAÇÃO VISUAL ===")]
     public Transform modeloMecanicoVisual; 
-    public float asaBankingMaximo = 75f; 
-    public float arfagemPitchMaxima = 30f; 
+    public float asaBankingMaximo = 45f; 
+    public float arfagemPitchMaxima = 20f; 
 
     [Header("=== TREM DE POUSO ===")]
     public List<Transform> rodas;
@@ -75,10 +75,13 @@ public class ControleAviao : MonoBehaviour
     private bool retomarMissaoAposAbastecer = false;
     private string ultimoMotivoRetorno = string.Empty;
     private Coroutine rotinaRetomadaMissao;
+    private int indiceRetanguloPatrulha = 0;
 
     // --- CACHE DE COMPONENTES (evita GetComponent no Update) ---
     private ControleUnidade _controleUnidade;
     private SistemaDeDanos _sistemaDanos;
+    private LancadorMisselCaca _lancadorCaca;
+    private float _tempoUltimoDanoRecebido = -100f;
 
     void Start()
     {
@@ -88,6 +91,12 @@ public class ControleAviao : MonoBehaviour
         // Cache de componentes usados no Update
         _controleUnidade = GetComponent<ControleUnidade>();
         _sistemaDanos = GetComponent<SistemaDeDanos>();
+        _lancadorCaca = GetComponent<LancadorMisselCaca>();
+
+        if (_sistemaDanos != null)
+        {
+            _sistemaDanos.OnDano += RegistrarDanoRecebido;
+        }
 
         if (rodas == null) rodas = new List<Transform>();
         if (rodas.Count == 0)
@@ -146,6 +155,20 @@ public class ControleAviao : MonoBehaviour
         _alturaEstacionamentoCache = ObterAlturaEstacionamento();
     }
 
+    private void OnDestroy()
+    {
+        if (_sistemaDanos != null)
+        {
+            _sistemaDanos.OnDano -= RegistrarDanoRecebido;
+        }
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
+    private void RegistrarDanoRecebido()
+    {
+        _tempoUltimoDanoRecebido = Time.time;
+    }
+
     public float ObterAlturaEstacionamento()
     {
         if (_alturaEstacionamentoCache > 0f) return _alturaEstacionamentoCache;
@@ -167,7 +190,7 @@ public class ControleAviao : MonoBehaviour
 
         float offset = transform.position.y - bounds.min.y + 0.05f;
         if (float.IsNaN(offset) || float.IsInfinity(offset)) return alturaBase;
-        return Mathf.Max(alturaBase, offset);
+        return Mathf.Clamp(offset, alturaBase, 5f); // Limita a 5m para evitar esferas de radar gigantes
     }
 
     private static string NormalizarChavePrefab(string nome)
@@ -216,10 +239,7 @@ public class ControleAviao : MonoBehaviour
         RegistroEntidadesJogo.Unregister(this);
     }
 
-    void OnDestroy()
-    {
-        RegistroEntidadesJogo.Unregister(this);
-    }
+
 
     void Update()
     {
@@ -301,11 +321,53 @@ public class ControleAviao : MonoBehaviour
     {
         float dt = Time.deltaTime;
         Vector3 retaAteAlvo = alvoGPSVoo - transform.position;
-        Quaternion olharMundoDesejado = Quaternion.LookRotation(retaAteAlvo);
-        float anguloPressaoLateralY = Vector3.SignedAngle(transform.forward, retaAteAlvo, Vector3.up);
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, olharMundoDesejado, taxaDeGiroLeme * dt);
+        float anguloPressaoLateralY = 0f;
         
-        float velFinal = (velocidadeMaximaVoo * multiplicadorVelocidadeTurbo) * multDano;
+        if (retaAteAlvo.sqrMagnitude > 0.1f)
+        {
+            Vector3 upRef = Mathf.Abs(Vector3.Dot(retaAteAlvo.normalized, Vector3.up)) > 0.99f ? transform.up : Vector3.up;
+            Quaternion olharMundoDesejado = Quaternion.LookRotation(retaAteAlvo, upRef);
+            anguloPressaoLateralY = Vector3.SignedAngle(transform.forward, retaAteAlvo, Vector3.up);
+            
+            // Slerp suaviza o voo do avião e evita viradas bruscas instantâneas
+            transform.rotation = Quaternion.Slerp(transform.rotation, olharMundoDesejado, (taxaDeGiroLeme / 15f) * dt);
+        }
+        
+        float multiplicadorPatrulha = 1f;
+        if (estadoAtual == EstadoAviao.EmMissao && !alvoPrioritarioIA && !emAtaqueMergulho)
+        {
+            KamikazeDrone kdTemp = GetComponent<KamikazeDrone>();
+            if (kdTemp == null || !kdTemp.kamikazeAtivo)
+            {
+                bool sobAtaqueOuEngajado = (_lancadorCaca != null && _lancadorCaca.TemInimigosDetectados) 
+                                           || (Time.time - _tempoUltimoDanoRecebido < 8f);
+                if (sobAtaqueOuEngajado)
+                {
+                    multiplicadorPatrulha = 1.0f; // Acelera ao máximo no combate/ataque
+                }
+                else
+                {
+                    multiplicadorPatrulha = 0.65f; // Reduz a velocidade na patrulha normal (65%)
+                }
+            }
+        }
+        else if (estadoAtual == EstadoAviao.Pousando)
+        {
+            if (aeroportoOrigem != null && aeroportoOrigem.waypointsDecida != null && aeroportoOrigem.waypointsDecida.Count > 1)
+            {
+                float distToTouchdown = Vector3.Distance(transform.position, aeroportoOrigem.waypointsDecida[1].position);
+                if (distToTouchdown > 120f)
+                    multiplicadorPatrulha = 1.0f; // Velocidade máxima até chegar perto
+                else
+                    multiplicadorPatrulha = Mathf.Lerp(multiplicadorPatrulha, 0.3f, Time.deltaTime * 2f); // Desacelera progressivamente para pousar lento (100 a chegar)
+            }
+            else
+            {
+                multiplicadorPatrulha = 0.4f; // Reduz velocidade na aproximação padrão
+            }
+        }
+
+        float velFinal = (velocidadeMaximaVoo * multiplicadorVelocidadeTurbo * multiplicadorPatrulha) * multDano;
         Vector3 novaPos = transform.position + transform.forward * (velFinal * dt);
 
         bool isKamikazeDiving = false;
@@ -345,6 +407,7 @@ public class ControleAviao : MonoBehaviour
         float raioSqr = raioDeAceitacao * raioDeAceitacao;
 
         bool alvoMovelFornecido = (alvoMovel != null);
+        Transform pai = transform.parent;
 
         while (true)
         {
@@ -356,67 +419,118 @@ public class ControleAviao : MonoBehaviour
                 yield break;
             }
 
-            Vector3 meuPos = transform.position;
-            Vector3 diff;
-
-            if (alvoMovel != null)
+            if (pai != null)
             {
-                diff = new Vector3(alvoMovel.position.x - meuPos.x, 0, alvoMovel.position.z - meuPos.z);
+                // Movimentação em espaço local do navio
+                Vector3 posLocal = transform.localPosition;
+                Vector3 destLocal = (alvoMovel != null) ? pai.InverseTransformPoint(alvoMovel.position) : pai.InverseTransformPoint(destinoFixo);
+                
+                Vector3 diffLocal = new Vector3(destLocal.x - posLocal.x, 0, destLocal.z - posLocal.z);
+                if (diffLocal.sqrMagnitude <= raioSqr) break;
+
+                Vector3 vetorAteDestinoLocal = destLocal - posLocal;
+                Vector3 dirForwardLocal = transform.localRotation * Vector3.forward;
+                if (vetorAteDestinoLocal.sqrMagnitude < 16f && Vector3.Dot(dirForwardLocal, vetorAteDestinoLocal.normalized) < 0f) break;
+
+                Vector3 direcaoHorizonLocal = new Vector3(vetorAteDestinoLocal.x, 0, vetorAteDestinoLocal.z).normalized;
+                if (direcaoHorizonLocal != Vector3.zero && vetorAteDestinoLocal.sqrMagnitude > 0.05f)
+                {
+                    Quaternion rotAlvoLocal = Quaternion.LookRotation(direcaoHorizonLocal);
+                    transform.localRotation = Quaternion.RotateTowards(transform.localRotation, rotAlvoLocal, (ignoreRotationSlowdown ? 90f : 50f) * Time.deltaTime);
+
+                    float fatorVelocidade = 1f;
+                    if (!ignoreRotationSlowdown)
+                    {
+                        fatorVelocidade = Mathf.Clamp01(1.2f - (Quaternion.Angle(transform.localRotation, rotAlvoLocal) / 45f));
+                        if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
+                    }
+
+                    Vector3 proximaPosLocal = posLocal + direcaoHorizonLocal * (vel * fatorVelocidade) * Time.deltaTime;
+                    proximaPosLocal.y = destLocal.y; // Mantém a altura local alinhada com o convés
+                    transform.localPosition = proximaPosLocal;
+                }
             }
             else
             {
-                diff = new Vector3(destinoFixo.x - meuPos.x, 0, destinoFixo.z - meuPos.z);
-            }
+                // Movimentação global padrão
+                Vector3 meuPos = transform.position;
+                Vector3 diff;
 
-            if (diff.sqrMagnitude <= raioSqr) break; 
-
-            Vector3 vetorAteDestino = (alvoMovel != null) ? (alvoMovel.position - meuPos) : (destinoFixo - meuPos);
-            if (vetorAteDestino.sqrMagnitude < 16f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f) break; 
-
-            Vector3 direcaoHorizon = new Vector3(vetorAteDestino.x, 0, vetorAteDestino.z).normalized;
-            if (direcaoHorizon != Vector3.zero)
-            {
-                Quaternion rotAlvo = Quaternion.LookRotation(direcaoHorizon);
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, (ignoreRotationSlowdown ? 90f : 50f) * Time.deltaTime);
-                
-                float fatorVelocidade = 1f;
-                if (!ignoreRotationSlowdown)
+                if (alvoMovel != null)
                 {
-                    fatorVelocidade = Mathf.Clamp01(1.2f - (Quaternion.Angle(transform.rotation, rotAlvo) / 45f));
-                    if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
+                    diff = new Vector3(alvoMovel.position.x - meuPos.x, 0, alvoMovel.position.z - meuPos.z);
                 }
-                
-                transform.position += vetorAteDestino.normalized * (vel * fatorVelocidade) * Time.deltaTime;
+                else
+                {
+                    diff = new Vector3(destinoFixo.x - meuPos.x, 0, destinoFixo.z - meuPos.z);
+                }
+
+                if (diff.sqrMagnitude <= raioSqr) break; 
+
+                Vector3 vetorAteDestino = (alvoMovel != null) ? (alvoMovel.position - meuPos) : (destinoFixo - meuPos);
+                if (vetorAteDestino.sqrMagnitude < 16f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f) break; 
+
+                Vector3 direcaoHorizon = new Vector3(vetorAteDestino.x, 0, vetorAteDestino.z).normalized;
+                if (direcaoHorizon != Vector3.zero && vetorAteDestino.sqrMagnitude > 0.05f)
+                {
+                    Quaternion rotAlvo = Quaternion.LookRotation(direcaoHorizon);
+                    transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, (ignoreRotationSlowdown ? 90f : 50f) * Time.deltaTime);
+                    
+                    float fatorVelocidade = 1f;
+                    if (!ignoreRotationSlowdown)
+                    {
+                        fatorVelocidade = Mathf.Clamp01(1.2f - (Quaternion.Angle(transform.rotation, rotAlvo) / 45f));
+                        if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
+                    }
+                    
+                    transform.position += vetorAteDestino.normalized * (vel * fatorVelocidade) * Time.deltaTime;
+                }
             }
+
             if (modeloMecanicoVisual != null) modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.identity, Time.deltaTime * 5f);
             yield return null;
         }
 
-        Vector3 destinoFinal = (alvoMovel != null) ? alvoMovel.position : destinoFixo;
-        if (pontoFinal && (transform.position - destinoFinal).sqrMagnitude < 25f) 
-            transform.position = destinoFinal;
+        if (pontoFinal)
+        {
+            if (pai != null)
+            {
+                Vector3 destLocal = (alvoMovel != null) ? pai.InverseTransformPoint(alvoMovel.position) : pai.InverseTransformPoint(destinoFixo);
+                if ((transform.localPosition - destLocal).sqrMagnitude < 25f)
+                    transform.localPosition = destLocal;
+            }
+            else
+            {
+                Vector3 destinoFinal = (alvoMovel != null) ? alvoMovel.position : destinoFixo;
+                if ((transform.position - destinoFinal).sqrMagnitude < 25f) 
+                    transform.position = destinoFinal;
+            }
+        }
     }
 
-    public IEnumerator SeguirCaminhoDeWaypoints(List<Transform> caminho, float velInicial, float velFinal, bool aceleracaoGradativa = false)
+    public IEnumerator SeguirCaminhoDeWaypoints(List<Transform> caminho, float velInicial, float velFinal, bool aceleracaoGradativa = false, bool permitirPular = true)
     {
         int totalWaypoints = caminho.Count;
 
-        // Otimização: Não volta pro waypoint [0] se o avião já estiver na frente (ex: decolando do meio da pista)
+        // Otimização: Não volta pro waypoint [0] se o avião já estiver na frente (apenas se permitirPular for true)
         int indiceInicial = 0;
-        float menorDist = float.MaxValue;
-        for (int i = 0; i < totalWaypoints; i++)
+        if (permitirPular)
         {
-            if (caminho[i] != null)
+            float menorDist = float.MaxValue;
+            for (int i = 0; i < totalWaypoints; i++)
             {
-                float d = Vector3.Distance(transform.position, caminho[i].position);
-                if (d < menorDist)
+                if (caminho[i] != null)
                 {
-                    menorDist = d;
-                    indiceInicial = i;
+                    float d = Vector3.Distance(transform.position, caminho[i].position);
+                    if (d < menorDist)
+                    {
+                        menorDist = d;
+                        indiceInicial = i;
+                    }
                 }
             }
+            if (indiceInicial < totalWaypoints - 1 && menorDist < 10f) indiceInicial++;
         }
-        if (indiceInicial < totalWaypoints - 1 && menorDist < 10f) indiceInicial++;
 
         // Aceleração gradativa começa apenas no final do percurso (Pista de decolagem)
         int indiceCorridaPista = indiceInicial;
@@ -438,6 +552,21 @@ public class ControleAviao : MonoBehaviour
         {
             if (caminho[i] == null) continue;
             
+            // --- CONTROLE DE FILA E DECOLAGEM DO PORTA-AVIÕES ---
+            bool ehPrepara = string.Equals(caminho[i].name.Trim(), "prepara", StringComparison.OrdinalIgnoreCase);
+            GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
+            
+            if (ehPrepara && carrier != null)
+            {
+                // Aguarda até o ponto prepara ser liberado pelo avião anterior
+                while (carrier.IsPreparaBusy(this))
+                {
+                    yield return new WaitForSeconds(0.5f);
+                }
+                // Reserva o ponto prepara
+                carrier.ReservePrepara(this);
+            }
+            
             float velAtual = velInicial;
             if (aceleracaoGradativa && i >= indiceCorridaPista)
             {
@@ -446,6 +575,26 @@ public class ControleAviao : MonoBehaviour
             
             // Segurança: O waypoint pode ser destruído durante o percurso
             yield return StartCoroutine(MoverInterpolado(Vector3.zero, velAtual, i == totalWaypoints - 1, caminho[i], aceleracaoGradativa && i >= indiceCorridaPista));
+            
+            // Chegada no ponto prepara: sobe a rampa e aguarda 7 segundos
+            if (caminho[i] != null && string.Equals(caminho[i].name.Trim(), "prepara", StringComparison.OrdinalIgnoreCase))
+            {
+                if (carrier != null)
+                {
+                    carrier.SubirRampa();
+                    yield return new WaitForSeconds(7f);
+                }
+            }
+
+            // Ao sair do prepara para o próximo ponto (ex: prepara 1): desce a rampa e libera a fila
+            if (caminho[i] != null && string.Equals(caminho[i].name.Trim(), "prepara", StringComparison.OrdinalIgnoreCase))
+            {
+                if (carrier != null)
+                {
+                    carrier.ReleasePrepara(this);
+                    carrier.DescerRampa();
+                }
+            }
             
             if (caminho[i] != null && caminho[i].name.IndexOf("alinhamento", StringComparison.OrdinalIgnoreCase) >= 0) 
             {
@@ -459,10 +608,19 @@ public class ControleAviao : MonoBehaviour
                     dir.y = 0;
                     if (dir.sqrMagnitude > 0.05f)
                     {
-                        Quaternion rotAlvo = Quaternion.LookRotation(dir.normalized);
-                        while (Quaternion.Angle(transform.rotation, rotAlvo) > 1.5f)
+                        float rotationTimeout = 3f;
+                        float rotTime = 0f;
+                        while (rotTime < rotationTimeout)
                         {
-                            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, 90f * Time.deltaTime);
+                            Vector3 currentDir = caminho[i + 1].position - transform.position;
+                            currentDir.y = 0;
+                            if (currentDir.sqrMagnitude < 0.05f) break;
+                            
+                            Quaternion rotAlvo = Quaternion.LookRotation(currentDir.normalized);
+                            if (Quaternion.Angle(transform.rotation, rotAlvo) <= 1.5f) break;
+
+                            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, 120f * Time.deltaTime);
+                            rotTime += Time.deltaTime;
                             yield return null;
                         }
                     }
@@ -602,6 +760,12 @@ public class ControleAviao : MonoBehaviour
         }
 
         ultimoObjetivoMissao = rotaPatrulhaSalva[rotaPatrulhaSalva.Count - 1];
+
+        // Atualiza a rota imediatamente se já estiver no ar
+        if (estadoAtual == EstadoAviao.EmMissao)
+        {
+            AtualizarDestinoPatrulha(rotaPatrulhaSalva[0]);
+        }
     }
 
     public void AtualizarDestinoPatrulha(Vector3 destino)
@@ -672,7 +836,7 @@ public class ControleAviao : MonoBehaviour
     private void PrepararRetornoSeguro(GerenciadorAeroporto baseSegura, string motivo)
     {
         ultimoMotivoRetorno = motivo;
-        retomarMissaoAposAbastecer = EhCacaOperacional() && motivo == "combustivel";
+        retomarMissaoAposAbastecer = motivo == "combustivel";
 
         if (baseSegura != null && baseSegura != aeroportoOrigem)
         {
@@ -686,11 +850,6 @@ public class ControleAviao : MonoBehaviour
     {
         GerenciadorAeroporto melhorBase = aeroportoOrigem;
         float melhorDistancia = DistanciaAteBase(melhorBase);
-
-        if (!EhCacaOperacional())
-        {
-            return melhorBase;
-        }
 
         int meuTime = ObterTeamId();
         GerenciadorPortaAvioes[] carriers = FindObjectsByType<GerenciadorPortaAvioes>(FindObjectsSortMode.None);
@@ -824,13 +983,55 @@ public class ControleAviao : MonoBehaviour
         ordemParaRetorno = false;
         estadoAtual = EstadoAviao.Decolando;
         vagaRetorno = null; 
-        yield return StartCoroutine(SeguirCaminhoDeWaypoints(aeroportoOrigem.waypointsDecolagem, velocidadeSolo, velocidadeMaximaVoo, true));
 
+        // === [DECOLAGEM] ===
+        if (aeroportoOrigem.waypointsDecolagem != null && aeroportoOrigem.waypointsDecolagem.Count > 0)
+        {
+            List<Transform> caminhoDecolagem = new List<Transform>();
+            
+            // Táxi de saída: se houver pontos de preparação, passa por eles antes da pista
+            if (aeroportoOrigem.wpPreparacao != null) caminhoDecolagem.Add(aeroportoOrigem.wpPreparacao);
+            if (aeroportoOrigem.wpPronto != null) caminhoDecolagem.Add(aeroportoOrigem.wpPronto);
+
+            for (int i = 0; i < aeroportoOrigem.waypointsDecolagem.Count; i++)
+            {
+                if (aeroportoOrigem.waypointsDecolagem[i] != null)
+                    caminhoDecolagem.Add(aeroportoOrigem.waypointsDecolagem[i]);
+            }
+            if (caminhoDecolagem.Count > 0)
+            {
+                // Giro realista: aponta suavemente para o início da pista antes de começar a andar
+                Vector3 dirParaPista = caminhoDecolagem[0].position - transform.position;
+                dirParaPista.y = 0f;
+                if (dirParaPista.sqrMagnitude > 0.1f)
+                {
+                    Quaternion rotAlvo = Quaternion.LookRotation(dirParaPista.normalized);
+                    while (Quaternion.Angle(transform.rotation, rotAlvo) > 5f)
+                    {
+                        Vector3 dir2 = caminhoDecolagem[0].position - transform.position;
+                        dir2.y = 0f;
+                        if (dir2.sqrMagnitude > 0.01f)
+                            rotAlvo = Quaternion.LookRotation(dir2.normalized);
+                        transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, 150f * Time.deltaTime);
+                        yield return null;
+                    }
+                }
+
+                // Táxi e decolagem usando waypoints (a velocidade baseia-se na de solo primeiro)
+                yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoDecolagem, velocidadeMaximaVoo, velocidadeSolo, false, false));
+            }
+        }
+        else
+        {
+            yield return new WaitForSeconds(0.5f); // Pequena pausa fallback se não houver pista
+        }
+
+        transform.SetParent(null, true);
         estaEmModoVooFisico = true;
         estadoAtual = EstadoAviao.EmMissao;
         if (alvoGPSVoo.y < 60f) alvoGPSVoo.y = 60f;
         centroDaPatrulha = alvoGPSVoo;
-        StartCoroutine(RecolherRodas(3f));
+        StartCoroutine(RecolherRodas(1f));
 
         // Voa até o centro da patrulha
         float margemChegadaSqr = Mathf.Max(20f, margemChegadaMissao) * Mathf.Max(20f, margemChegadaMissao);
@@ -852,6 +1053,13 @@ public class ControleAviao : MonoBehaviour
         // Loop de patrulha
         KamikazeDrone droneScript = GetComponent<KamikazeDrone>();
         
+        Vector3[] pontosRetangulo = new Vector3[4];
+        Vector3 ultimoCentroPatrulha = Vector3.zero;
+        float ultimoRaio = -1f;
+        
+        float tempoUltimaTrocaCentro = 0f;
+        Vector3 offsetPatrulha = Vector3.zero;
+
         while (!ordemParaRetorno)
         {
             if (droneScript != null)
@@ -866,18 +1074,46 @@ public class ControleAviao : MonoBehaviour
             }
             else if (!alvoPrioritarioIA)
             {
-                anguloOrbitaAtual += Time.deltaTime * velocidadeOrbitaMissao * sentidoOrbita;
-                Vector3 offsetOrbita = new Vector3(
-                    Mathf.Cos(anguloOrbitaAtual),
-                    0f,
-                    Mathf.Sin(anguloOrbitaAtual)) * Mathf.Max(25f, raioOrbitaMissao);
+                if (Time.time - tempoUltimaTrocaCentro > 45f)
+                {
+                    tempoUltimaTrocaCentro = Time.time;
+                    offsetPatrulha = new Vector3(UnityEngine.Random.Range(-100f, 100f), 0, UnityEngine.Random.Range(-100f, 100f));
+                }
 
-                alvoGPSVoo = centroDaPatrulha + offsetOrbita;
-                alvoGPSVoo.y = Mathf.Max(centroDaPatrulha.y, 60f);
+                Vector3 centroAtualizado = centroDaPatrulha + offsetPatrulha;
+                float raio = Mathf.Max(280f, raioOrbitaMissao * 7f);
+                float baseY = Mathf.Max(centroAtualizado.y, 100f);
 
-                Vector3 diffPatrulha = new Vector3(transform.position.x - centroDaPatrulha.x, 0, transform.position.z - centroDaPatrulha.z);
-                float raioSeguranca = Mathf.Max(raioOrbitaMissao * 2.5f, 160f);
-                if (diffPatrulha.sqrMagnitude > raioSeguranca * raioSeguranca) alvoGPSVoo = centroDaPatrulha;
+                if (centroAtualizado != ultimoCentroPatrulha || raio != ultimoRaio)
+                {
+                    ultimoCentroPatrulha = centroAtualizado;
+                    ultimoRaio = raio;
+
+                    // Retângulo alongado: 2x maior na frente/trás do que pros lados
+                    pontosRetangulo[0] = centroAtualizado + new Vector3(raio * 2f, 30f, raio);
+                    pontosRetangulo[1] = centroAtualizado + new Vector3(-raio * 2f, -10f, raio);
+                    pontosRetangulo[2] = centroAtualizado + new Vector3(-raio * 2f, 30f, -raio);
+                    pontosRetangulo[3] = centroAtualizado + new Vector3(raio * 2f, -10f, -raio);
+
+                    for (int i = 0; i < 4; i++) {
+                        pontosRetangulo[i].y = Mathf.Max(baseY + ((i % 2 == 0) ? 30f : -15f), 100f);
+                    }
+                }
+
+                Vector3 alvoDest = pontosRetangulo[indiceRetanguloPatrulha];
+                // Suaviza muito mais a transição de alvo, gerando curva realista ampla
+                alvoGPSVoo = Vector3.Lerp(alvoGPSVoo, alvoDest, Time.deltaTime * 0.2f);
+
+                // Checa distância em relação ao canto real (alvoDest) em vez do alvo interpolado (alvoGPSVoo)
+                float distSqr = (new Vector3(transform.position.x, 0, transform.position.z) - new Vector3(alvoDest.x, 0, alvoDest.z)).sqrMagnitude;
+                if (distSqr < 40000f) // 200m de distância para trocar de ponto, fazendo a curva bem antes de chegar no vértice
+                {
+                    indiceRetanguloPatrulha = (indiceRetanguloPatrulha + 1) % 4;
+                }
+
+                Vector3 diffPatrulha = new Vector3(transform.position.x - centroAtualizado.x, 0, transform.position.z - centroAtualizado.z);
+                float raioSeguranca = Mathf.Max(raio * 4f, 500f);
+                if (diffPatrulha.sqrMagnitude > raioSeguranca * raioSeguranca) alvoGPSVoo = centroAtualizado;
             }
             yield return null;
         }
@@ -887,86 +1123,171 @@ public class ControleAviao : MonoBehaviour
         retornoAutomaticoAposChegadaCentro = false;
         estadoAtual = EstadoAviao.Pousando;
 
-        if (aeroportoOrigem == null || aeroportoOrigem.waypointsDecida == null || aeroportoOrigem.waypointsDecida.Count == 0)
+        if (aeroportoOrigem == null || aeroportoOrigem.waypointsDecida == null || aeroportoOrigem.waypointsDecida.Count < 2)
         {
-            // O Aeroporto sumiu ou os dados do aeroporto foram destruídos enquanto estávamos no céu!
-            Debug.LogWarning($"[{gameObject.name}] Meu Aeroporto original foi DESTRUÍDO. Realizando Pouso Forçado/Ejeção.");
             var dmg = GetComponent<SistemaDeDanos>();
             if (dmg) dmg.ReceberDano(9999f); else Destroy(gameObject);
             yield break;
         }
 
-        Vector3 pontoFreiada = aeroportoOrigem.waypointsDecida[0].position;
-        alvoGPSVoo = pontoFreiada;
-        if (alvoGPSVoo.y < 40f) alvoGPSVoo.y = 40f; 
-        
+        vagaRetorno = aeroportoOrigem.ObterPrimeiraVagaLivre();
+        if (vagaRetorno != null && !aeroportoOrigem.avioesNoPatio.Contains(this))
+            aeroportoOrigem.avioesNoPatio.Add(this);
+
+        // 2. Fase de aproximação no ar: o índice [0] é o ponto sintético 600m atrás do navio
+        Vector3 pontoAproximacao = aeroportoOrigem.waypointsDecida[0].position;
+        Vector3 pontoTouchdown   = aeroportoOrigem.waypointsDecida[1].position;
+
+        alvoGPSVoo = pontoAproximacao;
+        if (alvoGPSVoo.y < 50f) alvoGPSVoo.y = 50f;
+
+        bool indoParaTouchdown = false;
+        float velOriginalVoo = velocidadeMaximaVoo;
+
         while (true)
         {
-            Vector3 diff2D = new Vector3(transform.position.x - alvoGPSVoo.x, 0, transform.position.z - alvoGPSVoo.z);
-            float distSqr = diff2D.sqrMagnitude;
-            
-            // Aumentado o raio de aceitação para 120m para garantir transição suave 
-            // no ponto de aproximação distante do Porta-Aviões
-            if (distSqr <= 14400f) break; // 120² = 14400
-            
-            if (distSqr < 250000f) AbaixarRodas(); // 500² = 250000
+            Vector3 alvoReal = indoParaTouchdown ? pontoTouchdown : pontoAproximacao;
+            alvoGPSVoo = Vector3.Lerp(alvoGPSVoo, alvoReal, Time.deltaTime * 1.5f);
+
+            Vector3 diffAprox = new Vector3(transform.position.x - pontoAproximacao.x, 0, transform.position.z - pontoAproximacao.z);
+            Vector3 diffTD    = new Vector3(transform.position.x - pontoTouchdown.x,   0, transform.position.z - pontoTouchdown.z);
+
+            if (!indoParaTouchdown)
+            {
+                if (diffAprox.sqrMagnitude <= 90000f) indoParaTouchdown = true; // 300 m
+            }
+            else
+            {
+                // Reduz a velocidade quando estiver a 100 metros (10000 = 100^2)
+                if (diffTD.sqrMagnitude <= 10000f)
+                {
+                    velocidadeMaximaVoo = velocidadeSolo * 1.2f;
+                }
+
+                if (diffTD.sqrMagnitude <= 900f) break; // 30 m do 1º waypoint real
+            }
+
+            if (diffTD.sqrMagnitude < 250000f) AbaixarRodas();
             yield return null;
         }
 
+        velocidadeMaximaVoo = velOriginalVoo; // Restaura a velocidade original para não quebrar o próximo voo
+
+        // 3. Glideslope: segue os filhos do "Pouso" (índice 1 em diante, inclui "Parando")
         AbaixarRodas();
         estaEmModoVooFisico = false;
-        yield return StartCoroutine(SeguirCaminhoDeWaypoints(aeroportoOrigem.waypointsDecida, velocidadeMaximaVoo * 0.5f, velocidadeSolo, true));
 
-        if (aeroportoOrigem == null) 
+        List<Transform> caminhoPouso = new List<Transform>();
+        for (int i = 1; i < aeroportoOrigem.waypointsDecida.Count; i++)
         {
-            if (_sistemaDanos) _sistemaDanos.ReceberDano(9999f); else Destroy(gameObject);
-            yield break;
+            if (aeroportoOrigem.waypointsDecida[i] != null)
+                caminhoPouso.Add(aeroportoOrigem.waypointsDecida[i]);
+        }
+        // Segue glideslope na velocidade de solo (lenta), permitindo pular waypoints já passados
+        yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoPouso, velocidadeSolo, velocidadeSolo, false, true));
+
+        // 4. Parentar ao convés do navio
+        Transform paiConves = (caminhoPouso.Count > 0 && caminhoPouso[caminhoPouso.Count - 1] != null)
+            ? (caminhoPouso[caminhoPouso.Count - 1].parent ?? aeroportoOrigem.transform)
+            : aeroportoOrigem.transform;
+        transform.SetParent(paiConves, true);
+
+        // 5. Fase de Táxi ou Bypass pro Porta-Aviões
+        estadoAtual = EstadoAviao.RetornandoPraVaga;
+        GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
+
+        if (carrier != null)
+        {
+            // Pula a pista de táxi ("Trabalho") e vai direto pro hangar inferior
+            if (carrier.nivelHangar != null)
+            {
+                transform.position = carrier.nivelHangar.position;
+                transform.rotation = carrier.nivelHangar.rotation;
+                yield return new WaitForSeconds(2.0f);
+            }
+        }
+        else if (aeroportoOrigem != null)
+        {
+            // Aeroportos padrões usam o táxi normal
+            if (aeroportoOrigem.waypointsTaxi != null && aeroportoOrigem.waypointsTaxi.Count > 0)
+            {
+                yield return StartCoroutine(SeguirCaminhoDeWaypoints(aeroportoOrigem.waypointsTaxi, velocidadeSolo, velocidadeSolo, false, true));
+                if (_sistemaDanos != null) _sistemaDanos.Reparar(_sistemaDanos.vidaMaxima);
+            }
+            else
+            {
+                if (aeroportoOrigem.wpAndadar != null)
+                    yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, aeroportoOrigem.wpAndadar));
+                
+                if (aeroportoOrigem.wpAnalise != null)
+                {
+                    yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, aeroportoOrigem.wpAnalise));
+                    if (_sistemaDanos != null) _sistemaDanos.Reparar(_sistemaDanos.vidaMaxima);
+                }
+            }
         }
 
-        estadoAtual = EstadoAviao.RetornandoPraVaga;
-        if (aeroportoOrigem != null && aeroportoOrigem.wpAndadar != null) yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, aeroportoOrigem.wpAndadar));
-        if (aeroportoOrigem != null && aeroportoOrigem.wpAnalise != null)
+        // 6. Busca da Vaga Final
+        if (vagaRetorno != null)
         {
-            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, aeroportoOrigem.wpAnalise));
-            
-            // REPARO AO CHEGAR: Restaura 100% da vida no ponto de análise
-            if (_sistemaDanos != null) _sistemaDanos.Reparar(_sistemaDanos.vidaMaxima);
+            if (carrier != null)
+            {
+                // No porta-aviões, aparece direto na vaga
+                transform.position = vagaRetorno.position;
+                transform.rotation = vagaRetorno.rotation;
+            }
+            else
+            {
+                // Aeroporto padrão faz o giro realista e o táxi final
+                Vector3 dirParaVaga = vagaRetorno.position - transform.position;
+                dirParaVaga.y = 0f;
+                if (dirParaVaga.sqrMagnitude > 0.1f)
+                {
+                    Quaternion rotAlvo = Quaternion.LookRotation(dirParaVaga.normalized);
+                    while (Quaternion.Angle(transform.rotation, rotAlvo) > 5f)
+                    {
+                        Vector3 dir2 = vagaRetorno.position - transform.position;
+                        dir2.y = 0f;
+                        if (dir2.sqrMagnitude > 0.01f)
+                            rotAlvo = Quaternion.LookRotation(dir2.normalized);
+                        transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, 150f * Time.deltaTime);
+                        yield return null;
+                    }
+                }
+
+                // Táxi final lento para a vaga exata
+                yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, vagaRetorno));
+            }
+
+            // 6. Estaciona: parentar à própria vaga e alinhar
+            transform.SetParent(vagaRetorno, true);
+            float alturaOffset = ObterAlturaEstacionamento();
+            transform.localPosition = new Vector3(0f, alturaOffset, 0f);
+
+            // Giro final suave para ângulo zero local (alinhar com a vaga)
+            while (Quaternion.Angle(transform.localRotation, Quaternion.identity) > 1f)
+            {
+                transform.localRotation = Quaternion.RotateTowards(
+                    transform.localRotation, Quaternion.identity, 30f * Time.deltaTime);
+                yield return null;
+            }
+            transform.localRotation = Quaternion.identity;
+            transform.localPosition = new Vector3(0f, alturaOffset, 0f);
+
+            // Garante que o voo físico NÃO seja reativado após o estacionamento
+            estaEmModoVooFisico = false;
+            estadoAtual = EstadoAviao.ProntoNoPatio;
             ProcessarServicoDeBaseAposPouso();
             
-            estadoAtual = EstadoAviao.ProntoNoPatio; 
-            yield return new WaitForSeconds(3f);
-            if (estadoAtual != EstadoAviao.ProntoNoPatio) yield break; 
-        }
-
-        if (aeroportoOrigem == null) yield break;
-
-        Transform vagaSegura = aeroportoOrigem.ObterPrimeiraVagaLivre();
-        if (vagaSegura != null)
-        {
-             vagaRetorno = vagaSegura;
-             // Registro imediato para evitar que outros aviões pousem na mesma vaga
-             if (!aeroportoOrigem.avioesNoPatio.Contains(this)) aeroportoOrigem.avioesNoPatio.Add(this);
-              yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, vagaRetorno));
-             
-             // Segurança: A vaga ou o aeroporto podem ter sido destruídos durante o taxiamento (yield acima)
-             if (vagaRetorno == null) yield break;
-
-             estadoAtual = EstadoAviao.ProntoNoPatio;
-             // Offset de altura para o avião ficar em cima do convés, não dentro da mesh
-             float alturaOffset = ObterAlturaEstacionamento();
-             transform.position = vagaRetorno.position + (vagaRetorno.up * alturaOffset);
-             transform.rotation = vagaRetorno.rotation; 
-             ProcessarServicoDeBaseAposPouso();
-             ProcessarRetomadaAposReabastecimento();
+            // Retoma patrulha automaticamente se o avião estava em missão e precisou abastecer
+            ProcessarRetomadaAposReabastecimento();
         }
         else
         {
-             if (aeroportoOrigem.wpPronto != null)
-             {
-                 yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, aeroportoOrigem.wpPronto));
-             }
-             ProcessarServicoDeBaseAposPouso();
-             if (aeroportoOrigem != null) aeroportoOrigem.GuardarNoHangarAutomatico(this);
+            // Pátio lotado → hangar
+            ProcessarServicoDeBaseAposPouso();
+            if (aeroportoOrigem != null) aeroportoOrigem.GuardarNoHangarAutomatico(this);
+            ProcessarRetomadaAposReabastecimento();
         }
     }
 

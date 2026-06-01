@@ -1,0 +1,79 @@
+=========================================================
+⚓ COMANDO DE OPERAÇÕES NAVAIS (PAINEL DO PORTA-AVIÕES)
+=========================================================
+Este painel é o centro de controle para todas as operações aéreas vinculadas ao porta-aviões. Ele permite gerenciar o radar, o convés, o hangar interno e dar ordens específicas para aviões e helicópteros.
+
+Abaixo está a descrição detalhada de cada seção e botão do painel:
+
+--- CABEÇALHO ---
+- Status do Navio: Exibe o nome da nação ou identificação do navio.
+- Fechar: Fecha o menu do porta-aviões.
+- "mostrar completa (pode pesar)": Uma caixa de seleção (toggle). Por padrão, o menu resume as listas de aviões (mostrando apenas os 10 primeiros) para evitar queda de FPS. Marcar essa opção força a exibição de TODAS as aeronaves.
+
+--- 📡 RADAR: AVIÕES NO CÉU (ALCANCE) ---
+Aparece apenas se houver aviões aliados voando nas proximidades do porta-aviões.
+- Lista de Aviões: Mostra o nome do avião.
+- ⬇️ Autorizar pouso: Cancela a missão atual do avião e ordena que ele pouse no porta-aviões.
+
+--- 📡 RADAR: HELICÓPTEROS ALIADOS ---
+Aparece apenas se houver helicópteros aliados voando nas proximidades.
+- Lista de Helicópteros: Mostra o nome do helicóptero.
+- 🛬 Chamar: Requisita que o helicóptero se vincule ao porta-aviões e inicie o procedimento de pouso no navio.
+
+--- 📦 CONVÉS (PRONTO PARA DECOLAR) ---
+Mostra as aeronaves que estão estacionadas no pátio superior (convés), prontas para uso.
+- 🧨 COMPRAR DRONE KAMIKAZE ($X): Desconta o valor e inicia a produção/instanciação de um drone diretamente no convés.
+- Lista de Aeronaves no Convés: Clicar no nome de uma aeronave seleciona ela para receber ordens (abre o menu de "AERONAVE" detalhado mais abaixo).
+
+--- 🚁 HELICÓPTEROS DO NAVIO ---
+Lista os helicópteros que pertencem ao porta-aviões.
+- Lista de Helicópteros: Clicar no nome seleciona o helicóptero para dar ordens.
+- Status: Mostra se o helicóptero está "em voo", no "Convés", ou "Aproximando" (em procedimento de pouso).
+- 🛬 Chamar / Aproximando: Se o helicóptero estiver voando, permite chamá-lo de volta para a sua vaga no navio.
+
+--- 🛠️ HANGAR INTERNO (RESERVAS) ---
+Mostra as aeronaves que estão guardadas dentro do navio (abaixo do convés).
+- Lista de Aeronaves no Hangar: Mostra os aviões na reserva.
+- ⬆️ Elevador: Coloca o avião no elevador e o sobe para o convés (pátio). Este botão só fica ativo se o elevador estiver livre e se houver vaga disponível no convés.
+- "Pátio lotado": Substitui o botão do elevador caso não haja vagas no convés.
+
+=========================================================
+🎯 MENU DE AERONAVE SELECIONADA (AVIÕES E DRONES)
+=========================================================
+Quando você clica em um avião no Convés ou Hangar, este menu inferior aparece com os dados e controles daquela aeronave.
+
+--- STATUS DA AERONAVE ---
+- Integridade: Mostra a vida atual / vida máxima (ex: 100/100).
+- Combustivel/Municao: Mostra o percentual de combustível e a quantidade de mísseis disponíveis.
+- 🔧 REPARAR E REABASTECER: (Aparece se o avião estiver no convés ou hangar). Restaura a vida para o máximo, enche o tanque de combustível e recarrega toda a munição.
+
+--- ORDENS DE VOO (AVIÕES COMUNS) ---
+Se a aeronave estiver no Convés (Pronta no Pátio):
+- 🛫 DECOLAR AO ATAQUE: Pede para você clicar no mapa ou em um alvo. O avião vai decolar, ir até o local e atacar os inimigos.
+- 📡 DECOLAR RECON.: Pede um clique no mapa. O avião decola e vai até o ponto para revelar a névoa de guerra daquela área.
+- 🛡️ DECOLAR PATRULHA: Pede cliques no mapa. O primeiro clique define o centro, e cliques adicionais expandem a rota multiponto. O avião ficará voando em círculos/retângulos na área defendendo-a.
+- 👥 DECOLAR SEGUIR: Pede para você clicar em uma unidade aliada (ex: outro navio ou tanque). O avião vai decolar e ficar escoltando essa unidade.
+
+--- ORDENS DE VOO (DRONES KAMIKAZE) ---
+Se a aeronave for um Drone Kamikaze:
+- Qtd. P/ Ataque (- / + / Todos): Permite selecionar quantos drones você quer lançar ao mesmo tempo.
+- 🚀 ATAQUE EM MASSA: Pede um clique no mapa/alvo. Lançará a quantidade selecionada de drones consecutivamente contra o alvo.
+- 💣 Ataque Solo: Pede um clique no mapa. Lança apenas o drone selecionado contra o alvo.
+
+--- ORDENS EM VOO ---
+Se a aeronave já estiver "Em Missão":
+- 🔙 ABORTAR E POUSAR: Cancela o ataque/patrulha e força o avião a retornar imediatamente para o porta-aviões.
+
+--- MOVIMENTAÇÃO INTERNA ---
+- ⬇️ DESCER PARA HANGAR: Se o avião estiver no convés e o elevador não estiver em uso, move o avião de volta para o hangar interno para liberar espaço no pátio superior.
+
+=========================================================
+🚁 MENU DE HELICÓPTERO SELECIONADO
+=========================================================
+Quando você clica em um helicóptero, as opções abaixo aparecem:
+
+- 👁️ Reconhecimento: Pede um clique no mapa para o helicóptero ir lá revelar a área.
+- 🛡️ Patrulha: Permite desenhar uma rota (com um ou múltiplos cliques direitos no mapa) para o helicóptero ficar voando de um ponto a outro guardando a região.
+- 💥 Ataque local: Ordena que o helicóptero vá até um ponto e ataque tudo que encontrar lá.
+- 🔙 Retornar para vaga: Cancela qualquer ordem atual e manda o helicóptero pousar no porta-aviões.
+- ❌ Cancelar Ordem Helicóptero: Se você clicou em um dos botões (como Patrulha) por engano, este botão cancela a espera do clique no mapa.

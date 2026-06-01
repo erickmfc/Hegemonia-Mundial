@@ -63,6 +63,19 @@ public class GerenteSelecao : MonoBehaviour
 
     void Update()
     {
+        // Se o Menu Comando estiver aberto, bloqueia qualquer clique ou arrasto no mundo
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto)
+        {
+            arrastando = false;
+            LiberarModoCaixaSelecao();
+            if (caixaSelecaoVisual != null)
+            {
+                caixaSelecaoVisual.gameObject.SetActive(false);
+                caixaSelecaoVisual.sizeDelta = Vector2.zero;
+            }
+            return;
+        }
+
         if (cameraPrincipal == null || !cameraPrincipal.gameObject.activeInHierarchy)
         {
             cameraPrincipal = ObterCameraForte();
@@ -88,11 +101,11 @@ public class GerenteSelecao : MonoBehaviour
                 return;
             }
 
-            // Clique esquerdo CANCELA o modo patrulha/seguir (sai do modo ao invés de ignorar o clique) PRIMEIRAMENTE
+            // Clique esquerdo no modo patrulha/seguir/ataque: NÃO cancela — deixa o DesenharLinhasOrdem processar
             DesenharLinhasOrdem desenhadorAtivo = ObterDesenhadorOrdens();
-            if (desenhadorAtivo != null && (desenhadorAtivo.modoPatrulhaAtivo || desenhadorAtivo.modoSeguirAtivo))
+            if (desenhadorAtivo != null && (desenhadorAtivo.modoPatrulhaAtivo || desenhadorAtivo.modoSeguirAtivo || desenhadorAtivo.modoAtaqueAtivo))
             {
-                desenhadorAtivo.CancelarModo();
+                // Deixa o DesenharLinhasOrdem capturar o clique (ele está registrado no Update com priority)
                 return;
             }
 
@@ -242,14 +255,14 @@ public class GerenteSelecao : MonoBehaviour
 
                     // VERIFICA SE CLICOU EM UM AEROPORTO PARA OS AVIÕES POUSAREM (Abastecimento Manual)
                     TorreDeControle torre = null;
-                    GerenciadorPortaAvioes portaAvioes = null;
+                    GerenciadorAeroporto aeroporto = null;
                     if (hit.collider != null)
                     {
                          torre = hit.collider.GetComponentInParent<TorreDeControle>();
-                         portaAvioes = hit.collider.GetComponentInParent<GerenciadorPortaAvioes>();
+                         aeroporto = hit.collider.GetComponentInParent<GerenciadorAeroporto>();
                     }
 
-                    MoverUnidadesEmGrupo(destino, torre, portaAvioes);
+                    MoverUnidadesEmGrupo(destino, torre, aeroporto);
                 }
             }
         }
@@ -312,10 +325,10 @@ public class GerenteSelecao : MonoBehaviour
                 continue;
             }
 
-            bool ehPortaAvioes = hit.collider.GetComponentInParent<GerenciadorPortaAvioes>() != null;
+            bool ehAeroporto = hit.collider.GetComponentInParent<GerenciadorAeroporto>() != null;
             bool temUnidadeOuNavAgent = hit.collider.GetComponentInParent<ControleUnidade>() != null ||
                                         hit.collider.GetComponentInParent<UnityEngine.AI.NavMeshAgent>() != null;
-            if (temUnidadeOuNavAgent && !ehPortaAvioes)
+            if (temUnidadeOuNavAgent && !ehAeroporto)
             {
                 continue;
             }
@@ -716,7 +729,7 @@ public class GerenteSelecao : MonoBehaviour
     }
 
     // Formacao considerando tamanho real (BoxCollider/NavMeshAgent)
-    void MoverUnidadesEmGrupo(Vector3 destinoCentral, TorreDeControle torreDestino = null, GerenciadorPortaAvioes portaAvioesDestino = null)
+    void MoverUnidadesEmGrupo(Vector3 destinoCentral, TorreDeControle torreDestino = null, GerenciadorAeroporto aeroportoDestino = null)
     {
         unidadesSelecionadas.RemoveAll(u => u == null);
         if (unidadesSelecionadas.Count == 0) return;
@@ -748,10 +761,10 @@ public class GerenteSelecao : MonoBehaviour
                     continue;
                 }
 
-                if (portaAvioesDestino != null)
+                if (aeroportoDestino != null)
                 {
-                    aviao.DefinirBaseAlternativaEIniciarRetorno(portaAvioesDestino);
-                    Debug.Log($"[GerenteSelecao] {unidade.name} redirecionado para pousar no porta-avioes {portaAvioesDestino.name}.");
+                    aviao.DefinirBaseAlternativaEIniciarRetorno(aeroportoDestino);
+                    Debug.Log($"[GerenteSelecao] {unidade.name} redirecionado para pousar no aeroporto/porta-avioes {aeroportoDestino.name}.");
                 }
                 else if (torreDestino != null)
                 {

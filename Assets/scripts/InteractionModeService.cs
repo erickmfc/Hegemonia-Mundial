@@ -12,7 +12,9 @@ public enum InteractionOwner
     Follow = 50,
     AirportOrder = 60,
     CarrierOrder = 70,
-    ManualFire = 80
+    ManualFire = 80,
+    MenuComando = 90,
+    Attack = 100
 }
 
 [System.Serializable]

@@ -194,6 +194,8 @@ public class C700TransporteAereo : MonoBehaviour
             return;
         }
 
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
+
         if (Input.GetKeyDown(KeyCode.O))
         {
             menuCargaAberto = !menuCargaAberto;

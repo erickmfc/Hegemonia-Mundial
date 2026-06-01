@@ -334,12 +334,14 @@ public class Helicoptero : MonoBehaviour
             }
         }
 
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
+
         if (Input.GetKeyDown(KeyCode.I)) 
         {
             if (estaVoando) { estaPousando = true; destino = transform.position; if (rotinaPousoAuto != null) StopCoroutine(rotinaPousoAuto); }
             else ChamarReforcos();
         }
-
+        
         if (Input.GetKeyDown(KeyCode.P)) OrdemPousoOuDesembarque();
         if (Input.GetKeyDown(KeyCode.O)) DispararFlaresManual(); 
     }

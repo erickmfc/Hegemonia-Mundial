@@ -13,7 +13,7 @@ public class CameraController : MonoBehaviour
     public float campoDeVisaoMin = 65f;
     public float campoDeVisaoMax = 85f;
     public float alturaMinParaFov = 2f;
-    public float alturaMaxParaFov = 2500f;
+    public float alturaMaxParaFov = 8000f;
 
     private float tempoShiftPressionado = 0f;
     private GerenteSelecao gerenteSelecaoCache;
@@ -44,6 +44,8 @@ public class CameraController : MonoBehaviour
         {
             return;
         }
+        
+        bool menusAbertos = MenuConstrucao.EstaAberto || MenuPier.EstaAberto || Fazenda.QualquerFazendaAberta || (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto);
 
         // Força a substituição do Inspector se estiver salvo um valor muito baixo
         if (multiplicadorShift < 12f) multiplicadorShift = 12f;
@@ -80,40 +82,44 @@ public class CameraController : MonoBehaviour
         right.y = 0;
         right.Normalize();
 
-        if (Input.GetKey("w")) pos += forward * velAtual * Time.deltaTime;
-        if (Input.GetKey("s")) pos -= forward * velAtual * Time.deltaTime;
-        if (Input.GetKey("d")) pos += right * velAtual * Time.deltaTime;
-        if (Input.GetKey("a")) pos -= right * velAtual * Time.deltaTime;
+        if (!menusAbertos)
+        {
+            if (Input.GetKey("w")) pos += forward * velAtual * Time.deltaTime;
+            if (Input.GetKey("s")) pos -= forward * velAtual * Time.deltaTime;
+            if (Input.GetKey("d")) pos += right * velAtual * Time.deltaTime;
+            if (Input.GetKey("a")) pos -= right * velAtual * Time.deltaTime;
+        }
 
-        // --- 3. Zoom (Rodinha do Mouse) ---
         // --- 3. Zoom (Rodinha do Mouse e Teclado) ---
         float zoomInput = 0f;
         
         // Bloqueia Zoom se estiver sobre UI ou com Menus Abertos
         bool mouseEmCimaDeUI = UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
-        bool menusAbertos = MenuConstrucao.EstaAberto || MenuPier.EstaAberto || Fazenda.QualquerFazendaAberta;
 
         if (!mouseEmCimaDeUI && !menusAbertos)
         {
             zoomInput = Input.GetAxis("Mouse ScrollWheel");
         }
 
-        // Teclas + e - (Teclado) com atalhos espelhados em Espaço/Ctrl.
-        if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Plus) || Input.GetKey(KeyCode.Equals) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+        if (!menusAbertos)
         {
-            zoomInput += 0.03f; // Desce a camera
-        }
-        if (Input.GetKey(KeyCode.KeypadMinus) || Input.GetKey(KeyCode.Minus))
-        {
-            zoomInput -= 0.08f; // Sobe a camera mais rápido (Antes 0.03)
-        }
-        if (Input.GetKey(KeyCode.Space))
-        {
-            zoomInput -= 0.15f; // Espaço sobe MUITO mais rápido agora (Antes 0.06)
+            // Teclas + e - (Teclado) com atalhos espelhados em Espaço/Ctrl.
+            if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Plus) || Input.GetKey(KeyCode.Equals) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            {
+                zoomInput += 0.03f; // Desce a camera
+            }
+            if (Input.GetKey(KeyCode.KeypadMinus) || Input.GetKey(KeyCode.Minus))
+            {
+                zoomInput -= 0.08f; // Sobe a camera mais rápido (Antes 0.03)
+            }
+            if (Input.GetKey(KeyCode.Space))
+            {
+                zoomInput -= 0.15f; // Espaço sobe MUITO mais rápido agora (Antes 0.06)
+            }
         }
 
         pos.y -= zoomInput * velocidadeZoom * Time.deltaTime;
-        pos.y = Mathf.Clamp(pos.y, 2f, 2500f); // Teto aumentado para o atalho do Espaço
+        pos.y = Mathf.Clamp(pos.y, 2f, 8000f); // Teto aumentado para o atalho do Espaço
 
         transform.position = pos;
 
@@ -130,29 +136,32 @@ public class CameraController : MonoBehaviour
 
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
-        bool podeRotacionar = true;
+        bool podeRotacionar = !menusAbertos;
         InteractionModeSnapshot snapshotInteracao = InteractionModeService.CurrentSnapshot();
         if (snapshotInteracao.Policy.bloqueiaRotacaoCamera)
         {
             podeRotacionar = false;
         }
 
-        if (podeRotacionar && (Input.GetMouseButton(1) || Input.GetMouseButton(2)))
+        if (podeRotacionar)
         {
-            // Mouse X gira a câmera no eixo Y global (olhar para lados)
-            float rotX = Input.GetAxis("Mouse X") * velocidadeRotacao * Time.deltaTime * 2f; // *2f para sensibilidade
-            transform.Rotate(Vector3.up, rotX, Space.World);
+            if (Input.GetMouseButton(1) || Input.GetMouseButton(2))
+            {
+                // Mouse X gira a câmera no eixo Y global (olhar para lados)
+                float rotX = Input.GetAxis("Mouse X") * velocidadeRotacao * Time.deltaTime * 2f; // *2f para sensibilidade
+                transform.Rotate(Vector3.up, rotX, Space.World);
 
-            // Mouse Y inclina a câmera (olhar para cima/baixo)
-            float rotY = Input.GetAxis("Mouse Y") * velocidadeRotacao * Time.deltaTime * 2f;
-            // Inverter rotY se quiser "inverter eixo Y"
-            transform.Rotate(Vector3.left, rotY, Space.Self);
-        }
-        else
-        {
-            // Teclas para rotacionar apenas no eixo Y
-            if (Input.GetKey("q")) transform.Rotate(Vector3.up, -velocidadeRotacao * Time.deltaTime, Space.World);
-            if (Input.GetKey("e")) transform.Rotate(Vector3.up, velocidadeRotacao * Time.deltaTime, Space.World);
+                // Mouse Y inclina a câmera (olhar para cima/baixo)
+                float rotY = Input.GetAxis("Mouse Y") * velocidadeRotacao * Time.deltaTime * 2f;
+                // Inverter rotY se quiser "inverter eixo Y"
+                transform.Rotate(Vector3.left, rotY, Space.Self);
+            }
+            else
+            {
+                // Teclas para rotacionar apenas no eixo Y
+                if (Input.GetKey("q")) transform.Rotate(Vector3.up, -velocidadeRotacao * Time.deltaTime, Space.World);
+                if (Input.GetKey("e")) transform.Rotate(Vector3.up, velocidadeRotacao * Time.deltaTime, Space.World);
+            }
         }
     }
 

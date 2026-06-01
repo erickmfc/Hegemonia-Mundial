@@ -12,7 +12,7 @@ namespace Hegemonia.AI.DEUSA
         public bool TemAreaAereaValida { get; private set; }
         public bool TemTerraSegura { get; private set; }
         public bool TemCosta { get; private set; }
-        public int TagsManuaisEncontradas { get; private set; }
+        public int TagsManuaisEncontradas { get; private set; } = -1;
         public Vector3 AncoraTerraSegura { get; private set; }
         public Vector3 AncoraCosta { get; private set; }
         public Vector3 AncoraAerea { get; private set; }
@@ -54,11 +54,13 @@ namespace Hegemonia.AI.DEUSA
             TemAreaAereaValida = AncoraAerea != Vector3.zero && TemTerraSegura;
             TemAreaNavalValida = AncoraNaval != Vector3.zero || TemCosta;
 
+            if (TagsManuaisEncontradas < 0) {
 #if UNITY_2023_1_OR_NEWER
-            TagsManuaisEncontradas = Object.FindObjectsByType<IA_ManualPlacementTag>(FindObjectsSortMode.None).Length;
+                TagsManuaisEncontradas = Object.FindObjectsByType<IA_ManualPlacementTag>(FindObjectsSortMode.None).Length;
 #else
-            TagsManuaisEncontradas = Object.FindObjectsOfType<IA_ManualPlacementTag>().Length;
+                TagsManuaisEncontradas = Object.FindObjectsOfType<IA_ManualPlacementTag>().Length;
 #endif
+            }
 
             UltimoResumo = "terra=" + TemTerraSegura
                            + " | costa=" + TemCosta

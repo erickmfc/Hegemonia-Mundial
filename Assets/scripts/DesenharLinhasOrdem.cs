@@ -26,6 +26,11 @@ public class DesenharLinhasOrdem : MonoBehaviour
     [Header("Estados Atuais")]
     public bool modoPatrulhaAtivo = false;
     public bool modoSeguirAtivo = false;
+    public bool modoAtaqueAtivo = false;
+
+    // Overlay HUD para modo ataque/patrulha
+    private GameObject _overlayHUDAtaque;
+    private UnityEngine.UI.Text _overlayTextoAtaque;
 
     public List<Vector3> pontosPatrulha = new List<Vector3>();
     private readonly List<GameObject> _alvosModo = new List<GameObject>(32);
@@ -71,6 +76,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
         modoPatrulhaAtivo = true;
         modoSeguirAtivo = false;
+        modoAtaqueAtivo = false;
         pontosPatrulha.Clear();
         GarantirLineRenderer();
         lineRenderer.positionCount = 0;
@@ -80,13 +86,50 @@ public class DesenharLinhasOrdem : MonoBehaviour
             {
                 bloqueiaSelecao = true,
                 bloqueiaOrdemMundo = true,
-                bloqueiaRotacaoCamera = true,
+                bloqueiaRotacaoCamera = false,
                 consomeLMB = true,
                 consomeRMB = true
             },
             "Patrulha em edição");
+        MostrarOverlayHUD("🗺 MODO PATRULHA: Clique ESQUERDO ou DIREITO no mapa para marcar pontos. ENTER confirma. ESC cancela.", new Color(1f, 0.85f, 0f));
         DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha iniciada (alvos=" + _alvosModo.Count + ")");
-        Debug.Log("MODO PATRULHA: Clique com o botão direito para marcar caminho inicial e continue clicando para adicionar mais pontos de patrulha. ESC ou ENTER para finalizar os desenhos.");
+        Debug.Log("MODO PATRULHA: Clique ESQUERDO ou DIREITO para marcar pontos de patrulha. ESC ou ENTER para finalizar.");
+    }
+
+    // ── MODO ATAQUE ──────────────────────────────────────────────────────────
+    public void IniciarModoAtaque()
+    {
+        IniciarModoAtaque(null);
+    }
+
+    public void IniciarModoAtaque(List<GameObject> selecionadosSnapshot)
+    {
+        DefinirAlvosModo(selecionadosSnapshot);
+        if (!ValidarAlvosModo())
+        {
+            Debug.LogWarning("MODO ATAQUE: nenhuma unidade valida selecionada.");
+            return;
+        }
+
+        modoAtaqueAtivo = true;
+        modoPatrulhaAtivo = false;
+        modoSeguirAtivo = false;
+        GarantirLineRenderer();
+        lineRenderer.positionCount = 0;
+        InteractionModeService.Request(
+            InteractionOwner.Attack,
+            new InteractionPolicy
+            {
+                bloqueiaSelecao = true,
+                bloqueiaOrdemMundo = true,
+                bloqueiaRotacaoCamera = false,
+                consomeLMB = true,
+                consomeRMB = true
+            },
+            "Ataque em edição");
+        MostrarOverlayHUD("🎯 MODO ATAQUE: Clique no alvo ou área para atacar. ESC cancela.", new Color(1f, 0.2f, 0.1f));
+        DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Ataque iniciado (alvos=" + _alvosModo.Count + ")");
+        Debug.Log("MODO ATAQUE: Clique esquerdo/direito no alvo ou área para atacar.");
     }
 
     public void IniciarModoSeguir()
@@ -124,7 +167,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
     void Update()
     {
-        if (!modoPatrulhaAtivo && !modoSeguirAtivo)
+        if (!modoPatrulhaAtivo && !modoSeguirAtivo && !modoAtaqueAtivo)
         {
             return;
         }
@@ -141,38 +184,50 @@ public class DesenharLinhasOrdem : MonoBehaviour
             return;
         }
 
-        if (modoPatrulhaAtivo && Input.GetMouseButtonDown(1))
+        // ── PATRULHA ──────────────────────
+        if (modoPatrulhaAtivo)
         {
-            Vector3 pontoPatrulha;
-            if (TryObterPontoPatrulha(out pontoPatrulha))
+            if (Input.GetMouseButtonDown(0)) // Clique Esquerdo: Adiciona ponto
             {
-                ConsumirCliqueNoFrame();
-                pontosPatrulha.Add(pontoPatrulha);
-                AtualizarLinhaVisualPatrulha();
-                MostrarMarcadorPatrulha(pontoPatrulha);
-
-                // Aplica a ordem em tempo real para as unidades já iniciarem a navegação da patrulha
-                AplicarOrdemPatrulha();
-                
-                // Removemos a exigência de segurar SHIFT, agora todo clique adiciona um ponto na rota livremente
+                Vector3 pontoPatrulha;
+                if (TryObterPontoPatrulha(out pontoPatrulha))
+                {
+                    ConsumirCliqueNoFrame();
+                    pontosPatrulha.Add(pontoPatrulha);
+                    AtualizarLinhaVisualPatrulha();
+                    MostrarMarcadorPatrulha(pontoPatrulha);
+                    // AplicarOrdemPatrulha() não é chamado aqui, para que eles só comecem ao confirmar.
+                }
             }
-        }
-
-        if (modoPatrulhaAtivo && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)))
-        {
-            if (pontosPatrulha.Count >= 1)
+            else if (Input.GetMouseButtonDown(1)) // Clique Direito: Confirma e Inicia a patrulha
             {
-                AplicarOrdemPatrulha();
-                DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha confirmada (pontos=" + pontosPatrulha.Count + ", alvos=" + _alvosModo.Count + ")");
-                Debug.Log("Patrulha confirmada e iniciada.");
+                if (pontosPatrulha.Count >= 1)
+                {
+                    AplicarOrdemPatrulha();
+                    DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha confirmada (pontos=" + pontosPatrulha.Count + ", alvos=" + _alvosModo.Count + ")");
+                    Debug.Log("Patrulha confirmada e iniciada via Botão Direito.");
+                }
+                else
+                {
+                    Debug.LogWarning("Cancelando patrulha (0 pontos).");
+                }
+                LimparTudo();
+                return;
             }
-            else
+            else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             {
-                Debug.LogWarning("Patrulha precisa de pelo menos 1 ponto.");
+                if (pontosPatrulha.Count >= 1)
+                {
+                    AplicarOrdemPatrulha();
+                }
+                LimparTudo();
+                return;
             }
-
-            LimparTudo();
-            return;
+            else if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                LimparTudo();
+                return;
+            }
         }
 
         if (modoPatrulhaAtivo && Input.GetKeyDown(KeyCode.Backspace) && pontosPatrulha.Count > 0)
@@ -181,7 +236,8 @@ public class DesenharLinhasOrdem : MonoBehaviour
             AtualizarLinhaVisualPatrulha();
         }
 
-        if (modoSeguirAtivo && Input.GetMouseButtonDown(1))
+        // ── SEGUIR ───────────────────────────────────────────────────────────
+        if (modoSeguirAtivo && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)))
         {
             if (Camera.main == null)
             {
@@ -209,16 +265,59 @@ public class DesenharLinhasOrdem : MonoBehaviour
             }
         }
 
+        // ── ATAQUE: clique esquerdo/direito define alvo ou área ──────────────
+        if (modoAtaqueAtivo && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)))
+        {
+            if (Camera.main == null) return;
+
+            ConsumirCliqueNoFrame();
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+
+            Vector3 pontoAtaque = Vector3.zero;
+            ControleUnidade alvoUnidade = null;
+            bool encontrou = false;
+
+            if (Physics.Raycast(ray, out hit))
+            {
+                pontoAtaque = hit.point;
+                encontrou = true;
+                // Verifica se clicou em uma unidade (inimiga ou qualquer alvo)
+                alvoUnidade = hit.collider.GetComponentInParent<ControleUnidade>();
+            }
+            else
+            {
+                // Fallback: plano do chão
+                UnityEngine.Plane plano = new UnityEngine.Plane(Vector3.up, Vector3.zero);
+                float dist;
+                if (plano.Raycast(ray, out dist))
+                {
+                    pontoAtaque = ray.GetPoint(dist);
+                    encontrou = true;
+                }
+            }
+
+            if (encontrou)
+            {
+                AplicarOrdemAtaque(pontoAtaque, alvoUnidade != null ? alvoUnidade.transform : null);
+
+                // Marcador visual no ataque removido para não aparecer no jogo 3D, conforme pedido do usuário
+                DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode",
+                    "Ataque confirmado em " + pontoAtaque + (alvoUnidade != null ? " (alvo=" + alvoUnidade.name + ")" : ""));
+                Debug.Log("[ModoAtaque] Ordem de ataque emitida em " + pontoAtaque);
+                LimparTudo();
+            }
+        }
+
+        // ESC cancela qualquer modo
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (modoPatrulhaAtivo)
-            {
                 DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha cancelada (esc).");
-            }
             else if (modoSeguirAtivo)
-            {
                 DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Seguir cancelado (esc).");
-            }
+            else if (modoAtaqueAtivo)
+                DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Ataque cancelado (esc).");
 
             LimparTudo();
         }
@@ -228,12 +327,63 @@ public class DesenharLinhasOrdem : MonoBehaviour
     {
         modoPatrulhaAtivo = false;
         modoSeguirAtivo = false;
+        modoAtaqueAtivo = false;
         pontosPatrulha.Clear();
         _alvosModo.Clear();
         GarantirLineRenderer();
         lineRenderer.positionCount = 0;
         InteractionModeService.Release(InteractionOwner.Patrol);
         InteractionModeService.Release(InteractionOwner.Follow);
+        InteractionModeService.Release(InteractionOwner.Attack);
+        OcultarOverlayHUD();
+    }
+
+    // ── Overlay HUD ─────────────────────────────────────────────────────────
+    void MostrarOverlayHUD(string mensagem, Color cor)
+    {
+        OcultarOverlayHUD();
+
+        Canvas canvas = FindFirstObjectByType<Canvas>();
+        if (canvas == null) return;
+
+        _overlayHUDAtaque = new GameObject("_OverlayModoOrdem");
+        _overlayHUDAtaque.transform.SetParent(canvas.transform, false);
+
+        // Painel de fundo
+        UnityEngine.UI.Image bg = _overlayHUDAtaque.AddComponent<UnityEngine.UI.Image>();
+        bg.color = new Color(0f, 0f, 0f, 0.72f);
+        RectTransform rt = _overlayHUDAtaque.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0f);
+        rt.anchorMax = new Vector2(0.5f, 0f);
+        rt.pivot = new Vector2(0.5f, 0f);
+        rt.anchoredPosition = new Vector2(0f, 60f);
+        rt.sizeDelta = new Vector2(760f, 54f);
+
+        // Texto
+        GameObject textoObj = new GameObject("_OverlayTexto");
+        textoObj.transform.SetParent(_overlayHUDAtaque.transform, false);
+        _overlayTextoAtaque = textoObj.AddComponent<UnityEngine.UI.Text>();
+        _overlayTextoAtaque.text = mensagem;
+        _overlayTextoAtaque.color = cor;
+        _overlayTextoAtaque.fontSize = 18;
+        _overlayTextoAtaque.fontStyle = FontStyle.Bold;
+        _overlayTextoAtaque.alignment = TextAnchor.MiddleCenter;
+        _overlayTextoAtaque.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        RectTransform rtTxt = textoObj.GetComponent<RectTransform>();
+        rtTxt.anchorMin = Vector2.zero;
+        rtTxt.anchorMax = Vector2.one;
+        rtTxt.offsetMin = new Vector2(8f, 4f);
+        rtTxt.offsetMax = new Vector2(-8f, -4f);
+    }
+
+    void OcultarOverlayHUD()
+    {
+        if (_overlayHUDAtaque != null)
+        {
+            Destroy(_overlayHUDAtaque);
+            _overlayHUDAtaque = null;
+            _overlayTextoAtaque = null;
+        }
     }
 
     private void DefinirAlvosModo(List<GameObject> selecionadosSnapshot)
@@ -299,6 +449,45 @@ public class DesenharLinhasOrdem : MonoBehaviour
         }
 
         return null;
+    }
+
+    // ── MÉTODOS AUXILIARES CHAMADOS PELO MENU DE COMANDO ─────────────────────
+    public void AdicionarPontoPatrulhaDoMenu(Vector3 ponto)
+    {
+        if (!modoPatrulhaAtivo) return;
+        pontosPatrulha.Add(ponto);
+        GarantirLineRenderer();
+        lineRenderer.positionCount = pontosPatrulha.Count;
+        lineRenderer.SetPosition(pontosPatrulha.Count - 1, ponto);
+        
+        // Marcador visual
+        MostrarMarcadorPatrulha(ponto, new Color(0.15f, 0.65f, 1f, 0.95f), 12f, 2.5f);
+        Debug.Log("[ModoPatrulha] Ponto adicionado via menu: " + ponto);
+    }
+
+    public void ConfirmarPatrulhaDoMenu()
+    {
+        if (!modoPatrulhaAtivo) return;
+        if (pontosPatrulha.Count >= 1)
+        {
+            AplicarOrdemPatrulha();
+            DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha confirmada via menu.");
+            LimparTudo();
+        }
+    }
+
+    public void AplicarOrdemSeguirDoMenu(Transform alvo)
+    {
+        if (!modoSeguirAtivo) return;
+        AplicarOrdemSeguir(alvo);
+        LimparTudo();
+    }
+
+    public void AplicarOrdemAtaqueDoMenu(Vector3 pontoAlvo, Transform transformAlvo)
+    {
+        if (!modoAtaqueAtivo) return;
+        AplicarOrdemAtaque(pontoAlvo, transformAlvo);
+        LimparTudo();
     }
 
     /// <summary>Cancela o modo patrulha ou seguir sem confirmar a ordem. Chamado pelo clique esquerdo.</summary>
@@ -506,6 +695,87 @@ public class DesenharLinhasOrdem : MonoBehaviour
             if (helicoptero != null)
             {
                 helicoptero.IniciarPatrulhaAeroporto(new List<Vector3>(pontosPatrulha));
+            }
+        }
+    }
+
+    // ── ATAQUE ───────────────────────────────────────────────────────────────
+    void AplicarOrdemAtaque(Vector3 pontoAlvo, Transform transformAlvo)
+    {
+        for (int i = 0; i < _alvosModo.Count; i++)
+        {
+            GameObject alvo = _alvosModo[i];
+            if (alvo == null) continue;
+
+            // Helicóptero: voa até o alvo e atira automaticamente
+            Helicoptero helicoptero = alvo.GetComponent<Helicoptero>();
+            if (helicoptero != null)
+            {
+                helicoptero.Decolar(pontoAlvo);
+                continue;
+            }
+
+            // Avião bombardeiro: define alvo de solo
+            AviaoBombardeiro bombardeiro = alvo.GetComponent<AviaoBombardeiro>();
+            if (bombardeiro != null)
+            {
+                bombardeiro.modoDeAtaque = AviaoBombardeiro.ModoAtaque.AtaqueAoSolo;
+                bombardeiro.alvoAreaSolo = pontoAlvo;
+                ControleAviao controleAviao = alvo.GetComponent<ControleAviao>();
+                if (controleAviao != null)
+                {
+                    if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                    {
+                        controleAviao.IniciarMissaoCompleta(pontoAlvo);
+                    }
+                    else if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+                    {
+                        controleAviao.alvoGPSVoo = pontoAlvo;
+                        controleAviao.centroDaPatrulha = pontoAlvo;
+                        controleAviao.ordemParaRetorno = false;
+                    }
+                }
+                continue;
+            }
+
+            // Qualquer unidade com ControleUnidade: move para o ponto de ataque
+            ControleUnidade unidade = alvo.GetComponent<ControleUnidade>();
+            if (unidade != null)
+            {
+                ControleAviao aviao = alvo.GetComponent<ControleAviao>();
+                if (aviao != null)
+                {
+                    unidade.DefinirModoCombate(true);
+                    if (aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                    {
+                        aviao.IniciarMissaoCompleta(pontoAlvo);
+                    }
+                    else if (aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+                    {
+                        aviao.alvoGPSVoo = pontoAlvo;
+                        aviao.centroDaPatrulha = pontoAlvo;
+                        aviao.ordemParaRetorno = false;
+                    }
+                    continue;
+                }
+
+                // Se tem alvo específico, força modo combate ativo e segue
+                if (transformAlvo != null)
+                {
+                    unidade.DefinirModoCombate(true);
+                    // Move para perto do alvo para atacar dentro do alcance
+                    Vector3 direcaoAlvo = (pontoAlvo - unidade.transform.position).normalized;
+                    float distanciaAtaque = 60f; // recua um pouco para estar em alcance
+                    Vector3 posicaoAtaque = pontoAlvo - direcaoAlvo * distanciaAtaque;
+                    unidade.EmitirOrdemMover(posicaoAtaque);
+                }
+                else
+                {
+                    // Ataque de área: move até o ponto diretamente
+                    unidade.DefinirModoCombate(true);
+                    unidade.EmitirOrdemMover(pontoAlvo);
+                }
+                continue;
             }
         }
     }

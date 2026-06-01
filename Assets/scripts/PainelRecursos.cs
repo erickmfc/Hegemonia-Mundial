@@ -639,8 +639,8 @@ public class PainelRecursos : MonoBehaviour
             : null;
 
         float energiaConsumida = paisJogador != null ? paisJogador.energiaConsumida : 0f;
-        float energiaProduzida = paisJogador != null ? paisJogador.energiaProduzida : Mathf.Max(0f, r.energia);
-        AtualizarEnergiaHUD(energiaConsumida, energiaProduzida, r.energia);
+        float energiaProduzida = paisJogador != null ? paisJogador.energiaProduzida : 0f;
+        AtualizarEnergiaHUD(energiaConsumida, energiaProduzida);
 
         if (textoPais != null)
             textoPais.text = paisJogador != null ? paisJogador.nomePais : "Pais 1";
@@ -668,7 +668,7 @@ public class PainelRecursos : MonoBehaviour
         AtualizarStatusLateral(paisJogador, energiaConsumida, energiaProduzida, ocupacaoArmazem);
     }
 
-    private void AtualizarEnergiaHUD(float consumida, float produzida, int estoqueEnergia)
+    private void AtualizarEnergiaHUD(float consumida, float produzida)
     {
         if (textoEnergia == null) return;
 
@@ -680,17 +680,17 @@ public class PainelRecursos : MonoBehaviour
             if (ganhoTextoEnergia != null)
             {
                 ganhoTextoEnergia.text = $"{consumida:0}/{produzida:0}";
-                ganhoTextoEnergia.color = uso >= 100f ? corVermelho : uso >= 90f ? corAmarelo : corVerde;
+                ganhoTextoEnergia.color = uso > 100f ? corVermelho : uso >= 90f ? corAmarelo : corVerde;
             }
         }
         else
         {
-            textoEnergia.text = estoqueEnergia.ToString("N0");
-            textoEnergia.color = corTexto;
+            textoEnergia.text = consumida > 0.01f ? "DEFICIT" : "SEM USINAS";
+            textoEnergia.color = consumida > 0.01f ? corVermelho : corTexto;
             if (ganhoTextoEnergia != null)
             {
-                ganhoTextoEnergia.text = "+0/s";
-                ganhoTextoEnergia.color = corVerde;
+                ganhoTextoEnergia.text = $"{consumida:0}/0";
+                ganhoTextoEnergia.color = consumida > 0.01f ? corVermelho : corTextoSecundario;
             }
         }
     }

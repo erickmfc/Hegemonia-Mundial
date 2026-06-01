@@ -189,6 +189,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 4
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!65 &5350341270629155526
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -227,9 +231,10 @@ MonoBehaviour:
   producaoAco: 0
   producaoEnergia: 0
   ativarAoCriar: 1
-  delayInicial: 0
-  estaProduzindo: 0
+  delayInicial: 3
+  estaProduzindo: 1
   efeitoProducao: {fileID: 0}
+  mostrarLogs: 0
   eficienciaBase: 1
 --- !u!1 &7674471837053092544
 GameObject:

@@ -1,0 +1,171 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements"
+    xsi="http://www.w3.org/2001/XMLSchema-instance"
+    engine="UnityEngine.UIElements"
+    noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd"
+    editor-extension-mode="False">
+
+    <Style src="project://database/Assets/Resources/MenuComando/MenuComando.uss" />
+
+    <ui:VisualElement name="menu-comando-root" class="menu-root" picking-mode="Ignore">
+
+        <!-- OVERLAY CRT scanlines -->
+        <ui:VisualElement name="crt-overlay" class="crt-overlay" picking-mode="Ignore" />
+
+        <!-- HEADER -->
+        <ui:VisualElement name="header" class="header">
+            <ui:Label name="header-titulo" text="🎯 COMANDO TÁTICO" class="header-titulo mono" />
+            <ui:VisualElement name="header-center" class="header-center">
+                <ui:Label name="header-status" text="● SISTEMA OPERACIONAL" class="header-status blink" />
+            </ui:VisualElement>
+            <ui:Label name="header-tempo-op" text="T.OP: 00:00:00" class="header-tempo mono" />
+        </ui:VisualElement>
+
+        <!-- CORPO PRINCIPAL: Mapa | FLIR -->
+        <ui:VisualElement name="corpo-principal" class="corpo-principal" picking-mode="Ignore">
+
+            <!-- PAINEL ESQUERDO: MAPA TÁTICO -->
+            <ui:VisualElement name="painel-mapa" class="rts-panel painel-mapa">
+                <ui:Label name="mapa-titulo" text="◉ MAPA TÁTICO" class="panel-label mono" />
+                <ui:Button name="btn-selecionar-tudo" text="SELECIONAR TUDO [A]" class="btn-selecionar-tudo mono" />
+
+                <!-- Grade do mapa -->
+                <ui:VisualElement name="mapa-grade" class="mapa-grade" picking-mode="Ignore" />
+
+                <!-- Radar sweep -->
+                <ui:VisualElement name="radar-sweep" class="radar-sweep" picking-mode="Ignore" />
+
+                <!-- Canvas onde as unidades são injetadas via C# -->
+                <ui:VisualElement name="mapa-unidades-layer" class="mapa-unidades-layer" />
+
+                <!-- SVG-like lines (VisualElements finos) -->
+                <ui:VisualElement name="mapa-linhas-layer" class="mapa-linhas-layer" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <!-- PAINEL DIREITO: CÂMERA FLIR -->
+            <ui:VisualElement name="painel-flir" class="rts-panel painel-flir">
+                <!-- Background da câmera (RenderTexture injetado via C#) -->
+                <ui:VisualElement name="flir-imagem" class="flir-imagem" picking-mode="Ignore" />
+
+                <!-- Noise overlay -->
+                <ui:VisualElement name="flir-noise" class="flir-noise" picking-mode="Ignore" />
+
+                <!-- Mira / Crosshair -->
+                <ui:VisualElement name="flir-crosshair" class="flir-crosshair" picking-mode="Ignore">
+                    <ui:VisualElement name="crosshair-h" class="crosshair-h" />
+                    <ui:VisualElement name="crosshair-v" class="crosshair-v" />
+                    <ui:VisualElement name="crosshair-box" class="crosshair-box" />
+                </ui:VisualElement>
+
+                <!-- Overlays de texto da câmera -->
+                <ui:VisualElement name="flir-overlay" class="flir-overlay" picking-mode="Ignore">
+                    <ui:Label name="flir-label-tl" text="FLIR / AUTO-TRK" class="flir-text flir-tl mono" />
+                    <ui:Label name="flir-label-tc" text="HDG 110.9°" class="flir-text flir-tc mono" />
+                    <ui:Label name="flir-label-tr" text="ZOOM: 2.5X" class="flir-text flir-tr mono" />
+                    <ui:Label name="flir-label-bc" text="" class="flir-text flir-bc mono flir-alert" />
+                    <ui:Label name="flir-unidade-nome" text="— SEM ALVO —" class="flir-unidade-nome mono" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <!-- ÁREA INFERIOR: 4 painéis -->
+        <ui:VisualElement name="area-inferior" class="area-inferior" picking-mode="Ignore">
+
+            <!-- PAINEL 1: Telemetria da Unidade Selecionada -->
+            <ui:VisualElement name="painel-telemetria" class="rts-panel painel-bottom">
+                <ui:Label text="◈ UNIDADE" class="panel-label mono" />
+
+                <ui:VisualElement name="unidade-header" class="unidade-header">
+                    <ui:Label name="unidade-emoji" text="✈️" class="unidade-emoji" />
+                    <ui:Label name="unidade-nome" text="NENHUMA" class="unidade-nome mono" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="stat-grid">
+                    <ui:Label text="TIPO:" class="stat-lbl" />
+                    <ui:Label name="stat-tipo" text="—" class="stat-val" />
+                    <ui:Label text="STATUS:" class="stat-lbl" />
+                    <ui:Label name="stat-status" text="—" class="stat-val stat-ok" />
+                    <ui:Label text="POSIÇÃO:" class="stat-lbl" />
+                    <ui:Label name="stat-pos" text="—" class="stat-val" />
+                    <ui:Label text="TEAM:" class="stat-lbl" />
+                    <ui:Label name="stat-team" text="—" class="stat-val" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="progress-row">
+                    <ui:Label text="HP" class="progress-lbl mono" />
+                    <ui:VisualElement class="progress-track">
+                        <ui:VisualElement name="hp-bar" class="progress-fill hp-fill" />
+                    </ui:VisualElement>
+                    <ui:Label name="hp-valor" text="100%" class="progress-val mono" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="progress-row">
+                    <ui:Label text="COMB." class="progress-lbl mono" />
+                    <ui:VisualElement class="progress-track">
+                        <ui:VisualElement name="fuel-bar" class="progress-fill fuel-fill" />
+                    </ui:VisualElement>
+                    <ui:Label name="fuel-valor" text="—%" class="progress-val mono" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- PAINEL 2: SITREP Global -->
+            <ui:VisualElement name="painel-sitrep" class="rts-panel painel-bottom">
+                <ui:Label text="◈ SITREP" class="panel-label mono" />
+
+                <ui:VisualElement class="sitrep-row">
+                    <ui:Label text="Forças Aliadas:" class="stat-lbl" />
+                    <ui:Label name="sitrep-aliados" text="0" class="stat-val sitrep-aliados" />
+                </ui:VisualElement>
+                <ui:VisualElement class="sitrep-row">
+                    <ui:Label text="Forças Hostis:" class="stat-lbl" />
+                    <ui:Label name="sitrep-inimigos" text="0" class="stat-val sitrep-inimigos" />
+                </ui:VisualElement>
+                <ui:VisualElement class="sitrep-row">
+                    <ui:Label text="Velocidade:" class="stat-lbl" />
+                    <ui:Label name="sitrep-vel" text="0 km/h" class="stat-val" />
+                </ui:VisualElement>
+                <ui:VisualElement class="sitrep-row sitrep-separator">
+                    <ui:Label text="Ameaça do Setor:" class="stat-lbl" />
+                    <ui:Label name="sitrep-ameaca" text="MEDIA" class="stat-val sitrep-ameaca" />
+                </ui:VisualElement>
+                <ui:VisualElement class="sitrep-row">
+                    <ui:Label text="Unid. Selecionada:" class="stat-lbl" />
+                    <ui:Label name="sitrep-sel" text="—" class="stat-val" />
+                </ui:VisualElement>
+                <ui:VisualElement class="sitrep-row">
+                    <ui:Label text="Tempo de Op.:" class="stat-lbl" />
+                    <ui:Label name="sitrep-tempo" text="00:00:00" class="stat-val mono" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- PAINEL 3: Log de Comunicações -->
+            <ui:VisualElement name="painel-log" class="rts-panel painel-bottom">
+                <ui:Label text="◈ REDE TÁTICA" class="panel-label mono" />
+                <ui:ScrollView name="log-scroll" class="log-scroll" vertical-scroller-visibility="AlwaysVisible">
+                    <ui:VisualElement name="log-container" class="log-container" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+
+            <!-- PAINEL 4: Ordens -->
+            <ui:VisualElement name="painel-ordens" class="rts-panel painel-bottom">
+                <ui:Label text="◈ ORDENS" class="panel-label mono" />
+
+                <ui:VisualElement class="ordens-grid">
+                    <ui:Button name="btn-ativo" text="⚔️ ATIVO" class="ordem-btn btn-ativo mono" />
+                    <ui:Button name="btn-passivo" text="🛡 PASSIVO" class="ordem-btn btn-passivo mono" />
+                    <ui:Button name="btn-funcionar" text="⚙ FUNCIONAR" class="ordem-btn btn-funcionar mono" />
+                    <ui:Button name="btn-patrulhar" text="🔄 PATRULHAR" class="ordem-btn btn-patrulhar mono" />
+                    <ui:Button name="btn-seguir" text="👁 SEGUIR" class="ordem-btn btn-seguir mono" />
+                    <ui:Button name="btn-atacar" text="🎯 ATACAR" class="ordem-btn btn-atacar mono" />
+                    <ui:Button name="btn-voltar-base" text="🏠 VOLTAR" class="ordem-btn btn-passivo mono" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="ordens-status">
+                    <ui:Label name="ordem-feedback" text="Selecione uma unidade no mapa" class="ordem-feedback mono" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

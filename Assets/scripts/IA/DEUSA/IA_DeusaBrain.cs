@@ -136,7 +136,7 @@ namespace Hegemonia.AI.DEUSA
 
             identidade.GarantirDefaults(_brain != null ? _brain.TeamId : 1, config.personalidade, config.modoInicial);
             _baseMaxCommandsPerFrame = _brain != null ? Mathf.Max(1, _brain.MaxCommandsPerFrame) : 4;
-            _performance.Reset(Time.time);
+            _performance.Reset(Time.time + (_brain != null ? _brain.TeamId * 0.43f : Random.value));
             _runtimeReady = true;
             EmitirLogInicialSeNecessario(true);
         }

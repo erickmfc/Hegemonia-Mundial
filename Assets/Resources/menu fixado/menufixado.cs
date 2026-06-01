@@ -191,6 +191,11 @@ public class MenuFixadoController : MonoBehaviour
         if (r == null) return;
 
         SistemaGovernoMundial.GarantirInstancia();
+        if (SistemaGovernoMundial.Instancia != null)
+        {
+            SistemaGovernoMundial.Instancia.SincronizarJogador();
+        }
+
         DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.ObterPais(SistemaGovernoMundial.Instancia.teamJogador) : null;
 
         SetText(lblCountryVal, pais != null ? pais.nomePais.ToUpper() : "PAÍS");
@@ -208,7 +213,7 @@ public class MenuFixadoController : MonoBehaviour
 
         SetText(lblFoodVal, r.comida.ToString("N0"));
         
-        SetText(lblPopVal, pais != null ? $"{pais.populacaoCivil:N0}/{r.populacaoMaxima:N0}" : $"{r.populacaoAtual:N0}/{r.populacaoMaxima:N0}");
+        SetText(lblPopVal, pais != null ? $"{pais.populacaoCivil:N0}/{pais.populacaoMaxima:N0}" : $"{r.populacaoAtual:N0}/{r.populacaoMaxima:N0}");
         if (lblHappyVal != null && pais != null)
         {
             SetText(lblHappyVal, $"{pais.felicidade:F0}%");

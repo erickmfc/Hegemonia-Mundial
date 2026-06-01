@@ -3,7 +3,52 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class CameraUnidadeHUD : MonoBehaviour
 {
-    public static CameraUnidadeHUD Instancia { get; private set; }
+    private static CameraUnidadeHUD _instancia;
+    private static bool _isQuitting = false;
+
+    public static bool Instanciada => _instancia != null;
+
+    public static CameraUnidadeHUD Instancia
+    {
+        get
+        {
+            if (_isQuitting) return null;
+            if (_instancia == null)
+            {
+                _instancia = FindFirstObjectByType<CameraUnidadeHUD>(FindObjectsInactive.Include);
+                if (_instancia == null)
+                {
+                    if (!Application.isPlaying) return null; // Não cria fora de PlayMode
+                    GameObject go = new GameObject("CameraUnidadeHUD_Dynamic");
+                    _instancia = go.AddComponent<CameraUnidadeHUD>();
+                    
+                    Camera cam = go.GetComponent<Camera>();
+                    cam.clearFlags = CameraClearFlags.SolidColor;
+                    cam.backgroundColor = new Color(0.02f, 0.05f, 0.02f, 1f); // Tom FLIR verde-escuro
+                    cam.fieldOfView = 30f;
+                    cam.farClipPlane = 6000f;
+                    
+                    int uiLayer = LayerMask.NameToLayer("UI");
+                    if (uiLayer >= 0)
+                    {
+                        cam.cullingMask &= ~(1 << uiLayer);
+                    }
+                    
+                    DontDestroyOnLoad(go);
+                }
+                else
+                {
+                    _instancia.gameObject.SetActive(true);
+                }
+            }
+            return _instancia;
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        _isQuitting = true;
+    }
 
     private Camera minhaCamera;
     private ControleUnidade targetUnit;
@@ -16,12 +61,12 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     private void Awake()
     {
-        if (Instancia != null && Instancia != this)
+        if (_instancia != null && _instancia != this)
         {
             Destroy(gameObject);
             return;
         }
-        Instancia = this;
+        _instancia = this;
 
         minhaCamera = GetComponent<Camera>();
         
@@ -31,9 +76,9 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (Instancia == this)
+        if (_instancia == this)
         {
-            Instancia = null;
+            _instancia = null;
         }
     }
 
@@ -86,6 +131,19 @@ public class CameraUnidadeHUD : MonoBehaviour
         }
     }
 
+    public float zoomFactor = 1f;
+    public float currentRotationY = 0f;
+
+    public void AddZoom(float delta)
+    {
+        zoomFactor = Mathf.Clamp(zoomFactor - delta, 0.2f, 6f);
+    }
+
+    public void AddRotation(float deltaY)
+    {
+        currentRotationY += deltaY;
+    }
+
     private void LateUpdate()
     {
         if (targetUnit == null)
@@ -120,8 +178,15 @@ public class CameraUnidadeHUD : MonoBehaviour
             localOffset = new Vector3(0f, 6f, -12f);
         }
 
+        // Aplica o zoom configurável
+        localOffset *= zoomFactor;
+
         Vector3 targetPos = targetUnit.transform.position;
-        Vector3 desiredPosition = targetUnit.transform.TransformPoint(localOffset);
+        
+        // Aplica a rotação em volta da unidade
+        Quaternion addRot = Quaternion.Euler(0f, currentRotationY, 0f);
+        Vector3 rotatedOffset = addRot * targetUnit.transform.TransformDirection(localOffset);
+        Vector3 desiredPosition = targetPos + rotatedOffset;
 
         // Suaviza a movimentação e rotação da câmera
         transform.position = Vector3.Lerp(transform.position, desiredPosition, Time.deltaTime * suavidadeSeguir);

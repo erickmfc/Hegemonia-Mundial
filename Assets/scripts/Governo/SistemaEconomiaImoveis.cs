@@ -9,7 +9,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
     private static readonly HashSet<EstruturaEconomica> EstruturasRegistradas = new HashSet<EstruturaEconomica>();
 
     [Header("Tick")]
-    public float intervaloLeitura = 5f;
+    public float intervaloLeitura = 1.5f;
     public bool usarTagsEconomicas = false;
     public bool usarCompatibilidadeImovel = true;
     public float intervaloVarreduraTags = 20f;
@@ -25,6 +25,8 @@ public class SistemaEconomiaImoveis : MonoBehaviour
     private readonly List<Imovel> imoveisBuffer = new List<Imovel>();
     private readonly List<EstruturaEconomica> consumidoresBuffer = new List<EstruturaEconomica>();
     private readonly List<Imovel> consumidoresImoveisBuffer = new List<Imovel>();
+    private readonly List<GerenciadorAeroporto> aeroportosBuffer = new List<GerenciadorAeroporto>();
+    private readonly List<GerenciadorAeroporto> consumidoresAeroportosBuffer = new List<GerenciadorAeroporto>();
     private readonly HashSet<int> objetosContados = new HashSet<int>();
     private float proximoTick;
     private float proximaVarreduraTags;
@@ -78,6 +80,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         objetosContados.Clear();
         consumidoresBuffer.Clear();
         consumidoresImoveisBuffer.Clear();
+        consumidoresAeroportosBuffer.Clear();
 
         foreach (EstruturaEconomica estrutura in EstruturasRegistradas)
         {
@@ -94,6 +97,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         if (usarCompatibilidadeImovel)
         {
             LerImoveisAntigos();
+            LerAeroportos();
         }
 
         DistribuirEnergia();
@@ -154,6 +158,30 @@ public class SistemaEconomiaImoveis : MonoBehaviour
                     economia.estruturasSemEnergia++;
                 }
             }
+
+            // Processa aeroportos
+            for (int i = 0; i < consumidoresAeroportosBuffer.Count; i++)
+            {
+                GerenciadorAeroporto aeroporto = consumidoresAeroportosBuffer[i];
+                if (aeroporto == null || ResolverTeamId(aeroporto.gameObject) != teamId) continue;
+                
+                float baseConsumo = 15.0f;
+                int totalAvioes = aeroporto.avioesNoPatio.Count + aeroporto.avioesNoHangar.Count;
+                int totalHelis = aeroporto.helicopterosDoAeroporto.Count;
+                int totalHeavy = aeroporto.transportesC700NoPatio.Count;
+                float consumo = baseConsumo + (totalAvioes * 2.0f) + (totalHelis * 1.5f) + (totalHeavy * 5.0f);
+
+                if (energiaDisponivel >= consumo)
+                {
+                    energiaDisponivel -= consumo;
+                    aeroporto.SetarSemEnergia(false);
+                }
+                else
+                {
+                    aeroporto.SetarSemEnergia(true);
+                    economia.estruturasSemEnergia++;
+                }
+            }
         }
     }
 
@@ -208,6 +236,36 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             if (imovel.GetComponent<EstruturaEconomica>() != null) continue;
             ContabilizarImovel(imovel);
         }
+    }
+
+    private void LerAeroportos()
+    {
+        RegistroEntidadesJogo.FillAeroportos(aeroportosBuffer);
+        for (int i = 0; i < aeroportosBuffer.Count; i++)
+        {
+            GerenciadorAeroporto aeroporto = aeroportosBuffer[i];
+            if (aeroporto == null || objetosContados.Contains(aeroporto.gameObject.GetInstanceID())) continue;
+            if (aeroporto.GetComponent<EstruturaEconomica>() != null) continue;
+            if (aeroporto is GerenciadorPortaAvioes) continue;
+            ContabilizarAeroporto(aeroporto);
+        }
+    }
+
+    private void ContabilizarAeroporto(GerenciadorAeroporto aeroporto)
+    {
+        objetosContados.Add(aeroporto.gameObject.GetInstanceID());
+        consumidoresAeroportosBuffer.Add(aeroporto);
+        int teamId = ResolverTeamId(aeroporto.gameObject);
+        DadosEconomiaPais economia = ObterOuCriar(teamId);
+        economia.estruturasContadas++;
+
+        float baseConsumo = 15.0f;
+        int totalAvioes = aeroporto.avioesNoPatio.Count + aeroporto.avioesNoHangar.Count;
+        int totalHelis = aeroporto.helicopterosDoAeroporto.Count;
+        int totalHeavy = aeroporto.transportesC700NoPatio.Count;
+        float consumo = baseConsumo + (totalAvioes * 2.0f) + (totalHelis * 1.5f) + (totalHeavy * 5.0f);
+
+        economia.energiaConsumida += consumo;
     }
 
     private void ContabilizarEstrutura(EstruturaEconomica estrutura)

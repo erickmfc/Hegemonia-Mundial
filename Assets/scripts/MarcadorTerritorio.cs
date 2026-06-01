@@ -44,6 +44,11 @@ public class MarcadorTerritorio : MonoBehaviour
         {
             GerenteDeTerritorio.Instancia.RegistrarMarcador(this);
         }
+        GerenciadorDivisaoTerritorial.GarantirInstancia();
+        if (GerenciadorDivisaoTerritorial.Instancia != null)
+        {
+            GerenciadorDivisaoTerritorial.Instancia.RegistrarCidade(this);
+        }
     }
 
     void OnDestroy()
@@ -51,6 +56,10 @@ public class MarcadorTerritorio : MonoBehaviour
         if (GerenteDeTerritorio.Instancia != null)
         {
             GerenteDeTerritorio.Instancia.RemoverMarcador(this);
+        }
+        if (GerenciadorDivisaoTerritorial.Instancia != null)
+        {
+            GerenciadorDivisaoTerritorial.Instancia.RemoverCidade(this);
         }
     }
 

@@ -14,6 +14,13 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     public Transform antenaRotativa;
     public float velGiroAntena = 45f;
     
+    [Header("=== ANIMAÇÃO DA RAMPA DE DECOLAGEM ===")]
+    public Transform rampaDecolagem;
+    private Vector3 _posicaoDefaultRampa;
+    private Quaternion _rotacaoDefaultRampa;
+    private ControleAviao _aviaoNoPrepara = null;
+    private Coroutine _rotinaRampa = null;
+    
     [Header("=== SISTEMA DE ELEVADOR ===")]
     public Transform plataformaElevador;
     public Transform nivelHangar;   // Ponto onde o elevador fica no fundo
@@ -227,42 +234,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
     }
 
-    private int ObterPrioridadeWaypointPouso(Transform waypoint)
-    {
-        if (waypoint == null)
-        {
-            return int.MinValue;
-        }
-
-        string nome = waypoint.name.ToLowerInvariant();
-        int prioridadeBase = 0;
-
-        int a = nome.IndexOf('(');
-        int b = nome.IndexOf(')');
-        if (a >= 0 && b > a)
-        {
-            string numero = nome.Substring(a + 1, b - a - 1).Trim();
-            if (int.TryParse(numero, out int valor))
-            {
-                prioridadeBase = 100 + valor;
-            }
-        }
-        else if (nome.Contains("aceleracao"))
-        {
-            prioridadeBase = 50;
-        }
-        else if (nome.Contains("rampa"))
-        {
-            prioridadeBase = 20;
-        }
-        else if (nome.Contains("parada") || nome.Contains("stop"))
-        {
-            prioridadeBase = 0;
-        }
-
-        return prioridadeBase;
-    }
-
     private Vector3 ObterDestinoAlinhamentoHelicoptero()
     {
         if (pontoAlinhamentoHelicoptero == null)
@@ -331,6 +302,37 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     {
         AutoDetectarHierarquiaSovereign();
         base.Awake(); // Inicializa lógica base do Aeroporto
+
+        if (rampaDecolagem == null)
+        {
+            rampaDecolagem = transform.Find("Rampa") ?? transform.Find("rampa");
+            if (rampaDecolagem == null)
+            {
+                foreach (Transform child in GetComponentsInChildren<Transform>(true))
+                {
+                    if (child.name.ToLower().Contains("rampa") && !child.name.ToLower().Contains("landing"))
+                    {
+                        rampaDecolagem = child;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (rampaDecolagem != null)
+        {
+            _posicaoDefaultRampa = rampaDecolagem.localPosition;
+            _rotacaoDefaultRampa = rampaDecolagem.localRotation;
+            
+            // Configura rampa para posição inicial default
+            Vector3 pos = _posicaoDefaultRampa;
+            pos.y = -4.4f;
+            rampaDecolagem.localPosition = pos;
+            
+            Vector3 rot = _rotacaoDefaultRampa.eulerAngles;
+            rot.x = 20f;
+            rampaDecolagem.localRotation = Quaternion.Euler(rot);
+        }
         
         _idCarrier = GetComponent<IdentidadeUnidade>();
         if (_idCarrier == null)
@@ -373,45 +375,85 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             LogDebug($"[Porta-Aviões] Sequência de Decolagem: {string.Join(" -> ", waypointsDecolagem.Where(w => w != null).Select(w => w.name))}");
         }
 
-        // 3. Mapeia Pouso Revertido (Maior para o Menor: 4 -> 3 -> 2 -> 1 -> rampa)
+        // 3. Mapeia Pouso (Apenas filhos diretos do grupo "Pouso", mantendo a ordem exata da hierarquia)
         Transform pistaParaUsar = (grupoPistaLanding != null) ? grupoPistaLanding : decida;
         if (pistaParaUsar != null)
         {
             List<Transform> listaTemp = new List<Transform>();
-            foreach (Transform t in pistaParaUsar) listaTemp.Add(t);
-            
-            // Ordenação Inteligente: 
-            // 1. Pega os que tem números e ordena decrescente (4, 3, 2, 1)
-            // 2. Coloca os sem número por último (aceleracao, rampa)
-            waypointsDecida = listaTemp
-                .Where(t => t != null)
-                .OrderByDescending(ObterPrioridadeWaypointPouso)
-                .ToList();
-            
-            
-            LogDebug($"[Porta-Aviões] Sequência de Pouso: {string.Join(" -> ", waypointsDecida.Select(w => w.name))}");
+            foreach (Transform t in pistaParaUsar)
+            {
+                if (t == null) continue;
+                // Previne que o próprio objeto "Pouso" ou qualquer pai vazado entre na lista
+                if (t == pistaParaUsar) continue;
+                string nm = t.name.Trim().ToLowerInvariant();
+                if (nm == "pouso") continue;
 
-            // --- NOVO: PONTO DE APROXIMAÇÃO REALISTA ---
-            // Cria um ponto 600m atrás do navio para o avião alinhar antes de pousar
+                listaTemp.Add(t);
+            }
+            
+            // O Segredo para não pular: MANTER A ORDEM EXATA DA HIERARQUIA DO UNITY!
+            // Ele vai ler exatamente na ordem: 1 -> 1 (1) -> 1 (2) -> ... -> Parando
+            waypointsDecida = listaTemp.ToList();
+            
+            LogDebug($"[Porta-Aviões] Sequência de Pouso (Glideslope): {string.Join(" -> ", waypointsDecida.Select(w => w.name))}");
+
+            // --- PONTO DE APROXIMAÇÃO REALISTA ---
+            // Cria um ponto 600m atrás do navio para o avião alinhar antes de iniciar a descida
             if (waypointsDecida.Count > 0)
             {
                 GameObject approach = new GameObject("Ponto_Aproximacao_Navio");
                 approach.transform.SetParent(this.transform);
                 
-                // Calcula direção da pista baseada nos dois primeiros pontos ou no forward do navio
+                // Calcula direção da pista baseada nos dois primeiros pontos da hierarquia (ex: 1 e 1(1))
                 Vector3 direcaoPista = (waypointsDecida.Count > 1) ? 
                     (waypointsDecida[0].position - waypointsDecida[1].position).normalized : transform.forward;
                 
-                // Coloca o ponto de entrada 600 metros atrás
+                // Coloca o ponto de entrada 600 metros atrás para aproximação em arco suave
                 approach.transform.position = waypointsDecida[0].position + direcaoPista * 600f + Vector3.up * 50f;
                 waypointsDecida.Insert(0, approach.transform);
             }
         }
         
-        // 4. Fallbacks de Taxiamento
-        if (wpAndadar == null) wpAndadar = (waypointSaidaPista != null) ? waypointSaidaPista : transform;
-        // Removido wpAnalise automático para não forçar parada no elevador antes do pátio
-        if (wpAnalise == null && waypointEntradaElevador != null) wpAnalise = null; 
+        // 4. Mapeia a Pista de Táxi ("Trabalho")
+        Transform grupoTrabalho = EncontrarTransformPorNomeExato("Trabalho") ?? EncontrarTransformPorTrechos("trabalho");
+        if (grupoTrabalho != null)
+        {
+            waypointsTaxi.Clear();
+            foreach (Transform t in grupoTrabalho)
+            {
+                if (t != null && t != grupoTrabalho)
+                {
+                    waypointsTaxi.Add(t);
+                }
+            }
+        }
+
+        // 5. Ajusta os waypoints clássicos (wpAndadar e wpAnalise) para compatibilidade com a máquina de estados base
+        if (waypointsTaxi.Count > 0)
+        {
+            // wpAndadar é o início do táxi. Se a lista existir, é o primeiro ponto do Trabalho.
+            if (wpAndadar == null) wpAndadar = waypointsTaxi[0];
+            
+            // wpAnalise (Busca) é o fim do táxi, onde o avião aguarda/alinha antes de ir pra vaga.
+            if (wpAnalise == null) wpAnalise = waypointsTaxi[waypointsTaxi.Count - 1];
+        }
+        else
+        {
+            // Fallbacks padrão caso não haja pasta Trabalho (mantém compatibilidade)
+            if (wpAndadar == null)
+            {
+                if (waypointsDecida != null && waypointsDecida.Count > 0)
+                    wpAndadar = waypointsDecida.Last();
+                else if (waypointSaidaPista != null)
+                    wpAndadar = waypointSaidaPista;
+                else
+                    wpAndadar = transform;
+            }
+            if (wpAnalise == null)
+            {
+                wpAnalise = wpAndadar;
+            }
+        }
     }
 
     void Update()
@@ -427,6 +469,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         // ==========================================
         if (Input.GetKeyDown(KeyCode.O))
         {
+            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
+
             // SÓ ABRE SE O NAVIO ESTIVER SELECIONADO PELO JOGADOR
             if (_controleUnidade != null && !_controleUnidade.selecionado)
             {
@@ -442,6 +486,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             {
                 _menuCarrierAtivo = false;
                 GestorMenusExclusivos.Fechar(this);
+                PortaAvioesUIController ui = GetComponent<PortaAvioesUIController>();
+                if (ui != null) ui.ToggleMenu(false);
                 return;
             }
 
@@ -449,6 +495,12 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             if (novoEstado) GestorMenusExclusivos.Abrir(this);
             else GestorMenusExclusivos.Fechar(this);
             _menuCarrierAtivo = novoEstado;
+
+            PortaAvioesUIController uiController = GetComponent<PortaAvioesUIController>();
+            if (uiController != null)
+            {
+                uiController.ToggleMenu(_menuCarrierAtivo);
+            }
         }
 
         // ==========================================
@@ -519,7 +571,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         foreach (var av in avioesNoPatio)
         {
             if (av == null) continue;
-            // Se estiver no chão/pátio, gruda no navio
+            // Se estiver no chão/pátio (Ou seja, DEPOIS de tocar no Parando, quando o ControleAviao muda pro estado RetornandoPraVaga), gruda no navio
             if (av.transform.parent != this.transform && 
                 (av.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio || 
                  av.estadoAtual == ControleAviao.EstadoAviao.Taxiando ||
@@ -1179,7 +1231,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 return;
             }
             
-            // 🔴 CORREÇÃO IMPORTANTE: Ativar a renderização da linha verde para a patrulha
             DesenharLinhasOrdem linhas = FindFirstObjectByType<DesenharLinhasOrdem>();
             if (linhas != null)
             {
@@ -1646,6 +1697,16 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         _rotinasRecebimentoHeliCarrier.Remove(heliId);
     }
 
+    public void AcionarElevadorParaCima(ControleAviao av)
+    {
+        if (!_elevadorOcupado) StartCoroutine(RotinaElevadorSequencial(av, true));
+    }
+
+    public void MandarParaOHangar(ControleAviao av)
+    {
+        if (!_elevadorOcupado) StartCoroutine(RotinaElevadorSequencial(av, false));
+    }
+
     IEnumerator RotinaElevadorSequencial(ControleAviao av, bool subir)
     {
         _elevadorOcupado = true;
@@ -1683,7 +1744,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         yield break;
     }
 
-    // Sobrecarga do MoverSuave para aceitar local ou global
     IEnumerator MoverSuave(Transform o, Vector3 a, Vector3 b, float s, bool local = true)
     {
         float t = 0;
@@ -1747,6 +1807,79 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (vaga != null)
         {
             helicoptero.FixarEmVagaMovel(vaga, transform);
+        }
+    }
+
+    // ======================================================
+    // MÉTODOS DE FILA DE DECOLAGEM E ANIMAÇÃO DA RAMPA
+    // ======================================================
+    public bool IsPreparaBusy(ControleAviao solicitante)
+    {
+        return _aviaoNoPrepara != null && _aviaoNoPrepara != solicitante;
+    }
+
+    public void ReservePrepara(ControleAviao solicitante)
+    {
+        _aviaoNoPrepara = solicitante;
+    }
+
+    public void ReleasePrepara(ControleAviao solicitante)
+    {
+        if (_aviaoNoPrepara == solicitante)
+        {
+            _aviaoNoPrepara = null;
+        }
+    }
+
+    public void SubirRampa()
+    {
+        if (rampaDecolagem == null) return;
+        if (_rotinaRampa != null) StopCoroutine(_rotinaRampa);
+        
+        Vector3 targetPos = _posicaoDefaultRampa;
+        targetPos.y = -4f;
+        
+        Vector3 rot = _rotacaoDefaultRampa.eulerAngles;
+        rot.x = 83f;
+        Quaternion targetRot = Quaternion.Euler(rot);
+        
+        _rotinaRampa = StartCoroutine(RotinaAnimarRampa(targetPos, targetRot, 1.5f));
+    }
+
+    public void DescerRampa()
+    {
+        if (rampaDecolagem == null) return;
+        if (_rotinaRampa != null) StopCoroutine(_rotinaRampa);
+        
+        Vector3 targetPos = _posicaoDefaultRampa;
+        targetPos.y = -4.4f;
+        
+        Vector3 rot = _rotacaoDefaultRampa.eulerAngles;
+        rot.x = 20f;
+        Quaternion targetRot = Quaternion.Euler(rot);
+        
+        _rotinaRampa = StartCoroutine(RotinaAnimarRampa(targetPos, targetRot, 1.5f));
+    }
+
+    private IEnumerator RotinaAnimarRampa(Vector3 targetPos, Quaternion targetRot, float duracao)
+    {
+        Vector3 startPos = rampaDecolagem.localPosition;
+        Quaternion startRot = rampaDecolagem.localRotation;
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / duracao;
+            if (rampaDecolagem != null)
+            {
+                rampaDecolagem.localPosition = Vector3.Lerp(startPos, targetPos, t);
+                rampaDecolagem.localRotation = Quaternion.Slerp(startRot, targetRot, t);
+            }
+            yield return null;
+        }
+        if (rampaDecolagem != null)
+        {
+            rampaDecolagem.localPosition = targetPos;
+            rampaDecolagem.localRotation = targetRot;
         }
     }
 }

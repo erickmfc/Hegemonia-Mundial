@@ -145,7 +145,7 @@ public class MenuGoverno : MonoBehaviour
     private static readonly string[] SubSancoes = { "Visao Geral", "Aplicadas", "Tipos", "Historico" };
     private static readonly string[] SubEconomia = { "Tesouro", "Orcamento", "Producao", "Impostos" };
     private static readonly string[] SubMercado = { "Comprar", "Vender", "Precos", "Rotas" };
-    private static readonly string[] SubInterior = { "Populacao", "Infra", "Bem-estar", "Projetos" };
+    private static readonly string[] SubInterior = { "Populacao", "Cidades", "Bem-estar", "Projetos" };
     private static readonly string[] SubDefesa = { "Comando", "Exercito", "Marinha", "Aerea", "Alertas" };
     private static readonly string[] SubCiencia = { "Projetos", "Tecnologias", "Labs", "Fila" };
     private static readonly string[] SubTrabalho = { "Empregos", "Setores", "Formacao", "Politicas" };
@@ -191,6 +191,7 @@ public class MenuGoverno : MonoBehaviour
     private float nextDynamicRefresh;
     private float nextPeriodicRefresh;
     private int paisSelecionadoId = 2;
+    private string cidadeSelecionadaId = string.Empty;
 
     private bool hudCached;
     private MiniMapa cachedMiniMapa;
@@ -294,7 +295,10 @@ public class MenuGoverno : MonoBehaviour
             return;
 
         if (Input.GetKeyDown(teclaAtalho))
+        {
+            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             AlternarMenu(!EstaAberto);
+        }
 
         if (!EstaAberto)
             return;
@@ -1177,20 +1181,83 @@ public class MenuGoverno : MonoBehaviour
 
     private void BuildInteriorPage(PageView page)
     {
-        CreateSectionTitle(page.Root.transform, "Interior");
-        Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
+        int tab = subAbaAtualIndex;
         page.Refresh = () =>
         {
+            ClearChildren(page.Root.transform);
             DadosPaisGoverno p = GetPlayerGov();
-            stats.text = p == null
-                ? "Dados internos indisponiveis."
-                : "Populacao: " + FormatNumber(p.populacao) + " / " + FormatNumber(p.populacaoMaxima)
+            if (p == null) return;
+
+            if (tab == 1) // Cidades e Estados
+            {
+                CreateSectionTitle(page.Root.transform, "Divisão Territorial");
+                CreateDescription(page.Root.transform, "Cidades e Estados no mapa. Selecione uma cidade para gerenciar à direita.");
+                CreateHeaderRow(page.Root.transform, new[] { "NOME DA CIDADE", "TIPO", "POP. CIVIL", "AEROPORTO", "DOMÍNIO" }, new[] { 1.4f, 1.0f, 0.8f, 0.8f, 0.8f });
+                BuildCidadesRows(page.Root.transform);
+            }
+            else
+            {
+                CreateSectionTitle(page.Root.transform, "Interior");
+                Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
+                stats.text = "Populacao: " + FormatNumber(p.populacao) + " / " + FormatNumber(p.populacaoMaxima)
                   + "\nEmprego: " + p.emprego.ToString("0") + "%"
                   + "\nMoradia: " + p.moradia.ToString("0") + "%"
                   + "\nQualidade de vida: " + p.qualidadeVida.ToString("0") + "%"
                   + "\nDeficit principal: " + MainDeficit(p);
+            }
         };
         page.Refresh();
+    }
+
+    private void BuildCidadesRows(Transform parent)
+    {
+        GerenciadorDivisaoTerritorial.GarantirInstancia();
+        var lista = GerenciadorDivisaoTerritorial.Instancia.cidades;
+        
+        if (lista.Count == 0)
+        {
+            CreateInfoBlock(parent, "Nenhuma cidade ou estado detectado no mapa. Construa uma prefeitura ou base militar.");
+            return;
+        }
+
+        foreach (var c in lista)
+        {
+            string tipoStr = c.ehEstado ? "Capital (Estado)" : "Cidade (Distrito)";
+            string aeroStr = c.temAeroporto ? "Sim 🛫" : "Não";
+            string donoStr = c.teamID == 1 ? "Jogador" : (c.teamID > 1 ? "IA (" + c.teamID + ")" : "Neutro");
+
+            GameObject row = CreatePanel("CidadeRow_" + c.id, parent, 38f, corCard);
+            HorizontalLayoutGroup hLayout = row.AddComponent<HorizontalLayoutGroup>();
+            hLayout.padding = new RectOffset(8, 8, 4, 4);
+            hLayout.spacing = 10;
+            hLayout.childControlWidth = true;
+            hLayout.childControlHeight = true;
+            hLayout.childForceExpandWidth = false;
+
+            // Nome da Cidade (Botão de Seleção)
+            Button btn = CreateMiniActionButton(row.transform, c.nome, c.id == cidadeSelecionadaId ? corDestaque : corAzulBotao, () =>
+            {
+                cidadeSelecionadaId = c.id;
+                RefreshDynamicData(true);
+            });
+            btn.GetComponent<LayoutElement>().preferredWidth = 140f;
+
+            // Tipo
+            CreateLayoutText(row.transform, tipoStr, 11, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 30f)
+                .GetComponent<LayoutElement>().preferredWidth = 100f;
+
+            // Pop. Civil
+            CreateLayoutText(row.transform, c.populacaoCivil.ToString("N0"), 11, corTextoPrimario, TextAnchor.MiddleLeft, FontStyle.Normal, 30f)
+                .GetComponent<LayoutElement>().preferredWidth = 80f;
+
+            // Aeroporto
+            CreateLayoutText(row.transform, aeroStr, 11, c.temAeroporto ? corVerde : corTextoApagado, TextAnchor.MiddleLeft, FontStyle.Normal, 30f)
+                .GetComponent<LayoutElement>().preferredWidth = 80f;
+
+            // Dono
+            CreateLayoutText(row.transform, donoStr, 11, c.teamID == 1 ? corVerde : (c.teamID > 1 ? corVermelho : corTextoApagado), TextAnchor.MiddleRight, FontStyle.Bold, 30f)
+                .GetComponent<LayoutElement>().preferredWidth = 80f;
+        }
     }
 
     private void BuildDefensePage(PageView page)
@@ -1409,21 +1476,75 @@ public class MenuGoverno : MonoBehaviour
 
     private void BuildInteriorActionsPage(PageView page)
     {
-        CreateSectionTitle(page.Root.transform, "Interior");
-        Text info = CreateInfoBlock(page.Root.transform, "Acoes civis de baixo custo visual.");
-        CreateActionButton(page.Root.transform, "MELHORAR MORADIA", corAzulBotao, () =>
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
         {
-            Government()?.AlterarMoradia(paisJogadorId, 3f);
-            Notificar("Interior", "Moradia melhorada.");
-            RefreshDynamicData(true);
-        });
-        CreateActionButton(page.Root.transform, "MUTIRAO DE EMPREGOS", corPainel2, () =>
-        {
-            Government()?.AlterarEmprego(paisJogadorId, 3f);
-            Notificar("Interior", "Empregos estimulados.");
-            RefreshDynamicData(true);
-        });
-        page.Refresh = () => { if (info != null) info.text = "Foco atual: " + MainDeficit(GetPlayerGov()); };
+            ClearChildren(page.Root.transform);
+            if (tab == 1) // Cidades e Estados
+            {
+                CreateSectionTitle(page.Root.transform, "Editar Território");
+                
+                GerenciadorDivisaoTerritorial.GarantirInstancia();
+                var selecionada = GerenciadorDivisaoTerritorial.Instancia.cidades.FirstOrDefault(c => c.id == cidadeSelecionadaId);
+                
+                if (selecionada == null)
+                {
+                    CreateInfoBlock(page.Root.transform, "Selecione uma cidade na lista à esquerda para editar seu nome ou ver estatísticas detalhadas.");
+                    return;
+                }
+
+                string tipoStr = selecionada.ehEstado ? "Capital (Estado)" : "Cidade (Distrito)";
+                string aeroStr = selecionada.temAeroporto ? "Sim" : "Nenhum";
+                string donoStr = selecionada.teamID == 1 ? "Jogador" : "IA";
+
+                Text info = CreateInfoBlock(page.Root.transform, string.Empty);
+                info.text = "Nome: " + selecionada.nome
+                    + "\nTipo: " + tipoStr
+                    + "\nJurisdição: " + donoStr
+                    + "\nPop. Civil: " + selecionada.populacaoCivil.ToString("N0")
+                    + "\nAeroporto: " + aeroStr
+                    + "\nLocalização: " + selecionada.marcador.transform.position.ToString("F0");
+
+                CreateDescription(page.Root.transform, "Alterar nome do território:");
+                InputField inputNome = CreateCompactInput(page.Root.transform, selecionada.nome);
+                
+                CreateActionButton(page.Root.transform, "SALVAR NOME", corVerde, () =>
+                {
+                    if (inputNome != null && !string.IsNullOrWhiteSpace(inputNome.text))
+                    {
+                        GerenciadorDivisaoTerritorial.Instancia.RenomearCidade(selecionada.id, inputNome.text);
+                        Notificar("Divisão", "Território renomeado para " + inputNome.text);
+                        RefreshDynamicData(true);
+                    }
+                });
+
+                if (selecionada.temAeroporto)
+                {
+                    CreateActionButton(page.Root.transform, "AEROPORTO: ROTAS CIVIS (Futuro)", corAzulBotao, () =>
+                    {
+                        Notificar("Aeroporto", "Integração Futura: Conectando voos comerciais civis de " + selecionada.nome + ".");
+                    });
+                }
+            }
+            else
+            {
+                CreateSectionTitle(page.Root.transform, "Acoes internas");
+                Text info = CreateInfoBlock(page.Root.transform, "Acoes civis de baixo custo visual.");
+                info.text = "Foco atual: " + MainDeficit(GetPlayerGov());
+                CreateActionButton(page.Root.transform, "MELHORAR MORADIA", corAzulBotao, () =>
+                {
+                    Government()?.AlterarMoradia(paisJogadorId, 3f);
+                    Notificar("Interior", "Moradia melhorada.");
+                    RefreshDynamicData(true);
+                });
+                CreateActionButton(page.Root.transform, "MUTIRAO DE EMPREGOS", corPainel2, () =>
+                {
+                    Government()?.AlterarEmprego(paisJogadorId, 3f);
+                    Notificar("Interior", "Empregos estimulados.");
+                    RefreshDynamicData(true);
+                });
+            }
+        };
         page.Refresh();
     }
 

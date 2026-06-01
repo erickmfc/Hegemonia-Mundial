@@ -55,6 +55,8 @@ public class Imovel : MonoBehaviour
     private bool registrado = false;
     private int limitePopulacaoAdicionado = 0;
     private float rendaRegistradaNoSistema = 0f;
+    private bool mouseHover = false;
+    private Texture2D _texturaTooltip;
 
     // ═══════════════════════════════════════════════════════════════
     // PROPRIEDADES PÚBLICAS (para outros scripts lerem)
@@ -276,6 +278,69 @@ public class Imovel : MonoBehaviour
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════
+    // INTERACTION & TOOLTIP (Hover Connectivity Feedback)
+    // ═══════════════════════════════════════════════════════════════
+
+    void OnMouseEnter()
+    {
+        mouseHover = true;
+    }
+
+    void OnMouseExit()
+    {
+        mouseHover = false;
+    }
+
+    private Texture2D ObterTexturaTooltip()
+    {
+        if (_texturaTooltip == null)
+        {
+            _texturaTooltip = new Texture2D(1, 1);
+            _texturaTooltip.SetPixel(0, 0, new Color(0.08f, 0.1f, 0.13f, 0.95f));
+            _texturaTooltip.Apply();
+        }
+        return _texturaTooltip;
+    }
+
+    void OnGUI()
+    {
+        if (!mouseHover) return;
+
+        GUIStyle boxStyle = new GUIStyle(GUI.skin.box);
+        boxStyle.normal.background = ObterTexturaTooltip();
+        boxStyle.padding = new RectOffset(10, 10, 10, 10);
+        boxStyle.alignment = TextAnchor.MiddleLeft;
+
+        GUIStyle textStyle = new GUIStyle(GUI.skin.label);
+        textStyle.richText = true;
+        textStyle.fontSize = 13;
+        textStyle.normal.textColor = Color.white;
+
+        float baseConsumo = Mathf.Max(0.5f, moradoresAtuais * 0.05f);
+        float consumo = baseConsumo * 1.5f;
+        string statusEnergia = semEnergia ? "<color=#ff5555>⚡ SEM ENERGIA</color>" : "<color=#55ff55>⚡ COM ENERGIA</color>";
+        string avisoBlackout = semEnergia ? "\n<color=orange>⚠️ Qualidade de vida caindo!</color>" : "";
+
+        string content = $"<b>🏠 RESIDÊNCIA CIVIL ({name.Replace("(Clone)", "")})</b>\n\n" +
+                         $"👥 Moradores: <b>{moradoresAtuais} / {capacidade}</b>\n" +
+                         $"⚡ Consumo: <b>{consumo:F2} MW</b>\n" +
+                         $"🔌 Conectividade: {statusEnergia}{avisoBlackout}";
+
+        Vector2 size = textStyle.CalcSize(new GUIContent(content));
+        float width = size.x + 20f;
+        float height = size.y + 20f;
+
+        Vector2 mousePos = Input.mousePosition;
+        Rect rect = new Rect(mousePos.x + 15f, Screen.height - mousePos.y + 15f, width, height);
+
+        if (rect.xMax > Screen.width) rect.x = mousePos.x - width - 15f;
+        if (rect.yMax > Screen.height) rect.y = Screen.height - mousePos.y - height - 15f;
+
+        GUI.Box(rect, "", boxStyle);
+        GUI.Label(new Rect(rect.x + 10, rect.y + 10, size.x, size.y), content, textStyle);
+    }
+
     // DESTRUIÇÃO
     // ═══════════════════════════════════════════════════════════════
 

@@ -1,0 +1,100 @@
+================================================================================
+           HEGEMONIA GLOBAL - MANUAL DO CENTRO DE CONTROLE DO AEROPORTO
+================================================================================
+
+Este documento descreve detalhadamente o funcionamento, a estrutura e todos os 
+botões/comandos do menu do "Centro de Controle Tático & Aeroporto" (gerenciado 
+pelo script "GerenciadorAeroporto.cs").
+
+--------------------------------------------------------------------------------
+1. VISÃO GERAL DA INTERFACE (UI)
+--------------------------------------------------------------------------------
+O menu é ativado quando o jogador interage com a base aérea/aeroporto. A interface
+é dividida em abas principais de navegação no topo e exibe colunas táticas de gestão
+de frota na parte inferior.
+
+Abas de Navegação (Topo):
+• [✈️ Aba Comercial]: Focada em operações civis, logística comercial e testes.
+• [🎖️ Aba Militar]: Focada no gerenciamento da frota militar de caças, bombardeiros,
+  drones kamikazes, helicópteros e aviões de transporte C700.
+
+--------------------------------------------------------------------------------
+2. ABA MILITAR (ESTRUTURA E COLUNAS)
+--------------------------------------------------------------------------------
+Quando selecionada, a Aba Militar divide a tela em duas colunas centrais de gestão:
+
+COLUNA ESQUERDA: FROTA ATIVA
+Exibe todas as aeronaves que estão operando ou prontas para uso.
+• Mostra um indicador colorido representando a vida/integridade estrutural.
+• Exibe o nome da aeronave e o seu estado atual em tempo real.
+• Permite clicar na aeronave para selecioná-la e abrir o "Painel de Ordens" específico.
+
+COLUNA DIREITA: HANGAR
+Exibe as aeronaves que estão guardadas e seguras no hangar.
+• [Lib. Todos]: Botão no topo que libera simultaneamente todas as aeronaves do hangar para o pátio de voo.
+• Lista de Aeronaves:
+  - [⮂ TROCAR]: Substitui a aeronave do pátio selecionada pela que está no hangar.
+  - [▶ LIBERAR]: Move a aeronave do hangar para uma vaga livre no pátio do convés/pista.
+  - [Pátio L.(X)]: Fica desabilitado quando o pátio está lotado, avisando que não há vagas.
+
+--------------------------------------------------------------------------------
+3. BOTÕES DE COMPRA (CRIAÇÃO DE AERONAVES)
+--------------------------------------------------------------------------------
+Localizados no topo da Aba Militar:
+• [🧨 COMPRAR DRONE KAMIKAZE ($1500)]:
+  - Consome $1500 do Orçamento de Defesa.
+  - Instancia um UCAV não tripulado descartável focado em ataques de precisão.
+• [✈️ COMPRAR SU-11 ($2500)]:
+  - Consome $2500 do Orçamento de Defesa.
+  - Instancia um caça tático multifuncional Su-11.
+
+--------------------------------------------------------------------------------
+4. PAINEL DE ORDENS: CAÇAS & BOMBARDEIROS (SELECIONADOS)
+--------------------------------------------------------------------------------
+Ao selecionar um avião da Frota Ativa, este painel é aberto para dar comandos:
+
+Aeronave Estacionada (Pronta no Pátio):
+• [👁️ Reconhecimento]: Prepara o avião para revelar o mapa. O jogador clica com o botão direito no destino desejado.
+• [🛡️ Patrulha Aérea]:
+  - Envia o caça para patrulhar uma rota circular no local clicado.
+  - Se a quantidade selecionada for maior que 1, envia uma esquadrilha para patrulhar em formação.
+• [💣 Ataque Solo]: Ordena o caça a bombardear/atacar um alvo inimigo ou coordenada no solo.
+• [🚀 ATAQUE EM MASSA] (Exclusivo Drone Kamikaze):
+  - Permite selecionar a quantidade de drones (através de botões + e -) e lançá-los simultaneamente para sobrecarregar as defesas inimigas.
+• [💣 Ataque Área (Tapete)] (Exclusivo Bombardeiro):
+  - Ordena o bombardeiro a soltar uma sequência contínua de bombas em linha reta sobre a área alvo.
+
+Aeronave Em Voo (Em Missão):
+• [🎯 ALTERAR ALVO/DESTINO]: Abre a câmera tática para selecionar uma nova coordenada de ataque ou voo.
+• [🔙 ABORTAR E RETORNAR À BASE]: Cancela todas as ordens e manda a aeronave retornar imediatamente para pousar no aeroporto de origem.
+
+--------------------------------------------------------------------------------
+5. PAINEL DE ORDENS: HELICÓPTEROS (SELECIONADOS)
+--------------------------------------------------------------------------------
+Dá comandos para helicópteros ativos da base aérea:
+
+Comandos Gerais:
+• [👁️ Reconhecimento]: Envia o helicóptero para patrulhar e revelar neblina de guerra em uma coordenada.
+• [🛡️ Patrulha]: Abre o modo de rota tática. Cada clique direito no mapa adiciona um waypoint para o helicóptero patrulhar de forma contínua.
+  - ENTER: Confirma a patrulha.
+  - BACKSPACE: Desfaz o último ponto.
+  - ESC: Cancela a ordem.
+• [💥 Ataque Local]: Envia o helicóptero para atacar alvos terrestres ou navais em uma região.
+• [🔙 Retornar para vaga H]: Manda o helicóptero retornar à base imediatamente caso esteja pairando no mar ou terra.
+
+Comandos de Transporte (Exclusivo Helicópteros de Transporte de Tropas):
+• [🛬 Transporte]: Ordena que o helicóptero voe até um local, pouse e descarregue/recolha unidades terrestres.
+• [📥 Recolher tropas]: Se o helicóptero estiver pousado próximo a soldados aliados, recolhe-os para dentro do inventário de carga.
+• [📤 Desembarcar]: Faz o helicóptero pousar no local atual e descarregar todas as tropas transportadas para o combate.
+
+--------------------------------------------------------------------------------
+6. PAINEL DE ORDENS: TRANSPORTE AÉREO C700
+--------------------------------------------------------------------------------
+Controla o cargueiro de suprimentos e tropas de grande porte (C700):
+
+• [Puxar tropas]: Manda o C700 atrais e embarcar todas as tropas terrestres amigas que estão próximas a ele na pista do aeroporto.
+• [Preparar decolagem / destino]: Ativa o cursor tático de voo. O C700 decola e voa até o ponto determinado no mapa.
+• [Voltar para aeroporto / Retornar à base]: Cancela a rota atual e força o cargueiro a voltar para o aeroporto principal.
+• [Desembarcar carga]: Abre as portas de carga do avião em solo e descarrega todos os veículos e soldados em solo.
+
+================================================================================

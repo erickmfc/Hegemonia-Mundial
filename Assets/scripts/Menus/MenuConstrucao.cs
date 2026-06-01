@@ -308,6 +308,7 @@ public class MenuConstrucao : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.C) || Input.GetKeyDown(teclaAtalho))
         {
+            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             Debug.Log("[MenuConstrucao] Tecla de atalho pressionada (C). Alternando menu...");
             AlternarMenu(!menuAberto);
         }

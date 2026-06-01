@@ -74,7 +74,7 @@ public class GerenciadorQuartel : MonoBehaviour
     {
         if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
         
-        if (Input.GetKeyDown(KeyCode.B))
+        if (Input.GetKeyDown(KeyCode.B) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
             if (!menuAberto)
             {

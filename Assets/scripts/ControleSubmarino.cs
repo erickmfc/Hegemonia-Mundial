@@ -222,6 +222,8 @@ public class ControleSubmarino : MonoBehaviour
 
     private void ProcessarComandosSelecionado()
     {
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
+        
         float tempoDesdeUltimoMovimento = Time.time - ultimoMovimento;
 
         if (Input.GetKeyDown(KeyCode.U))

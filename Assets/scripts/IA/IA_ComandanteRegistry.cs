@@ -5,6 +5,11 @@ public static class IA_ComandanteRegistry
 {
     private static readonly Dictionary<int, IA_Comandante> ComandantePorTime = new Dictionary<int, IA_Comandante>();
 
+    public static IEnumerable<IA_Comandante> AllCommanders
+    {
+        get { return ComandantePorTime.Values; }
+    }
+
     public static void Register(IA_Comandante comandante)
     {
         if (comandante == null)

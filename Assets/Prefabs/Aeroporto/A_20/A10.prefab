@@ -64,8 +64,8 @@ Transform:
   m_GameObject: {fileID: 5856478735962788406}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 211.60223, y: 0.52, z: 166.34009}
-  m_LocalScale: {x: 0.85, y: 0.85, z: 0.85}
+  m_LocalPosition: {x: 211.60223, y: 0.24, z: 166.34009}
+  m_LocalScale: {x: 0.7, y: 0.73, z: 0.9}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1759577325364295047}
@@ -113,6 +113,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &5031895178428176555
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -130,6 +134,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -159,7 +169,7 @@ MonoBehaviour:
   fogoNosMotores: []
   luzPosCombustao: {fileID: 0}
   rodas:
-  - {fileID: 1349261231542448979}
+  - {fileID: 0}
   eixoRecolher: {x: 1, y: 0, z: 0}
   anguloRecolher: 90
   velocidadeTremPouso: 2
@@ -184,6 +194,8 @@ MonoBehaviour:
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
+  reservaMinimaRetornoPercentual: 0.22
+  reservaRetornoComDanosPercentual: 0.34
   velocidadeSolo: 8
   velocidadeMaximaVoo: 95
   taxaDeGiroLeme: 90
@@ -194,7 +206,8 @@ MonoBehaviour:
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
   rodas:
-  - {fileID: 0}
+  - {fileID: 1349261231542448979}
+  ajusteAlturaEstacionado: 0
   alvoGPSVoo: {x: 0, y: 0, z: 0}
   centroDaPatrulha: {x: 0, y: 0, z: 0}
   emAtaqueMergulho: 0
@@ -389,7 +402,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4465720305584277147, guid: d002c63a247c7b646922b68193b26f85, type: 3}
       propertyPath: m_LocalScale.y
-      value: 1.1764705
+      value: 0.88
       objectReference: {fileID: 0}
     - target: {fileID: 4465720305584277147, guid: d002c63a247c7b646922b68193b26f85, type: 3}
       propertyPath: m_LocalScale.z

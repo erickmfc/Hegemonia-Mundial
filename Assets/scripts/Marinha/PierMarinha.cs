@@ -287,7 +287,7 @@ public class PierMarinha : MonoBehaviour
     {
         ProcessarManutencao();
 
-        if (Input.GetKeyDown(KeyCode.V))
+        if (Input.GetKeyDown(KeyCode.V) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
             MenuPier.AlternarPorAtalho(this);
         }

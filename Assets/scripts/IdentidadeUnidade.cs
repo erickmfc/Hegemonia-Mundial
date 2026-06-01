@@ -23,8 +23,16 @@ public class IdentidadeUnidade : MonoBehaviour
     public float combustivelPorHora;
     public float energiaConsumida;
 
+    [Header("Identidade Pessoal")]
+    public string nomeDeBatismo;
+
     void Start()
     {
+        if (string.IsNullOrEmpty(nomeDeBatismo))
+        {
+            nomeDeBatismo = GeradorNomesBatismo.GerarNome();
+        }
+
         // Registra-se no Censo ao nascer
         if (CensoImperial.Instancia != null)
         {
@@ -55,6 +63,17 @@ public class IdentidadeUnidade : MonoBehaviour
         if (CensoImperial.Instancia != null)
         {
             CensoImperial.Instancia.RemoverUnidade(tipoUnidade, teamID, gameObject);
+        }
+
+        // Liberar população militar consumida ao morrer
+        if (militaresConsumidos > 0 && SistemaGovernoMundial.Instancia != null)
+        {
+            var pais = SistemaGovernoMundial.Instancia.ObterPais(teamID);
+            if (pais != null)
+            {
+                pais.populacaoMilitarAtiva = Mathf.Max(0, pais.populacaoMilitarAtiva - militaresConsumidos);
+                pais.populacao = Mathf.Clamp(pais.populacaoCivil + pais.populacaoMilitarAtiva + pais.reservistas + pais.alistaveis, 0, pais.populacaoMaxima);
+            }
         }
     }
 }

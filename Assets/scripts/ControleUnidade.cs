@@ -184,6 +184,11 @@ public class ControleUnidade : MonoBehaviour
         if(anelSelecao != null) anelSelecao.SetActive(selecionado);
         posicaoWatchdogAnterior = transform.position;
 
+        if (GetComponent<RenderizadorOrdensUnidade>() == null)
+        {
+            gameObject.AddComponent<RenderizadorOrdensUnidade>();
+        }
+
         // --- CORREÇÃO DE RESPONSIVIDADE (SOLDADOS) ---
         // Se for uma unidade simples (sem scripts complexos de movimento), aplica configurações ágeis
         if (agente != null && !ehAereo &&
@@ -589,6 +594,10 @@ public class ControleUnidade : MonoBehaviour
         if (controleAviao != null)
         {
             controleAviao.RegistrarPatrulha(rotaFinal);
+            if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+            {
+                controleAviao.IniciarMissaoCompleta(rotaFinal[0]);
+            }
         }
         ordemControleAtual = OrdemControleUnidade.Patrulhando;
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");

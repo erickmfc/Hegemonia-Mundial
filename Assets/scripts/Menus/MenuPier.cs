@@ -39,8 +39,9 @@ public class MenuPier : MonoBehaviour
         }
 
         // Tecla de atalho alterada para 'V' conforme solicitado
-        if (Input.GetKeyDown(KeyCode.V))
+        if (Input.GetKeyDown(KeyCode.V) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
+            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             AlternarPorAtalho(pierAlvo);
         }
     }

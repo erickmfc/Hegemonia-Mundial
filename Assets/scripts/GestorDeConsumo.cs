@@ -97,12 +97,7 @@ public class GestorDeConsumo : MonoBehaviour
             totalConsumoPetroleo += censo.aereo * custoAereoPetroleo;
         totalConsumoDinheiro += censo.aereo * custoAereoDinheiro;
 
-        // Estruturas: Gastam Energia
-        totalConsumoEnergia += censo.estruturas * custoEstruturaEnergia;
-        
-        // Adicionais especificos (conforme pedido)
-        totalConsumoEnergia += censo.casas * custoExtraCasaEnergia;
-        totalConsumoEnergia += censo.pesquisasMilitares * custoExtraPesquisaMilitarEnergia;
+        // Estruturas agora gerenciam seu proprio consumo via SistemaEconomiaImoveis
 
         // 3. Aplica a cobrança (Remove do banco)
         if (totalConsumoDinheiro > 0) banco.RemoverRecurso("Dinheiro", totalConsumoDinheiro);

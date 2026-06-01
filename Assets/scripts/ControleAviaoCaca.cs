@@ -258,8 +258,12 @@ public class ControleAviaoCaca : MonoBehaviour
                     vetorParaDestino = destinoAtual - transform.position;
                 }
                 
-                Quaternion rotacaoAlvo = Quaternion.LookRotation(vetorParaDestino);
-                transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, dt * velocidadeCurva);
+                if (vetorParaDestino.sqrMagnitude > 0.1f)
+                {
+                    Vector3 upRef = Mathf.Abs(Vector3.Dot(vetorParaDestino.normalized, Vector3.up)) > 0.99f ? transform.up : Vector3.up;
+                    Quaternion rotacaoAlvo = Quaternion.LookRotation(vetorParaDestino, upRef);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, dt * velocidadeCurva);
+                }
             }
             
             // Ajuste suave de altura (Fly-by-wire)
@@ -272,8 +276,12 @@ public class ControleAviaoCaca : MonoBehaviour
         {
             if (temDestino)
             {
-                Vector3 dir = (destinoAtual - transform.position).normalized;
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), dt);
+                Vector3 dir = (destinoAtual - transform.position);
+                if (dir.sqrMagnitude > 0.1f)
+                {
+                    Vector3 upRef = Mathf.Abs(Vector3.Dot(dir.normalized, Vector3.up)) > 0.99f ? transform.up : Vector3.up;
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir, upRef), dt);
+                }
             }
             transform.Translate(Vector3.down * 5f * dt, Space.World);
         }

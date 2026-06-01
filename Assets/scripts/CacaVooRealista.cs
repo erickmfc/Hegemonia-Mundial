@@ -108,7 +108,8 @@ public class CacaVooRealista : MonoBehaviour
         // sqrMagnitude evita sqrt — mais performático que magnitude
         if (retaAteAlvo.sqrMagnitude < 25f) return; // 5² = 25
 
-        Quaternion olharMundoDesejado = Quaternion.LookRotation(retaAteAlvo);
+        Vector3 upRef = Mathf.Abs(Vector3.Dot(retaAteAlvo.normalized, Vector3.up)) > 0.99f ? thisRoot.up : Vector3.up;
+        Quaternion olharMundoDesejado = Quaternion.LookRotation(retaAteAlvo, upRef);
         float anguloPressaoLateralY = Vector3.SignedAngle(thisRoot.forward, retaAteAlvo, Vector3.up);
         thisRoot.rotation = Quaternion.RotateTowards(thisRoot.rotation, olharMundoDesejado, taxaDeGiroLeme * dt);
         thisRoot.position += thisRoot.forward * (velocidadeAtual * dt);

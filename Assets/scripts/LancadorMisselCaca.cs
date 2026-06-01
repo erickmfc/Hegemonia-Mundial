@@ -56,6 +56,8 @@ public class LancadorMisselCaca : MonoBehaviour
     private List<AlvoDetectado> inimigosNaArea = new List<AlvoDetectado>();
     private float tempoUltimoScan = 0f;
 
+    public bool TemInimigosDetectados => inimigosNaArea != null && inimigosNaArea.Count > 0;
+
     // Interface
     private Vector2 scrollPosition;
     private bool radarMinimizado = false;

@@ -57,8 +57,8 @@ namespace Hegemonia.AI.DEUSA
             politica.PriorizarAereo = resolvido >= DeusaEstagio.ProjecaoRegional && mapa != null && mapa.TemAreaAereaValida;
             politica.PriorizarEspionagem = resolvido >= DeusaEstagio.MilitarizacaoDefensiva;
             politica.PriorizarGuerraTotal = resolvido >= DeusaEstagio.GuerraTotal && config.permitirGuerraTotal;
-            politica.MinimoEsquadraoAereo = resolvido >= DeusaEstagio.ProjecaoRegional ? 4 : 0;
-            politica.MinimoAtaqueAereoPesado = resolvido >= DeusaEstagio.GuerraTotal ? 8 : 6;
+            politica.MinimoEsquadraoAereo = resolvido >= DeusaEstagio.ProjecaoRegional ? 12 : 2;
+            politica.MinimoAtaqueAereoPesado = resolvido >= DeusaEstagio.GuerraTotal ? 16 : 10;
             politica.Motivo = ConstruirMotivo(config, pais, economia, snapshot, resolvido);
             return politica;
         }

@@ -466,7 +466,8 @@ public class IA_General_Pro : MonoBehaviour
     void TentarComprarAviaoPeriodicamentre()
     {
         if (meusAeroportos.Count == 0) return;
-        if (grupoAvioes.Count >= 5) return; 
+        // Permite à IA expandir consideravelmente sua força aérea
+        if (grupoAvioes.Count >= avioesDesejados * 2) return; 
         if (chefe.dinheiro < 600) return;   
         if (MenuConstrucao.catalogoGlobal == null) return;
 

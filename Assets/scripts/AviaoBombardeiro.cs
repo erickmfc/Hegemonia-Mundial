@@ -254,23 +254,7 @@ public class AviaoBombardeiro : MonoBehaviour
 
     private void CriarMarcadorImediato()
     {
-        if (marcadorCriado || modoDeAtaque == ModoAtaque.Patrulha) return; // Patrulha não precisa de decal fixo no chão
-
-        marcadorAreaVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        Destroy(marcadorAreaVisual.GetComponent<Collider>());
-        
-        marcadorAreaVisual.transform.position = new Vector3(alvoAreaSolo.x, alvoAreaSolo.y + 0.15f, alvoAreaSolo.z);
-        
-        float scaleVisual = modoDeAtaque == ModoAtaque.AtaqueAoSolo ? raioDaArea * 2f : 120f;
-        marcadorAreaVisual.transform.localScale = new Vector3(scaleVisual, 0.05f, scaleVisual);
-        
-        Renderer rend = marcadorAreaVisual.GetComponent<Renderer>();
-        if (rend != null)
-        {
-            rend.material = new Material(Shader.Find("Sprites/Default"));
-            rend.material.color = new Color(1f, 0.35f, 0f, 0.2f); // Laranja translúcido
-        }
-        
+        // Removido a pedido do usuário: o marcador 3D (X/Cilindro) não deve aparecer no mundo do jogo, apenas no mapa tático (UI)
         marcadorCriado = true;
     }
 

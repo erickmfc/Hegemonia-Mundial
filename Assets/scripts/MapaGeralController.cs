@@ -68,8 +68,9 @@ public class MapaGeralController : MonoBehaviour
     void Update()
     {
         if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
-        if (Input.GetKeyDown(KeyCode.M))
+        if (Input.GetKeyDown(KeyCode.M) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
+            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             mapaAtivo = !mapaAtivo;
             cameraMapa.gameObject.SetActive(mapaAtivo);
             AplicarModoMapa(mapaAtivo);

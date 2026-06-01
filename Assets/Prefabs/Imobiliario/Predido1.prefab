@@ -1558,7 +1558,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 370d63f90b709ba458d6dd28aa2be0ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Imovel
-  capacidade: 100
+  capacidade: 1000
   distanciaConexao: 8
   ladoEsquerdo: {fileID: 0}
   ladoDireito: {fileID: 0}

@@ -65,6 +65,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     [HideInInspector] public Transform wpPreparacao;
     [HideInInspector] public Transform wpPronto;
     [HideInInspector] public List<Transform> waypointsDecolagem = new List<Transform>();
+    [HideInInspector] public List<Transform> waypointsTaxi = new List<Transform>();
     [HideInInspector] public List<Transform> waypointsDecida = new List<Transform>();
     
     [HideInInspector] public Transform wpAndadar;
@@ -89,6 +90,21 @@ public class GerenciadorAeroporto : MonoBehaviour
     private string _ultimoModeloPainelPatrulha = string.Empty;
     private bool _usarMarcadorPatrulhaAviaoNoProximoClique = false;
     private float _proximaSortidaIA = -999f;
+
+    [Header("⚡ Energia")]
+    public bool semEnergia = false;
+    private bool mouseHover = false;
+    private Texture2D _texturaTooltip;
+
+    public void SetarSemEnergia(bool status)
+    {
+        if (semEnergia == status) return;
+        semEnergia = status;
+        if (semEnergia)
+        {
+            Debug.Log($"[ENERGIA] Aeroporto {name} está sem energia! Operações e compras bloqueadas.");
+        }
+    }
 
     [Header("Spawn IA (Antitravada)")]
     [Tooltip("Quando ativo, compras de aeronaves da IA entram em fila e sao instanciadas aos poucos para evitar queda brutal de FPS/GC.")]
@@ -354,6 +370,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Alpha7))
         {
+            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
             if (_identidadeCacheada != null && _identidadeCacheada.teamID != 1 && _identidadeCacheada.teamID != 0) return;
 
@@ -832,6 +849,12 @@ public class GerenciadorAeroporto : MonoBehaviour
     {
         if (prefabDeAeronave == null)
         {
+            return;
+        }
+
+        if (semEnergia)
+        {
+            Debug.LogWarning($"[Aeroporto] {name} está sem energia! Compra de aeronaves bloqueada.");
             return;
         }
 
@@ -1763,9 +1786,68 @@ public class GerenciadorAeroporto : MonoBehaviour
     }
 #endif
 
+    void OnMouseEnter()
+    {
+        mouseHover = true;
+    }
+
+    void OnMouseExit()
+    {
+        mouseHover = false;
+    }
+
     void OnGUI()
     {
         if (Construtor.EmModoConstrucaoAtivo) return;
+
+        if (mouseHover && !(this is GerenciadorPortaAvioes))
+        {
+            GUIStyle boxStyle = new GUIStyle(GUI.skin.box);
+            if (_texturaTooltip == null)
+            {
+                _texturaTooltip = new Texture2D(1, 1);
+                _texturaTooltip.SetPixel(0, 0, new Color(0.08f, 0.1f, 0.13f, 0.95f));
+                _texturaTooltip.Apply();
+            }
+            boxStyle.normal.background = _texturaTooltip;
+            boxStyle.padding = new RectOffset(10, 10, 10, 10);
+            boxStyle.alignment = TextAnchor.MiddleLeft;
+
+            GUIStyle textStyle = new GUIStyle(GUI.skin.label);
+            textStyle.richText = true;
+            textStyle.fontSize = 13;
+            textStyle.normal.textColor = Color.white;
+
+            float baseConsumo = 15.0f;
+            int totalAvioes = avioesNoPatio.Count + avioesNoHangar.Count;
+            int totalHelis = helicopterosDoAeroporto.Count;
+            int totalHeavy = transportesC700NoPatio.Count;
+            float consumo = baseConsumo + (totalAvioes * 2.0f) + (totalHelis * 1.5f) + (totalHeavy * 5.0f);
+            
+            string statusEnergia = semEnergia ? "<color=#ff5555>⚡ APAGÃO (SEM ENERGIA)</color>" : "<color=#55ff55>⚡ OPERACIONAL</color>";
+            string avisoBlackout = semEnergia ? "\n<color=orange>⚠️ Lançamentos e compras bloqueados!</color>" : "";
+
+            string content = $"<b>✈️ AEROPORTO MILITAR ({name.Replace("(Clone)", "")})</b>\n\n" +
+                             $"🛸 Frota no Pátio: <b>{avioesNoPatio.Count + transportesC700NoPatio.Count}</b>\n" +
+                             $"🔒 Frota no Hangar: <b>{avioesNoHangar.Count}</b>\n" +
+                             $"🚁 Helicópteros: <b>{helicopterosDoAeroporto.Count}</b>\n" +
+                             $"⚡ Consumo: <b>{consumo:F2} MW</b>\n" +
+                             $"🔌 Conectividade: {statusEnergia}{avisoBlackout}";
+
+            Vector2 size = textStyle.CalcSize(new GUIContent(content));
+            float width = size.x + 20f;
+            float height = size.y + 20f;
+
+            Vector2 mousePos = Input.mousePosition;
+            Rect rect = new Rect(mousePos.x + 15f, Screen.height - mousePos.y + 15f, width, height);
+
+            if (rect.xMax > Screen.width) rect.x = mousePos.x - width - 15f;
+            if (rect.yMax > Screen.height) rect.y = Screen.height - mousePos.y - height - 15f;
+
+            GUI.Box(rect, "", boxStyle);
+            GUI.Label(new Rect(rect.x + 10, rect.y + 10, size.x, size.y), content, textStyle);
+        }
+
         if (!menuAtivo) return;
         if (!GestorMenusExclusivos.EstaAtivo(this))
         {
@@ -1831,6 +1913,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         // Botão de compra para o Drone Kamikaze
         if (prefabDroneKamikaze != null)
         {
+            if (semEnergia) GUI.enabled = false;
             if (GUILayout.Button($"🧨 COMPRAR DRONE KAMIKAZE (${precoDroneKamikaze})", GUILayout.Height(40)))
             {
                 if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoDroneKamikaze)
@@ -1843,6 +1926,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                     Debug.LogWarning("[Aeroporto] Dinheiro insuficiente para Drone Kamikaze!");
                 }
             }
+            if (semEnergia) GUI.enabled = true;
         }
         else
         {
@@ -1854,6 +1938,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         // Botão de compra para o Su-11
         if (prefabSu11 != null)
         {
+            if (semEnergia) GUI.enabled = false;
             if (GUILayout.Button($"✈️ COMPRAR SU-11 (${precoSu11})", GUILayout.Height(40)))
             {
                 if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoSu11)
@@ -1866,6 +1951,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                     Debug.LogWarning("[Aeroporto] Dinheiro insuficiente para Su-11!");
                 }
             }
+            if (semEnergia) GUI.enabled = true;
         }
         else
         {
@@ -1982,6 +2068,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         {
             string nomeLimpo = ObterInfoAviao(aviaoSelecionadoParaMissao, out string corCristal, out string vidaStr);
             GUILayout.Label($"<b>PAINEL DE ORDENS: <color={corCristal}>■</color> {nomeLimpo}{vidaStr}</b>");
+            if (semEnergia) GUI.enabled = false;
             
             if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
             {
@@ -2191,6 +2278,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                  GUILayout.Button("Aguarde a manobra de pista...", GUILayout.Height(40));
                  GUI.enabled = true;
             }
+            if (semEnergia) GUI.enabled = true;
         }
 
         DesenharPainelHelicoptero();
@@ -2207,6 +2295,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         GUILayout.Space(12);
         GUILayout.BeginVertical("box");
+        if (semEnergia) GUI.enabled = false;
         string nomeHeliSelecionado = helicopteroSelecionadoParaMissao.ObterRotuloExibicao();
         GUILayout.Label($"<b>PAINEL DE ORDENS: 🚁 {nomeHeliSelecionado}</b>");
         GUILayout.Label($"<color=cyan>{helicopteroSelecionadoParaMissao.ObterEstadoOperacionalAeroporto()}</color>");
@@ -2294,6 +2383,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
         }
 
+        if (semEnergia) GUI.enabled = true;
         GUILayout.EndVertical();
     }
 
@@ -2334,6 +2424,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             GUILayout.Space(8);
             string nomeSelecionado = ObterInfoAviao(c700SelecionadoParaMissao, out string corCristalSelecionado, out string vidaSelecionada);
             GUILayout.Label($"<b>SELECIONADO:</b> <color={corCristalSelecionado}>■</color> {nomeSelecionado}{vidaSelecionada}");
+            if (semEnergia) GUI.enabled = false;
 
             GUILayout.Label($"Estado: {c700SelecionadoParaMissao.estadoAtual}");
             GUILayout.Label($"Carga real: {c700SelecionadoParaMissao.QuantidadeCargaAtual}/{c700SelecionadoParaMissao.CapacidadeCargaAtual} | Manifesto: {c700SelecionadoParaMissao.QuantidadeManifestoTotal}");
@@ -2404,6 +2495,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                 }
             }
 
+        if (semEnergia) GUI.enabled = true;
         }
 
         GUILayout.EndScrollView();

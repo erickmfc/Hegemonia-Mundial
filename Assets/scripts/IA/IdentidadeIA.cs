@@ -26,6 +26,18 @@ public class IdentidadeIA : MonoBehaviour
     public Transform alvoPrincipal; 
     public Transform liderInimigo;
 
+    public static System.Collections.Generic.List<IdentidadeIA> TodasIdentidades = new System.Collections.Generic.List<IdentidadeIA>();
+
+    void Awake()
+    {
+        TodasIdentidades.Add(this);
+    }
+
+    void OnDestroy()
+    {
+        TodasIdentidades.Remove(this);
+    }
+
     void Start()
     {
         // Ao nascer, tenta se registrar no Gerente de Jogo

@@ -488,12 +488,18 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Se o usuário atribuiu um objeto pai que contém os pontos como filhos (ex: "Locals"),
-    /// nós expandimos a lista adicionando todos os filhos e removendo o pai.
-    /// </summary>
     private void PreprocessarWaypoints()
     {
+        if (pontosTrabalhador == null) pontosTrabalhador = new List<Transform>();
+        if (pontosTrabalhador.Count == 0)
+        {
+            Transform objTrabalho = transform.Find("Trabalho");
+            if (objTrabalho != null)
+            {
+                pontosTrabalhador.Add(objTrabalho);
+            }
+        }
+
         ExpandirPontos(pontosTrabalhador);
         ExpandirPontos(pontosMilitar);
     }

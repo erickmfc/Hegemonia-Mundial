@@ -1,0 +1,638 @@
+/* ============================================================
+   MENU COMANDO TÁTICO — USS Theme
+   Baseado no protótipo HTML/CSS tático com tema ciano escuro
+   ============================================================ */
+
+/* --- VARIÁVEIS GLOBAIS (via classes utilitárias) --- */
+/* --primary: #00e5ff  --enemy: #ff3333  --alert: #ffaa00 */
+
+/* --- ROOT --- */
+.menu-root {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    flex-direction: column;
+    background-color: rgba(5, 9, 12, 0.0); /* Transparent to allow seeing the 3D map */
+    padding: 12px;
+    gap: 10px;
+}
+
+/* --- OVERLAY CRT (scanlines) --- */
+.crt-overlay {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+}
+
+/* --- TIPOGRAFIA --- */
+.mono {
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+}
+
+/* --- HEADER --- */
+.header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(0, 229, 255, 0.3);
+    padding-bottom: 8px;
+    height: 36px;
+    flex-shrink: 0;
+}
+
+.header-titulo {
+    color: rgb(0, 229, 255);
+    font-size: 15px;
+    -unity-font-style: bold;
+}
+
+.header-center {
+    flex-direction: row;
+    align-items: center;
+}
+
+.header-status {
+    color: rgb(0, 229, 255);
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.header-tempo {
+    color: rgb(107, 139, 153);
+    font-size: 12px;
+}
+
+/* --- PAINEL BASE (rts-panel) --- */
+.rts-panel {
+    background-color: rgba(10, 16, 22, 0.88);
+    border-width: 1px;
+    border-color: rgba(0, 229, 255, 0.3);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Linha de brilho no topo do painel */
+.rts-panel::before {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background-color: rgba(0, 229, 255, 0.5);
+}
+
+/* --- CORPO PRINCIPAL (Mapa + FLIR) --- */
+.corpo-principal {
+    flex-direction: row;
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+}
+
+/* --- PAINEL DO MAPA --- */
+.painel-mapa {
+    flex: 1.3;
+    position: relative;
+    background-color: rgb(11, 20, 26);
+    overflow: hidden;
+}
+
+.panel-label {
+    color: rgb(107, 139, 153);
+    font-size: 11px;
+    -unity-font-style: bold;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(0, 229, 255, 0.2);
+    padding: 5px 8px;
+    letter-spacing: 2px;
+    flex-shrink: 0;
+}
+
+/* Grade do mapa */
+.mapa-grade {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+}
+
+/* Radar sweep */
+.radar-sweep {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 200%;
+    height: 2px;
+    background-image: linear-gradient(to right, transparent, rgba(0,229,255,0.4));
+    transform-origin: left center;
+    opacity: 0.35;
+    /* Animação via C# (rotate) */
+}
+
+/* Layer das unidades */
+.mapa-unidades-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+}
+
+.mapa-linhas-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+}
+
+/* --- MARCADORES DE UNIDADE NO MAPA --- */
+.mapa-unidade {
+    position: absolute;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    /* offset para centralizar */
+    margin-left: -15px;
+    margin-top: -15px;
+}
+
+.mapa-marcador {
+    width: 22px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-width: 2px;
+    border-radius: 3px;
+}
+
+.mapa-marcador.amigo {
+    border-color: rgb(0, 229, 255);
+    color: rgb(0, 229, 255);
+}
+
+.mapa-marcador.inimigo {
+    border-color: rgb(255, 51, 51);
+    color: rgb(255, 51, 51);
+    rotate: 45deg;
+}
+
+.mapa-marcador.destruido {
+    border-color: rgb(85, 85, 85);
+    color: rgb(85, 85, 85);
+    opacity: 0.5;
+}
+
+.mapa-label {
+    position: absolute;
+    top: -18px;
+    font-size: 9px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+    background-color: rgba(0, 0, 0, 0.85);
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+    border-width: 1px;
+}
+
+.mapa-label.amigo {
+    color: rgb(0, 229, 255);
+    border-color: rgb(0, 229, 255);
+}
+
+.mapa-label.inimigo {
+    color: rgb(255, 51, 51);
+    border-color: rgb(255, 51, 51);
+}
+
+.mapa-label.selecionado {
+    color: rgb(255, 255, 0);
+    border-color: rgb(255, 255, 0);
+}
+
+/* Mini barra de HP no mapa */
+.mapa-hp-track {
+    position: absolute;
+    bottom: -6px;
+    left: 0; right: 0;
+    height: 3px;
+    background-color: rgb(30, 30, 30);
+}
+
+.mapa-hp-fill {
+    height: 100%;
+}
+
+.mapa-hp-fill.amigo { background-color: rgb(0, 229, 255); }
+.mapa-hp-fill.inimigo { background-color: rgb(255, 51, 51); }
+
+/* Anel de seleção */
+.mapa-sel-ring {
+    position: absolute;
+    top: -4px; left: -4px; right: -4px; bottom: -4px;
+    border-width: 2px;
+    border-color: rgb(255, 220, 0);
+    border-radius: 50%;
+    opacity: 0;
+}
+
+.mapa-sel-ring.visivel {
+    opacity: 1;
+}
+
+/* --- PAINEL FLIR --- */
+.painel-flir {
+    flex: 1;
+    position: relative;
+    background-color: rgb(10, 10, 10);
+    overflow: hidden;
+    border-color: rgba(100, 100, 100, 0.4);
+}
+
+/* Imagem da câmera (RenderTexture) */
+.flir-imagem {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    -unity-background-scale-mode: stretch-to-fill;
+    opacity: 0.9;
+}
+
+/* Noise overlay */
+.flir-noise {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+}
+
+/* Crosshair */
+.flir-crosshair {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 140px; height: 140px;
+    margin-left: -70px;
+    margin-top: -70px;
+}
+
+.crosshair-h {
+    position: absolute;
+    top: 50%;
+    left: -20px; right: -20px;
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.75);
+    margin-top: -0.5px;
+}
+
+.crosshair-v {
+    position: absolute;
+    left: 50%;
+    top: -20px; bottom: -20px;
+    width: 1px;
+    background-color: rgba(255, 255, 255, 0.75);
+    margin-left: -0.5px;
+}
+
+.crosshair-box {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-width: 1.5px;
+    border-color: rgba(255, 255, 255, 0.45);
+}
+
+/* Overlay de texto do FLIR */
+.flir-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+}
+
+.flir-text {
+    position: absolute;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.9);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+}
+
+.flir-tl { top: 10px; left: 10px; }
+.flir-tc { top: 10px; left: 50%; translate: -50% 0; }
+.flir-tr { top: 10px; right: 10px; }
+.flir-bc { bottom: 22px; left: 50%; translate: -50% 0; color: rgb(255, 170, 0); }
+
+.flir-unidade-nome {
+    position: absolute;
+    bottom: 8px;
+    right: 10px;
+    font-size: 10px;
+    color: rgb(0, 229, 255);
+}
+
+.flir-alert {
+    color: rgb(255, 170, 0);
+}
+
+/* --- ÁREA INFERIOR --- */
+.area-inferior {
+    flex-direction: row;
+    gap: 10px;
+    height: 220px;
+    flex-shrink: 0;
+}
+
+.painel-bottom {
+    flex: 1;
+    padding-top: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: 10px;
+    overflow: hidden;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* --- TELEMETRIA DA UNIDADE --- */
+.unidade-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    flex-shrink: 0;
+}
+
+.unidade-emoji {
+    font-size: 20px;
+}
+
+.unidade-nome {
+    color: rgb(0, 229, 255);
+    font-size: 16px;
+    -unity-font-style: bold;
+    flex: 1;
+}
+
+.stat-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.stat-lbl {
+    color: rgb(107, 139, 153);
+    font-size: 10px;
+    width: 45%;
+}
+
+.stat-val {
+    color: rgb(208, 232, 240);
+    font-size: 10px;
+    -unity-font-style: bold;
+    width: 55%;
+}
+
+.stat-ok { color: rgb(0, 229, 255); }
+.stat-alert { color: rgb(255, 170, 0); }
+.stat-danger { color: rgb(255, 51, 51); }
+
+.progress-row {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 6px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.progress-lbl {
+    font-size: 10px;
+    color: rgb(107, 139, 153);
+    -unity-font-style: bold;
+    width: 45px;
+}
+
+.progress-track {
+    flex: 1;
+    height: 8px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-width: 1px;
+    border-color: rgba(0, 229, 255, 0.2);
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 2px;
+}
+
+.progress-fill {
+    height: 100%;
+}
+
+.progress-val {
+    font-size: 10px;
+    color: rgb(208, 232, 240);
+    -unity-font-style: bold;
+    width: 35px;
+    -unity-text-align: middle-right;
+}
+
+.hp-fill { background-color: rgb(0, 229, 255); }
+.fuel-fill { background-color: rgb(243, 156, 18); }
+
+/* --- SITREP --- */
+.sitrep-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+}
+
+.sitrep-separator {
+    border-top-width: 1px;
+    border-top-color: rgba(0, 229, 255, 0.15);
+    margin-top: 4px;
+    padding-top: 6px;
+}
+
+.sitrep-aliados { color: rgb(0, 229, 255); font-size: 14px; }
+.sitrep-inimigos { color: rgb(255, 51, 51); font-size: 14px; }
+.sitrep-ameaca { color: rgb(255, 170, 0); font-size: 11px; }
+
+/* --- LOG DE COMUNICAÇÕES --- */
+.log-scroll {
+    flex: 1;
+    min-height: 0;
+}
+
+.log-scroll > .unity-scroll-view__content-and-vertical-scroll-container > .unity-scroller--vertical {
+    width: 6px;
+}
+
+.log-scroll > .unity-scroll-view__content-and-vertical-scroll-container > .unity-scroller--vertical > .unity-base-slider__tracker {
+    background-color: rgba(0,0,0,0.3);
+}
+
+.log-scroll > .unity-scroll-view__content-and-vertical-scroll-container > .unity-scroller--vertical > .unity-base-slider__dragger {
+    background-color: rgba(0, 229, 255, 0.4);
+    border-radius: 2px;
+}
+
+.log-container {
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 4px;
+}
+
+.log-entry {
+    flex-direction: column;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+    padding-bottom: 3px;
+}
+
+.log-linha {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.log-time {
+    color: rgb(107, 139, 153);
+    font-size: 9px;
+    margin-right: 4px;
+}
+
+.log-source {
+    color: rgb(0, 229, 255);
+    font-size: 9px;
+    -unity-font-style: bold;
+    margin-right: 4px;
+}
+
+.log-source.inimigo { color: rgb(255, 51, 51); }
+.log-source.sistema { color: rgb(255, 170, 0); }
+
+.log-msg {
+    color: rgb(180, 200, 210);
+    font-size: 9px;
+}
+
+/* --- ORDENS --- */
+.ordens-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.ordem-btn {
+    flex: 1;
+    min-width: 45%;
+    height: 34px;
+    border-width: 1px;
+    border-color: rgba(0, 229, 255, 0.4);
+    border-radius: 2px;
+    font-size: 10px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    cursor: link;
+    transition-duration: 0.15s;
+    transition-property: background-color, border-color;
+}
+
+.ordem-btn:hover {
+    border-width: 1px;
+}
+
+.btn-ativo {
+    background-color: rgba(180, 0, 0, 0.35);
+    color: rgb(255, 100, 100);
+    border-color: rgba(255, 51, 51, 0.6);
+}
+.btn-ativo:hover {
+    background-color: rgba(200, 20, 20, 0.55);
+    border-color: rgb(255, 51, 51);
+}
+
+.btn-passivo {
+    background-color: rgba(0, 80, 180, 0.35);
+    color: rgb(100, 180, 255);
+    border-color: rgba(0, 150, 255, 0.5);
+}
+.btn-passivo:hover {
+    background-color: rgba(0, 100, 200, 0.55);
+    border-color: rgb(0, 229, 255);
+}
+
+.btn-funcionar {
+    background-color: rgba(0, 150, 100, 0.3);
+    color: rgb(100, 255, 180);
+    border-color: rgba(0, 200, 120, 0.5);
+}
+.btn-funcionar:hover {
+    background-color: rgba(0, 180, 120, 0.5);
+    border-color: rgb(0, 255, 180);
+}
+
+.btn-patrulhar {
+    background-color: rgba(160, 80, 0, 0.35);
+    color: rgb(255, 170, 80);
+    border-color: rgba(255, 130, 0, 0.5);
+}
+.btn-patrulhar:hover {
+    background-color: rgba(180, 100, 0, 0.55);
+    border-color: rgb(255, 170, 0);
+}
+
+.btn-seguir {
+    background-color: rgba(100, 0, 140, 0.35);
+    color: rgb(200, 120, 255);
+    border-color: rgba(160, 50, 200, 0.5);
+}
+.btn-seguir:hover {
+    background-color: rgba(130, 20, 170, 0.55);
+    border-color: rgb(200, 80, 255);
+}
+
+.btn-atacar {
+    background-color: rgba(220, 20, 60, 0.35);
+    color: rgb(255, 80, 100);
+    border-color: rgba(255, 30, 80, 0.5);
+}
+.btn-atacar:hover {
+    background-color: rgba(255, 30, 80, 0.55);
+    border-color: rgb(255, 50, 100);
+}
+
+.ordens-status {
+    margin-top: 6px;
+    border-top-width: 1px;
+    border-top-color: rgba(0, 229, 255, 0.15);
+    padding-top: 5px;
+}
+
+.ordem-feedback {
+    color: rgb(107, 139, 153);
+    font-size: 9px;
+    -unity-text-align: middle-center;
+}
+
+/* --- BLINK ANIMATION (via opacity) --- */
+.blink {
+    opacity: 1;
+    /* Animado via C# toggling opacity */
+}
+
+/* --- BOTÃO SELECIONAR TUDO (FLUTUANTE NO MAPA) --- */
+.btn-selecionar-tudo {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    height: 18px;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-top: 0;
+    padding-bottom: 0;
+    background-color: rgba(5, 9, 12, 0.85);
+    border-width: 1px;
+    border-color: rgba(0, 229, 255, 0.4);
+    border-radius: 2px;
+    color: rgb(0, 229, 255);
+    font-size: 8px;
+    cursor: link;
+    transition-duration: 0.12s;
+    transition-property: background-color;
+}
+
+.btn-selecionar-tudo:hover {
+    background-color: rgba(0, 229, 255, 0.25);
+    border-color: rgb(0, 229, 255);
+}
