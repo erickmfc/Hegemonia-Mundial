@@ -23,6 +23,7 @@ public class IA_Comandante : MonoBehaviour
     [Header("Estado Mental")]
     public EstadoEstrategico estadoAtual = EstadoEstrategico.Paz_Desenvolvimento;
     public float intervaloDecisao = 2.0f; // Segundos entre pensamentos
+    public bool controlePorLLM = false; // Se verdadeiro, o script ignora as regras padroes e obedece cegamente a IA Llama
 
     public enum EstadoEstrategico
     {
@@ -136,6 +137,8 @@ public class IA_Comandante : MonoBehaviour
 
     void AvaliarMudancaDeEstado()
     {
+        if (controlePorLLM) return; // O Llama assume total controle do fluxo.
+
         int totalSoldados = minhasUnidades.Count(u => u != null && !u.name.Contains("Construtor") && !u.name.Contains("Civil"));
         int totalCivis = meusCivis.Count(u => u != null);
         

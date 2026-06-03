@@ -258,6 +258,8 @@ public class MenuGoverno : MonoBehaviour
         Instancia = this;
         EstaAberto = false;
         AplicarLayoutGovernamentalAtual();
+        if (transform.parent != null)
+            transform.SetParent(null);
         DontDestroyOnLoad(gameObject);
 
         cachedSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;

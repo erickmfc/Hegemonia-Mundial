@@ -137,6 +137,7 @@ namespace Hegemonia.AI.BrainMaster
         private IA_NavalDirector _navalDirector;
         private IA_AirDirector _airDirector;
         private IA_DefenseDirector _defenseDirector;
+        private IA_TaskForceCoordinator _taskForceCoordinator;
         private IA_DeusaBrain _deusaBrain;
         private readonly List<IdentidadeUnidade> _backendUnitBuffer = new List<IdentidadeUnidade>(128);
 
@@ -417,6 +418,25 @@ namespace Hegemonia.AI.BrainMaster
 
             ActiveStrategicTarget = summary;
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_alvo_estrategico_" + TeamId, ActiveStrategicTarget);
+        }
+
+        public void DefinirDiretrizSuprema(string ordemLLM, int alvoTeamId)
+        {
+            if (ordemLLM == "invasao_anfibia_combinada")
+            {
+                StrategicPhase = IA_StrategicPhase.Dominacao;
+                ActiveImperialPlan = "invasao_anfibia_combinada";
+                ReportStrategicTarget("Força-Tarefa Combinada contra Nação " + alvoTeamId);
+                
+                // Força a produção intensa de navios e helicópteros
+                TargetFleet = Mathf.Max(TargetFleet, 10);
+                TargetAircraft = Mathf.Max(TargetAircraft, 10);
+                
+                if (_taskForceCoordinator != null)
+                {
+                    _taskForceCoordinator.SetInvasionTarget(alvoTeamId);
+                }
+            }
         }
 
         private void RegistrarRelatorioImperialPorTempo(float elapsed, IA_ForceSnapshot snapshot)
@@ -766,6 +786,10 @@ namespace Hegemonia.AI.BrainMaster
             _scheduler.Register(_navalDirector, now, 0.31f);
             _scheduler.Register(_airDirector, now, 0.34f);
             _scheduler.Register(_defenseDirector, now, 0.37f);
+            
+            _taskForceCoordinator = new IA_TaskForceCoordinator(Context);
+            _scheduler.Register(_taskForceCoordinator, now, 0.40f);
+            
             _scheduler.Register(_debugMonitor, now, 0.45f);
             _modulesRegistered = true;
         }

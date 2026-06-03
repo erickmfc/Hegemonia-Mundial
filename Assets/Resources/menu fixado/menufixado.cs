@@ -221,20 +221,22 @@ public class MenuFixadoController : MonoBehaviour
         }
 
         float consumida = pais?.energiaConsumida ?? 0f;
-        float produzida = pais != null ? pais.energiaProduzida : Mathf.Max(0f, r.energia);
+        float produzida = pais != null ? Mathf.Max(pais.energiaProduzida, r.energia) : Mathf.Max(0f, r.energia);
+
+        SetText(lblEnergyVal, $"{consumida:0}/{produzida:0}");
 
         if (produzida > 0.01f)
         {
             float uso = Mathf.Clamp((consumida / produzida) * 100f, 0f, 999f);
-            SetText(lblEnergyVal, uso >= 100f ? "DÉFICIT" : $"{uso:0}% USO");
-            SetColor(lblEnergyVal, uso >= 100f ? Color.red : (uso >= 90f ? Color.yellow : Color.white));
-            SetText(lblEnergyBonus, $"{consumida:0}/{produzida:0}");
-            SetColor(lblEnergyBonus, uso >= 100f ? Color.red : (uso >= 90f ? Color.yellow : Color.green));
+            SetColor(lblEnergyVal, uso > 100f ? Color.red : (uso >= 90f ? Color.yellow : Color.white));
+            SetText(lblEnergyBonus, uso > 100f ? "DÉFICIT" : $"{uso:0}% USO");
+            SetColor(lblEnergyBonus, uso > 100f ? Color.red : (uso >= 90f ? Color.yellow : Color.green));
         }
         else
         {
-            SetText(lblEnergyVal, r.energia.ToString("N0"));
-            SetText(lblEnergyBonus, "+0/s");
+            SetColor(lblEnergyVal, consumida > 0 ? Color.red : Color.white);
+            SetText(lblEnergyBonus, consumida > 0 ? "DÉFICIT" : "+0/s");
+            SetColor(lblEnergyBonus, consumida > 0 ? Color.red : Color.green);
         }
 
         if (GerenciadorArmazens.Instancia?.armazemRecursos != null)

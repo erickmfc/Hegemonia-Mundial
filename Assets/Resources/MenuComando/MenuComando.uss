@@ -72,12 +72,10 @@
     position: relative;
 }
 
-/* Linha de brilho no topo do painel */
-.rts-panel::before {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background-color: rgba(0, 229, 255, 0.5);
+/* Brilho no topo via borda (USS não suporta ::before) */
+.rts-panel {
+    border-top-width: 1px;
+    border-top-color: rgba(0, 229, 255, 0.5);
 }
 
 /* --- CORPO PRINCIPAL (Mapa + FLIR) --- */
@@ -119,7 +117,7 @@
     top: 50%; left: 50%;
     width: 200%;
     height: 2px;
-    background-image: linear-gradient(to right, transparent, rgba(0,229,255,0.4));
+    background-color: rgba(0, 229, 255, 0.4);
     transform-origin: left center;
     opacity: 0.35;
     /* Animação via C# (rotate) */

@@ -125,6 +125,7 @@ public class ControleTorreta : MonoBehaviour
 
     private AudioSource fonteAudio;
     private Transform alvoAtual;
+    [HideInInspector] public Transform alvoPrioritario;
     private Rigidbody alvoAtualRb; // CACHE: Otimização crucial para não usar GetComponent no Update
     private int indiceBarrilAtual = 0; 
     private int indicacaoSeguraDeBala = 0;
@@ -280,6 +281,19 @@ public class ControleTorreta : MonoBehaviour
         {
             SetarAlvo(null);
             return;
+        }
+
+        // HARD LOCK: Se temos um alvo prioritário válido e no alcance, focamos nele
+        if (alvoPrioritario != null && alvoPrioritario.gameObject.activeInHierarchy && ControleSubmarino.PodeSerAlvoConvencional(alvoPrioritario))
+        {
+            Collider colPrioritario = alvoPrioritario.GetComponentInChildren<Collider>();
+            Vector3 alvoPosRealPrioritario = (colPrioritario != null) ? colPrioritario.ClosestPoint(transform.position) : alvoPrioritario.position;
+            float distSqrPrioritario = (transform.position - alvoPosRealPrioritario).sqrMagnitude;
+            if (distSqrPrioritario <= alcance * alcance)
+            {
+                SetarAlvo(alvoPrioritario);
+                return;
+            }
         }
 
         int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferColisores, Physics.AllLayers, QueryTriggerInteraction.Ignore);

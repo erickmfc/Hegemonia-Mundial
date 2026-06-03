@@ -474,6 +474,7 @@ public class ControleUnidade : MonoBehaviour
         if (cancelarComportamentos || (ordemControleAtual != OrdemControleUnidade.Patrulhando && ordemControleAtual != OrdemControleUnidade.Seguindo))
         {
             ordemControleAtual = OrdemControleUnidade.Movendo;
+            DefinirAlvoPrioritario(null);
         }
 
         ExecutarMoverParaPonto(destino, cancelarComportamentos);
@@ -486,6 +487,7 @@ public class ControleUnidade : MonoBehaviour
         AtualizarTrilhaOficial();
         AtualizarEstadoDeBloqueio();
         CancelarOrdemEspecial(false);
+        DefinirAlvoPrioritario(null);
 
         bool alterouAlgo = false;
 
@@ -631,6 +633,28 @@ public class ControleUnidade : MonoBehaviour
         ordemControleAtual = OrdemControleUnidade.Seguindo;
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
         return true;
+    }
+
+    public void DefinirAlvoPrioritario(Transform alvo)
+    {
+        // Limpa o cache se for a primeira vez
+        if (cacheCombateSujo) GarantirCacheCombate();
+
+        foreach (var tiro in cacheSistemasDeTiro)
+        {
+            if (tiro != null) tiro.alvoPrioritario = alvo;
+        }
+        foreach (var torreta in cacheTorretas)
+        {
+            if (torreta != null) torreta.alvoPrioritario = alvo;
+        }
+        foreach (var modular in cacheTorretasModulares)
+        {
+            if (modular != null) modular.alvoPrioritario = alvo;
+        }
+        
+        // Também avisa ao avião/heli, se houver
+        if (controleAviao != null && alvo != null) controleAviao.alvoPrioritarioIA = true;
     }
 
     public void CancelarOrdemEspecial()

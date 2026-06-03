@@ -571,18 +571,18 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         foreach (var av in avioesNoPatio)
         {
             if (av == null) continue;
-            // Se estiver no chão/pátio (Ou seja, DEPOIS de tocar no Parando, quando o ControleAviao muda pro estado RetornandoPraVaga), gruda no navio
+            // Se estiver no chão/pátio ou decolando, gruda no navio
             if (av.transform.parent != this.transform && 
                 (av.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio || 
                  av.estadoAtual == ControleAviao.EstadoAviao.Taxiando ||
+                 av.estadoAtual == ControleAviao.EstadoAviao.Decolando ||
                  av.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga))
             {
                 av.transform.SetParent(this.transform, true);
             }
             // Se começou a voar, solta do navio
             else if (av.transform.parent == this.transform && 
-                    (av.estadoAtual == ControleAviao.EstadoAviao.EmMissao || 
-                     av.estadoAtual == ControleAviao.EstadoAviao.Decolando))
+                    (av.estadoAtual == ControleAviao.EstadoAviao.EmMissao))
             {
                 av.transform.SetParent(null, true);
             }

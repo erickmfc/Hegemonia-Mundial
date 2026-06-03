@@ -24,6 +24,13 @@ namespace Hegemonia.AI.BrainMaster
         private const int   TanksPerWave        = 2;
         private const int   SoldiersPerWave     = 3;
 
+        // --- Cortina de Ferro (Iron Curtain) ---
+        private float _nextIronCurtainCheckTime;
+        private float _ironCurtainActiveUntil;
+        private float _nextEmergencyBuildTime;
+        private const float IronCurtainAlertDuration = 60f;
+        private const float IronCurtainCheckInterval = 1f;
+
         public IA_DefenseDirector(IA_Context context)
         {
             _context = context;
@@ -60,6 +67,90 @@ namespace Hegemonia.AI.BrainMaster
             {
                 _nextGroundReinforceTime = now + 3f; // Verifica a cada 3s
                 TickGroundReinforcement(now);
+            }
+
+            // ── Bloco 4: Cortina de Ferro (Iron Curtain) ─────────────────────────
+            if (now >= _nextIronCurtainCheckTime)
+            {
+                _nextIronCurtainCheckTime = now + IronCurtainCheckInterval;
+                TickIronCurtain(now);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // BLOCO 4 — Cortina de Ferro (Intercepção Ativa de Mísseis/Bombardeiros)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        private void TickIronCurtain(float now)
+        {
+            Vector3 baseCenter = GetBaseCenter();
+            float radius = 1500f; // Alcance enorme de radar antecipado
+            
+            int teamId = _context.Brain != null ? _context.Brain.TeamId : -1;
+            
+            // Busca a ameaça balística ou de bombardeio mais próxima cruzando o espaço aéreo
+            Transform ameaca = MissileThreatTracker.EncontrarAmeacaMaisProxima(
+                baseCenter,
+                radius,
+                teamId,
+                null,
+                2f, // Multiplicador de antecipação agressivo
+                45f // 45 segundos de janela de antecipação
+            );
+
+            if (ameaca != null)
+            {
+                if (now > _ironCurtainActiveUntil && _context.Brain != null && _context.Brain.EnableVerboseLogs)
+                {
+                    Debug.Log($"<color=red>[IA_DefenseDirector] CORTINA DE FERRO ATIVADA! Ameaça detectada: {ameaca.name}</color>");
+                }
+                _ironCurtainActiveUntil = now + IronCurtainAlertDuration;
+            }
+
+            bool isIronCurtainActive = now < _ironCurtainActiveUntil;
+
+            if (isIronCurtainActive)
+            {
+                AtivarSistemasAntimissil();
+                
+                // Se o modo estiver ativo, acelera a construção de defesas! (com cooldown local)
+                if (now >= _nextEmergencyBuildTime && _commandQueueNotSaturated())
+                {
+                    _nextEmergencyBuildTime = now + 10f; // Tenta construir a cada 10s enquanto em alerta
+                    QueueDefensiveBuild("ciws", baseCenter, IA_TerrainType.City, 20f, 180f, 100, 5f);
+                    QueueDefensiveBuild("thaad", baseCenter, IA_TerrainType.Open, 40f, 220f, 99, 8f);
+                }
+            }
+        }
+
+        private void AtivarSistemasAntimissil()
+        {
+            if (_context.WorldState == null) return;
+            
+            // Varre estruturas próprias para encontrar SistemaAntiMissil e liga eles
+            for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
+            {
+                GameObject structObj = _context.WorldState.OwnStructures[i];
+                if (structObj == null) continue;
+                
+                SistemaAntiMissil antimissil = structObj.GetComponent<SistemaAntiMissil>();
+                if (antimissil != null)
+                {
+                    antimissil.DefinirModoAtivo(true);
+                }
+            }
+            
+            // Varre também unidades móveis (ex: Cruzadores Aegis)
+            for (int i = 0; i < _context.WorldState.OwnCombatUnits.Count; i++)
+            {
+                GameObject unitObj = _context.WorldState.OwnCombatUnits[i];
+                if (unitObj == null) continue;
+                
+                SistemaAntiMissil antimissil = unitObj.GetComponentInChildren<SistemaAntiMissil>();
+                if (antimissil != null)
+                {
+                    antimissil.DefinirModoAtivo(true);
+                }
             }
         }
 

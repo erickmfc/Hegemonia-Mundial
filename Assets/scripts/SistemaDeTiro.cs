@@ -10,6 +10,7 @@ public class SistemaDeTiro : MonoBehaviour
     public float intervaloEntreTiros = 0.5f;
     private float tempoParaProximoTiro = 0f;
     public Transform alvoAtual;
+    [HideInInspector] public Transform alvoPrioritario;
 
     [Header("Configuração de Munição")]
     public GameObject prefabProjetil; // A munição
@@ -198,12 +199,26 @@ public class SistemaDeTiro : MonoBehaviour
     {
         if (modoPassivo) return;
 
+        // Se houver um alvo prioritário válido e dentro do alcance, trava nele e ignora os outros
+        if (alvoPrioritario != null && alvoPrioritario.gameObject.activeInHierarchy && ControleSubmarino.PodeSerAlvoConvencional(alvoPrioritario))
+        {
+            Collider colPrioritario = alvoPrioritario.GetComponentInChildren<Collider>();
+            Vector3 alvoPosRealPrioritario = (colPrioritario != null) ? colPrioritario.ClosestPoint(transform.position) : alvoPrioritario.position;
+            float distSqrPrioritario = (transform.position - alvoPosRealPrioritario).sqrMagnitude;
+            if (distSqrPrioritario <= alcanceComMargemSqr)
+            {
+                alvoAtual = alvoPrioritario;
+                return; // Bloqueia a busca por novos alvos
+            }
+        }
+
         if (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy)
         {
              Collider col = alvoAtual.GetComponentInChildren<Collider>();
              Vector3 alvoPosReal = (col != null) ? col.ClosestPoint(transform.position) : alvoAtual.position;
              float distSqr = (transform.position - alvoPosReal).sqrMagnitude;
-             if (distSqr <= alcanceComMargemSqr) return;
+             if (distSqr <= alcanceComMargemSqr && alvoAtual == alvoPrioritario) return; // Mantém prioritário
+             if (distSqr <= alcanceComMargemSqr && alvoPrioritario == null) return;
         }
 
         alvoAtual = null; // Reseta para buscar o mais próximo

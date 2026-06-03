@@ -1,0 +1,38 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="NavioAbastecimentoUI.uss" />
+
+    <!-- Container base (Tela Inteira) — picking-mode=Ignore para não bloquear cliques fora do painel -->
+    <ui:VisualElement picking-mode="Ignore" style="flex-grow: 1; width: 100%; height: 100%; position: absolute; top: 0; left: 0;">
+
+        <!-- PAINEL LATERAL ESQUERDO (Navio de Abastecimento) -->
+        <ui:VisualElement class="supply-panel" name="supplyPanel">
+            <ui:VisualElement class="header">
+                <ui:Label class="gov-seal" text="DEPT. OF DEFENSE // NAVAL LOGISTICS" />
+                <ui:VisualElement class="header-title">
+                    <ui:Label class="header-title-highlight" name="lblShipDesignation" text="AOR" style="-unity-font-style: bold;"/>
+                    <ui:Label name="lblShipName" text="ABASTECIMENTO" style="-unity-font-style: bold;"/>
+                </ui:VisualElement>
+                <ui:Button name="btnClosePanel" class="close-btn" text="X" />
+            </ui:VisualElement>
+
+            <!-- Status de Combustível Principal do Navio Auxiliar -->
+            <ui:VisualElement class="fuel-status-area">
+                <ui:Label class="fuel-title" text="COMBUSTÍVEL EM ESTOQUE:" />
+                <ui:Label name="LabelCombustivel" class="fuel-value" text="10000 L" />
+            </ui:VisualElement>
+
+            <!-- Lista de Navios Próximos -->
+            <ui:Label class="section-header" text="CONTATOS DE RADAR (A ALCANCE)" />
+            <ui:ScrollView class="sections-container" name="ListaNavios">
+                <!-- Botões dos navios encontrados serão injetados aqui -->
+            </ui:ScrollView>
+
+            <!-- Área de Status da Operação (Ativa durante o abastecimento) -->
+            <ui:VisualElement class="operation-status-area">
+                <ui:Label name="LabelTempo" class="op-time-label" text="TEMPO DE OPERAÇÃO: 0.0s" />
+                <ui:ProgressBar name="BarraProgresso" class="op-progress-bar" value="0" title="Aguardando conexão..." />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

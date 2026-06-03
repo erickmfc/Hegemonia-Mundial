@@ -679,7 +679,7 @@ public class PainelRecursos : MonoBehaviour
             textoEnergia.color = uso >= 100f ? corVermelho : uso >= 90f ? corAmarelo : corTexto;
             if (ganhoTextoEnergia != null)
             {
-                ganhoTextoEnergia.text = $"{consumida:0}/{produzida:0}";
+                ganhoTextoEnergia.text = $"Consumo: {consumida:0} / Total: {produzida:0}";
                 ganhoTextoEnergia.color = uso > 100f ? corVermelho : uso >= 90f ? corAmarelo : corVerde;
             }
         }
@@ -689,7 +689,7 @@ public class PainelRecursos : MonoBehaviour
             textoEnergia.color = consumida > 0.01f ? corVermelho : corTexto;
             if (ganhoTextoEnergia != null)
             {
-                ganhoTextoEnergia.text = $"{consumida:0}/0";
+                ganhoTextoEnergia.text = $"Consumo: {consumida:0} / Total: 0";
                 ganhoTextoEnergia.color = consumida > 0.01f ? corVermelho : corTextoSecundario;
             }
         }

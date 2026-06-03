@@ -220,7 +220,7 @@ public class MenuComandoController : MonoBehaviour
 
         if (flirRT != null)
         {
-            if (CameraUnidadeHUD.Instanciada)
+            if (CameraUnidadeHUD.Instanciada && CameraUnidadeHUD.Instancia != null)
                 CameraUnidadeHUD.Instancia.DesativarDoMenu();
 
             flirRT.Release();
@@ -851,7 +851,7 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     private void AtualizarTelemetriaUnidade()
     {
-        if (unidadeSelecionadaMenu == null)
+        if (unidadesSelecionadasMenu.Count == 0)
         {
             SetText(unidadeNome, "NENHUMA");
             SetText(unidadeEmoji, "❓");
@@ -863,6 +863,64 @@ public class MenuComandoController : MonoBehaviour
             SetText(fuelValor, "—%");
             SetBarWidth(hpBar, 0f);
             SetBarWidth(fuelBar, 0f);
+            return;
+        }
+        else if (unidadesSelecionadasMenu.Count > 1)
+        {
+            SetText(unidadeNome, $"MÚLTIPLAS ({unidadesSelecionadasMenu.Count})");
+            SetText(unidadeEmoji, "👥");
+            SetText(statTipo, "MISTO");
+            SetText(statStatus, "VÁRIOS");
+            SetText(statPos, "MÚLTIPLAS");
+            SetText(statTeam, "ALIADO");
+
+            float somaHp = 0f;
+            float maxHp = 0f;
+            float somaFuel = 0f;
+            float maxFuel = 0f;
+
+            foreach (var u in unidadesSelecionadasMenu)
+            {
+                if (u == null) continue;
+                SistemaDeDanos sd = u.GetComponent<SistemaDeDanos>();
+                if (sd != null && sd.vidaMaxima > 0f)
+                {
+                    somaHp += sd.vidaAtual;
+                    maxHp += sd.vidaMaxima;
+                }
+
+                CombustivelUnidade cbu = u.GetComponent<CombustivelUnidade>();
+                if (cbu != null && cbu.Capacidade > 0f)
+                {
+                    somaFuel += cbu.CombustivelAtual;
+                    maxFuel += cbu.Capacidade;
+                }
+            }
+
+            float hpPct = maxHp > 0f ? Mathf.Clamp01(somaHp / maxHp) : 1f;
+            int hpInt = Mathf.RoundToInt(hpPct * 100f);
+            SetText(hpValor, $"{hpInt}%");
+            SetBarWidth(hpBar, hpPct);
+
+            if (hpBar != null)
+            {
+                hpBar.style.backgroundColor = hpInt > 60 ? new Color(0f, 0.9f, 1f) : hpInt > 25 ? new Color(1f, 0.67f, 0f) : new Color(1f, 0.2f, 0.2f);
+            }
+
+            if (maxFuel > 0f)
+            {
+                float fuelPct = Mathf.Clamp01(somaFuel / maxFuel);
+                int fuelInt = Mathf.RoundToInt(fuelPct * 100f);
+                SetText(fuelValor, $"{fuelInt}%");
+                SetBarWidth(fuelBar, fuelPct);
+            }
+            else
+            {
+                SetText(fuelValor, "N/A");
+                SetBarWidth(fuelBar, 1f);
+            }
+
+            if (flirTc != null) flirTc.text = "HDG MÚLTIPLOS";
             return;
         }
 
@@ -893,28 +951,28 @@ public class MenuComandoController : MonoBehaviour
             SetText(statStatus, "OK");
 
         // HP — via SistemaDeDanos
-        float hpPct = 1f;
-        SistemaDeDanos sd = cu.GetComponent<SistemaDeDanos>();
-        if (sd != null && sd.vidaMaxima > 0f)
-            hpPct = Mathf.Clamp01(sd.vidaAtual / sd.vidaMaxima);
-        int hpInt = Mathf.RoundToInt(hpPct * 100f);
-        SetText(hpValor, $"{hpInt}%");
-        SetBarWidth(hpBar, hpPct);
+        float hpPctSingle = 1f;
+        SistemaDeDanos sdSingle = cu.GetComponent<SistemaDeDanos>();
+        if (sdSingle != null && sdSingle.vidaMaxima > 0f)
+            hpPctSingle = Mathf.Clamp01(sdSingle.vidaAtual / sdSingle.vidaMaxima);
+        int hpIntSingle = Mathf.RoundToInt(hpPctSingle * 100f);
+        SetText(hpValor, $"{hpIntSingle}%");
+        SetBarWidth(hpBar, hpPctSingle);
 
         // Cor da barra de HP
         if (hpBar != null)
         {
             hpBar.style.backgroundColor =
-                hpInt > 60 ? new Color(0f, 0.9f, 1f) :
-                hpInt > 25 ? new Color(1f, 0.67f, 0f) :
+                hpIntSingle > 60 ? new Color(0f, 0.9f, 1f) :
+                hpIntSingle > 25 ? new Color(1f, 0.67f, 0f) :
                              new Color(1f, 0.2f, 0.2f);
         }
 
         // Combustível
-        CombustivelUnidade cbu = cu.GetComponent<CombustivelUnidade>();
-        if (cbu != null && cbu.Capacidade > 0f)
+        CombustivelUnidade cbuSingle = cu.GetComponent<CombustivelUnidade>();
+        if (cbuSingle != null && cbuSingle.Capacidade > 0f)
         {
-            float fuelPct = Mathf.Clamp01(cbu.CombustivelAtual / cbu.Capacidade);
+            float fuelPct = Mathf.Clamp01(cbuSingle.CombustivelAtual / cbuSingle.Capacidade);
             int fuelInt   = Mathf.RoundToInt(fuelPct * 100f);
             SetText(fuelValor, $"{fuelInt}%");
             SetBarWidth(fuelBar, fuelPct);

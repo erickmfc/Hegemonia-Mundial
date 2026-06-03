@@ -132,6 +132,9 @@ public class CameraController : MonoBehaviour
         {
             float tAltura = Mathf.InverseLerp(alturaMinParaFov, alturaMaxParaFov, pos.y);
             cameraPrincipal.fieldOfView = Mathf.Lerp(campoDeVisaoMin, campoDeVisaoMax, tAltura);
+            
+            // Ajusta a distância máxima de renderização dinamicamente para não cortar o horizonte
+            cameraPrincipal.farClipPlane = Mathf.Max(60000f, pos.y * 25f);
         }
 
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---

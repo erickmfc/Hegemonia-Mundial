@@ -1184,7 +1184,7 @@ public class ControleAviao : MonoBehaviour
                 caminhoPouso.Add(aeroportoOrigem.waypointsDecida[i]);
         }
         // Segue glideslope na velocidade de solo (lenta), permitindo pular waypoints já passados
-        yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoPouso, velocidadeSolo, velocidadeSolo, false, true));
+        yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoPouso, velocidadeSolo * 2.4f, velocidadeSolo * 2.4f, false, true));
 
         // 4. Parentar ao convés do navio
         Transform paiConves = (caminhoPouso.Count > 0 && caminhoPouso[caminhoPouso.Count - 1] != null)

@@ -19,7 +19,12 @@ namespace Hegemonia.AI.Master
         NavalTransport,
         Carrier,
         Fighter,
-        OilShip
+        OilShip,
+        Power,
+        Farm,
+        House,
+        Commercial,
+        NavalPatrol
     }
 
     public static class IA_CatalogRoleResolver
@@ -79,6 +84,11 @@ namespace Hegemonia.AI.Master
             ResolveRole(IA_CatalogRole.Carrier, "porta avioes", "carrier");
             ResolveRole(IA_CatalogRole.Fighter, "b260", "supra", "su11", "caca", "aviao de caca", "fighter");
             ResolveRole(IA_CatalogRole.OilShip, "navio petrolifero", "petroleiro");
+            ResolveRole(IA_CatalogRole.Power, "usina", "energia", "solar", "nuclear");
+            ResolveRole(IA_CatalogRole.Farm, "fazenda", "farm", "comida");
+            ResolveRole(IA_CatalogRole.House, "residencial", "predio", "casa popular", "house");
+            ResolveRole(IA_CatalogRole.Commercial, "comercial", "shopping", "loja");
+            ResolveRole(IA_CatalogRole.NavalPatrol, "fragata", "corveta", "destroyer", "navio de guerra");
         }
 
         private static void ResolveRole(IA_CatalogRole role, params string[] aliases)

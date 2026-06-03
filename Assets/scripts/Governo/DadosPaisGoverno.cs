@@ -132,6 +132,7 @@ public class DadosPaisGoverno
     [Range(0f, 1f)] public float pesoLealdadeAliados = 0.55f;
     [Range(0f, 1f)] public float pesoOdioRivais = 0.45f;
     public string planoEstrategico = "Equilibrio";
+    public bool tecnologiaExtracaoConcluida = false;
 
     [Header("Estoque")]
     public int comida = 500;

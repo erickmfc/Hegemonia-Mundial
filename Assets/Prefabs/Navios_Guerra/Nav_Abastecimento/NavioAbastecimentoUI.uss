@@ -1,0 +1,175 @@
+/* ─── Color Palette (Literal fallbacks for maximum compatibility in Unity USS) ─── */
+
+/* ─── Side Panel (Abastecimento) ─── */
+.supply-panel {
+    width: 220px;
+    top: 34px;
+    bottom: 0px;
+    background-color: rgba(6, 12, 20, 0.97);
+    border-right-width: 1px;
+    border-right-color: #1a3352;
+    flex-direction: column;
+    position: absolute;
+    left: 0px;
+}
+
+/* ─── Header ─── */
+.header {
+    padding: 7px 10px;
+    border-bottom-width: 1px;
+    border-bottom-color: #29a8e0;
+    background-color: #04080f;
+}
+
+.gov-seal {
+    font-size: 7px;
+    color: #4e6580;
+    margin-bottom: 2px;
+    letter-spacing: 1px;
+}
+
+.header-title {
+    font-size: 13px;
+    color: #dce8f5;
+    flex-direction: row;
+    align-items: center;
+}
+
+.header-title-highlight {
+    color: #29a8e0;
+    margin-right: 4px;
+}
+
+.close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: transparent;
+    color: #e03c3c;
+    border-width: 1px;
+    border-color: #e03c3c;
+    width: 18px;
+    height: 18px;
+    justify-content: center;
+    align-items: center;
+    font-size: 9px;
+    cursor: pointer;
+    transition-duration: 0.12s;
+}
+
+.close-btn:hover {
+    background-color: #e03c3c;
+    color: #ffffff;
+}
+
+/* Status de Combustível Principal */
+.fuel-status-area {
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-bottom-width: 1px;
+    border-bottom-color: #1a3352;
+    margin-bottom: 8px;
+}
+
+.fuel-title {
+    font-size: 8px;
+    color: #4e6580;
+    margin-bottom: 2px;
+}
+
+.fuel-value {
+    font-size: 16px;
+    color: #29a8e0;
+    -unity-font-style: bold;
+}
+
+.section-header {
+    font-size: 8px;
+    color: #29a8e0;
+    padding: 4px 10px;
+    background-color: rgba(41, 168, 224, 0.05);
+    border-top-width: 1px;
+    border-top-color: #1a3352;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a3352;
+    -unity-font-style: bold;
+}
+
+/* ─── Scroll Area ─── */
+.sections-container {
+    flex-grow: 1;
+    padding: 10px 8px;
+    flex-direction: column;
+}
+
+/* ─── Buttons ─── */
+.btn {
+    background-color: transparent;
+    border-width: 1px;
+    border-color: #1a3352;
+    color: #dce8f5;
+    padding: 5px;
+    font-size: 9px;
+    transition-duration: 0.12s;
+    cursor: pointer;
+    border-radius: 0px;
+}
+
+.btn:hover {
+    background-color: #1e3d63;
+    border-color: #29a8e0;
+}
+
+.btn-action {
+    color: #29a8e0;
+    border-color: #29a8e0;
+}
+.btn-action:hover {
+    background-color: #29a8e0;
+    color: #000000;
+}
+
+/* ─── Área de Operação / Refuel ─── */
+.operation-status-area {
+    padding: 12px 10px;
+    background-color: #04080f;
+    border-top-width: 1px;
+    border-top-color: #1a3352;
+}
+
+.op-time-label {
+    font-size: 9px;
+    color: #dce8f5;
+    margin-bottom: 6px;
+}
+
+.op-progress-bar {
+    height: 18px;
+    font-size: 9px;
+    color: #ffffff;
+}
+
+/* Customizar o visual padrão da barra de progresso no USS */
+.op-progress-bar .unity-progress-bar__container {
+    height: 18px;
+}
+
+.op-progress-bar .unity-progress-bar__background {
+    background-color: #0c1622;
+    border-color: #1a3352;
+    border-radius: 0px;
+}
+
+.op-progress-bar .unity-progress-bar__progress {
+    background-color: #29a8e0;
+    border-radius: 0px;
+}
+
+/* Unity resets */
+.unity-button {
+    margin: 0px;
+    border-radius: 0px;
+}
+.unity-scroll-view__content-container {
+    flex-direction: column;
+}

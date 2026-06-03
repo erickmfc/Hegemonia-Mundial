@@ -315,16 +315,37 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
 
     private void SetAnimadorVelocidade(MembroTripulacao membro, float valor)
     {
-        if (membro == null || membro.animator == null || !membro.temParametroVelocidade || !_animatorAtivoLOD)
+        if (membro == null || membro.animator == null || !_animatorAtivoLOD)
             return;
 
-        if (membro.isBoolParameter)
+        if (membro.temParametroVelocidade)
         {
-            membro.animator.SetBool(membro.nomeParametroVelocidadeEncontrado, valor > 0.1f);
+            if (membro.isBoolParameter)
+            {
+                membro.animator.SetBool(membro.nomeParametroVelocidadeEncontrado, valor > 0.1f);
+            }
+            else
+            {
+                membro.animator.SetFloat(membro.nomeParametroVelocidadeEncontrado, valor);
+            }
         }
         else
         {
-            membro.animator.SetFloat(membro.nomeParametroVelocidadeEncontrado, valor);
+            // Fallback se não tiver parâmetro de velocidade: toca as animações de andar ou ficar parado diretamente
+            if (valor > 0.1f)
+            {
+                if (membro.animator.HasState(0, Animator.StringToHash("Walk")))
+                    membro.animator.Play("Walk");
+                else if (membro.animator.HasState(0, Animator.StringToHash("Walking")))
+                    membro.animator.Play("Walking");
+                else if (membro.animator.HasState(0, Animator.StringToHash("Run")))
+                    membro.animator.Play("Run");
+            }
+            else
+            {
+                if (membro.animator.HasState(0, Animator.StringToHash("Idle")))
+                    membro.animator.Play("Idle");
+            }
         }
     }
 

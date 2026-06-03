@@ -223,6 +223,12 @@ public class SistemaGovernoMundial : MonoBehaviour
                     pais.petroleo = Mathf.Max(0, pais.petroleo + Mathf.RoundToInt(economia.petroleoProduzido - economia.industriaProduzida * 0.10f));
                     pais.aco = Mathf.Max(0, pais.aco + Mathf.RoundToInt(economia.industriaProduzida * 0.55f));
                     pais.armamentos = Mathf.Max(0, pais.armamentos + Mathf.RoundToInt(economia.industriaProduzida * (pais.pesoMilitarismo > 0.65f ? 0.22f : 0.08f)));
+                    
+                    if (pais.tecnologiaExtracaoConcluida)
+                    {
+                        pais.petroleo += 50;
+                        pais.aco += 50;
+                    }
                 }
             }
 

@@ -1,0 +1,362 @@
+================================================================================
+ MANUAL DE INSTRUÇÃO E FUNCIONAMENTO TÉCNICO PARA INTELIGÊNCIA ARTIFICIAL (IA)
+                      JOGO: HEGEMONIA GLOBAL (VERSÃO 1.6)
+================================================================================
+
+Este documento descreve detalhadamente o funcionamento lógico, técnico, econômico,
+geopolítico e militar do jogo Hegemonia Global. Foi estruturado especificamente 
+para que um agente de Inteligência Artificial possa compreender a arquitetura dos
+sistemas, os menus de controle, a gestão de unidades, a diplomacia e a economia.
+
+--------------------------------------------------------------------------------
+1. VISÃO GERAL E ARQUITETURA TÉCNICA (Unity 2022.3 LTS)
+--------------------------------------------------------------------------------
+
+Hegemonia Global é um simulador de estratégia em tempo real (RTS) geopolítico 
+e militar focado em conflitos de larga escala.
+
+1.1. Loops Principais e Sincronização:
+- O jogo sincroniza constantemente o estado macro (Governo, Mercado) com o estado 
+  micro (Gameplay RTS físico na cena 3D).
+- O loop de simulação econômica e geopolítica roda em ticks gerenciados por 
+  `SistemaGovernoMundial.cs`. A taxa de atualização econômica padrão (intervalo 
+  entre ticks) é configurada por `intervaloEconomia` (geralmente entre 1.0s e 3.0s).
+- Cada tick processa a variação do valor das moedas nacionais, inflação, consumo e
+  produção de recursos, bem como o comportamento tático de países controlados por IA.
+
+1.2. Estrutura de Equipes (Teams):
+- `teamID = 1` ou `teamJogador`: Representa o jogador humano (República Atlas).
+- `teamID > 1` (ex: 2, 3, 4, 5): Representa nações controladas por Inteligência 
+  Artificial do jogo.
+- `teamID = 0`: Entidades neutras.
+
+1.3. Persistência e Salvamento (`SistemaSaveGame.cs`):
+- O jogo salva o estado do mundo serializando objetos marcados com `SaveableEntity.cs`
+  em JSON/Binário. A persistência rastreia os recursos, posições e ordens das 
+  unidades, estados geopolíticos dos países e níveis de tecnologia.
+
+--------------------------------------------------------------------------------
+2. ARQUITETURA DA INTELIGÊNCIA ARTIFICIAL DE COMBATE E CONSTRUÇÃO (BrainMaster)
+--------------------------------------------------------------------------------
+
+A IA das nações rivais é gerenciada pelo sistema modular **BrainMaster**, que opera
+através de uma hierarquia de diretores especializados divididos em 4 níveis:
+
+2.1. Diretores de Comando (Nível Macro):
+- `IA_BrainMaster`: O coordenador central. Decide a postura geral do país 
+  (Agressivo, Defensivo, Comercial ou Expansivo).
+- `IA_NationalDirectors`: Gerencia as finanças macro do país da IA. Aloca verbas 
+  para pesquisa, expansão industrial ou militarização.
+- `IA_WorldState`: Monitora o mapa continuamente e registra a força e a posição 
+  de todas as unidades, alimentando a tomada de decisão estratégica.
+
+2.2. Diretores Operacionais (Nível Tático):
+- `IA_BuildDirector`: Toma decisões de urbanismo. Posiciona refinarias, fazendas, 
+  geradores de energia, bases e quartéis baseando-se em grades de energia e 
+  distâncias seguras.
+- `IA_ProductionDirector`: Monitora as forças do jogador e constrói contra-unidades
+  (Counter-play) adequadas.
+- `IA_TacticalDirector`: Planeja caminhos de ataque, rotas de flanco e objetivos.
+- `IA_SquadDirector`: Agrupa unidades individuais em esquadrões táticos para 
+  executar ataques coordenados e evitar que avancem sozinhas.
+
+2.3. Diretores de Domínio (Nível de Unidade):
+- `IA_AirDirector`: Comanda decolagens, rotas de patrulha e bombardeio de caças/drones.
+- `IA_NavalDirector`: Posiciona submarinos em áreas stealth e gerencia escoltas.
+- `IA_DefenseDirector`: Reage a ameaças aéreas e nucleares, construindo THAAD e CIWS.
+
+2.4. Otimização e Performance:
+- `Performance Scheduler` / `IA_PerformanceGovernor`: Distribui o processamento 
+  das tomadas de decisão da IA ao longo de múltiplos frames (Time-Slicing) para 
+  garantir 60 FPS mesmo em batalhas massivas.
+
+--------------------------------------------------------------------------------
+3. SISTEMA DE GOVERNO MUNDIAL E DIPLOMACIA (`SistemaGovernoMundial.cs`)
+--------------------------------------------------------------------------------
+
+O estado diplomático global é representado por nações simuladas que possuem
+características fiscais, demográficas, estoques físicos e perfis comportamentais.
+
+3.1. Países Padrão da Simulação:
+- **República Atlas (Team 1)**: O jogador. Renda equilibrada, economia versátil.
+- **República Boreal (Team 2)**: Perfil Aliado/Comercial. Alta lealdade e comércio.
+- **União Carmesim (Team 3)**: Perfil Rival/Guerra Fria (Produtor de Petróleo). 
+  Altamente agressivo e desconfiado. Inicia em guerra contra Atlas.
+- **Domínio Valerian (Team 4)**: Perfil Militarista/Mobilização. Inicia sancionado. 
+  Foco em produção de armamentos e exército pesado.
+- **Federação Alvorada (Team 5)**: Perfil Pequeno/Crescimento. Dependente do 
+  comércio externo, pacífico.
+
+3.2. Perfis de IA Diplomática (`PerfilPaisIA`):
+- `Pequeno`, `Industrial`, `ProdutorPetroleo`, `Militarista`, `Neutro`, `Rival`, `Aliado`.
+- Cada perfil define pesos numéricos para comportamentos como: `pesoDiplomacia`, 
+  `pesoComercio`, `pesoMilitarismo`, `pesoAgressividade`, `pesoOdioRivais`, 
+  `pesoLealdadeAliados`, etc.
+
+3.3. Modos Operacionais da IA Geopolítica (`ModoInicialPaisIA`):
+- `Paz`, `Ocioso`, `Comercial`, `Crescimento`, `Crise`, `GuerraFria`, `Mobilizacao`,
+  `GuerraTotal`, `AgressivoContraJogador`.
+
+3.4. Relações Diplomáticas (`RelacaoPaisGoverno`):
+- Possui um valor numérico (`valor`) que flutua de **-100 (Ódio absoluto / Guerra)** 
+  a **+100 (Aliança incondicional)**.
+- Flags de tratados:
+  - `tratadoComercial` (boolean): Habilita trading livre.
+  - `pactoMilitar` (boolean): Define aliança de defesa mútua.
+  - `pedidoPendente` (boolean): Impede spam de propostas para a mesma nação.
+  - `sancaoAtiva` (boolean): Indica se há sanções comerciais/políticas aplicadas.
+  - `guerraDeclarada` (boolean): Estado ativo de hostilidade armada.
+
+3.5. Propostas Internacionais (`PropostaInternacional`):
+- É o objeto usado para negociações.
+- Tipos de Proposta (`TipoPropostaInternacional`):
+  - `Compra`, `Venda`: Transações normais de mercado.
+  - `Anuncio`: Divulgação de ofertas de lotes.
+  - `Emprestimo`, `Doacao`: Envio de dinheiro ou recursos para apoio a aliados.
+  - `Contraoferta`: Proposta modificada após recusa de preço.
+  - `Bloqueio`: Interrupção de rotas comerciais.
+  - `Sancao`: Votação ou aplicação de punição econômica.
+  - `PedidoAjuda`: Solicitação de doações em crises de recursos.
+  - `PactoDefensivo`: Proposta de tratado militar mútuo.
+- Status da Proposta (`StatusPropostaInternacional`):
+  - `Pendente`, `Aceita`, `Recusada`, `Negociando`, `Expirada`, `Executada`.
+
+3.6. Ações Diplomáticas e Seus Efeitos:
+- **Propor Aliança**: Aumenta afinidade (+18). Se a afinidade for >= 60, ativa o 
+  `pactoMilitar` e `tratadoComercial`.
+- **Romper Aliança**: Desativa pacto militar, reduz afinidade (-22).
+- **Propor Pacto Defensivo**: Negocia ajuda mútua (requer afinidade >= 45).
+- **Aplicar Sanção**: Reduz afinidade (-18), impõe a flag `sancionado = true`, 
+  desativa o `tratadoComercial` e reduz a estabilidade da nação alvo em -8%.
+- **Remover Sanção**: Retira as sanções, restaura afinidade (+12), restabelece 
+  tratado comercial.
+- **Declarar Guerra / Notificar Guerra**: Define `emGuerra = true`, `guerraDeclarada = true`,
+  reduz estabilidade em -14%, reduz relação em -35, dispara simulação de pânico 
+  no mercado global.
+
+--------------------------------------------------------------------------------
+4. ESTRUTURA DO MENU DE GOVERNO (`MenuGoverno.cs` - TECLA X)
+--------------------------------------------------------------------------------
+
+A interface do governo é dividida em 9 categorias (abas) principais no topo, 
+cada uma com sub-abas, colunas centrais de dados (Scroll) e ações à direita.
+
+4.1. Catálogo Completo das Categorias e Sub-Abas:
+- **1. Relações Exteriores (`RelacoesExteriores`)**:
+  - Sub-Abas: "Resumo", "Nações", "Tratados", "Crises".
+  - Ações à Direita: Selecionar país e propor aliança, pacto defensivo, pedir 
+    ajuda humanitária, oferecer comida ou romper acordos.
+- **2. Alianças (`Aliancas`)**:
+  - Sub-Abas: "Blocos", "Pactos", "Operações", "Pedidos".
+  - Ações à Direita: Responder a pedidos diplomáticos enviados pela IA 
+    (Aceitar, Negociar/Contraoferta ou Recusar).
+- **3. Sanções (`Sancoes`)**:
+  - Sub-Abas: "Visão Geral", "Aplicadas", "Tipos", "Histórico".
+  - Ações à Direita: Painel para aplicar ou revogar sanções contra o país selecionado.
+- **4. Economia (`Economia`)**:
+  - Sub-Abas: "Tesouro", "Orçamento", "Produção", "Impostos".
+  - Ações à Direita: Ajuste de impostos (Comércio, Indústria, Moradia em faixas de 
+    +/-5%), ativação de programas de emprego ou investimento habitacional.
+- **5. Mercado Global (`MercadoGlobal`)**:
+  - Sub-Abas: "Comprar", "Vender", "Preços", "Rotas".
+  - Ações à Direita: Comprar melhor oferta, vender lote recomendado, simular/atualizar 
+    preços de mercado dinamicamente.
+- **6. Interior (`Interior`)**:
+  - Sub-Abas: "População", "Cidades", "Bem-estar", "Projetos".
+  - Ações à Direita: Gerenciamento territorial (renomear cidades, verificar 
+    estatísticas de aeroportos e demografia).
+- **7. Defesa (`Defesa`)**:
+  - Sub-Abas: "Comando", "Exército", "Marinha", "Aérea", "Alertas".
+  - Ações à Direita: Declarar estado de alerta militar geral, pedir apoio militar 
+    ou propor pacto defensivo direto.
+- **8. Ciência (`Ciencia`)**:
+  - Sub-Abas: "Projetos", "Tecnologias", "Labs", "Fila".
+  - Ações à Direita: Alterar o foco nacional de pesquisa científica 
+    (Energia, Indústria, Defesa ou Diplomacia).
+- **9. Trabalho (`Trabalho`)**:
+  - Sub-Abas: "Empregos", "Setores", "Formação", "Políticas".
+  - Ações à Direita: Ativar políticas industriais e civis.
+
+4.2. Mecânicas Econômicas e Indicadores Macro (`DadosPaisGoverno.cs`):
+- `valorMoeda`: Cotação da moeda do país. Afeta o `PoderDeCompra`.
+- `cambioComLider`: Câmbio de referência em relação à maior economia global.
+- `inflacao`: Cresce com a guerra (+0.08%/s), sanções (+0.06%/s) e déficits de 
+  comida/petróleo/energia (+0.04%/s). Reduz-se lentamente na paz estável.
+- `emprego` (0% a 100%): Afeta a estabilidade. Pode ser aumentado por ações como
+  "GERAR EMPREGOS" (+4% por clique) ou "MUTIRÃO DE EMPREGOS" (+3%).
+- `moradia` (0% a 100%): Representa a habitação civil. Aumentada por "INVESTIR EM 
+  MORADIA" (+4%) ou "MELHORAR MORADIA" (+3%).
+- `qualidadeVida` (0% a 100%): Depende da moradia, emprego e taxas fiscais baixas.
+- `estabilidade` (0% a 100%): Indicador crítico.
+  - Sobe se: emprego > 70% (+0.25/s), moradia > 65% (+0.18/s), qualidade de vida > 70% (+0.18/s).
+  - Desce se: carga fiscal > 18% (perda proporcional), qualidade de vida < 40% (-0.45/s), 
+    guerra ativa (-0.55/s), sancionado (-0.35/s), déficit de energia/comida (-0.08/s por unidade).
+- `saldo` (Dinheiro): Acumula o caixa líquido nacional.
+- Impostos (`impostoMoradia`, `impostoIndustria`, `impostoComercio`):
+  - Cada taxa varia de 0% a 35%.
+  - Taxas altas geram alta receita, mas derrubam a estabilidade e qualidade de vida.
+- `saldoOperacional` = (Receitas de Impostos + Receita de Venda de Energia) - (Custo de Manutenção da Base).
+
+4.3. Divisão Territorial e Estatísticas de Cidades (`GerenciadorDivisaoTerritorial.cs`):
+- O território nacional é dividido em Cidades (Distritos) e Capitais (Estados).
+- Cada cidade (`CidadeDef`) possui: `nome`, `ehEstado` (boolean), `populacaoCivil`, 
+  `temAeroporto` (boolean) e `teamID`.
+- Pelo Menu do Interior, o jogador pode renomear qualquer cidade sob seu domínio.
+
+--------------------------------------------------------------------------------
+5. MECÂNICAS DE GUERRA E CONTROLE DE UNIDADES (`ControleUnidade.cs`)
+--------------------------------------------------------------------------------
+
+5.1. Classificação das Unidades (`IdentidadeUnidade.cs`):
+- As unidades possuem um `teamID` que identifica a propriedade militar e um 
+  `TipoUnidade` para classificação de classes:
+  - `Infantaria`: Soldados de combate terrestre leve.
+  - `Veiculo`: Tanques pesados, blindados leves e caminhões de suporte.
+  - `Naval`: Fragatas, cruzadores, destroyers, submarinos e navios de carga.
+  - `Aereo`: Caças, bombardeiros, helicópteros de ataque e drones.
+  - `Estrutura`: Prédios administrativos, indústrias, torres de defesa e silos.
+
+5.2. Estados e Ordens Operacionais (`OrdemControleUnidade`):
+- `Ociosa`: Sem comandos ativos, aguardando alvos no perímetro.
+- `Movendo`: Deslocando-se até a coordenada estipulada.
+- `Parada`: Ordem explícita de manter posição, ignorando aproximações simples.
+- `Recuando`: Movimento de retirada em direção oposta a uma ameaça detectada.
+- `Patrulhando`: Movimento em loop (circular ou poligonal) entre pontos.
+- `Seguindo`: Escolta ativa atrás de uma unidade aliada.
+
+5.3. Modos de Postura em Combate (Passivo vs Ativo):
+- **Modo Passivo (Foco Azul)**: A unidade desativa o disparo automático. Ela não 
+  engajará inimigos na sua área visual por conta própria, atirando somente sob 
+  ordens diretas do jogador. Útil para missões furtivas de submarinos e caças.
+- **Modo Ativo / Fogo Livre (Foco Vermelho)**: Comportamento padrão de combate. 
+  A unidade varre o raio de alcance continuamente e ataca o inimigo mais próximo.
+
+5.4. Logística de Abastecimento e Consumo:
+- Unidades ativas consomem combustível baseado em sua taxa de movimento (`combustivelPorHora`).
+- Se o combustível zerar, a unidade entra em colapso logístico (`PararPorFaltaDeCombustivel`) 
+  e fica imóvel e indefesa até ser reabastecida por um `Track Combustivel` 
+  (terrestre) ou um `Navio Petroleiro` (marítimo).
+- Navios e aeronaves podem atracar em Piers e Aeroportos para reparo rápido de 
+  casco/blindagem e recarga de munições usando Aço e Dinheiro.
+
+5.5. Regras de Imigração e Fronteiras (Corredores de Visto):
+- O sistema geopolítico monitora fronteiras ativas (`GerenteDeTerritorio`).
+- Se uma unidade militar terrestre de outra nação (IA) tenta cruzar a fronteira 
+  para a terra do jogador humano (`teamJogador = 1`) sem visto aprovado:
+  - O script de controle bloqueia a movimentação (`agente.isStopped = true`).
+  - O país invasor envia uma solicitação de trânsito ao `SistemaConsulado.Instancia`.
+  - A unidade permanecerá congelada na fronteira até que o jogador humano aprove o visto.
+
+--------------------------------------------------------------------------------
+6. MECÂNICAS DE COMBATE AVANÇADO E DEFESA ESTRATÉGICA
+--------------------------------------------------------------------------------
+
+6.1. Defesa Costeira e Naval:
+- Unidades terrestres sem capacidade anfíbia são fisicamente proibidas de cruzar 
+  para malhas de água profunda (`RegistroSuperficieMapa`).
+- O combate naval envolve a detecção de navios e submarinos por sonar. Navios do 
+  tipo Destroyer (`USS Vindicator`) são caçadores dedicados de submarinos 
+  (`USS Mako`, `USS Wraith`), enquanto submarinos utilizam torpedos contra cruzadores.
+
+6.2. Defesa Antiaérea e Balística (THAAD, CIWS, Radar):
+- O espaço aéreo é rastreado por torres de radar. Quando mísseis táticos ou nucleares 
+  (ICBM) são disparados, eles são inseridos no `MissileThreatTracker.cs`.
+- **CIWS Phalanx**: Defesa de curto alcance baseada em metralhadoras rotativas rápidas. 
+  Tenta interceptar mísseis na fase final de aproximação (Defesa de Base).
+- **Sistema Anti-Míssil (THAAD)**: Defesa antiaérea de longo alcance. Intercepta
+  ogivas na alta atmosfera antes que atinjam a base (`SistemaAntiMissil.cs`).
+- **Silos Nucleares (`SiloNuclear.cs`)**: Estrutura estratégica pesada. O jogador 
+  deve armar a ogiva e selecionar o destino no mapa tático para descarregar o 
+  vetor balístico.
+
+--------------------------------------------------------------------------------
+7. DETALHAMENTO DE MENUS ADICIONAIS DO JOGO
+--------------------------------------------------------------------------------
+
+7.1. Menu de Construção (Tecla C - `MenuConstrucao.cs`):
+- O menu principal de expansão da base. Dividido nas categorias: *Exército, 
+  Marinha, Aeronáutica, Infraestrutura, Defesa e Urbana*.
+- Cada item tem requisitos de recursos físicos e tempo de construção. Ao passar 
+  o mouse, mostra-se um preview holográfico da construção e checagem de energia 
+  da base.
+
+7.2. Painel de Operações do Porta-Aviões (`Painel_Porta_Avioes.txt`):
+- Controla aeronaves baseadas no deck do `USS Sovereign`.
+- **Radar do Céu**: Mostra aeronaves nas proximidades e permite ordenar pouso.
+- **Convés**: Exibe caças prontos para decolagem imediata para missões de 
+  *Ataque, Reconhecimento, Patrulha Aérea ou Escolta*.
+- **Hangar Interno**: Armazenamento seguro de caças reserva. Usa elevador para 
+  subir as aeronaves para o convés caso haja vaga.
+- Permite construir Drones Kamikazes diretamente no deck.
+
+7.3. Centro de Controle do Aeroporto (`menu_aeroporto.txt`):
+- Gerencia a frota de aviões pesados (`GerenciadorAeroporto.cs`).
+- **Aba Comercial**: Gerenciamento de rotas de transporte civis e finanças aéreas.
+- **Aba Militar**: Gestão de caças (`Su-11`), bombardeiros (`B260`), drones e 
+  grandes cargueiros de transporte (`C700`).
+- Permite controlar esquadrilhas inteiras e configurar missões de bombardeio em área 
+  (tapete de bombas).
+
+--------------------------------------------------------------------------------
+8. CATÁLOGO COMPLETO DE UNIDADES E ESTRUTURAS DO JOGO
+--------------------------------------------------------------------------------
+
+8.1. Forças Terrestres (Exército):
+- **Soldado Rifle**: Infantaria leve básica ($50).
+- **Hamer Carro (Humvee)**: Veículo tático 4x4 leve e veloz ($200).
+- **Caminhão de Transporte**: Caminhão logístico para transporte ($100).
+- **Houver (Hovercraft)**: Veículo anfíbio capaz de trafegar em terra e água ($100).
+- **Hack**: Unidade móvel de artilharia leve / morteiro móvel ($100).
+- **Tank Arthur / C1 Verde**: Tanques médios, rápidos com boa cadência de tiro ($100).
+- **Tank C1 Camuflado**: Tanque tático com blindagem aprimorada ($150).
+- **Tank South**: Tanque pesado de alto poder de impacto e armadura maciça ($500).
+- **Tank_Ubu**: Artilharia blindada de longo alcance terrestre ($100).
+- **Tank_Antigravity**: Tanque experimental de assalto flutuante ($100).
+- **Artilharia**: Obus pesado fixo/móvel de longo alcance estratégico ($700).
+- **Track Combustivel**: Veículo logístico móvel de reabastecimento ($100).
+- **Ares Ar**: Plataforma móvel leve de mísseis antiaéreos terrestres ($100).
+
+8.2. Forças Navais (Marinha):
+- **Barco WW / Lancha Arrowhead**: Embarcações rápidas de patrulha leve ($100 - $200).
+- **Corveta Sam / Corveta Fortaleza**: Navios leves rápidos para escolta ($200 - $1200).
+- **USS Dominion**: Cruzador pesado de combate direto de superfície ($3500).
+- **USS Ironclad**: Encouraçado maciço de combate de longo alcance ($1000).
+- **USS Vindicator**: Destróier avançado com radares e defesas antiaéreas ($2500).
+- **USS Sovereign**: Porta-aviões pesado para projeção aérea estratégica ($5000).
+- **USS Liberty Prime**: Navio de transporte/cruzador anfíbio pesado ($5000).
+- **USS Mako**: Submarino de ataque furtivo contra navios de superfície ($3000).
+- **USS Wraith**: Submarino furtivo avançado com bloqueio de sonar ($3800).
+- **USS Leviathan**: Submarino nuclear lançador de mísseis balísticos ($4500).
+- **Petroleiro**: Navio tanque de transporte e reabastecimento marítimo ($100).
+- **Nav_Vigia / Nav_Think**: Navios leves e rápidos de vigilância ($100).
+
+8.3. Forças Aéreas (Aeronáutica):
+- **A_20**: Caça leve de ataque rápido ao solo ($100).
+- **B260**: Bombardeiro tático de médio porte ($100).
+- **C700 Transporte**: Gigante cargueiro aéreo de logística pesada e tropas ($100).
+- **Drone Hasaf (DH Hasaf)**: Drone de reconhecimento aéreo rápido ($100).
+- **Drone Veloster**: Drone interceptador super-veloz ($300).
+- **VAP Drone / Drone Kamikaze**: Aeronave não tripulada de ataque por choque ($100).
+- **Helicóptero Ray**: Helicóptero de transporte de tropas com rotor duplo ($850).
+- **Su11 / Vans Falcon**: Caças de superioridade aérea rápida ($100).
+
+8.4. Infraestrutura e Construções Civis/Militares:
+- **Quartel General (Prefeitura)**: Centro administrativo e comando de base ($100).
+- **Estaleiro Naval**: Produção e docagem marítima ($2500).
+- **Aeroporto**: Pista de decolagem, manutenção e controle militar de aviões ($100).
+- **Heliporto**: Plataforma de pouso e reabastecimento de helicópteros ($500).
+- **Tenda Militar**: Alojamento de soldados e recrutamento básico ($300).
+- **Armazem / Armazem Militar**: Depósito logístico de estoque de recursos ($100).
+- **Plataforma / Plataforma Offshore**: Extração de petróleo/suporte marítimo ($2000).
+- **Muro de Concreto / Muro Lateral**: Fortificação defensiva contra invasores ($50).
+- **Torre de Radar**: Varredura ativa contra névoa de guerra e alerta de mísseis ($400).
+- **Lançador de Mísseis**: Plataforma nuclear / silo balístico estratégico ($3000).
+- **Fronteira**: Flag decorativa/posto avançado de fiscalização ($1000).
+- **Prefeitura**: Centro urbano principal e gerador de taxas ($5000).
+- **Mini Predio**: Habitação civil para ampliação do censo demográfico ($100).
+- **Farm (Fazenda)**: Produção passiva de comida ($100).
+- **Energia (Gerador)**: Usina termelétrica para suprir a rede da base ($100).
+
+================================================================================
+                    FIM DO MANUAL DE FUNCIONAMENTO DA IA
+================================================================================

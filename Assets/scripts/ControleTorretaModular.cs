@@ -53,6 +53,7 @@ public class ControleTorretaModular : MonoBehaviour
     
     // ===== VARIÁVEIS INTERNAS =====
     private Transform alvoAtual;
+    [HideInInspector] public Transform alvoPrioritario;
     private Collider[] bufferColisores = new Collider[40];
     private int indiceArmaAlternada = 0;
     private int meuTime = 1;
@@ -195,6 +196,17 @@ public class ControleTorretaModular : MonoBehaviour
         {
             alvoAtual = null;
             return;
+        }
+
+        // HARD LOCK: Prioridade máxima para o alvo prioritário
+        if (alvoPrioritario != null && alvoPrioritario.gameObject.activeInHierarchy && ControleSubmarino.PodeSerAlvoConvencional(alvoPrioritario))
+        {
+            float distSqrPrioritario = (transform.position - alvoPrioritario.position).sqrMagnitude;
+            if (distSqrPrioritario <= alcanceRadar * alcanceRadar)
+            {
+                alvoAtual = alvoPrioritario;
+                return;
+            }
         }
         
         int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, bufferColisores, Physics.AllLayers, QueryTriggerInteraction.Ignore);

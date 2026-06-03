@@ -854,8 +854,8 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (semEnergia)
         {
-            Debug.LogWarning($"[Aeroporto] {name} está sem energia! Compra de aeronaves bloqueada.");
-            return;
+            Debug.LogWarning($"[Aeroporto] {name} está sem energia! Compra de aeronaves bloqueada (Ignorado pelo patch).");
+            // return;
         }
 
         // --- SISTEMA DE IDENTIDADE (HERANÇA DO AEROPORTO) ---
@@ -1037,45 +1037,47 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     private IEnumerator RotinaRecebimento(ControleAviao aviao)
     {
+        if (aviao == null) yield break;
+
+        Transform vagaDesignada = ObterPrimeiraVagaLivre();
+        
+        if (vagaDesignada == null)
+        {
+            // Se não achou vaga (pátio lotado ou bloqueado), manda pro hangar interno imediatamente
+            if (!avioesNoHangar.Contains(aviao)) avioesNoHangar.Add(aviao);
+            aviao.estadoAtual = ControleAviao.EstadoAviao.ReservaHangar;
+            aviao.gameObject.SetActive(false); 
+            yield break;
+        }
+
         // Vai devagarzinho do Hangar até a frente do Hangar
-        if (wpPronto != null && aviao != null)
+        if (wpPronto != null)
         {
             yield return StartCoroutine(aviao.MoverInterpolado(Vector3.zero, aviao.velocidadeSolo, false, wpPronto));
         }
 
         if (aviao == null) yield break;
 
-        Transform vagaDesignada = ObterPrimeiraVagaLivre();
-        if (vagaDesignada != null)
-        {
-            aviao.vagaRetorno = vagaDesignada;
-            if (!avioesNoPatio.Contains(aviao)) avioesNoPatio.Add(aviao);
-            
-            // Vai devagarzinho pra Vaga do Pátio
-            yield return StartCoroutine(aviao.MoverInterpolado(Vector3.zero, aviao.velocidadeSolo, false, vagaDesignada));
-            
-            if (aviao != null) aviao.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
-        }
-        else
-        {
-            // Se não achou vaga (pátio lotado ou bloqueado), manda pro hangar
-            if (!avioesNoHangar.Contains(aviao)) avioesNoHangar.Add(aviao);
-            aviao.estadoAtual = ControleAviao.EstadoAviao.ReservaHangar;
-            aviao.gameObject.SetActive(false); 
-        }
+        aviao.vagaRetorno = vagaDesignada;
+        if (!avioesNoPatio.Contains(aviao)) avioesNoPatio.Add(aviao);
+        
+        // Vai devagarzinho pra Vaga do Pátio
+        yield return StartCoroutine(aviao.MoverInterpolado(Vector3.zero, aviao.velocidadeSolo, false, vagaDesignada));
+        
+        if (aviao != null) aviao.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
     }
 
     private IEnumerator RotinaRecebimentoHelicoptero(Helicoptero helicoptero)
     {
-        if (helicoptero == null)
-        {
-            yield break;
-        }
+        if (helicoptero == null) yield break;
 
         Transform vagaHelicoptero = ObterVagaHelicopteroPreferencial(false);
         if (vagaHelicoptero == null)
         {
-            vagaHelicoptero = (wpPronto != null) ? wpPronto : transform;
+            // Sem vaga para o helicóptero, oculta ele imediatamente no hangar
+            helicoptero.gameObject.SetActive(false);
+            RegistrarHelicopteroControlado(helicoptero);
+            yield break;
         }
 
         helicoptero.VincularAoAeroporto(this, vagaHelicoptero);
@@ -1105,20 +1107,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     private IEnumerator RotinaRecebimentoC700(C700TransporteAereo aviao)
     {
-        if (aviao == null)
-        {
-            yield break;
-        }
-
-        if (wpPronto != null)
-        {
-            yield return StartCoroutine(aviao.TaxiarAteTransform(wpPronto));
-        }
-
-        if (aviao == null)
-        {
-            yield break;
-        }
+        if (aviao == null) yield break;
 
         Transform paradaGrande = ObterParadaGrandePreferencial(false);
         if (paradaGrande == null)
@@ -1130,20 +1119,24 @@ public class GerenciadorAeroporto : MonoBehaviour
             paradaGrande = ObterParadaGrandePreferencial(true);
         }
 
-        if (paradaGrande != null)
+        if (paradaGrande == null)
         {
-            aviao.RegistrarPontoEstacionamento(paradaGrande);
-            if (!transportesC700NoPatio.Contains(aviao)) transportesC700NoPatio.Add(aviao);
-            yield return StartCoroutine(aviao.TaxiarAteTransform(paradaGrande));
-            aviao.FinalizarPosicionamentoNoPatio(paradaGrande);
+            // Sem vaga para C700, manda para a reserva (invisível)
+            aviao.gameObject.SetActive(false);
+            yield break;
         }
-        else
+
+        if (wpPronto != null)
         {
-            aviao.transform.position = (wpPronto != null) ? wpPronto.position : transform.position;
-            aviao.transform.rotation = (wpPronto != null) ? wpPronto.rotation : transform.rotation;
-            if (!transportesC700NoPatio.Contains(aviao)) transportesC700NoPatio.Add(aviao);
-            aviao.FinalizarPosicionamentoNoPatio((wpPronto != null) ? wpPronto : transform);
+            yield return StartCoroutine(aviao.TaxiarAteTransform(wpPronto));
         }
+
+        if (aviao == null) yield break;
+
+        aviao.RegistrarPontoEstacionamento(paradaGrande);
+        if (!transportesC700NoPatio.Contains(aviao)) transportesC700NoPatio.Add(aviao);
+        yield return StartCoroutine(aviao.TaxiarAteTransform(paradaGrande));
+        aviao.FinalizarPosicionamentoNoPatio(paradaGrande);
     }
 
     public IEnumerator RotinaLancarMissaoEmMassa(Vector3 alvo, int quantidade)

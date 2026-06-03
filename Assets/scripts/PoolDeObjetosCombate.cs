@@ -259,15 +259,15 @@ public static class PoolDeObjetosCombate
                 return componente.gameObject;
             }
 
+            // Sub-asset ou tipo incompatível — destruir silenciosamente
             if (instanciaObj != null)
             {
-                Debug.LogWarning($"[PoolDeObjetosCombate] Prefab {prefab.name} instanciou como {instanciaObj.GetType().Name}, nao como GameObject.");
                 Object.Destroy(instanciaObj);
             }
         }
-        catch (System.InvalidCastException ex)
+        catch (System.Exception)
         {
-            Debug.LogWarning($"[PoolDeObjetosCombate] Falha ao instanciar prefab {prefab.name}: {ex.Message}");
+            // Prefab com referência quebrada — ignorar silenciosamente
         }
 
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("pool_misses");

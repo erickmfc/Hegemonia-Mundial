@@ -104,7 +104,6 @@ public class SistemaAntiMissil : MonoBehaviour
     private int misseisAtuais;
     private int cartuchosReserva;
     private bool recarregando = false;
-    private bool aguardandoReabastecimentoPier = false;
     private int indexSaida = 0;
     private readonly Dictionary<Transform, Vector3> ultimasPosicoesAmeaca = new Dictionary<Transform, Vector3>();
     private readonly List<Transform> chavesAmeacaParaRemover = new List<Transform>();
@@ -249,7 +248,6 @@ public class SistemaAntiMissil : MonoBehaviour
         misseisAtuais = ObterQuantidadePorCartuchoEfetiva();
         cartuchosReserva = Mathf.Max(0, ObterCartuchosMaximosEfetivos() - 1);
         recarregando = false;
-        aguardandoReabastecimentoPier = false;
     }
 
     void FinalizarTrocaCartucho()
@@ -259,13 +257,11 @@ public class SistemaAntiMissil : MonoBehaviour
             cartuchosReserva--;
             misseisAtuais = ObterQuantidadePorCartuchoEfetiva();
             recarregando = false;
-            aguardandoReabastecimentoPier = false;
             return;
         }
 
         misseisAtuais = 0;
         recarregando = false;
-        aguardandoReabastecimentoPier = true;
         alvoMissilAtual = null;
     }
 
@@ -278,7 +274,6 @@ public class SistemaAntiMissil : MonoBehaviour
 
         if (cartuchosReserva <= 0)
         {
-            aguardandoReabastecimentoPier = true;
             recarregando = false;
             return;
         }
@@ -1170,7 +1165,6 @@ public class SistemaAntiMissil : MonoBehaviour
             if (misseisAtuais <= 0)
             {
                 misseisAtuais = ObterQuantidadePorCartuchoEfetiva();
-                aguardandoReabastecimentoPier = false;
                 recarregando = false;
                 cooldownDisparo = Mathf.Min(cooldownDisparo, tempoEntreTiros);
                 alterou = true;
@@ -1191,11 +1185,6 @@ public class SistemaAntiMissil : MonoBehaviour
 
             cartuchosReserva++;
             alterou = true;
-        }
-
-        if (alterou)
-        {
-            aguardandoReabastecimentoPier = false;
         }
 
         return alterou;

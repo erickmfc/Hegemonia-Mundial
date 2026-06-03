@@ -70,7 +70,7 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             // --- Ação 2 (Meio da Janela) ---
             if (!intrusaoDetectada)
             {
-                GarantirAvioesIniciais();
+                GarantirEExpandirFrotaAerea();
                 yield return new WaitForSeconds(0.5f);
                 if (MenuConstrucao.EstaAberto || Input.GetKey(KeyCode.C)) intrusaoDetectada = true;
             }
@@ -134,28 +134,72 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         ConstruirNaTerra("Aeroporto", centro, 0); 
     }
 
-    void GarantirAvioesIniciais()
+    void GarantirEExpandirFrotaAerea()
     {
-        if (chefe != null && ExistePredio("Aeroporto"))
+        if (chefe == null || chefe.dinheiro < 1500f || !ExistePredio("Aeroporto")) return;
+
+        GameObject cacaPrefab = BuscarNoCatalogo("Fighter");
+        if (cacaPrefab == null) cacaPrefab = BuscarNoCatalogo("Caca");
+        if (cacaPrefab == null) cacaPrefab = BuscarNoCatalogo("Avia");
+
+        if (cacaPrefab != null)
         {
-            GameObject cacaPrefab = BuscarNoCatalogo("Caca");
-            if (cacaPrefab == null) cacaPrefab = BuscarNoCatalogo("Avia");
-            if (cacaPrefab != null)
+            var aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+            foreach (var aero in aeroportos)
             {
-                var aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-                foreach (var aero in aeroportos)
+                if (aero == null) continue;
+                var id = aero.GetComponent<IdentidadeUnidade>();
+                if (id != null && id.teamID == chefe.identidade.teamID)
                 {
-                    var id = aero.GetComponent<IdentidadeUnidade>();
-                    if (id != null && id.teamID == chefe.identidade.teamID)
+                    // Verifica se o aeroporto tem vagas no pátio
+                    int vagasTotais = aero.waypointsPatio.Count;
+                    int ocupados = aero.avioesNoPatio.Count + aero.avioesNoHangar.Count; // Considera hangar também para evitar sobrecarga excessiva
+
+                    if (ocupados < vagasTotais)
                     {
-                        // Força a compra de 4 aviões de combate gratuitos para já preencher o aeroporto da IA
-                        for (int i = 0; i < 4; i++)
-                        {
-                            aero.ComprarAviao(cacaPrefab);
-                        }
-                        break;
+                        chefe.GastarDinheiro(1000f);
+                        aero.ComprarAviao(cacaPrefab);
+                        break; // Compra um por vez para distribuir nos ciclos
                     }
                 }
+            }
+        }
+    }
+
+    void GarantirFrotaNavalCosteira(Vector3 centroBase)
+    {
+        if (chefe == null || chefe.dinheiro < 2500f) return;
+
+        GameObject navioPrefab = BuscarNoCatalogo("NavalPatrol");
+        if (navioPrefab == null) return;
+
+        var estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
+        foreach (var est in estaleiros)
+        {
+            if (est == null) continue;
+            var id = est.GetComponent<IdentidadeUnidade>();
+            if (id != null && id.teamID == chefe.identidade.teamID)
+            {
+                chefe.GastarDinheiro(2000f);
+                
+                // Encontra um ponto aleatório de água afastado para defender a costa
+                Vector3 direcaoAleatoria = new Vector3(Random.Range(-1f, 1f), 0, Random.Range(-1f, 1f)).normalized;
+                Vector3 pontoPatrulha = est.transform.position + (direcaoAleatoria * Random.Range(150f, 400f));
+                pontoPatrulha.y = nivelDoMar;
+
+                // Verifica se o ponto é água de fato
+                if (Terrain.activeTerrain != null && Terrain.activeTerrain.SampleHeight(pontoPatrulha) <= nivelDoMar - 0.1f)
+                {
+                    GameObject novoNavio = Instantiate(navioPrefab, est.transform.position + (est.transform.forward * 40f), Quaternion.LookRotation(est.transform.forward));
+                    ConfigurarIdentidade(novoNavio);
+                    
+                    var compMover = novoNavio.GetComponent<ControleNavioRealista>();
+                    if (compMover != null)
+                    {
+                        compMover.DefinirDestino(pontoPatrulha);
+                    }
+                }
+                break; // Compra um navio por vez
             }
         }
     }
@@ -202,6 +246,32 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         {
             if (ConstruirNaTerra("Heliporto", centro, 3000)) return; 
         }
+
+        // --- EXPANSÃO DE ECONOMIA E UTILIDADES ---
+        if (chefe.dinheiro > 600f)
+        {
+            int qtdUsinas = ContarPredios("Energia") + ContarPredios("Usina");
+            if (qtdUsinas < 3) 
+            {
+                if (ConstruirNaTerra("Energia", centro, 500)) return;
+            }
+
+            int qtdFazendas = ContarPredios("Fazenda") + ContarPredios("Comida");
+            if (qtdFazendas < 2) 
+            {
+                if (ConstruirNaTerra("Fazenda", centro, 400)) return;
+            }
+
+            if (!ExistePredio("Comercial")) 
+            {
+                if (ConstruirNaTerra("Comercial", centro, 300)) return;
+            }
+
+            if (!ExistePredio("Residencial") && !ExistePredio("Casa")) 
+            {
+                if (ConstruirNaTerra("Residencial", centro, 300)) return;
+            }
+        }
         
         if (chefe.dinheiro > 1500 && !ExistePredio("Estaleiro") && !ExistePredio("Pier") && !ExistePredio("Naval"))
         {
@@ -215,6 +285,10 @@ public class IA_Arquiteto_Pro : MonoBehaviour
                     ConstruirNaAgua("Pier", posAgua, dirMar); 
                 }
             }
+        }
+        else if ((ExistePredio("Estaleiro") || ExistePredio("Pier")) && chefe.dinheiro > 2500)
+        {
+            GarantirFrotaNavalCosteira(centro);
         }
 
         if (chefe.dinheiro > 1000)
@@ -287,7 +361,14 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
         Vector3 centro = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : transform.position;
 
-        if (!ExistePredio("Prefeitura") && !ExistePredio("Complexo")) ConstruirNaTerra("Prefeitura", centro, 0);
+        if (!ExistePredio("Prefeitura") && !ExistePredio("Complexo")) 
+        {
+            ConstruirNaTerra("Prefeitura", centro, 0);
+            
+            // Força a criação de uma Usina Nuclear a ~150m de distância ao lado
+            Vector3 posUsina = centro + (chefe.transform.right * 150f) + (chefe.transform.forward * 50f);
+            ConstruirNaTerra("Nuclear", posUsina, 0);
+        }
         if (!ExistePredio("Bandeira") && !ExistePredio("Flag")) ConstruirNaTerra("Bandeira", centro, 0);
         if (!ExistePredio("Tenda")) ConstruirNaTerra("Tenda", centro, 0);
         if (!ExistePredio("Veiculos")) ConstruirNaTerra("Veiculos", centro, 500); 
@@ -676,6 +757,10 @@ public class IA_Arquiteto_Pro : MonoBehaviour
                     else if (nomeChave == "Muro" && (nm.Contains("muro") || nm.Contains("cerca") || nm.Contains("wall") || nm.Contains("barricada"))) prefabAchado = item.prefabDaUnidade;
                     else if (nomeChave == "Aeroporto" && (nm.Contains("aeroporto") || nm.Contains("base aerea") || nm.Contains("pista") || nm.Contains("airport") || nm.Contains("hangar") && (nm.Contains("voo") || nm.Contains("aviao") || nm.Contains("aereo")))) prefabAchado = item.prefabDaUnidade;
                     else if (nomeChave == "Pier" && nm.Contains("pier")) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Energia" && (nm.Contains("usina") || nm.Contains("energia") || nm.Contains("solar") || nm.Contains("nuclear") || nm.Contains("power"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Fazenda" && (nm.Contains("fazenda") || nm.Contains("comida") || nm.Contains("farm") || nm.Contains("agricola"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Comercial" && (nm.Contains("comercial") || nm.Contains("loja") || nm.Contains("shopping"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Residencial" && (nm.Contains("residencial") || nm.Contains("casa") || nm.Contains("predio") || nm.Contains("house"))) prefabAchado = item.prefabDaUnidade;
                 }
             }
         }

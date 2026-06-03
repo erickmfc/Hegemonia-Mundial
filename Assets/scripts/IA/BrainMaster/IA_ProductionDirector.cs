@@ -139,6 +139,14 @@ namespace Hegemonia.AI.BrainMaster
                     oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0
                         ? Mathf.Max(oilTankerTarget, brain.TargetOilTankers)
                         : 0;
+                        
+                    if (brain.ActiveImperialPlan == "invasao_anfibia_combinada")
+                    {
+                        helicopterTarget = Mathf.Max(helicopterTarget, 4);
+                        navalTarget = Mathf.Max(navalTarget, 6);
+                        infantryTarget = Mathf.Max(infantryTarget, 20);
+                        tankTarget = Mathf.Max(tankTarget, 6);
+                    }
                 }
                 int subTarget = hasNavalBase && fleetCombatCount >= 1 && (counter.ReinforceCoast || counter.NavalWeight > 0.18f)
                     ? 1
@@ -204,14 +212,14 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (mustPrepareTransport)
+                if (mustPrepareTransport || (brain != null && brain.ActiveImperialPlan == "invasao_anfibia_combinada"))
                 {
-                    if (hasNavalBase && !transportPlan.EscortReady && QueueSurfaceFleetStep(navalCount, 97, 6.5f))
+                    if (hasNavalBase && (!transportPlan.EscortReady || navalCount < 4) && QueueSurfaceFleetStep(navalCount, 97, 4.5f))
                     {
                         return;
                     }
 
-                    if (!transportPlan.AirCoverReady)
+                    if (!transportPlan.AirCoverReady || (brain != null && brain.ActiveImperialPlan == "invasao_anfibia_combinada" && helicopterCount < 3))
                     {
                         if (hasAirport && fighterCount < Mathf.Max(2, fighterTarget) && QueuePreferredAircraft(96, 5.5f))
                         {
@@ -221,7 +229,7 @@ namespace Hegemonia.AI.BrainMaster
                         if (EnableHelicopterProduction
                             && hasHeliport
                             && helicopterCount < Mathf.Max(1, helicopterTarget)
-                            && QueueProduceBest(95, 6f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
+                            && QueueProduceBest(95, 4f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
                         {
                             return;
                         }

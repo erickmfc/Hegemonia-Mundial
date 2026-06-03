@@ -15,7 +15,7 @@ MonoBehaviour:
   nomeItem: Usina nuclear
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 7950830260176714564, guid: 94e26672313d2934d85630a5a91843d4, type: 3}
+  prefabDaUnidade: {fileID: 466907145681924878, guid: bd6499e97675cf44299130cd9f187dc0, type: 3}
   preco: 500
   categoria: 3
   balanceamento: {fileID: 0}

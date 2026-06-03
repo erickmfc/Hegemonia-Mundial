@@ -763,6 +763,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 if (transformAlvo != null)
                 {
                     unidade.DefinirModoCombate(true);
+                    unidade.DefinirAlvoPrioritario(transformAlvo);
                     // Move para perto do alvo para atacar dentro do alcance
                     Vector3 direcaoAlvo = (pontoAlvo - unidade.transform.position).normalized;
                     float distanciaAtaque = 60f; // recua um pouco para estar em alcance

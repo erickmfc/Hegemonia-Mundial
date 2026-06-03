@@ -2141,6 +2141,7 @@ public class MenuConstrucao : MonoBehaviour
         var comps = item.prefabDaUnidade.GetComponentsInChildren<Component>(true);
         foreach (var c in comps)
         {
+            if (c == null) continue; // Adicionado null check para evitar erro com Missing Scripts
             string n = c.GetType().Name.ToLower();
             if (n.Contains("torreta") || n.Contains("arma") || n.Contains("lancador") || n.Contains("caca"))
                 return "Armado";
@@ -2611,6 +2612,7 @@ public class MenuConstrucao : MonoBehaviour
             .Where(a =>
             {
                 if (a == null) return false;
+                if (a is GerenciadorPortaAvioes) return false; // Impede que compras do menu geral caiam no porta-aviões
                 IdentidadeUnidade id = a.GetComponent<IdentidadeUnidade>();
                 return id == null || id.teamID == 1;
             })
@@ -2727,9 +2729,9 @@ public class MenuConstrucao : MonoBehaviour
         if (targetIsPowerless)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(LocalizationManager.T("build.destination_no_power", "Bloqueado: o aeroporto ou heliporto de destino esta sem energia."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem energia");
-            return;
+            EmitirAvisoJogador(LocalizationManager.T("build.destination_no_power", "Aviso: o aeroporto de destino esta sem energia, mas a compra foi liberada."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem energia (ignorado pelo patch)");
+            // return; // <-- REMOVIDO para permitir a compra mesmo se o script de energia falhar
         }
 
         if (targetHeliporto == null && targetAeroporto == null)

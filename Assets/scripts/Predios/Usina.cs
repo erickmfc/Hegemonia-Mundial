@@ -6,7 +6,7 @@ public enum TipoUsina { Solar, Nuclear }
 /// Usina de Energia genérica (Solar e Nuclear).
 /// Gera energia para o país e possui custos operacionais e de mão de obra específicos.
 /// </summary>
-public class Usina : PredioRecursos
+public class Usina : MonoBehaviour
 {
     [Header("⚡ Tipo de Usina")]
     public TipoUsina tipoUsina = TipoUsina.Solar;
@@ -15,8 +15,11 @@ public class Usina : PredioRecursos
     [Tooltip("Eficiência base da usina")]
     public float eficienciaBase = 1.0f;
 
-    protected override void Start()
+    void Start()
     {
+        float producaoEnergia = 0f;
+        float producaoDinheiro = 0f;
+
         // Configura os valores de produção baseados no tipo de usina
         if (tipoUsina == TipoUsina.Solar)
         {
@@ -54,8 +57,5 @@ public class Usina : PredioRecursos
         }
         
         eco.InferirTeamId();
-
-        // Chama o Start da base para ativar a produção no GerenciadorRecursos
-        base.Start();
     }
 }
