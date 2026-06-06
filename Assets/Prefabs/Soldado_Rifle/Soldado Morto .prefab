@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 7624706648174739028}
   - component: {fileID: 6649335733072883689}
   - component: {fileID: -6070055513309869795}
+  - component: {fileID: 7368381335739554367}
   m_Layer: 0
   m_Name: 'Soldado Morto '
   m_TagString: Soldado
@@ -67,6 +68,25 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 0
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
+--- !u!114 &7368381335739554367
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9080047864039768087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1001 &7327407673367860979
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -693,6 +693,7 @@ GameObject:
   - component: {fileID: 4244820406282660562}
   - component: {fileID: 6473326894287874706}
   - component: {fileID: 4350598584428656056}
+  - component: {fileID: 4514079530132917530}
   m_Layer: 0
   m_Name: Vans
   m_TagString: Aereo
@@ -776,10 +777,24 @@ MonoBehaviour:
   somTiro: {fileID: 8300000, guid: ec9f47083560ce74e87495f678b41437, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
   misselPrefab: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
   locaisDoMissel:
   - {fileID: 3931619368939544756}
@@ -791,6 +806,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 10
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!82 &-9194245954572247376
 AudioSource:
   m_ObjectHideFlags: 0
@@ -929,6 +945,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &3662285357485046970
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -965,6 +985,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b45f7f566e989a54b8b2fbc38d71f9b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Helicoptero
+  corrigirRotacao: 0
+  modeloVisual: {fileID: 0}
   debugLogs: 0
   controleSempreAtivo: 0
   selecionado: 1
@@ -974,6 +996,12 @@ MonoBehaviour:
   velocidadeHelice: 1200
   velocidadeNavegacao: 35
   velocidadePouso: 6
+  velocidadeSubidaVertical: 6.5
+  velocidadeDescidaVertical: 5
+  alturaSubidaInicial: 10
+  ajusteAlturaEstacionado: 0
+  reservaRetornoPercentual: 0.32
+  raioInicioDescida: 18
   distanciaBusca: 50
   distanciaEmbarque: 5
   capacidadeMaxima: 0
@@ -984,21 +1012,34 @@ MonoBehaviour:
   cooldownFlares: 10
   tagMissil: Missil
   tagInimigo: Inimigo
-  modeloVisual: {fileID: 0}
-  ajusteYawModelo: 0
   flares: []
   helicePrincipal: {fileID: 3532613307683557407}
   heliceTraseira: {fileID: 8675863993214630558}
+  eixoRotacaoHeliceTraseira: 0
+  usarRotacaoHorizontalNaHeliceTraseira: 0
   audioMotor: {fileID: 0}
   pitchMinimo: 0.5
   pitchMaximo: 1.2
   volumeMaximo: 1
   tempoSpinUp: 4
   tempoSpinDown: 6
+  usarAnimacaoAntesDeVoar: 0
+  nomeAnimacaoDecolagem: Fly
+  tempoPreparacaoDecolagem: 1.1
+  helicopteroTransporte: 0
+  pousarNoDestinoTatico: 0
+  desembarcarAutomaticamenteAoPousar: 1
+  raioTransferenciaNavio: 35
+  mostrarIdentificacaoFlutuante: 1
   destino: {x: 0, y: 0, z: 0}
   estaVoando: 0
   nomeHelicoptero: "Falc\xE3o Negro"
   custoUpgrade: 800
+  idExibicao: 0
+  controladoPeloAeroporto: 0
+  estacionadoNoAeroporto: 0
+  vagaAeroporto: {fileID: 0}
+  missaoAtualAeroporto: 0
 --- !u!54 &6473326894287874706
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1043,6 +1084,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -1051,6 +1098,21 @@ MonoBehaviour:
   segmentosCirculo: 50
   linhaCaminho: {fileID: 0}
   corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
+--- !u!114 &4514079530132917530
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2697658890839971605}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &2979844653746988286
 GameObject:
   m_ObjectHideFlags: 0

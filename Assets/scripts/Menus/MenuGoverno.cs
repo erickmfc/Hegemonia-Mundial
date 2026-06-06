@@ -13,9 +13,9 @@ public class MenuGoverno : MonoBehaviour
     public KeyCode teclaAtalho = KeyCode.X;
 
     [Header("Layout RTS")]
-    [Range(0.40f, 0.92f)] public float larguraTela = 0.84f;
-    [Range(0.40f, 0.90f)] public float alturaTela = 0.80f;
-    [Range(-0.18f, 0.18f)] public float deslocamentoVertical = 0.01f;
+    [Range(0.40f, 0.98f)] public float larguraTela = 0.86f;
+    [Range(0.40f, 0.98f)] public float alturaTela = 0.96f;
+    [Range(-0.18f, 0.18f)] public float deslocamentoVertical = -0.01f;
     public float larguraSidebar = 198f;
     public float larguraPainelDireito = 300f;
     public float alturaCabecalho = 70f;
@@ -233,8 +233,8 @@ public class MenuGoverno : MonoBehaviour
 
     private void AplicarLayoutGovernamentalAtual()
     {
-        larguraTela = Mathf.Clamp(larguraTela, 0.72f, 0.86f);
-        alturaTela = Mathf.Clamp(alturaTela, 0.62f, 0.84f);
+        larguraTela = Mathf.Clamp(larguraTela, 0.72f, 0.98f);
+        alturaTela = Mathf.Clamp(alturaTela, 0.62f, 0.98f);
         deslocamentoVertical = Mathf.Clamp(deslocamentoVertical, -0.08f, 0.08f);
         larguraSidebar = Mathf.Clamp(larguraSidebar, 178f, 208f);
         larguraPainelDireito = Mathf.Clamp(larguraPainelDireito, 260f, 320f);
@@ -473,10 +473,10 @@ public class MenuGoverno : MonoBehaviour
 
         painelPrincipal = CreateUIObject(RootName, canvasObj.transform);
         painelRect = painelPrincipal.GetComponent<RectTransform>();
-        float halfW = Mathf.Clamp01(larguraTela) * 0.5f;
+        float w = Mathf.Clamp01(larguraTela);
         float halfH = Mathf.Clamp01(alturaTela) * 0.5f;
-        painelRect.anchorMin = new Vector2(0.5f - halfW, 0.5f - halfH + deslocamentoVertical);
-        painelRect.anchorMax = new Vector2(0.5f + halfW, 0.5f + halfH + deslocamentoVertical);
+        painelRect.anchorMin = new Vector2(0.01f, 0.5f - halfH + deslocamentoVertical);
+        painelRect.anchorMax = new Vector2(0.01f + w, 0.5f + halfH + deslocamentoVertical);
         painelRect.offsetMin = Vector2.zero;
         painelRect.offsetMax = Vector2.zero;
 

@@ -62,28 +62,28 @@ public class ControleAviao : MonoBehaviour
     public Vector3 alvoEstrategico; // Armazena a coordenada real (com Y exato do chão)
 
     public bool estaEmModoVooFisico = false;
-    private float giroLateralRoll = 0f; 
-    private float empinadaPitch = 0f;   
-    private float multiplicadorVelocidadeTurbo = 1f;
-    private float tempoSegurandoTab = 0f;
-    private float anguloOrbitaAtual = 0f;
-    private int sentidoOrbita = 1;
-    private bool retornoAutomaticoAposChegadaCentro = false;
-    private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
-    private readonly List<Vector3> rotaPatrulhaSalva = new List<Vector3>();
-    private Vector3 ultimoObjetivoMissao = Vector3.zero;
-    private bool retomarMissaoAposAbastecer = false;
-    private string ultimoMotivoRetorno = string.Empty;
-    private Coroutine rotinaRetomadaMissao;
-    private int indiceRetanguloPatrulha = 0;
+    protected float giroLateralRoll = 0f; 
+    protected float empinadaPitch = 0f;   
+    protected float multiplicadorVelocidadeTurbo = 1f;
+    protected float tempoSegurandoTab = 0f;
+    protected float anguloOrbitaAtual = 0f;
+    protected int sentidoOrbita = 1;
+    protected bool retornoAutomaticoAposChegadaCentro = false;
+    protected readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
+    protected readonly List<Vector3> rotaPatrulhaSalva = new List<Vector3>();
+    protected Vector3 ultimoObjetivoMissao = Vector3.zero;
+    protected bool retomarMissaoAposAbastecer = false;
+    protected string ultimoMotivoRetorno = string.Empty;
+    protected Coroutine rotinaRetomadaMissao;
+    protected int indiceRetanguloPatrulha = 0;
 
     // --- CACHE DE COMPONENTES (evita GetComponent no Update) ---
-    private ControleUnidade _controleUnidade;
-    private SistemaDeDanos _sistemaDanos;
-    private LancadorMisselCaca _lancadorCaca;
-    private float _tempoUltimoDanoRecebido = -100f;
+    protected ControleUnidade _controleUnidade;
+    protected SistemaDeDanos _sistemaDanos;
+    protected LancadorMisselCaca _lancadorCaca;
+    protected float _tempoUltimoDanoRecebido = -100f;
 
-    void Start()
+    protected virtual void Start()
     {
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null) rb.isKinematic = true; 
@@ -241,7 +241,7 @@ public class ControleAviao : MonoBehaviour
 
 
 
-    void Update()
+    protected virtual void Update()
     {
         if (!estaEmModoVooFisico) return;
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
@@ -317,7 +317,7 @@ public class ControleAviao : MonoBehaviour
         InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, heroico, 180f, 420f);
     }
 
-    private void ManobraVooRealista(float multDano = 1f)
+    protected virtual void ManobraVooRealista(float multDano = 1f)
     {
         float dt = Time.deltaTime;
         Vector3 retaAteAlvo = alvoGPSVoo - transform.position;

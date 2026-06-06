@@ -40,6 +40,33 @@ namespace Hegemonia.AI.Llama
         public long completed;
     }
 
+    public class OllamaStreamHandler : DownloadHandlerScript
+    {
+        private Action<string> onChunkReceived;
+        private string buffer = "";
+        
+        public OllamaStreamHandler(Action<string> onChunk) : base(new byte[16384]) 
+        {
+            this.onChunkReceived = onChunk;
+        }
+
+        protected override bool ReceiveData(byte[] data, int dataLength)
+        {
+            if (data == null || dataLength == 0) return false;
+            string text = Encoding.UTF8.GetString(data, 0, dataLength);
+            buffer += text;
+            
+            int lastNewline = buffer.LastIndexOf('\n');
+            if (lastNewline >= 0)
+            {
+                string completeLines = buffer.Substring(0, lastNewline);
+                buffer = buffer.Substring(lastNewline + 1);
+                onChunkReceived?.Invoke(completeLines);
+            }
+            return true;
+        }
+    }
+
     public class LlamaClient : MonoBehaviour
     {
         [Header("Configurações do Ollama")]
@@ -121,18 +148,15 @@ namespace Hegemonia.AI.Llama
             using (UnityWebRequest request = new UnityWebRequest(urlPull, "POST"))
             {
                 request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-                request.downloadHandler = new DownloadHandlerBuffer();
+                request.downloadHandler = new OllamaStreamHandler((textoCompleto) => {
+                    AtualizarProgressoDownload(textoCompleto);
+                });
                 request.SetRequestHeader("Content-Type", "application/json");
 
                 UnityWebRequestAsyncOperation asyncOp = request.SendWebRequest();
 
                 while (!asyncOp.isDone)
                 {
-                    string text = request.downloadHandler.text;
-                    if (!string.IsNullOrEmpty(text))
-                    {
-                        AtualizarProgressoDownload(text);
-                    }
                     yield return new WaitForSeconds(0.2f);
                 }
 

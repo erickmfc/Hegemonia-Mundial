@@ -47,6 +47,7 @@ GameObject:
   - component: {fileID: 2620938511765768467}
   - component: {fileID: 3003515292386049680}
   - component: {fileID: 8913026166836606737}
+  - component: {fileID: 3422957564983826697}
   m_Layer: 0
   m_Name: Estaleiros navais
   m_TagString: Imovel
@@ -203,6 +204,14 @@ MonoBehaviour:
   offsetAltura: 0
   efeitoConclusao: {fileID: 0}
   autoAlinharComAgua: 1
+  perfilColocacaoCosteira:
+    offsetAguaFrente: 35
+    offsetTerraTras: -15
+    raioMinimoSonda: 8
+    raioMaximoSonda: 180
+    empurraoPreview: 14
+    empurraoCommit: 18
+    usarValidacaoRapidaNoPreview: 1
   offsetAguaFrente: 35
   offsetTerraTras: -15
 --- !u!208 &2620938511765768467
@@ -237,6 +246,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 2
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!64 &8913026166836606737
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -259,6 +272,21 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &3422957564983826697
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3091952298521144747}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &3281884118873610546
 GameObject:
   m_ObjectHideFlags: 0

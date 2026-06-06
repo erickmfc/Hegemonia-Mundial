@@ -5394,6 +5394,7 @@ GameObject:
   - component: {fileID: 1455268677999496215}
   - component: {fileID: 2571058374784833120}
   - component: {fileID: 6324478497882466454}
+  - component: {fileID: 879240172153109104}
   m_Layer: 0
   m_Name: Nav_Tropas
   m_TagString: Navio
@@ -5524,6 +5525,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 2
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &7774817061415597115
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5622,6 +5627,8 @@ MonoBehaviour:
   alcanceTorpedos: 1000
   cooldownTorpedo: 5
   anguloMaximoLancamento: 90
+  torpedosNoModoAtivo: 1
+  intervaloBuscaTorpedoAtivo: 0.75
 --- !u!114 &6324478497882466454
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5640,6 +5647,7 @@ MonoBehaviour:
   - {fileID: 6093448538753403628}
   prefabMissel: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
   prefabTorpedo: {fileID: 0}
+  torpedosSomenteNoModoAtivo: 1
   municaoTotal: 10
   municaoMaxima: 10
   torpedosTotal: 8
@@ -5661,6 +5669,21 @@ MonoBehaviour:
   - Inimigo
   - Destrutivel
   debugLogs: 0
+--- !u!114 &879240172153109104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4326238571977262942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &4691570272486683892
 GameObject:
   m_ObjectHideFlags: 0

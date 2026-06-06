@@ -258,6 +258,7 @@ GameObject:
   - component: {fileID: -6511304501232847043}
   - component: {fileID: 2219297855408964396}
   - component: {fileID: -4723646779603236218}
+  - component: {fileID: 2097767683525489501}
   m_Layer: 0
   m_Name: Ares_Ar
   m_TagString: Imovel
@@ -298,6 +299,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -333,6 +340,13 @@ MonoBehaviour:
   - {fileID: 5310901612102755251}
   - {fileID: 5774827542028070110}
   - {fileID: 7209914213096082292}
+  limitarInclinacao: 1
+  elevacaoMinima: 0
+  elevacaoMaxima: 85
+  limitarRotacaoY: 0
+  anguloMinimoY: -160
+  anguloMaximoY: 160
+  checarLinhaDeVisao: 1
   quantidadeDeDisparo: 1
   tirosPorSegundo: 0.5
   tempoPausaRajada: 10
@@ -355,6 +369,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 0
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &2219297855408964396
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -375,6 +393,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 4
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!65 &-4723646779603236218
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -396,6 +418,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3.59, y: 3.53, z: 3.59}
   m_Center: {x: 0, y: 0.75, z: 0}
+--- !u!114 &2097767683525489501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 167466}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &1093506238242190
 GameObject:
   m_ObjectHideFlags: 0

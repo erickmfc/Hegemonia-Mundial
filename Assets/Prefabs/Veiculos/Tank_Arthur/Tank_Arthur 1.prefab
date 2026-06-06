@@ -192,6 +192,7 @@ GameObject:
   - component: {fileID: 6705082087531572936}
   - component: {fileID: 1062021077335127160}
   - component: {fileID: 891602707640704442}
+  - component: {fileID: 647937633448003346}
   m_Layer: 0
   m_Name: Tank_Arthur 1
   m_TagString: Player
@@ -232,6 +233,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -262,18 +269,42 @@ MonoBehaviour:
   tamanhoCartucho: 11
   tempoRecarga: 5
   pecaQueGira: {fileID: 3073737731895953717}
+  canosDaTorreta: {fileID: 0}
   locaisDoTiro:
   - {fileID: 8254213759177791756}
   municaoPrefab: {fileID: 5058724136885039853, guid: 10d02d52534ee864dafea47c0df55ef5, type: 3}
+  limitarInclinacao: 1
+  elevacaoMinima: -10
+  elevacaoMaxima: 80
   somTiro: {fileID: 8300000, guid: 1f5d14f7476b211498beb3c81883de6e, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel: 
   modoPassivo: 0
+  modoRadar: 0
+  interceptarMisseis: 0
+  usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
   misselPrefab: {fileID: 0}
   locaisDoMissel: []
   somMissel: {fileID: 0}
   tempoEntreMisseis: 2
+  capacidadeMisseis: 4
+  tempoRecargaMisseis: 10
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!195 &6705082087531572936
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -334,6 +365,21 @@ MonoBehaviour:
   causarExplosoes: 1
   qtdExplosoes: 5
   vidaUtil: 10
+--- !u!114 &647937633448003346
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1132656051466373794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &1392186725489195477
 GameObject:
   m_ObjectHideFlags: 0

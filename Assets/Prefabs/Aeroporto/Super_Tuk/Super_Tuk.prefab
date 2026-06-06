@@ -350,6 +350,7 @@ GameObject:
   - component: {fileID: 4505489411028330197}
   - component: {fileID: 4303117638714371999}
   - component: {fileID: -5102164957309288209}
+  - component: {fileID: 2095295368081961964}
   m_Layer: 0
   m_Name: Super_Tuk
   m_TagString: Aereo
@@ -445,6 +446,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 0
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &8351612203569207633
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -462,6 +467,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -503,10 +514,24 @@ MonoBehaviour:
   somTiro: {fileID: 8300000, guid: ec9f47083560ce74e87495f678b41437, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
   misselPrefab: {fileID: 0}
   locaisDoMissel: []
   somMissel: {fileID: 0}
@@ -514,6 +539,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 10
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!114 &216625474851512048
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -559,6 +585,8 @@ MonoBehaviour:
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
+  reservaMinimaRetornoPercentual: 0.22
+  reservaRetornoComDanosPercentual: 0.34
   velocidadeSolo: 7
   velocidadeMaximaVoo: 90
   taxaDeGiroLeme: 80
@@ -571,6 +599,7 @@ MonoBehaviour:
   rodas:
   - {fileID: 6550557276305995996}
   - {fileID: 5110667517129723671}
+  ajusteAlturaEstacionado: 0
   alvoGPSVoo: {x: 0, y: 0, z: 0}
   centroDaPatrulha: {x: 0, y: 0, z: 0}
   emAtaqueMergulho: 0
@@ -650,6 +679,21 @@ MonoBehaviour:
   raioDeVisao: 600
   cartuchoMaximo: 25
   tempoRecarga: 5
+--- !u!114 &2095295368081961964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4070482625320473334}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &4646874998638807707
 GameObject:
   m_ObjectHideFlags: 0

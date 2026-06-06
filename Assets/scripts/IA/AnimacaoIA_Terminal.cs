@@ -10,6 +10,13 @@ public class AnimacaoIA_Terminal : MonoBehaviour
 
     void Start()
     {
+        // Se o motor neural não estiver na cena, não mostra a tela de sincronização
+        if (Hegemonia.AI.Llama.LlamaClient.Instancia == null)
+        {
+            iaPronta = true;
+            return;
+        }
+
         // Inicia o loop da animação do texto
         StartCoroutine(AnimarTerminalMilitar());
     }

@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 9011985288443037310}
   - component: {fileID: 6593146295359539523}
   - component: {fileID: -975661281021449256}
+  - component: {fileID: 1349396419928952346}
   m_Layer: 0
   m_Name: Red_mun
   m_TagString: Untagged
@@ -162,7 +163,11 @@ MonoBehaviour:
   velocidade: 7
   dano: 5
   tempoDeVida: 2
-  efeitoExplosao: {fileID: 2799687479890543324, guid: 07180301372540a46864ed63d728a152, type: 3}
+  raioDeExplosao: 0
+  danoExplosao: 0
+  efeitoImpacto: {fileID: 0}
+  curvaDePerseguicao: 0
+  distanciaDetonacaoProximidade: 6
 --- !u!135 &9011985288443037310
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -226,6 +231,26 @@ MonoBehaviour:
   teamID: 1
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
+  tipoUnidade: 0
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
+--- !u!114 &1349396419928952346
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 103092412673567969}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &2041022671228705025
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,51 +1,37 @@
 using UnityEngine;
 using Hegemonia.AI.BrainMaster;
 
-/// <summary>
-/// Sistema de Imóveis — Casas, Prédios e Apartamentos.
-/// 
-/// ╔═══════════════════════════════════════════════════════════════╗
-/// ║  COMO FUNCIONA:                                              ║
-/// ║  1. Cada imóvel tem uma CAPACIDADE de moradores              ║
-/// ║  2. Moradores chegam gradualmente (não todos de uma vez)     ║
-/// ║  3. Cada morador = +1 populacaoAtual no GerenciadorRecursos  ║
-/// ║  4. Moradores geram renda (impostos) por segundo             ║
-/// ║  5. Moradores podem ir embora se qualidade de vida cair      ║
-/// ║  6. Ao destruir o imóvel, moradores são removidos            ║
-/// ╚═══════════════════════════════════════════════════════════════╝
-/// </summary>
 public class Imovel : MonoBehaviour
 {
     [Header("🏠 Configuração do Imóvel")]
-    [Tooltip("Quantidade máxima de moradores que cabem neste imóvel")]
     public int capacidade = 10;
 
     [Header("🏘️ Conexão de Quarteirão (Grudar Imóveis)")]
-    [Tooltip("Distância do centro até as laterais (usado para calcular a conexão)")]
     public float distanciaConexao = 8f;
-    [Tooltip("Opcional: Ponto exato do lado esquerdo. Se nulo, usará a distânciaConexao.")]
     public Transform ladoEsquerdo;
-    [Tooltip("Opcional: Ponto exato do lado direito. Se nulo, usará a distânciaConexao.")]
     public Transform ladoDireito;
+
+    [Header("🛣️ Conexão de Rua (Snaps)")]
+    public Transform conexaoRua;
+    public float distanciaFronteiraRua = 8f;
+    public Transform conexaoRuaTras;
+    public float distanciaFronteiraRuaTras = 8f;
+    public bool gerarPavimentacaoConcreto = true;
+    [HideInInspector] public GameObject pavimentoInstanciado;
 
     [Header("Debug")]
     public bool debugLogs = false;
 
-    // ═══════════════════════════════════════════════════════════════
-    // VALORES INTERNOS (o jogo calcula sozinho)
-    // ═══════════════════════════════════════════════════════════════
     private int moradoresAtuais = 0;
     private float rendaTotal = 0f;
     private int qualidadeAtual = 50;
 
-    // Constantes internas — o jogo controla
     private const int MORADORES_POR_CICLO = 2;
     private const float INTERVALO_CICLO = 5f;
     private const float RENDA_POR_MORADOR = 0.5f;
     private const int QUALIDADE_BASE = 50;
     private const int QUALIDADE_MINIMA = 20;
 
-    // Controle interno
     private float timerCiclo = 0f;
     [Header("⚡ Energia")]
     public bool semEnergia = false;
@@ -58,10 +44,6 @@ public class Imovel : MonoBehaviour
     private bool mouseHover = false;
     private Texture2D _texturaTooltip;
 
-    // ═══════════════════════════════════════════════════════════════
-    // PROPRIEDADES PÚBLICAS (para outros scripts lerem)
-    // ═══════════════════════════════════════════════════════════════
-
     public int MoradoresAtuais => moradoresAtuais;
     public int Capacidade => capacidade;
     public int VagasLivres => capacidade - moradoresAtuais;
@@ -70,80 +52,137 @@ public class Imovel : MonoBehaviour
     public float RendaAtual => rendaTotal;
     public int QualidadeAtual => qualidadeAtual;
 
-    public Vector3 ObterPontoEsquerdo()
+    public struct Conector
     {
-        if (ladoEsquerdo != null) return ladoEsquerdo.position;
-        return transform.position - transform.right * distanciaConexao;
+        public Vector3 posicao;
+        public Vector3 direcaoSaida; 
     }
 
-    public Vector3 ObterPontoDireito()
+    private Vector3 CalcularDirecaoSaidaSegura(Transform conector, Vector3 fallbackDir)
     {
-        if (ladoDireito != null) return ladoDireito.position;
-        return transform.position + transform.right * distanciaConexao;
+        if (conector == null) return fallbackDir;
+        Vector3 dir = conector.position - transform.position;
+        dir.y = 0;
+        if (dir.sqrMagnitude > 0.001f) return dir.normalized;
+        return conector.forward; 
+    }
+
+    public Conector ObterConectorFrente()
+    {
+        if (conexaoRua != null) return new Conector { posicao = conexaoRua.position, direcaoSaida = CalcularDirecaoSaidaSegura(conexaoRua, -transform.forward) };
+        return new Conector { posicao = transform.position - transform.forward * distanciaFronteiraRua, direcaoSaida = -transform.forward };
+    }
+
+    public Conector ObterConectorTras()
+    {
+        if (conexaoRuaTras != null) return new Conector { posicao = conexaoRuaTras.position, direcaoSaida = CalcularDirecaoSaidaSegura(conexaoRuaTras, transform.forward) };
+        return new Conector { posicao = transform.position + transform.forward * distanciaFronteiraRuaTras, direcaoSaida = transform.forward };
+    }
+
+    public Conector ObterConectorEsquerdo()
+    {
+        if (ladoEsquerdo != null) return new Conector { posicao = ladoEsquerdo.position, direcaoSaida = CalcularDirecaoSaidaSegura(ladoEsquerdo, -transform.right) };
+        return new Conector { posicao = transform.position - transform.right * distanciaConexao, direcaoSaida = -transform.right };
+    }
+
+    public Conector ObterConectorDireito()
+    {
+        if (ladoDireito != null) return new Conector { posicao = ladoDireito.position, direcaoSaida = CalcularDirecaoSaidaSegura(ladoDireito, transform.right) };
+        return new Conector { posicao = transform.position + transform.right * distanciaConexao, direcaoSaida = transform.right };
+    }
+
+    public void AtualizarPavimentacao(Vector3 posicaoRua)
+    {
+        if (!gerarPavimentacaoConcreto) return;
+
+        if (pavimentoInstanciado != null) Destroy(pavimentoInstanciado);
+
+        pavimentoInstanciado = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        pavimentoInstanciado.name = "Pavimentacao_Concreto_" + name;
+        Destroy(pavimentoInstanciado.GetComponent<Collider>());
+
+        pavimentoInstanciado.transform.rotation = Quaternion.Euler(90f, transform.rotation.eulerAngles.y, 0f);
+
+        Vector3 centroPavimento = (transform.position + posicaoRua) * 0.5f;
+        centroPavimento.y = transform.position.y + 0.02f;
+        pavimentoInstanciado.transform.position = centroPavimento;
+
+        float larguraPavimento = Vector3.Distance(ObterConectorEsquerdo().posicao, ObterConectorDireito().posicao);
+        float comprimentoPavimento = Vector3.Distance(transform.position, posicaoRua);
+
+        pavimentoInstanciado.transform.localScale = new Vector3(larguraPavimento, comprimentoPavimento, 1f);
+
+        Renderer rend = pavimentoInstanciado.GetComponent<Renderer>();
+        if (rend != null)
+        {
+            Material mat = new Material(Shader.Find("Sprites/Default"));
+            mat.color = new Color(0.4f, 0.4f, 0.4f, 1f);
+            rend.material = mat;
+        }
     }
 
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(ObterPontoEsquerdo(), 1f);
+        Gizmos.DrawWireSphere(ObterConectorEsquerdo().posicao, 1f);
         Gizmos.color = Color.magenta;
-        Gizmos.DrawWireSphere(ObterPontoDireito(), 1f);
+        Gizmos.DrawWireSphere(ObterConectorDireito().posicao, 1f);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(ObterConectorFrente().posicao, 1.2f);
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireSphere(ObterConectorTras().posicao, 1.2f);
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // INICIALIZAÇÃO
-    // ═══════════════════════════════════════════════════════════════
+    private Transform EncontrarFilhoPeloNome(Transform raiz, string[] nomes)
+    {
+        Transform[] todosFilhos = raiz.GetComponentsInChildren<Transform>(true);
+        foreach (Transform t in todosFilhos)
+        {
+            if (t == raiz) continue; 
+            foreach (string nome in nomes)
+            {
+                if (t.name.Equals(nome, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return t;
+                }
+            }
+        }
+        return null;
+    }
+
+    void Awake()
+    {
+        if (conexaoRua == null) conexaoRua = EncontrarFilhoPeloNome(transform, new string[] { "create", "frente", "conector" });
+        if (conexaoRuaTras == null) conexaoRuaTras = EncontrarFilhoPeloNome(transform, new string[] { "create_tras", "atras" });
+        if (ladoEsquerdo == null) ladoEsquerdo = EncontrarFilhoPeloNome(transform, new string[] { "esq", "create_esq" });
+        if (ladoDireito == null) ladoDireito = EncontrarFilhoPeloNome(transform, new string[] { "dir", "direito", "create_dir" });
+    }
 
     void Start()
     {
         qualidadeAtual = QUALIDADE_BASE;
 
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
-        if (recursos == null)
-        {
-            Debug.LogError($"[Imóvel] {name}: GerenciadorRecursos não encontrado!");
-            return;
-        }
+        if (recursos == null) return;
 
-        // Cada imóvel adiciona sua capacidade ao teto máximo de população
         recursos.AumentarLimitePopulacao(capacidade);
         limitePopulacaoAdicionado = capacidade;
         registrado = true;
-
-        // Timer randômico para não sincronizar todos os imóveis
         timerCiclo = Random.Range(0f, INTERVALO_CICLO);
-
-        if (debugLogs)
-            Debug.Log($"[Imovel] {name} construido! Capacidade: {capacidade}");
     }
 
-    void OnEnable()
-    {
-        RegistroEntidadesJogo.Register(this);
-        IA_BackendBridge.RegisterImovel(this);
-    }
-
-    void OnDisable()
-    {
-        RegistroEntidadesJogo.Unregister(this);
-        IA_BackendBridge.UnregisterImovel(this);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // UPDATE
-    // ═══════════════════════════════════════════════════════════════
+    void OnEnable() { RegistroEntidadesJogo.Register(this); IA_BackendBridge.RegisterImovel(this); }
+    void OnDisable() { RegistroEntidadesJogo.Unregister(this); IA_BackendBridge.UnregisterImovel(this); }
 
     void Update()
     {
         if (!registrado) return;
-
-        // Ciclo de moradores
         timerCiclo += Time.deltaTime;
         
         if (semEnergia)
         {
             timerSaidaEnergia += Time.deltaTime;
-            if (timerSaidaEnergia >= 15f) // Perde qualidade se sem energia
+            if (timerSaidaEnergia >= 15f) 
             {
                 ModificarQualidade(-4);
                 timerSaidaEnergia = 0f;
@@ -156,45 +195,38 @@ public class Imovel : MonoBehaviour
             timerCiclo = 0f;
         }
 
-        // Renda (a cada segundo)
         if (moradoresAtuais > 0)
         {
             timerRenda += Time.deltaTime;
-            if (timerRenda >= 1f)
-            {
-                timerRenda = 0f;
-            }
+            if (timerRenda >= 1f) timerRenda = 0f;
         }
     }
-
-    // ═══════════════════════════════════════════════════════════════
-    // LÓGICA DE MORADORES
-    // ═══════════════════════════════════════════════════════════════
 
     void ProcessarCicloMoradores()
     {
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (recursos == null) return;
 
-        if (qualidadeAtual >= QUALIDADE_MINIMA)
-            ChegadaDeMoradores(recursos);
-        else
-            SaidaDeMoradores(recursos);
+        float atratividade = 50f;
+        if (GerenciadorDivisaoTerritorial.Instancia != null) atratividade = GerenciadorDivisaoTerritorial.Instancia.ObterAtratividadeLocal(transform.position);
+
+        float fatorAtratividade = atratividade / 50f; 
+
+        if (qualidadeAtual >= QUALIDADE_MINIMA) ChegadaDeMoradores(recursos, fatorAtratividade);
+        else SaidaDeMoradores(recursos, fatorAtratividade);
     }
 
-    void ChegadaDeMoradores(GerenciadorRecursos recursos)
+    void ChegadaDeMoradores(GerenciadorRecursos recursos, float fatorAtratividade)
     {
         if (Lotado) return;
-
-        int querVir = Mathf.Min(MORADORES_POR_CICLO, VagasLivres);
+        int querVirBase = Mathf.Max(1, Mathf.RoundToInt(MORADORES_POR_CICLO * fatorAtratividade));
+        int querVir = Mathf.Min(querVirBase, VagasLivres);
         int aceitos = 0;
-
+        
         for (int i = 0; i < querVir; i++)
         {
-            if (recursos.AdicionarPopulacao(1))
-                aceitos++;
-            else
-                break;
+            if (recursos.AdicionarPopulacao(1)) aceitos++;
+            else break;
         }
 
         if (aceitos > 0)
@@ -204,93 +236,47 @@ public class Imovel : MonoBehaviour
         }
     }
 
-    void SaidaDeMoradores(GerenciadorRecursos recursos)
+    void SaidaDeMoradores(GerenciadorRecursos recursos, float fatorAtratividade)
     {
         if (moradoresAtuais <= 0) return;
-
         float fatorFuga = 1f - ((float)qualidadeAtual / QUALIDADE_MINIMA);
+        if (fatorAtratividade < 1f) fatorFuga *= (2f - fatorAtratividade); 
+        
         int querSair = Mathf.Max(1, Mathf.RoundToInt(MORADORES_POR_CICLO * fatorFuga));
         querSair = Mathf.Min(querSair, moradoresAtuais);
-
         moradoresAtuais -= querSair;
         recursos.RemoverPopulacao(querSair);
         AtualizarRenda();
-
-        Debug.Log($"[Imovel] {name}: -{querSair} moradores fugiram! Qualidade: {qualidadeAtual} ({moradoresAtuais}/{capacidade})");
     }
-
-    // ═══════════════════════════════════════════════════════════════
-    // RENDA
-    // ═══════════════════════════════════════════════════════════════
 
     void AtualizarRenda()
     {
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (recursos == null) return;
 
-        // Remove renda antiga
-        if (rendaRegistradaNoSistema > 0)
-            recursos.ModificarGanhos(multDinheiro: -rendaRegistradaNoSistema);
+        if (rendaRegistradaNoSistema > 0) recursos.ModificarGanhos(multDinheiro: -rendaRegistradaNoSistema);
 
-        // Calcula e registra nova renda
         rendaTotal = moradoresAtuais * RENDA_POR_MORADOR;
 
-        if (rendaTotal > 0)
-            recursos.ModificarGanhos(multDinheiro: rendaTotal);
-
+        if (rendaTotal > 0) recursos.ModificarGanhos(multDinheiro: rendaTotal);
         rendaRegistradaNoSistema = rendaTotal;
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // QUALIDADE DE VIDA (API para futuro)
-    // ═══════════════════════════════════════════════════════════════
-
-    public void ModificarQualidade(int delta)
-    {
-        qualidadeAtual = Mathf.Clamp(qualidadeAtual + delta, 0, 100);
-    }
-
-    public void SetarSemEnergia(bool status)
-    {
-        if (semEnergia == status) return;
-        semEnergia = status;
-        if (semEnergia)
-        {
-            Debug.Log($"[ENERGIA] {name} está sem energia! Moradores começarão a sair em breve.");
-        }
-    }
-
-    public void SetarQualidade(int novaQualidade)
-    {
-        qualidadeAtual = Mathf.Clamp(novaQualidade, 0, 100);
-    }
+    public void ModificarQualidade(int delta) { qualidadeAtual = Mathf.Clamp(qualidadeAtual + delta, 0, 100); }
+    public void SetarSemEnergia(bool status) { semEnergia = status; }
+    public void SetarQualidade(int novaQualidade) { qualidadeAtual = Mathf.Clamp(novaQualidade, 0, 100); }
 
     public void EvacuarTodos()
     {
         if (moradoresAtuais <= 0) return;
-
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
-        if (recursos != null)
-            recursos.RemoverPopulacao(moradoresAtuais);
-
+        if (recursos != null) recursos.RemoverPopulacao(moradoresAtuais);
         moradoresAtuais = 0;
         AtualizarRenda();
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // ═══════════════════════════════════════════════════════════════
-    // INTERACTION & TOOLTIP (Hover Connectivity Feedback)
-    // ═══════════════════════════════════════════════════════════════
-
-    void OnMouseEnter()
-    {
-        mouseHover = true;
-    }
-
-    void OnMouseExit()
-    {
-        mouseHover = false;
-    }
+    void OnMouseEnter() { mouseHover = true; }
+    void OnMouseExit() { mouseHover = false; }
 
     private Texture2D ObterTexturaTooltip()
     {
@@ -341,24 +327,17 @@ public class Imovel : MonoBehaviour
         GUI.Label(new Rect(rect.x + 10, rect.y + 10, size.x, size.y), content, textStyle);
     }
 
-    // DESTRUIÇÃO
-    // ═══════════════════════════════════════════════════════════════
-
     void OnDestroy()
     {
+        if (pavimentoInstanciado != null) Destroy(pavimentoInstanciado);
         RegistroEntidadesJogo.Unregister(this);
         if (!registrado) return;
 
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (recursos == null) return;
 
-        if (moradoresAtuais > 0)
-            recursos.RemoverPopulacao(moradoresAtuais);
-
-        if (rendaRegistradaNoSistema > 0)
-            recursos.ModificarGanhos(multDinheiro: -rendaRegistradaNoSistema);
-
-        if (limitePopulacaoAdicionado > 0)
-            recursos.AumentarLimitePopulacao(-limitePopulacaoAdicionado);
+        if (moradoresAtuais > 0) recursos.RemoverPopulacao(moradoresAtuais);
+        if (rendaRegistradaNoSistema > 0) recursos.ModificarGanhos(multDinheiro: -rendaRegistradaNoSistema);
+        if (limitePopulacaoAdicionado > 0) recursos.AumentarLimitePopulacao(-limitePopulacaoAdicionado);
     }
 }

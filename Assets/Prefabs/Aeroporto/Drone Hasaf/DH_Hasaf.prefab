@@ -315,6 +315,7 @@ GameObject:
   - component: {fileID: 1485689584720988904}
   - component: {fileID: 6042020736109886311}
   - component: {fileID: 1445499343046671358}
+  - component: {fileID: 617087563058528433}
   m_Layer: 0
   m_Name: DH_Hasaf
   m_TagString: Aereo
@@ -444,6 +445,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 0
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &1445499343046671358
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -468,7 +473,21 @@ MonoBehaviour:
   anguloAfundamentoX: -46
   duracaoAfundamento: 7
   atrasoPosAfundamento: 0.6
-  caiuPorCombustivel: 0
+--- !u!114 &617087563058528433
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8368706832941796259}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1001 &1796690068342040930
 PrefabInstance:
   m_ObjectHideFlags: 0

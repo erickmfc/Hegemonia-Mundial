@@ -139,6 +139,7 @@ GameObject:
   - component: {fileID: 1442098198245929}
   - component: {fileID: -3325090875797799037}
   - component: {fileID: 422640897367272454}
+  - component: {fileID: 2362484649600532378}
   m_Layer: 0
   m_Name: H_Raymorto
   m_TagString: Aereo
@@ -242,6 +243,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -285,6 +292,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b45f7f566e989a54b8b2fbc38d71f9b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Helicoptero
+  corrigirRotacao: 0
+  modeloVisual: {fileID: 0}
+  debugLogs: 0
   controleSempreAtivo: 0
   selecionado: 0
   raioDoClique: 7
@@ -293,6 +303,12 @@ MonoBehaviour:
   velocidadeHelice: 1200
   velocidadeNavegacao: 20
   velocidadePouso: 4
+  velocidadeSubidaVertical: 6.5
+  velocidadeDescidaVertical: 5
+  alturaSubidaInicial: 10
+  ajusteAlturaEstacionado: 0
+  reservaRetornoPercentual: 0.32
+  raioInicioDescida: 18
   distanciaBusca: 50
   distanciaEmbarque: 4
   capacidadeMaxima: 8
@@ -306,16 +322,31 @@ MonoBehaviour:
   flares: []
   helicePrincipal: {fileID: 0}
   heliceTraseira: {fileID: 0}
+  eixoRotacaoHeliceTraseira: 0
+  usarRotacaoHorizontalNaHeliceTraseira: 0
   audioMotor: {fileID: 0}
   pitchMinimo: 0.5
   pitchMaximo: 1.2
   volumeMaximo: 1
   tempoSpinUp: 4
   tempoSpinDown: 6
+  usarAnimacaoAntesDeVoar: 0
+  nomeAnimacaoDecolagem: Fly
+  tempoPreparacaoDecolagem: 1.1
+  helicopteroTransporte: 0
+  pousarNoDestinoTatico: 0
+  desembarcarAutomaticamenteAoPousar: 1
+  raioTransferenciaNavio: 35
+  mostrarIdentificacaoFlutuante: 1
   destino: {x: 0, y: 0, z: 0}
   estaVoando: 0
   nomeHelicoptero: "Helic\xF3ptero"
   custoUpgrade: 200
+  idExibicao: 0
+  controladoPeloAeroporto: 0
+  estacionadoNoAeroporto: 0
+  vagaAeroporto: {fileID: 0}
+  missaoAtualAeroporto: 0
 --- !u!114 &-3325090875797799037
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -332,6 +363,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &422640897367272454
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -349,6 +384,21 @@ MonoBehaviour:
   causarExplosoes: 1
   qtdExplosoes: 3
   vidaUtil: 15
+--- !u!114 &2362484649600532378
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 161708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &174438
 GameObject:
   m_ObjectHideFlags: 0
@@ -682,6 +732,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!4 &2969699705579729559 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4186404912646762751, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}

@@ -171,6 +171,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100000, guid: 373b0bc407de54b5c99d9dd78f20bea6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7579849108966592217}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 373b0bc407de54b5c99d9dd78f20bea6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5540706743123220234}
   m_SourcePrefab: {fileID: 100100000, guid: 373b0bc407de54b5c99d9dd78f20bea6, type: 3}
 --- !u!4 &4352203740637397895 stripped
 Transform:
@@ -223,6 +226,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -270,6 +279,8 @@ MonoBehaviour:
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
+  reservaMinimaRetornoPercentual: 0.22
+  reservaRetornoComDanosPercentual: 0.34
   velocidadeSolo: 10
   velocidadeMaximaVoo: 120
   taxaDeGiroLeme: 120
@@ -281,6 +292,7 @@ MonoBehaviour:
   arfagemPitchMaxima: 30
   rodas:
   - {fileID: 4033298983625985649}
+  ajusteAlturaEstacionado: 0
   alvoGPSVoo: {x: 0, y: 0, z: 0}
   centroDaPatrulha: {x: 0, y: 0, z: 0}
   emAtaqueMergulho: 0
@@ -304,6 +316,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!65 &7579849108966592217
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -325,3 +341,18 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2, y: 2, z: 2}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &5540706743123220234
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4352203740637700005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1

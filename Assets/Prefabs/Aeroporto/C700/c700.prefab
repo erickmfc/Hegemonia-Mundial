@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 163897241717511559}
   - component: {fileID: -2520532916029920953}
   - component: {fileID: -4392586327668773366}
+  - component: {fileID: 1405430845721605051}
   m_Layer: 0
   m_Name: c700
   m_TagString: Aereo
@@ -115,6 +116,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -140,6 +147,8 @@ MonoBehaviour:
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
+  reservaMinimaRetornoPercentual: 0.22
+  reservaRetornoComDanosPercentual: 0.34
   velocidadeSolo: 8
   velocidadeMaximaVoo: 70
   taxaDeGiroLeme: 90
@@ -153,6 +162,7 @@ MonoBehaviour:
   - {fileID: 4392790021970753982}
   - {fileID: 6656881521174964382}
   - {fileID: 4974841450194864090}
+  ajusteAlturaEstacionado: 0
   alvoGPSVoo: {x: 0, y: 0, z: 0}
   centroDaPatrulha: {x: 0, y: 0, z: 0}
   emAtaqueMergulho: 0
@@ -194,6 +204,7 @@ MonoBehaviour:
   distanciaRolagem: 45
   alturaToqueSolo: 1.6
   distanciaCorridaDecolagem: 90
+  reservaRetornoPercentual: 0.3
   modeloVisual: {fileID: 0}
   bankMaximo: 28
   pitchMaximo: 14
@@ -288,6 +299,21 @@ MonoBehaviour:
   anguloAfundamentoX: -46
   duracaoAfundamento: 7
   atrasoPosAfundamento: 0.6
+--- !u!114 &1405430845721605051
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 508363159047402675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1001 &4004041267334629408
 PrefabInstance:
   m_ObjectHideFlags: 0

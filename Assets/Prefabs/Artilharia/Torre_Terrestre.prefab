@@ -5144,6 +5144,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 127604, guid: 8453c646d469d4f75ad038fafc2bd145, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3268569848150316648}
+    - targetCorrespondingSourceObject: {fileID: 127604, guid: 8453c646d469d4f75ad038fafc2bd145, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7986044484450748929}
   m_SourcePrefab: {fileID: 100100000, guid: 8453c646d469d4f75ad038fafc2bd145, type: 3}
 --- !u!1 &5649350068939191231 stripped
 GameObject:
@@ -5172,17 +5175,42 @@ MonoBehaviour:
   tamanhoCartucho: 50
   tempoRecarga: 5
   pecaQueGira: {fileID: 5649350068939338181}
+  canosDaTorreta: {fileID: 0}
   locaisDoTiro:
   - {fileID: 9213829456331494070}
   municaoPrefab: {fileID: 4904590025691999903, guid: 08e9d536354a0c649a7f67a606438415, type: 3}
+  limitarInclinacao: 1
+  elevacaoMinima: -10
+  elevacaoMaxima: 80
   somTiro: {fileID: 8300000, guid: ec9f47083560ce74e87495f678b41437, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel: 
   modoPassivo: 0
+  modoRadar: 0
+  interceptarMisseis: 0
+  usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
   misselPrefab: {fileID: 0}
   locaisDoMissel: []
   somMissel: {fileID: 0}
   tempoEntreMisseis: 2
+  capacidadeMisseis: 4
+  tempoRecargaMisseis: 10
+  municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!114 &7835662373451986524
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5198,10 +5226,15 @@ MonoBehaviour:
   vidaMaxima: 50
   vidaAtual: 50
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 3.8
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!114 &3268569848150316648
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5218,6 +5251,25 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 0
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
+--- !u!114 &7986044484450748929
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5649350068939191231}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!4 &5649350068939338181 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 405518, guid: 8453c646d469d4f75ad038fafc2bd145, type: 3}

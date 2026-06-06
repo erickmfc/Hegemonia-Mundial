@@ -15,6 +15,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly List<GameObject> _airRaidB = new List<GameObject>(4);
         private readonly List<GameObject> _airRaidC = new List<GameObject>(4);
         private readonly Dictionary<GerenciadorAeroporto, int> _readyAircraftByAirport = new Dictionary<GerenciadorAeroporto, int>(8);
+        private readonly List<GameObject> _activeBombersBuffer = new List<GameObject>(8);
         private float _nextDecisionTime;
 
         public IA_AirDirector(IA_Context context)
@@ -70,10 +71,11 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             DispatchAirIntercept(baseCenter, airEnemy, groundEnemy, pressureTarget);
+            DispatchStrategicBombers(baseCenter, now);
             DispatchAirTransport(baseCenter, groundEnemy, pressureTarget, now);
             DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
                 "active_air_wings",
-                (_activeAirUnitsBuffer.Count + _activeAirTransportBuffer.Count) > 0 ? 1 : 0);
+                (_activeAirUnitsBuffer.Count + _activeAirTransportBuffer.Count + _activeBombersBuffer.Count) > 0 ? 1 : 0);
             float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
             if (elapsedMs > 0f)
             {
@@ -108,7 +110,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            bool includeBombers = airEnemy == null;
+            bool includeBombers = false; // Bombardeiros são gerenciados separadamente em DispatchStrategicBombers
             if (!TrySelectActiveAirUnits(squad.Units, _activeAirUnitsBuffer, false, includeBombers))
             {
                 return;
@@ -532,6 +534,96 @@ namespace Hegemonia.AI.BrainMaster
             return unit.GetComponent<AviaoBombardeiro>() != null
                    || normalizedName.Contains("b260")
                    || normalizedName.Contains("bomb");
+        }
+
+        private void DispatchStrategicBombers(Vector3 baseCenter, float now)
+        {
+            IA_SquadData squad = _context.SquadDirector.GetSquad(IA_SquadRole.AirIntercept);
+            if (!HasUnits(squad))
+            {
+                return;
+            }
+
+            _activeBombersBuffer.Clear();
+            for (int i = 0; i < squad.Units.Count; i++)
+            {
+                GameObject unit = squad.Units[i];
+                if (unit == null) continue;
+
+                if (IsBomber(unit))
+                {
+                    ControleAviao aircraft = unit.GetComponent<ControleAviao>();
+                    if (aircraft != null && (aircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio || aircraft.estadoAtual == ControleAviao.EstadoAviao.EmMissao))
+                    {
+                        _activeBombersBuffer.Add(unit);
+                    }
+                }
+            }
+
+            if (_activeBombersBuffer.Count == 0)
+            {
+                return;
+            }
+
+            Transform target = FindBestBombingTarget(baseCenter);
+            if (target != null)
+            {
+                QueueAttack("strategic_bombing", _activeBombersBuffer, target, target.position, 95, 8.0f);
+            }
+            else
+            {
+                Vector3 fallbackTarget = ResolvePressureTarget(baseCenter, now);
+                if (fallbackTarget != Vector3.zero)
+                {
+                    QueueAttack("strategic_bombing_fallback", _activeBombersBuffer, null, fallbackTarget + Vector3.up * 20f, 75, 10.0f);
+                }
+            }
+        }
+
+        private Transform FindBestBombingTarget(Vector3 baseCenter)
+        {
+            _context.WorldState.FillEnemyMemory(_enemyMemoryBuffer, 300f);
+            Transform best = null;
+            float bestPriority = float.MinValue;
+
+            for (int i = 0; i < _enemyMemoryBuffer.Count; i++)
+            {
+                IA_EnemyObservation obs = _enemyMemoryBuffer[i];
+                if (obs == null || obs.Transform == null || !obs.IsStructure)
+                {
+                    continue;
+                }
+
+                string name = IA_Text.Normalize(obs.UnitName);
+                float priority = 0f;
+
+                if (name.Contains("prefeitura") || name.Contains("capital") || name.Contains("governo") || name.Contains("cityhall"))
+                {
+                    priority = 500f;
+                }
+                else if (name.Contains("fabrica") || name.Contains("construtor") || name.Contains("factory") || name.Contains("centro de construcao") || name.Contains("centro_construcao"))
+                {
+                    priority = 400f;
+                }
+                else if (name.Contains("usina") || name.Contains("gerador") || name.Contains("solar") || name.Contains("power"))
+                {
+                    priority = 300f;
+                }
+                else if (name.Contains("aeroporto") || name.Contains("airport"))
+                {
+                    priority = 250f;
+                }
+
+                priority -= Vector3.Distance(baseCenter, obs.Position) * 0.05f;
+
+                if (priority > bestPriority)
+                {
+                    bestPriority = priority;
+                    best = obs.Transform;
+                }
+            }
+
+            return best;
         }
     }
 }

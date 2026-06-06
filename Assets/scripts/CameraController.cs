@@ -104,9 +104,13 @@ public class CameraController : MonoBehaviour
         if (!menusAbertos)
         {
             // Teclas + e - (Teclado) com atalhos espelhados em Espaço/Ctrl.
-            if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Plus) || Input.GetKey(KeyCode.Equals) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Plus) || Input.GetKey(KeyCode.Equals))
             {
                 zoomInput += 0.03f; // Desce a camera
+            }
+            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            {
+                zoomInput += 0.15f; // Ctrl desce MUITO mais rápido agora (Antes 0.03)
             }
             if (Input.GetKey(KeyCode.KeypadMinus) || Input.GetKey(KeyCode.Minus))
             {

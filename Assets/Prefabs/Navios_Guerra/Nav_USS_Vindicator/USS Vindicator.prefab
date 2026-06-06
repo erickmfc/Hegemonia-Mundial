@@ -52,6 +52,7 @@ GameObject:
   - component: {fileID: 6162987001252713015}
   - component: {fileID: 5531175316603253341}
   - component: {fileID: 3341252268851045335}
+  - component: {fileID: 4277699016974742124}
   m_Layer: 0
   m_Name: USS Vindicator
   m_TagString: Navio
@@ -94,6 +95,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -157,6 +164,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 2
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!65 &275791783940858264
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -238,9 +249,22 @@ MonoBehaviour:
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  antenaRadar: {fileID: 0}
+  velocidadeAntena: 60
   modoOperacao: 0
   somMotorParado: {fileID: 0}
   somMotorMovimento: {fileID: 0}
+  possuiTorpedos: 0
+  tubosTorpedo:
+  - {fileID: 0}
+  - {fileID: 0}
+  prefabTorpedo: {fileID: 0}
+  torpedosDisponiveis: 4
+  alcanceTorpedos: 600
+  cooldownTorpedo: 5
+  anguloMaximoLancamento: 90
+  torpedosNoModoAtivo: 1
+  intervaloBuscaTorpedoAtivo: 0.75
 --- !u!114 &6063526556936621026
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -259,8 +283,12 @@ MonoBehaviour:
   - {fileID: 9165776866606803687}
   - {fileID: 1650382267646983642}
   prefabMissel: {fileID: 6053793194223374486, guid: 40bde17751d496b42a56dc7ae5132e7e, type: 3}
+  prefabTorpedo: {fileID: 0}
+  torpedosSomenteNoModoAtivo: 1
   municaoTotal: 12
   municaoMaxima: 12
+  torpedosTotal: 8
+  torpedosMaximos: 8
   tirosPorSalva: 1
   intervaloEntreTiros: 0.5
   tempoRecargaSalva: 5
@@ -269,6 +297,7 @@ MonoBehaviour:
   maxMisseisSimultaneosPorAlvo: 2
   cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
+  preaquecerMisseisNoStart: 0
   volumeSom: 1
   pitchSom: 1
   distanciaSomMinima: 50
@@ -278,6 +307,7 @@ MonoBehaviour:
   - Destrutivel
   - Aereo
   - Imovel
+  debugLogs: 0
 --- !u!114 &6162987001252713015
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -321,6 +351,14 @@ MonoBehaviour:
   usarRastroLancamento: 1
   multiplicadorAntecipacaoAlcance: 1.35
   janelaAntecipacaoSegundos: 2
+  intervaloMinimoEscaneamento: 0.15
+  intervaloMinimoVarreduraFisica: 0.35
+  mascaraVarredura:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maximoCollidersProcessadosPorScan: 48
+  priorizarRastroLancamento: 1
+  maximoAliadosColisaoIgnorada: 48
   baseGiratoria: {fileID: 5176564179888039053}
   canoElevacao: {fileID: 5176564179888039055}
   velocidadeGiro: 60
@@ -362,6 +400,21 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 0}
+--- !u!114 &4277699016974742124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 62525798079713276}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &1190417579437578160
 GameObject:
   m_ObjectHideFlags: 0

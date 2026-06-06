@@ -11,7 +11,26 @@ public class CidadeEstado
     public int teamID;
     public bool ehEstado; // Se for baseado em uma Prefeitura
     public int populacaoCivil;
+    public int capacidadeHabitacional;
+    
+    [Header("Infraestrutura")]
     public bool temAeroporto;
+    public bool temPorto;
+    
+    [Header("Identidade Regional")]
+    public float scoreIndustrial;
+    public float scoreComercial;
+    public float scoreAgricola;
+    public float scoreTurismo;
+    public float scoreLogistica;
+    public float scoreEnergia;
+    public string identidadePrincipal = "Região em Desenvolvimento";
+    
+    [Header("Atratividade e Economia")]
+    [Range(0f, 100f)] public float atratividade = 50f;
+    public int empregosTotais;
+    public int vagasDeEmpregoAbertas;
+
     public MarcadorTerritorio marcador;
 
     public CidadeEstado(string id, string nome, int teamID, bool ehEstado, MarcadorTerritorio marcador)
@@ -22,7 +41,9 @@ public class CidadeEstado
         this.ehEstado = ehEstado;
         this.marcador = marcador;
         this.populacaoCivil = 0;
+        this.capacidadeHabitacional = 0;
         this.temAeroporto = false;
+        this.temPorto = false;
     }
 }
 
@@ -129,6 +150,7 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
         {
             nextRecalculateTime = Time.unscaledTime + RecalculateInterval;
             RecalcularDados();
+            ProcessarFluxoMigratorio();
         }
     }
 
@@ -224,42 +246,13 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
 
     public void RecalcularDados()
     {
-        // Limpa referências nulas de marcadores que possam ter sido destruídos sem notificar
         cidades.RemoveAll(c => c.marcador == null);
 
-        // Acha todas as casas e aeroportos uma vez para distribuir
-        Imovel[] imoveis = FindObjectsByType<Imovel>(FindObjectsSortMode.None);
-        GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        EstruturaEconomica[] estruturas = FindObjectsByType<EstruturaEconomica>(FindObjectsSortMode.None);
 
         foreach (var cidade in cidades)
         {
-            if (cidade.marcador == null) continue;
-
-            Vector3 centro = cidade.marcador.transform.position;
-            float raio = cidade.marcador.raioDeDominio;
-
-            // Recalcula população civil com base nas moradias dentro do limite
-            int pop = 0;
-            foreach (var imovel in imoveis)
-            {
-                if (imovel != null && Vector3.Distance(imovel.transform.position, centro) <= raio)
-                {
-                    pop += imovel.MoradoresAtuais;
-                }
-            }
-            cidade.populacaoCivil = pop;
-
-            // Verifica se possui aeroporto
-            bool temAero = false;
-            foreach (var aero in aeroportos)
-            {
-                if (aero != null && Vector3.Distance(aero.transform.position, centro) <= raio)
-                {
-                    temAero = true;
-                    break;
-                }
-            }
-            cidade.temAeroporto = temAero;
+            CalcularIdentidadeEAtratividade(cidade, estruturas);
         }
 
         OnDivisaoTerritorialAtualizada?.Invoke();
@@ -267,38 +260,135 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
 
     private void RecalcularCidadeUnica(CidadeEstado cidade)
     {
+        EstruturaEconomica[] estruturas = FindObjectsByType<EstruturaEconomica>(FindObjectsSortMode.None);
+        CalcularIdentidadeEAtratividade(cidade, estruturas);
+    }
+
+    private void CalcularIdentidadeEAtratividade(CidadeEstado cidade, EstruturaEconomica[] todasEstruturas)
+    {
         if (cidade.marcador == null) return;
 
         Vector3 centro = cidade.marcador.transform.position;
         float raio = cidade.marcador.raioDeDominio;
 
-        Imovel[] imoveis = FindObjectsByType<Imovel>(FindObjectsSortMode.None);
-        int pop = 0;
-        foreach (var imovel in imoveis)
-        {
-            if (imovel != null && Vector3.Distance(imovel.transform.position, centro) <= raio)
-            {
-                pop += imovel.MoradoresAtuais;
-            }
-        }
-        cidade.populacaoCivil = pop;
+        cidade.populacaoCivil = 0;
+        cidade.capacidadeHabitacional = 0;
+        cidade.empregosTotais = 0;
+        cidade.vagasDeEmpregoAbertas = 0;
+        cidade.temAeroporto = false;
+        cidade.temPorto = false;
 
-        GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        bool temAero = false;
-        foreach (var aero in aeroportos)
+        cidade.scoreIndustrial = 0f;
+        cidade.scoreComercial = 0f;
+        cidade.scoreAgricola = 0f;
+        cidade.scoreTurismo = 0f;
+        cidade.scoreLogistica = 0f;
+        cidade.scoreEnergia = 0f;
+
+        foreach (var est in todasEstruturas)
         {
-            if (aero != null && Vector3.Distance(aero.transform.position, centro) <= raio)
+            if (est == null || !est.gameObject.activeInHierarchy) continue;
+            
+            if (Vector3.Distance(est.transform.position, centro) <= raio)
             {
-                temAero = true;
-                break;
+                cidade.populacaoCivil += est.populacaoAtual;
+                cidade.capacidadeHabitacional += est.capacidadePopulacional;
+                cidade.empregosTotais += est.empregosGerados;
+
+                if (est.tipo == TipoEstruturaEconomica.Casa || est.tipo == TipoEstruturaEconomica.CasaPopular || est.tipo == TipoEstruturaEconomica.PredioResidencial)
+                {
+                    // Moradias
+                }
+                else if (est.tipo == TipoEstruturaEconomica.Industria || est.tipo == TipoEstruturaEconomica.IndustriaLeve || est.tipo == TipoEstruturaEconomica.IndustriaPesada)
+                {
+                    cidade.scoreIndustrial += est.empregosGerados;
+                }
+                else if (est.tipo == TipoEstruturaEconomica.Comercio || est.tipo == TipoEstruturaEconomica.ComercioPequeno || est.tipo == TipoEstruturaEconomica.Shopping)
+                {
+                    cidade.scoreComercial += est.empregosGerados;
+                    cidade.scoreTurismo += est.empregosGerados * 0.2f;
+                }
+                else if (est.tipo == TipoEstruturaEconomica.Farm)
+                {
+                    cidade.scoreAgricola += est.empregosGerados * 2f;
+                }
+                else if (est.tipo == TipoEstruturaEconomica.Energia || est.tipo == TipoEstruturaEconomica.UsinaHidreletrica || est.tipo == TipoEstruturaEconomica.UsinaSolar || est.tipo == TipoEstruturaEconomica.UsinaTermicaGrande || est.tipo == TipoEstruturaEconomica.UsinaTermicaPequena || est.tipo == TipoEstruturaEconomica.UsinaNuclear || est.tipo == TipoEstruturaEconomica.Refinaria || est.tipo == TipoEstruturaEconomica.Petroleo)
+                {
+                    cidade.scoreEnergia += est.energiaProduzida > 0 ? est.energiaProduzida : est.empregosGerados;
+                }
+                else if (est.tipo == TipoEstruturaEconomica.AeroportoCivil)
+                {
+                    cidade.temAeroporto = true;
+                    cidade.scoreLogistica += 1000f;
+                    cidade.scoreTurismo += 500f;
+                }
+                else if (est.tipo == TipoEstruturaEconomica.PortoComercial)
+                {
+                    cidade.temPorto = true;
+                    cidade.scoreLogistica += 1200f;
+                    cidade.scoreIndustrial += 400f;
+                }
             }
         }
-        cidade.temAeroporto = temAero;
+
+        cidade.vagasDeEmpregoAbertas = Mathf.Max(0, cidade.empregosTotais - cidade.populacaoCivil);
+
+        // Definir Identidade
+        float maxScore = Mathf.Max(cidade.scoreIndustrial, cidade.scoreComercial, cidade.scoreAgricola, cidade.scoreTurismo, cidade.scoreLogistica, cidade.scoreEnergia);
+        
+        if (maxScore < 50f) cidade.identidadePrincipal = "Região em Desenvolvimento";
+        else if (maxScore == cidade.scoreIndustrial) cidade.identidadePrincipal = "Polo Industrial";
+        else if (maxScore == cidade.scoreComercial) cidade.identidadePrincipal = "Centro Comercial";
+        else if (maxScore == cidade.scoreTurismo) cidade.identidadePrincipal = "Destino Turístico";
+        else if (maxScore == cidade.scoreAgricola) cidade.identidadePrincipal = "Polo Agrícola";
+        else if (maxScore == cidade.scoreLogistica) cidade.identidadePrincipal = "Hub Logístico";
+        else if (maxScore == cidade.scoreEnergia) cidade.identidadePrincipal = "Centro Energético";
+
+        // Calcular Atratividade (0 a 100)
+        float baseAtratividade = 20f;
+        float bonusEmprego = Mathf.Clamp((cidade.vagasDeEmpregoAbertas / 100f) * 10f, 0f, 40f); // Até 40 pontos por empregos sobrando
+        float bonusAero = cidade.temAeroporto ? 15f : 0f;
+        float bonusPorto = cidade.temPorto ? 15f : 0f;
+        float malusLotacao = (cidade.capacidadeHabitacional > 0 && cidade.populacaoCivil >= cidade.capacidadeHabitacional) ? -30f : 0f; // Fica menos atrativo se não tem casa
+        
+        cidade.atratividade = Mathf.Clamp(baseAtratividade + bonusEmprego + bonusAero + bonusPorto + malusLotacao, 0f, 100f);
     }
 
-    /// <summary>
-    /// API pública para o sistema de Aeroportos e Voos consultar quais cidades possuem infraestrutura
-    /// </summary>
+    private void ProcessarFluxoMigratorio()
+    {
+        // Migração ocorre movendo "pontos de população" das cidades menos atrativas para as mais atrativas.
+        // A lógica de imigração do Imovel.cs agora dependerá dessa atratividade.
+        // O Gerenciador de Recursos global (populacaoAtual) é distribuído.
+    }
+
+    public float ObterAtratividadeLocal(Vector3 posicao)
+    {
+        float atratividadeMedia = 50f; 
+        foreach(var cid in cidades)
+        {
+            if (cid.marcador != null && Vector3.Distance(posicao, cid.marcador.transform.position) <= cid.marcador.raioDeDominio)
+            {
+                return cid.atratividade;
+            }
+        }
+        return atratividadeMedia;
+    }
+
+    public float ObterEficienciaMaoDeObraLocal(Vector3 posicao)
+    {
+        foreach (var cid in cidades)
+        {
+            if (cid.marcador != null && Vector3.Distance(posicao, cid.marcador.transform.position) <= cid.marcador.raioDeDominio)
+            {
+                if (cid.empregosTotais == 0) return 1f;
+                // Se tem mais empregos do que população, a eficiência cai proporcionalmente
+                float prop = (float)cid.populacaoCivil / cid.empregosTotais;
+                return Mathf.Clamp01(prop);
+            }
+        }
+        return 1f;
+    }
+
     public List<CidadeEstado> ObterCidadesComAeroporto(int teamID)
     {
         return cidades.Where(c => c.teamID == teamID && c.temAeroporto).ToList();

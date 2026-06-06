@@ -326,6 +326,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100000, guid: 7d84a3ad37c1cb548a89d6fdb240b48f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3827940996975806636}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 7d84a3ad37c1cb548a89d6fdb240b48f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6376359414793596990}
   m_SourcePrefab: {fileID: 100100000, guid: 7d84a3ad37c1cb548a89d6fdb240b48f, type: 3}
 --- !u!1 &574422798335757279 stripped
 GameObject:
@@ -422,6 +425,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 1
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &1167984406110641512
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -466,6 +473,11 @@ MonoBehaviour:
   modoRadar: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 0
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
   misselPrefab: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
   locaisDoMissel:
   - {fileID: 8202988934483025130}
@@ -478,6 +490,7 @@ MonoBehaviour:
   tempoRecargaMisseis: 25
   municoesPorCano:
   - {fileID: 0}
+  alvoPrioritario: {fileID: 0}
 --- !u!114 &3827940996975806636
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -502,6 +515,21 @@ MonoBehaviour:
   anguloAfundamentoX: -46
   duracaoAfundamento: 7
   atrasoPosAfundamento: 0.6
+--- !u!114 &6376359414793596990
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 574422798335757279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!4 &574422798336251875 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400028, guid: 7d84a3ad37c1cb548a89d6fdb240b48f, type: 3}

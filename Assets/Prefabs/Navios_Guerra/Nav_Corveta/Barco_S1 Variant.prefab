@@ -285,6 +285,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5044891068901838743, guid: 4c5c0f15610f1c448ae7f0bca9cbb54c, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7414181292804280053}
+    - targetCorrespondingSourceObject: {fileID: 5044891068901838743, guid: 4c5c0f15610f1c448ae7f0bca9cbb54c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2020036174934850043}
   m_SourcePrefab: {fileID: 100100000, guid: 4c5c0f15610f1c448ae7f0bca9cbb54c, type: 3}
 --- !u!4 &6065104600604871606 stripped
 Transform:
@@ -316,6 +319,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 3.2
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!195 &2636521501731531771
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -363,13 +370,30 @@ MonoBehaviour:
   distanciaChegada: 5
   offsetAlturaAgua: 0
   profundidadeVisual: 0
+  anguloEntradaManobraRe: 120
+  anguloSaidaManobraRe: 70
+  duracaoMaximaManobraRe: 2.5
+  potenciaManobraRe: -0.5
   bigodeiraProa: {fileID: 0}
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  antenaRadar: {fileID: 0}
+  velocidadeAntena: 60
   modoOperacao: 0
   somMotorParado: {fileID: 0}
   somMotorMovimento: {fileID: 0}
+  possuiTorpedos: 0
+  tubosTorpedo:
+  - {fileID: 0}
+  - {fileID: 0}
+  prefabTorpedo: {fileID: 0}
+  torpedosDisponiveis: 4
+  alcanceTorpedos: 600
+  cooldownTorpedo: 5
+  anguloMaximoLancamento: 90
+  torpedosNoModoAtivo: 1
+  intervaloBuscaTorpedoAtivo: 0.75
 --- !u!65 &1597951890514396158
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -427,13 +451,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 0}
   selecionado: 0
+  aguardandoVisto: 0
+  vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
   corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
   larguraLinha: 0.15
   segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
 --- !u!54 &7414181292804280053
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -461,3 +495,18 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &2020036174934850043
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6872568706108772620}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1

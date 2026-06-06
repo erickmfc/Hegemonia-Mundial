@@ -465,6 +465,7 @@ GameObject:
   - component: {fileID: 1422014062887268803}
   - component: {fileID: 781230316867838661}
   - component: {fileID: 5351874306366902083}
+  - component: {fileID: 279515160016225489}
   m_Layer: 0
   m_Name: Coverta-San
   m_TagString: Navio
@@ -588,6 +589,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 2
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &2642306688316249893
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -647,6 +652,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 10
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!114 &6076680937914646467
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -726,6 +732,8 @@ MonoBehaviour:
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  antenaRadar: {fileID: 0}
+  velocidadeAntena: 60
   modoOperacao: 0
   somMotorParado: {fileID: 0}
   somMotorMovimento: {fileID: 0}
@@ -738,6 +746,8 @@ MonoBehaviour:
   alcanceTorpedos: 600
   cooldownTorpedo: 5
   anguloMaximoLancamento: 90
+  torpedosNoModoAtivo: 1
+  intervaloBuscaTorpedoAtivo: 0.75
 --- !u!54 &781230316867838661
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -789,6 +799,7 @@ MonoBehaviour:
   - {fileID: 2705970646538616859}
   prefabMissel: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
   prefabTorpedo: {fileID: 0}
+  torpedosSomenteNoModoAtivo: 1
   municaoTotal: 7
   municaoMaxima: 7
   torpedosTotal: 8
@@ -811,6 +822,21 @@ MonoBehaviour:
   - Destrutivel
   - Aereo
   debugLogs: 0
+--- !u!114 &279515160016225489
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1839352793183847460}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &1851640937854473842
 GameObject:
   m_ObjectHideFlags: 0

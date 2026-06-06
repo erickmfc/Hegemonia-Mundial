@@ -89,6 +89,7 @@ GameObject:
   - component: {fileID: 2649131289732551315}
   - component: {fileID: 5978006543255622900}
   - component: {fileID: 1210471985040092566}
+  - component: {fileID: 8700603226839832082}
   m_Layer: 0
   m_Name: UAV_01_Prefeb
   m_TagString: Inimigo
@@ -127,10 +128,15 @@ MonoBehaviour:
   vidaMaxima: 500
   vidaAtual: 500
   unidadeBiologica: 0
+  ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!114 &5978006543255622900
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -147,6 +153,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!65 &1210471985040092566
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -168,6 +178,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 0.81, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &8700603226839832082
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 774722944816504065}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &7891082182090746388
 GameObject:
   m_ObjectHideFlags: 0

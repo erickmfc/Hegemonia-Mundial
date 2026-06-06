@@ -48,6 +48,7 @@ GameObject:
   - component: {fileID: 8014502728833731529}
   - component: {fileID: 3881439562138129166}
   - component: {fileID: 7520479819138951782}
+  - component: {fileID: 6204088749075918417}
   m_Layer: 0
   m_Name: USS Leviathan
   m_TagString: Navio
@@ -200,6 +201,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 2
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &7520479819138951781
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -288,6 +293,21 @@ MonoBehaviour:
   estaAtracado: 0
   velocidadeDeRe: 5
   velocidadeRotacaoRe: 2
+--- !u!114 &6204088749075918417
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 790024337851436606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &932185402210133216
 GameObject:
   m_ObjectHideFlags: 0

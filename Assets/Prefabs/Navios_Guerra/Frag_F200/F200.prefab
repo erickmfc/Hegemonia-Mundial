@@ -263,6 +263,7 @@ GameObject:
   - component: {fileID: 3582184322423569531}
   - component: {fileID: 7958385514516893721}
   - component: {fileID: -495650715284487839}
+  - component: {fileID: 864051507914581678}
   m_Layer: 0
   m_Name: F200
   m_TagString: Navio
@@ -362,6 +363,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 2
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &2975450538900956811
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -477,6 +482,8 @@ MonoBehaviour:
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  antenaRadar: {fileID: 0}
+  velocidadeAntena: 60
   modoOperacao: 0
   somMotorParado: {fileID: 0}
   somMotorMovimento: {fileID: 0}
@@ -489,6 +496,8 @@ MonoBehaviour:
   alcanceTorpedos: 600
   cooldownTorpedo: 5
   anguloMaximoLancamento: 90
+  torpedosNoModoAtivo: 1
+  intervaloBuscaTorpedoAtivo: 0.75
 --- !u!114 &7958385514516893721
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -507,6 +516,7 @@ MonoBehaviour:
   - {fileID: 6239243678912139757}
   prefabMissel: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+  torpedosSomenteNoModoAtivo: 1
   municaoTotal: 32
   municaoMaxima: 32
   torpedosTotal: 8
@@ -561,6 +571,21 @@ MonoBehaviour:
   segmentosCirculo: 50
   linhaCaminho: {fileID: 0}
   corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
+--- !u!114 &864051507914581678
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5443981862646916581}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1001 &94164426517173095
 PrefabInstance:
   m_ObjectHideFlags: 0

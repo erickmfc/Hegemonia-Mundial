@@ -1223,6 +1223,7 @@ GameObject:
   - component: {fileID: 3076978023032189417}
   - component: {fileID: 7085343783887940215}
   - component: {fileID: 3159084832657925120}
+  - component: {fileID: 2941279973582650729}
   m_Layer: 0
   m_Name: 'Liberty Prime '
   m_TagString: Navio
@@ -1306,6 +1307,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -1415,9 +1422,22 @@ MonoBehaviour:
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  antenaRadar: {fileID: 0}
+  velocidadeAntena: 60
   modoOperacao: 0
   somMotorParado: {fileID: 0}
   somMotorMovimento: {fileID: 0}
+  possuiTorpedos: 0
+  tubosTorpedo:
+  - {fileID: 0}
+  - {fileID: 0}
+  prefabTorpedo: {fileID: 0}
+  torpedosDisponiveis: 4
+  alcanceTorpedos: 600
+  cooldownTorpedo: 5
+  anguloMaximoLancamento: 90
+  torpedosNoModoAtivo: 1
+  intervaloBuscaTorpedoAtivo: 0.75
 --- !u!114 &7085343783887940215
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1434,6 +1454,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 2
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &3159084832657925120
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1458,6 +1482,7 @@ MonoBehaviour:
   corredor1: {fileID: 8232276614509237746}
   chegada: {fileID: 5719250157933132379}
   pista: {fileID: 1453490149353928443}
+  pontoPousoDecolagemHeli: {fileID: 0}
   paradasHeli: []
   stop0: {fileID: 2861347889849944807}
   stop1: {fileID: 5325647710275495184}
@@ -1470,8 +1495,24 @@ MonoBehaviour:
   delayEntreUnidades: 0.35
   timeoutMoverAteFila: 20
   timeoutMoverInterno: 12
+  modoDesempenhoUI: 1
   debugLogs: 1
   descricaoParaIA: 
+--- !u!114 &2941279973582650729
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4357442004992980676}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &4919077872423613855
 GameObject:
   m_ObjectHideFlags: 0

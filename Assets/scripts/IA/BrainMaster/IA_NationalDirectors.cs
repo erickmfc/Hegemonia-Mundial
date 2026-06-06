@@ -407,10 +407,12 @@ namespace Hegemonia.AI.BrainMaster
             if (pais == null || pais.teamId == gov.teamJogador) return;
             _state.LastDiplomacyTime = now;
 
+            // --- RELAÇÃO COM O JOGADOR ---
+            RelacaoPaisGoverno relJogador = gov.ObterRelacao(pais.teamId, gov.teamJogador);
+
             if (pais.perfilIA == PerfilPaisIA.Aliado && pais.aliadoPrioritarioTeamId == gov.teamJogador)
             {
-                RelacaoPaisGoverno rel = gov.ObterRelacao(pais.teamId, gov.teamJogador);
-                if (!rel.pactoMilitar && rel.valor >= 55)
+                if (relJogador != null && !relJogador.pactoMilitar && relJogador.valor >= 55)
                 {
                     gov.TentarCriarProposta(new PropostaInternacional
                     {
@@ -425,6 +427,60 @@ namespace Hegemonia.AI.BrainMaster
                         expiraEm = Time.unscaledTime + 120f,
                         dedupKey = "diplo:pacto:" + pais.teamId + ":" + gov.teamJogador
                     });
+                }
+            }
+
+            // --- OPÇÃO A: DIPLOMACIA E ASFIXIA GEOPOLÍTICA ---
+            bool isRivalOrAggressive = pais.perfilIA == PerfilPaisIA.Rival 
+                                       || pais.perfilIA == PerfilPaisIA.Militarista
+                                       || pais.modoInicialIA == ModoInicialPaisIA.AgressivoContraJogador 
+                                       || pais.modoInicialIA == ModoInicialPaisIA.GuerraTotal
+                                       || pais.rivalTeamId == gov.teamJogador;
+
+            if (isRivalOrAggressive && relJogador != null)
+            {
+                // 1. Asfixia por Aço: Tenta esvaziar o estoque de aço do jogador oferecendo preços muito altos (compra do jogador)
+                int acoJogador = gov.ObterEstoque(gov.teamJogador, RecursoMercado.Aco);
+                if (acoJogador > 60)
+                {
+                    SistemaMercadoGlobal mercado = SistemaMercadoGlobal.Instancia;
+                    DadosItemMercado itemAco = mercado != null ? mercado.ObterItem("aco") : null;
+                    int precoAco = itemAco != null ? itemAco.precoAtual : 40;
+                    int precoTentador = Mathf.RoundToInt(precoAco * 1.45f);
+
+                    gov.TentarCriarProposta(new PropostaInternacional
+                    {
+                        origemTeamId = pais.teamId,
+                        alvoTeamId = gov.teamJogador,
+                        tipo = TipoPropostaInternacional.Compra,
+                        recurso = RecursoMercado.Aco,
+                        quantidade = 50,
+                        precoUnitario = precoTentador,
+                        prioridade = 75,
+                        motivo = $"{pais.nomePais} oferece proposta comercial vantajosa pelo seu Aço (Asfixia Econômica)",
+                        expiraEm = Time.unscaledTime + 90f,
+                        dedupKey = "diplo:asfixia_aco:" + pais.teamId + ":" + gov.teamJogador
+                    });
+                }
+
+                // 2. Sanções Econômicas: Se a relação for ruim (< -30) e não houver sanção ativa, aplica sanções comerciais unilaterais
+                if (relJogador.valor < -30 && !relJogador.sancaoAtiva)
+                {
+                    relJogador.sancaoAtiva = true;
+                    relJogador.tratadoComercial = false;
+                    relJogador.valor = Mathf.Clamp(relJogador.valor - 15, -100, 100);
+
+                    DadosPaisGoverno jogador = gov.ObterPais(gov.teamJogador);
+                    if (jogador != null)
+                    {
+                        jogador.sancionado = true;
+                        jogador.estabilidade = Mathf.Clamp(jogador.estabilidade - 12f, 5f, 100f);
+                        jogador.inflacao = Mathf.Clamp(jogador.inflacao + 4f, 0.5f, 40f);
+                    }
+
+                    gov.RegistrarNoticia($"{pais.nomePais} impôs sanções comerciais unilaterais severas contra o jogador para minar sua economia!");
+                    SistemaMercadoGlobal.Instancia?.SimularMercado();
+                    gov.ProcessarEconomia();
                 }
             }
         }

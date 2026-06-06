@@ -57,6 +57,24 @@ public class EstruturaEconomica : MonoBehaviour
         SistemaEconomiaImoveis.Unregister(this);
     }
 
+    private float timerUpdateEficiencia;
+
+    private void Update()
+    {
+        if (empregosGerados <= 0 || status != StatusEstruturaEconomica.Ativa) return;
+
+        timerUpdateEficiencia += Time.deltaTime;
+        if (timerUpdateEficiencia >= 5f)
+        {
+            timerUpdateEficiencia = Random.Range(0f, 1f); // Stagger updates
+            if (GerenciadorDivisaoTerritorial.Instancia != null)
+            {
+                float eficienciaMaoDeObra = GerenciadorDivisaoTerritorial.Instancia.ObterEficienciaMaoDeObraLocal(transform.position);
+                eficiencia = Mathf.Clamp01(eficienciaMaoDeObra);
+            }
+        }
+    }
+
     public void InferirTeamId()
     {
         IdentidadeUnidade identidade = GetComponentInParent<IdentidadeUnidade>();

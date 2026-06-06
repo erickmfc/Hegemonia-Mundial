@@ -101,6 +101,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100000, guid: 63378c9e93891ba43b71973b16224476, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4139692410545963051}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 63378c9e93891ba43b71973b16224476, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2329560069558378641}
   m_SourcePrefab: {fileID: 100100000, guid: 63378c9e93891ba43b71973b16224476, type: 3}
 --- !u!1 &4294933399016074583 stripped
 GameObject:
@@ -123,6 +126,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 4
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &2365430904827000075
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -143,6 +150,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 4.5
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!114 &4405451662449142716
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -158,12 +169,15 @@ MonoBehaviour:
   nomeDoPais: "Rep\xFAblica Federativa"
   ehDoJogador: 1
   nivelDoGoverno: 1
+  teclaAbrirGoverno: 120
   aoSerDestruido:
     m_PersistentCalls:
       m_Calls: []
   aoAbrirMenuGestao:
     m_PersistentCalls:
       m_Calls: []
+  validarEstruturaGovernamental: 1
+  forcarComoSedeGovernamental: 0
 --- !u!114 &-8250715248323221592
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -230,3 +244,18 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 300, y: 205.61058, z: 300}
   m_Center: {x: 0, y: 106.321526, z: 0}
+--- !u!114 &2329560069558378641
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4294933399016074583}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1

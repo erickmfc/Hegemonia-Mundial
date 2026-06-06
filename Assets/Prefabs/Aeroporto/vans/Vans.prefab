@@ -693,6 +693,7 @@ GameObject:
   - component: {fileID: 4244820406282660562}
   - component: {fileID: 6473326894287874706}
   - component: {fileID: 4350598584428656056}
+  - component: {fileID: 9132886485342995456}
   m_Layer: 0
   m_Name: Vans
   m_TagString: Aereo
@@ -805,6 +806,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 10
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!82 &-9194245954572247376
 AudioSource:
   m_ObjectHideFlags: 0
@@ -943,6 +945,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &3662285357485046970
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -994,6 +1000,7 @@ MonoBehaviour:
   velocidadeDescidaVertical: 5
   alturaSubidaInicial: 10
   ajusteAlturaEstacionado: 0
+  reservaRetornoPercentual: 0.32
   raioInicioDescida: 18
   distanciaBusca: 50
   distanciaEmbarque: 5
@@ -1091,6 +1098,21 @@ MonoBehaviour:
   segmentosCirculo: 50
   linhaCaminho: {fileID: 0}
   corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
+--- !u!114 &9132886485342995456
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2697658890839971605}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &2979844653746988286
 GameObject:
   m_ObjectHideFlags: 0

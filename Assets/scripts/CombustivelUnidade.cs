@@ -62,19 +62,20 @@ public class CombustivelUnidade : MonoBehaviour
         ultimaPosicao = transform.position;
     }
 
+    private float timerUpdate = 0f;
+
     private void Update()
     {
         if (!usaCombustivel || Capacidade <= 0f)
         {
-            ultimaPosicao = transform.position;
             return;
         }
 
-        float dt = Time.deltaTime;
-        if (dt <= 0f)
-        {
-            return;
-        }
+        timerUpdate += Time.deltaTime;
+        if (timerUpdate < 0.25f) return;
+
+        float dt = timerUpdate;
+        timerUpdate = 0f;
 
         Vector3 posicaoAtual = transform.position;
         Vector3 deslocamento = posicaoAtual - ultimaPosicao;
@@ -84,7 +85,12 @@ public class CombustivelUnidade : MonoBehaviour
 
         if (velocidade > velocidadeMinimaParaConsumo && !EstaVazio)
         {
-            bool sendoTransportado = transform.parent != null && transform.parent.GetComponentInParent<IdentidadeUnidade>() != null;
+            bool sendoTransportado = transform.parent != null;
+            if (sendoTransportado && transform.parent.GetComponentInParent<IdentidadeUnidade>() == null)
+            {
+                 sendoTransportado = false;
+            }
+
             if (!sendoTransportado)
             {
                 Consumir(consumoPorSegundoMovendo * dt);
@@ -494,7 +500,25 @@ public class CombustivelUnidade : MonoBehaviour
         switch (classeAlvo)
         {
             case ClasseCombustivelUnidade.Naval:
-                return 1800f * MultiplicadorCapacidadeNaval();
+                if (NomeContem("Sovereign")) return 50000f;
+                if (NomeContem("Liberty")) return 15000f;
+                if (NomeContem("Wall")) return 5800f;
+                if (NomeContem("F200")) return 4800f;
+                if (NomeContem("Fortaleza")) return 3800f;
+                if (NomeContem("Leviathan")) return 25800f;
+                if (NomeContem("abastecimento")) return 16800f;
+                if (NomeContem("Petroleiro")) return 9800f;
+                if (NomeContem("Ironclad")) return 6800f;
+                
+                // Os demais de grande porte mantêm a capacidade padrão de grande porte (9000f)
+                if (EhGrandePorte())
+                {
+                    return 9000f;
+                }
+                
+                // Os demais que não sejam de grande porte dobram a quantidade (3600f)
+                return 3600f;
+
             case ClasseCombustivelUnidade.Aerea:
                 return 300f * MultiplicadorCapacidadeAerea();
             case ClasseCombustivelUnidade.Terrestre:
@@ -509,7 +533,17 @@ public class CombustivelUnidade : MonoBehaviour
         switch (classeAlvo)
         {
             case ClasseCombustivelUnidade.Naval:
+                if (NomeContem("Sovereign")) return 0.6f;
+                if (NomeContem("Liberty")) return 0.6f;
+                if (NomeContem("Wall")) return 0.5f;
+                if (NomeContem("F200")) return 0.3f;
+                if (NomeContem("Fortaleza")) return 0.5f;
+                if (NomeContem("Leviathan")) return 0.5f;
+                if (NomeContem("abastecimento")) return 0.5f;
+                if (NomeContem("Petroleiro")) return 0.5f;
+                if (NomeContem("Ironclad")) return 0.2f;
                 return 0.50f;
+
             case ClasseCombustivelUnidade.Aerea:
                 if (GetComponent<C700TransporteAereo>() != null) return 1.95f;
                 if (GetComponent<AviaoBombardeiro>() != null) return 1.75f;
@@ -520,6 +554,21 @@ public class CombustivelUnidade : MonoBehaviour
             default:
                 return 0f;
         }
+    }
+
+    private bool EhGrandePorte()
+    {
+        if (GetComponent<GerenciadorPortaAvioes>() != null || NomeContem("porta"))
+        {
+            return true;
+        }
+
+        if (GetComponent<NavioTransporteTropas>() != null || GetComponent<NavioLiberty>() != null || NomeContem("transporte") || NomeContem("liberty"))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private float MultiplicadorCapacidadeAerea()

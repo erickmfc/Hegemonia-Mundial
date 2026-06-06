@@ -9722,6 +9722,7 @@ GameObject:
   - component: {fileID: -920725371610440869}
   - component: {fileID: 1993989958026674800}
   - component: {fileID: 228078682546798533}
+  - component: {fileID: 5229373166570721363}
   m_Layer: 0
   m_Name: G15
   m_TagString: Aereo
@@ -9964,6 +9965,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &7538818960477305039
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10062,6 +10067,8 @@ MonoBehaviour:
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
+  reservaMinimaRetornoPercentual: 0.22
+  reservaRetornoComDanosPercentual: 0.34
   velocidadeSolo: 10
   velocidadeMaximaVoo: 90
   taxaDeGiroLeme: 60
@@ -10072,6 +10079,7 @@ MonoBehaviour:
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
   rodas: []
+  ajusteAlturaEstacionado: 0
   alvoGPSVoo: {x: 0, y: 0, z: 0}
   centroDaPatrulha: {x: 0, y: 0, z: 0}
   emAtaqueMergulho: 0
@@ -10079,6 +10087,21 @@ MonoBehaviour:
   alvoPrioritarioIA: 0
   alvoEstrategico: {x: 0, y: 0, z: 0}
   estaEmModoVooFisico: 0
+--- !u!114 &5229373166570721363
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5614758741420790710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &6309512768409737743
 GameObject:
   m_ObjectHideFlags: 0

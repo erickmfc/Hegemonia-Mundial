@@ -62,6 +62,14 @@ public class CaminhaoCombustivel : MonoBehaviour
             mat.color = Color.yellow;
             linhaAbastecimento.material = mat;
         }
+        else
+        {
+            // Garante que o LineRenderer comece desabilitado para evitar piscar na tela
+            linhaAbastecimento.enabled = false;
+        }
+
+        // Garante o uso de coordenadas globais (world space) para alinhar a mangueira corretamente
+        linhaAbastecimento.useWorldSpace = true;
     }
 
     void OnEnable()
@@ -248,14 +256,23 @@ public class CaminhaoCombustivel : MonoBehaviour
         estadoAtual = EstadoCaminhao.AbastecendoAlvo;
         if (agente != null && agente.enabled) agente.ResetPath();
         
-        if (linhaAbastecimento != null && alvoUnidade != null)
+        if (linhaAbastecimento != null)
         {
+            linhaAbastecimento.useWorldSpace = true;
             linhaAbastecimento.enabled = true;
-            linhaAbastecimento.SetPosition(0, transform.position + Vector3.up);
-            linhaAbastecimento.SetPosition(1, alvoUnidade.position + Vector3.up);
         }
 
-        yield return new WaitForSeconds(tempoPorUnidade); // 4 Segundos
+        float tempoDecorrido = 0f;
+        while (tempoDecorrido < tempoPorUnidade)
+        {
+            if (linhaAbastecimento != null && alvoUnidade != null)
+            {
+                linhaAbastecimento.SetPosition(0, transform.position + Vector3.up);
+                linhaAbastecimento.SetPosition(1, alvoUnidade.position + Vector3.up);
+            }
+            tempoDecorrido += Time.deltaTime;
+            yield return null;
+        }
 
         if (linhaAbastecimento != null) linhaAbastecimento.enabled = false;
 

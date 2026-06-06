@@ -1,0 +1,85 @@
+=========================================================
+DETALHAMENTO DO MENU DO QUARTEL GENERAL (GerenciadorQuartel.cs)
+=========================================================
+
+O Menu do Quartel é a interface central de comando e logística da base. Ele é acionado ao pressionar a tecla "B" (ou clicando no quartel via interface principal) e gerencia o recolhimento de tropas, defesas passivas, arsenal e visualização de inimigos.
+
+Abaixo estão descritas todas as seções, os botões existentes na interface e quais funções do código eles chamam.
+
+---------------------------------------------------------
+1. CABEÇALHO (HEADER) E CONTROLES GERAIS
+---------------------------------------------------------
+- TEXTOS DE STATUS: Mostra a quantidade atual de soldados dormindo, veículos na garagem, mísseis armazenados, pacotes de munição e o raio de cobertura do quartel.
+- BOTÃO "X" (Fechar): Fica no canto superior direito.
+  -> Ação: Altera `menuAberto = false` e `InterfaceAberta = false`, fechando o menu do quartel.
+
+As abas principais são controladas pela variável `abaAtual`:
+- [0] 🪖 TROPAS
+- [1] 🔧 ARSENAL
+- [2] 🛰 INTELIGÊNCIA
+
+---------------------------------------------------------
+2. ABA 1: TROPAS (abaAtual = 0)
+(Desenhada pela função `DesenharAbaTropas()`)
+---------------------------------------------------------
+Esta aba é dividida em duas colunas: "Em Campo" (unidades soltas) e "Armazenadas" (dentro da base).
+
+COLUNA ESQUERDA: "EM CAMPO"
+- BOTÃO "CONVOCAR SELECIONADOS NO MAPA":
+  -> Ação: Busca todas as unidades do jogador que estão atualmente selecionadas pelo mouse e chama a função `ReceberUnidade(u)` para mandá-las de volta ao quartel.
+- BOTÃO "Chamar Infantaria (X)":
+  -> Ação: Itera sobre a lista `soldadosAvulsosCache` e chama `ReceberUnidade(u)` para todos os soldados avulsos no raio do quartel.
+- BOTÃO "Chamar Veículos (X)":
+  -> Ação: Itera sobre a lista `veiculosAvulsosCache` e chama `ReceberUnidade(u)` para todos os veículos avulsos.
+- BOTÕES INDIVIDUAIS "Convocar" (Na lista de scroll):
+  -> Ação: Há um botão ao lado do nome de cada unidade livre. Quando clicado, envia apenas aquela unidade específica de volta via `ReceberUnidade(u)`.
+
+COLUNA DIREITA: "ARMAZENADAS"
+- BOTÃO "Desdobrar 1":
+  -> Ação: Chama `DesdobrarSoldados(1)`. Pega 1 soldado do dormitório, reativa-o no mapa e dá ordem para sair.
+- BOTÃO "Desdobrar 5":
+  -> Ação: Chama `DesdobrarSoldados(5)`. Retira 5 soldados da lista `soldadosNoDormitorio`.
+- BOTÃO "Esvaziar Tudo":
+  -> Ação: Chama `DesdobrarSoldados(soldadosNoDormitorio.Count)`. Libera todos os soldados armazenados simultaneamente.
+- BOTÃO "LIGAR TODOS OS VEÍCULOS":
+  -> Ação: Faz um loop reverso na lista `veiculosNoQuartel` e chama `DesdobrarVeiculo(v)` para cada um, ativando todos os blindados.
+- BOTÕES INDIVIDUAIS "Ligar" (Na lista de scroll):
+  -> Ação: Retira e ativa apenas o veículo selecionado da garagem usando `DesdobrarVeiculo(v)`.
+
+---------------------------------------------------------
+3. ABA 2: ARSENAL E PROTOCOLOS (abaAtual = 1)
+(Desenhada pela função `DesenharAbaArsenal()`)
+---------------------------------------------------------
+Responsável pelas configurações passivas da base e compra de suprimentos logísticos.
+
+SEÇÃO: PROTOCOLOS DA BASE
+- TOGGLE "Recolhimento Automático":
+  -> Ação: Alterna o booleano `recolhimentoAutomatico`. Se verdadeiro, o quartel chama periodicamente a função `MonitorarUnidadesOciosas()` no `Update()`, puxando unidades paradas de volta.
+- SLIDER "Tempo ocioso antes de chamar":
+  -> Ação: Define o valor de `tempoOciosoPermitido` (entre 10s e 300s).
+- TOGGLE "Defesa Automática":
+  -> Ação: Alterna o booleano `modoDefensivoAtivo`. Se ativado, permite que a função `ChecarInvasaoEAcordarBase()` faça varreduras; se inimigos entrarem no raio, libera todos os soldados e veículos sozinhos.
+- TOGGLE "Treinamento Passivo":
+  -> Ação: Alterna o booleano `treinamentoPassivo`. Se ativado, soldados curados no quartel recebem um bônus de +20% de HP máximo.
+
+SEÇÃO: ARSENAL E MUNIÇÕES
+- BOTÃO "Encomendar Mísseis":
+  -> Ação: Usa `GerenciadorRecursos.Instancia.TentarGastarDinheiro(precoMissil)`. Se houver fundos, adiciona +10 em `misseisArmazenados`.
+- BOTÃO "Encomendar Munição":
+  -> Ação: Usa `GerenciadorRecursos.Instancia.TentarGastarDinheiro(precoMunicao)`. Se houver fundos, adiciona +100 em `municaoArmazenada`.
+
+SEÇÃO: LOGÍSTICA DE ABASTECIMENTO
+- TOGGLE "Abastecimento Automático Global":
+  -> Ação: Altera a variável estática `CaminhaoCombustivel.AbastecimentoAutomaticoGlobal`. Libera os caminhões de combustível para buscar unidades sem gasolina.
+- BOTÃO "Carregar Tracks neste QG":
+  -> Ação: Procura todos os caminhões de combustível do mapa e chama `c.ForcarRecarregarNoQuartel(this)`.
+- BOTÃO "Forçar Retorno à Base":
+  -> Ação: Procura os caminhões, define este quartel como casa (`c.DefinirQuartelPreferencial(this)`) e manda-os voltar imediatamente (`c.ForcarRetornoBase()`).
+
+---------------------------------------------------------
+4. ABA 3: INTELIGÊNCIA (abaAtual = 2)
+(Desenhada pela função `DesenharAbaInteligencia()`)
+---------------------------------------------------------
+- Esta aba não possui botões de interação direta (exceto o scroll).
+- Função Relacionada: `AtualizarDadosInimigos()`.
+- O que faz: Esta aba varre o mapa em busca de identidades inimigas e conta quantas tropas, tanques, aviões, navios e prédios cada país adversário possui, desenhando gráficos de barras usando as funções de IMGUI para que o jogador tenha informações táticas.

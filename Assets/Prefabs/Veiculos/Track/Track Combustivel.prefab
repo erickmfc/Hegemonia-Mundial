@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 6946603139955175138}
   - component: {fileID: 8602703339980342731}
   - component: {fileID: -8284698639850331272}
+  - component: {fileID: 1981020802199574498}
   m_Layer: 0
   m_Name: Track Combustivel
   m_TagString: Player
@@ -160,6 +161,21 @@ MonoBehaviour:
   teclaRecarregarCarga: 257
   mostrarIndicadorSelecionado: 1
   offsetIndicador: {x: 0, y: 4.1, z: 0}
+--- !u!114 &1981020802199574498
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122963518820336875}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1001 &7835950546453249108
 PrefabInstance:
   m_ObjectHideFlags: 0

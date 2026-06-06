@@ -188,12 +188,16 @@ public class LancadorMultiplo : MonoBehaviour
         {
             if (modoAutomatico)
             {
-                // Busca alvo
-                alvoAtual = BuscarAlvo();
-                if (alvoAtual != null)
+                if (Time.time - timerBusca > 0.5f)
                 {
-                    if(mostrarLogs) Debug.Log("[LancadorMultiplo] Loop: Parado + Auto + Alvo = INICIANDO CICLO!");
-                    StartCoroutine(CicloDeDisparo(alvoAtual));
+                    timerBusca = Time.time;
+                    // Busca alvo
+                    alvoAtual = BuscarAlvo();
+                    if (alvoAtual != null)
+                    {
+                        if(mostrarLogs) Debug.Log("[LancadorMultiplo] Loop: Parado + Auto + Alvo = INICIANDO CICLO!");
+                        StartCoroutine(CicloDeDisparo(alvoAtual));
+                    }
                 }
             }
         }
@@ -221,6 +225,8 @@ public class LancadorMultiplo : MonoBehaviour
         }
         return p;
     }
+
+    private float timerBusca = 0f;
 
     Transform BuscarAlvo()
     {

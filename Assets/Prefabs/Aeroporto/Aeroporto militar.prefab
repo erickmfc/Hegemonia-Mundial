@@ -128,6 +128,7 @@ GameObject:
   - component: {fileID: 2719733930215495805}
   - component: {fileID: 786684129391100217}
   - component: {fileID: 7500092410658312816}
+  - component: {fileID: 5180284636693338026}
   m_Layer: 0
   m_Name: Aeroporto militar
   m_TagString: Imovel
@@ -239,7 +240,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f34d9b1f36870a47b7752de870368e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GerenciadorAeroporto
+  companhiasAereas: []
+  prefabAviaoComercial: {fileID: 5050016442999540267, guid: 2ffa29eee4f4a7047b775c594b6a87ff, type: 3}
   patio: {fileID: 5848628380678204837}
+  patioMilitar: {fileID: 0}
   hangarAviao: {fileID: 6556892158939214608}
   decolagem: {fileID: 7963916713427582501}
   decida: {fileID: 8382160147949166554}
@@ -252,6 +256,8 @@ MonoBehaviour:
   helicopterosDoAeroporto: []
   prefabDroneKamikaze: {fileID: 0}
   precoDroneKamikaze: 1500
+  prefabSu11: {fileID: 0}
+  precoSu11: 2500
   prefabMarcadorPatrulhaAviao: {fileID: 100100000, guid: 34dfcaa6bb3c3cd4da2080dc3fac234b, type: 3}
   prefabMarcadorBombardeiro: {fileID: 100100000, guid: 8df1e45cda2d3fe408e1644747052e0e, type: 3}
   menuAeroportoUI: {fileID: 0}
@@ -262,6 +268,7 @@ MonoBehaviour:
   wpPreparacao: {fileID: 0}
   wpPronto: {fileID: 0}
   waypointsDecolagem: []
+  waypointsTaxi: []
   waypointsDecida: []
   wpAndadar: {fileID: 0}
   wpAnalise: {fileID: 0}
@@ -269,6 +276,11 @@ MonoBehaviour:
   qtdMassaDrone: 1
   esperandoCliquePatrulhaGrupo: 0
   qtdPatrulhaGrupo: 1
+  semEnergia: 0
+  usarFilaSpawnAereoIA: 1
+  intervaloSpawnIaSaudavel: 0.55
+  intervaloSpawnIaPressao: 1.7
+  intervaloSpawnIaCritico: 3.5
 --- !u!114 &2719733930215495805
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -285,6 +297,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!65 &786684129391100217
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -322,6 +338,21 @@ NavMeshObstacle:
   m_CarveOnlyStationary: 1
   m_Center: {x: -0.46, y: 0, z: 57.9}
   m_TimeToStationary: 0.5
+--- !u!114 &5180284636693338026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1032297418132470704}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &1119546737343212954
 GameObject:
   m_ObjectHideFlags: 0

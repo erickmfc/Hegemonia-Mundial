@@ -47,9 +47,29 @@ public class GerenciadorQuartel : MonoBehaviour
     
     private GUIStyle estiloJanela;
     private GUIStyle estiloBotao;
+    private GUIStyle estiloBotaoPerigo;
+    private GUIStyle estiloBotaoSecundario;
     private GUIStyle estiloAba;
+    private GUIStyle estiloAbaAtiva;
     private GUIStyle estiloTexto;
+    private GUIStyle estiloTextoTitulo;
+    private GUIStyle estiloTextoPequeno;
+    private GUIStyle estiloCard;
+    private GUIStyle estiloHeader;
     private bool estilosCriados = false;
+
+    // Texturas reutilizáveis
+    private static Texture2D _texFundoJanela;
+    private static Texture2D _texBotao;
+    private static Texture2D _texBotaoHover;
+    private static Texture2D _texBotaoPerigo;
+    private static Texture2D _texBotaoPerigHover;
+    private static Texture2D _texBotaoSec;
+    private static Texture2D _texBotaoSecHover;
+    private static Texture2D _texAba;
+    private static Texture2D _texAbaAtiva;
+    private static Texture2D _texCard;
+    private static Texture2D _texHeader;
 
     // Status Inteligência
     private class StatusInimigo {
@@ -99,6 +119,20 @@ public class GerenciadorQuartel : MonoBehaviour
         {
             ChecarInvasaoEAcordarBase();
             scanDefesaTimer = Time.time + 4f;
+        }
+
+        if (menuAberto)
+        {
+            if (abaAtual == 0)
+                AtualizarCacheUnidadesCampo(false);
+            else if (abaAtual == 2)
+            {
+                if (Time.unscaledTime > tagAtualizacaoIntel)
+                {
+                    AtualizarDadosInimigos();
+                    tagAtualizacaoIntel = Time.unscaledTime + 3f;
+                }
+            }
         }
     }
 
@@ -198,33 +232,125 @@ public class GerenciadorQuartel : MonoBehaviour
         return tex;
     }
 
+    private Texture2D CriarTexturaGradiente(Color topo, Color base_)
+    {
+        Texture2D tex = new Texture2D(1, 4);
+        tex.SetPixel(0, 0, base_);
+        tex.SetPixel(0, 1, Color.Lerp(base_, topo, 0.33f));
+        tex.SetPixel(0, 2, Color.Lerp(base_, topo, 0.66f));
+        tex.SetPixel(0, 3, topo);
+        tex.Apply();
+        return tex;
+    }
+
     private void InicializarEstilos()
     {
         if (estilosCriados) return;
 
+        // --- Paleta Principal ---
+        // Fundo da janela: cinza escuro quase preto com leve tom azul-escuro
+        if (_texFundoJanela == null) _texFundoJanela = CriarTexturaGradiente(
+            new Color(0.10f, 0.12f, 0.16f, 0.99f),
+            new Color(0.07f, 0.08f, 0.11f, 0.99f));
+
+        // Botão primário: verde-oliva militar com hover âmbar
+        if (_texBotao == null)     _texBotao     = CriarTexturaGradiente(new Color(0.18f, 0.30f, 0.15f, 1f), new Color(0.12f, 0.20f, 0.10f, 1f));
+        if (_texBotaoHover == null) _texBotaoHover = CriarTexturaGradiente(new Color(0.75f, 0.55f, 0.05f, 1f), new Color(0.55f, 0.38f, 0.02f, 1f));
+
+        // Botão perigo: vermelho
+        if (_texBotaoPerigo == null)    _texBotaoPerigo    = CriarTextura(new Color(0.50f, 0.08f, 0.08f, 1f));
+        if (_texBotaoPerigHover == null) _texBotaoPerigHover = CriarTextura(new Color(0.80f, 0.15f, 0.10f, 1f));
+
+        // Botão secundário: azul-aço
+        if (_texBotaoSec == null)     _texBotaoSec     = CriarTexturaGradiente(new Color(0.10f, 0.20f, 0.38f, 1f), new Color(0.07f, 0.13f, 0.26f, 1f));
+        if (_texBotaoSecHover == null) _texBotaoSecHover = CriarTexturaGradiente(new Color(0.15f, 0.35f, 0.60f, 1f), new Color(0.10f, 0.22f, 0.45f, 1f));
+
+        // Abas
+        if (_texAba == null)      _texAba      = CriarTextura(new Color(0.13f, 0.16f, 0.20f, 1f));
+        if (_texAbaAtiva == null) _texAbaAtiva = CriarTexturaGradiente(new Color(0.72f, 0.53f, 0.04f, 1f), new Color(0.50f, 0.35f, 0.01f, 1f));
+
+        // Card de item
+        if (_texCard == null)   _texCard   = CriarTextura(new Color(0.12f, 0.15f, 0.19f, 0.95f));
+        if (_texHeader == null) _texHeader = CriarTexturaGradiente(new Color(0.65f, 0.48f, 0.03f, 0.30f), new Color(0.08f, 0.10f, 0.14f, 0.30f));
+
+        // --- Janela ---
         estiloJanela = new GUIStyle(GUI.skin.window);
-        estiloJanela.normal.background = CriarTextura(new Color(0.13f, 0.18f, 0.14f, 0.98f)); 
-        estiloJanela.normal.textColor = new Color(0.9f, 1f, 0.9f);
+        estiloJanela.normal.background = _texFundoJanela;
+        estiloJanela.normal.textColor = new Color(0.90f, 0.82f, 0.40f);
         estiloJanela.fontStyle = FontStyle.Bold;
-        estiloJanela.fontSize = 20;
+        estiloJanela.fontSize = 18;
+        estiloJanela.padding = new RectOffset(10, 10, 30, 10);
 
+        // --- Botão primário ---
         estiloBotao = new GUIStyle(GUI.skin.button);
-        estiloBotao.normal.background = CriarTextura(new Color(0.2f, 0.3f, 0.2f, 0.9f));
-        estiloBotao.hover.background = CriarTextura(new Color(0.3f, 0.45f, 0.25f, 1f));
-        estiloBotao.normal.textColor = Color.white;
-        estiloBotao.hover.textColor = new Color(1f, 0.8f, 0.2f);
-        estiloBotao.padding = new RectOffset(6, 6, 6, 6);
-        estiloBotao.fontSize = 15;
+        estiloBotao.normal.background  = _texBotao;
+        estiloBotao.hover.background   = _texBotaoHover;
+        estiloBotao.normal.textColor   = new Color(0.85f, 0.95f, 0.75f);
+        estiloBotao.hover.textColor    = new Color(0.10f, 0.06f, 0.02f);
+        estiloBotao.active.background  = _texBotaoHover;
+        estiloBotao.padding = new RectOffset(8, 8, 7, 7);
+        estiloBotao.fontSize = 14;
         estiloBotao.fontStyle = FontStyle.Bold;
+        estiloBotao.wordWrap = true;
 
+        // --- Botão perigo ---
+        estiloBotaoPerigo = new GUIStyle(estiloBotao);
+        estiloBotaoPerigo.normal.background = _texBotaoPerigo;
+        estiloBotaoPerigo.hover.background  = _texBotaoPerigHover;
+        estiloBotaoPerigo.normal.textColor  = Color.white;
+        estiloBotaoPerigo.hover.textColor   = Color.white;
+
+        // --- Botão secundário ---
+        estiloBotaoSecundario = new GUIStyle(estiloBotao);
+        estiloBotaoSecundario.normal.background = _texBotaoSec;
+        estiloBotaoSecundario.hover.background  = _texBotaoSecHover;
+        estiloBotaoSecundario.normal.textColor  = new Color(0.70f, 0.88f, 1.0f);
+        estiloBotaoSecundario.hover.textColor   = Color.white;
+
+        // --- Abas ---
         estiloAba = new GUIStyle(estiloBotao);
-        estiloAba.fontSize = 16;
-        estiloAba.padding = new RectOffset(10, 10, 10, 10);
+        estiloAba.normal.background = _texAba;
+        estiloAba.hover.background  = _texAbaAtiva;
+        estiloAba.normal.textColor  = new Color(0.65f, 0.75f, 0.85f);
+        estiloAba.hover.textColor   = new Color(0.10f, 0.06f, 0.02f);
+        estiloAba.fontSize = 14;
+        estiloAba.fontStyle = FontStyle.Bold;
+        estiloAba.padding   = new RectOffset(12, 12, 10, 10);
 
+        estiloAbaAtiva = new GUIStyle(estiloAba);
+        estiloAbaAtiva.normal.background = _texAbaAtiva;
+        estiloAbaAtiva.normal.textColor  = new Color(0.10f, 0.06f, 0.02f);
+
+        // --- Textos ---
         estiloTexto = new GUIStyle(GUI.skin.label);
-        estiloTexto.normal.textColor = new Color(0.8f, 0.95f, 0.8f, 1f);
-        estiloTexto.fontSize = 15;
-        estiloTexto.fontStyle = FontStyle.Bold;
+        estiloTexto.normal.textColor = new Color(0.78f, 0.90f, 0.78f);
+        estiloTexto.fontSize = 13;
+        estiloTexto.fontStyle = FontStyle.Normal;
+        estiloTexto.wordWrap = true;
+
+        estiloTextoTitulo = new GUIStyle(estiloTexto);
+        estiloTextoTitulo.normal.textColor = new Color(0.90f, 0.82f, 0.40f);
+        estiloTextoTitulo.fontSize = 14;
+        estiloTextoTitulo.fontStyle = FontStyle.Bold;
+
+        estiloTextoPequeno = new GUIStyle(estiloTexto);
+        estiloTextoPequeno.fontSize = 12;
+        estiloTextoPequeno.normal.textColor = new Color(0.55f, 0.70f, 0.55f);
+
+        // --- Card (caixas de item) ---
+        estiloCard = new GUIStyle(GUI.skin.box);
+        estiloCard.normal.background = _texCard;
+        estiloCard.padding = new RectOffset(8, 8, 6, 6);
+        estiloCard.margin  = new RectOffset(0, 0, 3, 3);
+
+        // --- Header de seção ---
+        estiloHeader = new GUIStyle(GUI.skin.box);
+        estiloHeader.normal.background = _texHeader;
+        estiloHeader.normal.textColor  = new Color(0.90f, 0.82f, 0.40f);
+        estiloHeader.fontSize  = 13;
+        estiloHeader.fontStyle = FontStyle.Bold;
+        estiloHeader.alignment = TextAnchor.MiddleLeft;
+        estiloHeader.padding   = new RectOffset(10, 6, 5, 5);
 
         estilosCriados = true;
     }
@@ -235,33 +361,46 @@ public class GerenciadorQuartel : MonoBehaviour
         InicializarEstilos();
 
         GUI.depth = -100;
-        janelaRetangulo = GUI.Window(943, janelaRetangulo, DesenharJanela, "QG COMANDO - QUARTEL GERAL", estiloJanela);
+        janelaRetangulo = GUI.Window(943, janelaRetangulo, DesenharJanela, "  ⚔  QUARTEL GENERAL  |  CENTRO DE COMANDO", estiloJanela);
     }
 
     void DesenharJanela(int windowID)
     {
-        GUILayout.Space(10);
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("SALA DE TROPAS", estiloAba, GUILayout.Height(45))) abaAtual = 0;
-        if (GUILayout.Button("LOGÍSTICA & ARSENAL", estiloAba, GUILayout.Height(45))) abaAtual = 1;
-        if (GUILayout.Button("INTELIGÊNCIA INIMIGA", estiloAba, GUILayout.Height(45))) abaAtual = 2;
+        // --- Header de Status ---
+        GUILayout.BeginHorizontal(estiloHeader, GUILayout.Height(36));
+        GUILayout.Label($"🪖 Soldados: {soldadosNoDormitorio.Count}   🚗 Veículos: {veiculosNoQuartel.Count}   🚀 Mísseis: {misseisArmazenados}   💊 Munição: {municaoArmazenada}", estiloTextoTitulo);
+        GUILayout.FlexibleSpace();
+        GUILayout.Label($"Raio: {raioDeCobertura:F0}m", estiloTextoPequeno, GUILayout.Width(110));
         GUILayout.EndHorizontal();
 
-        GUILayout.Space(15);
+        GUILayout.Space(8);
+
+        // --- Abas ---
+        string[] nomesAbas   = { "🪖  TROPAS", "🔧  ARSENAL", "🛰  INTELIGÊNCIA" };
+        GUILayout.BeginHorizontal();
+        for (int i = 0; i < nomesAbas.Length; i++)
+        {
+            GUIStyle estilo = (abaAtual == i) ? estiloAbaAtiva : estiloAba;
+            if (GUILayout.Button(nomesAbas[i], estilo, GUILayout.Height(40)))
+                abaAtual = i;
+        }
+        GUILayout.EndHorizontal();
+
+        // Linha separadora visual
+        Rect linhaRect = GUILayoutUtility.GetLastRect();
+        GUILayout.Space(6);
 
         if (abaAtual == 0) DesenharAbaTropas();
         else if (abaAtual == 1) DesenharAbaArsenal();
         else if (abaAtual == 2) DesenharAbaInteligencia();
 
-        GUIStyle xStyle = new GUIStyle(estiloBotao);
-        xStyle.normal.background = CriarTextura(new Color(0.6f, 0.1f, 0.1f, 1f));
-        if (GUI.Button(new Rect(janelaRetangulo.width - 45, 5, 40, 30), "X", xStyle))
+        if (GUI.Button(new Rect(janelaRetangulo.width - 42, 4, 36, 26), "✕", estiloBotaoPerigo))
         {
             menuAberto = false;
             InterfaceAberta = false;
         }
 
-        GUI.DragWindow();
+        GUI.DragWindow(new Rect(0, 0, janelaRetangulo.width, 30));
     }
 
     private void AtualizarCacheUnidadesCampo(bool forcar)
@@ -294,17 +433,24 @@ public class GerenciadorQuartel : MonoBehaviour
         }
     }
 
+    private void DesenharSeparador(string titulo)
+    {
+        GUILayout.Space(4);
+        GUILayout.Label(titulo, estiloHeader, GUILayout.ExpandWidth(true), GUILayout.Height(24));
+        GUILayout.Space(4);
+    }
+
     void DesenharAbaTropas()
     {
-        AtualizarCacheUnidadesCampo(false);
+        float colW = janelaRetangulo.width * 0.48f;
         GUILayout.BeginHorizontal();
 
-        // ======= COLUNA ESQUERDA (Recolher do Mapa) ======
-        GUILayout.BeginVertical("box", GUILayout.Width(janelaRetangulo.width / 2f - 20));
-        GUILayout.Label(">>> LISTA DE EFETIVOS EM CAMPO (Recolher)", estiloTexto);
-        GUILayout.Space(5);
+        // =========== COLUNA ESQUERDA — RECOLHER DO CAMPO ===========
+        GUILayout.BeginVertical(estiloCard, GUILayout.Width(colW));
 
-        if (GUILayout.Button("CONVOCAR: OS SELECIONADOS NO MAPA", estiloBotao, GUILayout.Height(40)))
+        DesenharSeparador($"📡  EM CAMPO  —  Soldados: {soldadosAvulsosCache.Count}  |  Veículos: {veiculosAvulsosCache.Count}");
+
+        if (GUILayout.Button("↩  CONVOCAR SELECIONADOS NO MAPA", estiloBotaoSecundario, GUILayout.Height(36)))
         {
             foreach (var u in Object.FindObjectsByType<ControleUnidade>(FindObjectsSortMode.None))
                 if (u.selecionado && u.GetComponent<IdentidadeUnidade>()?.teamID == 1)
@@ -313,209 +459,222 @@ public class GerenciadorQuartel : MonoBehaviour
                     ReceberUnidade(u);
                 }
         }
-        
-        GUILayout.Space(5);
+        GUILayout.Space(4);
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button($"CHAMAR TODOS SOLDADOS ({soldadosAvulsosCache.Count})", estiloBotao, GUILayout.Height(35)))
-        {
+        if (GUILayout.Button($"↩ Chamar Infantaria ({soldadosAvulsosCache.Count})", estiloBotao, GUILayout.Height(32)))
             foreach (var u in soldadosAvulsosCache) ReceberUnidade(u);
-        }
-        if (GUILayout.Button($"CHAMAR TODOS VEICULOS ({veiculosAvulsosCache.Count})", estiloBotao, GUILayout.Height(35)))
-        {
+        if (GUILayout.Button($"↩ Chamar Veículos ({veiculosAvulsosCache.Count})", estiloBotao, GUILayout.Height(32)))
             foreach (var u in veiculosAvulsosCache) ReceberUnidade(u);
-        }
         GUILayout.EndHorizontal();
 
-        GUILayout.Space(10);
-        scrollConvocar = GUILayout.BeginScrollView(scrollConvocar, GUILayout.Height(380));
-        
-        // Soldados Espalhados
+        GUILayout.Space(6);
+        scrollConvocar = GUILayout.BeginScrollView(scrollConvocar);
+
         if (soldadosAvulsosCache.Count > 0)
         {
-            GUILayout.Label($"- INFANTARIA LIVRE ({soldadosAvulsosCache.Count}) -", estiloTexto);
+            GUILayout.Label("  🪖 INFANTARIA LIVRE", estiloTextoTitulo);
             foreach (var s in soldadosAvulsosCache)
             {
-                GUILayout.BeginHorizontal("box");
-                GUILayout.Label(s.name, estiloTexto, GUILayout.Width(220));
-                if (GUILayout.Button("Convocar", estiloBotao, GUILayout.Width(100))) ReceberUnidade(s);
+                GUILayout.BeginHorizontal(estiloCard);
+                GUILayout.Label($"· {s.name}", estiloTexto);
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("↩ Convocar", estiloBotao, GUILayout.Width(95), GUILayout.Height(26))) ReceberUnidade(s);
                 GUILayout.EndHorizontal();
             }
-            GUILayout.Space(15);
+            GUILayout.Space(8);
         }
-
-        // Veículos Espalhados
         if (veiculosAvulsosCache.Count > 0)
         {
-            GUILayout.Label($"- VEICULOS LIVRES ({veiculosAvulsosCache.Count}) -", estiloTexto);
+            GUILayout.Label("  🚗 VEÍCULOS LIVRES", estiloTextoTitulo);
             foreach (var v in veiculosAvulsosCache)
             {
-                GUILayout.BeginHorizontal("box");
-                GUILayout.Label(v.name, estiloTexto, GUILayout.Width(220));
-                if (GUILayout.Button("Convocar", estiloBotao, GUILayout.Width(100))) ReceberUnidade(v);
+                GUILayout.BeginHorizontal(estiloCard);
+                GUILayout.Label($"· {v.name}", estiloTexto);
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("↩ Convocar", estiloBotao, GUILayout.Width(95), GUILayout.Height(26))) ReceberUnidade(v);
                 GUILayout.EndHorizontal();
             }
         }
-        
         if (soldadosAvulsosCache.Count == 0 && veiculosAvulsosCache.Count == 0)
-        {
-            GUILayout.Label("Nenhuma unidade encontrada solta no Raio do Quartel.", estiloTexto);
-        }
+            GUILayout.Label("  ✅  Nenhuma unidade solta no raio do Quartel.", estiloTextoPequeno);
 
         GUILayout.EndScrollView();
         GUILayout.EndVertical();
 
+        GUILayout.Space(8);
 
-        GUILayout.Space(10);
-        // ======= COLUNA DIREITA (Desdobrar p/ Guerra) ======
-        GUILayout.BeginVertical("box", GUILayout.Width(janelaRetangulo.width / 2f - 20));
-        GUILayout.Label(">>> TROPAS ARMAZENADAS (Lançar p/ Guerra)", estiloTexto);
-        GUILayout.Space(5);
+        // =========== COLUNA DIREITA — TROPAS ARMAZENADAS ===========
+        GUILayout.BeginVertical(estiloCard, GUILayout.Width(colW));
 
-        GUILayout.Label($"Soldados Dormindo: {soldadosNoDormitorio.Count}", estiloTexto);
+        DesenharSeparador($"🏠  ARMAZENADAS  —  Soldados: {soldadosNoDormitorio.Count}  |  Veículos: {veiculosNoQuartel.Count}");
+
+        // Soldados
+        GUILayout.Label("  🪖 DORMITÓRIO", estiloTextoTitulo);
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Desdobrar 1", estiloBotao, GUILayout.Height(35))) DesdobrarSoldados(1);
-        if (GUILayout.Button("Desdobrar 5", estiloBotao, GUILayout.Height(35))) DesdobrarSoldados(5);
-        if (GUILayout.Button("Esvaziar Dormitório", estiloBotao, GUILayout.Height(35))) DesdobrarSoldados(soldadosNoDormitorio.Count);
+        if (GUILayout.Button("Desdobrar 1",  estiloBotao, GUILayout.Height(32))) DesdobrarSoldados(1);
+        if (GUILayout.Button("Desdobrar 5",  estiloBotao, GUILayout.Height(32))) DesdobrarSoldados(5);
+        if (GUILayout.Button("Esvaziar Tudo", estiloBotaoPerigo, GUILayout.Height(32))) DesdobrarSoldados(soldadosNoDormitorio.Count);
         GUILayout.EndHorizontal();
 
-        GUILayout.Space(15);
-        GUILayout.Label($"Veículos Pesados: {veiculosNoQuartel.Count}", estiloTexto);
+        GUILayout.Space(10);
 
-        if (GUILayout.Button("LIGAR TODOS VEÍCULOS (Retirar base inteira)", estiloBotao, GUILayout.Height(40)))
+        // Veículos
+        GUILayout.Label("  🚗 GARAGEM", estiloTextoTitulo);
+        if (GUILayout.Button("🔑  LIGAR TODOS OS VEÍCULOS", estiloBotaoPerigo, GUILayout.Height(34)))
         {
             int totalV = veiculosNoQuartel.Count;
-            for(int i = totalV - 1; i >= 0; i--) DesdobrarVeiculo(veiculosNoQuartel[i]);
+            for (int i = totalV - 1; i >= 0; i--) DesdobrarVeiculo(veiculosNoQuartel[i]);
         }
-        
-        GUILayout.Space(10);
-        scrollTropas = GUILayout.BeginScrollView(scrollTropas, GUILayout.Height(310));
-        
+
+        GUILayout.Space(6);
+        scrollTropas = GUILayout.BeginScrollView(scrollTropas);
         for (int i = 0; i < veiculosNoQuartel.Count; i++)
         {
             ControleUnidade v = veiculosNoQuartel[i];
             if (v == null) continue;
-
-            GUILayout.BeginHorizontal("box");
-            GUILayout.Label($"- {v.name}", estiloTexto, GUILayout.Width(220));
-            if (GUILayout.Button("Ligar Motor", estiloBotao, GUILayout.Width(100))) DesdobrarVeiculo(v);
+            GUILayout.BeginHorizontal(estiloCard);
+            GUILayout.Label($"· {v.name}", estiloTexto);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("🔑 Ligar", estiloBotaoSecundario, GUILayout.Width(80), GUILayout.Height(26))) DesdobrarVeiculo(v);
             GUILayout.EndHorizontal();
         }
-        
         if (veiculosNoQuartel.Count == 0)
-        {
-            GUILayout.Label("Nenhum tanque/caminhão estacionado.", estiloTexto);
-        }
-
+            GUILayout.Label("  ✅  Nenhum veículo estacionado.", estiloTextoPequeno);
         GUILayout.EndScrollView();
-        GUILayout.EndVertical();
 
+        GUILayout.EndVertical();
         GUILayout.EndHorizontal();
     }
 
     void DesenharAbaArsenal()
     {
         scrollArsenal = GUILayout.BeginScrollView(scrollArsenal);
-        GUILayout.Label(">>> PROTOCOLOS DA BASE", estiloTexto);
-        recolhimentoAutomatico = GUILayout.Toggle(recolhimentoAutomatico, " RECOLHIMENTO AUTOMÁTICO (Chama por rádio as unidades)", estiloTexto);
-        
+
+        // --- Protocolos ---
+        DesenharSeparador("⚙  PROTOCOLOS DA BASE");
+        GUILayout.BeginVertical(estiloCard);
+        recolhimentoAutomatico = GUILayout.Toggle(recolhimentoAutomatico, "  📻  Recolhimento Automático  (chama unidades ociosas por rádio)", estiloTexto);
         if (recolhimentoAutomatico)
         {
-            GUILayout.Label($"Aguardar tempo ocioso para chamar: {Mathf.Round(tempoOciosoPermitido)}s", estiloTexto);
+            GUILayout.Label($"     Tempo ocioso antes de chamar: {Mathf.Round(tempoOciosoPermitido)}s", estiloTextoPequeno);
             tempoOciosoPermitido = GUILayout.HorizontalSlider(tempoOciosoPermitido, 10f, 300f);
         }
+        GUILayout.Space(4);
+        modoDefensivoAtivo = GUILayout.Toggle(modoDefensivoAtivo, "  🛡  Defesa Automática  (libera tudo se a base for invadida)", estiloTexto);
+        GUILayout.Space(4);
+        treinamentoPassivo = GUILayout.Toggle(treinamentoPassivo, "  💪  Treinamento Passivo  (bônus de HP para unidades em repouso)", estiloTexto);
+        GUILayout.EndVertical();
 
-        GUILayout.Space(10);
-        modoDefensivoAtivo = GUILayout.Toggle(modoDefensivoAtivo, " DEFESA AUTOMÁTICA (Libera geral se a base for invadida)", estiloTexto);
-        treinamentoPassivo = GUILayout.Toggle(treinamentoPassivo, " TREINAMENTO PASSIVO (Bônus constante de HP para quem está hibernando)", estiloTexto);
-
-        GUILayout.Space(25);
-        GUILayout.Label(">>> ARSENAL E MUNIÇÕES DE RESERVA", estiloTexto);
-        GUILayout.Label($"Mísseis Armazenados: {misseisArmazenados}", estiloTexto);
-        GUILayout.Label($"Pacotes de Munição (Balas): {municaoArmazenada}", estiloTexto);
-
-        GUILayout.Space(15);
-        GUILayout.Label(">>> LOGÍSTICA TERRESTRE (CAMINHÕES DE ABASTECIMENTO)", estiloTexto);
-        CaminhaoCombustivel.AbastecimentoAutomaticoGlobal = GUILayout.Toggle(CaminhaoCombustivel.AbastecimentoAutomaticoGlobal, " ABASTECIMENTO AUTOMÁTICO (Caminhões Track buscam unidades secas)", estiloTexto);
-        
+        // --- Arsenal ---
+        GUILayout.Space(6);
+        DesenharSeparador("🚀  ARSENAL E MUNIÇÕES");
+        GUILayout.BeginVertical(estiloCard);
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("CARREGAR TRACKS NESTE QUARTEL", estiloBotao, GUILayout.Height(38)))
-        {
-            foreach (var c in Object.FindObjectsByType<CaminhaoCombustivel>(FindObjectsSortMode.None))
-            {
-                if (c == null) continue;
-                c.ForcarRecarregarNoQuartel(this);
-            }
-        }
-
-        if (GUILayout.Button("FORCAR RECARGA / RETORNO", estiloBotao, GUILayout.Height(38)))
-        {
-            var caminhoes = Object.FindObjectsByType<CaminhaoCombustivel>(FindObjectsSortMode.None);
-            foreach(var c in caminhoes)
-            {
-                if (c == null) continue;
-                c.DefinirQuartelPreferencial(this);
-                c.ForcarRetornoBase();
-            }
-        }
+        GUILayout.Label($"🚀  Mísseis Armazenados:", estiloTexto, GUILayout.Width(210));
+        GUILayout.Label($"{misseisArmazenados}", estiloTextoTitulo);
         GUILayout.EndHorizontal();
-
-        GUILayout.Label("Tracks atendem somente a area do QG/centro definido, abastecem abaixo de 20%, reparam e recarregam em quartel ou fila de terra do Liberty.", estiloTexto);
-
-        GUILayout.Space(15);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"🔫  Pacotes de Munição:", estiloTexto, GUILayout.Width(210));
+        GUILayout.Label($"{municaoArmazenada}", estiloTextoTitulo);
+        GUILayout.EndHorizontal();
+        GUILayout.Space(6);
         if (GerenciadorRecursos.Instancia != null)
         {
-            GUILayout.Label($"Fundo Nacional Atual: ${GerenciadorRecursos.Instancia.dinheiro}", estiloTexto);
-            
+            GUILayout.Label($"💰  Fundo Nacional: ${GerenciadorRecursos.Instancia.dinheiro}", estiloTextoTitulo);
+            GUILayout.Space(4);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button($"ENCOMENDAR LOTE DE MÍSSIL (${precoMissil})", estiloBotao, GUILayout.Height(50)))
-            {
+            if (GUILayout.Button($"🚀  Encomendar Mísseis  (-${precoMissil})", estiloBotao, GUILayout.Height(42)))
                 if (GerenciadorRecursos.Instancia.TentarGastarDinheiro(precoMissil)) misseisArmazenados += 10;
-            }
-
-            if (GUILayout.Button($"ENCOMENDAR MUNIÇÃO (${precoMunicao})", estiloBotao, GUILayout.Height(50)))
-            {
+            if (GUILayout.Button($"🔫  Encomendar Munição  (-${precoMunicao})", estiloBotao, GUILayout.Height(42)))
                 if (GerenciadorRecursos.Instancia.TentarGastarDinheiro(precoMunicao)) municaoArmazenada += 100;
-            }
             GUILayout.EndHorizontal();
         }
+        GUILayout.EndVertical();
+
+        // --- Logística ---
+        GUILayout.Space(6);
+        DesenharSeparador("🚛  LOGÍSTICA DE ABASTECIMENTO");
+        GUILayout.BeginVertical(estiloCard);
+        CaminhaoCombustivel.AbastecimentoAutomaticoGlobal = GUILayout.Toggle(CaminhaoCombustivel.AbastecimentoAutomaticoGlobal, "  🔄  Abastecimento Automático  (Tracks buscam unidades com combustível baixo)", estiloTexto);
+        GUILayout.Space(6);
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("⛽  Carregar Tracks neste QG", estiloBotao, GUILayout.Height(36)))
+            foreach (var c in Object.FindObjectsByType<CaminhaoCombustivel>(FindObjectsSortMode.None))
+                if (c != null) c.ForcarRecarregarNoQuartel(this);
+        if (GUILayout.Button("↩  Forçar Retorno à Base", estiloBotaoSecundario, GUILayout.Height(36)))
+        {
+            var caminhoes = Object.FindObjectsByType<CaminhaoCombustivel>(FindObjectsSortMode.None);
+            foreach (var c in caminhoes)
+                if (c != null) { c.DefinirQuartelPreferencial(this); c.ForcarRetornoBase(); }
+        }
+        GUILayout.EndHorizontal();
+        GUILayout.Label("  ℹ  Tracks atendem somente a área do QG, recarregam abaixo de 20% e retornam para reabastecimento.", estiloTextoPequeno);
+        GUILayout.EndVertical();
 
         GUILayout.EndScrollView();
     }
 
     void DesenharAbaInteligencia()
     {
-        if (Time.time > tagAtualizacaoIntel)
-        {
-            AtualizarDadosInimigos();
-            tagAtualizacaoIntel = Time.time + 3f; 
-        }
-
-        GUILayout.Label(">>> VARREDURA SATELITAL E ESPIONAGEM CIBERNÉTICA", estiloTexto);
-        GUILayout.Label("Lista dos países oponentes encontrados e contagem militar:", estiloTexto);
-        GUILayout.Space(10);
+        DesenharSeparador("🛰  VARREDURA SATELITAL — ESPIONAGEM CIBERNÉTICA");
+        GUILayout.Label("  Monitoramento em tempo real dos países oponentes.", estiloTextoPequeno);
+        GUILayout.Space(6);
 
         scrollInteligencia = GUILayout.BeginScrollView(scrollInteligencia);
 
         foreach (var kvp in infoInimigos)
         {
-            if (kvp.Key == 1) continue; 
+            if (kvp.Key == 1) continue;
 
             var status = kvp.Value;
-            GUILayout.BeginVertical("box");
-            GUILayout.Label($"🔴 PAÍS OPONENTE: {status.nomePais.ToUpper()}  [Time ID: {kvp.Key}]", estiloBotao); 
-            GUILayout.Label($" - Força de Infantaria: {status.infantaria}", estiloTexto);
-            GUILayout.Label($" - Força Blindada/Veículos: {status.veiculos}", estiloTexto);
-            GUILayout.Label($" - Força Aérea (Aviões/Helis): {status.aereos}", estiloTexto);
-            GUILayout.Label($" - Força Naval (Frota): {status.navais}", estiloTexto);
-            GUILayout.Label($" - Infraestruturas e Prédios: {status.predios}", estiloTexto);
+            GUILayout.BeginVertical(estiloCard);
+
+            // Cabeçalho do país
+            GUILayout.BeginHorizontal(estiloHeader, GUILayout.Height(28));
+            GUILayout.Label($"🔴  {status.nomePais.ToUpper()}", estiloTextoTitulo);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label($"Time #{kvp.Key}", estiloTextoPequeno, GUILayout.Width(70));
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(4);
+            int max = Mathf.Max(1, status.infantaria + status.veiculos + status.aereos + status.navais);
+            DesenharBarraForca("🪖 Infantaria",  status.infantaria, max, new Color(0.3f, 0.7f, 0.3f));
+            DesenharBarraForca("🚗 Blindados",   status.veiculos,   max, new Color(0.6f, 0.5f, 0.2f));
+            DesenharBarraForca("✈  Aéreos",     status.aereos,     max, new Color(0.2f, 0.5f, 0.9f));
+            DesenharBarraForca("⚓ Naval",       status.navais,     max, new Color(0.1f, 0.6f, 0.8f));
+            GUILayout.Label($"   🏛  Estruturas: {status.predios}", estiloTextoPequeno);
+            GUILayout.Space(4);
+
             GUILayout.EndVertical();
-            GUILayout.Space(15);
+            GUILayout.Space(8);
         }
 
         if (infoInimigos.Count <= 1)
-            GUILayout.Label("... Aguardando sinal. Nenhum inimigo monitorado ...", estiloTexto);
+            GUILayout.Label("  📡  Aguardando sinal... Nenhum inimigo monitorado.", estiloTextoPequeno);
 
         GUILayout.EndScrollView();
+    }
+
+    private void DesenharBarraForca(string label, int valor, int maximo, Color cor)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"   {label}:", estiloTexto, GUILayout.Width(130));
+        GUILayout.Label($"{valor}", estiloTextoTitulo, GUILayout.Width(40));
+
+        Rect baraBg = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(12));
+        float fill = maximo > 0 ? Mathf.Clamp01((float)valor / maximo) : 0f;
+        // Fundo
+        Color oldColor = GUI.color;
+        GUI.color = new Color(0.12f, 0.15f, 0.18f, 1f);
+        GUI.DrawTexture(baraBg, Texture2D.whiteTexture);
+        // Preenchimento
+        Rect barFill = new Rect(baraBg.x, baraBg.y, baraBg.width * fill, baraBg.height);
+        GUI.color = cor;
+        GUI.DrawTexture(barFill, Texture2D.whiteTexture);
+        GUI.color = oldColor;
+
+        GUILayout.Space(8);
+        GUILayout.EndHorizontal();
     }
 
     void AtualizarDadosInimigos()

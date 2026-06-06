@@ -1201,6 +1201,8 @@ public class ControleUnidade : MonoBehaviour
         linhaCaminho.useWorldSpace = true;
         linhaCaminho.startWidth = 0.5f;
         linhaCaminho.endWidth = 0.5f;
+        // CORREÇÃO: começa com 0 pontos para não renderizar lixo antes de ser atualizado
+        linhaCaminho.positionCount = 0;
         
         linhaCaminho.material = new Material(Shader.Find("Sprites/Default"));
         linhaCaminho.startColor = corCaminho;
@@ -1211,9 +1213,13 @@ public class ControleUnidade : MonoBehaviour
 
     void AtualizarVisualCaminho()
     {
-        if (linhaCaminho != null && linhaCaminho.gameObject.activeSelf)
+        // Garante que a linha de caminho esteja sempre desativada e sem pontos
+        if (linhaCaminho != null)
         {
-            linhaCaminho.gameObject.SetActive(false);
+            if (linhaCaminho.positionCount > 0)
+                linhaCaminho.positionCount = 0;
+            if (linhaCaminho.gameObject.activeSelf)
+                linhaCaminho.gameObject.SetActive(false);
         }
         return;
         // Desenho da linha verde desativado conforme solicitado

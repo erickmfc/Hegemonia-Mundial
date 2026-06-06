@@ -33,13 +33,28 @@ public class SistemaMercadoGlobal : MonoBehaviour
         InicializarItensPadrao();
     }
 
-    private void Update()
+    private void Start()
     {
-        if (Time.unscaledTime < proximoTick) return;
-        proximoTick = Time.unscaledTime + Mathf.Max(1f, intervaloMercado);
+        if (GerenciadorTempo.Instancia != null)
+        {
+            GerenciadorTempo.Instancia.OnDataAlterada += AoMudarDeDia;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (GerenciadorTempo.Instancia != null)
+        {
+            GerenciadorTempo.Instancia.OnDataAlterada -= AoMudarDeDia;
+        }
+    }
+
+    private void AoMudarDeDia()
+    {
         SincronizarCatalogoConstrucao();
         SimularMercado();
     }
+
 
     public void InicializarItensPadrao()
     {

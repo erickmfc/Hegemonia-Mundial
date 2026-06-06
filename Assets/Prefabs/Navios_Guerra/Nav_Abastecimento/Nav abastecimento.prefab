@@ -1,120 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &618936559504871670
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1913589403959281834}
-  - component: {fileID: 2586401538527991572}
-  - component: {fileID: 2297103783928712310}
-  - component: {fileID: 817268017770915367}
-  m_Layer: 0
-  m_Name: Cylinder
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1913589403959281834
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 618936559504871670}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0.073}
-  m_LocalScale: {x: 0.014138485, y: 0.7082205, z: 0.02812514}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 5841864928792810036}
-  - {fileID: 3930778661800850161}
-  m_Father: {fileID: 5355402072092281225}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &2586401538527991572
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 618936559504871670}
-  m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &2297103783928712310
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 618936559504871670}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!136 &817268017770915367
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 618936559504871670}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.50000006
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0.000000059604645, y: 0, z: -0.00000008940696}
 --- !u!1 &4466587286619151622
 GameObject:
   m_ObjectHideFlags: 0
@@ -139,12 +24,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4466587286619151622}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -0, y: -1.009, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: 0.7071068, y: -0, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: -0.7145945, z: 0.07299999}
+  m_LocalScale: {x: 0.014138484, y: 0.02812514, z: 0.7082205}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1913589403959281834}
+  m_Father: {fileID: 5355402072092281225}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!1 &5058915367961701969
 GameObject:
@@ -164,6 +49,7 @@ GameObject:
   - component: {fileID: 7229841819519731160}
   - component: {fileID: 4451440838074480325}
   - component: {fileID: 812937730086950638}
+  - component: {fileID: 7687605803028563258}
   m_Layer: 0
   m_Name: Nav abastecimento
   m_TagString: Navio
@@ -179,7 +65,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5058915367961701969}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 295.6, y: 0, z: -60.4}
   m_LocalScale: {x: 1, y: 1.2, z: 1.7}
   m_ConstrainProportionsScale: 0
@@ -221,8 +107,8 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 9
-  m_Acceleration: 9
+  m_Speed: 16
+  m_Acceleration: 15
   avoidancePriority: 50
   m_AngularSpeed: 120
   m_StoppingDistance: 0
@@ -272,15 +158,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
-  tempoAceleracao: 8
-  tempoDesaceleracao: 15
-  tempoParadaEmergencia: 10
-  velocidadeMaxima: 12
-  velocidadeLeme: 5
-  curvaMaximaGraus: 10
+  tempoAceleracao: 4
+  tempoDesaceleracao: 5
+  tempoParadaEmergencia: 5
+  velocidadeMaxima: 26
+  velocidadeLeme: 2.9
+  curvaMaximaGraus: 25
   coeficienteAderna: 2.5
-  alturaOnda: 0.5
-  frequenciaOnda: 0.2
+  alturaOnda: 0.74
+  frequenciaOnda: 0.55
   arrastoPassivo: 0.5
   distanciaChegada: 15
   offsetAlturaAgua: 0
@@ -368,18 +254,23 @@ MonoBehaviour:
   combustivelTotal: 20000
   taxaAbastecimento: 50
   metaTransferenciaPorNavio: 0
-  raioRadar: 500
+  raioRadar: 750
   layerNavios:
     serializedVersion: 2
-    m_Bits: 16
-  cano: {fileID: 1913589403959281834}
+    m_Bits: 4294967295
+  cano: {fileID: 0}
+  pivotNoCentro: 1
+  comprimentoPadraoCano: 2
+  espessuraCano: 0.4
   pontoOrigemEsquerda: {fileID: 5841864928792810036}
   pontoOrigemDireita: {fileID: 3930778661800850161}
   nomePontoEngateAlvo: CreateEngate
   velocidadeAproximacao: 15
   distanciaIdealEmparelhamento: 30
   velocidadeRotacao: 3
-  uiDocument: {fileID: 0}
+  escalaNavio: {x: 1, y: 1, z: 1}
+  offsetAlturaY: 0
+  mostrarPainelDebug: 1
 --- !u!114 &4451440838074480325
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -417,6 +308,21 @@ MonoBehaviour:
   combustivelPorHora: 0
   energiaConsumida: 0
   nomeDeBatismo: 
+--- !u!114 &7687605803028563258
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5058915367961701969}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &6574044225995504921
 GameObject:
   m_ObjectHideFlags: 0
@@ -441,13 +347,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6574044225995504921}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 1, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0.7071068, w: 0}
+  m_LocalPosition: {x: 0, y: 0.7082204, z: 0.07299999}
+  m_LocalScale: {x: 0.014138484, y: 0.028125143, z: 0.7082205}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1913589403959281834}
-  m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+  m_Father: {fileID: 5355402072092281225}
+  m_LocalEulerAnglesHint: {x: -90, y: 180, z: 0}
 --- !u!1 &6938231498153411852
 GameObject:
   m_ObjectHideFlags: 0
@@ -477,7 +383,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1913589403959281834}
+  - {fileID: 5841864928792810036}
+  - {fileID: 3930778661800850161}
   m_Father: {fileID: 2966355659543817280}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &7620315791878919455

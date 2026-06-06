@@ -37,6 +37,7 @@ public class MovimentoRealTerrestre : MonoBehaviour
     private bool hasPathCache;
     private bool pathPendingCache;
     private bool agenteLeituraValidaCache;
+    private readonly Collider[] bufferColisores = new Collider[8];
 
     void Start()
     {
@@ -79,8 +80,31 @@ public class MovimentoRealTerrestre : MonoBehaviour
         // Mantém o agente preso ao carro para calcular caminhos a partir da posição real
         agente.nextPosition = transform.position;
 
-        // 2. Cálculo de Destino
+        // 2. Cálculo de Destino com preferência de faixa (mão de ida e volta) se estiver na rua
         Vector3 proximoPonto = steeringTargetCache;
+        
+        RuaConectora ruaProxima = EncontrarRuaProxima(transform.position, 8f);
+        if (ruaProxima != null)
+        {
+            Vector3 dirRua = ruaProxima.transform.forward;
+            Vector3 dirMovimento = (proximoPonto - transform.position).normalized;
+            float dot = Vector3.Dot(dirMovimento, dirRua);
+            
+            // Deslocamento da faixa (afasta-se 25% da largura total do asfalto)
+            float shiftDistance = ruaProxima.largura * 0.25f;
+            
+            if (dot >= 0f)
+            {
+                // Sentido favorável da rua: mantém-se na faixa da direita
+                proximoPonto += ruaProxima.transform.right * shiftDistance;
+            }
+            else
+            {
+                // Sentido contrário: mantém-se na faixa da esquerda (direita invertida)
+                proximoPonto -= ruaProxima.transform.right * shiftDistance;
+            }
+        }
+
         Vector3 vetorDirecao = (proximoPonto - transform.position);
         vetorDirecao.y = 0; // Ignora altura (terreno plano)
 
@@ -257,5 +281,28 @@ public class MovimentoRealTerrestre : MonoBehaviour
                 }
             }
         }
+    }
+
+    private RuaConectora EncontrarRuaProxima(Vector3 posicao, float raioBusca)
+    {
+        int totalCols = Physics.OverlapSphereNonAlloc(posicao, raioBusca, bufferColisores, ~0, QueryTriggerInteraction.Ignore);
+        RuaConectora melhorRua = null;
+        float menorDist = float.MaxValue;
+        for (int i = 0; i < totalCols; i++)
+        {
+            Collider col = bufferColisores[i];
+            if (col == null) continue;
+            RuaConectora rua = col.GetComponentInParent<RuaConectora>();
+            if (rua != null)
+            {
+                float dist = Vector3.Distance(posicao, rua.transform.position);
+                if (dist < menorDist)
+                {
+                    menorDist = dist;
+                    melhorRua = rua;
+                }
+            }
+        }
+        return melhorRua;
     }
 }

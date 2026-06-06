@@ -70,3 +70,7 @@ ehthumbs.db
 Thumbs.db
 
 Assets/Industrial_Zone_Modular_Pack/Pipelines/Industral_Zone_HDRP.unitypackage
+
+# Unity Lighting Data
+*[Ll]ighting[Dd]ata.asset
+*[Ll]ighting[Dd]ata.asset.meta

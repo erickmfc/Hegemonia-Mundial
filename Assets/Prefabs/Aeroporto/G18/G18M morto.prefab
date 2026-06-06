@@ -51,6 +51,7 @@ GameObject:
   - component: {fileID: 1222432802716300693}
   - component: {fileID: 7825097297346056911}
   - component: {fileID: 4845286106728112725}
+  - component: {fileID: 2568328140483361520}
   m_Layer: 0
   m_Name: G18M morto
   m_TagString: Aereo
@@ -66,7 +67,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3555054237250671952}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 230.5, y: 1.7, z: 847.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -164,6 +165,12 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -188,6 +195,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!114 &87559553069281054
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -258,6 +269,8 @@ MonoBehaviour:
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
+  reservaMinimaRetornoPercentual: 0.22
+  reservaRetornoComDanosPercentual: 0.34
   velocidadeSolo: 10
   velocidadeMaximaVoo: 100
   taxaDeGiroLeme: 120
@@ -268,6 +281,7 @@ MonoBehaviour:
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
   rodas: []
+  ajusteAlturaEstacionado: 0
   alvoGPSVoo: {x: 0, y: 0, z: 0}
   centroDaPatrulha: {x: 0, y: 0, z: 0}
   emAtaqueMergulho: 0
@@ -293,7 +307,23 @@ MonoBehaviour:
   missilCacaPrefab: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
   tempoRecarga: 6
   raioDeDeteccao: 600
+  debugLogs: 0
   modoPassivo: 0
+--- !u!114 &2568328140483361520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3555054237250671952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &4857591987287079291
 GameObject:
   m_ObjectHideFlags: 0

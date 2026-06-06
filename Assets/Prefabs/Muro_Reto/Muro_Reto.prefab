@@ -88,6 +88,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7714254742557778490}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5188047987101821575}
   m_SourcePrefab: {fileID: 100100000, guid: db2f83413c1cd4a42a82a7a2006b7b15, type: 3}
 --- !u!1 &5570318996861275845 stripped
 GameObject:
@@ -114,6 +117,10 @@ MonoBehaviour:
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!65 &4868473442556747427
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -151,6 +158,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 4
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!208 &7714254742557778490
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -167,3 +178,18 @@ NavMeshObstacle:
   m_CarveOnlyStationary: 1
   m_Center: {x: 0, y: -0.029000001, z: 0}
   m_TimeToStationary: 0.5
+--- !u!114 &5188047987101821575
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5570318996861275845}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1

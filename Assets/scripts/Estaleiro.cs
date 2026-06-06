@@ -509,7 +509,7 @@ public class Estaleiro : MonoBehaviour
         // Ajusta a altura para o nível da água
         posFinal.y = nivelAguaAtual + offsetAltura;
 
-        Quaternion rotacaoNaval = Quaternion.LookRotation(waterForward, Vector3.up);
+        Quaternion rotacaoNaval = Quaternion.LookRotation(-waterForward, Vector3.up);
 
         // 1. INSTANCIA O PREFAB CRU E INTACTO!
         long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -576,19 +576,7 @@ public class Estaleiro : MonoBehaviour
             destinoSaida.y = nivelAguaAtual;
         }
 
-        Vector3 direcaoSaida = destinoSaida - navioPronto.transform.position;
-        direcaoSaida.y = 0f;
-        if (direcaoSaida.sqrMagnitude > 0.01f)
-        {
-            navioPronto.transform.rotation = Quaternion.LookRotation(direcaoSaida.normalized, Vector3.up);
-        }
-
-        var navRealistaSaida = navioPronto.GetComponent<ControleNavioRealista>();
-        if (navRealistaSaida != null)
-        {
-            navRealistaSaida.PrepararSaidaInicial(destinoSaida, 8f);
-        }
-
+        // Remove a movimentação e rotação automáticas em direção ao estaleiro/saída para que fiquem parados na atracagem.
         var agenteNovo = navioPronto.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agenteNovo != null)
         {
@@ -597,35 +585,12 @@ public class Estaleiro : MonoBehaviour
             {
                 agenteNovo.Warp(hit.position);
             }
+        }
 
-            var controleUnidade = navioPronto.GetComponent<ControleUnidade>();
-            var navRealista = navioPronto.GetComponent<ControleNavioRealista>();
-            var controleSubmarino = navioPronto.GetComponent<ControleSubmarino>();
-            var identidadeNaval = navioPronto.GetComponent<IdentidadeNaval>();
-            bool movimentoDelegado = false;
-
-            if (controleUnidade != null)
-            {
-                if (controleSubmarino != null)
-                {
-                    controleSubmarino.ForcarEstadoSuperficieImediato();
-                }
-
-                movimentoDelegado = controleUnidade.EmitirOrdemMover(destinoSaida);
-            }
-
-            if (!movimentoDelegado && navRealista != null) navRealista.DefinirDestino(destinoSaida);
-            else if (!movimentoDelegado && controleSubmarino != null)
-            {
-                controleSubmarino.ForcarEstadoSuperficieImediato();
-                controleSubmarino.DefinirDestino(destinoSaida);
-            }
-            else if (!movimentoDelegado && identidadeNaval != null) identidadeNaval.MoverPara(destinoSaida);
-            else if (!movimentoDelegado)
-            {
-                agenteNovo.isStopped = false;
-                navioPronto.SendMessage("MoverParaPonto", destinoSaida, SendMessageOptions.DontRequireReceiver);
-            }
+        var controleSubmarino = navioPronto.GetComponent<ControleSubmarino>();
+        if (controleSubmarino != null)
+        {
+            controleSubmarino.ForcarEstadoSuperficieImediato();
         }
 
         // Registrar no General se for IA

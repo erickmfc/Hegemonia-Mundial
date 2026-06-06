@@ -430,6 +430,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 35
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!1 &2976060225041733741
 GameObject:
   m_ObjectHideFlags: 0
@@ -658,6 +659,7 @@ GameObject:
   - component: {fileID: 3210600309673720727}
   - component: {fileID: 7156061998865911305}
   - component: {fileID: -8245045862515760698}
+  - component: {fileID: 175527378311232036}
   m_Layer: 0
   m_Name: Supra
   m_TagString: Aereo
@@ -739,6 +741,7 @@ MonoBehaviour:
   velocidadeDescidaVertical: 5
   alturaSubidaInicial: 10
   ajusteAlturaEstacionado: 0
+  reservaRetornoPercentual: 0.32
   raioInicioDescida: 18
   distanciaBusca: 0
   distanciaEmbarque: 0
@@ -794,6 +797,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 3
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!54 &1770092158635034674
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1002,6 +1009,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 25
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!65 &-8245045862515760698
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1023,6 +1031,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3.17, y: 2.5, z: 6.53}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &175527378311232036
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3806257293533495386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &3835105072774322464
 GameObject:
   m_ObjectHideFlags: 0

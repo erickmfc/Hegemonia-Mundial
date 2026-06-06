@@ -1,6 +1,5 @@
 using UnityEngine;
-using UnityEngine.UIElements;
-using System.Collections;
+using System.Collections.Generic;
 
 public class NavioAbastecimento : MonoBehaviour
 {
@@ -15,8 +14,8 @@ public class NavioAbastecimento : MonoBehaviour
     [Header("Configurações do Radar")]
     [Tooltip("Raio de varredura para encontrar navios.")]
     public float raioRadar = 500f;
-    [Tooltip("Layer usada para identificar o que é um navio.")]
-    public LayerMask layerNavios;
+    [Tooltip("Layer usada para identificar o que é um navio (deixe em Everything/~0 se não tiver certeza).")]
+    public LayerMask layerNavios = ~0;
 
     [Header("Configurações do Cano (Mangueira)")]
     [Tooltip("O GameObject que representa o cano.")]
@@ -45,16 +44,21 @@ public class NavioAbastecimento : MonoBehaviour
     [Tooltip("Offset vertical (Y) para ajustar a flutuação do navio (ex: -1 para baixar, 1 para subir).")]
     public float offsetAlturaY = 0f;
 
-    [Header("Interface (UI Toolkit)")]
-    public UIDocument uiDocument;
+    [Header("Menu Simples (OnGUI)")]
+    public bool mostrarPainelDebug = true;
     
-    // UI Elements
-    private VisualElement painelPrincipal;
-    private ScrollView listaNavios;
-    private ProgressBar barraProgresso;
-    private Label labelTempo;
-    private Label labelCombustivelRestante;
-    private Button btnFecharPainel;
+    // Lista para OnGUI
+    private struct NavioRadarInfo
+    {
+        public Transform raiz;
+        public string nome;
+        public float distancia;
+    }
+    private List<NavioRadarInfo> listaNaviosRadar = new List<NavioRadarInfo>();
+    private ControleUnidade controleUnidade;
+    private string mensagemStatusMenu = "";
+    private float sumirMensagemTempo = 0f;
+    private Vector2 scrollPosition;
     
     // Estado interno
     private bool estaAbastecendo = false;
@@ -67,6 +71,12 @@ public class NavioAbastecimento : MonoBehaviour
     private float alturaOriginalY;
     private Rigidbody rb;
     private bool originalKinematic = false;
+    
+    // Componentes de navegação a serem desativados durante acoplagem
+    private UnityEngine.AI.NavMeshAgent agenteNav;
+    private ControleNavioRealista controleNavio;
+    private bool originalNavAgentState = false;
+    private bool originalControleNavioState = false;
 
     void Start()
     {
@@ -76,6 +86,10 @@ public class NavioAbastecimento : MonoBehaviour
         {
             originalKinematic = rb.isKinematic;
         }
+        
+        agenteNav = GetComponent<UnityEngine.AI.NavMeshAgent>();
+        controleNavio = GetComponent<ControleNavioRealista>();
+        controleUnidade = GetComponentInParent<ControleUnidade>();
 
         // Ajusta a escala inicial se configurada
         if (escalaNavio != Vector3.one)
@@ -98,53 +112,10 @@ public class NavioAbastecimento : MonoBehaviour
             cano.gameObject.SetActive(false);
         }
 
-        ConfigurarUI();
         StartCoroutine(RotinaRadar());
     }
 
-    void ConfigurarUI()
-    {
-        if (uiDocument == null)
-        {
-            uiDocument = GetComponent<UIDocument>();
-        }
-
-        if (uiDocument == null)
-        {
-            Debug.LogWarning("UIDocument não atribuído no NavioAbastecimento e nenhum encontrado no mesmo GameObject.");
-            return;
-        }
-
-        var root = uiDocument.rootVisualElement;
-        
-        // Elementos correspondentes ao arquivo .uxml
-        painelPrincipal = root.Q<VisualElement>("supplyPanel");
-        listaNavios = root.Q<ScrollView>("ListaNavios");
-        barraProgresso = root.Q<ProgressBar>("BarraProgresso");
-        labelTempo = root.Q<Label>("LabelTempo");
-        labelCombustivelRestante = root.Q<Label>("LabelCombustivel");
-        btnFecharPainel = root.Q<Button>("btnClosePanel");
-
-        if (labelCombustivelRestante != null)
-        {
-            labelCombustivelRestante.text = $"{combustivelTotal:F0} L";
-        }
-        
-        if (barraProgresso != null) barraProgresso.style.display = DisplayStyle.None;
-        if (labelTempo != null) labelTempo.style.display = DisplayStyle.None;
-
-        if (btnFecharPainel != null)
-        {
-            btnFecharPainel.clicked += () => {
-                if (painelPrincipal != null)
-                {
-                    painelPrincipal.style.display = DisplayStyle.None;
-                }
-            };
-        }
-    }
-
-    IEnumerator RotinaRadar()
+    System.Collections.IEnumerator RotinaRadar()
     {
         while (true)
         {
@@ -158,41 +129,52 @@ public class NavioAbastecimento : MonoBehaviour
 
     void AtualizarListaNaviosProximos()
     {
-        if (listaNavios == null) return;
+        listaNaviosRadar.Clear();
 
-        listaNavios.Clear();
+        // Se layerNavios estiver vazia (0), forçamos buscar em tudo (~0) para evitar que o radar fique cego
+        LayerMask mascaraDeBusca = layerNavios.value == 0 ? ~0 : layerNavios;
 
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioRadar, layerNavios);
-        bool algumNavioEncontrado = false;
+        Collider[] hits = Physics.OverlapSphere(transform.position, raioRadar, mascaraDeBusca);
+        
+        // Usar um HashSet para evitar adicionar o mesmo navio múltiplas vezes caso ele tenha múltiplos colididores
+        HashSet<Transform> naviosAdicionados = new HashSet<Transform>();
 
         foreach (var hit in hits)
         {
             if (hit.transform != this.transform && hit.transform.root != this.transform.root)
             {
-                algumNavioEncontrado = true;
-                float distancia = Vector3.Distance(transform.position, hit.transform.position);
-                
-                // Criação do item de botão no padrão da UI do jogo
-                Button btnNavio = new Button(() => IniciarProcessoAbastecimento(hit.transform));
-                btnNavio.text = $"{hit.name} ({distancia:F0}m)";
-                btnNavio.AddToClassList("btn");
-                btnNavio.AddToClassList("btn-action");
-                btnNavio.style.marginBottom = 6;
-                btnNavio.style.height = 28;
-                btnNavio.style.fontSize = 9;
+                // Encontra o componente de combustível correspondente no alvo
+                CombustivelUnidade comb = hit.GetComponentInParent<CombustivelUnidade>();
+                if (comb == null)
+                {
+                    comb = hit.GetComponentInChildren<CombustivelUnidade>();
+                }
 
-                listaNavios.Add(btnNavio);
+                if (comb != null)
+                {
+                    // Verifica se o alvo é realmente um navio ou submarino por tag ou classe de combustível
+                    bool ehNavio = hit.CompareTag("Navio") || hit.CompareTag("Submarino") ||
+                                   comb.CompareTag("Navio") || comb.CompareTag("Submarino") ||
+                                   (hit.transform.parent != null && (hit.transform.parent.CompareTag("Navio") || hit.transform.parent.CompareTag("Submarino"))) ||
+                                   comb.classe == ClasseCombustivelUnidade.Naval;
+
+                    if (!ehNavio)
+                    {
+                        continue;
+                    }
+
+                    Transform navioRaiz = comb.transform;
+
+                    if (naviosAdicionados.Contains(navioRaiz))
+                    {
+                        continue;
+                    }
+                    naviosAdicionados.Add(navioRaiz);
+
+                    float distancia = Vector3.Distance(transform.position, navioRaiz.position);
+                    listaNaviosRadar.Add(new NavioRadarInfo { raiz = navioRaiz, nome = navioRaiz.name, distancia = distancia });
+                }
             }
-        }
-
-        if (!algumNavioEncontrado)
-        {
-            Label lblNenhum = new Label("Nenhum navio próximo");
-            lblNenhum.style.color = new Color(0.3f, 0.4f, 0.5f);
-            lblNenhum.style.fontSize = 9;
-            lblNenhum.style.unityTextAlign = TextAnchor.MiddleCenter;
-            lblNenhum.style.marginTop = 10;
-            listaNavios.Add(lblNenhum);
         }
     }
 
@@ -208,13 +190,21 @@ public class NavioAbastecimento : MonoBehaviour
             rb.isKinematic = true; // Evita colisões físicas e impulsos
         }
         
-        if (listaNavios != null) listaNavios.Clear();
-        
-        if (labelTempo != null)
+        if (agenteNav != null)
         {
-            labelTempo.style.display = DisplayStyle.Flex;
-            labelTempo.text = "Aproximando...";
+            originalNavAgentState = agenteNav.enabled;
+            agenteNav.enabled = false;
         }
+        
+        if (controleNavio != null)
+        {
+            originalControleNavioState = controleNavio.enabled;
+            controleNavio.enabled = false;
+        }
+        
+        listaNaviosRadar.Clear();
+        mensagemStatusMenu = "Aproximando...";
+        sumirMensagemTempo = Time.time + 10f;
     }
 
     void Update()
@@ -244,8 +234,28 @@ public class NavioAbastecimento : MonoBehaviour
         if (distanciaAoPonto > 3f)
         {
             transform.position = Vector3.MoveTowards(transform.position, posicaoEmparelhamento, velocidadeAproximacao * Time.deltaTime);
-            Quaternion rotacaoAlvo = Quaternion.LookRotation(alvoAtual.forward);
-            transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, velocidadeRotacao * Time.deltaTime);
+            
+            // Encara a direção para onde está navegando quando longe, e alinha com o alvo quando perto
+            Quaternion rotacaoDesejada;
+            if (distanciaAoPonto > 15f)
+            {
+                Vector3 direcaoMovimento = (posicaoEmparelhamento - transform.position).normalized;
+                direcaoMovimento.y = 0f; // Evita inclinar o navio para cima ou para baixo
+                if (direcaoMovimento.sqrMagnitude > 0.001f)
+                {
+                    rotacaoDesejada = Quaternion.LookRotation(direcaoMovimento);
+                }
+                else
+                {
+                    rotacaoDesejada = Quaternion.LookRotation(alvoAtual.forward);
+                }
+            }
+            else
+            {
+                rotacaoDesejada = Quaternion.LookRotation(alvoAtual.forward);
+            }
+            
+            transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoDesejada, velocidadeRotacao * Time.deltaTime);
         }
         else
         {
@@ -293,12 +303,8 @@ public class NavioAbastecimento : MonoBehaviour
             }
         }
 
-        if (barraProgresso != null)
-        {
-            barraProgresso.style.display = DisplayStyle.Flex;
-            barraProgresso.value = 0f;
-            barraProgresso.highValue = metaTransferenciaAtual;
-        }
+        mensagemStatusMenu = "Abastecendo...";
+        sumirMensagemTempo = Time.time + 10f;
 
         float distEsq = Vector3.Distance(pontoOrigemEsquerda.position, alvoAtual.position);
         float distDir = Vector3.Distance(pontoOrigemDireita.position, alvoAtual.position);
@@ -344,8 +350,6 @@ public class NavioAbastecimento : MonoBehaviour
                 combustivelAlvoComp.Abastecer(transferenciaEfetiva);
             }
 
-            AtualizarUIAbastecimento();
-
             if (combustivelTransferidoAlvo >= metaTransferenciaAtual || combustivelTotal <= 0)
             {
                 FinalizarAbastecimento();
@@ -386,26 +390,6 @@ public class NavioAbastecimento : MonoBehaviour
         cano.localScale = escala;
     }
 
-    void AtualizarUIAbastecimento()
-    {
-        if (labelCombustivelRestante != null)
-        {
-            labelCombustivelRestante.text = $"Total: {combustivelTotal:F0} L";
-        }
-
-        if (barraProgresso != null)
-        {
-            barraProgresso.value = combustivelTransferidoAlvo;
-            barraProgresso.title = $"Transferido: {combustivelTransferidoAlvo:F0} / {metaTransferenciaAtual:F0} L";
-        }
-
-        if (labelTempo != null)
-        {
-            float tempoDecorrido = Time.time - tempoInicioAbastecimento;
-            labelTempo.text = $"Tempo de Operação: {tempoDecorrido:F1}s";
-        }
-    }
-
     void FinalizarAbastecimento()
     {
         estaAbastecendo = false;
@@ -417,34 +401,100 @@ public class NavioAbastecimento : MonoBehaviour
             rb.isKinematic = originalKinematic; // Restaura a física normal do navio
         }
 
+        if (agenteNav != null)
+        {
+            agenteNav.enabled = originalNavAgentState;
+        }
+        
+        if (controleNavio != null)
+        {
+            controleNavio.enabled = originalControleNavioState;
+        }
+
         if (cano != null)
         {
             cano.gameObject.SetActive(false);
         }
 
-        if (barraProgresso != null)
-        {
-            barraProgresso.style.display = DisplayStyle.None;
-        }
-
-        if (labelTempo != null)
-        {
-            labelTempo.text = "ABASTECIMENTO COMPLETO";
-            Invoke("EsconderLabelTempo", 3f);
-        }
-    }
-
-    void EsconderLabelTempo()
-    {
-        if (labelTempo != null)
-        {
-            labelTempo.style.display = DisplayStyle.None;
-        }
+        mensagemStatusMenu = "ABASTECIMENTO COMPLETO";
+        sumirMensagemTempo = Time.time + 3f;
     }
 
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(0, 1, 1, 0.3f);
         Gizmos.DrawWireSphere(transform.position, raioRadar);
+    }
+    
+    void OnGUI()
+    {
+        if (!mostrarPainelDebug) return;
+        if (controleUnidade != null && !controleUnidade.selecionado) return;
+
+        // Define a área do menu no canto inferior esquerdo
+        GUILayout.BeginArea(new Rect(20, Screen.height - 280, 240, 260), GUI.skin.box);
+        
+        GUIStyle estiloTitulo = new GUIStyle(GUI.skin.label);
+        estiloTitulo.fontStyle = FontStyle.Bold;
+        estiloTitulo.alignment = TextAnchor.MiddleCenter;
+        
+        GUILayout.Label("NAVIO DE ABASTECIMENTO", estiloTitulo);
+        GUILayout.Label($"Estoque: {combustivelTotal:F0} Litros");
+        GUILayout.Space(5);
+        
+        if (estaAproximando || estaAbastecendo)
+        {
+            if (Time.time < sumirMensagemTempo)
+            {
+                GUILayout.Label($"Status: {mensagemStatusMenu}", estiloTitulo);
+            }
+            if (estaAbastecendo)
+            {
+                GUILayout.Label($"Transferido: {combustivelTransferidoAlvo:F0} / {metaTransferenciaAtual:F0} L");
+                float tempoDecorrido = Time.time - tempoInicioAbastecimento;
+                GUILayout.Label($"Tempo decorrido: {tempoDecorrido:F1}s");
+                
+                // Barra de progresso visual
+                float progress = metaTransferenciaAtual > 0 ? (combustivelTransferidoAlvo / metaTransferenciaAtual) : 0;
+                Rect r = GUILayoutUtility.GetRect(200, 15);
+                GUI.Box(r, "");
+                Rect fill = new Rect(r.x, r.y, r.width * progress, r.height);
+                Texture2D tex = Texture2D.whiteTexture;
+                Color old = GUI.color;
+                GUI.color = Color.green;
+                GUI.DrawTexture(fill, tex);
+                GUI.color = old;
+                GUILayout.Space(5);
+            }
+            
+            if (GUILayout.Button("Cancelar Operação", GUILayout.Height(30)))
+            {
+                FinalizarAbastecimento();
+            }
+        }
+        else
+        {
+            GUILayout.Label("Radar de Navios Próximos:", estiloTitulo);
+            if (listaNaviosRadar.Count == 0)
+            {
+                GUILayout.Label("Nenhum navio detectado.", GUILayout.Height(30));
+            }
+            else
+            {
+                scrollPosition = GUILayout.BeginScrollView(scrollPosition);
+                for (int i = 0; i < listaNaviosRadar.Count; i++)
+                {
+                    var info = listaNaviosRadar[i];
+                    if (info.raiz == null) continue; 
+                    
+                    if (GUILayout.Button($"{info.nome}\n{info.distancia:F0}m de distância", GUILayout.Height(40)))
+                    {
+                        IniciarProcessoAbastecimento(info.raiz);
+                    }
+                }
+                GUILayout.EndScrollView();
+            }
+        }
+        GUILayout.EndArea();
     }
 }

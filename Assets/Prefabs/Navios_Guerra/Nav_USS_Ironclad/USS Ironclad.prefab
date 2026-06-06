@@ -332,6 +332,7 @@ GameObject:
   - component: {fileID: 4703495614372460612}
   - component: {fileID: 5800589680931460302}
   - component: {fileID: 7461550045062992664}
+  - component: {fileID: 4147227475597945184}
   m_Layer: 0
   m_Name: USS Ironclad
   m_TagString: Navio
@@ -400,6 +401,10 @@ MonoBehaviour:
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
   tipoUnidade: 2
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!65 &8719440806488403419
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -454,9 +459,22 @@ MonoBehaviour:
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  antenaRadar: {fileID: 0}
+  velocidadeAntena: 60
   modoOperacao: 0
   somMotorParado: {fileID: 8300000, guid: f8e18ab65e78f0743ae583a8fbda9b6e, type: 3}
   somMotorMovimento: {fileID: 8300000, guid: f34f1cd4ea2656343b594d9466404130, type: 3}
+  possuiTorpedos: 0
+  tubosTorpedo:
+  - {fileID: 0}
+  - {fileID: 0}
+  prefabTorpedo: {fileID: 0}
+  torpedosDisponiveis: 4
+  alcanceTorpedos: 600
+  cooldownTorpedo: 5
+  anguloMaximoLancamento: 90
+  torpedosNoModoAtivo: 1
+  intervaloBuscaTorpedoAtivo: 0.75
 --- !u!114 &220498497041703636
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -508,8 +526,12 @@ MonoBehaviour:
   - {fileID: 4853462488599463718}
   - {fileID: 8362135119072907219}
   prefabMissel: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+  prefabTorpedo: {fileID: 0}
+  torpedosSomenteNoModoAtivo: 1
   municaoTotal: 26
   municaoMaxima: 32
+  torpedosTotal: 8
+  torpedosMaximos: 8
   tirosPorSalva: 1
   intervaloEntreTiros: 0.13
   tempoRecargaSalva: 1
@@ -518,6 +540,7 @@ MonoBehaviour:
   maxMisseisSimultaneosPorAlvo: 6
   cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
+  preaquecerMisseisNoStart: 0
   volumeSom: 1
   pitchSom: 1
   distanciaSomMinima: 50
@@ -558,10 +581,24 @@ MonoBehaviour:
   somTiro: {fileID: 8300000, guid: aa85dc85a67aa704391d80093c03b5e8, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
   misselPrefab: {fileID: 0}
   locaisDoMissel: []
   somMissel: {fileID: 0}
@@ -569,6 +606,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 10
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!114 &-7262620657248775482
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -671,10 +709,24 @@ MonoBehaviour:
   somTiro: {fileID: 8300000, guid: aa85dc85a67aa704391d80093c03b5e8, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
   misselPrefab: {fileID: 0}
   locaisDoMissel: []
   somMissel: {fileID: 0}
@@ -682,6 +734,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 10
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!64 &7461550045062992664
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -704,6 +757,21 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 0}
+--- !u!114 &4147227475597945184
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2462426102010119520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
 --- !u!1 &2518842337179265909
 GameObject:
   m_ObjectHideFlags: 0
@@ -1523,10 +1591,24 @@ MonoBehaviour:
   somTiro: {fileID: 8300000, guid: 1f5d14f7476b211498beb3c81883de6e, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
   misselPrefab: {fileID: 0}
   locaisDoMissel: []
   somMissel: {fileID: 0}
@@ -1534,6 +1616,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 10
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!4 &2587710232016543988 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 402804, guid: afbe3e44b3efec44789d7ab106ff9467, type: 3}
@@ -1732,10 +1815,24 @@ MonoBehaviour:
   somTiro: {fileID: 8300000, guid: ec9f47083560ce74e87495f678b41437, type: 3}
   somRecarga: {fileID: 0}
   fogoCano: {fileID: 0}
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
   misselPrefab: {fileID: 0}
   locaisDoMissel: []
   somMissel: {fileID: 0}
@@ -1743,6 +1840,7 @@ MonoBehaviour:
   capacidadeMisseis: 4
   tempoRecargaMisseis: 10
   municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!4 &7062289441083501967 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 505502104887743013, guid: 3e19a2889b40e9c409b9f15ac1c0f5bd, type: 3}

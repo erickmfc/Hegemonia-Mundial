@@ -88,11 +88,22 @@ public class Fazenda : MonoBehaviour
         janelaRetangulo = new Rect(Screen.width / 2f - 420f, Screen.height / 2f - 300f, 840f, 600f);
 
         PopularCatalogoSeNecessario();
-        StartCoroutine(RotinaProducaoAgricola());
+    }
+
+    private void Start()
+    {
+        if (GerenciadorTempo.Instancia != null)
+        {
+            GerenciadorTempo.Instancia.OnDataAlterada += ProcessarDiaAgricola;
+        }
     }
 
     void OnDestroy()
     {
+        if (GerenciadorTempo.Instancia != null)
+        {
+            GerenciadorTempo.Instancia.OnDataAlterada -= ProcessarDiaAgricola;
+        }
         if (FazendaAtiva == this)
         {
             FazendaAtiva = null;
@@ -180,17 +191,14 @@ public class Fazenda : MonoBehaviour
         }
     }
 
-    private System.Collections.IEnumerator RotinaProducaoAgricola()
+    private void ProcessarDiaAgricola()
     {
-        while (true)
-        {
-            yield return esperaProducao;
-            float delta = Mathf.Max(0.5f, intervaloProducaoSegundos);
-            
-            FazerTerrenoCrescer(1, ref lote1Ocupado, ref lote1Progresso, ref lote1SementeIndex, delta);
-            FazerTerrenoCrescer(2, ref lote2Ocupado, ref lote2Progresso, ref lote2SementeIndex, delta);
-            FazerTerrenoCrescer(3, ref lote3Ocupado, ref lote3Progresso, ref lote3SementeIndex, delta);
-        }
+        // Assume cada dia equivale a uma certa quantidade de tempo (e.g., 10 "unidades" de crescimento)
+        float delta = 10f; // Avança 10 de progresso por dia
+        
+        FazerTerrenoCrescer(1, ref lote1Ocupado, ref lote1Progresso, ref lote1SementeIndex, delta);
+        FazerTerrenoCrescer(2, ref lote2Ocupado, ref lote2Progresso, ref lote2SementeIndex, delta);
+        FazerTerrenoCrescer(3, ref lote3Ocupado, ref lote3Progresso, ref lote3SementeIndex, delta);
     }
 
     public void FecharMenu()

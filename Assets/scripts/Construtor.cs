@@ -53,6 +53,10 @@ public class Construtor : MonoBehaviour
     private readonly List<GameObject> fantasmasMuro = new List<GameObject>();
     private GameObject fantasmaUnico;
     private float rotacaoExtra = 0f;
+    private Vector3? ultimoPontoConstruidoRua = null;
+    private Collider ultimoColliderConstruidoRua = null;
+    private readonly List<GameObject> fantasmasRua = new List<GameObject>();
+    private bool definindoRua = false;
 
     private bool previewLocalInvalido = false;
     private string motivoInvalido = "";
@@ -108,14 +112,7 @@ public class Construtor : MonoBehaviour
         {
             InteractionModeService.Request(
                 InteractionOwner.Construction,
-                new InteractionPolicy
-                {
-                    bloqueiaSelecao = true,
-                    bloqueiaOrdemMundo = true,
-                    bloqueiaRotacaoCamera = true,
-                    consomeLMB = true,
-                    consomeRMB = true
-                },
+                new InteractionPolicy { bloqueiaSelecao = true, bloqueiaOrdemMundo = true, bloqueiaRotacaoCamera = true, consomeLMB = true, consomeRMB = true },
                 "Construção ativa");
         }
 
@@ -134,24 +131,31 @@ public class Construtor : MonoBehaviour
 
         if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape))
         {
-            CancelarConstrucao(false);
+            if (definindoRua)
+            {
+                definindoRua = false;
+                ultimoPontoConstruidoRua = null;
+                ultimoColliderConstruidoRua = null;
+                foreach (var f in fantasmasRua) if (f != null) Destroy(f);
+                fantasmasRua.Clear();
+                InvalidarPreviewSnapshot();
+            }
+            else
+            {
+                CancelarConstrucao(false);
+            }
             return;
         }
 
         if (IsMouseOverUI())
         {
             if (fantasmaUnico != null) fantasmaUnico.SetActive(false);
-            foreach (var f in fantasmasMuro)
-            {
-                if (f != null) f.SetActive(false);
-            }
+            foreach (var f in fantasmasMuro) if (f != null) f.SetActive(false);
+            foreach (var f in fantasmasRua) if (f != null) f.SetActive(false);
             return;
         }
 
-        if (fantasmaUnico != null && !fantasmaUnico.activeSelf)
-        {
-            fantasmaUnico.SetActive(true);
-        }
+        if (fantasmaUnico != null) fantasmaUnico.SetActive(!definindoRua);
 
         Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
         bool acertouChao = false;
@@ -168,20 +172,11 @@ public class Construtor : MonoBehaviour
         if (ehConstrucaoNaval)
         {
             acertouChao = TryObterPontoNoPlanoDoMar(raio, out pontoMouse);
-
             if (acertouChao)
             {
                 pontoMouse.y = NavalPlacementResolver.ResolveSeaLevel();
-
-                if (ehPlataforma)
-                {
-                    pontoMouse.y = 30.0f;
-                }
-
-                if (!ehEstruturaCosteira && ExisteTerraAltaNoPontoMaritimo(pontoMouse, mascaraGeral))
-                {
-                    acertouChao = false;
-                }
+                if (ehPlataforma) pontoMouse.y = 30.0f;
+                if (!ehEstruturaCosteira && ExisteTerraAltaNoPontoMaritimo(pontoMouse, mascaraGeral)) acertouChao = false;
             }
         }
         else
@@ -199,11 +194,9 @@ public class Construtor : MonoBehaviour
 
         bool ehMuro = prefabSelecionado.name.Contains("Muro") || prefabSelecionado.name.Contains("Fence");
         bool precisaRecalcularPreview = !PodeReutilizarPreview(pontoMouse);
-        long previewStart = 0L;
 
         if (precisaRecalcularPreview)
         {
-            previewStart = System.Diagnostics.Stopwatch.GetTimestamp();
             if (ehEstruturaCosteira)
             {
                 AtualizarPreviewCosteiroLeve(pontoMouse);
@@ -217,28 +210,14 @@ public class Construtor : MonoBehaviour
                 motivoInvalido = "";
             }
 
-            if (!previewLocalInvalido)
-            {
-                ValidarTerritorio(pontoMouse, ehPlataforma, ehEstruturaCosteira);
-            }
+            if (!previewLocalInvalido) ValidarTerritorio(pontoMouse, ehPlataforma, ehEstruturaCosteira);
 
             SalvarPreviewSnapshot(pontoMouse);
-            string chavePreview = ehConstrucaoNaval ? "naval_preview_ms" : "constructor_preview_ms";
-            float previewMs = MedirETrazerTempoDiagnostico(chavePreview, previewStart);
-            if (previewMs >= 25f)
-            {
-                DiagnosticoDesempenhoJogo.RegistrarEvento(
-                    "PreviewHitch",
-                    string.Format("{0} levou {1:0.0}ms em {2}", chavePreview, previewMs, prefabSelecionado.name));
-            }
         }
         else
         {
             RestaurarPreviewSnapshot();
-            if (usarPosicaoPreviewNaval)
-            {
-                pontoMouse = posicaoPreviewNaval;
-            }
+            if (usarPosicaoPreviewNaval) pontoMouse = posicaoPreviewNaval;
         }
 
         if (ehMuro) GerenciarConstrucaoMuro(pontoMouse);
@@ -249,18 +228,11 @@ public class Construtor : MonoBehaviour
     {
         ponto = Vector3.zero;
         float nivelDoMar = NavalPlacementResolver.ResolveSeaLevel();
-
         float denominador = Vector3.Dot(raio.direction, Vector3.up);
-        if (Mathf.Abs(denominador) < 0.0001f)
-        {
-            return false;
-        }
+        if (Mathf.Abs(denominador) < 0.0001f) return false;
 
         float distancia = (nivelDoMar - raio.origin.y) / denominador;
-        if (distancia < 0f)
-        {
-            return false;
-        }
+        if (distancia < 0f) return false;
 
         ponto = raio.origin + (raio.direction * distancia);
         ponto.y = nivelDoMar;
@@ -273,26 +245,13 @@ public class Construtor : MonoBehaviour
         RaycastHit infoTerreno;
         Vector3 origemCeu = new Vector3(pontoNoMar.x, nivelDoMar + 500f, pontoNoMar.z);
 
-        if (!Physics.Raycast(origemCeu, Vector3.down, out infoTerreno, 1000f, mascaraGeral))
-        {
-            return false;
-        }
-
-        if (infoTerreno.collider == null)
-        {
-            return false;
-        }
+        if (!Physics.Raycast(origemCeu, Vector3.down, out infoTerreno, 1000f, mascaraGeral)) return false;
+        if (infoTerreno.collider == null) return false;
 
         string nomeCollider = infoTerreno.collider.name.ToLower();
-        bool bateuEmAguaOuNaval = nomeCollider.Contains("agua") ||
-                                  nomeCollider.Contains("water") ||
-                                  infoTerreno.collider.gameObject.layer == 4;
+        bool bateuEmAguaOuNaval = nomeCollider.Contains("agua") || nomeCollider.Contains("water") || infoTerreno.collider.gameObject.layer == 4;
 
-        if (bateuEmAguaOuNaval)
-        {
-            return false;
-        }
-
+        if (bateuEmAguaOuNaval) return false;
         return infoTerreno.point.y > nivelDoMar + 1.0f;
     }
 
@@ -308,10 +267,6 @@ public class Construtor : MonoBehaviour
         }
 
         int quantidadeHits = Physics.RaycastNonAlloc(raio, bufferHitsConstrucao, 2000f, mascaraGeral, QueryTriggerInteraction.Ignore);
-        if (quantidadeHits >= bufferHitsConstrucao.Length)
-        {
-            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("preview_overflow_count");
-        }
         System.Array.Sort(bufferHitsConstrucao, 0, quantidadeHits, ComparadorHitsConstrucao);
 
         for (int i = 0; i < quantidadeHits; i++)
@@ -320,14 +275,9 @@ public class Construtor : MonoBehaviour
             if (h.collider == null) continue;
             string n = h.collider.name.ToLower();
 
-            if (n.Contains("bip001") || n.Contains("bone") || n.Contains("finger") || n.Contains("cube"))
-                continue;
-
-            if (h.collider.GetComponentInParent<UnityEngine.AI.NavMeshAgent>() != null)
-                continue;
-
-            if (h.collider.GetComponentInParent<ControleUnidade>() != null)
-                continue;
+            if (n.Contains("bip001") || n.Contains("bone") || n.Contains("finger") || n.Contains("cube")) continue;
+            if (h.collider.GetComponentInParent<UnityEngine.AI.NavMeshAgent>() != null) continue;
+            if (h.collider.GetComponentInParent<ControleUnidade>() != null) continue;
 
             pontoMouse = h.point;
             return true;
@@ -350,11 +300,7 @@ public class Construtor : MonoBehaviour
 
         Vector3 frente = rotacaoBase * Vector3.forward;
         frente.y = 0f;
-        if (frente.sqrMagnitude < 0.001f)
-        {
-            frente = Vector3.forward;
-        }
-
+        if (frente.sqrMagnitude < 0.001f) frente = Vector3.forward;
         frente.Normalize();
         rotacaoPreviewNaval = Quaternion.LookRotation(frente, Vector3.up);
         usarRotacaoPreviewNaval = true;
@@ -376,8 +322,6 @@ public class Construtor : MonoBehaviour
             previewUsaColocacaoNavalManual = true;
             return;
         }
-
-        // Sem restrição — permite colocar livremente em qualquer lugar
         LiberarPreviewCosteiroSemRestricao(pontoMouse);
     }
 
@@ -394,13 +338,8 @@ public class Construtor : MonoBehaviour
         int donoDoPonto = gerenteTerritorio.ObterDonoDoPonto(ponto);
         int meuTime = 1;
 
-        bool ehPrefeitura = prefabSelecionado.GetComponent<ComplexoGovernamental>() != null ||
-                            prefabSelecionado.name.ToLower().Contains("prefeitura") ||
-                            prefabSelecionado.name.ToLower().Contains("complexo");
-
-        bool ehBandeira = prefabSelecionado.name.ToLower().Contains("bandeira") ||
-                          prefabSelecionado.name.ToLower().Contains("flag") ||
-                          prefabSelecionado.GetComponent<MarcadorTerritorio>() != null;
+        bool ehPrefeitura = prefabSelecionado.GetComponent<ComplexoGovernamental>() != null || prefabSelecionado.name.ToLower().Contains("prefeitura") || prefabSelecionado.name.ToLower().Contains("complexo");
+        bool ehBandeira = prefabSelecionado.name.ToLower().Contains("bandeira") || prefabSelecionado.name.ToLower().Contains("flag") || prefabSelecionado.GetComponent<MarcadorTerritorio>() != null;
 
         if (!ehPrefeitura && !ehBandeira && !ehPlataforma && !ehEstruturaCosteira)
         {
@@ -420,7 +359,6 @@ public class Construtor : MonoBehaviour
                 motivoInvalido = "❌ INVASÃO DIRETA:\nVocê não pode fundar a Prefeitura/Capital em um país inimigo.";
                 return;
             }
-
             if (!gerenteTerritorio.PodeConstruirPrefeitura(ponto))
             {
                 previewLocalInvalido = true;
@@ -429,14 +367,11 @@ public class Construtor : MonoBehaviour
             }
         }
 
-        if (ehBandeira)
+        if (ehBandeira && donoDoPonto != 0 && donoDoPonto != meuTime)
         {
-            if (donoDoPonto != 0 && donoDoPonto != meuTime)
-            {
-                previewLocalInvalido = true;
-                motivoInvalido = "❌ JURISDIÇÃO INIMIGA:\nA soberania desta área já pertence a outra Nação.";
-                return;
-            }
+            previewLocalInvalido = true;
+            motivoInvalido = "❌ JURISDIÇÃO INIMIGA:\nA soberania desta área já pertence a outra Nação.";
+            return;
         }
 
         previewLocalInvalido = false;
@@ -445,48 +380,30 @@ public class Construtor : MonoBehaviour
 
     void GerenciarConstrucaoNormal(Vector3 ponto)
     {
+        RuaConectora ruaPrefab = prefabSelecionado != null ? prefabSelecionado.GetComponent<RuaConectora>() : null;
+        if (ruaPrefab != null && definindoRua)
+        {
+            GerenciarConstrucaoRuaContinua(ponto, ruaPrefab);
+            return;
+        }
+
         if (fantasmaUnico == null)
         {
-            if (prefabSelecionado == null)
-            {
-                Debug.LogError("[Construtor] Erro: prefabSelecionado é nulo ao tentar criar fantasma!");
-                return;
-            }
+            if (prefabSelecionado == null) return;
 
             GameObject containerSeguro = new GameObject("ContainerSeguro_Construtor");
             containerSeguro.SetActive(false);
-
             CriandoPreviewConstrucao = true;
-            try
-            {
-                fantasmaUnico = Instantiate(prefabSelecionado, ponto, Quaternion.identity, containerSeguro.transform);
-            }
-            finally
-            {
-                CriandoPreviewConstrucao = false;
-            }
+            try { fantasmaUnico = Instantiate(prefabSelecionado, ponto, Quaternion.identity, containerSeguro.transform); }
+            finally { CriandoPreviewConstrucao = false; }
             
-            // Garantir que a escala não seja zero na raiz (comum em prefabs animados)
-            if (fantasmaUnico.transform.localScale.sqrMagnitude < 0.0001f)
-            {
-                fantasmaUnico.transform.localScale = Vector3.one;
-                Debug.LogWarning($"[Construtor] Fantasma de {prefabSelecionado.name} tinha escala zero na raiz. Forçando para 1,1,1.");
-            }
+            if (fantasmaUnico.transform.localScale.sqrMagnitude < 0.0001f) fantasmaUnico.transform.localScale = Vector3.one;
 
-            // Forçar todos os renderers a ficarem ativos e verificar escalas zeradas nos filhos
             Renderer[] todosRenderers = fantasmaUnico.GetComponentsInChildren<Renderer>(true);
             foreach (Renderer r in todosRenderers)
             {
-                if (r.transform.localScale.sqrMagnitude < 0.0001f)
-                {
-                    r.transform.localScale = Vector3.one;
-                }
-                
-                // Ativar o GameObject do renderer caso venha desativado por padrão no prefab
-                if (!r.gameObject.activeSelf)
-                {
-                    r.gameObject.SetActive(true);
-                }
+                if (r.transform.localScale.sqrMagnitude < 0.0001f) r.transform.localScale = Vector3.one;
+                if (!r.gameObject.activeSelf) r.gameObject.SetActive(true);
             }
 
             RemoverColisoresEScripts(fantasmaUnico);
@@ -496,119 +413,262 @@ public class Construtor : MonoBehaviour
             fantasmaUnico.SetActive(true);
             CacheMateriaisFantasma();
             corFantasmaAplicada = false;
-
-            Debug.Log($"[Construtor] Fantasma criado com sucesso para: {prefabSelecionado.name}. Renderers ativados: {todosRenderers.Length}");
         }
 
         Vector3 posFinalPreview = usarPosicaoPreviewNaval ? posicaoPreviewNaval : ponto;
         
         bool fezSnapImovel = false;
+        bool fezSnapRua = false;
+        Collider snapCollider = null;
+        
         Imovel imovelPrefab = prefabSelecionado.GetComponent<Imovel>();
+        
         if (imovelPrefab != null && !usarPosicaoPreviewNaval)
         {
-            float raioBusca = imovelPrefab.distanciaConexao * 2f;
-            int totalCols = Physics.OverlapSphereNonAlloc(posFinalPreview, raioBusca, bufferColisoresSnap, ~0, QueryTriggerInteraction.Ignore);
-            if (totalCols >= bufferColisoresSnap.Length)
-            {
-                DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("preview_overflow_count");
-            }
-            Imovel imovelProximo = null;
-            float menorDistancia = float.MaxValue;
+            fantasmaUnico.transform.rotation = imovelPrefab.transform.rotation;
 
-            for (int i = 0; i < totalCols; i++)
+            RuaConectora ruaProxima = EncontrarRuaProxima(posFinalPreview, Mathf.Max(imovelPrefab.distanciaFronteiraRua, 20f));
+            if (ruaProxima != null)
             {
-                Collider col = bufferColisoresSnap[i];
-                if (col == null) continue;
-                Imovel vizinho = col.GetComponentInParent<Imovel>();
-                if (vizinho != null && vizinho.gameObject != fantasmaUnico)
+                Vector3 pInicio = GetPontoInicio(ruaProxima);
+                Vector3 pFim = GetPontoFim(ruaProxima);
+                
+                Vector3 pInicioPlano = pInicio; pInicioPlano.y = 0f;
+                Vector3 pFimPlano = pFim; pFimPlano.y = 0f;
+                Vector3 posPlana = posFinalPreview; posPlana.y = 0f;
+                
+                Vector3 ruaDirPlana = (pFimPlano - pInicioPlano).normalized;
+                if (ruaDirPlana == Vector3.zero) ruaDirPlana = Vector3.forward;
+
+                Vector3 v = posPlana - pInicioPlano;
+                float d = Vector3.Dot(v, ruaDirPlana);
+                d = Mathf.Clamp(d, 0, Vector3.Distance(pInicioPlano, pFimPlano));
+                
+                Vector3 pontoNaRuaPlano = pInicioPlano + ruaDirPlana * d;
+                Vector3 ruaRight = Vector3.Cross(Vector3.up, ruaDirPlana).normalized;
+                
+                Vector3 toMouse = posPlana - pontoNaRuaPlano;
+                float dotRight = Vector3.Dot(toMouse, ruaRight);
+                
+                Vector3 direcaoRuaParaCasa = (dotRight > 0) ? ruaRight : -ruaRight;
+                Vector3 direcaoFrenteCasa = -direcaoRuaParaCasa;
+                
+                // Força o prédio a ficar perfeitamente alinhado e RETO (Euler X e Z = 0)
+                float alvoYaw = Quaternion.LookRotation(direcaoFrenteCasa, Vector3.up).eulerAngles.y;
+                fantasmaUnico.transform.rotation = Quaternion.Euler(0, alvoYaw, 0);
+
+                // Recupera a altura Y real da rua para aplicar na casa
+                Vector3 pontoRealNaRua = pInicio + (pFim - pInicio).normalized * d;
+                
+                posFinalPreview = pontoRealNaRua + direcaoRuaParaCasa * ((ruaProxima.largura / 2f) + imovelPrefab.distanciaFronteiraRua);
+                posFinalPreview.y = pontoRealNaRua.y; 
+                
+                fezSnapImovel = true;
+                snapCollider = ruaProxima.GetComponent<Collider>();
+            }
+            else
+            {
+                float raioBusca = imovelPrefab.distanciaConexao * 2f;
+                int totalCols = Physics.OverlapSphereNonAlloc(posFinalPreview, raioBusca, bufferColisoresSnap, ~0, QueryTriggerInteraction.Ignore);
+                Imovel imovelProximo = null;
+                float menorDistancia = float.MaxValue;
+
+                for (int i = 0; i < totalCols; i++)
                 {
-                    float dist = Vector3.Distance(posFinalPreview, vizinho.transform.position);
-                    if (dist < menorDistancia)
+                    Collider col = bufferColisoresSnap[i];
+                    if (col == null) continue;
+                    Imovel viz = col.GetComponentInParent<Imovel>();
+                    if (viz != null && viz.gameObject != fantasmaUnico)
                     {
-                        menorDistancia = dist;
-                        imovelProximo = vizinho;
+                        float dist = Vector3.Distance(posFinalPreview, viz.transform.position);
+                        if (dist < menorDistancia)
+                        {
+                            menorDistancia = dist;
+                            imovelProximo = viz;
+                        }
                     }
                 }
-            }
 
-            if (imovelProximo != null)
-            {
-                Vector3 pEsq = imovelProximo.ObterPontoEsquerdo();
-                Vector3 pDir = imovelProximo.ObterPontoDireito();
-                
-                float distEsq = Vector3.Distance(posFinalPreview, pEsq);
-                float distDir = Vector3.Distance(posFinalPreview, pDir);
-                
-                if (distEsq < distDir && distEsq < imovelPrefab.distanciaConexao * 1.5f)
+                if (imovelProximo != null)
                 {
-                    fantasmaUnico.transform.rotation = imovelProximo.transform.rotation;
-                    posFinalPreview = pEsq - (fantasmaUnico.transform.right * imovelPrefab.distanciaConexao);
+                    Vector3 pEsqViz = GetPontoEsquerdo(imovelProximo);
+                    Vector3 pDirViz = GetPontoDireito(imovelProximo);
+                    
+                    Vector3 melhorPontoViz = (Vector3.Distance(posFinalPreview, pEsqViz) < Vector3.Distance(posFinalPreview, pDirViz)) ? pEsqViz : pDirViz;
+                    
+                    float alvoYaw = imovelProximo.transform.eulerAngles.y;
+                    fantasmaUnico.transform.rotation = Quaternion.Euler(0, alvoYaw, 0);
+                    
+                    Imovel imFantasma = fantasmaUnico.GetComponent<Imovel>();
+                    Vector3 pEsqFantasma = GetPontoEsquerdo(imFantasma);
+                    Vector3 pDirFantasma = GetPontoDireito(imFantasma);
+                    
+                    Vector3 melhorPontoFantasma = (Vector3.Distance(melhorPontoViz, pEsqFantasma) < Vector3.Distance(melhorPontoViz, pDirFantasma)) ? pEsqFantasma : pDirFantasma;
+                    
+                    Vector3 offsetLocal = melhorPontoFantasma - fantasmaUnico.transform.position;
+                    posFinalPreview = melhorPontoViz - offsetLocal;
+                    
                     fezSnapImovel = true;
+                    snapCollider = imovelProximo.GetComponent<Collider>();
                 }
-                else if (distDir <= distEsq && distDir < imovelPrefab.distanciaConexao * 1.5f)
+            }
+        }
+        else
+        {
+            if (ruaPrefab != null)
+            {
+                fantasmaUnico.transform.rotation = ruaPrefab.transform.rotation;
+
+                if (ultimoPontoConstruidoRua.HasValue)
                 {
-                    fantasmaUnico.transform.rotation = imovelProximo.transform.rotation;
-                    posFinalPreview = pDir + (fantasmaUnico.transform.right * imovelPrefab.distanciaConexao);
-                    fezSnapImovel = true;
+                    Vector3 anchor = ultimoPontoConstruidoRua.Value;
+                    Vector3 dir = posFinalPreview - anchor;
+                    dir.y = 0f;
+                    if (dir.sqrMagnitude > 0.001f) dir.Normalize(); else dir = Vector3.forward;
+                    
+                    float alvoYaw = Quaternion.LookRotation(dir, Vector3.up).eulerAngles.y;
+                    fantasmaUnico.transform.rotation = Quaternion.Euler(0, alvoYaw, 0);
+                    
+                    posFinalPreview = anchor + dir * (ruaPrefab.comprimento / 2f);
+                    
+                    fezSnapRua = true;
+                    snapCollider = ultimoColliderConstruidoRua;
+                }
+                else
+                {
+                    RuaConectora ruaProximaOutra = EncontrarRuaProxima(posFinalPreview, ruaPrefab.distanciaConexao * 2.5f);
+                    if (ruaProximaOutra != null && ruaProximaOutra.gameObject != fantasmaUnico)
+                    {
+                        Vector3 pInicio = GetPontoInicio(ruaProximaOutra);
+                        Vector3 pFim = GetPontoFim(ruaProximaOutra);
+                        
+                        float distIni = Vector3.Distance(posFinalPreview, pInicio);
+                        float distFim = Vector3.Distance(posFinalPreview, pFim);
+                        
+                        Vector3 snapPoint = (distIni < distFim) ? pInicio : pFim;
+                        Vector3 originPoint = (distIni < distFim) ? pFim : pInicio;
+                        
+                        Vector3 snapDir = (snapPoint - originPoint);
+                        snapDir.y = 0f; 
+                        if (snapDir.sqrMagnitude > 0.001f) snapDir.Normalize(); else snapDir = Vector3.forward;
+                        
+                        float alvoYaw = Quaternion.LookRotation(snapDir, Vector3.up).eulerAngles.y;
+                        fantasmaUnico.transform.rotation = Quaternion.Euler(0, alvoYaw, 0);
+                        
+                        posFinalPreview = snapPoint + snapDir * (ruaPrefab.comprimento / 2f);
+                        posFinalPreview.y = snapPoint.y;
+                        
+                        fezSnapRua = true;
+                        snapCollider = ruaProximaOutra.GetComponent<Collider>();
+                    }
                 }
             }
         }
 
         fantasmaUnico.transform.position = posFinalPreview;
+        if (usarRotacaoPreviewNaval) fantasmaUnico.transform.rotation = rotacaoPreviewNaval;
 
-        if (usarRotacaoPreviewNaval)
+        if (!previewLocalInvalido)
         {
-            fantasmaUnico.transform.rotation = rotacaoPreviewNaval;
+            if (VerificarSobreposicao(posFinalPreview, fantasmaUnico.transform.rotation, prefabSelecionado, 0.5f, snapCollider))
+            {
+                previewLocalInvalido = true;
+                motivoInvalido = "❌ SOBREPOSIÇÃO DE CONSTRUÇÃO:\nNão é permitido sobrepor prédios ou ruas.";
+            }
         }
 
         AplicarCorNoFantasma(fantasmaUnico, previewLocalInvalido);
 
-        if (Input.GetKeyDown(KeyCode.R) && !usarRotacaoPreviewNaval && !fezSnapImovel)
+        if (Input.GetKeyDown(KeyCode.R) && !usarRotacaoPreviewNaval && !fezSnapImovel && !fezSnapRua)
         {
             fantasmaUnico.transform.Rotate(0f, 90f, 0f);
         }
 
-        if (!Input.GetMouseButtonDown(0))
-        {
-            return;
-        }
-
+        if (!Input.GetMouseButtonDown(0)) return;
         if (previewLocalInvalido)
         {
             Debug.LogWarning($"⚠️ [Construtor] Abortando: {motivoInvalido}");
             return;
         }
 
-        long confirmStart = System.Diagnostics.Stopwatch.GetTimestamp();
-        Vector3 posFinal = fantasmaUnico.transform.position;
-        Quaternion rotFinal = fantasmaUnico.transform.rotation;
+        RuaConectora ruaPrefabTemp = prefabSelecionado != null ? prefabSelecionado.GetComponent<RuaConectora>() : null;
+        if (ruaPrefabTemp != null)
+        {
+            Vector3 direcaoRua = fantasmaUnico.transform.forward; 
+            direcaoRua.y = 0f; direcaoRua.Normalize();
+            ultimoPontoConstruidoRua = fantasmaUnico.transform.position + direcaoRua * (ruaPrefabTemp.comprimento / 2f);
+            ultimoColliderConstruidoRua = snapCollider;
+            definindoRua = true;
+            InvalidarPreviewSnapshot();
+            if (fantasmaUnico != null) fantasmaUnico.SetActive(false);
+            return;
+        }
 
-        // Estruturas costeiras usam a posição do preview diretamente, sem revalidação
+        CommitConstrucaoUnica(ponto, posFinalPreview, fantasmaUnico.transform.rotation, snapCollider);
+    }
+
+    void CommitConstrucaoUnica(Vector3 pontoMouse, Vector3 posFinal, Quaternion rotFinal, Collider snapCollider)
+    {
         if (EhEstruturaCosteiraPrefab(prefabSelecionado))
         {
             NavalPlacementResolver.StructurePose poseCommit;
-            if (NavalPlacementResolver.TryResolveStructurePose(prefabSelecionado, ponto, rotFinal, out poseCommit))
+            if (NavalPlacementResolver.TryResolveStructurePose(prefabSelecionado, pontoMouse, rotFinal, out poseCommit))
             {
                 posFinal = poseCommit.Position;
                 rotFinal = poseCommit.Rotation;
             }
-            // Se falhar, usa posFinal/rotFinal do fantasma (preview) sem bloquear
         }
 
-        if (!TentarCobrarConstrucao(custoAtual))
-        {
-            return;
-        }
+        if (!TentarCobrarConstrucao(custoAtual)) return;
 
         GameObject novo = Instantiate(prefabSelecionado, posFinal, rotFinal);
+
+        Imovel imovelNovo = novo.GetComponent<Imovel>();
+        if (imovelNovo != null)
+        {
+            RuaConectora ruaProxima = EncontrarRuaProxima(posFinal, Mathf.Max(imovelNovo.distanciaFronteiraRua * 2.5f, 20f));
+            if (ruaProxima != null)
+            {
+                Vector3 startRua = GetPontoInicio(ruaProxima);
+                Vector3 fimRua = GetPontoFim(ruaProxima);
+                Vector3 vetorRua = fimRua - startRua;
+                Vector3 dirRua = vetorRua.normalized;
+                float proj = Vector3.Dot(posFinal - startRua, dirRua);
+                proj = Mathf.Clamp(proj, 0f, vetorRua.magnitude);
+                Vector3 pontoProjetadoNaRua = startRua + dirRua * proj;
+                
+                imovelNovo.AtualizarPavimentacao(pontoProjetadoNaRua);
+            }
+        }
+        else
+        {
+            RuaConectora ruaNova = novo.GetComponent<RuaConectora>();
+            if (ruaNova != null)
+            {
+                Imovel[] todosImoveis = Object.FindObjectsByType<Imovel>(FindObjectsSortMode.None);
+                foreach (var imovel in todosImoveis)
+                {
+                    float dist = Vector3.Distance(imovel.transform.position, posFinal);
+                    if (dist < imovel.distanciaFronteiraRua * 2.5f)
+                    {
+                        Vector3 startRua = GetPontoInicio(ruaNova);
+                        Vector3 fimRua = GetPontoFim(ruaNova);
+                        Vector3 vetorRua = fimRua - startRua;
+                        Vector3 dirRua = vetorRua.normalized;
+                        float proj = Vector3.Dot(imovel.transform.position - startRua, dirRua);
+                        proj = Mathf.Clamp(proj, 0f, vetorRua.magnitude);
+                        Vector3 pontoProjetadoNaRua = startRua + dirRua * proj;
+                        
+                        imovel.AtualizarPavimentacao(pontoProjetadoNaRua);
+                    }
+                }
+            }
+        }
 
         if (EhEstruturaCosteiraPrefab(prefabSelecionado))
         {
             IA_ManualPlacementTag manualTag = novo.GetComponent<IA_ManualPlacementTag>();
-            if (manualTag == null)
-            {
-                manualTag = novo.AddComponent<IA_ManualPlacementTag>();
-            }
+            if (manualTag == null) manualTag = novo.AddComponent<IA_ManualPlacementTag>();
             manualTag.SourceLabel = previewUsaColocacaoNavalManual ? "Construtor jogador (manual)" : "Construtor jogador";
         }
 
@@ -640,44 +700,183 @@ public class Construtor : MonoBehaviour
         AnimadorConstrucao anim = novo.AddComponent<AnimadorConstrucao>();
         anim.IniciarAnimacao(escalaOriginal, 1.5f);
 
-        float constructorConfirmMs = MedirETrazerTempoDiagnostico("constructor_confirm_ms", confirmStart);
-        if (EhEstruturaCosteiraPrefab(prefabSelecionado))
+        CancelarConstrucao(false);
+    }
+
+    private void GerenciarConstrucaoRuaContinua(Vector3 ponto, RuaConectora ruaPrefab)
+    {
+        if (!ultimoPontoConstruidoRua.HasValue) return;
+        
+        Vector3 anchor = ultimoPontoConstruidoRua.Value;
+        Vector3 posFinalPreview = ponto;
+        
+        Collider snapColliderEnd = null;
+        RuaConectora ruaProximaOutra = EncontrarRuaProxima(posFinalPreview, ruaPrefab.distanciaConexao * 1.5f);
+        if (ruaProximaOutra != null)
         {
-            float navalCommitMs = MedirETrazerTempoDiagnostico("naval_commit_ms", confirmStart);
-            if (navalCommitMs >= 25f)
+            Vector3 pInicio = GetPontoInicio(ruaProximaOutra);
+            Vector3 pFim = GetPontoFim(ruaProximaOutra);
+            float distIni = Vector3.Distance(posFinalPreview, pInicio);
+            float distFim = Vector3.Distance(posFinalPreview, pFim);
+            
+            if (distIni < distFim && distIni < ruaPrefab.distanciaConexao * 1.5f) { posFinalPreview = pInicio; snapColliderEnd = ruaProximaOutra.GetComponent<Collider>(); }
+            else if (distFim < ruaPrefab.distanciaConexao * 1.5f) { posFinalPreview = pFim; snapColliderEnd = ruaProximaOutra.GetComponent<Collider>(); }
+        }
+        else
+        {
+            Imovel imovelProx = null;
+            Vector3 targetPoint = Vector3.zero;
+            float menorDist = float.MaxValue;
+            int totalCols = Physics.OverlapSphereNonAlloc(posFinalPreview, ruaPrefab.distanciaConexao * 2.5f, bufferColisoresSnap, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < totalCols; i++)
             {
-                DiagnosticoDesempenhoJogo.RegistrarEvento(
-                    "SpawnHitch",
-                    string.Format("naval_commit_ms levou {0:0.0}ms em {1}", navalCommitMs, prefabSelecionado.name));
+                Collider col = bufferColisoresSnap[i];
+                if (col == null) continue;
+                Imovel viz = col.GetComponentInParent<Imovel>();
+                if (viz != null)
+                {
+                    Vector3 pFront = GetPontoConexaoRua(viz);
+                    Vector3 pBack = GetPontoConexaoRuaTras(viz);
+                    float distFront = Vector3.Distance(posFinalPreview, pFront);
+                    float distBack = Vector3.Distance(posFinalPreview, pBack);
+                    if (distFront < menorDist)
+                    {
+                        menorDist = distFront;
+                        imovelProx = viz;
+                        targetPoint = pFront;
+                    }
+                    if (distBack < menorDist)
+                    {
+                        menorDist = distBack;
+                        imovelProx = viz;
+                        targetPoint = pBack;
+                    }
+                }
+            }
+
+            if (imovelProx != null && menorDist < ruaPrefab.distanciaConexao * 1.5f)
+            {
+                posFinalPreview = targetPoint;
+                snapColliderEnd = imovelProx.GetComponent<Collider>();
             }
         }
-        if (constructorConfirmMs >= 50f)
+        
+        Vector3 dir = posFinalPreview - anchor;
+        dir.y = 0f;
+        float dist = dir.magnitude;
+        if (dir.sqrMagnitude > 0.001f) dir.Normalize(); else dir = Vector3.forward;
+        
+        int quantidade = Mathf.Max(1, Mathf.RoundToInt(dist / ruaPrefab.comprimento));
+        
+        while (fantasmasRua.Count < quantidade)
         {
-            DiagnosticoDesempenhoJogo.RegistrarEvento(
-                constructorConfirmMs >= 600f ? "TrueFreeze" : "SpawnHitch",
-                string.Format("constructor_confirm_ms levou {0:0.0}ms em {1}", constructorConfirmMs, prefabSelecionado.name));
+            GameObject containerSeguro = new GameObject("ContainerSeguro_FantasmasRua");
+            containerSeguro.SetActive(false);
+            
+            GameObject g = Instantiate(prefabSelecionado, containerSeguro.transform);
+            RemoverColisoresEScripts(g);
+            SetLayerRecursively(g, LayerMask.NameToLayer("Ignore Raycast"));
+            g.transform.SetParent(null);
+            Destroy(containerSeguro);
+            fantasmasRua.Add(g);
         }
-
-        CancelarConstrucao(false);
+        
+        float alvoYaw = Quaternion.LookRotation(dir, Vector3.up).eulerAngles.y;
+        Quaternion rotSeg = Quaternion.Euler(0, alvoYaw, 0);
+        
+        Vector3 step = dir * ruaPrefab.comprimento;
+        Vector3 centroBase = anchor + (dir * (ruaPrefab.comprimento / 2f));
+        
+        for (int i = 0; i < quantidade; i++)
+        {
+            fantasmasRua[i].SetActive(true);
+            fantasmasRua[i].transform.rotation = rotSeg;
+            fantasmasRua[i].transform.position = centroBase + (step * i);
+        }
+        
+        for (int i = quantidade; i < fantasmasRua.Count; i++) fantasmasRua[i].SetActive(false);
+        
+        previewLocalInvalido = false;
+        motivoInvalido = "";
+        
+        for (int i = 0; i < quantidade; i++)
+        {
+            Vector3 posSeg = fantasmasRua[i].transform.position;
+            if (VerificarSobreposicao(posSeg, rotSeg, prefabSelecionado, 0.5f, ultimoColliderConstruidoRua, snapColliderEnd))
+            {
+                previewLocalInvalido = true;
+                motivoInvalido = "❌ SOBREPOSIÇÃO DE CONSTRUÇÃO:\nNão é permitido sobrepor prédios ou ruas.";
+                break;
+            }
+        }
+        
+        for (int i = 0; i < quantidade; i++) AplicarCorNoFantasmaGenerico(fantasmasRua[i], previewLocalInvalido);
+        
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (previewLocalInvalido)
+            {
+                Debug.LogWarning($"⚠️ [Construtor] Abortando: {motivoInvalido}");
+                return;
+            }
+            
+            int custoTotal = custoAtual * quantidade;
+            if (!TentarCobrarConstrucao(custoTotal)) return;
+            
+            Collider ultimoCol = null;
+            
+            for (int i = 0; i < quantidade; i++)
+            {
+                Vector3 posFinal = centroBase + (step * i);
+                GameObject novo = Instantiate(prefabSelecionado, posFinal, rotSeg);
+                RuaConectora rc = novo.GetComponent<RuaConectora>();
+                
+                ReativarLogicaUnidade(novo);
+                EnsureCollider(novo);
+                
+                ultimoCol = novo.GetComponent<Collider>();
+                
+                Imovel[] todosImoveis = Object.FindObjectsByType<Imovel>(FindObjectsSortMode.None);
+                foreach (var imovel in todosImoveis)
+                {
+                    float d = Vector3.Distance(imovel.transform.position, posFinal);
+                    if (d < imovel.distanciaFronteiraRua * 2.5f)
+                    {
+                        Vector3 startRua = GetPontoInicio(rc);
+                        Vector3 fimRua = GetPontoFim(rc);
+                        Vector3 dirRuaLocal = (fimRua - startRua).normalized;
+                        float distTotal = Vector3.Distance(startRua, fimRua);
+                        
+                        float proj = Vector3.Dot(imovel.transform.position - startRua, dirRuaLocal);
+                        proj = Mathf.Clamp(proj, 0f, distTotal);
+                        Vector3 pontoProjetadoNaRua = startRua + dirRuaLocal * proj;
+                        
+                        imovel.AtualizarPavimentacao(pontoProjetadoNaRua);
+                    }
+                }
+                
+                Vector3 escalaOriginal = novo.transform.localScale;
+                if (escalaOriginal.sqrMagnitude < 0.0001f) { escalaOriginal = Vector3.one; novo.transform.localScale = Vector3.one; }
+                novo.transform.localScale = Vector3.zero;
+                AnimadorConstrucao anim = novo.AddComponent<AnimadorConstrucao>();
+                anim.IniciarAnimacao(escalaOriginal, 1.5f);
+            }
+            
+            ultimoPontoConstruidoRua = anchor + (dir * (quantidade * ruaPrefab.comprimento));
+            ultimoColliderConstruidoRua = ultimoCol;
+            InvalidarPreviewSnapshot();
+            foreach (var f in fantasmasRua) if (f != null) f.SetActive(false);
+        }
     }
 
     bool TentarCobrarConstrucao(int custo)
     {
-        if (custo <= 0)
-        {
-            return true;
-        }
+        if (custo <= 0) return true;
 
         GerenteDeJogo gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
-        if (gerente != null && gerente.TentarGastarDinheiro(custo))
-        {
-            return true;
-        }
+        if (gerente != null && gerente.TentarGastarDinheiro(custo)) return true;
 
-        if (gerente == null && GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.TentarGastar(custoDinheiro: custo))
-        {
-            return true;
-        }
+        if (gerente == null && GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.TentarGastar(custoDinheiro: custo)) return true;
 
         string mensagem = $"Fundos insuficientes para construir. Custo: ${custo}.";
         Debug.LogWarning($"[Construtor] {mensagem}");
@@ -692,125 +891,21 @@ public class Construtor : MonoBehaviour
         return nome.Contains("estaleiro") || nome.Contains("pier");
     }
 
-    bool TryResolverPoseCosteiraManual(GameObject prefab, Vector3 pontoMouse, Quaternion rotacaoBase, out NavalPlacementResolver.StructurePose pose)
-    {
-        float nivelDoMar = NavalPlacementResolver.ResolveSeaLevel();
-        pose = new NavalPlacementResolver.StructurePose
-        {
-            Position = new Vector3(pontoMouse.x, nivelDoMar, pontoMouse.z),
-            Rotation = rotacaoBase,
-            SeaLevel = nivelDoMar,
-            Reason = "sem costa valida"
-        };
-
-        Vector3 fallbackForward = rotacaoBase * Vector3.forward;
-        if (fallbackForward.sqrMagnitude < 0.01f)
-        {
-            fallbackForward = Vector3.forward;
-        }
-
-        float frenteAgua = 35f;
-        float trasTerra = 15f;
-
-        Estaleiro estaleiro = prefab != null ? prefab.GetComponent<Estaleiro>() : null;
-        if (estaleiro != null)
-        {
-            frenteAgua = Mathf.Max(frenteAgua, Mathf.Abs(estaleiro.offsetAguaFrente));
-            trasTerra = Mathf.Max(trasTerra, Mathf.Abs(estaleiro.offsetTerraTras));
-        }
-
-        PierMarinha pier = prefab != null ? prefab.GetComponent<PierMarinha>() : null;
-        if (pier != null)
-        {
-            frenteAgua = Mathf.Max(frenteAgua, Mathf.Abs(pier.offsetAguaFrente));
-            trasTerra = Mathf.Max(trasTerra, Mathf.Abs(pier.offsetTerraTras));
-        }
-
-        Vector3 waterForward;
-        Vector3 waterPoint;
-        if (!NavalPlacementResolver.TryResolveWaterDirection(
-            pontoMouse,
-            fallbackForward,
-            8f,
-            Mathf.Max(180f, frenteAgua + 120f),
-            out waterForward,
-            out waterPoint,
-            out nivelDoMar))
-        {
-            pose.Reason = "sem agua proxima";
-            return false;
-        }
-
-        Vector3 posBase = new Vector3(pontoMouse.x, nivelDoMar, pontoMouse.z);
-        Vector3 frente = posBase + (waterForward * Mathf.Max(18f, frenteAgua * 0.70f));
-        Vector3 tras = posBase - (waterForward * Mathf.Max(12f, trasTerra));
-
-        bool temAguaNaFrente = NavalPlacementResolver.IsWaterAtPosition(frente, nivelDoMar);
-        bool temAguaAtras = NavalPlacementResolver.IsWaterAtPosition(tras, nivelDoMar);
-
-        if (!temAguaNaFrente)
-        {
-            pose.Reason = "sem agua na frente";
-            return false;
-        }
-
-        if (temAguaAtras)
-        {
-            pose.Reason = "sem terra atras";
-            return false;
-        }
-
-        float empurraoParaAgua = Mathf.Clamp(frenteAgua * 0.45f, 10f, Mathf.Max(28f, deslocamentoPadraoEstruturaCosteira));
-        Vector3 posFinal = posBase + (waterForward * empurraoParaAgua);
-        posFinal.y = nivelDoMar;
-
-        Vector3 checagemTerraAtras = posFinal - (waterForward * Mathf.Max(trasTerra, 10f));
-        Vector3 checagemAguaFrente = posFinal + (waterForward * Mathf.Max(frenteAgua * 0.60f, 14f));
-
-        bool validouTerraAtras = !NavalPlacementResolver.IsWaterAtPosition(checagemTerraAtras, nivelDoMar);
-        bool validouAguaFrente = NavalPlacementResolver.IsWaterAtPosition(checagemAguaFrente, nivelDoMar);
-
-        if (!validouTerraAtras)
-        {
-            pose.Reason = "pivot ficou avancado demais na agua";
-            return false;
-        }
-
-        if (!validouAguaFrente)
-        {
-            pose.Reason = "saida naval continuou sem agua";
-            return false;
-        }
-
-        pose.Position = posFinal;
-        pose.Rotation = Quaternion.LookRotation(waterForward, Vector3.up);
-        pose.SeaLevel = nivelDoMar;
-        pose.Reason = string.Empty;
-        return true;
-    }
-
     void TentarFixarSpawnNaval(GameObject estrutura, Quaternion rotacao, bool logar)
     {
         if (estrutura == null) return;
 
         Transform[] filhos = estrutura.GetComponentsInChildren<Transform>(true);
         Vector3 forward = rotacao * Vector3.forward;
-        if (forward.sqrMagnitude < 0.01f)
-        {
-            forward = estrutura.transform.forward;
-        }
+        if (forward.sqrMagnitude < 0.01f) forward = estrutura.transform.forward;
 
         forward.y = 0f;
-        if (forward.sqrMagnitude < 0.01f)
-        {
-            forward = Vector3.forward;
-        }
+        if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
         forward.Normalize();
 
         foreach (Transform t in filhos)
         {
             if (t == null) continue;
-
             string nome = t.name.ToLower();
             bool pareceSpawn = nome.Contains("spawn") || nome.Contains("saida") || nome.Contains("launch") || nome.Contains("navio");
             if (!pareceSpawn) continue;
@@ -819,53 +914,32 @@ public class Construtor : MonoBehaviour
             corrigido.y = alturaDoMar;
             t.position = corrigido;
 
-            if (logar)
-            {
-                Debug.Log($"[Construtor] Spawn naval forçado em {estrutura.name} -> {t.name} para {corrigido}");
-            }
+            if (logar) Debug.Log($"[Construtor] Spawn naval forçado em {estrutura.name} -> {t.name} para {corrigido}");
         }
     }
 
     void CacheMateriaisFantasma()
     {
         materiaisFantasma.Clear();
-        if (fantasmaUnico == null)
-        {
-            return;
-        }
+        if (fantasmaUnico == null) return;
 
         Renderer[] renders = fantasmaUnico.GetComponentsInChildren<Renderer>(true);
         foreach (Renderer r in renders)
         {
             if (r == null) continue;
-
             Material[] materiais = r.materials;
             for (int i = 0; i < materiais.Length; i++)
             {
-                if (materiais[i] != null)
-                {
-                    materiaisFantasma.Add(materiais[i]);
-                }
+                if (materiais[i] != null) materiaisFantasma.Add(materiais[i]);
             }
         }
     }
 
     void AplicarCorNoFantasma(GameObject fantasma, bool ehInvalido)
     {
-        if (fantasma == null)
-        {
-            return;
-        }
-
-        if (materiaisFantasma.Count == 0)
-        {
-            CacheMateriaisFantasma();
-        }
-
-        if (corFantasmaAplicada && corFantasmaInvalidaAplicada == ehInvalido)
-        {
-            return;
-        }
+        if (fantasma == null) return;
+        if (materiaisFantasma.Count == 0) CacheMateriaisFantasma();
+        if (corFantasmaAplicada && corFantasmaInvalidaAplicada == ehInvalido) return;
 
         Color cor = ehInvalido ? new Color(1f, 0.2f, 0.2f, 0.6f) : new Color(0.2f, 1f, 0.2f, 0.6f);
         for (int i = 0; i < materiaisFantasma.Count; i++)
@@ -922,10 +996,7 @@ public class Construtor : MonoBehaviour
         if (agent != null) agent.enabled = false;
 
         MonoBehaviour[] scripts = unidade.GetComponentsInChildren<MonoBehaviour>();
-        foreach (var script in scripts)
-        {
-            script.enabled = false;
-        }
+        foreach (var script in scripts) script.enabled = false;
     }
 
     void ReativarLogicaUnidade(GameObject unidade)
@@ -1050,12 +1121,7 @@ public class Construtor : MonoBehaviour
     public GameObject ConstruirEstruturaIA(GameObject prefab, Vector3 posicao, Quaternion rotacao)
     {
         if (prefab == null) return null;
-        DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefab.name);
-
-        long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
-        RegistrarTempoDiagnostico("spawn_structure_ms", instantiateStart);
-        long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
         EnsureCollider(novoPredio);
 
         Estaleiro estaleiro = novoPredio.GetComponent<Estaleiro>();
@@ -1072,13 +1138,6 @@ public class Construtor : MonoBehaviour
             TentarFixarSpawnNaval(pier.gameObject, rotacao, false);
         }
 
-        if (!Application.isEditor)
-        {
-            Debug.Log($"[Construtor IA] Construiu {prefab.name} em {posicao}");
-        }
-
-        RegistrarTempoDiagnostico("prefab_init_ms", initStart);
-
         return novoPredio;
     }
 
@@ -1091,7 +1150,6 @@ public class Construtor : MonoBehaviour
                 recemSelecionado = true;
                 return;
             }
-
             CancelarConstrucao(false);
         }
 
@@ -1101,21 +1159,17 @@ public class Construtor : MonoBehaviour
         categoriaAtual = categoria;
         modoConstrucao = true;
         recemSelecionado = true;
+        ultimoPontoConstruidoRua = null;
+        ultimoColliderConstruidoRua = null;
+        definindoRua = false;
+        foreach (var f in fantasmasRua) if (f != null) Destroy(f);
+        fantasmasRua.Clear();
         InvalidarPreviewSnapshot();
         ObterGerenteTerritorio(true);
         InteractionModeService.Request(
             InteractionOwner.Construction,
-            new InteractionPolicy
-            {
-                bloqueiaSelecao = true,
-                bloqueiaOrdemMundo = true,
-                bloqueiaRotacaoCamera = true,
-                consomeLMB = true,
-                consomeRMB = true
-            },
+            new InteractionPolicy { bloqueiaSelecao = true, bloqueiaOrdemMundo = true, bloqueiaRotacaoCamera = true, consomeLMB = true, consomeRMB = true },
             "Construção ativa");
-
-        Debug.Log($"[Construtor] MODO CONSTRUÇÃO ATIVADO para: {prefab.name}. Custo: {custo}. Categoria: {categoria}");
     }
 
     public void CancelarConstrucao(bool reembolsar = false)
@@ -1123,20 +1177,13 @@ public class Construtor : MonoBehaviour
         if (reembolsar && custoAtual > 0)
         {
             GerenteDeJogo gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
-            if (gerente != null)
-            {
-                gerente.dinheiroAtual += custoAtual;
-                Debug.Log($"[Construtor] Reembolsado ${custoAtual} (Gerente Antigo)");
-            }
-            else if (GerenciadorRecursos.Instancia != null)
-            {
-                GerenciadorRecursos.Instancia.AdicionarRecursos(addDinheiro: custoAtual);
-                Debug.Log($"[Construtor] Reembolsado ${custoAtual}");
-            }
+            if (gerente != null) gerente.dinheiroAtual += custoAtual;
+            else if (GerenciadorRecursos.Instancia != null) GerenciadorRecursos.Instancia.AdicionarRecursos(addDinheiro: custoAtual);
         }
 
         modoConstrucao = false;
         definindoMuro = false;
+        definindoRua = false;
         prefabSelecionado = null;
         custoAtual = 0;
         rotacaoExtra = 0f;
@@ -1145,30 +1192,26 @@ public class Construtor : MonoBehaviour
         previewUsaColocacaoNavalManual = false;
         previewLocalInvalido = false;
         motivoInvalido = "";
+        ultimoPontoConstruidoRua = null;
+        ultimoColliderConstruidoRua = null;
         InvalidarPreviewSnapshot();
         InteractionModeService.Release(InteractionOwner.Construction);
 
-        if (fantasmaUnico != null)
-        {
-            Destroy(fantasmaUnico);
-        }
+        if (fantasmaUnico != null) Destroy(fantasmaUnico);
         fantasmaUnico = null;
         materiaisFantasma.Clear();
         corFantasmaAplicada = false;
 
-        foreach (var f in fantasmasMuro)
-        {
-            if (f != null) Destroy(f);
-        }
+        foreach (var f in fantasmasMuro) if (f != null) Destroy(f);
         fantasmasMuro.Clear();
+
+        foreach (var f in fantasmasRua) if (f != null) Destroy(f);
+        fantasmasRua.Clear();
     }
 
     void SuspenderInteracoesConcorrentes()
     {
-        if (ModoDemolicao.TemModoAtivo)
-        {
-            ModoDemolicao.Instancia.AlternarModo(false);
-        }
+        if (ModoDemolicao.TemModoAtivo) ModoDemolicao.Instancia.AlternarModo(false);
 
         InteractionModeService.Release(InteractionOwner.Patrol);
         InteractionModeService.Release(InteractionOwner.Follow);
@@ -1177,28 +1220,13 @@ public class Construtor : MonoBehaviour
         InteractionModeService.Release(InteractionOwner.ManualFire);
 
         MenuMisseis menuMisseis = Object.FindFirstObjectByType<MenuMisseis>();
-        if (menuMisseis != null)
-        {
-            menuMisseis.CancelarLancamento();
-        }
+        if (menuMisseis != null) menuMisseis.CancelarLancamento();
 
         GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach (GerenciadorAeroporto aeroporto in aeroportos)
-        {
-            if (aeroporto != null)
-            {
-                aeroporto.CancelarInteracaoPorConstrucao();
-            }
-        }
+        foreach (GerenciadorAeroporto aeroporto in aeroportos) if (aeroporto != null) aeroporto.CancelarInteracaoPorConstrucao();
 
         NavioTransporteTropas[] naviosTransporte = Object.FindObjectsByType<NavioTransporteTropas>(FindObjectsSortMode.None);
-        foreach (NavioTransporteTropas navio in naviosTransporte)
-        {
-            if (navio != null)
-            {
-                navio.CancelarInteracaoPorConstrucao();
-            }
-        }
+        foreach (NavioTransporteTropas navio in naviosTransporte) if (navio != null) navio.CancelarInteracaoPorConstrucao();
     }
 
     void RemoverColisoresEScripts(GameObject obj)
@@ -1211,16 +1239,12 @@ public class Construtor : MonoBehaviour
         }
 
         UnityEngine.AI.NavMeshObstacle[] navs = obj.GetComponentsInChildren<UnityEngine.AI.NavMeshObstacle>(true);
-        foreach (var n in navs)
-        {
-            Destroy(n);
-        }
+        foreach (var n in navs) Destroy(n);
 
         MonoBehaviour[] scripts = obj.GetComponentsInChildren<MonoBehaviour>(true);
         foreach (var s in scripts)
         {
-            if (s == null) continue;
-            if (s == this) continue;
+            if (s == null || s == this) continue;
             s.enabled = false;
         }
     }
@@ -1279,112 +1303,6 @@ public class Construtor : MonoBehaviour
         }
     }
 
-    private static void RegistrarTempoDiagnostico(string chave, long inicio)
-    {
-        float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
-        if (elapsedMs > 0f)
-        {
-            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
-        }
-    }
-
-    private static float MedirETrazerTempoDiagnostico(string chave, long inicio)
-    {
-        float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicio) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
-        if (elapsedMs > 0f)
-        {
-            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(chave, elapsedMs);
-        }
-
-        return elapsedMs;
-    }
-
-    public float ObterAlturaTerreno(Vector3 ponto)
-    {
-        float alturaMarcada;
-        if (RegistroSuperficieMapa.TryGetAltura(ponto, TipoSuperficieMapa.Chao, out alturaMarcada))
-        {
-            return alturaMarcada;
-        }
-
-        if (Terrain.activeTerrain != null)
-        {
-            return Terrain.activeTerrain.SampleHeight(ponto);
-        }
-
-        RaycastHit hit;
-        if (Physics.Raycast(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, out hit, 1000f))
-        {
-            if (!hit.collider.name.ToLower().Contains("water"))
-            {
-                return hit.point.y;
-            }
-        }
-
-        return 0f;
-    }
-
-    public int VerTipoPonto(Vector3 ponto)
-    {
-        ClassificacaoSuperficieMapa classificacaoMarcada;
-        float alturaMarcada;
-        if (RegistroSuperficieMapa.TryClassify(ponto, out classificacaoMarcada, out alturaMarcada))
-        {
-            if (classificacaoMarcada == ClassificacaoSuperficieMapa.Agua || classificacaoMarcada == ClassificacaoSuperficieMapa.Costa)
-            {
-                return 1;
-            }
-
-            if (classificacaoMarcada == ClassificacaoSuperficieMapa.Chao)
-            {
-                return 2;
-            }
-        }
-
-        int mascaraGeral = ~(1 << LayerMask.NameToLayer("Ignore Raycast"));
-        RaycastHit[] hits = Physics.RaycastAll(new Vector3(ponto.x, 500f, ponto.z), Vector3.down, 1000f, mascaraGeral);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-
-        foreach (var hit in hits)
-        {
-            if (hit.collider == null) continue;
-            string n = hit.collider.name.ToLower();
-
-            if (n.Contains("bip001") || n.Contains("bone") || n.Contains("cube") || n.Contains("finger")) continue;
-            if (hit.collider.GetComponentInParent<IdentidadeUnidade>()) continue;
-
-            MarcadorSuperficieMapa marcador = hit.collider.GetComponentInParent<MarcadorSuperficieMapa>();
-            if (marcador != null)
-            {
-                return marcador.TipoSuperficie == TipoSuperficieMapa.Agua ? 1 : 2;
-            }
-
-            int l = hit.collider.gameObject.layer;
-            if (l == 4 || n.Contains("water") || n.Contains("agua") || n.Contains("ocean") || n.Contains("mar") || n.Contains("sea"))
-            {
-                return 1;
-            }
-
-            if (hit.point.y <= alturaDoMar + 1.0f)
-            {
-                return 1;
-            }
-
-            return 2;
-        }
-
-        if (Terrain.activeTerrain != null)
-        {
-            if (Terrain.activeTerrain.SampleHeight(ponto) <= alturaDoMar + 1.0f)
-            {
-                return 1;
-            }
-            return 2;
-        }
-
-        return 0;
-    }
-
     bool IsMouseOverUI()
     {
         UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current;
@@ -1403,85 +1321,43 @@ public class Construtor : MonoBehaviour
 
         foreach (UnityEngine.EventSystems.RaycastResult result in bufferRaycastUI)
         {
-            if (result.gameObject == null || !result.gameObject.activeInHierarchy)
-            {
-                continue;
-            }
-
+            if (result.gameObject == null || !result.gameObject.activeInHierarchy) continue;
             Canvas c = result.gameObject.GetComponentInParent<Canvas>();
-            if (c == null || c.renderMode == RenderMode.WorldSpace)
-            {
-                continue;
-            }
-
-            if (!UIEstaVisivelEInterativa(result.gameObject))
-            {
-                continue;
-            }
-
+            if (c == null || c.renderMode == RenderMode.WorldSpace) continue;
+            if (!UIEstaVisivelEInterativa(result.gameObject)) continue;
             return true;
         }
-
         return false;
     }
 
     static bool UIEstaVisivelEInterativa(GameObject uiObject)
     {
-        if (uiObject == null || !uiObject.activeInHierarchy)
-        {
-            return false;
-        }
-
+        if (uiObject == null || !uiObject.activeInHierarchy) return false;
         Graphic graphic = uiObject.GetComponent<Graphic>();
-        if (graphic != null && !graphic.raycastTarget)
-        {
-            return false;
-        }
+        if (graphic != null && !graphic.raycastTarget) return false;
 
         CanvasGroup[] groups = uiObject.GetComponentsInParent<CanvasGroup>(true);
         for (int i = 0; i < groups.Length; i++)
         {
             CanvasGroup group = groups[i];
             if (group == null) continue;
-            if (!group.blocksRaycasts || group.alpha <= 0.05f)
-            {
-                return false;
-            }
+            if (!group.blocksRaycasts || group.alpha <= 0.05f) return false;
         }
-
         return UIObjetoBloqueiaCliqueMundo(uiObject);
     }
 
     static bool UIObjetoBloqueiaCliqueMundo(GameObject uiObject)
     {
-        if (uiObject == null)
-        {
-            return false;
-        }
-
-        if (uiObject.GetComponentInParent<Selectable>() != null
-            || uiObject.GetComponentInParent<ScrollRect>() != null
-            || uiObject.GetComponentInParent<UnityEngine.EventSystems.EventTrigger>() != null)
-        {
-            return true;
-        }
+        if (uiObject == null) return false;
+        if (uiObject.GetComponentInParent<Selectable>() != null || uiObject.GetComponentInParent<ScrollRect>() != null || uiObject.GetComponentInParent<UnityEngine.EventSystems.EventTrigger>() != null) return true;
 
         Transform atual = uiObject.transform;
         while (atual != null)
         {
             string nome = atual.name;
-            if (nome.Contains("Painel_Construcao")
-                || nome.Contains("Painel_Governo")
-                || nome.Contains("Menu")
-                || nome.Contains("Popup")
-                || nome.Contains("Modal"))
-            {
-                return true;
-            }
-
+            if (nome.Contains("Painel_Construcao") || nome.Contains("Painel_Governo") || nome.Contains("Menu") || nome.Contains("Popup") || nome.Contains("Modal")) return true;
             atual = atual.parent;
         }
-
         return false;
     }
 
@@ -1506,7 +1382,6 @@ public class Construtor : MonoBehaviour
     void SetLayerRecursively(GameObject obj, int newLayer)
     {
         if (obj == null) return;
-
         obj.layer = newLayer;
         foreach (Transform child in obj.transform)
         {
@@ -1517,26 +1392,10 @@ public class Construtor : MonoBehaviour
 
     bool PodeReutilizarPreview(Vector3 pontoMouse)
     {
-        if (!possuiPreviewSnapshot || prefabSelecionado == null)
-        {
-            return false;
-        }
-
-        if (previewSnapshot.prefabId != prefabSelecionado.GetInstanceID())
-        {
-            return false;
-        }
-
-        if (Application.isPlaying && (Time.unscaledTime - previewSnapshot.timestamp) > JanelaCachePreviewSegundos)
-        {
-            return false;
-        }
-
-        if (Mathf.Abs(previewSnapshot.rotationKey - ObterChaveRotacaoPreview()) > 0.01f)
-        {
-            return false;
-        }
-
+        if (!possuiPreviewSnapshot || prefabSelecionado == null) return false;
+        if (previewSnapshot.prefabId != prefabSelecionado.GetInstanceID()) return false;
+        if (Application.isPlaying && (Time.unscaledTime - previewSnapshot.timestamp) > JanelaCachePreviewSegundos) return false;
+        if (Mathf.Abs(previewSnapshot.rotationKey - ObterChaveRotacaoPreview()) > 0.01f) return false;
         return previewSnapshot.mouseCell == QuantizarPontoPreview(pontoMouse);
     }
 
@@ -1586,47 +1445,24 @@ public class Construtor : MonoBehaviour
     Vector3 QuantizarPontoPreview(Vector3 pontoMouse)
     {
         float passo = Mathf.Max(0.1f, DistanciaCachePreview);
-        return new Vector3(
-            Mathf.Round(pontoMouse.x / passo) * passo,
-            0f,
-            Mathf.Round(pontoMouse.z / passo) * passo);
+        return new Vector3(Mathf.Round(pontoMouse.x / passo) * passo, 0f, Mathf.Round(pontoMouse.z / passo) * passo);
     }
 
     float ObterChaveRotacaoPreview()
     {
         float angulo = rotacaoExtra;
-        if (usarRotacaoPreviewNaval)
-        {
-            angulo += rotacaoPreviewNaval.eulerAngles.y;
-        }
-        else if (fantasmaUnico != null)
-        {
-            angulo += fantasmaUnico.transform.eulerAngles.y;
-        }
-        else if (prefabSelecionado != null)
-        {
-            angulo += prefabSelecionado.transform.eulerAngles.y;
-        }
-
+        if (usarRotacaoPreviewNaval) angulo += rotacaoPreviewNaval.eulerAngles.y;
+        else if (fantasmaUnico != null) angulo += fantasmaUnico.transform.eulerAngles.y;
+        else if (prefabSelecionado != null) angulo += prefabSelecionado.transform.eulerAngles.y;
         return Mathf.Repeat(Mathf.Round(angulo * 10f) * 0.1f, 360f);
     }
 
     GerenteDeTerritorio ObterGerenteTerritorio(bool criarSeAusente)
     {
-        if (gerenteTerritorioCache != null)
-        {
-            return gerenteTerritorioCache;
-        }
+        if (gerenteTerritorioCache != null) return gerenteTerritorioCache;
+        if (Time.unscaledTime < proximaBuscaGerenteTerritorio) return GerenteDeTerritorio.Instancia;
 
-        if (Time.unscaledTime < proximaBuscaGerenteTerritorio)
-        {
-            return GerenteDeTerritorio.Instancia;
-        }
-
-        gerenteTerritorioCache = GerenteDeTerritorio.Instancia != null
-            ? GerenteDeTerritorio.Instancia
-            : Object.FindFirstObjectByType<GerenteDeTerritorio>();
-
+        gerenteTerritorioCache = GerenteDeTerritorio.Instancia != null ? GerenteDeTerritorio.Instancia : Object.FindFirstObjectByType<GerenteDeTerritorio>();
         if (gerenteTerritorioCache == null && criarSeAusente)
         {
             GameObject gerObj = new GameObject("GerenteDeTerritorio_Sistema");
@@ -1635,5 +1471,128 @@ public class Construtor : MonoBehaviour
 
         proximaBuscaGerenteTerritorio = Time.unscaledTime + 1f;
         return gerenteTerritorioCache;
+    }
+
+    private RuaConectora EncontrarRuaProxima(Vector3 posicao, float raioBusca)
+    {
+        int totalCols = Physics.OverlapSphereNonAlloc(posicao, raioBusca, bufferColisoresSnap, ~0, QueryTriggerInteraction.Ignore);
+        RuaConectora melhorRua = null;
+        float menorDist = float.MaxValue;
+        for (int i = 0; i < totalCols; i++)
+        {
+            Collider col = bufferColisoresSnap[i];
+            if (col == null) continue;
+            RuaConectora rua = col.GetComponentInParent<RuaConectora>();
+            if (rua != null)
+            {
+                float dist = Vector3.Distance(posicao, rua.transform.position);
+                if (dist < menorDist)
+                {
+                    menorDist = dist;
+                    melhorRua = rua;
+                }
+            }
+        }
+        return melhorRua;
+    }
+
+    private bool VerificarSobreposicao(Vector3 posicao, Quaternion rotacao, GameObject prefab, float margemSeguranca = 0.5f, Collider ignorarCollider = null, Collider ignorarCollider2 = null)
+    {
+        Bounds boundsBase = new Bounds(prefab.transform.position, Vector3.zero);
+        Renderer[] renderers = prefab.GetComponentsInChildren<Renderer>(true);
+        if (renderers.Length > 0)
+        {
+            boundsBase = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) boundsBase.Encapsulate(renderers[i].bounds);
+        }
+        
+        Vector3 metadeTamanho = boundsBase.extents - (Vector3.one * margemSeguranca);
+        if (metadeTamanho.x < 0.2f) metadeTamanho.x = 0.2f;
+        if (metadeTamanho.y < 0.2f) metadeTamanho.y = 0.2f;
+        if (metadeTamanho.z < 0.2f) metadeTamanho.z = 0.2f;
+
+        Collider[] cols = Physics.OverlapBox(posicao, metadeTamanho, rotacao, ~0, QueryTriggerInteraction.Ignore);
+        foreach (var col in cols)
+        {
+            if (col == null) continue;
+            
+            if (ignorarCollider != null && (col == ignorarCollider || col.transform.IsChildOf(ignorarCollider.transform) || ignorarCollider.transform.IsChildOf(col.transform))) continue;
+            if (ignorarCollider2 != null && (col == ignorarCollider2 || col.transform.IsChildOf(ignorarCollider2.transform) || ignorarCollider2.transform.IsChildOf(col.transform))) continue;
+
+            string nomeCol = col.name.ToLower();
+            if (nomeCol.Contains("terreno") || nomeCol.Contains("terrain") || nomeCol.Contains("agua") || nomeCol.Contains("water") || col.gameObject.layer == 4)
+            {
+                continue;
+            }
+            
+            if (col.GetComponentInParent<Imovel>() != null || 
+                col.GetComponentInParent<RuaConectora>() != null ||
+                col.GetComponentInParent<Edificio>() != null ||
+                nomeCol.Contains("complexo") || 
+                nomeCol.Contains("quartel"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void AplicarCorNoFantasmaGenerico(GameObject obj, bool ehInvalido)
+    {
+        if (obj == null) return;
+        Color cor = ehInvalido ? new Color(1f, 0.2f, 0.2f, 0.6f) : new Color(0.2f, 1f, 0.2f, 0.6f);
+        Renderer[] renders = obj.GetComponentsInChildren<Renderer>(true);
+        foreach (Renderer r in renders)
+        {
+            if (r == null) continue;
+            Material[] materiais = r.materials;
+            foreach (Material mat in materiais)
+            {
+                if (mat == null) continue;
+                mat.color = cor;
+                mat.SetFloat("_Mode", 3);
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = 3000;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers para evitar erros de versão nos scripts Imovel e RuaConectora
+    // Faz a matemática internamente sem exigir métodos atualizados nestas classes
+    // -------------------------------------------------------------------------
+    private Vector3 GetPontoInicio(RuaConectora rua) {
+        return rua.transform.position - rua.transform.forward * (rua.comprimento / 2f);
+    }
+    
+    private Vector3 GetPontoFim(RuaConectora rua) {
+        return rua.transform.position + rua.transform.forward * (rua.comprimento / 2f);
+    }
+    
+    private Vector3 GetPontoEsquerdo(Imovel imovel) {
+        return imovel.transform.position - imovel.transform.right * imovel.distanciaConexao;
+    }
+    
+    private Vector3 GetPontoDireito(Imovel imovel) {
+        return imovel.transform.position + imovel.transform.right * imovel.distanciaConexao;
+    }
+    
+    private Vector3 GetPontoConexaoRua(Imovel imovel) {
+        return imovel.transform.position - imovel.transform.forward * imovel.distanciaFronteiraRua;
+    }
+    
+    private Vector3 GetPontoConexaoRuaTras(Imovel imovel) {
+        // Tenta pegar a variável "traseira" se você possuir um Imovel mais atualizado, caso contrário usa a frente.
+        float dist = imovel.distanciaFronteiraRua;
+        var field = imovel.GetType().GetField("distanciaFronteiraRuaTras");
+        if (field != null) {
+            dist = (float)field.GetValue(imovel);
+        }
+        return imovel.transform.position + imovel.transform.forward * dist;
     }
 }
