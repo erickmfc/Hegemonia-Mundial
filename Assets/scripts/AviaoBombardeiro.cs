@@ -62,7 +62,6 @@ public class AviaoBombardeiro : MonoBehaviour
     
     // Visuais
     private GameObject marcadorAreaVisual;
-    private bool marcadorCriado = false;
     private Vector3 ultimoAlvoEstrategico = Vector3.zero;
 
     // Estado de Voo
@@ -255,7 +254,6 @@ public class AviaoBombardeiro : MonoBehaviour
     private void CriarMarcadorImediato()
     {
         // Removido a pedido do usuário: o marcador 3D (X/Cilindro) não deve aparecer no mundo do jogo, apenas no mapa tático (UI)
-        marcadorCriado = true;
     }
 
     void OnDestroy()

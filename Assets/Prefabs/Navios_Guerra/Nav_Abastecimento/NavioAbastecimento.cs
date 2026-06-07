@@ -153,9 +153,10 @@ public class NavioAbastecimento : MonoBehaviour
                 if (comb != null)
                 {
                     // Verifica se o alvo é realmente um navio ou submarino por tag ou classe de combustível
-                    bool ehNavio = hit.CompareTag("Navio") || hit.CompareTag("Submarino") ||
-                                   comb.CompareTag("Navio") || comb.CompareTag("Submarino") ||
-                                   (hit.transform.parent != null && (hit.transform.parent.CompareTag("Navio") || hit.transform.parent.CompareTag("Submarino"))) ||
+                    // Usa TagSafe.Matches para evitar exceção se a tag não estiver registrada no projeto
+                    bool ehNavio = TagSafe.Matches(hit, "Navio") || TagSafe.Matches(hit, "Submarino") ||
+                                   TagSafe.Matches(comb, "Navio") || TagSafe.Matches(comb, "Submarino") ||
+                                   (hit.transform.parent != null && (TagSafe.Matches(hit.transform.parent, "Navio") || TagSafe.Matches(hit.transform.parent, "Submarino"))) ||
                                    comb.classe == ClasseCombustivelUnidade.Naval;
 
                     if (!ehNavio)

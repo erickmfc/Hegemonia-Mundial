@@ -147,7 +147,7 @@ public class IA_Arquiteto_Pro : MonoBehaviour
             var aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
             foreach (var aero in aeroportos)
             {
-                if (aero == null) continue;
+                if (aero == null || aero is GerenciadorAeroportoComercial) continue;
                 var id = aero.GetComponent<IdentidadeUnidade>();
                 if (id != null && id.teamID == chefe.identidade.teamID)
                 {

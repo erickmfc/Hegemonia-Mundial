@@ -153,7 +153,7 @@ namespace Hegemonia.UI
             _textoAlerta.fontSize = 13f;
             _textoAlerta.alignment = TextAlignmentOptions.Center;
             _textoAlerta.fontStyle = FontStyles.Bold;
-            _textoAlerta.enableWordWrapping = true;
+            _textoAlerta.textWrappingMode = TextWrappingModes.Normal;
 
             panelGO.SetActive(false);
         }

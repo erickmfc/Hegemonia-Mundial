@@ -305,6 +305,11 @@ namespace Hegemonia.AI.BrainMaster
                 return "estaleiro naval";
             }
 
+            if (normalized.Contains("aeroporto comercial") || normalized.Contains("aeroporto_comercial") || normalized.Contains("aeroportocomercial"))
+            {
+                return "aeroporto comercial";
+            }
+
             if (normalized.Contains("aeroporto")
                 || normalized.Contains("airport")
                 || normalized.Contains("base aerea")
@@ -334,6 +339,23 @@ namespace Hegemonia.AI.BrainMaster
             if (normalized.Contains("lancador") || normalized.Contains("missil") || normalized.Contains("silo"))
             {
                 return "lancador de misseis";
+            }
+
+            // Imóveis residenciais
+            if (normalized.Contains("imovel") || normalized.Contains("casa")
+                || normalized.Contains("moradia") || normalized.Contains("residencia")
+                || normalized.Contains("habitacao") || normalized.Contains("house")
+                || normalized.Contains("apartamento"))
+            {
+                return "imovel";
+            }
+
+            // Prédios / Village
+            if (normalized.Contains("village") || normalized.Contains("aldeia")
+                || normalized.Contains("predio") || normalized.Contains("edificio")
+                || normalized.Contains("vila") || (normalized.Contains("predio") && !normalized.Contains("pre")))
+            {
+                return "village";
             }
 
             return normalized;
@@ -417,7 +439,12 @@ namespace Hegemonia.AI.BrainMaster
                 aliases.Add("estaleiro naval");
             }
 
-            if (!isPortaAvioes && (isAirport || joined.Contains("aeroporto") || joined.Contains("airport") || joined.Contains("pista")))
+            if (!isPortaAvioes && (joined.Contains("aeroporto comercial") || joined.Contains("aeroportocomercial")))
+            {
+                aliases.Add("aeroporto comercial");
+                aliases.Add("aeroporto_comercial");
+            }
+            else if (!isPortaAvioes && (isAirport || joined.Contains("aeroporto") || joined.Contains("airport") || joined.Contains("pista")))
             {
                 aliases.Add("aeroporto");
                 aliases.Add("airport");
@@ -457,6 +484,31 @@ namespace Hegemonia.AI.BrainMaster
                 aliases.Add("lancador de misseis");
                 aliases.Add("missil");
                 aliases.Add("silo");
+            }
+
+            // Imóveis residenciais (casas, apartamentos, moradias)
+            if (joined.Contains("imovel") || joined.Contains("casa") || joined.Contains("moradia")
+                || joined.Contains("residencia") || joined.Contains("house") || joined.Contains("apartamento")
+                || joined.Contains("habitacao"))
+            {
+                aliases.Add("imovel");
+                aliases.Add("casa");
+                aliases.Add("moradia");
+                aliases.Add("residencia");
+                aliases.Add("house");
+                aliases.Add("habitacao");
+                aliases.Add("apartamento");
+            }
+
+            // Prédios / Village
+            if (joined.Contains("village") || joined.Contains("predio") || joined.Contains("aldeia")
+                || joined.Contains("vila") || joined.Contains("edificio"))
+            {
+                aliases.Add("village");
+                aliases.Add("predio");
+                aliases.Add("aldeia");
+                aliases.Add("vila");
+                aliases.Add("edificio");
             }
 
             return aliases.ToArray();
@@ -1711,7 +1763,7 @@ namespace Hegemonia.AI.BrainMaster
             for (int i = 0; i < _airportBuffer.Count; i++)
             {
                 GerenciadorAeroporto airport = _airportBuffer[i];
-                if (airport == null || !_bridge.BelongsToTeam(airport))
+                if (airport == null || !_bridge.BelongsToTeam(airport) || airport is GerenciadorAeroportoComercial)
                 {
                     continue;
                 }
@@ -1809,6 +1861,10 @@ namespace Hegemonia.AI.BrainMaster
                    || n.Contains("g15")
                    || n.Contains("a_20")
                    || n.Contains("a20")
+                   || n.Contains("a10")
+                   || n.Contains("a-10")
+                   || n.Contains("warthog")
+                   || n.Contains("thunderbolt")
                    || n.Contains("g18m")
                    || n.Contains("super tuk")
                    || n.Contains("supertuk")
@@ -2523,6 +2579,11 @@ namespace Hegemonia.AI.BrainMaster
                 modernAircraft.alvoEstrategico = strategicTarget != Vector3.zero ? strategicTarget : desired;
                 modernAircraft.centroDaPatrulha = desired;
                 modernAircraft.alvoGPSVoo = desired;
+
+                if (modernAircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                {
+                    modernAircraft.IniciarMissaoCompleta(modernAircraft.alvoEstrategico);
+                }
             }
         }
 

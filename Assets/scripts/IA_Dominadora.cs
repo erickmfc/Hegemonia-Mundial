@@ -407,6 +407,9 @@ public class IA_Dominadora : MonoBehaviour
 
     void Start()
     {
+        // A IA cria um nome do país ao iniciar o jogo
+        nomeNacao = "Império de " + GeradorNomesBatismo.GerarNome();
+
         if (autoDetectarMarcadores)
             BuscarSinalizadoresGlobais();
 

@@ -1131,6 +1131,7 @@ public class GerenteSelecao : MonoBehaviour
         foreach (var unidade in bufferControlesSelecionaveis)
         {
             if (unidade == null || !unidade.enabled) continue; // Ignora unidades desativadas (como soldados dentro de caminhões)
+            if (unidade.GetComponent<ControleAviaoComercial>() != null) continue; // Ignora civis
 
             // Onde o tanque está na tela?
             Vector3 posTela = cam.WorldToScreenPoint(unidade.transform.position);
@@ -1153,6 +1154,10 @@ public class GerenteSelecao : MonoBehaviour
         ControleUnidade unidade = origem.GetComponentInParent<ControleUnidade>();
         if (unidade != null)
         {
+            if (unidade.GetComponent<ControleAviaoComercial>() != null)
+            {
+                return null; // Aviões comerciais são automáticos e não selecionáveis
+            }
             return unidade;
         }
 

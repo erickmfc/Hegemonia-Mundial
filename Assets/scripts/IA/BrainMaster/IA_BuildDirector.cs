@@ -375,6 +375,9 @@ namespace Hegemonia.AI.BrainMaster
             int walls;
             int missiles;
             int warehouses;
+            int usinas;
+            int houses;
+            int villages;
             CollectStructureCounts(
                 out cityHall,
                 out hq,
@@ -390,7 +393,10 @@ namespace Hegemonia.AI.BrainMaster
                 out plataformas,
                 out walls,
                 out missiles,
-                out warehouses);
+                out warehouses,
+                out usinas,
+                out houses,
+                out villages);
             UpdateProgressTracker(now);
 
             Vector3 baseCenter = _context.WorldState.BaseCenter;
@@ -505,7 +511,8 @@ namespace Hegemonia.AI.BrainMaster
                 warehouses,
                 barracks,
                 estaleiros,
-                piers);
+                piers,
+                usinas);
             EndTimingScope(
                 "HandleScriptedBootstrap",
                 "handled=" + bootstrapHandled + (_context.Brain != null ? " | stage=" + _context.Brain.BootstrapStage : string.Empty),
@@ -544,6 +551,12 @@ namespace Hegemonia.AI.BrainMaster
             int desiredBarracks = 1;
             int desiredFactories = mobilizingBase ? 2 : 1;
             int desiredAirports = 1;
+            int desiredUsinas = factories > 0 ? 2 : 1;
+
+            if (usinas < desiredUsinas && QueueBuildAtLand("usina", IA_ZoneType.Core, landAnchor, 25f, 220f, mobilizingBase ? 97 : 96, 10f))
+            {
+                return;
+            }
 
             if (barracks < desiredBarracks && QueueBuildAtLand("quartel", IA_ZoneType.Military, landAnchor, 25f, 90f, mobilizingBase ? 98 : 95, mobilizingBase ? 10f : 8f))
             {
@@ -629,7 +642,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            if (airports < desiredAirports && factories > 0 && QueueBuildAtLand("aeroporto", IA_ZoneType.Air, landAnchor, 320f, 980f, mobilizingBase ? 95 : 94, mobilizingBase ? 24f : 18f))
+            if (airports < desiredAirports && factories > 0 && QueueBuildAtLand("aeroporto", IA_ZoneType.Air, landAnchor, 90f, 300f, mobilizingBase ? 95 : 94, mobilizingBase ? 24f : 18f))
             {
                 return;
             }
@@ -660,6 +673,29 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             if (warehouses < 1 && QueueBuildAtLand("armazem", IA_ZoneType.Economy, landAnchor, 35f, 150f, 74, 12f))
+            {
+                return;
+            }
+
+            // == Imóveis Residenciais ==
+            // A IA constrói casas após ter prefeitura + ao menos uma estrutura produtiva.
+            // Limite de 4 casas (imovel) e 2 prédios/villages por base.
+            bool temEstruturaProdutiva = factories > 0 || barracks > 0 || usinas > 0;
+            if (houses < 4
+                && cityHall > 0
+                && temEstruturaProdutiva
+                && !mobilizingBase
+                && QueueBuildAtLand("imovel", IA_ZoneType.Economy, landAnchor, 15f, 130f, 72, 18f))
+            {
+                return;
+            }
+
+            if (villages < 2
+                && houses >= 2
+                && cityHall > 0
+                && temEstruturaProdutiva
+                && !mobilizingBase
+                && QueueBuildAtLand("village", IA_ZoneType.Economy, landAnchor, 30f, 160f, 68, 22f))
             {
                 return;
             }
@@ -720,7 +756,10 @@ namespace Hegemonia.AI.BrainMaster
             out int plataformas,
             out int walls,
             out int missiles,
-            out int warehouses)
+            out int warehouses,
+            out int usinas,
+            out int houses,
+            out int villages)
         {
             long profileStart = BeginTimingScope();
 
@@ -739,6 +778,9 @@ namespace Hegemonia.AI.BrainMaster
             walls = 0;
             missiles = 0;
             warehouses = 0;
+            usinas = 0;
+            houses = 0;
+            villages = 0;
 
             for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
             {
@@ -819,6 +861,11 @@ namespace Hegemonia.AI.BrainMaster
                     walls++;
                 }
 
+                if (name.Contains("usina"))
+                {
+                    usinas++;
+                }
+
                 if (name.Contains("lancador") || name.Contains("missil") || name.Contains("silo"))
                 {
                     missiles++;
@@ -827,6 +874,21 @@ namespace Hegemonia.AI.BrainMaster
                 if (name.Contains("armazem") || name.Contains("galpao"))
                 {
                     warehouses++;
+                }
+
+                // Imóveis residenciais (casas, apartamentos, moradias)
+                if (name.Contains("imovel") || name.Contains("casa") || name.Contains("moradia")
+                    || name.Contains("residencia") || name.Contains("house") || name.Contains("apartamento")
+                    || name.Contains("habitacao"))
+                {
+                    houses++;
+                }
+
+                // Prédios / Village
+                if (name.Contains("village") || name.Contains("predio") || name.Contains("aldeia")
+                    || name.Contains("vila") || name.Contains("edificio"))
+                {
+                    villages++;
                 }
             }
 
@@ -1310,7 +1372,8 @@ namespace Hegemonia.AI.BrainMaster
             int warehouses,
             int barracks,
             int estaleiros,
-            int piers)
+            int piers,
+            int usinas)
         {
             IA_BrainMaster brain = _context.Brain;
             if (brain == null || !brain.IsBootstrapActive)
@@ -1327,9 +1390,9 @@ namespace Hegemonia.AI.BrainMaster
                         return AdvanceBootstrapAfterTime(
                             elapsed,
                             BootstrapAeroportoTime,
-                            IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
-                            "prefeitura pronta; aguardando t=10s para aeroporto",
-                            "abrindo fase do aeroporto");
+                            IA_BrainMaster.IA_BootstrapStage.BuildUsina,
+                            "prefeitura pronta; aguardando t=10s para usina",
+                            "abrindo fase da usina");
                     }
 
                     if (elapsed < BootstrapPrefeituraTime)
@@ -1349,6 +1412,80 @@ namespace Hegemonia.AI.BrainMaster
                         "Prefeitura",
                         "governo",
                         "capital");
+
+                case IA_BrainMaster.IA_BootstrapStage.BuildUsina:
+                    if (usinas > 0)
+                    {
+                        return AdvanceBootstrapAfterTime(
+                            elapsed,
+                            8f,
+                            IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial,
+                            "usina pronta; aguardando t=8s para aeroporto comercial",
+                            "abrindo fase do aeroporto comercial");
+                    }
+
+                    if (elapsed < 6f)
+                    {
+                        brain.SetBootstrapStatus("aguardando t=6s para iniciar usina");
+                        return true;
+                    }
+
+                    if (brain.GetBootstrapStageElapsed(now) >= 20f)
+                    {
+                        brain.SetBootstrapStage(
+                            IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial,
+                            "usina adiada; seguindo bootstrap e retomando depois");
+                        return true;
+                    }
+
+                    return TryBootstrapMandatoryLandBuild(
+                        "usina",
+                        landAnchor != Vector3.zero ? landAnchor : baseCenter,
+                        IA_ZoneType.Core,
+                        15f,
+                        150f,
+                        990,
+                        2.5f,
+                        "Usina",
+                        "energia",
+                        "usina");
+
+                case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial:
+                    if (_context.WorldState.ForceSnapshot.CommercialAirportCount > 0)
+                    {
+                        return AdvanceBootstrapAfterTime(
+                            elapsed,
+                            10f,
+                            IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
+                            "aeroporto comercial pronto; aguardando t=10s para aeroporto militar",
+                            "abrindo fase do aeroporto militar");
+                    }
+
+                    if (elapsed < 8f)
+                    {
+                        brain.SetBootstrapStatus("aguardando t=8s para iniciar aeroporto comercial");
+                        return true;
+                    }
+
+                    if (brain.GetBootstrapStageElapsed(now) >= 25f)
+                    {
+                        brain.SetBootstrapStage(
+                            IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
+                            "aeroporto comercial adiado; seguindo bootstrap e retomando depois");
+                        return true;
+                    }
+
+                    return TryBootstrapMandatoryLandBuild(
+                        "aeroporto_comercial",
+                        landAnchor,
+                        IA_ZoneType.Air,
+                        60f,
+                        400f,
+                        975,
+                        4f,
+                        "aeroporto comercial",
+                        "pista comercial",
+                        "comercial");
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildAeroporto:
                     if (airports > 0)
@@ -1380,7 +1517,7 @@ namespace Hegemonia.AI.BrainMaster
                         landAnchor,
                         IA_ZoneType.Air,
                         40f,
-                        1600f,
+                        300f,
                         980,
                         4f,
                         "aeroporto",

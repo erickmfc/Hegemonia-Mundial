@@ -153,7 +153,7 @@ public class PainelRecursos : MonoBehaviour
             transform.SetParent(canvasGO.transform, false);
         }
 
-        if (FindObjectOfType<EventSystem>() == null)
+        if (FindFirstObjectByType<EventSystem>() == null)
         {
             GameObject eventSystem = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
             eventSystem.transform.SetAsLastSibling();
@@ -476,7 +476,7 @@ public class PainelRecursos : MonoBehaviour
         tmp.color = cor;
         tmp.alignment = alinhamento;
         tmp.fontStyle = estilo;
-        tmp.enableWordWrapping = false;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
         tmp.overflowMode = TextOverflowModes.Ellipsis;
         tmp.raycastTarget = false;
 

@@ -2613,6 +2613,7 @@ public class MenuConstrucao : MonoBehaviour
             {
                 if (a == null) return false;
                 if (a is GerenciadorPortaAvioes) return false; // Impede que compras do menu geral caiam no porta-aviões
+                if (a is GerenciadorAeroportoComercial) return false; // Impede aviões militares no aeroporto comercial
                 IdentidadeUnidade id = a.GetComponent<IdentidadeUnidade>();
                 return id == null || id.teamID == 1;
             })

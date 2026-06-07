@@ -323,8 +323,9 @@ public class GerenteDeJogo : MonoBehaviour
                     || (a.GetComponentInParent<IdentidadeNaval>() != null)
                     || (a.GetComponentInParent<NavioPetroleiro>() != null);
                 bool ehCarrierNome = a.name.ToLower().Contains("carrier") || a.name.ToLower().Contains("porta") || a.name.ToLower().Contains("navio") || a.name.ToLower().Contains("ship");
+                bool ehComercial = a is GerenciadorAeroportoComercial;
                 
-                if (ehCarrier || ehTransporte || ehNaval || ehCarrierNome) continue;
+                if (ehCarrier || ehTransporte || ehNaval || ehCarrierNome || ehComercial) continue;
 
                 bool temVagaAerea = pedido.ehHelicoptero
                     ? (a.ObterVagaHelicopteroPreferencial(false) != null)

@@ -55,12 +55,35 @@ public class SistemaDeDanos : MonoBehaviour
         vidaAtual += bonus; 
     }
 
-    public void ReceberDano(float dano)
+    public void ReceberDano(float dano, UnityEngine.GameObject agressor = null)
     {
         if (morreu) return;
 
         vidaAtual -= dano;
         float porcentagem = vidaAtual / vidaMaxima;
+        
+        if (agressor != null)
+        {
+            IdentidadeUnidade vitimaID = GetComponent<IdentidadeUnidade>();
+            if (vitimaID == null) vitimaID = GetComponentInParent<IdentidadeUnidade>();
+            IdentidadeUnidade agressorID = agressor.GetComponent<IdentidadeUnidade>();
+            if (agressorID == null) agressorID = agressor.GetComponentInParent<IdentidadeUnidade>();
+
+            if (vitimaID != null && agressorID != null && vitimaID.teamID != agressorID.teamID)
+            {
+                if (Hegemonia.AI.BrainMaster.SistemaGovernoMundial.Instancia != null)
+                {
+                    var relacao = Hegemonia.AI.BrainMaster.SistemaGovernoMundial.Instancia.ObterRelacao(vitimaID.teamID, agressorID.teamID);
+                    if (relacao != null && !relacao.guerraDeclarada)
+                    {
+                        relacao.guerraDeclarada = true;
+                        Hegemonia.AI.BrainMaster.SistemaGovernoMundial.Instancia.NotificarGuerra(vitimaID.teamID);
+                        Hegemonia.AI.BrainMaster.SistemaGovernoMundial.Instancia.NotificarGuerra(agressorID.teamID);
+                        UnityEngine.Debug.Log($"[Diplomacia] GUERRA declarada entre Time {vitimaID.teamID} e Time {agressorID.teamID} devida a agressão!");
+                    }
+                }
+            }
+        }
         
         // Notifica outros sistemas que recebeu dano
         OnDano?.Invoke();

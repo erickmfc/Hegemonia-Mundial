@@ -495,8 +495,8 @@ MonoBehaviour:
   estaEmModoVooFisico: 0
   tipoPropulsao: 1
   helices:
-  - {fileID: 1334921942806542342}
-  - {fileID: 2040706147767250595}
+  - {fileID: 7139795083732527761}
+  - {fileID: 3419444695556104051}
   eixoGiroHelice: {x: 0, y: 0, z: 1}
   velocidadeMaxGiroHelice: 1500
   rastroTurbinas: []
@@ -506,6 +506,9 @@ MonoBehaviour:
   asaBankingComercial: 25
   arfagemPitchComercial: 12
   somMotorComercial: {fileID: 0}
+  nomeCompanhia: Independente
+  nomeDestinoIA: 
+  passagensVendidas: 0
 --- !u!4 &5306535090736281042 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8846175526807498921, guid: 7400e145d90b69f4b8c251d7c1adfca8, type: 3}

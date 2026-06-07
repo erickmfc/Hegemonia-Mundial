@@ -16,7 +16,6 @@ namespace Hegemonia.AI.Master
         [SerializeField] private bool _applyOnAwake = true;
         [SerializeField] private bool _logChanges = false;
 
-        private static bool _appliedOnce;
         private static IA_ModeSwitch _instance;
         private bool _hasAppliedLocally;
 
@@ -60,7 +59,6 @@ namespace Hegemonia.AI.Master
             }
 
             _hasAppliedLocally = true;
-            _appliedOnce = true;
             switch (_mode)
             {
                 case AIStackMode.NovaIA:

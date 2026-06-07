@@ -1222,6 +1222,7 @@ public class ControleUnidade : MonoBehaviour
                 linhaCaminho.gameObject.SetActive(false);
         }
         return;
+#if false
         // Desenho da linha verde desativado conforme solicitado
         if (!selecionado || linhaCaminho == null) return;
 
@@ -1295,6 +1296,7 @@ public class ControleUnidade : MonoBehaviour
         {
             if (linhaCaminho.gameObject.activeSelf) linhaCaminho.gameObject.SetActive(false);
         }
+#endif
     }
 
     void RegistrarDestinoOrdenado(Vector3 destino)

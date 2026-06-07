@@ -28,9 +28,6 @@ public class MenuComandoController : MonoBehaviour
     [Tooltip("Metade do tamanho do mundo em unidades (ex: 5000 = mundo de -5000 a +5000)")]
     [SerializeField] private float mundoMetade = 5000f;
 
-    [Header("Referências Opcionais")]
-    [Tooltip("Prefixo dos GameObjects de unidade inimiga para identificação (Tag)")]
-    [SerializeField] private string tagInimigo = "Inimigo";
 
     // -----------------------------------------------------------------------
     // Estado interno
@@ -851,8 +848,15 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     private void AtualizarTelemetriaUnidade()
     {
+        unidadesSelecionadasMenu.RemoveAll(u => u == null);
+        if (unidadeSelecionadaMenu == null && unidadesSelecionadasMenu.Count > 0)
+        {
+            unidadeSelecionadaMenu = unidadesSelecionadasMenu[0];
+        }
+
         if (unidadesSelecionadasMenu.Count == 0)
         {
+            unidadeSelecionadaMenu = null;
             SetText(unidadeNome, "NENHUMA");
             SetText(unidadeEmoji, "❓");
             SetText(statTipo, "—");

@@ -985,20 +985,29 @@ public class ControleAviao : MonoBehaviour
         vagaRetorno = null; 
 
         // === [DECOLAGEM] ===
-        if (aeroportoOrigem.waypointsDecolagem != null && aeroportoOrigem.waypointsDecolagem.Count > 0)
+        var wpDecolagem = ObterWaypointsDecolagem();
+        var wpsTaxiEntrada = ObterWaypointsTaxiEntrada();
+        List<Transform> caminhoDecolagem = new List<Transform>();
+        
+        if (wpsTaxiEntrada != null)
         {
-            List<Transform> caminhoDecolagem = new List<Transform>();
-            
-            // Táxi de saída: se houver pontos de preparação, passa por eles antes da pista
-            if (aeroportoOrigem.wpPreparacao != null) caminhoDecolagem.Add(aeroportoOrigem.wpPreparacao);
-            if (aeroportoOrigem.wpPronto != null) caminhoDecolagem.Add(aeroportoOrigem.wpPronto);
-
-            for (int i = 0; i < aeroportoOrigem.waypointsDecolagem.Count; i++)
+            for (int i = 0; i < wpsTaxiEntrada.Count; i++)
             {
-                if (aeroportoOrigem.waypointsDecolagem[i] != null)
-                    caminhoDecolagem.Add(aeroportoOrigem.waypointsDecolagem[i]);
+                if (wpsTaxiEntrada[i] != null)
+                    caminhoDecolagem.Add(wpsTaxiEntrada[i]);
             }
-            if (caminhoDecolagem.Count > 0)
+        }
+        
+        if (wpDecolagem != null)
+        {
+            for (int i = 0; i < wpDecolagem.Count; i++)
+            {
+                if (wpDecolagem[i] != null)
+                    caminhoDecolagem.Add(wpDecolagem[i]);
+            }
+        }
+
+        if (caminhoDecolagem.Count > 0)
             {
                 // Giro realista: aponta suavemente para o início da pista antes de começar a andar
                 Vector3 dirParaPista = caminhoDecolagem[0].position - transform.position;

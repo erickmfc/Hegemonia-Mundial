@@ -4,44 +4,7 @@ using System.Collections.Generic;
 
 public class GerenciadorAeroporto : MonoBehaviour
 {
-    [System.Serializable]
-    public class ContratoAereoAtivo
-    {
-        public string nomeCompanhia;
-        public int diasDuracao;
-        public int diasRestantes;
-        public int baiasOcupadas;
-        public int valorPorPassagem;
-        public float demandaTurismoBase;
-        public int passagensVendidasHoje;
-    }
-
-    [System.Serializable]
-    public class ContratoAereoOferecido
-    {
-        public string nomeCompanhia;
-        public int diasDuracao;
-        public int baiasExigidas;
-        public int baiasNegociadas;
-        public int valorPorPassagem;
-        public float demandaTurismoBase;
-    }
-
-    [Header("Sistema de Aviação Comercial")]
-    public int totalBaiasComerciais = 5;
-    public List<ContratoAereoAtivo> contratosAtivos = new List<ContratoAereoAtivo>();
-    public List<ContratoAereoOferecido> contratosDisponiveis = new List<ContratoAereoOferecido>();
-    
-    private float timerDiaComercial = 0f;
-    private float tempoUltimoTickEconomia = 0f;
-    private int estatisticaTurismoDia = 0;
-    private int estatisticaPassagensVendidasDia = 0;
-    private int paisesConectados = 0;
-    
-    [Header("Spawner Visual Comercial")]
-    public GameObject prefabAviaoComercial; // Vincular C40h
-    private float tempoUltimoSpawnComercial = 0f;
-    private List<ControleAviaoComercial> frotaComercialAtiva = new List<ControleAviaoComercial>();
+    // Estruturas comerciais removidas e transferidas para GerenciadorAeroportoComercial.cs
     
     private enum ModoOrdemHelicoptero
     {
@@ -95,7 +58,6 @@ public class GerenciadorAeroporto : MonoBehaviour
     private Vector2 scrollPosHangar;
     private Vector2 scrollPosC700;
     private Vector2 scrollPosAbaMilitar;
-    private Vector2 scrollPosAbaComercial;
     [HideInInspector] public ControleAviao aviaoSelecionadoParaMissao;
     [HideInInspector] public C700TransporteAereo c700SelecionadoParaMissao;
     [HideInInspector] public Helicoptero helicopteroSelecionadoParaMissao;
@@ -130,6 +92,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     private string _ultimoModeloPainelPatrulha = string.Empty;
     private bool _usarMarcadorPatrulhaAviaoNoProximoClique = false;
     private float _proximaSortidaIA = -999f;
+    private float _proximoReporPatioTime = -999f;
 
     [Header("⚡ Energia")]
     public bool semEnergia = false;
@@ -178,11 +141,6 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     protected virtual void Awake()
     {
-        if (contratosDisponiveis.Count == 0)
-        {
-            GerarNovosContratos();
-        }
-
 #if UNITY_EDITOR
         GarantirPrefabsMarcadoresNoEditor();
 #endif
@@ -289,7 +247,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         RegistroEntidadesJogo.Unregister(this);
     }
 
-    void Start()
+    protected virtual void Start()
     {
         // Inicia o serviço de reparação automática
         StartCoroutine(ManutencaoDeFrota());
@@ -372,143 +330,6 @@ public class GerenciadorAeroporto : MonoBehaviour
         ServicoAbastecimento.TentarAbastecer(combustivel, 45f * Mathf.Max(0.1f, deltaServico), out _);
     }
 
-    private void ProcessarEconomiaAviação()
-    {
-        if (Time.time < tempoUltimoTickEconomia + 4f) return;
-        tempoUltimoTickEconomia = Time.time;
-
-        if (semEnergia) return;
-
-        timerDiaComercial += 4f; 
-        if (timerDiaComercial >= 120f)
-        {
-            timerDiaComercial = 0f;
-            VirarDiaComercial();
-        }
-
-        ProcessarSpawnComercialVisuais(contratosAtivos.Count);
-    }
-
-    private void VirarDiaComercial()
-    {
-        GerarNovosContratos();
-        
-        estatisticaTurismoDia = 0;
-        estatisticaPassagensVendidasDia = 0;
-        int receitaDia = 0;
-
-        float qualidadeVida = 50f;
-        if (SistemaGovernoMundial.Instancia != null && _identidadeCacheada != null)
-        {
-            var pais = SistemaGovernoMundial.Instancia.ObterPais(_identidadeCacheada.teamID);
-            if (pais != null) qualidadeVida = pais.qualidadeVida;
-        }
-
-        // Fator de escala: 100% qualidade de vida pode chegar a 100k turismo.
-        // Se < 25%, cai drasticamente.
-        float fatorAtrai = qualidadeVida / 100f;
-        if (qualidadeVida < 25f) fatorAtrai *= 0.1f;
-
-        for (int i = contratosAtivos.Count - 1; i >= 0; i--)
-        {
-            var cia = contratosAtivos[i];
-            cia.diasRestantes--;
-            
-            if (cia.diasRestantes <= 0)
-            {
-                contratosAtivos.RemoveAt(i);
-                continue;
-            }
-
-            int minTurismo = (int)(1000 * cia.demandaTurismoBase * fatorAtrai);
-            int maxTurismo = (int)(10000 * cia.demandaTurismoBase * fatorAtrai);
-            if (minTurismo < 0) minTurismo = 0;
-            if (maxTurismo <= minTurismo) maxTurismo = minTurismo + 10;
-
-            int turismoDesteVoo = Random.Range(minTurismo, maxTurismo);
-            cia.passagensVendidasHoje = turismoDesteVoo;
-
-            estatisticaTurismoDia += turismoDesteVoo;
-            estatisticaPassagensVendidasDia += turismoDesteVoo;
-            receitaDia += turismoDesteVoo * cia.valorPorPassagem;
-        }
-
-        if (GerenciadorRecursos.Instancia != null)
-        {
-            GerenciadorRecursos.Instancia.dinheiro += receitaDia;
-        }
-
-        // Atualizar estatística de países
-        paisesConectados = 0;
-        if (GerenciadorDivisaoTerritorial.Instancia != null)
-        {
-            var todosAeros = GerenciadorDivisaoTerritorial.Instancia.cidades;
-            HashSet<int> teamsConectados = new HashSet<int>();
-            foreach (var cid in todosAeros)
-            {
-                if (cid.temAeroporto && cid.teamID != (_identidadeCacheada != null ? _identidadeCacheada.teamID : 1))
-                {
-                    teamsConectados.Add(cid.teamID);
-                }
-            }
-            paisesConectados = teamsConectados.Count;
-        }
-    }
-
-    private void GerarNovosContratos()
-    {
-        contratosDisponiveis.Clear();
-        string[] nomesCias = { "Atlas Global", "Solaris Fly", "Carmesim Airways", "Boreal Charter", "Valeriana Express", "Oceanic Air", "Pinnacle Jet" };
-        
-        int qtdNovos = Random.Range(2, 5);
-        for(int i=0; i<qtdNovos; i++)
-        {
-            var novo = new ContratoAereoOferecido();
-            novo.nomeCompanhia = nomesCias[Random.Range(0, nomesCias.Length)];
-            novo.baiasExigidas = Random.Range(1, 4);
-            novo.baiasNegociadas = novo.baiasExigidas;
-            novo.diasDuracao = Random.Range(3, 15);
-            novo.valorPorPassagem = Random.Range(5, 40);
-            novo.demandaTurismoBase = Random.Range(0.5f, 2f);
-            
-            contratosDisponiveis.Add(novo);
-        }
-    }
-
-    private void ProcessarSpawnComercialVisuais(int qtdContratosAtivos)
-    {
-        if (prefabAviaoComercial == null || qtdContratosAtivos == 0 || semEnergia) return;
-        
-        RemoveNulls(frotaComercialAtiva);
-        
-        if (frotaComercialAtiva.Count >= 3) return;
-
-        if (Time.time < tempoUltimoSpawnComercial + Random.Range(20f, 40f)) return;
-        
-        Transform vaga = ObterPrimeiraVagaLivre();
-        if (vaga == null) return; 
-
-        tempoUltimoSpawnComercial = Time.time;
-        Vector3 posSpawn = (wpPreparacao != null) ? wpPreparacao.position : transform.position;
-        GameObject comercialObj = Instantiate(prefabAviaoComercial, posSpawn, Quaternion.identity);
-        
-        ControleAviaoComercial ca = comercialObj.GetComponent<ControleAviaoComercial>();
-        if (ca == null) ca = comercialObj.AddComponent<ControleAviaoComercial>();
-        
-        ca.aeroportoOrigem = this;
-        
-        // Atribuir dados do voo a partir de um contrato aleatório ativo
-        if (contratosAtivos.Count > 0)
-        {
-            var contrato = contratosAtivos[Random.Range(0, contratosAtivos.Count)];
-            ca.nomeCompanhia = contrato.nomeCompanhia;
-            ca.passagensVendidas = Random.Range((int)(contrato.passagensVendidasHoje * 0.1f), (int)(contrato.passagensVendidasHoje * 0.5f) + 1);
-        }
-
-        frotaComercialAtiva.Add(ca);
-        StartCoroutine(RotinaRecebimento(ca)); 
-    }
-
     private void ProcessarFilaCompraAeronavesIA()
     {
         if (!usarFilaSpawnAereoIA) return;
@@ -531,14 +352,19 @@ public class GerenciadorAeroporto : MonoBehaviour
         _proximoSpawnAeronaveIA = Time.unscaledTime + Mathf.Max(0.05f, cooldown);
     }
 
-    void Update()
+    protected virtual void Update()
     {
-        ProcessarEconomiaAviação();
-
         ProcessarFilaCompraAeronavesIA();
         if (cameraPrincipal == null) cameraPrincipal = Camera.main;
         RemoveNulls(helicopterosDoAeroporto);
         LimparHelicopterosTransferidos();
+
+        // Replenish patio from hangar periodically if space is available
+        if (avioesNoHangar.Count > 0 && Time.time >= _proximoReporPatioTime)
+        {
+            _proximoReporPatioTime = Time.time + 2.0f;
+            ReporPatioComAvioesDoHangar();
+        }
 
         if (Construtor.EmModoConstrucaoAtivo)
         {
@@ -1140,6 +966,12 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (controleDaNave != null)
         {
             controleDaNave.aeroportoOrigem = this;
+            Transform vaga = ObterPrimeiraVagaLivre();
+            if (vaga != null)
+            {
+                controleDaNave.vagaRetorno = vaga;
+                if (!avioesNoPatio.Contains(controleDaNave)) avioesNoPatio.Add(controleDaNave);
+            }
             StartCoroutine(RotinaRecebimento(controleDaNave));
         }
 
@@ -1219,20 +1051,23 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
-    private IEnumerator RotinaRecebimento(ControleAviao aviao)
+    protected IEnumerator RotinaRecebimento(ControleAviao aviao)
     {
         if (aviao == null) yield break;
 
-        Transform vagaDesignada = ObterPrimeiraVagaLivre();
+        Transform vagaDesignada = aviao.vagaRetorno != null ? aviao.vagaRetorno : ObterPrimeiraVagaLivre();
         
         if (vagaDesignada == null)
         {
-            // Se não achou vaga (pátio lotado ou bloqueado), manda pro hangar interno imediatamente
+            if (avioesNoPatio.Contains(aviao)) avioesNoPatio.Remove(aviao);
             if (!avioesNoHangar.Contains(aviao)) avioesNoHangar.Add(aviao);
             aviao.estadoAtual = ControleAviao.EstadoAviao.ReservaHangar;
             aviao.gameObject.SetActive(false); 
             yield break;
         }
+
+        aviao.vagaRetorno = vagaDesignada;
+        if (!avioesNoPatio.Contains(aviao)) avioesNoPatio.Add(aviao);
 
         // Vai devagarzinho do Hangar até a frente do Hangar
         if (wpPronto != null)
@@ -1241,9 +1076,6 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
 
         if (aviao == null) yield break;
-
-        aviao.vagaRetorno = vagaDesignada;
-        if (!avioesNoPatio.Contains(aviao)) avioesNoPatio.Add(aviao);
         
         // Vai devagarzinho pra Vaga do Pátio
         yield return StartCoroutine(aviao.MoverInterpolado(Vector3.zero, aviao.velocidadeSolo, false, vagaDesignada));
@@ -1973,7 +1805,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         mouseHover = false;
     }
 
-    void OnGUI()
+    protected virtual void OnGUI()
     {
         if (Construtor.EmModoConstrucaoAtivo) return;
 
@@ -2063,153 +1895,19 @@ public class GerenciadorAeroporto : MonoBehaviour
         GUILayout.BeginArea(new Rect(telaDeMenu.x + 15, telaDeMenu.y + 35, telaDeMenu.width - 30, telaDeMenu.height - 45));
         
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("✈️ Aba Comercial", GUILayout.Height(35))) { abaAtual = 0; aviaoSelecionadoParaMissao = null; c700SelecionadoParaMissao = null; helicopteroSelecionadoParaMissao = null; }
-        if (GUILayout.Button("🎖️ Aba Militar", GUILayout.Height(35))) { abaAtual = 1; aviaoSelecionadoParaMissao = null; c700SelecionadoParaMissao = null; helicopteroSelecionadoParaMissao = null; }
+        if (GUILayout.Button("🎖️ Frota Militar", GUILayout.Height(35))) { abaAtual = 1; aviaoSelecionadoParaMissao = null; c700SelecionadoParaMissao = null; helicopteroSelecionadoParaMissao = null; }
         GUILayout.EndHorizontal();
 
         GUILayout.Space(25);
 
-        if (abaAtual == 0)
-        {
-            scrollPosAbaComercial = GUILayout.BeginScrollView(scrollPosAbaComercial);
-            DesenharAbaComercial();
-            GUILayout.EndScrollView();
-        }
-        else if (abaAtual == 1)
-        {
-            scrollPosAbaMilitar = GUILayout.BeginScrollView(scrollPosAbaMilitar);
-            DesenharAbaMilitar();
-            GUILayout.EndScrollView();
-        }
+        scrollPosAbaMilitar = GUILayout.BeginScrollView(scrollPosAbaMilitar);
+        DesenharAbaMilitar();
+        GUILayout.EndScrollView();
+        
         GUILayout.EndArea();
     }
 
-    private void DesenharAbaComercial()
-    {
-        int baiasOcupadas = 0;
-        foreach(var c in contratosAtivos) baiasOcupadas += c.baiasOcupadas;
-
-        GUILayout.Label("<size=18><b>ESTATÍSTICAS DO DIA</b></size>");
-        GUILayout.BeginHorizontal("box");
-        GUILayout.Label($"<b>Turismo (Hoje):</b> <color=cyan>+{estatisticaTurismoDia}</color>");
-        GUILayout.Label($"<b>Passagens:</b> <color=cyan>+{estatisticaPassagensVendidasDia}</color>");
-        GUILayout.Label($"<b>Contratos:</b> <color=cyan>{contratosAtivos.Count}</color>");
-        GUILayout.Label($"<b>Países:</b> <color=cyan>{paisesConectados}</color>");
-        GUILayout.EndHorizontal();
-
-        GUILayout.Space(15);
-        GUILayout.Label($"<size=18><b>🏢 COMPANHIAS AÉREAS E CONTRATOS (Baias: {baiasOcupadas}/{totalBaiasComerciais})</b></size>");
-
-        foreach (var cia in contratosDisponiveis)
-        {
-            GUILayout.BeginVertical("box");
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"<b>{cia.nomeCompanhia}</b>", GUILayout.Width(150));
-            
-            GUILayout.Label("Baias Solicitadas: ");
-            if (GUILayout.Button("-", GUILayout.Width(25))) cia.baiasNegociadas = Mathf.Max(1, cia.baiasNegociadas - 1);
-            GUILayout.Label($"<b>{cia.baiasNegociadas}</b>", GUILayout.Width(20));
-            if (GUILayout.Button("+", GUILayout.Width(25))) cia.baiasNegociadas++;
-
-            GUILayout.FlexibleSpace();
-            GUILayout.Label($"Duracão: {cia.diasDuracao}d", GUILayout.Width(80));
-
-            if (baiasOcupadas + cia.baiasNegociadas > totalBaiasComerciais)
-            {
-                GUI.color = Color.red;
-                GUILayout.Label("SEM VAGAS", GUILayout.Width(100));
-                GUI.color = Color.white;
-            }
-            else
-            {
-                if (GUILayout.Button("Assinar", GUILayout.Width(100), GUILayout.Height(25)))
-                {
-                    float qualidadeVida = 50f;
-                    if (SistemaGovernoMundial.Instancia != null && _identidadeCacheada != null)
-                    {
-                        var pais = SistemaGovernoMundial.Instancia.ObterPais(_identidadeCacheada.teamID);
-                        if (pais != null) qualidadeVida = pais.qualidadeVida;
-                    }
-
-                    // Chance de recusa baseada na negociação e riqueza
-                    float chanceBase = qualidadeVida; // ex: 80% se feliz
-                    if (cia.baiasNegociadas < cia.baiasExigidas)
-                    {
-                        chanceBase -= 30f * (cia.baiasExigidas - cia.baiasNegociadas); // Pune redução
-                    }
-                    else if (cia.baiasNegociadas > cia.baiasExigidas)
-                    {
-                        chanceBase += 10f; // Bônus
-                    }
-
-                    if (Random.Range(0f, 100f) <= chanceBase)
-                    {
-                        ContratoAereoAtivo ativo = new ContratoAereoAtivo();
-                        ativo.nomeCompanhia = cia.nomeCompanhia;
-                        ativo.diasDuracao = cia.diasDuracao;
-                        ativo.diasRestantes = cia.diasDuracao;
-                        ativo.baiasOcupadas = cia.baiasNegociadas;
-                        ativo.demandaTurismoBase = cia.demandaTurismoBase + (cia.baiasNegociadas * 0.2f);
-                        ativo.valorPorPassagem = cia.valorPorPassagem;
-                        contratosAtivos.Add(ativo);
-                        Debug.Log("Contrato aceito!");
-                        cia.nomeCompanhia = "ASSINADO"; // marca para deletar
-                    }
-                    else
-                    {
-                        Debug.Log("A Companhia recusou a oferta!");
-                        cia.nomeCompanhia = "RECUSADO";
-                    }
-                }
-            }
-            GUILayout.EndHorizontal();
-            
-            if (cia.nomeCompanhia == "RECUSADO")
-            {
-                GUI.color = Color.red;
-                GUILayout.Label("A companhia recusou a sua oferta e retirou-se das negociações!");
-                GUI.color = Color.white;
-            }
-
-            GUILayout.EndVertical();
-        }
-
-        contratosDisponiveis.RemoveAll(c => c.nomeCompanhia == "ASSINADO" || c.nomeCompanhia == "RECUSADO");
-
-        if (contratosAtivos.Count > 0)
-        {
-            GUILayout.Space(10);
-            GUILayout.Label("<size=16><b>CONTRATOS ATIVOS</b></size>");
-            foreach (var ativo in contratosAtivos)
-            {
-                GUILayout.Label($"- <b>{ativo.nomeCompanhia}</b> | Baias: {ativo.baiasOcupadas} | Restam {ativo.diasRestantes} dias | Hoje: {ativo.passagensVendidasHoje} pass.");
-            }
-        }
-
-        GUILayout.Space(15);
-        GUILayout.Label("<size=18><b>✈️ ROTAS AÉREAS ATIVAS (TRÁFEGO VISUAL)</b></size>");
-        GUILayout.BeginVertical("box");
-        
-        foreach (var aviao in frotaComercialAtiva)
-        {
-            if (aviao == null) continue;
-            string estado = aviao.estadoAtual.ToString();
-            
-            ControleAviaoComercial cac = aviao as ControleAviaoComercial;
-            string destino = (cac != null && cac.nomeDestinoIA != "") ? cac.nomeDestinoIA : "Exterior";
-            string ciaNome = (cac != null && cac.nomeCompanhia != "") ? cac.nomeCompanhia : "Independente";
-            int pass = (cac != null) ? cac.passagensVendidas : Random.Range(10, 150);
-            
-            GUILayout.Label($"🛫 <b>VOO {ciaNome} ({aviao.name.Replace("(Clone)", "")})</b>");
-            GUILayout.Label($"  - Destino: <color=yellow>{destino}</color> | Passagens: {pass} | Status: <color=cyan>{estado}</color>");
-        }
-        
-        if (frotaComercialAtiva.Count == 0)
-        {
-            GUILayout.Label("<color=gray>Nenhum tráfego visual no momento.</color>");
-        }
-        GUILayout.EndVertical();
-    }
+    // Aba Comercial removida
 
     private void DesenharAbaMilitar()
     {
@@ -2962,7 +2660,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         return true;
     }
 
-    private void ReporPatioComAvioesDoHangar()
+    protected void ReporPatioComAvioesDoHangar()
     {
         for (int i = avioesNoHangar.Count - 1; i >= 0 && ObterPrimeiraVagaLivre() != null; i--)
         {

@@ -625,7 +625,7 @@ public class IA_General_Pro : MonoBehaviour
         foreach(var h in helis) RegistrarHeliporto(h, 2000f);
 
         var aerops = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach(var a in aerops) RegistrarAeroporto(a, 3000f);
+        foreach(var a in aerops) if (!(a is GerenciadorAeroportoComercial)) RegistrarAeroporto(a, 3000f);
     }
 
     void AvaliarCombate()
@@ -797,10 +797,10 @@ public class IA_General_Pro : MonoBehaviour
 
     Vector3 EvitarAeroporto(Vector3 ponto, Vector3 centroBase)
     {
-        var aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach (var aero in aeroportos)
+        var aerops = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        foreach (var aero in aerops)
         {
-            if (aero == null) continue;
+            if (aero == null || aero is GerenciadorAeroportoComercial) continue;
             Bounds b = new Bounds(aero.transform.position, Vector3.zero);
             Renderer[] rends = aero.GetComponentsInChildren<Renderer>();
             foreach (var r in rends) { if (r != null) b.Encapsulate(r.bounds); }

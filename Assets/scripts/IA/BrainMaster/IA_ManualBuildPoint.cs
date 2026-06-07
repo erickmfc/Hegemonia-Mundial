@@ -166,6 +166,8 @@ namespace Hegemonia.AI.BrainMaster
             case IA_BrainMaster.IA_BootstrapStage.HoldShipLaunch: return "Aguardar Lancamento Naval";
             case IA_BrainMaster.IA_BootstrapStage.Completed: return "Concluido";
             case IA_BrainMaster.IA_BootstrapStage.MobilizeBase: return "Mobilizacao Defensiva";
+            case IA_BrainMaster.IA_BootstrapStage.BuildUsina: return "Construir Usina";
+            case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial: return "Construir Aeroporto Comercial";
             default: return stage.ToString();
         }
         }
@@ -186,6 +188,10 @@ namespace Hegemonia.AI.BrainMaster
                     return "quartel, tenda, barraca";
                 case IA_BrainMaster.IA_BootstrapStage.BuildShipyard:
                     return "estaleiro, estaleiros, pier";
+                case IA_BrainMaster.IA_BootstrapStage.BuildUsina:
+                    return "usina, energia";
+                case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial:
+                    return "aeroporto comercial, pista comercial";
                 default:
                     return string.Empty;
             }

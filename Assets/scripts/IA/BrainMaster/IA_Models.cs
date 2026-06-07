@@ -470,6 +470,7 @@ namespace Hegemonia.AI.BrainMaster
         public int BarracksCount;
         public int FactoryCount;
         public int AirportCount;
+        public int CommercialAirportCount;
         public int HeliportCount;
         public int ShipyardCount;
         public int PierCount;
@@ -492,6 +493,11 @@ namespace Hegemonia.AI.BrainMaster
         public bool HasAirport
         {
             get { return AirportCount > 0; }
+        }
+
+        public bool HasCommercialAirport
+        {
+            get { return CommercialAirportCount > 0; }
         }
 
         public bool HasHeliport

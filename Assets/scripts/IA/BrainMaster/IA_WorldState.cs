@@ -1131,6 +1131,7 @@ namespace Hegemonia.AI.BrainMaster
             _forceSnapshot.BarracksCount = 0;
             _forceSnapshot.FactoryCount = 0;
             _forceSnapshot.AirportCount = 0;
+            _forceSnapshot.CommercialAirportCount = 0;
             _forceSnapshot.HeliportCount = 0;
             _forceSnapshot.ShipyardCount = 0;
             _forceSnapshot.PierCount = 0;
@@ -1244,7 +1245,14 @@ namespace Hegemonia.AI.BrainMaster
 
             if (n.Contains("aeroporto") || n.Contains("airport") || n.Contains("base aerea") || n.Contains("pista"))
             {
-                _forceSnapshot.AirportCount++;
+                if (n.Contains("comercial") || n.Contains("commercial"))
+                {
+                    _forceSnapshot.CommercialAirportCount++;
+                }
+                else
+                {
+                    _forceSnapshot.AirportCount++;
+                }
             }
 
             if (n.Contains("heliporto") || n.Contains("hangar"))

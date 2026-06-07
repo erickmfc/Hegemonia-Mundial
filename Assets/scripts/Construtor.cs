@@ -565,6 +565,11 @@ public class Construtor : MonoBehaviour
             }
         }
 
+        if (ruaPrefab != null && !fezSnapRua)
+        {
+            posFinalPreview.y += 0.05f; // Evita que a estrada fique enterrada sob o terreno (Z-fighting)
+        }
+
         fantasmaUnico.transform.position = posFinalPreview;
         if (usarRotacaoPreviewNaval) fantasmaUnico.transform.rotation = rotacaoPreviewNaval;
 

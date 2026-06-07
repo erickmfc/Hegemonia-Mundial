@@ -26,7 +26,9 @@ namespace Hegemonia.AI.BrainMaster
             HoldShipLaunch = 15,
             InvasionPrep = 16,
             Completed = 17,
-            MobilizeBase = 18
+            MobilizeBase = 18,
+            BuildUsina = 19,
+            BuildAeroportoComercial = 20
         }
 
         public enum IA_IntegrationMode

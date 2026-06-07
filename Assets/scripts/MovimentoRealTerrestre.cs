@@ -81,7 +81,7 @@ public class MovimentoRealTerrestre : MonoBehaviour
         agente.nextPosition = transform.position;
 
         // 2. Cálculo de Destino com preferência de faixa (mão de ida e volta) se estiver na rua
-        Vector3 proximoPonto = steeringTargetCache;
+        Vector3 proximoPonto = (agente.enabled && agente.isOnNavMesh) ? agente.steeringTarget : transform.position;
         
         RuaConectora ruaProxima = EncontrarRuaProxima(transform.position, 8f);
         if (ruaProxima != null)
@@ -110,22 +110,22 @@ public class MovimentoRealTerrestre : MonoBehaviour
 
         float distanciaAteAlvo = vetorDirecao.magnitude;
         
-        // Verifica se realmente tem que andar
-        bool temCaminho = hasPathCache && distanciaAteAlvo > distanciaParada;
-        
-        // Correção de bug do NavMesh (às vezes ele acha que tem caminho mas já está lá)
-        // PROTEÇÃO: Só verifica remainingDistance se estiver no NavMesh e Ativo
-        if (agenteLeituraValidaCache)
+        // Verifica se realmente tem que andar usando o estado em tempo real do agente
+        bool temCaminho = false;
+        if (agente.enabled && agente.isOnNavMesh)
         {
-            if (remainingDistanceCache <= distanciaParada && !pathPendingCache)
+            if (!agente.isStopped && (agente.hasPath || agente.pathPending))
             {
-                temCaminho = false; 
+                if (agente.pathPending || agente.remainingDistance > distanciaParada)
+                {
+                    temCaminho = true;
+                }
+                else if (agente.hasPath)
+                {
+                    // Chegou ao destino: limpa o caminho para evitar overshoot / oscilação
+                    agente.ResetPath();
+                }
             }
-        }
-        else
-        {
-            // Se perdeu o NavMesh, aborta movimento para evitar erros
-            temCaminho = false;
         }
 
         // --- LÓGICA DE MOVIMENTO FÍSICO ---

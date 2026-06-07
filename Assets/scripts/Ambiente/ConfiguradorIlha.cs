@@ -112,7 +112,9 @@ public class ConfiguradorIlha : MonoBehaviour
             {
                 // Em versões novas do Unity, o Bake via script no Editor mudou levemente
                 #if UNITY_EDITOR
+                #pragma warning disable 0618
                 UnityEditor.AI.NavMeshBuilder.BuildNavMesh();
+                #pragma warning restore 0618
                 #endif
                 LogDiagnostico("[ConfiguradorIlha] NavMesh rebakeado automaticamente no Editor.");
             }
@@ -184,7 +186,9 @@ public class ConfiguradorIlha : MonoBehaviour
     [ContextMenu("Ação: Rebakear NavMesh da Cena Inteira")]
     private void RebakearNavMesh()
     {
+        #pragma warning disable 0618
         UnityEditor.AI.NavMeshBuilder.BuildNavMesh();
+        #pragma warning restore 0618
         Debug.Log("[ConfiguradorIlha] NavMesh rebakeado com sucesso! ✓");
     }
 

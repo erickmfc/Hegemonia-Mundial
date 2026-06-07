@@ -210,38 +210,65 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
     private string ObterNomeDisponivel(int teamID)
     {
         string[] pool;
-        string prefix = "";
 
         if (teamID == 1) // Jogador
         {
             pool = nomesJogador;
+            foreach (string nome in pool)
+            {
+                if (!nomesUsados.Contains(nome))
+                {
+                    return nome;
+                }
+            }
+            string nomeBase = pool[UnityEngine.Random.Range(0, pool.Length)];
+            int sufixo = 2;
+            while (nomesUsados.Contains(nomeBase + " " + sufixo))
+            {
+                sufixo++;
+            }
+            return nomeBase + " " + sufixo;
         }
         else if (teamID > 1) // IA
         {
-            pool = nomesIA;
+            // A IA agora gera nomes dinamicamente parecidos com estados baseados no país
+            string nomeGerado = "Estado de " + GeradorNomesBatismo.GerarNome();
+            int tentativas = 0;
+            while (nomesUsados.Contains(nomeGerado) && tentativas < 20)
+            {
+                nomeGerado = "Estado de " + GeradorNomesBatismo.GerarNome();
+                tentativas++;
+            }
+            
+            if (nomesUsados.Contains(nomeGerado))
+            {
+                int sufixoIA = 2;
+                while (nomesUsados.Contains(nomeGerado + " " + sufixoIA))
+                {
+                    sufixoIA++;
+                }
+                nomeGerado = nomeGerado + " " + sufixoIA;
+            }
+            return nomeGerado;
         }
         else // Neutro
         {
             pool = nomesNeutro;
-        }
-
-        // Tenta achar um nome que ainda não foi usado
-        foreach (string nome in pool)
-        {
-            if (!nomesUsados.Contains(nome))
+            foreach (string nome in pool)
             {
-                return nome;
+                if (!nomesUsados.Contains(nome))
+                {
+                    return nome;
+                }
             }
+            string nomeBaseN = pool[UnityEngine.Random.Range(0, pool.Length)];
+            int sufixoN = 2;
+            while (nomesUsados.Contains(nomeBaseN + " " + sufixoN))
+            {
+                sufixoN++;
+            }
+            return nomeBaseN + " " + sufixoN;
         }
-
-        // Se todos os nomes estiverem usados, pega um aleatório e coloca um sufixo numérico
-        string nomeBase = pool[UnityEngine.Random.Range(0, pool.Length)];
-        int sufixo = 2;
-        while (nomesUsados.Contains(nomeBase + " " + sufixo))
-        {
-            sufixo++;
-        }
-        return nomeBase + " " + sufixo;
     }
 
     public void RecalcularDados()
@@ -381,9 +408,12 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
             if (cid.marcador != null && Vector3.Distance(posicao, cid.marcador.transform.position) <= cid.marcador.raioDeDominio)
             {
                 if (cid.empregosTotais == 0) return 1f;
+                // Garante no mínimo 50% de eficiência mesmo sem população para que as primeiras construções funcionem
+                if (cid.populacaoCivil == 0) return 0.5f; 
+                
                 // Se tem mais empregos do que população, a eficiência cai proporcionalmente
                 float prop = (float)cid.populacaoCivil / cid.empregosTotais;
-                return Mathf.Clamp01(prop);
+                return Mathf.Clamp(prop, 0.1f, 1f); // Garante no mínimo 10%
             }
         }
         return 1f;

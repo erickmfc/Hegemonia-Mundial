@@ -454,7 +454,7 @@ namespace Hegemonia.AI.BrainMaster
             DadosConstrucao data = ChoosePreferredAircraftVariant();
             if (data == null)
             {
-                return QueueProduceBest(priority, cooldown, "b260", "supra", "su11", "a_20", "g15", "super tuk", "g_18m", "g18m", "fa1", "caca", "aviao");
+                return QueueProduceBest(priority, cooldown, "b260", "supra", "su11", "a_20", "a10", "warthog", "g15", "super tuk", "g_18m", "g18m", "fa1", "caca", "aviao");
             }
 
             IA_ProduceOrderData payload = new IA_ProduceOrderData
@@ -559,6 +559,11 @@ namespace Hegemonia.AI.BrainMaster
             if (joined.Contains("a_20") || joined.Contains("a20") || joined.Contains("a 20"))
             {
                 return "a20";
+            }
+
+            if (joined.Contains("a10") || joined.Contains("a-10") || joined.Contains("warthog") || joined.Contains("thunderbolt"))
+            {
+                return "a10";
             }
 
             if (joined.Contains("super tuk") || joined.Contains("supertuk") || joined.Contains("super_tuk") || joined.Contains("tuk"))

@@ -250,7 +250,7 @@ public class Projetil : MonoBehaviour
 
         if (vidaDireta != null)
         {
-            vidaDireta.ReceberDano(dano);
+            vidaDireta.ReceberDano(dano, dono);
             // Debug.Log($"[Projetil] 🎯 ACERTOU {alvo.name}! Dano: {dano}. Vida Restante: {vidaDireta.vidaAtual}");
         }
         else
@@ -331,7 +331,7 @@ public class Projetil : MonoBehaviour
 
             if (vida != null && !alvosExplosao.Contains(vida))
             {
-                vida.ReceberDano(danoReal);
+                vida.ReceberDano(danoReal, dono);
                 alvosExplosao.Add(vida);
             }
 

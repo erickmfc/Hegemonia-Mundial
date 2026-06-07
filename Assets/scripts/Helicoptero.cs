@@ -1041,9 +1041,12 @@ public class Helicoptero : MonoBehaviour
                 {
                     lancadorCaca.RecarregarCompletoNaBase();
                 }
-                foreach (var moduloArma in GetComponentsInChildren<ModuloArma>())
+                foreach (var torreta in GetComponentsInChildren<ControleTorretaModular>())
                 {
-                    moduloArma.municaoAtual = moduloArma.tamanhoCartucho;
+                    foreach (var arma in torreta.armas)
+                    {
+                        if (arma != null) arma.municaoAtual = arma.tamanhoCartucho;
+                    }
                 }
 
                 foreach (GameObject s in soldadosEmbarcados)

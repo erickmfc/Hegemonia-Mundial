@@ -62,6 +62,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     private List<ControleAviao> _avioesProximosNoAr = new List<ControleAviao>();
     private readonly List<Helicoptero> _helicopterosProximosNoAr = new List<Helicoptero>();
     private float _tempoProximoScan = 0f;
+    private float _tempoProximoReporPatioCarrier = -999f;
     private Vector2 _scrollHelisCarrier;
     private readonly List<Vector3> _rotaPatrulhaAviaoCarrier = new List<Vector3>();
     private readonly List<Vector3> _rotaPatrulhaHelicopteroCarrier = new List<Vector3>();
@@ -456,7 +457,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
     }
 
-    void Update()
+    protected override void Update()
     {
         // 1. Rotação da Antena
         if (antenaRotativa != null)
@@ -553,6 +554,13 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (_selecionadoCarrier != null && _selecionadoCarrier.aguardandoCliqueRadar && !_menuCarrierAtivo)
         {
             ProcessarOrdemAviaoCarrier();
+        }
+
+        // Auto-replenish patio from hangar periodically if space is available
+        if (avioesNoHangar.Count > 0 && Time.time >= _tempoProximoReporPatioCarrier)
+        {
+            _tempoProximoReporPatioCarrier = Time.time + 2.0f;
+            ReporPatioComAvioesDoHangar();
         }
 
         // 6. SISTEMA DE "CONVÈS ADERENTE" (Parenting)
@@ -714,7 +722,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             (b.transform.position - transform.position).sqrMagnitude));
     }
 
-    void OnGUI()
+    protected override void OnGUI()
     {
         if (!_menuCarrierAtivo) return;
         if (!GestorMenusExclusivos.EstaAtivo(this))

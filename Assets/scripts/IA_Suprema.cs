@@ -171,6 +171,9 @@ public class IA_Suprema : MonoBehaviour
 
     void Start()
     {
+        // A IA cria um nome do país ao iniciar o jogo
+        nomeNacao = "República de " + GeradorNomesBatismo.GerarNome();
+
         BuscarSinalizadoresGlobais();
         StartCoroutine(RotinaInicial());
     }

@@ -142,7 +142,6 @@ namespace Hegemonia.AI.Master
         [Header("Identidade")]
         [SerializeField] private int _teamId = 2;
         [SerializeField] private int[] _alliedTeams = Array.Empty<int>();
-        [SerializeField] private GlobalStrategyMode _strategyMode = GlobalStrategyMode.Balanced;
         [SerializeField] private bool _isHumanTeam = false;
 
         [Header("Perfil de Execução")]
