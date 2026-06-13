@@ -64,6 +64,9 @@
                     <ui:Label name="flir-label-bc" text="" class="flir-text flir-bc mono flir-alert" />
                     <ui:Label name="flir-unidade-nome" text="— SEM ALVO —" class="flir-unidade-nome mono" />
                 </ui:VisualElement>
+
+                <!-- Botão de Alternar Câmera Drone (invisível por padrão, visível se drone) -->
+                <ui:Button name="btn-drone-cam" text="📷 CÂMERA DRONE" class="btn-selecionar-tudo mono" style="position: absolute; bottom: 8px; left: 10px; height: 20px; font-size: 9px; display: none;" />
             </ui:VisualElement>
 
         </ui:VisualElement>

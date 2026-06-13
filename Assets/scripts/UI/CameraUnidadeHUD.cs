@@ -106,6 +106,10 @@ public class CameraUnidadeHUD : MonoBehaviour
     public void DefinirTarget(ControleUnidade unidade)
     {
         targetUnit = unidade;
+        modoDroneCamera = false;
+        currentRotationX = 15f;
+        currentRotationY = 0f;
+        currentLookedTarget = null;
         if (targetUnit != null && minhaCamera != null && minhaCamera.enabled)
         {
             // Reposiciona instantaneamente na primeira seleção para não ter transição visual lenta/estranha
@@ -133,6 +137,11 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     public float zoomFactor = 1f;
     public float currentRotationY = 0f;
+    public float currentRotationX = 15f;
+    public bool modoDroneCamera = false;
+    private GameObject currentLookedTarget = null;
+
+    public GameObject GetLookedTarget() => currentLookedTarget;
 
     public void AddZoom(float delta)
     {
@@ -142,6 +151,11 @@ public class CameraUnidadeHUD : MonoBehaviour
     public void AddRotation(float deltaY)
     {
         currentRotationY += deltaY;
+    }
+
+    public void AddRotationVertical(float deltaX)
+    {
+        currentRotationX = Mathf.Clamp(currentRotationX + deltaX, -75f, 75f);
     }
 
     private void LateUpdate()
@@ -157,6 +171,43 @@ public class CameraUnidadeHUD : MonoBehaviour
         }
 
         if (targetUnit == null) return;
+
+        // Se a câmera do drone estiver ativa e a unidade for um drone (tem KamikazeDrone)
+        KamikazeDrone drone = targetUnit.GetComponent<KamikazeDrone>();
+        if (modoDroneCamera && drone != null)
+        {
+            float scaleFactor = Mathf.Max(targetUnit.transform.localScale.x, targetUnit.transform.localScale.z);
+            // Posição no nariz/frente do drone
+            Vector3 localCameraPosition = new Vector3(0f, -0.2f * scaleFactor, 0.6f * scaleFactor);
+            Vector3 worldCameraPos = targetUnit.transform.TransformPoint(localCameraPosition);
+            
+            transform.position = Vector3.Lerp(transform.position, worldCameraPos, Time.deltaTime * suavidadeSeguir);
+            
+            // Rotação: gimbal (drone rot + local gimbal yaw/pitch)
+            Quaternion droneRot = targetUnit.transform.rotation;
+            Quaternion gimbalRot = Quaternion.Euler(currentRotationX, currentRotationY, 0f);
+            Quaternion desiredRotation = droneRot * gimbalRot;
+            
+            transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, Time.deltaTime * suavidadeRotacao);
+            
+            // Zoom FOV
+            float desiredFOV = Mathf.Clamp(30f / zoomFactor, 1f, 45f);
+            if (minhaCamera != null)
+            {
+                minhaCamera.fieldOfView = Mathf.Lerp(minhaCamera.fieldOfView, desiredFOV, Time.deltaTime * 10f);
+            }
+            
+            ProcessarMarcacaoAlvos();
+            return;
+        }
+        else
+        {
+            if (minhaCamera != null)
+            {
+                minhaCamera.fieldOfView = Mathf.Lerp(minhaCamera.fieldOfView, 30f, Time.deltaTime * 5f);
+            }
+            currentLookedTarget = null;
+        }
 
         // Ajuste de offset dinâmico baseado na escala da unidade (para navios/soldados)
         float factor = Mathf.Max(targetUnit.transform.localScale.x, targetUnit.transform.localScale.z);
@@ -194,6 +245,106 @@ public class CameraUnidadeHUD : MonoBehaviour
         Vector3 lookTarget = targetPos + Vector3.up * (factor * 0.4f + 0.5f);
         Quaternion targetRotation = Quaternion.LookRotation(lookTarget - transform.position);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * suavidadeRotacao);
+    }
+
+    private void ProcessarMarcacaoAlvos()
+    {
+        if (minhaCamera == null) return;
+        
+        Ray ray = minhaCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        RaycastHit hit;
+        int layerMask = ~LayerMask.GetMask("UI");
+        
+        if (Physics.Raycast(ray, out hit, 5000f, layerMask))
+        {
+            IdentidadeUnidade id = hit.collider.GetComponentInParent<IdentidadeUnidade>();
+            if (id != null && id.gameObject != targetUnit.gameObject)
+            {
+                currentLookedTarget = id.gameObject;
+                
+                // Se pressionar Space ou clicar botão esquerdo
+                if (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0))
+                {
+                    MarcarComoAlvo(id);
+                }
+            }
+            else
+            {
+                currentLookedTarget = null;
+                
+                if (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0))
+                {
+                    MarcarCoordenada(hit.point);
+                }
+            }
+        }
+        else
+        {
+            currentLookedTarget = null;
+        }
+    }
+
+    private void MarcarComoAlvo(IdentidadeUnidade id)
+    {
+        if (targetUnit == null) return;
+        
+        ControleAviao aviao = targetUnit.GetComponent<ControleAviao>();
+        KamikazeDrone drone = targetUnit.GetComponent<KamikazeDrone>();
+        
+        if (aviao != null)
+        {
+            aviao.alvoEstrategico = id.transform.position;
+            aviao.alvoGPSVoo = id.transform.position;
+            
+            if (drone != null)
+            {
+                drone.alvoAtual = id.transform;
+                drone.kamikazeAtivo = true;
+                aviao.velocidadeMaximaVoo = drone.velocidadeAtaque;
+            }
+            
+            if (MenuComandoController.Instancia != null)
+            {
+                MenuComandoController.Instancia.AdicionarLog("DRONE", $"ALVO LOCK: {id.name.ToUpper()} EM {id.transform.position}", "sistema");
+            }
+            
+            try
+            {
+                AudioClip clip = Resources.Load<AudioClip>("Sons/alvo_fixado") ?? Resources.Load<AudioClip>("mp3/click");
+                if (clip != null)
+                {
+                    AudioSource.PlayClipAtPoint(clip, id.transform.position, 0.8f);
+                }
+            }
+            catch {}
+        }
+    }
+    
+    private void MarcarCoordenada(Vector3 ponto)
+    {
+        if (targetUnit == null) return;
+        
+        ControleAviao aviao = targetUnit.GetComponent<ControleAviao>();
+        if (aviao != null)
+        {
+            aviao.alvoEstrategico = ponto;
+            aviao.alvoGPSVoo = ponto;
+            
+            if (MenuComandoController.Instancia != null)
+            {
+                MenuComandoController.Instancia.AdicionarLog("DRONE", $"COORDENADAS ENVIADAS: {ponto:F1}", "sistema");
+            }
+            
+            try
+            {
+                AudioClip clip = Resources.Load<AudioClip>("mp3/click");
+                if (clip != null)
+                {
+                    AudioSource.PlayClipAtPoint(clip, targetUnit.transform.position, 0.5f);
+                }
+            }
+            catch {}
+        }
     }
 
     public void AtualizarFoco()

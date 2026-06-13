@@ -54,6 +54,9 @@ public class MenuComandoController : MonoBehaviour
     private Label flirAlerta;
     private Label flirTc;
     private Label flirUnidadeNome;
+    private Label flirTl;
+    private Label flirTr;
+    private Button btnDroneCam;
     private RenderTexture flirRT;
 
     // Telemetria
@@ -147,6 +150,15 @@ public class MenuComandoController : MonoBehaviour
 
         if (!menuAberto) return;
 
+        // Atalho: tecla V alterna câmera do drone
+        if (unidadeSelecionadaMenu != null && unidadeSelecionadaMenu.GetComponent<KamikazeDrone>() != null)
+        {
+            if (Input.GetKeyDown(KeyCode.V))
+            {
+                AlternarModoCameraDrone();
+            }
+        }
+
         // Atalho: tecla A seleciona todas as unidades aliadas no mapa
         if (Input.GetKeyDown(KeyCode.A))
         {
@@ -172,6 +184,10 @@ public class MenuComandoController : MonoBehaviour
         {
             if (Input.GetKeyDown(k))
             {
+                if (k == KeyCode.V && unidadeSelecionadaMenu != null && unidadeSelecionadaMenu.GetComponent<KamikazeDrone>() != null)
+                {
+                    continue;
+                }
                 // Consome o input sem fazer nada
                 AdicionarLog("SISTEMA", $"Tecla [{k}] bloqueada — Menu Comando ativo.", "sistema");
             }
@@ -341,6 +357,8 @@ public class MenuComandoController : MonoBehaviour
         flirAlerta      = root.Q<Label>("flir-label-bc");
         flirTc          = root.Q<Label>("flir-label-tc");
         flirUnidadeNome = root.Q<Label>("flir-unidade-nome");
+        flirTl          = root.Q<Label>("flir-label-tl");
+        flirTr          = root.Q<Label>("flir-label-tr");
 
         unidadeNome  = root.Q<Label>("unidade-nome");
         unidadeEmoji = root.Q<Label>("unidade-emoji");
@@ -390,6 +408,9 @@ public class MenuComandoController : MonoBehaviour
 
         var btnSelTudo = root.Q<Button>("btn-selecionar-tudo");
         if (btnSelTudo != null) btnSelTudo.clicked += () => SelecionarTodasUnidadesAliadas();
+
+        btnDroneCam = root.Q<Button>("btn-drone-cam");
+        if (btnDroneCam != null) btnDroneCam.clicked += () => AlternarModoCameraDrone();
 
         // Registro de ouvintes de eventos para Zoom, Pan e Cliques no Mapa
         var painelMapa = root.Q<VisualElement>("painel-mapa");
@@ -856,6 +877,8 @@ public class MenuComandoController : MonoBehaviour
 
         if (unidadesSelecionadasMenu.Count == 0)
         {
+            if (btnDroneCam != null) btnDroneCam.style.display = DisplayStyle.None;
+            if (CameraUnidadeHUD.Instancia != null) CameraUnidadeHUD.Instancia.modoDroneCamera = false;
             unidadeSelecionadaMenu = null;
             SetText(unidadeNome, "NENHUMA");
             SetText(unidadeEmoji, "❓");
@@ -867,10 +890,16 @@ public class MenuComandoController : MonoBehaviour
             SetText(fuelValor, "—%");
             SetBarWidth(hpBar, 0f);
             SetBarWidth(fuelBar, 0f);
+            
+            // Restaura texto padrão do FLIR se não há unidade
+            if (flirTl != null) flirTl.text = "FLIR / AUTO-TRK";
+            if (flirTr != null) flirTr.text = "ZOOM: 1.0X";
             return;
         }
         else if (unidadesSelecionadasMenu.Count > 1)
         {
+            if (btnDroneCam != null) btnDroneCam.style.display = DisplayStyle.None;
+            if (CameraUnidadeHUD.Instancia != null) CameraUnidadeHUD.Instancia.modoDroneCamera = false;
             SetText(unidadeNome, $"MÚLTIPLAS ({unidadesSelecionadasMenu.Count})");
             SetText(unidadeEmoji, "👥");
             SetText(statTipo, "MISTO");
@@ -925,6 +954,10 @@ public class MenuComandoController : MonoBehaviour
             }
 
             if (flirTc != null) flirTc.text = "HDG MÚLTIPLOS";
+            
+            // Restaura texto padrão do FLIR se múltipla seleção
+            if (flirTl != null) flirTl.text = "FLIR / AUTO-TRK";
+            if (flirTr != null) flirTr.text = "ZOOM: 1.0X";
             return;
         }
 
@@ -993,6 +1026,77 @@ public class MenuComandoController : MonoBehaviour
             float hdg = cu.transform.eulerAngles.y;
             flirTc.text = $"HDG {hdg:F1}°";
         }
+
+        // Atualiza visibilidade e texto do botão de câmera do drone
+        if (btnDroneCam != null)
+        {
+            if (cu != null && cu.GetComponent<KamikazeDrone>() != null)
+            {
+                btnDroneCam.style.display = DisplayStyle.Flex;
+                if (CameraUnidadeHUD.Instancia != null && CameraUnidadeHUD.Instancia.modoDroneCamera)
+                {
+                    btnDroneCam.text = "📹 CÂMERA NORMAL";
+                }
+                else
+                {
+                    btnDroneCam.text = "📷 CÂMERA DRONE";
+                }
+            }
+            else
+            {
+                btnDroneCam.style.display = DisplayStyle.None;
+                if (CameraUnidadeHUD.Instancia != null)
+                {
+                    CameraUnidadeHUD.Instancia.modoDroneCamera = false;
+                }
+            }
+        }
+
+        // Atualiza textos do overlay FLIR baseado no estado da câmera do drone
+        if (CameraUnidadeHUD.Instancia != null && CameraUnidadeHUD.Instancia.modoDroneCamera && cu != null && cu.GetComponent<KamikazeDrone>() != null)
+        {
+            if (flirTl != null) flirTl.text = "DRONE CAM / GIMBAL";
+            
+            float zoomX = CameraUnidadeHUD.Instancia.zoomFactor;
+            if (flirTr != null) flirTr.text = $"ZOOM: {zoomX:F1}X";
+            
+            GameObject lookedTarget = CameraUnidadeHUD.Instancia.GetLookedTarget();
+            if (lookedTarget != null)
+            {
+                if (flirUnidadeNome != null) flirUnidadeNome.text = $"LOCK: {lookedTarget.name.ToUpper()}";
+                if (flirAlerta != null) flirAlerta.text = "🎯 ALVO NA MIRA (CLIQUE/ESPAÇO PARA TRAVAR)";
+            }
+            else
+            {
+                if (flirUnidadeNome != null) flirUnidadeNome.text = "BUSCANDO ALVO...";
+                if (flirAlerta != null) flirAlerta.text = "ÁREA DE OPERAÇÃO - HUD ATIVO";
+            }
+        }
+        else
+        {
+            if (flirTl != null) flirTl.text = "FLIR / AUTO-TRK";
+            
+            float zoomX = CameraUnidadeHUD.Instancia != null ? CameraUnidadeHUD.Instancia.zoomFactor : 1f;
+            if (flirTr != null) flirTr.text = $"ZOOM: {zoomX:F1}X";
+            
+            if (flirUnidadeNome != null)
+                flirUnidadeNome.text = cu != null ? ObterNomeExibicao(cu.gameObject) : "— SEM ALVO —";
+            
+            if (flirAlerta != null)
+                flirAlerta.text = cu != null ? "TRACKING: " + ObterNomeExibicao(cu.gameObject) : "FLIR OFF-LINE";
+        }
+    }
+
+    private void AlternarModoCameraDrone()
+    {
+        if (CameraUnidadeHUD.Instancia == null) return;
+        
+        CameraUnidadeHUD.Instancia.modoDroneCamera = !CameraUnidadeHUD.Instancia.modoDroneCamera;
+        
+        string modoStr = CameraUnidadeHUD.Instancia.modoDroneCamera ? "CÂMERA INTERNA DRONE ACESSADA" : "RETORNADO À CÂMERA ORBITAL";
+        AdicionarLog("DRONE", modoStr, "sistema");
+        
+        AtualizarTelemetriaUnidade();
     }
 
     // -----------------------------------------------------------------------
