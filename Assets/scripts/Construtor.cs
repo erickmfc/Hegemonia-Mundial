@@ -427,7 +427,9 @@ public class Construtor : MonoBehaviour
         {
             fantasmaUnico.transform.rotation = imovelPrefab.transform.rotation;
 
-            RuaConectora ruaProxima = EncontrarRuaProxima(posFinalPreview, Mathf.Max(imovelPrefab.distanciaFronteiraRua, 20f));
+            // Raio maior para garantir snap dos dois lados da estrada
+            float raioBuscaRua = Mathf.Max(imovelPrefab.distanciaFronteiraRua + 50f, 50f);
+            RuaConectora ruaProxima = EncontrarRuaProxima(posFinalPreview, raioBuscaRua);
             if (ruaProxima != null)
             {
                 Vector3 pInicio = GetPontoInicio(ruaProxima);
@@ -440,17 +442,29 @@ public class Construtor : MonoBehaviour
                 Vector3 ruaDirPlana = (pFimPlano - pInicioPlano).normalized;
                 if (ruaDirPlana == Vector3.zero) ruaDirPlana = Vector3.forward;
 
+                // Projeta o mouse na linha da rua sem clamp, para detectar o lado correto
+                // mesmo quando o mouse está além dos extremos da rua
                 Vector3 v = posPlana - pInicioPlano;
                 float d = Vector3.Dot(v, ruaDirPlana);
-                d = Mathf.Clamp(d, 0, Vector3.Distance(pInicioPlano, pFimPlano));
+                // Para o posicionamento da casa, clampamos dentro do comprimento da rua
+                float dClamp = Mathf.Clamp(d, 0, Vector3.Distance(pInicioPlano, pFimPlano));
                 
-                Vector3 pontoNaRuaPlano = pInicioPlano + ruaDirPlana * d;
+                Vector3 pontoNaRuaPlano = pInicioPlano + ruaDirPlana * dClamp;
                 Vector3 ruaRight = Vector3.Cross(Vector3.up, ruaDirPlana).normalized;
                 
-                Vector3 toMouse = posPlana - pontoNaRuaPlano;
-                float dotRight = Vector3.Dot(toMouse, ruaRight);
+                // Usa o vetor do mouse sem clamp para detectar o lado correto (esquerdo ou direito da rua)
+                Vector3 centroRuaPlano = (pInicioPlano + pFimPlano) * 0.5f;
+                Vector3 toMouseDoCentro = posPlana - centroRuaPlano;
+                float dotRight = Vector3.Dot(toMouseDoCentro, ruaRight);
+                // Se o mouse estiver exatamente sobre a rua (dotRight muito próximo de zero),
+                // usa a posição do mouse não-clampada em relação ao ponto projetado
+                if (Mathf.Abs(dotRight) < 0.1f)
+                {
+                    Vector3 toMouseDoProj = posPlana - pontoNaRuaPlano;
+                    dotRight = Vector3.Dot(toMouseDoProj, ruaRight);
+                }
                 
-                Vector3 direcaoRuaParaCasa = (dotRight > 0) ? ruaRight : -ruaRight;
+                Vector3 direcaoRuaParaCasa = (dotRight >= 0) ? ruaRight : -ruaRight;
                 Vector3 direcaoFrenteCasa = -direcaoRuaParaCasa;
                 
                 // Força o prédio a ficar perfeitamente alinhado e RETO (Euler X e Z = 0)
@@ -458,7 +472,7 @@ public class Construtor : MonoBehaviour
                 fantasmaUnico.transform.rotation = Quaternion.Euler(0, alvoYaw, 0);
 
                 // Recupera a altura Y real da rua para aplicar na casa
-                Vector3 pontoRealNaRua = pInicio + (pFim - pInicio).normalized * d;
+                Vector3 pontoRealNaRua = pInicio + (pFim - pInicio).normalized * dClamp;
                 
                 posFinalPreview = pontoRealNaRua + direcaoRuaParaCasa * ((ruaProxima.largura / 2f) + imovelPrefab.distanciaFronteiraRua);
                 posFinalPreview.y = pontoRealNaRua.y; 

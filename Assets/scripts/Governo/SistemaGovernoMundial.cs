@@ -212,6 +212,32 @@ public class SistemaGovernoMundial : MonoBehaviour
             pais.inflacao += (pais.deficitComida + pais.deficitEnergia + pais.deficitPetroleo) > 0f ? 0.04f : -0.02f;
             pais.inflacao = Mathf.Clamp(pais.inflacao, 0.5f, 40f);
 
+            // ─── FELICIDADE DINÂMICA ───────────────────────────────────────────────
+            // A felicidade reflete ao vivo o estado do país e aparece no HUD.
+            // Cada tick econômico a felicidade deriva ±0.5~2 pontos conforme:
+            //   emprego alto    → +0.4  |  emprego baixo    → -0.6
+            //   moradia boa     → +0.3  |  moradia ruim     → -0.5
+            //   sem déficit energia → +0.2  |  com déficit  → -0.8
+            //   sem déficit comida  → +0.2  |  com déficit  → -1.0
+            //   em guerra       → -1.2  |  sancionado       → -0.6
+            //   impostos altos (>20%) → -0.4 por faixa extra
+            //   qualidade de vida alta → bônus
+            {
+                float deltaFelicidade = 0f;
+                deltaFelicidade += pais.emprego >= 75f ? 0.40f : (pais.emprego >= 55f ? 0f : -0.60f);
+                deltaFelicidade += pais.moradia >= 70f ? 0.30f : (pais.moradia >= 50f ? 0f : -0.50f);
+                deltaFelicidade += pais.deficitEnergia <= 0f ? 0.20f : -0.80f;
+                deltaFelicidade += pais.deficitComida <= 0f ? 0.20f : -1.00f;
+                if (pais.emGuerra) deltaFelicidade -= 1.20f;
+                if (pais.sancionado) deltaFelicidade -= 0.60f;
+                float cargaFiscalFel = CargaFiscalMedia(pais);
+                if (cargaFiscalFel > 20f) deltaFelicidade -= (cargaFiscalFel - 20f) * 0.04f;
+                if (pais.qualidadeVida > 70f) deltaFelicidade += 0.30f;
+                else if (pais.qualidadeVida < 30f) deltaFelicidade -= 0.50f;
+                pais.felicidade = Mathf.Clamp(pais.felicidade + deltaFelicidade, 0f, 100f);
+            }
+            // ──────────────────────────────────────────────────────────────────────
+
             SistemaMoeda.Processar(pais, economia);
 
             if (pais.teamId != teamJogador)
