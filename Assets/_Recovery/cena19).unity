@@ -4355,7 +4355,7 @@ GameObject:
   - component: {fileID: 461569556}
   - component: {fileID: 461569557}
   m_Layer: 0
-  m_Name: GameObject (5)
+  m_Name: usina
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4370,7 +4370,7 @@ Transform:
   m_GameObject: {fileID: 461569555}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -567, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4395,7 +4395,7 @@ MonoBehaviour:
   ReusePoint: 0
   OccupiedRadius: 18
   RestrictToBootstrapStage: 0
-  BootstrapStage: 0
+  BootstrapStage: 19
   GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
   GizmoRadius: 5
 --- !u!1 &465408610
@@ -5662,7 +5662,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &590836159
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7048,7 +7048,7 @@ GameObject:
   - component: {fileID: 720902425}
   - component: {fileID: 720902426}
   m_Layer: 0
-  m_Name: Aeroporto (1)
+  m_Name: Aeroporto com
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7063,7 +7063,7 @@ Transform:
   m_GameObject: {fileID: 720902424}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -694.6, y: 0, z: -116}
+  m_LocalPosition: {x: -694.6, y: 0, z: -256}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7088,7 +7088,7 @@ MonoBehaviour:
   ReusePoint: 0
   OccupiedRadius: 18
   RestrictToBootstrapStage: 1
-  BootstrapStage: 2
+  BootstrapStage: 20
   GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
   GizmoRadius: 5
 --- !u!1001 &733659936
@@ -13523,11 +13523,11 @@ GameObject:
   - component: {fileID: 1846054610}
   m_Layer: 0
   m_Name: IA_Comandante
-  m_TagString: Player
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1846054608
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13543,9 +13543,9 @@ MonoBehaviour:
   TeamID: 2
   identidade: {fileID: 0}
   NomeComandante: General Kaos
-  dinheiro: 5000
+  dinheiro: 50000
   rendaPorSegundo: 15
-  estadoAtual: 1
+  estadoAtual: 0
   intervaloDecisao: 15
   controlePorLLM: 0
   minhasUnidades: []
@@ -13567,7 +13567,7 @@ Transform:
   m_GameObject: {fileID: 1846054607}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 1618, y: 0, z: -3409}
+  m_LocalPosition: {x: 1618, y: 0, z: -3117}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -14084,7 +14084,7 @@ Transform:
   m_GameObject: {fileID: 1931904362}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 32, y: 0, z: -79.99994}
+  m_LocalPosition: {x: 242.5, y: 0, z: -40.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

@@ -1056,7 +1056,15 @@ public class ControleSubmarino : MonoBehaviour
 
     public static bool PodeSerAlvoConvencional(Transform alvo)
     {
-        return alvo != null && !EstaOcultoParaCombateConvencional(alvo);
+        if (alvo == null || EstaOcultoParaCombateConvencional(alvo)) return false;
+        
+        // Aviões comerciais são ignorados por radares e sistemas de tiro convencionais
+        if (alvo.GetComponentInParent<ControleAviaoComercial>() != null || alvo.GetComponentInChildren<ControleAviaoComercial>() != null)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     public bool PodeAtacarIA()

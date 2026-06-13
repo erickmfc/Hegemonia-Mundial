@@ -102,6 +102,7 @@ public class IA_General_Pro : MonoBehaviour
             _timerReorganizar = 0;
             LimparMortos();
             if (!jaAtacou) MoverTropasParaPontoDeEncontro();
+            GerenciarFrotaNaval();
         }
 
         _timerAtaque += deltaCompat;
@@ -281,6 +282,41 @@ public class IA_General_Pro : MonoBehaviour
         }
     }
 
+    void GerenciarFrotaNaval()
+    {
+        if (grupoNavios.Count == 0) return;
+        
+        Transform alvoInimigo = BuscarAlvo();
+        Vector3 centroBase = (chefe.basePrincipal != null) ? chefe.basePrincipal.position : transform.position;
+
+        foreach (var navObj in grupoNavios)
+        {
+            if (navObj == null) continue;
+            
+            bool ehTransporteNaval = navObj.GetComponent<TransporteTerrestre>() != null;
+            if (ehTransporteNaval) continue;
+
+            var mov = navObj.GetComponent<ControleUnidade>();
+            if (mov == null) continue;
+
+            if (alvoInimigo != null)
+            {
+                // Mover a uma distância de bombardeio costeiro do alvo
+                Vector3 direcao = (alvoInimigo.position - navObj.transform.position).normalized;
+                Vector3 posicaoBombardeio = alvoInimigo.position - (direcao * 300f); 
+                mov.EmitirOrdemMover(posicaoBombardeio);
+            }
+            else
+            {
+                // Patrulha costeira ou formação em volta da base
+                if (Vector3.Distance(navObj.transform.position, centroBase) > 400f)
+                {
+                    mov.EmitirOrdemMover(centroBase + new Vector3(Random.Range(-100f, 100f), 0, Random.Range(-100f, 100f)));
+                }
+            }
+        }
+    }
+
     void GerenciarTransporteRay()
     {
         Transform alvoInimigo = BuscarAlvo();
@@ -390,6 +426,10 @@ public class IA_General_Pro : MonoBehaviour
 
         LimparMortos(); 
 
+        // HARD CAP: Evitar travamentos e lag extremo com 200+ unidades
+        int totalUnidadesMilitares = chefe.minhasUnidades.Count(u => u != null && !u.name.Contains("Construtor") && !u.name.Contains("Civil"));
+        if (totalUnidadesMilitares >= 45) return; // Limite global de tropas para manter o FPS saudável
+
         bool temQuartel = minhasFabricas.Any(f =>
             f != null && (
                 f.ehQuartel ||
@@ -446,6 +486,11 @@ public class IA_General_Pro : MonoBehaviour
              if (ComprarUnidade(false, false, false, false, "Tank", "Tanque", "Leopard", "Blindado", "South", "Ubu", "Gravity", "Anti")) return;
         }
 
+        if (grupoNavios.Count < naviosDesejados && temEstaleiro)
+        {
+             if (ComprarUnidade(false, true, false, false, "Navio", "Fragata", "Corveta", "Sub", "Destroier")) return;
+        }
+
         if (grupoAvioes.Count < avioesDesejados && meusAeroportos.Count > 0 && chefe.dinheiro > 600)
         {
              if (ComprarUnidade(false, false, false, true, "Caca", "Tuk", "F22", "F-22", "Super", "Jet", "Aviao", "Caoc")) return;
@@ -456,10 +501,11 @@ public class IA_General_Pro : MonoBehaviour
              if (ComprarUnidade(false, false, true, false, "Heli", "Apache", "Cobra", "Falcon", "Ray", "Guincho")) return;
         }
 
-        if (chefe.dinheiro > 2000)
+        if (chefe.dinheiro > 2000 && totalUnidadesMilitares < 40)
         {
              if (Random.value > 0.4f && temFabricaVeiculos) ComprarUnidade(false, false, false, false, "Tank", "South", "Ubu", "Gravity");
              else if (temQuartel) ComprarUnidade(true, false, false, false, "Soldado", "Infantaria");
+             else if (temEstaleiro) ComprarUnidade(false, true, false, false, "Navio", "Fragata", "Corveta");
         }
     }
 
@@ -705,15 +751,16 @@ public class IA_General_Pro : MonoBehaviour
             float avancoFrontal = Mathf.Min(600f, distanciaTotal * 0.7f);
 
             Vector3 offsetFlanco = Vector3.zero;
-            int taticaDeFlanco = contagemEsquadrao % 3; 
+            int taticaDeFlanco = contagemEsquadrao % 4; 
 
             if (_inimigoForteEmDefesa && taticaDeFlanco == 0)
             {
-                taticaDeFlanco = Random.Range(1, 3); 
+                taticaDeFlanco = Random.Range(1, 4); 
             }
 
             if (taticaDeFlanco == 1) offsetFlanco = esquerdaLateral * 750f; 
             else if (taticaDeFlanco == 2) offsetFlanco = -esquerdaLateral * 750f; 
+            else if (taticaDeFlanco == 3) offsetFlanco = (dirParaAlvo * 300f) + (esquerdaLateral * 400f);
 
             Vector3 stagingArea = centro + (dirParaAlvo * avancoFrontal) + offsetFlanco;
             if (Terrain.activeTerrain != null) stagingArea.y = Terrain.activeTerrain.SampleHeight(stagingArea);
@@ -747,6 +794,12 @@ public class IA_General_Pro : MonoBehaviour
         else if(n.Contains("tanque") || n.Contains("tank") || n.Contains("leopard") || n.Contains("blindado") || n.Contains("south") || n.Contains("ubu") || n.Contains("gravity") || n.Contains("ares")) grupoTanques.Add(u);
         else if(u.GetComponent<TransporteTerrestre>() != null) grupoTransportes.Add(u);
         else grupoSoldados.Add(u);
+
+        // PROPAGAR PARA O COMANDANTE CENTRAL (Impede falhas no censo global e no hard-cap de performance)
+        if (chefe != null && !chefe.minhasUnidades.Contains(u))
+        {
+            chefe.RegistrarUnidade(u);
+        }
     }
 
     public void RegistrarSoldado(GameObject u) { RegistrarUnidade(u); }

@@ -604,10 +604,13 @@ public class LancadorNaval : MonoBehaviour
         tempoUltimoDisparo = Time.time;
         int misseisDisponiveisNaSalva = Mathf.Min(tirosPorSalva, municaoTotal);
         
-        // Simulação de dano do Míssil
+        // Simulação de dano do Míssil (seguro contra nulos se for um lançador apenas de torpedo)
         float danoMissel = 200f; 
-        MisselNaval refMissel = prefabMissel.GetComponent<MisselNaval>();
-        if (refMissel != null) danoMissel = refMissel.dano;
+        if (prefabMissel != null)
+        {
+            MisselNaval refMissel = prefabMissel.GetComponent<MisselNaval>();
+            if (refMissel != null) danoMissel = refMissel.dano;
+        }
 
         for (int i = 0; i < misseisDisponiveisNaSalva; i++)
         {

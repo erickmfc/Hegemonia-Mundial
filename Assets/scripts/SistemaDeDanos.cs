@@ -71,14 +71,14 @@ public class SistemaDeDanos : MonoBehaviour
 
             if (vitimaID != null && agressorID != null && vitimaID.teamID != agressorID.teamID)
             {
-                if (Hegemonia.AI.BrainMaster.SistemaGovernoMundial.Instancia != null)
+                if (SistemaGovernoMundial.Instancia != null)
                 {
-                    var relacao = Hegemonia.AI.BrainMaster.SistemaGovernoMundial.Instancia.ObterRelacao(vitimaID.teamID, agressorID.teamID);
+                    var relacao = SistemaGovernoMundial.Instancia.ObterRelacao(vitimaID.teamID, agressorID.teamID);
                     if (relacao != null && !relacao.guerraDeclarada)
                     {
                         relacao.guerraDeclarada = true;
-                        Hegemonia.AI.BrainMaster.SistemaGovernoMundial.Instancia.NotificarGuerra(vitimaID.teamID);
-                        Hegemonia.AI.BrainMaster.SistemaGovernoMundial.Instancia.NotificarGuerra(agressorID.teamID);
+                        SistemaGovernoMundial.Instancia.NotificarGuerra(vitimaID.teamID);
+                        SistemaGovernoMundial.Instancia.NotificarGuerra(agressorID.teamID);
                         UnityEngine.Debug.Log($"[Diplomacia] GUERRA declarada entre Time {vitimaID.teamID} e Time {agressorID.teamID} devida a agressão!");
                     }
                 }

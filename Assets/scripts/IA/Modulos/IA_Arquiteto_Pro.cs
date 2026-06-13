@@ -272,13 +272,41 @@ public class IA_Arquiteto_Pro : MonoBehaviour
                 if (ConstruirNaTerra("Residencial", centro, 300)) return;
             }
         }
+
+        // --- EXPANSÃO HABITACIONAL E PETRÓLEO ---
+        if (chefe.dinheiro > 1000f)
+        {
+            int qtdCasas = ContarPredios("Residencial") + ContarPredios("Casa") + ContarPredios("Predio");
+            if (qtdCasas < 4)
+            {
+                if (ConstruirNaTerra("Residencial", centro, 400)) return;
+                if (ConstruirNaTerra("Casa", centro, 200)) return;
+                if (ConstruirNaTerra("Predio", centro, 600)) return;
+            }
+
+            int qtdPetroleo = ContarPredios("Petroleo") + ContarPredios("Refinaria");
+            if (qtdPetroleo < 2)
+            {
+                Vector3 posAgua = EncontrarAgua(centro, 50f, 600f);
+                if (posAgua != Vector3.zero)
+                {
+                     Vector3 dirMar = (posAgua - centro).normalized;
+                     ConstruirNaAgua("Petroleo", posAgua, dirMar);
+                }
+                else
+                {
+                     if (ConstruirNaTerra("Petroleo", centro, 800)) return;
+                }
+            }
+        }
         
         if (chefe.dinheiro > 1500 && !ExistePredio("Estaleiro") && !ExistePredio("Pier") && !ExistePredio("Naval"))
         {
             Vector3 posAgua = EncontrarAgua(centro, 50f, 600f);
             if (posAgua != Vector3.zero)
             {
-                if (GerenteDeTerritorio.Instancia != null && GerenteDeTerritorio.Instancia.ObterDonoDoPonto(posAgua) == chefe.identidade.teamID)
+                int donoAgua = GerenteDeTerritorio.Instancia != null ? GerenteDeTerritorio.Instancia.ObterDonoDoPonto(posAgua) : 0;
+                if (donoAgua == chefe.identidade.teamID || donoAgua == 0) // Água amiga ou neutra (águas internacionais)
                 {
                     Vector3 dirMar = (posAgua - centro).normalized;
                     ConstruirNaAgua("Estaleiro", posAgua, dirMar);
@@ -300,6 +328,13 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
             if (qtdAA < 4 && chefe.dinheiro >= 800) ConstruirAresEstrategico(centro, 800);
             else if (qtdSolo < 6 && chefe.dinheiro >= 500) ConstruirDefesaInteligente("Torreta", centro, 500);
+
+            if (chefe.dinheiro > 3000)
+            {
+                 if (!ExistePredio("Radar")) ConstruirDefesaInteligente("Radar", centro, 1000);
+                 else if (!ExistePredio("THAAD")) ConstruirDefesaInteligente("THAAD", centro, 2000);
+                 else if (!ExistePredio("CIWS")) ConstruirDefesaInteligente("CIWS", centro, 1500);
+            }
         }
         
         if (chefe.dinheiro > 600)
@@ -684,7 +719,11 @@ public class IA_Arquiteto_Pro : MonoBehaviour
     {
         GameObject novo = Instantiate(prefab, pos, rot);
         ConfigurarIdentidade(novo);
-        if(chefe != null) chefe.GastarDinheiro(200); 
+        if(chefe != null) 
+        {
+            chefe.GastarDinheiro(200); 
+            chefe.RegistrarUnidade(novo);
+        }
     }
 
     bool DentroDeAeroporto(Vector3 posicao)
@@ -761,6 +800,12 @@ public class IA_Arquiteto_Pro : MonoBehaviour
                     else if (nomeChave == "Fazenda" && (nm.Contains("fazenda") || nm.Contains("comida") || nm.Contains("farm") || nm.Contains("agricola"))) prefabAchado = item.prefabDaUnidade;
                     else if (nomeChave == "Comercial" && (nm.Contains("comercial") || nm.Contains("loja") || nm.Contains("shopping"))) prefabAchado = item.prefabDaUnidade;
                     else if (nomeChave == "Residencial" && (nm.Contains("residencial") || nm.Contains("casa") || nm.Contains("predio") || nm.Contains("house"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Petroleo" && (nm.Contains("petroleo") || nm.Contains("refinaria") || nm.Contains("oil"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Predio" && (nm.Contains("predio") || nm.Contains("building") || nm.Contains("apartamento"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Casa" && (nm.Contains("casa") || nm.Contains("house"))) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "Radar" && nm.Contains("radar")) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "THAAD" && nm.Contains("thaad")) prefabAchado = item.prefabDaUnidade;
+                    else if (nomeChave == "CIWS" && (nm.Contains("ciws") || nm.Contains("c.i.w.s"))) prefabAchado = item.prefabDaUnidade;
                 }
             }
         }

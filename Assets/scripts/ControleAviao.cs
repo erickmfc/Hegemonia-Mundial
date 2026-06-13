@@ -64,6 +64,7 @@ public class ControleAviao : MonoBehaviour
     public bool estaEmModoVooFisico = false;
     protected float giroLateralRoll = 0f; 
     protected float empinadaPitch = 0f;   
+    protected float giroLateralYInicial = 0f;
     protected float multiplicadorVelocidadeTurbo = 1f;
     protected float tempoSegurandoTab = 0f;
     protected float anguloOrbitaAtual = 0f;
@@ -85,6 +86,11 @@ public class ControleAviao : MonoBehaviour
 
     protected virtual void Start()
     {
+        if (modeloMecanicoVisual != null)
+        {
+            giroLateralYInicial = modeloMecanicoVisual.localEulerAngles.y;
+        }
+
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null) rb.isKinematic = true; 
 
@@ -397,7 +403,7 @@ public class ControleAviao : MonoBehaviour
             float inclinacaoAlvoX = Mathf.Clamp(retaAteAlvo.y * -3.0f, -arfagemPitchMaxima, arfagemPitchMaxima);
             giroLateralRoll = Mathf.Lerp(giroLateralRoll, inclinacaoAlvoZ, dt * 5f);
             empinadaPitch = Mathf.Lerp(empinadaPitch, inclinacaoAlvoX, dt * 5f);
-            modeloMecanicoVisual.localRotation = Quaternion.Euler(empinadaPitch, 0f, giroLateralRoll);
+            modeloMecanicoVisual.localRotation = Quaternion.Euler(empinadaPitch, giroLateralYInicial, giroLateralRoll);
         }
     }
 
@@ -487,7 +493,7 @@ public class ControleAviao : MonoBehaviour
                 }
             }
 
-            if (modeloMecanicoVisual != null) modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.identity, Time.deltaTime * 5f);
+            if (modeloMecanicoVisual != null) modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.Euler(0f, giroLateralYInicial, 0f), Time.deltaTime * 5f);
             yield return null;
         }
 
@@ -687,7 +693,7 @@ public class ControleAviao : MonoBehaviour
 
             if (modeloMecanicoVisual != null)
             {
-                modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.identity, 0.45f);
+                modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.Euler(0f, giroLateralYInicial, 0f), 0.45f);
             }
             return;
         }
@@ -972,7 +978,37 @@ public class ControleAviao : MonoBehaviour
         return baseDestino.transform.position;
     }
 
-    private IEnumerator SequenciaDeVooEPouso()
+    protected virtual List<Transform> ObterWaypointsDecolagem()
+    {
+        return aeroportoOrigem != null ? aeroportoOrigem.waypointsDecolagem : new List<Transform>();
+    }
+
+    protected virtual List<Transform> ObterWaypointsDecida()
+    {
+        return aeroportoOrigem != null ? aeroportoOrigem.waypointsDecida : new List<Transform>();
+    }
+
+    protected virtual List<Transform> ObterWaypointsTaxi()
+    {
+        return aeroportoOrigem != null ? aeroportoOrigem.waypointsTaxi : new List<Transform>();
+    }
+
+    protected virtual Transform ObterWpPreparacao()
+    {
+        return aeroportoOrigem != null ? aeroportoOrigem.wpPreparacao : null;
+    }
+
+    protected virtual Transform ObterWpPronto()
+    {
+        return aeroportoOrigem != null ? aeroportoOrigem.wpPronto : null;
+    }
+
+    protected virtual List<Transform> ObterWaypointsTaxiEntrada()
+    {
+        return new List<Transform>();
+    }
+
+    protected virtual IEnumerator SequenciaDeVooEPouso()
     {
         if (aeroportoOrigem == null) 
         {
@@ -1027,9 +1063,8 @@ public class ControleAviao : MonoBehaviour
                 }
 
                 // Táxi e decolagem usando waypoints (a velocidade baseia-se na de solo primeiro)
-                yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoDecolagem, velocidadeMaximaVoo, velocidadeSolo, false, false));
+                yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoDecolagem, velocidadeSolo, velocidadeMaximaVoo, true, false));
             }
-        }
         else
         {
             yield return new WaitForSeconds(0.5f); // Pequena pausa fallback se não houver pista
@@ -1325,7 +1360,7 @@ public class ControleAviao : MonoBehaviour
         }
     }
 
-    private IEnumerator RecolherRodas(float delay)
+    protected IEnumerator RecolherRodas(float delay)
     {
         yield return new WaitForSeconds(delay);
         if (rodasRecolhidas) yield break;
@@ -1345,7 +1380,7 @@ public class ControleAviao : MonoBehaviour
             if (rodas[i] != null) rodas[i].gameObject.SetActive(false);
     }
 
-    private void AbaixarRodas()
+    protected void AbaixarRodas()
     {
         if (!rodasRecolhidas) return;
         rodasRecolhidas = false;

@@ -619,12 +619,29 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     {
         if (prefabAviaoComercial == null || voo == null) return;
 
-        // Spawna alto no céu e longe
-        Vector2 dir = Random.insideUnitCircle.normalized * 3000f;
-        Vector3 posSpawn = new Vector3(transform.position.x + dir.x, 150f, transform.position.z + dir.y);
+        Vector3 posSpawn = transform.position;
+        Quaternion rotSpawn = Quaternion.identity;
 
-        // Instancia virado para o aeroporto
-        GameObject obj = Instantiate(prefabAviaoComercial, posSpawn, Quaternion.LookRotation((transform.position - posSpawn).normalized));
+        // Tenta spawnar no primeiro ponto da descida comum do aeroporto (os creaty)
+        if (decida != null && decida.childCount > 0)
+        {
+            Transform primeiroPonto = decida.GetChild(0);
+            posSpawn = primeiroPonto.position;
+            if (decida.childCount > 1)
+                rotSpawn = Quaternion.LookRotation((decida.GetChild(1).position - posSpawn).normalized);
+            else
+                rotSpawn = primeiroPonto.rotation;
+        }
+        else
+        {
+            // Fallback: Spawna alto no céu e longe
+            Vector2 dir = Random.insideUnitCircle.normalized * 3000f;
+            posSpawn = new Vector3(transform.position.x + dir.x, 150f, transform.position.z + dir.y);
+            rotSpawn = Quaternion.LookRotation((transform.position - posSpawn).normalized);
+        }
+
+        // Instancia o avião
+        GameObject obj = Instantiate(prefabAviaoComercial, posSpawn, rotSpawn);
         
         Rigidbody rb = obj.GetComponent<Rigidbody>();
         if (rb != null) rb.isKinematic = true;
@@ -644,8 +661,8 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
 
         frotaComercialAtiva.Add(ca);
 
-        // Faz ele voltar para o aeroporto imediatamente
         ca.DefinirBaseAlternativaEIniciarRetorno(this);
+        ca.IniciarSequenciaPousoComercial();
     }
 
     private void VirarDiaComercial()

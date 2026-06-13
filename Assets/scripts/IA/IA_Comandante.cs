@@ -99,6 +99,7 @@ public class IA_Comandante : MonoBehaviour
         IA_ComandanteRegistry.Register(this);
         StartCoroutine(CicloDeDecisao());
         StartCoroutine(RendaPassiva());
+        StartCoroutine(CicloDeConversaGoverno());
     }
 
     // --- MÁQUINA DE ESTADOS (COROUTINE) ---
@@ -139,44 +140,57 @@ public class IA_Comandante : MonoBehaviour
     {
         if (controlePorLLM) return; // O Llama assume total controle do fluxo.
 
-        int totalSoldados = minhasUnidades.Count(u => u != null && !u.name.Contains("Construtor") && !u.name.Contains("Civil"));
-        int totalCivis = meusCivis.Count(u => u != null);
+        int forcaMilitar = minhasUnidades.Count(u => u != null && !u.name.Contains("Construtor") && !u.name.Contains("Civil"));
+        int forcaEconomica = minhasBases.Count;
         
-        // A IA começa pacífica, juntando forças ou colonizando. 
-        // Se a economia está forte, ela expande e investe em civis/turismo.
+        // Limites Militares Avançados
+        int limiteTropaAtaque = 25; // Exército colossal para atacar (tanques, navios, aéreos e soldados)
+        int limiteTropaRecuo = 8;   // Exército fraco, precisa focar em defesa
         
-        // Se tem menos de 2 bases, foca em exploração
-        if (minhasBases.Count < 2 && dinheiro > 1000) 
+        // 1. Sobrevivência Básica e Expansão Rápida
+        if (forcaEconomica < 3) 
         {
             estadoAtual = EstadoEstrategico.Expandir;
             return;
         }
 
-        // Se está incrivelmente rica e estruturada, ataca
-        if (totalSoldados >= 15 && dinheiro > 2000)
+        // 2. Fortificação se não tem exército suficiente para segurar a agressividade
+        if (forcaMilitar < limiteTropaRecuo && estadoAtual != EstadoEstrategico.Expandir)
+        {
+            // Pende mais para acumular forças, mas pode fortificar muros e torres
+            estadoAtual = (Random.value > 0.3f) ? EstadoEstrategico.Acumular_Forcas : EstadoEstrategico.Fortificar;
+            return;
+        }
+
+        // 3. Economia de Guerra (Guerra Fria) / Preparação
+        if (forcaMilitar >= limiteTropaRecuo && forcaMilitar < limiteTropaAtaque)
+        {
+            // Se tem rios de dinheiro, se dá ao luxo de focar na nação (Turismo/Povo)
+            if (dinheiro > 3500)
+                estadoAtual = EstadoEstrategico.Paz_Desenvolvimento;
+            else
+                estadoAtual = EstadoEstrategico.Acumular_Forcas;
+            return;
+        }
+
+        // 4. Ataque Massivo - A fúria do Comandante
+        if (forcaMilitar >= limiteTropaAtaque && dinheiro >= 1500)
         {
             estadoAtual = EstadoEstrategico.Ataque_Total;
             return;
         }
         
-        // Se perdeu o exército, volta pra casa
-        if (totalSoldados < 5 && estadoAtual == EstadoEstrategico.Ataque_Total)
+        // 5. Gerenciamento de exaustão durante Ataque Total
+        if (estadoAtual == EstadoEstrategico.Ataque_Total && (forcaMilitar < 15 || dinheiro < 500))
         {
             estadoAtual = EstadoEstrategico.Acumular_Forcas;
             return;
         }
-
-        // Se tem economia sobrando mas ainda não tem exército colossal, foca no Povo.
-        if (dinheiro > 1000 && totalSoldados >= 5 && totalSoldados < 15)
-        {
-            estadoAtual = EstadoEstrategico.Paz_Desenvolvimento;
-            return;
-        }
         
-        // Estado base se não caiu nas outras regras
-        if (estadoAtual == EstadoEstrategico.Expandir && minhasBases.Count >= 2)
+        // Fallback: Se não caiu em nada (ex: forcaMilitar >= 25 mas sem dinheiro)
+        if (estadoAtual == EstadoEstrategico.Expandir && forcaEconomica >= 3)
         {
-            estadoAtual = EstadoEstrategico.Paz_Desenvolvimento;
+            estadoAtual = EstadoEstrategico.Acumular_Forcas;
         }
     }
 
@@ -302,21 +316,39 @@ public class IA_Comandante : MonoBehaviour
 
         if (transporte == null)
         {
-            // Se não tem, encomenda um! (Via general se possível)
-            // if (dinheiro > 1000) ComprarUnidadeIA("Hovercraft"); 
-            
-            // Unidade espera no ponto de reunião por enquanto
+            // Se não tem, a unidade espera na costa ou no ponto de reunião
             MoverPara(unidade, pontoDeReuniao);
             return;
         }
 
-        // B. Lógica de Embarque (Placeholder)
-        MoverPara(unidade, transporte.transform.position);
+        var scriptTransp = transporte.GetComponent<TransporteTerrestre>();
+        var navMovel = transporte.GetComponent<ControleUnidade>();
+
+        if (scriptTransp != null)
+        {
+            // Manda a unidade e o barco para a mesma coordenada costeira
+            Vector3 direcaoAgua = (destino - unidade.transform.position).normalized;
+            Vector3 pontoCosteiro = unidade.transform.position + (direcaoAgua * 20f); 
+            
+            MoverPara(unidade, pontoCosteiro);
+            if (navMovel && Vector3.Distance(transporte.transform.position, unidade.transform.position) > 60f)
+            {
+                 navMovel.EmitirOrdemMover(pontoCosteiro);
+            }
+            
+            // O embarque e a travessia real (mover para o alvo e desembarcar) 
+            // será gerenciado continuamente pelo GerenciarTransportes() do IA_General_Pro.
+        }
+        else
+        {
+            MoverPara(unidade, transporte.transform.position);
+        }
     }
 
     GameObject ObterTransporteLivre()
     {
-        return meusTransportes.FirstOrDefault(t => t != null && Vector3.Distance(t.transform.position, transform.position) < 500); 
+        // Retorna transportes navais ou terrestres aptos que não estão absurdamente longe
+        return meusTransportes.FirstOrDefault(t => t != null && t.activeInHierarchy && Vector3.Distance(t.transform.position, transform.position) < 800f); 
     }
 
     // --- UTILITÁRIOS ---
@@ -383,7 +415,7 @@ public class IA_Comandante : MonoBehaviour
         {
             meusTransportes.Add(unidade);
         }
-        else if (unidade.GetComponent<NavMeshAgent>() != null)
+        else if (unidade.GetComponent<NavMeshAgent>() != null || unidade.name.ToLower().Contains("aviao") || unidade.name.ToLower().Contains("navio") || unidade.name.ToLower().Contains("caca") || unidade.name.ToLower().Contains("heli"))
         {
             minhasUnidades.Add(unidade);
         }
@@ -416,5 +448,60 @@ public class IA_Comandante : MonoBehaviour
     public void AdicionarDinheiro(float valor)
     {
         dinheiro += valor;
+    }
+
+    // --- CONVERSA E GOVERNO (DIPLOMACIA E PROPOSTAS) ---
+    IEnumerator CicloDeConversaGoverno()
+    {
+        yield return new WaitForSeconds(30f);
+
+        while (true)
+        {
+            yield return new WaitForSeconds(Random.Range(45f, 90f)); 
+
+            if (gerenteJogo == null) continue;
+
+            SistemaGovernoMundial gov = Object.FindFirstObjectByType<SistemaGovernoMundial>();
+            if (gov == null) continue;
+
+            int alvoId = 1; // Equipe do Jogador
+
+            PropostaInternacional proposta = new PropostaInternacional();
+            proposta.origemTeamId = this.identidade.teamID;
+            proposta.alvoTeamId = alvoId;
+            proposta.criadaEm = Time.time;
+            proposta.expiraEm = Time.time + 120f;
+            proposta.dedupKey = "Comandante_Fala_" + Time.time;
+
+            if (estadoAtual == EstadoEstrategico.Paz_Desenvolvimento || estadoAtual == EstadoEstrategico.Expandir)
+            {
+                proposta.tipo = TipoPropostaInternacional.Venda;
+                proposta.recurso = RecursoMercado.Comida;
+                proposta.quantidade = 100;
+                proposta.precoUnitario = 8;
+                proposta.motivo = $"{NomeComandante}: Temos excesso de produção e desejamos estreitar laços. Comprem nossos recursos!";
+            }
+            else if (estadoAtual == EstadoEstrategico.Acumular_Forcas)
+            {
+                proposta.tipo = TipoPropostaInternacional.Compra;
+                proposta.recurso = RecursoMercado.Petroleo;
+                proposta.quantidade = 200;
+                proposta.precoUnitario = 4;
+                proposta.motivo = $"{NomeComandante}: Exigimos petróleo barato para nossa máquina de guerra. Recuse e sofra as consequências.";
+            }
+            else if (estadoAtual == EstadoEstrategico.Ataque_Total)
+            {
+                proposta.tipo = TipoPropostaInternacional.PactoDefensivo;
+                proposta.quantidade = 0;
+                proposta.precoUnitario = 0;
+                proposta.motivo = $"{NomeComandante}: Nossas tropas estão a caminho. Renda-se assinando este pacto e torne-se um vassalo nosso!";
+            }
+            else
+            {
+                continue;
+            }
+
+            gov.TentarCriarProposta(proposta);
+        }
     }
 }
