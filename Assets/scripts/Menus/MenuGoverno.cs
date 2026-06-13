@@ -1889,16 +1889,28 @@ public class MenuGoverno : MonoBehaviour
             return;
         }
 
+        float consumoCivil = p.populacaoCivil / 100f * 1f;
+        float consumoMilitar = p.populacaoMilitarAtiva / 100f * 2f;
+        float consumoTotalComida = consumoCivil + consumoMilitar;
+
         CreateInfoBlock(parent,
-            "Comida: " + economia.comidaProduzida.ToString("0.0")
-            + "\nPetroleo: " + economia.petroleoProduzido.ToString("0.0")
-            + "\nAco: " + economia.industriaProduzida.ToString("0.0")
-            + "\nDeficit principal: " + economia.DeficitPrincipal);
+            "Estoque de comida: " + p.comida.ToString() + " t"
+            + "\nComida produzida: " + economia.comidaProduzida.ToString("0.0") + " t"
+            + "\nComida consumida: " + consumoTotalComida.ToString("0.0") + " t"
+            + "\n   - Consumo populacao civil: " + consumoCivil.ToString("0.0") + " t"
+            + "\n   - Consumo forcas militares: " + consumoMilitar.ToString("0.0") + " t"
+            + "\nDeficit de comida: " + economia.deficitComida.ToString("0.0") + " t");
+
         CreateInfoBlock(parent,
             "Energia gerada: " + p.energiaProduzida.ToString("0.0") + " MW"
             + "\nEnergia consumida: " + p.energiaConsumida.ToString("0.0") + " MW"
             + "\nPredios sem energia: " + p.estruturasSemEnergia
             + "\nQualidade de vida: " + p.qualidadeVida.ToString("0") + "%");
+
+        CreateInfoBlock(parent,
+            "Petroleo produzido: " + economia.petroleoProduzido.ToString("0.0") + " t"
+            + "\nAco produzido: " + economia.industriaProduzida.ToString("0.0") + " t"
+            + "\nDeficit principal: " + economia.DeficitPrincipal);
     }
 
     private void CreateTaxOverviewRows(Transform parent, DadosPaisGoverno p)
@@ -2057,14 +2069,24 @@ public class MenuGoverno : MonoBehaviour
             p.saldo = gr.dinheiro;
             p.petroleo = gr.petroleo;
             p.aco = gr.aco;
+            p.comida = gr.comida;
             p.populacao = gr.populacaoAtual;
             p.populacaoMaxima = gr.populacaoMaxima;
+        }
+
+        float taxaComida = 0f;
+        DadosEconomiaPais playerEcon = PlayerEconomy();
+        if (p != null && playerEcon != null)
+        {
+            float consumoCivil = p.populacaoCivil / 100f * 1f;
+            float consumoMilitar = p.populacaoMilitarAtiva / 100f * 2f;
+            taxaComida = playerEcon.comidaProduzida - (consumoCivil + consumoMilitar);
         }
 
         SetResource("DINHEIRO", p != null ? "$" + FormatNumber(p.saldo) : gr != null ? "$" + FormatNumber(gr.dinheiro) : "n/d", p != null ? SignedRate(p.rendaPorSegundo) : string.Empty, corVerde);
         SetResource("PETROLEO", p != null ? FormatNumber(p.petroleo) : gr != null ? FormatNumber(gr.petroleo) : "0", gr != null ? SignedRate(gr.petroleoPorSegundo) : string.Empty, gr == null || gr.petroleoPorSegundo >= 0f ? corVerde : corVermelho);
         SetResource("ACO", p != null ? FormatNumber(p.aco) : gr != null ? FormatNumber(gr.aco) : "0", gr != null ? SignedRate(gr.acoPorSegundo) : string.Empty, gr == null || gr.acoPorSegundo >= 0f ? corVerde : corVermelho);
-        SetResource("COMIDA", p != null ? FormatNumber(p.comida) : gr != null ? FormatNumber(gr.comida) : "0", string.Empty, corVerde);
+        SetResource("COMIDA", p != null ? FormatNumber(p.comida) : gr != null ? FormatNumber(gr.comida) : "0", p != null && playerEcon != null ? SignedRate(taxaComida) : string.Empty, p == null || taxaComida >= 0f ? corVerde : corVermelho);
         SetResource("POP", p != null ? FormatNumber(p.populacao) + "/" + FormatNumber(p.populacaoMaxima) : gr != null ? gr.populacaoAtual + "/" + gr.populacaoMaxima : "0", string.Empty, corTextoSecundario);
         SetResource("ESTAB", p != null ? p.estabilidade.ToString("0") + "%" : "n/d", p != null ? "Infl. " + p.inflacao.ToString("0.0") + "%" : string.Empty, p != null ? StatusColor(p) : corTextoSecundario);
         SetResource("STATUS", p != null ? StatusGov(p).ToUpperInvariant() : "OK", string.Empty, p != null ? StatusColor(p) : corTextoSecundario);

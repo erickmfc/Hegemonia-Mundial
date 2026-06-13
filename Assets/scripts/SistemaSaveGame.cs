@@ -17,6 +17,7 @@ public class DadosDoJogo
     public int petroleoJogador = 500;
     public int acoJogador = 300;
     public int energiaJogador = 100;
+    public int comidaJogador = 500;
     public string mapaAtual = "Mapa_1";
     public string idioma = "pt-BR";
     public string dificuldade = "normal";
@@ -399,6 +400,7 @@ public class SistemaSaveGame : MonoBehaviour
         dadosAtuais.petroleoJogador = GerenciadorRecursos.Instancia.petroleo;
         dadosAtuais.acoJogador = GerenciadorRecursos.Instancia.aco;
         dadosAtuais.energiaJogador = GerenciadorRecursos.Instancia.energia;
+        dadosAtuais.comidaJogador = GerenciadorRecursos.Instancia.comida;
     }
 
     private void AplicarRecursosSalvos()
@@ -412,6 +414,7 @@ public class SistemaSaveGame : MonoBehaviour
         GerenciadorRecursos.Instancia.petroleo = dadosAtuais.petroleoJogador;
         GerenciadorRecursos.Instancia.aco = dadosAtuais.acoJogador;
         GerenciadorRecursos.Instancia.energia = dadosAtuais.energiaJogador;
+        GerenciadorRecursos.Instancia.comida = dadosAtuais.comidaJogador;
     }
 
     private void CapturarIdioma()

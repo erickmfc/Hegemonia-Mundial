@@ -833,6 +833,8 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             case RecursoMercado.Comida:
                 pais.comida = Mathf.Max(0, pais.comida + delta);
+                if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
+                    GerenciadorRecursos.Instancia.comida = pais.comida;
                 break;
             case RecursoMercado.Petroleo:
                 pais.petroleo = Mathf.Max(0, pais.petroleo + delta);

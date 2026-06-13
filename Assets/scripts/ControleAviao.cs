@@ -35,6 +35,8 @@ public class ControleAviao : MonoBehaviour
     public float velocidadeOrbitaMissao = 0.9f;
     [Tooltip("Distância para considerar que chegou ao centro inicial da missão.")]
     public float margemChegadaMissao = 65f;
+    [Tooltip("Altitude de voo padrão da aeronave (em metros).")]
+    public float altitudeVoo = 120f;
 
     [Header("=== ANIMAÇÃO VISUAL ===")]
     public Transform modeloMecanicoVisual; 
@@ -1073,7 +1075,7 @@ public class ControleAviao : MonoBehaviour
         transform.SetParent(null, true);
         estaEmModoVooFisico = true;
         estadoAtual = EstadoAviao.EmMissao;
-        if (alvoGPSVoo.y < 60f) alvoGPSVoo.y = 60f;
+        if (alvoGPSVoo.y < altitudeVoo) alvoGPSVoo.y = altitudeVoo;
         centroDaPatrulha = alvoGPSVoo;
         StartCoroutine(RecolherRodas(1f));
 
@@ -1126,7 +1128,7 @@ public class ControleAviao : MonoBehaviour
 
                 Vector3 centroAtualizado = centroDaPatrulha + offsetPatrulha;
                 float raio = Mathf.Max(280f, raioOrbitaMissao * 7f);
-                float baseY = Mathf.Max(centroAtualizado.y, 100f);
+                float baseY = Mathf.Max(centroAtualizado.y, altitudeVoo);
 
                 if (centroAtualizado != ultimoCentroPatrulha || raio != ultimoRaio)
                 {
@@ -1140,7 +1142,7 @@ public class ControleAviao : MonoBehaviour
                     pontosRetangulo[3] = centroAtualizado + new Vector3(raio * 2f, -10f, -raio);
 
                     for (int i = 0; i < 4; i++) {
-                        pontosRetangulo[i].y = Mathf.Max(baseY + ((i % 2 == 0) ? 30f : -15f), 100f);
+                        pontosRetangulo[i].y = Mathf.Max(baseY + ((i % 2 == 0) ? 30f : -15f), altitudeVoo);
                     }
                 }
 

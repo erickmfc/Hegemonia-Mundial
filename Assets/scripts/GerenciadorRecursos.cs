@@ -50,6 +50,7 @@ public class GerenciadorRecursos : MonoBehaviour
                 Instancia.petroleo = this.petroleo;
                 Instancia.aco = this.aco;
                 Instancia.energia = this.energia;
+                Instancia.comida = this.comida;
                 Instancia.populacaoAtual = this.populacaoAtual;
                 Instancia.populacaoMaxima = this.populacaoMaxima;
                 
@@ -76,6 +77,7 @@ public class GerenciadorRecursos : MonoBehaviour
             petroleo = SistemaSaveGame.Instancia.dadosAtuais.petroleoJogador;
             aco = SistemaSaveGame.Instancia.dadosAtuais.acoJogador;
             energia = SistemaSaveGame.Instancia.dadosAtuais.energiaJogador;
+            comida = SistemaSaveGame.Instancia.dadosAtuais.comidaJogador;
             NotificarAtualizacao();
         }
     }

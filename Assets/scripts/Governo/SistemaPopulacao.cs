@@ -13,6 +13,14 @@ public static class SistemaPopulacao
         // Subtrai do estoque a necessidade total (ou até onde tiver estoque)
         int consumoReal = Mathf.Min(pais.comida, Mathf.CeilToInt(necessidadeComida));
         pais.comida -= consumoReal;
+
+        if (SistemaGovernoMundial.Instancia != null && pais.teamId == SistemaGovernoMundial.Instancia.teamJogador)
+        {
+            if (GerenciadorRecursos.Instancia != null && consumoReal > 0)
+            {
+                GerenciadorRecursos.Instancia.RemoverRecurso("Comida", consumoReal);
+            }
+        }
         
         // Colapso por fome se o déficit persistir além do estoque
         if (economia.deficitComida > 0 && pais.comida <= 0)
