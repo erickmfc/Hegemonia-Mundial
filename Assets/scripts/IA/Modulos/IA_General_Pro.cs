@@ -426,9 +426,9 @@ public class IA_General_Pro : MonoBehaviour
 
         LimparMortos(); 
 
-        // HARD CAP: Evitar travamentos e lag extremo com 200+ unidades
+        // HARD CAP: Evitar travamentos e lag extremo (unidades da IA sem LOD são pesadas)
         int totalUnidadesMilitares = chefe.minhasUnidades.Count(u => u != null && !u.name.Contains("Construtor") && !u.name.Contains("Civil"));
-        if (totalUnidadesMilitares >= 45) return; // Limite global de tropas para manter o FPS saudável
+        if (totalUnidadesMilitares >= 30) return; // Limite global reduzido para manter FPS saudável
 
         bool temQuartel = minhasFabricas.Any(f =>
             f != null && (
@@ -496,6 +496,9 @@ public class IA_General_Pro : MonoBehaviour
              if (ComprarUnidade(false, false, false, true, "Caca", "Tuk", "F22", "F-22", "Super", "Jet", "Aviao", "Caoc")) return;
         }
 
+        // Limite extra: máximo de 6 aviões para não sobrecarregar o aeroporto
+        if (grupoAvioes.Count >= avioesDesejados + 2) { /* não comprar mais aviões */ }
+
         if (grupoHelis.Count < helicopterosDesejados && chefe.dinheiro > 600)
         {
              if (ComprarUnidade(false, false, true, false, "Heli", "Apache", "Cobra", "Falcon", "Ray", "Guincho")) return;
@@ -512,8 +515,8 @@ public class IA_General_Pro : MonoBehaviour
     void TentarComprarAviaoPeriodicamentre()
     {
         if (meusAeroportos.Count == 0) return;
-        // Permite à IA expandir consideravelmente sua força aérea
-        if (grupoAvioes.Count >= avioesDesejados * 2) return; 
+        // Limita expansão aérea para não sobrecarregar o aeroporto e o FPS
+        if (grupoAvioes.Count >= avioesDesejados + 2) return; 
         if (chefe.dinheiro < 600) return;   
         if (MenuConstrucao.catalogoGlobal == null) return;
 
@@ -661,6 +664,9 @@ public class IA_General_Pro : MonoBehaviour
         if (Time.time - _ultimoScanGlobal < 5.0f) return;
         _ultimoScanGlobal = Time.time;
 
+        Vector3 centroIA = (chefe != null && chefe.basePrincipal != null) ? chefe.basePrincipal.position : (chefe != null ? chefe.transform.position : Vector3.zero);
+        int meuTime = (chefe != null && chefe.identidade != null) ? chefe.identidade.teamID : -1;
+
         var fabs = FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
         foreach(var f in fabs) RegistrarFabrica(f);
         
@@ -671,7 +677,21 @@ public class IA_General_Pro : MonoBehaviour
         foreach(var h in helis) RegistrarHeliporto(h, 2000f);
 
         var aerops = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach(var a in aerops) if (!(a is GerenciadorAeroportoComercial)) RegistrarAeroporto(a, 3000f);
+        foreach(var a in aerops)
+        {
+            if (a == null || a is GerenciadorAeroportoComercial) continue;
+            var idComp = a.GetComponent<IdentidadeUnidade>();
+            if (idComp != null && idComp.teamID == meuTime)
+            {
+                RegistrarAeroporto(a, 3000f);
+            }
+            else if (idComp == null)
+            {
+                // Fallback: aceita aeroporto sem IdentidadeUnidade se estiver perto da nossa base
+                float dist = Vector3.Distance(a.transform.position, centroIA);
+                if (dist < 500f) RegistrarAeroporto(a, 3000f);
+            }
+        }
     }
 
     void AvaliarCombate()
@@ -800,6 +820,16 @@ public class IA_General_Pro : MonoBehaviour
         {
             chefe.RegistrarUnidade(u);
         }
+
+        // OTIMIZADOR DE PERFORMANCE: Adiciona throttling de distância automaticamente
+        // Evita que NavMesh, animadores e scripts de IA rodem a 100% quando a unidade está longe.
+        // Não adiciona em aviões (já têm otimização própria) ou edifícios (sem NavMesh).
+        bool ehEdificio = u.GetComponent<NavMeshAgent>() == null && u.GetComponent<ControleUnidade>() == null;
+        bool ehAviao    = n.Contains("caca") || n.Contains("aviao") || n.Contains("jet") || n.Contains("super");
+        if (!ehEdificio && !ehAviao && u.GetComponent<IA_OtimizadorUnidade>() == null)
+        {
+            u.AddComponent<IA_OtimizadorUnidade>();
+        }
     }
 
     public void RegistrarSoldado(GameObject u) { RegistrarUnidade(u); }
@@ -817,7 +847,14 @@ public class IA_General_Pro : MonoBehaviour
     }
     public void RegistrarAeroporto(GerenciadorAeroporto a, float alcance)
     {
-        if(a != null && a.GetComponent<IdentidadeUnidade>()?.teamID == chefe.identidade.teamID && !meusAeroportos.Contains(a)) meusAeroportos.Add(a);
+        if (a == null || meusAeroportos.Contains(a)) return;
+        var idComp = a.GetComponent<IdentidadeUnidade>();
+        int meuTime = (chefe != null && chefe.identidade != null) ? chefe.identidade.teamID : -1;
+        // Aceita se teamID bate OU se não tem IdentidadeUnidade (aeroporto recém-construído sem identidade ainda)
+        if (idComp == null || idComp.teamID == meuTime)
+        {
+            meusAeroportos.Add(a);
+        }
     }
 
     bool EhNaval(MonoBehaviour b) 

@@ -723,6 +723,23 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         {
             chefe.GastarDinheiro(200); 
             chefe.RegistrarUnidade(novo);
+
+            // Registra imediatamente no General_Pro se for uma estrutura produtiva
+            if (chefe.cerebroGeneral != null)
+            {
+                var aero = novo.GetComponent<GerenciadorAeroporto>();
+                if (aero != null && !(aero is GerenciadorAeroportoComercial))
+                    chefe.cerebroGeneral.RegistrarAeroporto(aero, 9999f);
+
+                var est = novo.GetComponent<Estaleiro>();
+                if (est != null) chefe.cerebroGeneral.RegistrarEstaleiro(est, 9999f);
+
+                var heli = novo.GetComponent<Heliporto>();
+                if (heli != null) chefe.cerebroGeneral.RegistrarHeliporto(heli, 9999f);
+
+                var fab = novo.GetComponent<Fabrica>();
+                if (fab != null) chefe.cerebroGeneral.RegistrarFabrica(fab);
+            }
         }
     }
 

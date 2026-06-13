@@ -240,7 +240,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     // ======================================================================
     public PistaComercial SolicitarPistaParaDecolagem(ControleAviaoComercial aviao)
     {
-        // Prefere pista livre; evita conflito com pouso
+        // Prefere pista livre com waypoints válidos; evita conflito com pouso
         foreach (var p in todasPistas)
         {
             if (p.estado == PistaComercial.EstadoPista.Livre && p.waypointsDecolagem.Count > 0)
@@ -250,6 +250,20 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
                 return p;
             }
         }
+
+        // Fallback: se nenhuma pista configurada tem waypoints, tenta qualquer pista livre
+        // (decolagem sem waypoints de taxi — avião decola verticalmente)
+        foreach (var p in todasPistas)
+        {
+            if (p.estado == PistaComercial.EstadoPista.Livre)
+            {
+                p.estado = PistaComercial.EstadoPista.EmDecolagem;
+                p.aviaoNaPista = aviao;
+                Debug.LogWarning($"[Comercial] {p.nomePista} sem waypoints configurados. Avião decolará sem taxi.");
+                return p;
+            }
+        }
+
         return null; // Nenhuma livre agora — avião vai para fila
     }
 

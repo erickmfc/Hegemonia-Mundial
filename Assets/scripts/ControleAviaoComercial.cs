@@ -97,11 +97,30 @@ public class ControleAviaoComercial : ControleAviao
 
         // Aguarda horário do voo (gerenciado pelo aeroporto)
         // O aeroporto chama SolicitarDecolagem() no momento certo.
-        // Como fallback, se ficar parado mais de 3 min, tenta decolar sozinho.
+        // Fallback: se ficar parado mais de 3 min, SOLICITA pista ao aeroporto antes de decolar.
         timerEstacionadoComercial += Time.deltaTime;
+
         if (timerEstacionadoComercial >= 180f && !decolagemSolicitada)
         {
-            SolicitarDecolagem();
+            // Se tem aeroporto, solicita pista através do sistema formal.
+            // Isso garante que o avião use a pista e não decole "do ar".
+            if (aeroportoOrigemComercial != null)
+            {
+                SolicitarDecolagem();
+            }
+            else if (pistaDesignada != null)
+            {
+                // Sem aeroporto mas com pista atribuída manualmente: decola
+                SolicitarDecolagem();
+            }
+            // Se não tem nem aeroporto nem pista: aguarda mais 60s e tenta de novo
+            else if (timerEstacionadoComercial >= 240f)
+            {
+                // Último recurso: decola sem pista (comportamento antigo de fallback)
+                decolagemSolicitada = true;
+                DefinirDestinoComercial();
+                IniciarMissaoCompleta(alvoGPSVoo);
+            }
         }
     }
 
