@@ -1319,7 +1319,7 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     // Log de comunicações
     // -----------------------------------------------------------------------
-    private void AdicionarLog(string fonte, string msg, string tipo)
+    public void AdicionarLog(string fonte, string msg, string tipo)
     {
         var now  = DateTime.Now;
         string t = $"{now.Hour:D2}:{now.Minute:D2}:{now.Second:D2}";
