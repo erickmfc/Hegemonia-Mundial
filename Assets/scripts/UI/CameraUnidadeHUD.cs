@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 [RequireComponent(typeof(Camera))]
 public class CameraUnidadeHUD : MonoBehaviour
@@ -69,9 +70,87 @@ public class CameraUnidadeHUD : MonoBehaviour
         _instancia = this;
 
         minhaCamera = GetComponent<Camera>();
+        if (minhaCamera != null)
+        {
+            minhaCamera.farClipPlane = 8000f;
+        }
         
         // Garante que comece desativada para poupar performance
         DesativarDoMenu();
+    }
+
+    private bool fogOriginalState;
+    private float fogOriginalStart;
+    private float fogOriginalEnd;
+    private FogMode fogOriginalMode;
+    private Color fogOriginalColor;
+
+    private void OnEnable()
+    {
+        RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+        RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
+    }
+
+    private void OnDisable()
+    {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+        RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
+    }
+
+    private void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
+    {
+        if (camera == minhaCamera && modoDroneCamera)
+        {
+            fogOriginalState = RenderSettings.fog;
+            fogOriginalStart = RenderSettings.fogStartDistance;
+            fogOriginalEnd = RenderSettings.fogEndDistance;
+            fogOriginalMode = RenderSettings.fogMode;
+            fogOriginalColor = RenderSettings.fogColor;
+
+            RenderSettings.fog = false;
+            RenderSettings.fogStartDistance = 100000f;
+            RenderSettings.fogEndDistance = 200000f;
+        }
+    }
+
+    private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
+    {
+        if (camera == minhaCamera && modoDroneCamera)
+        {
+            RenderSettings.fog = fogOriginalState;
+            RenderSettings.fogStartDistance = fogOriginalStart;
+            RenderSettings.fogEndDistance = fogOriginalEnd;
+            RenderSettings.fogMode = fogOriginalMode;
+            RenderSettings.fogColor = fogOriginalColor;
+        }
+    }
+
+    private void OnPreRender()
+    {
+        if (modoDroneCamera)
+        {
+            fogOriginalState = RenderSettings.fog;
+            fogOriginalStart = RenderSettings.fogStartDistance;
+            fogOriginalEnd = RenderSettings.fogEndDistance;
+            fogOriginalMode = RenderSettings.fogMode;
+            fogOriginalColor = RenderSettings.fogColor;
+
+            RenderSettings.fog = false;
+            RenderSettings.fogStartDistance = 100000f;
+            RenderSettings.fogEndDistance = 200000f;
+        }
+    }
+
+    private void OnPostRender()
+    {
+        if (modoDroneCamera)
+        {
+            RenderSettings.fog = fogOriginalState;
+            RenderSettings.fogStartDistance = fogOriginalStart;
+            RenderSettings.fogEndDistance = fogOriginalEnd;
+            RenderSettings.fogMode = fogOriginalMode;
+            RenderSettings.fogColor = fogOriginalColor;
+        }
     }
 
     private void OnDestroy()
@@ -110,6 +189,12 @@ public class CameraUnidadeHUD : MonoBehaviour
         currentRotationX = 15f;
         currentRotationY = 0f;
         currentLookedTarget = null;
+        alvoTravadoCamera = null;
+        pontoTravadoCamera = null;
+        if (minhaCamera != null)
+        {
+            minhaCamera.farClipPlane = 8000f;
+        }
         if (targetUnit != null && minhaCamera != null && minhaCamera.enabled)
         {
             // Reposiciona instantaneamente na primeira seleção para não ter transição visual lenta/estranha
@@ -139,23 +224,36 @@ public class CameraUnidadeHUD : MonoBehaviour
     public float currentRotationY = 0f;
     public float currentRotationX = 15f;
     public bool modoDroneCamera = false;
+    public Transform alvoTravadoCamera = null;
+    public Vector3? pontoTravadoCamera = null;
     private GameObject currentLookedTarget = null;
 
     public GameObject GetLookedTarget() => currentLookedTarget;
 
     public void AddZoom(float delta)
     {
-        zoomFactor = Mathf.Clamp(zoomFactor - delta, 0.2f, 6f);
+        zoomFactor = Mathf.Clamp(zoomFactor - delta, 0.06f, 18f);
     }
 
     public void AddRotation(float deltaY)
     {
         currentRotationY += deltaY;
+        alvoTravadoCamera = null;
+        pontoTravadoCamera = null;
     }
 
     public void AddRotationVertical(float deltaX)
     {
-        currentRotationX = Mathf.Clamp(currentRotationX + deltaX, -75f, 75f);
+        if (modoDroneCamera)
+        {
+            currentRotationX = Mathf.Clamp(currentRotationX + deltaX, -15f, 85f);
+            alvoTravadoCamera = null;
+            pontoTravadoCamera = null;
+        }
+        else
+        {
+            currentRotationX = Mathf.Clamp(currentRotationX + deltaX, -75f, 75f);
+        }
     }
 
     private void LateUpdate()
@@ -172,9 +270,7 @@ public class CameraUnidadeHUD : MonoBehaviour
 
         if (targetUnit == null) return;
 
-        // Se a câmera do drone estiver ativa e a unidade for um drone (tem KamikazeDrone)
-        KamikazeDrone drone = targetUnit.GetComponent<KamikazeDrone>();
-        if (modoDroneCamera && drone != null)
+        if (modoDroneCamera)
         {
             float scaleFactor = Mathf.Max(targetUnit.transform.localScale.x, targetUnit.transform.localScale.z);
             // Posição no nariz/frente do drone
@@ -188,10 +284,61 @@ public class CameraUnidadeHUD : MonoBehaviour
             Quaternion gimbalRot = Quaternion.Euler(currentRotationX, currentRotationY, 0f);
             Quaternion desiredRotation = droneRot * gimbalRot;
             
-            transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, Time.deltaTime * suavidadeRotacao);
-            
-            // Zoom FOV
-            float desiredFOV = Mathf.Clamp(30f / zoomFactor, 1f, 45f);
+            // Estabiliza o roll (eixo Z) mantendo o horizonte nivelado
+            Vector3 forward;
+            if (alvoTravadoCamera != null && alvoTravadoCamera.gameObject.activeInHierarchy)
+            {
+                float targetHeight = 1f;
+                var targetDmg = alvoTravadoCamera.GetComponent<SistemaDeDanos>();
+                if (targetDmg != null && targetDmg.vidaAtual <= 0)
+                {
+                    alvoTravadoCamera = null;
+                    forward = desiredRotation * Vector3.forward;
+                }
+                else
+                {
+                    Vector3 targetLookPos = alvoTravadoCamera.position + Vector3.up * targetHeight;
+                    forward = (targetLookPos - transform.position).normalized;
+
+                    Quaternion localRot = Quaternion.Inverse(droneRot) * Quaternion.LookRotation(forward, Vector3.up);
+                    Vector3 euler = localRot.eulerAngles;
+                    float pitch = euler.x > 180f ? euler.x - 360f : euler.x;
+                    float yaw = euler.y > 180f ? euler.y - 360f : euler.y;
+                    currentRotationX = Mathf.Clamp(pitch, -15f, 85f);
+                    currentRotationY = yaw;
+                }
+            }
+            else if (pontoTravadoCamera.HasValue)
+            {
+                Vector3 targetLookPos = pontoTravadoCamera.Value;
+                forward = (targetLookPos - transform.position).normalized;
+
+                Quaternion localRot = Quaternion.Inverse(droneRot) * Quaternion.LookRotation(forward, Vector3.up);
+                Vector3 euler = localRot.eulerAngles;
+                float pitch = euler.x > 180f ? euler.x - 360f : euler.x;
+                float yaw = euler.y > 180f ? euler.y - 360f : euler.y;
+                currentRotationX = Mathf.Clamp(pitch, -15f, 85f);
+                currentRotationY = yaw;
+            }
+            else
+            {
+                forward = desiredRotation * Vector3.forward;
+            }
+
+            Quaternion stabilizedRotation;
+            if (Mathf.Abs(Vector3.Dot(forward, Vector3.up)) > 0.99f)
+            {
+                stabilizedRotation = desiredRotation;
+            }
+            else
+            {
+                stabilizedRotation = Quaternion.LookRotation(forward, Vector3.up);
+            }
+
+            transform.rotation = Quaternion.Slerp(transform.rotation, stabilizedRotation, Time.deltaTime * suavidadeRotacao);
+
+            // Zoom FOV poderoso para o drone Hasaf
+            float desiredFOV = Mathf.Clamp(30f / zoomFactor, 0.1f, 45f);
             if (minhaCamera != null)
             {
                 minhaCamera.fieldOfView = Mathf.Lerp(minhaCamera.fieldOfView, desiredFOV, Time.deltaTime * 10f);
@@ -250,11 +397,11 @@ public class CameraUnidadeHUD : MonoBehaviour
     private void ProcessarMarcacaoAlvos()
     {
         if (minhaCamera == null) return;
-        
+
         Ray ray = minhaCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
         RaycastHit hit;
         int layerMask = ~LayerMask.GetMask("UI");
-        
+
         if (Physics.Raycast(ray, out hit, 5000f, layerMask))
         {
             IdentidadeUnidade id = hit.collider.GetComponentInParent<IdentidadeUnidade>();
@@ -286,10 +433,27 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     private void MarcarComoAlvo(IdentidadeUnidade id)
     {
-        if (targetUnit == null) return;
+        if (targetUnit == null || id == null) return;
         
+        bool ordemCombateAplicada = false;
+        if (id != null && id.transform != null)
+        {
+            ordemCombateAplicada = targetUnit.EmitirMissaoAereaOfensiva(id.transform.position, id.transform);
+            if (!ordemCombateAplicada && (targetUnit.EhUnidadeNaval() || targetUnit.GetComponent<ControleSubmarino>() != null))
+            {
+                ordemCombateAplicada = targetUnit.EmitirMissaoNavalOfensiva(id.transform.position, id.transform, false, false);
+            }
+            if (!ordemCombateAplicada)
+            {
+                targetUnit.DefinirModoCombate(true);
+                targetUnit.DefinirAlvoPrioritario(id.transform);
+                ordemCombateAplicada = true;
+            }
+        }
+
         ControleAviao aviao = targetUnit.GetComponent<ControleAviao>();
         KamikazeDrone drone = targetUnit.GetComponent<KamikazeDrone>();
+        ControleDroneHasaf droneHasaf = targetUnit.GetComponent<ControleDroneHasaf>();
         
         if (aviao != null)
         {
@@ -303,9 +467,9 @@ public class CameraUnidadeHUD : MonoBehaviour
                 aviao.velocidadeMaximaVoo = drone.velocidadeAtaque;
             }
             
-            if (MenuComandoController.Instancia != null)
+            if (droneHasaf != null)
             {
-                MenuComandoController.Instancia.AdicionarLog("DRONE", $"ALVO LOCK: {id.name.ToUpper()} EM {id.transform.position}", "sistema");
+                droneHasaf.AtribuirAlvo(id.transform);
             }
             
             try
@@ -318,6 +482,16 @@ public class CameraUnidadeHUD : MonoBehaviour
             }
             catch {}
         }
+
+        alvoTravadoCamera = id.transform;
+        pontoTravadoCamera = null;
+
+        if (MenuComandoController.Instancia != null)
+        {
+            string origem = aviao != null ? "DRONE" : "OPS";
+            string acao = ordemCombateAplicada ? "ALVO LOCK/COMBATE" : "ALVO LOCK";
+            MenuComandoController.Instancia.AdicionarLog(origem, $"{acao}: {id.name.ToUpper()} EM {id.transform.position}", "sistema");
+        }
     }
     
     private void MarcarCoordenada(Vector3 ponto)
@@ -325,10 +499,18 @@ public class CameraUnidadeHUD : MonoBehaviour
         if (targetUnit == null) return;
         
         ControleAviao aviao = targetUnit.GetComponent<ControleAviao>();
+        ControleDroneHasaf droneHasaf = targetUnit.GetComponent<ControleDroneHasaf>();
         if (aviao != null)
         {
-            aviao.alvoEstrategico = ponto;
-            aviao.alvoGPSVoo = ponto;
+            targetUnit.EmitirMissaoAereaOfensiva(ponto, null);
+
+            if (droneHasaf != null)
+            {
+                droneHasaf.AtribuirAlvo(null);
+            }
+
+            pontoTravadoCamera = ponto;
+            alvoTravadoCamera = null;
             
             if (MenuComandoController.Instancia != null)
             {
@@ -344,6 +526,25 @@ public class CameraUnidadeHUD : MonoBehaviour
                 }
             }
             catch {}
+        }
+        else
+        {
+            if (targetUnit.EhUnidadeNaval() || targetUnit.GetComponent<ControleSubmarino>() != null)
+            {
+                targetUnit.EmitirMissaoNavalOfensiva(ponto, null, false, true);
+            }
+            else
+            {
+                targetUnit.DefinirModoCombate(true);
+                targetUnit.EmitirOrdemMover(ponto);
+            }
+            pontoTravadoCamera = ponto;
+            alvoTravadoCamera = null;
+
+            if (MenuComandoController.Instancia != null)
+            {
+                MenuComandoController.Instancia.AdicionarLog("OPS", $"COORDENADAS ENVIADAS: {ponto:F1}", "sistema");
+            }
         }
     }
 

@@ -65,8 +65,8 @@
                     <ui:Label name="flir-unidade-nome" text="— SEM ALVO —" class="flir-unidade-nome mono" />
                 </ui:VisualElement>
 
-                <!-- Botão de Alternar Câmera Drone (invisível por padrão, visível se drone) -->
-                <ui:Button name="btn-drone-cam" text="📷 CÂMERA DRONE" class="btn-selecionar-tudo mono" style="position: absolute; bottom: 8px; left: 10px; height: 20px; font-size: 9px; display: none;" />
+                <!-- ZOOM SLIDER (Alavanca Visual) -->
+                <ui:Slider name="flir-zoom-slider" low-value="0" high-value="100" value="50" direction="Vertical" class="flir-zoom-slider" />
             </ui:VisualElement>
 
         </ui:VisualElement>
@@ -84,14 +84,26 @@
                 </ui:VisualElement>
 
                 <ui:VisualElement class="stat-grid">
-                    <ui:Label text="TIPO:" class="stat-lbl" />
-                    <ui:Label name="stat-tipo" text="—" class="stat-val" />
-                    <ui:Label text="STATUS:" class="stat-lbl" />
-                    <ui:Label name="stat-status" text="—" class="stat-val stat-ok" />
-                    <ui:Label text="POSIÇÃO:" class="stat-lbl" />
-                    <ui:Label name="stat-pos" text="—" class="stat-val" />
-                    <ui:Label text="TEAM:" class="stat-lbl" />
-                    <ui:Label name="stat-team" text="—" class="stat-val" />
+                    <ui:VisualElement class="stat-row">
+                        <ui:Label text="TIPO:" class="stat-lbl" />
+                        <ui:Label name="stat-tipo" text="—" class="stat-val" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="stat-row">
+                        <ui:Label text="STATUS:" class="stat-lbl" />
+                        <ui:Label name="stat-status" text="—" class="stat-val stat-ok" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="stat-row">
+                        <ui:Label text="POSIÇÃO:" class="stat-lbl" />
+                        <ui:Label name="stat-pos" text="—" class="stat-val" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="stat-row">
+                        <ui:Label text="ARMAS:" class="stat-lbl" />
+                        <ui:Label name="stat-armas" text="—" class="stat-val" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="stat-row">
+                        <ui:Label text="TEAM:" class="stat-lbl" />
+                        <ui:Label name="stat-team" text="—" class="stat-val" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
 
                 <ui:VisualElement class="progress-row">
@@ -161,6 +173,7 @@
                     <ui:Button name="btn-seguir" text="👁 SEGUIR" class="ordem-btn btn-seguir mono" />
                     <ui:Button name="btn-atacar" text="🎯 ATACAR" class="ordem-btn btn-atacar mono" />
                     <ui:Button name="btn-voltar-base" text="🏠 VOLTAR" class="ordem-btn btn-passivo mono" />
+                    <ui:Button name="btn-troca-camera" text="📷 CÂMERA" class="ordem-btn btn-seguir mono" />
                 </ui:VisualElement>
 
                 <ui:VisualElement class="ordens-status">

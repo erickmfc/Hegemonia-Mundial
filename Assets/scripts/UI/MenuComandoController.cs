@@ -58,6 +58,7 @@ public class MenuComandoController : MonoBehaviour
     private Label flirTr;
     private Button btnDroneCam;
     private RenderTexture flirRT;
+    private Slider flirZoomSlider;
 
     // Telemetria
     private Label unidadeNome;
@@ -65,6 +66,7 @@ public class MenuComandoController : MonoBehaviour
     private Label statTipo;
     private Label statStatus;
     private Label statPos;
+    private Label statArmas;
     private Label statTeam;
     private Label hpValor;
     private Label fuelValor;
@@ -359,12 +361,32 @@ public class MenuComandoController : MonoBehaviour
         flirUnidadeNome = root.Q<Label>("flir-unidade-nome");
         flirTl          = root.Q<Label>("flir-label-tl");
         flirTr          = root.Q<Label>("flir-label-tr");
+        flirZoomSlider  = root.Q<Slider>("flir-zoom-slider");
+        if (flirZoomSlider != null)
+        {
+            flirZoomSlider.RegisterValueChangedCallback(evt =>
+            {
+                if (CameraUnidadeHUD.Instancia != null)
+                {
+                    float targetZoom = 0.06f + (evt.newValue / 100f) * (18.0f - 0.06f);
+                    if (Mathf.Abs(CameraUnidadeHUD.Instancia.zoomFactor - targetZoom) > 0.01f)
+                    {
+                        CameraUnidadeHUD.Instancia.zoomFactor = targetZoom;
+                    }
+                }
+            });
+            flirZoomSlider.RegisterCallback<PointerDownEvent>(evt =>
+            {
+                evt.StopPropagation();
+            });
+        }
 
         unidadeNome  = root.Q<Label>("unidade-nome");
         unidadeEmoji = root.Q<Label>("unidade-emoji");
         statTipo     = root.Q<Label>("stat-tipo");
         statStatus   = root.Q<Label>("stat-status");
         statPos      = root.Q<Label>("stat-pos");
+        statArmas    = root.Q<Label>("stat-armas");
         statTeam     = root.Q<Label>("stat-team");
         hpValor      = root.Q<Label>("hp-valor");
         fuelValor    = root.Q<Label>("fuel-valor");
@@ -405,6 +427,9 @@ public class MenuComandoController : MonoBehaviour
 
         var btnVoltarBase = root.Q<Button>("btn-voltar-base");
         if (btnVoltarBase != null) btnVoltarBase.clicked += () => ExecutarOrdem("VOLTAR_BASE");
+
+        var btnTrocaCamera = root.Q<Button>("btn-troca-camera");
+        if (btnTrocaCamera != null) btnTrocaCamera.clicked += () => ExecutarOrdem("TROCAR_CAMERA");
 
         var btnSelTudo = root.Q<Button>("btn-selecionar-tudo");
         if (btnSelTudo != null) btnSelTudo.clicked += () => SelecionarTodasUnidadesAliadas();
@@ -512,7 +537,9 @@ public class MenuComandoController : MonoBehaviour
                 if (draggingFlir && CameraUnidadeHUD.Instancia != null)
                 {
                     float deltaX = evt.localPosition.x - lastPos.x;
+                    float deltaY = evt.localPosition.y - lastPos.y;
                     CameraUnidadeHUD.Instancia.AddRotation(deltaX * 0.5f);
+                    CameraUnidadeHUD.Instancia.AddRotationVertical(deltaY * 0.5f);
                     lastPos = evt.localPosition;
                     evt.StopPropagation();
                 }
@@ -633,6 +660,43 @@ public class MenuComandoController : MonoBehaviour
                 marc?.RemoveFromClassList("inimigo");
                 marc?.AddToClassList("destruido");
             }
+        }
+
+        // Marcador Direcional Drone Hasaf (<)
+        if (CameraUnidadeHUD.Instancia != null && CameraUnidadeHUD.Instancia.modoDroneCamera && CameraUnidadeHUD.Instancia.gameObject.activeInHierarchy)
+        {
+            var camTrans = CameraUnidadeHUD.Instancia.transform;
+            Vector3 pos3D = camTrans.position;
+            
+            float camPctX = ((pos3D.x - xMin) / rangeX) * 100f;
+            float camPctZ = (1f - (pos3D.z - zMin) / rangeZ) * 100f;
+
+            if (!mapaElementos.TryGetValue(-9999, out VisualElement camMarker) || camMarker == null)
+            {
+                camMarker = new Label("<");
+                camMarker.name = "mapa-cam-marker";
+                camMarker.style.position = Position.Absolute;
+                camMarker.style.color = Color.red;
+                camMarker.style.fontSize = 20;
+                camMarker.style.unityFontStyleAndWeight = FontStyle.Bold;
+                camMarker.style.unityTextAlign = TextAnchor.MiddleCenter;
+                camMarker.style.textShadow = new TextShadow { color = Color.black, offset = new Vector2(1,1), blurRadius = 2f };
+                
+                // Ajuste de pivô para rotacionar corretamente pelo centro
+                camMarker.style.transformOrigin = new TransformOrigin(Length.Percent(50f), Length.Percent(50f));
+                
+                mapaElementos[-9999] = camMarker;
+                mapaUnidadesLayer.Add(camMarker);
+            }
+            vivos.Add(-9999);
+            
+            camMarker.style.left = new StyleLength(new Length(camPctX, LengthUnit.Percent));
+            camMarker.style.top  = new StyleLength(new Length(camPctZ, LengthUnit.Percent));
+            camMarker.style.display = (camPctX >= -5f && camPctX <= 105f && camPctZ >= -5f && camPctZ <= 105f) ? DisplayStyle.Flex : DisplayStyle.None;
+            
+            // Rotação da câmera: -90 para compensar o caractere '<' que aponta pra esquerda, mais a rotação Yaw
+            float angle = camTrans.eulerAngles.y - 90f;
+            camMarker.style.rotate = new StyleRotate(new Rotate(angle));
         }
 
         // Remove elementos de unidades que não existem mais
@@ -864,6 +928,22 @@ public class MenuComandoController : MonoBehaviour
         AtualizarTelemetriaUnidade();
     }
 
+    private void CiclarUnidadeSelecionada()
+    {
+        if (unidadesSelecionadasMenu.Count <= 1) return;
+        
+        int indexAtual = unidadesSelecionadasMenu.IndexOf(unidadeSelecionadaMenu);
+        if (indexAtual == -1) indexAtual = 0;
+        
+        indexAtual = (indexAtual + 1) % unidadesSelecionadasMenu.Count;
+        unidadeSelecionadaMenu = unidadesSelecionadasMenu[indexAtual];
+        
+        if (CameraUnidadeHUD.Instancia != null)
+            CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu);
+            
+        AtualizarTelemetriaUnidade();
+    }
+
     // -----------------------------------------------------------------------
     // Telemetria
     // -----------------------------------------------------------------------
@@ -885,6 +965,7 @@ public class MenuComandoController : MonoBehaviour
             SetText(statTipo, "—");
             SetText(statStatus, "—");
             SetText(statPos, "—");
+            SetText(statArmas, "—");
             SetText(statTeam, "—");
             SetText(hpValor, "—%");
             SetText(fuelValor, "—%");
@@ -893,7 +974,8 @@ public class MenuComandoController : MonoBehaviour
             
             // Restaura texto padrão do FLIR se não há unidade
             if (flirTl != null) flirTl.text = "FLIR / AUTO-TRK";
-            if (flirTr != null) flirTr.text = "ZOOM: 1.0X";
+            if (flirTr != null) flirTr.text = "ZOOM: 1.0X (14%)";
+            if (flirZoomSlider != null) flirZoomSlider.SetValueWithoutNotify(14f);
             return;
         }
         else if (unidadesSelecionadasMenu.Count > 1)
@@ -905,6 +987,7 @@ public class MenuComandoController : MonoBehaviour
             SetText(statTipo, "MISTO");
             SetText(statStatus, "VÁRIOS");
             SetText(statPos, "MÚLTIPLAS");
+            SetText(statArmas, "VÁRIAS");
             SetText(statTeam, "ALIADO");
 
             float somaHp = 0f;
@@ -957,7 +1040,8 @@ public class MenuComandoController : MonoBehaviour
             
             // Restaura texto padrão do FLIR se múltipla seleção
             if (flirTl != null) flirTl.text = "FLIR / AUTO-TRK";
-            if (flirTr != null) flirTr.text = "ZOOM: 1.0X";
+            if (flirTr != null) flirTr.text = "ZOOM: 1.0X (14%)";
+            if (flirZoomSlider != null) flirZoomSlider.SetValueWithoutNotify(14f);
             return;
         }
 
@@ -978,6 +1062,21 @@ public class MenuComandoController : MonoBehaviour
         // Posição
         Vector3 p = cu.transform.position;
         SetText(statPos, $"{p.x:F0}, {p.z:F0}");
+
+        // Armas
+        string textoArmas = "N/A";
+        var lmCaca = cu.GetComponent<LancadorMisselCaca>();
+        var lmNaval = cu.GetComponent<LancadorNaval>();
+        var lmSolo = cu.GetComponent<LancadorMisseis>();
+        
+        if (lmCaca != null)
+            textoArmas = $"MSL: {lmCaca.municaoAtual}/{lmCaca.municaoMaxima}";
+        else if (lmNaval != null)
+            textoArmas = $"MSL: {lmNaval.municaoTotal}/{lmNaval.municaoMaxima} | TORP: {lmNaval.torpedosTotal}/{lmNaval.torpedosMaximos}";
+        else if (lmSolo != null)
+            textoArmas = $"MSL: {lmSolo.municaoAtual}/{lmSolo.municaoMaxima}";
+            
+        SetText(statArmas, textoArmas);
 
         // Status
         bool passivo;
@@ -1027,38 +1126,21 @@ public class MenuComandoController : MonoBehaviour
             flirTc.text = $"HDG {hdg:F1}°";
         }
 
-        // Atualiza visibilidade e texto do botão de câmera do drone
+        // Ocultar btnDroneCam antigo, agora usamos o botão CÂMERA nas ordens
         if (btnDroneCam != null)
         {
-            if (cu != null && cu.GetComponent<KamikazeDrone>() != null)
-            {
-                btnDroneCam.style.display = DisplayStyle.Flex;
-                if (CameraUnidadeHUD.Instancia != null && CameraUnidadeHUD.Instancia.modoDroneCamera)
-                {
-                    btnDroneCam.text = "📹 CÂMERA NORMAL";
-                }
-                else
-                {
-                    btnDroneCam.text = "📷 CÂMERA DRONE";
-                }
-            }
-            else
-            {
-                btnDroneCam.style.display = DisplayStyle.None;
-                if (CameraUnidadeHUD.Instancia != null)
-                {
-                    CameraUnidadeHUD.Instancia.modoDroneCamera = false;
-                }
-            }
+            btnDroneCam.style.display = DisplayStyle.None;
         }
 
         // Atualiza textos do overlay FLIR baseado no estado da câmera do drone
-        if (CameraUnidadeHUD.Instancia != null && CameraUnidadeHUD.Instancia.modoDroneCamera && cu != null && cu.GetComponent<KamikazeDrone>() != null)
+        if (CameraUnidadeHUD.Instancia != null && CameraUnidadeHUD.Instancia.modoDroneCamera && cu != null)
         {
             if (flirTl != null) flirTl.text = "DRONE CAM / GIMBAL";
             
             float zoomX = CameraUnidadeHUD.Instancia.zoomFactor;
-            if (flirTr != null) flirTr.text = $"ZOOM: {zoomX:F1}X";
+            float zoomPercent = Mathf.Clamp((zoomX - 0.06f) / (18.0f - 0.06f) * 100f, 0f, 100f);
+            if (flirTr != null) flirTr.text = $"ZOOM: {zoomX:F1}X ({zoomPercent:F0}%)";
+            if (flirZoomSlider != null) flirZoomSlider.SetValueWithoutNotify(zoomPercent);
             
             GameObject lookedTarget = CameraUnidadeHUD.Instancia.GetLookedTarget();
             if (lookedTarget != null)
@@ -1077,7 +1159,9 @@ public class MenuComandoController : MonoBehaviour
             if (flirTl != null) flirTl.text = "FLIR / AUTO-TRK";
             
             float zoomX = CameraUnidadeHUD.Instancia != null ? CameraUnidadeHUD.Instancia.zoomFactor : 1f;
-            if (flirTr != null) flirTr.text = $"ZOOM: {zoomX:F1}X";
+            float zoomPercent = Mathf.Clamp((zoomX - 0.06f) / (18.0f - 0.06f) * 100f, 0f, 100f);
+            if (flirTr != null) flirTr.text = $"ZOOM: {zoomX:F1}X ({zoomPercent:F0}%)";
+            if (flirZoomSlider != null) flirZoomSlider.SetValueWithoutNotify(zoomPercent);
             
             if (flirUnidadeNome != null)
                 flirUnidadeNome.text = cu != null ? ObterNomeExibicao(cu.gameObject) : "— SEM ALVO —";
@@ -1092,6 +1176,14 @@ public class MenuComandoController : MonoBehaviour
         if (CameraUnidadeHUD.Instancia == null) return;
         
         CameraUnidadeHUD.Instancia.modoDroneCamera = !CameraUnidadeHUD.Instancia.modoDroneCamera;
+        
+        if (CameraUnidadeHUD.Instancia.modoDroneCamera)
+        {
+            // Reset to default angle and zoom when entering drone cam mode
+            CameraUnidadeHUD.Instancia.currentRotationX = 35f; // Point downward (35 degrees) to see terrains and units
+            CameraUnidadeHUD.Instancia.currentRotationY = 0f;  // Look forward
+            CameraUnidadeHUD.Instancia.zoomFactor = 2.57f;     // Default 14% zoom (around 1.0X)
+        }
         
         string modoStr = CameraUnidadeHUD.Instancia.modoDroneCamera ? "CÂMERA INTERNA DRONE ACESSADA" : "RETORNADO À CÂMERA ORBITAL";
         AdicionarLog("DRONE", modoStr, "sistema");
@@ -1313,6 +1405,19 @@ public class MenuComandoController : MonoBehaviour
                 SetText(ordemFeedback, $"✔ [{retornando} UDS] → RETORNANDO À BASE");
                 AdicionarLog("OPS", $"{retornando} aeronaves ordenadas a retornar à base", "normal");
                 break;
+
+            case "TROCAR_CAMERA":
+                if (unidadesSelecionadasMenu.Count > 1)
+                {
+                    CiclarUnidadeSelecionada();
+                    SetText(ordemFeedback, $"✔ CÂMERA ALTERADA PARA {ObterNomeExibicao(unidadeSelecionadaMenu.gameObject)}");
+                }
+                else
+                {
+                    AlternarModoCameraDrone();
+                    SetText(ordemFeedback, $"✔ MODO DE CÂMERA ALTERNADO");
+                }
+                break;
         }
     }
 
@@ -1508,6 +1613,22 @@ public class MenuComandoController : MonoBehaviour
                 melhorAlvo = id.gameObject;
             }
         }
+
+        var idsIA = FindObjectsByType<IdentidadeIA>(FindObjectsSortMode.None);
+        foreach (var id in idsIA)
+        {
+            if (id == null || !id.gameObject.activeInHierarchy) continue;
+            if (ignorarTimeJogador && id.teamID == 1) continue;
+            if (id.GetComponentInParent<IdentidadeUnidade>() != null) continue;
+
+            float dist = Vector3.Distance(new Vector3(id.transform.position.x, 0, id.transform.position.z), new Vector3(worldPos.x, 0, worldPos.z));
+            if (dist < menorDist)
+            {
+                menorDist = dist;
+                melhorAlvo = id.gameObject;
+            }
+        }
+
         return melhorAlvo;
     }
 
@@ -1611,5 +1732,15 @@ public class MenuComandoController : MonoBehaviour
         line.style.rotate = new StyleRotate(new Rotate(angle));
         
         mapaLinhasLayer.Add(line);
+    }
+
+    public void NotificarAtaqueDrone(string msg)
+    {
+        AdicionarLog("DRONE HASAF", "[FLIR] " + msg, "ATAQUE");
+        if (flirAlerta != null)
+        {
+            flirAlerta.text = "ALERTA: " + msg;
+            flirAlerta.style.color = Color.red;
+        }
     }
 }
