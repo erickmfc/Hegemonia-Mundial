@@ -31,6 +31,7 @@ public class Fazenda : MonoBehaviour
         public int lucroGerado;
         public float tempoCrescimento; // tempo real em segundos
         public int custoSemente;
+        public int diasParaSafra = 2;
     }
 
     [Header("Configurações da Fazenda")]
@@ -71,6 +72,7 @@ public class Fazenda : MonoBehaviour
     private GUIStyle estiloXBotao;
     private bool estilosProntos = false;
     private WaitForSeconds esperaProducao;
+    private float comidaPorSegundoAtual = 0f;
 
     void Awake()
     {
@@ -92,17 +94,13 @@ public class Fazenda : MonoBehaviour
 
     private void Start()
     {
-        if (GerenciadorTempo.Instancia != null)
-        {
-            GerenciadorTempo.Instancia.OnDataAlterada += ProcessarDiaAgricola;
-        }
     }
 
     void OnDestroy()
     {
-        if (GerenciadorTempo.Instancia != null)
+        if (GerenciadorRecursos.Instancia != null && comidaPorSegundoAtual > 0f)
         {
-            GerenciadorTempo.Instancia.OnDataAlterada -= ProcessarDiaAgricola;
+            GerenciadorRecursos.Instancia.ModificarGanhos(0, 0, 0, 0, -comidaPorSegundoAtual);
         }
         if (FazendaAtiva == this)
         {
@@ -113,6 +111,23 @@ public class Fazenda : MonoBehaviour
 
     void Update()
     {
+        if (Time.timeScale == 0f) return;
+
+        float novaComidaPorSegundo = 0f;
+        
+        ProcessarCrescimentoContinuo(1, ref lote1Ocupado, ref lote1Progresso, ref lote1SementeIndex, ref novaComidaPorSegundo);
+        ProcessarCrescimentoContinuo(2, ref lote2Ocupado, ref lote2Progresso, ref lote2SementeIndex, ref novaComidaPorSegundo);
+        ProcessarCrescimentoContinuo(3, ref lote3Ocupado, ref lote3Progresso, ref lote3SementeIndex, ref novaComidaPorSegundo);
+
+        if (Mathf.Abs(novaComidaPorSegundo - comidaPorSegundoAtual) > 0.01f)
+        {
+            if (GerenciadorRecursos.Instancia != null)
+            {
+                GerenciadorRecursos.Instancia.ModificarGanhos(0, 0, 0, 0, novaComidaPorSegundo - comidaPorSegundoAtual);
+            }
+            comidaPorSegundoAtual = novaComidaPorSegundo;
+        }
+
         // Interação de Clique na Fazenda
         if (!Input.GetMouseButtonDown(0))
         {
@@ -142,7 +157,6 @@ public class Fazenda : MonoBehaviour
                     menuAberto = true;
                     FazendaAtiva = this;
                     QualquerFazendaAberta = true;
-                    janelaRetangulo.position = new Vector2(Screen.width / 2f - 420f, Screen.height / 2f - 300f);
                     LogFarm("Terminal da fazenda aberto.");
                 }
                 else
@@ -191,16 +205,6 @@ public class Fazenda : MonoBehaviour
         }
     }
 
-    private void ProcessarDiaAgricola()
-    {
-        // Assume cada dia equivale a uma certa quantidade de tempo (e.g., 10 "unidades" de crescimento)
-        float delta = 10f; // Avança 10 de progresso por dia
-        
-        FazerTerrenoCrescer(1, ref lote1Ocupado, ref lote1Progresso, ref lote1SementeIndex, delta);
-        FazerTerrenoCrescer(2, ref lote2Ocupado, ref lote2Progresso, ref lote2SementeIndex, delta);
-        FazerTerrenoCrescer(3, ref lote3Ocupado, ref lote3Progresso, ref lote3SementeIndex, delta);
-    }
-
     public void FecharMenu()
     {
         menuAberto = false;
@@ -211,42 +215,33 @@ public class Fazenda : MonoBehaviour
         }
     }
 
-    private void FazerTerrenoCrescer(int numeroLote, ref bool ocupado, ref float progresso, ref int sementeIndex, float deltaTimeAtualizado)
+    private void ProcessarCrescimentoContinuo(int numeroLote, ref bool ocupado, ref float progresso, ref int sementeIndex, ref float ganhoComida)
     {
         if (ocupado && sementeIndex > 0 && sementeIndex < catalogoAgricola.Count)
         {
             RegistoColheita cultivo = catalogoAgricola[sementeIndex];
-            
-            progresso += deltaTimeAtualizado;
-            
-            // Fim da Estação de Colheita
+            progresso += Time.deltaTime;
+            ganhoComida += (float)cultivo.lucroGerado / cultivo.tempoCrescimento;
+
             if (progresso >= cultivo.tempoCrescimento)
             {
                 if (GerenciadorRecursos.Instancia != null)
                 {
-                    GerenciadorRecursos.Instancia.AdicionarRecurso("Comida", cultivo.lucroGerado);
-                    LogFarm($"Colheita de {cultivo.nome}: +{cultivo.lucroGerado} comida.");
-                    
-                    // Tenta replantar automaticamente
                     if (GerenciadorRecursos.Instancia.TentarGastarDinheiro(cultivo.custoSemente))
                     {
-                        progresso = 0f; // Reinicia o ciclo
+                        progresso = 0f;
                         LogFarm($"Replantio automatico de {cultivo.nome}. Custo: -${cultivo.custoSemente}");
                     }
                     else
                     {
-                        // Sem dinheiro para sementes -> Para a fazenda
-                        ocupado = false;
-                        progresso = 0f;
-                        sementeIndex = 0;
-                        LogFarm("Replantio falhou por dinheiro insuficiente. Terreno desocupado.");
+                        // Sem dinheiro para sementes -> aguarda
+                        progresso = cultivo.tempoCrescimento - 0.1f;
+                        ganhoComida -= (float)cultivo.lucroGerado / cultivo.tempoCrescimento;
                     }
                 }
                 else
                 {
-                    ocupado = false;
                     progresso = 0f;
-                    sementeIndex = 0;
                 }
             }
         }
@@ -540,17 +535,19 @@ public class Fazenda : MonoBehaviour
             return;
 
         catalogoAgricola.Add(new RegistoColheita { nome = "-", semente = SementeAgricola.Nenhum });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Milho", semente = SementeAgricola.Milho, lucroGerado = 300, tempoCrescimento = 90f, custoSemente = 50 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Batata", semente = SementeAgricola.Batata, lucroGerado = 280, tempoCrescimento = 100f, custoSemente = 40 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Feijao", semente = SementeAgricola.Feijao, lucroGerado = 250, tempoCrescimento = 120f, custoSemente = 35 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Trigo", semente = SementeAgricola.Trigo, lucroGerado = 360, tempoCrescimento = 180f, custoSemente = 65 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Arroz", semente = SementeAgricola.Arroz, lucroGerado = 400, tempoCrescimento = 210f, custoSemente = 70 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Cana-de-Acucar", semente = SementeAgricola.CanaDeAcucar, lucroGerado = 550, tempoCrescimento = 300f, custoSemente = 100 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Algodao", semente = SementeAgricola.Algodao, lucroGerado = 650, tempoCrescimento = 360f, custoSemente = 120 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Soja", semente = SementeAgricola.Soja, lucroGerado = 800, tempoCrescimento = 420f, custoSemente = 150 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Cafe", semente = SementeAgricola.Cafe, lucroGerado = 1100, tempoCrescimento = 600f, custoSemente = 250 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Cacau", semente = SementeAgricola.Cacau, lucroGerado = 1500, tempoCrescimento = 800f, custoSemente = 350 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Milho", semente = SementeAgricola.Milho, lucroGerado = 300, tempoCrescimento = 90f, custoSemente = 50, diasParaSafra = 2 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Batata", semente = SementeAgricola.Batata, lucroGerado = 280, tempoCrescimento = 100f, custoSemente = 40, diasParaSafra = 2 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Feijao", semente = SementeAgricola.Feijao, lucroGerado = 250, tempoCrescimento = 120f, custoSemente = 35, diasParaSafra = 2 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Trigo", semente = SementeAgricola.Trigo, lucroGerado = 360, tempoCrescimento = 180f, custoSemente = 65, diasParaSafra = 3 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Arroz", semente = SementeAgricola.Arroz, lucroGerado = 400, tempoCrescimento = 210f, custoSemente = 70, diasParaSafra = 3 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Cana-de-Acucar", semente = SementeAgricola.CanaDeAcucar, lucroGerado = 550, tempoCrescimento = 300f, custoSemente = 100, diasParaSafra = 4 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Algodao", semente = SementeAgricola.Algodao, lucroGerado = 650, tempoCrescimento = 360f, custoSemente = 120, diasParaSafra = 4 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Soja", semente = SementeAgricola.Soja, lucroGerado = 800, tempoCrescimento = 420f, custoSemente = 150, diasParaSafra = 5 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Cafe", semente = SementeAgricola.Cafe, lucroGerado = 1100, tempoCrescimento = 600f, custoSemente = 250, diasParaSafra = 6 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Cacau", semente = SementeAgricola.Cacau, lucroGerado = 1500, tempoCrescimento = 800f, custoSemente = 350, diasParaSafra = 7 });
     }
+
+
 
     private void LogFarm(string mensagem)
     {

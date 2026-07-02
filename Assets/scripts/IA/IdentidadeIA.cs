@@ -28,14 +28,26 @@ public class IdentidadeIA : MonoBehaviour
 
     public static System.Collections.Generic.List<IdentidadeIA> TodasIdentidades = new System.Collections.Generic.List<IdentidadeIA>();
 
-    void Awake()
+    void OnEnable()
     {
-        TodasIdentidades.Add(this);
+        if (!TodasIdentidades.Contains(this))
+        {
+            TodasIdentidades.Add(this);
+        }
+
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    void OnDisable()
+    {
+        TodasIdentidades.Remove(this);
+        RegistroEntidadesJogo.Unregister(this);
     }
 
     void OnDestroy()
     {
         TodasIdentidades.Remove(this);
+        RegistroEntidadesJogo.Unregister(this);
     }
 
     void Start()

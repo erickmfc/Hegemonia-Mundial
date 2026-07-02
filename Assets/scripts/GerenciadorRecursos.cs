@@ -23,6 +23,7 @@ public class GerenciadorRecursos : MonoBehaviour
     public float petroleoPorSegundo = 0f; // Zerado! Depende da Plataforma agora.
     public float acoPorSegundo = 5f;
     public float energiaPorSegundo = 0f;
+    public float comidaPorSegundo = 0f;
 
     [Header("⚙️ Configurações")]
     public bool ativarGanhosAutomaticos = true;
@@ -103,6 +104,7 @@ public class GerenciadorRecursos : MonoBehaviour
             petroleo += Mathf.RoundToInt(petroleoPorSegundo);
             aco += Mathf.RoundToInt(acoPorSegundo);
             energia += Mathf.RoundToInt(energiaPorSegundo);
+            comida += Mathf.RoundToInt(comidaPorSegundo);
             
             ValidarLimites();
             
@@ -215,12 +217,13 @@ public class GerenciadorRecursos : MonoBehaviour
         NotificarAtualizacao();
     }
 
-    public void ModificarGanhos(float multDinheiro = 0, float multPetroleo = 0, float multAco = 0, float multEnergia = 0)
+    public void ModificarGanhos(float multDinheiro = 0, float multPetroleo = 0, float multAco = 0, float multEnergia = 0, float multComida = 0)
     {
         dinheiroPorSegundo += multDinheiro;
         petroleoPorSegundo += multPetroleo;
         acoPorSegundo += multAco;
         energiaPorSegundo += multEnergia;
+        comidaPorSegundo += multComida;
         NotificarAtualizacao();
     }
 

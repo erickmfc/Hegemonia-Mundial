@@ -16,6 +16,10 @@ PrefabInstance:
       propertyPath: lengthInSec
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 162338076548706659, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
+      propertyPath: m_Name
+      value: AR_Mid 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2864504667967888179, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -216,70 +220,5 @@ PrefabInstance:
     m_RemovedGameObjects:
     - {fileID: 443299249219380017, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4228149179738620338}
-    - targetCorrespondingSourceObject: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4933306925821022456}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
---- !u!1 &2445636553566034334 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6053793194223374486, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-  m_PrefabInstance: {fileID: 8499349853847881992}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &4228149179738620338
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2445636553566034334}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 100
-  vidaAtual: 0
-  unidadeBiologica: 0
-  ehEstrutura: 0
-  prefabDestrocos: {fileID: 0}
-  somExplosaoExclusivo: {fileID: 0}
-  tamanhoDoEfeito: 1
-  ajusteDePosicao: {x: 0, y: 0, z: 0}
-  habilitarAfundamentoNaval: 0
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
-  atrasoPosAfundamento: 0.6
---- !u!114 &4933306925821022456
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2445636553566034334}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a5f4688f1bd4ead479e87e7cc5036db6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MisselCaca
-  tempoQuedaLivre: 0.1
-  forcaQuedaAdicional: 2
-  aceleracaoBoost: 100
-  velocidadeMaxima: 120
-  forcaRotacao: 5
-  sistemaFumaca: {fileID: 2931052983890345434}
-  dano: 450
-  raioExplosao: 50
-  escalaVisualExplosao: 6
-  volumeSom: 1
-  efeitoExplosaoPrefab: {fileID: 100002, guid: 6ecf76dc4f268d340b2666896a954bcc, type: 3}
-  somExplosao: {fileID: 8300000, guid: 986d6b30567e30e428f3f21373fe45ca, type: 3}
-  tempoMaximoVida: 10
---- !u!198 &2931052983890345434 stripped
-ParticleSystem:
-  m_CorrespondingSourceObject: {fileID: 6728079333652362450, guid: c7ff21fb0b65dfd4b861ce6411e878e1, type: 3}
-  m_PrefabInstance: {fileID: 8499349853847881992}
-  m_PrefabAsset: {fileID: 0}

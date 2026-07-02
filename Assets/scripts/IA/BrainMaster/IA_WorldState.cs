@@ -16,6 +16,23 @@ namespace Hegemonia.AI.BrainMaster
             public string NormalizedName;
             public IA_Domain Domain;
             public bool IsStructure;
+            public bool IsAirport;
+            public bool IsMilitaryAirport;
+            public bool IsCommercialAirport;
+            public bool IsHeliport;
+            public bool IsShipyard;
+            public bool IsPier;
+            public bool IsPlatform;
+            public bool IsFactory;
+            public bool IsBarracks;
+            public bool IsWarehouse;
+            public bool IsPower;
+            public bool IsDefense;
+            public bool IsCommercial;
+            public bool IsCivil;
+            public bool IsMilitary;
+            public bool IsCore;
+            public bool IsEconomy;
             public bool IsTransport;
             public bool IsOilTanker;
             public bool IsGroundTransport;
@@ -27,6 +44,7 @@ namespace Hegemonia.AI.BrainMaster
             public bool IsArtillery;
             public bool IsHelicopter;
             public bool IsFixedWing;
+            public bool IsCommercialAircraft;
             public bool IsRadar;
             public bool IsHighValueMobile;
             public float VisionRadius;
@@ -1117,6 +1135,7 @@ namespace Hegemonia.AI.BrainMaster
             _forceSnapshot.Helicopters = 0;
             _forceSnapshot.FixedWingAircraft = 0;
             _forceSnapshot.ReadyAircraft = 0;
+            _forceSnapshot.ReadyFighters = 0;
             _forceSnapshot.AirUnits = 0;
             _forceSnapshot.NavalUnits = 0;
             _forceSnapshot.Submarines = 0;
@@ -1131,8 +1150,10 @@ namespace Hegemonia.AI.BrainMaster
             _forceSnapshot.BarracksCount = 0;
             _forceSnapshot.FactoryCount = 0;
             _forceSnapshot.AirportCount = 0;
+            _forceSnapshot.MilitaryAirportCount = 0;
             _forceSnapshot.CommercialAirportCount = 0;
             _forceSnapshot.HeliportCount = 0;
+            _forceSnapshot.CommercialAircraft = 0;
             _forceSnapshot.ShipyardCount = 0;
             _forceSnapshot.PierCount = 0;
             _forceSnapshot.PlatformCount = 0;
@@ -1203,6 +1224,13 @@ namespace Hegemonia.AI.BrainMaster
             {
                 _forceSnapshot.FixedWingAircraft++;
                 _forceSnapshot.ReadyAircraft++;
+                _forceSnapshot.ReadyFighters++;
+            }
+
+            if (entry.IsCommercialAircraft)
+            {
+                _forceSnapshot.CommercialAircraft++;
+                _forceSnapshot.ReadyAircraft++;
             }
 
             if (entry.IsNavalTransport)
@@ -1219,13 +1247,6 @@ namespace Hegemonia.AI.BrainMaster
             {
                 _forceSnapshot.HoverTransports++;
             }
-
-
-
-            if (entry.IsNavalTransport)
-            {
-                _forceSnapshot.NavalTransports++;
-            }
         }
 
         private void AccumulateStructureSnapshot(EntityRuntimeCacheEntry entry)
@@ -1233,21 +1254,27 @@ namespace Hegemonia.AI.BrainMaster
             string n = entry.NormalizedName;
             _forceSnapshot.TotalOwnStructures++;
 
-            if (n.Contains("tenda") || n.Contains("barraca") || n.Contains("quartel"))
+            if (entry.IsBarracks || n.Contains("tenda") || n.Contains("barraca") || n.Contains("quartel"))
             {
                 _forceSnapshot.BarracksCount++;
             }
 
-            if (n.Contains("construtor de veiculos") || n.Contains("construtor") || n.Contains("fabrica"))
+            if (entry.IsFactory || n.Contains("construtor de veiculos") || n.Contains("construtor") || n.Contains("fabrica"))
             {
                 _forceSnapshot.FactoryCount++;
             }
 
-            if (n.Contains("aeroporto") || n.Contains("airport") || n.Contains("base aerea") || n.Contains("pista"))
+            if ((entry.IsAirport && !entry.IsHeliport) || entry.IsMilitaryAirport || entry.IsCommercialAirport
+                || n.Contains("aeroporto") || n.Contains("airport") || n.Contains("base aerea") || n.Contains("pista"))
             {
-                if (n.Contains("comercial") || n.Contains("commercial"))
+                if (entry.IsCommercialAirport || n.Contains("comercial") || n.Contains("commercial"))
                 {
                     _forceSnapshot.CommercialAirportCount++;
+                }
+                else if (entry.IsMilitaryAirport)
+                {
+                    _forceSnapshot.MilitaryAirportCount++;
+                    _forceSnapshot.AirportCount++;
                 }
                 else
                 {
@@ -1255,27 +1282,27 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            if (n.Contains("heliporto") || n.Contains("hangar"))
+            if (entry.IsHeliport || n.Contains("heliporto") || n.Contains("heliport") || n.Contains("hangar"))
             {
                 _forceSnapshot.HeliportCount++;
             }
 
-            if (n.Contains("estaleiro"))
+            if (entry.IsShipyard || n.Contains("estaleiro"))
             {
                 _forceSnapshot.ShipyardCount++;
             }
 
-            if (n.Contains("pier"))
+            if (entry.IsPier || n.Contains("pier"))
             {
                 _forceSnapshot.PierCount++;
             }
 
-            if (n.Contains("plataforma"))
+            if (entry.IsPlatform || n.Contains("plataforma"))
             {
                 _forceSnapshot.PlatformCount++;
             }
 
-            if (n.Contains("armazem") || n.Contains("warehouse"))
+            if (entry.IsWarehouse || n.Contains("armazem") || n.Contains("warehouse"))
             {
                 _forceSnapshot.WarehouseCount++;
             }
@@ -1301,21 +1328,38 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             string n = IA_Text.Normalize(obj.name);
-            bool hasAircraft = obj.GetComponent<ControleAviao>() != null || obj.GetComponent<ControleAviaoCaca>() != null;
-            bool hasHelicopter = obj.GetComponent<Helicoptero>() != null;
+            IA_ConstructionMetadata metadata = obj.GetComponent<IA_ConstructionMetadata>();
+            IA_ConstructionCapability capabilities = metadata != null ? metadata.Capabilities : IA_ConstructionCapability.Auto;
+            bool hasMetadata = metadata != null && capabilities != IA_ConstructionCapability.Auto;
+            bool hasCarrierComponent = obj.GetComponent<GerenciadorPortaAvioes>() != null;
+            bool hasCommercialAirportComponent = obj.GetComponent<GerenciadorAeroportoComercial>() != null;
+            bool hasHeliportComponent = obj.GetComponent<Heliporto>() != null;
+            bool hasMilitaryAirportComponent = !hasCommercialAirportComponent
+                                               && !hasHeliportComponent
+                                               && !hasCarrierComponent
+                                               && obj.GetComponent<GerenciadorAeroporto>() != null;
+            bool metadataIsUnit = hasMetadata && metadata.IsUnit;
+            bool metadataIsStructure = hasMetadata && metadata.IsStructure;
+            bool hasCommercialAircraft = (metadataIsUnit && metadata.IsCommercialAircraft) || obj.GetComponent<ControleAviaoComercial>() != null;
+            bool hasAircraft = ((metadataIsUnit && (metadata.IsAircraft || metadata.IsFighterAircraft || metadata.IsCommercialAircraft))
+                                || obj.GetComponent<ControleAviao>() != null
+                                || obj.GetComponent<ControleAviaoCaca>() != null) && !hasCommercialAircraft;
+            bool hasHelicopter = (metadataIsUnit && metadata.IsHelicopter) || obj.GetComponent<Helicoptero>() != null;
             bool hasSubmarine = obj.GetComponent<ControleSubmarino>() != null || n.Contains("leviathan") || n.Contains("wraith") || n.Contains("mako");
-            bool isOilTanker = obj.GetComponent<NavioPetroleiro>() != null || n.Contains("petroleiro") || n.Contains("petrolifero") || n.Contains("tanker");
-            bool isNavalTransportComp = obj.GetComponent<NavioTransporteTropas>() != null;
-            bool hasNaval = obj.GetComponent<ControleNavioRealista>() != null || isOilTanker || isNavalTransportComp || n.Contains("navio") || n.Contains("corveta") || n.Contains("destroy") || n.Contains("ironclad") || n.Contains("sovereign") || n.Contains("vindicator") || n.Contains("arrowhead");
+            bool isOilTanker = (metadataIsUnit && metadata.IsOilTanker) || obj.GetComponent<NavioPetroleiro>() != null || n.Contains("petroleiro") || n.Contains("petrolifero") || n.Contains("tanker");
+            bool isNavalTransportComp = (metadataIsUnit && metadata.IsNavalTransport) || obj.GetComponent<NavioTransporteTropas>() != null;
+            bool hasNaval = (metadataIsUnit && metadata.IsNavalDomain) || obj.GetComponent<ControleNavioRealista>() != null || isOilTanker || isNavalTransportComp || n.Contains("navio") || n.Contains("corveta") || n.Contains("destroy") || n.Contains("ironclad") || n.Contains("sovereign") || n.Contains("vindicator") || n.Contains("arrowhead");
             bool hasAgent = obj.GetComponent<NavMeshAgent>() != null;
             bool mobileByScript = !hasAgent
                                   && (hasAircraft
                                       || hasHelicopter
                                       || hasNaval
                                       || hasSubmarine
-                                      || obj.GetComponent<ControleUnidade>() != null);
+                                      || obj.GetComponent<ControleUnidade>() != null
+                                      || metadataIsUnit);
 
-            bool explicitStructure = n.Contains("prefeitura")
+            bool explicitStructure = metadataIsStructure
+                                     || n.Contains("prefeitura")
                                      || n.Contains("quartel")
                                      || n.Contains("fabrica")
                                      || n.Contains("refinaria")
@@ -1323,21 +1367,38 @@ namespace Hegemonia.AI.BrainMaster
                                      || n.Contains("radar")
                                      || n.Contains("muro")
                                      || n.Contains("estaleiro")
+                                     || n.Contains("shipyard")
                                      || n.Contains("pier")
                                      || n.Contains("plataforma")
                                      || n.Contains("aeroporto")
                                      || n.Contains("heliporto")
+                                     || n.Contains("heliport")
                                      || n.Contains("armazem");
 
             IdentidadeUnidade idComp = obj.GetComponent<IdentidadeUnidade>();
-            bool isAereoFromComp = idComp != null && idComp.tipoUnidade == TipoUnidade.Aereo;
+            bool isAereoFromComp = (metadataIsUnit && metadata.IsAirDomain) || (idComp != null && idComp.tipoUnidade == TipoUnidade.Aereo);
             bool isDrone = n.Contains("drone") || n.Contains("vap");
             bool isFixedWingByName = IsFixedWingAircraftName(n);
+            bool isCommercialAircraft = (metadataIsUnit && metadata.IsCommercialAircraft)
+                                        || hasCommercialAircraft
+                                        || n.Contains("comercial")
+                                        || n.Contains("commercial");
 
             bool isStructure = explicitStructure || (!hasAgent && !mobileByScript);
             IA_Domain domain = IA_Domain.Land;
 
-            if (isAereoFromComp || hasAircraft || hasHelicopter || n.Contains("heli") || n.Contains("aviao") || isFixedWingByName || isDrone)
+            if (hasMetadata && capabilities != IA_ConstructionCapability.Auto)
+            {
+                if (metadataIsUnit && metadata.IsAirDomain)
+                {
+                    domain = IA_Domain.Air;
+                }
+                else if (metadataIsUnit && metadata.IsNavalDomain)
+                {
+                    domain = IA_Domain.Naval;
+                }
+            }
+            else if (isAereoFromComp || hasAircraft || hasHelicopter || n.Contains("heli") || n.Contains("aviao") || isFixedWingByName || isDrone || isCommercialAircraft)
             {
                 domain = IA_Domain.Air;
             }
@@ -1347,7 +1408,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             bool isHover = n.Contains("hover") || n.Contains("houver");
-            bool isTransport = isOilTanker
+            bool isTransport = (metadataIsUnit && metadata.IsTransport)
+                               || isOilTanker
                                || n.Contains("transporte")
                                || n.Contains("truck")
                                || n.Contains("caminhao")
@@ -1359,6 +1421,27 @@ namespace Hegemonia.AI.BrainMaster
                 NormalizedName = n,
                 Domain = domain,
                 IsStructure = isStructure,
+                IsAirport = hasMetadata
+                    ? metadata.IsAirport && !metadata.IsHeliport && !hasCarrierComponent
+                    : hasMilitaryAirportComponent || hasCommercialAirportComponent || ((n.Contains("aeroporto") || n.Contains("airport") || n.Contains("base aerea") || n.Contains("pista")) && !hasHeliportComponent),
+                IsMilitaryAirport = hasMetadata
+                    ? metadata.IsMilitaryAirport && !metadata.IsHeliport && !hasCarrierComponent
+                    : hasMilitaryAirportComponent || (!hasHeliportComponent && (n.Contains("aeroporto") || n.Contains("airport") || n.Contains("base aerea") || n.Contains("pista")) && !n.Contains("comercial") && !n.Contains("commercial")),
+                IsCommercialAirport = hasMetadata
+                    ? metadata.IsCommercialAirport && !metadata.IsHeliport && !hasCarrierComponent
+                    : hasCommercialAirportComponent || (!hasHeliportComponent && (n.Contains("aeroporto") || n.Contains("airport")) && (n.Contains("comercial") || n.Contains("commercial"))),
+                IsHeliport = hasMetadata ? metadata.IsHeliport || hasHeliportComponent : hasHeliportComponent || n.Contains("heliporto") || n.Contains("heliport") || n.Contains("hangar"),
+                IsShipyard = hasMetadata ? metadata.IsShipyard : n.Contains("estaleiro") || n.Contains("shipyard"),
+                IsPier = hasMetadata ? metadata.IsPier : n.Contains("pier"),
+                IsPlatform = hasMetadata ? metadata.IsPlatform : n.Contains("plataforma") || n.Contains("offshore platform"),
+                IsFactory = hasMetadata ? metadata.IsFactory : n.Contains("construtor") || n.Contains("fabrica") || n.Contains("factory") || n.Contains("vehicle factory"),
+                IsBarracks = hasMetadata ? metadata.IsBarracks : n.Contains("tenda") || n.Contains("barraca") || n.Contains("quartel") || n.Contains("barracks"),
+                IsWarehouse = hasMetadata ? metadata.IsWarehouse : n.Contains("armazem") || n.Contains("warehouse") || n.Contains("galpao"),
+                IsPower = hasMetadata ? metadata.IsPower : n.Contains("usina") || n.Contains("energia") || n.Contains("power plant") || n.Contains("power"),
+                IsDefense = hasMetadata ? metadata.IsDefense : n.Contains("radar") || n.Contains("ciws") || n.Contains("phalanx") || n.Contains("antia") || n.Contains("torreta") || n.Contains("sentinela"),
+                IsCommercial = hasMetadata ? metadata.IsCommercial : n.Contains("comercial") || n.Contains("commercial"),
+                IsCivil = hasMetadata ? metadata.IsCivil : n.Contains("civil") || n.Contains("resid") || n.Contains("moradia") || n.Contains("casa") || n.Contains("imovel") || n.Contains("village"),
+                IsMilitary = hasMetadata ? metadata.IsMilitary : n.Contains("militar") || n.Contains("quartel") || n.Contains("fabrica") || n.Contains("tenda") || n.Contains("aeroporto"),
                 IsTransport = isTransport,
                 IsOilTanker = isOilTanker,
                 IsGroundTransport = (n.Contains("truck") || n.Contains("caminhao") || n.Contains("transporte")) && domain == IA_Domain.Land,
@@ -1369,10 +1452,11 @@ namespace Hegemonia.AI.BrainMaster
                 IsTank = n.Contains("tank") || n.Contains("mbt") || n.Contains("south") || n.Contains("arthur") || n.Contains("c1"),
                 IsArtillery = n.Contains("artilh") || n.Contains("hack") || n.Contains("mlrs") || n.Contains("lancador"),
                 IsHelicopter = hasHelicopter || n.Contains("heli") || n.Contains("ray") || n.Contains("vans"),
-                IsFixedWing = isAereoFromComp || hasAircraft || isFixedWingByName || n.Contains("jet") || n.Contains("aviao") || isDrone,
+                IsFixedWing = !isCommercialAircraft && (isAereoFromComp || hasAircraft || isFixedWingByName || n.Contains("jet") || n.Contains("aviao") || isDrone),
+                IsCommercialAircraft = isCommercialAircraft,
                 IsRadar = n.Contains("radar"),
-                IsHighValueMobile = isAereoFromComp || hasAircraft || isFixedWingByName || hasHelicopter || hasNaval || hasSubmarine || isDrone,
-                VisionRadius = ResolveVisionRadius(n, isStructure, hasAircraft || isAereoFromComp || isFixedWingByName || isDrone, hasHelicopter, hasNaval || hasSubmarine)
+                IsHighValueMobile = !isStructure && (isAereoFromComp || hasAircraft || isFixedWingByName || hasHelicopter || hasNaval || hasSubmarine || isDrone || isCommercialAircraft),
+                VisionRadius = ResolveVisionRadius(n, isStructure, hasAircraft || isAereoFromComp || isFixedWingByName || isDrone || isCommercialAircraft, hasHelicopter, hasNaval || hasSubmarine)
             };
 
             _entityRuntimeCache[id] = entry;

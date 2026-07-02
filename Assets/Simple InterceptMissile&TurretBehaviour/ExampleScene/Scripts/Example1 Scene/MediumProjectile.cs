@@ -8,10 +8,7 @@ public class MediumProjectile : AntiMissileProjectile {
 
 	protected override void OnCollisionEnter(Collision col)
 	{
-		if(IsPooling)
-			Destroy(gameObject); // disable this projectile
-		else
-			Destroy(gameObject, 0.1f); // if not pooling destroy it immediately
+		Destroy(gameObject, 0.1f); // o pool do projeto já é tratado pelo AntiMissileProjectile
 
 		var layer = LayerMask.LayerToName(col.gameObject.layer);
 

@@ -65,11 +65,14 @@ public class SomUnidade : MonoBehaviour
         
         // Configuração padrão
         audioSource.spatialBlend = 1f; 
-        audioSource.maxDistance = 50f;
+        audioSource.rolloffMode = AudioRolloffMode.Linear;
+        audioSource.minDistance = 8f;
+        audioSource.maxDistance = tipoUnidade == TipoSomUnidade.Aviao || tipoUnidade == TipoSomUnidade.Helicoptero ? 150f : 50f;
         
         // Torna o som de Tiro e Explosão em 3D
         audioSourceSecundario.spatialBlend = 1f;
-        audioSourceSecundario.maxDistance = 150f;
+        audioSourceSecundario.minDistance = 3f;
+        audioSourceSecundario.maxDistance = 50f;
         audioSourceSecundario.rolloffMode = AudioRolloffMode.Linear;
         
         // Cachear referências pesadas
@@ -77,28 +80,49 @@ public class SomUnidade : MonoBehaviour
         sistemaDanos = GetComponent<SistemaDeDanos>();
         agenteCached = GetComponent<UnityEngine.AI.NavMeshAgent>();
         rbCached = GetComponent<Rigidbody>();
+        if (sistemaDanos != null)
+        {
+            sistemaDanos.OnMorte -= TocarSomExplosao;
+            sistemaDanos.OnDano -= TocarSomDano;
+            sistemaDanos.OnMorte += TocarSomExplosao;
+            sistemaDanos.OnDano += TocarSomDano;
+        }
+        ConfigurarSonsPadrao();
+        TentarCarregarClipsDoPrefab();
+    }
+
+    void Update()
+    {
+        DetectarVelocidade();
+        AjustarSomMotor();
     }
 
     void DetectarVelocidade()
     {
+        float deltaMovimento = 0f;
+        if (lastPosition != Vector3.zero)
+        {
+            deltaMovimento = (transform.position - lastPosition).magnitude / Time.deltaTime;
+        }
+        lastPosition = transform.position;
+
         // Usa cache em vez de GetComponent todo frame
         if (agenteCached != null && agenteCached.enabled && agenteCached.isOnNavMesh)
         {
             velocidadeAtual = agenteCached.velocity.magnitude;
         }
-        // Para unidades com Rigidbody (física)
-        else if (rbCached != null)
+        else if (rbCached != null && !rbCached.isKinematic)
         {
             velocidadeAtual = rbCached.linearVelocity.magnitude;
         }
-        // Para unidades aéreas manuais
-        else if (controleUnidade != null)
+        else
         {
-            if (lastPosition != Vector3.zero)
-            {
-                velocidadeAtual = (transform.position - lastPosition).magnitude / Time.deltaTime;
-            }
-            lastPosition = transform.position;
+            velocidadeAtual = deltaMovimento;
+        }
+
+        if (deltaMovimento > velocidadeAtual)
+        {
+            velocidadeAtual = deltaMovimento;
         }
         
         estaMovendo = velocidadeAtual > 0.1f;
@@ -108,7 +132,16 @@ public class SomUnidade : MonoBehaviour
 
     void AjustarSomMotor()
     {
-        if (somMotor == null) return;
+        if (audioSource == null) return;
+
+        if (somMotor == null && somParado == null)
+        {
+            if (audioSource.isPlaying)
+            {
+                audioSource.Stop();
+            }
+            return;
+        }
         
         // Se está movendo e o som não está tocando, inicia
         if (estaMovendo && !somMotorTocando)
@@ -132,7 +165,17 @@ public class SomUnidade : MonoBehaviour
 
     void IniciarSomMotor(bool movimento)
     {
+        if (audioSource == null || !audioSource.isActiveAndEnabled)
+        {
+            somMotorTocando = false;
+            return;
+        }
+
         AudioClip clipParaTocar = movimento ? somMotor : somParado;
+        if (clipParaTocar == null)
+        {
+            clipParaTocar = somMotor != null ? somMotor : somParado;
+        }
         
         if (clipParaTocar == null)
         {
@@ -144,7 +187,14 @@ public class SomUnidade : MonoBehaviour
         audioSource.loop = loopMotor;
         audioSource.volume = volumeMotor;
         audioSource.pitch = pitchMin;
-        audioSource.Play();
+        if (audioSource.isPlaying)
+        {
+            audioSource.Stop();
+        }
+        if (!audioSource.isPlaying)
+        {
+            audioSource.Play();
+        }
         
         somMotorTocando = true;
         
@@ -157,7 +207,7 @@ public class SomUnidade : MonoBehaviour
         switch (tipoUnidade)
         {
             case TipoSomUnidade.Helicoptero:
-                audioSource.maxDistance = 80f;
+                audioSource.maxDistance = 150f;
                 velocidadeParaMaxPitch = 15f;
                 pitchMin = 0.9f;
                 pitchMax = 1.3f;
@@ -171,7 +221,7 @@ public class SomUnidade : MonoBehaviour
                 break;
                 
             case TipoSomUnidade.Tank:
-                audioSource.maxDistance = 60f;
+                audioSource.maxDistance = 50f;
                 velocidadeParaMaxPitch = 8f;
                 pitchMin = 0.7f;
                 pitchMax = 1.2f;
@@ -185,11 +235,30 @@ public class SomUnidade : MonoBehaviour
                 break;
                 
             case TipoSomUnidade.Navio:
-                audioSource.maxDistance = 100f;
+                audioSource.maxDistance = 50f;
                 velocidadeParaMaxPitch = 5f;
                 pitchMin = 0.6f;
                 pitchMax = 1.0f;
                 break;
+        }
+    }
+
+    private void TentarCarregarClipsDoPrefab()
+    {
+        if (somMotor == null || somParado == null || somTiro == null || somExplosao == null || somDano == null)
+        {
+            AudioSource[] fontes = GetComponentsInChildren<AudioSource>(true);
+            for (int i = 0; i < fontes.Length; i++)
+            {
+                AudioSource fonte = fontes[i];
+                if (fonte == null || fonte.clip == null) continue;
+
+                if (somMotor == null) somMotor = fonte.clip;
+                else if (somParado == null) somParado = fonte.clip;
+                else if (somTiro == null) somTiro = fonte.clip;
+                else if (somExplosao == null) somExplosao = fonte.clip;
+                else if (somDano == null) somDano = fonte.clip;
+            }
         }
     }
 

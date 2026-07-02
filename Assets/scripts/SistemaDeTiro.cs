@@ -188,7 +188,7 @@ public class SistemaDeTiro : MonoBehaviour
 
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
-        fonteAudio.spatialBlend = 1.0f; 
+        AudioRuntime.ConfigurarFonteDeArmamento(fonteAudio);
 
         // OTIMIZAÇÃO: Scan com intervalo aleatório
         float inicioAleatorio = Random.Range(0f, 1.0f);
@@ -222,6 +222,11 @@ public class SistemaDeTiro : MonoBehaviour
         }
 
         alvoAtual = null; // Reseta para buscar o mais próximo
+
+        if (DeveAdiarNovaBusca())
+        {
+            return;
+        }
 
         // Busca nova lista de alvos potenciais usando buffer para ZERO alocação de memória (GC Free)
         int naviosNaArea = Physics.OverlapSphereNonAlloc(transform.position, alcanceTiro, bufferColisores, Physics.AllLayers, QueryTriggerInteraction.Ignore);
@@ -293,6 +298,17 @@ public class SistemaDeTiro : MonoBehaviour
 
         // --- Limpa o buffer manual para a próxima passada ---
         for (int i = 0; i < naviosNaArea; i++) bufferColisores[i] = null;
+    }
+
+    private bool DeveAdiarNovaBusca()
+    {
+        if (!DiagnosticoDesempenhoJogo.RuntimeSobPressao() && !DiagnosticoDesempenhoJogo.RuntimeSaturado())
+        {
+            return false;
+        }
+
+        int divisor = DiagnosticoDesempenhoJogo.RuntimeSaturado() ? 4 : 2;
+        return (Mathf.Abs(GetInstanceID()) + Time.frameCount) % divisor != 0;
     }
 
     void Atirar()

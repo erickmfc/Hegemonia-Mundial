@@ -9,6 +9,8 @@ using Hegemonia.AI.BrainMaster;
 
 public class MenuConstrucao : MonoBehaviour
 {
+    public static MenuConstrucao Instancia { get; private set; }
+
     [System.Serializable]
     public class ConfigVisualCategoria
     {
@@ -54,6 +56,7 @@ public class MenuConstrucao : MonoBehaviour
     private Transform containerAbas;
     private GridLayoutGroup gradeBotoes;
     private RectTransform viewportBotoes;
+    private ScrollRect scrollRectBotoes;
     private CanvasGroup canvasGroupPainel;
     private InputField campoBusca;
     private Image imagemDetalheIcone;
@@ -78,6 +81,32 @@ public class MenuConstrucao : MonoBehaviour
     private readonly Dictionary<DadosConstrucao.CategoriaItem, ConfigVisualCategoria> lookupVisualCategorias = new Dictionary<DadosConstrucao.CategoriaItem, ConfigVisualCategoria>();
     private readonly Dictionary<int, Sprite> cacheIconesResolvidos = new Dictionary<int, Sprite>();
     private Sprite iconePlaceholderRuntime;
+    private bool resetarScrollParaTopoPendente;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void GarantirInstanciaRuntime()
+    {
+        if (Object.FindFirstObjectByType<MenuConstrucao>() != null)
+        {
+            return;
+        }
+
+        GameObject root = new GameObject("MenuConstrucao_Auto");
+        Object.DontDestroyOnLoad(root);
+        root.AddComponent<MenuConstrucao>();
+        Debug.Log("[MenuConstrucao] Instancia ausente na cena. Criado bootstrap automatico.");
+    }
+
+    void Awake()
+    {
+        if (Instancia != null && Instancia != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instancia = this;
+    }
 
     void Start()
     {
@@ -102,6 +131,14 @@ public class MenuConstrucao : MonoBehaviour
         FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Exercito);
     }
 
+    void OnDestroy()
+    {
+        if (Instancia == this)
+        {
+            Instancia = null;
+        }
+    }
+
     // (Removido Scanner Global de Prefabs que destruía os arquivos Assets do HD causando Missing Scripts)
 
     void CarregarTodasAsFichas()
@@ -109,35 +146,37 @@ public class MenuConstrucao : MonoBehaviour
         if (catalogo == null) catalogo = new List<DadosConstrucao>();
         List<DadosConstrucao> fichasConfiguradasNaCena = catalogo
             .Where(ficha => ficha != null)
+            .Distinct()
             .ToList();
 
         catalogo.Clear();
         
-        List<DadosConstrucao> fichasEncontradas = new List<DadosConstrucao>(fichasConfiguradasNaCena);
 
-#if UNITY_EDITOR
-        string[] guids = UnityEditor.AssetDatabase.FindAssets("t:DadosConstrucao");
-        foreach (string guid in guids)
+        foreach (var ficha in fichasConfiguradasNaCena)
         {
-            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-            DadosConstrucao asset = UnityEditor.AssetDatabase.LoadAssetAtPath<DadosConstrucao>(path);
-            if (asset != null) fichasEncontradas.Add(asset);
-        }
-
-        // AdicionarPrefabsImobiliariosSemFicha(fichasEncontradas); // Desativado para evitar criação automática sem pedido
-#else
-        fichasEncontradas.AddRange(Resources.FindObjectsOfTypeAll<DadosConstrucao>());
-#endif
-
-        foreach (var ficha in fichasEncontradas.Distinct())
-        {
-            if (ficha != null && ficha.prefabDaUnidade != null && !string.IsNullOrEmpty(ficha.nomeItem))
+            GameObject prefab;
+            if (ficha != null && ficha.TryGetPrefab(out prefab) && !string.IsNullOrEmpty(ficha.nomeItem))
             {
                 string nm = ficha.nomeItem.ToLower();
-                if (nm.Contains("destroc") || nm.Contains("destroç") || nm.Contains("chama") || 
-                    ficha.prefabDaUnidade.GetComponent<DestrocosEmChamas>() != null)
+                bool isDestrocos = false;
+                try
                 {
-                    continue; 
+                    isDestrocos = nm.Contains("destroc") || nm.Contains("destroç") || nm.Contains("chama") ||
+                                  prefab.GetComponent<DestrocosEmChamas>() != null;
+                }
+                catch (MissingReferenceException)
+                {
+                    // Prefab tem missing scripts em filhos — descarta.
+                    continue;
+                }
+                catch (System.Exception)
+                {
+                    continue;
+                }
+
+                if (isDestrocos)
+                {
+                    continue;
                 }
 
                 catalogo.Add(ficha);
@@ -145,7 +184,7 @@ public class MenuConstrucao : MonoBehaviour
                     quantidadesPorItem.Add(ficha.nomeItem, 1);
             }
         }
-        catalogo = catalogo.OrderBy(f => (int)f.categoria).ThenBy(f => f.nomeItem).ToList();
+        catalogo = catalogo.OrderBy(f => (int)f.categoria).ThenBy(f => f.GetDisplayName()).ToList();
         catalogoGlobal = new List<DadosConstrucao>(catalogo);
     }
 
@@ -168,7 +207,16 @@ public class MenuConstrucao : MonoBehaviour
                 continue;
             }
 
-            bool jaTemFicha = fichasEncontradas.Any(ficha => ficha != null && ficha.prefabDaUnidade == prefab);
+            bool jaTemFicha = fichasEncontradas.Any(ficha =>
+            {
+                if (ficha == null)
+                {
+                    return false;
+                }
+
+                GameObject prefabFicha;
+                return ficha.TryGetPrefab(out prefabFicha) && prefabFicha == prefab;
+            });
             if (jaTemFicha)
             {
                 continue;
@@ -209,27 +257,72 @@ public class MenuConstrucao : MonoBehaviour
             catalogo = new List<DadosConstrucao>();
         }
 
-        catalogo.RemoveAll(item => item == null);
+#if UNITY_EDITOR
+        GarantirFichaC700NoCatalogo();
+#endif
 
-        if (catalogo.Count == 0 && catalogoGlobal != null && catalogoGlobal.Count > 0)
+        List<DadosConstrucao> catalogoValido = new List<DadosConstrucao>();
+        foreach (var item in catalogo)
         {
-            catalogo = catalogoGlobal
-                .Where(item => item != null)
-                .OrderBy(item => (int)item.categoria)
-                .ThenBy(item => item.nomeItem)
-                .ToList();
+            if (item == null)
+            {
+                continue;
+            }
+
+            GameObject prefab;
+            if (!item.TryGetPrefab(out prefab) || string.IsNullOrWhiteSpace(item.nomeItem))
+            {
+                continue;
+            }
+
+            string nm = item.nomeItem.ToLower();
+            bool isDestrocos = false;
+            try
+            {
+                isDestrocos = nm.Contains("destroc") || nm.Contains("destroç") || nm.Contains("chama") ||
+                              prefab.GetComponent<DestrocosEmChamas>() != null;
+            }
+            catch (MissingReferenceException)
+            {
+                continue;
+            }
+            catch (System.Exception)
+            {
+                continue;
+            }
+
+            if (isDestrocos)
+            {
+                continue;
+            }
+
+            catalogoValido.Add(item);
         }
 
-        if (catalogo.Count == 0 && autoCarregarFichas)
+        catalogo = catalogoValido
+            .Distinct()
+            .OrderBy(item => (int)item.categoria)
+            .ThenBy(item => item.GetDisplayName())
+            .ToList();
+        catalogoGlobal = new List<DadosConstrucao>(catalogo);
+    }
+
+#if UNITY_EDITOR
+    void GarantirFichaC700NoCatalogo()
+    {
+        const string caminhoC700 = "Assets/Prefabs/Aeroporto/C700/c700.asset";
+        DadosConstrucao c700 = UnityEditor.AssetDatabase.LoadAssetAtPath<DadosConstrucao>(caminhoC700);
+        if (c700 == null)
         {
-            CarregarTodasAsFichas();
+            return;
         }
 
-        if ((catalogoGlobal == null || catalogoGlobal.Count == 0) && catalogo.Count > 0)
+        if (!catalogo.Contains(c700))
         {
-            catalogoGlobal = new List<DadosConstrucao>(catalogo);
+            catalogo.Add(c700);
         }
     }
+#endif
 
     List<DadosConstrucao> ObterItensDaCategoria(DadosConstrucao.CategoriaItem categoriaDesejada, bool aplicarBusca)
     {
@@ -241,7 +334,9 @@ public class MenuConstrucao : MonoBehaviour
             query = query.Where(ItemPassaFiltroBusca);
         }
 
-        return query.ToList();
+        return query
+            .OrderBy(item => item.GetDisplayName())
+            .ToList();
     }
 
     void DefinirTextoBuscaSemEvento(string novoTexto)
@@ -322,6 +417,11 @@ public class MenuConstrucao : MonoBehaviour
 
     public void AlternarMenu(bool abrir)
     {
+        if (painelPrincipal == null || canvasGroupPainel == null)
+        {
+            Debug.LogWarning("[MenuConstrucao] Painel ausente. Reconstruindo interface em runtime.");
+            GerarInterfaceCompleta();
+        }
         if (painelPrincipal == null) 
         {
             Debug.LogWarning("[MenuConstrucao] painelPrincipal é nulo! Não foi possível abrir o menu.");
@@ -355,6 +455,11 @@ public class MenuConstrucao : MonoBehaviour
             catch (System.Exception ex)
             {
                 Debug.LogError($"[MenuConstrucao] Erro ao fechar outros menus: {ex.Message}");
+            }
+
+            if (autoCarregarFichas)
+            {
+                CarregarTodasAsFichas();
             }
 
             GarantirCatalogoValido();
@@ -534,6 +639,10 @@ public class MenuConstrucao : MonoBehaviour
         CriarPlacaTitulo(painelPrincipal.transform);
         CriarLinhaNavegacao(painelPrincipal.transform);
         CriarCorpoPrincipal(painelPrincipal.transform);
+        painelPrincipal.SetActive(false);
+        canvasGroupPainel.alpha = 0f;
+        canvasGroupPainel.blocksRaycasts = false;
+        canvasGroupPainel.interactable = false;
     }
 
     void CriarPlacaTitulo(Transform pai)
@@ -785,6 +894,7 @@ public class MenuConstrucao : MonoBehaviour
         sr.inertia = true;
         sr.horizontal = false;
         sr.vertical = true;
+        scrollRectBotoes = sr;
 
         GameObject viewport = CriarRetangulo("Viewport", bodyObj.transform);
         Image imgView = viewport.AddComponent<Image>();
@@ -812,6 +922,8 @@ public class MenuConstrucao : MonoBehaviour
         grid.padding = new RectOffset(30, 10, 10, 20); // 5% movido para a esquerda (de 60 foi pra 30)
         grid.childAlignment = TextAnchor.UpperLeft;
         grid.constraint = GridLayoutGroup.Constraint.Flexible; // Permite preencher todo o espaço disponível sem limite
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 4;
         gradeBotoes = grid;
 
         ContentSizeFitter csf = content.AddComponent<ContentSizeFitter>();
@@ -1156,7 +1268,10 @@ public class MenuConstrucao : MonoBehaviour
             return true;
         }
 
+        string displayName = item.GetDisplayName();
+
         return (!string.IsNullOrEmpty(item.nomeItem) && item.nomeItem.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
+            || (!string.IsNullOrEmpty(displayName) && displayName.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
             || (!string.IsNullOrEmpty(item.descricao) && item.descricao.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
             || ObterRotuloCategoria(item.categoria).IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
@@ -1179,7 +1294,12 @@ public class MenuConstrucao : MonoBehaviour
         int colunas = Mathf.FloorToInt((larguraUtil + gradeBotoes.spacing.x) / bloco);
         colunas = Mathf.Max(colunas, 4); // Remove o teto de 7, permite quantas colunas couberem na tela!
 
-        if (gradeBotoes.constraintCount != colunas && gradeBotoes.constraint == GridLayoutGroup.Constraint.FixedColumnCount)
+        if (gradeBotoes.constraint != GridLayoutGroup.Constraint.FixedColumnCount)
+        {
+            gradeBotoes.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        }
+
+        if (gradeBotoes.constraintCount != colunas)
         {
             gradeBotoes.constraintCount = colunas;
         }
@@ -1238,7 +1358,7 @@ public class MenuConstrucao : MonoBehaviour
                 : string.Empty;
         }
 
-        textoDetalheNome.text = item.nomeItem;
+        textoDetalheNome.text = item.GetDisplayName();
         textoDetalheCategoria.text = ObterRotuloCategoria(item.categoria);
         textoDetalhePreco.text = "$ " + item.preco;
         textoDetalheTipo.text = ObterTipoItem(item);
@@ -1457,6 +1577,7 @@ public class MenuConstrucao : MonoBehaviour
             }
         }
 
+        resetarScrollParaTopoPendente = true;
         AtualizarPainelDetalhes(primeiroItemCategoria);
         
         StartCoroutine(AtualizarLayouts());
@@ -1467,6 +1588,12 @@ public class MenuConstrucao : MonoBehaviour
         yield return new WaitForEndOfFrame();
         AjustarGradeAoEspacoDisponivel();
         if(containerBotoes != null) LayoutRebuilder.ForceRebuildLayoutImmediate(containerBotoes.GetComponent<RectTransform>());
+        if (scrollRectBotoes != null && resetarScrollParaTopoPendente)
+        {
+            Canvas.ForceUpdateCanvases();
+            scrollRectBotoes.verticalNormalizedPosition = 1f;
+            resetarScrollParaTopoPendente = false;
+        }
     }
 
     void CriarCardItemModerno(DadosConstrucao item)
@@ -1565,7 +1692,7 @@ public class MenuConstrucao : MonoBehaviour
         leNome.preferredHeight = 30;
 
         Text tNome = nomeObj.AddComponent<Text>();
-        tNome.text = item.nomeItem;
+        tNome.text = item.GetDisplayName();
         tNome.font = ObterFontePadrao();
         tNome.fontSize = 14;
         tNome.alignment = TextAnchor.MiddleCenter;
@@ -2042,7 +2169,8 @@ public class MenuConstrucao : MonoBehaviour
 
     string ObterTextoVelocidadeItem(DadosConstrucao item)
     {
-        if (item == null || item.prefabDaUnidade == null)
+        GameObject prefab;
+        if (item == null || !item.TryGetPrefab(out prefab))
         {
             return "--";
         }
@@ -2053,7 +2181,6 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         float velocidade = -1f;
-        GameObject prefab = item.prefabDaUnidade;
 
         ControleAviao controleAviao = prefab.GetComponent<ControleAviao>() ?? prefab.GetComponentInChildren<ControleAviao>(true);
         if (controleAviao != null)
@@ -2116,13 +2243,14 @@ public class MenuConstrucao : MonoBehaviour
 
     string ObterTextoVidaItem(DadosConstrucao item)
     {
-        if (item == null || item.prefabDaUnidade == null) return "--";
+        GameObject prefab;
+        if (item == null || !item.TryGetPrefab(out prefab)) return "--";
         if (item.balanceamento != null && !string.IsNullOrWhiteSpace(item.balanceamento.blindagemExibida))
         {
             return item.balanceamento.blindagemExibida.Trim();
         }
-        SistemaDeDanos sys = item.prefabDaUnidade.GetComponent<SistemaDeDanos>();
-        if (sys == null) sys = item.prefabDaUnidade.GetComponentInChildren<SistemaDeDanos>(true);
+        SistemaDeDanos sys = prefab.GetComponent<SistemaDeDanos>();
+        if (sys == null) sys = prefab.GetComponentInChildren<SistemaDeDanos>(true);
 
         if (sys != null)
         {
@@ -2133,12 +2261,13 @@ public class MenuConstrucao : MonoBehaviour
 
     string ObterTextoPoderFogoItem(DadosConstrucao item)
     {
-        if (item == null || item.prefabDaUnidade == null) return "--";
+        GameObject prefab;
+        if (item == null || !item.TryGetPrefab(out prefab)) return "--";
         if (item.balanceamento != null && !string.IsNullOrWhiteSpace(item.balanceamento.poderOfensivoExibido))
         {
             return item.balanceamento.poderOfensivoExibido.Trim();
         }
-        var comps = item.prefabDaUnidade.GetComponentsInChildren<Component>(true);
+        var comps = prefab.GetComponentsInChildren<Component>(true);
         foreach (var c in comps)
         {
             if (c == null) continue; // Adicionado null check para evitar erro com Missing Scripts
@@ -3033,3 +3162,4 @@ public class MenuConstrucao : MonoBehaviour
         if(img != null) img.color = corOriginal;
     }
 }
+

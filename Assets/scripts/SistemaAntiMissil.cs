@@ -134,7 +134,7 @@ public class SistemaAntiMissil : MonoBehaviour
 
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
-        audioSource.spatialBlend = 1f;
+        AudioRuntime.ConfigurarFonteDeArmamento(audioSource);
 
         AtualizarCacheOrigem();
 
@@ -478,6 +478,15 @@ public class SistemaAntiMissil : MonoBehaviour
             int limiteProcessamento = Mathf.Min(
                 Mathf.Min(quantidadeObjetos, bufferAmeacas.Length),
                 Mathf.Max(1, maximoCollidersProcessadosPorScan));
+
+            if (DiagnosticoDesempenhoJogo.RuntimeSaturado())
+            {
+                limiteProcessamento = Mathf.Max(8, limiteProcessamento / 3);
+            }
+            else if (DiagnosticoDesempenhoJogo.RuntimeSobPressao())
+            {
+                limiteProcessamento = Mathf.Max(12, limiteProcessamento / 2);
+            }
 
             for (int i = 0; i < limiteProcessamento; i++)
             {

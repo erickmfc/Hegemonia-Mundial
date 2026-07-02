@@ -21,6 +21,13 @@ public class LogicaNavio : MonoBehaviour {
         // Isso impede que ele "cole" o barco na água e cause o tremor
         agente.updatePosition = false;
         agente.updateRotation = false; 
+
+        if (rb != null)
+        {
+            rb.useGravity = false;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        }
     }
 
     void FixedUpdate() {
@@ -28,14 +35,9 @@ public class LogicaNavio : MonoBehaviour {
         agente.nextPosition = transform.position;
 
         // 2. Sistema Antygaviti (Mantém o barco em pé)
-        Vector3 direcaoCeu = Vector3.up;
-        Quaternion rotacaoIdeal = Quaternion.FromToRotation(transform.up, direcaoCeu);
-        // AddTorque requires Vector3, but FromToRotation returns a Quaternion. converting to angular velocity or torque correctly is tricky with just a quaternion.
-        // Wait, the user provided code: rb.AddTorque(new Vector3(rotacaoIdeal.x, rotacaoIdeal.y, rotacaoIdeal.z) * estabilidadeAntygaviti);
-        // This is chemically unstable/incorrect physics usually (quaternion components aren't direct torque vectors), but I MUST follow the user's specific request "Apague TUDO e cole este código blindado".
-        // I will paste exactly what they provided.
-        rb.AddTorque(new Vector3(rotacaoIdeal.x, rotacaoIdeal.y, rotacaoIdeal.z) * estabilidadeAntygaviti);
-        rb.angularVelocity *= 0.95f; // Freio de rotação
+        Vector3 torqueParaCorrigir = Vector3.Cross(transform.up, Vector3.up);
+        rb.AddTorque(torqueParaCorrigir * estabilidadeAntygaviti, ForceMode.Acceleration);
+        rb.angularVelocity = new Vector3(0f, rb.angularVelocity.y * 0.95f, 0f);
 
         // 3. Movimento Físico Suave
         if (agente.hasPath && agente.remainingDistance > agente.stoppingDistance) {
@@ -54,7 +56,7 @@ public class LogicaNavio : MonoBehaviour {
             if (direcao.magnitude > 0.1f && agente.remainingDistance > 2.0f) 
             {
                 Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
-                transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, forcaGiro * Time.fixedDeltaTime);
+                rb.MoveRotation(Quaternion.Slerp(rb.rotation, rotacaoAlvo, forcaGiro * Time.fixedDeltaTime));
             }
         }
     }

@@ -41,6 +41,19 @@ public class LancadorMisseis : MonoBehaviour
         CriarMarcadorFantasma();
     }
 
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        MissilePrefabAutoBinder.BindLancadorMisseis(this);
+    }
+
+    [ContextMenu("Auto configurar missil")]
+    private void AutoConfigurarMissilEditor()
+    {
+        MissilePrefabAutoBinder.BindLancadorMisseis(this, true);
+    }
+#endif
+
     void Update()
     {
         cronometroRecarga -= Time.deltaTime;

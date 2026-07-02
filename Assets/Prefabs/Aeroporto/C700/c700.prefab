@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: -2520532916029920953}
   - component: {fileID: -4392586327668773366}
   - component: {fileID: 1405430845721605051}
+  - component: {fileID: 8982411069363398455}
   m_Layer: 0
   m_Name: c700
   m_TagString: Aereo
@@ -35,7 +36,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 406.39136, y: 13.92, z: 34.194237}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.83778, y: 1, z: 0.86287}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4392790021970753982}
@@ -71,8 +72,6 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -94,7 +93,6 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -116,7 +114,7 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
-  dominioControleAtual: 0
+  dominioControleAtual: 3
   ordemControleAtual: 0
   modoCombateOficialAtivo: 1
   executorControleAtual: NavMeshAgent
@@ -155,6 +153,7 @@ MonoBehaviour:
   raioOrbitaMissao: 85
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
+  altitudeVoo: 350
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -170,6 +169,8 @@ MonoBehaviour:
   alvoPrioritarioIA: 0
   alvoEstrategico: {x: 0, y: 0, z: 0}
   estaEmModoVooFisico: 0
+  aceleracaoVoo: 18
+  desaceleracaoVoo: 25
 --- !u!114 &3363487500830176677
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -197,8 +198,8 @@ MonoBehaviour:
   velocidadeDecolagem: 42
   velocidadeCruzeiro: 70
   aceleracaoVoo: 42
-  giroVoo: 65
-  altitudeCruzeiro: 150
+  giroVoo: 30
+  altitudeCruzeiro: 350
   distanciaAproximacao: 220
   distanciaDescida: 90
   distanciaRolagem: 45
@@ -314,6 +315,26 @@ MonoBehaviour:
   uniqueId: 
   prefabKey: 
   runtimeSpawned: 1
+--- !u!114 &8982411069363398455
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 508363159047402675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 0
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!1001 &4004041267334629408
 PrefabInstance:
   m_ObjectHideFlags: 0

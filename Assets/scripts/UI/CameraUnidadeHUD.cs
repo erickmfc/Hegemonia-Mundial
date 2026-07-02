@@ -53,7 +53,12 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     private Camera minhaCamera;
     private ControleUnidade targetUnit;
+    private GerenteSelecao gerenteSelecaoCache;
     private RenderTexture currentRT;
+    private float proximoRefreshGerenteSelecao;
+    private float proximoProcessamentoMarcacao;
+    private readonly RaycastHit[] hitsMarcacao = new RaycastHit[32];
+    private int layerMaskMarcacao;
 
     [Header("Configurações de Foco")]
     [SerializeField] private Vector3 offsetBase = new Vector3(0f, 15f, -25f);
@@ -74,6 +79,8 @@ public class CameraUnidadeHUD : MonoBehaviour
         {
             minhaCamera.farClipPlane = 8000f;
         }
+
+        layerMaskMarcacao = ~LayerMask.GetMask("UI");
         
         // Garante que comece desativada para poupar performance
         DesativarDoMenu();
@@ -174,7 +181,6 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     public void DesativarDoMenu()
     {
-        targetUnit = null;
         if (minhaCamera != null)
         {
             minhaCamera.targetTexture = null;
@@ -184,13 +190,17 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     public void DefinirTarget(ControleUnidade unidade)
     {
+        bool mesmaUnidade = targetUnit == unidade && unidade != null;
         targetUnit = unidade;
-        modoDroneCamera = false;
-        currentRotationX = 15f;
-        currentRotationY = 0f;
         currentLookedTarget = null;
-        alvoTravadoCamera = null;
-        pontoTravadoCamera = null;
+        if (!mesmaUnidade)
+        {
+            modoDroneCamera = false;
+            currentRotationX = 15f;
+            currentRotationY = 0f;
+            alvoTravadoCamera = null;
+            pontoTravadoCamera = null;
+        }
         if (minhaCamera != null)
         {
             minhaCamera.farClipPlane = 8000f;
@@ -261,7 +271,7 @@ public class CameraUnidadeHUD : MonoBehaviour
         if (targetUnit == null)
         {
             // Tenta obter do GerenteSelecao caso não tenha sido definido manualmente
-            var gerente = FindFirstObjectByType<GerenteSelecao>();
+            var gerente = ObterGerenteSelecaoCache();
             if (gerente != null && gerente.unidadesSelecionadas != null && gerente.unidadesSelecionadas.Count > 0)
             {
                 targetUnit = gerente.unidadesSelecionadas[0];
@@ -344,7 +354,15 @@ public class CameraUnidadeHUD : MonoBehaviour
                 minhaCamera.fieldOfView = Mathf.Lerp(minhaCamera.fieldOfView, desiredFOV, Time.deltaTime * 10f);
             }
             
-            ProcessarMarcacaoAlvos();
+            if (Time.unscaledTime >= proximoProcessamentoMarcacao)
+            {
+                proximoProcessamentoMarcacao = Time.unscaledTime + (DiagnosticoDesempenhoJogo.RuntimeSaturado()
+                    ? 0.12f
+                    : DiagnosticoDesempenhoJogo.RuntimeSobPressao()
+                        ? 0.08f
+                        : 0.05f);
+                ProcessarMarcacaoAlvos();
+            }
             return;
         }
         else
@@ -396,38 +414,50 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     private void ProcessarMarcacaoAlvos()
     {
-        if (minhaCamera == null) return;
+        if (minhaCamera == null || targetUnit == null) return;
 
         Ray ray = minhaCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-        RaycastHit hit;
-        int layerMask = ~LayerMask.GetMask("UI");
-
-        if (Physics.Raycast(ray, out hit, 5000f, layerMask))
+        int quantidadeHits = Physics.RaycastNonAlloc(ray, hitsMarcacao, 5000f, layerMaskMarcacao, QueryTriggerInteraction.Ignore);
+        RaycastHit? primeiroPontoValido = null;
+        float menorDistanciaPonto = float.MaxValue;
+        IdentidadeUnidade alvoEncontrado = null;
+        float menorDistanciaAlvo = float.MaxValue;
+        for (int i = 0; i < quantidadeHits; i++)
         {
-            IdentidadeUnidade id = hit.collider.GetComponentInParent<IdentidadeUnidade>();
-            if (id != null && id.gameObject != targetUnit.gameObject)
+            RaycastHit hit = hitsMarcacao[i];
+            if (hit.collider == null || hit.transform == null) continue;
+            if (hit.transform == targetUnit.transform
+                || hit.transform.IsChildOf(targetUnit.transform)
+                || targetUnit.transform.IsChildOf(hit.transform)) continue;
+
+            if (hit.distance < menorDistanciaPonto)
             {
-                currentLookedTarget = id.gameObject;
-                
-                // Se pressionar Space ou clicar botão esquerdo
-                if (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0))
-                {
-                    MarcarComoAlvo(id);
-                }
+                menorDistanciaPonto = hit.distance;
+                primeiroPontoValido = hit;
             }
-            else
+
+            IdentidadeUnidade id = hit.collider.GetComponentInParent<IdentidadeUnidade>();
+            if (id == null) id = hit.collider.GetComponentInChildren<IdentidadeUnidade>();
+            if (id == null) continue;
+
+            if (hit.distance < menorDistanciaAlvo)
             {
-                currentLookedTarget = null;
-                
-                if (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0))
-                {
-                    MarcarCoordenada(hit.point);
-                }
+                menorDistanciaAlvo = hit.distance;
+                alvoEncontrado = id;
             }
         }
-        else
+
+        currentLookedTarget = alvoEncontrado != null ? alvoEncontrado.gameObject : null;
+        bool confirmar = Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0);
+        if (!confirmar) return;
+
+        if (alvoEncontrado != null)
         {
-            currentLookedTarget = null;
+            MarcarComoAlvo(alvoEncontrado);
+        }
+        else if (primeiroPontoValido.HasValue)
+        {
+            MarcarCoordenada(primeiroPontoValido.Value.point);
         }
     }
 
@@ -438,6 +468,19 @@ public class CameraUnidadeHUD : MonoBehaviour
         bool ordemCombateAplicada = false;
         if (id != null && id.transform != null)
         {
+            ControleSubmarino submarinoManual = targetUnit.GetComponent<ControleSubmarino>();
+            if (submarinoManual != null && submarinoManual.EmModoManualDisparo())
+            {
+                ordemCombateAplicada = submarinoManual.TentarDisparoManual(id.transform.position, id.transform);
+                if (ordemCombateAplicada)
+                {
+                    alvoTravadoCamera = id.transform;
+                    pontoTravadoCamera = null;
+                }
+            }
+
+            if (!ordemCombateAplicada)
+            {
             ordemCombateAplicada = targetUnit.EmitirMissaoAereaOfensiva(id.transform.position, id.transform);
             if (!ordemCombateAplicada && (targetUnit.EhUnidadeNaval() || targetUnit.GetComponent<ControleSubmarino>() != null))
             {
@@ -448,6 +491,7 @@ public class CameraUnidadeHUD : MonoBehaviour
                 targetUnit.DefinirModoCombate(true);
                 targetUnit.DefinirAlvoPrioritario(id.transform);
                 ordemCombateAplicada = true;
+            }
             }
         }
 
@@ -499,6 +543,7 @@ public class CameraUnidadeHUD : MonoBehaviour
         if (targetUnit == null) return;
         
         ControleAviao aviao = targetUnit.GetComponent<ControleAviao>();
+        ControleSubmarino submarino = targetUnit.GetComponent<ControleSubmarino>();
         ControleDroneHasaf droneHasaf = targetUnit.GetComponent<ControleDroneHasaf>();
         if (aviao != null)
         {
@@ -529,6 +574,19 @@ public class CameraUnidadeHUD : MonoBehaviour
         }
         else
         {
+            if (submarino != null && submarino.EmModoManualDisparo())
+            {
+                bool disparou = submarino.TentarDisparoManual(ponto, null);
+                pontoTravadoCamera = ponto;
+                alvoTravadoCamera = null;
+
+                if (disparou && MenuComandoController.Instancia != null)
+                {
+                    MenuComandoController.Instancia.AdicionarLog("SUB", $"MISSIL MANUAL: {ponto:F1}", "sistema");
+                }
+                return;
+            }
+
             if (targetUnit.EhUnidadeNaval() || targetUnit.GetComponent<ControleSubmarino>() != null)
             {
                 targetUnit.EmitirMissaoNavalOfensiva(ponto, null, false, true);
@@ -550,7 +608,13 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     public void AtualizarFoco()
     {
-        var gerente = FindFirstObjectByType<GerenteSelecao>();
+        if (targetUnit != null)
+        {
+            DefinirTarget(targetUnit);
+            return;
+        }
+
+        var gerente = ObterGerenteSelecaoCache(true);
         if (gerente != null && gerente.unidadesSelecionadas != null && gerente.unidadesSelecionadas.Count > 0)
         {
             DefinirTarget(gerente.unidadesSelecionadas[0]);
@@ -559,5 +623,17 @@ public class CameraUnidadeHUD : MonoBehaviour
         {
             DefinirTarget(null);
         }
+    }
+
+    private GerenteSelecao ObterGerenteSelecaoCache(bool forcarRefresh = false)
+    {
+        if (!forcarRefresh && gerenteSelecaoCache != null && Time.unscaledTime < proximoRefreshGerenteSelecao)
+        {
+            return gerenteSelecaoCache;
+        }
+
+        proximoRefreshGerenteSelecao = Time.unscaledTime + 0.5f;
+        gerenteSelecaoCache = FindFirstObjectByType<GerenteSelecao>();
+        return gerenteSelecaoCache;
     }
 }

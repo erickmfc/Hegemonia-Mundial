@@ -149,8 +149,6 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -172,7 +170,6 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -316,6 +313,7 @@ MonoBehaviour:
   raioOrbitaMissao: 85
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
+  altitudeVoo: 120
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -329,6 +327,8 @@ MonoBehaviour:
   alvoPrioritarioIA: 0
   alvoEstrategico: {x: 0, y: 0, z: 0}
   estaEmModoVooFisico: 0
+  aceleracaoVoo: 18
+  desaceleracaoVoo: 25
 --- !u!114 &7923779498511352763
 MonoBehaviour:
   m_ObjectHideFlags: 0

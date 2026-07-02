@@ -37,7 +37,7 @@ namespace Hegemonia.AI.DEUSA
             PrecisaIndustria = politica.PriorizarIndustria && snapshot.FactoryCount <= 0;
             PrecisaQuartel = politica.PriorizarDefesa && snapshot.BarracksCount <= 0;
             PrecisaRadar = politica.PriorizarDefesa && snapshot.RadarCount <= 0;
-            PrecisaAeroporto = politica.PriorizarAereo && !snapshot.HasAirport && mapa.TemAreaAereaValida;
+            PrecisaAeroporto = politica.PriorizarAereo && !snapshot.HasMilitaryAirport && mapa.TemAreaAereaValida;
             PrecisaEstaleiro = politica.PriorizarNaval && snapshot.ShipyardCount <= 0 && mapa.TemAreaNavalValida;
             PrecisaPier = politica.PriorizarNaval && snapshot.PierCount <= 0 && mapa.TemAreaNavalValida;
             PrecisaPlataforma = politica.PriorizarNaval && snapshot.PlatformCount <= 0 && mapa.TemAreaNavalValida;

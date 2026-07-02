@@ -70,7 +70,7 @@ namespace Hegemonia.AI.BrainMaster
         public int MaxCommandsPerFrame = 4;
         public bool UseScriptedBootstrap = true;
         [Tooltip("Tempo minimo em segundos que a IA usa para estruturar base e produzir tropas sem atacar.")]
-        public float BootstrapMobilizationSeconds = 300f;
+        public float BootstrapMobilizationSeconds = 60f;
 
         [Header("Debug")]
         public bool EnableVerboseLogs = false;
@@ -84,6 +84,7 @@ namespace Hegemonia.AI.BrainMaster
         [TextArea(2, 8)] public string CombatPressureSummary = string.Empty;
 
         [Header("Imperial AI")]
+        public IA_WarPosture WarPosture = IA_WarPosture.BalancedAggression;
         public IA_StrategicPhase StrategicPhase = IA_StrategicPhase.Abertura;
         public string ActiveImperialPlan = "abertura";
         public string ImperialLastFailure = string.Empty;
@@ -253,12 +254,16 @@ namespace Hegemonia.AI.BrainMaster
                                  + " | Credits=" + Credits
                                  + " | Dificuldade=" + GameDifficultyManager.PerfilAtual.Codigo
                                  + BuildNationalSummary()
+                                 + " | BootstrapLabel=" + IA_ManualBuildPoint.GetPortugueseBootstrapStageLabel(BootstrapStage)
                                  + (_deusaBrain != null
                                      ? " | DEUSA=" + _deusaBrain.EstagioAtual + (_deusaBrain.ModoObservadorAtivo ? "(Obs)" : string.Empty)
                                      : string.Empty)
                                  + (_deusaBrain != null && _deusaBrain.ModoObservadorAtivo ? " | ObsScope=" + _deusaBrain.EscopoObservador : string.Empty)
+                                 + (_constructionPlanner != null && !string.IsNullOrWhiteSpace(_constructionPlanner.LastSummary)
+                                     ? " | Construction=" + _constructionPlanner.LastSummary
+                                     : string.Empty)
                                  + " | Imperial=" + StrategicPhase + " " + ActiveImperialPlan
-                                 + " | Bootstrap=" + BootstrapStage
+                                 + " | BootstrapStage=" + BootstrapStage
                                  + " | BootstrapStatus=" + BootstrapStatus
                                  + " | Governor=" + (Context != null && Context.PerformanceGovernorState != null
                                      ? Context.PerformanceGovernorState.Band.ToString()
@@ -301,10 +306,33 @@ namespace Hegemonia.AI.BrainMaster
 
             int baseFleet = elapsed < 300f ? 4 : (elapsed < 600f ? 10 : (elapsed < 1200f ? 18 : 30));
             int baseAir = elapsed < 300f ? 4 : (elapsed < 600f ? 10 : (elapsed < 1200f ? 16 : 24));
+            if (WarPosture == IA_WarPosture.BalancedAggression)
+            {
+                baseFleet = elapsed < 300f ? 4 : (elapsed < 900f ? 8 : (elapsed < 1800f ? 12 : 16));
+                baseAir = elapsed < 300f ? 2 : (elapsed < 900f ? 8 : (elapsed < 1800f ? 12 : 16));
+            }
             int metaFrotaPorJogador = perfil.AjustarMetaContraJogador(PlayerFleetEstimate, 1.22f, TargetCoastalDefenseShips + 1);
             int metaArPorJogador = perfil.AjustarMetaContraJogador(PlayerAircraftEstimate, 1.28f, 2);
             TargetFleet = Mathf.Max(perfil.AjustarMeta(baseFleet, 1), metaFrotaPorJogador, TargetCoastalDefenseShips + 2);
             TargetAircraft = Mathf.Max(perfil.AjustarMeta(baseAir, 1), metaArPorJogador);
+            if (WarPosture == IA_WarPosture.BalancedAggression)
+            {
+                if (elapsed < 300f)
+                {
+                    TargetFleet = Mathf.Max(TargetFleet, snapshot.HasNavalBase ? 1 : 0);
+                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 2 : 0);
+                }
+                else if (elapsed < 900f)
+                {
+                    TargetFleet = Mathf.Max(TargetFleet, snapshot.HasNavalBase ? 5 : 0);
+                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 10 : 0);
+                }
+                else
+                {
+                    TargetFleet = Mathf.Max(TargetFleet, snapshot.HasNavalBase ? 8 : 0);
+                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 16 : 0);
+                }
+            }
 
             bool oilGap = snapshot.PlatformCount < TargetPlatforms
                           || snapshot.PierCount < TargetPiers
@@ -361,6 +389,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             ImperialPlanSummary = "fase=" + StrategicPhase
+                                  + " | postura=" + WarPosture
                                   + " | dificuldade=" + perfil.Codigo
                                   + " | plano=" + ActiveImperialPlan
                                   + " | alvo estrategico=" + (string.IsNullOrWhiteSpace(ActiveStrategicTarget) ? "n/d" : ActiveStrategicTarget)
@@ -433,6 +462,7 @@ namespace Hegemonia.AI.BrainMaster
                 // Força a produção intensa de navios e helicópteros
                 TargetFleet = Mathf.Max(TargetFleet, 10);
                 TargetAircraft = Mathf.Max(TargetAircraft, 10);
+                WarPosture = IA_WarPosture.BalancedAggression;
                 
                 if (_taskForceCoordinator != null)
                 {
@@ -867,7 +897,11 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool ShouldBlockCommandQueueByDeusaObserver()
         {
-            return _deusaBrain != null && _deusaBrain.BloquearFilaBrainMasterEmObservador;
+            // O bootstrap e a recuperacao da base nunca podem ser silenciados por uma
+            // configuracao de debug persistida na cena ou no save.
+            return !IsBootstrapActive
+                   && _deusaBrain != null
+                   && _deusaBrain.BloquearFilaBrainMasterEmObservador;
         }
 
         private void DrainCommandQueueBlockedByDeusa(float now)
@@ -1098,7 +1132,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public float GetBootstrapMobilizationSeconds()
         {
-            return Mathf.Clamp(BootstrapMobilizationSeconds, 60f, 600f);
+            return Mathf.Clamp(BootstrapMobilizationSeconds, 30f, 300f);
         }
 
         public void SetBootstrapStage(IA_BootstrapStage stage, string status)

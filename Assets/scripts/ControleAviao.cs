@@ -13,6 +13,13 @@ public class ControleAviao : MonoBehaviour
     
     [Header("=== ESTADO ATUAL ===")]
     public EstadoAviao estadoAtual = EstadoAviao.ReservaHangar;
+
+    public void DefinirEstado(EstadoAviao novoEstado)
+    {
+        estadoAtual = novoEstado;
+        bool motorLigado = novoEstado != EstadoAviao.ReservaHangar && novoEstado != EstadoAviao.ProntoNoPatio;
+        AudioRuntime.DefinirMotorAereo(gameObject, motorLigado);
+    }
     [HideInInspector] public GerenciadorAeroporto aeroportoOrigem;
     [HideInInspector] public Transform vagaRetorno;
     [HideInInspector] public bool aguardandoCliqueRadar = false;
@@ -68,6 +75,9 @@ public class ControleAviao : MonoBehaviour
     protected float empinadaPitch = 0f;   
     protected float giroLateralYInicial = 0f;
     protected float multiplicadorVelocidadeTurbo = 1f;
+    protected float velocidadeVooAtual = 0f;
+    public float aceleracaoVoo = 18f;
+    public float desaceleracaoVoo = 25f;
     protected float tempoSegurandoTab = 0f;
     protected float anguloOrbitaAtual = 0f;
     protected int sentidoOrbita = 1;
@@ -79,6 +89,7 @@ public class ControleAviao : MonoBehaviour
     protected string ultimoMotivoRetorno = string.Empty;
     protected Coroutine rotinaRetomadaMissao;
     protected int indiceRetanguloPatrulha = 0;
+    private bool protecaoCombustivelCarrier = false;
 
     // --- CACHE DE COMPONENTES (evita GetComponent no Update) ---
     protected ControleUnidade _controleUnidade;
@@ -265,7 +276,7 @@ public class ControleAviao : MonoBehaviour
             InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Logistica, inicioLogica);
         }
 
-        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        if (!PodeIgnorarFaltaDeCombustivel() && !CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
             return;
@@ -351,32 +362,41 @@ public class ControleAviao : MonoBehaviour
                                            || (Time.time - _tempoUltimoDanoRecebido < 8f);
                 if (sobAtaqueOuEngajado)
                 {
-                    multiplicadorPatrulha = 1.0f; // Acelera ao máximo no combate/ataque
+                    multiplicadorPatrulha = 1.2f; // Acelera a 120% no combate/ataque
                 }
                 else
                 {
-                    multiplicadorPatrulha = 0.65f; // Reduz a velocidade na patrulha normal (65%)
+                    multiplicadorPatrulha = 1.0f; // Velocidade máxima na patrulha normal (100%)
                 }
             }
         }
         else if (estadoAtual == EstadoAviao.Pousando)
         {
+            bool pousoEmPortaAvioes = aeroportoOrigem is GerenciadorPortaAvioes;
             if (aeroportoOrigem != null && aeroportoOrigem.waypointsDecida != null && aeroportoOrigem.waypointsDecida.Count > 1)
             {
                 float distToTouchdown = Vector3.Distance(transform.position, aeroportoOrigem.waypointsDecida[1].position);
-                if (distToTouchdown > 120f)
-                    multiplicadorPatrulha = 1.0f; // Velocidade máxima até chegar perto
+                if (pousoEmPortaAvioes)
+                {
+                    multiplicadorPatrulha = distToTouchdown > 120f ? 0.95f : 0.75f;
+                }
+                else if (distToTouchdown > 120f)
+                {
+                    multiplicadorPatrulha = 0.7f; // Mantém 70% da velocidade na aproximação longa
+                }
                 else
                     multiplicadorPatrulha = Mathf.Lerp(multiplicadorPatrulha, 0.3f, Time.deltaTime * 2f); // Desacelera progressivamente para pousar lento (100 a chegar)
             }
             else
             {
-                multiplicadorPatrulha = 0.4f; // Reduz velocidade na aproximação padrão
+                multiplicadorPatrulha = pousoEmPortaAvioes ? 0.8f : 0.4f; // Reduz velocidade na aproximação padrão
             }
         }
 
         float velFinal = (velocidadeMaximaVoo * multiplicadorVelocidadeTurbo * multiplicadorPatrulha) * multDano;
-        Vector3 novaPos = transform.position + transform.forward * (velFinal * dt);
+        float taxaVelocidade = velFinal >= velocidadeVooAtual ? aceleracaoVoo : desaceleracaoVoo;
+        velocidadeVooAtual = Mathf.MoveTowards(velocidadeVooAtual, velFinal, taxaVelocidade * dt);
+        Vector3 novaPos = transform.position + transform.forward * (velocidadeVooAtual * dt);
 
         bool isKamikazeDiving = false;
         KamikazeDrone kd = GetComponent<KamikazeDrone>();
@@ -394,7 +414,7 @@ public class ControleAviao : MonoBehaviour
              alvoGPSVoo = centroDoMap;
              Quaternion freioDeOuro = Quaternion.LookRotation((centroDoMap - transform.position).normalized);
              transform.rotation = Quaternion.RotateTowards(transform.rotation, freioDeOuro, 100f * dt);
-             novaPos = transform.position + transform.forward * (velocidadeMaximaVoo * dt);
+             novaPos = transform.position + transform.forward * (velocidadeVooAtual * dt);
         }
 
         transform.position = novaPos;
@@ -421,7 +441,7 @@ public class ControleAviao : MonoBehaviour
         {
             if (alvoMovelFornecido && alvoMovel == null) break; // O alvo (ex: vaga ou aeroporto) foi destruído no caminho
 
-            if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+            if (!PodeIgnorarFaltaDeCombustivel() && !CombustivelUnidade.PodeOperarObjeto(gameObject))
             {
                 PararPorFaltaDeCombustivel();
                 yield break;
@@ -519,6 +539,12 @@ public class ControleAviao : MonoBehaviour
     public IEnumerator SeguirCaminhoDeWaypoints(List<Transform> caminho, float velInicial, float velFinal, bool aceleracaoGradativa = false, bool permitirPular = true)
     {
         int totalWaypoints = caminho.Count;
+        bool carrierTakeoff = aceleracaoGradativa && aeroportoOrigem is GerenciadorPortaAvioes;
+        bool carrierLanding = !aceleracaoGradativa && aeroportoOrigem is GerenciadorPortaAvioes;
+        if (carrierLanding)
+        {
+            permitirPular = true;
+        }
 
         // Otimização: Não volta pro waypoint [0] se o avião já estiver na frente (apenas se permitirPular for true)
         int indiceInicial = 0;
@@ -544,12 +570,36 @@ public class ControleAviao : MonoBehaviour
         int indiceCorridaPista = indiceInicial;
         if (aceleracaoGradativa)
         {
-            for (int i = totalWaypoints - 1; i >= indiceInicial; i--)
+            bool encontrouPreparaCarrier = false;
+            if (carrierTakeoff)
             {
-                if (caminho[i] != null && caminho[i].name.IndexOf("alinhamento", StringComparison.OrdinalIgnoreCase) >= 0)
+                for (int i = indiceInicial; i < totalWaypoints; i++)
                 {
-                    indiceCorridaPista = i;
-                    break;
+                    if (caminho[i] != null && caminho[i].name.IndexOf("prepara", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        indiceCorridaPista = i;
+                        encontrouPreparaCarrier = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!encontrouPreparaCarrier)
+            {
+                bool encontrouAlinhamento = false;
+                for (int i = totalWaypoints - 1; i >= indiceInicial; i--)
+                {
+                    if (caminho[i] != null && caminho[i].name.IndexOf("alinhamento", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        indiceCorridaPista = i;
+                        encontrouAlinhamento = true;
+                        break;
+                    }
+                }
+
+                if (!encontrouAlinhamento)
+                {
+                    indiceCorridaPista = Mathf.Max(indiceInicial, totalWaypoints - 2);
                 }
             }
         }
@@ -576,13 +626,18 @@ public class ControleAviao : MonoBehaviour
             }
             
             float velAtual = velInicial;
-            if (aceleracaoGradativa && i >= indiceCorridaPista)
+            if (carrierLanding)
+            {
+                velAtual = Mathf.Max(velInicial, velocidadeSolo * 2f);
+            }
+            else if (aceleracaoGradativa && i >= indiceCorridaPista)
             {
                 velAtual = Mathf.Lerp(velInicial, velFinal, (i - indiceCorridaPista) / divisorPista);
             }
             
             // Segurança: O waypoint pode ser destruído durante o percurso
-            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velAtual, i == totalWaypoints - 1, caminho[i], aceleracaoGradativa && i >= indiceCorridaPista));
+            bool ignoreRotationSlowdown = (aceleracaoGradativa && i >= indiceCorridaPista) || carrierLanding;
+            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velAtual, i == totalWaypoints - 1, caminho[i], ignoreRotationSlowdown));
             
             // Chegada no ponto prepara: sobe a rampa e aguarda 7 segundos
             if (caminho[i] != null && string.Equals(caminho[i].name.Trim(), "prepara", StringComparison.OrdinalIgnoreCase))
@@ -592,6 +647,10 @@ public class ControleAviao : MonoBehaviour
                     carrier.SubirRampa();
                     yield return new WaitForSeconds(7f);
                 }
+            }
+            else if (caminho[i] != null && caminho[i].name.StartsWith("Prepara", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return new WaitForSeconds(0.75f);
             }
 
             // Ao sair do prepara para o próximo ponto (ex: prepara 1): desce a rampa e libera a fila
@@ -607,7 +666,7 @@ public class ControleAviao : MonoBehaviour
             if (caminho[i] != null && caminho[i].name.IndexOf("alinhamento", StringComparison.OrdinalIgnoreCase) >= 0) 
             {
                 // Parada exigida de forma realista antes de decolar (ou no pouso)
-                yield return new WaitForSeconds(2f);
+                yield return new WaitForSeconds(carrierLanding ? 0.15f : 2f);
 
                 // Rotaciona para o próximo ponto antes de acelerar livremente
                 if (i + 1 < totalWaypoints && caminho[i + 1] != null)
@@ -639,7 +698,7 @@ public class ControleAviao : MonoBehaviour
 
     public void IniciarMissaoCompleta(Vector3 alvoFinalGPS)
     {
-        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        if (!PodeIgnorarFaltaDeCombustivel() && !CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
             return;
@@ -684,6 +743,11 @@ public class ControleAviao : MonoBehaviour
 
     public void PararPorFaltaDeCombustivel()
     {
+        if (PodeIgnorarFaltaDeCombustivel())
+        {
+            return;
+        }
+
         bool falhaDurantePousoOuDecolagem = (estadoAtual == EstadoAviao.Pousando || estadoAtual == EstadoAviao.Decolando || estadoAtual == EstadoAviao.EmMissao)
             && transform.position.y > 4f;
 
@@ -720,6 +784,10 @@ public class ControleAviao : MonoBehaviour
         }
 
         aeroportoOrigem = novaBase;
+        if (novaBase is GerenciadorPortaAvioes)
+        {
+            DefinirProtecaoCombustivelCarrier(true);
+        }
 
         if (estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Pousando || estadoAtual == EstadoAviao.Decolando)
         {
@@ -849,6 +917,11 @@ public class ControleAviao : MonoBehaviour
         if (baseSegura != null && baseSegura != aeroportoOrigem)
         {
             aeroportoOrigem = baseSegura;
+        }
+
+        if (baseSegura is GerenciadorPortaAvioes)
+        {
+            DefinirProtecaoCombustivelCarrier(true);
         }
 
         ComandoRetornarBase();
@@ -1019,8 +1092,12 @@ public class ControleAviao : MonoBehaviour
         }
 
         ordemParaRetorno = false;
-        estadoAtual = EstadoAviao.Decolando;
-        vagaRetorno = null; 
+        DefinirEstado(EstadoAviao.Decolando);
+        if (vagaRetorno == null && transform.parent != null)
+        {
+            // Em porta-aviões, preserva a vaga de origem para retornar ao mesmo ponto.
+            vagaRetorno = transform.parent;
+        }
 
         // === [DECOLAGEM] ===
         var wpDecolagem = ObterWaypointsDecolagem();
@@ -1065,7 +1142,11 @@ public class ControleAviao : MonoBehaviour
                 }
 
                 // Táxi e decolagem usando waypoints (a velocidade baseia-se na de solo primeiro)
-                yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoDecolagem, velocidadeSolo, velocidadeMaximaVoo, true, false));
+                float velocidadeSaidaConves = aeroportoOrigem is GerenciadorPortaAvioes
+                    ? Mathf.Min(velocidadeMaximaVoo, 55f)
+                    : velocidadeMaximaVoo;
+                yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoDecolagem, velocidadeSolo, velocidadeSaidaConves, true, false));
+                velocidadeVooAtual = velocidadeSaidaConves;
             }
         else
         {
@@ -1074,7 +1155,7 @@ public class ControleAviao : MonoBehaviour
 
         transform.SetParent(null, true);
         estaEmModoVooFisico = true;
-        estadoAtual = EstadoAviao.EmMissao;
+        DefinirEstado(EstadoAviao.EmMissao);
         if (alvoGPSVoo.y < altitudeVoo) alvoGPSVoo.y = altitudeVoo;
         centroDaPatrulha = alvoGPSVoo;
         StartCoroutine(RecolherRodas(1f));
@@ -1167,7 +1248,11 @@ public class ControleAviao : MonoBehaviour
         // --- RETORNO À BASE ---
         ordemParaRetorno = false;
         retornoAutomaticoAposChegadaCentro = false;
-        estadoAtual = EstadoAviao.Pousando;
+        DefinirEstado(EstadoAviao.Pousando);
+        if (aeroportoOrigem is GerenciadorPortaAvioes)
+        {
+            DefinirProtecaoCombustivelCarrier(true);
+        }
 
         if (aeroportoOrigem == null || aeroportoOrigem.waypointsDecida == null || aeroportoOrigem.waypointsDecida.Count < 2)
         {
@@ -1176,7 +1261,11 @@ public class ControleAviao : MonoBehaviour
             yield break;
         }
 
-        vagaRetorno = aeroportoOrigem.ObterPrimeiraVagaLivre();
+        GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
+        if (vagaRetorno == null)
+        {
+            vagaRetorno = aeroportoOrigem.ObterPrimeiraVagaLivre();
+        }
         if (vagaRetorno != null && !aeroportoOrigem.avioesNoPatio.Contains(this))
             aeroportoOrigem.avioesNoPatio.Add(this);
 
@@ -1230,7 +1319,8 @@ public class ControleAviao : MonoBehaviour
                 caminhoPouso.Add(aeroportoOrigem.waypointsDecida[i]);
         }
         // Segue glideslope na velocidade de solo (lenta), permitindo pular waypoints já passados
-        yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoPouso, velocidadeSolo * 2.4f, velocidadeSolo * 2.4f, false, true));
+        float velocidadeTaxiPouso = carrier != null ? Mathf.Max(velocidadeSolo * 2f, 18f) : velocidadeSolo * 2.4f;
+        yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoPouso, velocidadeTaxiPouso, velocidadeTaxiPouso, false, false));
 
         // 4. Parentar ao convés do navio
         Transform paiConves = (caminhoPouso.Count > 0 && caminhoPouso[caminhoPouso.Count - 1] != null)
@@ -1239,20 +1329,17 @@ public class ControleAviao : MonoBehaviour
         transform.SetParent(paiConves, true);
 
         // 5. Fase de Táxi ou Bypass pro Porta-Aviões
-        estadoAtual = EstadoAviao.RetornandoPraVaga;
-        GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
-
+        DefinirEstado(EstadoAviao.RetornandoPraVaga);
         if (carrier != null)
         {
-            // Pula a pista de táxi ("Trabalho") e vai direto pro hangar inferior
-            if (carrier.nivelHangar != null)
+            while (carrier != null && vagaRetorno == null)
             {
-                transform.position = carrier.nivelHangar.position;
-                transform.rotation = carrier.nivelHangar.rotation;
-                yield return new WaitForSeconds(2.0f);
+                vagaRetorno = carrier.ObterPrimeiraVagaLivre();
+                if (vagaRetorno == null) yield return new WaitForSeconds(1f);
             }
         }
-        else if (aeroportoOrigem != null)
+
+        if (carrier == null && aeroportoOrigem != null)
         {
             // Aeroportos padrões usam o táxi normal
             if (aeroportoOrigem.waypointsTaxi != null && aeroportoOrigem.waypointsTaxi.Count > 0)
@@ -1276,13 +1363,7 @@ public class ControleAviao : MonoBehaviour
         // 6. Busca da Vaga Final
         if (vagaRetorno != null)
         {
-            if (carrier != null)
-            {
-                // No porta-aviões, aparece direto na vaga
-                transform.position = vagaRetorno.position;
-                transform.rotation = vagaRetorno.rotation;
-            }
-            else
+            if (carrier == null)
             {
                 // Aeroporto padrão faz o giro realista e o táxi final
                 Vector3 dirParaVaga = vagaRetorno.position - transform.position;
@@ -1304,10 +1385,15 @@ public class ControleAviao : MonoBehaviour
                 // Táxi final lento para a vaga exata
                 yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, vagaRetorno));
             }
+            else
+            {
+                // Porta-aviões: pouso termina direto na vaga reservada, sem teleportar para outro ponto.
+                yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, vagaRetorno));
+            }
 
             // 6. Estaciona: parentar à própria vaga e alinhar
             transform.SetParent(vagaRetorno, true);
-            float alturaOffset = ObterAlturaEstacionamento();
+            float alturaOffset = carrier != null ? Mathf.Min(0.25f, ObterAlturaEstacionamento() * 0.1f) : ObterAlturaEstacionamento();
             transform.localPosition = new Vector3(0f, alturaOffset, 0f);
 
             // Giro final suave para ângulo zero local (alinhar com a vaga)
@@ -1322,13 +1408,13 @@ public class ControleAviao : MonoBehaviour
 
             // Garante que o voo físico NÃO seja reativado após o estacionamento
             estaEmModoVooFisico = false;
-            estadoAtual = EstadoAviao.ProntoNoPatio;
+            DefinirEstado(EstadoAviao.ProntoNoPatio);
             ProcessarServicoDeBaseAposPouso();
             
             // Retoma patrulha automaticamente se o avião estava em missão e precisou abastecer
             ProcessarRetomadaAposReabastecimento();
         }
-        else
+        else if (carrier == null)
         {
             // Pátio lotado → hangar
             ProcessarServicoDeBaseAposPouso();
@@ -1342,10 +1428,13 @@ public class ControleAviao : MonoBehaviour
         if (aeroportoOrigem is GerenciadorPortaAvioes)
         {
             GerenciadorPortaAvioes.ReabastecerAeronaveCarrier(this, false);
-            return;
+        }
+        else
+        {
+            ReabastecerSeAbaixoDe(0.50f);
         }
 
-        ReabastecerSeAbaixoDe(0.50f);
+        DefinirProtecaoCombustivelCarrier(false);
     }
 
     public void ReabastecerSeAbaixoDe(float percentualMinimo)
@@ -1414,5 +1503,15 @@ public class ControleAviao : MonoBehaviour
         yield return new WaitForSeconds(3.5f);
         velocidadeMaximaVoo = velOriginal;
         emAtaqueMergulho = false;
+    }
+
+    public bool PodeIgnorarFaltaDeCombustivel()
+    {
+        return protecaoCombustivelCarrier;
+    }
+
+    private void DefinirProtecaoCombustivelCarrier(bool ativa)
+    {
+        protecaoCombustivelCarrier = ativa;
     }
 }

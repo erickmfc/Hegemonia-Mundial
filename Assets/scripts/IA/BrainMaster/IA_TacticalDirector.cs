@@ -6,7 +6,7 @@ namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_TacticalDirector : IIAUpdateModule
     {
-        private const float ForcedAssaultStartSeconds = 60f;
+        private const float ForcedAssaultStartSeconds = 35f;
         private readonly IA_Context _context;
         private readonly List<GameObject> _loadedAmphibiousBuffer = new List<GameObject>(16);
         private readonly List<GameObject> _emptyAmphibiousBuffer = new List<GameObject>(16);
@@ -334,8 +334,8 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            Vector3 rally = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 35f, 110f, 18);
-            QueueMove("logistics_idle", _emptyGroundTransportBuffer, rally, 64, 5.6f);
+            Vector3 rally = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 90f, 180f, 18);
+            QueueMove("logistics_idle", _emptyGroundTransportBuffer, rally, 74, 4.2f);
 
             if (_context.Brain == null || _context.Brain.IntegrationMode != IA_BrainMaster.IA_IntegrationMode.Full)
             {
@@ -380,22 +380,28 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             bool forcedAssault = now >= ForcedAssaultStartSeconds;
+            bool pressureAssault = _context != null
+                                  && _context.Brain != null
+                                  && _context.Brain.WarPosture == IA_WarPosture.BalancedAggression
+                                  && now >= 20f;
             Vector3 forcedTarget = strategicObjective;
             bool hasForcedTarget = forcedAssault && _context.WorldState.TryGetEnemyStrategicAnchor(baseCenter, out forcedTarget);
 
             int maxAttackers = decision != null
-                ? Mathf.Max(4, decision.MaxLandAttackers)
-                : (forcedAssault ? 40 : 24);
-            List<GameObject> assaultUnits = CollectGroundAssaultUnits(Mathf.Min(forcedAssault ? 40 : 24, maxAttackers));
-            if (assaultUnits.Count < (forcedAssault ? 2 : 3))
+                ? Mathf.Max(pressureAssault ? 8 : 4, decision.MaxLandAttackers)
+                : (forcedAssault ? 40 : (pressureAssault ? 28 : 24));
+            List<GameObject> assaultUnits = CollectGroundAssaultUnits(Mathf.Min(forcedAssault ? 40 : (pressureAssault ? 28 : 24), maxAttackers));
+            if (assaultUnits.Count < (forcedAssault ? 2 : (pressureAssault ? 4 : 3)))
             {
                 return;
             }
 
             if (visibleEnemy != null)
             {
-                QueueAttack("assault_wave", assaultUnits, visibleEnemy, strategicObjective, 93, 4.2f);
-                _nextAssaultWaveTime = now + 4.5f;
+                QueueAttack("assault_wave", assaultUnits, visibleEnemy, strategicObjective, pressureAssault ? 96 : 93, pressureAssault ? 3.0f : 4.2f);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("assault_wave_size", assaultUnits.Count);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_land", assaultUnits.Count);
+                _nextAssaultWaveTime = now + (pressureAssault ? 3.2f : 4.5f);
                 _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
                 return;
             }
@@ -406,8 +412,10 @@ namespace Hegemonia.AI.BrainMaster
                 fallbackTarget = ResolveExplorationObjective(baseCenter, now, true);
             }
 
-            QueueMove("assault_wave", assaultUnits, fallbackTarget, forcedAssault ? 96 : 90, forcedAssault ? 2.2f : 3.2f);
-            _nextAssaultWaveTime = now + (forcedAssault ? 3.0f : 5.5f);
+            QueueMove("assault_wave", assaultUnits, fallbackTarget, forcedAssault ? 96 : (pressureAssault ? 93 : 90), forcedAssault ? 2.2f : (pressureAssault ? 2.8f : 3.2f));
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("assault_wave_size", assaultUnits.Count);
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_land", assaultUnits.Count);
+            _nextAssaultWaveTime = now + (forcedAssault ? 3.0f : (pressureAssault ? 3.6f : 5.5f));
             _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
         }
 

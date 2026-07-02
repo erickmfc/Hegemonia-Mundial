@@ -51,13 +51,18 @@ namespace Hegemonia.AI.BrainMaster
 
         public bool TargetsItem(IA_BrainMaster brain, string itemKey)
         {
+            return TargetsItem(brain, itemKey, null);
+        }
+
+        public bool TargetsItem(IA_BrainMaster brain, string itemKey, DadosConstrucao data)
+        {
             if (RestrictToBootstrapStage
                 && (brain == null || brain.BootstrapStage != BootstrapStage))
             {
                 return false;
             }
 
-            if (!MatchesItem(itemKey))
+            if (!MatchesItem(itemKey, data))
             {
                 return false;
             }
@@ -152,7 +157,7 @@ namespace Hegemonia.AI.BrainMaster
             {
                 case IA_BrainMaster.IA_BootstrapStage.Disabled: return "Desativado";
                 case IA_BrainMaster.IA_BootstrapStage.BuildPrefeitura: return "Construir Prefeitura";
-                case IA_BrainMaster.IA_BootstrapStage.BuildAeroporto: return "Construir Aeroporto";
+                case IA_BrainMaster.IA_BootstrapStage.BuildAeroporto: return "Construir Aeroporto Militar";
                 case IA_BrainMaster.IA_BootstrapStage.BuildVehicleFactory: return "Construir Fabrica de Veiculos";
                 case IA_BrainMaster.IA_BootstrapStage.BuildSupportHangar: return "Construir Hangar de Apoio";
                 case IA_BrainMaster.IA_BootstrapStage.BuildTent: return "Construir Tenda Militar";
@@ -165,10 +170,10 @@ namespace Hegemonia.AI.BrainMaster
             case IA_BrainMaster.IA_BootstrapStage.ProduceShip: return "Produzir Navio";
             case IA_BrainMaster.IA_BootstrapStage.HoldShipLaunch: return "Aguardar Lancamento Naval";
             case IA_BrainMaster.IA_BootstrapStage.Completed: return "Concluido";
-            case IA_BrainMaster.IA_BootstrapStage.MobilizeBase: return "Mobilizacao Defensiva";
-            case IA_BrainMaster.IA_BootstrapStage.BuildUsina: return "Construir Usina";
-            case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial: return "Construir Aeroporto Comercial";
-            default: return stage.ToString();
+                case IA_BrainMaster.IA_BootstrapStage.MobilizeBase: return "Mobilizacao Defensiva";
+                case IA_BrainMaster.IA_BootstrapStage.BuildUsina: return "Construir Usina";
+                case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial: return "Construir Aeroporto Comercial";
+                default: return stage.ToString();
         }
         }
 
@@ -177,21 +182,21 @@ namespace Hegemonia.AI.BrainMaster
             switch (stage)
             {
                 case IA_BrainMaster.IA_BootstrapStage.BuildPrefeitura:
-                    return "prefeitura, governo, capital";
+                    return "prefeitura, governo, capital, city hall, town hall";
                 case IA_BrainMaster.IA_BootstrapStage.BuildAeroporto:
-                    return "aeroporto, airport";
+                    return "aeroporto militar, base aerea, military airport, airport, pista";
                 case IA_BrainMaster.IA_BootstrapStage.BuildVehicleFactory:
-                    return "construtor de veiculos, construtor, fabrica";
+                    return "construtor de veiculos, construtor, fabrica, factory";
                 case IA_BrainMaster.IA_BootstrapStage.BuildSupportHangar:
-                    return "hangar, heliporto, armazem";
+                    return "hangar, heliporto, heliport, armazem";
                 case IA_BrainMaster.IA_BootstrapStage.BuildTent:
-                    return "quartel, tenda, barraca";
+                    return "quartel, tenda, barraca, barracks";
                 case IA_BrainMaster.IA_BootstrapStage.BuildShipyard:
-                    return "estaleiro, estaleiros, pier";
+                    return "estaleiro, estaleiros, pier, shipyard, dock";
                 case IA_BrainMaster.IA_BootstrapStage.BuildUsina:
-                    return "usina, energia";
+                    return "usina, energia, power plant";
                 case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial:
-                    return "aeroporto comercial, pista comercial";
+                    return "aeroporto comercial, commercial airport, pista comercial";
                 default:
                     return string.Empty;
             }
@@ -218,7 +223,7 @@ namespace Hegemonia.AI.BrainMaster
             switch (role)
             {
                 case OperationalRole.EstacionamentoNaval:
-                    return "estaleiro, pier, porto, plataforma, navio transporte, transporte naval, hovercraft, liberty";
+                    return "estaleiro, pier, plataforma, navio transporte, transporte naval, hovercraft, liberty";
                 case OperationalRole.PatrulhaNaval:
                     return "navio, escolta, submarino, patrulha, destroyer, fragata, corveta, ironclad, vindicator";
                 case OperationalRole.TransporteTerrestre:
@@ -238,7 +243,7 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
-        private bool MatchesItem(string itemKey)
+        private bool MatchesItem(string itemKey, DadosConstrucao data = null)
         {
             string normalizedItem = IA_Text.Normalize(itemKey);
             if (string.IsNullOrEmpty(normalizedItem))
@@ -268,11 +273,49 @@ namespace Hegemonia.AI.BrainMaster
                     (normalizedItem.Contains("pier") && filter.Contains("pier")) ||
                     (normalizedItem.Contains("quartel general") && filter.Contains("quartel general")))
                 {
+                    if (!IsStageCompatible(data, normalizedItem))
+                    {
+                        continue;
+                    }
+
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private bool IsStageCompatible(DadosConstrucao data, string normalizedItem)
+        {
+            if (!RestrictToBootstrapStage)
+            {
+                return true;
+            }
+
+            switch (BootstrapStage)
+            {
+                case IA_BrainMaster.IA_BootstrapStage.BuildAeroporto:
+                    if (data != null)
+                    {
+                        bool commercialAirport = data.HasCapability(IA_ConstructionCapability.CommercialAirport);
+                        bool militaryAirport = data.HasCapability(IA_ConstructionCapability.MilitaryAirport) || data.HasCapability(IA_ConstructionCapability.Airport);
+                        return militaryAirport && !commercialAirport;
+                    }
+
+                    return !normalizedItem.Contains("comercial") && !normalizedItem.Contains("commercial");
+
+                case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial:
+                    if (data != null)
+                    {
+                        return data.HasCapability(IA_ConstructionCapability.CommercialAirport)
+                               || (data.HasCapability(IA_ConstructionCapability.Commercial) && !data.HasCapability(IA_ConstructionCapability.MilitaryAirport));
+                    }
+
+                    return normalizedItem.Contains("comercial") || normalizedItem.Contains("commercial");
+
+                default:
+                    return true;
+            }
         }
 
         private string GetEffectiveFilterSource()

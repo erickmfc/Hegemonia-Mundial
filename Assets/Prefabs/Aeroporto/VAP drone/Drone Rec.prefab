@@ -146,6 +146,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 4ebde2f0b723347ee8d061fc97f7243f, type: 2}
+    - target: {fileID: 9500000, guid: 373b0bc407de54b5c99d9dd78f20bea6, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -287,6 +291,7 @@ MonoBehaviour:
   raioOrbitaMissao: 85
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
+  altitudeVoo: 120
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -300,6 +305,8 @@ MonoBehaviour:
   alvoPrioritarioIA: 0
   alvoEstrategico: {x: 0, y: 0, z: 0}
   estaEmModoVooFisico: 0
+  aceleracaoVoo: 18
+  desaceleracaoVoo: 25
 --- !u!114 &6030306241575672316
 MonoBehaviour:
   m_ObjectHideFlags: 0

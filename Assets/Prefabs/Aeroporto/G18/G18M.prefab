@@ -52,6 +52,8 @@ GameObject:
   - component: {fileID: 7825097297346056911}
   - component: {fileID: 4845286106728112725}
   - component: {fileID: 6822669880444300208}
+  - component: {fileID: -1960936707701329789}
+  - component: {fileID: -5951652902521827119}
   m_Layer: 0
   m_Name: G18M
   m_TagString: Aereo
@@ -103,10 +105,10 @@ Rigidbody:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3555054237250671952}
-  serializedVersion: 5
+  serializedVersion: 4
   m_Mass: 1
-  m_LinearDamping: 0
-  m_AngularDamping: 0.05
+  m_Drag: 0
+  m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -235,11 +237,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b3111c5c5b2e754fbb3d1eec33b04da, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleAviaoCaca
-  altitudeCruzeiro: 50
+  altitudeCruzeiro: 65
   alturaDecolagem: 15
   velocidadeTaxi: 10
-  velocidadeCruzeiro: 40
-  velocidadeAtaque: 90
+  velocidadeCruzeiro: 80
+  velocidadeAtaque: 99
   velocidadeCurva: 2
   fogoNosMotores: []
   luzPosCombustao: {fileID: 0}
@@ -248,10 +250,12 @@ MonoBehaviour:
   eixoRecolher: {x: 1, y: 0, z: 0}
   anguloRecolher: 90
   velocidadeTremPouso: 2
-  somPassagem: {fileID: 8300000, guid: c5ceb6103df2afc429d49dd4bf8651d4, type: 3}
-  distanciaAtivacaoSom: 100
+  somPassagem: {fileID: 8300000, guid: 9bf97d507925fa84a8266faa6513256c, type: 3}
+  distanciaAtivacaoSom: 150
   estadoAtual: 0
   corIdentificacao: {r: 0, g: 0, b: 0, a: 0}
+  distanciaTransicaoCruzeiro: 140
+  duracaoBoostDefensivo: 4
 --- !u!114 &7825097297346056911
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -277,6 +281,7 @@ MonoBehaviour:
   raioOrbitaMissao: 85
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
+  altitudeVoo: 120
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -289,6 +294,8 @@ MonoBehaviour:
   alvoPrioritarioIA: 0
   alvoEstrategico: {x: 0, y: 0, z: 0}
   estaEmModoVooFisico: 0
+  aceleracaoVoo: 18
+  desaceleracaoVoo: 25
 --- !u!114 &4845286106728112725
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -304,7 +311,7 @@ MonoBehaviour:
   municaoAtual: 3
   municaoMaxima: 3
   pontosDeSaida: []
-  missilCacaPrefab: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
+  missilCacaPrefab: {fileID: 1828480966644363526, guid: b08f5a92de3e8f64f86cac8213399aad, type: 3}
   tempoRecarga: 1.5
   raioDeDeteccao: 600
   debugLogs: 0
@@ -324,6 +331,128 @@ MonoBehaviour:
   uniqueId: 
   prefabKey: 
   runtimeSpawned: 1
+--- !u!82 &-1960936707701329789
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3555054237250671952}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 150
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!114 &-5951652902521827119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3555054237250671952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc23fc57a22fec84a931072cb1213e9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tipoUnidade: 1
+  somMotor: {fileID: 8300000, guid: 3375e751a9605ec469a16d6bcba85aaa, type: 3}
+  somParado: {fileID: 0}
+  somTiro: {fileID: 0}
+  somExplosao: {fileID: 0}
+  somDano: {fileID: 0}
+  volumeMotor: 0.5
+  volumeTiro: 0.8
+  volumeExplosao: 1
+  pitchMin: 0.8
+  pitchMax: 1.5
+  velocidadeParaMaxPitch: 10
+  loopMotor: 1
 --- !u!1 &4857591987287079291
 GameObject:
   m_ObjectHideFlags: 0
@@ -5101,8 +5230,6 @@ ParticleSystemRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -5124,7 +5251,6 @@ ParticleSystemRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -9937,8 +10063,6 @@ ParticleSystemRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -9960,7 +10084,6 @@ ParticleSystemRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0

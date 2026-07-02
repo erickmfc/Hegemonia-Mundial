@@ -130,15 +130,28 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
+                string byId = IA_Text.Normalize(candidate.GetStableId());
+                string byDisplay = IA_Text.Normalize(candidate.GetDisplayName());
                 string byName = IA_Text.Normalize(candidate.nomeItem);
                 string byAsset = IA_Text.Normalize(candidate.name);
-                string byPrefab = candidate.prefabDaUnidade != null ? IA_Text.Normalize(candidate.prefabDaUnidade.name) : string.Empty;
-                if (byName.Contains(normalized)
+                GameObject candidatePrefab;
+                string byPrefab = candidate.TryGetPrefab(out candidatePrefab)
+                    ? IA_Text.Normalize(candidatePrefab.name)
+                    : string.Empty;
+                if (byId.Contains(normalized)
+                    || normalized.Contains(byId)
+                    || byDisplay.Contains(normalized)
+                    || normalized.Contains(byDisplay)
+                    || byName.Contains(normalized)
                     || normalized.Contains(byName)
                     || byAsset.Contains(normalized)
                     || byPrefab.Contains(normalized)
                     || (!string.IsNullOrEmpty(canonical)
-                        && (byName.Contains(canonical) || byAsset.Contains(canonical) || byPrefab.Contains(canonical))))
+                        && (byId.Contains(canonical)
+                            || byDisplay.Contains(canonical)
+                            || byName.Contains(canonical)
+                            || byAsset.Contains(canonical)
+                            || byPrefab.Contains(canonical))))
                 {
                     item = candidate;
                     return true;
@@ -151,7 +164,7 @@ namespace Hegemonia.AI.BrainMaster
         public string ResolveBuildKey(params string[] hints)
         {
             DadosConstrucao data = FindFirstAvailable(hints);
-            return data != null ? data.nomeItem : string.Empty;
+            return data != null ? data.GetDisplayName() : string.Empty;
         }
 
         public DadosConstrucao FindFirstAvailable(params string[] keys)
@@ -203,11 +216,34 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             id.teamID = _teamId;
+
+            IA_IdentityRegistryHook hook = obj.GetComponent<IA_IdentityRegistryHook>();
+            if (hook == null)
+            {
+                hook = obj.AddComponent<IA_IdentityRegistryHook>();
+            }
+        }
+
+        public static void AttachConstructionMetadata(GameObject obj, DadosConstrucao data)
+        {
+            if (obj == null || data == null)
+            {
+                return;
+            }
+
+            IA_ConstructionMetadata metadata = obj.GetComponent<IA_ConstructionMetadata>();
+            if (metadata == null)
+            {
+                metadata = obj.AddComponent<IA_ConstructionMetadata>();
+            }
+
+            metadata.ApplyFrom(data);
         }
 
         private void AddCatalogItem(DadosConstrucao item)
         {
-            if (item == null || item.prefabDaUnidade == null)
+            GameObject prefab;
+            if (item == null || !item.TryGetPrefab(out prefab))
             {
                 return;
             }
@@ -218,9 +254,16 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             _catalog.Add(item);
+            AddKey(item.GetStableId(), item);
+            AddKey(IA_Text.Normalize(item.GetDisplayName()), item);
             AddKey(IA_Text.Normalize(item.nomeItem), item);
             AddKey(IA_Text.Normalize(item.name), item);
-            AddKey(IA_Text.Normalize(item.prefabDaUnidade.name), item);
+            AddKey(IA_Text.Normalize(prefab.name), item);
+
+            foreach (string alias in item.GetExplicitAliases())
+            {
+                AddKey(IA_Text.Normalize(alias), item);
+            }
 
             string[] aliases = BuildAliases(item);
             for (int i = 0; i < aliases.Length; i++)
@@ -255,7 +298,17 @@ namespace Hegemonia.AI.BrainMaster
                 return "prefeitura";
             }
 
+            if (normalized.Contains("city hall") || normalized.Contains("town hall"))
+            {
+                return "prefeitura";
+            }
+
             if (normalized.Contains("quartel general") || normalized.Contains("quartel_general") || normalized == "hq")
+            {
+                return "quartel general";
+            }
+
+            if (normalized.Contains("headquarters"))
             {
                 return "quartel general";
             }
@@ -305,7 +358,12 @@ namespace Hegemonia.AI.BrainMaster
                 return "estaleiro naval";
             }
 
-            if (normalized.Contains("aeroporto comercial") || normalized.Contains("aeroporto_comercial") || normalized.Contains("aeroportocomercial"))
+            if (normalized.Contains("aeroporto militar") || normalized.Contains("base aerea militar") || normalized.Contains("military airport"))
+            {
+                return "aeroporto militar";
+            }
+
+            if (normalized.Contains("aeroporto comercial") || normalized.Contains("aeroporto_comercial") || normalized.Contains("aeroportocomercial") || normalized.Contains("commercial airport"))
             {
                 return "aeroporto comercial";
             }
@@ -318,7 +376,7 @@ namespace Hegemonia.AI.BrainMaster
                 return "aeroporto";
             }
 
-            if (normalized.Contains("heliporto"))
+            if (normalized.Contains("heliporto") || normalized.Contains("heliport"))
             {
                 return "heliporto";
             }
@@ -363,46 +421,77 @@ namespace Hegemonia.AI.BrainMaster
 
         private static string[] BuildAliases(DadosConstrucao item)
         {
-            List<string> aliases = new List<string>();
-            string joined = IA_Text.Normalize(item.nomeItem + " " + item.name + " " + item.prefabDaUnidade.name);
-            // Porta-aviões herda de GerenciadorAeroporto — NÃO deve ser tratado como aeroporto!
-            bool isPortaAvioes = item.prefabDaUnidade.GetComponent<GerenciadorPortaAvioes>() != null;
-            bool isAirport = !isPortaAvioes && item.prefabDaUnidade.GetComponent<GerenciadorAeroporto>() != null;
-            bool isHeliport = item.prefabDaUnidade.GetComponent<Heliporto>() != null;
+            GameObject prefab;
+            if (item == null || !item.TryGetPrefab(out prefab))
+            {
+                return new string[0];
+            }
 
-            if (joined.Contains("prefeitura"))
+            List<string> aliases = new List<string>();
+            string joined = IA_Text.Normalize(item.GetDisplayName() + " " + item.name + " " + prefab.name);
+            // Porta-aviões herda de GerenciadorAeroporto — NÃO deve ser tratado como aeroporto!
+            bool isPortaAvioes;
+            bool isAirport;
+            bool isHeliport;
+            bool isShipyard;
+            bool isPier;
+            try
+            {
+                isPortaAvioes = prefab.GetComponent<GerenciadorPortaAvioes>() != null;
+                isAirport = !isPortaAvioes && prefab.GetComponent<GerenciadorAeroporto>() != null && prefab.GetComponent<Heliporto>() == null;
+                isHeliport = prefab.GetComponent<Heliporto>() != null;
+                isShipyard = prefab.GetComponent<Estaleiro>() != null;
+                isPier = prefab.GetComponent<PierMarinha>() != null;
+            }
+            catch (MissingReferenceException)
+            {
+                // Prefab com missing scripts nos filhos — descarta silenciosamente.
+                return new string[0];
+            }
+            catch (System.Exception)
+            {
+                return new string[0];
+            }
+
+            if (joined.Contains("prefeitura") || joined.Contains("city hall") || joined.Contains("town hall"))
             {
                 aliases.Add("prefeitura");
                 aliases.Add("governo");
                 aliases.Add("capital");
+                aliases.Add("city hall");
+                aliases.Add("town hall");
             }
 
-            if (joined.Contains("quartel_general") || joined.Contains("quartel general"))
+            if (joined.Contains("quartel_general") || joined.Contains("quartel general") || joined.Contains("headquarters"))
             {
                 aliases.Add("quartel general");
                 aliases.Add("quartel_general");
                 aliases.Add("hq");
+                aliases.Add("headquarters");
             }
 
-            if (joined.Contains("tenda"))
+            if (joined.Contains("tenda") || joined.Contains("barracks"))
             {
                 aliases.Add("tenda militar");
                 aliases.Add("tenda");
                 aliases.Add("barraca");
                 aliases.Add("infantaria");
+                aliases.Add("barracks");
             }
 
-            if (joined.Contains("construtor de veiculos"))
+            if (joined.Contains("construtor de veiculos") || joined.Contains("vehicle factory") || joined.Contains("factory"))
             {
                 aliases.Add("construtor de veiculos");
                 aliases.Add("fabrica");
                 aliases.Add("factory");
+                aliases.Add("vehicle factory");
             }
 
-            if (joined.Contains("armazem") || joined.Contains("armazem_recursos"))
+            if (joined.Contains("armazem") || joined.Contains("armazem_recursos") || joined.Contains("warehouse"))
             {
                 aliases.Add("armazem");
                 aliases.Add("galpao");
+                aliases.Add("warehouse");
             }
 
             if (joined.Contains("radar"))
@@ -433,23 +522,41 @@ namespace Hegemonia.AI.BrainMaster
                 aliases.Add("wall");
             }
 
-            if (joined.Contains("estaleiro"))
+            if (isShipyard || joined.Contains("estaleiro") || joined.Contains("shipyard"))
             {
                 aliases.Add("estaleiro");
                 aliases.Add("estaleiro naval");
+                aliases.Add("shipyard");
+                aliases.Add("dock");
             }
 
-            if (!isPortaAvioes && (joined.Contains("aeroporto comercial") || joined.Contains("aeroportocomercial")))
+            if (isPier || joined.Contains("pier"))
+            {
+                aliases.Add("pier");
+                aliases.Add("dock");
+            }
+
+            bool isCommercialAirport = !isPortaAvioes && prefab.GetComponent<GerenciadorAeroportoComercial>() != null;
+            bool isMilitaryAirport = !isPortaAvioes
+                                     && prefab.GetComponent<GerenciadorAeroporto>() != null
+                                     && !isCommercialAirport
+                                     && !isHeliport;
+
+            if (isCommercialAirport || (!isPortaAvioes && (joined.Contains("aeroporto comercial") || joined.Contains("aeroportocomercial"))))
             {
                 aliases.Add("aeroporto comercial");
                 aliases.Add("aeroporto_comercial");
+                aliases.Add("commercial airport");
             }
-            else if (!isPortaAvioes && (isAirport || joined.Contains("aeroporto") || joined.Contains("airport") || joined.Contains("pista")))
+            else if (isMilitaryAirport || (!isPortaAvioes && (isAirport || joined.Contains("aeroporto") || joined.Contains("airport") || joined.Contains("pista"))))
             {
                 aliases.Add("aeroporto");
                 aliases.Add("airport");
                 aliases.Add("base aerea");
                 aliases.Add("pista");
+                aliases.Add("aeroporto militar");
+                aliases.Add("base aerea militar");
+                aliases.Add("military airport");
             }
 
             if (isPortaAvioes)
@@ -459,14 +566,24 @@ namespace Hegemonia.AI.BrainMaster
                 aliases.Add("porta-avioes");
             }
 
-            if (isHeliport || joined.Contains("heliporto"))
+            if (isHeliport || joined.Contains("heliporto") || joined.Contains("heliport"))
             {
                 aliases.Add("heliporto");
+                aliases.Add("heliport");
             }
 
-            if (joined.Contains("plataforma"))
+            if (joined.Contains("plataforma") || joined.Contains("offshore platform"))
             {
                 aliases.Add("plataforma");
+                aliases.Add("offshore platform");
+            }
+
+            if (joined.Contains("usina") || joined.Contains("energia") || joined.Contains("power") || joined.Contains("power plant") || joined.Contains("solar") || joined.Contains("nuclear"))
+            {
+                aliases.Add("usina");
+                aliases.Add("power plant");
+                aliases.Add("power");
+                aliases.Add("energia");
             }
 
             if (joined.Contains("petroleiro") || joined.Contains("petrolifero") || joined.Contains("tanker"))
@@ -691,8 +808,15 @@ namespace Hegemonia.AI.BrainMaster
 
             if (IsAirport(data, zone) && !HasAirportClearance(position, world, Mathf.Max(80f, spacingRadius + 30f)))
             {
-                reason = "aeroporto muito perto do nucleo ou de imoveis";
-                return false;
+                if (IsMilitaryAirport(data, zone) && HasAirportClearance(position, world, Mathf.Max(55f, spacingRadius + 12f), 40f))
+                {
+                    // Aeroporto militar recebe uma folga menor para permitir expansão da IA em bases compactas.
+                }
+                else
+                {
+                    reason = "aeroporto muito perto do nucleo ou de imoveis";
+                    return false;
+                }
             }
 
             if (IsReserved(position, Mathf.Max(10f, spacingRadius)))
@@ -827,12 +951,12 @@ namespace Hegemonia.AI.BrainMaster
                 rotation = pose.Rotation;
             }
 
-            if (!forceManualPlacement && !ValidatePlacement(itemKey, position, rotation, zone, world, map, threat, out reason))
+            if (!ValidatePlacement(itemKey, position, rotation, zone, world, map, threat, out reason))
             {
                 return false;
             }
 
-            Construtor construtor = Construtor.Instancia != null ? Construtor.Instancia : Object.FindFirstObjectByType<Construtor>();
+            Construtor construtor = Construtor.Instancia != null ? Construtor.Instancia : UnityEngine.Object.FindFirstObjectByType<Construtor>();
             bool rawInstantiate = false;
             if (construtor != null)
             {
@@ -842,7 +966,7 @@ namespace Hegemonia.AI.BrainMaster
             {
                 rawInstantiate = true;
                 long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
-                created = Object.Instantiate(data.prefabDaUnidade, position, rotation);
+                created = UnityEngine.Object.Instantiate(data.prefabDaUnidade, position, rotation);
                 RegistrarTempoDiagnostico("spawn_structure_ms", instantiateStart);
             }
 
@@ -864,7 +988,9 @@ namespace Hegemonia.AI.BrainMaster
                 manualTag.SourceLabel = manualPointLabel ?? string.Empty;
             }
 
+            IA_BackendBridge.AttachConstructionMetadata(created, data);
             _bridge.EnsureIdentity(created);
+            IA_WorldState.NotifyEntityChanged(created.GetComponent<IdentidadeUnidade>());
             Estaleiro estaleiro = created.GetComponent<Estaleiro>();
             if (estaleiro != null)
             {
@@ -1466,6 +1592,11 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool HasAirportClearance(Vector3 position, IA_WorldState world, float minDistanceFromCore)
         {
+            return HasAirportClearance(position, world, minDistanceFromCore, 60f);
+        }
+
+        private bool HasAirportClearance(Vector3 position, IA_WorldState world, float minDistanceFromCore, float minDistanceFromImovel)
+        {
             for (int i = 0; i < world.OwnStructures.Count; i++)
             {
                 GameObject structure = world.OwnStructures[i];
@@ -1502,7 +1633,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 float d = Vector3.Distance(Flatten(imovel.transform.position), Flatten(position));
-                if (d < 60f)
+                if (d < minDistanceFromImovel)
                 {
                     return false;
                 }
@@ -1516,6 +1647,19 @@ namespace Hegemonia.AI.BrainMaster
             if (data == null || data.prefabDaUnidade == null)
             {
                 return false;
+            }
+
+            if (data.prefabDaUnidade.GetComponent<GerenciadorPortaAvioes>() != null
+                || data.prefabDaUnidade.GetComponent<Heliporto>() != null)
+            {
+                return false;
+            }
+
+            if (data.HasCapability(IA_ConstructionCapability.Airport)
+                || data.HasCapability(IA_ConstructionCapability.MilitaryAirport)
+                || data.HasCapability(IA_ConstructionCapability.CommercialAirport))
+            {
+                return true;
             }
 
             // Porta-aviões herda de GerenciadorAeroporto mas NÃO é aeroporto terrestre
@@ -1534,6 +1678,38 @@ namespace Hegemonia.AI.BrainMaster
                    || joined.Contains("airport")
                    || joined.Contains("base aerea")
                    || joined.Contains("pista");
+        }
+
+        private static bool IsMilitaryAirport(DadosConstrucao data, IA_ZoneType zone)
+        {
+            if (data == null || data.prefabDaUnidade == null)
+            {
+                return false;
+            }
+
+            if (data.prefabDaUnidade.GetComponent<GerenciadorPortaAvioes>() != null
+                || data.prefabDaUnidade.GetComponent<Heliporto>() != null
+                || data.prefabDaUnidade.GetComponent<GerenciadorAeroportoComercial>() != null)
+            {
+                return false;
+            }
+
+            if (data.HasCapability(IA_ConstructionCapability.MilitaryAirport))
+            {
+                return true;
+            }
+
+            if (data.prefabDaUnidade.GetComponent<GerenciadorPortaAvioes>() != null)
+            {
+                return false;
+            }
+
+            string joined = IA_Text.Normalize(data.nomeItem + " " + data.prefabDaUnidade.name);
+            return (zone == IA_ZoneType.Air || zone == IA_ZoneType.Military)
+                   && (joined.Contains("aeroporto militar")
+                       || joined.Contains("base aerea militar")
+                       || joined.Contains("aeroporto")
+                       || joined.Contains("airport"));
         }
 
         private void Reserve(Vector3 position, float radius, float until)
@@ -1601,6 +1777,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly List<Estaleiro> _shipyardBuffer = new List<Estaleiro>(8);
         private readonly List<PierMarinha> _pierBuffer = new List<PierMarinha>(8);
         private readonly List<GerenciadorAeroporto> _airportBuffer = new List<GerenciadorAeroporto>(8);
+        private readonly List<GerenciadorAeroportoComercial> _commercialAirportBuffer = new List<GerenciadorAeroportoComercial>(4);
         private readonly List<Heliporto> _heliportBuffer = new List<Heliporto>(8);
 
         public ProductionService(IA_BackendBridge bridge, int teamId)
@@ -1693,7 +1870,9 @@ namespace Hegemonia.AI.BrainMaster
                 GameObject unit = factory.ProduzirUnidade(data.prefabDaUnidade);
                 if (unit != null)
                 {
+                    IA_BackendBridge.AttachConstructionMetadata(unit, data);
                     _bridge.EnsureIdentity(unit);
+                    IA_WorldState.NotifyEntityChanged(unit.GetComponent<IdentidadeUnidade>());
                     return unit;
                 }
             }
@@ -1759,6 +1938,13 @@ namespace Hegemonia.AI.BrainMaster
             {
                 DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", data.prefabDaUnidade.name);
             }
+            bool isCommercialAircraft = IsCommercialAircraft(data);
+            if (isCommercialAircraft)
+            {
+                reason = "aeroporto comercial indisponivel";
+                return null;
+            }
+
             RegistroEntidadesJogo.FillAeroportos(_airportBuffer);
             for (int i = 0; i < _airportBuffer.Count; i++)
             {
@@ -1799,9 +1985,11 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                GameObject unit = Object.Instantiate(data.prefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
+                GameObject unit = UnityEngine.Object.Instantiate(data.prefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
                 long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
+                IA_BackendBridge.AttachConstructionMetadata(unit, data);
                 _bridge.EnsureIdentity(unit);
+                IA_WorldState.NotifyEntityChanged(unit.GetComponent<IdentidadeUnidade>());
                 RegistrarTempoDiagnostico("prefab_init_ms", initStart);
                 RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
                 return unit;
@@ -1847,10 +2035,24 @@ namespace Hegemonia.AI.BrainMaster
                    || n.Contains("vans");
         }
 
+        private static bool IsCommercialAircraft(DadosConstrucao data)
+        {
+            if (data == null || data.prefabDaUnidade == null)
+            {
+                return false;
+            }
+
+            string n = IA_Text.Normalize(data.nomeItem + " " + data.prefabDaUnidade.name);
+            return data.prefabDaUnidade.GetComponent<ControleAviaoComercial>() != null
+                   || n.Contains("comercial")
+                   || n.Contains("commercial");
+        }
+
         private static bool IsFighter(DadosConstrucao data)
         {
             string n = IA_Text.Normalize(data.nomeItem + " " + data.prefabDaUnidade.name);
-            return data.prefabDaUnidade.GetComponent<ControleAviao>() != null
+            return !IsCommercialAircraft(data)
+                   && (data.prefabDaUnidade.GetComponent<ControleAviao>() != null
                    || n.Contains("caca")
                    || n.Contains("fa1")
                    || n.Contains("jet")
@@ -1868,7 +2070,7 @@ namespace Hegemonia.AI.BrainMaster
                    || n.Contains("g18m")
                    || n.Contains("super tuk")
                    || n.Contains("supertuk")
-                   || n.Contains("aviao");
+                   || n.Contains("aviao"));
         }
 
         private static bool IsInfantry(DadosConstrucao data)

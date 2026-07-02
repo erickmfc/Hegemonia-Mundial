@@ -156,7 +156,8 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
     private void AuditarFicha(DadosConstrucao ficha, ref int erros, ref int avisos, ref int eventosEmitidos, int limiteEventos)
     {
         string nome = string.IsNullOrWhiteSpace(ficha.nomeItem) ? ficha.name : ficha.nomeItem;
-        GameObject prefab = ficha.prefabDaUnidade;
+        GameObject prefab = null;
+        bool hasPrefab = ficha != null && ficha.TryGetPrefab(out prefab);
 
         if (string.IsNullOrWhiteSpace(ficha.nomeItem))
         {
@@ -170,7 +171,7 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
             Emitir("ERRO", nome + ": preco negativo (" + ficha.preco + ")", ref eventosEmitidos, limiteEventos);
         }
 
-        if (prefab == null)
+        if (!hasPrefab || prefab == null)
         {
             avisos++;
             // Emitir("AVISO", nome + ": prefab ausente", ref eventosEmitidos, limiteEventos);

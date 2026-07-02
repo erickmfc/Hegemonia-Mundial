@@ -20,17 +20,18 @@ public class Tank : MonoBehaviour {
 
 		_rb = GetComponent<Rigidbody>();
 
-		transform.Rotate(0f,Random.Range(RandomTurnRate[0],RandomTurnRate[1]),0f);
+		if (RandomTurnRate != null && RandomTurnRate.Length >= 2)
+			transform.Rotate(0f,Random.Range(RandomTurnRate[0],RandomTurnRate[1]),0f);
 
-		DamageFX.SetActive(false);
+		if (DamageFX) DamageFX.SetActive(false);
 		
-		ExplosionFX.SetActive(false);
+		if (ExplosionFX) ExplosionFX.SetActive(false);
 		
 		_agent = GetComponent<NavMeshAgent>();
 		
-		_waypoints = Manager.GetInstance().Waypoints1;
-
-		RandomPoint(_waypoints[Random.Range(0, _waypoints.Length)].position, 2f, out _targetPoint);
+		Manager manager = Manager.GetInstance();
+		_waypoints = manager != null ? manager.Waypoints1 : null;
+		DefinirDestinoAleatorio();
 
 		NavAgentControl(true, false);
 		
@@ -40,28 +41,44 @@ public class Tank : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+		if (!_agent || !_agent.enabled || !_agent.isOnNavMesh) return;
 
 		if(_isDead){
 			Speed = Mathf.Lerp(Speed, 0, LerpSpeed * Time.fixedDeltaTime);
 		}	
 
 		// Generate a new Quaternion representing the rotation we should have
-		Quaternion newRot = Quaternion.LookRotation (_agent.desiredVelocity);
-		// Smoothly rotate to that new rotation over time
-		transform.rotation = Quaternion.Slerp(transform.rotation, newRot, Time.deltaTime * 5.0f);
+		Vector3 velocidadeDesejada = _agent.desiredVelocity;
+		if (velocidadeDesejada.sqrMagnitude > 0.0001f)
+		{
+			Quaternion newRot = Quaternion.LookRotation(velocidadeDesejada);
+			transform.rotation = Quaternion.Slerp(transform.rotation, newRot, Time.deltaTime * 5.0f);
+		}
 
 		if(Vector3.Distance(transform.position, _targetPoint) < _agent.stoppingDistance)
 		{
-			RandomPoint(_waypoints[Random.Range(0, _waypoints.Length)].position, 2f, out _targetPoint);
+			DefinirDestinoAleatorio();
 		}
 
 		if (_agent.isPathStale || 
 			!_agent.hasPath   ||
 			_agent.pathStatus!=NavMeshPathStatus.PathComplete) 
 		{
-			RandomPoint(_waypoints[Random.Range(0, _waypoints.Length)].position, 2f, out _targetPoint);
+			DefinirDestinoAleatorio();
 		}
 
+	}
+
+	private bool DefinirDestinoAleatorio()
+	{
+		if (!_agent || !_agent.enabled || !_agent.isOnNavMesh || _waypoints == null || _waypoints.Length == 0)
+			return false;
+
+		Transform waypoint = _waypoints[Random.Range(0, _waypoints.Length)];
+		if (!waypoint) return false;
+
+		RandomPoint(waypoint.position, 2f, out _targetPoint);
+		return true;
 	}
 
 	void OnCollisionEnter(Collision collision)
@@ -112,7 +129,8 @@ public class Tank : MonoBehaviour {
 		}
 		
 		//set the target point as the new destination
-		_agent.SetDestination(result);
+		if (_agent && _agent.enabled && _agent.isOnNavMesh)
+			_agent.SetDestination(result);
 	}
 
 	void Destroy()

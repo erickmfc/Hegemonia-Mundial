@@ -162,7 +162,17 @@ public class SistemaArmamentoHelice : MonoBehaviour
                 }
             }
         }
-        alvoAtualGuardado = alvoMaisProximoScanner;
+
+        if (alvoMaisProximoScanner != alvoAtualGuardado)
+        {
+            alvoAtualGuardado = alvoMaisProximoScanner;
+            if (alvoAtualGuardado != null)
+            {
+                // Sempre reinicia a sequencia quando um novo alvo aparece para evitar ficar preso em patrulha.
+                estadoAtualAtaque = EstadoCombate.Patrulha;
+                cronometroEvasao = 0f;
+            }
+        }
     }
 
     void ExecutarManobrasDeCombate()
@@ -219,7 +229,7 @@ public class SistemaArmamentoHelice : MonoBehaviour
                 controleAviao.alvoGPSVoo = pontoChao;
 
                 float anguloFrontal = Vector3.Angle(transform.forward, direcaoMergulho);
-                if (anguloFrontal <= 15f && cronometroTiro <= 0f && distanciaDoAlvo < 750f && !recarregando)
+                if (anguloFrontal <= 25f && cronometroTiro <= 0f && distanciaDoAlvo < 900f && !recarregando)
                 {
                     AtirarMetralhadora(posicaoAlvo);
                 }

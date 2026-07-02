@@ -116,6 +116,7 @@ public class Helicoptero : MonoBehaviour
     private bool preparandoDecolagem = false;
     private bool aplicarAltitudeCruzeiroNaDecolagem = true;
     private Animation animacaoDecolagem;
+    private Transform alvoComandoAtaque;
 
     // COMPATIBILIDADE EXTERNA
     [HideInInspector] public string nomeHelicoptero = "Falcão Negro"; 
@@ -143,6 +144,13 @@ public class Helicoptero : MonoBehaviour
 
     void Awake()
     {
+        // O menu satelite e a trilha oficial de ordens usam ControleUnidade como
+        // contrato comum. O proprio ControleUnidade detecta Helicoptero e evita NavMesh.
+        if (GetComponent<ControleUnidade>() == null)
+        {
+            gameObject.AddComponent<ControleUnidade>();
+        }
+
         rb = GetComponent<Rigidbody>();
         if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
 
@@ -201,10 +209,18 @@ public class Helicoptero : MonoBehaviour
         if (animacaoDecolagem) animacaoDecolagem.playAutomatically = false;
 
         if(!audioMotor) audioMotor = GetComponent<AudioSource>();
+        if(!audioMotor) audioMotor = GetComponentInChildren<AudioSource>(true);
         if(audioMotor)
         {
             audioMotor.loop = true;
             audioMotor.playOnAwake = false;
+            audioMotor.spatialBlend = 1f;
+            audioMotor.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioMotor.dopplerLevel = 0f;
+            audioMotor.minDistance = 9f;
+            audioMotor.maxDistance = 150f;
+            audioMotor.rolloffMode = AudioRolloffMode.Linear;
+            audioMotor.priority = Mathf.Min(audioMotor.priority, 48);
             audioMotor.volume = 0;
             audioMotor.pitch = pitchMinimo;
         }
@@ -239,9 +255,33 @@ public class Helicoptero : MonoBehaviour
         {
             PararPorFaltaDeCombustivel();
         }
+        AtualizarAlvoComandoAtaque();
         if (estaVoando) ProcessarMovimento();
         ControlarMotorEHelices();
         InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Aereo, inicioUpdate);
+    }
+
+    public void OrdenarAtaque(Transform alvo, Vector3 pontoFallback)
+    {
+        alvoComandoAtaque = alvo;
+        modoCombateAtivo = true;
+        Decolar(alvo != null ? alvo.position : pontoFallback);
+    }
+
+    private void AtualizarAlvoComandoAtaque()
+    {
+        if (alvoComandoAtaque == null)
+        {
+            return;
+        }
+
+        if (!alvoComandoAtaque.gameObject.activeInHierarchy)
+        {
+            alvoComandoAtaque = null;
+            return;
+        }
+
+        destino = AjustarDestinoParaVoo(alvoComandoAtaque.position);
     }
 
     private void LateUpdate()

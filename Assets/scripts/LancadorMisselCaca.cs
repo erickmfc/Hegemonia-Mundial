@@ -93,6 +93,19 @@ public class LancadorMisselCaca : MonoBehaviour
         tempoUltimoScan = Time.time + UnityEngine.Random.Range(0.05f, 0.85f);
     }
 
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        MissilePrefabAutoBinder.BindLancadorMisselCaca(this);
+    }
+
+    [ContextMenu("Auto configurar missil")]
+    private void AutoConfigurarMissilEditor()
+    {
+        MissilePrefabAutoBinder.BindLancadorMisselCaca(this, true);
+    }
+#endif
+
     void Update()
     {
         if (cronometroRecarga > 0) cronometroRecarga -= Time.deltaTime;

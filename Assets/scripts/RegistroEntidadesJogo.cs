@@ -3,9 +3,12 @@ using UnityEngine;
 
 public static class RegistroEntidadesJogo
 {
+    public static event System.Action EntidadesAlteradas;
+
     private static readonly HashSet<IdentidadeUnidade> Unidades = new HashSet<IdentidadeUnidade>();
     private static readonly HashSet<ControleUnidade> ControlesUnidade = new HashSet<ControleUnidade>();
     private static readonly HashSet<IdentidadeNaval> Navios = new HashSet<IdentidadeNaval>();
+    private static readonly HashSet<IdentidadeIA> IdentidadesIA = new HashSet<IdentidadeIA>();
     private static readonly HashSet<Imovel> Imoveis = new HashSet<Imovel>();
     private static readonly HashSet<GerenciadorAeroporto> Aeroportos = new HashSet<GerenciadorAeroporto>();
     private static readonly HashSet<ControleAviao> Avioes = new HashSet<ControleAviao>();
@@ -19,6 +22,7 @@ public static class RegistroEntidadesJogo
         if (unidade != null)
         {
             Unidades.Add(unidade);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -27,6 +31,7 @@ public static class RegistroEntidadesJogo
         if (unidade != null)
         {
             Unidades.Remove(unidade);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -35,6 +40,7 @@ public static class RegistroEntidadesJogo
         if (unidade != null)
         {
             ControlesUnidade.Add(unidade);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -43,6 +49,25 @@ public static class RegistroEntidadesJogo
         if (unidade != null)
         {
             ControlesUnidade.Remove(unidade);
+            EntidadesAlteradas?.Invoke();
+        }
+    }
+
+    public static void Register(IdentidadeIA identidade)
+    {
+        if (identidade != null)
+        {
+            IdentidadesIA.Add(identidade);
+            EntidadesAlteradas?.Invoke();
+        }
+    }
+
+    public static void Unregister(IdentidadeIA identidade)
+    {
+        if (identidade != null)
+        {
+            IdentidadesIA.Remove(identidade);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -51,6 +76,7 @@ public static class RegistroEntidadesJogo
         if (navio != null)
         {
             Navios.Add(navio);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -59,6 +85,7 @@ public static class RegistroEntidadesJogo
         if (navio != null)
         {
             Navios.Remove(navio);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -67,6 +94,7 @@ public static class RegistroEntidadesJogo
         if (imovel != null)
         {
             Imoveis.Add(imovel);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -75,6 +103,7 @@ public static class RegistroEntidadesJogo
         if (imovel != null)
         {
             Imoveis.Remove(imovel);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -83,6 +112,7 @@ public static class RegistroEntidadesJogo
         if (aeroporto != null)
         {
             Aeroportos.Add(aeroporto);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -91,6 +121,7 @@ public static class RegistroEntidadesJogo
         if (aeroporto != null)
         {
             Aeroportos.Remove(aeroporto);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -99,6 +130,7 @@ public static class RegistroEntidadesJogo
         if (aviao != null)
         {
             Avioes.Add(aviao);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -107,6 +139,7 @@ public static class RegistroEntidadesJogo
         if (aviao != null)
         {
             Avioes.Remove(aviao);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -115,6 +148,7 @@ public static class RegistroEntidadesJogo
         if (pier != null)
         {
             Piers.Add(pier);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -123,6 +157,7 @@ public static class RegistroEntidadesJogo
         if (pier != null)
         {
             Piers.Remove(pier);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -131,6 +166,7 @@ public static class RegistroEntidadesJogo
         if (fabrica != null)
         {
             Fabricas.Add(fabrica);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -139,6 +175,7 @@ public static class RegistroEntidadesJogo
         if (fabrica != null)
         {
             Fabricas.Remove(fabrica);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -147,6 +184,7 @@ public static class RegistroEntidadesJogo
         if (estaleiro != null)
         {
             Estaleiros.Add(estaleiro);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -155,6 +193,7 @@ public static class RegistroEntidadesJogo
         if (estaleiro != null)
         {
             Estaleiros.Remove(estaleiro);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -163,6 +202,7 @@ public static class RegistroEntidadesJogo
         if (heliporto != null)
         {
             Heliportos.Add(heliporto);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -171,6 +211,7 @@ public static class RegistroEntidadesJogo
         if (heliporto != null)
         {
             Heliportos.Remove(heliporto);
+            EntidadesAlteradas?.Invoke();
         }
     }
 
@@ -187,6 +228,11 @@ public static class RegistroEntidadesJogo
     public static void FillNavios(List<IdentidadeNaval> destino)
     {
         Fill(Navios, destino);
+    }
+
+    public static void FillIdentidadesIA(List<IdentidadeIA> destino)
+    {
+        Fill(IdentidadesIA, destino);
     }
 
     public static void FillImoveis(List<Imovel> destino)

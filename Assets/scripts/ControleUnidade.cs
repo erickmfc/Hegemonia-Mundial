@@ -35,8 +35,11 @@ public struct EstadoControleUnidadeSnapshot
 
 public class ControleUnidade : MonoBehaviour
 {
+    private static readonly int VelocidadeAnimatorHash = Animator.StringToHash("Velocidade");
+
     private NavMeshAgent agente;
     private Animator animator; // Referência para as animações
+    private bool animatorPossuiVelocidade;
     
     public GameObject anelSelecao; 
     public bool selecionado = false;
@@ -57,6 +60,7 @@ public class ControleUnidade : MonoBehaviour
     private Helicoptero helicopteroExterno;
     private ControleAviao controleAviao;
     private ControleAviaoCaca controleAviaoCaca;
+    private LancadorMisselCaca lancadorMisselCaca;
     private C700TransporteAereo c700TransporteAereo;
     private HovercraftTransporte hovercraftTransporte;
     private ControleNavioRealista controleNavioRealista;
@@ -99,12 +103,19 @@ public class ControleUnidade : MonoBehaviour
     {
         SanearBoxCollidersComEscalaNegativa();
         agente = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>(); 
+        animator = GetComponent<Animator>();
+        animatorPossuiVelocidade = PossuiParametroFloat(animator, VelocidadeAnimatorHash);
+        AudioRuntime.ConfigurarHierarquia(gameObject);
         
         // Verifica controladores externos
         helicopteroExterno = GetComponent<Helicoptero>();
         controleAviao = GetComponent<ControleAviao>();
         controleAviaoCaca = GetComponent<ControleAviaoCaca>();
+        lancadorMisselCaca = GetComponent<LancadorMisselCaca>();
+        if (lancadorMisselCaca == null)
+        {
+            lancadorMisselCaca = GetComponentInChildren<LancadorMisselCaca>(true);
+        }
         c700TransporteAereo = GetComponent<C700TransporteAereo>();
         hovercraftTransporte = GetComponent<HovercraftTransporte>();
         controleNavioRealista = GetComponent<ControleNavioRealista>();
@@ -421,9 +432,9 @@ public class ControleUnidade : MonoBehaviour
         }
 
         // 3. Controle de Animação (Genérico)
-        if (animator != null && animator.runtimeAnimatorController != null)
+        if (animatorPossuiVelocidade && animator != null && animator.runtimeAnimatorController != null)
         {
-            animator.SetFloat("Velocidade", velocidadeAtual);
+            animator.SetFloat(VelocidadeAnimatorHash, velocidadeAtual);
         }
 
         // 4. Controle de Movimento pelo Mouse (se selecionado)
@@ -436,6 +447,26 @@ public class ControleUnidade : MonoBehaviour
         */
 
         InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Terra, inicioUpdate);
+    }
+
+    private static bool PossuiParametroFloat(Animator alvo, int parametroHash)
+    {
+        if (alvo == null || alvo.runtimeAnimatorController == null)
+        {
+            return false;
+        }
+
+        AnimatorControllerParameter[] parametros = alvo.parameters;
+        for (int i = 0; i < parametros.Length; i++)
+        {
+            AnimatorControllerParameter parametro = parametros[i];
+            if (parametro.nameHash == parametroHash && parametro.type == AnimatorControllerParameterType.Float)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     void MoverParaMouse()
@@ -657,6 +688,69 @@ public class ControleUnidade : MonoBehaviour
         if (controleAviao != null && alvo != null) controleAviao.alvoPrioritarioIA = true;
     }
 
+    public bool EmitirMissaoAereaOfensiva(Vector3 pontoAlvo, Transform alvoTransform)
+    {
+        AtualizarTrilhaOficial();
+        AtualizarEstadoDeBloqueio();
+        if (bloqueioControleAtivo)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: missao aerea ofensiva bloqueada ({motivoBloqueioControle})");
+            return false;
+        }
+
+        DefinirModoCombate(true);
+
+        if (lancadorMisselCaca != null && alvoTransform != null)
+        {
+            lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, 6f);
+        }
+
+        if (controleAviao != null)
+        {
+            controleAviao.alvoEstrategico = pontoAlvo;
+            controleAviao.alvoGPSVoo = pontoAlvo;
+        }
+
+        bool ordemEmitida = EmitirOrdemMover(pontoAlvo, true);
+        if (ordemEmitida)
+        {
+            DefinirAlvoPrioritario(alvoTransform);
+        }
+        return ordemEmitida;
+    }
+
+    public bool EmitirMissaoNavalOfensiva(Vector3 pontoAlvo, Transform alvoTransform, bool manterFormacao, bool cancelarComportamentos)
+    {
+        AtualizarTrilhaOficial();
+        AtualizarEstadoDeBloqueio();
+        if (bloqueioControleAtivo)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: missao naval ofensiva bloqueada ({motivoBloqueioControle})");
+            return false;
+        }
+
+        DefinirModoCombate(true);
+
+        if (lancadorMisselCaca != null && alvoTransform != null)
+        {
+            lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, 6f);
+        }
+
+        if (controleNavioRealista != null && alvoTransform != null)
+        {
+            controleNavioRealista.DefinirDestinoAtaqueLateral(alvoTransform.position);
+            DefinirAlvoPrioritario(alvoTransform);
+            return true;
+        }
+
+        bool ordemEmitida = EmitirOrdemMover(pontoAlvo, cancelarComportamentos);
+        if (ordemEmitida)
+        {
+            DefinirAlvoPrioritario(alvoTransform);
+        }
+        return ordemEmitida;
+    }
+
     public void CancelarOrdemEspecial()
     {
         CancelarOrdemEspecial(true);
@@ -706,6 +800,12 @@ public class ControleUnidade : MonoBehaviour
                 // Debug.Log($"[Bloqueio] {name} recusou mover para Água profunda.");
                 return; 
             }
+        }
+
+        if (c700TransporteAereo != null && c700TransporteAereo.EstaNoSolo && !c700TransporteAereo.AguardandoDestinoAereo)
+        {
+            c700TransporteAereo.ReceberOrdemMover(destino);
+            return;
         }
 
         RegistrarDestinoOrdenado(destino);
@@ -961,7 +1061,8 @@ public class ControleUnidade : MonoBehaviour
         {
             SistemaDeTiro sistema = cacheSistemasDeTiro[i];
             if (sistema == null) continue;
-            sistema.DefinirModoPassivo(!ativo);
+            bool usarSomenteRadarMissil = lancadorMisselCaca != null;
+            sistema.DefinirModoPassivo(usarSomenteRadarMissil || !ativo);
             alterouAlgo = true;
         }
 

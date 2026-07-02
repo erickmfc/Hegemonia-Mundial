@@ -1865,7 +1865,6 @@ GameObject:
   - component: {fileID: 330585544}
   - component: {fileID: 330585547}
   - component: {fileID: 330585548}
-  - component: {fileID: 330585549}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -2012,20 +2011,6 @@ MonoBehaviour:
   campoDeVisaoMax: 85
   alturaMinParaFov: 2
   alturaMaxParaFov: 2500
---- !u!114 &330585549
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 330585543}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2a3d951024223d944ab18d7c73d2c51c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VerificadorAudio
-  executarNoStart: 0
-  permitirTeclaVerificacao: 0
 --- !u!1001 &351101317
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2690,12 +2675,12 @@ MonoBehaviour:
     icone: {fileID: 0}
     glifoFallback: U
   construtorCena: {fileID: 1066512838}
-  autoCarregarFichas: 1
-  catalogo:
-  - {fileID: 11400000, guid: 80d62c9132dade74889dc96868aceeb3, type: 2}
-  - {fileID: 11400000, guid: 69f98666ec5ecb04eb3a82a2fea937f3, type: 2}
-  - {fileID: 11400000, guid: 32ab85a48e6ba6d43b8dfd9fc46bd117, type: 2}
-  - {fileID: 11400000, guid: b9abb8cd25535964988af08ef685b9fb, type: 2}
+   autoCarregarFichas: 0
+   catalogo:
+   - {fileID: 11400000, guid: 80d62c9132dade74889dc96868aceeb3, type: 2}
+   - {fileID: 11400000, guid: 69f98666ec5ecb04eb3a82a2fea937f3, type: 2}
+   - {fileID: 11400000, guid: 32ab85a48e6ba6d43b8dfd9fc46bd117, type: 2}
+   - {fileID: 11400000, guid: b9abb8cd25535964988af08ef685b9fb, type: 2}
   - {fileID: 11400000, guid: 645503ced41fcb1479239e8a947b9aef, type: 2}
   - {fileID: 11400000, guid: 92f3dfebc2a6f524f8fde4fae4e2e566, type: 2}
   - {fileID: 11400000, guid: 33616df4113469543a3551353eee4b3b, type: 2}
@@ -2706,6 +2691,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7437f74e617b5ff4e8d89dfc2f98c68e, type: 2}
   - {fileID: 11400000, guid: 060d1954fe5a40d44b6d0d18f6b8fc4c, type: 2}
   - {fileID: 11400000, guid: d845d5010ae02d349aec41435d88c422, type: 2}
+  - {fileID: 11400000, guid: 5b395e1856df6904bac8519cd4a53ecf, type: 2}
   - {fileID: 11400000, guid: a390fca24fa5f6942b18a2959b1df013, type: 2}
   - {fileID: 11400000, guid: e88a0d4e34d60964fbeab45a370beb7d, type: 2}
   - {fileID: 11400000, guid: c6e5bcf065ceb814faa72126dbbc601b, type: 2}

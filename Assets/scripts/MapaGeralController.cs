@@ -18,6 +18,7 @@ public class MapaGeralController : MonoBehaviour
     private float fogStartOriginal;
     private float fogEndOriginal;
     private FogMode fogModeOriginal;
+    private float volumeAudioOriginal = 1f;
 
     [Header("Configurações do Mapa")]
     public float velocidadeMover  = 120f;
@@ -38,6 +39,8 @@ public class MapaGeralController : MonoBehaviour
 
     // Cache de objetos do mundo para não chamar Find() o tempo todo
     private List<IdentidadeUnidade> _cacheUnidades = new List<IdentidadeUnidade>();
+    private readonly List<MissileThreatTracker> _misseisAtivos = new List<MissileThreatTracker>(64);
+    private readonly List<Projetil> _projeteisAtivos = new List<Projetil>(256);
     private float _tempoRefreshCache = 0f;
 
     void Start()
@@ -79,12 +82,13 @@ public class MapaGeralController : MonoBehaviour
             {
                 Vector3 p = cameraPrincipal.transform.position;
                 cameraMapa.transform.position = new Vector3(p.x, 1350f, p.z);
-                AudioListener.volume = 0.3f;
+                volumeAudioOriginal = AudioListener.volume;
+                AudioListener.volume = 0f;
                 RefreshCache();
             }
             else
             {
-                AudioListener.volume = 1f;
+                AudioListener.volume = volumeAudioOriginal;
             }
         }
 
@@ -103,6 +107,7 @@ public class MapaGeralController : MonoBehaviour
 
     private void OnDisable()
     {
+        AudioListener.volume = volumeAudioOriginal;
         AplicarModoMapa(false);
     }
 
@@ -195,6 +200,8 @@ public class MapaGeralController : MonoBehaviour
 
         // --- Ícones das unidades e prédios no mapa ---
         DesenharIconesNoMapa();
+        DesenharDisparosNoMapa();
+        GUI.Label(new Rect(Screen.width - 330f, barH + 8f, 315f, 22f), "DISPAROS: ciano aliado | vermelho inimigo | amarelo neutro", legStyle);
     }
 
     void DesenharIconesNoMapa()
@@ -247,6 +254,65 @@ public class MapaGeralController : MonoBehaviour
     }
 
     // Desenha um quadrado colorido
+    void DesenharDisparosNoMapa()
+    {
+        if (cameraMapa == null || Event.current.type != EventType.Repaint) return;
+
+        MissileThreatTracker.CopiarAmeacasAtivas(_misseisAtivos);
+        Projetil.CopiarAtivosNoMapa(_projeteisAtivos);
+
+        int inicioMisseis = Mathf.Max(0, _misseisAtivos.Count - 128);
+        for (int i = inicioMisseis; i < _misseisAtivos.Count; i++)
+        {
+            MissileThreatTracker missil = _misseisAtivos[i];
+            if (missil == null || missil.RaizMissil == null) continue;
+            DesenharRastroCombate(missil.RaizMissil.position, missil.ObterVelocidadeAtual(), CorDoDisparo(missil.TeamOrigem), true);
+        }
+
+        int inicioProjeteis = Mathf.Max(0, _projeteisAtivos.Count - 160);
+        for (int i = inicioProjeteis; i < _projeteisAtivos.Count; i++)
+        {
+            Projetil projetil = _projeteisAtivos[i];
+            if (projetil == null || projetil.GetComponent<MissileThreatTracker>() != null) continue;
+            DesenharRastroCombate(projetil.transform.position, projetil.transform.forward, CorDoDisparo(projetil.TeamDono), false);
+        }
+    }
+
+    void DesenharRastroCombate(Vector3 posicao, Vector3 direcao, Color cor, bool missil)
+    {
+        Vector3 tela = cameraMapa.WorldToScreenPoint(posicao);
+        if (tela.z <= 0f) return;
+
+        float sx = tela.x;
+        float sy = Screen.height - tela.y;
+        if (sx < -20f || sx > Screen.width + 20f || sy < -20f || sy > Screen.height + 20f) return;
+
+        Vector3 dir = direcao.sqrMagnitude > 0.001f ? direcao.normalized : Vector3.forward;
+        Vector3 telaFrente = cameraMapa.WorldToScreenPoint(posicao + dir * (missil ? 45f : 20f));
+        Vector2 delta = new Vector2(telaFrente.x - tela.x, -(telaFrente.y - tela.y));
+        if (delta.sqrMagnitude > 0.01f) delta.Normalize();
+
+        GUI.color = new Color(cor.r, cor.g, cor.b, 0.65f);
+        int pontos = missil ? 5 : 3;
+        for (int i = 1; i <= pontos; i++)
+        {
+            float distancia = i * (missil ? 4f : 3f);
+            GUI.DrawTexture(new Rect(sx - delta.x * distancia - 1f, sy - delta.y * distancia - 1f, 2f, 2f), Texture2D.whiteTexture);
+        }
+
+        GUI.color = cor;
+        float tamanho = missil ? 8f : 4f;
+        GUI.DrawTexture(new Rect(sx - tamanho * 0.5f, sy - tamanho * 0.5f, tamanho, tamanho), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+    }
+
+    Color CorDoDisparo(int team)
+    {
+        if (team == meuTeamID) return Color.cyan;
+        if (team > 0) return new Color(1f, 0.2f, 0.12f, 1f);
+        return Color.yellow;
+    }
+
     void DesenharIcone(float cx, float cy, float w, float h, Color cor)
     {
         GUI.color = Color.black;

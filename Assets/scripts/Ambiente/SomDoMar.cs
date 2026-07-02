@@ -1,60 +1,55 @@
 using UnityEngine;
 
 [RequireComponent(typeof(AudioSource))]
-public class SomDoMar : MonoBehaviour
+public sealed class SomDoMar : MonoBehaviour
 {
-    [Header("Configuração")]
-    [Tooltip("Arraste sua câmera aqui (ou deixe vazio para pegar a MainCamera)")]
     public Transform cameraPrincipal;
-
-    [Tooltip("Arraste aqui o Áudio do Mar")]
     public AudioClip clipeDoMar;
+    public float nivelDaAgua = 0f;
+    public float alturaMinima = 5f;
+    public float alturaMaxima = 80f;
 
-    [Header("Ajustes de Altura")]
-    public float nivelDaAgua = 0f; // Altura Y do mar (geralmente 0)
-    public float alturaMinima = 5f; // Altura onde o som é MÁXIMO (bem perto da água)
-    public float alturaMaxima = 80f; // Altura onde o som zera (câmera muito alta)
-    
-    [Range(0, 1f)] 
+    [Range(0f, 1f)]
     public float volumeGeral = 0.8f;
+    public bool tocarAutomaticamente = true;
 
-    private AudioSource audioSource;
+    private AudioSource fonte;
 
-    void Start()
+    private void Awake()
     {
-        audioSource = GetComponent<AudioSource>();
-        
-        // Configurações automáticas do AudioSource
-        audioSource.clip = clipeDoMar;
-        audioSource.loop = true;
-        audioSource.playOnAwake = true;
-        audioSource.spatialBlend = 0f; // 2D (Vamos controlar o volume manualmente por script, melhor para ambiente)
-        audioSource.dopplerLevel = 0f; // Sem efeito doppler
-        
-        if (cameraPrincipal == null && Camera.main != null)
-            cameraPrincipal = Camera.main.transform;
-
-        if (audioSource.clip != null)
-            audioSource.Play();
+        fonte = GetComponent<AudioSource>();
+        if (clipeDoMar != null) fonte.clip = clipeDoMar;
+        fonte.loop = true;
+        fonte.playOnAwake = false;
+        fonte.spatialBlend = 0f;
+        fonte.dopplerLevel = 0f;
+        fonte.priority = Mathf.Min(fonte.priority, 96);
     }
 
-    void Update()
+    private void OnEnable()
     {
-        if (cameraPrincipal == null) return;
+        CameraController.CameraMudouArea += AoMudarAreaDaCamera;
+        if (cameraPrincipal != null) AoMudarAreaDaCamera(cameraPrincipal.position);
+        GarantirReproducao();
+    }
 
-        // 1. O som segue a câmera no X e Z, mas fica preso na altura da água
-        // Isso cria a ilusão de que o mar está "em todo lugar abaixo de você"
-        transform.position = new Vector3(cameraPrincipal.position.x, nivelDaAgua, cameraPrincipal.position.z);
+    private void OnDisable()
+    {
+        CameraController.CameraMudouArea -= AoMudarAreaDaCamera;
+    }
 
-        // 2. Calcular Volume baseado na Altura da Câmera
-        float alturaAtual = cameraPrincipal.position.y;
-        
-        // Fórmula de Interpolação (Lerp Inverso)
-        // Quanto mais perto da alturaMinima, mais perto de 1.
-        // Quanto mais perto da alturaMaxima, mais perto de 0.
-        float t = Mathf.InverseLerp(alturaMaxima, alturaMinima, alturaAtual);
-        
-        // Aplica o volume com uma curva suave (quadrática) para ficar natural
-        audioSource.volume = t * t * volumeGeral;
+    private void AoMudarAreaDaCamera(Vector3 posicao)
+    {
+        if (fonte == null) return;
+        float alturaSobreAgua = Mathf.Max(0f, posicao.y - nivelDaAgua);
+        float fatorAltura = Mathf.InverseLerp(alturaMaxima, alturaMinima, alturaSobreAgua);
+        fonte.volume = fatorAltura * fatorAltura * volumeGeral;
+    }
+
+    private void GarantirReproducao()
+    {
+        if (fonte == null) return;
+        if (fonte.clip == null && clipeDoMar != null) fonte.clip = clipeDoMar;
+        if (tocarAutomaticamente && fonte.clip != null && !fonte.isPlaying) fonte.Play();
     }
 }

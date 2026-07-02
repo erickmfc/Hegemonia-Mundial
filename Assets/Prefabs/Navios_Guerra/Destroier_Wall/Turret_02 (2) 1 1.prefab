@@ -29,7 +29,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 4090176795392385571}
+  m_Father: {fileID: 4090176795392402793}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &4090176795392784553
 PrefabInstance:
@@ -40,6 +40,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 100000, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
+      propertyPath: m_Name
+      value: Turret_02 (2) 1 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 179452, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
       propertyPath: m_Name
       value: Turret_02 (2) 1 1
       objectReference: {fileID: 0}
@@ -118,63 +122,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 400010, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 417216, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3647297641779607559}
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 7225303023925442712}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
---- !u!4 &4090176795392385571 stripped
+--- !u!4 &4090176795392402793 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 400010, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
+  m_CorrespondingSourceObject: {fileID: 417216, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
   m_PrefabInstance: {fileID: 4090176795392784553}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &4090176795392818697 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 100000, guid: 20b61641fab7240cf813c8c166807c47, type: 3}
-  m_PrefabInstance: {fileID: 4090176795392784553}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &7225303023925442712
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4090176795392818697}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 37af128960c2d574f99598557ad1624e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
-  etiquetaAlvo: Inimigo
-  alcance: 400
-  velocidadeGiro: 60
-  limitarRotacao: 1
-  anguloMinimo: -90
-  anguloMaximo: 120
-  tempoEntreTiros: 0.5
-  tamanhoCartucho: 50
-  tempoRecarga: 4
-  pecaQueGira: {fileID: 0}
-  canosDaTorreta: {fileID: 0}
-  locaisDoTiro:
-  - {fileID: 3647297641779607559}
-  municaoPrefab: {fileID: 5864298406509392469, guid: 7d63fada631986340b6342d8658a8c17, type: 3}
-  limitarInclinacao: 1
-  elevacaoMinima: -10
-  elevacaoMaxima: 80
-  somTiro: {fileID: 8300000, guid: ec9f47083560ce74e87495f678b41437, type: 3}
-  somRecarga: {fileID: 0}
-  fogoCano: {fileID: 0}
-  modoPassivo: 0
-  interceptarMisseis: 0
-  usarMisselParaInterceptar: 1
-  misselPrefab: {fileID: 0}
-  locaisDoMissel: []
-  somMissel: {fileID: 0}
-  tempoEntreMisseis: 2
-  capacidadeMisseis: 4
-  tempoRecargaMisseis: 10
-  municoesPorCano: []

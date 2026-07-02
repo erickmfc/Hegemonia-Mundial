@@ -368,6 +368,7 @@ namespace Hegemonia.AI.BrainMaster
             int sentries;
             int ciws;
             int airports;
+            int commercialAirports;
             int heliports;
             int estaleiros;
             int piers;
@@ -387,6 +388,7 @@ namespace Hegemonia.AI.BrainMaster
                 out sentries,
                 out ciws,
                 out airports,
+                out commercialAirports,
                 out heliports,
                 out estaleiros,
                 out piers,
@@ -506,6 +508,7 @@ namespace Hegemonia.AI.BrainMaster
                 navalAnchor,
                 cityHall,
                 airports,
+                commercialAirports,
                 factories,
                 heliports,
                 warehouses,
@@ -642,7 +645,12 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            if (airports < desiredAirports && factories > 0 && QueueBuildAtLand("aeroporto", IA_ZoneType.Air, landAnchor, 90f, 300f, mobilizingBase ? 95 : 94, mobilizingBase ? 24f : 18f))
+            if (airports < desiredAirports && factories > 0 && QueueBuildAtLand("aeroporto militar", IA_ZoneType.Air, landAnchor, 260f, 520f, mobilizingBase ? 95 : 94, mobilizingBase ? 24f : 18f))
+            {
+                return;
+            }
+
+            if (commercialAirports < 1 && airports > 0 && QueueBuildAtLand("aeroporto comercial", IA_ZoneType.Air, landAnchor, 100f, 340f, mobilizingBase ? 92 : 90, mobilizingBase ? 28f : 22f))
             {
                 return;
             }
@@ -750,6 +758,7 @@ namespace Hegemonia.AI.BrainMaster
             out int sentries,
             out int ciws,
             out int airports,
+            out int commercialAirports,
             out int heliports,
             out int estaleiros,
             out int piers,
@@ -771,6 +780,7 @@ namespace Hegemonia.AI.BrainMaster
             sentries = 0;
             ciws = 0;
             airports = 0;
+            commercialAirports = 0;
             heliports = 0;
             estaleiros = 0;
             piers = 0;
@@ -791,37 +801,39 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 string name = IA_Text.Normalize(structure.name);
+                IA_ConstructionMetadata metadata = structure.GetComponent<IA_ConstructionMetadata>();
+                bool hasMetadata = metadata != null && metadata.Capabilities != IA_ConstructionCapability.Auto;
                 if (string.IsNullOrEmpty(name))
                 {
                     continue;
                 }
 
-                if (name.Contains("prefeitura"))
+                if ((hasMetadata && metadata.IsCityHall) || name.Contains("prefeitura") || name.Contains("city hall") || name.Contains("town hall"))
                 {
                     cityHall++;
                 }
 
-                if (name.Contains("quartel general") || name.Contains("quartel_general"))
+                if ((hasMetadata && metadata.IsHeadquarters) || name.Contains("quartel general") || name.Contains("quartel_general") || name.Contains("headquarters") || name == "hq")
                 {
                     hq++;
                 }
 
-                if (name.Contains("tenda") || name.Contains("barraca"))
+                if ((hasMetadata && metadata.IsBarracks) || name.Contains("tenda") || name.Contains("barraca") || name.Contains("barracks"))
                 {
                     barracks++;
                 }
 
-                if (name.Contains("construtor de veiculos") || name.Contains("construtor") || name.Contains("fabrica"))
+                if ((hasMetadata && metadata.IsFactory) || name.Contains("construtor de veiculos") || name.Contains("construtor") || name.Contains("fabrica") || name.Contains("factory") || name.Contains("vehicle factory"))
                 {
                     factories++;
                 }
 
-                if (name.Contains("radar"))
+                if ((hasMetadata && metadata.IsRadar) || name.Contains("radar"))
                 {
                     radars++;
                 }
 
-                if (name.Contains("torre") || name.Contains("sentinela") || name.Contains("metralh") || name.Contains("torreta"))
+                if ((hasMetadata && metadata.IsDefense) || name.Contains("torre") || name.Contains("sentinela") || name.Contains("metralh") || name.Contains("torreta"))
                 {
                     sentries++;
                 }
@@ -831,27 +843,38 @@ namespace Hegemonia.AI.BrainMaster
                     ciws++;
                 }
 
-                if (name.Contains("aeroporto") || name.Contains("base aerea") || name.Contains("airport") || name.Contains("pista"))
+                if (((hasMetadata && metadata.IsAirport && !metadata.IsHeliport)) || name.Contains("aeroporto") || name.Contains("base aerea") || name.Contains("airport") || name.Contains("pista"))
                 {
-                    airports++;
+                    if ((hasMetadata && metadata.IsCommercialAirport) || name.Contains("comercial") || name.Contains("commercial"))
+                    {
+                        commercialAirports++;
+                    }
+                    else if (hasMetadata && metadata.IsMilitaryAirport)
+                    {
+                        airports++;
+                    }
+                    else
+                    {
+                        airports++;
+                    }
                 }
 
-                if (name.Contains("heliporto"))
+                if ((hasMetadata && metadata.IsHeliport) || name.Contains("heliporto") || name.Contains("heliport"))
                 {
                     heliports++;
                 }
 
-                if (name.Contains("estaleiro"))
+                if ((hasMetadata && metadata.IsShipyard) || name.Contains("estaleiro") || name.Contains("shipyard"))
                 {
                     estaleiros++;
                 }
 
-                if (name.Contains("pier"))
+                if ((hasMetadata && metadata.IsPier) || name.Contains("pier"))
                 {
                     piers++;
                 }
 
-                if (name.Contains("plataforma"))
+                if ((hasMetadata && metadata.IsPlatform) || name.Contains("plataforma") || name.Contains("offshore platform"))
                 {
                     plataformas++;
                 }
@@ -861,7 +884,7 @@ namespace Hegemonia.AI.BrainMaster
                     walls++;
                 }
 
-                if (name.Contains("usina"))
+                if ((hasMetadata && metadata.IsPower) || name.Contains("usina") || name.Contains("power plant") || name.Contains("power"))
                 {
                     usinas++;
                 }
@@ -871,13 +894,13 @@ namespace Hegemonia.AI.BrainMaster
                     missiles++;
                 }
 
-                if (name.Contains("armazem") || name.Contains("galpao"))
+                if ((hasMetadata && metadata.IsWarehouse) || name.Contains("armazem") || name.Contains("galpao") || name.Contains("warehouse"))
                 {
                     warehouses++;
                 }
 
                 // Imóveis residenciais (casas, apartamentos, moradias)
-                if (name.Contains("imovel") || name.Contains("casa") || name.Contains("moradia")
+                if ((hasMetadata && metadata.IsCivil) || name.Contains("imovel") || name.Contains("casa") || name.Contains("moradia")
                     || name.Contains("residencia") || name.Contains("house") || name.Contains("apartamento")
                     || name.Contains("habitacao"))
                 {
@@ -1085,11 +1108,17 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            DadosConstrucao resolvedData = null;
+            if (_context.Backend != null)
+            {
+                _context.Backend.TryResolveItem(itemKey, out resolvedData);
+            }
+
             IA_ManualBuildPoint[] manualPoints = brain.GetComponentsInChildren<IA_ManualBuildPoint>(true);
             for (int i = 0; i < manualPoints.Length; i++)
             {
                 IA_ManualBuildPoint point = manualPoints[i];
-                if (point == null || !point.TargetsItem(brain, itemKey))
+                if (point == null || !point.TargetsItem(brain, itemKey, resolvedData))
                 {
                     continue;
                 }
@@ -1128,6 +1157,12 @@ namespace Hegemonia.AI.BrainMaster
                 return ManualBuildCandidateStatus.None;
             }
 
+            DadosConstrucao resolvedData = null;
+            if (_context.Backend != null)
+            {
+                _context.Backend.TryResolveItem(itemKey, out resolvedData);
+            }
+
             Vector3 searchReference = reference;
             if (searchReference == Vector3.zero)
             {
@@ -1140,7 +1175,7 @@ namespace Hegemonia.AI.BrainMaster
             for (int i = 0; i < manualPoints.Length; i++)
             {
                 IA_ManualBuildPoint point = manualPoints[i];
-                if (point == null || !point.TargetsItem(brain, itemKey))
+                if (point == null || !point.TargetsItem(brain, itemKey, resolvedData))
                 {
                     continue;
                 }
@@ -1221,18 +1256,48 @@ namespace Hegemonia.AI.BrainMaster
             ManualBuildCandidateStatus manualStatus = TryResolveManualBuildCandidate(itemKey, anchor, out candidate, out manualPoint, out manualReason);
             if (manualStatus == ManualBuildCandidateStatus.Found)
             {
-                bool trackNavalDiagnostics = ShouldTrackNavalDiagnostic(itemKey, desiredTerrain);
-                if (trackNavalDiagnostics)
-                {
-                    NavalDiagnosticLine("ponto manual | item=" + itemKey + " | marcador=" + manualPoint.GetDisplayLabel());
-                    NavalDiagnosticPoint(candidate, "manual: " + manualPoint.GetDisplayLabel(), new Color(1f, 0.82f, 0.15f, 1f), 3.6f, false);
-                }
+                string manualValidationReason;
+                bool manualTerritoryOk = _context.Backend.BuildService.ValidateTerritoryProbe(itemKey, candidate, out manualValidationReason);
+                bool manualPlacementOk = manualTerritoryOk
+                                         && _context.Backend.BuildService.ValidatePlacement(
+                                             itemKey,
+                                             candidate,
+                                             zone,
+                                             _context.WorldState,
+                                             _context.MapAnalyzer,
+                                             _context.ThreatAnalyzer,
+                                             out manualValidationReason);
 
-                _pendingManualBuildPoint = manualPoint;
-                failureReason = string.Empty;
-                return true;
+                if (!manualPlacementOk)
+                {
+                    bool trackRejectedManual = ShouldTrackNavalDiagnostic(itemKey, desiredTerrain);
+                    if (trackRejectedManual)
+                    {
+                        NavalDiagnosticLine("ponto manual rejeitado | item=" + itemKey + " | motivo=" + manualValidationReason);
+                        NavalDiagnosticPoint(candidate, "manual rejeitado: " + manualValidationReason, new Color(1f, 0.32f, 0.2f, 1f), 3.8f);
+                    }
+
+                    manualPoint = null;
+                    manualReason = string.IsNullOrEmpty(manualValidationReason)
+                        ? "ponto manual invalido"
+                        : "ponto manual invalido: " + manualValidationReason;
+                }
+                else
+                {
+                    bool trackNavalDiagnostics = ShouldTrackNavalDiagnostic(itemKey, desiredTerrain);
+                    if (trackNavalDiagnostics)
+                    {
+                        NavalDiagnosticLine("ponto manual | item=" + itemKey + " | marcador=" + manualPoint.GetDisplayLabel());
+                        NavalDiagnosticPoint(candidate, "manual: " + manualPoint.GetDisplayLabel(), new Color(1f, 0.82f, 0.15f, 1f), 3.6f, false);
+                    }
+
+                    _pendingManualBuildPoint = manualPoint;
+                    failureReason = string.Empty;
+                    return true;
+                }
             }
-            else if (manualStatus == ManualBuildCandidateStatus.Blocked)
+
+            if (manualStatus == ManualBuildCandidateStatus.Blocked)
             {
                 bool trackNavalDiagnostics = ShouldTrackNavalDiagnostic(itemKey, desiredTerrain);
                 if (trackNavalDiagnostics)
@@ -1242,6 +1307,27 @@ namespace Hegemonia.AI.BrainMaster
 
                 failureReason = manualReason;
                 return false;
+            }
+
+            if (_context.ConstructionPlanner != null)
+            {
+                IA_LotCandidate plannedLot;
+                string plannerReason;
+                if (_context.ConstructionPlanner.TryPlanBuild(itemKey, zone, anchor, desiredTerrain, out plannedLot, out plannerReason)
+                    && plannedLot != null)
+                {
+                    candidate = plannedLot.Position;
+                    failureReason = string.Empty;
+
+                    if (ShouldTrackNavalDiagnostic(itemKey, desiredTerrain))
+                    {
+                        NavalDiagnosticLine("planner aprovou lote | item=" + itemKey + " | setor=" + plannedLot.Sector + " | score=" + plannedLot.Score.ToString("0.0"));
+                        NavalDiagnosticPoint(candidate, "planner: " + itemKey, new Color(0.3f, 0.9f, 0.6f, 1f), 3.4f, false);
+                    }
+
+                    _pendingManualBuildPoint = null;
+                    return true;
+                }
             }
 
             if (desiredTerrain == IA_TerrainType.Water)
@@ -1367,6 +1453,7 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 navalAnchor,
             int cityHall,
             int airports,
+            int commercialAirports,
             int factories,
             int heliports,
             int warehouses,
@@ -1419,9 +1506,9 @@ namespace Hegemonia.AI.BrainMaster
                         return AdvanceBootstrapAfterTime(
                             elapsed,
                             8f,
-                            IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial,
-                            "usina pronta; aguardando t=8s para aeroporto comercial",
-                            "abrindo fase do aeroporto comercial");
+                            IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
+                            "usina pronta; aguardando t=8s para aeroporto militar",
+                            "abrindo fase do aeroporto militar");
                     }
 
                     if (elapsed < 6f)
@@ -1433,7 +1520,7 @@ namespace Hegemonia.AI.BrainMaster
                     if (brain.GetBootstrapStageElapsed(now) >= 20f)
                     {
                         brain.SetBootstrapStage(
-                            IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial,
+                            IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
                             "usina adiada; seguindo bootstrap e retomando depois");
                         return true;
                     }
@@ -1451,41 +1538,10 @@ namespace Hegemonia.AI.BrainMaster
                         "usina");
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial:
-                    if (_context.WorldState.ForceSnapshot.CommercialAirportCount > 0)
-                    {
-                        return AdvanceBootstrapAfterTime(
-                            elapsed,
-                            10f,
-                            IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
-                            "aeroporto comercial pronto; aguardando t=10s para aeroporto militar",
-                            "abrindo fase do aeroporto militar");
-                    }
-
-                    if (elapsed < 8f)
-                    {
-                        brain.SetBootstrapStatus("aguardando t=8s para iniciar aeroporto comercial");
-                        return true;
-                    }
-
-                    if (brain.GetBootstrapStageElapsed(now) >= 25f)
-                    {
-                        brain.SetBootstrapStage(
-                            IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
-                            "aeroporto comercial adiado; seguindo bootstrap e retomando depois");
-                        return true;
-                    }
-
-                    return TryBootstrapMandatoryLandBuild(
-                        "aeroporto_comercial",
-                        landAnchor,
-                        IA_ZoneType.Air,
-                        60f,
-                        400f,
-                        975,
-                        4f,
-                        "aeroporto comercial",
-                        "pista comercial",
-                        "comercial");
+                    brain.SetBootstrapStage(
+                        IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
+                        "aeroporto comercial saiu do bootstrap obrigatorio; priorizando aeroporto militar");
+                    return true;
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildAeroporto:
                     if (airports > 0)
@@ -1513,17 +1569,16 @@ namespace Hegemonia.AI.BrainMaster
                     }
 
                     return TryBootstrapMandatoryLandBuild(
-                        "aeroporto",
+                        "aeroporto militar",
                         landAnchor,
                         IA_ZoneType.Air,
                         40f,
                         300f,
                         980,
                         4f,
-                        "aeroporto",
-                        "base aerea",
-                        "airport",
-                        "pista");
+                        "aeroporto militar",
+                        "base aerea militar",
+                        "military airport");
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildVehicleFactory:
                     if (factories > 0)
@@ -1697,8 +1752,7 @@ namespace Hegemonia.AI.BrainMaster
                         975,
                         10f,
                         "pier",
-                        "dock",
-                        "porto");
+                        "dock");
 
                 case IA_BrainMaster.IA_BootstrapStage.HoldShipLaunch:
                     brain.SetBootstrapStatus("navio produzido; aguardando saida segura para o mar");
@@ -3548,6 +3602,7 @@ namespace Hegemonia.AI.BrainMaster
             bool foundCoast = false;
             float bestLandScore = float.MinValue;
             float bestCoastScore = float.MinValue;
+            int territoryAnchorsScanned = 0;
 
             for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
             {
@@ -3568,6 +3623,14 @@ namespace Hegemonia.AI.BrainMaster
                         continue;
                     }
                 }
+
+                // Terrain probing is expensive. Three territorial anchors are enough to
+                // establish a stable coast reference; the result is cached below.
+                if (territoryAnchorsScanned >= 3)
+                {
+                    break;
+                }
+                territoryAnchorsScanned++;
 
                 Vector3 center = EnsureDryLandAnchor(structure.transform.position);
                 float markerRadius = marker != null ? marker.raioDeDominio : (isGovernment ? 300f : 140f);
@@ -3611,11 +3674,12 @@ namespace Hegemonia.AI.BrainMaster
             _cachedTerritoryLandAnchor = landAnchor;
             _cachedTerritoryCoastAnchor = coastAnchor;
             _cachedTerritoryAnchorResolved = resolved;
-            _cachedTerritoryAnchorsUntil = now + (resolved ? 4f : 1.5f);
+            _cachedTerritoryAnchorsUntil = now + (resolved ? 30f : 8f);
 
             EndTimingScope(
                 "TryResolveFriendlyTerritorySurfaceAnchors",
-                "structures=" + structureCount + " | foundLand=" + foundLand + " | foundCoast=" + foundCoast,
+                "structures=" + structureCount + " | scanned=" + territoryAnchorsScanned
+                    + " | foundLand=" + foundLand + " | foundCoast=" + foundCoast,
                 profileStart,
                 1.50f);
             return resolved;
@@ -3633,39 +3697,12 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            Vector3 bestAnchor = coastalAnchor;
-            float bestScore = float.MinValue;
-            bool foundBetter = false;
-            List<Vector3> anchors = BuildBootstrapLandAnchors(reference != Vector3.zero ? reference : landAnchor);
-            int anchorsTried = 0;
-            for (int i = 0; i < anchors.Count; i++)
-            {
-                Vector3 candidate;
-                if (!(TryFindDirectCoastalAnchor(anchors[i], out candidate) || TryFindCoastalAnchor(anchors[i], out candidate)))
-                {
-                    continue;
-                }
-
-                anchorsTried++;
-                float score;
-                if (!TryScoreCoastalAnchorCandidate(reference != Vector3.zero ? reference : landAnchor, candidate, candidate - anchors[i], out score))
-                {
-                    continue;
-                }
-
-                if (!foundBetter || score > bestScore)
-                {
-                    foundBetter = true;
-                    bestScore = score;
-                    bestAnchor = candidate;
-                }
-            }
-
-            coastalAnchor = foundBetter ? bestAnchor : coastalAnchor;
-            bool resolved = coastalAnchor != Vector3.zero;
+            // Surface resolution already validates and scores a coastal point. Re-scanning
+            // every base anchor here caused 400-500 ms stalls on the main thread.
+            bool resolved = true;
             EndTimingScope(
                 "TryResolveFriendlyTerritoryCoastalAnchor",
-                "anchors=" + anchors.Count + " | tried=" + anchorsTried + " | resolved=" + resolved,
+                "cached-surface=true | resolved=true",
                 profileStart,
                 2.00f);
             return resolved;

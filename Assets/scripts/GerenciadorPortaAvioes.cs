@@ -487,8 +487,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             {
                 _menuCarrierAtivo = false;
                 GestorMenusExclusivos.Fechar(this);
-                PortaAvioesUIController ui = GetComponent<PortaAvioesUIController>();
-                if (ui != null) ui.ToggleMenu(false);
                 return;
             }
 
@@ -497,11 +495,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             else GestorMenusExclusivos.Fechar(this);
             _menuCarrierAtivo = novoEstado;
 
-            PortaAvioesUIController uiController = GetComponent<PortaAvioesUIController>();
-            if (uiController != null)
-            {
-                uiController.ToggleMenu(_menuCarrierAtivo);
-            }
         }
 
         // ==========================================
@@ -557,12 +550,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
 
         // Auto-replenish patio from hangar periodically if space is available
-        if (avioesNoHangar.Count > 0 && Time.time >= _tempoProximoReporPatioCarrier)
-        {
-            _tempoProximoReporPatioCarrier = Time.time + 2.0f;
-            ReporPatioComAvioesDoHangar();
-        }
-
         // 6. SISTEMA DE "CONVÈS ADERENTE" (Parenting)
         // Garante que aviões no navio se movam JUNTO com o navio
         GerenciarParentescoAeronaves();
@@ -1617,11 +1604,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (vagaLivre != null)
         {
             return vagaLivre;
-        }
-
-        if (waypointsPatio != null && waypointsPatio.Count > 0)
-        {
-            return waypointsPatio[0];
         }
 
         return null;

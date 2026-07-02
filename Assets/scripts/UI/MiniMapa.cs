@@ -55,6 +55,8 @@ public class MiniMapa : MonoBehaviour
 
     // Ícones de unidades
     private List<MapaIcone> _icones = new List<MapaIcone>();
+    private static readonly Dictionary<int, Sprite> _spriteCirculoCache = new Dictionary<int, Sprite>(4);
+    private float _proximoRefreshIcones;
 
     private struct MapaIcone
     {
@@ -111,7 +113,17 @@ public class MiniMapa : MonoBehaviour
             _trianguloJogador.transform.rotation = Quaternion.identity; // Sempre apontando para cima
         }
 
-        AtualizarIcones();
+        float intervaloIcones = DiagnosticoDesempenhoJogo.RuntimeSaturado()
+            ? 0.12f
+            : DiagnosticoDesempenhoJogo.RuntimeSobPressao()
+                ? 0.08f
+                : 0.05f;
+
+        if (Time.unscaledTime >= _proximoRefreshIcones)
+        {
+            _proximoRefreshIcones = Time.unscaledTime + intervaloIcones;
+            AtualizarIcones();
+        }
     }
 
     void InicializarSeNecessario()
@@ -274,7 +286,7 @@ public class MiniMapa : MonoBehaviour
         Mask mascara = mapaObj.AddComponent<Mask>();
         mascara.showMaskGraphic = false;
         Image imgMascara = mapaObj.AddComponent<Image>();
-        imgMascara.sprite = CriarSpriteCirculo(256);
+        imgMascara.sprite = ObterSpriteCirculo(256);
         imgMascara.color = Color.white;
 
         // Imagem da RenderTexture
@@ -334,7 +346,7 @@ public class MiniMapa : MonoBehaviour
         rt.offsetMax = Vector2.zero;
 
         Image img = obj.AddComponent<Image>();
-        img.sprite = CriarSpriteCirculo(256);
+        img.sprite = ObterSpriteCirculo(256);
         img.type = Image.Type.Simple;
         img.color = new Color(0, 0, 0, 0f); // Transparente — só para referência
         img.raycastTarget = false;
@@ -378,7 +390,7 @@ public class MiniMapa : MonoBehaviour
 
         Image img = iconObj.AddComponent<Image>();
         img.color = ehInimigo ? new Color(1f, 0.2f, 0.2f) : new Color(0.2f, 0.8f, 0.3f);
-        img.sprite = CriarSpriteCirculo(16);
+        img.sprite = ObterSpriteCirculo(16);
 
         _icones.Add(new MapaIcone { alvo = unidade, rect = rt, img = img, ehInimigo = ehInimigo });
     }
@@ -399,17 +411,30 @@ public class MiniMapa : MonoBehaviour
         rt.sizeDelta = tamanho;
 
         Image img = obj.AddComponent<Image>();
-        img.sprite = CriarSpriteCirculo(256);
+        img.sprite = ObterSpriteCirculo(256);
         img.color = cor;
         img.type = Image.Type.Simple;
 
         return obj;
     }
 
-    Sprite CriarSpriteCirculo(int resolucao)
+    private static Sprite ObterSpriteCirculo(int resolucao)
+    {
+        if (_spriteCirculoCache.TryGetValue(resolucao, out Sprite cache) && cache != null)
+        {
+            return cache;
+        }
+
+        Sprite sprite = CriarSpriteCirculo(resolucao);
+        _spriteCirculoCache[resolucao] = sprite;
+        return sprite;
+    }
+
+    private static Sprite CriarSpriteCirculo(int resolucao)
     {
         Texture2D tex = new Texture2D(resolucao, resolucao, TextureFormat.RGBA32, false);
         tex.filterMode = FilterMode.Bilinear;
+        tex.hideFlags = HideFlags.DontSave;
 
         Vector2 centro = new Vector2(resolucao / 2f, resolucao / 2f);
         float raio = resolucao / 2f - 1f;
@@ -425,8 +450,10 @@ public class MiniMapa : MonoBehaviour
         }
         tex.Apply();
 
-        return Sprite.Create(tex, new Rect(0, 0, resolucao, resolucao),
+        Sprite sprite = Sprite.Create(tex, new Rect(0, 0, resolucao, resolucao),
                              new Vector2(0.5f, 0.5f), resolucao / 2f);
+        sprite.hideFlags = HideFlags.DontSave;
+        return sprite;
     }
 
     void OnDestroy()

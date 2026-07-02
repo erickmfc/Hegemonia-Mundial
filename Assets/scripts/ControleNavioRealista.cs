@@ -105,6 +105,7 @@ public class ControleNavioRealista : MonoBehaviour
     private float anguloLemeAtual = 0f; // -1 a 1 (Posição do Leme)
     private Vector3 destinoAtual;
     private bool temDestino = false;
+    public bool TemDestinoAtivo => temDestino;
     
     // Variáveis auxiliares visual
     private float tempoVibracao = 0f;
@@ -125,7 +126,7 @@ public class ControleNavioRealista : MonoBehaviour
     private int totalTubosValidos = 0;
     private float proximoLancamentoTorpedo = 0f;
     private float proximaBuscaTorpedoAtivo = 0f;
-    private bool modoCombateTorpedosAtivo = true;
+    private bool modoCombateTorpedosAtivo = false;
     private IdentidadeUnidade minhaIdentidade;
     private static readonly Collider[] bufferAlvosTorpedo = new Collider[96];
     private static readonly List<IdentidadeUnidade> unidadesRegistradasTorpedo = new List<IdentidadeUnidade>(256);
@@ -251,7 +252,10 @@ public class ControleNavioRealista : MonoBehaviour
             if (InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickSensor, intervaloArma))
             {
                 long inicioArma = InfraPerformanceGameplay.MarcarInicioMedicao();
-                TentarAtaqueTorpedoModoAtivo();
+                if (modoOperacao == ModoOperacao.Ativo)
+                {
+                    TentarAtaqueTorpedoModoAtivo();
+                }
                 InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Arma, inicioArma);
             }
         }
@@ -788,7 +792,8 @@ public class ControleNavioRealista : MonoBehaviour
 
             // Guarda: se o destino é praticamente o mesmo e já temos um path ativo,
             // não interrompe a navegação (evita engasgamento durante patrulha).
-            if (Vector3.Distance(destinoAtual, destino) < 2f
+            if (temDestino
+                && Vector3.Distance(destinoAtual, destino) < 2f
                 && agente.isOnNavMesh
                 && (agente.hasPath || agente.pathPending))
             {
@@ -888,6 +893,54 @@ public class ControleNavioRealista : MonoBehaviour
         {
             proximaBuscaTorpedoAtivo = 0f;
         }
+    }
+
+    public void DefinirModoOperacao(ModoOperacao novoModo, bool logar = true)
+    {
+        modoOperacao = novoModo;
+        modoCombateTorpedosAtivo = novoModo == ModoOperacao.Ativo;
+        proximaBuscaTorpedoAtivo = 0f;
+
+        if (logar)
+        {
+            Debug.Log($"[ControleNavioRealista] Modo alterado para {modoOperacao} em {name}.");
+        }
+    }
+
+    public void DefinirDestinoAtaqueLateral(Vector3 alvo, float deslocamentoLateral = 140f, float recuo = 70f)
+    {
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
+        DefinirModoCombateTorpedos(true);
+
+        Vector3 direcaoParaAlvo = alvo - transform.position;
+        direcaoParaAlvo.y = 0f;
+        if (direcaoParaAlvo.sqrMagnitude < 0.01f)
+        {
+            direcaoParaAlvo = transform.forward;
+        }
+        direcaoParaAlvo.Normalize();
+
+        Vector3 lateral = Vector3.Cross(Vector3.up, direcaoParaAlvo);
+        lateral.y = 0f;
+        if (lateral.sqrMagnitude < 0.01f)
+        {
+            lateral = transform.right;
+            lateral.y = 0f;
+        }
+        if (lateral.sqrMagnitude < 0.01f)
+        {
+            lateral = Vector3.right;
+        }
+        lateral.Normalize();
+
+        Vector3 destinoAtaque = alvo + (lateral * Mathf.Max(40f, deslocamentoLateral)) - (direcaoParaAlvo * Mathf.Max(0f, recuo));
+        destinoAtaque.y = transform.position.y;
+        DefinirDestino(destinoAtaque);
     }
 
     public bool ModoCombateTorpedosAtivo()

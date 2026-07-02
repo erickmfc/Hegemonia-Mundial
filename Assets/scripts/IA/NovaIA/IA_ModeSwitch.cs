@@ -1,4 +1,6 @@
+using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Hegemonia.AI.Master
 {
@@ -7,29 +9,41 @@ namespace Hegemonia.AI.Master
     {
         public enum AIStackMode
         {
-            NovaIA = 0,
-            BrainMaster = 1,
+            BrainMaster = 0,
+            NovaIA = 1,
             Legacy = 2
         }
 
-        [SerializeField] private AIStackMode _mode = AIStackMode.NovaIA;
+        private static readonly Type[] LegacyStackTypes =
+        {
+            typeof(IA_Comandante),
+            typeof(IA_General),
+            typeof(IA_General_Pro),
+            typeof(IA_Arquiteto_Pro),
+            typeof(CerebroIA),
+            typeof(IA_Dominadora),
+            typeof(IA_Suprema)
+        };
+
+        [SerializeField] private AIStackMode _mode = AIStackMode.BrainMaster;
         [SerializeField] private bool _applyOnAwake = true;
         [SerializeField] private bool _logChanges = false;
 
         private static IA_ModeSwitch _instance;
-        private bool _hasAppliedLocally;
+        private AIStackMode _lastAppliedMode = (AIStackMode)(-1);
+        private bool _sceneLoadedHooked;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsureDefaultModeSwitch()
         {
-            IA_ModeSwitch existing = Object.FindFirstObjectByType<IA_ModeSwitch>();
+            IA_ModeSwitch existing = UnityEngine.Object.FindFirstObjectByType<IA_ModeSwitch>();
             if (existing != null)
             {
                 return;
             }
 
             GameObject root = new GameObject("IA_ModeSwitch_Auto");
-            Object.DontDestroyOnLoad(root);
+            UnityEngine.Object.DontDestroyOnLoad(root);
             root.AddComponent<IA_ModeSwitch>();
         }
 
@@ -43,22 +57,53 @@ namespace Hegemonia.AI.Master
 
             _instance = this;
             DontDestroyOnLoad(gameObject);
+            HookSceneLoaded();
 
             if (_applyOnAwake)
             {
-                ApplyMode();
+                ApplyMode(true);
             }
+        }
+
+        private void OnEnable()
+        {
+            HookSceneLoaded();
+            if (_applyOnAwake)
+            {
+                ApplyMode(true);
+            }
+        }
+
+        private void OnDisable()
+        {
+            UnhookSceneLoaded();
+        }
+
+        private void OnDestroy()
+        {
+            if (_instance == this)
+            {
+                _instance = null;
+            }
+
+            UnhookSceneLoaded();
         }
 
         [ContextMenu("Apply Mode")]
         public void ApplyMode()
         {
-            if (_hasAppliedLocally)
+            ApplyMode(false);
+        }
+
+        public void ApplyMode(bool force)
+        {
+            if (!force && _lastAppliedMode == _mode)
             {
                 return;
             }
 
-            _hasAppliedLocally = true;
+            _lastAppliedMode = _mode;
+
             switch (_mode)
             {
                 case AIStackMode.NovaIA:
@@ -73,41 +118,73 @@ namespace Hegemonia.AI.Master
             }
         }
 
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            _lastAppliedMode = (AIStackMode)(-1);
+            if (_applyOnAwake)
+            {
+                ApplyMode(true);
+            }
+        }
+
+        private void HookSceneLoaded()
+        {
+            if (_sceneLoadedHooked)
+            {
+                return;
+            }
+
+            SceneManager.sceneLoaded += OnSceneLoaded;
+            _sceneLoadedHooked = true;
+        }
+
+        private void UnhookSceneLoaded()
+        {
+            if (!_sceneLoadedHooked)
+            {
+                return;
+            }
+
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            _sceneLoadedHooked = false;
+        }
+
         private void ApplyNovaIAMode()
         {
-            SetScriptsEnabledByTypeName("IA_MasterController", true);
-            SetScriptsEnabledByNamespace("Hegemonia.AI.BrainMaster", false);
-            SetScriptsEnabledByTypeName("IA_Dominadora", false);
-            SetScriptsEnabledByTypeName("IA_Suprema", false);
-            SetScriptsEnabledByTypeName("IA_Comandante", false);
-            SetScriptsEnabledByTypeName("IA_General", false);
-            SetScriptsEnabledByTypeName("CerebroIA", false);
+            SetNamespaceEnabled("Hegemonia.AI.BrainMaster", false);
+            SetNamespaceEnabled("Hegemonia.AI.DEUSA", false);
+            SetExactTypesEnabled(false, LegacyStackTypes);
+            SetNamespaceEnabled("Hegemonia.AI.Master", true, excludeSelf: true);
         }
 
         private void ApplyBrainMasterMode()
         {
-            SetScriptsEnabledByTypeName("IA_MasterController", false);
-            SetScriptsEnabledByNamespace("Hegemonia.AI.BrainMaster", true);
+            SetNamespaceEnabled("Hegemonia.AI.Master", false, excludeSelf: true);
+            SetNamespaceEnabled("Hegemonia.AI.DEUSA", true);
+            SetNamespaceEnabled("Hegemonia.AI.BrainMaster", true);
+            SetExactTypesEnabled(false, LegacyStackTypes);
         }
 
         private void ApplyLegacyMode()
         {
-            SetScriptsEnabledByTypeName("IA_MasterController", false);
-            SetScriptsEnabledByNamespace("Hegemonia.AI.BrainMaster", false);
-            SetScriptsEnabledByTypeName("IA_Dominadora", true);
-            SetScriptsEnabledByTypeName("IA_Suprema", true);
-            SetScriptsEnabledByTypeName("IA_Comandante", true);
-            SetScriptsEnabledByTypeName("IA_General", true);
-            SetScriptsEnabledByTypeName("CerebroIA", true);
+            SetNamespaceEnabled("Hegemonia.AI.BrainMaster", false);
+            SetNamespaceEnabled("Hegemonia.AI.DEUSA", false);
+            SetNamespaceEnabled("Hegemonia.AI.Master", false, excludeSelf: true);
+            SetExactTypesEnabled(true, LegacyStackTypes);
         }
 
-        private void SetScriptsEnabledByNamespace(string ns, bool enabledValue)
+        private void SetNamespaceEnabled(string ns, bool enabledValue, bool excludeSelf = false)
         {
             MonoBehaviour[] all = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
             for (int i = 0; i < all.Length; i++)
             {
                 MonoBehaviour mb = all[i];
                 if (mb == null)
+                {
+                    continue;
+                }
+
+                if (excludeSelf && mb == this)
                 {
                     continue;
                 }
@@ -118,21 +195,17 @@ namespace Hegemonia.AI.Master
                     continue;
                 }
 
-                if (mb.enabled == enabledValue)
-                {
-                    continue;
-                }
-
-                mb.enabled = enabledValue;
-                if (_logChanges)
-                {
-                    Debug.Log("[IA_ModeSwitch] " + mb.GetType().Name + " => " + enabledValue, mb);
-                }
+                SetEnabled(mb, enabledValue);
             }
         }
 
-        private void SetScriptsEnabledByTypeName(string typeNameContains, bool enabledValue)
+        private void SetExactTypesEnabled(bool enabledValue, params Type[] types)
         {
+            if (types == null || types.Length == 0)
+            {
+                return;
+            }
+
             MonoBehaviour[] all = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
             for (int i = 0; i < all.Length; i++)
             {
@@ -142,22 +215,37 @@ namespace Hegemonia.AI.Master
                     continue;
                 }
 
-                string typeName = mb.GetType().Name;
-                if (typeName.IndexOf(typeNameContains, System.StringComparison.OrdinalIgnoreCase) < 0)
+                Type behaviourType = mb.GetType();
+                bool matches = false;
+                for (int t = 0; t < types.Length; t++)
+                {
+                    if (behaviourType == types[t])
+                    {
+                        matches = true;
+                        break;
+                    }
+                }
+
+                if (!matches)
                 {
                     continue;
                 }
 
-                if (mb.enabled == enabledValue)
-                {
-                    continue;
-                }
+                SetEnabled(mb, enabledValue);
+            }
+        }
 
-                mb.enabled = enabledValue;
-                if (_logChanges)
-                {
-                    Debug.Log("[IA_ModeSwitch] " + typeName + " => " + enabledValue, mb);
-                }
+        private void SetEnabled(MonoBehaviour behaviour, bool enabledValue)
+        {
+            if (behaviour.enabled == enabledValue)
+            {
+                return;
+            }
+
+            behaviour.enabled = enabledValue;
+            if (_logChanges)
+            {
+                Debug.Log("[IA_ModeSwitch] " + behaviour.GetType().Name + " => " + enabledValue, behaviour);
             }
         }
     }

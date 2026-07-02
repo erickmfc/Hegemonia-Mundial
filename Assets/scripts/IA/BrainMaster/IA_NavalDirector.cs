@@ -5,7 +5,7 @@ namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_NavalDirector : IIAUpdateModule
     {
-        private const float ForcedNavalStrikeStartSeconds = 60f;
+        private const float ForcedNavalStrikeStartSeconds = 40f;
         private readonly IA_Context _context;
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
         private readonly List<IA_StrategicTargetData> _strategicTargetsBuffer = new List<IA_StrategicTargetData>(6);
@@ -216,6 +216,7 @@ namespace Hegemonia.AI.BrainMaster
             {
                 Vector3 attackAxis = ResolveAttackPoint(stagePoint, target.position, 0f, 520f);
                 QueueAttack("naval_heavy", _heavyActiveBuffer, target, attackAxis, 88, 3.8f);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_naval", _heavyActiveBuffer.Count);
             }
         }
 
@@ -298,7 +299,7 @@ namespace Hegemonia.AI.BrainMaster
             int heavyCount = CountUnits(heavy);
             int subCount = CountUnits(submarine);
             int combatCount = escortCount + heavyCount + subCount;
-            int minCombat = _context.Brain != null && (int)_context.Brain.StrategicPhase >= (int)IA_StrategicPhase.PressaoEconomica ? 5 : 4;
+            int minCombat = _context.Brain != null && (int)_context.Brain.StrategicPhase >= (int)IA_StrategicPhase.PressaoEconomica ? 4 : 3;
             if (combatCount < minCombat)
             {
                 return false;
@@ -312,8 +313,10 @@ namespace Hegemonia.AI.BrainMaster
             int assembled = CountUnitsNear(escort, assemblyCenter, 420f)
                            + CountUnitsNear(heavy, assemblyCenter, 420f)
                            + CountUnitsNear(submarine, assemblyCenter, 460f);
-            int required = Mathf.Clamp(combatCount - 1, 2, combatCount);
-            return assembled >= required;
+            int required = Mathf.Clamp(combatCount - 2, 2, combatCount);
+            bool ready = assembled >= required;
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("naval_strike_ready", ready ? 1 : 0);
+            return ready;
         }
 
         private Vector3 ResolveAssemblyPoint(Vector3 baseCenter, Vector3 objective)

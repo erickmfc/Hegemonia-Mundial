@@ -46,7 +46,10 @@ public class MenuComandoController : MonoBehaviour
     // Elementos do mapa
     private VisualElement mapaUnidadesLayer;
     private VisualElement mapaLinhasLayer;
+    private VisualElement painelMapa;
+    private Label mapaTitulo;
     private VisualElement radarSweep;
+    private VisualElement mapaCameraMarker;
     private float radarAngulo;
 
     // Elementos FLIR
@@ -90,11 +93,38 @@ public class MenuComandoController : MonoBehaviour
     private Label ordemFeedback;
 
     // Mapa — cache de VisualElements por instância
-    private readonly Dictionary<int, VisualElement> mapaElementos = new Dictionary<int, VisualElement>();
+    private sealed class MapaItemUI
+    {
+        public VisualElement Root;
+        public Label Label;
+        public VisualElement Marcador;
+        public VisualElement Ring;
+        public VisualElement HpFill;
+        public ControleUnidade Controle;
+        public SistemaDeDanos Dano;
+        public IdentidadeUnidade Identidade;
+        public bool UltimoDestruido;
+    }
+
+    private readonly Dictionary<int, MapaItemUI> mapaElementos = new Dictionary<int, MapaItemUI>();
+    private readonly HashSet<int> mapaVivos = new HashSet<int>();
+    private readonly List<int> mapaRemovidos = new List<int>(64);
+    private readonly List<VisualElement> linhasOrdemPool = new List<VisualElement>(64);
+    private int linhasOrdemAtivas;
+
+    private readonly List<IdentidadeUnidade> cacheUnidadesMapa = new List<IdentidadeUnidade>(256);
+    private readonly List<ControleUnidade> cacheControlesPersistencia = new List<ControleUnidade>(256);
+    private readonly List<IdentidadeIA> cacheIdentidadesIA = new List<IdentidadeIA>(64);
+    private readonly HashSet<int> unidadesSelecionadasIds = new HashSet<int>();
+    private float proximoRefreshCachesEntidades;
+    private bool cachesEntidadesSujo = true;
+    private MiniMapa miniMapaCache;
 
     // Unidade selecionada DENTRO DO MENU
     private ControleUnidade unidadeSelecionadaMenu; // Unidade focada (telemetria e FLIR)
     private readonly List<ControleUnidade> unidadesSelecionadasMenu = new List<ControleUnidade>(); // Lista de todas as selecionadas no menu
+    private const string PlayerPrefsMenuFocusKey = "hegemonia.menu.comando.foco";
+    private const string PlayerPrefsMenuSelectionKey = "hegemonia.menu.comando.selecionadas";
 
     // Referências a sistemas do jogo
     private GerenteSelecao gerenteSelecao;
@@ -124,6 +154,7 @@ public class MenuComandoController : MonoBehaviour
     {
         if (Instancia != null && Instancia != this) { Destroy(gameObject); return; }
         Instancia = this;
+        RegistroEntidadesJogo.EntidadesAlteradas += MarcarCachesEntidadesSujo;
 
         uiDoc = GetComponent<UIDocument>();
     }
@@ -219,7 +250,13 @@ public class MenuComandoController : MonoBehaviour
         AtualizarRelogio();
 
         // Atualiza mapa a cada 0.1s para não sobrecarregar
-        if (tickMapa >= 0.1f)
+        float intervaloMapa = DiagnosticoDesempenhoJogo.RuntimeSaturado()
+            ? 0.18f
+            : DiagnosticoDesempenhoJogo.RuntimeSobPressao()
+                ? 0.12f
+                : 0.1f;
+
+        if (tickMapa >= intervaloMapa)
         {
             tickMapa = 0;
             AtualizarMapaTatico();
@@ -230,6 +267,7 @@ public class MenuComandoController : MonoBehaviour
 
     private void OnDestroy()
     {
+        RegistroEntidadesJogo.EntidadesAlteradas -= MarcarCachesEntidadesSujo;
         if (Instancia == this) Instancia = null;
         LiberarBloqueioInput();
 
@@ -272,44 +310,142 @@ public class MenuComandoController : MonoBehaviour
             CameraUnidadeHUD.Instancia.AtivarNoMenu(flirRT);
 
         // Desativa o mini-mapa da HUD
-        var miniMapa = FindFirstObjectByType<MiniMapa>();
+        if (miniMapaCache == null)
+            miniMapaCache = FindFirstObjectByType<MiniMapa>();
+
+        var miniMapa = miniMapaCache;
         if (miniMapa != null)
         {
             miniMapa.gameObject.SetActive(false);
         }
 
-        // Sincroniza a seleção do menu com a seleção atual do jogo
-        unidadesSelecionadasMenu.Clear();
-        if (gerenteSelecao == null)
-            gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
-
-        if (gerenteSelecao != null && gerenteSelecao.unidadesSelecionadas != null)
+        bool restaurouPersistencia = RestaurarSelecaoPersistida();
+        if (!restaurouPersistencia)
         {
-            foreach (var cu in gerenteSelecao.unidadesSelecionadas)
-            {
-                if (cu != null && !unidadesSelecionadasMenu.Contains(cu))
-                {
-                    unidadesSelecionadasMenu.Add(cu);
-                }
-            }
+            SincronizarSelecaoComJogo();
         }
 
-        // Define a unidade em foco para telemetria/FLIR
-        if (unidadesSelecionadasMenu.Count > 0)
+        if (unidadeSelecionadaMenu == null && unidadesSelecionadasMenu.Count > 0)
         {
             unidadeSelecionadaMenu = unidadesSelecionadasMenu[unidadesSelecionadasMenu.Count - 1];
         }
-        else
-        {
-            unidadeSelecionadaMenu = null;
-            SelecionarPrimeiraUnidadeAliada();
-        }
+
+        AtualizarCacheSelecaoIds();
+        cachesEntidadesSujo = true;
 
         // Conecta câmera FLIR à unidade focada
         if (CameraUnidadeHUD.Instancia != null)
             CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu);
 
         AdicionarLog("COMANDO", "Menu Tático aberto. Sincronizada seleção.", "sistema");
+    }
+
+    private void SincronizarSelecaoComJogo()
+    {
+        unidadesSelecionadasMenu.Clear();
+
+        if (gerenteSelecao == null)
+            gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
+
+        if (gerenteSelecao == null || gerenteSelecao.unidadesSelecionadas == null)
+        {
+            return;
+        }
+
+        foreach (var cu in gerenteSelecao.unidadesSelecionadas)
+        {
+            if (cu != null && !unidadesSelecionadasMenu.Contains(cu))
+            {
+                unidadesSelecionadasMenu.Add(cu);
+            }
+        }
+
+        AtualizarCacheSelecaoIds();
+    }
+
+    private bool RestaurarSelecaoPersistida()
+    {
+        string idsSerializados = PlayerPrefs.GetString(PlayerPrefsMenuSelectionKey, string.Empty);
+        string focoSerializado = PlayerPrefs.GetString(PlayerPrefsMenuFocusKey, string.Empty);
+
+        if (string.IsNullOrWhiteSpace(idsSerializados) && string.IsNullOrWhiteSpace(focoSerializado))
+        {
+            return false;
+        }
+
+        unidadesSelecionadasMenu.Clear();
+
+        string[] ids = idsSerializados.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < ids.Length; i++)
+        {
+            ControleUnidade cu = EncontrarUnidadePorIdPersistente(ids[i]);
+            if (cu != null && !unidadesSelecionadasMenu.Contains(cu))
+            {
+                unidadesSelecionadasMenu.Add(cu);
+            }
+        }
+
+        unidadeSelecionadaMenu = EncontrarUnidadePorIdPersistente(focoSerializado);
+        if (unidadeSelecionadaMenu == null && unidadesSelecionadasMenu.Count > 0)
+        {
+            unidadeSelecionadaMenu = unidadesSelecionadasMenu[unidadesSelecionadasMenu.Count - 1];
+        }
+
+        AtualizarCacheSelecaoIds();
+
+        return unidadeSelecionadaMenu != null || unidadesSelecionadasMenu.Count > 0;
+    }
+
+    private ControleUnidade EncontrarUnidadePorIdPersistente(string uniqueId)
+    {
+        if (string.IsNullOrWhiteSpace(uniqueId))
+        {
+            return null;
+        }
+
+        AtualizarCacheEntidadesSeNecessario();
+
+        for (int i = 0; i < cacheControlesPersistencia.Count; i++)
+        {
+            ControleUnidade cu = cacheControlesPersistencia[i];
+            if (cu == null) continue;
+
+            SaveableEntity saveable = cu.GetComponent<SaveableEntity>();
+            if (saveable != null && saveable.UniqueId == uniqueId)
+            {
+                return cu;
+            }
+        }
+
+        return null;
+    }
+
+    private string ObterIdPersistente(ControleUnidade cu)
+    {
+        if (cu == null)
+        {
+            return string.Empty;
+        }
+
+        SaveableEntity saveable = SaveableEntity.Garantir(cu.gameObject);
+        return saveable != null ? saveable.UniqueId : string.Empty;
+    }
+
+    private void SalvarSelecaoPersistida()
+    {
+        List<string> ids = new List<string>(unidadesSelecionadasMenu.Count);
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            string id = ObterIdPersistente(unidadesSelecionadasMenu[i]);
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                ids.Add(id);
+            }
+        }
+
+        PlayerPrefs.SetString(PlayerPrefsMenuSelectionKey, ids.Count > 0 ? string.Join(";", ids) : string.Empty);
+        PlayerPrefs.SetString(PlayerPrefsMenuFocusKey, ObterIdPersistente(unidadeSelecionadaMenu));
+        PlayerPrefs.Save();
     }
 
     public void FecharMenu()
@@ -334,11 +470,16 @@ public class MenuComandoController : MonoBehaviour
             CameraUnidadeHUD.Instancia.DesativarDoMenu();
 
         // Reativa o mini-mapa da HUD
-        var miniMapa = FindFirstObjectByType<MiniMapa>();
+        if (miniMapaCache == null)
+            miniMapaCache = FindFirstObjectByType<MiniMapa>();
+
+        var miniMapa = miniMapaCache;
         if (miniMapa != null)
         {
             miniMapa.gameObject.SetActive(true);
         }
+
+        SalvarSelecaoPersistida();
     }
 
     private void LiberarBloqueioInput()
@@ -353,6 +494,8 @@ public class MenuComandoController : MonoBehaviour
     {
         mapaUnidadesLayer = root.Q<VisualElement>("mapa-unidades-layer");
         mapaLinhasLayer   = root.Q<VisualElement>("mapa-linhas-layer");
+        painelMapa        = root.Q<VisualElement>("painel-mapa");
+        mapaTitulo        = root.Q<Label>("mapa-titulo");
         radarSweep        = root.Q<VisualElement>("radar-sweep");
 
         flirImagem      = root.Q<VisualElement>("flir-imagem");
@@ -438,7 +581,6 @@ public class MenuComandoController : MonoBehaviour
         if (btnDroneCam != null) btnDroneCam.clicked += () => AlternarModoCameraDrone();
 
         // Registro de ouvintes de eventos para Zoom, Pan e Cliques no Mapa
-        var painelMapa = root.Q<VisualElement>("painel-mapa");
         if (painelMapa != null)
         {
             // Zoom com scroll do mouse
@@ -580,12 +722,12 @@ public class MenuComandoController : MonoBehaviour
     private void AtualizarMapaTatico()
     {
         if (mapaUnidadesLayer == null) return;
+        AtualizarCacheEntidadesSeNecessario();
 
         // Atualiza título do mapa com zoom ativo
-        var titulo = root.Q<Label>("mapa-titulo");
-        if (titulo != null)
+        if (mapaTitulo != null)
         {
-            titulo.text = $"◉ MAPA TÁTICO (ZOOM: {mapaZoom:F1}X)";
+            mapaTitulo.text = $"◉ MAPA TÁTICO (ZOOM: {mapaZoom:F1}X)";
         }
 
         // Calcula a nova janela de visualização baseada no Zoom e Pan
@@ -594,22 +736,18 @@ public class MenuComandoController : MonoBehaviour
         float xMin = mapaCentro.x - rangeX / 2f;
         float zMin = mapaCentro.y - rangeZ / 2f;
 
-        // Busca todas as identidades (aliadas + inimigas)
-        var todasIdentidades = new List<IdentidadeUnidade>(
-            FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None));
+        mapaVivos.Clear();
 
-        var vivos = new HashSet<int>();
-
-        foreach (var id in todasIdentidades)
+        for (int i = 0; i < cacheUnidadesMapa.Count; i++)
         {
+            var id = cacheUnidadesMapa[i];
             if (id == null || !id.gameObject.activeInHierarchy) continue;
 
             int instId = id.gameObject.GetInstanceID();
-            vivos.Add(instId);
-
             bool amigo   = id.teamID == 1;
             bool inimigo = id.teamID == 2;
             if (!amigo && !inimigo) continue;
+            mapaVivos.Add(instId);
 
             Vector3 pos3D = id.transform.position;
 
@@ -617,48 +755,55 @@ public class MenuComandoController : MonoBehaviour
             float pctX = ((pos3D.x - xMin) / rangeX) * 100f;
             float pctZ = (1f - (pos3D.z - zMin) / rangeZ) * 100f;
 
-            // Obtém HP via SistemaDeDanos
-            float hpPct = 1f;
-            ControleUnidade cu = id.GetComponent<ControleUnidade>();
-            SistemaDeDanos sdMapa = id.GetComponent<SistemaDeDanos>();
-            if (sdMapa != null && sdMapa.vidaMaxima > 0f)
-                hpPct = Mathf.Clamp01(sdMapa.vidaAtual / sdMapa.vidaMaxima);
-
-            string emoji = ObterEmojiUnidade(id);
-
-            if (!mapaElementos.TryGetValue(instId, out VisualElement el) || el == null)
+            if (!mapaElementos.TryGetValue(instId, out MapaItemUI item) || item == null || item.Root == null)
             {
-                el = CriarElementoMapa(id, amigo, emoji);
-                mapaElementos[instId] = el;
-                mapaUnidadesLayer.Add(el);
+                item = CriarElementoMapa(id, amigo, ObterEmojiUnidade(id));
+                mapaElementos[instId] = item;
+                mapaUnidadesLayer.Add(item.Root);
+            }
+
+            float hpPct = 1f;
+            if (item.Dano != null && item.Dano.vidaMaxima > 0f)
+            {
+                hpPct = Mathf.Clamp01(item.Dano.vidaAtual / item.Dano.vidaMaxima);
             }
 
             // Atualiza posição e visibilidade (se fora do mapa aproximado, esconde para economizar render)
-            el.style.left = new StyleLength(new Length(pctX, LengthUnit.Percent));
-            el.style.top  = new StyleLength(new Length(pctZ, LengthUnit.Percent));
-            el.style.display = (pctX >= -5f && pctX <= 105f && pctZ >= -5f && pctZ <= 105f) ? DisplayStyle.Flex : DisplayStyle.None;
+            item.Root.style.left = new StyleLength(new Length(pctX, LengthUnit.Percent));
+            item.Root.style.top  = new StyleLength(new Length(pctZ, LengthUnit.Percent));
+            item.Root.style.display = (pctX >= -5f && pctX <= 105f && pctZ >= -5f && pctZ <= 105f) ? DisplayStyle.Flex : DisplayStyle.None;
 
             // Atualiza barra de HP
-            var hpFill = el.Q<VisualElement>("mapa-hp-fill");
-            if (hpFill != null)
-                hpFill.style.width = new StyleLength(new Length(hpPct * 100f, LengthUnit.Percent));
+            if (item.HpFill != null)
+            {
+                item.HpFill.style.width = new StyleLength(new Length(hpPct * 100f, LengthUnit.Percent));
+            }
 
             // Atualiza seleção visual
-            var ring = el.Q<VisualElement>("mapa-sel-ring");
-            if (ring != null)
+            if (item.Ring != null)
             {
-                bool estasel = cu != null && unidadesSelecionadasMenu.Contains(cu);
-                if (estasel) ring.AddToClassList("visivel");
-                else         ring.RemoveFromClassList("visivel");
+                bool estasel = unidadesSelecionadasIds.Contains(instId);
+                if (estasel) item.Ring.AddToClassList("visivel");
+                else         item.Ring.RemoveFromClassList("visivel");
             }
 
             // Cor correta se HP zerado
-            if (hpPct <= 0f)
+            if (item.Marcador != null)
             {
-                var marc = el.Q<VisualElement>("mapa-marcador");
-                marc?.RemoveFromClassList("amigo");
-                marc?.RemoveFromClassList("inimigo");
-                marc?.AddToClassList("destruido");
+                if (hpPct <= 0f && !item.UltimoDestruido)
+                {
+                    item.Marcador.RemoveFromClassList("amigo");
+                    item.Marcador.RemoveFromClassList("inimigo");
+                    item.Marcador.AddToClassList("destruido");
+                    item.UltimoDestruido = true;
+                }
+                else if (hpPct > 0f && item.UltimoDestruido)
+                {
+                    item.Marcador.RemoveFromClassList("destruido");
+                    if (amigo) item.Marcador.AddToClassList("amigo");
+                    if (inimigo) item.Marcador.AddToClassList("inimigo");
+                    item.UltimoDestruido = false;
+                }
             }
         }
 
@@ -671,9 +816,9 @@ public class MenuComandoController : MonoBehaviour
             float camPctX = ((pos3D.x - xMin) / rangeX) * 100f;
             float camPctZ = (1f - (pos3D.z - zMin) / rangeZ) * 100f;
 
-            if (!mapaElementos.TryGetValue(-9999, out VisualElement camMarker) || camMarker == null)
+            if (mapaCameraMarker == null)
             {
-                camMarker = new Label("<");
+                var camMarker = new Label("<");
                 camMarker.name = "mapa-cam-marker";
                 camMarker.style.position = Position.Absolute;
                 camMarker.style.color = Color.red;
@@ -685,37 +830,43 @@ public class MenuComandoController : MonoBehaviour
                 // Ajuste de pivô para rotacionar corretamente pelo centro
                 camMarker.style.transformOrigin = new TransformOrigin(Length.Percent(50f), Length.Percent(50f));
                 
-                mapaElementos[-9999] = camMarker;
+                mapaCameraMarker = camMarker;
                 mapaUnidadesLayer.Add(camMarker);
             }
-            vivos.Add(-9999);
             
-            camMarker.style.left = new StyleLength(new Length(camPctX, LengthUnit.Percent));
-            camMarker.style.top  = new StyleLength(new Length(camPctZ, LengthUnit.Percent));
-            camMarker.style.display = (camPctX >= -5f && camPctX <= 105f && camPctZ >= -5f && camPctZ <= 105f) ? DisplayStyle.Flex : DisplayStyle.None;
+            mapaCameraMarker.style.left = new StyleLength(new Length(camPctX, LengthUnit.Percent));
+            mapaCameraMarker.style.top  = new StyleLength(new Length(camPctZ, LengthUnit.Percent));
+            mapaCameraMarker.style.display = (camPctX >= -5f && camPctX <= 105f && camPctZ >= -5f && camPctZ <= 105f) ? DisplayStyle.Flex : DisplayStyle.None;
             
             // Rotação da câmera: -90 para compensar o caractere '<' que aponta pra esquerda, mais a rotação Yaw
             float angle = camTrans.eulerAngles.y - 90f;
-            camMarker.style.rotate = new StyleRotate(new Rotate(angle));
+            mapaCameraMarker.style.rotate = new StyleRotate(new Rotate(angle));
+        }
+        else if (mapaCameraMarker != null)
+        {
+            mapaCameraMarker.style.display = DisplayStyle.None;
         }
 
         // Remove elementos de unidades que não existem mais
-        var removidos = new List<int>();
         foreach (var kv in mapaElementos)
         {
-            if (!vivos.Contains(kv.Key))
+            if (!mapaVivos.Contains(kv.Key))
             {
-                kv.Value?.RemoveFromHierarchy();
-                removidos.Add(kv.Key);
+                kv.Value?.Root?.RemoveFromHierarchy();
+                mapaRemovidos.Add(kv.Key);
             }
         }
-        foreach (var r in removidos) mapaElementos.Remove(r);
+        for (int i = 0; i < mapaRemovidos.Count; i++)
+        {
+            mapaElementos.Remove(mapaRemovidos[i]);
+        }
+        mapaRemovidos.Clear();
 
         // Desenhar linhas de patrulha/ataque na UI
         DesenharLinhasOrdemNoMapaUI();
     }
 
-    private VisualElement CriarElementoMapa(IdentidadeUnidade id, bool amigo, string emoji)
+    private MapaItemUI CriarElementoMapa(IdentidadeUnidade id, bool amigo, string emoji)
     {
         string classFacao = amigo ? "amigo" : "inimigo";
 
@@ -763,6 +914,7 @@ public class MenuComandoController : MonoBehaviour
 
         // Clique para selecionar a unidade no menu
         ControleUnidade cu = id.GetComponent<ControleUnidade>();
+        SistemaDeDanos sd = id.GetComponent<SistemaDeDanos>();
         if (cu != null)
         {
             var capturedCu = cu;
@@ -773,7 +925,6 @@ public class MenuComandoController : MonoBehaviour
 
                 if (desenhadorOrdens != null && (desenhadorOrdens.modoPatrulhaAtivo || desenhadorOrdens.modoSeguirAtivo || desenhadorOrdens.modoAtaqueAtivo))
                 {
-                    var painelMapa = root.Q<VisualElement>("painel-mapa");
                     if (painelMapa != null)
                     {
                         Vector2 localMousePosOnMap = painelMapa.WorldToLocal(evt.position);
@@ -788,7 +939,18 @@ public class MenuComandoController : MonoBehaviour
             });
         }
 
-        return container;
+        return new MapaItemUI
+        {
+            Root = container,
+            Label = label,
+            Marcador = marcador,
+            Ring = ring,
+            HpFill = hpFillEl,
+            Controle = cu,
+            Dano = sd,
+            Identidade = id,
+            UltimoDestruido = false
+        };
     }
 
     private string ObterEmojiUnidade(IdentidadeUnidade id)
@@ -812,10 +974,12 @@ public class MenuComandoController : MonoBehaviour
         {
             unidadesSelecionadasMenu.Clear();
             unidadeSelecionadaMenu = null;
+            AtualizarCacheSelecaoIds();
             if (flirUnidadeNome != null) flirUnidadeNome.text = "SEM SINAL";
             if (flirAlerta != null) flirAlerta.text = "FLIR OFF-LINE";
             if (ordemFeedback != null) ordemFeedback.text = "Nenhuma unidade selecionada — clique no mapa";
             if (CameraUnidadeHUD.Instanciada) CameraUnidadeHUD.Instancia.DefinirTarget(null);
+            SalvarSelecaoPersistida();
             AtualizarTelemetriaUnidade();
             return;
         }
@@ -839,6 +1003,8 @@ public class MenuComandoController : MonoBehaviour
             AdicionarLog("OPS", $"Unidade selecionada: {cu.name} (Total: {unidadesSelecionadasMenu.Count})", "normal");
         }
 
+        AtualizarCacheSelecaoIds();
+
         // Conecta câmera FLIR à unidade focada
         if (CameraUnidadeHUD.Instancia != null)
             CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu);
@@ -859,6 +1025,7 @@ public class MenuComandoController : MonoBehaviour
         }
 
         AtualizarTelemetriaUnidade();
+        SalvarSelecaoPersistida();
     }
 
     private string ObterNomeExibicao(GameObject obj)
@@ -871,8 +1038,9 @@ public class MenuComandoController : MonoBehaviour
 
     private void SelecionarPrimeiraUnidadeAliada()
     {
-        var ids = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        foreach (var id in ids)
+        AtualizarCacheEntidadesSeNecessario(true);
+
+        foreach (var id in cacheUnidadesMapa)
         {
             if (id.teamID == 1)
             {
@@ -880,6 +1048,7 @@ public class MenuComandoController : MonoBehaviour
                 if (cu != null)
                 {
                     SelecionarUnidadeNoMenu(cu);
+                    SalvarSelecaoPersistida();
                     return;
                 }
             }
@@ -891,9 +1060,10 @@ public class MenuComandoController : MonoBehaviour
         unidadesSelecionadasMenu.Clear();
         unidadeSelecionadaMenu = null;
 
-        var ids = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        foreach (var id in ids)
+        AtualizarCacheEntidadesSeNecessario(true);
+        for (int i = 0; i < cacheUnidadesMapa.Count; i++)
         {
+            var id = cacheUnidadesMapa[i];
             if (id != null && id.teamID == 1)
             {
                 var cu = id.GetComponent<ControleUnidade>();
@@ -904,6 +1074,8 @@ public class MenuComandoController : MonoBehaviour
                 }
             }
         }
+
+        AtualizarCacheSelecaoIds();
 
         // Conecta câmera FLIR à unidade focada
         if (CameraUnidadeHUD.Instancia != null)
@@ -926,6 +1098,7 @@ public class MenuComandoController : MonoBehaviour
 
         AdicionarLog("OPS", $"Selecionadas todas as {unidadesSelecionadasMenu.Count} unidades aliadas.", "normal");
         AtualizarTelemetriaUnidade();
+        SalvarSelecaoPersistida();
     }
 
     private void CiclarUnidadeSelecionada()
@@ -937,11 +1110,13 @@ public class MenuComandoController : MonoBehaviour
         
         indexAtual = (indexAtual + 1) % unidadesSelecionadasMenu.Count;
         unidadeSelecionadaMenu = unidadesSelecionadasMenu[indexAtual];
+        AtualizarCacheSelecaoIds();
         
         if (CameraUnidadeHUD.Instancia != null)
             CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu);
             
         AtualizarTelemetriaUnidade();
+        SalvarSelecaoPersistida();
     }
 
     // -----------------------------------------------------------------------
@@ -950,6 +1125,7 @@ public class MenuComandoController : MonoBehaviour
     private void AtualizarTelemetriaUnidade()
     {
         unidadesSelecionadasMenu.RemoveAll(u => u == null);
+        AtualizarCacheSelecaoIds();
         if (unidadeSelecionadaMenu == null && unidadesSelecionadasMenu.Count > 0)
         {
             unidadeSelecionadaMenu = unidadesSelecionadasMenu[0];
@@ -1196,11 +1372,12 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     private void AtualizarSitrep()
     {
-        var ids   = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        AtualizarCacheEntidadesSeNecessario();
+
         int aliados  = 0;
         int inimigos = 0;
 
-        foreach (var id in ids)
+        foreach (var id in cacheUnidadesMapa)
         {
             if (!id.gameObject.activeInHierarchy) continue;
             if (id.teamID == 1) aliados++;
@@ -1434,6 +1611,11 @@ public class MenuComandoController : MonoBehaviour
 
         if (logContainer == null) return;
 
+        while (logContainer.childCount >= 60)
+        {
+            logContainer.RemoveAt(0);
+        }
+
         var entry = new VisualElement();
         entry.AddToClassList("log-entry");
 
@@ -1458,13 +1640,12 @@ public class MenuComandoController : MonoBehaviour
         linha.Add(lblMsg);
         entry.Add(linha);
 
-        logContainer.Add(entry);
-
-        // Auto-scroll para o fundo
-        logContainer.RegisterCallback<GeometryChangedEvent>(_ =>
+        entry.RegisterCallback<AttachToPanelEvent>(_ =>
         {
             logScroll?.ScrollTo(entry);
         });
+
+        logContainer.Add(entry);
     }
 
     // -----------------------------------------------------------------------
@@ -1482,10 +1663,44 @@ public class MenuComandoController : MonoBehaviour
                 new Length(Mathf.Clamp01(pct01) * 100f, LengthUnit.Percent));
     }
 
+    private void AtualizarCacheSelecaoIds()
+    {
+        unidadesSelecionadasIds.Clear();
+
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            ControleUnidade cu = unidadesSelecionadasMenu[i];
+            if (cu != null)
+            {
+                unidadesSelecionadasIds.Add(cu.GetInstanceID());
+            }
+        }
+    }
+
+    private void AtualizarCacheEntidadesSeNecessario(bool forcar = false)
+    {
+        float agora = Time.unscaledTime;
+        if (!forcar && !cachesEntidadesSujo && agora < proximoRefreshCachesEntidades)
+        {
+            return;
+        }
+
+        RegistroEntidadesJogo.FillUnidades(cacheUnidadesMapa);
+        RegistroEntidadesJogo.FillControlesUnidade(cacheControlesPersistencia);
+        RegistroEntidadesJogo.FillIdentidadesIA(cacheIdentidadesIA);
+        proximoRefreshCachesEntidades = agora + 0.2f;
+        cachesEntidadesSujo = false;
+    }
+
     // ── MÉTODOS DE CONTROLE DO MAPA (ZOOM, PAN, CLIQUE E LINHAS) ─────────────
+    private void MarcarCachesEntidadesSujo()
+    {
+        cachesEntidadesSujo = true;
+        proximoRefreshCachesEntidades = 0f;
+    }
+
     private void AlterarZoom(float zoomDelta, Vector2 localMousePos)
     {
-        var painelMapa = root.Q<VisualElement>("painel-mapa");
         if (painelMapa == null) return;
 
         float zoomAntigo = mapaZoom;
@@ -1519,7 +1734,6 @@ public class MenuComandoController : MonoBehaviour
 
     private Vector3 ConverterLocalParaMundo(Vector2 localPos)
     {
-        var painelMapa = root.Q<VisualElement>("painel-mapa");
         float W = painelMapa != null ? painelMapa.resolvedStyle.width : 500f;
         float H = painelMapa != null ? painelMapa.resolvedStyle.height : 500f;
 
@@ -1598,33 +1812,40 @@ public class MenuComandoController : MonoBehaviour
 
     private GameObject EncontrarUnidadeProxima(Vector3 worldPos, float raioMaximo, bool ignorarTimeJogador = false)
     {
-        var ids = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        AtualizarCacheEntidadesSeNecessario();
+
         GameObject melhorAlvo = null;
-        float menorDist = raioMaximo;
-        foreach (var id in ids)
+        float menorDist = raioMaximo * raioMaximo;
+
+        for (int i = 0; i < cacheUnidadesMapa.Count; i++)
         {
+            var id = cacheUnidadesMapa[i];
             if (id == null || !id.gameObject.activeInHierarchy) continue;
             if (ignorarTimeJogador && id.teamID == 1) continue;
-            
-            float dist = Vector3.Distance(new Vector3(id.transform.position.x, 0, id.transform.position.z), new Vector3(worldPos.x, 0, worldPos.z));
-            if (dist < menorDist)
+
+            Vector3 delta = id.transform.position - worldPos;
+            delta.y = 0f;
+            float distSqr = delta.sqrMagnitude;
+            if (distSqr < menorDist)
             {
-                menorDist = dist;
+                menorDist = distSqr;
                 melhorAlvo = id.gameObject;
             }
         }
 
-        var idsIA = FindObjectsByType<IdentidadeIA>(FindObjectsSortMode.None);
-        foreach (var id in idsIA)
+        for (int i = 0; i < cacheIdentidadesIA.Count; i++)
         {
+            var id = cacheIdentidadesIA[i];
             if (id == null || !id.gameObject.activeInHierarchy) continue;
             if (ignorarTimeJogador && id.teamID == 1) continue;
             if (id.GetComponentInParent<IdentidadeUnidade>() != null) continue;
 
-            float dist = Vector3.Distance(new Vector3(id.transform.position.x, 0, id.transform.position.z), new Vector3(worldPos.x, 0, worldPos.z));
-            if (dist < menorDist)
+            Vector3 delta = id.transform.position - worldPos;
+            delta.y = 0f;
+            float distSqr = delta.sqrMagnitude;
+            if (distSqr < menorDist)
             {
-                menorDist = dist;
+                menorDist = distSqr;
                 melhorAlvo = id.gameObject;
             }
         }
@@ -1635,17 +1856,32 @@ public class MenuComandoController : MonoBehaviour
     private void DesenharLinhasOrdemNoMapaUI()
     {
         if (mapaLinhasLayer == null) return;
-        mapaLinhasLayer.Clear();
 
         if (desenhadorOrdens == null)
             desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
-        if (desenhadorOrdens == null) return;
+        if (desenhadorOrdens == null)
+        {
+            for (int i = 0; i < linhasOrdemPool.Count; i++)
+            {
+                linhasOrdemPool[i].style.display = DisplayStyle.None;
+            }
+            return;
+        }
 
         float W = mapaLinhasLayer.resolvedStyle.width;
         float H = mapaLinhasLayer.resolvedStyle.height;
 
-        if (W <= 0 || H <= 0) return;
+        if (W <= 0 || H <= 0)
+        {
+            for (int i = 0; i < linhasOrdemPool.Count; i++)
+            {
+                linhasOrdemPool[i].style.display = DisplayStyle.None;
+            }
+            return;
+        }
+
+        linhasOrdemAtivas = 0;
 
         // 1. Linhas de Patrulha
         if (desenhadorOrdens.modoPatrulhaAtivo && desenhadorOrdens.pontosPatrulha != null && desenhadorOrdens.pontosPatrulha.Count > 0)
@@ -1701,6 +1937,11 @@ public class MenuComandoController : MonoBehaviour
                 }
             }
         }
+
+        for (int i = linhasOrdemAtivas; i < linhasOrdemPool.Count; i++)
+        {
+            linhasOrdemPool[i].style.display = DisplayStyle.None;
+        }
     }
 
     private Vector2 ConvertMundoParaPixel(Vector3 pos3D, float W, float H)
@@ -1721,17 +1962,29 @@ public class MenuComandoController : MonoBehaviour
 
         float angle = Mathf.Atan2(p2.y - p1.y, p2.x - p1.x) * Mathf.Rad2Deg;
 
-        VisualElement line = new VisualElement();
-        line.style.position = Position.Absolute;
+        VisualElement line;
+        if (linhasOrdemAtivas < linhasOrdemPool.Count)
+        {
+            line = linhasOrdemPool[linhasOrdemAtivas];
+        }
+        else
+        {
+            line = new VisualElement();
+            line.style.position = Position.Absolute;
+            line.pickingMode = PickingMode.Ignore;
+            line.style.transformOrigin = new StyleTransformOrigin(new TransformOrigin(Length.Percent(0), Length.Percent(50)));
+            linhasOrdemPool.Add(line);
+            mapaLinhasLayer.Add(line);
+        }
+
         line.style.left = p1.x;
         line.style.top = p1.y;
         line.style.width = d;
         line.style.height = 2f;
         line.style.backgroundColor = cor;
-        line.style.transformOrigin = new StyleTransformOrigin(new TransformOrigin(Length.Percent(0), Length.Percent(50)));
         line.style.rotate = new StyleRotate(new Rotate(angle));
-        
-        mapaLinhasLayer.Add(line);
+        line.style.display = DisplayStyle.Flex;
+        linhasOrdemAtivas++;
     }
 
     public void NotificarAtaqueDrone(string msg)

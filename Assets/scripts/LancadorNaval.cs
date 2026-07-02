@@ -34,8 +34,8 @@ public class LancadorNaval : MonoBehaviour
     [Header("Configurações de Áudio")]
     [Range(0f, 1f)] public float volumeSom = 1.0f;
     [Range(0.1f, 3f)] public float pitchSom = 1.0f;
-    public float distanciaSomMinima = 10f;
-    public float distanciaSomMaxima = 500f;
+    public float distanciaSomMinima = 3f;
+    public float distanciaSomMaxima = 50f;
 
     [Header("Tags de Alvos")]
     public List<string> tagsInimigas = new List<string> { "Inimigo", "Destrutivel" };
@@ -102,6 +102,19 @@ public class LancadorNaval : MonoBehaviour
 
         CriarVisualizadorAlcance();
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        MissilePrefabAutoBinder.BindLancadorNaval(this);
+    }
+
+    [ContextMenu("Auto configurar misseis")]
+    private void AutoConfigurarMisseisEditor()
+    {
+        MissilePrefabAutoBinder.BindLancadorNaval(this, true);
+    }
+#endif
 
     IEnumerator PreaquecerMisseisSemTravada()
     {
@@ -194,13 +207,6 @@ public class LancadorNaval : MonoBehaviour
     {
         if (cameraPrincipal == null) cameraPrincipal = Camera.main;
         AtualizarVisualizadorAlcance();
-
-        // Atualiza configurações em tempo real se alteradas no Inspector
-        if (audioSource != null)
-        {
-            audioSource.minDistance = distanciaSomMinima;
-            audioSource.maxDistance = distanciaSomMaxima;
-        }
 
         // 1. Controle de Modos (Tecla 'I')
         ChecarTrocaDeModo();

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class MisselICBM : MonoBehaviour
 {
@@ -15,7 +16,7 @@ public class MisselICBM : MonoBehaviour
     public AudioClip somExplosao; // Arraste o áudio aqui
     public float raioDeDano = 20f;
     public float escalaExplosao = 8.0f;
-    public float distanciaSom = 500f; // Distância máxima para ouvir
+    public float distanciaSom = 50f; // Distância máxima para ouvir
 
     // Internas
     private Vector3 alvo;
@@ -24,6 +25,7 @@ public class MisselICBM : MonoBehaviour
     private float tempoDeVida = 0;
     private Quaternion rotacaoAlvo;
     private readonly Collider[] bufferExplosao = new Collider[160];
+    private static readonly HashSet<int> alvosProcessados = new HashSet<int>();
 
     public void IniciarLancamento(Vector3 pontoAlvo)
     {
@@ -147,8 +149,8 @@ public class MisselICBM : MonoBehaviour
             source.clip = somExplosao;
             source.volume = 1.0f;
             source.spatialBlend = 1.0f;
-            source.minDistance = 10f;
-            source.maxDistance = distanciaSom;
+            source.minDistance = 3f;
+            source.maxDistance = Mathf.Min(distanciaSom, 50f);
             source.rolloffMode = AudioRolloffMode.Linear;
             source.Play();
 
@@ -156,6 +158,7 @@ public class MisselICBM : MonoBehaviour
         }
         
         // 3. Aplica Dano e Física (O Melhor dos Dois Mundos)
+        alvosProcessados.Clear();
         int hits = Physics.OverlapSphereNonAlloc(transform.position, raioDeDano, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < hits; i++)
         {
@@ -166,8 +169,15 @@ public class MisselICBM : MonoBehaviour
             }
 
             // A. Dano no Sistema (Unidades/Prédios)
-            SistemaDeDanos vida = h.GetComponent<SistemaDeDanos>();
-            vida?.ReceberDano(9999);
+            SistemaDeDanos vida = h.GetComponent<SistemaDeDanos>() ?? h.GetComponentInParent<SistemaDeDanos>();
+            if (vida != null)
+            {
+                int idVida = vida.GetInstanceID();
+                if (alvosProcessados.Add(idVida))
+                {
+                    vida.ReceberDano(Mathf.RoundToInt(Mathf.Max(300f, raioDeDano * 50f)));
+                }
+            }
 
             // B. Física de Explosão (Empurrar Destroços/Unidades)
             Rigidbody rb = h.GetComponent<Rigidbody>();
