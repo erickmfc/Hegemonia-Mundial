@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// GerenciadorPortaAvioes - Especializado para navios porta-aviões.
@@ -61,6 +62,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     public float raioRadarResgate = 1500f; // Aumentei um pouco o alcance para facilitar
     private List<ControleAviao> _avioesProximosNoAr = new List<ControleAviao>();
     private readonly List<Helicoptero> _helicopterosProximosNoAr = new List<Helicoptero>();
+    private readonly List<ControleAviao> _bufferScanAvioes = new List<ControleAviao>(48);
+    private readonly List<Helicoptero> _bufferScanHelicopteros = new List<Helicoptero>(32);
     private float _tempoProximoScan = 0f;
     private float _tempoProximoReporPatioCarrier = -999f;
     private Vector2 _scrollHelisCarrier;
@@ -324,15 +327,18 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         {
             _posicaoDefaultRampa = rampaDecolagem.localPosition;
             _rotacaoDefaultRampa = rampaDecolagem.localRotation;
-            
-            // Configura rampa para posição inicial default
-            Vector3 pos = _posicaoDefaultRampa;
-            pos.y = -4.4f;
-            rampaDecolagem.localPosition = pos;
-            
-            Vector3 rot = _rotacaoDefaultRampa.eulerAngles;
-            rot.x = 20f;
-            rampaDecolagem.localRotation = Quaternion.Euler(rot);
+
+            if (!EhCenaDeMenuAtiva())
+            {
+                // Em jogo, a rampa inicia recolhida para a rotina de taxi/decolagem.
+                Vector3 pos = _posicaoDefaultRampa;
+                pos.y = -4.4f;
+                rampaDecolagem.localPosition = pos;
+
+                Vector3 rot = _rotacaoDefaultRampa.eulerAngles;
+                rot.x = 20f;
+                rampaDecolagem.localRotation = Quaternion.Euler(rot);
+            }
         }
         
         _idCarrier = GetComponent<IdentidadeUnidade>();
@@ -638,12 +644,13 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     void EscanearAvioesNoAr()
     {
         _avioesProximosNoAr.Clear();
-        var todosAvioes = Object.FindObjectsByType<ControleAviao>(FindObjectsSortMode.None);
+        _bufferScanAvioes.Clear();
+        RegistroEntidadesJogo.FillAvioes(_bufferScanAvioes);
         
         if (_idCarrier == null) _idCarrier = GetComponent<IdentidadeUnidade>();
         int meuTime = (_idCarrier != null) ? _idCarrier.teamID : 1;
 
-        foreach (var av in todosAvioes)
+        foreach (var av in _bufferScanAvioes)
         {
             if (av == null || av.aeroportoOrigem == this) continue;
             
@@ -670,13 +677,14 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     void EscanearHelicopterosNoAr()
     {
         _helicopterosProximosNoAr.Clear();
-        var todosHelis = Object.FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
+        _bufferScanHelicopteros.Clear();
+        RegistroEntidadesJogo.FillHelicopteros(_bufferScanHelicopteros);
         _helicopterosVistosScan.Clear();
 
         if (_idCarrier == null) _idCarrier = GetComponent<IdentidadeUnidade>();
         int meuTime = (_idCarrier != null) ? _idCarrier.teamID : 1;
 
-        foreach (var heli in todosHelis)
+        foreach (var heli in _bufferScanHelicopteros)
         {
             if (heli == null) continue;
             int heliId = heli.GetInstanceID();
@@ -1823,7 +1831,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     public void SubirRampa()
     {
-        if (rampaDecolagem == null) return;
+        if (rampaDecolagem == null || EhCenaDeMenuAtiva()) return;
         if (_rotinaRampa != null) StopCoroutine(_rotinaRampa);
         
         Vector3 targetPos = _posicaoDefaultRampa;
@@ -1838,7 +1846,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     public void DescerRampa()
     {
-        if (rampaDecolagem == null) return;
+        if (rampaDecolagem == null || EhCenaDeMenuAtiva()) return;
         if (_rotinaRampa != null) StopCoroutine(_rotinaRampa);
         
         Vector3 targetPos = _posicaoDefaultRampa;
@@ -1871,5 +1879,12 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             rampaDecolagem.localPosition = targetPos;
             rampaDecolagem.localRotation = targetRot;
         }
+    }
+
+    private bool EhCenaDeMenuAtiva()
+    {
+        string nomeCena = SceneManager.GetActiveScene().name;
+        return nomeCena == ConfiguracaoCenasJogo.CenaMenuPrincipalCanonica
+            || nomeCena == ConfiguracaoCenasJogo.CenaMenuFallback;
     }
 }
