@@ -122,6 +122,18 @@ public class MenuInicialController : MonoBehaviour
             return;
         }
 
+        Scene cenaAtual = SceneManager.GetActiveScene();
+        if (!usarCenaDeFundoExistente && cenaAtual.name == ConfiguracaoCenasJogo.CenaMenuFallback)
+        {
+            string cenaMenuCanonica = ConfiguracaoCenasJogo.ResolverCenaMenuPrincipal();
+            if (!string.IsNullOrWhiteSpace(cenaMenuCanonica)
+                && ConfiguracaoCenasJogo.CenaExiste(cenaMenuCanonica))
+            {
+                SceneManager.LoadScene(cenaMenuCanonica);
+                return;
+            }
+        }
+
         GarantirEventSystem();
 
         if (usarCenaDeFundoExistente)
@@ -282,6 +294,11 @@ public class MenuInicialController : MonoBehaviour
             cameraDiorama = cameraObject.AddComponent<Camera>();
             cameraObject.AddComponent<AudioListener>();
         }
+
+        cameraDiorama.transform.position = posicaoCameraFallback;
+        cameraDiorama.transform.rotation = Quaternion.LookRotation(alvoCameraFallback - posicaoCameraFallback);
+        cameraDiorama.fieldOfView = CampoDeVisaoMenuPadrao;
+        AplicarConfiguracaoCameraMenu(cameraDiorama);
     }
 
     private void ConfigurarIluminacaoFallback()
@@ -596,7 +613,26 @@ public class MenuInicialController : MonoBehaviour
 
     private void ConstruirDioramaFallback()
     {
-        return;
+        GameObject raiz = GameObject.Find("DioramaMenuFallback");
+        if (raiz != null)
+        {
+            Destroy(raiz);
+        }
+
+        raiz = new GameObject("DioramaMenuFallback");
+        raiz.transform.position = Vector3.zero;
+
+        baseNavioAtual = baseNavioFallback;
+        inicioJatoAtual = inicioJatoFallback;
+        fimJatoAtual = fimJatoFallback;
+
+        CriarPiso(raiz.transform);
+        CriarAguaEBarco(raiz.transform);
+        CriarPlataformaETanque(raiz.transform);
+        CriarHangar(raiz.transform, new Vector3(-7.8f, 0f, 10.5f), new Vector3(4.8f, 3.3f, 8.6f));
+        CriarTorreControle(raiz.transform, new Vector3(-2.8f, 0f, 13.2f));
+        CriarJatoPassando(raiz.transform);
+        CriarTorreta(raiz.transform, new Vector3(18f, 0f, 24f));
     }
 
     private void CriarPiso(Transform parent)
