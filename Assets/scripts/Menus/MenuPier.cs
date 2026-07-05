@@ -28,6 +28,9 @@ public class MenuPier : MonoBehaviour
     private Transform listaContextoContainer; 
     private Text tituloContexto;
     private readonly List<IdentidadeNaval> naviosBuffer = new List<IdentidadeNaval>(64);
+    private MenuConstrucao menuConstrucaoCache;
+    private MenuMisseis menuMisseisCache;
+    private MenuGoverno menuGovernoCache;
 
     void Update()
     {
@@ -119,14 +122,14 @@ public class MenuPier : MonoBehaviour
         if (menuAberto)
         {
             // Fecha os outros 
-            MenuConstrucao menuCon = Object.FindFirstObjectByType<MenuConstrucao>();
-            if (menuCon != null && MenuConstrucao.EstaAberto) menuCon.AlternarMenu(false);
+            if (menuConstrucaoCache == null) menuConstrucaoCache = Object.FindFirstObjectByType<MenuConstrucao>();
+            if (menuConstrucaoCache != null && MenuConstrucao.EstaAberto) menuConstrucaoCache.AlternarMenu(false);
 
-            MenuMisseis menuMiss = Object.FindFirstObjectByType<MenuMisseis>();
-            if (menuMiss != null && MenuMisseis.EstaAberto) menuMiss.CancelarLancamento();
+            if (menuMisseisCache == null) menuMisseisCache = Object.FindFirstObjectByType<MenuMisseis>();
+            if (menuMisseisCache != null && MenuMisseis.EstaAberto) menuMisseisCache.CancelarLancamento();
 
-            MenuGoverno menuGov = Object.FindFirstObjectByType<MenuGoverno>();
-            if (menuGov != null && MenuGoverno.EstaAberto) menuGov.AlternarMenu(false);
+            if (menuGovernoCache == null) menuGovernoCache = Object.FindFirstObjectByType<MenuGoverno>();
+            if (menuGovernoCache != null && MenuGoverno.EstaAberto) menuGovernoCache.AlternarMenu(false);
 
             AtualizarListaDeDocas();
             LimparPainelContexto("Selecione uma doca à esquerda...");

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
 using UnityEngine;
 
@@ -41,6 +42,7 @@ public class MisselNaval : MonoBehaviour
     public float tamanhoFumaca = 1.5f;
 
     private static readonly Collider[] bufferExplosao = new Collider[32];
+    private static readonly HashSet<int> alvosProcessados = new HashSet<int>();
 
     private Vector3 pontoAlvo;
     private Transform alvoTransform;
@@ -269,17 +271,19 @@ public class MisselNaval : MonoBehaviour
             source.clip = somExplosao;
             source.volume = volumeSom;
             source.spatialBlend = 1f;
-            source.minDistance = 10f;
-            source.maxDistance = 600f;
+            source.minDistance = 3f;
+            source.maxDistance = 50f;
+            source.rolloffMode = AudioRolloffMode.Linear;
             source.Play();
             Destroy(audioObj, somExplosao.length + 0.5f);
         }
 
+        alvosProcessados.Clear();
         int atingidos = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, bufferExplosao);
         for (int i = 0; i < atingidos; i++)
         {
             Collider col = bufferExplosao[i];
-            if (col == null)
+            if (col == null || col.isTrigger)
             {
                 continue;
             }
@@ -287,6 +291,8 @@ public class MisselNaval : MonoBehaviour
             SistemaDeDanos alvoVida = col.GetComponentInParent<SistemaDeDanos>();
             if (alvoVida != null)
             {
+                int idVida = alvoVida.GetInstanceID();
+                if (!alvosProcessados.Add(idVida)) continue;
                 alvoVida.ReceberDano(dano);
             }
 

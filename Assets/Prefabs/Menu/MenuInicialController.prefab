@@ -44,12 +44,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d1aa96100fe249488fd66e0eea883c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuInicialController
-  cameraDiorama: {fileID: 0}
-  velocidadeMovimento: 10
-  limiteAlturaMinima: 1
-  limiteAlturaMaxima: 50
-  nomeCenaNovoJogo: Atualizacao
-  painelMenuPrincipal: {fileID: 0}
-  painelConfiguracoes: {fileID: 0}
-  painelCarregarJogo: {fileID: 0}
-  painelCreditos: {fileID: 0}

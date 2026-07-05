@@ -36,7 +36,7 @@ namespace Hegemonia.AI.BrainMaster
         public float MinBackoffSeconds = 0.05f;
         public float PhaseOffsetSeconds = 0f;
         /// <summary>
-        /// Quando false, modulos pesados (BuildDirector, SemanticMapPlanner, CoastScan) sao pulados
+        /// Quando false, modulos de analise espacial pesada sao pulados
         /// neste frame. Definido pelo IA_GlobalBrainCoordinator via round-robin entre IAs.
         /// </summary>
         public bool HeavyModulesAllowed = true;
@@ -164,8 +164,9 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            return moduleName == "IA_BuildDirector"
-                   || moduleName == "IA_SemanticMapPlanner"
+            // BuildDirector precisa continuar rodando para criar ordens basicas e fazer o
+            // bootstrap. As buscas caras dele possuem locks e backoffs proprios.
+            return moduleName == "IA_SemanticMapPlanner"
                    || moduleName == "IA_NavalDirector"
                    || moduleName == "IA_ThreatAnalyzer"
                    || moduleName == "IA_ZonePlanner";

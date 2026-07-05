@@ -215,6 +215,7 @@ public class MenuComandoInteligente : MonoBehaviour
             canvasObj = new GameObject("Canvas_Gerado_Automatico");
             Canvas c = canvasObj.AddComponent<Canvas>();
             c.renderMode = RenderMode.ScreenSpaceOverlay;
+            c.sortingOrder = 5000;
             canvasObj.AddComponent<CanvasScaler>();
             canvasObj.AddComponent<GraphicRaycaster>();
         }
@@ -224,13 +225,20 @@ public class MenuComandoInteligente : MonoBehaviour
             Destroy(painelMestre);
         }
 
-        painelMestre = new GameObject("PainelComandos", typeof(RectTransform), typeof(Image));
+        painelMestre = new GameObject("PainelComandos", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
         painelMestre.transform.SetParent(canvasObj.transform);
 
         RectTransform rt = painelMestre.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1, 1);
         rt.anchoredPosition = new Vector2(-20, -20);
-        painelMestre.GetComponent<Image>().color = new Color(0, 0, 0, 0.8f);
+        Image fundo = painelMestre.GetComponent<Image>();
+        fundo.color = new Color(0, 0, 0, 0.8f);
+        fundo.raycastTarget = true;
+
+        CanvasGroup cg = painelMestre.GetComponent<CanvasGroup>();
+        cg.interactable = true;
+        cg.blocksRaycasts = true;
+        cg.ignoreParentGroups = true;
 
         VerticalLayoutGroup vlg = painelMestre.AddComponent<VerticalLayoutGroup>();
         vlg.padding = new RectOffset(10, 10, 10, 10);
@@ -358,8 +366,10 @@ public class MenuComandoInteligente : MonoBehaviour
 
         Image img = btnObj.AddComponent<Image>();
         img.color = new Color(0.2f, 0.35f, 0.65f);
+        img.raycastTarget = true;
 
         Button btn = btnObj.AddComponent<Button>();
+        btn.interactable = true;
         MenuComandoInteligenteBotaoBinding binding = btnObj.AddComponent<MenuComandoInteligenteBotaoBinding>();
         binding.menu = this;
         btn.onClick.AddListener(binding.Executar);

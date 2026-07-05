@@ -5,7 +5,7 @@ namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_AirDirector : IIAUpdateModule
     {
-        private const float ForcedAirStrikeStartSeconds = 60f;
+        private const float ForcedAirStrikeStartSeconds = 35f;
         private readonly IA_Context _context;
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
         private readonly List<IA_StrategicTargetData> _strategicTargetsBuffer = new List<IA_StrategicTargetData>(6);
@@ -138,7 +138,7 @@ namespace Hegemonia.AI.BrainMaster
         {
             IA_BrainMaster brain = _context != null ? _context.Brain : null;
             // Threshold reduzido para 3 avioes para permitir raids mais cedo
-            if (brain == null || brain.StrategicPhase < IA_StrategicPhase.PressaoEconomica || source == null || source.Count < 3)
+            if (brain == null || brain.StrategicPhase < IA_StrategicPhase.Expansao || source == null || source.Count < 2)
             {
                 return false;
             }
@@ -515,6 +515,11 @@ namespace Hegemonia.AI.BrainMaster
                 return max;
             }
 
+            if (max >= 6)
+            {
+                return Mathf.Min(max, Random.Range(4, 7));
+            }
+
             if (Random.value < 0.45f)
             {
                 return Random.Range(2, Mathf.Min(4, max) + 1);
@@ -569,6 +574,7 @@ namespace Hegemonia.AI.BrainMaster
             if (target != null)
             {
                 QueueAttack("strategic_bombing", _activeBombersBuffer, target, target.position, 95, 8.0f);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_air", _activeBombersBuffer.Count);
             }
             else
             {
@@ -576,6 +582,7 @@ namespace Hegemonia.AI.BrainMaster
                 if (fallbackTarget != Vector3.zero)
                 {
                     QueueAttack("strategic_bombing_fallback", _activeBombersBuffer, null, fallbackTarget + Vector3.up * 20f, 75, 10.0f);
+                    DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_air", _activeBombersBuffer.Count);
                 }
             }
         }

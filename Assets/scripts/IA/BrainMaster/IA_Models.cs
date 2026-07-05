@@ -102,6 +102,13 @@ namespace Hegemonia.AI.BrainMaster
         Dominacao
     }
 
+    public enum IA_WarPosture
+    {
+        Cautious,
+        BalancedAggression,
+        TotalPressure
+    }
+
     public enum IA_StrategicTargetKind
     {
         None,
@@ -470,13 +477,16 @@ namespace Hegemonia.AI.BrainMaster
         public int BarracksCount;
         public int FactoryCount;
         public int AirportCount;
+        public int MilitaryAirportCount;
         public int CommercialAirportCount;
         public int HeliportCount;
+        public int CommercialAircraft;
         public int ShipyardCount;
         public int PierCount;
         public int PlatformCount;
         public int WarehouseCount;
         public int RadarCount;
+        public int ReadyFighters;
         public bool EnemyVisible;
         public float RecentCombatSeconds = 999f;
 
@@ -492,7 +502,12 @@ namespace Hegemonia.AI.BrainMaster
 
         public bool HasAirport
         {
-            get { return AirportCount > 0; }
+            get { return AirportCount > 0 || MilitaryAirportCount > 0 || CommercialAirportCount > 0; }
+        }
+
+        public bool HasMilitaryAirport
+        {
+            get { return MilitaryAirportCount > 0; }
         }
 
         public bool HasCommercialAirport

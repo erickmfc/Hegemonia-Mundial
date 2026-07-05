@@ -634,7 +634,10 @@ namespace Hegemonia.AI.Master
                 }
             }
 
-            if (data.categoria == DadosConstrucao.CategoriaItem.Aeronautica || normalized.Contains("aviao") || normalized.Contains("caca"))
+            bool isCommercialAircraft = data.prefabDaUnidade.GetComponent<ControleAviaoComercial>() != null
+                                         || normalized.Contains("comercial");
+            if (!isCommercialAircraft
+                && (data.categoria == DadosConstrucao.CategoriaItem.Aeronautica || normalized.Contains("aviao") || normalized.Contains("caca")))
             {
                 RegistroEntidadesJogo.FillAeroportos(_airportBuffer);
                 for (int i = 0; i < _airportBuffer.Count; i++)
@@ -1490,7 +1493,7 @@ namespace Hegemonia.AI.Master
         {
             string warehouse = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Warehouse, "armazem");
             string factory = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Factory, "fabrica");
-            string airport = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Airport, "aeroporto");
+            string airport = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.AirportMilitary, "aeroporto militar");
 
             if (snapshot.WarehouseCount <= 1)
             {

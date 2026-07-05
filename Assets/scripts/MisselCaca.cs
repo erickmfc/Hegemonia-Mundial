@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
 
 public class MisselCaca : MonoBehaviour
@@ -34,6 +35,7 @@ public class MisselCaca : MonoBehaviour
 
     // --- CACHE: Buffer reutilizável para OverlapSphere (reduz GC) ---
     private static readonly Collider[] _explosaoBuffer = new Collider[32];
+    private static readonly HashSet<int> _alvosJaProcessados = new HashSet<int>();
     // --- CACHE: WaitForSeconds reutilizável ---
     private WaitForSeconds _esperaQuedaLivre;
     private float _tempoExpirar;
@@ -181,8 +183,9 @@ public class MisselCaca : MonoBehaviour
                 source.clip = somExplosao;
                 source.volume = volumeSom;
                 source.spatialBlend = 1f; 
-                source.minDistance = 20f;
-                source.maxDistance = 500f; 
+                source.minDistance = 3f;
+                source.maxDistance = 50f;
+                source.rolloffMode = AudioRolloffMode.Linear;
                 source.Play();
                 Destroy(audioObj, somExplosao.length + 0.1f);
             }
@@ -190,14 +193,19 @@ public class MisselCaca : MonoBehaviour
 
         // OverlapSphereNonAlloc: O(1) em GC
 
+        _alvosJaProcessados.Clear();
         int numHits = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, _explosaoBuffer);
         for (int i = 0; i < numHits; i++)
         {
             Collider col = _explosaoBuffer[i];
-            if (col == null) continue;
+            if (col == null || col.isTrigger) continue;
             SistemaDeDanos alvoVida = col.GetComponentInParent<SistemaDeDanos>();
             if (alvoVida != null)
+            {
+                int id = alvoVida.GetInstanceID();
+                if (!_alvosJaProcessados.Add(id)) continue;
                 alvoVida.ReceberDano(dano);
+            }
         }
 
         PoolDeObjetosCombate.Release(gameObject);

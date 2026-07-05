@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 /// <summary>
 /// MÍSSIL AR-TERRA DO BOMBARDEIRO
@@ -92,6 +93,7 @@ public class MisselBombardeiro : MonoBehaviour
     private bool emArco = true;    // Fase 1: subir no arco
     private GameObject dono;
     private readonly Collider[] bufferExplosao = new Collider[96];
+    private static readonly HashSet<int> alvosProcessados = new HashSet<int>();
 
     // ──────────────────────────────────────────────────────────
     //  API PÚBLICA (chamada pelo AviaoBombardeiro)
@@ -253,6 +255,7 @@ public class MisselBombardeiro : MonoBehaviour
             AudioSource.PlayClipAtPoint(somExplosao, transform.position);
 
         // Dano em área
+        alvosProcessados.Clear();
         int hits = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < hits; i++)
         {
@@ -263,6 +266,8 @@ public class MisselBombardeiro : MonoBehaviour
             SistemaDeDanos vida = h.GetComponent<SistemaDeDanos>() ?? h.GetComponentInParent<SistemaDeDanos>();
             if (vida != null)
             {
+                int idVida = vida.GetInstanceID();
+                if (!alvosProcessados.Add(idVida)) continue;
                 int danoFinal = danoMaximo;
                 if (danoComFalloff)
                 {

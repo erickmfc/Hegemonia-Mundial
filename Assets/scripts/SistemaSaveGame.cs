@@ -173,6 +173,7 @@ public class SistemaSaveGame : MonoBehaviour
     private string caminhoDoArquivo;
     private bool restauracaoPendente;
     private readonly List<GameObject> bufferObjetos = new List<GameObject>(512);
+    private readonly List<GerenciadorAeroporto> bufferAeroportos = new List<GerenciadorAeroporto>(32);
     private readonly Dictionary<string, SaveableEntity> saveablesPorId = new Dictionary<string, SaveableEntity>(StringComparer.Ordinal);
 
     public static SistemaSaveGame GarantirInstancia()
@@ -710,7 +711,9 @@ public class SistemaSaveGame : MonoBehaviour
         AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<ControleUnidade>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
         AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<IdentidadeNaval>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
         AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<Imovel>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
-        AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
+        bufferAeroportos.Clear();
+        RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
+        AdicionarCandidatos(bufferAeroportos.Select(c => c != null ? c.gameObject : null));
         AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<Fabrica>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
         AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
         AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));

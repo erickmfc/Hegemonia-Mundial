@@ -15,8 +15,12 @@ MonoBehaviour:
   nomeItem: DH Hasaf
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 8368706832941796259, guid: 2c014bc20bf6f3341b671c576f9c14ff, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
+  prefabDaUnidade: {fileID: 8368706832941796259, guid: 1be86e7bf4d176648b8299c48a427170, type: 3}
   preco: 100
   categoria: 2
+  escalaPoder: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

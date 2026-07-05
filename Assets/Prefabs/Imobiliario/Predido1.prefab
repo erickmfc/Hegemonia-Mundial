@@ -1562,6 +1562,12 @@ MonoBehaviour:
   distanciaConexao: 8
   ladoEsquerdo: {fileID: 0}
   ladoDireito: {fileID: 0}
+  conexaoRua: {fileID: 0}
+  distanciaFronteiraRua: 8
+  conexaoRuaTras: {fileID: 0}
+  distanciaFronteiraRuaTras: 8
+  gerarPavimentacaoConcreto: 1
+  pavimentoInstanciado: {fileID: 0}
   debugLogs: 0
   semEnergia: 0
 --- !u!114 &8051842144925750592

@@ -4,7 +4,7 @@ using UnityEngine.AI;
 public class ControladorNavioVigilante : MonoBehaviour
 {
     [Header("Configuracoes de Combate")]
-    public float alcanceAtaque = 15f;
+    public float alcanceAtaque = 150f;
     public float cadenciaTiro = 0.5f;
     public GameObject projetilPrefab;
     public Transform[] pontosDisparo;
@@ -82,12 +82,12 @@ public class ControladorNavioVigilante : MonoBehaviour
     {
         alvoAtual = null;
         float menorDistanciaQuadrada = alcanceQuadrado;
-        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcanceAtaque, bufferRadar);
+        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcanceAtaque, bufferRadar, Physics.AllLayers, QueryTriggerInteraction.Ignore);
 
         for (int i = 0; i < quantidade; i++)
         {
             Collider col = bufferRadar[i];
-            if (col == null || !TagSafe.Matches(col, "Inimigo"))
+            if (col == null)
             {
                 continue;
             }
@@ -103,6 +103,19 @@ public class ControladorNavioVigilante : MonoBehaviour
                 continue;
             }
 
+            IdentidadeUnidade idCandidato = candidato.GetComponentInParent<IdentidadeUnidade>();
+            IdentidadeUnidade idProprio = GetComponent<IdentidadeUnidade>();
+            if (idCandidato != null && idProprio != null && idCandidato.teamID == idProprio.teamID)
+            {
+                continue;
+            }
+
+            SistemaDeDanos vida = candidato.GetComponentInParent<SistemaDeDanos>();
+            if (vida != null && vida.vidaAtual <= 0f)
+            {
+                continue;
+            }
+
             Vector3 delta = candidato.position - transform.position;
             delta.y = 0f;
             float distanciaQuadrada = delta.sqrMagnitude;
@@ -111,6 +124,11 @@ public class ControladorNavioVigilante : MonoBehaviour
                 menorDistanciaQuadrada = distanciaQuadrada;
                 alvoAtual = candidato;
             }
+        }
+
+        if (debugDisparo && alvoAtual == null)
+        {
+            Debug.Log($"[Marinha] {name} nao encontrou alvo valido em {alcanceAtaque:F0}m.");
         }
     }
 

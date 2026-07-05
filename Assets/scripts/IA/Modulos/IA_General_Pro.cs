@@ -42,6 +42,7 @@ public class IA_General_Pro : MonoBehaviour
     [SerializeField] private List<Estaleiro> meusEstaleiros = new List<Estaleiro>(); 
     [SerializeField] private List<Heliporto> meusHeliportos = new List<Heliporto>();
     [SerializeField] private List<GerenciadorAeroporto> meusAeroportos = new List<GerenciadorAeroporto>();
+    private readonly List<GerenciadorAeroporto> _bufferAeroportos = new List<GerenciadorAeroporto>(32);
 
     private float _timerRecrutamento;
     private float _timerAtaque;
@@ -493,7 +494,7 @@ public class IA_General_Pro : MonoBehaviour
 
         if (grupoAvioes.Count < avioesDesejados && meusAeroportos.Count > 0 && chefe.dinheiro > 600)
         {
-             if (ComprarUnidade(false, false, false, true, "Caca", "Tuk", "F22", "F-22", "Super", "Jet", "Aviao", "Caoc")) return;
+             if (ComprarUnidade(false, false, false, true, "Caca", "Tuk", "F22", "F-22", "Super", "Jet", "Caoc", "Fighter")) return;
         }
 
         // Limite extra: máximo de 6 aviões para não sobrecarregar o aeroporto
@@ -525,7 +526,7 @@ public class IA_General_Pro : MonoBehaviour
             i.preco <= chefe.dinheiro &&
             (i.nomeItem.ToLower().Contains("caca") || i.nomeItem.ToLower().Contains("tuk") ||
              i.nomeItem.ToLower().Contains("f22") || i.nomeItem.ToLower().Contains("jet") ||
-             i.nomeItem.ToLower().Contains("aviao") || i.nomeItem.ToLower().Contains("super") ||
+             i.nomeItem.ToLower().Contains("super") ||
              i.nomeItem.ToLower().Contains("caoc"))
         );
 
@@ -676,8 +677,9 @@ public class IA_General_Pro : MonoBehaviour
         var helis = FindObjectsByType<Heliporto>(FindObjectsSortMode.None);
         foreach(var h in helis) RegistrarHeliporto(h, 2000f);
 
-        var aerops = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach(var a in aerops)
+        _bufferAeroportos.Clear();
+        RegistroEntidadesJogo.FillAeroportos(_bufferAeroportos);
+        foreach(var a in _bufferAeroportos)
         {
             if (a == null || a is GerenciadorAeroportoComercial) continue;
             var idComp = a.GetComponent<IdentidadeUnidade>();
@@ -808,7 +810,7 @@ public class IA_General_Pro : MonoBehaviour
         string n = u.name.ToLower();
 
         if (n.Contains("civil") || n.Contains("turista") || n.Contains("onibus") || n.Contains("kombi")) chefe.meusCivis.Add(u);
-        else if(n.Contains("caca") || n.Contains("tuk") || n.Contains("jet") || n.Contains("aviao") || n.Contains("super") || n.Contains("f22") || n.Contains("caoc")) grupoAvioes.Add(u);
+        else if(n.Contains("caca") || n.Contains("tuk") || n.Contains("jet") || n.Contains("super") || n.Contains("f22") || n.Contains("caoc") || n.Contains("fighter")) grupoAvioes.Add(u);
         else if(n.Contains("heli") || n.Contains("apache") || n.Contains("cobra") || n.Contains("falcon") || n.Contains("ray")) grupoHelis.Add(u);
         else if(n.Contains("navio") || n.Contains("fragata") || n.Contains("corveta") || n.Contains("sub") || n.Contains("carrier") || n.Contains("liberty") || n.Contains("hovercraft")) grupoNavios.Add(u);
         else if(n.Contains("tanque") || n.Contains("tank") || n.Contains("leopard") || n.Contains("blindado") || n.Contains("south") || n.Contains("ubu") || n.Contains("gravity") || n.Contains("ares")) grupoTanques.Add(u);
@@ -824,8 +826,8 @@ public class IA_General_Pro : MonoBehaviour
         // OTIMIZADOR DE PERFORMANCE: Adiciona throttling de distância automaticamente
         // Evita que NavMesh, animadores e scripts de IA rodem a 100% quando a unidade está longe.
         // Não adiciona em aviões (já têm otimização própria) ou edifícios (sem NavMesh).
-        bool ehEdificio = u.GetComponent<NavMeshAgent>() == null && u.GetComponent<ControleUnidade>() == null;
-        bool ehAviao    = n.Contains("caca") || n.Contains("aviao") || n.Contains("jet") || n.Contains("super");
+        bool ehEdificio = u.GetComponent<UnityEngine.AI.NavMeshAgent>() == null && u.GetComponent<ControleUnidade>() == null;
+        bool ehAviao    = n.Contains("caca") || n.Contains("jet") || n.Contains("super") || n.Contains("fighter");
         if (!ehEdificio && !ehAviao && u.GetComponent<IA_OtimizadorUnidade>() == null)
         {
             u.AddComponent<IA_OtimizadorUnidade>();
@@ -887,8 +889,9 @@ public class IA_General_Pro : MonoBehaviour
 
     Vector3 EvitarAeroporto(Vector3 ponto, Vector3 centroBase)
     {
-        var aerops = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach (var aero in aerops)
+        _bufferAeroportos.Clear();
+        RegistroEntidadesJogo.FillAeroportos(_bufferAeroportos);
+        foreach (var aero in _bufferAeroportos)
         {
             if (aero == null || aero is GerenciadorAeroportoComercial) continue;
             Bounds b = new Bounds(aero.transform.position, Vector3.zero);

@@ -42,12 +42,13 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             // O Coordenador lê os Esquadrões de Diferentes "Domínios" (Ar e Mar)
-            IA_SquadData transportSquad = _context.SquadDirector.GetSquad(IA_SquadRole.AirTacticalTransport);
+            IA_SquadData transportSquad = _context.SquadDirector.GetSquad(IA_SquadRole.NavalTransport);
+            IA_SquadData airTransportSquad = _context.SquadDirector.GetSquad(IA_SquadRole.AirTacticalTransport);
             IA_SquadData escortSquad = _context.SquadDirector.GetSquad(IA_SquadRole.NavalEscort);
 
             // Verifica se as forças mínimas foram atingidas
-            if (transportSquad == null || transportSquad.Units.Count < 2) return;
-            if (escortSquad == null || escortSquad.Units.Count < 3) return;
+            if ((transportSquad == null || transportSquad.Units.Count < 1) && (airTransportSquad == null || airTransportSquad.Units.Count < 2)) return;
+            if (escortSquad == null || escortSquad.Units.Count < 2) return;
 
             // Resolve o alvo
             Vector3 targetPosition = Vector3.zero;
@@ -83,7 +84,8 @@ namespace Hegemonia.AI.BrainMaster
                 return count > 0 ? sum / count : Vector3.zero;
             }
 
-            Vector3 transportCenter = GetSquadCenter(transportSquad);
+            IA_SquadData anchorSquad = transportSquad != null && transportSquad.Units.Count > 0 ? transportSquad : airTransportSquad;
+            Vector3 transportCenter = GetSquadCenter(anchorSquad);
             Vector3 escortCenter = GetSquadCenter(escortSquad);
 
             // Cria um Ponto de Encontro no Mar (Assembly)
@@ -106,14 +108,13 @@ namespace Hegemonia.AI.BrainMaster
                 
                 // Escolhe a âncora (o transporte naval) - Por enquanto pega o primeiro helicóptero/navio de transporte
                 Transform ancora = null;
-                foreach(var id in transportSquad.Units)
+                foreach(var id in anchorSquad.Units)
                 {
                     if (id != null) 
                     {
                         ancora = id.transform;
                         // Preferência para navios de transporte como âncora
-                        var ident = id.GetComponent<IdentidadeUnidade>();
-                        if (ident != null && ident.tipoUnidade == TipoUnidade.Naval) break; 
+                        if (id.GetComponent<NavioTransporteTropas>() != null) break; 
                     }
                 }
                 
@@ -131,14 +132,17 @@ namespace Hegemonia.AI.BrainMaster
                     }
                     
                     // Adiciona escoltas aereas (helicópteros que restaram)
-                    foreach(var id in transportSquad.Units)
+                    if (airTransportSquad != null)
                     {
-                        if (id != null && id.transform != ancora)
+                        foreach(var id in airTransportSquad.Units)
                         {
-                            var ident = id.GetComponent<IdentidadeUnidade>();
-                            if (ident != null && ident.tipoUnidade == TipoUnidade.Aereo)
+                            if (id != null && id.transform != ancora)
                             {
-                                comboio.escoltasAereas.Add(id.transform);
+                                var ident = id.GetComponent<IdentidadeUnidade>();
+                                if (ident != null && ident.tipoUnidade == TipoUnidade.Aereo)
+                                {
+                                    comboio.escoltasAereas.Add(id.transform);
+                                }
                             }
                         }
                     }
@@ -147,9 +151,8 @@ namespace Hegemonia.AI.BrainMaster
                 }
                 
                 // Desativa a invasão no BrainMaster para dar cooldown e resetar fase
-                _invasionActive = false;
-                _context.Brain.StrategicPhase = IA_StrategicPhase.LogisticaPetroleo; 
-                _context.Brain.ActiveImperialPlan = "reagrupar";
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("amphibious_launches", 1);
+                _context.Brain.ActiveImperialPlan = "invasao_anfibia_em_curso";
             }
         }
     }

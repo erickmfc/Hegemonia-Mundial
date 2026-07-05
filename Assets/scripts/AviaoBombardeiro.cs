@@ -97,6 +97,19 @@ public class AviaoBombardeiro : MonoBehaviour
         }
     }
 
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        MissilePrefabAutoBinder.BindAviaoBombardeiro(this);
+    }
+
+    [ContextMenu("Auto configurar projetil")]
+    private void AutoConfigurarProjetilEditor()
+    {
+        MissilePrefabAutoBinder.BindAviaoBombardeiro(this, true);
+    }
+#endif
+
     void LateUpdate()
     {
         SincronizarAlvoDoAeroporto();

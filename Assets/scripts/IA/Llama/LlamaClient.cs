@@ -93,8 +93,8 @@ namespace Hegemonia.AI.Llama
 
         void Start()
         {
-            LigarMotorOllama();
-            StartCoroutine(AguardarIAFicarPronta());
+            // Integração Llama/Ollama desativada. Mantemos o componente inerte para compatibilidade.
+            enabled = false;
         }
 
         private void LigarMotorOllama()

@@ -106,6 +106,8 @@ public class LancadorMLRS : MonoBehaviour
             audioSourceMotor.spatialBlend = 1f;
             if(somMotor != null) audioSourceMotor.Play();
         }
+
+        AudioRuntime.ConfigurarHierarquia(gameObject);
     }
 
     void BuscarAlvo()

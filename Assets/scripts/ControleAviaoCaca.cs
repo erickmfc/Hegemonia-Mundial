@@ -36,6 +36,8 @@ public class ControleAviaoCaca : MonoBehaviour
     private AudioSource audioSourcePassagem;
     private bool jaTocouPassagem = false;
     private Transform cameraTransform;
+    private float proximoSomPassagem = 0f;
+    private Vector3 ultimaPosicaoSomPassagem;
 
     public enum EstadoVoo { NoChao, Decolando, Voando, Pousando }
     [SerializeField]
@@ -62,13 +64,27 @@ public class ControleAviaoCaca : MonoBehaviour
     // --- CACHE: distância ao quadrado para flyby (evita sqrt) ---
     private float _distAtivacaoSomSqr;
     private float _distResetSomSqr;
+    private SistemaDeDanos _sistemaDanos;
+    private float _tempoBoostDefensivoAte = 0f;
+
+    [Header("Comportamento de Velocidade")]
+    [Tooltip("Distância até o destino a partir da qual o caça começa a reduzir para cruzeiro.")]
+    public float distanciaTransicaoCruzeiro = 140f;
+    [Tooltip("Tempo em segundos usando velocidade máxima após receber dano.")]
+    public float duracaoBoostDefensivo = 4f;
 
     void Start()
     {
         _controleUnidade = GetComponent<ControleUnidade>();
         _sistemaTiro = GetComponentInChildren<SistemaDeTiro>();
+        _sistemaDanos = GetComponent<SistemaDeDanos>();
         _controleAviaoModerno = GetComponent<ControleAviao>();
         _temControleModerno = (_controleAviaoModerno != null);
+
+        if (_sistemaDanos != null)
+        {
+            _sistemaDanos.OnDano += RegistrarDanoRecebido;
+        }
         
         destinoAtual = transform.position;
 
@@ -109,10 +125,20 @@ public class ControleAviaoCaca : MonoBehaviour
         objSom.transform.localPosition = Vector3.zero;
         audioSourcePassagem = objSom.AddComponent<AudioSource>();
         audioSourcePassagem.spatialBlend = 1f;
-        audioSourcePassagem.minDistance = 15f;
-        audioSourcePassagem.maxDistance = 250f;
+        audioSourcePassagem.minDistance = 9f;
+        audioSourcePassagem.maxDistance = 150f;
         audioSourcePassagem.playOnAwake = false;
         audioSourcePassagem.clip = somPassagem;
+        audioSourcePassagem.loop = false;
+        ultimaPosicaoSomPassagem = transform.position;
+    }
+
+    void OnDestroy()
+    {
+        if (_sistemaDanos != null)
+        {
+            _sistemaDanos.OnDano -= RegistrarDanoRecebido;
+        }
     }
 
     void Update()
@@ -120,6 +146,7 @@ public class ControleAviaoCaca : MonoBehaviour
         // Animação do Cristal
         if (cristalIdentificacao != null)
             cristalIdentificacao.transform.Rotate(0, 90f * Time.deltaTime, 0, Space.World);
+
 
         // Se o ControleAviao (Moderno) existir, desliga TUDO do script velho — o moderno assume
         if (_temControleModerno) return;
@@ -133,6 +160,7 @@ public class ControleAviaoCaca : MonoBehaviour
         AtualizarLogicaEstado();
         MoverAviao();
         AnimarTremDePouso();
+        AtualizarSomPassagem();
 
         // Decolagem automática se tem destino longe
         if (estadoAtual == EstadoVoo.NoChao && temDestino)
@@ -142,24 +170,6 @@ public class ControleAviaoCaca : MonoBehaviour
                 IniciarDecolagem();
         }
 
-        // SOM DE PASSAGEM (Flyby) na Câmera
-        if (cameraTransform != null && somPassagem != null)
-        {
-            float distCamSqr = (transform.position - cameraTransform.position).sqrMagnitude;
-            
-            if (distCamSqr < _distAtivacaoSomSqr && estadoAtual == EstadoVoo.Voando)
-            {
-                if (!jaTocouPassagem)
-                {
-                    audioSourcePassagem.Play();
-                    jaTocouPassagem = true;
-                }
-            }
-            else if (distCamSqr > _distResetSomSqr)
-            {
-                jaTocouPassagem = false;
-            }
-        }
     }
 
     public void DefinirDestino(Vector3 novoDestino)
@@ -198,8 +208,6 @@ public class ControleAviaoCaca : MonoBehaviour
         float alturaDoChao = transform.position.y;
         float dt = Time.deltaTime;
         
-        bool emCombate = (_sistemaTiro != null && !_sistemaTiro.modoPassivo);
-
         switch (estadoAtual)
         {
             case EstadoVoo.NoChao:
@@ -213,7 +221,7 @@ public class ControleAviaoCaca : MonoBehaviour
                 break;
 
             case EstadoVoo.Decolando:
-                velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeCruzeiro, dt * 0.5f);
+                velocidadeAtual = Mathf.Lerp(velocidadeAtual, ObterVelocidadeAlvoVoo(), dt * 0.5f);
                 ControlarEfeitosMotor(true);
                 if (alturaDoChao > alturaDecolagem)
                 {
@@ -223,8 +231,7 @@ public class ControleAviaoCaca : MonoBehaviour
                 break;
 
             case EstadoVoo.Voando:
-                float targetSpeed = emCombate ? velocidadeAtaque : velocidadeCruzeiro;
-                velocidadeAtual = Mathf.Lerp(velocidadeAtual, targetSpeed, dt);
+                velocidadeAtual = Mathf.Lerp(velocidadeAtual, ObterVelocidadeAlvoVoo(), dt);
                 ControlarEfeitosMotor(true);
                 break;
                 
@@ -238,6 +245,36 @@ public class ControleAviaoCaca : MonoBehaviour
                 }
                 break;
         }
+    }
+
+    private float ObterVelocidadeAlvoVoo()
+    {
+        if (Time.time < _tempoBoostDefensivoAte)
+        {
+            return velocidadeAtaque;
+        }
+
+        bool emCombate = (_sistemaTiro != null && !_sistemaTiro.modoPassivo);
+        if (emCombate)
+        {
+            return velocidadeAtaque;
+        }
+
+        if (temDestino)
+        {
+            float distDestino = Vector3.Distance(transform.position, destinoAtual);
+            if (distDestino > distanciaTransicaoCruzeiro)
+            {
+                return velocidadeAtaque;
+            }
+        }
+
+        return velocidadeCruzeiro;
+    }
+
+    private void RegistrarDanoRecebido()
+    {
+        _tempoBoostDefensivoAte = Time.time + duracaoBoostDefensivo;
     }
 
     void MoverAviao()
@@ -310,6 +347,79 @@ public class ControleAviaoCaca : MonoBehaviour
         estadoAtual = EstadoVoo.Pousando;
         destinoAtual = pistaPosicao;
         temDestino = true;
+    }
+
+    void AtualizarSomPassagem()
+    {
+        if (somPassagem == null || audioSourcePassagem == null)
+        {
+            return;
+        }
+
+        AtualizarReferenciaOuvinte();
+        if (cameraTransform == null)
+        {
+            return;
+        }
+
+        Vector3 deslocamento = transform.position - ultimaPosicaoSomPassagem;
+        float velocidadeAproximada = deslocamento.magnitude / Mathf.Max(Time.deltaTime, 0.0001f);
+        ultimaPosicaoSomPassagem = transform.position;
+
+        float distCamSqr = (transform.position - cameraTransform.position).sqrMagnitude;
+        bool pertoDaCamera = distCamSqr < _distAtivacaoSomSqr;
+        bool emMovimentoRapido = velocidadeAproximada > 18f;
+        bool emAltitudeDeVoo = transform.position.y > 8f;
+
+        if (pertoDaCamera && emMovimentoRapido && emAltitudeDeVoo && Time.time >= proximoSomPassagem)
+        {
+            TocarSomPassagem();
+            proximoSomPassagem = Time.time + 1.6f;
+            jaTocouPassagem = true;
+        }
+        else if (distCamSqr > _distResetSomSqr)
+        {
+            jaTocouPassagem = false;
+        }
+    }
+
+    private void AtualizarReferenciaOuvinte()
+    {
+        if (cameraTransform != null)
+        {
+            return;
+        }
+
+        if (Camera.main != null)
+        {
+            cameraTransform = Camera.main.transform;
+            return;
+        }
+
+        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsSortMode.None);
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            Camera cam = cameras[i];
+            if (cam != null && cam.enabled)
+            {
+                cameraTransform = cam.transform;
+                return;
+            }
+        }
+
+        AudioListener listener = FindFirstObjectByType<AudioListener>();
+        if (listener != null)
+        {
+            cameraTransform = listener.transform;
+        }
+    }
+
+    void TocarSomPassagem()
+    {
+        if (audioSourcePassagem == null || somPassagem == null) return;
+        audioSourcePassagem.Stop();
+        audioSourcePassagem.spatialBlend = 1f;
+        audioSourcePassagem.PlayOneShot(somPassagem, 1f);
     }
 
     void AnimarTremDePouso()

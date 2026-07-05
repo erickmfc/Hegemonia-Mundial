@@ -46,6 +46,24 @@ public class ControleTorreta : MonoBehaviour
     public AudioClip somTiro;
     public AudioClip somRecarga; 
     public ParticleSystem fogoCano;
+    [Tooltip("Objeto/efeito de disparo já criado na hierarquia ou no prefab. Se definido, ele também é ativado no tiro.")]
+    public GameObject fogoCanoObjeto;
+    [Tooltip("Prefab visual opcional do clarão/fumaça de disparo. Pode ser um prefab leve da pasta FX.")]
+    public GameObject efeitoCanoPrefab;
+    [Tooltip("Ponto opcional para soltar o efeito do disparo. Se vazio, usa o primeiro cano/local de tiro encontrado.")]
+    public Transform pontoEfeitoCano;
+    [Tooltip("Tempo de vida do efeito de disparo instanciado.")]
+    public float duracaoEfeitoCano = 1.5f;
+
+    [Header("Recuo Realista")]
+    [Tooltip("Ativa um pequeno recuo visual a cada disparo.")]
+    public bool usarRecuoAoDisparar = true;
+    [Tooltip("Peça que vai sofrer o recuo. Se vazio, usa os canos da torreta ou a base giratória.")]
+    public Transform pecaRecuo;
+    [Tooltip("Distância do recuo em metros locais por disparo.")]
+    public float forcaRecuoDisparo = 0.12f;
+    [Tooltip("Velocidade de retorno do recuo ao ponto original.")]
+    public float velocidadeRetornoRecuo = 18f;
 
     [Header("Sistema de Desdobramento (MLRS/Lançador)")]
     [Tooltip("Se ativado, a torreta precisa 'abrir' ou 'levantar' antes de disparar.")]
@@ -133,6 +151,10 @@ public class ControleTorreta : MonoBehaviour
     private float rotacaoXOriginal, rotacaoYOriginal, rotacaoZOriginal, giroPitchAlvo = 0f;
     private float progressoDesdobramento = 0f;
     private bool estaProntoParaAtirar = true;
+    private Transform _alvoRecuoTransform;
+    private Vector3 _recuoLocalOriginal;
+    private bool _recuoInicializado;
+    private float _recuoAtual;
 
     // Rastreio de Velocidade
     private Transform alvoAnteriorParaCalculo;
@@ -203,6 +225,8 @@ public class ControleTorreta : MonoBehaviour
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
         fonteAudio.spatialBlend = 1f;
+
+        InicializarEfeitosDisparo();
 
         if (usarSistemaDesdobramento)
         {
@@ -277,13 +301,17 @@ public class ControleTorreta : MonoBehaviour
     #region Radar e Busca de Alvos
     void ProcurarAlvo()
     {
-        if (modoPassivo) 
+        if (modoPassivo)
         {
             SetarAlvo(null);
             return;
         }
 
-        // HARD LOCK: Se temos um alvo prioritário válido e no alcance, focamos nele
+        if (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy && !interceptarMisseis && !interceptarTorpedos)
+        {
+            return;
+        }
+
         if (alvoPrioritario != null && alvoPrioritario.gameObject.activeInHierarchy && ControleSubmarino.PodeSerAlvoConvencional(alvoPrioritario))
         {
             Collider colPrioritario = alvoPrioritario.GetComponentInChildren<Collider>();
@@ -296,25 +324,44 @@ public class ControleTorreta : MonoBehaviour
             }
         }
 
+        if (DeveAdiarNovaBusca())
+        {
+            return;
+        }
+
         int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferColisores, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
 
         if (debugRadar && quantidadeEncontrada > 0)
+        {
             Debug.Log($"[ControleTorreta {name}] OverlapSphere encontrou {quantidadeEncontrada} colliders. MeuTime={meuTime}, AntiAereo={souAntiAereo}, Alcance={alcance}");
+        }
 
         for (int i = 0; i < quantidadeEncontrada; i++)
         {
             Collider hit = bufferColisores[i];
-            if (hit == null) continue;
+            if (hit == null)
+            {
+                continue;
+            }
 
             Transform alvoTr = hit.transform;
             Transform alvoSubstitutoAereo = ResolverAtiradorAereoDeProjetil(hit);
-            if (alvoSubstitutoAereo != null) alvoTr = alvoSubstitutoAereo;
-            if (!ControleSubmarino.PodeSerAlvoConvencional(alvoTr)) continue;
+            if (alvoSubstitutoAereo != null)
+            {
+                alvoTr = alvoSubstitutoAereo;
+            }
 
-            // Ignora a própria nave/veículo
-            if (alvoTr.root == transform.root) continue;
+            if (!ControleSubmarino.PodeSerAlvoConvencional(alvoTr))
+            {
+                continue;
+            }
+
+            if (alvoTr.root == transform.root)
+            {
+                continue;
+            }
 
             bool ehMissil = ObterEhMissilComCache(alvoTr);
             bool ehTorpedo = ObterEhTorpedoComCache(alvoTr);
@@ -325,21 +372,23 @@ public class ControleTorreta : MonoBehaviour
                 Vector3 direcaoDoMissil = alvoTr.forward;
                 Vector3 direcaoParaMim = (transform.position - alvoTr.position).normalized;
                 if (Vector3.Dot(direcaoDoMissil, direcaoParaMim) > 0.2f)
+                {
                     ehInimigo = true;
-                else continue;
+                }
+                else
+                {
+                    continue;
+                }
             }
             else if (interceptarTorpedos && ehTorpedo)
             {
-                // Torpedos são sempre considerados ameaças (não têm "time" próprio)
                 ehInimigo = true;
 
-                // Tentar identificar origem do torpedo
                 if (identificarOrigemTorpedo)
                 {
                     Torpedo torpedo = alvoTr.GetComponent<Torpedo>();
                     if (torpedo != null && torpedo.lancador != null)
                     {
-                        // Se o lançador é inimigo, confirmar inimigo
                         IdentidadeUnidade idLancador = torpedo.lancador.GetComponent<IdentidadeUnidade>();
                         if (idLancador != null && idLancador.teamID != meuTime && idLancador.teamID != 0)
                         {
@@ -354,60 +403,70 @@ public class ControleTorreta : MonoBehaviour
                 IdentidadeUnidade idAlvo = ObterIdentidadeUnidadeComCache(alvoTr);
                 if (idAlvo != null)
                 {
-                    if (idAlvo.teamID != meuTime && idAlvo.teamID != 0) ehInimigo = true;
+                    if (idAlvo.teamID != meuTime && idAlvo.teamID != 0)
+                    {
+                        ehInimigo = true;
+                    }
                 }
-                else
+                else if (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo"))
                 {
-                    if (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo")) ehInimigo = true;
+                    ehInimigo = true;
                 }
             }
 
-            if (ehInimigo)
+            if (!ehInimigo)
             {
-                IdentidadeUnidade idAlvo = ObterIdentidadeUnidadeComCache(alvoTr);
-                
-                bool alvoAereo = ehMissil || ehTorpedo || alvoTr.position.y > 6f ||
-                                 (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
-                                 TagSafe.Matches(alvoTr, "Aereo") || TagSafe.Matches(alvoTr, "Areo") ||
-                                 ObterEhAviaoComCache(alvoTr) || ObterEhHeliComCache(alvoTr) ||
-                                 ObterEhC700ComCache(alvoTr);
+                continue;
+            }
 
-                if (!alvoAereo)
-                {
-                    string nm = alvoTr.name;
-                    alvoAereo = nm.Contains("aviao", System.StringComparison.OrdinalIgnoreCase) ||
-                                nm.Contains("heli", System.StringComparison.OrdinalIgnoreCase) ||
-                                nm.Contains("caca", System.StringComparison.OrdinalIgnoreCase) ||
-                                nm.Contains("drone", System.StringComparison.OrdinalIgnoreCase) ||
-                                nm.Contains("c700", System.StringComparison.OrdinalIgnoreCase) ||
-                                nm.Contains("b260", System.StringComparison.OrdinalIgnoreCase) ||
-                                nm.Contains("bombardeiro", System.StringComparison.OrdinalIgnoreCase) ||
-                                nm.Contains("transporte", System.StringComparison.OrdinalIgnoreCase);
-                }
+            IdentidadeUnidade idAlvo2 = ObterIdentidadeUnidadeComCache(alvoTr);
+            bool alvoAereo = ehMissil || ehTorpedo || alvoTr.position.y > 6f ||
+                             (idAlvo2 != null && idAlvo2.tipoUnidade == TipoUnidade.Aereo) ||
+                             TagSafe.Matches(alvoTr, "Aereo") || TagSafe.Matches(alvoTr, "Areo") ||
+                             ObterEhAviaoComCache(alvoTr) || ObterEhHeliComCache(alvoTr) ||
+                             ObterEhC700ComCache(alvoTr);
 
-                if (debugRadar)
-                {
-                    string tipo = idAlvo != null ? idAlvo.tipoUnidade.ToString() : "sem_id";
-                    int tid = idAlvo != null ? idAlvo.teamID : -99;
-                    string tipoAlvo = ehTorpedo ? "TORPEDO" : (ehMissil ? "MISSIL" : (alvoAereo ? "AEREO" : "TERRESTRE"));
-                    Debug.Log($"[ControleTorreta {name}] Candidato: {alvoTr.root.name} | Tipo={tipoAlvo} | Inimigo={ehInimigo} | Aereo={alvoAereo} | Classe={tipo} | TeamID={tid} | Y={alvoTr.position.y:F1} | Dist={Vector3.Distance(transform.position, alvoTr.position):F1}");
-                }
+            if (!alvoAereo)
+            {
+                string nm = alvoTr.name;
+                alvoAereo = nm.Contains("aviao", System.StringComparison.OrdinalIgnoreCase) ||
+                            nm.Contains("heli", System.StringComparison.OrdinalIgnoreCase) ||
+                            nm.Contains("caca", System.StringComparison.OrdinalIgnoreCase) ||
+                            nm.Contains("drone", System.StringComparison.OrdinalIgnoreCase) ||
+                            nm.Contains("c700", System.StringComparison.OrdinalIgnoreCase) ||
+                            nm.Contains("b260", System.StringComparison.OrdinalIgnoreCase) ||
+                            nm.Contains("bombardeiro", System.StringComparison.OrdinalIgnoreCase) ||
+                            nm.Contains("transporte", System.StringComparison.OrdinalIgnoreCase);
+            }
 
-                if (souAntiAereo && !alvoAereo) continue;
-                if (!souAntiAereo && alvoAereo) continue;
+            if (debugRadar)
+            {
+                string tipo = idAlvo2 != null ? idAlvo2.tipoUnidade.ToString() : "sem_id";
+                int tid = idAlvo2 != null ? idAlvo2.teamID : -99;
+                string tipoAlvo = ehTorpedo ? "TORPEDO" : (ehMissil ? "MISSIL" : (alvoAereo ? "AEREO" : "TERRESTRE"));
+                Debug.Log($"[ControleTorreta {name}] Candidato: {alvoTr.root.name} | Tipo={tipoAlvo} | Inimigo={ehInimigo} | Aereo={alvoAereo} | Classe={tipo} | TeamID={tid} | Y={alvoTr.position.y:F1} | Dist={Vector3.Distance(transform.position, alvoTr.position):F1}");
+            }
 
-                // Calcular prioridade do alvo (torpedos têm prioridade máxima por padrão)
-                float prioridade = 0f;
-                if (ehTorpedo) prioridade = -1000f; // Prioridade máxima (distância negativa)
-                else if (ehMissil) prioridade = -500f;
+            if (souAntiAereo && !alvoAereo)
+            {
+                continue;
+            }
 
-                Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
-                float dist = (transform.position - pontoMaisProximo).sqrMagnitude + prioridade;
-                if (dist < menorDistancia)
-                {
-                    menorDistancia = dist;
-                    melhorAlvo = ResolverTransformAlvo(alvoTr);
-                }
+            if (!souAntiAereo && alvoAereo)
+            {
+                continue;
+            }
+
+            float prioridade = 0f;
+            if (ehTorpedo) prioridade = -1000f;
+            else if (ehMissil) prioridade = -500f;
+
+            Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
+            float dist = (transform.position - pontoMaisProximo).sqrMagnitude + prioridade;
+            if (dist < menorDistancia)
+            {
+                menorDistancia = dist;
+                melhorAlvo = ResolverTransformAlvo(alvoTr);
             }
         }
 
@@ -417,10 +476,27 @@ public class ControleTorreta : MonoBehaviour
         }
 
         if (debugRadar)
+        {
             Debug.Log($"[ControleTorreta {name}] Alvo escolhido: {(melhorAlvo != null ? melhorAlvo.name : "NENHUM")}");
+        }
 
-        for (int i = 0; i < quantidadeEncontrada; i++) bufferColisores[i] = null;
+        for (int i = 0; i < quantidadeEncontrada; i++)
+        {
+            bufferColisores[i] = null;
+        }
+
         SetarAlvo(melhorAlvo);
+    }
+
+    private bool DeveAdiarNovaBusca()
+    {
+        if (!DiagnosticoDesempenhoJogo.RuntimeSobPressao() && !DiagnosticoDesempenhoJogo.RuntimeSaturado())
+        {
+            return false;
+        }
+
+        int divisor = DiagnosticoDesempenhoJogo.RuntimeSaturado() ? 4 : 2;
+        return (Mathf.Abs(GetInstanceID()) + Time.frameCount) % divisor != 0;
     }
 
     public void DefinirModoAtivo(bool ativo)
@@ -506,6 +582,7 @@ public class ControleTorreta : MonoBehaviour
     void Update()
     {
         AtualizarVisualizadorAlcance();
+        AtualizarRecuo();
 
         // Recarga de mísseis
         if (estaRecarregandoMisseis)
@@ -776,6 +853,8 @@ public class ControleTorreta : MonoBehaviour
             }
 
             if (somTiro != null && fonteAudio != null) fonteAudio.PlayOneShot(somTiro);
+            TocarEfeitoDisparo();
+            AplicarRecuoDisparo();
 
             indiceBarrilAtual = (indiceBarrilAtual + 1) % locaisDoTiro.Length;
             balasAtuais--;
@@ -847,6 +926,172 @@ public class ControleTorreta : MonoBehaviour
         MissileThreatTracker.RegistrarLancamento(missel, this, posicaoPredita, alvoResolvido, MissileThreatTracker.EstimarVelocidade(missel));
 
         if (somMissel != null && fonteAudio != null) fonteAudio.PlayOneShot(somMissel);
+        TocarEfeitoDisparo();
+        AplicarRecuoDisparo();
+    }
+
+    void InicializarRecuo()
+    {
+        _alvoRecuoTransform = pecaRecuo != null
+            ? pecaRecuo
+            : (canosDaTorreta != null ? canosDaTorreta : pecaQueGira);
+
+        if (_alvoRecuoTransform == null)
+        {
+            _alvoRecuoTransform = transform;
+        }
+
+        _recuoLocalOriginal = _alvoRecuoTransform.localPosition;
+        _recuoInicializado = true;
+        _recuoAtual = 0f;
+    }
+
+    void AtualizarRecuo()
+    {
+        if (!usarRecuoAoDisparar)
+        {
+            return;
+        }
+
+        if (!_recuoInicializado || _alvoRecuoTransform == null)
+        {
+            InicializarRecuo();
+        }
+
+        float novoRecuo = Mathf.MoveTowards(_recuoAtual, 0f, Time.deltaTime * velocidadeRetornoRecuo);
+        if (!Mathf.Approximately(novoRecuo, _recuoAtual))
+        {
+            _recuoAtual = novoRecuo;
+            _alvoRecuoTransform.localPosition = _recuoLocalOriginal + Vector3.back * (forcaRecuoDisparo * _recuoAtual);
+        }
+    }
+
+    void AplicarRecuoDisparo()
+    {
+        if (!usarRecuoAoDisparar)
+        {
+            return;
+        }
+
+        if (!_recuoInicializado || _alvoRecuoTransform == null)
+        {
+            InicializarRecuo();
+        }
+
+        _recuoAtual = 1f;
+        _alvoRecuoTransform.localPosition = _recuoLocalOriginal + Vector3.back * forcaRecuoDisparo;
+    }
+
+    void TocarEfeitoDisparo()
+    {
+        Transform origem = ResolverPontoEfeitoDisparo();
+
+        if (fogoCano != null)
+        {
+            fogoCano.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            fogoCano.Play(true);
+        }
+
+        if (fogoCanoObjeto != null)
+        {
+            ParticleSystem[] sistemas = fogoCanoObjeto.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < sistemas.Length; i++)
+            {
+                ParticleSystem sistema = sistemas[i];
+                if (sistema == null) continue;
+                sistema.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                sistema.Play(true);
+            }
+        }
+
+        if (efeitoCanoPrefab != null && origem != null)
+        {
+            PoolDeObjetosCombate.SpawnTemporario(
+                efeitoCanoPrefab,
+                origem.position,
+                origem.rotation,
+                Mathf.Max(0.25f, duracaoEfeitoCano));
+        }
+    }
+
+    void InicializarEfeitosDisparo()
+    {
+        if (fogoCano == null)
+        {
+            if (fogoCanoObjeto != null)
+            {
+                fogoCano = fogoCanoObjeto.GetComponentInChildren<ParticleSystem>(true);
+                if (fogoCano == null)
+                {
+                    fogoCano = fogoCanoObjeto.GetComponent<ParticleSystem>();
+                }
+            }
+
+            ParticleSystem[] sistemas = GetComponentsInChildren<ParticleSystem>(true);
+            ParticleSystem melhorCandidato = null;
+            int melhorPontuacao = -1;
+
+            for (int i = 0; i < sistemas.Length; i++)
+            {
+                ParticleSystem sistema = sistemas[i];
+                if (sistema == null) continue;
+
+                string nome = sistema.name != null ? sistema.name.Replace(" ", string.Empty).ToLowerInvariant() : string.Empty;
+                int pontuacao = 0;
+
+                if (nome.Contains("fire") || nome.Contains("fogo")) pontuacao += 8;
+                if (nome.Contains("muzzle") || nome.Contains("boca") || nome.Contains("cano")) pontuacao += 6;
+                if (nome.Contains("smoke") || nome.Contains("fumaca") || nome.Contains("smoke")) pontuacao += 3;
+                if (sistema.main.playOnAwake) pontuacao += 1;
+
+                if (pontuacao > melhorPontuacao)
+                {
+                    melhorPontuacao = pontuacao;
+                    melhorCandidato = sistema;
+                }
+            }
+
+            if (melhorCandidato != null)
+            {
+                fogoCano = melhorCandidato;
+            }
+        }
+
+        if (fogoCano != null)
+        {
+            fogoCano.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+    }
+
+    Transform ResolverPontoEfeitoDisparo()
+    {
+        if (pontoEfeitoCano != null)
+        {
+            return pontoEfeitoCano;
+        }
+
+        if (locaisDoTiro != null)
+        {
+            for (int i = 0; i < locaisDoTiro.Length; i++)
+            {
+                if (locaisDoTiro[i] != null)
+                {
+                    return locaisDoTiro[i];
+                }
+            }
+        }
+
+        if (canosDaTorreta != null)
+        {
+            return canosDaTorreta;
+        }
+
+        if (pecaQueGira != null)
+        {
+            return pecaQueGira;
+        }
+
+        return transform;
     }
 
     void IniciarRecarga()

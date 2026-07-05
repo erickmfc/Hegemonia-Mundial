@@ -120,6 +120,65 @@ public static class MissingScriptLocator
         Debug.Log("[MissingScriptLocator] Scripts faltando removidos da selecao: " + totalRemoved);
     }
 
+    [MenuItem("Tools/Diagnostics/Remove Missing Scripts From ALL Prefabs (Project-wide)")]
+    private static void RemoveMissingScriptsFromAllPrefabs()
+    {
+        bool confirm = EditorUtility.DisplayDialog(
+            "Remover Missing Scripts de TODOS os Prefabs",
+            "Isso vai escanear e limpar TODOS os prefabs do projeto.\n" +
+            "A operação é destrutiva (remove componentes inválidos).\n" +
+            "Certifique-se de ter um backup ou commit git antes de continuar.",
+            "Continuar",
+            "Cancelar");
+
+        if (!confirm) return;
+
+        string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab");
+        int totalRemoved = 0;
+        int totalPrefabs = 0;
+
+        try
+        {
+            for (int i = 0; i < prefabGuids.Length; i++)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(prefabGuids[i]);
+
+                EditorUtility.DisplayProgressBar(
+                    "Removendo Missing Scripts...",
+                    path,
+                    (float)i / prefabGuids.Length);
+
+                GameObject prefabRoot = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefabRoot == null) continue;
+
+                // Usa PrefabUtility para editar o asset de prefab corretamente.
+                using (var editScope = new PrefabUtility.EditPrefabContentsScope(path))
+                {
+                    int removed = RemoveMissingScriptsRecursive(editScope.prefabContentsRoot);
+                    if (removed > 0)
+                    {
+                        totalRemoved += removed;
+                        totalPrefabs++;
+                    }
+                }
+            }
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar();
+        }
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        string msg = totalRemoved > 0
+            ? $"[MissingScriptLocator] Removidos {totalRemoved} missing script(s) de {totalPrefabs} prefab(s)."
+            : "[MissingScriptLocator] Nenhum missing script encontrado em nenhum prefab.";
+
+        Debug.LogWarning(msg);
+        EditorUtility.DisplayDialog("Concluído", msg, "OK");
+    }
+
     [MenuItem("Tools/Diagnostics/Remove Missing Scripts From Open Scenes")]
     private static void RemoveMissingScriptsFromOpenScenes()
     {

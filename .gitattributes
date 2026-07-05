@@ -1,0 +1,28 @@
+* text=auto
+
+# Unity YAML: texto estável e merge semântico quando configurado pelo Unity.
+*.meta text eol=lf
+*.unity text eol=lf merge=unityyamlmerge
+*.prefab text eol=lf merge=unityyamlmerge
+*.asset text eol=lf merge=unityyamlmerge
+*.mat text eol=lf merge=unityyamlmerge
+*.anim text eol=lf merge=unityyamlmerge
+*.controller text eol=lf merge=unityyamlmerge
+*.cs text eol=lf diff=csharp
+*.json text eol=lf
+*.asmdef text eol=lf
+
+# Binários novos devem ser adicionados ao Git LFS antes do primeiro commit.
+*.fbx binary
+*.blend binary
+*.psd binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.tga binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.mp4 binary
+*.mov binary
+*.pdf binary

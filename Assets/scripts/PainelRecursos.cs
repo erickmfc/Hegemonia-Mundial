@@ -44,6 +44,7 @@ public class PainelRecursos : MonoBehaviour
     public TextMeshProUGUI ganhoTextoPetroleo;
     public TextMeshProUGUI ganhoTextoAco;
     public TextMeshProUGUI ganhoTextoEnergia;
+    public TextMeshProUGUI ganhoTextoComida;
 
     [Header("Status Extra")]
     public TextMeshProUGUI textoEstoque;
@@ -212,7 +213,7 @@ public class PainelRecursos : MonoBehaviour
         CriarLinhaRecurso(conteudoRecursos, 1, "E", "ENERGIA", "0%", corAmarelo, out textoEnergia, out ganhoTextoEnergia);
         CriarLinhaRecurso(conteudoRecursos, 2, "OIL", "PETROLEO", "0", corCiano, out textoPetroleo, out ganhoTextoPetroleo);
         CriarLinhaRecurso(conteudoRecursos, 3, "AC", "ACO", "0", new Color(0.75f, 0.80f, 0.85f, 1f), out textoAco, out ganhoTextoAco);
-        CriarLinhaRecurso(conteudoRecursos, 4, "FD", "COMIDA", "0", corVerde, out textoComida, out _);
+        CriarLinhaRecurso(conteudoRecursos, 4, "FD", "COMIDA", "0", corVerde, out textoComida, out ganhoTextoComida);
         CriarLinhaRecurso(conteudoRecursos, 5, "POP", "POPULACAO", "0/0", new Color(0.45f, 0.80f, 1f, 1f), out textoPopulacao, out _);
         CriarLinhaRecurso(conteudoRecursos, 6, "BOX", "ARMAZEM", "0%", corAmarelo, out textoEstoque, out _);
         CriarLinhaRecurso(conteudoRecursos, 7, "PA", "PAIS", "-", new Color(0.95f, 0.95f, 0.82f, 1f), out textoPais, out _);
@@ -610,7 +611,7 @@ public class PainelRecursos : MonoBehaviour
             if (ganhoTextoEnergia != null) ganhoTextoEnergia.text = "0/0";
             AtualizarTexto(textoPetroleo, 500, ganhoTextoPetroleo, 0, "");
             AtualizarTexto(textoAco, 325, ganhoTextoAco, 5, "");
-            AtualizarTexto(textoComida, 240, null, 0, "");
+            AtualizarTexto(textoComida, 240, ganhoTextoComida, 0, "");
 
             if (textoPopulacao != null) textoPopulacao.text = "12/200";
             if (textoPais != null) textoPais.text = "Republica Atlas";
@@ -628,7 +629,7 @@ public class PainelRecursos : MonoBehaviour
         AtualizarTexto(textoDinheiro, r.dinheiro, ganhoTextoDinheiro, r.dinheiroPorSegundo, "$ ");
         AtualizarTexto(textoPetroleo, r.petroleo, ganhoTextoPetroleo, r.petroleoPorSegundo, "");
         AtualizarTexto(textoAco, r.aco, ganhoTextoAco, r.acoPorSegundo, "");
-        AtualizarTexto(textoComida, r.comida, null, 0, "");
+        AtualizarTexto(textoComida, r.comida, ganhoTextoComida, r.comidaPorSegundo, "");
 
         if (textoPopulacao != null)
             textoPopulacao.text = $"{r.populacaoAtual:N0}/{r.populacaoMaxima:N0}";

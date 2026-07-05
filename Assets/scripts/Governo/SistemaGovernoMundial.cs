@@ -98,11 +98,11 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         if (paises.Count == 0)
         {
-            paises.Add(new DadosPaisGoverno { teamId = 1, nomePais = "Republica Atlas", nomeMoeda = "Atlas", simboloMoeda = "AT$", bloco = "Ordem Atlas", saldo = 5000, comida = 500, petroleo = 500, aco = 300, armamentos = 500, emprego = 78f, moradia = 72f, estabilidade = 76f, producao = 78f, aliadoPrioritarioTeamId = 2, rivalTeamId = 3, perfilIA = PerfilPaisIA.Neutro, modoInicialIA = ModoInicialPaisIA.Crescimento, nivelEconomico = 62, nivelIndustrial = 58, nivelMilitar = 54, nivelDiplomatico = 65, pesoComercio = 0.58f, pesoDiplomacia = 0.62f });
-            paises.Add(new DadosPaisGoverno { teamId = 2, nomePais = "Republica Boreal", nomeMoeda = "Boreal", simboloMoeda = "BO$", bloco = "Ordem Atlas", saldo = 18000, comida = 1800, petroleo = 2600, aco = 700, armamentos = 900, emprego = 82f, moradia = 78f, estabilidade = 84f, producao = 74f, perfilIA = PerfilPaisIA.Aliado, modoInicialIA = ModoInicialPaisIA.Comercial, nivelEconomico = 78, nivelIndustrial = 66, nivelMilitar = 55, nivelDiplomatico = 76, pesoLealdadeAliados = 0.82f, pesoComercio = 0.72f });
-            paises.Add(new DadosPaisGoverno { teamId = 3, nomePais = "Uniao Carmesim", nomeMoeda = "Carmesim", simboloMoeda = "CA$", bloco = "Pacto Solaris", saldo = 22000, comida = 900, petroleo = 4800, aco = 1200, armamentos = 1600, emprego = 61f, moradia = 52f, estabilidade = 44f, producao = 81f, emGuerra = true, perfilIA = PerfilPaisIA.ProdutorPetroleo, modoInicialIA = ModoInicialPaisIA.GuerraFria, nivelEconomico = 70, nivelIndustrial = 62, nivelMilitar = 78, nivelDiplomatico = 36, pesoAgressividade = 0.72f, pesoOdioRivais = 0.80f });
-            paises.Add(new DadosPaisGoverno { teamId = 4, nomePais = "Dominio Valerian", nomeMoeda = "Valer", simboloMoeda = "VA$", bloco = "Liga Continental", saldo = 16000, comida = 600, petroleo = 900, aco = 1800, armamentos = 2100, emprego = 66f, moradia = 58f, estabilidade = 48f, producao = 76f, sancionado = true, perfilIA = PerfilPaisIA.Militarista, modoInicialIA = ModoInicialPaisIA.Mobilizacao, nivelEconomico = 58, nivelIndustrial = 78, nivelMilitar = 86, nivelDiplomatico = 32, pesoMilitarismo = 0.88f, pesoControleEstoque = 0.75f });
-            paises.Add(new DadosPaisGoverno { teamId = 5, nomePais = "Federacao Alvorada", nomeMoeda = "Aurora", simboloMoeda = "AU$", bloco = "Nenhum", saldo = 12500, comida = 3400, petroleo = 600, aco = 500, armamentos = 350, emprego = 74f, moradia = 80f, estabilidade = 69f, producao = 67f, perfilIA = PerfilPaisIA.Pequeno, modoInicialIA = ModoInicialPaisIA.Crescimento, nivelEconomico = 52, nivelIndustrial = 34, nivelMilitar = 24, nivelDiplomatico = 58, pesoDependenciaExterna = 0.80f, pesoDiplomacia = 0.70f });
+            paises.Add(new DadosPaisGoverno { teamId = 1, nomePais = "Republica Atlas", nomeMoeda = "Atlas", simboloMoeda = "AT$", bloco = "Ordem Atlas", saldo = 5000, comida = 500, petroleo = 500, energia = 260, aco = 300, armamentos = 500, emprego = 78f, moradia = 72f, estabilidade = 76f, producao = 78f, aliadoPrioritarioTeamId = 2, rivalTeamId = 3, perfilIA = PerfilPaisIA.Neutro, modoInicialIA = ModoInicialPaisIA.Crescimento, nivelEconomico = 62, nivelIndustrial = 58, nivelMilitar = 54, nivelDiplomatico = 65, pesoComercio = 0.58f, pesoDiplomacia = 0.62f });
+            paises.Add(new DadosPaisGoverno { teamId = 2, nomePais = "Republica Boreal", nomeMoeda = "Boreal", simboloMoeda = "BO$", bloco = "Ordem Atlas", saldo = 18000, comida = 1800, petroleo = 2600, energia = 380, aco = 700, armamentos = 900, emprego = 82f, moradia = 78f, estabilidade = 84f, producao = 74f, perfilIA = PerfilPaisIA.Aliado, modoInicialIA = ModoInicialPaisIA.Comercial, nivelEconomico = 78, nivelIndustrial = 66, nivelMilitar = 55, nivelDiplomatico = 76, pesoLealdadeAliados = 0.82f, pesoComercio = 0.72f });
+            paises.Add(new DadosPaisGoverno { teamId = 3, nomePais = "Uniao Carmesim", nomeMoeda = "Carmesim", simboloMoeda = "CA$", bloco = "Pacto Solaris", saldo = 22000, comida = 900, petroleo = 4800, energia = 420, aco = 1200, armamentos = 1600, emprego = 61f, moradia = 52f, estabilidade = 44f, producao = 81f, emGuerra = true, perfilIA = PerfilPaisIA.ProdutorPetroleo, modoInicialIA = ModoInicialPaisIA.GuerraFria, nivelEconomico = 70, nivelIndustrial = 62, nivelMilitar = 78, nivelDiplomatico = 36, pesoAgressividade = 0.72f, pesoOdioRivais = 0.80f });
+            paises.Add(new DadosPaisGoverno { teamId = 4, nomePais = "Dominio Valerian", nomeMoeda = "Valer", simboloMoeda = "VA$", bloco = "Liga Continental", saldo = 16000, comida = 600, petroleo = 900, energia = 280, aco = 1800, armamentos = 2100, emprego = 66f, moradia = 58f, estabilidade = 48f, producao = 76f, sancionado = true, perfilIA = PerfilPaisIA.Militarista, modoInicialIA = ModoInicialPaisIA.Mobilizacao, nivelEconomico = 58, nivelIndustrial = 78, nivelMilitar = 86, nivelDiplomatico = 32, pesoMilitarismo = 0.88f, pesoControleEstoque = 0.75f });
+            paises.Add(new DadosPaisGoverno { teamId = 5, nomePais = "Federacao Alvorada", nomeMoeda = "Aurora", simboloMoeda = "AU$", bloco = "Nenhum", saldo = 12500, comida = 3400, petroleo = 600, energia = 220, aco = 500, armamentos = 350, emprego = 74f, moradia = 80f, estabilidade = 69f, producao = 67f, perfilIA = PerfilPaisIA.Pequeno, modoInicialIA = ModoInicialPaisIA.Crescimento, nivelEconomico = 52, nivelIndustrial = 34, nivelMilitar = 24, nivelDiplomatico = 58, pesoDependenciaExterna = 0.80f, pesoDiplomacia = 0.70f });
         }
 
         if (relacoes.Count == 0)
@@ -132,7 +132,8 @@ public class SistemaGovernoMundial : MonoBehaviour
                 perfilIA = perfil,
                 modoInicialIA = modo,
                 bloco = "IA",
-                saldo = 12000
+                saldo = 12000,
+                energia = 320
             };
             paises.Add(pais);
             mudou = true;
@@ -247,6 +248,7 @@ public class SistemaGovernoMundial : MonoBehaviour
                 {
                     pais.comida = Mathf.Max(0, pais.comida + Mathf.RoundToInt(economia.comidaProduzida - Mathf.Max(1f, pais.populacao * 0.01f)));
                     pais.petroleo = Mathf.Max(0, pais.petroleo + Mathf.RoundToInt(economia.petroleoProduzido - economia.industriaProduzida * 0.10f));
+                    pais.energia = Mathf.Max(0, pais.energia + Mathf.RoundToInt(economia.energiaProduzida - economia.energiaConsumida * 0.85f));
                     pais.aco = Mathf.Max(0, pais.aco + Mathf.RoundToInt(economia.industriaProduzida * 0.55f));
                     pais.armamentos = Mathf.Max(0, pais.armamentos + Mathf.RoundToInt(economia.industriaProduzida * (pais.pesoMilitarismo > 0.65f ? 0.22f : 0.08f)));
                     
@@ -278,6 +280,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         jogador.saldo = gr.dinheiro;
         jogador.comida = gr.comida;
         jogador.petroleo = gr.petroleo;
+        jogador.energia = gr.energia;
         jogador.aco = gr.aco;
         if (economia != null)
         {
@@ -389,6 +392,81 @@ public class SistemaGovernoMundial : MonoBehaviour
         return true;
     }
 
+    public bool InvestirCapacidadeNacional(int teamId, string foco, int custo = 900)
+    {
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null || string.IsNullOrWhiteSpace(foco)) return false;
+
+        int gasto = Mathf.Clamp(custo, 150, 5000);
+        if (!TentarPagar(teamId, gasto)) return false;
+
+        string focoNormalizado = foco.Trim().ToLowerInvariant();
+        int ganhoEconomico = 0;
+        int ganhoIndustrial = 0;
+        int ganhoDiplomatico = 0;
+        int ganhoMilitar = 0;
+        float bonusEstabilidade = 0f;
+
+        switch (focoNormalizado)
+        {
+            case "energia":
+                ganhoEconomico = 3;
+                ganhoIndustrial = 2;
+                bonusEstabilidade = 0.7f;
+                pais.tecnologiaExtracaoConcluida = true;
+                break;
+            case "industria":
+                ganhoEconomico = 1;
+                ganhoIndustrial = 3;
+                bonusEstabilidade = 0.5f;
+                break;
+            case "diplomacia":
+                ganhoEconomico = 1;
+                ganhoDiplomatico = 3;
+                bonusEstabilidade = 0.8f;
+                break;
+            case "defesa":
+                ganhoEconomico = 1;
+                ganhoMilitar = 3;
+                bonusEstabilidade = 0.3f;
+                break;
+            case "logistica":
+            case "economia":
+                ganhoEconomico = 3;
+                ganhoIndustrial = 1;
+                ganhoDiplomatico = 1;
+                bonusEstabilidade = 0.6f;
+                break;
+            case "ciencia":
+                ganhoEconomico = 1;
+                ganhoIndustrial = 1;
+                ganhoDiplomatico = 1;
+                ganhoMilitar = 1;
+                bonusEstabilidade = 0.5f;
+                break;
+            default:
+                ganhoEconomico = 1;
+                bonusEstabilidade = 0.2f;
+                break;
+        }
+
+        pais.nivelEconomico = Mathf.Clamp(pais.nivelEconomico + ganhoEconomico, 0, 100);
+        pais.nivelIndustrial = Mathf.Clamp(pais.nivelIndustrial + ganhoIndustrial, 0, 100);
+        pais.nivelDiplomatico = Mathf.Clamp(pais.nivelDiplomatico + ganhoDiplomatico, 0, 100);
+        pais.nivelMilitar = Mathf.Clamp(pais.nivelMilitar + ganhoMilitar, 0, 100);
+        pais.estabilidade = Mathf.Clamp(pais.estabilidade + bonusEstabilidade, 0f, 100f);
+        pais.producao = Mathf.Clamp(pais.producao + ganhoEconomico * 0.8f + ganhoIndustrial * 0.6f, 0f, 100f);
+
+        RegistrarNoticia(pais.nomePais + " investiu em " + focoNormalizado + ".");
+        if (teamId == teamJogador)
+        {
+            SincronizarJogador();
+        }
+
+        OnGovernoAtualizado?.Invoke();
+        return true;
+    }
+
     public bool CriarPropostaJogador(int alvoTeamId, TipoPropostaInternacional tipo, RecursoMercado recurso, int quantidade, int precoUnitario, string motivo, string dedupKey = null)
     {
         if (alvoTeamId <= 0 || alvoTeamId == teamJogador) return false;
@@ -459,6 +537,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             case RecursoMercado.Comida: return pais.comida;
             case RecursoMercado.Petroleo: return pais.petroleo;
+            case RecursoMercado.Energia: return pais.energia;
             case RecursoMercado.Aco: return pais.aco;
             case RecursoMercado.Armamentos: return pais.armamentos;
             case RecursoMercado.Uranio: return pais.uranio;
@@ -785,6 +864,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             case RecursoMercado.Comida: return "comida";
             case RecursoMercado.Petroleo: return "petroleo";
+            case RecursoMercado.Energia: return "energia";
             case RecursoMercado.Aco: return "aco";
             case RecursoMercado.Armamentos: return "armamentos";
             case RecursoMercado.Uranio: return "uranio";
@@ -841,6 +921,11 @@ public class SistemaGovernoMundial : MonoBehaviour
                 if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
                     GerenciadorRecursos.Instancia.petroleo = pais.petroleo;
                 break;
+            case RecursoMercado.Energia:
+                pais.energia = Mathf.Max(0, pais.energia + delta);
+                if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
+                    GerenciadorRecursos.Instancia.energia = pais.energia;
+                break;
             case RecursoMercado.Aco:
                 pais.aco = Mathf.Max(0, pais.aco + delta);
                 if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
@@ -864,15 +949,24 @@ public class SistemaGovernoMundial : MonoBehaviour
         pais.populacao = Mathf.Clamp(economia.populacaoTotal > 0 ? economia.populacaoTotal : pais.populacao, 0, pais.populacaoMaxima);
         pais.emprego = economia.populacaoTotal <= 0 ? 100f : Mathf.Clamp01(economia.empregosOcupados / (float)Mathf.Max(1, economia.populacaoTotal)) * 100f;
         pais.moradia = economia.populacaoTotal <= 0 ? 100f : Mathf.Clamp01(economia.moradiaTotal / (float)Mathf.Max(1, economia.populacaoTotal)) * 100f;
-        pais.producao = Mathf.Clamp(35f + economia.industriaProduzida * 4f + economia.petroleoProduzido * 2f + economia.comidaProduzida * 1.2f - economia.deficitEnergia * 4f, 5f, 100f);
+        pais.producao = Mathf.Clamp(35f
+            + economia.industriaProduzida * 4f
+            + economia.petroleoProduzido * 2f
+            + economia.comidaProduzida * 1.2f
+            + pais.nivelEconomico * 0.22f
+            + pais.nivelIndustrial * 0.32f
+            - economia.deficitEnergia * 4f, 5f, 100f);
         pais.impostoMoradia = NormalizarImposto(pais.impostoMoradia);
         pais.impostoIndustria = NormalizarImposto(pais.impostoIndustria);
         pais.impostoComercio = NormalizarImposto(pais.impostoComercio);
 
-        pais.receitaMoradia = economia.receitaMoradia * FatorImposto(pais.impostoMoradia);
-        pais.receitaIndustria = economia.receitaIndustria * FatorImposto(pais.impostoIndustria);
-        pais.receitaComercio = economia.receitaComercio * FatorImposto(pais.impostoComercio);
-        pais.receitaEnergia = economia.receitaEnergia;
+        float multiplicadorEconomico = 1f + pais.nivelEconomico * 0.0020f;
+        float multiplicadorIndustrial = 1f + pais.nivelIndustrial * 0.0025f;
+        float multiplicadorDiplomatico = 1f + pais.nivelDiplomatico * 0.0018f;
+        pais.receitaMoradia = economia.receitaMoradia * FatorImposto(pais.impostoMoradia) * multiplicadorEconomico;
+        pais.receitaIndustria = economia.receitaIndustria * FatorImposto(pais.impostoIndustria) * multiplicadorIndustrial;
+        pais.receitaComercio = economia.receitaComercio * FatorImposto(pais.impostoComercio) * multiplicadorDiplomatico;
+        pais.receitaEnergia = economia.receitaEnergia * (1f + (pais.nivelEconomico + pais.nivelIndustrial) * 0.0010f);
         pais.custoManutencao = economia.custoManutencao + economia.energiaConsumida * 0.35f + pais.populacao * 0.01f;
         pais.saldoOperacional = (pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia) - pais.custoManutencao;
         pais.rendaPorSegundo = Mathf.Max(0f, pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia);

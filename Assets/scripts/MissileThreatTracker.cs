@@ -23,6 +23,24 @@ public class MissileThreatTracker : MonoBehaviour
     public bool Interceptor => interceptor;
     public Transform RaizMissil => raizMissil != null ? raizMissil : (transform.root != null ? transform.root : transform);
 
+    public static void CopiarAmeacasAtivas(List<MissileThreatTracker> destino)
+    {
+        if (destino == null) return;
+        destino.Clear();
+
+        for (int i = ameacasAtivas.Count - 1; i >= 0; i--)
+        {
+            MissileThreatTracker tracker = ameacasAtivas[i];
+            if (tracker == null || tracker.RaizMissil == null || !tracker.RaizMissil.gameObject.activeInHierarchy)
+            {
+                ameacasAtivas.RemoveAt(i);
+                continue;
+            }
+
+            destino.Add(tracker);
+        }
+    }
+
     public Vector3 ObterVelocidadeAtual()
     {
         if (rb == null && raizMissil != null) rb = raizMissil.GetComponent<Rigidbody>();

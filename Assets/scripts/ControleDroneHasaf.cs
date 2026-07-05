@@ -38,8 +38,21 @@ public class ControleDroneHasaf : MonoBehaviour
         
         // Ajuste de estabilidade e voo do ControleAviao
         controleAviao.raioOrbitaMissao = raioPatrulha;
-        controleAviao.altitudeVoo = 200f; // Voo mais alto para melhor visão e evitar obstáculos
+        controleAviao.altitudeVoo = 90f; // Drone de vigia: altitude baixa e est�vel
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        MissilePrefabAutoBinder.BindControleDroneHasaf(this);
+    }
+
+    [ContextMenu("Auto configurar missil")]
+    private void AutoConfigurarMissilEditor()
+    {
+        MissilePrefabAutoBinder.BindControleDroneHasaf(this, true);
+    }
+#endif
 
     private void RemoverFumaca()
     {
@@ -106,16 +119,14 @@ public class ControleDroneHasaf : MonoBehaviour
             // Seguir alvo
             if (alvoSeguir.gameObject.activeInHierarchy)
             {
-                Vector3 direcao = (transform.position - alvoSeguir.position).normalized;
-                controleAviao.alvoGPSVoo = alvoSeguir.position + (direcao * distanciaManterAlvo);
-                
-                // Se for inimigo, tenta lançar missel
-                IdentidadeUnidade id = alvoSeguir.GetComponent<IdentidadeUnidade>();
-                IdentidadeUnidade meuId = GetComponent<IdentidadeUnidade>();
-                if (id != null && meuId != null && id.teamID != meuId.teamID)
+                Vector3 alvoPlano = alvoSeguir.position;
+                alvoPlano.y = transform.position.y;
+                Vector3 direcao = (transform.position - alvoPlano).normalized;
+                if (direcao.sqrMagnitude < 0.01f)
                 {
-                    DispararMissil(alvoSeguir);
+                    direcao = -transform.forward;
                 }
+                controleAviao.alvoGPSVoo = alvoPlano + (direcao * distanciaManterAlvo);
             }
             else
             {
@@ -128,7 +139,9 @@ public class ControleDroneHasaf : MonoBehaviour
             Transform alvoInimigo = EscanearInimigoProximo(600f);
             if (alvoInimigo != null)
             {
-                DispararMissil(alvoInimigo);
+                Vector3 alvoPlano = alvoInimigo.position;
+                alvoPlano.y = transform.position.y;
+                controleAviao.alvoGPSVoo = alvoPlano;
             }
         }
     }
@@ -137,6 +150,12 @@ public class ControleDroneHasaf : MonoBehaviour
     {
         alvoSeguir = novoAlvo;
         controleAviao.estadoAtual = ControleAviao.EstadoAviao.EmMissao;
+        if (novoAlvo != null)
+        {
+            Vector3 foco = novoAlvo.position;
+            foco.y = transform.position.y;
+            controleAviao.alvoGPSVoo = foco;
+        }
     }
 
     public void DispararMissil(Transform alvo)
@@ -153,7 +172,7 @@ public class ControleDroneHasaf : MonoBehaviour
             MisselTatico missil = missilGO.GetComponent<MisselTatico>();
             if (missil == null) missil = missilGO.AddComponent<MisselTatico>(); // Fallback
             
-            missil.IniciarLancamento(alvo.position, gameObject);
+            missil.IniciarLancamento(alvo.position);
             
             // Notificar Menu Satélite
             if (MenuComandoController.Instancia != null)

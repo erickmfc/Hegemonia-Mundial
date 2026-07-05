@@ -116,6 +116,7 @@ public class Helicoptero : MonoBehaviour
     private bool preparandoDecolagem = false;
     private bool aplicarAltitudeCruzeiroNaDecolagem = true;
     private Animation animacaoDecolagem;
+    private Transform alvoComandoAtaque;
 
     // COMPATIBILIDADE EXTERNA
     [HideInInspector] public string nomeHelicoptero = "Falcão Negro"; 
@@ -123,8 +124,8 @@ public class Helicoptero : MonoBehaviour
     private bool disponivelParaPatrulha = true; 
     private IdentidadeUnidade identidade;
     private Rigidbody rb;
-    private static List<Helicoptero> todosHelicopteros = new List<Helicoptero>();
     private static int proximoIdExibicao = 1;
+    private static readonly List<Helicoptero> _bufferHelicopterosConsulta = new List<Helicoptero>(32);
     [SerializeField, HideInInspector] private int idExibicao = 0;
     private readonly RaycastHit[] _bufferRaycastSolo = new RaycastHit[32];
     private float _cacheAlturaSolo = 0f;
@@ -138,11 +139,18 @@ public class Helicoptero : MonoBehaviour
     private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
 
     void LogDebug(string msg) { if (debugLogs) Debug.Log(msg); }
-    void OnEnable() { if(!todosHelicopteros.Contains(this)) todosHelicopteros.Add(this); }
-    void OnDisable() { todosHelicopteros.Remove(this); }
+    void OnEnable() { RegistroEntidadesJogo.Register(this); }
+    void OnDisable() { RegistroEntidadesJogo.Unregister(this); }
 
     void Awake()
     {
+        // O menu satelite e a trilha oficial de ordens usam ControleUnidade como
+        // contrato comum. O proprio ControleUnidade detecta Helicoptero e evita NavMesh.
+        if (GetComponent<ControleUnidade>() == null)
+        {
+            gameObject.AddComponent<ControleUnidade>();
+        }
+
         rb = GetComponent<Rigidbody>();
         if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
 
@@ -201,10 +209,18 @@ public class Helicoptero : MonoBehaviour
         if (animacaoDecolagem) animacaoDecolagem.playAutomatically = false;
 
         if(!audioMotor) audioMotor = GetComponent<AudioSource>();
+        if(!audioMotor) audioMotor = GetComponentInChildren<AudioSource>(true);
         if(audioMotor)
         {
             audioMotor.loop = true;
             audioMotor.playOnAwake = false;
+            audioMotor.spatialBlend = 1f;
+            audioMotor.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioMotor.dopplerLevel = 0f;
+            audioMotor.minDistance = 9f;
+            audioMotor.maxDistance = 150f;
+            audioMotor.rolloffMode = AudioRolloffMode.Linear;
+            audioMotor.priority = Mathf.Min(audioMotor.priority, 48);
             audioMotor.volume = 0;
             audioMotor.pitch = pitchMinimo;
         }
@@ -239,9 +255,33 @@ public class Helicoptero : MonoBehaviour
         {
             PararPorFaltaDeCombustivel();
         }
+        AtualizarAlvoComandoAtaque();
         if (estaVoando) ProcessarMovimento();
         ControlarMotorEHelices();
         InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Aereo, inicioUpdate);
+    }
+
+    public void OrdenarAtaque(Transform alvo, Vector3 pontoFallback)
+    {
+        alvoComandoAtaque = alvo;
+        modoCombateAtivo = true;
+        Decolar(alvo != null ? alvo.position : pontoFallback);
+    }
+
+    private void AtualizarAlvoComandoAtaque()
+    {
+        if (alvoComandoAtaque == null)
+        {
+            return;
+        }
+
+        if (!alvoComandoAtaque.gameObject.activeInHierarchy)
+        {
+            alvoComandoAtaque = null;
+            return;
+        }
+
+        destino = AjustarDestinoParaVoo(alvoComandoAtaque.position);
     }
 
     private void LateUpdate()
@@ -1080,7 +1120,27 @@ public class Helicoptero : MonoBehaviour
     void VerificarInatividade() { if (!estaVoando && motorLigado) { timerInatividade += Time.deltaTime; if (timerInatividade > 10f) motorLigado = false; } }
 
     private List<GameObject> soldadosChamados = new List<GameObject>();
-    public static bool SoldadoEstaEmbarcando(GameObject s) { if (s == null) return false; for (int i = 0; i < todosHelicopteros.Count; i++) { var h = todosHelicopteros[i]; if (h != null && h.soldadosChamados.Contains(s)) return true; } return false; }
+    public static bool SoldadoEstaEmbarcando(GameObject s)
+    {
+        if (s == null)
+        {
+            return false;
+        }
+
+        _bufferHelicopterosConsulta.Clear();
+        RegistroEntidadesJogo.FillHelicopteros(_bufferHelicopterosConsulta);
+
+        for (int i = 0; i < _bufferHelicopterosConsulta.Count; i++)
+        {
+            Helicoptero h = _bufferHelicopterosConsulta[i];
+            if (h != null && h.soldadosChamados.Contains(s))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public int ChamarReforcos()
     {

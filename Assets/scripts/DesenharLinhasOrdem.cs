@@ -702,6 +702,8 @@ public class DesenharLinhasOrdem : MonoBehaviour
     // ── ATAQUE ───────────────────────────────────────────────────────────────
     void AplicarOrdemAtaque(Vector3 pontoAlvo, Transform transformAlvo)
     {
+        bool ataqueEmAlvoEspecifico = transformAlvo != null;
+
         for (int i = 0; i < _alvosModo.Count; i++)
         {
             GameObject alvo = _alvosModo[i];
@@ -711,7 +713,15 @@ public class DesenharLinhasOrdem : MonoBehaviour
             Helicoptero helicoptero = alvo.GetComponent<Helicoptero>();
             if (helicoptero != null)
             {
-                helicoptero.Decolar(pontoAlvo);
+                ControleUnidade controleHelicoptero = alvo.GetComponent<ControleUnidade>();
+                helicoptero.modoCombateAtivo = true;
+                if (controleHelicoptero != null)
+                {
+                    controleHelicoptero.DefinirModoCombate(true);
+                    controleHelicoptero.DefinirAlvoPrioritario(transformAlvo);
+                }
+
+                helicoptero.OrdenarAtaque(transformAlvo, pontoAlvo);
                 continue;
             }
 
@@ -724,6 +734,8 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 ControleAviao controleAviao = alvo.GetComponent<ControleAviao>();
                 if (controleAviao != null)
                 {
+                    controleAviao.alvoPrioritarioIA = ataqueEmAlvoEspecifico;
+                    controleAviao.alvoEstrategico = ataqueEmAlvoEspecifico ? transformAlvo.position : pontoAlvo;
                     if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
                     {
                         controleAviao.IniciarMissaoCompleta(pontoAlvo);
@@ -738,6 +750,15 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 continue;
             }
 
+            // Navio realista: avança para um ponto lateral na agua e dispara torpedos sem ir de frente
+            ControleNavioRealista navioRealista = alvo.GetComponent<ControleNavioRealista>();
+            if (navioRealista != null)
+            {
+                Vector3 referenciaNaval = transformAlvo != null ? transformAlvo.position : pontoAlvo;
+                navioRealista.DefinirDestinoAtaqueLateral(referenciaNaval);
+                continue;
+            }
+
             // Qualquer unidade com ControleUnidade: move para o ponto de ataque
             ControleUnidade unidade = alvo.GetComponent<ControleUnidade>();
             if (unidade != null)
@@ -745,6 +766,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 ControleAviao aviao = alvo.GetComponent<ControleAviao>();
                 if (aviao != null)
                 {
+                    aviao.alvoPrioritarioIA = ataqueEmAlvoEspecifico;
                     unidade.DefinirModoCombate(true);
                     if (aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
                     {
@@ -754,6 +776,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
                     {
                         aviao.alvoGPSVoo = pontoAlvo;
                         aviao.centroDaPatrulha = pontoAlvo;
+                        aviao.alvoEstrategico = ataqueEmAlvoEspecifico ? transformAlvo.position : pontoAlvo;
                         aviao.ordemParaRetorno = false;
                     }
                     continue;
@@ -938,8 +961,10 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
 
         // Guarda Global: Se o destino já foi designado e a unidade já está navegando para ele,
         // NÃO re-emite o comando (isso evita o "hiccup" de recalcular path a cada 3 segundos).
-        bool agenteTemRotaAtiva = agente != null && agente.enabled && agente.isOnNavMesh
-                                  && (agente.hasPath || agente.pathPending);
+        bool agenteTemRotaAtiva = ehNaval && navioRealista != null
+            ? navioRealista.TemDestinoAtivo
+            : agente != null && agente.enabled && agente.isOnNavMesh
+              && (agente.hasPath || agente.pathPending);
         
         if (indiceDesignado == indiceAtual && agenteTemRotaAtiva)
         {
@@ -947,14 +972,14 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
         }
 
         // Intervalo de segurança (caso a unidade se perca ou pare por colisão externa)
-        float intervaloSeguranca = ehNaval ? 10f : 5f;
+        float intervaloSeguranca = ehNaval ? 1.5f : 2f;
 
 
-        if (indiceDesignado != indiceAtual || Time.time - tempoUltimoComando > intervaloSeguranca)
+        if (indiceDesignado != indiceAtual || !agenteTemRotaAtiva
+            || Time.time - tempoUltimoComando > intervaloSeguranca)
         {
-            indiceDesignado = indiceAtual;
             tempoUltimoComando = Time.time;
-            controle.EmitirOrdemMover(alvo, false);
+            indiceDesignado = controle.EmitirOrdemMover(alvo, false) ? indiceAtual : -1;
         }
     }
 }

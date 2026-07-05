@@ -17,6 +17,7 @@ public class MenuComportamento : MonoBehaviour
     private GameObject painelMenu;
     private Text txtEstadoAtual;
     private GerenteSelecao gerenteSelecao;
+    private DesenharLinhasOrdem desenhadorOrdens;
 
     void Start()
     {
@@ -42,6 +43,11 @@ public class MenuComportamento : MonoBehaviour
     {
         if (gerenteSelecao == null || painelMenu == null)
         {
+            if (gerenteSelecao == null)
+            {
+                gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
+            }
+
             return;
         }
 
@@ -136,12 +142,22 @@ public class MenuComportamento : MonoBehaviour
             return;
         }
 
+        if (gerenteSelecao == null)
+        {
+            gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
+        }
+
         bool temSelecao = gerenteSelecao != null && gerenteSelecao.unidadesSelecionadas.Count > 0;
         painelMenu.SetActive(temSelecao);
     }
 
     public void DefinirComportamento(bool passivo)
     {
+        if (gerenteSelecao == null)
+        {
+            gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
+        }
+
         if (gerenteSelecao == null)
         {
             return;
@@ -167,10 +183,14 @@ public class MenuComportamento : MonoBehaviour
 
     public void AtivarModoPatrulha()
     {
-        DesenharLinhasOrdem desenhador = FindFirstObjectByType<DesenharLinhasOrdem>();
-        if (desenhador != null)
+        if (desenhadorOrdens == null)
         {
-            desenhador.IniciarModoPatrulha();
+            desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
+        }
+
+        if (desenhadorOrdens != null)
+        {
+            desenhadorOrdens.IniciarModoPatrulha();
         }
         else
         {
@@ -180,10 +200,14 @@ public class MenuComportamento : MonoBehaviour
 
     public void AtivarModoSeguir()
     {
-        DesenharLinhasOrdem desenhador = FindFirstObjectByType<DesenharLinhasOrdem>();
-        if (desenhador != null)
+        if (desenhadorOrdens == null)
         {
-            desenhador.IniciarModoSeguir();
+            desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
+        }
+
+        if (desenhadorOrdens != null)
+        {
+            desenhadorOrdens.IniciarModoSeguir();
         }
         else
         {

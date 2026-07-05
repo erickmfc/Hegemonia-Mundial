@@ -120,7 +120,7 @@ namespace Hegemonia.AI.DEUSA
                 desejado = Max(desejado, DeusaEstagio.MilitarizacaoDefensiva);
             }
 
-            if (snapshot.HasAirport || snapshot.HasNavalBase || snapshot.TotalCombatUnits >= 12)
+            if (snapshot.HasMilitaryAirport || snapshot.HasNavalBase || snapshot.TotalCombatUnits >= 12)
             {
                 desejado = Max(desejado, DeusaEstagio.ProjecaoRegional);
             }
@@ -176,7 +176,7 @@ namespace Hegemonia.AI.DEUSA
                 return "pressao populacional";
             }
 
-            if (snapshot != null && snapshot.HasAirport)
+            if (snapshot != null && snapshot.HasMilitaryAirport)
             {
                 return "projecao aerea ativa";
             }

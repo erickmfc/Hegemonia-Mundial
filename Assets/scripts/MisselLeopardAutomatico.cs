@@ -176,7 +176,9 @@ public class MisselLeopardAutomatico : MonoBehaviour
             source.clip = somExplosao;
             source.volume = volumeSom;
             source.spatialBlend = 1.0f;
-            source.maxDistance = 500f;
+            source.minDistance = 3f;
+            source.maxDistance = 50f;
+            source.rolloffMode = AudioRolloffMode.Linear;
             source.Play();
             Destroy(audioObj, somExplosao.length + 0.5f);
         }

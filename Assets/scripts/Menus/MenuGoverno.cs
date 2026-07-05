@@ -233,18 +233,38 @@ public class MenuGoverno : MonoBehaviour
 
     private void AplicarLayoutGovernamentalAtual()
     {
-        larguraTela = Mathf.Clamp(larguraTela, 0.72f, 0.98f);
-        alturaTela = Mathf.Clamp(alturaTela, 0.62f, 0.98f);
+        larguraTela = Mathf.Clamp(Mathf.Max(larguraTela, 0.94f), 0.80f, 0.98f);
+        alturaTela = Mathf.Clamp(Mathf.Max(alturaTela, 0.98f), 0.70f, 0.99f);
         deslocamentoVertical = Mathf.Clamp(deslocamentoVertical, -0.08f, 0.08f);
-        larguraSidebar = Mathf.Clamp(larguraSidebar, 178f, 208f);
-        larguraPainelDireito = Mathf.Clamp(larguraPainelDireito, 260f, 320f);
-        alturaCabecalho = Mathf.Clamp(alturaCabecalho, 62f, 76f);
-        alturaRecursos = Mathf.Clamp(alturaRecursos, 42f, 50f);
-        alturaSubAbas = Mathf.Clamp(alturaSubAbas, 36f, 42f);
-        alturaRodape = Mathf.Clamp(alturaRodape, 30f, 36f);
-        alturaDica = Mathf.Clamp(alturaDica, 22f, 28f);
-        espacamento = Mathf.Clamp(espacamento, 6f, 9f);
+        larguraSidebar = Mathf.Clamp(Mathf.Max(larguraSidebar, 220f), 190f, 240f);
+        larguraPainelDireito = Mathf.Clamp(Mathf.Max(larguraPainelDireito, 340f), 280f, 380f);
+        alturaCabecalho = Mathf.Clamp(Mathf.Max(alturaCabecalho, 78f), 66f, 90f);
+        alturaRecursos = Mathf.Clamp(Mathf.Max(alturaRecursos, 54f), 44f, 64f);
+        alturaSubAbas = Mathf.Clamp(Mathf.Max(alturaSubAbas, 44f), 38f, 52f);
+        alturaRodape = Mathf.Clamp(Mathf.Max(alturaRodape, 40f), 32f, 48f);
+        alturaDica = Mathf.Clamp(Mathf.Max(alturaDica, 30f), 24f, 36f);
+        espacamento = Mathf.Clamp(Mathf.Max(espacamento, 12f), 8f, 16f);
         intervaloTickGoverno = Mathf.Clamp(intervaloTickGoverno, 0.75f, 2f);
+
+        corFundoJanela = new Color(0.045f, 0.048f, 0.054f, 0.985f);
+        corFundoEscuro = new Color(0.020f, 0.023f, 0.028f, 0.98f);
+        corPainel = new Color(0.080f, 0.086f, 0.096f, 0.965f);
+        corPainel2 = new Color(0.102f, 0.110f, 0.122f, 0.965f);
+        corCard = new Color(0.122f, 0.130f, 0.144f, 0.94f);
+        corCardClara = new Color(0.160f, 0.170f, 0.186f, 0.94f);
+        corLinha = new Color(0.820f, 0.655f, 0.290f, 0.96f);
+        corLinhaFraca = new Color(0.520f, 0.395f, 0.180f, 0.28f);
+        corDestaque = new Color(0.920f, 0.740f, 0.300f, 1f);
+        corAzulBotao = new Color(0.108f, 0.240f, 0.305f, 1f);
+        corAbaAtiva = new Color(0.166f, 0.145f, 0.094f, 0.98f);
+        corVerde = new Color(0.305f, 0.720f, 0.395f, 1f);
+        corAmarelo = new Color(0.935f, 0.705f, 0.295f, 1f);
+        corLaranja = new Color(0.930f, 0.485f, 0.210f, 1f);
+        corVermelho = new Color(0.815f, 0.195f, 0.165f, 1f);
+        corRoxo = new Color(0.560f, 0.440f, 0.850f, 1f);
+        corTextoPrimario = new Color(0.945f, 0.965f, 0.985f, 1f);
+        corTextoSecundario = new Color(0.735f, 0.795f, 0.845f, 1f);
+        corTextoApagado = new Color(0.535f, 0.580f, 0.630f, 1f);
     }
 
     private void Awake()
@@ -494,6 +514,7 @@ public class MenuGoverno : MonoBehaviour
         root.childForceExpandWidth = true;
         root.childForceExpandHeight = false;
 
+        BuildAmbientBackdrop(painelPrincipal.transform);
         BuildHeader(painelPrincipal.transform);
         BuildResourceBar(painelPrincipal.transform);
         BuildMainArea(painelPrincipal.transform);
@@ -504,39 +525,87 @@ public class MenuGoverno : MonoBehaviour
         ShowCurrentPage();
     }
 
+    private void BuildAmbientBackdrop(Transform parent)
+    {
+        GameObject wash = CreateUIObject("BackdropWash", parent);
+        wash.transform.SetAsFirstSibling();
+        LayoutElement washLe = wash.AddComponent<LayoutElement>();
+        washLe.ignoreLayout = true;
+        Image washImg = wash.AddComponent<Image>();
+        washImg.color = new Color(0.018f, 0.022f, 0.030f, 0.18f);
+        RectTransform washRt = wash.GetComponent<RectTransform>();
+        Stretch(washRt, 0f, 0f, 0f, 0f);
+
+        GameObject topGlow = CreateUIObject("GlowTopRight", parent);
+        topGlow.transform.SetAsFirstSibling();
+        LayoutElement topGlowLe = topGlow.AddComponent<LayoutElement>();
+        topGlowLe.ignoreLayout = true;
+        Image topGlowImg = topGlow.AddComponent<Image>();
+        topGlowImg.color = new Color(0.920f, 0.720f, 0.250f, 0.08f);
+        RectTransform topGlowRt = topGlow.GetComponent<RectTransform>();
+        topGlowRt.anchorMin = new Vector2(0.66f, 0.70f);
+        topGlowRt.anchorMax = new Vector2(1f, 1f);
+        topGlowRt.offsetMin = Vector2.zero;
+        topGlowRt.offsetMax = Vector2.zero;
+
+        GameObject bottomGlow = CreateUIObject("GlowBottomLeft", parent);
+        bottomGlow.transform.SetAsFirstSibling();
+        LayoutElement bottomGlowLe = bottomGlow.AddComponent<LayoutElement>();
+        bottomGlowLe.ignoreLayout = true;
+        Image bottomGlowImg = bottomGlow.AddComponent<Image>();
+        bottomGlowImg.color = new Color(0.070f, 0.170f, 0.220f, 0.11f);
+        RectTransform bottomGlowRt = bottomGlow.GetComponent<RectTransform>();
+        bottomGlowRt.anchorMin = new Vector2(0f, 0f);
+        bottomGlowRt.anchorMax = new Vector2(0.34f, 0.32f);
+        bottomGlowRt.offsetMin = Vector2.zero;
+        bottomGlowRt.offsetMax = Vector2.zero;
+
+        GameObject leftLine = CreateUIObject("AccentLine", parent);
+        leftLine.transform.SetAsFirstSibling();
+        LayoutElement lineLe = leftLine.AddComponent<LayoutElement>();
+        lineLe.ignoreLayout = true;
+        Image lineImg = leftLine.AddComponent<Image>();
+        lineImg.color = new Color(0.820f, 0.655f, 0.290f, 0.22f);
+        RectTransform lineRt = leftLine.GetComponent<RectTransform>();
+        lineRt.anchorMin = new Vector2(0f, 0f);
+        lineRt.anchorMax = new Vector2(0f, 1f);
+        lineRt.sizeDelta = new Vector2(4f, 0f);
+        lineRt.anchoredPosition = Vector2.zero;
+    }
+
     private void BuildHeader(Transform parent)
     {
         GameObject header = CreatePanel("Header", parent, alturaCabecalho, new Color(0.016f, 0.022f, 0.028f, 0.98f));
         HorizontalLayoutGroup h = header.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(16, 14, 10, 10);
-        h.spacing = 12;
+        h.padding = new RectOffset(18, 16, 12, 12);
+        h.spacing = 14;
         h.childControlWidth = true;
         h.childControlHeight = true;
         h.childForceExpandHeight = true;
 
         GameObject idBox = CreatePanel("Identidade", header.transform, 0f, corPainel);
         LayoutElement idLe = idBox.GetComponent<LayoutElement>();
-        idLe.preferredWidth = 300f;
-        idLe.minWidth = 260f;
+        idLe.preferredWidth = 320f;
+        idLe.minWidth = 280f;
         idLe.flexibleWidth = 0f;
         VerticalLayoutGroup idV = idBox.AddComponent<VerticalLayoutGroup>();
-        idV.padding = new RectOffset(14, 12, 8, 6);
+        idV.padding = new RectOffset(16, 14, 10, 8);
         idV.spacing = 2;
         titleText = CreateLayoutText(idBox.transform, "GOVERNO", 20, corTextoPrimario, TextAnchor.LowerLeft, FontStyle.Bold, 28f);
         subtitleText = CreateLayoutText(idBox.transform, "Painel nacional", 11, corTextoSecundario, TextAnchor.UpperLeft, FontStyle.Normal, 18f);
 
         GameObject center = CreateUIObject("TituloCentral", header.transform);
         center.AddComponent<LayoutElement>().flexibleWidth = 1f;
-        CreateFreeText(center.transform, "HEGEMONIA", 25, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold);
+        CreateFreeText(center.transform, "HEGEMONIA GLOBAL", 25, corTextoPrimario, TextAnchor.MiddleCenter, FontStyle.Bold);
 
         GameObject identidadeEditor = CreatePanel("EditorIdentidade", header.transform, 0f, corPainel2);
         LayoutElement editorLe = identidadeEditor.GetComponent<LayoutElement>();
-        editorLe.preferredWidth = 460f;
-        editorLe.minWidth = 420f;
+        editorLe.preferredWidth = 500f;
+        editorLe.minWidth = 440f;
         editorLe.flexibleWidth = 0f;
 
         VerticalLayoutGroup editorLayout = identidadeEditor.AddComponent<VerticalLayoutGroup>();
-        editorLayout.padding = new RectOffset(10, 10, 8, 8);
+        editorLayout.padding = new RectOffset(12, 12, 10, 10);
         editorLayout.spacing = 6;
         editorLayout.childControlWidth = true;
         editorLayout.childControlHeight = true;
@@ -574,9 +643,9 @@ public class MenuGoverno : MonoBehaviour
 
         Button close = CreateButton(header.transform, "X", new Color(0.300f, 0.060f, 0.055f, 1f), () => AlternarMenu(false));
         LayoutElement closeLe = close.GetComponent<LayoutElement>();
-        closeLe.preferredWidth = 84f;
-        closeLe.minWidth = 72f;
-        closeLe.preferredHeight = 52f;
+        closeLe.preferredWidth = 92f;
+        closeLe.minWidth = 78f;
+        closeLe.preferredHeight = 56f;
     }
 
     private void BuildResourceBar(Transform parent)
@@ -593,6 +662,7 @@ public class MenuGoverno : MonoBehaviour
         CreateResourceView("DINHEIRO", "$", corVerde);
         CreateResourceView("PETROLEO", "OIL", corDestaque);
         CreateResourceView("ACO", "ACO", corAmarelo);
+        CreateResourceView("ENERGIA", "NRG", corRoxo);
         CreateResourceView("COMIDA", "FOOD", corVerde);
         CreateResourceView("POP", "POP", corTextoSecundario);
         CreateResourceView("ESTAB", "EST", corDestaque);
@@ -604,10 +674,10 @@ public class MenuGoverno : MonoBehaviour
         GameObject body = CreateUIObject("Corpo", parent);
         LayoutElement bodyLe = body.AddComponent<LayoutElement>();
         bodyLe.flexibleHeight = 1f;
-        bodyLe.minHeight = 360f;
+        bodyLe.minHeight = 400f;
 
         HorizontalLayoutGroup h = body.AddComponent<HorizontalLayoutGroup>();
-        h.padding = new RectOffset(12, 12, 10, 10);
+        h.padding = new RectOffset(16, 16, 14, 14);
         h.spacing = espacamento;
         h.childControlWidth = true;
         h.childControlHeight = true;
@@ -645,7 +715,7 @@ public class MenuGoverno : MonoBehaviour
         GameObject area = CreateUIObject("AreaConteudo", parent);
         area.AddComponent<LayoutElement>().flexibleWidth = 1f;
         VerticalLayoutGroup v = area.AddComponent<VerticalLayoutGroup>();
-        v.spacing = 8f;
+        v.spacing = 10f;
         v.childControlWidth = true;
         v.childControlHeight = true;
         v.childForceExpandHeight = false;
@@ -662,7 +732,7 @@ public class MenuGoverno : MonoBehaviour
         GameObject split = CreateUIObject("Split", area.transform);
         LayoutElement splitLe = split.AddComponent<LayoutElement>();
         splitLe.flexibleHeight = 1f;
-        splitLe.minHeight = 280f;
+        splitLe.minHeight = 320f;
 
         HorizontalLayoutGroup splitH = split.AddComponent<HorizontalLayoutGroup>();
         splitH.spacing = espacamento;
@@ -1175,6 +1245,8 @@ public class MenuGoverno : MonoBehaviour
                     + "\nInflacao: " + p.inflacao.ToString("0.0") + "%"
                     + "\nExportacao: " + p.exportacaoTotal.ToString("0.0")
                     + "\nImportacao: " + p.importacaoTotal.ToString("0.0")
+                    + "\nEstoque energia: " + FormatNumber(p.energia)
+                    + "\nEstoque comida: " + FormatNumber(p.comida)
                     + "\nDeficit principal: " + MainDeficit(p);
             }
         };
@@ -1311,12 +1383,15 @@ public class MenuGoverno : MonoBehaviour
                 return;
             }
 
-            string sugestao = p.deficitEnergia > 0f ? "Energia" : p.nivelIndustrial < p.nivelMilitar ? "Industria" : "Diplomacia";
+            string sugestao = p.deficitEnergia > 0f ? "Energia" : p.comida < 300 ? "Comida" : p.nivelIndustrial < p.nivelMilitar ? "Industria" : "Diplomacia";
             Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
             stats.text = (tab == 1 ? "Tecnologias" : tab == 2 ? "Laboratorios" : tab == 3 ? "Fila de pesquisa" : "Projetos")
+                + "\nNivel economico: " + p.nivelEconomico
                 + "\nNivel industrial: " + p.nivelIndustrial
                 + "\nNivel diplomatico: " + p.nivelDiplomatico
                 + "\nNivel militar: " + p.nivelMilitar
+                + "\nEstoque energia: " + FormatNumber(p.energia)
+                + "\nEstoque comida: " + FormatNumber(p.comida)
                 + "\nPlano nacional: " + p.planoEstrategico
                 + "\nPrioridade sugerida: " + sugestao;
         };
@@ -1470,6 +1545,8 @@ public class MenuGoverno : MonoBehaviour
                 Notificar("Economia", "Investimento em moradia aplicado.");
                 RefreshDynamicData(true);
             });
+            CreateActionButton(page.Root.transform, "COMPRAR COMIDA", corVerde, () => ExecuteBuy("comida"));
+            CreateActionButton(page.Root.transform, "COMPRAR PETROLEO", corLaranja, () => ExecuteBuy("petroleo"));
             CreateActionButton(page.Root.transform, "VENDER ENERGIA (EXCESSO)", corVerde, () => SellRealResource("energia", 50));
             CreateActionButton(page.Root.transform, "COMPRAR ENERGIA (EMERGENCIA)", corVermelho, () => ExecuteBuy("energia"));
         };
@@ -1522,9 +1599,10 @@ public class MenuGoverno : MonoBehaviour
 
                 if (selecionada.temAeroporto)
                 {
-                    CreateActionButton(page.Root.transform, "AEROPORTO: ROTAS CIVIS (Futuro)", corAzulBotao, () =>
+                    CreateActionButton(page.Root.transform, "ROTAS CIVIS E LOGISTICA", corAzulBotao, () =>
                     {
-                        Notificar("Aeroporto", "Integração Futura: Conectando voos comerciais civis de " + selecionada.nome + ".");
+                        bool ok = InvestirSetorUI("Logistica", 650, "Logistica", string.Empty);
+                        Notificar("Aeroporto", ok ? "Rotas civis fortalecidas para " + selecionada.nome + "." : "Nao foi possivel financiar as rotas civis.");
                     });
                 }
             }
@@ -1589,10 +1667,10 @@ public class MenuGoverno : MonoBehaviour
             ClearChildren(page.Root.transform);
             CreateSectionTitle(page.Root.transform, "Pesquisa");
             CreateInfoBlock(page.Root.transform, "Cada acao reposiciona o foco nacional e aparece nas leituras do governo.");
-            CreateActionButton(page.Root.transform, "PRIORIZAR ENERGIA", corAzulBotao, () => DefinirPlanoUI("Energia"));
-            CreateActionButton(page.Root.transform, "PRIORIZAR INDUSTRIA", corPainel2, () => DefinirPlanoUI("Industria"));
-            CreateActionButton(page.Root.transform, "PRIORIZAR DIPLOMACIA", new Color(0.110f, 0.200f, 0.280f, 1f), () => DefinirPlanoUI("Diplomacia"));
-            CreateActionButton(page.Root.transform, "PRIORIZAR DEFESA", new Color(0.280f, 0.130f, 0.120f, 1f), () => DefinirPlanoUI("Defesa"));
+            CreateActionButton(page.Root.transform, "INVESTIR EM ENERGIA", corAzulBotao, () => InvestirSetorUI("Energia", 750, "Energia"));
+            CreateActionButton(page.Root.transform, "INVESTIR EM INDUSTRIA", corPainel2, () => InvestirSetorUI("Industria", 700, "Industria"));
+            CreateActionButton(page.Root.transform, "INVESTIR EM DIPLOMACIA", new Color(0.110f, 0.200f, 0.280f, 1f), () => InvestirSetorUI("Diplomacia", 600, "Diplomacia"));
+            CreateActionButton(page.Root.transform, "INVESTIR EM DEFESA", new Color(0.280f, 0.130f, 0.120f, 1f), () => InvestirSetorUI("Defesa", 850, "Defesa"));
         };
         page.Refresh();
     }
@@ -1982,6 +2060,29 @@ public class MenuGoverno : MonoBehaviour
         RefreshDynamicData(true);
     }
 
+    private bool InvestirSetorUI(string foco, int custo, string plano = null, string categoriaAviso = "Ciencia")
+    {
+        string canalAviso = string.IsNullOrWhiteSpace(categoriaAviso) ? "Governo" : categoriaAviso;
+        if (Government() == null)
+        {
+            Notificar(canalAviso, "Sistema de governo indisponivel.");
+            return false;
+        }
+
+        bool ok = Government().InvestirCapacidadeNacional(paisJogadorId, foco, custo);
+        if (ok && !string.IsNullOrWhiteSpace(plano))
+        {
+            Government().DefinirPlanoEstrategico(paisJogadorId, plano);
+        }
+
+        if (!string.IsNullOrWhiteSpace(categoriaAviso))
+        {
+            Notificar(canalAviso, ok ? foco + " financiado." : "Nao foi possivel concluir o investimento.");
+        }
+        RefreshDynamicData(true);
+        return ok;
+    }
+
     private void AjustarImpostoUI(string categoria, int delta)
     {
         if (Government() == null)
@@ -2069,23 +2170,27 @@ public class MenuGoverno : MonoBehaviour
             p.saldo = gr.dinheiro;
             p.petroleo = gr.petroleo;
             p.aco = gr.aco;
+            p.energia = gr.energia;
             p.comida = gr.comida;
             p.populacao = gr.populacaoAtual;
             p.populacaoMaxima = gr.populacaoMaxima;
         }
 
         float taxaComida = 0f;
+        float taxaEnergia = 0f;
         DadosEconomiaPais playerEcon = PlayerEconomy();
         if (p != null && playerEcon != null)
         {
             float consumoCivil = p.populacaoCivil / 100f * 1f;
             float consumoMilitar = p.populacaoMilitarAtiva / 100f * 2f;
             taxaComida = playerEcon.comidaProduzida - (consumoCivil + consumoMilitar);
+            taxaEnergia = playerEcon.energiaProduzida - playerEcon.energiaConsumida;
         }
 
         SetResource("DINHEIRO", p != null ? "$" + FormatNumber(p.saldo) : gr != null ? "$" + FormatNumber(gr.dinheiro) : "n/d", p != null ? SignedRate(p.rendaPorSegundo) : string.Empty, corVerde);
         SetResource("PETROLEO", p != null ? FormatNumber(p.petroleo) : gr != null ? FormatNumber(gr.petroleo) : "0", gr != null ? SignedRate(gr.petroleoPorSegundo) : string.Empty, gr == null || gr.petroleoPorSegundo >= 0f ? corVerde : corVermelho);
         SetResource("ACO", p != null ? FormatNumber(p.aco) : gr != null ? FormatNumber(gr.aco) : "0", gr != null ? SignedRate(gr.acoPorSegundo) : string.Empty, gr == null || gr.acoPorSegundo >= 0f ? corVerde : corVermelho);
+        SetResource("ENERGIA", p != null ? FormatNumber(p.energia) : gr != null ? FormatNumber(gr.energia) : "0", p != null && playerEcon != null ? SignedRate(taxaEnergia) : string.Empty, p == null || taxaEnergia >= 0f ? corVerde : corVermelho);
         SetResource("COMIDA", p != null ? FormatNumber(p.comida) : gr != null ? FormatNumber(gr.comida) : "0", p != null && playerEcon != null ? SignedRate(taxaComida) : string.Empty, p == null || taxaComida >= 0f ? corVerde : corVermelho);
         SetResource("POP", p != null ? FormatNumber(p.populacao) + "/" + FormatNumber(p.populacaoMaxima) : gr != null ? gr.populacaoAtual + "/" + gr.populacaoMaxima : "0", string.Empty, corTextoSecundario);
         SetResource("ESTAB", p != null ? p.estabilidade.ToString("0") + "%" : "n/d", p != null ? "Infl. " + p.inflacao.ToString("0.0") + "%" : string.Empty, p != null ? StatusColor(p) : corTextoSecundario);

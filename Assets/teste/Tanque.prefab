@@ -92,8 +92,6 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -115,7 +113,6 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -189,8 +186,6 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -212,7 +207,6 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -274,7 +268,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 4480961355066741266}
   selecionado: 0
+  aguardandoVisto: 0
+  vistoAprovado: 0
   velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
+  tamanhoSelecao: 0
+  corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
+  linhaAlcance: {fileID: 0}
+  corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
+  larguraLinha: 0.15
+  segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
 --- !u!208 &-3531820236190028511
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -306,6 +316,11 @@ MonoBehaviour:
   teamID: 1
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
+  tipoUnidade: 0
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
 --- !u!1001 &4173445283179853415
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -407,10 +422,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1e939b9a5d995140bf346f9ba6ef1a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeTiro
+  modoPassivo: 0
+  etiquetaAlvo: Inimigo
+  intervaloEntreTiros: 0.5
+  alvoAtual: {fileID: 0}
+  alvoPrioritario: {fileID: 0}
   prefabProjetil: {fileID: 1616850976552727515, guid: 3de0ae35819a8084697de5b2528faa4e, type: 3}
+  capacidadePente: 30
+  tempoRecarga: 2
+  alcanceTiro: 50
+  velocidadeDoTiro: 60
   bocaDoCano: {fileID: 8776381242100586501}
   forcaDoTiro: 1000
   somTiro: {fileID: 8300000, guid: aa85dc85a67aa704391d80093c03b5e8, type: 3}
+  somRecarga: {fileID: 0}
+  somSemMuni: {fileID: 0}
 --- !u!1001 &4426281149060496258
 PrefabInstance:
   m_ObjectHideFlags: 0

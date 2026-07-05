@@ -182,6 +182,19 @@ public class ControleSubmarino : MonoBehaviour
         }
     }
 
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        MissilePrefabAutoBinder.BindControleSubmarino(this);
+    }
+
+    [ContextMenu("Auto configurar misseis")]
+    private void AutoConfigurarMisseisEditor()
+    {
+        MissilePrefabAutoBinder.BindControleSubmarino(this, true);
+    }
+#endif
+
     void Update()
     {
         if (cameraPrincipal == null)
@@ -426,7 +439,18 @@ public class ControleSubmarino : MonoBehaviour
 
     private void ProcessarMiraManual()
     {
-        if (!Input.GetMouseButtonDown(1))
+        bool disparoSolicitado =
+            Input.GetMouseButtonDown(1) ||
+            Input.GetMouseButtonDown(0) ||
+            Input.GetKeyDown(KeyCode.Space);
+
+        if (!disparoSolicitado)
+        {
+            return;
+        }
+
+        if (UnityEngine.EventSystems.EventSystem.current != null &&
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
         {
             return;
         }
@@ -458,6 +482,31 @@ public class ControleSubmarino : MonoBehaviour
 
         pontoAlvoAtual = hit.point;
         DispararMissel(pontoAlvoAtual);
+    }
+
+    public bool TentarDisparoManual(Vector3 pontoAlvo, Transform alvoT = null)
+    {
+        if (modoAtual != ModoOperacao.Manual)
+        {
+            return false;
+        }
+
+        if (misseisDisponiveis <= 0)
+        {
+            Debug.Log("[USS Leviathan] Sem misseis disponiveis!", this);
+            return false;
+        }
+
+        float distancia = Vector3.Distance(transform.position, pontoAlvo);
+        if (distancia > alcanceMisseis)
+        {
+            Debug.Log($"[USS Leviathan] Alvo fora de alcance! ({distancia:F0}m / max {alcanceMisseis:F0}m)", this);
+            return false;
+        }
+
+        pontoAlvoAtual = pontoAlvo;
+        DispararMissel(pontoAlvoAtual, alvoT);
+        return true;
     }
 
     private void TentarAtaqueAutomatico()

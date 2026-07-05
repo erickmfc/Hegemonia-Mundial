@@ -12,6 +12,8 @@ using Hegemonia.AI.BrainMaster;
 /// </summary>
 public class Projetil : MonoBehaviour
 {
+    private static readonly HashSet<Projetil> ativosNoMapa = new HashSet<Projetil>();
+
     [Header("Balística")]
     [Tooltip("Velocidade do projétil em metros por segundo.")]
     public float velocidade = 60f;
@@ -37,6 +39,7 @@ public class Projetil : MonoBehaviour
     private GameObject dono;           // Quem atirou (para não se auto-atingir)
     private Vector3 direcaoCustom;     // Direção de voo definida externamente
     private bool temDirecaoCustom = false;
+    private int teamDono = -1;
     private bool jaAcertou = false;    // Evita dano duplo se colidir com múltiplos colliders no mesmo frame
     
     // Homing (Perseguição)
@@ -50,11 +53,26 @@ public class Projetil : MonoBehaviour
     private readonly List<SistemaDeDanos> alvosExplosao = new List<SistemaDeDanos>(16);
     private float tempoExpirar;
 
+    public int TeamDono => teamDono;
+
+    public static void CopiarAtivosNoMapa(List<Projetil> destino)
+    {
+        if (destino == null) return;
+        destino.Clear();
+
+        foreach (Projetil projetil in ativosNoMapa)
+        {
+            if (projetil != null && projetil.gameObject.activeInHierarchy) destino.Add(projetil);
+        }
+    }
+
     void OnEnable()
     {
         IA_CombatTelemetry.RegisterProjectile();
+        ativosNoMapa.Add(this);
         jaAcertou = false;
         dono = null;
+        teamDono = -1;
         alvoPerseguido = null;
         direcaoCustom = Vector3.zero;
         temDirecaoCustom = false;
@@ -64,9 +82,11 @@ public class Projetil : MonoBehaviour
     void OnDisable()
     {
         IA_CombatTelemetry.UnregisterProjectile();
+        ativosNoMapa.Remove(this);
         jaAcertou = false;
         alvoPerseguido = null;
         dono = null;
+        teamDono = -1;
         temDirecaoCustom = false;
         direcaoCustom = Vector3.zero;
     }
@@ -79,8 +99,8 @@ public class Projetil : MonoBehaviour
         {
             a.spatialBlend = 1f;
             a.rolloffMode = AudioRolloffMode.Linear;
-            a.minDistance = 10f;
-            a.maxDistance = 300f;
+            a.minDistance = 3f;
+            a.maxDistance = 50f;
         }
     }
 
@@ -193,6 +213,9 @@ public class Projetil : MonoBehaviour
     public void SetDono(GameObject quemAtirou)
     {
         dono = quemAtirou;
+        IdentidadeUnidade identidade = dono != null ? dono.GetComponent<IdentidadeUnidade>() : null;
+        if (identidade == null && dono != null) identidade = dono.GetComponentInParent<IdentidadeUnidade>();
+        teamDono = identidade != null ? identidade.teamID : -1;
     }
 
     public GameObject GetDono()
@@ -293,8 +316,8 @@ public class Projetil : MonoBehaviour
             {
                 a.spatialBlend = 1f;
                 a.rolloffMode = AudioRolloffMode.Linear;
-                a.minDistance = 20f;
-                a.maxDistance = 600f;
+                a.minDistance = 3f;
+                a.maxDistance = 50f;
             }
 
         }

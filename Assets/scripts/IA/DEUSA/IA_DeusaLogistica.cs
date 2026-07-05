@@ -21,7 +21,7 @@ namespace Hegemonia.AI.DEUSA
             PrecisaPetroleoMercado = pais.petroleo < 240;
             PrecisaPetroleiro = marinha != null && marinha.PrecisaPetroleiro;
             PrecisaTransporte = marinha != null && marinha.PrecisaTransporte;
-            PodeProjetarForca = snapshot.HasNavalBase || snapshot.HasAirport || snapshot.HoverTransports > 0;
+            PodeProjetarForca = snapshot.HasNavalBase || snapshot.HasMilitaryAirport || snapshot.HoverTransports > 0;
 
             UltimoResumo = "petroleo=" + pais.petroleo
                            + " | mercado=" + PrecisaPetroleoMercado

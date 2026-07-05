@@ -19,6 +19,9 @@ public class MenuMisseis : MonoBehaviour
     private bool modoMira = false; // Se estamos esperando clicar no mapa
     public static bool EstaAberto = false;
     private Camera cameraPrincipal;
+    private MenuConstrucao menuConstrucaoCache;
+    private MenuPier menuPierCache;
+    private MenuGoverno menuGovernoCache;
 
     void Start()
     {
@@ -78,14 +81,14 @@ public class MenuMisseis : MonoBehaviour
         EstaAberto = true;
 
         // Fecha os outros
-        MenuConstrucao menuCon = Object.FindFirstObjectByType<MenuConstrucao>();
-        if (menuCon != null && MenuConstrucao.EstaAberto) menuCon.AlternarMenu(false);
+        if (menuConstrucaoCache == null) menuConstrucaoCache = Object.FindFirstObjectByType<MenuConstrucao>();
+        if (menuConstrucaoCache != null && MenuConstrucao.EstaAberto) menuConstrucaoCache.AlternarMenu(false);
 
-        MenuPier menuPier = Object.FindFirstObjectByType<MenuPier>();
-        if (menuPier != null && MenuPier.EstaAberto) menuPier.FecharMenu();
+        if (menuPierCache == null) menuPierCache = Object.FindFirstObjectByType<MenuPier>();
+        if (menuPierCache != null && MenuPier.EstaAberto) menuPierCache.FecharMenu();
 
-        MenuGoverno menuGov = Object.FindFirstObjectByType<MenuGoverno>();
-        if (menuGov != null && MenuGoverno.EstaAberto) menuGov.AlternarMenu(false);
+        if (menuGovernoCache == null) menuGovernoCache = Object.FindFirstObjectByType<MenuGoverno>();
+        if (menuGovernoCache != null && MenuGoverno.EstaAberto) menuGovernoCache.AlternarMenu(false);
     }
 
     void SelecionarMissel(GameObject prefab)

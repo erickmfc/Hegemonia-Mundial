@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Nara - Aviao Bombardeiro Antigo
+  m_EditorClassIdentifier: 
+  nomeItem: Nara Aviao Bombardeiro Antigo
+  descricao: Bombardeiro antigo de duas helices. Classificacao de poder NARA nivel C.
+  icone: {fileID: 0}
+  itemId: nara_bombardeiro_antigo
+  aliases: nara, bombardeiro antigo, old bomber, aviao antigo
+  capacidades: 100663442
+  prefabDaUnidade: {fileID: 100100000, guid: dba1be74b6b8a854089ade6338d59edd, type: 3}
+  preco: 1800
+  categoria: 2
+  escalaPoder: 4
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

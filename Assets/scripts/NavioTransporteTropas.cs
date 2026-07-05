@@ -176,6 +176,7 @@ public class NavioTransporteTropas : MonoBehaviour
     private float _proximaAtualizacaoTemTerra;
     private readonly RaycastHit[] _hitsTerraBuffer = new RaycastHit[32];
     private Collider[] _hitsHeliBuffer = new Collider[128];
+    private readonly List<Helicoptero> _bufferHelicopterosFallback = new List<Helicoptero>(32);
     private readonly HashSet<int> _vistosHelisBusca = new HashSet<int>(64);
     private readonly HashSet<int> _vistosSanearHelis = new HashSet<int>(32);
     private Collider[] _hitsTerrestresBuffer = new Collider[256];
@@ -2165,10 +2166,11 @@ public class NavioTransporteTropas : MonoBehaviour
 
         if (destino.Count == 0)
         {
-            var todos = UnityEngine.Object.FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
-            for (int i = 0; i < todos.Length; i++)
+            _bufferHelicopterosFallback.Clear();
+            RegistroEntidadesJogo.FillHelicopteros(_bufferHelicopterosFallback);
+            for (int i = 0; i < _bufferHelicopterosFallback.Count; i++)
             {
-                TentarAdicionarHeliProximo(todos[i], meuTime, raioSqr, destino);
+                TentarAdicionarHeliProximo(_bufferHelicopterosFallback[i], meuTime, raioSqr, destino);
             }
         }
 

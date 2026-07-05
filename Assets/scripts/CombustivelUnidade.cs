@@ -97,7 +97,7 @@ public class CombustivelUnidade : MonoBehaviour
             }
         }
 
-        if (EstaVazio && pararAoEsvaziar)
+        if (EstaVazio && pararAoEsvaziar && !PodeIgnorarFalhaDeCombustivel())
         {
             PararPorFaltaDeCombustivel();
         }
@@ -292,6 +292,11 @@ public class CombustivelUnidade : MonoBehaviour
 
     public void PararPorFaltaDeCombustivel()
     {
+        if (PodeIgnorarFalhaDeCombustivel())
+        {
+            return;
+        }
+
         if (paradaAplicada || parandoPorFalta)
         {
             return;
@@ -413,6 +418,12 @@ public class CombustivelUnidade : MonoBehaviour
 
         CombustivelUnidade combustivel = componente.GetComponent<CombustivelUnidade>();
         return combustivel != null ? combustivel.TextoStatusCurto() : "";
+    }
+
+    private bool PodeIgnorarFalhaDeCombustivel()
+    {
+        ControleAviao aviao = GetComponent<ControleAviao>();
+        return aviao != null && aviao.PodeIgnorarFaltaDeCombustivel();
     }
 
     public static bool DeveUsarCombustivel(GameObject alvo)

@@ -296,6 +296,23 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         economia.combustivelConsumido += estrutura.combustivelConsumido;
         economia.militaresNecessarios += estrutura.militaresNecessarios;
         RegistrarFluxoEconomico(economia, estrutura.tipo, estrutura.dinheiroGerado * eficiencia);
+        float manutencaoExtra = 0f;
+        switch (estrutura.tipo)
+        {
+            case TipoEstruturaEconomica.Farm:
+                manutencaoExtra = Mathf.Max(0.45f, estrutura.comidaProduzida * 0.12f + estrutura.energiaConsumida * 0.08f);
+                break;
+            case TipoEstruturaEconomica.Energia:
+                manutencaoExtra = Mathf.Max(0.35f, estrutura.energiaProduzida * 0.10f);
+                break;
+            case TipoEstruturaEconomica.UsinaSolar:
+                manutencaoExtra = Mathf.Max(0.25f, estrutura.energiaProduzida * 0.06f);
+                break;
+        }
+        if (manutencaoExtra > 0f)
+        {
+            RegistrarFluxoEconomico(economia, estrutura.tipo, -manutencaoExtra);
+        }
         RegistrarFluxoEconomico(economia, TipoEstruturaEconomica.Casa, estrutura.populacaoAtual * rendaPorPopulacao);
         economia.eficienciaMedia += eficiencia;
     }
@@ -361,12 +378,14 @@ public class SistemaEconomiaImoveis : MonoBehaviour
                 economia.empregosDisponiveis += 10;
                 economia.comidaProduzida += 5f;
                 RegistrarFluxoEconomico(economia, tipo, 3f);
+                RegistrarFluxoEconomico(economia, tipo, -1.3f);
                 economia.energiaConsumida += 0.7f;
                 break;
             case TipoEstruturaEconomica.Energia:
                 economia.empregosDisponiveis += 8;
                 economia.energiaProduzida += 8f;
                 RegistrarFluxoEconomico(economia, tipo, 2f);
+                RegistrarFluxoEconomico(economia, tipo, -1.5f);
                 break;
             case TipoEstruturaEconomica.PesquisaMilitar:
                 economia.empregosDisponiveis += 15;

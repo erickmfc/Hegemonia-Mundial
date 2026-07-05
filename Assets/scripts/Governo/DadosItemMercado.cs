@@ -6,6 +6,7 @@ public enum RecursoMercado
     Nenhum,
     Comida,
     Petroleo,
+    Energia,
     Aco,
     Armamentos,
     Uranio

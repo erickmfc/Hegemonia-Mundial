@@ -15,7 +15,7 @@ MonoBehaviour:
   nomeItem: Nav_tropa
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 4326238571977262942, guid: 243d1596d57694346bc385d990bdaeda, type: 3}
+  prefabDaUnidade: {fileID: 7010249315367195738, guid: e32b2a5eb4d577647a0429498a1b7da8, type: 3}
   preco: 100
   categoria: 1
   balanceamento: {fileID: 0}

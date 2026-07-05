@@ -6,8 +6,8 @@ namespace Hegemonia.AI.BrainMaster
     public sealed class IA_ProductionDirector : IIAUpdateModule
     {
         private const bool EnableHelicopterProduction = true;
-        private const float TimedAirKickoffSeconds = 9f;
-        private const float TimedNavalKickoffSeconds = 10f;
+        private const float TimedAirKickoffSeconds = 8f;
+        private const float TimedNavalKickoffSeconds = 9f;
         private const float StructureStabilitySeconds = 2.5f;
         private const int TimedAirKickoffTarget = 1;
         private const int TimedNavalMinArmy = 0;
@@ -80,7 +80,10 @@ namespace Hegemonia.AI.BrainMaster
                 int artyCount = snapshot.ArtilleryUnits;
                 int helicopterCount = snapshot.Helicopters;
                 int fighterCount = snapshot.FixedWingAircraft;
+                int commercialAircraftCount = snapshot.CommercialAircraft;
                 int airCount = helicopterCount + fighterCount;
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("commercial_aircraft_count", commercialAircraftCount);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("fighters_ready", snapshot.ReadyFighters);
                 int navalCount = snapshot.NavalUnits;
                 int submarineCount = snapshot.Submarines;
                 int oilTankerCount = snapshot.OilTankers;
@@ -88,7 +91,7 @@ namespace Hegemonia.AI.BrainMaster
                 int hoverCount = snapshot.HoverTransports;
                 bool hasBarracks = snapshot.HasBarracks;
                 bool hasFactory = snapshot.HasFactory;
-                bool hasAirport = snapshot.HasAirport;
+                bool hasMilitaryAirport = snapshot.HasMilitaryAirport;
                 bool hasHeliport = snapshot.HasHeliport;
                 bool hasNavalBase = snapshot.HasNavalBase || HasImmediateNavalBase();
                 int structureCount = snapshot.TotalOwnStructures;
@@ -126,7 +129,7 @@ namespace Hegemonia.AI.BrainMaster
                 int helicopterTarget = EnableHelicopterProduction && hasHeliport
                     ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 3f), 2, 5)
                     : 0;
-                int fighterTarget = hasAirport ? Mathf.Clamp(8 + Mathf.RoundToInt(counter.AirWeight * 8f) + (int)(now / 60f), 8, 40) : 0;
+                int fighterTarget = hasMilitaryAirport ? Mathf.Clamp(10 + Mathf.RoundToInt(counter.AirWeight * 8f) + (int)(now / 70f), 10, 26) : 0;
                 int patrolShipTarget = hasNavalBase ? 1 : 0;
                 int navalTarget = hasNavalBase
                     ? Mathf.Clamp(3 + Mathf.RoundToInt(counter.NavalWeight * 5f), 3, 12)
@@ -134,7 +137,7 @@ namespace Hegemonia.AI.BrainMaster
                 int oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0 ? 1 : 0;
                 if (brain != null)
                 {
-                    fighterTarget = hasAirport ? Mathf.Max(fighterTarget, brain.TargetAircraft) : 0;
+                    fighterTarget = hasMilitaryAirport ? Mathf.Max(fighterTarget, brain.TargetAircraft) : 0;
                     navalTarget = hasNavalBase ? Mathf.Max(navalTarget, brain.TargetFleet) : 0;
                     oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0
                         ? Mathf.Max(oilTankerTarget, brain.TargetOilTankers)
@@ -158,6 +161,31 @@ namespace Hegemonia.AI.BrainMaster
                     && counter.ReinforceCoast
                     ? 1
                     : 0;
+                if (_context.Brain != null && _context.Brain.WarPosture == IA_WarPosture.BalancedAggression)
+                {
+                    if (now < 300f)
+                    {
+                        infantryTarget = Mathf.Max(infantryTarget, 6);
+                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 2 : 0);
+                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 3 : 0);
+                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 1 : 0);
+                    }
+                    else if (now < 900f)
+                    {
+                        infantryTarget = Mathf.Max(infantryTarget, 16);
+                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 6 : 0);
+                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 10 : 0);
+                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 4 : 0);
+                    }
+                    else
+                    {
+                        infantryTarget = Mathf.Max(infantryTarget, 20);
+                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 8 : 0);
+                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 14 : 0);
+                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 5 : 0);
+                    }
+                }
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("fighter_target", fighterTarget);
                 int armyCount = Mathf.Max(
                     snapshot.TotalCombatUnits,
                     infantryCount + tankCount + artyCount + airCount + navalCount + submarineCount + hoverCount);
@@ -170,7 +198,7 @@ namespace Hegemonia.AI.BrainMaster
                     artyTarget = Mathf.Min(artyTarget, 1);
                     helicopterTarget = Mathf.Min(helicopterTarget, hasHeliport ? 2 : 0);
                     bool recoveryOverride = brain != null && brain.WeakEmpireRecoveryActive;
-                    fighterTarget = recoveryOverride ? fighterTarget : Mathf.Min(fighterTarget, hasAirport ? 8 : 0);
+                    fighterTarget = recoveryOverride ? fighterTarget : Mathf.Min(fighterTarget, hasMilitaryAirport ? 10 : 0);
                     navalTarget = recoveryOverride ? navalTarget : Mathf.Min(navalTarget, hasNavalBase ? 6 : 0);
                 }
 
@@ -181,7 +209,7 @@ namespace Hegemonia.AI.BrainMaster
                     artyTarget = Mathf.Min(artyTarget, transportPlan.AvailableCapacity >= 10 ? 1 : 0);
                 }
 
-                if (!_timedAirKickoffTriggered && now >= TimedAirKickoffSeconds && hasAirport && fighterCount >= TimedAirKickoffTarget)
+                if (!_timedAirKickoffTriggered && now >= TimedAirKickoffSeconds && hasMilitaryAirport && fighterCount >= TimedAirKickoffTarget)
                 {
                     _timedAirKickoffTriggered = true;
                 }
@@ -193,7 +221,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (!_timedAirKickoffTriggered
                     && now >= TimedAirKickoffSeconds
-                    && hasAirport
+                    && hasMilitaryAirport
                     && fighterCount < TimedAirKickoffTarget
                     && QueuePreferredAircraft(99, 2.5f))
                 {
@@ -221,7 +249,7 @@ namespace Hegemonia.AI.BrainMaster
 
                     if (!transportPlan.AirCoverReady || (brain != null && brain.ActiveImperialPlan == "invasao_anfibia_combinada" && helicopterCount < 3))
                     {
-                        if (hasAirport && fighterCount < Mathf.Max(2, fighterTarget) && QueuePreferredAircraft(96, 5.5f))
+                        if (hasMilitaryAirport && fighterCount < Mathf.Max(2, fighterTarget) && QueuePreferredAircraft(96, 5.5f))
                         {
                             return;
                         }
@@ -256,7 +284,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 // Avioes tem prioridade quando a frota aerea esta abaixo do minimo
-                if (hasAirport && fighterCount < 6 && QueuePreferredAircraft(95, 3.5f))
+                if (hasMilitaryAirport && fighterCount < 8 && QueuePreferredAircraft(95, 2.6f))
                 {
                     return;
                 }
@@ -266,7 +294,7 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (hasNavalBase && navalCount < 2 && QueueSurfaceFleetStep(navalCount, 91, 6.5f))
+                if (hasNavalBase && navalCount < 2 && QueueSurfaceFleetStep(navalCount, 91, 4.6f))
                 {
                     return;
                 }
@@ -279,7 +307,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 // Garante que o aeroporto NUNCA fique vazio, reposição constante com alta prioridade
-                if (hasAirport && fighterCount < 8 && QueuePreferredAircraft(93, 3.0f))
+                if (hasMilitaryAirport && fighterCount < 10 && QueuePreferredAircraft(93, 3.0f))
                 {
                     return;
                 }
@@ -301,12 +329,12 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (hasBarracks && infantryCount < infantryTarget && QueueProduceBest(90, 4f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
+                if (hasBarracks && infantryCount < infantryTarget && QueueProduceBest(90, 3.0f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
                 {
                     return;
                 }
 
-                if (hasFactory && tankCount < tankTarget && QueueProduceBest(86, 5f, "tank mbt", "mbt", "tank south", "tank c1", "tank arthur"))
+                if (hasFactory && tankCount < tankTarget && QueueProduceBest(86, 3.6f, "tank mbt", "mbt", "tank south", "tank c1", "tank arthur"))
                 {
                     return;
                 }
@@ -334,13 +362,13 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (EnableHelicopterProduction && hasHeliport && helicopterCount < helicopterTarget && QueueProduceBest(83, 6f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
+                if (EnableHelicopterProduction && hasHeliport && helicopterCount < helicopterTarget && QueueProduceBest(83, 4.5f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
                 {
                     return;
                 }
 
                 // Mantém a produção rodando até bater o teto dinâmico (buffer extra), não mais bloqueado por AirWeight
-                if (hasAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && QueuePreferredAircraft(89, 3.5f))
+                if (hasMilitaryAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && QueuePreferredAircraft(89, 2.8f))
                 {
                     return;
                 }
@@ -454,7 +482,7 @@ namespace Hegemonia.AI.BrainMaster
             DadosConstrucao data = ChoosePreferredAircraftVariant();
             if (data == null)
             {
-                return QueueProduceBest(priority, cooldown, "b260", "supra", "su11", "a_20", "a10", "warthog", "g15", "super tuk", "g_18m", "g18m", "fa1", "caca", "aviao");
+                return QueueProduceBest(priority, cooldown, "b260", "supra", "su11", "a_20", "a10", "warthog", "g15", "super tuk", "g_18m", "g18m", "fa1", "caca", "fighter");
             }
 
             IA_ProduceOrderData payload = new IA_ProduceOrderData
@@ -535,12 +563,13 @@ namespace Hegemonia.AI.BrainMaster
 
         private static string GetPreferredAircraftVariant(DadosConstrucao data)
         {
-            if (data == null || data.prefabDaUnidade == null)
+            GameObject prefab;
+            if (data == null || !data.TryGetPrefabBasico(out prefab))
             {
                 return string.Empty;
             }
 
-            string joined = IA_Text.Normalize(data.nomeItem + " " + data.name + " " + data.prefabDaUnidade.name);
+            string joined = IA_Text.Normalize(data.nomeItem + " " + data.name + " " + prefab.name);
             if (joined.Contains("b260") || joined.Contains("b-260") || joined.Contains("b 260"))
             {
                 return "b260";
@@ -574,6 +603,41 @@ namespace Hegemonia.AI.BrainMaster
             if (joined.Contains("su11") || joined.Contains("su-11"))
             {
                 return "su11";
+            }
+
+            // Qualquer aeronave militar cadastrada pode entrar na rotacao. O ID
+            // estavel evita que variantes com nomes parecidos sejam agrupadas.
+            IA_ConstructionCapability capabilities = data.GetResolvedCapabilities();
+            bool isCommercial = (capabilities & IA_ConstructionCapability.CommercialAircraft) != 0
+                                || prefab.GetComponent<ControleAviaoComercial>() != null;
+            bool isFixedWing = (capabilities & IA_ConstructionCapability.Aircraft) != 0
+                               || (capabilities & IA_ConstructionCapability.FighterAircraft) != 0
+                               || prefab.GetComponent<ControleAviao>() != null
+                               || prefab.GetComponent<ControleAviaoCaca>() != null;
+            bool isHelicopter = (capabilities & IA_ConstructionCapability.Helicopter) != 0
+                                || prefab.GetComponent<Helicoptero>() != null;
+            bool isCombatAircraft = (capabilities & IA_ConstructionCapability.FighterAircraft) != 0
+                                    || prefab.GetComponent<ControleAviaoCaca>() != null
+                                    || joined.Contains("caca")
+                                    || joined.Contains("fighter")
+                                    || joined.Contains("bombardeiro")
+                                    || joined.Contains("bomber")
+                                    || joined.Contains("jet")
+                                    || joined.Contains("supra")
+                                    || joined.Contains("su11")
+                                    || joined.Contains("g15")
+                                    || joined.Contains("g18")
+                                    || joined.Contains("super tuk")
+                                    || joined.Contains("b260")
+                                    || joined.Contains("a_20")
+                                    || joined.Contains("a20")
+                                    || joined.Contains("a10")
+                                    || joined.Contains("warthog")
+                                    || joined.Contains("nara");
+
+            if (isFixedWing && !isCommercial && !isHelicopter && isCombatAircraft)
+            {
+                return "aircraft:" + data.GetStableId();
             }
 
             return string.Empty;
@@ -630,10 +694,10 @@ namespace Hegemonia.AI.BrainMaster
             int artyCount = snapshot.ArtilleryUnits;
             int fighterCount = snapshot.FixedWingAircraft;
             int navalCount = snapshot.NavalUnits;
-            bool hasBarracks = snapshot.HasBarracks;
-            bool hasFactory = snapshot.HasFactory;
-            bool hasAirport = snapshot.HasAirport;
-            bool hasNavalBase = snapshot.HasNavalBase || HasImmediateNavalBase();
+                bool hasBarracks = snapshot.HasBarracks;
+                bool hasFactory = snapshot.HasFactory;
+                bool hasMilitaryAirport = snapshot.HasMilitaryAirport;
+                bool hasNavalBase = snapshot.HasNavalBase || HasImmediateNavalBase();
 
             switch (stage)
             {
@@ -673,15 +737,15 @@ namespace Hegemonia.AI.BrainMaster
 
                 case IA_BrainMaster.IA_BootstrapStage.ProduceAircraft:
                     brain.SetBootstrapStatus("bootstrap: produzindo avioes e mantendo no patio");
-                    if (brain.GetBootstrapStageElapsed(now) >= 5f)
+                    if (fighterCount >= 2)
                     {
-                        brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.BuildShipyard, "liberando construcao obrigatoria do estaleiro");
+                        brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.BuildShipyard, "dois cacas prontos; liberando construcao obrigatoria do estaleiro");
                         return true;
                     }
 
-                    if (!hasAirport)
+                    if (!hasMilitaryAirport)
                     {
-                        brain.ReportBootstrapError("avioes: aeroporto indisponivel");
+                        brain.ReportBootstrapError("avioes: aeroporto militar indisponivel");
                         return true;
                     }
 
@@ -690,6 +754,7 @@ namespace Hegemonia.AI.BrainMaster
                         return true;
                     }
 
+                    brain.ReportBootstrapError("avioes: aguardando catalogo, fila ou vaga do aeroporto");
                     return true;
 
                 case IA_BrainMaster.IA_BootstrapStage.ProduceOilTanker:
@@ -781,7 +846,7 @@ namespace Hegemonia.AI.BrainMaster
                     return true;
 
                 case IA_BrainMaster.IA_BootstrapStage.MobilizeBase:
-                    return TickMobilizationProduction(now, brain, snapshot, hasBarracks, hasFactory, hasAirport, hasNavalBase);
+                    return TickMobilizationProduction(now, brain, snapshot, hasBarracks, hasFactory, hasMilitaryAirport, hasNavalBase);
 
                 default:
                     return true;
@@ -794,7 +859,7 @@ namespace Hegemonia.AI.BrainMaster
             IA_ForceSnapshot snapshot,
             bool hasBarracks,
             bool hasFactory,
-            bool hasAirport,
+            bool hasMilitaryAirport,
             bool hasNavalBase)
         {
             float elapsed = brain.GetBootstrapElapsed(now);
@@ -808,7 +873,7 @@ namespace Hegemonia.AI.BrainMaster
             int infantryTarget = Mathf.Clamp(10 + Mathf.FloorToInt(elapsed / 30f) * 3, 10, 32);
             int tankTarget = hasFactory ? Mathf.Clamp(3 + Mathf.FloorToInt(elapsed / 60f) * 2, 3, 10) : 0;
             int artyTarget = hasFactory ? Mathf.Clamp(1 + Mathf.FloorToInt(elapsed / 90f), 1, 4) : 0;
-            int fighterTarget = hasAirport ? Mathf.Clamp(4 + Mathf.FloorToInt(elapsed / 45f), 4, 12) : 0;
+            int fighterTarget = hasMilitaryAirport ? Mathf.Clamp(5 + Mathf.FloorToInt(elapsed / 40f), 5, 14) : 0;
             int navalTarget = hasNavalBase ? Mathf.Clamp(1 + Mathf.FloorToInt(elapsed / 90f), 1, 4) : 0;
 
             brain.SetBootstrapStatus(
@@ -830,7 +895,7 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            if (hasAirport
+            if (hasMilitaryAirport
                 && snapshot.FixedWingAircraft < fighterTarget
                 && QueuePreferredAircraft(997, 3.0f))
             {
@@ -1214,12 +1279,11 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 string name = IA_Text.Normalize(unit.name);
-                if (unit.GetComponent<ControleAviao>() != null
+                if ((unit.GetComponent<ControleAviao>() != null
                     || unit.GetComponent<ControleAviaoCaca>() != null
                     || name.Contains("fa1")
                     || name.Contains("caca")
                     || name.Contains("jet")
-                    || name.Contains("aviao")
                     || name.Contains("a_20")
                     || name.Contains("g_18m")
                     || name.Contains("g18m")
@@ -1230,6 +1294,7 @@ namespace Hegemonia.AI.BrainMaster
                     || name.Contains("g15")
                     || name.Contains("super tuk")
                     || name.Contains("supertuk"))
+                    && unit.GetComponent<ControleAviaoComercial>() == null)
                 {
                     count++;
                 }

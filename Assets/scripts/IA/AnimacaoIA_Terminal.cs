@@ -10,15 +10,8 @@ public class AnimacaoIA_Terminal : MonoBehaviour
 
     void Start()
     {
-        // Se o motor neural não estiver na cena, não mostra a tela de sincronização
-        if (Hegemonia.AI.Llama.LlamaClient.Instancia == null)
-        {
-            iaPronta = true;
-            return;
-        }
-
-        // Inicia o loop da animação do texto
-        StartCoroutine(AnimarTerminalMilitar());
+        // A interface Llama/Ollama foi desativada; a IA local inicia sem tela de sincronização.
+        iaPronta = true;
     }
 
     public void AtualizarProgresso(string status, long completed, long total)
@@ -44,8 +37,8 @@ public class AnimacaoIA_Terminal : MonoBehaviour
         while (!iaPronta)
         {
             string statusExibicao = string.IsNullOrEmpty(statusCustomizado) ? "Inicializando Motor Neural..." : statusCustomizado;
-            // Alterna o ícone para dar sensação de processamento
-            textoAnimado = $"SINCRONIZANDO ALTO COMANDO GLOBAL {spinner[index]}\n{statusExibicao}";
+            // Mantido apenas por compatibilidade; a animação fica inativa quando a IA local assume.
+            textoAnimado = $"IA LOCAL ATIVA {spinner[index]}\n{statusExibicao}";
             index = (index + 1) % spinner.Length;
             
             yield return new WaitForSeconds(0.15f); // Velocidade do giro

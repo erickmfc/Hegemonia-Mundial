@@ -91,7 +91,7 @@ public class TorretaAntiaerea : MonoBehaviour
         // Prepara sistema de som
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
-        audioSource.spatialBlend = 1f;
+        AudioRuntime.ConfigurarFonteDeArmamento(audioSource);
 
         // Inicia varredura do céu a cada 0.5s para economizar processamento
         InvokeRepeating("ProcurarAlvoAereo", Random.Range(0f, 0.5f), 0.5f);

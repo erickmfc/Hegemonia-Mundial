@@ -103,6 +103,9 @@ public class GerenteDeJogo : MonoBehaviour
     private float _tempoApertandoTab = 0f;
     private readonly Dictionary<string, int> _slotsSaidaPorPonto = new Dictionary<string, int>();
     private const int SlotsPorPontoSaida = 9; // 3x3
+    private const float IntervaloProcessamentoFilaProducao = 0.2f;
+    private static readonly WaitForSeconds EsperaProcessamentoFilaProducao = new WaitForSeconds(IntervaloProcessamentoFilaProducao);
+    private readonly List<GerenciadorAeroporto> _bufferAeroportosEntrega = new List<GerenciadorAeroporto>(16);
 
     void Update()
     {
@@ -173,7 +176,7 @@ public class GerenteDeJogo : MonoBehaviour
             {
                 // Pega o primeiro da fila
                 PedidoDeProducao pedidoAtual = filaProducao[0];
-                pedidoAtual.tempoRestante -= 0.2f; // Subtrai o intervalo da coroutine
+                pedidoAtual.tempoRestante -= IntervaloProcessamentoFilaProducao; // Mantido em sincronia com a espera da coroutine
 
                 if (pedidoAtual.tempoRestante <= 0)
                 {
@@ -184,7 +187,7 @@ public class GerenteDeJogo : MonoBehaviour
             }
             
             // Aguarda 0.2 segundos antes de checar novamente
-            yield return new WaitForSeconds(0.2f);
+            yield return EsperaProcessamentoFilaProducao;
         }
     }
 
@@ -306,11 +309,13 @@ public class GerenteDeJogo : MonoBehaviour
         if (pedido.ehAviao || pedido.ehHelicoptero)
         {
             // Busca o MELHOR aeroporto (um que não esteja lotado e seja do jogador)
-            GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+            _bufferAeroportosEntrega.Clear();
+            RegistroEntidadesJogo.FillAeroportos(_bufferAeroportosEntrega);
             GerenciadorAeroporto aeroEscolhido = null;
 
-            foreach (var a in aeroportos)
+            for (int i = 0; i < _bufferAeroportosEntrega.Count; i++)
             {
+                GerenciadorAeroporto a = _bufferAeroportosEntrega[i];
                 if (a == null) continue;
                 
                 // EXCLUSÃO TOTAL: Aviões novos NUNCA vão para Navios (Porta-Aviões, Transportes, Hovercrafts)

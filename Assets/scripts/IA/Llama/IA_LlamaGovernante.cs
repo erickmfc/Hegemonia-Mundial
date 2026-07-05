@@ -25,7 +25,7 @@ namespace Hegemonia.AI.Llama
         private LlamaClient llamaClient;
 
         [Header("Configurações do Cérebro LLM")]
-        public bool habilitarLlama = true;
+        public bool habilitarLlama = false;
         public float intervaloDeDecisaoSegundos = 60f;
         public int idNacao = 2; // O ID desta nação. O jogador humano é 1.
 
@@ -55,17 +55,13 @@ Para diplomacia/ataque direcionado:
             chefe = GetComponent<IA_Comandante>();
             arquiteto = GetComponent<IA_Arquiteto_Pro>();
             
-            if (chefe != null) chefe.controlePorLLM = habilitarLlama;
-
-            // Busca o LlamaClient na cena, ou cria um se não existir
-            llamaClient = FindFirstObjectByType<LlamaClient>();
-            if (llamaClient == null)
+            if (chefe != null)
             {
-                GameObject clientObj = new GameObject("LlamaClientAPI");
-                llamaClient = clientObj.AddComponent<LlamaClient>();
+                chefe.controlePorLLM = false;
             }
 
-            tempoUltimaDecisao = Time.time;
+            // A integração Llama/Ollama foi desativada: a IA segue 100% local.
+            enabled = false;
         }
 
         void Update()
@@ -96,7 +92,8 @@ Para diplomacia/ataque direcionado:
             int dinheiroAtual = (int)chefe.dinheiro;
             
             int avioesNoPatio = 0;
-            var aeroportos = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+            List<GerenciadorAeroporto> aeroportos = new List<GerenciadorAeroporto>();
+            RegistroEntidadesJogo.FillAeroportos(aeroportos);
             foreach(var aero in aeroportos)
             {
                 var id = aero.GetComponent<IdentidadeUnidade>();

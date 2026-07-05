@@ -902,6 +902,13 @@ public class GerenciadorAeroporto : MonoBehaviour
         Vector3 posSpawn = (wpPreparacao != null) ? wpPreparacao.position : transform.position;
         GameObject aeronaveNascente = Instantiate(prefabDeAeronave, posSpawn, Quaternion.identity);
 
+        string nomePrefabNormalizado = prefabDeAeronave.name.ToLowerInvariant();
+        if ((nomePrefabNormalizado.Contains("nara") || nomePrefabNormalizado.Contains("american_plane_transport"))
+            && aeronaveNascente.GetComponentInChildren<AviaoBombardeiro>(true) == null)
+        {
+            aeronaveNascente.AddComponent<AviaoBombardeiro>();
+        }
+
         // Mede init pós-instantiate (o custo total do spawn fica em spawn_air_ms).
         long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
 
@@ -941,7 +948,9 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         CombustivelUnidade.Garantir(aeronaveNascente, true);
 
-        C700TransporteAereo c700 = aeronaveNascente != null ? aeronaveNascente.GetComponent<C700TransporteAereo>() : null;
+        C700TransporteAereo c700 = aeronaveNascente != null
+            ? aeronaveNascente.GetComponentInChildren<C700TransporteAereo>(true)
+            : null;
         if (c700 != null)
         {
             c700.DefinirAeroportoOrigem(this);
@@ -951,7 +960,9 @@ public class GerenciadorAeroporto : MonoBehaviour
             return;
         }
 
-        Helicoptero helicoptero = aeronaveNascente != null ? aeronaveNascente.GetComponent<Helicoptero>() : null;
+        Helicoptero helicoptero = aeronaveNascente != null
+            ? aeronaveNascente.GetComponentInChildren<Helicoptero>(true)
+            : null;
         if (helicoptero != null)
         {
             StartCoroutine(RotinaRecebimentoHelicoptero(helicoptero));
@@ -960,7 +971,9 @@ public class GerenciadorAeroporto : MonoBehaviour
             return;
         }
 
-        ControleAviao controleDaNave = aeronaveNascente != null ? aeronaveNascente.GetComponent<ControleAviao>() : null;
+        ControleAviao controleDaNave = aeronaveNascente != null
+            ? aeronaveNascente.GetComponentInChildren<ControleAviao>(true)
+            : null;
         if (aeronaveNascente != null && controleDaNave == null) controleDaNave = aeronaveNascente.AddComponent<ControleAviao>();
 
         if (controleDaNave != null)
@@ -1059,11 +1072,14 @@ public class GerenciadorAeroporto : MonoBehaviour
         
         if (vagaDesignada == null)
         {
-            if (avioesNoPatio.Contains(aviao)) avioesNoPatio.Remove(aviao);
-            if (!avioesNoHangar.Contains(aviao)) avioesNoHangar.Add(aviao);
-            aviao.estadoAtual = ControleAviao.EstadoAviao.ReservaHangar;
-            aviao.gameObject.SetActive(false); 
-            yield break;
+            GameObject vagaEmergencial = new GameObject($"Vaga_Emergencial_{waypointsPatio.Count}");
+            vagaEmergencial.transform.SetParent(patio != null ? patio : transform, false);
+            int indice = waypointsPatio.Count;
+            vagaEmergencial.transform.localPosition = new Vector3((indice % 6) * 14f - 35f, 0f, (indice / 6) * 16f + 45f);
+            vagaEmergencial.transform.localRotation = Quaternion.identity;
+            vagaDesignada = vagaEmergencial.transform;
+            waypointsPatio.Add(vagaDesignada);
+            Debug.LogWarning($"[Aeroporto] {name} estava sem vaga livre. Criada {vagaDesignada.name} para manter {aviao.name} visivel no patio.");
         }
 
         aviao.vagaRetorno = vagaDesignada;

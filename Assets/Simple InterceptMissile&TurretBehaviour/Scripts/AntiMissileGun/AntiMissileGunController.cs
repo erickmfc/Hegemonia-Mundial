@@ -1,9 +1,8 @@
-﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AntiMissileGunController : MonoBehaviour {
-
+public class AntiMissileGunController : MonoBehaviour
+{
 	[Header("Turret Settings")]
 	[Tooltip("Pivot for horizontal rotation")]
 	public Transform HorizontalPivot;
@@ -16,123 +15,121 @@ public class AntiMissileGunController : MonoBehaviour {
 	public bool HorizontalRotationLimit;
 
 	[Tooltip("Right rotation limit")]
-	[Range(0,180)]
-	public float RightRotationLimit; 
+	[Range(0, 180)]
+	public float RightRotationLimit;
 
 	[Tooltip("Left rotation limit")]
-	[Range(0,180)]
-	public float LeftRotationLimit; 
+	[Range(0, 180)]
+	public float LeftRotationLimit;
 
 	[Header("Vertical Rotation Settings")]
 	[Tooltip("If you want to limit vertical turret rotation")]
 	public bool VerticalRotationLimit;
 
 	[Tooltip("Upwards rotation limit")]
-	[Range(0,70)]
+	[Range(0, 70)]
 	public float UpwardsRotationLimit;
 
 	[Tooltip("Downwards rotation limit")]
-	[Range(0,70)]
+	[Range(0, 70)]
 	public float DownwardsRotationLimit;
-	
+
 	[Tooltip("Turning speed")]
-	[Range(0,300)]
+	[Range(0, 300)]
 	public float TurnSpeed;
 
 	[Header("Gun Settings")]
-
 	[Tooltip("Click if you want to use pooling")]
-	public bool UsePooling;
+	public bool UsePooling = true;
 
 	[Tooltip("Gun firing rate")]
-	public float FireRate;
+	public float FireRate = 0.5f;
 
 	[Tooltip("Projectile traveling speed")]
-	public float ProjectileSpeed;
+	public float ProjectileSpeed = 100f;
 
 	[Tooltip("How many projectile in this turret")]
-	public float ProjectileCount;
+	public float ProjectileCount = 100f;
 
 	[Tooltip("Projectile prefabs")]
 	public GameObject ProjectilePrefab;
 
 	[Tooltip("Adjust the efficiency of this turret")]
-	[Range(3f,4f)]
-	public float Efficiency;
+	[Range(3f, 4f)]
+	public float Efficiency = 4f;
 
 	[Tooltip("Barrel for instantiating projectile")]
 	public Transform[] Barrel;
 
-	[HideInInspector]
-	public Transform target; // Target position
+	[Header("Integração do Projeto")]
+	[Tooltip("Se ativo, o disparo tenta registrar a ameaça no rastreador global do projeto.")]
+	public bool RegistrarLancamentoNoTracker = true;
+
+	[Tooltip("Se o prefab não tiver Projetil, tenta inicializar qualquer script compatível do projeto.")]
+	public bool PermitirFallbackParaProjetilPadrao = true;
 
 	[HideInInspector]
-	public Vector3 predictedTargetPosition; // lead target position;
+	public Transform target;
+
+	[HideInInspector]
+	public Vector3 predictedTargetPosition;
+
 	[Header("Effects (Optional)")]
 	[Tooltip("Shoot effect when firing the gun (optional)")]
 	public GameObject ShootFX;
 	public GameObject BulletShellFX;
 
-	private Vector3 targetlastPosition; // Target last  position in last frame; 
+	private Vector3 targetlastPosition;
 	protected ParticleSystem bulletShellFX_PS;
-	protected ParticleSystem shootFX_PS;	
+	protected ParticleSystem shootFX_PS;
 	protected float nextFireAllowed;
-	protected bool IsAiming = false; 
+	protected bool IsAiming = false;
+	private IdentidadeUnidade minhaIdentidade;
 
 	protected virtual void Start()
-	{	
-		// Make sure the two pivots and barrel are not null
+	{
 		target = null;
-		if(HorizontalPivot == null || VerticalPivot == null)
+		minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
+		if (HorizontalPivot == null || VerticalPivot == null)
 		{
-			Debug.Log("There is no pivot found, Please drag your pivots into this script");
-			return;
-		}
-			
-		if(Barrel.Length == 0)
-		{
-			Debug.Log("There is no Barrel found, Please drag your pivots into this script");
+			Debug.LogWarning("[AntiMissileGunController] Pivots nao configurados.");
 			return;
 		}
 
-		if(ProjectilePrefab == null)
+		if (Barrel == null || Barrel.Length == 0)
 		{
-			Debug.Log("There is no projectile prefab found, Please drag your projectile prefab into this script");
+			Debug.LogWarning("[AntiMissileGunController] Nenhum barrel configurado.");
 			return;
 		}
 
-		if(UsePooling)
-		{	
-			if(PoolManager.instance == null)
-			{
-			  Debug.Log("PoolManager is missing, Please create a GameObject and add PoolManager.cs");
-			  return;
-			}
-			else
-				PoolManager.instance.CreatePool(ProjectilePrefab, 100);	
+		if (ProjectilePrefab == null)
+		{
+			Debug.LogWarning("[AntiMissileGunController] ProjectilePrefab ausente.");
+			return;
 		}
-			
-		if(BulletShellFX != null)
+
+		if (UsePooling)
+		{
+			PoolDeObjetosCombate.Prewarm(ProjectilePrefab, 100);
+		}
+
+		if (BulletShellFX != null)
 		{
 			BulletShellFX.SetActive(true);
 			bulletShellFX_PS = BulletShellFX.GetComponent<ParticleSystem>();
-			bulletShellFX_PS.Stop();
-		} 
-			
+			if (bulletShellFX_PS != null) bulletShellFX_PS.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+		}
 
-		if(ShootFX != null)
+		if (ShootFX != null)
 		{
 			ShootFX.SetActive(true);
 			shootFX_PS = ShootFX.GetComponent<ParticleSystem>();
-			shootFX_PS.Stop();
+			if (shootFX_PS != null) shootFX_PS.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 		}
-			
 	}
-	
-	private void FixedUpdate()
-	{	
-		
 
+	private void FixedUpdate()
+	{
 		LeadTarget();
 		HorizontalRotation();
 		VerticalRotation();
@@ -140,149 +137,219 @@ public class AntiMissileGunController : MonoBehaviour {
 	}
 
 	private void LeadTarget()
-	{	
-		if(target == null) return;
-		// Get target position in one second ahead 
-		Vector3 targetSpeed = (target.position - targetlastPosition);
-		targetSpeed /= Time.deltaTime; // Target distance in one second. Since "Time.deltaTime" = 1/FPS
+	{
+		if (target == null)
+		{
+			IsAiming = false;
+			return;
+		}
 
-		// ---------------------------------------------------------------------------------------------
-		// Calculate the the lead target position based on target speed and projectileTravelTime to reach the target
+		Vector3 targetSpeed = (target.position - targetlastPosition);
+		targetSpeed /= Mathf.Max(Time.deltaTime, 0.0001f);
 
 		float distance = Vector3.Distance(transform.position, target.position);
-		float projectileTravelTime = distance / Mathf.Max(ProjectileSpeed,2f);
-		Vector3 aimPoint = target.position + targetSpeed * Efficiency/4 * projectileTravelTime;
+		float projectileTravelTime = distance / Mathf.Max(ProjectileSpeed, 2f);
+		Vector3 aimPoint = target.position + targetSpeed * Efficiency / 4f * projectileTravelTime;
 
 		float distance2 = Vector3.Distance(transform.position, aimPoint);
-		float projectileTravelTime2 = distance2 / Mathf.Max(ProjectileSpeed,2f);
-		predictedTargetPosition = target.position + targetSpeed * Efficiency/4 * projectileTravelTime2;
-
-		Debug.DrawLine(transform.position, predictedTargetPosition, Color.blue);
+		float projectileTravelTime2 = distance2 / Mathf.Max(ProjectileSpeed, 2f);
+		predictedTargetPosition = target.position + targetSpeed * Efficiency / 4f * projectileTravelTime2;
 
 		targetlastPosition = target.position;
 	}
 
 	private void HorizontalRotation()
-	{	
-			if(HorizontalPivot == null && VerticalPivot == null || target == null) return;
+	{
+		if (HorizontalPivot == null || target == null) return;
 
-			// Get target position from world space to local space from our  parent position (this.transfrom)
-			Vector3 targetPositionInLocalSpace = this.transform.InverseTransformPoint(predictedTargetPosition);
-			// Set "TargetPositionInLocalSpace" Y axis to zero, since this is horizontal rotation
-			targetPositionInLocalSpace.y = 0f;
-			
-			// Store clamp value of the rotation
-			Vector3 clamp = targetPositionInLocalSpace;
-			// Clamp turret horizontal rotation according to its limit
-			if(HorizontalRotationLimit)
-			{
-				if(targetPositionInLocalSpace.x >= 0f)
-					clamp = Vector3.RotateTowards(Vector3.forward, targetPositionInLocalSpace, Mathf.Deg2Rad * RightRotationLimit, 0f);
-				else
-					clamp = Vector3.RotateTowards(Vector3.forward, targetPositionInLocalSpace, Mathf.Deg2Rad * LeftRotationLimit, 0f);	
-			}
+		Vector3 targetPositionInLocalSpace = transform.InverseTransformPoint(predictedTargetPosition);
+		targetPositionInLocalSpace.y = 0f;
+
+		Vector3 clamp = targetPositionInLocalSpace;
+		if (HorizontalRotationLimit)
+		{
+			if (targetPositionInLocalSpace.x >= 0f)
+				clamp = Vector3.RotateTowards(Vector3.forward, targetPositionInLocalSpace, Mathf.Deg2Rad * RightRotationLimit, 0f);
 			else
-			{
-				RightRotationLimit = 0f;
-				LeftRotationLimit = 0f;
-			}
+				clamp = Vector3.RotateTowards(Vector3.forward, targetPositionInLocalSpace, Mathf.Deg2Rad * LeftRotationLimit, 0f);
+		}
 
-			// Rotate turret
-			Quaternion whereToRotate = Quaternion.LookRotation(clamp);	
-			HorizontalPivot.localRotation = Quaternion.RotateTowards(HorizontalPivot.localRotation, whereToRotate, TurnSpeed * Time.deltaTime);
-
-			//Debug.DrawLine(HorizontalPivot.position, HorizontalPivot.position + HorizontalPivot.forward * 2000f, Color.yellow);
-
+		Quaternion whereToRotate = Quaternion.LookRotation(clamp);
+		HorizontalPivot.localRotation = Quaternion.RotateTowards(HorizontalPivot.localRotation, whereToRotate, TurnSpeed * Time.deltaTime);
 	}
-
 
 	private void VerticalRotation()
-	{	
-		if(HorizontalPivot == null && VerticalPivot == null || target == null) return;
+	{
+		if (VerticalPivot == null || target == null) return;
 
-			// Get target position from world space to local space from horizontal pivot position
-			Vector3 targetPositionInLocalSpace = HorizontalPivot.transform.InverseTransformPoint(predictedTargetPosition);
+		Vector3 targetPositionInLocalSpace = HorizontalPivot != null
+			? HorizontalPivot.transform.InverseTransformPoint(predictedTargetPosition)
+			: transform.InverseTransformPoint(predictedTargetPosition);
 
-			// Set "TargetPositionInLocalSpace" X axis to zero, since this is vertical rotation
-			targetPositionInLocalSpace.x = 0f;
+		targetPositionInLocalSpace.x = 0f;
 
-			// Store clamp value of the rotation
-			Vector3 clamp = targetPositionInLocalSpace;
-			// Clamp turret vertical rotation according to its limit
-			if(VerticalRotationLimit)
-			{
-				if(targetPositionInLocalSpace.y >= 0f)
-					clamp = Vector3.RotateTowards(Vector3.forward, targetPositionInLocalSpace, Mathf.Deg2Rad * UpwardsRotationLimit, 0f);
-				else
-					clamp = Vector3.RotateTowards(Vector3.forward, targetPositionInLocalSpace, Mathf.Deg2Rad * DownwardsRotationLimit, 0f);
-			}
+		Vector3 clamp = targetPositionInLocalSpace;
+		if (VerticalRotationLimit)
+		{
+			if (targetPositionInLocalSpace.y >= 0f)
+				clamp = Vector3.RotateTowards(Vector3.forward, targetPositionInLocalSpace, Mathf.Deg2Rad * UpwardsRotationLimit, 0f);
 			else
-			{
-				UpwardsRotationLimit = 0f;
-				DownwardsRotationLimit = 0f;
-			}
-			
+				clamp = Vector3.RotateTowards(Vector3.forward, targetPositionInLocalSpace, Mathf.Deg2Rad * DownwardsRotationLimit, 0f);
+		}
 
-			// Rotate 
-			Quaternion whereToRotate = Quaternion.LookRotation(clamp);			
-			VerticalPivot.localRotation = Quaternion.RotateTowards(VerticalPivot.localRotation, whereToRotate, 2 * TurnSpeed * Time.deltaTime);
+		Quaternion whereToRotate = Quaternion.LookRotation(clamp);
+		VerticalPivot.localRotation = Quaternion.RotateTowards(VerticalPivot.localRotation, whereToRotate, 2f * TurnSpeed * Time.deltaTime);
 
-			//Debug.DrawLine(VerticalPivot.position, VerticalPivot.position + VerticalPivot.forward * 2000f, Color.black);
-
-			// Check if target is out of turret rotation limit
-			Vector3 dirTotarget = (predictedTargetPosition - VerticalPivot.position).normalized;
-			float angle = Mathf.Abs(Vector3.Angle(VerticalPivot.forward, dirTotarget));
-			if(angle < 5)
-				IsAiming = true;
-			else
-				IsAiming = false;
-			
+		Vector3 dirTotarget = (predictedTargetPosition - VerticalPivot.position).normalized;
+		float angle = Mathf.Abs(Vector3.Angle(VerticalPivot.forward, dirTotarget));
+		IsAiming = angle < 5f;
 	}
 
-	// Set Target, this called from AntiMissileGunScanner
 	public void SetTargetGun(Transform targetPosition)
 	{
-		this.target = targetPosition;
+		target = targetPosition;
+		if (target != null)
+		{
+			targetlastPosition = target.position;
+		}
 	}
 
 	protected virtual void Fire()
-	{			
-		// Only fire when there is a target, turret is aiming and within fire rate
-		if(target != null && ProjectileCount > 0 && Time.time > nextFireAllowed && IsAiming)
-		{	
-			for(int i = 0; i < Barrel.Length; i++)
-			{	
-				if(UsePooling)
-					PoolManager.instance.ReuseObject(ProjectilePrefab, Barrel[i].position, Barrel[i].rotation, predictedTargetPosition, ProjectileSpeed);
-				else
-				{
-					AntiMissileProjectile newProjectile = Instantiate(ProjectilePrefab, Barrel[i].position, Barrel[i].rotation).GetComponent<AntiMissileProjectile>();							
-					newProjectile.transform.LookAt(predictedTargetPosition);
-					newProjectile.Speed = this.ProjectileSpeed;
-				}
-				
-				ProjectileCount --;
-			}
-			nextFireAllowed = Time.time + FireRate;
-			
-			// Play Effects
-			if(BulletShellFX != null)
-			{
-				bulletShellFX_PS.Play();
-				Invoke("StopBulletShellEffect", 1.2f);
-			}
-			
-
-			if(ShootFX == null) return;
-			shootFX_PS.Play();
-			
+	{
+		if (target == null || ProjectileCount <= 0 || Time.time <= nextFireAllowed || !IsAiming)
+		{
+			return;
 		}
+
+		if (Barrel == null || Barrel.Length == 0)
+		{
+			Debug.LogWarning("[AntiMissileGunController] Nenhum barrel configurado.");
+			return;
+		}
+
+		for (int i = 0; i < Barrel.Length; i++)
+		{
+			Transform barrel = Barrel[i];
+			if (barrel == null)
+			{
+				continue;
+			}
+
+			GameObject projectileGO = UsePooling
+				? PoolDeObjetosCombate.Spawn(ProjectilePrefab, barrel.position, barrel.rotation)
+				: Instantiate(ProjectilePrefab, barrel.position, barrel.rotation);
+
+			if (projectileGO == null)
+			{
+				continue;
+			}
+
+			InicializarProjetil(projectileGO, barrel);
+			ProjectileCount--;
+		}
+
+		nextFireAllowed = Time.time + FireRate;
+
+		if (BulletShellFX != null && bulletShellFX_PS != null)
+		{
+			bulletShellFX_PS.Play();
+			Invoke(nameof(StopBulletShellEffect), 1.2f);
+		}
+
+		if (ShootFX != null && shootFX_PS != null)
+		{
+			shootFX_PS.Play();
+		}
+	}
+
+	private void InicializarProjetil(GameObject projectileGO, Transform barrel)
+	{
+		if (projectileGO == null)
+		{
+			return;
+		}
+
+		Transform alvoResolvido = ResolverAlvo(target);
+		Vector3 posicaoPredita = predictedTargetPosition;
+		Vector3 direcaoInicial = posicaoPredita - barrel.position;
+		if (direcaoInicial.sqrMagnitude <= 0.001f)
+		{
+			direcaoInicial = barrel.forward;
+		}
+		direcaoInicial.Normalize();
+
+		Projetil projetil = projectileGO.GetComponent<Projetil>();
+		if (projetil == null && PermitirFallbackParaProjetilPadrao)
+		{
+			projetil = projectileGO.AddComponent<Projetil>();
+		}
+
+		if (projetil != null)
+		{
+			projetil.SetDono(transform.root != null ? transform.root.gameObject : gameObject);
+			projetil.velocidade = ProjectileSpeed;
+			projetil.SetDirecao(direcaoInicial);
+			if (alvoResolvido != null)
+			{
+				projetil.SetAlvo(alvoResolvido);
+				projetil.curvaDePerseguicao = Mathf.Max(projetil.curvaDePerseguicao, 150f);
+			}
+		}
+		else
+		{
+			AntiMissileProjectile antiMissileProjectile = projectileGO.GetComponent<AntiMissileProjectile>();
+			if (antiMissileProjectile != null)
+			{
+				antiMissileProjectile.transform.rotation = Quaternion.LookRotation(direcaoInicial);
+				antiMissileProjectile.Speed = ProjectileSpeed;
+			}
+		}
+
+		if (RegistrarLancamentoNoTracker && alvoResolvido != null)
+		{
+			MissileThreatTracker.RegistrarLancamento(
+				projectileGO,
+				this,
+				posicaoPredita,
+				alvoResolvido,
+				ProjectileSpeed,
+				true);
+		}
+	}
+
+	private Transform ResolverAlvo(Transform alvoOriginal)
+	{
+		if (alvoOriginal == null)
+		{
+			return null;
+		}
+
+		Projetil projetil = alvoOriginal.GetComponentInParent<Projetil>();
+		if (projetil != null)
+		{
+			return projetil.transform;
+		}
+
+		Rigidbody rb = alvoOriginal.GetComponentInParent<Rigidbody>();
+		if (rb != null)
+		{
+			return rb.transform;
+		}
+
+		IdentidadeUnidade identidade = alvoOriginal.GetComponentInParent<IdentidadeUnidade>();
+		if (identidade != null)
+		{
+			return identidade.transform;
+		}
+
+		return alvoOriginal.root != null ? alvoOriginal.root : alvoOriginal;
 	}
 
 	void StopBulletShellEffect()
 	{
-		bulletShellFX_PS.Stop();
+		if (bulletShellFX_PS != null)
+		{
+			bulletShellFX_PS.Stop();
+		}
 	}
-
-	
 }

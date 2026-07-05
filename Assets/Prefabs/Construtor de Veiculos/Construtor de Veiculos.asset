@@ -15,7 +15,12 @@ MonoBehaviour:
   nomeItem: Construtor de Veiculos
   descricao: Hangar avancado para producao e manutencao de veiculos pesados.
   icone: {fileID: 21300000, guid: 05c4c9a9cb8d2df4fb5d12cc92ce0cfa, type: 3}
+  itemId:
+  aliases:
+  capacidades: 0
   prefabDaUnidade: {fileID: 7213140222438100777, guid: de1399e2c962362479dda709fd9b10f1, type: 3}
   preco: 2000
-  categoria: 4
+  categoria: 0
+  escalaPoder: 0
+  balanceamento: {fileID: 0}
   scriptsDeComando: []

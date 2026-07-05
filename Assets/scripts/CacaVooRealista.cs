@@ -59,6 +59,15 @@ public class CacaVooRealista : MonoBehaviour
             somMotorJato = GetComponentInParent<AudioSource>();
         if (somMotorJato == null)
             somMotorJato = GetComponent<AudioSource>();
+        if (somMotorJato == null)
+            somMotorJato = gameObject.AddComponent<AudioSource>();
+
+        somMotorJato.playOnAwake = false;
+        somMotorJato.loop = true;
+        somMotorJato.spatialBlend = 1f;
+        somMotorJato.rolloffMode = AudioRolloffMode.Linear;
+        somMotorJato.minDistance = 9f;
+        somMotorJato.maxDistance = 150f;
     }
 
     void Update()
@@ -67,6 +76,7 @@ public class CacaVooRealista : MonoBehaviour
         {
             ManobraEInterpolacaoCurva();
             SensoriamentoDoMotor();
+            GarantirAudioMotor();
         }
         else
         {
@@ -128,6 +138,43 @@ public class CacaVooRealista : MonoBehaviour
     {
         if (somMotorJato != null)
             somMotorJato.pitch = Mathf.Lerp(0.6f, 1.8f, velocidadeAtual / velocidadeMaxima);
+    }
+
+    private void GarantirAudioMotor()
+    {
+        if (somMotorJato == null)
+        {
+            return;
+        }
+
+        if (somMotorJato.clip == null)
+        {
+            AudioClip clip = BuscarAudioClipNoObjeto();
+            if (clip != null)
+            {
+                somMotorJato.clip = clip;
+            }
+        }
+
+        if (somMotorJato.clip != null && !somMotorJato.isPlaying)
+        {
+            somMotorJato.Play();
+        }
+    }
+
+    private AudioClip BuscarAudioClipNoObjeto()
+    {
+        AudioSource[] fontes = GetComponentsInChildren<AudioSource>(true);
+        for (int i = 0; i < fontes.Length; i++)
+        {
+            AudioSource fonte = fontes[i];
+            if (fonte != null && fonte.clip != null)
+            {
+                return fonte.clip;
+            }
+        }
+
+        return null;
     }
 
     private void DesligarVFX()

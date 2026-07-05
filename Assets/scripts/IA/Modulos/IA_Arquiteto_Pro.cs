@@ -12,6 +12,7 @@ public class IA_Arquiteto_Pro : MonoBehaviour
     private IA_Comandante chefe;
     private bool baseIniciada = false;
     private float tempoUltimaBandeira = 0f;
+    private readonly List<GerenciadorAeroporto> _bufferAeroportos = new List<GerenciadorAeroporto>(32);
 
     public float nivelDoMar = 0f; 
 
@@ -144,7 +145,9 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
         if (cacaPrefab != null)
         {
-            var aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+            _bufferAeroportos.Clear();
+            RegistroEntidadesJogo.FillAeroportos(_bufferAeroportos);
+            var aeroportos = _bufferAeroportos;
             foreach (var aero in aeroportos)
             {
                 if (aero == null || aero is GerenciadorAeroportoComercial) continue;
@@ -376,7 +379,18 @@ public class IA_Arquiteto_Pro : MonoBehaviour
         
         if (nomeParcial.Contains("Estaleiro") || nomeParcial.Contains("Pier")) count += FindObjectsByType<Estaleiro>(FindObjectsSortMode.None).Count(e => e != null && e.GetComponent<IdentidadeUnidade>()?.teamID == chefe.identidade.teamID);
         if (nomeParcial.Contains("Heliporto")) count += FindObjectsByType<Heliporto>(FindObjectsSortMode.None).Count(h => h != null && h.GetComponent<IdentidadeUnidade>()?.teamID == chefe.identidade.teamID);
-        if (nomeParcial.ToLower().Contains("aeroporto")) count += FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None).Count(a => a != null && a.GetComponent<IdentidadeUnidade>()?.teamID == chefe.identidade.teamID);
+        if (nomeParcial.ToLower().Contains("aeroporto"))
+        {
+            _bufferAeroportos.Clear();
+            RegistroEntidadesJogo.FillAeroportos(_bufferAeroportos);
+            foreach (var a in _bufferAeroportos)
+            {
+                if (a != null && a.GetComponent<IdentidadeUnidade>()?.teamID == chefe.identidade.teamID)
+                {
+                    count++;
+                }
+            }
+        }
 
         return count;
     }
@@ -745,7 +759,9 @@ public class IA_Arquiteto_Pro : MonoBehaviour
 
     bool DentroDeAeroporto(Vector3 posicao)
     {
-        var aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        _bufferAeroportos.Clear();
+        RegistroEntidadesJogo.FillAeroportos(_bufferAeroportos);
+        var aeroportos = _bufferAeroportos;
         foreach (var aero in aeroportos)
         {
             if (aero == null) continue;

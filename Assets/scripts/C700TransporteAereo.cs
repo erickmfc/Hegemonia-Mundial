@@ -36,6 +36,13 @@ public class C700TransporteAereo : MonoBehaviour
 
     [Header("Estado")]
     public EstadoC700 estadoAtual = EstadoC700.Solo;
+
+    private void DefinirEstado(EstadoC700 novoEstado)
+    {
+        estadoAtual = novoEstado;
+        bool motorLigado = novoEstado != EstadoC700.Solo;
+        AudioRuntime.DefinirMotorAereo(gameObject, motorLigado);
+    }
     public bool debugLogs = false;
 
     [Header("Aeroporto")]
@@ -92,6 +99,13 @@ public class C700TransporteAereo : MonoBehaviour
     [Header("Combate")]
     public bool desabilitarArmasAoIniciar = true;
 
+    [Header("Marcadores de Missao")]
+    public float alturaMarcadorMissao = 18f;
+    public float escalaMarcadorMissao = 2.8f;
+    public float espessuraLinhaMissao = 0.22f;
+    public Color corPousoMissao = new Color(0.15f, 0.95f, 1f, 0.45f);
+    public Color corParadaMissao = new Color(1f, 0.85f, 0.2f, 0.45f);
+
     private readonly List<SlotCarga> slots = new List<SlotCarga>();
     private ControleUnidade controleUnidade;
     private Rigidbody rb;
@@ -115,6 +129,9 @@ public class C700TransporteAereo : MonoBehaviour
     private Vector3 destinoMissaoProgramado;
     private bool temDestinoMissaoProgramado;
     private bool retornoMissaoProgramado;
+    private GameObject marcadorPousoMissao;
+    private GameObject marcadorParadaMissao;
+    private LineRenderer linhaMissao;
 
     private bool EstaSelecionado => controleUnidade != null && controleUnidade.selecionado;
     public bool EstaNoSolo => estadoAtual == EstadoC700.Solo || estadoAtual == EstadoC700.Taxiando;
@@ -167,6 +184,16 @@ public class C700TransporteAereo : MonoBehaviour
     {
         AderirAoSolo();
         ultimaPosicao = transform.position;
+    }
+
+    private void OnDisable()
+    {
+        LimparIndicadoresMissao();
+    }
+
+    private void OnDestroy()
+    {
+        LimparIndicadoresMissao();
     }
 
     private void Update()
@@ -249,6 +276,7 @@ public class C700TransporteAereo : MonoBehaviour
         GUILayout.Label("Estado: " + estadoAtual);
         GUILayout.Label("Carga real: " + QuantidadeCargas() + "/" + slots.Count);
         GUILayout.Label("Manifesto: " + QuantidadeManifestoTotal);
+        GUILayout.Label("Modo: " + (aguardandoDestinoAereo ? "aguardando destino" : temDestinoMissaoProgramado ? "missao programada" : EstaNoSolo ? "base/patio" : "em voo"));
 
         if (temDestinoVisual)
         {
@@ -256,19 +284,21 @@ public class C700TransporteAereo : MonoBehaviour
         }
 
         string textoOrdem = temDestinoMissaoProgramado
-            ? "Destino travado. O C700 vai terminar o taxi e decolar sozinho."
+            ? "Destino travado. O C700 vai decolar, voar e pousar no local marcado."
             : aguardandoDestinoAereo
                 ? "Modo aereo ativo. Clique direito no mapa para definir a missao."
-                : "Clique direito no chao: taxi. Z ou botao abaixo: missao aerea.";
+                : EstaNoSolo
+                    ? "Sem controle livre no solo. Use o menu para armar voo, transportar tropas ou retornar."
+                    : "Em voo. Use o menu para mandar voltar ou concluir a missao.";
         GUILayout.Label(textoOrdem);
 
         GUI.enabled = EstaNoSolo;
-        if (GUILayout.Button("Preparar decolagem / escolher destino", GUILayout.Height(34f)))
+        if (GUILayout.Button("Armar voo / escolher destino", GUILayout.Height(34f)))
         {
             PrepararMissaoAerea();
         }
         GUI.enabled = EstaNoSolo && rotinaCarga == null;
-        if (GUILayout.Button("Puxar unidades proximas (I)", GUILayout.Height(34f)))
+        if (GUILayout.Button("Levar tropas / puxar proximas (I)", GUILayout.Height(34f)))
         {
             PuxarUnidadesProximas();
         }
@@ -361,7 +391,7 @@ public class C700TransporteAereo : MonoBehaviour
 
         yield return StartCoroutine(TaxiarAtePosicao(ponto.position, velocidadeTaxi, -1f, false));
         transform.rotation = ponto.rotation;
-        estadoAtual = EstadoC700.Solo;
+        DefinirEstado(EstadoC700.Solo);
     }
 
     public void FinalizarPosicionamentoNoPatio(Transform ponto)
@@ -376,7 +406,7 @@ public class C700TransporteAereo : MonoBehaviour
         transform.rotation = ponto.rotation;
         velocidadeSoloAtual = 0f;
         velocidadeAereaAtual = 0f;
-        estadoAtual = EstadoC700.Solo;
+        DefinirEstado(EstadoC700.Solo);
         LimparMissaoProgramada();
         LimparDestinoVisual();
     }
@@ -389,36 +419,18 @@ public class C700TransporteAereo : MonoBehaviour
             return;
         }
 
-        if (aguardandoDestinoAereo)
+        if (aguardandoDestinoAereo || temDestinoMissaoProgramado || !EstaNoSolo)
         {
             OrdenarVoo(destino, false);
             return;
         }
 
-        if (!EstaNoSolo)
-        {
-            OrdenarVoo(destino, false);
-            return;
-        }
-
-        OrdenarTaxiSolo(destino);
+        MostrarMensagem("Abra o menu com O para definir uma missao aerea.");
     }
 
     public void OrdenarTaxiSolo(Vector3 destino)
     {
-        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
-        {
-            PararPorFaltaDeCombustivel();
-            return;
-        }
-
-        if (!EstaNoSolo)
-        {
-            return;
-        }
-
-        RegistrarDestinoVisual(destino);
-        IniciarRotinaMovimento(TaxiarAtePosicao(destino, velocidadeTaxi));
+        MostrarMensagem("O C700 nao aceita taxi manual. Use o menu para armar voo ou retornar.");
     }
 
     public void OrdenarRetornoAoAeroporto()
@@ -504,6 +516,7 @@ public class C700TransporteAereo : MonoBehaviour
         aguardandoDestinoAereo = true;
         prontoParaDecolarNaPista = false;
         LimparMissaoProgramada();
+        LimparDestinoVisual();
         MostrarMensagem("Missao armada. Clique com o botao direito no destino.");
     }
 
@@ -579,6 +592,7 @@ public class C700TransporteAereo : MonoBehaviour
         aguardandoDestinoAereo = false;
         LimparMissaoProgramada();
         Vector3 destinoSolo = AjustarPosicaoAoSolo(destinoFinal);
+        AtualizarIndicadoresMissao(destinoSolo);
 
         if (EstaNoSolo)
         {
@@ -619,7 +633,7 @@ public class C700TransporteAereo : MonoBehaviour
         // Ponto 3: Toque na Rampa
         Vector3 pontoTouchdown = destinoSolo - direcaoRetaPouso * 10f + Vector3.up * alturaToqueSolo;
 
-        estadoAtual = EstadoC700.EmVoo;
+        DefinirEstado(EstadoC700.EmVoo);
 
         // SE ELE ESTIVER MUITO PERTO DO DESTINO, TEM QUE SE AFASTAR PRIMEIRO PARA NAO CAIR DE BICO GIRANDO
         // Se a distância for menor que 1500m, ele não tem rampa pra fazer os 1000m de linha reta
@@ -634,12 +648,12 @@ public class C700TransporteAereo : MonoBehaviour
         // 1. Voa rápido até o Inicio da Aproximação (1000m afastado do destino)
         yield return StartCoroutine(VoarAtePonto(pontoIaf1000m, velocidadeCruzeiro, 50f));
 
-        estadoAtual = EstadoC700.Aproximando;
+        DefinirEstado(EstadoC700.Aproximando);
         
         // 2. Desce o plano inclinado em linha reta perdendo 10 metros de altura a cada 100m andados
         yield return StartCoroutine(VoarAtePonto(pontoFa100m, velocidadeCruzeiro * 0.75f, 25f));
 
-        estadoAtual = EstadoC700.Pousando;
+        DefinirEstado(EstadoC700.Pousando);
         
         // 3. Flare (Ultimos 100m até tocar com as rodas)
         yield return StartCoroutine(VoarAtePonto(pontoTouchdown, velocidadeDecolagem * 0.9f, 6f));
@@ -658,8 +672,9 @@ public class C700TransporteAereo : MonoBehaviour
 
         velocidadeAereaAtual = 0f;
         velocidadeSoloAtual = 0f;
-        estadoAtual = EstadoC700.Solo;
+        DefinirEstado(EstadoC700.Solo);
         AtualizarDestinoVisualAoChegar(destinoSolo);
+        LimparDestinoVisual();
         rotinaMovimento = null;
     }
 
@@ -772,7 +787,7 @@ public class C700TransporteAereo : MonoBehaviour
 
         // REMOVIDO SNAP ESTÁTICO DE ROTAÇÃO E ROBÓTICO. Deixa o avião virar realisticamente de onde estiver!
         
-        estadoAtual = EstadoC700.Solo;
+        DefinirEstado(EstadoC700.Solo);
         aguardandoDestinoAereo = true;
         prontoParaDecolarNaPista = true;
         MostrarMensagem("C700 na pista. Clique com o botao direito no destino.");
@@ -891,7 +906,7 @@ public class C700TransporteAereo : MonoBehaviour
             yield return StartCoroutine(CorridaDecolagemTempoParaLocalAberto());
         }
 
-        estadoAtual = EstadoC700.EmVoo;
+        DefinirEstado(EstadoC700.EmVoo);
 
         // IMPORTANTE: Continua a missão aérea (se existir) após decolar! (corrige bug de ficar voando solto)
         if (temDestinoMissaoProgramado)
@@ -908,7 +923,7 @@ public class C700TransporteAereo : MonoBehaviour
 
     private IEnumerator CorridaDecolagemTempoParaLocalAberto()
     {
-        estadoAtual = EstadoC700.Decolando;
+        DefinirEstado(EstadoC700.Decolando);
         Vector3 inicioCorrida = transform.position;
         Vector3 direcaoSaidaCerta = transform.forward;
         direcaoSaidaCerta.y = 0f;
@@ -939,7 +954,7 @@ public class C700TransporteAereo : MonoBehaviour
 
     private IEnumerator CorridaDecolagemPara(Vector3 destinoSolo)
     {
-        estadoAtual = EstadoC700.Decolando;
+        DefinirEstado(EstadoC700.Decolando);
         Vector3 inicioCorrida = transform.position;
         Vector3 destino = AjustarPosicaoAoSolo(destinoSolo);
 
@@ -1034,7 +1049,7 @@ public class C700TransporteAereo : MonoBehaviour
 
     private IEnumerator TaxiarAtePosicao(Vector3 destino, float velocidadeMaxima, float velocidadeInicial = -1f, bool atualizarEstacionamento = true)
     {
-        estadoAtual = EstadoC700.Taxiando;
+        DefinirEstado(EstadoC700.Taxiando);
         if (velocidadeInicial >= 0f)
         {
             velocidadeSoloAtual = velocidadeInicial;
@@ -1085,7 +1100,7 @@ public class C700TransporteAereo : MonoBehaviour
         transform.position = destinoSolo;
         AderirAoSolo();
         velocidadeSoloAtual = 0f;
-        estadoAtual = EstadoC700.Solo;
+        DefinirEstado(EstadoC700.Solo);
         if (!aguardandoDestinoAereo && !temDestinoMissaoProgramado)
         {
             AtualizarDestinoVisualAoChegar(destinoSolo);
@@ -1114,10 +1129,11 @@ public class C700TransporteAereo : MonoBehaviour
         aguardandoDestinoAereo = false;
         prontoParaDecolarNaPista = false;
         LimparMissaoProgramada();
+        LimparDestinoVisual();
 
         if (EstaNoSolo)
         {
-            estadoAtual = EstadoC700.Solo;
+            DefinirEstado(EstadoC700.Solo);
             AderirAoSolo();
             return;
         }
@@ -1735,16 +1751,117 @@ public class C700TransporteAereo : MonoBehaviour
         }
     }
 
+    private void AtualizarIndicadoresMissao(Vector3 destinoFinal)
+    {
+        Vector3 destinoSolo = AjustarPosicaoAoSolo(destinoFinal);
+        Vector3 referencia = transform.position;
+        Vector3 direcao = destinoSolo - referencia;
+        direcao.y = 0f;
+
+        if (direcao.sqrMagnitude < 0.01f)
+        {
+            direcao = transform.forward;
+            direcao.y = 0f;
+        }
+
+        if (direcao.sqrMagnitude < 0.01f)
+        {
+            direcao = Vector3.forward;
+        }
+
+        direcao.Normalize();
+
+        Vector3 pontoPouso = destinoSolo - direcao * 12f + Vector3.up * alturaToqueSolo;
+        Vector3 pontoParada = destinoSolo;
+
+        marcadorPousoMissao = AtualizarMarcadorMissao(marcadorPousoMissao, pontoPouso, corPousoMissao, "C700_Marcador_Pouso");
+        marcadorParadaMissao = AtualizarMarcadorMissao(marcadorParadaMissao, pontoParada, corParadaMissao, "C700_Marcador_Parada");
+        AtualizarLinhaMissao(pontoPouso, pontoParada);
+    }
+
+    private GameObject AtualizarMarcadorMissao(GameObject marcadorExistente, Vector3 posicao, Color cor, string nome)
+    {
+        if (marcadorExistente != null)
+        {
+            marcadorExistente.transform.position = posicao + Vector3.up * alturaMarcadorMissao;
+            Renderer existente = marcadorExistente.GetComponent<Renderer>();
+            if (existente != null && existente.material != null)
+            {
+                existente.material.color = cor;
+            }
+            return marcadorExistente;
+        }
+
+        GameObject marcador = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        marcador.name = nome;
+        Destroy(marcador.GetComponent<Collider>());
+        marcador.transform.position = posicao + Vector3.up * alturaMarcadorMissao;
+        marcador.transform.localScale = new Vector3(escalaMarcadorMissao, alturaMarcadorMissao, escalaMarcadorMissao);
+
+        Renderer rend = marcador.GetComponent<Renderer>();
+        if (rend != null)
+        {
+            rend.material = new Material(Shader.Find("Sprites/Default"));
+            rend.material.color = cor;
+        }
+        return marcador;
+    }
+
+    private void AtualizarLinhaMissao(Vector3 inicio, Vector3 fim)
+    {
+        if (linhaMissao == null)
+        {
+            GameObject linhaObj = new GameObject("C700_Linha_Missao");
+            linhaObj.transform.SetParent(transform, true);
+            linhaMissao = linhaObj.AddComponent<LineRenderer>();
+            linhaMissao.useWorldSpace = true;
+            linhaMissao.startWidth = espessuraLinhaMissao;
+            linhaMissao.endWidth = espessuraLinhaMissao;
+            linhaMissao.material = new Material(Shader.Find("Sprites/Default"));
+            linhaMissao.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            linhaMissao.positionCount = 2;
+        }
+
+        linhaMissao.gameObject.SetActive(true);
+        linhaMissao.SetPosition(0, inicio + Vector3.up * 1.2f);
+        linhaMissao.SetPosition(1, fim + Vector3.up * 1.2f);
+        linhaMissao.startColor = corPousoMissao;
+        linhaMissao.endColor = corParadaMissao;
+    }
+
+    private void LimparIndicadoresMissao()
+    {
+        if (marcadorPousoMissao != null)
+        {
+            Destroy(marcadorPousoMissao);
+            marcadorPousoMissao = null;
+        }
+
+        if (marcadorParadaMissao != null)
+        {
+            Destroy(marcadorParadaMissao);
+            marcadorParadaMissao = null;
+        }
+
+        if (linhaMissao != null)
+        {
+            Destroy(linhaMissao.gameObject);
+            linhaMissao = null;
+        }
+    }
+
     private void RegistrarDestinoVisual(Vector3 destino)
     {
         destinoVisualAtual = AjustarPosicaoAoSolo(destino);
         temDestinoVisual = true;
+        AtualizarIndicadoresMissao(destinoVisualAtual);
     }
 
     private void LimparDestinoVisual()
     {
         temDestinoVisual = false;
         destinoVisualAtual = Vector3.zero;
+        LimparIndicadoresMissao();
     }
 
     private void AtualizarDestinoVisualAoChegar(Vector3 destino)

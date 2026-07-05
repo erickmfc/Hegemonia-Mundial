@@ -61,8 +61,6 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -84,7 +82,6 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -215,8 +212,6 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -238,7 +233,6 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -478,6 +472,7 @@ MonoBehaviour:
   raioOrbitaMissao: 350
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
+  altitudeVoo: 120
   modeloMecanicoVisual: {fileID: 36123138936339233}
   asaBankingMaximo: 45
   arfagemPitchMaxima: 20
@@ -493,6 +488,8 @@ MonoBehaviour:
   alvoPrioritarioIA: 0
   alvoEstrategico: {x: 0, y: 0, z: 0}
   estaEmModoVooFisico: 0
+  aceleracaoVoo: 18
+  desaceleracaoVoo: 25
   tipoPropulsao: 1
   helices:
   - {fileID: 7139795083732527761}
@@ -509,6 +506,32 @@ MonoBehaviour:
   nomeCompanhia: Independente
   nomeDestinoIA: 
   passagensVendidas: 0
+  aeroportoOrigemComercial: {fileID: 0}
+  pistaDesignada:
+    nomePista: 
+    pista: {fileID: 0}
+    taxiEntrada: {fileID: 0}
+    taxiSaida: {fileID: 0}
+    waypointsDecolagem: []
+    waypointsDecida: []
+    waypointsTaxiEntrada: []
+    waypointsTaxiSaida: []
+    estado: 0
+    aviaoNaPista: {fileID: 0}
+  vooAssociado:
+    numeroVoo: 
+    nomeCompanhia: 
+    destino: 
+    ehChegada: 0
+    vagaIndex: 0
+    passagensVendidas: 0
+    horarioPartidaJogo: 0
+    horarioAgendado: 0
+    status: 0
+    aviao: {fileID: 0}
+    passageirosTuristas: 0
+    passageirosImigrantes: 0
+    timerTuristas: 0
 --- !u!4 &5306535090736281042 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8846175526807498921, guid: 7400e145d90b69f4b8c251d7c1adfca8, type: 3}

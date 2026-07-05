@@ -556,7 +556,7 @@ namespace Hegemonia.AI.DEUSA
                 return;
             }
 
-            if (_construcao.PrecisaAeroporto && TentarEnfileirarConstrucao("deusa_aeroporto", 92, 20f, IA_ZoneType.Air, "aeroporto", "airport"))
+            if (_construcao.PrecisaAeroporto && TentarEnfileirarConstrucao("deusa_aeroporto", 92, 20f, IA_ZoneType.Air, "aeroporto militar", "base aerea militar", "military airport"))
             {
                 return;
             }
@@ -594,7 +594,7 @@ namespace Hegemonia.AI.DEUSA
                 return;
             }
 
-            if (_aerea.PrecisaAviacao && snapshot.HasAirport && TentarEnfileirarProducao("deusa_aviao", 86, 7f, "b260", "fa1", "caca", "aviao"))
+            if (_aerea.PrecisaAviacao && snapshot.HasMilitaryAirport && TentarEnfileirarProducao("deusa_aviao", 86, 7f, "b260", "fa1", "caca", "aviao"))
             {
                 return;
             }
@@ -860,7 +860,7 @@ namespace Hegemonia.AI.DEUSA
 
             if (_construcao.PrecisaAeroporto)
             {
-                return "Aeroporto";
+                return "Aeroporto Militar";
             }
 
             if (_construcao.PrecisaEstaleiro)

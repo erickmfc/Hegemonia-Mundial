@@ -1,8 +1,11 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class CameraController : MonoBehaviour
 {
+    public static event Action<Vector3> CameraMudouArea;
+
     public float velocidade = 20f;
     public float velocidadeMenu = 5f;
     public float velocidadeZoom = 4000f;
@@ -19,6 +22,9 @@ public class CameraController : MonoBehaviour
     private GerenteSelecao gerenteSelecaoCache;
     private float proximaBuscaGerenteSelecao = 0f;
     private Camera cameraPrincipal;
+    private Vector3 ultimaAreaNotificada;
+    private const float DistanciaMinimaNotificacaoSqr = 625f;
+    private const float AlturaMinimaNotificacao = 5f;
 
     void Start()
     {
@@ -27,6 +33,9 @@ public class CameraController : MonoBehaviour
         {
             cameraPrincipal.fieldOfView = campoDeVisaoBase;
         }
+
+        ultimaAreaNotificada = transform.position;
+        CameraMudouArea?.Invoke(ultimaAreaNotificada);
     }
 
     void Update()
@@ -126,6 +135,7 @@ public class CameraController : MonoBehaviour
         pos.y = Mathf.Clamp(pos.y, 2f, 8000f); // Teto aumentado para o atalho do Espaço
 
         transform.position = pos;
+        NotificarMudancaDeArea(pos);
 
         if (cameraPrincipal == null)
         {
@@ -138,7 +148,7 @@ public class CameraController : MonoBehaviour
             cameraPrincipal.fieldOfView = Mathf.Lerp(campoDeVisaoMin, campoDeVisaoMax, tAltura);
             
             // Ajusta a distância máxima de renderização dinamicamente para não cortar o horizonte
-            cameraPrincipal.farClipPlane = Mathf.Max(60000f, pos.y * 25f);
+            cameraPrincipal.farClipPlane = Mathf.Clamp(pos.y * 4f, 1500f, 6000f);
         }
 
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
@@ -152,7 +162,7 @@ public class CameraController : MonoBehaviour
 
         if (podeRotacionar)
         {
-            if (Input.GetMouseButton(1) || Input.GetMouseButton(2))
+            if (!BloquearRotacaoPorMiraManual() && (Input.GetMouseButton(1) || Input.GetMouseButton(2)))
             {
                 // Mouse X gira a câmera no eixo Y global (olhar para lados)
                 float rotX = Input.GetAxis("Mouse X") * velocidadeRotacao * Time.deltaTime * 2f; // *2f para sensibilidade
@@ -172,6 +182,19 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    private void NotificarMudancaDeArea(Vector3 posicao)
+    {
+        Vector2 deslocamentoPlano = new Vector2(posicao.x - ultimaAreaNotificada.x, posicao.z - ultimaAreaNotificada.z);
+        if (deslocamentoPlano.sqrMagnitude < DistanciaMinimaNotificacaoSqr
+            && Mathf.Abs(posicao.y - ultimaAreaNotificada.y) < AlturaMinimaNotificacao)
+        {
+            return;
+        }
+
+        ultimaAreaNotificada = posicao;
+        CameraMudouArea?.Invoke(posicao);
+    }
+
     GerenteSelecao ObterGerenteSelecao()
     {
         if (gerenteSelecaoCache == null && Time.time >= proximaBuscaGerenteSelecao)
@@ -181,5 +204,37 @@ public class CameraController : MonoBehaviour
         }
 
         return gerenteSelecaoCache;
+    }
+
+    private bool BloquearRotacaoPorMiraManual()
+    {
+        GerenteSelecao gerente = ObterGerenteSelecao();
+        if (gerente == null || gerente.unidadesSelecionadas == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < gerente.unidadesSelecionadas.Count; i++)
+        {
+            ControleUnidade unidade = gerente.unidadesSelecionadas[i];
+            if (unidade == null)
+            {
+                continue;
+            }
+
+            ControleSubmarino submarino = unidade.GetComponent<ControleSubmarino>();
+            if (submarino != null && submarino.EmModoManualDisparo())
+            {
+                return true;
+            }
+
+            LancadorNaval lancadorNaval = unidade.GetComponentInChildren<LancadorNaval>(true);
+            if (lancadorNaval != null && lancadorNaval.modoAtual == LancadorNaval.ModoOperacao.Manual)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
