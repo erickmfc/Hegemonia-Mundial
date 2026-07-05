@@ -88,7 +88,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 32ce560dd3360da439531016f604e494, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 0}
   selecionado: 0
@@ -141,7 +141,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 86bf21ae7ce6f5a47b74d272af475dc8, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::IdentidadeNaval
   nomeDoNavio: Vindicator
   categoriaNavio: 1
@@ -196,10 +196,10 @@ Rigidbody:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 62525798079713276}
-  serializedVersion: 4
+  serializedVersion: 5
   m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -362,7 +362,7 @@ MonoBehaviour:
   baseGiratoria: {fileID: 5176564179888039053}
   canoElevacao: {fileID: 5176564179888039055}
   velocidadeGiro: 60
-  prefabIntercepador: {fileID: 6053793194223374486, guid: 28187b8accd16534c9de2bb764f3ada8, type: 3}
+  prefabIntercepador: {fileID: 1828480966644363526, guid: b08f5a92de3e8f64f86cac8213399aad, type: 3}
   pontosDeSaida:
   - {fileID: 710339387541763032}
   - {fileID: 5722256221834511903}
@@ -570,38 +570,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8139370442635534747}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
---- !u!1 &2792862033347885172
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2452910732237239983}
-  m_Layer: 0
-  m_Name: GameObject
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2452910732237239983
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2792862033347885172}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0.5, y: -0.5, z: -0.5, w: 0.5}
-  m_LocalPosition: {x: -0.04607726, y: -0.011, z: 0}
-  m_LocalScale: {x: 0.008738715, y: 0.013902504, z: 0.27248904}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 3865442754315681732}
-  m_Father: {fileID: 7368455566050977321}
-  m_LocalEulerAnglesHint: {x: -90, y: -90, z: 0}
 --- !u!1 &3352954834904684235
 GameObject:
   m_ObjectHideFlags: 0
@@ -633,6 +601,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1027576861776745056}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+--- !u!1 &3543610504556870234
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4199059024789444961}
+  m_Layer: 0
+  m_Name: boca
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4199059024789444961
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3543610504556870234}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.1, z: 0.539}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3865442754315681732}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4490758375087968270
 GameObject:
   m_ObjectHideFlags: 0
@@ -698,6 +697,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -719,6 +720,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -859,13 +861,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7484319291885228532}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: -0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 10.71, z: 0}
-  m_LocalScale: {x: 1, y: 0.051020414, z: 19.599997}
+  m_LocalRotation: {x: -0.0558589, y: -0.70517987, z: -0.052167308, w: 0.704897}
+  m_LocalPosition: {x: 0.0346, y: 0.0308, z: 0.0001}
+  m_LocalScale: {x: 0.008745052, y: 0.013901671, z: 0.27262837}
   m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2452910732237239983}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_Children:
+  - {fileID: 4199059024789444961}
+  m_Father: {fileID: 7368455566050977321}
+  m_LocalEulerAnglesHint: {x: -8.762, y: -90.046, z: 0.304}
 --- !u!33 &8423240918125776933
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -894,6 +897,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -915,6 +920,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -991,6 +997,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Cano
       objectReference: {fileID: 0}
+    - target: {fileID: 3575391994411543334, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3575391994411543334, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 2.89
+      objectReference: {fileID: 0}
     - target: {fileID: 3575391994411543336, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.1463
@@ -1017,7 +1031,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3575391994411543338, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.206
+      value: 0.212
       objectReference: {fileID: 0}
     - target: {fileID: 3575391994411543338, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1072,9 +1086,83 @@ PrefabInstance:
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 3575391994411543342, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2452910732237239983}
-    m_AddedComponents: []
+      addedObject: {fileID: 3865442754315681732}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3575391994411448074, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5275514357658337572}
   m_SourcePrefab: {fileID: 100100000, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
+--- !u!1 &7368455566050490893 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3575391994411448074, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}
+  m_PrefabInstance: {fileID: 6331035641670470919}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5275514357658337572
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7368455566050490893}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37af128960c2d574f99598557ad1624e, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
+  etiquetaAlvo: Inimigo
+  alcance: 950
+  velocidadeGiro: 60
+  limitarRotacao: 1
+  anguloMinimo: -90
+  anguloMaximo: 90
+  tempoEntreTiros: 0.3
+  tamanhoCartucho: 50
+  tempoRecarga: 8
+  pecaQueGira: {fileID: 7368455566050977325}
+  canosDaTorreta: {fileID: 0}
+  locaisDoTiro:
+  - {fileID: 4199059024789444961}
+  municaoPrefab: {fileID: 5864298406509392469, guid: ed8f0d5525bd8b045bdb2ffb83514f53, type: 3}
+  limitarInclinacao: 1
+  elevacaoMinima: -10
+  elevacaoMaxima: 80
+  somTiro: {fileID: 8300000, guid: 1f5d14f7476b211498beb3c81883de6e, type: 3}
+  somRecarga: {fileID: 0}
+  fogoCano: {fileID: 0}
+  fogoCanoObjeto: {fileID: 1938979120316268, guid: 018c6bb3f1d37b34fbba9163f8f42430, type: 3}
+  efeitoCanoPrefab: {fileID: 0}
+  pontoEfeitoCano: {fileID: 0}
+  duracaoEfeitoCano: 1.5
+  usarRecuoAoDisparar: 1
+  pecaRecuo: {fileID: 3865442754315681732}
+  forcaRecuoDisparo: 0.12
+  velocidadeRetornoRecuo: 18
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel:
+  modoPassivo: 0
+  modoRadar: 0
+  interceptarMisseis: 0
+  usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
+  misselPrefab: {fileID: 0}
+  locaisDoMissel: []
+  somMissel: {fileID: 0}
+  tempoEntreMisseis: 2
+  capacidadeMisseis: 4
+  tempoRecargaMisseis: 10
+  municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
 --- !u!4 &7368455566050977321 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3575391994411543342, guid: 83c3dfc7a948bd24ba4467a7eb39729f, type: 3}

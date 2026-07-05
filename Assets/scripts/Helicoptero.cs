@@ -124,8 +124,8 @@ public class Helicoptero : MonoBehaviour
     private bool disponivelParaPatrulha = true; 
     private IdentidadeUnidade identidade;
     private Rigidbody rb;
-    private static List<Helicoptero> todosHelicopteros = new List<Helicoptero>();
     private static int proximoIdExibicao = 1;
+    private static readonly List<Helicoptero> _bufferHelicopterosConsulta = new List<Helicoptero>(32);
     [SerializeField, HideInInspector] private int idExibicao = 0;
     private readonly RaycastHit[] _bufferRaycastSolo = new RaycastHit[32];
     private float _cacheAlturaSolo = 0f;
@@ -139,8 +139,8 @@ public class Helicoptero : MonoBehaviour
     private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
 
     void LogDebug(string msg) { if (debugLogs) Debug.Log(msg); }
-    void OnEnable() { if(!todosHelicopteros.Contains(this)) todosHelicopteros.Add(this); }
-    void OnDisable() { todosHelicopteros.Remove(this); }
+    void OnEnable() { RegistroEntidadesJogo.Register(this); }
+    void OnDisable() { RegistroEntidadesJogo.Unregister(this); }
 
     void Awake()
     {
@@ -1120,7 +1120,27 @@ public class Helicoptero : MonoBehaviour
     void VerificarInatividade() { if (!estaVoando && motorLigado) { timerInatividade += Time.deltaTime; if (timerInatividade > 10f) motorLigado = false; } }
 
     private List<GameObject> soldadosChamados = new List<GameObject>();
-    public static bool SoldadoEstaEmbarcando(GameObject s) { if (s == null) return false; for (int i = 0; i < todosHelicopteros.Count; i++) { var h = todosHelicopteros[i]; if (h != null && h.soldadosChamados.Contains(s)) return true; } return false; }
+    public static bool SoldadoEstaEmbarcando(GameObject s)
+    {
+        if (s == null)
+        {
+            return false;
+        }
+
+        _bufferHelicopterosConsulta.Clear();
+        RegistroEntidadesJogo.FillHelicopteros(_bufferHelicopterosConsulta);
+
+        for (int i = 0; i < _bufferHelicopterosConsulta.Count; i++)
+        {
+            Helicoptero h = _bufferHelicopterosConsulta[i];
+            if (h != null && h.soldadosChamados.Contains(s))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public int ChamarReforcos()
     {

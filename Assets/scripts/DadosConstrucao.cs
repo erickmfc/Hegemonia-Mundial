@@ -100,6 +100,32 @@ public class DadosConstrucao : ScriptableObject
         return prefab != null;
     }
 
+    public bool TryGetPrefabBasico(out GameObject prefab)
+    {
+        prefab = null;
+
+        try
+        {
+            prefab = prefabDaUnidade;
+            if (prefab == null)
+            {
+                return false;
+            }
+
+            string _ = prefab.name;
+        }
+        catch (MissingReferenceException)
+        {
+            prefab = null;
+        }
+        catch (System.NullReferenceException)
+        {
+            prefab = null;
+        }
+
+        return prefab != null;
+    }
+
     public string GetDisplayName()
     {
         if (!string.IsNullOrWhiteSpace(nomeItem))
@@ -113,7 +139,7 @@ public class DadosConstrucao : ScriptableObject
         }
 
         GameObject prefab;
-        if (TryGetPrefab(out prefab) && !string.IsNullOrWhiteSpace(prefab.name))
+        if (TryGetPrefabBasico(out prefab) && !string.IsNullOrWhiteSpace(prefab.name))
         {
             return prefab.name.Trim();
         }
@@ -171,7 +197,7 @@ public class DadosConstrucao : ScriptableObject
     {
         IA_ConstructionCapability result = IA_ConstructionCapability.Auto;
         GameObject prefab;
-        bool hasPrefab = TryGetPrefab(out prefab);
+        bool hasPrefab = TryGetPrefabBasico(out prefab);
         string joined = IA_Text.Normalize(GetDisplayName() + " " + name + " " + (hasPrefab ? prefab.name : string.Empty));
 
         bool hasCommercialAirport = false;
@@ -345,7 +371,7 @@ public class DadosConstrucao : ScriptableObject
         // Bloco protegido: prefabDaUnidade pode ter "fake null" ou missing scripts
         // que só explodem no primeiro GetComponent, não no null-check do C#.
         GameObject validatedPrefab;
-        if (TryGetPrefab(out validatedPrefab))
+        if (TryGetPrefabBasico(out validatedPrefab))
         {
             try
             {

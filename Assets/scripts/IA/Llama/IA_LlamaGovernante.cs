@@ -92,7 +92,8 @@ Para diplomacia/ataque direcionado:
             int dinheiroAtual = (int)chefe.dinheiro;
             
             int avioesNoPatio = 0;
-            var aeroportos = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+            List<GerenciadorAeroporto> aeroportos = new List<GerenciadorAeroporto>();
+            RegistroEntidadesJogo.FillAeroportos(aeroportos);
             foreach(var aero in aeroportos)
             {
                 var id = aero.GetComponent<IdentidadeUnidade>();

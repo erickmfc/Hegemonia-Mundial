@@ -65,11 +65,11 @@ public class ControleAviaoComercial : ControleAviao
         if (somMotorComercial == null) somMotorComercial = GetComponentInChildren<AudioSource>();
         if (somMotorComercial != null) { somMotorComercial.loop = true; somMotorComercial.spatialBlend = 1f; }
 
-        CombustivelUnidade comb = CombustivelUnidade.Garantir(gameObject, false);
+        CombustivelUnidade comb = CombustivelUnidade.Garantir(gameObject, true);
         if (comb != null)
         {
             comb.mostrarIndicadorMundo = false; // Não mostra UI para avião comercial
-            comb.consumoPorSegundoMovendo *= 2.5f; // Gasta bastante para durar o voo todo
+            comb.usaCombustivel = false; // Avião comercial não deve cair por falta de combustível
         }
     }
 

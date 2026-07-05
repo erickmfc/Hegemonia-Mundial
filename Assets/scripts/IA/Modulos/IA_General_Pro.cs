@@ -42,6 +42,7 @@ public class IA_General_Pro : MonoBehaviour
     [SerializeField] private List<Estaleiro> meusEstaleiros = new List<Estaleiro>(); 
     [SerializeField] private List<Heliporto> meusHeliportos = new List<Heliporto>();
     [SerializeField] private List<GerenciadorAeroporto> meusAeroportos = new List<GerenciadorAeroporto>();
+    private readonly List<GerenciadorAeroporto> _bufferAeroportos = new List<GerenciadorAeroporto>(32);
 
     private float _timerRecrutamento;
     private float _timerAtaque;
@@ -676,8 +677,9 @@ public class IA_General_Pro : MonoBehaviour
         var helis = FindObjectsByType<Heliporto>(FindObjectsSortMode.None);
         foreach(var h in helis) RegistrarHeliporto(h, 2000f);
 
-        var aerops = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach(var a in aerops)
+        _bufferAeroportos.Clear();
+        RegistroEntidadesJogo.FillAeroportos(_bufferAeroportos);
+        foreach(var a in _bufferAeroportos)
         {
             if (a == null || a is GerenciadorAeroportoComercial) continue;
             var idComp = a.GetComponent<IdentidadeUnidade>();
@@ -887,8 +889,9 @@ public class IA_General_Pro : MonoBehaviour
 
     Vector3 EvitarAeroporto(Vector3 ponto, Vector3 centroBase)
     {
-        var aerops = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach (var aero in aerops)
+        _bufferAeroportos.Clear();
+        RegistroEntidadesJogo.FillAeroportos(_bufferAeroportos);
+        foreach (var aero in _bufferAeroportos)
         {
             if (aero == null || aero is GerenciadorAeroportoComercial) continue;
             Bounds b = new Bounds(aero.transform.position, Vector3.zero);

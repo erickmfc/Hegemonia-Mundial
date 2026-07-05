@@ -69,6 +69,7 @@ public class Construtor : MonoBehaviour
     private bool usarPosicaoPreviewNaval = false;
     private readonly RaycastHit[] bufferHitsConstrucao = new RaycastHit[96];
     private readonly Collider[] bufferColisoresSnap = new Collider[48];
+    private readonly List<GerenciadorAeroporto> bufferAeroportos = new List<GerenciadorAeroporto>(32);
     private readonly List<UnityEngine.EventSystems.RaycastResult> bufferRaycastUI = new List<UnityEngine.EventSystems.RaycastResult>(16);
     private readonly List<Material> materiaisFantasma = new List<Material>(32);
     private static readonly RaycastHitDistanceComparer ComparadorHitsConstrucao = new RaycastHitDistanceComparer();
@@ -1241,8 +1242,9 @@ public class Construtor : MonoBehaviour
         MenuMisseis menuMisseis = Object.FindFirstObjectByType<MenuMisseis>();
         if (menuMisseis != null) menuMisseis.CancelarLancamento();
 
-        GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
-        foreach (GerenciadorAeroporto aeroporto in aeroportos) if (aeroporto != null) aeroporto.CancelarInteracaoPorConstrucao();
+        bufferAeroportos.Clear();
+        RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
+        foreach (GerenciadorAeroporto aeroporto in bufferAeroportos) if (aeroporto != null) aeroporto.CancelarInteracaoPorConstrucao();
 
         NavioTransporteTropas[] naviosTransporte = Object.FindObjectsByType<NavioTransporteTropas>(FindObjectsSortMode.None);
         foreach (NavioTransporteTropas navio in naviosTransporte) if (navio != null) navio.CancelarInteracaoPorConstrucao();

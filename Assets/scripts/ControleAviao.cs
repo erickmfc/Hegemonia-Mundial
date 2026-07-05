@@ -464,13 +464,13 @@ public class ControleAviao : MonoBehaviour
                 if (direcaoHorizonLocal != Vector3.zero && vetorAteDestinoLocal.sqrMagnitude > 0.05f)
                 {
                     Quaternion rotAlvoLocal = Quaternion.LookRotation(direcaoHorizonLocal);
-                    transform.localRotation = Quaternion.RotateTowards(transform.localRotation, rotAlvoLocal, (ignoreRotationSlowdown ? 90f : 50f) * Time.deltaTime);
+                    transform.localRotation = Quaternion.RotateTowards(transform.localRotation, rotAlvoLocal, (ignoreRotationSlowdown ? 180f : 120f) * Time.deltaTime);
 
                     float fatorVelocidade = 1f;
                     if (!ignoreRotationSlowdown)
                     {
-                        fatorVelocidade = Mathf.Clamp01(1.2f - (Quaternion.Angle(transform.localRotation, rotAlvoLocal) / 45f));
-                        if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
+                        fatorVelocidade = Mathf.Clamp01(1.0f - (Quaternion.Angle(transform.localRotation, rotAlvoLocal) / 20f));
+                        if (fatorVelocidade < 0.05f) fatorVelocidade = 0.05f; // Aguarda virar para frente antes de andar
                     }
 
                     Vector3 proximaPosLocal = posLocal + direcaoHorizonLocal * (vel * fatorVelocidade) * Time.deltaTime;
@@ -502,13 +502,13 @@ public class ControleAviao : MonoBehaviour
                 if (direcaoHorizon != Vector3.zero && vetorAteDestino.sqrMagnitude > 0.05f)
                 {
                     Quaternion rotAlvo = Quaternion.LookRotation(direcaoHorizon);
-                    transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, (ignoreRotationSlowdown ? 90f : 50f) * Time.deltaTime);
+                    transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, (ignoreRotationSlowdown ? 180f : 120f) * Time.deltaTime);
                     
                     float fatorVelocidade = 1f;
                     if (!ignoreRotationSlowdown)
                     {
-                        fatorVelocidade = Mathf.Clamp01(1.2f - (Quaternion.Angle(transform.rotation, rotAlvo) / 45f));
-                        if (fatorVelocidade < 0.2f) fatorVelocidade = 0.2f;
+                        fatorVelocidade = Mathf.Clamp01(1.0f - (Quaternion.Angle(transform.rotation, rotAlvo) / 20f));
+                        if (fatorVelocidade < 0.05f) fatorVelocidade = 0.05f; // Aguarda virar para frente antes de andar
                     }
                     
                     transform.position += vetorAteDestino.normalized * (vel * fatorVelocidade) * Time.deltaTime;

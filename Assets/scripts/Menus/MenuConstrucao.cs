@@ -155,7 +155,7 @@ public class MenuConstrucao : MonoBehaviour
         foreach (var ficha in fichasConfiguradasNaCena)
         {
             GameObject prefab;
-            if (ficha != null && ficha.TryGetPrefab(out prefab) && !string.IsNullOrEmpty(ficha.nomeItem))
+            if (ficha != null && ficha.TryGetPrefabBasico(out prefab) && !string.IsNullOrEmpty(ficha.nomeItem))
             {
                 string nm = ficha.nomeItem.ToLower();
                 bool isDestrocos = false;
@@ -215,7 +215,7 @@ public class MenuConstrucao : MonoBehaviour
                 }
 
                 GameObject prefabFicha;
-                return ficha.TryGetPrefab(out prefabFicha) && prefabFicha == prefab;
+                return ficha.TryGetPrefabBasico(out prefabFicha) && prefabFicha == prefab;
             });
             if (jaTemFicha)
             {
@@ -270,7 +270,7 @@ public class MenuConstrucao : MonoBehaviour
             }
 
             GameObject prefab;
-            if (!item.TryGetPrefab(out prefab) || string.IsNullOrWhiteSpace(item.nomeItem))
+            if (!item.TryGetPrefabBasico(out prefab) || string.IsNullOrWhiteSpace(item.nomeItem))
             {
                 continue;
             }
@@ -2170,7 +2170,7 @@ public class MenuConstrucao : MonoBehaviour
     string ObterTextoVelocidadeItem(DadosConstrucao item)
     {
         GameObject prefab;
-        if (item == null || !item.TryGetPrefab(out prefab))
+        if (item == null || !item.TryGetPrefabBasico(out prefab))
         {
             return "--";
         }
@@ -2244,7 +2244,7 @@ public class MenuConstrucao : MonoBehaviour
     string ObterTextoVidaItem(DadosConstrucao item)
     {
         GameObject prefab;
-        if (item == null || !item.TryGetPrefab(out prefab)) return "--";
+        if (item == null || !item.TryGetPrefabBasico(out prefab)) return "--";
         if (item.balanceamento != null && !string.IsNullOrWhiteSpace(item.balanceamento.blindagemExibida))
         {
             return item.balanceamento.blindagemExibida.Trim();
@@ -2262,7 +2262,7 @@ public class MenuConstrucao : MonoBehaviour
     string ObterTextoPoderFogoItem(DadosConstrucao item)
     {
         GameObject prefab;
-        if (item == null || !item.TryGetPrefab(out prefab)) return "--";
+        if (item == null || !item.TryGetPrefabBasico(out prefab)) return "--";
         if (item.balanceamento != null && !string.IsNullOrWhiteSpace(item.balanceamento.poderOfensivoExibido))
         {
             return item.balanceamento.poderOfensivoExibido.Trim();

@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
-  m_Name: Construtor de Veiculos
-  m_EditorClassIdentifier: 
-  nomeItem: Construtor de Veiculos
-  descricao: Hangar avancado para producao e manutencao de veiculos pesados.
-  icone: {fileID: 21300000, guid: 05c4c9a9cb8d2df4fb5d12cc92ce0cfa, type: 3}
-  itemId:
-  aliases:
+  m_Name: Nav Global
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Nav Global
+  descricao: Nav Global
+  icone: {fileID: 21300000, guid: 9d7ff4564e36e864b9abbb0827f2539c, type: 3}
+  itemId: 
+  aliases: 
   capacidades: 0
-  prefabDaUnidade: {fileID: 7213140222438100777, guid: de1399e2c962362479dda709fd9b10f1, type: 3}
-  preco: 2000
-  categoria: 0
+  prefabDaUnidade: {fileID: 7585688427160210609, guid: 1d87a440df47fdf4ab6a4bf26c94c619, type: 3}
+  preco: 100
+  categoria: 1
   escalaPoder: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

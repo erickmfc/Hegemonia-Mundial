@@ -90,6 +90,7 @@ namespace Hegemonia.AI.BrainMaster
     {
         private readonly IA_Context _context;
         private readonly IA_NationalDecisionState _state;
+        private float _nextInvestmentTime;
 
         public IA_EconomyDirector(IA_Context context, IA_NationalDecisionState state)
         {
@@ -128,6 +129,19 @@ namespace Hegemonia.AI.BrainMaster
             {
                 pais.estabilidade = Mathf.Clamp(pais.estabilidade - 0.06f, 0f, 100f);
             }
+
+            if (gov != null && now >= _nextInvestmentTime && pais.saldo > 3500)
+            {
+                string focoInvestimento = ResolveInvestmentFocus(pais, economia, _state);
+                if (!string.IsNullOrEmpty(focoInvestimento) && pais.estabilidade > 45f)
+                {
+                    int custoInvestimento = focoInvestimento == "Energia" ? 850 : focoInvestimento == "Industria" ? 700 : focoInvestimento == "Defesa" ? 900 : 600;
+                    if (gov.InvestirCapacidadeNacional(pais.teamId, focoInvestimento, custoInvestimento))
+                    {
+                        _nextInvestmentTime = now + 24f;
+                    }
+                }
+            }
         }
 
         public static RecursoMercado ResolveCriticalNeed(DadosPaisGoverno pais)
@@ -136,16 +150,19 @@ namespace Hegemonia.AI.BrainMaster
             DadosEconomiaPais economia = SistemaEconomiaImoveis.Instancia != null ? SistemaEconomiaImoveis.Instancia.ObterEconomia(pais.teamId) : null;
             if (economia != null)
             {
+                if (economia.deficitEnergia > 0.5f || pais.energia < 180) return RecursoMercado.Energia;
                 if (economia.deficitComida > 0.5f) return RecursoMercado.Comida;
                 if (economia.deficitPetroleo > 0.5f) return RecursoMercado.Petroleo;
                 if (economia.deficitEnergia > 1.5f && pais.aco < 260) return RecursoMercado.Aco;
             }
 
+            int energiaMin = pais.perfilIA == PerfilPaisIA.Industrial || pais.perfilIA == PerfilPaisIA.Militarista ? 260 : 180;
             int comidaMin = pais.perfilIA == PerfilPaisIA.Pequeno ? 420 : 260;
             int petroleoMin = pais.perfilIA == PerfilPaisIA.Industrial || pais.perfilIA == PerfilPaisIA.Militarista ? 520 : 260;
             int acoMin = pais.perfilIA == PerfilPaisIA.Industrial || pais.perfilIA == PerfilPaisIA.Militarista ? 360 : 160;
             int armasMin = pais.emGuerra || pais.perfilIA == PerfilPaisIA.Militarista ? 360 : 160;
 
+            if (pais.energia < energiaMin) return RecursoMercado.Energia;
             if (pais.comida < comidaMin) return RecursoMercado.Comida;
             if (pais.petroleo < petroleoMin) return RecursoMercado.Petroleo;
             if (pais.aco < acoMin) return RecursoMercado.Aco;
@@ -159,11 +176,13 @@ namespace Hegemonia.AI.BrainMaster
             DadosEconomiaPais economia = SistemaEconomiaImoveis.Instancia != null ? SistemaEconomiaImoveis.Instancia.ObterEconomia(pais.teamId) : null;
             if (economia != null)
             {
+                if (economia.energiaProduzida > economia.deficitEnergia + 4f && pais.energia > 320) return RecursoMercado.Energia;
                 if (economia.petroleoProduzido > economia.deficitPetroleo + 4f && pais.petroleo > 650) return RecursoMercado.Petroleo;
                 if (economia.comidaProduzida > economia.deficitComida + 4f && pais.comida > 800) return RecursoMercado.Comida;
                 if (economia.industriaProduzida > 7f && pais.aco > 650) return RecursoMercado.Aco;
             }
 
+            if (pais.energia > 900) return RecursoMercado.Energia;
             if (pais.perfilIA == PerfilPaisIA.ProdutorPetroleo && pais.petroleo > 900) return RecursoMercado.Petroleo;
             if (pais.perfilIA == PerfilPaisIA.Industrial && pais.armamentos > 650) return RecursoMercado.Armamentos;
             if (pais.comida > 1100) return RecursoMercado.Comida;
@@ -171,6 +190,56 @@ namespace Hegemonia.AI.BrainMaster
             if (pais.aco > 850) return RecursoMercado.Aco;
             if (pais.armamentos > 750) return RecursoMercado.Armamentos;
             return RecursoMercado.Nenhum;
+        }
+
+        private static string ResolveInvestmentFocus(DadosPaisGoverno pais, DadosEconomiaPais economia, IA_NationalDecisionState state)
+        {
+            if (pais == null)
+            {
+                return string.Empty;
+            }
+
+            if (economia != null && (economia.deficitEnergia > 0.5f || pais.energia < 180))
+            {
+                return "Energia";
+            }
+
+            if (economia != null && economia.deficitComida > 0.5f)
+            {
+                return "Logistica";
+            }
+
+            if (state != null && state.StrategicPlan == "ConstruirEnergia")
+            {
+                return "Energia";
+            }
+
+            if (state != null && state.StrategicPlan == "Exportar")
+            {
+                return "Industria";
+            }
+
+            if (pais.nivelEconomico < 58)
+            {
+                return "Economia";
+            }
+
+            if (pais.nivelIndustrial < 60)
+            {
+                return "Industria";
+            }
+
+            if (pais.nivelDiplomatico < 55 && pais.perfilIA != PerfilPaisIA.Militarista)
+            {
+                return "Diplomacia";
+            }
+
+            if (pais.nivelMilitar < 55 && (pais.emGuerra || pais.perfilIA == PerfilPaisIA.Militarista))
+            {
+                return "Defesa";
+            }
+
+            return string.Empty;
         }
     }
 

@@ -129,7 +129,7 @@ namespace Hegemonia.AI.BrainMaster
                 int helicopterTarget = EnableHelicopterProduction && hasHeliport
                     ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 3f), 2, 5)
                     : 0;
-                int fighterTarget = hasMilitaryAirport ? Mathf.Clamp(8 + Mathf.RoundToInt(counter.AirWeight * 8f) + (int)(now / 75f), 8, 24) : 0;
+                int fighterTarget = hasMilitaryAirport ? Mathf.Clamp(10 + Mathf.RoundToInt(counter.AirWeight * 8f) + (int)(now / 70f), 10, 26) : 0;
                 int patrolShipTarget = hasNavalBase ? 1 : 0;
                 int navalTarget = hasNavalBase
                     ? Mathf.Clamp(3 + Mathf.RoundToInt(counter.NavalWeight * 5f), 3, 12)
@@ -167,21 +167,21 @@ namespace Hegemonia.AI.BrainMaster
                     {
                         infantryTarget = Mathf.Max(infantryTarget, 6);
                         tankTarget = Mathf.Max(tankTarget, hasFactory ? 2 : 0);
-                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 2 : 0);
+                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 3 : 0);
                         navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 1 : 0);
                     }
                     else if (now < 900f)
                     {
                         infantryTarget = Mathf.Max(infantryTarget, 16);
                         tankTarget = Mathf.Max(tankTarget, hasFactory ? 6 : 0);
-                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 8 : 0);
+                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 10 : 0);
                         navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 4 : 0);
                     }
                     else
                     {
                         infantryTarget = Mathf.Max(infantryTarget, 20);
                         tankTarget = Mathf.Max(tankTarget, hasFactory ? 8 : 0);
-                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 12 : 0);
+                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 14 : 0);
                         navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 5 : 0);
                     }
                 }
@@ -198,7 +198,7 @@ namespace Hegemonia.AI.BrainMaster
                     artyTarget = Mathf.Min(artyTarget, 1);
                     helicopterTarget = Mathf.Min(helicopterTarget, hasHeliport ? 2 : 0);
                     bool recoveryOverride = brain != null && brain.WeakEmpireRecoveryActive;
-                    fighterTarget = recoveryOverride ? fighterTarget : Mathf.Min(fighterTarget, hasMilitaryAirport ? 8 : 0);
+                    fighterTarget = recoveryOverride ? fighterTarget : Mathf.Min(fighterTarget, hasMilitaryAirport ? 10 : 0);
                     navalTarget = recoveryOverride ? navalTarget : Mathf.Min(navalTarget, hasNavalBase ? 6 : 0);
                 }
 
@@ -284,7 +284,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 // Avioes tem prioridade quando a frota aerea esta abaixo do minimo
-                if (hasMilitaryAirport && fighterCount < 6 && QueuePreferredAircraft(95, 2.6f))
+                if (hasMilitaryAirport && fighterCount < 8 && QueuePreferredAircraft(95, 2.6f))
                 {
                     return;
                 }
@@ -307,7 +307,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 // Garante que o aeroporto NUNCA fique vazio, reposição constante com alta prioridade
-                if (hasMilitaryAirport && fighterCount < 8 && QueuePreferredAircraft(93, 3.0f))
+                if (hasMilitaryAirport && fighterCount < 10 && QueuePreferredAircraft(93, 3.0f))
                 {
                     return;
                 }
@@ -564,7 +564,7 @@ namespace Hegemonia.AI.BrainMaster
         private static string GetPreferredAircraftVariant(DadosConstrucao data)
         {
             GameObject prefab;
-            if (data == null || !data.TryGetPrefab(out prefab))
+            if (data == null || !data.TryGetPrefabBasico(out prefab))
             {
                 return string.Empty;
             }
@@ -873,7 +873,7 @@ namespace Hegemonia.AI.BrainMaster
             int infantryTarget = Mathf.Clamp(10 + Mathf.FloorToInt(elapsed / 30f) * 3, 10, 32);
             int tankTarget = hasFactory ? Mathf.Clamp(3 + Mathf.FloorToInt(elapsed / 60f) * 2, 3, 10) : 0;
             int artyTarget = hasFactory ? Mathf.Clamp(1 + Mathf.FloorToInt(elapsed / 90f), 1, 4) : 0;
-            int fighterTarget = hasMilitaryAirport ? Mathf.Clamp(4 + Mathf.FloorToInt(elapsed / 45f), 4, 12) : 0;
+            int fighterTarget = hasMilitaryAirport ? Mathf.Clamp(5 + Mathf.FloorToInt(elapsed / 40f), 5, 14) : 0;
             int navalTarget = hasNavalBase ? Mathf.Clamp(1 + Mathf.FloorToInt(elapsed / 90f), 1, 4) : 0;
 
             brain.SetBootstrapStatus(

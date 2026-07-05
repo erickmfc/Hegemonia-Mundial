@@ -137,6 +137,7 @@ public class DadosPaisGoverno
     [Header("Estoque")]
     public int comida = 500;
     public int petroleo = 500;
+    public int energia = 200;
     public int aco = 300;
     public int armamentos = 500;
     public int uranio;
@@ -155,6 +156,7 @@ public class DadosPaisGoverno
         float estoqueEssencial = 0f;
         estoqueEssencial += comida > 150 ? 8f : -10f;
         estoqueEssencial += petroleo > 150 ? 8f : -8f;
+        estoqueEssencial += energia > 120 ? 6f : -6f;
         estoqueEssencial += aco > 120 ? 6f : -6f;
 
         float score = 50f;

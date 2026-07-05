@@ -135,7 +135,7 @@ namespace Hegemonia.AI.BrainMaster
                 string byName = IA_Text.Normalize(candidate.nomeItem);
                 string byAsset = IA_Text.Normalize(candidate.name);
                 GameObject candidatePrefab;
-                string byPrefab = candidate.TryGetPrefab(out candidatePrefab)
+                string byPrefab = candidate.TryGetPrefabBasico(out candidatePrefab)
                     ? IA_Text.Normalize(candidatePrefab.name)
                     : string.Empty;
                 if (byId.Contains(normalized)
@@ -243,7 +243,7 @@ namespace Hegemonia.AI.BrainMaster
         private void AddCatalogItem(DadosConstrucao item)
         {
             GameObject prefab;
-            if (item == null || !item.TryGetPrefab(out prefab))
+            if (item == null || !item.TryGetPrefabBasico(out prefab))
             {
                 return;
             }
@@ -422,7 +422,7 @@ namespace Hegemonia.AI.BrainMaster
         private static string[] BuildAliases(DadosConstrucao item)
         {
             GameObject prefab;
-            if (item == null || !item.TryGetPrefab(out prefab))
+            if (item == null || !item.TryGetPrefabBasico(out prefab))
             {
                 return new string[0];
             }

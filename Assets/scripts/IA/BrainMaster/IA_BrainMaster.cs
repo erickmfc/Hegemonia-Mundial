@@ -89,7 +89,7 @@ namespace Hegemonia.AI.BrainMaster
         public string ActiveImperialPlan = "abertura";
         public string ImperialLastFailure = string.Empty;
         public int TargetFleet = 4;
-        public int TargetAircraft = 6;
+        public int TargetAircraft = 8;
         public int TargetOilTankers = 2;
         public int TargetPlatforms = 2;
         public int TargetPiers = 2;
@@ -305,11 +305,11 @@ namespace Hegemonia.AI.BrainMaster
             TargetCiws = elapsed >= 900f ? perfil.AjustarMeta(1, 0) : 0;
 
             int baseFleet = elapsed < 300f ? 4 : (elapsed < 600f ? 10 : (elapsed < 1200f ? 18 : 30));
-            int baseAir = elapsed < 300f ? 4 : (elapsed < 600f ? 10 : (elapsed < 1200f ? 16 : 24));
+            int baseAir = elapsed < 300f ? 5 : (elapsed < 600f ? 11 : (elapsed < 1200f ? 17 : 25));
             if (WarPosture == IA_WarPosture.BalancedAggression)
             {
                 baseFleet = elapsed < 300f ? 4 : (elapsed < 900f ? 8 : (elapsed < 1800f ? 12 : 16));
-                baseAir = elapsed < 300f ? 2 : (elapsed < 900f ? 8 : (elapsed < 1800f ? 12 : 16));
+                baseAir = elapsed < 300f ? 3 : (elapsed < 900f ? 9 : (elapsed < 1800f ? 13 : 18));
             }
             int metaFrotaPorJogador = perfil.AjustarMetaContraJogador(PlayerFleetEstimate, 1.22f, TargetCoastalDefenseShips + 1);
             int metaArPorJogador = perfil.AjustarMetaContraJogador(PlayerAircraftEstimate, 1.28f, 2);
@@ -320,17 +320,17 @@ namespace Hegemonia.AI.BrainMaster
                 if (elapsed < 300f)
                 {
                     TargetFleet = Mathf.Max(TargetFleet, snapshot.HasNavalBase ? 1 : 0);
-                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 2 : 0);
+                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 3 : 0);
                 }
                 else if (elapsed < 900f)
                 {
                     TargetFleet = Mathf.Max(TargetFleet, snapshot.HasNavalBase ? 5 : 0);
-                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 10 : 0);
+                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 11 : 0);
                 }
                 else
                 {
                     TargetFleet = Mathf.Max(TargetFleet, snapshot.HasNavalBase ? 8 : 0);
-                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 16 : 0);
+                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 18 : 0);
                 }
             }
 
@@ -461,7 +461,7 @@ namespace Hegemonia.AI.BrainMaster
                 
                 // Força a produção intensa de navios e helicópteros
                 TargetFleet = Mathf.Max(TargetFleet, 10);
-                TargetAircraft = Mathf.Max(TargetAircraft, 10);
+                TargetAircraft = Mathf.Max(TargetAircraft, 12);
                 WarPosture = IA_WarPosture.BalancedAggression;
                 
                 if (_taskForceCoordinator != null)
