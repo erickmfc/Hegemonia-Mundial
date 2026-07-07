@@ -62,6 +62,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         InicializarDadosPadrao();
         GarantirMercado();
         GarantirEconomiaViva();
+        GarantirSistemaIndustrial();
     }
 
     private void OnApplicationQuit()
@@ -113,6 +114,11 @@ public class SistemaGovernoMundial : MonoBehaviour
             relacoes.Add(new RelacaoPaisGoverno { teamA = 1, teamB = 5, valor = 28, tratadoComercial = true, pedidoPendente = true });
         }
 
+        foreach (DadosPaisGoverno pais in paises)
+        {
+            GarantirCatalogosNacionais(pais);
+        }
+
         SincronizarJogador();
     }
 
@@ -148,6 +154,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
 
         AplicarPerfilPadrao(pais);
+        GarantirCatalogosNacionais(pais);
         if (mudou)
         {
             OnGovernoAtualizado?.Invoke();
@@ -188,12 +195,15 @@ public class SistemaGovernoMundial : MonoBehaviour
 
             float scoreAntes = pais.PontuacaoEconomica();
             DadosEconomiaPais economia = economiaImoveis != null ? economiaImoveis.ObterEconomia(pais.teamId) : null;
-            if (economia != null)
+            if (economia == null)
             {
-                AplicarEconomiaImoveis(pais, economia);
-                SistemaPopulacao.Processar(pais, economia);
-                SistemaMilitar.Processar(pais, economia);
+                economia = new DadosEconomiaPais { teamId = pais.teamId };
             }
+            
+            AplicarEconomiaImoveis(pais, economia);
+            SistemaPopulacao.Processar(pais, economia);
+            SistemaMilitar.Processar(pais, economia);
+            AtualizarSistemasNacionais(pais);
 
             pais.estabilidade += pais.emprego > 70f ? 0.25f : -0.35f;
             pais.estabilidade += pais.moradia > 65f ? 0.18f : -0.30f;
@@ -213,31 +223,100 @@ public class SistemaGovernoMundial : MonoBehaviour
             pais.inflacao += (pais.deficitComida + pais.deficitEnergia + pais.deficitPetroleo) > 0f ? 0.04f : -0.02f;
             pais.inflacao = Mathf.Clamp(pais.inflacao, 0.5f, 40f);
 
-            // ─── FELICIDADE DINÂMICA ───────────────────────────────────────────────
-            // A felicidade reflete ao vivo o estado do país e aparece no HUD.
-            // Cada tick econômico a felicidade deriva ±0.5~2 pontos conforme:
-            //   emprego alto    → +0.4  |  emprego baixo    → -0.6
-            //   moradia boa     → +0.3  |  moradia ruim     → -0.5
-            //   sem déficit energia → +0.2  |  com déficit  → -0.8
-            //   sem déficit comida  → +0.2  |  com déficit  → -1.0
-            //   em guerra       → -1.2  |  sancionado       → -0.6
-            //   impostos altos (>20%) → -0.4 por faixa extra
-            //   qualidade de vida alta → bônus
+            // ─── FELICIDADE DINÂMICA – Sistema Ponderado (Cities Skylines) ────────
+            // Pesos: Comida 25% | Energia 20% | Emprego 20% | Moradia 15% |
+            //        Segurança 10% | Impostos 5% | Qualidade de Vida 5%
+            // Felicidade > 80 → país próspero, crescimento acelerado
+            // Felicidade < 40 → emigração e crise demográfica
+            // ─────────────────────────────────────────────────────────────────────
             {
                 float deltaFelicidade = 0f;
-                deltaFelicidade += pais.emprego >= 75f ? 0.40f : (pais.emprego >= 55f ? 0f : -0.60f);
-                deltaFelicidade += pais.moradia >= 70f ? 0.30f : (pais.moradia >= 50f ? 0f : -0.50f);
-                deltaFelicidade += pais.deficitEnergia <= 0f ? 0.20f : -0.80f;
-                deltaFelicidade += pais.deficitComida <= 0f ? 0.20f : -1.00f;
-                if (pais.emGuerra) deltaFelicidade -= 1.20f;
-                if (pais.sancionado) deltaFelicidade -= 0.60f;
+
+                // --- 1. ALIMENTAÇÃO (Peso 25%) ---
+                float consumoDiario = (pais.populacaoCivil / 100f * 1f) + (pais.populacaoMilitarAtiva / 100f * 2f);
+                if (pais.comida <= 0 && pais.deficitComida > 0f)
+                    deltaFelicidade -= 3.5f; // Fome crítica – catástrofe demográfica
+                else if (pais.comida < consumoDiario * 3f && pais.deficitComida > 0f)
+                    deltaFelicidade -= 1.0f; // Estoque baixo + déficit
+                else if (pais.deficitComida > 0f)
+                    deltaFelicidade -= 0.3f; // Produção insuficiente mas tem estoque
+                else if (pais.comida >= consumoDiario * 10f)
+                    deltaFelicidade += 0.4f; // Abundância: população feliz
+                else
+                    deltaFelicidade += 0.15f; // Comida adequada
+
+                // --- 2. ENERGIA (Peso 20%) ---
+                if (pais.deficitEnergia > 3f || pais.estruturasSemEnergia > 3)
+                    deltaFelicidade -= 2.0f; // Apagão grave
+                else if (pais.deficitEnergia > 0f || pais.estruturasSemEnergia > 0)
+                    deltaFelicidade -= 0.8f; // Energia instável
+                else
+                    deltaFelicidade += 0.3f; // Energia estável
+
+                // --- 3. EMPREGO (Peso 20%) ---
+                if (pais.emprego < 40f)
+                    deltaFelicidade -= 1.2f; // Desemprego severo
+                else if (pais.emprego < 60f)
+                    deltaFelicidade -= 0.5f; // Desemprego moderado
+                else if (pais.emprego >= 85f)
+                    deltaFelicidade += 0.5f; // Pleno emprego: muito feliz
+                else if (pais.emprego >= 70f)
+                    deltaFelicidade += 0.25f; // Emprego bom
+
+                // --- 4. MORADIA (Peso 15%) ---
+                if (pais.pressaoHabitacional > 1.05f)
+                    deltaFelicidade -= 0.7f * (pais.pressaoHabitacional - 1f) * 10f; // Superpopulação
+                else if (pais.moradia < 50f)
+                    deltaFelicidade -= 0.8f; // Falta de moradia grave
+                else if (pais.moradia < 70f)
+                    deltaFelicidade -= 0.2f; // Moradia apertada
+                else if (pais.moradia >= 90f)
+                    deltaFelicidade += 0.35f; // Ótima cobertura habitacional
+                else
+                    deltaFelicidade += 0.1f; // Moradia razoável
+
+                // --- 5. SEGURANÇA E ESTABILIDADE (Peso 10%) ---
+                if (pais.emGuerra)
+                    deltaFelicidade -= 2.0f; // Guerra = crise de felicidade
+                if (pais.sancionado)
+                    deltaFelicidade -= 0.8f;
+                if (pais.inflacao > 20f)
+                    deltaFelicidade -= (pais.inflacao - 20f) * 0.12f;
+                else if (pais.inflacao < 5f)
+                    deltaFelicidade += 0.15f; // Inflação controlada = estabilidade
+
+                // --- 6. IMPOSTOS (Peso 5%) ---
                 float cargaFiscalFel = CargaFiscalMedia(pais);
-                if (cargaFiscalFel > 20f) deltaFelicidade -= (cargaFiscalFel - 20f) * 0.04f;
-                if (pais.qualidadeVida > 70f) deltaFelicidade += 0.30f;
-                else if (pais.qualidadeVida < 30f) deltaFelicidade -= 0.50f;
-                pais.felicidade = Mathf.Clamp(pais.felicidade + deltaFelicidade, 0f, 100f);
+                if (cargaFiscalFel > 25f)
+                    deltaFelicidade -= (cargaFiscalFel - 25f) * 0.10f;
+                else if (cargaFiscalFel > 18f)
+                    deltaFelicidade -= (cargaFiscalFel - 18f) * 0.05f;
+                else
+                    deltaFelicidade += 0.1f; // Impostos baixos
+
+                // --- 7. QUALIDADE DE VIDA / IDH (Peso 5%) ---
+                if (pais.qualidadeVida > 75f)
+                    deltaFelicidade += 0.5f;
+                else if (pais.qualidadeVida > 55f)
+                    deltaFelicidade += 0.2f;
+                else if (pais.qualidadeVida < 30f)
+                    deltaFelicidade -= 0.8f;
+                else if (pais.qualidadeVida < 45f)
+                    deltaFelicidade -= 0.3f;
+
+                // --- BÔNUS DE PROSPERIDADE: Satisfação de Serviços ---
+                // País com bons serviços recebe bônus adicional de estabilidade de felicidade
+                if (pais.indiceSatisfacaoServicos > 80f)
+                    deltaFelicidade += 0.3f;
+                else if (pais.indiceSatisfacaoServicos < 30f)
+                    deltaFelicidade -= 0.4f;
+
+                // Aplica suavizando (quanto maior a diferença, mais lenta a mudança)
+                // Isso evita oscilações bruscas de 0→100 em poucos ticks
+                float pesoSuavizacao = Mathf.Lerp(1f, 0.5f, Mathf.Abs(deltaFelicidade) / 5f);
+                pais.felicidade = Mathf.Clamp(pais.felicidade + deltaFelicidade * pesoSuavizacao, 0f, 100f);
             }
-            // ──────────────────────────────────────────────────────────────────────
+            // ─────────────────────────────────────────────────────────────────────
 
             SistemaMoeda.Processar(pais, economia);
 
@@ -282,18 +361,31 @@ public class SistemaGovernoMundial : MonoBehaviour
         jogador.petroleo = gr.petroleo;
         jogador.energia = gr.energia;
         jogador.aco = gr.aco;
+
+        // Se a populacao do jogador nao foi inicializada, puxa o valor inicial do GerenciadorRecursos
+        if (jogador.populacao <= 0 && gr.populacaoAtual > 0)
+        {
+            jogador.populacao = gr.populacaoAtual;
+            jogador.populacaoMaxima = gr.populacaoMaxima;
+        }
+
         if (economia != null)
         {
-            jogador.populacao = Mathf.Max(gr.populacaoAtual, economia.populacaoTotal);
-            jogador.populacaoMaxima = Mathf.Max(gr.populacaoMaxima, economia.moradiaTotal);
+            // A populacao maxima e ditada pelas casas construidas (moradiaTotal)
+            jogador.populacaoMaxima = Mathf.Max(jogador.populacaoMaxima, economia.moradiaTotal);
+            
+            // Sincroniza de volta para o GerenciadorRecursos
+            gr.populacaoAtual = jogador.populacao;
+            gr.populacaoMaxima = jogador.populacaoMaxima;
+
             jogador.rendaPorSegundo = Mathf.Max(gr.dinheiroPorSegundo, economia.dinheiroGerado);
             jogador.producao = Mathf.Clamp(40f + economia.industriaProduzida * 4f + economia.petroleoProduzido * 2f, 10f, 100f);
             AplicarEconomiaImoveis(jogador, economia);
         }
         else
         {
-            jogador.populacao = gr.populacaoAtual;
-            jogador.populacaoMaxima = gr.populacaoMaxima;
+            gr.populacaoAtual = jogador.populacao;
+            gr.populacaoMaxima = jogador.populacaoMaxima;
             jogador.rendaPorSegundo = gr.dinheiroPorSegundo;
             jogador.producao = Mathf.Clamp(55f + gr.acoPorSegundo * 3f + gr.petroleoPorSegundo * 2f, 10f, 100f);
         }
@@ -388,6 +480,218 @@ public class SistemaGovernoMundial : MonoBehaviour
         if (pais.planoEstrategico == valor) return false;
         pais.planoEstrategico = valor;
         RegistrarNoticia(pais.nomePais + " mudou o foco nacional para " + valor + ".");
+        OnGovernoAtualizado?.Invoke();
+        return true;
+    }
+
+    public bool IniciarPesquisaNacional(int teamId, string pesquisaId, out string mensagem)
+    {
+        mensagem = "Pesquisa indisponivel.";
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null)
+        {
+            return false;
+        }
+
+        GarantirCatalogosNacionais(pais);
+        PesquisaNacionalEstado pesquisa = pais.pesquisas.FirstOrDefault(p => p != null && p.id == pesquisaId);
+        if (pesquisa == null)
+        {
+            mensagem = "Pesquisa nao encontrada.";
+            return false;
+        }
+
+        if (pesquisa.concluida)
+        {
+            mensagem = "Pesquisa ja concluida.";
+            return false;
+        }
+
+        if (pesquisa.emAndamento)
+        {
+            mensagem = "Pesquisa ja esta em andamento.";
+            return false;
+        }
+
+        if (!DependenciasAtendidas(pais, pesquisa.dependencias))
+        {
+            mensagem = "Dependencias cientificas ainda nao foram concluídas.";
+            return false;
+        }
+
+        if (!TentarPagar(teamId, pesquisa.custoSaldo))
+        {
+            mensagem = "Saldo insuficiente para iniciar a pesquisa.";
+            return false;
+        }
+
+        if (!ConsumirEnergia(teamId, pesquisa.custoEnergia))
+        {
+            AdicionarSaldo(teamId, pesquisa.custoSaldo);
+            mensagem = "Energia insuficiente para iniciar a pesquisa.";
+            return false;
+        }
+
+        pesquisa.diaInicio = DiaAtual();
+        pesquisa.emAndamento = true;
+        mensagem = "Pesquisa iniciada: " + pesquisa.nome + ".";
+        OnGovernoAtualizado?.Invoke();
+        return true;
+    }
+
+    public bool IniciarTecnologiaNacional(int teamId, string tecnologiaId, out string mensagem)
+    {
+        mensagem = "Tecnologia indisponivel.";
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null)
+        {
+            return false;
+        }
+
+        GarantirCatalogosNacionais(pais);
+        TecnologiaNacionalEstado tecnologia = pais.tecnologias.FirstOrDefault(t => t != null && t.id == tecnologiaId);
+        if (tecnologia == null)
+        {
+            mensagem = "Tecnologia nao encontrada.";
+            return false;
+        }
+
+        if (tecnologia.nivelAtual >= tecnologia.nivelMaximo)
+        {
+            mensagem = "Tecnologia ja esta no nivel maximo.";
+            return false;
+        }
+
+        if (tecnologia.emAndamento)
+        {
+            mensagem = "Tecnologia ja esta em desenvolvimento.";
+            return false;
+        }
+
+        if (!DependenciasAtendidas(pais, tecnologia.dependencias))
+        {
+            mensagem = "Dependencias tecnológicas ainda nao foram atendidas.";
+            return false;
+        }
+
+        int custoSaldo = tecnologia.custoSaldo * Mathf.Max(1, tecnologia.nivelAtual + 1);
+        int custoEnergia = tecnologia.custoEnergia * Mathf.Max(1, tecnologia.nivelAtual + 1);
+        if (!TentarPagar(teamId, custoSaldo))
+        {
+            mensagem = "Saldo insuficiente para investir nessa tecnologia.";
+            return false;
+        }
+
+        if (!ConsumirEnergia(teamId, custoEnergia))
+        {
+            AdicionarSaldo(teamId, custoSaldo);
+            mensagem = "Energia insuficiente para investir nessa tecnologia.";
+            return false;
+        }
+
+        tecnologia.diaInicio = DiaAtual();
+        tecnologia.emAndamento = true;
+        mensagem = "Tecnologia em desenvolvimento: " + tecnologia.nome + ".";
+        OnGovernoAtualizado?.Invoke();
+        return true;
+    }
+
+    public bool ExpandirLaboratorio(int teamId, string laboratorioId, out string mensagem)
+    {
+        mensagem = "Laboratorio indisponivel.";
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null)
+        {
+            return false;
+        }
+
+        GarantirCatalogosNacionais(pais);
+        LaboratorioNacionalEstado laboratorio = pais.laboratorios.FirstOrDefault(l => l != null && l.id == laboratorioId);
+        if (laboratorio == null)
+        {
+            mensagem = "Laboratorio nao encontrado.";
+            return false;
+        }
+
+        if (laboratorio.nivelAtual >= laboratorio.nivelMaximo)
+        {
+            mensagem = "Laboratorio ja opera no teto atual.";
+            return false;
+        }
+
+        if (laboratorio.emExpansao)
+        {
+            mensagem = "Laboratorio ja esta sendo expandido.";
+            return false;
+        }
+
+        if (!DependenciasAtendidas(pais, laboratorio.dependencias))
+        {
+            mensagem = "Requisitos laboratoriais ainda nao foram atendidos.";
+            return false;
+        }
+
+        int custoSaldo = laboratorio.custoSaldo * Mathf.Max(1, laboratorio.nivelAtual + 1);
+        int custoEnergia = laboratorio.custoEnergia * Mathf.Max(1, laboratorio.nivelAtual + 1);
+        if (!TentarPagar(teamId, custoSaldo))
+        {
+            mensagem = "Saldo insuficiente para o laboratorio.";
+            return false;
+        }
+
+        if (!ConsumirEnergia(teamId, custoEnergia))
+        {
+            AdicionarSaldo(teamId, custoSaldo);
+            mensagem = "Energia insuficiente para a expansão.";
+            return false;
+        }
+
+        laboratorio.diaInicio = DiaAtual();
+        laboratorio.emExpansao = true;
+        mensagem = "Expansao iniciada: " + laboratorio.nome + ".";
+        OnGovernoAtualizado?.Invoke();
+        return true;
+    }
+
+    public void ConfigurarSatelite(int teamId, bool manutencaoAutomatica)
+    {
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null)
+        {
+            return;
+        }
+
+        GarantirCatalogosNacionais(pais);
+        pais.sateliteDefesa.manutencaoAutomatica = manutencaoAutomatica;
+        OnGovernoAtualizado?.Invoke();
+    }
+
+    public bool InvestirNoSatelite(int teamId, int aporte, out string mensagem)
+    {
+        mensagem = "Programa satelital indisponivel.";
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null)
+        {
+            return false;
+        }
+
+        GarantirCatalogosNacionais(pais);
+        if (!PesquisaConcluida(pais, "pesquisa_satelite_1"))
+        {
+            mensagem = "Pesquise tecnologia de satelite nivel 1 primeiro.";
+            return false;
+        }
+
+        if (!TentarPagar(teamId, aporte))
+        {
+            mensagem = "Saldo insuficiente para o aporte orbital.";
+            return false;
+        }
+
+        pais.sateliteDefesa.desbloqueado = true;
+        pais.sateliteDefesa.integridade = Mathf.Clamp(pais.sateliteDefesa.integridade + aporte / 40f, 0f, 100f);
+        pais.sateliteDefesa.desempenho = Mathf.Clamp(pais.sateliteDefesa.desempenho + aporte / 50f, 0f, 100f);
+        mensagem = "Aporte orbital aplicado ao satelite nacional.";
         OnGovernoAtualizado?.Invoke();
         return true;
     }
@@ -531,6 +835,13 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     public int ObterEstoque(int teamId, RecursoMercado recurso)
     {
+        string recursoId = IntegracaoMercadoIndustrial.IdInternoDoMercado(recurso);
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial != null && IndustriaIds.EhIndustrial(recursoId))
+        {
+            return industrial.ObterQuantidadeInt(teamId, recurso);
+        }
+
         DadosPaisGoverno pais = ObterPais(teamId);
         if (pais == null) return 0;
         switch (recurso)
@@ -667,6 +978,345 @@ public class SistemaGovernoMundial : MonoBehaviour
     public void RemoverEstoque(int teamId, RecursoMercado recurso, int quantidade)
     {
         AlterarEstoque(teamId, recurso, -Mathf.Abs(quantidade));
+    }
+
+    private void GarantirCatalogosNacionais(DadosPaisGoverno pais)
+    {
+        if (pais == null)
+        {
+            return;
+        }
+
+        if (pais.pesquisas == null) pais.pesquisas = new List<PesquisaNacionalEstado>();
+        if (pais.tecnologias == null) pais.tecnologias = new List<TecnologiaNacionalEstado>();
+        if (pais.laboratorios == null) pais.laboratorios = new List<LaboratorioNacionalEstado>();
+        if (pais.sateliteDefesa == null) pais.sateliteDefesa = new SateliteDefesaEstado();
+
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_extracao_ferro", "Extracao de Minerio de Ferro", "Extracao", "Organiza a primeira cadeia nacional de ferro bruto.", "Base de mineracao", "Ordens de ferro e lotes pesados", string.Empty, 520, 60, 2));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_extracao_cobre", "Extracao de Minerio de Cobre", "Extracao", "Abre o ciclo de cobre para eletrica e industria.", "Aco leve e energia basica", "Ordens de cobre e refino industrial", string.Empty, 580, 70, 2));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_extracao_bauxita", "Extracao de Bauxita", "Extracao", "Prepara a base para materiais leves.", "Base de extracao e logistica", "Bauxita e duraluminio", string.Empty, 640, 75, 2));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_metalurgia", "Metalurgia do Aco", "Pesquisa", "Libera o refino nacional de aco estrutural.", "Base industrial", "Aco estrutural e linhas de refino", "pesquisa_extracao_ferro", 650, 90, 2));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_extracao_titanio", "Extracao de Titanio", "Extracao Estrategica", "Mapeia e habilita minerio estrategico para blindagem pesada.", "Metalurgia do Aco", "Liga de titanio e materiais pesados", "pesquisa_metalurgia", 1450, 140, 3));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_eletronica", "Eletronica Industrial", "Pesquisa", "Desenvolve componentes eletronicos para guiagem e radares.", "Metalurgia do Aco", "Componentes eletronicos", "pesquisa_metalurgia,pesquisa_extracao_cobre", 950, 120, 3));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_nuclear", "Pesquisa Nuclear", "Pesquisa", "Abre o ciclo nuclear e o laboratorio dedicado.", "Eletronica, estabilidade e energia", "Uranio enriquecido e laboratorio nuclear", "pesquisa_eletronica,pesquisa_extracao_titanio", 4200, 420, 5));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_municao_leve", "Municao Leve", "Balistica", "Padroniza lotes iniciais para infantaria e defesa terrestre.", "Metalurgia e cobre", "Pacote balistico inicial", "pesquisa_metalurgia,pesquisa_extracao_cobre", 1100, 90, 2));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_municao_30", "Municao Automatizada 30 mm", "Balistica Pesada", "Abre o ramo de municao automatica para plataformas mais pesadas.", "Municao Leve", "Munição 30 mm e cadencia industrial", "pesquisa_municao_leve", 1500, 120, 3));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_municao_naval", "Municao Naval", "Artilharia Naval", "Desenvolve lotes reforcados para plataformas navais.", "Municao Leve e titanio", "Munição naval e blindagem de projetil", "pesquisa_municao_leve,pesquisa_extracao_titanio", 1900, 150, 3));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_bombas_aereas", "Bombas Aereas Taticas", "Armamento Aereo", "Abre a trilha de armamento aereo de impacto tatico.", "Aeroespacial I", "Bombas e cargas aereas", "pesquisa_aeroespacial_1", 2100, 170, 3));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_missil_guiado", "Missil Guiado", "Misseis", "Unifica sensores, guiagem e telemetria para armas inteligentes.", "Eletronica Industrial", "Misseis guiados e componentes militares", "pesquisa_eletronica", 2600, 220, 4));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_interceptacao", "Interceptacao Integrada", "Defesa Aerea", "Prepara a defesa para neutralizar alvos em voo.", "Missil Guiado e Satelite I", "Interceptacao e radares de reacao", "pesquisa_missil_guiado,pesquisa_satelite_1", 3100, 250, 4));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_foguete_1", "Tecnologia de Foguete I", "Aeroespacial", "Primeira etapa de propulsao e combustiveis.", "Metalurgia do Aco", "Base para programa orbital", "pesquisa_metalurgia", 1600, 160, 3));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_foguete_2", "Tecnologia de Foguete II", "Aeroespacial", "Aumenta alcance, guiagem e estabilidade de voo.", "Foguete I", "Programa orbital intermediario", "pesquisa_foguete_1", 2600, 240, 4));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_foguete_3", "Tecnologia de Foguete III", "Aeroespacial", "Fecha o pacote de propulsao pesada para lancamento orbital.", "Foguete II", "Capacidade de lancamento pesada", "pesquisa_foguete_2", 4200, 360, 5));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_aeroespacial_1", "Tecnologia Aeroespacial I", "Aeroespacial", "Estruturas leves, navegacao e telemetria basica.", "Eletronica Industrial", "Programa aeroespacial", "pesquisa_eletronica,pesquisa_extracao_bauxita", 1800, 180, 3));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_aeroespacial_2", "Tecnologia Aeroespacial II", "Aeroespacial", "Integra sensores, telemetria e materiais leves.", "Aeroespacial I", "Programa aeroespacial avancado", "pesquisa_aeroespacial_1", 2700, 240, 4));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_aeroespacial_3", "Tecnologia Aeroespacial III", "Aeroespacial", "Prepara a base final para missao orbital nacional.", "Aeroespacial II", "Capacidade espacial completa", "pesquisa_aeroespacial_2", 4600, 380, 5));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_satelite_1", "Tecnologia de Satelite I", "Orbital", "Primeiros sistemas de observacao e estabilizacao orbital.", "Aeroespacial I, Foguete I", "Desbloqueia satelite nacional", "pesquisa_foguete_1,pesquisa_aeroespacial_1", 2200, 210, 3));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_satelite_2", "Tecnologia de Satelite II", "Orbital", "Melhora sensores, transmissores e cobertura orbital.", "Satelite I", "Desempenho orbital melhorado", "pesquisa_satelite_1", 3200, 280, 4));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_satelite_3", "Tecnologia de Satelite III", "Orbital", "Completa autonomia e robustez do pacote satelital.", "Satelite II", "Pronto para prefab de foguete futuro", "pesquisa_satelite_2,pesquisa_foguete_3,pesquisa_aeroespacial_3", 5200, 420, 5));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_agencia_orbital", "Agencia Atlas Orbital", "Institucional", "Equivalente nacional de uma agencia espacial para coordenar missoes.", "Satelite II e Foguete II", "Coordenacao espacial nacional", "pesquisa_satelite_2,pesquisa_foguete_2", 3800, 260, 4));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_icnu", "Programa ICNU", "Dissuasao Estrategica", "Etapa final do pacote de dissuasao orbital e nuclear.", "Nuclear, interceptacao e satelite III", "Ciclo estrategico completo", "pesquisa_nuclear,pesquisa_interceptacao,pesquisa_satelite_3", 6800, 560, 6));
+
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_linhas_industriais", "Linhas Industriais", "Industria", "Amplia a capacidade de linhas industriais nacionais.", "Mais linhas e menos gargalo", "pesquisa_metalurgia", 900, 80, 2, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_refino_alto_rendimento", "Refino de Alto Rendimento", "Industria", "Aumenta eficiencia das ordens de refino.", "Mais rendimento e menos perdas", "pesquisa_eletronica", 1200, 100, 2, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_automacao_linhas", "Automacao de Linhas", "Industria", "Reduz paradas entre lotes e acelera a fila.", "Resposta industrial mais rapida", "pesquisa_eletronica", 1500, 120, 3, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_reserva_materiais", "Reserva Imediata de Materiais", "Industria", "Protege estoques ja alocados aos projetos.", "Menos gargalo de materiais", "pesquisa_metalurgia", 1350, 100, 2, 2));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_integracao_armazem", "Integracao com Armazem Nacional", "Industria", "Liga fila, estoque e historico logístico.", "Maior controle do armazem", "pesquisa_eletronica", 1600, 120, 3, 2));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_propulsao_solida", "Propulsao de Combustivel Solido", "Foguetes", "Base tecnologica para o ramo de foguetes.", "Melhora programa de foguetes", "pesquisa_foguete_1", 1800, 150, 3, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_estabilizacao_lancamento", "Estabilizacao de Lancamento", "Foguetes", "Aumenta previsibilidade e seguranca do lancador.", "Mais confianca orbital", "pesquisa_foguete_2", 2200, 170, 3, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_controle_orbital", "Controle Orbital", "Orbital", "Melhora estabilidade e telemetria do satelite.", "Maior integridade orbital", "pesquisa_satelite_1", 2100, 180, 3, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_radar_satelital", "Radar Satelital", "Orbital", "Integra observacao orbital a defesa aerea.", "Bonus ao satelite nacional", "pesquisa_satelite_2", 2400, 200, 3, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_navegacao_inercial", "Navegacao Inercial", "Orbital", "Refina rotas, giroscopios e posicao do veiculo orbital.", "Controle fino de rota", "pesquisa_aeroespacial_2,pesquisa_foguete_2", 2500, 200, 3, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_miniaturizacao", "Miniaturizacao Industrial", "Eletronica", "Compacta sensores, chips e placas criticas.", "Componentes mais densos", "pesquisa_eletronica", 1900, 150, 3, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_guiagem_precisao", "Guiagem de Precisao", "Misseis", "Torna a linha de misseis e interceptacao mais confiavel.", "Armas inteligentes mais estaveis", "pesquisa_missil_guiado", 2600, 210, 3, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_ciencia_aplicada", "Ciencia Aplicada", "Pesquisa", "Acelera pesquisas, laboratorios e projetos nacionais.", "Ciclo cientifico mais forte", "pesquisa_agencia_orbital", 2600, 200, 3, 3));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_autorizacao_nuclear", "Autorizacao Nuclear", "Nuclear", "Padroniza seguranca e governanca do programa nuclear.", "Seguranca institucional", "pesquisa_nuclear", 2800, 260, 4, 2));
+        GarantirTecnologiaCatalogo(pais, CriarTecnologia("tec_blindagem_radiologica", "Blindagem Radiologica", "Nuclear", "Fortalece seguranca de laboratorios e cargas sensiveis.", "Protecao do ciclo nuclear", "pesquisa_icnu", 3400, 280, 4, 2));
+
+        GarantirLaboratorioCatalogo(pais, CriarLaboratorio("lab_metalurgia", "Laboratorio de Materiais Ferrosos", "Ferro, aco estrutural e projeteis.", "Base metalurgica nacional.", "pesquisa_metalurgia", 1200, 100, 2, 3));
+        GarantirLaboratorioCatalogo(pais, CriarLaboratorio("lab_eletronica", "Laboratorio de Eletronica Industrial", "Sensores, chips, guiagem e radares.", "Pilar de componentes eletronicos.", "pesquisa_eletronica", 1500, 120, 3, 3));
+        GarantirLaboratorioCatalogo(pais, CriarLaboratorio("lab_aeroespacial", "Laboratorio Aeroespacial", "Estruturas leves, telemetria e foguetes.", "Centro de desenvolvimento orbital.", "pesquisa_aeroespacial_1,pesquisa_foguete_1", 2600, 210, 4, 3));
+        GarantirLaboratorioCatalogo(pais, CriarLaboratorio("lab_nuclear", "Laboratorio Nuclear", "Ciclo do uranio, contencao e seguranca.", "Estrutura critica para programa nuclear.", "pesquisa_nuclear", 4200, 360, 5, 2));
+        GarantirLaboratorioCatalogo(pais, CriarLaboratorio("lab_orbital", "Centro Orbital Atlas", "Satelites, lancamento e controle remoto.", "Centro de comando espacial.", "pesquisa_agencia_orbital,pesquisa_satelite_2", 5200, 420, 5, 3));
+        GarantirLaboratorioCatalogo(pais, CriarLaboratorio("lab_balistica", "Laboratorio Balistico", "Municao leve, 30 mm e blindados.", "Polo de balistica e cadencia de linha.", "pesquisa_municao_leve,pesquisa_municao_30", 2300, 170, 3, 3));
+        GarantirLaboratorioCatalogo(pais, CriarLaboratorio("lab_armas_navais", "Laboratorio de Armas Navais", "Munição naval, casco e guiagem maritima.", "Desenvolvimento naval pesado.", "pesquisa_municao_naval,pesquisa_satelite_1", 3100, 220, 4, 3));
+        GarantirLaboratorioCatalogo(pais, CriarLaboratorio("lab_misseis", "Laboratorio de Misseis Guiados", "Guiagem, sensores e interceptacao.", "Centro de resposta antiaerea e tática.", "pesquisa_missil_guiado,pesquisa_interceptacao", 3600, 260, 4, 3));
+        GarantirLaboratorioCatalogo(pais, CriarLaboratorio("lab_dissuasao", "Centro Estrategico de Dissuasao", "Orbital, nuclear e controle de cargas sensiveis.", "Estrutura final do pacote estrategico nacional.", "pesquisa_icnu,pesquisa_satelite_3", 6200, 520, 6, 2));
+    }
+
+    private void AtualizarSistemasNacionais(DadosPaisGoverno pais)
+    {
+        GarantirCatalogosNacionais(pais);
+        int diaAtual = DiaAtual();
+
+        foreach (PesquisaNacionalEstado pesquisa in pais.pesquisas.Where(p => p != null && p.emAndamento))
+        {
+            if (diaAtual < pesquisa.diaInicio + Mathf.Max(1, pesquisa.duracaoDias))
+            {
+                continue;
+            }
+
+            pesquisa.emAndamento = false;
+            pesquisa.concluida = true;
+            if (pesquisa.id == "pesquisa_satelite_1")
+            {
+                pais.sateliteDefesa.desbloqueado = true;
+            }
+
+            if (pesquisa.id == "pesquisa_nuclear")
+            {
+                pais.tecnologiaExtracaoConcluida = true;
+            }
+
+            RegistrarNoticia(pais.nomePais + " concluiu " + pesquisa.nome + ".");
+        }
+
+        foreach (TecnologiaNacionalEstado tecnologia in pais.tecnologias.Where(t => t != null && t.emAndamento))
+        {
+            if (diaAtual < tecnologia.diaInicio + Mathf.Max(1, tecnologia.duracaoDias))
+            {
+                continue;
+            }
+
+            tecnologia.emAndamento = false;
+            tecnologia.nivelAtual = Mathf.Clamp(tecnologia.nivelAtual + 1, 0, tecnologia.nivelMaximo);
+            AplicarEfeitoTecnologia(pais, tecnologia);
+            RegistrarNoticia(pais.nomePais + " elevou " + tecnologia.nome + " para o nivel " + tecnologia.nivelAtual + ".");
+        }
+
+        foreach (LaboratorioNacionalEstado laboratorio in pais.laboratorios.Where(l => l != null && l.emExpansao))
+        {
+            if (diaAtual < laboratorio.diaInicio + Mathf.Max(1, laboratorio.duracaoDias))
+            {
+                continue;
+            }
+
+            laboratorio.emExpansao = false;
+            laboratorio.nivelAtual = Mathf.Clamp(laboratorio.nivelAtual + 1, 0, laboratorio.nivelMaximo);
+            pais.nivelIndustrial = Mathf.Clamp(pais.nivelIndustrial + 1, 0, 100);
+            RegistrarNoticia(pais.nomePais + " expandiu " + laboratorio.nome + " para o nivel " + laboratorio.nivelAtual + ".");
+        }
+
+        ProcessarSatelite(pais, diaAtual);
+    }
+
+    private void ProcessarSatelite(DadosPaisGoverno pais, int diaAtual)
+    {
+        if (pais == null || pais.sateliteDefesa == null || !pais.sateliteDefesa.desbloqueado)
+        {
+            return;
+        }
+
+        if (pais.sateliteDefesa.ultimoDiaProcessado >= diaAtual)
+        {
+            return;
+        }
+
+        pais.sateliteDefesa.ultimoDiaProcessado = diaAtual;
+        int custoBase = pais.sateliteDefesa.manutencaoAutomatica
+            ? pais.sateliteDefesa.custoOperacionalDiario + pais.sateliteDefesa.custoManutencaoDiaria
+            : pais.sateliteDefesa.custoOperacionalDiario;
+
+        bool pagou = TentarPagar(pais.teamId, custoBase);
+        if (pagou)
+        {
+            pais.sateliteDefesa.integridade = Mathf.Clamp(pais.sateliteDefesa.integridade + (pais.sateliteDefesa.manutencaoAutomatica ? 1.8f : -0.4f), 0f, 100f);
+            pais.sateliteDefesa.desempenho = Mathf.Clamp(pais.sateliteDefesa.desempenho + 0.9f, 0f, 100f);
+        }
+        else
+        {
+            pais.sateliteDefesa.integridade = Mathf.Clamp(pais.sateliteDefesa.integridade - 2.8f, 0f, 100f);
+            pais.sateliteDefesa.desempenho = Mathf.Clamp(pais.sateliteDefesa.desempenho - 2.1f, 0f, 100f);
+        }
+    }
+
+    private void AplicarEfeitoTecnologia(DadosPaisGoverno pais, TecnologiaNacionalEstado tecnologia)
+    {
+        if (pais == null || tecnologia == null)
+        {
+            return;
+        }
+
+        switch (tecnologia.id)
+        {
+            case "tec_linhas_industriais":
+            case "tec_refino_alto_rendimento":
+            case "tec_automacao_linhas":
+                pais.nivelIndustrial = Mathf.Clamp(pais.nivelIndustrial + 2, 0, 100);
+                break;
+            case "tec_propulsao_solida":
+            case "tec_estabilizacao_lancamento":
+            case "tec_controle_orbital":
+            case "tec_radar_satelital":
+            case "tec_navegacao_inercial":
+            case "tec_guiagem_precisao":
+                pais.nivelMilitar = Mathf.Clamp(pais.nivelMilitar + 2, 0, 100);
+                pais.nivelIndustrial = Mathf.Clamp(pais.nivelIndustrial + 1, 0, 100);
+                break;
+            case "tec_reserva_materiais":
+            case "tec_integracao_armazem":
+            case "tec_miniaturizacao":
+                pais.nivelIndustrial = Mathf.Clamp(pais.nivelIndustrial + 2, 0, 100);
+                pais.nivelEconomico = Mathf.Clamp(pais.nivelEconomico + 1, 0, 100);
+                break;
+            case "tec_ciencia_aplicada":
+                pais.nivelEconomico = Mathf.Clamp(pais.nivelEconomico + 2, 0, 100);
+                pais.nivelIndustrial = Mathf.Clamp(pais.nivelIndustrial + 1, 0, 100);
+                pais.nivelDiplomatico = Mathf.Clamp(pais.nivelDiplomatico + 1, 0, 100);
+                break;
+            case "tec_autorizacao_nuclear":
+            case "tec_blindagem_radiologica":
+                pais.estabilidade = Mathf.Clamp(pais.estabilidade + 1.5f, 0f, 100f);
+                pais.nivelIndustrial = Mathf.Clamp(pais.nivelIndustrial + 1, 0, 100);
+                break;
+        }
+    }
+
+    private bool ConsumirEnergia(int teamId, int custoEnergia)
+    {
+        if (custoEnergia <= 0)
+        {
+            return true;
+        }
+
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null || pais.energia < custoEnergia)
+        {
+            return false;
+        }
+
+        pais.energia -= custoEnergia;
+        if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
+        {
+            GerenciadorRecursos.Instancia.energia = Mathf.Max(0, GerenciadorRecursos.Instancia.energia - custoEnergia);
+            GerenciadorRecursos.Instancia.NotificarAtualizacao();
+        }
+
+        return true;
+    }
+
+    private bool DependenciasAtendidas(DadosPaisGoverno pais, string dependencias)
+    {
+        if (pais == null || string.IsNullOrWhiteSpace(dependencias))
+        {
+            return true;
+        }
+
+        string[] partes = dependencias.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < partes.Length; i++)
+        {
+            string dependencia = partes[i].Trim();
+            if (dependencia.StartsWith("lab_", StringComparison.OrdinalIgnoreCase))
+            {
+                LaboratorioNacionalEstado laboratorio = pais.laboratorios.FirstOrDefault(l => l != null && l.id == dependencia);
+                if (laboratorio == null || laboratorio.nivelAtual <= 0)
+                {
+                    return false;
+                }
+            }
+            else if (!PesquisaConcluida(pais, dependencia))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool PesquisaConcluida(DadosPaisGoverno pais, string pesquisaId)
+    {
+        if (pais == null || string.IsNullOrWhiteSpace(pesquisaId))
+        {
+            return true;
+        }
+
+        PesquisaNacionalEstado pesquisa = pais.pesquisas.FirstOrDefault(p => p != null && p.id == pesquisaId);
+        return pesquisa != null && pesquisa.concluida;
+    }
+
+    private int DiaAtual()
+    {
+        return GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
+    }
+
+    private static PesquisaNacionalEstado CriarPesquisa(string id, string nome, string categoria, string descricao, string requisitos, string desbloqueia, string dependencias, int custoSaldo, int custoEnergia, int duracaoDias)
+    {
+        return new PesquisaNacionalEstado
+        {
+            id = id,
+            nome = nome,
+            categoria = categoria,
+            descricao = descricao,
+            requisitosVisuais = requisitos,
+            desbloqueia = desbloqueia,
+            dependencias = dependencias,
+            custoSaldo = custoSaldo,
+            custoEnergia = custoEnergia,
+            duracaoDias = Mathf.Max(1, duracaoDias)
+        };
+    }
+
+    private static TecnologiaNacionalEstado CriarTecnologia(string id, string nome, string categoria, string descricao, string efeito, string dependencias, int custoSaldo, int custoEnergia, int duracaoDias, int nivelMaximo)
+    {
+        return new TecnologiaNacionalEstado
+        {
+            id = id,
+            nome = nome,
+            categoria = categoria,
+            descricao = descricao,
+            efeito = efeito,
+            dependencias = dependencias,
+            custoSaldo = custoSaldo,
+            custoEnergia = custoEnergia,
+            duracaoDias = Mathf.Max(1, duracaoDias),
+            nivelMaximo = Mathf.Max(1, nivelMaximo)
+        };
+    }
+
+    private static LaboratorioNacionalEstado CriarLaboratorio(string id, string nome, string especializacao, string descricao, string dependencias, int custoSaldo, int custoEnergia, int duracaoDias, int nivelMaximo)
+    {
+        return new LaboratorioNacionalEstado
+        {
+            id = id,
+            nome = nome,
+            especializacao = especializacao,
+            descricao = descricao,
+            dependencias = dependencias,
+            custoSaldo = custoSaldo,
+            custoEnergia = custoEnergia,
+            duracaoDias = Mathf.Max(1, duracaoDias),
+            nivelMaximo = Mathf.Max(1, nivelMaximo)
+        };
+    }
+
+    private void GarantirPesquisaCatalogo(DadosPaisGoverno pais, PesquisaNacionalEstado pesquisa)
+    {
+        if (pais == null || pesquisa == null || pais.pesquisas.Any(p => p != null && string.Equals(p.id, pesquisa.id, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        pais.pesquisas.Add(pesquisa);
+    }
+
+    private void GarantirTecnologiaCatalogo(DadosPaisGoverno pais, TecnologiaNacionalEstado tecnologia)
+    {
+        if (pais == null || tecnologia == null || pais.tecnologias.Any(t => t != null && string.Equals(t.id, tecnologia.id, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        pais.tecnologias.Add(tecnologia);
+    }
+
+    private void GarantirLaboratorioCatalogo(DadosPaisGoverno pais, LaboratorioNacionalEstado laboratorio)
+    {
+        if (pais == null || laboratorio == null || pais.laboratorios.Any(l => l != null && string.Equals(l.id, laboratorio.id, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        pais.laboratorios.Add(laboratorio);
     }
 
     public void AlterarEmprego(int teamId, float delta)
@@ -906,6 +1556,23 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     private void AlterarEstoque(int teamId, RecursoMercado recurso, int delta)
     {
+        string recursoId = IntegracaoMercadoIndustrial.IdInternoDoMercado(recurso);
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial != null && IndustriaIds.EhIndustrial(recursoId))
+        {
+            if (delta >= 0)
+            {
+                industrial.AdicionarEstoque(teamId, recurso, delta);
+            }
+            else
+            {
+                industrial.RemoverEstoque(teamId, recurso, -delta);
+            }
+
+            OnGovernoAtualizado?.Invoke();
+            return;
+        }
+
         DadosPaisGoverno pais = ObterPais(teamId);
         if (pais == null) return;
 
@@ -944,11 +1611,37 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     private void AplicarEconomiaImoveis(DadosPaisGoverno pais, DadosEconomiaPais economia)
     {
-        if (pais == null || economia == null) return;
-        pais.populacaoMaxima = Mathf.Max(1, economia.moradiaTotal);
-        pais.populacao = Mathf.Clamp(economia.populacaoTotal > 0 ? economia.populacaoTotal : pais.populacao, 0, pais.populacaoMaxima);
-        pais.emprego = economia.populacaoTotal <= 0 ? 100f : Mathf.Clamp01(economia.empregosOcupados / (float)Mathf.Max(1, economia.populacaoTotal)) * 100f;
-        pais.moradia = economia.populacaoTotal <= 0 ? 100f : Mathf.Clamp01(economia.moradiaTotal / (float)Mathf.Max(1, economia.populacaoTotal)) * 100f;
+        if (economia.estruturasContadas > 0)
+        {
+            int baseMax = 1;
+            if (pais.teamId == teamJogador && GerenciadorRecursos.Instancia != null)
+            {
+                baseMax = GerenciadorRecursos.Instancia.populacaoMaxima;
+            }
+            pais.populacaoMaxima = Mathf.Max(baseMax, economia.moradiaTotal);
+            pais.populacao = Mathf.Clamp(economia.populacaoTotal > 0 ? economia.populacaoTotal : pais.populacao, 0, pais.populacaoMaxima);
+            pais.emprego = economia.populacaoTotal <= 0 ? 100f : Mathf.Clamp01(economia.empregosOcupados / (float)Mathf.Max(1, economia.populacaoTotal)) * 100f;
+            pais.moradia = economia.populacaoTotal <= 0 ? 100f : Mathf.Clamp01(economia.moradiaTotal / (float)Mathf.Max(1, economia.populacaoTotal)) * 100f;
+            pais.qualidadeVida = economia.qualidadeVida;
+        }
+        else
+        {
+            // Sem estruturas cadastradas: usa valores orgânicos derivados da felicidade e população
+            // NÃO força emprego/moradia artificialmente a 100%, isso engana o sistema de felicidade
+            if (pais.teamId == teamJogador && GerenciadorRecursos.Instancia != null)
+            {
+                pais.populacao = GerenciadorRecursos.Instancia.populacaoAtual;
+                pais.populacaoMaxima = GerenciadorRecursos.Instancia.populacaoMaxima;
+            }
+            // Emprego deriva da felicidade e estabilidade do país (se nenhuma estrutura existe, é informal)
+            pais.emprego = Mathf.Clamp(50f + (pais.felicidade - 50f) * 0.4f + (pais.estabilidade - 50f) * 0.2f, 20f, 85f);
+            // Moradia: sem construção formal, moradia é limitada (improvisada)
+            pais.moradia = Mathf.Clamp(40f + (pais.felicidade - 50f) * 0.3f, 20f, 70f);
+            // Qualidade de vida cresce com felicidade e emprego orgânicos
+            pais.qualidadeVida = Mathf.Clamp(
+                35f + (pais.emprego - 50f) * 0.25f + (pais.moradia - 50f) * 0.20f + (pais.felicidade - 50f) * 0.20f,
+                15f, 70f);
+        }
         pais.producao = Mathf.Clamp(35f
             + economia.industriaProduzida * 4f
             + economia.petroleoProduzido * 2f
@@ -1080,5 +1773,23 @@ public class SistemaGovernoMundial : MonoBehaviour
         GameObject go = new GameObject("SistemaMercadoGlobal_Runtime");
         go.AddComponent<SistemaMercadoGlobal>();
         DontDestroyOnLoad(go);
+    }
+
+    private void GarantirSistemaIndustrial()
+    {
+        // Cria o SistemaIndustrial se ele ainda não existe na cena
+        if (SistemaIndustrialNacional.Instancia == null)
+        {
+            GameObject go = new GameObject("SistemaIndustrialNacional_Runtime");
+            go.AddComponent<SistemaIndustrialNacional>();
+            DontDestroyOnLoad(go);
+        }
+
+        // Gera o perfil mineral de todos os países existentes (apenas se ainda não gerado)
+        foreach (DadosPaisGoverno pais in paises)
+        {
+            if (pais != null)
+                SistemaIndustrialNacional.Instancia.GarantirPerfil(pais.teamId);
+        }
     }
 }

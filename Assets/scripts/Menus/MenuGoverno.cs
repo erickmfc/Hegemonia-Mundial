@@ -147,7 +147,7 @@ public class MenuGoverno : MonoBehaviour
     private static readonly string[] SubMercado = { "Comprar", "Vender", "Precos", "Rotas" };
     private static readonly string[] SubInterior = { "Populacao", "Cidades", "Bem-estar", "Projetos" };
     private static readonly string[] SubDefesa = { "Comando", "Exercito", "Marinha", "Aerea", "Alertas" };
-    private static readonly string[] SubCiencia = { "Projetos", "Tecnologias", "Labs", "Fila" };
+    private static readonly string[] SubCiencia = { "Pesquisa", "Tecnologias", "Projetos", "Laboratorios" };
     private static readonly string[] SubTrabalho = { "Empregos", "Setores", "Formacao", "Politicas" };
 
     private readonly Dictionary<CategoriaGoverno, NavButtonView> navButtons = new Dictionary<CategoriaGoverno, NavButtonView>();
@@ -234,7 +234,7 @@ public class MenuGoverno : MonoBehaviour
     private void AplicarLayoutGovernamentalAtual()
     {
         larguraTela = Mathf.Clamp(Mathf.Max(larguraTela, 0.94f), 0.80f, 0.98f);
-        alturaTela = Mathf.Clamp(Mathf.Max(alturaTela, 0.98f), 0.70f, 0.99f);
+        alturaTela = Mathf.Clamp(Mathf.Max(alturaTela, 0.82f), 0.70f, 0.99f);
         deslocamentoVertical = Mathf.Clamp(deslocamentoVertical, -0.08f, 0.08f);
         larguraSidebar = Mathf.Clamp(Mathf.Max(larguraSidebar, 220f), 190f, 240f);
         larguraPainelDireito = Mathf.Clamp(Mathf.Max(larguraPainelDireito, 340f), 280f, 380f);
@@ -286,6 +286,11 @@ public class MenuGoverno : MonoBehaviour
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += AoMudarCena;
 
         SistemaGovernoMundial.GarantirInstancia();
+        if (MenuGovernoNovoController.GarantirInstancia())
+        {
+            MenuGovernoNovoController.Instancia.Abrir(false);
+            return;
+        }
         BuildShell();
         painelPrincipal.SetActive(false);
     }
@@ -342,6 +347,13 @@ public class MenuGoverno : MonoBehaviour
     public void AlternarMenu(bool abrir)
     {
         GarantirAtivo(this);
+        if (MenuGovernoNovoController.GarantirInstancia())
+        {
+            MenuGovernoNovoController.Instancia.Abrir(abrir);
+            EsconderHUD(abrir);
+            if (painelPrincipal != null) painelPrincipal.SetActive(false);
+            return;
+        }
         BuildShell();
 
         if (abrir == EstaAberto && painelPrincipal.activeSelf == abrir)
@@ -1365,6 +1377,20 @@ public class MenuGoverno : MonoBehaviour
                 + "\nPressao de guerra: " + (gov != null ? (gov.PressaoGlobalGuerra() * 100f).ToString("0") + "%" : "n/d")
                 + "\nPaises em guerra: " + wars
                 + "\nPlano atual: " + p.planoEstrategico;
+
+            if (tab == 3 || tab == 0)
+            {
+                CreateDescription(page.Root.transform, "Ramo aereo e orbital com foco em manutencao, cobertura e desempenho do satelite nacional.");
+                CreateDefenseSatelliteCard(page.Root.transform, p);
+            }
+            else if (tab == 1)
+            {
+                CreateDescription(page.Root.transform, "Prontidao terrestre, estoques de armamento e capacidade de resposta do exercito.");
+            }
+            else if (tab == 2)
+            {
+                CreateDescription(page.Root.transform, "Capacidade naval, projecao maritima e cobertura de municao costeira.");
+            }
         };
         page.Refresh();
     }
@@ -1383,17 +1409,55 @@ public class MenuGoverno : MonoBehaviour
                 return;
             }
 
+            SistemaGovernoMundial gov = Government();
+            if (gov == null)
+            {
+                CreateInfoBlock(page.Root.transform, "Sistema cientifico indisponivel.");
+                return;
+            }
+
             string sugestao = p.deficitEnergia > 0f ? "Energia" : p.comida < 300 ? "Comida" : p.nivelIndustrial < p.nivelMilitar ? "Industria" : "Diplomacia";
             Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
-            stats.text = (tab == 1 ? "Tecnologias" : tab == 2 ? "Laboratorios" : tab == 3 ? "Fila de pesquisa" : "Projetos")
-                + "\nNivel economico: " + p.nivelEconomico
+            stats.text = "Nivel economico: " + p.nivelEconomico
                 + "\nNivel industrial: " + p.nivelIndustrial
                 + "\nNivel diplomatico: " + p.nivelDiplomatico
                 + "\nNivel militar: " + p.nivelMilitar
-                + "\nEstoque energia: " + FormatNumber(p.energia)
-                + "\nEstoque comida: " + FormatNumber(p.comida)
-                + "\nPlano nacional: " + p.planoEstrategico
+                + "\nEnergia disponivel: " + FormatNumber(p.energia)
+                + "\nComida em estoque: " + FormatNumber(p.comida)
+                + "\nMortos acumulados: " + FormatNumber(p.mortosAcumulados)
                 + "\nPrioridade sugerida: " + sugestao;
+
+            if (tab == 0)
+            {
+                CreateDescription(page.Root.transform, "Pesquisas clicaveis com custo, tempo em dias e desbloqueios reais para o programa cientifico.");
+                foreach (PesquisaNacionalEstado pesquisa in p.pesquisas)
+                {
+                    CreateScienceResearchCard(page.Root.transform, pesquisa);
+                }
+                return;
+            }
+
+            if (tab == 1)
+            {
+                CreateDescription(page.Root.transform, "Tecnologias permanentes por nivel, com investimento progressivo e efeitos nacionais.");
+                foreach (TecnologiaNacionalEstado tecnologia in p.tecnologias)
+                {
+                    CreateScienceTechnologyCard(page.Root.transform, tecnologia);
+                }
+                return;
+            }
+
+            if (tab == 2)
+            {
+                BuildScienceProjectsCards(page.Root.transform, p);
+                return;
+            }
+
+            CreateDescription(page.Root.transform, "Laboratorios nacionais interativos ligados a eficiencia, energia e teto de pesquisa.");
+            foreach (LaboratorioNacionalEstado laboratorio in p.laboratorios)
+            {
+                CreateScienceLabCard(page.Root.transform, laboratorio);
+            }
         };
         page.Refresh();
     }
@@ -1634,8 +1698,16 @@ public class MenuGoverno : MonoBehaviour
         page.Refresh = () =>
         {
             ClearChildren(page.Root.transform);
-            CreateSectionTitle(page.Root.transform, "Comando");
-            CreateInfoBlock(page.Root.transform, "Acoes militares conectadas ao estado geopolitico e aos pedidos da IA.");
+            string titulo = tab == 3 ? "Aerea / Orbital" : tab == 2 ? "Marinha" : tab == 1 ? "Exercito" : "Comando";
+            CreateSectionTitle(page.Root.transform, titulo);
+            CreateInfoBlock(page.Root.transform, tab == 3
+                ? "Controles aereos e orbitais conectados ao satelite, manutencao e cobertura nacional."
+                : "Acoes militares conectadas ao estado geopolitico e aos pedidos da IA.");
+            DadosPaisGoverno p = GetPlayerGov();
+            if (p != null && (tab == 0 || tab == 3))
+            {
+                CreateDefenseSatelliteCard(page.Root.transform, p);
+            }
             CreateCountrySelector(page.Root.transform);
             CreateActionButton(page.Root.transform, "DECLARAR ALERTA", new Color(0.420f, 0.150f, 0.080f, 1f), () =>
             {
@@ -1666,7 +1738,12 @@ public class MenuGoverno : MonoBehaviour
         {
             ClearChildren(page.Root.transform);
             CreateSectionTitle(page.Root.transform, "Pesquisa");
-            CreateInfoBlock(page.Root.transform, "Cada acao reposiciona o foco nacional e aparece nas leituras do governo.");
+            DadosPaisGoverno p = GetPlayerGov();
+            if (p != null)
+            {
+                CreateScienceSummaryCard(page.Root.transform, p);
+            }
+            CreateInfoBlock(page.Root.transform, "Cada card abaixo aplica investimento real, muda o cofre nacional e conversa com pesquisa, tecnologia, projetos e laboratorios.");
             CreateActionButton(page.Root.transform, "INVESTIR EM ENERGIA", corAzulBotao, () => InvestirSetorUI("Energia", 750, "Energia"));
             CreateActionButton(page.Root.transform, "INVESTIR EM INDUSTRIA", corPainel2, () => InvestirSetorUI("Industria", 700, "Industria"));
             CreateActionButton(page.Root.transform, "INVESTIR EM DIPLOMACIA", new Color(0.110f, 0.200f, 0.280f, 1f), () => InvestirSetorUI("Diplomacia", 600, "Diplomacia"));
@@ -2787,7 +2864,7 @@ public class MenuGoverno : MonoBehaviour
 
     private void CacheHUDComponents()
     {
-        if (hudCached) return;
+        if (hudCached && cachedMiniMapa != null && cachedMenuComportamento != null && cachedMenuConstrucao != null) return;
         cachedMiniMapa = Achar<MiniMapa>();
         cachedMenuComportamento = AcharComponenteMesmoInativo<MenuComportamento>();
         cachedMenuConstrucao = AcharComponenteMesmoInativo<MenuConstrucao>();
@@ -2802,6 +2879,13 @@ public class MenuGoverno : MonoBehaviour
         if (comportamento != null)
         {
             comportamento.DefinirVisibilidadeHud(visible);
+            return;
+        }
+
+        MenuConstrucao construcao = component as MenuConstrucao;
+        if (construcao != null)
+        {
+            construcao.DefinirVisibilidadeHud(visible);
             return;
         }
 
@@ -3027,6 +3111,379 @@ public class MenuGoverno : MonoBehaviour
         if (p.deficitComida > 0.5f) return "Comida";
         if (p.deficitPetroleo > 0.5f) return "Petroleo";
         return "Nenhum";
+    }
+
+    private void CreateScienceSummaryCard(Transform parent, DadosPaisGoverno pais)
+    {
+        Text box = CreateInfoBlock(parent, string.Empty);
+        box.text = "Tesouro cientifico: $" + FormatNumber(pais.saldo)
+            + "\nLinhas industriais: " + ObterResumoLinhasIndustriais(pais.teamId)
+            + "\nMortos acumulados: " + FormatNumber(pais.mortosAcumulados)
+            + "\nFoco atual: " + pais.planoEstrategico
+            + "\nPrograma orbital: " + (pais.sateliteDefesa != null && pais.sateliteDefesa.desbloqueado ? "ativo" : "bloqueado");
+    }
+
+    private void CreateScienceResearchCard(Transform parent, PesquisaNacionalEstado pesquisa)
+    {
+        if (pesquisa == null) return;
+        GameObject card = CreatePanel("Pesquisa_" + pesquisa.id, parent, 0f, corCardClara);
+        card.GetComponent<LayoutElement>().minHeight = 150f;
+        VerticalLayoutGroup v = card.AddComponent<VerticalLayoutGroup>();
+        v.padding = new RectOffset(10, 10, 10, 10);
+        v.spacing = 6;
+        v.childControlHeight = true;
+        v.childControlWidth = true;
+        v.childForceExpandHeight = false;
+        v.childForceExpandWidth = true;
+
+        string estado = pesquisa.concluida ? "CONCLUIDA"
+            : pesquisa.emAndamento ? "EM ANDAMENTO"
+            : DependenciasAtendidasUI(pesquisa.dependencias) ? "PRONTA"
+            : "BLOQUEADA";
+        Text body = CreateLayoutText(card.transform,
+            pesquisa.nome.ToUpperInvariant()
+            + "\nCategoria: " + pesquisa.categoria
+            + "\n" + pesquisa.descricao
+            + "\nRequisitos: " + pesquisa.requisitosVisuais
+            + "\nDesbloqueia: " + pesquisa.desbloqueia
+            + "\nCusto: $" + FormatNumber(pesquisa.custoSaldo) + " | Energia: " + FormatNumber(pesquisa.custoEnergia)
+            + "\nTempo: " + pesquisa.duracaoDias + " dias"
+            + "\nEstado: " + estado + PesquisaTempoRestanteTexto(pesquisa),
+            11, corTextoPrimario, TextAnchor.UpperLeft, FontStyle.Normal, 108f);
+        body.verticalOverflow = VerticalWrapMode.Overflow;
+
+        if (!pesquisa.concluida && !pesquisa.emAndamento)
+        {
+            CreateSmallButton(card.transform, "INICIAR PESQUISA", corAzulBotao, () =>
+            {
+                string mensagem = "Sistema de pesquisa indisponivel.";
+                bool ok = Government() != null && Government().IniciarPesquisaNacional(paisJogadorId, pesquisa.id, out mensagem);
+                Notificar("Ciencia", mensagem);
+                RefreshDynamicData(true);
+            });
+        }
+        else if (pesquisa.concluida)
+        {
+            CreateSmallButton(card.transform, "DESBLOQUEADA", corVerde, null);
+        }
+    }
+
+    private void CreateScienceTechnologyCard(Transform parent, TecnologiaNacionalEstado tecnologia)
+    {
+        if (tecnologia == null) return;
+        GameObject card = CreatePanel("Tecnologia_" + tecnologia.id, parent, 0f, corCardClara);
+        card.GetComponent<LayoutElement>().minHeight = 146f;
+        VerticalLayoutGroup v = card.AddComponent<VerticalLayoutGroup>();
+        v.padding = new RectOffset(10, 10, 10, 10);
+        v.spacing = 6;
+        v.childControlHeight = true;
+        v.childControlWidth = true;
+        v.childForceExpandHeight = false;
+        v.childForceExpandWidth = true;
+        int proximoNivel = Mathf.Min(tecnologia.nivelMaximo, tecnologia.nivelAtual + 1);
+
+        Text body = CreateLayoutText(card.transform,
+            tecnologia.nome.ToUpperInvariant()
+            + "\nCategoria: " + tecnologia.categoria
+            + "\n" + tecnologia.descricao
+            + "\nEfeito: " + tecnologia.efeito
+            + "\nNivel: " + tecnologia.nivelAtual + "/" + tecnologia.nivelMaximo
+            + "\nInvestimento: $" + FormatNumber(tecnologia.custoSaldo * Mathf.Max(1, proximoNivel))
+            + " | Energia: " + FormatNumber(tecnologia.custoEnergia * Mathf.Max(1, proximoNivel))
+            + "\nTempo: " + tecnologia.duracaoDias + " dias"
+            + "\nEstado: " + (tecnologia.emAndamento ? "PESQUISANDO" : (tecnologia.nivelAtual >= tecnologia.nivelMaximo ? "MAXIMO" : "DISPONIVEL"))
+            + TecnologiaTempoRestanteTexto(tecnologia),
+            11, corTextoPrimario, TextAnchor.UpperLeft, FontStyle.Normal, 104f);
+        body.verticalOverflow = VerticalWrapMode.Overflow;
+
+        if (tecnologia.nivelAtual < tecnologia.nivelMaximo && !tecnologia.emAndamento)
+        {
+            CreateSmallButton(card.transform, "INVESTIR NIVEL " + proximoNivel, corPainel2, () =>
+            {
+                string mensagem = "Sistema de tecnologia indisponivel.";
+                bool ok = Government() != null && Government().IniciarTecnologiaNacional(paisJogadorId, tecnologia.id, out mensagem);
+                Notificar("Tecnologia", mensagem);
+                RefreshDynamicData(true);
+            });
+        }
+        else if (tecnologia.nivelAtual >= tecnologia.nivelMaximo)
+        {
+            CreateSmallButton(card.transform, "EFEITO APLICADO", corVerde, null);
+        }
+    }
+
+    private void BuildScienceProjectsCards(Transform parent, DadosPaisGoverno pais)
+    {
+        CreateDescription(parent, "Projetos industriais conectados as linhas reais do pais e aos custos do cofre.");
+
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial == null)
+        {
+            CreateInfoBlock(parent, "Sistema industrial nacional indisponivel.");
+            return;
+        }
+
+        EstadoIndustrialPais estado = industrial.ObterEstadoPais(pais.teamId);
+        IReadOnlyList<LinhaIndustrial> linhas = industrial.ObterLinhasPais(pais.teamId);
+        Text overview = CreateInfoBlock(parent, string.Empty);
+        overview.text = "Linhas atuais: " + (linhas != null ? linhas.Count.ToString() : "0")
+            + "\nOcupadas: " + (estado != null ? estado.linhasOcupadas.ToString() : "0")
+            + "\nDisponiveis: " + (estado != null ? estado.linhasDisponiveis.ToString() : "0")
+            + "\nOrdens ativas: " + (estado != null ? estado.ordensAtivas.ToString() : "0")
+            + "\nProducao diaria: " + (estado != null ? estado.producaoDiariaTotal.ToString("N0") : "0")
+            + "\nProjetos catalogados: " + industrial.ReceitasCatalogo.Count;
+
+        if (linhas != null && linhas.Count > 0)
+        {
+            CreateDescription(parent, "Linhas industriais atuais: linha 1, linha 2 e demais filas com status, progresso e receita em execucao.");
+            foreach (LinhaIndustrial linha in linhas)
+            {
+                if (linha == null) continue;
+                CreateScienceLineCard(parent, linha);
+            }
+        }
+
+        CreateDescription(parent, "Lotes disponiveis para investimento industrial. Variantes pesadas e militares custam mais e drenam mais energia do cofre.");
+        foreach (ReceitaIndustrialSO receita in industrial.ReceitasCatalogo)
+        {
+            if (receita == null) continue;
+            CreateScienceProjectCard(parent, receita);
+        }
+    }
+
+    private void CreateScienceLineCard(Transform parent, LinhaIndustrial linha)
+    {
+        GameObject card = CreatePanel("LinhaIndustrial_" + linha.indice, parent, 0f, corCardClara);
+        card.GetComponent<LayoutElement>().minHeight = 114f;
+        VerticalLayoutGroup layout = card.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(10, 10, 10, 10);
+        layout.spacing = 6;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
+
+        bool ocupada = linha.EstaOcupada;
+        string receita = string.IsNullOrWhiteSpace(linha.receitaId) ? "Livre" : linha.receitaId;
+        string texto = "LINHA " + (linha.indice + 1)
+            + "\nEstado: " + linha.estado
+            + "\nReceita atual: " + receita
+            + "\nDias restantes: " + linha.diasRestantes
+            + "\nProgresso: " + (linha.progresso * 100f).ToString("0") + "%";
+        Text body = CreateLayoutText(card.transform, texto, 11, corTextoPrimario, TextAnchor.UpperLeft, FontStyle.Normal, 74f);
+        body.verticalOverflow = VerticalWrapMode.Overflow;
+
+        CreateSmallButton(card.transform, ocupada ? "EM EXECUCAO" : "PRONTA PARA LOTE", ocupada ? corAzulBotao : corVerde, null);
+    }
+
+    private void CreateScienceProjectCard(Transform parent, ReceitaIndustrialSO receita)
+    {
+        GameObject card = CreatePanel("Projeto_" + receita.id, parent, 0f, corCardClara);
+        card.GetComponent<LayoutElement>().minHeight = 156f;
+        VerticalLayoutGroup v = card.AddComponent<VerticalLayoutGroup>();
+        v.padding = new RectOffset(10, 10, 10, 10);
+        v.spacing = 6;
+        v.childControlHeight = true;
+        v.childControlWidth = true;
+        v.childForceExpandHeight = false;
+        v.childForceExpandWidth = true;
+
+        string materiais = receita.materiaisNecessarios != null && receita.materiaisNecessarios.Count > 0
+            ? string.Join(" | ", receita.materiaisNecessarios.Select(m => m.recursoId + ": " + m.quantidade.ToString("N0")))
+            : "Sem entrada";
+        DadosPaisGoverno pais = GetPlayerGov();
+        bool pesquisaOk = string.IsNullOrEmpty(receita.pesquisaExigida) || DependenciasAtendidasUI(receita.pesquisaExigida);
+        bool nivelOk = pais != null && pais.nivelIndustrial >= receita.nivelIndustrialExigido;
+        string statusProjeto = pesquisaOk && nivelOk ? "DISPONIVEL" : "BLOQUEADO";
+
+        Text body = CreateLayoutText(card.transform,
+            receita.nome.ToUpperInvariant()
+            + "\nEntradas: " + materiais
+            + "\nSaida: " + receita.quantidadeProduzida.ToString("N0") + " " + receita.produtoFinalId
+            + "\nCusto: $" + FormatNumber(receita.dinheiroNecessario) + " | Energia: " + FormatNumber(receita.energiaNecessaria)
+            + "\nDuracao: " + receita.diasNecessarios + " dias"
+            + "\nPesquisa exigida: " + (string.IsNullOrEmpty(receita.pesquisaExigida) ? "Nenhuma" : receita.pesquisaExigida)
+            + "\nNivel industrial: " + receita.nivelIndustrialExigido
+            + "\nStatus: " + statusProjeto,
+            11, corTextoPrimario, TextAnchor.UpperLeft, FontStyle.Normal, 112f);
+        body.verticalOverflow = VerticalWrapMode.Overflow;
+
+        CreateSmallButton(card.transform, pesquisaOk && nivelOk ? "INICIAR LOTE" : "VER REQUISITOS", pesquisaOk && nivelOk ? corVerde : corPainel2, () =>
+        {
+            SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+            OrdemRefinoIndustrial ordem = industrial != null ? industrial.CriarOrdemRefino(paisJogadorId, receita.id) : null;
+            bool ok = ordem != null && ordem.estado != EstadoOrdemRefinoIndustrial.PausadaSemVerba;
+            Notificar("Projetos", ok ? "Lote industrial iniciado para " + receita.nome + "." : "Nao foi possivel iniciar " + receita.nome + ".");
+            RefreshDynamicData(true);
+        });
+    }
+
+    private void CreateScienceLabCard(Transform parent, LaboratorioNacionalEstado laboratorio)
+    {
+        if (laboratorio == null) return;
+        GameObject card = CreatePanel("Lab_" + laboratorio.id, parent, 0f, corCardClara);
+        card.GetComponent<LayoutElement>().minHeight = 146f;
+        VerticalLayoutGroup v = card.AddComponent<VerticalLayoutGroup>();
+        v.padding = new RectOffset(10, 10, 10, 10);
+        v.spacing = 6;
+        v.childControlHeight = true;
+        v.childControlWidth = true;
+        v.childForceExpandHeight = false;
+        v.childForceExpandWidth = true;
+
+        Text body = CreateLayoutText(card.transform,
+            laboratorio.nome.ToUpperInvariant()
+            + "\nEspecializacao: " + laboratorio.especializacao
+            + "\n" + laboratorio.descricao
+            + "\nNivel: " + laboratorio.nivelAtual + "/" + laboratorio.nivelMaximo
+            + "\nCusto: $" + FormatNumber(laboratorio.custoSaldo * Mathf.Max(1, laboratorio.nivelAtual + 1))
+            + " | Energia: " + FormatNumber(laboratorio.custoEnergia * Mathf.Max(1, laboratorio.nivelAtual + 1))
+            + "\nTempo: " + laboratorio.duracaoDias + " dias"
+            + "\nEstado: " + (laboratorio.emExpansao ? "EM EXPANSAO" : (laboratorio.nivelAtual >= laboratorio.nivelMaximo ? "MAXIMO" : "DISPONIVEL"))
+            + LaboratorioTempoRestanteTexto(laboratorio),
+            11, corTextoPrimario, TextAnchor.UpperLeft, FontStyle.Normal, 104f);
+        body.verticalOverflow = VerticalWrapMode.Overflow;
+
+        if (laboratorio.nivelAtual < laboratorio.nivelMaximo && !laboratorio.emExpansao)
+        {
+            CreateSmallButton(card.transform, "EXPANDIR", corAzulBotao, () =>
+            {
+                string mensagem = "Sistema de laboratorio indisponivel.";
+                bool ok = Government() != null && Government().ExpandirLaboratorio(paisJogadorId, laboratorio.id, out mensagem);
+                Notificar("Laboratorio", mensagem);
+                RefreshDynamicData(true);
+            });
+        }
+        else if (laboratorio.nivelAtual >= laboratorio.nivelMaximo)
+        {
+            CreateSmallButton(card.transform, "OPERANDO", corVerde, null);
+        }
+    }
+
+    private void CreateDefenseSatelliteCard(Transform parent, DadosPaisGoverno pais)
+    {
+        SateliteDefesaEstado satelite = pais != null ? pais.sateliteDefesa : null;
+        if (satelite == null)
+        {
+            return;
+        }
+
+        string prontidao = satelite.integridade >= 75f && satelite.desempenho >= 70f
+            ? "OPERACIONAL"
+            : satelite.integridade >= 45f && satelite.desempenho >= 45f
+                ? "ATENCAO"
+                : "CRITICO";
+        Text box = CreateInfoBlock(parent, string.Empty);
+        box.text = "SATELITE NACIONAL"
+            + "\nStatus: " + (satelite.desbloqueado ? "ATIVO" : "BLOQUEADO")
+            + "\nProntidao: " + prontidao
+            + "\nDesempenho: " + satelite.desempenho.ToString("0") + "%"
+            + "\nIntegridade: " + satelite.integridade.ToString("0") + "%"
+            + "\nCusto operacao: $" + FormatNumber(satelite.custoOperacionalDiario) + "/dia"
+            + "\nCusto manutencao: $" + FormatNumber(satelite.custoManutencaoDiaria) + "/dia"
+            + "\nManutencao automatica: " + (satelite.manutencaoAutomatica ? "SIM" : "NAO");
+
+        CreateActionButton(parent, satelite.manutencaoAutomatica ? "DESLIGAR MANUTENCAO AUTO" : "LIGAR MANUTENCAO AUTO",
+            corPainel2, () =>
+            {
+                Government()?.ConfigurarSatelite(paisJogadorId, !satelite.manutencaoAutomatica);
+                Notificar("Defesa", "Manutencao automatica do satelite atualizada.");
+                RefreshDynamicData(true);
+            });
+
+        CreateActionButton(parent, "APORTAR $1.200 NO SATELITE", corAzulBotao, () =>
+        {
+            string mensagem = "Sistema de satelite indisponivel.";
+            bool ok = Government() != null && Government().InvestirNoSatelite(paisJogadorId, 1200, out mensagem);
+            Notificar("Defesa", mensagem);
+            RefreshDynamicData(true);
+        });
+    }
+
+    private bool DependenciasAtendidasUI(string dependencias)
+    {
+        DadosPaisGoverno pais = GetPlayerGov();
+        if (pais == null || string.IsNullOrWhiteSpace(dependencias))
+        {
+            return true;
+        }
+
+        string[] partes = dependencias.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < partes.Length; i++)
+        {
+            string dependencia = partes[i].Trim();
+            if (dependencia.StartsWith("lab_", StringComparison.OrdinalIgnoreCase))
+            {
+                LaboratorioNacionalEstado laboratorio = pais.laboratorios.FirstOrDefault(l => l != null && l.id == dependencia);
+                if (laboratorio == null || laboratorio.nivelAtual <= 0)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                PesquisaNacionalEstado pesquisa = pais.pesquisas.FirstOrDefault(p => p != null && p.id == dependencia);
+                if (pesquisa == null || !pesquisa.concluida)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private string PesquisaTempoRestanteTexto(PesquisaNacionalEstado pesquisa)
+    {
+        if (pesquisa == null || !pesquisa.emAndamento)
+        {
+            return string.Empty;
+        }
+
+        int diaAtual = GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
+        int restante = Mathf.Max(0, (pesquisa.diaInicio + pesquisa.duracaoDias) - diaAtual);
+        return " | Restam " + restante + " dias";
+    }
+
+    private string TecnologiaTempoRestanteTexto(TecnologiaNacionalEstado tecnologia)
+    {
+        if (tecnologia == null || !tecnologia.emAndamento)
+        {
+            return string.Empty;
+        }
+
+        int diaAtual = GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
+        int restante = Mathf.Max(0, (tecnologia.diaInicio + tecnologia.duracaoDias) - diaAtual);
+        return " | Restam " + restante + " dias";
+    }
+
+    private string LaboratorioTempoRestanteTexto(LaboratorioNacionalEstado laboratorio)
+    {
+        if (laboratorio == null || !laboratorio.emExpansao)
+        {
+            return string.Empty;
+        }
+
+        int diaAtual = GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
+        int restante = Mathf.Max(0, (laboratorio.diaInicio + laboratorio.duracaoDias) - diaAtual);
+        return " | Restam " + restante + " dias";
+    }
+
+    private string ObterResumoLinhasIndustriais(int teamId)
+    {
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial == null)
+        {
+            return "0/0";
+        }
+
+        EstadoIndustrialPais estado = industrial.ObterEstadoPais(teamId);
+        if (estado == null)
+        {
+            return "0/0";
+        }
+
+        return estado.linhasOcupadas + "/" + (estado.linhasOcupadas + estado.linhasDisponiveis);
     }
 
     private string FormatNumber(int number)

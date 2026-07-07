@@ -266,6 +266,8 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         float consumo = baseConsumo + (totalAvioes * 2.0f) + (totalHelis * 1.5f) + (totalHeavy * 5.0f);
 
         economia.energiaConsumida += consumo;
+        economia.empregosDisponiveis += 150; // Aeroportos geram muitos empregos
+
     }
 
     private void ContabilizarEstrutura(EstruturaEconomica estrutura)
@@ -413,16 +415,36 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         economia.petroleoProduzido += predio.producaoPetroleo;
         economia.industriaProduzida += predio.producaoAco;
         economia.energiaProduzida += predio.producaoEnergia;
+
+        // Adiciona empregos de acordo com o tipo
+        TipoEstruturaEconomica tipo = ResolverTipoPredio(predio);
+        switch (tipo)
+        {
+            case TipoEstruturaEconomica.Petroleo: economia.empregosDisponiveis += 12; break;
+            case TipoEstruturaEconomica.Industria: economia.empregosDisponiveis += 24; break;
+            case TipoEstruturaEconomica.Energia: economia.empregosDisponiveis += 8; break;
+            case TipoEstruturaEconomica.Comercio: economia.empregosDisponiveis += 10; break;
+            default: economia.empregosDisponiveis += 10; break;
+        }
     }
 
     private void FinalizarSnapshots()
     {
         foreach (DadosEconomiaPais economia in economias.Values)
         {
-            economia.empregosOcupados = Mathf.Min(economia.populacaoTotal, economia.empregosDisponiveis);
-            economia.deficitEmprego = Mathf.Max(0, economia.populacaoTotal - economia.empregosDisponiveis);
+            int populacaoReal = Mathf.Max(0, economia.populacaoTotal);
+            if (SistemaGovernoMundial.Instancia != null
+                && economia.teamId == SistemaGovernoMundial.Instancia.teamJogador
+                && GerenciadorRecursos.Instancia != null)
+            {
+                populacaoReal = Mathf.Max(0, GerenciadorRecursos.Instancia.populacaoAtual);
+            }
+
+            economia.populacaoTotal = populacaoReal;
+            economia.empregosOcupados = Mathf.Min(populacaoReal, economia.empregosDisponiveis);
+            economia.deficitEmprego = Mathf.Max(0, populacaoReal - economia.empregosDisponiveis);
             economia.deficitEnergia = Mathf.Max(0f, economia.energiaConsumida - economia.energiaProduzida);
-            economia.pressaoPopulacional = economia.moradiaTotal <= 0 ? 1f : Mathf.Clamp01(economia.populacaoTotal / (float)economia.moradiaTotal);
+            economia.pressaoPopulacional = economia.moradiaTotal <= 0 ? 1f : Mathf.Clamp01(populacaoReal / (float)economia.moradiaTotal);
             economia.deficitPetroleo = Mathf.Max(0f, economia.industriaProduzida * petroleoConsumidoPorIndustria - economia.petroleoProduzido);
             economia.eficienciaMedia = economia.estruturasContadas > 0 ? Mathf.Clamp01(economia.eficienciaMedia / economia.estruturasContadas) : 1f;
             economia.exportacaoTotal = economia.comidaProduzida + economia.petroleoProduzido + economia.industriaProduzida;
@@ -439,7 +461,39 @@ public class SistemaEconomiaImoveis : MonoBehaviour
 
         if (valor < 0f)
         {
-            economia.custoManutencao += Mathf.Abs(valor);
+            float absValor = Mathf.Abs(valor);
+            economia.custoManutencao += absValor;
+            switch (tipo)
+            {
+                case TipoEstruturaEconomica.PesquisaMilitar:
+                case TipoEstruturaEconomica.BaseMilitarPequena:
+                case TipoEstruturaEconomica.BaseMilitarMedia:
+                case TipoEstruturaEconomica.GrandeBaseMilitar:
+                case TipoEstruturaEconomica.BaseAerea:
+                case TipoEstruturaEconomica.BaseNaval:
+                    economia.custoMilitar += absValor;
+                    break;
+                case TipoEstruturaEconomica.Energia:
+                case TipoEstruturaEconomica.UsinaSolar:
+                case TipoEstruturaEconomica.UsinaTermicaPequena:
+                case TipoEstruturaEconomica.UsinaTermicaGrande:
+                case TipoEstruturaEconomica.UsinaNuclear:
+                case TipoEstruturaEconomica.UsinaHidreletrica:
+                case TipoEstruturaEconomica.AeroportoCivil:
+                case TipoEstruturaEconomica.PortoComercial:
+                    economia.custoInfraestrutura += absValor;
+                    break;
+                case TipoEstruturaEconomica.Industria:
+                case TipoEstruturaEconomica.IndustriaLeve:
+                case TipoEstruturaEconomica.IndustriaPesada:
+                case TipoEstruturaEconomica.Petroleo:
+                case TipoEstruturaEconomica.Refinaria:
+                    economia.custoProducao += absValor;
+                    break;
+                default:
+                    economia.custoSocial += absValor;
+                    break;
+            }
             return;
         }
 

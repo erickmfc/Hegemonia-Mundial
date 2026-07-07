@@ -1,20 +1,20 @@
 /* StyleSheet for Colony Status Bar UI */
 
 .colony-status-container {
-    width: 100%;
+    width: 110%;
     align-items: center;
     justify-content: flex-start;
-    padding-top: 12px;
+    padding-top: 0;
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     position: absolute;
-    top: 0;
-    left: 0;
+    top: -1%;
+    left: -5%;
 }
 
 .status-bar-panel {
-    width: 98%;
-    max-width: 1600px;
-    height: 52px;
+    width: 100%;
+    max-width: 1760px;
+    height: 58px;
     background-color: rgba(7, 24, 39, 0.72); /* Cor anterior azul escuro */
     border-width: 1.5px;
     border-color: rgba(0, 195, 255, 0.4); /* Borda azul anterior */
@@ -22,8 +22,8 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 20px;
+    padding-right: 20px;
     
     /* Glow effect anterior */
     border-left-color: rgba(0, 195, 255, 0.55);
@@ -49,14 +49,15 @@
     flex-direction: row;
     align-items: center;
     flex-grow: 1;
-    justify-content: space-around;
+    justify-content: space-between;
+    flex-wrap: nowrap;
 }
 
 .resource-item {
     flex-direction: row;
     align-items: center;
-    margin-left: 6px;
-    margin-right: 6px;
+    margin-left: 3px;
+    margin-right: 3px;
 }
 
 .country-item {
@@ -83,13 +84,20 @@
 /* Value Labels */
 .resource-base-value {
     color: rgb(240, 248, 255); /* Azul/branco anterior */
-    font-size: 12px;
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+.resource-bonus {
+    color: #22c55e;
+    font-size: 9px;
+    margin-left: 2px;
     -unity-font-style: bold;
 }
 
 .resource-bonus-value {
     color: #22c55e;
-    font-size: 10px;
+    font-size: 9px;
     margin-left: 2px;
     -unity-font-style: bold;
 }

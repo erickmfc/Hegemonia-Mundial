@@ -15,17 +15,14 @@ public class MenuFixadoController : MonoBehaviour
     // Labels
     private Label lblCountryVal, lblDateVal;
     private Label lblMoneyVal, lblMoneyBonus, lblCurrencyVal, lblGoldVal;
-    private Label lblHappyVal, lblPopVal;
+    private Label lblHappyVal, lblPopVal, lblDeadVal, lblJobsVal;
     private Label lblOilVal, lblOilBonus;
     private Label lblSteelVal, lblSteelBonus;
-    private Label lblFoodVal;
+    private Label lblFoodVal, lblFoodBonus;
     private Label lblEnergyVal, lblEnergyBonus;
     private Label lblStorageVal;
     private Label lblMilitaryVal, lblMilitaryBonus;
 
-    // Data
-    private float timeAccumulator = 0f;
-    private int elapsedDays = 0;
     private bool _activeInScene = true;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -123,6 +120,8 @@ public class MenuFixadoController : MonoBehaviour
         
         lblHappyVal = root.Q<Label>("lbl-happy-val");
         lblPopVal = root.Q<Label>("lbl-pop-val");
+        lblDeadVal = root.Q<Label>("lbl-dead-val");
+        lblJobsVal = root.Q<Label>("lbl-jobs-val");
         
         lblOilVal = root.Q<Label>("lbl-oil-val");
         lblOilBonus = root.Q<Label>("lbl-oil-bonus");
@@ -131,6 +130,7 @@ public class MenuFixadoController : MonoBehaviour
         lblSteelBonus = root.Q<Label>("lbl-steel-bonus");
         
         lblFoodVal = root.Q<Label>("lbl-food-val");
+        lblFoodBonus = root.Q<Label>("lbl-food-bonus");
         
         lblEnergyVal = root.Q<Label>("lbl-energy-val");
         lblEnergyBonus = root.Q<Label>("lbl-energy-bonus");
@@ -140,10 +140,30 @@ public class MenuFixadoController : MonoBehaviour
         lblMilitaryVal = root.Q<Label>("lbl-military-val");
         lblMilitaryBonus = root.Q<Label>("lbl-military-bonus");
 
+        ConfigurarTooltips();
         uiPronta = true;
         CheckSceneVisibility(SceneManager.GetActiveScene());
         RegistrarEventos();
         UpdateUI();
+    }
+
+    private void ConfigurarTooltips()
+    {
+        if (lblMoneyVal != null) lblMoneyVal.tooltip = "Saldo atual do tesouro nacional.";
+        if (lblCountryVal != null) lblCountryVal.tooltip = "Pais atualmente controlado.";
+        if (lblCurrencyVal != null) lblCurrencyVal.tooltip = "Moeda nacional e relacao com a moeda lider.";
+        if (lblGoldVal != null) lblGoldVal.tooltip = "Reserva de ouro estrategica.";
+        if (lblHappyVal != null) lblHappyVal.tooltip = "Felicidade media da populacao.";
+        if (lblPopVal != null) lblPopVal.tooltip = "Populacao civil atual versus capacidade habitacional.";
+        if (lblDeadVal != null) lblDeadVal.tooltip = "Mortes acumuladas por guerra, fome e crises.";
+        if (lblJobsVal != null) lblJobsVal.tooltip = "Empregos ocupados versus vagas disponiveis.";
+        if (lblFoodVal != null) lblFoodVal.tooltip = "Estoque nacional de comida.";
+        if (lblFoodBonus != null) lblFoodBonus.tooltip = "Saldo liquido de producao e consumo de comida.";
+        if (lblEnergyVal != null) lblEnergyVal.tooltip = "Energia consumida versus energia disponivel.";
+        if (lblEnergyBonus != null) lblEnergyBonus.tooltip = "Percentual de uso ou deficit energetico.";
+        if (lblStorageVal != null) lblStorageVal.tooltip = "Ocupacao do armazem nacional.";
+        if (lblMilitaryVal != null) lblMilitaryVal.tooltip = "Soldados ativos em servico.";
+        if (lblMilitaryBonus != null) lblMilitaryBonus.tooltip = "Recrutaveis e reservistas disponiveis.";
     }
 
     private void RegistrarEventos()
@@ -152,6 +172,7 @@ public class MenuFixadoController : MonoBehaviour
         if (GerenciadorRecursos.Instancia != null) GerenciadorRecursos.Instancia.OnRecursosAtualizados += UpdateUI;
         if (CensoImperial.Instancia != null) CensoImperial.Instancia.OnCensoAtualizado += UpdateUI;
         if (GerenciadorArmazens.Instancia != null) GerenciadorArmazens.Instancia.OnArmazensAtualizados += UpdateUI;
+        if (GerenciadorTempo.Instancia != null) GerenciadorTempo.Instancia.OnDataAlterada += UpdateUI;
     }
 
     private void DesregistrarEventos()
@@ -159,6 +180,7 @@ public class MenuFixadoController : MonoBehaviour
         if (GerenciadorRecursos.Instancia != null) GerenciadorRecursos.Instancia.OnRecursosAtualizados -= UpdateUI;
         if (CensoImperial.Instancia != null) CensoImperial.Instancia.OnCensoAtualizado -= UpdateUI;
         if (GerenciadorArmazens.Instancia != null) GerenciadorArmazens.Instancia.OnArmazensAtualizados -= UpdateUI;
+        if (GerenciadorTempo.Instancia != null) GerenciadorTempo.Instancia.OnDataAlterada -= UpdateUI;
     }
 
     private void Update()
@@ -166,19 +188,6 @@ public class MenuFixadoController : MonoBehaviour
         if (!uiPronta || !_activeInScene) return;
 
         if (Time.frameCount % 30 == 0) RegistrarEventos();
-
-        timeAccumulator += Time.deltaTime;
-        if (timeAccumulator >= 120f)
-        {
-            int dias = Mathf.FloorToInt(timeAccumulator / 120f);
-            elapsedDays += dias;
-            timeAccumulator -= dias * 120f;
-            if (lblDateVal != null)
-            {
-                System.DateTime data = new System.DateTime(2000, 1, 1).AddDays(elapsedDays);
-                lblDateVal.text = data.ToString("dd/MM/yyyy");
-            }
-        }
 
         if (Time.frameCount % 60 == 0) UpdateUI();
     }
@@ -197,10 +206,16 @@ public class MenuFixadoController : MonoBehaviour
         }
 
         DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.ObterPais(SistemaGovernoMundial.Instancia.teamJogador) : null;
+        DadosEconomiaPais economia = null;
+        if (SistemaEconomiaImoveis.Instancia != null)
+        {
+            economia = SistemaEconomiaImoveis.Instancia.ObterEconomia(SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.teamJogador : 1);
+        }
 
         SetText(lblCountryVal, pais != null ? pais.nomePais.ToUpper() : "PAÍS");
         SetText(lblCurrencyVal, pais != null ? $"{pais.nomeMoeda.ToUpper()} {pais.cambioComLider:0.00}X" : "$");
         SetText(lblGoldVal, pais != null ? pais.reservaOuro.ToString("N0") : "0");
+        AtualizarData();
 
         SetText(lblMoneyVal, r.dinheiro.ToString("N0"));
         AtualizarBonus(lblMoneyBonus, r.dinheiroPorSegundo, "/s");
@@ -212,12 +227,45 @@ public class MenuFixadoController : MonoBehaviour
         AtualizarBonus(lblSteelBonus, r.acoPorSegundo, "/s");
 
         SetText(lblFoodVal, r.comida.ToString("N0"));
+        if (economia != null)
+        {
+            float comidaLiquid = economia.comidaProduzida - economia.comidaConsumida;
+            AtualizarBonus(lblFoodBonus, comidaLiquid, "/s");
+        }
+        else
+        {
+            AtualizarBonus(lblFoodBonus, 0f, "/s");
+        }
         
         SetText(lblPopVal, pais != null ? $"{pais.populacaoCivil:N0}/{pais.populacaoMaxima:N0}" : $"{r.populacaoAtual:N0}/{r.populacaoMaxima:N0}");
+        SetText(lblDeadVal, pais != null ? pais.mortosAcumulados.ToString("N0") : "0");
+        SetColor(lblDeadVal, pais != null && pais.mortosAcumulados > 0 ? new Color(0.90f, 0.30f, 0.30f) : Color.white);
+        if (lblPopVal != null && pais != null)
+        {
+            lblPopVal.tooltip = "Populacao civil: " + pais.populacaoCivil.ToString("N0")
+                + "\nPopulacao total: " + pais.populacao.ToString("N0")
+                + "\nCapacidade: " + pais.populacaoMaxima.ToString("N0");
+        }
+        if (lblDeadVal != null && pais != null)
+        {
+            lblDeadVal.tooltip = "Mortes acumuladas: " + pais.mortosAcumulados.ToString("N0")
+                + "\nMortalidade atual: " + pais.mortalidade.ToString("0.0");
+        }
         if (lblHappyVal != null && pais != null)
         {
             SetText(lblHappyVal, $"{pais.felicidade:F0}%");
             SetColor(lblHappyVal, pais.felicidade >= 70 ? Color.green : (pais.felicidade >= 40 ? Color.yellow : Color.red));
+        }
+
+        if (lblJobsVal != null && economia != null)
+        {
+            int disponiveis = Mathf.Max(0, economia.empregosDisponiveis);
+            int ocupados = Mathf.Max(0, economia.empregosOcupados);
+            lblJobsVal.text = $"{ocupados:N0}/{disponiveis:N0}";
+            SetColor(lblJobsVal, economia.deficitEmprego > 0 ? Color.yellow : Color.white);
+            lblJobsVal.tooltip = "Empregos ocupados: " + ocupados.ToString("N0")
+                + "\nVagas disponiveis: " + disponiveis.ToString("N0")
+                + "\nDeficit: " + economia.deficitEmprego.ToString("0");
         }
 
         float consumida = pais?.energiaConsumida ?? 0f;
@@ -242,20 +290,36 @@ public class MenuFixadoController : MonoBehaviour
         if (GerenciadorArmazens.Instancia?.armazemRecursos != null)
         {
             float oc = GerenciadorArmazens.Instancia.armazemRecursos.PercentualOcupacao();
-            SetText(lblStorageVal, oc >= 90f ? $"{oc:F0}% CHEIO" : $"{oc:F0}%");
+            SetText(lblStorageVal, oc >= 90f ? $"{oc:F0}% CHEIO" : $"{oc:F0}% EST");
             SetColor(lblStorageVal, oc >= 90f ? Color.red : (oc >= 75f ? Color.yellow : Color.white));
+            lblStorageVal.tooltip = "Ocupacao do armazem nacional: " + oc.ToString("0") + "%";
         }
         else
         {
-            SetText(lblStorageVal, "OK");
+            SetText(lblStorageVal, "OK EST");
             SetColor(lblStorageVal, Color.white);
         }
 
         if (CensoImperial.Instancia != null && pais != null)
         {
             SetText(lblMilitaryVal, pais.populacaoMilitarAtiva.ToString("N0"));
-            SetText(lblMilitaryBonus, $"+{pais.alistaveis:N0} RES");
+            SetText(lblMilitaryBonus, $"A {pais.alistaveis:N0} | R {pais.reservistas:N0}");
+            lblMilitaryVal.tooltip = "Soldados ativos: " + pais.populacaoMilitarAtiva.ToString("N0");
+            lblMilitaryBonus.tooltip = "Recrutaveis: " + pais.alistaveis.ToString("N0")
+                + "\nReservistas: " + pais.reservistas.ToString("N0");
         }
+    }
+
+    private void AtualizarData()
+    {
+        if (lblDateVal == null)
+        {
+            return;
+        }
+
+        int dias = GerenciadorTempo.Instancia != null ? Mathf.Max(0, GerenciadorTempo.Instancia.totalDias - 1) : 0;
+        System.DateTime data = new System.DateTime(2000, 1, 1).AddDays(dias);
+        lblDateVal.text = data.ToString("dd/MM/yyyy");
     }
 
     private void SetText(Label lbl, string text)

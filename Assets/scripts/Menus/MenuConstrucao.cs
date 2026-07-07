@@ -82,6 +82,7 @@ public class MenuConstrucao : MonoBehaviour
     private readonly Dictionary<int, Sprite> cacheIconesResolvidos = new Dictionary<int, Sprite>();
     private Sprite iconePlaceholderRuntime;
     private bool resetarScrollParaTopoPendente;
+    private bool atalhosSuspensos;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void GarantirInstanciaRuntime()
@@ -391,28 +392,158 @@ public class MenuConstrucao : MonoBehaviour
 
     void Update()
     {
-        if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null)
+        if (atalhosSuspensos)
         {
-            var selected = EventSystem.current.currentSelectedGameObject;
-            if (selected.GetComponent<InputField>() != null || 
-                selected.GetComponent<TMPro.TMP_InputField>() != null)
+            return;
+        }
+
+        LiberarSelecaoOculta();
+
+        if (teclaAtalho != KeyCode.None && Input.GetKeyDown(teclaAtalho))
+        {
+            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
+            if (AtalhoBloqueadoPorCampoTexto())
             {
                 return;
             }
-        }
-
-        if (Input.GetKeyDown(KeyCode.C) || Input.GetKeyDown(teclaAtalho))
-        {
-            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             Debug.Log("[MenuConstrucao] Tecla de atalho pressionada (C). Alternando menu...");
             AlternarMenu(!menuAberto);
         }
+    }
+
+    bool AtalhoBloqueadoPorCampoTexto()
+    {
+        if (EventSystem.current == null || EventSystem.current.currentSelectedGameObject == null)
+        {
+            return false;
+        }
+
+        GameObject selected = EventSystem.current.currentSelectedGameObject;
+        if (selected == null || !selected.activeInHierarchy)
+        {
+            return false;
+        }
+
+        bool ehCampoTexto = selected.GetComponent<InputField>() != null
+            || selected.GetComponent<TMPro.TMP_InputField>() != null;
+        if (!ehCampoTexto)
+        {
+            return false;
+        }
+
+        if (!HierarquiaCanvasVisivel(selected.transform))
+        {
+            EventSystem.current.SetSelectedGameObject(null);
+            return false;
+        }
+
+        bool campoDoMenuConstrucao = painelPrincipal != null
+            && selected.transform.IsChildOf(painelPrincipal.transform);
+
+        // Permite fechar o menu mesmo com a busca focada, mas evita abrir enquanto o
+        // jogador estiver digitando em campos realmente visíveis de outros painéis.
+        return !menuAberto || !campoDoMenuConstrucao;
+    }
+
+    void LiberarSelecaoOculta()
+    {
+        if (EventSystem.current == null)
+        {
+            return;
+        }
+
+        GameObject selected = EventSystem.current.currentSelectedGameObject;
+        if (!EhCampoTexto(selected))
+        {
+            return;
+        }
+
+        if (selected == null || !selected.activeInHierarchy || !HierarquiaCanvasVisivel(selected.transform))
+        {
+            EventSystem.current.SetSelectedGameObject(null);
+        }
+    }
+
+    bool EhCampoTexto(GameObject alvo)
+    {
+        return alvo != null
+            && (alvo.GetComponent<InputField>() != null
+                || alvo.GetComponent<TMPro.TMP_InputField>() != null);
+    }
+
+    bool HierarquiaCanvasVisivel(Transform alvo)
+    {
+        if (alvo == null || !alvo.gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        Canvas canvas = alvo.GetComponentInParent<Canvas>(true);
+        if (canvas != null && !canvas.isActiveAndEnabled)
+        {
+            return false;
+        }
+
+        CanvasGroup[] grupos = alvo.GetComponentsInParent<CanvasGroup>(true);
+        for (int i = 0; i < grupos.Length; i++)
+        {
+            CanvasGroup grupo = grupos[i];
+            if (grupo == null || grupo.ignoreParentGroups)
+            {
+                continue;
+            }
+
+            if (grupo.alpha <= 0.01f || !grupo.interactable || !grupo.blocksRaycasts)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public void AlternarMenu()
     {
         if (painelPrincipal == null) return;
         AlternarMenu(!menuAberto);
+    }
+
+    public void DefinirVisibilidadeHud(bool visivel)
+    {
+        atalhosSuspensos = !visivel;
+
+        if (!visivel)
+        {
+            if (menuAberto)
+            {
+                AlternarMenu(false);
+            }
+            else if (painelPrincipal != null)
+            {
+                painelPrincipal.SetActive(false);
+                if (canvasGroupPainel != null)
+                {
+                    canvasGroupPainel.alpha = 0f;
+                    canvasGroupPainel.blocksRaycasts = false;
+                    canvasGroupPainel.interactable = false;
+                }
+            }
+
+            LimparBuscaPresa();
+            LiberarSelecaoOculta();
+            return;
+        }
+
+        if (painelPrincipal != null && menuAberto)
+        {
+            painelPrincipal.SetActive(true);
+        }
+
+        if (canvasGroupPainel != null)
+        {
+            canvasGroupPainel.blocksRaycasts = menuAberto;
+            canvasGroupPainel.interactable = menuAberto;
+        }
     }
 
     public void AlternarMenu(bool abrir)
@@ -570,7 +701,7 @@ public class MenuConstrucao : MonoBehaviour
 
         while (tempo < duracao)
         {
-            tempo += Time.deltaTime;
+            tempo += Time.unscaledDeltaTime;
             canvasGroupPainel.alpha = Mathf.Lerp(alphaInicial, alphaFinal, tempo / duracao);
             yield return null;
         }
@@ -579,6 +710,20 @@ public class MenuConstrucao : MonoBehaviour
 
         if (!abrir)
         {
+            if (campoBusca != null)
+            {
+                campoBusca.DeactivateInputField();
+            }
+
+            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null)
+            {
+                GameObject selecionado = EventSystem.current.currentSelectedGameObject;
+                if (selecionado != null && painelPrincipal != null && selecionado.transform.IsChildOf(painelPrincipal.transform))
+                {
+                    EventSystem.current.SetSelectedGameObject(null);
+                }
+            }
+
             painelPrincipal.SetActive(false);
         }
     }
@@ -3148,18 +3293,17 @@ public class MenuConstrucao : MonoBehaviour
         float tempo = 0;
         while(tempo < 0.1f)
         {
-            tempo += Time.deltaTime;
+            tempo += Time.unscaledDeltaTime;
             if(img != null) img.color = Color.Lerp(corOriginal, corErro, tempo / 0.1f);
             yield return null;
         }
         tempo = 0;
         while(tempo < 0.3f)
         {
-            tempo += Time.deltaTime;
+            tempo += Time.unscaledDeltaTime;
             if(img != null) img.color = Color.Lerp(corErro, corOriginal, tempo / 0.3f);
             yield return null;
         }
         if(img != null) img.color = corOriginal;
     }
 }
-
