@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum PerfilPaisIA
@@ -49,6 +50,80 @@ public enum StatusPropostaInternacional
     Executada
 }
 
+public enum PosturaRelacaoPais
+{
+    Neutro,
+    Amigo,
+    Inimigo
+}
+
+[Serializable]
+public class PesquisaNacionalEstado
+{
+    public string id;
+    public string nome;
+    public string categoria;
+    public string descricao;
+    public string requisitosVisuais;
+    public string desbloqueia;
+    public string dependencias;
+    public int custoSaldo;
+    public int custoEnergia;
+    public int duracaoDias = 1;
+    public int diaInicio = -1;
+    public int nivelAtual;
+    public int nivelMaximo = 1;
+    public bool emAndamento;
+    public bool concluida;
+}
+
+[Serializable]
+public class TecnologiaNacionalEstado
+{
+    public string id;
+    public string nome;
+    public string categoria;
+    public string descricao;
+    public string efeito;
+    public string dependencias;
+    public int custoSaldo;
+    public int custoEnergia;
+    public int duracaoDias = 1;
+    public int diaInicio = -1;
+    public int nivelAtual;
+    public int nivelMaximo = 1;
+    public bool emAndamento;
+}
+
+[Serializable]
+public class LaboratorioNacionalEstado
+{
+    public string id;
+    public string nome;
+    public string especializacao;
+    public string descricao;
+    public string dependencias;
+    public int custoSaldo;
+    public int custoEnergia;
+    public int duracaoDias = 1;
+    public int diaInicio = -1;
+    public int nivelAtual;
+    public int nivelMaximo = 3;
+    public bool emExpansao;
+}
+
+[Serializable]
+public class SateliteDefesaEstado
+{
+    public bool desbloqueado;
+    public bool manutencaoAutomatica = true;
+    public float integridade = 100f;
+    public float desempenho = 72f;
+    public int custoOperacionalDiario = 180;
+    public int custoManutencaoDiaria = 120;
+    public int ultimoDiaProcessado;
+}
+
 [Serializable]
 public class DadosPaisGoverno
 {
@@ -71,15 +146,28 @@ public class DadosPaisGoverno
     public float producao = 70f;
     
     [Header("Demografia")]
-    public int populacao = 5000;
-    public int populacaoMaxima = 5000;
-    public int populacaoCivil = 5000;
+    public int populacao = 3200;
+    public int populacaoMaxima = 3200;
+    public int populacaoCivil = 3200;
     public int populacaoMilitarAtiva = 0;
     public int reservistas = 0;
     public int alistaveis = 0;
+    public int mortosAcumulados = 0;
     [Range(0f, 100f)] public float felicidade = 70f;
     public float mortalidade = 1f;
     public float natalidade = 1.2f;
+
+    // ─── Dinâmica Populacional Avançada ───────────────────────────────────
+    /// <summary>Migração líquida por tick. Positivo = imigração, Negativo = emigração.</summary>
+    public float taxaMigracao = 0f;
+    /// <summary>Razão população/capacidade habitacional (0 = vazio, 1 = lotado, >1 = superpopulação).</summary>
+    public float pressaoHabitacional = 0f;
+    /// <summary>Índice composto de satisfação (0-100) com serviços públicos e qualidade de vida.</summary>
+    public float indiceSatisfacaoServicos = 50f;
+    /// <summary>Índice de atratividade nacional para crescimento populacional (0-1).</summary>
+    public float indiceAtratividade = 0.5f;
+    // ─────────────────────────────────────────────────────────────────────
+
 
     public int saldo = 5000;
     public float rendaPorSegundo = 10f;
@@ -108,6 +196,9 @@ public class DadosPaisGoverno
 
     [Header("Diplomacia")]
     public string bloco = "Nenhum";
+    public string federacaoGlobal = string.Empty;
+    [Range(0f, 100f)] public float legitimidadeGlobal = 70f;
+    public List<EmprestimoFederativoEstado> emprestimos = new List<EmprestimoFederativoEstado>();
     public bool emGuerra;
     public bool sancionado;
     public int aliadoPrioritarioTeamId = -1;
@@ -133,6 +224,10 @@ public class DadosPaisGoverno
     [Range(0f, 1f)] public float pesoOdioRivais = 0.45f;
     public string planoEstrategico = "Equilibrio";
     public bool tecnologiaExtracaoConcluida = false;
+    public List<PesquisaNacionalEstado> pesquisas = new List<PesquisaNacionalEstado>();
+    public List<TecnologiaNacionalEstado> tecnologias = new List<TecnologiaNacionalEstado>();
+    public List<LaboratorioNacionalEstado> laboratorios = new List<LaboratorioNacionalEstado>();
+    public SateliteDefesaEstado sateliteDefesa = new SateliteDefesaEstado();
 
     [Header("Estoque")]
     public int comida = 500;
@@ -141,6 +236,25 @@ public class DadosPaisGoverno
     public int aco = 300;
     public int armamentos = 500;
     public int uranio;
+
+    // ─── Estoque Mineral (gerido pelo SistemaIndustrial) ─────────────────
+    // Matéria-Prima Bruta (toneladas)
+    [Header("Estoque Mineral — Bruto (t)")]
+    public float minerioFerro       = 0f;
+    public float minerioCobre       = 0f;
+    public float bauxita            = 0f;
+    public float minerioTitanio     = 0f;
+    public float uranioBruto        = 0f;
+
+    // Materiais Refinados (toneladas)
+    [Header("Estoque Mineral — Refinado (t)")]
+    public float acoEstrutural              = 0f;
+    public float cobreEletrolitico          = 0f;
+    public float duraluminio               = 0f;
+    public float ligaTitanio               = 0f;
+    public float componentesEletronicos    = 0f;
+    public float uranioEnriquecido         = 0f;
+    // ─────────────────────────────────────────────────────────────────────
 
     public float PoderDeCompra
     {
@@ -212,6 +326,8 @@ public class RelacaoPaisGoverno
     public bool pedidoPendente;
     public bool sancaoAtiva;
     public bool guerraDeclarada;
+    public PosturaRelacaoPais posturaAParaB = PosturaRelacaoPais.Neutro;
+    public PosturaRelacaoPais posturaBParaA = PosturaRelacaoPais.Neutro;
 
     public bool Envolve(int a, int b)
     {
@@ -221,5 +337,16 @@ public class RelacaoPaisGoverno
     public int Outro(int teamId)
     {
         return teamA == teamId ? teamB : teamA;
+    }
+
+    public PosturaRelacaoPais PosturaDe(int teamId)
+    {
+        return teamA == teamId ? posturaAParaB : posturaBParaA;
+    }
+
+    public void DefinirPostura(int teamId, PosturaRelacaoPais postura)
+    {
+        if (teamA == teamId) posturaAParaB = postura;
+        else if (teamB == teamId) posturaBParaA = postura;
     }
 }

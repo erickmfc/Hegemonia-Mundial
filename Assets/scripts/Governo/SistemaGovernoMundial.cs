@@ -119,6 +119,8 @@ public class SistemaGovernoMundial : MonoBehaviour
             relacoes.Add(new RelacaoPaisGoverno { teamA = 1, teamB = 5, valor = 28, tratadoComercial = true, pedidoPendente = true });
         }
 
+        GarantirPosturasIniciais();
+
         foreach (DadosPaisGoverno pais in paises)
         {
             GarantirCatalogosNacionais(pais);
@@ -128,6 +130,22 @@ public class SistemaGovernoMundial : MonoBehaviour
         IA01NationNameRegistry.GarantirMoedasUnicas(paises);
 
         SincronizarJogador();
+    }
+
+    private void GarantirPosturasIniciais()
+    {
+        foreach (RelacaoPaisGoverno rel in relacoes)
+        {
+            if (rel == null) continue;
+            if (rel.posturaAParaB == PosturaRelacaoPais.Neutro && rel.valor >= 50)
+                rel.posturaAParaB = PosturaRelacaoPais.Amigo;
+            else if (rel.posturaAParaB == PosturaRelacaoPais.Neutro && rel.valor <= -50)
+                rel.posturaAParaB = PosturaRelacaoPais.Inimigo;
+            if (rel.posturaBParaA == PosturaRelacaoPais.Neutro && rel.valor >= 50)
+                rel.posturaBParaA = PosturaRelacaoPais.Amigo;
+            else if (rel.posturaBParaA == PosturaRelacaoPais.Neutro && rel.valor <= -50)
+                rel.posturaBParaA = PosturaRelacaoPais.Inimigo;
+        }
     }
 
     public void GarantirPaisIA(int teamId, string nomePais, string nomeMoeda, string simboloMoeda, PerfilPaisIA perfil, ModoInicialPaisIA modo)
@@ -183,6 +201,87 @@ public class SistemaGovernoMundial : MonoBehaviour
         rel = new RelacaoPaisGoverno { teamA = a, teamB = b, valor = 0, tratadoComercial = true };
         relacoes.Add(rel);
         return rel;
+    }
+
+    public PosturaRelacaoPais ObterPostura(int origemTeamId, int alvoTeamId)
+    {
+        RelacaoPaisGoverno rel = ObterRelacao(origemTeamId, alvoTeamId);
+        return rel == null ? PosturaRelacaoPais.Neutro : rel.PosturaDe(origemTeamId);
+    }
+
+    public bool DefinirPostura(int origemTeamId, int alvoTeamId, PosturaRelacaoPais postura, out string mensagem)
+    {
+        mensagem = string.Empty;
+        DadosPaisGoverno origem = ObterPais(origemTeamId);
+        DadosPaisGoverno alvo = ObterPais(alvoTeamId);
+        if (origem == null || alvo == null || origemTeamId == alvoTeamId)
+        {
+            mensagem = "Nacao invalida para relacionamento.";
+            return false;
+        }
+
+        RelacaoPaisGoverno rel = ObterRelacao(origemTeamId, alvoTeamId);
+        if (postura == PosturaRelacaoPais.Inimigo && origem.federacaoGlobal == alvo.federacaoGlobal
+            && !string.IsNullOrWhiteSpace(origem.federacaoGlobal))
+        {
+            mensagem = "Membros da mesma federacao nao podem declarar Inimigo sem romper o tratado.";
+            return false;
+        }
+
+        rel.DefinirPostura(origemTeamId, postura);
+        if (postura == PosturaRelacaoPais.Amigo) rel.valor = Mathf.Clamp(rel.valor + 5, -100, 100);
+        else if (postura == PosturaRelacaoPais.Inimigo) rel.valor = Mathf.Clamp(rel.valor - 8, -100, 100);
+        RegistrarNoticia(origem.nomePais + " declarou " + postura + " em relacao a " + alvo.nomePais + ".");
+        mensagem = "Postura definida: " + postura + ".";
+        OnGovernoAtualizado?.Invoke();
+        return true;
+    }
+
+    private void GerarPedidosDeAjudaAutomaticos()
+    {
+        if (paises == null || teamJogador <= 0) return;
+        float agora = Time.unscaledTime;
+        foreach (DadosPaisGoverno solicitante in paises)
+        {
+            if (solicitante == null || solicitante.teamId == teamJogador) continue;
+            if (solicitante.estabilidade > 45f && !solicitante.emGuerra && solicitante.comida > 0) continue;
+
+            RecursoMercado recurso;
+            string motivo;
+            if (solicitante.comida <= 0 || solicitante.deficitComida > 0f)
+            {
+                recurso = RecursoMercado.Comida;
+                motivo = "Pedido de mantimento alimentar: estoque de comida critico.";
+            }
+            else if (solicitante.emGuerra || solicitante.nivelMilitar < 30)
+            {
+                recurso = RecursoMercado.Armamentos;
+                motivo = "Pedido de apoio militar contra ameaca ativa.";
+            }
+            else
+            {
+                recurso = RecursoMercado.Energia;
+                motivo = "Pedido de mantimento energetico para estabilizar a economia.";
+            }
+
+            bool jaExiste = propostas.Any(p => p != null && p.EstaPendente && p.tipo == TipoPropostaInternacional.PedidoAjuda
+                && p.origemTeamId == solicitante.teamId && p.alvoTeamId == teamJogador && p.recurso == recurso && p.expiraEm > agora);
+            if (jaExiste) continue;
+
+            TentarCriarProposta(new PropostaInternacional
+            {
+                origemTeamId = solicitante.teamId,
+                alvoTeamId = teamJogador,
+                tipo = TipoPropostaInternacional.PedidoAjuda,
+                recurso = recurso,
+                quantidade = Mathf.Clamp(solicitante.populacao / 4, 50, 400),
+                precoUnitario = 1,
+                prioridade = 90,
+                motivo = motivo,
+                expiraEm = agora + 120f,
+                dedupKey = "ajuda-auto:" + solicitante.teamId + ":" + recurso
+            });
+        }
     }
 
     public IEnumerable<DadosPaisGoverno> ObterAliados(int teamId)
@@ -357,6 +456,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
 
         AtualizarReferenciasMoeda();
+        GerarPedidosDeAjudaAutomaticos();
 
         OnGovernoAtualizado?.Invoke();
     }

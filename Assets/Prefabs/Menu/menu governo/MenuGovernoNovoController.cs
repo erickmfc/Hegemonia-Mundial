@@ -851,6 +851,48 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         conteudo.Add(linha);
     }
 
+    private void TabelaPedidoAjuda(SistemaGovernoMundial gov, PropostaInternacional proposta)
+    {
+        VisualElement linha = new VisualElement();
+        linha.AddToClassList("gov-table-row");
+        foreach (string valor in new[]
+        {
+            gov.NomePais(proposta.origemTeamId),
+            "MANTIMENTO",
+            proposta.recurso.ToString(),
+            proposta.quantidade.ToString("N0")
+        })
+        {
+            Label label = new Label(valor);
+            label.AddToClassList("gov-table-cell");
+            linha.Add(label);
+        }
+
+        VisualElement botoes = new VisualElement();
+        botoes.AddToClassList("gov-table-cell");
+        botoes.style.flexDirection = FlexDirection.Row;
+        string id = proposta.id;
+        Button aceitar = new Button(() => ResolverPedidoAjuda(id, StatusPropostaInternacional.Aceita)) { text = "ACEITAR" };
+        aceitar.AddToClassList("gov-row-button");
+        Button recusar = new Button(() => ResolverPedidoAjuda(id, StatusPropostaInternacional.Recusada)) { text = "RECUSAR" };
+        recusar.AddToClassList("gov-row-button");
+        botoes.Add(aceitar);
+        botoes.Add(recusar);
+        linha.Add(botoes);
+        conteudo.Add(linha);
+    }
+
+    private void ResolverPedidoAjuda(string propostaId, StatusPropostaInternacional status)
+    {
+        SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
+        if (gov == null) return;
+        string mensagem;
+        bool ok = gov.ResolverProposta(propostaId, status, out mensagem);
+        MostrarMensagem((ok ? "Pedido de ajuda: " : "Pedido de ajuda recusado: ") + mensagem);
+        AtualizarRecursos();
+        MostrarPagina(abaAtual);
+    }
+
     private void TabelaLinhaDuplaAcao(string a, string b, string c, string d, Action acaoMais, Action acaoMenos)
     {
         VisualElement linha = new VisualElement(); linha.AddToClassList("gov-table-row");
@@ -874,10 +916,47 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         card.Add(new Label("Caixa: $ " + n.saldo.ToString("N0") + " | Divida: $ " + n.divida.ToString("N0") + " | Estado: " + ObterStatusNacional(n)));
         card.Add(new Label("Moeda: " + n.nomeMoeda + " | 1 " + n.nomeMoeda + " = " + n.cambioComLider.ToString("0.00") + " DH"));
         card.Add(new Label("Federacao: " + SistemaFederacoesGlobais.NomeFederacao(n.federacaoGlobal)));
+        if (n.teamId != 1 && SistemaGovernoMundial.Instancia != null)
+        {
+            SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
+            PropostaInternacional pedido = gov.Propostas.FirstOrDefault(p => p != null && p.EstaPendente
+                && p.tipo == TipoPropostaInternacional.PedidoAjuda && p.origemTeamId == n.teamId && p.alvoTeamId == 1);
+            if (pedido != null)
+            {
+                Label alerta = new Label("PEDIDO DE AJUDA: " + pedido.recurso.ToString().ToUpperInvariant() + " x" + pedido.quantidade.ToString("N0"));
+                alerta.AddToClassList("state-warn");
+                card.Add(alerta);
+            }
+            PosturaRelacaoPais postura = gov.ObterPostura(1, n.teamId);
+            Label relacao = new Label("Postura bilateral: " + postura.ToString().ToUpperInvariant());
+            relacao.AddToClassList("gov-section-title");
+            card.Add(relacao);
+            VisualElement posturaBotoes = new VisualElement();
+            posturaBotoes.style.flexDirection = FlexDirection.Row;
+            foreach (PosturaRelacaoPais opcao in new[] { PosturaRelacaoPais.Amigo, PosturaRelacaoPais.Neutro, PosturaRelacaoPais.Inimigo })
+            {
+                PosturaRelacaoPais escolha = opcao;
+                Button botao = new Button(() => DefinirPosturaMenu(n.teamId, escolha)) { text = escolha.ToString().ToUpperInvariant() };
+                botao.AddToClassList("gov-row-button");
+                if (escolha == postura) botao.AddToClassList("selected");
+                posturaBotoes.Add(botao);
+            }
+            card.Add(posturaBotoes);
+        }
         Button selecionar = new Button(() => { paisSelecionado = n.teamId; MostrarMensagem(n.nomePais + " selecionado."); MostrarPagina(abaAtual); }) { text = "ABRIR PAIS" };
         selecionar.AddToClassList("gov-row-button");
         card.Add(selecionar);
         conteudo.Add(card);
+    }
+
+    private void DefinirPosturaMenu(int alvoTeamId, PosturaRelacaoPais postura)
+    {
+        SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
+        if (gov == null) return;
+        string mensagem;
+        bool ok = gov.DefinirPostura(1, alvoTeamId, postura, out mensagem);
+        MostrarMensagem((ok ? "Relacao atualizada: " : "Relacao recusada: ") + mensagem);
+        MostrarPagina(abaAtual);
     }
 
     private void ConstruirRelacoes()
@@ -1016,7 +1095,10 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             }
             foreach (PropostaInternacional proposta in pendentes)
             {
-                TabelaLinha(g.NomePais(proposta.origemTeamId), proposta.tipo.ToString(), proposta.recurso.ToString(), proposta.quantidade.ToString(), "ANALISAR", () => MostrarMensagem("Pedido de " + g.NomePais(proposta.origemTeamId) + " selecionado."));
+                if (proposta.tipo == TipoPropostaInternacional.PedidoAjuda)
+                    TabelaPedidoAjuda(g, proposta);
+                else
+                    TabelaLinha(g.NomePais(proposta.origemTeamId), proposta.tipo.ToString(), proposta.recurso.ToString(), proposta.quantidade.ToString(), "ANALISAR", () => MostrarMensagem("Pedido de " + g.NomePais(proposta.origemTeamId) + " selecionado."));
             }
             return;
         }
