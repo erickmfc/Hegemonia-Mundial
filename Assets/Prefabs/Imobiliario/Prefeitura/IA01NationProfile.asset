@@ -1,0 +1,123 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5b56d4b2a7d48ba90ba06f54b0d2530, type: 3}
+  m_Name: IA01NationProfile
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NationProfile
+  profileKey: default
+  nationIdHint: 0
+  teamIdHint: 0
+  nationName: Nation
+  presidentName: President
+  currencyName: Credit
+  currencySymbol: $
+  countryProfile: Neutral
+  difficultyProfile: normal
+  seedOffset: 0
+  personality: 0
+  doctrine: 0
+  defaultExecutionMode: 3
+  defaultNationMode: 1
+  defaultStage: 0
+  defaultPosture: 0
+  aggressionWeight: 0.5
+  cautionWeight: 0.5
+  commercialWeight: 0.5
+  diplomacyWeight: 0.5
+  militaryWeight: 0.5
+  selfSufficiencyWeight: 0.5
+  expansionWeight: 0.5
+  opportunismWeight: 0.5
+  landWeight: 0.5
+  airWeight: 0.5
+  navalWeight: 0.5
+  defenseWeight: 0.5
+  economyWeight: 0.5
+  industryWeight: 0.5
+  agricultureWeight: 0.5
+  technologyWeight: 0.5
+  initialTreasury: 30000
+  baseCadenceSeconds: 0.65
+  minSliceMilliseconds: 0.08
+  maxSliceMilliseconds: 0.75
+  maxOperationsPerSlice: 8
+  maxEventsPerSlice: 12
+  allowObserverWriteBacks: 0
+  preferDeterministicBoot: 1
+  allowSaveIntegration: 1
+  allowAutoBootstrap: 1
+  constructionGovernor:
+    emergencyReserve: 2500
+    minimumConstructionReserve: 1000
+    maximumConstructionBudgetPercent: 0.25
+    maximumMaintenancePercent: 0.25
+    minimumAcceptableFps: 20
+    maxIaFrameBudgetMs: 8
+    maxBuildPlannerBudgetMs: 4
+    maxCandidatesPerSlice: 8
+    maxPhysicsChecksPerSlice: 32
+    phaseLimits:
+    - stage: 0
+      maxTotalStructures: 2
+      maxCapital: 1
+      maxResidential: 1
+      maxFoodProduction: 1
+      maxEnergyProduction: 1
+      maxStorage: 0
+      maxLogistics: 0
+      maxIndustrial: 0
+      maxDefense: 0
+      maxCoveragePercent: 0.25
+      minimumSpacing: 18
+      reservedOpenSpacePercent: 70
+      roadSpacePercent: 0
+    - stage: 3
+      maxTotalStructures: 8
+      maxCapital: 1
+      maxResidential: 3
+      maxFoodProduction: 2
+      maxEnergyProduction: 2
+      maxStorage: 2
+      maxLogistics: 1
+      maxIndustrial: 0
+      maxDefense: 0
+      maxCoveragePercent: 0.45
+      minimumSpacing: 14
+      reservedOpenSpacePercent: 40
+      roadSpacePercent: 10
+    - stage: 4
+      maxTotalStructures: 16
+      maxCapital: 1
+      maxResidential: 6
+      maxFoodProduction: 4
+      maxEnergyProduction: 4
+      maxStorage: 4
+      maxLogistics: 3
+      maxIndustrial: 2
+      maxDefense: 1
+      maxCoveragePercent: 0.6
+      minimumSpacing: 12
+      reservedOpenSpacePercent: 25
+      roadSpacePercent: 15
+    - stage: 100
+      maxTotalStructures: 0
+      maxCapital: 1
+      maxResidential: 0
+      maxFoodProduction: 0
+      maxEnergyProduction: 0
+      maxStorage: 0
+      maxLogistics: 0
+      maxIndustrial: 0
+      maxDefense: 0
+      maxCoveragePercent: 0
+      minimumSpacing: 16
+      reservedOpenSpacePercent: 100
+      roadSpacePercent: 0

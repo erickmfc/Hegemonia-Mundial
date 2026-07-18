@@ -1,0 +1,43 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="MenuGovernoNovo.uss" />
+    <ui:VisualElement name="menu-governo" class="gov-root">
+        <ui:VisualElement class="gov-shell">
+            <ui:VisualElement class="gov-header">
+                <ui:VisualElement class="gov-brand">
+                    <ui:Label text="A" class="gov-crest" />
+                    <ui:VisualElement>
+                        <ui:Label name="country-name" text="REPUBLICA ATLAS" class="gov-country" />
+                        <ui:Label name="country-meta" text="PRESIDENTE ATLAS" class="gov-meta" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="gov-title">
+                    <ui:Label text="HEGEMONIA" />
+                    <ui:Label text="GLOBAL" class="gov-title-accent" />
+                </ui:VisualElement>
+                <ui:VisualElement class="gov-status">
+                    <ui:Label text="STATUS NACIONAL" class="gov-caption" />
+                    <ui:Label name="national-status" text="PAZ" class="gov-status-value" />
+                </ui:VisualElement>
+                <ui:Button name="close-button" text="X" class="gov-close" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="resource-bar" class="gov-resources" />
+
+            <ui:VisualElement class="gov-body">
+                <ui:ScrollView name="navigation" class="gov-navigation" mode="Vertical" />
+                <ui:VisualElement class="gov-workspace">
+                    <ui:ScrollView name="section-tabs" class="gov-tabs" mode="Horizontal" />
+                    <ui:VisualElement class="gov-page">
+                        <ui:ScrollView name="content-panel" class="gov-content" mode="Vertical" />
+                        <ui:ScrollView name="action-panel" class="gov-actions" mode="Vertical" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="gov-footer">
+                <ui:Label name="footer-message" text="GOVERNO: Sistema nacional operacional." />
+                <ui:Label name="breadcrumb" text="Relacoes / Resumo" class="gov-footer-path" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -18,16 +18,16 @@ public class MenuInicialController : MonoBehaviour
     private const float VelocidadeNavio = 0.38f;
     private const float IntervaloDisparoTorreta = 1.2f;
 
-    private readonly Color corPainel = new Color(0.03f, 0.08f, 0.12f, 0.92f);
-    private readonly Color corPainelTopo = new Color(0.08f, 0.16f, 0.2f, 0.88f);
-    private readonly Color corBorda = new Color(0.36f, 0.84f, 0.98f, 0.34f);
-    private readonly Color corBotao = new Color(0.09f, 0.16f, 0.2f, 0.84f);
-    private readonly Color corBotaoHover = new Color(0.14f, 0.25f, 0.32f, 0.96f);
-    private readonly Color corBotaoDestaque = new Color(0.18f, 0.42f, 0.56f, 0.96f);
-    private readonly Color corBotaoBloqueado = new Color(0.08f, 0.11f, 0.14f, 0.62f);
-    private readonly Color corBotaoSair = new Color(0.36f, 0.17f, 0.17f, 0.9f);
-    private readonly Color corTexto = new Color(0.92f, 0.98f, 1f, 1f);
-    private readonly Color corTextoSuave = new Color(0.74f, 0.86f, 0.91f, 1f);
+    private readonly Color corPainel = new Color(0.025f, 0.055f, 0.075f, 0.96f);
+    private readonly Color corPainelTopo = new Color(0.035f, 0.13f, 0.18f, 0.98f);
+    private readonly Color corBorda = new Color(0.27f, 0.78f, 0.88f, 0.55f);
+    private readonly Color corBotao = new Color(0.045f, 0.095f, 0.125f, 0.96f);
+    private readonly Color corBotaoHover = new Color(0.08f, 0.24f, 0.29f, 0.98f);
+    private readonly Color corBotaoDestaque = new Color(0.02f, 0.39f, 0.49f, 0.98f);
+    private readonly Color corBotaoBloqueado = new Color(0.055f, 0.07f, 0.08f, 0.8f);
+    private readonly Color corBotaoSair = new Color(0.28f, 0.075f, 0.09f, 0.96f);
+    private readonly Color corTexto = new Color(0.91f, 0.98f, 0.98f, 1f);
+    private readonly Color corTextoSuave = new Color(0.59f, 0.76f, 0.79f, 1f);
     private readonly Color corTextoDesabilitado = new Color(0.68f, 0.74f, 0.78f, 0.72f);
     private readonly Color corTextoAlerta = new Color(1f, 0.74f, 0.68f, 1f);
     private readonly Vector3 posicaoCameraFallback = new Vector3(13.5f, 7.4f, -18.5f);
@@ -195,10 +195,21 @@ public class MenuInicialController : MonoBehaviour
 
     public void Btn_CarregarJogo()
     {
-        if (!sistemaSave.TentarCarregarJogo())
+        if (!sistemaSave.PossuiSave())
         {
             AtualizarEstadoDoSave();
             DefinirStatus(LocalizationManager.T("menu.main.no_save", "Nenhum save encontrado para carregar."), true);
+            return;
+        }
+
+        PainelSavesUI.Abrir(canvasMenuPrincipal.transform, sistemaSave, false, CarregarSaveSelecionado);
+    }
+
+    private void CarregarSaveSelecionado(string saveId)
+    {
+        if (!sistemaSave.TentarCarregarSave(saveId))
+        {
+            DefinirStatus("Nao foi possivel carregar a partida selecionada.", true);
             return;
         }
 
@@ -783,44 +794,53 @@ public class MenuInicialController : MonoBehaviour
 
         canvasMenuPrincipal.gameObject.AddComponent<GraphicRaycaster>();
 
-        RectTransform vinheta = CriarPainel("Vinheta", canvasMenuPrincipal.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Color(0f, 0f, 0f, 0.16f));
+        RectTransform vinheta = CriarPainel("Vinheta", canvasMenuPrincipal.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Color(0f, 0.025f, 0.04f, 0.12f));
         vinheta.offsetMin = Vector2.zero;
         vinheta.offsetMax = Vector2.zero;
 
-        RectTransform painel = CriarPainel("PainelLateral", canvasMenuPrincipal.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(354f, 0f), corPainel);
-        CriarPainel("FaixaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -18f), new Vector2(0f, 122f), corPainelTopo);
+        RectTransform painel = CriarPainel("PainelLateral", canvasMenuPrincipal.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(520f, 0f), corPainel);
+        CriarPainel("FaixaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -18f), new Vector2(0f, 174f), corPainelTopo);
         CriarPainel("BrilhoBorda", painel, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(-2f, 0f), new Vector2(3f, 0f), corBorda);
+        CriarPainel("LinhaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -22f), new Vector2(0f, 3f), new Color(0.25f, 0.9f, 0.96f, 0.95f));
 
         RectTransform coluna = new GameObject("ColunaMenu").AddComponent<RectTransform>();
         coluna.SetParent(painel, false);
         coluna.anchorMin = new Vector2(0f, 0f);
         coluna.anchorMax = new Vector2(1f, 1f);
-        coluna.offsetMin = new Vector2(24f, 24f);
-        coluna.offsetMax = new Vector2(-22f, -24f);
+        coluna.offsetMin = new Vector2(34f, 28f);
+        coluna.offsetMax = new Vector2(-34f, -28f);
 
-        CriarTexto("Titulo", coluna, "HEGEMONIA\nGLOBAL", 38, FontStyle.Bold, TextAnchor.UpperLeft, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -8f), new Vector2(0f, 92f));
-        CriarTexto("Subtitulo", coluna, LocalizationManager.T("menu.main.subtitle", "Nova campanha e carregar jogo"), 16, FontStyle.Normal, TextAnchor.UpperLeft, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -94f), new Vector2(0f, 24f));
+        CriarTexto("Selo", coluna, "CENTRO DE COMANDO  //  HGM-01", 11, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.35f, 0.91f, 0.94f, 0.98f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -6f), new Vector2(0f, 22f));
+        CriarTexto("Titulo", coluna, "HEGEMONIA\nGLOBAL", 43, FontStyle.Bold, TextAnchor.UpperLeft, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -22f), new Vector2(0f, 104f));
+        CriarTexto("Subtitulo", coluna, LocalizationManager.T("menu.main.subtitle", "Estratégia, território e poder"), 16, FontStyle.Normal, TextAnchor.UpperLeft, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -122f), new Vector2(0f, 24f));
+        CriarPainel("DivisorAcoes", coluna, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -158f), new Vector2(0f, 1f), new Color(0.24f, 0.68f, 0.72f, 0.32f));
+        CriarTexto("SecaoAcoes", coluna, "OPERAÇÕES  /  SELECIONE UMA DIRETRIZ", 11, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.53f, 0.84f, 0.86f, 0.95f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -170f), new Vector2(0f, 22f));
 
         RectTransform grupoBotoes = new GameObject("GrupoBotoes").AddComponent<RectTransform>();
         grupoBotoes.SetParent(coluna, false);
         grupoBotoes.anchorMin = new Vector2(0f, 1f);
         grupoBotoes.anchorMax = new Vector2(1f, 1f);
         grupoBotoes.pivot = new Vector2(0.5f, 1f);
-        grupoBotoes.anchoredPosition = new Vector2(0f, -160f);
-        grupoBotoes.sizeDelta = new Vector2(0f, 420f);
+        grupoBotoes.anchoredPosition = new Vector2(0f, -202f);
+        grupoBotoes.sizeDelta = new Vector2(0f, 548f);
 
         float posicaoY = 0f;
         CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.new", "Nova Campanha"), "CP", corBotaoDestaque, true, Btn_NovaCampanha, ref posicaoY);
         CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.tutorial", "Tutorial"), "TR", corBotao, true, Btn_Tutorial, ref posicaoY);
-        CriarBotao(grupoBotoes, "Escaramuca", "SK", corBotao, false, () => Btn_ModoIndisponivel("Escaramuca"), ref posicaoY);
+        CriarBotao(grupoBotoes, "Escaramuça", "SK", corBotao, false, () => Btn_ModoIndisponivel("Escaramuça"), ref posicaoY);
         CriarBotao(grupoBotoes, "Multijogador", "MP", corBotao, false, () => Btn_ModoIndisponivel("Multijogador"), ref posicaoY);
         botaoCarregar = CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.load", "Carregar Jogo"), "LD", corBotao, true, Btn_CarregarJogo, ref posicaoY);
         CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.language", "Idioma") + ": " + LocalizationManager.Instancia.NomeIdiomaAtual(), "LG", corBotao, true, Btn_AlternarIdioma, ref posicaoY);
         CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.difficulty", "Dificuldade") + ": " + GameDifficultyManager.Instancia.NomeDificuldadeAtual(), "DF", corBotao, true, Btn_AlternarDificuldade, ref posicaoY);
         CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.exit", "Sair"), "EX", corBotaoSair, true, Btn_Sair, ref posicaoY);
 
-        statusText = CriarTexto("Status", coluna, string.Empty, 15, FontStyle.Bold, TextAnchor.LowerLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 96f), new Vector2(0f, 34f));
-        CriarTexto("Rodape", coluna, "O jogo abre pelo menu principal.\nCampanha e tutorial usam cenas canonicas do bootstrap.\nESC pausa e F1 abre ajuda durante a partida.", 13, FontStyle.Normal, TextAnchor.LowerLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 14f), new Vector2(0f, 78f));
+        RectTransform statusBox = CriarPainel("StatusBox", coluna, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 112f), new Vector2(0f, 68f), new Color(0.035f, 0.13f, 0.15f, 0.96f));
+        statusText = CriarTexto("Status", statusBox, string.Empty, 15, FontStyle.Bold, TextAnchor.MiddleLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(16f, 0f), new Vector2(-32f, 0f));
+        CriarTexto("Rodape", coluna, "SISTEMA ONLINE  /  ESC para pausar  /  F1 para ajuda", 11, FontStyle.Normal, TextAnchor.LowerLeft, new Color(0.42f, 0.62f, 0.65f, 0.9f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 20f), new Vector2(0f, 28f));
+
+        CriarPainel("HUDSuperiorDireito", canvasMenuPrincipal.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-34f, -34f), new Vector2(330f, 82f), new Color(0.02f, 0.07f, 0.09f, 0.72f));
+        CriarTexto("Setor", canvasMenuPrincipal.transform, "ATLANTIC THEATER  //  SECTOR 07", 12, FontStyle.Bold, TextAnchor.MiddleLeft, new Color(0.5f, 0.88f, 0.88f, 0.95f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-190f, -38f), new Vector2(300f, 22f));
+        CriarTexto("EstadoRede", canvasMenuPrincipal.transform, "COMMAND NETWORK   -   ONLINE", 11, FontStyle.Normal, TextAnchor.MiddleLeft, new Color(0.76f, 0.88f, 0.84f, 0.88f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-190f, -66f), new Vector2(300f, 20f));
     }
 
     private void RecriarInterface()
@@ -893,13 +913,14 @@ public class MenuInicialController : MonoBehaviour
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0.5f, 1f);
         rect.anchoredPosition = new Vector2(0f, -posicaoY);
-        rect.sizeDelta = new Vector2(0f, 56f);
+        rect.sizeDelta = new Vector2(0f, 60f);
 
         Image fundo = botaoObject.AddComponent<Image>();
         fundo.color = interativo ? corBase : corBotaoBloqueado;
+        fundo.raycastTarget = true;
 
         Outline borda = botaoObject.AddComponent<Outline>();
-        borda.effectColor = new Color(corBorda.r, corBorda.g, corBorda.b, interativo ? 0.24f : 0.1f);
+        borda.effectColor = new Color(corBorda.r, corBorda.g, corBorda.b, interativo ? 0.28f : 0.08f);
         borda.effectDistance = new Vector2(1f, -1f);
 
         Button botao = botaoObject.AddComponent<Button>();
@@ -915,8 +936,21 @@ public class MenuInicialController : MonoBehaviour
         botao.onClick.AddListener(acao);
 
         Color corRotulo = interativo ? corTexto : corTextoDesabilitado;
-        CriarTexto("Label", botaoObject.transform, titulo.ToUpper(), 21, FontStyle.Bold, TextAnchor.MiddleLeft, corRotulo, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(18f, 0f), new Vector2(-70f, 0f));
-        CriarTexto("Icon", botaoObject.transform, icone, 18, FontStyle.Bold, TextAnchor.MiddleCenter, corRotulo, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(-24f, 0f), new Vector2(34f, 0f));
+        RectTransform barra = CriarPainel("Accent", botaoObject.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(4f, 0f), interativo ? new Color(0.28f, 0.91f, 0.94f, 0.95f) : new Color(0.34f, 0.38f, 0.41f, 0.55f));
+        barra.SetAsFirstSibling();
+
+        Text label = CriarTexto("Label", botaoObject.transform, titulo.ToUpper(), 17, FontStyle.Bold, TextAnchor.MiddleLeft, corRotulo, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(22f, 0f), new Vector2(-100f, 0f));
+        label.horizontalOverflow = HorizontalWrapMode.Wrap;
+        label.verticalOverflow = VerticalWrapMode.Truncate;
+        label.resizeTextForBestFit = true;
+        label.resizeTextMinSize = 13;
+        label.resizeTextMaxSize = 17;
+
+        RectTransform iconBadge = CriarPainel("IconBadge", botaoObject.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(54f, 32f), new Color(0.32f, 0.85f, 0.86f, interativo ? 0.12f : 0.04f));
+        Text iconText = CriarTexto("Icon", iconBadge, icone, 16, FontStyle.Bold, TextAnchor.MiddleCenter, corRotulo, new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
+        iconText.resizeTextForBestFit = true;
+        iconText.resizeTextMinSize = 12;
+        iconText.resizeTextMaxSize = 16;
 
         posicaoY += 68f;
         return botao;

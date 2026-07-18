@@ -141,8 +141,8 @@ public class MenuGoverno : MonoBehaviour
     private static Font fontePadraoCache;
     private static readonly CategoriaGoverno[] Categorias = (CategoriaGoverno[])Enum.GetValues(typeof(CategoriaGoverno));
     private static readonly string[] SubRelacoes = { "Resumo", "Nacoes", "Tratados", "Crises" };
-    private static readonly string[] SubAliancas = { "Blocos", "Pactos", "Operacoes", "Pedidos" };
-    private static readonly string[] SubSancoes = { "Visao Geral", "Aplicadas", "Tipos", "Historico" };
+    private static readonly string[] SubAliancas = { "Federacoes", "Pactos", "Operacoes", "Pedidos" };
+    private static readonly string[] SubSancoes = { "Visao Geral", "Aplicadas", "Tipos", "Historico", "Legitimidade", "Emprestimos" };
     private static readonly string[] SubEconomia = { "Tesouro", "Orcamento", "Producao", "Impostos" };
     private static readonly string[] SubMercado = { "Comprar", "Vender", "Precos", "Rotas" };
     private static readonly string[] SubInterior = { "Populacao", "Cidades", "Bem-estar", "Projetos" };
@@ -286,7 +286,7 @@ public class MenuGoverno : MonoBehaviour
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += AoMudarCena;
 
         SistemaGovernoMundial.GarantirInstancia();
-        if (MenuGovernoNovoController.GarantirInstancia())
+        if (MenuGovernoNovoController.GarantirInstancia() && MenuGovernoNovoController.Instancia != null)
         {
             MenuGovernoNovoController.Instancia.Abrir(false);
             return;
@@ -347,8 +347,9 @@ public class MenuGoverno : MonoBehaviour
     public void AlternarMenu(bool abrir)
     {
         GarantirAtivo(this);
-        if (MenuGovernoNovoController.GarantirInstancia())
+        if (MenuGovernoNovoController.GarantirInstancia() && MenuGovernoNovoController.Instancia != null)
         {
+            EstaAberto = abrir;
             MenuGovernoNovoController.Instancia.Abrir(abrir);
             EsconderHUD(abrir);
             if (painelPrincipal != null) painelPrincipal.SetActive(false);
@@ -1165,10 +1166,9 @@ public class MenuGoverno : MonoBehaviour
                     BuildPendingProposalRows(page.Root.transform, true);
                     break;
                 default:
-                    CreateSectionTitle(page.Root.transform, "Aliancas e blocos");
-                    CreateDescription(page.Root.transform, "Blocos geopoliticos, afinidade e parceiros prioritarios.");
-                    CreateHeaderRow(page.Root.transform, new[] { "PAIS", "BLOCO", "REL", "STATUS" }, new[] { 1.35f, 0.95f, 0.45f, 0.75f });
-                    RebuildSimpleCountryRows(page.Root.transform, "Alianca");
+                    CreateSectionTitle(page.Root.transform, "Federacoes globais");
+                    CreateDescription(page.Root.transform, "Filiacao obrigatoria, balanceamento automatico e influencia dos dois blocos.");
+                    BuildFederationRows(page.Root.transform);
                     break;
             }
         };
@@ -1197,6 +1197,14 @@ public class MenuGoverno : MonoBehaviour
                     CreateSectionTitle(page.Root.transform, "Historico de crises");
                     CreateDescription(page.Root.transform, "Ultimas noticias politicas e comerciais registradas pelo governo.");
                     BuildNewsRows(page.Root.transform);
+                    break;
+                case 4:
+                    CreateSectionTitle(page.Root.transform, "Legitimidade global");
+                    BuildLegitimacyRows(page.Root.transform);
+                    break;
+                case 5:
+                    CreateSectionTitle(page.Root.transform, "Emprestimos federativos");
+                    BuildLoanRows(page.Root.transform);
                     break;
                 default:
                     CreateSectionTitle(page.Root.transform, "Sancoes");
@@ -1569,12 +1577,98 @@ public class MenuGoverno : MonoBehaviour
             Notificar("Sancoes", "Sancao removida.");
             RefreshDynamicData(true);
         });
+        CreateActionButton(page.Root.transform, "PEDIR EMPRESTIMO DE AJUSTE", corAmarelo, () =>
+        {
+            string mensagem;
+            if (SistemaFederacoesGlobais.Instancia == null)
+            {
+                mensagem = "federacao indisponivel";
+            }
+            else
+            {
+                bool aceito = SistemaFederacoesGlobais.Instancia.SolicitarEmprestimo(paisSelecionadoId, paisJogadorId, 2500f, false, out mensagem);
+            }
+            Notificar("Federacao", mensagem);
+            RefreshDynamicData(true);
+        });
+        CreateActionButton(page.Root.transform, "PEDIR CREDITO MILITAR", corLaranja, () =>
+        {
+            string mensagem;
+            if (SistemaFederacoesGlobais.Instancia == null)
+            {
+                mensagem = "federacao indisponivel";
+            }
+            else
+            {
+                bool aceito = SistemaFederacoesGlobais.Instancia.SolicitarEmprestimo(paisSelecionadoId, paisJogadorId, 2500f, true, out mensagem);
+            }
+            Notificar("Federacao", mensagem);
+            RefreshDynamicData(true);
+        });
         page.Refresh = () =>
         {
             DadosPaisGoverno p = Government()?.ObterPais(paisSelecionadoId);
-            selected.text = p == null ? "Nenhum alvo." : p.nomePais + "\nStatus: " + StatusGov(p) + "\nSancionado: " + (p.sancionado ? "sim" : "nao");
+            selected.text = p == null ? "Nenhum alvo." : p.nomePais + "\nStatus: " + StatusGov(p) + "\nSancionado: " + (p.sancionado ? "sim" : "nao") + "\nFederacao: " + SistemaFederacoesGlobais.NomeFederacao(p.federacaoGlobal) + "\nLegitimidade: " + p.legitimidadeGlobal.ToString("0");
         };
         page.Refresh();
+    }
+
+    private void BuildFederationRows(Transform parent)
+    {
+        SistemaFederacoesGlobais.GarantirInstancia();
+        CreateHeaderRow(parent, new[] { "PAIS", "FEDERACAO", "LEGIT.", "DIVIDA" }, new[] { 1.25f, 1.25f, 0.55f, 0.70f });
+        foreach (DadosPaisGoverno p in Government() != null ? Government().Paises.OrderBy(x => x.teamId) : Enumerable.Empty<DadosPaisGoverno>())
+        {
+            if (p == null) continue;
+            GameObject row = CreateRow(parent, "Federacao_" + p.teamId, 34f);
+            // Each row is a horizontal table row. Without the layout group the
+            // labels keep their default rect (all at the same origin), which
+            // makes the federation columns overlap in the live menu.
+            SetupRow(row);
+            CreateFlexText(row.transform, p.nomePais, 11, corTextoPrimario, 1.25f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, SistemaFederacoesGlobais.NomeFederacao(p.federacaoGlobal), 10, corTextoSecundario, 1.25f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, p.legitimidadeGlobal.ToString("0"), 11, p.legitimidadeGlobal < 35f ? corVermelho : corVerde, 0.55f, TextAnchor.MiddleCenter);
+            float divida = p.emprestimos == null ? 0f : p.emprestimos.Sum(x => x != null ? x.saldoDevedor : 0f);
+            CreateFlexText(row.transform, divida.ToString("0"), 10, divida > 0f ? corAmarelo : corTextoApagado, 0.70f, TextAnchor.MiddleRight);
+        }
+    }
+
+    private void BuildLegitimacyRows(Transform parent)
+    {
+        CreateDescription(parent, "Crimes de guerra, sancoes e trocas de bloco reduzem legitimidade; ajuda e consenso recuperam apoio.");
+        BuildFederationRows(parent);
+    }
+
+    private void BuildLoanRows(Transform parent)
+    {
+        DadosPaisGoverno p = GetPlayerGov();
+        if (p == null || p.emprestimos == null || p.emprestimos.Count == 0)
+        {
+            CreateInfoBlock(parent, "Nenhum emprestimo ativo.");
+            return;
+        }
+        foreach (EmprestimoFederativoEstado loan in p.emprestimos)
+        {
+            if (loan == null) continue;
+            GameObject row = CreateRow(parent, "Emprestimo_" + loan.id, 52f);
+            SetupRow(row);
+            CreateFlexText(row.transform, loan.id + "\nCredor: " + loan.credorTeamId, 10, corTextoPrimario, 1.3f, TextAnchor.MiddleLeft);
+            CreateFlexText(row.transform, loan.saldoDevedor.ToString("0") + "\n" + (loan.inadimplente ? "INADIMPLENTE" : "ATIVO"), 10, loan.inadimplente ? corVermelho : corAmarelo, 1f, TextAnchor.MiddleLeft);
+            CreateActionButton(row.transform, "QUITAR", corVerde, () =>
+            {
+                string mensagem;
+                if (SistemaFederacoesGlobais.Instancia == null)
+                {
+                    mensagem = "emprestimo indisponivel";
+                }
+                else
+                {
+                    bool quitado = SistemaFederacoesGlobais.Instancia.QuitarEmprestimo(p.teamId, loan.id, out mensagem);
+                }
+                Notificar("Emprestimo", mensagem);
+                RefreshDynamicData(true);
+            });
+        }
     }
 
     private void BuildEconomyActionsPage(PageView page)

@@ -450,6 +450,24 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             economia.exportacaoTotal = economia.comidaProduzida + economia.petroleoProduzido + economia.industriaProduzida;
             economia.importacaoTotal = economia.deficitEnergia + economia.deficitPetroleo;
             economia.qualidadeVida = CalcularQualidadeVida(economia);
+
+            // Toda nação mantém serviços públicos mesmo antes de registrar
+            // casas, fábricas ou bases como estruturas econômicas. Sem esta
+            // parcela o livro-caixa ficava praticamente em zero (frequentemente
+            // aparecia apenas "$1"), tornando o orçamento fictício.
+            float custosClassificados = Mathf.Max(0f,
+                economia.custoSocial + economia.custoInfraestrutura +
+                economia.custoMilitar + economia.custoProducao);
+            float custosNaoClassificados = Mathf.Max(0f, economia.custoManutencao - custosClassificados);
+            float custoSocialBase = Mathf.Max(24f, populacaoReal * 0.018f);
+            float custoInfraestruturaBase = Mathf.Max(2f, economia.energiaConsumida * 0.35f + economia.estruturasSemEnergia * 2.5f);
+            float custoMilitarBase = Mathf.Max(2f, economia.empregosOcupados * 0.0015f);
+            float custoProducaoBase = Mathf.Max(2f, economia.industriaProduzida * 0.02f);
+            economia.custoSocial += custoSocialBase;
+            economia.custoInfraestrutura += custoInfraestruturaBase;
+            economia.custoMilitar += custoMilitarBase;
+            economia.custoProducao += custoProducaoBase;
+            economia.custoManutencao = custosNaoClassificados + economia.custoSocial + economia.custoInfraestrutura + economia.custoMilitar + economia.custoProducao;
             economia.saldoOperacional = economia.ReceitaBruta - economia.custoManutencao;
             economia.dinheiroGerado = economia.saldoOperacional;
         }
@@ -558,9 +576,6 @@ public class SistemaEconomiaImoveis : MonoBehaviour
 
         IdentidadeIA identidadeIA = go.GetComponentInParent<IdentidadeIA>();
         if (identidadeIA != null && identidadeIA.teamID > 0) return identidadeIA.teamID;
-
-        IA_Comandante comandante = go.GetComponentInParent<IA_Comandante>();
-        if (comandante != null && comandante.TeamID > 0) return comandante.TeamID;
 
         SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
         return gov != null ? gov.teamJogador : 1;

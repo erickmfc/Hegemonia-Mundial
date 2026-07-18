@@ -8,14 +8,14 @@ public class MenuPausaController : MonoBehaviour
 {
     public static bool EstaPausado { get; private set; }
 
-    private readonly Color corOverlay = new Color(0f, 0f, 0f, 0.45f);
-    private readonly Color corPainel = new Color(0.06f, 0.12f, 0.16f, 0.92f);
-    private readonly Color corPainelTopo = new Color(0.09f, 0.18f, 0.23f, 0.94f);
-    private readonly Color corBorda = new Color(0.47f, 0.9f, 1f, 0.34f);
-    private readonly Color corBotao = new Color(0.11f, 0.18f, 0.23f, 0.92f);
-    private readonly Color corBotaoDestaque = new Color(0.19f, 0.43f, 0.55f, 0.96f);
-    private readonly Color corBotaoHover = new Color(0.16f, 0.28f, 0.34f, 0.96f);
-    private readonly Color corBotaoSair = new Color(0.36f, 0.17f, 0.17f, 0.94f);
+    private readonly Color corOverlay = new Color(0f, 0f, 0f, 0.56f);
+    private readonly Color corPainel = new Color(0.05f, 0.1f, 0.13f, 0.95f);
+    private readonly Color corPainelTopo = new Color(0.08f, 0.18f, 0.22f, 0.97f);
+    private readonly Color corBorda = new Color(0.47f, 0.9f, 1f, 0.38f);
+    private readonly Color corBotao = new Color(0.06f, 0.12f, 0.15f, 0.96f);
+    private readonly Color corBotaoDestaque = new Color(0.08f, 0.3f, 0.42f, 0.98f);
+    private readonly Color corBotaoHover = new Color(0.12f, 0.22f, 0.27f, 0.98f);
+    private readonly Color corBotaoSair = new Color(0.29f, 0.09f, 0.11f, 0.96f);
     private readonly Color corTexto = new Color(0.92f, 0.98f, 1f, 1f);
     private readonly Color corTextoSuave = new Color(0.74f, 0.86f, 0.91f, 1f);
     private readonly Color corTextoAlerta = new Color(1f, 0.74f, 0.68f, 1f);
@@ -62,6 +62,11 @@ public class MenuPausaController : MonoBehaviour
 
     private void Update()
     {
+        if (FabricaMineriosMenuController.EstaAberto)
+        {
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.Escape) && !EstaDigitandoEmCampoTexto())
         {
             AlternarMenu();
@@ -148,15 +153,26 @@ public class MenuPausaController : MonoBehaviour
     private void SalvarJogo()
     {
         sistemaSave.RegistrarCenaAtual(SceneManager.GetActiveScene().name);
-        sistemaSave.SalvarJogo();
-        AtualizarStatus(LocalizationManager.T("pause.saved", "Jogo salvo com sucesso."), false);
+        PainelSavesUI.Abrir(canvasMenu.transform, sistemaSave, true, null,
+            () => AtualizarStatus(LocalizationManager.T("pause.saved", "Gerenciador de saves fechado."), false));
     }
 
     private void CarregarJogo()
     {
-        if (!sistemaSave.TentarCarregarJogo())
+        if (!sistemaSave.PossuiSave())
         {
             AtualizarStatus(LocalizationManager.T("pause.no_save", "Nenhum save encontrado para carregar."), true);
+            return;
+        }
+
+        PainelSavesUI.Abrir(canvasMenu.transform, sistemaSave, false, CarregarSaveSelecionado);
+    }
+
+    private void CarregarSaveSelecionado(string saveId)
+    {
+        if (!sistemaSave.TentarCarregarSave(saveId))
+        {
+            AtualizarStatus("Nao foi possivel carregar a partida selecionada.", true);
             return;
         }
 
@@ -236,25 +252,27 @@ public class MenuPausaController : MonoBehaviour
         overlay.offsetMin = Vector2.zero;
         overlay.offsetMax = Vector2.zero;
 
-        RectTransform painel = CriarPainel("PainelCentral", raizMenu.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(470f, 720f), corPainel);
-        CriarPainel("FaixaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -22f), new Vector2(0f, 130f), corPainelTopo);
+        RectTransform painel = CriarPainel("PainelCentral", raizMenu.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(580f, 900f), corPainel);
+        CriarPainel("FaixaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -22f), new Vector2(0f, 150f), corPainelTopo);
+        CriarPainel("LinhaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -22f), new Vector2(0f, 3f), new Color(0.56f, 0.86f, 0.93f, 0.9f));
         CriarPainel("Brilho", painel, new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero, new Color(0f, 0f, 0f, 0f));
 
         Outline outline = painel.gameObject.AddComponent<Outline>();
         outline.effectColor = corBorda;
-        outline.effectDistance = new Vector2(2f, -2f);
+        outline.effectDistance = new Vector2(3f, -3f);
 
-        CriarTexto("Cabecalho", painel, LocalizationManager.T("pause.header", "HEGEMONIA GLOBAL"), 22, FontStyle.Bold, TextAnchor.UpperCenter, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -28f), new Vector2(0f, 36f));
-        CriarTexto("Titulo", painel, LocalizationManager.T("pause.title", "PAUSADO"), 52, FontStyle.Bold, TextAnchor.UpperCenter, new Color(0.43f, 0.93f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -120f), new Vector2(0f, 56f));
-        CriarTexto("Subtitulo", painel, LocalizationManager.T("pause.header", "HEGEMONIA GLOBAL"), 24, FontStyle.Bold, TextAnchor.UpperCenter, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -180f), new Vector2(0f, 30f));
+        CriarTexto("Cabecalho", painel, "PAINEL TÁTICO", 13, FontStyle.Bold, TextAnchor.UpperCenter, new Color(0.67f, 0.9f, 0.96f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -26f), new Vector2(0f, 24f));
+        CriarTexto("Titulo", painel, LocalizationManager.T("pause.header", "HEGEMONIA GLOBAL"), 34, FontStyle.Bold, TextAnchor.UpperCenter, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -62f), new Vector2(0f, 42f));
+        CriarTexto("Subtitulo", painel, LocalizationManager.T("pause.title", "PAUSADO"), 50, FontStyle.Bold, TextAnchor.UpperCenter, new Color(0.43f, 0.93f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -112f), new Vector2(0f, 56f));
+        CriarTexto("Descricao", painel, "Controle rápido da campanha, idioma, saves e retorno imediato ao combate.", 15, FontStyle.Normal, TextAnchor.UpperCenter, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -168f), new Vector2(-64f, 34f));
 
         RectTransform botoes = new GameObject("BotoesMenuPausa").AddComponent<RectTransform>();
         botoes.SetParent(painel, false);
         botoes.anchorMin = new Vector2(0.5f, 1f);
         botoes.anchorMax = new Vector2(0.5f, 1f);
         botoes.pivot = new Vector2(0.5f, 1f);
-        botoes.anchoredPosition = new Vector2(0f, -250f);
-        botoes.sizeDelta = new Vector2(340f, 470f);
+        botoes.anchoredPosition = new Vector2(0f, -238f);
+        botoes.sizeDelta = new Vector2(420f, 500f);
 
         float posicaoY = 0f;
         CriarBotao(botoes, LocalizationManager.T("pause.resume", "Retomar Jogo"), "GO", corBotaoDestaque, RetomarJogo, ref posicaoY);
@@ -265,8 +283,9 @@ public class MenuPausaController : MonoBehaviour
         CriarBotao(botoes, LocalizationManager.T("pause.restart", "Reiniciar Partida"), "RE", corBotao, ReiniciarPartida, ref posicaoY);
         CriarBotao(botoes, LocalizationManager.T("pause.exit_menu", "Sair para Menu Principal"), "EX", corBotaoSair, SairParaMenuPrincipal, ref posicaoY);
 
-        statusText = CriarTexto("Status", painel, string.Empty, 16, FontStyle.Bold, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 36f), new Vector2(-40f, 30f));
-        CriarTexto("Rodape", painel, LocalizationManager.T("pause.footer", "ESC retoma a partida."), 14, FontStyle.Normal, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 14f), new Vector2(-40f, 20f));
+        RectTransform statusBox = CriarPainel("StatusBox", painel, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 72f), new Vector2(430f, 54f), new Color(0.07f, 0.12f, 0.15f, 0.96f));
+        statusText = CriarTexto("Status", statusBox, string.Empty, 16, FontStyle.Bold, TextAnchor.MiddleCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-32f, 0f));
+        CriarTexto("Rodape", painel, LocalizationManager.T("pause.footer", "ESC retoma a partida."), 14, FontStyle.Normal, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 22f), new Vector2(-48f, 20f));
     }
 
     private void RecriarInterface()
@@ -344,14 +363,14 @@ public class MenuPausaController : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 1f);
         rect.pivot = new Vector2(0.5f, 1f);
         rect.anchoredPosition = new Vector2(0f, -posicaoY);
-        rect.sizeDelta = new Vector2(340f, 58f);
+        rect.sizeDelta = new Vector2(420f, 62f);
 
         Image fundo = botaoObject.AddComponent<Image>();
         fundo.color = corBase;
 
         Outline borda = botaoObject.AddComponent<Outline>();
-        borda.effectColor = new Color(corBorda.r, corBorda.g, corBorda.b, 0.22f);
-        borda.effectDistance = new Vector2(1f, -1f);
+        borda.effectColor = new Color(corBorda.r, corBorda.g, corBorda.b, 0.26f);
+        borda.effectDistance = new Vector2(2f, -2f);
 
         Button botao = botaoObject.AddComponent<Button>();
         ColorBlock cores = botao.colors;
@@ -364,10 +383,23 @@ public class MenuPausaController : MonoBehaviour
         botao.colors = cores;
         botao.onClick.AddListener(acao);
 
-        CriarTexto("Label", botaoObject.transform, titulo.ToUpper(), 20, FontStyle.Bold, TextAnchor.MiddleCenter, corTexto, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(-18f, 0f), new Vector2(-82f, 0f));
-        CriarTexto("Icon", botaoObject.transform, icone, 20, FontStyle.Bold, TextAnchor.MiddleCenter, corTexto, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(-28f, 0f), new Vector2(36f, 0f));
+        RectTransform barra = CriarPainel("Accent", botaoObject.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(5f, 0f), new Color(0.6f, 0.88f, 0.97f, 0.95f));
+        barra.SetAsFirstSibling();
 
-        posicaoY += 70f;
+        Text label = CriarTexto("Label", botaoObject.transform, titulo.ToUpper(), 19, FontStyle.Bold, TextAnchor.MiddleLeft, corTexto, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(26f, 0f), new Vector2(-112f, 0f));
+        label.horizontalOverflow = HorizontalWrapMode.Wrap;
+        label.verticalOverflow = VerticalWrapMode.Truncate;
+        label.resizeTextForBestFit = true;
+        label.resizeTextMinSize = 14;
+        label.resizeTextMaxSize = 19;
+
+        RectTransform iconBadge = CriarPainel("IconBadge", botaoObject.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-18f, 0f), new Vector2(56f, 34f), new Color(1f, 1f, 1f, 0.08f));
+        Text iconText = CriarTexto("Icon", iconBadge, icone, 16, FontStyle.Bold, TextAnchor.MiddleCenter, corTexto, new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
+        iconText.resizeTextForBestFit = true;
+        iconText.resizeTextMinSize = 12;
+        iconText.resizeTextMaxSize = 16;
+
+        posicaoY += 74f;
     }
 
     private void AtualizarStatus(string mensagem, bool alerta)

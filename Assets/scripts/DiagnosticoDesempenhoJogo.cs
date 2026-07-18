@@ -159,6 +159,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     private string _overlayLine4 = string.Empty;
     private string _overlayLine5 = string.Empty;
     private string _overlayLine6 = string.Empty;
+    private string _overlayLine7 = string.Empty;
     private string _ultimoBlocoEventos = "Nenhum evento marcado.";
     private float _proximoRefreshOverlay;
 
@@ -459,6 +460,24 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             return;
         }
 
+        // The diagnostic panel is IMGUI and consumes pointer events in its
+        // rectangle.  Never draw it over the Government menu: the menu must
+        // receive every click and nothing behind it should be selectable.
+        if (MenuGoverno.EstaAberto)
+        {
+            return;
+        }
+
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+        {
+            return;
+        }
+
+        if (Time.timeScale <= 0f)
+        {
+            return;
+        }
+
         GarantirGuiStyles();
 
         // Throttle: reconstroi as strings do overlay a cada 0.35 s
@@ -469,8 +488,8 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             ReconstruirLinhasOverlay();
         }
 
-        float largura = Mathf.Min(Screen.width - 20f, 700f);
-        float altura = 250f;
+        float largura = Mathf.Min(Screen.width - 20f, 780f);
+        float altura = 320f;
         GUILayout.BeginArea(new Rect(10f, 10f, largura, altura), _caixaStyle);
         GUILayout.Label("Diagnostico de Desempenho", _tituloStyle);
         GUILayout.Label(_overlayLine1, _textoStyle);
@@ -479,6 +498,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         GUILayout.Label(_overlayLine4, _textoStyle);
         GUILayout.Label(_overlayLine5, _textoStyle);
         GUILayout.Label(_overlayLine6, _textoStyle);
+        if (!string.IsNullOrEmpty(_overlayLine7))
+        {
+            GUILayout.Label(_overlayLine7, _textoStyle);
+        }
 
         if (!string.IsNullOrEmpty(_csvPath))
         {
@@ -573,6 +596,139 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             linhaIa,
             ofensores + navalLock,
             _ultimoBlocoEventos);
+
+        string iaState = ObterTextoMetrica("ia_runtime_state");
+        string iaBootstrap = ObterTextoMetrica("ia_runtime_bootstrap");
+        string iaTrace = ObterTextoMetrica("ia_runtime_trace");
+        string iaError = ObterTextoMetrica("ia_runtime_error");
+        string iaAuthority = ObterTextoMetrica("ia_runtime_authority");
+        string ia01Progress = ObterTextoMetrica("ia01_progress");
+        string ia01Objective = ObterTextoMetrica("ia01_objective");
+        string ia01Construction = ObterTextoMetrica("ia01_construction");
+        string ia01Combat = ObterTextoMetrica("ia01_combat");
+        string ia01Market = ObterTextoMetrica("ia01_market");
+        string ia01BlockedIntent = ObterTextoMetrica("ia01_blocked_intent");
+        string ia01BlockReason = ObterTextoMetrica("ia01_block_reason");
+        string ia01Failures = ObterTextoMetrica("ia01_failures");
+        string ia01Cooldown = ObterTextoMetrica("ia01_cooldown");
+        string ia01Unblock = ObterTextoMetrica("ia01_unblock");
+        string ia01ExpensiveModule = ObterTextoMetrica("ia01_expensive_module");
+        string ia01LastSlice = ObterTextoMetrica("ia01_last_slice");
+        string ia01CatalogQueries = ObterTextoMetrica("ia01_catalog_queries");
+        string ia01CatalogIntentQueries = ObterTextoMetrica("ia01_catalog_intent_queries");
+        string ia01CatalogIndexBuilds = ObterTextoMetrica("ia01_catalog_index_builds");
+        string ia01CatalogCandidates = ObterTextoMetrica("ia01_catalog_candidates");
+        string ia01PhysicsChecks = ObterTextoMetrica("ia01_physics_checks");
+        string ia01CapitalSource = ObterTextoMetrica("ia01_capital_source");
+        string ia01CapitalItem = ObterTextoMetrica("ia01_capital_item");
+        string ia01CapitalPrefab = ObterTextoMetrica("ia01_capital_prefab");
+        string ia01CapitalDiagnostic = ObterTextoMetrica("ia01_capital_diagnostic");
+        string ia01ConstructionMode = ObterTextoMetrica("ia01_construction_mode");
+        string ia01ConstructionState = ObterTextoMetrica("ia01_construction_state");
+        string ia01ConstructionCommand = ObterTextoMetrica("ia01_construction_command");
+        string ia01ActiveCommand = ObterTextoMetrica("ia01_active_command");
+        string ia01PendingStructure = ObterTextoMetrica("ia01_pending_structure");
+        string ia01ConfirmationDeadline = ObterTextoMetrica("ia01_confirmation_deadline");
+        string ia01Treasury = ObterTextoMetrica("ia01_treasury");
+        string ia01BuildingsTotal = ObterTextoMetrica("ia01_buildings_total");
+        string ia01BuildingsByRole = ObterTextoMetrica("ia01_buildings_by_role");
+        string ia01BuildingsByStrategicRole = ObterTextoMetrica("ia01_buildings_by_strategic_role");
+        string ia01HousingNeed = ObterTextoMetrica("ia01_housing_need");
+        string ia01FoodCoverage = ObterTextoMetrica("ia01_food_coverage");
+        string ia01EnergyCoverage = ObterTextoMetrica("ia01_energy_coverage");
+        string ia01StorageOccupancy = ObterTextoMetrica("ia01_storage_occupancy");
+        string ia01EmergencyReserve = ObterTextoMetrica("ia01_emergency_reserve");
+        string ia01AvailableConstructionFunds = ObterTextoMetrica("ia01_available_construction_funds");
+        string ia01CityCoverage = ObterTextoMetrica("ia01_city_coverage");
+        string ia01CurrentSector = ObterTextoMetrica("ia01_current_sector");
+        string ia01CurrentNeed = ObterTextoMetrica("ia01_current_need");
+        string ia01NeedScore = ObterTextoMetrica("ia01_need_score");
+        string ia01CurrentLot = ObterTextoMetrica("ia01_current_lot");
+        string ia01LastConstructionCompletedAt = ObterTextoMetrica("ia01_last_construction_completed_at");
+        string ia01ConstructionFreezeReason = ObterTextoMetrica("ia01_construction_freeze_reason");
+        string ia01NextUnfreezeCondition = ObterTextoMetrica("ia01_next_unfreeze_condition");
+        string ia01FoundationFundingGranted = ObterTextoMetrica("ia01_foundation_funding_granted");
+        string ia01FoundationCapitalCost = ObterTextoMetrica("ia01_foundation_capital_cost");
+        string ia01FoundationAvailableFunds = ObterTextoMetrica("ia01_foundation_available_funds");
+        string ia01LastFailureCode = ObterTextoMetrica("ia01_last_failure_code");
+        string ia01LastFailureDetail = ObterTextoMetrica("ia01_last_failure_detail");
+        bool hasIa01Metrics = !string.IsNullOrEmpty(ia01Progress)
+            || !string.IsNullOrEmpty(ia01Objective)
+            || !string.IsNullOrEmpty(ia01Construction)
+            || !string.IsNullOrEmpty(ia01Combat)
+            || !string.IsNullOrEmpty(ia01Market);
+        if (string.IsNullOrEmpty(iaState) && string.IsNullOrEmpty(iaBootstrap) && string.IsNullOrEmpty(iaTrace) && string.IsNullOrEmpty(iaError) && string.IsNullOrEmpty(iaAuthority))
+        {
+            _overlayLine7 = hasIa01Metrics
+                ? "IA: BrainMaster sem metricas nesta janela | IA01 ativa."
+                : "IA: sem dados ainda | BrainMaster nao publicou metricas nesta janela.";
+        }
+        else
+        {
+            _overlayLine7 = string.Format(
+                CultureInfo.InvariantCulture,
+                "IA: {0} | bootstrap {1} | trace {2} | authority {3} | erro {4}",
+                string.IsNullOrEmpty(iaState) ? "n/d" : iaState,
+                string.IsNullOrEmpty(iaBootstrap) ? "n/d" : iaBootstrap,
+                string.IsNullOrEmpty(iaTrace) ? "n/d" : iaTrace,
+                string.IsNullOrEmpty(iaAuthority) ? "n/d" : iaAuthority,
+                string.IsNullOrEmpty(iaError) ? "sem erro" : iaError);
+        }
+
+        if (!string.IsNullOrEmpty(ia01Objective) || !string.IsNullOrEmpty(ia01Construction) || !string.IsNullOrEmpty(ia01Combat) || !string.IsNullOrEmpty(ia01Market))
+        {
+            _overlayLine7 += "\nIA01: " + (string.IsNullOrEmpty(ia01Progress) ? "progresso aguardando" : ia01Progress)
+                + " | " + (string.IsNullOrEmpty(ia01Objective) ? "objetivo aguardando" : ia01Objective)
+                + " | obra=" + (string.IsNullOrEmpty(ia01Construction) ? "n/d" : ia01Construction)
+                + " | combate=" + (string.IsNullOrEmpty(ia01Combat) ? "n/d" : ia01Combat)
+                + " | mercado=" + (string.IsNullOrEmpty(ia01Market) ? "n/d" : ia01Market)
+                + "\nIA01 bloqueio: intencao=" + (string.IsNullOrEmpty(ia01BlockedIntent) ? "n/d" : ia01BlockedIntent)
+                + " motivo=" + (string.IsNullOrEmpty(ia01BlockReason) ? "n/d" : ia01BlockReason)
+                + " falhas=" + (string.IsNullOrEmpty(ia01Failures) ? "0" : ia01Failures)
+                + " codigo=" + (string.IsNullOrEmpty(ia01LastFailureCode) ? "None" : ia01LastFailureCode)
+                + " cooldown=" + (string.IsNullOrEmpty(ia01Cooldown) ? "n/d" : ia01Cooldown)
+                + " desbloqueio=" + (string.IsNullOrEmpty(ia01Unblock) ? "n/d" : ia01Unblock)
+                + "\nIA01 falha: detalhe=" + (string.IsNullOrEmpty(ia01LastFailureDetail) ? "n/d" : ia01LastFailureDetail)
+                + "\nIA01 perf: mais caro=" + (string.IsNullOrEmpty(ia01ExpensiveModule) ? "n/d" : ia01ExpensiveModule)
+                + " ultima fatia=" + (string.IsNullOrEmpty(ia01LastSlice) ? "n/d" : ia01LastSlice)
+                + " consultas catalogo=" + (string.IsNullOrEmpty(ia01CatalogQueries) ? "0" : ia01CatalogQueries)
+                + " consultas intent=" + (string.IsNullOrEmpty(ia01CatalogIntentQueries) ? "0" : ia01CatalogIntentQueries)
+                + " indices=" + (string.IsNullOrEmpty(ia01CatalogIndexBuilds) ? "0" : ia01CatalogIndexBuilds)
+                + " candidatos=" + (string.IsNullOrEmpty(ia01CatalogCandidates) ? "0" : ia01CatalogCandidates)
+                + " fisica=" + (string.IsNullOrEmpty(ia01PhysicsChecks) ? "0" : ia01PhysicsChecks);
+            _overlayLine7 += "\nIA01 capital: fonte=" + (string.IsNullOrEmpty(ia01CapitalSource) ? "n/d" : ia01CapitalSource)
+                + " itemId=" + (string.IsNullOrEmpty(ia01CapitalItem) ? "n/d" : ia01CapitalItem)
+                + " prefab=" + (string.IsNullOrEmpty(ia01CapitalPrefab) ? "n/d" : ia01CapitalPrefab)
+                + " diagnostico=" + (string.IsNullOrEmpty(ia01CapitalDiagnostic) ? "n/d" : ia01CapitalDiagnostic);
+            _overlayLine7 += "\nIA01 construcao: modo=" + (string.IsNullOrEmpty(ia01ConstructionMode) ? "n/d" : ia01ConstructionMode)
+                + " estado=" + (string.IsNullOrEmpty(ia01ConstructionState) ? "n/d" : ia01ConstructionState)
+                + " freeze=" + (string.IsNullOrEmpty(ia01ConstructionFreezeReason) ? "n/d" : ia01ConstructionFreezeReason)
+                + " desbloqueio=" + (string.IsNullOrEmpty(ia01NextUnfreezeCondition) ? "n/d" : ia01NextUnfreezeCondition)
+                + "\nIA01 comando: active=" + (string.IsNullOrEmpty(ia01ActiveCommand) ? "n/d" : ia01ActiveCommand)
+                + " pending=" + (string.IsNullOrEmpty(ia01PendingStructure) ? "n/d" : ia01PendingStructure)
+                + " deadline=" + (string.IsNullOrEmpty(ia01ConfirmationDeadline) ? "n/d" : ia01ConfirmationDeadline)
+                + " lote=" + (string.IsNullOrEmpty(ia01CurrentLot) ? "n/d" : ia01CurrentLot)
+                + "\nIA01 financeiro: treasury=" + (string.IsNullOrEmpty(ia01Treasury) ? "n/d" : ia01Treasury)
+                + " reserva=" + (string.IsNullOrEmpty(ia01EmergencyReserve) ? "n/d" : ia01EmergencyReserve)
+                + " fundos=" + (string.IsNullOrEmpty(ia01AvailableConstructionFunds) ? "n/d" : ia01AvailableConstructionFunds)
+                + " fundingFundacao=" + (string.IsNullOrEmpty(ia01FoundationFundingGranted) ? "false" : ia01FoundationFundingGranted)
+                + " custoCapital=" + (string.IsNullOrEmpty(ia01FoundationCapitalCost) ? "0" : ia01FoundationCapitalCost)
+                + " fundosFundacao=" + (string.IsNullOrEmpty(ia01FoundationAvailableFunds) ? "0" : ia01FoundationAvailableFunds)
+                + " concluidaEm=" + (string.IsNullOrEmpty(ia01LastConstructionCompletedAt) ? "n/d" : ia01LastConstructionCompletedAt)
+                + "\nIA01 base: total=" + (string.IsNullOrEmpty(ia01BuildingsTotal) ? "0" : ia01BuildingsTotal)
+                + " roles=" + (string.IsNullOrEmpty(ia01BuildingsByStrategicRole) ? "n/d" : ia01BuildingsByStrategicRole)
+                + " necessidade=" + (string.IsNullOrEmpty(ia01CurrentNeed) ? "n/d" : ia01CurrentNeed)
+                + " score=" + (string.IsNullOrEmpty(ia01NeedScore) ? "0" : ia01NeedScore)
+                + "\nIA01 necessidades: moradia=" + (string.IsNullOrEmpty(ia01HousingNeed) ? "n/d" : ia01HousingNeed)
+                + " comida=" + (string.IsNullOrEmpty(ia01FoodCoverage) ? "n/d" : ia01FoodCoverage)
+                + " energia=" + (string.IsNullOrEmpty(ia01EnergyCoverage) ? "n/d" : ia01EnergyCoverage)
+                + " armazenamento=" + (string.IsNullOrEmpty(ia01StorageOccupancy) ? "n/d" : ia01StorageOccupancy)
+                + " cobertura=" + (string.IsNullOrEmpty(ia01CityCoverage) ? "n/d" : ia01CityCoverage)
+                + " setor=" + (string.IsNullOrEmpty(ia01CurrentSector) ? "n/d" : ia01CurrentSector)
+                + "\nIA01 index: catalogo=" + (string.IsNullOrEmpty(ia01CatalogIndexBuilds) ? "0" : ia01CatalogIndexBuilds)
+                + " candidatos=" + (string.IsNullOrEmpty(ia01CatalogCandidates) ? "0" : ia01CatalogCandidates)
+                + " fisica=" + (string.IsNullOrEmpty(ia01PhysicsChecks) ? "0" : ia01PhysicsChecks);
+        }
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)

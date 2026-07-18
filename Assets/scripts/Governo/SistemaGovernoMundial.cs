@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class SistemaGovernoMundial : MonoBehaviour
 {
+    public const string MoedaMestreNome = "Dolar Hegemonico (DH)";
     public static SistemaGovernoMundial Instancia { get; private set; }
     private static bool encerrando;
 
@@ -63,6 +64,9 @@ public class SistemaGovernoMundial : MonoBehaviour
         GarantirMercado();
         GarantirEconomiaViva();
         GarantirSistemaIndustrial();
+        RegistroNacoesGoverno.GarantirInstancia();
+        RegistroNacoesGoverno.Instancia?.Sincronizar(paises);
+        SistemaFederacoesGlobais.GarantirInstancia();
     }
 
     private void OnApplicationQuit()
@@ -90,6 +94,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         SincronizarJogador();
         DescobrirIAsDaCena();
         ProcessarEconomia();
+        SistemaFederacoesGlobais.GarantirInstancia();
     }
 
     public void InicializarDadosPadrao()
@@ -118,6 +123,9 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             GarantirCatalogosNacionais(pais);
         }
+
+        IA01NationNameRegistry.SortearNomesDePartida(paises, DateTime.Now.Millisecond);
+        IA01NationNameRegistry.GarantirMoedasUnicas(paises);
 
         SincronizarJogador();
     }
@@ -154,6 +162,8 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
 
         AplicarPerfilPadrao(pais);
+        IA01NationNameRegistry.GarantirNomesUnicos(paises, teamId + Time.frameCount);
+        IA01NationNameRegistry.GarantirMoedasUnicas(paises);
         GarantirCatalogosNacionais(pais);
         if (mudou)
         {
@@ -185,6 +195,8 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     public void ProcessarEconomia()
     {
+        RegistroNacoesGoverno.GarantirInstancia();
+        RegistroNacoesGoverno.Instancia?.Sincronizar(paises);
         SistemaMercadoGlobal mercado = SistemaMercadoGlobal.Instancia;
         float petroleoVariacao = mercado != null ? (mercado.ObterItem("petroleo")?.variacaoPercentual ?? 0f) : 0f;
         SistemaEconomiaImoveis economiaImoveis = SistemaEconomiaImoveis.Instancia;
@@ -801,7 +813,7 @@ public class SistemaGovernoMundial : MonoBehaviour
     {
         if (valor <= 0) return true;
         DadosPaisGoverno pais = ObterPais(teamId);
-        if (pais == null || pais.saldo < valor) return false;
+        if (pais == null) return false;
 
         if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
         {
@@ -809,6 +821,8 @@ public class SistemaGovernoMundial : MonoBehaviour
             SincronizarJogador();
             return true;
         }
+
+        if (pais.saldo < valor) return false;
 
         pais.saldo -= valor;
         OnGovernoAtualizado?.Invoke();
@@ -856,9 +870,36 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
     }
 
+    public int ObterEstoque(int teamId, string recursoId)
+    {
+        if (string.IsNullOrWhiteSpace(recursoId))
+        {
+            return 0;
+        }
+
+        RecursoMercado recursoLegado;
+        if (TentarConverterRecursoMercado(recursoId, out recursoLegado))
+        {
+            return ObterEstoque(teamId, recursoLegado);
+        }
+
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial != null)
+        {
+            return Mathf.RoundToInt((float)industrial.Armazem.ObterDisponivel(teamId.ToString(), recursoId));
+        }
+
+        return 0;
+    }
+
     public void AdicionarEstoque(int teamId, RecursoMercado recurso, int quantidade)
     {
         AlterarEstoque(teamId, recurso, Mathf.Abs(quantidade));
+    }
+
+    public void AdicionarEstoque(int teamId, string recursoId, int quantidade)
+    {
+        AlterarEstoque(teamId, recursoId, Mathf.Abs(quantidade));
     }
 
     public IEnumerable<PropostaInternacional> ObterPropostasPendentesPara(int teamId)
@@ -978,6 +1019,11 @@ public class SistemaGovernoMundial : MonoBehaviour
     public void RemoverEstoque(int teamId, RecursoMercado recurso, int quantidade)
     {
         AlterarEstoque(teamId, recurso, -Mathf.Abs(quantidade));
+    }
+
+    public void RemoverEstoque(int teamId, string recursoId, int quantidade)
+    {
+        AlterarEstoque(teamId, recursoId, -Mathf.Abs(quantidade));
     }
 
     private void GarantirCatalogosNacionais(DadosPaisGoverno pais)
@@ -1232,6 +1278,11 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         PesquisaNacionalEstado pesquisa = pais.pesquisas.FirstOrDefault(p => p != null && p.id == pesquisaId);
         return pesquisa != null && pesquisa.concluida;
+    }
+
+    public bool TemPesquisaConcluida(int teamId, string pesquisaId)
+    {
+        return PesquisaConcluida(ObterPais(teamId), pesquisaId);
     }
 
     private int DiaAtual()
@@ -1575,28 +1626,62 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         DadosPaisGoverno pais = ObterPais(teamId);
         if (pais == null) return;
+        GerenciadorRecursos gr = teamId == teamJogador ? GerenciadorRecursos.Instancia : null;
+        GerenciadorArmazens armazens = teamId == teamJogador ? GerenciadorArmazens.Instancia : null;
 
         switch (recurso)
         {
             case RecursoMercado.Comida:
                 pais.comida = Mathf.Max(0, pais.comida + delta);
-                if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
-                    GerenciadorRecursos.Instancia.comida = pais.comida;
+                if (gr != null)
+                {
+                    gr.comida = pais.comida;
+                }
+                if (armazens != null && armazens.armazemRecursos != null)
+                {
+                    int alvo = Mathf.Max(0, pais.comida);
+                    armazens.armazemRecursos.alimentos = Mathf.Clamp(alvo, 0, armazens.armazemRecursos.alimentosMaximo);
+                    armazens.NotificarAtualizacaoManual();
+                }
                 break;
             case RecursoMercado.Petroleo:
                 pais.petroleo = Mathf.Max(0, pais.petroleo + delta);
-                if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
-                    GerenciadorRecursos.Instancia.petroleo = pais.petroleo;
+                if (gr != null)
+                {
+                    gr.petroleo = pais.petroleo;
+                }
+                if (armazens != null && armazens.armazemRecursos != null)
+                {
+                    int alvo = Mathf.Max(0, pais.petroleo);
+                    armazens.armazemRecursos.petroleo = Mathf.Clamp(alvo, 0, armazens.armazemRecursos.petroleoMaximo);
+                    armazens.NotificarAtualizacaoManual();
+                }
                 break;
             case RecursoMercado.Energia:
                 pais.energia = Mathf.Max(0, pais.energia + delta);
-                if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
-                    GerenciadorRecursos.Instancia.energia = pais.energia;
+                if (gr != null)
+                {
+                    gr.energia = pais.energia;
+                }
+                if (armazens != null && armazens.armazemRecursos != null)
+                {
+                    int alvo = Mathf.Max(0, pais.energia);
+                    armazens.armazemRecursos.energia = Mathf.Clamp(alvo, 0, armazens.armazemRecursos.energiaMaximo);
+                    armazens.NotificarAtualizacaoManual();
+                }
                 break;
             case RecursoMercado.Aco:
                 pais.aco = Mathf.Max(0, pais.aco + delta);
-                if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
-                    GerenciadorRecursos.Instancia.aco = pais.aco;
+                if (gr != null)
+                {
+                    gr.aco = pais.aco;
+                }
+                if (armazens != null && armazens.armazemRecursos != null)
+                {
+                    int alvo = Mathf.Max(0, pais.aco);
+                    armazens.armazemRecursos.metal = Mathf.Clamp(alvo, 0, armazens.armazemRecursos.metalMaximo);
+                    armazens.NotificarAtualizacaoManual();
+                }
                 break;
             case RecursoMercado.Armamentos:
                 pais.armamentos = Mathf.Max(0, pais.armamentos + delta);
@@ -1607,6 +1692,100 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
 
         OnGovernoAtualizado?.Invoke();
+    }
+
+    private void AlterarEstoque(int teamId, string recursoId, int delta)
+    {
+        if (string.IsNullOrWhiteSpace(recursoId) || delta == 0)
+        {
+            return;
+        }
+
+        RecursoMercado recursoLegado;
+        if (TentarConverterRecursoMercado(recursoId, out recursoLegado))
+        {
+            AlterarEstoque(teamId, recursoLegado, delta);
+            return;
+        }
+
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial == null)
+        {
+            return;
+        }
+
+        if (delta >= 0)
+        {
+            industrial.Armazem.Adicionar(teamId.ToString(), recursoId, delta);
+        }
+        else
+        {
+            industrial.Armazem.TentarConsumir(teamId.ToString(), recursoId, -delta);
+        }
+
+        OnGovernoAtualizado?.Invoke();
+    }
+
+    private static bool TentarConverterRecursoMercado(string recursoId, out RecursoMercado recurso)
+    {
+        recurso = RecursoMercado.Nenhum;
+        if (string.IsNullOrWhiteSpace(recursoId))
+        {
+            return false;
+        }
+
+        switch (recursoId.Trim().ToLowerInvariant())
+        {
+            case "comida":
+                recurso = RecursoMercado.Comida;
+                return true;
+            case "petroleo":
+                recurso = RecursoMercado.Petroleo;
+                return true;
+            case "energia":
+                recurso = RecursoMercado.Energia;
+                return true;
+            case "aco":
+            case "aco_estrutural":
+                recurso = RecursoMercado.Aco;
+                return true;
+            case "armamentos":
+                recurso = RecursoMercado.Armamentos;
+                return true;
+            case "uranio":
+            case "uranio_bruto":
+                recurso = RecursoMercado.Uranio;
+                return true;
+            case "minerio_ferro":
+                recurso = RecursoMercado.MinerioFerro;
+                return true;
+            case "minerio_cobre":
+                recurso = RecursoMercado.MinerioCobre;
+                return true;
+            case "bauxita":
+                recurso = RecursoMercado.Bauxita;
+                return true;
+            case "minerio_titanio":
+                recurso = RecursoMercado.MinerioTitanio;
+                return true;
+            case "cobre_eletrolitico":
+                recurso = RecursoMercado.CobreEletrolitico;
+                return true;
+            case "duraluminio":
+                recurso = RecursoMercado.Duraluminio;
+                return true;
+            case "liga_titanio":
+                recurso = RecursoMercado.LigaTitanio;
+                return true;
+            case "componentes_eletronicos":
+                recurso = RecursoMercado.ComponentesEletronicos;
+                return true;
+            case "uranio_enriquecido":
+                recurso = RecursoMercado.UranioEnriquecido;
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void AplicarEconomiaImoveis(DadosPaisGoverno pais, DadosEconomiaPais economia)
@@ -1660,7 +1839,21 @@ public class SistemaGovernoMundial : MonoBehaviour
         pais.receitaIndustria = economia.receitaIndustria * FatorImposto(pais.impostoIndustria) * multiplicadorIndustrial;
         pais.receitaComercio = economia.receitaComercio * FatorImposto(pais.impostoComercio) * multiplicadorDiplomatico;
         pais.receitaEnergia = economia.receitaEnergia * (1f + (pais.nivelEconomico + pais.nivelIndustrial) * 0.0010f);
-        pais.custoManutencao = economia.custoManutencao + economia.energiaConsumida * 0.35f + pais.populacao * 0.01f;
+        // Mesmo uma nação sem prédios registrados possui serviços, imóveis,
+        // administração e defesa básica. O custo não pode ficar zerado só
+        // porque o cadastro econômico ainda não recebeu todas as estruturas.
+        float custoServicosBase = Mathf.Max(24f, pais.populacao * 0.018f);
+        float custoMoradia = Mathf.Max(0f, economia.moradiaTotal) * 0.06f;
+        float custoDefesa = pais.populacaoMilitarAtiva * 0.012f + pais.armamentos * 0.0015f;
+        float custoInfraestrutura = Mathf.Max(0f, economia.energiaConsumida) * 0.35f + Mathf.Max(0f, economia.estruturasSemEnergia) * 2.5f;
+        // Publicar o detalhamento no mesmo snapshot que a UI consome. Antes
+        // só o total era calculado, deixando as linhas Social/Infra/Militar
+        // zeradas (e arredondadas para valores fictícios como $1).
+        economia.custoSocial = custoServicosBase + custoMoradia;
+        economia.custoMilitar = custoDefesa;
+        economia.custoInfraestrutura = custoInfraestrutura;
+        economia.custoProducao = Mathf.Max(0f, economia.custoManutencao);
+        pais.custoManutencao = economia.custoProducao + economia.custoSocial + economia.custoMilitar + economia.custoInfraestrutura;
         pais.saldoOperacional = (pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia) - pais.custoManutencao;
         pais.rendaPorSegundo = Mathf.Max(0f, pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia);
         pais.gastosPorSegundo = Mathf.Max(0f, pais.custoManutencao);
@@ -1710,7 +1903,8 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             DadosPaisGoverno pais = paises[i];
             if (pais == null) continue;
-            pais.moedaLiderReferencia = lider.nomeMoeda;
+            pais.moedaLiderReferencia = MoedaMestreNome;
+            // valorMoeda expressa diretamente quanto 1 unidade nacional vale em DH.
             pais.cambioComLider = Mathf.Clamp(pais.valorMoeda / valorLider, 0.01f, 99f);
         }
     }
@@ -1736,23 +1930,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     private void DescobrirIAsDaCena()
     {
-        IEnumerable<IA_Comandante> comandantes = IA_ComandanteRegistry.AllCommanders;
         IEnumerable<IdentidadeIA> identidades = IdentidadeIA.TodasIdentidades;
-        foreach (IA_Comandante comandante in comandantes)
-        {
-            if (comandante == null || comandante.TeamID <= 1 || ObterPais(comandante.TeamID) != null) continue;
-            paises.Add(new DadosPaisGoverno
-            {
-                teamId = comandante.TeamID,
-                nomePais = string.IsNullOrEmpty(comandante.NomeComandante) ? "Pais IA " + comandante.TeamID : comandante.NomeComandante,
-                nomeMoeda = "Moeda " + comandante.TeamID,
-                simboloMoeda = "IA$",
-                saldo = Mathf.RoundToInt(comandante.dinheiro),
-                rendaPorSegundo = comandante.rendaPorSegundo,
-                bloco = "IA"
-            });
-        }
-
         foreach (IdentidadeIA identidade in identidades)
         {
             if (identidade == null || identidade.teamID <= 1 || ObterPais(identidade.teamID) != null) continue;
