@@ -252,6 +252,7 @@ public class ControleUnidade : MonoBehaviour
     public DominioControleUnidade DominioAtual => dominioControleAtual;
     public OrdemControleUnidade OrdemAtual => ordemControleAtual;
     public string ExecutorAtual => executorControleAtual;
+    public bool ModoCombateAtivo => modoCombateOficialAtivo;
 
     [Header("Visual")]
     public float tamanhoSelecao = 0f; // 0 = Automatico
@@ -602,6 +603,24 @@ public class ControleUnidade : MonoBehaviour
         }
 
         AtualizarTrilhaOficial();
+
+        List<Vector3> rotaFinal = new List<Vector3>(pontosPatrulha);
+        if (rotaFinal.Count == 1)
+        {
+            rotaFinal.Insert(0, transform.position);
+        }
+
+        // O vinculo com aeroporto controla pouso e abastecimento, mas nao pode
+        // impedir uma ordem manual enviada pelo menu satelite.
+        if (helicopteroExterno != null)
+        {
+            CancelarOrdemEspecial(false);
+            helicopteroExterno.IniciarPatrulhaAeroporto(rotaFinal);
+            ordemControleAtual = OrdemControleUnidade.Patrulhando;
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
+            return true;
+        }
+
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo)
         {
@@ -610,12 +629,6 @@ public class ControleUnidade : MonoBehaviour
         }
 
         CancelarOrdemEspecial(false);
-
-        List<Vector3> rotaFinal = new List<Vector3>(pontosPatrulha);
-        if (rotaFinal.Count == 1)
-        {
-            rotaFinal.Insert(0, transform.position);
-        }
 
         ComportamentoPatrulhaUniversal patrulha = GetComponent<ComportamentoPatrulhaUniversal>();
         if (patrulha == null)
@@ -639,6 +652,11 @@ public class ControleUnidade : MonoBehaviour
 
     public bool EmitirOrdemSeguir(Transform alvo)
     {
+        return EmitirOrdemSeguir(alvo, -1f);
+    }
+
+    public bool EmitirOrdemSeguir(Transform alvo, float distanciaSeguimento)
+    {
         if (alvo == null)
         {
             return false;
@@ -660,7 +678,7 @@ public class ControleUnidade : MonoBehaviour
             seguir = gameObject.AddComponent<ComportamentoSeguirUniversal>();
         }
 
-        seguir.Configurar(alvo);
+        seguir.Configurar(alvo, distanciaSeguimento);
         ordemControleAtual = OrdemControleUnidade.Seguindo;
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
         return true;
@@ -1040,6 +1058,12 @@ public class ControleUnidade : MonoBehaviour
 
         bool alterouAlgo = false;
         modoCombateOficialAtivo = ativo;
+
+        if (helicopteroExterno != null)
+        {
+            helicopteroExterno.AplicarModoCombateDoMenu(ativo);
+            alterouAlgo = true;
+        }
 
         for (int i = 0; i < cacheTorretas.Length; i++)
         {

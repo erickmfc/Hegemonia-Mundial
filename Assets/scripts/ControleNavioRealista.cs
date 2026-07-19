@@ -111,6 +111,7 @@ public class ControleNavioRealista : MonoBehaviour
     private float tempoVibracao = 0f;
     private float offsetOnda;
     private Quaternion rotacaoInicialModelo;
+    private Vector3 posicaoInicialModelo = Vector3.zero;
     private IdentidadeNaval identidade;
     private bool ajusteInicialFlutuacaoVerificado = false;
     private float tempoAssistenciaSaida = 0f;
@@ -165,7 +166,10 @@ public class ControleNavioRealista : MonoBehaviour
             modelo3D = transform.GetChild(0);
 
         if (modelo3D != null)
+        {
             rotacaoInicialModelo = modelo3D.localRotation;
+            posicaoInicialModelo = modelo3D.localPosition;
+        }
 
         // Configuração de Áudio
         fonteAudio = GetComponent<AudioSource>();
@@ -551,7 +555,7 @@ public class ControleNavioRealista : MonoBehaviour
         if (!ajusteInicialFlutuacaoVerificado)
         {
             ajusteInicialFlutuacaoVerificado = true;
-            if (TentarCorrigirFlutuacaoInicial(nivelMar))
+            if (Mathf.Abs(offsetAlturaAgua) < 0.1f && TentarCorrigirFlutuacaoInicial(nivelMar))
             {
                 alturaFinal = profundidadeVisual + offsetAlturaAgua;
                 posVisual.y = nivelMar + alturaFinal;
@@ -687,11 +691,11 @@ public class ControleNavioRealista : MonoBehaviour
         // 2. VIBRAÇÃO (Crash Stop)
         if (tempoVibracao > 0)
         {
-            modelo3D.localPosition = Random.insideUnitSphere * 0.05f; // Shake leve
+            modelo3D.localPosition = posicaoInicialModelo + Random.insideUnitSphere * 0.05f; // Shake leve
         }
         else
         {
-            modelo3D.localPosition = Vector3.zero;
+            modelo3D.localPosition = posicaoInicialModelo;
         }
 
         // 3. PARTICULAS

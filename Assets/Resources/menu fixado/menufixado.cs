@@ -169,6 +169,7 @@ public class MenuFixadoController : MonoBehaviour
     private void RegistrarEventos()
     {
         DesregistrarEventos();
+        GerenciadorTempo.GarantirInstancia();
         if (GerenciadorRecursos.Instancia != null) GerenciadorRecursos.Instancia.OnRecursosAtualizados += UpdateUI;
         if (CensoImperial.Instancia != null) CensoImperial.Instancia.OnCensoAtualizado += UpdateUI;
         if (GerenciadorArmazens.Instancia != null) GerenciadorArmazens.Instancia.OnArmazensAtualizados += UpdateUI;

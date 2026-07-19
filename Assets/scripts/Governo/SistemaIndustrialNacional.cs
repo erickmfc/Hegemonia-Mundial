@@ -30,7 +30,6 @@ public class SistemaIndustrialNacional : MonoBehaviour
     [SerializeField] private List<ConfiguracaoExtracaoIndustrial> configuracoesExtracao = new List<ConfiguracaoExtracaoIndustrial>();
 
     [Header("Diagnóstico")]
-    [SerializeField] private bool mostrarLogs = false;
     [SerializeField] private int limiteHistorico = 200;
 
     public ArmazemNacional Armazem { get; private set; } = new ArmazemNacional();
@@ -88,6 +87,7 @@ public class SistemaIndustrialNacional : MonoBehaviour
         Instancia = this;
         DontDestroyOnLoad(gameObject);
         InicializarCatalogoPadrao();
+        CatalogoProdutoCompartilhado.RegistrarIndustrial(recursosCatalogo, receitasCatalogo);
         GarantirPaisExistentes();
         ConectarEventosTempoEMercado();
         IntegracaoMercadoIndustrial.GarantirCatalogoNoMercado(SistemaMercadoGlobal.Instancia);
@@ -98,6 +98,7 @@ public class SistemaIndustrialNacional : MonoBehaviour
     {
         GarantirPaisExistentes();
         ConectarEventosTempoEMercado();
+        CatalogoProdutoCompartilhado.RegistrarIndustrial(recursosCatalogo, receitasCatalogo);
         IntegracaoMercadoIndustrial.GarantirCatalogoNoMercado(SistemaMercadoGlobal.Instancia);
         IntegracaoMercadoIndustrial.SincronizarEstoquesNoMercado(this, SistemaMercadoGlobal.Instancia);
     }
@@ -1744,6 +1745,60 @@ public class SistemaIndustrialNacional : MonoBehaviour
             recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.LigaTitanio, "Liga de titânio", "Liga estratégica de alta resistência.", CategoriaRecursoIndustrial.Estrategico, "t", 720, RaridadeRecursoIndustrial.Raro, true));
             recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.ComponentesEletronicos, "Componentes eletrônicos", "Guiagem, sensores e automação.", CategoriaRecursoIndustrial.Componente, "unidades", 980, RaridadeRecursoIndustrial.Raro, true));
             recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.UranioEnriquecido, "Urânio enriquecido", "Carga estratégica nuclear abstrata.", CategoriaRecursoIndustrial.MilitarFuturo, "cargas", 5200, RaridadeRecursoIndustrial.Estrategico, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.MinerioLitio, "Minério de lítio", "Base para células de lítio e armazenamento moderno.", CategoriaRecursoIndustrial.MateriaPrima, "t", 220, RaridadeRecursoIndustrial.Raro, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.TerrasRaras, "Terras raras", "Sensores, eletrônicos e guiagem de precisão.", CategoriaRecursoIndustrial.Estrategico, "t", 420, RaridadeRecursoIndustrial.MuitoRaro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.MinerioNiquel, "Minério de níquel", "Liga e aço especial.", CategoriaRecursoIndustrial.MateriaPrima, "t", 160, RaridadeRecursoIndustrial.Incomum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.MinerioManganes, "Minério de manganês", "Refino de aço especial e blindagem.", CategoriaRecursoIndustrial.MateriaPrima, "t", 150, RaridadeRecursoIndustrial.Incomum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Silica, "Sílica", "Vidro industrial, eletrônicos e componentes.", CategoriaRecursoIndustrial.MateriaPrima, "t", 90, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Calcario, "Calcário", "Base para cimento e infraestrutura pesada.", CategoriaRecursoIndustrial.MateriaPrima, "t", 70, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.AreiaIndustrial, "Areia industrial", "Entrada para vidro industrial.", CategoriaRecursoIndustrial.MateriaPrima, "t", 65, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Fosfato, "Fosfato", "Base de fertilizantes e agroindústria.", CategoriaRecursoIndustrial.MateriaPrima, "t", 85, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.CarvaoMineral, "Carvão mineral", "Energia térmica e metalurgia pesada.", CategoriaRecursoIndustrial.MateriaPrima, "t", 100, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.PetroleoBruto, "Petróleo bruto", "Base energética e química industrial.", CategoriaRecursoIndustrial.Estrategico, "barris", 180, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.GasNatural, "Gás natural", "Energia industrial e fertilizante.", CategoriaRecursoIndustrial.Estrategico, "m3", 170, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.AluminioIndustrial, "Alumínio industrial", "Material leve para construção e aeronáutica.", CategoriaRecursoIndustrial.Refinado, "t", 210, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.AcoEspecial, "Aço especial", "Aço reforçado para blindagem e motores pesados.", CategoriaRecursoIndustrial.Estrategico, "t", 430, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.CelulasLitio, "Células de lítio", "Armazenamento industrial e baterias.", CategoriaRecursoIndustrial.Refinado, "t", 360, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.VidroIndustrial, "Vidro industrial", "Construção, visão e sensores.", CategoriaRecursoIndustrial.Refinado, "t", 120, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Cimento, "Cimento", "Base de construção civil e fortificações.", CategoriaRecursoIndustrial.Refinado, "t", 80, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Fertilizante, "Fertilizante", "Aumenta produtividade agrícola e agroindustrial.", CategoriaRecursoIndustrial.Refinado, "t", 150, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.PlasticoIndustrial, "Plástico industrial", "Química leve para cabos, carenagens e logística.", CategoriaRecursoIndustrial.Refinado, "t", 160, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.BorrachaSintetica, "Borracha sintética", "Pneus, vedação e isolamento.", CategoriaRecursoIndustrial.Refinado, "t", 170, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.CabosEletricos, "Cabos elétricos", "Transmissão, energia e comunicação.", CategoriaRecursoIndustrial.Componente, "t", 220, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.CircuitosEletronicos, "Circuitos eletrônicos", "Base de controle e automação.", CategoriaRecursoIndustrial.Componente, "unidades", 500, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Sensores, "Sensores", "Leitura tática, navegação e radar.", CategoriaRecursoIndustrial.Componente, "unidades", 650, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.BateriaIndustrial, "Bateria industrial", "Armazenamento para veículos e drones.", CategoriaRecursoIndustrial.Componente, "unidades", 720, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.BateriaAltaCapacidade, "Bateria de alta capacidade", "Autonomia ampliada para unidades avançadas.", CategoriaRecursoIndustrial.Componente, "unidades", 980, RaridadeRecursoIndustrial.Estrategico, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.MotorEletrico, "Motor elétrico", "Propulsão leve para veículos e drones.", CategoriaRecursoIndustrial.Componente, "unidades", 430, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.MotorCombustao, "Motor a combustão", "Propulsão base para veículos terrestres.", CategoriaRecursoIndustrial.Componente, "unidades", 400, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.MotorDiesel, "Motor diesel", "Propulsão pesada para logística e blindados.", CategoriaRecursoIndustrial.Componente, "unidades", 460, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.MotorNaval, "Motor naval", "Propulsão marítima e logística costeira.", CategoriaRecursoIndustrial.Componente, "unidades", 540, RaridadeRecursoIndustrial.Incomum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.TurbinaAerea, "Turbina aérea", "Propulsão de aeronaves e plataformas de caça.", CategoriaRecursoIndustrial.Componente, "unidades", 900, RaridadeRecursoIndustrial.Estrategico, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.TurbinaNaval, "Turbina naval", "Propulsão avançada para navios pesados.", CategoriaRecursoIndustrial.Componente, "unidades", 980, RaridadeRecursoIndustrial.Estrategico, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.PneusIndustriais, "Pneus industriais", "Mobilidade terrestre e veículos pesados.", CategoriaRecursoIndustrial.Componente, "unidades", 180, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.SistemaHidraulico, "Sistema hidráulico", "Movimento, braços e torres pesadas.", CategoriaRecursoIndustrial.Componente, "unidades", 260, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.ChassiLeve, "Chassi leve", "Base de veículos rápidos.", CategoriaRecursoIndustrial.Componente, "unidades", 300, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.ChassiPesado, "Chassi pesado", "Base de blindados e caminhões militares.", CategoriaRecursoIndustrial.Componente, "unidades", 600, RaridadeRecursoIndustrial.Incomum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Esteiras, "Esteiras", "Mobilidade blindada e veículos pesados.", CategoriaRecursoIndustrial.Componente, "unidades", 240, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.BlindagemLeve, "Blindagem leve", "Proteção para veículos rápidos.", CategoriaRecursoIndustrial.Componente, "unidades", 320, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.BlindagemMedia, "Blindagem média", "Proteção para blindados de linha.", CategoriaRecursoIndustrial.Componente, "unidades", 500, RaridadeRecursoIndustrial.Incomum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.BlindagemPesada, "Blindagem pesada", "Proteção para unidades de ponta.", CategoriaRecursoIndustrial.Componente, "unidades", 750, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Avionicos, "Aviônicos", "Controle de voo e navegação aérea.", CategoriaRecursoIndustrial.Componente, "unidades", 850, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Radar, "Radar", "Detecção e defesa aérea/naval.", CategoriaRecursoIndustrial.Componente, "unidades", 760, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Sonar, "Sonar", "Detecção submarina e marinha.", CategoriaRecursoIndustrial.Componente, "unidades", 640, RaridadeRecursoIndustrial.Raro, true));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.ModuloComunicacao, "Módulo de comunicação", "Telemetria e comando.", CategoriaRecursoIndustrial.Componente, "unidades", 300, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.ModuloNavegacao, "Módulo de navegação", "Rotas e precisão tática.", CategoriaRecursoIndustrial.Componente, "unidades", 280, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.EquipamentoLogistico, "Equipamento logístico", "Apoio, transporte e carga.", CategoriaRecursoIndustrial.Componente, "unidades", 240, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.MaquinasIndustriais, "Máquinas industriais", "Linha de produção e manufatura pesada.", CategoriaRecursoIndustrial.Componente, "unidades", 500, RaridadeRecursoIndustrial.Incomum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.GuindasteIndustrial, "Guindaste industrial", "Construção pesada e estaleiros.", CategoriaRecursoIndustrial.Componente, "unidades", 620, RaridadeRecursoIndustrial.Incomum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Etanol, "Etanol", "Combustível renovável para logística leve.", CategoriaRecursoIndustrial.Refinado, "l", 120, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Biodiesel, "Biodiesel", "Combustível renovável para frotas.", CategoriaRecursoIndustrial.Refinado, "l", 135, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Biogas, "Biogás", "Gás de origem biológica e industrial.", CategoriaRecursoIndustrial.Refinado, "m3", 90, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Gasolina, "Gasolina", "Combustível leve para veículos.", CategoriaRecursoIndustrial.Refinado, "l", 180, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.Diesel, "Diesel", "Combustível pesado para frota e blindados.", CategoriaRecursoIndustrial.Refinado, "l", 185, RaridadeRecursoIndustrial.Comum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.CombustivelAviacao, "Combustível de aviação", "Combustível refinado para aeronaves.", CategoriaRecursoIndustrial.Refinado, "l", 240, RaridadeRecursoIndustrial.Incomum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.CombustivelNaval, "Combustível naval", "Combustível para rotas marítimas.", CategoriaRecursoIndustrial.Refinado, "l", 220, RaridadeRecursoIndustrial.Incomum, false));
+            recursosCatalogo.Add(CriarRecursoPadrao(IndustriaIds.LubrificanteIndustrial, "Lubrificante industrial", "Base para motores e linhas pesadas.", CategoriaRecursoIndustrial.Refinado, "l", 110, RaridadeRecursoIndustrial.Comum, false));
         }
 
         GarantirReceitaCatalogo(CriarReceitaPadrao(IndustriaIds.AcoEstrutural, "Aço estrutural", new[]

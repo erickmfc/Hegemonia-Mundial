@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 
 namespace Hegemonia.AI.BrainMaster
@@ -38,6 +39,7 @@ namespace Hegemonia.AI.BrainMaster
     {
         Queued,
         Running,
+        AwaitingConfirmation,
         Success,
         Failed,
         CoolingDown,
@@ -141,18 +143,28 @@ namespace Hegemonia.AI.BrainMaster
     public sealed class IA_CommandRequest
     {
         public string Id;
+        public string Origin;
+        public string Domain;
+        public string Reason;
+        public string Family;
         public IA_CommandType Type;
         public int Priority;
         public string DedupKey;
         public float CooldownSeconds;
         public object Payload;
         public float EnqueueTime;
+        public int AttemptCount;
+        public float FirstAttemptTime;
     }
 
     [Serializable]
     public sealed class IA_CommandRecord
     {
         public string Id;
+        public string Origin;
+        public string Domain;
+        public string Reason;
+        public string Family;
         public string DedupKey;
         public IA_CommandType Type;
         public IA_CommandStatus Status;
@@ -584,6 +596,43 @@ namespace Hegemonia.AI.BrainMaster
 
             _normalizeCache[value] = normalized;
             return normalized;
+        }
+    }
+
+    public static class IA_CommandFactory
+    {
+        public static IA_CommandRequest Create(
+            IA_CommandType type,
+            string origin,
+            string domain,
+            string reason,
+            int priority,
+            string family,
+            string seed,
+            float cooldownSeconds,
+            object payload,
+            string id = null)
+        {
+            string normalizedFamily = NormalizeFamily(family, type);
+            return new IA_CommandRequest
+            {
+                Id = string.IsNullOrWhiteSpace(id) ? string.Empty : id,
+                Origin = origin,
+                Domain = domain,
+                Reason = reason,
+                Family = normalizedFamily,
+                Type = type,
+                Priority = priority,
+                DedupKey = IA_SharedRuntimeSupport.BuildCommandDedupKey(normalizedFamily, seed, payload),
+                CooldownSeconds = cooldownSeconds,
+                Payload = payload
+            };
+        }
+
+        public static string NormalizeFamily(string family, IA_CommandType type)
+        {
+            string normalized = IA_Text.Normalize(family);
+            return string.IsNullOrEmpty(normalized) ? type.ToString().ToLowerInvariant() : normalized;
         }
     }
 }

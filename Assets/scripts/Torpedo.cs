@@ -220,11 +220,14 @@ public class Torpedo : MonoBehaviour
         }
         else if (!emSubida)
         {
-            // Manter profundidade de navegação
-            float erroProfundidade = profundidadeNavegacao - profundidadeAtual;
+            float nivelMar = 0f;
+            try { nivelMar = NavalPlacementResolver.ResolveSeaLevel(); } catch {}
+
+            // Manter profundidade de navegação (relativo ao nível do mar)
+            float erroProfundidade = (nivelMar + profundidadeNavegacao) - profundidadeAtual;
             
             // Se está voando (lançado de um navio), aplica gravidade e aponta pra água
-            if (profundidadeAtual > 2f && erroProfundidade < 0)
+            if (profundidadeAtual > nivelMar + 0.2f && erroProfundidade < 0)
             {
                 movimento.y = -35f * Time.deltaTime;
                 direcaoAtual = Vector3.Lerp(direcaoAtual, (new Vector3(direcaoAtual.x, -1f, direcaoAtual.z)).normalized, Time.deltaTime * 4f);
@@ -403,8 +406,11 @@ public class Torpedo : MonoBehaviour
     {
         if (rastroBolas == null) return;
         
+        float nivelMar = 0f;
+        try { nivelMar = NavalPlacementResolver.ResolveSeaLevel(); } catch {}
+        
         // Criar bolhas na superfície da água
-        Vector3 posSuperficie = new Vector3(transform.position.x, 0, transform.position.z);
+        Vector3 posSuperficie = new Vector3(transform.position.x, nivelMar, transform.position.z);
         GameObject bolhasObj = PoolDeObjetosCombate.SpawnTemporario(rastroBolas.gameObject, posSuperficie, Quaternion.identity, 3f);
         ParticleSystem bolhas = bolhasObj != null ? bolhasObj.GetComponent<ParticleSystem>() : null;
         if (bolhas != null) bolhas.Play();

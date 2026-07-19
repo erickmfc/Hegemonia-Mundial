@@ -293,7 +293,7 @@ public class MisselNaval : MonoBehaviour
             {
                 int idVida = alvoVida.GetInstanceID();
                 if (!alvosProcessados.Add(idVida)) continue;
-                alvoVida.ReceberDano(dano);
+                alvoVida.ReceberDano(dano, lancador != null ? lancador.gameObject : null);
             }
 
             bufferExplosao[i] = null;

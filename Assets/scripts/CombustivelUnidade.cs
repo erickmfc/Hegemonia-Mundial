@@ -1,6 +1,7 @@
 using System.Text;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
 
 public enum ClasseCombustivelUnidade
 {
@@ -105,6 +106,11 @@ public class CombustivelUnidade : MonoBehaviour
 
     private void OnGUI()
     {
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+        {
+            return;
+        }
+
         if (!mostrarIndicadorMundo || !usaCombustivel || Capacidade <= 0f)
         {
             return;
@@ -592,6 +598,12 @@ public class CombustivelUnidade : MonoBehaviour
         if (GetComponent<AviaoBombardeiro>() != null || NomeContem("bomb"))
         {
             return 3f;
+        }
+
+        if (GetComponent<ControleDroneHasaf>() != null || NomeContem("hasaf"))
+        {
+            // Drone Hasaf: triplo de combustível (base 300f * 6 = 1800f em vez do padrão 300f * 2 = 600f)
+            return 6f;
         }
 
         return 2f;

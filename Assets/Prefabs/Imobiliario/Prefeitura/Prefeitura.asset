@@ -13,9 +13,15 @@ MonoBehaviour:
   m_Name: Prefeitura
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: 'Prefeitura '
-  descricao: "Descri\xE7\xE3o curta..."
+  descricao: Prefeitura
   icone: {fileID: 0}
+  itemId: capital.prefeitura
+  aliases: prefeitura,capital,governo
+  capacidades: 37
   prefabDaUnidade: {fileID: 4294933399016074583, guid: 302247c9d375f5d41ab41de04df1dd24, type: 3}
   preco: 5000
   categoria: 6
+  escalaPoder: 2
+  strategicRole: 15
+  balanceamento: {fileID: 0}
   scriptsDeComando: []

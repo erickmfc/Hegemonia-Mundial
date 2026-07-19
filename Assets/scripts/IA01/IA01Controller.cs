@@ -40,6 +40,7 @@ namespace Hegemonia.AI.IA01
         [SerializeField] private IA01BuildPlan buildPlan;
         [SerializeField] private IA01CityLayout cityLayout;
         [SerializeField] private List<DadosConstrucao> fichasDeConstrucao = new List<DadosConstrucao>();
+        [SerializeField] private GameObject fighterPrefab;
         [SerializeField] private bool useScriptedOpening = true;
         [SerializeField] private bool usePreparedSlots = true;
         [SerializeField] private bool allowAutonomousExpansion = true;
@@ -53,6 +54,7 @@ namespace Hegemonia.AI.IA01
         private readonly Stopwatch sliceStopwatch = new Stopwatch();
         private readonly StringBuilder summary = new StringBuilder(512);
         private readonly IA01GameStateBridge gameStateBridge = new IA01GameStateBridge();
+        private readonly HashSet<IA01IntentType> loggedAnchorResolutions = new HashSet<IA01IntentType>();
         private IA01RuntimeContext context;
         private IA01NationProfile runtimeProfile;
         private IA01EventBus sharedEventBus;
@@ -67,6 +69,7 @@ namespace Hegemonia.AI.IA01
         private string lastExecutionMessage = string.Empty;
         private IA01WorkResult lastExecutionResult;
         private bool restoredFromSave;
+        private float nextStandaloneTick;
 
         public string ModuleId => UniqueEntityId;
         public bool IsDirty => context != null && context.IsDirty;
@@ -92,6 +95,7 @@ namespace Hegemonia.AI.IA01
         public int PendingEventCount => pendingEventCount;
         public string ConstructionStatus => nationRuntime != null ? nationRuntime.ConstructionStatus : "Runtime aguardando inicializacao.";
         public string CombatStatus => nationRuntime != null ? nationRuntime.CombatStatus : "Runtime aguardando inicializacao.";
+        public string MilitaryStatus => nationRuntime != null ? nationRuntime.MilitaryStatus : "Reserva militar aguardando inicializacao.";
         public string MarketStatus => nationRuntime != null ? nationRuntime.MarketStatus : "Mercado aguardando inicializacao.";
         public string EconomicStateStatus => nationRuntime != null && nationRuntime.EconomicModel != null ? nationRuntime.EconomicModel.Status : "Economia aguardando inicializacao.";
         public string ProgressionStatus => nationRuntime != null ? nationRuntime.ProgressionStatus : "Runtime aguardando inicializacao.";
@@ -102,6 +106,7 @@ namespace Hegemonia.AI.IA01
         public IA01ConstructionAnchors ConstructionAnchors => constructionAnchors != null ? constructionAnchors : GetComponentInChildren<IA01ConstructionAnchors>(true);
         public IA01BuildPlan BuildPlan => buildPlan;
         public IA01CityLayout CityLayout => cityLayout;
+        public GameObject FighterPrefab => fighterPrefab;
         public IReadOnlyList<DadosConstrucao> FichasDeConstrucao => fichasDeConstrucao;
         public bool UseScriptedOpening => useScriptedOpening;
         public bool UsePreparedSlots => usePreparedSlots;
@@ -110,15 +115,40 @@ namespace Hegemonia.AI.IA01
 
         public bool TryResolveConstructionAnchor(IA01IntentType intent, out Vector3 position)
         {
+            position = Vector3.zero;
             Quaternion ignored;
             return TryResolveConstructionAnchor(intent, out position, out ignored);
         }
 
         public bool TryResolveConstructionAnchor(IA01IntentType intent, out Vector3 position, out Quaternion rotation)
         {
-            IA01ConstructionAnchors anchors = ConstructionAnchors;
             position = Vector3.zero;
             rotation = Quaternion.identity;
+            // Os creates "IA01 Local - ..." sao os pontos oficiais do pais.
+            // Nem todas as cenas possuem o componente opcional
+            // IA01ConstructionAnchors, entao resolvemos o slot pelo mesmo id
+            // usado no plano de construcao. Isso impede a IA de procurar um lote
+            // livre ou construir em outra regiao quando o create ja existe.
+            string slotId = ResolveLocalSlotId(intent);
+            IA01BuildSlot slot;
+            IA01CityLayout resolvedLayout = ResolveCityLayoutForSlot(slotId);
+            if (!string.IsNullOrWhiteSpace(slotId) && resolvedLayout != null && resolvedLayout.TryGetSlot(slotId, out slot) && slot != null)
+            {
+                Transform point = slot.BuildingPoint != null ? slot.BuildingPoint : slot.transform;
+                position = point.position;
+                rotation = point.rotation;
+                if (loggedAnchorResolutions.Add(intent))
+                {
+                    UnityEngine.Debug.Log("[IA01 Anchor] " + intent + " -> " + slot.name + " (" + slot.SlotId + ") pos=" + position.ToString("F2"));
+                }
+                return true;
+            }
+
+            // Compatibilidade com cenas antigas: somente usa as referencias
+            // legadas se o create oficial nao existir. Essas referencias podem
+            // estar preenchidas no prefab, mas nunca devem sobrescrever um
+            // create diferente configurado na cena.
+            IA01ConstructionAnchors anchors = ConstructionAnchors;
             if (anchors != null)
             {
                 Vector3 resolvedPosition;
@@ -127,36 +157,61 @@ namespace Hegemonia.AI.IA01
                 {
                     position = resolvedPosition;
                     rotation = resolvedRotation;
+                    if (loggedAnchorResolutions.Add(intent))
+                    {
+                        UnityEngine.Debug.Log("[IA01 Anchor] " + intent + " -> legado (slot " + slotId + " indisponivel) pos=" + position.ToString("F2"));
+                    }
                     return true;
                 }
             }
 
-            // Os creates "IA01 Local - ..." sao os pontos oficiais do pais.
-            // Nem todas as cenas possuem o componente opcional
-            // IA01ConstructionAnchors, entao resolvemos o slot pelo mesmo id
-            // usado no plano de construcao. Isso impede a IA de procurar um lote
-            // livre ou construir em outra regiao quando o create ja existe.
-            string slotId = ResolveLocalSlotId(intent);
-            IA01BuildSlot slot;
-            if (string.IsNullOrWhiteSpace(slotId) || cityLayout == null || !cityLayout.TryGetSlot(slotId, out slot) || slot == null)
-            {
-                return false;
-            }
+            return false;
+        }
 
-            Transform point = slot.BuildingPoint != null ? slot.BuildingPoint : slot.transform;
-            position = point.position;
-            rotation = point.rotation;
-            return true;
+        private IA01CityLayout ResolveCityLayoutForSlot(string slotId)
+        {
+            if (string.IsNullOrWhiteSpace(slotId)) return null;
+            IA01CityLayout candidate = cityLayout;
+            IA01BuildSlot ignored;
+            if (candidate != null && candidate.TryGetSlot(slotId, out ignored)) return candidate;
+
+            candidate = GetComponentInChildren<IA01CityLayout>(true);
+            if (candidate != null && candidate.TryGetSlot(slotId, out ignored)) return candidate;
+            candidate = GetComponentInParent<IA01CityLayout>(true);
+            if (candidate != null && candidate.TryGetSlot(slotId, out ignored)) return candidate;
+
+            // Algumas cenas antigas mantêm o layout como irmao do controlador.
+            // Escolhe o layout que realmente possui o create solicitado e que
+            // esta mais proximo desta IA, evitando pegar o create de outro pais.
+            IA01CityLayout[] layouts = UnityEngine.Object.FindObjectsByType<IA01CityLayout>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            float bestDistance = float.PositiveInfinity;
+            for (int i = 0; i < layouts.Length; i++)
+            {
+                IA01CityLayout layout = layouts[i];
+                if (layout == null || !layout.TryGetSlot(slotId, out ignored)) continue;
+                float distance = (layout.transform.position - transform.position).sqrMagnitude;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    candidate = layout;
+                }
+            }
+            return candidate;
         }
 
         private static string ResolveLocalSlotId(IA01IntentType intent)
         {
             switch (intent)
             {
+                case IA01IntentType.EstablishCapital: return "prefeitura_01";
+                case IA01IntentType.BuildEnergy: return "energia_01";
+                case IA01IntentType.BuildFoodProduction: return "fazenda_01";
+                case IA01IntentType.BuildStorage: return "armazem_01";
                 case IA01IntentType.BuildVehicleConstructor: return "ia01.local.construtor_veiculos";
                 case IA01IntentType.BuildMilitaryAirport: return "ia01.local.aeroporto_militar";
                 case IA01IntentType.BuildCommercialAirport: return "ia01.local.aeroporto_comercial";
                 case IA01IntentType.BuildShipyard: return "ia01.local.estaleiro";
+                case IA01IntentType.BuildPier: return "ia01.local.pier";
                 case IA01IntentType.BuildMilitaryTent: return "ia01.local.tenda";
                 case IA01IntentType.BuildStarterHouse: return "ia01.local.casa";
                 case IA01IntentType.BuildMediumApartment: return "ia01.local.apartamento_medio";
@@ -171,14 +226,62 @@ namespace Hegemonia.AI.IA01
             EnsureBootstrap(false);
         }
 
+        // Controllers can be created after the manager (or in a scene that has no
+        // manager object at all). Keep a small safety tick here so the nation still
+        // reaches its production directors instead of remaining permanently idle.
+        private void Update()
+        {
+            if (!Application.isPlaying || !IsEnabled)
+            {
+                return;
+            }
+
+            if (attachedManager == null && autoRegisterWithManager)
+            {
+                RegisterWithManager();
+            }
+
+            if (attachedManager == null && Time.unscaledTime >= nextStandaloneTick)
+            {
+                nextStandaloneTick = Time.unscaledTime + Mathf.Max(0.25f, fallbackCadenceSeconds);
+                ExecuteSlice(IA01WorkBudget.Create(3f, 4, 2, true, false));
+            }
+        }
+
         private void OnEnable()
         {
             EnsureBootstrap(false);
+            SistemaDeDanos.OnDanoGlobal += HandleGlobalDamage;
             if (Application.isPlaying && autoRegisterWithManager) RegisterWithManager();
         }
 
-        private void OnDisable() => Shutdown();
-        private void OnDestroy() => Shutdown();
+        private void OnDisable()
+        {
+            SistemaDeDanos.OnDanoGlobal -= HandleGlobalDamage;
+            Shutdown();
+        }
+
+        private void OnDestroy()
+        {
+            SistemaDeDanos.OnDanoGlobal -= HandleGlobalDamage;
+            Shutdown();
+        }
+
+        private void HandleGlobalDamage(SistemaDeDanos victimDamage, GameObject aggressor, float damage)
+        {
+            if (!Application.isPlaying || victimDamage == null || aggressor == null) return;
+
+            IdentidadeUnidade victimIdentity = victimDamage.GetComponent<IdentidadeUnidade>();
+            if (victimIdentity == null) victimIdentity = victimDamage.GetComponentInParent<IdentidadeUnidade>();
+            IdentidadeUnidade aggressorIdentity = aggressor.GetComponent<IdentidadeUnidade>();
+            if (aggressorIdentity == null) aggressorIdentity = aggressor.GetComponentInParent<IdentidadeUnidade>();
+            if (victimIdentity == null || aggressorIdentity == null
+                || victimIdentity.teamID != TeamId || aggressorIdentity.teamID <= 0
+                || aggressorIdentity.teamID == TeamId) return;
+
+            EnsureBootstrap(false);
+            nationRuntime?.RegisterHostileAggression(aggressorIdentity.teamID, aggressor.transform.position, damage);
+        }
 
         public void Initialize(IA01RuntimeContext suppliedContext)
         {
@@ -472,6 +575,7 @@ namespace Hegemonia.AI.IA01
                 .Append(" objective=").Append(NextObjectiveStatus)
                 .Append(" construction=").Append(ConstructionStatus)
                 .Append(" combat=").Append(CombatStatus)
+                .Append(" military=").Append(MilitaryStatus)
                 .Append(" market=").Append(MarketStatus)
                 .Append(" economy=").Append(EconomicStateStatus);
             return summary.ToString();

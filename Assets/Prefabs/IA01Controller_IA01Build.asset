@@ -223,3 +223,35 @@ MonoBehaviour:
       target: 1
       role: 0
     failurePolicy: 0
+  - stepId: naval.pier
+    constructionData: {fileID: 11400000, guid: 049d629974210464ea2a8e621f6dc6a4, type: 2}
+    requiredRole: 17
+    placementMode: 0
+    primarySlotId: ia01.local.pier
+    slotGroupId: infraestrutura_estrategica
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: naval.plataforma
+    constructionData: {fileID: 11400000, guid: 1248a0cf1bfa3cc4fa60960cb29fed68, type: 2}
+    requiredRole: 11
+    placementMode: 1
+    primarySlotId: 
+    slotGroupId: plataformas_offshore
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0

@@ -1013,7 +1013,8 @@ public class ControleAviao : MonoBehaviour
 
     private IEnumerator RotinaRetomarMissaoAposReabastecimento()
     {
-        yield return new WaitForSeconds(0.35f);
+        float espera = aeroportoOrigem is GerenciadorPortaAvioes ? 4f : 1f;
+        yield return new WaitForSeconds(espera);
 
         if (estadoAtual != EstadoAviao.ProntoNoPatio)
         {
@@ -1021,7 +1022,17 @@ public class ControleAviao : MonoBehaviour
             yield break;
         }
 
-        if (_controleUnidade != null && rotaPatrulhaSalva.Count > 1)
+        bool retomandoDeCarrier = aeroportoOrigem is GerenciadorPortaAvioes;
+
+        if (retomandoDeCarrier)
+        {
+            // No porta-aviões o avião deve permanecer visível e aguardando nova ordem manual.
+            // Evita o ciclo "pousa -> reabastece -> decola sozinho" que fazia ele sumir do convés.
+            rotinaRetomadaMissao = null;
+            yield break;
+        }
+
+        if (rotaPatrulhaSalva.Count > 1)
         {
             _controleUnidade.EmitirOrdemPatrulha(new List<Vector3>(rotaPatrulhaSalva));
         }

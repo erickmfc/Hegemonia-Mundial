@@ -27,6 +27,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
     public bool modoPatrulhaAtivo = false;
     public bool modoSeguirAtivo = false;
     public bool modoAtaqueAtivo = false;
+    private float distanciaSeguimentoPadrao = 200f;
 
     // Overlay HUD para modo ataque/patrulha
     private GameObject _overlayHUDAtaque;
@@ -163,6 +164,11 @@ public class DesenharLinhasOrdem : MonoBehaviour
             "Seguir em edição");
         DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Seguir iniciado (alvos=" + _alvosModo.Count + ")");
         Debug.Log("MODO SEGUIR: clique com o botao direito em uma unidade aliada. ESC cancela.");
+    }
+
+    public void DefinirDistanciaSeguimento(float distancia)
+    {
+        distanciaSeguimentoPadrao = Mathf.Clamp(distancia, 25f, 10000f);
     }
 
     void Update()
@@ -476,11 +482,17 @@ public class DesenharLinhasOrdem : MonoBehaviour
         }
     }
 
-    public void AplicarOrdemSeguirDoMenu(Transform alvo)
+    public bool AplicarOrdemSeguirDoMenu(Transform alvo)
     {
-        if (!modoSeguirAtivo) return;
-        AplicarOrdemSeguir(alvo);
+        return AplicarOrdemSeguirDoMenu(alvo, -1f);
+    }
+
+    public bool AplicarOrdemSeguirDoMenu(Transform alvo, float distanciaSeguimento)
+    {
+        if (!modoSeguirAtivo) return false;
+        bool aplicado = AplicarOrdemSeguir(alvo, distanciaSeguimento);
         LimparTudo();
+        return aplicado;
     }
 
     public void AplicarOrdemAtaqueDoMenu(Vector3 pontoAlvo, Transform transformAlvo)
@@ -804,9 +816,15 @@ public class DesenharLinhasOrdem : MonoBehaviour
         }
     }
 
-    void AplicarOrdemSeguir(Transform alvo)
+    bool AplicarOrdemSeguir(Transform alvo, float distanciaSeguimento = -1f)
     {
+        if (distanciaSeguimento <= 0f)
+        {
+            distanciaSeguimento = distanciaSeguimentoPadrao;
+        }
+
         ControleUnidade unidadeAlvo = alvo != null ? alvo.GetComponent<ControleUnidade>() : null;
+        bool ordemEmitida = false;
         for (int i = 0; i < _alvosModo.Count; i++)
         {
             GameObject candidato = _alvosModo[i];
@@ -827,8 +845,10 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 continue;
             }
 
-            unidade.EmitirOrdemSeguir(alvo);
+            ordemEmitida |= unidade.EmitirOrdemSeguir(alvo, distanciaSeguimento);
         }
+
+        return ordemEmitida;
     }
 
     bool PodeSeguirAlvo(ControleUnidade seguidor, ControleUnidade alvo)
@@ -997,13 +1017,15 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
 
     public Transform AlvoSeguido => alvoSeguido;
 
-    public void Configurar(Transform novoAlvo)
+    public void Configurar(Transform novoAlvo, float distanciaDesejada = -1f)
     {
         alvoSeguido = novoAlvo;
         controle = GetComponent<ControleUnidade>();
         ehNaval = controle != null && controle.EhUnidadeNaval();
         ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
-        distanciaIdeal = ehNaval ? 170f : (ehAereo ? (controle != null && controle.TemHelicopteroExterno ? 60f : 140f) : 45f);
+        distanciaIdeal = distanciaDesejada > 0f
+            ? Mathf.Clamp(distanciaDesejada, 25f, 10000f)
+            : (ehNaval ? 170f : (ehAereo ? (controle != null && controle.TemHelicopteroExterno ? 60f : 140f) : 45f));
         intervaloAtualizacao = ehNaval ? 0.2f : (ehAereo ? 0.25f : 0.5f);
         offsetLateralNaval = ehNaval ? (((GetInstanceID() & 1) == 0) ? 50f : -50f) : 0f;
     }
@@ -1054,46 +1076,17 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
 
     void AtualizarSeguimentoPadrao()
     {
-        float distancia = Vector3.Distance(transform.position, alvoSeguido.position);
+        Vector3 destinoEscolta = CalcularDestinoPadrao();
+        float distanciaDestino = Vector3.Distance(transform.position, destinoEscolta);
 
-        if (distancia > distanciaIdeal)
+        if (distanciaDestino > 15f)
         {
-            Vector3 posicaoEscolta = alvoSeguido.position - (alvoSeguido.forward * (distanciaIdeal * 0.8f));
-            controle.EmitirOrdemMover(posicaoEscolta, false);
-
-            if (distancia < distanciaIdeal + 40f)
-            {
-                ControleUnidade controleLider = alvoSeguido.GetComponent<ControleUnidade>();
-                if (controleLider != null)
-                {
-                    float velLider = controleLider.ObterVelocidadeAtualReal();
-                    if (velLider > 0.5f)
-                    {
-                        controle.AplicarLimiteVelocidade(velLider * 1.15f);
-                    }
-                    else
-                    {
-                        controle.RestaurarVelocidadeOriginal();
-                    }
-                }
-            }
-            else
-            {
-                controle.RestaurarVelocidadeOriginal();
-            }
+            controle.EmitirOrdemMover(destinoEscolta, false);
+            AjustarVelocidadeSeguirBase();
         }
         else
         {
-            ControleUnidade controleLider = alvoSeguido.GetComponent<ControleUnidade>();
-            if (distancia < distanciaIdeal * 0.6f)
-            {
-                controle.AplicarLimiteVelocidade(0.1f);
-                controle.EmitirOrdemMover(transform.position, false);
-            }
-            else if (controleLider != null)
-            {
-                controle.AplicarLimiteVelocidade(controleLider.ObterVelocidadeAtualReal());
-            }
+            AjustarVelocidadeSeguirBase();
         }
     }
 
@@ -1211,6 +1204,40 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         {
             controle.AplicarLimiteVelocidade(0.1f);
             controle.EmitirOrdemMover(transform.position, false);
+        }
+    }
+
+    private Vector3 CalcularDestinoPadrao()
+    {
+        Vector3 frente = Flatten(alvoSeguido.forward);
+        if (frente.sqrMagnitude < 0.01f)
+        {
+            frente = Flatten(transform.position - alvoSeguido.position);
+        }
+
+        if (frente.sqrMagnitude < 0.01f)
+        {
+            frente = Vector3.forward;
+        }
+
+        frente.Normalize();
+        return alvoSeguido.position - frente * distanciaIdeal;
+    }
+
+    private void AjustarVelocidadeSeguirBase()
+    {
+        ControleUnidade controleLider = alvoSeguido.GetComponent<ControleUnidade>();
+        if (controleLider != null)
+        {
+            float velLider = controleLider.ObterVelocidadeAtualReal();
+            if (velLider > 0.5f)
+            {
+                controle.AplicarLimiteVelocidade(velLider * 1.1f);
+            }
+            else
+            {
+                controle.RestaurarVelocidadeOriginal();
+            }
         }
     }
 

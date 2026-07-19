@@ -265,14 +265,16 @@ namespace Hegemonia.AI.BrainMaster
                 Zone     = IA_ZoneType.Defense
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type            = IA_CommandType.Build,
-                Priority        = priority,
-                DedupKey        = "ares_build:" + terrain.ToString().ToLower() + ":" + _aresBuilt,
-                CooldownSeconds = cooldown,
-                Payload         = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Build,
+                "IA_DefenseDirector",
+                "defense",
+                "estrutura defensiva de resposta",
+                priority,
+                "defense",
+                "ares_build:" + terrain.ToString().ToLower() + ":" + _aresBuilt,
+                cooldown,
+                payload);
 
             string reason;
             bool ok = _context.CommandQueue.Enqueue(request, Time.time, out reason);
@@ -384,18 +386,20 @@ namespace Hegemonia.AI.BrainMaster
 
         private void QueueGroundUnit(string itemKey, int priority)
         {
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type            = IA_CommandType.Produce,
-                Priority        = priority,
-                DedupKey        = "ground_reinforce:" + IA_Text.Normalize(itemKey) + ":" + Time.frameCount,
-                CooldownSeconds = 4f,
-                Payload         = new IA_ProduceOrderData
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Produce,
+                "IA_DefenseDirector",
+                "production",
+                "reforco terrestre reativo",
+                priority,
+                "production",
+                "ground_reinforce:" + IA_Text.Normalize(itemKey) + ":" + Time.frameCount,
+                4f,
+                new IA_ProduceOrderData
                 {
-                    ItemKey  = itemKey,
+                    ItemKey = itemKey,
                     Quantity = 1
-                }
-            };
+                });
 
             string reason;
             _context.CommandQueue.Enqueue(request, Time.time, out reason);
@@ -436,14 +440,16 @@ namespace Hegemonia.AI.BrainMaster
                 Zone     = IA_ZoneType.Defense
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type            = IA_CommandType.Build,
-                Priority        = priority,
-                DedupKey        = "defense_build:" + IA_Text.Normalize(itemKey),
-                CooldownSeconds = cooldown,
-                Payload         = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Build,
+                "IA_DefenseDirector",
+                "defense",
+                "construcao defensiva de contingencia",
+                priority,
+                "defense",
+                "defense_build:" + IA_Text.Normalize(itemKey),
+                cooldown,
+                payload);
 
             string reason;
             _context.CommandQueue.Enqueue(request, Time.time, out reason);

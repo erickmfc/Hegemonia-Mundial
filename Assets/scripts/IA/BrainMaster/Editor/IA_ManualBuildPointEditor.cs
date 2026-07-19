@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace Hegemonia.AI.BrainMaster
 {
+    // Inspector dedicado para pontos manuais do BrainMaster.
     [CustomEditor(typeof(IA_ManualBuildPoint))]
     public sealed class IA_ManualBuildPointEditor : Editor
     {

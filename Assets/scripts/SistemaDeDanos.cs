@@ -7,6 +7,7 @@ public class SistemaDeDanos : MonoBehaviour
     // === EVENTOS PARA OUTROS SCRIPTS ===
     public event Action OnDano;  // Disparado quando recebe dano
     public event Action OnMorte; // Disparado quando morre
+    public static event Action<SistemaDeDanos, GameObject, float> OnDanoGlobal;
     
     [Header("Configuração Vital")]
     public float vidaMaxima = 100f;
@@ -59,6 +60,14 @@ public class SistemaDeDanos : MonoBehaviour
     {
         if (morreu) return;
 
+        // Alguns mísseis antigos não carregam o dono no impacto. Quando isso
+        // acontece, tenta identificar uma unidade hostil que esteja próxima do
+        // alvo para não perder a autoria do ataque.
+        if (agressor == null)
+        {
+            agressor = InferirAgressorProximo();
+        }
+
         vidaAtual -= dano;
         float porcentagem = vidaAtual / vidaMaxima;
         
@@ -73,6 +82,7 @@ public class SistemaDeDanos : MonoBehaviour
             {
                 if (SistemaGovernoMundial.Instancia != null)
                 {
+                    SistemaGovernoMundial.Instancia.RegistrarAgressao(vitimaID.teamID, agressorID.teamID);
                     var relacao = SistemaGovernoMundial.Instancia.ObterRelacao(vitimaID.teamID, agressorID.teamID);
                     if (relacao != null && !relacao.guerraDeclarada)
                     {
@@ -85,6 +95,8 @@ public class SistemaDeDanos : MonoBehaviour
             }
         }
         
+        OnDanoGlobal?.Invoke(this, agressor, dano);
+
         // Notifica outros sistemas que recebeu dano
         OnDano?.Invoke();
 
@@ -105,6 +117,31 @@ public class SistemaDeDanos : MonoBehaviour
         {
              // Opcional: Debug.Log($"Vida restante do {gameObject.name}: {vidaAtual}");
         }
+    }
+
+    private GameObject InferirAgressorProximo()
+    {
+        IdentidadeUnidade vitima = GetComponent<IdentidadeUnidade>();
+        if (vitima == null) vitima = GetComponentInParent<IdentidadeUnidade>();
+        if (vitima == null || vitima.teamID <= 0) return null;
+
+        IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        IdentidadeUnidade melhor = null;
+        float menorDistancia = 120f * 120f;
+        for (int i = 0; i < unidades.Length; i++)
+        {
+            IdentidadeUnidade candidata = unidades[i];
+            if (candidata == null || candidata.teamID <= 0 || candidata.teamID == vitima.teamID
+                || candidata.tipoUnidade == TipoUnidade.Estrutura) continue;
+
+            float distancia = (candidata.transform.position - transform.position).sqrMagnitude;
+            if (distancia < menorDistancia)
+            {
+                menorDistancia = distancia;
+                melhor = candidata;
+            }
+        }
+        return melhor != null ? melhor.gameObject : null;
     }
 
     // --- MÉTODOS DE REPARO (USADO PELO PIER DE MANUTENÇÃO) ---

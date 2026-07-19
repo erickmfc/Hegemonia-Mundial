@@ -55,7 +55,7 @@ namespace Hegemonia.AI.DEUSA
             TemAreaNavalValida = AncoraNaval != Vector3.zero || TemCosta;
 
             if (TagsManuaisEncontradas < 0) {
-#if UNITY_2023_1_OR_NEWER
+#if UNITY_6000_0_OR_NEWER || UNITY_2023_1_OR_NEWER
                 TagsManuaisEncontradas = Object.FindObjectsByType<IA_ManualPlacementTag>(FindObjectsSortMode.None).Length;
 #else
                 TagsManuaisEncontradas = Object.FindObjectsOfType<IA_ManualPlacementTag>().Length;

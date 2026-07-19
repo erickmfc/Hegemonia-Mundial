@@ -91,13 +91,6 @@ public class EstruturaEconomica : MonoBehaviour
             return;
         }
 
-        IA_Comandante comandante = GetComponentInParent<IA_Comandante>();
-        if (comandante != null && comandante.TeamID > 0)
-        {
-            teamId = comandante.TeamID;
-            return;
-        }
-
         SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
         teamId = gov != null ? gov.teamJogador : Mathf.Max(1, teamId);
     }

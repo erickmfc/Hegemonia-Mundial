@@ -177,14 +177,16 @@ namespace Hegemonia.AI.BrainMaster
                 PointB = pointB
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Patrol,
-                Priority = 68,
-                DedupKey = "patrol:border",
-                CooldownSeconds = 5f,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Patrol,
+                "IA_TacticalDirector",
+                "tactical",
+                "patrulha de fronteira",
+                68,
+                "tactical",
+                "patrol:border",
+                5f,
+                payload);
 
             string reason;
             _context.CommandQueue.Enqueue(request, Time.time, out reason);
@@ -919,14 +921,16 @@ namespace Hegemonia.AI.BrainMaster
                 Destination = destination
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Move,
-                Priority = priority,
-                DedupKey = "move:" + key,
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Move,
+                "IA_TacticalDirector",
+                "tactical",
+                "reposicionamento tatico",
+                priority,
+                "tactical",
+                "move:" + key,
+                cooldown,
+                payload);
 
             string reason;
             _context.CommandQueue.Enqueue(request, Time.time, out reason);
@@ -941,14 +945,16 @@ namespace Hegemonia.AI.BrainMaster
                 TargetPosition = targetPosition
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Attack,
-                Priority = priority,
-                DedupKey = "attack:" + key,
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Attack,
+                "IA_TacticalDirector",
+                "tactical",
+                "ordem ofensiva",
+                priority,
+                "tactical",
+                "attack:" + key,
+                cooldown,
+                payload);
 
             string reason;
             _context.CommandQueue.Enqueue(request, Time.time, out reason);
@@ -969,14 +975,16 @@ namespace Hegemonia.AI.BrainMaster
                 Target = target
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Ability,
-                Priority = priority,
-                DedupKey = "ability:" + key,
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Ability,
+                "IA_TacticalDirector",
+                "tactical",
+                "habilidade tática",
+                priority,
+                "tactical",
+                "ability:" + key,
+                cooldown,
+                payload);
 
             string reason;
             _context.CommandQueue.Enqueue(request, Time.time, out reason);

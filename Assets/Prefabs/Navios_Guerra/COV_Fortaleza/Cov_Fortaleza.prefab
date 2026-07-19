@@ -112,10 +112,10 @@ Rigidbody:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 108590380420570160}
-  serializedVersion: 4
+  serializedVersion: 5
   m_Mass: 50
-  m_Drag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -227,6 +227,7 @@ MonoBehaviour:
   modoAtual: 0
   cabecaRotativa: {fileID: 0}
   pontosDeSaida: []
+  pontosDeSaidaTorpedo: []
   prefabMissel: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 1
@@ -392,6 +393,7 @@ MonoBehaviour:
   tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
+  bloquearMovimentoAutomatico: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
   interceptarTorpedos: 0
@@ -468,6 +470,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -489,6 +493,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -556,6 +561,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -577,6 +584,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -663,6 +671,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -684,6 +694,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -749,6 +760,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -770,6 +783,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -844,6 +858,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -865,6 +881,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -930,6 +947,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -951,6 +970,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -1016,6 +1036,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -1037,6 +1059,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -1133,6 +1156,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -1154,6 +1179,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -1166,6 +1192,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6512952030664979889}
     m_Modifications:
+    - target: {fileID: 1956277204074730875, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
+      propertyPath: pecaRecuo
+      value: 
+      objectReference: {fileID: 5247001300755955213}
+    - target: {fileID: 1956277204074730875, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
+      propertyPath: municaoPrefab
+      value: 
+      objectReference: {fileID: 5864298406509392469, guid: ed8f0d5525bd8b045bdb2ffb83514f53, type: 3}
     - target: {fileID: 7558865025457271507, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
       propertyPath: m_Name
       value: torreta esquerda (1)
@@ -1227,6 +1261,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
+--- !u!4 &5247001300755955213 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7558865025457586335, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
+  m_PrefabInstance: {fileID: 2321443237477498514}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &5247001300755980465 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7558865025457626659, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
@@ -1313,6 +1352,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6512952030664979889}
     m_Modifications:
+    - target: {fileID: 1956277204074730875, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
+      propertyPath: pecaRecuo
+      value: 
+      objectReference: {fileID: 3272080060532743344}
+    - target: {fileID: 1956277204074730875, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
+      propertyPath: municaoPrefab
+      value: 
+      objectReference: {fileID: 5864298406509392469, guid: ed8f0d5525bd8b045bdb2ffb83514f53, type: 3}
     - target: {fileID: 7558865025457271507, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
       propertyPath: m_Name
       value: torreta esquerda
@@ -1335,11 +1382,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7558865025457626659, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.11969998
+      value: 0.1175
       objectReference: {fileID: 0}
     - target: {fileID: 7558865025457626659, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.1459
+      value: 0.1464
       objectReference: {fileID: 0}
     - target: {fileID: 7558865025457626659, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1374,6 +1421,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
+--- !u!4 &3272080060532743344 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7558865025457586335, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}
+  m_PrefabInstance: {fileID: 5012146620535888943}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &3272080060532769292 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7558865025457626659, guid: 97e880e140b1a5d4b974e7839e77463c, type: 3}

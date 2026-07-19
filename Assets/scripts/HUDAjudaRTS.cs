@@ -24,6 +24,7 @@ public sealed class HUDAjudaRTS : MonoBehaviour
     private bool expandido = true;
     private float recolherAutomaticamenteEm = -1f;
     private float toastAte = -1f;
+    private Coroutine animacaoToast;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -118,6 +119,34 @@ public sealed class HUDAjudaRTS : MonoBehaviour
 
         Instancia.textoToast.text = mensagem.Trim();
         Instancia.toastAte = Time.unscaledTime + (duracao > 0f ? duracao : Instancia.duracaoToastPadrao);
+        
+        if (Instancia.animacaoToast != null) Instancia.StopCoroutine(Instancia.animacaoToast);
+        Instancia.animacaoToast = Instancia.StartCoroutine(Instancia.AnimarToastErro());
+    }
+
+    private System.Collections.IEnumerator AnimarToastErro()
+    {
+        float timer = 0f;
+        Color originalColor = new Color(1f, 0.94f, 0.74f, 1f);
+        Color errorColor = new Color(1f, 0.3f, 0.3f, 1f);
+        Vector3 originalScale = Vector3.one;
+        Vector3 punchScale = new Vector3(1.25f, 1.25f, 1.25f);
+        
+        while (timer < 0.6f)
+        {
+            timer += Time.unscaledDeltaTime;
+            float t = timer / 0.6f;
+            
+            textoToast.color = Color.Lerp(errorColor, originalColor, t);
+            
+            float scaleValue = Mathf.Sin(t * Mathf.PI);
+            textoToast.transform.localScale = Vector3.Lerp(originalScale, punchScale, scaleValue);
+            
+            yield return null;
+        }
+        
+        textoToast.color = originalColor;
+        textoToast.transform.localScale = originalScale;
     }
 
     private void AtualizarConteudo()

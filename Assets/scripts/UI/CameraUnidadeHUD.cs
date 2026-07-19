@@ -81,7 +81,7 @@ public class CameraUnidadeHUD : MonoBehaviour
         }
 
         layerMaskMarcacao = ~LayerMask.GetMask("UI");
-        
+
         // Garante que comece desativada para poupar performance
         DesativarDoMenu();
     }
@@ -190,12 +190,20 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     public void DefinirTarget(ControleUnidade unidade)
     {
+        DefinirTarget(unidade, false);
+    }
+
+    public void DefinirTarget(ControleUnidade unidade, bool manterModoDrone)
+    {
         bool mesmaUnidade = targetUnit == unidade && unidade != null;
         targetUnit = unidade;
         currentLookedTarget = null;
         if (!mesmaUnidade)
         {
-            modoDroneCamera = false;
+            if (!manterModoDrone)
+            {
+                modoDroneCamera = false;
+            }
             currentRotationX = 15f;
             currentRotationY = 0f;
             alvoTravadoCamera = null;
@@ -239,6 +247,19 @@ public class CameraUnidadeHUD : MonoBehaviour
     private GameObject currentLookedTarget = null;
 
     public GameObject GetLookedTarget() => currentLookedTarget;
+
+    private static string ObterNomeExibicao(GameObject obj)
+    {
+        if (obj == null) return "DESCONHECIDO";
+
+        IdentidadeUnidade id = obj.GetComponent<IdentidadeUnidade>();
+        if (id != null && !string.IsNullOrEmpty(id.nomeDeBatismo))
+        {
+            return id.nomeDeBatismo.ToUpperInvariant();
+        }
+
+        return SaveableEntity.NormalizarPrefabKey(obj.name).ToUpperInvariant();
+    }
 
     public void AddZoom(float delta)
     {
@@ -453,12 +474,38 @@ public class CameraUnidadeHUD : MonoBehaviour
 
         if (alvoEncontrado != null)
         {
-            MarcarComoAlvo(alvoEncontrado);
+            // Descobre o time do controlador atual
+            IdentidadeUnidade meuId = targetUnit != null ? targetUnit.GetComponent<IdentidadeUnidade>() : null;
+            int meuTime = meuId != null ? meuId.teamID : 1;
+
+            // Se for aliado (mesmo time) ou neutro: APENAS trava a camera, sem atacar
+            if (alvoEncontrado.teamID == meuTime || alvoEncontrado.teamID == 0)
+            {
+                TravadoEmAlvo(alvoEncontrado.transform);
+                if (MenuComandoController.Instancia != null)
+                    MenuComandoController.Instancia.AdicionarLog("DRONE", $"SEGUINDO: {ObterNomeExibicao(alvoEncontrado.gameObject)}", "sistema");
+            }
+            else
+            {
+                // Inimigo: processa normalmente (ataque/missao)
+                MarcarComoAlvo(alvoEncontrado);
+            }
         }
         else if (primeiroPontoValido.HasValue)
         {
             MarcarCoordenada(primeiroPontoValido.Value.point);
         }
+    }
+
+    /// <summary>
+    /// Trava a camera do drone em qualquer Transform (aliado, aviao, navio, etc.)
+    /// sem emitir ordem de combate. Use via codigo ou pelo reticulo do drone.
+    /// </summary>
+    public void TravadoEmAlvo(Transform alvo)
+    {
+        if (alvo == null) { alvoTravadoCamera = null; pontoTravadoCamera = null; return; }
+        alvoTravadoCamera = alvo;
+        pontoTravadoCamera = null;
     }
 
     private void MarcarComoAlvo(IdentidadeUnidade id)

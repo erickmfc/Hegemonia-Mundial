@@ -190,8 +190,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0490873aa7b16fa4ebd1aa4f5755c6c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MarcadorTerritorio
-  raioDeDominio: 600
-  ehPrefeitura: 0
+  raioDeDominio: 1000
+  ehPrefeitura: 1
   mostrarBordasNoJogo: 1
   larguraLinha: 1.5
 --- !u!114 &-1340844490088325378

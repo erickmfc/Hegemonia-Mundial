@@ -271,7 +271,7 @@ public class BombaBombardeiro : MonoBehaviour
                     float fator = Mathf.Clamp01(1f - (dist / raioExplosao));
                     danoFinal   = Mathf.RoundToInt(danoMaximo * fator);
                 }
-                vida.ReceberDano(danoFinal);
+                vida.ReceberDano(danoFinal, dono);
             }
 
             Rigidbody rb = h.GetComponent<Rigidbody>();

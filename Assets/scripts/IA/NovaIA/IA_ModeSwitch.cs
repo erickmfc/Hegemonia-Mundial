@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Hegemonia.AI.Shared;
 
 namespace Hegemonia.AI.Master
 {
@@ -14,16 +15,7 @@ namespace Hegemonia.AI.Master
             Legacy = 2
         }
 
-        private static readonly Type[] LegacyStackTypes =
-        {
-            typeof(IA_Comandante),
-            typeof(IA_General),
-            typeof(IA_General_Pro),
-            typeof(IA_Arquiteto_Pro),
-            typeof(CerebroIA),
-            typeof(IA_Dominadora),
-            typeof(IA_Suprema)
-        };
+        private static readonly Type[] LegacyStackTypes = IA_SharedRuntimeSupport.LegacyStackTypes;
 
         [SerializeField] private AIStackMode _mode = AIStackMode.BrainMaster;
         [SerializeField] private bool _applyOnAwake = true;
@@ -33,10 +25,30 @@ namespace Hegemonia.AI.Master
         private AIStackMode _lastAppliedMode = (AIStackMode)(-1);
         private bool _sceneLoadedHooked;
 
+        public static AIStackMode CurrentMode
+        {
+            get { return _instance != null ? _instance._mode : AIStackMode.BrainMaster; }
+        }
+
+        public static bool IsBrainMasterMode
+        {
+            get { return CurrentMode == AIStackMode.BrainMaster; }
+        }
+
+        public static bool IsNovaIAMode
+        {
+            get { return CurrentMode == AIStackMode.NovaIA; }
+        }
+
+        public static bool IsLegacyMode
+        {
+            get { return CurrentMode == AIStackMode.Legacy; }
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsureDefaultModeSwitch()
         {
-            IA_ModeSwitch existing = UnityEngine.Object.FindFirstObjectByType<IA_ModeSwitch>();
+            IA_ModeSwitch existing = IA_UnitySearch.FindFirst<IA_ModeSwitch>();
             if (existing != null)
             {
                 return;
@@ -103,6 +115,7 @@ namespace Hegemonia.AI.Master
             }
 
             _lastAppliedMode = _mode;
+            _instance = this;
 
             switch (_mode)
             {
@@ -151,31 +164,36 @@ namespace Hegemonia.AI.Master
 
         private void ApplyNovaIAMode()
         {
-            SetNamespaceEnabled("Hegemonia.AI.BrainMaster", false);
-            SetNamespaceEnabled("Hegemonia.AI.DEUSA", false);
-            SetExactTypesEnabled(false, LegacyStackTypes);
-            SetNamespaceEnabled("Hegemonia.AI.Master", true, excludeSelf: true);
+            MonoBehaviour[] all = IA_UnitySearch.FindAll<MonoBehaviour>();
+            SetNamespaceEnabled(all, "Hegemonia.AI.BrainMaster", false);
+            SetNamespaceEnabled(all, "Hegemonia.AI.DEUSA", false);
+            SetNamespaceEnabled(all, "Hegemonia.AI.Sovereign", false);
+            SetExactTypesEnabled(all, false, LegacyStackTypes);
+            SetNamespaceEnabled(all, "Hegemonia.AI.Master", true, excludeSelf: true);
         }
 
         private void ApplyBrainMasterMode()
         {
-            SetNamespaceEnabled("Hegemonia.AI.Master", false, excludeSelf: true);
-            SetNamespaceEnabled("Hegemonia.AI.DEUSA", true);
-            SetNamespaceEnabled("Hegemonia.AI.BrainMaster", true);
-            SetExactTypesEnabled(false, LegacyStackTypes);
+            MonoBehaviour[] all = IA_UnitySearch.FindAll<MonoBehaviour>();
+            SetNamespaceEnabled(all, "Hegemonia.AI.Master", false, excludeSelf: true);
+            SetNamespaceEnabled(all, "Hegemonia.AI.DEUSA", true);
+            SetNamespaceEnabled(all, "Hegemonia.AI.BrainMaster", true);
+            SetNamespaceEnabled(all, "Hegemonia.AI.Sovereign", true);
+            SetExactTypesEnabled(all, false, LegacyStackTypes);
         }
 
         private void ApplyLegacyMode()
         {
-            SetNamespaceEnabled("Hegemonia.AI.BrainMaster", false);
-            SetNamespaceEnabled("Hegemonia.AI.DEUSA", false);
-            SetNamespaceEnabled("Hegemonia.AI.Master", false, excludeSelf: true);
-            SetExactTypesEnabled(true, LegacyStackTypes);
+            MonoBehaviour[] all = IA_UnitySearch.FindAll<MonoBehaviour>();
+            SetNamespaceEnabled(all, "Hegemonia.AI.BrainMaster", false);
+            SetNamespaceEnabled(all, "Hegemonia.AI.DEUSA", false);
+            SetNamespaceEnabled(all, "Hegemonia.AI.Sovereign", false);
+            SetNamespaceEnabled(all, "Hegemonia.AI.Master", false, excludeSelf: true);
+            SetExactTypesEnabled(all, true, LegacyStackTypes);
         }
 
-        private void SetNamespaceEnabled(string ns, bool enabledValue, bool excludeSelf = false)
+        private void SetNamespaceEnabled(MonoBehaviour[] all, string ns, bool enabledValue, bool excludeSelf = false)
         {
-            MonoBehaviour[] all = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
             for (int i = 0; i < all.Length; i++)
             {
                 MonoBehaviour mb = all[i];
@@ -199,14 +217,13 @@ namespace Hegemonia.AI.Master
             }
         }
 
-        private void SetExactTypesEnabled(bool enabledValue, params Type[] types)
+        private void SetExactTypesEnabled(MonoBehaviour[] all, bool enabledValue, params Type[] types)
         {
             if (types == null || types.Length == 0)
             {
                 return;
             }
 
-            MonoBehaviour[] all = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
             for (int i = 0; i < all.Length; i++)
             {
                 MonoBehaviour mb = all[i];

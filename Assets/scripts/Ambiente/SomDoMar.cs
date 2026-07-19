@@ -12,6 +12,8 @@ public sealed class SomDoMar : MonoBehaviour
     [Range(0f, 1f)]
     public float volumeGeral = 0.8f;
     public bool tocarAutomaticamente = true;
+    public bool exigirAguaNaCamera = true;
+    public float margemAgua = 2f;
 
     private AudioSource fonte;
 
@@ -29,6 +31,11 @@ public sealed class SomDoMar : MonoBehaviour
     private void OnEnable()
     {
         CameraController.CameraMudouArea += AoMudarAreaDaCamera;
+        if (cameraPrincipal == null)
+        {
+            CameraController controlador = FindFirstObjectByType<CameraController>();
+            if (controlador != null) cameraPrincipal = controlador.transform;
+        }
         if (cameraPrincipal != null) AoMudarAreaDaCamera(cameraPrincipal.position);
         GarantirReproducao();
     }
@@ -41,6 +48,11 @@ public sealed class SomDoMar : MonoBehaviour
     private void AoMudarAreaDaCamera(Vector3 posicao)
     {
         if (fonte == null) return;
+        if (exigirAguaNaCamera && !RegistroSuperficieMapa.TryGetAltura(posicao, TipoSuperficieMapa.Agua, out _, margemAgua))
+        {
+            fonte.volume = 0f;
+            return;
+        }
         float alturaSobreAgua = Mathf.Max(0f, posicao.y - nivelDaAgua);
         float fatorAltura = Mathf.InverseLerp(alturaMaxima, alturaMinima, alturaSobreAgua);
         fonte.volume = fatorAltura * fatorAltura * volumeGeral;

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Hegemonia.AI.Shared;
 
 namespace Hegemonia.AI.Master
 {
@@ -8,18 +9,10 @@ namespace Hegemonia.AI.Master
     /// </summary>
     public sealed class IA_RuntimeCoordinator
     {
-        private sealed class ControllerState
-        {
-            public int TeamId;
-            public IA_MasterController.RuntimeSeverity StableSeverity = IA_MasterController.RuntimeSeverity.Stable;
-            public int EscalateVotes;
-            public int RelaxVotes;
-        }
-
         private static IA_RuntimeCoordinator _instance;
         public static IA_RuntimeCoordinator Instance => _instance ?? (_instance = new IA_RuntimeCoordinator());
 
-        private readonly Dictionary<int, ControllerState> _controllers = new Dictionary<int, ControllerState>(16);
+        private readonly Dictionary<int, IA_ControllerState<IA_MasterController.RuntimeSeverity>> _controllers = new Dictionary<int, IA_ControllerState<IA_MasterController.RuntimeSeverity>>(16);
         private readonly List<int> _orderedIds = new List<int>(16);
 
         private IA_RuntimeCoordinator()
@@ -34,7 +27,7 @@ namespace Hegemonia.AI.Master
         {
             if (!_controllers.ContainsKey(controllerId))
             {
-                _controllers.Add(controllerId, new ControllerState { TeamId = teamId });
+                _controllers.Add(controllerId, new IA_ControllerState<IA_MasterController.RuntimeSeverity> { TeamId = teamId });
                 _orderedIds.Add(controllerId);
             }
         }
@@ -120,7 +113,7 @@ namespace Hegemonia.AI.Master
             float smoothedFps,
             float minimumSafeFps)
         {
-            ControllerState state;
+            IA_ControllerState<IA_MasterController.RuntimeSeverity> state;
             if (!_controllers.TryGetValue(controllerId, out state))
             {
                 return measured;

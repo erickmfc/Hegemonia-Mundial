@@ -156,18 +156,20 @@ namespace Hegemonia.AI.IA01
                 unfreeze = "Aguardar saldo acima de " + settings.EmergencyReserve + ".";
             }
 
-            if (!frozen && !openingInfrastructurePending && context.CurrentPosture == IA01NationPosture.Recovery && !threatened && !atWar)
+            bool economyCanExpand = treasury >= Mathf.Max(14000, (settings != null ? settings.EmergencyReserve : 0) * 2)
+                && food > 0 && energy > 0;
+            if (!frozen && !openingInfrastructurePending && context.CurrentPosture == IA01NationPosture.Recovery && !threatened && !atWar && !economyCanExpand)
             {
                 frozen = true;
                 reason = "Recovery sem ameaca imediata.";
-                unfreeze = "Sair de Recovery ou surgir ameaca real.";
+                unfreeze = "Aumentar caixa, comida e energia ou surgir ameaca real.";
             }
 
-            if (!frozen && !openingInfrastructurePending && phaseLimit != null && structureCount > phaseLimit.maxTotalStructures)
+            if (!frozen && !openingInfrastructurePending && phaseLimit != null && structureCount > phaseLimit.maxTotalStructures && !economyCanExpand)
             {
                 frozen = true;
                 reason = "Estruturas acima do limite da fase.";
-                unfreeze = "Reduzir a base ou mudar a fase.";
+                unfreeze = "Aumentar caixa/comida/energia para liberar expansao ou mudar a fase.";
             }
 
             // Falha de catálogo/lote pertence à etapa atual. Nunca congela a

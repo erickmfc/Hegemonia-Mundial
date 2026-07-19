@@ -12,25 +12,8 @@ public class SinalizadorIA : MonoBehaviour
 
     void Start()
     {
-        // Assim que o jogo comeca, este objeto avisa as IAs estrategicas da cena.
-        IA_Suprema ia = Object.FindFirstObjectByType<IA_Suprema>();
-        IA_Dominadora iaDominadora = Object.FindFirstObjectByType<IA_Dominadora>();
-
-        if (ia != null)
-        {
-            if (istoE_Agua)
-                ia.ReceberSinalizador(this.transform.position, true);
-            else if (istoE_Terra)
-                ia.ReceberSinalizador(this.transform.position, false);
-        }
-
-        if (iaDominadora != null)
-        {
-            if (istoE_Agua)
-                iaDominadora.ReceberSinalizador(this.transform.position, true);
-            else if (istoE_Terra)
-                iaDominadora.ReceberSinalizador(this.transform.position, false);
-        }
+        // Legado removido: este marcador agora é apenas visual.
+        // Mantido para não quebrar cenas antigas que ainda contenham o componente.
     }
 
     // Desenha uma esfera colorida no Unity (só você vê, não aparece no jogo) para não perder o objeto de vista!

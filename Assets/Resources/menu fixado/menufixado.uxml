@@ -61,6 +61,17 @@
                     <ui:Label text="0/0" name="lbl-pop-val" class="resource-base-value" />
                 </ui:VisualElement>
 
+                <ui:VisualElement class="resource-item">
+                    <ui:Label text="☠" class="resource-emoji" />
+                    <ui:Label text="0" name="lbl-dead-val" class="resource-base-value" />
+                </ui:VisualElement>
+
+                <!-- Empregos (Jobs) -->
+                <ui:VisualElement class="resource-item">
+                    <ui:Label text="💼" class="resource-emoji" />
+                    <ui:Label text="0" name="lbl-jobs-val" class="resource-base-value" />
+                </ui:VisualElement>
+
                 <!-- Petróleo (Oil) -->
                 <ui:VisualElement class="resource-item">
                     <ui:Label text="🛢️" class="resource-emoji" />
@@ -79,6 +90,7 @@
                 <ui:VisualElement class="resource-item">
                     <ui:Label text="🌾" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-food-val" class="resource-base-value" />
+                    <ui:Label text="+0/s" name="lbl-food-bonus" class="resource-bonus" />
                 </ui:VisualElement>
 
                 <!-- Energia (Energy) -->

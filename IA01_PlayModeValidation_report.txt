@@ -1,0 +1,27 @@
+IA01 PLAY MODE VALIDATION
+Status: FAIL: Capital flow did not stabilize. state=Idle capital=False buildings=1 pending=0 sawWaitingConfirmation=False mode=Frozen treasury=140 reserve=2500 available=0 need=Prefeitura sera criada pelo catalogo oficial. score=1000 objective=Objetivo: fundar a prefeitura. constructionCommand= command= block=Funds failures=1 capitalSource=CatalogRole capitalItemId=capital.prefeitura capitalPrefab=Prefeitura capitalDiagnostic=Capital valida: itemId=capital.prefeitura prefab=Prefeitura.
+ExitCode: 1
+ElapsedSeconds: 16.46
+Scene: SampleScene
+CapitalSource: CatalogRole
+CapitalItemId: capital.prefeitura
+CapitalPrefab: Prefeitura
+CapitalFailure: Capital valida: itemId=capital.prefeitura prefab=Prefeitura.
+Transitions: Idle -> Cooldown -> Idle
+WaitingConfirmation: False
+MaxPendingCommands: 0
+TraceFile: 
+
+[20:53:39] Entered Play Mode.
+[20:53:39] Stage -> LoadMenu | Preparing fresh campaign.
+[20:53:40] Loading menu scene.
+[20:53:41] Stage -> WaitMenu | Menu scene active.
+[20:53:42] Menu controller found: MenuInicialController.
+[20:53:42] Stage -> StartCampaign | Invoking new campaign.
+[20:53:42] Calling Btn_NovaCampanha().
+[20:53:42] Stage -> WaitWorld | Campaign requested.
+[20:53:44] IA01 manager/controller/runtime resolved.
+[20:53:44] Stage -> ObserveCapital | World ready.
+[20:53:56] Capital flow stalled | mode=Frozen state=Idle treasury=140 reserve=2500 available=0 need=Prefeitura sera criada pelo catalogo oficial. score=1000 objective=Objetivo: fundar a prefeitura. constructionCommand= command= block=Funds failures=1 capitalSource=CatalogRole capitalItemId=capital.prefeitura capitalPrefab=Prefeitura capitalDiagnostic=Capital valida: itemId=capital.prefeitura prefab=Prefeitura.
+[20:53:56] Validation failed: Capital flow did not stabilize. state=Idle capital=False buildings=1 pending=0 sawWaitingConfirmation=False mode=Frozen treasury=140 reserve=2500 available=0 need=Prefeitura sera criada pelo catalogo oficial. score=1000 objective=Objetivo: fundar a prefeitura. constructionCommand= command= block=Funds failures=1 capitalSource=CatalogRole capitalItemId=capital.prefeitura capitalPrefab=Prefeitura capitalDiagnostic=Capital valida: itemId=capital.prefeitura prefab=Prefeitura.
+

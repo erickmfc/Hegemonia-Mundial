@@ -15,8 +15,13 @@ MonoBehaviour:
   nomeItem: Predio Medio
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
+  itemId: residencial.apartamento_medio
+  aliases: apartamento, apartamentos, predio medio, edificio residencial
+  capacidades: 16777281
   prefabDaUnidade: {fileID: 60023181095797247, guid: 06ebfc572d71e6140ac32be5c7f7ec22, type: 3}
   preco: 250
   categoria: 6
+  escalaPoder: 0
+  strategicRole: 1
   balanceamento: {fileID: 0}
   scriptsDeComando: []

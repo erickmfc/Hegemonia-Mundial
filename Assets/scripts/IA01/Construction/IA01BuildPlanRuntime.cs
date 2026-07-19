@@ -36,7 +36,7 @@ namespace Hegemonia.AI.IA01
             IA01IntentType.EstablishCapital, IA01IntentType.BuildEnergy, IA01IntentType.BuildFoodProduction,
             IA01IntentType.BuildResidentialCapacity, IA01IntentType.BuildStorage, IA01IntentType.BuildLogistics,
             IA01IntentType.BuildRoad, IA01IntentType.BuildMilitaryAirport, IA01IntentType.BuildCommercialAirport,
-            IA01IntentType.BuildShipyard, IA01IntentType.BuildIndustry, IA01IntentType.BuildDefense,
+            IA01IntentType.BuildShipyard, IA01IntentType.BuildPier, IA01IntentType.BuildOffshorePlatform, IA01IntentType.BuildIndustry, IA01IntentType.BuildDefense,
             IA01IntentType.BuildStarterHouse, IA01IntentType.BuildMediumApartment, IA01IntentType.BuildHighApartment,
             IA01IntentType.BuildMilitaryTent, IA01IntentType.BuildVehicleConstructor
         };
@@ -111,6 +111,10 @@ namespace Hegemonia.AI.IA01
                     SlotValidationResult = reason;
                     return false;
                 }
+                // Alguns prefabs navais antigos chegam do catalogo como NavalBase
+                // generico. O roteiro preserva a funcao especifica do create.
+                if (step.requiredRole != IA01StrategicRole.None)
+                    definition.StrategicRole = step.requiredRole;
                 if (step.minimumStage > (int)context.CurrentStage)
                 {
                     reason = "fase minima ainda nao atingida";
@@ -468,6 +472,8 @@ namespace Hegemonia.AI.IA01
                     return (role == IA01StrategicRole.Airfield || role == IA01StrategicRole.Airport)
                         && StepHasAnyToken(step, "comercial", "commercial", "civil", "terminal");
                 case IA01IntentType.BuildShipyard: return role == IA01StrategicRole.NavalBase || role == IA01StrategicRole.Shipyard || role == IA01StrategicRole.Port || role == IA01StrategicRole.Pier;
+                case IA01IntentType.BuildPier: return role == IA01StrategicRole.Pier;
+                case IA01IntentType.BuildOffshorePlatform: return role == IA01StrategicRole.NavalBase;
                 case IA01IntentType.BuildStarterHouse: return role == IA01StrategicRole.Residential && StepHasAnyToken(step, "casa", "house");
                 case IA01IntentType.BuildMediumApartment: return role == IA01StrategicRole.Residential && StepHasAnyToken(step, "medio", "médio", "apartment", "apartamento");
                 case IA01IntentType.BuildHighApartment: return role == IA01StrategicRole.Residential && StepHasAnyToken(step, "hard", "alto", "high", "torre");
@@ -506,6 +512,10 @@ namespace Hegemonia.AI.IA01
                     return text.Contains("aeroporto_comercial") || text.Contains("aeroporto comercial") || text.Contains("commercial airport") || text.Contains("terminal civil");
                 case IA01IntentType.BuildShipyard:
                     return text.Contains("estaleiro") || text.Contains("shipyard") || text.Contains("naval yard");
+                case IA01IntentType.BuildPier:
+                    return text.Contains("pier");
+                case IA01IntentType.BuildOffshorePlatform:
+                    return text.Contains("plataforma") || text.Contains("offshore");
                 case IA01IntentType.BuildMilitaryTent:
                     return text.Contains("tenda") || text.Contains("tent") || text.Contains("barracks");
                 case IA01IntentType.BuildVehicleConstructor:

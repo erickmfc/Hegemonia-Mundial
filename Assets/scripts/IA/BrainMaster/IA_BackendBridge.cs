@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
+using Hegemonia.AI.IA01;
 using UnityEngine;
 using UnityEngine.AI;
+using Hegemonia.AI.Shared;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -88,6 +90,7 @@ namespace Hegemonia.AI.BrainMaster
             else
             {
                 Debug.Log("[IA_BackendBridge] Catalogo carregado: " + _catalog.Count + " itens disponíveis para a IA.");
+                CatalogoProdutoCompartilhado.RegistrarConstrucoes(_catalog);
             }
         }
 
@@ -110,7 +113,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            string canonical = CanonicalizeKey(normalized);
+            string canonical = IA_SharedRuntimeSupport.CanonicalizeActionKey(normalized);
 
             if (_catalogByKey.TryGetValue(normalized, out item))
             {
@@ -188,18 +191,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public bool BelongsToTeam(Component component)
         {
-            if (component == null)
-            {
-                return false;
-            }
-
-            IdentidadeUnidade id = component.GetComponent<IdentidadeUnidade>();
-            if (id == null)
-            {
-                id = component.GetComponentInParent<IdentidadeUnidade>();
-            }
-
-            return id != null && id.teamID == _teamId;
+            return IA_SharedRuntimeSupport.BelongsToTeam(component, _teamId);
         }
 
         public void EnsureIdentity(GameObject obj)
@@ -931,6 +923,12 @@ namespace Hegemonia.AI.BrainMaster
         {
             created = null;
             reason = string.Empty;
+            if (IA01ConstructionAuthority.IsOwner(_teamId))
+            {
+                reason = "construcao delegada a IA01";
+                return false;
+            }
+
             DadosConstrucao data;
             if (!_bridge.TryResolveItem(itemKey, out data))
             {
@@ -1064,9 +1062,10 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            Vector3 waterPoint;
-            string reason;
-            return NavalPlacementResolver.TryResolveWaterSpawn(probe, Vector3.forward, 0f, 36f, out waterPoint, out seaLevel, out reason);
+            // Encontrar agua nas proximidades nao torna o ponto de construcao valido.
+            // O ponto precisa ser corrigido pelo planejador naval antes desta validacao;
+            // aceitar o ponto terrestre aqui fazia navios nascerem sobre a ilha.
+            return false;
         }
 
         private bool IsDefense(DadosConstrucao data)
@@ -1456,7 +1455,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool IsFootprintFree(Vector3 position, Vector2 halfExtents)
         {
-            Vector3 extents = new Vector3(Mathf.Max(2f, halfExtents.x), 10f, Mathf.Max(2f, halfExtents.y));
+            Vector3 extents = new Vector3(Mathf.Max(2f, halfExtents.x * 0.95f), 10f, Mathf.Max(2f, halfExtents.y * 0.95f));
             // Substituído OverlapBox por OverlapBoxNonAlloc (elimina alocações de array por chamada)
             int hitCount = Physics.OverlapBoxNonAlloc(position, extents, _footprintBuffer, Quaternion.identity, ~0, QueryTriggerInteraction.Collide);
             for (int i = 0; i < hitCount; i++)

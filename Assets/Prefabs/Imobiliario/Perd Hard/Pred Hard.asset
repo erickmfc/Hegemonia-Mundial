@@ -15,8 +15,13 @@ MonoBehaviour:
   nomeItem: Predio Hard
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
+  itemId: residencial.apartamento_grande
+  aliases: apartamento grande, torre residencial, predio alto, edificio residencial
+  capacidades: 16777281
   prefabDaUnidade: {fileID: 5276979632483884529, guid: d0bfd2136cb7159418e61f926cfc969c, type: 3}
   preco: 5000
   categoria: 6
+  escalaPoder: 0
+  strategicRole: 1
   balanceamento: {fileID: 0}
   scriptsDeComando: []

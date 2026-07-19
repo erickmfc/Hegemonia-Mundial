@@ -65,7 +65,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     private readonly List<ControleAviao> _bufferScanAvioes = new List<ControleAviao>(48);
     private readonly List<Helicoptero> _bufferScanHelicopteros = new List<Helicoptero>(32);
     private float _tempoProximoScan = 0f;
-    private float _tempoProximoReporPatioCarrier = -999f;
     private Vector2 _scrollHelisCarrier;
     private readonly List<Vector3> _rotaPatrulhaAviaoCarrier = new List<Vector3>();
     private readonly List<Vector3> _rotaPatrulhaHelicopteroCarrier = new List<Vector3>();
@@ -555,7 +554,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             ProcessarOrdemAviaoCarrier();
         }
 
-        // Auto-replenish patio from hangar periodically if space is available
         // 6. SISTEMA DE "CONVÈS ADERENTE" (Parenting)
         // Garante que aviões no navio se movam JUNTO com o navio
         GerenciarParentescoAeronaves();
@@ -786,8 +784,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 
                 if (GUILayout.Button("⬇️ Autorizar pouso", GUILayout.Width(140), GUILayout.Height(22)))
                 {
-                    av.aeroportoOrigem = this;
-                    av.ComandoRetornarBase();
+                    av.DefinirBaseAlternativaEIniciarRetorno(this);
                     _avioesProximosNoAr.RemoveAt(i);
                     break;
                 }
@@ -1784,8 +1781,42 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     public override void GuardarNoHangarAutomatico(ControleAviao av)
     {
-        base.GuardarNoHangarAutomatico(av);
-        if (av != null) av.transform.SetParent(this.transform);
+        if (av == null)
+        {
+            return;
+        }
+
+        av.aeroportoOrigem = this;
+
+        Transform vagaVisivel = null;
+        if (av.vagaRetorno != null && (av.vagaRetorno == transform || av.vagaRetorno.IsChildOf(transform)))
+        {
+            vagaVisivel = av.vagaRetorno;
+        }
+        else
+        {
+            vagaVisivel = ObterPrimeiraVagaLivre();
+        }
+
+        if (vagaVisivel != null)
+        {
+            ColocarAviaoInstantaneamenteNoPatio(av, vagaVisivel, true);
+            av.transform.SetParent(this.transform, true);
+            return;
+        }
+
+        avioesNoHangar.Remove(av);
+        if (!avioesNoPatio.Contains(av))
+        {
+            avioesNoPatio.Add(av);
+        }
+
+        av.gameObject.SetActive(true);
+        av.transform.SetParent(this.transform, true);
+        av.aguardandoCliqueRadar = false;
+        av.ordemParaRetorno = false;
+        av.estaEmModoVooFisico = false;
+        av.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
     }
 
     public override void RegistrarHelicopteroControlado(Helicoptero helicoptero)

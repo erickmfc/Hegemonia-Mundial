@@ -15,8 +15,13 @@ MonoBehaviour:
   nomeItem: Aeroporto comercial
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
+  itemId: aeroporto_comercial
+  aliases: aeroporto comercial, terminal civil, commercial airport, aeroporto civil
+  capacidades: 25168465
   prefabDaUnidade: {fileID: 5339982755822327566, guid: 38154d6e927ca7945be5ad5b4a4e3286, type: 3}
   preco: 100
   categoria: 2
+  escalaPoder: 0
+  strategicRole: 10
   balanceamento: {fileID: 0}
   scriptsDeComando: []

@@ -17,10 +17,11 @@ MonoBehaviour:
   icone: {fileID: 21300000, guid: 336d2d78c93876444b98f98a28b019bb, type: 3}
   itemId: aeroporto_militar
   aliases: aeroporto militar, base aerea militar, military airport, base aerea, aeroporto
-  capacidades: 1024
+  capacidades: 1681
   prefabDaUnidade: {fileID: 1032297418132470704, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
   preco: 100
   categoria: 2
   escalaPoder: 0
+  strategicRole: 10
   balanceamento: {fileID: 0}
   scriptsDeComando: []

@@ -14,7 +14,6 @@ public class ControleDroneHasaf : MonoBehaviour
     public float tempoRecarga = 3f;
     private float cronometroRecarga = 0f;
     private int municaoAtual = 4;
-    private int municaoMaxima = 4;
 
     [Header("Patrulha e Seguir")]
     public float distanciaManterAlvo = 250f;
@@ -38,7 +37,7 @@ public class ControleDroneHasaf : MonoBehaviour
         
         // Ajuste de estabilidade e voo do ControleAviao
         controleAviao.raioOrbitaMissao = raioPatrulha;
-        controleAviao.altitudeVoo = 90f; // Drone de vigia: altitude baixa e est·vel
+        controleAviao.altitudeVoo = 90f; // Drone de vigia: altitude baixa e est√°vel
     }
 
 #if UNITY_EDITOR

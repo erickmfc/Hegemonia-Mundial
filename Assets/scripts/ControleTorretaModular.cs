@@ -29,6 +29,8 @@ public class ControleTorretaModular : MonoBehaviour
     [Header("⚙️ Comportamento")]
     [Tooltip("Se ativo, torreta não ataca")]
     public bool modoPassivo = false;
+    [Tooltip("Failsafe: impede qualquer rotacao automatica desta torreta.")]
+    public bool bloquearMovimentoAutomatico = false;
     
     [Header("🔫 Armamento (Múltiplas Armas)")]
     [Tooltip("Lista de armas instaladas nesta torreta")]
@@ -163,6 +165,12 @@ public class ControleTorretaModular : MonoBehaviour
     
     void Update()
     {
+        if (bloquearMovimentoAutomatico)
+        {
+            alvoAtual = null;
+            return;
+        }
+
         // Atualiza cooldowns de todas as armas
         foreach (var arma in armas)
         {
@@ -171,7 +179,9 @@ public class ControleTorretaModular : MonoBehaviour
         
         if (alvoAtual != null)
         {
-            if (!alvoAtual.gameObject.activeInHierarchy || !ControleSubmarino.PodeSerAlvoConvencional(alvoAtual))
+            if (!alvoAtual.gameObject.activeInHierarchy
+                || !ControleSubmarino.PodeSerAlvoConvencional(alvoAtual)
+                || (alvoAtual.position - transform.position).sqrMagnitude > alcanceRadar * alcanceRadar)
             {
                 alvoAtual = null;
                 return;

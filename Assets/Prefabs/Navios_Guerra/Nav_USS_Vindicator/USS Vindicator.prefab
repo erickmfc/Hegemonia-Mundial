@@ -88,7 +88,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 32ce560dd3360da439531016f604e494, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
   anelSelecao: {fileID: 0}
   selecionado: 0
@@ -119,10 +119,10 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 25
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 100
+  m_Speed: 39
+  m_Acceleration: 5
+  avoidancePriority: 35
+  m_AngularSpeed: 120
   m_StoppingDistance: 0
   m_AutoTraverseOffMeshLink: 1
   m_AutoBraking: 1
@@ -141,7 +141,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 86bf21ae7ce6f5a47b74d272af475dc8, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IdentidadeNaval
   nomeDoNavio: Vindicator
   categoriaNavio: 1
@@ -1107,7 +1107,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 37af128960c2d574f99598557ad1624e, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigo
   alcance: 950
@@ -1145,7 +1145,7 @@ MonoBehaviour:
   rotRepouso: {x: 0, y: 90, z: 0}
   rotDisparo: {x: 0, y: 90, z: -86.14}
   autoConfigurarRepousoNoStart: 1
-  tagPontoMissel:
+  tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
   interceptarMisseis: 0

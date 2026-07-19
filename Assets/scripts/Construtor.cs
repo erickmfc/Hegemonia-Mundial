@@ -438,7 +438,15 @@ public class Construtor : MonoBehaviour
                 
                 Vector3 pInicioPlano = pInicio; pInicioPlano.y = 0f;
                 Vector3 pFimPlano = pFim; pFimPlano.y = 0f;
-                Vector3 posPlana = posFinalPreview; posPlana.y = 0f;
+
+                // Correção de Parallax: intercepta o raio da câmera com a altura real da rua
+                Vector3 posPlana = posFinalPreview;
+                Ray rayMouse = Camera.main.ScreenPointToRay(Input.mousePosition);
+                UnityEngine.Plane planoRua = new UnityEngine.Plane(Vector3.up, new Vector3(0, pInicio.y, 0));
+                if (planoRua.Raycast(rayMouse, out float enter)) {
+                    posPlana = rayMouse.GetPoint(enter);
+                }
+                posPlana.y = 0f;
                 
                 Vector3 ruaDirPlana = (pFimPlano - pInicioPlano).normalized;
                 if (ruaDirPlana == Vector3.zero) ruaDirPlana = Vector3.forward;
@@ -454,14 +462,12 @@ public class Construtor : MonoBehaviour
                 Vector3 ruaRight = Vector3.Cross(Vector3.up, ruaDirPlana).normalized;
                 
                 // Usa o vetor do mouse sem clamp para detectar o lado correto (esquerdo ou direito da rua)
-                Vector3 centroRuaPlano = (pInicioPlano + pFimPlano) * 0.5f;
-                Vector3 toMouseDoCentro = posPlana - centroRuaPlano;
-                float dotRight = Vector3.Dot(toMouseDoCentro, ruaRight);
+                Vector3 toMouseDoProj = posPlana - pontoNaRuaPlano;
+                float dotRight = Vector3.Dot(toMouseDoProj, ruaRight);
                 // Se o mouse estiver exatamente sobre a rua (dotRight muito próximo de zero),
                 // usa a posição do mouse não-clampada em relação ao ponto projetado
                 if (Mathf.Abs(dotRight) < 0.1f)
                 {
-                    Vector3 toMouseDoProj = posPlana - pontoNaRuaPlano;
                     dotRight = Vector3.Dot(toMouseDoProj, ruaRight);
                 }
                 
@@ -593,7 +599,7 @@ public class Construtor : MonoBehaviour
             if (VerificarSobreposicao(posFinalPreview, fantasmaUnico.transform.rotation, prefabSelecionado, 0.5f, snapCollider))
             {
                 previewLocalInvalido = true;
-                motivoInvalido = "❌ SOBREPOSIÇÃO DE CONSTRUÇÃO:\nNão é permitido sobrepor prédios ou ruas.";
+                motivoInvalido = LocalizationManager.T("build.overlap", "❌ SOBREPOSIÇÃO DE CONSTRUÇÃO:\nNão é permitido sobrepor prédios ou ruas.");
             }
         }
 
@@ -825,7 +831,7 @@ public class Construtor : MonoBehaviour
             if (VerificarSobreposicao(posSeg, rotSeg, prefabSelecionado, 0.5f, ultimoColliderConstruidoRua, snapColliderEnd))
             {
                 previewLocalInvalido = true;
-                motivoInvalido = "❌ SOBREPOSIÇÃO DE CONSTRUÇÃO:\nNão é permitido sobrepor prédios ou ruas.";
+                motivoInvalido = LocalizationManager.T("build.overlap", "❌ SOBREPOSIÇÃO DE CONSTRUÇÃO:\nNão é permitido sobrepor prédios ou ruas.");
                 break;
             }
         }
@@ -1527,7 +1533,9 @@ public class Construtor : MonoBehaviour
             for (int i = 1; i < renderers.Length; i++) boundsBase.Encapsulate(renderers[i].bounds);
         }
         
-        Vector3 metadeTamanho = boundsBase.extents - (Vector3.one * margemSeguranca);
+        // Reduz levemente a area de checagem para permitir encaixe por borda no grid.
+        float fatorApertura = Mathf.Clamp01(1f - (margemSeguranca * 0.1f));
+        Vector3 metadeTamanho = boundsBase.extents * fatorApertura;
         if (metadeTamanho.x < 0.2f) metadeTamanho.x = 0.2f;
         if (metadeTamanho.y < 0.2f) metadeTamanho.y = 0.2f;
         if (metadeTamanho.z < 0.2f) metadeTamanho.z = 0.2f;

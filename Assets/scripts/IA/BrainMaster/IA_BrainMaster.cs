@@ -1,5 +1,9 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using Hegemonia.AI.DEUSA;
+using Hegemonia.AI.Shared;
+using Hegemonia.AI.Sovereign;
 using UnityEngine;
 
 namespace Hegemonia.AI.BrainMaster
@@ -82,6 +86,7 @@ namespace Hegemonia.AI.BrainMaster
         [TextArea(2, 8)] public string BootstrapLastError = string.Empty;
         [TextArea(4, 18)] public string NavalDiagnosticSummary = string.Empty;
         [TextArea(2, 8)] public string CombatPressureSummary = string.Empty;
+        public string RuntimeTracePath = string.Empty;
 
         [Header("Imperial AI")]
         public IA_WarPosture WarPosture = IA_WarPosture.BalancedAggression;
@@ -112,6 +117,8 @@ namespace Hegemonia.AI.BrainMaster
         }
 
         private IA_CommandQueue _commandQueue;
+        private IA_CommandConfirmationService _commandConfirmationService;
+        private IA_IntentCommandRouter _intentCommandRouter;
         private IA_BackendBridge _backendBridge;
         private IA_PerformanceScheduler _scheduler;
         private IA_DebugMonitor _debugMonitor;
@@ -164,6 +171,9 @@ namespace Hegemonia.AI.BrainMaster
         private int _coordinatorSlot = 0;
         private readonly System.Diagnostics.Stopwatch _updateWatch = new System.Diagnostics.Stopwatch();
         private float _nextObserverQueueLogTime = -1f;
+        private string _authorityOwnerKey = string.Empty;
+        private bool _authorityClaimed;
+        private string _authorityStatus = "autoridade pendente";
 
         private enum IA_CommandLane
         {
@@ -180,12 +190,21 @@ namespace Hegemonia.AI.BrainMaster
         {
             _activeBrainCount++;
             _coordinatorSlot = IA_GlobalBrainCoordinator.Instance.Register(TeamId);
+            _authorityOwnerKey = BuildAuthorityOwnerKey();
+            SynchronizeCommandAuthority();
+            IA_RuntimeTextTrace.EnsureSession(TeamId);
         }
 
         private void OnDisable()
         {
+            ReleaseCommandAuthority();
             _activeBrainCount = Mathf.Max(0, _activeBrainCount - 1);
             IA_GlobalBrainCoordinator.Instance.Unregister(TeamId);
+        }
+
+        private void OnApplicationQuit()
+        {
+            IA_RuntimeTextTrace.CloseSession();
         }
 
         private void Awake()
@@ -202,8 +221,10 @@ namespace Hegemonia.AI.BrainMaster
         private void Update()
         {
             TickEconomy(Time.deltaTime);
+            IA_RuntimeTextTrace.LogFrame(TeamId, "BrainMaster", "UPDATE_BEGIN", BuildRuntimeTraceSnapshot());
             if (!EnsureRuntimeOperational(false))
             {
+                IA_RuntimeTextTrace.LogFrame(TeamId, "BrainMaster", "UPDATE_ABORT", "runtime indisponivel | " + BuildRuntimeTraceSnapshot());
                 return;
             }
 
@@ -246,7 +267,17 @@ namespace Hegemonia.AI.BrainMaster
                 coordinator.ReportFrameCost(_coordinatorSlot, (float)_updateWatch.Elapsed.TotalMilliseconds, canRunHeavy);
             }
 
-            ProcessCommandQueue(Time.time);
+            float commandNow = Time.time;
+            // O roteamento e leve e nao pode ficar atras de modulos pesados no scheduler.
+            if (_intentCommandRouter != null)
+            {
+                _intentCommandRouter.Tick(commandNow, Time.deltaTime);
+            }
+            ProcessCommandQueue(commandNow);
+            if (_commandConfirmationService != null)
+            {
+                _commandConfirmationService.Tick(_commandQueue, _worldState, commandNow);
+            }
 
             if (Time.unscaledTime >= _nextRuntimeSummaryTime)
             {
@@ -265,12 +296,24 @@ namespace Hegemonia.AI.BrainMaster
                                  + " | Imperial=" + StrategicPhase + " " + ActiveImperialPlan
                                  + " | BootstrapStage=" + BootstrapStage
                                  + " | BootstrapStatus=" + BootstrapStatus
+                                 + " | Authority=" + _authorityStatus
+                                 + " | QueuePending=" + (_commandQueue != null ? _commandQueue.PendingCount.ToString() : "n/d")
+                                 + " | QueueAwaiting=" + (_commandQueue != null ? _commandQueue.AwaitingConfirmationCount.ToString() : "n/d")
+                                 + " | QueueOk=" + (_commandQueue != null ? _commandQueue.CompletedSuccessCount.ToString() : "n/d")
+                                 + " | QueueFail=" + (_commandQueue != null ? _commandQueue.CompletedFailureCount.ToString() : "n/d")
                                  + " | Governor=" + (Context != null && Context.PerformanceGovernorState != null
                                      ? Context.PerformanceGovernorState.Band.ToString()
                                      : "n/d")
                                  + (string.IsNullOrEmpty(BootstrapLastError) ? string.Empty : " | BootstrapError=" + BootstrapLastError);
+                RuntimeTracePath = IA_RuntimeTextTrace.CurrentPath;
+                if (!string.IsNullOrEmpty(RuntimeTracePath))
+                {
+                    RuntimeSummary += " | TraceTxt=" + Path.GetFileName(RuntimeTracePath);
+                }
                 NavalDiagnosticSummary = IA_NavalBuildDiagnostics.GetInspectorSummary(this);
                 CombatPressureSummary = BuildCombatPressureSummary();
+                AtualizarDiagnosticoRuntimeOverlay();
+                IA_RuntimeTextTrace.LogFrame(TeamId, "BrainMaster", "UPDATE_SUMMARY", RuntimeSummary);
                 _nextRuntimeSummaryTime = Time.unscaledTime + 0.6f;
             }
         }
@@ -540,13 +583,16 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Build,
-                Priority = Mathf.Clamp(priority, 1, 1000),
-                DedupKey = "compat:build:" + IA_Text.Normalize(itemKey),
-                CooldownSeconds = 0.45f,
-                Payload = new IA_BuildOrderData
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Build,
+                "IA_BrainMaster",
+                "build",
+                "ponte de compatibilidade",
+                Mathf.Clamp(priority, 1, 1000),
+                "build",
+                itemKey,
+                0.45f,
+                new IA_BuildOrderData
                 {
                     ItemKey = itemKey,
                     Position = ResolveBackendPoint(worldPoint),
@@ -554,8 +600,7 @@ namespace Hegemonia.AI.BrainMaster
                     Zone = ResolveBuildZone(itemKey),
                     ForceManualPlacement = false,
                     ManualPointLabel = string.Empty
-                }
-            };
+                });
 
             string reason;
             return _commandQueue.Enqueue(request, Time.time, out reason);
@@ -578,18 +623,20 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Produce,
-                Priority = Mathf.Clamp(priority, 1, 1000),
-                DedupKey = "compat:produce:" + IA_Text.Normalize(itemKey),
-                CooldownSeconds = 0.35f,
-                Payload = new IA_ProduceOrderData
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Produce,
+                "IA_BrainMaster",
+                "production",
+                "ponte de compatibilidade",
+                Mathf.Clamp(priority, 1, 1000),
+                "production",
+                itemKey,
+                0.35f,
+                new IA_ProduceOrderData
                 {
                     ItemKey = itemKey,
                     Quantity = 1
-                }
-            };
+                });
 
             string reason;
             return _commandQueue.Enqueue(request, Time.time, out reason);
@@ -622,14 +669,16 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Move,
-                Priority = Mathf.Clamp(priority, 1, 1000),
-                DedupKey = "compat:move:" + IA_Text.Normalize(packageTag),
-                CooldownSeconds = 0.2f,
-                Payload = move
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Move,
+                "IA_BrainMaster",
+                "tactical",
+                "ponte de compatibilidade",
+                Mathf.Clamp(priority, 1, 1000),
+                "tactical",
+                packageTag,
+                0.2f,
+                move);
 
             string reason;
             return _commandQueue.Enqueue(request, Time.time, out reason);
@@ -663,14 +712,16 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Attack,
-                Priority = Mathf.Clamp(priority, 1, 1000),
-                DedupKey = "compat:attack:" + IA_Text.Normalize(attackTag),
-                CooldownSeconds = 0.2f,
-                Payload = attack
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Attack,
+                "IA_BrainMaster",
+                "tactical",
+                "ponte de compatibilidade",
+                Mathf.Clamp(priority, 1, 1000),
+                "tactical",
+                attackTag,
+                0.2f,
+                attack);
 
             string reason;
             return _commandQueue.Enqueue(request, Time.time, out reason);
@@ -824,23 +875,34 @@ namespace Hegemonia.AI.BrainMaster
             
             _scheduler.Register(_debugMonitor, now, 0.45f);
             _modulesRegistered = true;
+            IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "MODULES", "modulos registrados");
         }
 
         private void ProcessCommandQueue(float now)
         {
-            if (ShouldBlockCommandQueueByDeusaObserver())
+            if (!HasCommandAuthority())
             {
-                DrainCommandQueueBlockedByDeusa(now);
+                IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "QUEUE_BLOCK", "sem autoridade de comando");
                 return;
             }
 
             if (IntegrationMode == IA_IntegrationMode.ShadowReadOnly)
             {
+                IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "QUEUE_BLOCK", "modo ShadowReadOnly");
+                return;
+            }
+
+            string observerBlockReason;
+            if (TryGetObserverQueueBlockReason(out observerBlockReason))
+            {
+                IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "QUEUE_BLOCK", observerBlockReason);
+                DrainCommandQueueBlockedByDeusa(now, observerBlockReason);
                 return;
             }
 
             if (_commandQueue == null || _backendBridge == null || _backendBridge.CommandService == null || Context == null)
             {
+                IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "QUEUE_BLOCK", "runtime incompleto para processar fila");
                 return;
             }
 
@@ -852,22 +914,28 @@ namespace Hegemonia.AI.BrainMaster
             int productionExecuted = 0;
             int buildExecuted = 0;
             int executed = 0;
-            while (executed < maxCommands)
+            int inspected = 0;
+            int inspectionLimit = Mathf.Max(maxCommands, maxCommands * 2);
+            while (executed < maxCommands && inspected < inspectionLimit)
             {
                 IA_CommandRequest request;
                 if (!_commandQueue.TryDequeue(now, out request))
                 {
                     break;
                 }
+                inspected++;
 
                 if (!IsCommandAllowedInMode(request.Type))
                 {
+                    IA_RuntimeTextTrace.LogCommand(TeamId, "BrainMaster", "BLOCK_MODE", request, "bloqueado pelo modo de integracao");
                     _commandQueue.Complete(request, false, now, "bloqueado pelo modo de integracao");
+                    TraceCommandExecution(request, false, "bloqueado pelo modo de integracao");
                     continue;
                 }
 
                 if (!IsCommandAllowedByBootstrap(request))
                 {
+                    IA_RuntimeTextTrace.LogCommand(TeamId, "BrainMaster", "BLOCK_BOOTSTRAP", request, "bloqueado pelo bootstrap");
                     _commandQueue.Complete(request, false, now, "bloqueado pelo bootstrap");
                     TraceCommandExecution(request, false, "bloqueado pelo bootstrap");
                     continue;
@@ -882,29 +950,54 @@ namespace Hegemonia.AI.BrainMaster
                         ref productionExecuted,
                         ref buildExecuted))
                 {
-                    _commandQueue.Complete(request, false, now, "adiado por quota de combate");
+                    IA_RuntimeTextTrace.LogCommand(TeamId, "BrainMaster", "QUEUE_RETRY", request, "adiado por quota de combate");
+                    _commandQueue.Requeue(request, now, 0.25f, "adiado por quota de combate");
                     TraceCommandExecution(request, false, "adiado por quota de combate");
                     continue;
                 }
 
+                bool requiresConfirmation = request.Type == IA_CommandType.Build || request.Type == IA_CommandType.Produce;
+                if (requiresConfirmation)
+                {
+                    _commandConfirmationService.CaptureBaseline(request, _worldState);
+                }
+
                 string message;
                 bool success = _backendBridge.CommandService.Execute(request, Context, out message);
-                _commandQueue.Complete(request, success, now, message);
-                TraceCommandExecution(request, success, message);
+                if (success && requiresConfirmation)
+                {
+                    _commandConfirmationService.TrackAccepted(request, _commandQueue, now, message);
+                }
+                else
+                {
+                    if (requiresConfirmation) _commandConfirmationService.Cancel(request.Id);
+                    _commandQueue.Complete(request, success, now, message);
+                }
+                TraceCommandExecution(request, success, message, success && requiresConfirmation);
                 executed++;
             }
         }
 
-        private bool ShouldBlockCommandQueueByDeusaObserver()
+        private bool TryGetObserverQueueBlockReason(out string reason)
         {
+            reason = string.Empty;
             // O bootstrap e a recuperacao da base nunca podem ser silenciados por uma
             // configuracao de debug persistida na cena ou no save.
-            return !IsBootstrapActive
-                   && _deusaBrain != null
-                   && _deusaBrain.BloquearFilaBrainMasterEmObservador;
+            if (IsBootstrapActive || _deusaBrain == null)
+            {
+                return false;
+            }
+
+            if (!_deusaBrain.ModoObservadorAtivo || !_deusaBrain.BloquearFilaBrainMasterEmObservador)
+            {
+                return false;
+            }
+
+            reason = "modo observador ativo na DEUSA";
+            return true;
         }
 
-        private void DrainCommandQueueBlockedByDeusa(float now)
+        private void DrainCommandQueueBlockedByDeusa(float now, string reason)
         {
             if (_commandQueue == null)
             {
@@ -921,9 +1014,9 @@ namespace Hegemonia.AI.BrainMaster
                     break;
                 }
 
-                const string reason = "bloqueado pelo modo observador da DEUSA";
-                _commandQueue.Complete(request, false, now, reason);
-                TraceCommandExecution(request, false, reason);
+                string blockedReason = string.IsNullOrEmpty(reason) ? "bloqueado pelo modo observador da DEUSA" : reason;
+                _commandQueue.Complete(request, false, now, blockedReason);
+                TraceCommandExecution(request, false, blockedReason);
                 blocked++;
             }
 
@@ -1154,6 +1247,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             BootstrapStatus = normalizedStatus;
+            IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "BOOTSTRAP_STATUS", BootstrapStatus);
+            AtualizarDiagnosticoRuntimeOverlay();
             if (stageChanged)
             {
                 TraceBootstrapStep("fase -> " + stage + (string.IsNullOrEmpty(normalizedStatus) ? string.Empty : " | " + normalizedStatus));
@@ -1178,6 +1273,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             BootstrapStatus = normalizedStatus;
+            IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "BOOTSTRAP_STATUS", BootstrapStatus);
+            AtualizarDiagnosticoRuntimeOverlay();
             TraceBootstrapStep(normalizedStatus);
         }
 
@@ -1190,6 +1287,11 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             BootstrapLastError = normalizedError;
+            if (!string.IsNullOrEmpty(normalizedError))
+            {
+                IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "BOOTSTRAP_ERROR", normalizedError);
+            }
+            AtualizarDiagnosticoRuntimeOverlay();
             if (!string.IsNullOrEmpty(normalizedError))
             {
                 TraceBootstrapStep("erro -> " + normalizedError, true);
@@ -1326,6 +1428,8 @@ namespace Hegemonia.AI.BrainMaster
         {
             _modulesRegistered = false;
             _commandQueue = new IA_CommandQueue();
+            _commandQueue.TraceTeamId = TeamId;
+            _commandConfirmationService = new IA_CommandConfirmationService();
             _backendBridge = new IA_BackendBridge(TeamId);
             _worldState = new IA_WorldState(TeamId);
             _worldState.SetFallbackCenter(transform.position);
@@ -1333,6 +1437,7 @@ namespace Hegemonia.AI.BrainMaster
             _profileMemory = new IA_PlayerProfileMemory(_worldState);
             _threatAnalyzer = new IA_ThreatAnalyzer(_worldState, _mapAnalyzer);
             _scheduler = new IA_PerformanceScheduler();
+            _scheduler.TraceTeamId = TeamId;
             _schedulerPhaseOffset = ComputeSchedulerPhaseOffset();
             _scheduler.PhaseOffsetSeconds = _schedulerPhaseOffset;
             ConfigureSchedulerBudget();
@@ -1354,6 +1459,10 @@ namespace Hegemonia.AI.BrainMaster
                 TransportPlan = new IA_TransportPlan(),
                 BattleDecision = IA_GlobalBrainCoordinator.Instance.BuildBattleDecision()
             };
+            Context.IntentBoard = new IA_NationalIntentBoard();
+            Context.StrategyArbiter = new IA_StrategyArbiter();
+            _intentCommandRouter = new IA_IntentCommandRouter(Context);
+            Context.IntentCommandRouter = _intentCommandRouter;
 
             _deusaBrain = GetComponent<IA_DeusaBrain>();
             if (_deusaBrain == null)
@@ -1486,6 +1595,31 @@ namespace Hegemonia.AI.BrainMaster
                        : string.Empty);
         }
 
+        private string BuildRuntimeTraceSnapshot()
+        {
+            string queue = _commandQueue != null ? _commandQueue.PendingCount.ToString() : "n/d";
+            string confirming = _commandQueue != null ? _commandQueue.AwaitingConfirmationCount.ToString() : "n/d";
+            string intents = Context != null && Context.IntentBoard != null ? Context.IntentBoard.PendingCount.ToString() : "n/d";
+            string pressure = Context != null && Context.CombatPressure != null ? Context.CombatPressure.Estado.ToString() : "n/d";
+            string deusa = _deusaBrain != null ? _deusaBrain.EstagioAtual.ToString() : "n/d";
+            string plan = StrategicPhase + " " + ActiveImperialPlan;
+            string nat = _nationalDecisionState != null ? _nationalDecisionState.StrategicPlan : "n/d";
+
+            return "credits=" + Credits
+                   + " | queue=" + queue
+                   + " | confirming=" + confirming
+                   + " | intents=" + intents
+                   + " | pressure=" + pressure
+                   + " | mode=" + IntegrationMode
+                   + " | bootstrap=" + BootstrapStage
+                   + " | bootstrapStatus=" + (string.IsNullOrEmpty(BootstrapStatus) ? "n/d" : BootstrapStatus)
+                   + " | authority=" + _authorityStatus
+                   + " | plan=" + plan
+                   + " | national=" + nat
+                   + " | deusa=" + deusa
+                   + " | trace=" + (string.IsNullOrEmpty(RuntimeTracePath) ? "n/d" : Path.GetFileName(RuntimeTracePath));
+        }
+
         private bool EnsureRuntimeGraph(bool refreshCatalog, bool registerModules)
         {
             if (HasRuntimeGraph())
@@ -1507,6 +1641,7 @@ namespace Hegemonia.AI.BrainMaster
 
             BootstrapLastError = "runtime da IA recomposto apos referencias nulas";
             RuntimeSummary = "BrainMaster recomposto em runtime.";
+            IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "RUNTIME", RuntimeSummary);
             return true;
         }
 
@@ -1516,6 +1651,9 @@ namespace Hegemonia.AI.BrainMaster
             if (!HasRuntimeGraph())
             {
                 BootstrapLastError = "runtime critico indisponivel";
+                ReleaseCommandAuthority();
+                _authorityStatus = "autoridade liberada: runtime indisponivel";
+                IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "RUNTIME_ERROR", BootstrapLastError);
                 return false;
             }
 
@@ -1550,7 +1688,13 @@ namespace Hegemonia.AI.BrainMaster
 
         public void TraceBootstrapStep(string message, bool warning = false)
         {
-            if (!EnableBootstrapConsoleTrace || string.IsNullOrEmpty(message))
+            if (string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "BOOTSTRAP_TRACE", message);
+            if (!EnableBootstrapConsoleTrace)
             {
                 return;
             }
@@ -1567,8 +1711,14 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
-        private void TraceCommandExecution(IA_CommandRequest request, bool success, string message)
+        private void TraceCommandExecution(IA_CommandRequest request, bool success, string message, bool awaitingConfirmation = false)
         {
+            string traceState = !success
+                ? "COMMAND_FAIL"
+                : awaitingConfirmation
+                    ? "COMMAND_ACCEPTED_AWAIT_CONFIRMATION"
+                    : "COMMAND_OK";
+            IA_RuntimeTextTrace.LogCommand(TeamId, "BrainMaster", traceState, request, message);
             if (!EnableBootstrapConsoleTrace || request == null)
             {
                 return;
@@ -1585,8 +1735,20 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             string descriptor = DescribeCommand(request);
-            string result = success ? "OK" : "FALHA";
+            string result = !success
+                ? "FALHA"
+                : awaitingConfirmation
+                    ? "ACEITA_AGUARDANDO_CONFIRMACAO"
+                    : "CONFIRMADO";
             string text = "cmd " + request.Type + " -> " + descriptor + " => " + result;
+            if (!string.IsNullOrEmpty(request.Origin) || !string.IsNullOrEmpty(request.Domain))
+            {
+                text += " | origem=" + request.Origin + " | dominio=" + request.Domain;
+            }
+            if (!string.IsNullOrEmpty(request.Reason))
+            {
+                text += " | motivo=" + request.Reason;
+            }
             if (!string.IsNullOrEmpty(message))
             {
                 text += " | " + message;
@@ -1624,6 +1786,99 @@ namespace Hegemonia.AI.BrainMaster
             return string.IsNullOrEmpty(request.DedupKey) ? request.Type.ToString() : request.DedupKey;
         }
 
+        private string BuildAuthorityOwnerKey()
+        {
+            return "BrainMaster:" + TeamId + ":" + GetInstanceID();
+        }
+
+        private bool SynchronizeCommandAuthority()
+        {
+            if (!IA_SharedRuntimeSupport.IsBrainMasterMode || IntegrationMode == IA_IntegrationMode.ShadowReadOnly)
+            {
+                ReleaseCommandAuthority();
+                _authorityStatus = "autoridade liberada";
+                IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "AUTHORITY", _authorityStatus);
+                AtualizarDiagnosticoRuntimeOverlay();
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(_authorityOwnerKey))
+            {
+                _authorityOwnerKey = BuildAuthorityOwnerKey();
+            }
+
+            _authorityClaimed = AIControlAuthority.Claim(
+                TeamId,
+                _authorityOwnerKey,
+                IA_SharedRuntimeSupport.BrainMasterAuthorityPriority);
+
+            _authorityStatus = _authorityClaimed
+                ? "autoridade brainmaster ativa"
+                : "autoridade brainmaster bloqueada por stack superior";
+            IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "AUTHORITY", _authorityStatus);
+            AtualizarDiagnosticoRuntimeOverlay();
+            return _authorityClaimed;
+        }
+
+        private void ReleaseCommandAuthority()
+        {
+            if (!_authorityClaimed || string.IsNullOrEmpty(_authorityOwnerKey))
+            {
+                _authorityClaimed = false;
+                return;
+            }
+
+            AIControlAuthority.Release(TeamId, _authorityOwnerKey);
+            _authorityClaimed = false;
+            _authorityStatus = "autoridade liberada";
+            IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "AUTHORITY", _authorityStatus);
+            AtualizarDiagnosticoRuntimeOverlay();
+        }
+
+        private bool HasCommandAuthority()
+        {
+            return !string.IsNullOrEmpty(_authorityOwnerKey)
+                   && AIControlAuthority.CanIssue(TeamId, _authorityOwnerKey);
+        }
+
+        public bool HasExecutionAuthority
+        {
+            get { return HasCommandAuthority(); }
+        }
+
+        private void AtualizarDiagnosticoRuntimeOverlay()
+        {
+            string runtimeState;
+            if (!HasRuntimeGraph())
+            {
+                runtimeState = "OFF";
+            }
+            else if (!string.IsNullOrEmpty(BootstrapLastError))
+            {
+                runtimeState = "ERRO";
+            }
+            else if (IsBootstrapActive)
+            {
+                runtimeState = "BOOT";
+            }
+            else
+            {
+                runtimeState = "OK";
+            }
+
+            string bootstrapText = string.IsNullOrEmpty(BootstrapStatus)
+                ? (BootstrapStage == IA_BootstrapStage.Disabled ? "n/d" : BootstrapStage.ToString())
+                : BootstrapStatus;
+            string traceText = string.IsNullOrEmpty(RuntimeTracePath) ? "n/d" : Path.GetFileName(RuntimeTracePath);
+            string errorText = string.IsNullOrEmpty(BootstrapLastError) ? "sem erro" : BootstrapLastError;
+
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_runtime_state", runtimeState);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_runtime_bootstrap", bootstrapText);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_runtime_trace", traceText);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_runtime_error", errorText);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_runtime_authority", _authorityStatus);
+        }
+
         private void InitializeBootstrap()
         {
             _bootstrapStartTime = Time.time;
@@ -1634,6 +1889,8 @@ namespace Hegemonia.AI.BrainMaster
                 BootstrapStage = IA_BootstrapStage.Completed;
                 BootstrapStatus = "bootstrap desativado";
                 BootstrapLastError = string.Empty;
+                IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "BOOTSTRAP", BootstrapStatus);
+                AtualizarDiagnosticoRuntimeOverlay();
                 return;
             }
 
@@ -1665,7 +1922,19 @@ namespace Hegemonia.AI.BrainMaster
 
         private void ApplyIntegrationPolicy()
         {
-            if (IntegrationMode != IA_IntegrationMode.Full || !DisableLegacyAIWhenFull)
+            SynchronizeCommandAuthority();
+
+            if (!IA_SharedRuntimeSupport.IsBrainMasterMode)
+            {
+                _legacyPolicyApplied = false;
+                _legacyPolicyAppliedTeamId = -1;
+                _legacyPolicyAppliedMode = IntegrationMode;
+                _nextLegacyPolicyScanUnscaledTime = -1f;
+                return;
+            }
+
+            if (IntegrationMode != IA_IntegrationMode.Full
+                || !DisableLegacyAIWhenFull)
             {
                 _legacyPolicyApplied = false;
                 _legacyPolicyAppliedTeamId = -1;
@@ -1684,9 +1953,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            DisableLegacyComponent<IA_Suprema>();
-            DisableLegacyComponent<IA_Dominadora>();
-            DisableLegacyComponent<IA_Comandante>();
+            DisableLowerPriorityControllers();
 
             _legacyPolicyApplied = true;
             _legacyPolicyAppliedTeamId = TeamId;
@@ -1694,15 +1961,19 @@ namespace Hegemonia.AI.BrainMaster
             _nextLegacyPolicyScanUnscaledTime = Time.unscaledTime + 10f;
         }
 
-        private void DisableLegacyComponent<T>() where T : MonoBehaviour
+        private void DisableLowerPriorityControllers()
         {
-            T[] components = Object.FindObjectsByType<T>(FindObjectsSortMode.None);
+            MonoBehaviour[] components = IA_UnitySearch.FindAll<MonoBehaviour>();
             for (int i = 0; i < components.Length; i++)
             {
-                T component = components[i];
+                MonoBehaviour component = components[i];
+                string typeName = component != null ? component.GetType().FullName ?? component.GetType().Name : string.Empty;
+                bool isDirectControlStack = IA_SharedRuntimeSupport.IsCommandAuthorityType(typeName);
+
                 if (component == null
                     || component.gameObject == gameObject
-                    || !ComponentBelongsToSameTeam(component))
+                    || !isDirectControlStack
+                    || !IA_SharedRuntimeSupport.BelongsToTeam(component, TeamId))
                 {
                     continue;
                 }
@@ -1718,34 +1989,6 @@ namespace Hegemonia.AI.BrainMaster
                     _disabledLegacy.Add(component);
                 }
             }
-        }
-
-        private bool ComponentBelongsToSameTeam(MonoBehaviour component)
-        {
-            if (component == null)
-            {
-                return false;
-            }
-
-            IA_Suprema suprema = component as IA_Suprema;
-            if (suprema != null)
-            {
-                return suprema.teamID == TeamId;
-            }
-
-            IA_Dominadora dominadora = component as IA_Dominadora;
-            if (dominadora != null)
-            {
-                return dominadora.teamID == TeamId;
-            }
-
-            IA_Comandante comandante = component as IA_Comandante;
-            if (comandante != null)
-            {
-                return comandante.TeamID == TeamId;
-            }
-
-            return false;
         }
     }
 }

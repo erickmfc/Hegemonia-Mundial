@@ -150,6 +150,40 @@ public class MenuConstrucao : MonoBehaviour
             .Distinct()
             .ToList();
 
+        DadosConstrucao[] fichasResources = Resources.LoadAll<DadosConstrucao>(string.Empty);
+        for (int i = 0; i < fichasResources.Length; i++)
+        {
+            DadosConstrucao ficha = fichasResources[i];
+            if (ficha != null && !fichasConfiguradasNaCena.Contains(ficha))
+            {
+                fichasConfiguradasNaCena.Add(ficha);
+            }
+        }
+
+#if UNITY_EDITOR
+        string[] fichasEssenciais =
+        {
+            "Assets/Prefabs/Aeroporto/Aeroporto militar.asset",
+            "Assets/Prefabs/Aeroporto/Aeroporto comercial/Aeroporto comercial.asset",
+            "Assets/Prefabs/Construtor de Veiculos/Construtor de Veiculos.asset",
+            "Assets/Prefabs/Construtor de Veiculos/Tenda/Construcao_Tenda.asset",
+            "Assets/Prefabs/Estaleiro Marinho/Estaleiro_Naval.asset",
+            "Assets/Prefabs/Imobiliario/Fabrica/Industria.asset",
+            "Assets/Prefabs/Imobiliario/casa/Casa.asset",
+            "Assets/Prefabs/Imobiliario/Pred Medio/Predio Medio.asset",
+            "Assets/Prefabs/Imobiliario/Pred Vilage/NovaConstrucao.asset",
+            "Assets/Prefabs/Imobiliario/Perd Hard/Pred Hard.asset"
+        };
+        for (int i = 0; i < fichasEssenciais.Length; i++)
+        {
+            DadosConstrucao ficha = UnityEditor.AssetDatabase.LoadAssetAtPath<DadosConstrucao>(fichasEssenciais[i]);
+            if (ficha != null && !fichasConfiguradasNaCena.Contains(ficha))
+            {
+                fichasConfiguradasNaCena.Add(ficha);
+            }
+        }
+#endif
+
         catalogo.Clear();
         
 
@@ -187,6 +221,7 @@ public class MenuConstrucao : MonoBehaviour
         }
         catalogo = catalogo.OrderBy(f => (int)f.categoria).ThenBy(f => f.GetDisplayName()).ToList();
         catalogoGlobal = new List<DadosConstrucao>(catalogo);
+        CatalogoProdutoCompartilhado.RegistrarConstrucoes(catalogoGlobal);
     }
 
 #if UNITY_EDITOR
@@ -258,6 +293,48 @@ public class MenuConstrucao : MonoBehaviour
             catalogo = new List<DadosConstrucao>();
         }
 
+        if (catalogo.Count == 0)
+        {
+            DadosConstrucao[] recursos = Resources.FindObjectsOfTypeAll<DadosConstrucao>();
+            if (recursos != null && recursos.Length > 0)
+            {
+                for (int i = 0; i < recursos.Length; i++)
+                {
+                    DadosConstrucao recurso = recursos[i];
+                    if (recurso != null && !catalogo.Contains(recurso))
+                    {
+                        catalogo.Add(recurso);
+                    }
+                }
+
+                if (catalogo.Count > 0)
+                {
+                    Debug.Log("[MenuConstrucao] Catálogo preenchido via Resources com " + catalogo.Count + " fichas.");
+                }
+            }
+
+#if UNITY_EDITOR
+            if (catalogo.Count == 0)
+            {
+                string[] guids = UnityEditor.AssetDatabase.FindAssets("t:DadosConstrucao");
+                for (int i = 0; i < guids.Length; i++)
+                {
+                    string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[i]);
+                    DadosConstrucao recurso = UnityEditor.AssetDatabase.LoadAssetAtPath<DadosConstrucao>(path);
+                    if (recurso != null && !catalogo.Contains(recurso))
+                    {
+                        catalogo.Add(recurso);
+                    }
+                }
+
+                if (catalogo.Count > 0)
+                {
+                    Debug.Log("[MenuConstrucao] Catálogo preenchido via AssetDatabase com " + catalogo.Count + " fichas.");
+                }
+            }
+#endif
+        }
+
 #if UNITY_EDITOR
         GarantirFichaC700NoCatalogo();
 #endif
@@ -306,6 +383,19 @@ public class MenuConstrucao : MonoBehaviour
             .ThenBy(item => item.GetDisplayName())
             .ToList();
         catalogoGlobal = new List<DadosConstrucao>(catalogo);
+        CatalogoProdutoCompartilhado.RegistrarConstrucoes(catalogoGlobal);
+    }
+
+    /// <summary>
+    /// Bootstrap publico para consumidores autonomos, como IA01, que podem
+    /// iniciar antes do Start desta UI. Nao abre o menu nem altera a selecao.
+    /// </summary>
+    public void GarantirCatalogoParaIA()
+    {
+        if (catalogo == null || catalogo.Count == 0 || catalogoGlobal == null || catalogoGlobal.Count == 0)
+        {
+            GarantirCatalogoValido();
+        }
     }
 
 #if UNITY_EDITOR

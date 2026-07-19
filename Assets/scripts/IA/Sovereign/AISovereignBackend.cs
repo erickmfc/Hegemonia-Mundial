@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 
 namespace Hegemonia.AI.Sovereign
@@ -650,18 +651,7 @@ namespace Hegemonia.AI.Sovereign
 
         private bool BelongsToTeam(GameObject obj)
         {
-            if (obj == null)
-            {
-                return false;
-            }
-
-            IdentidadeUnidade id = obj.GetComponent<IdentidadeUnidade>();
-            if (id == null)
-            {
-                id = obj.GetComponentInParent<IdentidadeUnidade>();
-            }
-
-            return id != null && id.teamID == _teamId;
+            return IA_SharedRuntimeSupport.BelongsToTeam(obj, _teamId);
         }
 
         private void EnsureIdentity(GameObject instance)

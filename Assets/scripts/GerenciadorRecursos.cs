@@ -13,8 +13,8 @@ public class GerenciadorRecursos : MonoBehaviour
     public int dinheiro = 5000;
     public int petroleo = 500;
     public int aco = 300;
-    public int populacaoAtual = 5000;
-    public int populacaoMaxima = 5000;
+    public int populacaoAtual = 3200;
+    public int populacaoMaxima = 3200;
     public int energia = 100;
     public int comida = 100;
 
@@ -256,7 +256,7 @@ public class GerenciadorRecursos : MonoBehaviour
         NotificarAtualizacao();
     }
 
-    void NotificarAtualizacao()
+    public void NotificarAtualizacao()
     {
         OnRecursosAtualizados?.Invoke();
     }

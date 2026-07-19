@@ -15,8 +15,13 @@ MonoBehaviour:
   nomeItem: Casa
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
+  itemId: residencial.casa
+  aliases: casa, moradia, residencial, house, housing
+  capacidades: 16777281
   prefabDaUnidade: {fileID: 261584176072942310, guid: ecfc8d04b781ed14ea698b8d3bb8f42c, type: 3}
   preco: 100
   categoria: 6
+  escalaPoder: 0
+  strategicRole: 1
   balanceamento: {fileID: 0}
   scriptsDeComando: []

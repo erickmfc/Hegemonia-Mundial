@@ -275,7 +275,7 @@ public class MisselBombardeiro : MonoBehaviour
                     float fator   = Mathf.Clamp01(1f - (dist / raioExplosao));
                     danoFinal     = Mathf.RoundToInt(danoMaximo * fator);
                 }
-                vida.ReceberDano(danoFinal);
+                vida.ReceberDano(danoFinal, dono);
             }
 
             // Empurrão físico (opcional, se tiver RigidBody)

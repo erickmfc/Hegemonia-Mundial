@@ -93,7 +93,6 @@ public static class NavalPlacementResolver
     private static float _cachedSeaLevel;
     private static float _cachedSeaLevelUntil = -1f;
     private static Construtor _cachedConstrutor;
-    private static IA_Suprema _cachedIaSuprema;
     private static readonly Dictionary<ProbeCacheKey, WaterDirectionCacheEntry> WaterDirectionCache = new Dictionary<ProbeCacheKey, WaterDirectionCacheEntry>(32);
     private static readonly Dictionary<ProbeCacheKey, PreviewPoseCacheEntry> PreviewPoseCache = new Dictionary<ProbeCacheKey, PreviewPoseCacheEntry>(32);
 
@@ -121,25 +120,6 @@ public static class NavalPlacementResolver
         {
             _cachedConstrutor = construtor;
             float nivel = construtor.alturaDoMar;
-            float referencia;
-            if (TryResolveWaterReferenceHeight(out referencia) && Mathf.Abs(referencia - nivel) > 0.25f)
-            {
-                nivel = referencia;
-            }
-
-            if (Application.isPlaying)
-            {
-                _cachedSeaLevel = nivel;
-                _cachedSeaLevelUntil = now + SeaLevelCacheTtl;
-            }
-            return nivel;
-        }
-
-        IA_Suprema iaSuprema = _cachedIaSuprema != null ? _cachedIaSuprema : UnityEngine.Object.FindFirstObjectByType<IA_Suprema>();
-        if (iaSuprema != null)
-        {
-            _cachedIaSuprema = iaSuprema;
-            float nivel = iaSuprema.nivelDoMar;
             float referencia;
             if (TryResolveWaterReferenceHeight(out referencia) && Mathf.Abs(referencia - nivel) > 0.25f)
             {

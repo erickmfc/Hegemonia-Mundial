@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 
 namespace Hegemonia.AI.DEUSA
@@ -144,6 +145,11 @@ namespace Hegemonia.AI.DEUSA
         public void Tick(float now, float deltaTime)
         {
             if (!ativarDEUSA || _brain == null || _context == null)
+            {
+                return;
+            }
+
+            if (!IA_SharedRuntimeSupport.IsBrainMasterMode)
             {
                 return;
             }
@@ -655,14 +661,16 @@ namespace Hegemonia.AI.DEUSA
                 Zone = zone
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Build,
-                Priority = priority,
-                DedupKey = dedup,
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Build,
+                "IA_DeusaBrain",
+                "build",
+                "planejamento observador",
+                priority,
+                "build",
+                dedup,
+                cooldown,
+                payload);
 
             string enqueueReason;
             return _context.CommandQueue.Enqueue(request, Time.time, out enqueueReason);
@@ -687,14 +695,16 @@ namespace Hegemonia.AI.DEUSA
                 Quantity = 1
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Produce,
-                Priority = priority,
-                DedupKey = dedup,
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Produce,
+                "IA_DeusaBrain",
+                "production",
+                "planejamento observador",
+                priority,
+                "production",
+                dedup,
+                cooldown,
+                payload);
 
             string enqueueReason;
             return _context.CommandQueue.Enqueue(request, Time.time, out enqueueReason);
@@ -763,6 +773,7 @@ namespace Hegemonia.AI.DEUSA
                 + " | observador=" + ModoObservadorAtivo
                 + " | escopo=" + EscopoObservador,
                 this);
+            IA_RuntimeTextTrace.LogText(identidade.teamID, "DEUSA", "BIND", "Runtime vinculado | pais=" + identidade.nomePais + " | presidente=" + identidade.nomePresidente + " | moeda=" + identidade.nomeMoeda + " | modo=" + config.modoInicial + " | personalidade=" + identidade.personalidade + " | observador=" + ModoObservadorAtivo + " | escopo=" + EscopoObservador);
 
             _logInicialEmitido = true;
             _ultimoModoObservadorLogado = ModoObservadorAtivo;
@@ -791,6 +802,7 @@ namespace Hegemonia.AI.DEUSA
                             : " | o BrainMaster legado continua autorizado a agir.")
                         : " | execucao DEUSA liberada."),
                     this);
+                IA_RuntimeTextTrace.LogText(identidade.teamID, "DEUSA", "OBSERVADOR", "modoObservadorDebug=" + modoObservador + " | escopo=" + EscopoObservador + (modoObservador ? (BloquearFilaBrainMasterEmObservador ? " | a fila do BrainMaster sera bloqueada." : " | o BrainMaster legado continua autorizado a agir.") : " | execucao DEUSA liberada."));
                 _ultimoModoObservadorLogado = modoObservador;
             }
 
@@ -801,6 +813,7 @@ namespace Hegemonia.AI.DEUSA
                     + " | motivo=" + (_politica != null ? _politica.Motivo : "n/d")
                     + " | politica=" + (politicaNacional != null ? politicaNacional.ResumoCurto() : "n/d"),
                     this);
+                IA_RuntimeTextTrace.LogText(identidade.teamID, "DEUSA", "ESTAGIO", "estagio -> " + identidade.estagioAtual + " | motivo=" + (_politica != null ? _politica.Motivo : "n/d") + " | politica=" + (politicaNacional != null ? politicaNacional.ResumoCurto() : "n/d"));
                 _ultimoEstagioLogado = identidade.estagioAtual;
             }
 
@@ -812,6 +825,7 @@ namespace Hegemonia.AI.DEUSA
                     + " | proximaConstrucao=" + (politicaNacional != null ? politicaNacional.proximaConstrucao : "Nenhuma")
                     + " | alvo=" + (politicaNacional != null ? politicaNacional.alvoPrioritario : "Nenhum"),
                     this);
+                IA_RuntimeTextTrace.LogText(identidade.teamID, "DEUSA", "RESUMO", "observador=" + EscopoObservador + " | proximaPrioridade=" + (prioridadesAtuais != null && prioridadesAtuais.Count > 0 ? prioridadesAtuais[0].ToString() : "Nenhuma") + " | proximaConstrucao=" + (politicaNacional != null ? politicaNacional.proximaConstrucao : "Nenhuma") + " | alvo=" + (politicaNacional != null ? politicaNacional.alvoPrioritario : "Nenhum"));
                 _proximoLogResumoTime = Time.unscaledTime + 20f;
             }
         }

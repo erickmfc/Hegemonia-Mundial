@@ -34,7 +34,6 @@ public class ControleAviaoCaca : MonoBehaviour
     [Tooltip("Distância máxima da câmera para tocar o som de passagem.")]
     public float distanciaAtivacaoSom = 100f;
     private AudioSource audioSourcePassagem;
-    private bool jaTocouPassagem = false;
     private Transform cameraTransform;
     private float proximoSomPassagem = 0f;
     private Vector3 ultimaPosicaoSomPassagem;
@@ -63,7 +62,6 @@ public class ControleAviaoCaca : MonoBehaviour
 
     // --- CACHE: distância ao quadrado para flyby (evita sqrt) ---
     private float _distAtivacaoSomSqr;
-    private float _distResetSomSqr;
     private SistemaDeDanos _sistemaDanos;
     private float _tempoBoostDefensivoAte = 0f;
 
@@ -90,7 +88,6 @@ public class ControleAviaoCaca : MonoBehaviour
 
         // Pré-calcula distâncias ao quadrado (evita sqrt no Update)
         _distAtivacaoSomSqr = distanciaAtivacaoSom * distanciaAtivacaoSom;
-        _distResetSomSqr = (distanciaAtivacaoSom * 1.5f) * (distanciaAtivacaoSom * 1.5f);
 
         // --- GERAR CRISTAL ÚNICO ---
         corIdentificacao = Random.ColorHSV(0f, 1f, 0.8f, 1f, 0.8f, 1f);
@@ -375,11 +372,6 @@ public class ControleAviaoCaca : MonoBehaviour
         {
             TocarSomPassagem();
             proximoSomPassagem = Time.time + 1.6f;
-            jaTocouPassagem = true;
-        }
-        else if (distCamSqr > _distResetSomSqr)
-        {
-            jaTocouPassagem = false;
         }
     }
 

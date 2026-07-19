@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="factory-menu-overlay" class="factory-overlay">
+        <ui:VisualElement name="factory-menu-panel" class="factory-panel">
+            <ui:VisualElement class="factory-header">
+                <ui:VisualElement class="factory-header-copy">
+                    <ui:Label name="factory-menu-title" class="factory-title" text="Fabrica Industrial" />
+                    <ui:Label name="factory-menu-subtitle" class="factory-subtitle" text="Minerios, pedras e extracao" />
+                    <ui:Label name="factory-menu-status" class="factory-status" text="Carregando..." />
+                </ui:VisualElement>
+                <ui:Button name="factory-menu-close" class="factory-close" text="FECHAR" />
+            </ui:VisualElement>
+            <ui:VisualElement class="factory-summary">
+                <ui:Label name="factory-summary-day" class="factory-summary-chip" text="Hoje: 0 t" />
+                <ui:Label name="factory-summary-week" class="factory-summary-chip" text="Semana: 0 t" />
+                <ui:Label name="factory-summary-month" class="factory-summary-chip" text="Mes: 0 t" />
+                <ui:Label name="factory-summary-stock" class="factory-summary-chip" text="Estoque: 0 t" />
+                <ui:Label name="factory-summary-value" class="factory-summary-chip" text="Valor estoque: $ 0.00" />
+            </ui:VisualElement>
+            <ui:ScrollView name="factory-minerals-list" class="factory-list" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

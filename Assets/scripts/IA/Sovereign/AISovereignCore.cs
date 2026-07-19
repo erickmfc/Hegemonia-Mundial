@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Hegemonia.AI.Shared;
 
 namespace Hegemonia.AI.Sovereign
 {
@@ -365,12 +366,18 @@ namespace Hegemonia.AI.Sovereign
         private struct ClaimEntry
         {
             public string OwnerKey;
+            public int Priority;
             public float ClaimedAt;
         }
 
         private static readonly Dictionary<int, ClaimEntry> Claims = new Dictionary<int, ClaimEntry>();
 
         public static bool Claim(int teamId, string ownerKey)
+        {
+            return Claim(teamId, ownerKey, IA_SharedRuntimeSupport.LegacyAuthorityPriority);
+        }
+
+        public static bool Claim(int teamId, string ownerKey, int priority)
         {
             if (teamId <= 0 || string.IsNullOrWhiteSpace(ownerKey))
             {
@@ -380,12 +387,24 @@ namespace Hegemonia.AI.Sovereign
             ClaimEntry entry;
             if (Claims.TryGetValue(teamId, out entry))
             {
-                return string.Equals(entry.OwnerKey, ownerKey, StringComparison.Ordinal);
+                if (string.Equals(entry.OwnerKey, ownerKey, StringComparison.Ordinal))
+                {
+                    entry.Priority = Mathf.Max(entry.Priority, priority);
+                    entry.ClaimedAt = Time.unscaledTime;
+                    Claims[teamId] = entry;
+                    return true;
+                }
+
+                if (priority < entry.Priority)
+                {
+                    return false;
+                }
             }
 
             Claims[teamId] = new ClaimEntry
             {
                 OwnerKey = ownerKey,
+                Priority = priority,
                 ClaimedAt = Time.unscaledTime
             };
             return true;
@@ -420,27 +439,24 @@ namespace Hegemonia.AI.Sovereign
                 return false;
             }
 
+            if (entry.Priority < 0)
+            {
+                return false;
+            }
+
             return string.Equals(entry.OwnerKey, ownerKey, StringComparison.Ordinal);
         }
     }
 
     public sealed class AISovereignRuntime
     {
-        private sealed class ControllerState
-        {
-            public int TeamId;
-            public AISovereignSeverity StableSeverity;
-            public int EscalateVotes;
-            public int RelaxVotes;
-        }
-
         private static AISovereignRuntime _instance;
         public static AISovereignRuntime Instance
         {
             get { return _instance ?? (_instance = new AISovereignRuntime()); }
         }
 
-        private readonly Dictionary<int, ControllerState> _controllers = new Dictionary<int, ControllerState>(16);
+        private readonly Dictionary<int, IA_ControllerState<AISovereignSeverity>> _controllers = new Dictionary<int, IA_ControllerState<AISovereignSeverity>>(16);
         private readonly List<int> _orderedIds = new List<int>(16);
         private readonly Dictionary<int, int> _teamOwners = new Dictionary<int, int>(16);
 
@@ -452,7 +468,7 @@ namespace Hegemonia.AI.Sovereign
         {
             if (!_controllers.ContainsKey(controllerId))
             {
-                _controllers.Add(controllerId, new ControllerState
+                _controllers.Add(controllerId, new IA_ControllerState<AISovereignSeverity>
                 {
                     TeamId = teamId,
                     StableSeverity = AISovereignSeverity.Stable
@@ -465,7 +481,7 @@ namespace Hegemonia.AI.Sovereign
 
         public void Unregister(int controllerId)
         {
-            ControllerState state;
+            IA_ControllerState<AISovereignSeverity> state;
             if (_controllers.TryGetValue(controllerId, out state))
             {
                 if (_teamOwners.TryGetValue(state.TeamId, out int owner) && owner == controllerId)
@@ -525,7 +541,7 @@ namespace Hegemonia.AI.Sovereign
 
         public AISovereignSeverity ResolveSeverity(int controllerId, AISovereignSeverity measured, float smoothedFps, float minimumSafeFps)
         {
-            ControllerState state;
+            IA_ControllerState<AISovereignSeverity> state;
             if (!_controllers.TryGetValue(controllerId, out state))
             {
                 return measured;

@@ -275,22 +275,32 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
             return;
         }
 
-        guiFPS[] hudsLegados = FindObjectsByType<guiFPS>(FindObjectsSortMode.None);
-        for (int i = 0; i < hudsLegados.Length; i++)
+        DesabilitarComponentesPorNome("guiFPS");
+        DesabilitarComponentesPorNome("ui_suimonoFps");
+    }
+
+    private static void DesabilitarComponentesPorNome(string nomeTipo)
+    {
+        if (string.IsNullOrWhiteSpace(nomeTipo))
         {
-            if (hudsLegados[i] != null)
-            {
-                hudsLegados[i].enabled = false;
-            }
+            return;
         }
 
-        ui_suimonoFps[] hudsUgui = FindObjectsByType<ui_suimonoFps>(FindObjectsSortMode.None);
-        for (int i = 0; i < hudsUgui.Length; i++)
+        MonoBehaviour[] comportamentos = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
+        for (int i = 0; i < comportamentos.Length; i++)
         {
-            if (hudsUgui[i] != null)
+            MonoBehaviour comportamento = comportamentos[i];
+            if (comportamento == null)
             {
-                hudsUgui[i].enabled = false;
+                continue;
             }
+
+            if (!string.Equals(comportamento.GetType().Name, nomeTipo, System.StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            comportamento.enabled = false;
         }
     }
 

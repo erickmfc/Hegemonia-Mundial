@@ -128,7 +128,6 @@ public class C700TransporteAereo : MonoBehaviour
     private bool temDestinoVisual;
     private Vector3 destinoMissaoProgramado;
     private bool temDestinoMissaoProgramado;
-    private bool retornoMissaoProgramado;
     private GameObject marcadorPousoMissao;
     private GameObject marcadorParadaMissao;
     private LineRenderer linhaMissao;
@@ -683,15 +682,8 @@ public class C700TransporteAereo : MonoBehaviour
         if (aeroportoOrigem == null || aeroportoOrigem.waypointsDecolagem == null || aeroportoOrigem.waypointsDecolagem.Count == 0)
         {
             aguardandoDestinoAereo = true;
+            LimparMissaoProgramada();
             MostrarMensagem("Sem pista configurada. Clique no mapa para tentar decolar daqui.");
-            if (temDestinoMissaoProgramado)
-            {
-                Vector3 destinoAuto = destinoMissaoProgramado;
-                bool retornoAuto = retornoMissaoProgramado;
-                LimparMissaoProgramada();
-                aguardandoDestinoAereo = false;
-                yield return StartCoroutine(RotinaMissaoAerea(destinoAuto, retornoAuto));
-            }
             rotinaMovimento = null;
             yield break;
         }
@@ -715,15 +707,8 @@ public class C700TransporteAereo : MonoBehaviour
         if (indiceVoo <= 0)
         {
             aguardandoDestinoAereo = true;
+            LimparMissaoProgramada();
             MostrarMensagem("Pista incompleta. Clique no mapa para tentar decolar.");
-            if (temDestinoMissaoProgramado)
-            {
-                Vector3 destinoAuto = destinoMissaoProgramado;
-                bool retornoAuto = retornoMissaoProgramado;
-                LimparMissaoProgramada();
-                aguardandoDestinoAereo = false;
-                yield return StartCoroutine(RotinaMissaoAerea(destinoAuto, retornoAuto));
-            }
             rotinaMovimento = null;
             yield break;
         }
@@ -792,14 +777,8 @@ public class C700TransporteAereo : MonoBehaviour
         prontoParaDecolarNaPista = true;
         MostrarMensagem("C700 na pista. Clique com o botao direito no destino.");
 
-        if (temDestinoMissaoProgramado)
-        {
-            Vector3 destinoAuto = destinoMissaoProgramado;
-            bool retornoAuto = retornoMissaoProgramado;
-            LimparMissaoProgramada();
-            aguardandoDestinoAereo = false;
-            yield return StartCoroutine(RotinaMissaoAerea(destinoAuto, retornoAuto));
-        }
+        // A missão termina aqui. Se o jogador quiser seguir viagem, precisa dar nova ordem.
+        LimparMissaoProgramada();
 
         rotinaMovimento = null;
     }
@@ -909,15 +888,6 @@ public class C700TransporteAereo : MonoBehaviour
         DefinirEstado(EstadoC700.EmVoo);
 
         // IMPORTANTE: Continua a missão aérea (se existir) após decolar! (corrige bug de ficar voando solto)
-        if (temDestinoMissaoProgramado)
-        {
-            Vector3 destinoAuto = destinoMissaoProgramado;
-            bool retornoAuto = retornoMissaoProgramado;
-            LimparMissaoProgramada();
-            aguardandoDestinoAereo = false;
-            yield return StartCoroutine(RotinaMissaoAerea(destinoAuto, retornoAuto));
-        }
-
         rotinaMovimento = null;
     }
 
@@ -1882,7 +1852,6 @@ public class C700TransporteAereo : MonoBehaviour
     {
         temDestinoMissaoProgramado = false;
         destinoMissaoProgramado = Vector3.zero;
-        retornoMissaoProgramado = false;
     }
 
     private bool TemEspacoLivre()

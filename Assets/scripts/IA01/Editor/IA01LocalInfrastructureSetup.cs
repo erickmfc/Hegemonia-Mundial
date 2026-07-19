@@ -52,6 +52,12 @@ public static class IA01LocalInfrastructureSetup
         new LocalDefinition("ia01.local.estaleiro", "IA01 Local - Estaleiro Naval", "Assets/Prefabs/Estaleiro Marinho/Estaleiro_Naval.asset", IA01StrategicRole.Shipyard, IA01BuildDomain.Coastal, "naval.naval.estaleiro", false, true)
     };
 
+    private static readonly LocalDefinition PierDefinition =
+        new LocalDefinition("ia01.local.pier", "IA01 Local - Pier Naval", "Assets/Prefabs/Marinha/Pier_marinha.asset", IA01StrategicRole.Pier, IA01BuildDomain.Coastal, "naval.pier");
+
+    private static readonly LocalDefinition PlatformDefinition =
+        new LocalDefinition(string.Empty, "IA01 Local - Plataforma Offshore", "Assets/Prefabs/Marinha/PLataforma.asset", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, "naval.plataforma");
+
     [MenuItem("Tools/IA01/Configurar Locais para Infraestrutura Inicial")]
     private static void Configure()
     {
@@ -80,6 +86,101 @@ public static class IA01LocalInfrastructureSetup
         Debug.Log("[IA01] Os 8 locais foram configurados para a infraestrutura inicial. Posicione os marcadores na cena e salve quando estiver satisfeito.", layout);
     }
 
+    [MenuItem("Tools/IA01/Criar locais navais e de logistica")]
+    private static void CreateNavalAndLogisticsLocals()
+    {
+        IA01CityLayout layout = FindLayoutWithLocals(out _);
+        if (layout == null)
+        {
+            EditorUtility.DisplayDialog("IA01", "Nenhum IA01CityLayout foi encontrado na cena aberta.", "OK");
+            return;
+        }
+
+        CreateAuxiliarySlot(layout.transform, "IA01 Local - Armazenamento 01", "ia01.local.armazenamento.01", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(-48f, 0f, 52f));
+        CreateAuxiliarySlot(layout.transform, "IA01 Local - Armazenamento 02", "ia01.local.armazenamento.02", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(0f, 0f, 66f));
+        CreateAuxiliarySlot(layout.transform, "IA01 Local - Armazenamento 03", "ia01.local.armazenamento.03", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(48f, 0f, 52f));
+        Transform pier = CreateAuxiliarySlot(layout.transform, "IA01 Local - Pier Naval", "ia01.local.pier", IA01StrategicRole.Pier, IA01BuildDomain.Coastal, new Vector3(-90f, 0f, 135f));
+        ConfigureNavalAuxiliary(pier);
+        CreateAuxiliarySlot(layout.transform, "IA01 Local - Plataforma de Petróleo A", "ia01.local.plataforma.a", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, new Vector3(120f, 0f, 200f));
+        CreateAuxiliarySlot(layout.transform, "IA01 Local - Plataforma de Petróleo B", "ia01.local.plataforma.b", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, new Vector3(-180f, 0f, 260f));
+        CreateAuxiliarySlot(layout.transform, "IA01 Local - Plataforma de Petróleo C", "ia01.local.plataforma.c", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, new Vector3(300f, 0f, 320f));
+
+        ConfigurePlan();
+
+        Transform shipyard = FindChildRecursive(layout.transform, "IA01 Local - Estaleiro Naval");
+        if (shipyard != null)
+        {
+            CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área A", new Vector3(120f, 0f, 160f));
+            CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área B", new Vector3(-140f, 0f, 220f));
+            CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área C", new Vector3(250f, 0f, 300f));
+        }
+
+        EditorSceneManager.MarkSceneDirty(layout.gameObject.scene);
+        Debug.Log("[IA01] Criados os 3 locais de armazém, pier, 3 locais de plataforma e 3 áreas de patrulha naval. Posicione os marcadores sobre a água antes de salvar.", layout);
+    }
+
+    private static Transform CreateAuxiliarySlot(Transform parent, string name, string slotId, IA01StrategicRole role, IA01BuildDomain domain, Vector3 localPosition)
+    {
+        Transform marker = FindChildRecursive(parent, name);
+        if (marker == null)
+        {
+            GameObject go = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(go, "Criar local IA01");
+            marker = go.transform;
+            marker.SetParent(parent, false);
+            marker.localPosition = localPosition;
+        }
+
+        IA01BuildSlot slot = marker.GetComponent<IA01BuildSlot>();
+        if (slot == null) slot = Undo.AddComponent<IA01BuildSlot>(marker.gameObject);
+        SerializedObject so = new SerializedObject(slot);
+        so.FindProperty("slotId").stringValue = slotId;
+        so.FindProperty("slotGroupId").stringValue = slotId.IndexOf("plataforma", StringComparison.OrdinalIgnoreCase) >= 0
+            ? "plataformas_offshore"
+            : "infraestrutura_estrategica";
+        so.FindProperty("allowedRole").enumValueIndex = (int)role;
+        so.FindProperty("allowedDomain").enumValueIndex = (int)domain;
+        so.FindProperty("exactPosition").boolValue = true;
+        so.FindProperty("allowAlternativeSlot").boolValue = false;
+        so.FindProperty("buildingPoint").objectReferenceValue = marker;
+        so.FindProperty("reservedFootprint").vector2Value = role == IA01StrategicRole.Storage ? new Vector2(34f, 28f) : new Vector2(75f, 55f);
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(slot);
+        return marker;
+    }
+
+    private static void ConfigureNavalAuxiliary(Transform marker)
+    {
+        if (marker == null) return;
+        IA01BuildSlot slot = marker.GetComponent<IA01BuildSlot>();
+        Transform spawn = EnsureChild(marker, "Spawn_Unidades", new Vector3(0f, 0f, 36f));
+        Transform exit = EnsureChild(marker, "Direcao_Saida", new Vector3(0f, 0f, 120f));
+        ConfigureNaval(marker, slot, spawn, exit);
+    }
+
+    private static void CreatePatrolZone(Transform parent, string name, Vector3 localPosition)
+    {
+        Transform zone = parent.Find(name);
+        if (zone == null)
+        {
+            GameObject go = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(go, "Criar área de patrulha naval IA01");
+            zone = go.transform;
+            zone.SetParent(parent, false);
+            zone.localPosition = localPosition;
+        }
+        if (zone.GetComponent<IA01NavalPatrolZone>() == null)
+            Undo.AddComponent<IA01NavalPatrolZone>(zone.gameObject);
+    }
+
+    private static Transform FindChildRecursive(Transform root, string name)
+    {
+        Transform[] descendants = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < descendants.Length; i++)
+            if (string.Equals(descendants[i].name, name, StringComparison.OrdinalIgnoreCase)) return descendants[i];
+        return null;
+    }
+
     private static List<Transform> FindLocals(Transform root)
     {
         List<Transform> result = new List<Transform>();
@@ -90,13 +191,23 @@ public static class IA01LocalInfrastructureSetup
             if (child == root) continue;
             IA01BuildSlot slot = child.GetComponent<IA01BuildSlot>();
             if (child.name.StartsWith("Local", StringComparison.OrdinalIgnoreCase)
-                || (slot != null && child.name.StartsWith("IA01 Local -", StringComparison.OrdinalIgnoreCase)))
+                || (slot != null && IsInfrastructureLocal(child.name)))
             {
                 result.Add(child);
             }
         }
         result.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
         return result;
+    }
+
+    private static bool IsInfrastructureLocal(string name)
+    {
+        for (int i = 0; i < Definitions.Length; i++)
+        {
+            if (string.Equals(name, Definitions[i].Name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 
     private static IA01CityLayout FindLayoutWithLocals(out List<Transform> locals)
@@ -210,6 +321,15 @@ public static class IA01LocalInfrastructureSetup
             return;
         }
 
+        IA01Controller controller = UnityEngine.Object.FindFirstObjectByType<IA01Controller>();
+        if (controller != null)
+        {
+            SerializedObject controllerSo = new SerializedObject(controller);
+            controllerSo.FindProperty("fighterPrefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Aeroporto/Su11/Su11.prefab");
+            controllerSo.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(controller);
+        }
+
         EnsureStep(plan, Definitions[0], IA01StrategicRole.MilitaryProduction);
         EnsureStep(plan, Definitions[1], IA01StrategicRole.Residential);
         EnsureStep(plan, Definitions[2], IA01StrategicRole.Residential);
@@ -218,6 +338,8 @@ public static class IA01LocalInfrastructureSetup
         EnsureStep(plan, Definitions[5], IA01StrategicRole.Airfield);
         EnsureStep(plan, Definitions[6], IA01StrategicRole.Airfield);
         EnsureStep(plan, Definitions[7], IA01StrategicRole.Shipyard);
+        EnsureStep(plan, PierDefinition, IA01StrategicRole.Pier);
+        EnsureStep(plan, PlatformDefinition, IA01StrategicRole.NavalBase);
 
         SerializedObject so = new SerializedObject(plan);
         SerializedProperty steps = so.FindProperty("steps");
@@ -231,6 +353,24 @@ public static class IA01LocalInfrastructureSetup
                 step.FindPropertyRelative("placementMode").enumValueIndex = (int)IA01PlacementMode.ExactSlot;
                 step.FindPropertyRelative("primarySlotId").stringValue = Definitions[7].SlotId;
                 step.FindPropertyRelative("slotGroupId").stringValue = "abertura_inicial";
+                step.FindPropertyRelative("failurePolicy").enumValueIndex = (int)IA01FailurePolicy.Wait;
+            }
+            else if (step.FindPropertyRelative("stepId").stringValue == PierDefinition.StepId)
+            {
+                step.FindPropertyRelative("constructionData").objectReferenceValue = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(PierDefinition.AssetPath);
+                step.FindPropertyRelative("requiredRole").enumValueIndex = (int)IA01StrategicRole.Pier;
+                step.FindPropertyRelative("placementMode").enumValueIndex = (int)IA01PlacementMode.ExactSlot;
+                step.FindPropertyRelative("primarySlotId").stringValue = PierDefinition.SlotId;
+                step.FindPropertyRelative("slotGroupId").stringValue = "infraestrutura_estrategica";
+                step.FindPropertyRelative("failurePolicy").enumValueIndex = (int)IA01FailurePolicy.Wait;
+            }
+            else if (step.FindPropertyRelative("stepId").stringValue == PlatformDefinition.StepId)
+            {
+                step.FindPropertyRelative("constructionData").objectReferenceValue = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(PlatformDefinition.AssetPath);
+                step.FindPropertyRelative("requiredRole").enumValueIndex = (int)IA01StrategicRole.NavalBase;
+                step.FindPropertyRelative("placementMode").enumValueIndex = (int)IA01PlacementMode.SlotGroup;
+                step.FindPropertyRelative("primarySlotId").stringValue = string.Empty;
+                step.FindPropertyRelative("slotGroupId").stringValue = "plataformas_offshore";
                 step.FindPropertyRelative("failurePolicy").enumValueIndex = (int)IA01FailurePolicy.Wait;
             }
         }
@@ -261,9 +401,10 @@ public static class IA01LocalInfrastructureSetup
         step.FindPropertyRelative("stepId").stringValue = definition.StepId;
         step.FindPropertyRelative("constructionData").objectReferenceValue = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(definition.AssetPath);
         step.FindPropertyRelative("requiredRole").enumValueIndex = (int)role;
-        step.FindPropertyRelative("placementMode").enumValueIndex = (int)IA01PlacementMode.ExactSlot;
+        bool groupedPlatform = definition == PlatformDefinition;
+        step.FindPropertyRelative("placementMode").enumValueIndex = (int)(groupedPlatform ? IA01PlacementMode.SlotGroup : IA01PlacementMode.ExactSlot);
         step.FindPropertyRelative("primarySlotId").stringValue = definition.SlotId;
-        step.FindPropertyRelative("slotGroupId").stringValue = "abertura_inicial";
+        step.FindPropertyRelative("slotGroupId").stringValue = groupedPlatform ? "plataformas_offshore" : "abertura_inicial";
         step.FindPropertyRelative("autonomousZoneId").stringValue = string.Empty;
         step.FindPropertyRelative("required").boolValue = false;
         step.FindPropertyRelative("minimumStage").intValue = 0;

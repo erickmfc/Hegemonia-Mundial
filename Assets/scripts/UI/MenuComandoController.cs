@@ -62,6 +62,20 @@ public class MenuComandoController : MonoBehaviour
     private Button btnDroneCam;
     private RenderTexture flirRT;
     private Slider flirZoomSlider;
+    private VisualElement painelSeguir;
+    private ScrollView seguirScroll;
+    private VisualElement seguirLista;
+    private Label seguirStatus;
+    private Button btnSeguir100;
+    private Button btnSeguir200;
+    private Button btnSeguir2000;
+    private Button btnSeguir5000;
+    private Button btnFecharSeguir;
+    private readonly List<GameObject> alvosSeguirUI = new List<GameObject>(64);
+    private GameObject alvoSeguimentoSelecionado;
+    private Button itemSeguimentoDestacado;
+    private float distanciaSeguimentoAtual = 200f;
+    private readonly float[] distanciasSeguimento = { 100f, 200f, 2000f, 5000f };
 
     // Telemetria
     private Label unidadeNome;
@@ -80,6 +94,7 @@ public class MenuComandoController : MonoBehaviour
     private Label sitrepAliados;
     private Label sitrepInimigos;
     private Label sitrepVel;
+    private Label sitrepFuel;
     private Label sitrepAmeaca;
     private Label sitrepSel;
     private Label sitrepTempo;
@@ -130,6 +145,38 @@ public class MenuComandoController : MonoBehaviour
     private GerenteSelecao gerenteSelecao;
     private DesenharLinhasOrdem desenhadorOrdens;
 
+    // O jogador pode controlar outro time em campanhas carregadas.  O menu
+    // tatico precisa consultar a mesma fonte usada pelo governo, em vez de
+    // tratar permanentemente o time 1 como aliado.
+    private int TimeJogadorAtual => SistemaGovernoMundial.Instancia != null
+        ? Mathf.Max(1, SistemaGovernoMundial.Instancia.teamJogador)
+        : 1;
+
+    private bool EhUnidadeDoJogador(IdentidadeUnidade identidade)
+    {
+        return identidade != null && identidade.teamID == TimeJogadorAtual;
+    }
+
+    // Unidades antigas da cena e algumas unidades criadas por produtores
+    // externos podem ter IdentidadeUnidade, mas ainda nao ter o adaptador de
+    // ordens. O satelite nao deve deixa-las impossiveis de comandar.
+    private static ControleUnidade ObterControleTatico(IdentidadeUnidade identidade, bool prepararSeMovel = false)
+    {
+        if (identidade == null)
+        {
+            return null;
+        }
+
+        ControleUnidade controle = identidade.GetComponent<ControleUnidade>();
+        if (controle == null && prepararSeMovel
+            && identidade.tipoUnidade != TipoUnidade.Estrutura)
+        {
+            controle = identidade.gameObject.AddComponent<ControleUnidade>();
+        }
+
+        return controle;
+    }
+
     // Timer
     private float tempoOperacao;
     private float blink;
@@ -173,6 +220,9 @@ public class MenuComandoController : MonoBehaviour
 
     private void Update()
     {
+        // Se o Menu do Governo estiver aberto, ignora atalhos de teclado
+        if (MenuGoverno.EstaAberto) return;
+
         // Tecla 1 — toggle
         if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
         {
@@ -196,6 +246,22 @@ public class MenuComandoController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.A))
         {
             SelecionarTodasUnidadesAliadas();
+        }
+
+        // Confirmação rápida do alvo de seguir pela mira ou pela lista lateral
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            if (desenhadorOrdens == null)
+                desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
+
+            bool painelSeguirAberto = painelSeguir != null && painelSeguir.style.display.value != DisplayStyle.None;
+            if ((desenhadorOrdens != null && desenhadorOrdens.modoSeguirAtivo) || painelSeguirAberto)
+            {
+                if (ConfirmarSeguimentoAtivo())
+                {
+                    return;
+                }
+            }
         }
 
         // Confirmação de Patrulha via ENTER
@@ -335,7 +401,7 @@ public class MenuComandoController : MonoBehaviour
 
         // Conecta câmera FLIR à unidade focada
         if (CameraUnidadeHUD.Instancia != null)
-            CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu);
+            CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu, true);
 
         AdicionarLog("COMANDO", "Menu Tático aberto. Sincronizada seleção.", "sistema");
     }
@@ -539,10 +605,27 @@ public class MenuComandoController : MonoBehaviour
         sitrepAliados  = root.Q<Label>("sitrep-aliados");
         sitrepInimigos = root.Q<Label>("sitrep-inimigos");
         sitrepVel      = root.Q<Label>("sitrep-vel");
+        sitrepFuel     = root.Q<Label>("sitrep-fuel");
         sitrepAmeaca   = root.Q<Label>("sitrep-ameaca");
         sitrepSel      = root.Q<Label>("sitrep-sel");
         sitrepTempo    = root.Q<Label>("sitrep-tempo");
         headerTempo    = root.Q<Label>("header-tempo-op");
+
+        painelSeguir   = root.Q<VisualElement>("painel-seguir");
+        seguirScroll   = root.Q<ScrollView>("seguir-scroll");
+        seguirLista    = root.Q<VisualElement>("seguir-lista");
+        seguirStatus   = root.Q<Label>("seguir-status");
+        btnSeguir100   = root.Q<Button>("seguir-dist-100");
+        btnSeguir200   = root.Q<Button>("seguir-dist-200");
+        btnSeguir2000  = root.Q<Button>("seguir-dist-2000");
+        btnSeguir5000  = root.Q<Button>("seguir-dist-5000");
+        btnFecharSeguir = root.Q<Button>("btn-fechar-seguir");
+
+        if (btnSeguir100 != null) btnSeguir100.clicked += () => DefinirDistanciaSeguimento(100f);
+        if (btnSeguir200 != null) btnSeguir200.clicked += () => DefinirDistanciaSeguimento(200f);
+        if (btnSeguir2000 != null) btnSeguir2000.clicked += () => DefinirDistanciaSeguimento(2000f);
+        if (btnSeguir5000 != null) btnSeguir5000.clicked += () => DefinirDistanciaSeguimento(5000f);
+        if (btnFecharSeguir != null) btnFecharSeguir.clicked += CancelarModoSeguir;
 
         logContainer = root.Q<VisualElement>("log-container");
         logScroll    = root.Q<ScrollView>("log-scroll");
@@ -579,6 +662,8 @@ public class MenuComandoController : MonoBehaviour
 
         btnDroneCam = root.Q<Button>("btn-drone-cam");
         if (btnDroneCam != null) btnDroneCam.clicked += () => AlternarModoCameraDrone();
+
+        FecharPainelSeguimento();
 
         // Registro de ouvintes de eventos para Zoom, Pan e Cliques no Mapa
         if (painelMapa != null)
@@ -744,8 +829,8 @@ public class MenuComandoController : MonoBehaviour
             if (id == null || !id.gameObject.activeInHierarchy) continue;
 
             int instId = id.gameObject.GetInstanceID();
-            bool amigo   = id.teamID == 1;
-            bool inimigo = id.teamID == 2;
+            bool amigo   = EhUnidadeDoJogador(id);
+            bool inimigo = id.teamID > 0 && !amigo;
             if (!amigo && !inimigo) continue;
             mapaVivos.Add(instId);
 
@@ -875,7 +960,8 @@ public class MenuComandoController : MonoBehaviour
         container.name = $"mapa-unit-{id.gameObject.GetInstanceID()}";
 
         // Label com nome
-        var label = new Label(id.name.Length > 10 ? id.name.Substring(0, 10) : id.name);
+        string nomeMapa = ObterNomeExibicao(id.gameObject);
+        var label = new Label(nomeMapa.Length > 10 ? nomeMapa.Substring(0, 10) : nomeMapa);
         label.name = "mapa-label";
         label.AddToClassList("mapa-label");
         label.AddToClassList(classFacao);
@@ -913,7 +999,7 @@ public class MenuComandoController : MonoBehaviour
         container.Add(hpTrack);
 
         // Clique para selecionar a unidade no menu
-        ControleUnidade cu = id.GetComponent<ControleUnidade>();
+        ControleUnidade cu = ObterControleTatico(id);
         SistemaDeDanos sd = id.GetComponent<SistemaDeDanos>();
         if (cu != null)
         {
@@ -994,20 +1080,20 @@ public class MenuComandoController : MonoBehaviour
                 unidadeSelecionadaMenu = unidadesSelecionadasMenu.Count > 0 ? 
                     unidadesSelecionadasMenu[unidadesSelecionadasMenu.Count - 1] : null;
             }
-            AdicionarLog("OPS", $"Unidade desmarcada: {cu.name} (Total: {unidadesSelecionadasMenu.Count})", "normal");
+            AdicionarLog("OPS", $"Unidade desmarcada: {ObterNomeExibicao(cu.gameObject)} (Total: {unidadesSelecionadasMenu.Count})", "normal");
         }
         else
         {
             unidadesSelecionadasMenu.Add(cu);
             unidadeSelecionadaMenu = cu; // Foca na mais recente
-            AdicionarLog("OPS", $"Unidade selecionada: {cu.name} (Total: {unidadesSelecionadasMenu.Count})", "normal");
+            AdicionarLog("OPS", $"Unidade selecionada: {ObterNomeExibicao(cu.gameObject)} (Total: {unidadesSelecionadasMenu.Count})", "normal");
         }
 
         AtualizarCacheSelecaoIds();
 
         // Conecta câmera FLIR à unidade focada
         if (CameraUnidadeHUD.Instancia != null)
-            CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu);
+            CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu, true);
 
         // Atualiza labels de foco
         if (flirUnidadeNome != null)
@@ -1032,8 +1118,329 @@ public class MenuComandoController : MonoBehaviour
     {
         if (obj == null) return "DESCONHECIDO";
         var id = obj.GetComponent<IdentidadeUnidade>();
-        if (id != null && !string.IsNullOrEmpty(id.nomeDeBatismo)) return id.nomeDeBatismo.ToUpper();
-        return obj.name.ToUpper();
+        if (id != null && !string.IsNullOrEmpty(id.nomeDeBatismo)) return id.nomeDeBatismo.ToUpperInvariant();
+        return SaveableEntity.NormalizarPrefabKey(obj.name).ToUpperInvariant();
+    }
+
+    private void AbrirPainelSeguimento()
+    {
+        AtualizarDrawerSeguimento(true);
+    }
+
+    private void CancelarModoSeguir()
+    {
+        if (desenhadorOrdens == null)
+        {
+            desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
+        }
+
+        if (desenhadorOrdens != null && desenhadorOrdens.modoSeguirAtivo)
+        {
+            desenhadorOrdens.CancelarModo();
+        }
+
+        alvoSeguimentoSelecionado = null;
+        FecharPainelSeguimento();
+        AtualizarEstadoSeguimento();
+        SetText(ordemFeedback, "Seguir cancelado.");
+    }
+
+    private void FecharPainelSeguimento()
+    {
+        if (painelSeguir != null)
+        {
+            painelSeguir.style.display = DisplayStyle.None;
+        }
+    }
+
+    private void AtualizarDrawerSeguimento(bool forcarVisivel = false)
+    {
+        if (painelSeguir == null)
+        {
+            return;
+        }
+
+        bool drawerJaAberto = painelSeguir.style.display.value == DisplayStyle.Flex;
+        bool ativo = forcarVisivel || drawerJaAberto || (desenhadorOrdens != null && desenhadorOrdens.modoSeguirAtivo);
+        painelSeguir.style.display = ativo ? DisplayStyle.Flex : DisplayStyle.None;
+        if (!ativo)
+        {
+            return;
+        }
+
+        AtualizarEstadoSeguimento();
+        RecarregarListaSeguimento();
+    }
+
+    private void AtualizarEstadoSeguimento()
+    {
+        if (seguirStatus == null)
+        {
+            return;
+        }
+
+        string alvoAtual = alvoSeguimentoSelecionado != null ? ObterNomeExibicao(alvoSeguimentoSelecionado) : "SEM ALVO";
+        seguirStatus.text = $"SELECIONADO: {alvoAtual} | DIST: {distanciaSeguimentoAtual:0}m | SPACE confirma a mira";
+        AtualizarBotoesDistanciaSeguimento();
+    }
+
+    private void AtualizarBotoesDistanciaSeguimento()
+    {
+        AtualizarBotaoDistanciaSeguimento(btnSeguir100, 100f);
+        AtualizarBotaoDistanciaSeguimento(btnSeguir200, 200f);
+        AtualizarBotaoDistanciaSeguimento(btnSeguir2000, 2000f);
+        AtualizarBotaoDistanciaSeguimento(btnSeguir5000, 5000f);
+    }
+
+    private void AtualizarBotaoDistanciaSeguimento(Button botao, float distancia)
+    {
+        if (botao == null)
+        {
+            return;
+        }
+
+        if (Mathf.Abs(distanciaSeguimentoAtual - distancia) < 0.5f)
+        {
+            botao.AddToClassList("ativo");
+        }
+        else
+        {
+            botao.RemoveFromClassList("ativo");
+        }
+    }
+
+    private void DefinirDistanciaSeguimento(float distancia)
+    {
+        distanciaSeguimentoAtual = Mathf.Clamp(distancia, 25f, 10000f);
+        AtualizarEstadoSeguimento();
+
+        if (desenhadorOrdens == null)
+        {
+            desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
+        }
+
+        if (desenhadorOrdens != null)
+        {
+            desenhadorOrdens.DefinirDistanciaSeguimento(distanciaSeguimentoAtual);
+        }
+
+        if (alvoSeguimentoSelecionado != null)
+        {
+            ConfirmarSeguimentoEspecifico(alvoSeguimentoSelecionado);
+        }
+    }
+
+    private void RecarregarListaSeguimento()
+    {
+        if (seguirLista == null)
+        {
+            return;
+        }
+
+        seguirLista.Clear();
+        alvosSeguirUI.Clear();
+        itemSeguimentoDestacado = null;
+
+        AtualizarCacheEntidadesSeNecessario();
+
+        List<IdentidadeUnidade> candidatos = new List<IdentidadeUnidade>(cacheUnidadesMapa.Count);
+        for (int i = 0; i < cacheUnidadesMapa.Count; i++)
+        {
+            IdentidadeUnidade id = cacheUnidadesMapa[i];
+            if (!EhAlvoSeguivel(id))
+            {
+                continue;
+            }
+
+            candidatos.Add(id);
+        }
+
+        Vector3 referencia = unidadeSelecionadaMenu != null
+            ? unidadeSelecionadaMenu.transform.position
+            : (CameraUnidadeHUD.Instancia != null ? CameraUnidadeHUD.Instancia.transform.position : Vector3.zero);
+
+        candidatos.Sort((a, b) =>
+        {
+            float da = Vector3.Distance(a.transform.position, referencia);
+            float db = Vector3.Distance(b.transform.position, referencia);
+            return da.CompareTo(db);
+        });
+        if (alvoSeguimentoSelecionado != null && !candidatos.Exists(c => c != null && c.gameObject == alvoSeguimentoSelecionado))
+        {
+            alvoSeguimentoSelecionado = null;
+        }
+
+        if (candidatos.Count == 0)
+        {
+            var vazio = new Label("Sem alvos aliados visíveis");
+            vazio.AddToClassList("seguir-status");
+            seguirLista.Add(vazio);
+            return;
+        }
+
+        if (alvoSeguimentoSelecionado == null)
+        {
+            alvoSeguimentoSelecionado = candidatos[0].gameObject;
+        }
+
+        for (int i = 0; i < candidatos.Count; i++)
+        {
+            IdentidadeUnidade id = candidatos[i];
+            GameObject alvo = id.gameObject;
+            alvosSeguirUI.Add(alvo);
+
+            float distancia = Vector3.Distance(alvo.transform.position, referencia);
+
+            Button item = new Button();
+            item.AddToClassList("seguir-item");
+            if (alvoSeguimentoSelecionado == alvo)
+            {
+                item.AddToClassList("ativo");
+                itemSeguimentoDestacado = item;
+            }
+
+            item.clicked += () => ConfirmarSeguimentoEspecifico(alvo);
+
+            var nome = new Label(ObterNomeExibicao(alvo));
+            nome.AddToClassList("seguir-item-nome");
+
+            var meta = new Label($"{id.tipoUnidade.ToString().ToUpperInvariant()} | {distancia:F0}m");
+            meta.AddToClassList("seguir-item-meta");
+
+            item.Add(nome);
+            item.Add(meta);
+            seguirLista.Add(item);
+        }
+
+        if (itemSeguimentoDestacado != null)
+        {
+            seguirScroll?.ScrollTo(itemSeguimentoDestacado);
+            AnimarItemSeguimento(itemSeguimentoDestacado);
+        }
+    }
+
+    private bool EhAlvoSeguivel(IdentidadeUnidade id)
+    {
+        if (id == null || !id.gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        if (!EhUnidadeDoJogador(id))
+        {
+            return false;
+        }
+
+        SistemaDeDanos sd = id.GetComponent<SistemaDeDanos>();
+        if (sd != null && sd.vidaMaxima > 0f && sd.vidaAtual <= 0f)
+        {
+            return false;
+        }
+
+            ControleUnidade controle = ObterControleTatico(id);
+        if (controle != null && unidadesSelecionadasIds.Contains(controle.GetInstanceID()))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool ConfirmarSeguimentoAtivo()
+    {
+        if (CameraUnidadeHUD.Instancia != null)
+        {
+            GameObject looked = CameraUnidadeHUD.Instancia.GetLookedTarget();
+            if (looked != null && ConfirmarSeguimentoEspecifico(looked))
+            {
+                return true;
+            }
+        }
+
+        if (alvoSeguimentoSelecionado != null && ConfirmarSeguimentoEspecifico(alvoSeguimentoSelecionado))
+        {
+            return true;
+        }
+
+        if (alvosSeguirUI.Count > 0)
+        {
+            return ConfirmarSeguimentoEspecifico(alvosSeguirUI[0]);
+        }
+
+        SetText(ordemFeedback, "⚠ Nenhum alvo válido para seguir.");
+        return false;
+    }
+
+    private bool AplicarSeguimentoSelecionado(Transform alvo)
+    {
+        if (alvo == null)
+        {
+            return false;
+        }
+
+        bool ordemEmitida = false;
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            ControleUnidade unidade = unidadesSelecionadasMenu[i];
+            if (unidade == null || unidade.transform == alvo)
+            {
+                continue;
+            }
+
+            ordemEmitida |= unidade.EmitirOrdemSeguir(alvo, distanciaSeguimentoAtual);
+        }
+
+        return ordemEmitida;
+    }
+
+    private bool ConfirmarSeguimentoEspecifico(GameObject alvo)
+    {
+        if (alvo == null)
+        {
+            return false;
+        }
+
+        if (unidadesSelecionadasMenu.Count == 0)
+        {
+            return false;
+        }
+
+        IdentidadeUnidade id = alvo.GetComponent<IdentidadeUnidade>();
+        if (!EhAlvoSeguivel(id))
+        {
+            return false;
+        }
+
+        alvoSeguimentoSelecionado = alvo;
+
+        if (AplicarSeguimentoSelecionado(alvo.transform))
+        {
+            if (desenhadorOrdens == null)
+            {
+                desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
+            }
+
+            if (desenhadorOrdens != null && desenhadorOrdens.modoSeguirAtivo)
+            {
+                desenhadorOrdens.CancelarModo();
+            }
+
+            AtualizarCameraSeguimento(alvo);
+
+            if (CameraUnidadeHUD.Instancia != null)
+            {
+                CameraUnidadeHUD.Instancia.modoDroneCamera = true;
+            }
+
+            AtualizarEstadoSeguimento();
+            RecarregarListaSeguimento();
+            SetText(ordemFeedback, $"✔ SEGUIR: {ObterNomeExibicao(alvo)} @ {distanciaSeguimentoAtual:0}m");
+            AdicionarLog("OPS", $"Seguir alvo {ObterNomeExibicao(alvo)} confirmado a {distanciaSeguimentoAtual:0}m.", "normal");
+            return true;
+        }
+
+        SetText(ordemFeedback, "⚠ Falha ao aplicar ordem de seguir.");
+        return false;
     }
 
     private void SelecionarPrimeiraUnidadeAliada()
@@ -1042,9 +1449,9 @@ public class MenuComandoController : MonoBehaviour
 
         foreach (var id in cacheUnidadesMapa)
         {
-            if (id.teamID == 1)
+            if (EhUnidadeDoJogador(id))
             {
-                var cu = id.GetComponent<ControleUnidade>();
+                var cu = ObterControleTatico(id, true);
                 if (cu != null)
                 {
                     SelecionarUnidadeNoMenu(cu);
@@ -1064,9 +1471,9 @@ public class MenuComandoController : MonoBehaviour
         for (int i = 0; i < cacheUnidadesMapa.Count; i++)
         {
             var id = cacheUnidadesMapa[i];
-            if (id != null && id.teamID == 1)
+            if (EhUnidadeDoJogador(id))
             {
-                var cu = id.GetComponent<ControleUnidade>();
+                var cu = ObterControleTatico(id, true);
                 if (cu != null)
                 {
                     unidadesSelecionadasMenu.Add(cu);
@@ -1079,7 +1486,7 @@ public class MenuComandoController : MonoBehaviour
 
         // Conecta câmera FLIR à unidade focada
         if (CameraUnidadeHUD.Instancia != null)
-            CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu);
+            CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu, true);
 
         // Atualiza labels de foco
         if (flirUnidadeNome != null)
@@ -1113,7 +1520,7 @@ public class MenuComandoController : MonoBehaviour
         AtualizarCacheSelecaoIds();
         
         if (CameraUnidadeHUD.Instancia != null)
-            CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu);
+            CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu, true);
             
         AtualizarTelemetriaUnidade();
         SalvarSelecaoPersistida();
@@ -1224,7 +1631,7 @@ public class MenuComandoController : MonoBehaviour
         ControleUnidade cu = unidadeSelecionadaMenu;
 
         // Nome
-        SetText(unidadeNome, cu.name.ToUpper());
+        SetText(unidadeNome, ObterNomeExibicao(cu.gameObject));
 
         // Emoji + tipo
         IdentidadeUnidade id = cu.GetComponent<IdentidadeUnidade>();
@@ -1232,7 +1639,7 @@ public class MenuComandoController : MonoBehaviour
         {
             SetText(unidadeEmoji, ObterEmojiUnidade(id));
             SetText(statTipo, id.tipoUnidade.ToString().ToUpper());
-            SetText(statTeam, id.teamID == 1 ? "ALIADO" : "INIMIGO");
+            SetText(statTeam, EhUnidadeDoJogador(id) ? "ALIADO" : "INIMIGO");
         }
 
         // Posição
@@ -1321,7 +1728,7 @@ public class MenuComandoController : MonoBehaviour
             GameObject lookedTarget = CameraUnidadeHUD.Instancia.GetLookedTarget();
             if (lookedTarget != null)
             {
-                if (flirUnidadeNome != null) flirUnidadeNome.text = $"LOCK: {lookedTarget.name.ToUpper()}";
+                if (flirUnidadeNome != null) flirUnidadeNome.text = $"LOCK: {ObterNomeExibicao(lookedTarget)}";
                 if (flirAlerta != null) flirAlerta.text = "🎯 ALVO NA MIRA (CLIQUE/ESPAÇO PARA TRAVAR)";
             }
             else
@@ -1345,6 +1752,8 @@ public class MenuComandoController : MonoBehaviour
             if (flirAlerta != null)
                 flirAlerta.text = cu != null ? "TRACKING: " + ObterNomeExibicao(cu.gameObject) : "FLIR OFF-LINE";
         }
+
+        AtualizarDrawerSeguimento();
     }
 
     private void AlternarModoCameraDrone()
@@ -1380,13 +1789,13 @@ public class MenuComandoController : MonoBehaviour
         foreach (var id in cacheUnidadesMapa)
         {
             if (!id.gameObject.activeInHierarchy) continue;
-            if (id.teamID == 1) aliados++;
-            else if (id.teamID == 2) inimigos++;
+            if (EhUnidadeDoJogador(id)) aliados++;
+            else if (id.teamID > 0) inimigos++;
         }
 
         SetText(sitrepAliados,  aliados.ToString());
         SetText(sitrepInimigos, inimigos.ToString());
-        SetText(sitrepSel,      unidadeSelecionadaMenu != null ? unidadeSelecionadaMenu.name : "—");
+        SetText(sitrepSel,      unidadeSelecionadaMenu != null ? ObterNomeExibicao(unidadeSelecionadaMenu.gameObject) : "—");
 
         // Velocidade
         if (unidadeSelecionadaMenu != null)
@@ -1400,10 +1809,22 @@ public class MenuComandoController : MonoBehaviour
                 if (nav != null) vel = nav.velocity.magnitude * 3.6f;
             }
             SetText(sitrepVel, $"{vel:F0} KM/H");
+
+            CombustivelUnidade cbu = unidadeSelecionadaMenu.GetComponent<CombustivelUnidade>();
+            if (cbu != null && cbu.Capacidade > 0f)
+            {
+                float fuelPct = Mathf.Clamp01(cbu.CombustivelAtual / cbu.Capacidade);
+                SetText(sitrepFuel, $"{fuelPct * 100f:F0}%");
+            }
+            else
+            {
+                SetText(sitrepFuel, "N/A");
+            }
         }
         else
         {
             SetText(sitrepVel, "0 KM/H");
+            SetText(sitrepFuel, "N/A");
         }
 
         // Avaliação de ameaça
@@ -1523,8 +1944,18 @@ public class MenuComandoController : MonoBehaviour
                 if (desenhadorOrdens != null)
                 {
                     desenhadorOrdens.IniciarModoSeguir(snapshot);
-                    SetText(ordemFeedback, $"✔ [{snapshot.Count} UDS] → SEGUIR\nClique em uma unidade aliada no mapa.");
-                    AdicionarLog("OPS", $"{snapshot.Count} unidades: modo seguir iniciado — clique na unidade alvo", "normal");
+                    desenhadorOrdens.DefinirDistanciaSeguimento(distanciaSeguimentoAtual);
+                    alvoSeguimentoSelecionado = null;
+                    AbrirPainelSeguimento();
+                    RecarregarListaSeguimento();
+                    AtualizarEstadoSeguimento();
+                    if (CameraUnidadeHUD.Instancia != null && unidadeSelecionadaMenu != null)
+                    {
+                        CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu, true);
+                        CameraUnidadeHUD.Instancia.modoDroneCamera = true;
+                    }
+                    SetText(ordemFeedback, $"✔ [{snapshot.Count} UDS] → SEGUIR\nEscolha um alvo na lista ou na mira. SPACE confirma.");
+                    AdicionarLog("OPS", $"{snapshot.Count} unidades: modo seguir iniciado — escolha o alvo", "normal");
                 }
                 else
                 {
@@ -1771,9 +2202,7 @@ public class MenuComandoController : MonoBehaviour
             GameObject alvo = EncontrarUnidadeProxima(worldPos, 150f);
             if (alvo != null)
             {
-                desenhadorOrdens.AplicarOrdemSeguirDoMenu(alvo.transform);
-                SetText(ordemFeedback, $"✔ Ordem SEGUIR enviada para {alvo.name}.");
-                AdicionarLog("OPS", $"Seguir alvo {alvo.name} confirmado.", "normal");
+                ConfirmarSeguimentoEspecifico(alvo);
             }
             else
             {
@@ -1787,7 +2216,8 @@ public class MenuComandoController : MonoBehaviour
             if (alvo != null)
             {
                 SetText(ordemFeedback, $"✔ Ordem ATAQUE enviada contra {alvo.name}.");
-                AdicionarLog("OPS", $"Ataque ao alvo {alvo.name} confirmado.", "alerta");
+                AdicionarLog("OPS", $"Ataque ao alvo {ObterNomeExibicao(alvo)} confirmado.", "alerta");
+                SetText(ordemFeedback, $"ATAQUE confirmado contra {ObterNomeExibicao(alvo)}.");
             }
             else
             {
@@ -1805,9 +2235,69 @@ public class MenuComandoController : MonoBehaviour
         if (desenhadorOrdens != null)
         {
             desenhadorOrdens.CancelarModo();
+            FecharPainelSeguimento();
             SetText(ordemFeedback, "Ordem cancelada.");
             AdicionarLog("OPS", "Ação cancelada pelo usuário.", "normal");
         }
+    }
+
+    private void AtualizarCameraSeguimento(GameObject alvo)
+    {
+        if (alvo == null || CameraUnidadeHUD.Instancia == null)
+        {
+            return;
+        }
+
+        ControleUnidade alvoControle = alvo.GetComponent<ControleUnidade>();
+        if (alvoControle != null)
+        {
+            CameraUnidadeHUD.Instancia.DefinirTarget(alvoControle, true);
+        }
+
+        CameraUnidadeHUD.Instancia.TravadoEmAlvo(alvo.transform);
+        CameraUnidadeHUD.Instancia.modoDroneCamera = true;
+
+        if (flirUnidadeNome != null)
+        {
+            flirUnidadeNome.text = ObterNomeExibicao(alvo);
+        }
+
+        if (flirAlerta != null)
+        {
+            flirAlerta.text = "SEGUIMENTO ATIVO";
+        }
+    }
+
+    private void AnimarItemSeguimento(Button item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+
+        item.RemoveFromClassList("seguir-item-pulse");
+        item.AddToClassList("seguir-item-pulse");
+
+        int toggles = 0;
+        IVisualElementScheduledItem scheduled = null;
+        scheduled = item.schedule.Execute(() =>
+        {
+            if (item == null || item.panel == null)
+            {
+                scheduled?.Pause();
+                return;
+            }
+
+            bool pulseAtivo = item.ClassListContains("seguir-item-pulse");
+            item.EnableInClassList("seguir-item-pulse", !pulseAtivo);
+            toggles++;
+
+            if (toggles >= 6)
+            {
+                item.EnableInClassList("seguir-item-pulse", true);
+                scheduled?.Pause();
+            }
+        }).Every(120);
     }
 
     private GameObject EncontrarUnidadeProxima(Vector3 worldPos, float raioMaximo, bool ignorarTimeJogador = false)
@@ -1821,7 +2311,7 @@ public class MenuComandoController : MonoBehaviour
         {
             var id = cacheUnidadesMapa[i];
             if (id == null || !id.gameObject.activeInHierarchy) continue;
-            if (ignorarTimeJogador && id.teamID == 1) continue;
+            if (ignorarTimeJogador && EhUnidadeDoJogador(id)) continue;
 
             Vector3 delta = id.transform.position - worldPos;
             delta.y = 0f;
@@ -1837,7 +2327,7 @@ public class MenuComandoController : MonoBehaviour
         {
             var id = cacheIdentidadesIA[i];
             if (id == null || !id.gameObject.activeInHierarchy) continue;
-            if (ignorarTimeJogador && id.teamID == 1) continue;
+            if (ignorarTimeJogador && id.teamID == TimeJogadorAtual) continue;
             if (id.GetComponentInParent<IdentidadeUnidade>() != null) continue;
 
             Vector3 delta = id.transform.position - worldPos;

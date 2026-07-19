@@ -41,7 +41,6 @@ public class ControleAviaoComercial : ControleAviao
     private bool destinoCalculado = false;
     private float timerEstacionadoComercial = 0f;
     private bool decolagemSolicitada = false;
-    private bool aguardandoPista = false;
 
     [Header("=== INFRAESTRUTURA COMERCIAL ===")]
     public GerenciadorAeroportoComercial aeroportoOrigemComercial;
@@ -52,7 +51,6 @@ public class ControleAviaoComercial : ControleAviao
 
     private EstadoAviao estadoAnterior;
 
-    // ── Startup ─────────────────────────────────────────────────────────
     protected override void Start()
     {
         base.Start();
@@ -73,7 +71,6 @@ public class ControleAviaoComercial : ControleAviao
         }
     }
 
-    // ── Update ─────────────────────────────────────────────────────────
     protected override void Update()
     {
         GerenciarEstacionamento();
@@ -84,39 +81,29 @@ public class ControleAviaoComercial : ControleAviao
         VerificarChegadaExterior();
     }
 
-    // ── Estacionamento e decolagem automática ──────────────────────────
     private void GerenciarEstacionamento()
     {
         if (estadoAtual != EstadoAviao.ProntoNoPatio)
         {
             timerEstacionadoComercial = 0f;
             decolagemSolicitada = false;
-            aguardandoPista = false;
             return;
         }
 
-        // Aguarda horário do voo (gerenciado pelo aeroporto)
-        // O aeroporto chama SolicitarDecolagem() no momento certo.
-        // Fallback: se ficar parado mais de 3 min, SOLICITA pista ao aeroporto antes de decolar.
         timerEstacionadoComercial += Time.deltaTime;
 
         if (timerEstacionadoComercial >= 180f && !decolagemSolicitada)
         {
-            // Se tem aeroporto, solicita pista através do sistema formal.
-            // Isso garante que o avião use a pista e não decole "do ar".
             if (aeroportoOrigemComercial != null)
             {
                 SolicitarDecolagem();
             }
             else if (pistaDesignada != null)
             {
-                // Sem aeroporto mas com pista atribuída manualmente: decola
                 SolicitarDecolagem();
             }
-            // Se não tem nem aeroporto nem pista: aguarda mais 60s e tenta de novo
             else if (timerEstacionadoComercial >= 240f)
             {
-                // Último recurso: decola sem pista (comportamento antigo de fallback)
                 decolagemSolicitada = true;
                 DefinirDestinoComercial();
                 IniciarMissaoCompleta(alvoGPSVoo);
@@ -124,7 +111,6 @@ public class ControleAviaoComercial : ControleAviao
         }
     }
 
-    /// <summary>Chamado pelo GerenciadorAeroportoComercial quando o horário do voo chegou.</summary>
     public void SolicitarDecolagem()
     {
         if (decolagemSolicitada || estadoAtual != EstadoAviao.ProntoNoPatio) return;
@@ -132,7 +118,6 @@ public class ControleAviaoComercial : ControleAviao
 
         if (aeroportoOrigemComercial != null)
         {
-            // Tenta pegar pista diretamente; se não conseguir, entra na fila
             PistaComercial pista = aeroportoOrigemComercial.SolicitarPistaParaDecolagem(this);
             if (pista != null)
                 AtribuirPistaEDecolar(pista);
@@ -141,13 +126,11 @@ public class ControleAviaoComercial : ControleAviao
         }
         else
         {
-            // Sem aeroporto comercial — tenta decolagem normal
             DefinirDestinoComercial();
             IniciarMissaoCompleta(alvoGPSVoo);
         }
     }
 
-    /// <summary>Chamado quando o aeroporto atribui uma pista livre para decolagem.</summary>
     public void AtribuirPistaEDecolar(PistaComercial pista)
     {
         pistaDesignada = pista;
@@ -155,7 +138,6 @@ public class ControleAviaoComercial : ControleAviao
 
         if (vooAssociado != null) vooAssociado.status = StatusVoo.EmVoo;
 
-        // Desparenta da vaga (hangar) para poder se mover livremente
         if (transform.parent != null && transform.parent == vagaRetorno)
             transform.SetParent(null, true);
 
@@ -163,42 +145,34 @@ public class ControleAviaoComercial : ControleAviao
         IniciarMissaoCompleta(alvoGPSVoo);
     }
 
-    /// <summary>Chamado quando o aeroporto atribui uma pista para pouso.</summary>
     public void AtribuirPistaEPousar(PistaComercial pista)
     {
         pistaDesignada = pista;
-        // O pouso já estava em andamento, só confirma a pista
         Debug.Log($"[Comercial] {nomeCompanhia} pista atribuída para pouso: {pista.nomePista}.");
     }
 
-    // ── Liberação de pista ─────────────────────────────────────────────
     private void GerenciarLiberacaoPista()
     {
         if (estadoAnterior == estadoAtual) return;
 
         if (estadoAnterior == EstadoAviao.Decolando && estadoAtual == EstadoAviao.EmMissao)
         {
-            // Libera pista após decolar completamente
             if (aeroportoOrigemComercial != null) aeroportoOrigemComercial.LiberarPista(pistaDesignada, this);
             pistaDesignada = null;
         }
         else if (estadoAnterior == EstadoAviao.RetornandoPraVaga && estadoAtual == EstadoAviao.ProntoNoPatio)
         {
-            // Libera pista após concluir taxi de chegada
             if (aeroportoOrigemComercial != null) aeroportoOrigemComercial.LiberarPista(pistaDesignada, this);
             pistaDesignada = null;
 
-            // Notifica aeroporto da chegada
             if (aeroportoOrigemComercial != null) aeroportoOrigemComercial.AviaoChegou(this);
 
-            // Reseta para próximo voo
             destinoCalculado   = false;
             nomeDestinoIA      = "";
             decolagemSolicitada= false;
             timerEstacionadoComercial = 0f;
             if (vooAssociado != null) vooAssociado.status = StatusVoo.Pousou;
 
-            // Recarrega combustível (não mostra interface)
             CombustivelUnidade comb = GetComponent<CombustivelUnidade>();
             if (comb != null) comb.PreencherSemCusto();
         }
@@ -206,7 +180,6 @@ public class ControleAviaoComercial : ControleAviao
         estadoAnterior = estadoAtual;
     }
 
-    // ── Waypoints comerciais ───────────────────────────────────────────
     protected override List<Transform> ObterWaypointsDecolagem()
     {
         if (pistaDesignada != null && pistaDesignada.waypointsDecolagem.Count > 0)
@@ -216,15 +189,12 @@ public class ControleAviaoComercial : ControleAviao
 
     protected override List<Transform> ObterWaypointsDecida()
     {
-        // Solicita pista para pouso se ainda não tem
         if (pistaDesignada == null && aeroportoOrigemComercial != null)
         {
             pistaDesignada = aeroportoOrigemComercial.SolicitarPistaParaPouso(this);
             if (pistaDesignada == null)
             {
-                // Entra na fila de pouso
                 aeroportoOrigemComercial.EntrarNaFilaPouso(this);
-                // Retorna pista 1 como fallback de emergência
                 pistaDesignada = aeroportoOrigemComercial.pista1;
             }
         }
@@ -235,7 +205,6 @@ public class ControleAviaoComercial : ControleAviao
 
     protected override List<Transform> ObterWaypointsTaxi()
     {
-        // Retorna taxi de saída da pista (chegada → hangar)
         if (pistaDesignada != null && pistaDesignada.waypointsTaxiSaida.Count > 0)
             return pistaDesignada.waypointsTaxiSaida;
         return base.ObterWaypointsTaxi();
@@ -243,7 +212,6 @@ public class ControleAviaoComercial : ControleAviao
 
     protected override Transform ObterWpPreparacao()
     {
-        // Ponto inicial do taxi de partida (hangar → pista)
         if (pistaDesignada != null && pistaDesignada.waypointsTaxiEntrada.Count > 0)
             return pistaDesignada.waypointsTaxiEntrada[0];
         return base.ObterWpPreparacao();
@@ -251,17 +219,11 @@ public class ControleAviaoComercial : ControleAviao
 
     protected override Transform ObterWpPronto()
     {
-        // Último ponto do taxi de partida (alinhamento na cabeça de pista)
         if (pistaDesignada != null && pistaDesignada.waypointsTaxiEntrada.Count > 1)
             return pistaDesignada.waypointsTaxiEntrada[pistaDesignada.waypointsTaxiEntrada.Count - 1];
         return base.ObterWpPronto();
     }
 
-    /// <summary>
-    /// Retorna a lista COMPLETA de waypoints de táxi de entrada (hangar → cabeceira da pista).
-    /// Sobrescreve o método da classe base para garantir que o avião percorra todos os pontos
-    /// intermediários da taxiway, em vez de pular direto para o início da pista.
-    /// </summary>
     protected override List<Transform> ObterWaypointsTaxiEntrada()
     {
         if (pistaDesignada != null && pistaDesignada.waypointsTaxiEntrada.Count > 0)
@@ -269,10 +231,6 @@ public class ControleAviaoComercial : ControleAviao
         return base.ObterWaypointsTaxiEntrada();
     }
 
-    /// <summary>
-    /// Pushback realista: o avião comercial recua da vaga por 3 segundos de ré para a popa
-    /// antes de iniciar a contagem para o táxi.
-    /// </summary>
     private IEnumerator ExecutarPushbackInicial(Transform primeiroPonto)
     {
         if (primeiroPonto == null) yield break;
@@ -286,7 +244,6 @@ public class ControleAviaoComercial : ControleAviao
             float dt = Time.deltaTime;
             tempo += dt;
 
-            // Move para trás (ré) em linha reta para a popa
             transform.position -= transform.forward * (velocidadePushback * dt);
 
             if (modeloMecanicoVisual != null)
@@ -301,7 +258,58 @@ public class ControleAviaoComercial : ControleAviao
         StartCoroutine(SequenciaDeVooEPouso());
     }
 
-    // ── Ciclo de Voo e Pouso Comercial Completo ──
+    // =========================================================================
+    // CORREÇÃO DO EFEITO CARANGUEJO - MOVIMENTO EXCLUSIVO COMERCIAL
+    // Estas funções garantem que o nariz do avião sempre aponte para a direção
+    // do movimento, ignorando a rotação defeituosa dos waypoints.
+    // =========================================================================
+    
+    protected IEnumerator MoverInterpoladoComercial(Vector3 destino, float vel, bool noChao)
+    {
+        // Se estiver no chão, compensa a altura para não enterrar o pneu
+        if (noChao) 
+        {
+            destino.y += ObterAlturaEstacionamento();
+        }
+
+        while (true)
+        {
+            Vector3 direcaoParaRotacao = destino - transform.position;
+            
+            // Se estiver taxiando no chão, força a rotação a ficar reta (Pitch 0) para o bico não empinar
+            if (noChao) direcaoParaRotacao.y = 0f; 
+
+            float dist = Vector3.Distance(transform.position, destino);
+            if (dist <= 0.5f) break; // Chegou no alvo
+
+            // Força o avião a olhar para a linha do movimento
+            if (direcaoParaRotacao.sqrMagnitude > 0.01f)
+            {
+                Quaternion rotacaoAlvo = Quaternion.LookRotation(direcaoParaRotacao.normalized);
+                transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, 8f * Time.deltaTime);
+            }
+
+            // Move fisicamente para o ponto
+            transform.position = Vector3.MoveTowards(transform.position, destino, vel * Time.deltaTime);
+            yield return null;
+        }
+    }
+
+    protected IEnumerator SeguirCaminhoComercial(List<Transform> waypoints, float velInicial, float velFinal, bool noChao)
+    {
+        for (int i = 0; i < waypoints.Count; i++)
+        {
+            if (waypoints[i] == null) continue;
+            
+            // Calcula aceleração (Ex: aumenta a vel. do inicio ao fim da pista)
+            float t = waypoints.Count > 1 ? (float)i / (waypoints.Count - 1) : 1f;
+            float velAtual = Mathf.Lerp(velInicial, velFinal, t);
+            
+            // Usa a nova rotina anti-caranguejo
+            yield return StartCoroutine(MoverInterpoladoComercial(waypoints[i].position, velAtual, noChao));
+        }
+    }
+
     protected override IEnumerator SequenciaDeVooEPouso()
     {
         if (aeroportoOrigem == null)
@@ -323,19 +331,13 @@ public class ControleAviaoComercial : ControleAviao
         {
             estadoAtual = EstadoAviao.Decolando;
             
-            // Avião pega seu caminho de saída (se o aeroporto designar uma rota base)
             var wpsTaxiEntrada = ObterWaypointsTaxiEntrada();
-            
             Transform primeiroPonto = null;
             if (wpsTaxiEntrada != null && wpsTaxiEntrada.Count > 0) primeiroPonto = wpsTaxiEntrada[0];
 
-            // 1. Pushback com 3 segundos de ré
             yield return StartCoroutine(ExecutarPushbackInicial(primeiroPonto));
-            
-            // 2. Pausa 3 segundos APÓS o pushback
             yield return new WaitForSeconds(3f);
 
-            // Pede a pista ANTES de taxiar para poder usar o caminho de táxi específico daquela pista
             while (pistaDesignada == null && aeroportoOrigemComercial != null)
             {
                 pistaDesignada = aeroportoOrigemComercial.SolicitarPistaParaDecolagem(this);
@@ -346,10 +348,8 @@ public class ControleAviaoComercial : ControleAviao
                 }
             }
 
-            // Atualiza o caminho de taxi com base na pista escolhida
             wpsTaxiEntrada = ObterWaypointsTaxiEntrada();
 
-            // 3. Táxi até a cabeceira
             if (wpsTaxiEntrada != null && wpsTaxiEntrada.Count > 0)
             {
                 List<Transform> taxiCaminho = new List<Transform>();
@@ -358,59 +358,70 @@ public class ControleAviaoComercial : ControleAviao
                     if (wpsTaxiEntrada[i] != null) taxiCaminho.Add(wpsTaxiEntrada[i]);
                 }
                 
+                // USANDO O SISTEMA CORRIGIDO AQUI ->
                 if (taxiCaminho.Count > 0)
-                    yield return StartCoroutine(SeguirCaminhoDeWaypoints(taxiCaminho, velocidadeSolo * 0.5f, velocidadeSolo, false, false));
+                    yield return StartCoroutine(SeguirCaminhoComercial(taxiCaminho, velocidadeSolo * 0.5f, velocidadeSolo, true));
                 
-                // 4. Vai para o último wp de táxi (hold-short) e PARA 3 SEGUNDOS
                 Transform ultimoTaxi = wpsTaxiEntrada[wpsTaxiEntrada.Count - 1];
                 if (ultimoTaxi != null)
-                    yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, ultimoTaxi));
+                    yield return StartCoroutine(MoverInterpoladoComercial(ultimoTaxi.position, velocidadeSolo, true));
             }
 
             yield return new WaitForSeconds(3f);
 
-            // 5. Entra na pista e se coloca na posição de voo
             var wpDecolagem = ObterWaypointsDecolagem();
             if (wpDecolagem != null && wpDecolagem.Count > 0)
             {
-                // Entra na pista e alinha
-                yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, wpDecolagem[0]));
+                // Entrando na pista
+                yield return StartCoroutine(MoverInterpoladoComercial(wpDecolagem[0].position, velocidadeSolo, true));
 
-                // 6. Pausa de 3 segundos na pista (Checkups)
                 yield return new WaitForSeconds(3f);
 
-                // 7. Aceleração de Decolagem
                 List<Transform> pistaCaminho = new List<Transform>();
                 for (int i = 1; i < wpDecolagem.Count; i++)
                 {
                     if (wpDecolagem[i] != null) pistaCaminho.Add(wpDecolagem[i]);
                 }
+                
+                // Acelerando corrigido ->
                 if (pistaCaminho.Count > 0)
-                    yield return StartCoroutine(SeguirCaminhoDeWaypoints(pistaCaminho, velocidadeSolo, velocidadeMaximaVoo, true, false));
+                    yield return StartCoroutine(SeguirCaminhoComercial(pistaCaminho, velocidadeSolo, velocidadeMaximaVoo, true));
             }
 
-            // Libera o parente para voar fisicamente
             transform.SetParent(null, true);
         }
 
         // ==========================================
         // FASE 2: VOO (Em Missão)
         // ==========================================
-        estaEmModoVooFisico = true;
-        estadoAtual = EstadoAviao.EmMissao;
-        if (alvoGPSVoo.y < 60f) alvoGPSVoo.y = 60f;
-        StartCoroutine(RecolherRodas(1f));
-
-        // Voa até o destino
-        float distAproximacao = Mathf.Max(20f, margemChegadaMissao);
-        distAproximacao *= distAproximacao;
-        
-        while (true)
+        // Para decolagens normais E para chegadas externas: voa até o alvo definido.
+        // - Saídas: alvoGPSVoo é o destino (exterior).
+        // - Chegadas: alvoGPSVoo é o ponto de entrada da pista (definido no SpawnarAviaoDeChegada).
         {
-            Vector3 diff = new Vector3(transform.position.x - alvoGPSVoo.x, 0, transform.position.z - alvoGPSVoo.z);
-            if (diff.sqrMagnitude <= distAproximacao) break;
-            if (ordemParaRetorno) break;
-            yield return null;
+            estaEmModoVooFisico = true;
+            estadoAtual = EstadoAviao.EmMissao;
+            if (alvoGPSVoo.y < altitudeCruzeiroComercial) alvoGPSVoo.y = altitudeCruzeiroComercial;
+            StartCoroutine(RecolherRodas(1f));
+
+            float distAproximacao = Mathf.Max(20f, margemChegadaMissao);
+            distAproximacao *= distAproximacao;
+
+            while (true)
+            {
+                Vector3 diff = new Vector3(transform.position.x - alvoGPSVoo.x, 0, transform.position.z - alvoGPSVoo.z);
+                if (diff.sqrMagnitude <= distAproximacao) break;
+                if (ordemParaRetorno) break;
+                yield return null;
+            }
+
+            // Para voos de SAÍDA que não são chegadas: terminam aqui (destruídos ou voam para destino).
+            // Para voos de CHEGADA: continuam para a fase de pouso abaixo.
+            if (vooAssociado != null && !vooAssociado.ehChegada)
+            {
+                // Avião de saída chegou ao destino exterior — destruir
+                Destroy(gameObject);
+                yield break;
+            }
         }
 
         // ==========================================
@@ -419,79 +430,70 @@ public class ControleAviaoComercial : ControleAviao
         ordemParaRetorno = false;
         estadoAtual = EstadoAviao.Pousando;
 
-        // Vai para a rota de descida comum do Aeroporto ("creaty")
-        List<Transform> wpsCriaty = new List<Transform>();
-        if (aeroportoOrigem.decida != null)
-        {
-            foreach (Transform t in aeroportoOrigem.decida) wpsCriaty.Add(t);
-        }
-
-        if (wpsCriaty.Count > 0)
-        {
-            alvoGPSVoo = wpsCriaty[0].position;
-            if (alvoGPSVoo.y < 50f) alvoGPSVoo.y = 50f;
-
-            while (true)
-            {
-                Vector3 diff = new Vector3(transform.position.x - alvoGPSVoo.x, 0, transform.position.z - alvoGPSVoo.z);
-                if (diff.sqrMagnitude <= 90000f) break; // 300m
-                yield return null;
-            }
-
-            AbaixarRodas();
-            estaEmModoVooFisico = false;
-
-            // Desce usando os waypoints do "descida" global
-            yield return StartCoroutine(SeguirCaminhoDeWaypoints(wpsCriaty, velocidadeSolo * 2.4f, velocidadeSolo * 2.4f, false, true));
-        }
-        else
-        {
-            AbaixarRodas();
-            estaEmModoVooFisico = false;
-        }
-
-        // Escolhe a pista de pouso (Após passar pelo último creaty)
+        // Solicita pista de pouso (se ainda não tiver sido designada)
         while (pistaDesignada == null && aeroportoOrigemComercial != null)
         {
             pistaDesignada = aeroportoOrigemComercial.SolicitarPistaParaPouso(this);
             if (pistaDesignada == null)
             {
                 aeroportoOrigemComercial.EntrarNaFilaPouso(this);
-                // Pairando enquanto aguarda pista
+                // Mantém o avião voando devagar enquanto aguarda pista
                 transform.position += transform.forward * (velocidadeSolo * Time.deltaTime);
-                yield return null; 
+                yield return null;
             }
         }
 
-        // Segue os waypoints de descida DA PISTA escolhida (Pousa normalmente)
+        // Obtém waypoints de descida da pista designada (já na ordem correta: entrada → toque)
         var wpDescidaPista = ObterWaypointsDecida();
+
         if (wpDescidaPista != null && wpDescidaPista.Count > 0)
         {
-            yield return StartCoroutine(SeguirCaminhoDeWaypoints(wpDescidaPista, velocidadeSolo * 2.4f, velocidadeSolo, false, true));
+            // Voa até o ponto mais alto da descida ainda no ar
+            Vector3 wpEntrada = wpDescidaPista[wpDescidaPista.Count - 1].position;
+            wpEntrada.y = Mathf.Max(wpEntrada.y, 50f);
+            alvoGPSVoo = wpEntrada;
+
+            while (true)
+            {
+                Vector3 diff = new Vector3(transform.position.x - wpEntrada.x, 0, transform.position.z - wpEntrada.z);
+                if (diff.sqrMagnitude <= 90000f) break; // 300m
+                yield return null;
+            }
+
+            // Abaixa rodas e sai do modo de voo físico
+            AbaixarRodas();
+            estaEmModoVooFisico = false;
+
+            // Desce pela pista (céu → chão, noChao = false para poder inclinar o nariz)
+            yield return StartCoroutine(SeguirCaminhoComercial(wpDescidaPista, velocidadeSolo * 2.4f, velocidadeSolo, false));
+        }
+        else
+        {
+            // Sem waypoints: apenas pousa no local
+            AbaixarRodas();
+            estaEmModoVooFisico = false;
         }
 
         estadoAtual = EstadoAviao.RetornandoPraVaga;
         transform.SetParent(aeroportoOrigem.transform, true);
 
-        // Táxi de saída (Ao contrário, indo para a vaga)
         var wpsTaxiSaida = ObterWaypointsTaxi();
         
-        // 1. Pausa de 3 segundos no final da pista antes de taxiar
         yield return new WaitForSeconds(3f);
 
         if (wpsTaxiSaida != null && wpsTaxiSaida.Count > 0)
         {
-            yield return StartCoroutine(SeguirCaminhoDeWaypoints(wpsTaxiSaida, velocidadeSolo, velocidadeSolo, false, true));
+            // Taxi até o portão
+            yield return StartCoroutine(SeguirCaminhoComercial(wpsTaxiSaida, velocidadeSolo, velocidadeSolo, true));
         }
 
-        // Busca Vaga
         if (vagaRetorno == null) vagaRetorno = aeroportoOrigem.ObterPrimeiraVagaLivre();
         
         if (vagaRetorno != null)
         {
-            // 2. Pausa de 3 segundos antes de estacionar
             yield return new WaitForSeconds(3f);
 
+            // Alinhamento final com a vaga para estacionar bonito de ré
             Vector3 dirParaVaga = vagaRetorno.position - transform.position;
             dirParaVaga.y = 0f;
             if (dirParaVaga.sqrMagnitude > 0.1f)
@@ -507,7 +509,7 @@ public class ControleAviaoComercial : ControleAviao
                 }
             }
 
-            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, true, vagaRetorno));
+            yield return StartCoroutine(MoverInterpoladoComercial(vagaRetorno.position, velocidadeSolo, true));
 
             transform.SetParent(vagaRetorno, true);
             float alt = ObterAlturaEstacionamento();
@@ -532,7 +534,6 @@ public class ControleAviaoComercial : ControleAviao
         }
     }
 
-    // ── Destino comercial ──────────────────────────────────────────────
     private void DefinirDestinoComercial()
     {
         if (destinoCalculado) return;
@@ -564,7 +565,6 @@ public class ControleAviaoComercial : ControleAviao
         if (vooAssociado != null) vooAssociado.destino = "Exterior";
     }
 
-    // ── Chegada ao exterior (despawn) ──────────────────────────────────
     private float timerVooExterior = 0f;
 
     private void VerificarChegadaExterior()
@@ -577,19 +577,16 @@ public class ControleAviaoComercial : ControleAviao
             new Vector3(transform.position.x, 0, transform.position.z),
             new Vector3(alvoGPSVoo.x, 0, alvoGPSVoo.z));
             
-        // Só some se estiver voando há mais de 2 minutos (120s) e já estiver relativamente longe
         if (timerVooExterior >= 120f && dist < 3000f) 
             Destroy(gameObject);
     }
 
-    // ── Voo realista (sobrescreve o da base) ───────────────────────────
     protected override void ManobraVooRealista(float multDano = 1f)
     {
         float dt = Time.deltaTime;
         Vector3 retaAteAlvo = alvoGPSVoo - transform.position;
         float anguloPressaoLateralY = 0f;
 
-        // Mantém altitude de cruzeiro
         if (estadoAtual == EstadoAviao.EmMissao && alvoGPSVoo.y < altitudeCruzeiroComercial)
         {
             alvoGPSVoo.y = altitudeCruzeiroComercial;
@@ -612,7 +609,6 @@ public class ControleAviaoComercial : ControleAviao
         float velFinal = velocidadeMaximaVoo * multiplicadorVelocidadeTurbo * mult * multDano;
         Vector3 novaPos = transform.position + transform.forward * (velFinal * dt);
 
-        // Piso de segurança
         if (novaPos.y < 25f)
         {
             novaPos.y = 25f;
@@ -620,7 +616,6 @@ public class ControleAviaoComercial : ControleAviao
                 Quaternion.Euler(0, transform.eulerAngles.y, 0), 20f * dt);
         }
 
-        // Bordas do mapa
         if (Mathf.Abs(novaPos.x) > 10000f || Mathf.Abs(novaPos.z) > 10000f)
         {
             Vector3 centro = new Vector3(0, novaPos.y, 0);
@@ -632,7 +627,6 @@ public class ControleAviaoComercial : ControleAviao
 
         transform.position = novaPos;
 
-        // Banking / Pitch visuais
         if (modeloMecanicoVisual != null)
         {
             float rollAlvo  = Mathf.Clamp(anguloPressaoLateralY * -1.8f, -asaBankingComercial, asaBankingComercial);
@@ -643,7 +637,6 @@ public class ControleAviaoComercial : ControleAviao
         }
     }
 
-    // ── Efeitos de motor ───────────────────────────────────────────────
     private void AtualizarEfeitosMotores()
     {
         float dt = Time.deltaTime;

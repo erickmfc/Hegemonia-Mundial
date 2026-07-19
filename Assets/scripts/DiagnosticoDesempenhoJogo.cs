@@ -606,6 +606,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         string ia01Objective = ObterTextoMetrica("ia01_objective");
         string ia01Construction = ObterTextoMetrica("ia01_construction");
         string ia01Combat = ObterTextoMetrica("ia01_combat");
+        string ia01Military = ObterTextoMetrica("ia01_military_reserve");
         string ia01Market = ObterTextoMetrica("ia01_market");
         string ia01BlockedIntent = ObterTextoMetrica("ia01_blocked_intent");
         string ia01BlockReason = ObterTextoMetrica("ia01_block_reason");
@@ -679,9 +680,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         {
             _overlayLine7 += "\nIA01: " + (string.IsNullOrEmpty(ia01Progress) ? "progresso aguardando" : ia01Progress)
                 + " | " + (string.IsNullOrEmpty(ia01Objective) ? "objetivo aguardando" : ia01Objective)
-                + " | obra=" + (string.IsNullOrEmpty(ia01Construction) ? "n/d" : ia01Construction)
-                + " | combate=" + (string.IsNullOrEmpty(ia01Combat) ? "n/d" : ia01Combat)
-                + " | mercado=" + (string.IsNullOrEmpty(ia01Market) ? "n/d" : ia01Market)
+                 + " | obra=" + (string.IsNullOrEmpty(ia01Construction) ? "n/d" : ia01Construction)
+                 + " | combate=" + (string.IsNullOrEmpty(ia01Combat) ? "n/d" : ia01Combat)
+                 + " | reserva militar=" + (string.IsNullOrEmpty(ia01Military) ? "n/d" : ia01Military)
+                 + " | mercado=" + (string.IsNullOrEmpty(ia01Market) ? "n/d" : ia01Market)
                 + "\nIA01 bloqueio: intencao=" + (string.IsNullOrEmpty(ia01BlockedIntent) ? "n/d" : ia01BlockedIntent)
                 + " motivo=" + (string.IsNullOrEmpty(ia01BlockReason) ? "n/d" : ia01BlockReason)
                 + " falhas=" + (string.IsNullOrEmpty(ia01Failures) ? "0" : ia01Failures)

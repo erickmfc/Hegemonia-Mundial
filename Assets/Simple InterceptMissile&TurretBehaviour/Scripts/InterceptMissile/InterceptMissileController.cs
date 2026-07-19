@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 public class InterceptMissileController : MonoBehaviour {
@@ -78,9 +79,28 @@ public class InterceptMissileController : MonoBehaviour {
 			newMissile.transform.localPosition = offset; // Note: optional position
 
 			loadedMissile.Add(newMissile);
-			CameraManager.CameraTargets.Add(newMissile.transform); // just for missile camera
+			RegistrarAlvoDeCameraOpcional(newMissile.transform); // just for missile camera
 			loadedMissileCount ++;
 			MissileCount --;
+		}
+	}
+
+	private static void RegistrarAlvoDeCameraOpcional(Transform alvo)
+	{
+		if(alvo == null) return;
+
+		System.Type cameraManagerType = System.Type.GetType("CameraManager");
+		if(cameraManagerType == null) return;
+
+		FieldInfo cameraTargetsField = cameraManagerType.GetField("CameraTargets", BindingFlags.Public | BindingFlags.Static);
+		if(cameraTargetsField == null) return;
+
+		IList<Transform> cameraTargets = cameraTargetsField.GetValue(null) as IList<Transform>;
+		if(cameraTargets == null) return;
+
+		if(!cameraTargets.Contains(alvo))
+		{
+			cameraTargets.Add(alvo);
 		}
 	}
 

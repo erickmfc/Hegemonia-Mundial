@@ -38,7 +38,6 @@ public class IA_OtimizadorUnidade : MonoBehaviour
     private bool _estaCulled = false;
     private bool _inicializado = false;
     private float _originalNavSpeed = -1f;
-    private float _originalUpdateInterval = -1f;
     private Transform _camTransform;
 
     // Taxas de atualização do NavMesh por nível (em segundos entre atualizações)

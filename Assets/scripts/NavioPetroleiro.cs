@@ -40,6 +40,9 @@ public class NavioPetroleiro : ControleUnidade
     private NavMeshAgent agenteNav;
     private IdentidadeUnidade identidadeCache;
     private float timerEstado = 0f;
+    private Vector3 destinoNavMeshAtual;
+    private bool possuiDestinoNavMesh;
+    private float proximoReplanejamento;
 
     // Alvos
     public PlataformaOffshore plataformaAlvo;
@@ -319,10 +322,30 @@ public class NavioPetroleiro : ControleUnidade
 
     void ExecutarViagemNavMesh(System.Action aoChegar)
     {
+        if (agenteNav == null || !possuiDestinoNavMesh)
+        {
+            statusDebug = "Rota naval sem destino valido.";
+            return;
+        }
+
         if (!agenteNav.enabled || !agenteNav.isOnNavMesh)
         {
             statusDebug = "Tentando reconectar NavMesh...";
             AtivarNavMeshNoLocal();
+            if (agenteNav.enabled && agenteNav.isOnNavMesh)
+                agenteNav.SetDestination(destinoNavMeshAtual);
+            return;
+        }
+
+        if (agenteNav.pathStatus == NavMeshPathStatus.PathInvalid
+            || (!agenteNav.pathPending && !agenteNav.hasPath))
+        {
+            if (Time.time >= proximoReplanejamento)
+            {
+                proximoReplanejamento = Time.time + 1.5f;
+                agenteNav.SetDestination(destinoNavMeshAtual);
+            }
+            statusDebug = "Replanejando rota naval...";
             return;
         }
 
@@ -332,7 +355,10 @@ public class NavioPetroleiro : ControleUnidade
              transform.rotation = Quaternion.Euler(0, euler.y, 0);
         }
 
-        if (!agenteNav.pathPending && agenteNav.remainingDistance <= agenteNav.stoppingDistance + 0.5f)
+        if (!agenteNav.pathPending
+            && agenteNav.pathStatus == NavMeshPathStatus.PathComplete
+            && !float.IsInfinity(agenteNav.remainingDistance)
+            && agenteNav.remainingDistance <= agenteNav.stoppingDistance + 0.8f)
         {
             aoChegar.Invoke();
         }
@@ -444,7 +470,7 @@ public class NavioPetroleiro : ControleUnidade
     {
         timerEstado += Time.deltaTime;
         
-        int qtdPorFrame = Mathf.RoundToInt(taxaTransferencia * Time.deltaTime);
+        int qtdPorFrame = Mathf.Max(1, Mathf.RoundToInt(taxaTransferencia * Time.deltaTime));
         
         // Define o tempo máximo de operação (usa a variável do inspector ou um mínimo de 15s se a do inspector for muito curta, para dar tempo de carregar)
         // Na verdade, vamos respeitar o Inspector E a capacidade.
@@ -513,9 +539,8 @@ public class NavioPetroleiro : ControleUnidade
             statusDebug = $"Esvaziando: {petroleoCarregado}/{capacidadeMaxima} ({timerEstado:F1}s)";
 
             bool tanqueVazio = petroleoCarregado <= 0;
-            bool tempoEsgotado = timerEstado > tempoLimite;
-
-            if (tanqueVazio || tempoEsgotado)
+            // Nunca abandona o pier com petroleo ainda no porao.
+            if (tanqueVazio)
             {
                 MudarEstado(proximo);
             }
@@ -526,29 +551,29 @@ public class NavioPetroleiro : ControleUnidade
 
     void ConfigurarNavMesh(Vector3 destino)
     {
-        if (EmitirOrdemMover(destino, false))
-        {
-            return;
-        }
-
+        destinoNavMeshAtual = destino;
+        possuiDestinoNavMesh = true;
+        proximoReplanejamento = 0f;
+        EmitirOrdemMover(destino, false);
         AtivarNavMeshNoLocal();
-        if (agenteNav.enabled)
+        if (agenteNav != null && agenteNav.enabled && agenteNav.isOnNavMesh)
         {
             agenteNav.isStopped = false;
-            MovimentoFallbackTransicional.TrySetNavDestination(gameObject, destino);
+            agenteNav.SetDestination(destino);
         }
     }
 
     void AtivarNavMeshNoLocal()
     {
-        if (agenteNav.enabled) return;
+        if (agenteNav == null) return;
+        if (agenteNav.enabled && agenteNav.isOnNavMesh) return;
 
         NavMeshHit hit;
         // Procura chão navegável num raio de 10 metros
-        if (NavMesh.SamplePosition(transform.position, out hit, 10.0f, NavMesh.AllAreas))
+        if (NavMesh.SamplePosition(transform.position, out hit, 30.0f, NavMesh.AllAreas))
         {
+            if (!agenteNav.enabled) agenteNav.enabled = true;
             agenteNav.Warp(hit.position);
-            agenteNav.enabled = true;
         }
         else
         {
@@ -558,11 +583,12 @@ public class NavioPetroleiro : ControleUnidade
 
     void DesligarNavMesh()
     {
-        if (agenteNav.enabled)
+        if (agenteNav != null && agenteNav.enabled)
         {
             agenteNav.isStopped = true;
             agenteNav.enabled = false;
         }
+        possuiDestinoNavMesh = false;
     }
 
     // --- BUSCADORES ---

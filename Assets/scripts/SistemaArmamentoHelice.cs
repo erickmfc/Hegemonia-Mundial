@@ -31,6 +31,7 @@ public class SistemaArmamentoHelice : MonoBehaviour
 
     // --- VARIÁVEIS DE CONTROLE INTERNO ---
     private ControleAviao controleAviao;
+    private ControleUnidade controleUnidade;
     private int meuTime = 1;
     private float cronometroScan = 0f;
     private Transform alvoAtualGuardado;
@@ -47,6 +48,7 @@ public class SistemaArmamentoHelice : MonoBehaviour
     {
         balasAtuais = cartuchoMaximo;
         controleAviao = GetComponent<ControleAviao>();
+        controleUnidade = GetComponent<ControleUnidade>();
         PoolDeObjetosCombate.Prewarm(prefabProjetilTrassante, Mathf.Clamp(canosDeTiro != null ? canosDeTiro.Length * 2 : 4, 4, 10));
         
         IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
@@ -92,6 +94,15 @@ public class SistemaArmamentoHelice : MonoBehaviour
 
         // Se não estiver voando em missão, não faz lógica de tiro
         if (controleAviao.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return;
+
+        // PASSIVO no menu satelite significa nao adquirir nem atacar alvos.
+        if (controleUnidade != null && !controleUnidade.ModoCombateAtivo)
+        {
+            alvoAtualGuardado = null;
+            estadoAtualAtaque = EstadoCombate.Patrulha;
+            controleAviao.alvoPrioritarioIA = false;
+            return;
+        }
 
         // Controle de recarga
         if (recarregando)

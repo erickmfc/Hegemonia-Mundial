@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 
 namespace Hegemonia.AI.Sovereign
@@ -63,9 +64,13 @@ namespace Hegemonia.AI.Sovereign
         {
             EnsureRuntimeWiring();
             EnsureNationalData();
+            if (!EnsureModeEligible())
+            {
+                return;
+            }
             if (autoClaimAuthority)
             {
-                _authorityActive = AIControlAuthority.Claim(teamId, _ownerKey);
+                _authorityActive = AIControlAuthority.Claim(teamId, _ownerKey, IA_SharedRuntimeSupport.SovereignAuthorityPriority);
             }
 
             AISovereignRuntime.Instance.Register(GetInstanceID(), teamId);
@@ -93,6 +98,11 @@ namespace Hegemonia.AI.Sovereign
             UpdateFrameHealth();
             EnsureNationalData();
             SyncAlliesIfNeeded();
+
+            if (!EnsureModeEligible())
+            {
+                return;
+            }
 
             _authorityActive = AIControlAuthority.CanIssue(teamId, _ownerKey);
             _legacyAdapter.Apply(_authorityActive);
@@ -185,6 +195,11 @@ namespace Hegemonia.AI.Sovereign
             BuildPresidentProfile();
             _nextAlliesSyncTime = 0f;
 
+            if (!EnsureModeEligible())
+            {
+                return;
+            }
+
             if (!isActiveAndEnabled)
             {
                 return;
@@ -197,7 +212,7 @@ namespace Hegemonia.AI.Sovereign
 
             if (autoClaimAuthority)
             {
-                _authorityActive = AIControlAuthority.Claim(teamId, _ownerKey);
+                _authorityActive = AIControlAuthority.Claim(teamId, _ownerKey, IA_SharedRuntimeSupport.SovereignAuthorityPriority);
             }
 
             AISovereignRuntime.Instance.Register(GetInstanceID(), teamId);
@@ -238,6 +253,27 @@ namespace Hegemonia.AI.Sovereign
             {
                 gov.GarantirPaisIA(teamId, "Soberania " + teamId, "Moeda " + teamId, "S$" + teamId, PerfilPaisIA.Neutro, ModoInicialPaisIA.Crescimento);
             }
+        }
+
+        private bool EnsureModeEligible()
+        {
+            if (IA_SharedRuntimeSupport.IsStackAllowedInCurrentMode(GetType().FullName))
+            {
+                return true;
+            }
+
+            if (_authorityActive)
+            {
+                AIControlAuthority.Release(teamId, _ownerKey);
+                _authorityActive = false;
+            }
+
+            if (_legacyAdapter != null)
+            {
+                _legacyAdapter.Apply(false);
+            }
+
+            return false;
         }
 
         private void BuildPresidentProfile()

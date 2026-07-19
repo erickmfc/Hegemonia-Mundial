@@ -1,10 +1,12 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.DEUSA;
+using Hegemonia.AI.IA01;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
@@ -12,7 +14,9 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 7;
+    public int saveVersion = 10;
+    public string nomeSave = "Partida";
+    public string salvoEmUtc = string.Empty;
     public int creditosJogador = 5000;
     public int petroleoJogador = 500;
     public int acoJogador = 300;
@@ -29,9 +33,68 @@ public class DadosDoJogo
     public List<SaveProductionOrderData> filaProducao = new List<SaveProductionOrderData>();
     public List<SaveAiStrategicStateData> estadosIA = new List<SaveAiStrategicStateData>();
     public List<SaveDeusaStateData> estadosDeusa = new List<SaveDeusaStateData>();
+    public List<SaveIA01NationState> estadosIA01 = new List<SaveIA01NationState>();
     public float qgPosX;
     public float qgPosY;
     public float qgPosZ;
+    public int totalDias = 1;
+    public IndustrialSaveData industria = new IndustrialSaveData();
+    // Sistema Industrial: salvo permanentemente (perfil mineral nunca muda)
+    public List<SavePerfilMineral>  perfisMineral  = new List<SavePerfilMineral>();
+    public List<SaveEstoqueMineral> estoquesMineral = new List<SaveEstoqueMineral>();
+}
+
+[Serializable]
+public sealed class SaveSlotInfo
+{
+    public string id;
+    public string nome;
+    public string mapa;
+    public string salvoEmUtc;
+    public float tempoJogo;
+}
+
+// â”€â”€ SerializaÃ§Ã£o do Perfil GeolÃ³gico â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+[Serializable]
+public class SavePerfilMineral
+{
+    public int teamId;
+    public bool perfilGerado;
+    public int ferro;    // AbundanciaMineralNivel como int
+    public int cobre;
+    public int bauxita;
+    public int titanio;
+    public int uranio;
+    public bool extraindoFerro;
+    public bool extraindoCobre;
+    public bool extraindoBauxita;
+    public bool extraindoTitanio;
+    public bool extraindoUranio;
+    public bool refinandoAco;
+    public bool refinandoCobreEletrolitico;
+    public bool refinandoDuraluminio;
+    public bool refinandoLigaTitanio;
+    public bool refinandoComponentes;
+    public bool refinandoUranioEnriquecido;
+    public float modificadorIndustrial = 1f;
+}
+
+// â”€â”€ SerializaÃ§Ã£o do Estoque Mineral â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+[Serializable]
+public class SaveEstoqueMineral
+{
+    public int   teamId;
+    public float minerioFerro;
+    public float minerioCobre;
+    public float bauxita;
+    public float minerioTitanio;
+    public float uranioBruto;
+    public float acoEstrutural;
+    public float cobreEletrolitico;
+    public float duraluminio;
+    public float ligaTitanio;
+    public float componentesEletronicos;
+    public float uranioEnriquecido;
 }
 
 [Serializable]
@@ -169,8 +232,11 @@ public class SistemaSaveGame : MonoBehaviour
     public DadosDoJogo dadosAtuais;
     public bool exibirLogsNoConsole = false;
     public bool carregouDeSave = false;
+    public bool partidaNovaRecemIniciada { get; private set; }
 
     private string caminhoDoArquivo;
+    private string diretorioSaves;
+    private string saveSelecionadoId = string.Empty;
     private bool restauracaoPendente;
     private readonly List<GameObject> bufferObjetos = new List<GameObject>(512);
     private readonly List<GerenciadorAeroporto> bufferAeroportos = new List<GerenciadorAeroporto>(32);
@@ -200,6 +266,8 @@ public class SistemaSaveGame : MonoBehaviour
             return;
         }
 
+        diretorioSaves = Path.Combine(Application.persistentDataPath, "Saves");
+        Directory.CreateDirectory(diretorioSaves);
         caminhoDoArquivo = Path.Combine(Application.persistentDataPath, "save_partida.json");
         SceneManager.sceneLoaded += AoCarregarCena;
         InicializarDados();
@@ -215,10 +283,18 @@ public class SistemaSaveGame : MonoBehaviour
 
     private void InicializarDados()
     {
+        partidaNovaRecemIniciada = false;
+
         if (PossuiSave())
         {
-            CarregarJogo();
+            // Nao restauramos automaticamente a campanha ao iniciar a aplicacao.
+            // O save deve ser carregado apenas por acao explicita do jogador.
+            dadosAtuais = new DadosDoJogo();
+            GarantirColecoesIA01();
+            carregouDeSave = false;
             restauracaoPendente = false;
+            AplicarIdiomaSalvo();
+            AplicarDificuldadeSalva();
             return;
         }
 
@@ -229,7 +305,115 @@ public class SistemaSaveGame : MonoBehaviour
 
     public bool PossuiSave()
     {
-        return !string.IsNullOrEmpty(caminhoDoArquivo) && File.Exists(caminhoDoArquivo);
+        return ListarSaves().Count > 0;
+    }
+
+    public IReadOnlyList<SaveSlotInfo> ListarSaves()
+    {
+        List<SaveSlotInfo> resultado = new List<SaveSlotInfo>();
+        List<string> arquivos = new List<string>();
+        string legado = Path.Combine(Application.persistentDataPath, "save_partida.json");
+        if (File.Exists(legado)) arquivos.Add(legado);
+        if (!string.IsNullOrWhiteSpace(diretorioSaves) && Directory.Exists(diretorioSaves))
+        {
+            arquivos.AddRange(Directory.GetFiles(diretorioSaves, "*.json"));
+        }
+
+        for (int i = 0; i < arquivos.Count; i++)
+        {
+            try
+            {
+                string arquivo = arquivos[i];
+                DadosDoJogo dados = JsonUtility.FromJson<DadosDoJogo>(File.ReadAllText(arquivo));
+                if (dados == null) continue;
+                resultado.Add(new SaveSlotInfo
+                {
+                    id = arquivo,
+                    nome = string.IsNullOrWhiteSpace(dados.nomeSave)
+                        ? (arquivo == legado ? "Partida antiga" : Path.GetFileNameWithoutExtension(arquivo))
+                        : dados.nomeSave.Trim(),
+                    mapa = dados.mapaAtual,
+                    salvoEmUtc = dados.salvoEmUtc,
+                    tempoJogo = dados.tempoJogo
+                });
+            }
+            catch (Exception ex)
+            {
+                LogInfo("Save ignorado por estar invalido: " + arquivos[i] + " | " + ex.Message);
+            }
+        }
+
+        return resultado
+            .OrderByDescending(s => s.salvoEmUtc)
+            .ThenBy(s => s.nome, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public bool SelecionarSave(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || !File.Exists(id)) return false;
+        caminhoDoArquivo = id;
+        saveSelecionadoId = id;
+        return true;
+    }
+
+    public bool TentarCarregarSave(string id)
+    {
+        return SelecionarSave(id) && TentarCarregarJogo();
+    }
+
+    public bool RenomearSave(string id, string novoNome)
+    {
+        if (string.IsNullOrWhiteSpace(id) || !File.Exists(id) || string.IsNullOrWhiteSpace(novoNome)) return false;
+        try
+        {
+            DadosDoJogo dados = JsonUtility.FromJson<DadosDoJogo>(File.ReadAllText(id));
+            if (dados == null) return false;
+            dados.nomeSave = NormalizarNomeSave(novoNome);
+            File.WriteAllText(id, JsonUtility.ToJson(dados, true));
+            if (string.Equals(caminhoDoArquivo, id, StringComparison.OrdinalIgnoreCase)) dadosAtuais = dados;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogInfo("Falha ao renomear save: " + ex.Message);
+            return false;
+        }
+    }
+
+    public bool ExcluirSave(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || !File.Exists(id)) return false;
+        try
+        {
+            File.Delete(id);
+            if (string.Equals(caminhoDoArquivo, id, StringComparison.OrdinalIgnoreCase))
+            {
+                caminhoDoArquivo = Path.Combine(Application.persistentDataPath, "save_partida.json");
+                saveSelecionadoId = string.Empty;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogInfo("Falha ao excluir save: " + ex.Message);
+            return false;
+        }
+    }
+
+    public void SalvarJogo(string nomeSave)
+    {
+        string nome = NormalizarNomeSave(nomeSave);
+        if (string.IsNullOrWhiteSpace(saveSelecionadoId) || !File.Exists(saveSelecionadoId))
+        {
+            string id = "save_" + DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff") + ".json";
+            caminhoDoArquivo = Path.Combine(diretorioSaves, id);
+            saveSelecionadoId = caminhoDoArquivo;
+        }
+
+        if (dadosAtuais == null) dadosAtuais = new DadosDoJogo();
+        dadosAtuais.nomeSave = nome;
+        SalvarJogo();
     }
 
     public void SalvarJogo()
@@ -239,7 +423,10 @@ public class SistemaSaveGame : MonoBehaviour
             dadosAtuais = new DadosDoJogo();
         }
 
-        dadosAtuais.saveVersion = 7;
+        GarantirColecoesIA01();
+        dadosAtuais.saveVersion = 10;
+        dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
+        dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
         CapturarRecursos();
         CapturarCamera();
@@ -247,8 +434,11 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarDificuldade();
         CapturarFilaProducao();
         CapturarEstadoIAImperial();
+        CapturarEstadoIA01();
         CapturarEstadoDeusa();
         CapturarEntidades();
+        CapturarSistemaIndustrial();
+        dadosAtuais.totalDias = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : dadosAtuais.totalDias;
 
         string json = JsonUtility.ToJson(dadosAtuais, true);
         File.WriteAllText(caminhoDoArquivo, json);
@@ -257,10 +447,17 @@ public class SistemaSaveGame : MonoBehaviour
 
     public void CarregarJogo()
     {
-        if (!PossuiSave())
+        if (string.IsNullOrWhiteSpace(caminhoDoArquivo) || !File.Exists(caminhoDoArquivo))
+        {
+            SaveSlotInfo primeiro = ListarSaves().FirstOrDefault();
+            if (primeiro != null) SelecionarSave(primeiro.id);
+        }
+
+        if (string.IsNullOrWhiteSpace(caminhoDoArquivo) || !File.Exists(caminhoDoArquivo))
         {
             dadosAtuais = new DadosDoJogo();
             carregouDeSave = false;
+            partidaNovaRecemIniciada = false;
             return;
         }
 
@@ -270,28 +467,43 @@ public class SistemaSaveGame : MonoBehaviour
         {
             dadosAtuais = new DadosDoJogo();
             carregouDeSave = false;
+            partidaNovaRecemIniciada = false;
             return;
         }
 
+        GarantirColecoesIA01();
         if (dadosAtuais.saveVersion <= 0)
         {
             dadosAtuais.saveVersion = 1;
         }
 
+        if (dadosAtuais.totalDias <= 0)
+        {
+            dadosAtuais.totalDias = 1;
+        }
+
+        MigrarIndustriaLegadaSeNecessario();
+
         carregouDeSave = true;
-        restauracaoPendente = dadosAtuais.saveVersion >= 2 && dadosAtuais.entidades != null && dadosAtuais.entidades.Count > 0;
+        partidaNovaRecemIniciada = false;
+        restauracaoPendente = dadosAtuais.saveVersion >= 2 && ((dadosAtuais.entidades != null && dadosAtuais.entidades.Count > 0) || (dadosAtuais.estadosIA01 != null && dadosAtuais.estadosIA01.Count > 0));
         AplicarIdiomaSalvo();
         AplicarDificuldadeSalva();
         AplicarRecursosSalvos();
+        AplicarTempoSalvo();
         LogInfo("Jogo carregado com sucesso.");
     }
 
     public void IniciarNovoJogo(string cenaInicial = null)
     {
         dadosAtuais = new DadosDoJogo();
+        saveSelecionadoId = string.Empty;
+        caminhoDoArquivo = Path.Combine(Application.persistentDataPath, "save_partida.json");
+        GarantirColecoesIA01();
         dadosAtuais.idioma = LocalizationManager.Instancia.ObterCodigoIdioma();
         dadosAtuais.dificuldade = GameDifficultyManager.Instancia.ObterCodigoDificuldade();
         carregouDeSave = false;
+        partidaNovaRecemIniciada = true;
         restauracaoPendente = false;
         RegistrarCenaAtual(string.IsNullOrWhiteSpace(cenaInicial) ? dadosAtuais.mapaAtual : cenaInicial);
         LogInfo("Novo jogo iniciado com dados reiniciados.");
@@ -340,12 +552,30 @@ public class SistemaSaveGame : MonoBehaviour
 
         dadosAtuais = new DadosDoJogo();
         carregouDeSave = false;
+        partidaNovaRecemIniciada = false;
         restauracaoPendente = false;
         LogInfo("Save apagado do computador. Comecando do zero.");
     }
 
+    private static string NormalizarNomeSave(string nome)
+    {
+        string resultado = string.IsNullOrWhiteSpace(nome) ? "Partida" : nome.Trim();
+        foreach (char invalido in Path.GetInvalidFileNameChars()) resultado = resultado.Replace(invalido, ' ');
+        return resultado.Length > 48 ? resultado.Substring(0, 48).Trim() : resultado;
+    }
+
+    public void ConsumirMarcadorPartidaNova()
+    {
+        partidaNovaRecemIniciada = false;
+    }
+
     private void AoCarregarCena(Scene cena, LoadSceneMode modo)
     {
+        if (!carregouDeSave && partidaNovaRecemIniciada)
+        {
+            SanitizarCenaDePartidaNova(cena);
+        }
+
         if (!carregouDeSave)
         {
             return;
@@ -385,9 +615,63 @@ public class SistemaSaveGame : MonoBehaviour
         RestaurarFilaProducao();
         AplicarEstadoIAImperial();
         AplicarEstadoDeusa();
+        RestaurarEstadoIA01();
         AplicarCameraSalva();
         AplicarRecursosSalvos();
+        AplicarTempoSalvo();
+        RestaurarSistemaIndustrial();
         DiagnosticoDesempenhoJogo.RegistrarEvento("Save", "Mundo restaurado (entidades=" + (dadosAtuais.entidades != null ? dadosAtuais.entidades.Count : 0) + ")");
+    }
+
+    private void SanitizarCenaDePartidaNova(Scene cena)
+    {
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(cena.name))
+        {
+            return;
+        }
+
+        int unidadesRemovidas = 0;
+        int comandantesRemovidos = 0;
+
+        IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        for (int i = 0; i < unidades.Length; i++)
+        {
+            IdentidadeUnidade unidade = unidades[i];
+            if (unidade == null || unidade.tipoUnidade == TipoUnidade.Estrutura || unidade.teamID <= 0)
+            {
+                continue;
+            }
+
+            Destroy(unidade.gameObject);
+            unidadesRemovidas++;
+        }
+
+        IdentidadeIA[] identidadesIA = FindObjectsByType<IdentidadeIA>(FindObjectsSortMode.None);
+        for (int i = 0; i < identidadesIA.Length; i++)
+        {
+            IdentidadeIA identidade = identidadesIA[i];
+            if (identidade == null)
+            {
+                continue;
+            }
+
+            bool pareceComandanteDeTeste =
+                (!string.IsNullOrWhiteSpace(identidade.biografia) && identidade.biografia.Contains("testes militares"))
+                || identidade.name.StartsWith("IA_", StringComparison.OrdinalIgnoreCase)
+                || identidade.teamID > 1;
+
+            if (!pareceComandanteDeTeste)
+            {
+                continue;
+            }
+
+            Destroy(identidade.gameObject);
+            comandantesRemovidos++;
+        }
+
+        partidaNovaRecemIniciada = false;
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Partida", "Sanitizacao de partida nova (unidades=" + unidadesRemovidas + ", comandantes=" + comandantesRemovidos + ")");
+        LogInfo("Sanitizacao de partida nova concluida. Unidades removidas=" + unidadesRemovidas + " | comandantes removidos=" + comandantesRemovidos + ".");
     }
 
     private void CapturarRecursos()
@@ -504,7 +788,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         dadosAtuais.estadosIA.Clear();
-        IA_BrainMaster[] brains = UnityEngine.Object.FindObjectsByType<IA_BrainMaster>(FindObjectsSortMode.None);
+        IA_BrainMaster[] brains = IA_UnitySearch.FindAll<IA_BrainMaster>();
         foreach (IA_BrainMaster brain in brains)
         {
             if (brain == null)
@@ -536,6 +820,47 @@ public class SistemaSaveGame : MonoBehaviour
         }
     }
 
+    private void CapturarEstadoIA01()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        GarantirColecoesIA01();
+        dadosAtuais.estadosIA01.Clear();
+
+        if (IA01Manager.TryGetInstance(out IA01Manager manager) && manager != null)
+        {
+            List<SaveIA01NationState> estados = manager.CaptureSaveStates();
+            if (estados != null)
+            {
+                dadosAtuais.estadosIA01.AddRange(estados);
+            }
+
+            return;
+        }
+
+        IA01Controller[] controllers = IA_UnitySearch.FindAll<IA01Controller>();
+        if (controllers == null || controllers.Length == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < controllers.Length; i++)
+        {
+            IA01Controller controller = controllers[i];
+            if (controller == null)
+            {
+                continue;
+            }
+
+            dadosAtuais.estadosIA01.Add(controller.CaptureSaveState());
+        }
+
+        dadosAtuais.estadosIA01.Sort(CompararEstadosIA01);
+    }
+
     private void CapturarEstadoDeusa()
     {
         if (dadosAtuais.estadosDeusa == null)
@@ -544,11 +869,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         dadosAtuais.estadosDeusa.Clear();
-#if UNITY_2023_1_OR_NEWER
-        IA_DeusaBrain[] deuses = UnityEngine.Object.FindObjectsByType<IA_DeusaBrain>(FindObjectsSortMode.None);
-#else
-        IA_DeusaBrain[] deuses = UnityEngine.Object.FindObjectsOfType<IA_DeusaBrain>();
-#endif
+        IA_DeusaBrain[] deuses = IA_UnitySearch.FindAll<IA_DeusaBrain>();
         for (int i = 0; i < deuses.Length; i++)
         {
             IA_DeusaBrain deusa = deuses[i];
@@ -586,7 +907,7 @@ public class SistemaSaveGame : MonoBehaviour
             return;
         }
 
-        IA_BrainMaster[] brains = UnityEngine.Object.FindObjectsByType<IA_BrainMaster>(FindObjectsSortMode.None);
+        IA_BrainMaster[] brains = IA_UnitySearch.FindAll<IA_BrainMaster>();
         foreach (IA_BrainMaster brain in brains)
         {
             if (brain == null)
@@ -627,11 +948,7 @@ public class SistemaSaveGame : MonoBehaviour
             return;
         }
 
-#if UNITY_2023_1_OR_NEWER
-        IA_DeusaBrain[] deuses = UnityEngine.Object.FindObjectsByType<IA_DeusaBrain>(FindObjectsSortMode.None);
-#else
-        IA_DeusaBrain[] deuses = UnityEngine.Object.FindObjectsOfType<IA_DeusaBrain>();
-#endif
+        IA_DeusaBrain[] deuses = IA_UnitySearch.FindAll<IA_DeusaBrain>();
         for (int i = 0; i < deuses.Length; i++)
         {
             IA_DeusaBrain deusa = deuses[i];
@@ -666,6 +983,44 @@ public class SistemaSaveGame : MonoBehaviour
                 salvo.nomePresidente,
                 salvo.nomeMoeda,
                 salvo.resumoNacional);
+        }
+    }
+
+    private void RestaurarEstadoIA01()
+    {
+        if (dadosAtuais == null || dadosAtuais.estadosIA01 == null || dadosAtuais.estadosIA01.Count == 0)
+        {
+            return;
+        }
+
+        IA01Manager manager = IA01Manager.Instancia;
+        if (manager != null)
+        {
+            manager.RestoreSaveStates(dadosAtuais.estadosIA01);
+            return;
+        }
+
+        IA01Controller[] controllers = IA_UnitySearch.FindAll<IA01Controller>();
+        if (controllers == null || controllers.Length == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < dadosAtuais.estadosIA01.Count; i++)
+        {
+            SaveIA01NationState state = dadosAtuais.estadosIA01[i];
+            if (state == null)
+            {
+                continue;
+            }
+
+            IA01Controller controller = EncontrarControllerIA01(controllers, state);
+            if (controller == null)
+            {
+                continue;
+            }
+
+            controller.RestoreFromSaveState(state);
         }
     }
 
@@ -706,17 +1061,17 @@ public class SistemaSaveGame : MonoBehaviour
         dadosAtuais.entidades.Clear();
         bufferObjetos.Clear();
 
-        AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<SaveableEntity>(FindObjectsSortMode.None).Select(s => s != null ? s.gameObject : null));
-        AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
-        AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<ControleUnidade>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
-        AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<IdentidadeNaval>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
-        AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<Imovel>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<SaveableEntity>().Select(s => s != null ? s.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<IdentidadeUnidade>().Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<ControleUnidade>().Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<IdentidadeNaval>().Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<Imovel>().Select(c => c != null ? c.gameObject : null));
         bufferAeroportos.Clear();
         RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
         AdicionarCandidatos(bufferAeroportos.Select(c => c != null ? c.gameObject : null));
-        AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<Fabrica>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
-        AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
-        AdicionarCandidatos(UnityEngine.Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None).Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<Fabrica>().Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<Estaleiro>().Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<PierMarinha>().Select(c => c != null ? c.gameObject : null));
 
         foreach (GameObject obj in bufferObjetos)
         {
@@ -814,7 +1169,7 @@ public class SistemaSaveGame : MonoBehaviour
 
     private void LimparEntidadesPersistidasDaCena()
     {
-        SaveableEntity[] existentes = UnityEngine.Object.FindObjectsByType<SaveableEntity>(FindObjectsSortMode.None);
+        SaveableEntity[] existentes = IA_UnitySearch.FindAll<SaveableEntity>();
         foreach (SaveableEntity existente in existentes)
         {
             if (existente != null && existente.gameObject != gameObject)
@@ -980,4 +1335,378 @@ public class SistemaSaveGame : MonoBehaviour
 
     [ContextMenu("Forcar Apagar Save")]
     private void TesteApagar() { ApagarDados(); }
+
+    // â”€â”€ Sistema Industrial: Salvar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private void CapturarSistemaIndustrial()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial == null)
+        {
+            return;
+        }
+
+        dadosAtuais.industria = industrial.CriarSaveData();
+        if (dadosAtuais.industria != null)
+        {
+            dadosAtuais.totalDias = dadosAtuais.industria.totalDias;
+        }
+
+        SincronizarCompatibilidadeIndustrialLegada(dadosAtuais.industria);
+        LogInfo($"[SistemaIndustrial] {(dadosAtuais.industria != null && dadosAtuais.industria.perfisMineral != null ? dadosAtuais.industria.perfisMineral.Count : 0)} perfis e " +
+                $"{(dadosAtuais.industria != null && dadosAtuais.industria.estoques != null ? dadosAtuais.industria.estoques.Count : 0)} estoques minerais salvos.");
+    }
+
+    // â”€â”€ Sistema Industrial: Carregar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private void RestaurarSistemaIndustrial()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        MigrarIndustriaLegadaSeNecessario();
+
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial == null)
+        {
+            return;
+        }
+
+        industrial.RestaurarSaveData(dadosAtuais.industria);
+        SincronizarCompatibilidadeIndustrialLegada(dadosAtuais.industria);
+
+        if (GerenciadorTempo.Instancia != null)
+        {
+            GerenciadorTempo.Instancia.RestaurarDias(Mathf.Max(1, dadosAtuais.totalDias));
+        }
+
+        LogInfo("[SistemaIndustrial] Sistema industrial restaurado do save.");
+    }
+
+    private void AplicarTempoSalvo()
+    {
+        if (dadosAtuais == null || GerenciadorTempo.Instancia == null)
+        {
+            return;
+        }
+
+        int totalDias = dadosAtuais.totalDias;
+        if (dadosAtuais.industria != null && dadosAtuais.industria.totalDias > 0)
+        {
+            totalDias = dadosAtuais.industria.totalDias;
+        }
+
+        GerenciadorTempo.Instancia.RestaurarDias(Mathf.Max(1, totalDias));
+    }
+
+    private void MigrarIndustriaLegadaSeNecessario()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        if (dadosAtuais.industria == null)
+        {
+            dadosAtuais.industria = new IndustrialSaveData();
+        }
+
+        if (dadosAtuais.industria.totalDias <= 0)
+        {
+            dadosAtuais.industria.totalDias = Mathf.Max(1, dadosAtuais.totalDias);
+        }
+
+        if ((dadosAtuais.industria.perfisMineral == null || dadosAtuais.industria.perfisMineral.Count == 0) && dadosAtuais.perfisMineral != null)
+        {
+            foreach (SavePerfilMineral salvo in dadosAtuais.perfisMineral)
+            {
+                if (salvo == null)
+                {
+                    continue;
+                }
+
+                dadosAtuais.industria.perfisMineral.Add(new SavePerfilMineralIndustrial
+                {
+                    teamId = salvo.teamId,
+                    perfilGerado = salvo.perfilGerado,
+                    ferro = salvo.ferro,
+                    cobre = salvo.cobre,
+                    bauxita = salvo.bauxita,
+                    titanio = salvo.titanio,
+                    uranio = salvo.uranio,
+                    modificadorIndustrial = salvo.modificadorIndustrial,
+                    extraindoFerro = salvo.extraindoFerro,
+                    extraindoCobre = salvo.extraindoCobre,
+                    extraindoBauxita = salvo.extraindoBauxita,
+                    extraindoTitanio = salvo.extraindoTitanio,
+                    extraindoUranio = salvo.extraindoUranio,
+                    refinandoAco = salvo.refinandoAco,
+                    refinandoCobreEletrolitico = salvo.refinandoCobreEletrolitico,
+                    refinandoDuraluminio = salvo.refinandoDuraluminio,
+                    refinandoLigaTitanio = salvo.refinandoLigaTitanio,
+                    refinandoComponentes = salvo.refinandoComponentes,
+                    refinandoUranioEnriquecido = salvo.refinandoUranioEnriquecido
+                });
+            }
+        }
+
+        if ((dadosAtuais.industria.estoques == null || dadosAtuais.industria.estoques.Count == 0) && dadosAtuais.estoquesMineral != null)
+        {
+            foreach (SaveEstoqueMineral salvo in dadosAtuais.estoquesMineral)
+            {
+                if (salvo == null)
+                {
+                    continue;
+                }
+
+                dadosAtuais.industria.estoques.Add(new SaveEstoqueIndustrial
+                {
+                    paisId = salvo.teamId.ToString(),
+                    estoques = new List<QuantidadeRecursoIndustrial>
+                    {
+                        new QuantidadeRecursoIndustrial(IndustriaIds.MinerioFerro, salvo.minerioFerro),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.MinerioCobre, salvo.minerioCobre),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.Bauxita, salvo.bauxita),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.MinerioTitanio, salvo.minerioTitanio),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.UranioBruto, salvo.uranioBruto),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.AcoEstrutural, salvo.acoEstrutural),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.CobreEletrolitico, salvo.cobreEletrolitico),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.Duraluminio, salvo.duraluminio),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.LigaTitanio, salvo.ligaTitanio),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.ComponentesEletronicos, salvo.componentesEletronicos),
+                        new QuantidadeRecursoIndustrial(IndustriaIds.UranioEnriquecido, salvo.uranioEnriquecido)
+                    }
+                });
+            }
+        }
+
+        dadosAtuais.totalDias = Mathf.Max(1, dadosAtuais.totalDias);
+    }
+
+    private void SincronizarCompatibilidadeIndustrialLegada(IndustrialSaveData industria)
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        if (dadosAtuais.perfisMineral == null)
+        {
+            dadosAtuais.perfisMineral = new List<SavePerfilMineral>();
+        }
+
+        if (dadosAtuais.estoquesMineral == null)
+        {
+            dadosAtuais.estoquesMineral = new List<SaveEstoqueMineral>();
+        }
+
+        dadosAtuais.perfisMineral.Clear();
+        dadosAtuais.estoquesMineral.Clear();
+
+        if (industria == null)
+        {
+            return;
+        }
+
+        if (industria.perfisMineral != null)
+        {
+            foreach (SavePerfilMineralIndustrial salvo in industria.perfisMineral)
+            {
+                if (salvo == null)
+                {
+                    continue;
+                }
+
+                dadosAtuais.perfisMineral.Add(new SavePerfilMineral
+                {
+                    teamId = salvo.teamId,
+                    perfilGerado = salvo.perfilGerado,
+                    ferro = salvo.ferro,
+                    cobre = salvo.cobre,
+                    bauxita = salvo.bauxita,
+                    titanio = salvo.titanio,
+                    uranio = salvo.uranio,
+                    extraindoFerro = salvo.extraindoFerro,
+                    extraindoCobre = salvo.extraindoCobre,
+                    extraindoBauxita = salvo.extraindoBauxita,
+                    extraindoTitanio = salvo.extraindoTitanio,
+                    extraindoUranio = salvo.extraindoUranio,
+                    refinandoAco = salvo.refinandoAco,
+                    refinandoCobreEletrolitico = salvo.refinandoCobreEletrolitico,
+                    refinandoDuraluminio = salvo.refinandoDuraluminio,
+                    refinandoLigaTitanio = salvo.refinandoLigaTitanio,
+                    refinandoComponentes = salvo.refinandoComponentes,
+                    refinandoUranioEnriquecido = salvo.refinandoUranioEnriquecido,
+                    modificadorIndustrial = salvo.modificadorIndustrial
+                });
+            }
+        }
+
+        if (industria.estoques != null)
+        {
+            foreach (SaveEstoqueIndustrial salvo in industria.estoques)
+            {
+                if (salvo == null)
+                {
+                    continue;
+                }
+
+                SaveEstoqueMineral legado = new SaveEstoqueMineral();
+                if (int.TryParse(salvo.paisId, out int teamId))
+                {
+                    legado.teamId = teamId;
+                }
+
+                if (salvo.estoques != null)
+                {
+                    foreach (QuantidadeRecursoIndustrial recurso in salvo.estoques)
+                    {
+                        if (recurso == null)
+                        {
+                            continue;
+                        }
+
+                        if (string.Equals(recurso.recursoId, IndustriaIds.MinerioFerro, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.minerioFerro = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.MinerioCobre, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.minerioCobre = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.Bauxita, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.bauxita = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.MinerioTitanio, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.minerioTitanio = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.UranioBruto, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.uranioBruto = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.AcoEstrutural, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.acoEstrutural = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.CobreEletrolitico, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.cobreEletrolitico = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.Duraluminio, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.duraluminio = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.LigaTitanio, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.ligaTitanio = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.ComponentesEletronicos, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.componentesEletronicos = (float)recurso.quantidade;
+                        }
+                        else if (string.Equals(recurso.recursoId, IndustriaIds.UranioEnriquecido, StringComparison.OrdinalIgnoreCase))
+                        {
+                            legado.uranioEnriquecido = (float)recurso.quantidade;
+                        }
+                    }
+                }
+
+                dadosAtuais.estoquesMineral.Add(legado);
+            }
+        }
+    }
+
+    private void GarantirColecoesIA01()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        if (dadosAtuais.estadosIA01 == null)
+        {
+            dadosAtuais.estadosIA01 = new List<SaveIA01NationState>();
+        }
+    }
+
+    private static IA01Controller EncontrarControllerIA01(IEnumerable<IA01Controller> controllers, SaveIA01NationState state)
+    {
+        if (controllers == null || state == null)
+        {
+            return null;
+        }
+
+        IA01Controller porNationId = null;
+        IA01Controller porTeamId = null;
+        IA01Controller porNome = null;
+
+        foreach (IA01Controller controller in controllers)
+        {
+            if (controller == null)
+            {
+                continue;
+            }
+
+            if (state.instanceId > 0 && controller.InstanceId == state.instanceId)
+            {
+                return controller;
+            }
+
+            if (porNationId == null && state.nationId > 0 && controller.NationId == state.nationId)
+            {
+                porNationId = controller;
+            }
+
+            if (porTeamId == null && state.teamId > 0 && controller.TeamId == state.teamId)
+            {
+                porTeamId = controller;
+            }
+
+            if (porNome == null && !string.IsNullOrWhiteSpace(state.nationName) && string.Equals(controller.NationName, state.nationName, StringComparison.Ordinal))
+            {
+                porNome = controller;
+            }
+        }
+
+        return porNationId ?? porTeamId ?? porNome;
+    }
+
+    private static int CompararEstadosIA01(SaveIA01NationState left, SaveIA01NationState right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return 0;
+        }
+
+        if (left == null)
+        {
+            return -1;
+        }
+
+        if (right == null)
+        {
+            return 1;
+        }
+
+        int comparacao = left.nationId.CompareTo(right.nationId);
+        if (comparacao != 0)
+        {
+            return comparacao;
+        }
+
+        comparacao = left.teamId.CompareTo(right.teamId);
+        if (comparacao != 0)
+        {
+            return comparacao;
+        }
+
+        return left.instanceId.CompareTo(right.instanceId);
+    }
 }

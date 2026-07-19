@@ -11,10 +11,11 @@ public class LancadorNaval : MonoBehaviour
     public ModoOperacao modoAtual = ModoOperacao.Passivo;
     public Transform cabecaRotativa; // Parte que gira (se houver)
     public Transform[] pontosDeSaida; // Onde os mísseis nascem (bocas do VLS)
+    public Transform[] pontosDeSaidaTorpedo; // Onde os torpedos nascem (tubos de torpedo)
     public GameObject prefabMissel; // O prefab que tem o script MisselNaval
     public GameObject prefabTorpedo; // NOVO: Prefab do torpedo/missil anti-navio
     [Tooltip("Se ativo, torpedos ficam reservados para o comando ATIVO do navio e nao saem pelo automatico da tecla I.")]
-    public bool torpedosSomenteNoModoAtivo = true;
+    public bool torpedosSomenteNoModoAtivo = false;
 
     [Header("Configurações de Combate")]
     public int municaoTotal = 32;
@@ -46,6 +47,7 @@ public class LancadorNaval : MonoBehaviour
     // Estado interno
     private float tempoUltimoDisparo = 0f;
     private int indicePontoSaida = 0; // Para alternar entre as bocas do VLS
+    private int indicePontoSaidaTorpedo = 0; // Para alternar entre tubos de torpedo
     private AudioSource audioSource;
     private Transform alvoAtual;
 
@@ -705,17 +707,6 @@ public class LancadorNaval : MonoBehaviour
         // Vai checar limites depois de decidir qual disparar
 
 
-        // Pega o próximo ponto de saída (rodízio entre os tubos)
-        Transform pontoDeSaida = transform; // Fallback
-        if (pontosDeSaida != null && pontosDeSaida.Length > 0)
-        {
-            if (pontosDeSaida[indicePontoSaida] != null)
-            {
-                pontoDeSaida = pontosDeSaida[indicePontoSaida];
-            }
-            indicePontoSaida = (indicePontoSaida + 1) % pontosDeSaida.Length;
-        }
-
         if (prefabMissel == null && prefabTorpedo == null) return; // Segurança
 
         bool alvoNavalOuSubmarino = false;
@@ -749,6 +740,25 @@ public class LancadorNaval : MonoBehaviour
         
         if (prefabASpawnar == prefabTorpedo) torpedosTotal--;
         else municaoTotal--;
+
+        // Pega o próximo ponto de saída correto (rodízio entre os tubos)
+        Transform pontoDeSaida = transform; // Fallback
+        if (prefabASpawnar == prefabTorpedo && pontosDeSaidaTorpedo != null && pontosDeSaidaTorpedo.Length > 0)
+        {
+            if (pontosDeSaidaTorpedo[indicePontoSaidaTorpedo] != null)
+            {
+                pontoDeSaida = pontosDeSaidaTorpedo[indicePontoSaidaTorpedo];
+            }
+            indicePontoSaidaTorpedo = (indicePontoSaidaTorpedo + 1) % pontosDeSaidaTorpedo.Length;
+        }
+        else if (pontosDeSaida != null && pontosDeSaida.Length > 0)
+        {
+            if (pontosDeSaida[indicePontoSaida] != null)
+            {
+                pontoDeSaida = pontosDeSaida[indicePontoSaida];
+            }
+            indicePontoSaida = (indicePontoSaida + 1) % pontosDeSaida.Length;
+        }
 
         // Cria o projétil (míssil ou torpedo)
         GameObject misselObj = PoolDeObjetosCombate.Spawn(prefabASpawnar, pontoDeSaida.position, pontoDeSaida.rotation);
@@ -823,18 +833,22 @@ public class LancadorNaval : MonoBehaviour
             style.fontStyle = FontStyle.Bold;
             style.fontSize = 14;
 
+            int misseisLancados = municaoMaxima - municaoTotal;
+            int torpsLancados = torpedosMaximos - torpedosTotal;
+            
             string texto = "";
+            string textoBase = $"\nMísseis (Longo Alcance): {municaoTotal}/{municaoMaxima} (Lançados: {misseisLancados})\nTorpedos: {torpedosTotal}/{torpedosMaximos} (Lançados: {torpsLancados})";
 
             // Define cor baseada no modo
             switch (modoAtual)
             {
                 case ModoOperacao.Passivo: 
                     style.normal.textColor = Color.gray; 
-                    texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}\nTorpedos: {torpedosTotal}/{torpedosMaximos}";
+                    texto = $"[{modoAtual}]" + textoBase;
                     break;
                 case ModoOperacao.Manual: 
                     style.normal.textColor = Color.yellow; 
-                    texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}\nTorpedos: {torpedosTotal}/{torpedosMaximos}";
+                    texto = $"[{modoAtual}]" + textoBase;
                     break;
                 case ModoOperacao.Automatico: 
                     style.normal.textColor = Color.red;
@@ -842,12 +856,12 @@ public class LancadorNaval : MonoBehaviour
                     if (Time.time < tempoParaAtivarAutomatico)
                     {
                         float restante = tempoParaAtivarAutomatico - Time.time;
-                        texto = $"[ARMANDO {restante:F1}s]\nMísseis: {municaoTotal}/{municaoMaxima}\nTorpedos: {torpedosTotal}/{torpedosMaximos}";
+                        texto = $"[ARMANDO {restante:F1}s]" + textoBase;
                         style.normal.textColor = Color.Lerp(Color.yellow, Color.red, Mathf.PingPong(Time.time * 5f, 1f));
                     }
                     else
                     {
-                        texto = $"[{modoAtual}]\nMísseis: {municaoTotal}/{municaoMaxima}\nTorpedos: {torpedosTotal}/{torpedosMaximos}";
+                        texto = $"[{modoAtual}]" + textoBase;
                     }
                     break;
             }

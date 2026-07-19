@@ -27,6 +27,8 @@ public static class SistemaPopulacao
     {
         if (pais == null || economia == null) return;
 
+        int populacaoCivilAtual = UnityEngine.Mathf.Max(0, pais.populacaoCivil);
+
         // CONSUMO DE COMIDA
         float necessidadeComida = (pais.populacaoCivil / 100f * 1f)
                                 + (pais.populacaoMilitarAtiva / 100f * 2f);
@@ -51,10 +53,13 @@ public static class SistemaPopulacao
         // CAMADA 2 - PRESSAO HABITACIONAL E CRESCIMENTO / EMIGRACAO
         int variacaoMigratoria = 0;
         int popMax = UnityEngine.Mathf.Max(1, pais.populacaoMaxima);
+        int capacidadeResidencial = UnityEngine.Mathf.Max(0, economia.moradiaTotal);
 
-        pais.pressaoHabitacional = pais.populacaoMaxima > 0
-            ? (float)pais.populacao / pais.populacaoMaxima
-            : 1f;
+        // Prefeitura permite uma administracao inicial, mas nao e moradia.
+        // Sem casas, a populacao existente sofre pressao habitacional extrema.
+        pais.pressaoHabitacional = capacidadeResidencial > 0
+            ? (float)pais.populacaoCivil / capacidadeResidencial
+            : (pais.populacaoCivil > 0 ? 2f : 0f);
 
         float fatorAeroporto = ObterFatorAeroporto();
         bool emSuperpopulacao = pais.pressaoHabitacional > MARGEM_SUPERPOPULACAO;
@@ -84,8 +89,7 @@ public static class SistemaPopulacao
                     1f - (indiceAtratividade / 0.35f));
             }
 
-            variacaoMigratoria = -UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(
-                UnityEngine.Mathf.Max(1f, pais.populacao) * taxaEmig * pais.mortalidade));
+            variacaoMigratoria = -UnityEngine.Mathf.RoundToInt(populacaoCivilAtual * taxaEmig);
             pais.taxaMigracao = variacaoMigratoria;
         }
         else
@@ -97,39 +101,40 @@ public static class SistemaPopulacao
         int evacuacaoForcada = 0;
         int mortesPorCrise = 0;
 
-        if (pais.comida <= 0 && economia.deficitComida > 0f)
+        if (populacaoCivilAtual > 0 && pais.comida <= 0 && economia.deficitComida > 0f)
         {
-            mortesPorCrise += UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(pais.populacao * 0.005f));
-            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade + 0.15f, 1f, 8f);
+            mortesPorCrise += UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(populacaoCivilAtual * 0.03f));
+            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade + 0.45f, 1f, 20f);
         }
-        else if (pais.comida < necessidadeComida * 2f && economia.deficitComida > 0f)
+        else if (populacaoCivilAtual > 0 && pais.comida < necessidadeComida * 2f && economia.deficitComida > 0f)
         {
-            mortesPorCrise += UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(pais.populacao * 0.002f));
-            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade + 0.05f, 1f, 8f);
+            mortesPorCrise += UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(populacaoCivilAtual * 0.008f));
+            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade + 0.12f, 1f, 20f);
         }
         else
         {
             pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade - 0.05f, 1f, 5f);
         }
 
-        if (economia.estruturasSemEnergia > 0 && economia.deficitEnergia > 2f)
+        if (populacaoCivilAtual > 0 && economia.estruturasSemEnergia > 0 && economia.deficitEnergia > 2f)
         {
-            evacuacaoForcada += UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(pais.populacao * 0.002f));
+            evacuacaoForcada += UnityEngine.Mathf.RoundToInt(populacaoCivilAtual * 0.002f);
         }
 
-        if (pais.emGuerra)
+        if (populacaoCivilAtual > 0 && pais.emGuerra)
         {
-            mortesPorCrise += UnityEngine.Mathf.Max(2, UnityEngine.Mathf.RoundToInt(pais.populacao * 0.008f));
+            mortesPorCrise += UnityEngine.Mathf.RoundToInt(populacaoCivilAtual * 0.008f);
         }
+
+        mortesPorCrise = UnityEngine.Mathf.Clamp(mortesPorCrise, 0, populacaoCivilAtual);
+        evacuacaoForcada = UnityEngine.Mathf.Clamp(evacuacaoForcada, 0, UnityEngine.Mathf.Max(0, populacaoCivilAtual - mortesPorCrise));
 
         int deltaPopulacao = variacaoMigratoria - evacuacaoForcada - mortesPorCrise;
 
         // APLICAR DELTA NA POPULACAO
         int limiteMax = UnityEngine.Mathf.RoundToInt(popMax * MARGEM_SUPERPOPULACAO);
-        if (pais.moradia < 10f)
-        {
-            limiteMax = UnityEngine.Mathf.Max(limiteMax, UnityEngine.Mathf.RoundToInt(popMax * OCUP_MINIMA_SEM_MORADIA));
-        }
+        if (capacidadeResidencial <= 0)
+            limiteMax = UnityEngine.Mathf.Min(limiteMax, popMax);
 
         if (deltaPopulacao != 0)
         {
@@ -176,13 +181,13 @@ public static class SistemaPopulacao
         // Emprego (25%) - empregos disponiveis > populacao = muito atraente
         float taxaEmprego = economia.empregosDisponiveis > 0
             ? UnityEngine.Mathf.Clamp01((float)economia.empregosDisponiveis / UnityEngine.Mathf.Max(1, pais.populacao))
-            : UnityEngine.Mathf.Clamp01(pais.emprego / 100f);
+            : 0f;
         score += taxaEmprego * 0.25f;
 
         // Moradia disponivel (20%)
         float taxaMoradia = economia.moradiaTotal > 0
             ? UnityEngine.Mathf.Clamp01((float)(economia.moradiaTotal - pais.populacao) / UnityEngine.Mathf.Max(1, economia.moradiaTotal))
-            : UnityEngine.Mathf.Clamp01(pais.moradia / 100f) * 0.5f;
+            : 0f;
         score += UnityEngine.Mathf.Max(0f, taxaMoradia) * 0.20f;
 
         // Comida suficiente (15%)

@@ -15,8 +15,13 @@ MonoBehaviour:
   nomeItem: Energia
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
+  itemId: energia.inicial
+  aliases: energia, usina, power, power plant
+  capacidades: 524353
   prefabDaUnidade: {fileID: 6626967401301132369, guid: 3b8d63093e94ede409195caacaab0f93, type: 3}
   preco: 100
-  categoria: 3
+  categoria: 5
+  escalaPoder: 0
+  strategicRole: 3
   balanceamento: {fileID: 0}
   scriptsDeComando: []

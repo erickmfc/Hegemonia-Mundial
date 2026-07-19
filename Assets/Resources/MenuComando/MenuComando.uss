@@ -94,6 +94,133 @@
     overflow: hidden;
 }
 
+.seguir-drawer {
+    position: absolute;
+    left: 10px;
+    top: 42px;
+    width: 270px;
+    bottom: 10px;
+    background-color: rgba(5, 10, 14, 0.94);
+    border-width: 1px;
+    border-color: rgba(0, 229, 255, 0.35);
+    border-radius: 4px;
+    padding: 8px;
+    gap: 6px;
+    display: none;
+    flex-direction: column;
+}
+
+.seguir-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.seguir-fechar {
+    width: 24px;
+    height: 24px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 1px;
+    border-color: rgba(0, 229, 255, 0.35);
+    color: rgb(0, 229, 255);
+    background-color: rgba(0, 0, 0, 0.35);
+}
+
+.seguir-fechar:hover {
+    border-color: rgb(0, 229, 255);
+}
+
+.seguir-distancias {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.seguir-dist-btn {
+    width: 48%;
+    height: 30px;
+    border-width: 1px;
+    border-color: rgba(0, 229, 255, 0.35);
+    border-radius: 2px;
+    background-color: rgba(0, 32, 44, 0.7);
+    color: rgb(0, 229, 255);
+    font-size: 10px;
+}
+
+.seguir-dist-btn.ativo {
+    background-color: rgba(0, 120, 160, 0.8);
+    border-color: rgb(0, 229, 255);
+    color: rgb(255, 255, 255);
+}
+
+.seguir-status {
+    color: rgb(107, 139, 153);
+    font-size: 9px;
+    flex-shrink: 0;
+    white-space: normal;
+}
+
+.seguir-scroll {
+    flex: 1;
+    min-height: 0;
+}
+
+.seguir-lista {
+    flex-direction: column;
+    gap: 5px;
+    padding-right: 2px;
+}
+
+.seguir-item {
+    min-height: 36px;
+    border-width: 1px;
+    border-color: rgba(0, 229, 255, 0.25);
+    border-radius: 3px;
+    background-color: rgba(0, 0, 0, 0.35);
+    padding-left: 7px;
+    padding-right: 7px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    justify-content: center;
+    transition-duration: 0.14s;
+    transition-property: background-color, border-color, scale, translate;
+}
+
+.seguir-item:hover {
+    border-color: rgb(0, 229, 255);
+    background-color: rgba(0, 48, 64, 0.8);
+}
+
+.seguir-item.ativo {
+    border-color: rgb(255, 220, 0);
+    background-color: rgba(48, 42, 0, 0.9);
+    scale: 1.02;
+}
+
+.seguir-item.seguir-item-pulse {
+    border-color: rgb(255, 245, 120);
+    background-color: rgba(86, 76, 0, 0.98);
+    scale: 1.05;
+    translate: 0 -1px;
+}
+
+.seguir-item-nome {
+    color: rgb(0, 229, 255);
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+.seguir-item-meta {
+    color: rgb(180, 200, 210);
+    font-size: 9px;
+}
+
 .panel-label {
     color: rgb(107, 139, 153);
     font-size: 11px;
@@ -374,15 +501,17 @@
 
 .stat-lbl {
     color: rgb(107, 139, 153);
-    font-size: 10px;
+    font-size: 11px;
     width: 55px;
 }
 
 .stat-val {
     color: rgb(208, 232, 240);
-    font-size: 10px;
+    font-size: 11px;
     -unity-font-style: bold;
     flex: 1;
+    padding-top: 3px;
+    padding-bottom: 3px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -438,11 +567,14 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    padding: 2px 0;
+    padding: 4px 0;
 }
 
 .sitrep-row .stat-lbl {
-    width: 95px;
+    width: 118px;
+    font-size: 12px;
+    color: rgb(146, 175, 186);
+    -unity-font-style: bold;
 }
 
 .sitrep-separator {
@@ -452,9 +584,29 @@
     padding-top: 6px;
 }
 
-.sitrep-aliados { color: rgb(0, 229, 255); font-size: 14px; }
-.sitrep-inimigos { color: rgb(255, 51, 51); font-size: 14px; }
-.sitrep-ameaca { color: rgb(255, 170, 0); font-size: 11px; }
+.sitrep-valor {
+    color: rgb(245, 250, 255);
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-right;
+    background-color: rgba(0, 0, 0, 0.42);
+    border-width: 1px;
+    border-color: rgba(0, 229, 255, 0.16);
+    border-radius: 3px;
+    padding-left: 7px;
+    padding-right: 7px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    min-height: 20px;
+}
+
+.sitrep-aliados { color: rgb(0, 229, 255); font-size: 15px; }
+.sitrep-inimigos { color: rgb(255, 51, 51); font-size: 15px; }
+.sitrep-ameaca { color: rgb(255, 170, 0); font-size: 12px; }
+.sitrep-fuel { color: rgb(255, 200, 120); }
+.sitrep-vel { color: rgb(225, 238, 245); }
+.sitrep-sel { color: rgb(220, 242, 248); }
+.sitrep-tempo { color: rgb(210, 230, 238); }
 
 /* --- LOG DE COMUNICAÇÕES --- */
 .log-scroll {
@@ -603,16 +755,15 @@
 
 .ordens-status {
     margin-top: 6px;
-    border-top-width: 1px;
-    border-top-color: rgba(0, 229, 255, 0.15);
-    padding-top: 5px;
+    padding-top: 8px;
     picking-mode: ignore;
 }
 
 .ordem-feedback {
     color: rgb(107, 139, 153);
-    font-size: 9px;
+    font-size: 10px;
     -unity-text-align: middle-center;
+    white-space: normal;
 }
 
 /* --- BLINK ANIMATION (via opacity) --- */

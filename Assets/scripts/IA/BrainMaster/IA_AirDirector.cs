@@ -297,14 +297,16 @@ namespace Hegemonia.AI.BrainMaster
                         Target = target
                     };
 
-                    IA_CommandRequest request = new IA_CommandRequest
-                    {
-                        Type = IA_CommandType.Ability,
-                        Priority = 83,
-                        DedupKey = "ability:air_transport_drop",
-                        CooldownSeconds = 6f,
-                        Payload = ability
-                    };
+                    IA_CommandRequest request = IA_CommandFactory.Create(
+                        IA_CommandType.Ability,
+                        "IA_AirDirector",
+                        "air",
+                        "desembarque tatico",
+                        83,
+                        "air",
+                        "ability:air_transport_drop",
+                        6f,
+                        ability);
 
                     string reason;
                     _context.CommandQueue.Enqueue(request, Time.time, out reason);
@@ -345,14 +347,16 @@ namespace Hegemonia.AI.BrainMaster
                 Destination = destination
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Move,
-                Priority = priority,
-                DedupKey = "move:" + key,
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Move,
+                "IA_AirDirector",
+                "air",
+                "reposicionamento aereo",
+                priority,
+                "air",
+                "move:" + key,
+                cooldown,
+                payload);
 
             string reason;
             _context.CommandQueue.Enqueue(request, Time.time, out reason);
@@ -367,14 +371,16 @@ namespace Hegemonia.AI.BrainMaster
                 TargetPosition = targetPosition
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Attack,
-                Priority = priority,
-                DedupKey = "attack:" + key,
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Attack,
+                "IA_AirDirector",
+                "air",
+                "ataque aereo",
+                priority,
+                "air",
+                "attack:" + key,
+                cooldown,
+                payload);
 
             string reason;
             _context.CommandQueue.Enqueue(request, Time.time, out reason);

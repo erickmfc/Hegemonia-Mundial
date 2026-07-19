@@ -15,8 +15,13 @@ MonoBehaviour:
   nomeItem: Vilage medio
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
+  itemId: residencial.vila
+  aliases: vila residencial, casas, condominio, village
+  capacidades: 16777281
   prefabDaUnidade: {fileID: 8072385313274950680, guid: ebf037ace6197df4d9ff9da4d6439d54, type: 3}
   preco: 100
   categoria: 6
+  escalaPoder: 0
+  strategicRole: 1
   balanceamento: {fileID: 0}
   scriptsDeComando: []

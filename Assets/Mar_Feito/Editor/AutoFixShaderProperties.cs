@@ -3,14 +3,8 @@ using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
 
-[InitializeOnLoad]
 public class AutoFixShaderProperties
 {
-    static AutoFixShaderProperties()
-    {
-        EditorApplication.delayCall += RunFix;
-    }
-
     static void RunFix()
     {
         string[] matGuids = AssetDatabase.FindAssets("t:Material");

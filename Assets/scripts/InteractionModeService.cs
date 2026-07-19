@@ -14,6 +14,8 @@ public enum InteractionOwner
     CarrierOrder = 70,
     ManualFire = 80,
     MenuComando = 90,
+    FactoryIndustryPanel = 95,
+    GovernmentMenu = 96,
     Attack = 100
 }
 

@@ -115,8 +115,34 @@ public class PlataformaOffshore : MonoBehaviour
 
     void Awake()
     {
+        GarantirPontosDeNavegacao();
+    }
+
+    private void GarantirPontosDeNavegacao()
+    {
+        if (pontoChegada == null)
+            pontoChegada = CriarPontoLogistico("PontoChegadaPetroleiro", new Vector3(0f, 0f, -18f));
+        if (pontoAbastecer == null)
+            pontoAbastecer = CriarPontoLogistico("PontoAbastecerPetroleiro", new Vector3(0f, 0f, -8f));
+        if (pontoSaida == null || pontoSaida == pontoAbastecer)
+            pontoSaida = CriarPontoLogistico("PontoSaidaPetroleiro", new Vector3(0f, 0f, 18f));
+    }
+
+    private Transform CriarPontoLogistico(string nome, Vector3 posicaoLocal)
+    {
+        GameObject ponto = new GameObject(nome);
+        ponto.transform.SetParent(transform, false);
+        ponto.transform.localPosition = posicaoLocal;
+        ponto.transform.localRotation = Quaternion.identity;
+        return ponto.transform;
+    }
+    /*
+    {
         // Pontos de navegação removidos
     }
+
+    }
+    */
 
     void Start()
     {

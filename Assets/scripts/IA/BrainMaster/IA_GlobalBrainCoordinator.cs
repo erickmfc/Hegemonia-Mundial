@@ -69,6 +69,7 @@ namespace Hegemonia.AI.BrainMaster
             if (!_registeredTeamIds.Contains(teamId))
             {
                 _registeredTeamIds.Add(teamId);
+                _registeredTeamIds.Sort();
             }
 
             return _registeredTeamIds.IndexOf(teamId);

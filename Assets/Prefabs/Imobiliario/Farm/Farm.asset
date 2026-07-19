@@ -15,7 +15,12 @@ MonoBehaviour:
   nomeItem: Farm
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
+  itemId: comida.fazenda
+  aliases: fazenda, farm, comida, agricultura, food
+  capacidades: 65
   prefabDaUnidade: {fileID: 7005871210347569535, guid: 720935d5ec5feb44693c9f24b37199cc, type: 3}
   preco: 100
   categoria: 4
+  escalaPoder: 0
+  strategicRole: 2
   scriptsDeComando: []

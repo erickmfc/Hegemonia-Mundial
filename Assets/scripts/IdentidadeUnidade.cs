@@ -71,6 +71,7 @@ public class IdentidadeUnidade : MonoBehaviour
             var pais = SistemaGovernoMundial.Instancia.ObterPais(teamID);
             if (pais != null)
             {
+                pais.mortosAcumulados += militaresConsumidos;
                 pais.populacaoMilitarAtiva = Mathf.Max(0, pais.populacaoMilitarAtiva - militaresConsumidos);
                 pais.populacao = Mathf.Clamp(pais.populacaoCivil + pais.populacaoMilitarAtiva + pais.reservistas + pais.alistaveis, 0, pais.populacaoMaxima);
             }

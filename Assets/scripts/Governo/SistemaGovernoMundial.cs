@@ -63,6 +63,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         InicializarDadosPadrao();
         GarantirMercado();
         GarantirEconomiaViva();
+        GerenciadorTempo.GarantirInstancia();
         GarantirSistemaIndustrial();
         RegistroNacoesGoverno.GarantirInstancia();
         RegistroNacoesGoverno.Instancia?.Sincronizar(paises);
@@ -481,26 +482,22 @@ public class SistemaGovernoMundial : MonoBehaviour
             jogador.populacaoMaxima = gr.populacaoMaxima;
         }
 
-        if (economia != null)
+        // Mesmo antes de a cena registrar as estruturas na economia, aplica-se
+        // um retrato vazio. Isso impede população, renda e capacidade antigas de
+        // continuarem aparecendo como se existissem casas, comida ou indústria.
+        if (economia == null)
         {
-            // A populacao maxima e ditada pelas casas construidas (moradiaTotal)
-            jogador.populacaoMaxima = Mathf.Max(jogador.populacaoMaxima, economia.moradiaTotal);
-            
-            // Sincroniza de volta para o GerenciadorRecursos
-            gr.populacaoAtual = jogador.populacao;
-            gr.populacaoMaxima = jogador.populacaoMaxima;
+            economia = new DadosEconomiaPais { teamId = teamJogador };
+        }
 
-            jogador.rendaPorSegundo = Mathf.Max(gr.dinheiroPorSegundo, economia.dinheiroGerado);
-            jogador.producao = Mathf.Clamp(40f + economia.industriaProduzida * 4f + economia.petroleoProduzido * 2f, 10f, 100f);
-            AplicarEconomiaImoveis(jogador, economia);
-        }
-        else
-        {
-            gr.populacaoAtual = jogador.populacao;
-            gr.populacaoMaxima = jogador.populacaoMaxima;
-            jogador.rendaPorSegundo = gr.dinheiroPorSegundo;
-            jogador.producao = Mathf.Clamp(55f + gr.acoPorSegundo * 3f + gr.petroleoPorSegundo * 2f, 10f, 100f);
-        }
+        AplicarEconomiaImoveis(jogador, economia);
+
+        // O HUD e o caixa usam o fluxo calculado pelas estruturas reais.
+        // A renda passiva antiga nao pode sustentar um pais sem economia.
+        gr.dinheiroPorSegundo = jogador.saldoOperacional;
+        gr.energiaPorSegundo = Mathf.RoundToInt(economia.energiaProduzida - economia.energiaConsumida);
+        gr.populacaoAtual = jogador.populacao;
+        gr.populacaoMaxima = jogador.populacaoMaxima;
 
         // CORREÇÃO: Sincronizar a população civil do jogador também, já que a UI lê jogador.populacaoCivil
         jogador.populacaoCivil = Mathf.Max(0, jogador.populacao - jogador.populacaoMilitarAtiva - jogador.reservistas - jogador.alistaveis);
@@ -1502,6 +1499,44 @@ public class SistemaGovernoMundial : MonoBehaviour
         ProcessarEconomia();
     }
 
+    /// <summary>Registra a agressao e grava o agressor como inimigo do alvo.</summary>
+    public void RegistrarAgressao(int vitimaTeamId, int agressorTeamId)
+    {
+        if (vitimaTeamId <= 0 || agressorTeamId <= 0 || vitimaTeamId == agressorTeamId) return;
+
+        DadosPaisGoverno vitima = ObterPais(vitimaTeamId);
+        DadosPaisGoverno agressor = ObterPais(agressorTeamId);
+        if (vitima != null)
+        {
+            vitima.emGuerra = true;
+            vitima.rivalTeamId = agressorTeamId;
+            vitima.estabilidade = Mathf.Clamp(vitima.estabilidade - 6f, 0f, 100f);
+        }
+        if (agressor != null)
+        {
+            agressor.emGuerra = true;
+            agressor.rivalTeamId = vitimaTeamId;
+        }
+
+        RelacaoPaisGoverno relacao = ObterRelacao(vitimaTeamId, agressorTeamId);
+        bool novaGuerra = relacao != null && !relacao.guerraDeclarada;
+        if (relacao != null)
+        {
+            relacao.guerraDeclarada = true;
+            relacao.valor = Mathf.Clamp(relacao.valor - 35, -100, 100);
+            relacao.posturaAParaB = PosturaRelacaoPais.Inimigo;
+            relacao.posturaBParaA = PosturaRelacaoPais.Inimigo;
+        }
+        if (novaGuerra)
+        {
+            RegistrarNoticia("Agressao confirmada: " + NomePais(vitimaTeamId) + " identificou " + NomePais(agressorTeamId) + " como inimigo.");
+            UnityEngine.Debug.Log("[Diplomacia] Agressor identificado como inimigo: vitima=" + vitimaTeamId + " agressor=" + agressorTeamId);
+        }
+        SistemaMercadoGlobal.Instancia?.SimularMercado();
+        ProcessarEconomia();
+        OnGovernoAtualizado?.Invoke();
+    }
+
     public void ProporAlianca(int alvoTeamId)
     {
         RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
@@ -1890,7 +1925,28 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     private void AplicarEconomiaImoveis(DadosPaisGoverno pais, DadosEconomiaPais economia)
     {
-        if (economia.estruturasContadas > 0)
+        // Capacidade vem de moradia real. A prefeitura so oferece uma lotacao
+        // administrativa temporaria; ela nao representa uma cidade residencial.
+        int capacidadeResidencial = Mathf.Max(0, economia.moradiaTotal);
+        int capacidadeAdministrativa = PossuiSedeAdministrativa(pais.teamId) ? 200 : 0;
+        pais.populacaoMaxima = Mathf.Max(capacidadeResidencial, capacidadeAdministrativa);
+
+        int limiteTotal = Mathf.Max(0, pais.populacaoMaxima);
+        pais.populacao = Mathf.Clamp(pais.populacao, 0, limiteTotal);
+        int naoCivil = Mathf.Max(0, pais.populacaoMilitarAtiva + pais.reservistas + pais.alistaveis);
+        pais.populacaoCivil = Mathf.Clamp(pais.populacaoCivil, 0, Mathf.Max(0, limiteTotal - naoCivil));
+        pais.populacao = pais.populacaoCivil + naoCivil;
+
+        int populacaoParaIndicadores = Mathf.Max(1, pais.populacaoCivil);
+        pais.emprego = Mathf.Clamp01(economia.empregosOcupados / (float)populacaoParaIndicadores) * 100f;
+        pais.moradia = capacidadeResidencial <= 0 ? 0f
+            : Mathf.Clamp01(capacidadeResidencial / (float)populacaoParaIndicadores) * 100f;
+        pais.pressaoHabitacional = capacidadeResidencial <= 0
+            ? (pais.populacaoCivil > 0 ? 2f : 0f)
+            : (float)pais.populacaoCivil / capacidadeResidencial;
+        pais.qualidadeVida = economia.qualidadeVida;
+
+        if (false && economia.estruturasContadas > 0)
         {
             int baseMax = 1;
             if (pais.teamId == teamJogador && GerenciadorRecursos.Instancia != null)
@@ -1903,7 +1959,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             pais.moradia = economia.populacaoTotal <= 0 ? 100f : Mathf.Clamp01(economia.moradiaTotal / (float)Mathf.Max(1, economia.populacaoTotal)) * 100f;
             pais.qualidadeVida = economia.qualidadeVida;
         }
-        else
+        else if (false)
         {
             // Sem estruturas cadastradas: usa valores orgânicos derivados da felicidade e população
             // NÃO força emprego/moradia artificialmente a 100%, isso engana o sistema de felicidade
@@ -1942,18 +1998,18 @@ public class SistemaGovernoMundial : MonoBehaviour
         // Mesmo uma nação sem prédios registrados possui serviços, imóveis,
         // administração e defesa básica. O custo não pode ficar zerado só
         // porque o cadastro econômico ainda não recebeu todas as estruturas.
-        float custoServicosBase = Mathf.Max(24f, pais.populacao * 0.018f);
-        float custoMoradia = Mathf.Max(0f, economia.moradiaTotal) * 0.06f;
+        float custoServicosBase = capacidadeAdministrativa > 0 ? 16f : 4f;
+        float custoMoradia = 0f;
         float custoDefesa = pais.populacaoMilitarAtiva * 0.012f + pais.armamentos * 0.0015f;
-        float custoInfraestrutura = Mathf.Max(0f, economia.energiaConsumida) * 0.35f + Mathf.Max(0f, economia.estruturasSemEnergia) * 2.5f;
+        float custoInfraestrutura = 0f;
         // Publicar o detalhamento no mesmo snapshot que a UI consome. Antes
         // só o total era calculado, deixando as linhas Social/Infra/Militar
         // zeradas (e arredondadas para valores fictícios como $1).
-        economia.custoSocial = custoServicosBase + custoMoradia;
-        economia.custoMilitar = custoDefesa;
-        economia.custoInfraestrutura = custoInfraestrutura;
-        economia.custoProducao = Mathf.Max(0f, economia.custoManutencao);
-        pais.custoManutencao = economia.custoProducao + economia.custoSocial + economia.custoMilitar + economia.custoInfraestrutura;
+        // Nao altere o snapshot aqui: esta funcao tambem e chamada pelo HUD.
+        // Somar custos no snapshot a cada refresh fazia a despesa crescer sem limite.
+        float custoNacional = economia.custoManutencao
+            + custoServicosBase + custoMoradia + custoDefesa + custoInfraestrutura;
+        pais.custoManutencao = custoNacional;
         pais.saldoOperacional = (pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia) - pais.custoManutencao;
         pais.rendaPorSegundo = Mathf.Max(0f, pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia);
         pais.gastosPorSegundo = Mathf.Max(0f, pais.custoManutencao);
@@ -1966,6 +2022,24 @@ public class SistemaGovernoMundial : MonoBehaviour
         pais.estruturasSemEnergia = economia.estruturasSemEnergia;
         pais.exportacaoTotal = economia.exportacaoTotal;
         pais.importacaoTotal = economia.importacaoTotal;
+    }
+
+    private bool PossuiSedeAdministrativa(int teamId)
+    {
+#if UNITY_2023_1_OR_NEWER
+        ComplexoGovernamental[] sedes = FindObjectsByType<ComplexoGovernamental>(FindObjectsSortMode.None);
+#else
+        ComplexoGovernamental[] sedes = FindObjectsOfType<ComplexoGovernamental>();
+#endif
+        for (int i = 0; i < sedes.Length; i++)
+        {
+            ComplexoGovernamental sede = sedes[i];
+            if (sede == null || !sede.isActiveAndEnabled) continue;
+            IdentidadeUnidade identidade = sede.GetComponentInParent<IdentidadeUnidade>();
+            if (identidade != null && identidade.teamID == teamId) return true;
+            if (identidade == null && teamId == teamJogador && sede.ehDoJogador) return true;
+        }
+        return false;
     }
 
     private static float FatorImposto(int impostoPercentual)

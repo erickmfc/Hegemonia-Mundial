@@ -59,22 +59,46 @@ public class SistemaMercadoGlobal : MonoBehaviour
     public void InicializarItensPadrao()
     {
         if (itens == null) itens = new List<DadosItemMercado>();
-        if (itens.Count > 0) return;
+        if (itens.Count > 0)
+        {
+            NormalizarItensMercado();
+            IntegracaoMercadoIndustrial.GarantirCatalogoNoMercado(this);
+            CatalogoProdutoCompartilhado.RegistrarMercado(itens);
+            return;
+        }
 
-        itens.Add(new DadosItemMercado { id = "comida", nome = "Comida", recurso = RecursoMercado.Comida, precoBase = 120, precoAtual = 120, estoqueGlobal = 24850, oferta = 76f, demanda = 58f, volatilidade = 0.07f });
-        itens.Add(new DadosItemMercado { id = "petroleo", nome = "Petroleo", recurso = RecursoMercado.Petroleo, precoBase = 185, precoAtual = 185, estoqueGlobal = 18340, oferta = 52f, demanda = 72f, volatilidade = 0.12f });
-        itens.Add(new DadosItemMercado { id = "aco", nome = "Aco", recurso = RecursoMercado.Aco, precoBase = 95, precoAtual = 95, estoqueGlobal = 31760, oferta = 81f, demanda = 55f, volatilidade = 0.06f });
-        itens.Add(new DadosItemMercado { id = "energia", nome = "Energia", recurso = RecursoMercado.Energia, precoBase = 65, precoAtual = 65, estoqueGlobal = 45000, oferta = 65f, demanda = 50f, volatilidade = 0.05f });
-        itens.Add(new DadosItemMercado { id = "armamentos", nome = "Armamentos", recurso = RecursoMercado.Armamentos, precoBase = 420, precoAtual = 420, estoqueGlobal = 7420, oferta = 43f, demanda = 64f, volatilidade = 0.14f });
-        itens.Add(new DadosItemMercado { id = "uranio", nome = "Uranio", recurso = RecursoMercado.Uranio, precoBase = 900, precoAtual = 900, estoqueGlobal = 1250, oferta = 30f, demanda = 50f, volatilidade = 0.16f });
+        itens.Add(CriarItemPadrao("comida", "Comida", RecursoMercado.Comida, 120, 24850, 76f, 58f, 0.07f));
+        itens.Add(CriarItemPadrao("comida_milho", "Milho", RecursoMercado.Comida, 84, 16200, 82f, 51f, 0.05f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_batata", "Batata", RecursoMercado.Comida, 78, 14100, 79f, 49f, 0.05f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_feijao", "Feijao", RecursoMercado.Comida, 92, 12800, 68f, 56f, 0.06f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_trigo", "Trigo", RecursoMercado.Comida, 110, 15500, 72f, 58f, 0.06f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_arroz", "Arroz", RecursoMercado.Comida, 118, 14900, 70f, 60f, 0.06f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_cana", "Cana-de-Acucar", RecursoMercado.Comida, 135, 11800, 65f, 59f, 0.07f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_algodao", "Algodao", RecursoMercado.Comida, 142, 9200, 55f, 52f, 0.08f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_soja", "Soja", RecursoMercado.Comida, 155, 13400, 67f, 63f, 0.07f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_cafe", "Cafe", RecursoMercado.Comida, 205, 7600, 44f, 61f, 0.10f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_cacau", "Cacau", RecursoMercado.Comida, 235, 6200, 40f, 64f, 0.11f, "Agricola"));
+        itens.Add(CriarItemPadrao("petroleo", "Petroleo", RecursoMercado.Petroleo, 185, 18340, 52f, 72f, 0.12f));
+        itens.Add(CriarItemPadrao("aco", "Aco", RecursoMercado.Aco, 95, 31760, 81f, 55f, 0.06f));
+        itens.Add(CriarItemPadrao("energia", "Energia", RecursoMercado.Energia, 65, 45000, 65f, 50f, 0.05f));
+        itens.Add(CriarItemPadrao("armamentos", "Armamentos", RecursoMercado.Armamentos, 420, 7420, 43f, 64f, 0.14f));
+        itens.Add(CriarItemPadrao("uranio", "Uranio", RecursoMercado.Uranio, 900, 1250, 30f, 50f, 0.16f));
+        NormalizarItensMercado();
+        IntegracaoMercadoIndustrial.GarantirCatalogoNoMercado(this);
+        CatalogoProdutoCompartilhado.RegistrarMercado(itens);
     }
 
     public void RegistrarItem(DadosItemMercado item)
     {
         if (item == null || string.IsNullOrEmpty(item.id)) return;
+        if (string.IsNullOrEmpty(item.recursoId))
+        {
+            item.recursoId = ObterRecursoIdMercado(item.recurso, item.id);
+        }
         DadosItemMercado existente = ObterItem(item.id);
         if (existente != null) return;
         itens.Add(item);
+        CatalogoProdutoCompartilhado.RegistrarMercado(new[] { item });
         OnMercadoAtualizado?.Invoke();
     }
 
@@ -85,12 +109,13 @@ public class SistemaMercadoGlobal : MonoBehaviour
         foreach (DadosConstrucao ficha in MenuConstrucao.catalogoGlobal)
         {
             if (ficha == null || string.IsNullOrEmpty(ficha.nomeItem)) continue;
-            string id = "construcao_" + ficha.nomeItem.ToLowerInvariant().Replace(" ", "_");
+            string id = ficha.GetStableId();
             if (ObterItem(id) != null) continue;
 
             itens.Add(new DadosItemMercado
             {
                 id = id,
+                recursoId = id,
                 nome = ficha.nomeItem,
                 categoria = ficha.categoria.ToString(),
                 recurso = RecursoMercado.Nenhum,
@@ -104,12 +129,15 @@ public class SistemaMercadoGlobal : MonoBehaviour
                 podeVender = false
             });
         }
+
+        NormalizarItensMercado();
+        CatalogoProdutoCompartilhado.RegistrarMercado(itens);
     }
 
     public DadosItemMercado ObterItem(string id)
     {
         if (string.IsNullOrEmpty(id)) return null;
-        return itens.FirstOrDefault(i => i != null && string.Equals(i.id, id, StringComparison.OrdinalIgnoreCase));
+        return itens.FirstOrDefault(i => i != null && (string.Equals(i.id, id, StringComparison.OrdinalIgnoreCase) || string.Equals(i.recursoId, id, StringComparison.OrdinalIgnoreCase)));
     }
 
     public IEnumerable<DadosItemMercado> ItensOrdenados()
@@ -176,6 +204,30 @@ public class SistemaMercadoGlobal : MonoBehaviour
                 oferta += ofertaIndustria * 0.25f;
                 demanda += deficitEnergia * 1.5f;
             }
+            else if (item.recurso == RecursoMercado.MinerioFerro ||
+                     item.recurso == RecursoMercado.MinerioCobre ||
+                     item.recurso == RecursoMercado.Bauxita ||
+                     item.recurso == RecursoMercado.MinerioTitanio ||
+                     item.recurso == RecursoMercado.CobreEletrolitico ||
+                     item.recurso == RecursoMercado.Duraluminio ||
+                     item.recurso == RecursoMercado.LigaTitanio ||
+                     item.recurso == RecursoMercado.ComponentesEletronicos ||
+                     item.recurso == RecursoMercado.UranioEnriquecido)
+            {
+                float fatorIndustria = Mathf.Clamp01(ofertaIndustria / 20f);
+                demanda += ofertaIndustria * 0.14f;
+                oferta += fatorIndustria * 10f;
+
+                if (item.recurso == RecursoMercado.UranioEnriquecido)
+                {
+                    demanda += pressaoGuerra * 35f;
+                    oferta -= pressaoSancoes * 14f;
+                }
+                else if (item.recurso == RecursoMercado.LigaTitanio || item.recurso == RecursoMercado.ComponentesEletronicos)
+                {
+                    demanda += pressaoGuerra * 10f;
+                }
+            }
             else if (item.recurso == RecursoMercado.Energia)
             {
                 demanda += deficitEnergia * 4f;
@@ -218,10 +270,12 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return false;
         }
 
-        quantidade = Mathf.Min(quantidade, Mathf.Max(0, item.estoqueGlobal));
-        int total = quantidade * item.precoAtual;
         DadosPaisGoverno comprador = governo.ObterPais(compradorTeamId);
         DadosPaisGoverno vendedor = governo.ObterPais(vendedorTeamId);
+        string recursoId = ObterRecursoIdEfetivo(item);
+        int estoqueVendedor = governo.ObterEstoque(vendedorTeamId, recursoId);
+        quantidade = Mathf.Min(quantidade, Mathf.Max(0, item.estoqueGlobal), Mathf.Max(0, estoqueVendedor));
+        int total = quantidade * item.precoAtual;
         if (comprador == null || vendedor == null || quantidade <= 0)
         {
             mensagem = "Pais sem oferta disponivel.";
@@ -235,8 +289,8 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         governo.AdicionarSaldo(vendedorTeamId, total);
-        governo.AdicionarEstoque(compradorTeamId, item.recurso, quantidade);
-        governo.RemoverEstoque(vendedorTeamId, item.recurso, quantidade);
+        governo.AdicionarEstoque(compradorTeamId, recursoId, quantidade);
+        governo.RemoverEstoque(vendedorTeamId, recursoId, quantidade);
 
         item.estoqueGlobal = Mathf.Max(0, item.estoqueGlobal - quantidade);
         item.demanda = Mathf.Clamp(item.demanda + quantidade / 120f, 0f, 160f);
@@ -269,7 +323,8 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return false;
         }
 
-        int disponivel = governo.ObterEstoque(vendedorTeamId, item.recurso);
+        string recursoId = ObterRecursoIdEfetivo(item);
+        int disponivel = governo.ObterEstoque(vendedorTeamId, recursoId);
         quantidade = Mathf.Min(quantidade, disponivel);
         if (quantidade <= 0)
         {
@@ -285,8 +340,8 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         governo.AdicionarSaldo(vendedorTeamId, total);
-        governo.RemoverEstoque(vendedorTeamId, item.recurso, quantidade);
-        governo.AdicionarEstoque(compradorTeamId, item.recurso, quantidade);
+        governo.RemoverEstoque(vendedorTeamId, recursoId, quantidade);
+        governo.AdicionarEstoque(compradorTeamId, recursoId, quantidade);
 
         item.estoqueGlobal += quantidade;
         item.oferta = Mathf.Clamp(item.oferta + quantidade / 100f, 0f, 160f);
@@ -339,8 +394,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
                 if (gr.aco >= quantidade) { gr.RemoverRecurso("Aco", quantidade); temRecurso = true; }
                 break;
             case RecursoMercado.Comida:
-                // Comida: reservada para expansão futura
-                temRecurso = false;
+                if (gr.comida >= quantidade) { gr.RemoverRecurso("Comida", quantidade); temRecurso = true; }
                 break;
             default:
                 // Energia e outros: trata energia como recurso vendável
@@ -350,12 +404,6 @@ public class SistemaMercadoGlobal : MonoBehaviour
                     temRecurso = true;
                 }
                 break;
-        }
-
-        if (!temRecurso && item.recurso == RecursoMercado.Comida && gr.comida >= quantidade)
-        {
-            gr.RemoverRecurso("Comida", quantidade);
-            temRecurso = true;
         }
 
         if (!temRecurso)
@@ -368,11 +416,33 @@ public class SistemaMercadoGlobal : MonoBehaviour
         dinheiroRecebido = quantidade * item.precoAtual;
         gr.AdicionarRecurso("Dinheiro", dinheiroRecebido);
 
+        GerenciadorArmazens armazens = GerenciadorArmazens.Instancia;
+        if (armazens != null && armazens.armazemRecursos != null)
+        {
+            switch (item.recurso)
+            {
+                case RecursoMercado.Comida:
+                    armazens.armazemRecursos.alimentos = Mathf.Clamp(gr.comida, 0, armazens.armazemRecursos.alimentosMaximo);
+                    break;
+                case RecursoMercado.Petroleo:
+                    armazens.armazemRecursos.petroleo = Mathf.Clamp(gr.petroleo, 0, armazens.armazemRecursos.petroleoMaximo);
+                    break;
+                case RecursoMercado.Energia:
+                    armazens.armazemRecursos.energia = Mathf.Clamp(gr.energia, 0, armazens.armazemRecursos.energiaMaximo);
+                    break;
+                case RecursoMercado.Aco:
+                    armazens.armazemRecursos.metal = Mathf.Clamp(gr.aco, 0, armazens.armazemRecursos.metalMaximo);
+                    break;
+            }
+
+            armazens.NotificarAtualizacaoManual();
+        }
+
         // Atualiza o mercado (aumenta oferta, simula venda)
         item.estoqueGlobal += quantidade;
         item.oferta = Mathf.Clamp(item.oferta + quantidade / 100f, 0f, 160f);
 
-        mensagem = "Vendeu " + quantidade + " de " + item.nome + " por $" + dinheiroRecebido;
+        mensagem = "Vendeu " + quantidade + " t de " + item.nome + " por $" + dinheiroRecebido;
         OnMercadoAtualizado?.Invoke();
         Debug.Log("[Mercado] " + mensagem);
         return true;
@@ -459,11 +529,72 @@ public class SistemaMercadoGlobal : MonoBehaviour
             else if (pais.emGuerra && pais.armamentos < 260) necessidade = ObterItem("armamentos");
             if (necessidade == null) continue;
 
-            DadosPaisGoverno vendedor = governo.Paises.FirstOrDefault(p => p != null && p.teamId != pais.teamId && governo.ObterEstoque(p.teamId, necessidade.recurso) > 120);
+            DadosPaisGoverno vendedor = governo.Paises.FirstOrDefault(p => p != null && p.teamId != pais.teamId && governo.ObterEstoque(p.teamId, ObterRecursoIdEfetivo(necessidade)) > 120);
             if (vendedor == null) continue;
 
             int quantidade = Mathf.Min(necessidade.CalcularQuantidadePadrao(), Mathf.Max(10, pais.saldo / Mathf.Max(1, necessidade.precoAtual) / 2));
             Comprar(pais.teamId, vendedor.teamId, necessidade.id, quantidade, out _);
         }
+    }
+
+    private void NormalizarItensMercado()
+    {
+        if (itens == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < itens.Count; i++)
+        {
+            DadosItemMercado item = itens[i];
+            if (item == null)
+            {
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(item.recursoId))
+            {
+                item.recursoId = ObterRecursoIdMercado(item.recurso, item.id);
+            }
+        }
+    }
+
+    private static string ObterRecursoIdEfetivo(DadosItemMercado item)
+    {
+        if (item == null)
+        {
+            return string.Empty;
+        }
+
+        return string.IsNullOrEmpty(item.recursoId) ? item.id : item.recursoId;
+    }
+
+    private static DadosItemMercado CriarItemPadrao(string id, string nome, RecursoMercado recurso, int precoBase, int estoqueGlobal, float oferta, float demanda, float volatilidade, string categoria = "Recurso")
+    {
+        return new DadosItemMercado
+        {
+            id = id,
+            recursoId = ObterRecursoIdMercado(recurso, id),
+            nome = nome,
+            categoria = categoria,
+            recurso = recurso,
+            precoBase = precoBase,
+            precoAtual = precoBase,
+            estoqueGlobal = estoqueGlobal,
+            oferta = oferta,
+            demanda = demanda,
+            volatilidade = volatilidade
+        };
+    }
+
+    private static string ObterRecursoIdMercado(RecursoMercado recurso, string fallback)
+    {
+        string recursoId = IntegracaoMercadoIndustrial.IdInternoDoMercado(recurso);
+        if (!string.IsNullOrWhiteSpace(recursoId))
+        {
+            return recursoId;
+        }
+
+        return string.IsNullOrWhiteSpace(fallback) ? string.Empty : fallback;
     }
 }

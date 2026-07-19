@@ -15,7 +15,12 @@ MonoBehaviour:
   nomeItem: 'Armazem '
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
+  itemId: logistica.armazem
+  aliases: armazem, deposito, storage, warehouse, logistica
+  capacidades: 262209
   prefabDaUnidade: {fileID: 3497148357011904414, guid: 5e9842dea86d0d54894138428e274308, type: 3}
   preco: 100
   categoria: 4
+  escalaPoder: 0
+  strategicRole: 4
   scriptsDeComando: []

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.IA01;
 using Hegemonia.Menus.Comandos;
 using UnityEngine;
 
@@ -51,6 +52,8 @@ public class DadosConstrucao : ScriptableObject
     public CategoriaItem categoria;
     [Tooltip("Escala de poder NARA usada para balanceamento e leitura tática.")]
     public EscalaPoder escalaPoder = EscalaPoder.NaoClassificado;
+    [Tooltip("Papel estrategico explicito usado pela IA.")]
+    public IA01StrategicRole strategicRole = IA01StrategicRole.None;
 
     [Header("Balanceamento em Dados")]
     public DadosBalanceamentoUnidade balanceamento;

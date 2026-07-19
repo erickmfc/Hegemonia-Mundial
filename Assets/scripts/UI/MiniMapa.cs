@@ -58,6 +58,8 @@ public class MiniMapa : MonoBehaviour
     private static readonly Dictionary<int, Sprite> _spriteCirculoCache = new Dictionary<int, Sprite>(4);
     private float _proximoRefreshIcones;
 
+    // Shader warmup: evita compilação ao vivo durante o voo
+
     private struct MapaIcone
     {
         public Transform alvo;
@@ -203,7 +205,7 @@ public class MiniMapa : MonoBehaviour
         _camMapa.backgroundColor = new Color(0.85f, 0.78f, 0.58f, 1f); // Areia
         _camMapa.cullingMask = ~0; // Renderiza tudo
         _camMapa.depth = -10;
-        _camMapa.farClipPlane = 3000f;
+        _camMapa.farClipPlane = 2000f; // Reduzido de 3000 para menor carga de render
 
         // Exclui camada de UI para não renderizar na câmera do mapa
         int camadaUI = LayerMask.NameToLayer("UI");
@@ -211,6 +213,9 @@ public class MiniMapa : MonoBehaviour
         {
             _camMapa.cullingMask &= ~(1 << camadaUI);
         }
+
+        // Nao aquece todos os shaders aqui. No URP, o warmup global pode misturar
+        // keyword spaces de shaders diferentes e inundar o Console com asserts.
     }
 
     // =========================================================

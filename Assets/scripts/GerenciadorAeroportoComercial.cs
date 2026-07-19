@@ -162,14 +162,16 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
 
     private float timerDiaComercial       = 0f;
     private float tempoUltimoTickEconomia = 0f;
-    private int   estatisticaTurismoDia   = 0;
-    private int   estatisticaPassagensVendidasDia = 0;
+    public int   estatisticaTurismoDia   = 0;
+    public int   estatisticaPassagensVendidasDia = 0;
     private int   paisesConectados        = 0;
+
+    // Cooldown para evitar que todos os aviões decolem ao mesmo tempo
+    private float timerProximoVooPermitido = 0f;
 
     // ── Spawn ──────────────────────────────────────────────────────────
     [Header("=== Spawn Visual ===")]
     public GameObject prefabAviaoComercial;
-    private float tempoUltimoSpawnComercial = 0f;
     private List<ControleAviaoComercial> frotaComercialAtiva = new List<ControleAviaoComercial>();
 
     // ── Turismo / Imigração ────────────────────────────────────────────
@@ -500,7 +502,13 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
                 {
                     // Hora de partir!
                     if (voo.status != StatusVoo.Cancelado)
-                        voo.aviao.SolicitarDecolagem();
+                    {
+                        if (Time.time >= timerProximoVooPermitido)
+                        {
+                            timerProximoVooPermitido = Time.time + Random.Range(10f, 20f);
+                            voo.aviao.SolicitarDecolagem();
+                        }
+                    }
                 }
             }
             // Chegadas
@@ -633,26 +641,58 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     {
         if (prefabAviaoComercial == null || voo == null) return;
 
+        // ── Calcula ponto de spawn longe do aeroporto ──
+        // O avião deve aparecer NO AR, a ~2000m, na direção oposta à pista
+        // para que faça o percurso completo de aproximação → pista → táxi → vaga.
         Vector3 posSpawn = transform.position;
         Quaternion rotSpawn = Quaternion.identity;
 
-        // Tenta spawnar no primeiro ponto da descida comum do aeroporto (os creaty)
-        if (decida != null && decida.childCount > 0)
+        // Determina a direção da pista de pouso (do 1º wp de decida invertido = final da pista)
+        // O avião deve vir na direção OPOSTA ao vetor de decolagem para pousar corretamente.
+        Vector3 direcaoAproximacao = Vector3.forward; // fallback
+
+        // Pega a direção da pista usando os waypointsDecida da pista 1 (referência)
+        PistaComercial pistaRef = null;
+        foreach (var p in todasPistas)
         {
-            Transform primeiroPonto = decida.GetChild(0);
-            posSpawn = primeiroPonto.position;
-            if (decida.childCount > 1)
-                rotSpawn = Quaternion.LookRotation((decida.GetChild(1).position - posSpawn).normalized);
+            if (p.waypointsDecida != null && p.waypointsDecida.Count >= 2)
+            {
+                pistaRef = p;
+                break;
+            }
+        }
+
+        if (pistaRef != null && pistaRef.waypointsDecida.Count >= 2)
+        {
+            // waypointsDecida[0] = ponto de toque (início do pouso no chão)
+            // waypointsDecida[last] = ponto mais distante (onde o avião entra)
+            // A direção de aproximação é do último ponto para o primeiro
+            Transform wpEntrada = pistaRef.waypointsDecida[pistaRef.waypointsDecida.Count - 1];
+            Transform wpToque   = pistaRef.waypointsDecida[0];
+            Vector3 direcaoPista = (wpToque.position - wpEntrada.position);
+            direcaoPista.y = 0f;
+            if (direcaoPista.sqrMagnitude > 0.01f)
+                direcaoAproximacao = direcaoPista.normalized;
             else
-                rotSpawn = primeiroPonto.rotation;
+                direcaoAproximacao = wpEntrada.forward;
         }
-        else
+        else if (decida != null && decida.childCount > 1)
         {
-            // Fallback: Spawna alto no céu e longe
-            Vector2 dir = Random.insideUnitCircle.normalized * 3000f;
-            posSpawn = new Vector3(transform.position.x + dir.x, 150f, transform.position.z + dir.y);
-            rotSpawn = Quaternion.LookRotation((transform.position - posSpawn).normalized);
+            // Fallback: usa os filhos do decida bruto (ainda não invertidos)
+            Transform wp0 = decida.GetChild(0);
+            Transform wp1 = decida.GetChild(1);
+            Vector3 d = (wp1.position - wp0.position);
+            d.y = 0f;
+            if (d.sqrMagnitude > 0.01f) direcaoAproximacao = d.normalized;
         }
+
+        // Spawn a 2000m NA DIREÇÃO OPOSTA ao pouso (ou seja, de onde o avião vem)
+        const float distanciaSpawn = 2000f;
+        const float alturaSpawn = 150f;
+        posSpawn = transform.position - direcaoAproximacao * distanciaSpawn;
+        posSpawn.y = alturaSpawn;
+        // Avião deve apontar na direção do aeroporto (mesma da pista)
+        rotSpawn = Quaternion.LookRotation(direcaoAproximacao);
 
         // Instancia o avião
         GameObject obj = Instantiate(prefabAviaoComercial, posSpawn, rotSpawn);
@@ -664,8 +704,8 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         if (ca == null) ca = obj.AddComponent<ControleAviaoComercial>();
 
         ca.estaEmModoVooFisico = true;
-        ca.estadoAtual = ControleAviao.EstadoAviao.EmMissao; // Voando
-        
+        ca.estadoAtual = ControleAviao.EstadoAviao.EmMissao; // Voando para o aeroporto
+
         ca.aeroportoOrigemComercial = this;
         ca.aeroportoOrigem = this;
         ca.nomeCompanhia = voo.nomeCompanhia;
@@ -673,9 +713,21 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         ca.vooAssociado = voo;
         voo.aviao = ca;
 
+        // Define o ponto de aproximação como alvo de voo inicial
+        // (primeiro waypoint de decida = entrada da pista de pouso)
+        if (pistaRef != null && pistaRef.waypointsDecida.Count > 0)
+        {
+            Vector3 wpChegada = pistaRef.waypointsDecida[pistaRef.waypointsDecida.Count - 1].position;
+            wpChegada.y = alturaSpawn;
+            ca.alvoGPSVoo = wpChegada;
+        }
+        else
+        {
+            ca.alvoGPSVoo = new Vector3(transform.position.x, alturaSpawn, transform.position.z);
+        }
+
         frotaComercialAtiva.Add(ca);
 
-        ca.DefinirBaseAlternativaEIniciarRetorno(this);
         ca.IniciarSequenciaPousoComercial();
     }
 
@@ -715,6 +767,55 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
             estatisticaTurismoDia       += turismo;
             estatisticaPassagensVendidasDia += turismo;
             receitaDia                  += turismo * cia.valorPorPassagem;
+        }
+
+        // ── Consumo Diário de Combustível pelo Aeroporto ──
+        int combustivelNecessario = 0;
+        foreach (var cia in contratosAtivos)
+        {
+            // Base 100 por contrato + extra por demanda e passageiros
+            combustivelNecessario += 100 + Mathf.RoundToInt((cia.passagensVendidasHoje / 10f) * cia.demandaTurismoBase);
+        }
+
+        if (combustivelNecessario > 0 && GerenciadorRecursos.Instancia != null)
+        {
+            int combustivelDisponivel = GerenciadorRecursos.Instancia.petroleo;
+            if (combustivelDisponivel >= combustivelNecessario)
+            {
+                GerenciadorRecursos.Instancia.petroleo -= combustivelNecessario; // Subtrai direto
+            }
+            else
+            {
+                // Consome o estoque restante
+                if (combustivelDisponivel > 0)
+                {
+                    GerenciadorRecursos.Instancia.petroleo = 0;
+                    combustivelNecessario -= combustivelDisponivel;
+                }
+                
+                // Compra o restante usando o dinheiro do país (5% a 15% da renda diária)
+                int custoFaltante = Mathf.RoundToInt(receitaDia * Random.Range(0.05f, 0.15f));
+                
+                // Aplicar dívida: bypass ValidarLimites subtraindo diretamente.
+                GerenciadorRecursos.Instancia.dinheiro -= custoFaltante;
+                
+                // Também sincroniza com o governo mundial se houver
+                if (SistemaGovernoMundial.Instancia != null && _identidadeCacheada != null)
+                {
+                    var pais = SistemaGovernoMundial.Instancia.ObterPais(_identidadeCacheada.teamID);
+                    if (pais != null)
+                    {
+                        pais.saldo -= custoFaltante;
+                        pais.petroleo = GerenciadorRecursos.Instancia.petroleo; // 0
+                    }
+                }
+                
+                Debug.Log($"[Comercial] Faltou combustível para o aeroporto! Compra automática consumiu {custoFaltante} de dinheiro, gerando possível dívida.");
+            }
+            
+            // Força atualização visual
+            if (GerenciadorRecursos.Instancia != null)
+                GerenciadorRecursos.Instancia.GetType().GetMethod("NotificarAtualizacao", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(GerenciadorRecursos.Instancia, null);
         }
 
         if (GerenciadorRecursos.Instancia != null)
@@ -771,12 +872,18 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         int qtd = Random.Range(2, 5);
         for (int i = 0; i < qtd; i++)
         {
+            int tier = Random.Range(0, 100);
+            int duracao;
+            if (tier < 60) duracao = Random.Range(3, 15); // Fim de dias
+            else if (tier < 90) duracao = Random.Range(160, 200); // ~6 meses
+            else duracao = Random.Range(350, 380); // ~1 ano
+
             contratosDisponiveis.Add(new ContratoAereoOferecido
             {
                 nomeCompanhia   = nomes[Random.Range(0, nomes.Length)],
                 baiasExigidas   = Random.Range(1, 4),
                 baiasNegociadas = Random.Range(1, 4),
-                diasDuracao     = Random.Range(3, 15),
+                diasDuracao     = duracao,
                 valorPorPassagem= Random.Range(5, 40),
                 demandaTurismoBase = Random.Range(0.5f, 2f)
             });
@@ -822,16 +929,14 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         GUI.Label(new Rect(x + 15, y + 10, w - 30, 32),
             "<size=20><b>✈  CENTRO DE CONTROLE — AEROPORTO COMERCIAL</b></size>");
 
-        // Abas — 4 abas: comercial + militar
+        // Abas — 3 abas comerciais
         float tabY = y + 52f;
-        string[] abas = { "📋 VOOS", "📄 CONTRATOS", "📊 ESTATÍSTICAS", "🪖 MILITAR" };
+        string[] abas = { "📋 VOOS", "📄 CONTRATOS", "📊 ESTATÍSTICAS" };
         float tabW = (w - 30f) / abas.Length;
         for (int i = 0; i < abas.Length; i++)
         {
             Rect tabRect = new Rect(x + 15 + i * tabW, tabY, tabW - 2f, 30f);
-            Color tabColor;
-            if (i == 3)      tabColor = (abaMenuComercial == i) ? new Color(0.6f, 0.2f, 0.2f) : new Color(0.25f, 0.1f, 0.1f);
-            else             tabColor = (abaMenuComercial == i) ? new Color(0.2f, 0.5f, 1f)   : new Color(0.1f, 0.15f, 0.25f);
+            Color tabColor = (abaMenuComercial == i) ? new Color(0.2f, 0.5f, 1f) : new Color(0.1f, 0.15f, 0.25f);
             DrawRect(tabRect, tabColor);
             if (GUI.Button(tabRect, abas[i])) abaMenuComercial = i;
         }
@@ -845,7 +950,6 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
             case 0: DesenharPainelVoos(); break;
             case 1: DesenharAbaCOntratos(); break;
             case 2: DesenharAbaEstatisticas(); break;
-            case 3: DesenharAbaFrotaMilitar(); break;
         }
 
         GUILayout.EndArea();

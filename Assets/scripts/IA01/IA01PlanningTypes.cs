@@ -131,7 +131,11 @@ namespace Hegemonia.AI.IA01
         BuildMediumApartment,
         BuildHighApartment,
         BuildMilitaryTent,
-        BuildVehicleConstructor
+        BuildVehicleConstructor,
+        // Infraestrutura naval encadeada. Fica no final para nao alterar IDs
+        // serializados dos planos e saves existentes.
+        BuildPier,
+        BuildOffshorePlatform
     }
 
     public enum IA01CommandState

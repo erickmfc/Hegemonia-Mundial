@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.EventSystems;
 
 public class Fabrica : MonoBehaviour
 {
@@ -16,6 +17,16 @@ public class Fabrica : MonoBehaviour
     [Tooltip("Se esta lista estiver vazia, o script buscará automaticamente por filhos chamados 'Ponto_Saida'.")]
     public List<Transform> pontosSaidaExtras = new List<Transform>();
     private int indiceSaidaGlobal = 0;
+
+    public GerenciadorExtracoes GerenciadorExtracoesLocal
+    {
+        get { return GetComponent<GerenciadorExtracoes>(); }
+    }
+
+    public bool PossuiPainelIndustrial
+    {
+        get { return GerenciadorExtracoesLocal != null; }
+    }
 
     void OnEnable()
     {
@@ -70,6 +81,33 @@ public class Fabrica : MonoBehaviour
             if (ehQuartel) gerente.AtualizarPontoQuartel(pontoNascimento, pontoSaida);
             else gerente.AtualizarPontoHangar(pontoNascimento, pontoSaida);
         }
+    }
+
+    private void OnMouseDown()
+    {
+        if (!PossuiPainelIndustrial)
+        {
+            return;
+        }
+
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        {
+            return;
+        }
+
+        InteractionModeSnapshot snapshot = InteractionModeService.CurrentSnapshot();
+        if (snapshot.HasOwner && snapshot.Owner != InteractionOwner.FactoryIndustryPanel)
+        {
+            return;
+        }
+
+        IdentidadeUnidade identidade = GetComponentInParent<IdentidadeUnidade>();
+        if (identidade != null && identidade.teamID != 1)
+        {
+            return;
+        }
+
+        FabricaMineriosMenuController.AbrirPara(this);
     }
 
     private static Dictionary<Transform, int> _contadorSlot = new Dictionary<Transform, int>();
@@ -188,8 +226,6 @@ public class Fabrica : MonoBehaviour
         // Registro IA
         if (idU != null && idU.teamID != 1)
         {
-            var myCommander = IA_ComandanteRegistry.GetCommanderByTeam(idU.teamID);
-            if (myCommander != null && myCommander.cerebroGeneral != null) myCommander.cerebroGeneral.RegistrarUnidade(unidade);
             DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
         }
 

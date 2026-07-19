@@ -39,6 +39,27 @@
 
                 <!-- SVG-like lines (VisualElements finos) -->
                 <ui:VisualElement name="mapa-linhas-layer" class="mapa-linhas-layer" picking-mode="Ignore" />
+
+                <!-- Drawer de seguir -->
+                <ui:VisualElement name="painel-seguir" class="seguir-drawer">
+                    <ui:VisualElement class="seguir-header">
+                        <ui:Label name="seguir-titulo" text="SEGUIR / ALVOS" class="panel-label mono" />
+                        <ui:Button name="btn-fechar-seguir" text="X" class="seguir-fechar mono" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="seguir-distancias">
+                        <ui:Button name="seguir-dist-100" text="100m" class="seguir-dist-btn mono" />
+                        <ui:Button name="seguir-dist-200" text="200m" class="seguir-dist-btn mono" />
+                        <ui:Button name="seguir-dist-2000" text="2000m" class="seguir-dist-btn mono" />
+                        <ui:Button name="seguir-dist-5000" text="5000m" class="seguir-dist-btn mono" />
+                    </ui:VisualElement>
+
+                    <ui:Label name="seguir-status" text="Clique em SEGUIR e escolha um alvo" class="seguir-status mono" />
+
+                    <ui:ScrollView name="seguir-scroll" class="seguir-scroll" vertical-scroller-visibility="AlwaysVisible">
+                        <ui:VisualElement name="seguir-lista" class="seguir-lista" />
+                    </ui:ScrollView>
+                </ui:VisualElement>
             </ui:VisualElement>
 
             <!-- PAINEL DIREITO: CÂMERA FLIR -->
@@ -129,27 +150,31 @@
 
                 <ui:VisualElement class="sitrep-row">
                     <ui:Label text="Forças Aliadas:" class="stat-lbl" />
-                    <ui:Label name="sitrep-aliados" text="0" class="stat-val sitrep-aliados" />
+                    <ui:Label name="sitrep-aliados" text="0" class="stat-val sitrep-valor sitrep-aliados" />
                 </ui:VisualElement>
                 <ui:VisualElement class="sitrep-row">
                     <ui:Label text="Forças Hostis:" class="stat-lbl" />
-                    <ui:Label name="sitrep-inimigos" text="0" class="stat-val sitrep-inimigos" />
+                    <ui:Label name="sitrep-inimigos" text="0" class="stat-val sitrep-valor sitrep-inimigos" />
                 </ui:VisualElement>
                 <ui:VisualElement class="sitrep-row">
                     <ui:Label text="Velocidade:" class="stat-lbl" />
-                    <ui:Label name="sitrep-vel" text="0 km/h" class="stat-val" />
+                    <ui:Label name="sitrep-vel" text="0 km/h" class="stat-val sitrep-valor sitrep-vel" />
+                </ui:VisualElement>
+                <ui:VisualElement class="sitrep-row">
+                    <ui:Label text="Combustível:" class="stat-lbl" />
+                    <ui:Label name="sitrep-fuel" text="0%" class="stat-val sitrep-valor sitrep-fuel" />
                 </ui:VisualElement>
                 <ui:VisualElement class="sitrep-row sitrep-separator">
                     <ui:Label text="Ameaça do Setor:" class="stat-lbl" />
-                    <ui:Label name="sitrep-ameaca" text="MEDIA" class="stat-val sitrep-ameaca" />
+                    <ui:Label name="sitrep-ameaca" text="MEDIA" class="stat-val sitrep-valor sitrep-ameaca" />
                 </ui:VisualElement>
                 <ui:VisualElement class="sitrep-row">
                     <ui:Label text="Unid. Selecionada:" class="stat-lbl" />
-                    <ui:Label name="sitrep-sel" text="—" class="stat-val" />
+                    <ui:Label name="sitrep-sel" text="—" class="stat-val sitrep-valor sitrep-sel" />
                 </ui:VisualElement>
                 <ui:VisualElement class="sitrep-row">
                     <ui:Label text="Tempo de Op.:" class="stat-lbl" />
-                    <ui:Label name="sitrep-tempo" text="00:00:00" class="stat-val mono" />
+                    <ui:Label name="sitrep-tempo" text="00:00:00" class="stat-val sitrep-valor sitrep-tempo mono" />
                 </ui:VisualElement>
             </ui:VisualElement>
 

@@ -1236,6 +1236,11 @@ public class GerenteSelecao : MonoBehaviour
                 // Certifica se a fábrica pertence ao jogador (TeamID 1)
                 if (id == null || id.teamID == 1) 
                 {
+                    if (fabrica.PossuiPainelIndustrial && FabricaMineriosMenuController.AbrirPara(fabrica))
+                    {
+                        return;
+                    }
+
                     MenuConstrucao menu = Object.FindFirstObjectByType<MenuConstrucao>();
                     if (menu != null)
                     {

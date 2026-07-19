@@ -144,7 +144,10 @@ namespace Hegemonia.AI.IA01
                 maxResidential = 6,
                 maxFoodProduction = 4,
                 maxEnergyProduction = 4,
-                maxStorage = 4,
+                // Depósitos são logísticos, não uma fonte de expansão urbana.
+                // A IA01 tem três âncoras específicas para eles e nunca deve
+                // cobrir a cidade de armazéns.
+                maxStorage = 3,
                 maxLogistics = 3,
                 maxIndustrial = 2,
                 maxDefense = 1,

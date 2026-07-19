@@ -153,7 +153,7 @@ public sealed class LocalizationManager : MonoBehaviour
         {
             case IdiomaJogo.EnUs: return "English";
             case IdiomaJogo.ZhHans: return "简体中文";
-            default: return "Portugues BR";
+            default: return "Português BR";
         }
     }
 

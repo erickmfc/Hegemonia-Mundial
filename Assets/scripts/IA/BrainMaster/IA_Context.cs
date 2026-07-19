@@ -41,5 +41,8 @@ namespace Hegemonia.AI.BrainMaster
         public IA_LotPlanner LotPlanner;
         public IA_UrbanBuildValidator UrbanBuildValidator;
         public IA_ConstructionPlanner ConstructionPlanner;
+        public IA_NationalIntentBoard IntentBoard;
+        public IA_StrategyArbiter StrategyArbiter;
+        public IA_IntentCommandRouter IntentCommandRouter;
     }
 }

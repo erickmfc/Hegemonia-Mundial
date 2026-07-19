@@ -1613,8 +1613,6 @@ public class Helicoptero : MonoBehaviour
 
     public void DefinirModoCombateAtivo(bool ativo)
     {
-        modoCombateAtivo = ativo;
-
         ControleUnidade controle = GetComponent<ControleUnidade>();
         if (controle == null)
         {
@@ -1624,6 +1622,18 @@ public class Helicoptero : MonoBehaviour
         if (controle != null)
         {
             controle.DefinirModoCombate(ativo);
+            return;
+        }
+
+        AplicarModoCombateDoMenu(ativo);
+    }
+
+    public void AplicarModoCombateDoMenu(bool ativo)
+    {
+        modoCombateAtivo = ativo;
+        if (!ativo)
+        {
+            alvoComandoAtaque = null;
         }
     }
 

@@ -887,12 +887,6 @@ public class PierMarinha : MonoBehaviour
 
         if (idPier != null && idPier.teamID != 1)
         {
-            var myCommander = IA_ComandanteRegistry.GetCommanderByTeam(idPier.teamID);
-            if (myCommander != null && myCommander.cerebroGeneral != null)
-            {
-                myCommander.cerebroGeneral.RegistrarUnidade(novoNavio);
-            }
-
             DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
         }
         

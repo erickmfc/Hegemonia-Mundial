@@ -533,6 +533,39 @@ public class Estaleiro : MonoBehaviour
         // --- LÓGICA DE IDENTIDADE (Dinâmica) ---
         navioPronto.layer = LayerMask.NameToLayer("Default");
         IdentidadeUnidade idEstaleiro = GetComponentInParent<IdentidadeUnidade>();
+        // Alguns creates antigos de estaleiro não carregam IdentidadeUnidade no
+        // objeto raiz. Nesse caso, usa o controlador de IA mais próximo para
+        // que o navio já nasça com o time correto (e possa receber patrulha,
+        // entrar na contagem militar e reagir às ordens da nação).
+        if (idEstaleiro == null)
+        {
+            Hegemonia.AI.IA01.IA01Controller[] controllers =
+                UnityEngine.Object.FindObjectsByType<Hegemonia.AI.IA01.IA01Controller>(FindObjectsSortMode.None);
+            Hegemonia.AI.IA01.IA01Controller nearest = null;
+            float nearestDistance = float.PositiveInfinity;
+            for (int i = 0; i < controllers.Length; i++)
+            {
+                Hegemonia.AI.IA01.IA01Controller candidate = controllers[i];
+                if (candidate == null || !candidate.isActiveAndEnabled || candidate.TeamId <= 1) continue;
+                float distance = Vector3.Distance(candidate.transform.position, transform.position);
+                if (distance < nearestDistance && distance <= 2200f)
+                {
+                    nearest = candidate;
+                    nearestDistance = distance;
+                }
+            }
+            if (nearest != null)
+            {
+                idEstaleiro = nearest.gameObject.GetComponent<IdentidadeUnidade>();
+                if (idEstaleiro == null)
+                {
+                    idEstaleiro = nearest.gameObject.AddComponent<IdentidadeUnidade>();
+                    idEstaleiro.teamID = nearest.TeamId;
+                    idEstaleiro.nomeDoPais = nearest.NationName;
+                    idEstaleiro.tipoUnidade = TipoUnidade.Estrutura;
+                }
+            }
+        }
         IdentidadeUnidade idNavio = navioPronto.GetComponent<IdentidadeUnidade>();
         if (idNavio == null) idNavio = navioPronto.AddComponent<IdentidadeUnidade>();
 
@@ -596,12 +629,6 @@ public class Estaleiro : MonoBehaviour
         // Registrar no General se for IA
         if (idNavio.teamID != 1)
         {
-            var myCommander = IA_ComandanteRegistry.GetCommanderByTeam(idNavio.teamID);
-            if (myCommander != null && myCommander.cerebroGeneral != null)
-            {
-                myCommander.cerebroGeneral.RegistrarUnidade(navioPronto);
-            }
-
             DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
         }
 

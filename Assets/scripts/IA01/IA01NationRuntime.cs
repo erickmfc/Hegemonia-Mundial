@@ -34,9 +34,11 @@ namespace Hegemonia.AI.IA01
         public IA01BuildDirector BuildDirector { get; }
         public IA01WarDirector WarDirector { get; }
         public IA01NationalEconomyDirector NationalEconomy { get; }
+        public IA01MilitaryDirector MilitaryDirector { get; }
 
         public string ConstructionStatus => BuildDirector.Status;
         public string CombatStatus => WarDirector.Status;
+        public string MilitaryStatus => MilitaryDirector != null ? MilitaryDirector.Status : "Reserva militar aguardando inicializacao.";
         public string ProgressionStatus { get; private set; } = "Aguardando inicializacao.";
         public string NextObjectiveStatus { get; private set; } = "Aguardando inicializacao.";
         public string MarketStatus => NationalEconomy.Status;
@@ -107,7 +109,13 @@ namespace Hegemonia.AI.IA01
             Strategy = new IA01StrategyArbiter(IntentBoard);
             BuildDirector = new IA01BuildDirector(controller, context, WorldState, ConstructionGovernor, Catalog, Reservations, FailureMemory, CommandQueue, CityPlanner, ZonePlanner, LotPlanner, BackendBridge, BuildPlanRuntime);
             WarDirector = new IA01WarDirector(controller, context, WorldState, CityPlanner, MissionDirector);
+            MilitaryDirector = new IA01MilitaryDirector(controller, context);
             NationalEconomy = new IA01NationalEconomyDirector(context);
+        }
+
+        public void RegisterHostileAggression(int attackerTeamId, Vector3 attackerPosition, float damage)
+        {
+            WarDirector?.RegisterHostileAggression(attackerTeamId, attackerPosition, damage);
         }
 
         public bool FoundationFundingGranted => Economy != null && Economy.FoundationFundingGranted;
@@ -182,6 +190,9 @@ namespace Hegemonia.AI.IA01
             operations += WarDirector.Plan(now, IntentBoard, Economy.IsEmergencyReserveRequired) ? 1 : 0;
             TrackModule("WarDirector", moduleStartedAt);
             moduleStartedAt = Time.realtimeSinceStartup;
+            operations += MilitaryDirector != null && MilitaryDirector.Tick(now) ? 1 : 0;
+            TrackModule("MilitaryDirector", moduleStartedAt);
+            moduleStartedAt = Time.realtimeSinceStartup;
             ConstructionGovernor.Refresh(now, country, WorldState, Catalog, BuildDirector);
             TrackModule("ConstructionGovernor", moduleStartedAt);
             Strategy.Arbitrate(now, Economy.IsEmergencyReserveRequired);
@@ -235,6 +246,7 @@ namespace Hegemonia.AI.IA01
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_objective", NextObjectiveStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_construction", ConstructionStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_combat", CombatStatus);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_military_reserve", MilitaryStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_market", MarketStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_capital_source", CapitalSourceStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_capital_item", CapitalItemIdStatus);
@@ -769,6 +781,8 @@ namespace Hegemonia.AI.IA01
         private float nextCapitalCheckAt;
         private int lastCapitalCatalogVersion = -1;
         private ComplexoGovernamental lastCapitalAnchor;
+        private int lastFoodExpansionDay = -1;
+        private int lastEnergyExpansionDay = -1;
 
         private static readonly IA01IntentType[] FoundationSequence =
         {
@@ -784,6 +798,8 @@ namespace Hegemonia.AI.IA01
             IA01IntentType.BuildMilitaryAirport,
             IA01IntentType.BuildCommercialAirport,
             IA01IntentType.BuildShipyard,
+            IA01IntentType.BuildPier,
+            IA01IntentType.BuildOffshorePlatform,
             IA01IntentType.BuildIndustry
         };
 
@@ -1000,6 +1016,10 @@ namespace Hegemonia.AI.IA01
                         || HasOwnedStructure(IA01StrategicRole.Shipyard)
                         || HasOwnedStructure(IA01StrategicRole.Port)
                         || HasOwnedStructure(IA01StrategicRole.Pier);
+                case IA01IntentType.BuildPier:
+                    return HasOwnedStructure(IA01StrategicRole.Pier);
+                case IA01IntentType.BuildOffshorePlatform:
+                    return HasOwnedStructureMatching(IA01StrategicRole.NavalBase, "plataforma", "offshore");
                 case IA01IntentType.BuildIndustry:
                     return HasOwnedStructure(IA01StrategicRole.Industrial);
                 default:
@@ -1024,6 +1044,8 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildMilitaryAirport: return "Aeroporto militar";
                 case IA01IntentType.BuildCommercialAirport: return "Aeroporto comercial";
                 case IA01IntentType.BuildShipyard: return "Estaleiro naval";
+                case IA01IntentType.BuildPier: return "Pier naval";
+                case IA01IntentType.BuildOffshorePlatform: return "Plataforma offshore";
                 case IA01IntentType.BuildIndustry: return "Industria";
                 default: return intent.ToString();
             }
@@ -1066,10 +1088,10 @@ namespace Hegemonia.AI.IA01
             int energy = country != null ? country.energia : 0;
             int food = country != null ? country.comida : 0;
 
-            PublishBuildNeed(board, now, profile, IA01IntentType.BuildEnergy, stage, posture, structures, threatened, atWar, structures < 2 || stage == IA01NationStage.Initialization || stage == IA01NationStage.Reconnaissance || energy < 500, "Energia inicial");
-            PublishBuildNeed(board, now, profile, IA01IntentType.BuildFoodProduction, stage, posture, structures, threatened, atWar, structures < 3 || stage == IA01NationStage.Survival || food < 500, "Producao de alimentos");
+            PublishBuildNeed(board, now, profile, IA01IntentType.BuildEnergy, stage, posture, structures, threatened, atWar, DeveConstruirEnergia(country), "Energia inicial");
+            PublishBuildNeed(board, now, profile, IA01IntentType.BuildFoodProduction, stage, posture, structures, threatened, atWar, DeveConstruirComida(country), "Producao de alimentos");
             PublishBuildNeed(board, now, profile, IA01IntentType.BuildResidentialCapacity, stage, posture, structures, threatened, atWar, structures < 4 || stage == IA01NationStage.Survival || stage == IA01NationStage.Stabilization, "Moradia inicial");
-            PublishBuildNeed(board, now, profile, IA01IntentType.BuildStorage, stage, posture, structures, threatened, atWar, structures < 5 || stage >= IA01NationStage.Stabilization, "Reserva e armazenamento");
+            PublishBuildNeed(board, now, profile, IA01IntentType.BuildStorage, stage, posture, structures, threatened, atWar, DeveConstruirArmazenamento(), "Reserva e armazenamento");
             PublishBuildNeed(board, now, profile, IA01IntentType.BuildLogistics, stage, posture, structures, threatened, atWar, structures < 6 || stage >= IA01NationStage.UrbanDevelopment, "Acesso e logistica");
             PublishBuildNeed(board, now, profile, IA01IntentType.BuildIndustry, stage, posture, structures, threatened, atWar, structures >= 5 && stage >= IA01NationStage.Industrialization, "Base industrial");
             bool shouldPublishDefense = threatened
@@ -1083,16 +1105,93 @@ namespace Hegemonia.AI.IA01
 
             if (structures >= 6)
             {
-                PublishBuildNeed(board, now, profile, IA01IntentType.BuildEnergy, stage, posture, structures, threatened, atWar, energy < 900 || profile == null || profile.EconomyWeight >= 0.45f, "Reforco energetico");
-                PublishBuildNeed(board, now, profile, IA01IntentType.BuildFoodProduction, stage, posture, structures, threatened, atWar, food < 900 || profile == null || profile.AgricultureWeight >= 0.45f, "Seguranca alimentar");
+                PublishBuildNeed(board, now, profile, IA01IntentType.BuildEnergy, stage, posture, structures, threatened, atWar, DeveConstruirEnergia(country), "Reforco energetico");
+                PublishBuildNeed(board, now, profile, IA01IntentType.BuildFoodProduction, stage, posture, structures, threatened, atWar, DeveConstruirComida(country), "Seguranca alimentar");
                 PublishBuildNeed(board, now, profile, IA01IntentType.BuildResidentialCapacity, stage, posture, structures, threatened, atWar, profile == null || profile.CautionWeight >= 0.45f, "Expansao residencial");
-                PublishBuildNeed(board, now, profile, IA01IntentType.BuildStorage, stage, posture, structures, threatened, atWar, profile == null || profile.IndustryWeight >= 0.45f, "Suporte industrial");
+                PublishBuildNeed(board, now, profile, IA01IntentType.BuildStorage, stage, posture, structures, threatened, atWar, DeveConstruirArmazenamento(), "Suporte industrial");
                 PublishBuildNeed(board, now, profile, IA01IntentType.BuildLogistics, stage, posture, structures, threatened, atWar, profile == null || profile.ExpansionWeight >= 0.45f || stage >= IA01NationStage.RegionalProjection, "Rede logistica");
                 PublishBuildNeed(board, now, profile, IA01IntentType.BuildIndustry, stage, posture, structures, threatened, atWar, stage >= IA01NationStage.Industrialization && (profile == null || profile.IndustryWeight >= 0.40f), "Expansao industrial");
                 PublishBuildNeed(board, now, profile, IA01IntentType.BuildDefense, stage, posture, structures, threatened, atWar, threatened || atWar || profile == null || profile.DefenseWeight >= 0.45f, "Seguranca da cidade");
             }
 
             Status = BuildStatus(stage, posture, threatened, atWar, emergencyReserve, structures);
+        }
+
+        /// <summary>
+        /// Armazém só é pedido quando há capacidade realmente pressionada. O limite
+        /// absoluto é três, definido pelas três âncoras de logística da IA01.
+        /// </summary>
+        private bool DeveConstruirArmazenamento()
+        {
+            IA01Manager manager = controller != null ? controller.Manager : null;
+            if (manager == null || manager.WorldRegistry == null || context == null)
+            {
+                return false;
+            }
+
+            int existentes = manager.WorldRegistry.CountStructuresByStrategicRole(context.TeamId, IA01StrategicRole.Storage);
+            if (existentes >= 3)
+            {
+                return false;
+            }
+
+            if (existentes == 0)
+            {
+                return true;
+            }
+
+            if (context.TryGetResource("storage", out IA01ResourceRecord armazenamento)
+                && armazenamento != null
+                && armazenamento.Capacity > 0f)
+            {
+                return armazenamento.Amount / armazenamento.Capacity >= 0.85f;
+            }
+
+            return false;
+        }
+
+        private bool DeveConstruirComida(DadosPaisGoverno country)
+        {
+            return DeveExpandirInfraestrutura(
+                IA01StrategicRole.FoodProduction,
+                country != null ? country.comida : 0,
+                800,
+                6,
+                ref lastFoodExpansionDay);
+        }
+
+        private bool DeveConstruirEnergia(DadosPaisGoverno country)
+        {
+            return DeveExpandirInfraestrutura(
+                IA01StrategicRole.EnergyProduction,
+                country != null ? country.energia : 0,
+                1400,
+                3,
+                ref lastEnergyExpansionDay);
+        }
+
+        /// <summary>
+        /// Fazenda e usina são expansões lentas: uma por dia de jogo somente
+        /// quando o recurso correspondente está baixo. Impede a avalanche de
+        /// dezenas de prédios no mesmo frame.
+        /// </summary>
+        private bool DeveExpandirInfraestrutura(IA01StrategicRole role, int estoque, int minimo, int limite, ref int ultimoDia)
+        {
+            IA01Manager manager = controller != null ? controller.Manager : null;
+            if (manager == null || manager.WorldRegistry == null || context == null) return false;
+            int existentes = manager.WorldRegistry.CountStructuresByStrategicRole(context.TeamId, role);
+            if (existentes >= limite) return false;
+            if (existentes == 0) return true;
+            if (estoque >= minimo) return false;
+
+            int dia = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 0;
+            if (dia <= 0)
+            {
+                return ultimoDia < 0;
+            }
+            if (ultimoDia == dia) return false;
+            ultimoDia = dia;
+            return true;
         }
 
         private bool PublishBuildNeed(IA01IntentBoard board, float now, IA01NationProfile profile, IA01IntentType intent, IA01NationStage stage, IA01NationPosture posture, int structures, bool threatened, bool atWar, bool shouldPublish, string reason)
@@ -1454,7 +1553,7 @@ namespace Hegemonia.AI.IA01
 
                 int priority = intent == IA01IntentType.BuildDefense
                     ? (candidate.StrategicRole == IA01StrategicRole.AntiAirDefense ? 100 : 10)
-                    : 0;
+                    : ResolveInfrastructurePriority(intent, candidate);
                 if (bestExact == null
                     || priority > bestPriority
                     || (priority == bestPriority && candidate.Cost < bestExact.Cost))
@@ -1476,6 +1575,25 @@ namespace Hegemonia.AI.IA01
                 ? "NoValidCatalogItem: catalogo vazio para " + intent + "."
                 : "NoValidCatalogItem: catalogo sem item compatível para " + intent + ".";
             return false;
+        }
+
+        private static int ResolveInfrastructurePriority(IA01IntentType intent, IA01BuildDefinition candidate)
+        {
+            if (candidate == null || candidate.Item == null) return 0;
+            string text = IA_Text.Normalize(candidate.Item.GetDisplayName() + " " + candidate.Item.name + " " + candidate.Item.aliases);
+            if (intent == IA01IntentType.BuildEnergy)
+            {
+                // Uma fonte de alta capacidade reduz a quantidade de usinas e
+                // preserva área do mapa; nuclear só entra se a IA puder pagá-la.
+                if (text.Contains("nuclear") || text.Contains("nucleo") || text.Contains("reator") || text.Contains("reator")) return 300;
+                if (text.Contains("hidro") || text.Contains("hydro") || text.Contains("termica") || text.Contains("thermal")) return 180;
+                return 40;
+            }
+            if (intent == IA01IntentType.BuildFoodProduction)
+            {
+                return text.Contains("fazenda") || text.Contains("farm") ? 120 : 20;
+            }
+            return 0;
         }
 
         private static bool IsForcedOpeningIntent(IA01IntentType intent)
@@ -1646,6 +1764,9 @@ namespace Hegemonia.AI.IA01
                     }
 
                     return IA01BuildDomain.Coastal;
+                case IA01IntentType.BuildPier:
+                case IA01IntentType.BuildOffshorePlatform:
+                    return IA01BuildDomain.Coastal;
                 default:
                     return IA01BuildDomain.Land;
             }
@@ -1661,6 +1782,10 @@ namespace Hegemonia.AI.IA01
                     return new[] { "aeroporto_comercial", "aeroporto comercial", "commercial airport", "terminal civil" };
                 case IA01IntentType.BuildShipyard:
                     return new[] { "estaleiro", "shipyard", "naval yard" };
+                case IA01IntentType.BuildPier:
+                    return new[] { "pier" };
+                case IA01IntentType.BuildOffshorePlatform:
+                    return new[] { "plataforma", "offshore" };
                 case IA01IntentType.BuildMilitaryTent:
                     return new[] { "tenda", "tent", "barracks" };
                 case IA01IntentType.BuildVehicleConstructor:
@@ -1991,6 +2116,8 @@ namespace Hegemonia.AI.IA01
                 || intent == IA01IntentType.BuildMilitaryAirport
                 || intent == IA01IntentType.BuildCommercialAirport
                 || intent == IA01IntentType.BuildShipyard
+                || intent == IA01IntentType.BuildPier
+                || intent == IA01IntentType.BuildOffshorePlatform
                 || intent == IA01IntentType.BuildIndustry;
             if (definition.MinimumStage > stage && !sequenceIntent)
             {
@@ -2035,6 +2162,12 @@ namespace Hegemonia.AI.IA01
                         || definition.StrategicRole == IA01StrategicRole.Shipyard
                         || definition.StrategicRole == IA01StrategicRole.Port
                         || definition.StrategicRole == IA01StrategicRole.Pier;
+                case IA01IntentType.BuildPier:
+                    return definition.StrategicRole == IA01StrategicRole.Pier
+                        || CandidateText(definition).Contains("pier");
+                case IA01IntentType.BuildOffshorePlatform:
+                    return definition.StrategicRole == IA01StrategicRole.NavalBase
+                        && (CandidateText(definition).Contains("plataforma") || CandidateText(definition).Contains("offshore"));
                 case IA01IntentType.BuildIndustry:
                     return definition.StrategicRole == IA01StrategicRole.Industrial;
                 case IA01IntentType.EstablishCapital:
@@ -2124,7 +2257,9 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildRoad: return IA01BuildArchetype.Logistics;
                 case IA01IntentType.BuildMilitaryAirport:
                 case IA01IntentType.BuildCommercialAirport: return IA01BuildArchetype.Air;
-                case IA01IntentType.BuildShipyard: return IA01BuildArchetype.Naval;
+                case IA01IntentType.BuildShipyard:
+                case IA01IntentType.BuildPier:
+                case IA01IntentType.BuildOffshorePlatform: return IA01BuildArchetype.Naval;
                 case IA01IntentType.BuildStarterHouse:
                 case IA01IntentType.BuildMediumApartment:
                 case IA01IntentType.BuildHighApartment: return IA01BuildArchetype.Residential;
@@ -2159,6 +2294,10 @@ namespace Hegemonia.AI.IA01
                     return IA01StrategicRole.Airfield;
                 case IA01IntentType.BuildShipyard:
                     return IA01StrategicRole.Shipyard;
+                case IA01IntentType.BuildPier:
+                    return IA01StrategicRole.Pier;
+                case IA01IntentType.BuildOffshorePlatform:
+                    return IA01StrategicRole.NavalBase;
                 case IA01IntentType.BuildStarterHouse:
                 case IA01IntentType.BuildMediumApartment:
                 case IA01IntentType.BuildHighApartment:
@@ -3021,8 +3160,16 @@ namespace Hegemonia.AI.IA01
                 foundationBudgetOverride = foundationBudgetOverride || openingBudgetOverride;
                 bool restoredPlanCommand = buildPlan != null && buildPlan.TryGetRestoredPending(intent, out planSelection, out planReason);
                 bool found = restoredPlanCommand || buildPlan != null && buildPlan.TrySelect(intent, now, out planSelection, out planHandled, out planReason);
-                bool allowOpeningFallback = city != null && city.IsFoundationSequenceIntent(intent.Type);
-                if (!found && (!planHandled || allowOpeningFallback))
+                // Um create preparado é uma ordem de posicionamento, não uma
+                // sugestão. Se ele não estiver válido, a IA aguarda e informa o
+                // motivo; nunca procura um lote aleatório no mapa.
+                bool allowOpeningFallback = city != null
+                    && city.IsFoundationSequenceIntent(intent.Type)
+                    && !RequiresOwnCreate(intent.Type);
+                // Fichas antigas do plano podem não ser reconhecidas pelo catálogo
+                // novo. Para itens com create próprio, aceita outra ficha compatível,
+                // mas mantém obrigatoriamente a âncora do create na etapa de lote.
+                if (!found && (!planHandled || allowOpeningFallback || RequiresOwnCreate(intent.Type)))
                 {
                     found = intent.Type == IA01IntentType.EstablishCapital
                         ? catalog.TryGetCapital(out definition)
@@ -3077,9 +3224,17 @@ namespace Hegemonia.AI.IA01
                 int maxPhysicsChecks = governor != null ? governor.MaxPhysicsChecksPerSlice : 16;
                 IA01BuildLot lot;
                 string reason;
-                Vector3 anchorPosition;
-                Quaternion anchorRotation;
-                bool hasAnchor = controller.TryResolveConstructionAnchor(intent.Type, out anchorPosition, out anchorRotation);
+                Vector3 anchorPosition = Vector3.zero; // default for residential lots
+                Quaternion anchorRotation = Quaternion.identity; // default for residential lots
+                // Estruturas especiais usam o create fixo. Residencias sao excecao:
+                // o create apenas indica a regiao de referencia; cada casa/predio
+                // precisa de um lote novo junto da rua para formar um bairro.
+                bool residentialIntent = definition.StrategicRole == IA01StrategicRole.Residential;
+                bool hasAnchor = false;
+                if (!residentialIntent)
+                {
+                    hasAnchor = controller.TryResolveConstructionAnchor(intent.Type, out anchorPosition, out anchorRotation);
+                }
                 if (hasAnchor)
                 {
                     // O create/âncora do próprio país tem prioridade absoluta,
@@ -3197,10 +3352,29 @@ namespace Hegemonia.AI.IA01
 
         private static bool IsFixedConstructionIntent(IA01IntentType type)
         {
-            return type == IA01IntentType.BuildVehicleConstructor
+            return type == IA01IntentType.BuildEnergy
+                || type == IA01IntentType.BuildFoodProduction
+                || type == IA01IntentType.BuildStorage
+                || type == IA01IntentType.BuildVehicleConstructor
                 || type == IA01IntentType.BuildMilitaryAirport
                 || type == IA01IntentType.BuildCommercialAirport
-                || type == IA01IntentType.BuildShipyard;
+                || type == IA01IntentType.BuildShipyard
+                || type == IA01IntentType.BuildPier
+                || type == IA01IntentType.BuildOffshorePlatform;
+        }
+
+        private static bool RequiresOwnCreate(IA01IntentType type)
+        {
+            return type == IA01IntentType.BuildEnergy
+                || type == IA01IntentType.BuildFoodProduction
+                || type == IA01IntentType.BuildStorage
+                || type == IA01IntentType.BuildVehicleConstructor
+                || type == IA01IntentType.BuildMilitaryAirport
+                || type == IA01IntentType.BuildCommercialAirport
+                || type == IA01IntentType.BuildShipyard
+                || type == IA01IntentType.BuildPier
+                || type == IA01IntentType.BuildOffshorePlatform
+                || type == IA01IntentType.BuildMilitaryTent;
         }
 
         public bool AllowsIntent(IA01Intent intent, float now)
@@ -3425,6 +3599,11 @@ namespace Hegemonia.AI.IA01
                     continue;
                 }
 
+                // Residencias ocupam lotes urbanos reais: a frente precisa apontar para
+                // uma rua e alternamos os dois lados para formar quarteiroes, em vez de
+                // empilhar tudo no mesmo ponto de origem da IA.
+                TryArrangeResidentialLot(definition, ref position, ref rotation, slot);
+
                 GerenteDeTerritorio territory = GerenteDeTerritorio.Instancia;
                 if (territory != null)
                 {
@@ -3547,6 +3726,7 @@ namespace Hegemonia.AI.IA01
                     if (reason == "orcamento de fisica excedido") break;
                     continue;
                 }
+                TryArrangeResidentialLot(definition, ref position, ref rotation, slot);
                 if (!bounds.Contains(position))
                 {
                     reason = "candidato saiu da zona autonoma";
@@ -3706,6 +3886,49 @@ namespace Hegemonia.AI.IA01
             return true;
         }
 
+        private static void TryArrangeResidentialLot(IA01BuildDefinition definition, ref Vector3 position, ref Quaternion rotation, int slot)
+        {
+            if (definition == null || definition.StrategicRole != IA01StrategicRole.Residential) return;
+            GameObject prefab;
+            if (definition.Item == null || !definition.Item.TryGetPrefabBasico(out prefab) || prefab == null) return;
+            Imovel imovel = prefab.GetComponent<Imovel>();
+            if (imovel == null) return;
+
+            Collider[] hits = Physics.OverlapSphere(position, 180f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            RuaConectora nearest = null;
+            float best = float.MaxValue;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                RuaConectora road = hits[i] != null ? hits[i].GetComponentInParent<RuaConectora>() : null;
+                if (road == null) continue;
+                Vector3 a = road.ObterConectorInicio().posicao;
+                Vector3 b = road.ObterConectorFim().posicao;
+                Vector3 ab = b - a;
+                ab.y = 0f;
+                if (ab.sqrMagnitude < 0.01f) continue;
+                Vector3 p = position; p.y = a.y;
+                float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / ab.sqrMagnitude);
+                Vector3 projected = a + ab * t;
+                float distance = (p - projected).sqrMagnitude;
+                if (distance < best) { best = distance; nearest = road; }
+            }
+            if (nearest == null) return;
+
+            Vector3 start = nearest.ObterConectorInicio().posicao;
+            Vector3 end = nearest.ObterConectorFim().posicao;
+            Vector3 direction = end - start; direction.y = 0f;
+            if (direction.sqrMagnitude < 0.01f) return;
+            direction.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, direction).normalized;
+            Vector3 flat = position; flat.y = start.y;
+            float along = Mathf.Clamp(Vector3.Dot(flat - start, direction), 2f, Vector3.Distance(start, end) - 2f);
+            Vector3 onRoad = start + direction * along;
+            Vector3 side = ((slot & 1) == 0) ? right : -right;
+            position = onRoad + side * (nearest.largura * 0.5f + imovel.distanciaFronteiraRua);
+            position.y = onRoad.y;
+            rotation = Quaternion.LookRotation(-side, Vector3.up);
+        }
+
         private bool HasAntiAirStrategicClearance(Vector3 position)
         {
             const float minimumDistance = 100f;
@@ -3766,6 +3989,17 @@ namespace Hegemonia.AI.IA01
 
     public sealed class IA01WarDirector
     {
+        private sealed class HostileContact
+        {
+            public int TeamId;
+            public Vector3 Position;
+            public float LastSeenAt;
+            public float Damage;
+        }
+
+        private readonly Dictionary<int, HostileContact> hostileContacts = new Dictionary<int, HostileContact>();
+        private const float HostileContactLifetime = 90f;
+        private const float NearbyAggressorRadius = 180f;
         private readonly IA01Controller controller;
         private readonly IA01RuntimeContext context;
         private readonly IA01WorldState world;
@@ -3788,6 +4022,25 @@ namespace Hegemonia.AI.IA01
             this.missions = missions;
         }
 
+        public void RegisterHostileAggression(int attackerTeamId, Vector3 attackerPosition, float damage)
+        {
+            if (attackerTeamId <= 0 || attackerTeamId == context.TeamId) return;
+
+            float now = Time.unscaledTime;
+            HostileContact contact;
+            if (!hostileContacts.TryGetValue(attackerTeamId, out contact) || contact == null)
+            {
+                contact = new HostileContact { TeamId = attackerTeamId };
+                hostileContacts[attackerTeamId] = contact;
+                Debug.Log("[IA01 Combat] Time " + context.TeamId + " identificou o agressor " + attackerTeamId + " como inimigo.");
+            }
+
+            contact.Position = attackerPosition;
+            contact.LastSeenAt = now;
+            contact.Damage += Mathf.Max(0f, damage);
+            Status = "Agressor identificado: time " + attackerTeamId + "; preparando retaliacao.";
+        }
+
         public bool Plan(float now, IA01IntentBoard board, bool emergencyReserve)
         {
             if (now < nextCheckAt) return false;
@@ -3800,6 +4053,11 @@ namespace Hegemonia.AI.IA01
                 board.Publish(IA01IntentType.DefendCapital, 1200, "Prefeitura sob ameaca", now);
                 Campaign.DefendingCapital = true;
                 return QueueDefense(now);
+            }
+
+            if (QueueRetaliation(now, board, emergencyReserve))
+            {
+                return true;
             }
 
             Campaign.DefendingCapital = false;
@@ -3847,6 +4105,78 @@ namespace Hegemonia.AI.IA01
                     : brain.TryIssueMovePackage(context.TeamId, "ia01_campaign_corridor", objective, 950),
                 success => Status = success ? (finalAttack ? "Campanha atacando prefeitura inimiga." : "Campanha abrindo corredor ate a prefeitura.") : "Ordem de campanha recusada; aguardando replano.");
             return true;
+        }
+
+        private bool QueueRetaliation(float now, IA01IntentBoard board, bool emergencyReserve)
+        {
+            HostileContact contact = ResolveLatestContact(now);
+            if (contact == null) return false;
+
+            Vector3 target = ResolveNearbyAggressor(contact);
+            board.Publish(IA01IntentType.DefendCapital, emergencyReserve ? 1200 : 1150,
+                "Retaliar contra o agressor identificado", now);
+            if (now < nextOrderAt) return false;
+
+            IA_BrainMaster brain = FindBrainMaster();
+            if (brain == null)
+            {
+                Status = "Agressor identificado; aguardando BrainMaster para retaliacao.";
+                return false;
+            }
+
+            nextOrderAt = now + 4f;
+            int attackerTeamId = contact.TeamId;
+            missions.Queue("retaliate:" + context.TeamId + ":" + attackerTeamId,
+                () => brain.TryIssueAttack(context.TeamId, "ia01_retaliacao_" + attackerTeamId, target, 1150),
+                success => Status = success
+                    ? "Retaliacao enviada contra o time " + attackerTeamId + "."
+                    : "Agressor identificado; retaliacao aguardando unidades disponiveis.");
+            return true;
+        }
+
+        private HostileContact ResolveLatestContact(float now)
+        {
+            HostileContact latest = null;
+            List<int> expired = null;
+            foreach (KeyValuePair<int, HostileContact> pair in hostileContacts)
+            {
+                HostileContact contact = pair.Value;
+                if (contact == null || now - contact.LastSeenAt > HostileContactLifetime)
+                {
+                    if (expired == null) expired = new List<int>();
+                    expired.Add(pair.Key);
+                    continue;
+                }
+
+                if (latest == null || contact.LastSeenAt > latest.LastSeenAt) latest = contact;
+            }
+
+            if (expired != null)
+            {
+                for (int i = 0; i < expired.Count; i++) hostileContacts.Remove(expired[i]);
+            }
+            return latest;
+        }
+
+        private Vector3 ResolveNearbyAggressor(HostileContact contact)
+        {
+            if (contact == null) return controller.transform.position;
+
+            Vector3 target = contact.Position;
+            float bestDistance = NearbyAggressorRadius * NearbyAggressorRadius;
+            for (int i = 0; i < world.EnemyUnits.Count; i++)
+            {
+                IdentidadeUnidade enemy = world.EnemyUnits[i];
+                if (enemy == null || enemy.teamID != contact.TeamId) continue;
+
+                float distance = (enemy.transform.position - contact.Position).sqrMagnitude;
+                if (distance <= bestDistance)
+                {
+                    bestDistance = distance;
+                    target = enemy.transform.position;
+                }
+            }
+            return target;
         }
 
         private bool QueueDefense(float now)

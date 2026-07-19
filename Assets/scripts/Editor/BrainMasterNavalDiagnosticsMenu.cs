@@ -1,5 +1,6 @@
 using System.Text;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.Shared;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,7 +9,7 @@ public static class BrainMasterNavalDiagnosticsMenu
     [MenuItem("Tools/Diagnostics/BrainMaster/Dump Naval Report")]
     private static void DumpNavalReport()
     {
-        IA_BrainMaster[] brains = Object.FindObjectsByType<IA_BrainMaster>(FindObjectsSortMode.None);
+        IA_BrainMaster[] brains = IA_UnitySearch.FindAll<IA_BrainMaster>();
         int dumped = 0;
         for (int i = 0; i < brains.Length; i++)
         {
@@ -169,7 +170,7 @@ public static class BrainMasterNavalDiagnosticsMenu
             }
         }
 
-        return Object.FindFirstObjectByType<IA_BrainMaster>();
+        return IA_UnitySearch.FindFirst<IA_BrainMaster>();
     }
 
     private static bool TryResolveShipyard(IA_BrainMaster brain, out string itemKey, out DadosConstrucao data)

@@ -91,6 +91,8 @@ public class ControleTorreta : MonoBehaviour
     [Header("Radar e Ociosidade")]
     [Tooltip("Se ativado, a torreta fica girando 360º quando não tem alvos (estilo radar). Se desativado, ela volta para a frente.")]
     public bool modoRadar = false;
+    [Tooltip("Failsafe: impede qualquer rotacao automatica desta torreta.")]
+    public bool bloquearMovimentoAutomatico = false;
     
     [Header("Defesa Anti-Míssil")]
     [Tooltip("Pode interceptar mísseis inimigos no ar?")]
@@ -288,6 +290,7 @@ public class ControleTorreta : MonoBehaviour
 
         CriarVisualizadorAlcance();
         GarantirLocaisDeTiro();
+        GarantirCanosDaTorreta();
 
         if (municaoPrefab != null)
             PoolDeObjetosCombate.Prewarm(municaoPrefab, Mathf.Clamp(tamanhoCartucho / 5, 4, 12));
@@ -301,7 +304,7 @@ public class ControleTorreta : MonoBehaviour
     #region Radar e Busca de Alvos
     void ProcurarAlvo()
     {
-        if (modoPassivo)
+        if (modoPassivo || bloquearMovimentoAutomatico)
         {
             SetarAlvo(null);
             return;
@@ -581,6 +584,12 @@ public class ControleTorreta : MonoBehaviour
     #region Update e Rotação
     void Update()
     {
+        if (bloquearMovimentoAutomatico)
+        {
+            SetarAlvo(null);
+            return;
+        }
+
         AtualizarVisualizadorAlcance();
         AtualizarRecuo();
 
@@ -624,7 +633,9 @@ public class ControleTorreta : MonoBehaviour
                 if (progressoDesdobramento >= 1f) estaProntoParaAtirar = true;
             }
 
-            if (!alvoAtual.gameObject.activeInHierarchy || !ControleSubmarino.PodeSerAlvoConvencional(alvoAtual))
+            if (!alvoAtual.gameObject.activeInHierarchy
+                || !ControleSubmarino.PodeSerAlvoConvencional(alvoAtual)
+                || (alvoAtual.position - transform.position).sqrMagnitude > alcance * alcance)
             {
                 SetarAlvo(null);
                 return;
@@ -837,19 +848,26 @@ public class ControleTorreta : MonoBehaviour
                 return;
             }
 
-            GameObject bala = PoolDeObjetosCombate.Spawn(prefabParaUsar, barrilDaVez.position, barrilDaVez.rotation);
+            Vector3 direcaoDisparo = barrilDaVez.forward;
+            if (alvoAtual != null)
+            {
+                Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
+                Vector3 direcaoPredita = alvoPosicao - barrilDaVez.position;
+                if (direcaoPredita.sqrMagnitude > 0.01f)
+                {
+                    direcaoDisparo = direcaoPredita.normalized;
+                }
+            }
+
+            Quaternion rotacaoDisparo = Quaternion.LookRotation(direcaoDisparo, Vector3.up);
+            GameObject bala = PoolDeObjetosCombate.Spawn(prefabParaUsar, barrilDaVez.position, rotacaoDisparo);
             Projetil scriptBala = bala != null ? bala.GetComponent<Projetil>() : null;
             
             if (scriptBala != null)
             {
                 scriptBala.SetDono(transform.root.gameObject);
-                if (alvoAtual != null)
-                {
-                    Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
-                    Vector3 direcao = (alvoPosicao - barrilDaVez.position).normalized;
-                    scriptBala.SetDirecao(direcao);
-                    if (scriptBala.velocidade == 0) scriptBala.velocidade = 200f; 
-                }
+                scriptBala.SetDirecao(direcaoDisparo);
+                if (scriptBala.velocidade == 0) scriptBala.velocidade = 200f;
             }
 
             if (somTiro != null && fonteAudio != null) fonteAudio.PlayOneShot(somTiro);
@@ -1319,7 +1337,11 @@ public class ControleTorreta : MonoBehaviour
     void GarantirLocaisDeTiro()
     {
         locaisDoTiro = FiltrarLocaisValidos(locaisDoTiro);
-        if (locaisDoTiro != null && locaisDoTiro.Length > 0) return;
+        if (locaisDoTiro != null && locaisDoTiro.Length > 0)
+        {
+            GarantirCanosDaTorreta();
+            return;
+        }
 
         locaisDoTiro = DescobrirLocaisDeTiroAutomaticos();
         if (locaisDoTiro != null && locaisDoTiro.Length > 0)
@@ -1329,7 +1351,34 @@ public class ControleTorreta : MonoBehaviour
                 Debug.LogWarning($"[ControleTorreta] '{gameObject.name}' estava sem locaisDoTiro. Fallback automatico configurado.", this);
                 diagnosticoLocaisDoTiroEmitido = true;
             }
+            GarantirCanosDaTorreta();
             return;
+        }
+    }
+
+    void GarantirCanosDaTorreta()
+    {
+        if (canosDaTorreta != null || locaisDoTiro == null || locaisDoTiro.Length == 0)
+        {
+            return;
+        }
+
+        Transform pontoPrincipal = locaisDoTiro[0];
+        if (pontoPrincipal == null)
+        {
+            return;
+        }
+
+        Transform candidato = pontoPrincipal.parent;
+        while (candidato != null && candidato != transform)
+        {
+            if (candidato != pecaQueGira)
+            {
+                canosDaTorreta = candidato;
+                break;
+            }
+
+            candidato = candidato.parent;
         }
     }
 

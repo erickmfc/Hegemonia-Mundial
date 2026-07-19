@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Artilharia
   descricao: "Ataque de longa dist\xE2ncia."
+  itemId: artilharia_ar
   icone: {fileID: 0}
   prefabDaUnidade: {fileID: 861696503367353079, guid: d29c5d27a37b58348985ca6f91f76a90, type: 3}
   preco: 700

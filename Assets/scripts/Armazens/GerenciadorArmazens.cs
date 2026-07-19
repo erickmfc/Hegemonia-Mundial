@@ -153,6 +153,11 @@ public class GerenciadorArmazens : MonoBehaviour
         return armazemRecursos.ConsultarRecurso(tipo);
     }
 
+    public void NotificarAtualizacaoManual()
+    {
+        OnArmazensAtualizados?.Invoke();
+    }
+
     // ==================== MÉTODOS PÚBLICOS PARA RECURSOS MILITARES ====================
 
     /// <summary>

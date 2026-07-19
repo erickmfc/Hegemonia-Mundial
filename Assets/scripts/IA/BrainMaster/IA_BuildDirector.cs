@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Hegemonia.AI.IA01;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -155,6 +156,7 @@ namespace Hegemonia.AI.BrainMaster
 
             _lastSlowSectionSummary = section + "=" + elapsedMs.ToString("0.00") + "ms"
                 + (string.IsNullOrEmpty(detail) ? string.Empty : " | " + detail);
+            IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_BuildDirector", "PROFILE", _lastSlowSectionSummary);
 
             float now = Time.time;
             float cooldownSeconds = elapsedMs >= 500f
@@ -345,9 +347,85 @@ namespace Hegemonia.AI.BrainMaster
                    && (_context.CombatPressure == null || _context.CombatPressure.IsCombatRecent(45f) == false);
         }
 
+        private void AdvanceDelegatedBootstrapIfReady()
+        {
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            if (brain == null || !brain.IsBootstrapActive)
+            {
+                return;
+            }
+
+            int cityHall;
+            int hq;
+            int barracks;
+            int factories;
+            int radars;
+            int sentries;
+            int ciws;
+            int airports;
+            int commercialAirports;
+            int heliports;
+            int estaleiros;
+            int piers;
+            int plataformas;
+            int walls;
+            int missiles;
+            int warehouses;
+            int usinas;
+            int houses;
+            int villages;
+            CollectStructureCounts(
+                out cityHall,
+                out hq,
+                out barracks,
+                out factories,
+                out radars,
+                out sentries,
+                out ciws,
+                out airports,
+                out commercialAirports,
+                out heliports,
+                out estaleiros,
+                out piers,
+                out plataformas,
+                out walls,
+                out missiles,
+                out warehouses,
+                out usinas,
+                out houses,
+                out villages);
+
+            bool foundationReady = airports > 0
+                && commercialAirports > 0
+                && estaleiros > 0
+                && factories > 0;
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
+                "ia_foundation_infrastructure_ready",
+                foundationReady ? 1 : 0);
+            if (!foundationReady)
+            {
+                return;
+            }
+
+            // A IA01 ja construiu a cadeia oficial. Libera o bootstrap para a
+            // fase de producao sem tentar repetir obras pelo BrainMaster.
+            brain.SetBootstrapStage(
+                IA_BrainMaster.IA_BootstrapStage.ProduceGroundUnits,
+                "infraestrutura fundacional pronta; liberando producao militar");
+        }
+
         public void Tick(float now, float deltaTime)
         {
             IA_NavalPlacementField.BeginFrame();
+
+            if (_context != null && _context.Brain != null
+                && IA01ConstructionAuthority.IsOwner(_context.Brain.TeamId))
+            {
+                AdvanceDelegatedBootstrapIfReady();
+                CombatNavalBuildLocked = false;
+                CombatNavalBuildLockReason = "Construcao entregue a IA01.";
+                return;
+            }
 
             if (now < _nextDecisionTime)
             {
@@ -2658,16 +2736,35 @@ namespace Hegemonia.AI.BrainMaster
                 ManualPointLabel = manualPoint != null ? manualPoint.GetDisplayLabel() : string.Empty
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Build,
-                Priority = priority,
-                DedupKey = "build:" + IA_Text.Normalize(itemKey),
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Build,
+                "IA_BuildDirector",
+                "build",
+                forceManualPlacement ? "construcao manual validada" : "construcao validada",
+                priority,
+                "build",
+                "build:" + IA_Text.Normalize(itemKey),
+                cooldown,
+                payload);
 
-            bool queued = _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            DadosConstrucao buildData;
+            _context.Backend.TryResolveItem(itemKey, out buildData);
+            IA_NationalIntent intent = new IA_NationalIntent
+            {
+                DedupKey = request.DedupKey,
+                Origin = "IA_BuildDirector",
+                Reason = request.Reason,
+                Kind = IA_IntentKind.Build,
+                Priority = priority,
+                Urgency = priority,
+                EstimatedCost = buildData != null ? buildData.preco : 0f,
+                ExpectedBenefit = zone == IA_ZoneType.Defense || zone == IA_ZoneType.Core ? 50f : 25f,
+                ValidUntil = Time.time + 12f,
+                Command = request
+            };
+            bool queued = _context.IntentBoard != null
+                ? _context.IntentBoard.Publish(intent, Time.time, out reason)
+                : _context.CommandQueue.Enqueue(request, Time.time, out reason);
             if (trackNavalDiagnostics)
             {
                 NavalDiagnosticLine("fila " + (queued ? "ok" : "falhou") + " | item=" + itemKey + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
@@ -2682,6 +2779,11 @@ namespace Hegemonia.AI.BrainMaster
             if (queued)
             {
                 DiagnosticoDesempenhoJogo.RegistrarConstrucao(itemKey, candidate);
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_BuildDirector", "BUILD_OK", "item=" + itemKey + " | pos=" + candidate);
+            }
+            else
+            {
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_BuildDirector", "BUILD_FAIL", "item=" + itemKey + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
             }
 
             return queued;
@@ -2731,6 +2833,7 @@ namespace Hegemonia.AI.BrainMaster
         private void NavalDiagnosticLine(string line)
         {
             IA_NavalBuildDiagnostics.AddLine(_context.Brain, line);
+            IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_BuildDirector", "NAVAL", line);
         }
 
         private void NavalDiagnosticPoint(Vector3 position, string label, Color color, float size = 3.5f, bool wire = true)
@@ -2917,6 +3020,12 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            if (!HasBrainMasterAuthority())
+            {
+                EndTimingScope("ExecuteBuildImmediately", "item=" + itemKey + " | success=false | reason=sem autoridade brainmaster", profileStart, 2.00f);
+                return false;
+            }
+
             bool forceManualPlacement = manualPoint != null && manualPoint.ForceExactPlacement;
             Quaternion rotation = manualPoint != null ? manualPoint.transform.rotation : Quaternion.identity;
             string poseReason;
@@ -2936,14 +3045,16 @@ namespace Hegemonia.AI.BrainMaster
                 ManualPointLabel = manualPoint != null ? manualPoint.GetDisplayLabel() : string.Empty
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Build,
-                Priority = 999,
-                DedupKey = "recovery_build:" + IA_Text.Normalize(itemKey) + ":" + Time.frameCount,
-                CooldownSeconds = 0f,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Build,
+                "IA_BuildDirector",
+                "build",
+                "recuperacao de emergencia",
+                999,
+                "build",
+                "recovery_build:" + IA_Text.Normalize(itemKey) + ":" + Time.frameCount,
+                0f,
+                payload);
 
             string message;
             bool success = _context.Backend.CommandService.Execute(request, _context, out message);
@@ -2977,6 +3088,12 @@ namespace Hegemonia.AI.BrainMaster
             float maxRadius)
         {
             long profileStart = BeginTimingScope();
+            if (!HasBrainMasterAuthority())
+            {
+                EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=false | reason=sem autoridade brainmaster", profileStart, 2.00f);
+                return false;
+            }
+
             DadosConstrucao item;
             if (!_context.Backend.TryResolveItem(itemKey, out item) || item == null || item.prefabDaUnidade == null)
             {
@@ -3063,6 +3180,13 @@ namespace Hegemonia.AI.BrainMaster
 
             EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=true", profileStart, 2.00f);
             return true;
+        }
+
+        private bool HasBrainMasterAuthority()
+        {
+            return _context != null
+                   && _context.Brain != null
+                   && _context.Brain.HasExecutionAuthority;
         }
 
         private bool TryFindLegacyCandidate(

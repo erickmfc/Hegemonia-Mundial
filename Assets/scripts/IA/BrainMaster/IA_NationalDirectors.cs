@@ -287,6 +287,11 @@ namespace Hegemonia.AI.BrainMaster
                 float desconto = rel.pactoMilitar ? 0.86f : 0.96f;
                 CriarProposta(gov, pais.teamId, jogador.teamId, TipoPropostaInternacional.Venda, surplus, quantidade, Mathf.RoundToInt(item.precoAtual * desconto), "oferta de " + item.nome + " no mercado aliado");
                 _state.ActiveOffers++;
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_SyncNetwork", "MARKET_OFFER", pais.nomePais + " oferece " + item.nome + " x" + quantidade + " | motivo=oferta de " + item.nome + " no mercado aliado");
+            }
+            else
+            {
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_SyncNetwork", "MARKET_IDLE", pais.nomePais + " sem oferta publica | surplus=" + surplus);
             }
         }
 
@@ -365,6 +370,7 @@ namespace Hegemonia.AI.BrainMaster
             if (vendedor == null)
             {
                 _state.BlockedDecisions++;
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_MarketDirector", "BUY_BLOCKED", comprador.nomePais + " sem vendedor para " + recurso);
                 return;
             }
 
@@ -373,16 +379,19 @@ namespace Hegemonia.AI.BrainMaster
             if (vendedor.teamId == gov.teamJogador)
             {
                 CriarProposta(gov, comprador.teamId, vendedor.teamId, TipoPropostaInternacional.Compra, recurso, quantidade, AjustarPreco(item.precoAtual, rel, comprador), comprador.nomePais + " quer comprar " + item.nome);
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_MarketDirector", "BUY_PROPOSAL", comprador.nomePais + " quer comprar " + item.nome + " x" + quantidade);
                 return;
             }
 
             if (rel.sancaoAtiva || rel.valor < -80)
             {
                 _state.BlockedDecisions++;
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_MarketDirector", "BUY_BLOCKED", comprador.nomePais + " bloqueado por relacao/sancao | recurso=" + recurso);
                 return;
             }
 
             mercado.Comprar(comprador.teamId, vendedor.teamId, item.id, quantidade, out _);
+            IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_MarketDirector", "BUY_EXEC", comprador.nomePais + " comprou " + item.nome + " x" + quantidade + " de " + vendedor.nomePais);
         }
 
         private void TrySellSurplus(SistemaGovernoMundial gov, SistemaMercadoGlobal mercado, DadosPaisGoverno vendedor, RecursoMercado recurso)
@@ -404,12 +413,18 @@ namespace Hegemonia.AI.BrainMaster
             if (comprador.teamId == gov.teamJogador)
             {
                 CriarProposta(gov, vendedor.teamId, comprador.teamId, TipoPropostaInternacional.Venda, recurso, quantidade, preco, vendedor.nomePais + " oferece " + item.nome);
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_MarketDirector", "SELL_PROPOSAL", vendedor.nomePais + " oferece " + item.nome + " x" + quantidade);
                 return;
             }
 
             if (!rel.sancaoAtiva && rel.valor > -75)
             {
                 mercado.Vender(vendedor.teamId, comprador.teamId, item.id, quantidade, out _);
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_MarketDirector", "SELL_EXEC", vendedor.nomePais + " vendeu " + item.nome + " x" + quantidade + " para " + comprador.nomePais);
+            }
+            else
+            {
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_MarketDirector", "SELL_BLOCKED", vendedor.nomePais + " bloqueado por relacao/sancao | recurso=" + recurso);
             }
         }
 
@@ -435,7 +450,7 @@ namespace Hegemonia.AI.BrainMaster
             return Mathf.Max(1, Mathf.RoundToInt(precoBase * mult));
         }
 
-        private static void CriarProposta(SistemaGovernoMundial gov, int origem, int alvo, TipoPropostaInternacional tipo, RecursoMercado recurso, int quantidade, int preco, string motivo)
+        private void CriarProposta(SistemaGovernoMundial gov, int origem, int alvo, TipoPropostaInternacional tipo, RecursoMercado recurso, int quantidade, int preco, string motivo)
         {
             gov.TentarCriarProposta(new PropostaInternacional
             {
@@ -450,6 +465,7 @@ namespace Hegemonia.AI.BrainMaster
                 expiraEm = Time.unscaledTime + 75f,
                 dedupKey = "market:" + origem + ":" + alvo + ":" + tipo + ":" + recurso
             });
+            IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_MarketDirector", "MARKET_PROPOSAL", motivo + " | tipo=" + tipo + " | recurso=" + recurso + " | qtd=" + quantidade + " | preco=" + preco);
         }
     }
 

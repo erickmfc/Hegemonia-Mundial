@@ -49,6 +49,15 @@ namespace Hegemonia.AI.BrainMaster
             sb.Append(" | EnemyVisible=").Append(_world.VisibleEnemies.Count);
             sb.Append(" | Queue=").Append(_queue.PendingCount);
             sb.Append(" | Cooldowns=").Append(_queue.CooldownCount);
+            sb.Append(" | Confirming=").Append(_queue.AwaitingConfirmationCount);
+            if (_brain != null && _brain.Context != null && _brain.Context.IntentBoard != null)
+            {
+                sb.Append(" | Intents=").Append(_brain.Context.IntentBoard.PendingCount);
+            }
+            if (_brain != null && !string.IsNullOrEmpty(_brain.RuntimeTracePath))
+            {
+                sb.Append(" | TraceTxt=").Append(System.IO.Path.GetFileName(_brain.RuntimeTracePath));
+            }
 
             var snapshots = _scheduler.GetSnapshot();
             for (int i = 0; i < snapshots.Count; i++)

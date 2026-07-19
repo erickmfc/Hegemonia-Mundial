@@ -22,20 +22,40 @@ public class MarcadorTerritorio : MonoBehaviour
     void Start()
     {
         var id = GetComponent<IdentidadeUnidade>();
-        if (id != null) teamID = id.teamID;
-
-        // Auto-detecta Prefeitura pelo script ou nome (apreciação da montagem anterior)
-        if (GetComponent<ComplexoGovernamental>() != null || gameObject.name.ToLower().Contains("prefeitura"))
-        {
-            ehPrefeitura = true;
-            if (raioDeDominio < 300f) raioDeDominio = 300f; // Prefeituras têm raio maior p/ controle central
-        }
+        bool detectarPrefeitura = GetComponent<ComplexoGovernamental>() != null
+            || gameObject.name.ToLower().Contains("prefeitura");
+        ConfigureOwnership(id != null ? id.teamID : teamID, detectarPrefeitura, 0f);
 
         // Aguarda 1 frame para garantir que os Gerentes existam antes de registrar
         Invoke("RegistrarSe", 0.5f);
         
         // Inicia identificação in-game
         Invoke("CriarIdentificacaoVisual", 0.6f);
+    }
+
+    /// <summary>
+    /// Configura uma fundação territorial criada em tempo de jogo. Isso permite que
+    /// uma IA use a própria posição como capital sem procurar ou alterar outra cidade.
+    /// </summary>
+    public void ConfigureOwnership(int novoTeamId, bool definirComoPrefeitura, float raioMinimo)
+    {
+        teamID = Mathf.Max(0, novoTeamId);
+        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade != null)
+        {
+            identidade.teamID = teamID;
+        }
+
+        ehPrefeitura |= definirComoPrefeitura;
+
+        if (ehPrefeitura)
+        {
+            raioDeDominio = Mathf.Max(300f, raioDeDominio, raioMinimo);
+        }
+        else if (raioMinimo > 0f)
+        {
+            raioDeDominio = Mathf.Max(raioDeDominio, raioMinimo);
+        }
     }
 
     void RegistrarSe()

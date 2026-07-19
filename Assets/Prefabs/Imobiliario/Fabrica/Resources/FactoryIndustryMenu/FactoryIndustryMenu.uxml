@@ -1,0 +1,34 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="factory-menu-overlay" class="factory-overlay">
+        <ui:VisualElement name="factory-menu-panel" class="factory-panel">
+            <ui:VisualElement class="factory-panel-glow" />
+            <ui:VisualElement class="factory-header">
+                <ui:VisualElement class="factory-header-copy">
+                    <ui:Label name="factory-menu-title" class="factory-title" text="Complexo Industrial de Extracao" />
+                    <ui:Label name="factory-menu-subtitle" class="factory-subtitle" text="Mineracao, estoque e fluxo operacional" />
+                    <ui:Label name="factory-menu-status" class="factory-status" text="Sincronizando patio mineral..." />
+                </ui:VisualElement>
+                <ui:Button name="factory-menu-close" class="factory-close" text="Fechar" />
+            </ui:VisualElement>
+            <ui:VisualElement class="factory-summary">
+                <ui:Label name="factory-summary-day" class="factory-summary-chip is-primary" text="Saida do dia  0 t" />
+                <ui:Label name="factory-summary-week" class="factory-summary-chip" text="Ritmo semanal  0 t" />
+                <ui:Label name="factory-summary-month" class="factory-summary-chip" text="Acumulado mensal  0 t" />
+                <ui:Label name="factory-summary-stock" class="factory-summary-chip" text="Estoque mineral  0 t" />
+                <ui:Label name="factory-summary-value" class="factory-summary-chip is-accent" text="Valor patrimonial  $ 0.00" />
+            </ui:VisualElement>
+            <ui:VisualElement class="factory-body">
+                <ui:VisualElement name="factory-mineral-highlight" class="factory-highlight">
+                    <ui:VisualElement class="factory-highlight-header">
+                        <ui:Label name="factory-highlight-name" class="factory-highlight-name" text="Ferro" />
+                        <ui:Label name="factory-highlight-state" class="factory-highlight-state" text="ATIVA" />
+                    </ui:VisualElement>
+                    <ui:Label name="factory-highlight-summary" class="factory-highlight-summary" text="Estoque 0 t  |  0 kg armazenados  |  ordens 0" />
+                    <ui:Label name="factory-highlight-flow" class="factory-highlight-flow" text="Hoje 0 t  |  Semana 0 t  |  Mes 0 t  |  proxima entrega -" />
+                    <ui:VisualElement name="factory-highlight-metrics" class="factory-highlight-metrics" />
+                </ui:VisualElement>
+                <ui:ScrollView name="factory-minerals-list" class="factory-list" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

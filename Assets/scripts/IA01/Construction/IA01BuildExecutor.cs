@@ -45,6 +45,36 @@ namespace Hegemonia.AI.IA01
             identity.tipoUnidade = TipoUnidade.Estrutura;
             SaveableEntity.Garantir(built, prefab.name);
 
+            // Mantem a mesma regra visual do construtor do jogador: casas da IA
+            // recebem calcada/conexao na rua mais proxima apos a criacao.
+            Imovel residential = built.GetComponent<Imovel>();
+            if (residential != null)
+            {
+                RuaConectora[] roads = UnityEngine.Object.FindObjectsByType<RuaConectora>(FindObjectsSortMode.None);
+                RuaConectora nearestRoad = null;
+                Vector3 nearestPoint = built.transform.position;
+                float bestSqr = Mathf.Infinity;
+                for (int i = 0; i < roads.Length; i++)
+                {
+                    RuaConectora road = roads[i];
+                    if (road == null) continue;
+                    Vector3 a = road.ObterConectorInicio().posicao;
+                    Vector3 b = road.ObterConectorFim().posicao;
+                    Vector3 ab = b - a;
+                    ab.y = 0f;
+                    if (ab.sqrMagnitude < 0.01f) continue;
+                    Vector3 p = built.transform.position; p.y = a.y;
+                    float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / ab.sqrMagnitude);
+                    Vector3 projected = a + ab * t;
+                    float sqr = (p - projected).sqrMagnitude;
+                    if (sqr < bestSqr) { bestSqr = sqr; nearestRoad = road; nearestPoint = projected; }
+                }
+                if (nearestRoad != null && bestSqr <= 180f * 180f)
+                {
+                    residential.AtualizarPavimentacao(nearestPoint);
+                }
+            }
+
             if (definition.Archetype == IA01BuildArchetype.Command || definition.StrategicRole == IA01StrategicRole.Capital
                 || definition.StrategicRole == IA01StrategicRole.Government || definition.StrategicRole == IA01StrategicRole.Command)
             {

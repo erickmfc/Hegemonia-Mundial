@@ -1,0 +1,199 @@
+.factory-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(8, 13, 18, 0.72);
+    padding: 24px;
+}
+
+.factory-panel {
+    width: 960px;
+    max-width: 96%;
+    max-height: 92%;
+    padding: 20px;
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    background-color: rgb(12, 18, 24);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(120, 180, 215, 0.22);
+    border-right-color: rgba(120, 180, 215, 0.22);
+    border-top-color: rgba(120, 180, 215, 0.22);
+    border-bottom-color: rgba(120, 180, 215, 0.22);
+}
+
+.factory-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+}
+
+.factory-header-copy {
+    flex-grow: 1;
+}
+
+.factory-title {
+    color: rgb(235, 244, 248);
+    font-size: 24px;
+    -unity-font-style: bold;
+}
+
+.factory-subtitle {
+    margin-top: 4px;
+    color: rgb(132, 168, 182);
+    font-size: 13px;
+}
+
+.factory-status {
+    margin-top: 8px;
+    color: rgb(168, 214, 205);
+    font-size: 12px;
+}
+
+.factory-close {
+    min-width: 120px;
+    height: 38px;
+    color: rgb(235, 244, 248);
+    background-color: rgb(148, 68, 48);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.factory-summary {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.factory-summary-chip {
+    margin-right: 8px;
+    margin-bottom: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    color: rgb(222, 233, 237);
+    background-color: rgb(22, 31, 40);
+    border-top-left-radius: 999px;
+    border-top-right-radius: 999px;
+    border-bottom-left-radius: 999px;
+    border-bottom-right-radius: 999px;
+    font-size: 12px;
+}
+
+.factory-list {
+    flex-grow: 1;
+    min-height: 440px;
+}
+
+.factory-mineral-card {
+    margin-bottom: 12px;
+    padding: 14px;
+    background-color: rgb(17, 25, 33);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(120, 180, 215, 0.14);
+    border-right-color: rgba(120, 180, 215, 0.14);
+    border-top-color: rgba(120, 180, 215, 0.14);
+    border-bottom-color: rgba(120, 180, 215, 0.14);
+}
+
+.factory-mineral-top {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.factory-mineral-name {
+    color: rgb(241, 247, 249);
+    font-size: 18px;
+    -unity-font-style: bold;
+}
+
+.factory-mineral-state {
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-top-left-radius: 999px;
+    border-top-right-radius: 999px;
+    border-bottom-left-radius: 999px;
+    border-bottom-right-radius: 999px;
+    background-color: rgb(35, 52, 60);
+    color: rgb(216, 228, 232);
+    font-size: 11px;
+}
+
+.factory-mineral-state.is-good {
+    background-color: rgb(31, 84, 67);
+    color: rgb(188, 243, 224);
+}
+
+.factory-mineral-state.is-warn {
+    background-color: rgb(108, 78, 29);
+    color: rgb(255, 225, 168);
+}
+
+.factory-mineral-state.is-bad {
+    background-color: rgb(111, 44, 44);
+    color: rgb(255, 203, 203);
+}
+
+.factory-mineral-subtitle {
+    margin-top: 8px;
+    margin-bottom: 12px;
+    color: rgb(145, 171, 181);
+    font-size: 12px;
+    white-space: normal;
+}
+
+.factory-mineral-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.factory-metric {
+    width: 168px;
+    min-height: 58px;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    padding: 8px;
+    background-color: rgb(11, 17, 23);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.factory-metric-label {
+    color: rgb(134, 157, 168);
+    font-size: 11px;
+}
+
+.factory-metric-value {
+    margin-top: 4px;
+    color: rgb(238, 245, 247);
+    font-size: 14px;
+    -unity-font-style: bold;
+}

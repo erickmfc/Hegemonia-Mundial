@@ -1267,6 +1267,7 @@ namespace Hegemonia.AI.BrainMaster
             if ((entry.IsAirport && !entry.IsHeliport) || entry.IsMilitaryAirport || entry.IsCommercialAirport
                 || n.Contains("aeroporto") || n.Contains("airport") || n.Contains("base aerea") || n.Contains("pista"))
             {
+                _forceSnapshot.AirportCount++;
                 if (entry.IsCommercialAirport || n.Contains("comercial") || n.Contains("commercial"))
                 {
                     _forceSnapshot.CommercialAirportCount++;
@@ -1274,11 +1275,10 @@ namespace Hegemonia.AI.BrainMaster
                 else if (entry.IsMilitaryAirport)
                 {
                     _forceSnapshot.MilitaryAirportCount++;
-                    _forceSnapshot.AirportCount++;
                 }
                 else
                 {
-                    _forceSnapshot.AirportCount++;
+                    _forceSnapshot.MilitaryAirportCount++;
                 }
             }
 

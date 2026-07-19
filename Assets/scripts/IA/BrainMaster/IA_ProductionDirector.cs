@@ -36,7 +36,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public float Interval
         {
-            get { return 0.85f; }
+            get { return 0.65f; }
         }
 
         public float BudgetMs
@@ -66,6 +66,22 @@ namespace Hegemonia.AI.BrainMaster
             long profileStart = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
+                // A IA01 e a autoridade de infraestrutura do time. Nenhuma etapa
+                // de bootstrap militar pode consumir a fila antes de a cadeia
+                // fundacional estar pronta.
+                IA_ForceSnapshot foundationSnapshot = GetSnapshot();
+                bool foundationInfrastructureReady = foundationSnapshot.HasMilitaryAirport
+                    && foundationSnapshot.HasCommercialAirport
+                    && foundationSnapshot.ShipyardCount > 0
+                    && foundationSnapshot.HasFactory;
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
+                    "ia_foundation_infrastructure_ready",
+                    foundationInfrastructureReady ? 1 : 0);
+                if (!foundationInfrastructureReady)
+                {
+                    return;
+                }
+
                 if (TickBootstrapProduction(now))
                 {
                     return;
@@ -98,6 +114,19 @@ namespace Hegemonia.AI.BrainMaster
                 int fleetCombatCount = navalCount + submarineCount;
                 UpdateStructureTracker(now, structureCount);
 
+                bool foundationInfrastructureStillReady = hasMilitaryAirport
+                    && snapshot.HasCommercialAirport
+                    && snapshot.ShipyardCount > 0
+                    && hasFactory;
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("ia_foundation_infrastructure_ready", foundationInfrastructureStillReady ? 1 : 0);
+                if (!foundationInfrastructureStillReady)
+                {
+                    // A produção militar começa somente depois da sequência de
+                    // infraestrutura da IA01. O BrainMaster permanece vivo,
+                    // aguardando as instalações corretas.
+                    return;
+                }
+
                 Vector3 baseCenter = ResolveBaseCenter();
                 IA_TransportPlan transportPlan = BuildTransportPlan(
                     now,
@@ -123,16 +152,16 @@ namespace Hegemonia.AI.BrainMaster
                                            && transportPlan.RequiredCapacity >= 8;
                 bool shouldPauseGroundMass = ShouldPauseOffensiveGroundMass(transportPlan, infantryCount, tankCount, artyCount, decision);
 
-                int infantryTarget = 16 + (counter.AntiRush ? 10 : 0) + Mathf.RoundToInt(counter.LandWeight * 7f);
-                int tankTarget = 7 + Mathf.RoundToInt(counter.LandWeight * 7f);
-                int artyTarget = 2 + (counter.ReinforceCenter ? 1 : 0);
+                int infantryTarget = 12 + (counter.AntiRush ? 8 : 0) + Mathf.RoundToInt(counter.LandWeight * 8f);
+                int tankTarget = 5 + Mathf.RoundToInt(counter.LandWeight * 6f);
+                int artyTarget = 1 + (counter.ReinforceCenter ? 1 : 0);
                 int helicopterTarget = EnableHelicopterProduction && hasHeliport
-                    ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 3f), 2, 5)
+                    ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 4f), 2, 6)
                     : 0;
                 int fighterTarget = hasMilitaryAirport ? Mathf.Clamp(10 + Mathf.RoundToInt(counter.AirWeight * 8f) + (int)(now / 70f), 10, 26) : 0;
                 int patrolShipTarget = hasNavalBase ? 1 : 0;
                 int navalTarget = hasNavalBase
-                    ? Mathf.Clamp(3 + Mathf.RoundToInt(counter.NavalWeight * 5f), 3, 12)
+                    ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.NavalWeight * 6f), 2, 10)
                     : 0;
                 int oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0 ? 1 : 0;
                 if (brain != null)
@@ -165,24 +194,24 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     if (now < 300f)
                     {
-                        infantryTarget = Mathf.Max(infantryTarget, 6);
+                        infantryTarget = Mathf.Max(infantryTarget, 8);
                         tankTarget = Mathf.Max(tankTarget, hasFactory ? 2 : 0);
-                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 3 : 0);
+                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 2 : 0);
                         navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 1 : 0);
                     }
                     else if (now < 900f)
                     {
-                        infantryTarget = Mathf.Max(infantryTarget, 16);
-                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 6 : 0);
+                        infantryTarget = Mathf.Max(infantryTarget, 14);
+                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 4 : 0);
                         fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 10 : 0);
-                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 4 : 0);
+                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 3 : 0);
                     }
                     else
                     {
-                        infantryTarget = Mathf.Max(infantryTarget, 20);
-                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 8 : 0);
+                        infantryTarget = Mathf.Max(infantryTarget, 18);
+                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 6 : 0);
                         fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 14 : 0);
-                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 5 : 0);
+                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 4 : 0);
                     }
                 }
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("fighter_target", fighterTarget);
@@ -284,17 +313,17 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 // Avioes tem prioridade quando a frota aerea esta abaixo do minimo
-                if (hasMilitaryAirport && fighterCount < 8 && QueuePreferredAircraft(95, 2.6f))
+                if (hasMilitaryAirport && fighterCount < 6 && QueuePreferredAircraft(95, 2.0f))
                 {
                     return;
                 }
 
-                if (hasBarracks && infantryCount < 4 && QueueProduceBest(94, 5f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
+                if (hasBarracks && infantryCount < 6 && QueueProduceBest(94, 3.8f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
                 {
                     return;
                 }
 
-                if (hasNavalBase && navalCount < 2 && QueueSurfaceFleetStep(navalCount, 91, 4.6f))
+                if (hasNavalBase && navalCount < 2 && QueueSurfaceFleetStep(navalCount, 91, 3.6f))
                 {
                     return;
                 }
@@ -307,7 +336,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 // Garante que o aeroporto NUNCA fique vazio, reposição constante com alta prioridade
-                if (hasMilitaryAirport && fighterCount < 10 && QueuePreferredAircraft(93, 3.0f))
+                if (hasMilitaryAirport && fighterCount < 8 && QueuePreferredAircraft(93, 2.2f))
                 {
                     return;
                 }
@@ -329,17 +358,17 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (hasBarracks && infantryCount < infantryTarget && QueueProduceBest(90, 3.0f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
+                if (hasBarracks && infantryCount < infantryTarget && QueueProduceBest(90, 2.4f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
                 {
                     return;
                 }
 
-                if (hasFactory && tankCount < tankTarget && QueueProduceBest(86, 3.6f, "tank mbt", "mbt", "tank south", "tank c1", "tank arthur"))
+                if (hasFactory && tankCount < tankTarget && QueueProduceBest(86, 2.8f, "tank mbt", "mbt", "tank south", "tank c1", "tank arthur"))
                 {
                     return;
                 }
 
-                if (hasFactory && artyCount < artyTarget && QueueProduceBest(82, 6f, "hack", "artilharia", "lancador"))
+                if (hasFactory && artyCount < artyTarget && QueueProduceBest(82, 4.5f, "hack", "artilharia", "lancador"))
                 {
                     return;
                 }
@@ -362,20 +391,20 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (EnableHelicopterProduction && hasHeliport && helicopterCount < helicopterTarget && QueueProduceBest(83, 4.5f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
+                if (EnableHelicopterProduction && hasHeliport && helicopterCount < helicopterTarget && QueueProduceBest(83, 3.2f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
                 {
                     return;
                 }
 
                 // Mantém a produção rodando até bater o teto dinâmico (buffer extra), não mais bloqueado por AirWeight
-                if (hasMilitaryAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && QueuePreferredAircraft(89, 2.8f))
+                if (hasMilitaryAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && QueuePreferredAircraft(89, 2.1f))
                 {
                     return;
                 }
 
                 if (hasNavalBase)
                 {
-                    if (navalCount < patrolShipTarget && QueueSurfaceFleetStep(navalCount, 85, 7f))
+                    if (navalCount < patrolShipTarget && QueueSurfaceFleetStep(navalCount, 85, 5.0f))
                     {
                         return;
                     }
@@ -385,7 +414,7 @@ namespace Hegemonia.AI.BrainMaster
                         return;
                     }
 
-                    if (!suppressExpansion && navalCount < navalTarget && QueueSurfaceFleetStep(navalCount, 80, 7f))
+                    if (!suppressExpansion && navalCount < navalTarget && QueueSurfaceFleetStep(navalCount, 80, 5.0f))
                     {
                         return;
                     }
@@ -443,6 +472,7 @@ namespace Hegemonia.AI.BrainMaster
             DadosConstrucao data = _context.Backend.FindFirstAvailable(keys);
             if (data == null)
             {
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_NO_CANDIDATE", "sem item para chaves=" + string.Join(",", keys));
                 return false;
             }
 
@@ -452,21 +482,28 @@ namespace Hegemonia.AI.BrainMaster
                 Quantity = 1
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Produce,
-                Priority = priority,
-                DedupKey = "produce:" + IA_Text.Normalize(data.nomeItem),
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Produce,
+                "IA_ProductionDirector",
+                "production",
+                "fila de producao otimizada",
+                priority,
+                "production",
+                "produce:" + IA_Text.Normalize(data.nomeItem),
+                cooldown,
+                payload);
 
             string reason;
-            bool enqueued = _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            bool enqueued = PublishProductionIntent(request, data, priority, "fila de producao otimizada", out reason);
             if (enqueued)
             {
                 DiagnosticoDesempenhoJogo.RegistrarProducao(data.nomeItem);
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_OK", "item=" + data.nomeItem + " | motivo=fila de producao otimizada");
                 ArmRuntimeQueueCooldown();
+            }
+            else
+            {
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_FAIL", "item=" + data.nomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
             }
 
             return enqueued;
@@ -482,6 +519,7 @@ namespace Hegemonia.AI.BrainMaster
             DadosConstrucao data = ChoosePreferredAircraftVariant();
             if (data == null)
             {
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_VARIANT_FALLBACK", "variante preferida nao encontrada");
                 return QueueProduceBest(priority, cooldown, "b260", "supra", "su11", "a_20", "a10", "warthog", "g15", "super tuk", "g_18m", "g18m", "fa1", "caca", "fighter");
             }
 
@@ -491,24 +529,58 @@ namespace Hegemonia.AI.BrainMaster
                 Quantity = 1
             };
 
-            IA_CommandRequest request = new IA_CommandRequest
-            {
-                Type = IA_CommandType.Produce,
-                Priority = priority,
-                DedupKey = "produce:" + IA_Text.Normalize(data.nomeItem),
-                CooldownSeconds = cooldown,
-                Payload = payload
-            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Produce,
+                "IA_ProductionDirector",
+                "production",
+                "preferencia aerea",
+                priority,
+                "production",
+                "produce:" + IA_Text.Normalize(data.nomeItem),
+                cooldown,
+                payload);
 
             string reason;
-            bool enqueued = _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            bool enqueued = PublishProductionIntent(request, data, priority, "preferencia aerea", out reason);
             if (enqueued)
             {
                 DiagnosticoDesempenhoJogo.RegistrarProducao(data.nomeItem, "IA_Prod_Air");
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_OK", "item=" + data.nomeItem + " | motivo=preferencia aerea");
                 ArmRuntimeQueueCooldown();
+            }
+            else
+            {
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_FAIL", "item=" + data.nomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
             }
 
             return enqueued;
+        }
+
+        private bool PublishProductionIntent(IA_CommandRequest request, DadosConstrucao data, int priority, string reasonText, out string reason)
+        {
+            if (_context.IntentBoard == null)
+            {
+                bool direct = _context.CommandQueue.Enqueue(request, Time.time, out reason);
+                IA_RuntimeTextTrace.LogCommand(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", direct ? "PROD_ENQUEUE" : "PROD_REJECT", request, direct ? "enfileirado diretamente" : reason);
+                return direct;
+            }
+
+            IA_NationalIntent intent = new IA_NationalIntent
+            {
+                DedupKey = request.DedupKey,
+                Origin = "IA_ProductionDirector",
+                Reason = reasonText,
+                Kind = IA_IntentKind.Produce,
+                Priority = priority,
+                Urgency = priority,
+                EstimatedCost = data != null ? data.preco : 0f,
+                ExpectedBenefit = 35f,
+                ValidUntil = Time.time + 8f,
+                Command = request
+            };
+            bool queued = _context.IntentBoard.Publish(intent, Time.time, out reason);
+            IA_RuntimeTextTrace.LogCommand(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", queued ? "PROD_INTENT" : "PROD_INTENT_REJECT", request, queued ? "intencao de producao publicada" : reason);
+            return queued;
         }
 
         private DadosConstrucao ChoosePreferredAircraftVariant()

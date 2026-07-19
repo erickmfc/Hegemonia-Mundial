@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.Shared;
 using UnityEngine.AI;
 using UnityEngine;
 
@@ -1014,18 +1015,7 @@ namespace Hegemonia.AI.Master
 
         private bool BelongsToTeam(GameObject go)
         {
-            if (go == null)
-            {
-                return false;
-            }
-
-            IdentidadeUnidade id = go.GetComponent<IdentidadeUnidade>();
-            if (id == null)
-            {
-                id = go.GetComponentInParent<IdentidadeUnidade>();
-            }
-
-            return id != null && id.teamID == _teamId;
+            return IA_SharedRuntimeSupport.BelongsToTeam(go, _teamId);
         }
 
         private void RegisterController()

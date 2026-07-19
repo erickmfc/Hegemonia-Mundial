@@ -1579,7 +1579,7 @@ public class MenuGoverno : MonoBehaviour
         });
         CreateActionButton(page.Root.transform, "PEDIR EMPRESTIMO DE AJUSTE", corAmarelo, () =>
         {
-            string mensagem;
+            string mensagem = "federacao indisponivel";
             if (SistemaFederacoesGlobais.Instancia == null)
             {
                 mensagem = "federacao indisponivel";
@@ -1593,7 +1593,7 @@ public class MenuGoverno : MonoBehaviour
         });
         CreateActionButton(page.Root.transform, "PEDIR CREDITO MILITAR", corLaranja, () =>
         {
-            string mensagem;
+            string mensagem = "federacao indisponivel";
             if (SistemaFederacoesGlobais.Instancia == null)
             {
                 mensagem = "federacao indisponivel";
@@ -1656,7 +1656,7 @@ public class MenuGoverno : MonoBehaviour
             CreateFlexText(row.transform, loan.saldoDevedor.ToString("0") + "\n" + (loan.inadimplente ? "INADIMPLENTE" : "ATIVO"), 10, loan.inadimplente ? corVermelho : corAmarelo, 1f, TextAnchor.MiddleLeft);
             CreateActionButton(row.transform, "QUITAR", corVerde, () =>
             {
-                string mensagem;
+                string mensagem = "emprestimo indisponivel";
                 if (SistemaFederacoesGlobais.Instancia == null)
                 {
                     mensagem = "emprestimo indisponivel";
@@ -2196,7 +2196,7 @@ public class MenuGoverno : MonoBehaviour
             return;
         }
 
-        string mensagem;
+        string mensagem = "Proposta indisponivel.";
         bool ok = Government().ResolverProposta(propostaId, status, out mensagem);
         Notificar(contexto, ok ? mensagem : "Falha ao resolver proposta.");
         RefreshDynamicData(true);

@@ -5,12 +5,12 @@ using UnityEditor.SceneManagement;
 /// <summary>
 /// Ferramenta de limpeza para remover referências de scripts ausentes
 /// </summary>
-public class CleanMissingScripts : MonoBehaviour
+public static class CleanMissingScripts
 {
     [MenuItem("Tools/🧹 Limpar Scripts Ausentes na Cena")]
     static void LimparScriptsAusentesNaCena()
     {
-        GameObject[] objs = FindObjectsOfType<GameObject>();
+        GameObject[] objs = ObterGameObjectsDaCena();
         int contagem = 0;
         int objetosAfetados = 0;
         
@@ -28,7 +28,7 @@ public class CleanMissingScripts : MonoBehaviour
         if (contagem > 0)
         {
             Debug.LogWarning($"[CleanMissingScripts] Total: {contagem} scripts ausentes removidos de {objetosAfetados} GameObjects.");
-            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+            EditorSceneManager.MarkAllScenesDirty();
         }
         else
         {
@@ -39,7 +39,7 @@ public class CleanMissingScripts : MonoBehaviour
     [MenuItem("Tools/🔍 Encontrar GameObjects com Scripts Ausentes")]
     static void EncontrarObjetosComScriptsAusentes()
     {
-        GameObject[] objs = FindObjectsOfType<GameObject>();
+        GameObject[] objs = ObterGameObjectsDaCena();
         int encontrados = 0;
         
         Debug.Log("=== PROCURANDO SCRIPTS AUSENTES ===");
@@ -85,5 +85,14 @@ public class CleanMissingScripts : MonoBehaviour
         }
         
         return path;
+    }
+
+    private static GameObject[] ObterGameObjectsDaCena()
+    {
+#if UNITY_6000_0_OR_NEWER || UNITY_2023_1_OR_NEWER
+        return Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+#else
+        return Object.FindObjectsOfType<GameObject>();
+#endif
     }
 }

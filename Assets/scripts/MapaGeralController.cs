@@ -43,6 +43,12 @@ public class MapaGeralController : MonoBehaviour
     private readonly List<Projetil> _projeteisAtivos = new List<Projetil>(256);
     private float _tempoRefreshCache = 0f;
 
+    // --- Modo de seguir unidade selecionada ---
+    private bool _seguindoAlvo = false;
+    private Transform _alvoSeguir = null;
+
+    // --- Shader warmup (evita compilação durante o voo) ---
+
     void Start()
     {
         cameraPrincipal = Camera.main;
@@ -66,6 +72,9 @@ public class MapaGeralController : MonoBehaviour
         fogStartOriginal = RenderSettings.fogStartDistance;
         fogEndOriginal = RenderSettings.fogEndDistance;
         fogModeOriginal = RenderSettings.fogMode;
+
+        // Evita Shader.WarmupAllShaders: no URP ele pode combinar keyword spaces
+        // incompatíveis entre shaders e gerar asserts durante a entrada no Play Mode.
     }
 
     void Update()
@@ -94,6 +103,29 @@ public class MapaGeralController : MonoBehaviour
 
         if (mapaAtivo && cameraMapa != null)
         {
+            // Tecla F: alterna modo de seguir unidade selecionada
+            if (Input.GetKeyDown(KeyCode.F))
+            {
+                _seguindoAlvo = !_seguindoAlvo;
+                if (_seguindoAlvo)
+                {
+                    // Tenta obter a unidade selecionada no GerenteSelecao
+                    _alvoSeguir = ObterTransformSelecionado();
+                    if (_alvoSeguir == null) _seguindoAlvo = false; // Nada selecionado
+                }
+                else
+                {
+                    _alvoSeguir = null;
+                }
+            }
+
+            // Se estiver seguindo, verifica se o alvo ainda existe
+            if (_seguindoAlvo && (_alvoSeguir == null || !_alvoSeguir.gameObject.activeInHierarchy))
+            {
+                _seguindoAlvo = false;
+                _alvoSeguir = null;
+            }
+
             ControlarMapa();
 
             // Refresh do cache a cada 2s
@@ -103,6 +135,21 @@ public class MapaGeralController : MonoBehaviour
                 _tempoRefreshCache = Time.time + 2f;
             }
         }
+    }
+
+    private Transform ObterTransformSelecionado()
+    {
+        GerenteSelecao gerente = null;
+#if UNITY_2023_1_OR_NEWER
+        gerente = Object.FindFirstObjectByType<GerenteSelecao>();
+#else
+        gerente = Object.FindObjectOfType<GerenteSelecao>();
+#endif
+        if (gerente == null || gerente.unidadesSelecionadas == null || gerente.unidadesSelecionadas.Count == 0)
+            return null;
+
+        ControleUnidade cu = gerente.unidadesSelecionadas[0];
+        return cu != null ? cu.transform : null;
     }
 
     private void OnDisable()
@@ -121,6 +168,26 @@ public class MapaGeralController : MonoBehaviour
 
     void ControlarMapa()
     {
+        // --- MODO SEGUIR: câmera fica centrada no alvo ---
+        if (_seguindoAlvo && _alvoSeguir != null)
+        {
+            Vector3 alvoPos = _alvoSeguir.position;
+            cameraMapa.transform.position = Vector3.Lerp(
+                cameraMapa.transform.position,
+                new Vector3(alvoPos.x, cameraMapa.transform.position.y, alvoPos.z),
+                Time.unscaledDeltaTime * 8f);
+
+            // Ainda permite zoom enquanto segue
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            if (scroll != 0)
+            {
+                cameraMapa.orthographicSize -= scroll * zoomVelocidade * Time.unscaledDeltaTime;
+                cameraMapa.orthographicSize  = Mathf.Clamp(cameraMapa.orthographicSize, zoomMinimo, zoomMaximo);
+            }
+            return;
+        }
+
+        // --- MODO LIVRE: pan normal com WASD/bordas ---
         float movX = Input.GetAxisRaw("Horizontal");
         float movZ = Input.GetAxisRaw("Vertical");
 
@@ -136,10 +203,10 @@ public class MapaGeralController : MonoBehaviour
                 * (velocidadeMover * mult) * Time.unscaledDeltaTime;
         }
 
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (scroll != 0)
+        float scrollLivre = Input.GetAxis("Mouse ScrollWheel");
+        if (scrollLivre != 0)
         {
-            cameraMapa.orthographicSize -= scroll * zoomVelocidade * Time.unscaledDeltaTime;
+            cameraMapa.orthographicSize -= scrollLivre * zoomVelocidade * Time.unscaledDeltaTime;
             cameraMapa.orthographicSize  = Mathf.Clamp(cameraMapa.orthographicSize, zoomMinimo, zoomMaximo);
         }
     }
@@ -184,7 +251,11 @@ public class MapaGeralController : MonoBehaviour
             fontStyle  = FontStyle.Bold,
             normal     = { textColor = Color.cyan }
         };
-        GUI.Label(new Rect(0, 0, Screen.width, barH), "MAPA ESTRATEGICO  [WASD mover] [Scroll zoom] [M fechar]", titleStyle);
+        string modoSeguir = _seguindoAlvo && _alvoSeguir != null
+            ? $"[F seguir: {_alvoSeguir.name.ToUpper()}]"
+            : "[F seguir unidade]";
+        GUI.Label(new Rect(0, 0, Screen.width, barH),
+            $"MAPA ESTRATEGICO  [WASD mover] [Scroll zoom] [{modoSeguir}] [M fechar]", titleStyle);
 
         // --- Legenda no canto inferior esquerdo ---
         float legX = 12f, legY = Screen.height - 100f;

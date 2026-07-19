@@ -60,6 +60,7 @@ public class DadosEconomiaPais
     public int empregosOcupados;
 
     public float comidaProduzida;
+    public float comidaConsumida;
     public float petroleoProduzido;
     public float industriaProduzida;
     public float energiaProduzida;
@@ -71,6 +72,10 @@ public class DadosEconomiaPais
     public float receitaIndustria;
     public float receitaComercio;
     public float receitaEnergia;
+    public float custoMilitar;
+    public float custoInfraestrutura;
+    public float custoProducao;
+    public float custoSocial;
     public float custoManutencao;
     public float saldoOperacional;
 

@@ -12,10 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: PLataforma
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: PLataforma
+  nomeItem: Plataforma
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 21300000, guid: cb2174967db5cd74e8c35e639d419f33, type: 3}
-  prefabDaUnidade: {fileID: 4823762535859768294, guid: 5e87edf62f9c2604aba4d806190464ba, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
+  prefabDaUnidade: {fileID: 4835940525621673593, guid: ee38923a50e7e974384461c2819599d8, type: 3}
   preco: 100
-  categoria: 3
+  categoria: 5
+  escalaPoder: 0
+  balanceamento: {fileID: 0}
   scriptsDeComando: []

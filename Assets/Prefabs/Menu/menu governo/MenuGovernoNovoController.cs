@@ -518,7 +518,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private void TrocarFederacao(string destino)
     {
         SistemaFederacoesGlobais.GarantirInstancia();
-        string mensagem;
+        string mensagem = "federacao indisponivel";
         bool ok;
         if (SistemaFederacoesGlobais.Instancia == null)
         {
@@ -886,7 +886,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     {
         SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
         if (gov == null) return;
-        string mensagem;
+        string mensagem = "Operacao indisponivel.";
         bool ok = gov.ResolverProposta(propostaId, status, out mensagem);
         MostrarMensagem((ok ? "Pedido de ajuda: " : "Pedido de ajuda recusado: ") + mensagem);
         AtualizarRecursos();
@@ -953,7 +953,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     {
         SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
         if (gov == null) return;
-        string mensagem;
+        string mensagem = "Relacao indisponivel.";
         bool ok = gov.DefinirPostura(1, alvoTeamId, postura, out mensagem);
         MostrarMensagem((ok ? "Relacao atualizada: " : "Relacao recusada: ") + mensagem);
         MostrarPagina(abaAtual);

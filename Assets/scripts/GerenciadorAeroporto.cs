@@ -186,7 +186,9 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
 
         // --- SISTEMA DE EMERGÊNCIA: AUTO-GERAÇÃO DE VAGAS ---
-        if (waypointsPatio.Count < 24)
+        // Porta-aviões já usa vagas explícitas da hierarquia ("Patio aberto > parada...").
+        // Não gerar slots extras para não criar pontos invisíveis no convés.
+        if (!(this is GerenciadorPortaAvioes) && waypointsPatio.Count < 24)
         {
             int vagasFaltantes = 24 - waypointsPatio.Count;
             float anguloStep = 360f / vagasFaltantes * Mathf.Deg2Rad;
@@ -869,11 +871,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
 
         // --- SISTEMA DE IDENTIDADE (HERANÇA DO AEROPORTO) ---
-        if (!_identidadeVerificada)
-        {
-            _identidadeCacheada = GetComponent<IdentidadeUnidade>();
-            _identidadeVerificada = true;
-        }
+        // A IA pode receber sua identidade depois do Awake, quando a base acaba
+        // de ser construída. Releia a raiz a cada compra para não tratar um
+        // aeroporto da IA como aeroporto do jogador por causa de cache antigo.
+        _identidadeCacheada = GetComponent<IdentidadeUnidade>();
+        _identidadeVerificada = true;
 
         bool aeroportoEhIA = _identidadeCacheada != null && _identidadeCacheada.teamID > 1;
 
@@ -899,7 +901,13 @@ public class GerenciadorAeroporto : MonoBehaviour
         long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
 
         DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefabDeAeronave.name);
-        Vector3 posSpawn = (wpPreparacao != null) ? wpPreparacao.position : transform.position;
+        // O ponto de preparacao pertence ao aeroporto. Se um prefab/scene object
+        // apontar para um transform externo (por exemplo, a prefeitura), ignora a
+        // referencia e usa a raiz da propria base para nunca criar a aeronave fora dela.
+        bool pontoPreparacaoLocal = wpPreparacao != null
+            && (wpPreparacao == transform || wpPreparacao.IsChildOf(transform))
+            && (wpPreparacao.position - transform.position).sqrMagnitude <= 40000f;
+        Vector3 posSpawn = pontoPreparacaoLocal ? wpPreparacao.position : transform.position;
         GameObject aeronaveNascente = Instantiate(prefabDeAeronave, posSpawn, Quaternion.identity);
 
         string nomePrefabNormalizado = prefabDeAeronave.name.ToLowerInvariant();
@@ -931,13 +939,6 @@ public class GerenciadorAeroporto : MonoBehaviour
             // Se pertencer à IA (Time 2 ou maior), empurra o avião pra mente dela
             if (idAviao.teamID > 1)
             {
-                // Busca o general correto que comanda este time específico
-                IA_General_Pro gen = IA_ComandanteRegistry.GetGeneralByTeam(idAviao.teamID);
-                if (gen != null)
-                {
-                    gen.RegistrarUnidade(aeronaveNascente);
-                }
-
                 DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
             }
         }
