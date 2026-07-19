@@ -99,6 +99,7 @@ public static class IA01LocalInfrastructureSetup
         CreateAuxiliarySlot(layout.transform, "IA01 Local - Armazenamento 01", "ia01.local.armazenamento.01", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(-48f, 0f, 52f));
         CreateAuxiliarySlot(layout.transform, "IA01 Local - Armazenamento 02", "ia01.local.armazenamento.02", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(0f, 0f, 66f));
         CreateAuxiliarySlot(layout.transform, "IA01 Local - Armazenamento 03", "ia01.local.armazenamento.03", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(48f, 0f, 52f));
+        CreateAuxiliarySlot(layout.transform, "IA01 Local - Quartel Militar", "ia01.local.quartel", IA01StrategicRole.MilitaryProduction, IA01BuildDomain.Land, new Vector3(72f, 0f, 118f));
         Transform pier = CreateAuxiliarySlot(layout.transform, "IA01 Local - Pier Naval", "ia01.local.pier", IA01StrategicRole.Pier, IA01BuildDomain.Coastal, new Vector3(-90f, 0f, 135f));
         ConfigureNavalAuxiliary(pier);
         CreateAuxiliarySlot(layout.transform, "IA01 Local - Plataforma de Petróleo A", "ia01.local.plataforma.a", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, new Vector3(120f, 0f, 200f));
@@ -113,6 +114,12 @@ public static class IA01LocalInfrastructureSetup
             CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área A", new Vector3(120f, 0f, 160f));
             CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área B", new Vector3(-140f, 0f, 220f));
             CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área C", new Vector3(250f, 0f, 300f));
+        }
+
+        Transform airport = FindChildRecursive(layout.transform, "IA01 Local - Aeroporto Militar");
+        if (airport != null)
+        {
+            CreateAirPatrolZone(airport, "IA01 Patrulha Aerea - Área Inicial", new Vector3(0f, 0f, 280f));
         }
 
         EditorSceneManager.MarkSceneDirty(layout.gameObject.scene);
@@ -171,6 +178,21 @@ public static class IA01LocalInfrastructureSetup
         }
         if (zone.GetComponent<IA01NavalPatrolZone>() == null)
             Undo.AddComponent<IA01NavalPatrolZone>(zone.gameObject);
+    }
+
+    private static void CreateAirPatrolZone(Transform parent, string name, Vector3 localPosition)
+    {
+        Transform zone = parent.Find(name);
+        if (zone == null)
+        {
+            GameObject go = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(go, "Criar área de patrulha aérea IA01");
+            zone = go.transform;
+            zone.SetParent(parent, false);
+            zone.localPosition = localPosition;
+        }
+        if (zone.GetComponent<IA01AirPatrolZone>() == null)
+            Undo.AddComponent<IA01AirPatrolZone>(zone.gameObject);
     }
 
     private static Transform FindChildRecursive(Transform root, string name)

@@ -130,6 +130,15 @@ namespace Hegemonia.AI.IA01
             // usado no plano de construcao. Isso impede a IA de procurar um lote
             // livre ou construir em outra regiao quando o create ja existe.
             string slotId = ResolveLocalSlotId(intent);
+            if (intent == IA01IntentType.BuildOffshorePlatform
+                && TryResolvePlatformSlot(out position, out rotation, out string platformSlotId))
+            {
+                if (loggedAnchorResolutions.Add(intent))
+                {
+                    UnityEngine.Debug.Log("[IA01 Anchor] " + intent + " -> " + platformSlotId + " pos=" + position.ToString("F2"));
+                }
+                return true;
+            }
             IA01BuildSlot slot;
             IA01CityLayout resolvedLayout = ResolveCityLayoutForSlot(slotId);
             if (!string.IsNullOrWhiteSpace(slotId) && resolvedLayout != null && resolvedLayout.TryGetSlot(slotId, out slot) && slot != null)
@@ -165,6 +174,31 @@ namespace Hegemonia.AI.IA01
                 }
             }
 
+            return false;
+        }
+
+        private bool TryResolvePlatformSlot(out Vector3 position, out Quaternion rotation, out string slotId)
+        {
+            position = Vector3.zero;
+            rotation = Quaternion.identity;
+            slotId = string.Empty;
+            string[] ids = { "ia01.local.plataforma.a", "ia01.local.plataforma.b", "ia01.local.plataforma.c" };
+            int start = Mathf.Abs((matchSeed * 31) + TeamId) % ids.Length;
+            for (int i = 0; i < ids.Length; i++)
+            {
+                string candidateId = ids[(start + i) % ids.Length];
+                IA01CityLayout layout = ResolveCityLayoutForSlot(candidateId);
+                if (layout == null || !layout.TryGetSlot(candidateId, out IA01BuildSlot slot) || slot == null)
+                {
+                    continue;
+                }
+
+                Transform point = slot.BuildingPoint != null ? slot.BuildingPoint : slot.transform;
+                position = point.position;
+                rotation = point.rotation;
+                slotId = slot.name + " (" + slot.SlotId + ")";
+                return true;
+            }
             return false;
         }
 
@@ -212,6 +246,7 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildCommercialAirport: return "ia01.local.aeroporto_comercial";
                 case IA01IntentType.BuildShipyard: return "ia01.local.estaleiro";
                 case IA01IntentType.BuildPier: return "ia01.local.pier";
+                case IA01IntentType.BuildOffshorePlatform: return "ia01.local.plataforma.a";
                 case IA01IntentType.BuildMilitaryTent: return "ia01.local.tenda";
                 case IA01IntentType.BuildStarterHouse: return "ia01.local.casa";
                 case IA01IntentType.BuildMediumApartment: return "ia01.local.apartamento_medio";

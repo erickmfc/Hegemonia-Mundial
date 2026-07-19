@@ -117,6 +117,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     [SerializeField] private float intervaloSpawnIaCritico = 3.5f;
     private readonly Queue<GameObject> _filaSpawnAeronavesIA = new Queue<GameObject>();
     private float _proximoSpawnAeronaveIA = -999f;
+    private float _primeiroEnfileiramentoAeronaveIA = -999f;
     private bool _interacaoManualSolicitada;
 
     protected static int RemoveNulls<T>(List<T> lista) where T : class
@@ -338,7 +339,12 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (_filaSpawnAeronavesIA == null || _filaSpawnAeronavesIA.Count == 0) return;
         if (Time.unscaledTime < _proximoSpawnAeronaveIA) return;
 
-        if (DiagnosticoDesempenhoJogo.RuntimeSaturado())
+        // O primeiro caça da IA não pode ficar preso indefinidamente pelo
+        // limitador de desempenho: a fila é escalonada, mas depois de alguns
+        // segundos ela precisa liberar ao menos uma aeronave no próprio pátio.
+        bool liberarPrimeiroMesmoSobPressao = _primeiroEnfileiramentoAeronaveIA > 0f
+            && Time.unscaledTime - _primeiroEnfileiramentoAeronaveIA >= 4f;
+        if (DiagnosticoDesempenhoJogo.RuntimeSaturado() && !liberarPrimeiroMesmoSobPressao)
         {
             _proximoSpawnAeronaveIA = Time.unscaledTime + Mathf.Max(0.2f, intervaloSpawnIaCritico);
             return;
@@ -346,6 +352,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         GameObject prefab = _filaSpawnAeronavesIA.Dequeue();
         if (prefab != null) ComprarAviaoImediato(prefab);
+        if (_filaSpawnAeronavesIA.Count == 0) _primeiroEnfileiramentoAeronaveIA = -999f;
 
         float cooldown = intervaloSpawnIaSaudavel;
         if (DiagnosticoDesempenhoJogo.RuntimeSaturado()) cooldown = intervaloSpawnIaCritico;
@@ -882,11 +889,22 @@ public class GerenciadorAeroporto : MonoBehaviour
         // Para IA, enfileira para não spawnar vários aviões no mesmo segundo e travar o jogo.
         if (aeroportoEhIA && usarFilaSpawnAereoIA)
         {
+            if (_filaSpawnAeronavesIA.Count == 0) _primeiroEnfileiramentoAeronaveIA = Time.unscaledTime;
             _filaSpawnAeronavesIA.Enqueue(prefabDeAeronave);
             ProcessarFilaCompraAeronavesIA();
             return;
         }
 
+        ComprarAviaoImediato(prefabDeAeronave);
+    }
+
+    /// <summary>
+    /// Spawn da reserva mínima da IA usando o mesmo pátio e a mesma rotina do
+    /// jogador, sem deixar o primeiro caça preso no limitador da fila.
+    /// </summary>
+    public void ComprarAviaoIAImediato(GameObject prefabDeAeronave)
+    {
+        if (prefabDeAeronave == null) return;
         ComprarAviaoImediato(prefabDeAeronave);
     }
 

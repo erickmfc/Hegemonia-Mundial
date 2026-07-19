@@ -18,10 +18,27 @@ namespace Hegemonia.AI.IA01
             Vector3 c = Quaternion.Euler(0f, fase + 240f, 0f) * Vector3.forward;
             return new[]
             {
-                transform.position + a * (raio * 0.72f),
-                transform.position + b * raio,
-                transform.position + c * (raio * 0.72f)
+                ResolverAgua(transform.position + a * (raio * 0.72f), a),
+                ResolverAgua(transform.position + b * raio, b),
+                ResolverAgua(transform.position + c * (raio * 0.72f), c)
             };
+        }
+
+        private static Vector3 ResolverAgua(Vector3 candidato, Vector3 direcao)
+        {
+            if (NavalPlacementResolver.IsWaterAtPosition(candidato))
+            {
+                candidato.y = NavalPlacementResolver.ResolveSeaLevel();
+                return candidato;
+            }
+
+            if (NavalPlacementResolver.TryResolveWaterSpawn(candidato, direcao, 0f, 220f, out Vector3 agua, out _, out _))
+            {
+                return agua;
+            }
+
+            candidato.y = NavalPlacementResolver.ResolveSeaLevel();
+            return candidato;
         }
 
         private void OnDrawGizmosSelected()

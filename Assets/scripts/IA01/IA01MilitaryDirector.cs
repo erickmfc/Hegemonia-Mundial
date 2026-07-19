@@ -18,10 +18,14 @@ namespace Hegemonia.AI.IA01
         private float nextTickAt;
         private float nextPatrolAt;
         private int lastNavalPatrolDay = -1;
+        private int lastAirPatrolDay = -1;
         private int issuedFighters;
         private int issuedNaval;
         private float lastFighterOrderAt = -999f;
         private float nextShipyardRecoveryAt;
+        private float nextPierRecoveryAt;
+        private float nextPlatformRecoveryAt;
+        private float nextNavalStagingAt;
         private string status = "Reserva militar aguardando infraestrutura.";
 
         private const int MinSoldiers = 6;
@@ -96,7 +100,10 @@ namespace Hegemonia.AI.IA01
             // Se a abertura ainda não conseguiu erguer a fábrica/aeroporto em 12 s,
             // cria a reserva em ponto seguro do próprio território. Isso mantém a IA
             // jogável sem espalhar construções ou unidades para o mapa adversário.
+            EnsurePierThenPlatform(now);
             ApplyNavalPatrols(now);
+            ApplyNavalStaging(now);
+            ApplyAirPatrols(now);
             status = string.Format("Reserva militar: soldados={0}/{1} tanques={2}/{3} cacas={4}/{5} navios={6}/{7}",
                 soldiers, targetSoldiers, tanks, targetTanks, fighters, targetFighters, naval, targetNaval);
             if (changed)
@@ -150,7 +157,11 @@ namespace Hegemonia.AI.IA01
             }
             else
             {
-                nextPatrolAt = now + 45f;
+                // No primeiro dia a patrulha começa assim que a primeira
+                // embarcação sai do estaleiro; depois o intervalo do create
+                // controla as novas passagens. Evita deixar o navio parado
+                // por quase um minuto após a construção.
+                nextPatrolAt = now + 5f;
             }
             IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
             int assigned = 0;
@@ -178,6 +189,12 @@ namespace Hegemonia.AI.IA01
                 if (control.OrdemAtual == OrdemControleUnidade.Patrulhando)
                 {
                     alreadyPatrolling++;
+                    continue;
+                }
+                // Um navio abre a patrulha contínua. Os demais são escalonados
+                // em pontos costeiros leves para não concentrar custo de rota.
+                if (assigned > 0)
+                {
                     continue;
                 }
                 IA01NavalPatrolZone zone = zones[assigned % zones.Length];
@@ -217,6 +234,155 @@ namespace Hegemonia.AI.IA01
             }
         }
 
+        private void ApplyAirPatrols(float now)
+        {
+            IA01AirPatrolZone[] zones = controller != null
+                ? controller.GetComponentsInChildren<IA01AirPatrolZone>(true)
+                : Array.Empty<IA01AirPatrolZone>();
+            if (zones.Length == 0)
+            {
+                zones = UnityEngine.Object.FindObjectsByType<IA01AirPatrolZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            }
+            if (zones.Length == 0)
+            {
+                IA01AirPatrolZone created = EnsureAirPatrolZone();
+                if (created != null) zones = new[] { created };
+            }
+            if (zones.Length == 0) return;
+
+            int currentDay = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 0;
+            int interval = Mathf.Max(1, zones[0].IntervaloDias);
+            if (currentDay > 0)
+            {
+                if (lastAirPatrolDay >= 0 && currentDay - lastAirPatrolDay < interval) return;
+                lastAirPatrolDay = currentDay;
+            }
+            else if (now < 3f)
+            {
+                return;
+            }
+
+            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+            int candidates = 0;
+            for (int i = 0; i < identities.Length; i++)
+            {
+                IdentidadeUnidade id = identities[i];
+                if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Aereo) continue;
+                candidates++;
+                ControleUnidade control = id.GetComponent<ControleUnidade>()
+                    ?? id.GetComponentInParent<ControleUnidade>()
+                    ?? id.GetComponentInChildren<ControleUnidade>(true);
+                if (control == null || control.OrdemAtual == OrdemControleUnidade.Patrulhando) continue;
+                Vector3[] route = zones[0].CriarRota(0);
+                if (control.EmitirOrdemPatrulha(route))
+                {
+                    DiagnosticoDesempenhoJogo.RegistrarEvento("IA01_AirPatrol", id.name + " patrulha " + zones[0].name);
+                    Debug.Log("[IA01 Military] Patrulha aerea: " + id.name + " -> " + zones[0].name + " centro=" + zones[0].transform.position.ToString("F2"));
+                }
+                // Apenas um caça inicia a patrulha; a expansão pode liberar os demais.
+                break;
+            }
+            if (candidates > 0)
+            {
+                Debug.Log("[IA01 Military] Patrulha aerea: candidatos=" + candidates + " | limite inicial=1");
+            }
+        }
+
+        private IA01AirPatrolZone EnsureAirPatrolZone()
+        {
+            GerenciadorAeroporto[] airports = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < airports.Length; i++)
+            {
+                GerenciadorAeroporto airport = airports[i];
+                if (airport == null || !BelongsToOwnAirport(airport)) continue;
+                Transform existing = airport.transform.Find("IA01 Patrulha Aerea - Área Inicial");
+                GameObject go = existing != null ? existing.gameObject : new GameObject("IA01 Patrulha Aerea - Área Inicial");
+                if (existing == null) go.transform.SetParent(airport.transform, false);
+                go.transform.localPosition = new Vector3(0f, 0f, 280f);
+                IA01AirPatrolZone zone = go.GetComponent<IA01AirPatrolZone>();
+                if (zone == null) zone = go.AddComponent<IA01AirPatrolZone>();
+                Debug.Log("[IA01 Military] Create de patrulha aerea garantido: " + go.name + " pos=" + go.transform.position.ToString("F2"));
+                return zone;
+            }
+            return null;
+        }
+
+        private void ApplyNavalStaging(float now)
+        {
+            if (now < nextNavalStagingAt) return;
+            nextNavalStagingAt = now + 30f;
+            IA01NavalPatrolZone[] zones = UnityEngine.Object.FindObjectsByType<IA01NavalPatrolZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (zones.Length == 0) return;
+            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+            int staged = 0;
+            for (int i = 0; i < identities.Length; i++)
+            {
+                IdentidadeUnidade id = identities[i];
+                if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Naval) continue;
+                ControleUnidade control = id.GetComponent<ControleUnidade>()
+                    ?? id.GetComponentInParent<ControleUnidade>()
+                    ?? id.GetComponentInChildren<ControleUnidade>(true);
+                if (control == null || control.OrdemAtual == OrdemControleUnidade.Patrulhando) continue;
+                ControleNavioRealista navio = id.GetComponent<ControleNavioRealista>()
+                    ?? id.GetComponentInParent<ControleNavioRealista>()
+                    ?? id.GetComponentInChildren<ControleNavioRealista>(true);
+                if (navio != null && navio.TemDestinoAtivo) continue;
+                Vector3 ponto = zones[(i + 1) % zones.Length].transform.position;
+                if (NavalPlacementResolver.TryResolveWaterSpawn(ponto, Vector3.right, 0f, 180f, out Vector3 agua, out _, out _))
+                    ponto = agua;
+                if (control.EmitirOrdemMover(ponto, true))
+                {
+                    staged++;
+                    Debug.Log("[IA01 Military] Navio em ponto costeiro otimizado: " + id.name + " -> " + ponto.ToString("F2"));
+                    if (staged >= 2) break;
+                }
+            }
+        }
+
+        private void EnsurePierThenPlatform(float now)
+        {
+            if (controller == null) return;
+            PierMarinha[] piers = UnityEngine.Object.FindObjectsByType<PierMarinha>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            bool ownPier = false;
+            for (int i = 0; i < piers.Length; i++)
+            {
+                if (piers[i] != null && BelongsToTeam(piers[i].gameObject)) { ownPier = true; break; }
+            }
+
+            if (!ownPier && now >= nextPierRecoveryAt)
+            {
+                nextPierRecoveryAt = now + 18f;
+                BuildCoastalStructure(IA01IntentType.BuildPier, "pier", "dock");
+                return;
+            }
+            if (!ownPier || now < nextPlatformRecoveryAt) return;
+
+            PlataformaOffshore[] platforms = UnityEngine.Object.FindObjectsByType<PlataformaOffshore>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < platforms.Length; i++)
+            {
+                if (platforms[i] != null && BelongsToTeam(platforms[i].gameObject)) return;
+            }
+            nextPlatformRecoveryAt = now + 35f;
+            BuildCoastalStructure(IA01IntentType.BuildOffshorePlatform, "plataforma", "offshore");
+        }
+
+        private bool BuildCoastalStructure(IA01IntentType intent, params string[] blueprintTokens)
+        {
+            if (!controller.TryResolveConstructionAnchor(intent, out Vector3 anchor, out Quaternion rotation)) return false;
+            DadosConstrucao blueprint = FindStructureBlueprint(blueprintTokens);
+            if (blueprint == null || !blueprint.TryGetPrefabBasico(out GameObject prefab) || prefab == null) return false;
+            Construtor builder = Construtor.Instancia != null ? Construtor.Instancia : UnityEngine.Object.FindFirstObjectByType<Construtor>();
+            GameObject built = builder != null ? builder.ConstruirEstruturaIA(prefab, anchor, rotation) : UnityEngine.Object.Instantiate(prefab, anchor, rotation);
+            if (built == null) return false;
+            built.transform.SetPositionAndRotation(anchor, rotation);
+            IdentidadeUnidade identity = built.GetComponent<IdentidadeUnidade>() ?? built.AddComponent<IdentidadeUnidade>();
+            identity.teamID = context.TeamId;
+            identity.nomeDoPais = controller.NationName;
+            identity.tipoUnidade = TipoUnidade.Estrutura;
+            Debug.Log("[IA01 Military] " + intent + " criado no create: " + built.name + " pos=" + built.transform.position.ToString("F2"));
+            return true;
+        }
+
         private void NormalizeOwnedNavalIdentities()
         {
             Estaleiro[] shipyards = UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
@@ -225,6 +391,11 @@ namespace Hegemonia.AI.IA01
             {
                 Estaleiro shipyard = shipyards[i];
                 if (shipyard != null && BelongsToTeam(shipyard.gameObject)) ownedPorts.Add(shipyard.transform.position);
+            }
+            PierMarinha[] piers = UnityEngine.Object.FindObjectsByType<PierMarinha>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < piers.Length; i++)
+            {
+                if (piers[i] != null && BelongsToTeam(piers[i].gameObject)) ownedPorts.Add(piers[i].transform.position);
             }
             if (ownedPorts.Count == 0) return;
 
@@ -238,7 +409,9 @@ namespace Hegemonia.AI.IA01
                 {
                     Vector3 delta = id.transform.position - ownedPorts[p];
                     delta.y = 0f;
-                    if (delta.sqrMagnitude <= 900f * 900f) { nearOwnedPort = true; break; }
+                    // O estaleiro libera a embarcação alguns centenas de metros
+                    // mar adentro; a identidade pode estar além do create visual.
+                    if (delta.sqrMagnitude <= 2600f * 2600f) { nearOwnedPort = true; break; }
                 }
                 // Navios liberados pelo estaleiro sem identidade herdada recebem o
                 // time da IA antes da contagem e da ordem de patrulha.
@@ -394,6 +567,7 @@ namespace Hegemonia.AI.IA01
                 if (!BelongsToOwnAirport(airport)) continue;
                 airport.gameObject.SetActive(true);
                 airport.enabled = true;
+                airport.SetarSemEnergia(false);
                 EnsureAirportIdentity(airport);
                 // Nem toda ficha de caca esta no catalogo global em runtime. O
                 // aeroporto militar ja possui a mesma referencia usada pelo
@@ -406,12 +580,12 @@ namespace Hegemonia.AI.IA01
                     status = "Aeroporto militar sem prefab de caca configurado.";
                     continue;
                 }
-                airport.ComprarAviao(aircraft);
+                airport.ComprarAviaoIAImediato(aircraft);
                 // A fila é a mesma usada pelo jogador: ela pode liberar a aeronave
                 // no próximo frame, já na vaga de estacionamento do aeroporto.
                 issuedFighters++;
                 lastFighterOrderAt = Time.time;
-                Debug.Log("[IA01 Military] Caca enfileirado no aeroporto proprio: " + airport.name + " -> " + aircraft.name);
+                Debug.Log("[IA01 Military] Caca estacionado no aeroporto proprio: " + airport.name + " -> " + aircraft.name);
                 return true;
 
                 // Aeroporto militar sem IdentidadeUnidade não propaga o team para
@@ -468,6 +642,11 @@ namespace Hegemonia.AI.IA01
             {
                 airport.gameObject.SetActive(true);
                 airport.enabled = true;
+                // O create militar pode nascer antes da primeira usina. A base
+                // continua usando a fila oficial do aeroporto, mas não fica
+                // permanentemente travada pelo sinal inicial de apagão durante
+                // a mobilização mínima da IA.
+                airport.SetarSemEnergia(false);
                 EnsureAirportIdentity(airport);
                 Debug.Log("[IA01 Military] Aeroporto militar criado no create: " + built.name + " pos=" + built.transform.position.ToString("F2"));
             }
