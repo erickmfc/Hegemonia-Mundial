@@ -43,6 +43,10 @@ namespace Hegemonia.AI.IA01
             identity.teamID = context.TeamId;
             identity.nomeDoPais = context.NationName;
             identity.tipoUnidade = TipoUnidade.Estrutura;
+            Estaleiro builtShipyard = built.GetComponent<Estaleiro>();
+            if (builtShipyard != null) builtShipyard.OwnerTeamId = context.TeamId;
+            PierMarinha builtPier = built.GetComponent<PierMarinha>();
+            if (builtPier != null) builtPier.OwnerTeamId = context.TeamId;
             SaveableEntity.Garantir(built, prefab.name);
 
             // Mantem a mesma regra visual do construtor do jogador: casas da IA

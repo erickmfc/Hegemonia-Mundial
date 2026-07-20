@@ -58,6 +58,10 @@ public class TorretaAntiaerea : MonoBehaviour
     private int indexPontoDisparo = 0;
     private Collider[] _bufferOverlaps = new Collider[96];
     private static readonly List<IdentidadeUnidade> unidadesRegistroRadar = new List<IdentidadeUnidade>(256);
+    private Quaternion rotacaoInicialBaseGiratoria = Quaternion.identity;
+    private Quaternion rotacaoInicialCanoElevacao = Quaternion.identity;
+    private Vector3 eulerRepousoBaseGiratoria;
+    private Vector3 eulerRepousoCanoElevacao;
 
     Transform ResolverTransformPrincipal(Transform alvo)
     {
@@ -86,6 +90,17 @@ public class TorretaAntiaerea : MonoBehaviour
         {
             minhaIdentidade = gameObject.AddComponent<IdentidadeUnidade>();
             minhaIdentidade.teamID = 1; // 1 = Time do Jogador por padrão
+        }
+
+        if (baseGiratoria != null)
+        {
+            rotacaoInicialBaseGiratoria = baseGiratoria.localRotation;
+            eulerRepousoBaseGiratoria = baseGiratoria.localEulerAngles;
+        }
+        if (canoElevacao != null)
+        {
+            rotacaoInicialCanoElevacao = canoElevacao.localRotation;
+            eulerRepousoCanoElevacao = canoElevacao.localEulerAngles;
         }
 
         // Prepara sistema de som
@@ -262,7 +277,8 @@ public class TorretaAntiaerea : MonoBehaviour
             float anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
             if (limitarRotacaoY) anguloY = Mathf.Clamp(anguloY, anguloMinimoY, anguloMaximoY);
             
-            Quaternion rotacaoAlvoBase = Quaternion.Euler(0f, anguloY, 0f);
+            // Mantém a inclinação/roll authored do suporte e altera somente o yaw.
+            Quaternion rotacaoAlvoBase = Quaternion.Euler(eulerRepousoBaseGiratoria.x, anguloY, eulerRepousoBaseGiratoria.z);
             baseGiratoria.localRotation = Quaternion.Slerp(baseGiratoria.localRotation, rotacaoAlvoBase, Time.deltaTime * 40f);
         }
 
@@ -278,7 +294,7 @@ public class TorretaAntiaerea : MonoBehaviour
             
             if (limitarInclinacao) giroPitch = Mathf.Clamp(giroPitch, -elevacaoMaxima, -elevacaoMinima);
             
-            Quaternion rotacaoAlvoCano = Quaternion.Euler(giroPitch, 0f, 0f);
+            Quaternion rotacaoAlvoCano = Quaternion.Euler(giroPitch, eulerRepousoCanoElevacao.y, eulerRepousoCanoElevacao.z);
             canoElevacao.localRotation = Quaternion.Slerp(canoElevacao.localRotation, rotacaoAlvoCano, Time.deltaTime * 40f);
         }
     }

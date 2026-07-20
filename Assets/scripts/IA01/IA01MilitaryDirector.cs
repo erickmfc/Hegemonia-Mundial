@@ -26,12 +26,16 @@ namespace Hegemonia.AI.IA01
         private float nextPierRecoveryAt;
         private float nextPlatformRecoveryAt;
         private float nextNavalStagingAt;
+        private float platformConfirmedAt = -1f;
+        private float nextTankerAttemptAt;
+        private bool tankerOrderIssued;
         private string status = "Reserva militar aguardando infraestrutura.";
 
         private const int MinSoldiers = 6;
         private const int MinTanks = 3;
         private const int MinFighters = 2;
         private const int MinNaval = 1;
+        private const float TankerDelayAfterPlatformSeconds = 60f;
 
         public string Status => status;
 
@@ -67,13 +71,17 @@ namespace Hegemonia.AI.IA01
             int actions = 0;
             if (soldiers < targetSoldiers && actions < 2)
             {
-                bool produced = TryProduceLand(FindSoldier(), "soldados");
+                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Infantry, targetSoldiers, soldiers, now);
+                bool produced = reserved && TryProduceLand(FindSoldier(), "soldados");
+                if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.Infantry, now);
                 changed |= produced;
                 if (produced) actions++;
             }
             if (tanks < targetTanks && actions < 2)
             {
-                bool produced = TryProduceLand(FindTank(), "tanques");
+                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Tank, targetTanks, tanks, now);
+                bool produced = reserved && TryProduceLand(FindTank(), "tanques");
+                if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.Tank, now);
                 changed |= produced;
                 if (produced) actions++;
             }
@@ -81,7 +89,9 @@ namespace Hegemonia.AI.IA01
             // já emitidas para não comprar duplicado antes da contagem atualizar.
             if (fighters + issuedFighters < targetFighters && actions < 2)
             {
-                bool produced = TryProduceFighter(FindFighter(), now);
+                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Fighter, targetFighters, fighters, now);
+                bool produced = reserved && TryProduceFighter(FindFighter(), now);
+                if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.Fighter, now);
                 changed |= produced;
                 if (produced) actions++;
             }
@@ -89,7 +99,9 @@ namespace Hegemonia.AI.IA01
             // Assim que existir estaleiro/pier, a IA coloca pelo menos uma unidade naval.
             if (naval + issuedNaval < targetNaval && HasOwnNavalInfrastructure() && actions < 2)
             {
-                bool produced = TryProduceNaval(FindNaval(), "navios");
+                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Naval, targetNaval, naval, now, 90f);
+                bool produced = reserved && TryProduceNaval(FindNaval(), "navios");
+                if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.Naval, now);
                 changed |= produced;
                 if (produced) actions++;
             }
@@ -101,6 +113,7 @@ namespace Hegemonia.AI.IA01
             // cria a reserva em ponto seguro do próprio território. Isso mantém a IA
             // jogável sem espalhar construções ou unidades para o mapa adversário.
             EnsurePierThenPlatform(now);
+            EnsureTankerAfterPlatform(now);
             ApplyNavalPatrols(now);
             ApplyNavalStaging(now);
             ApplyAirPatrols(now);
@@ -120,15 +133,41 @@ namespace Hegemonia.AI.IA01
             DadosPaisGoverno country = government != null ? government.ObterPais(context.TeamId) : null;
             if (country == null) return;
 
-            // Crescimento gradual: somente aumenta a reserva quando a economia
-            // consegue pagar operacao e reposicao sem entrar em crise.
-            bool economyHealthy = country.saldo >= 14000 && country.comida > 0 && country.energia > 0;
-            if (!economyHealthy) return;
-            int expansionTier = Mathf.Clamp((country.saldo - 14000) / 9000, 0, 3);
-            soldiers += expansionTier * 2;
-            tanks += expansionTier;
-            fighters += expansionTier;
-            naval += expansionTier > 1 ? 1 : 0;
+            // Crescimento gradual: a reserva minima permanece igual, mas uma
+            // nação com população, caixa e doutrina militar pode evoluir para
+            // potência. Déficit de comida/energia ou crise nunca é ignorado.
+            bool atWar = country.emGuerra
+                || country.modoInicialIA == ModoInicialPaisIA.Mobilizacao
+                || country.modoInicialIA == ModoInicialPaisIA.GuerraTotal
+                || country.modoInicialIA == ModoInicialPaisIA.AgressivoContraJogador;
+            bool economyHealthy = country.comida > 0 && country.energia > 0 && country.saldo >= 14000;
+            if (!economyHealthy && !atWar) return;
+
+            int populationTier = Mathf.Clamp(country.populacao / 5000, 0, 6);
+            int treasuryTier = Mathf.Clamp((country.saldo - 14000) / 9000, 0, 5);
+            int militaryTier = Mathf.Clamp(Mathf.RoundToInt(country.nivelMilitar / 25f), 0, 4);
+            int doctrineTier = Mathf.Clamp(Mathf.RoundToInt(country.pesoMilitarismo * 3f), 0, 3);
+            bool powerDoctrine = country.perfilIA == PerfilPaisIA.Militarista
+                || country.perfilIA == PerfilPaisIA.Rival
+                || country.nivelMilitar >= 70
+                || country.pesoMilitarismo >= 0.70f;
+            int expansionTier = Mathf.Clamp(
+                Mathf.Max(populationTier / 2, treasuryTier) + militaryTier / 2 + doctrineTier + (atWar ? 2 : 0),
+                0,
+                powerDoctrine ? 7 : 4);
+
+            soldiers += expansionTier * 2 + (powerDoctrine ? 2 : 0);
+            tanks += expansionTier + (powerDoctrine ? 1 : 0);
+            fighters += Mathf.Max(0, expansionTier / 2) + (powerDoctrine ? 1 : 0);
+            naval += expansionTier >= 3 ? 1 : 0;
+
+            // População e orçamento limitam a expansão física. Isso evita que
+            // uma duplicação de identidade vire dezenas de caças na mesma base.
+            int mobilizable = Mathf.Max(6, country.populacaoCivil > 0 ? country.populacaoCivil / 900 : country.populacao / 900);
+            soldiers = Mathf.Min(soldiers, Mathf.Max(MinSoldiers, mobilizable));
+            tanks = Mathf.Min(tanks, Mathf.Max(MinTanks, 3 + mobilizable / 8));
+            fighters = Mathf.Min(fighters, Mathf.Max(MinFighters, 2 + mobilizable / 10));
+            naval = Mathf.Min(naval, Mathf.Max(MinNaval, 1 + mobilizable / 14));
         }
 
         private void ApplyNavalPatrols(float now)
@@ -153,7 +192,6 @@ namespace Hegemonia.AI.IA01
             if (currentDay > 0)
             {
                 if (lastNavalPatrolDay >= 0 && currentDay - lastNavalPatrolDay < interval) return;
-                lastNavalPatrolDay = currentDay;
             }
             else
             {
@@ -168,10 +206,24 @@ namespace Hegemonia.AI.IA01
             int candidates = 0;
             int alreadyPatrolling = 0;
             int rejected = 0;
+            int logisticsTankers = 0;
             for (int i = 0; i < identities.Length; i++)
             {
                 IdentidadeUnidade id = identities[i];
                 if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Naval) continue;
+
+                // Estaleiros/pieres podem carregar uma IdentidadeUnidade para
+                // registro, mas não são navios. O petroleiro tem uma máquina
+                // própria de rota plataforma -> píer e não pode receber a
+                // patrulha de combate genérica, pois isso interromperia o
+                // carregamento/descarregamento de petróleo.
+                if (IsNavalStructure(id)) continue;
+                if (IsLogisticsTanker(id))
+                {
+                    logisticsTankers++;
+                    continue;
+                }
+
                 candidates++;
                 // Creates antigos podem deixar a IdentidadeUnidade em um filho
                 // enquanto o controle fica no objeto raiz (ou vice-versa).
@@ -212,8 +264,14 @@ namespace Hegemonia.AI.IA01
             }
             if (candidates > 0)
             {
-                Debug.Log(string.Format("[IA01 Military] Patrulha naval: candidatos={0} atribuídos={1} jáPatrulhando={2} recusados={3}",
-                    candidates, assigned, alreadyPatrolling, rejected));
+                // Consome o dia somente quando ja existe embarcacao elegivel.
+                // O ciclo inicial pode ocorrer antes da saida do estaleiro.
+                if (currentDay > 0 && (assigned > 0 || alreadyPatrolling > 0))
+                {
+                    lastNavalPatrolDay = currentDay;
+                }
+                Debug.Log(string.Format("[IA01 Military] Patrulha naval: candidatos={0} atribuídos={1} jáPatrulhando={2} recusados={3} petroleirosLogistica={4}",
+                    candidates, assigned, alreadyPatrolling, rejected, logisticsTankers));
             }
             else
             {
@@ -221,7 +279,10 @@ namespace Hegemonia.AI.IA01
                 for (int i = 0; i < identities.Length; i++)
                 {
                     IdentidadeUnidade id = identities[i];
-                    if (id != null && id.tipoUnidade == TipoUnidade.Naval)
+                    if (id != null
+                        && id.tipoUnidade == TipoUnidade.Naval
+                        && !IsNavalStructure(id)
+                        && !IsLogisticsTanker(id))
                     {
                         navalIdentities++;
                     }
@@ -319,6 +380,7 @@ namespace Hegemonia.AI.IA01
             {
                 IdentidadeUnidade id = identities[i];
                 if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Naval) continue;
+                if (IsNavalStructure(id) || IsLogisticsTanker(id)) continue;
                 ControleUnidade control = id.GetComponent<ControleUnidade>()
                     ?? id.GetComponentInParent<ControleUnidade>()
                     ?? id.GetComponentInChildren<ControleUnidade>(true);
@@ -337,6 +399,21 @@ namespace Hegemonia.AI.IA01
                     if (staged >= 2) break;
                 }
             }
+        }
+
+        private bool IsNavalStructure(IdentidadeUnidade identity)
+        {
+            if (identity == null) return false;
+            return identity.GetComponentInParent<Estaleiro>() != null
+                || identity.GetComponentInParent<PierMarinha>() != null;
+        }
+
+        private bool IsLogisticsTanker(IdentidadeUnidade identity)
+        {
+            if (identity == null) return false;
+            return identity.GetComponent<NavioPetroleiro>() != null
+                || identity.GetComponentInParent<NavioPetroleiro>() != null
+                || identity.GetComponentInChildren<NavioPetroleiro>(true) != null;
         }
 
         private void EnsurePierThenPlatform(float now)
@@ -366,9 +443,87 @@ namespace Hegemonia.AI.IA01
             BuildCoastalStructure(IA01IntentType.BuildOffshorePlatform, "plataforma", "offshore");
         }
 
+        /// <summary>
+        /// O petroleiro só entra na fila depois que a plataforma offshore da
+        /// própria IA foi confirmada. A espera representa um dia de operação
+        /// (60 segundos no ritmo atual da partida), evitando que estaleiro,
+        /// pier, plataforma e navio nasçam todos no mesmo instante.
+        /// </summary>
+        private void EnsureTankerAfterPlatform(float now)
+        {
+            if (controller == null || tankerOrderIssued) return;
+
+            PlataformaOffshore plataformaPropria = null;
+            PlataformaOffshore[] plataformas = UnityEngine.Object.FindObjectsByType<PlataformaOffshore>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < plataformas.Length; i++)
+            {
+                PlataformaOffshore candidata = plataformas[i];
+                if (candidata != null && BelongsToTeam(candidata.gameObject))
+                {
+                    plataformaPropria = candidata;
+                    break;
+                }
+            }
+
+            if (plataformaPropria == null)
+            {
+                platformConfirmedAt = -1f;
+                return;
+            }
+
+            if (platformConfirmedAt < 0f)
+            {
+                platformConfirmedAt = now;
+                Debug.Log("[IA01 Military] Plataforma de petróleo confirmada; petroleiro liberado em "
+                    + TankerDelayAfterPlatformSeconds.ToString("0") + "s.");
+                return;
+            }
+
+            if (now - platformConfirmedAt < TankerDelayAfterPlatformSeconds || now < nextTankerAttemptAt)
+                return;
+
+            NavioPetroleiro[] petroleiros = UnityEngine.Object.FindObjectsByType<NavioPetroleiro>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < petroleiros.Length; i++)
+            {
+                if (petroleiros[i] != null && BelongsToTeam(petroleiros[i].gameObject))
+                {
+                    tankerOrderIssued = true;
+                    return;
+                }
+            }
+
+            DadosConstrucao fichaPetroleiro = FindTanker();
+            if (fichaPetroleiro == null || !fichaPetroleiro.TryGetPrefabBasico(out GameObject prefab) || prefab == null)
+            {
+                nextTankerAttemptAt = now + 15f;
+                Debug.LogWarning("[IA01 Military] Plataforma confirmada, mas ficha de navio petroleiro ainda nao foi localizada.");
+                return;
+            }
+
+            Estaleiro[] estaleiros = UnityEngine.Object.FindObjectsByType<Estaleiro>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < estaleiros.Length; i++)
+            {
+                Estaleiro estaleiro = estaleiros[i];
+                if (estaleiro == null || !BelongsToTeam(estaleiro.gameObject)) continue;
+                if (!estaleiro.ConstruirUnidade(prefab)) continue;
+
+                tankerOrderIssued = true;
+                Debug.Log("[IA01 Military] Navio petroleiro iniciado após um dia da plataforma: "
+                    + estaleiro.name + " -> " + prefab.name);
+                return;
+            }
+
+            nextTankerAttemptAt = now + 15f;
+        }
+
         private bool BuildCoastalStructure(IA01IntentType intent, params string[] blueprintTokens)
         {
-            if (!controller.TryResolveConstructionAnchor(intent, out Vector3 anchor, out Quaternion rotation)) return false;
+            Vector3 anchor;
+            Quaternion rotation;
+            if (!controller.TryResolveConstructionAnchor(intent, out anchor, out rotation)) return false;
             DadosConstrucao blueprint = FindStructureBlueprint(blueprintTokens);
             if (blueprint == null || !blueprint.TryGetPrefabBasico(out GameObject prefab) || prefab == null) return false;
             Construtor builder = Construtor.Instancia != null ? Construtor.Instancia : UnityEngine.Object.FindFirstObjectByType<Construtor>();
@@ -403,7 +558,15 @@ namespace Hegemonia.AI.IA01
             for (int i = 0; i < identities.Length; i++)
             {
                 IdentidadeUnidade id = identities[i];
-                if (id == null || id.tipoUnidade != TipoUnidade.Naval || id.teamID == context.TeamId) continue;
+                // A identidade gravada na unidade e a fonte de verdade da
+                // propriedade. Nunca adote uma embarcacao de outro time
+                // apenas porque ela saiu perto do porto da IA. Corrija
+                // somente identidades realmente ausentes (team 0).
+            // Petroleiros sao logistica: nunca podem ser incorporados a
+            // patrulha da IA, mesmo quando uma unidade legada ainda estiver
+            // sem teamID. A propria rotina NavioPetroleiro resolve a rota
+            // plataforma -> pier do seu dono.
+            if (id == null || id.tipoUnidade != TipoUnidade.Naval || id.teamID > 0 || IsLogisticsTanker(id)) continue;
                 bool nearOwnedPort = false;
                 for (int p = 0; p < ownedPorts.Count; p++)
                 {
@@ -494,6 +657,26 @@ namespace Hegemonia.AI.IA01
             return FindUnit(item => item.categoria == DadosConstrucao.CategoriaItem.Marinha
                 && !item.HasCapability(IA_ConstructionCapability.NavalTransport)
                 && !Contains(item, "petroleiro", "tanker", "transporte"));
+        }
+
+        private DadosConstrucao FindTanker()
+        {
+            return FindUnit(item =>
+            {
+                if (item.categoria != DadosConstrucao.CategoriaItem.Marinha) return false;
+                if (Contains(item, "petroleiro", "tanker", "oil tanker")) return true;
+                try
+                {
+                    return item.TryGetPrefabBasico(out GameObject prefab)
+                        && prefab != null
+                        && (prefab.GetComponent<NavioPetroleiro>() != null
+                            || prefab.GetComponentInChildren<NavioPetroleiro>(true) != null);
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            });
         }
 
         private DadosConstrucao FindUnit(Func<DadosConstrucao, bool> predicate)
@@ -900,38 +1083,20 @@ namespace Hegemonia.AI.IA01
 
         private int CountUnits(TipoUnidade type)
         {
-            int count = 0;
-            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-            for (int i = 0; i < identities.Length; i++)
-                if (identities[i] != null && identities[i].teamID == context.TeamId && identities[i].tipoUnidade == type) count++;
-            return count;
+            return IA01MilitaryProductionGuard.CountOwnedUnique(context.TeamId, type);
         }
 
         private int CountTanks()
         {
-            int count = 0;
-            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-            for (int i = 0; i < identities.Length; i++)
-            {
-                IdentidadeUnidade id = identities[i];
-                if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Veiculo) continue;
-                string name = IA_Text.Normalize(id.gameObject.name);
-                if (Contains(name, "tank", "tanque", "blindado", "vehicle", "veiculo", "carro")) count++;
-            }
-            return count;
+            return IA01MilitaryProductionGuard.CountOwnedUnique(context.TeamId, TipoUnidade.Veiculo, id =>
+                Contains(IA_Text.Normalize(id.gameObject.name), "tank", "tanque", "blindado", "vehicle", "veiculo", "carro"));
         }
 
         private int CountFighters()
         {
-            int count = 0;
-            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-            for (int i = 0; i < identities.Length; i++)
-            {
-                IdentidadeUnidade id = identities[i];
-                if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Aereo) continue;
-                if (id.GetComponentInChildren<ControleAviaoCaca>(true) != null || Contains(id.gameObject.name, "caca", "fighter", "su11", "g15", "falcon")) count++;
-            }
-            return count;
+            return IA01MilitaryProductionGuard.CountOwnedUnique(context.TeamId, TipoUnidade.Aereo, id =>
+                id.GetComponentInChildren<ControleAviaoCaca>(true) != null
+                || Contains(id.gameObject.name, "caca", "fighter", "su11", "g15", "falcon"));
         }
 
         private bool HasOwnNavalInfrastructure()

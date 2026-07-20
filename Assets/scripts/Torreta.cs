@@ -18,11 +18,17 @@ public class Torreta : MonoBehaviour
     public string tagInimigo = "Inimigo"; 
     private Transform alvoAtual;
     private int _meuTime;
+    private Quaternion rotacaoInicialCabeca = Quaternion.identity;
+    private Vector3 eulerRepousoCabeca;
     private static readonly List<IdentidadeUnidade> _bufferUnidades = new List<IdentidadeUnidade>(512);
 
     void Start()
     {
         _meuTime = GetComponentInParent<IdentidadeUnidade>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 1;
+        if (cabecaGiro == null) cabecaGiro = transform;
+        rotacaoInicialCabeca = cabecaGiro.localRotation;
+        eulerRepousoCabeca = cabecaGiro.localEulerAngles;
+        if (pontoTiro == null) pontoTiro = cabecaGiro;
         InvokeRepeating("AtualizarAlvo", 0f, 0.5f);
     }
 
@@ -68,11 +74,26 @@ public class Torreta : MonoBehaviour
         // ---------------------------------------------------
 
         // 1. MIRAR
-        Vector3 direcao = alvoAtual.position - transform.position;
-        Quaternion olharPara = Quaternion.LookRotation(direcao);
-        
-        Vector3 rotacao = Quaternion.Lerp(cabecaGiro.rotation, olharPara, Time.deltaTime * velocidadeGiro).eulerAngles;
-        cabecaGiro.rotation = Quaternion.Euler(0f, rotacao.y, 0f); 
+        Vector3 direcao = alvoAtual.position - cabecaGiro.position;
+        direcao.y = 0f;
+        if (direcao.sqrMagnitude < 0.001f) return;
+
+        if (cabecaGiro.parent != null)
+        {
+            Vector3 localDir = cabecaGiro.parent.InverseTransformDirection(direcao);
+            float yaw = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+            Quaternion olharPara = Quaternion.Euler(eulerRepousoCabeca.x, yaw, eulerRepousoCabeca.z);
+            cabecaGiro.localRotation = Quaternion.Lerp(cabecaGiro.localRotation, olharPara, Time.deltaTime * velocidadeGiro);
+        }
+        else
+        {
+            // Sem pai, a torreta usa coordenadas de mundo. Usar o próprio
+            // transform como referência fazia o yaw ser recalculado em cima
+            // da rotação atual e podia causar giro estranho/deriva.
+            float yawMundo = Mathf.Atan2(direcao.x, direcao.z) * Mathf.Rad2Deg;
+            Quaternion olharParaMundo = Quaternion.Euler(eulerRepousoCabeca.x, yawMundo, eulerRepousoCabeca.z);
+            cabecaGiro.rotation = Quaternion.Lerp(cabecaGiro.rotation, olharParaMundo, Time.deltaTime * velocidadeGiro);
+        }
 
         // 2. ATIRAR (Só se estiver bem alinhado)
         // Calcula o ângulo ignorando a altura para evitar falhas se o alvo estiver num morro

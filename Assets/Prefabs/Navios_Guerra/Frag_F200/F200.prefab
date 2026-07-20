@@ -80,7 +80,7 @@ Transform:
   m_GameObject: {fileID: 2189358134733502302}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 0.45, z: -2.36}
+  m_LocalPosition: {x: 0, y: 0.97, z: -2.36}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -238,7 +238,7 @@ Transform:
   m_GameObject: {fileID: 4885453297573246132}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 1.27, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -282,7 +282,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 912.2, y: 0, z: -50.24608}
-  m_LocalScale: {x: 5.51, y: 5, z: 6.28}
+  m_LocalScale: {x: 10.18, y: 7.07, z: 10.96}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8473599024029357935}
@@ -515,14 +515,16 @@ MonoBehaviour:
   cabecaRotativa: {fileID: 0}
   pontosDeSaida:
   - {fileID: 6239243678912139757}
-  prefabMissel: {fileID: 4263464772621876949, guid: d29c5d27a37b58348985ca6f91f76a90, type: 3}
+  pontosDeSaidaTorpedo:
+  - {fileID: 3239054904195782399}
+  prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 1
   municaoTotal: 32
   municaoMaxima: 32
   torpedosTotal: 8
   torpedosMaximos: 8
-  tirosPorSalva: 1
+  tirosPorSalva: 2
   intervaloEntreTiros: 1
   tempoRecargaSalva: 5
   alcanceRadar: 1500

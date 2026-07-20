@@ -28,12 +28,16 @@ public class ControladorNavioVigilante : MonoBehaviour
     private float proximaBuscaAlvo = 0f;
     private const float IntervaloBuscaAlvo = 0.2f;
     private bool torretaAlinhada;
+    private Vector3 eulerRepousoBase;
+    private Vector3 eulerRepousoCano;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         transform.position = new Vector3(transform.position.x, 0f, transform.position.z);
         AutoConfigurarTorreta();
+        if (baseTorreta != null) eulerRepousoBase = baseTorreta.localEulerAngles;
+        if (canoElevacao != null) eulerRepousoCano = canoElevacao.localEulerAngles;
     }
 
     void Update()
@@ -138,14 +142,17 @@ public class ControladorNavioVigilante : MonoBehaviour
             return;
         }
 
-        if (baseTorreta != null)
+        if (baseTorreta != null && baseTorreta != transform)
         {
             Vector3 direcaoBase = posicaoAlvo - baseTorreta.position;
             direcaoBase.y = 0f;
             if (direcaoBase.sqrMagnitude > 0.01f)
             {
-                Quaternion rotacaoBaseAlvo = Quaternion.LookRotation(direcaoBase.normalized, Vector3.up);
-                baseTorreta.rotation = Quaternion.Slerp(baseTorreta.rotation, rotacaoBaseAlvo, Time.deltaTime * velocidadeGiroTorreta);
+                Transform referenciaBase = baseTorreta.parent != null ? baseTorreta.parent : baseTorreta;
+                Vector3 direcaoLocal = referenciaBase.InverseTransformDirection(direcaoBase.normalized);
+                float yaw = Mathf.Atan2(direcaoLocal.x, direcaoLocal.z) * Mathf.Rad2Deg;
+                Quaternion rotacaoBaseAlvo = Quaternion.Euler(eulerRepousoBase.x, yaw, eulerRepousoBase.z);
+                baseTorreta.localRotation = Quaternion.Slerp(baseTorreta.localRotation, rotacaoBaseAlvo, Time.deltaTime * velocidadeGiroTorreta);
             }
         }
 
@@ -158,7 +165,7 @@ public class ControladorNavioVigilante : MonoBehaviour
             float pitch = -Mathf.Atan2(direcaoLocal.y, new Vector2(direcaoLocal.x, direcaoLocal.z).magnitude) * Mathf.Rad2Deg;
             pitch = Mathf.Clamp(pitch, elevacaoMinima, elevacaoMaxima);
 
-            Quaternion rotacaoLocalAlvo = Quaternion.Euler(pitch, 0f, 0f);
+            Quaternion rotacaoLocalAlvo = Quaternion.Euler(pitch, eulerRepousoCano.y, eulerRepousoCano.z);
             canoElevacao.localRotation = Quaternion.Slerp(canoElevacao.localRotation, rotacaoLocalAlvo, Time.deltaTime * velocidadeGiroTorreta);
         }
 

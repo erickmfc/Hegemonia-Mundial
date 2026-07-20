@@ -5,7 +5,7 @@
             <ui:VisualElement class="gov-header">
                 <ui:VisualElement class="gov-brand">
                     <ui:Label text="A" class="gov-crest" />
-                    <ui:VisualElement>
+                    <ui:VisualElement class="gov-country-block">
                         <ui:Label name="country-name" text="REPUBLICA ATLAS" class="gov-country" />
                         <ui:Label name="country-meta" text="PRESIDENTE ATLAS" class="gov-meta" />
                     </ui:VisualElement>

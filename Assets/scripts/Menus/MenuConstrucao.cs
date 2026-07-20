@@ -2978,8 +2978,7 @@ public class MenuConstrucao : MonoBehaviour
                 if (a == null) return false;
                 if (a is GerenciadorPortaAvioes) return false; // Impede que compras do menu geral caiam no porta-aviões
                 if (a is GerenciadorAeroportoComercial) return false; // Impede aviões militares no aeroporto comercial
-                IdentidadeUnidade id = a.GetComponent<IdentidadeUnidade>();
-                return id == null || id.teamID == 1;
+                return EhEstruturaDoJogador(a);
             })
             .ToList();
 
@@ -2992,9 +2991,7 @@ public class MenuConstrucao : MonoBehaviour
                 .Where(h =>
                 {
                     if (h == null) return false;
-                    IdentidadeUnidade id = h.GetComponent<IdentidadeUnidade>();
-                    if (id == null) id = h.GetComponentInParent<IdentidadeUnidade>();
-                    return id == null || id.teamID == 1;
+                    return EhEstruturaDoJogador(h);
                 })
                 .ToList();
         }
@@ -3162,18 +3159,15 @@ public class MenuConstrucao : MonoBehaviour
             .Where(e => e != null && EhEstruturaDoJogador(e) && EstruturaNavalOperacional(e))
             .ToList();
 
-        List<PierMarinha> piers = ehNavioGrande
-            ? new List<PierMarinha>()
-            : Object.FindObjectsByType<PierMarinha>(FindObjectsSortMode.None)
-                .Where(p => p != null && EhEstruturaDoJogador(p) && EstruturaNavalOperacional(p))
-                .ToList();
-
-        if (estaleiros.Count == 0 && piers.Count == 0)
+        // Pier e estrutura de atracagem/logistica. A fila de producao naval do
+        // jogador deve nascer exclusivamente no Estaleiro.
+        if (estaleiros.Count == 0)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            DiagnosticarEstruturasNavaisJogador();
             EmitirAvisoJogador(ehNavioGrande
                 ? LocalizationManager.T("build.need_shipyard_big", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir esse navio grande.")
-                : LocalizationManager.T("build.need_shipyard", "Bloqueado: construa um ESTALEIRO ou PIER costeiro valido para produzir navios."));
+                : LocalizationManager.T("build.need_shipyard", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir navios."));
             DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem estrutura naval");
             return;
         }
@@ -3199,24 +3193,6 @@ public class MenuConstrucao : MonoBehaviour
                     sucesso = true;
                     enfileirados++;
                     break;
-                }
-            }
-
-            if (!sucesso)
-            {
-                foreach (PierMarinha pier in piers)
-                {
-                    if (pier == null || !EstruturaNavalOperacional(pier))
-                    {
-                        continue;
-                    }
-
-                    if (pier.ConstruirNavio(item.prefabDaUnidade))
-                    {
-                        sucesso = true;
-                        enfileirados++;
-                        break;
-                    }
                 }
             }
 
@@ -3272,13 +3248,91 @@ public class MenuConstrucao : MonoBehaviour
             return false;
         }
 
+        Estaleiro estaleiro = estrutura as Estaleiro;
+        if (estaleiro != null)
+        {
+            return estaleiro.OwnerTeamId == 1;
+        }
+
+        PierMarinha pier = estrutura as PierMarinha;
+        if (pier != null)
+        {
+            return pier.OwnerTeamId == 1;
+        }
+
         IdentidadeUnidade id = estrutura.GetComponent<IdentidadeUnidade>();
         if (id == null)
         {
             id = estrutura.GetComponentInParent<IdentidadeUnidade>();
         }
 
-        return id == null || id.teamID == 1;
+        if (id != null)
+        {
+            return id.teamID == 1;
+        }
+
+        IA_ManualPlacementTag manualTag = estrutura.GetComponent<IA_ManualPlacementTag>();
+        if (manualTag == null)
+        {
+            manualTag = estrutura.GetComponentInParent<IA_ManualPlacementTag>();
+        }
+
+        if (manualTag != null)
+        {
+            return true;
+        }
+
+        return !EhEstruturaMarcadaComoIA(estrutura);
+    }
+
+    /// <summary>
+    /// Mantém no log a causa exata quando uma compra naval é bloqueada. Isso
+    /// diferencia identidade antiga do prefab, dono explícito e pose costeira
+    /// inválida, sem depender de proximidade no mapa.
+    /// </summary>
+    void DiagnosticarEstruturasNavaisJogador()
+    {
+        Estaleiro[] todos = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
+        if (todos == null || todos.Length == 0)
+        {
+            Debug.LogWarning("[MenuConstrucao][Naval] Nenhum componente Estaleiro ativo foi encontrado na cena.");
+            return;
+        }
+
+        for (int i = 0; i < todos.Length; i++)
+        {
+            Estaleiro estaleiro = todos[i];
+            if (estaleiro == null) continue;
+
+            IdentidadeUnidade identidade = estaleiro.GetComponent<IdentidadeUnidade>();
+            if (identidade == null) identidade = estaleiro.GetComponentInParent<IdentidadeUnidade>();
+            IA_ManualPlacementTag manual = estaleiro.GetComponent<IA_ManualPlacementTag>();
+            if (manual == null) manual = estaleiro.GetComponentInParent<IA_ManualPlacementTag>();
+
+            string validacao;
+            bool poseValida = NavalPlacementResolver.IsCurrentStructurePoseValid(estaleiro.gameObject, out validacao);
+            Debug.LogWarning(string.Format(
+                "[MenuConstrucao][Naval] Estaleiro='{0}' owner={1} identidade={2} tag='{3}' jogador={4} poseValida={5} motivo='{6}'.",
+                estaleiro.name,
+                estaleiro.OwnerTeamId,
+                identidade != null ? identidade.teamID.ToString() : "ausente",
+                manual != null ? manual.SourceLabel : "ausente",
+                EhEstruturaDoJogador(estaleiro),
+                poseValida,
+                validacao));
+        }
+    }
+
+    bool EhEstruturaMarcadaComoIA(Component estrutura)
+    {
+        if (estrutura == null)
+        {
+            return false;
+        }
+
+        return estrutura.GetComponentInParent<IdentidadeIA>() != null
+            || estrutura.GetComponentInParent<IA_IdentityRegistryHook>() != null
+            || estrutura.GetComponentInParent<IA_BrainMaster>() != null;
     }
 
     bool EstruturaNavalOperacional(Component estrutura)

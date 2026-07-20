@@ -39,6 +39,28 @@ public class SistemaDeDanos : MonoBehaviour
     // Estados
     private bool morreu = false;
 
+    /// <summary>
+    /// Resolve a identidade da entidade mesmo quando o collider, o sistema de
+    /// dano e o marcador de dono estão em níveis diferentes da hierarquia.
+    /// Estruturas navais antigas usam as três variações (raiz, filho e pai),
+    /// por isso a resolução não pode depender somente de GetComponent.
+    /// </summary>
+    public static IdentidadeUnidade ResolverIdentidade(Component origem)
+    {
+        if (origem == null) return null;
+
+        IdentidadeUnidade identidade = origem.GetComponent<IdentidadeUnidade>();
+        if (identidade != null) return identidade;
+
+        identidade = origem.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade != null) return identidade;
+
+        // Quando o SistemaDeDanos está na raiz e a identidade está em um
+        // marcador filho, a busca no próprio objeto completa o caso.
+        identidade = origem.GetComponentInChildren<IdentidadeUnidade>(true);
+        return identidade;
+    }
+
     void Start()
     {
         vidaAtual = vidaMaxima;
@@ -73,10 +95,8 @@ public class SistemaDeDanos : MonoBehaviour
         
         if (agressor != null)
         {
-            IdentidadeUnidade vitimaID = GetComponent<IdentidadeUnidade>();
-            if (vitimaID == null) vitimaID = GetComponentInParent<IdentidadeUnidade>();
-            IdentidadeUnidade agressorID = agressor.GetComponent<IdentidadeUnidade>();
-            if (agressorID == null) agressorID = agressor.GetComponentInParent<IdentidadeUnidade>();
+            IdentidadeUnidade vitimaID = ResolverIdentidade(this);
+            IdentidadeUnidade agressorID = ResolverIdentidade(agressor.transform);
 
             if (vitimaID != null && agressorID != null && vitimaID.teamID != agressorID.teamID)
             {
@@ -121,8 +141,7 @@ public class SistemaDeDanos : MonoBehaviour
 
     private GameObject InferirAgressorProximo()
     {
-        IdentidadeUnidade vitima = GetComponent<IdentidadeUnidade>();
-        if (vitima == null) vitima = GetComponentInParent<IdentidadeUnidade>();
+        IdentidadeUnidade vitima = ResolverIdentidade(this);
         if (vitima == null || vitima.teamID <= 0) return null;
 
         IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);

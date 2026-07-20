@@ -711,6 +711,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             _registryScratch.Clear();
+            HashSet<int> canonicalKeys = new HashSet<int>();
             foreach (IdentidadeUnidade id in _globalRegistry)
             {
                 _registryScratch.Add(id);
@@ -726,6 +727,14 @@ namespace Hegemonia.AI.BrainMaster
 
                 GameObject go = id.gameObject;
                 if (go == null)
+                {
+                    continue;
+                }
+
+                // Prefabs antigos podem registrar a identidade no root e em um
+                // filho. Ambos representam a mesma unidade física e não podem
+                // inflar caças/tanques/navios no diagnóstico.
+                if (!canonicalKeys.Add(ResolveCanonicalEntityKey(id)))
                 {
                     continue;
                 }
@@ -746,6 +755,16 @@ namespace Hegemonia.AI.BrainMaster
 
             _lastSeenRegistryVersion = _registryVersion;
             _snapshotDirty = false;
+        }
+
+        private static int ResolveCanonicalEntityKey(IdentidadeUnidade identity)
+        {
+            if (identity == null) return 0;
+            ControleUnidade control = identity.GetComponent<ControleUnidade>()
+                ?? identity.GetComponentInParent<ControleUnidade>()
+                ?? identity.GetComponentInChildren<ControleUnidade>(true);
+            if (control != null) return control.GetInstanceID();
+            return identity.transform.root != null ? identity.transform.root.GetInstanceID() : identity.GetInstanceID();
         }
 
         private void RefreshVisibleEnemies(float now)

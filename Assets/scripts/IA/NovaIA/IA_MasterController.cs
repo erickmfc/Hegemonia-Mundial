@@ -455,6 +455,10 @@ namespace Hegemonia.AI.Master
             }
 
             EnsureTeamIdentity(created);
+            Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
+            if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
+            PierMarinha createdPier = created.GetComponent<PierMarinha>();
+            if (createdPier != null) createdPier.OwnerTeamId = _teamId;
             return true;
         }
 
@@ -619,20 +623,6 @@ namespace Hegemonia.AI.Master
                     }
                 }
 
-                RegistroEntidadesJogo.FillPiers(_pierBuffer);
-                for (int i = 0; i < _pierBuffer.Count; i++)
-                {
-                    PierMarinha pier = _pierBuffer[i];
-                    if (pier == null || !BelongsToTeam(pier.gameObject))
-                    {
-                        continue;
-                    }
-
-                    if (pier.ConstruirNavio(data.prefabDaUnidade))
-                    {
-                        return true;
-                    }
-                }
             }
 
             bool isCommercialAircraft = data.prefabDaUnidade.GetComponent<ControleAviaoComercial>() != null

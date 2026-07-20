@@ -219,14 +219,15 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 108590380420570160}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 17b026664e199e0448537a7727a1568c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LancadorNaval
   modoAtual: 0
   cabecaRotativa: {fileID: 0}
-  pontosDeSaida: []
+  pontosDeSaida:
+  - {fileID: 0}
   pontosDeSaidaTorpedo: []
   prefabMissel: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}

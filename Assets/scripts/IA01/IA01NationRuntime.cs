@@ -35,10 +35,12 @@ namespace Hegemonia.AI.IA01
         public IA01WarDirector WarDirector { get; }
         public IA01NationalEconomyDirector NationalEconomy { get; }
         public IA01MilitaryDirector MilitaryDirector { get; }
+        public IA01PlanningAdvisor PlanningAdvisor { get; }
 
         public string ConstructionStatus => BuildDirector.Status;
         public string CombatStatus => WarDirector.Status;
         public string MilitaryStatus => MilitaryDirector != null ? MilitaryDirector.Status : "Reserva militar aguardando inicializacao.";
+        public string PlanningStatus => PlanningAdvisor != null ? PlanningAdvisor.Status : "Planejador aguardando inicializacao.";
         public string ProgressionStatus { get; private set; } = "Aguardando inicializacao.";
         public string NextObjectiveStatus { get; private set; } = "Aguardando inicializacao.";
         public string MarketStatus => NationalEconomy.Status;
@@ -111,6 +113,7 @@ namespace Hegemonia.AI.IA01
             WarDirector = new IA01WarDirector(controller, context, WorldState, CityPlanner, MissionDirector);
             MilitaryDirector = new IA01MilitaryDirector(controller, context);
             NationalEconomy = new IA01NationalEconomyDirector(context);
+            PlanningAdvisor = new IA01PlanningAdvisor(context, WorldState, controller.EnablePlanningAdvisor);
         }
 
         public void RegisterHostileAggression(int attackerTeamId, Vector3 attackerPosition, float damage)
@@ -170,6 +173,9 @@ namespace Hegemonia.AI.IA01
             operations += Economy.EnsureFoundationFunding(CityPlanner.Capital != null, capitalCost, restoredFromSave) ? 1 : 0;
             currentTreasury = country != null ? country.saldo : currentTreasury;
             UpdateOperationalStatus(now, country);
+            moduleStartedAt = Time.realtimeSinceStartup;
+            operations += PlanningAdvisor != null && PlanningAdvisor.Refresh(now, country, Economy.IsEmergencyReserveRequired) ? 1 : 0;
+            TrackModule("PlanningAdvisor", moduleStartedAt);
             CityPlanner.PublishNeeds(IntentBoard, now, profile, country, Economy.IsEmergencyReserveRequired);
             TrackModule("CityPlanner", moduleStartedAt);
             bool constructionIntentPending = false;
@@ -247,6 +253,7 @@ namespace Hegemonia.AI.IA01
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_construction", ConstructionStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_combat", CombatStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_military_reserve", MilitaryStatus);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_planning_advisor", PlanningStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_market", MarketStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_capital_source", CapitalSourceStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_capital_item", CapitalItemIdStatus);
@@ -1000,7 +1007,7 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildHighApartment:
                     return HasOwnedStructureMatching(IA01StrategicRole.Residential, "hard", "alto", "high", "torre");
                 case IA01IntentType.BuildMilitaryTent:
-                    return HasOwnedStructureMatching(IA01StrategicRole.MilitaryProduction, "tenda", "tent");
+                    return HasOwnedStructureMatching(IA01StrategicRole.MilitaryProduction, "tenda", "tent", "quartel", "barracks");
                 case IA01IntentType.BuildVehicleConstructor:
                     return HasOwnedStructureMatching(IA01StrategicRole.MilitaryProduction, "construtor", "veiculo", "veículo", "vehicle");
                 case IA01IntentType.BuildStorage:
@@ -1787,7 +1794,7 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildOffshorePlatform:
                     return new[] { "plataforma", "offshore" };
                 case IA01IntentType.BuildMilitaryTent:
-                    return new[] { "tenda", "tent", "barracks" };
+                    return new[] { "tenda", "tent", "quartel", "barracks" };
                 case IA01IntentType.BuildVehicleConstructor:
                     return new[] { "construtor", "veiculo", "vehicle factory" };
                 default:
@@ -2141,7 +2148,7 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildHighApartment:
                     return definition.StrategicRole == IA01StrategicRole.Residential && IsNamedCandidate(definition, "hard", "alto", "high", "torre");
                 case IA01IntentType.BuildMilitaryTent:
-                    return definition.StrategicRole == IA01StrategicRole.MilitaryProduction && IsNamedCandidate(definition, "tenda", "tent");
+                    return definition.StrategicRole == IA01StrategicRole.MilitaryProduction && IsNamedCandidate(definition, "tenda", "tent", "quartel", "barracks");
                 case IA01IntentType.BuildVehicleConstructor:
                     return definition.StrategicRole == IA01StrategicRole.MilitaryProduction && IsNamedCandidate(definition, "construtor", "veiculo", "veículo", "vehicle");
                 case IA01IntentType.BuildStorage:

@@ -266,9 +266,16 @@ public class MenuPier : MonoBehaviour
             Debug.Log($"[MenuPier] Buscando navios da categoria: {categoria}. Total de navios na cena: {naviosBuffer.Count}");
         }
 
+        int teamDoPier = RecursosPorTime.ObterTeamId(pierAlvo);
         foreach (var navio in naviosBuffer)
         {
             if (navio == null) continue;
+
+            // Um pier so pode chamar navios do proprio pais. Sem este filtro,
+            // o menu do jogador podia requisitar uma unidade da IA (ou a IA
+            // requisitar uma unidade do jogador) pelo simples fato de estar
+            // mais proxima.
+            if (RecursosPorTime.ObterTeamId(navio) != teamDoPier) continue;
 
             float distancia = Vector3.Distance(pierAlvo.transform.position, navio.transform.position);
             

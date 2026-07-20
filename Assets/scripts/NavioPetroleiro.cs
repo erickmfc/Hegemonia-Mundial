@@ -43,6 +43,8 @@ public class NavioPetroleiro : ControleUnidade
     private Vector3 destinoNavMeshAtual;
     private bool possuiDestinoNavMesh;
     private float proximoReplanejamento;
+    private bool fallbackAquaticoAtivo;
+    private bool avisoFallbackAquaticoEmitido;
 
     // Alvos
     public PlataformaOffshore plataformaAlvo;
@@ -328,12 +330,28 @@ public class NavioPetroleiro : ControleUnidade
             return;
         }
 
+        // Petroleiro navega sobre água e não deve depender do NavMesh de
+        // terra. A rota direta mantém a sequência plataforma -> píer sem
+        // interferir nas patrulhas militares das corvetas.
+        if (fallbackAquaticoAtivo)
+        {
+            ExecutarFallbackAquatico(aoChegar);
+            return;
+        }
+
         if (!agenteNav.enabled || !agenteNav.isOnNavMesh)
         {
             statusDebug = "Tentando reconectar NavMesh...";
             AtivarNavMeshNoLocal();
             if (agenteNav.enabled && agenteNav.isOnNavMesh)
+            {
+                fallbackAquaticoAtivo = false;
                 agenteNav.SetDestination(destinoNavMeshAtual);
+            }
+            else
+            {
+                ExecutarFallbackAquatico(aoChegar);
+            }
             return;
         }
 
@@ -346,6 +364,14 @@ public class NavioPetroleiro : ControleUnidade
                 agenteNav.SetDestination(destinoNavMeshAtual);
             }
             statusDebug = "Replanejando rota naval...";
+
+            // O NavMesh terrestre pode existir no mapa, mas não cobrir o
+            // corredor de água até a plataforma/píer. Nesse caso, não deixe o
+            // petroleiro congelado: usa o deslocamento aquático seguro abaixo.
+            if (!agenteNav.pathPending && agenteNav.pathStatus == NavMeshPathStatus.PathInvalid)
+            {
+                ExecutarFallbackAquatico(aoChegar);
+            }
             return;
         }
 
@@ -362,6 +388,48 @@ public class NavioPetroleiro : ControleUnidade
         {
             aoChegar.Invoke();
         }
+    }
+
+    void ExecutarFallbackAquatico(System.Action aoChegar)
+    {
+        if (agenteNav != null && agenteNav.enabled)
+        {
+            agenteNav.isStopped = true;
+            agenteNav.enabled = false;
+        }
+
+        if (!fallbackAquaticoAtivo)
+        {
+            fallbackAquaticoAtivo = true;
+        }
+        if (!avisoFallbackAquaticoEmitido)
+        {
+            avisoFallbackAquaticoEmitido = true;
+            Debug.Log("[Navio Petroleiro] Rota aquatica direta ativa para a logistica.", this);
+        }
+
+        Vector3 destino = destinoNavMeshAtual;
+        destino.y = transform.position.y;
+        Vector3 delta = destino - transform.position;
+        delta.y = 0f;
+        float distancia = delta.magnitude;
+        if (distancia <= 3.5f)
+        {
+            fallbackAquaticoAtivo = false;
+            avisoFallbackAquaticoEmitido = false;
+            aoChegar.Invoke();
+            return;
+        }
+
+        float velocidade = Mathf.Max(velocidadeManobra, 8f);
+        transform.position = Vector3.MoveTowards(transform.position, destino, velocidade * Time.deltaTime);
+        if (delta.sqrMagnitude > 0.01f)
+        {
+            Quaternion rotacao = Quaternion.LookRotation(delta.normalized, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotacao, 35f * Time.deltaTime);
+            transform.rotation = Quaternion.Euler(0f, transform.rotation.eulerAngles.y, 0f);
+        }
+        statusDebug = "Patrulha logistica aquatica: " + Mathf.RoundToInt(distancia) + " m restantes.";
     }
 
     void ExecutarAcoplagemManual(Transform alvo, EstadoPetroleiro proximo)
@@ -553,13 +621,13 @@ public class NavioPetroleiro : ControleUnidade
     {
         destinoNavMeshAtual = destino;
         possuiDestinoNavMesh = true;
+        fallbackAquaticoAtivo = true;
+        avisoFallbackAquaticoEmitido = false;
         proximoReplanejamento = 0f;
-        EmitirOrdemMover(destino, false);
-        AtivarNavMeshNoLocal();
-        if (agenteNav != null && agenteNav.enabled && agenteNav.isOnNavMesh)
+        if (agenteNav != null && agenteNav.enabled)
         {
-            agenteNav.isStopped = false;
-            agenteNav.SetDestination(destino);
+            agenteNav.isStopped = true;
+            agenteNav.enabled = false;
         }
     }
 
@@ -589,6 +657,8 @@ public class NavioPetroleiro : ControleUnidade
             agenteNav.enabled = false;
         }
         possuiDestinoNavMesh = false;
+        fallbackAquaticoAtivo = false;
+        avisoFallbackAquaticoEmitido = false;
     }
 
     // --- BUSCADORES ---

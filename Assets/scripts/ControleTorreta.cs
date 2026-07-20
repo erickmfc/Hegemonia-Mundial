@@ -151,6 +151,11 @@ public class ControleTorreta : MonoBehaviour
     private int indicacaoSeguraDeBala = 0;
     
     private float rotacaoXOriginal, rotacaoYOriginal, rotacaoZOriginal, giroPitchAlvo = 0f;
+    // Preserva a postura authored do prefab. Zerar X/Z ao mirar fazia algumas
+    // torretas deitarem quando o alvo mudava de lado ou no momento do disparo.
+    private Quaternion rotacaoInicialPecaQueGira = Quaternion.identity;
+    private Quaternion rotacaoInicialCanos = Quaternion.identity;
+    private bool rotacaoInicialCanosCapturada;
     private float progressoDesdobramento = 0f;
     private bool estaProntoParaAtirar = true;
     private Transform _alvoRecuoTransform;
@@ -283,6 +288,13 @@ public class ControleTorreta : MonoBehaviour
             rotacaoXOriginal = pecaQueGira.localEulerAngles.x;
             rotacaoYOriginal = pecaQueGira.localEulerAngles.y;
             rotacaoZOriginal = pecaQueGira.localEulerAngles.z;
+            rotacaoInicialPecaQueGira = pecaQueGira.localRotation;
+        }
+
+        if (canosDaTorreta != null)
+        {
+            rotacaoInicialCanos = canosDaTorreta.localRotation;
+            rotacaoInicialCanosCapturada = true;
         }
 
         float inicioAleatorio = Random.Range(0f, 0.5f);
@@ -291,6 +303,11 @@ public class ControleTorreta : MonoBehaviour
         CriarVisualizadorAlcance();
         GarantirLocaisDeTiro();
         GarantirCanosDaTorreta();
+        if (canosDaTorreta != null && !rotacaoInicialCanosCapturada)
+        {
+            rotacaoInicialCanos = canosDaTorreta.localRotation;
+            rotacaoInicialCanosCapturada = true;
+        }
 
         if (municaoPrefab != null)
             PoolDeObjetosCombate.Prewarm(municaoPrefab, Mathf.Clamp(tamanhoCartucho / 5, 4, 12));
@@ -670,15 +687,18 @@ public class ControleTorreta : MonoBehaviour
 
                 if (canosDaTorreta != null && canosDaTorreta != pecaParaDesdobrar)
                 {
-                    Quaternion rotacaoBase = Quaternion.Euler(0f, anguloY, 0f);
+                    // Altera somente o yaw: a inclinação/roll original do
+                    // suporte continua intacta.
+                    Quaternion rotacaoBase = Quaternion.Euler(rotacaoXOriginal, anguloY, rotacaoZOriginal);
                     pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoBase, Time.deltaTime * velocidadeGiro);
 
-                    Quaternion rotacaoCanos = Quaternion.Euler(giroPitchAlvo, 0f, 0f);
+                    Quaternion rotacaoCanos = (rotacaoInicialCanosCapturada ? rotacaoInicialCanos : Quaternion.identity)
+                        * Quaternion.Euler(giroPitchAlvo, 0f, 0f);
                     canosDaTorreta.localRotation = Quaternion.Lerp(canosDaTorreta.localRotation, rotacaoCanos, Time.deltaTime * velocidadeGiro);
                 }
                 else if (canosDaTorreta == null || canosDaTorreta == pecaParaDesdobrar)
                 {
-                    Quaternion rotacaoTotal = Quaternion.Euler(pecaQueGira.localEulerAngles.x, anguloY, pecaQueGira.localEulerAngles.z);
+                    Quaternion rotacaoTotal = Quaternion.Euler(rotacaoXOriginal, anguloY, rotacaoZOriginal);
                     pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoTotal, Time.deltaTime * velocidadeGiro);
                 }
             }
@@ -743,11 +763,14 @@ public class ControleTorreta : MonoBehaviour
         }
         else
         {
-            Quaternion rotacaoDescanso = Quaternion.Euler(rotacaoXOriginal, rotacaoYOriginal, rotacaoZOriginal);
+            Quaternion rotacaoDescanso = rotacaoInicialPecaQueGira;
             pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoDescanso, Time.deltaTime * (velocidadeGiro * 0.5f));
 
             if (canosDaTorreta != null)
-                canosDaTorreta.localRotation = Quaternion.Lerp(canosDaTorreta.localRotation, Quaternion.identity, Time.deltaTime * (velocidadeGiro * 0.5f));
+            {
+                Quaternion repousoCanos = rotacaoInicialCanosCapturada ? rotacaoInicialCanos : Quaternion.identity;
+                canosDaTorreta.localRotation = Quaternion.Lerp(canosDaTorreta.localRotation, repousoCanos, Time.deltaTime * (velocidadeGiro * 0.5f));
+            }
         }
     }
     #endregion

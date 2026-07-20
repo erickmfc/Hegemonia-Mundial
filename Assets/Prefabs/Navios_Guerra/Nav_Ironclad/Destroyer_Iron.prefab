@@ -184,7 +184,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &8368875008025031717
 Transform:
   m_ObjectHideFlags: 0
@@ -266,17 +266,17 @@ MonoBehaviour:
   pontosDeSaidaTorpedo:
   - {fileID: 4561696825931924387}
   - {fileID: 945275736789065339}
-  prefabMissel: {fileID: 4263464772621876949, guid: d29c5d27a37b58348985ca6f91f76a90, type: 3}
+  prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 1
   municaoTotal: 32
   municaoMaxima: 32
   torpedosTotal: 8
   torpedosMaximos: 8
-  tirosPorSalva: 4
+  tirosPorSalva: 1
   intervaloEntreTiros: 0.5
   tempoRecargaSalva: 5
-  alcanceRadar: 500
+  alcanceRadar: 1100
   intervaloVarreduraAutomatica: 0.45
   maxMisseisSimultaneosPorAlvo: 6
   cooldownAutorizacaoAlvo: 1.4
@@ -468,7 +468,7 @@ Transform:
   m_GameObject: {fileID: 1100829494872894950}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -1.055, y: 1.98, z: 0}
+  m_LocalPosition: {x: -1.055, y: 2.06, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -621,7 +621,7 @@ Transform:
   m_GameObject: {fileID: 5929134917542229934}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 1.05, y: 2.025, z: -0.076}
+  m_LocalPosition: {x: 1.05, y: 2.107, z: -0.076}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -769,7 +769,7 @@ Transform:
   m_GameObject: {fileID: 6309233461676423101}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -1.055, y: 1.98, z: 0.0971}
+  m_LocalPosition: {x: -1.055, y: 2.007, z: 0.0971}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -800,7 +800,7 @@ Transform:
   m_GameObject: {fileID: 6853703204593100456}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 1.05, y: 2.025, z: -0.014}
+  m_LocalPosition: {x: 1.05, y: 2.107, z: -0.014}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

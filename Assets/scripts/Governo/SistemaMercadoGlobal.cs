@@ -63,6 +63,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
         {
             NormalizarItensMercado();
             IntegracaoMercadoIndustrial.GarantirCatalogoNoMercado(this);
+            SincronizarEquipamentosMilitares();
             CatalogoProdutoCompartilhado.RegistrarMercado(itens);
             return;
         }
@@ -85,6 +86,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
         itens.Add(CriarItemPadrao("uranio", "Uranio", RecursoMercado.Uranio, 900, 1250, 30f, 50f, 0.16f));
         NormalizarItensMercado();
         IntegracaoMercadoIndustrial.GarantirCatalogoNoMercado(this);
+        SincronizarEquipamentosMilitares();
         CatalogoProdutoCompartilhado.RegistrarMercado(itens);
     }
 
@@ -131,6 +133,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         NormalizarItensMercado();
+        SincronizarEquipamentosMilitares();
         CatalogoProdutoCompartilhado.RegistrarMercado(itens);
     }
 
@@ -273,7 +276,9 @@ public class SistemaMercadoGlobal : MonoBehaviour
         DadosPaisGoverno comprador = governo.ObterPais(compradorTeamId);
         DadosPaisGoverno vendedor = governo.ObterPais(vendedorTeamId);
         string recursoId = ObterRecursoIdEfetivo(item);
-        int estoqueVendedor = governo.ObterEstoque(vendedorTeamId, recursoId);
+        int estoqueVendedor = item.equipamentoMilitar
+            ? item.estoqueGlobal
+            : governo.ObterEstoque(vendedorTeamId, recursoId);
         quantidade = Mathf.Min(quantidade, Mathf.Max(0, item.estoqueGlobal), Mathf.Max(0, estoqueVendedor));
         int total = quantidade * item.precoAtual;
         if (comprador == null || vendedor == null || quantidade <= 0)
@@ -289,8 +294,20 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         governo.AdicionarSaldo(vendedorTeamId, total);
-        governo.AdicionarEstoque(compradorTeamId, recursoId, quantidade);
-        governo.RemoverEstoque(vendedorTeamId, recursoId, quantidade);
+        if (item.equipamentoMilitar)
+        {
+            if (!EntregaMercadoMilitar.Enviar(item, vendedorTeamId, compradorTeamId, quantidade, out mensagem))
+            {
+                governo.AdicionarSaldo(compradorTeamId, total);
+                governo.AdicionarSaldo(vendedorTeamId, -total);
+                return false;
+            }
+        }
+        else
+        {
+            governo.AdicionarEstoque(compradorTeamId, recursoId, quantidade);
+            governo.RemoverEstoque(vendedorTeamId, recursoId, quantidade);
+        }
 
         item.estoqueGlobal = Mathf.Max(0, item.estoqueGlobal - quantidade);
         item.demanda = Mathf.Clamp(item.demanda + quantidade / 120f, 0f, 160f);
@@ -305,6 +322,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
             total = total,
             compraDoJogador = compradorTeamId == governo.teamJogador,
             mensagem = comprador.nomePais + " comprou " + quantidade + " de " + item.nome + " de " + vendedor.nomePais
+                + (item.equipamentoMilitar ? " | entrega a caminho do destino" : string.Empty)
         };
 
         RegistrarTransacao(transacao);
@@ -557,6 +575,48 @@ public class SistemaMercadoGlobal : MonoBehaviour
                 item.recursoId = ObterRecursoIdMercado(item.recurso, item.id);
             }
         }
+    }
+
+    private void SincronizarEquipamentosMilitares()
+    {
+        if (MenuConstrucao.catalogoGlobal == null) return;
+
+        foreach (DadosConstrucao ficha in MenuConstrucao.catalogoGlobal)
+        {
+            if (ficha == null || !ficha.HasCapability(Hegemonia.AI.BrainMaster.IA_ConstructionCapability.Unit)) continue;
+            Hegemonia.AI.BrainMaster.IA_ConstructionCapability caps = ficha.GetResolvedCapabilities();
+            bool militar = (caps & Hegemonia.AI.BrainMaster.IA_ConstructionCapability.Military) != 0
+                || ficha.categoria == DadosConstrucao.CategoriaItem.Exercito
+                || ficha.categoria == DadosConstrucao.CategoriaItem.Marinha
+                || ficha.categoria == DadosConstrucao.CategoriaItem.Aeronautica;
+            if (!militar || !ficha.TryGetPrefabBasico(out GameObject prefab) || prefab == null) continue;
+
+            string id = ficha.GetStableId();
+            DadosItemMercado item = ObterItem(id);
+            string entrega = (caps & Hegemonia.AI.BrainMaster.IA_ConstructionCapability.Air) != 0 || ficha.categoria == DadosConstrucao.CategoriaItem.Aeronautica
+                ? "aeronave"
+                : (caps & Hegemonia.AI.BrainMaster.IA_ConstructionCapability.Naval) != 0 || ficha.categoria == DadosConstrucao.CategoriaItem.Marinha
+                    ? "navio" : "terra";
+            if (item == null)
+            {
+                item = new DadosItemMercado
+                {
+                    id = id, recursoId = "equipamento_" + id, nome = ficha.GetDisplayName(),
+                    categoria = "Equipamento militar", recurso = RecursoMercado.Armamentos,
+                    precoBase = Mathf.Max(1, ficha.preco), precoAtual = Mathf.Max(1, ficha.preco),
+                    estoqueGlobal = 20, oferta = 45f, demanda = 40f, volatilidade = 0.10f,
+                    podeComprar = true, podeVender = false
+                };
+                itens.Add(item);
+            }
+            item.equipamentoMilitar = true;
+            item.prefabId = id;
+            item.tipoEntrega = entrega;
+            item.podeComprar = true;
+            item.podeVender = false;
+            item.estoqueGlobal = Mathf.Max(1, item.estoqueGlobal);
+        }
+        NormalizarItensMercado();
     }
 
     private static string ObterRecursoIdEfetivo(DadosItemMercado item)

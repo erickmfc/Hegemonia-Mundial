@@ -119,7 +119,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 39
+  m_Speed: 45
   m_Acceleration: 5
   avoidancePriority: 35
   m_AngularSpeed: 120
@@ -282,17 +282,19 @@ MonoBehaviour:
   pontosDeSaida:
   - {fileID: 9165776866606803687}
   - {fileID: 1650382267646983642}
-  prefabMissel: {fileID: 4263464772621876949, guid: d29c5d27a37b58348985ca6f91f76a90, type: 3}
+  pontosDeSaidaTorpedo:
+  - {fileID: 1650382267646983642}
+  prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 1
-  municaoTotal: 12
-  municaoMaxima: 12
-  torpedosTotal: 8
-  torpedosMaximos: 8
+  municaoTotal: 24
+  municaoMaxima: 24
+  torpedosTotal: 10
+  torpedosMaximos: 10
   tirosPorSalva: 1
-  intervaloEntreTiros: 0.5
+  intervaloEntreTiros: 0.1
   tempoRecargaSalva: 5
-  alcanceRadar: 1500
+  alcanceRadar: 1700
   intervaloVarreduraAutomatica: 0.45
   maxMisseisSimultaneosPorAlvo: 2
   cooldownAutorizacaoAlvo: 1.4
@@ -344,7 +346,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 71303ae0b6f9fa447951fb8acb05aecc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaAntiMissil
-  alcanceRadar: 1000
+  alcanceRadar: 1200
   tempoDeEscaneamento: 0.18
   velocidadeMinimaAmeaca: 5
   dotMinimoAmeaca: 0.4
@@ -1148,6 +1150,7 @@ MonoBehaviour:
   tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
+  bloquearMovimentoAutomatico: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
   interceptarTorpedos: 0

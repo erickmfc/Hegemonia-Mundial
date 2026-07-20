@@ -10,6 +10,29 @@ public class Estaleiro : MonoBehaviour
 {
     private Vector3 _ultimoForwardAgua = Vector3.forward;
 
+    [Header("Proprietario da estrutura")]
+    [Tooltip("Use 0 para ler a IdentidadeUnidade da propria estrutura. Nunca e inferido pela distancia a outra IA.")]
+    [SerializeField] private int ownerTeamId;
+
+    public int OwnerTeamId
+    {
+        get { return ResolverOwnerTeamId(); }
+        set
+        {
+            ownerTeamId = Mathf.Max(0, value);
+
+            // A estrutura pode vir de um prefab que carregava a identidade de
+            // outro país. Ao definir explicitamente o dono, mantenha também a
+            // identidade usada pelos navios produzidos e pelo menu do jogador.
+            if (ownerTeamId > 0)
+            {
+                IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
+                if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
+                if (id != null) id.teamID = ownerTeamId;
+            }
+        }
+    }
+
     [System.Serializable]
     public class SlotConstrucao
     {
@@ -61,6 +84,7 @@ public class Estaleiro : MonoBehaviour
     
     void Start()
     {
+        NormalizarProprietarioDoJogador();
         SincronizarPerfilCosteiro();
         AutoDetectarFilhosDaCena();
         NormalizarSlots();
@@ -76,6 +100,34 @@ public class Estaleiro : MonoBehaviour
         }
 
         RegistrarNoGerente();
+    }
+
+    /// <summary>
+    /// Corrige estaleiros de saves/prefabs antigos que chegaram com a
+    /// IdentidadeUnidade de uma IA. O marcador e escrito pelo Construtor do
+    /// jogador; estaleiros criados pelos executores da IA usam outro rotulo e
+    /// continuam com o proprio time.
+    /// </summary>
+    void NormalizarProprietarioDoJogador()
+    {
+        IA_ManualPlacementTag manualTag = GetComponent<IA_ManualPlacementTag>();
+        if (manualTag == null) manualTag = GetComponentInParent<IA_ManualPlacementTag>();
+        if (manualTag == null
+            || string.IsNullOrEmpty(manualTag.SourceLabel)
+            || !manualTag.SourceLabel.StartsWith("Construtor jogador", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade == null)
+        {
+            identidade = gameObject.AddComponent<IdentidadeUnidade>();
+        }
+
+        identidade.teamID = 1;
+        identidade.nomeDoPais = "Hegemonia";
+        OwnerTeamId = 1;
     }
 
     /// <summary>
@@ -176,11 +228,7 @@ public class Estaleiro : MonoBehaviour
 
         if (gerente != null)
         {
-            // Pega identidade para saber se é do jogador
-            IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
-            if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
-
-            if (id == null || id.teamID == 1)
+            if (ResolverOwnerTeamId() == 1)
             {
                 // Registra o primeiro slot como spawn se possível
                 Transform spawn = (slots != null && slots.Length > 0) ? slots[0].pontoDeConstrucao : transform;
@@ -191,9 +239,37 @@ public class Estaleiro : MonoBehaviour
 
     bool EstruturaDoJogadorHumano()
     {
+        return ResolverOwnerTeamId() == 1;
+    }
+
+    private int ResolverOwnerTeamId()
+    {
+        // A marca aplicada pelo Construtor identifica uma estrutura colocada
+        // manualmente pelo jogador. Ela tem precedência sobre uma identidade
+        // antiga gravada no prefab, evitando que o estaleiro seja atribuído à
+        // IA mais próxima ou a um país de teste.
+        IA_ManualPlacementTag manualTag = GetComponent<IA_ManualPlacementTag>();
+        if (manualTag == null) manualTag = GetComponentInParent<IA_ManualPlacementTag>();
+        if (manualTag != null
+            && !string.IsNullOrEmpty(manualTag.SourceLabel)
+            && manualTag.SourceLabel.StartsWith("Construtor jogador", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
         IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
         if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
-        return id == null || id.teamID == 1;
+        if (id != null && id.teamID > 0) return id.teamID;
+        if (ownerTeamId > 0) return ownerTeamId;
+        // Estruturas colocadas pelo jogador recebem esta marca antes de
+        // qualquer unidade ser criada. Ela e um fallback seguro para o time 1.
+        if (manualTag != null)
+        {
+            return 1;
+        }
+        // Prefabs legados do jogador ja usavam team 1 por padrao. O ponto
+        // importante e nunca escolher uma IA pela proximidade.
+        return 1;
     }
 
     bool IgnorarRegrasCosteirasManuais()
@@ -530,55 +606,19 @@ public class Estaleiro : MonoBehaviour
             slot.barFillImage = null;
         }
 
-        // --- LÓGICA DE IDENTIDADE (Dinâmica) ---
+        // --- LÓGICA DE IDENTIDADE (somente a propria estrutura) ---
         navioPronto.layer = LayerMask.NameToLayer("Default");
         IdentidadeUnidade idEstaleiro = GetComponentInParent<IdentidadeUnidade>();
-        // Alguns creates antigos de estaleiro não carregam IdentidadeUnidade no
-        // objeto raiz. Nesse caso, usa o controlador de IA mais próximo para
-        // que o navio já nasça com o time correto (e possa receber patrulha,
-        // entrar na contagem militar e reagir às ordens da nação).
-        if (idEstaleiro == null)
-        {
-            Hegemonia.AI.IA01.IA01Controller[] controllers =
-                UnityEngine.Object.FindObjectsByType<Hegemonia.AI.IA01.IA01Controller>(FindObjectsSortMode.None);
-            Hegemonia.AI.IA01.IA01Controller nearest = null;
-            float nearestDistance = float.PositiveInfinity;
-            for (int i = 0; i < controllers.Length; i++)
-            {
-                Hegemonia.AI.IA01.IA01Controller candidate = controllers[i];
-                if (candidate == null || !candidate.isActiveAndEnabled || candidate.TeamId <= 1) continue;
-                float distance = Vector3.Distance(candidate.transform.position, transform.position);
-                if (distance < nearestDistance && distance <= 2200f)
-                {
-                    nearest = candidate;
-                    nearestDistance = distance;
-                }
-            }
-            if (nearest != null)
-            {
-                idEstaleiro = nearest.gameObject.GetComponent<IdentidadeUnidade>();
-                if (idEstaleiro == null)
-                {
-                    idEstaleiro = nearest.gameObject.AddComponent<IdentidadeUnidade>();
-                    idEstaleiro.teamID = nearest.TeamId;
-                    idEstaleiro.nomeDoPais = nearest.NationName;
-                    idEstaleiro.tipoUnidade = TipoUnidade.Estrutura;
-                }
-            }
-        }
         IdentidadeUnidade idNavio = navioPronto.GetComponent<IdentidadeUnidade>();
         if (idNavio == null) idNavio = navioPronto.AddComponent<IdentidadeUnidade>();
 
-        if (idEstaleiro != null)
-        {
-            idNavio.teamID = idEstaleiro.teamID;
-            idNavio.nomeDoPais = idEstaleiro.nomeDoPais;
-        }
-        else
-        {
-            idNavio.teamID = 1;
-            idNavio.nomeDoPais = "Hegemonia";
-        }
+        int ownerTeam = Mathf.Max(1, OwnerTeamId);
+        idNavio.teamID = ownerTeam;
+        idNavio.nomeDoPais = idEstaleiro != null
+            && idEstaleiro.teamID == ownerTeam
+            && !string.IsNullOrEmpty(idEstaleiro.nomeDoPais)
+            ? idEstaleiro.nomeDoPais
+            : (ownerTeam == 1 ? "Hegemonia" : "Nacao " + ownerTeam);
 
         idNavio.tipoUnidade = TipoUnidade.Naval;
         CombustivelUnidade.Garantir(navioPronto, true);

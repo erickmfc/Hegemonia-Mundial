@@ -120,10 +120,21 @@ public class SistemaAntiMissil : MonoBehaviour
     private Collider[] collidersOrigemCache;
     private Transform raizDefendidaCache;
     private float proximaVarreduraFisicaLiberada;
+    private Vector3 eulerRepousoBaseGiratoria;
+    private Vector3 eulerRepousoCanoElevacao;
 
     void Start()
     {
         InicializarPaiol();
+
+        if (baseGiratoria != null)
+        {
+            eulerRepousoBaseGiratoria = baseGiratoria.localEulerAngles;
+        }
+        if (canoElevacao != null)
+        {
+            eulerRepousoCanoElevacao = canoElevacao.localEulerAngles;
+        }
 
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
         if (minhaIdentidade == null)
@@ -198,7 +209,8 @@ public class SistemaAntiMissil : MonoBehaviour
 
         if (canoElevacao != null)
         {
-            canoElevacao.localRotation = Quaternion.Lerp(canoElevacao.localRotation, Quaternion.identity, Time.deltaTime * 5f);
+            Quaternion repouso = Quaternion.Euler(eulerRepousoCanoElevacao.x, eulerRepousoCanoElevacao.y, eulerRepousoCanoElevacao.z);
+            canoElevacao.localRotation = Quaternion.Lerp(canoElevacao.localRotation, repouso, Time.deltaTime * 5f);
         }
     }
 
@@ -737,8 +749,19 @@ public class SistemaAntiMissil : MonoBehaviour
             dirBase.y = 0f;
             if (dirBase.sqrMagnitude > 0.0001f)
             {
-                Quaternion rotAlvo = Quaternion.LookRotation(dirBase);
-                baseGiratoria.rotation = Quaternion.Slerp(baseGiratoria.rotation, rotAlvo, Time.deltaTime * velocidadeGiro);
+                if (baseGiratoria.parent != null)
+                {
+                    Vector3 localDir = baseGiratoria.parent.InverseTransformDirection(dirBase.normalized);
+                    float yaw = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+                    Quaternion rotAlvo = Quaternion.Euler(eulerRepousoBaseGiratoria.x, yaw, eulerRepousoBaseGiratoria.z);
+                    baseGiratoria.localRotation = Quaternion.Slerp(baseGiratoria.localRotation, rotAlvo, Time.deltaTime * velocidadeGiro);
+                }
+                else
+                {
+                    float yawMundo = Mathf.Atan2(dirBase.x, dirBase.z) * Mathf.Rad2Deg;
+                    Quaternion rotAlvoMundo = Quaternion.Euler(eulerRepousoBaseGiratoria.x, yawMundo, eulerRepousoBaseGiratoria.z);
+                    baseGiratoria.rotation = Quaternion.Slerp(baseGiratoria.rotation, rotAlvoMundo, Time.deltaTime * velocidadeGiro);
+                }
             }
         }
 
@@ -747,8 +770,21 @@ public class SistemaAntiMissil : MonoBehaviour
             Vector3 dirCano = posFutura - canoElevacao.position;
             if (dirCano.sqrMagnitude > 0.0001f)
             {
-                Quaternion rotCano = Quaternion.LookRotation(dirCano);
-                canoElevacao.rotation = Quaternion.Slerp(canoElevacao.rotation, rotCano, Time.deltaTime * velocidadeGiro);
+                if (canoElevacao.parent != null)
+                {
+                    Vector3 localDir = canoElevacao.parent.InverseTransformDirection(dirCano.normalized);
+                    float plano = new Vector2(localDir.x, localDir.z).magnitude;
+                    float pitch = -Mathf.Atan2(localDir.y, plano) * Mathf.Rad2Deg;
+                    Quaternion rotCano = Quaternion.Euler(pitch, eulerRepousoCanoElevacao.y, eulerRepousoCanoElevacao.z);
+                    canoElevacao.localRotation = Quaternion.Slerp(canoElevacao.localRotation, rotCano, Time.deltaTime * velocidadeGiro);
+                }
+                else
+                {
+                    float plano = new Vector2(dirCano.x, dirCano.z).magnitude;
+                    float pitchMundo = -Mathf.Atan2(dirCano.y, plano) * Mathf.Rad2Deg;
+                    Quaternion rotCanoMundo = Quaternion.Euler(pitchMundo, eulerRepousoCanoElevacao.y, eulerRepousoCanoElevacao.z);
+                    canoElevacao.rotation = Quaternion.Slerp(canoElevacao.rotation, rotCanoMundo, Time.deltaTime * velocidadeGiro);
+                }
             }
         }
     }

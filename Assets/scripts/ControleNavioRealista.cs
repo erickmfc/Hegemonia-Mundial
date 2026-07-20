@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Rigidbody))]
@@ -121,6 +122,10 @@ public class ControleNavioRealista : MonoBehaviour
     private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
     private float proximoReplanDestino;
     private Vector3 ultimoDestinoAplicado = Vector3.zero;
+    // Algumas cenas possuem água navegável sem NavMesh. Nesse caso o navio
+    // continua usando a simulação hidrodinâmica, sem repetir o mesmo aviso a
+    // cada frame de patrulha.
+    private float proximoAvisoSemNavMesh;
     
     // Estado dos torpedos
     private bool[] tubosTorpedoUsados;
@@ -200,6 +205,11 @@ public class ControleNavioRealista : MonoBehaviour
 
     void Update()
     {
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+        {
+            return;
+        }
+
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         try
         {
@@ -213,11 +223,6 @@ public class ControleNavioRealista : MonoBehaviour
                 {
                     destinoAssistenciaSaida = Vector3.zero;
                 }
-            }
-
-            if (!AgenteProntoParaLeitura())
-            {
-                return;
             }
 
             if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
@@ -302,11 +307,39 @@ public class ControleNavioRealista : MonoBehaviour
     {
         if (!AgenteProntoParaLeitura())
         {
-            potenciaAlvo = 0f;
-            temDestino = false;
-            manobraReAtiva = false;
-            tempoRestanteManobraRe = 0f;
-            anguloLemeAtual = Mathf.MoveTowards(anguloLemeAtual, 0f, Time.deltaTime * velocidadeLeme);
+            // Fallback aquático: pontos de patrulha ficam na água e nem sempre
+            // têm NavMesh. Ainda assim a mesma física do navio deve obedecer à
+            // ordem de movimento, ataque ou patrulha recebida.
+            if (!temDestino || destinoAtual == Vector3.zero)
+            {
+                potenciaAlvo = 0f;
+                manobraReAtiva = false;
+                tempoRestanteManobraRe = 0f;
+                anguloLemeAtual = Mathf.MoveTowards(anguloLemeAtual, 0f, Time.deltaTime * velocidadeLeme);
+                return;
+            }
+
+            Vector3 direcaoFallback = destinoAtual - transform.position;
+            direcaoFallback.y = 0f;
+            float distanciaFallback = direcaoFallback.magnitude;
+            if (distanciaFallback <= distanciaChegada)
+            {
+                potenciaAlvo = 0f;
+                temDestino = false;
+                manobraReAtiva = false;
+                tempoRestanteManobraRe = 0f;
+                return;
+            }
+
+            direcaoFallback.Normalize();
+            float anguloFallback = Vector3.SignedAngle(transform.forward, direcaoFallback, Vector3.up);
+            anguloLemeAtual = Mathf.MoveTowards(
+                anguloLemeAtual,
+                Mathf.Clamp(anguloFallback / 30f, -1f, 1f),
+                Time.deltaTime * velocidadeLeme);
+            potenciaAlvo = distanciaFallback < 40f
+                ? Mathf.Clamp01(distanciaFallback / 40f)
+                : 1f;
             return;
         }
 
@@ -564,12 +597,18 @@ public class ControleNavioRealista : MonoBehaviour
         }
 
         // 2. Informe ao NavMeshAgent que ele "virtualmente" está na superfície (NavMesh)
-        Vector3 posSimulacao = new Vector3(novaPos.x, nivelMar, novaPos.z);
-        agente.nextPosition = posSimulacao; 
+        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            Vector3 posSimulacao = new Vector3(novaPos.x, nivelMar, novaPos.z);
+            agente.nextPosition = posSimulacao;
+        }
 
         // 3. Ajuste o colisor (Cilindro do Agent) para que ele suba até a superfície e não fique afundado junto com o visual
         // Mantém o agente "virtual" no nível do mar mesmo com o casco visual abaixo/acima dele.
-        agente.baseOffset = nivelMar - posVisual.y;
+        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            agente.baseOffset = nivelMar - posVisual.y;
+        }
     }
 
     bool TentarCorrigirFlutuacaoInicial(float nivelMar)
@@ -779,6 +818,14 @@ public class ControleNavioRealista : MonoBehaviour
     // Método para integração com ControleUnidade
     public void DefinirDestino(Vector3 destino)
     {
+        // O diorama do menu reutiliza navios da campanha, mas não deve aceitar
+        // ordens nem tentar preparar um NavMesh enquanto a partida ainda não
+        // começou. A cena de campanha continua usando o fluxo normal abaixo.
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+        {
+            return;
+        }
+
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
@@ -840,7 +887,19 @@ public class ControleNavioRealista : MonoBehaviour
             return;
         }
 
-        Debug.LogWarning($"[ControleNavioRealista] Tentativa de navegar sem estar no NavMesh! ({name})");
+        // Patrulhas navais não devem travar só porque a área de água não foi
+        // bakeada. O destino fica guardado e o fallback acima conduz o casco.
+        destinoAtual = destino;
+        temDestino = destino != Vector3.zero;
+        manobraReAtiva = false;
+        tempoRestanteManobraRe = 0f;
+        estaDesligado = false;
+        tempoInatividade = 0f;
+        if (Time.time >= proximoAvisoSemNavMesh)
+        {
+            Debug.LogWarning($"[ControleNavioRealista] NavMesh indisponível para {name}; usando navegação aquática direta.");
+            proximoAvisoSemNavMesh = Time.time + 5f;
+        }
     }
 
     public void PararPorFaltaDeCombustivel()

@@ -988,6 +988,10 @@ namespace Hegemonia.AI.BrainMaster
 
             IA_BackendBridge.AttachConstructionMetadata(created, data);
             _bridge.EnsureIdentity(created);
+            Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
+            if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
+            PierMarinha createdPier = created.GetComponent<PierMarinha>();
+            if (createdPier != null) createdPier.OwnerTeamId = _teamId;
             IA_WorldState.NotifyEntityChanged(created.GetComponent<IdentidadeUnidade>());
             Estaleiro estaleiro = created.GetComponent<Estaleiro>();
             if (estaleiro != null)
@@ -1883,7 +1887,7 @@ namespace Hegemonia.AI.BrainMaster
         private GameObject ProduceNaval(DadosConstrucao data, out string reason)
         {
             reason = string.Empty;
-            string lastReason = "estaleiro/pier indisponivel";
+            string lastReason = "estaleiro indisponivel";
             long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
             if (data != null && data.prefabDaUnidade != null)
             {
@@ -1905,24 +1909,6 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 lastReason = "estaleiro sem agua, sem costa ou sem vaga";
-            }
-
-            RegistroEntidadesJogo.FillPiers(_pierBuffer);
-            for (int i = 0; i < _pierBuffer.Count; i++)
-            {
-                PierMarinha p = _pierBuffer[i];
-                if (p == null || !_bridge.BelongsToTeam(p))
-                {
-                    continue;
-                }
-
-                if (p.ConstruirNavio(data.prefabDaUnidade))
-                {
-                    RegistrarTempoDiagnostico("spawn_naval_ms", spawnStart);
-                    return data.prefabDaUnidade;
-                }
-
-                lastReason = "pier sem agua ou mal posicionado";
             }
 
             reason = lastReason;

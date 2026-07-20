@@ -704,21 +704,21 @@ public class Construtor : MonoBehaviour
         Estaleiro estaleiro = novo.GetComponent<Estaleiro>();
         if (estaleiro != null)
         {
-            // Prefabs navais podem carregar uma identidade de teste/IA. Na
-            // colocacao manual pelo jogador, a propriedade deve ser definida
-            // antes de o Estaleiro registrar slots e logistica.
-            if (previewUsaColocacaoNavalManual)
+            // Tudo que chega a este metodo veio do Construtor do jogador.
+            // Alguns prefabs navais carregam identidade de teste/IA (time 2),
+            // o que fazia os cacas tratarem o estaleiro comprado como inimigo
+            // e bloqueava a fila naval do jogador. Normalize sempre a posse
+            // antes de registrar slots e logistica; a IA usa seus executores
+            // proprios e nao passa por este caminho.
+            IdentidadeUnidade identidadeEstaleiro = novo.GetComponent<IdentidadeUnidade>();
+            if (identidadeEstaleiro == null)
             {
-                IdentidadeUnidade identidadeEstaleiro = novo.GetComponent<IdentidadeUnidade>();
-                if (identidadeEstaleiro == null)
-                {
-                    identidadeEstaleiro = novo.AddComponent<IdentidadeUnidade>();
-                }
-
-                identidadeEstaleiro.teamID = 1;
-                identidadeEstaleiro.nomeDoPais = "Hegemonia";
-                estaleiro.OwnerTeamId = 1;
+                identidadeEstaleiro = novo.AddComponent<IdentidadeUnidade>();
             }
+
+            identidadeEstaleiro.teamID = 1;
+            identidadeEstaleiro.nomeDoPais = "Hegemonia";
+            estaleiro.OwnerTeamId = 1;
 
             estaleiro.AtualizarReferenciasLitoraneas();
             TentarFixarSpawnNaval(estaleiro.gameObject, rotFinal, true);
@@ -727,21 +727,17 @@ public class Construtor : MonoBehaviour
         PierMarinha pier = novo.GetComponent<PierMarinha>();
         if (pier != null)
         {
-            // Prefabs costeiros podem ter uma identidade de teste/IA gravada.
-            // A colocacao feita pelo Construtor do jogador deve sempre assumir
-            // o time humano, sem alterar o caminho ConstruirEstruturaIA.
-            if (previewUsaColocacaoNavalManual)
+            // Mesma normalizacao do estaleiro: o pier comprado pelo jogador
+            // nunca pode herdar a identidade de um prefab de IA.
+            IdentidadeUnidade identidadePier = novo.GetComponent<IdentidadeUnidade>();
+            if (identidadePier == null)
             {
-                IdentidadeUnidade identidadePier = novo.GetComponent<IdentidadeUnidade>();
-                if (identidadePier == null)
-                {
-                    identidadePier = novo.AddComponent<IdentidadeUnidade>();
-                }
-
-                identidadePier.teamID = 1;
-                identidadePier.nomeDoPais = "Hegemonia";
-                pier.OwnerTeamId = 1;
+                identidadePier = novo.AddComponent<IdentidadeUnidade>();
             }
+
+            identidadePier.teamID = 1;
+            identidadePier.nomeDoPais = "Hegemonia";
+            pier.OwnerTeamId = 1;
 
             pier.RegistrarNoGerente();
             TentarFixarSpawnNaval(pier.gameObject, rotFinal, true);

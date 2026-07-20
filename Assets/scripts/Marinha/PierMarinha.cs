@@ -8,6 +8,27 @@ using Hegemonia.AI.BrainMaster;
 
 public class PierMarinha : MonoBehaviour
 {
+    [Header("Proprietario e funcao")]
+    [Tooltip("Use 0 para ler a IdentidadeUnidade da propria estrutura. Nunca e inferido pela distancia a outra IA.")]
+    [SerializeField] private int ownerTeamId;
+    [Tooltip("O pier e logistico por padrao. A producao de navios militares deve ocorrer no Estaleiro.")]
+    [SerializeField] private bool permitirConstrucaoNaviosNoPier = false;
+
+    public int OwnerTeamId
+    {
+        get { return ResolverOwnerTeamId(); }
+        set
+        {
+            ownerTeamId = Mathf.Max(0, value);
+            if (ownerTeamId > 0)
+            {
+                IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
+                if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
+                if (id != null) id.teamID = ownerTeamId;
+            }
+        }
+    }
+
     [System.Serializable]
     public class VagaDeAtracagem
     {
@@ -200,10 +221,33 @@ public class PierMarinha : MonoBehaviour
 
     void Start()
     {
+        NormalizarProprietarioDoJogador();
         SincronizarPerfilCosteiro();
         CorrigirPoseCosteiraSeNecessario();
         StartCoroutine(RotinaBuscaConstrucao());
         RegistrarNoGerente();
+    }
+
+    void NormalizarProprietarioDoJogador()
+    {
+        IA_ManualPlacementTag manualTag = GetComponent<IA_ManualPlacementTag>();
+        if (manualTag == null) manualTag = GetComponentInParent<IA_ManualPlacementTag>();
+        if (manualTag == null
+            || string.IsNullOrEmpty(manualTag.SourceLabel)
+            || !manualTag.SourceLabel.StartsWith("Construtor jogador", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade == null)
+        {
+            identidade = gameObject.AddComponent<IdentidadeUnidade>();
+        }
+
+        identidade.teamID = 1;
+        identidade.nomeDoPais = "Hegemonia";
+        OwnerTeamId = 1;
     }
 
     void OnValidate()
@@ -222,7 +266,7 @@ public class PierMarinha : MonoBehaviour
             IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
             if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
 
-            if (id == null || id.teamID == 1)
+            if (ResolverOwnerTeamId() == 1)
             {
                 // Registra o primeiro ponto de saída ou o próprio transform como spawn
                 Transform spawn = (pontosDeSaida != null && pontosDeSaida.Length > 0) ? pontosDeSaida[0] : transform;
@@ -237,7 +281,29 @@ public class PierMarinha : MonoBehaviour
     {
         IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
         if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
-        return id == null || id.teamID == 1;
+        return ResolverOwnerTeamId() == 1;
+    }
+
+    private int ResolverOwnerTeamId()
+    {
+        IA_ManualPlacementTag manualTag = GetComponent<IA_ManualPlacementTag>();
+        if (manualTag == null) manualTag = GetComponentInParent<IA_ManualPlacementTag>();
+        if (manualTag != null
+            && !string.IsNullOrEmpty(manualTag.SourceLabel)
+            && manualTag.SourceLabel.StartsWith("Construtor jogador", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        IdentidadeUnidade id = GetComponent<IdentidadeUnidade>();
+        if (id == null) id = GetComponentInParent<IdentidadeUnidade>();
+        if (id != null && id.teamID > 0) return id.teamID;
+        if (ownerTeamId > 0) return ownerTeamId;
+        if (manualTag != null)
+        {
+            return 1;
+        }
+        return 1;
     }
 
     bool IgnorarRegrasCosteirasManuais()
@@ -463,6 +529,14 @@ public class PierMarinha : MonoBehaviour
     public void AtribuirVaga(VagaDeAtracagem vaga, IdentidadeNaval navio)
     {
         if (vaga == null || navio == null) return;
+
+        int teamDoPier = ResolverOwnerTeamId();
+        int teamDoNavio = RecursosPorTime.ObterTeamId(navio);
+        if (teamDoNavio != teamDoPier)
+        {
+            Debug.LogWarning($"[Pier] Atracagem recusada: navio do time {teamDoNavio} nao pode usar pier do time {teamDoPier}.", this);
+            return;
+        }
         
         var agent = navio.GetComponent<NavMeshAgent>();
         if (agent == null) agent = navio.GetComponentInChildren<NavMeshAgent>();
@@ -738,8 +812,14 @@ public class PierMarinha : MonoBehaviour
     {
         IdentidadeNaval candidato = null;
         float menorDistancia = raioDeBusca;
+        int teamDoPier = ResolverOwnerTeamId();
         foreach (var navio in navios)
         {
+            if (navio == null || RecursosPorTime.ObterTeamId(navio) != teamDoPier)
+            {
+                continue;
+            }
+
             if (navio.categoriaNavio == vaga.categoriaAceita && !navio.EstaAtracado)
             {
                 float dist = Vector3.Distance(transform.position, navio.transform.position);
@@ -752,6 +832,11 @@ public class PierMarinha : MonoBehaviour
     public bool ConstruirNavio(GameObject prefabNavio)
     {
         if (prefabNavio == null) return false;
+        if (!permitirConstrucaoNaviosNoPier)
+        {
+            Debug.LogWarning("[PierMarinha] Producao bloqueada: este pier e logistico. Use um Estaleiro para construir navios.", this);
+            return false;
+        }
         DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefabNavio.name);
 
         string validacaoPier;
@@ -797,15 +882,15 @@ public class PierMarinha : MonoBehaviour
         var idNavio = novoNavio.GetComponent<IdentidadeUnidade>();
         if (idNavio == null) idNavio = novoNavio.AddComponent<IdentidadeUnidade>();
 
-        if (idPier != null && idNavio != null)
+        if (idNavio != null)
         {
-            idNavio.teamID = idPier.teamID;
-            idNavio.nomeDoPais = idPier.nomeDoPais;
-        }
-        else if (idNavio != null)
-        {
-            idNavio.teamID = 1;
-            if (string.IsNullOrEmpty(idNavio.nomeDoPais)) idNavio.nomeDoPais = "Hegemonia";
+            int ownerTeam = Mathf.Max(1, OwnerTeamId);
+            idNavio.teamID = ownerTeam;
+            idNavio.nomeDoPais = idPier != null
+                && idPier.teamID == ownerTeam
+                && !string.IsNullOrEmpty(idPier.nomeDoPais)
+                ? idPier.nomeDoPais
+                : (ownerTeam == 1 ? "Hegemonia" : "Nacao " + ownerTeam);
         }
 
         if (idNavio != null)

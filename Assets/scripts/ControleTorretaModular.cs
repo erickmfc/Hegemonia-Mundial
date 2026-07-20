@@ -61,6 +61,8 @@ public class ControleTorretaModular : MonoBehaviour
     private int meuTime = 1;
     private Transform minhaRaiz;
     private bool souAntiAereo;
+    private Quaternion rotacaoInicialPecaQueGira = Quaternion.identity;
+    private Vector3 eulerRepousoPecaQueGira;
     private static readonly List<IdentidadeUnidade> unidadesRegistroRadar = new List<IdentidadeUnidade>(256);
     
     void Start()
@@ -81,6 +83,11 @@ public class ControleTorretaModular : MonoBehaviour
         meuTime = (meuID != null) ? meuID.teamID : 1;
         minhaRaiz = transform.root;
         if (pecaQueGira == null) pecaQueGira = transform;
+        if (pecaQueGira != null)
+        {
+            rotacaoInicialPecaQueGira = pecaQueGira.localRotation;
+            eulerRepousoPecaQueGira = pecaQueGira.localEulerAngles;
+        }
         souAntiAereo = DeterminarSouAntiAereo();
         
         // Inicia busca de alvos
@@ -337,15 +344,22 @@ public class ControleTorretaModular : MonoBehaviour
             float anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
             float anguloTravado = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
             
-            Quaternion rotacaoAlvo = Quaternion.Euler(0, anguloTravado, 0);
+            // Não zerar X/Z do prefab: isso inclinava a torre inteira ao
+            // trocar de alvo, especialmente em navios com convés inclinado.
+            Quaternion rotacaoAlvo = Quaternion.Euler(eulerRepousoPecaQueGira.x, anguloTravado, eulerRepousoPecaQueGira.z);
             pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
         }
         else
         {
             // Rotação livre
-            Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
-            rotacaoAlvo = Quaternion.Euler(0, rotacaoAlvo.eulerAngles.y, 0);
-            pecaQueGira.rotation = Quaternion.Lerp(pecaQueGira.rotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
+            direcao.y = 0f;
+            if (direcao.sqrMagnitude < 0.001f) return;
+            float yaw = Quaternion.LookRotation(direcao.normalized, Vector3.up).eulerAngles.y;
+            Quaternion rotacaoAlvo = Quaternion.Euler(eulerRepousoPecaQueGira.x, yaw, eulerRepousoPecaQueGira.z);
+            if (pecaQueGira.parent != null)
+                pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
+            else
+                pecaQueGira.rotation = Quaternion.Lerp(pecaQueGira.rotation, rotacaoAlvo, Time.deltaTime * velocidadeGiro);
         }
     }
     
@@ -456,7 +470,7 @@ public class ControleTorretaModular : MonoBehaviour
         if (limitarRotacao)
         {
             // Volta para o centro
-            pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, Quaternion.identity, Time.deltaTime * 2f);
+            pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoInicialPecaQueGira, Time.deltaTime * 2f);
         }
         else
         {

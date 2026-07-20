@@ -166,6 +166,11 @@ namespace Hegemonia.AI.IA01
 
         private void Update()
         {
+            if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
             ExecuteTick(Time.unscaledTime, Time.unscaledDeltaTime * 1000f, frameBudgetMilliseconds);
         }
 

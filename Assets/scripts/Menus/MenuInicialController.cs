@@ -58,6 +58,7 @@ public class MenuInicialController : MonoBehaviour
     private readonly List<Transform> avioesG18 = new List<Transform>();
     private readonly List<Vector3> posicoesOriginaisG18 = new List<Vector3>();
     private readonly List<WindZone> zonasVento = new List<WindZone>();
+    private readonly List<MonoBehaviour> comportamentosSuspensos = new List<MonoBehaviour>();
     private Vector3 inicioJatoAtual;
     private Vector3 fimJatoAtual;
     private Vector3 baseNavioAtual;
@@ -68,6 +69,7 @@ public class MenuInicialController : MonoBehaviour
     private float faseNavio;
     private float tempoDisparo;
     private float duracaoDisparo;
+    private float proximaLimpezaDiorama;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void CriarBootstrapMenu()
@@ -109,7 +111,11 @@ public class MenuInicialController : MonoBehaviour
             DesativarControladoresCameraDaCenaMenu();
             InicializarAnimacaoCenaExistente();
             DesativarAgentesDaCenaMenu();
-            // DesativarScriptsDaCenaMenu();
+            // O cenário do menu usa prefabs da campanha como diorama. Eles precisam
+            // permanecer visíveis, mas sem lógica de combate/movimento para não iniciar
+            // uma guerra enquanto o jogador ainda está escolhendo a campanha.
+            DesativarScriptsDaCenaMenu();
+            PararEfeitosVisuaisDaCenaMenu();
             // RemoverMenusDeComportamentoDaCenaMenu();
             // DesativarCanvasesDaCenaMenu();
         }
@@ -162,12 +168,20 @@ public class MenuInicialController : MonoBehaviour
         if (usarCenaDeFundoExistente)
         {
             LimparCanvasesEstranhosDaCenaMenu();
-            AnimarCenaExistente();
+            // O diorama do menu permanece estatico; a campanha inicia os
+            // controladores reais quando a cena de jogo for carregada.
+            if (Time.unscaledTime >= proximaLimpezaDiorama)
+            {
+                DesativarScriptsDaCenaMenu();
+                PararEfeitosVisuaisDaCenaMenu();
+                proximaLimpezaDiorama = Time.unscaledTime + 0.5f;
+            }
         }
     }
 
     private void OnDestroy()
     {
+        RestaurarScriptsSuspensos();
         if (!ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
         {
             return;
@@ -256,6 +270,7 @@ public class MenuInicialController : MonoBehaviour
     {
         Time.timeScale = 1f;
         AudioListener.pause = false;
+        RestaurarScriptsSuspensos();
 
         if (!ConfiguracaoCenasJogo.CenaExiste(nomeCena))
         {
@@ -339,12 +354,19 @@ public class MenuInicialController : MonoBehaviour
 
     private void DesativarScriptsDaCenaMenu()
     {
+        SuspenderGerenciadorIA01();
         Scene cenaAtiva = SceneManager.GetActiveScene();
         MonoBehaviour[] comportamentos = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         for (int i = 0; i < comportamentos.Length; i++)
         {
             MonoBehaviour comportamento = comportamentos[i];
-            if (comportamento == null || comportamento == this || comportamento.gameObject.scene != cenaAtiva)
+            if (comportamento == null || comportamento == this)
+            {
+                continue;
+            }
+
+            bool pertenceAoMenu = comportamento.gameObject.scene == cenaAtiva;
+            if (!pertenceAoMenu && !EhControladorPersistenteDoDiorama(comportamento))
             {
                 continue;
             }
@@ -360,8 +382,61 @@ public class MenuInicialController : MonoBehaviour
                 continue;
             }
 
-            comportamento.enabled = false;
+            if (comportamento.enabled)
+            {
+                comportamento.enabled = false;
+                if (!comportamentosSuspensos.Contains(comportamento))
+                {
+                    comportamentosSuspensos.Add(comportamento);
+                }
+            }
         }
+    }
+
+    private void SuspenderGerenciadorIA01()
+    {
+        if (!Hegemonia.AI.IA01.IA01Manager.TryGetInstance(out Hegemonia.AI.IA01.IA01Manager manager)
+            || manager == null
+            || !manager.enabled)
+        {
+            return;
+        }
+
+        manager.enabled = false;
+        if (!comportamentosSuspensos.Contains(manager))
+        {
+            comportamentosSuspensos.Add(manager);
+        }
+    }
+
+    private bool EhControladorPersistenteDoDiorama(MonoBehaviour comportamento)
+    {
+        string nome = comportamento.GetType().Name.ToLowerInvariant();
+        return nome.Contains("ia01")
+            || nome.Contains("controleunidade")
+            || nome.Contains("controlenavio")
+            || nome.Contains("controletorreta")
+            || nome.Contains("comportamentopatrulha")
+            || nome.Contains("sistemadedanos")
+            || nome.Contains("projetil")
+            || nome.Contains("combate")
+            || nome.Contains("patrulha")
+            || nome.Contains("motorunidade")
+            || nome.Contains("movimento");
+    }
+
+    private void RestaurarScriptsSuspensos()
+    {
+        for (int i = 0; i < comportamentosSuspensos.Count; i++)
+        {
+            MonoBehaviour comportamento = comportamentosSuspensos[i];
+            if (comportamento != null)
+            {
+                comportamento.enabled = true;
+            }
+        }
+
+        comportamentosSuspensos.Clear();
     }
 
     private void DesativarAgentesDaCenaMenu()
@@ -377,6 +452,71 @@ public class MenuInicialController : MonoBehaviour
             }
 
             agente.enabled = false;
+        }
+    }
+
+    private void PararEfeitosVisuaisDaCenaMenu()
+    {
+        Scene cenaAtiva = SceneManager.GetActiveScene();
+
+        Animator[] animadores = FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < animadores.Length; i++)
+        {
+            Animator animador = animadores[i];
+            if (animador != null && animador.gameObject.scene == cenaAtiva)
+            {
+                animador.Rebind();
+                animador.Update(0f);
+                animador.enabled = false;
+            }
+        }
+
+        ParticleSystem[] particulas = FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < particulas.Length; i++)
+        {
+            ParticleSystem particula = particulas[i];
+            if (particula != null && particula.gameObject.scene == cenaAtiva)
+            {
+                particula.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                particula.Clear(true);
+                particula.gameObject.SetActive(false);
+            }
+        }
+
+        TrailRenderer[] rastros = FindObjectsByType<TrailRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < rastros.Length; i++)
+        {
+            TrailRenderer rastro = rastros[i];
+            if (rastro != null && rastro.gameObject.scene == cenaAtiva)
+            {
+                rastro.emitting = false;
+                rastro.Clear();
+            }
+        }
+
+        LineRenderer[] linhas = FindObjectsByType<LineRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < linhas.Length; i++)
+        {
+            LineRenderer linha = linhas[i];
+            if (linha != null && linha.gameObject.scene == cenaAtiva)
+            {
+                linha.enabled = false;
+            }
+        }
+
+        Rigidbody[] corpos = FindObjectsByType<Rigidbody>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < corpos.Length; i++)
+        {
+            Rigidbody corpo = corpos[i];
+            if (corpo != null && corpo.gameObject.scene == cenaAtiva)
+            {
+                if (!corpo.isKinematic)
+                {
+                    corpo.linearVelocity = Vector3.zero;
+                    corpo.angularVelocity = Vector3.zero;
+                }
+                corpo.isKinematic = true;
+            }
         }
     }
 

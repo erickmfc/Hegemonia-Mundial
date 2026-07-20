@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Hegemonia.AI.IA01;
 using UnityEngine;
 
 namespace Hegemonia.AI.BrainMaster
@@ -158,11 +159,11 @@ namespace Hegemonia.AI.BrainMaster
                 int helicopterTarget = EnableHelicopterProduction && hasHeliport
                     ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 4f), 2, 6)
                     : 0;
-                int fighterTarget = hasMilitaryAirport ? Mathf.Clamp(10 + Mathf.RoundToInt(counter.AirWeight * 8f) + (int)(now / 70f), 10, 26) : 0;
+                int fighterBaseline = 2 + Mathf.RoundToInt(counter.AirWeight * 4f) + Mathf.FloorToInt(now / 120f);
+                int fighterTarget = hasMilitaryAirport ? Mathf.Max(2, fighterBaseline) : 0;
                 int patrolShipTarget = hasNavalBase ? 1 : 0;
-                int navalTarget = hasNavalBase
-                    ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.NavalWeight * 6f), 2, 10)
-                    : 0;
+                int navalBaseline = 1 + Mathf.RoundToInt(counter.NavalWeight * 4f) + Mathf.FloorToInt(now / 180f);
+                int navalTarget = hasNavalBase ? Mathf.Max(1, navalBaseline) : 0;
                 int oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0 ? 1 : 0;
                 if (brain != null)
                 {
@@ -476,6 +477,20 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            IA01MilitaryAssetKind assetKind = IA01MilitaryProductionGuard.Classify(data);
+            bool reserved = assetKind == IA01MilitaryAssetKind.Other
+                || IA01MilitaryProductionGuard.TryReserveSingle(
+                    _context.Brain != null ? _context.Brain.TeamId : 0,
+                    assetKind,
+                    CurrentCountFor(assetKind, GetSnapshot()),
+                    Time.time,
+                    assetKind == IA01MilitaryAssetKind.Naval || assetKind == IA01MilitaryAssetKind.OilTanker ? 90f : 45f);
+            if (!reserved)
+            {
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_GUARD", "ordem ja pendente para " + assetKind);
+                return false;
+            }
+
             IA_ProduceOrderData payload = new IA_ProduceOrderData
             {
                 ItemKey = data.nomeItem,
@@ -503,6 +518,8 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
+                if (assetKind != IA01MilitaryAssetKind.Other)
+                    IA01MilitaryProductionGuard.Cancel(_context.Brain != null ? _context.Brain.TeamId : 0, assetKind, Time.time);
                 IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_FAIL", "item=" + data.nomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
             }
 
@@ -529,6 +546,13 @@ namespace Hegemonia.AI.BrainMaster
                 Quantity = 1
             };
 
+            int teamId = _context.Brain != null ? _context.Brain.TeamId : 0;
+            if (!IA01MilitaryProductionGuard.TryReserveSingle(teamId, IA01MilitaryAssetKind.Fighter, GetSnapshot().FixedWingAircraft, Time.time))
+            {
+                IA_RuntimeTextTrace.LogText(teamId, "IA_ProductionDirector", "AIR_PROD_GUARD", "caca ja pendente");
+                return false;
+            }
+
             IA_CommandRequest request = IA_CommandFactory.Create(
                 IA_CommandType.Produce,
                 "IA_ProductionDirector",
@@ -550,10 +574,25 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
+                IA01MilitaryProductionGuard.Cancel(teamId, IA01MilitaryAssetKind.Fighter, Time.time);
                 IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_FAIL", "item=" + data.nomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
             }
 
             return enqueued;
+        }
+
+        private static int CurrentCountFor(IA01MilitaryAssetKind kind, IA_ForceSnapshot snapshot)
+        {
+            if (snapshot == null) return 0;
+            switch (kind)
+            {
+                case IA01MilitaryAssetKind.Infantry: return snapshot.InfantryUnits;
+                case IA01MilitaryAssetKind.Tank: return snapshot.TankUnits;
+                case IA01MilitaryAssetKind.Fighter: return snapshot.FixedWingAircraft;
+                case IA01MilitaryAssetKind.Naval: return snapshot.NavalUnits;
+                case IA01MilitaryAssetKind.OilTanker: return snapshot.OilTankers;
+                default: return 0;
+            }
         }
 
         private bool PublishProductionIntent(IA_CommandRequest request, DadosConstrucao data, int priority, string reasonText, out string reason)
@@ -1271,16 +1310,6 @@ namespace Hegemonia.AI.BrainMaster
             {
                 Estaleiro estaleiro = _registeredShipyardBuffer[i];
                 if (estaleiro != null && _context.Backend.BelongsToTeam(estaleiro))
-                {
-                    return true;
-                }
-            }
-
-            RegistroEntidadesJogo.FillPiers(_registeredPierBuffer);
-            for (int i = 0; i < _registeredPierBuffer.Count; i++)
-            {
-                PierMarinha pier = _registeredPierBuffer[i];
-                if (pier != null && _context.Backend.BelongsToTeam(pier))
                 {
                     return true;
                 }

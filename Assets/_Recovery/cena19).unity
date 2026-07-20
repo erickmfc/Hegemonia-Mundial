@@ -475,15 +475,12 @@ Transform:
   m_GameObject: {fileID: 55593037}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 85, y: 0, z: 672}
+  m_LocalPosition: {x: 85, y: 0, z: 220}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 845886241}
   - {fileID: 1668727864}
-  - {fileID: 1473665158}
-  - {fileID: 1674176790}
-  - {fileID: 1757553435}
   - {fileID: 416076069}
   - {fileID: 1046860316}
   m_Father: {fileID: 1656089298}
@@ -553,15 +550,6 @@ MonoBehaviour:
   m_Script: {fileID: 464703300}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 55593040}
-  runwayStart: {fileID: 416076069}
-  runwayEnd: {fileID: 1046860316}
-  aircraftSpawn: {fileID: 845886241}
-  approachDirection: {fileID: 1668727864}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!1 &59077669
 GameObject:
   m_ObjectHideFlags: 0
@@ -1251,7 +1239,7 @@ Transform:
   m_GameObject: {fileID: 192015498}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 493, y: 0, z: -802}
+  m_LocalPosition: {x: 493, y: 0, z: -37}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1273,15 +1261,6 @@ MonoBehaviour:
   m_Script: {fileID: 1364039730}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 192015501}
-  runwayStart: {fileID: 0}
-  runwayEnd: {fileID: 0}
-  aircraftSpawn: {fileID: 1066176301}
-  approachDirection: {fileID: 45947714}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!114 &192015501
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3032,7 +3011,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: -0.052149113, y: -0.6915209, z: 0.05017544, w: -0.7187222}
-  m_LocalPosition: {x: -53, y: 116, z: -2948}
+  m_LocalPosition: {x: -53, y: 116, z: -383.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3179,6 +3158,7 @@ MonoBehaviour:
   useScriptedOpening: 1
   usePreparedSlots: 1
   allowAutonomousExpansion: 0
+  enablePlanningAdvisor: 1
   autoRegisterWithManager: 1
   autoApplyGovernmentSnapshot: 1
   fallbackCadenceSeconds: 0.65
@@ -4912,37 +4892,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 465408610}
   m_CullTransparentMesh: 1
---- !u!1 &473742722
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 473742723}
-  m_Layer: 0
-  m_Name: NavalSpawnPoint
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &473742723
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 473742722}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2105634726}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &475589930
 GameObject:
   m_ObjectHideFlags: 0
@@ -5533,7 +5482,7 @@ Transform:
   m_GameObject: {fileID: 515773600}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -213, y: 0, z: -25}
+  m_LocalPosition: {x: 424, y: 0, z: -419}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -5587,15 +5536,6 @@ MonoBehaviour:
   m_Script: {fileID: 1189833638}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 515773602}
-  runwayStart: {fileID: 1780816893}
-  runwayEnd: {fileID: 147112496}
-  aircraftSpawn: {fileID: 74379366}
-  approachDirection: {fileID: 1494176613}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!1 &526704005
 GameObject:
   m_ObjectHideFlags: 0
@@ -5996,7 +5936,7 @@ Transform:
   m_GameObject: {fileID: 577579845}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -514, y: 0, z: -286}
+  m_LocalPosition: {x: 350, y: 0, z: 535}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -6004,6 +5944,9 @@ Transform:
   - {fileID: 342383268}
   - {fileID: 2138149983}
   - {fileID: 720611916}
+  - {fileID: 1473665158}
+  - {fileID: 1674176790}
+  - {fileID: 1757553435}
   m_Father: {fileID: 1656089298}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &577579847
@@ -6018,15 +5961,6 @@ MonoBehaviour:
   m_Script: {fileID: 1364039730}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 577579848}
-  runwayStart: {fileID: 0}
-  runwayEnd: {fileID: 0}
-  aircraftSpawn: {fileID: 368802372}
-  approachDirection: {fileID: 342383268}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!114 &577579848
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7800,6 +7734,70 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 734612338}
   m_CullTransparentMesh: 1
+--- !u!1 &751202750
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 751202751}
+  - component: {fileID: 751202752}
+  m_Layer: 0
+  m_Name: IA01 Local - Quartel Militar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &751202751
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 751202750}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -657, y: 0, z: -268}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1656089298}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &751202752
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 751202750}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.quartel
+  slotGroupId: infraestrutura_estrategica
+  allowedRole: 9
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  buildingPoint: {fileID: 751202751}
+  unitSpawnPoint: {fileID: 0}
+  exitDirection: {fileID: 0}
+  reservedFootprint: {x: 75, y: 55}
+  safetyMargin: 1
+  ownerTeamId: 0
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 0
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1001 &772987144
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8103,37 +8101,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d1aa96100fe249488fd66e0eea883c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuInicialController
---- !u!1 &794852856
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 794852857}
-  m_Layer: 0
-  m_Name: ExitDirection
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &794852857
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 794852856}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0.9991192, z: -0, w: -0.041962795}
-  m_LocalPosition: {x: -7, y: 0, z: -79}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2105634726}
-  m_LocalEulerAnglesHint: {x: 0, y: 184.81, z: 0}
 --- !u!1 &796208851
 GameObject:
   m_ObjectHideFlags: 0
@@ -9226,7 +9193,7 @@ Transform:
   m_GameObject: {fileID: 967542490}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 473, y: 0, z: -25}
+  m_LocalPosition: {x: -644, y: 0, z: -630.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -9301,15 +9268,6 @@ MonoBehaviour:
   m_Script: {fileID: 1189833638}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 967542492}
-  runwayStart: {fileID: 1629170633}
-  runwayEnd: {fileID: 1331715506}
-  aircraftSpawn: {fileID: 1245035042}
-  approachDirection: {fileID: 1770147847}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!1001 &984845447
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10774,6 +10732,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 967542491}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1261364565
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1261364566}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1261364566
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1261364565}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 42.24, y: 1.95, z: 10.93}
+  m_LocalScale: {x: 4.69, y: 1.95, z: 3}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1265026225
 GameObject:
   m_ObjectHideFlags: 0
@@ -11100,7 +11089,7 @@ Transform:
   m_GameObject: {fileID: 1301463026}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -505, y: 0, z: 384}
+  m_LocalPosition: {x: -690, y: 0, z: 623}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -11697,12 +11686,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1473665157}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1315, y: 0, z: 160}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -1580, y: 0, z: 507}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 55593038}
+  m_Father: {fileID: 577579846}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1473665159
 MonoBehaviour:
@@ -12341,7 +12330,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 463242382}
-  - {fileID: 2105634726}
   - {fileID: 1280361615}
   - {fileID: 2001000002}
   - {fileID: 2001000012}
@@ -12362,6 +12350,7 @@ Transform:
   - {fileID: 607556042}
   - {fileID: 343018169}
   - {fileID: 859165900}
+  - {fileID: 751202751}
   m_Father: {fileID: 1499043415}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1656089299
@@ -12494,12 +12483,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1674176789}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -140, y: 0, z: 602}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -405, y: 0, z: 1201}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 55593038}
+  m_Father: {fileID: 577579846}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1674176791
 MonoBehaviour:
@@ -13190,12 +13179,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1757553434}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1260, y: 0, z: 300}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 743, y: 0, z: 308}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 55593038}
+  m_Father: {fileID: 577579846}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1757553436
 MonoBehaviour:
@@ -13314,6 +13303,63 @@ MonoBehaviour:
   BootstrapStage: 18
   GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
   GizmoRadius: 5
+--- !u!1001 &1769977869
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1032297418132470704, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_Name
+      value: Aeroporto militar
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 471.22202
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 468.6289
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3995878500618963171, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
 --- !u!1 &1770147846
 GameObject:
   m_ObjectHideFlags: 0
@@ -15487,94 +15533,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 36123138936339233, guid: 2ffa29eee4f4a7047b775c594b6a87ff, type: 3}
   m_PrefabInstance: {fileID: 300099104717330211}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &2105634725
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2105634726}
-  - component: {fileID: 2105634727}
-  - component: {fileID: 2105634728}
-  m_Layer: 0
-  m_Name: EstaleiroSlot
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2105634726
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2105634725}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
-  m_LocalPosition: {x: 46.28058, y: -0.00001474121, z: 755}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 473742723}
-  - {fileID: 794852857}
-  m_Father: {fileID: 1656089298}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2105634727
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2105634725}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 488dbb675be1aa44b9d43b1415adafc9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalBuildSlot
-  buildSlot: {fileID: 2105634728}
-  navalSpawnPoint: {fileID: 473742723}
-  exitDirection: {fileID: 794852857}
-  minimumWaterDepth: 4
-  minimumExitWidth: 18
-  maritimeRegionId: 
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
---- !u!114 &2105634728
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2105634725}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
-  slotId: estaleiro_01
-  slotGroupId: naval
-  allowedRole: 19
-  allowedDomain: 1
-  required: 0
-  exactPosition: 1
-  allowAlternativeSlot: 0
-  buildingPoint: {fileID: 2105634726}
-  unitSpawnPoint: {fileID: 473742723}
-  exitDirection: {fileID: 794852857}
-  reservedFootprint: {x: 24, y: 24}
-  safetyMargin: 2
-  ownerTeamId: 2
-  state: 0
-  reservedCommandId: 
-  ownerNationId: 0
-  constructedItemId: 
-  reservedAt: 0
-  blockReason: 
-  layoutVersion: 1
 --- !u!1001 &2107889819
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -15969,6 +15927,63 @@ MonoBehaviour:
   reservedAt: 0
   blockReason: 
   layoutVersion: 1
+--- !u!1001 &266702500997258655
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 8936758618779149341, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_Name
+      value: Helicoptero Presidencial
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 42.24
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.95
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 10.93
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8986347550205615056, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 012fe7d25b993a546af7f31fbc2ba275, type: 3}
 --- !u!1001 &300099104717330211
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17482,3 +17497,6 @@ SceneRoots:
   - {fileID: 1721431453}
   - {fileID: 377339255}
   - {fileID: 1851622894}
+  - {fileID: 1261364566}
+  - {fileID: 266702500997258655}
+  - {fileID: 1769977869}

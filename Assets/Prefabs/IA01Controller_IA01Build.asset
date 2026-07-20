@@ -255,3 +255,19 @@ MonoBehaviour:
       target: 1
       role: 0
     failurePolicy: 0
+  - stepId: abertura.militar.quartel
+    constructionData: {fileID: 11400000, guid: 33616df4113469543a3551353eee4b3b, type: 2}
+    requiredRole: 9
+    placementMode: 0
+    primarySlotId: ia01.local.quartel
+    slotGroupId: infraestrutura_estrategica
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0

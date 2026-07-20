@@ -68,6 +68,10 @@ namespace Hegemonia.AI.Sovereign
             }
 
             EnsureIdentity(created);
+            Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
+            if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
+            PierMarinha createdPier = created.GetComponent<PierMarinha>();
+            if (createdPier != null) createdPier.OwnerTeamId = _teamId;
             IA_BackendBridge.AttachConstructionMetadata(created, data);
             DiagnosticoDesempenhoJogo.RegistrarConstrucao(data.GetDisplayName(), position, "IA_Soberana_Build");
             return true;
@@ -300,7 +304,7 @@ namespace Hegemonia.AI.Sovereign
                 case AISovereignCatalogRole.Airport:
                     return item.HasCapability(IA_ConstructionCapability.MilitaryAirport) || (item.HasCapability(IA_ConstructionCapability.Airport) && !item.HasCapability(IA_ConstructionCapability.Heliport));
                 case AISovereignCatalogRole.Shipyard:
-                    return item.HasCapability(IA_ConstructionCapability.Shipyard) || item.HasCapability(IA_ConstructionCapability.Pier) || normalized.Contains("estaleiro") || normalized.Contains("pier");
+                    return item.HasCapability(IA_ConstructionCapability.Shipyard) || normalized.Contains("estaleiro");
                 case AISovereignCatalogRole.Platform:
                     return item.HasCapability(IA_ConstructionCapability.Platform) || normalized.Contains("plataforma");
                 case AISovereignCatalogRole.Fighter:
@@ -344,20 +348,6 @@ namespace Hegemonia.AI.Sovereign
                     }
                 }
 
-                RegistroEntidadesJogo.FillPiers(_piers);
-                for (int i = 0; i < _piers.Count; i++)
-                {
-                    PierMarinha pier = _piers[i];
-                    if (pier == null || !BelongsToTeam(pier.gameObject))
-                    {
-                        continue;
-                    }
-
-                    if (pier.ConstruirNavio(data.prefabDaUnidade))
-                    {
-                        return true;
-                    }
-                }
             }
 
             if (data.HasCapability(IA_ConstructionCapability.Aircraft) || data.HasCapability(IA_ConstructionCapability.FighterAircraft) || normalized.Contains("aviao"))

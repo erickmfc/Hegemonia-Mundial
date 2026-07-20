@@ -27,6 +27,9 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private int paisSelecionado = 2;
     private float proximaAtualizacao;
     private bool aberturaPendente;
+    private bool mercadoEstoquePrimeiro;
+    private bool mercadoSomenteDisponiveis;
+    private string mercadoCategoria = "Todos";
 
     private static readonly string[] OrdemSecoes = new[]
     {
@@ -609,6 +612,11 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             return;
         }
 
+        // O catalogo de fichas pode carregar depois do singleton do mercado.
+        // Sincronizar aqui garante que os equipamentos militares aparecam no
+        // primeiro acesso ao menu.
+        mercado.SincronizarCatalogoConstrucao();
+
         var itens = mercado.ItensOrdenados().ToList();
         int compras = mercado.historico.Count(t => t != null && t.compradorTeamId == 1);
         int vendas = mercado.historico.Count(t => t != null && t.vendedorTeamId == 1);
@@ -630,10 +638,87 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                     ? "Escolha a quantidade em cada card. O valor total e calculado antes da confirmacao."
                     : "Venda recursos do estoque nacional para compradores internacionais disponiveis.");
 
+            VisualElement filtros = new VisualElement();
+            filtros.AddToClassList("gov-market-filters");
+            Label filtroTitulo = new Label("FILTROS DO MERCADO");
+            filtroTitulo.AddToClassList("gov-market-filter-title");
+            filtros.Add(filtroTitulo);
+
+            Toggle estoquePrimeiro = new Toggle("MEU ESTOQUE PRIMEIRO")
+            {
+                value = mercadoEstoquePrimeiro
+            };
+            estoquePrimeiro.AddToClassList("gov-market-filter");
+            estoquePrimeiro.tooltip = "Coloca no topo os recursos que ja existem no seu armazenamento.";
+            estoquePrimeiro.RegisterValueChangedCallback(evt =>
+            {
+                mercadoEstoquePrimeiro = evt.newValue;
+                MostrarPagina(abaAtual);
+            });
+            filtros.Add(estoquePrimeiro);
+
+            Toggle somenteDisponiveis = new Toggle("SOMENTE DISPONIVEIS")
+            {
+                value = mercadoSomenteDisponiveis
+            };
+            somenteDisponiveis.AddToClassList("gov-market-filter");
+            somenteDisponiveis.tooltip = comprar
+                ? "Mostra apenas itens com oferta global e compra habilitada."
+                : "Mostra apenas itens que possuem estoque para venda.";
+            somenteDisponiveis.RegisterValueChangedCallback(evt =>
+            {
+                mercadoSomenteDisponiveis = evt.newValue;
+                MostrarPagina(abaAtual);
+            });
+            filtros.Add(somenteDisponiveis);
+
+            VisualElement categorias = new VisualElement();
+            categorias.AddToClassList("gov-market-category-filters");
+            foreach (string nomeCategoria in new[] { "Todos", "Minerios", "Combustiveis", "Alimentos", "Tanques", "Navios", "Aeronaves", "Armas" })
+            {
+                string categoriaBotao = nomeCategoria;
+                Button botaoCategoria = new Button(() =>
+                {
+                    mercadoCategoria = categoriaBotao;
+                    MostrarPagina(abaAtual);
+                }) { text = categoriaBotao.ToUpperInvariant() };
+                botaoCategoria.AddToClassList("gov-market-filter");
+                if (categoriaBotao == mercadoCategoria) botaoCategoria.AddToClassList("active");
+                categorias.Add(botaoCategoria);
+            }
+            filtros.Add(categorias);
+            conteudo.Add(filtros);
+
             VisualElement grade = new VisualElement();
             grade.AddToClassList("gov-market-grid");
-            foreach (DadosItemMercado item in itens)
+            IEnumerable<DadosItemMercado> itensExibicao = itens;
+            if (!string.Equals(mercadoCategoria, "Todos", StringComparison.OrdinalIgnoreCase))
+                itensExibicao = itensExibicao.Where(item => CategoriaMercado(item) == mercadoCategoria);
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            int timeJogador = governo != null ? governo.teamJogador : 1;
+            if (mercadoSomenteDisponiveis)
+            {
+                itensExibicao = itensExibicao.Where(item =>
+                {
+                    int estoque = governo != null ? governo.ObterEstoque(timeJogador, item.recurso) : 0;
+                    return comprar
+                        ? item.podeComprar && item.precoAtual > 0f && item.estoqueGlobal > 0
+                        : item.podeVender && item.precoAtual > 0f && estoque > 0;
+                });
+            }
+            if (mercadoEstoquePrimeiro)
+            {
+                itensExibicao = itensExibicao
+                    .OrderByDescending(item => governo != null && governo.ObterEstoque(timeJogador, item.recurso) > 0)
+                    .ThenBy(item => item.NomeFormatado);
+            }
+            foreach (DadosItemMercado item in itensExibicao)
                 AdicionarCardMercado(grade, item, comprar);
+            if (grade.childCount == 0)
+            {
+                AdicionarCard(conteudo, "NENHUM ITEM NESTE FILTRO",
+                    "Retire o filtro ou aguarde a atualização do estoque e das ofertas.");
+            }
             conteudo.Add(grade);
             return;
         }
@@ -778,7 +863,9 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         bool ok = false;
         if (comprar)
         {
-            DadosPaisGoverno vendedor = g.Paises.FirstOrDefault(p => p.teamId != 1 && g.ObterEstoque(p.teamId, item.recurso) > 0);
+            DadosPaisGoverno vendedor = g.Paises.FirstOrDefault(p => p.teamId != 1 && (item.equipamentoMilitar
+                ? p.saldo >= quantidade * item.precoAtual
+                : g.ObterEstoque(p.teamId, item.recurso) > 0));
             if (vendedor == null)
             {
                 mensagem = "Nenhum fornecedor possui estoque disponivel.";
@@ -815,6 +902,32 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         MostrarMensagem((ok ? "Operacao concluida: " : "Operacao recusada: ") + mensagem);
         AtualizarRecursos();
         MostrarPagina(abaAtual);
+    }
+
+    private static string CategoriaMercado(DadosItemMercado item)
+    {
+        if (item == null) return "Outros";
+        if (item.equipamentoMilitar)
+        {
+            string tipo = (item.tipoEntrega ?? string.Empty).ToLowerInvariant();
+            if (tipo.Contains("aeronave")) return "Aeronaves";
+            if (tipo.Contains("navio")) return "Navios";
+            string texto = ((item.nome ?? string.Empty) + " " + (item.id ?? string.Empty)).ToLowerInvariant();
+            return texto.Contains("tanque") || texto.Contains("tank") || texto.Contains("blindad") ? "Tanques" : "Armas";
+        }
+        switch (item.recurso)
+        {
+            case RecursoMercado.Comida: return "Alimentos";
+            case RecursoMercado.Petroleo: return "Combustiveis";
+            case RecursoMercado.MinerioFerro:
+            case RecursoMercado.MinerioCobre:
+            case RecursoMercado.Bauxita:
+            case RecursoMercado.MinerioTitanio:
+            case RecursoMercado.Uranio: return "Minerios";
+            default:
+                string texto = ((item.categoria ?? string.Empty) + " " + (item.nome ?? string.Empty)).ToLowerInvariant();
+                return texto.Contains("combust") || texto.Contains("gasolina") || texto.Contains("diesel") ? "Combustiveis" : "Outros";
+        }
     }
 
     private int ContarRelacoes(Func<RelacaoPaisGoverno, bool> filtro)

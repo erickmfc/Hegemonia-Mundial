@@ -58,6 +58,11 @@ public static class IA01LocalInfrastructureSetup
     private static readonly LocalDefinition PlatformDefinition =
         new LocalDefinition(string.Empty, "IA01 Local - Plataforma Offshore", "Assets/Prefabs/Marinha/PLataforma.asset", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, "naval.plataforma");
 
+    // Create opcional para o quartel. Usa a ficha/prefab da tenda militar,
+    // que ja possui Fabrica.ehQuartel, mas com um slot proprio editavel.
+    private static readonly LocalDefinition QuartelDefinition =
+        new LocalDefinition("ia01.local.quartel", "IA01 Local - Quartel Militar", "Assets/Prefabs/Construtor de Veiculos/Tenda/Construcao_Tenda.asset", IA01StrategicRole.MilitaryProduction, IA01BuildDomain.Land, "abertura.militar.quartel");
+
     [MenuItem("Tools/IA01/Configurar Locais para Infraestrutura Inicial")]
     private static void Configure()
     {
@@ -99,7 +104,7 @@ public static class IA01LocalInfrastructureSetup
         CreateAuxiliarySlot(layout.transform, "IA01 Local - Armazenamento 01", "ia01.local.armazenamento.01", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(-48f, 0f, 52f));
         CreateAuxiliarySlot(layout.transform, "IA01 Local - Armazenamento 02", "ia01.local.armazenamento.02", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(0f, 0f, 66f));
         CreateAuxiliarySlot(layout.transform, "IA01 Local - Armazenamento 03", "ia01.local.armazenamento.03", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(48f, 0f, 52f));
-        CreateAuxiliarySlot(layout.transform, "IA01 Local - Quartel Militar", "ia01.local.quartel", IA01StrategicRole.MilitaryProduction, IA01BuildDomain.Land, new Vector3(72f, 0f, 118f));
+        CreateAuxiliarySlot(layout.transform, QuartelDefinition.Name, QuartelDefinition.SlotId, QuartelDefinition.Role, QuartelDefinition.Domain, new Vector3(72f, 0f, 118f));
         Transform pier = CreateAuxiliarySlot(layout.transform, "IA01 Local - Pier Naval", "ia01.local.pier", IA01StrategicRole.Pier, IA01BuildDomain.Coastal, new Vector3(-90f, 0f, 135f));
         ConfigureNavalAuxiliary(pier);
         CreateAuxiliarySlot(layout.transform, "IA01 Local - Plataforma de Petróleo A", "ia01.local.plataforma.a", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, new Vector3(120f, 0f, 200f));
@@ -124,6 +129,30 @@ public static class IA01LocalInfrastructureSetup
 
         EditorSceneManager.MarkSceneDirty(layout.gameObject.scene);
         Debug.Log("[IA01] Criados os 3 locais de armazém, pier, 3 locais de plataforma e 3 áreas de patrulha naval. Posicione os marcadores sobre a água antes de salvar.", layout);
+    }
+
+    [MenuItem("Tools/IA01/Criar local de quartel militar")]
+    private static void CreateQuartelLocal()
+    {
+        IA01CityLayout layout = FindLayoutWithLocals(out _);
+        if (layout == null)
+        {
+            EditorUtility.DisplayDialog("IA01", "Nenhum IA01CityLayout foi encontrado na cena aberta.", "OK");
+            return;
+        }
+
+        Transform marker = CreateAuxiliarySlot(
+            layout.transform,
+            QuartelDefinition.Name,
+            QuartelDefinition.SlotId,
+            QuartelDefinition.Role,
+            QuartelDefinition.Domain,
+            new Vector3(72f, 0f, 118f));
+        ConfigurePlan();
+        EditorSceneManager.MarkSceneDirty(layout.gameObject.scene);
+        AssetDatabase.SaveAssets();
+        Selection.activeObject = marker != null ? marker.gameObject : layout.gameObject;
+        Debug.Log("[IA01] Create de quartel criado: " + QuartelDefinition.SlotId + ". Mova o marcador para o local desejado e salve a cena.", layout);
     }
 
     private static Transform CreateAuxiliarySlot(Transform parent, string name, string slotId, IA01StrategicRole role, IA01BuildDomain domain, Vector3 localPosition)
@@ -360,6 +389,7 @@ public static class IA01LocalInfrastructureSetup
         EnsureStep(plan, Definitions[5], IA01StrategicRole.Airfield);
         EnsureStep(plan, Definitions[6], IA01StrategicRole.Airfield);
         EnsureStep(plan, Definitions[7], IA01StrategicRole.Shipyard);
+        EnsureStep(plan, QuartelDefinition, IA01StrategicRole.MilitaryProduction);
         EnsureStep(plan, PierDefinition, IA01StrategicRole.Pier);
         EnsureStep(plan, PlatformDefinition, IA01StrategicRole.NavalBase);
 
@@ -393,6 +423,15 @@ public static class IA01LocalInfrastructureSetup
                 step.FindPropertyRelative("placementMode").enumValueIndex = (int)IA01PlacementMode.SlotGroup;
                 step.FindPropertyRelative("primarySlotId").stringValue = string.Empty;
                 step.FindPropertyRelative("slotGroupId").stringValue = "plataformas_offshore";
+                step.FindPropertyRelative("failurePolicy").enumValueIndex = (int)IA01FailurePolicy.Wait;
+            }
+            else if (step.FindPropertyRelative("stepId").stringValue == QuartelDefinition.StepId)
+            {
+                step.FindPropertyRelative("constructionData").objectReferenceValue = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(QuartelDefinition.AssetPath);
+                step.FindPropertyRelative("requiredRole").enumValueIndex = (int)IA01StrategicRole.MilitaryProduction;
+                step.FindPropertyRelative("placementMode").enumValueIndex = (int)IA01PlacementMode.ExactSlot;
+                step.FindPropertyRelative("primarySlotId").stringValue = QuartelDefinition.SlotId;
+                step.FindPropertyRelative("slotGroupId").stringValue = "infraestrutura_estrategica";
                 step.FindPropertyRelative("failurePolicy").enumValueIndex = (int)IA01FailurePolicy.Wait;
             }
         }

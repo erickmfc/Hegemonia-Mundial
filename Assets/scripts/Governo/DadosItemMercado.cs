@@ -40,6 +40,12 @@ public class DadosItemMercado
     public bool podeComprar = true;
     public bool podeVender = true;
 
+    // Preenchido para ofertas de equipamento militar. O item continua no
+    // mesmo mercado global, mas a liquidacao cria a unidade e a entrega.
+    public bool equipamentoMilitar;
+    public string prefabId = string.Empty;
+    public string tipoEntrega = string.Empty;
+
     public string NomeFormatado => string.IsNullOrEmpty(nome) ? id : nome;
     public string RecursoIdEfetivo
     {
@@ -62,6 +68,10 @@ public class DadosItemMercado
 
     public int CalcularQuantidadePadrao()
     {
+        if (equipamentoMilitar)
+        {
+            return 1;
+        }
         string recursoInterno = RecursoIdEfetivo;
         if (IndustriaIds.EhIndustrial(recursoInterno))
         {

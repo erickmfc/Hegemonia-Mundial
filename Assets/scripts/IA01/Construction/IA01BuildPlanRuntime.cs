@@ -81,6 +81,25 @@ namespace Hegemonia.AI.IA01
                 if (steps.Count == 0) return false;
             }
 
+            // O create de quartel tem prioridade quando foi configurado na
+            // cena; sem ele, o create antigo da tenda continua sendo usado.
+            if (intent.Type == IA01IntentType.BuildMilitaryTent && steps.Count > 1)
+            {
+                for (int i = 1; i < steps.Count; i++)
+                {
+                    IA01BuildPlanStep candidate = steps[i];
+                    if (candidate != null && string.Equals(candidate.primarySlotId, "ia01.local.quartel", StringComparison.OrdinalIgnoreCase))
+                    {
+                        List<IA01BuildPlanStep> reordered = new List<IA01BuildPlanStep>(steps);
+                        IA01BuildPlanStep first = reordered[0];
+                        reordered[0] = candidate;
+                        reordered[i] = first;
+                        steps = reordered;
+                        break;
+                    }
+                }
+            }
+
             for (int i = 0; i < steps.Count; i++)
             {
                 IA01BuildPlanStep step = steps[i];
@@ -477,7 +496,7 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildStarterHouse: return role == IA01StrategicRole.Residential && StepHasAnyToken(step, "casa", "house");
                 case IA01IntentType.BuildMediumApartment: return role == IA01StrategicRole.Residential && StepHasAnyToken(step, "medio", "médio", "apartment", "apartamento");
                 case IA01IntentType.BuildHighApartment: return role == IA01StrategicRole.Residential && StepHasAnyToken(step, "hard", "alto", "high", "torre");
-                case IA01IntentType.BuildMilitaryTent: return role == IA01StrategicRole.MilitaryProduction && StepHasAnyToken(step, "tenda", "tent");
+                case IA01IntentType.BuildMilitaryTent: return role == IA01StrategicRole.MilitaryProduction && StepHasAnyToken(step, "tenda", "tent", "quartel", "barracks");
                 case IA01IntentType.BuildVehicleConstructor: return role == IA01StrategicRole.MilitaryProduction && StepHasAnyToken(step, "construtor", "veiculo", "veículo", "vehicle");
                 default: return false;
             }
@@ -517,7 +536,7 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildOffshorePlatform:
                     return text.Contains("plataforma") || text.Contains("offshore");
                 case IA01IntentType.BuildMilitaryTent:
-                    return text.Contains("tenda") || text.Contains("tent") || text.Contains("barracks");
+                    return text.Contains("tenda") || text.Contains("tent") || text.Contains("quartel") || text.Contains("barracks");
                 case IA01IntentType.BuildVehicleConstructor:
                     return text.Contains("construtor") || text.Contains("veiculo") || text.Contains("vehicle");
                 default:

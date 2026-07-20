@@ -44,6 +44,7 @@ namespace Hegemonia.AI.IA01
         [SerializeField] private bool useScriptedOpening = true;
         [SerializeField] private bool usePreparedSlots = true;
         [SerializeField] private bool allowAutonomousExpansion = true;
+        [SerializeField] private bool enablePlanningAdvisor = true;
 
         [Header("Runtime")]
         [SerializeField] private bool autoRegisterWithManager = true;
@@ -96,6 +97,7 @@ namespace Hegemonia.AI.IA01
         public string ConstructionStatus => nationRuntime != null ? nationRuntime.ConstructionStatus : "Runtime aguardando inicializacao.";
         public string CombatStatus => nationRuntime != null ? nationRuntime.CombatStatus : "Runtime aguardando inicializacao.";
         public string MilitaryStatus => nationRuntime != null ? nationRuntime.MilitaryStatus : "Reserva militar aguardando inicializacao.";
+        public string PlanningStatus => nationRuntime != null ? nationRuntime.PlanningStatus : "Planejador aguardando inicializacao.";
         public string MarketStatus => nationRuntime != null ? nationRuntime.MarketStatus : "Mercado aguardando inicializacao.";
         public string EconomicStateStatus => nationRuntime != null && nationRuntime.EconomicModel != null ? nationRuntime.EconomicModel.Status : "Economia aguardando inicializacao.";
         public string ProgressionStatus => nationRuntime != null ? nationRuntime.ProgressionStatus : "Runtime aguardando inicializacao.";
@@ -111,6 +113,7 @@ namespace Hegemonia.AI.IA01
         public bool UseScriptedOpening => useScriptedOpening;
         public bool UsePreparedSlots => usePreparedSlots;
         public bool AllowAutonomousExpansion => allowAutonomousExpansion;
+        public bool EnablePlanningAdvisor => enablePlanningAdvisor;
         public IA01BuildSlot CapitalSlot => cityLayout != null ? cityLayout.CapitalSlot : null;
 
         public bool TryResolveConstructionAnchor(IA01IntentType intent, out Vector3 position)
@@ -130,6 +133,18 @@ namespace Hegemonia.AI.IA01
             // usado no plano de construcao. Isso impede a IA de procurar um lote
             // livre ou construir em outra regiao quando o create ja existe.
             string slotId = ResolveLocalSlotId(intent);
+            if (intent == IA01IntentType.BuildMilitaryTent)
+            {
+                // Se o novo create de quartel foi colocado pelo criador, ele
+                // passa a ser o ponto oficial da infantaria. Sem esse create,
+                // o slot antigo da tenda permanece como fallback.
+                IA01CityLayout quartelLayout = ResolveCityLayoutForSlot("ia01.local.quartel");
+                IA01BuildSlot quartelSlot;
+                if (quartelLayout != null && quartelLayout.TryGetSlot("ia01.local.quartel", out quartelSlot) && quartelSlot != null)
+                {
+                    slotId = "ia01.local.quartel";
+                }
+            }
             if (intent == IA01IntentType.BuildOffshorePlatform
                 && TryResolvePlatformSlot(out position, out rotation, out string platformSlotId))
             {
@@ -306,10 +321,8 @@ namespace Hegemonia.AI.IA01
         {
             if (!Application.isPlaying || victimDamage == null || aggressor == null) return;
 
-            IdentidadeUnidade victimIdentity = victimDamage.GetComponent<IdentidadeUnidade>();
-            if (victimIdentity == null) victimIdentity = victimDamage.GetComponentInParent<IdentidadeUnidade>();
-            IdentidadeUnidade aggressorIdentity = aggressor.GetComponent<IdentidadeUnidade>();
-            if (aggressorIdentity == null) aggressorIdentity = aggressor.GetComponentInParent<IdentidadeUnidade>();
+            IdentidadeUnidade victimIdentity = SistemaDeDanos.ResolverIdentidade(victimDamage);
+            IdentidadeUnidade aggressorIdentity = SistemaDeDanos.ResolverIdentidade(aggressor.transform);
             if (victimIdentity == null || aggressorIdentity == null
                 || victimIdentity.teamID != TeamId || aggressorIdentity.teamID <= 0
                 || aggressorIdentity.teamID == TeamId) return;
@@ -611,6 +624,7 @@ namespace Hegemonia.AI.IA01
                 .Append(" construction=").Append(ConstructionStatus)
                 .Append(" combat=").Append(CombatStatus)
                 .Append(" military=").Append(MilitaryStatus)
+                .Append(" planning=").Append(PlanningStatus)
                 .Append(" market=").Append(MarketStatus)
                 .Append(" economy=").Append(EconomicStateStatus);
             return summary.ToString();

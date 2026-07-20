@@ -336,6 +336,36 @@ namespace Hegemonia.AI.BrainMaster
 
             float elapsed = Time.timeSinceLevelLoad;
             PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            DadosPaisGoverno country = SistemaGovernoMundial.Instancia != null
+                ? SistemaGovernoMundial.Instancia.ObterPais(TeamId)
+                : null;
+            bool powerDoctrine = country != null
+                && (country.perfilIA == PerfilPaisIA.Militarista
+                    || country.perfilIA == PerfilPaisIA.Rival
+                    || country.nivelMilitar >= 70
+                    || country.pesoMilitarismo >= 0.70f
+                    || country.modoInicialIA == ModoInicialPaisIA.Mobilizacao
+                    || country.modoInicialIA == ModoInicialPaisIA.GuerraTotal
+                    || country.modoInicialIA == ModoInicialPaisIA.AgressivoContraJogador);
+            float population = country != null
+                ? Mathf.Max(100f, country.populacaoCivil > 0 ? country.populacaoCivil : country.populacao)
+                : 3200f;
+            float operationalCash = country != null
+                ? Mathf.Max(0f, country.saldo + Mathf.Max(0f, country.rendaPorSegundo - country.gastosPorSegundo) * 180f)
+                : 12000f;
+            float budgetFactor = Mathf.Clamp01(operationalCash / 60000f);
+            float militarismFactor = country != null
+                ? Mathf.Clamp01((country.nivelMilitar / 100f * 0.55f) + country.pesoMilitarismo * 0.45f)
+                : 0.45f;
+            float threatFactor = country != null && country.emGuerra ? 1.35f : 1f;
+            int airCapacity = Mathf.Clamp(
+                3 + Mathf.RoundToInt(((population / 5000f) * 2f + budgetFactor * 16f + militarismFactor * 10f) * threatFactor),
+                3,
+                powerDoctrine ? 56 : 32);
+            int fleetCapacity = Mathf.Clamp(
+                2 + Mathf.RoundToInt(((population / 7000f) * 2f + budgetFactor * 12f + militarismFactor * 8f) * threatFactor),
+                2,
+                powerDoctrine ? 48 : 24);
             int basePlatforms = elapsed >= 1800f ? 3 : (elapsed >= 900f ? 2 : 1);
             int baseTankers = elapsed >= 1800f ? 3 : (elapsed >= 900f ? 2 : 1);
             int baseCoastalDefense = elapsed >= 900f ? 3 : 2;
@@ -356,8 +386,14 @@ namespace Hegemonia.AI.BrainMaster
             }
             int metaFrotaPorJogador = perfil.AjustarMetaContraJogador(PlayerFleetEstimate, 1.22f, TargetCoastalDefenseShips + 1);
             int metaArPorJogador = perfil.AjustarMetaContraJogador(PlayerAircraftEstimate, 1.28f, 2);
-            TargetFleet = Mathf.Max(perfil.AjustarMeta(baseFleet, 1), metaFrotaPorJogador, TargetCoastalDefenseShips + 2);
-            TargetAircraft = Mathf.Max(perfil.AjustarMeta(baseAir, 1), metaArPorJogador);
+            TargetFleet = Mathf.Clamp(
+                Mathf.Max(perfil.AjustarMeta(baseFleet, 1), metaFrotaPorJogador, TargetCoastalDefenseShips + 2, powerDoctrine ? 6 : 0),
+                1,
+                fleetCapacity);
+            TargetAircraft = Mathf.Clamp(
+                Mathf.Max(perfil.AjustarMeta(baseAir, 1), metaArPorJogador, powerDoctrine ? 6 : 0),
+                1,
+                airCapacity);
             if (WarPosture == IA_WarPosture.BalancedAggression)
             {
                 if (elapsed < 300f)

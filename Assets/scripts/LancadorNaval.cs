@@ -95,8 +95,9 @@ public class LancadorNaval : MonoBehaviour
         audioSource.rolloffMode = AudioRolloffMode.Linear;
         audioSource.playOnAwake = false;
 
-        minhaIdentidade = GetComponentInParent<IdentidadeUnidade>(); 
+        minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
         if (minhaIdentidade == null) minhaIdentidade = GetComponent<IdentidadeUnidade>();
+        if (minhaIdentidade == null) minhaIdentidade = GetComponentInChildren<IdentidadeUnidade>(true);
 
         // Cache do ControleUnidade para saber se estou selecionado
         meuControle = GetComponent<ControleUnidade>();
@@ -684,7 +685,11 @@ public class LancadorNaval : MonoBehaviour
             {
                 // Respeita a inclinação realista do navio sobre as ondas!
                 Vector3 direcao = alvoDaVez.position - cabecaRotativa.position;
-                Vector3 upDoNavio = cabecaRotativa.parent != null ? cabecaRotativa.parent.up : Vector3.up;
+                // O eixo vertical do pai pode carregar roll/pitch do modelo
+                // importado e fazer a torreta "deitar" ao mirar. Canhoes
+                // navais mantem o plano de tiro nivelado com o mundo; o
+                // balanço visual do casco nao deve alterar o eixo de yaw.
+                Vector3 upDoNavio = Vector3.up;
                 
                 // Projeta o alvo no "chão" do navio para a torre não focar pra cima/baixo torta
                 Vector3 direcaoNoConves = Vector3.ProjectOnPlane(direcao, upDoNavio).normalized;
@@ -721,7 +726,14 @@ public class LancadorNaval : MonoBehaviour
 
         GameObject prefabASpawnar = prefabMissel;
         bool podeUsarTorpedoNesteLancador = !torpedosSomenteNoModoAtivo;
-        if (alvoNavalOuSubmarino && podeUsarTorpedoNesteLancador && prefabTorpedo != null && torpedosTotal > 0)
+        // No automatico, use primeiro o missil guiado. O torpedo fica como
+        // fallback quando a carga de misseis acabou; assim navios de combate
+        // realmente engajam alvos navais com a arma esperada.
+        if (alvoNavalOuSubmarino && prefabMissel != null && municaoTotal > 0)
+        {
+            prefabASpawnar = prefabMissel;
+        }
+        else if (alvoNavalOuSubmarino && podeUsarTorpedoNesteLancador && prefabTorpedo != null && torpedosTotal > 0)
         {
             prefabASpawnar = prefabTorpedo;
         }

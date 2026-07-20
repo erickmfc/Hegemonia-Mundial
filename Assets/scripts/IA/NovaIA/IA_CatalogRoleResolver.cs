@@ -82,7 +82,7 @@ namespace Hegemonia.AI.Master
             ResolveRole(IA_CatalogRole.Airport, "aeroporto", "airport", "base aerea");
             ResolveRole(IA_CatalogRole.AirportMilitary, "aeroporto militar", "base aerea militar", "military airport");
             ResolveRole(IA_CatalogRole.AirportCommercial, "aeroporto comercial", "commercial airport");
-            ResolveRole(IA_CatalogRole.Shipyard, "estaleiro", "estaleiro naval", "pier", "dock");
+            ResolveRole(IA_CatalogRole.Shipyard, "estaleiro", "estaleiro naval");
             ResolveRole(IA_CatalogRole.Platform, "plataforma", "plataforma petrolifera");
             ResolveRole(IA_CatalogRole.NavalTransport, "navio transporte", "transporte naval");
             ResolveRole(IA_CatalogRole.Carrier, "porta avioes", "carrier");
@@ -172,7 +172,7 @@ namespace Hegemonia.AI.Master
                     return item.HasCapability(IA_ConstructionCapability.CommercialAirport)
                            && !item.HasCapability(IA_ConstructionCapability.Heliport);
                 case IA_CatalogRole.Shipyard:
-                    return item.HasCapability(IA_ConstructionCapability.Shipyard) || item.HasCapability(IA_ConstructionCapability.Pier);
+                    return item.HasCapability(IA_ConstructionCapability.Shipyard);
                 case IA_CatalogRole.Platform:
                     return item.HasCapability(IA_ConstructionCapability.Platform);
                 case IA_CatalogRole.NavalTransport:
