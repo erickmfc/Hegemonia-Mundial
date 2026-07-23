@@ -50,10 +50,24 @@ public class TorretaAntiaerea : MonoBehaviour
     public float velocidadeProjetil = 200f;
     public AudioClip somDisparo;
 
+    [Header("Economia da Municao")]
+    [Tooltip("No Ares_Ar, cada disparo compra um cartucho diretamente do saldo do pais.")]
+    public bool cobrarCadaDisparo = true;
+    [Tooltip("Quantidade de cartuchos no carregador antes da pausa de reabastecimento.")]
+    public int capacidadeCartucho = 10;
+    [Tooltip("Pausa necessaria para reabastecer o carregador do Ares_Ar.")]
+    public float tempoReabastecimento = 8f;
+    public string idMunicao = "municao_ares_ar";
+
     // Variáveis internas state
     private Transform alvoAtual;
     private IdentidadeUnidade minhaIdentidade;
     private bool atirando = false;
+    private bool reabastecendo = false;
+    private float contadorReabastecimento;
+    private int cartuchosAtuais;
+    private bool ehAresAr;
+    private float proximoAvisoSemSaldo;
     private AudioSource audioSource;
     private int indexPontoDisparo = 0;
     private Collider[] _bufferOverlaps = new Collider[96];
@@ -84,6 +98,20 @@ public class TorretaAntiaerea : MonoBehaviour
 
     void Start()
     {
+        ehAresAr = SistemaGastosMilitares.EhAresAr(gameObject.name + " " + transform.root.name);
+        if (ehAresAr)
+        {
+            SistemaGastosMilitares.GarantirInstancia();
+            DefinicaoMunicaoMilitar definicao = SistemaGastosMilitares.Instancia != null
+                ? SistemaGastosMilitares.Instancia.ObterMunicao(idMunicao)
+                : null;
+            if (definicao != null)
+            {
+                capacidadeCartucho = Mathf.Max(1, definicao.capacidadeCartucho);
+                tempoReabastecimento = Mathf.Max(0.1f, definicao.tempoReabastecimento);
+            }
+            cartuchosAtuais = Mathf.Max(1, capacidadeCartucho);
+        }
         // Procura ou cria a identidade do time para não atirar nos próprios aviões
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
         if (minhaIdentidade == null)
