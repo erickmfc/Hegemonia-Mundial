@@ -402,8 +402,15 @@ public class TorretaAntiaerea : MonoBehaviour
             
             if (alvoAtual == null) break;
 
-            DispararMunicoes();
+            if (!DispararMunicoes())
+                break;
             disparosFeitos++;
+
+            if (ehAresAr && cartuchosAtuais <= 0)
+            {
+                IniciarReabastecimento();
+                break;
+            }
             
             yield return new WaitForSeconds(tempoEntreTiros);
         }
@@ -412,9 +419,28 @@ public class TorretaAntiaerea : MonoBehaviour
         atirando = false;
     }
 
-    void DispararMunicoes()
+    bool DispararMunicoes()
     {
-        if (prefabProjetil == null) return;
+        if (prefabProjetil == null) return false;
+
+        if (ehAresAr && cobrarCadaDisparo)
+        {
+            int teamId = minhaIdentidade != null ? Mathf.Max(1, minhaIdentidade.teamID) : 1;
+            string mensagem;
+            if (SistemaGastosMilitares.Instancia == null)
+                SistemaGastosMilitares.GarantirInstancia();
+            if (SistemaGastosMilitares.Instancia == null
+                || !SistemaGastosMilitares.Instancia.TentarPagarDisparo(teamId, idMunicao, transform.root.name, out mensagem))
+            {
+                if (Time.unscaledTime >= proximoAvisoSemSaldo)
+                {
+                    Debug.LogWarning("[Ares_Ar] " + mensagem + " Disparo pausado ate haver saldo.", this);
+                    proximoAvisoSemSaldo = Time.unscaledTime + 2f;
+                }
+                return false;
+            }
+            cartuchosAtuais = Mathf.Max(0, cartuchosAtuais - 1);
+        }
 
         Transform pontoSaida = transform;
         if (pontosDeDisparo != null && pontosDeDisparo.Length > 0)
@@ -453,6 +479,16 @@ public class TorretaAntiaerea : MonoBehaviour
             audioSource.pitch = Random.Range(0.9f, 1.1f);
             audioSource.PlayOneShot(somDisparo, 0.8f);
         }
+
+        return true;
+    }
+
+    private void IniciarReabastecimento()
+    {
+        if (!ehAresAr) return;
+        reabastecendo = true;
+        contadorReabastecimento = Mathf.Max(0.1f, tempoReabastecimento);
+        Debug.Log("[Ares_Ar] Carregador vazio. Reabastecendo por " + contadorReabastecimento.ToString("0.0") + "s.", this);
     }
 
     void OnDrawGizmosSelected()
