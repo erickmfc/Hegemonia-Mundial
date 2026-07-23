@@ -142,6 +142,18 @@ public class TorretaAntiaerea : MonoBehaviour
 
     void Update()
     {
+        if (reabastecendo)
+        {
+            contadorReabastecimento -= Time.deltaTime;
+            if (contadorReabastecimento <= 0f)
+            {
+                reabastecendo = false;
+                cartuchosAtuais = Mathf.Max(1, capacidadeCartucho);
+                contadorReabastecimento = 0f;
+            }
+            return;
+        }
+
         if (alvoAtual != null)
         {
             // Se o alvo morreu ou fugiu
