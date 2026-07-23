@@ -102,7 +102,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7425304053494373610}
   m_Layer: 0
-  m_Name: Conecta (2)
+  m_Name: saida
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -117,7 +117,7 @@ Transform:
   m_GameObject: {fileID: 1410252673456590439}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 566, y: 17.07, z: 0}
+  m_LocalPosition: {x: 235, y: 3.24, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -348,6 +348,8 @@ GameObject:
   - component: {fileID: 5531474160123073769}
   - component: {fileID: 4601301485885416100}
   - component: {fileID: 8289692511935164439}
+  - component: {fileID: 9051922646613005468}
+  - component: {fileID: 507773151787372252}
   m_Layer: 0
   m_Name: Plataforma
   m_TagString: Imovel
@@ -383,19 +385,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 86cb54ed7aa961244bfcedd3f5478eb9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlataformaOffshore
-  producaoMinima: 2315
-  producaoMaxima: 5000
+  ownerTeamId: 0
+  producaoMinima: 5000
+  producaoMaxima: 50000
   sementeDoMapa: 100.5
   escalaDasManchas: 0.1
   petroleoArmazenado: 0
-  capacidadeArmazenamento: 50000
+  capacidadeArmazenamento: 100000
   producaoAtualDestaPlataforma: 0
   qualidadeDoPoco: 
   textoProducao3D: {fileID: 0}
-  pontoChegada: {fileID: 7425304053494373610}
+  pontoChegada: {fileID: 6489590560701927973}
   pontoAbastecer: {fileID: 8708717476075388323}
-  pontoSaida: {fileID: 6489590560701927973}
+  pontoSaida: {fileID: 7425304053494373610}
   ocupada: 0
+  capacidadeFilaPetroleiros: 8
   debugLogs: 0
 --- !u!114 &8289692511935164439
 MonoBehaviour:
@@ -412,6 +416,50 @@ MonoBehaviour:
   uniqueId: 
   prefabKey: 
   runtimeSpawned: 1
+--- !u!114 &9051922646613005468
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4835940525621673593}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 4
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
+--- !u!114 &507773151787372252
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4835940525621673593}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 850
+  vidaAtual: 850
+  unidadeBiologica: 0
+  ehEstrutura: 1
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 6.2
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
 --- !u!1 &5684350832229341717
 GameObject:
   m_ObjectHideFlags: 0
@@ -422,7 +470,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6489590560701927973}
   m_Layer: 0
-  m_Name: Conecta
+  m_Name: chegada
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -437,7 +485,7 @@ Transform:
   m_GameObject: {fileID: 5684350832229341717}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -0, y: 0.989, z: 0}
+  m_LocalPosition: {x: -102.1, y: 5.02, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -451,6 +499,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 5531474160123073769}
     m_Modifications:
+    - target: {fileID: 6571871577693774952, guid: d61779b3b500add46ab3ccff00bbabf0, type: 3}
+      propertyPath: m_Name
+      value: chegada
+      objectReference: {fileID: 0}
     - target: {fileID: 7459563389774560712, guid: d61779b3b500add46ab3ccff00bbabf0, type: 3}
       propertyPath: m_TagString
       value: Imovel
@@ -511,6 +563,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8825726887962428435, guid: d61779b3b500add46ab3ccff00bbabf0, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -102.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8825726887962428435, guid: d61779b3b500add46ab3ccff00bbabf0, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 5.02
+      objectReference: {fileID: 0}
+    - target: {fileID: 8825726887962428435, guid: d61779b3b500add46ab3ccff00bbabf0, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -541,7 +605,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 983898456539275641}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
   m_Name: 
@@ -561,7 +625,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 983898456539275641}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
   m_Name: 

@@ -13,6 +13,8 @@ public class RuaConectora : MonoBehaviour
     public Transform pontoLadoEsquerdo;
     public Transform pontoLadoDireito;
     public float distanciaConexao = 3f;
+    [Tooltip("Quando desativado, residencias nao podem usar este trecho como frente de rua.")]
+    public bool permiteCasas = true;
     
     [Header("🎨 Pavement (Calçada/Concreto Opcional)")]
     public GameObject prefabPapeamentoConcreto;
@@ -33,15 +35,29 @@ public class RuaConectora : MonoBehaviour
                 }
             }
         }
+
+        // Os prefabs antigos usam nomes compostos, como "lado esq" e
+        // "connector frente". Aceita esses nomes sem exigir a renomeacao
+        // manual de cada prefab.
+        foreach (Transform t in todosFilhos)
+        {
+            if (t == raiz) continue;
+            string nomeFilho = t.name.ToLowerInvariant();
+            foreach (string nome in nomes)
+            {
+                string termo = nome.ToLowerInvariant();
+                if (nomeFilho.Contains(termo)) return t;
+            }
+        }
         return null;
     }
 
     void Awake()
     {
-        if (pontoInicio == null) pontoInicio = EncontrarFilhoPeloNome(transform, new string[] { "create", "conector", "inicio" });
-        if (pontoFim == null) pontoFim = EncontrarFilhoPeloNome(transform, new string[] { "create (1)", "create2", "conector (1)", "fim" });
-        if (pontoLadoEsquerdo == null) pontoLadoEsquerdo = EncontrarFilhoPeloNome(transform, new string[] { "esq", "create_esq" });
-        if (pontoLadoDireito == null) pontoLadoDireito = EncontrarFilhoPeloNome(transform, new string[] { "dir", "direito", "create_dir" });
+        if (pontoInicio == null) pontoInicio = EncontrarFilhoPeloNome(transform, new string[] { "create", "connector frente", "conector frente", "inicio" });
+        if (pontoFim == null) pontoFim = EncontrarFilhoPeloNome(transform, new string[] { "create (1)", "create2", "connector tras", "conector tras", "fim" });
+        if (pontoLadoEsquerdo == null) pontoLadoEsquerdo = EncontrarFilhoPeloNome(transform, new string[] { "lado esq", "esquerdo", "esq", "create_esq" });
+        if (pontoLadoDireito == null) pontoLadoDireito = EncontrarFilhoPeloNome(transform, new string[] { "lado dir", "direito", "dir", "create_dir" });
     }
 
     void Start()

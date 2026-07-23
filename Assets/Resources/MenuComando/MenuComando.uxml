@@ -18,6 +18,7 @@
                 <ui:Label name="header-status" text="● SISTEMA OPERACIONAL" class="header-status blink" />
             </ui:VisualElement>
             <ui:Label name="header-tempo-op" text="T.OP: 00:00:00" class="header-tempo mono" />
+            <ui:Button name="btn-fechar-menu" text="FECHAR 1" class="menu-fechar mono" />
         </ui:VisualElement>
 
         <!-- CORPO PRINCIPAL: Mapa | FLIR -->
@@ -26,8 +27,6 @@
             <!-- PAINEL ESQUERDO: MAPA TÁTICO -->
             <ui:VisualElement name="painel-mapa" class="rts-panel painel-mapa">
                 <ui:Label name="mapa-titulo" text="◉ MAPA TÁTICO" class="panel-label mono" />
-                <ui:Button name="btn-selecionar-tudo" text="SELECIONAR TUDO [A]" class="btn-selecionar-tudo mono" />
-
                 <!-- Grade do mapa -->
                 <ui:VisualElement name="mapa-grade" class="mapa-grade" picking-mode="Ignore" />
 
@@ -59,6 +58,13 @@
                     <ui:ScrollView name="seguir-scroll" class="seguir-scroll" vertical-scroller-visibility="AlwaysVisible">
                         <ui:VisualElement name="seguir-lista" class="seguir-lista" />
                     </ui:ScrollView>
+                </ui:VisualElement>
+
+                <!-- Barra de seleção sempre acima das camadas do mapa -->
+                <ui:VisualElement name="mapa-selecao-barra" class="mapa-selecao-barra">
+                    <ui:Button name="btn-selecionar-tudo" text="SELECIONAR TUDO [A]" class="btn-selecionar-tudo mono" />
+                    <ui:Button name="btn-desselecionar-tudo" text="DESSELECIONAR ATUAL" class="btn-desselecionar-tudo mono" />
+                    <ui:Label name="selecao-resumo" text="✓ NENHUMA UNIDADE SELECIONADA" class="selecao-resumo mono" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
@@ -119,7 +125,7 @@
                     </ui:VisualElement>
                     <ui:VisualElement class="stat-row">
                         <ui:Label text="ARMAS:" class="stat-lbl" />
-                        <ui:Label name="stat-armas" text="—" class="stat-val" />
+                        <ui:Label name="stat-armas" text="—" class="stat-val stat-armas-live" />
                     </ui:VisualElement>
                     <ui:VisualElement class="stat-row">
                         <ui:Label text="TEAM:" class="stat-lbl" />

@@ -39,6 +39,14 @@ public class Construtor : MonoBehaviour
 
     [Header("Debug / Estado Atual")]
     public GameObject prefabSelecionado;
+
+    [Header("Ruas")]
+    public GameObject prefabRuaLateral;
+    [Tooltip("Elevação aplicada às ruas para evitar que o piso fique enterrado no terreno.")]
+    public float elevacaoRua = 0.25f;
+    [Range(10f, 90f)] public float anguloMinimoViradaRua = 25f;
+    [Tooltip("Marque se o prefab lateral base faz a curva para a esquerda.")]
+    public bool lateralBaseViraEsquerda = true;
     public bool modoConstrucao = false;
 
     [Header("Naval")]
@@ -56,7 +64,9 @@ public class Construtor : MonoBehaviour
     private Vector3? ultimoPontoConstruidoRua = null;
     private Collider ultimoColliderConstruidoRua = null;
     private readonly List<GameObject> fantasmasRua = new List<GameObject>();
+    private readonly List<GameObject> prefabsPlanejadosRua = new List<GameObject>();
     private bool definindoRua = false;
+    private Vector3? ultimaDirecaoRuaConstruida = null;
 
     private bool previewLocalInvalido = false;
     private string motivoInvalido = "";
@@ -137,6 +147,8 @@ public class Construtor : MonoBehaviour
                 definindoRua = false;
                 ultimoPontoConstruidoRua = null;
                 ultimoColliderConstruidoRua = null;
+                ultimaDirecaoRuaConstruida = null;
+                prefabsPlanejadosRua.Clear();
                 foreach (var f in fantasmasRua) if (f != null) Destroy(f);
                 fantasmasRua.Clear();
                 InvalidarPreviewSnapshot();
@@ -429,8 +441,8 @@ public class Construtor : MonoBehaviour
             fantasmaUnico.transform.rotation = imovelPrefab.transform.rotation;
 
             // Raio maior para garantir snap dos dois lados da estrada
-            float raioBuscaRua = Mathf.Max(imovelPrefab.distanciaFronteiraRua + 50f, 50f);
-            RuaConectora ruaProxima = EncontrarRuaProxima(posFinalPreview, raioBuscaRua);
+            float raioBuscaRua = Mathf.Max(imovelPrefab.distanciaFronteiraRua + 18f, 28f);
+            RuaConectora ruaProxima = EncontrarRuaProxima(posFinalPreview, raioBuscaRua, true);
             if (ruaProxima != null)
             {
                 Vector3 pInicio = GetPontoInicio(ruaProxima);
@@ -478,60 +490,28 @@ public class Construtor : MonoBehaviour
                 float alvoYaw = Quaternion.LookRotation(direcaoFrenteCasa, Vector3.up).eulerAngles.y;
                 fantasmaUnico.transform.rotation = Quaternion.Euler(0, alvoYaw, 0);
 
-                // Recupera a altura Y real da rua para aplicar na casa
+                // O campo "largura" dos prefabs antigos nao acompanha a
+                // escala aplicada no modelo. Mede a largura real pelos
+                // conectores laterais e alinha o conector frontal da casa.
                 Vector3 pontoRealNaRua = pInicio + (pFim - pInicio).normalized * dClamp;
-                
-                posFinalPreview = pontoRealNaRua + direcaoRuaParaCasa * ((ruaProxima.largura / 2f) + imovelPrefab.distanciaFronteiraRua);
-                posFinalPreview.y = pontoRealNaRua.y; 
+                float meiaLarguraRua = ObterMeiaLarguraRua(ruaProxima, ruaDirPlana);
+                Vector3 alvoConectorCasa = pontoRealNaRua + direcaoRuaParaCasa * (meiaLarguraRua + imovelPrefab.distanciaFronteiraRua);
+                Imovel imovelFantasma = fantasmaUnico.GetComponent<Imovel>();
+                Vector3 deslocamentoConector = imovelFantasma != null
+                    ? imovelFantasma.ObterConectorFrente().posicao - fantasmaUnico.transform.position
+                    : Vector3.zero;
+                posFinalPreview = alvoConectorCasa - deslocamentoConector;
+                posFinalPreview.y = pontoRealNaRua.y;
                 
                 fezSnapImovel = true;
                 snapCollider = ruaProxima.GetComponent<Collider>();
             }
             else
             {
-                float raioBusca = imovelPrefab.distanciaConexao * 2f;
-                int totalCols = Physics.OverlapSphereNonAlloc(posFinalPreview, raioBusca, bufferColisoresSnap, ~0, QueryTriggerInteraction.Ignore);
-                Imovel imovelProximo = null;
-                float menorDistancia = float.MaxValue;
-
-                for (int i = 0; i < totalCols; i++)
-                {
-                    Collider col = bufferColisoresSnap[i];
-                    if (col == null) continue;
-                    Imovel viz = col.GetComponentInParent<Imovel>();
-                    if (viz != null && viz.gameObject != fantasmaUnico)
-                    {
-                        float dist = Vector3.Distance(posFinalPreview, viz.transform.position);
-                        if (dist < menorDistancia)
-                        {
-                            menorDistancia = dist;
-                            imovelProximo = viz;
-                        }
-                    }
-                }
-
-                if (imovelProximo != null)
-                {
-                    Vector3 pEsqViz = GetPontoEsquerdo(imovelProximo);
-                    Vector3 pDirViz = GetPontoDireito(imovelProximo);
-                    
-                    Vector3 melhorPontoViz = (Vector3.Distance(posFinalPreview, pEsqViz) < Vector3.Distance(posFinalPreview, pDirViz)) ? pEsqViz : pDirViz;
-                    
-                    float alvoYaw = imovelProximo.transform.eulerAngles.y;
-                    fantasmaUnico.transform.rotation = Quaternion.Euler(0, alvoYaw, 0);
-                    
-                    Imovel imFantasma = fantasmaUnico.GetComponent<Imovel>();
-                    Vector3 pEsqFantasma = GetPontoEsquerdo(imFantasma);
-                    Vector3 pDirFantasma = GetPontoDireito(imFantasma);
-                    
-                    Vector3 melhorPontoFantasma = (Vector3.Distance(melhorPontoViz, pEsqFantasma) < Vector3.Distance(melhorPontoViz, pDirFantasma)) ? pEsqFantasma : pDirFantasma;
-                    
-                    Vector3 offsetLocal = melhorPontoFantasma - fantasmaUnico.transform.position;
-                    posFinalPreview = melhorPontoViz - offsetLocal;
-                    
-                    fezSnapImovel = true;
-                    snapCollider = imovelProximo.GetComponent<Collider>();
-                }
+                previewLocalInvalido = true;
+                motivoInvalido = LocalizationManager.T(
+                    "build.need_road",
+                    "CONSTRUCAO BLOQUEADA:\nA residencia precisa ficar conectada a uma rua. Construa ou selecione uma rua primeiro.");
             }
         }
         else
@@ -545,19 +525,17 @@ public class Construtor : MonoBehaviour
                     Vector3 anchor = ultimoPontoConstruidoRua.Value;
                     Vector3 dir = posFinalPreview - anchor;
                     dir.y = 0f;
-                    if (dir.sqrMagnitude > 0.001f) dir.Normalize(); else dir = Vector3.forward;
-                    
-                    float alvoYaw = Quaternion.LookRotation(dir, Vector3.up).eulerAngles.y;
-                    fantasmaUnico.transform.rotation = Quaternion.Euler(0, alvoYaw, 0);
-                    
-                    posFinalPreview = anchor + dir * (ruaPrefab.comprimento / 2f);
+                    if (dir.sqrMagnitude > 0.001f) dir.Normalize(); else dir = ObterDirecaoRua(fantasmaUnico.GetComponent<RuaConectora>());
+
+                    OrientarRuaNaDirecao(fantasmaUnico, dir);
+                    posFinalPreview = PosicaoRaizComInicioRua(fantasmaUnico, anchor);
                     
                     fezSnapRua = true;
                     snapCollider = ultimoColliderConstruidoRua;
                 }
                 else
                 {
-                    RuaConectora ruaProximaOutra = EncontrarRuaProxima(posFinalPreview, ruaPrefab.distanciaConexao * 2.5f);
+                    RuaConectora ruaProximaOutra = EncontrarRuaProxima(posFinalPreview, Mathf.Max(ruaPrefab.distanciaConexao * 2.5f, 12f));
                     if (ruaProximaOutra != null && ruaProximaOutra.gameObject != fantasmaUnico)
                     {
                         Vector3 pInicio = GetPontoInicio(ruaProximaOutra);
@@ -573,14 +551,16 @@ public class Construtor : MonoBehaviour
                         snapDir.y = 0f; 
                         if (snapDir.sqrMagnitude > 0.001f) snapDir.Normalize(); else snapDir = Vector3.forward;
                         
-                        float alvoYaw = Quaternion.LookRotation(snapDir, Vector3.up).eulerAngles.y;
-                        fantasmaUnico.transform.rotation = Quaternion.Euler(0, alvoYaw, 0);
-                        
-                        posFinalPreview = snapPoint + snapDir * (ruaPrefab.comprimento / 2f);
+                        OrientarRuaNaDirecao(fantasmaUnico, snapDir);
+                        posFinalPreview = PosicaoRaizComInicioRua(fantasmaUnico, snapPoint);
                         posFinalPreview.y = snapPoint.y;
                         
                         fezSnapRua = true;
                         snapCollider = ruaProximaOutra.GetComponent<Collider>();
+                    }
+                    else
+                    {
+                        posFinalPreview = PosicaoRaizComInicioRua(fantasmaUnico, posFinalPreview);
                     }
                 }
             }
@@ -588,7 +568,7 @@ public class Construtor : MonoBehaviour
 
         if (ruaPrefab != null && !fezSnapRua)
         {
-            posFinalPreview.y += 0.05f; // Evita que a estrada fique enterrada sob o terreno (Z-fighting)
+            posFinalPreview.y += Mathf.Max(0.25f, elevacaoRua); // Evita que a estrada fique enterrada sob o terreno (Z-fighting)
         }
 
         fantasmaUnico.transform.position = posFinalPreview;
@@ -613,6 +593,7 @@ public class Construtor : MonoBehaviour
         if (!Input.GetMouseButtonDown(0)) return;
         if (previewLocalInvalido)
         {
+            AvisarConstrucao(motivoInvalido);
             Debug.LogWarning($"⚠️ [Construtor] Abortando: {motivoInvalido}");
             return;
         }
@@ -620,10 +601,16 @@ public class Construtor : MonoBehaviour
         RuaConectora ruaPrefabTemp = prefabSelecionado != null ? prefabSelecionado.GetComponent<RuaConectora>() : null;
         if (ruaPrefabTemp != null)
         {
-            Vector3 direcaoRua = fantasmaUnico.transform.forward; 
-            direcaoRua.y = 0f; direcaoRua.Normalize();
-            ultimoPontoConstruidoRua = fantasmaUnico.transform.position + direcaoRua * (ruaPrefabTemp.comprimento / 2f);
-            ultimoColliderConstruidoRua = snapCollider;
+            // O primeiro clique apenas marca o início. A cobrança e a criação
+            // dos segmentos acontecem somente no segundo clique, quando o
+            // jogador já definiu o comprimento da via.
+            RuaConectora marcadorRua = fantasmaUnico.GetComponent<RuaConectora>();
+            ultimoPontoConstruidoRua = marcadorRua != null
+                ? GetPontoInicio(marcadorRua)
+                : posFinalPreview;
+            ultimoColliderConstruidoRua = null;
+            ultimaDirecaoRuaConstruida = null;
+            prefabsPlanejadosRua.Clear();
             definindoRua = true;
             InvalidarPreviewSnapshot();
             if (fantasmaUnico != null) fantasmaUnico.SetActive(false);
@@ -652,7 +639,7 @@ public class Construtor : MonoBehaviour
         Imovel imovelNovo = novo.GetComponent<Imovel>();
         if (imovelNovo != null)
         {
-            RuaConectora ruaProxima = EncontrarRuaProxima(posFinal, Mathf.Max(imovelNovo.distanciaFronteiraRua * 2.5f, 20f));
+            RuaConectora ruaProxima = EncontrarRuaProxima(posFinal, Mathf.Max(imovelNovo.distanciaFronteiraRua * 2.5f, 20f), true);
             if (ruaProxima != null)
             {
                 Vector3 startRua = GetPontoInicio(ruaProxima);
@@ -743,6 +730,17 @@ public class Construtor : MonoBehaviour
             TentarFixarSpawnNaval(pier.gameObject, rotFinal, true);
         }
 
+        PlataformaOffshore plataforma = novo.GetComponent<PlataformaOffshore>();
+        if (plataforma != null)
+        {
+            IdentidadeUnidade identidadePlataforma = novo.GetComponent<IdentidadeUnidade>();
+            if (identidadePlataforma == null) identidadePlataforma = novo.AddComponent<IdentidadeUnidade>();
+            identidadePlataforma.teamID = 1;
+            identidadePlataforma.nomeDoPais = "Hegemonia";
+            identidadePlataforma.tipoUnidade = TipoUnidade.Estrutura;
+            plataforma.OwnerTeamId = 1;
+        }
+
         Vector3 escalaOriginal = novo.transform.localScale;
         if (escalaOriginal.sqrMagnitude < 0.0001f)
         {
@@ -765,7 +763,9 @@ public class Construtor : MonoBehaviour
         Vector3 posFinalPreview = ponto;
         
         Collider snapColliderEnd = null;
-        RuaConectora ruaProximaOutra = EncontrarRuaProxima(posFinalPreview, ruaPrefab.distanciaConexao * 1.5f);
+        float comprimentoReal = ObterComprimentoRua(ruaPrefab);
+        float distanciaSnapRua = Mathf.Max(ruaPrefab.distanciaConexao * 1.5f, 8f);
+        RuaConectora ruaProximaOutra = EncontrarRuaProxima(posFinalPreview, distanciaSnapRua);
         if (ruaProximaOutra != null)
         {
             Vector3 pInicio = GetPontoInicio(ruaProximaOutra);
@@ -773,8 +773,8 @@ public class Construtor : MonoBehaviour
             float distIni = Vector3.Distance(posFinalPreview, pInicio);
             float distFim = Vector3.Distance(posFinalPreview, pFim);
             
-            if (distIni < distFim && distIni < ruaPrefab.distanciaConexao * 1.5f) { posFinalPreview = pInicio; snapColliderEnd = ruaProximaOutra.GetComponent<Collider>(); }
-            else if (distFim < ruaPrefab.distanciaConexao * 1.5f) { posFinalPreview = pFim; snapColliderEnd = ruaProximaOutra.GetComponent<Collider>(); }
+            if (distIni < distFim && distIni < distanciaSnapRua) { posFinalPreview = pInicio; snapColliderEnd = ruaProximaOutra.GetComponent<Collider>(); }
+            else if (distFim < distanciaSnapRua) { posFinalPreview = pFim; snapColliderEnd = ruaProximaOutra.GetComponent<Collider>(); }
         }
         else
         {
@@ -808,7 +808,7 @@ public class Construtor : MonoBehaviour
                 }
             }
 
-            if (imovelProx != null && menorDist < ruaPrefab.distanciaConexao * 1.5f)
+            if (imovelProx != null && menorDist < distanciaSnapRua)
             {
                 posFinalPreview = targetPoint;
                 snapColliderEnd = imovelProx.GetComponent<Collider>();
@@ -818,35 +818,42 @@ public class Construtor : MonoBehaviour
         Vector3 dir = posFinalPreview - anchor;
         dir.y = 0f;
         float dist = dir.magnitude;
-        if (dir.sqrMagnitude > 0.001f) dir.Normalize(); else dir = Vector3.forward;
-        
-        int quantidade = Mathf.Max(1, Mathf.RoundToInt(dist / ruaPrefab.comprimento));
-        
-        while (fantasmasRua.Count < quantidade)
-        {
-            GameObject containerSeguro = new GameObject("ContainerSeguro_FantasmasRua");
-            containerSeguro.SetActive(false);
-            
-            GameObject g = Instantiate(prefabSelecionado, containerSeguro.transform);
-            RemoverColisoresEScripts(g);
-            SetLayerRecursively(g, LayerMask.NameToLayer("Ignore Raycast"));
-            g.transform.SetParent(null);
-            Destroy(containerSeguro);
-            fantasmasRua.Add(g);
-        }
-        
-        float alvoYaw = Quaternion.LookRotation(dir, Vector3.up).eulerAngles.y;
-        Quaternion rotSeg = Quaternion.Euler(0, alvoYaw, 0);
-        
-        Vector3 step = dir * ruaPrefab.comprimento;
-        Vector3 centroBase = anchor + (dir * (ruaPrefab.comprimento / 2f));
-        
+        if (dir.sqrMagnitude > 0.001f) dir.Normalize(); else dir = ObterDirecaoRua(ruaPrefab);
+
+        bool usarLateral = DeveUsarRuaLateral(dir);
+        RuaConectora ruaLateralPrefab = usarLateral && prefabRuaLateral != null
+            ? prefabRuaLateral.GetComponent<RuaConectora>()
+            : null;
+        float comprimentoLateral = ruaLateralPrefab != null ? ObterComprimentoRua(ruaLateralPrefab) : 0f;
+        int quantidade = CalcularQuantidadeSegmentosRua(dist, comprimentoReal, comprimentoLateral, usarLateral);
+
+        while (prefabsPlanejadosRua.Count < quantidade) prefabsPlanejadosRua.Add(null);
         for (int i = 0; i < quantidade; i++)
         {
-            fantasmasRua[i].SetActive(true);
-            fantasmasRua[i].transform.rotation = rotSeg;
-            fantasmasRua[i].transform.position = centroBase + (step * i);
+            GameObject prefabSegmento = usarLateral && i == 0 ? prefabRuaLateral : prefabSelecionado;
+            if (prefabsPlanejadosRua[i] != prefabSegmento) prefabsPlanejadosRua[i] = null;
+            GarantirFantasmaRua(i, prefabSegmento);
+            prefabsPlanejadosRua[i] = prefabSegmento;
         }
+
+        float acumulado = 0f;
+        for (int i = 0; i < quantidade; i++)
+        {
+            GameObject fantasma = fantasmasRua[i];
+            GameObject prefabSegmento = prefabsPlanejadosRua[i];
+            if (fantasma == null || prefabSegmento == null) continue;
+
+            fantasma.SetActive(true);
+            if (usarLateral && i == 0 && ultimaDirecaoRuaConstruida.HasValue)
+            {
+                PrepararLateralParaVirada(fantasma, ultimaDirecaoRuaConstruida.Value, dir);
+            }
+            OrientarRuaNaDirecao(fantasma, dir);
+            fantasma.transform.position = PosicaoRaizComInicioRua(fantasma, anchor + (dir * acumulado));
+            acumulado += ObterComprimentoRua(fantasma.GetComponent<RuaConectora>());
+        }
+
+        Quaternion rotSeg = quantidade > 0 ? fantasmasRua[0].transform.rotation : Quaternion.identity;
         
         for (int i = quantidade; i < fantasmasRua.Count; i++) fantasmasRua[i].SetActive(false);
         
@@ -856,7 +863,8 @@ public class Construtor : MonoBehaviour
         for (int i = 0; i < quantidade; i++)
         {
             Vector3 posSeg = fantasmasRua[i].transform.position;
-            if (VerificarSobreposicao(posSeg, rotSeg, prefabSelecionado, 0.5f, ultimoColliderConstruidoRua, snapColliderEnd))
+            GameObject prefabSegmento = prefabsPlanejadosRua[i] != null ? prefabsPlanejadosRua[i] : prefabSelecionado;
+            if (VerificarSobreposicao(posSeg, fantasmasRua[i].transform.rotation, prefabSegmento, 0.5f, ultimoColliderConstruidoRua, snapColliderEnd))
             {
                 previewLocalInvalido = true;
                 motivoInvalido = LocalizationManager.T("build.overlap", "❌ SOBREPOSIÇÃO DE CONSTRUÇÃO:\nNão é permitido sobrepor prédios ou ruas.");
@@ -878,12 +886,27 @@ public class Construtor : MonoBehaviour
             if (!TentarCobrarConstrucao(custoTotal)) return;
             
             Collider ultimoCol = null;
-            
+            RuaConectora ultimaRuaConstruida = null;
+            float acumuladoCommit = 0f;
+            Vector3 direcaoAnterior = ultimaDirecaoRuaConstruida ?? dir;
+
             for (int i = 0; i < quantidade; i++)
             {
-                Vector3 posFinal = centroBase + (step * i);
-                GameObject novo = Instantiate(prefabSelecionado, posFinal, rotSeg);
+                GameObject prefabSegmento = i < prefabsPlanejadosRua.Count && prefabsPlanejadosRua[i] != null
+                    ? prefabsPlanejadosRua[i]
+                    : prefabSelecionado;
+                RuaConectora prefabComponente = prefabSegmento != null ? prefabSegmento.GetComponent<RuaConectora>() : null;
+                Vector3 inicioSegmento = anchor + (dir * acumuladoCommit);
+                GameObject novo = Instantiate(prefabSegmento, inicioSegmento, rotSeg);
+                if (usarLateral && i == 0)
+                {
+                    PrepararLateralParaVirada(novo, direcaoAnterior, dir);
+                }
+                OrientarRuaNaDirecao(novo, dir);
+                novo.transform.position = PosicaoRaizComInicioRua(novo, inicioSegmento);
                 RuaConectora rc = novo.GetComponent<RuaConectora>();
+                ultimaRuaConstruida = rc;
+                acumuladoCommit += ObterComprimentoRua(rc != null ? rc : prefabComponente);
                 
                 ReativarLogicaUnidade(novo);
                 EnsureCollider(novo);
@@ -893,7 +916,7 @@ public class Construtor : MonoBehaviour
                 Imovel[] todosImoveis = Object.FindObjectsByType<Imovel>(FindObjectsSortMode.None);
                 foreach (var imovel in todosImoveis)
                 {
-                    float d = Vector3.Distance(imovel.transform.position, posFinal);
+                    float d = Vector3.Distance(imovel.transform.position, novo.transform.position);
                     if (d < imovel.distanciaFronteiraRua * 2.5f)
                     {
                         Vector3 startRua = GetPontoInicio(rc);
@@ -916,8 +939,10 @@ public class Construtor : MonoBehaviour
                 anim.IniciarAnimacao(escalaOriginal, 1.5f);
             }
             
-            ultimoPontoConstruidoRua = anchor + (dir * (quantidade * ruaPrefab.comprimento));
+            // O proximo trecho nasce do conector real do ultimo segmento.
+            ultimoPontoConstruidoRua = ultimaRuaConstruida != null ? GetPontoFim(ultimaRuaConstruida) : anchor + (dir * acumuladoCommit);
             ultimoColliderConstruidoRua = ultimoCol;
+            ultimaDirecaoRuaConstruida = ultimaRuaConstruida != null ? ObterDirecaoRua(ultimaRuaConstruida) : dir;
             InvalidarPreviewSnapshot();
             foreach (var f in fantasmasRua) if (f != null) f.SetActive(false);
         }
@@ -938,11 +963,22 @@ public class Construtor : MonoBehaviour
         return false;
     }
 
+    private void AvisarConstrucao(string mensagem)
+    {
+        if (string.IsNullOrWhiteSpace(mensagem))
+        {
+            mensagem = LocalizationManager.T("build.invalid_location", "Local de construção inválido.");
+        }
+
+        Debug.LogWarning($"[Construtor] {mensagem}");
+        HUDAjudaRTS.MostrarMensagemTemporaria(mensagem.Replace("\n", "  "), 3.6f);
+    }
+
     bool EhEstruturaCosteiraPrefab(GameObject prefab)
     {
         if (prefab == null) return false;
         string nome = prefab.name.ToLower();
-        return nome.Contains("estaleiro") || nome.Contains("pier");
+        return nome.Contains("estaleiro") || nome.Contains("pier") || nome.Contains("plataforma") || nome.Contains("offshore");
     }
 
     void TentarFixarSpawnNaval(GameObject estrutura, Quaternion rotacao, bool logar)
@@ -1192,6 +1228,14 @@ public class Construtor : MonoBehaviour
             TentarFixarSpawnNaval(pier.gameObject, rotacao, false);
         }
 
+        PlataformaOffshore plataforma = novoPredio.GetComponent<PlataformaOffshore>();
+        if (plataforma != null)
+        {
+            Vector3 nivelAgua = novoPredio.transform.position;
+            nivelAgua.y = NavalPlacementResolver.ResolveSeaLevel();
+            novoPredio.transform.position = nivelAgua;
+        }
+
         return novoPredio;
     }
 
@@ -1215,6 +1259,8 @@ public class Construtor : MonoBehaviour
         recemSelecionado = true;
         ultimoPontoConstruidoRua = null;
         ultimoColliderConstruidoRua = null;
+        ultimaDirecaoRuaConstruida = null;
+        prefabsPlanejadosRua.Clear();
         definindoRua = false;
         foreach (var f in fantasmasRua) if (f != null) Destroy(f);
         fantasmasRua.Clear();
@@ -1248,6 +1294,8 @@ public class Construtor : MonoBehaviour
         motivoInvalido = "";
         ultimoPontoConstruidoRua = null;
         ultimoColliderConstruidoRua = null;
+        ultimaDirecaoRuaConstruida = null;
+        prefabsPlanejadosRua.Clear();
         InvalidarPreviewSnapshot();
         InteractionModeService.Release(InteractionOwner.Construction);
 
@@ -1261,6 +1309,7 @@ public class Construtor : MonoBehaviour
 
         foreach (var f in fantasmasRua) if (f != null) Destroy(f);
         fantasmasRua.Clear();
+        prefabsPlanejadosRua.Clear();
     }
 
     void SuspenderInteracoesConcorrentes()
@@ -1528,27 +1577,162 @@ public class Construtor : MonoBehaviour
         return gerenteTerritorioCache;
     }
 
-    private RuaConectora EncontrarRuaProxima(Vector3 posicao, float raioBusca)
+    private bool DeveUsarRuaLateral(Vector3 direcaoDesejada)
     {
-        int totalCols = Physics.OverlapSphereNonAlloc(posicao, raioBusca, bufferColisoresSnap, ~0, QueryTriggerInteraction.Ignore);
+        if (prefabRuaLateral == null || ultimaDirecaoRuaConstruida == null) return false;
+
+        Vector3 anterior = ultimaDirecaoRuaConstruida.Value;
+        anterior.y = 0f;
+        Vector3 nova = direcaoDesejada;
+        nova.y = 0f;
+        if (anterior.sqrMagnitude < 0.001f || nova.sqrMagnitude < 0.001f) return false;
+
+        return Vector3.Angle(anterior.normalized, nova.normalized) >= Mathf.Max(1f, anguloMinimoViradaRua);
+    }
+
+    private void PrepararLateralParaVirada(GameObject objeto, Vector3 direcaoAnterior, Vector3 direcaoNova)
+    {
+        if (objeto == null || prefabRuaLateral == null) return;
+
+        Vector3 anterior = direcaoAnterior;
+        anterior.y = 0f;
+        Vector3 nova = direcaoNova;
+        nova.y = 0f;
+        if (anterior.sqrMagnitude < 0.001f || nova.sqrMagnitude < 0.001f) return;
+
+        bool virouEsquerda = Vector3.Cross(anterior.normalized, nova.normalized).y > 0f;
+        bool precisaEspelhar = virouEsquerda != lateralBaseViraEsquerda;
+        Vector3 escala = objeto.transform.localScale;
+        escala.x = precisaEspelhar ? -Mathf.Abs(escala.x) : Mathf.Abs(escala.x);
+        objeto.transform.localScale = escala;
+    }
+
+    private int CalcularQuantidadeSegmentosRua(float distancia, float comprimentoReta, float comprimentoLateral, bool usarLateral)
+    {
+        if (!usarLateral || comprimentoLateral <= 0.1f)
+        {
+            return Mathf.Max(1, Mathf.RoundToInt(distancia / Mathf.Max(0.1f, comprimentoReta)));
+        }
+
+        float restante = Mathf.Max(0f, distancia - comprimentoLateral);
+        int quantidade = 1;
+        while (restante > 0.5f && quantidade < 128)
+        {
+            restante -= Mathf.Max(0.1f, comprimentoReta);
+            quantidade++;
+        }
+        return quantidade;
+    }
+
+    private void GarantirFantasmaRua(int indice, GameObject prefabSegmento)
+    {
+        if (prefabSegmento == null) return;
+
+        while (fantasmasRua.Count <= indice) fantasmasRua.Add(null);
+        GameObject atual = fantasmasRua[indice];
+        GameObject prefabAtual = indice < prefabsPlanejadosRua.Count ? prefabsPlanejadosRua[indice] : null;
+        if (atual != null && prefabAtual == prefabSegmento) return;
+
+        if (atual != null) Destroy(atual);
+
+        GameObject containerSeguro = new GameObject("ContainerSeguro_FantasmasRua");
+        containerSeguro.SetActive(false);
+        CriandoPreviewConstrucao = true;
+        try
+        {
+            atual = Instantiate(prefabSegmento, containerSeguro.transform);
+        }
+        finally
+        {
+            CriandoPreviewConstrucao = false;
+        }
+
+        RemoverColisoresEScripts(atual);
+        SetLayerRecursively(atual, LayerMask.NameToLayer("Ignore Raycast"));
+        atual.transform.SetParent(null);
+        Destroy(containerSeguro);
+        fantasmasRua[indice] = atual;
+    }
+
+    private RuaConectora EncontrarRuaProxima(Vector3 posicao, float raioBusca, bool exigirCasas = false)
+    {
         RuaConectora melhorRua = null;
         float menorDist = float.MaxValue;
-        for (int i = 0; i < totalCols; i++)
+        RuaConectora[] ruas = Object.FindObjectsByType<RuaConectora>(FindObjectsSortMode.None);
+        for (int i = 0; i < ruas.Length; i++)
         {
-            Collider col = bufferColisoresSnap[i];
-            if (col == null) continue;
-            RuaConectora rua = col.GetComponentInParent<RuaConectora>();
-            if (rua != null)
+            RuaConectora rua = ruas[i];
+            if (rua == null || !rua.isActiveAndEnabled) continue;
+            if (exigirCasas && !rua.permiteCasas) continue;
+
+            Vector3 inicio = GetPontoInicio(rua);
+            Vector3 fim = GetPontoFim(rua);
+            Vector3 inicioPlano = inicio; inicioPlano.y = 0f;
+            Vector3 fimPlano = fim; fimPlano.y = 0f;
+            Vector3 pontoPlano = posicao; pontoPlano.y = 0f;
+            Vector3 vetor = fimPlano - inicioPlano;
+            float comprimento = vetor.magnitude;
+            if (comprimento < 0.01f) continue;
+
+            Vector3 direcao = vetor / comprimento;
+            float projecao = Mathf.Clamp(Vector3.Dot(pontoPlano - inicioPlano, direcao), 0f, comprimento);
+            float dist = Vector3.Distance(pontoPlano, inicioPlano + direcao * projecao);
+            if (dist <= raioBusca && dist < menorDist)
             {
-                float dist = Vector3.Distance(posicao, rua.transform.position);
-                if (dist < menorDist)
-                {
-                    menorDist = dist;
-                    melhorRua = rua;
-                }
+                menorDist = dist;
+                melhorRua = rua;
             }
         }
         return melhorRua;
+    }
+
+    private float ObterComprimentoRua(RuaConectora rua)
+    {
+        if (rua == null) return 1f;
+        float real = Vector3.Distance(GetPontoInicio(rua), GetPontoFim(rua));
+        return real > 0.1f ? real : Mathf.Max(0.1f, rua.comprimento);
+    }
+
+    private Vector3 ObterDirecaoRua(RuaConectora rua)
+    {
+        if (rua == null) return Vector3.forward;
+        Vector3 direcao = GetPontoFim(rua) - GetPontoInicio(rua);
+        direcao.y = 0f;
+        return direcao.sqrMagnitude > 0.001f ? direcao.normalized : Vector3.forward;
+    }
+
+    private float ObterMeiaLarguraRua(RuaConectora rua, Vector3 direcaoRua)
+    {
+        if (rua == null) return 0f;
+        Vector3 esquerda = rua.ObterConectorEsquerdo().posicao;
+        Vector3 direita = rua.ObterConectorDireito().posicao;
+        Vector3 lateral = direita - esquerda;
+        lateral.y = 0f;
+        float larguraReal = lateral.magnitude;
+        return larguraReal > 0.1f ? larguraReal * 0.5f : Mathf.Max(0.1f, rua.largura * 0.5f);
+    }
+
+    private void OrientarRuaNaDirecao(GameObject objetoRua, Vector3 direcaoDesejada)
+    {
+        if (objetoRua == null) return;
+        RuaConectora rua = objetoRua.GetComponent<RuaConectora>();
+        if (rua == null) return;
+
+        direcaoDesejada.y = 0f;
+        if (direcaoDesejada.sqrMagnitude < 0.001f) return;
+        direcaoDesejada.Normalize();
+
+        Vector3 direcaoAtual = ObterDirecaoRua(rua);
+        Quaternion ajuste = Quaternion.FromToRotation(direcaoAtual, direcaoDesejada);
+        objetoRua.transform.rotation = ajuste * objetoRua.transform.rotation;
+    }
+
+    private Vector3 PosicaoRaizComInicioRua(GameObject objetoRua, Vector3 inicioDesejado)
+    {
+        if (objetoRua == null) return inicioDesejado;
+        RuaConectora rua = objetoRua.GetComponent<RuaConectora>();
+        if (rua == null) return inicioDesejado;
+        return inicioDesejado - (GetPontoInicio(rua) - objetoRua.transform.position);
     }
 
     private bool VerificarSobreposicao(Vector3 posicao, Quaternion rotacao, GameObject prefab, float margemSeguranca = 0.5f, Collider ignorarCollider = null, Collider ignorarCollider2 = null)
@@ -1624,32 +1808,33 @@ public class Construtor : MonoBehaviour
     // Faz a matemática internamente sem exigir métodos atualizados nestas classes
     // -------------------------------------------------------------------------
     private Vector3 GetPontoInicio(RuaConectora rua) {
-        return rua.transform.position - rua.transform.forward * (rua.comprimento / 2f);
+        return rua != null ? rua.ObterConectorInicio().posicao
+            : Vector3.zero;
     }
     
     private Vector3 GetPontoFim(RuaConectora rua) {
-        return rua.transform.position + rua.transform.forward * (rua.comprimento / 2f);
+        return rua != null ? rua.ObterConectorFim().posicao
+            : Vector3.zero;
     }
     
     private Vector3 GetPontoEsquerdo(Imovel imovel) {
-        return imovel.transform.position - imovel.transform.right * imovel.distanciaConexao;
+        return imovel != null ? imovel.ObterConectorEsquerdo().posicao
+            : Vector3.zero;
     }
     
     private Vector3 GetPontoDireito(Imovel imovel) {
-        return imovel.transform.position + imovel.transform.right * imovel.distanciaConexao;
+        return imovel != null ? imovel.ObterConectorDireito().posicao
+            : Vector3.zero;
     }
     
     private Vector3 GetPontoConexaoRua(Imovel imovel) {
-        return imovel.transform.position - imovel.transform.forward * imovel.distanciaFronteiraRua;
+        return imovel != null ? imovel.ObterConectorFrente().posicao
+            : Vector3.zero;
     }
     
     private Vector3 GetPontoConexaoRuaTras(Imovel imovel) {
         // Tenta pegar a variável "traseira" se você possuir um Imovel mais atualizado, caso contrário usa a frente.
-        float dist = imovel.distanciaFronteiraRua;
-        var field = imovel.GetType().GetField("distanciaFronteiraRuaTras");
-        if (field != null) {
-            dist = (float)field.GetValue(imovel);
-        }
-        return imovel.transform.position + imovel.transform.forward * dist;
+        return imovel != null ? imovel.ObterConectorTras().posicao
+            : Vector3.zero;
     }
 }

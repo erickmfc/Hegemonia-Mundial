@@ -70,6 +70,7 @@ public class ControleNavioRealista : MonoBehaviour
     private AudioSource fonteAudio;
     private float tempoInatividade = 0f;
     private bool estaDesligado = false;
+    private bool paradoPorFaltaDeCombustivel;
 
     [Header("Sistema de Torpedos")]
     [Tooltip("Se true, este navio pode lançar torpedos.")]
@@ -101,6 +102,7 @@ public class ControleNavioRealista : MonoBehaviour
     private NavMeshAgent agente;
     private Rigidbody rb;
     private Vector3 velocidadeVetorial = Vector3.zero; // Vector de inércia real
+    public float VelocidadeAtual => velocidadeVetorial.magnitude;
     private float potenciaAlvo = 0f; // -1 a 1 (Input)
     private float potenciaAtual = 0f; // -1 a 1 (RPM do eixo)
     private float anguloLemeAtual = 0f; // -1 a 1 (Posição do Leme)
@@ -227,11 +229,16 @@ public class ControleNavioRealista : MonoBehaviour
 
             if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
             {
-                PararPorFaltaDeCombustivel();
+                if (!paradoPorFaltaDeCombustivel)
+                {
+                    paradoPorFaltaDeCombustivel = true;
+                    PararPorFaltaDeCombustivel();
+                }
                 AtualizarEfeitosVisuais();
                 AtualizarAudio();
                 return;
             }
+            paradoPorFaltaDeCombustivel = false;
 
             // 0. VERIFICAÇÃO DE ATIVIDADE
             float intervaloLogica = InfraPerformanceGameplay.ResolverIntervalo(0.25f, estadoOtimizacao, true, true);
@@ -919,7 +926,7 @@ public class ControleNavioRealista : MonoBehaviour
             agente.velocity = Vector3.zero;
         }
 
-        if (rb != null)
+        if (rb != null && !rb.isKinematic)
         {
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;

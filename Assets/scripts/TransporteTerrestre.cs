@@ -23,6 +23,38 @@ public class TransporteTerrestre : MonoBehaviour
     private float _cooldownEmbarque = 0f;
     private const float COOLDOWN_EMBARQUE = 30f; // 30 segundos entre ciclos de busca
 
+    // Prefabs antigos colocam o controle/identidade no filho que recebe o
+    // colisor. Procurar nos tres niveis deixa a tecla O e a IA consistentes.
+    private ControleUnidade ObterControleUnidade()
+    {
+        ControleUnidade controle = GetComponent<ControleUnidade>();
+        if (controle == null) controle = GetComponentInParent<ControleUnidade>();
+        if (controle == null) controle = GetComponentInChildren<ControleUnidade>(true);
+        return controle;
+    }
+
+    private IdentidadeUnidade ObterIdentidadeUnidade()
+    {
+        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade == null) identidade = GetComponentInParent<IdentidadeUnidade>();
+        if (identidade == null) identidade = GetComponentInChildren<IdentidadeUnidade>(true);
+        return identidade;
+    }
+
+    private int ObterTimeDaUnidade(GameObject unidade)
+    {
+        if (unidade == null) return 0;
+        IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
+        if (identidade == null) identidade = unidade.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade == null) identidade = unidade.GetComponentInChildren<IdentidadeUnidade>(true);
+        if (identidade != null) return identidade.teamID;
+
+        IdentidadeIA identidadeIA = unidade.GetComponent<IdentidadeIA>();
+        if (identidadeIA == null) identidadeIA = unidade.GetComponentInParent<IdentidadeIA>();
+        if (identidadeIA == null) identidadeIA = unidade.GetComponentInChildren<IdentidadeIA>(true);
+        return identidadeIA != null ? identidadeIA.teamID : 0;
+    }
+
     void Awake()
     {
         // Inicializa array de assentos baseados nos slots disponíveis
@@ -56,7 +88,7 @@ public class TransporteTerrestre : MonoBehaviour
         // VerificarSelecao(); // REMOVIDO: Usar sistema padrão abaixo
         
         // Integração com ControleUnidade (Padrão do Projeto)
-        var ctrl = GetComponent<ControleUnidade>();
+        var ctrl = ObterControleUnidade();
         if(ctrl != null) selecionado = ctrl.selecionado;
 
         // Cooldown de embarque
@@ -67,7 +99,7 @@ public class TransporteTerrestre : MonoBehaviour
             // O -> OPEN / Entrar
             if (Input.GetKeyDown(KeyCode.O)) 
             {
-                TentarEmbarcar();
+                TentarEmbarcar(true);
             }
             // P -> soltar tropas | U mantido como atalho legado
             if (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.U))
@@ -84,13 +116,20 @@ public class TransporteTerrestre : MonoBehaviour
 
     public void TentarEmbarcar()
     {
+        TentarEmbarcar(false);
+    }
+
+    private void TentarEmbarcar(bool comandoManual)
+    {
         // Se este veículo for um caça/avião que por acidente tem o script, ignora
         string me = gameObject.name.ToLower();
         if (me.Contains("caoc") || me.Contains("caca") || me.Contains("tuk") || me.Contains("jet") || me.Contains("aviao") || me.Contains("f22"))
             return;
 
         // Cooldown ativo — não busca
-        if (_cooldownEmbarque > 0f) return;
+        // O comando manual deve responder imediatamente. O cooldown continua
+        // valendo para as chamadas automaticas da IA, evitando spam de busca.
+        if (!comandoManual && _cooldownEmbarque > 0f) return;
 
         // Conta total atual
         int totalEmbarcados = soldadosInternos.Count + ContarVisiveis();
@@ -136,7 +175,10 @@ public class TransporteTerrestre : MonoBehaviour
 
             // 1. Ignora Veículos de Transporte e Tanques Grandes
             // Se tiver script de transporte ou for muito grande
-            if (soldado.GetComponent<TransporteTerrestre>() != null) continue;
+            TransporteTerrestre outroTransporte = soldado.GetComponent<TransporteTerrestre>();
+            if (outroTransporte == null) outroTransporte = soldado.GetComponentInParent<TransporteTerrestre>();
+            if (outroTransporte != null) continue;
+            if (JaEstaEmbarcado(soldado)) continue;
             
             // 2. Filtro por Nome (Mais permissivo)
             string nomeLower = soldado.name.ToLower();
@@ -176,12 +218,11 @@ public class TransporteTerrestre : MonoBehaviour
             {
                 // CRÍTICO: Verifica Identidade de Time (TeamID)
                 // A IA (Time 2) só deve pegar soldados do Time 2.
-                var identidadeSoldado = soldado.GetComponent<IdentidadeUnidade>();
-                var minhaIdentidade = GetComponent<IdentidadeUnidade>();
-                
-                if(identidadeSoldado != null && minhaIdentidade != null)
+                int timeSoldado = ObterTimeDaUnidade(soldado);
+                int meuTime = ObterTimeDaUnidade(gameObject);
+                if (timeSoldado != 0 && meuTime != 0)
                 {
-                    if(identidadeSoldado.teamID != minhaIdentidade.teamID) 
+                    if(timeSoldado != meuTime)
                     {
                         // Se não for do mesmo time, ignora silenciosamente
                         continue; 
@@ -208,6 +249,16 @@ public class TransporteTerrestre : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Mesma operacao da tecla O, exposta para o diretor tatico da IA.
+    /// </summary>
+    public bool TentarEmbarcarAutomatico()
+    {
+        int antes = QuantidadePassageiros;
+        TentarEmbarcar();
+        return QuantidadePassageiros > antes;
+    }
+
     bool JaEstaEmbarcado(GameObject obj)
     {
         if (soldadosInternos.Contains(obj)) return true;
@@ -217,6 +268,12 @@ public class TransporteTerrestre : MonoBehaviour
 
     void EmbarcarUnidade(GameObject soldado)
     {
+        if (assentosVisiveis == null || soldadosNosAssentos == null)
+        {
+            assentosVisiveis = System.Array.Empty<Transform>();
+            soldadosNosAssentos = System.Array.Empty<GameObject>();
+        }
+
         // 1. Tenta colocar num assento visível primeiro
         for (int i = 0; i < assentosVisiveis.Length; i++)
         {
@@ -322,6 +379,7 @@ public class TransporteTerrestre : MonoBehaviour
     void DesabilitarMovimento(GameObject unidade)
     {
         NavMeshAgent agent = unidade.GetComponent<NavMeshAgent>();
+        if (agent == null) agent = unidade.GetComponentInChildren<NavMeshAgent>(true);
         if (agent != null)
         {
             agent.enabled = false; // Desliga o NavMeshAgent
@@ -335,6 +393,8 @@ public class TransporteTerrestre : MonoBehaviour
 
         // DESLIGA O CONTROLE PARA NÃO SER SELECIONADO
         ControleUnidade ctrl = unidade.GetComponent<ControleUnidade>();
+        if (ctrl == null) ctrl = unidade.GetComponentInParent<ControleUnidade>();
+        if (ctrl == null) ctrl = unidade.GetComponentInChildren<ControleUnidade>(true);
         if (ctrl != null)
         {
              ctrl.DefinirSelecao(false); // Garante que deseleciona visualmente antes
@@ -358,9 +418,12 @@ public class TransporteTerrestre : MonoBehaviour
 
         // REATIVA CONTROLE
         ControleUnidade ctrl = unidade.GetComponent<ControleUnidade>();
+        if (ctrl == null) ctrl = unidade.GetComponentInParent<ControleUnidade>();
+        if (ctrl == null) ctrl = unidade.GetComponentInChildren<ControleUnidade>(true);
         if (ctrl != null) ctrl.enabled = true;
 
         NavMeshAgent agent = unidade.GetComponent<NavMeshAgent>();
+        if (agent == null) agent = unidade.GetComponentInChildren<NavMeshAgent>(true);
         if (agent != null)
         {
             agent.enabled = true;

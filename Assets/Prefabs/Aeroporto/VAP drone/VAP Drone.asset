@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: VAP Drone
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 21300000, guid: 9a59d622ad00eb4498af99efd78835d6, type: 3}
+  icone: {fileID: 0}
   prefabDaUnidade: {fileID: 1528946479851719052, guid: 22d99746e015e3048847e2e2a0059eba, type: 3}
   preco: 100
   categoria: 2

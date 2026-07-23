@@ -147,15 +147,25 @@ public class Imovel : MonoBehaviour
                 }
             }
         }
+
+        foreach (Transform t in todosFilhos)
+        {
+            if (t == raiz) continue;
+            string nomeFilho = t.name.ToLowerInvariant();
+            foreach (string nome in nomes)
+            {
+                if (nomeFilho.Contains(nome.ToLowerInvariant())) return t;
+            }
+        }
         return null;
     }
 
     void Awake()
     {
-        if (conexaoRua == null) conexaoRua = EncontrarFilhoPeloNome(transform, new string[] { "create", "frente", "conector" });
-        if (conexaoRuaTras == null) conexaoRuaTras = EncontrarFilhoPeloNome(transform, new string[] { "create_tras", "atras" });
-        if (ladoEsquerdo == null) ladoEsquerdo = EncontrarFilhoPeloNome(transform, new string[] { "esq", "create_esq" });
-        if (ladoDireito == null) ladoDireito = EncontrarFilhoPeloNome(transform, new string[] { "dir", "direito", "create_dir" });
+        if (conexaoRua == null) conexaoRua = EncontrarFilhoPeloNome(transform, new string[] { "create", "connector frente", "frente", "conector" });
+        if (conexaoRuaTras == null) conexaoRuaTras = EncontrarFilhoPeloNome(transform, new string[] { "create_tras", "connector tras", "atras" });
+        if (ladoEsquerdo == null) ladoEsquerdo = EncontrarFilhoPeloNome(transform, new string[] { "lado esq", "esquerdo", "esq", "create_esq" });
+        if (ladoDireito == null) ladoDireito = EncontrarFilhoPeloNome(transform, new string[] { "lado dir", "direito", "dir", "create_dir" });
     }
 
     void Start()

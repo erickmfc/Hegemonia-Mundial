@@ -21,6 +21,7 @@ MonoBehaviour:
   prefabDaUnidade: {fileID: 5115040976698317614, guid: b0c1761981ccc824b87939d448131738, type: 3}
   preco: 100
   categoria: 1
-  escalaPoder: 0
+  escalaPoder: 3
+  strategicRole: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

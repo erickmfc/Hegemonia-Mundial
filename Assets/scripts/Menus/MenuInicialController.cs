@@ -133,6 +133,7 @@ public class MenuInicialController : MonoBehaviour
         {
             string cenaMenuCanonica = ConfiguracaoCenasJogo.ResolverCenaMenuPrincipal();
             if (!string.IsNullOrWhiteSpace(cenaMenuCanonica)
+                && cenaMenuCanonica != cenaAtual.name
                 && ConfiguracaoCenasJogo.CenaExiste(cenaMenuCanonica))
             {
                 SceneManager.LoadScene(cenaMenuCanonica);

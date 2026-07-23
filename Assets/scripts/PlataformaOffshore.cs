@@ -1,9 +1,29 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
+using Hegemonia.AI.BrainMaster;
 
 public class PlataformaOffshore : MonoBehaviour
 {
+    [Header("Proprietario")]
+    [Tooltip("Time dono da plataforma. Zero usa a identidade da estrutura; nunca e inferido pela distancia.")]
+    [SerializeField] private int ownerTeamId;
+
+    public int OwnerTeamId
+    {
+        get { return ResolverOwnerTeamId(); }
+        set
+        {
+            ownerTeamId = Mathf.Max(0, value);
+            if (ownerTeamId <= 0) return;
+            IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+            if (identidade == null) identidade = GetComponentInParent<IdentidadeUnidade>();
+            if (identidade == null) identidade = gameObject.AddComponent<IdentidadeUnidade>();
+            identidade.teamID = ownerTeamId;
+            identidade.tipoUnidade = TipoUnidade.Estrutura;
+        }
+    }
     [Header("Limites de Produção")]
     public int producaoMinima = 2315;
     public int producaoMaxima = 5000;
@@ -34,6 +54,45 @@ public class PlataformaOffshore : MonoBehaviour
     private NavioPetroleiro _petroleiroOcupante;
     private float _reservaPetroleiroAte;
 
+    [Header("Fila de petroleiros")]
+    [Tooltip("Quantidade de petroleiros que podem aguardar nesta plataforma. O primeiro opera; os demais ficam enfileirados.")]
+    [SerializeField] private int capacidadeFilaPetroleiros = 8;
+    [System.NonSerialized] private readonly List<NavioPetroleiro> _filaPetroleiros = new List<NavioPetroleiro>(8);
+
+    public int PetroleirosNaFila
+    {
+        get
+        {
+            LimparFila();
+            return _filaPetroleiros.Count;
+        }
+    }
+
+    public bool PodeReceberPetroleiro(NavioPetroleiro petroleiro)
+    {
+        LimparFila();
+        if (petroleiro == null) return false;
+        if (_filaPetroleiros.Contains(petroleiro) || _petroleiroOcupante == petroleiro) return true;
+        return _filaPetroleiros.Count < Mathf.Max(1, capacidadeFilaPetroleiros);
+    }
+
+    public bool EhOcupante(NavioPetroleiro petroleiro)
+    {
+        return petroleiro != null && _petroleiroOcupante == petroleiro;
+    }
+
+    private void LimparFila()
+    {
+        for (int i = _filaPetroleiros.Count - 1; i >= 0; i--)
+        {
+            NavioPetroleiro navio = _filaPetroleiros[i];
+            if (navio == null || !navio.gameObject.activeInHierarchy)
+                _filaPetroleiros.RemoveAt(i);
+        }
+        if (_petroleiroReservado == null || !_filaPetroleiros.Contains(_petroleiroReservado))
+            _petroleiroReservado = _filaPetroleiros.Count > 0 ? _filaPetroleiros[0] : null;
+    }
+
     [Header("Debug")]
     public bool debugLogs = false;
 
@@ -44,10 +103,16 @@ public class PlataformaOffshore : MonoBehaviour
 
     public bool TentarOcupar(NavioPetroleiro petroleiro)
     {
+        LimparFila();
         if (petroleiro == null || (_petroleiroOcupante != null && _petroleiroOcupante != petroleiro))
         {
             return false;
         }
+
+        // Apenas o primeiro da fila entra no ponto de abastecimento. Os demais
+        // continuam reservados e aguardam sem disputar o mesmo ponto azul.
+        if (_filaPetroleiros.Count > 0 && _filaPetroleiros[0] != petroleiro)
+            return false;
 
         _petroleiroOcupante = petroleiro;
         ocupada = true;
@@ -66,44 +131,33 @@ public class PlataformaOffshore : MonoBehaviour
             _petroleiroOcupante = null;
             ocupada = false;
         }
+        LimparFila();
     }
 
     public bool EstaReservadaPorOutro(NavioPetroleiro petroleiro)
     {
-        if (_petroleiroReservado == null || _petroleiroReservado == petroleiro)
-        {
-            return false;
-        }
-
-        if (Time.time > _reservaPetroleiroAte)
-        {
-            _petroleiroReservado = null;
-            _reservaPetroleiroAte = 0f;
-            return false;
-        }
-
-        return true;
+        LimparFila();
+        if (_petroleiroReservado == null || _petroleiroReservado == petroleiro) return false;
+        return Time.time <= _reservaPetroleiroAte && !PodeReceberPetroleiro(petroleiro);
     }
 
     public bool TentarReservar(NavioPetroleiro petroleiro, float duracaoSegundos = 90f)
     {
-        if (petroleiro == null || EstaReservadaPorOutro(petroleiro))
-        {
-            return false;
-        }
+        LimparFila();
+        if (!PodeReceberPetroleiro(petroleiro)) return false;
 
-        _petroleiroReservado = petroleiro;
+        if (!_filaPetroleiros.Contains(petroleiro))
+            _filaPetroleiros.Add(petroleiro);
+        _petroleiroReservado = _filaPetroleiros[0];
         _reservaPetroleiroAte = Time.time + Mathf.Max(5f, duracaoSegundos);
         return true;
     }
 
     public void LiberarReserva(NavioPetroleiro petroleiro)
     {
-        if (_petroleiroReservado == petroleiro)
-        {
-            _petroleiroReservado = null;
-            _reservaPetroleiroAte = 0f;
-        }
+        if (petroleiro != null) _filaPetroleiros.Remove(petroleiro);
+        LimparFila();
+        _reservaPetroleiroAte = _petroleiroReservado != null ? Time.time + 90f : 0f;
     }
 
     public int DrenarPetroleo(int quantidadeSolicitada)
@@ -115,7 +169,32 @@ public class PlataformaOffshore : MonoBehaviour
 
     void Awake()
     {
+        GarantirIdentidadeEDano();
         GarantirPontosDeNavegacao();
+    }
+
+    private void GarantirIdentidadeEDano()
+    {
+        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade == null) identidade = GetComponentInParent<IdentidadeUnidade>();
+        if (identidade == null) identidade = gameObject.AddComponent<IdentidadeUnidade>();
+        identidade.tipoUnidade = TipoUnidade.Estrutura;
+        int time = ResolverOwnerTeamId();
+        if (time > 0) identidade.teamID = time;
+
+        SistemaDeDanos danos = GetComponent<SistemaDeDanos>();
+        if (danos == null) danos = gameObject.AddComponent<SistemaDeDanos>();
+        danos.ehEstrutura = true;
+        if (danos.vidaMaxima < 1000f) danos.vidaMaxima = 10000f;
+    }
+
+    private int ResolverOwnerTeamId()
+    {
+        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade == null) identidade = GetComponentInParent<IdentidadeUnidade>();
+        if (identidade != null && identidade.teamID > 0) return identidade.teamID;
+        if (ownerTeamId > 0) return ownerTeamId;
+        return 1;
     }
 
     private void GarantirPontosDeNavegacao()
@@ -146,6 +225,13 @@ public class PlataformaOffshore : MonoBehaviour
 
     void Start()
     {
+        // Plataformas offshore devem compartilhar exatamente o mesmo plano
+        // d'água usado pelos navios. Prefabs antigos vinham com Y de terra e
+        // ficavam visualmente flutuando (ou enterrados) após a construção.
+        Vector3 nivelado = transform.position;
+        nivelado.y = NavalPlacementResolver.ResolveSeaLevel();
+        transform.position = nivelado;
+
         CalcularPotencialDoLocal();
         StartCoroutine(CicloDeProducao());
     }

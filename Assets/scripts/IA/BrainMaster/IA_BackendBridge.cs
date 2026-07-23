@@ -992,6 +992,8 @@ namespace Hegemonia.AI.BrainMaster
             if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
             PierMarinha createdPier = created.GetComponent<PierMarinha>();
             if (createdPier != null) createdPier.OwnerTeamId = _teamId;
+            PlataformaOffshore createdPlatform = created.GetComponent<PlataformaOffshore>();
+            if (createdPlatform != null) createdPlatform.OwnerTeamId = _teamId;
             IA_WorldState.NotifyEntityChanged(created.GetComponent<IdentidadeUnidade>());
             Estaleiro estaleiro = created.GetComponent<Estaleiro>();
             if (estaleiro != null)

@@ -61,6 +61,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -82,6 +84,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -212,6 +215,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -233,6 +238,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -472,7 +478,7 @@ MonoBehaviour:
   raioOrbitaMissao: 350
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
-  altitudeVoo: 120
+  altitudeVoo: 390
   modeloMecanicoVisual: {fileID: 36123138936339233}
   asaBankingMaximo: 45
   arfagemPitchMaxima: 20
@@ -499,7 +505,7 @@ MonoBehaviour:
   rastroTurbinas: []
   luzesTurbina: []
   inerciaAceleracao: 1.5
-  altitudeCruzeiroComercial: 90
+  altitudeCruzeiroComercial: 390
   asaBankingComercial: 25
   arfagemPitchComercial: 12
   somMotorComercial: {fileID: 0}

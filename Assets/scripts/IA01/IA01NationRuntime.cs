@@ -33,6 +33,7 @@ namespace Hegemonia.AI.IA01
         public IA01StrategyArbiter Strategy { get; }
         public IA01BuildDirector BuildDirector { get; }
         public IA01WarDirector WarDirector { get; }
+        public int WarEscalationLevel => WarDirector != null ? WarDirector.EscalationLevel : 0;
         public IA01NationalEconomyDirector NationalEconomy { get; }
         public IA01MilitaryDirector MilitaryDirector { get; }
         public IA01PlanningAdvisor PlanningAdvisor { get; }
@@ -3248,10 +3249,27 @@ namespace Hegemonia.AI.IA01
                     // inclusive sobre um slot preparado de outro layout.
                     if (!lots.TryFindAnchoredLot(definition, anchorPosition, anchorRotation, maxPhysicsChecks, out lot, out reason))
                     {
+                        string motivoFallback = string.Empty;
+                        // O construtor de veículos continua pertencendo à abertura
+                        // da própria IA, mas um create pode cair sobre um collider
+                        // legado ou sobre uma unidade que foi posicionada depois.
+                        // Nesse caso procura um lote próximo da âncora, sem liberar
+                        // a construção para outra região do mapa.
+                        if (intent.Type == IA01IntentType.BuildVehicleConstructor
+                            && lots.TryFindLot(definition, anchorPosition, now, maxCandidates, maxPhysicsChecks, out lot, out motivoFallback))
+                        {
+                            reason = "âncora ocupada; lote local alternativo aprovado: " + lot.Key;
+                            Status = "Construtor de veículos deslocado para lote local da âncora.";
+                        }
+                        else
+                        {
+                            if (intent.Type == IA01IntentType.BuildVehicleConstructor && !string.IsNullOrWhiteSpace(motivoFallback))
+                                reason = reason + " | fallback local: " + motivoFallback;
                         currentConstructionState = IA01ConstructionState.Cooldown;
                         Status = "Create fixo invalido para " + definition.DisplayName + ": " + reason;
                         RecordFailure(intent.Type, attemptKey, now, stateToken, IA01FailureCode.NoValidLot, IA01IntentBlockReason.NoLot, reason);
                         return false;
+                        }
                     }
                 }
                 else if (planSelection != null && planSelection.UsesPreparedSlot)
@@ -4019,6 +4037,16 @@ namespace Hegemonia.AI.IA01
 
         public IA01Campaign Campaign { get; } = new IA01Campaign();
         public string Status { get; private set; } = "Sem alerta de guerra.";
+        public int EscalationLevel
+        {
+            get
+            {
+                float total = 0f;
+                foreach (HostileContact contact in hostileContacts.Values)
+                    if (contact != null) total += contact.Damage;
+                return Mathf.Clamp(Mathf.FloorToInt(total / 500f), 0, 6);
+            }
+        }
 
         public IA01WarDirector(IA01Controller controller, IA01RuntimeContext context, IA01WorldState world, IA01CityPlanner city, IA01MissionDirector missions)
         {
@@ -4252,6 +4280,30 @@ namespace Hegemonia.AI.IA01
 
         private Vector3 ResolveApproach(Vector3 target)
         {
+            // Se o mapa tiver creates de avanço, a guerra usa esses pontos
+            // editáveis antes do fallback de NavMesh. Isso mantém a IA dentro
+            // do corredor planejado pelo criador e evita atacar de coordenada
+            // aleatória ou atravessar estruturas costeiras.
+            IA01WarAdvanceZone[] warZones = UnityEngine.Object.FindObjectsByType<IA01WarAdvanceZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            Vector3 configured = target;
+            float configuredDistance = float.MaxValue;
+            for (int z = 0; z < warZones.Length; z++)
+            {
+                IA01WarAdvanceZone zone = warZones[z];
+                if (zone == null || zone.TeamId != context.TeamId || zone.Tipo == IA01WarAdvanceZone.Dominio.Aereo) continue;
+                for (int p = 0; p < 8; p++)
+                {
+                    Vector3 candidate = zone.ObterPonto(p);
+                    float distance = (candidate - target).sqrMagnitude;
+                    if (distance < configuredDistance)
+                    {
+                        configuredDistance = distance;
+                        configured = candidate;
+                    }
+                }
+            }
+            if (configuredDistance < float.MaxValue) return configured;
+
             Vector3 origin = city.Capital != null ? city.Capital.transform.position : controller.transform.position;
             if (!NavMesh.SamplePosition(origin, out NavMeshHit originHit, 80f, NavMesh.AllAreas)) return target;
             Vector3 best = target;

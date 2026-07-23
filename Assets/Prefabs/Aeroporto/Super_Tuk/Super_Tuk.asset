@@ -15,7 +15,13 @@ MonoBehaviour:
   nomeItem: Super Tuk
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 21300000, guid: 6b20c158a0c4a5b4f86bfd5a0867646c, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
   prefabDaUnidade: {fileID: 4070482625320473334, guid: fdf158167eb94644a929c6718fcc204b, type: 3}
   preco: 100
   categoria: 2
+  escalaPoder: 4
+  strategicRole: 0
+  balanceamento: {fileID: 0}
   scriptsDeComando: []

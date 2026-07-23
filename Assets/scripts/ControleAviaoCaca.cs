@@ -43,6 +43,7 @@ public class ControleAviaoCaca : MonoBehaviour
     private EstadoVoo estadoAtual = EstadoVoo.NoChao;
 
     private float velocidadeAtual = 0f;
+    public float VelocidadeAtual => velocidadeAtual;
     private Vector3 destinoAtual;
     public Vector3 DestinoAtual => destinoAtual;
     private bool temDestino = false;

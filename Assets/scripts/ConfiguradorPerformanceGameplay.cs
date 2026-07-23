@@ -35,7 +35,8 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     }
 
     [Header("Atalho")]
-    [SerializeField] private KeyCode teclaAlternarPerfil = KeyCode.F10;
+    // F10 fica reservado exclusivamente para fechar a ajuda do jogo.
+    [SerializeField] private KeyCode teclaAlternarPerfil = KeyCode.F12;
     [SerializeField] private bool iniciarEmGameplay = true;
 
     [Header("Gameplay")]

@@ -12,11 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: rua reta
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: rua reta
+  nomeItem: Rua reta
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 636174002655611779, guid: 67abdcb30617047418acb93ca5c83eeb, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
+  prefabDaUnidade: {fileID: 936700734265133677, guid: 120d93985f34c6e448b436eb6769cdfc, type: 3}
   preco: 100
   categoria: 4
+  escalaPoder: 3
+  strategicRole: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

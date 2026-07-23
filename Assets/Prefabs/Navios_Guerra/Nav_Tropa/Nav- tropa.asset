@@ -15,8 +15,13 @@ MonoBehaviour:
   nomeItem: Nav_tropa
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 0}
+  itemId: 
+  aliases: 
+  capacidades: 0
   prefabDaUnidade: {fileID: 7010249315367195738, guid: e32b2a5eb4d577647a0429498a1b7da8, type: 3}
   preco: 100
   categoria: 1
+  escalaPoder: 3
+  strategicRole: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

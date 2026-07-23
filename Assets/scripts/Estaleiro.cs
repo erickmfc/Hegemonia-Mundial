@@ -676,6 +676,7 @@ public class Estaleiro : MonoBehaviour
         NavioPetroleiro petroleiro = navioPronto.GetComponent<NavioPetroleiro>();
         if (petroleiro != null)
         {
+            petroleiro.DefinirEquipeOperacao(ownerTeam);
             petroleiro.DefinirSaidaEstaleiro(destinoSaida);
         }
 

@@ -122,10 +122,10 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
-  torpedosDisponiveis: 8
-  alcanceTorpedos: 1200
-  cooldownTorpedo: 5
-  alcanceMisseis: 1300
+  torpedosDisponiveis: 22
+  alcanceTorpedos: 2500
+  cooldownTorpedo: 1
+  alcanceMisseis: 2300
   modoAtual: 0
   intervaloBuscaAutomatica: 2
   estaSubmerso: 1
@@ -135,7 +135,7 @@ MonoBehaviour:
   mostrarCristalSomenteParaJogador: 1
   alturaCristalSobreAgua: 10
   escalaCristal: {x: 1.1, y: 1.1, z: 1.1}
-  corCristal: {r: 0.1, g: 0.95, b: 1, a: 0.92}
+  corCristal: {r: 0.8679245, g: 0.24412589, b: 0.13510147, a: 0.92}
   velocidadeGiroMax: 15
   aceleracao: 1.5
   forcaInclinacao: 3
@@ -222,7 +222,7 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
-  dominioControleAtual: 0
+  dominioControleAtual: 2
   ordemControleAtual: 0
   modoCombateOficialAtivo: 1
   executorControleAtual: NavMeshAgent
@@ -597,6 +597,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -618,6 +620,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -807,6 +810,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -828,6 +833,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0

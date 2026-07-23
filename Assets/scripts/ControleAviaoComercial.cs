@@ -310,6 +310,21 @@ public class ControleAviaoComercial : ControleAviao
         }
     }
 
+    private List<Transform> ObterCorredorAproximacaoComercial()
+    {
+        List<Transform> corredor = new List<Transform>();
+        Transform grupo = aeroportoOrigemComercial != null ? aeroportoOrigemComercial.decida : null;
+        if (grupo == null) return corredor;
+
+        // O grupo "chegando" é a aproximação aérea longa. Ele não é vaga e
+        // nunca deve ser substituído pelo ponto de estacionamento.
+        foreach (Transform ponto in grupo)
+        {
+            if (ponto != null) corredor.Add(ponto);
+        }
+        return corredor;
+    }
+
     protected override IEnumerator SequenciaDeVooEPouso()
     {
         if (aeroportoOrigem == null)
@@ -443,13 +458,17 @@ public class ControleAviaoComercial : ControleAviao
             }
         }
 
-        // Obtém waypoints de descida da pista designada (já na ordem correta: entrada → toque)
+        // Obtém os dois trechos separados: corredor aéreo e pista. A pista é
+        // percorrida do limiar até o ponto de toque; só depois começa o táxi.
         var wpDescidaPista = ObterWaypointsDecida();
+        List<Transform> corredorAproximacao = ObterCorredorAproximacaoComercial();
 
-        if (wpDescidaPista != null && wpDescidaPista.Count > 0)
+        if (wpDescidaPista != null && wpDescidaPista.Count >= 2)
         {
-            // Voa até o ponto mais alto da descida ainda no ar
-            Vector3 wpEntrada = wpDescidaPista[wpDescidaPista.Count - 1].position;
+            Transform primeiroCorredor = corredorAproximacao.Count > 0
+                ? corredorAproximacao[0]
+                : wpDescidaPista[wpDescidaPista.Count - 1];
+            Vector3 wpEntrada = primeiroCorredor.position;
             wpEntrada.y = Mathf.Max(wpEntrada.y, 50f);
             alvoGPSVoo = wpEntrada;
 
@@ -460,18 +479,32 @@ public class ControleAviaoComercial : ControleAviao
                 yield return null;
             }
 
-            // Abaixa rodas e sai do modo de voo físico
+            // A partir daqui o avião está alinhado com o eixo da pista. A
+            // aproximação longa é aérea; o limiar e os demais pontos são solo.
             AbaixarRodas();
             estaEmModoVooFisico = false;
 
-            // Desce pela pista (céu → chão, noChao = false para poder inclinar o nariz)
-            yield return StartCoroutine(SeguirCaminhoComercial(wpDescidaPista, velocidadeSolo * 2.4f, velocidadeSolo, false));
+            if (corredorAproximacao.Count > 0)
+                yield return StartCoroutine(SeguirCaminhoComercial(corredorAproximacao, velocidadeSolo * 2.4f, velocidadeSolo * 2f, false));
+
+            // Último trecho do ar até o limiar da pista.
+            yield return StartCoroutine(MoverInterpoladoComercial(wpDescidaPista[0].position, velocidadeSolo * 2f, false));
+
+            // Toque confirmado: agora o avião só pode se deslocar no plano da
+            // pista, com trem de pouso apoiado, até liberar a faixa.
+            List<Transform> caminhoSolo = new List<Transform>();
+            for (int i = 1; i < wpDescidaPista.Count; i++)
+                if (wpDescidaPista[i] != null) caminhoSolo.Add(wpDescidaPista[i]);
+            if (caminhoSolo.Count > 0)
+                yield return StartCoroutine(SeguirCaminhoComercial(caminhoSolo, velocidadeSolo * 1.35f, velocidadeSolo, true));
         }
         else
         {
-            // Sem waypoints: apenas pousa no local
+            Debug.LogWarning($"[Comercial] {name} sem rota de pouso válida; pouso cancelado para evitar queda em vaga.");
             AbaixarRodas();
             estaEmModoVooFisico = false;
+            Destroy(gameObject);
+            yield break;
         }
 
         estadoAtual = EstadoAviao.RetornandoPraVaga;

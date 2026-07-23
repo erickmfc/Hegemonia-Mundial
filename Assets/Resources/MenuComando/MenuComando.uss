@@ -62,6 +62,22 @@
     font-size: 12px;
 }
 
+.menu-fechar {
+    min-width: 86px;
+    height: 28px;
+    margin-right: 8px;
+    align-self: center;
+    border-width: 1px;
+    border-color: rgb(0, 190, 220);
+    background-color: rgb(10, 45, 60);
+    color: rgb(230, 250, 255);
+    font-size: 11px;
+}
+
+.menu-fechar:hover {
+    background-color: rgb(20, 90, 110);
+}
+
 /* --- PAINEL BASE (rts-panel) --- */
 .rts-panel {
     background-color: rgba(10, 16, 22, 0.88);
@@ -266,11 +282,15 @@
     position: absolute;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 42px;
+    height: 42px;
     /* offset para centralizar */
-    margin-left: -15px;
-    margin-top: -15px;
+    margin-left: -21px;
+    margin-top: -21px;
+}
+
+.mapa-unidade.controlavel .mapa-marcador {
+    border-color: rgb(255, 220, 0);
 }
 
 .mapa-marcador {
@@ -330,6 +350,24 @@
     border-color: rgb(255, 255, 0);
 }
 
+.mapa-label.foco {
+    color: rgb(255, 255, 255);
+    border-color: rgb(255, 255, 255);
+    background-color: rgba(255, 190, 0, 0.45);
+}
+
+.mapa-marcador.selecionado {
+    border-color: rgb(255, 225, 0);
+    color: rgb(255, 225, 0);
+    background-color: rgba(120, 90, 0, 0.72);
+}
+
+.mapa-marcador.foco {
+    border-color: rgb(255, 255, 255);
+    color: rgb(255, 255, 255);
+    background-color: rgba(255, 170, 0, 0.78);
+}
+
 /* Mini barra de HP no mapa */
 .mapa-hp-track {
     position: absolute;
@@ -358,6 +396,15 @@
 
 .mapa-sel-ring.visivel {
     opacity: 1;
+    border-width: 3px;
+    scale: 1.12 1.12;
+}
+
+.ordem-selecionada {
+    border-color: rgb(255, 224, 72);
+    background-color: rgba(255, 190, 0, 0.38);
+    color: rgb(255, 255, 255);
+    scale: 1.03 1.03;
 }
 
 /* --- PAINEL FLIR --- */
@@ -515,6 +562,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.stat-armas-live {
+    white-space: normal;
+    font-size: 9px;
+    padding-top: 1px;
+    padding-bottom: 1px;
 }
 
 .stat-ok { color: rgb(0, 229, 255); }
@@ -684,7 +738,6 @@
     font-size: 10px;
     -unity-font-style: bold;
     letter-spacing: 1px;
-    cursor: link;
     transition-duration: 0.15s;
     transition-property: background-color, border-color;
 }
@@ -773,10 +826,19 @@
 }
 
 /* --- BOTÃO SELECIONAR TUDO (FLUTUANTE NO MAPA) --- */
-.btn-selecionar-tudo {
+.mapa-selecao-barra {
     position: absolute;
-    top: 5px;
-    right: 8px;
+    width: 570px;
+    height: 22px;
+    left: 480px;
+    top: 42px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.btn-selecionar-tudo {
+    position: relative;
+    width: 115px;
     height: 18px;
     padding-left: 6px;
     padding-right: 6px;
@@ -788,7 +850,6 @@
     border-radius: 2px;
     color: rgb(0, 229, 255);
     font-size: 8px;
-    cursor: link;
     transition-duration: 0.12s;
     transition-property: background-color;
 }
@@ -796,6 +857,43 @@
 .btn-selecionar-tudo:hover {
     background-color: rgba(0, 229, 255, 0.25);
     border-color: rgb(0, 229, 255);
+}
+
+.btn-desselecionar-tudo {
+    position: relative;
+    width: 142px;
+    margin-left: 4px;
+    height: 18px;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-top: 0;
+    padding-bottom: 0;
+    background-color: rgba(35, 8, 8, 0.9);
+    border-width: 1px;
+    border-color: rgba(255, 90, 90, 0.55);
+    border-radius: 2px;
+    color: rgb(255, 150, 150);
+    font-size: 8px;
+}
+
+.btn-desselecionar-tudo:hover {
+    background-color: rgba(255, 60, 60, 0.25);
+    border-color: rgb(255, 90, 90);
+    color: rgb(255, 220, 220);
+}
+
+.selecao-resumo {
+    position: relative;
+    flex-grow: 1;
+    min-width: 80px;
+    margin-left: 4px;
+    height: 18px;
+    overflow: hidden;
+    white-space: nowrap;
+    color: rgb(255, 230, 70);
+    font-size: 8px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
 }
 
 /* --- ZOOM SLIDER --- */

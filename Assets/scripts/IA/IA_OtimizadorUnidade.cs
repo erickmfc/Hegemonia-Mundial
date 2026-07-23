@@ -176,9 +176,18 @@ public class IA_OtimizadorUnidade : MonoBehaviour
             _agente.speed = _originalNavSpeed * fatorVelocidade;
 
         // AutoBraking e obstáculo avoidance — reduz custo quando distante
-        _agente.obstacleAvoidanceType = (fatorVelocidade < 0.6f)
-            ? ObstacleAvoidanceType.NoObstacleAvoidance
-            : ObstacleAvoidanceType.LowQualityObstacleAvoidance;
+        // Mantem a evitacao para unidades terrestres mesmo no modo distante.
+        // O modo NoObstacleAvoidance fazia tanques e soldados escorregarem
+        // pelas estruturas ate encontrar uma borda.
+        bool terrestre = _controle != null
+            && !_controle.EhUnidadeNaval()
+            && _controle.DominioAtual != DominioControleUnidade.Aereo;
+        _agente.obstacleAvoidanceType = terrestre
+            ? ObstacleAvoidanceType.LowQualityObstacleAvoidance
+            : ((fatorVelocidade < 0.6f)
+                ? ObstacleAvoidanceType.NoObstacleAvoidance
+                : ObstacleAvoidanceType.LowQualityObstacleAvoidance);
+        _agente.avoidancePriority = terrestre ? 45 : 65;
     }
 
     void AjustarAnimators(bool ligado, float velocidade)

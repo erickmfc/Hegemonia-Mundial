@@ -119,12 +119,16 @@ public static class IA01LocalInfrastructureSetup
             CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área A", new Vector3(120f, 0f, 160f));
             CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área B", new Vector3(-140f, 0f, 220f));
             CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área C", new Vector3(250f, 0f, 300f));
+            CreateWarAdvanceZone(shipyard, "IA01 WarAdvanceZone Naval A", new Vector3(180f, 0f, 220f), IA01WarAdvanceZone.Dominio.Naval);
+            CreateWarAdvanceZone(shipyard, "IA01 WarAdvanceZone Naval B", new Vector3(-220f, 0f, 300f), IA01WarAdvanceZone.Dominio.Naval);
+            CreateExtractionZone(shipyard, "IA01 ExtractionZone Naval", new Vector3(-40f, 0f, 150f));
         }
 
         Transform airport = FindChildRecursive(layout.transform, "IA01 Local - Aeroporto Militar");
         if (airport != null)
         {
             CreateAirPatrolZone(airport, "IA01 Patrulha Aerea - Área Inicial", new Vector3(0f, 0f, 280f));
+            CreateWarAdvanceZone(airport, "IA01 WarAdvanceZone Aerea", new Vector3(0f, 100f, 320f), IA01WarAdvanceZone.Dominio.Aereo);
         }
 
         EditorSceneManager.MarkSceneDirty(layout.gameObject.scene);
@@ -222,6 +226,49 @@ public static class IA01LocalInfrastructureSetup
         }
         if (zone.GetComponent<IA01AirPatrolZone>() == null)
             Undo.AddComponent<IA01AirPatrolZone>(zone.gameObject);
+    }
+
+    private static void CreateWarAdvanceZone(Transform parent, string name, Vector3 localPosition, IA01WarAdvanceZone.Dominio dominio)
+    {
+        Transform zone = parent.Find(name);
+        if (zone == null)
+        {
+            GameObject go = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(go, "Criar zona de avancao de guerra IA01");
+            zone = go.transform;
+            zone.SetParent(parent, false);
+            zone.localPosition = localPosition;
+        }
+        IA01WarAdvanceZone component = zone.GetComponent<IA01WarAdvanceZone>();
+        if (component == null) component = Undo.AddComponent<IA01WarAdvanceZone>(zone.gameObject);
+        SerializedObject so = new SerializedObject(component);
+        so.FindProperty("teamId").intValue = 2;
+        so.FindProperty("dominio").enumValueIndex = (int)dominio;
+        so.FindProperty("raio").floatValue = dominio == IA01WarAdvanceZone.Dominio.Aereo ? 260f : 180f;
+        so.FindProperty("pontos").intValue = 4;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(component);
+    }
+
+    private static void CreateExtractionZone(Transform parent, string name, Vector3 localPosition)
+    {
+        Transform zone = parent.Find(name);
+        if (zone == null)
+        {
+            GameObject go = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(go, "Criar zona de extracao IA01");
+            zone = go.transform;
+            zone.SetParent(parent, false);
+            zone.localPosition = localPosition;
+        }
+        IA01ExtractionZone component = zone.GetComponent<IA01ExtractionZone>();
+        if (component == null) component = Undo.AddComponent<IA01ExtractionZone>(zone.gameObject);
+        SerializedObject so = new SerializedObject(component);
+        so.FindProperty("teamId").intValue = 2;
+        so.FindProperty("raio").floatValue = 80f;
+        so.FindProperty("vagas").intValue = 6;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(component);
     }
 
     private static Transform FindChildRecursive(Transform root, string name)

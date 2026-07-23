@@ -162,7 +162,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a5f4688f1bd4ead479e87e7cc5036db6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tempoQuedaLivre: 0.86
+  tempoQuedaLivre: 0.1
   forcaQuedaAdicional: 2
   aceleracaoBoost: 70
   velocidadeMaxima: 150
@@ -333,7 +333,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tipoUnidade: 3
-  somMotor: {fileID: 0}
+  somMotor: {fileID: 8300000, guid: 37e988d5d952345668084e36b27560aa, type: 3}
   somParado: {fileID: 0}
   somTiro: {fileID: 0}
   somExplosao: {fileID: 0}
@@ -386,7 +386,7 @@ ParticleSystem:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5237207472229078896}
   serializedVersion: 8
-  lengthInSec: 0.67
+  lengthInSec: 0.74
   simulationSpeed: 1
   stopAction: 0
   cullingMode: 0
@@ -461,7 +461,7 @@ ParticleSystem:
     startLifetime:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 1.92
+      scalar: 0.84
       minScalar: 5
       maxCurve:
         serializedVersion: 2
@@ -1010,7 +1010,7 @@ ParticleSystem:
     serializedVersion: 6
     enabled: 1
     type: 4
-    angle: 20.68
+    angle: 2.56
     length: 5
     boxThickness: {x: 0, y: 0, z: 0}
     radiusThickness: 1

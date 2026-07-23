@@ -15,7 +15,13 @@ MonoBehaviour:
   nomeItem: G_18M
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 21300000, guid: 273d5c6167c9cad438346feaf3cad00e, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
   prefabDaUnidade: {fileID: 3555054237250671952, guid: d40741596d3baf7489cdf797e780ba25, type: 3}
   preco: 100
   categoria: 2
+  escalaPoder: 2
+  strategicRole: 0
+  balanceamento: {fileID: 0}
   scriptsDeComando: []

@@ -118,6 +118,32 @@ public class Helicoptero : MonoBehaviour
     private Animation animacaoDecolagem;
     private Transform alvoComandoAtaque;
 
+    // Missao especial pausada durante o retorno para abastecimento. A rota e o
+    // alvo ficam guardados para que o helicoptero volte ao mesmo trabalho depois
+    // de pousar, em vez de ficar estacionado ou perder os pontos de patrulha.
+    private readonly List<Vector3> rotaPatrulhaSalva = new List<Vector3>();
+    private int indicePatrulhaSalva = 0;
+    private bool retomarPatrulhaDepoisDeAbastecer = false;
+    private Transform alvoSeguimentoSalvo;
+    private float distanciaSeguimentoSalva = -1f;
+    private bool retomarSeguimentoDepoisDeAbastecer = false;
+
+    private ControleUnidade ObterControleUnidade()
+    {
+        ControleUnidade controle = GetComponent<ControleUnidade>();
+        if (controle == null) controle = GetComponentInParent<ControleUnidade>();
+        if (controle == null) controle = GetComponentInChildren<ControleUnidade>(true);
+        return controle;
+    }
+
+    private ComportamentoSeguirUniversal ObterComportamentoSeguir()
+    {
+        ComportamentoSeguirUniversal seguir = GetComponent<ComportamentoSeguirUniversal>();
+        if (seguir == null) seguir = GetComponentInParent<ComportamentoSeguirUniversal>();
+        if (seguir == null) seguir = GetComponentInChildren<ComportamentoSeguirUniversal>(true);
+        return seguir;
+    }
+
     // COMPATIBILIDADE EXTERNA
     [HideInInspector] public string nomeHelicoptero = "Falcão Negro"; 
     [HideInInspector] public int custoUpgrade = 800;  
@@ -266,6 +292,21 @@ public class Helicoptero : MonoBehaviour
         alvoComandoAtaque = alvo;
         modoCombateAtivo = true;
         Decolar(alvo != null ? alvo.position : pontoFallback);
+    }
+
+    /// <summary>
+    /// Faz o helicoptero acompanhar uma estrutura ou unidade em movimento.
+    /// O componente universal atualiza a posicao do alvo, portanto nao fica
+    /// preso a uma coordenada antiga.
+    /// </summary>
+    public bool SeguirAlvoMovel(Transform alvo, float distancia = -1f)
+    {
+        if (alvo == null) return false;
+        ControleUnidade controle = ObterControleUnidade();
+        if (controle == null) return false;
+        alvoComandoAtaque = alvo;
+        modoCombateAtivo = true;
+        return controle.EmitirOrdemSeguir(alvo, distancia);
     }
 
     private void AtualizarAlvoComandoAtaque()
@@ -1100,6 +1141,10 @@ public class Helicoptero : MonoBehaviour
             }
             if(soldadosEmbarcados.Count > 0 && desembarcarAutomaticamenteAoPousar && !pousouEmVagaRegistrada) EjetarTodos();
             disponivelParaPatrulha = true; 
+            if (pousouEmVagaRegistrada)
+            {
+                RetomarMissaoDepoisDoReabastecimento();
+            }
         }
 
         // 4. LÓGICA DE PATRULHA
@@ -1565,6 +1610,8 @@ public class Helicoptero : MonoBehaviour
     public bool TemOrigemAeroportoRegistrada() { return aeroportoOrigem != null && vagaOrigemAeroporto != null; }
     public void IniciarPatrulhaAeroporto(List<Vector3> wp)
     {
+        retomarPatrulhaDepoisDeAbastecer = false;
+        rotaPatrulhaSalva.Clear();
         rotaPatrulhaAeroporto.Clear(); indicePatrulhaAeroporto = 0;
         if (wp == null || wp.Count == 0) { missaoAtualAeroporto = 0; return; }
         for (int i = 0; i < wp.Count; i++) { Vector3 ponto = AjustarDestinoParaVoo(wp[i]); rotaPatrulhaAeroporto.Add(ponto); }
@@ -1700,9 +1747,65 @@ public class Helicoptero : MonoBehaviour
         if (vaga == null) return;
         FinalizarPosicionamentoNaVagaAeroporto(vaga);
     }
-    
+
+    private void SalvarMissaoAntesDoReabastecimento()
+    {
+        retomarPatrulhaDepoisDeAbastecer = missaoAtualAeroporto == 3 && rotaPatrulhaAeroporto.Count > 1;
+        if (retomarPatrulhaDepoisDeAbastecer)
+        {
+            rotaPatrulhaSalva.Clear();
+            rotaPatrulhaSalva.AddRange(rotaPatrulhaAeroporto);
+            indicePatrulhaSalva = Mathf.Clamp(indicePatrulhaAeroporto, 0, rotaPatrulhaSalva.Count - 1);
+            Debug.Log($"[Helicoptero] Missao de patrulha salva para reabastecimento: {name} pontos={rotaPatrulhaSalva.Count} indice={indicePatrulhaSalva}");
+        }
+
+        ComportamentoSeguirUniversal seguir = ObterComportamentoSeguir();
+        retomarSeguimentoDepoisDeAbastecer = seguir != null && seguir.enabled && seguir.AlvoSeguido != null;
+        if (retomarSeguimentoDepoisDeAbastecer)
+        {
+            alvoSeguimentoSalvo = seguir.AlvoSeguido;
+            distanciaSeguimentoSalva = -1f;
+            seguir.enabled = false;
+            Debug.Log($"[Helicoptero] Seguimento salvo para reabastecimento: {name} alvo={alvoSeguimentoSalvo.name}");
+        }
+    }
+
+    private void RetomarMissaoDepoisDoReabastecimento()
+    {
+        if (retomarSeguimentoDepoisDeAbastecer && alvoSeguimentoSalvo != null && alvoSeguimentoSalvo.gameObject.activeInHierarchy)
+        {
+            ControleUnidade controle = ObterControleUnidade();
+            if (controle != null)
+            {
+                ComportamentoSeguirUniversal seguir = ObterComportamentoSeguir();
+                if (seguir == null) seguir = gameObject.AddComponent<ComportamentoSeguirUniversal>();
+                seguir.enabled = true;
+                seguir.Configurar(alvoSeguimentoSalvo, distanciaSeguimentoSalva);
+                controle.DefinirAlvoPrioritario(alvoSeguimentoSalvo);
+                controle.DefinirModoCombate(modoCombateAtivo);
+                Debug.Log($"[Helicoptero] Seguimento retomado apos reabastecimento: {name} alvo={alvoSeguimentoSalvo.name}");
+            }
+        }
+        else if (retomarPatrulhaDepoisDeAbastecer && rotaPatrulhaSalva.Count > 1)
+        {
+            List<Vector3> rota = new List<Vector3>(rotaPatrulhaSalva.Count);
+            for (int i = 0; i < rotaPatrulhaSalva.Count; i++)
+            {
+                rota.Add(rotaPatrulhaSalva[(indicePatrulhaSalva + i) % rotaPatrulhaSalva.Count]);
+            }
+            IniciarPatrulhaAeroporto(rota);
+            Debug.Log($"[Helicoptero] Patrulha retomada apos reabastecimento: {name} pontos={rota.Count}");
+        }
+
+        retomarPatrulhaDepoisDeAbastecer = false;
+        retomarSeguimentoDepoisDeAbastecer = false;
+        alvoSeguimentoSalvo = null;
+        rotaPatrulhaSalva.Clear();
+    }
+
     public void RetornarParaVagaAeroporto()
     {
+        SalvarMissaoAntesDoReabastecimento();
         Transform vagaRetorno = vagaOrigemAeroporto != null ? vagaOrigemAeroporto : vagaAeroporto;
         if (vagaRetorno != null)
         {

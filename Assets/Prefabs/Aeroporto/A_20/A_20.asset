@@ -15,7 +15,13 @@ MonoBehaviour:
   nomeItem: A_20
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 21300000, guid: 71b1146f9e689f742abd3caa1cd3c1d2, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
   prefabDaUnidade: {fileID: 5856478735962788406, guid: a4c29bcc0b486ef44bd8a4b7e2f29c82, type: 3}
   preco: 100
   categoria: 2
+  escalaPoder: 3
+  strategicRole: 0
+  balanceamento: {fileID: 0}
   scriptsDeComando: []

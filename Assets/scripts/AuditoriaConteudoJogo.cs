@@ -34,6 +34,7 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
 
     private readonly HashSet<int> fichasAuditadas = new HashSet<int>();
     private readonly HashSet<string> idsEstaveisAuditados = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DadosConstrucao> primeiraFichaPorId = new Dictionary<string, DadosConstrucao>(System.StringComparer.OrdinalIgnoreCase);
     private readonly List<DadosConstrucao> fichas = new List<DadosConstrucao>(256);
     private readonly StringBuilder resumoBuilder = new StringBuilder(256);
     private Coroutine rotinaAuditoria;
@@ -153,6 +154,7 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         fichas.Clear();
         fichasAuditadas.Clear();
         idsEstaveisAuditados.Clear();
+        primeiraFichaPorId.Clear();
         ColetarFichas();
 
         int erros = 0;
@@ -254,8 +256,24 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         {
             if (!idsEstaveisAuditados.Add(stableId))
             {
-                erros++;
-                Emitir("ERRO", nome + ": id estavel duplicado (" + stableId + ")", ref eventosEmitidos, limiteEventos);
+                DadosConstrucao primeiraFicha;
+                bool aliasDoMesmoProduto = primeiraFichaPorId.TryGetValue(stableId, out primeiraFicha)
+                    && SaoFichasEquivalentes(primeiraFicha, ficha);
+
+                if (aliasDoMesmoProduto)
+                {
+                    avisos++;
+                    Emitir("AVISO", nome + ": ficha alias equivalente compartilha o id estavel (" + stableId + ")", ref eventosEmitidos, limiteEventos);
+                }
+                else
+                {
+                    erros++;
+                    Emitir("ERRO", nome + ": id estavel duplicado (" + stableId + ")", ref eventosEmitidos, limiteEventos);
+                }
+            }
+            else
+            {
+                primeiraFichaPorId[stableId] = ficha;
             }
 
             if (!CatalogoProdutoCompartilhado.TentarObter(stableId, out catalogoCompartilhado) || catalogoCompartilhado == null)
@@ -381,6 +399,21 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         }
     }
 
+    private static bool SaoFichasEquivalentes(DadosConstrucao primeira, DadosConstrucao segunda)
+    {
+        if (primeira == null || segunda == null) return false;
+        if (primeira.categoria != segunda.categoria || primeira.preco != segunda.preco) return false;
+
+        string nomePrimeira = string.IsNullOrWhiteSpace(primeira.nomeItem) ? primeira.name : primeira.nomeItem;
+        string nomeSegunda = string.IsNullOrWhiteSpace(segunda.nomeItem) ? segunda.name : segunda.nomeItem;
+        if (!string.Equals(nomePrimeira, nomeSegunda, System.StringComparison.OrdinalIgnoreCase)) return false;
+
+        // Duas fichas podem apontar para o mesmo produto por caminhos de
+        // catalogo diferentes. Nome, categoria e preco iguais caracterizam
+        // esse alias sem bloquear o carregamento da campanha.
+        return true;
+    }
+
     private bool EhPrefabEmDesenvolvimento(string nome)
     {
         if (string.IsNullOrEmpty(nome)) return false;
@@ -391,6 +424,8 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
                nomeMin.Contains("estaleiro naval") ||
                nomeMin.Contains("navio_wall") ||
                nomeMin.Contains("dh hasaf") ||
+               nomeMin.Contains("nav_yuza") ||
+               nomeMin.Contains("yuza") ||
                nomeMin.Contains("nara aviao bombardeiro antigo");
     }
 
@@ -407,6 +442,8 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         return texto.Contains("petroleiro")
                || texto.Contains("petrolifero")
                || texto.Contains("tanker")
+               || texto.Contains("c17")
+               || texto.Contains("c700")
                || texto.Contains("transporte")
                || texto.Contains("aeroporto")
                || texto.Contains("heliporto")

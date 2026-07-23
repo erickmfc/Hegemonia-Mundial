@@ -411,8 +411,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 1200
-  vidaAtual: 1200
+  vidaMaxima: 1500
+  vidaAtual: 1500
   unidadeBiologica: 0
   ehEstrutura: 0
   prefabDestrocos: {fileID: 0}
@@ -728,6 +728,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 0}
     - target: {fileID: 6600696461855498824, guid: 667f590199d7e624981a0ffb1d770a33, type: 3}
+      propertyPath: limitarRotacao
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6600696461855498824, guid: 667f590199d7e624981a0ffb1d770a33, type: 3}
       propertyPath: forcaRecuoDisparo
       value: 0.02
       objectReference: {fileID: 0}
@@ -1040,6 +1044,10 @@ PrefabInstance:
       propertyPath: municaoPrefab
       value: 
       objectReference: {fileID: 5864298406509392469, guid: ed8f0d5525bd8b045bdb2ffb83514f53, type: 3}
+    - target: {fileID: 6600696461855498824, guid: 667f590199d7e624981a0ffb1d770a33, type: 3}
+      propertyPath: limitarRotacao
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6600696461855498824, guid: 667f590199d7e624981a0ffb1d770a33, type: 3}
       propertyPath: forcaRecuoDisparo
       value: 0.02

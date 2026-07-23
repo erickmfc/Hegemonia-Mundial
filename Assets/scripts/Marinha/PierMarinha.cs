@@ -85,6 +85,41 @@ public class PierMarinha : MonoBehaviour
     private NavioPetroleiro _petroleiroOcupanteLogistica;
     private float _reservaPetroleiroAte;
 
+    [Header("Fila de descarga")]
+    [Tooltip("Quantidade de petroleiros que podem aguardar a descarga neste pier.")]
+    [SerializeField] private int capacidadeFilaLogistica = 8;
+    [System.NonSerialized] private readonly List<NavioPetroleiro> _filaLogistica = new List<NavioPetroleiro>(8);
+
+    public int PetroleirosNaFilaLogistica
+    {
+        get { LimparFilaLogistica(); return _filaLogistica.Count; }
+    }
+
+    public bool PodeReceberLogistica(NavioPetroleiro petroleiro)
+    {
+        LimparFilaLogistica();
+        if (petroleiro == null) return false;
+        if (_filaLogistica.Contains(petroleiro) || _petroleiroOcupanteLogistica == petroleiro) return true;
+        return _filaLogistica.Count < Mathf.Max(1, capacidadeFilaLogistica);
+    }
+
+    public bool EhOcupanteLogistica(NavioPetroleiro petroleiro)
+    {
+        return petroleiro != null && _petroleiroOcupanteLogistica == petroleiro;
+    }
+
+    private void LimparFilaLogistica()
+    {
+        for (int i = _filaLogistica.Count - 1; i >= 0; i--)
+        {
+            NavioPetroleiro navio = _filaLogistica[i];
+            if (navio == null || !navio.gameObject.activeInHierarchy)
+                _filaLogistica.RemoveAt(i);
+        }
+        if (_petroleiroReservado == null || !_filaLogistica.Contains(_petroleiroReservado))
+            _petroleiroReservado = _filaLogistica.Count > 0 ? _filaLogistica[0] : null;
+    }
+
     public void TentarOcupar()
     {
         ocupada = true;
@@ -92,10 +127,14 @@ public class PierMarinha : MonoBehaviour
 
     public bool TentarOcuparLogistica(NavioPetroleiro petroleiro)
     {
+        LimparFilaLogistica();
         if (petroleiro == null || (_petroleiroOcupanteLogistica != null && _petroleiroOcupanteLogistica != petroleiro))
         {
             return false;
         }
+
+        if (_filaLogistica.Count > 0 && _filaLogistica[0] != petroleiro)
+            return false;
 
         _petroleiroOcupanteLogistica = petroleiro;
         ocupada = true;
@@ -114,44 +153,31 @@ public class PierMarinha : MonoBehaviour
             _petroleiroOcupanteLogistica = null;
             ocupada = false;
         }
+        LimparFilaLogistica();
     }
 
     public bool EstaReservadoPorOutro(NavioPetroleiro petroleiro)
     {
-        if (_petroleiroReservado == null || _petroleiroReservado == petroleiro)
-        {
-            return false;
-        }
-
-        if (Time.time > _reservaPetroleiroAte)
-        {
-            _petroleiroReservado = null;
-            _reservaPetroleiroAte = 0f;
-            return false;
-        }
-
-        return true;
+        LimparFilaLogistica();
+        if (_petroleiroReservado == null || _petroleiroReservado == petroleiro) return false;
+        return Time.time <= _reservaPetroleiroAte && !PodeReceberLogistica(petroleiro);
     }
 
     public bool TentarReservarLogistica(NavioPetroleiro petroleiro, float duracaoSegundos = 90f)
     {
-        if (petroleiro == null || EstaReservadoPorOutro(petroleiro))
-        {
-            return false;
-        }
-
-        _petroleiroReservado = petroleiro;
+        LimparFilaLogistica();
+        if (!PodeReceberLogistica(petroleiro)) return false;
+        if (!_filaLogistica.Contains(petroleiro)) _filaLogistica.Add(petroleiro);
+        _petroleiroReservado = _filaLogistica[0];
         _reservaPetroleiroAte = Time.time + Mathf.Max(5f, duracaoSegundos);
         return true;
     }
 
     public void LiberarReservaLogistica(NavioPetroleiro petroleiro)
     {
-        if (_petroleiroReservado == petroleiro)
-        {
-            _petroleiroReservado = null;
-            _reservaPetroleiroAte = 0f;
-        }
+        if (petroleiro != null) _filaLogistica.Remove(petroleiro);
+        LimparFilaLogistica();
+        _reservaPetroleiroAte = _petroleiroReservado != null ? Time.time + 90f : 0f;
     }
 
     public void ReceberPetroleo(int quantidade)
@@ -193,7 +219,13 @@ public class PierMarinha : MonoBehaviour
 
     void Awake()
     {
-        // Pontos do Petroleiro removidos conforme solicitado
+        // Piers também são alvos destrutíveis. Prefabs antigos não trazem o
+        // componente na raiz, então garantimos uma vida única para que o dano
+        // aplicado aos colliders filhos chegue ao dono correto.
+        SistemaDeDanos danos = GetComponent<SistemaDeDanos>();
+        if (danos == null) danos = gameObject.AddComponent<SistemaDeDanos>();
+        danos.ehEstrutura = true;
+        if (danos.vidaMaxima < 1000f) danos.vidaMaxima = 15000f;
     }
 
     void OnEnable()
@@ -896,6 +928,12 @@ public class PierMarinha : MonoBehaviour
         if (idNavio != null)
         {
             idNavio.tipoUnidade = TipoUnidade.Naval;
+        }
+
+        NavioPetroleiro petroleiroCriado = novoNavio.GetComponent<NavioPetroleiro>();
+        if (petroleiroCriado != null)
+        {
+            petroleiroCriado.DefinirEquipeOperacao(Mathf.Max(1, OwnerTeamId));
         }
 
         IdentidadeNaval idNaval = novoNavio.GetComponent<IdentidadeNaval>();

@@ -39,6 +39,10 @@ public class NavioPetroleiro : ControleUnidade
     // Componentes
     private NavMeshAgent agenteNav;
     private IdentidadeUnidade identidadeCache;
+    // A equipe de operação é definida pelo estaleiro/píer no momento do
+    // nascimento. Não deve ser inferida novamente por controladores depois,
+    // pois isso fazia o petroleiro do jogador entrar na logística da IA.
+    private int equipeOperacaoFixa;
     private float timerEstado = 0f;
     private Vector3 destinoNavMeshAtual;
     private bool possuiDestinoNavMesh;
@@ -87,6 +91,23 @@ public class NavioPetroleiro : ControleUnidade
         pontoDeSaidaEstaleiro = pontoSaida;
     }
 
+    public void DefinirEquipeOperacao(int teamId)
+    {
+        equipeOperacaoFixa = Mathf.Max(1, teamId);
+        if (identidadeCache == null)
+        {
+            identidadeCache = GetComponent<IdentidadeUnidade>() ?? GetComponentInParent<IdentidadeUnidade>();
+        }
+
+        if (identidadeCache == null)
+        {
+            identidadeCache = gameObject.AddComponent<IdentidadeUnidade>();
+        }
+
+        identidadeCache.teamID = equipeOperacaoFixa;
+        identidadeCache.tipoUnidade = TipoUnidade.Naval;
+    }
+
     void Update()
     {
         // Máquina de Estados
@@ -119,6 +140,12 @@ public class NavioPetroleiro : ControleUnidade
                 break;
 
             case EstadoPetroleiro.ACOPLANDO_PLATAFORMA:
+                if (plataformaAlvo != null && !plataformaAlvo.EhOcupante(this)
+                    && !plataformaAlvo.TentarOcupar(this))
+                {
+                    statusDebug = "Fila da plataforma: aguardando vaga livre.";
+                    return;
+                }
                 if(plataformaAlvo != null) 
                     ExecutarAcoplagemManual(plataformaAlvo.pontoAbastecer, EstadoPetroleiro.CARREGANDO);
                 break;
@@ -137,6 +164,12 @@ public class NavioPetroleiro : ControleUnidade
                 break;
 
             case EstadoPetroleiro.ACOPLANDO_PIER:
+                if (pierAlvo != null && !pierAlvo.EhOcupanteLogistica(this)
+                    && !pierAlvo.TentarOcuparLogistica(this))
+                {
+                    statusDebug = "Fila do pier: aguardando vaga livre.";
+                    return;
+                }
                 if(pierAlvo != null)
                     ExecutarAcoplagemManual(pierAlvo.Atraca_petro, EstadoPetroleiro.DESCARREGANDO);
                 break;
@@ -316,9 +349,14 @@ public class NavioPetroleiro : ControleUnidade
             new Vector2(transform.position.x, transform.position.z),
             new Vector2(destino.x, destino.z));
 
-        if (distH < 2.5f || timerEstado > 30.0f)
+        if (distH < 2.5f)
         {
             MudarEstado(EstadoPetroleiro.INDO_PLATAFORMA);
+        }
+        else if (timerEstado > 45.0f)
+        {
+            Debug.LogWarning($"[Navio Petroleiro] Recuo do pier ainda distante ({distH:0.0} m); mantendo rota de ré.", this);
+            timerEstado = 0f;
         }
     }
 
@@ -442,10 +480,22 @@ public class NavioPetroleiro : ControleUnidade
 
         timerEstado += Time.deltaTime; 
 
-        float dist = Vector3.Distance(transform.position, alvo.position);
-        
         Vector3 destino = alvo.position;
         destino.y = transform.position.y;
+        // A atracação acontece no plano da água. Não conte a altura do
+        // marcador azul (que pode estar no deck da plataforma/pier), senão
+        // o navio chega horizontalmente mas nunca conclui a etapa.
+        float dist = Vector3.Distance(transform.position, destino);
+
+        // Conclui a vaga azul antes do alinhamento fino da proa. Sem isso,
+        // um casco a poucos metros podia ficar preso tentando girar.
+        if (dist <= 3.5f)
+        {
+            transform.position = destino;
+            transform.rotation = Quaternion.Euler(0, alvo.rotation.eulerAngles.y, 0);
+            MudarEstado(proximo);
+            return;
+        }
 
         Vector3 dirInicial = destino - transform.position;
         dirInicial.y = 0f;
@@ -493,17 +543,15 @@ public class NavioPetroleiro : ControleUnidade
         Debug.DrawLine(transform.position, destino, Color.cyan);
 
         // Condição de chegada ou Timeout de segurança (40s para garantir que não teletransporta visualmente)
-        if (dist < 0.8f || timerEstado > 40.0f) 
+        // Conclui somente ao chegar ao ponto azul. Nunca troca de alvo por
+        // timeout distante, pois isso misturava pier/plataforma entre equipes.
+        // O ponto azul marca a vaga, não o pivô exato do casco. Uma pequena
+        // tolerância horizontal evita que colisores/boias deixem o navio
+        // eternamente em aproximação quando já está dentro da vaga.
+        if (timerEstado > 60.0f)
         {
-            if(timerEstado > 40.0f) Debug.LogWarning("[Navio] Timeout Acoplagem! Forçando transição.");
-            
-            // Snap final apenas se estiver perto o suficiente para não "pular" na tela
-            if(dist < 5.0f) {
-                transform.position = destino;
-                transform.rotation = Quaternion.Euler(0, alvo.rotation.eulerAngles.y, 0);
-            }
-            
-            MudarEstado(proximo);
+            Debug.LogWarning($"[Navio Petroleiro] Atracagem ainda distante ({dist:0.0} m); mantendo aproximação ao ponto azul.", this);
+            timerEstado = 0f;
         }
     }
 
@@ -527,11 +575,17 @@ public class NavioPetroleiro : ControleUnidade
 
          float distH = Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(alvoSaida.position.x, alvoSaida.position.z));
 
-         // Tolerância maior na saída
-         if (distH < 2.5f || timerEstado > 20.0f) 
-         {
-             MudarEstado(proximo);
-         }
+        // A saída também precisa alcançar o ponto azul; não encerra a etapa
+        // apenas porque passou tempo suficiente.
+        if (distH < 2.5f)
+        {
+            MudarEstado(proximo);
+        }
+        else if (timerEstado > 45.0f)
+        {
+            Debug.LogWarning($"[Navio Petroleiro] Saída ainda distante ({distH:0.0} m); mantendo a rota.", this);
+            timerEstado = 0f;
+        }
     }
 
     void ExecutarOperacaoLogistica(bool carregando, EstadoPetroleiro proximo)
@@ -688,6 +742,11 @@ public class NavioPetroleiro : ControleUnidade
                 }
             }
 
+            if (equipeOperacaoFixa > 0)
+            {
+                return equipeOperacaoFixa;
+            }
+
             return identidadeCache != null && identidadeCache.teamID > 0
                 ? identidadeCache.teamID
                 : RecursosPorTime.ObterTeamId(this);
@@ -755,12 +814,7 @@ public class NavioPetroleiro : ControleUnidade
                 continue;
             }
 
-            if (plataforma.ocupada && plataforma != plataformaAlvo)
-            {
-                continue;
-            }
-
-            if (plataforma.EstaReservadaPorOutro(this))
+            if (!plataforma.PodeReceberPetroleiro(this))
             {
                 continue;
             }
@@ -804,12 +858,7 @@ public class NavioPetroleiro : ControleUnidade
                 continue;
             }
 
-            if (pier.ocupada && pier != pierAlvo)
-            {
-                continue;
-            }
-
-            if (pier.EstaReservadoPorOutro(this))
+            if (!pier.PodeReceberLogistica(this))
             {
                 continue;
             }

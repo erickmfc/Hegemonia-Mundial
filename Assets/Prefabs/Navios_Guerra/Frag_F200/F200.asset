@@ -15,8 +15,13 @@ MonoBehaviour:
   nomeItem: F200
   descricao: Fragata tecnologica
   icone: {fileID: 21300000, guid: d5e141f0c5f671847acfbc349b87b8c1, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
   prefabDaUnidade: {fileID: 5443981862646916581, guid: 5b7a0b939d2128d4295d009ab13ccb17, type: 3}
   preco: 100
   categoria: 1
+  escalaPoder: 1
+  strategicRole: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

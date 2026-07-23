@@ -404,7 +404,10 @@ public class SistemaGovernoMundial : MonoBehaviour
                 else if (cargaFiscalFel > 18f)
                     deltaFelicidade -= (cargaFiscalFel - 18f) * 0.05f;
                 else
-                    deltaFelicidade += 0.1f; // Impostos baixos
+                    // Reduzir impostos melhora perceptivelmente o poder de
+                    // compra e a satisfação; o efeito ainda é gradual para
+                    // não transformar um clique em 100% de felicidade.
+                    deltaFelicidade += 0.25f + Mathf.Clamp01((18f - cargaFiscalFel) / 18f) * 0.20f;
 
                 // --- 7. QUALIDADE DE VIDA / IDH (Peso 5%) ---
                 if (pais.qualidadeVida > 75f)

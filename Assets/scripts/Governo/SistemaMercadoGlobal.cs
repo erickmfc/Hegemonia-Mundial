@@ -287,6 +287,12 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return false;
         }
 
+        if (ComercioBloqueadoPorGuerra(compradorTeamId, vendedorTeamId, comprador, vendedor))
+        {
+            mensagem = "Comercio bloqueado: " + comprador.nomePais + " esta em guerra com " + vendedor.nomePais + ".";
+            return false;
+        }
+
         if (!governo.TentarPagar(compradorTeamId, total))
         {
             mensagem = "Dinheiro insuficiente.";
@@ -341,6 +347,14 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return false;
         }
 
+        DadosPaisGoverno vendedorPais = governo.ObterPais(vendedorTeamId);
+        DadosPaisGoverno compradorPais = governo.ObterPais(compradorTeamId);
+        if (ComercioBloqueadoPorGuerra(vendedorTeamId, compradorTeamId, vendedorPais, compradorPais))
+        {
+            mensagem = "Comercio bloqueado: " + vendedorPais.nomePais + " esta em guerra com " + compradorPais.nomePais + ".";
+            return false;
+        }
+
         string recursoId = ObterRecursoIdEfetivo(item);
         int disponivel = governo.ObterEstoque(vendedorTeamId, recursoId);
         quantidade = Mathf.Min(quantidade, disponivel);
@@ -381,6 +395,23 @@ public class SistemaMercadoGlobal : MonoBehaviour
         RegistrarTransacao(transacao);
         mensagem = transacao.mensagem;
         return true;
+    }
+
+    public bool ComercioBloqueadoPorGuerra(int origemTeamId, int destinoTeamId)
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null) return false;
+        return ComercioBloqueadoPorGuerra(origemTeamId, destinoTeamId,
+            governo.ObterPais(origemTeamId), governo.ObterPais(destinoTeamId));
+    }
+
+    private bool ComercioBloqueadoPorGuerra(int origemTeamId, int destinoTeamId, DadosPaisGoverno origem, DadosPaisGoverno destino)
+    {
+        if (origem == null || destino == null || origemTeamId == destinoTeamId) return false;
+        RelacaoPaisGoverno relacao = SistemaGovernoMundial.Instancia.ObterRelacao(origemTeamId, destinoTeamId);
+        return relacao != null && (relacao.guerraDeclarada
+            || (origem.emGuerra && origem.rivalTeamId == destinoTeamId)
+            || (destino.emGuerra && destino.rivalTeamId == origemTeamId));
     }
 
     /// <summary>

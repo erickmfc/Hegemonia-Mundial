@@ -15,7 +15,13 @@ MonoBehaviour:
   nomeItem: Corveta sam
   descricao: "Descri\xE7\xE3o curta..."
   icone: {fileID: 21300000, guid: 714438dbd2495fb41ab35a77dee33fde, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
   prefabDaUnidade: {fileID: 1839352793183847460, guid: fd4134640fb717f46b44e2c904f79437, type: 3}
   preco: 200
   categoria: 1
+  escalaPoder: 3
+  strategicRole: 0
+  balanceamento: {fileID: 0}
   scriptsDeComando: []

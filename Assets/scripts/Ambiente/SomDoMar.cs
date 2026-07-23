@@ -61,6 +61,10 @@ public sealed class SomDoMar : MonoBehaviour
     private void GarantirReproducao()
     {
         if (fonte == null) return;
+        // Uma fonte pode ficar desabilitada quando o objeto de ambiente é
+        // desativado por uma cena/painel. Play() nesse estado gera spam no
+        // console e não produz som; aguarde o próximo OnEnable.
+        if (!fonte.enabled || !fonte.gameObject.activeInHierarchy) return;
         if (fonte.clip == null && clipeDoMar != null) fonte.clip = clipeDoMar;
         if (tocarAutomaticamente && fonte.clip != null && !fonte.isPlaying) fonte.Play();
     }

@@ -8,7 +8,7 @@ public sealed class HUDAjudaRTS : MonoBehaviour
 {
     public static HUDAjudaRTS Instancia { get; private set; }
 
-    [SerializeField] private KeyCode teclaAlternar = KeyCode.F1;
+    [SerializeField] private KeyCode teclaAlternar = KeyCode.F10;
     [SerializeField] private float duracaoToastPadrao = 3.5f;
 
     private Font fontePadrao;
@@ -21,10 +21,13 @@ public sealed class HUDAjudaRTS : MonoBehaviour
     private Text textoAtalhos;
     private Text textoRuntime;
     private Text textoToast;
+    private RectTransform painelToast;
     private bool expandido = true;
     private float recolherAutomaticamenteEm = -1f;
     private float toastAte = -1f;
     private Coroutine animacaoToast;
+    private static string mensagemPendente;
+    private static float duracaoMensagemPendente;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -64,6 +67,14 @@ public sealed class HUDAjudaRTS : MonoBehaviour
         ConstruirInterface();
         AtualizarVisibilidadePainel(true);
         recolherAutomaticamenteEm = Time.unscaledTime + 12f;
+        if (!string.IsNullOrWhiteSpace(mensagemPendente))
+        {
+            string mensagem = mensagemPendente;
+            float duracao = duracaoMensagemPendente > 0f ? duracaoMensagemPendente : duracaoToastPadrao;
+            mensagemPendente = null;
+            duracaoMensagemPendente = 0f;
+            ExibirMensagem(mensagem, duracao);
+        }
     }
 
     private void OnDestroy()
@@ -76,9 +87,26 @@ public sealed class HUDAjudaRTS : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(teclaAlternar))
+        // F10 sempre fecha o card. F1 alterna entre o card completo e a ajuda
+        // rápida, sem deixar o atalho de fechar abrir a ajuda novamente.
+        if (Input.GetKeyDown(KeyCode.F10))
         {
+            expandido = false;
+            recolherAutomaticamenteEm = -1f;
+            if (painel != null) painel.gameObject.SetActive(false);
+            AtualizarVisibilidadePainel(false);
+        }
+        else if (Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(teclaAlternar))
+        {
+            if (painel != null && !painel.gameObject.activeSelf)
+            {
+                painel.gameObject.SetActive(true);
+                expandido = true;
+            }
+            else
+            {
             expandido = !expandido;
+            }
             if (expandido)
             {
                 recolherAutomaticamenteEm = -1f;
@@ -107,21 +135,39 @@ public sealed class HUDAjudaRTS : MonoBehaviour
         {
             bool toastAtivo = Time.unscaledTime <= toastAte;
             textoToast.gameObject.SetActive(toastAtivo);
+            if (painelToast != null) painelToast.gameObject.SetActive(toastAtivo);
         }
     }
 
     public static void MostrarMensagemTemporaria(string mensagem, float duracao = -1f)
     {
-        if (Instancia == null || string.IsNullOrWhiteSpace(mensagem))
+        if (string.IsNullOrWhiteSpace(mensagem))
         {
             return;
         }
 
-        Instancia.textoToast.text = mensagem.Trim();
-        Instancia.toastAte = Time.unscaledTime + (duracao > 0f ? duracao : Instancia.duracaoToastPadrao);
-        
-        if (Instancia.animacaoToast != null) Instancia.StopCoroutine(Instancia.animacaoToast);
-        Instancia.animacaoToast = Instancia.StartCoroutine(Instancia.AnimarToastErro());
+        float duracaoFinal = duracao > 0f ? duracao : 3.5f;
+        if (Instancia == null)
+        {
+            mensagemPendente = mensagem.Trim();
+            duracaoMensagemPendente = duracaoFinal;
+            if (!ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            {
+                new GameObject("HUDAjudaRTS_Aviso").AddComponent<HUDAjudaRTS>();
+            }
+            return;
+        }
+
+        Instancia.ExibirMensagem(mensagem, duracaoFinal);
+    }
+
+    private void ExibirMensagem(string mensagem, float duracao)
+    {
+        textoToast.text = mensagem.Trim();
+        toastAte = Time.unscaledTime + duracao;
+        if (painelToast != null) painelToast.gameObject.SetActive(true);
+        if (animacaoToast != null) StopCoroutine(animacaoToast);
+        animacaoToast = StartCoroutine(AnimarToastErro());
     }
 
     private System.Collections.IEnumerator AnimarToastErro()
@@ -239,7 +285,8 @@ public sealed class HUDAjudaRTS : MonoBehaviour
         }
 
         textoAtalhos.gameObject.SetActive(expandido);
-        painel.sizeDelta = expandido ? new Vector2(500f, 240f) : new Vector2(500f, 128f);
+        if (painel != null && !painel.gameObject.activeSelf) return;
+        painel.sizeDelta = expandido ? new Vector2(500f, 300f) : new Vector2(500f, 154f);
 
         if (imediato && grupoCanvas != null)
         {
@@ -252,7 +299,7 @@ public sealed class HUDAjudaRTS : MonoBehaviour
         canvas = new GameObject("Canvas_AjudaRTS").AddComponent<Canvas>();
         canvas.transform.SetParent(transform, false);
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 7200;
+        canvas.sortingOrder = 30000;
         canvas.overrideSorting = true;
 
         CanvasScaler scaler = canvas.gameObject.AddComponent<CanvasScaler>();
@@ -271,12 +318,17 @@ public sealed class HUDAjudaRTS : MonoBehaviour
         outline.effectDistance = new Vector2(1f, -1f);
 
         textoCabecalho = CriarTexto("Cabecalho", painel, "COMANDO TATICO", 20, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.86f, 0.98f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -14f), new Vector2(-36f, 28f));
-        textoObjetivo = CriarTexto("Objetivo", painel, string.Empty, 13, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.72f, 0.9f, 0.98f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -48f), new Vector2(-36f, 34f));
-        textoSelecao = CriarTexto("Selecao", painel, string.Empty, 13, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.94f, 0.98f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -90f), new Vector2(-36f, 28f));
-        textoAtalhos = CriarTexto("Atalhos", painel, string.Empty, 12, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.78f, 0.88f, 0.93f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -122f), new Vector2(-36f, 84f));
+        textoObjetivo = CriarTexto("Objetivo", painel, string.Empty, 13, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.72f, 0.9f, 0.98f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -50f), new Vector2(-36f, 48f));
+        textoSelecao = CriarTexto("Selecao", painel, string.Empty, 13, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.94f, 0.98f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -106f), new Vector2(-36f, 34f));
+        textoAtalhos = CriarTexto("Atalhos", painel, string.Empty, 12, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.78f, 0.88f, 0.93f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -148f), new Vector2(-36f, 108f));
         textoRuntime = CriarTexto("Runtime", painel, string.Empty, 12, FontStyle.Bold, TextAnchor.LowerLeft, new Color(0.84f, 0.97f, 0.88f, 1f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(18f, 18f), new Vector2(-36f, 24f));
-        textoToast = CriarTexto("Toast", canvas.transform, string.Empty, 16, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(1f, 0.94f, 0.74f, 1f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(860f, 34f));
-        textoToast.gameObject.SetActive(false);
+        painelToast = CriarPainel("PainelAviso", canvas.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(1100f, 76f), new Color(0.28f, 0.03f, 0.03f, 0.94f));
+        painelToast.pivot = new Vector2(0.5f, 0.5f);
+        Outline outlineToast = painelToast.gameObject.AddComponent<Outline>();
+        outlineToast.effectColor = new Color(1f, 0.25f, 0.18f, 0.95f);
+        outlineToast.effectDistance = new Vector2(2f, -2f);
+        textoToast = CriarTexto("Toast", painelToast, string.Empty, 20, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(1f, 0.94f, 0.74f, 1f), new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-36f, -18f));
+        painelToast.gameObject.SetActive(false);
     }
 
     private RectTransform CriarPainel(string nome, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPosition, Vector2 sizeDelta, Color cor)

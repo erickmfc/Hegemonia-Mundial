@@ -1017,10 +1017,19 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
 
     public Transform AlvoSeguido => alvoSeguido;
 
+    private ControleUnidade ObterControle(Transform raiz)
+    {
+        if (raiz == null) return null;
+        ControleUnidade encontrado = raiz.GetComponent<ControleUnidade>();
+        if (encontrado == null) encontrado = raiz.GetComponentInParent<ControleUnidade>();
+        if (encontrado == null) encontrado = raiz.GetComponentInChildren<ControleUnidade>(true);
+        return encontrado;
+    }
+
     public void Configurar(Transform novoAlvo, float distanciaDesejada = -1f)
     {
         alvoSeguido = novoAlvo;
-        controle = GetComponent<ControleUnidade>();
+        controle = ObterControle(transform);
         ehNaval = controle != null && controle.EhUnidadeNaval();
         ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
         distanciaIdeal = distanciaDesejada > 0f
@@ -1092,7 +1101,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
 
     void AtualizarSeguimentoAereo()
     {
-        ControleUnidade controleLider = alvoSeguido.GetComponent<ControleUnidade>();
+        ControleUnidade controleLider = ObterControle(alvoSeguido);
         float velocidadeLider = controleLider != null ? controleLider.ObterVelocidadeAtualReal() : 0f;
 
         Vector3 frenteLider = Flatten(alvoSeguido.forward);
@@ -1143,7 +1152,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
 
     void AtualizarSeguimentoNaval()
     {
-        ControleUnidade controleLider = alvoSeguido.GetComponent<ControleUnidade>();
+        ControleUnidade controleLider = ObterControle(alvoSeguido);
         float velocidadeLider = controleLider != null ? controleLider.ObterVelocidadeAtualReal() : 0f;
 
         Vector3 frenteLider = alvoSeguido.forward;

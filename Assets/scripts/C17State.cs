@@ -1,0 +1,34 @@
+namespace Hegemonia.Aeronaves.C17
+{
+    public enum EstadoAviaoTransporte
+    {
+        Inicializando,
+        Estacionado,
+        AguardandoDestino,
+        TaxiandoParaDecolagem,
+        TaxiandoParaPista,
+        AlinhandoNaPista,
+        Decolando,
+        CorridaDecolagem,
+        RotacaoDecolagem,
+        Subindo,
+        Navegando,
+        OrbitandoDestino,
+        PreparandoAproximacao,
+        AlinhandoPouso,
+        Descendo,
+        Pousando,
+        TocandoPista,
+        Freando,
+        TaxiandoParaVaga,
+        Pousado,
+        Embarcando,
+        Desembarcando,
+        RetornandoBase,
+        Arremetendo,
+        SemCombustivel,
+        SemRota,
+        Emergencia,
+        Destruido
+    }
+}

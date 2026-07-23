@@ -71,6 +71,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -92,6 +94,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -158,6 +161,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -179,6 +184,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -341,11 +347,11 @@ MonoBehaviour:
   anguloMinimoY: -160
   anguloMaximoY: 160
   checarLinhaDeVisao: 1
-  quantidadeDeDisparo: 1
+  quantidadeDeDisparo: 2
   tirosPorSegundo: 0.5
   tempoPausaRajada: 10
-  prefabProjetil: {fileID: 4263464772621876949, guid: d29c5d27a37b58348985ca6f91f76a90, type: 3}
-  velocidadeProjetil: 200
+  prefabProjetil: {fileID: 1828480966644363526, guid: b08f5a92de3e8f64f86cac8213399aad, type: 3}
+  velocidadeProjetil: 120
   somDisparo: {fileID: 8300000, guid: 30cc20ef2ed3c4f35af5120b0a841e84, type: 3}
 --- !u!114 &-6511304501232847043
 MonoBehaviour:

@@ -46,6 +46,12 @@ namespace Hegemonia.AI.IA01
         [SerializeField] private bool allowAutonomousExpansion = true;
         [SerializeField] private bool enablePlanningAdvisor = true;
 
+        [Header("Progressao militar")]
+        [Tooltip("Quando ativo, a reserva militar compra primeiro o menor escalao disponivel e sobe conforme a economia melhora.")]
+        [SerializeField] private bool progressiveMilitaryCatalog = true;
+        [Tooltip("Permite que uma economia forte/guerra avance mais rapidamente para A e S sem alterar a fila oficial.")]
+        [SerializeField] private bool allowMilitaryTierAdvancement = true;
+
         [Header("Runtime")]
         [SerializeField] private bool autoRegisterWithManager = true;
         [SerializeField] private bool autoApplyGovernmentSnapshot = true;
@@ -96,6 +102,7 @@ namespace Hegemonia.AI.IA01
         public int PendingEventCount => pendingEventCount;
         public string ConstructionStatus => nationRuntime != null ? nationRuntime.ConstructionStatus : "Runtime aguardando inicializacao.";
         public string CombatStatus => nationRuntime != null ? nationRuntime.CombatStatus : "Runtime aguardando inicializacao.";
+        public int WarEscalationLevel => nationRuntime != null ? nationRuntime.WarEscalationLevel : 0;
         public string MilitaryStatus => nationRuntime != null ? nationRuntime.MilitaryStatus : "Reserva militar aguardando inicializacao.";
         public string PlanningStatus => nationRuntime != null ? nationRuntime.PlanningStatus : "Planejador aguardando inicializacao.";
         public string MarketStatus => nationRuntime != null ? nationRuntime.MarketStatus : "Mercado aguardando inicializacao.";
@@ -114,6 +121,8 @@ namespace Hegemonia.AI.IA01
         public bool UsePreparedSlots => usePreparedSlots;
         public bool AllowAutonomousExpansion => allowAutonomousExpansion;
         public bool EnablePlanningAdvisor => enablePlanningAdvisor;
+        public bool ProgressiveMilitaryCatalog => progressiveMilitaryCatalog;
+        public bool AllowMilitaryTierAdvancement => allowMilitaryTierAdvancement;
         public IA01BuildSlot CapitalSlot => cityLayout != null ? cityLayout.CapitalSlot : null;
 
         public bool TryResolveConstructionAnchor(IA01IntentType intent, out Vector3 position)
@@ -272,7 +281,10 @@ namespace Hegemonia.AI.IA01
 
         private void Awake()
         {
-            if (Application.isPlaying) DontDestroyOnLoad(gameObject);
+            // Unity só aceita DontDestroyOnLoad em objetos raiz. Prefabs de
+            // país podem ser filhos de um bootstrap da cena, então preserva
+            // a instância sem gerar aviso nem mover hierarquia indevidamente.
+            if (Application.isPlaying && transform.parent == null) DontDestroyOnLoad(gameObject);
             EnsureBootstrap(false);
         }
 

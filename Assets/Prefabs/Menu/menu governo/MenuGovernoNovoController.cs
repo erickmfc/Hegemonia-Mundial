@@ -163,6 +163,16 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         root.style.display = abrir ? DisplayStyle.Flex : DisplayStyle.None;
         if (abrir)
         {
+            // O Governo novo usa UI Toolkit e o menu de Construção usa
+            // Canvas. Fechar somente o MenuGoverno antigo deixava o Canvas
+            // marcado como dono da interação; depois o atalho C parecia não
+            // funcionar. Sempre encerra a construção antes de assumir o foco.
+            MenuConstrucao construcao = FindFirstObjectByType<MenuConstrucao>();
+            if (construcao != null && MenuConstrucao.EstaAberto)
+            {
+                construcao.AlternarMenu(false);
+            }
+
             InteractionModeService.Request(
                 this,
                 InteractionOwner.GovernmentMenu,
@@ -375,13 +385,30 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         recursos.Clear();
         DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.ObterPais(1) : null;
         if (pais == null) return;
-        AdicionarRecurso("TESOURO", "$ " + pais.saldo.ToString("N0"));
-        AdicionarRecurso("PETROLEO", pais.petroleo.ToString("N0"));
-        AdicionarRecurso("ACO", pais.aco.ToString("N0"));
-        AdicionarRecurso("ENERGIA", pais.energia.ToString("N0"));
-        AdicionarRecurso("COMIDA", pais.comida.ToString("N0"));
+        GerenciadorRecursos recursosReais = GerenciadorRecursos.Instancia;
+        AdicionarRecurso("TESOURO", "$ " + (recursosReais != null ? recursosReais.dinheiro : pais.saldo).ToString("N0"));
+        // O cabeçalho deve ler o armazem vivo. O espelho econômico pode estar
+        // atrasado um ciclo, especialmente depois de uma descarga de petroleiro.
+        AdicionarRecurso("PETROLEO", EstoqueReal(RecursoMercado.Petroleo).ToString("N0"));
+        AdicionarRecurso("ACO", EstoqueReal(RecursoMercado.Aco).ToString("N0"));
+        AdicionarRecurso("ENERGIA", EstoqueReal(RecursoMercado.Energia).ToString("N0"));
+        AdicionarRecurso("COMIDA", EstoqueReal(RecursoMercado.Comida).ToString("N0"));
         AdicionarRecurso("POPULACAO", pais.populacaoCivil.ToString("N0"));
         AdicionarRecurso("ESTABILIDADE", pais.estabilidade.ToString("0") + "%");
+    }
+
+    private static int EstoqueReal(RecursoMercado recurso)
+    {
+        GerenciadorRecursos gr = GerenciadorRecursos.Instancia;
+        if (gr == null) return 0;
+        switch (recurso)
+        {
+            case RecursoMercado.Petroleo: return Mathf.Max(0, gr.petroleo);
+            case RecursoMercado.Aco: return Mathf.Max(0, gr.aco);
+            case RecursoMercado.Energia: return Mathf.Max(0, gr.energia);
+            case RecursoMercado.Comida: return Mathf.Max(0, gr.comida);
+            default: return 0;
+        }
     }
 
     private void AdicionarRecurso(string rotulo, string valor)
@@ -700,7 +727,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             {
                 itensExibicao = itensExibicao.Where(item =>
                 {
-                    int estoque = governo != null ? governo.ObterEstoque(timeJogador, item.recurso) : 0;
+                    int estoque = EstoqueReal(item.recurso);
                     return comprar
                         ? item.podeComprar && item.precoAtual > 0f && item.estoqueGlobal > 0
                         : item.podeVender && item.precoAtual > 0f && estoque > 0;
@@ -709,7 +736,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             if (mercadoEstoquePrimeiro)
             {
                 itensExibicao = itensExibicao
-                    .OrderByDescending(item => governo != null && governo.ObterEstoque(timeJogador, item.recurso) > 0)
+                    .OrderByDescending(item => EstoqueReal(item.recurso) > 0)
                     .ThenBy(item => item.NomeFormatado);
             }
             foreach (DadosItemMercado item in itensExibicao)
@@ -757,8 +784,10 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private void AdicionarCardMercado(VisualElement grade, DadosItemMercado item, bool comprar)
     {
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
-        int estoqueJogador = governo != null ? governo.ObterEstoque(governo.teamJogador, item.recurso) : 0;
-        int quantidadeInicial = Mathf.Max(1, item.CalcularQuantidadePadrao());
+        int estoqueJogador = EstoqueReal(item.recurso);
+        int quantidadeInicial = comprar
+            ? Mathf.Max(1, item.CalcularQuantidadePadrao())
+            : Mathf.Clamp(item.CalcularQuantidadePadrao(), 1, Mathf.Max(1, estoqueJogador));
 
         VisualElement card = new VisualElement();
         card.AddToClassList("gov-market-card");
@@ -1325,32 +1354,37 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
         if (abaAtual == "Orcamento")
         {
-            float receitaBruta = eco != null ? eco.ReceitaBruta : p.rendaPorSegundo * 30f;
-            float custos = eco != null ? eco.custoManutencao : p.custoManutencao;
-            float saldoOperacional = eco != null ? eco.saldoOperacional : p.saldoOperacional;
-            float qv = eco != null ? eco.qualidadeVida : p.qualidadeVida;
-            int estruturasSemEnergia = eco != null ? eco.estruturasSemEnergia : p.estruturasSemEnergia;
-            float pressao = eco != null ? eco.pressaoPopulacional : p.pressaoHabitacional;
+            RelatorioOrcamentoNacional rel = SistemaOrcamentoNacional.ObterOuCriar().GerarRelatorio(p != null ? p.teamId : 1);
 
             LinhaCards(new[]
             {
-                ("RECEITA BRUTA", "$ " + receitaBruta.ToString("N0"), "state-good"),
-                ("CUSTO TOTAL", "$ " + custos.ToString("N0"), "state-bad"),
-                ("SALDO OPERACIONAL", "$ " + saldoOperacional.ToString("N0"), saldoOperacional >= 0f ? "state-good" : "state-bad"),
-                ("QUALIDADE DE VIDA", qv.ToString("0") + "%", qv >= 70f ? "state-good" : "state-warn"),
-                ("SEM ENERGIA", estruturasSemEnergia.ToString(), estruturasSemEnergia > 0 ? "state-warn" : "state-good"),
-                ("PRESSAO H.", (pressao * 100f).ToString("0") + "%", pressao > 1f ? "state-bad" : "state-info")
+                ("RECEITA TOTAL/DIA", "$ " + rel.receitaTotalDia.ToString("N0"), "state-good"),
+                ("DESPESA TOTAL/DIA", "$ " + rel.despesaTotalDia.ToString("N0"), "state-bad"),
+                ("SALDO LÍQUIDO/DIA", "$ " + rel.saldoLiquidoDia.ToString("N0"), rel.saldoLiquidoDia >= 0m ? "state-good" : "state-bad"),
+                ("PROJEÇÃO MENSAL", "$ " + rel.projecaoMensal.ToString("N0"), rel.projecaoMensal >= 0m ? "state-good" : "state-bad"),
+                ("TESOURO ATUAL", "$ " + rel.tesouroAtual.ToString("N0"), rel.tesouroAtual > 1000f ? "state-good" : "state-warn"),
+                ("DÍVIDA TOTAL", "$ " + rel.dividaTotal.ToString("N0"), rel.dividaTotal > 0f ? "state-bad" : "state-good"),
+                ("INFLAÇÃO", rel.inflacao.ToString("0.0") + "%", rel.inflacao <= 5f ? "state-good" : "state-warn"),
+                ("CARGA FISCAL", rel.cargaFiscalMedia.ToString("0.0") + "%", rel.cargaFiscalMedia <= 18f ? "state-good" : "state-warn")
             });
 
-            AdicionarCard(conteudo, "ORCAMENTO PUBLICO",
-                "Receitas e despesas ja estao ligadas ao motor economico.\n" +
-                "Quando a renda bruta sobe acima dos custos, o saldo operacional melhora e a estabilidade reage melhor.\n" +
-                "Estruturas sem energia e pressao habitacional pressionam o orcamento indiretamente.");
-            TabelaCabecalho("DESPESA", "CUSTO", "TIPO", "IMPACTO", "STATUS");
-            TabelaLinha("SOCIAL", eco != null ? "$ " + eco.custoSocial.ToString("N0") : "N/D", "Moradia, etc.", "-", eco != null && eco.custoSocial > 0 ? "ATIVO" : "-");
-            TabelaLinha("INFRAESTRUTURA", eco != null ? "$ " + eco.custoInfraestrutura.ToString("N0") : "N/D", "Energia, Portos", "-", eco != null && eco.custoInfraestrutura > 0 ? "ATIVO" : "-");
-            TabelaLinha("MILITAR", eco != null ? "$ " + eco.custoMilitar.ToString("N0") : "N/D", "Bases", "-", eco != null && eco.custoMilitar > 0 ? "ATIVO" : "-");
-            TabelaLinha("PRODUCAO", eco != null ? "$ " + eco.custoProducao.ToString("N0") : "N/D", "Industrias", "-", eco != null && eco.custoProducao > 0 ? "ATIVO" : "-");
+            AdicionarCard(conteudo, "BALANÇO GERAL DE RECEITAS",
+                "Consolidação completa de receitas estatais. Clique em qualquer linha para inspecionar a fórmula e origem dos dados.");
+            TabelaCabecalho("RECEITA", "BASE DE CÁLCULO", "VALOR / DIA", "TENDÊNCIA", "STATUS");
+            foreach (var rec in rel.receitas)
+            {
+                string info = rec.detalhamento;
+                TabelaLinha(rec.nome, rec.baseCalculo, "+$ " + rec.valorDiario.ToString("N0") + "/dia", rec.tendencia, rec.status, () => MostrarMensagem(info));
+            }
+
+            AdicionarCard(conteudo, "BALANÇO GERAL DE DESPESAS",
+                "Consolidação detalhada dos custos operacionais do país. Clique em qualquer linha para inspecionar os detalhes de cálculo.");
+            TabelaCabecalho("DESPESA", "BASE DE CÁLCULO", "VALOR / DIA", "TENDÊNCIA", "STATUS");
+            foreach (var desp in rel.despesas)
+            {
+                string info = desp.detalhamento;
+                TabelaLinha(desp.nome, desp.baseCalculo, "$ " + desp.valorDiario.ToString("N0") + "/dia", desp.tendencia, desp.status, () => MostrarMensagem(info));
+            }
             return;
         }
 

@@ -15,6 +15,7 @@ namespace Hegemonia.AI.IA01
         private readonly IA01Controller controller;
         private readonly IA01RuntimeContext context;
         private readonly List<DadosConstrucao> catalog = new List<DadosConstrucao>(128);
+        private readonly List<DadosConstrucao> tierCandidates = new List<DadosConstrucao>(32);
         private float nextTickAt;
         private float nextPatrolAt;
         private int lastNavalPatrolDay = -1;
@@ -29,6 +30,7 @@ namespace Hegemonia.AI.IA01
         private float platformConfirmedAt = -1f;
         private float nextTankerAttemptAt;
         private bool tankerOrderIssued;
+        private bool warZonesEnsured;
         private string status = "Reserva militar aguardando infraestrutura.";
 
         private const int MinSoldiers = 6;
@@ -38,6 +40,8 @@ namespace Hegemonia.AI.IA01
         private const float TankerDelayAfterPlatformSeconds = 60f;
 
         public string Status => status;
+
+        private bool ProgressaoEscalaoAtiva => controller == null || controller.ProgressiveMilitaryCatalog;
 
         public IA01MilitaryDirector(IA01Controller controller, IA01RuntimeContext context)
         {
@@ -55,6 +59,7 @@ namespace Hegemonia.AI.IA01
             nextTickAt = now + 2.25f;
             RefreshCatalog();
             NormalizeOwnedNavalIdentities();
+            EnsureOperationalWarZones();
             int soldiers = CountUnits(TipoUnidade.Infantaria);
             int tanks = CountTanks();
             int fighters = CountFighters();
@@ -117,13 +122,80 @@ namespace Hegemonia.AI.IA01
             ApplyNavalPatrols(now);
             ApplyNavalStaging(now);
             ApplyAirPatrols(now);
-            status = string.Format("Reserva militar: soldados={0}/{1} tanques={2}/{3} cacas={4}/{5} navios={6}/{7}",
-                soldiers, targetSoldiers, tanks, targetTanks, fighters, targetFighters, naval, targetNaval);
+            status = string.Format("Reserva militar: soldados={0}/{1} tanques={2}/{3} cacas={4}/{5} navios={6}/{7} escalao={8}",
+                soldiers, targetSoldiers, tanks, targetTanks, fighters, targetFighters, naval, targetNaval,
+                ProgressaoEscalaoAtiva ? ResolverEtapaEscalao() : -1);
             if (changed)
             {
                 Debug.Log("[IA01 Military] " + status);
             }
             return changed;
+        }
+
+        private void EnsureOperationalWarZones()
+        {
+            if (warZonesEnsured || controller == null || context == null) return;
+
+            Estaleiro shipyard = null;
+            Estaleiro[] shipyards = UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < shipyards.Length; i++)
+            {
+                if (shipyards[i] != null && BelongsToTeam(shipyards[i].gameObject))
+                {
+                    shipyard = shipyards[i];
+                    break;
+                }
+            }
+
+            if (shipyard != null)
+            {
+                CriarZonaGuerraSeAusente(shipyard.transform, "IA01 WarAdvanceZone Naval A", new Vector3(180f, 0f, 220f), IA01WarAdvanceZone.Dominio.Naval, 180f);
+                CriarZonaGuerraSeAusente(shipyard.transform, "IA01 WarAdvanceZone Naval B", new Vector3(-220f, 0f, 300f), IA01WarAdvanceZone.Dominio.Naval, 180f);
+                CriarZonaExtracaoSeAusente(shipyard.transform, "IA01 ExtractionZone Naval", new Vector3(-40f, 0f, 150f));
+            }
+
+            bool airportFound = false;
+            GerenciadorAeroporto[] airports = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < airports.Length; i++)
+            {
+                GerenciadorAeroporto airport = airports[i];
+                if (airport == null || !BelongsToTeam(airport.gameObject)) continue;
+                CriarZonaGuerraSeAusente(airport.transform, "IA01 WarAdvanceZone Aerea", new Vector3(0f, 100f, 320f), IA01WarAdvanceZone.Dominio.Aereo, 260f);
+                airportFound = true;
+                break;
+            }
+
+            warZonesEnsured = shipyard != null && airportFound;
+        }
+
+        private void CriarZonaGuerraSeAusente(Transform parent, string nome, Vector3 local, IA01WarAdvanceZone.Dominio dominio, float raio)
+        {
+            Transform child = parent.Find(nome);
+            if (child == null)
+            {
+                GameObject go = new GameObject(nome);
+                go.transform.SetParent(parent, false);
+                go.transform.localPosition = local;
+                child = go.transform;
+            }
+            IA01WarAdvanceZone zona = child.GetComponent<IA01WarAdvanceZone>();
+            if (zona == null) zona = child.gameObject.AddComponent<IA01WarAdvanceZone>();
+            zona.Configurar(context.TeamId, dominio, raio, 4);
+        }
+
+        private void CriarZonaExtracaoSeAusente(Transform parent, string nome, Vector3 local)
+        {
+            Transform child = parent.Find(nome);
+            if (child == null)
+            {
+                GameObject go = new GameObject(nome);
+                go.transform.SetParent(parent, false);
+                go.transform.localPosition = local;
+                child = go.transform;
+            }
+            IA01ExtractionZone zona = child.GetComponent<IA01ExtractionZone>();
+            if (zona == null) zona = child.gameObject.AddComponent<IA01ExtractionZone>();
+            zona.Configurar(context.TeamId, 80f, 6);
         }
 
         private void ResolveTargets(out int soldiers, out int tanks, out int fighters, out int naval)
@@ -156,6 +228,13 @@ namespace Hegemonia.AI.IA01
                 0,
                 powerDoctrine ? 7 : 4);
 
+            // Cada dano sofrido aumenta a pressão de guerra em degraus. A meta
+            // cresce por ciclo, mas continua limitada por população e orçamento;
+            // isso impede tanto a passividade após perder navios quanto a
+            // duplicação desenfreada observada nos prefabs antigos.
+            int surge = atWar && controller != null ? Mathf.Clamp(controller.WarEscalationLevel, 0, 6) : 0;
+            expansionTier = Mathf.Clamp(expansionTier + surge, 0, powerDoctrine ? 10 : 7);
+
             soldiers += expansionTier * 2 + (powerDoctrine ? 2 : 0);
             tanks += expansionTier + (powerDoctrine ? 1 : 0);
             fighters += Mathf.Max(0, expansionTier / 2) + (powerDoctrine ? 1 : 0);
@@ -164,10 +243,22 @@ namespace Hegemonia.AI.IA01
             // População e orçamento limitam a expansão física. Isso evita que
             // uma duplicação de identidade vire dezenas de caças na mesma base.
             int mobilizable = Mathf.Max(6, country.populacaoCivil > 0 ? country.populacaoCivil / 900 : country.populacao / 900);
+            if (atWar)
+            {
+                // Guerra muda a postura: mesmo com a populaÃ§Ã£o inicial baixa,
+                // a naÃ§Ã£o mobiliza uma reserva de emergÃªncia e repÃµe perdas.
+                // O limite continua pequeno e depende do nÃ­vel de escalada, por
+                // isso nÃ£o cria dezenas de ordens duplicadas no mesmo frame.
+                mobilizable = Mathf.Max(mobilizable, 24 + surge * 8);
+                soldiers = Mathf.Max(soldiers, 8 + surge * 3);
+                tanks = Mathf.Max(tanks, 4 + surge);
+                fighters = Mathf.Max(fighters, 3 + Mathf.CeilToInt(surge * 0.5f));
+                naval = Mathf.Max(naval, 2 + Mathf.CeilToInt(surge * 0.5f));
+            }
             soldiers = Mathf.Min(soldiers, Mathf.Max(MinSoldiers, mobilizable));
             tanks = Mathf.Min(tanks, Mathf.Max(MinTanks, 3 + mobilizable / 8));
             fighters = Mathf.Min(fighters, Mathf.Max(MinFighters, 2 + mobilizable / 10));
-            naval = Mathf.Min(naval, Mathf.Max(MinNaval, 1 + mobilizable / 14));
+            naval = Mathf.Min(naval, Mathf.Max(MinNaval, 1 + mobilizable / 14 + surge / 2));
         }
 
         private void ApplyNavalPatrols(float now)
@@ -526,6 +617,8 @@ namespace Hegemonia.AI.IA01
             if (!controller.TryResolveConstructionAnchor(intent, out anchor, out rotation)) return false;
             DadosConstrucao blueprint = FindStructureBlueprint(blueprintTokens);
             if (blueprint == null || !blueprint.TryGetPrefabBasico(out GameObject prefab) || prefab == null) return false;
+            if (prefab.GetComponent<PlataformaOffshore>() != null)
+                anchor.y = NavalPlacementResolver.ResolveSeaLevel();
             Construtor builder = Construtor.Instancia != null ? Construtor.Instancia : UnityEngine.Object.FindFirstObjectByType<Construtor>();
             GameObject built = builder != null ? builder.ConstruirEstruturaIA(prefab, anchor, rotation) : UnityEngine.Object.Instantiate(prefab, anchor, rotation);
             if (built == null) return false;
@@ -534,6 +627,12 @@ namespace Hegemonia.AI.IA01
             identity.teamID = context.TeamId;
             identity.nomeDoPais = controller.NationName;
             identity.tipoUnidade = TipoUnidade.Estrutura;
+            PlataformaOffshore platform = built.GetComponent<PlataformaOffshore>();
+            if (platform != null) platform.OwnerTeamId = context.TeamId;
+            Estaleiro shipyard = built.GetComponent<Estaleiro>();
+            if (shipyard != null) shipyard.OwnerTeamId = context.TeamId;
+            PierMarinha pier = built.GetComponent<PierMarinha>();
+            if (pier != null) pier.OwnerTeamId = context.TeamId;
             Debug.Log("[IA01 Military] " + intent + " criado no create: " + built.name + " pos=" + built.transform.position.ToString("F2"));
             return true;
         }
@@ -611,6 +710,14 @@ namespace Hegemonia.AI.IA01
             DadosConstrucao[] resources = Resources.LoadAll<DadosConstrucao>(string.Empty);
             for (int i = 0; i < resources.Length; i++)
                 AddCandidate(resources[i]);
+
+            // Nem todas as fichas militares estão dentro de uma pasta Resources.
+            // O menu pode ainda não ter sido aberto quando a IA faz sua primeira
+            // reserva; inclua também os assets já carregados pelo projeto para que
+            // os tanques não desapareçam do catálogo de produção.
+            DadosConstrucao[] assetsCarregados = Resources.FindObjectsOfTypeAll<DadosConstrucao>();
+            for (int i = 0; i < assetsCarregados.Length; i++)
+                AddCandidate(assetsCarregados[i]);
         }
 
         private void AddCandidate(DadosConstrucao item)
@@ -681,12 +788,101 @@ namespace Hegemonia.AI.IA01
 
         private DadosConstrucao FindUnit(Func<DadosConstrucao, bool> predicate)
         {
+            if (!ProgressaoEscalaoAtiva)
+            {
+                for (int i = 0; i < catalog.Count; i++)
+                {
+                    DadosConstrucao item = catalog[i];
+                    if (item != null && predicate(item)) return item;
+                }
+                return null;
+            }
+
+            tierCandidates.Clear();
             for (int i = 0; i < catalog.Count; i++)
             {
                 DadosConstrucao item = catalog[i];
-                if (item != null && predicate(item)) return item;
+                if (item != null && predicate(item)) tierCandidates.Add(item);
             }
-            return null;
+            if (tierCandidates.Count == 0) return null;
+
+            tierCandidates.Sort(CompararEscalaoFracoParaForte);
+            int etapa = ResolverEtapaEscalao();
+            int indice = Mathf.Min(etapa, tierCandidates.Count - 1);
+            DadosConstrucao escolhido = tierCandidates[indice];
+
+            // Fichas sem classificacao sao legadas. Se houver alguma ficha
+            // classificada, priorizamos a progressao classificada; caso
+            // contrario, mantemos exatamente o primeiro item antigo.
+            if (escolhido.escalaPoder == DadosConstrucao.EscalaPoder.NaoClassificado)
+            {
+                for (int i = 0; i < tierCandidates.Count; i++)
+                {
+                    if (tierCandidates[i].escalaPoder != DadosConstrucao.EscalaPoder.NaoClassificado)
+                    {
+                        escolhido = tierCandidates[Mathf.Min(etapa, tierCandidates.Count - 1)];
+                        break;
+                    }
+                }
+            }
+            return escolhido;
+        }
+
+        private int ResolverEtapaEscalao()
+        {
+            SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno country = government != null && context != null
+                ? government.ObterPais(context.TeamId)
+                : null;
+            if (country == null) return 0;
+
+            int etapa = 0;
+            int dia = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 0;
+            bool economiaSaudavel = country.saldo >= 18000 && country.comida > 0 && country.energia > 0;
+            if (economiaSaudavel && (dia >= 2 || country.saldo >= 28000)) etapa = 1;
+            if (economiaSaudavel && country.saldo >= 45000 && country.nivelIndustrial >= 45 && (dia >= 5 || country.nivelEconomico >= 55)) etapa = 2;
+            if (economiaSaudavel && country.saldo >= 90000 && country.nivelIndustrial >= 65 && (dia >= 10 || country.nivelEconomico >= 70)) etapa = 3;
+
+            bool emGuerra = country.emGuerra
+                || country.modoInicialIA == ModoInicialPaisIA.Mobilizacao
+                || country.modoInicialIA == ModoInicialPaisIA.GuerraTotal
+                || country.modoInicialIA == ModoInicialPaisIA.AgressivoContraJogador;
+            if (emGuerra && controller != null && controller.AllowMilitaryTierAdvancement)
+            {
+                etapa += Mathf.Clamp(controller.WarEscalationLevel / 2, 0, 2);
+            }
+            return Mathf.Clamp(etapa, 0, 4);
+        }
+
+        private static int CompararEscalaoFracoParaForte(DadosConstrucao a, DadosConstrucao b)
+        {
+            int rankA = ResolverRankEscalao(a);
+            int rankB = ResolverRankEscalao(b);
+            int comparacao = rankA.CompareTo(rankB);
+            if (comparacao != 0) return comparacao;
+            int precoA = a != null ? Mathf.Max(0, a.preco) : int.MaxValue;
+            int precoB = b != null ? Mathf.Max(0, b.preco) : int.MaxValue;
+            comparacao = precoA.CompareTo(precoB);
+            if (comparacao != 0) return comparacao;
+            string nomeA = a != null ? a.GetDisplayName() : string.Empty;
+            string nomeB = b != null ? b.GetDisplayName() : string.Empty;
+            return string.CompareOrdinal(nomeA, nomeB);
+        }
+
+        private static int ResolverRankEscalao(DadosConstrucao item)
+        {
+            if (item == null) return 0;
+            switch (item.escalaPoder)
+            {
+                // A ficha usa S=1 e D=5. Aqui a leitura e invertida para
+                // representar a compra natural: D/C/B -> A -> S.
+                case DadosConstrucao.EscalaPoder.D: return 0;
+                case DadosConstrucao.EscalaPoder.C: return 1;
+                case DadosConstrucao.EscalaPoder.B: return 2;
+                case DadosConstrucao.EscalaPoder.A: return 3;
+                case DadosConstrucao.EscalaPoder.S: return 4;
+                default: return 2;
+            }
         }
 
         private bool TryProduceLand(DadosConstrucao item, string label)

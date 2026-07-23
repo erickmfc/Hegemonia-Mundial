@@ -48,6 +48,8 @@ public class MenuComandoController : MonoBehaviour
     private VisualElement mapaLinhasLayer;
     private VisualElement painelMapa;
     private Label mapaTitulo;
+    private VisualElement mapaSelecaoBarra;
+    private Label selecaoResumo;
     private VisualElement radarSweep;
     private VisualElement mapaCameraMarker;
     private float radarAngulo;
@@ -71,6 +73,8 @@ public class MenuComandoController : MonoBehaviour
     private Button btnSeguir2000;
     private Button btnSeguir5000;
     private Button btnFecharSeguir;
+    private Button btnFecharMenu;
+    private Button btnDesselecionarTudo;
     private readonly List<GameObject> alvosSeguirUI = new List<GameObject>(64);
     private GameObject alvoSeguimentoSelecionado;
     private Button itemSeguimentoDestacado;
@@ -100,12 +104,21 @@ public class MenuComandoController : MonoBehaviour
     private Label sitrepTempo;
     private Label headerTempo;
 
+    private Vector3 ultimaPosicaoTelemetria;
+    private float ultimoTempoTelemetria = -1f;
+    private int ultimaUnidadeTelemetriaId;
+    private readonly Dictionary<int, Vector3> origemMisseis = new Dictionary<int, Vector3>(64);
+    private readonly List<GameObject> misseisEmVoo = new List<GameObject>(64);
+    private readonly List<int> idsMisseisAtivos = new List<int>(64);
+
     // Log
     private VisualElement logContainer;
     private ScrollView logScroll;
 
     // Ordens
     private Label ordemFeedback;
+    private readonly List<Button> botoesOrdem = new List<Button>(8);
+    private Button botaoOrdemSelecionado;
 
     // Mapa — cache de VisualElements por instância
     private sealed class MapaItemUI
@@ -209,6 +222,7 @@ public class MenuComandoController : MonoBehaviour
     private void Start()
     {
         root = uiDoc.rootVisualElement;
+        menuAberto = false;
 
         // Oculta o menu na inicialização
         root.style.display = DisplayStyle.None;
@@ -220,8 +234,14 @@ public class MenuComandoController : MonoBehaviour
 
     private void Update()
     {
+        if (root == null || uiDoc == null)
+        {
+            return;
+        }
+
         // Se o Menu do Governo estiver aberto, ignora atalhos de teclado
-        if (MenuGoverno.EstaAberto) return;
+        // A tecla 1 Ã© tratada antes do bloqueio do Governo para permitir
+        // recuperar o menu quando o estado estÃ¡tico ficou desatualizado.
 
         // Tecla 1 — toggle
         if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
@@ -230,6 +250,14 @@ public class MenuComandoController : MonoBehaviour
             else AbrirMenu();
             return;
         }
+
+        if (menuAberto && Input.GetKeyDown(KeyCode.Escape))
+        {
+            FecharMenu();
+            return;
+        }
+
+        if (MenuGoverno.EstaAberto) return;
 
         if (!menuAberto) return;
 
@@ -562,6 +590,20 @@ public class MenuComandoController : MonoBehaviour
         mapaLinhasLayer   = root.Q<VisualElement>("mapa-linhas-layer");
         painelMapa        = root.Q<VisualElement>("painel-mapa");
         mapaTitulo        = root.Q<Label>("mapa-titulo");
+        mapaSelecaoBarra  = root.Q<VisualElement>("mapa-selecao-barra");
+        selecaoResumo     = root.Q<Label>("selecao-resumo");
+
+        if (mapaSelecaoBarra != null)
+        {
+            mapaSelecaoBarra.style.position = Position.Absolute;
+            mapaSelecaoBarra.style.top = 42f;
+            mapaSelecaoBarra.style.left = 480f;
+            mapaSelecaoBarra.style.width = 570f;
+            mapaSelecaoBarra.style.height = 22f;
+            mapaSelecaoBarra.style.flexDirection = FlexDirection.Row;
+            mapaSelecaoBarra.style.alignItems = Align.Center;
+            mapaSelecaoBarra.BringToFront();
+        }
         radarSweep        = root.Q<VisualElement>("radar-sweep");
 
         flirImagem      = root.Q<VisualElement>("flir-imagem");
@@ -620,12 +662,14 @@ public class MenuComandoController : MonoBehaviour
         btnSeguir2000  = root.Q<Button>("seguir-dist-2000");
         btnSeguir5000  = root.Q<Button>("seguir-dist-5000");
         btnFecharSeguir = root.Q<Button>("btn-fechar-seguir");
+        btnFecharMenu = root.Q<Button>("btn-fechar-menu");
 
         if (btnSeguir100 != null) btnSeguir100.clicked += () => DefinirDistanciaSeguimento(100f);
         if (btnSeguir200 != null) btnSeguir200.clicked += () => DefinirDistanciaSeguimento(200f);
         if (btnSeguir2000 != null) btnSeguir2000.clicked += () => DefinirDistanciaSeguimento(2000f);
         if (btnSeguir5000 != null) btnSeguir5000.clicked += () => DefinirDistanciaSeguimento(5000f);
         if (btnFecharSeguir != null) btnFecharSeguir.clicked += CancelarModoSeguir;
+        if (btnFecharMenu != null) btnFecharMenu.clicked += FecharMenu;
 
         logContainer = root.Q<VisualElement>("log-container");
         logScroll    = root.Q<ScrollView>("log-scroll");
@@ -634,31 +678,34 @@ public class MenuComandoController : MonoBehaviour
 
         // Botões de ordem
         var btnAtivo = root.Q<Button>("btn-ativo");
-        if (btnAtivo != null) btnAtivo.clicked += () => ExecutarOrdem("ATIVO");
+        if (btnAtivo != null) VincularBotaoOrdem(btnAtivo, "ATIVO");
 
         var btnPassivo = root.Q<Button>("btn-passivo");
-        if (btnPassivo != null) btnPassivo.clicked += () => ExecutarOrdem("PASSIVO");
+        if (btnPassivo != null) VincularBotaoOrdem(btnPassivo, "PASSIVO");
 
         var btnFuncionar = root.Q<Button>("btn-funcionar");
-        if (btnFuncionar != null) btnFuncionar.clicked += () => ExecutarOrdem("FUNCIONAR");
+        if (btnFuncionar != null) VincularBotaoOrdem(btnFuncionar, "FUNCIONAR");
 
         var btnPatrulhar = root.Q<Button>("btn-patrulhar");
-        if (btnPatrulhar != null) btnPatrulhar.clicked += () => ExecutarOrdem("PATRULHAR");
+        if (btnPatrulhar != null) VincularBotaoOrdem(btnPatrulhar, "PATRULHAR");
 
         var btnSeguir = root.Q<Button>("btn-seguir");
-        if (btnSeguir != null) btnSeguir.clicked += () => ExecutarOrdem("SEGUIR");
+        if (btnSeguir != null) VincularBotaoOrdem(btnSeguir, "SEGUIR");
 
         var btnAtacar = root.Q<Button>("btn-atacar");
-        if (btnAtacar != null) btnAtacar.clicked += () => ExecutarOrdem("ATACAR");
+        if (btnAtacar != null) VincularBotaoOrdem(btnAtacar, "ATACAR");
 
         var btnVoltarBase = root.Q<Button>("btn-voltar-base");
-        if (btnVoltarBase != null) btnVoltarBase.clicked += () => ExecutarOrdem("VOLTAR_BASE");
+        if (btnVoltarBase != null) VincularBotaoOrdem(btnVoltarBase, "VOLTAR_BASE");
 
         var btnTrocaCamera = root.Q<Button>("btn-troca-camera");
-        if (btnTrocaCamera != null) btnTrocaCamera.clicked += () => ExecutarOrdem("TROCAR_CAMERA");
+        if (btnTrocaCamera != null) VincularBotaoOrdem(btnTrocaCamera, "TROCAR_CAMERA");
 
         var btnSelTudo = root.Q<Button>("btn-selecionar-tudo");
         if (btnSelTudo != null) btnSelTudo.clicked += () => SelecionarTodasUnidadesAliadas();
+
+        btnDesselecionarTudo = root.Q<Button>("btn-desselecionar-tudo");
+        if (btnDesselecionarTudo != null) btnDesselecionarTudo.clicked += DesselecionarUnidadeEmFoco;
 
         btnDroneCam = root.Q<Button>("btn-drone-cam");
         if (btnDroneCam != null) btnDroneCam.clicked += () => AlternarModoCameraDrone();
@@ -786,6 +833,42 @@ public class MenuComandoController : MonoBehaviour
     }
 
     // -----------------------------------------------------------------------
+    private void VincularBotaoOrdem(Button botao, string ordem)
+    {
+        if (botao == null) return;
+        botao.pickingMode = PickingMode.Position;
+        botoesOrdem.Add(botao);
+        botao.clicked += () =>
+        {
+            AtualizarDestaqueOrdem(botao);
+            ExecutarOrdem(ordem);
+        };
+    }
+
+    private void AtualizarDestaqueOrdem(Button selecionado)
+    {
+        botaoOrdemSelecionado = selecionado;
+        for (int i = 0; i < botoesOrdem.Count; i++)
+        {
+            Button botao = botoesOrdem[i];
+            if (botao != null)
+            {
+                botao.EnableInClassList("ordem-selecionada", botao == selecionado);
+                bool ativo = botao == selecionado;
+                botao.style.borderTopWidth = ativo ? 3f : 1f;
+                botao.style.borderRightWidth = ativo ? 3f : 1f;
+                botao.style.borderBottomWidth = ativo ? 3f : 1f;
+                botao.style.borderLeftWidth = ativo ? 3f : 1f;
+                var corBorda = ativo ? new Color(1f, 0.82f, 0.08f) : new Color(0.05f, 0.7f, 0.85f);
+                botao.style.borderTopColor = corBorda;
+                botao.style.borderRightColor = corBorda;
+                botao.style.borderBottomColor = corBorda;
+                botao.style.borderLeftColor = corBorda;
+                botao.style.unityFontStyleAndWeight = ativo ? FontStyle.Bold : FontStyle.Normal;
+            }
+        }
+    }
+
     // Câmera FLIR — RenderTexture
     // -----------------------------------------------------------------------
     private void CriarRenderTextureFLIR()
@@ -865,9 +948,26 @@ public class MenuComandoController : MonoBehaviour
             }
 
             // Atualiza seleção visual
+            bool estasel = unidadesSelecionadasIds.Contains(instId);
+            bool estaEmFoco = unidadeSelecionadaMenu != null
+                && unidadeSelecionadaMenu.gameObject.GetInstanceID() == instId;
+            if (item.Root != null)
+            {
+                item.Root.EnableInClassList("selecionado", estasel);
+                item.Root.EnableInClassList("foco", estaEmFoco);
+            }
+            if (item.Label != null)
+            {
+                item.Label.EnableInClassList("selecionado", estasel);
+                item.Label.EnableInClassList("foco", estaEmFoco);
+            }
+            if (item.Marcador != null)
+            {
+                item.Marcador.EnableInClassList("selecionado", estasel);
+                item.Marcador.EnableInClassList("foco", estaEmFoco);
+            }
             if (item.Ring != null)
             {
-                bool estasel = unidadesSelecionadasIds.Contains(instId);
                 if (estasel) item.Ring.AddToClassList("visivel");
                 else         item.Ring.RemoveFromClassList("visivel");
             }
@@ -958,10 +1058,19 @@ public class MenuComandoController : MonoBehaviour
         var container = new VisualElement();
         container.AddToClassList("mapa-unidade");
         container.name = $"mapa-unit-{id.gameObject.GetInstanceID()}";
+        // Unidades aliadas antigas podem chegar sem o adaptador de ordens.
+        // Prepara somente as unidades do jogador para que o card/marcador
+        // continue selecionável; nunca adiciona controle aos inimigos.
+        ControleUnidade controleTatico = ObterControleTatico(id, amigo);
+        if (controleTatico != null)
+        {
+            container.AddToClassList("controlavel");
+            container.tooltip = "Unidade controlavel pelo jogador — clique para assumir o controle";
+        }
 
         // Label com nome
         string nomeMapa = ObterNomeExibicao(id.gameObject);
-        var label = new Label(nomeMapa.Length > 10 ? nomeMapa.Substring(0, 10) : nomeMapa);
+        var label = new Label(nomeMapa.Length > 28 ? nomeMapa.Substring(0, 28) + "..." : nomeMapa);
         label.name = "mapa-label";
         label.AddToClassList("mapa-label");
         label.AddToClassList(classFacao);
@@ -999,7 +1108,7 @@ public class MenuComandoController : MonoBehaviour
         container.Add(hpTrack);
 
         // Clique para selecionar a unidade no menu
-        ControleUnidade cu = ObterControleTatico(id);
+        ControleUnidade cu = controleTatico;
         SistemaDeDanos sd = id.GetComponent<SistemaDeDanos>();
         if (cu != null)
         {
@@ -1118,8 +1227,44 @@ public class MenuComandoController : MonoBehaviour
     {
         if (obj == null) return "DESCONHECIDO";
         var id = obj.GetComponent<IdentidadeUnidade>();
-        if (id != null && !string.IsNullOrEmpty(id.nomeDeBatismo)) return id.nomeDeBatismo.ToUpperInvariant();
-        return SaveableEntity.NormalizarPrefabKey(obj.name).ToUpperInvariant();
+        string nome = id != null && !string.IsNullOrWhiteSpace(id.nomeDeBatismo)
+            ? id.nomeDeBatismo.Trim()
+            : SaveableEntity.NormalizarPrefabKey(obj.name);
+        return $"{ObterCategoriaExibicao(obj, id)} — {nome}".ToUpperInvariant();
+    }
+
+    private string ObterCategoriaExibicao(GameObject obj, IdentidadeUnidade id)
+    {
+        if (obj == null) return "UNIDADE";
+
+        if (obj.GetComponent<Estaleiro>() != null) return "ESTALEIRO";
+        if (obj.GetComponent<GerenciadorAeroportoComercial>() != null) return "AEROPORTO COMERCIAL";
+        if (obj.GetComponent<GerenciadorAeroporto>() != null) return "AEROPORTO";
+        if (obj.GetComponent<Heliporto>() != null) return "HELIPORTO";
+        if (obj.GetComponent<PlataformaOffshore>() != null) return "PLATAFORMA";
+        if (obj.GetComponent<PierMarinha>() != null) return "PIER";
+        if (obj.GetComponent<ComplexoGovernamental>() != null) return "PREFEITURA";
+        if (obj.GetComponent<SiloNuclear>() != null) return "SILO";
+        if (obj.GetComponent<Fabrica>() != null) return "FÁBRICA";
+        if (obj.GetComponent<Fazenda>() != null) return "FAZENDA";
+        if (obj.GetComponent<Imovel>() != null) return "IMÓVEL";
+
+        if (id != null)
+        {
+            switch (id.tipoUnidade)
+            {
+                case TipoUnidade.Aereo:
+                    if (obj.GetComponent<Helicoptero>() != null) return "HELICÓPTERO";
+                    if (obj.GetComponent<ControleAviaoComercial>() != null) return "AVIÃO COMERCIAL";
+                    return "CAÇA";
+                case TipoUnidade.Naval: return "UNIDADE NAVAL";
+                case TipoUnidade.Veiculo:
+                case TipoUnidade.Infantaria: return "UNIDADE TERRESTRE";
+                case TipoUnidade.Estrutura: return "ESTRUTURA";
+            }
+        }
+
+        return "UNIDADE";
     }
 
     private void AbrirPainelSeguimento()
@@ -1462,6 +1607,26 @@ public class MenuComandoController : MonoBehaviour
         }
     }
 
+    private void DesselecionarUnidadeEmFoco()
+    {
+        if (unidadeSelecionadaMenu == null && unidadesSelecionadasMenu.Count > 0)
+        {
+            unidadeSelecionadaMenu = unidadesSelecionadasMenu[unidadesSelecionadasMenu.Count - 1];
+        }
+
+        if (unidadeSelecionadaMenu != null)
+        {
+            string nomeRemovido = ObterNomeExibicao(unidadeSelecionadaMenu.gameObject);
+            SelecionarUnidadeNoMenu(unidadeSelecionadaMenu);
+            AdicionarLog("OPS", $"Unidade desmarcada pelo menu: {nomeRemovido}.", "normal");
+            return;
+        }
+
+        if (ordemFeedback != null)
+            ordemFeedback.text = "Nenhuma unidade selecionada no mapa";
+        AdicionarLog("OPS", "Nenhuma unidade em foco para desselecionar.", "normal");
+    }
+
     private void SelecionarTodasUnidadesAliadas()
     {
         unidadesSelecionadasMenu.Clear();
@@ -1549,6 +1714,7 @@ public class MenuComandoController : MonoBehaviour
             SetText(statStatus, "—");
             SetText(statPos, "—");
             SetText(statArmas, "—");
+            AtualizarTextoMisseisEmVoo("—");
             SetText(statTeam, "—");
             SetText(hpValor, "—%");
             SetText(fuelValor, "—%");
@@ -1571,6 +1737,7 @@ public class MenuComandoController : MonoBehaviour
             SetText(statStatus, "VÁRIOS");
             SetText(statPos, "MÚLTIPLAS");
             SetText(statArmas, "VÁRIAS");
+            AtualizarTextoMisseisEmVoo("VÁRIAS");
             SetText(statTeam, "ALIADO");
 
             float somaHp = 0f;
@@ -1638,7 +1805,7 @@ public class MenuComandoController : MonoBehaviour
         if (id != null)
         {
             SetText(unidadeEmoji, ObterEmojiUnidade(id));
-            SetText(statTipo, id.tipoUnidade.ToString().ToUpper());
+            SetText(statTipo, ObterCategoriaExibicao(cu.gameObject, id));
             SetText(statTeam, EhUnidadeDoJogador(id) ? "ALIADO" : "INIMIGO");
         }
 
@@ -1659,7 +1826,7 @@ public class MenuComandoController : MonoBehaviour
         else if (lmSolo != null)
             textoArmas = $"MSL: {lmSolo.municaoAtual}/{lmSolo.municaoMaxima}";
             
-        SetText(statArmas, textoArmas);
+        AtualizarTextoMisseisEmVoo(textoArmas);
 
         // Status
         bool passivo;
@@ -1800,15 +1967,28 @@ public class MenuComandoController : MonoBehaviour
         // Velocidade
         if (unidadeSelecionadaMenu != null)
         {
-            float vel = 0f;
+            float velMps = 0f;
+            ControleAviaoCaca caca = unidadeSelecionadaMenu.GetComponent<ControleAviaoCaca>();
+            if (caca != null) velMps = caca.VelocidadeAtual;
+            if (velMps <= 0.01f)
+            {
+                ControleAviao aviao = unidadeSelecionadaMenu.GetComponent<ControleAviao>();
+                if (aviao != null) velMps = aviao.VelocidadeVooAtual;
+            }
+            if (velMps <= 0.01f)
+            {
+                ControleNavioRealista navio = unidadeSelecionadaMenu.GetComponent<ControleNavioRealista>();
+                if (navio != null) velMps = navio.VelocidadeAtual;
+            }
             Rigidbody rb = unidadeSelecionadaMenu.GetComponent<Rigidbody>();
-            if (rb != null) vel = rb.linearVelocity.magnitude * 3.6f; // m/s to km/h
+            if (velMps <= 0.01f && rb != null) velMps = rb.linearVelocity.magnitude;
             else
             {
                 UnityEngine.AI.NavMeshAgent nav = unidadeSelecionadaMenu.GetComponent<UnityEngine.AI.NavMeshAgent>();
-                if (nav != null) vel = nav.velocity.magnitude * 3.6f;
+                if (velMps <= 0.01f && nav != null) velMps = nav.velocity.magnitude;
             }
-            SetText(sitrepVel, $"{vel:F0} KM/H");
+            velMps = ObterVelocidadeTelemetria(unidadeSelecionadaMenu.gameObject, velMps);
+            SetText(sitrepVel, $"{velMps * 3.6f:F0} KM/H");
 
             CombustivelUnidade cbu = unidadeSelecionadaMenu.GetComponent<CombustivelUnidade>();
             if (cbu != null && cbu.Capacidade > 0f)
@@ -1845,6 +2025,101 @@ public class MenuComandoController : MonoBehaviour
                 ameaca == "ALTA"   ? new Color(1f, 0.55f, 0f) :
                                      new Color(1f, 0.2f, 0.1f);
         }
+    }
+
+    private float ObterVelocidadeTelemetria(GameObject unidade, float velocidadeMpsAtual)
+    {
+        if (unidade == null) return 0f;
+
+        // Aviões e navios antigos podem se mover por transform, sem Rigidbody
+        // nem NavMeshAgent. A amostra entre dois frames mantém a velocidade
+        // real visível no SITREP nesses casos.
+        if (velocidadeMpsAtual > 0.01f)
+        {
+            ultimaPosicaoTelemetria = unidade.transform.position;
+            ultimoTempoTelemetria = Time.unscaledTime;
+            ultimaUnidadeTelemetriaId = unidade.GetInstanceID();
+            return velocidadeMpsAtual;
+        }
+
+        int id = unidade.GetInstanceID();
+        float agora = Time.unscaledTime;
+        if (ultimaUnidadeTelemetriaId == id && ultimoTempoTelemetria >= 0f)
+        {
+            float intervalo = agora - ultimoTempoTelemetria;
+            if (intervalo > 0.001f)
+            {
+                float amostrada = Vector3.Distance(unidade.transform.position, ultimaPosicaoTelemetria) / intervalo;
+                ultimaPosicaoTelemetria = unidade.transform.position;
+                ultimoTempoTelemetria = agora;
+                return amostrada;
+            }
+        }
+
+        ultimaUnidadeTelemetriaId = id;
+        ultimaPosicaoTelemetria = unidade.transform.position;
+        ultimoTempoTelemetria = agora;
+        return 0f;
+    }
+
+    private void AtualizarTextoMisseisEmVoo(string textoBase)
+    {
+        misseisEmVoo.Clear();
+        idsMisseisAtivos.Clear();
+        Transform[] objetos = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        HashSet<int> vistos = new HashSet<int>();
+
+        for (int i = 0; i < objetos.Length; i++)
+        {
+            Transform t = objetos[i];
+            if (t == null) continue;
+            GameObject raiz = t.root != null ? t.root.gameObject : t.gameObject;
+            if (raiz == null || !vistos.Add(raiz.GetInstanceID())) continue;
+
+            string tag = t.gameObject.tag ?? string.Empty;
+            string nome = t.gameObject.name ?? string.Empty;
+            bool tagMissel = tag.Equals("Missel", StringComparison.OrdinalIgnoreCase)
+                || tag.Equals("Missil", StringComparison.OrdinalIgnoreCase)
+                || tag.Equals("Missile", StringComparison.OrdinalIgnoreCase);
+            bool nomeMissel = nome.IndexOf("missel", StringComparison.OrdinalIgnoreCase) >= 0
+                || nome.IndexOf("missil", StringComparison.OrdinalIgnoreCase) >= 0
+                || nome.IndexOf("missile", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool componenteMissel = raiz.GetComponentInChildren<MisselNaval>(true) != null
+                || raiz.GetComponentInChildren<MisselCaca>(true) != null
+                || raiz.GetComponentInChildren<MisselSubmarino>(true) != null
+                || raiz.GetComponentInChildren<MisselICBM>(true) != null
+                || raiz.GetComponentInChildren<MisselTatico>(true) != null
+                || raiz.GetComponentInChildren<MisselLeopardAutomatico>(true) != null
+                || raiz.GetComponentInChildren<MissilTeleguiado>(true) != null;
+            if (!tagMissel && !nomeMissel && !componenteMissel) continue;
+
+            int id = raiz.GetInstanceID();
+            misseisEmVoo.Add(raiz);
+            idsMisseisAtivos.Add(id);
+            if (!origemMisseis.ContainsKey(id)) origemMisseis[id] = raiz.transform.position;
+        }
+
+        HashSet<int> ativos = new HashSet<int>(idsMisseisAtivos);
+        List<int> antigos = new List<int>();
+        foreach (KeyValuePair<int, Vector3> origem in origemMisseis)
+        {
+            if (!ativos.Contains(origem.Key)) antigos.Add(origem.Key);
+        }
+        for (int i = 0; i < antigos.Count; i++) origemMisseis.Remove(antigos[i]);
+
+        string texto = string.IsNullOrWhiteSpace(textoBase) ? string.Empty : textoBase;
+        texto += $"\nEM VOO: {misseisEmVoo.Count}";
+        int limite = Mathf.Min(3, misseisEmVoo.Count);
+        for (int i = 0; i < limite; i++)
+        {
+            GameObject missel = misseisEmVoo[i];
+            if (missel == null) continue;
+            Vector3 origem = origemMisseis[missel.GetInstanceID()];
+            float deslocamento = Vector3.Distance(origem, missel.transform.position);
+            texto += $"\n{missel.name}: Δ{deslocamento:F0}m";
+        }
+        if (misseisEmVoo.Count > limite) texto += $"\n+{misseisEmVoo.Count - limite} mísseis";
+        SetText(statArmas, texto);
     }
 
     // -----------------------------------------------------------------------
@@ -2103,8 +2378,42 @@ public class MenuComandoController : MonoBehaviour
             ControleUnidade cu = unidadesSelecionadasMenu[i];
             if (cu != null)
             {
-                unidadesSelecionadasIds.Add(cu.GetInstanceID());
+                // O mapa usa o ID do GameObject, nao o ID do componente ControleUnidade.
+                // Usar o componente fazia o anel e a cor de selecao nao aparecerem.
+                unidadesSelecionadasIds.Add(cu.gameObject.GetInstanceID());
             }
+        }
+
+        AtualizarResumoSelecao();
+    }
+
+    private void AtualizarResumoSelecao()
+    {
+        if (selecaoResumo == null) return;
+
+        const string marcaSelecao = "\u2713 ";
+
+        if (unidadesSelecionadasMenu.Count == 0)
+        {
+            selecaoResumo.text = marcaSelecao + "NENHUMA UNIDADE SELECIONADA";
+            return;
+        }
+
+        List<string> nomes = new List<string>(unidadesSelecionadasMenu.Count);
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            ControleUnidade cu = unidadesSelecionadasMenu[i];
+            if (cu != null) nomes.Add(ObterNomeExibicao(cu.gameObject));
+        }
+
+        if (nomes.Count == 0)
+        {
+            selecaoResumo.text = marcaSelecao + "NENHUMA UNIDADE SELECIONADA";
+        }
+        else
+        {
+            selecaoResumo.text = marcaSelecao + string.Join(" | ", nomes) +
+                (nomes.Count == 1 ? " SELECIONADO" : " SELECIONADOS");
         }
     }
 

@@ -47,6 +47,8 @@ namespace Hegemonia.AI.IA01
             if (builtShipyard != null) builtShipyard.OwnerTeamId = context.TeamId;
             PierMarinha builtPier = built.GetComponent<PierMarinha>();
             if (builtPier != null) builtPier.OwnerTeamId = context.TeamId;
+            PlataformaOffshore builtPlatform = built.GetComponent<PlataformaOffshore>();
+            if (builtPlatform != null) builtPlatform.OwnerTeamId = context.TeamId;
             SaveableEntity.Garantir(built, prefab.name);
 
             // Mantem a mesma regra visual do construtor do jogador: casas da IA

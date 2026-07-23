@@ -76,6 +76,7 @@ public class ControleAviao : MonoBehaviour
     protected float giroLateralYInicial = 0f;
     protected float multiplicadorVelocidadeTurbo = 1f;
     protected float velocidadeVooAtual = 0f;
+    public float VelocidadeVooAtual => velocidadeVooAtual;
     public float aceleracaoVoo = 18f;
     public float desaceleracaoVoo = 25f;
     protected float tempoSegurandoTab = 0f;
@@ -262,6 +263,7 @@ public class ControleAviao : MonoBehaviour
 
     protected virtual void Update()
     {
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
         if (!estaEmModoVooFisico) return;
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         AtualizarEstadoOtimizacao();
@@ -348,8 +350,13 @@ public class ControleAviao : MonoBehaviour
             Quaternion olharMundoDesejado = Quaternion.LookRotation(retaAteAlvo, upRef);
             anguloPressaoLateralY = Vector3.SignedAngle(transform.forward, retaAteAlvo, Vector3.up);
             
-            // Slerp suaviza o voo do avião e evita viradas bruscas instantâneas
-            transform.rotation = Quaternion.Slerp(transform.rotation, olharMundoDesejado, (taxaDeGiroLeme / 15f) * dt);
+            // Trata a taxa como graus por segundo. O Slerp anterior podia
+            // consumir quase todo o angulo em um unico frame, gerando o
+            // corte brusco visto quando o caça retornava para a base.
+            transform.rotation = Quaternion.RotateTowards(
+                transform.rotation,
+                olharMundoDesejado,
+                Mathf.Max(1f, taxaDeGiroLeme) * dt);
         }
         
         float multiplicadorPatrulha = 1f;
@@ -698,6 +705,11 @@ public class ControleAviao : MonoBehaviour
 
     public void IniciarMissaoCompleta(Vector3 alvoFinalGPS)
     {
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
+        {
+            Debug.LogWarning($"[C17] Ordem generica ignorada em {name}; use o aeroporto/C17TransporteController.");
+            return;
+        }
         if (!PodeIgnorarFaltaDeCombustivel() && !CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
@@ -735,6 +747,7 @@ public class ControleAviao : MonoBehaviour
 
     public void ComandoRetornarBase()
     {
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
         if (estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Decolando)
         {
             ordemParaRetorno = true;
@@ -778,6 +791,7 @@ public class ControleAviao : MonoBehaviour
 
     public void DefinirBaseAlternativaEIniciarRetorno(GerenciadorAeroporto novaBase)
     {
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
         if (novaBase == null)
         {
             return;

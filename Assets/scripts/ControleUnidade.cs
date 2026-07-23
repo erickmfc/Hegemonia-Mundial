@@ -325,6 +325,8 @@ public class ControleUnidade : MonoBehaviour
             AtualizarVisualCaminho();
         }
 
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
+
         // SE TIVER HELICOPTER CONTROLLER: NÃO FAZ NADA DE MOVIMENTO AQUI
         // Deixa o outro script cuidar de tudo, este fica só para Seleção/Identidade
         if (helicopteroExterno != null) return;
@@ -495,6 +497,11 @@ public class ControleUnidade : MonoBehaviour
 
     public bool EmitirOrdemMover(Vector3 destino, bool cancelarComportamentos = true)
     {
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
+        {
+            Debug.LogWarning($"[C17] Movimento generico recusado para {name}; ordem deve vir do aeroporto.");
+            return false;
+        }
         AtualizarTrilhaOficial();
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo)
@@ -535,7 +542,13 @@ public class ControleUnidade : MonoBehaviour
             alterouAlgo = true;
         }
 
-        if (controleAviao != null)
+        var c17Script = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
+        if (c17Script != null)
+        {
+            c17Script.CancelarOrdemExterna();
+            alterouAlgo = true;
+        }
+        else if (controleAviao != null)
         {
             controleAviao.ordemParaRetorno = true;
             alterouAlgo = true;

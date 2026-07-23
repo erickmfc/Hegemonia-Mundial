@@ -11,6 +11,7 @@ public class FalhaAereaFisica : MonoBehaviour
     private float arrastoLinear;
     private float giroRoll;
     private float giroPitch;
+    private Vector3 direcaoFrente;
 
     public static void Ativar(GameObject alvo, Rigidbody rb, float velocidadeFrente, float descidaInicial, bool usarPerfilHelicoptero, SistemaDeDanos danos = null)
     {
@@ -68,13 +69,19 @@ public class FalhaAereaFisica : MonoBehaviour
         }
 
         velocidadeAtual += Vector3.down * empuxoDescida;
+        direcaoFrente = Vector3.ProjectOnPlane(velocidadeAtual, Vector3.up);
+        if (direcaoFrente.sqrMagnitude < 0.01f)
+        {
+            direcaoFrente = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+        }
+        direcaoFrente = direcaoFrente.sqrMagnitude > 0.01f ? direcaoFrente.normalized : Vector3.forward;
         corpo.linearVelocity = velocidadeAtual;
         corpo.angularVelocity = new Vector3(0.45f, 0.2f, perfilHelicoptero ? 0.35f : 0.7f);
 
         enabled = true;
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
         if (corpo == null)
         {
@@ -88,9 +95,23 @@ public class FalhaAereaFisica : MonoBehaviour
 
         if (!impactoAplicado)
         {
-            corpo.AddForce(transform.forward * (perfilHelicoptero ? 4.5f : 7f), ForceMode.Acceleration);
-            transform.Rotate(Vector3.forward, giroRoll * Time.deltaTime, Space.Self);
-            transform.Rotate(Vector3.right, giroPitch * Time.deltaTime, Space.Self);
+            float velocidadeMinimaFrente = Mathf.Max(
+                perfilHelicoptero ? velocidadeCruzeiro * 0.45f : velocidadeCruzeiro * 0.70f,
+                perfilHelicoptero ? 12f : 28f);
+
+            Vector3 velocidade = corpo.linearVelocity;
+            Vector3 velocidadeHorizontal = Vector3.ProjectOnPlane(velocidade, Vector3.up);
+            float velocidadeNaFrente = Vector3.Dot(velocidadeHorizontal, direcaoFrente);
+            if (velocidadeNaFrente < velocidadeMinimaFrente)
+            {
+                velocidadeHorizontal += direcaoFrente * (velocidadeMinimaFrente - velocidadeNaFrente);
+                velocidade = velocidadeHorizontal + Vector3.up * velocidade.y;
+                corpo.linearVelocity = velocidade;
+            }
+
+            corpo.AddForce(direcaoFrente * (perfilHelicoptero ? 3.5f : 6f), ForceMode.Acceleration);
+            transform.Rotate(Vector3.forward, giroRoll * Time.fixedDeltaTime, Space.Self);
+            transform.Rotate(Vector3.right, giroPitch * Time.fixedDeltaTime, Space.Self);
         }
 
         if (transform.position.y <= 1.5f)

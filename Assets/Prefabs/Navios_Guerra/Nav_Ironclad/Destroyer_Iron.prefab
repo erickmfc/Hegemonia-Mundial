@@ -285,7 +285,7 @@ MonoBehaviour:
   volumeSom: 1
   pitchSom: 1
   distanciaSomMinima: 3
-  distanciaSomMaxima: 65
+  distanciaSomMaxima: 100
   tagsInimigas:
   - Inimigo
   - Destrutivel
@@ -354,7 +354,7 @@ MonoBehaviour:
   antenaRadar: {fileID: 0}
   velocidadeAntena: 60
   modoOperacao: 0
-  somMotorParado: {fileID: 0}
+  somMotorParado: {fileID: 8300000, guid: f8e18ab65e78f0743ae583a8fbda9b6e, type: 3}
   somMotorMovimento: {fileID: 0}
   possuiTorpedos: 0
   tubosTorpedo:

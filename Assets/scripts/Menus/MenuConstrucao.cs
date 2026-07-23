@@ -189,10 +189,16 @@ public class MenuConstrucao : MonoBehaviour
 
         foreach (var ficha in fichasConfiguradasNaCena)
         {
-            GameObject prefab;
-            if (ficha != null && ficha.TryGetPrefabBasico(out prefab) && !string.IsNullOrEmpty(ficha.nomeItem))
+            if (ficha == null) continue;
+            string nomeValido = ficha.GetDisplayName();
+            if (string.IsNullOrEmpty(nomeValido)) continue;
+
+            GameObject prefab = null;
+            bool temPrefab = ficha.TryGetPrefabBasico(out prefab);
+
+            if (temPrefab && prefab != null)
             {
-                string nm = ficha.nomeItem.ToLower();
+                string nm = nomeValido.ToLower();
                 bool isDestrocos = false;
                 try
                 {
@@ -201,23 +207,21 @@ public class MenuConstrucao : MonoBehaviour
                 }
                 catch (MissingReferenceException)
                 {
-                    // Prefab tem missing scripts em filhos — descarta.
-                    continue;
+                    // Prefab tem missing scripts em filhos — ignora filtro de destroços, mas mantem o card no menu
                 }
                 catch (System.Exception)
                 {
-                    continue;
                 }
 
                 if (isDestrocos)
                 {
                     continue;
                 }
-
-                catalogo.Add(ficha);
-                if (!quantidadesPorItem.ContainsKey(ficha.nomeItem))
-                    quantidadesPorItem.Add(ficha.nomeItem, 1);
             }
+
+            catalogo.Add(ficha);
+            if (!quantidadesPorItem.ContainsKey(ficha.nomeItem))
+                quantidadesPorItem.Add(ficha.nomeItem, 1);
         }
         catalogo = catalogo.OrderBy(f => (int)f.categoria).ThenBy(f => f.GetDisplayName()).ToList();
         catalogoGlobal = new List<DadosConstrucao>(catalogo);
@@ -482,6 +486,16 @@ public class MenuConstrucao : MonoBehaviour
 
     void Update()
     {
+        // O Governo novo fecha o Canvas de construÃ§Ã£o sem passar pelo HUD
+        // legado. Se o foco for liberado, recupera o atalho C mesmo que uma
+        // cena antiga tenha deixado o sinal de suspensÃ£o preso.
+        if (atalhosSuspensos && !MenuGoverno.EstaAberto
+            && (MenuGovernoNovoController.Instancia == null
+                || !MenuGovernoNovoController.Instancia.gameObject.activeInHierarchy))
+        {
+            atalhosSuspensos = false;
+        }
+
         if (atalhosSuspensos)
         {
             return;
@@ -663,6 +677,9 @@ public class MenuConstrucao : MonoBehaviour
 
                 MenuGoverno menuGov = Object.FindFirstObjectByType<MenuGoverno>();
                 if (menuGov != null && MenuGoverno.EstaAberto) menuGov.AlternarMenu(false);
+
+                MenuGovernoNovoController menuGovNovo = Object.FindFirstObjectByType<MenuGovernoNovoController>();
+                if (menuGovNovo != null && MenuGoverno.EstaAberto) menuGovNovo.Abrir(false);
 
                 RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
                 foreach (GerenciadorAeroporto aeroporto in bufferAeroportos)
@@ -897,6 +914,32 @@ public class MenuConstrucao : MonoBehaviour
         layoutTopo.spacing = 10;
 
         CriarLinhaDecorativa(topoObj.transform);
+
+        // Fechamento explícito evita que o clique atravesse o painel e acione
+        // o menu Governo que fica atrás. O botão usa o mesmo CanvasGroup do
+        // menu, portanto recebe o clique em uma única tentativa.
+        GameObject fecharObj = CriarRetangulo("BotaoFechar", topoObj.transform);
+        LayoutElement leFechar = fecharObj.AddComponent<LayoutElement>();
+        leFechar.minWidth = 38f;
+        leFechar.preferredWidth = 38f;
+        leFechar.minHeight = 24f;
+        leFechar.preferredHeight = 24f;
+        Image imgFechar = fecharObj.AddComponent<Image>();
+        imgFechar.color = new Color(0.45f, 0.08f, 0.10f, 0.92f);
+        imgFechar.raycastTarget = true;
+        Button botaoFechar = fecharObj.AddComponent<Button>();
+        botaoFechar.targetGraphic = imgFechar;
+        botaoFechar.onClick.AddListener(() => AlternarMenu(false));
+        GameObject textoFechar = CriarRetangulo("Texto", fecharObj.transform);
+        Text txFechar = textoFechar.AddComponent<Text>();
+        txFechar.text = "X";
+        txFechar.font = ObterFontePadrao();
+        txFechar.fontSize = 16;
+        txFechar.fontStyle = FontStyle.Bold;
+        txFechar.alignment = TextAnchor.MiddleCenter;
+        txFechar.color = Color.white;
+        txFechar.raycastTarget = false;
+        EsticarRectTransform(textoFechar.GetComponent<RectTransform>());
 
         GameObject badgeTitulo = CriarRetangulo("BadgeTitulo", topoObj.transform);
         LayoutElement leBadge = badgeTitulo.AddComponent<LayoutElement>();
@@ -2214,7 +2257,11 @@ public class MenuConstrucao : MonoBehaviour
 
         if (item.icone != null)
         {
-            return item.icone;
+            string nomeIcone = item.icone.name != null ? item.icone.name.ToLowerInvariant() : string.Empty;
+            if (!nomeIcone.Contains("bkwv7tbkwv7tbkwv"))
+            {
+                return item.icone;
+            }
         }
 
         int chave = item.GetInstanceID();

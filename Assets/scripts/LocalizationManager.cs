@@ -227,6 +227,8 @@ public sealed class LocalizationManager : MonoBehaviour
         Add("build.no_manager", "Gerente de jogo nao encontrado. Nao foi possivel iniciar a construcao.", "Game manager not found. Could not start construction.", "找不到游戏管理器，无法开始建造。");
         Add("build.missing_prefab", "Prefab faltando para {0}.", "Missing prefab for {0}.", "{0} 缺少预制体。");
         Add("build.no_money", "Fundos insuficientes para comprar {0}.", "Insufficient funds to buy {0}.", "资金不足，无法购买 {0}。");
+        Add("economy.no_money_action", "SEM DINHEIRO\nRecursos insuficientes para esta ação.", "NO MONEY\nInsufficient funds for this action.", "没有资金\n资金不足，无法执行此操作。");
+        Add("economy.no_energy_action", "SEM ENERGIA\nEnergia insuficiente para esta ação.", "NO ENERGY\nInsufficient energy for this action.", "没有能源\n能源不足，无法执行此操作。");
         Add("build.need_airport", "Bloqueado: voce precisa construir um AEROPORTO ou HELIPORTO primeiro para comprar aeronaves.", "Blocked: build an AIRPORT or HELIPAD first to buy aircraft.", "已阻止：先建造机场或直升机场才能购买飞机。");
         Add("build.no_airport", "Erro: nenhum aeroporto valido encontrado para entregar esta aeronave.", "Error: no valid airport found to deliver this aircraft.", "错误：没有可交付该飞机的有效机场。");
         Add("build.need_shipyard_big", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir esse navio grande.", "Blocked: build a valid coastal SHIPYARD to produce this large ship.", "已阻止：建造有效的海岸造船厂以生产大型舰船。");

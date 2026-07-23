@@ -34,6 +34,20 @@ public class MenuPier : MonoBehaviour
 
     void Update()
     {
+        // O píer pode ser destruído durante um ataque enquanto a UI ainda
+        // mantém a referência antiga. Fechar e limpar o alvo evita callbacks
+        // de botões acessando transform/vagas de um objeto já destruído.
+        if (menuAberto && pierAlvo == null)
+        {
+            menuAberto = false;
+            EstaAberto = false;
+            if (painelMestre != null) painelMestre.SetActive(false);
+            tituloContexto = null;
+            listaDocasContainer = null;
+            listaContextoContainer = null;
+            return;
+        }
+
         if (UnityEngine.EventSystems.EventSystem.current != null && 
             UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null &&
             UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<InputField>() != null)
@@ -142,6 +156,12 @@ public class MenuPier : MonoBehaviour
 
     void AtualizarListaDeDocas()
     {
+        if (pierAlvo == null || listaDocasContainer == null)
+        {
+            if (pierAlvo == null) FecharMenu();
+            return;
+        }
+
         // Limpa lista visual anterior
         foreach (Transform child in listaDocasContainer) Destroy(child.gameObject);
 
@@ -174,7 +194,11 @@ public class MenuPier : MonoBehaviour
 
     void SelecionarDoca(int indexVaga)
     {
-        if (pierAlvo.vagasDisponiveis == null || indexVaga >= pierAlvo.vagasDisponiveis.Count) return;
+        if (pierAlvo == null || pierAlvo.vagasDisponiveis == null || indexVaga < 0 || indexVaga >= pierAlvo.vagasDisponiveis.Count)
+        {
+            if (pierAlvo == null) FecharMenu();
+            return;
+        }
 
         var vaga = pierAlvo.vagasDisponiveis[indexVaga];
         LimparPainelContexto(""); // Limpa painel da direita
@@ -259,6 +283,7 @@ public class MenuPier : MonoBehaviour
     List<IdentidadeNaval> EncontrarNaviosDisponiveis(IdentidadeNaval.CategoriaNavio categoria)
     {
         var lista = new List<IdentidadeNaval>();
+        if (pierAlvo == null) return lista;
         RegistroEntidadesJogo.FillNavios(naviosBuffer);
 
         if (debugLogs)
