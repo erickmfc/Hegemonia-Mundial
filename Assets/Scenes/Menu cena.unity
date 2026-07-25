@@ -270,6 +270,26 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3345625160462930024, guid: 45105829ad4875643a6be21018e24af7, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.64128554
+      objectReference: {fileID: 0}
+    - target: {fileID: 3345625160462930024, guid: 45105829ad4875643a6be21018e24af7, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.7673024
+      objectReference: {fileID: 0}
+    - target: {fileID: 3345625160462930024, guid: 45105829ad4875643a6be21018e24af7, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3345625160462930024, guid: 45105829ad4875643a6be21018e24af7, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3345625160462930024, guid: 45105829ad4875643a6be21018e24af7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 100.224
+      objectReference: {fileID: 0}
     - target: {fileID: 4460423651130263869, guid: 45105829ad4875643a6be21018e24af7, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -457,6 +477,63 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e94f48ff3d249f342a9fe296647019d1, type: 3}
+--- !u!1001 &368637773
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3727675069201702099, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_Name
+      value: Plataforma 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 217.34601
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 9.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 6.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8923547073651819551, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
 --- !u!1001 &373934459
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -825,23 +902,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -378.30722
+      value: -268.4
       objectReference: {fileID: 0}
     - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.7080103
       objectReference: {fileID: 0}
     - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0.7062021
       objectReference: {fileID: 0}
     - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -849,7 +926,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: -89.853
       objectReference: {fileID: 0}
     - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -1370,8 +1447,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a3d951024223d944ab18d7c73d2c51c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VerificadorAudio
-  executarNoStart: 0
-  permitirTeclaVerificacao: 0
 --- !u!114 &1255879883
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2362,10 +2437,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad00857d3bcdc02498ef7e307e12dde2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.Llama.LlamaClient
-  ollamaUrl: http://localhost:11434/api/generate
-  modeloAtivo: qwen2.5:1.5b
-  animacaoTerminal: {fileID: 1909996862}
-  forcarFormatoJson: 1
 --- !u!114 &2118743533
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2479,3 +2550,4 @@ SceneRoots:
   - {fileID: 373934459}
   - {fileID: 2118743534}
   - {fileID: 1909996863}
+  - {fileID: 368637773}

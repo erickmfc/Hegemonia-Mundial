@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Hegemonia.Cartel
 {
@@ -145,6 +146,14 @@ namespace Hegemonia.Cartel
 
         private void Start()
         {
+            if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            {
+                State = CartelControllerState.Disabled;
+                StatusDebug = "Cartel desligado na cena de menu.";
+                enabled = false;
+                return;
+            }
+
             if (StartAutomatically)
             {
                 Initialize();
@@ -153,6 +162,11 @@ namespace Hegemonia.Cartel
 
         private void Update()
         {
+            if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
             if (!initialized || State == CartelControllerState.Disabled || Time.time < nextDecisionTime)
             {
                 return;
