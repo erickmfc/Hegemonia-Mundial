@@ -86,8 +86,8 @@ public class Fazenda : MonoBehaviour
         GarantirEstruturaEconomica();
         esperaProducao = new WaitForSeconds(Mathf.Max(1.5f, intervaloProducaoSegundos));
         
-        // Menu 20% maior (840x600)
-        janelaRetangulo = new Rect(Screen.width / 2f - 420f, Screen.height / 2f - 300f, 840f, 600f);
+        // Janela compacta e centralizada para manter os dois painéis legíveis.
+        janelaRetangulo = new Rect(Screen.width / 2f - 380f, Screen.height / 2f - 270f, 760f, 540f);
 
         PopularCatalogoSeNecessario();
     }
@@ -112,6 +112,13 @@ public class Fazenda : MonoBehaviour
     void Update()
     {
         if (Time.timeScale == 0f) return;
+
+        // OnGUI e o mundo recebem o mesmo Input. Quando o cursor está dentro
+        // da janela, o clique pertence ao menu e não pode atingir objetos atrás.
+        if (menuAberto && CliqueCapturadoPeloMenu())
+        {
+            return;
+        }
 
         float novaComidaPorSegundo = 0f;
         
@@ -194,6 +201,21 @@ public class Fazenda : MonoBehaviour
 
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         houveHitCliqueProcessado = Physics.Raycast(ray, out hitCliqueProcessado, 5000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+    }
+
+    public static bool CliqueCapturadoPeloMenu()
+    {
+        if (!QualquerFazendaAberta || FazendaAtiva == null || !FazendaAtiva.menuAberto)
+        {
+            return false;
+        }
+
+        Rect bounds = new Rect(
+            FazendaAtiva.janelaRetangulo.x,
+            Screen.height - FazendaAtiva.janelaRetangulo.y - FazendaAtiva.janelaRetangulo.height,
+            FazendaAtiva.janelaRetangulo.width,
+            FazendaAtiva.janelaRetangulo.height);
+        return bounds.Contains(Input.mousePosition);
     }
 
     private void FecharSeCliqueFora()
@@ -350,16 +372,16 @@ public class Fazenda : MonoBehaviour
         GUILayout.BeginHorizontal();
 
         // ------------------------- LADO ESQUERDO (Status dos Lotes)
-        GUILayout.BeginVertical("box", GUILayout.Width(350)); // Maior
+        GUILayout.BeginVertical("box", GUILayout.Width(300));
         GUILayout.Label("/// CAMPOS DE PRODUÇÃO ///", estiloSemente);
-        GUILayout.Space(15);
+        GUILayout.Space(10);
 
         scrollLotes = GUILayout.BeginScrollView(scrollLotes);
 
         DesenharLoteUI(1, lote1Ocupado, lote1SementeIndex, lote1Progresso);
-        GUILayout.Space(25);
+        GUILayout.Space(12);
         DesenharLoteUI(2, lote2Ocupado, lote2SementeIndex, lote2Progresso);
-        GUILayout.Space(25);
+        GUILayout.Space(12);
         
         if (!lote3Comprado) {
             GUILayout.BeginVertical("box");
@@ -392,7 +414,7 @@ public class Fazenda : MonoBehaviour
             RegistoColheita cultura = catalogoAgricola[i];
             
             GUILayout.BeginHorizontal("box");
-            GUILayout.BeginVertical(GUILayout.Width(220));
+            GUILayout.BeginVertical(GUILayout.Width(180));
             GUILayout.Label($"🌱 {cultura.nome}", estiloSemente);
             GUILayout.Label($"Cresce em: {cultura.tempoCrescimento}s", estiloStatus);
             GUILayout.Label($"Produção: +{cultura.lucroGerado} Comida", estiloStatus);

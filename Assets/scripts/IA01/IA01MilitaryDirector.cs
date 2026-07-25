@@ -62,6 +62,7 @@ namespace Hegemonia.AI.IA01
             EnsureOperationalWarZones();
             int soldiers = CountUnits(TipoUnidade.Infantaria);
             int tanks = CountTanks();
+            int antiAir = CountAntiAir();
             int fighters = CountFighters();
             int naval = CountUnits(TipoUnidade.Naval);
             ResolveTargets(out int targetSoldiers, out int targetTanks, out int targetFighters, out int targetNaval);
@@ -92,6 +93,17 @@ namespace Hegemonia.AI.IA01
             }
             // A compra no aeroporto/estaleiro é assíncrona. Considera as ordens
             // já emitidas para não comprar duplicado antes da contagem atualizar.
+            // Toda IA01 procura manter pelo menos uma defesa antiaerea Ares_Ar
+            // quando existe uma ficha valida no catalogo e uma fabrica propria.
+            if (antiAir < 1 && actions < 2)
+            {
+                bool reserved = IA01MilitaryProductionGuard.TryReserveSingle(context.TeamId, IA01MilitaryAssetKind.AntiAir, antiAir, now);
+                bool produced = reserved && TryProduceLand(FindAntiAir(), "Ares_Ar antiaereo");
+                if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.AntiAir, now);
+                changed |= produced;
+                if (produced) actions++;
+            }
+
             if (fighters + issuedFighters < targetFighters && actions < 2)
             {
                 bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Fighter, targetFighters, fighters, now);
@@ -122,8 +134,8 @@ namespace Hegemonia.AI.IA01
             ApplyNavalPatrols(now);
             ApplyNavalStaging(now);
             ApplyAirPatrols(now);
-            status = string.Format("Reserva militar: soldados={0}/{1} tanques={2}/{3} cacas={4}/{5} navios={6}/{7} escalao={8}",
-                soldiers, targetSoldiers, tanks, targetTanks, fighters, targetFighters, naval, targetNaval,
+            status = string.Format("Reserva militar: soldados={0}/{1} tanques={2}/{3} AA={4} cacas={5}/{6} navios={7}/{8} escalao={9}",
+                soldiers, targetSoldiers, tanks, targetTanks, antiAir, fighters, targetFighters, naval, targetNaval,
                 ProgressaoEscalaoAtiva ? ResolverEtapaEscalao() : -1);
             if (changed)
             {
@@ -753,6 +765,14 @@ namespace Hegemonia.AI.IA01
                 && Contains(item, "tanque", "tank", "blindado", "veiculo", "vehicle", "carro"));
         }
 
+        private DadosConstrucao FindAntiAir()
+        {
+            return FindUnit(item => item != null
+                && item.categoria == DadosConstrucao.CategoriaItem.Exercito
+                && (SistemaGastosMilitares.EhAresAr(item.GetDisplayName() + " " + item.name + " " + item.aliases)
+                    || Contains(item, "antiaereo", "anti aereo", "defesa aerea", "ares")));
+        }
+
         private DadosConstrucao FindFighter()
         {
             return FindUnit(item => item.HasCapability(IA_ConstructionCapability.FighterAircraft)
@@ -952,9 +972,15 @@ namespace Hegemonia.AI.IA01
                 // aeroporto militar ja possui a mesma referencia usada pelo
                 // jogador, portanto ela é o fallback correto e estaciona no patio.
                 GameObject aircraft = item != null ? item.prefabDaUnidade : null;
-                if (aircraft == null && item != null) item.TryGetPrefabBasico(out aircraft);
-                if (aircraft == null) aircraft = airport.prefabSu11;
-                if (aircraft == null)
+                if (!IsUsableAircraftPrefab(aircraft) && item != null)
+                {
+                    item.TryGetPrefabBasico(out aircraft);
+                }
+                // Fichas antigas de caça podem apontar para um objeto vazio ou
+                // para um placeholder. Nesse caso a referência do próprio
+                // aeroporto é a mesma usada pela compra do jogador.
+                if (!IsUsableAircraftPrefab(aircraft)) aircraft = airport.prefabSu11;
+                if (!IsUsableAircraftPrefab(aircraft))
                 {
                     status = "Aeroporto militar sem prefab de caca configurado.";
                     continue;
@@ -977,6 +1003,24 @@ namespace Hegemonia.AI.IA01
             // sem aviação. Se nenhum componente encontrado for o dela, o create
             // militar é a fonte segura: a aeronave nasce no próprio pátio.
             return SpawnFighterAtMilitaryAirport(item);
+        }
+
+        private static bool IsUsableAircraftPrefab(GameObject prefab)
+        {
+            if (prefab == null || string.IsNullOrWhiteSpace(prefab.name)) return false;
+            try
+            {
+                Component[] components = prefab.GetComponents<Component>();
+                for (int i = 0; i < components.Length; i++)
+                {
+                    if (components[i] == null) return false;
+                }
+                return true;
+            }
+            catch (MissingReferenceException)
+            {
+                return false;
+            }
         }
 
         private GerenciadorAeroporto EnsureOwnMilitaryAirport()
@@ -1038,7 +1082,12 @@ namespace Hegemonia.AI.IA01
             // para cenas com aeroportos de outros países: nasce no create do
             // aeroporto da IA, nunca em ponto genérico do mapa.
             GameObject fallback = item != null ? item.prefabDaUnidade : null;
-            if (fallback == null && controller != null) fallback = controller.FighterPrefab;
+            if (!IsUsableAircraftPrefab(fallback) && controller != null) fallback = controller.FighterPrefab;
+            if (!IsUsableAircraftPrefab(fallback))
+            {
+                status = "Reserva militar sem prefab de caca valido.";
+                return false;
+            }
             Vector3 anchor = Vector3.zero;
             Quaternion rotation = Quaternion.identity;
             bool hasAnchor = false;
@@ -1286,6 +1335,22 @@ namespace Hegemonia.AI.IA01
         {
             return IA01MilitaryProductionGuard.CountOwnedUnique(context.TeamId, TipoUnidade.Veiculo, id =>
                 Contains(IA_Text.Normalize(id.gameObject.name), "tank", "tanque", "blindado", "vehicle", "veiculo", "carro"));
+        }
+
+        private int CountAntiAir()
+        {
+            HashSet<int> roots = new HashSet<int>();
+            TorretaAntiaerea[] torretas = UnityEngine.Object.FindObjectsByType<TorretaAntiaerea>(FindObjectsSortMode.None);
+            for (int i = 0; i < torretas.Length; i++)
+            {
+                TorretaAntiaerea torreta = torretas[i];
+                if (torreta == null || !torreta.gameObject.activeInHierarchy) continue;
+                IdentidadeUnidade identity = torreta.GetComponentInParent<IdentidadeUnidade>();
+                if (identity == null || identity.teamID != context.TeamId) continue;
+                Transform root = torreta.transform.root;
+                if (root != null && SistemaGastosMilitares.EhAresAr(root.name)) roots.Add(root.GetInstanceID());
+            }
+            return roots.Count;
         }
 
         private int CountFighters()

@@ -119,6 +119,8 @@ public class MenuComandoController : MonoBehaviour
     private Label ordemFeedback;
     private readonly List<Button> botoesOrdem = new List<Button>(8);
     private Button botaoOrdemSelecionado;
+    private bool modoMovimentoMapaAtivo = false;
+    private bool modoLancamentoMissilMapaAtivo = false;
 
     // Mapa — cache de VisualElements por instância
     private sealed class MapaItemUI
@@ -182,7 +184,8 @@ public class MenuComandoController : MonoBehaviour
 
         ControleUnidade controle = identidade.GetComponent<ControleUnidade>();
         if (controle == null && prepararSeMovel
-            && identidade.tipoUnidade != TipoUnidade.Estrutura)
+            && (identidade.tipoUnidade != TipoUnidade.Estrutura
+                || identidade.GetComponent<SiloLancadorEstrategico>() != null))
         {
             controle = identidade.gameObject.AddComponent<ControleUnidade>();
         }
@@ -274,6 +277,13 @@ public class MenuComandoController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.A))
         {
             SelecionarTodasUnidadesAliadas();
+        }
+
+        // A tecla I executa o mesmo comando do botao ESTADO (ALTERNAR).
+        if (Input.GetKeyDown(KeyCode.I))
+        {
+            ExecutarOrdem("ESTADO_ALTERNAR");
+            return;
         }
 
         // Confirmação rápida do alvo de seguir pela mira ou pela lista lateral
@@ -546,6 +556,8 @@ public class MenuComandoController : MonoBehaviour
     {
         if (!menuAberto) return;
         menuAberto = false;
+        modoMovimentoMapaAtivo = false;
+        modoLancamentoMissilMapaAtivo = false;
 
         root.style.display = DisplayStyle.None;
 
@@ -683,6 +695,9 @@ public class MenuComandoController : MonoBehaviour
         var btnPassivo = root.Q<Button>("btn-passivo");
         if (btnPassivo != null) VincularBotaoOrdem(btnPassivo, "PASSIVO");
 
+        var btnEstado = root.Q<Button>("btn-estado");
+        if (btnEstado != null) VincularBotaoOrdem(btnEstado, "ESTADO_ALTERNAR");
+
         var btnFuncionar = root.Q<Button>("btn-funcionar");
         if (btnFuncionar != null) VincularBotaoOrdem(btnFuncionar, "FUNCIONAR");
 
@@ -700,6 +715,12 @@ public class MenuComandoController : MonoBehaviour
 
         var btnTrocaCamera = root.Q<Button>("btn-troca-camera");
         if (btnTrocaCamera != null) VincularBotaoOrdem(btnTrocaCamera, "TROCAR_CAMERA");
+
+        var btnMover = root.Q<Button>("btn-mover-mapa");
+        if (btnMover != null) VincularBotaoOrdem(btnMover, "MOVER_MAPA");
+
+        var btnLancamento = root.Q<Button>("btn-lancar-missil");
+        if (btnLancamento != null) VincularBotaoOrdem(btnLancamento, "LANCAR_MISSIL");
 
         var btnSelTudo = root.Q<Button>("btn-selecionar-tudo");
         if (btnSelTudo != null) btnSelTudo.clicked += () => SelecionarTodasUnidadesAliadas();
@@ -740,7 +761,7 @@ public class MenuComandoController : MonoBehaviour
                 }
                 else if (evt.button == 1) // Botão direito
                 {
-                    OnMapRightClicked();
+                    OnMapRightClicked(evt.localPosition);
                     evt.StopPropagation();
                 }
             });
@@ -2176,6 +2197,41 @@ public class MenuComandoController : MonoBehaviour
                 AdicionarLog("OPS", $"{snapshot.Count} unidades: modo PASSIVO ativado", "normal");
                 break;
 
+            case "ESTADO_ALTERNAR":
+                List<string> estados = new List<string>();
+                foreach (var u in unidadesSelecionadasMenu)
+                {
+                    if (u == null) continue;
+                    string estado = u.AlternarEstadoOperacional();
+                    if (!estados.Contains(estado)) estados.Add(estado);
+                }
+                SetText(ordemFeedback, $"ESTADO: {string.Join(" / ", estados)}");
+                AdicionarLog("OPS", $"{snapshot.Count} unidades: estado alternado pela tecla I/menu", "normal");
+                break;
+
+            case "MOVER_MAPA":
+                modoMovimentoMapaAtivo = true;
+                if (desenhadorOrdens != null) desenhadorOrdens.CancelarModo();
+                FecharPainelSeguimento();
+                SetText(ordemFeedback, $"MOVER ATIVO: clique esquerdo ou direito no mapa para escolher o destino.");
+                AdicionarLog("OPS", $"{snapshot.Count} unidades: aguardando ponto de movimento no mapa", "normal");
+                break;
+
+            case "LANCAR_MISSIL":
+                modoLancamentoMissilMapaAtivo = true;
+                modoMovimentoMapaAtivo = false;
+                if (desenhadorOrdens != null) desenhadorOrdens.CancelarModo();
+                FecharPainelSeguimento();
+                foreach (var u in unidadesSelecionadasMenu)
+                {
+                    if (u == null) continue;
+                    SiloLancadorEstrategico silo = u.GetComponent<SiloLancadorEstrategico>();
+                    if (silo != null) silo.ArmarMarcacaoAlvo();
+                }
+                SetText(ordemFeedback, "LANÇAMENTO ARMADO: clique no mapa para marcar a área de impacto.");
+                AdicionarLog("OPS", $"{snapshot.Count} unidade(s): marcação de alvo estratégico iniciada", "alerta");
+                break;
+
             case "FUNCIONAR":
                 foreach (var u in unidadesSelecionadasMenu)
                 {
@@ -2491,6 +2547,20 @@ public class MenuComandoController : MonoBehaviour
 
     private void OnMapClicked(Vector2 localPos)
     {
+        Vector3 worldPos = ConverterLocalParaMundo(localPos);
+
+        if (modoLancamentoMissilMapaAtivo)
+        {
+            EnviarOrdemLancamentoMissilMapa(worldPos);
+            return;
+        }
+
+        if (modoMovimentoMapaAtivo)
+        {
+            EnviarOrdemMovimentoMapa(worldPos);
+            return;
+        }
+
         if (desenhadorOrdens == null)
             desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2498,8 +2568,6 @@ public class MenuComandoController : MonoBehaviour
 
         if (!desenhadorOrdens.modoPatrulhaAtivo && !desenhadorOrdens.modoSeguirAtivo && !desenhadorOrdens.modoAtaqueAtivo)
             return;
-
-        Vector3 worldPos = ConverterLocalParaMundo(localPos);
 
         if (desenhadorOrdens.modoPatrulhaAtivo)
         {
@@ -2536,8 +2604,20 @@ public class MenuComandoController : MonoBehaviour
         }
     }
 
-    private void OnMapRightClicked()
+    private void OnMapRightClicked(Vector2 localPos)
     {
+        if (modoLancamentoMissilMapaAtivo)
+        {
+            EnviarOrdemLancamentoMissilMapa(ConverterLocalParaMundo(localPos));
+            return;
+        }
+
+        if (modoMovimentoMapaAtivo)
+        {
+            EnviarOrdemMovimentoMapa(ConverterLocalParaMundo(localPos));
+            return;
+        }
+
         if (desenhadorOrdens == null)
             desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2548,6 +2628,41 @@ public class MenuComandoController : MonoBehaviour
             SetText(ordemFeedback, "Ordem cancelada.");
             AdicionarLog("OPS", "Ação cancelada pelo usuário.", "normal");
         }
+    }
+
+    private void EnviarOrdemMovimentoMapa(Vector3 destino)
+    {
+        int enviadas = 0;
+        foreach (var unidade in unidadesSelecionadasMenu)
+        {
+            if (unidade != null && unidade.EmitirOrdemMover(destino))
+            {
+                enviadas++;
+            }
+        }
+
+        modoMovimentoMapaAtivo = false;
+        SetText(ordemFeedback, enviadas > 0
+            ? $"Movimento enviado para {enviadas} unidade(s)."
+            : "Nenhuma ordem aceita; navios precisam de um ponto na água.");
+        AdicionarLog("OPS", $"Ordem de movimento no mapa: {enviadas} unidade(s) aceitas.", enviadas > 0 ? "normal" : "alerta");
+    }
+
+    private void EnviarOrdemLancamentoMissilMapa(Vector3 destino)
+    {
+        int ordenadas = 0;
+        foreach (var unidade in unidadesSelecionadasMenu)
+        {
+            if (unidade == null) continue;
+            SiloLancadorEstrategico silo = unidade.GetComponent<SiloLancadorEstrategico>();
+            if (silo != null && silo.TentarLancarNaArea(destino)) ordenadas++;
+        }
+
+        modoLancamentoMissilMapaAtivo = false;
+        SetText(ordemFeedback, ordenadas > 0
+            ? $"Lançamento estratégico preparado para {ordenadas} base(s)."
+            : "Nenhuma base estratégica aceitou o alvo.");
+        AdicionarLog("OPS", $"Ordem de lançamento estratégico: {ordenadas} base(s).", ordenadas > 0 ? "alerta" : "normal");
     }
 
     private void AtualizarCameraSeguimento(GameObject alvo)

@@ -89,6 +89,11 @@ public class Construtor : MonoBehaviour
     private UnityEngine.EventSystems.EventSystem eventSystemUI;
     private bool corFantasmaInvalidaAplicada;
     private bool corFantasmaAplicada;
+    private bool logouIcbmFalha;
+    // Fichas estratégicas (como o ICBM) podem ser compradas mesmo quando o
+    // mapa ainda não possui uma área de território reivindicada. A permissão
+    // é ativada somente pela ficha correspondente no menu de construção.
+    private bool permitirIcbmForaTerritorio;
     private BuildPreviewSnapshot previewSnapshot;
     private bool possuiPreviewSnapshot;
     private GerenteDeTerritorio gerenteTerritorioCache;
@@ -160,6 +165,11 @@ public class Construtor : MonoBehaviour
             return;
         }
 
+        if (Input.GetMouseButtonDown(0))
+        {
+            Debug.Log($"[Construtor][DEBUG] clique modo={modoConstrucao} prefab={(prefabSelecionado != null ? prefabSelecionado.name : "NULL")} sobreUI={IsMouseOverUI()} mouse={Input.mousePosition}", this);
+        }
+
         if (IsMouseOverUI())
         {
             if (fantasmaUnico != null) fantasmaUnico.SetActive(false);
@@ -176,7 +186,9 @@ public class Construtor : MonoBehaviour
 
         string nomePrefab = prefabSelecionado.name.ToLower();
         bool ehEstruturaCosteira = EhEstruturaCosteiraPrefab(prefabSelecionado);
-        bool ehPlataforma = nomePrefab.Contains("plataforma");
+        bool ehSiloEstrategico = permitirIcbmForaTerritorio ||
+            prefabSelecionado.GetComponentInChildren<SiloLancadorEstrategico>(true) != null;
+        bool ehPlataforma = nomePrefab.Contains("plataforma") && !ehSiloEstrategico;
         bool ehConstrucaoNaval = ehEstruturaCosteira || ehPlataforma;
 
         int layerIgnore = LayerMask.NameToLayer("Ignore Raycast");
@@ -199,6 +211,11 @@ public class Construtor : MonoBehaviour
 
         if (!acertouChao)
         {
+            if (prefabSelecionado != null && prefabSelecionado.GetComponentInChildren<SiloLancadorEstrategico>(true) != null && !logouIcbmFalha)
+            {
+                logouIcbmFalha = true;
+                Debug.LogWarning($"[Construtor][ICBM] nao encontrou ponto de terreno para o raio do mouse {Input.mousePosition}.", this);
+            }
             usarRotacaoPreviewNaval = false;
             usarPosicaoPreviewNaval = false;
             InvalidarPreviewSnapshot();
@@ -296,6 +313,24 @@ public class Construtor : MonoBehaviour
             return true;
         }
 
+        // Alguns mapas de campanha usam um plano visual de terreno sem
+        // Collider. O silo estratégico ainda precisa aceitar um ponto nesses
+        // terrenos; sem este fallback o clique nunca chega ao commit e o
+        // jogador paga a ficha sem ver a plataforma. Limitamos o plano ao
+        // ICBM para não alterar a validação das demais construções.
+        bool ehSiloEstrategico = permitirIcbmForaTerritorio || (prefabSelecionado != null &&
+            prefabSelecionado.GetComponentInChildren<SiloLancadorEstrategico>(true) != null);
+        if (ehSiloEstrategico)
+        {
+            UnityEngine.Plane planoTerreno = new UnityEngine.Plane(Vector3.up, Vector3.zero);
+            if (planoTerreno.Raycast(raio, out float distanciaPlano) && distanciaPlano >= 0f)
+            {
+                pontoMouse = raio.GetPoint(distanciaPlano);
+                pontoMouse.y = 0f;
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -353,8 +388,10 @@ public class Construtor : MonoBehaviour
 
         bool ehPrefeitura = prefabSelecionado.GetComponent<ComplexoGovernamental>() != null || prefabSelecionado.name.ToLower().Contains("prefeitura") || prefabSelecionado.name.ToLower().Contains("complexo");
         bool ehBandeira = prefabSelecionado.name.ToLower().Contains("bandeira") || prefabSelecionado.name.ToLower().Contains("flag") || prefabSelecionado.GetComponent<MarcadorTerritorio>() != null;
+        bool ehSiloEstrategico = permitirIcbmForaTerritorio ||
+            prefabSelecionado.GetComponentInChildren<SiloLancadorEstrategico>(true) != null;
 
-        if (!ehPrefeitura && !ehBandeira && !ehPlataforma && !ehEstruturaCosteira)
+        if (!ehPrefeitura && !ehBandeira && !ehPlataforma && !ehEstruturaCosteira && !ehSiloEstrategico)
         {
             if (donoDoPonto != meuTime)
             {
@@ -394,6 +431,8 @@ public class Construtor : MonoBehaviour
     void GerenciarConstrucaoNormal(Vector3 ponto)
     {
         RuaConectora ruaPrefab = prefabSelecionado != null ? prefabSelecionado.GetComponent<RuaConectora>() : null;
+        bool ehSiloEstrategico = permitirIcbmForaTerritorio ||
+            (prefabSelecionado != null && prefabSelecionado.GetComponentInChildren<SiloLancadorEstrategico>(true) != null);
         if (ruaPrefab != null && definindoRua)
         {
             GerenciarConstrucaoRuaContinua(ponto, ruaPrefab);
@@ -574,13 +613,18 @@ public class Construtor : MonoBehaviour
         fantasmaUnico.transform.position = posFinalPreview;
         if (usarRotacaoPreviewNaval) fantasmaUnico.transform.rotation = rotacaoPreviewNaval;
 
-        if (!previewLocalInvalido)
+        if (!previewLocalInvalido && !ehSiloEstrategico)
         {
             if (VerificarSobreposicao(posFinalPreview, fantasmaUnico.transform.rotation, prefabSelecionado, 0.5f, snapCollider))
             {
                 previewLocalInvalido = true;
                 motivoInvalido = LocalizationManager.T("build.overlap", "❌ SOBREPOSIÇÃO DE CONSTRUÇÃO:\nNão é permitido sobrepor prédios ou ruas.");
             }
+        }
+        else if (ehSiloEstrategico)
+        {
+            previewLocalInvalido = false;
+            motivoInvalido = "";
         }
 
         AplicarCorNoFantasma(fantasmaUnico, previewLocalInvalido);
@@ -622,6 +666,14 @@ public class Construtor : MonoBehaviour
 
     void CommitConstrucaoUnica(Vector3 pontoMouse, Vector3 posFinal, Quaternion rotFinal, Collider snapCollider)
     {
+        bool ehIcbm = prefabSelecionado != null &&
+            (prefabSelecionado.name.ToLower().Contains("foguete") ||
+             prefabSelecionado.GetComponentInChildren<SiloLancadorEstrategico>(true) != null);
+        if (ehIcbm)
+        {
+            Debug.Log($"[Construtor][ICBM] confirmando pos={posFinal} mouse={pontoMouse} invalido={previewLocalInvalido} custo={custoAtual}", this);
+        }
+
         if (EhEstruturaCosteiraPrefab(prefabSelecionado))
         {
             NavalPlacementResolver.StructurePose poseCommit;
@@ -632,9 +684,18 @@ public class Construtor : MonoBehaviour
             }
         }
 
-        if (!TentarCobrarConstrucao(custoAtual)) return;
+        if (!TentarCobrarConstrucao(custoAtual))
+        {
+            if (ehIcbm) Debug.LogWarning("[Construtor][ICBM] compra rejeitada por saldo insuficiente.", this);
+            return;
+        }
 
         GameObject novo = Instantiate(prefabSelecionado, posFinal, rotFinal);
+        if (ehIcbm)
+        {
+            Renderer[] renderers = novo.GetComponentsInChildren<Renderer>(true);
+            Debug.Log($"[Construtor][ICBM] instanciado nome={novo.name} ativo={novo.activeInHierarchy} pos={novo.transform.position} escala={novo.transform.lossyScale} renderers={renderers.Length}", novo);
+        }
 
         Imovel imovelNovo = novo.GetComponent<Imovel>();
         if (imovelNovo != null)
@@ -753,6 +814,7 @@ public class Construtor : MonoBehaviour
         anim.IniciarAnimacao(escalaOriginal, 1.5f);
 
         CancelarConstrucao(false);
+        if (ehIcbm) Debug.Log("[Construtor][ICBM] construção confirmada e modo encerrado.", novo);
     }
 
     private void GerenciarConstrucaoRuaContinua(Vector3 ponto, RuaConectora ruaPrefab)
@@ -1241,6 +1303,11 @@ public class Construtor : MonoBehaviour
 
     public void SelecionarParaConstruir(GameObject prefab, int custo, DadosConstrucao.CategoriaItem categoria)
     {
+        SelecionarParaConstruir(prefab, custo, categoria, false);
+    }
+
+    public void SelecionarParaConstruir(GameObject prefab, int custo, DadosConstrucao.CategoriaItem categoria, bool permitirForaTerritorio)
+    {
         if (modoConstrucao)
         {
             if (prefabSelecionado == prefab)
@@ -1253,6 +1320,12 @@ public class Construtor : MonoBehaviour
 
         SuspenderInteracoesConcorrentes();
         prefabSelecionado = prefab;
+        logouIcbmFalha = false;
+        permitirIcbmForaTerritorio = permitirForaTerritorio;
+        if (permitirIcbmForaTerritorio || (prefab != null && prefab.GetComponentInChildren<SiloLancadorEstrategico>(true) != null))
+        {
+            Debug.Log($"[Construtor][ICBM] modo de posicionamento iniciado; custo={custo} prefab={prefab.name}.", this);
+        }
         custoAtual = custo;
         categoriaAtual = categoria;
         modoConstrucao = true;
@@ -1280,6 +1353,7 @@ public class Construtor : MonoBehaviour
             if (gerente != null) gerente.dinheiroAtual += custoAtual;
             else if (GerenciadorRecursos.Instancia != null) GerenciadorRecursos.Instancia.AdicionarRecursos(addDinheiro: custoAtual);
         }
+        permitirIcbmForaTerritorio = false;
 
         modoConstrucao = false;
         definindoMuro = false;

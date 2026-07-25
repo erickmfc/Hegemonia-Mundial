@@ -498,19 +498,23 @@ public static class CatalogoProdutoCompartilhado
 
         GameObject prefab;
         bool temPrefab = construcao.TryGetPrefabBasico(out prefab);
+        string idBase = construcao.GetStableId();
+        string nomeBase = construcao.GetDisplayName();
+        string descricaoBase = construcao.descricao ?? string.Empty;
+        bool ehAresAntiaereo = EhAresAntiaereo(idBase, nomeBase, descricaoBase, prefab);
         IA_ConstructionCapability capabilities = construcao.GetResolvedCapabilities();
         CatalogoProdutoUnificadoItem item = new CatalogoProdutoUnificadoItem
         {
-            id = construcao.GetStableId(),
-            nome = construcao.GetDisplayName(),
-            descricao = construcao.descricao,
-            categoria = ConverterCategoriaConstrucao(construcao, capabilities),
+            id = idBase,
+            nome = nomeBase,
+            descricao = descricaoBase,
+            categoria = ehAresAntiaereo ? CategoriaProduto.Missil : ConverterCategoriaConstrucao(construcao, capabilities),
             unidade = "un",
             prefabId = temPrefab && prefab != null ? IA_Text.Normalize(prefab.name) : IA_Text.Normalize(construcao.name),
             permiteProducaoAutomatica = false,
             permiteCompraAutomatica = false,
             permiteVendaAutomatica = false,
-            prioridade = 1,
+            prioridade = ehAresAntiaereo ? 100 : 1,
             dicaDesbloqueio = construcao.descricao,
             dicaMaterialFaltante = string.Empty,
             dicaEstruturaFaltante = string.Empty,
@@ -529,7 +533,39 @@ public static class CatalogoProdutoCompartilhado
             item.aliases.Add(alias);
         }
 
+        if (ehAresAntiaereo)
+        {
+            AdicionarAlias(item, "Ares Ar");
+            AdicionarAlias(item, "Ares_Ar");
+            AdicionarAlias(item, "anti aereo");
+            AdicionarAlias(item, "antiaereo");
+            AdicionarAlias(item, "antiaereo contra avioes");
+            AdicionarAlias(item, "defesa aerea");
+            AdicionarAlias(item, "aa");
+        }
+
         return item;
+    }
+
+    private static bool EhAresAntiaereo(string id, string nome, string descricao, GameObject prefab)
+    {
+        string combinado = (id ?? string.Empty) + " " + (nome ?? string.Empty) + " " + (descricao ?? string.Empty);
+        if (prefab != null) combinado += " " + prefab.name;
+        combinado = combinado.ToLowerInvariant();
+        return combinado.Contains("ares_ar")
+            || combinado.Contains("ares ar")
+            || (combinado.Contains("ares") && combinado.Contains("antia"))
+            || combinado.Contains("anti aereo")
+            || combinado.Contains("antiaereo")
+            || combinado.Contains("defesa aerea");
+    }
+
+    private static void AdicionarAlias(CatalogoProdutoUnificadoItem item, string alias)
+    {
+        if (item == null || string.IsNullOrWhiteSpace(alias)) return;
+        if (item.aliases == null) item.aliases = new List<string>();
+        if (!item.aliases.Any(a => string.Equals(a, alias, StringComparison.OrdinalIgnoreCase)))
+            item.aliases.Add(alias);
     }
 
     private static CategoriaProduto ConverterCategoriaConstrucao(DadosConstrucao construcao, IA_ConstructionCapability capabilities)

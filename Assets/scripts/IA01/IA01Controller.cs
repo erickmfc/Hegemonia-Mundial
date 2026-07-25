@@ -52,6 +52,10 @@ namespace Hegemonia.AI.IA01
         [Tooltip("Permite que uma economia forte/guerra avance mais rapidamente para A e S sem alterar a fila oficial.")]
         [SerializeField] private bool allowMilitaryTierAdvancement = true;
 
+        [Header("Suporte estratégico opcional")]
+        [Tooltip("Fica desativado por padrão até os lançadores balísticos e o presidente existirem no jogo.")]
+        [SerializeField] private IA01StrategicOptions strategicOptions = new IA01StrategicOptions();
+
         [Header("Runtime")]
         [SerializeField] private bool autoRegisterWithManager = true;
         [SerializeField] private bool autoApplyGovernmentSnapshot = true;
@@ -77,6 +81,7 @@ namespace Hegemonia.AI.IA01
         private IA01WorkResult lastExecutionResult;
         private bool restoredFromSave;
         private float nextStandaloneTick;
+        [NonSerialized] private IA01StrategicSupport strategicSupport;
 
         public string ModuleId => UniqueEntityId;
         public bool IsDirty => context != null && context.IsDirty;
@@ -123,6 +128,8 @@ namespace Hegemonia.AI.IA01
         public bool EnablePlanningAdvisor => enablePlanningAdvisor;
         public bool ProgressiveMilitaryCatalog => progressiveMilitaryCatalog;
         public bool AllowMilitaryTierAdvancement => allowMilitaryTierAdvancement;
+        public IA01StrategicOptions StrategicOptions => strategicOptions;
+        public IA01StrategicSupport StrategicSupport => strategicSupport;
         public IA01BuildSlot CapitalSlot => cityLayout != null ? cityLayout.CapitalSlot : null;
 
         public bool TryResolveConstructionAnchor(IA01IntentType intent, out Vector3 position)
@@ -392,6 +399,17 @@ namespace Hegemonia.AI.IA01
                 changed |= runtimeOperations > 0;
             }
 
+            // O suporte estratégico é opcional e só trabalha quando alguma
+            // integração futura foi explicitamente ativada no Inspector.
+            if (strategicSupport != null
+                && (strategicSupport.Options.BallisticEnabled
+                    || strategicSupport.Options.EnableStrategicLeaderIntegration
+                    || strategicSupport.Options.EnableCountryTransferOperation)
+                && operations < budget.MaxOperations)
+            {
+                operations += strategicSupport.ProcessSlice(Time.unscaledTime, budget.MaxOperations - operations);
+            }
+
             if (operations < budget.MaxOperations)
             {
                 operations += gameStateBridge.Refresh(context, budget.MaxOperations - operations);
@@ -419,6 +437,7 @@ namespace Hegemonia.AI.IA01
             sharedEventBus = null;
             subscribedNationId = 0;
             nationRuntime = null;
+            strategicSupport = null;
             pendingEventCount = 0;
         }
 
@@ -567,6 +586,26 @@ namespace Hegemonia.AI.IA01
             return sharedEventBus.Publish(new IA01RuntimeEvent { NationId = NationId, TeamId = TeamId, SourceInstanceId = InstanceId, Topic = topic ?? string.Empty, Message = message ?? string.Empty, Payload = payload, Severity = severity, TimeStamp = Time.unscaledTime });
         }
 
+        public IA01BallisticThreatRecord RegisterBallisticImpact(Vector3 impactPosition, Vector3 predictedTargetPosition, Vector3 arrivalDirection, Vector3 probableLaunchArea, IA01BallisticMissileType missileType, IA01BallisticWarheadType warheadType, int launchCount, float damage, string infrastructureHit, int suspectedCountryId = 0, int confirmedCountryId = 0, Vector3 knownLaunchPosition = default(Vector3), bool launchPositionKnown = false, float authorshipConfidence = 0f)
+        {
+            EnsureBootstrap(false);
+            return strategicSupport != null
+                ? strategicSupport.RegisterBallisticImpact(impactPosition, predictedTargetPosition, arrivalDirection, probableLaunchArea, missileType, warheadType, launchCount, damage, infrastructureHit, suspectedCountryId, confirmedCountryId, knownLaunchPosition, launchPositionKnown, authorshipConfidence, Time.unscaledTime)
+                : null;
+        }
+
+        public bool RegisterLeaderEvent(IA01LeaderEventType eventType, string leaderId, Vector3 position, float confidence, int relatedCountryId = 0, string regionId = null, string buildingId = null, string vehicleId = null)
+        {
+            EnsureBootstrap(false);
+            return strategicSupport != null && strategicSupport.RegisterLeaderEvent(eventType, leaderId, position, confidence, Time.unscaledTime, relatedCountryId, regionId, buildingId, vehicleId);
+        }
+
+        public bool BeginCountryTransfer(int winnerCountryId, int defeatedCountryId, int regions, int cities, int structures, int resources, int units)
+        {
+            EnsureBootstrap(false);
+            return strategicSupport != null && strategicSupport.BeginCountryTransfer(winnerCountryId, defeatedCountryId, regions, cities, structures, resources, units);
+        }
+
         public IA01WorldEntityRecord BuildWorldRecord()
         {
             EnsureBootstrap(false);
@@ -576,6 +615,7 @@ namespace Hegemonia.AI.IA01
         public void EnsureBootstrap(bool forceProfileRebuild)
         {
             if (context == null) context = new IA01RuntimeContext();
+            if (strategicOptions == null) strategicOptions = new IA01StrategicOptions();
             if (runtimeProfile == null || forceProfileRebuild)
             {
                 runtimeProfile = profileAsset != null ? profileAsset.CloneForRuntime(context.GetIdentitySnapshot()) : (createRuntimeProfileWhenMissing ? ScriptableObject.CreateInstance<IA01NationProfile>() : null);
@@ -594,6 +634,7 @@ namespace Hegemonia.AI.IA01
             if (country != null) context.ApplyGovernmentSnapshot(country);
             uniqueEntityId = "ia01:" + identity.NationId + ":" + identity.TeamId + ":" + InstanceId;
             if (nationRuntime == null) nationRuntime = new IA01NationRuntime(this, context, runtimeProfile);
+            if (strategicSupport == null) strategicSupport = new IA01StrategicSupport(identity.NationId, strategicOptions);
             RefreshEventBusSubscription();
             runtimeSummary = BuildRuntimeSummary();
         }
@@ -638,7 +679,8 @@ namespace Hegemonia.AI.IA01
                 .Append(" military=").Append(MilitaryStatus)
                 .Append(" planning=").Append(PlanningStatus)
                 .Append(" market=").Append(MarketStatus)
-                .Append(" economy=").Append(EconomicStateStatus);
+                .Append(" economy=").Append(EconomicStateStatus)
+                .Append(" strategic=").Append(strategicSupport != null ? strategicSupport.Status : "n/d");
             return summary.ToString();
         }
 

@@ -30,6 +30,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
 
         Instancia = this;
         DontDestroyOnLoad(gameObject);
+        SistemaGastosMilitares.GarantirInstancia();
         InicializarItensPadrao();
     }
 
@@ -276,9 +277,12 @@ public class SistemaMercadoGlobal : MonoBehaviour
         DadosPaisGoverno comprador = governo.ObterPais(compradorTeamId);
         DadosPaisGoverno vendedor = governo.ObterPais(vendedorTeamId);
         string recursoId = ObterRecursoIdEfetivo(item);
-        int estoqueVendedor = item.equipamentoMilitar
-            ? item.estoqueGlobal
-            : governo.ObterEstoque(vendedorTeamId, recursoId);
+        SistemaGastosMilitares gastosMilitares = SistemaGastosMilitares.Instancia;
+        int estoqueVendedor = item.municaoMilitar && gastosMilitares != null
+            ? gastosMilitares.ObterEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar)
+            : item.equipamentoMilitar
+                ? item.estoqueGlobal
+                : governo.ObterEstoque(vendedorTeamId, recursoId);
         quantidade = Mathf.Min(quantidade, Mathf.Max(0, item.estoqueGlobal), Mathf.Max(0, estoqueVendedor));
         int total = quantidade * item.precoAtual;
         if (comprador == null || vendedor == null || quantidade <= 0)
@@ -300,7 +304,18 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         governo.AdicionarSaldo(vendedorTeamId, total);
-        if (item.equipamentoMilitar)
+        if (item.municaoMilitar && gastosMilitares != null)
+        {
+            if (!gastosMilitares.RemoverEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar, quantidade))
+            {
+                governo.AdicionarSaldo(compradorTeamId, total);
+                governo.AdicionarSaldo(vendedorTeamId, -total);
+                mensagem = "Estoque de municao do fornecedor esgotado.";
+                return false;
+            }
+            gastosMilitares.AdicionarEstoqueMunicao(compradorTeamId, item.idMunicaoMilitar, quantidade);
+        }
+        else if (item.equipamentoMilitar)
         {
             if (!EntregaMercadoMilitar.Enviar(item, vendedorTeamId, compradorTeamId, quantidade, out mensagem))
             {
@@ -328,7 +343,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
             total = total,
             compraDoJogador = compradorTeamId == governo.teamJogador,
             mensagem = comprador.nomePais + " comprou " + quantidade + " de " + item.nome + " de " + vendedor.nomePais
-                + (item.equipamentoMilitar ? " | entrega a caminho do destino" : string.Empty)
+                + (item.equipamentoMilitar ? " | entrega a caminho do destino" : item.municaoMilitar ? " | cartuchos enviados ao armazem" : string.Empty)
         };
 
         RegistrarTransacao(transacao);
@@ -356,7 +371,11 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         string recursoId = ObterRecursoIdEfetivo(item);
-        int disponivel = governo.ObterEstoque(vendedorTeamId, recursoId);
+        SistemaGastosMilitares.GarantirInstancia();
+        SistemaGastosMilitares gastosMilitares = SistemaGastosMilitares.Instancia;
+        int disponivel = item.municaoMilitar && gastosMilitares != null
+            ? gastosMilitares.ObterEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar)
+            : governo.ObterEstoque(vendedorTeamId, recursoId);
         quantidade = Mathf.Min(quantidade, disponivel);
         if (quantidade <= 0)
         {
@@ -372,8 +391,22 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         governo.AdicionarSaldo(vendedorTeamId, total);
-        governo.RemoverEstoque(vendedorTeamId, recursoId, quantidade);
-        governo.AdicionarEstoque(compradorTeamId, recursoId, quantidade);
+        if (item.municaoMilitar)
+        {
+            if (gastosMilitares == null || !gastosMilitares.RemoverEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar, quantidade))
+            {
+                governo.AdicionarSaldo(compradorTeamId, total);
+                governo.AdicionarSaldo(vendedorTeamId, -total);
+                mensagem = "Estoque de municao insuficiente para concluir a venda.";
+                return false;
+            }
+            gastosMilitares.AdicionarEstoqueMunicao(compradorTeamId, item.idMunicaoMilitar, quantidade);
+        }
+        else
+        {
+            governo.RemoverEstoque(vendedorTeamId, recursoId, quantidade);
+            governo.AdicionarEstoque(compradorTeamId, recursoId, quantidade);
+        }
 
         item.estoqueGlobal += quantidade;
         item.oferta = Mathf.Clamp(item.oferta + quantidade / 100f, 0f, 160f);
@@ -610,6 +643,9 @@ public class SistemaMercadoGlobal : MonoBehaviour
 
     private void SincronizarEquipamentosMilitares()
     {
+        // A munição ativa não depende do catálogo de construções ter carregado.
+        // Isso garante que o valor de mercado do Ares_Ar apareça desde o início.
+        SincronizarMunicoesAtivas();
         if (MenuConstrucao.catalogoGlobal == null) return;
 
         foreach (DadosConstrucao ficha in MenuConstrucao.catalogoGlobal)
@@ -646,6 +682,65 @@ public class SistemaMercadoGlobal : MonoBehaviour
             item.podeComprar = true;
             item.podeVender = false;
             item.estoqueGlobal = Mathf.Max(1, item.estoqueGlobal);
+        }
+        NormalizarItensMercado();
+    }
+
+    private void SincronizarMunicoesAtivas()
+    {
+        SistemaGastosMilitares.GarantirInstancia();
+        SistemaGastosMilitares gastos = SistemaGastosMilitares.Instancia;
+        if (gastos == null) return;
+
+        foreach (DefinicaoMunicaoMilitar municao in gastos.ObterMunicoesAtivas())
+        {
+            if (municao == null || string.IsNullOrWhiteSpace(municao.id)) continue;
+            DadosItemMercado item = ObterItem(municao.id);
+            if (item == null)
+            {
+                item = new DadosItemMercado
+                {
+                    id = municao.id,
+                    recursoId = municao.id,
+                    nome = municao.nome,
+                    categoria = "Municoes",
+                    recurso = RecursoMercado.Armamentos,
+                    precoBase = Mathf.Max(1, municao.valorUnitario),
+                    precoAtual = Mathf.Max(1, municao.valorUnitario),
+                    estoqueGlobal = 500,
+                    oferta = 52f,
+                    demanda = 48f,
+                    volatilidade = 0.08f,
+                    podeComprar = true,
+                    podeVender = true,
+                    municaoMilitar = true,
+                    idMunicaoMilitar = municao.id
+                };
+                itens.Add(item);
+            }
+            else
+            {
+                item.nome = municao.nome;
+                item.categoria = "Municoes";
+                item.precoBase = Mathf.Max(1, municao.valorUnitario);
+                item.precoAtual = Mathf.Max(1, item.precoAtual);
+                item.podeComprar = true;
+                item.podeVender = true;
+                item.municaoMilitar = true;
+                item.idMunicaoMilitar = municao.id;
+            }
+        }
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null)
+        {
+            foreach (DadosPaisGoverno pais in governo.Paises)
+            {
+                if (pais == null) continue;
+                // Estoque inicial pequeno para que o mercado tenha fornecedor;
+                // a fabricação nacional pode aumentar esse saldo depois.
+                gastos.GarantirEstoqueInicial(pais.teamId, "municao_ares_ar", 20);
+            }
         }
         NormalizarItensMercado();
     }

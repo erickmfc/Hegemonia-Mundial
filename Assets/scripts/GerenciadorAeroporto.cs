@@ -941,7 +941,14 @@ public class GerenciadorAeroporto : MonoBehaviour
     /// </summary>
     public void ComprarAviaoIAImediato(GameObject prefabDeAeronave)
     {
-        if (prefabDeAeronave == null) return;
+        // A IA pode encontrar fichas legadas com uma referência vazia/objeto
+        // quebrado. Não encaminhe esse objeto para Instantiate: isso gerava o
+        // erro de prefab sem nome e interrompia a fila militar.
+        if (prefabDeAeronave == null || string.IsNullOrWhiteSpace(prefabDeAeronave.name))
+        {
+            Debug.LogWarning("[Aeroporto] Ordem da IA ignorada: prefab de aeronave invalido.", this);
+            return;
+        }
         ComprarAviaoImediato(prefabDeAeronave);
     }
 
@@ -963,7 +970,12 @@ public class GerenciadorAeroporto : MonoBehaviour
             && (wpPreparacao == transform || wpPreparacao.IsChildOf(transform))
             && (wpPreparacao.position - transform.position).sqrMagnitude <= 40000f;
         Vector3 posSpawn = pontoPreparacaoLocal ? wpPreparacao.position : transform.position;
-        GameObject aeronaveNascente = Instantiate(prefabDeAeronave, posSpawn, Quaternion.identity);
+        GameObject aeronaveNascente = UnityEngine.Object.Instantiate((UnityEngine.Object)prefabDeAeronave, posSpawn, Quaternion.identity) as GameObject;
+        if (aeronaveNascente == null)
+        {
+            Debug.LogError("[Aeroporto] Nao foi possivel instanciar o prefab de aeronave: " + prefabDeAeronave.name, this);
+            return;
+        }
 
         string nomePrefabNormalizado = prefabDeAeronave.name.ToLowerInvariant();
         if ((nomePrefabNormalizado.Contains("nara") || nomePrefabNormalizado.Contains("american_plane_transport"))

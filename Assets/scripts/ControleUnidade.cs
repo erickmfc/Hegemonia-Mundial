@@ -833,6 +833,14 @@ public class ControleUnidade : MonoBehaviour
             }
         }
 
+        // Navios e submarinos só recebem destinos confirmados na água.
+        // Isso evita que uma amostragem genérica do NavMesh escolha a layer Chao.
+        if (EhUnidadeNaval() && !NavalPlacementResolver.IsWaterAtPosition(destino))
+        {
+            Debug.LogWarning($"[ControleUnidade] {name}: destino naval recusado porque está fora da água ({destino.x:F0}, {destino.z:F0}).", this);
+            return;
+        }
+
         if (c700TransporteAereo != null && c700TransporteAereo.EstaNoSolo && !c700TransporteAereo.AguardandoDestinoAereo)
         {
             c700TransporteAereo.ReceberOrdemMover(destino);
@@ -963,7 +971,10 @@ public class ControleUnidade : MonoBehaviour
                      if (!agente.isOnNavMesh)
                      {
                          NavMeshHit hit;
-                         if (NavMesh.SamplePosition(transform.position, out hit, 100f, NavMesh.AllAreas))
+                          int areaMaskRecuperacao = EhUnidadeNaval()
+                              ? (agente.areaMask != 0 ? agente.areaMask : (1 << 3))
+                              : NavMesh.AllAreas;
+                          if (NavMesh.SamplePosition(transform.position, out hit, 100f, areaMaskRecuperacao))
                          {
                              agente.Warp(hit.position);
                          }
@@ -1112,6 +1123,40 @@ public class ControleUnidade : MonoBehaviour
         }
 
         return alterouAlgo;
+    }
+
+    /// <summary>
+    /// Alterna o estado operacional pelo mesmo comando usado pela tecla I.
+    /// Cada executor mantém o seu ciclo próprio; unidades sem ciclo específico
+    /// usam o estado de combate ATIVO/PASSIVO já exibido no menu.
+    /// </summary>
+    public string AlternarEstadoOperacional()
+    {
+        if (controleSubmarino != null)
+        {
+            return controleSubmarino.AlternarEstadoOperacional();
+        }
+
+        if (controleNavioRealista != null)
+        {
+            ControleNavioRealista.ModoOperacao novoModo = controleNavioRealista.modoOperacao == ControleNavioRealista.ModoOperacao.Ativo
+                ? ControleNavioRealista.ModoOperacao.Passivo
+                : ControleNavioRealista.ModoOperacao.Ativo;
+            controleNavioRealista.DefinirModoOperacao(novoModo);
+            DefinirModoCombate(novoModo == ControleNavioRealista.ModoOperacao.Ativo);
+            return novoModo.ToString().ToUpperInvariant();
+        }
+
+        if (TryObterEstadoCombate(out bool passivo, out _))
+        {
+            bool novoAtivo = passivo;
+            DefinirModoCombate(novoAtivo);
+            return novoAtivo ? "ATIVO" : "PASSIVO";
+        }
+
+        bool fallbackAtivo = !modoCombateOficialAtivo;
+        DefinirModoCombate(fallbackAtivo);
+        return fallbackAtivo ? "ATIVO" : "PASSIVO";
     }
 
     public bool TryObterEstadoCombate(out bool passivo, out string descricao)

@@ -46,6 +46,11 @@ public class DadosItemMercado
     public string prefabId = string.Empty;
     public string tipoEntrega = string.Empty;
 
+    // Oferta de munição produzida/armazenada por países. Diferente de um
+    // equipamento, a liquidação apenas transfere cartuchos para o estoque.
+    public bool municaoMilitar;
+    public string idMunicaoMilitar = string.Empty;
+
     public string NomeFormatado => string.IsNullOrEmpty(nome) ? id : nome;
     public string RecursoIdEfetivo
     {
@@ -68,6 +73,10 @@ public class DadosItemMercado
 
     public int CalcularQuantidadePadrao()
     {
+        if (municaoMilitar)
+        {
+            return 10;
+        }
         if (equipamentoMilitar)
         {
             return 1;

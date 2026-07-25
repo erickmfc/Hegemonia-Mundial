@@ -483,15 +483,17 @@ public class ControleNavioRealista : MonoBehaviour
                 int areaMask = agente.areaMask;
                 if (areaMask == 0)
                 {
-                    areaMask = NavMesh.AllAreas;
+                    areaMask = 1 << 3;
                 }
 
-                if (!NavMesh.SamplePosition(transform.position, out hit, RaioPreparacaoNavMesh, areaMask))
+                Vector3 origemAgua = transform.position;
+                origemAgua.y = NavalPlacementResolver.ResolveSeaLevel();
+                if (NavalPlacementResolver.TryResolveWaterSpawn(origemAgua, transform.forward, 0f, 220f, out Vector3 pontoAgua, out _, out _))
                 {
-                    NavMesh.SamplePosition(transform.position, out hit, RaioPreparacaoNavMesh, NavMesh.AllAreas);
+                    origemAgua = pontoAgua;
                 }
 
-                if (hit.hit)
+                if (NavMesh.SamplePosition(origemAgua, out hit, RaioPreparacaoNavMesh, areaMask) && hit.hit)
                 {
                     agente.Warp(hit.position);
                 }
@@ -839,6 +841,12 @@ public class ControleNavioRealista : MonoBehaviour
             return;
         }
 
+        if (!NavalPlacementResolver.IsWaterAtPosition(destino))
+        {
+            Debug.LogWarning($"[ControleNavioRealista] Destino recusado para {name}: ponto fora da água ({destino.x:F0}, {destino.z:F0}).", this);
+            return;
+        }
+
         if (TentarPrepararAgenteParaNavegacao())
         {
             float cooldown = InfraPerformanceGameplay.ResolverIntervalo(1.10f, estadoOtimizacao, true, true);
@@ -869,13 +877,8 @@ public class ControleNavioRealista : MonoBehaviour
             if (!destinoAceito)
             {
                 NavMeshHit hitDestino;
-                int areaMask = agente.areaMask == 0 ? NavMesh.AllAreas : agente.areaMask;
-                if (!NavMesh.SamplePosition(destino, out hitDestino, RaioDestinoNavMesh, areaMask))
-                {
-                    NavMesh.SamplePosition(destino, out hitDestino, RaioDestinoNavMesh, NavMesh.AllAreas);
-                }
-
-                if (hitDestino.hit)
+                int areaMask = agente.areaMask == 0 ? (1 << 3) : agente.areaMask;
+                if (NavMesh.SamplePosition(destino, out hitDestino, RaioDestinoNavMesh, areaMask) && hitDestino.hit)
                 {
                     destinoAceito = agente.SetDestination(hitDestino.position);
                     temDestino = destinoAceito;

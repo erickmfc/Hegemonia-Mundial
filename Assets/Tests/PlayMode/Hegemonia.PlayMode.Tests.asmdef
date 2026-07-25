@@ -1,15 +1,9 @@
 {
   "name": "Hegemonia.PlayMode.Tests",
   "rootNamespace": "",
-  "references": [
-    "Assembly-CSharp"
-  ],
-  "optionalUnityReferences": [
-    "TestAssemblies"
-  ],
-  "includePlatforms": [
-    "Editor"
-  ],
+  "references": [],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,

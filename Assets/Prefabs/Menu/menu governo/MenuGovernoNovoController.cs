@@ -48,7 +48,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         { "Relacoes", new[] { "Resumo", "Nacoes", "Tratados", "Crises" } },
         { "Aliancas", new[] { "Blocos", "Membros", "Pactos", "Pedidos" } },
         { "Sancoes", new[] { "Ativas", "Embargos", "Pressao", "Historico", "Legitimidade", "Emprestimos" } },
-        { "Economia", new[] { "Tesouro", "Orcamento", "Producao", "Impostos" } },
+        { "Economia", new[] { "Tesouro", "Orcamento", "Gastos", "Producao", "Impostos" } },
         { "Mercado", new[] { "Comprar", "Vender", "Precos", "Rotas" } },
         { "Interior", new[] { "Populacao", "Cidades", "Bem-estar", "Projetos" } },
         { "Defesa", new[] { "Comando", "Exercito", "Marinha", "Aerea", "Alertas" } },
@@ -473,7 +473,12 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 Acao("REVER IMPACTO", () => { MostrarMensagem("Impacto das sancoes revisado."); MostrarPagina(abaAtual); });
                 break;
             case "Economia":
-                if (abaAtual == "Tesouro" || abaAtual == "Orcamento")
+                if (abaAtual == "Gastos")
+                {
+                    Acao("ATUALIZAR GASTOS MILITARES", () => { MostrarMensagem("Relatorio de gastos atualizado."); MostrarPagina(abaAtual); });
+                    Acao("ABRIR DEFESA", () => { categoria = "Defesa"; MostrarSecao("Defesa"); });
+                }
+                else if (abaAtual == "Tesouro" || abaAtual == "Orcamento")
                 {
                     Acao("GERAR EMPREGOS", () => Executar(() => SistemaGovernoMundial.Instancia.AlterarEmprego(1, 3f), "Programa de empregos executado."));
                     Acao("INVESTIR EM MORADIA", MelhorarMoradia);
@@ -701,7 +706,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
             VisualElement categorias = new VisualElement();
             categorias.AddToClassList("gov-market-category-filters");
-            foreach (string nomeCategoria in new[] { "Todos", "Minerios", "Combustiveis", "Alimentos", "Tanques", "Navios", "Aeronaves", "Armas" })
+            foreach (string nomeCategoria in new[] { "Todos", "Minerios", "Combustiveis", "Alimentos", "Tanques", "Navios", "Aeronaves", "Armas", "Municoes" })
             {
                 string categoriaBotao = nomeCategoria;
                 Button botaoCategoria = new Button(() =>
@@ -727,7 +732,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             {
                 itensExibicao = itensExibicao.Where(item =>
                 {
-                    int estoque = EstoqueReal(item.recurso);
+                    int estoque = EstoqueMercadoDoTime(item, timeJogador);
                     return comprar
                         ? item.podeComprar && item.precoAtual > 0f && item.estoqueGlobal > 0
                         : item.podeVender && item.precoAtual > 0f && estoque > 0;
@@ -736,7 +741,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             if (mercadoEstoquePrimeiro)
             {
                 itensExibicao = itensExibicao
-                    .OrderByDescending(item => EstoqueReal(item.recurso) > 0)
+                    .OrderByDescending(item => EstoqueMercadoDoTime(item, timeJogador) > 0)
                     .ThenBy(item => item.NomeFormatado);
             }
             foreach (DadosItemMercado item in itensExibicao)
@@ -784,7 +789,8 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private void AdicionarCardMercado(VisualElement grade, DadosItemMercado item, bool comprar)
     {
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
-        int estoqueJogador = EstoqueReal(item.recurso);
+        int timeJogador = governo != null ? governo.teamJogador : 1;
+        int estoqueJogador = EstoqueMercadoDoTime(item, timeJogador);
         int quantidadeInicial = comprar
             ? Mathf.Max(1, item.CalcularQuantidadePadrao())
             : Mathf.Clamp(item.CalcularQuantidadePadrao(), 1, Mathf.Max(1, estoqueJogador));
@@ -800,12 +806,12 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         Label detalhes = new Label(
             "Preco unitario: $ " + item.precoAtual.ToString("N0") +
             "\nVariacao: " + variacao +
-            (comprar ? "\nOferta global: " + item.estoqueGlobal.ToString("N0") + " t" : "\nSeu estoque: " + estoqueJogador.ToString("N0") + " t") +
-            "\nLiquidacao em alimento agregado do armazem.");
+            (comprar ? "\nOferta global: " + item.estoqueGlobal.ToString("N0") + (item.municaoMilitar ? " cart." : " t") : "\nSeu estoque: " + estoqueJogador.ToString("N0") + (item.municaoMilitar ? " cart." : " t")) +
+            (item.municaoMilitar ? "\nCada disparo desconta um cartucho do estoque da unidade." : "\nLiquidacao no estoque agregado do armazem."));
         detalhes.AddToClassList("gov-market-details");
         card.Add(detalhes);
 
-        IntegerField quantidade = new IntegerField("QUANTIDADE (t)");
+        IntegerField quantidade = new IntegerField(item.municaoMilitar ? "QUANTIDADE (CARTUCHOS)" : "QUANTIDADE (t)");
         quantidade.value = quantidadeInicial;
         quantidade.AddToClassList("gov-quantity");
         card.Add(quantidade);
@@ -815,7 +821,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         Action atualizarTotal = () =>
         {
             int valor = Mathf.Max(1, quantidade.value);
-            total.text = (comprar ? "TOTAL: $ " : "RECEBER: $ ") + ((long)valor * item.precoAtual).ToString("N0") + "  |  " + valor.ToString("N0") + " t";
+            total.text = (comprar ? "TOTAL: $ " : "RECEBER: $ ") + ((long)valor * item.precoAtual).ToString("N0") + "  |  " + valor.ToString("N0") + (item.municaoMilitar ? " cart." : " t");
         };
         quantidade.RegisterValueChangedCallback(evt =>
         {
@@ -892,9 +898,12 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         bool ok = false;
         if (comprar)
         {
-            DadosPaisGoverno vendedor = g.Paises.FirstOrDefault(p => p.teamId != 1 && (item.equipamentoMilitar
-                ? p.saldo >= quantidade * item.precoAtual
-                : g.ObterEstoque(p.teamId, item.recurso) > 0));
+            SistemaGastosMilitares.GarantirInstancia();
+            DadosPaisGoverno vendedor = g.Paises.FirstOrDefault(p => p.teamId != 1 && (item.municaoMilitar
+                ? SistemaGastosMilitares.Instancia != null && SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(p.teamId, item.idMunicaoMilitar) > 0
+                : item.equipamentoMilitar
+                    ? p.saldo >= quantidade * item.precoAtual
+                    : g.ObterEstoque(p.teamId, item.recurso) > 0));
             if (vendedor == null)
             {
                 mensagem = "Nenhum fornecedor possui estoque disponivel.";
@@ -936,6 +945,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private static string CategoriaMercado(DadosItemMercado item)
     {
         if (item == null) return "Outros";
+        if (item.municaoMilitar) return "Municoes";
         if (item.equipamentoMilitar)
         {
             string tipo = (item.tipoEntrega ?? string.Empty).ToLowerInvariant();
@@ -957,6 +967,18 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 string texto = ((item.categoria ?? string.Empty) + " " + (item.nome ?? string.Empty)).ToLowerInvariant();
                 return texto.Contains("combust") || texto.Contains("gasolina") || texto.Contains("diesel") ? "Combustiveis" : "Outros";
         }
+    }
+
+    private int EstoqueMercadoDoTime(DadosItemMercado item, int teamId)
+    {
+        if (item != null && item.municaoMilitar)
+        {
+            SistemaGastosMilitares.GarantirInstancia();
+            return SistemaGastosMilitares.Instancia != null
+                ? SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(teamId, item.idMunicaoMilitar)
+                : 0;
+        }
+        return teamId == 1 ? EstoqueReal(item != null ? item.recurso : RecursoMercado.Aco) : 0;
     }
 
     private int ContarRelacoes(Func<RelacaoPaisGoverno, bool> filtro)
@@ -1325,6 +1347,12 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         SistemaEconomiaImoveis sistemaEconomia = SistemaEconomiaImoveis.Instancia;
         DadosEconomiaPais eco = sistemaEconomia != null ? sistemaEconomia.ObterEconomia(p.teamId) : null;
 
+        if (abaAtual == "Gastos")
+        {
+            ConstruirGastosMilitares(p);
+            return;
+        }
+
         if (abaAtual == "Tesouro")
         {
             LinhaCards(new[]
@@ -1457,6 +1485,55 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         AtualizarRecursos();
         MostrarPagina(abaAtual);
     }
+    private void ConstruirGastosMilitares(DadosPaisGoverno p)
+    {
+        SistemaGastosMilitares.GarantirInstancia();
+        SistemaGastosMilitares gastos = SistemaGastosMilitares.Instancia;
+        if (gastos == null)
+        {
+            AdicionarCard(conteudo, "GASTOS MILITARES INDISPONIVEIS", "O registro financeiro ainda esta inicializando.");
+            return;
+        }
+
+        List<RegistroGastoMilitar> registros = gastos.ObterRegistrosDoTime(p.teamId).ToList();
+        int total = registros.Sum(x => Mathf.Max(0, x.valorTotal));
+        int disparos = registros.Where(x => x.tipo == TipoGastoMilitar.Disparo).Sum(x => x.quantidade);
+        int compras = registros.Where(x => x.tipo == TipoGastoMilitar.CompraMunicao || x.tipo == TipoGastoMilitar.CompraUnidade).Sum(x => x.quantidade);
+        int fabricados = registros.Where(x => x.tipo == TipoGastoMilitar.FabricacaoMunicao).Sum(x => x.quantidade);
+
+        LinhaCards(new[]
+        {
+            ("GASTO REGISTRADO", "$ " + total.ToString("N0"), total > 0 ? "state-warn" : "state-info"),
+            ("DISPAROS", disparos.ToString("N0"), disparos > 0 ? "state-bad" : "state-good"),
+            ("COMPRAS MILITARES", compras.ToString("N0"), "state-info"),
+            ("FABRICACAO", fabricados.ToString("N0"), "state-good")
+        });
+
+        AdicionarCard(conteudo, "CONTROLE DE GASTOS MILITARES",
+            "Cada disparo do Ares_Ar aparece como compra de um cartucho. Compras de unidades, pesquisas militares e lotes fabricados tambem entram neste historico.\nSaldo atual: $ " + p.saldo.ToString("N0"));
+
+        TabelaCabecalho("TIPO", "ITEM", "QTD", "VALOR UNIT.", "TOTAL");
+        foreach (RegistroGastoMilitar registro in registros.Take(30))
+        {
+            if (registro == null) continue;
+            string detalhe = (registro.data ?? string.Empty) + " | " + (registro.origem ?? string.Empty);
+            TabelaLinha(registro.tipo.ToString(), registro.itemNome, registro.quantidade.ToString("N0") + " " + registro.unidade,
+                "$ " + registro.valorUnitario.ToString("N0"), "$ " + registro.valorTotal.ToString("N0"), () => MostrarMensagem(detalhe));
+        }
+        if (registros.Count == 0)
+            AdicionarCard(conteudo, "SEM GASTOS MILITARES REGISTRADOS", "O historico sera preenchido quando uma unidade for comprada, fabricada, pesquisada ou disparar.");
+
+        AdicionarTitulo(conteudo, "ESTOQUE DE MUNICAO", "Quantidade armazenada por tipo e valor atual de referencia no mercado.");
+        TabelaCabecalho("MUNICAO", "CATEGORIA", "ARMAZENADO", "VALOR", "DISPAROS");
+        foreach (DefinicaoMunicaoMilitar municao in gastos.ObterMunicoesAtivas())
+        {
+            TabelaLinha(municao.nome, municao.categoria,
+                gastos.ObterEstoqueMunicao(p.teamId, municao.id).ToString("N0") + " cart.",
+                "$ " + municao.valorUnitario.ToString("N0"), municao.totalDisparado.ToString("N0"),
+                () => MostrarMensagem(municao.descricao));
+        }
+    }
+
     private void ConstruirInterior(DadosPaisGoverno p)
     {
         GerenciadorDivisaoTerritorial.GarantirInstancia();
@@ -1503,6 +1580,10 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         SistemaGovernoMundial g = SistemaGovernoMundial.Instancia;
         if (g == null) { AdicionarCard(conteudo, "DADOS INDISPONIVEIS", "Defesa ainda nao foi inicializada."); return; }
 
+        SistemaGastosMilitares.GarantirInstancia();
+        SistemaGastosMilitares gastosMilitares = SistemaGastosMilitares.Instancia;
+        DefinicaoMunicaoMilitar aresMunicao = gastosMilitares != null ? gastosMilitares.ObterMunicao("municao_ares_ar") : null;
+
         GerenciadorDivisaoTerritorial.GarantirInstancia();
         int aeroportos = GerenciadorDivisaoTerritorial.Instancia != null ? GerenciadorDivisaoTerritorial.Instancia.ObterCidadesComAeroporto(1).Count : 0;
         int portos = GerenciadorDivisaoTerritorial.Instancia != null ? GerenciadorDivisaoTerritorial.Instancia.cidades.Count(c => c != null && c.teamID == 1 && c.temPorto) : 0;
@@ -1511,6 +1592,8 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         {
             LinhaCards(new[] { ("PRONTIDAO", p.nivelMilitar + "%", "state-good"), ("ARMAMENTOS", p.armamentos.ToString("N0"), "state-info"), ("URANIO", p.uranio.ToString("N0"), "state-warn"), ("PRESSAO DE GUERRA", g.PressaoGlobalGuerra().ToString("0") + "%", "state-bad") });
             AdicionarCard(conteudo, "PLANO DEFENSIVO ATUAL", $"Postura: {p.planoEstrategico}\nMilitares ativos: {p.populacaoMilitarAtiva:N0}\nReservistas: {p.reservistas:N0}\nAlistaveis: {p.alistaveis:N0}\nSituacao: {(p.emGuerra ? "EM GUERRA" : "PAZ")}");
+            if (aresMunicao != null)
+                AdicionarCard(conteudo, "MUNICAO ANTIAEREA", $"{aresMunicao.nome}\nValor por cartucho: $ {aresMunicao.valorUnitario:N0}\nCarregador: {aresMunicao.capacidadeCartucho} cartuchos\nPausa de reabastecimento: {aresMunicao.tempoReabastecimento:0.0}s\nDisparos registrados: {aresMunicao.totalDisparado:N0}");
             TabelaCabecalho("NACAO", "STATUS", "NIVEL MILITAR", "RELACAO", "RISCO");
             foreach (DadosPaisGoverno outro in g.Paises)
             {
@@ -1537,7 +1620,10 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         if (abaAtual == "Aerea")
         {
             LinhaCards(new[] { ("AEROPORTOS", aeroportos.ToString(), "state-info"), ("ESTOQUE", p.armamentos.ToString("N0"), "state-good"), ("URANIO", p.uranio.ToString("N0"), "state-warn"), ("PRONTIDAO", p.nivelMilitar + "%", "state-good") });
-            AdicionarCard(conteudo, "FORCA AEREA", $"Aeroportos operacionais: {aeroportos}\nPlano atual: {p.planoEstrategico}\nPressao de guerra: {g.PressaoGlobalGuerra() * 100f:0}%");
+            string aresTexto = aresMunicao != null
+                ? $"\n\nAres_Ar: {aresMunicao.totalDisparado:N0} disparos | $ {aresMunicao.valorUnitario:N0}/cartucho | carregador {aresMunicao.capacidadeCartucho} | reabastecimento {aresMunicao.tempoReabastecimento:0.0}s"
+                : string.Empty;
+            AdicionarCard(conteudo, "FORCA AEREA", $"Aeroportos operacionais: {aeroportos}\nPlano atual: {p.planoEstrategico}\nPressao de guerra: {g.PressaoGlobalGuerra() * 100f:0}%" + aresTexto);
             return;
         }
 
@@ -1637,6 +1723,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 "A linha nuclear existe como conteudo estrategico futuro e so deve liberar quando houver energia, estabilidade e laboratorio adequados.",
                 p.tecnologiaExtracaoConcluida && p.nivelIndustrial >= 70 && p.estabilidade >= 70f ? "PRONTA PARA DESBLOQUEIO" : "BLOQUEADA",
                 p.tecnologiaExtracaoConcluida && p.nivelIndustrial >= 70 && p.estabilidade >= 70f ? "state-warn" : "state-bad");
+            ConstruirCatalogoMunicoesCiencia(false, p);
             return;
         }
 
@@ -1733,6 +1820,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             AdicionarCardCiencia(gradeArsenal, "D", "MISSEIS GUIADOS", "homing_missile | Missil_05 | Intercept_Missile", "Base esperada: componentes eletronicos, duraluminio e cobre refinado.", "FUTURO", "state-info");
             AdicionarCardCiencia(gradeArsenal, "E", "MISSEIS NAVAIS", "missel_sub | Missel_navTomy", "Base esperada: liga de titanio, eletronicos e casco estrategico.", "FUTURO", "state-info");
             AdicionarCardCiencia(gradeArsenal, "F", "DISSUASAO NUCLEAR", "ICNU", "Base esperada: uranio enriquecido, componentes eletronicos e cadeia nuclear completa.", "FUTURO ESTRATEGICO", "state-bad");
+            ConstruirCatalogoMunicoesCiencia(true, p);
             return;
         }
 
@@ -1767,6 +1855,50 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 "Linha " + (l.indice + 1) + ": " + DescreverEstadoLinha(l) +
                 (string.IsNullOrWhiteSpace(l.receitaId) ? string.Empty : " | " + NomeIndustrial(l.receitaId))));
         AdicionarCard(conteudo, "LINHAS INDUSTRIAIS ATUAIS", linhasTexto);
+    }
+
+    private void ConstruirCatalogoMunicoesCiencia(bool permitirFabricacao, DadosPaisGoverno pais)
+    {
+        SistemaGastosMilitares.GarantirInstancia();
+        SistemaGastosMilitares gastos = SistemaGastosMilitares.Instancia;
+        if (gastos == null) return;
+
+        AdicionarTitulo(conteudo, permitirFabricacao ? "FABRICACAO DE MUNICOES ATIVAS" : "MUNICOES E SISTEMAS EM USO",
+            "Somente os armamentos registrados como ativos aparecem aqui, com pesquisa, valor de mercado e quantidade.");
+        VisualElement grade = CriarGradeCiencia();
+        foreach (DefinicaoMunicaoMilitar municao in gastos.ObterMunicoesAtivas())
+        {
+            PesquisaNacionalEstado pesquisa = pais != null && pais.pesquisas != null
+                ? pais.pesquisas.FirstOrDefault(x => x != null && string.Equals(x.id, municao.pesquisaId, StringComparison.OrdinalIgnoreCase))
+                : null;
+            bool desbloqueada = pesquisa == null || pesquisa.concluida;
+            string status = pesquisa == null ? "CATALOGADA" : pesquisa.concluida ? "DESBLOQUEADA" : pesquisa.emAndamento ? "EM PESQUISA" : "BLOQUEADA";
+            string classe = desbloqueada ? "state-good" : pesquisa != null && pesquisa.emAndamento ? "state-info" : "state-bad";
+            string corpo = municao.descricao
+                + "\nValor de mercado: $ " + municao.valorUnitario.ToString("N0")
+                + " por cartucho\nCarregador: " + municao.capacidadeCartucho
+                + " | Reabastecimento: " + municao.tempoReabastecimento.ToString("0.0") + "s"
+                + "\nFabricados: " + municao.totalFabricado.ToString("N0")
+                + " | Disparados: " + municao.totalDisparado.ToString("N0");
+            AdicionarCardCiencia(grade, "AA", municao.nome.ToUpperInvariant(), municao.categoria, corpo, status, classe,
+                permitirFabricacao && desbloqueada ? "FABRICAR 10" : null,
+                permitirFabricacao && desbloqueada ? () => ProduzirMunicaoMilitar(municao.id, 10) : null,
+                "buy");
+        }
+    }
+
+    private void ProduzirMunicaoMilitar(string municaoId, int quantidade)
+    {
+        SistemaGastosMilitares.GarantirInstancia();
+        string mensagem = "Sistema de gastos militares indisponivel.";
+        bool ok = false;
+        if (SistemaGastosMilitares.Instancia != null)
+        {
+            ok = SistemaGastosMilitares.Instancia.ProduzirMunicao(1, municaoId, quantidade, out mensagem);
+        }
+        MostrarMensagem(ok ? mensagem : "Fabricacao recusada: " + mensagem);
+        AtualizarRecursos();
+        MostrarPagina(abaAtual);
     }
 
     private void CriarProjetoIndustrial(string receitaId)

@@ -426,11 +426,15 @@ public class TorretaAntiaerea : MonoBehaviour
         if (ehAresAr && cobrarCadaDisparo)
         {
             int teamId = minhaIdentidade != null ? Mathf.Max(1, minhaIdentidade.teamID) : 1;
-            string mensagem;
+            string mensagem = "Sistema de gastos militares indisponivel.";
+            bool pagamentoAprovado = false;
             if (SistemaGastosMilitares.Instancia == null)
                 SistemaGastosMilitares.GarantirInstancia();
-            if (SistemaGastosMilitares.Instancia == null
-                || !SistemaGastosMilitares.Instancia.TentarPagarDisparo(teamId, idMunicao, transform.root.name, out mensagem))
+            if (SistemaGastosMilitares.Instancia != null)
+            {
+                pagamentoAprovado = SistemaGastosMilitares.Instancia.TentarPagarDisparo(teamId, idMunicao, transform.root.name, out mensagem);
+            }
+            if (!pagamentoAprovado)
             {
                 if (Time.unscaledTime >= proximoAvisoSemSaldo)
                 {

@@ -37,7 +37,7 @@ namespace Hegemonia.Aeronaves.C17
             int vagas = apenasTropas ? capacidadeSoldados - tropas.Count : capacidadeVeiculos - veiculos.Count;
             if (vagas <= 0) return;
             Transform origem = apenasTropas ? pontoEntradaTropas : pontoEntradaVeiculos;
-            Vector3 centro = origem != null ? origem.position : transform.position;
+            Vector3 centro = origem != null ? origem.position : transform.position - transform.forward * distanciaEntrada;
             Collider[] encontrados = Physics.OverlapSphere(centro, raioBusca, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < encontrados.Length && vagas > 0; i++)
             {

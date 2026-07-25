@@ -9,6 +9,7 @@ using Hegemonia.AI.BrainMaster;
 
 public class MenuConstrucao : MonoBehaviour
 {
+    // Recompilacao forcada para garantir que o fluxo ICBM atualizado seja carregado no Play Mode.
     public static MenuConstrucao Instancia { get; private set; }
 
     [System.Serializable]
@@ -172,7 +173,10 @@ public class MenuConstrucao : MonoBehaviour
             "Assets/Prefabs/Imobiliario/casa/Casa.asset",
             "Assets/Prefabs/Imobiliario/Pred Medio/Predio Medio.asset",
             "Assets/Prefabs/Imobiliario/Pred Vilage/NovaConstrucao.asset",
-            "Assets/Prefabs/Imobiliario/Perd Hard/Pred Hard.asset"
+            "Assets/Prefabs/Imobiliario/Perd Hard/Pred Hard.asset",
+            // Ficha do silo/lançador ICBM: fica fora de Resources, portanto
+            // precisa entrar explicitamente no catálogo essencial do menu.
+            "Assets/Prefabs/Missiles/ICBM/Foguete.asset"
         };
         for (int i = 0; i < fichasEssenciais.Length; i++)
         {
@@ -340,7 +344,8 @@ public class MenuConstrucao : MonoBehaviour
         }
 
 #if UNITY_EDITOR
-        GarantirFichaC700NoCatalogo();
+            GarantirFichaC700NoCatalogo();
+            GarantirFichaICBMNoCatalogo();
 #endif
 
         List<DadosConstrucao> catalogoValido = new List<DadosConstrucao>();
@@ -415,6 +420,21 @@ public class MenuConstrucao : MonoBehaviour
         if (!catalogo.Contains(c700))
         {
             catalogo.Add(c700);
+        }
+    }
+
+    void GarantirFichaICBMNoCatalogo()
+    {
+        const string caminhoIcbm = "Assets/Prefabs/Missiles/ICBM/Foguete.asset";
+        DadosConstrucao icbm = UnityEditor.AssetDatabase.LoadAssetAtPath<DadosConstrucao>(caminhoIcbm);
+        if (icbm != null && !catalogo.Contains(icbm))
+        {
+            catalogo.Add(icbm);
+            if (!quantidadesPorItem.ContainsKey(icbm.nomeItem))
+            {
+                quantidadesPorItem.Add(icbm.nomeItem, 1);
+            }
+            Debug.Log("[MenuConstrucao] Ficha ICBM adicionada ao catalogo runtime.");
         }
     }
 #endif
@@ -2900,6 +2920,19 @@ public class MenuConstrucao : MonoBehaviour
 
         DesligarModoDemolicaoSeAtivo();
 
+        // O silo ICBM é uma estrutura estratégica mesmo que o prefab tenha
+        // sido importado sem os componentes usuais de imóvel. Forçamos o
+        // fluxo de posicionamento pela ficha, evitando que ele caia no fluxo
+        // de compra de unidade terrestre ou na validação territorial comum.
+        bool ehIcbm = string.Equals(item.itemId, "foguete_icbm", System.StringComparison.OrdinalIgnoreCase)
+            || item.GetDisplayName().IndexOf("ICBM", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        if (ehIcbm)
+        {
+            Debug.LogWarning($"[MenuConstrucao][ICBM] fluxo de estrutura confirmado; prefab={item.prefabDaUnidade.name}");
+            IniciarConstrucaoFantasma(item, cardImage);
+            return;
+        }
+
         switch (fluxo)
         {
             case TipoFluxoConstrucao.Estrutura:
@@ -2967,6 +3000,7 @@ public class MenuConstrucao : MonoBehaviour
 
     void IniciarConstrucaoFantasma(DadosConstrucao item, Image cardImage)
     {
+        Debug.Log($"[MenuConstrucao][DEBUG] iniciar item={item?.name} nome={item?.GetDisplayName()} id={item?.itemId} prefab={(item != null && item.prefabDaUnidade != null ? item.prefabDaUnidade.name : "NULL")}");
         Construtor construtor = ObterOuCriarConstrutor();
         if (construtor == null)
         {
@@ -2988,7 +3022,10 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         if (cardImage != null) StartCoroutine(FlashCard(cardImage));
-        construtor.SelecionarParaConstruir(item.prefabDaUnidade, Mathf.Max(0, item.preco), item.categoria);
+        bool ehIcbm = item != null &&
+            (string.Equals(item.itemId, "foguete_icbm", System.StringComparison.OrdinalIgnoreCase) ||
+             item.GetDisplayName().IndexOf("ICBM", System.StringComparison.OrdinalIgnoreCase) >= 0);
+        construtor.SelecionarParaConstruir(item.prefabDaUnidade, Mathf.Max(0, item.preco), item.categoria, ehIcbm);
         AlternarMenu(false);
     }
 

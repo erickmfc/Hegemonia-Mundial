@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: LAncador
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Lancador ICBM
+  descricao: Plataforma de lancamento balistico estrategico.
+  icone: {fileID: 0}
+  itemId: foguete_icbm
+  aliases: 
+  capacidades: 0
+  prefabDaUnidade: {fileID: 3727675069201702099, guid: ab963aeba80e30f45890ef36d29d0af9, type: 3}
+  preco: 2500
+  categoria: 4
+  escalaPoder: 0
+  strategicRole: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

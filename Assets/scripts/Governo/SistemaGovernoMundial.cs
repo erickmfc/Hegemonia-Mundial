@@ -37,7 +37,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 #if UNITY_2023_1_OR_NEWER
         SistemaGovernoMundial existente = FindFirstObjectByType<SistemaGovernoMundial>();
 #else
-        SistemaGovernoMundial existente = FindObjectOfType<SistemaGovernoMundial>();
+        SistemaGovernoMundial existente = FindFirstObjectByType<SistemaGovernoMundial>();
 #endif
         if (existente != null)
         {
@@ -644,6 +644,9 @@ public class SistemaGovernoMundial : MonoBehaviour
             return false;
         }
 
+        SistemaGastosMilitares.GarantirInstancia();
+        SistemaGastosMilitares.Instancia?.RegistrarPesquisa(teamId, pesquisa.id, pesquisa.nome, pesquisa.custoSaldo, pesquisa.categoria);
+
         pesquisa.diaInicio = DiaAtual();
         pesquisa.emAndamento = true;
         mensagem = "Pesquisa iniciada: " + pesquisa.nome + ".";
@@ -700,6 +703,9 @@ public class SistemaGovernoMundial : MonoBehaviour
             mensagem = "Energia insuficiente para investir nessa tecnologia.";
             return false;
         }
+
+        SistemaGastosMilitares.GarantirInstancia();
+        SistemaGastosMilitares.Instancia?.RegistrarPesquisa(teamId, tecnologia.id, tecnologia.nome, custoSaldo, tecnologia.categoria);
 
         tecnologia.diaInicio = DiaAtual();
         tecnologia.emAndamento = true;
@@ -1151,6 +1157,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_bombas_aereas", "Bombas Aereas Taticas", "Armamento Aereo", "Abre a trilha de armamento aereo de impacto tatico.", "Aeroespacial I", "Bombas e cargas aereas", "pesquisa_aeroespacial_1", 2100, 170, 3));
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_missil_guiado", "Missil Guiado", "Misseis", "Unifica sensores, guiagem e telemetria para armas inteligentes.", "Eletronica Industrial", "Misseis guiados e componentes militares", "pesquisa_eletronica", 2600, 220, 4));
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_interceptacao", "Interceptacao Integrada", "Defesa Aerea", "Prepara a defesa para neutralizar alvos em voo.", "Missil Guiado e Satelite I", "Interceptacao e radares de reacao", "pesquisa_missil_guiado,pesquisa_satelite_1", 3100, 250, 4));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_ares_ar", "Ares Ar - Defesa Antiaerea", "Defesa Aerea", "Habilita a operacao e a fabricacao dos cartuchos do sistema Ares_Ar.", "Interceptacao Integrada", "Ares_Ar e cartuchos antiaereos", "pesquisa_interceptacao", 1800, 150, 3));
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_foguete_1", "Tecnologia de Foguete I", "Aeroespacial", "Primeira etapa de propulsao e combustiveis.", "Metalurgia do Aco", "Base para programa orbital", "pesquisa_metalurgia", 1600, 160, 3));
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_foguete_2", "Tecnologia de Foguete II", "Aeroespacial", "Aumenta alcance, guiagem e estabilidade de voo.", "Foguete I", "Programa orbital intermediario", "pesquisa_foguete_1", 2600, 240, 4));
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_foguete_3", "Tecnologia de Foguete III", "Aeroespacial", "Fecha o pacote de propulsao pesada para lancamento orbital.", "Foguete II", "Capacidade de lancamento pesada", "pesquisa_foguete_2", 4200, 360, 5));
@@ -1949,6 +1956,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             : (float)pais.populacaoCivil / capacidadeResidencial;
         pais.qualidadeVida = economia.qualidadeVida;
 
+#if false
         if (false && economia.estruturasContadas > 0)
         {
             int baseMax = 1;
@@ -1980,6 +1988,7 @@ public class SistemaGovernoMundial : MonoBehaviour
                 35f + (pais.emprego - 50f) * 0.25f + (pais.moradia - 50f) * 0.20f + (pais.felicidade - 50f) * 0.20f,
                 15f, 70f);
         }
+#endif
         pais.producao = Mathf.Clamp(35f
             + economia.industriaProduzida * 4f
             + economia.petroleoProduzido * 2f
@@ -2032,7 +2041,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 #if UNITY_2023_1_OR_NEWER
         ComplexoGovernamental[] sedes = FindObjectsByType<ComplexoGovernamental>(FindObjectsSortMode.None);
 #else
-        ComplexoGovernamental[] sedes = FindObjectsOfType<ComplexoGovernamental>();
+        ComplexoGovernamental[] sedes = FindObjectsByType<ComplexoGovernamental>(FindObjectsSortMode.None);
 #endif
         for (int i = 0; i < sedes.Length; i++)
         {

@@ -53,7 +53,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
     {
         if (Instancia != null) return Instancia;
 
-        SistemaOrcamentoNacional existente = FindObjectOfType<SistemaOrcamentoNacional>();
+        SistemaOrcamentoNacional existente = FindFirstObjectByType<SistemaOrcamentoNacional>();
         if (existente != null)
         {
             Instancia = existente;

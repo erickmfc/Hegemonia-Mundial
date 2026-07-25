@@ -115,6 +115,9 @@ public class ControleSubmarino : MonoBehaviour
     private float proximaBuscaAutomatica = 0f;
     private bool selecaoAnterior = false;
     private bool cursorMiraAtivo = false;
+    private Vector3 destinoFallback;
+    private bool temDestinoFallback = false;
+    private float proximaTentativaNavMesh = 0f;
 
     private GameObject cristalIdentificacao;
     private Renderer cristalRenderer;
@@ -173,6 +176,7 @@ public class ControleSubmarino : MonoBehaviour
 
         CriarCristalIdentificacao();
         AplicarEstadoInicial();
+        StartCoroutine(PrepararAgenteNaval());
         AtualizarCristalIdentificacao(true);
         AtualizarCursorMira(false);
 
@@ -303,11 +307,29 @@ public class ControleSubmarino : MonoBehaviour
             return;
         }
 
+        if (!agente.isOnNavMesh)
+        {
+            if (Time.time >= proximaTentativaNavMesh)
+            {
+                proximaTentativaNavMesh = Time.time + 1f;
+                TentarColocarAgenteNaAgua();
+            }
+
+            if (!agente.isOnNavMesh)
+            {
+                AtualizarMovimentoFallback();
+                return;
+            }
+        }
+
         if (modoAtual == ModoOperacao.Manual && cursorMiraAtivo)
         {
             velocidadeAtualSimulada = 0f;
-            agente.velocity = Vector3.zero;
-            agente.ResetPath();
+            if (agente.isOnNavMesh)
+            {
+                agente.velocity = Vector3.zero;
+                agente.ResetPath();
+            }
             return;
         }
 
@@ -319,6 +341,94 @@ public class ControleSubmarino : MonoBehaviour
         {
             velocidadeAtualSimulada = Mathf.Lerp(velocidadeAtualSimulada, 0f, Time.deltaTime * 0.5f);
             agente.velocity = transform.forward * velocidadeAtualSimulada;
+        }
+    }
+
+    private IEnumerator PrepararAgenteNaval()
+    {
+        // A NavMeshSurface pode terminar de assar depois do Start dos prefabs.
+        // Tenta em alguns frames para não deixar o Leviatã permanentemente parado.
+        for (int i = 0; i < 5; i++)
+        {
+            yield return null;
+            if (TentarColocarAgenteNaAgua())
+            {
+                yield break;
+            }
+        }
+    }
+
+    private bool TentarColocarAgenteNaAgua()
+    {
+        if (agente == null || !agente.enabled || !gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        if (agente.isOnNavMesh)
+        {
+            return true;
+        }
+
+        int areaMask = agente.areaMask == 0 ? (1 << 3) : agente.areaMask;
+        NavMeshHit hit;
+        Vector3 origem = transform.position;
+        origem.y = ResolverNivelAgua();
+
+        if (!NavalPlacementResolver.TryResolveWaterSpawn(origem, transform.forward, 0f, 220f, out Vector3 pontoAgua, out _, out _))
+        {
+            pontoAgua = origem;
+        }
+
+        if (!NavMesh.SamplePosition(pontoAgua, out hit, 45f, areaMask))
+        {
+            return false;
+        }
+
+        bool reposicionado = agente.Warp(hit.position);
+        if (reposicionado)
+        {
+            agente.baseOffset = CalcularOffsetParaEstado(estaSubmerso, hit.position.y);
+            AtualizarTransformY(hit.position.y + agente.baseOffset);
+        }
+        return reposicionado && agente.isOnNavMesh;
+    }
+
+    private void AtualizarMovimentoFallback()
+    {
+        if (!temDestinoFallback)
+        {
+            velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, 0f, aceleracao * Time.deltaTime);
+            return;
+        }
+
+        Vector3 direcao = destinoFallback - transform.position;
+        direcao.y = 0f;
+        float distancia = direcao.magnitude;
+        if (distancia <= 4f)
+        {
+            temDestinoFallback = false;
+            velocidadeAtualSimulada = 0f;
+            return;
+        }
+
+        direcao.Normalize();
+        float angulo = Vector3.SignedAngle(transform.forward, direcao, Vector3.up);
+        float lemeAlvo = Mathf.Clamp(angulo / 30f, -1f, 1f);
+        lemeAtual = Mathf.MoveTowards(lemeAtual, lemeAlvo, Time.deltaTime * 2f);
+        transform.Rotate(Vector3.up, lemeAtual * velocidadeGiroMax * Time.deltaTime);
+
+        velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, velocidadeOriginal, aceleracao * Time.deltaTime);
+        Vector3 proximaPosicao = transform.position + transform.forward * (velocidadeAtualSimulada * Time.deltaTime);
+        proximaPosicao.y = transform.position.y;
+        if (NavalPlacementResolver.IsWaterAtPosition(proximaPosicao))
+        {
+            transform.position = proximaPosicao;
+        }
+        else
+        {
+            velocidadeAtualSimulada = 0f;
+            temDestinoFallback = false;
         }
     }
 
@@ -428,6 +538,13 @@ public class ControleSubmarino : MonoBehaviour
             Debug.Log($"[USS Leviathan] Modo alterado para: {modoAtual}", this);
             MostrarStatusSubmarino();
         }
+    }
+
+    /// <summary>Alterna o mesmo ciclo usado pela tecla I e pelo menu tático.</summary>
+    public string AlternarEstadoOperacional()
+    {
+        CiclarModoOperacao();
+        return modoAtual.ToString().ToUpperInvariant();
     }
 
     private void MostrarStatusSubmarino()
@@ -1171,8 +1288,30 @@ public class ControleSubmarino : MonoBehaviour
             return;
         }
 
+        if (!NavalPlacementResolver.IsWaterAtPosition(destino))
+        {
+            Debug.LogWarning($"[USS Leviathan] Ordem recusada: destino fora da água ({destino.x:F0}, {destino.z:F0}).", this);
+            return;
+        }
+
+        destino.y = ResolverNivelAgua();
+        destinoFallback = destino;
+        temDestinoFallback = true;
+
+        if (agente != null && agente.enabled && !agente.isOnNavMesh)
+        {
+            TentarColocarAgenteNaAgua();
+        }
+
         if (agente != null && agente.enabled && agente.isOnNavMesh)
         {
+            if (NavMesh.SamplePosition(destino, out NavMeshHit hitDestino, 30f, agente.areaMask == 0 ? (1 << 3) : agente.areaMask))
+            {
+                destino = hitDestino.position;
+                destinoFallback = destino;
+            }
+
+            temDestinoFallback = false;
             agente.SetDestination(destino);
             agente.isStopped = false;
         }
@@ -1183,6 +1322,7 @@ public class ControleSubmarino : MonoBehaviour
         velocidadeAtualSimulada = 0f;
         lemeAtual = 0f;
         emMovimento = false;
+        temDestinoFallback = false;
 
         if (agente != null && agente.enabled && agente.isOnNavMesh)
         {

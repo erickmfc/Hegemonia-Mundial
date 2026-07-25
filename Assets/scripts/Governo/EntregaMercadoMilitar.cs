@@ -57,9 +57,9 @@ public sealed class EntregaMercadoMilitar : MonoBehaviour
     private static Transform EncontrarPonto(string tipo, int teamId)
     {
         if (tipo == "aeronave")
-            return UnityEngine.Object.FindObjectsOfType<GerenciadorAeroporto>().Select(a => new { a, id = a.GetComponentInParent<IdentidadeUnidade>() }).Where(x => x.id != null && x.id.teamID == teamId).Select(x => x.a.decolagem != null ? x.a.decolagem : x.a.transform).FirstOrDefault();
+            return UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None).Select(a => new { a, id = a.GetComponentInParent<IdentidadeUnidade>() }).Where(x => x.id != null && x.id.teamID == teamId).Select(x => x.a.decolagem != null ? x.a.decolagem : x.a.transform).FirstOrDefault();
         if (tipo == "navio")
-            return UnityEngine.Object.FindObjectsOfType<Estaleiro>().Where(e => e.OwnerTeamId == teamId).Select(e => e.pontoDeSaida != null ? e.pontoDeSaida : e.transform).FirstOrDefault();
-        return UnityEngine.Object.FindObjectsOfType<GerenciadorQuartel>().Select(q => new { q, id = q.GetComponentInParent<IdentidadeUnidade>() }).Where(x => x.id != null && x.id.teamID == teamId).Select(x => x.q.transform).FirstOrDefault();
+            return UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None).Where(e => e.OwnerTeamId == teamId).Select(e => e.pontoDeSaida != null ? e.pontoDeSaida : e.transform).FirstOrDefault();
+        return UnityEngine.Object.FindObjectsByType<GerenciadorQuartel>(FindObjectsSortMode.None).Select(q => new { q, id = q.GetComponentInParent<IdentidadeUnidade>() }).Where(x => x.id != null && x.id.teamID == teamId).Select(x => x.q.transform).FirstOrDefault();
     }
 }

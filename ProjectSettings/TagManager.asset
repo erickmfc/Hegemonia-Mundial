@@ -21,6 +21,7 @@ TagManager:
   - Aviao
   - Municao
   - Rua
+  - Bandido
   layers:
   - Default
   - TransparentFX

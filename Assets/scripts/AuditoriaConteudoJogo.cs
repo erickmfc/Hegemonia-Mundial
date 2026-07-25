@@ -426,7 +426,13 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
                nomeMin.Contains("dh hasaf") ||
                nomeMin.Contains("nav_yuza") ||
                nomeMin.Contains("yuza") ||
-               nomeMin.Contains("nara aviao bombardeiro antigo");
+               nomeMin.Contains("nara aviao bombardeiro antigo") ||
+               // A ficha Foguete/ICBM atual é um placeholder de catálogo (o
+               // lançamento usa o prefab do lançador), portanto não deve
+               // bloquear o carregamento da campanha por falta de identidade.
+               nomeMin.Contains("foguete icbm") ||
+               nomeMin == "foguete" ||
+               nomeMin.Contains("icbm");
     }
 
     private bool EhCategoriaMilitar(DadosConstrucao.CategoriaItem categoria)

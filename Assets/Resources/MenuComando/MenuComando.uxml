@@ -198,7 +198,10 @@
 
                 <ui:VisualElement class="ordens-grid">
                     <ui:Button name="btn-ativo" text="⚔️ ATIVO" class="ordem-btn btn-ativo mono" />
+                    <ui:Button name="btn-estado" text="↔ ESTADO (ALTERNAR) [I]" class="ordem-btn btn-estado mono" />
                     <ui:Button name="btn-passivo" text="🛡 PASSIVO" class="ordem-btn btn-passivo mono" />
+                    <ui:Button name="btn-mover-mapa" text="✥ MOVER [CLIQUE NO MAPA]" class="ordem-btn btn-mover-mapa mono" />
+                    <ui:Button name="btn-lancar-missil" text="🚀 LANÇAR MÍSSIL [ÁREA]" class="ordem-btn btn-lancar-missil mono" />
                     <ui:Button name="btn-funcionar" text="⚙ FUNCIONAR" class="ordem-btn btn-funcionar mono" />
                     <ui:Button name="btn-patrulhar" text="🔄 PATRULHAR" class="ordem-btn btn-patrulhar mono" />
                     <ui:Button name="btn-seguir" text="👁 SEGUIR" class="ordem-btn btn-seguir mono" />

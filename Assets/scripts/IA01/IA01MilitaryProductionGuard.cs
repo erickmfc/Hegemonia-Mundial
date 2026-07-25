@@ -12,7 +12,8 @@ namespace Hegemonia.AI.IA01
         Tank,
         Fighter,
         Naval,
-        OilTanker
+        OilTanker,
+        AntiAir
     }
 
     /// <summary>
@@ -44,6 +45,8 @@ namespace Hegemonia.AI.IA01
                 return IA01MilitaryAssetKind.Naval;
             if (text.Contains("tank") || text.Contains("tanque") || text.Contains("mbt") || text.Contains("blindado"))
                 return IA01MilitaryAssetKind.Tank;
+            if (text.Contains("ares_ar") || text.Contains("ares ar") || text.Contains("antiaereo") || text.Contains("anti aereo"))
+                return IA01MilitaryAssetKind.AntiAir;
             if (data.HasCapability(IA_ConstructionCapability.FighterAircraft)
                 || text.Contains("caca") || text.Contains("fighter") || text.Contains("su11") || text.Contains("g15")
                 || text.Contains("b260") || text.Contains("jet"))

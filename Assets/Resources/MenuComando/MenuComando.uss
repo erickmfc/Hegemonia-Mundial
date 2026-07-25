@@ -766,6 +766,36 @@
     border-color: rgb(0, 229, 255);
 }
 
+.btn-estado {
+    background-color: rgba(0, 130, 150, 0.35);
+    color: rgb(120, 245, 245);
+    border-color: rgba(0, 220, 220, 0.65);
+}
+.btn-estado:hover {
+    background-color: rgba(0, 170, 180, 0.55);
+    border-color: rgb(0, 255, 255);
+}
+
+.btn-mover-mapa {
+    background-color: rgba(30, 130, 150, 0.36);
+    color: rgb(150, 235, 255);
+    border-color: rgba(50, 210, 240, 0.65);
+}
+.btn-mover-mapa:hover {
+    background-color: rgba(30, 170, 195, 0.56);
+    border-color: rgb(100, 255, 255);
+}
+
+.btn-lancar-missil {
+    background-color: rgba(170, 45, 15, 0.42);
+    color: rgb(255, 190, 100);
+    border-color: rgba(255, 125, 35, 0.75);
+}
+.btn-lancar-missil:hover {
+    background-color: rgba(220, 65, 20, 0.62);
+    border-color: rgb(255, 210, 120);
+}
+
 .btn-funcionar {
     background-color: rgba(0, 150, 100, 0.3);
     color: rgb(100, 255, 180);

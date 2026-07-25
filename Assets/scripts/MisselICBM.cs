@@ -10,6 +10,8 @@ public class MisselICBM : MonoBehaviour
     [Header("Trajetória")]
     public float alturaDoArco = 60f; // Altura máxima do voo
     public float atrasoParaVirar = 1.5f; // Tempo que sobe reto antes de mirar
+    [Tooltip("Distancia usada para confirmar o impacto no ponto de destino.")]
+    public float distanciaDeImpacto = 12f;
 
     [Header("Explosão")]
     public GameObject efeitoExplosao;
@@ -24,6 +26,9 @@ public class MisselICBM : MonoBehaviour
     private bool explodiu = false;
     private float tempoDeVida = 0;
     private Quaternion rotacaoAlvo;
+    private bool iniciouDescida;
+    private Vector3 pontoDePartida;
+    private float alturaDoApex;
     private readonly Collider[] bufferExplosao = new Collider[160];
     private static readonly HashSet<int> alvosProcessados = new HashSet<int>();
 
@@ -33,6 +38,9 @@ public class MisselICBM : MonoBehaviour
         lancado = true;
         explodiu = false;
         tempoDeVida = 0;
+        iniciouDescida = false;
+        pontoDePartida = transform.position;
+        alturaDoApex = Mathf.Max(pontoDePartida.y, alvo.y) + Mathf.Max(alturaDoArco, 10f);
         CancelInvoke(nameof(ReativarColisao));
 
         // 1. Aponta o míssil para CIMA imediatamente ao nascer
@@ -72,6 +80,43 @@ public class MisselICBM : MonoBehaviour
         if (!lancado) return;
 
         tempoDeVida += Time.deltaTime;
+
+        // Trajetoria robusta: sobe ate um apex fixo e inicia a descida
+        // obrigatoriamente, evitando a mira dinamica que mantinha o missil no ceu.
+        Vector3 posicaoAnteriorCorrigida = transform.position;
+        if (!iniciouDescida && transform.position.y < alturaDoApex - 2f)
+        {
+            Quaternion subirCorrigido = Quaternion.LookRotation(Vector3.up);
+            float giroSubidaCorrigido = tempoDeVida < atrasoParaVirar ? 180f : velocidadeDeGiro;
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, subirCorrigido, giroSubidaCorrigido * Time.deltaTime);
+        }
+        else
+        {
+            iniciouDescida = true;
+            Vector3 direcaoParaAlvoCorrigida = alvo - transform.position;
+            if (direcaoParaAlvoCorrigida.sqrMagnitude > 0.001f)
+            {
+                Quaternion mirarAlvoCorrigido = Quaternion.LookRotation(direcaoParaAlvoCorrigida.normalized);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, mirarAlvoCorrigido, velocidadeDeGiro * Time.deltaTime);
+            }
+        }
+        transform.position += transform.forward * (velocidade * Time.deltaTime);
+        Vector3 segmentoCorrigido = transform.position - posicaoAnteriorCorrigida;
+        float comprimentoCorrigido = segmentoCorrigido.sqrMagnitude;
+        float tCorrigido = comprimentoCorrigido > 0.0001f
+            ? Mathf.Clamp01(Vector3.Dot(alvo - posicaoAnteriorCorrigida, segmentoCorrigido) / comprimentoCorrigido)
+            : 0f;
+        Vector3 pontoMaisProximoCorrigido = posicaoAnteriorCorrigida + segmentoCorrigido * tCorrigido;
+        bool cruzouAlvoCorrigido = iniciouDescida && Vector3.Distance(pontoMaisProximoCorrigido, alvo) <= Mathf.Max(4f, distanciaDeImpacto);
+        bool chegouAoChaoCorrigido = iniciouDescida && transform.position.y <= alvo.y + 2f;
+        if (cruzouAlvoCorrigido || chegouAoChaoCorrigido)
+        {
+            transform.position = alvo;
+            Explodir();
+        }
+        return;
+    }
+#if false
 
         // --- MOVIMENTO ---
         // O míssil SEMPRE vai para onde o nariz (Azul) aponta
@@ -118,6 +163,7 @@ public class MisselICBM : MonoBehaviour
         }
     }
 
+#endif
     void Explodir()
     {
         if (explodiu)

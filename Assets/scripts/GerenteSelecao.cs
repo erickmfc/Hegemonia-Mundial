@@ -92,6 +92,13 @@ public class GerenteSelecao : MonoBehaviour
             }
             return;
         }
+
+        if (Fazenda.CliqueCapturadoPeloMenu())
+        {
+            arrastando = false;
+            LiberarModoCaixaSelecao();
+            return;
+        }
         // 1. CLICOU (Marca onde começou)
         if (Input.GetMouseButtonDown(0))
         {
@@ -427,6 +434,11 @@ public class GerenteSelecao : MonoBehaviour
 
     bool IsMouseOverInteractiveUI()
     {
+        if (Fazenda.CliqueCapturadoPeloMenu())
+        {
+            return true;
+        }
+
         EventSystem eventSystem = EventSystem.current;
         if (eventSystem == null)
         {
@@ -710,7 +722,11 @@ public class GerenteSelecao : MonoBehaviour
             if (ehGrupoNaval)
             {
                  UnityEngine.AI.NavMeshHit hit;
-                 if (UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, 15f, UnityEngine.AI.NavMesh.AllAreas))
+                 UnityEngine.AI.NavMeshAgent agenteNaval = alvoCtrl.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                 int mascaraAgua = agenteNaval != null && agenteNaval.areaMask != 0
+                     ? agenteNaval.areaMask
+                     : (1 << 3);
+                 if (UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, 15f, mascaraAgua))
                  {
                      posAlvo = hit.position;
                  }
@@ -733,6 +749,19 @@ public class GerenteSelecao : MonoBehaviour
     {
         unidadesSelecionadas.RemoveAll(u => u == null);
         if (unidadesSelecionadas.Count == 0) return;
+
+        // Bases estratégicas são fixas: o clique de ordem representa a área
+        // de impacto e jamais deve virar uma ordem de movimento.
+        bool possuiBaseEstrategica = false;
+        foreach (var unidade in unidadesSelecionadas)
+        {
+            if (unidade == null) continue;
+            SiloLancadorEstrategico silo = unidade.GetComponent<SiloLancadorEstrategico>();
+            if (silo == null) continue;
+            possuiBaseEstrategica = true;
+            silo.TentarLancarNaArea(destinoCentral);
+        }
+        if (possuiBaseEstrategica) return;
 
         bool ehGrupoNaval = false;
         bool temVeiculo = false;
@@ -919,7 +948,11 @@ public class GerenteSelecao : MonoBehaviour
             bool unidadeAnfibia = alvoCtrl.TemHovercraftTransporte;
 
             UnityEngine.AI.NavMeshHit hit;
-            if (!unidadeAnfibia && !usarAmostragemLeve && UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, UnityEngine.AI.NavMesh.AllAreas))
+            UnityEngine.AI.NavMeshAgent agenteFormacao = alvoCtrl.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            int mascaraAmostragem = alvoCtrl.EhUnidadeNaval()
+                ? (agenteFormacao != null && agenteFormacao.areaMask != 0 ? agenteFormacao.areaMask : (1 << 3))
+                : UnityEngine.AI.NavMesh.AllAreas;
+            if (!unidadeAnfibia && !usarAmostragemLeve && UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, mascaraAmostragem))
             {
                 posAlvo = hit.position;
             }
@@ -1164,7 +1197,13 @@ public class GerenteSelecao : MonoBehaviour
         IdentidadeNaval identidadeNaval = origem.GetComponentInParent<IdentidadeNaval>();
         if (identidadeNaval == null)
         {
-            return null;
+            SiloLancadorEstrategico silo = origem.GetComponentInParent<SiloLancadorEstrategico>();
+            if (silo == null) return null;
+
+            unidade = silo.GetComponent<ControleUnidade>();
+            if (unidade == null) unidade = silo.gameObject.AddComponent<ControleUnidade>();
+            if (!unidade.enabled) unidade.enabled = true;
+            return unidade;
         }
 
         unidade = identidadeNaval.GetComponent<ControleUnidade>();
