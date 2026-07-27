@@ -1088,6 +1088,52 @@ namespace Hegemonia.AI.IA01
                 status = "Reserva militar sem prefab de caca valido.";
                 return false;
             }
+
+            // Mesmo o caminho de recuperacao deve usar o servico oficial do
+            // aeroporto. O fallback antigo instanciava apenas a identidade no
+            // create: o aviao podia receber uma ordem e continuar sem
+            // aeroportoOrigem, ficando preso no hangar ou sendo destruido ao
+            // iniciar a sequencia de voo.
+            GerenciadorAeroporto aeroportoProprio = null;
+            GerenciadorAeroporto[] aeroportosAtuais = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < aeroportosAtuais.Length; i++)
+            {
+                GerenciadorAeroporto candidato = aeroportosAtuais[i];
+                if (BelongsToOwnAirport(candidato))
+                {
+                    aeroportoProprio = candidato;
+                    break;
+                }
+            }
+            if (aeroportoProprio == null)
+                aeroportoProprio = EnsureOwnMilitaryAirport();
+
+            if (aeroportoProprio != null)
+            {
+                aeroportoProprio.gameObject.SetActive(true);
+                aeroportoProprio.enabled = true;
+                aeroportoProprio.SetarSemEnergia(false);
+                EnsureAirportIdentity(aeroportoProprio);
+
+                GameObject aeronave = item != null ? item.prefabDaUnidade : null;
+                if (!IsUsableAircraftPrefab(aeronave) && item != null)
+                    item.TryGetPrefabBasico(out aeronave);
+                if (!IsUsableAircraftPrefab(aeronave))
+                    aeronave = aeroportoProprio.prefabSu11;
+                if (!IsUsableAircraftPrefab(aeronave))
+                    aeronave = fallback;
+
+                if (IsUsableAircraftPrefab(aeronave))
+                {
+                    aeroportoProprio.ComprarAviaoIAImediato(aeronave);
+                    issuedFighters++;
+                    lastFighterOrderAt = Time.time;
+                    Debug.Log("[IA01 Military] Caca estacionado no aeroporto proprio (recuperacao): "
+                        + aeroportoProprio.name + " -> " + aeronave.name);
+                    return true;
+                }
+            }
             Vector3 anchor = Vector3.zero;
             Quaternion rotation = Quaternion.identity;
             bool hasAnchor = false;

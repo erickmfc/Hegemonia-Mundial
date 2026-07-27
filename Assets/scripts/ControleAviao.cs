@@ -745,6 +745,24 @@ public class ControleAviao : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Inicia uma patrulha que foi ordenada enquanto a aeronave ainda estava
+    /// taxiando do hangar para o pátio. Sem esta verificação, a ordem ficava
+    /// registrada em ControleUnidade, mas nenhum código voltava a chamar a
+    /// sequência de decolagem quando o avião chegava à vaga.
+    /// </summary>
+    public void TentarIniciarPatrulhaPendente()
+    {
+        if (estadoAtual != EstadoAviao.ProntoNoPatio || aeroportoOrigem == null)
+            return;
+        if (_controleUnidade == null || _controleUnidade.OrdemAtual != OrdemControleUnidade.Patrulhando)
+            return;
+        if (rotaPatrulhaSalva == null || rotaPatrulhaSalva.Count == 0)
+            return;
+
+        IniciarMissaoCompleta(rotaPatrulhaSalva[0]);
+    }
+
     public void ComandoRetornarBase()
     {
         if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;

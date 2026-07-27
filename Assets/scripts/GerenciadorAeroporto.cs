@@ -1164,7 +1164,14 @@ public class GerenciadorAeroporto : MonoBehaviour
         // Vai devagarzinho pra Vaga do Pátio
         yield return StartCoroutine(aviao.MoverInterpolado(Vector3.zero, aviao.velocidadeSolo, false, vagaDesignada));
         
-        if (aviao != null) aviao.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
+        if (aviao != null)
+        {
+            aviao.DefinirEstado(ControleAviao.EstadoAviao.ProntoNoPatio);
+            // A IA pode emitir a patrulha antes de a rotina de recebimento
+            // terminar. Reaplica a ordem no momento em que a aeronave fica
+            // realmente pronta, evitando que ela permaneça parada no pátio.
+            aviao.TentarIniciarPatrulhaPendente();
+        }
     }
 
     private IEnumerator RotinaRecebimentoHelicoptero(Helicoptero helicoptero)

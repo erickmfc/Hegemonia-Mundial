@@ -26,6 +26,10 @@ public class MapaGeralController : MonoBehaviour
     public float zoomMinimo = 30f;
     public float zoomMaximo = 500f;
 
+    [Header("Limites automáticos do mapa")]
+    [SerializeField] private bool detectarLimitesReaisDoMapa = true;
+    [SerializeField] private float margemMapa = 250f;
+
     [Header("Configurações de Exibição")]
     public int meuTeamID = 1; // ID do jogador (unidades aliadas a mostrar)
     public float nivelDoMar = 0f; // Heights abaixo disso = oceano azul
@@ -47,11 +51,16 @@ public class MapaGeralController : MonoBehaviour
     private bool _seguindoAlvo = false;
     private Transform _alvoSeguir = null;
 
+    private Vector2 centroMapa = Vector2.zero;
+    private float metadeMapa = 5000f;
+    private bool limitesMapaInicializados;
+
     // --- Shader warmup (evita compilação durante o voo) ---
 
     void Start()
     {
         cameraPrincipal = Camera.main;
+        AtualizarLimitesMapa();
 
         GameObject camObj = new GameObject("Camera_MapaGeral");
         cameraMapa = camObj.AddComponent<Camera>();
@@ -64,7 +73,7 @@ public class MapaGeralController : MonoBehaviour
         cameraMapa.cullingMask      = ~0; // Vê tudo inicialmente
         cameraMapa.depth            = 100;
         cameraMapa.nearClipPlane    = 0.3f;
-        cameraMapa.farClipPlane     = 6000f;
+        cameraMapa.farClipPlane     = Mathf.Max(6000f, metadeMapa * 4f);
         cameraMapa.gameObject.SetActive(false);
 
         fogOriginal = RenderSettings.fog;
@@ -75,6 +84,131 @@ public class MapaGeralController : MonoBehaviour
 
         // Evita Shader.WarmupAllShaders: no URP ele pode combinar keyword spaces
         // incompatíveis entre shaders e gerar asserts durante a entrada no Play Mode.
+    }
+
+    /// <summary>
+    /// Descobre a extensão real dos Terrains ativos. O valor original continua
+    /// sendo o mínimo/fallback para preservar cenas antigas sem Terrain.
+    /// </summary>
+    private void AtualizarLimitesMapa()
+    {
+        float metadeConfigurada = Mathf.Max(1f, metadeMapa);
+        float minX = float.MaxValue;
+        float maxX = float.MinValue;
+        float minZ = float.MaxValue;
+        float maxZ = float.MinValue;
+        bool encontrouTerrain = false;
+
+        Terrain[] terrenos = detectarLimitesReaisDoMapa
+            ? FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            : System.Array.Empty<Terrain>();
+
+        if (detectarLimitesReaisDoMapa)
+        {
+            for (int i = 0; i < terrenos.Length; i++)
+            {
+                Terrain terreno = terrenos[i];
+                TerrainData dados = terreno != null ? terreno.terrainData : null;
+                if (terreno == null || dados == null || !terreno.gameObject.scene.IsValid())
+                {
+                    continue;
+                }
+
+                // Terrains desativados ou com escala zero são restos de mapas
+                // antigos/tiles de apoio e não devem ampliar o limite jogável.
+                Vector3 escala = terreno.transform.lossyScale;
+                if (!terreno.gameObject.activeInHierarchy || Mathf.Abs(escala.x) < 0.001f || Mathf.Abs(escala.z) < 0.001f)
+                {
+                    continue;
+                }
+
+                Vector3 origem = terreno.GetPosition();
+                Vector3 tamanho = dados.size;
+                if (tamanho.x <= 0f || tamanho.z <= 0f)
+                {
+                    continue;
+                }
+
+                minX = Mathf.Min(minX, origem.x);
+                maxX = Mathf.Max(maxX, origem.x + tamanho.x);
+                minZ = Mathf.Min(minZ, origem.z);
+                maxZ = Mathf.Max(maxZ, origem.z + tamanho.z);
+                encontrouTerrain = true;
+            }
+
+            // Algumas partes jogáveis ficam fora do Terrain principal. A cena
+            // atual, por exemplo, mantém a cidade/layout da IA01 ao sul do
+            // terreno. Inclui apenas layouts-raiz conhecidos e seus filhos
+            // ativos, sem usar objetos desativados ou tiles de apoio.
+            Transform[] todosTransforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < todosTransforms.Length; i++)
+            {
+                Transform layout = todosTransforms[i];
+                if (layout == null || !layout.gameObject.activeInHierarchy) continue;
+
+                string nomeLayout = layout.name.ToLowerInvariant();
+                bool layoutDeMapa = nomeLayout.Contains("ia01citylayout")
+                    || nomeLayout.Contains("cartelmanualcreates")
+                    || nomeLayout == "terrenos";
+                if (!layoutDeMapa) continue;
+
+                Transform[] pontosLayout = layout.GetComponentsInChildren<Transform>(true);
+                for (int j = 0; j < pontosLayout.Length; j++)
+                {
+                    Transform ponto = pontosLayout[j];
+                    if (ponto == null || !ponto.gameObject.activeInHierarchy) continue;
+                    Vector3 escala = ponto.lossyScale;
+                    if (Mathf.Abs(escala.x) < 0.001f || Mathf.Abs(escala.z) < 0.001f) continue;
+
+                    Vector3 posicao = ponto.position;
+                    minX = Mathf.Min(minX, posicao.x);
+                    maxX = Mathf.Max(maxX, posicao.x);
+                    minZ = Mathf.Min(minZ, posicao.z);
+                    maxZ = Mathf.Max(maxZ, posicao.z);
+                    encontrouTerrain = true;
+                }
+            }
+        }
+
+        if (!encontrouTerrain)
+        {
+            centroMapa = Vector2.zero;
+            metadeMapa = metadeConfigurada;
+            limitesMapaInicializados = true;
+            Debug.LogWarning($"[MapaGeral] Nenhum Terrain ativo encontrado; usando limite configurado de {metadeMapa:F0}.");
+            return;
+        }
+
+        float margem = Mathf.Max(0f, margemMapa);
+        minX -= margem;
+        maxX += margem;
+        minZ -= margem;
+        maxZ += margem;
+
+        centroMapa = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
+        float metadeTerrain = Mathf.Max((maxX - minX) * 0.5f, (maxZ - minZ) * 0.5f);
+        metadeMapa = Mathf.Max(metadeConfigurada, metadeTerrain);
+        zoomMaximo = Mathf.Max(zoomMaximo, metadeMapa);
+        limitesMapaInicializados = true;
+
+        Debug.Log($"[MapaGeral] Limites do mapa: centro=({centroMapa.x:F0}, {centroMapa.y:F0}) metade={metadeMapa:F0} zoomMaximo={zoomMaximo:F0}.");
+    }
+
+    private void LimitarCameraMapa()
+    {
+        if (cameraMapa == null) return;
+        if (!limitesMapaInicializados) AtualizarLimitesMapa();
+
+        float aspecto = Mathf.Max(0.1f, (float)Screen.width / Mathf.Max(1f, Screen.height));
+        float meiaAltura = cameraMapa.orthographicSize;
+        float meiaLargura = meiaAltura * aspecto;
+        float limiteX = Mathf.Max(0f, metadeMapa - meiaLargura);
+        float limiteZ = Mathf.Max(0f, metadeMapa - meiaAltura);
+
+        Vector3 pos = cameraMapa.transform.position;
+        pos.x = Mathf.Clamp(pos.x, centroMapa.x - limiteX, centroMapa.x + limiteX);
+        pos.z = Mathf.Clamp(pos.z, centroMapa.y - limiteZ, centroMapa.y + limiteZ);
+        cameraMapa.transform.position = pos;
     }
 
     void Update()
@@ -91,6 +225,7 @@ public class MapaGeralController : MonoBehaviour
             {
                 Vector3 p = cameraPrincipal.transform.position;
                 cameraMapa.transform.position = new Vector3(p.x, 1350f, p.z);
+                LimitarCameraMapa();
                 volumeAudioOriginal = AudioListener.volume;
                 AudioListener.volume = 0f;
                 RefreshCache();
@@ -176,6 +311,7 @@ public class MapaGeralController : MonoBehaviour
                 cameraMapa.transform.position,
                 new Vector3(alvoPos.x, cameraMapa.transform.position.y, alvoPos.z),
                 Time.unscaledDeltaTime * 8f);
+            LimitarCameraMapa();
 
             // Ainda permite zoom enquanto segue
             float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -183,6 +319,7 @@ public class MapaGeralController : MonoBehaviour
             {
                 cameraMapa.orthographicSize -= scroll * zoomVelocidade * Time.unscaledDeltaTime;
                 cameraMapa.orthographicSize  = Mathf.Clamp(cameraMapa.orthographicSize, zoomMinimo, zoomMaximo);
+                LimitarCameraMapa();
             }
             return;
         }
@@ -201,6 +338,7 @@ public class MapaGeralController : MonoBehaviour
             float mult = cameraMapa.orthographicSize / 50f;
             cameraMapa.transform.position += new Vector3(movX, 0, movZ).normalized
                 * (velocidadeMover * mult) * Time.unscaledDeltaTime;
+            LimitarCameraMapa();
         }
 
         float scrollLivre = Input.GetAxis("Mouse ScrollWheel");
@@ -208,6 +346,7 @@ public class MapaGeralController : MonoBehaviour
         {
             cameraMapa.orthographicSize -= scrollLivre * zoomVelocidade * Time.unscaledDeltaTime;
             cameraMapa.orthographicSize  = Mathf.Clamp(cameraMapa.orthographicSize, zoomMinimo, zoomMaximo);
+            LimitarCameraMapa();
         }
     }
 

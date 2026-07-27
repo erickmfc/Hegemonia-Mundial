@@ -27,6 +27,10 @@ public class MenuComandoController : MonoBehaviour
     [Header("Mapa Tático")]
     [Tooltip("Metade do tamanho do mundo em unidades (ex: 5000 = mundo de -5000 a +5000)")]
     [SerializeField] private float mundoMetade = 5000f;
+    [Tooltip("Descobre automaticamente os limites dos Terrains ativos da cena para o mapa tático.")]
+    [SerializeField] private bool detectarLimitesReaisDoMapa = true;
+    [Tooltip("Margem adicionada ao redor dos Terrains para não cortar unidades na borda.")]
+    [SerializeField] private float margemMapa = 250f;
 
 
     // -----------------------------------------------------------------------
@@ -40,6 +44,8 @@ public class MenuComandoController : MonoBehaviour
     // Zoom e Pan no mapa tático
     private float mapaZoom = 1.0f;
     private Vector2 mapaCentro = Vector2.zero;
+    private Vector2 centroMapaDetectado = Vector2.zero;
+    private bool limitesMapaInicializados;
     private bool arrastandoMapa = false;
     private Vector2 ultimaPosicaoMouseDrag;
 
@@ -227,12 +233,140 @@ public class MenuComandoController : MonoBehaviour
         root = uiDoc.rootVisualElement;
         menuAberto = false;
 
+        AtualizarLimitesMapa();
+
         // Oculta o menu na inicialização
         root.style.display = DisplayStyle.None;
 
         BindUI();
         CriarRenderTextureFLIR();
         AdicionarLog("SISTEMA", "Menu Comando inicializado. Tecla [1] para abrir/fechar.", "sistema");
+    }
+
+    /// <summary>
+    /// Mantém o mapa tático sincronizado com a extensão real do terreno. O
+    /// valor do Inspector continua sendo usado como mínimo/fallback, então
+    /// cenas antigas sem Terrain não mudam de comportamento.
+    /// </summary>
+    private void AtualizarLimitesMapa()
+    {
+        float metadeConfigurada = Mathf.Max(1f, mundoMetade);
+        float minX = float.MaxValue;
+        float maxX = float.MinValue;
+        float minZ = float.MaxValue;
+        float maxZ = float.MinValue;
+        bool encontrouTerrain = false;
+
+        Terrain[] terrenos = detectarLimitesReaisDoMapa
+            ? FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            : System.Array.Empty<Terrain>();
+
+        if (detectarLimitesReaisDoMapa)
+        {
+            for (int i = 0; i < terrenos.Length; i++)
+            {
+                Terrain terreno = terrenos[i];
+                TerrainData dados = terreno != null ? terreno.terrainData : null;
+                if (terreno == null || dados == null || !terreno.gameObject.scene.IsValid())
+                {
+                    continue;
+                }
+
+                // Ignora tiles desativados ou com escala zero que pertencem a
+                // versões antigas/apoio da cena, sem limitar o mapa jogável.
+                Vector3 escala = terreno.transform.lossyScale;
+                if (!terreno.gameObject.activeInHierarchy || Mathf.Abs(escala.x) < 0.001f || Mathf.Abs(escala.z) < 0.001f)
+                {
+                    continue;
+                }
+
+                Vector3 origem = terreno.GetPosition();
+                Vector3 tamanho = dados.size;
+                if (tamanho.x <= 0f || tamanho.z <= 0f)
+                {
+                    continue;
+                }
+
+                minX = Mathf.Min(minX, origem.x);
+                maxX = Mathf.Max(maxX, origem.x + tamanho.x);
+                minZ = Mathf.Min(minZ, origem.z);
+                maxZ = Mathf.Max(maxZ, origem.z + tamanho.z);
+                encontrouTerrain = true;
+            }
+
+            // O mapa jogável também possui layouts fora do Terrain principal
+            // (a cidade/layout da IA01 é o caso atual). Inclui somente raízes
+            // de mapa conhecidas e pontos ativos, mantendo tiles antigos
+            // desativados ou com escala zero fora do cálculo.
+            Transform[] todosTransforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < todosTransforms.Length; i++)
+            {
+                Transform layout = todosTransforms[i];
+                if (layout == null || !layout.gameObject.activeInHierarchy) continue;
+
+                string nomeLayout = layout.name.ToLowerInvariant();
+                bool layoutDeMapa = nomeLayout.Contains("ia01citylayout")
+                    || nomeLayout.Contains("cartelmanualcreates")
+                    || nomeLayout == "terrenos";
+                if (!layoutDeMapa) continue;
+
+                Transform[] pontosLayout = layout.GetComponentsInChildren<Transform>(true);
+                for (int j = 0; j < pontosLayout.Length; j++)
+                {
+                    Transform ponto = pontosLayout[j];
+                    if (ponto == null || !ponto.gameObject.activeInHierarchy) continue;
+                    Vector3 escala = ponto.lossyScale;
+                    if (Mathf.Abs(escala.x) < 0.001f || Mathf.Abs(escala.z) < 0.001f) continue;
+
+                    Vector3 posicao = ponto.position;
+                    minX = Mathf.Min(minX, posicao.x);
+                    maxX = Mathf.Max(maxX, posicao.x);
+                    minZ = Mathf.Min(minZ, posicao.z);
+                    maxZ = Mathf.Max(maxZ, posicao.z);
+                    encontrouTerrain = true;
+                }
+            }
+        }
+
+        if (!encontrouTerrain)
+        {
+            centroMapaDetectado = Vector2.zero;
+            mapaCentro = centroMapaDetectado;
+            mundoMetade = metadeConfigurada;
+            limitesMapaInicializados = true;
+            Debug.LogWarning($"[MenuComando] Nenhum Terrain ativo encontrado; usando limite configurado de {mundoMetade:F0}.");
+            return;
+        }
+
+        float margem = Mathf.Max(0f, margemMapa);
+        minX -= margem;
+        maxX += margem;
+        minZ -= margem;
+        maxZ += margem;
+
+        centroMapaDetectado = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
+        float metadeTerrain = Mathf.Max((maxX - minX) * 0.5f, (maxZ - minZ) * 0.5f);
+
+        // Nunca reduz a área configurada anteriormente; apenas amplia quando
+        // o mapa/terreno da cena for maior.
+        mundoMetade = Mathf.Max(metadeConfigurada, metadeTerrain);
+        mapaCentro = centroMapaDetectado;
+        limitesMapaInicializados = true;
+
+        Debug.Log($"[MenuComando] Limites do mapa tático: centro=({centroMapaDetectado.x:F0}, {centroMapaDetectado.y:F0}) metade={mundoMetade:F0}.");
+    }
+
+    private void LimitarCentroMapa(float rangeX, float rangeZ)
+    {
+        if (!limitesMapaInicializados)
+        {
+            AtualizarLimitesMapa();
+        }
+
+        float limitePanX = Mathf.Max(0f, mundoMetade - rangeX * 0.5f);
+        float limitePanZ = Mathf.Max(0f, mundoMetade - rangeZ * 0.5f);
+        mapaCentro.x = Mathf.Clamp(mapaCentro.x, centroMapaDetectado.x - limitePanX, centroMapaDetectado.x + limitePanX);
+        mapaCentro.y = Mathf.Clamp(mapaCentro.y, centroMapaDetectado.y - limitePanZ, centroMapaDetectado.y + limitePanZ);
     }
 
     private void Update()
@@ -785,8 +919,7 @@ public class MenuComandoController : MonoBehaviour
                         float deltaWorldZ = (delta.y / H) * rangeZ;
 
                         mapaCentro += new Vector2(deltaWorldX, deltaWorldZ);
-                        mapaCentro.x = Mathf.Clamp(mapaCentro.x, -mundoMetade, mundoMetade);
-                        mapaCentro.y = Mathf.Clamp(mapaCentro.y, -mundoMetade, mundoMetade);
+                        LimitarCentroMapa(rangeX, rangeZ);
                     }
                     evt.StopPropagation();
                 }
@@ -2522,8 +2655,7 @@ public class MenuComandoController : MonoBehaviour
                 mapaCentro.x = mundoMouseX - (normX - 0.5f) * rangeXNovo;
                 mapaCentro.y = mundoMouseZ - (0.5f - normY) * rangeZNovo;
 
-                mapaCentro.x = Mathf.Clamp(mapaCentro.x, -mundoMetade, mundoMetade);
-                mapaCentro.y = Mathf.Clamp(mapaCentro.y, -mundoMetade, mundoMetade);
+                LimitarCentroMapa(rangeXNovo, rangeZNovo);
             }
         }
     }

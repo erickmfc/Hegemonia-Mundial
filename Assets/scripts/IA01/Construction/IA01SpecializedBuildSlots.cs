@@ -185,6 +185,23 @@ namespace Hegemonia.AI.IA01
                 if (approachDirection == null) approachDirection = buildSlot.ExitDirection;
             }
 
+            // Creates antigos de aeroporto já possuem os dois marcadores de
+            // pista na própria hierarquia, mas não tinham esses campos ligados.
+            // Preenche apenas referências vazias e somente por nomes explícitos,
+            // sem alterar layouts que já foram configurados manualmente.
+            if (runwayStart == null || runwayEnd == null)
+            {
+                Transform[] filhos = GetComponentsInChildren<Transform>(true);
+                for (int i = 0; i < filhos.Length; i++)
+                {
+                    Transform filho = filhos[i];
+                    if (filho == null) continue;
+                    string nome = filho.name.Replace(" ", string.Empty).Replace("_", string.Empty).ToLowerInvariant();
+                    if (runwayStart == null && (nome == "pistainicio" || nome == "runwaystart")) runwayStart = filho;
+                    if (runwayEnd == null && (nome == "pistafim" || nome == "runwayend")) runwayEnd = filho;
+                }
+            }
+
             minimumRunwayLength = Mathf.Max(8f, minimumRunwayLength);
             InvalidateCache();
         }

@@ -708,15 +708,6 @@ MonoBehaviour:
   m_Script: {fileID: 464703300}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 55593040}
-  runwayStart: {fileID: 0}
-  runwayEnd: {fileID: 0}
-  aircraftSpawn: {fileID: 845886241}
-  approachDirection: {fileID: 1668727864}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!1 &59077669
 GameObject:
   m_ObjectHideFlags: 0
@@ -1602,15 +1593,6 @@ MonoBehaviour:
   m_Script: {fileID: 1364039730}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 192015501}
-  runwayStart: {fileID: 0}
-  runwayEnd: {fileID: 0}
-  aircraftSpawn: {fileID: 1066176301}
-  approachDirection: {fileID: 45947714}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!114 &192015501
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6705,15 +6687,6 @@ MonoBehaviour:
   m_Script: {fileID: 1189833638}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 515773602}
-  runwayStart: {fileID: 0}
-  runwayEnd: {fileID: 0}
-  aircraftSpawn: {fileID: 74379366}
-  approachDirection: {fileID: 1494176613}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!1 &519213581
 GameObject:
   m_ObjectHideFlags: 0
@@ -7372,15 +7345,6 @@ MonoBehaviour:
   m_Script: {fileID: 1364039730}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 577579848}
-  runwayStart: {fileID: 0}
-  runwayEnd: {fileID: 0}
-  aircraftSpawn: {fileID: 368802372}
-  approachDirection: {fileID: 342383268}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!114 &577579848
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8568,7 +8532,7 @@ MonoBehaviour:
   m_Center: {x: 0, y: 2, z: 0}
   m_LayerMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 16
   m_UseGeometry: 0
   m_DefaultArea: 3
   m_GenerateLinks: 0
@@ -8579,7 +8543,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: 9e2ded7724f01354a8e6bf60e24b4222, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: dbb956c2c329d7948a9d2b7cf8055d35, type: 2}
   m_BuildHeightMesh: 0
 --- !u!4 &643600141
 Transform:
@@ -12288,15 +12252,6 @@ MonoBehaviour:
   m_Script: {fileID: 1189833638}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
-  buildSlot: {fileID: 967542492}
-  runwayStart: {fileID: 0}
-  runwayEnd: {fileID: 0}
-  aircraftSpawn: {fileID: 1245035042}
-  approachDirection: {fileID: 1770147847}
-  minimumRunwayLength: 70
-  cachedValid: 0
-  cachedReason: Ainda nao validado.
-  cachedLayoutVersion: -1
 --- !u!1 &972029384
 GameObject:
   m_ObjectHideFlags: 0
