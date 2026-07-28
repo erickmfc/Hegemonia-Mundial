@@ -160,6 +160,21 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
             catch (System.Exception) { }
         }
 
+        // Tripulantes do convés são elementos visuais e não unidades selecionáveis.
+        // O prefab Soldier também traz controladores de unidade que podem sobrescrever
+        // a posição local a cada frame, deixando o personagem parado/flutuando.
+        ControleUnidade controleUnidade = go.GetComponent<ControleUnidade>();
+        if (controleUnidade != null)
+        {
+            controleUnidade.enabled = false;
+        }
+
+        AnimadorUnidade animadorUnidade = go.GetComponent<AnimadorUnidade>();
+        if (animadorUnidade != null)
+        {
+            animadorUnidade.enabled = false;
+        }
+
         // Remove ou desativa o NavMeshAgent na instância para que possamos controlar o movimento local
         // manualmente e evitar conflitos com o movimento do navio.
         UnityEngine.AI.NavMeshAgent instAgent = go.GetComponent<UnityEngine.AI.NavMeshAgent>();
@@ -328,6 +343,21 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
             {
                 membro.animator.SetFloat(membro.nomeParametroVelocidadeEncontrado, valor);
             }
+
+            // O controlador do trabalhador usa os estados "andando" e "parado".
+            // Forçar a troca aqui mantém a animação funcionando mesmo quando a
+            // transição do Animator não é avaliada a tempo no primeiro frame.
+            string estado = valor > 0.1f ? "andando" : "parado";
+            int hashEstado = Animator.StringToHash(estado);
+            if (membro.animator.HasState(0, hashEstado) &&
+                membro.animator.GetCurrentAnimatorStateInfo(0).shortNameHash != hashEstado)
+            {
+                // Play direto evita que o tripulante fique preso no estado parado
+                // quando a troca automática do Animator ocorre antes do primeiro frame.
+                membro.animator.Play(hashEstado, 0, 0f);
+            }
+
+            membro.animator.speed = 1f;
         }
         else
         {

@@ -80,6 +80,7 @@ public class ControleUnidade : MonoBehaviour
     private int reemissoesWatchdogOrdem;
     private float proximoRefreshVisualCaminho;
     private float proximoReplanNavMesh;
+    private float proximaRecuperacaoMovimento;
     private Vector3 ultimoDestinoReplanNavMesh;
     private const float IntervaloWatchdogOrdem = 1.25f;
     private const float TempoMaximoSemProgresso = 7.5f;
@@ -202,6 +203,11 @@ public class ControleUnidade : MonoBehaviour
 
         // --- CORREÇÃO DE RESPONSIVIDADE (SOLDADOS) ---
         // Se for uma unidade simples (sem scripts complexos de movimento), aplica configurações ágeis
+        if (agente != null && !ehAereo && !EhUnidadeNaval())
+        {
+            NormalizarMascaraNavMeshTerrestre();
+        }
+
         if (agente != null && !ehAereo &&
             !TryGetComponent<MovimentoRealTerrestre>(out _) && 
             !TryGetComponent<ControleNavioRealista>(out _) &&
@@ -212,6 +218,26 @@ public class ControleUnidade : MonoBehaviour
             agente.acceleration = 60.0f; // Aceleração instantânea
             agente.angularSpeed = 720.0f; // Giro instantâneo
             agente.autoBraking = true;
+        }
+    }
+
+    private void NormalizarMascaraNavMeshTerrestre()
+    {
+        if (agente == null || !agente.enabled || ehAereo || EhUnidadeNaval())
+        {
+            return;
+        }
+
+        int areaWalkable = NavMesh.GetAreaFromName("Walkable");
+        if (areaWalkable < 0)
+        {
+            return;
+        }
+
+        int mascaraWalkable = 1 << areaWalkable;
+        if ((agente.areaMask & mascaraWalkable) == 0)
+        {
+            agente.areaMask |= mascaraWalkable;
         }
     }
 
@@ -425,6 +451,8 @@ public class ControleUnidade : MonoBehaviour
                 LimparDestinoOrdenado();
             }
         }
+
+        RecuperarMovimentoTerrestreSeNecessario();
 
         float intervaloWatchdog = InfraPerformanceGameplay.ResolverIntervalo(IntervaloWatchdogOrdem, estadoOtimizacao, false, true);
         if (InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickWatchdog, intervaloWatchdog))
@@ -1044,6 +1072,45 @@ public class ControleUnidade : MonoBehaviour
             agente.isStopped = false;
         }
         InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Pathfinding, inicioPath);
+    }
+
+    private void RecuperarMovimentoTerrestreSeNecessario()
+    {
+        if (!possuiDestinoOrdenado || ehAereo || EhUnidadeNaval() || hovercraftTransporte != null)
+        {
+            return;
+        }
+
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject)
+            || Time.unscaledTime < proximaRecuperacaoMovimento)
+        {
+            return;
+        }
+
+        float distancia = Vector3.Distance(transform.position, ultimoDestinoOrdenado);
+        if (distancia <= 3f)
+        {
+            return;
+        }
+
+        proximaRecuperacaoMovimento = Time.unscaledTime + 1.25f;
+        if (agente == null)
+        {
+            agente = GetComponent<NavMeshAgent>();
+        }
+
+        if (agente == null)
+        {
+            return;
+        }
+
+        bool caminhoParado = agente.enabled && agente.isOnNavMesh && agente.isStopped;
+        bool caminhoPerdido = agente.enabled && agente.isOnNavMesh && !agente.pathPending && !agente.hasPath;
+        if (caminhoParado || caminhoPerdido || !agente.enabled || !agente.isOnNavMesh)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("RecuperacaoMovimento", $"{name}: reativando ordem terrestre ativa");
+            ExecutarMoverParaPonto(ultimoDestinoOrdenado, false);
+        }
     }
 
     public float ObterVelocidadeAtualReal()

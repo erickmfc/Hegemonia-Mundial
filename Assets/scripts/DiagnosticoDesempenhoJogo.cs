@@ -6,6 +6,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.SceneManagement;
+using Hegemonia.Cartel;
 
 [DefaultExecutionOrder(-1000)]
 public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
@@ -489,7 +490,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         }
 
         float largura = Mathf.Min(Screen.width - 20f, 780f);
-        float altura = 320f;
+        float altura = 380f;
         GUILayout.BeginArea(new Rect(10f, 10f, largura, altura), _caixaStyle);
         GUILayout.Label("Diagnostico de Desempenho", _tituloStyle);
         GUILayout.Label(_overlayLine1, _textoStyle);
@@ -597,6 +598,38 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             ofensores + navalLock,
             _ultimoBlocoEventos);
 
+        CartelAIController cartel = FindFirstObjectByType<CartelAIController>();
+        if (cartel == null)
+        {
+            _overlayLine7 = "Cartel: controlador nao encontrado nesta cena.";
+        }
+        else
+        {
+            List<CartelManualCreate> cartelCreates = CartelManualCreate.GetAll(false);
+            int createsAtivos = 0;
+            for (int i = 0; i < cartelCreates.Count; i++)
+            {
+                if (cartelCreates[i] != null && cartelCreates[i].EnabledForCartel && cartelCreates[i].gameObject.activeInHierarchy)
+                {
+                    createsAtivos++;
+                }
+            }
+
+            string estadoCartel = ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name)
+                ? "menu (normal)"
+                : (cartel.enabled ? cartel.State.ToString() : "componente desativado");
+            _overlayLine7 = string.Format(
+                CultureInfo.InvariantCulture,
+                "Cartel: {0} | Creates {1}/{2} ativos | Bases {3} | Missoes {4} | Roubos {5} | {6}",
+                estadoCartel,
+                createsAtivos,
+                cartelCreates.Count,
+                cartel.Bases == null ? 0 : cartel.Bases.Count,
+                cartel.CompletedMissions,
+                cartel.RobberiesCompleted,
+                string.IsNullOrEmpty(cartel.StatusDebug) ? "sem status" : cartel.StatusDebug);
+        }
+
         string iaState = ObterTextoMetrica("ia_runtime_state");
         string iaBootstrap = ObterTextoMetrica("ia_runtime_bootstrap");
         string iaTrace = ObterTextoMetrica("ia_runtime_trace");
@@ -660,13 +693,13 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             || !string.IsNullOrEmpty(ia01Market);
         if (string.IsNullOrEmpty(iaState) && string.IsNullOrEmpty(iaBootstrap) && string.IsNullOrEmpty(iaTrace) && string.IsNullOrEmpty(iaError) && string.IsNullOrEmpty(iaAuthority))
         {
-            _overlayLine7 = hasIa01Metrics
+            _overlayLine7 += "\n" + (hasIa01Metrics
                 ? "IA: BrainMaster sem metricas nesta janela | IA01 ativa."
-                : "IA: sem dados ainda | BrainMaster nao publicou metricas nesta janela.";
+                : "IA: sem dados ainda | BrainMaster nao publicou metricas nesta janela.");
         }
         else
         {
-            _overlayLine7 = string.Format(
+            _overlayLine7 += "\n" + string.Format(
                 CultureInfo.InvariantCulture,
                 "IA: {0} | bootstrap {1} | trace {2} | authority {3} | erro {4}",
                 string.IsNullOrEmpty(iaState) ? "n/d" : iaState,

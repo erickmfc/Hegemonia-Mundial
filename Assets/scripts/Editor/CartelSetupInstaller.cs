@@ -79,8 +79,10 @@ public static class CartelSetupInstaller
         controller.Prefabs.BasePrefab = basePrefab;
         controller.Prefabs.GroundMemberPrefab = groundMemberPrefab;
         controller.Prefabs.GroundVehiclePrefab = groundVehiclePrefab;
+        controller.Prefabs.GroundVehiclePrefabSecondary = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Veiculos/Hamer/Hamer.prefab");
         controller.Prefabs.MaritimeMemberPrefab = maritimeMemberPrefab;
         controller.Prefabs.PirateBoatPrefab = pirateBoatPrefab;
+        controller.Prefabs.CrewProjectilePrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Soldado_Rifle/Bala.prefab");
 
         int createCount = ConfigureCreates();
         EditorUtility.SetDirty(controller);

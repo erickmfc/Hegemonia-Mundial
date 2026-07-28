@@ -796,16 +796,6 @@
     border-color: rgb(255, 210, 120);
 }
 
-.btn-funcionar {
-    background-color: rgba(0, 150, 100, 0.3);
-    color: rgb(100, 255, 180);
-    border-color: rgba(0, 200, 120, 0.5);
-}
-.btn-funcionar:hover {
-    background-color: rgba(0, 180, 120, 0.5);
-    border-color: rgb(0, 255, 180);
-}
-
 .btn-patrulhar {
     background-color: rgba(160, 80, 0, 0.35);
     color: rgb(255, 170, 80);

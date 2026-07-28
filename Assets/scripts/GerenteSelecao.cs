@@ -951,7 +951,9 @@ public class GerenteSelecao : MonoBehaviour
             UnityEngine.AI.NavMeshAgent agenteFormacao = alvoCtrl.GetComponent<UnityEngine.AI.NavMeshAgent>();
             int mascaraAmostragem = alvoCtrl.EhUnidadeNaval()
                 ? (agenteFormacao != null && agenteFormacao.areaMask != 0 ? agenteFormacao.areaMask : (1 << 3))
-                : UnityEngine.AI.NavMesh.AllAreas;
+                : (agenteFormacao != null && agenteFormacao.areaMask != 0
+                    ? agenteFormacao.areaMask
+                    : UnityEngine.AI.NavMesh.AllAreas);
             if (!unidadeAnfibia && !usarAmostragemLeve && UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, mascaraAmostragem))
             {
                 posAlvo = hit.position;

@@ -43,10 +43,12 @@ namespace Hegemonia.Cartel
         [Header("Terrestre")]
         public GameObject GroundMemberPrefab;
         public GameObject GroundVehiclePrefab;
+        public GameObject GroundVehiclePrefabSecondary;
 
         [Header("Maritimo")]
         public GameObject MaritimeMemberPrefab;
         public GameObject PirateBoatPrefab;
+        public GameObject CrewProjectilePrefab;
     }
 
     [Serializable]
@@ -104,6 +106,11 @@ namespace Hegemonia.Cartel
 
         [Header("Prefabs opcionais")]
         public CartelPrefabSet Prefabs = new CartelPrefabSet();
+
+        [Header("Transporte e combate do cartel")]
+        public bool AutoEmbarkMaritimeCrew = true;
+        public bool DisembarkCrewWhenReturningToIsland = false;
+        [Min(1)] public int MinimumLevelForSecondaryVehicle = 2;
 
         [Header("Validacao de construcao")]
         public LayerMask PlacementBlockerLayers;
@@ -434,7 +441,11 @@ namespace Hegemonia.Cartel
 
             for (int i = 0; i < groundVehicles && runtime.GroundVehicles.Count < MaxGroundVehiclesPerBase; i++)
             {
-                GameObject unit = SpawnUnit(Prefabs == null ? null : Prefabs.GroundVehiclePrefab,
+                bool useSecondary = CartelLevel >= MinimumLevelForSecondaryVehicle && (i % 2 == 1);
+                GameObject groundPrefab = useSecondary && Prefabs != null && Prefabs.GroundVehiclePrefabSecondary != null
+                    ? Prefabs.GroundVehiclePrefabSecondary
+                    : (Prefabs == null ? null : Prefabs.GroundVehiclePrefab);
+                GameObject unit = SpawnUnit(groundPrefab,
                     runtime.GroundSpawn, runtime, "CartelVeiculo");
                 if (unit != null) runtime.GroundVehicles.Add(unit);
             }
@@ -451,6 +462,16 @@ namespace Hegemonia.Cartel
                 GameObject unit = SpawnUnit(Prefabs == null ? null : Prefabs.PirateBoatPrefab,
                     runtime.MaritimeSpawn, runtime, "CartelBarco");
                 if (unit != null) runtime.Boats.Add(unit);
+            }
+
+            if (AutoEmbarkMaritimeCrew)
+            {
+                for (int i = 0; i < runtime.Boats.Count; i++)
+                {
+                    if (runtime.Boats[i] == null) continue;
+                    TransporteTerrestre transporte = runtime.Boats[i].GetComponent<TransporteTerrestre>();
+                    if (transporte != null) transporte.TentarEmbarcarAutomatico();
+                }
             }
 
             runtime.InitialUnitsCreated = true;
@@ -471,6 +492,18 @@ namespace Hegemonia.Cartel
                 || label.IndexOf("Barco", StringComparison.OrdinalIgnoreCase) >= 0
                 ? TipoUnidade.Naval
                 : (label.IndexOf("Veiculo", StringComparison.OrdinalIgnoreCase) >= 0 ? TipoUnidade.Veiculo : TipoUnidade.Infantaria));
+            bool unidadeMaritima = label.IndexOf("Maritimo", StringComparison.OrdinalIgnoreCase) >= 0
+                || label.IndexOf("Barco", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (unidadeMaritima)
+            {
+                SistemaDeTiro tiro = unit.GetComponent<SistemaDeTiro>();
+                if (tiro == null) tiro = unit.AddComponent<SistemaDeTiro>();
+                tiro.modoPassivo = false;
+                tiro.prefabProjetil = Prefabs == null ? null : Prefabs.CrewProjectilePrefab;
+                tiro.alcanceTiro = 80f;
+                tiro.intervaloEntreTiros = 0.75f;
+                tiro.capacidadePente = 30;
+            }
             return unit;
         }
 
@@ -525,6 +558,7 @@ namespace Hegemonia.Cartel
                     break;
 
                 case CartelOperationPhase.Patrol:
+                    DefinirAlvoDeTiro(op.Unit, null);
                     if (HasThreatNear(op.Unit))
                     {
                         SetMaritimeEscape(op);
@@ -560,11 +594,13 @@ namespace Hegemonia.Cartel
                 case CartelOperationPhase.ApproachingTanker:
                     if (!IsValidTanker(op.TargetTanker, op.CurrentPoint))
                     {
+                        DefinirAlvoDeTiro(op.Unit, null);
                         op.TargetTanker = null;
                         op.Phase = CartelOperationPhase.Patrol;
                         break;
                     }
 
+                    DefinirAlvoDeTiro(op.Unit, op.TargetTanker.transform);
                     SendToPosition(op.Unit, op.TargetTanker.transform.position, true);
                     if (Vector3.Distance(op.Unit.transform.position, op.TargetTanker.transform.position) <= 14f)
                     {
@@ -575,6 +611,7 @@ namespace Hegemonia.Cartel
                 case CartelOperationPhase.Robbery:
                     if (!IsValidTanker(op.TargetTanker, op.CurrentPoint))
                     {
+                        DefinirAlvoDeTiro(op.Unit, null);
                         op.TargetTanker = null;
                         op.Phase = CartelOperationPhase.Patrol;
                         break;
@@ -583,6 +620,7 @@ namespace Hegemonia.Cartel
                     op.Cargo = Mathf.Max(0, op.TargetTanker.petroleoCarregado);
                     op.TargetTanker.petroleoCarregado = 0;
                     RobberiesCompleted++;
+                    DefinirAlvoDeTiro(op.Unit, null);
                     SetMaritimeEscape(op);
                     break;
 
@@ -613,6 +651,11 @@ namespace Hegemonia.Cartel
                     }
                     else
                     {
+                        if (DisembarkCrewWhenReturningToIsland)
+                        {
+                            TransporteTerrestre transporte = op.Unit.GetComponent<TransporteTerrestre>();
+                            if (transporte != null) transporte.DesembarcarTudo();
+                        }
                         op.CurrentPoint = FindNearestCreate(CartelCreateType.CartelCoastalMeetingCreate, op.Unit.transform.position, op.Base.CountryId);
                         op.Phase = op.CurrentPoint == null ? CartelOperationPhase.Parking : CartelOperationPhase.CoastalMeeting;
                     }
@@ -658,6 +701,7 @@ namespace Hegemonia.Cartel
 
         private void SetMaritimeEscape(CartelOperation op)
         {
+            if (op != null) DefinirAlvoDeTiro(op.Unit, null);
             CartelManualCreate escape = FindFarthestUsable(CartelCreateType.CartelMaritimeEscapeCreate, op.Base.CountryId, op.Unit.transform.position);
             if (escape == null) escape = FindNearestCreate(CartelCreateType.CartelMaritimeHideCreate, op.Unit.transform.position, op.Base.CountryId);
             op.CurrentPoint = escape;
@@ -854,7 +898,13 @@ namespace Hegemonia.Cartel
             }
             else
             {
+                // O prefab terrestre pode ser um veiculo comum (van/tanque),
+                // sem o componente de carga. Nesse caso a reuniao ainda
+                // precisa descarregar o roubo na reserva da base, em vez de
+                // simplesmente perder o petroleo.
+                maritime.Base.FuelStock += maritime.Cargo;
                 maritime.Cargo = 0f;
+                ground.Cargo = 0f;
             }
 
             if (maritime.Cargo <= 0.01f)
@@ -992,6 +1042,15 @@ namespace Hegemonia.Cartel
             // O movimento terrestre precisa passar pela trilha oficial do projeto
             // (ControleUnidade). Nao usar NavMeshAgent.SetDestination diretamente,
             // pois isso conflita com a auditoria e com o controle das outras IAs.
+        }
+
+        private static void DefinirAlvoDeTiro(GameObject unit, Transform target)
+        {
+            if (unit == null) return;
+            SistemaDeTiro tiro = unit.GetComponent<SistemaDeTiro>();
+            if (tiro == null) return;
+            tiro.alvoPrioritario = target;
+            tiro.modoPassivo = false;
         }
 
         private bool Arrived(GameObject unit, CartelManualCreate point)

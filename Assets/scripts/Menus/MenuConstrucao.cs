@@ -46,7 +46,6 @@ public class MenuConstrucao : MonoBehaviour
     public Construtor construtorCena;
 
     [Header("Sistema")]
-    public bool autoCarregarFichas = false;
     public List<DadosConstrucao> catalogo = new List<DadosConstrucao>();
 
     public static List<DadosConstrucao> catalogoGlobal;
@@ -113,7 +112,6 @@ public class MenuConstrucao : MonoBehaviour
     void Start()
     {
         gerente = Object.FindFirstObjectByType<GerenteDeJogo>();
-        if (autoCarregarFichas) CarregarTodasAsFichas();
         GarantirCatalogoValido();
 
         GarantirConfigsVisuaisCategoria();
@@ -143,7 +141,8 @@ public class MenuConstrucao : MonoBehaviour
 
     // (Removido Scanner Global de Prefabs que destruía os arquivos Assets do HD causando Missing Scripts)
 
-    void CarregarTodasAsFichas()
+#if false
+    void CarregarTodasAsFichasLegado()
     {
         if (catalogo == null) catalogo = new List<DadosConstrucao>();
         List<DadosConstrucao> fichasConfiguradasNaCena = catalogo
@@ -294,7 +293,64 @@ public class MenuConstrucao : MonoBehaviour
     }
 #endif
 
+#endif
+
     void GarantirCatalogoValido()
+    {
+        if (catalogo == null)
+        {
+            catalogo = new List<DadosConstrucao>();
+        }
+
+        List<DadosConstrucao> catalogoDaCena = new List<DadosConstrucao>();
+        foreach (DadosConstrucao item in catalogo)
+        {
+            if (item == null || string.IsNullOrWhiteSpace(item.nomeItem))
+            {
+                continue;
+            }
+
+            GameObject prefab;
+            if (!item.TryGetPrefabBasico(out prefab))
+            {
+                continue;
+            }
+
+            string nome = item.GetDisplayName();
+            bool isDestrocos = nome.IndexOf("destroc", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                               nome.IndexOf("chama", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            try
+            {
+                isDestrocos = isDestrocos || prefab.GetComponent<DestrocosEmChamas>() != null;
+            }
+            catch (MissingReferenceException)
+            {
+                continue;
+            }
+
+            if (isDestrocos)
+            {
+                continue;
+            }
+
+            catalogoDaCena.Add(item);
+            if (!quantidadesPorItem.ContainsKey(item.nomeItem))
+            {
+                quantidadesPorItem.Add(item.nomeItem, 1);
+            }
+        }
+
+        catalogo = catalogoDaCena
+            .Distinct()
+            .OrderBy(item => (int)item.categoria)
+            .ThenBy(item => item.GetDisplayName())
+            .ToList();
+        catalogoGlobal = new List<DadosConstrucao>(catalogo);
+        CatalogoProdutoCompartilhado.RegistrarConstrucoes(catalogoGlobal);
+    }
+
+#if false
+    void GarantirCatalogoValidoLegado()
     {
         if (catalogo == null)
         {
@@ -395,6 +451,8 @@ public class MenuConstrucao : MonoBehaviour
         CatalogoProdutoCompartilhado.RegistrarConstrucoes(catalogoGlobal);
     }
 
+#endif
+
     /// <summary>
     /// Bootstrap publico para consumidores autonomos, como IA01, que podem
     /// iniciar antes do Start desta UI. Nao abre o menu nem altera a selecao.
@@ -407,6 +465,7 @@ public class MenuConstrucao : MonoBehaviour
         }
     }
 
+#if false
 #if UNITY_EDITOR
     void GarantirFichaC700NoCatalogo()
     {
@@ -437,6 +496,8 @@ public class MenuConstrucao : MonoBehaviour
             Debug.Log("[MenuConstrucao] Ficha ICBM adicionada ao catalogo runtime.");
         }
     }
+#endif
+
 #endif
 
     List<DadosConstrucao> ObterItensDaCategoria(DadosConstrucao.CategoriaItem categoriaDesejada, bool aplicarBusca)
@@ -713,11 +774,6 @@ public class MenuConstrucao : MonoBehaviour
             catch (System.Exception ex)
             {
                 Debug.LogError($"[MenuConstrucao] Erro ao fechar outros menus: {ex.Message}");
-            }
-
-            if (autoCarregarFichas)
-            {
-                CarregarTodasAsFichas();
             }
 
             GarantirCatalogoValido();

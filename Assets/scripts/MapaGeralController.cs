@@ -13,6 +13,10 @@ public class MapaGeralController : MonoBehaviour
     private Camera cameraPrincipal;
     private Camera cameraMapa;
     private bool mapaAtivo = false;
+    private Vector3 cameraPrincipalPosicaoAntesDoMapa;
+    private Quaternion cameraPrincipalRotacaoAntesDoMapa;
+    private float cameraPrincipalFovAntesDoMapa;
+    private bool snapshotCameraPrincipalValido;
     private bool fogOriginal;
     private Color fogColorOriginal;
     private float fogStartOriginal;
@@ -218,6 +222,13 @@ public class MapaGeralController : MonoBehaviour
         {
             if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             mapaAtivo = !mapaAtivo;
+            if (mapaAtivo && cameraPrincipal != null)
+            {
+                cameraPrincipalPosicaoAntesDoMapa = cameraPrincipal.transform.position;
+                cameraPrincipalRotacaoAntesDoMapa = cameraPrincipal.transform.rotation;
+                cameraPrincipalFovAntesDoMapa = cameraPrincipal.fieldOfView;
+                snapshotCameraPrincipalValido = true;
+            }
             cameraMapa.gameObject.SetActive(mapaAtivo);
             AplicarModoMapa(mapaAtivo);
 
@@ -233,6 +244,15 @@ public class MapaGeralController : MonoBehaviour
             else
             {
                 AudioListener.volume = volumeAudioOriginal;
+                _seguindoAlvo = false;
+                _alvoSeguir = null;
+                if (snapshotCameraPrincipalValido && cameraPrincipal != null)
+                {
+                    cameraPrincipal.transform.SetPositionAndRotation(
+                        cameraPrincipalPosicaoAntesDoMapa,
+                        cameraPrincipalRotacaoAntesDoMapa);
+                    cameraPrincipal.fieldOfView = cameraPrincipalFovAntesDoMapa;
+                }
             }
         }
 
@@ -348,6 +368,21 @@ public class MapaGeralController : MonoBehaviour
             cameraMapa.orthographicSize  = Mathf.Clamp(cameraMapa.orthographicSize, zoomMinimo, zoomMaximo);
             LimitarCameraMapa();
         }
+
+        if (Input.GetKeyDown(KeyCode.KeypadPlus) || Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.Plus))
+            AjustarZoomMapa(-1f);
+        if (Input.GetKeyDown(KeyCode.KeypadMinus) || Input.GetKeyDown(KeyCode.Minus))
+            AjustarZoomMapa(1f);
+    }
+
+    private void AjustarZoomMapa(float direcao)
+    {
+        if (cameraMapa == null) return;
+        cameraMapa.orthographicSize = Mathf.Clamp(
+            cameraMapa.orthographicSize + direcao * Mathf.Max(10f, zoomVelocidade * 0.08f),
+            zoomMinimo,
+            zoomMaximo);
+        LimitarCameraMapa();
     }
 
     private void AplicarModoMapa(bool ativo)
@@ -395,6 +430,10 @@ public class MapaGeralController : MonoBehaviour
             : "[F seguir unidade]";
         GUI.Label(new Rect(0, 0, Screen.width, barH),
             $"MAPA ESTRATEGICO  [WASD mover] [Scroll zoom] [{modoSeguir}] [M fechar]", titleStyle);
+
+        GUIStyle zoomStyle = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
+        if (GUI.Button(new Rect(Screen.width - 118f, 3f, 34f, 24f), "+", zoomStyle)) AjustarZoomMapa(-1f);
+        if (GUI.Button(new Rect(Screen.width - 78f, 3f, 34f, 24f), "−", zoomStyle)) AjustarZoomMapa(1f);
 
         // --- Legenda no canto inferior esquerdo ---
         float legX = 12f, legY = Screen.height - 100f;

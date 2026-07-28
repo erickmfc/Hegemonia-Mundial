@@ -832,9 +832,6 @@ public class MenuComandoController : MonoBehaviour
         var btnEstado = root.Q<Button>("btn-estado");
         if (btnEstado != null) VincularBotaoOrdem(btnEstado, "ESTADO_ALTERNAR");
 
-        var btnFuncionar = root.Q<Button>("btn-funcionar");
-        if (btnFuncionar != null) VincularBotaoOrdem(btnFuncionar, "FUNCIONAR");
-
         var btnPatrulhar = root.Q<Button>("btn-patrulhar");
         if (btnPatrulhar != null) VincularBotaoOrdem(btnPatrulhar, "PATRULHAR");
 
@@ -2363,26 +2360,6 @@ public class MenuComandoController : MonoBehaviour
                 }
                 SetText(ordemFeedback, "LANÇAMENTO ARMADO: clique no mapa para marcar a área de impacto.");
                 AdicionarLog("OPS", $"{snapshot.Count} unidade(s): marcação de alvo estratégico iniciada", "alerta");
-                break;
-
-            case "FUNCIONAR":
-                foreach (var u in unidadesSelecionadasMenu)
-                {
-                    if (u != null)
-                    {
-                        // Envia mensagem genérica para qualquer componente que suporte "AlternarFuncionamento"
-                        u.gameObject.SendMessage("AlternarFuncionamento", SendMessageOptions.DontRequireReceiver);
-                        
-                        // Fallback manual para caminhão se existir a variável
-                        var caminhao = u.GetComponent<CaminhaoTanqueAbastecimento>();
-                        if (caminhao != null)
-                        {
-                            caminhao.abastecerAutomaticamente = !caminhao.abastecerAutomaticamente;
-                        }
-                    }
-                }
-                SetText(ordemFeedback, $"✔ [{snapshot.Count} UDS] → FUNCIONAMENTO ALTERNADO");
-                AdicionarLog("OPS", $"{snapshot.Count} unidades: funcionamento alternado", "normal");
                 break;
 
             case "PATRULHAR":

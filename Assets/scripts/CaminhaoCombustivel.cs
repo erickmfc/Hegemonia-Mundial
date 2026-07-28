@@ -123,7 +123,7 @@ public class CaminhaoCombustivel : MonoBehaviour
                     }
                     else
                     {
-                        agente.SetDestination(alvoUnidade.position);
+                        DefinirDestinoAutomatico(alvoUnidade.position);
                     }
                     break;
 
@@ -141,7 +141,7 @@ public class CaminhaoCombustivel : MonoBehaviour
                     }
                     else
                     {
-                        agente.SetDestination(alvoRecargaBase.position);
+                        DefinirDestinoAutomatico(alvoRecargaBase.position);
                     }
                     break;
             }
@@ -191,7 +191,7 @@ public class CaminhaoCombustivel : MonoBehaviour
             componenteAlvoCombustivel = melhorCombustivel;
             componenteAlvoDanos = melhorDanos;
             estadoAtual = EstadoCaminhao.IndoAbastecerAlvo;
-            agente.SetDestination(melhorAlvo.position);
+            DefinirDestinoAutomatico(melhorAlvo.position);
         }
     }
 
@@ -246,7 +246,7 @@ public class CaminhaoCombustivel : MonoBehaviour
             estadoAtual = EstadoCaminhao.IndoRecarregar;
             if (agente != null && agente.enabled && agente.isOnNavMesh)
             {
-                agente.SetDestination(alvoRecargaBase.position);
+                DefinirDestinoAutomatico(alvoRecargaBase.position);
             }
         }
     }
@@ -341,8 +341,19 @@ public class CaminhaoCombustivel : MonoBehaviour
         estadoAtual = EstadoCaminhao.IndoRecarregar;
         if (agente != null && agente.enabled && agente.isOnNavMesh)
         {
-            agente.SetDestination(alvoRecargaBase.position);
+            DefinirDestinoAutomatico(alvoRecargaBase.position);
         }
+    }
+
+    private void DefinirDestinoAutomatico(Vector3 destino)
+    {
+        if (agente == null || !agente.enabled || !agente.isOnNavMesh)
+        {
+            return;
+        }
+
+        agente.isStopped = false;
+        agente.SetDestination(destino);
     }
 
     private Vector3 ObterCentroAreaAtuacao()
