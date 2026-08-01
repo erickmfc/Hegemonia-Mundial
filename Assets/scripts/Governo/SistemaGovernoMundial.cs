@@ -2007,9 +2007,32 @@ public class SistemaGovernoMundial : MonoBehaviour
         pais.receitaIndustria = economia.receitaIndustria * FatorImposto(pais.impostoIndustria) * multiplicadorIndustrial;
         pais.receitaComercio = economia.receitaComercio * FatorImposto(pais.impostoComercio) * multiplicadorDiplomatico;
         pais.receitaEnergia = economia.receitaEnergia * (1f + (pais.nivelEconomico + pais.nivelIndustrial) * 0.0010f);
-        // Mesmo uma nação sem prédios registrados possui serviços, imóveis,
-        // administração e defesa básica. O custo não pode ficar zerado só
-        // porque o cadastro econômico ainda não recebeu todas as estruturas.
+
+        // Partida nova: sem estruturas, tropas ou compromissos ativos não há
+        // fluxo econômico que justifique retirar dinheiro do governo. Assim
+        // que a nação construir, mobilizar ou assumir um compromisso, o bloco
+        // normal abaixo volta a calcular tributos e despesas.
+        if (!PossuiAtividadeOrcamentaria(pais, economia) && capacidadeAdministrativa <= 0)
+        {
+            pais.receitaMoradia = 0f;
+            pais.receitaIndustria = 0f;
+            pais.receitaComercio = 0f;
+            pais.receitaEnergia = 0f;
+            pais.custoManutencao = 0f;
+            pais.saldoOperacional = 0f;
+            pais.rendaPorSegundo = 0f;
+            pais.gastosPorSegundo = 0f;
+            pais.energiaProduzida = economia.energiaProduzida;
+            pais.energiaConsumida = economia.energiaConsumida;
+            pais.deficitComida = economia.deficitComida;
+            pais.deficitEnergia = economia.deficitEnergia;
+            pais.deficitPetroleo = economia.deficitPetroleo;
+            pais.estruturasSemEnergia = economia.estruturasSemEnergia;
+            pais.exportacaoTotal = economia.exportacaoTotal;
+            pais.importacaoTotal = economia.importacaoTotal;
+            return;
+        }
+
         float custoServicosBase = capacidadeAdministrativa > 0 ? 16f : 4f;
         float custoMoradia = 0f;
         float custoDefesa = pais.populacaoMilitarAtiva * 0.012f + pais.armamentos * 0.0015f;
@@ -2034,6 +2057,19 @@ public class SistemaGovernoMundial : MonoBehaviour
         pais.estruturasSemEnergia = economia.estruturasSemEnergia;
         pais.exportacaoTotal = economia.exportacaoTotal;
         pais.importacaoTotal = economia.importacaoTotal;
+    }
+
+    private static bool PossuiAtividadeOrcamentaria(DadosPaisGoverno pais, DadosEconomiaPais economia)
+    {
+        if (economia != null && economia.estruturasContadas > 0) return true;
+        if (pais == null) return false;
+
+        if (pais.populacaoMilitarAtiva > 0 || pais.reservistas > 0) return true;
+        if (pais.divida > 0f) return true;
+        if (pais.emprestimos != null && pais.emprestimos.Any(e => e != null && e.saldoDevedor > 0f)) return true;
+        if (pais.pesquisas != null && pais.pesquisas.Any(p => p != null && p.emAndamento)) return true;
+        if (pais.laboratorios != null && pais.laboratorios.Any(l => l != null && l.nivelAtual > 0)) return true;
+        return pais.sateliteDefesa != null && pais.sateliteDefesa.desbloqueado;
     }
 
     private bool PossuiSedeAdministrativa(int teamId)

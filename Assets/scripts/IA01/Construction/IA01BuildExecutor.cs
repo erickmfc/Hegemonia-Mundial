@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Hegemonia.AI.IA01
 {
@@ -23,7 +24,14 @@ namespace Hegemonia.AI.IA01
         public bool TryExecute(IA01BuildDefinition definition, IA01BuildLot lot, string commandId, string prefabId, bool allowFoundationFundingOverride, out GameObject built)
         {
             built = null;
-            if (definition == null || lot == null || backend == null || !backend.TryPay(definition.Cost, allowFoundationFundingOverride)) return false;
+            // Um controlador persistente jamais pode materializar construcoes no
+            // diorama do menu. Isso tambem protege saves antigos que mantiveram
+            // uma fila de construcao pendente ao voltar para a tela inicial.
+            if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name)) return false;
+            if (definition == null || lot == null || backend == null || controller == null || context == null
+                || context.TeamId <= 1
+                || !controller.IsPositionInsidePreparedTerritory(lot.Position, 220f)
+                || !backend.TryPay(definition.Cost, allowFoundationFundingOverride)) return false;
             if (definition.Item == null || !definition.Item.TryGetPrefabBasico(out GameObject prefab) || prefab == null)
             {
                 backend.Refund(definition.Cost);

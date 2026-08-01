@@ -4336,7 +4336,7 @@ TerrainCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_TerrainData: {fileID: 15600000, guid: b7b6f8da36a28da48887bcc509d6e41c, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 565e3d3ed1cc1184db5946e84305f81a, type: 2}
   m_EnableTreeColliders: 1
 --- !u!218 &362165588
 Terrain:
@@ -4347,7 +4347,7 @@ Terrain:
   m_GameObject: {fileID: 362165586}
   m_Enabled: 1
   serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: b7b6f8da36a28da48887bcc509d6e41c, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 565e3d3ed1cc1184db5946e84305f81a, type: 2}
   m_TreeDistance: 5000
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5
@@ -4423,7 +4423,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: 14f565d7d6692ed458b3f8a2aac4b006, type: 2}
+  m_NavMeshData: {fileID: 0}
   m_BuildHeightMesh: 0
 --- !u!114 &362165591
 MonoBehaviour:
@@ -8544,7 +8544,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: 9e2ded7724f01354a8e6bf60e24b4222, type: 2}
+  m_NavMeshData: {fileID: 0}
   m_BuildHeightMesh: 0
 --- !u!4 &643600141
 Transform:
@@ -9332,7 +9332,7 @@ Terrain:
   m_GameObject: {fileID: 703348083}
   m_Enabled: 1
   serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: 9ed6594561cab7749b744c621efbd4d1, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 565e3d3ed1cc1184db5946e84305f81a, type: 2}
   m_TreeDistance: 5000
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5
@@ -21046,7 +21046,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: c74fe44ccc10d2746ab93bd54d1b22af, type: 2}
+  m_NavMeshData: {fileID: 0}
   m_BuildHeightMesh: 0
 --- !u!154 &1968926790
 TerrainCollider:
@@ -21066,7 +21066,7 @@ TerrainCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_TerrainData: {fileID: 15600000, guid: b7b6f8da36a28da48887bcc509d6e41c, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 565e3d3ed1cc1184db5946e84305f81a, type: 2}
   m_EnableTreeColliders: 1
 --- !u!218 &1968926791
 Terrain:
@@ -21077,7 +21077,7 @@ Terrain:
   m_GameObject: {fileID: 1968926786}
   m_Enabled: 1
   serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: b7b6f8da36a28da48887bcc509d6e41c, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 565e3d3ed1cc1184db5946e84305f81a, type: 2}
   m_TreeDistance: 5000
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5
@@ -21388,7 +21388,7 @@ TerrainCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_TerrainData: {fileID: 15600000, guid: 772b910bfc34ece4282dd34ec92fee4f, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 565e3d3ed1cc1184db5946e84305f81a, type: 2}
   m_EnableTreeColliders: 1
 --- !u!218 &1984084237
 Terrain:
@@ -21399,7 +21399,7 @@ Terrain:
   m_GameObject: {fileID: 1984084234}
   m_Enabled: 1
   serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: 772b910bfc34ece4282dd34ec92fee4f, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 565e3d3ed1cc1184db5946e84305f81a, type: 2}
   m_TreeDistance: 5000
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5
@@ -21460,7 +21460,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: 956fbb6620eab0e47ae0d2b9bc2e0037, type: 2}
+  m_NavMeshData: {fileID: 0}
   m_BuildHeightMesh: 0
 --- !u!114 &1984084239
 MonoBehaviour:

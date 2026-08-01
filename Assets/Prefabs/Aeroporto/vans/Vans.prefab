@@ -804,16 +804,16 @@ MonoBehaviour:
   raioDeteccaoTorpedo: 150
   prioridadeTorpedos: 0
   debugRadar: 0
-  misselPrefab: {fileID: 2445636553566034334, guid: e3fc988632ab63d44b172c6453c37e97, type: 3}
+  misselPrefab: {fileID: 1828480966644363526, guid: b08f5a92de3e8f64f86cac8213399aad, type: 3}
   locaisDoMissel:
   - {fileID: 3931619368939544756}
   - {fileID: 7181799659710889496}
   - {fileID: 4873626904382189324}
   - {fileID: 1934763394201985371}
   somMissel: {fileID: 8300000, guid: 30cc20ef2ed3c4f35af5120b0a841e84, type: 3}
-  tempoEntreMisseis: 3
+  tempoEntreMisseis: 8
   capacidadeMisseis: 4
-  tempoRecargaMisseis: 10
+  tempoRecargaMisseis: 20
   municoesPorCano: []
   alvoPrioritario: {fileID: 0}
 --- !u!82 &-9194245954572247376
@@ -1000,10 +1000,10 @@ MonoBehaviour:
   controleSempreAtivo: 0
   selecionado: 1
   raioDoClique: 13
-  altitudeDeVoo: 65
+  altitudeDeVoo: 100
   alturaPouso: 1.33
   velocidadeHelice: 1200
-  velocidadeNavegacao: 45
+  velocidadeNavegacao: 55
   velocidadePouso: 6
   velocidadeSubidaVertical: 6.5
   velocidadeDescidaVertical: 5

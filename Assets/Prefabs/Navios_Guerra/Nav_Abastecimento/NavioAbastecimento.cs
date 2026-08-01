@@ -144,13 +144,21 @@ public class NavioAbastecimento : MonoBehaviour
             if (hit.transform != this.transform && hit.transform.root != this.transform.root)
             {
                 // Encontra o componente de combustível correspondente no alvo
-                CombustivelUnidade comb = hit.GetComponentInParent<CombustivelUnidade>();
-                if (comb == null)
-                {
-                    comb = hit.GetComponentInChildren<CombustivelUnidade>();
-                }
+                    CombustivelUnidade comb = hit.GetComponentInParent<CombustivelUnidade>();
+                    if (comb == null)
+                    {
+                        comb = hit.GetComponentInChildren<CombustivelUnidade>();
+                    }
 
-                if (comb != null)
+                    // Um navio que ainda está dentro do Estaleiro é uma unidade
+                    // em construção, não um alvo disponível para abastecimento.
+                    // Sem este filtro ele aparecia no radar do reabastecedor.
+                    if (comb != null && comb.GetComponentInParent<Estaleiro>() != null)
+                    {
+                        continue;
+                    }
+
+                    if (comb != null)
                 {
                     // Verifica se o alvo é realmente um navio ou submarino por tag ou classe de combustível
                     // Usa TagSafe.Matches para evitar exceção se a tag não estiver registrada no projeto

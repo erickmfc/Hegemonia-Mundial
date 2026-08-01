@@ -39,6 +39,9 @@ namespace Hegemonia.AI.IA01
 
         private float nextServiceRefreshAt;
         private IA01SchedulerPlan lastPlan = new IA01SchedulerPlan();
+        private bool worldReady;
+        private string worldReadyReason = "aguardando inicialização do mundo";
+        private string lastWorldReadyLogReason = string.Empty;
 
         public static IA01Manager Instancia
         {
@@ -95,6 +98,8 @@ namespace Hegemonia.AI.IA01
         public IA01SchedulerPlan LastPlan => lastPlan;
         public string RuntimeSummary => runtimeSummary;
         public int MatchSeed => matchSeed;
+        public bool WorldReady => worldReady;
+        public string WorldReadyReason => worldReadyReason;
 
         private void Awake()
         {
@@ -112,6 +117,10 @@ namespace Hegemonia.AI.IA01
 
             SceneManager.sceneLoaded += OnSceneLoaded;
             RefreshServiceDiagnostics(true);
+            if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
             if (autoBindSceneControllers)
             {
                 BindSceneControllers();
@@ -125,6 +134,10 @@ namespace Hegemonia.AI.IA01
         private void OnEnable()
         {
             RefreshServiceDiagnostics(true);
+            if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
             if (autoBindSceneControllers)
             {
                 BindSceneControllers();
@@ -148,10 +161,19 @@ namespace Hegemonia.AI.IA01
             }
 
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            controllers.Clear();
+            executionBuffer.Clear();
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            worldReady = false;
+            worldReadyReason = "cena alterada; aguardando novo layout";
+            lastWorldReadyLogReason = string.Empty;
+            if (ConfiguracaoCenasJogo.EhCenaDeMenu(scene.name))
+            {
+                return;
+            }
             if (autoBindSceneControllers)
             {
                 BindSceneControllers();
@@ -186,6 +208,8 @@ namespace Hegemonia.AI.IA01
                 controllers.Add(controller);
             }
 
+            worldReady = false;
+
             controller.EnsureBootstrap(false);
             controller.AttachManager(this);
             if (autoResolveIdentityCollisions)
@@ -206,6 +230,7 @@ namespace Hegemonia.AI.IA01
             }
 
             controllers.Remove(controller);
+            worldReady = false;
             scheduler.Unregister(controller.InstanceId);
             telemetry.UnregisterController(controller.InstanceId);
             worldRegistry.Remove(controller.UniqueEntityId);
@@ -214,12 +239,21 @@ namespace Hegemonia.AI.IA01
 
         public int ExecuteTick(float now, float frameMs, float frameBudgetOverrideMs = -1f)
         {
+            PruneInvalidControllers();
             if (autoBindSceneControllers && controllers.Count == 0)
             {
                 BindSceneControllers();
             }
 
             RefreshServiceDiagnostics(false, now);
+
+            if (!TryPrepareWorld(out string notReadyReason))
+            {
+                ReportWorldNotReady(notReadyReason);
+                runtimeSummary = BuildRuntimeSummary(null);
+                telemetry.RecordFrame(frameMs);
+                return 0;
+            }
 
             float budgetMs = frameBudgetOverrideMs > 0f ? frameBudgetOverrideMs : frameBudgetMilliseconds;
             IA01SchedulerPlan plan = scheduler.BuildPlan(controllers, now, budgetMs);
@@ -389,6 +423,84 @@ namespace Hegemonia.AI.IA01
             {
                 RegisterController(found[i]);
             }
+        }
+
+        private void PruneInvalidControllers()
+        {
+            for (int i = controllers.Count - 1; i >= 0; i--)
+            {
+                if (controllers[i] == null)
+                {
+                    controllers.RemoveAt(i);
+                }
+            }
+        }
+
+        private bool TryPrepareWorld(out string reason)
+        {
+            worldReady = false;
+            reason = string.Empty;
+
+            global::SistemaGovernoMundial government = global::SistemaGovernoMundial.Instancia;
+            if (government == null)
+            {
+                reason = "governo mundial ainda não inicializado";
+                worldReadyReason = reason;
+                return false;
+            }
+
+            if (government.Paises == null || government.Paises.Count == 0)
+            {
+                reason = "lista de países ainda não carregada";
+                worldReadyReason = reason;
+                return false;
+            }
+
+            if (controllers.Count == 0)
+            {
+                reason = "nenhum controller IA01 registrado na cena";
+                worldReadyReason = reason;
+                return false;
+            }
+
+            bool activeControllerFound = false;
+            for (int i = 0; i < controllers.Count; i++)
+            {
+                IA01Controller controller = controllers[i];
+                if (controller == null) continue;
+                if (!controller.isActiveAndEnabled) continue;
+                activeControllerFound = true;
+                if (!controller.IsWorldReady(out string controllerReason))
+                {
+                    reason = "team=" + controller.TeamId + ": " + controllerReason;
+                    worldReadyReason = reason;
+                    return false;
+                }
+            }
+
+            if (!activeControllerFound)
+            {
+                reason = "nenhum controller IA01 ativo na cena";
+                worldReadyReason = reason;
+                return false;
+            }
+
+            worldReady = true;
+            worldReadyReason = "ok";
+            if (lastWorldReadyLogReason != "ready")
+            {
+                Debug.Log("[IA01 WorldReady] layout, identidade e governo prontos; execução liberada.");
+                lastWorldReadyLogReason = "ready";
+            }
+            return true;
+        }
+
+        private void ReportWorldNotReady(string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason)) reason = "motivo não informado";
+            if (lastWorldReadyLogReason == reason) return;
+            Debug.LogWarning("[IA01 WorldNotReady] " + reason + ". Nenhuma construção ou slice foi executado.");
+            lastWorldReadyLogReason = reason;
         }
 
         private void SpawnConfiguredGovernmentControllers()
@@ -587,6 +699,8 @@ namespace Hegemonia.AI.IA01
             summaryBuilder.Append(" avgMs=").Append(telemetry.AverageFrameMs.ToString("0.000"));
             summaryBuilder.Append(" slices=").Append(telemetry.SliceCount);
             summaryBuilder.Append(" events=").Append(telemetry.EventCount);
+            summaryBuilder.Append(" worldReady=").Append(worldReady ? "true" : "false");
+            if (!worldReady) summaryBuilder.Append(" worldReason=").Append(worldReadyReason ?? string.Empty);
             summaryBuilder.Append(" service=").Append(ServiceSnapshot.Report ?? string.Empty);
             return summaryBuilder.ToString();
         }

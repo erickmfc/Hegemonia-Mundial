@@ -451,10 +451,21 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             economia.importacaoTotal = economia.deficitEnergia + economia.deficitPetroleo;
             economia.qualidadeVida = CalcularQualidadeVida(economia);
 
-            // Toda nação mantém serviços públicos mesmo antes de registrar
-            // casas, fábricas ou bases como estruturas econômicas. Sem esta
-            // parcela o livro-caixa ficava praticamente em zero (frequentemente
-            // aparecia apenas "$1"), tornando o orçamento fictício.
+            // Uma partida nova sem estruturas não tem manutenção econômica
+            // para cobrar. Os custos classificados abaixo só entram depois
+            // que uma estrutura real foi registrada para esta nação.
+            if (economia.estruturasContadas <= 0)
+            {
+                economia.custoSocial = 0f;
+                economia.custoInfraestrutura = 0f;
+                economia.custoMilitar = 0f;
+                economia.custoProducao = 0f;
+                economia.custoManutencao = 0f;
+                economia.saldoOperacional = 0f;
+                economia.dinheiroGerado = 0f;
+                continue;
+            }
+
             float custosClassificados = Mathf.Max(0f,
                 economia.custoSocial + economia.custoInfraestrutura +
                 economia.custoMilitar + economia.custoProducao);

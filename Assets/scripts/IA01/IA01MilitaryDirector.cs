@@ -42,6 +42,7 @@ namespace Hegemonia.AI.IA01
         public string Status => status;
 
         private bool ProgressaoEscalaoAtiva => controller == null || controller.ProgressiveMilitaryCatalog;
+        private bool PermiteInfraestruturaInicialAutomatica => controller != null && controller.UseScriptedOpening;
 
         public IA01MilitaryDirector(IA01Controller controller, IA01RuntimeContext context)
         {
@@ -521,7 +522,7 @@ namespace Hegemonia.AI.IA01
 
         private void EnsurePierThenPlatform(float now)
         {
-            if (controller == null) return;
+            if (!PermiteInfraestruturaInicialAutomatica) return;
             PierMarinha[] piers = UnityEngine.Object.FindObjectsByType<PierMarinha>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             bool ownPier = false;
             for (int i = 0; i < piers.Length; i++)
@@ -554,7 +555,7 @@ namespace Hegemonia.AI.IA01
         /// </summary>
         private void EnsureTankerAfterPlatform(float now)
         {
-            if (controller == null || tankerOrderIssued) return;
+            if (!PermiteInfraestruturaInicialAutomatica || tankerOrderIssued) return;
 
             PlataformaOffshore plataformaPropria = null;
             PlataformaOffshore[] plataformas = UnityEngine.Object.FindObjectsByType<PlataformaOffshore>(
@@ -624,9 +625,11 @@ namespace Hegemonia.AI.IA01
 
         private bool BuildCoastalStructure(IA01IntentType intent, params string[] blueprintTokens)
         {
+            if (!PermiteInfraestruturaInicialAutomatica) return false;
             Vector3 anchor;
             Quaternion rotation;
             if (!controller.TryResolveConstructionAnchor(intent, out anchor, out rotation)) return false;
+            if (!controller.IsPositionInsidePreparedTerritory(anchor, 260f)) return false;
             DadosConstrucao blueprint = FindStructureBlueprint(blueprintTokens);
             if (blueprint == null || !blueprint.TryGetPrefabBasico(out GameObject prefab) || prefab == null) return false;
             if (prefab.GetComponent<PlataformaOffshore>() != null)
@@ -762,6 +765,7 @@ namespace Hegemonia.AI.IA01
         private DadosConstrucao FindTank()
         {
             return FindUnit(item => item.categoria == DadosConstrucao.CategoriaItem.Exercito
+                && !IsAircraftDefinition(item)
                 && Contains(item, "tanque", "tank", "blindado", "veiculo", "vehicle", "carro"));
         }
 
@@ -907,7 +911,9 @@ namespace Hegemonia.AI.IA01
 
         private bool TryProduceLand(DadosConstrucao item, string label)
         {
-            if (item == null || item.prefabDaUnidade == null) return false;
+            if (item == null || item.prefabDaUnidade == null
+                || item.categoria != DadosConstrucao.CategoriaItem.Exercito
+                || IsAircraftDefinition(item)) return false;
             Fabrica[] factories = UnityEngine.Object.FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
             for (int i = 0; i < factories.Length; i++)
             {
@@ -949,6 +955,7 @@ namespace Hegemonia.AI.IA01
             }
             if (!ownAirportFound)
             {
+                if (!PermiteInfraestruturaInicialAutomatica) return false;
                 GerenciadorAeroporto recovered = EnsureOwnMilitaryAirport();
                 if (recovered != null)
                     airports = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -1002,7 +1009,7 @@ namespace Hegemonia.AI.IA01
             // Não use um aeroporto de outra nação como motivo para a IA ficar
             // sem aviação. Se nenhum componente encontrado for o dela, o create
             // militar é a fonte segura: a aeronave nasce no próprio pátio.
-            return SpawnFighterAtMilitaryAirport(item);
+            return PermiteInfraestruturaInicialAutomatica && SpawnFighterAtMilitaryAirport(item);
         }
 
         private static bool IsUsableAircraftPrefab(GameObject prefab)
@@ -1025,12 +1032,17 @@ namespace Hegemonia.AI.IA01
 
         private GerenciadorAeroporto EnsureOwnMilitaryAirport()
         {
-            if (controller == null) return null;
+            if (!PermiteInfraestruturaInicialAutomatica) return null;
             Vector3 anchor;
             Quaternion rotation;
             if (!controller.TryResolveConstructionAnchor(IA01IntentType.BuildMilitaryAirport, out anchor, out rotation))
             {
                 Debug.LogWarning("[IA01 Military] Create de aeroporto militar nao resolvido para a IA01.");
+                return null;
+            }
+            if (!controller.IsPositionInsidePreparedTerritory(anchor, 220f))
+            {
+                Debug.LogWarning("[IA01 Military] Anchor de aeroporto fora do territorio preparado; criacao cancelada.");
                 return null;
             }
 
@@ -1177,6 +1189,11 @@ namespace Hegemonia.AI.IA01
                 status = "Reserva militar aguardando create do aeroporto militar.";
                 return false;
             }
+            if (!controller.IsPositionInsidePreparedTerritory(anchor, 220f))
+            {
+                status = "Reserva militar aguardando anchor seguro do aeroporto militar.";
+                return false;
+            }
 
             GameObject unit = UnityEngine.Object.Instantiate(fallback, anchor, rotation);
             if (unit == null) return false;
@@ -1195,22 +1212,7 @@ namespace Hegemonia.AI.IA01
         private bool BelongsToOwnAirport(GerenciadorAeroporto airport)
         {
             if (airport == null) return false;
-            if (BelongsToTeam(airport.gameObject)) return true;
-            if (controller == null) return false;
-
-            Vector3 anchor;
-            Quaternion rotation;
-            if (controller.TryResolveConstructionAnchor(IA01IntentType.BuildMilitaryAirport, out anchor, out rotation)
-                && (airport.transform.position - anchor).sqrMagnitude <= 600f * 600f)
-            {
-                return true;
-            }
-            if (controller.TryResolveConstructionAnchor(IA01IntentType.BuildCommercialAirport, out anchor, out rotation)
-                && (airport.transform.position - anchor).sqrMagnitude <= 600f * 600f)
-            {
-                return true;
-            }
-            return false;
+            return BelongsToTeam(airport.gameObject);
         }
 
         private bool TryProduceNaval(DadosConstrucao item, string label)
@@ -1232,7 +1234,7 @@ namespace Hegemonia.AI.IA01
             // nunca chegar ao passo do estaleiro. Recupera somente o create naval
             // definido pelo próprio país, usando o mesmo prefab/componente do
             // jogador; assim a produção não cai em um porto aleatório.
-            if (Time.time >= nextShipyardRecoveryAt)
+            if (PermiteInfraestruturaInicialAutomatica && Time.time >= nextShipyardRecoveryAt)
             {
                 nextShipyardRecoveryAt = Time.time + 10f;
                 Estaleiro recovered = EnsureOwnShipyard();
@@ -1253,7 +1255,7 @@ namespace Hegemonia.AI.IA01
             {
                 if (existing[i] != null && BelongsToTeam(existing[i].gameObject)) return existing[i];
             }
-            if (controller == null) return null;
+            if (!PermiteInfraestruturaInicialAutomatica) return null;
 
             Vector3 anchor = Vector3.zero;
             Quaternion rotation = Quaternion.identity;
@@ -1261,6 +1263,11 @@ namespace Hegemonia.AI.IA01
             if (!hasAnchor)
             {
                 Debug.LogWarning("[IA01 Military] Create de estaleiro naval nao resolvido para a IA01.");
+                return null;
+            }
+            if (!controller.IsPositionInsidePreparedTerritory(anchor, 220f))
+            {
+                Debug.LogWarning("[IA01 Military] Anchor de estaleiro fora do territorio preparado; criacao cancelada.");
                 return null;
             }
 
@@ -1323,7 +1330,7 @@ namespace Hegemonia.AI.IA01
         private bool TryEmergencySpawn(DadosConstrucao item, string label, Transform anchor = null)
         {
             if (item == null || item.prefabDaUnidade == null) return false;
-            if (anchor == null) return false;
+            if (anchor == null || controller == null || !controller.IsPositionInsidePreparedTerritory(anchor.position, 240f)) return false;
             Vector3 origin = anchor != null ? anchor.position : (controller != null ? controller.transform.position : Vector3.zero);
             Vector3 position = origin + new Vector3(UnityEngine.Random.Range(-18f, 18f), 0f, UnityEngine.Random.Range(-18f, 18f));
             if (UnityEngine.AI.NavMesh.SamplePosition(position, out UnityEngine.AI.NavMeshHit hit, 25f, UnityEngine.AI.NavMesh.AllAreas))
@@ -1436,21 +1443,40 @@ namespace Hegemonia.AI.IA01
                 {
                     IA01WorldEntityRecord record = records[i];
                     if (record != null && record.Kind == IA01WorldEntityKind.Structure
-                        && Vector3.Distance(record.Position, go.transform.position) <= 35f)
+                        && record.NativeObject == go)
                     {
                         return true;
                     }
                 }
             }
 
-            // Fallback para a abertura, antes do primeiro refresh do registro.
-            return controller != null
-                && Vector3.Distance(controller.transform.position, go.transform.position) <= 150f;
+            return false;
+        }
+
+        private static bool IsAircraftDefinition(DadosConstrucao item)
+        {
+            if (item == null) return false;
+            if (item.categoria == DadosConstrucao.CategoriaItem.Aeronautica
+                || item.HasCapability(IA_ConstructionCapability.Air)
+                || item.HasCapability(IA_ConstructionCapability.Aircraft)
+                || item.HasCapability(IA_ConstructionCapability.FighterAircraft)
+                || item.HasCapability(IA_ConstructionCapability.CommercialAircraft)
+                || item.HasCapability(IA_ConstructionCapability.Helicopter)) return true;
+            if (Contains(item, "aviao", "aeronave", "fighter", "caca", "helicopter", "helicoptero")) return true;
+            try
+            {
+                return item.prefabDaUnidade != null
+                    && item.prefabDaUnidade.GetComponentInChildren<ControleAviao>(true) != null;
+            }
+            catch (MissingReferenceException)
+            {
+                return true;
+            }
         }
 
         private bool IsAppropriateFactory(Fabrica factory, DadosConstrucao item)
         {
-            if (factory == null || item == null) return false;
+            if (factory == null || item == null || IsAircraftDefinition(item)) return false;
             bool infantry = item.categoria == DadosConstrucao.CategoriaItem.Exercito
                 && !Contains(item, "tanque", "tank", "blindado", "veiculo", "vehicle", "carro");
             string name = IA_Text.Normalize(factory.gameObject.name + " " + factory.transform.root.name);

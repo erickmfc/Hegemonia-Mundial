@@ -846,14 +846,31 @@ public class Estaleiro : MonoBehaviour
         float hFrente = 0f;
         float hTras = 0f;
         
-        if(Terrain.activeTerrain != null)
+        if (TrySampleTerrainHeight(posFrente, out hFrente))
         {
-            hFrente = Terrain.activeTerrain.SampleHeight(posFrente);
-            hTras = Terrain.activeTerrain.SampleHeight(posTras);
+            TrySampleTerrainHeight(posTras, out hTras);
         }
 
         // Deve prever a frente perto d'água e traseira em solo alto
         return (hFrente <= nivelAgua + 1f) && (hTras > nivelAgua);
+    }
+
+    private static bool TrySampleTerrainHeight(Vector3 position, out float height)
+    {
+        height = 0f;
+        Terrain[] terrains = Terrain.activeTerrains;
+        for (int i = 0; i < terrains.Length; i++)
+        {
+            Terrain terrain = terrains[i];
+            if (terrain == null || terrain.terrainData == null || !terrain.enabled) continue;
+            Vector3 minimum = terrain.transform.position;
+            Vector3 size = Vector3.Scale(terrain.terrainData.size, terrain.transform.lossyScale);
+            if (position.x < minimum.x || position.x > minimum.x + size.x
+                || position.z < minimum.z || position.z > minimum.z + size.z) continue;
+            height = terrain.SampleHeight(position) + terrain.transform.position.y;
+            return true;
+        }
+        return false;
     }
 
     void OnDrawGizmos()

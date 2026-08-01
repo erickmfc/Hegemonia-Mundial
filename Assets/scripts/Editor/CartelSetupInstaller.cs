@@ -63,8 +63,8 @@ public static class CartelSetupInstaller
             "Assets/Prefabs/Veiculos/Hamer/Hamer.prefab", "CartelVeiculo.prefab");
         GameObject maritimeMemberPrefab = CopyOrLoadPrefab(
             "Assets/Prefabs/Soldado_Rifle/Trabalhador_Conves.prefab", "CartelMaritimo.prefab");
-        GameObject pirateBoatPrefab = CopyOrLoadPrefab(
-            "Assets/Prefabs/Navios_Guerra/Nav_San/Barco_S1 Variant.prefab", "CartelBarco.prefab");
+        GameObject pirateBoatPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/Cartel/Barco cartel.prefab");
 
         CartelAIController controller = FindOrCreateController();
         controller.CartelTeamId = 9;

@@ -193,14 +193,13 @@
             </ui:VisualElement>
 
             <!-- PAINEL 4: Ordens -->
-            <ui:VisualElement name="painel-ordens" class="rts-panel painel-bottom">
+                <ui:VisualElement name="painel-ordens" class="rts-panel painel-bottom painel-ordens">
                 <ui:Label text="◈ ORDENS" class="panel-label mono" />
 
                 <ui:VisualElement class="ordens-grid">
                     <ui:Button name="btn-ativo" text="⚔️ ATIVO" class="ordem-btn btn-ativo mono" />
                     <ui:Button name="btn-estado" text="↔ ESTADO (ALTERNAR) [I]" class="ordem-btn btn-estado mono" />
                     <ui:Button name="btn-passivo" text="🛡 PASSIVO" class="ordem-btn btn-passivo mono" />
-                    <ui:Button name="btn-mover-mapa" text="✥ MOVER [CLIQUE NO MAPA]" class="ordem-btn btn-mover-mapa mono" />
                     <ui:Button name="btn-lancar-missil" text="🚀 LANÇAR MÍSSIL [ÁREA]" class="ordem-btn btn-lancar-missil mono" />
                     <ui:Button name="btn-troca-camera" text="📷 CÂMERA" class="ordem-btn btn-seguir mono" />
                     <ui:Button name="btn-patrulhar" text="🔄 PATRULHAR" class="ordem-btn btn-patrulhar mono" />

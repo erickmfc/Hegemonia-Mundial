@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Hegemonia.AI.Sovereign
 {
@@ -24,6 +25,14 @@ namespace Hegemonia.AI.Sovereign
 
         private void Update()
         {
+            // A IA soberana e inicializada para a partida, nao para o menu.
+            // Sem este bloqueio ela criava controladores persistentes antes de
+            // o jogador iniciar uma campanha na build.
+            if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
             if (Time.unscaledTime < _nextSyncTime)
             {
                 return;

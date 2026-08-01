@@ -545,16 +545,36 @@ public class SistemaSaveGame : MonoBehaviour
 
     public void ApagarDados()
     {
-        if (PossuiSave())
+        // O save antigo ficava fora de /Saves e o botao apagava apenas o
+        // caminho atualmente selecionado. Assim, um slot antigo continuava
+        // sendo listado e podia reintroduzir estruturas corrompidas.
+        List<string> arquivosParaApagar = new List<string>();
+        string legado = Path.Combine(Application.persistentDataPath, "save_partida.json");
+        if (File.Exists(legado)) arquivosParaApagar.Add(legado);
+        if (!string.IsNullOrWhiteSpace(diretorioSaves) && Directory.Exists(diretorioSaves))
         {
-            File.Delete(caminhoDoArquivo);
+            arquivosParaApagar.AddRange(Directory.GetFiles(diretorioSaves, "*.json"));
+        }
+
+        for (int i = 0; i < arquivosParaApagar.Count; i++)
+        {
+            try
+            {
+                File.Delete(arquivosParaApagar[i]);
+            }
+            catch (Exception ex)
+            {
+                LogInfo("Falha ao apagar save " + arquivosParaApagar[i] + ": " + ex.Message);
+            }
         }
 
         dadosAtuais = new DadosDoJogo();
+        caminhoDoArquivo = legado;
+        saveSelecionadoId = string.Empty;
         carregouDeSave = false;
         partidaNovaRecemIniciada = false;
         restauracaoPendente = false;
-        LogInfo("Save apagado do computador. Comecando do zero.");
+        LogInfo("Todos os saves foram apagados do computador. Comecando do zero.");
     }
 
     private static string NormalizarNomeSave(string nome)
@@ -631,13 +651,30 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         int unidadesRemovidas = 0;
+        int estruturasIARemovidas = 0;
         int comandantesRemovidos = 0;
 
         IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
         for (int i = 0; i < unidades.Length; i++)
         {
             IdentidadeUnidade unidade = unidades[i];
-            if (unidade == null || unidade.tipoUnidade == TipoUnidade.Estrutura || unidade.teamID <= 0)
+            if (unidade == null || unidade.teamID <= 0)
+            {
+                continue;
+            }
+
+            // Partida nova nao deve herdar creates da IA deixados por um save,
+            // pelo editor ou por uma tentativa anterior de abertura. Os slots
+            // oficiais continuam na cena; somente a estrutura ja instanciada e
+            // marcada com team de IA e removida.
+            if (unidade.tipoUnidade == TipoUnidade.Estrutura && unidade.teamID > 1)
+            {
+                Destroy(unidade.gameObject);
+                estruturasIARemovidas++;
+                continue;
+            }
+
+            if (unidade.tipoUnidade == TipoUnidade.Estrutura)
             {
                 continue;
             }
@@ -670,8 +707,8 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         partidaNovaRecemIniciada = false;
-        DiagnosticoDesempenhoJogo.RegistrarEvento("Partida", "Sanitizacao de partida nova (unidades=" + unidadesRemovidas + ", comandantes=" + comandantesRemovidos + ")");
-        LogInfo("Sanitizacao de partida nova concluida. Unidades removidas=" + unidadesRemovidas + " | comandantes removidos=" + comandantesRemovidos + ".");
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Partida", "Sanitizacao de partida nova (unidades=" + unidadesRemovidas + ", estruturasIA=" + estruturasIARemovidas + ", comandantes=" + comandantesRemovidos + ")");
+        LogInfo("Sanitizacao de partida nova concluida. Unidades removidas=" + unidadesRemovidas + " | estruturas IA removidas=" + estruturasIARemovidas + " | comandantes removidos=" + comandantesRemovidos + ".");
     }
 
     private void CapturarRecursos()
@@ -1115,6 +1152,20 @@ public class SistemaSaveGame : MonoBehaviour
         ControleUnidade controle = obj.GetComponent<ControleUnidade>();
         ComportamentoPatrulhaUniversal patrulha = obj.GetComponent<ComportamentoPatrulhaUniversal>();
         ComportamentoSeguirUniversal seguir = obj.GetComponent<ComportamentoSeguirUniversal>();
+        int teamId = identidade != null ? identidade.teamID : 1;
+        if (identidade == null)
+        {
+            IA01Controller[] controllers = IA_UnitySearch.FindAll<IA01Controller>();
+            for (int i = 0; i < controllers.Length; i++)
+            {
+                IA01Controller controller = controllers[i];
+                if (controller != null && controller.IsPositionInsidePreparedTerritory(obj.transform.position, 80f))
+                {
+                    teamId = controller.TeamId;
+                    break;
+                }
+            }
+        }
 
         SaveEntityData data = new SaveEntityData
         {
@@ -1125,7 +1176,7 @@ public class SistemaSaveGame : MonoBehaviour
             posicao = new SaveVector3(obj.transform.position),
             rotacao = new SaveQuaternion(obj.transform.rotation),
             escala = new SaveVector3(obj.transform.localScale),
-            teamID = identidade != null ? identidade.teamID : 1,
+            teamID = teamId,
             nomeDoPais = identidade != null ? identidade.nomeDoPais : string.Empty,
             tipoUnidade = identidade != null ? identidade.tipoUnidade : TipoUnidade.Estrutura,
             possuiVida = danos != null,
@@ -1184,6 +1235,25 @@ public class SistemaSaveGame : MonoBehaviour
         if (data == null || string.IsNullOrWhiteSpace(data.prefabKey))
         {
             return;
+        }
+
+        // Saves anteriores ao layout territorial atual podem conter estruturas
+        // da IA01 em coordenadas antigas. Não mover nem apagar unidades móveis:
+        // somente rejeitar a estrutura fora do envelope oficial da própria IA,
+        // permitindo que o runtime a reconstrua nos Creates atuais.
+        if (data.tipoUnidade == TipoUnidade.Estrutura && data.teamID > 0)
+        {
+            IA01Controller controller = IA01Manager.Instancia != null
+                ? IA01Manager.Instancia.FindControllerByTeamId(data.teamID)
+                : null;
+            if (controller != null && controller.CityLayout != null
+                && !controller.IsPositionInsidePreparedTerritory(data.posicao.ToVector3()))
+            {
+                Debug.LogWarning("[Save] Estrutura IA01 antiga fora do layout atual ignorada: "
+                    + data.prefabKey + " team=" + data.teamID + " pos=" + data.posicao.ToVector3().ToString("F2"));
+                DiagnosticoDesempenhoJogo.RegistrarEvento("Save", "Estrutura IA01 antiga ignorada fora do layout: " + data.prefabKey);
+                return;
+            }
         }
 
         GameObject prefab = ResolverPrefab(data.prefabKey);

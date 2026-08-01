@@ -514,6 +514,15 @@
     gap: 5px;
 }
 
+/* O painel de ordens tem cinco linhas com as acoes restantes. Mantemos
+   espacamento compacto para que a ultima linha e o feedback nunca sejam
+   cortados pela altura fixa da faixa inferior. */
+.painel-ordens {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    gap: 3px;
+}
+
 /* --- TELEMETRIA DA UNIDADE --- */
 .unidade-header {
     flex-direction: row;
@@ -728,6 +737,11 @@
     margin-top: 6px;
 }
 
+.painel-ordens .ordens-grid {
+    gap: 3px;
+    margin-top: 3px;
+}
+
 .ordem-btn {
     flex: 1;
     min-width: 45%;
@@ -740,6 +754,11 @@
     letter-spacing: 1px;
     transition-duration: 0.15s;
     transition-property: background-color, border-color;
+}
+
+.painel-ordens .ordem-btn {
+    height: 30px;
+    min-height: 30px;
 }
 
 .ordem-btn:hover {
@@ -774,16 +793,6 @@
 .btn-estado:hover {
     background-color: rgba(0, 170, 180, 0.55);
     border-color: rgb(0, 255, 255);
-}
-
-.btn-mover-mapa {
-    background-color: rgba(30, 130, 150, 0.36);
-    color: rgb(150, 235, 255);
-    border-color: rgba(50, 210, 240, 0.65);
-}
-.btn-mover-mapa:hover {
-    background-color: rgba(30, 170, 195, 0.56);
-    border-color: rgb(100, 255, 255);
 }
 
 .btn-lancar-missil {

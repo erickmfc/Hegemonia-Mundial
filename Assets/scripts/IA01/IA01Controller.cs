@@ -132,11 +132,122 @@ namespace Hegemonia.AI.IA01
         public IA01StrategicSupport StrategicSupport => strategicSupport;
         public IA01BuildSlot CapitalSlot => cityLayout != null ? cityLayout.CapitalSlot : null;
 
+        /// <summary>
+        /// A IA só pode executar quando a identidade, o governo e o layout
+        /// oficial já estiverem disponíveis. Este método não cria estruturas;
+        /// apenas prepara e valida os dados necessários para o primeiro slice.
+        /// </summary>
+        public bool IsWorldReady(out string reason)
+        {
+            reason = string.Empty;
+            if (!isActiveAndEnabled)
+            {
+                reason = "controller inativo";
+                return false;
+            }
+
+            EnsureBootstrap(false);
+            if (NationId <= 0 || TeamId <= 0)
+            {
+                reason = "identidade da nação ainda não resolvida";
+                return false;
+            }
+
+            SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
+            if (government == null)
+            {
+                reason = "governo mundial ainda não inicializado";
+                return false;
+            }
+
+            if (government.ObterPais(TeamId) == null)
+            {
+                reason = "país da IA ainda não registrado: team=" + TeamId;
+                return false;
+            }
+
+            IA01CityLayout layout = CityLayout;
+            if (layout != null)
+            {
+                if (!layout.EnsureRuntimeReady())
+                {
+                    reason = "layout sem slots preparados: " + layout.LayoutId;
+                    return false;
+                }
+                if (layout.OwnerTeamId != TeamId || layout.OwnerNationId != NationId)
+                    layout.ConfigureOwner(TeamId, NationId);
+            }
+            else if (UsePreparedSlots)
+            {
+                reason = "layout preparado ausente";
+                return false;
+            }
+
+            return true;
+        }
+
         public bool TryResolveConstructionAnchor(IA01IntentType intent, out Vector3 position)
         {
             position = Vector3.zero;
             Quaternion ignored;
             return TryResolveConstructionAnchor(intent, out position, out ignored);
+        }
+
+        /// <summary>
+        /// Valida uma posição de estrutura contra o envelope do layout oficial
+        /// desta nação. É usado na migração de saves antigos, cujo layout podia
+        /// estar em coordenadas diferentes, antes de restaurar uma construção.
+        /// Unidades móveis não passam por esta validação.
+        /// </summary>
+        public bool IsPositionInsidePreparedTerritory(Vector3 position, float margin = 220f)
+        {
+            IA01CityLayout layout = CityLayout;
+            if (layout == null || (layout.OwnerTeamId > 0 && layout.OwnerTeamId != TeamId)) return false;
+
+            IA01BuildSlot[] slots = layout.GetComponentsInChildren<IA01BuildSlot>(true);
+            bool foundOwnedSlot = false;
+            float minX = float.PositiveInfinity;
+            float maxX = float.NegativeInfinity;
+            float minZ = float.PositiveInfinity;
+            float maxZ = float.NegativeInfinity;
+            for (int i = 0; i < slots.Length; i++)
+            {
+                IA01BuildSlot slot = slots[i];
+                if (slot == null || (slot.OwnerTeamId > 0 && slot.OwnerTeamId != TeamId)) continue;
+                Transform point = slot.BuildingPoint != null ? slot.BuildingPoint : slot.transform;
+                if (point == null) continue;
+
+                foundOwnedSlot = true;
+                Vector3 slotPosition = point.position;
+                minX = Mathf.Min(minX, slotPosition.x);
+                maxX = Mathf.Max(maxX, slotPosition.x);
+                minZ = Mathf.Min(minZ, slotPosition.z);
+                maxZ = Mathf.Max(maxZ, slotPosition.z);
+            }
+
+            if (!foundOwnedSlot) return false;
+            float safeMargin = Mathf.Max(50f, margin);
+            bool insidePreparedEnvelope = position.x >= minX - safeMargin && position.x <= maxX + safeMargin
+                && position.z >= minZ - safeMargin && position.z <= maxZ + safeMargin;
+            return insidePreparedEnvelope && !IsInsidePlayerTerritory(position);
+        }
+
+        private static bool IsInsidePlayerTerritory(Vector3 position)
+        {
+            MarcadorTerritorio[] markers = UnityEngine.Object.FindObjectsByType<MarcadorTerritorio>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < markers.Length; i++)
+            {
+                MarcadorTerritorio marker = markers[i];
+                if (marker == null) continue;
+                IdentidadeUnidade identity = marker.GetComponent<IdentidadeUnidade>();
+                int teamId = identity != null ? identity.teamID : marker.teamID;
+                if (teamId != 1) continue;
+                float radius = Mathf.Max(0f, marker.raioDeDominio);
+                Vector3 delta = position - marker.transform.position;
+                if (Mathf.Abs(delta.x) <= radius && Mathf.Abs(delta.z) <= radius) return true;
+            }
+            return false;
         }
 
         public bool TryResolveConstructionAnchor(IA01IntentType intent, out Vector3 position, out Quaternion rotation)
@@ -149,18 +260,6 @@ namespace Hegemonia.AI.IA01
             // usado no plano de construcao. Isso impede a IA de procurar um lote
             // livre ou construir em outra regiao quando o create ja existe.
             string slotId = ResolveLocalSlotId(intent);
-            if (intent == IA01IntentType.BuildMilitaryTent)
-            {
-                // Se o novo create de quartel foi colocado pelo criador, ele
-                // passa a ser o ponto oficial da infantaria. Sem esse create,
-                // o slot antigo da tenda permanece como fallback.
-                IA01CityLayout quartelLayout = ResolveCityLayoutForSlot("ia01.local.quartel");
-                IA01BuildSlot quartelSlot;
-                if (quartelLayout != null && quartelLayout.TryGetSlot("ia01.local.quartel", out quartelSlot) && quartelSlot != null)
-                {
-                    slotId = "ia01.local.quartel";
-                }
-            }
             if (intent == IA01IntentType.BuildOffshorePlatform
                 && TryResolvePlatformSlot(out position, out rotation, out string platformSlotId))
             {
@@ -172,7 +271,7 @@ namespace Hegemonia.AI.IA01
             }
             IA01BuildSlot slot;
             IA01CityLayout resolvedLayout = ResolveCityLayoutForSlot(slotId);
-            if (!string.IsNullOrWhiteSpace(slotId) && resolvedLayout != null && resolvedLayout.TryGetSlot(slotId, out slot) && slot != null)
+            if (!string.IsNullOrWhiteSpace(slotId) && resolvedLayout != null && resolvedLayout.TryGetSlot(slotId, out slot) && IsOwnedLayoutSlot(resolvedLayout, slot))
             {
                 Transform point = slot.BuildingPoint != null ? slot.BuildingPoint : slot.transform;
                 position = point.position;
@@ -182,6 +281,19 @@ namespace Hegemonia.AI.IA01
                     UnityEngine.Debug.Log("[IA01 Anchor] " + intent + " -> " + slot.name + " (" + slot.SlotId + ") pos=" + position.ToString("F2"));
                 }
                 return true;
+            }
+
+            // Se existe um slot preparado para este intento, nunca caia em uma
+            // ancora legada ou em um lote livre de outra regiao. Uma falha de
+            // planejamento e segura; uma construcao fora do territorio mistura
+            // as faccoes e corrompe a partida.
+            if (!string.IsNullOrWhiteSpace(slotId) && (resolvedLayout != null || HasPreparedSlotInScene(slotId)))
+            {
+                if (loggedAnchorResolutions.Add(intent))
+                {
+                    UnityEngine.Debug.LogWarning("[IA01 Anchor] Slot rejeitado por pertencer a outro territorio: " + slotId + " | team=" + TeamId);
+                }
+                return false;
             }
 
             // Compatibilidade com cenas antigas: somente usa as referencias
@@ -219,7 +331,7 @@ namespace Hegemonia.AI.IA01
             {
                 string candidateId = ids[(start + i) % ids.Length];
                 IA01CityLayout layout = ResolveCityLayoutForSlot(candidateId);
-                if (layout == null || !layout.TryGetSlot(candidateId, out IA01BuildSlot slot) || slot == null)
+                if (layout == null || !layout.TryGetSlot(candidateId, out IA01BuildSlot slot) || !IsOwnedLayoutSlot(layout, slot))
                 {
                     continue;
                 }
@@ -238,12 +350,12 @@ namespace Hegemonia.AI.IA01
             if (string.IsNullOrWhiteSpace(slotId)) return null;
             IA01CityLayout candidate = cityLayout;
             IA01BuildSlot ignored;
-            if (candidate != null && candidate.TryGetSlot(slotId, out ignored)) return candidate;
+            if (candidate != null && candidate.TryGetSlot(slotId, out ignored) && IsOwnedLayoutSlot(candidate, ignored)) return candidate;
 
             candidate = GetComponentInChildren<IA01CityLayout>(true);
-            if (candidate != null && candidate.TryGetSlot(slotId, out ignored)) return candidate;
+            if (candidate != null && candidate.TryGetSlot(slotId, out ignored) && IsOwnedLayoutSlot(candidate, ignored)) return candidate;
             candidate = GetComponentInParent<IA01CityLayout>(true);
-            if (candidate != null && candidate.TryGetSlot(slotId, out ignored)) return candidate;
+            if (candidate != null && candidate.TryGetSlot(slotId, out ignored) && IsOwnedLayoutSlot(candidate, ignored)) return candidate;
 
             // Algumas cenas antigas mantêm o layout como irmao do controlador.
             // Escolhe o layout que realmente possui o create solicitado e que
@@ -253,7 +365,7 @@ namespace Hegemonia.AI.IA01
             for (int i = 0; i < layouts.Length; i++)
             {
                 IA01CityLayout layout = layouts[i];
-                if (layout == null || !layout.TryGetSlot(slotId, out ignored)) continue;
+                if (layout == null || !layout.TryGetSlot(slotId, out ignored) || !IsOwnedLayoutSlot(layout, ignored)) continue;
                 float distance = (layout.transform.position - transform.position).sqrMagnitude;
                 if (distance < bestDistance)
                 {
@@ -262,6 +374,28 @@ namespace Hegemonia.AI.IA01
                 }
             }
             return candidate;
+        }
+
+        private bool IsOwnedLayoutSlot(IA01CityLayout layout, IA01BuildSlot slot)
+        {
+            if (layout == null || slot == null) return false;
+            int ownerTeam = TeamId;
+            if (ownerTeam <= 0) return false;
+            if (layout.OwnerTeamId > 0 && layout.OwnerTeamId != ownerTeam) return false;
+            if (slot.OwnerTeamId > 0 && slot.OwnerTeamId != ownerTeam) return false;
+            return true;
+        }
+
+        private bool HasPreparedSlotInScene(string slotId)
+        {
+            if (string.IsNullOrWhiteSpace(slotId)) return false;
+            IA01CityLayout[] layouts = UnityEngine.Object.FindObjectsByType<IA01CityLayout>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < layouts.Length; i++)
+            {
+                IA01CityLayout layout = layouts[i];
+                if (layout != null && layout.TryGetSlot(slotId, out IA01BuildSlot slot) && slot != null) return true;
+            }
+            return false;
         }
 
         private static string ResolveLocalSlotId(IA01IntentType intent)
@@ -288,10 +422,9 @@ namespace Hegemonia.AI.IA01
 
         private void Awake()
         {
-            // Unity só aceita DontDestroyOnLoad em objetos raiz. Prefabs de
-            // país podem ser filhos de um bootstrap da cena, então preserva
-            // a instância sem gerar aviso nem mover hierarquia indevidamente.
-            if (Application.isPlaying && transform.parent == null) DontDestroyOnLoad(gameObject);
+            // O manager é persistente. O controller ligado à cena não é:
+            // mantê-lo vivo deixava um layout antigo apontando para a cena
+            // destruída e duplicava a IA ao voltar do menu para a campanha.
             EnsureBootstrap(false);
         }
 
@@ -313,6 +446,7 @@ namespace Hegemonia.AI.IA01
             if (attachedManager == null && Time.unscaledTime >= nextStandaloneTick)
             {
                 nextStandaloneTick = Time.unscaledTime + Mathf.Max(0.25f, fallbackCadenceSeconds);
+                if (!IsWorldReady(out _)) return;
                 ExecuteSlice(IA01WorkBudget.Create(3f, 4, 2, true, false));
             }
         }
@@ -367,6 +501,13 @@ namespace Hegemonia.AI.IA01
             if (!IsEnabled || budget.MaxOperations <= 0 && budget.MaxEvents <= 0)
             {
                 return lastExecutionResult = IA01WorkResult.Empty("disabled_or_empty_budget");
+            }
+
+            string worldNotReadyReason;
+            if (!IsWorldReady(out worldNotReadyReason))
+            {
+                lastExecutionMessage = "IA01 WorldNotReady: " + worldNotReadyReason;
+                return lastExecutionResult = IA01WorkResult.Empty("world_not_ready:" + worldNotReadyReason);
             }
 
             EnsureBootstrap(false);

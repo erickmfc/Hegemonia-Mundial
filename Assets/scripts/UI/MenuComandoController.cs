@@ -125,7 +125,6 @@ public class MenuComandoController : MonoBehaviour
     private Label ordemFeedback;
     private readonly List<Button> botoesOrdem = new List<Button>(8);
     private Button botaoOrdemSelecionado;
-    private bool modoMovimentoMapaAtivo = false;
     private bool modoLancamentoMissilMapaAtivo = false;
 
     // Mapa — cache de VisualElements por instância
@@ -690,7 +689,6 @@ public class MenuComandoController : MonoBehaviour
     {
         if (!menuAberto) return;
         menuAberto = false;
-        modoMovimentoMapaAtivo = false;
         modoLancamentoMissilMapaAtivo = false;
 
         root.style.display = DisplayStyle.None;
@@ -846,9 +844,6 @@ public class MenuComandoController : MonoBehaviour
 
         var btnTrocaCamera = root.Q<Button>("btn-troca-camera");
         if (btnTrocaCamera != null) VincularBotaoOrdem(btnTrocaCamera, "TROCAR_CAMERA");
-
-        var btnMover = root.Q<Button>("btn-mover-mapa");
-        if (btnMover != null) VincularBotaoOrdem(btnMover, "MOVER_MAPA");
 
         var btnLancamento = root.Q<Button>("btn-lancar-missil");
         if (btnLancamento != null) VincularBotaoOrdem(btnLancamento, "LANCAR_MISSIL");
@@ -2339,17 +2334,8 @@ public class MenuComandoController : MonoBehaviour
                 AdicionarLog("OPS", $"{snapshot.Count} unidades: estado alternado pela tecla I/menu", "normal");
                 break;
 
-            case "MOVER_MAPA":
-                modoMovimentoMapaAtivo = true;
-                if (desenhadorOrdens != null) desenhadorOrdens.CancelarModo();
-                FecharPainelSeguimento();
-                SetText(ordemFeedback, $"MOVER ATIVO: clique esquerdo ou direito no mapa para escolher o destino.");
-                AdicionarLog("OPS", $"{snapshot.Count} unidades: aguardando ponto de movimento no mapa", "normal");
-                break;
-
             case "LANCAR_MISSIL":
                 modoLancamentoMissilMapaAtivo = true;
-                modoMovimentoMapaAtivo = false;
                 if (desenhadorOrdens != null) desenhadorOrdens.CancelarModo();
                 FecharPainelSeguimento();
                 foreach (var u in unidadesSelecionadasMenu)
@@ -2664,12 +2650,6 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
 
-        if (modoMovimentoMapaAtivo)
-        {
-            EnviarOrdemMovimentoMapa(worldPos);
-            return;
-        }
-
         if (desenhadorOrdens == null)
             desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2721,12 +2701,6 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
 
-        if (modoMovimentoMapaAtivo)
-        {
-            EnviarOrdemMovimentoMapa(ConverterLocalParaMundo(localPos));
-            return;
-        }
-
         if (desenhadorOrdens == null)
             desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2737,24 +2711,6 @@ public class MenuComandoController : MonoBehaviour
             SetText(ordemFeedback, "Ordem cancelada.");
             AdicionarLog("OPS", "Ação cancelada pelo usuário.", "normal");
         }
-    }
-
-    private void EnviarOrdemMovimentoMapa(Vector3 destino)
-    {
-        int enviadas = 0;
-        foreach (var unidade in unidadesSelecionadasMenu)
-        {
-            if (unidade != null && unidade.EmitirOrdemMover(destino))
-            {
-                enviadas++;
-            }
-        }
-
-        modoMovimentoMapaAtivo = false;
-        SetText(ordemFeedback, enviadas > 0
-            ? $"Movimento enviado para {enviadas} unidade(s)."
-            : "Nenhuma ordem aceita; navios precisam de um ponto na água.");
-        AdicionarLog("OPS", $"Ordem de movimento no mapa: {enviadas} unidade(s) aceitas.", enviadas > 0 ? "normal" : "alerta");
     }
 
     private void EnviarOrdemLancamentoMissilMapa(Vector3 destino)

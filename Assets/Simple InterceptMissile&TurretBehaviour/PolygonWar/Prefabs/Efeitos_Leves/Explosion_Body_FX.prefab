@@ -4690,8 +4690,6 @@ GameObject:
   - component: {fileID: 4295433317460516}
   - component: {fileID: 198446841649294506}
   - component: {fileID: 199858455338650986}
-  - component: {fileID: 114624768526000382}
-  - component: {fileID: 114968832550612128}
   m_Layer: 0
   m_Name: Explosion_Body_FX
   m_TagString: Untagged
@@ -9356,33 +9354,6 @@ ParticleSystemRenderer:
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
   m_MaskInteraction: 0
---- !u!114 &114624768526000382
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1428540705898108}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8def1c80f375f4742bbb5773dc8a1871, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  TimeToDestroy: 5
---- !u!114 &114968832550612128
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1428540705898108}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1849d2a1a4dad46b99ce4aed7ba74ff7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ExplosionForce: 15
-  Radius: 10
 --- !u!1 &1565961888518314
 GameObject:
   m_ObjectHideFlags: 0

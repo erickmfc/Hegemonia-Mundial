@@ -204,13 +204,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 1254547255348624}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 946155d8b296c43cfa14808cad43e6f7, type: 3}
+  m_Script: {fileID: 11500000, guid: 53ca19d366f8d9f44a936127b47853ce, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
-  Speed: 0
-  TimeTodestroy: 5
-  Explosion: {fileID: 1404802046468498, guid: 2938def9583039b498280fae52bf6fd4, type: 3}
-  BodyExplosion_FX: {fileID: 1428540705898108, guid: 05773da76fe5ee64584ab0c3d9169be9, type: 3}
+  m_EditorClassIdentifier: Assembly-CSharp::Projetil
+  velocidade: 60
+  dano: 10
+  tempoDeVida: 5
+  raioDeExplosao: 0
+  danoExplosao: 0
+  efeitoImpacto: {fileID: 1404802046468498, guid: 2938def9583039b498280fae52bf6fd4, type: 3}
+  curvaDePerseguicao: 0
+  distanciaDetonacaoProximidade: 6
 --- !u!1 &1892125027059630
 GameObject:
   m_ObjectHideFlags: 0

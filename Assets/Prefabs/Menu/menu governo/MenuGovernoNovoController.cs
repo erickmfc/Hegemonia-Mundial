@@ -520,6 +520,29 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 Acao("MOBILIZACAO", () => Plano("Mobilizacao"), "warning");
                 Acao("EQUILIBRIO", () => Plano("Equilibrio"));
                 Acao("INVESTIR EM DEFESA", () => Investir("defesa"));
+                if (abaAtual == "Aerea")
+                {
+                    Acao("ALTERNAR MANUTENCAO DO SATELITE", () =>
+                    {
+                        SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
+                        DadosPaisGoverno pais = gov != null ? gov.ObterPais(1) : null;
+                        if (pais != null)
+                        {
+                            if (pais.sateliteDefesa == null) pais.sateliteDefesa = new SateliteDefesaEstado();
+                            gov.ConfigurarSatelite(1, !pais.sateliteDefesa.manutencaoAutomatica);
+                            MostrarMensagem("Manutencao automatica do satelite atualizada.");
+                            MostrarPagina(abaAtual);
+                        }
+                    });
+                    Acao("APORTAR $1.200 NO SATELITE", () =>
+                    {
+                        string mensagem = "Programa satelital indisponivel.";
+                        bool ok = SistemaGovernoMundial.Instancia != null
+                            && SistemaGovernoMundial.Instancia.InvestirNoSatelite(1, 1200, out mensagem);
+                        MostrarMensagem(ok ? mensagem : "Aporte recusado: " + mensagem);
+                        MostrarPagina(abaAtual);
+                    }, "warning");
+                }
                 break;
             case "Ciencia":
                 if (abaAtual == "Pesquisa")
@@ -1624,6 +1647,18 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 ? $"\n\nAres_Ar: {aresMunicao.totalDisparado:N0} disparos | $ {aresMunicao.valorUnitario:N0}/cartucho | carregador {aresMunicao.capacidadeCartucho} | reabastecimento {aresMunicao.tempoReabastecimento:0.0}s"
                 : string.Empty;
             AdicionarCard(conteudo, "FORCA AEREA", $"Aeroportos operacionais: {aeroportos}\nPlano atual: {p.planoEstrategico}\nPressao de guerra: {g.PressaoGlobalGuerra() * 100f:0}%" + aresTexto);
+            if (p.sateliteDefesa == null)
+            {
+                p.sateliteDefesa = new SateliteDefesaEstado();
+            }
+            SateliteDefesaEstado satelite = p.sateliteDefesa;
+            string statusSatelite = satelite.desbloqueado ? "ATIVO" : "BLOQUEADO";
+            string prontidaoSatelite = satelite.integridade >= 75f && satelite.desempenho >= 70f
+                ? "OPERACIONAL"
+                : satelite.integridade >= 45f && satelite.desempenho >= 45f ? "ATENCAO" : "CRITICO";
+            AdicionarCard(conteudo, "SATELITE NACIONAL",
+                $"Status: {statusSatelite}\nProntidao: {prontidaoSatelite}\nDesempenho: {satelite.desempenho:0}%\nIntegridade: {satelite.integridade:0}%\n" +
+                $"Custo operacao: $ {satelite.custoOperacionalDiario:N0}/dia\nManutencao automatica: {(satelite.manutencaoAutomatica ? "SIM" : "NAO")}");
             return;
         }
 

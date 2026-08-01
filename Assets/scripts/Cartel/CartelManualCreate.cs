@@ -47,7 +47,10 @@ namespace Hegemonia.Cartel
         CityReference,
         PoliceReference,
         MilitaryReference,
-        BusyRoadReference
+        BusyRoadReference,
+
+        CartelBoatCrewCreate,
+        CartelBoatCargoCreate
     }
 
     public enum CartelRouteKind
@@ -192,6 +195,11 @@ namespace Hegemonia.Cartel
             {
                 occupants.Remove(occupant.GetInstanceID());
             }
+        }
+
+        public void ClearOccupants()
+        {
+            occupants.Clear();
         }
 
         public int OccupantCount()

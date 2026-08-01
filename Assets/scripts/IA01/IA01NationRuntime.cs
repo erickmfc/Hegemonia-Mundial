@@ -1068,24 +1068,34 @@ namespace Hegemonia.AI.IA01
                 return;
             }
 
-            if (catalog.CatalogVersion != unavailableSequenceCatalogVersion)
+            // A abertura roteirizada e opcional. Sem ela, a IA nao pode enfileirar
+            // quartel, fabrica, aeroportos ou estruturas navais por conta propria
+            // logo no carregamento da partida.
+            if (controller != null && controller.UseScriptedOpening)
             {
-                unavailableSequenceSteps.Clear();
-                unavailableSequenceCatalogVersion = catalog.CatalogVersion;
-            }
-
-            for (int i = 0; i < FoundationSequence.Length; i++)
-            {
-                IA01IntentType step = FoundationSequence[i];
-                if (IsFoundationStepComplete(step) || unavailableSequenceSteps.Contains(step))
+                if (catalog.CatalogVersion != unavailableSequenceCatalogVersion)
                 {
-                    continue;
+                    unavailableSequenceSteps.Clear();
+                    unavailableSequenceCatalogVersion = catalog.CatalogVersion;
                 }
 
-                FoundationSequenceStatus = ResolveFoundationReason(step);
-                board.Publish(step, 2000 - i, FoundationSequenceStatus, now);
-                Status = "Sequencia de fundacao: " + FoundationSequenceStatus + ".";
-                return;
+                for (int i = 0; i < FoundationSequence.Length; i++)
+                {
+                    IA01IntentType step = FoundationSequence[i];
+                    if (IsFoundationStepComplete(step) || unavailableSequenceSteps.Contains(step))
+                    {
+                        continue;
+                    }
+
+                    FoundationSequenceStatus = ResolveFoundationReason(step);
+                    board.Publish(step, 2000 - i, FoundationSequenceStatus, now);
+                    Status = "Sequencia de fundacao: " + FoundationSequenceStatus + ".";
+                    return;
+                }
+            }
+            else
+            {
+                FoundationSequenceStatus = "Abertura roteirizada desativada.";
             }
 
             bool threatened = IA01OperationalRules.IsCapitalThreatened(world, capital, country);
@@ -1622,6 +1632,22 @@ namespace Hegemonia.AI.IA01
                 return false;
             }
 
+            // Alguns itens antigos reutilizam o nome "Tenda Militar" em
+            // fichas de defesa. Na abertura, o ID estavel e a unica forma
+            // segura de nao transformar uma torreta ou um alias em quartel,
+            // nem uma unidade aerea em construtor terrestre.
+            string preferredItemId = PreferredForcedOpeningItemId(intent);
+            if (!string.IsNullOrWhiteSpace(preferredItemId))
+            {
+                for (int i = 0; i < cachedDefinitions.Count; i++)
+                {
+                    IA01BuildDefinition candidate = cachedDefinitions[i];
+                    if (candidate == null || candidate.Item == null
+                        || !string.Equals(candidate.Item.GetStableId(), preferredItemId, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (TryCreateForcedOpeningDefinition(intent, candidate.Item, out definition)) return true;
+                }
+            }
+
             for (int i = 0; i < cachedDefinitions.Count; i++)
             {
                 IA01BuildDefinition candidate = cachedDefinitions[i];
@@ -1675,6 +1701,19 @@ namespace Hegemonia.AI.IA01
 
             LastDiagnostic = "NoValidCatalogItem: BuildPlan sem ficha direta para abertura " + intent + ".";
             return false;
+        }
+
+        private static string PreferredForcedOpeningItemId(IA01IntentType intent)
+        {
+            switch (intent)
+            {
+                case IA01IntentType.BuildMilitaryTent: return "militar.tenda";
+                case IA01IntentType.BuildVehicleConstructor: return "militar.fabrica_veiculos";
+                case IA01IntentType.BuildShipyard: return "naval.estaleiro";
+                case IA01IntentType.BuildMilitaryAirport: return "aeroporto_militar";
+                case IA01IntentType.BuildCommercialAirport: return "aeroporto_comercial";
+                default: return string.Empty;
+            }
         }
 
         private static bool TryCreateForcedOpeningDefinition(IA01IntentType intent, DadosConstrucao item, out IA01BuildDefinition definition)
@@ -2760,27 +2799,73 @@ namespace Hegemonia.AI.IA01
         private readonly IA01Controller controller;
         public IA01ZonePlanner(IA01Controller controller) { this.controller = controller; }
 
-        public Vector3 ResolvePlanningOrigin(IA01CityPlanner city, IA01BuildDefinition definition)
+        public bool TryResolvePlanningOrigin(IA01CityPlanner city, IA01BuildDefinition definition, out Vector3 origin, out string reason)
         {
-            if (city.Capital == null)
+            origin = Vector3.zero;
+            reason = string.Empty;
+            if (definition == null)
             {
-                Vector3 origin = controller != null ? controller.transform.position : Vector3.zero;
-                Terrain terrain = Terrain.activeTerrain;
-                if (terrain != null)
+                reason = "definição de construção ausente";
+                return false;
+            }
+
+            if (city != null && city.Capital != null)
+            {
+                origin = city.Capital.transform.position;
+            }
+            else
+            {
+                // Antes o fallback era controller.transform.position. Em uma
+                // build fria esse objeto costuma estar perto da câmera e não
+                // representa o território da IA. O único fallback permitido é
+                // o create oficial da capital já registrado no layout.
+                IA01BuildSlot capitalSlot = controller != null ? controller.CapitalSlot : null;
+                if (capitalSlot == null)
                 {
-                    origin.y = terrain.SampleHeight(origin) + terrain.transform.position.y;
-                }
-                else if (Physics.Raycast(origin + Vector3.up * 500f, Vector3.down, out RaycastHit hit, 1000f, ~0, QueryTriggerInteraction.Ignore))
-                {
-                    origin.y = hit.point.y;
+                    reason = "capital e create oficial da capital ainda não estão prontos";
+                    return false;
                 }
 
-                return origin;
+                Transform point = capitalSlot.BuildingPoint != null ? capitalSlot.BuildingPoint : capitalSlot.transform;
+                if (point == null)
+                {
+                    reason = "create oficial da capital sem ponto de construção";
+                    return false;
+                }
+
+                origin = point.position;
             }
-            Vector3 capitalOrigin = city.Capital.transform.position;
+
             // Heavy industry and naval facilities are planned away from the command core.
-            if (definition.Archetype == IA01BuildArchetype.Industrial || definition.Archetype == IA01BuildArchetype.Naval) capitalOrigin += new Vector3(90f, 0f, 0f);
-            return capitalOrigin;
+            if (definition.Archetype == IA01BuildArchetype.Industrial || definition.Archetype == IA01BuildArchetype.Naval) origin += new Vector3(90f, 0f, 0f);
+            return true;
+        }
+
+        private static bool TrySampleTerrainHeight(Vector3 position, out float height)
+        {
+            height = 0f;
+            Terrain[] terrains = Terrain.activeTerrains;
+            for (int i = 0; i < terrains.Length; i++)
+            {
+                Terrain terrain = terrains[i];
+                if (terrain == null || terrain.terrainData == null || !terrain.enabled)
+                {
+                    continue;
+                }
+
+                Vector3 minimum = terrain.transform.position;
+                Vector3 size = Vector3.Scale(terrain.terrainData.size, terrain.transform.lossyScale);
+                if (position.x < minimum.x || position.x > minimum.x + size.x
+                    || position.z < minimum.z || position.z > minimum.z + size.z)
+                {
+                    continue;
+                }
+
+                height = terrain.SampleHeight(position) + terrain.transform.position.y;
+                return true;
+            }
+
+            return false;
         }
     }
 
@@ -3226,7 +3311,14 @@ namespace Hegemonia.AI.IA01
                 Vector3 origin;
                 if (!controller.TryResolveConstructionAnchor(intent.Type, out origin))
                 {
-                    origin = zones.ResolvePlanningOrigin(city, definition);
+                    string originReason;
+                    if (!zones.TryResolvePlanningOrigin(city, definition, out origin, out originReason))
+                    {
+                        currentConstructionState = IA01ConstructionState.Cooldown;
+                        Status = "WorldNotReady para " + definition.DisplayName + ": " + originReason;
+                        RecordFailure(intent.Type, attemptKey, now, stateToken, IA01FailureCode.NoValidLot, IA01IntentBlockReason.NoLot, originReason);
+                        return false;
+                    }
                 }
                 int maxCandidates = governor != null ? governor.MaxCandidatesPerSlice : 4;
                 int maxPhysicsChecks = governor != null ? governor.MaxPhysicsChecksPerSlice : 16;
@@ -3255,7 +3347,9 @@ namespace Hegemonia.AI.IA01
                         // legado ou sobre uma unidade que foi posicionada depois.
                         // Nesse caso procura um lote próximo da âncora, sem liberar
                         // a construção para outra região do mapa.
-                        if (intent.Type == IA01IntentType.BuildVehicleConstructor
+                        // Um create ocupado bloqueia a obra; nunca procura um lote
+                        // alternativo que possa cair em outra parte do mapa.
+                        if (!RequiresOwnCreate(intent.Type) && intent.Type == IA01IntentType.BuildVehicleConstructor
                             && lots.TryFindLot(definition, anchorPosition, now, maxCandidates, maxPhysicsChecks, out lot, out motivoFallback))
                         {
                             reason = "âncora ocupada; lote local alternativo aprovado: " + lot.Key;
@@ -3380,6 +3474,7 @@ namespace Hegemonia.AI.IA01
             return type == IA01IntentType.BuildEnergy
                 || type == IA01IntentType.BuildFoodProduction
                 || type == IA01IntentType.BuildStorage
+                || type == IA01IntentType.BuildMilitaryTent
                 || type == IA01IntentType.BuildVehicleConstructor
                 || type == IA01IntentType.BuildMilitaryAirport
                 || type == IA01IntentType.BuildCommercialAirport
@@ -4304,7 +4399,24 @@ namespace Hegemonia.AI.IA01
             }
             if (configuredDistance < float.MaxValue) return configured;
 
-            Vector3 origin = city.Capital != null ? city.Capital.transform.position : controller.transform.position;
+            Vector3 origin;
+            if (city.Capital != null)
+            {
+                origin = city.Capital.transform.position;
+            }
+            else if (controller != null && controller.CapitalSlot != null)
+            {
+                Transform capitalPoint = controller.CapitalSlot.BuildingPoint != null
+                    ? controller.CapitalSlot.BuildingPoint
+                    : controller.CapitalSlot.transform;
+                origin = capitalPoint != null ? capitalPoint.position : target;
+            }
+            else
+            {
+                // Sem capital construída e sem create oficial, não inventa
+                // uma origem perto da câmera; usa o alvo já confirmado.
+                return target;
+            }
             if (!NavMesh.SamplePosition(origin, out NavMeshHit originHit, 80f, NavMesh.AllAreas)) return target;
             Vector3 best = target;
             float bestLength = float.MaxValue;

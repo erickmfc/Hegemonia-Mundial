@@ -519,7 +519,7 @@ public class CombustivelUnidade : MonoBehaviour
             case ClasseCombustivelUnidade.Naval:
                 if (NomeContem("Sovereign")) return 50000f;
                 if (NomeContem("Liberty")) return 15000f;
-                if (NomeContem("Wall")) return 5800f;
+                if (NomeContem("Wall")) return 23200f;
                 if (NomeContem("F200")) return 4800f;
                 if (NomeContem("Fortaleza")) return 3800f;
                 if (NomeContem("Leviathan")) return 25800f;

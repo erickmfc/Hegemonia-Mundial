@@ -87,13 +87,28 @@ public class MenuConstrucao : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void GarantirInstanciaRuntime()
     {
+        // O menu inicial nao possui a interface de campanha e, antes, este
+        // bootstrap era marcado como DontDestroyOnLoad. Ao entrar em cena19),
+        // ele sobrevivia sem catalogo e o MenuConstrucao serializado da cena
+        // era destruido pelo singleton; o resultado era uma grade vazia.
+        // Procura tambem objetos inativos e deixa cada cena ser dona da sua
+        // propria interface.
+        MenuConstrucao[] existentes = Resources.FindObjectsOfTypeAll<MenuConstrucao>();
+        for (int i = 0; i < existentes.Length; i++)
+        {
+            MenuConstrucao existente = existentes[i];
+            if (existente != null && existente.gameObject.scene.IsValid())
+            {
+                return;
+            }
+        }
+
         if (Object.FindFirstObjectByType<MenuConstrucao>() != null)
         {
             return;
         }
 
         GameObject root = new GameObject("MenuConstrucao_Auto");
-        Object.DontDestroyOnLoad(root);
         root.AddComponent<MenuConstrucao>();
         Debug.Log("[MenuConstrucao] Instancia ausente na cena. Criado bootstrap automatico.");
     }
@@ -2540,8 +2555,15 @@ public class MenuConstrucao : MonoBehaviour
 
         float velocidade = -1f;
 
+        Helicoptero helicoptero = prefab.GetComponent<Helicoptero>() ?? prefab.GetComponentInChildren<Helicoptero>(true);
+        if (helicoptero != null)
+        {
+            // O controlador usa m/s; os cards exibem km/h como os demais meios.
+            velocidade = helicoptero.velocidadeNavegacao;
+        }
+
         ControleAviao controleAviao = prefab.GetComponent<ControleAviao>() ?? prefab.GetComponentInChildren<ControleAviao>(true);
-        if (controleAviao != null)
+        if (velocidade <= 0f && controleAviao != null)
         {
             velocidade = controleAviao.velocidadeMaximaVoo;
         }

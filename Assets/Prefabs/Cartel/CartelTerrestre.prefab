@@ -211,6 +211,7 @@ GameObject:
   - component: {fileID: 208297035133646173}
   - component: {fileID: 4506347189568623366}
   - component: {fileID: 1607472520766139417}
+  - component: {fileID: 4863542369693242095}
   m_Layer: 0
   m_Name: CartelTerrestre
   m_TagString: Bandido
@@ -254,7 +255,7 @@ Animator:
   m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
+  m_AnimatePhysics: 1
   m_WarningMessage: 
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
@@ -444,6 +445,18 @@ CapsuleCollider:
   m_Height: 7.29
   m_Direction: 1
   m_Center: {x: 0, y: 1.23, z: 0}
+--- !u!114 &4863542369693242095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6111281885404050440}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a72c2d3b8a34b7d9d5f5f7f3b1e0a42, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ArmaNaMaoRuntime
 --- !u!1 &8276474867559655601
 GameObject:
   m_ObjectHideFlags: 0
@@ -484,9 +497,49 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6834252266271752662}
     m_Modifications:
+    - target: {fileID: -9032572576409422515, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8130933607285721555, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7984412861716912261, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -6963972439722044888, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: -6689036041284674117, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
       propertyPath: m_Name
       value: m16_assault_rifle
+      objectReference: {fileID: 0}
+    - target: {fileID: -6609434681049085478, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4595867577613854796, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -2578377267722729888, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -1594019050746263525, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -1244206246711804687, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -1038380980008012483, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: a72cef18920f56848acb3f8f8c5aa5f3, type: 3}
       propertyPath: m_LocalScale.x

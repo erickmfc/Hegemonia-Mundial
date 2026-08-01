@@ -54,6 +54,7 @@ public class CameraUnidadeHUD : MonoBehaviour
     private Camera minhaCamera;
     private ControleUnidade targetUnit;
     private GerenteSelecao gerenteSelecaoCache;
+    private int ultimaUnidadeSelecionadaId;
     private RenderTexture currentRT;
     private float proximoRefreshGerenteSelecao;
     private float proximoProcessamentoMarcacao;
@@ -289,13 +290,18 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (targetUnit == null)
+        GerenteSelecao gerenteAtual = ObterGerenteSelecaoCache();
+        if (gerenteAtual != null && gerenteAtual.unidadesSelecionadas != null && gerenteAtual.unidadesSelecionadas.Count > 0)
         {
-            // Tenta obter do GerenteSelecao caso não tenha sido definido manualmente
-            var gerente = ObterGerenteSelecaoCache();
-            if (gerente != null && gerente.unidadesSelecionadas != null && gerente.unidadesSelecionadas.Count > 0)
+            ControleUnidade unidadeSelecionada = gerenteAtual.unidadesSelecionadas[0];
+            if (unidadeSelecionada != null)
             {
-                targetUnit = gerente.unidadesSelecionadas[0];
+                int idSelecionado = unidadeSelecionada.GetInstanceID();
+                if (idSelecionado != ultimaUnidadeSelecionadaId || targetUnit != unidadeSelecionada)
+                {
+                    ultimaUnidadeSelecionadaId = idSelecionado;
+                    DefinirTarget(unidadeSelecionada);
+                }
             }
         }
 
@@ -664,10 +670,14 @@ public class CameraUnidadeHUD : MonoBehaviour
         var gerente = ObterGerenteSelecaoCache(true);
         if (gerente != null && gerente.unidadesSelecionadas != null && gerente.unidadesSelecionadas.Count > 0)
         {
+            ultimaUnidadeSelecionadaId = gerente.unidadesSelecionadas[0] != null
+                ? gerente.unidadesSelecionadas[0].GetInstanceID()
+                : 0;
             DefinirTarget(gerente.unidadesSelecionadas[0]);
         }
         else
         {
+            ultimaUnidadeSelecionadaId = 0;
             DefinirTarget(null);
         }
     }

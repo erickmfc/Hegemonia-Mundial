@@ -18,7 +18,7 @@ MonoBehaviour:
   itemId: 
   aliases: 
   capacidades: 0
-  prefabDaUnidade: {fileID: 8368706832941796259, guid: a56ba474d1c28e14987f504424f9ae9e, type: 3}
+  prefabDaUnidade: {fileID: 8368706832941796259, guid: 2a0b213db7331844e919895fede61ff4, type: 3}
   preco: 100
   categoria: 2
   escalaPoder: 3

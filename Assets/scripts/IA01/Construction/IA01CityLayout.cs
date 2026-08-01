@@ -23,11 +23,12 @@ namespace Hegemonia.AI.IA01
         public IA01BuildSlot CapitalSlot => capitalSlot;
         public int OwnerTeamId => ownerTeamId;
         public int OwnerNationId => ownerNationId;
+        public int RegisteredSlotCount => registeredSlots.Count;
+        public bool IsRuntimeReady => slotRegistry != null && registeredSlots.Count > 0 && slotRegistry.SlotCount > 0;
 
         private void Awake()
         {
-            EnsureRegistry();
-            RegisterChildSlotsOnce();
+            EnsureRuntimeReady();
         }
 
         private void OnValidate()
@@ -69,6 +70,7 @@ namespace Hegemonia.AI.IA01
 
         public void ConfigureOwner(int teamId, int nationId)
         {
+            EnsureRuntimeReady();
             ownerTeamId = teamId;
             ownerNationId = nationId;
             for (int i = 0; i < registeredSlots.Count; i++)
@@ -158,6 +160,18 @@ namespace Hegemonia.AI.IA01
                 SaveIA01BuildSlotState state = states[i];
                 if (state != null && slotRegistry.TryGetSlot(state.slotId, out IA01BuildSlot slot)) slot.RestoreSaveState(state);
             }
+        }
+
+        /// <summary>
+        /// Garante que o registro de slots exista antes de qualquer diretor de
+        /// construção tentar planejar. Isso fecha a corrida entre Awake do
+        /// controller e Awake deste layout em uma build fria.
+        /// </summary>
+        public bool EnsureRuntimeReady()
+        {
+            EnsureRegistry();
+            if (!IsRuntimeReady) RegisterChildSlotsOnce();
+            return IsRuntimeReady;
         }
 
         private void EnsureRegistry()

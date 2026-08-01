@@ -5,6 +5,7 @@ using Hegemonia.AI.DEUSA;
 using Hegemonia.AI.Shared;
 using Hegemonia.AI.Sovereign;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Hegemonia.AI.BrainMaster
 {
@@ -188,6 +189,12 @@ namespace Hegemonia.AI.BrainMaster
 
         private void OnEnable()
         {
+            if (IsRecoveryCampaignScene())
+            {
+                enabled = false;
+                return;
+            }
+
             _activeBrainCount++;
             _coordinatorSlot = IA_GlobalBrainCoordinator.Instance.Register(TeamId);
             _authorityOwnerKey = BuildAuthorityOwnerKey();
@@ -209,8 +216,21 @@ namespace Hegemonia.AI.BrainMaster
 
         private void Awake()
         {
+            if (IsRecoveryCampaignScene())
+            {
+                enabled = false;
+                return;
+            }
+
             Credits = Mathf.Max(0, InitialCredits);
             EnsureRuntimeGraph(false, false);
+        }
+
+        private static bool IsRecoveryCampaignScene()
+        {
+            Scene active = SceneManager.GetActiveScene();
+            return active.name == ConfiguracaoCenasJogo.CenaCampanhaCanonica
+                || active.path == "Assets/Scenes/cena19).unity";
         }
 
         private void Start()

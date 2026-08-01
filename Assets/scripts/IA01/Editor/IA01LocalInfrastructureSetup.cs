@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using Hegemonia.AI.IA01;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEditorInternal;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Converte os marcadores temporarios "Local" do IA01CityLayout em slots nomeados
@@ -42,53 +44,94 @@ public static class IA01LocalInfrastructureSetup
 
     private static readonly LocalDefinition[] Definitions =
     {
-        new LocalDefinition("ia01.local.tenda", "IA01 Local - Tenda Militar", "Assets/Prefabs/Construtor de Veiculos/Tenda/Construcao_Tenda.asset", IA01StrategicRole.MilitaryProduction, IA01BuildDomain.Land, "abertura.militar.tenda"),
-        new LocalDefinition("ia01.local.casa", "IA01 Local - Casa", "Assets/Prefabs/Imobiliario/casa/Casa.asset", IA01StrategicRole.Residential, IA01BuildDomain.Land, "abertura.residencial.casa"),
-        new LocalDefinition("ia01.local.apartamento_medio", "IA01 Local - Apartamento Medio", "Assets/Prefabs/Imobiliario/Pred Medio/Predio Medio.asset", IA01StrategicRole.Residential, IA01BuildDomain.Land, "abertura.residencial.apartamento_medio"),
-        new LocalDefinition("ia01.local.apartamento_alto", "IA01 Local - Apartamento Alto", "Assets/Prefabs/Imobiliario/Perd Hard/Pred Hard.asset", IA01StrategicRole.Residential, IA01BuildDomain.Land, "abertura.residencial.apartamento_alto"),
-        new LocalDefinition("ia01.local.construtor_veiculos", "IA01 Local - Construtor de Veiculos", "Assets/Prefabs/Construtor de Veiculos/Construtor de Veiculos.asset", IA01StrategicRole.MilitaryProduction, IA01BuildDomain.Land, "abertura.militar.construtor_veiculos"),
-        new LocalDefinition("ia01.local.aeroporto_militar", "IA01 Local - Aeroporto Militar", "Assets/Prefabs/Aeroporto/Aeroporto militar.asset", IA01StrategicRole.Airfield, IA01BuildDomain.Airfield, "abertura.aereo.aeroporto_militar", true),
-        new LocalDefinition("ia01.local.aeroporto_comercial", "IA01 Local - Aeroporto Comercial", "Assets/Prefabs/Aeroporto/Aeroporto comercial/Aeroporto comercial.asset", IA01StrategicRole.Airfield, IA01BuildDomain.Airfield, "abertura.aereo.aeroporto_comercial", true),
-        new LocalDefinition("ia01.local.estaleiro", "IA01 Local - Estaleiro Naval", "Assets/Prefabs/Estaleiro Marinho/Estaleiro_Naval.asset", IA01StrategicRole.Shipyard, IA01BuildDomain.Coastal, "naval.naval.estaleiro", false, true)
+        new LocalDefinition("ia01.local.tenda", "IA01 Create - Tenda Militar", "Assets/Prefabs/Construtor de Veiculos/Tenda/Construcao_Tenda.asset", IA01StrategicRole.MilitaryProduction, IA01BuildDomain.Land, "abertura.militar.tenda"),
+        new LocalDefinition("ia01.local.casa", "IA01 Create - Casa", "Assets/Prefabs/Imobiliario/casa/Casa.asset", IA01StrategicRole.Residential, IA01BuildDomain.Land, "abertura.residencial.casa"),
+        new LocalDefinition("ia01.local.apartamento_medio", "IA01 Create - Apartamento Medio", "Assets/Prefabs/Imobiliario/Pred Medio/Predio Medio.asset", IA01StrategicRole.Residential, IA01BuildDomain.Land, "abertura.residencial.apartamento_medio"),
+        new LocalDefinition("ia01.local.apartamento_alto", "IA01 Create - Apartamento Alto", "Assets/Prefabs/Imobiliario/Perd Hard/Pred Hard.asset", IA01StrategicRole.Residential, IA01BuildDomain.Land, "abertura.residencial.apartamento_alto"),
+        new LocalDefinition("ia01.local.construtor_veiculos", "IA01 Create - Construtor de Veiculos", "Assets/Prefabs/Construtor de Veiculos/Construtor de Veiculos.asset", IA01StrategicRole.MilitaryProduction, IA01BuildDomain.Land, "abertura.militar.construtor_veiculos"),
+        new LocalDefinition("ia01.local.aeroporto_militar", "IA01 Create - Aeroporto Militar", "Assets/Prefabs/Aeroporto/Aeroporto militar.asset", IA01StrategicRole.Airfield, IA01BuildDomain.Airfield, "abertura.aereo.aeroporto_militar", true),
+        new LocalDefinition("ia01.local.aeroporto_comercial", "IA01 Create - Aeroporto Comercial", "Assets/Prefabs/Aeroporto/Aeroporto comercial/Aeroporto comercial.asset", IA01StrategicRole.Airfield, IA01BuildDomain.Airfield, "abertura.aereo.aeroporto_comercial", true),
+        new LocalDefinition("ia01.local.estaleiro", "IA01 Create - Estaleiro Naval", "Assets/Prefabs/Estaleiro Marinho/Estaleiro_Naval.asset", IA01StrategicRole.Shipyard, IA01BuildDomain.Coastal, "naval.naval.estaleiro", false, true)
     };
 
     private static readonly LocalDefinition PierDefinition =
-        new LocalDefinition("ia01.local.pier", "IA01 Local - Pier Naval", "Assets/Prefabs/Marinha/Pier_marinha.asset", IA01StrategicRole.Pier, IA01BuildDomain.Coastal, "naval.pier");
+        new LocalDefinition("ia01.local.pier", "IA01 Create - Pier Naval", "Assets/Prefabs/Marinha/Pier_marinha.asset", IA01StrategicRole.Pier, IA01BuildDomain.Coastal, "naval.pier");
 
     private static readonly LocalDefinition PlatformDefinition =
-        new LocalDefinition(string.Empty, "IA01 Local - Plataforma Offshore", "Assets/Prefabs/Marinha/PLataforma.asset", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, "naval.plataforma");
+        new LocalDefinition(string.Empty, "IA01 Create - Plataforma Offshore", "Assets/Prefabs/Marinha/PLataforma.asset", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, "naval.plataforma");
 
     // Create opcional para o quartel. Usa a ficha/prefab da tenda militar,
     // que ja possui Fabrica.ehQuartel, mas com um slot proprio editavel.
     private static readonly LocalDefinition QuartelDefinition =
-        new LocalDefinition("ia01.local.quartel", "IA01 Local - Quartel Militar", "Assets/Prefabs/Construtor de Veiculos/Tenda/Construcao_Tenda.asset", IA01StrategicRole.MilitaryProduction, IA01BuildDomain.Land, "abertura.militar.quartel");
+        new LocalDefinition("ia01.local.quartel", "IA01 Create - Quartel Militar", "Assets/Prefabs/Construtor de Veiculos/Tenda/Construcao_Tenda.asset", IA01StrategicRole.MilitaryProduction, IA01BuildDomain.Land, "abertura.militar.quartel");
 
     [MenuItem("Tools/IA01/Configurar Locais para Infraestrutura Inicial")]
     private static void Configure()
     {
-        IA01CityLayout layout = FindLayoutWithLocals(out List<Transform> locals);
-        if (layout == null)
+        if (!NormalizeScene(SceneManager.GetActiveScene()))
         {
             EditorUtility.DisplayDialog("IA01", "Nenhum IA01CityLayout foi encontrado na cena aberta.", "OK");
+        }
+    }
+
+    [MenuItem("Tools/IA01/Normalizar e reparar creates da IA01")]
+    private static void NormalizeActiveScene()
+    {
+        if (!NormalizeScene(SceneManager.GetActiveScene()))
+        {
+            EditorUtility.DisplayDialog("IA01", "Nenhum IA01CityLayout foi encontrado na cena aberta.", "OK");
+        }
+    }
+
+    // Entry point usado pela validacao da build para garantir que a cena entregue
+    // ao executavel ja tenha os creates unicos e os planos sincronizados.
+    public static void NormalizeCampaignScene()
+    {
+        const string scenePath = "Assets/Scenes/cena19).unity";
+        Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+        if (!NormalizeScene(scene))
+        {
+            Debug.LogError("[IA01] IA01CityLayout ausente em " + scenePath);
             return;
         }
 
-        if (locals.Count < Definitions.Length)
-        {
-            EditorUtility.DisplayDialog("IA01", "Foram encontrados " + locals.Count + " locais; sao necessarios " + Definitions.Length + ".", "OK");
-            return;
-        }
+        EditorSceneManager.SaveScene(scene);
+        AssetDatabase.SaveAssets();
+        Debug.Log("[IA01] Creates da campanha normalizados e cena salva: " + scenePath);
+    }
+
+    private static bool NormalizeScene(Scene scene)
+    {
+        if (!scene.IsValid()) return false;
+        IA01CityLayout layout = FindLayoutWithLocals(out _);
+        if (layout == null) return false;
 
         Undo.IncrementCurrentGroup();
-        Undo.SetCurrentGroupName("Configurar locais da infraestrutura inicial IA01");
+        Undo.SetCurrentGroupName("Normalizar creates da infraestrutura IA01");
         for (int i = 0; i < Definitions.Length; i++)
         {
-            ConfigureSlot(locals[i], Definitions[i]);
+            Transform marker = EnsureCanonicalSlot(layout.transform, Definitions[i], new Vector3((i - 3) * 42f, 0f, 80f + (i % 2) * 42f));
+            ConfigureSlot(marker, Definitions[i]);
         }
+
+        Transform quartel = EnsureCanonicalSlot(layout.transform, QuartelDefinition, new Vector3(72f, 0f, 118f));
+        ConfigureSlot(quartel, QuartelDefinition);
+        Transform pier = EnsureCanonicalSlot(layout.transform, PierDefinition, new Vector3(-90f, 0f, 135f));
+        ConfigureSlot(pier, PierDefinition);
+        ConfigureNavalAuxiliary(pier);
+
+        NormalizeAuxiliarySlot(layout.transform, "IA01 Create - Armazenamento 01", "ia01.local.armazenamento.01", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(-48f, 0f, 52f));
+        NormalizeAuxiliarySlot(layout.transform, "IA01 Create - Armazenamento 02", "ia01.local.armazenamento.02", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(0f, 0f, 66f));
+        NormalizeAuxiliarySlot(layout.transform, "IA01 Create - Armazenamento 03", "ia01.local.armazenamento.03", IA01StrategicRole.Storage, IA01BuildDomain.Land, new Vector3(48f, 0f, 52f));
+        NormalizeAuxiliarySlot(layout.transform, "IA01 Create - Plataforma Offshore A", "ia01.local.plataforma.a", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, new Vector3(120f, 0f, 200f));
+        NormalizeAuxiliarySlot(layout.transform, "IA01 Create - Plataforma Offshore B", "ia01.local.plataforma.b", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, new Vector3(-180f, 0f, 260f));
+        NormalizeAuxiliarySlot(layout.transform, "IA01 Create - Plataforma Offshore C", "ia01.local.plataforma.c", IA01StrategicRole.NavalBase, IA01BuildDomain.Coastal, new Vector3(300f, 0f, 320f));
+
         ConfigurePlan();
-        EditorSceneManager.MarkSceneDirty(layout.gameObject.scene);
+        EditorSceneManager.MarkSceneDirty(scene);
         AssetDatabase.SaveAssets();
-        Debug.Log("[IA01] Os 8 locais foram configurados para a infraestrutura inicial. Posicione os marcadores na cena e salve quando estiver satisfeito.", layout);
+        Debug.Log("[IA01] Creates unicos configurados por slotId, com duplicatas removidas.", layout);
+        return true;
     }
 
     [MenuItem("Tools/IA01/Criar locais navais e de logistica")]
@@ -113,7 +156,7 @@ public static class IA01LocalInfrastructureSetup
 
         ConfigurePlan();
 
-        Transform shipyard = FindChildRecursive(layout.transform, "IA01 Local - Estaleiro Naval");
+        Transform shipyard = FindSlotById(layout.transform, "ia01.local.estaleiro");
         if (shipyard != null)
         {
             CreatePatrolZone(shipyard, "IA01 Patrulha Naval - Área A", new Vector3(120f, 0f, 160f));
@@ -124,7 +167,7 @@ public static class IA01LocalInfrastructureSetup
             CreateExtractionZone(shipyard, "IA01 ExtractionZone Naval", new Vector3(-40f, 0f, 150f));
         }
 
-        Transform airport = FindChildRecursive(layout.transform, "IA01 Local - Aeroporto Militar");
+        Transform airport = FindSlotById(layout.transform, "ia01.local.aeroporto_militar");
         if (airport != null)
         {
             CreateAirPatrolZone(airport, "IA01 Patrulha Aerea - Área Inicial", new Vector3(0f, 0f, 280f));
@@ -161,7 +204,7 @@ public static class IA01LocalInfrastructureSetup
 
     private static Transform CreateAuxiliarySlot(Transform parent, string name, string slotId, IA01StrategicRole role, IA01BuildDomain domain, Vector3 localPosition)
     {
-        Transform marker = FindChildRecursive(parent, name);
+        Transform marker = FindSlotById(parent, slotId) ?? FindChildRecursive(parent, name);
         if (marker == null)
         {
             GameObject go = new GameObject(name);
@@ -187,6 +230,87 @@ public static class IA01LocalInfrastructureSetup
         so.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(slot);
         return marker;
+    }
+
+    private static void NormalizeAuxiliarySlot(Transform parent, string name, string slotId, IA01StrategicRole role, IA01BuildDomain domain, Vector3 localPosition)
+    {
+        LocalDefinition definition = new LocalDefinition(slotId, name, string.Empty, role, domain, string.Empty);
+        Transform marker = EnsureCanonicalSlot(parent, definition, localPosition);
+        ConfigureSlot(marker, definition);
+        IA01BuildSlot slot = marker != null ? marker.GetComponent<IA01BuildSlot>() : null;
+        if (slot != null)
+        {
+            SerializedObject so = new SerializedObject(slot);
+            so.FindProperty("slotGroupId").stringValue = slotId.IndexOf("plataforma", StringComparison.OrdinalIgnoreCase) >= 0
+                ? "plataformas_offshore"
+                : "infraestrutura_estrategica";
+            so.FindProperty("allowAlternativeSlot").boolValue = false;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(slot);
+        }
+    }
+
+    private static Transform EnsureCanonicalSlot(Transform parent, LocalDefinition definition, Vector3 localPosition)
+    {
+        IA01BuildSlot[] slots = parent.GetComponentsInChildren<IA01BuildSlot>(true);
+        List<Transform> matches = new List<Transform>();
+        Transform canonical = null;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            IA01BuildSlot slot = slots[i];
+            if (slot == null || !MatchesDefinition(slot.transform, definition)) continue;
+            matches.Add(slot.transform);
+            if (canonical == null && string.Equals(slot.transform.name, definition.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                canonical = slot.transform;
+            }
+        }
+
+        if (canonical == null && matches.Count > 0) canonical = matches[0];
+        if (canonical == null)
+        {
+            GameObject go = new GameObject(definition.Name);
+            Undo.RegisterCreatedObjectUndo(go, "Criar create IA01");
+            canonical = go.transform;
+            canonical.SetParent(parent, false);
+            canonical.localPosition = localPosition;
+            canonical.localRotation = Quaternion.identity;
+        }
+
+        for (int i = 0; i < matches.Count; i++)
+        {
+            Transform duplicate = matches[i];
+            if (duplicate == null || duplicate == canonical) continue;
+            // Marcadores duplicados sao somente pontos de layout; remover o
+            // objeto inteiro evita que o registry mantenha dois slots com o
+            // mesmo ID e escolha um ponto imprevisivel.
+            Undo.DestroyObjectImmediate(duplicate.gameObject);
+        }
+
+        Undo.RecordObject(canonical.gameObject, "Renomear create IA01");
+        canonical.name = definition.Name;
+        return canonical;
+    }
+
+    private static bool MatchesDefinition(Transform marker, LocalDefinition definition)
+    {
+        if (marker == null || definition == null) return false;
+        IA01BuildSlot slot = marker.GetComponent<IA01BuildSlot>();
+        if (slot != null && !string.IsNullOrWhiteSpace(definition.SlotId)
+            && string.Equals(slot.SlotId, definition.SlotId, StringComparison.OrdinalIgnoreCase)) return true;
+        if (string.Equals(marker.name, definition.Name, StringComparison.OrdinalIgnoreCase)) return true;
+        return marker.name.StartsWith("IA01 Local - " + definition.Name.Replace("IA01 Create - ", string.Empty), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static Transform FindSlotById(Transform parent, string slotId)
+    {
+        if (parent == null || string.IsNullOrWhiteSpace(slotId)) return null;
+        IA01BuildSlot[] slots = parent.GetComponentsInChildren<IA01BuildSlot>(true);
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] != null && string.Equals(slots[i].SlotId, slotId, StringComparison.OrdinalIgnoreCase)) return slots[i].transform;
+        }
+        return null;
     }
 
     private static void ConfigureNavalAuxiliary(Transform marker)
@@ -288,7 +412,8 @@ public static class IA01LocalInfrastructureSetup
             Transform child = descendants[i];
             if (child == root) continue;
             IA01BuildSlot slot = child.GetComponent<IA01BuildSlot>();
-            if (child.name.StartsWith("Local", StringComparison.OrdinalIgnoreCase)
+            if (child.name.StartsWith("IA01 Local", StringComparison.OrdinalIgnoreCase)
+                || child.name.StartsWith("IA01 Create", StringComparison.OrdinalIgnoreCase)
                 || (slot != null && IsInfrastructureLocal(child.name)))
             {
                 result.Add(child);
@@ -334,6 +459,26 @@ public static class IA01LocalInfrastructureSetup
 
     private static void ConfigureSlot(Transform marker, LocalDefinition definition)
     {
+        if (marker == null || definition == null) return;
+
+        // Alguns marcadores antigos tinham um componente especializado de
+        // outro tipo (ou um MonoBehaviour sem script). Isso passa no Inspector,
+        // mas pode invalidar a serializacao da cena no player. Cada create deve
+        // carregar somente o componente especializado que corresponde ao seu
+        // dominio.
+        GameObjectUtility.RemoveMonoBehavioursWithMissingScript(marker.gameObject);
+        IA01AirportBuildSlot[] aeroportosAntigos = marker.GetComponents<IA01AirportBuildSlot>();
+        for (int i = 0; i < aeroportosAntigos.Length; i++)
+        {
+            if (aeroportosAntigos[i] != null) Undo.DestroyObjectImmediate(aeroportosAntigos[i]);
+        }
+
+        IA01NavalBuildSlot[] navaisAntigos = marker.GetComponents<IA01NavalBuildSlot>();
+        for (int i = 0; i < navaisAntigos.Length; i++)
+        {
+            if (navaisAntigos[i] != null) Undo.DestroyObjectImmediate(navaisAntigos[i]);
+        }
+
         Undo.RecordObject(marker.gameObject, "Nomear local IA01");
         marker.name = definition.Name;
         IA01BuildSlot slot = marker.GetComponent<IA01BuildSlot>();

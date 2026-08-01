@@ -45,6 +45,23 @@ public class OceanAdvanced : MonoBehaviour
 
   void Awake()
   {
+    if (ocean == null)
+    {
+      enabled = false;
+      Debug.LogWarning("[OceanAdvanced] Material do oceano ausente; componente desativado para manter a campanha executavel.");
+      return;
+    }
+
+    if (sun == null)
+      sun = FindFirstObjectByType<Light>();
+
+    if (sun == null)
+    {
+      enabled = false;
+      Debug.LogWarning("[OceanAdvanced] Luz solar ausente; componente desativado para manter a campanha executavel.");
+      return;
+    }
+
     Vector4[] v_waves = new Vector4[NB_WAVE];
     Vector4[] v_waves_dir = new Vector4[NB_WAVE];
     for (int i = 0; i < NB_WAVE; i++)
@@ -64,6 +81,9 @@ public class OceanAdvanced : MonoBehaviour
 
   void FixedUpdate()
   {
+    if (ocean == null || sun == null)
+      return;
+
     ocean.SetVector("world_light_dir", -sun.transform.forward);
     ocean.SetVector("sun_color", new Vector4(sun.color.r, sun.color.g, sun.color.b, 0.0F));
   }

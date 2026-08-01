@@ -35,6 +35,7 @@ Transform:
   - {fileID: 2988734535853375839}
   - {fileID: 4377170344211780193}
   - {fileID: 4371240763505966528}
+  - {fileID: 2617991776085607789}
   m_Father: {fileID: 2718341912561515315}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!1 &367043594760488668
@@ -62,12 +63,162 @@ Transform:
   m_GameObject: {fileID: 367043594760488668}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.86, y: 0, z: -1.59}
+  m_LocalPosition: {x: -0.86, y: 0.546, z: -1.59}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 461604695196253225}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &910000000000000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 910000000000000002}
+  - component: {fileID: 910000000000000003}
+  m_Layer: 0
+  m_Name: CreateTripulacao_Barco
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &910000000000000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000000000000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1287911824049671730}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &910000000000000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000000000000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f1d6c1a0e0f4f6b9f4f0c0b6b9e5a21, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.Cartel.CartelManualCreate
+  Type: 35
+  CountryId: Pais01
+  OwnerId: Cartel
+  LinkId: 
+  EnabledForCartel: 0
+  Radius: 1
+  MaxOccupants: 0
+  AllowReuse: 1
+  RequiresSafeArea: 0
+  AvoidWater: 0
+  AvoidBuildings: 0
+  AvoidRoads: 0
+  RouteKind: 0
+  RouteSequence: 0
+  RouteSetId: 
+  BasePreference: 0
+  CityDistanceWeight: 0
+  PoliceDistanceWeight: 0
+  MilitaryDistanceWeight: 0
+  BusyRoadDistanceWeight: 0
+  CoastalAccessBonus: 0
+  MinimumDistanceToOtherBase: 0
+  TargetType: 
+  TargetCountryId: 
+  EconomicValue: 0
+  SecurityLevel: 0
+  AllowsRobbery: 0
+  DestroyOnCompletion: 0
+  HideRendererAtRuntime: 0
+  GizmoColor: {r: 0.1, g: 0.8, b: 1, a: 1}
+  DrawGizmo: 1
+--- !u!1 &910000000000000004
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 910000000000000005}
+  - component: {fileID: 910000000000000006}
+  m_Layer: 0
+  m_Name: CreateCarga_Barco
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &910000000000000005
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000000000000004}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.35, z: -1.15}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1287911824049671730}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &910000000000000006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000000000000004}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f1d6c1a0e0f4f6b9f4f0c0b6b9e5a21, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.Cartel.CartelManualCreate
+  Type: 36
+  CountryId: Pais01
+  OwnerId: Cartel
+  LinkId: 
+  EnabledForCartel: 0
+  Radius: 1
+  MaxOccupants: 0
+  AllowReuse: 1
+  RequiresSafeArea: 0
+  AvoidWater: 0
+  AvoidBuildings: 0
+  AvoidRoads: 0
+  RouteKind: 0
+  RouteSequence: 0
+  RouteSetId: 
+  BasePreference: 0
+  CityDistanceWeight: 0
+  PoliceDistanceWeight: 0
+  MilitaryDistanceWeight: 0
+  BusyRoadDistanceWeight: 0
+  CoastalAccessBonus: 0
+  MinimumDistanceToOtherBase: 0
+  TargetType: 
+  TargetCountryId: 
+  EconomicValue: 0
+  SecurityLevel: 0
+  AllowsRobbery: 0
+  DestroyOnCompletion: 0
+  HideRendererAtRuntime: 0
+  GizmoColor: {r: 1, g: 0.65, b: 0.1, a: 1}
+  DrawGizmo: 1
 --- !u!1 &2896007126478394632
 GameObject:
   m_ObjectHideFlags: 0
@@ -100,6 +251,37 @@ Transform:
   - {fileID: 4642288204931635685}
   m_Father: {fileID: 2718341912561515315}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+--- !u!1 &4152308196355111341
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2617991776085607789}
+  m_Layer: 0
+  m_Name: l (6)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2617991776085607789
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4152308196355111341}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.06, y: -0.19, z: -5.59}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 461604695196253225}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4807513932687650014
 GameObject:
   m_ObjectHideFlags: 0
@@ -125,7 +307,7 @@ Transform:
   m_GameObject: {fileID: 4807513932687650014}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.06, y: -0.19, z: -3.725}
+  m_LocalPosition: {x: -0.794, y: 0.142, z: -3.725}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -156,7 +338,7 @@ Transform:
   m_GameObject: {fileID: 5402998971163014605}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.39, y: 0, z: -1.59}
+  m_LocalPosition: {x: 0.988, y: 0.558, z: -1.59}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -177,6 +359,8 @@ GameObject:
   - component: {fileID: 2696733382247155337}
   - component: {fileID: 3527508070751615481}
   - component: {fileID: 6328183523506900528}
+  - component: {fileID: 335088121049710369}
+  - component: {fileID: 7580134267859031742}
   m_Layer: 0
   m_Name: Barco cartel
   m_TagString: Navio
@@ -198,6 +382,8 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 788605011259399111}
+  - {fileID: 910000000000000002}
+  - {fileID: 910000000000000005}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &228256135109878016
@@ -220,7 +406,7 @@ BoxCollider:
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 5.4, y: 6.31, z: 34.05}
-  m_Center: {x: 0, y: 2.36, z: 0}
+  m_Center: {x: 2.93, y: 2.36, z: 0}
 --- !u!195 &6657495880751938451
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -231,7 +417,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 15
+  m_Speed: 21
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 120
@@ -363,6 +549,68 @@ MonoBehaviour:
   combustivelPorHora: 0
   energiaConsumida: 0
   nomeDeBatismo: 
+--- !u!114 &335088121049710369
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6062016681428944115}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32ce560dd3360da439531016f604e494, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
+  anelSelecao: {fileID: 0}
+  selecionado: 0
+  aguardandoVisto: 0
+  vistoAprovado: 0
+  velocidadeVoo: 8
+  dominioControleAtual: 0
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
+  tamanhoSelecao: 0
+  corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
+  linhaAlcance: {fileID: 0}
+  corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
+  larguraLinha: 0.15
+  segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
+--- !u!114 &7580134267859031742
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6062016681428944115}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3e9a16a8f3a4d30b7f0ec7c8d4d4a12, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.Cartel.CartelBarcoTripulacao
+  pontosTripulacao:
+  - {fileID: 3028891969787616791}
+  - {fileID: 5540946790975840944}
+  - {fileID: 7704109926408876084}
+  - {fileID: 2988734535853375839}
+  - {fileID: 4377170344211780193}
+  - {fileID: 4371240763505966528}
+  pontoCarga: {fileID: 2617991776085607789}
+  createBaseTripulacao: {fileID: 910000000000000003}
+  posicoesTripulacao:
+  - {x: -0.47, y: 1.05, z: 0.55}
+  - {x: 0.85, y: 1.05, z: 0.55}
+  - {x: -0.75, y: 1.05, z: -0.65}
+  - {x: 0.75, y: 1.05, z: -0.65}
+  createCarga: {fileID: 910000000000000006}
+  posicaoCargaLocal: {x: 0, y: 1.35, z: -1.15}
+  prefabCargaVisual: {fileID: 208337448308930263, guid: db69bdab9213be8479d3479d4cdec1da, type: 3}
+  criarCargaVisualSeNaoHouverPrefab: 1
+  escalaCarga: 0.85
 --- !u!1 &7274965533083979759
 GameObject:
   m_ObjectHideFlags: 0
@@ -419,7 +667,7 @@ Transform:
   m_GameObject: {fileID: 7737677482667936812}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.86, y: 0, z: 0.29}
+  m_LocalPosition: {x: -0.86, y: 0.551, z: 0.29}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -450,7 +698,7 @@ Transform:
   m_GameObject: {fileID: 8456979345173137781}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.14, y: 0, z: 0.82}
+  m_LocalPosition: {x: 0.973, y: 0.581, z: 0.095}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -481,7 +729,7 @@ Transform:
   m_GameObject: {fileID: 8931204850445309542}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.95, y: -0.35, z: -3.725}
+  m_LocalPosition: {x: 0.95, y: 0.193, z: -3.725}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

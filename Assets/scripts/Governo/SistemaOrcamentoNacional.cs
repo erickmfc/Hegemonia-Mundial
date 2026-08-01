@@ -125,6 +125,27 @@ public class SistemaOrcamentoNacional : MonoBehaviour
         bool sateliteAtivo = p.sateliteDefesa != null && p.sateliteDefesa.desbloqueado;
         float custoSateliteDia = sateliteAtivo ? (p.sateliteDefesa.custoOperacionalDiario + p.sateliteDefesa.custoManutencaoDiaria) : 0f;
 
+        bool possuiAtividadeOrcamentaria = (eco != null && eco.estruturasContadas > 0)
+            || infantarias > 0 || veiculos > 0 || navais > 0 || aereos > 0 || estruturas > 0
+            || p.populacaoMilitarAtiva > 0 || p.reservistas > 0
+            || relatorio.dividaTotal > 0f || pesquisasAtivas > 0 || labsAtivos > 0 || sateliteAtivo;
+        if (!possuiAtividadeOrcamentaria)
+        {
+            p.rendaPorSegundo = 0f;
+            p.gastosPorSegundo = 0f;
+            p.saldoOperacional = 0f;
+            if (eco != null)
+            {
+                eco.custoSocial = 0f;
+                eco.custoInfraestrutura = 0f;
+                eco.custoMilitar = 0f;
+                eco.custoProducao = 0f;
+                eco.custoManutencao = 0f;
+                eco.saldoOperacional = 0f;
+            }
+            return relatorio;
+        }
+
         // ==================== RECEITAS ====================
 
         // 1. Imposto de Renda

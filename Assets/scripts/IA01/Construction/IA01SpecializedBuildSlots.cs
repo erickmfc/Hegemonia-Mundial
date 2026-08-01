@@ -125,7 +125,7 @@ namespace Hegemonia.AI.IA01
 
     /// <summary>Reserves and validates the runway and approach corridor of a prepared airport slot.</summary>
     [DisallowMultipleComponent]
-    public sealed class IA01AirportBuildSlot : MonoBehaviour
+    public sealed class IA01AirportBuildSlotLegacy : MonoBehaviour
     {
         [SerializeField] private IA01BuildSlot buildSlot;
         [SerializeField] private Transform runwayStart;

@@ -2687,9 +2687,41 @@ public class MenuGoverno : MonoBehaviour
     private Text CreateInfoBlock(Transform parent, string text)
     {
         GameObject box = CreatePanel("Info", parent, 0f, corCard);
-        box.GetComponent<LayoutElement>().minHeight = 96f;
+        LayoutElement layout = box.GetComponent<LayoutElement>();
+        layout.minHeight = 96f;
+        layout.preferredHeight = 96f;
         Text t = CreateFreeText(box.transform, text, 12, corTextoSecundario, TextAnchor.UpperLeft, FontStyle.Normal, 10, 8, 10, 8);
+        t.verticalOverflow = VerticalWrapMode.Overflow;
+        StartCoroutine(AjustarAlturaInfoBlockDepoisDoLayout(box, t));
         return t;
+    }
+
+    private IEnumerator AjustarAlturaInfoBlockDepoisDoLayout(GameObject box, Text text)
+    {
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        if (box == null || text == null) yield break;
+
+        RectTransform rect = box.GetComponent<RectTransform>();
+        LayoutElement layout = box.GetComponent<LayoutElement>();
+        if (rect == null || layout == null) yield break;
+
+        float larguraTexto = Mathf.Max(220f, rect.rect.width - 20f);
+        float caracteresPorLinha = Mathf.Max(24f, larguraTexto / Mathf.Max(6f, text.fontSize * 0.55f));
+        string conteudo = text.text ?? string.Empty;
+        int linhas = 0;
+        string[] linhasTexto = conteudo.Split('\n');
+        for (int i = 0; i < linhasTexto.Length; i++)
+        {
+            linhas += Mathf.Max(1, Mathf.CeilToInt(linhasTexto[i].Length / caracteresPorLinha));
+        }
+
+        float alturaEstimada = 16f + linhas * (text.fontSize + 4f);
+        float alturaPreferida = Mathf.Max(text.preferredHeight + 16f, alturaEstimada);
+        layout.minHeight = Mathf.Clamp(alturaPreferida, 96f, 320f);
+        layout.preferredHeight = layout.minHeight;
+        LayoutRebuilder.MarkLayoutForRebuild(rect);
     }
 
     private void CreateHeaderRow(Transform parent, string[] labels, float[] widths)
@@ -2825,7 +2857,7 @@ public class MenuGoverno : MonoBehaviour
         t.alignment = anchor;
         t.fontStyle = style;
         t.horizontalOverflow = HorizontalWrapMode.Wrap;
-        t.verticalOverflow = VerticalWrapMode.Truncate;
+        t.verticalOverflow = VerticalWrapMode.Overflow;
         t.resizeTextForBestFit = true;
         t.resizeTextMinSize = Mathf.Max(8, size - 2);
         t.resizeTextMaxSize = size;
@@ -2850,7 +2882,7 @@ public class MenuGoverno : MonoBehaviour
         t.alignment = anchor;
         t.fontStyle = style;
         t.horizontalOverflow = HorizontalWrapMode.Wrap;
-        t.verticalOverflow = VerticalWrapMode.Truncate;
+        t.verticalOverflow = VerticalWrapMode.Overflow;
         t.resizeTextForBestFit = true;
         t.resizeTextMinSize = Mathf.Max(8, size - 2);
         t.resizeTextMaxSize = size;
@@ -3456,19 +3488,27 @@ public class MenuGoverno : MonoBehaviour
 
     private void CreateDefenseSatelliteCard(Transform parent, DadosPaisGoverno pais)
     {
-        SateliteDefesaEstado satelite = pais != null ? pais.sateliteDefesa : null;
-        if (satelite == null)
+        if (pais == null)
         {
             return;
         }
+
+        // Saves/estados antigos podem desserializar o campo como nulo. O
+        // painel continua apresentando o programa orbital e o mesmo estado
+        // fica disponivel para os botoes de manutencao e aporte.
+        if (pais.sateliteDefesa == null)
+        {
+            pais.sateliteDefesa = new SateliteDefesaEstado();
+        }
+
+        SateliteDefesaEstado satelite = pais.sateliteDefesa;
 
         string prontidao = satelite.integridade >= 75f && satelite.desempenho >= 70f
             ? "OPERACIONAL"
             : satelite.integridade >= 45f && satelite.desempenho >= 45f
                 ? "ATENCAO"
                 : "CRITICO";
-        Text box = CreateInfoBlock(parent, string.Empty);
-        box.text = "SATELITE NACIONAL"
+        string textoSatelite = "SATELITE NACIONAL"
             + "\nStatus: " + (satelite.desbloqueado ? "ATIVO" : "BLOQUEADO")
             + "\nProntidao: " + prontidao
             + "\nDesempenho: " + satelite.desempenho.ToString("0") + "%"
@@ -3476,6 +3516,7 @@ public class MenuGoverno : MonoBehaviour
             + "\nCusto operacao: $" + FormatNumber(satelite.custoOperacionalDiario) + "/dia"
             + "\nCusto manutencao: $" + FormatNumber(satelite.custoManutencaoDiaria) + "/dia"
             + "\nManutencao automatica: " + (satelite.manutencaoAutomatica ? "SIM" : "NAO");
+        CreateInfoBlock(parent, textoSatelite);
 
         CreateActionButton(parent, satelite.manutencaoAutomatica ? "DESLIGAR MANUTENCAO AUTO" : "LIGAR MANUTENCAO AUTO",
             corPainel2, () =>

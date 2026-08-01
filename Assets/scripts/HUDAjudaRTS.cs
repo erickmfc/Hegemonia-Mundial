@@ -96,7 +96,7 @@ public sealed class HUDAjudaRTS : MonoBehaviour
             if (painel != null) painel.gameObject.SetActive(false);
             AtualizarVisibilidadePainel(false);
         }
-        else if (Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(teclaAlternar))
+        else if (Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(teclaAlternar) || Input.GetKeyDown(KeyCode.N))
         {
             if (painel != null && !painel.gameObject.activeSelf)
             {
@@ -214,8 +214,9 @@ public sealed class HUDAjudaRTS : MonoBehaviour
         {
             textoAtalhos.text =
                 "LMB arrasta selecao  |  RMB envia ordem\n" +
-                "C construcao  |  M mapa tatico  |  ESC pausa\n" +
-                "X governo  |  V pier  |  TAB acelera se o runtime permitir\n" +
+                "C construcao  |  M mapa tatico  |  B quartel  |  ESC pausa\n" +
+                "X governo  |  N ajuda completa  |  TAB acelera se o runtime permitir\n" +
+                "Z aeroporto (com aeroporto)  |  V pier (com pier)\n" +
                 "PASSIVO/ATIVO/PATRULHA/SEGUIR ficam visiveis ao selecionar unidades";
         }
     }

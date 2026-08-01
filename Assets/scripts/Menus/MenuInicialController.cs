@@ -93,6 +93,7 @@ public class MenuInicialController : MonoBehaviour
         Scene cenaAtiva = SceneManager.GetActiveScene();
         if (!ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtiva.name))
         {
+            DesativarInterfaceEstaticaDoMenu();
             enabled = false;
             return;
         }
@@ -118,6 +119,37 @@ public class MenuInicialController : MonoBehaviour
             PararEfeitosVisuaisDaCenaMenu();
             // RemoverMenusDeComportamentoDaCenaMenu();
             // DesativarCanvasesDaCenaMenu();
+        }
+    }
+
+    private void DesativarInterfaceEstaticaDoMenu()
+    {
+        GameObject interfaceObject = GameObject.Find("Interface");
+        if (interfaceObject != null)
+        {
+            // Em campanha, "Interface" nao e o menu inicial: ele contem o
+            // HUD e os menus de gameplay (construcao, governo, comando,
+            // pausa, mapa e atalhos). Desliga-lo fazia a build criar apenas
+            // um MenuConstrucao_Auto sem referencias de catalogo.
+            interfaceObject.SetActive(true);
+            RectTransform rect = interfaceObject.GetComponent<RectTransform>();
+            if (rect != null && rect.localScale.sqrMagnitude < 0.01f)
+            {
+                rect.localScale = Vector3.one;
+            }
+        }
+
+        GameObject menusUi = GameObject.Find("menus ui");
+        if (menusUi != null)
+        {
+            // Este canvas contem o menu de governo UI Toolkit e o HUD RTS.
+            menusUi.SetActive(true);
+        }
+
+        GameObject menuFixo = GameObject.Find("menufixo");
+        if (menuFixo != null)
+        {
+            menuFixo.SetActive(false);
         }
     }
 
@@ -183,6 +215,18 @@ public class MenuInicialController : MonoBehaviour
     private void OnDestroy()
     {
         RestaurarScriptsSuspensos();
+
+        // O canvas do menu e criado em runtime como objeto raiz. Ao trocar
+        // para a campanha, destrua-o explicitamente para que a interface do
+        // menu nao fique sobreposta a cena de jogo.
+        if (canvasMenuPrincipal != null)
+        {
+            Destroy(canvasMenuPrincipal.gameObject);
+            canvasMenuPrincipal = null;
+            botaoCarregar = null;
+            statusText = null;
+        }
+
         if (!ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
         {
             return;
@@ -279,8 +323,22 @@ public class MenuInicialController : MonoBehaviour
             return;
         }
 
+        DestruirInterfaceMenuAntesDaTroca();
         FluxoInicialJogo.AutorizarCarga(nomeCena);
         SceneManager.LoadScene(nomeCena);
+    }
+
+    private static void DestruirInterfaceMenuAntesDaTroca()
+    {
+        string[] nomesInterfaces = { "CanvasMenuPrincipal", "Interface", "menus ui", "menufixo" };
+        for (int i = 0; i < nomesInterfaces.Length; i++)
+        {
+            GameObject objeto = GameObject.Find(nomesInterfaces[i]);
+            if (objeto != null)
+            {
+                Destroy(objeto);
+            }
+        }
     }
 
     private void GarantirEventSystem()
@@ -1082,7 +1140,7 @@ public class MenuInicialController : MonoBehaviour
 
         Text label = CriarTexto("Label", botaoObject.transform, titulo.ToUpper(), 17, FontStyle.Bold, TextAnchor.MiddleLeft, corRotulo, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(22f, 0f), new Vector2(-100f, 0f));
         label.horizontalOverflow = HorizontalWrapMode.Wrap;
-        label.verticalOverflow = VerticalWrapMode.Truncate;
+        label.verticalOverflow = VerticalWrapMode.Overflow;
         label.resizeTextForBestFit = true;
         label.resizeTextMinSize = 13;
         label.resizeTextMaxSize = 17;

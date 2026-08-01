@@ -5,7 +5,7 @@ public static class ConfiguracaoCenasJogo
     public const string CenaMenuPrincipalCanonica = "Menu cena";
     public const string CenaMenuFallback = "MenuPrincipal";
     public const string CenaCampanhaCanonica = "cena19)";
-    public const string CenaTutorialCanonica = "tutorial";
+    public const string CenaTutorialCanonica = "teste";
 
     private static readonly string[] aliasesMenuPrincipal =
     {
@@ -19,12 +19,16 @@ public static class ConfiguracaoCenasJogo
     {
         CenaCampanhaCanonica,
         "Assets/_Recovery/cena19).unity",
+        "Assets/_Recovery/0 (9).unity",
         "Assets/Scenes/SampleScene.unity"
     };
 
     private static readonly string[] aliasesTutorial =
     {
         CenaTutorialCanonica,
+        "Assets/_Recovery/teste.unity",
+        "Assets/Scenes/Tutorial Coast Scene Final.unity",
+        "tutorial",
         "Assets/_Recovery/Tutorial/tutorial.unity"
     };
 

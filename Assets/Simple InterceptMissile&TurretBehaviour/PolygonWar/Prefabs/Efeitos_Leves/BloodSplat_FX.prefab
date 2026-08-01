@@ -11,8 +11,6 @@ GameObject:
   - component: {fileID: 499110}
   - component: {fileID: 19808544}
   - component: {fileID: 19951176}
-  - component: {fileID: 114941321402103060}
-  - component: {fileID: 114722108309909536}
   m_Layer: 0
   m_Name: BloodSplat_FX
   m_TagString: Untagged
@@ -4650,30 +4648,3 @@ ParticleSystemRenderer:
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
   m_MaskInteraction: 0
---- !u!114 &114941321402103060
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 166404}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8def1c80f375f4742bbb5773dc8a1871, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  TimeToDestroy: 1
---- !u!114 &114722108309909536
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 166404}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1849d2a1a4dad46b99ce4aed7ba74ff7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ExplosionForce: 4
-  Radius: 3

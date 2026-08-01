@@ -674,7 +674,7 @@ public static class NavalPlacementResolver
         // Caso contrário, construções navais/costeiras ficam impossíveis de posicionar.
         if (Terrain.activeTerrain != null)
         {
-            return SampleTerrainHeight(position) <= seaLevel + WaterTolerance;
+            return SampleGroundHeight(position, seaLevel) <= seaLevel + WaterTolerance;
         }
 
         // Fallback genérico: se o chão estiver abaixo do nível do mar, consideramos água.
@@ -953,9 +953,10 @@ public static class NavalPlacementResolver
             return alturaMarcada;
         }
 
-        if (Terrain.activeTerrain != null)
+        Terrain terrain = FindTerrainContaining(position);
+        if (terrain != null)
         {
-            return SampleTerrainHeight(position);
+            return terrain.SampleHeight(position) + terrain.transform.position.y;
         }
 
         RaycastHit[] hits = Physics.RaycastAll(
@@ -980,15 +981,27 @@ public static class NavalPlacementResolver
         return fallback;
     }
 
-    private static float SampleTerrainHeight(Vector3 position)
+    private static Terrain FindTerrainContaining(Vector3 position)
     {
-        Terrain terrain = Terrain.activeTerrain;
-        if (terrain == null)
+        Terrain[] terrains = Terrain.activeTerrains;
+        for (int i = 0; i < terrains.Length; i++)
         {
-            return 0f;
+            Terrain terrain = terrains[i];
+            if (terrain == null || terrain.terrainData == null || !terrain.enabled)
+            {
+                continue;
+            }
+
+            Vector3 minimum = terrain.transform.position;
+            Vector3 size = Vector3.Scale(terrain.terrainData.size, terrain.transform.lossyScale);
+            if (position.x >= minimum.x && position.x <= minimum.x + size.x
+                && position.z >= minimum.z && position.z <= minimum.z + size.z)
+            {
+                return terrain;
+            }
         }
 
-        return terrain.SampleHeight(position) + terrain.transform.position.y;
+        return null;
     }
 
     private static Vector3 SnapToSeaLevel(Vector3 value, float seaLevel)
