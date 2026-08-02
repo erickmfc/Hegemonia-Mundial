@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Navio de carga
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Navio de Carga
+  descricao: Navio civil para transportar recursos, equipamentos e unidades entre portos.
+  icone: {fileID: 0}
+  itemId: navio_carga_mercado
+  aliases: cargueiro, navio cargueiro, transporte maritimo
+  capacidades: 0
+  prefabDaUnidade: {fileID: 2370659336498935496, guid: f290134bdd2312c4e93ddf72d575aaf3, type: 3}
+  preco: 3000
+  categoria: 1
+  escalaPoder: 0
+  strategicRole: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

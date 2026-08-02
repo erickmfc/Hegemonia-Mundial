@@ -167,7 +167,10 @@ namespace Hegemonia.Cartel
 
             if (registro.agente != null)
             {
-                registro.agente.isStopped = true;
+                if (registro.agente.isActiveAndEnabled && registro.agente.isOnNavMesh)
+                {
+                    registro.agente.isStopped = true;
+                }
                 registro.agente.enabled = false;
             }
 

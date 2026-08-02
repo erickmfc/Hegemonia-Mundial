@@ -85,7 +85,10 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     // Postpone levemente para nao tentar de novo no proximo frame
                     slot.NextTick = now + Mathf.Max(MinBackoffSeconds, slot.Module.Interval * 0.5f);
-                    IA_RuntimeTextTrace.LogModule(TraceTeamId, slot.Module.Name, "SKIP_HEAVY", 0f, slot.Module.BudgetMs, "heavy token indisponivel");
+                    if (IA_RuntimeTextTrace.ModuleTraceEnabled)
+                    {
+                        IA_RuntimeTextTrace.LogModule(TraceTeamId, slot.Module.Name, "SKIP_HEAVY", 0f, slot.Module.BudgetMs, "heavy token indisponivel");
+                    }
                     continue;
                 }
 
@@ -95,7 +98,10 @@ namespace Hegemonia.AI.BrainMaster
                 slot.LastCostMs = Mathf.Max(0f, moduleEnd - moduleStart);
                 slot.PeakCostMs = Mathf.Max(slot.PeakCostMs, slot.LastCostMs);
                 slot.RunCount++;
-                IA_RuntimeTextTrace.LogModule(TraceTeamId, slot.Module.Name, "RUN", slot.LastCostMs, slot.Module.BudgetMs, "next=" + (now + Mathf.Max(MinBackoffSeconds, slot.Module.Interval)).ToString("0.000", CultureInfo.InvariantCulture));
+                if (IA_RuntimeTextTrace.ModuleTraceEnabled)
+                {
+                    IA_RuntimeTextTrace.LogModule(TraceTeamId, slot.Module.Name, "RUN", slot.LastCostMs, slot.Module.BudgetMs, "next=" + (now + Mathf.Max(MinBackoffSeconds, slot.Module.Interval)).ToString("0.000", CultureInfo.InvariantCulture));
+                }
 
                 bool moduleOverBudget = slot.LastCostMs > Mathf.Max(0.1f, slot.Module.BudgetMs);
                 if (moduleOverBudget)

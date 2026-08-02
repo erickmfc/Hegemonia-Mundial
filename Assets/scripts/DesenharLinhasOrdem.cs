@@ -981,7 +981,9 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
 
         // Guarda Global: Se o destino já foi designado e a unidade já está navegando para ele,
         // NÃO re-emite o comando (isso evita o "hiccup" de recalcular path a cada 3 segundos).
-        bool agenteTemRotaAtiva = ehNaval && navioRealista != null
+        bool agenteTemRotaAtiva = ehAereo
+            ? controle.PossuiDestinoOrdenado
+            : ehNaval && navioRealista != null
             ? navioRealista.TemDestinoAtivo
             : agente != null && agente.enabled && agente.isOnNavMesh
               && (agente.hasPath || agente.pathPending);

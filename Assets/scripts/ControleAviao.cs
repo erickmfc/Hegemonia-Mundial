@@ -837,6 +837,7 @@ public class ControleAviao : MonoBehaviour
 
     public void RegistrarMissaoManual(Vector3 destino)
     {
+        indiceRetanguloPatrulha = 0;
         ultimoObjetivoMissao = destino;
         if (ultimoObjetivoMissao.y < 60f)
         {
@@ -852,6 +853,7 @@ public class ControleAviao : MonoBehaviour
     public void RegistrarPatrulha(IList<Vector3> rota)
     {
         rotaPatrulhaSalva.Clear();
+        indiceRetanguloPatrulha = 0;
         if (rota == null || rota.Count == 0)
         {
             return;
@@ -1244,6 +1246,27 @@ public class ControleAviao : MonoBehaviour
             }
             else if (!alvoPrioritarioIA)
             {
+                // Patrulha enviada pelo menu satélite: segue exatamente os
+                // pontos escolhidos. Antes, o sistema gerava um retângulo
+                // aleatório e ignorava parte do traçado manual.
+                if (rotaPatrulhaSalva.Count > 0)
+                {
+                    Vector3 pontoRota = rotaPatrulhaSalva[indiceRetanguloPatrulha % rotaPatrulhaSalva.Count];
+                    pontoRota.y = Mathf.Max(pontoRota.y, altitudeVoo);
+                    alvoGPSVoo = pontoRota;
+
+                    Vector3 diferencaRota = transform.position - pontoRota;
+                    diferencaRota.y = 0f;
+                    float margemRota = Mathf.Max(45f, margemChegadaMissao);
+                    if (diferencaRota.sqrMagnitude <= margemRota * margemRota)
+                    {
+                        indiceRetanguloPatrulha = (indiceRetanguloPatrulha + 1) % rotaPatrulhaSalva.Count;
+                    }
+
+                    yield return null;
+                    continue;
+                }
+
                 if (Time.time - tempoUltimaTrocaCentro > 45f)
                 {
                     tempoUltimaTrocaCentro = Time.time;

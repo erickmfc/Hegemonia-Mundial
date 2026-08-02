@@ -17,6 +17,12 @@ namespace Hegemonia.AI.BrainMaster
         private static readonly object _gate = new object();
         private static Session _session;
 
+        // Rastrear cada frame/modulo abre escrita sincronizada no arquivo e
+        // compete diretamente com a main thread do jogo. Eventos de negocio
+        // continuam registrados; o detalhamento pesado fica opt-in.
+        public static bool FrameTraceEnabled { get; set; }
+        public static bool ModuleTraceEnabled { get; set; }
+
         public static string CurrentPath
         {
             get
@@ -63,6 +69,11 @@ namespace Hegemonia.AI.BrainMaster
 
         public static void LogFrame(int teamId, string component, string phase, string message)
         {
+            if (!FrameTraceEnabled)
+            {
+                return;
+            }
+
             Write(teamId, component, phase, message);
         }
 
@@ -78,6 +89,11 @@ namespace Hegemonia.AI.BrainMaster
 
         public static void LogModule(int teamId, string moduleName, string state, float costMs, float budgetMs, string message)
         {
+            if (!ModuleTraceEnabled)
+            {
+                return;
+            }
+
             string payload = string.Format(
                 CultureInfo.InvariantCulture,
                 "{0} | cost={1:0.00}ms | budget={2:0.00}ms{3}",

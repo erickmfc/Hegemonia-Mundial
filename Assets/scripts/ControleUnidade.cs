@@ -66,6 +66,9 @@ public class ControleUnidade : MonoBehaviour
     private ControleNavioRealista controleNavioRealista;
     private NavegacaoInteligenteNaval navegacaoInteligenteNaval;
     private ControleSubmarino controleSubmarino;
+    private Hegemonia.Aeronaves.C17.C17TransporteController c17Transporte;
+    private IdentidadeIA identidadeIA;
+    private IdentidadeUnidade identidadeUnidade;
 
     // --- SISTEMA DE VELOCIDADE DINÂMICA (Para Seguir) ---
     private float velocidadeOriginalSalva = -1f;
@@ -81,6 +84,7 @@ public class ControleUnidade : MonoBehaviour
     private float proximoRefreshVisualCaminho;
     private float proximoReplanNavMesh;
     private float proximaRecuperacaoMovimento;
+    private float proximaVerificacaoTerritorio;
     private Vector3 ultimoDestinoReplanNavMesh;
     private const float IntervaloWatchdogOrdem = 1.25f;
     private const float TempoMaximoSemProgresso = 7.5f;
@@ -122,6 +126,9 @@ public class ControleUnidade : MonoBehaviour
         controleNavioRealista = GetComponent<ControleNavioRealista>();
         navegacaoInteligenteNaval = GetComponent<NavegacaoInteligenteNaval>();
         controleSubmarino = GetComponent<ControleSubmarino>();
+        c17Transporte = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
+        identidadeIA = GetComponent<IdentidadeIA>();
+        identidadeUnidade = GetComponent<IdentidadeUnidade>();
 
         if (navegacaoInteligenteNaval != null)
         {
@@ -275,6 +282,7 @@ public class ControleUnidade : MonoBehaviour
     public bool TemHelicopteroExterno => helicopteroExterno != null;
     public bool TemHovercraftTransporte => hovercraftTransporte != null;
     public bool TemC700TransporteAereo => c700TransporteAereo != null;
+    public bool PossuiDestinoOrdenado => possuiDestinoOrdenado;
     public DominioControleUnidade DominioAtual => dominioControleAtual;
     public OrdemControleUnidade OrdemAtual => ordemControleAtual;
     public string ExecutorAtual => executorControleAtual;
@@ -351,7 +359,7 @@ public class ControleUnidade : MonoBehaviour
             AtualizarVisualCaminho();
         }
 
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
+        if (c17Transporte != null) return;
 
         // SE TIVER HELICOPTER CONTROLLER: NÃO FAZ NADA DE MOVIMENTO AQUI
         // Deixa o outro script cuidar de tudo, este fica só para Seleção/Identidade
@@ -392,10 +400,12 @@ public class ControleUnidade : MonoBehaviour
             velocidadeAtual = agente.velocity.magnitude;
 
             // --- CORREDOR NULO (Alfândega e Imigração) ---
-            if (GerenteDeTerritorio.Instancia != null)
+            if (GerenteDeTerritorio.Instancia != null && Time.unscaledTime >= proximaVerificacaoTerritorio)
             {
                 // Busca a identidade, se não achar retorna 0.
-                int teamMeu = GetComponent<IdentidadeIA>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 0;
+                proximaVerificacaoTerritorio = Time.unscaledTime + 0.35f;
+                int teamMeu = identidadeIA != null ? identidadeIA.teamID
+                    : (identidadeUnidade != null ? identidadeUnidade.teamID : 0);
                 
                 // Só processa checagem para times diferentes do Player (1)
                 if (teamMeu != 0 && teamMeu != 1)
@@ -525,7 +535,7 @@ public class ControleUnidade : MonoBehaviour
 
     public bool EmitirOrdemMover(Vector3 destino, bool cancelarComportamentos = true)
     {
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
+        if (c17Transporte != null)
         {
             Debug.LogWarning($"[C17] Movimento generico recusado para {name}; ordem deve vir do aeroporto.");
             return false;
@@ -570,7 +580,7 @@ public class ControleUnidade : MonoBehaviour
             alterouAlgo = true;
         }
 
-        var c17Script = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
+        var c17Script = c17Transporte;
         if (c17Script != null)
         {
             c17Script.CancelarOrdemExterna();
@@ -658,6 +668,29 @@ public class ControleUnidade : MonoBehaviour
             CancelarOrdemEspecial(false);
             helicopteroExterno.IniciarPatrulhaAeroporto(rotaFinal);
             ordemControleAtual = OrdemControleUnidade.Patrulhando;
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
+            return true;
+        }
+
+        // O avião moderno já possui o próprio ciclo de decolagem, patrulha,
+        // retorno e abastecimento. Não anexe a patrulha universal junto dele:
+        // os dois sistemas acabavam reenviando destinos diferentes.
+        if (controleAviao != null)
+        {
+            AtualizarEstadoDeBloqueio();
+            if (bloqueioControleAtivo)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: patrulha bloqueada ({motivoBloqueioControle})");
+                return false;
+            }
+
+            CancelarOrdemEspecial(false);
+            controleAviao.RegistrarPatrulha(rotaFinal);
+            ordemControleAtual = OrdemControleUnidade.Patrulhando;
+            if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+            {
+                controleAviao.IniciarMissaoCompleta(rotaFinal[0]);
+            }
             DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
             return true;
         }

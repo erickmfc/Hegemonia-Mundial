@@ -846,15 +846,28 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             int valor = Mathf.Max(1, quantidade.value);
             total.text = (comprar ? "TOTAL: $ " : "RECEBER: $ ") + ((long)valor * item.precoAtual).ToString("N0") + "  |  " + valor.ToString("N0") + (item.municaoMilitar ? " cart." : " t");
         };
+        Toggle repeticao = null;
         quantidade.RegisterValueChangedCallback(evt =>
         {
             int limite = comprar ? Mathf.Max(1, item.estoqueGlobal) : Mathf.Max(1, estoqueJogador);
             int ajustada = Mathf.Clamp(evt.newValue, 1, limite);
             if (ajustada != evt.newValue) quantidade.SetValueWithoutNotify(ajustada);
             atualizarTotal();
+            if (repeticao != null && repeticao.value)
+                SistemaLogisticaMercado.Instancia?.ConfigurarRepeticao(item.id, ajustada, comprar, true);
         });
         atualizarTotal();
         card.Add(total);
+
+        SistemaLogisticaMercado.GarantirInstancia();
+        repeticao = new Toggle("REPETIR A CADA 2 DIAS");
+        repeticao.value = SistemaLogisticaMercado.Instancia != null && SistemaLogisticaMercado.Instancia.TemRepeticao(item.id, comprar);
+        repeticao.AddToClassList("gov-market-repeat");
+        repeticao.RegisterValueChangedCallback(evt =>
+        {
+            SistemaLogisticaMercado.Instancia?.ConfigurarRepeticao(item.id, Mathf.Max(1, quantidade.value), comprar, evt.newValue);
+        });
+        card.Add(repeticao);
 
         VisualElement botoes = new VisualElement();
         botoes.AddToClassList("gov-inline-actions");
@@ -926,7 +939,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 ? SistemaGastosMilitares.Instancia != null && SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(p.teamId, item.idMunicaoMilitar) > 0
                 : item.equipamentoMilitar
                     ? p.saldo >= quantidade * item.precoAtual
-                    : g.ObterEstoque(p.teamId, item.recurso) > 0));
+                    : g.ObterEstoque(p.teamId, item.RecursoIdEfetivo) > 0));
             if (vendedor == null)
             {
                 mensagem = "Nenhum fornecedor possui estoque disponivel.";
@@ -945,8 +958,14 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
             if (recursoCivilReal)
             {
-                int ganho;
-                ok = m.VenderRecursoReal(item.id, quantidade, out mensagem, out ganho);
+                DadosPaisGoverno comprador = g.Paises
+                    .Where(p => p != null && p.teamId != g.teamJogador && p.saldo >= quantidade * item.precoAtual)
+                    .OrderByDescending(p => p.saldo)
+                    .FirstOrDefault();
+                if (comprador == null)
+                    mensagem = "Nenhum comprador possui saldo para esta operacao.";
+                else
+                    ok = m.Vender(g.teamJogador, comprador.teamId, item.id, quantidade, out mensagem);
             }
             else
             {

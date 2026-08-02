@@ -449,6 +449,8 @@ public class Estaleiro : MonoBehaviour
         }
 
         return prefabDoNavio.GetComponent<NavioPetroleiro>() != null
+            || prefabDoNavio.GetComponent<NavioCargaMercado>() != null
+            || prefabDoNavio.name.IndexOf("navio de carga", System.StringComparison.OrdinalIgnoreCase) >= 0
             || prefabDoNavio.GetComponent<TransporteAnfibio>() != null
             || prefabDoNavio.GetComponent<NavioLiberty>() != null;
     }
@@ -678,6 +680,17 @@ public class Estaleiro : MonoBehaviour
         {
             petroleiro.DefinirEquipeOperacao(ownerTeam);
             petroleiro.DefinirSaidaEstaleiro(destinoSaida);
+        }
+
+        bool ehCargueiro = slot.prefabAtual != null &&
+            (slot.prefabAtual.GetComponent<NavioCargaMercado>() != null ||
+             slot.prefabAtual.name.IndexOf("navio de carga", System.StringComparison.OrdinalIgnoreCase) >= 0);
+        if (ehCargueiro)
+        {
+            NavioCargaMercado cargueiro = navioPronto.GetComponent<NavioCargaMercado>();
+            if (cargueiro == null) cargueiro = navioPronto.AddComponent<NavioCargaMercado>();
+            cargueiro.Inicializar(ownerTeam, false);
+            cargueiro.PararNoPonto(destinoSaida);
         }
 
         // Efeitos

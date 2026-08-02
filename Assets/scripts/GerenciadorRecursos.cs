@@ -19,7 +19,9 @@ public class GerenciadorRecursos : MonoBehaviour
     public int comida = 100;
 
     [Header("📈 Ganhos Passivos (Base)")]
-    public float dinheiroPorSegundo = 10f;
+    // O caixa começa sem renda artificial. A renda passa a vir do orçamento
+    // nacional depois que houver atividade econômica real.
+    public float dinheiroPorSegundo = 0f;
     public float petroleoPorSegundo = 0f; // Zerado! Depende da Plataforma agora.
     public float acoPorSegundo = 5f;
     public float energiaPorSegundo = 0f;
@@ -174,7 +176,6 @@ public class GerenciadorRecursos : MonoBehaviour
     // Garante que recursos não fiquem negativos
     void ValidarLimites()
     {
-        dinheiro = Mathf.Max(0, dinheiro);
         petroleo = Mathf.Max(0, petroleo);
         aco = Mathf.Max(0, aco);
         energia = Mathf.Max(0, energia);

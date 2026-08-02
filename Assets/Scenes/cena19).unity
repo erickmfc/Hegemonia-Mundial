@@ -1197,7 +1197,7 @@ MonoBehaviour:
   populacaoMaxima: 100
   energia: 100
   comida: 100
-  dinheiroPorSegundo: 10
+  dinheiroPorSegundo: 0
   petroleoPorSegundo: 5
   acoPorSegundo: 5
   energiaPorSegundo: 0
@@ -22199,6 +22199,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: eb1285045c9923640971e5969093fdaf, type: 2}
   - {fileID: 11400000, guid: 746aefeccc6df704f9ffc132ed2277d3, type: 2}
   - {fileID: 11400000, guid: 26a1f6efe807e524fa34e7da4621f49f, type: 2}
+  - {fileID: 11400000, guid: a4c3f2b1d9e8496e8c8b1a2d7f3e5c91, type: 2}
   - {fileID: 0}
 --- !u!1 &299885441
 GameObject:
@@ -156385,6 +156386,9 @@ MonoBehaviour:
   campoDeVisaoMax: 85
   alturaMinParaFov: 2
   alturaMaxParaFov: 2500
+  distanciaMinimaRender: 2500
+  distanciaMaximaRender: 14000
+  multiplicadorDistanciaRender: 6
 --- !u!114 &1705755670
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -156469,7 +156473,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 1000
+  far clip plane: 2500
   field of view: 75
   orthographic: 0
   orthographic size: 5

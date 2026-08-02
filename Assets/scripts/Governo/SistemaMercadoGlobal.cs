@@ -31,6 +31,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
         Instancia = this;
         DontDestroyOnLoad(gameObject);
         SistemaGastosMilitares.GarantirInstancia();
+        SistemaLogisticaMercado.GarantirInstancia();
         InicializarItensPadrao();
     }
 
@@ -274,6 +275,11 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return false;
         }
 
+        if (compradorTeamId != vendedorTeamId)
+        {
+            return ExecutarCompraInternacional(compradorTeamId, vendedorTeamId, item, quantidade, out mensagem, false);
+        }
+
         DadosPaisGoverno comprador = governo.ObterPais(compradorTeamId);
         DadosPaisGoverno vendedor = governo.ObterPais(vendedorTeamId);
         string recursoId = ObterRecursoIdEfetivo(item);
@@ -362,6 +368,11 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return false;
         }
 
+        if (vendedorTeamId != compradorTeamId)
+        {
+            return ExecutarVendaInternacional(vendedorTeamId, compradorTeamId, item, quantidade, out mensagem, false);
+        }
+
         DadosPaisGoverno vendedorPais = governo.ObterPais(vendedorTeamId);
         DadosPaisGoverno compradorPais = governo.ObterPais(compradorTeamId);
         if (ComercioBloqueadoPorGuerra(vendedorTeamId, compradorTeamId, vendedorPais, compradorPais))
@@ -430,6 +441,260 @@ public class SistemaMercadoGlobal : MonoBehaviour
         return true;
     }
 
+    private bool ExecutarCompraInternacional(int compradorTeamId, int vendedorTeamId, DadosItemMercado item, int quantidade, out string mensagem, bool repeticao)
+    {
+        mensagem = string.Empty;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno comprador = governo != null ? governo.ObterPais(compradorTeamId) : null;
+        DadosPaisGoverno vendedor = governo != null ? governo.ObterPais(vendedorTeamId) : null;
+        if (governo == null || comprador == null || vendedor == null)
+        {
+            mensagem = "Pais sem oferta disponivel.";
+            return false;
+        }
+        if (ComercioBloqueadoPorGuerra(compradorTeamId, vendedorTeamId, comprador, vendedor))
+        {
+            mensagem = "Comercio bloqueado por guerra.";
+            return false;
+        }
+
+        string recursoId = ObterRecursoIdEfetivo(item);
+        SistemaGastosMilitares.GarantirInstancia();
+        SistemaGastosMilitares gastos = SistemaGastosMilitares.Instancia;
+        int estoqueVendedor = item.municaoMilitar && gastos != null
+            ? gastos.ObterEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar)
+            : item.equipamentoMilitar ? item.estoqueGlobal : governo.ObterEstoque(vendedorTeamId, recursoId);
+        quantidade = Mathf.Min(quantidade, Mathf.Max(0, item.estoqueGlobal), Mathf.Max(0, estoqueVendedor));
+        if (quantidade <= 0)
+        {
+            mensagem = "Pais sem oferta disponivel.";
+            return false;
+        }
+
+        int total = quantidade * Mathf.Max(1, item.precoAtual);
+        bool entregaSemNavio = DeveEntregarSemNavio(item, true);
+        int frete = entregaSemNavio ? 0 : Mathf.Max(1, Mathf.CeilToInt(total * SistemaLogisticaMercado.FretePercentual));
+        if (!governo.TentarPagar(compradorTeamId, total + frete))
+        {
+            mensagem = "Dinheiro insuficiente para compra e frete.";
+            return false;
+        }
+
+        bool removido = item.equipamentoMilitar;
+        if (item.municaoMilitar)
+            removido = gastos != null && gastos.RemoverEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar, quantidade);
+        else if (!item.equipamentoMilitar)
+        {
+            governo.RemoverEstoque(vendedorTeamId, recursoId, quantidade);
+            removido = true;
+        }
+
+        if (!removido)
+        {
+            governo.AdicionarSaldo(compradorTeamId, total + frete);
+            mensagem = "Estoque do fornecedor mudou antes do embarque.";
+            return false;
+        }
+
+        item.estoqueGlobal = Mathf.Max(0, item.estoqueGlobal - quantidade);
+        item.demanda = Mathf.Clamp(item.demanda + quantidade / 120f, 0f, 160f);
+
+        if (entregaSemNavio)
+        {
+            string entregaMensagem;
+            if (!EntregaMercadoMilitar.Enviar(item, vendedorTeamId, compradorTeamId, quantidade, out entregaMensagem))
+            {
+                item.estoqueGlobal += quantidade;
+                governo.AdicionarSaldo(compradorTeamId, total);
+                if (!item.equipamentoMilitar && !item.municaoMilitar)
+                    governo.AdicionarEstoque(vendedorTeamId, recursoId, quantidade);
+                mensagem = "Estaleiro do comprador indisponivel; compra do navio cancelada.";
+                return false;
+            }
+
+            governo.AdicionarSaldo(vendedorTeamId, total);
+            TransacaoMercado direta = new TransacaoMercado
+            {
+                id = Guid.NewGuid().ToString("N"),
+                compradorTeamId = compradorTeamId,
+                vendedorTeamId = vendedorTeamId,
+                itemId = item.id,
+                quantidade = quantidade,
+                precoUnitario = Mathf.Max(1, item.precoAtual),
+                total = total,
+                frete = 0,
+                compraDoJogador = compradorTeamId == governo.teamJogador,
+                status = "ENTREGUE",
+                mensagem = vendedor.nomePais + " vendeu " + quantidade + " de " + item.nome + "; navio enviado diretamente ao estaleiro."
+            };
+            RegistrarTransacao(direta);
+            mensagem = direta.mensagem;
+            return true;
+        }
+
+        TransacaoMercado transacao = new TransacaoMercado
+        {
+            id = Guid.NewGuid().ToString("N"),
+            compradorTeamId = compradorTeamId,
+            vendedorTeamId = vendedorTeamId,
+            itemId = item.id,
+            quantidade = quantidade,
+            precoUnitario = Mathf.Max(1, item.precoAtual),
+            total = total,
+            frete = frete,
+            compraDoJogador = compradorTeamId == governo.teamJogador,
+            status = "AGUARDANDO EMBARQUE",
+            mensagem = comprador.nomePais + " comprou " + quantidade + " de " + item.nome + "; aguardando navio de carga."
+        };
+
+        SistemaLogisticaMercado.GarantirInstancia();
+        if (SistemaLogisticaMercado.Instancia == null || !SistemaLogisticaMercado.Instancia.Enfileirar(transacao, frete, repeticao, out _))
+        {
+            if (item.municaoMilitar) gastos?.AdicionarEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar, quantidade);
+            else if (!item.equipamentoMilitar) governo.AdicionarEstoque(vendedorTeamId, recursoId, quantidade);
+            item.estoqueGlobal += quantidade;
+            governo.AdicionarSaldo(compradorTeamId, total + frete);
+            mensagem = "Logistica maritima indisponivel; compra cancelada.";
+            return false;
+        }
+        RegistrarTransacao(transacao);
+        mensagem = transacao.mensagem;
+        return true;
+    }
+
+    private bool ExecutarVendaInternacional(int vendedorTeamId, int compradorTeamId, DadosItemMercado item, int quantidade, out string mensagem, bool repeticao)
+    {
+        mensagem = string.Empty;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno vendedor = governo != null ? governo.ObterPais(vendedorTeamId) : null;
+        DadosPaisGoverno comprador = governo != null ? governo.ObterPais(compradorTeamId) : null;
+        if (governo == null || vendedor == null || comprador == null)
+        {
+            mensagem = "Pais sem estoque ou comprador.";
+            return false;
+        }
+        if (ComercioBloqueadoPorGuerra(vendedorTeamId, compradorTeamId, vendedor, comprador))
+        {
+            mensagem = "Comercio bloqueado por guerra.";
+            return false;
+        }
+
+        string recursoId = ObterRecursoIdEfetivo(item);
+        SistemaGastosMilitares.GarantirInstancia();
+        SistemaGastosMilitares gastos = SistemaGastosMilitares.Instancia;
+        int disponivel = item.municaoMilitar && gastos != null
+            ? gastos.ObterEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar)
+            : governo.ObterEstoque(vendedorTeamId, recursoId);
+        quantidade = Mathf.Min(quantidade, Mathf.Max(0, disponivel));
+        if (quantidade <= 0)
+        {
+            mensagem = "Sem estoque para vender.";
+            return false;
+        }
+
+        int total = quantidade * Mathf.Max(1, item.precoAtual);
+        bool entregaSemNavio = DeveEntregarSemNavio(item, false);
+        int frete = entregaSemNavio ? 0 : Mathf.Max(1, Mathf.CeilToInt(total * SistemaLogisticaMercado.FretePercentual));
+        if (!governo.TentarPagar(compradorTeamId, total + frete))
+        {
+            mensagem = "Comprador sem dinheiro para compra e frete.";
+            return false;
+        }
+
+        bool removido = item.municaoMilitar
+            ? gastos != null && gastos.RemoverEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar, quantidade)
+            : true;
+        if (!item.municaoMilitar)
+        {
+            governo.RemoverEstoque(vendedorTeamId, recursoId, quantidade);
+        }
+        if (!removido)
+        {
+            governo.AdicionarSaldo(compradorTeamId, total + frete);
+            mensagem = "Estoque mudou antes do embarque.";
+            return false;
+        }
+
+        if (entregaSemNavio)
+        {
+            governo.AdicionarEstoque(compradorTeamId, recursoId, quantidade);
+            item.estoqueGlobal += quantidade;
+            item.oferta = Mathf.Clamp(item.oferta + quantidade / 100f, 0f, 160f);
+            governo.AdicionarSaldo(vendedorTeamId, total);
+            TransacaoMercado direta = new TransacaoMercado
+            {
+                id = Guid.NewGuid().ToString("N"),
+                compradorTeamId = compradorTeamId,
+                vendedorTeamId = vendedorTeamId,
+                itemId = item.id,
+                quantidade = quantidade,
+                precoUnitario = Mathf.Max(1, item.precoAtual),
+                total = total,
+                frete = 0,
+                compraDoJogador = compradorTeamId == governo.teamJogador,
+                status = "ENTREGUE",
+                mensagem = vendedor.nomePais + " vendeu " + quantidade + " de energia diretamente; nenhum navio necessario."
+            };
+            RegistrarTransacao(direta);
+            mensagem = direta.mensagem;
+            return true;
+        }
+
+        item.estoqueGlobal += quantidade;
+        item.oferta = Mathf.Clamp(item.oferta + quantidade / 100f, 0f, 160f);
+        TransacaoMercado transacao = new TransacaoMercado
+        {
+            id = Guid.NewGuid().ToString("N"),
+            compradorTeamId = compradorTeamId,
+            vendedorTeamId = vendedorTeamId,
+            itemId = item.id,
+            quantidade = quantidade,
+            precoUnitario = Mathf.Max(1, item.precoAtual),
+            total = total,
+            frete = frete,
+            compraDoJogador = compradorTeamId == governo.teamJogador,
+            status = "AGUARDANDO EMBARQUE",
+            mensagem = vendedor.nomePais + " vendeu " + quantidade + " de " + item.nome + "; aguardando navio de carga."
+        };
+
+        SistemaLogisticaMercado.GarantirInstancia();
+        if (SistemaLogisticaMercado.Instancia == null || !SistemaLogisticaMercado.Instancia.Enfileirar(transacao, frete, repeticao, out _))
+        {
+            if (item.municaoMilitar) gastos?.AdicionarEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar, quantidade);
+            else governo.AdicionarEstoque(vendedorTeamId, recursoId, quantidade);
+            item.estoqueGlobal = Mathf.Max(0, item.estoqueGlobal - quantidade);
+            governo.AdicionarSaldo(compradorTeamId, total + frete);
+            mensagem = "Logistica maritima indisponivel; venda cancelada.";
+            return false;
+        }
+        RegistrarTransacao(transacao);
+        mensagem = transacao.mensagem;
+        return true;
+    }
+
+    public bool ComprarAutomaticamente(int compradorTeamId, string itemId, int quantidade, out string mensagem)
+    {
+        DadosItemMercado item = ObterItem(itemId);
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (item == null || governo == null) { mensagem = "Item indisponivel."; return false; }
+        DadosPaisGoverno fornecedor = governo.Paises.FirstOrDefault(p => p != null && p.teamId != compradorTeamId &&
+            (!item.municaoMilitar ? governo.ObterEstoque(p.teamId, ObterRecursoIdEfetivo(item)) > 0 :
+                SistemaGastosMilitares.Instancia != null && SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(p.teamId, item.idMunicaoMilitar) > 0));
+        if (fornecedor == null) { mensagem = "Nenhum fornecedor possui estoque."; return false; }
+        return Comprar(compradorTeamId, fornecedor.teamId, item.id, quantidade, out mensagem);
+    }
+
+    public bool VenderAutomaticamente(int vendedorTeamId, string itemId, int quantidade, out string mensagem)
+    {
+        DadosItemMercado item = ObterItem(itemId);
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (item == null || governo == null) { mensagem = "Item indisponivel."; return false; }
+        DadosPaisGoverno comprador = governo.Paises.Where(p => p != null && p.teamId != vendedorTeamId)
+            .OrderByDescending(p => p.saldo).FirstOrDefault();
+        if (comprador == null) { mensagem = "Nenhum comprador disponivel."; return false; }
+        return Vender(vendedorTeamId, comprador.teamId, item.id, quantidade, out mensagem);
+    }
+
     public bool ComercioBloqueadoPorGuerra(int origemTeamId, int destinoTeamId)
     {
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
@@ -465,6 +730,13 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return false;
         }
 
+        if (item.recurso != RecursoMercado.Energia
+            && !string.Equals(item.id, "energia", StringComparison.OrdinalIgnoreCase))
+        {
+            mensagem = "A venda de " + item.nome + " exige navio de carga; energia e a unica venda direta.";
+            return false;
+        }
+
         // Verifica e retira o recurso real
         bool temRecurso = false;
         switch (item.recurso)
@@ -480,7 +752,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
                 break;
             default:
                 // Energia e outros: trata energia como recurso vendável
-                if (item.id == "energia" && gr.energia >= quantidade)
+                if ((item.recurso == RecursoMercado.Energia || item.id == "energia") && gr.energia >= quantidade)
                 {
                     gr.RemoverRecurso("Energia", quantidade);
                     temRecurso = true;
@@ -753,6 +1025,24 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         return string.IsNullOrEmpty(item.recursoId) ? item.id : item.recursoId;
+    }
+
+    private static bool DeveEntregarSemNavio(DadosItemMercado item, bool compra)
+    {
+        if (item == null) return false;
+        if (compra)
+        {
+            // Navio comprado via mercado viaja como a propria unidade e entra
+            // no estaleiro; nao faz sentido colocar um navio dentro de outro.
+            return item.equipamentoMilitar
+                && !string.IsNullOrEmpty(item.tipoEntrega)
+                && item.tipoEntrega.IndexOf("navio", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        // A excecao solicitada para venda direta e somente a energia. Todos
+        // os outros recursos e equipamentos continuam dependendo do frete.
+        return item.recurso == RecursoMercado.Energia
+            || string.Equals(item.id, "energia", StringComparison.OrdinalIgnoreCase);
     }
 
     private static DadosItemMercado CriarItemPadrao(string id, string nome, RecursoMercado recurso, int precoBase, int estoqueGlobal, float oferta, float demanda, float volatilidade, string categoria = "Recurso")

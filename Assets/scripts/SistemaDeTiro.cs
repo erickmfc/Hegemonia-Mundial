@@ -313,10 +313,24 @@ public class SistemaDeTiro : MonoBehaviour
 
     void Atirar()
     {
+        if (prefabProjetil == null)
+        {
+            // Prefabs antigos podem nao ter municao configurada; o tiro nao
+            // pode gerar NullReference e interromper a defesa da unidade.
+            balasAtuais = Mathf.Max(0, balasAtuais - 1);
+            tempoParaProximoTiro = Mathf.Max(0.25f, intervaloEntreTiros);
+            return;
+        }
         // Se a boca do cano não estiver definida, usa a posição do próprio objeto
         Transform origem = (bocaDoCano != null) ? bocaDoCano : transform;
 
         GameObject bala = PoolDeObjetosCombate.Spawn(prefabProjetil, origem.position, origem.rotation);
+        if (bala == null)
+        {
+            balasAtuais = Mathf.Max(0, balasAtuais - 1);
+            tempoParaProximoTiro = Mathf.Max(0.25f, intervaloEntreTiros);
+            return;
+        }
         
         // --- CORREÇÃO DE SEGURANÇA ---
         Projetil scriptBala = bala.GetComponent<Projetil>();

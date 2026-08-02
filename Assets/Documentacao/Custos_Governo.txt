@@ -1,0 +1,975 @@
+CUSTOS, IMPOSTOS E ORÇAMENTO — HEGEMONIA GLOBAL
+VERSÃO 3 — SIMPLIFICADA, SEM RETIRAR CONTEÚDO
+Data da revisão: 01/08/2026
+
+LEGENDA RÁPIDA
+- COMPRA ÚNICA: paga uma vez ao comprar, construir, pesquisar ou desbloquear.
+- POR SEGUNDO: manutenção operacional das unidades.
+- POR DIA: impostos, orçamento, serviços públicos, dívida e indicadores.
+- RECEITA: entrada real no Tesouro.
+- EMPRÉSTIMO: aumenta o caixa, mas também aumenta a dívida.
+
+VISÃO GERAL
+- Imposto só é arrecadado quando existe uma base econômica real.
+- Receita privada pertence à economia; o governo recebe apenas os impostos.
+- Empresa pública transfere seu resultado líquido ao Tesouro.
+- Gastos públicos dependem da necessidade e do financiamento escolhido.
+- A mesma receita ou despesa nunca pode ser registrada duas vezes.
+- Todos os valores, regras, efeitos, scripts, migrações, conquistas e testes da
+  versão completa permanecem neste arquivo.
+
+STATUS DESTA VERSÃO
+Este documento é uma proposta de substituição das fórmulas fiscais e orçamentárias atuais. As seções de mercado, unidades, pesquisas, laboratórios, extração, fazenda, construção e equipamentos mantêm os valores já registrados no código, salvo quando este documento disser expressamente o contrário.
+
+OBJETIVOS DA REVISÃO
+- Fazer o governo arrecadar impostos apenas quando existir atividade econômica.
+- Separar receita privada, receita de empresa pública, imposto e empréstimo.
+- Cobrar imposto sobre uma base tributável real, e não multiplicar receitas por “1 + alíquota”.
+- Processar impostos e orçamento uma vez por dia do jogo.
+- Fazer impostos altos aumentarem arrecadação no curto prazo, mas reduzirem consumo, investimento, emprego, popularidade e conformidade no médio prazo.
+- Fazer serviços públicos dependerem do orçamento realmente destinado a eles.
+- Impedir dupla cobrança da mesma atividade por sistemas diferentes.
+- Manter os números ajustáveis para equilibrar a economia sem reescrever código.
+
+REGRA DO CAIXA DO GOVERNO
+- Dinheiro representa o caixa do Tesouro Nacional.
+- Compras únicas exigem saldo disponível no momento da compra.
+- Despesas recorrentes podem gerar déficit.
+- O caixa pode ficar temporariamente negativo até o limite de crédito emergencial.
+- No fechamento do dia, a parte negativa do caixa pode ser convertida em dívida de curto prazo, conforme a política fiscal do país.
+- Comida, petróleo, energia, aço e outros estoques físicos têm piso zero.
+- Não deve existir manutenção de unidade, estrutura, laboratório, satélite ou serviço que ainda não exista ou não esteja ativo.
+- Um país com população possui custos civis básicos mesmo que não tenha tropas.
+- Um cenário realmente vazio, sem população e sem estruturas, não gera receita nem despesa.
+- Valores “/s” continuam sendo operacionais. Impostos, orçamento, juros e indicadores fiscais são calculados por dia do jogo.
+
+
+========================================================================
+1) SISTEMA FISCAL NACIONAL — IMPOSTOS E RECEITAS
+
+Sistemas envolvidos atualmente:
+DadosPaisGoverno.cs
+SistemaGovernoMundial.cs
+SistemaOrcamentoNacional.cs
+SistemaEconomiaImoveis.cs
+SistemaMercadoGlobal.cs
+SistemaIndustrialNacional.cs
+
+Novo sistema central sugerido:
+SistemaFiscalNacional.cs
+
+1.1) REGRA FUNDAMENTAL DA ARRECADAÇÃO
+
+A fórmula antiga não deve usar: receitaDaAtividade × (1 + imposto/100)
+
+A fórmula correta é: arrecadacao = baseTributavel × aliquota × conformidade × eficienciaFiscal × escalaFiscal × modificadores
+
+Onde:
+- baseTributavel é o valor econômico realmente produzido, vendido, recebido, importado, exportado ou possuído.
+- aliquota é a porcentagem definida pelo jogador.
+- conformidade representa quanto da economia paga corretamente.
+- eficienciaFiscal representa a capacidade administrativa do governo.
+- escalaFiscal ajusta todos os valores ao tamanho monetário do jogo.
+- modificadores representam guerra, sanções, corrupção, leis, tecnologias, estabilidade, ocupação estrangeira e eventos.
+
+Nenhum imposto gera dinheiro quando sua base tributável for zero.
+
+1.2) INDICADORES NECESSÁRIOS
+
+O fechamento fiscal diário deve produzir um SnapshotEconomicoNacional com:
+- população civil;
+- população empregada;
+- população desempregada;
+- população vulnerável;
+- massa salarial;
+- renda disponível;
+- consumo das famílias;
+- receita bruta empresarial;
+- lucro empresarial;
+- prejuízo empresarial;
+- valor dos imóveis ocupados;
+- valor das importações;
+- valor das exportações;
+- valor dos recursos extraídos;
+- produção das empresas públicas;
+- inflação;
+- desemprego;
+- estabilidade;
+- corrupção;
+- informalidade;
+- conformidade tributária;
+- eficiência administrativa;
+- produto interno diário aproximado;
+- dívida pública;
+- juros;
+- reservas do Tesouro.
+
+A carga tributária real exibida no painel não será a média das alíquotas.
+Ela será: cargaTributaria = impostosArrecadados / produtoInternoDiario
+
+1.3) IMPOSTOS PRINCIPAIS
+
+Imposto / política                 Inicial       Faixa
+Imposto de renda pessoal           8%            0% a 30%
+Contribuição sobre a folha         6%            0% a 18%
+Imposto sobre consumo              10%           0% a 25%
+Imposto sobre lucro empresarial    15%           0% a 30%
+Imposto sobre propriedade urbana   2% ao ano     0% a 10% ao ano
+Royalties de recursos naturais     12%           0% a 30%
+Tarifa de importação               5%            0% a 25%
+Imposto de exportação              0%            0% a 15%
+Contribuição de guerra             0%            0% a 10%; somente emergência
+
+As alíquotas normais podem mudar em passos de 1 ponto percentual. Uma alteração entra em vigor no dia seguinte e seus efeitos econômicos são aplicados gradualmente durante 15 dias do jogo. Isso impede o jogador de aumentar o imposto por um instante, arrecadar e reduzir imediatamente sem consequência.
+
+Mudanças acima de 5 pontos em sete dias geram:
+- perda de aprovação;
+- aumento temporário da incerteza;
+- queda no investimento;
+- crescimento da informalidade;
+- custo político no governo.
+
+1.4) IMPOSTO DE RENDA PESSOAL
+
+Base: renda formal recebida pela população no dia.
+
+Para manter progressividade sem simular cada cidadão individualmente, a população
+é dividida em quatro grupos agregados:
+
+Grupo vulnerável:
+- isento;
+- recebe assistência quando elegível.
+
+Grupo trabalhador:
+- paga 50% da alíquota definida.
+
+Classe média:
+- paga 100% da alíquota definida.
+
+Alta renda:
+- paga 150% da alíquota definida, limitada a 35%.
+
+Fórmula: IRPF = soma(rendaDoGrupo × aliquotaEfetivaDoGrupo) × conformidade × eficienciaFiscal × escalaFiscal
+
+Efeitos:
+- aumenta receita pública;
+- reduz renda disponível;
+- imposto moderado financia serviços sem grande dano;
+- imposto excessivo reduz consumo, imigração qualificada e aprovação;
+- baixa conformidade pode transformar parte da renda em economia informal.
+
+1.5) CONTRIBUIÇÃO SOBRE A FOLHA
+
+Base: massa salarial dos empregos formais ocupados.
+
+Fórmula: folha = massaSalarial × aliquotaFolha × conformidade × eficienciaFiscal × escalaFiscal
+
+Finalidade: financiar previdência, assistência e seguro-desemprego.
+
+Efeitos:
+- melhora o financiamento social;
+- alíquota alta aumenta o custo do emprego formal;
+- pode reduzir novas contratações e elevar informalidade;
+- automação e recessão reduzem naturalmente essa base.
+
+1.6) IMPOSTO SOBRE CONSUMO
+
+Base: valor das vendas finais para a população.
+
+Não devem entrar novamente nessa base:
+- vendas entre fábricas;
+- transferências internas de estoque;
+- compra pública já registrada como despesa;
+- exportações;
+- itens revendidos sem consumo final.
+
+Fórmula: consumo = valorVendasFinais × aliquotaConsumo × conformidade × eficienciaFiscal × escalaFiscal
+
+Efeitos:
+- é uma fonte estável de arrecadação;
+- aumenta o preço final;
+- reduz poder de compra quando elevado;
+- pode aumentar inflação e insatisfação;
+- recessão, desemprego e imposto de renda alto diminuem o consumo.
+
+1.7) IMPOSTO SOBRE LUCRO EMPRESARIAL
+
+A base não é a receita bruta.
+
+lucroTributavel = máximo de zero entre: receitaBruta
+- salários
+- energia
+- matérias-primas
+- manutenção
+- logística
+- juros empresariais
+- depreciação simplificada
+
+Fórmula: impostoEmpresarial = lucroTributavel × aliquotaLucro × conformidade × eficienciaFiscal × escalaFiscal
+
+Empresas com prejuízo não pagam imposto sobre lucro. Opcionalmente, o prejuízo pode ser compensado com lucros dos próximos 30 dias.
+
+Efeitos:
+- imposto moderado transforma crescimento industrial em receita pública;
+- imposto excessivo reduz investimento, expansão e produção;
+- empresas públicas não pagam imposto a si mesmas: seu lucro líquido é transferido ao Tesouro como “dividendos de estatais”.
+
+1.8) IMPOSTO SOBRE PROPRIEDADE URBANA
+
+Base: valor cadastral das casas, prédios comerciais e imóveis ocupados.
+
+Como é um imposto sobre patrimônio, a alíquota é anual: aliquotaDiaria = aliquotaAnual / 365
+
+Fórmula: propriedade = valorCadastralOcupado × aliquotaDiaria × conformidade × eficienciaFiscal × escalaFiscal
+
+Imóveis destruídos, abandonados ou ainda em construção não pagam integralmente.
+
+Efeitos:
+- financia administração urbana e infraestrutura;
+- incentiva ocupação eficiente do solo;
+- imposto excessivo reduz aprovação, construção residencial e crescimento urbano.
+
+1.9) ROYALTIES DE RECURSOS NATURAIS
+
+Base:
+valor de mercado dos recursos extraídos no dia: petróleo, urânio, ferro, cobre, bauxita, titânio e outros recursos estratégicos.
+
+Fórmula: royalties = quantidadeExtraida × precoDeReferencia × aliquotaRoyalties × escalaFiscal
+
+Empresas públicas:
+- o Tesouro recebe o lucro líquido da empresa;
+- royalties podem ser registrados contabilmente, mas não devem somar dinheiro duas vezes ao caixa.
+
+Empresas privadas:
+- pagam royalties sobre extração;
+- pagam imposto empresarial somente sobre o lucro restante.
+
+Efeitos:
+- aumenta receita de países ricos em recursos;
+- royalties altos reduzem investimento extrativo;
+- parte da arrecadação pode ser enviada a um Fundo Soberano.
+
+1.10) TARIFA DE IMPORTAÇÃO
+
+Base: valor aduaneiro dos bens importados.
+
+Fórmula: tarifaImportacao = valorImportado × aliquotaImportacao × eficienciaAduaneira × escalaFiscal
+
+Efeitos:
+- gera receita e protege produção nacional;
+- aumenta o preço dos produtos importados;
+- pode reduzir comércio, causar escassez e provocar retaliação;
+- acordos comerciais podem reduzir ou zerar a tarifa entre aliados.
+
+1.11) IMPOSTO DE EXPORTAÇÃO
+
+Base: valor dos bens exportados.
+
+É opcional e começa em zero.
+
+Efeitos:
+- arrecada sobre setores exportadores;
+- pode segurar recursos estratégicos no mercado interno;
+- reduz competitividade internacional quando elevado;
+- deve ser separado da tarifa de importação.
+
+1.12) CONTRIBUIÇÃO DE GUERRA
+
+Imposto temporário disponível apenas quando:
+- o país está em guerra;
+- existe mobilização nacional;
+- o parlamento/governo aprovou estado de emergência.
+
+Duração padrão: 30 dias, renovável.
+
+Base: renda e lucro, sem incidir novamente sobre consumo.
+
+Efeitos:
+- aumenta receita militar de curto prazo;
+- reduz aprovação e investimento;
+- permanecer ativa depois da guerra gera penalidade política crescente.
+
+1.13) CONFORMIDADE, INFORMALIDADE E CORRUPÇÃO
+
+conformidadeBase = 0,75
+
+Modificadores sugeridos: + até 0,10 por boa estabilidade; + até 0,08 por bons serviços públicos; + até 0,07 por administração digital e fiscalização;
+- até 0,20 por corrupção;
+- até 0,18 por carga tributária excessiva;
+- até 0,12 por desemprego e recessão;
+- até 0,15 por ocupação, guerra civil ou colapso institucional.
+
+Limites: conformidade mínima 0,25; conformidade máxima 0,98.
+
+Informalidade cresce quando:
+- impostos aumentam rápido;
+- desemprego está alto;
+- fiscalização é fraca;
+- corrupção é alta;
+- serviços públicos são ruins.
+
+Fiscalização extrema também possui custo administrativo e pode reduzir aprovação.
+
+1.14) EFICIÊNCIA FISCAL
+
+eficienciaFiscal inicia em 0,80.
+
+Pode variar de 0,50 a 1,05 conforme:
+- orçamento da administração;
+- quantidade de cidades;
+- tecnologia administrativa;
+- estabilidade;
+- corrupção;
+- guerra;
+- prédios do governo;
+- energia e comunicação disponíveis.
+
+Eficiência acima de 1,00 representa recuperação de débitos, multas e melhoria operacional, não criação artificial de dinheiro.
+
+1.15) OUTRAS RECEITAS DO GOVERNO — NÃO SÃO IMPOSTOS
+
+Devem aparecer separadamente no orçamento:
+- dividendos de empresas públicas;
+- venda pública de energia;
+- venda pública de petróleo e minerais;
+- tarifas de serviços;
+- multas;
+- concessões;
+- doações e ajuda internacional;
+- reparações de guerra;
+- rendimento do Fundo Soberano;
+- emissão de dívida;
+- venda de ativos públicos.
+
+Empréstimo aumenta caixa, mas não é receita fiscal: aumenta a dívida. Venda de estoque público reduz patrimônio e também não é imposto.
+
+========================================================================
+2) MANUTENÇÃO DE UNIDADES — COBRADA A CADA 1 SEGUNDO
+Sistema: GestorDeConsumo.cs
+
+Tipo de unidade                 Dinheiro/s    Petróleo/s    Aço/peças/s
+Infantaria                      $1 por soldado       —             —
+Veículo terrestre               —                    1*            1 por veículo
+Navio                           $10 por navio        2*            —
+Avião ou helicóptero            $5 por aeronave      4*            —
+
+* O petróleo periódico só é cobrado quando usarCombustivelPorUnidade estiver desligado. No modo atual, com combustível por unidade ligado, aviões, helicópteros, navios e veículos gastam o combustível de seus próprios tanques durante o movimento.
+
+
+========================================================================
+3) DESPESAS RECORRENTES E ORÇAMENTO DO GOVERNO
+
+Sistemas atuais:
+SistemaEconomiaImoveis.cs
+SistemaOrcamentoNacional.cs
+SistemaGastosMilitares.cs
+
+3.1) REGRA GERAL
+
+Cada área possui:
+- necessidade calculada;
+- orçamento autorizado pelo jogador;
+- gasto efetivamente pago;
+- nível de atendimento;
+- efeitos de subfinanciamento;
+- benefício adicional com retorno decrescente.
+
+gastoEfetivo = necessidade × percentualDeFinanciamento
+
+Faixa de financiamento:
+0% a 49%: estado crítico; grandes penalidades.
+
+50% a 79%: subfinanciado; serviço funciona parcialmente.
+
+80% a 110%: faixa normal.
+
+111% a 140%: serviço reforçado, com benefício menor a cada ponto adicional.
+
+Acima de 140%: quase todo valor adicional tem retorno muito baixo e aumenta risco de desperdício ou corrupção.
+
+Não usar valores fixos automáticos como “ou $2” quando não existe base real. Os coeficientes abaixo são valores iniciais de balanceamento e devem ficar em um ScriptableObject, sem números espalhados pelo código.
+
+3.2) ASSISTÊNCIA SOCIAL E PREVIDÊNCIA
+
+População elegível:
+- desempregados;
+- vulneráveis;
+- dependentes de militares mortos;
+- famílias afetadas por desastre;
+- aposentados, caso o jogo simule essa categoria.
+
+necessidadeSocial = (populacaoVulneravel × 0,018) + (desempregadosElegiveis × 0,010) + encargosDeMortos + auxiliosDeEmergencia
+
+Efeitos de bom financiamento:
+- reduz pobreza;
+- melhora estabilidade;
+- sustenta consumo durante recessões;
+- reduz crime e migração de saída.
+
+Efeitos de imposto sobre folha alto sem serviço correspondente:
+- forte perda de aprovação;
+- crescimento da informalidade.
+
+3.3) SAÚDE
+
+necessidadeSaude = populacaoCivil × 0,005 × multiplicadorDemandaSaude
+
+multiplicadorDemandaSaude considera:
+- qualidade de vida;
+- poluição;
+- guerra;
+- fome;
+- desastres;
+- falta de energia;
+- epidemias;
+- quantidade de hospitais e capacidade disponível.
+
+Efeitos de subfinanciamento:
+- mortalidade maior;
+- produtividade menor;
+- recuperação militar e civil mais lenta;
+- queda de aprovação.
+
+Não somar bônus fixo de $2 ou $6 sem registrar a causa no orçamento.
+
+3.4) EDUCAÇÃO
+
+populacaoEscolarEstimada = populacaoCivil × percentualEscolar
+
+necessidadeEducacao = (populacaoEscolarEstimada × 0,004) + custoDeUniversidades + custoDeFormacaoTecnica
+
+Efeitos:
+- melhora produtividade;
+- acelera qualificação industrial;
+- aumenta velocidade de pesquisa no longo prazo;
+- reduz informalidade e desemprego estrutural.
+
+Pesquisa militar e laboratórios aparecem em Ciência e Tecnologia, não devem ser cobrados novamente como educação.
+
+3.5) ADMINISTRAÇÃO PÚBLICA
+
+necessidadeAdministracao = (cidadesAtivas × 3,5) + (populacaoCivil × 0,0005) + custoDePrediosPublicos + custoDeFiscalizacao + custoDiplomatico
+
+Efeitos:
+- melhora eficiência fiscal;
+- reduz corrupção;
+- melhora resposta a crises;
+- permite administrar mais cidades e territórios.
+
+Baixa estabilidade aumenta o custo, mas o motivo deve aparecer como item separado: “custo extraordinário de instabilidade”.
+
+3.6) INFRAESTRUTURA
+
+necessidadeInfraestrutura = (energiaConsumida × 0,35) + (estruturasAtivas × 0,05) + manutencaoDeEstradas + manutencaoDePortos + manutencaoDeAeroportos + manutencaoDaRedeEletrica + reparosDeGuerra + (estruturasSemEnergia × 2,5)
+
+Efeitos de bom financiamento:
+- reduz falhas;
+- melhora logística;
+- aumenta produtividade;
+- reduz perdas de energia;
+- acelera reparos.
+
+Infraestrutura destruída pode exigir compra de reconstrução além da manutenção.
+
+3.7) DEFESA NACIONAL
+
+A defesa não deve usar apenas “empregos ocupados × 0,0015”.
+
+necessidadeDefesa = soldosMilitares + manutencaoDasUnidades + combustívelOperacional + muniçãoConsumida + manutençãoDeBases + logísticaMilitar + mobilização + operaçõesDeGuerra + inteligência + defesaDoPresidente
+
+Unidades continuam usando os valores operacionais do GestorDeConsumo.cs, porém o orçamento deve consolidar esses gastos em uma única categoria para exibição.
+
+Não cobrar duas vezes:
+- se GestorDeConsumo já retirou dinheiro, o orçamento apenas registra;
+- se o orçamento central for responsável por pagar, GestorDeConsumo somente informa a necessidade.
+
+3.8) PRODUÇÃO PÚBLICA E SUBSÍDIOS
+
+Empresas públicas: resultadoPublico = receitaBrutaPublica
+- energia
+- salários
+- insumos
+- manutenção
+- logística
+
+Se positivo: entra como dividendos/resultado de estatais.
+
+Se negativo: entra como produção pública/subsídio.
+
+Empresas privadas não devem transferir receita integral ao governo. Elas pagam imposto sobre lucro e demais tributos aplicáveis.
+
+Subsídios concedidos pelo jogador devem mostrar:
+- setor beneficiado;
+- custo diário;
+- duração;
+- empregos protegidos;
+- produção adicional;
+- risco de dependência.
+
+3.9) CIÊNCIA E TECNOLOGIA
+
+necessidadeCiencia = pesquisasAtivas + laboratoriosAtivos + programasEspaciais + programasNucleares + manutençãoDoSatélite + centrosEstratégicos
+
+O custo de início de pesquisa continua sendo compra única. O funcionamento diário de laboratórios e programas é manutenção recorrente.
+
+Satélite de defesa:
+- custo operacional atual: $180 por dia;
+- manutenção automática atual: $120 por dia;
+- total atual com manutenção automática: $300 por dia;
+- sem manutenção automática: $180 por dia;
+- nenhum custo antes do desbloqueio.
+
+3.10) SEGURANÇA INTERNA E JUSTIÇA
+
+Nova categoria sugerida: necessidadeSeguranca = (populacaoCivil × 0,0025) + custoPolicial + custoPrisional + custoDeFronteira + combateAoCartel + proteçãoDeInfraestruturaCrítica
+
+Efeitos:
+- reduz crime, sabotagem e pirataria terrestre;
+- aumenta conformidade tributária;
+- melhora estabilidade;
+- excesso de repressão pode reduzir aprovação.
+
+3.11) MEIO AMBIENTE E DESASTRES
+
+Nova categoria opcional: necessidadeAmbiental = poluicaoIndustrial + vazamentos + desmatamento + riscoNuclear + eventosClimaticos + recuperaçãoDeÁreas
+
+Efeitos:
+- reduz danos à saúde;
+- diminui risco de desastre;
+- melhora agricultura, turismo e aprovação.
+
+3.12) JUROS E DÍVIDA
+
+jurosDiarios = saldoDevedor × taxaAnualEfetiva / 365
+
+A taxa efetiva considera:
+- taxa básica;
+- dívida em relação ao produto interno;
+- déficit recente;
+- estabilidade;
+- guerra;
+- sanções;
+- reservas;
+- histórico de pagamento.
+
+Indicadores: resultadoPrimario = receitasSemEmprestimos - despesasSemJuros resultadoNominal = receitasSemEmprestimos - despesasTotais dividaSobreProduto = dividaPublica / produtoInternoAnualizado reservaEmDias = caixaDisponivel / despesaMediaDiaria
+
+Emissão de dívida:
+- aumenta caixa;
+- aumenta juros futuros;
+- não conta como arrecadação;
+- pode financiar crise, guerra ou investimento.
+
+3.13) OUTRAS DESPESAS
+
+Remover a cobrança automática genérica de $1,50 por ciclo.
+
+“Outras despesas” deve conter apenas fatos identificáveis:
+- indenizações;
+- ajuda internacional;
+- reparações;
+- eventos;
+- manutenção diplomática extraordinária;
+- corrupção detectada;
+- desperdício;
+- custos judiciais;
+- resgate de empresas;
+- emergência presidencial.
+
+Cada item precisa de nome, valor, origem e duração.
+
+3.14) PRIORIDADE DE PAGAMENTO
+
+Quando o caixa não for suficiente, usar prioridade configurável.
+
+Sugestão padrão:
+1. juros e obrigações contratuais;
+2. saúde essencial;
+3. assistência essencial;
+4. administração mínima;
+5. defesa em operação;
+6. energia e infraestrutura crítica;
+7. educação;
+8. ciência;
+9. subsídios e programas opcionais.
+
+O jogador pode alterar prioridades, mas deve receber consequências claras.
+
+3.15) FUNDO SOBERANO E RESERVA DE EMERGÊNCIA
+
+O jogador pode enviar uma porcentagem de:
+- royalties;
+- dividendos de estatais;
+- superávit fiscal;
+- reparações de guerra
+
+para um Fundo Soberano.
+
+Usos:
+- cobrir recessão;
+- financiar reconstrução;
+- estabilizar preço de recursos;
+- pagar dívida;
+- gerar rendimento moderado;
+- evitar gastar toda a renda do petróleo imediatamente.
+
+========================================================================
+4) PREÇOS-BASE DO MERCADO
+Sistema: SistemaMercadoGlobal.cs São preços unitários iniciais. O mercado recalcula precoAtual conforme oferta, demanda, guerra, sanções e oscilação; por isso o valor na tela pode mudar.
+
+Item                         Preço-base unitário
+Comida                       $120
+Milho                        $84
+Batata                       $78
+Feijão                       $92
+Trigo                        $110
+Arroz                        $118
+Cana-de-açúcar               $135
+Algodão                      $142
+Soja                         $155
+Café                         $205
+Cacau                        $235
+Petróleo                     $185
+Aço                          $95
+Energia                      $65
+Armamentos                   $420
+Urânio                       $900
+
+O total de uma compra de mercado é quantidade × precoAtual. Venda usa o preço atual do item e só pode ser feita sobre estoque disponível.
+
+
+========================================================================
+5) COMPRAS MILITARES, MUNIÇÃO E UPGRADES
+
+Munição antiaérea Ares Ar:
+- Cartucho Ares Ar: $220 por cartucho disparado.
+- Capacidade de cartucho: 10; o pagamento é registrado por disparo/cartucho.
+
+Arsenal do quartel:
+- Míssil: o valor operacional definido no GerenciadorQuartel é $500 por compra; cada compra adiciona 10 mísseis ao armazenamento.
+- Munição: $100 por compra; cada compra adiciona 100 unidades.
+
+Aeroporto e unidades especiais:
+- Drone kamikaze: $1.500.
+- Su-11: $2.500.
+- Upgrade de helicóptero H_Ray: $200.
+- Upgrade de avião Vans: $800.
+- Upgrade de avião Flow: $800.
+- Upgrade de avião Supra: $800.
+
+O preço de uma unidade, estrutura ou equipamento cadastrado no catálogo é o campo DadosConstrucao.preco. O valor padrão da ficha é $100, mas cada ficha/prefab pode substituí-lo. Equipamentos militares entram no mercado com esse preço da ficha.
+
+
+========================================================================
+6) PESQUISAS, TECNOLOGIAS E LABORATÓRIOS
+Compra/início: cada item cobra o custo de saldo e energia uma vez ao iniciar. Tecnologia cobra custo × (nível atual + 1). A duração está em dias do jogo.
+
+PESQUISAS (saldo / energia / duração)
+Extração de Ferro ........................ $520 / 60 / 2 dias
+Extração de Cobre ........................ $580 / 70 / 2 dias
+Extração de Bauxita ...................... $640 / 75 / 2 dias
+Metalurgia do Aço ........................ $650 / 90 / 2 dias
+Extração de Titânio ...................... $1.450 / 140 / 3 dias
+Eletrônica Industrial .................... $950 / 120 / 3 dias
+Pesquisa Nuclear .......................... $4.200 / 420 / 5 dias
+Munição Leve .............................. $1.100 / 90 / 2 dias
+Munição Automatizada 30 mm ................ $1.500 / 120 / 3 dias
+Munição Naval ............................. $1.900 / 150 / 3 dias
+Bombas Aéreas Táticas ..................... $2.100 / 170 / 3 dias
+Míssil Guiado ............................. $2.600 / 220 / 4 dias
+Interceptação Integrada ................... $3.100 / 250 / 4 dias
+Ares Ar — Defesa Antiaérea ............... $1.800 / 150 / 3 dias
+Tecnologia de Foguete I ................... $1.600 / 160 / 3 dias
+Tecnologia de Foguete II .................. $2.600 / 240 / 4 dias
+Tecnologia de Foguete III ................. $4.200 / 360 / 5 dias
+Tecnologia Aeroespacial I ................. $1.800 / 180 / 3 dias
+Tecnologia Aeroespacial II ................ $2.700 / 240 / 4 dias
+Tecnologia Aeroespacial III ............... $4.600 / 380 / 5 dias
+Tecnologia de Satélite I .................. $2.200 / 210 / 3 dias
+Tecnologia de Satélite II ................. $3.200 / 280 / 4 dias
+Tecnologia de Satélite III ................ $5.200 / 420 / 5 dias
+Agência Atlas Orbital ..................... $3.800 / 260 / 4 dias
+Programa ICNU ............................. $6.800 / 560 / 6 dias
+
+TECNOLOGIAS (saldo / energia / duração / nível máximo)
+Linhas Industriais ......................... $900 / 80 / 2 dias / 3
+Refino de Alto Rendimento ................. $1.200 / 100 / 2 dias / 3
+Automação de Linhas ....................... $1.500 / 120 / 3 dias / 3
+Reserva Imediata de Materiais ............. $1.350 / 100 / 2 dias / 2
+Integração com Armazém Nacional ........... $1.600 / 120 / 3 dias / 2
+Propulsão de Combustível Sólido ........... $1.800 / 150 / 3 dias / 3
+Estabilização de Lançamento ............... $2.200 / 170 / 3 dias / 3
+Controle Orbital ........................... $2.100 / 180 / 3 dias / 3
+Radar Satelital ............................ $2.400 / 200 / 3 dias / 3
+Navegação Inercial ......................... $2.500 / 200 / 3 dias / 3
+Miniaturização Industrial .................. $1.900 / 150 / 3 dias / 3
+Guiagem de Precisão ........................ $2.600 / 210 / 3 dias / 3
+Ciência Aplicada .......................... $2.600 / 200 / 3 dias / 3
+Autorização Nuclear ........................ $2.800 / 260 / 4 dias / 2
+Blindagem Radiológica ...................... $3.400 / 280 / 4 dias / 2
+
+LABORATÓRIOS (saldo / energia / duração / nível máximo)
+Materiais Ferrosos ......................... $1.200 / 100 / 2 dias / 3
+Eletrônica Industrial ...................... $1.500 / 120 / 3 dias / 3
+Aeroespacial ............................... $2.600 / 210 / 4 dias / 3
+Nuclear .................................... $4.200 / 360 / 5 dias / 2
+Centro Orbital Atlas ....................... $5.200 / 420 / 5 dias / 3
+Balístico .................................. $2.300 / 170 / 3 dias / 3
+Armas Navais ............................... $3.100 / 220 / 4 dias / 3
+Mísseis Guiados ............................ $3.600 / 260 / 4 dias / 3
+Centro Estratégico de Dissuasão ........... $6.200 / 520 / 6 dias / 2
+
+
+========================================================================
+7) EXTRAÇÃO MINERAL — CUSTO POR CICLO
+Sistema: CriadorScriptablesExtracao.cs / SistemaIndustrialNacional.cs
+
+Minério                         Dinheiro/ciclo   Energia/ciclo   Observação
+Ferro                           $400             50              5.200–7.800 t
+Cobre                           $650             70              1.300–3.100 t
+Bauxita                         $850             90              800–2.200 t
+Titânio                         $2.000           180             500–1.400 t
+Urânio bruto                    $5.000           350             50–300 t; exige autorização
+
+
+========================================================================
+8) FAZENDA E DESBLOQUEIOS
+- Desbloquear o terceiro lote da fazenda: $2.000.
+- Fazenda ativa também usa o fluxo econômico: receita $3, custo $1,30 e 0,7 de energia por registro de estrutura.
+
+
+========================================================================
+9) COMPRA DE CONSTRUÇÃO E EQUIPAMENTO
+- O custo de compra não é uma taxa fixa global: vem de DadosConstrucao.preco na ficha do item. O padrão do campo é $100.
+- O catálogo de construção pode conter prédios, tropas terrestres, navios, aeronaves, tecnologia, infraestrutura, energia e itens urbanos.
+- Para cada ficha, o menu de mercado mostra o preço atual; esse preço deve ser considerado a fonte final se o prefab tiver um valor próprio.
+- Construção não deve ser cobrada como manutenção antes de existir/estar ativa.
+
+
+========================================================================
+10) RESUMO DO QUE COBRA E QUANDO
+Compra única: construção, unidade, equipamento, munição comprada, pesquisa, tecnologia, laboratório, extração iniciada, lote de fazenda e upgrade. Manutenção: unidades vivas por segundo, estruturas ativas, serviços nacionais, satélite desbloqueado, dívida e ciclos de produção/extração. Imposto: moradia/renda, indústria, comércio/consumo e tarifas; são receitas do governo calculadas conforme base econômica, não uma cobrança fixa por segundo.
+
+
+========================================================================
+11) CICLO DIÁRIO DO SISTEMA ECONÔMICO
+
+No encerramento de cada dia:
+1. congelar o snapshot econômico;
+2. consolidar produção, empregos, salários, vendas, lucro e comércio;
+3. calcular cada base tributável;
+4. calcular conformidade e eficiência;
+5. arrecadar impostos uma única vez;
+6. registrar outras receitas;
+7. calcular necessidades de cada serviço;
+8. pagar despesas conforme orçamento e prioridade;
+9. calcular resultado primário e nominal;
+10. cobrar juros e atualizar dívida;
+11. atualizar inflação, desemprego, aprovação, informalidade e investimento;
+12. salvar o histórico;
+13. emitir eventos de conquista e alertas do HUD.
+
+Nunca calcular imposto em Update() ou a cada frame.
+
+
+========================================================================
+12) EFEITOS ECONÔMICOS GRADUAIS
+
+Impostos e gastos não devem alterar toda a economia instantaneamente.
+
+Aplicar suavização: valorAtual = aproximar(valorAtual, valorAlvo, velocidadeDiaria)
+
+Exemplos:
+- imposto de consumo alto reduz consumo ao longo de vários dias;
+- imposto empresarial alto reduz investimento e novas fábricas;
+- educação melhora produtividade lentamente;
+- infraestrutura melhora produção mais rapidamente;
+- corte de saúde pode gerar efeitos rápidos em guerra ou epidemia;
+- contribuição de guerra perde efeito quando a guerra termina.
+
+Uma curva de Laffer simplificada pode existir sem ser exibida como regra absoluta:
+- receita sobe com a alíquota no início;
+- depois, a base, a conformidade e o crescimento começam a cair;
+- a alíquota que maximiza receita muda conforme estabilidade e eficiência.
+
+
+========================================================================
+13) ARQUITETURA TÉCNICA SUGERIDA
+
+SistemaFiscalNacional.cs
+- coordena fechamento fiscal diário;
+- não contém dados visuais;
+- não procura objetos com Find a cada ciclo.
+
+DadosPoliticaFiscal.cs
+- ScriptableObject com alíquotas, limites, atrasos e coeficientes.
+
+SnapshotEconomicoNacional.cs
+- estrutura imutável com bases do dia.
+
+ResultadoFiscalDiario.cs
+- receitas e despesas detalhadas;
+- resultado primário;
+- resultado nominal;
+- dívida e reservas.
+
+HistoricoFiscalNacional.cs
+- mantém pelo menos 365 dias;
+- fornece gráficos e médias móveis.
+
+RegistroTransacaoGoverno.cs
+- impede dupla contabilização;
+- cada transação possui ID, categoria, origem, valor e dia.
+
+PainelOrcamentoNacional.cs
+- apenas apresenta e envia decisões;
+- não calcula economia.
+
+Eventos recomendados:
+OnDiaEconomicoFechado
+OnImpostoAlterado
+OnReceitaFiscalCalculada
+OnDespesaPublicaPaga
+OnDeficitRegistrado
+OnDividaEmitida
+OnServicoSubfinanciado
+OnSuperavitMantido
+OnFundoSoberanoAlterado
+
+Usar double ou dinheiro em centavos com long para reduzir erro acumulado. Todos os valores de balanceamento devem ficar em ScriptableObjects.
+
+
+========================================================================
+14) MIGRAÇÃO DOS CAMPOS ANTIGOS
+
+Ao carregar save antigo:
+impostoMoradia:
+- transforma-se em imposto de renda pessoal;
+- imposto sobre propriedade começa em 2%.
+
+impostoIndustria:
+- transforma-se em imposto sobre lucro empresarial.
+
+impostoComercio:
+- transforma-se em imposto sobre consumo.
+
+Novos padrões: contribuição sobre folha: 6%; royalties: 12%; tarifa de importação: 5%; imposto de exportação: 0%; contribuição de guerra: 0%; eficiência fiscal: 0,80; conformidade: 0,75.
+
+Não apagar os campos antigos imediatamente. Manter migração por versão de save e remover somente depois de validar saves antigos.
+
+
+========================================================================
+15) REGRAS CONTRA DUPLA CONTABILIZAÇÃO
+
+- Receita de casa, comércio e indústria pertence primeiro à economia.
+- O governo recebe somente o imposto correspondente.
+- Receita de empresa pública pode ir ao Tesouro como resultado de estatal.
+- Venda de recurso público e royalties não podem remunerar a mesma extração duas vezes sem registro contábil.
+- Manutenção retirada por GestorDeConsumo não pode ser retirada novamente pelo orçamento.
+- Compra de unidade não é manutenção.
+- Empréstimo não é receita.
+- Produção de energia não gera receita se não houver consumo, venda ou contrato.
+- Transferência de estoque não é comércio.
+- Importação e consumo são bases diferentes e podem coexistir, mas devem aparecer separadamente ao jogador.
+- Fallback só funciona quando o sistema principal não forneceu snapshot. Nunca executar fallback e snapshot no mesmo dia.
+
+
+========================================================================
+16) CONQUISTAS FISCAIS PARA O JOGO E PARA A STEAM
+
+CONTAS EM ORDEM
+Mantenha resultado nominal positivo por 30 dias sem financiar Saúde e Educação abaixo de 90%.
+
+ESTADO EFICIENTE
+Alcance conformidade tributária de 90% com carga tributária abaixo de 25%.
+
+RESERVA NACIONAL
+Acumule reservas suficientes para pagar 30 dias de despesas.
+
+FUNDO DO FUTURO
+Deposite uma grande parcela dos royalties no Fundo Soberano durante 60 dias.
+
+SAÍDA DA CRISE
+Reduza a dívida em relação ao produto interno após enfrentar uma recessão.
+
+SEM PETRÓLEO FÁCIL
+Mantenha superávit por 30 dias sem receber royalties de petróleo ou urânio.
+
+ECONOMIA DE GUERRA
+Financie uma guerra durante 30 dias sem deixar Saúde, Energia e Logística em estado crítico.
+
+CARGA EQUILIBRADA
+Mantenha crescimento, aprovação e superávit simultaneamente por 60 dias.
+
+
+========================================================================
+17) TESTES OBRIGATÓRIOS
+
+Cenário vazio:
+- sem população e estruturas;
+- receita zero;
+- despesa zero;
+- caixa não muda.
+
+País civil:
+- população e empregos;
+- IRPF, folha e consumo funcionam;
+- nenhuma manutenção militar.
+
+Indústria com prejuízo:
+- imposto empresarial zero;
+- prejuízo não vira arrecadação negativa.
+
+Indústria lucrativa:
+- imposto calculado sobre lucro, não receita.
+
+Empresa pública:
+- resultado líquido vai ao Tesouro;
+- sem imposto duplicado.
+
+Importação:
+- tarifa aplicada uma vez;
+- preço final aumenta;
+- estoque recebido corretamente.
+
+Extração privada:
+- royalties cobrados;
+- lucro restante pode pagar imposto empresarial.
+
+Extração pública:
+- resultado da estatal e royalties não duplicam caixa.
+
+Guerra:
+- despesas militares aumentam;
+- contribuição de guerra só funciona durante emergência;
+- fim da guerra inicia retirada da contribuição.
+
+Save antigo:
+- alíquotas antigas migram;
+- nenhum campo fica zerado por erro;
+- não há arrecadação duplicada no primeiro dia carregado.
+
+Teste de 365 dias:
+- nenhuma variável vira NaN ou infinito;
+- histórico mantém valores coerentes;
+- arredondamento não cria dinheiro;
+- caixa, dívida e estoque salvam e carregam corretamente.
+
+FONTES PRINCIPAIS CONSULTADAS
+Assets/scripts/GerenciadorRecursos.cs
+Assets/scripts/GestorDeConsumo.cs
+Assets/scripts/DadosConstrucao.cs
+Assets/scripts/Governo/DadosPaisGoverno.cs
+Assets/scripts/Governo/SistemaGovernoMundial.cs
+Assets/scripts/Governo/SistemaOrcamentoNacional.cs
+Assets/scripts/Governo/SistemaEconomiaImoveis.cs
+Assets/scripts/Governo/SistemaMercadoGlobal.cs
+Assets/scripts/Governo/SistemaGastosMilitares.cs
+Assets/scripts/Governo/SistemaIndustrialNacional.cs
+Assets/scripts/Armazens/DadosTipoMinerio.cs
+Assets/scripts/Fazenda.cs
+Assets/scripts/GerenciadorQuartel.cs
+Assets/scripts/GerenciadorAeroporto.cs
+
+NOTA FINAL
+As seções de preços e custos mantidos refletem os valores registrados no documento original de 01/08/2026. As novas fórmulas fiscais, categorias orçamentárias, efeitos, arquitetura e conquistas são uma proposta de implementação e ainda precisam ser aplicadas e testadas no código do jogo.

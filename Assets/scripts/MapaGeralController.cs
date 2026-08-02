@@ -58,13 +58,18 @@ public class MapaGeralController : MonoBehaviour
     private Vector2 centroMapa = Vector2.zero;
     private float metadeMapa = 5000f;
     private bool limitesMapaInicializados;
+    private Terrain terrenoInimigo;
+    private Bounds limitesTerrenoInimigo;
+    private bool territorioInimigoDisponivel;
 
     // --- Shader warmup (evita compilação durante o voo) ---
 
     void Start()
     {
+        OcultarTerrenoInimigoAuxiliar();
         cameraPrincipal = Camera.main;
         AtualizarLimitesMapa();
+        AtualizarLimitesTerritorioInimigo();
 
         GameObject camObj = new GameObject("Camera_MapaGeral");
         cameraMapa = camObj.AddComponent<Camera>();
@@ -88,6 +93,39 @@ public class MapaGeralController : MonoBehaviour
 
         // Evita Shader.WarmupAllShaders: no URP ele pode combinar keyword spaces
         // incompatíveis entre shaders e gerar asserts durante a entrada no Play Mode.
+    }
+
+    private void OcultarTerrenoInimigoAuxiliar()
+    {
+        Terrain[] terrenos = FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < terrenos.Length; i++)
+        {
+            Terrain terreno = terrenos[i];
+            if (terreno == null) continue;
+
+            string nome = terreno.name.ToLowerInvariant();
+            if (!nome.Contains("mapa inimigo") && !nome.Contains("mapa_inimigo")) continue;
+
+            terrenoInimigo = terreno;
+            // Desliga somente o renderer do Terrain. O TerrainCollider e o
+            // NavMeshSurface continuam disponíveis para a lógica do jogo.
+            terreno.enabled = false;
+        }
+    }
+
+    private void AtualizarLimitesTerritorioInimigo()
+    {
+        territorioInimigoDisponivel = false;
+        if (terrenoInimigo == null || terrenoInimigo.terrainData == null) return;
+
+        TerrainData dados = terrenoInimigo.terrainData;
+        Vector3 escala = terrenoInimigo.transform.lossyScale;
+        float escalaX = Mathf.Abs(escala.x) > 0.001f ? Mathf.Abs(escala.x) : 1f;
+        float escalaZ = Mathf.Abs(escala.z) > 0.001f ? Mathf.Abs(escala.z) : 1f;
+        Vector3 tamanho = new Vector3(dados.size.x * escalaX, Mathf.Max(1f, dados.size.y), dados.size.z * escalaZ);
+        Vector3 centro = terrenoInimigo.GetPosition() + new Vector3(tamanho.x * 0.5f, tamanho.y * 0.5f, tamanho.z * 0.5f);
+        limitesTerrenoInimigo = new Bounds(centro, tamanho);
+        territorioInimigoDisponivel = tamanho.x > 1f && tamanho.z > 1f;
     }
 
     /// <summary>
@@ -387,22 +425,11 @@ public class MapaGeralController : MonoBehaviour
 
     private void AplicarModoMapa(bool ativo)
     {
-        if (ativo)
-        {
-            fogOriginal = RenderSettings.fog;
-            fogColorOriginal = RenderSettings.fogColor;
-            fogStartOriginal = RenderSettings.fogStartDistance;
-            fogEndOriginal = RenderSettings.fogEndDistance;
-            fogModeOriginal = RenderSettings.fogMode;
-            RenderSettings.fog = false;
-            return;
-        }
-
-        RenderSettings.fog = fogOriginal;
-        RenderSettings.fogColor = fogColorOriginal;
-        RenderSettings.fogStartDistance = fogStartOriginal;
-        RenderSettings.fogEndDistance = fogEndOriginal;
-        RenderSettings.fogMode = fogModeOriginal;
+        // A neblina pertence ao mundo inteiro. Alterá-la ao alternar a câmera
+        // do satélite fazia a câmera principal receber uma mudança de estado
+        // durante um frame, produzindo flashes e cores estouradas na build.
+        // O mapa usa sua própria câmera/limites; portanto não disputa mais o
+        // RenderSettings global com o gameplay.
     }
 
     // ================================================================
@@ -448,9 +475,57 @@ public class MapaGeralController : MonoBehaviour
         GUI.Label(new Rect(legX, legY + 66, 170, 20), "🔵  Oceano",          legStyle);
 
         // --- Ícones das unidades e prédios no mapa ---
+        DesenharTerritorioInimigo();
         DesenharIconesNoMapa();
         DesenharDisparosNoMapa();
         GUI.Label(new Rect(Screen.width - 330f, barH + 8f, 315f, 22f), "DISPAROS: ciano aliado | vermelho inimigo | amarelo neutro", legStyle);
+    }
+
+    private void DesenharTerritorioInimigo()
+    {
+        if (cameraMapa == null || !territorioInimigoDisponivel) return;
+
+        Vector3 min = limitesTerrenoInimigo.min;
+        Vector3 max = limitesTerrenoInimigo.max;
+        Vector3[] cantos =
+        {
+            cameraMapa.WorldToScreenPoint(new Vector3(min.x, 0f, min.z)),
+            cameraMapa.WorldToScreenPoint(new Vector3(min.x, 0f, max.z)),
+            cameraMapa.WorldToScreenPoint(new Vector3(max.x, 0f, min.z)),
+            cameraMapa.WorldToScreenPoint(new Vector3(max.x, 0f, max.z))
+        };
+
+        float minX = float.MaxValue;
+        float maxX = float.MinValue;
+        float minY = float.MaxValue;
+        float maxY = float.MinValue;
+        bool visivel = false;
+        for (int i = 0; i < cantos.Length; i++)
+        {
+            if (cantos[i].z <= 0f) continue;
+            visivel = true;
+            minX = Mathf.Min(minX, cantos[i].x);
+            maxX = Mathf.Max(maxX, cantos[i].x);
+            minY = Mathf.Min(minY, Screen.height - cantos[i].y);
+            maxY = Mathf.Max(maxY, Screen.height - cantos[i].y);
+        }
+
+        if (!visivel || maxX < 0f || minX > Screen.width || maxY < 0f || minY > Screen.height) return;
+
+        minX = Mathf.Clamp(minX, -2f, Screen.width + 2f);
+        maxX = Mathf.Clamp(maxX, -2f, Screen.width + 2f);
+        minY = Mathf.Clamp(minY, -2f, Screen.height + 2f);
+        maxY = Mathf.Clamp(maxY, -2f, Screen.height + 2f);
+        if (maxX <= minX || maxY <= minY) return;
+
+        GUI.color = new Color(0.82f, 0.08f, 0.08f, 0.22f);
+        GUI.DrawTexture(new Rect(minX, minY, maxX - minX, maxY - minY), Texture2D.whiteTexture);
+        GUI.color = new Color(1f, 0.18f, 0.12f, 0.8f);
+        GUI.DrawTexture(new Rect(minX, minY, maxX - minX, 2f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(minX, maxY - 2f, maxX - minX, 2f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(minX, minY, 2f, maxY - minY), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(maxX - 2f, minY, 2f, maxY - minY), Texture2D.whiteTexture);
+        GUI.color = Color.white;
     }
 
     void DesenharIconesNoMapa()

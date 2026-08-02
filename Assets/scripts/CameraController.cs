@@ -18,6 +18,13 @@ public class CameraController : MonoBehaviour
     public float alturaMinParaFov = 2f;
     public float alturaMaxParaFov = 8000f;
 
+    [Header("Distância de renderização do mapa")]
+    [Tooltip("Limite inferior evita que o terreno e a costa desapareçam na build.")]
+    public float distanciaMinimaRender = 2500f;
+    [Tooltip("Limite superior cobre o mapa grande sem deixar o recorte crescer indefinidamente.")]
+    public float distanciaMaximaRender = 14000f;
+    public float multiplicadorDistanciaRender = 6f;
+
     private float tempoShiftPressionado = 0f;
     private GerenteSelecao gerenteSelecaoCache;
     private float proximaBuscaGerenteSelecao = 0f;
@@ -147,8 +154,15 @@ public class CameraController : MonoBehaviour
             float tAltura = Mathf.InverseLerp(alturaMinParaFov, alturaMaxParaFov, pos.y);
             cameraPrincipal.fieldOfView = Mathf.Lerp(campoDeVisaoMin, campoDeVisaoMax, tAltura);
             
-            // Ajusta a distância máxima de renderização dinamicamente para não cortar o horizonte
-            cameraPrincipal.farClipPlane = Mathf.Clamp(pos.y * 4f, 1500f, 6000f);
+            // O mapa é maior que o valor padrão de 1000/1500 salvo na cena. Em
+            // builds isso cortava terreno, costa e unidades à distância.
+            float distanciaMinima = Mathf.Max(1000f, distanciaMinimaRender);
+            float distanciaMaxima = Mathf.Max(distanciaMinima, distanciaMaximaRender);
+            float multiplicador = Mathf.Max(1f, multiplicadorDistanciaRender);
+            cameraPrincipal.farClipPlane = Mathf.Clamp(
+                pos.y * multiplicador,
+                distanciaMinima,
+                distanciaMaxima);
         }
 
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---

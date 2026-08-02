@@ -241,10 +241,16 @@ namespace Hegemonia.AI.BrainMaster
         private void Update()
         {
             TickEconomy(Time.deltaTime);
-            IA_RuntimeTextTrace.LogFrame(TeamId, "BrainMaster", "UPDATE_BEGIN", BuildRuntimeTraceSnapshot());
+            if (IA_RuntimeTextTrace.FrameTraceEnabled)
+            {
+                IA_RuntimeTextTrace.LogFrame(TeamId, "BrainMaster", "UPDATE_BEGIN", BuildRuntimeTraceSnapshot());
+            }
             if (!EnsureRuntimeOperational(false))
             {
-                IA_RuntimeTextTrace.LogFrame(TeamId, "BrainMaster", "UPDATE_ABORT", "runtime indisponivel | " + BuildRuntimeTraceSnapshot());
+                if (IA_RuntimeTextTrace.FrameTraceEnabled)
+                {
+                    IA_RuntimeTextTrace.LogFrame(TeamId, "BrainMaster", "UPDATE_ABORT", "runtime indisponivel | " + BuildRuntimeTraceSnapshot());
+                }
                 return;
             }
 

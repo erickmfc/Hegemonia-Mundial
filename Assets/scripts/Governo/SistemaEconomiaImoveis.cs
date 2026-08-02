@@ -602,7 +602,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             case TipoEstruturaEconomica.Comercio: economia.comercios++; break;
             case TipoEstruturaEconomica.Farm: economia.farms++; break;
             case TipoEstruturaEconomica.Energia: economia.usinas++; break;
-            case TipoEstruturaEconomica.PesquisaMilitar: economia.estruturasContadas++; break;
+            case TipoEstruturaEconomica.PesquisaMilitar: break;
             case TipoEstruturaEconomica.UsinaSolar: economia.usinas++; break;
         }
     }

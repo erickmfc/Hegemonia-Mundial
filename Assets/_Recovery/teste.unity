@@ -3468,6 +3468,9 @@ MonoBehaviour:
   campoDeVisaoMax: 90
   alturaMinParaFov: 2
   alturaMaxParaFov: 2500
+  distanciaMinimaRender: 2500
+  distanciaMaximaRender: 14000
+  multiplicadorDistanciaRender: 6
 --- !u!1 &338526164
 GameObject:
   m_ObjectHideFlags: 0
@@ -3792,7 +3795,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &358294490
 Transform:
   m_ObjectHideFlags: 0
@@ -3875,7 +3878,7 @@ Terrain:
   m_HeightmapMaximumLOD: 0
   m_ShadowCastingMode: 2
   m_DrawHeightmap: 1
-  m_DrawInstanced: 1
+  m_DrawInstanced: 0
   m_DrawTreesAndFoliage: 1
   m_StaticShadowCaster: 0
   m_IgnoreQualitySettings: 0
@@ -5564,7 +5567,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &499541507
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6315,7 +6318,7 @@ Terrain:
   m_HeightmapMaximumLOD: 0
   m_ShadowCastingMode: 2
   m_DrawHeightmap: 1
-  m_DrawInstanced: 1
+  m_DrawInstanced: 0
   m_DrawTreesAndFoliage: 1
   m_StaticShadowCaster: 0
   m_IgnoreQualitySettings: 0
@@ -17180,7 +17183,7 @@ Transform:
   m_GameObject: {fileID: 1499043414}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 1791, y: 0.000015258789, z: -8705}
+  m_LocalPosition: {x: 438, y: 0.000015258789, z: -8705}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -17770,7 +17773,7 @@ MonoBehaviour:
   populacaoMaxima: 100
   energia: 100
   comida: 100
-  dinheiroPorSegundo: 10
+  dinheiroPorSegundo: 0
   petroleoPorSegundo: 5
   acoPorSegundo: 5
   energiaPorSegundo: 0
@@ -21284,7 +21287,7 @@ Terrain:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1984084234}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 6
   m_TerrainData: {fileID: 15600000, guid: 772b910bfc34ece4282dd34ec92fee4f, type: 2}
   m_TreeDistance: 5000
@@ -21299,7 +21302,7 @@ Terrain:
   m_HeightmapMaximumLOD: 0
   m_ShadowCastingMode: 2
   m_DrawHeightmap: 1
-  m_DrawInstanced: 1
+  m_DrawInstanced: 0
   m_DrawTreesAndFoliage: 1
   m_StaticShadowCaster: 0
   m_IgnoreQualitySettings: 0

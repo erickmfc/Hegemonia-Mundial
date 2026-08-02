@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 [DefaultExecutionOrder(-950)]
@@ -19,12 +20,18 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
         public float BillboardStart;
         public float BasemapDistance;
         public float PixelError;
+        public bool DrawInstanced;
     }
 
     private struct EstadoVolume
     {
         public bool Enabled;
         public float Weight;
+    }
+
+    private struct EstadoBloom
+    {
+        public bool Active;
     }
 
     private struct EstadoRendererAgua
@@ -41,6 +48,7 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
 
     [Header("Gameplay")]
     [SerializeField] private bool desligarVolumesGlobaisExtras = true;
+    [SerializeField] private bool bloquearBloomInstavelDuranteGameplay = true;
     [SerializeField] private bool simplificarTerrenos = true;
     [SerializeField] private bool simplificarAgua = true;
     [SerializeField] private bool desligarMedidoresFpsLegados = false;
@@ -56,6 +64,7 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
 
     private readonly Dictionary<int, EstadoTerrain> _terrainsOriginais = new Dictionary<int, EstadoTerrain>();
     private readonly Dictionary<int, EstadoVolume> _volumesOriginais = new Dictionary<int, EstadoVolume>();
+    private readonly Dictionary<int, EstadoBloom> _bloomsOriginais = new Dictionary<int, EstadoBloom>();
     private readonly Dictionary<int, EstadoRendererAgua> _renderersAguaOriginais = new Dictionary<int, EstadoRendererAgua>();
     private PerfilQualidade _perfilAtual;
     private float _shadowDistanceOriginal = -1f;
@@ -125,6 +134,11 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
                 AplicarVolumesGameplay();
             }
 
+            if (bloquearBloomInstavelDuranteGameplay)
+            {
+                AplicarBloomSeguro();
+            }
+
             if (simplificarAgua)
             {
                 AplicarAguaGameplay();
@@ -171,7 +185,8 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
                     TreeDistance = terreno.treeDistance,
                     BillboardStart = terreno.treeBillboardDistance,
                     BasemapDistance = terreno.basemapDistance,
-                    PixelError = terreno.heightmapPixelError
+                    PixelError = terreno.heightmapPixelError,
+                    DrawInstanced = terreno.drawInstanced
                 };
             }
 
@@ -180,6 +195,12 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
             terreno.treeBillboardDistance = Mathf.Min(terreno.treeBillboardDistance, terrainBillboardStartGameplay);
             terreno.basemapDistance = Mathf.Min(terreno.basemapDistance, terrainBasemapDistanceGameplay);
             terreno.heightmapPixelError = Mathf.Max(terreno.heightmapPixelError, terrainPixelErrorGameplay);
+            // O shader de Terrain usado nesta cena não fornece todos os
+            // parâmetros de instancing exigidos pelo URP (unity_SHC/
+            // unity_SHBb). Isso gerava avisos por frame e flashes de luz na
+            // build. Desligamos apenas o caminho instanciado; o Terrain,
+            // collider e navegação continuam ativos.
+            terreno.drawInstanced = false;
         }
     }
 
@@ -206,7 +227,11 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
                 };
             }
 
-            if (volumePrincipal == null || volume.priority > volumePrincipal.priority)
+            if (volumePrincipal == null || volume.priority > volumePrincipal.priority ||
+                (volume.priority == volumePrincipal.priority && volume.gameObject.activeInHierarchy && !volumePrincipal.gameObject.activeInHierarchy) ||
+                (volume.priority == volumePrincipal.priority && volume.gameObject.activeInHierarchy == volumePrincipal.gameObject.activeInHierarchy &&
+                 string.Equals(volume.name, "Global Volume", System.StringComparison.Ordinal) &&
+                 !string.Equals(volumePrincipal.name, "Global Volume", System.StringComparison.Ordinal)))
             {
                 volumePrincipal = volume;
             }
@@ -231,6 +256,35 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
             }
 
             volume.enabled = false;
+        }
+    }
+
+    private void AplicarBloomSeguro()
+    {
+        Volume[] volumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
+        for (int i = 0; i < volumes.Length; i++)
+        {
+            Volume volume = volumes[i];
+            if (volume == null || !volume.isGlobal || volume.sharedProfile == null)
+            {
+                continue;
+            }
+
+            Bloom bloom;
+            if (!volume.sharedProfile.TryGet(out bloom) || bloom == null)
+            {
+                continue;
+            }
+
+            int key = bloom.GetInstanceID();
+            if (!_bloomsOriginais.ContainsKey(key))
+            {
+                _bloomsOriginais[key] = new EstadoBloom { Active = bloom.active };
+            }
+
+            // Materiais HDR e partículas temporárias não podem transformar um
+            // marcador fora da câmera em um clarão verde/ciano no gameplay.
+            bloom.active = false;
         }
     }
 
@@ -356,6 +410,7 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
                 terreno.treeBillboardDistance = estado.BillboardStart;
                 terreno.basemapDistance = estado.BasemapDistance;
                 terreno.heightmapPixelError = estado.PixelError;
+                terreno.drawInstanced = estado.DrawInstanced;
             }
         }
 
@@ -372,6 +427,30 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
             {
                 volume.enabled = estado.Enabled;
                 volume.weight = estado.Weight;
+            }
+        }
+
+        if (bloquearBloomInstavelDuranteGameplay)
+        {
+            Volume[] volumesComBloom = FindObjectsByType<Volume>(FindObjectsSortMode.None);
+            for (int i = 0; i < volumesComBloom.Length; i++)
+            {
+                Volume volume = volumesComBloom[i];
+                if (volume == null || volume.sharedProfile == null)
+                {
+                    continue;
+                }
+
+                Bloom bloom;
+                if (!volume.sharedProfile.TryGet(out bloom) || bloom == null)
+                {
+                    continue;
+                }
+
+                if (_bloomsOriginais.TryGetValue(bloom.GetInstanceID(), out EstadoBloom estadoBloom))
+                {
+                    bloom.active = estadoBloom.Active;
+                }
             }
         }
 

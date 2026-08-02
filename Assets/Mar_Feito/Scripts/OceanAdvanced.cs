@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class OceanAdvanced : MonoBehaviour
 {
@@ -30,6 +31,13 @@ public class OceanAdvanced : MonoBehaviour
  
   private int interaction_id = 0;
   private Vector4[] interactions = new Vector4[NB_INTERACTIONS];
+  // Mantém as propriedades do oceano em instâncias pertencentes aos
+  // renderers. Nunca altera o Material compartilhado do projeto.
+  private readonly List<Renderer> renderersRenderizados = new List<Renderer>();
+  private readonly List<Material[]> materiaisRenderizados = new List<Material[]>();
+  private Vector4 ultimaDirecaoLuz;
+  private Vector4 ultimaCorLuz;
+  private bool luzInicializada;
 
   
   const int NB_WAVE = 5;
@@ -45,7 +53,13 @@ public class OceanAdvanced : MonoBehaviour
 
   void Awake()
   {
-    if (ocean == null)
+    // O campo antigo "ocean" pode apontar para Mar_Novo.mat, enquanto o
+    // MeshRenderer da cena usa Sea.mat. Inicializa o material efetivamente
+    // renderizado, mas em uma instância local para não contaminar assets
+    // compartilhados nem outros objetos que usem o mesmo shader.
+    RegistrarMateriaisRenderizados();
+
+    if (renderersRenderizados.Count == 0)
     {
       enabled = false;
       Debug.LogWarning("[OceanAdvanced] Material do oceano ausente; componente desativado para manter a campanha executavel.");
@@ -70,22 +84,25 @@ public class OceanAdvanced : MonoBehaviour
       v_waves_dir[i] = new Vector4(waves[i].direction.x, waves[i].direction.y, 0, 0);
     }
 
-    ocean.SetVectorArray("waves_p", v_waves);
-    ocean.SetVectorArray("waves_d", v_waves_dir);
-
     for (int i = 0; i < NB_INTERACTIONS; i++)
       interactions[i].w = 500.0F;
-    ocean.SetVectorArray("interactions", interactions);
-    ocean.SetVector("world_light_dir", -sun.transform.forward);
+
+    AplicarParametrosDoOceano(v_waves, v_waves_dir);
   }
 
   void FixedUpdate()
   {
-    if (ocean == null || sun == null)
+    if (sun == null || materiaisRenderizados.Count == 0)
       return;
 
-    ocean.SetVector("world_light_dir", -sun.transform.forward);
-    ocean.SetVector("sun_color", new Vector4(sun.color.r, sun.color.g, sun.color.b, 0.0F));
+    Vector4 direcaoLuz = -sun.transform.forward;
+    Vector4 corLuz = new Vector4(sun.color.r, sun.color.g, sun.color.b, 0.0F);
+    if (luzInicializada &&
+        (direcaoLuz - ultimaDirecaoLuz).sqrMagnitude < 0.000001f &&
+        (corLuz - ultimaCorLuz).sqrMagnitude < 0.000001f)
+      return;
+
+    AplicarLuz(direcaoLuz, corLuz);
   }
 
   public void RegisterInteraction(Vector3 pos, float strength)
@@ -94,8 +111,104 @@ public class OceanAdvanced : MonoBehaviour
     interactions[interaction_id].y = pos.z;
     interactions[interaction_id].z = strength;
     interactions[interaction_id].w = Time.time;
-    ocean.SetVectorArray("interactions", interactions);
+    AplicarInteracoes();
     interaction_id = (interaction_id + 1) % NB_INTERACTIONS;
+  }
+
+  private void RegistrarMateriaisRenderizados()
+  {
+    renderersRenderizados.Clear();
+    materiaisRenderizados.Clear();
+
+    Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+    for (int i = 0; i < renderers.Length; i++)
+    {
+      Renderer renderer = renderers[i];
+      if (renderer == null) continue;
+
+      Material[] materiaisCompartilhados = renderer.sharedMaterials;
+      bool rendererDoOceano = false;
+      for (int m = 0; m < materiaisCompartilhados.Length; m++)
+      {
+        Material material = materiaisCompartilhados[m];
+        if (material == ocean ||
+            (material != null && material.shader != null &&
+             material.shader.name == "Nature/OceanAdvanced"))
+        {
+          rendererDoOceano = true;
+          break;
+        }
+      }
+
+      if (!rendererDoOceano) continue;
+
+      // renderer.materials cria cópias por renderer e deixa os assets .mat
+      // originais intactos. O oceano possui poucos renderers, então o custo
+      // é fixo e elimina a disputa entre cenas/câmeras.
+      renderersRenderizados.Add(renderer);
+      materiaisRenderizados.Add(renderer.materials);
+    }
+  }
+
+  private void AplicarLuz(Vector4 direcaoLuz, Vector4 corLuz)
+  {
+    ultimaDirecaoLuz = direcaoLuz;
+    ultimaCorLuz = corLuz;
+    luzInicializada = true;
+
+    for (int i = 0; i < materiaisRenderizados.Count; i++)
+    {
+      Material[] materiais = materiaisRenderizados[i];
+      if (materiais == null) continue;
+      for (int m = 0; m < materiais.Length; m++)
+      {
+        Material material = materiais[m];
+        if (material == null) continue;
+        material.SetVector("world_light_dir", direcaoLuz);
+        material.SetVector("sun_color", corLuz);
+      }
+    }
+  }
+
+  private void AplicarParametrosDoOceano(Vector4[] v_waves, Vector4[] v_waves_dir)
+  {
+    Vector4 direcaoLuz = -sun.transform.forward;
+    Vector4 corLuz = new Vector4(sun.color.r, sun.color.g, sun.color.b, 0.0F);
+
+    for (int i = 0; i < materiaisRenderizados.Count; i++)
+    {
+      Material[] materiais = materiaisRenderizados[i];
+      if (materiais == null) continue;
+      for (int m = 0; m < materiais.Length; m++)
+      {
+        Material material = materiais[m];
+        if (material == null) continue;
+
+        material.SetVectorArray("waves_p", v_waves);
+        material.SetVectorArray("waves_d", v_waves_dir);
+        material.SetVectorArray("interactions", interactions);
+        material.SetVector("world_light_dir", direcaoLuz);
+        material.SetVector("sun_color", corLuz);
+      }
+    }
+
+    ultimaDirecaoLuz = direcaoLuz;
+    ultimaCorLuz = corLuz;
+    luzInicializada = true;
+  }
+
+  private void AplicarInteracoes()
+  {
+    for (int i = 0; i < materiaisRenderizados.Count; i++)
+    {
+      Material[] materiais = materiaisRenderizados[i];
+      if (materiais == null) continue;
+      for (int m = 0; m < materiais.Length; m++)
+      {
+        Material material = materiais[m];
+        if (material != null) material.SetVectorArray("interactions", interactions);
+      }
+    }
   }
 
 

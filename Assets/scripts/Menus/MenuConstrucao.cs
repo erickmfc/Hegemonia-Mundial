@@ -3549,6 +3549,8 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         return prefabDoNavio.GetComponent<NavioPetroleiro>() != null
+            || prefabDoNavio.GetComponent<NavioCargaMercado>() != null
+            || prefabDoNavio.name.IndexOf("navio de carga", System.StringComparison.OrdinalIgnoreCase) >= 0
             || prefabDoNavio.GetComponent<TransporteAnfibio>() != null
             || prefabDoNavio.GetComponent<NavioLiberty>() != null;
     }

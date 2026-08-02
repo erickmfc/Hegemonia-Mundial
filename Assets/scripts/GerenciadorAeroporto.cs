@@ -828,7 +828,15 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (shader != null) rend.material = new Material(shader);
             c.a = 1f;
             rend.material.color = c;
-            rend.material.SetColor("_EmissionColor", c * 1.8f);
+            // Marcador de ordem não é uma fonte de luz. Em build, a emissão
+            // somada ao Bloom podia virar um clarão verde/ciano no horizonte.
+            // Mantemos a cor do marcador, mas removemos qualquer emissão do
+            // material criado em runtime.
+            if (rend.material.HasProperty("_EmissionColor"))
+            {
+                rend.material.DisableKeyword("_EMISSION");
+                rend.material.SetColor("_EmissionColor", Color.black);
+            }
         }
 
         // Animação e Fade suave

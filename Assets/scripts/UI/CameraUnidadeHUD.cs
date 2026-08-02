@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Rendering;
 
 [RequireComponent(typeof(Camera))]
 public class CameraUnidadeHUD : MonoBehaviour
@@ -65,6 +64,8 @@ public class CameraUnidadeHUD : MonoBehaviour
     [SerializeField] private Vector3 offsetBase = new Vector3(0f, 15f, -25f);
     [SerializeField] private float suavidadeSeguir = 8f;
     [SerializeField] private float suavidadeRotacao = 5f;
+    [SerializeField] private float tempoEstabilizacaoCamera = 0.12f;
+    private Vector3 velocidadePosicaoCamera;
 
     private void Awake()
     {
@@ -87,79 +88,13 @@ public class CameraUnidadeHUD : MonoBehaviour
         DesativarDoMenu();
     }
 
-    private bool fogOriginalState;
-    private float fogOriginalStart;
-    private float fogOriginalEnd;
-    private FogMode fogOriginalMode;
-    private Color fogOriginalColor;
+    // A câmera de unidade não altera RenderSettings globalmente. Isso evita
+    // disputa de neblina entre a câmera principal, minimapa e câmera HUD.
+    // A câmera HUD não altera RenderSettings globalmente.
 
-    private void OnEnable()
-    {
-        RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
-        RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
-    }
+    private void OnEnable() { }
 
-    private void OnDisable()
-    {
-        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
-        RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
-    }
-
-    private void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
-    {
-        if (camera == minhaCamera && modoDroneCamera)
-        {
-            fogOriginalState = RenderSettings.fog;
-            fogOriginalStart = RenderSettings.fogStartDistance;
-            fogOriginalEnd = RenderSettings.fogEndDistance;
-            fogOriginalMode = RenderSettings.fogMode;
-            fogOriginalColor = RenderSettings.fogColor;
-
-            RenderSettings.fog = false;
-            RenderSettings.fogStartDistance = 100000f;
-            RenderSettings.fogEndDistance = 200000f;
-        }
-    }
-
-    private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
-    {
-        if (camera == minhaCamera && modoDroneCamera)
-        {
-            RenderSettings.fog = fogOriginalState;
-            RenderSettings.fogStartDistance = fogOriginalStart;
-            RenderSettings.fogEndDistance = fogOriginalEnd;
-            RenderSettings.fogMode = fogOriginalMode;
-            RenderSettings.fogColor = fogOriginalColor;
-        }
-    }
-
-    private void OnPreRender()
-    {
-        if (modoDroneCamera)
-        {
-            fogOriginalState = RenderSettings.fog;
-            fogOriginalStart = RenderSettings.fogStartDistance;
-            fogOriginalEnd = RenderSettings.fogEndDistance;
-            fogOriginalMode = RenderSettings.fogMode;
-            fogOriginalColor = RenderSettings.fogColor;
-
-            RenderSettings.fog = false;
-            RenderSettings.fogStartDistance = 100000f;
-            RenderSettings.fogEndDistance = 200000f;
-        }
-    }
-
-    private void OnPostRender()
-    {
-        if (modoDroneCamera)
-        {
-            RenderSettings.fog = fogOriginalState;
-            RenderSettings.fogStartDistance = fogOriginalStart;
-            RenderSettings.fogEndDistance = fogOriginalEnd;
-            RenderSettings.fogMode = fogOriginalMode;
-            RenderSettings.fogColor = fogOriginalColor;
-        }
-    }
+    private void OnDisable() { }
 
     private void OnDestroy()
     {
@@ -201,6 +136,7 @@ public class CameraUnidadeHUD : MonoBehaviour
         currentLookedTarget = null;
         if (!mesmaUnidade)
         {
+            velocidadePosicaoCamera = Vector3.zero;
             if (!manterModoDrone)
             {
                 modoDroneCamera = false;
@@ -314,10 +250,13 @@ public class CameraUnidadeHUD : MonoBehaviour
             Vector3 localCameraPosition = new Vector3(0f, -0.2f * scaleFactor, 0.6f * scaleFactor);
             Vector3 worldCameraPos = targetUnit.transform.TransformPoint(localCameraPosition);
             
-            transform.position = Vector3.Lerp(transform.position, worldCameraPos, Time.deltaTime * suavidadeSeguir);
+            float fatorPosicaoDrone = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeSeguir) * Time.deltaTime);
+            transform.position = Vector3.Lerp(transform.position, worldCameraPos, fatorPosicaoDrone);
             
             // Rotação: gimbal (drone rot + local gimbal yaw/pitch)
-            Quaternion droneRot = targetUnit.transform.rotation;
+            // Não herda pitch/roll do avião ou helicóptero: o horizonte fica
+            // estável mesmo enquanto o modelo faz a curva.
+            Quaternion droneRot = Quaternion.Euler(0f, targetUnit.transform.eulerAngles.y, 0f);
             Quaternion gimbalRot = Quaternion.Euler(currentRotationX, currentRotationY, 0f);
             Quaternion desiredRotation = droneRot * gimbalRot;
             
@@ -372,7 +311,8 @@ public class CameraUnidadeHUD : MonoBehaviour
                 stabilizedRotation = Quaternion.LookRotation(forward, Vector3.up);
             }
 
-            transform.rotation = Quaternion.Slerp(transform.rotation, stabilizedRotation, Time.deltaTime * suavidadeRotacao);
+            float fatorRotacaoDrone = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeRotacao) * Time.deltaTime);
+            transform.rotation = Quaternion.Slerp(transform.rotation, stabilizedRotation, fatorRotacaoDrone);
 
             // Zoom FOV poderoso para o drone Hasaf
             float desiredFOV = Mathf.Clamp(30f / zoomFactor, 0.1f, 45f);
@@ -428,15 +368,30 @@ public class CameraUnidadeHUD : MonoBehaviour
         
         // Aplica a rotação em volta da unidade
         Quaternion addRot = Quaternion.Euler(0f, currentRotationY, 0f);
-        Vector3 rotatedOffset = addRot * targetUnit.transform.TransformDirection(localOffset);
+        bool unidadeAerea = targetUnit.DominioAtual == DominioControleUnidade.Aereo
+            || targetUnit.GetComponent<Helicoptero>() != null
+            || targetUnit.GetComponent<ControleAviao>() != null
+            || targetUnit.GetComponent<C700TransporteAereo>() != null;
+        Quaternion baseRotacao = unidadeAerea
+            ? Quaternion.Euler(0f, targetUnit.transform.eulerAngles.y, 0f)
+            : targetUnit.transform.rotation;
+        Vector3 rotatedOffset = addRot * (baseRotacao * localOffset);
         Vector3 desiredPosition = targetPos + rotatedOffset;
 
-        // Suaviza a movimentação e rotação da câmera
-        transform.position = Vector3.Lerp(transform.position, desiredPosition, Time.deltaTime * suavidadeSeguir);
+        // Suavização independente do FPS e sem acompanhar pitch/roll do
+        // veículo como se fosse vibração da câmera.
+        transform.position = Vector3.SmoothDamp(
+            transform.position,
+            desiredPosition,
+            ref velocidadePosicaoCamera,
+            Mathf.Max(0.03f, tempoEstabilizacaoCamera),
+            Mathf.Infinity,
+            Time.deltaTime);
         
         Vector3 lookTarget = targetPos + Vector3.up * (factor * 0.4f + 0.5f);
         Quaternion targetRotation = Quaternion.LookRotation(lookTarget - transform.position);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * suavidadeRotacao);
+        float fatorRotacaoNormal = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeRotacao) * Time.deltaTime);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, fatorRotacaoNormal);
     }
 
     private void ProcessarMarcacaoAlvos()

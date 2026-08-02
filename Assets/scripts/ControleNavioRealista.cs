@@ -711,7 +711,9 @@ public class ControleNavioRealista : MonoBehaviour
         }
 
         float velocidadeReal = velocidadeVetorial.magnitude;
-        float ratioVelocidade = velocidadeReal / velocidadeMaxima;
+        float velocidadeReferencia = (float.IsNaN(velocidadeMaxima) || float.IsInfinity(velocidadeMaxima))
+            ? 1f : Mathf.Max(0.1f, Mathf.Abs(velocidadeMaxima));
+        float ratioVelocidade = Mathf.Clamp01(velocidadeReal / velocidadeReferencia);
 
         // 1. ROLL (Adernamento)
         // Curva pra esquerda (Leme < 0) -> Joga corpo pra direita (Roll > 0 ??? Não, Roll < 0 é direita em Unity Z?)
@@ -818,7 +820,13 @@ public class ControleNavioRealista : MonoBehaviour
             
             // Ajuste de Pitch dinâmico
             if (emMovimento)
-                fonteAudio.pitch = Mathf.Lerp(0.9f, 1.2f, velocidadeVetorial.magnitude / velocidadeMaxima);
+            {
+                float referencia = (float.IsNaN(velocidadeMaxima) || float.IsInfinity(velocidadeMaxima))
+                    ? 1f : Mathf.Max(0.1f, Mathf.Abs(velocidadeMaxima));
+                float proporcao = velocidadeVetorial.magnitude / referencia;
+                if (float.IsNaN(proporcao) || float.IsInfinity(proporcao)) proporcao = 0f;
+                fonteAudio.pitch = Mathf.Clamp(Mathf.Lerp(0.9f, 1.2f, Mathf.Clamp01(proporcao)), 0.1f, 3f);
+            }
             else
                 fonteAudio.pitch = 1.0f;
         }
