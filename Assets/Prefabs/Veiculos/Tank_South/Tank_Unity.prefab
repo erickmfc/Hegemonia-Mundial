@@ -350,6 +350,7 @@ MonoBehaviour:
   tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
+  bloquearMovimentoAutomatico: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
   interceptarTorpedos: 0
@@ -468,6 +469,7 @@ MonoBehaviour:
   tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
+  bloquearMovimentoAutomatico: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
   interceptarTorpedos: 0

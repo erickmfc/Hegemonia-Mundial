@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Math = System.Math;
 
 public enum TipoGastoMilitar
 {
@@ -24,7 +25,7 @@ public class DefinicaoMunicaoMilitar
     public string descricao = string.Empty;
     public string pesquisaId = string.Empty;
     public string prefabNome = string.Empty;
-    public int valorUnitario = 200;
+    public long valorUnitario = 220000L;
     public int capacidadeCartucho = 10;
     public float tempoReabastecimento = 8f;
     public bool ativo = true;
@@ -52,8 +53,8 @@ public class RegistroGastoMilitar
     public string categoria = string.Empty;
     public string unidade = string.Empty;
     public int quantidade;
-    public int valorUnitario;
-    public int valorTotal;
+    public long valorUnitario;
+    public long valorTotal;
     public string origem = string.Empty;
     public string data = string.Empty;
     public float tempo;
@@ -152,12 +153,18 @@ public sealed class SistemaGastosMilitares : MonoBehaviour
                 descricao = "Cartucho comprado diretamente pela unidade a cada disparo contra aeronaves.",
                 pesquisaId = "pesquisa_ares_ar",
                 prefabNome = "Ares_Ar",
-                valorUnitario = 220,
+                valorUnitario = 220000L,
                 capacidadeCartucho = 10,
                 tempoReabastecimento = 8f,
                 ativo = true
             };
             catalogoMunicoes.Add(ares);
+        }
+        else
+        {
+            // Saves antigos podem trazer o preco simbolico do cartucho.
+            // O ID continua o mesmo, mas o valor definitivo passa a valer para novos disparos.
+            ares.valorUnitario = 220000L;
         }
     }
 
@@ -194,7 +201,7 @@ public sealed class SistemaGastosMilitares : MonoBehaviour
             return false;
         }
 
-        if (!governo.TentarPagar(time, Mathf.Max(1, municao.valorUnitario)))
+        if (!governo.TentarPagar(time, Math.Max(1L, municao.valorUnitario)))
         {
             mensagem = "Sem saldo para comprar o cartucho de " + municao.nome + ".";
             return false;
@@ -218,8 +225,8 @@ public sealed class SistemaGastosMilitares : MonoBehaviour
             return false;
         }
 
-        int custoUnitarioFabricacao = Mathf.Max(1, Mathf.RoundToInt(municao.valorUnitario * 0.60f));
-        int custoTotal = custoUnitarioFabricacao * quantidade;
+        long custoUnitarioFabricacao = Math.Max(1L, (long)Math.Round(municao.valorUnitario * 0.60d));
+        long custoTotal = custoUnitarioFabricacao * quantidade;
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
         if (governo == null || !governo.TentarPagar(Mathf.Max(1, teamId), custoTotal))
         {
@@ -276,9 +283,9 @@ public sealed class SistemaGastosMilitares : MonoBehaviour
         return registros.Where(x => x != null && x.teamId == teamId).OrderByDescending(x => x.tempo);
     }
 
-    public int TotalGasto(int teamId)
+    public long TotalGasto(int teamId)
     {
-        return registros.Where(x => x != null && x.teamId == teamId).Sum(x => Mathf.Max(0, x.valorTotal));
+        return registros.Where(x => x != null && x.teamId == teamId).Sum(x => Math.Max(0L, x.valorTotal));
     }
 
     public static bool EhAresAr(string texto)
@@ -309,7 +316,7 @@ public sealed class SistemaGastosMilitares : MonoBehaviour
     }
 
     private void Registrar(int teamId, TipoGastoMilitar tipo, string itemId, string itemNome, string categoria,
-        string unidade, int quantidade, int valorUnitario, string origem)
+        string unidade, int quantidade, long valorUnitario, string origem)
     {
         RegistroGastoMilitar registro = new RegistroGastoMilitar
         {
@@ -320,8 +327,8 @@ public sealed class SistemaGastosMilitares : MonoBehaviour
             categoria = categoria ?? "Militar",
             unidade = unidade ?? "unidade",
             quantidade = Mathf.Max(1, quantidade),
-            valorUnitario = Mathf.Max(0, valorUnitario),
-            valorTotal = Mathf.Max(0, quantidade) * Mathf.Max(0, valorUnitario),
+            valorUnitario = Math.Max(0L, valorUnitario),
+            valorTotal = Math.Max(0, quantidade) * Math.Max(0L, valorUnitario),
             origem = origem ?? string.Empty,
             data = DateTime.Now.ToString("dd/MM/yyyy HH:mm"),
             tempo = Time.unscaledTime

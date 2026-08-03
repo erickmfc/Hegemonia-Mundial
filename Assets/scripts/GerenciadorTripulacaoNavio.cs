@@ -149,6 +149,7 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
 
         // Instancia no mundo na posição do ponto inicial
         GameObject go = Instantiate(prefab, pontoInicial.position, pontoInicial.rotation);
+        DesativarRuntimeDeCombate(go);
 
         // Restaura o estado do prefab
         if (prefabAgent != null && prefabAgentWasEnabled)
@@ -228,6 +229,21 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
         DefinirNovoDestino(membro);
 
         _tripulacao.Add(membro);
+    }
+
+    private static void DesativarRuntimeDeCombate(GameObject tripulante)
+    {
+        if (tripulante == null) return;
+
+        MonoBehaviour[] comportamentos = tripulante.GetComponentsInChildren<MonoBehaviour>(true);
+        for (int i = 0; i < comportamentos.Length; i++)
+        {
+            MonoBehaviour comportamento = comportamentos[i];
+            if (comportamento != null)
+            {
+                comportamento.enabled = false;
+            }
+        }
     }
 
     private void DefinirNovoDestino(MembroTripulacao membro)

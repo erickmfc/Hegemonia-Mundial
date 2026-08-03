@@ -169,7 +169,7 @@ public class DadosPaisGoverno
     // ─────────────────────────────────────────────────────────────────────
 
 
-    public int saldo = 5000;
+    public long saldo = 5000L;
     public float rendaPorSegundo = 10f;
     public float gastosPorSegundo = 4f;
     public float divida = 0f;

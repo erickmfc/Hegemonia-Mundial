@@ -172,6 +172,8 @@ public class ControleTorreta : MonoBehaviour
     private ControleUnidade meuControle;
     private IdentidadeUnidade minhaIdentidade;
     private int meuTime = -1;
+    private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
+    private float proximaBuscaAlvo;
 
     private bool souAntiAereo;
     private bool diagnosticoLocaisDoTiroEmitido;
@@ -297,8 +299,7 @@ public class ControleTorreta : MonoBehaviour
             rotacaoInicialCanosCapturada = true;
         }
 
-        float inicioAleatorio = Random.Range(0f, 0.5f);
-        InvokeRepeating(nameof(ProcurarAlvo), inicioAleatorio, 0.4f);
+        proximaBuscaAlvo = Time.unscaledTime + Random.Range(0f, 0.5f);
 
         CriarVisualizadorAlcance();
         GarantirLocaisDeTiro();
@@ -601,6 +602,7 @@ public class ControleTorreta : MonoBehaviour
     #region Update e Rotação
     void Update()
     {
+        AtualizarAgendamentoBusca();
         if (bloquearMovimentoAutomatico)
         {
             SetarAlvo(null);
@@ -749,6 +751,24 @@ public class ControleTorreta : MonoBehaviour
                 }
             }
             ModoOcioso();
+        }
+    }
+
+    private void AtualizarAgendamentoBusca()
+    {
+        if (modoPassivo || bloquearMovimentoAutomatico) return;
+        bool selecionada = meuControle != null && meuControle.selecionado;
+        bool critica = interceptarMisseis || interceptarTorpedos;
+        bool emCombate = critica || alvoAtual != null || alvoPrioritario != null;
+        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionada, emCombate, critica);
+        float intervalo = InfraPerformanceGameplay.ResolverIntervalo(
+            emCombate || selecionada ? 0.20f : 0.40f,
+            estadoOtimizacao,
+            true,
+            true);
+        if (InfraPerformanceGameplay.DeveExecutar(this, ref proximaBuscaAlvo, intervalo))
+        {
+            ProcurarAlvo();
         }
     }
 

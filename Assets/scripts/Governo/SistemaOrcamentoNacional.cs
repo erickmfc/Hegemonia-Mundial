@@ -22,7 +22,7 @@ public class RelatorioOrcamentoNacional
     public decimal despesaTotalDia;
     public decimal saldoLiquidoDia;
     public decimal projecaoMensal;
-    public float tesouroAtual;
+    public decimal tesouroAtual;
     public float dividaTotal;
     public float inflacao;
     public float cargaFiscalMedia;

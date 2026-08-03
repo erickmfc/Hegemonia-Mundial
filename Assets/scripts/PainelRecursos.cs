@@ -606,7 +606,10 @@ public class PainelRecursos : MonoBehaviour
     {
         if (GerenciadorRecursos.Instancia == null)
         {
-            AtualizarTexto(textoDinheiro, 10320, ganhoTextoDinheiro, 11, "$ ");
+            long caixaInicial = GameDifficultyManager.Instancia != null
+                ? GameDifficultyManager.PerfilAtual.DinheiroInicial
+                : 0L;
+            AtualizarTextoDinheiro(textoDinheiro, caixaInicial, ganhoTextoDinheiro, 0f, "$ ");
             if (textoEnergia != null) textoEnergia.text = "0% USO";
             if (ganhoTextoEnergia != null) ganhoTextoEnergia.text = "0/0";
             AtualizarTexto(textoPetroleo, 500, ganhoTextoPetroleo, 0, "");
@@ -626,7 +629,7 @@ public class PainelRecursos : MonoBehaviour
 
         var r = GerenciadorRecursos.Instancia;
 
-        AtualizarTexto(textoDinheiro, r.dinheiro, ganhoTextoDinheiro, r.dinheiroPorSegundo, "$ ");
+        AtualizarTextoDinheiro(textoDinheiro, r.dinheiro, ganhoTextoDinheiro, r.dinheiroPorSegundo, "$ ");
         AtualizarTexto(textoPetroleo, r.petroleo, ganhoTextoPetroleo, r.petroleoPorSegundo, "");
         AtualizarTexto(textoAco, r.aco, ganhoTextoAco, r.acoPorSegundo, "");
         AtualizarTexto(textoComida, r.comida, ganhoTextoComida, r.comidaPorSegundo, "");
@@ -756,6 +759,18 @@ public class PainelRecursos : MonoBehaviour
                 txtGanho.text = "+0/s";
                 txtGanho.color = corVerde;
             }
+        }
+    }
+
+    private void AtualizarTextoDinheiro(TextMeshProUGUI txtValor, long valor, TextMeshProUGUI txtGanho, float ganho, string prefixo)
+    {
+        if (txtValor != null)
+            txtValor.text = ValoresDefinitivosHegemonia.FormatarDinheiro(valor);
+
+        if (txtGanho != null)
+        {
+            txtGanho.text = ganho > 0f ? $"+{ganho:N0}/s" : ganho < 0f ? $"{ganho:N0}/s" : "+0/s";
+            txtGanho.color = ganho < 0f ? corVermelho : corVerde;
         }
     }
 }

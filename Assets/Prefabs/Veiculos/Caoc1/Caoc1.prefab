@@ -873,7 +873,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 1
-  m_Speed: 8
+  m_Speed: 20
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 120.78
@@ -897,7 +897,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 12d9556e02055ca40abad284bc14922a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MovimentoRealTerrestre
-  velocidadeMaxima: 4.73
+  velocidadeMaxima: 20
   aceleracao: 3.87
   desaceleracao: 10
   potenciaCurva: 60
@@ -921,7 +921,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TransporteTerrestre
   capacidadeMaxima: 20
   distanciaParaEmbarque: 10
-  distanciaDescarga: 3
+  distanciaDescarga: 7
   assentosVisiveis: []
 --- !u!114 &780330869220879923
 MonoBehaviour:

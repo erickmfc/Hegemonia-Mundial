@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections;
 using System.Collections.Generic;
+using Math = System.Math;
 using UnityEngine.AI;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
@@ -11,6 +12,11 @@ public class MenuConstrucao : MonoBehaviour
 {
     // Recompilacao forcada para garantir que o fluxo ICBM atualizado seja carregado no Play Mode.
     public static MenuConstrucao Instancia { get; private set; }
+
+    private static long PrecoEfetivo(DadosConstrucao item)
+    {
+        return item != null ? item.ObterPrecoEfetivo() : 0L;
+    }
 
     [System.Serializable]
     public class ConfigVisualCategoria
@@ -188,6 +194,7 @@ public class MenuConstrucao : MonoBehaviour
             "Assets/Prefabs/Imobiliario/Pred Medio/Predio Medio.asset",
             "Assets/Prefabs/Imobiliario/Pred Vilage/NovaConstrucao.asset",
             "Assets/Prefabs/Imobiliario/Perd Hard/Pred Hard.asset",
+            "Assets/Prefabs/Energia/Usina de carvao.asset",
             // Ficha do silo/lançador ICBM: fica fora de Resources, portanto
             // precisa entrar explicitamente no catálogo essencial do menu.
             "Assets/Prefabs/Missiles/ICBM/Foguete.asset"
@@ -1729,7 +1736,7 @@ public class MenuConstrucao : MonoBehaviour
 
         textoDetalheNome.text = item.GetDisplayName();
         textoDetalheCategoria.text = ObterRotuloCategoria(item.categoria);
-        textoDetalhePreco.text = "$ " + item.preco;
+        textoDetalhePreco.text = ValoresDefinitivosHegemonia.FormatarDinheiro(PrecoEfetivo(item));
         textoDetalheTipo.text = ObterTipoItem(item);
         textoDetalheVelocidade.text = ObterTextoVelocidadeItem(item);
         if (textoDetalheVida != null) textoDetalheVida.text = ObterTextoVidaItem(item);
@@ -2078,7 +2085,7 @@ public class MenuConstrucao : MonoBehaviour
         lePreco.preferredHeight = 18;
 
         Text tPreco = precoObj.AddComponent<Text>();
-        tPreco.text = $"<color=#44FF88>$ {item.preco}</color>";
+        tPreco.text = $"<color=#44FF88>{ValoresDefinitivosHegemonia.FormatarDinheiro(PrecoEfetivo(item))}</color>";
         tPreco.font = ObterFontePadrao();
         tPreco.fontSize = 13;
         tPreco.alignment = TextAnchor.MiddleCenter;
@@ -2934,7 +2941,7 @@ public class MenuConstrucao : MonoBehaviour
         return quantidadesPorItem.ContainsKey(item.nomeItem) ? Mathf.Max(1, quantidadesPorItem[item.nomeItem]) : 1;
     }
 
-    bool TemDinheiroPara(int custo)
+    bool TemDinheiroPara(long custo)
     {
         if (custo <= 0)
         {
@@ -2977,7 +2984,8 @@ public class MenuConstrucao : MonoBehaviour
 
         TipoFluxoConstrucao fluxo = ClassificarFluxo(item);
         int quantidade = ObterQuantidadeParaCompra(item, fluxo == TipoFluxoConstrucao.Estrutura);
-        int custoTotal = Mathf.Max(0, item.preco) * quantidade;
+        long preco = PrecoEfetivo(item);
+        long custoTotal = Math.Max(0L, preco) * Math.Max(0, quantidade);
 
         string motivoGovernanca;
         if (!GovernadorGameplayRTS.PermitirProducao(item, quantidade, out motivoGovernanca))
@@ -3078,6 +3086,7 @@ public class MenuConstrucao : MonoBehaviour
 
     void IniciarConstrucaoFantasma(DadosConstrucao item, Image cardImage)
     {
+        long preco = PrecoEfetivo(item);
         Debug.Log($"[MenuConstrucao][DEBUG] iniciar item={item?.name} nome={item?.GetDisplayName()} id={item?.itemId} prefab={(item != null && item.prefabDaUnidade != null ? item.prefabDaUnidade.name : "NULL")}");
         Construtor construtor = ObterOuCriarConstrutor();
         if (construtor == null)
@@ -3103,13 +3112,13 @@ public class MenuConstrucao : MonoBehaviour
         bool ehIcbm = item != null &&
             (string.Equals(item.itemId, "foguete_icbm", System.StringComparison.OrdinalIgnoreCase) ||
              item.GetDisplayName().IndexOf("ICBM", System.StringComparison.OrdinalIgnoreCase) >= 0);
-        construtor.SelecionarParaConstruir(item.prefabDaUnidade, Mathf.Max(0, item.preco), item.categoria, ehIcbm);
+        construtor.SelecionarParaConstruir(item.prefabDaUnidade, Math.Max(0L, preco), item.categoria, ehIcbm);
         AlternarMenu(false);
     }
 
     void ProduzirUnidadeTerrestre(DadosConstrucao item, int quantidade, Image cardImage)
     {
-        gerente.ComprarUnidade(item.prefabDaUnidade, item.preco, quantidade);
+        gerente.ComprarUnidade(item.prefabDaUnidade, PrecoEfetivo(item), quantidade);
         if (cardImage != null) StartCoroutine(FlashCard(cardImage));
         AlternarMenu(false);
     }
@@ -3269,7 +3278,7 @@ public class MenuConstrucao : MonoBehaviour
         int comprados = 0;
         for (int i = 0; i < quantidade; i++)
         {
-            if (!gerente.TentarGastarDinheiro(item.preco))
+            if (!gerente.TentarGastarDinheiro(PrecoEfetivo(item)))
             {
                 break;
             }
@@ -3337,7 +3346,7 @@ public class MenuConstrucao : MonoBehaviour
         int enfileirados = 0;
         for (int i = 0; i < quantidade; i++)
         {
-            if (!gerente.TentarGastarDinheiro(item.preco))
+            if (!gerente.TentarGastarDinheiro(PrecoEfetivo(item)))
             {
                 break;
             }
@@ -3360,7 +3369,7 @@ public class MenuConstrucao : MonoBehaviour
 
             if (!sucesso)
             {
-                ReembolsarDinheiro(item.preco);
+                ReembolsarDinheiro(PrecoEfetivo(item));
                 EmitirAvisoJogador(string.Format(LocalizationManager.T("build.naval_fail", "Falha ao produzir '{0}' em estruturas navais validas."), item.nomeItem));
                 DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": estrutura naval recusou");
                 break;
@@ -3555,7 +3564,7 @@ public class MenuConstrucao : MonoBehaviour
             || prefabDoNavio.GetComponent<NavioLiberty>() != null;
     }
 
-    void ReembolsarDinheiro(int valor)
+    void ReembolsarDinheiro(long valor)
     {
         if (valor <= 0)
         {

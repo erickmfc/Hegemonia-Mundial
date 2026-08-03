@@ -24,6 +24,9 @@ public sealed class PerfilDificuldadeJogo
     public readonly int BonusModulosPorFrameIA;
     public readonly int BonusHeavySlotsIA;
     public readonly int MetaEstabilidadeMinutos;
+    public readonly long DinheiroInicial;
+    public readonly float MultiplicadorReceita;
+    public readonly float MultiplicadorManutencao;
 
     public PerfilDificuldadeJogo(
         DificuldadeJogo dificuldade,
@@ -53,6 +56,9 @@ public sealed class PerfilDificuldadeJogo
         BonusModulosPorFrameIA = bonusModulosPorFrameIA;
         BonusHeavySlotsIA = bonusHeavySlotsIA;
         MetaEstabilidadeMinutos = metaEstabilidadeMinutos;
+        DinheiroInicial = ValoresDefinitivosHegemonia.DinheiroInicial(dificuldade);
+        MultiplicadorReceita = ValoresDefinitivosHegemonia.MultiplicadorReceita(dificuldade);
+        MultiplicadorManutencao = ValoresDefinitivosHegemonia.MultiplicadorManutencao(dificuldade);
     }
 
     public int AjustarComandos(int baseValue)
@@ -93,7 +99,7 @@ public sealed class GameDifficultyManager : MonoBehaviour
         0.78f, 0.72f, 0.75f, 0.72f, 0.70f, 1.35f, -1, -1, -1, 30);
 
     private static readonly PerfilDificuldadeJogo PerfilNormal = new PerfilDificuldadeJogo(
-        DificuldadeJogo.Normal, "normal", "difficulty.normal",
+        DificuldadeJogo.Normal, "medio", "difficulty.normal",
         1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 0, 0, 0, 30);
 
     private static readonly PerfilDificuldadeJogo PerfilDificil = new PerfilDificuldadeJogo(
@@ -179,7 +185,7 @@ public sealed class GameDifficultyManager : MonoBehaviour
                 fallback = "Imperial";
                 break;
             default:
-                fallback = "Normal";
+                fallback = "Medio";
                 break;
         }
 
@@ -197,10 +203,13 @@ public sealed class GameDifficultyManager : MonoBehaviour
                 AplicarCodigo(PerfilDificil.Codigo);
                 break;
             case DificuldadeJogo.Dificil:
-                AplicarCodigo(PerfilImperial.Codigo);
+                AplicarCodigo(PerfilFacil.Codigo);
+                break;
+            case DificuldadeJogo.Imperial:
+                AplicarCodigo(PerfilFacil.Codigo);
                 break;
             default:
-                AplicarCodigo(PerfilFacil.Codigo);
+                AplicarCodigo(PerfilDificil.Codigo);
                 break;
         }
     }
@@ -252,6 +261,12 @@ public sealed class GameDifficultyManager : MonoBehaviour
             || string.Equals(codigo, "easy", StringComparison.OrdinalIgnoreCase))
         {
             return DificuldadeJogo.Facil;
+        }
+
+        if (string.Equals(codigo, "medio", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(codigo, "normal", StringComparison.OrdinalIgnoreCase))
+        {
+            return DificuldadeJogo.Normal;
         }
 
         if (string.Equals(codigo, "dificil", StringComparison.OrdinalIgnoreCase)

@@ -9,7 +9,10 @@ public static class AudioRuntime
         Terrestre,
         Armamento,
         Naval,
-        Aereo
+        Aereo,
+        Musica,
+        Ambiente,
+        Voz
     }
 
     public static void ConfigurarHierarquia(GameObject raiz)
@@ -58,6 +61,59 @@ public static class AudioRuntime
         ConfigurarFonte(fonte, Categoria.Armamento);
     }
 
+    public static void ConfigurarTodasAsFontesDaCena()
+    {
+        AudioSource[] fontes = UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
+        for (int i = 0; i < fontes.Length; i++)
+        {
+            ConfigurarFonteGenerica(fontes[i]);
+        }
+    }
+
+    public static void ConfigurarFonteGenerica(AudioSource fonte)
+    {
+        if (fonte == null)
+        {
+            return;
+        }
+
+        Transform origem = fonte.transform;
+        if (origem.GetComponentInParent<SomDoMar>() != null)
+        {
+            ConfigurarFonte(fonte, Categoria.Ambiente);
+            return;
+        }
+
+        if (origem.GetComponentInParent<MusicPlaylistController>() != null
+            || origem.GetComponentInParent<IntroVideoController>() != null)
+        {
+            ConfigurarFonte(fonte, Categoria.Musica);
+            return;
+        }
+
+        ConfigurarFonte(fonte, ResolverCategoria(origem));
+    }
+
+    public static void PlayClipAtPoint(AudioClip clip, Vector3 posicao, float volume = 1f)
+    {
+        if (clip == null)
+        {
+            return;
+        }
+
+        GameObject objeto = new GameObject("AudioOneShot_" + clip.name);
+        objeto.transform.position = posicao;
+        AudioSource fonte = objeto.AddComponent<AudioSource>();
+        fonte.clip = clip;
+        fonte.volume = volume;
+        fonte.playOnAwake = false;
+        fonte.spatialBlend = 1f;
+        fonte.loop = false;
+        ConfigurarFonteDeArmamento(fonte);
+        fonte.Play();
+        UnityEngine.Object.Destroy(objeto, clip.length + 0.1f);
+    }
+
     private static void SincronizarMotorAereoComEstado(GameObject raiz)
     {
         ControleAviao aviao = raiz.GetComponent<ControleAviao>();
@@ -77,13 +133,25 @@ public static class AudioRuntime
     {
         if (fonte == null) return;
 
-        fonte.spatialBlend = 1f;
+        fonte.spatialBlend = categoria == Categoria.Musica || categoria == Categoria.Ambiente ? 0f : 1f;
         fonte.rolloffMode = AudioRolloffMode.Linear;
         fonte.dopplerLevel = 0f;
         fonte.spread = categoria == Categoria.Aereo ? 55f : 20f;
         fonte.minDistance = ObterDistanciaMinima(categoria);
         fonte.maxDistance = ObterDistanciaMaxima(categoria);
         fonte.priority = Mathf.Min(fonte.priority, ObterPrioridade(categoria));
+        AudioSettingsService.RegistrarFonte(fonte, ConverterCategoria(categoria));
+    }
+
+    private static AudioChannel ConverterCategoria(Categoria categoria)
+    {
+        switch (categoria)
+        {
+            case Categoria.Musica: return AudioChannel.Musica;
+            case Categoria.Ambiente: return AudioChannel.Ambiente;
+            case Categoria.Voz: return AudioChannel.Voz;
+            default: return AudioChannel.Efeitos;
+        }
     }
 
     private static Categoria ResolverCategoria(Transform origem)

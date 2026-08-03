@@ -252,7 +252,7 @@ public class MisselBombardeiro : MonoBehaviour
 
         // Som
         if (somExplosao != null)
-            AudioSource.PlayClipAtPoint(somExplosao, transform.position);
+            AudioRuntime.PlayClipAtPoint(somExplosao, transform.position);
 
         // Dano em área
         alvosProcessados.Clear();

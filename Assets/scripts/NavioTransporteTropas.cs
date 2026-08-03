@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Hegemonia.AI.BrainMaster;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -14,6 +15,9 @@ using UnityEngine.AI;
 /// </summary>
 public class NavioTransporteTropas : MonoBehaviour
 {
+    // Registro sem busca global: o WorldState consulta somente os transportes ativos
+    // para contabilizar a força que está armazenada no manifesto.
+    private static readonly HashSet<NavioTransporteTropas> TransportesAtivos = new HashSet<NavioTransporteTropas>();
     [Header("Capacidade")]
     public int capacidadeMaxVeiculos = 8;
     public int capacidadeMaxSoldados = 200;
@@ -133,6 +137,7 @@ public class NavioTransporteTropas : MonoBehaviour
     private class CargaTerrestre
     {
         public GameObject unidade;
+        public ManifestoCargaOperacional manifesto;
         public bool navAgentEnabledAntes;
         public bool controleEnabledAntes;
         public bool rbExiste;
@@ -148,6 +153,11 @@ public class NavioTransporteTropas : MonoBehaviour
         public Helicoptero heli;
         public Transform paradaAtual;
         public bool emSaida;
+    }
+
+    private void OnEnable()
+    {
+        TransportesAtivos.Add(this);
     }
 
     private readonly List<CargaTerrestre> _veiculosCarregados = new List<CargaTerrestre>();
@@ -193,6 +203,48 @@ public class NavioTransporteTropas : MonoBehaviour
     public int VeiculosMax => capacidadeMaxVeiculos;
     public int SoldadosMax => capacidadeMaxSoldados;
     public int AereosMax => capacidadeMaxAereos;
+
+    /// <summary>
+    /// Passageiros em manifesto continuam compondo a força estratégica, mas não entram
+    /// em OwnCombatUnits nem em provedores de visão, pois não estão disponíveis no mapa.
+    /// </summary>
+    public static void AcumularForcaEmbarcada(int teamId, IA_ForceSnapshot forca)
+    {
+        if (forca == null) return;
+
+        foreach (NavioTransporteTropas transporte in TransportesAtivos)
+        {
+            if (transporte == null || !transporte.isActiveAndEnabled) continue;
+            transporte.AcumularListaEmbarcada(transporte._soldadosCarregados, teamId, forca);
+            transporte.AcumularListaEmbarcada(transporte._veiculosCarregados, teamId, forca);
+        }
+    }
+
+    private void AcumularListaEmbarcada(List<CargaTerrestre> cargas, int teamId, IA_ForceSnapshot forca)
+    {
+        if (cargas == null) return;
+        for (int i = 0; i < cargas.Count; i++)
+        {
+            CargaTerrestre carga = cargas[i];
+            if (carga == null) continue;
+
+            ManifestoCargaOperacional manifesto = carga.manifesto;
+            if (manifesto == null) continue;
+            if (manifesto.TeamId != teamId) continue;
+
+            forca.TotalOwnUnits++;
+            forca.TotalCombatUnits++;
+            if (manifesto.Tipo == TipoUnidade.Infantaria)
+            {
+                forca.InfantryUnits++;
+                continue;
+            }
+
+            string nome = manifesto.NomeExibicao.ToLowerInvariant();
+            if (nome.Contains("artilh") || nome.Contains("artillery")) forca.ArtilleryUnits++;
+            else forca.TankUnits++;
+        }
+    }
 
     public bool TemPontoEmTerra()
     {
@@ -307,6 +359,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private void OnDisable()
     {
+        TransportesAtivos.Remove(this);
         GestorMenusExclusivos.Fechar(this);
         if (_interacaoHeliSolicitada)
         {
@@ -439,10 +492,10 @@ public class NavioTransporteTropas : MonoBehaviour
             
             for (int i = 0; i < limiteVeiculos; i++)
             {
-                var u = _veiculosCarregados[i]?.unidade;
-                if (u == null) continue;
+                var carga = _veiculosCarregados[i];
+                if (!CargaValida(carga)) continue;
                 string pfx = (_categoriaSelecionada == CategoriaSelecao.Veiculo && _indiceSelecionadoVeiculo == i) ? "► " : "";
-                if (GUILayout.Button($"{pfx}🚚 {CompactarTextoMenu(LimparClone(u.name), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
+                if (GUILayout.Button($"{pfx}🚚 {CompactarTextoMenu(LimparClone(ObterNomeCarga(carga)), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
                 {
                     _categoriaSelecionada = CategoriaSelecao.Veiculo;
                     _indiceSelecionadoVeiculo = i;
@@ -469,10 +522,10 @@ public class NavioTransporteTropas : MonoBehaviour
             
             for (int i = 0; i < limiteSoldados; i++)
             {
-                var u = _soldadosCarregados[i]?.unidade;
-                if (u == null) continue;
+                var carga = _soldadosCarregados[i];
+                if (!CargaValida(carga)) continue;
                 string pfx = (_categoriaSelecionada == CategoriaSelecao.Soldado && _indiceSelecionadoSoldado == i) ? "► " : "";
-                if (GUILayout.Button($"{pfx}🪖 {CompactarTextoMenu(LimparClone(u.name), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
+                if (GUILayout.Button($"{pfx}🪖 {CompactarTextoMenu(LimparClone(ObterNomeCarga(carga)), 30)}", _uiLinhaCompacta, GUILayout.Height(22f)))
                 {
                     _categoriaSelecionada = CategoriaSelecao.Soldado;
                     _indiceSelecionadoSoldado = i;
@@ -945,9 +998,10 @@ public class NavioTransporteTropas : MonoBehaviour
             if (!_operacaoTerrestreAtiva) break;
 
             var carga = filaSaida[i];
-            if (carga == null || carga.unidade == null) continue;
+            if (carga == null) continue;
 
-            GameObject u = carga.unidade;
+            GameObject u = MaterializarCarga(carga, chegada.position, transform.rotation);
+            if (u == null) continue;
             u.SetActive(true);
             u.transform.SetParent(_containerCarga, true);
             u.transform.localPosition = localChegada;
@@ -1104,7 +1158,9 @@ public class NavioTransporteTropas : MonoBehaviour
         CombustivelUnidade comb = u.GetComponent<CombustivelUnidade>();
         if (comb != null) comb.PreencherSemCusto();
 
-        u.SetActive(false);
+        carga.manifesto = ManifestoCargaOperacional.Capturar(u);
+        Destroy(u);
+        carga.unidade = null;
         _contagemCargaSuja = true;
     }
 
@@ -1116,6 +1172,74 @@ public class NavioTransporteTropas : MonoBehaviour
         _contagemCargaSuja = true;
     }
 
+    private static bool CargaValida(CargaTerrestre carga)
+    {
+        return carga != null && (carga.unidade != null || carga.manifesto != null);
+    }
+
+    private static string ObterNomeCarga(CargaTerrestre carga)
+    {
+        if (carga == null) return string.Empty;
+        if (carga.unidade != null) return carga.unidade.name;
+        return carga.manifesto != null ? carga.manifesto.NomeExibicao : string.Empty;
+    }
+
+    private static GameObject MaterializarCarga(CargaTerrestre carga, Vector3 posicao, Quaternion rotacao)
+    {
+        if (carga == null) return null;
+        if (carga.unidade != null) return carga.unidade;
+        if (carga.manifesto == null) return null;
+
+        GameObject unidade = carga.manifesto.Materializar(posicao, rotacao);
+        if (unidade != null)
+        {
+            carga.unidade = unidade;
+            carga.manifesto = null;
+        }
+        return unidade;
+    }
+
+    private static void ConverterUnidadeEmManifesto(CargaTerrestre carga)
+    {
+        if (carga == null || carga.unidade == null) return;
+        carga.manifesto = ManifestoCargaOperacional.Capturar(carga.unidade);
+        Destroy(carga.unidade);
+        carga.unidade = null;
+    }
+
+    public void AdicionarManifestosAoSave(string transporteUniqueId, List<SaveTransportManifestData> destino)
+    {
+        // O save armazena somente dados serializáveis; a unidade física não fica oculta no navio.
+        if (destino == null || string.IsNullOrWhiteSpace(transporteUniqueId)) return;
+        AdicionarListaManifestosAoSave(_veiculosCarregados, transporteUniqueId, true, destino);
+        AdicionarListaManifestosAoSave(_soldadosCarregados, transporteUniqueId, false, destino);
+    }
+
+    public void RestaurarManifesto(SaveEntityData entidade, bool veiculo)
+    {
+        if (entidade == null) return;
+        CargaTerrestre carga = new CargaTerrestre { manifesto = new ManifestoCargaOperacional { entidade = entidade } };
+        if (veiculo) _veiculosCarregados.Add(carga);
+        else _soldadosCarregados.Add(carga);
+        _contagemCargaSuja = true;
+    }
+
+    private static void AdicionarListaManifestosAoSave(List<CargaTerrestre> origem, string transporteUniqueId, bool veiculo, List<SaveTransportManifestData> destino)
+    {
+        if (origem == null) return;
+        for (int i = 0; i < origem.Count; i++)
+        {
+            CargaTerrestre carga = origem[i];
+            if (carga == null || carga.manifesto == null || carga.manifesto.entidade == null) continue;
+            destino.Add(new SaveTransportManifestData
+            {
+                transporteUniqueId = transporteUniqueId,
+                veiculo = veiculo,
+                entidade = carga.manifesto.entidade
+            });
+        }
+    }
+
     public int TransferirSoldadosParaHelicoptero(Helicoptero heli, int quantidadeMax = int.MaxValue)
     {
         if (heli == null || quantidadeMax <= 0) return 0;
@@ -1124,12 +1248,18 @@ public class NavioTransporteTropas : MonoBehaviour
         for (int i = _soldadosCarregados.Count - 1; i >= 0 && transferidos < quantidadeMax; i--)
         {
             CargaTerrestre carga = _soldadosCarregados[i];
-            if (carga == null || carga.unidade == null)
+            if (carga == null)
             {
                 _soldadosCarregados.RemoveAt(i);
                 continue;
             }
-            if (!heli.EmbarcarSoldadoTransferido(carga.unidade)) continue;
+            GameObject unidade = MaterializarCarga(carga, transform.position + transform.forward * 4f, transform.rotation);
+            if (unidade == null) continue;
+            if (!heli.EmbarcarSoldadoTransferido(unidade))
+            {
+                ConverterUnidadeEmManifesto(carga);
+                continue;
+            }
             RemoverCargaTerrestre(carga);
             transferidos++;
         }
@@ -1156,7 +1286,9 @@ public class NavioTransporteTropas : MonoBehaviour
         CombustivelUnidade comb = soldado.GetComponent<CombustivelUnidade>();
         if (comb != null) comb.PreencherSemCusto();
 
-        soldado.SetActive(false);
+        carga.manifesto = ManifestoCargaOperacional.Capturar(soldado);
+        Destroy(soldado);
+        carga.unidade = null;
         _soldadosCarregados.Add(carga);
         _contagemCargaSuja = true;
         return true;
@@ -1640,14 +1772,12 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         if (_categoriaSelecionada == CategoriaSelecao.Veiculo && _indiceSelecionadoVeiculo >= 0 && _indiceSelecionadoVeiculo < _veiculosCarregados.Count)
         {
-            var u = _veiculosCarregados[_indiceSelecionadoVeiculo]?.unidade;
-            return u != null ? LimparClone(u.name) : string.Empty;
+            return LimparClone(ObterNomeCarga(_veiculosCarregados[_indiceSelecionadoVeiculo]));
         }
 
         if (_categoriaSelecionada == CategoriaSelecao.Soldado && _indiceSelecionadoSoldado >= 0 && _indiceSelecionadoSoldado < _soldadosCarregados.Count)
         {
-            var u = _soldadosCarregados[_indiceSelecionadoSoldado]?.unidade;
-            return u != null ? LimparClone(u.name) : string.Empty;
+            return LimparClone(ObterNomeCarga(_soldadosCarregados[_indiceSelecionadoSoldado]));
         }
 
         if (_categoriaSelecionada == CategoriaSelecao.Heli && _indiceSelecionadoHeli >= 0 && _indiceSelecionadoHeli < _helisCarregados.Count)
@@ -1838,12 +1968,12 @@ public class NavioTransporteTropas : MonoBehaviour
 
         for (int i = _veiculosCarregados.Count - 1; i >= 0; i--)
         {
-            if (_veiculosCarregados[i] == null || _veiculosCarregados[i].unidade == null)
+            if (_veiculosCarregados[i] == null || (_veiculosCarregados[i].unidade == null && _veiculosCarregados[i].manifesto == null))
                 _veiculosCarregados.RemoveAt(i);
         }
         for (int i = _soldadosCarregados.Count - 1; i >= 0; i--)
         {
-            if (_soldadosCarregados[i] == null || _soldadosCarregados[i].unidade == null)
+            if (_soldadosCarregados[i] == null || (_soldadosCarregados[i].unidade == null && _soldadosCarregados[i].manifesto == null))
                 _soldadosCarregados.RemoveAt(i);
         }
         for (int i = _helisCarregados.Count - 1; i >= 0; i--)
@@ -2121,15 +2251,15 @@ public class NavioTransporteTropas : MonoBehaviour
         if (origem == null || origem.Count == 0) return;
         if (qtd == int.MaxValue)
         {
-            for (int i = startIndex; i < origem.Count; i++) if (origem[i] != null && origem[i].unidade != null) destino.Add(origem[i]);
-            for (int i = 0; i < startIndex; i++) if (origem[i] != null && origem[i].unidade != null) destino.Add(origem[i]);
+            for (int i = startIndex; i < origem.Count; i++) if (CargaValida(origem[i])) destino.Add(origem[i]);
+            for (int i = 0; i < startIndex; i++) if (CargaValida(origem[i])) destino.Add(origem[i]);
             return;
         }
 
         int adicionados = 0;
         for (int i = startIndex; i < origem.Count && adicionados < qtd; i++)
         {
-            if (origem[i] == null || origem[i].unidade == null) continue;
+            if (!CargaValida(origem[i])) continue;
             destino.Add(origem[i]);
             adicionados++;
         }

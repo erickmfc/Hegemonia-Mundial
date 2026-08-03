@@ -98,7 +98,7 @@ public class Torpedo : MonoBehaviour
         
         // Som de lançamento
         if (somLancamento != null)
-            AudioSource.PlayClipAtPoint(somLancamento, transform.position, 0.8f);
+            AudioRuntime.PlayClipAtPoint(somLancamento, transform.position, 0.8f);
         
         // Configurar layer de colisão para detectar todos os navios/submarinos em qualquer layer
         layersDetectaveis = ~0;
@@ -423,7 +423,7 @@ public class Torpedo : MonoBehaviour
 
         // Som de explosão
         if (somExplosao != null)
-            AudioSource.PlayClipAtPoint(somExplosao, transform.position, 1.0f);
+            AudioRuntime.PlayClipAtPoint(somExplosao, transform.position, 1.0f);
 
         // Efeito visual
         if (prefabExplosao != null)

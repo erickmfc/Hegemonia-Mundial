@@ -217,6 +217,7 @@ public sealed class HUDAjudaRTS : MonoBehaviour
                 "C construcao  |  M mapa tatico  |  B quartel  |  ESC pausa\n" +
                 "X governo  |  N ajuda completa  |  TAB acelera se o runtime permitir\n" +
                 "Z aeroporto (com aeroporto)  |  V pier (com pier)\n" +
+                "I embarca soldados em caminhao/carro selecionado  |  P desembarca\n" +
                 "PASSIVO/ATIVO/PATRULHA/SEGUIR ficam visiveis ao selecionar unidades";
         }
     }

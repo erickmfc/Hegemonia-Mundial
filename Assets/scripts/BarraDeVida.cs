@@ -36,6 +36,12 @@ public class BarraDeVida : MonoBehaviour
         {
             camPrincipal = Camera.main;
         }
+        if (canvasLocal != null && !canvasLocal.enabled && sistemaDeDanos != null &&
+            Mathf.Approximately(sistemaDeDanos.vidaAtual, ultimaVidaAtual) &&
+            Mathf.Approximately(sistemaDeDanos.vidaMaxima, ultimaVidaMaxima))
+        {
+            return;
+        }
         // 1. BILLBOARD (Olhar para a câmera)
         if (camPrincipal != null) 
         {

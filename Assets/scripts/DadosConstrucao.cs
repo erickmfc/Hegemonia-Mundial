@@ -46,7 +46,11 @@ public class DadosConstrucao : ScriptableObject
     [Header("Técnico")]
     [Tooltip("Arraste aqui o objeto AZUL da pasta (Prefab), NÃO arraste da cena!")]
     public GameObject prefabDaUnidade; // O objeto 3D que vai ser construído
+    // Campo legado mantido como int para compatibilidade com a IA e assets antigos.
+    // O preco efetivo da campanha vem de ValoresDefinitivosHegemonia e usa long.
     public int preco = 100;
+    [Tooltip("Valor definitivo da campanha. Zero usa a tabela central por ID/nome.")]
+    public long precoDefinitivo;
 
     [Header("Classificação")]
     public CategoriaItem categoria;
@@ -101,6 +105,16 @@ public class DadosConstrucao : ScriptableObject
         }
 
         return prefab != null;
+    }
+
+    /// <summary>
+    /// Valor definitivo usado pela campanha. Mantem o campo serializado para
+    /// compatibilidade com fichas antigas e aplica aliases centralizados.
+    /// </summary>
+    public long ObterPrecoEfetivo()
+    {
+        long valorTabela = ValoresDefinitivosHegemonia.ObterPreco(this);
+        return valorTabela > 0L ? valorTabela : (precoDefinitivo > 0L ? precoDefinitivo : System.Math.Max(0L, preco));
     }
 
     public bool TryGetPrefabBasico(out GameObject prefab)

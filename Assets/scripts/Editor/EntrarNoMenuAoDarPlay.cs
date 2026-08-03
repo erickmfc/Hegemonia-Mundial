@@ -7,6 +7,9 @@ using UnityEngine.SceneManagement;
 [InitializeOnLoad]
 internal static class EntrarNoMenuAoDarPlay
 {
+    // O Editor deve iniciar o Play na cena que o desenvolvedor deixou aberta.
+    // A entrada pelo menu continua sendo responsabilidade da build/runtime.
+    private const bool ForcarMenuAoDarPlay = false;
     private const string CaminhoMenuPrincipal = "Assets/Scenes/Menu cena.unity";
     private static bool reinicioAgendado;
 
@@ -17,7 +20,7 @@ internal static class EntrarNoMenuAoDarPlay
 
     private static void AoMudarEstadoDoPlay(PlayModeStateChange estado)
     {
-        if (estado != PlayModeStateChange.ExitingEditMode || reinicioAgendado)
+        if (!ForcarMenuAoDarPlay || estado != PlayModeStateChange.ExitingEditMode || reinicioAgendado)
         {
             return;
         }

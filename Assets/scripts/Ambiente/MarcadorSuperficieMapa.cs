@@ -56,6 +56,27 @@ public sealed class MarcadorSuperficieMapa : MonoBehaviour
         get { return _hasBounds; }
     }
 
+    /// <summary>
+    /// Define explicitamente a função deste marcador quando ele é criado por
+    /// um inicializador de cena. Evita que um marcador novo nasça como Água
+    /// apenas porque o campo serializado ainda não existia no objeto.
+    /// </summary>
+    public void DefinirTipo(TipoSuperficieMapa tipo)
+    {
+        if (tipoSuperficie == tipo)
+        {
+            return;
+        }
+
+        tipoSuperficie = tipo;
+        RebuildCaches();
+        AtualizarBounds();
+        if (isActiveAndEnabled)
+        {
+            RegistroSuperficieMapa.Registrar(this);
+        }
+    }
+
     private void Reset()
     {
         InferirTipoPeloNome();

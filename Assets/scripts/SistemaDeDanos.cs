@@ -292,11 +292,11 @@ public class SistemaDeDanos : MonoBehaviour
     {
         if (somExplosaoExclusivo != null)
         {
-            AudioSource.PlayClipAtPoint(somExplosaoExclusivo, transform.position);
+            AudioRuntime.PlayClipAtPoint(somExplosaoExclusivo, transform.position);
         }
         else if(GerenciadorFXGlobal.Instancia != null && GerenciadorFXGlobal.Instancia.somExplosao != null)
         {
-            AudioSource.PlayClipAtPoint(GerenciadorFXGlobal.Instancia.somExplosao, transform.position);
+            AudioRuntime.PlayClipAtPoint(GerenciadorFXGlobal.Instancia.somExplosao, transform.position);
         }
     }
 

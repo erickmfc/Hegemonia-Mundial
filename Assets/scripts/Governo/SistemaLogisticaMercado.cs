@@ -55,7 +55,9 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
     public const float FretePercentual = 0.05f;
 
     [Header("Configuracao")]
-    public float intervaloProcessamento = 0.75f;
+    // A logistica nao precisa disputar o mesmo frame com a simulacao taticamente.
+    // Um ciclo de 1 s mantem a entrega responsiva e evita reprocessamento excessivo.
+    public float intervaloProcessamento = 1f;
     public float tempoEmbarque = 1.25f;
     public float tempoDesembarque = 1.25f;
     public int intervaloRepeticaoDias = 2;
@@ -68,6 +70,8 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
     private readonly List<NavioCargaMercado> navios = new List<NavioCargaMercado>(16);
     private readonly List<Viagem> viagens = new List<Viagem>(16);
     private readonly List<PedidoMercadoLogistico> entregasPendentes = new List<PedidoMercadoLogistico>(8);
+    private readonly Dictionary<string, List<PedidoMercadoLogistico>> gruposBuffer = new Dictionary<string, List<PedidoMercadoLogistico>>(StringComparer.Ordinal);
+    private readonly List<string> chavesGruposBuffer = new List<string>(16);
     private float proximoProcessamento;
     private float proximoLogSemPorto;
     private int ultimoDiaRepeticao = -1;
@@ -220,23 +224,33 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
     private void ProcessarViagens()
     {
         LimparListas();
-        for (int i = 0; i < viagens.Count; i++)
-        {
-            Viagem viagem = viagens[i];
-            if (viagem == null || viagem.navio == null) continue;
-            if (viagem.carregando) continue;
-        }
+        gruposBuffer.Clear();
+        chavesGruposBuffer.Clear();
 
-        List<PedidoMercadoLogistico> aguardando = pedidos
-            .Where(x => x != null && string.Equals(x.status, "AGUARDANDO EMBARQUE", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        foreach (IGrouping<string, PedidoMercadoLogistico> grupo in aguardando.GroupBy(x => x.vendedorTeamId + ":" + x.compradorTeamId).ToList())
+        for (int i = 0; i < pedidos.Count; i++)
         {
-            if (viagens.Any(x => x != null && x.pedidos.Any(p => p != null && grupo.Any(g => g.id == p.id))))
+            PedidoMercadoLogistico pedido = pedidos[i];
+            if (pedido == null || !string.Equals(pedido.status, "AGUARDANDO EMBARQUE", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            PedidoMercadoLogistico primeiro = grupo.FirstOrDefault();
+            string chave = pedido.vendedorTeamId + ":" + pedido.compradorTeamId;
+            if (!gruposBuffer.TryGetValue(chave, out List<PedidoMercadoLogistico> grupo))
+            {
+                grupo = new List<PedidoMercadoLogistico>(4);
+                gruposBuffer.Add(chave, grupo);
+                chavesGruposBuffer.Add(chave);
+            }
+            grupo.Add(pedido);
+        }
+
+        for (int grupoIndex = 0; grupoIndex < chavesGruposBuffer.Count; grupoIndex++)
+        {
+            string chaveGrupo = chavesGruposBuffer[grupoIndex];
+            List<PedidoMercadoLogistico> grupo = gruposBuffer[chaveGrupo];
+            if (grupo == null || grupo.Count == 0 || GrupoJaEmViagem(grupo))
+                continue;
+
+            PedidoMercadoLogistico primeiro = grupo[0];
             if (primeiro == null) continue;
             PierMarinha origem = EncontrarPier(primeiro.vendedorTeamId);
             PierMarinha destino = EncontrarPier(primeiro.compradorTeamId);
@@ -245,7 +259,7 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
                 if (Time.unscaledTime >= proximoLogSemPorto)
                 {
                     proximoLogSemPorto = Time.unscaledTime + 20f;
-                    Debug.Log("[LogisticaMercado] Aguardando pier de origem/destino para a rota " + grupo.Key);
+                    Debug.Log("[LogisticaMercado] Aguardando pier de origem/destino para a rota " + chaveGrupo);
                 }
                 continue;
             }
@@ -261,8 +275,9 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
 
             List<PedidoMercadoLogistico> selecionados = new List<PedidoMercadoLogistico>();
             float carga = 0f;
-            foreach (PedidoMercadoLogistico pedido in grupo)
+            for (int pedidoIndex = 0; pedidoIndex < grupo.Count; pedidoIndex++)
             {
+                PedidoMercadoLogistico pedido = grupo[pedidoIndex];
                 float peso = Mathf.Max(1, pedido.quantidade);
                 if (selecionados.Count > 0 && carga + peso > navio.capacidadeCarga) break;
                 selecionados.Add(pedido);
@@ -288,6 +303,26 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
             viagens.Add(nova);
             IniciarViagem(nova);
         }
+    }
+
+    private bool GrupoJaEmViagem(List<PedidoMercadoLogistico> grupo)
+    {
+        for (int viagemIndex = 0; viagemIndex < viagens.Count; viagemIndex++)
+        {
+            Viagem viagem = viagens[viagemIndex];
+            if (viagem == null || viagem.pedidos == null) continue;
+            for (int pedidoIndex = 0; pedidoIndex < viagem.pedidos.Count; pedidoIndex++)
+            {
+                PedidoMercadoLogistico emViagem = viagem.pedidos[pedidoIndex];
+                if (emViagem == null) continue;
+                for (int grupoIndex = 0; grupoIndex < grupo.Count; grupoIndex++)
+                {
+                    if (grupo[grupoIndex] != null && grupo[grupoIndex].id == emViagem.id)
+                        return true;
+                }
+            }
+        }
+        return false;
     }
 
     private void IniciarViagem(Viagem viagem)

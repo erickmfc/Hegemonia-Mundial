@@ -38,10 +38,15 @@ public class MovimentoRealTerrestre : MonoBehaviour
     private bool pathPendingCache;
     private bool agenteLeituraValidaCache;
     private readonly Collider[] bufferColisores = new Collider[8];
+    private ControleUnidade controleUnidadeCache;
+    private RuaConectora ruaProximaCache;
+    private Vector3 ultimaPosicaoConsultaRua;
+    private float proximaConsultaRua;
 
     void Start()
     {
         agente = GetComponent<NavMeshAgent>();
+        controleUnidadeCache = GetComponent<ControleUnidade>();
         
         // Desacopla o Agente: Nós controlamos a física
         agente.updateRotation = false;
@@ -81,9 +86,9 @@ public class MovimentoRealTerrestre : MonoBehaviour
         agente.nextPosition = transform.position;
 
         // 2. Cálculo de Destino com preferência de faixa (mão de ida e volta) se estiver na rua
-        Vector3 proximoPonto = (agente.enabled && agente.isOnNavMesh) ? agente.steeringTarget : transform.position;
+        Vector3 proximoPonto = agenteLeituraValidaCache ? steeringTargetCache : transform.position;
         
-        RuaConectora ruaProxima = EncontrarRuaProxima(transform.position, 8f);
+        RuaConectora ruaProxima = ObterRuaProximaCache();
         if (ruaProxima != null)
         {
             Vector3 dirRua = ruaProxima.transform.forward;
@@ -114,13 +119,13 @@ public class MovimentoRealTerrestre : MonoBehaviour
         bool temCaminho = false;
         if (agente.enabled && agente.isOnNavMesh)
         {
-            if (!agente.isStopped && (agente.hasPath || agente.pathPending))
+            if (!agente.isStopped && (hasPathCache || pathPendingCache))
             {
-                if (agente.pathPending || agente.remainingDistance > distanciaParada)
+                if (pathPendingCache || remainingDistanceCache > distanciaParada)
                 {
                     temCaminho = true;
                 }
-                else if (agente.hasPath)
+                else if (hasPathCache)
                 {
                     // Chegou ao destino: limpa o caminho para evitar overshoot / oscilação
                     agente.ResetPath();
@@ -185,8 +190,7 @@ public class MovimentoRealTerrestre : MonoBehaviour
 
     private void AtualizarEstadoOtimizacao()
     {
-        ControleUnidade controle = GetComponent<ControleUnidade>();
-        bool selecionado = controle != null && controle.selecionado;
+        bool selecionado = controleUnidadeCache != null && controleUnidadeCache.selecionado;
         bool engajado = agente != null && agente.enabled && (agente.hasPath || agente.velocity.sqrMagnitude > 0.1f);
         InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, false, 140f, 320f);
     }
@@ -295,7 +299,7 @@ public class MovimentoRealTerrestre : MonoBehaviour
             RuaConectora rua = col.GetComponentInParent<RuaConectora>();
             if (rua != null)
             {
-                float dist = Vector3.Distance(posicao, rua.transform.position);
+                float dist = (posicao - rua.transform.position).sqrMagnitude;
                 if (dist < menorDist)
                 {
                     menorDist = dist;
@@ -304,5 +308,22 @@ public class MovimentoRealTerrestre : MonoBehaviour
             }
         }
         return melhorRua;
+    }
+
+    private RuaConectora ObterRuaProximaCache()
+    {
+        Vector3 atual = transform.position;
+        bool mudouDeArea = (atual - ultimaPosicaoConsultaRua).sqrMagnitude >= 16f;
+        if (mudouDeArea || Time.unscaledTime >= proximaConsultaRua)
+        {
+            long inicio = InfraPerformanceGameplay.MarcarInicioMedicao();
+            ruaProximaCache = EncontrarRuaProxima(atual, 8f);
+            ultimaPosicaoConsultaRua = atual;
+            proximaConsultaRua = Time.unscaledTime + InfraPerformanceGameplay.ResolverIntervalo(0.35f, estadoOtimizacao, true, true);
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Pathfinding, inicio);
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("road_probes");
+        }
+
+        return ruaProximaCache;
     }
 }

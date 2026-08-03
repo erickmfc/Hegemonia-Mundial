@@ -1,0 +1,278 @@
+RELATORIO DE VALORES E ESPECIFICACOES MINIMAS
+Hegemonia Mundial - catalogo atual do projeto
+
+ESCOPO
+Este arquivo resume os valores encontrados diretamente nos dados atuais do jogo.
+Ele serve como base para comparar itens sem alterar o funcionamento existente.
+
+LEGENDA
+- $ = dinheiro do jogo.
+- /un = por unidade construida.
+- /s = por segundo de simulacao, quando informado pelo sistema economico.
+- Preco do menu = DadosConstrucao.preco. Comprar N unidades custa preco x N.
+- "Nao informado" significa que o valor nao esta exposto no cadastro principal ou depende de variante do prefab.
+- Valores de mercado sao precos-base; o preco atual varia durante a simulacao.
+- A categoria abaixo e a categoria cadastrada no asset, mesmo quando existe classificacao suspeita.
+
+1. ESTADO INICIAL E RECURSOS
+
+Recurso             Valor inicial   Taxa passiva inicial   Observacao
+Dinheiro            $5.000          $0/s                   usado principalmente na construcao
+Petroleo            500             0/s                   combustivel/recurso
+Acao                300             +5/s                  industria e construcao
+Populacao           3.200/3.200     --                     capacidade inicial registrada
+Energia             100             0/s                   saldo inicial
+Comida              100             0/s                   saldo inicial
+
+2. MERCADO E RECURSOS COMERCIALIZADOS
+
+Produto             Preco-base/un   Lote padrao   Indicador minimo
+Comida              $120            100           alimento agregado
+Milho               $84             100           alimento/agricultura
+Batata              $78             100           alimento/agricultura
+Feijao              $92             100           alimento/agricultura
+Trigo               $110            100           alimento/agricultura
+Arroz               $118            100           alimento/agricultura
+Cana-de-Acucar      $135            100           agricultura/industria
+Algodao             $142            100           materia-prima textil
+Soja                $155            100           alimento/industria
+Cafe                $205            100           produto agricola
+Cacau               $235            100           produto agricola
+Petroleo            $185            100           combustivel/industria
+Acao                $95             100           industria
+Energia             $65             100           recurso energetico
+Armamentos          $420            50            industria militar
+Uranio              $900            50            energia nuclear
+
+O lote padrao e uma referencia de compra do mercado, nao um custo adicional da construcao.
+Materiais refinados, municao e equipamentos usam lotes menores conforme a categoria.
+
+3. CATALOGO DO MENU DE CONSTRUCAO
+
+As linhas abaixo mostram: preco unitario | nome | categoria | funcao/especificacao minima.
+
+3.1 EXERCITO
+$100/un | Ares Ar | Exercito | sistema de artilharia; ficha de combate depende do prefab.
+$700/un | Artilharia | Exercito | artilharia pesada; existe cadastro duplicado pelo mesmo preco.
+$100/un | Nav_Yuza | Exercito | navio de desembarque; classificacao cadastrada como Exercito.
+$100/un | Quartel General | Exercito | centro de comando; capacidade/raio dependem do prefab.
+$700/un | Artilharia | Exercito | segunda ficha de artilharia; verificar duplicidade antes de balancear.
+$100/un | Caminhao de transporte | Exercito | transporte terrestre/logistica; velocidade e capacidade dependem do prefab.
+$100/un | Hack | Exercito | veiculo militar; arma e vida dependem da variante do prefab.
+$200/un | Hamer carro | Exercito | veiculo leve; mobilidade/arma dependem do prefab.
+$100/un | Leonc1 | Exercito | tanque/veiculo blindado; vida e arma dependem do prefab.
+$100/un | HG Ar | Exercito | veiculo blindado; especificacao nao normalizada no catalogo.
+$100/un | Tank_Antigravity | Exercito | tanque especial; mobilidade e arma dependem do prefab.
+$100/un | Tank Arthur | Exercito | tanque; comparar por vida, alcance e cadencia no prefab.
+$150/un | Tank C1 camuflado | Exercito | tanque camuflado; preco maior que o Tank C1 verde.
+$100/un | Tank C1 Verde | Exercito | tanque; ficha de combate depende do prefab.
+$100/un | tank codex | Exercito | tanque pesado; ficha de combate depende do prefab.
+$500/un | TAnk_South | Exercito | tanque de maior custo; conferir vida, dano e blindagem.
+$100/un | Tank_UBU | Exercito | tanque; dados verificados na secao 5.
+$100/un | Track Combustivel | Exercito | veiculo de apoio/combustivel; capacidade depende do prefab.
+
+3.2 MARINHA
+$2.500/un | Estaleiro Naval | Marinha | estrutura naval; produz/apoia unidades navais.
+$100/un | Petroleiro | Marinha | transporte de petroleo; carga e velocidade dependem do prefab.
+$100/un | Navio de Carga | Marinha | transporte logistico; existe outra ficha com o mesmo nome.
+$3.000/un | Navio de Carga | Marinha | segunda ficha de carga; possivel duplicidade de balanceamento.
+$2.000/un | Marinha | Marinha | pier/base naval; capacidade depende do prefab.
+$100/un | Corveta Fortaleza | Marinha | navio de combate leve; ficha de armas depende do prefab.
+$100/un | Des_Wall | Marinha | navio de desembarque/combate; ficha depende do prefab.
+$100/un | F200 | Marinha | fragata; sensores, armas e vida dependem do prefab.
+$4.500/un | USS Leviathan | Marinha | navio pesado/submersivel; dados verificados na secao 5.
+$100/un | Nav Abastecimento | Marinha | apoio logistico; dados verificados na secao 5.
+$1.000/un | USS Ironclad | Marinha | navio de combate; torreta/misseis dependem do prefab.
+$5.000/un | Liberty Prime | Marinha | navio pesado; ficha de combate depende do prefab.
+$100/un | Barco WW Transporte | Marinha | transporte; capacidade depende do prefab.
+$200/un | Corveta sam | Marinha | corveta/defesa; dados representativos verificados na secao 5.
+$100/un | Nav_tropa | Marinha | transporte de tropas; capacidade depende do prefab.
+$2.500/un | USS Vindicator | Marinha | navio de combate pesado; ficha depende do prefab.
+$100/un | Nav_Vigia | Marinha | patrulha/vigilancia; sensores dependem do prefab.
+$100/un | Nav_Think | Marinha | navio de vigilancia; verificar variante visual e arma.
+$100/un | Nav Global | Marinha | porta-avioes; dados de vida e velocidade na secao 5.
+$1.200/un | USS Arrowhead | Marinha | navio de combate; ficha depende do prefab.
+$3.500/un | USS Dominion | Marinha | navio pesado; ficha depende do prefab.
+$3.000/un | USS Mako | Marinha | navio de combate; ficha depende do prefab.
+$3.800/un | USS Wraith | Marinha | navio de combate pesado; ficha depende do prefab.
+
+3.3 AERONAUTICA
+$100/un | Aeroporto Militar | Aeronautica | base aerea militar; opera aeronaves militares.
+$100/un | Aeroporto comercial | Aeronautica | aeroporto civil; recebe aviacao comercial.
+$100/un | A_20 | Aeronautica | aeronave de ataque; dados verificados na secao 5.
+$100/un | B260 | Aeronautica | aeronave; vida e velocidade verificadas na secao 5.
+$100/un | C17 | Aeronautica | transporte aereo; capacidade depende do prefab.
+$100/un | C700 Transporte | Aeronautica | transporte aereo; capacidade depende do prefab.
+$100/un | DH Hasaf | Aeronautica | drone/aeronave; sensor e arma dependem da variante.
+$100/un | Vans falcon | Aeronautica | aeronave de combate; dados verificados na secao 5.
+$100/un | Flow | Aeronautica | aeronave; desempenho depende do prefab.
+$100/un | Garcia G15 | Aeronautica | aeronave; desempenho depende do prefab.
+$100/un | G_18M | Aeronautica | aeronave; desempenho depende do prefab.
+$100/un | Su11 | Aeronautica | aeronave de combate; desempenho depende do prefab.
+$2.000/un | Su20 | Aeronautica | aeronave de maior custo; comparar vida, velocidade e armamento.
+$100/un | Super Tuk | Aeronautica | aeronave; dados dependem do prefab.
+$100/un | Supra | Aeronautica | aeronave armada; dados verificados na secao 5.
+$100/un | Vans falcon | Aeronautica | segunda ficha/variante com mesmo nome.
+$300/un | Drone Veloster | Aeronautica | drone rapido; dados verificados na secao 5.
+$100/un | VAP Drone | Aeronautica | drone leve; dados verificados na secao 5.
+
+3.4 INFRAESTRUTURA
+$500/un | Heliporto | Infraestrutura | recebe e opera helicopteros.
+$100/un | Fabrica | Infraestrutura | industria; empregos e producao dependem da estrutura economica.
+$100/un | Farm | Infraestrutura | agricultura; producao depende da semente escolhida.
+$100/un | Rua reta | Infraestrutura | infraestrutura viaria; nao e unidade militar.
+$3.000/un | Lancador de Misseis | Infraestrutura | defesa/ataque de longo alcance.
+$2.500/un | Lancador ICBM | Infraestrutura | lancamento estrategico; custo operacional depende do sistema.
+$50/un | Muro lateral | Infraestrutura | defesa passiva/limite territorial.
+$100/un | Armazem | Infraestrutura | armazenamento de recursos.
+$100/un | Armazem Militar | Infraestrutura | armazenamento/logistica militar.
+
+3.5 ENERGIA
+$100/un | Energia | Energia | estrutura energetica legada; consultar producao do prefab.
+$1.200/un | Usina de Carvao | Energia | 240 MW; 300 empregos; consome 42 combustivel/s; polui e tem custo operacional.
+$3.500/un | Usina Grande | Energia | usina de grande porte; prefab da ficha nao esta ligado ao asset.
+$100/un | Plataforma | Energia | plataforma naval; categoria cadastrada como Energia.
+
+3.6 TECNOLOGIA
+$500/un | Usina nuclear | Tecnologia | usina nuclear; cadastro esta em Tecnologia, embora a funcao seja Energia.
+
+3.7 URBANA / IMOVEIS
+$100/un | Centro de construcao | Urbana | apoio de construcao/demolicao.
+$100/un | Casa | Urbana | imovel residencial; capacidade atual verificada: 15 pessoas.
+$5.000/un | Predio Hard | Urbana | imovel residencial grande; capacidade atual: 5.000 pessoas.
+$250/un | Predio Medio | Urbana | imovel residencial medio; capacidade atual: 1.200 pessoas.
+$100/un | Vilage medio | Urbana | conjunto residencial; capacidade atual: 2.000 pessoas.
+$1.000/un | Fronteira | Urbana | controle/limite territorial.
+$5.000/un | Prefeitura | Urbana | estrutura administrativa; capacidade e efeitos dependem do prefab.
+
+3.8 FICHAS PLACEHOLDER
+$100/un | Nome da Unidade | Exercito | ficha generica sem prefab valido.
+$100/un | Nome da Unidade | Exercito | ficha generica; prefabDaUnidade vazio.
+
+4. ESTRUTURAS ECONOMICAS E CAPACIDADES MINIMAS
+
+Tipo                     Capacidade/efeito principal                  Energia/consumo    Empregos
+CasaPopular              6 pessoas                                    2                  0
+PredioResidencial        60 pessoas                                    12                 8
+ComercioPequeno          empregos                                      8                  12
+Shopping                 $30 gerado; militar 20                        60                 260
+IndustriaLeve            producao industrial 15; combustivel 5         80                 180
+IndustriaPesada          producao industrial 45; combustivel 18        260                650
+Refinaria                petroleo 120; militar 80                      380                900
+PortoComercial           militar 40; combustivel 6                      180                420
+AeroportoCivil           militar 60; combustivel 15                     220                700
+UsinaTermicaPequena      energia 120; combustivel 8                     --                 120
+UsinaTermicaGrande       energia 450; combustivel 35                    --                 420
+UsinaNuclear             energia 2.200; combustivel 3                    --                 2.050
+UsinaHidreletrica        energia 1.500                                  --                 700
+UsinaSolar               energia 160                                    --                 90
+UsinaCarvao              energia 240; custo monetario -180/s             --                 300
+BaseMilitarPequena       militar 180; combustivel 3                     45                 --
+BaseMilitarMedia         militar 700; combustivel 10                    120                --
+GrandeBaseMilitar        militar 2.500; combustivel 28                  300                --
+BaseAerea                militar 1.800; combustivel 40                  260                350
+BaseNaval                militar 2.200; combustivel 55                  340                420
+
+Observacao: estas estruturas economicas sao defaults do sistema e podem ser diferentes
+da capacidade do componente Imovel do prefab. Para o menu, o valor do prefab e a
+referencia visual/territorial; para a economia, o tipo economico e a referencia de simulacao.
+
+Diferencas importantes encontradas:
+- O exemplo citado de casa para 20 pessoas nao e o valor atual do prefab: esta 15.
+- O exemplo citado de predio medio para 6.000 pessoas nao e o valor atual do prefab: esta 1.200.
+- CasaPopular/PredioResidencial sao defaults economicos separados dos prefabs Casa/Predio Medio.
+
+5. COMPARACAO MINIMA DE UNIDADES COM DADOS VERIFICADOS
+
+Item                 Preco    Vida   Velocidade    Alcance/cadencia                         Leitura rapida
+Tank_UBU             $100     1.000  --            300; tiro a cada 2s; recarga 2s; pente 10 tanque de baixo custo, alcance bom
+A_20                 $100     650    95            visao 650; cadencia .02; pente 100; recarga 2 aeronave rapida e armada
+B260                 $100     1.200  90            --                                       mais vida que A_20, menos velocidade
+VAP Drone            $100     100    80            --                                       drone leve e barato
+Drone Veloster       $300     100    120           --                                       drone mais rapido, mas fragil
+Supra                $100     350    --            alcance 350; tiro .08; pente 50; recarga 2 aeronave armada
+Vans Falcon          $100     350    --            alcance 550; tiro .02; pente 45; recarga 4 maior alcance/cadencia
+USS Leviathan        $4.500   800    2             torpedo 22; alcance 2.500; missil 2.300; cd 1 navio pesado/submersivel
+Nav Abastecimento    $100     900    26            torpedo 4; alcance 600; cd 5   apoio com boa vida e baixo custo
+Nav Global           $100     1.800  25            --                                       porta-avioes/estrutura naval
+Corveta Sam          $200     1.450  --            alcance 900; tiro 1s; pente 30; recarga 6 corveta defensiva
+
+Notas:
+- Os dados acima foram lidos dos prefabs/variantes diretamente verificaveis.
+- Alguns itens do menu apontam para prefabs com variantes internas; nesses casos o
+  valor final pode mudar conforme o objeto filho usado pela cena.
+- Nao foram inventados dano, velocidade ou capacidade quando o dado nao estava
+  serializado de forma confiavel no prefab correspondente.
+- A comparacao mais simples e: preco/vida, preco/alcance, cadencia, pente e funcao.
+
+6. AGRICULTURA E COMIDA
+
+Semente             Producao de comida   Crescimento   Custo da semente   Ciclo exibido
+Milho               300                  90s           $50                2 dias
+Batata              280                  100s          $40                2 dias
+Feijao              250                  120s          $35                2 dias
+Trigo               360                  180s          $65                3 dias
+Arroz               400                  210s          $70                3 dias
+Cana-de-Acucar      550                  300s          $100               4 dias
+Algodao             650                  360s          $120               4 dias
+Soja                800                  420s          $150               5 dias
+Cafe                1.100                600s          $250               6 dias
+Cacau               1.500                800s          $350               7 dias
+
+O lote 3 da fazenda custa $2.000. A fazenda recompra a semente ao terminar cada ciclo.
+
+7. MUNICAO E ARSENAL
+
+Cartucho Ares Ar: valor cobrado por disparo $220; capacidade 10; recarga 8s;
+custo estimado de fabricacao 60% = $132 por cartucho.
+
+Sistema legado do quartel:
+- pacote de misseis: $500 por 10 = $50 por missil;
+- pacote de municao: $100 por 100 = $1 por unidade.
+Esses valores pertencem ao fluxo legado e podem coexistir com o sistema Ares.
+
+8. CUSTOS OPERACIONAIS E ENERGIA
+
+O menu de construcao desconta o preco unitario em dinheiro. Combustivel, energia,
+municao, impostos e manutencao sao custos de simulacao separados quando o sistema
+da estrutura ou da unidade os utiliza.
+
+Usina Solar: 160 unidades de energia no default atual.
+Usina de Carvao: 240 unidades de energia, 42 combustivel/s, 300 empregos e custo
+monetario direto de $180/s. A manutencao adicional configurada e aproximadamente
+maximo de $55 ou 22% da producao; para 240, fica $55/s. Total aproximado: $235/s.
+Considerando o dia padrao de 30 segundos, o gasto estimado e $7.050 por dia.
+A usina de carvao tambem alimenta o sistema de poluicao/meio ambiente.
+
+9. COMO COMPARAR OS ITENS
+
+Para uma comparacao rapida entre duas unidades da mesma categoria:
+1) compare preco por vida;
+2) compare velocidade e alcance;
+3) compare cadencia, tamanho do pente e tempo de recarga;
+4) veja a funcao: ataque, defesa, transporte, apoio ou producao;
+5) para predios, compare pessoas atendidas, empregos, energia e manutencao;
+6) para agricultura, compare producao por segundo e custo do ciclo.
+
+Exemplos:
+- Tank_UBU custa $100 para 1.000 de vida: base barata de linha de frente.
+- Drone Veloster custa $300 e tem 120 de velocidade, mas somente 100 de vida:
+  paga-se mobilidade, nao resistencia.
+- Predio Hard atende 5.000 pessoas, enquanto Predio Medio atende 1.200 no prefab atual:
+  o predio medio e mais barato, mas exige mais unidades para a mesma populacao.
+- Usina de carvao gera 1,5x a energia da solar atual, mas cobra combustivel,
+  dinheiro e poluicao; a escolha e desempenho energetico contra custo ambiental.
+
+10. PONTOS PARA NORMALIZAR EM UM BALANCEAMENTO FUTURO
+
+- Revisar as fichas duplicadas de Vans falcon, Artilharia e Navio de Carga.
+- Corrigir categorias de Nav_Yuza, Plataforma e Usina nuclear se isso refletir a
+  organizacao desejada do menu.
+- Remover ou esconder fichas placeholder sem prefab valido.
+- Ligar a ficha Usina Grande a um prefab valido.
+- Se o objetivo de design for Casa = 20 e Predio Medio = 6.000, alterar os prefabs
+  depois de confirmar que a economia tambem deve usar esses mesmos numeros.
+- Criar uma ficha de stats normalizada para cada unidade, evitando depender de
+  variantes internas do prefab para mostrar vida, velocidade, dano e recarga.
+
+FIM DO RELATORIO

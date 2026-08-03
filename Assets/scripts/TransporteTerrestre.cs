@@ -6,6 +6,11 @@ public class TransporteTerrestre : MonoBehaviour
 {
     [Header("Configurações de Transporte")]
     public int capacidadeMaxima = 4;
+    [Header("Atalhos")]
+    [Tooltip("Com o caminhao/carro selecionado, esta tecla embarca soldados aliados proximos.")]
+    public KeyCode teclaEmbarcar = KeyCode.I;
+    [Tooltip("Com tropas a bordo, esta tecla desembarca os passageiros.")]
+    public KeyCode teclaDesembarcar = KeyCode.P;
     public float distanciaParaEmbarque = 10f; // Raio para puxar soldados
     public float distanciaDescarga = 3.0f;    // Distância exata pedida (3 metros)
 
@@ -96,13 +101,13 @@ public class TransporteTerrestre : MonoBehaviour
 
         if (selecionado)
         {
-            // O -> OPEN / Entrar
-            if (Input.GetKeyDown(KeyCode.O)) 
+            // I -> puxar/embarcar soldados aliados proximos.
+            if (teclaEmbarcar != KeyCode.None && Input.GetKeyDown(teclaEmbarcar)) 
             {
                 TentarEmbarcar(true);
             }
             // P -> soltar tropas | U mantido como atalho legado
-            if (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.U))
+            if ((teclaDesembarcar != KeyCode.None && Input.GetKeyDown(teclaDesembarcar)) || Input.GetKeyDown(KeyCode.U))
             {
                 DesembarcarTudo();
             }
@@ -250,7 +255,7 @@ public class TransporteTerrestre : MonoBehaviour
     }
 
     /// <summary>
-    /// Mesma operacao da tecla O, exposta para o diretor tatico da IA.
+    /// Mesma operacao da tecla I, exposta para o diretor tatico da IA.
     /// </summary>
     public bool TentarEmbarcarAutomatico()
     {

@@ -218,8 +218,8 @@ public class MenuFixadoController : MonoBehaviour
         SetText(lblGoldVal, pais != null ? pais.reservaOuro.ToString("N0") : "0");
         AtualizarData();
 
-        SetText(lblMoneyVal, r.dinheiro.ToString("N0"));
-        AtualizarBonus(lblMoneyBonus, r.dinheiroPorSegundo, "/s");
+        SetText(lblMoneyVal, ValoresDefinitivosHegemonia.FormatarDinheiro(r.dinheiro));
+        AtualizarBonus(lblMoneyBonus, r.dinheiroPorSegundo, "/s", true);
 
         SetText(lblOilVal, r.petroleo.ToString("N0"));
         AtualizarBonus(lblOilBonus, r.petroleoPorSegundo, "/s");
@@ -333,10 +333,13 @@ public class MenuFixadoController : MonoBehaviour
         if (lbl != null) lbl.style.color = color;
     }
 
-    private void AtualizarBonus(Label lbl, float valor, string sufixo)
+    private void AtualizarBonus(Label lbl, float valor, string sufixo, bool monetario = false)
     {
         if (lbl == null) return;
-        lbl.text = valor >= 0 ? $"+{valor:N0}{sufixo}" : $"{valor:N0}{sufixo}";
+        string valorFormatado = monetario
+            ? ValoresDefinitivosHegemonia.FormatarDinheiro(Mathf.RoundToInt(Mathf.Abs(valor)))
+            : Mathf.Abs(valor).ToString("N0");
+        lbl.text = valor >= 0 ? $"+{valorFormatado}{sufixo}" : $"-{valorFormatado}{sufixo}";
         lbl.style.color = valor >= 0 ? new Color(0.13f, 0.77f, 0.36f) : Color.red;
     }
 }

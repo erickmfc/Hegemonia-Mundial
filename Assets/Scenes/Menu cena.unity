@@ -1027,7 +1027,7 @@ Terrain:
   m_StaticShadowCaster: 0
   m_IgnoreQualitySettings: 0
   m_ReflectionProbeUsage: 1
-  m_MaterialTemplate: {fileID: 2100000, guid: be1672567266e5f40a8a109aace4fdd4, type: 2}
+  m_MaterialTemplate: {fileID: 2100000, guid: 793e5652386c11b4b813215ab25ff7fc, type: 2}
   m_BakeLightProbesForTrees: 1
   m_PreserveTreePrototypeLayers: 0
   m_DeringLightProbesForTrees: 1
@@ -1319,7 +1319,7 @@ Terrain:
   m_StaticShadowCaster: 0
   m_IgnoreQualitySettings: 0
   m_ReflectionProbeUsage: 1
-  m_MaterialTemplate: {fileID: 2100000, guid: 594ea882c5a793440b60ff72d896021e, type: 2}
+  m_MaterialTemplate: {fileID: 2100000, guid: 793e5652386c11b4b813215ab25ff7fc, type: 2}
   m_BakeLightProbesForTrees: 1
   m_PreserveTreePrototypeLayers: 0
   m_DeringLightProbesForTrees: 1
@@ -1406,12 +1406,15 @@ MonoBehaviour:
   velocidadeMenu: 5
   velocidadeZoom: 1000
   velocidadeRotacao: 100
-  multiplicadorShift: 2.5
+  multiplicadorShift: 12
   campoDeVisaoBase: 150
   campoDeVisaoMin: 85
   campoDeVisaoMax: 90
   alturaMinParaFov: 2
   alturaMaxParaFov: 2500
+  distanciaMinimaRender: 2500
+  distanciaMaximaRender: 14000
+  multiplicadorDistanciaRender: 6
 --- !u!114 &1255879884
 MonoBehaviour:
   m_ObjectHideFlags: 0

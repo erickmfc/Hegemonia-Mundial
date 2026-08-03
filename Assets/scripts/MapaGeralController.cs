@@ -49,7 +49,15 @@ public class MapaGeralController : MonoBehaviour
     private List<IdentidadeUnidade> _cacheUnidades = new List<IdentidadeUnidade>();
     private readonly List<MissileThreatTracker> _misseisAtivos = new List<MissileThreatTracker>(64);
     private readonly List<Projetil> _projeteisAtivos = new List<Projetil>(256);
+    private readonly Vector3[] _cantosTerritorioInimigo = new Vector3[4];
     private float _tempoRefreshCache = 0f;
+
+    // Estilos IMGUI sao reutilizados enquanto o mapa esta aberto para nao alocar por repaint.
+    private GUIStyle _tituloMapaStyle;
+    private GUIStyle _zoomMapaStyle;
+    private GUIStyle _legendaMapaStyle;
+    private GUIStyle _trianguloSombraStyle;
+    private GUIStyle _trianguloCorStyle;
 
     // --- Modo de seguir unidade selecionada ---
     private bool _seguindoAlvo = false;
@@ -438,6 +446,7 @@ public class MapaGeralController : MonoBehaviour
     void OnGUI()
     {
         if (!mapaAtivo || cameraMapa == null) return;
+        GarantirEstilosGui();
 
         // --- Barra superior com info e botão de fechar ---
         float barH = 30f;
@@ -445,20 +454,14 @@ public class MapaGeralController : MonoBehaviour
         GUI.DrawTexture(new Rect(0, 0, Screen.width, barH), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize   = 15,
-            fontStyle  = FontStyle.Bold,
-            normal     = { textColor = Color.cyan }
-        };
+        GUIStyle titleStyle = _tituloMapaStyle;
         string modoSeguir = _seguindoAlvo && _alvoSeguir != null
             ? $"[F seguir: {_alvoSeguir.name.ToUpper()}]"
             : "[F seguir unidade]";
         GUI.Label(new Rect(0, 0, Screen.width, barH),
             $"MAPA ESTRATEGICO  [WASD mover] [Scroll zoom] [{modoSeguir}] [M fechar]", titleStyle);
 
-        GUIStyle zoomStyle = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
+        GUIStyle zoomStyle = _zoomMapaStyle;
         if (GUI.Button(new Rect(Screen.width - 118f, 3f, 34f, 24f), "+", zoomStyle)) AjustarZoomMapa(-1f);
         if (GUI.Button(new Rect(Screen.width - 78f, 3f, 34f, 24f), "−", zoomStyle)) AjustarZoomMapa(1f);
 
@@ -468,7 +471,7 @@ public class MapaGeralController : MonoBehaviour
         GUI.DrawTexture(new Rect(legX - 6, legY - 6, 175f, 90f), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        GUIStyle legStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, normal = { textColor = Color.white } };
+        GUIStyle legStyle = _legendaMapaStyle;
         GUI.Label(new Rect(legX, legY,      170, 20), "■  Prédio Aliado",   legStyle);
         GUI.Label(new Rect(legX, legY + 22, 170, 20), "▲  Unidade Aliada",  legStyle);
         GUI.Label(new Rect(legX, legY + 44, 170, 20), "●  Unidade Neutra",  legStyle);
@@ -481,19 +484,38 @@ public class MapaGeralController : MonoBehaviour
         GUI.Label(new Rect(Screen.width - 330f, barH + 8f, 315f, 22f), "DISPAROS: ciano aliado | vermelho inimigo | amarelo neutro", legStyle);
     }
 
+    private void GarantirEstilosGui()
+    {
+        if (_trianguloSombraStyle != null) return;
+
+        _tituloMapaStyle = new GUIStyle(GUI.skin.label)
+        {
+            alignment = TextAnchor.MiddleCenter,
+            fontSize = 15,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = Color.cyan }
+        };
+        _zoomMapaStyle = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
+        _legendaMapaStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, normal = { textColor = Color.white } };
+        _trianguloSombraStyle = new GUIStyle
+        {
+            alignment = TextAnchor.MiddleCenter,
+            normal = { textColor = Color.black }
+        };
+        _trianguloCorStyle = new GUIStyle { alignment = TextAnchor.MiddleCenter };
+    }
+
     private void DesenharTerritorioInimigo()
     {
         if (cameraMapa == null || !territorioInimigoDisponivel) return;
 
         Vector3 min = limitesTerrenoInimigo.min;
         Vector3 max = limitesTerrenoInimigo.max;
-        Vector3[] cantos =
-        {
-            cameraMapa.WorldToScreenPoint(new Vector3(min.x, 0f, min.z)),
-            cameraMapa.WorldToScreenPoint(new Vector3(min.x, 0f, max.z)),
-            cameraMapa.WorldToScreenPoint(new Vector3(max.x, 0f, min.z)),
-            cameraMapa.WorldToScreenPoint(new Vector3(max.x, 0f, max.z))
-        };
+        Vector3[] cantos = _cantosTerritorioInimigo;
+        cantos[0] = cameraMapa.WorldToScreenPoint(new Vector3(min.x, 0f, min.z));
+        cantos[1] = cameraMapa.WorldToScreenPoint(new Vector3(min.x, 0f, max.z));
+        cantos[2] = cameraMapa.WorldToScreenPoint(new Vector3(max.x, 0f, min.z));
+        cantos[3] = cameraMapa.WorldToScreenPoint(new Vector3(max.x, 0f, max.z));
 
         float minX = float.MaxValue;
         float maxX = float.MinValue;
@@ -649,16 +671,13 @@ public class MapaGeralController : MonoBehaviour
     // Desenha triângulo (simulado com labels de símbolo)
     void DesenharTriangulo(float cx, float cy, float size, Color cor)
     {
-        GUIStyle st = new GUIStyle()
-        {
-            fontSize  = (int)(size * 2),
-            alignment = TextAnchor.MiddleCenter,
-            normal    = { textColor = Color.black }
-        };
+        int fontSize = (int)(size * 2);
+        _trianguloSombraStyle.fontSize = fontSize;
+        _trianguloCorStyle.fontSize = fontSize;
         // Sombra
-        GUI.Label(new Rect(cx - size + 1, cy - size + 1, size * 2, size * 2), "▲", st);
+        GUI.Label(new Rect(cx - size + 1, cy - size + 1, size * 2, size * 2), "▲", _trianguloSombraStyle);
         // Cor real
-        st.normal.textColor = cor;
-        GUI.Label(new Rect(cx - size, cy - size, size * 2, size * 2), "▲", st);
+        _trianguloCorStyle.normal.textColor = cor;
+        GUI.Label(new Rect(cx - size, cy - size, size * 2, size * 2), "▲", _trianguloCorStyle);
     }
 }

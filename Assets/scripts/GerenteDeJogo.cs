@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
+using System;
 
 public class GerenteDeJogo : MonoBehaviour
 {
@@ -9,9 +10,9 @@ public class GerenteDeJogo : MonoBehaviour
 
     [Header("Economia - DEPRECATED: Use GerenciadorRecursos.Instancia")]
     [Tooltip("Deprecated: Este campo agora é gerenciado pelo GerenciadorRecursos")]
-    public int dinheiroAtual 
+    public long dinheiroAtual
     { 
-        get { return GerenciadorRecursos.Instancia != null ? GerenciadorRecursos.Instancia.dinheiro : 5000; }
+        get { return GerenciadorRecursos.Instancia != null ? GerenciadorRecursos.Instancia.dinheiro : 5000L; }
         set { if (GerenciadorRecursos.Instancia != null) GerenciadorRecursos.Instancia.dinheiro = value; }
     } 
 
@@ -192,7 +193,7 @@ public class GerenteDeJogo : MonoBehaviour
     }
 
     // O Menu chama essa função
-    public void ComprarUnidade(GameObject unidadeParaConstruir, int preco, int quantidade)
+    public void ComprarUnidade(GameObject unidadeParaConstruir, long preco, int quantidade)
     {
         // 1. Identificar Tipo
         string nome = unidadeParaConstruir.name.ToLower();
@@ -215,7 +216,7 @@ public class GerenteDeJogo : MonoBehaviour
 
         LogInfo($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}, Avião? {ehAviao}");
 
-        int custoTotal = preco * quantidade;
+        long custoTotal = preco * Math.Max(0, quantidade);
 
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (recursos == null)
@@ -793,7 +794,7 @@ public class GerenteDeJogo : MonoBehaviour
     }
 
     // Mantido para compatibilidade com o Construtor.cs (Sobrecarga antiga)
-    public void ComprarUnidade(GameObject unidade, int preco)
+    public void ComprarUnidade(GameObject unidade, long preco)
     {
         ComprarUnidade(unidade, preco, 1);
     }
@@ -801,7 +802,7 @@ public class GerenteDeJogo : MonoBehaviour
 
 
     // Mantido para compatibilidade com o Construtor.cs
-    public bool TentarGastarDinheiro(int custo)
+    public bool TentarGastarDinheiro(long custo)
     {
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (recursos != null)

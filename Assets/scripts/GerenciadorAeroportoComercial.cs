@@ -21,11 +21,15 @@ public class PistaComercial
     public enum EstadoPista { Livre, EmDecolagem, EmPouso }
     [HideInInspector] public EstadoPista estado = EstadoPista.Livre;
     [HideInInspector] public ControleAviaoComercial aviaoNaPista;
+    private bool inicializada;
 
     public bool ocupada => estado != EstadoPista.Livre;
 
     public void Inicializar()
     {
+        if (inicializada) return;
+        inicializada = true;
+
         if (pista != null)
         {
             foreach (Transform t in pista) waypointsDecolagem.Add(t);
@@ -274,7 +278,8 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         // Aceita pista livre OU pista que já está em decolagem (sentido oposto é ok em pistas separadas)
         foreach (var p in todasPistas)
         {
-            if (p.estado == PistaComercial.EstadoPista.Livre && p.waypointsDecida.Count > 0)
+            p.Inicializar();
+            if (p.estado == PistaComercial.EstadoPista.Livre && p.waypointsDecida.Count >= 2)
             {
                 p.estado = PistaComercial.EstadoPista.EmPouso;
                 p.aviaoNaPista = aviao;
@@ -282,9 +287,9 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
             }
         }
         // Fallback de emergência: pista 1
-        pista1.estado = PistaComercial.EstadoPista.EmPouso;
-        pista1.aviaoNaPista = aviao;
-        return pista1;
+        // Sem rota vÃ¡lida, aguarda na fila. Nunca entrega uma pista sem rota,
+        // pois isso faria o aviÃ£o cair no caminho genÃ©rico direto para a vaga.
+        return null;
     }
 
     // Mantém compatibilidade com código antigo

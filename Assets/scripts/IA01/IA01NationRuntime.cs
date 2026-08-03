@@ -87,7 +87,7 @@ namespace Hegemonia.AI.IA01
         private float lastRuntimeSliceMilliseconds;
         private string mostExpensiveModule = "n/d";
         private float mostExpensiveModuleMilliseconds;
-        private int currentTreasury;
+        private long currentTreasury;
 
         public IA01NationRuntime(IA01Controller controller, IA01RuntimeContext context, IA01NationProfile profile)
         {
@@ -330,7 +330,7 @@ namespace Hegemonia.AI.IA01
         {
             bool hasCapital = CityPlanner.Capital != null;
             int structures = WorldState.OwnedStructures.Count;
-            int treasury = country != null ? country.saldo : 0;
+            int treasury = country != null ? (int)Math.Min(int.MaxValue, Math.Max(int.MinValue, country.saldo)) : 0;
             int energy = country != null ? country.energia : 0;
             int food = country != null ? country.comida : 0;
             bool threatened = IA01OperationalRules.IsCapitalThreatened(WorldState, CityPlanner.Capital, country);
@@ -677,14 +677,14 @@ namespace Hegemonia.AI.IA01
         private bool foundationFundingGranted;
         private bool restoredFromSave;
         private int lastFoundationCapitalCost;
-        private int lastFoundationTarget;
-        private int lastFoundationAvailableFunds;
+        private long lastFoundationTarget;
+        private long lastFoundationAvailableFunds;
 
         public bool IsEmergencyReserveRequired { get; private set; }
         public bool FoundationFundingGranted => foundationFundingGranted;
         public int LastFoundationCapitalCost => lastFoundationCapitalCost;
-        public int LastFoundationTarget => lastFoundationTarget;
-        public int LastFoundationAvailableFunds => lastFoundationAvailableFunds;
+        public long LastFoundationTarget => lastFoundationTarget;
+        public long LastFoundationAvailableFunds => lastFoundationAvailableFunds;
 
         public IA01EconomyDirector(IA01RuntimeContext context, IA01NationProfile profile)
         {
@@ -716,7 +716,7 @@ namespace Hegemonia.AI.IA01
                 return false;
             }
 
-            int delta = profile.InitialTreasury - country.saldo;
+            long delta = profile.InitialTreasury - country.saldo;
             if (delta != 0)
             {
                 government.AdicionarSaldo(context.TeamId, delta);
@@ -738,7 +738,7 @@ namespace Hegemonia.AI.IA01
 
             SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
             DadosPaisGoverno country = government != null ? government.ObterPais(context.TeamId) : null;
-            int target = Mathf.Max(profile.InitialTreasury, Mathf.Max(5000, capitalCost) + 2500);
+            long target = Math.Max(profile.InitialTreasury, Math.Max(5000L, capitalCost) + 2500L);
             lastFoundationTarget = target;
             if (government == null || country == null)
             {
@@ -746,7 +746,7 @@ namespace Hegemonia.AI.IA01
                 return false;
             }
 
-            lastFoundationAvailableFunds = Mathf.Max(country.saldo, capitalCost);
+            lastFoundationAvailableFunds = Math.Max(country.saldo, (long)capitalCost);
 
             if (foundationFundingGranted && country.saldo >= Mathf.Max(1, capitalCost))
             {
@@ -3050,6 +3050,8 @@ namespace Hegemonia.AI.IA01
         private bool cancelQueuedConstructionCommand;
         private bool confirmationTimeoutArmed;
         private float lastConstructionCompletedAt = -1f;
+        private float nextNonCapitalConstructionAt;
+        private bool nonCapitalCadenceArmed;
         private IA01BuildDefinition pendingDefinition;
         private IA01BuildLot pendingLot;
         private IA01Intent pendingIntent;
@@ -3114,7 +3116,7 @@ namespace Hegemonia.AI.IA01
                     world != null ? world.Version : -1,
                     IA01OperationalRules.IsCapitalThreatened(world, city.Capital, country),
                     country != null && country.emGuerra,
-                    country != null ? country.saldo : 0,
+                    LegacyTreasuryValue(country),
                     country != null ? country.energia : 0,
                     country != null ? country.comida : 0);
 
@@ -3199,6 +3201,27 @@ namespace Hegemonia.AI.IA01
                 if (city != null && city.Capital != null)
                 {
                     board.Complete(IA01IntentType.EstablishCapital);
+
+                    // A prefeitura e a unica obra imediata da abertura. Assim que ela
+                    // existe (inclusive se veio pronta da cena/save), arma uma fila
+                    // simples para as demais estruturas. Sem este limite, cada slice
+                    // tenta catalogo, lote e fisica para a proxima obra logo apos a
+                    // confirmacao anterior, causando o gargalo da primeira partida.
+                    if (!nonCapitalCadenceArmed)
+                    {
+                        nonCapitalCadenceArmed = true;
+                        nextNonCapitalConstructionAt = now + GetNonCapitalConstructionInterval();
+                    }
+
+                    if (now < nextNonCapitalConstructionAt)
+                    {
+                        currentConstructionState = IA01ConstructionState.Cooldown;
+                        currentNeed = "Abertura em fila";
+                        needScore = 0;
+                        Status = "Aguardando proxima obra da abertura: " + (nextNonCapitalConstructionAt - now).ToString("0.0", CultureInfo.InvariantCulture) + " s.";
+                        context.SetMetric("ia01.construction.opening_wait", 1d);
+                        return false;
+                    }
                 }
 
                 currentConstructionState = IA01ConstructionState.SelectingIntent;
@@ -3564,7 +3587,7 @@ namespace Hegemonia.AI.IA01
             DadosPaisGoverno country = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.ObterPais(context.TeamId) : null;
             string regionKey = BuildRegionKey(country);
             int failureWorldVersion = intent.Type == IA01IntentType.EstablishCapital ? -1 : world.Version;
-            string token = failures.BuildStateToken(catalog.CatalogVersion, failureWorldVersion, IA01OperationalRules.IsCapitalThreatened(world, city.Capital, country), country != null && country.emGuerra, country != null ? country.saldo : 0, country != null ? country.energia : 0, country != null ? country.comida : 0);
+            string token = failures.BuildStateToken(catalog.CatalogVersion, failureWorldVersion, IA01OperationalRules.IsCapitalThreatened(world, city.Capital, country), country != null && country.emGuerra, LegacyTreasuryValue(country), country != null ? country.energia : 0, country != null ? country.comida : 0);
             string key = failures.BuildIntentKey(intent.Type, IA01StrategicRole.None, regionKey);
             return failures.CanAttempt(key, now, token);
         }
@@ -3572,6 +3595,12 @@ namespace Hegemonia.AI.IA01
         private static string BuildRegionKey(DadosPaisGoverno country)
         {
             return country != null ? "capital:" + country.teamId : "capital:unknown";
+        }
+
+        private static int LegacyTreasuryValue(DadosPaisGoverno country)
+        {
+            if (country == null) return 0;
+            return (int)Math.Min(int.MaxValue, Math.Max(int.MinValue, country.saldo));
         }
 
         private static bool IsBuildIntent(IA01IntentType type)
@@ -3633,7 +3662,7 @@ namespace Hegemonia.AI.IA01
                     world != null ? world.Version : -1,
                     IA01OperationalRules.IsCapitalThreatened(world, city.Capital, country),
                     country != null && country.emGuerra,
-                    country != null ? country.saldo : 0,
+                    LegacyTreasuryValue(country),
                     country != null ? country.energia : 0,
                     country != null ? country.comida : 0);
                 RecordFailure(
@@ -3665,9 +3694,19 @@ namespace Hegemonia.AI.IA01
             context.SetMetric("ia01.construction.completed", completed + 1d);
             context.MarkDirty(IA01DirtyReason.ExternalEvent);
             lastConstructionCompletedAt = now;
+            if (intent.Type != IA01IntentType.EstablishCapital)
+            {
+                nonCapitalCadenceArmed = true;
+                nextNonCapitalConstructionAt = now + GetNonCapitalConstructionInterval();
+            }
             Status = definition.UsedCatalogFallback
                 ? "Construido com fallback e confirmado: " + definition.DisplayName + "."
                 : "Construido e confirmado: " + definition.DisplayName + ".";
+        }
+
+        private float GetNonCapitalConstructionInterval()
+        {
+            return controller != null ? controller.NonCapitalConstructionIntervalSeconds : 5f;
         }
     }
 

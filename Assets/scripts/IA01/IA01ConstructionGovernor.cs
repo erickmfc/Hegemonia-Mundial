@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using System.Text;
 using UnityEngine;
 
@@ -26,7 +27,7 @@ namespace Hegemonia.AI.IA01
         private string availableConstructionFunds = "n/d";
         private string cityCoveragePercent = "n/d";
         private int lastStructureCount;
-        private int availableConstructionFundsAmount;
+        private long availableConstructionFundsAmount;
         private int consecutivePerformanceWarnings;
 
         public IA01ConstructionGovernor(IA01Controller controller, IA01RuntimeContext context, IA01NationProfile profile)
@@ -48,7 +49,7 @@ namespace Hegemonia.AI.IA01
         public string StorageOccupancy => storageOccupancy;
         public string EmergencyReserve => emergencyReserve;
         public string AvailableConstructionFunds => availableConstructionFunds;
-        public int AvailableConstructionFundsAmount => availableConstructionFundsAmount;
+        public long AvailableConstructionFundsAmount => availableConstructionFundsAmount;
         public string CityCoveragePercent => cityCoveragePercent;
         public string CurrentSector => currentSector;
         public int BuildingsTotal => lastStructureCount;
@@ -86,7 +87,7 @@ namespace Hegemonia.AI.IA01
             IA01ConstructionPhaseLimit phaseLimit = settings != null ? settings.ResolvePhaseLimit(context.CurrentStage) : null;
             MaxCandidatesPerSlice = settings != null ? settings.MaxCandidatesPerSlice : 8;
             MaxPhysicsChecksPerSlice = settings != null ? settings.MaxPhysicsChecksPerSlice : 16;
-            int treasury = country != null ? country.saldo : 0;
+            long treasury = country != null ? country.saldo : 0L;
             int food = country != null ? country.comida : 0;
             int energy = country != null ? country.energia : 0;
             bool threatened = IA01OperationalRules.IsCapitalThreatened(world, controller != null && buildDirector != null ? buildDirector.CapitalMarker : null, country);
@@ -112,10 +113,10 @@ namespace Hegemonia.AI.IA01
             int reservedOperationCosts = 0;
             int reservedFoodCosts = 0;
             int reservedMilitaryCosts = 0;
-            int availableFunds = treasury - minimumConstructionReserve - reservedOperationCosts - reservedFoodCosts - reservedMilitaryCosts;
+            long availableFunds = treasury - minimumConstructionReserve - reservedOperationCosts - reservedFoodCosts - reservedMilitaryCosts;
             if (settings != null)
             {
-                availableFunds = Mathf.Max(0, treasury - settings.EmergencyReserve - reservedOperationCosts - reservedFoodCosts - reservedMilitaryCosts);
+                availableFunds = Math.Max(0L, treasury - settings.EmergencyReserve - reservedOperationCosts - reservedFoodCosts - reservedMilitaryCosts);
             }
 
             bool foundationPending = buildDirector != null
@@ -125,7 +126,7 @@ namespace Hegemonia.AI.IA01
             if (foundationPending)
             {
                 // A reserva normal não pode impedir a primeira prefeitura.
-                availableFunds = Mathf.Max(0, treasury);
+                availableFunds = Math.Max(0L, treasury);
             }
 
             availableConstructionFundsAmount = availableFunds;

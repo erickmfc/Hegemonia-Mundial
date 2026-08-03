@@ -30,7 +30,7 @@ public class Fazenda : MonoBehaviour
         public SementeAgricola semente;
         public int lucroGerado;
         public float tempoCrescimento; // tempo real em segundos
-        public int custoSemente;
+        public long custoSemente;
         public int diasParaSafra = 2;
     }
 
@@ -52,7 +52,7 @@ public class Fazenda : MonoBehaviour
 
     [Header("Lote de Produção 3 (Adquirível)")]
     public bool lote3Comprado = false;
-    public int custoLote3 = 2000;
+    public long custoLote3 = 2000000L;
     public bool lote3Ocupado = false;
     public int lote3SementeIndex = 0;
     public float lote3Progresso = 0f;
@@ -90,6 +90,7 @@ public class Fazenda : MonoBehaviour
         janelaRetangulo = new Rect(Screen.width / 2f - 380f, Screen.height / 2f - 270f, 760f, 540f);
 
         PopularCatalogoSeNecessario();
+        NormalizarCatalogoAgricola();
     }
 
     private void Start()
@@ -113,9 +114,20 @@ public class Fazenda : MonoBehaviour
     {
         if (Time.timeScale == 0f) return;
 
+        // Fazendas sem lavoura ativa nao precisam executar a rotina de
+        // crescimento em todos os frames. Isso evita custo acumulado quando
+        // existem muitas fazendas no mapa.
+        bool houveClique = Input.GetMouseButtonDown(0);
+        if (!houveClique && !ExisteLavouraAtiva())
+        {
+            return;
+        }
+
         // OnGUI e o mundo recebem o mesmo Input. Quando o cursor está dentro
         // da janela, o clique pertence ao menu e não pode atingir objetos atrás.
-        if (menuAberto && CliqueCapturadoPeloMenu())
+        // O painel novo e feito em UI Toolkit. Ele captura somente o clique;
+        // a producao da fazenda continua correndo enquanto o painel esta aberto.
+        if (menuAberto && CliqueCapturadoPeloMenu() && houveClique)
         {
             return;
         }
@@ -136,7 +148,7 @@ public class Fazenda : MonoBehaviour
         }
 
         // Interação de Clique na Fazenda
-        if (!Input.GetMouseButtonDown(0))
+        if (!houveClique)
         {
             return;
         }
@@ -164,6 +176,7 @@ public class Fazenda : MonoBehaviour
                     menuAberto = true;
                     FazendaAtiva = this;
                     QualquerFazendaAberta = true;
+                    FazendaMenuController.AbrirPara(this);
                     LogFarm("Terminal da fazenda aberto.");
                 }
                 else
@@ -210,6 +223,13 @@ public class Fazenda : MonoBehaviour
             return false;
         }
 
+        // UI Toolkit cobre a tela inteira e o InteractionModeService bloqueia
+        // acoes no mundo. Isso tambem impede selecao atraves do painel.
+        if (FazendaMenuController.EstaAberto)
+        {
+            return true;
+        }
+
         Rect bounds = new Rect(
             FazendaAtiva.janelaRetangulo.x,
             Screen.height - FazendaAtiva.janelaRetangulo.y - FazendaAtiva.janelaRetangulo.height,
@@ -229,6 +249,12 @@ public class Fazenda : MonoBehaviour
 
     public void FecharMenu()
     {
+        EncerrarEstadoDoMenu();
+        FazendaMenuController.FecharSeAbertoPara(this);
+    }
+
+    internal void EncerrarEstadoDoMenu()
+    {
         menuAberto = false;
         if (FazendaAtiva == this)
         {
@@ -242,6 +268,16 @@ public class Fazenda : MonoBehaviour
         if (ocupado && sementeIndex > 0 && sementeIndex < catalogoAgricola.Count)
         {
             RegistoColheita cultivo = catalogoAgricola[sementeIndex];
+            if (cultivo == null || cultivo.tempoCrescimento <= 0f || float.IsNaN(cultivo.tempoCrescimento) || float.IsInfinity(cultivo.tempoCrescimento))
+            {
+                // Dados legados incompletos nao podem entrar em um ciclo de
+                // replantio infinito nem gerar NaN/Infinity na economia.
+                ocupado = false;
+                progresso = 0f;
+                sementeIndex = 0;
+                return;
+            }
+
             progresso += Time.deltaTime;
             ganhoComida += (float)cultivo.lucroGerado / cultivo.tempoCrescimento;
 
@@ -265,6 +301,63 @@ public class Fazenda : MonoBehaviour
                 {
                     progresso = 0f;
                 }
+            }
+        }
+    }
+
+    private bool ExisteLavouraAtiva()
+    {
+        return LoteValido(lote1Ocupado, lote1SementeIndex)
+            || LoteValido(lote2Ocupado, lote2SementeIndex)
+            || LoteValido(lote3Ocupado, lote3SementeIndex);
+    }
+
+    private bool LoteValido(bool ocupado, int sementeIndex)
+    {
+        if (!ocupado || catalogoAgricola == null || sementeIndex <= 0 || sementeIndex >= catalogoAgricola.Count)
+        {
+            return false;
+        }
+
+        RegistoColheita cultura = catalogoAgricola[sementeIndex];
+        return cultura != null && cultura.tempoCrescimento > 0f && !float.IsNaN(cultura.tempoCrescimento);
+    }
+
+    private void NormalizarCatalogoAgricola()
+    {
+        if (catalogoAgricola == null)
+        {
+            catalogoAgricola = new List<RegistoColheita>();
+        }
+
+        for (int i = 0; i < catalogoAgricola.Count; i++)
+        {
+            RegistoColheita cultura = catalogoAgricola[i];
+            if (cultura == null)
+            {
+                catalogoAgricola[i] = new RegistoColheita
+                {
+                    nome = "Cultura indisponivel",
+                    semente = SementeAgricola.Nenhum,
+                    tempoCrescimento = 120f,
+                    custoSemente = 0L
+                };
+                continue;
+            }
+
+            if (cultura.tempoCrescimento <= 0f || float.IsNaN(cultura.tempoCrescimento) || float.IsInfinity(cultura.tempoCrescimento))
+            {
+                cultura.tempoCrescimento = 120f;
+            }
+
+            if (cultura.custoSemente < 0L)
+            {
+                cultura.custoSemente = 0L;
+            }
+
+            if (string.IsNullOrWhiteSpace(cultura.nome))
+            {
+                cultura.nome = cultura.semente == SementeAgricola.Nenhum ? "Cultura" : cultura.semente.ToString();
             }
         }
     }
@@ -347,6 +440,10 @@ public class Fazenda : MonoBehaviour
 
     void OnGUI()
     {
+        // O menu legado IMGUI foi substituido pelo painel UI Toolkit.
+        // O processamento agricola e as APIs abaixo continuam sendo usados.
+        return;
+        /*
         if (!menuAberto) return;
         InicializarEstilos();
         GUI.depth = -110; 
@@ -362,6 +459,7 @@ public class Fazenda : MonoBehaviour
             // Set flag on globally so CameraController can see it if we updated it
             QualquerFazendaAberta = true; 
         }
+        */
     }
 
     void InterfaceFazenda(int windowID)
@@ -535,6 +633,101 @@ public class Fazenda : MonoBehaviour
         }
     }
 
+    // API de apresentacao: o processamento original continua centralizado
+    // acima, mas o painel UI Toolkit nao precisa acessar metodos privados.
+    public bool MenuAberto => menuAberto;
+    public string NomeFazendaExibicao => string.IsNullOrWhiteSpace(nomeFazenda) ? "Fazenda Nacional" : nomeFazenda;
+    public float ComidaPorSegundoAtual => comidaPorSegundoAtual;
+    public int CatalogoAgricolaCount => catalogoAgricola != null ? catalogoAgricola.Count : 0;
+
+    public RegistoColheita ObterCultura(int indice)
+    {
+        if (catalogoAgricola == null || indice < 0 || indice >= catalogoAgricola.Count)
+        {
+            return null;
+        }
+
+        return catalogoAgricola[indice];
+    }
+
+    public bool ObterEstadoLote(int numeroLote, out bool ocupado, out int sementeIndex, out float progresso)
+    {
+        ocupado = false;
+        sementeIndex = 0;
+        progresso = 0f;
+
+        switch (numeroLote)
+        {
+            case 1:
+                ocupado = lote1Ocupado;
+                sementeIndex = lote1SementeIndex;
+                progresso = lote1Progresso;
+                return true;
+            case 2:
+                ocupado = lote2Ocupado;
+                sementeIndex = lote2SementeIndex;
+                progresso = lote2Progresso;
+                return true;
+            case 3:
+                ocupado = lote3Ocupado;
+                sementeIndex = lote3SementeIndex;
+                progresso = lote3Progresso;
+                return lote3Comprado;
+            default:
+                return false;
+        }
+    }
+
+    public bool PlantarSementePeloMenu(int loteDestino, int sementeId)
+    {
+        if (loteDestino == 3 && !lote3Comprado)
+        {
+            return false;
+        }
+
+        bool ocupado;
+        int sementeAtual;
+        float progresso;
+        if (!ObterEstadoLote(loteDestino, out ocupado, out sementeAtual, out progresso) || ocupado)
+        {
+            return false;
+        }
+
+        RegistoColheita cultura = ObterCultura(sementeId);
+        if (cultura == null || sementeId <= 0)
+        {
+            return false;
+        }
+
+        PlantarSemente(loteDestino, sementeId);
+        ObterEstadoLote(loteDestino, out ocupado, out sementeAtual, out progresso);
+        return ocupado && sementeAtual == sementeId;
+    }
+
+    public void LiberarLotePeloMenu(int numeroLote)
+    {
+        LimparLote(numeroLote);
+    }
+
+    public bool ComprarTerceiroLotePeloMenu()
+    {
+        if (lote3Comprado)
+        {
+            return true;
+        }
+
+        if (GerenciadorRecursos.Instancia == null ||
+            !GerenciadorRecursos.Instancia.TentarGastarDinheiro(custoLote3))
+        {
+            LogFarm("Dinheiro insuficiente para desbloquear o terceiro lote.");
+            return false;
+        }
+
+        lote3Comprado = true;
+        LogFarm("Terceiro lote desbloqueado.");
+        return true;
+    }
+
     // Salvar Dados Básicos (Se tiver sistema de save unificado, aqui ficam as propriedades para ele varrer)
     // As propriedades lote1Ocupado e afins já são públicas, sendo fácil de serializar no JSON/PlayerPrefs global!
     private void GarantirEstruturaEconomica()
@@ -557,16 +750,16 @@ public class Fazenda : MonoBehaviour
             return;
 
         catalogoAgricola.Add(new RegistoColheita { nome = "-", semente = SementeAgricola.Nenhum });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Milho", semente = SementeAgricola.Milho, lucroGerado = 300, tempoCrescimento = 90f, custoSemente = 50, diasParaSafra = 2 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Batata", semente = SementeAgricola.Batata, lucroGerado = 280, tempoCrescimento = 100f, custoSemente = 40, diasParaSafra = 2 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Feijao", semente = SementeAgricola.Feijao, lucroGerado = 250, tempoCrescimento = 120f, custoSemente = 35, diasParaSafra = 2 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Trigo", semente = SementeAgricola.Trigo, lucroGerado = 360, tempoCrescimento = 180f, custoSemente = 65, diasParaSafra = 3 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Arroz", semente = SementeAgricola.Arroz, lucroGerado = 400, tempoCrescimento = 210f, custoSemente = 70, diasParaSafra = 3 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Cana-de-Acucar", semente = SementeAgricola.CanaDeAcucar, lucroGerado = 550, tempoCrescimento = 300f, custoSemente = 100, diasParaSafra = 4 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Algodao", semente = SementeAgricola.Algodao, lucroGerado = 650, tempoCrescimento = 360f, custoSemente = 120, diasParaSafra = 4 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Soja", semente = SementeAgricola.Soja, lucroGerado = 800, tempoCrescimento = 420f, custoSemente = 150, diasParaSafra = 5 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Cafe", semente = SementeAgricola.Cafe, lucroGerado = 1100, tempoCrescimento = 600f, custoSemente = 250, diasParaSafra = 6 });
-        catalogoAgricola.Add(new RegistoColheita { nome = "Cacau", semente = SementeAgricola.Cacau, lucroGerado = 1500, tempoCrescimento = 800f, custoSemente = 350, diasParaSafra = 7 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Milho", semente = SementeAgricola.Milho, lucroGerado = 300, tempoCrescimento = 90f, custoSemente = 50000L, diasParaSafra = 2 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Batata", semente = SementeAgricola.Batata, lucroGerado = 280, tempoCrescimento = 100f, custoSemente = 40000L, diasParaSafra = 2 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Feijao", semente = SementeAgricola.Feijao, lucroGerado = 250, tempoCrescimento = 120f, custoSemente = 35000L, diasParaSafra = 2 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Trigo", semente = SementeAgricola.Trigo, lucroGerado = 360, tempoCrescimento = 180f, custoSemente = 65000L, diasParaSafra = 3 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Arroz", semente = SementeAgricola.Arroz, lucroGerado = 400, tempoCrescimento = 210f, custoSemente = 70000L, diasParaSafra = 3 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Cana-de-Acucar", semente = SementeAgricola.CanaDeAcucar, lucroGerado = 550, tempoCrescimento = 300f, custoSemente = 100000L, diasParaSafra = 4 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Algodao", semente = SementeAgricola.Algodao, lucroGerado = 650, tempoCrescimento = 360f, custoSemente = 120000L, diasParaSafra = 4 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Soja", semente = SementeAgricola.Soja, lucroGerado = 800, tempoCrescimento = 420f, custoSemente = 150000L, diasParaSafra = 5 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Cafe", semente = SementeAgricola.Cafe, lucroGerado = 1100, tempoCrescimento = 600f, custoSemente = 250000L, diasParaSafra = 6 });
+        catalogoAgricola.Add(new RegistoColheita { nome = "Cacau", semente = SementeAgricola.Cacau, lucroGerado = 1500, tempoCrescimento = 800f, custoSemente = 350000L, diasParaSafra = 7 });
     }
 
 

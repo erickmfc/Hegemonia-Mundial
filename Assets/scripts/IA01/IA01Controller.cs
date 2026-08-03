@@ -60,6 +60,9 @@ namespace Hegemonia.AI.IA01
         [SerializeField] private bool autoRegisterWithManager = true;
         [SerializeField] private bool autoApplyGovernmentSnapshot = true;
         [SerializeField] private float fallbackCadenceSeconds = 0.65f;
+        [Header("Cadencia de construcao")]
+        [Tooltip("Depois da prefeitura, a IA espera este intervalo real entre obras confirmadas. Evita que a abertura concentre instanciacao, fisica e catalogo no mesmo frame.")]
+        [SerializeField, Min(0f)] private float nonCapitalConstructionIntervalSeconds = 5f;
         [TextArea(3, 12)] [SerializeField] private string runtimeSummary = string.Empty;
 
         private readonly Stopwatch sliceStopwatch = new Stopwatch();
@@ -131,6 +134,7 @@ namespace Hegemonia.AI.IA01
         public IA01StrategicOptions StrategicOptions => strategicOptions;
         public IA01StrategicSupport StrategicSupport => strategicSupport;
         public IA01BuildSlot CapitalSlot => cityLayout != null ? cityLayout.CapitalSlot : null;
+        public float NonCapitalConstructionIntervalSeconds => Mathf.Max(0f, nonCapitalConstructionIntervalSeconds);
 
         /// <summary>
         /// A IA só pode executar quando a identidade, o governo e o layout
@@ -234,6 +238,9 @@ namespace Hegemonia.AI.IA01
 
         private static bool IsInsidePlayerTerritory(Vector3 position)
         {
+            int playerTeam = SistemaGovernoMundial.Instancia != null
+                ? Mathf.Max(1, SistemaGovernoMundial.Instancia.teamJogador)
+                : 1;
             MarcadorTerritorio[] markers = UnityEngine.Object.FindObjectsByType<MarcadorTerritorio>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < markers.Length; i++)
@@ -242,7 +249,7 @@ namespace Hegemonia.AI.IA01
                 if (marker == null) continue;
                 IdentidadeUnidade identity = marker.GetComponent<IdentidadeUnidade>();
                 int teamId = identity != null ? identity.teamID : marker.teamID;
-                if (teamId != 1) continue;
+                if (teamId != playerTeam) continue;
                 float radius = Mathf.Max(0f, marker.raioDeDominio);
                 Vector3 delta = position - marker.transform.position;
                 if (Mathf.Abs(delta.x) <= radius && Mathf.Abs(delta.z) <= radius) return true;

@@ -145,7 +145,7 @@ public class MenuGoverno : MonoBehaviour
     private static readonly string[] SubSancoes = { "Visao Geral", "Aplicadas", "Tipos", "Historico", "Legitimidade", "Emprestimos" };
     private static readonly string[] SubEconomia = { "Tesouro", "Orcamento", "Producao", "Impostos" };
     private static readonly string[] SubMercado = { "Comprar", "Vender", "Precos", "Rotas" };
-    private static readonly string[] SubInterior = { "Populacao", "Cidades", "Bem-estar", "Projetos" };
+    private static readonly string[] SubInterior = { "Populacao", "Cidades", "Bem-estar", "Projetos", "Meio Ambiente" };
     private static readonly string[] SubDefesa = { "Comando", "Exercito", "Marinha", "Aerea", "Alertas" };
     private static readonly string[] SubCiencia = { "Pesquisa", "Tecnologias", "Projetos", "Laboratorios" };
     private static readonly string[] SubTrabalho = { "Empregos", "Setores", "Formacao", "Politicas" };
@@ -1257,7 +1257,7 @@ public class MenuGoverno : MonoBehaviour
                 Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
                 stats.text = "Saldo: $" + FormatNumber(p.saldo)
                     + "\nRenda bruta: +" + Mathf.RoundToInt(p.rendaPorSegundo) + "/s"
-                    + "\nGastos: -" + Mathf.RoundToInt(p.gastosPorSegundo) + "/s"
+                    + "\nGastos: -$" + FormatNumber(p.gastosPorSegundo) + "/s"
                     + "\nSaldo operacional: " + SignedRate(p.saldoOperacional)
                     + "\nPoder de compra: " + p.PoderDeCompra.ToString("0.00")
                     + "\nMoeda: 1 " + p.nomeMoeda + " = " + p.cambioComLider.ToString("0.00") + " " + p.moedaLiderReferencia
@@ -1282,7 +1282,11 @@ public class MenuGoverno : MonoBehaviour
             DadosPaisGoverno p = GetPlayerGov();
             if (p == null) return;
 
-            if (tab == 1) // Cidades e Estados
+            if (tab == 4)
+            {
+                BuildEnvironmentPage(page, p);
+            }
+            else if (tab == 1) // Cidades e Estados
             {
                 CreateSectionTitle(page.Root.transform, "Divisão Territorial");
                 CreateDescription(page.Root.transform, "Cidades e Estados no mapa. Selecione uma cidade para gerenciar à direita.");
@@ -1301,6 +1305,46 @@ public class MenuGoverno : MonoBehaviour
             }
         };
         page.Refresh();
+    }
+
+    private void BuildEnvironmentPage(PageView page, DadosPaisGoverno pais)
+    {
+        DadosEconomiaPais economia = PlayerEconomy();
+        CreateSectionTitle(page.Root.transform, "Poluicao e Meio Ambiente");
+
+        if (economia == null)
+        {
+            CreateInfoBlock(page.Root.transform, "Dados ambientais indisponiveis: a economia ainda nao foi recalculada.");
+            return;
+        }
+
+        CreateDescription(page.Root.transform,
+            "Estimativa nacional baseada na energia gerada. O percentual de energia mede a matriz do pais; o indice ambiental e um indicador interno de 0 a 100.");
+
+        Text resumo = CreateInfoBlock(page.Root.transform, string.Empty);
+        resumo.text = "INDICE DE POLUICAO: " + economia.poluicaoIndice.ToString("0.0") + "/100"
+            + "\nEnergia limpa: " + economia.energiaLimpaPercentual.ToString("0.0") + "%"
+            + "\nEnergia fossil (carvao): " + economia.energiaFossilPercentual.ToString("0.0") + "%"
+            + "\nUsinas solares: " + economia.usinasSolares
+            + " | Usinas de carvao: " + economia.usinasCarvao
+            + "\nGeracao solar: " + economia.energiaSolarProduzida.ToString("0.0") + " MW"
+            + "\nGeracao a carvao: " + economia.energiaCarvaoProduzida.ToString("0.0") + " MW";
+
+        CreateSectionTitle(page.Root.transform, "Emissoes estimadas por dia");
+        Text emissoes = CreateInfoBlock(page.Root.transform, string.Empty);
+        emissoes.text = "CO2: " + economia.co2ToneladasDia.ToString("N1") + " toneladas/dia"
+            + "\nSO2: " + economia.so2KgDia.ToString("N1") + " kg/dia"
+            + "\nNOx: " + economia.noxKgDia.ToString("N1") + " kg/dia"
+            + "\nParticulas finas (PM): " + economia.particulasKgDia.ToString("N1") + " kg/dia";
+
+        CreateSectionTitle(page.Root.transform, "Impacto no tesouro");
+        Text custo = CreateInfoBlock(page.Root.transform, string.Empty);
+        custo.text = "CUSTO DAS USINAS DE CARVAO: -$" + FormatNumber(economia.custoUsinasCarvaoPorDia) + "/dia"
+            + "\nEste valor inclui o custo operacional da usina, combustivel, filtros, cinzas e controle ambiental."
+            + "\nSem usina de carvao, este custo fica em $0/dia.";
+
+        CreateDescription(page.Root.transform,
+            "Base do modelo: fator medio de CO2 do carvao publicado pela EIA e fatores de emissao atmosferica de referencia AP-42/EPA. Valores reais variam por combustivel, eficiencia e filtros da usina; nao sao leitura de sensor.");
     }
 
     private void BuildCidadesRows(Transform parent)
@@ -2126,6 +2170,7 @@ public class MenuGoverno : MonoBehaviour
             + "Energia: +" + Mathf.RoundToInt(p.receitaEnergia) + "/s");
         CreateInfoBlock(parent,
             "Manutencao: -" + Mathf.RoundToInt(p.custoManutencao) + "/s\n"
+            + "Manutencao militar cobrada no ultimo dia: -$" + FormatNumber(GestorDeConsumo.Instancia != null ? GestorDeConsumo.Instancia.totalConsumoDinheiro : 0L) + "/dia\n"
             + "Saldo operacional: " + SignedRate(p.saldoOperacional) + "\n"
             + "Divida: $" + FormatNumber(Mathf.RoundToInt(p.divida)));
     }
@@ -3623,7 +3668,17 @@ public class MenuGoverno : MonoBehaviour
 
     private string FormatNumber(int number)
     {
-        return number.ToString("N0").Replace(",", ".");
+        return ValoresDefinitivosHegemonia.FormatarDinheiro(number).TrimStart('$');
+    }
+
+    private string FormatNumber(long number)
+    {
+        return ValoresDefinitivosHegemonia.FormatarDinheiro(number).TrimStart('$');
+    }
+
+    private string FormatNumber(float number)
+    {
+        return FormatNumber((long)Math.Round(number, MidpointRounding.AwayFromZero));
     }
 
     private string SignedRate(float value)
@@ -3726,7 +3781,7 @@ public class MenuGoverno : MonoBehaviour
             ItemId = item.id;
             Name.text = item.nome.ToUpperInvariant();
             Stock.text = Menu.FormatNumber(item.estoqueGlobal);
-            Price.text = "$" + Menu.FormatNumber(item.precoAtual);
+            Price.text = ValoresDefinitivosHegemonia.FormatarDinheiro(item.precoAtual);
             Price.color = item.variacaoPercentual >= 0f ? Menu.corVerde : Menu.corVermelho;
             Partner.text = partner != null ? partner.nomePais : "sem oferta";
             Action.interactable = partner != null && item.estoqueGlobal > 0;
@@ -3779,7 +3834,7 @@ public class MenuGoverno : MonoBehaviour
         public void Refresh(DadosItemMercado item)
         {
             Name.text = item.nome.ToUpperInvariant();
-            Price.text = "$" + item.precoAtual.ToString("N0").Replace(",", ".");
+            Price.text = ValoresDefinitivosHegemonia.FormatarDinheiro(item.precoAtual);
             Var.text = (item.variacaoPercentual >= 0f ? "+" : "") + item.variacaoPercentual.ToString("0.0") + "%";
             Var.color = item.variacaoPercentual >= 0f ? new Color(0.220f, 0.790f, 0.390f, 1f) : new Color(0.900f, 0.180f, 0.140f, 1f);
             Offer.text = item.oferta.ToString("0");

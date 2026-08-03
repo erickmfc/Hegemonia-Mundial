@@ -11,6 +11,7 @@ public enum TipoEstruturaEconomica
     Energia,
     PesquisaMilitar,
     UsinaSolar,
+    UsinaCarvao,
     CasaPopular,
     PredioResidencial,
     ComercioPequeno,
@@ -52,6 +53,8 @@ public class DadosEconomiaPais
     public int comercios;
     public int farms;
     public int usinas;
+    public int usinasSolares;
+    public int usinasCarvao;
     public int estruturasSemEnergia;
 
     public int moradiaTotal;
@@ -88,6 +91,17 @@ public class DadosEconomiaPais
     public float eficienciaMedia = 1f;
     public float exportacaoTotal;
     public float importacaoTotal;
+
+    public float energiaSolarProduzida;
+    public float energiaCarvaoProduzida;
+    public float co2ToneladasDia;
+    public float so2KgDia;
+    public float noxKgDia;
+    public float particulasKgDia;
+    public float poluicaoIndice;
+    public float energiaLimpaPercentual;
+    public float energiaFossilPercentual;
+    public float custoUsinasCarvaoPorDia;
 
     public float CoberturaMoradia
     {

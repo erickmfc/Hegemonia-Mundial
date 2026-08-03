@@ -63,6 +63,8 @@ public class ConfiguradorIlha : MonoBehaviour
             _marcador = gameObject.AddComponent<MarcadorSuperficieMapa>();
         }
 
+        _marcador.DefinirTipo(TipoSuperficieMapa.Chao);
+
         LogDiagnostico($"[ConfiguradorIlha] '{gameObject.name}' inicializado. Tipo: {_marcador.TipoSuperficie}");
     }
 

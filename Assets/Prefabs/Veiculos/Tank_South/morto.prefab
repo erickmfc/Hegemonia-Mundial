@@ -217,15 +217,15 @@ PrefabInstance:
     - target: {fileID: 2316316, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 0ae8aab4ae40e7741a636cf6e5136a55, type: 2}
+      objectReference: {fileID: 4002065185420988265, guid: e1d81c06b6cb50c489236be412bc9644, type: 3}
     - target: {fileID: 2356118, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 0ae8aab4ae40e7741a636cf6e5136a55, type: 2}
+      objectReference: {fileID: 2656027207664422766, guid: e1d81c06b6cb50c489236be412bc9644, type: 3}
     - target: {fileID: 2383698, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 0ae8aab4ae40e7741a636cf6e5136a55, type: 2}
+      objectReference: {fileID: 2656027207664422766, guid: e1d81c06b6cb50c489236be412bc9644, type: 3}
     - target: {fileID: 9592210, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -403,6 +403,7 @@ MonoBehaviour:
   tagPontoMissel: 
   modoPassivo: 0
   modoRadar: 0
+  bloquearMovimentoAutomatico: 0
   interceptarMisseis: 0
   usarMisselParaInterceptar: 1
   interceptarTorpedos: 0

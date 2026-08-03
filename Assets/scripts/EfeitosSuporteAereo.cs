@@ -53,7 +53,7 @@ public class BombaAerea : MonoBehaviour
         
         // 2. Efeitos
         if (efeitoExplosao != null) PoolDeObjetosCombate.SpawnTemporario(efeitoExplosao, transform.position, Quaternion.identity, 4f);
-        if (somExplosao != null) AudioSource.PlayClipAtPoint(somExplosao, transform.position);
+        if (somExplosao != null) AudioRuntime.PlayClipAtPoint(somExplosao, transform.position);
         
         Debug.Log("💥 BOOM! Bomba explodiu.");
         PoolDeObjetosCombate.Release(gameObject); // Remove a bomba

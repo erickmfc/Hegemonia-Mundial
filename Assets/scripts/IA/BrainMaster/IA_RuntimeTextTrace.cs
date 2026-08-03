@@ -16,6 +16,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private static readonly object _gate = new object();
         private static Session _session;
+        private static float _nextFlushTime;
 
         // Rastrear cada frame/modulo abre escrita sincronizada no arquivo e
         // compete diretamente com a main thread do jogo. Eventos de negocio
@@ -63,6 +64,7 @@ namespace Hegemonia.AI.BrainMaster
                 finally
                 {
                     _session = null;
+                    _nextFlushTime = 0f;
                 }
             }
         }
@@ -130,8 +132,12 @@ namespace Hegemonia.AI.BrainMaster
                 Mathf.Max(-1, teamId));
             string path = Path.Combine(root, fileName);
             FileStream stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read);
-            StreamWriter writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+            // AutoFlush por linha transformava cada evento de IA em uma escrita
+            // sincronizada no disco. O trace continua completo, mas agora e
+            // descarregado em pequenos lotes para nao bloquear a main thread.
+            StreamWriter writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = false };
             _session = new Session { Path = path, Writer = writer };
+            _nextFlushTime = Time.unscaledTime + 1f;
 
             WriteLineUnlocked(
                 teamId,
@@ -159,6 +165,11 @@ namespace Hegemonia.AI.BrainMaster
                 Normalize(message, string.Empty));
 
             _session.Writer.WriteLine(line);
+            if (Time.unscaledTime >= _nextFlushTime)
+            {
+                _session.Writer.Flush();
+                _nextFlushTime = Time.unscaledTime + 1f;
+            }
         }
 
         private static string BuildCommandMessage(IA_CommandRequest request, string message)

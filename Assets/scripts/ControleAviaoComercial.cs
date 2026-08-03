@@ -182,52 +182,89 @@ public class ControleAviaoComercial : ControleAviao
 
     protected override List<Transform> ObterWaypointsDecolagem()
     {
-        if (pistaDesignada != null && pistaDesignada.waypointsDecolagem.Count > 0)
-            return pistaDesignada.waypointsDecolagem;
+        if (pistaDesignada != null)
+        {
+            pistaDesignada.Inicializar();
+            if (pistaDesignada.waypointsDecolagem.Count > 0)
+                return pistaDesignada.waypointsDecolagem;
+        }
         return base.ObterWaypointsDecolagem();
     }
 
     protected override List<Transform> ObterWaypointsDecida()
     {
-        if (pistaDesignada == null && aeroportoOrigemComercial != null)
+        if (!PistaDesignadaTemRotaDePouso() && aeroportoOrigemComercial != null)
         {
+            pistaDesignada = null;
             pistaDesignada = aeroportoOrigemComercial.SolicitarPistaParaPouso(this);
             if (pistaDesignada == null)
             {
                 aeroportoOrigemComercial.EntrarNaFilaPouso(this);
-                pistaDesignada = aeroportoOrigemComercial.pista1;
+                return new List<Transform>();
             }
         }
-        if (pistaDesignada != null && pistaDesignada.waypointsDecida.Count > 0)
+        if (pistaDesignada == null)
+            return new List<Transform>();
+
+        pistaDesignada.Inicializar();
+        if (pistaDesignada.waypointsDecida.Count > 0)
             return pistaDesignada.waypointsDecida;
-        return base.ObterWaypointsDecida();
+
+        // Comercial nao usa a descida generica do aeroporto: sem rota de pista,
+        // aguarda configuracao valida em vez de pousar direto na vaga.
+        return new List<Transform>();
+    }
+
+    private bool PistaDesignadaTemRotaDePouso()
+    {
+        if (pistaDesignada == null) return false;
+
+        pistaDesignada.Inicializar();
+        return pistaDesignada.waypointsDecida != null
+               && pistaDesignada.waypointsDecida.Count >= 2;
     }
 
     protected override List<Transform> ObterWaypointsTaxi()
     {
-        if (pistaDesignada != null && pistaDesignada.waypointsTaxiSaida.Count > 0)
-            return pistaDesignada.waypointsTaxiSaida;
+        if (pistaDesignada != null)
+        {
+            pistaDesignada.Inicializar();
+            if (pistaDesignada.waypointsTaxiSaida.Count > 0)
+                return pistaDesignada.waypointsTaxiSaida;
+        }
         return base.ObterWaypointsTaxi();
     }
 
     protected override Transform ObterWpPreparacao()
     {
-        if (pistaDesignada != null && pistaDesignada.waypointsTaxiEntrada.Count > 0)
-            return pistaDesignada.waypointsTaxiEntrada[0];
+        if (pistaDesignada != null)
+        {
+            pistaDesignada.Inicializar();
+            if (pistaDesignada.waypointsTaxiEntrada.Count > 0)
+                return pistaDesignada.waypointsTaxiEntrada[0];
+        }
         return base.ObterWpPreparacao();
     }
 
     protected override Transform ObterWpPronto()
     {
-        if (pistaDesignada != null && pistaDesignada.waypointsTaxiEntrada.Count > 1)
-            return pistaDesignada.waypointsTaxiEntrada[pistaDesignada.waypointsTaxiEntrada.Count - 1];
+        if (pistaDesignada != null)
+        {
+            pistaDesignada.Inicializar();
+            if (pistaDesignada.waypointsTaxiEntrada.Count > 1)
+                return pistaDesignada.waypointsTaxiEntrada[pistaDesignada.waypointsTaxiEntrada.Count - 1];
+        }
         return base.ObterWpPronto();
     }
 
     protected override List<Transform> ObterWaypointsTaxiEntrada()
     {
-        if (pistaDesignada != null && pistaDesignada.waypointsTaxiEntrada.Count > 0)
-            return new List<Transform>(pistaDesignada.waypointsTaxiEntrada);
+        if (pistaDesignada != null)
+        {
+            pistaDesignada.Inicializar();
+            if (pistaDesignada.waypointsTaxiEntrada.Count > 0)
+                return new List<Transform>(pistaDesignada.waypointsTaxiEntrada);
+        }
         return base.ObterWaypointsTaxiEntrada();
     }
 
@@ -446,8 +483,9 @@ public class ControleAviaoComercial : ControleAviao
         estadoAtual = EstadoAviao.Pousando;
 
         // Solicita pista de pouso (se ainda não tiver sido designada)
-        while (pistaDesignada == null && aeroportoOrigemComercial != null)
+        while (!PistaDesignadaTemRotaDePouso() && aeroportoOrigemComercial != null)
         {
+            pistaDesignada = null;
             pistaDesignada = aeroportoOrigemComercial.SolicitarPistaParaPouso(this);
             if (pistaDesignada == null)
             {

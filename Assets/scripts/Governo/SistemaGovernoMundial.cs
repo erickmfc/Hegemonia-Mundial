@@ -915,7 +915,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         return true;
     }
 
-    public bool TentarPagar(int teamId, int valor)
+    public bool TentarPagar(int teamId, long valor)
     {
         if (valor <= 0) return true;
         DadosPaisGoverno pais = ObterPais(teamId);
@@ -935,7 +935,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         return true;
     }
 
-    public void AdicionarSaldo(int teamId, int valor)
+    public void AdicionarSaldo(int teamId, long valor)
     {
         DadosPaisGoverno pais = ObterPais(teamId);
         if (pais == null || valor == 0) return;
@@ -2044,6 +2044,17 @@ public class SistemaGovernoMundial : MonoBehaviour
         // Somar custos no snapshot a cada refresh fazia a despesa crescer sem limite.
         float custoNacional = economia.custoManutencao
             + custoServicosBase + custoMoradia + custoDefesa + custoInfraestrutura;
+        if (pais.teamId == teamJogador)
+        {
+            PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+            float multiplicadorReceita = perfil != null ? perfil.MultiplicadorReceita : 1f;
+            float multiplicadorManutencao = perfil != null ? perfil.MultiplicadorManutencao : 1f;
+            pais.receitaMoradia *= multiplicadorReceita;
+            pais.receitaIndustria *= multiplicadorReceita;
+            pais.receitaComercio *= multiplicadorReceita;
+            pais.receitaEnergia *= multiplicadorReceita;
+            custoNacional *= multiplicadorManutencao;
+        }
         pais.custoManutencao = custoNacional;
         pais.saldoOperacional = (pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia) - pais.custoManutencao;
         pais.rendaPorSegundo = Mathf.Max(0f, pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia);

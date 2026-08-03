@@ -8,6 +8,7 @@ using UnityEngine.UIElements;
 [DisallowMultipleComponent]
 public sealed class FabricaMineriosMenuController : MonoBehaviour
 {
+    private const int MaxHistoricoConsultadoNoPainel = 96;
     private const string UxmlResourcePath = "FactoryIndustryMenu/FactoryIndustryMenu";
     private const string UssResourcePath = "FactoryIndustryMenu/FactoryIndustryMenu";
 
@@ -439,6 +440,12 @@ public sealed class FabricaMineriosMenuController : MonoBehaviour
         InteractionModeService.Release(this, InteractionOwner.FactoryIndustryPanel);
     }
 
+    // Usado quando outro painel operacional precisa assumir o foco da UI.
+    public void FecharParaOutraInterface()
+    {
+        Fechar();
+    }
+
     private void AtualizarPainel()
     {
         if (root == null)
@@ -463,8 +470,8 @@ public sealed class FabricaMineriosMenuController : MonoBehaviour
             o != null && (o.Estado == EstadoOrdem.Ativa || o.Estado == EstadoOrdem.Aguardando || o.Estado == EstadoOrdem.ConcluindoCiclo));
         MineralSnapshot destaque = ObterSnapshotDestaque(snapshots);
 
-        SetTexto(titleLabel, "Complexo Industrial de Extracao");
-        SetTexto(subtitleLabel, fabricaAtual.name + "  |  ciclo diario " + gerenciadorAtual.DiaAtual);
+        SetTexto(titleLabel, "CENTRAL INDUSTRIAL");
+        SetTexto(subtitleLabel, fabricaAtual.name + "  |  extracao, energia e estoque em uma tela");
         SetTexto(statusLabel, "Ordens ativas " + ordensAtivas +
             "  |  proximo fechamento em " + Mathf.CeilToInt(gerenciadorAtual.TempoAteProximoDia) + "s");
         SetTexto(resumoDiaLabel, "Saida do dia  " + FormatarToneladas(totalDia));
@@ -599,7 +606,8 @@ public sealed class FabricaMineriosMenuController : MonoBehaviour
             }
 
             IReadOnlyList<RegistroExtracao> historico = ordem.Historico;
-            for (int h = 0; h < historico.Count; h++)
+            int primeiroHistorico = Mathf.Max(0, historico.Count - MaxHistoricoConsultadoNoPainel);
+            for (int h = primeiroHistorico; h < historico.Count; h++)
             {
                 RegistroExtracao registro = historico[h];
                 mediaCiclo += registro.quantidadeProduzida;
@@ -732,6 +740,7 @@ public sealed class FabricaMineriosMenuController : MonoBehaviour
             destaqueMetricas.Add(CriarMetrica("Dias por ciclo", snapshot.diasCiclo > 0 ? snapshot.diasCiclo + " dias" : "-", "accent-smoke"));
             destaqueMetricas.Add(CriarMetrica("Custo por ciclo", FormatarMoeda(snapshot.custoDinheiroCiclo), "accent-copper"));
             destaqueMetricas.Add(CriarMetrica("Energia por ciclo", snapshot.custoEnergiaCiclo.ToString("N0", CultureInfo.InvariantCulture), "accent-gold"));
+            AdicionarAcoesOrdem(destaqueMetricas, snapshot, false);
         }
     }
 
@@ -777,9 +786,16 @@ public sealed class FabricaMineriosMenuController : MonoBehaviour
         grid.Add(CriarMetrica("Mes", FormatarToneladas(snapshot.extraidoMes), "compact"));
         grid.Add(CriarMetrica("Valor / kg", FormatarMoeda(snapshot.valorKg), "compact"));
 
+        VisualElement acoes = new VisualElement();
+        acoes.style.flexDirection = FlexDirection.Row;
+        acoes.style.flexWrap = Wrap.Wrap;
+        acoes.style.marginTop = 4;
+        AdicionarAcoesOrdem(acoes, snapshot, true);
+
         card.Add(topo);
         card.Add(descricao);
         card.Add(grid);
+        card.Add(acoes);
         card.style.marginBottom = 8;
         card.style.paddingLeft = 14;
         card.style.paddingRight = 14;
@@ -795,6 +811,105 @@ public sealed class FabricaMineriosMenuController : MonoBehaviour
             AtualizarPainel();
         });
         return card;
+    }
+
+    private void AdicionarAcoesOrdem(VisualElement destino, MineralSnapshot snapshot, bool compacto)
+    {
+        if (destino == null || gerenciadorAtual == null || gerenciadorAtual.ordens == null)
+        {
+            return;
+        }
+
+        int encontradas = 0;
+        for (int indice = 0; indice < gerenciadorAtual.ordens.Count; indice++)
+        {
+            OrdemExtracao ordem = gerenciadorAtual.ordens[indice];
+            if (ordem == null || ordem.dados == null || ordem.dados.tipoExtracao != snapshot.tipo)
+            {
+                continue;
+            }
+
+            encontradas++;
+            EstadoOrdem estado = ordem.Estado;
+            string texto;
+            bool habilitado = true;
+            Color cor;
+            if (estado == EstadoOrdem.Bloqueada)
+            {
+                texto = compacto ? "AUTORIZAR" : "AUTORIZAR ORDEM";
+                cor = new Color(0.42f, 0.30f, 0.10f);
+            }
+            else if (estado == EstadoOrdem.Pausada)
+            {
+                texto = compacto ? "RETOMAR" : "RETOMAR ORDEM";
+                cor = new Color(0.14f, 0.38f, 0.20f);
+            }
+            else if (estado == EstadoOrdem.Aguardando || estado == EstadoOrdem.Ativa)
+            {
+                texto = compacto ? "PAUSAR" : "PAUSAR ORDEM";
+                cor = new Color(0.35f, 0.22f, 0.10f);
+            }
+            else
+            {
+                texto = compacto ? "AGUARDAR" : "AGUARDAR RECURSOS";
+                cor = new Color(0.20f, 0.22f, 0.23f);
+                habilitado = false;
+            }
+
+            int indiceCapturado = indice;
+            Button acao = new Button { text = texto };
+            acao.style.height = compacto ? 28 : 34;
+            acao.style.minWidth = compacto ? 108 : 142;
+            acao.style.marginRight = 6;
+            acao.style.marginTop = 6;
+            acao.style.backgroundColor = cor;
+            acao.style.color = Color.white;
+            acao.style.unityFontStyleAndWeight = FontStyle.Bold;
+            acao.SetEnabled(habilitado);
+            acao.clicked += () => ExecutarAcaoOrdem(indiceCapturado);
+            destino.Add(acao);
+        }
+
+        if (encontradas == 0)
+        {
+            Label semOrdem = new Label(compacto ? "sem ordem" : "Nenhuma ordem configurada para este mineral.");
+            semOrdem.style.fontSize = compacto ? 10 : 12;
+            semOrdem.style.color = new Color(0.62f, 0.68f, 0.68f);
+            semOrdem.style.marginTop = 8;
+            destino.Add(semOrdem);
+        }
+    }
+
+    private void ExecutarAcaoOrdem(int indice)
+    {
+        if (gerenciadorAtual == null || gerenciadorAtual.ordens == null ||
+            indice < 0 || indice >= gerenciadorAtual.ordens.Count)
+        {
+            return;
+        }
+
+        OrdemExtracao ordem = gerenciadorAtual.ordens[indice];
+        if (ordem == null)
+        {
+            return;
+        }
+
+        switch (ordem.Estado)
+        {
+            case EstadoOrdem.Bloqueada:
+                gerenciadorAtual.AutorizarOrdem(indice);
+                break;
+            case EstadoOrdem.Pausada:
+                gerenciadorAtual.RetomarOrdem(indice);
+                break;
+            case EstadoOrdem.Aguardando:
+            case EstadoOrdem.Ativa:
+                gerenciadorAtual.PausarOrdem(indice);
+                break;
+        }
+
+        ultimaAssinaturaLista = string.Empty;
+        AtualizarPainel();
     }
 
     private static VisualElement CriarMetrica(string rotulo, string valor, string variantClass = null)

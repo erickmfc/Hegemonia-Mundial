@@ -62,7 +62,12 @@ public class MenuPausaController : MonoBehaviour
 
     private void Update()
     {
-        if (FabricaMineriosMenuController.EstaAberto)
+        if (FabricaMineriosMenuController.EstaAberto || FazendaMenuController.EstaAberto)
+        {
+            return;
+        }
+
+        if (AudioSettingsPanelUI.EstaAberto)
         {
             return;
         }
@@ -150,6 +155,11 @@ public class MenuPausaController : MonoBehaviour
             false);
     }
 
+    private void AbrirConfiguracoesAudio()
+    {
+        AudioSettingsPanelUI.Abrir(canvasMenu != null ? canvasMenu.transform : transform);
+    }
+
     private void SalvarJogo()
     {
         sistemaSave.RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -184,7 +194,7 @@ public class MenuPausaController : MonoBehaviour
         }
 
         FluxoInicialJogo.AutorizarCarga(cenaDestino);
-        SceneManager.LoadScene(cenaDestino);
+        LoadingScreenService.CarregarCena(cenaDestino, LoadingRequestKind.Save);
     }
 
     private void ReiniciarPartida()
@@ -193,7 +203,7 @@ public class MenuPausaController : MonoBehaviour
         sistemaSave.IniciarNovoJogo(cenaAtual);
         RestaurarFluxoNormal();
         FluxoInicialJogo.AutorizarCarga(cenaAtual);
-        SceneManager.LoadScene(cenaAtual);
+        LoadingScreenService.CarregarCena(cenaAtual, LoadingRequestKind.Save);
     }
 
     private void SairParaMenuPrincipal()
@@ -272,12 +282,13 @@ public class MenuPausaController : MonoBehaviour
         botoes.anchorMax = new Vector2(0.5f, 1f);
         botoes.pivot = new Vector2(0.5f, 1f);
         botoes.anchoredPosition = new Vector2(0f, -238f);
-        botoes.sizeDelta = new Vector2(420f, 500f);
+        botoes.sizeDelta = new Vector2(420f, 600f);
 
         float posicaoY = 0f;
         CriarBotao(botoes, LocalizationManager.T("pause.resume", "Retomar Jogo"), "GO", corBotaoDestaque, RetomarJogo, ref posicaoY);
         CriarBotao(botoes, string.Format(LocalizationManager.T("pause.settings_language", "Idioma: {0}"), LocalizationManager.Instancia.NomeIdiomaAtual()), "LG", corBotao, AlternarIdioma, ref posicaoY);
         CriarBotao(botoes, string.Format(LocalizationManager.T("pause.settings_difficulty", "Dificuldade: {0}"), GameDifficultyManager.Instancia.NomeDificuldadeAtual()), "DF", corBotao, AlternarDificuldade, ref posicaoY);
+        CriarBotao(botoes, "Audio", "AU", corBotao, AbrirConfiguracoesAudio, ref posicaoY);
         CriarBotao(botoes, LocalizationManager.T("pause.load", "Carregar Jogo"), "LD", corBotao, CarregarJogo, ref posicaoY);
         CriarBotao(botoes, LocalizationManager.T("pause.save", "Salvar Jogo"), "SV", corBotao, SalvarJogo, ref posicaoY);
         CriarBotao(botoes, LocalizationManager.T("pause.restart", "Reiniciar Partida"), "RE", corBotao, ReiniciarPartida, ref posicaoY);

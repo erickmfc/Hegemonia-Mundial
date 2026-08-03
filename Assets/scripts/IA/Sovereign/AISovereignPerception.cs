@@ -89,8 +89,10 @@ namespace Hegemonia.AI.Sovereign
             NavalTransportCount = 0;
             FighterCount = 0;
 
-            Vector3 sum = Vector3.zero;
-            int count = 0;
+            Vector3 sumStructures = Vector3.zero;
+            int structureCount = 0;
+            Vector3 sumUnits = Vector3.zero;
+            int unitCount = 0;
 
             for (int i = 0; i < _globalUnits.Count; i++)
             {
@@ -103,12 +105,27 @@ namespace Hegemonia.AI.Sovereign
                 if (id.teamID == _teamId)
                 {
                     ClassifyOwned(id);
-                    sum += id.transform.position;
-                    count++;
+                    IA_ConstructionMetadata metadata = id.GetComponent<IA_ConstructionMetadata>();
+                    bool isStructure = id.tipoUnidade == TipoUnidade.Estrutura
+                        || (metadata != null && metadata.IsStructure);
+                    if (isStructure)
+                    {
+                        sumStructures += id.transform.position;
+                        structureCount++;
+                    }
+                    else
+                    {
+                        sumUnits += id.transform.position;
+                        unitCount++;
+                    }
                 }
             }
 
-            BaseCenter = count > 0 ? (sum / count) : Vector3.zero;
+            // Estruturas sao uma ancora estavel. Unidades moveis ficam apenas
+            // como fallback quando a IA ainda nao possui infraestrutura.
+            BaseCenter = structureCount > 0
+                ? sumStructures / structureCount
+                : (unitCount > 0 ? sumUnits / unitCount : Vector3.zero);
 
             for (int i = 0; i < _globalUnits.Count; i++)
             {

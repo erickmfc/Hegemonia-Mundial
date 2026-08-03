@@ -46,6 +46,15 @@ public interface ITickGameplayUnit
 
 public static class InfraPerformanceGameplay
 {
+    private sealed class EntradaEspacialTatica
+    {
+        public ControleUnidade controle;
+        public Transform transform;
+        public IdentidadeUnidade identidade;
+        public SistemaDeDanos danos;
+        public int teamId;
+    }
+
     private sealed class CachePercepcao
     {
         public float expiraEm;
@@ -53,7 +62,13 @@ public static class InfraPerformanceGameplay
     }
 
     private static readonly List<ControleUnidade> BufferControles = new List<ControleUnidade>(512);
+    // Consultas de alvo rodam na thread principal do Unity; reutilizar este buffer evita GC por procura.
+    private static readonly List<Transform> BufferInimigoMaisProximo = new List<Transform>(8);
     private static readonly Dictionary<long, CachePercepcao> CacheInimigosPorSetor = new Dictionary<long, CachePercepcao>(128);
+    private static readonly Dictionary<long, List<EntradaEspacialTatica>> IndiceEspacialTatico = new Dictionary<long, List<EntradaEspacialTatica>>(256);
+    private static readonly List<EntradaEspacialTatica> EntradasEspaciais = new List<EntradaEspacialTatica>(512);
+    private const float TamanhoCelulaTatica = 96f;
+    private static float proximaAtualizacaoIndiceEspacial;
     private static Transform _cameraCache;
     private static int _ultimoFrameCamera = -1;
 
@@ -275,13 +290,12 @@ public static class InfraPerformanceGameplay
 
     public static Transform ObterInimigoMaisProximo(Vector3 origem, float raio, int meuTime)
     {
-        List<Transform> buffer = new List<Transform>(8);
-        ObterInimigosProximos(origem, raio, meuTime, buffer, 8);
+        ObterInimigosProximos(origem, raio, meuTime, BufferInimigoMaisProximo, 8);
         Transform melhor = null;
         float menorSqr = float.MaxValue;
-        for (int i = 0; i < buffer.Count; i++)
+        for (int i = 0; i < BufferInimigoMaisProximo.Count; i++)
         {
-            Transform candidato = buffer[i];
+            Transform candidato = BufferInimigoMaisProximo[i];
             if (candidato == null)
             {
                 continue;
@@ -311,85 +325,142 @@ public static class InfraPerformanceGameplay
             return;
         }
 
-        float cell = Mathf.Max(60f, Mathf.Min(180f, raio));
-        int cellX = Mathf.RoundToInt(origem.x / cell);
-        int cellZ = Mathf.RoundToInt(origem.z / cell);
-        int radiusKey = Mathf.RoundToInt(raio / 20f);
-        long key = (((long)meuTime & 0xFFFFL) << 48)
-                   ^ (((long)(cellX & 0xFFFF)) << 32)
-                   ^ (((long)(cellZ & 0xFFFF)) << 16)
-                   ^ (uint)radiusKey;
+        AtualizarIndiceEspacialSeNecessario();
 
-        CachePercepcao cache;
-        if (!CacheInimigosPorSetor.TryGetValue(key, out cache))
+        int minX = Mathf.FloorToInt((origem.x - raio) / TamanhoCelulaTatica);
+        int maxX = Mathf.FloorToInt((origem.x + raio) / TamanhoCelulaTatica);
+        int minZ = Mathf.FloorToInt((origem.z - raio) / TamanhoCelulaTatica);
+        int maxZ = Mathf.FloorToInt((origem.z + raio) / TamanhoCelulaTatica);
+        float raioSqr = raio * raio;
+        int limite = Mathf.Max(1, maxResultados);
+
+        for (int x = minX; x <= maxX && destino.Count < limite; x++)
         {
-            cache = new CachePercepcao();
-            CacheInimigosPorSetor[key] = cache;
-        }
-
-        float ttl = DiagnosticoDesempenhoJogo.RuntimeSaturado() ? 0.60f : DiagnosticoDesempenhoJogo.RuntimeSobPressao() ? 0.40f : 0.25f;
-        if (Time.unscaledTime >= cache.expiraEm)
-        {
-            long inicio = MarcarInicioMedicao();
-            cache.resultados.Clear();
-            RegistroEntidadesJogo.FillControlesUnidade(BufferControles);
-
-            float raioSqr = raio * raio;
-            for (int i = 0; i < BufferControles.Count; i++)
+            for (int z = minZ; z <= maxZ && destino.Count < limite; z++)
             {
-                ControleUnidade controle = BufferControles[i];
-                if (controle == null || !controle.gameObject.activeInHierarchy)
+                List<EntradaEspacialTatica> celula;
+                if (!IndiceEspacialTatico.TryGetValue(ComporChaveCelula(x, z), out celula))
                 {
                     continue;
                 }
 
-                int team = ObterTime(controle.gameObject);
-                if (team <= 0 || team == meuTime)
+                for (int i = 0; i < celula.Count && destino.Count < limite; i++)
                 {
-                    continue;
-                }
+                    EntradaEspacialTatica entrada = celula[i];
+                    if (entrada == null || entrada.transform == null || entrada.teamId <= 0 || entrada.teamId == meuTime)
+                    {
+                        continue;
+                    }
 
-                SistemaDeDanos danos = controle.GetComponent<SistemaDeDanos>();
-                if (danos == null)
-                {
-                    danos = controle.GetComponentInChildren<SistemaDeDanos>();
-                }
+                    if (entrada.danos != null && entrada.danos.vidaAtual <= 0f)
+                    {
+                        continue;
+                    }
 
-                if (danos != null && danos.vidaAtual <= 0f)
-                {
-                    continue;
+                    Vector3 delta = entrada.transform.position - origem;
+                    delta.y = 0f;
+                    if (delta.sqrMagnitude <= raioSqr)
+                    {
+                        destino.Add(entrada.transform);
+                    }
                 }
-
-                Vector3 delta = controle.transform.position - origem;
-                delta.y = 0f;
-                if (delta.sqrMagnitude > raioSqr)
-                {
-                    continue;
-                }
-
-                cache.resultados.Add(controle.transform);
             }
+        }
+    }
 
-            cache.expiraEm = Time.unscaledTime + ttl;
-            RegistrarTempoDecorrido(CategoriaBudgetGameplay.Sensor, inicio);
+    private static void AtualizarIndiceEspacialSeNecessario()
+    {
+        if (Time.unscaledTime < proximaAtualizacaoIndiceEspacial)
+        {
+            return;
         }
 
-        float maxDistSqr = raio * raio;
-        for (int i = 0; i < cache.resultados.Count && destino.Count < Mathf.Max(1, maxResultados); i++)
+        long inicio = MarcarInicioMedicao();
+        IndiceEspacialTatico.Clear();
+        EntradasEspaciais.Clear();
+        RegistroEntidadesJogo.FillControlesUnidade(BufferControles);
+        Transform camera = ObterCameraPrincipal();
+        int proximas = 0;
+        int medias = 0;
+        int distantes = 0;
+
+        for (int i = 0; i < BufferControles.Count; i++)
         {
-            Transform candidato = cache.resultados[i];
-            if (candidato == null)
+            ControleUnidade controle = BufferControles[i];
+            if (controle == null || !controle.gameObject.activeInHierarchy)
             {
                 continue;
             }
 
-            Vector3 delta = candidato.position - origem;
-            delta.y = 0f;
-            if (delta.sqrMagnitude <= maxDistSqr)
+            Transform transformControle = controle.transform;
+            IdentidadeUnidade identidade = controle.GetComponent<IdentidadeUnidade>();
+            if (identidade == null)
             {
-                destino.Add(candidato);
+                identidade = controle.GetComponentInParent<IdentidadeUnidade>();
             }
+
+            int team = identidade != null ? identidade.teamID : ObterTime(controle.gameObject);
+            if (team <= 0)
+            {
+                continue;
+            }
+
+            SistemaDeDanos danos = controle.GetComponent<SistemaDeDanos>();
+            if (danos == null)
+            {
+                danos = controle.GetComponentInChildren<SistemaDeDanos>();
+            }
+
+            EntradaEspacialTatica entrada = new EntradaEspacialTatica
+            {
+                controle = controle,
+                transform = transformControle,
+                identidade = identidade,
+                danos = danos,
+                teamId = team
+            };
+            EntradasEspaciais.Add(entrada);
+
+            if (camera != null)
+            {
+                float distanciaSqr = (transformControle.position - camera.position).sqrMagnitude;
+                if (distanciaSqr >= 320f * 320f) distantes++;
+                else if (distanciaSqr >= 140f * 140f) medias++;
+                else proximas++;
+            }
+
+            int cellX = Mathf.FloorToInt(transformControle.position.x / TamanhoCelulaTatica);
+            int cellZ = Mathf.FloorToInt(transformControle.position.z / TamanhoCelulaTatica);
+            long key = ComporChaveCelula(cellX, cellZ);
+            List<EntradaEspacialTatica> celula;
+            if (!IndiceEspacialTatico.TryGetValue(key, out celula))
+            {
+                celula = new List<EntradaEspacialTatica>(8);
+                IndiceEspacialTatico.Add(key, celula);
+            }
+            celula.Add(entrada);
         }
+
+        float intervalo = DiagnosticoDesempenhoJogo.RuntimeSaturado() ? 0.55f
+            : DiagnosticoDesempenhoJogo.RuntimeSobPressao() ? 0.35f : 0.20f;
+        proximaAtualizacaoIndiceEspacial = Time.unscaledTime + intervalo;
+        long delta = System.Diagnostics.Stopwatch.GetTimestamp() - inicio;
+        if (delta > 0)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(
+                "tactical_index_ms",
+                (float)(delta * 1000.0 / System.Diagnostics.Stopwatch.Frequency));
+        }
+        RegistrarTempoDecorrido(CategoriaBudgetGameplay.Sensor, inicio);
+        DiagnosticoDesempenhoJogo.DefinirContadorMetrica("tactical_index_units", EntradasEspaciais.Count);
+        DiagnosticoDesempenhoJogo.DefinirContadorMetrica("land_units_near", proximas);
+        DiagnosticoDesempenhoJogo.DefinirContadorMetrica("land_units_medium", medias);
+        DiagnosticoDesempenhoJogo.DefinirContadorMetrica("land_units_far", distantes);
+    }
+
+    private static long ComporChaveCelula(int x, int z)
+    {
+        return ((long)x << 32) ^ (uint)z;
     }
 
     private static Transform ObterCameraPrincipal()

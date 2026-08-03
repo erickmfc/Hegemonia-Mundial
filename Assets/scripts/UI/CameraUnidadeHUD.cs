@@ -529,7 +529,7 @@ public class CameraUnidadeHUD : MonoBehaviour
                 AudioClip clip = Resources.Load<AudioClip>("Sons/alvo_fixado") ?? Resources.Load<AudioClip>("mp3/click");
                 if (clip != null)
                 {
-                    AudioSource.PlayClipAtPoint(clip, id.transform.position, 0.8f);
+                    AudioRuntime.PlayClipAtPoint(clip, id.transform.position, 0.8f);
                 }
             }
             catch {}
@@ -575,7 +575,7 @@ public class CameraUnidadeHUD : MonoBehaviour
                 AudioClip clip = Resources.Load<AudioClip>("mp3/click");
                 if (clip != null)
                 {
-                    AudioSource.PlayClipAtPoint(clip, targetUnit.transform.position, 0.5f);
+                    AudioRuntime.PlayClipAtPoint(clip, targetUnit.transform.position, 0.5f);
                 }
             }
             catch {}

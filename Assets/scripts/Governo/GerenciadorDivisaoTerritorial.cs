@@ -339,7 +339,7 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
                 {
                     cidade.scoreAgricola += est.empregosGerados * 2f;
                 }
-                else if (est.tipo == TipoEstruturaEconomica.Energia || est.tipo == TipoEstruturaEconomica.UsinaHidreletrica || est.tipo == TipoEstruturaEconomica.UsinaSolar || est.tipo == TipoEstruturaEconomica.UsinaTermicaGrande || est.tipo == TipoEstruturaEconomica.UsinaTermicaPequena || est.tipo == TipoEstruturaEconomica.UsinaNuclear || est.tipo == TipoEstruturaEconomica.Refinaria || est.tipo == TipoEstruturaEconomica.Petroleo)
+                else if (est.tipo == TipoEstruturaEconomica.Energia || est.tipo == TipoEstruturaEconomica.UsinaHidreletrica || est.tipo == TipoEstruturaEconomica.UsinaSolar || est.tipo == TipoEstruturaEconomica.UsinaCarvao || est.tipo == TipoEstruturaEconomica.UsinaTermicaGrande || est.tipo == TipoEstruturaEconomica.UsinaTermicaPequena || est.tipo == TipoEstruturaEconomica.UsinaNuclear || est.tipo == TipoEstruturaEconomica.Refinaria || est.tipo == TipoEstruturaEconomica.Petroleo)
                 {
                     cidade.scoreEnergia += est.energiaProduzida > 0 ? est.energiaProduzida : est.empregosGerados;
                 }

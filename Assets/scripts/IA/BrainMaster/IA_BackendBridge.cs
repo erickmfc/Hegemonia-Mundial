@@ -951,6 +951,14 @@ namespace Hegemonia.AI.BrainMaster
 
             if (!ValidatePlacement(itemKey, position, rotation, zone, world, map, threat, out reason))
             {
+                if (!string.IsNullOrEmpty(reason)
+                    && (reason.Contains("territorio") || reason.Contains("jurisdicao") || reason.Contains("costa sob pressao")))
+                {
+                    DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("ia_build_territory_blocked");
+                    DiagnosticoDesempenhoJogo.RegistrarEvento(
+                        "IA_BuildBloqueado",
+                        "team=" + _teamId + " item=" + itemKey + " pos=" + position.ToString("F1") + " motivo=" + reason);
+                }
                 return false;
             }
 

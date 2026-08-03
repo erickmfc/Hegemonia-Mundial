@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -374,7 +375,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            int quantidade = Mathf.Min(item.CalcularQuantidadePadrao() * 2, Mathf.Max(10, comprador.saldo / Mathf.Max(1, item.precoAtual) / 2));
+            int quantidade = Mathf.Min(item.CalcularQuantidadePadrao() * 2, (int)Math.Min(int.MaxValue, Math.Max(10L, comprador.saldo / Math.Max(1L, item.precoAtual) / 2L)));
             RelacaoPaisGoverno rel = gov.ObterRelacao(comprador.teamId, vendedor.teamId);
             if (vendedor.teamId == gov.teamJogador)
             {

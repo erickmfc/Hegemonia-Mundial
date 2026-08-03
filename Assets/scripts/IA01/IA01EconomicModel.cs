@@ -51,7 +51,7 @@ namespace Hegemonia.AI.IA01
             float food = country.populacao > 0 ? country.comida / (float)Mathf.Max(1, country.populacao) : country.comida;
             int emergencyReserve = 2500;
             if (country.estabilidade <= 0f && country.saldo <= 0 && country.divida > Mathf.Max(1000f, country.saldo * 2f)) State = IA01EconomicState.Collapse;
-            else if (country.divida > Mathf.Max(1000f, Mathf.Max(1, country.saldo) * 1.5f) || country.comida < 0 || food < 0.02f) State = IA01EconomicState.Crisis;
+            else if (country.divida > Mathf.Max(1000f, Mathf.Max(1f, (float)country.saldo) * 1.5f) || country.comida < 0 || food < 0.02f) State = IA01EconomicState.Crisis;
             else if (country.saldo < Mathf.Max(500, emergencyReserve) || country.divida > Mathf.Max(500f, country.saldo * 0.65f) || food < 0.08f) State = IA01EconomicState.Alert;
             else if (country.saldo >= Mathf.Max(12000, (profile != null ? profile.InitialTreasury : 10000) * 2) && country.divida < country.saldo * 0.15f && country.comida > Mathf.Max(1000, country.populacao)) State = IA01EconomicState.Prosperity;
             else State = IA01EconomicState.Stable;

@@ -4,8 +4,8 @@
             <ui:VisualElement class="factory-panel-glow" />
             <ui:VisualElement class="factory-header">
                 <ui:VisualElement class="factory-header-copy">
-                    <ui:Label name="factory-menu-title" class="factory-title" text="Complexo Industrial de Extracao" />
-                    <ui:Label name="factory-menu-subtitle" class="factory-subtitle" text="Mineracao, estoque e fluxo operacional" />
+                    <ui:Label name="factory-menu-title" class="factory-title" text="CENTRAL INDUSTRIAL" />
+                    <ui:Label name="factory-menu-subtitle" class="factory-subtitle" text="Extracao, energia e estoque em uma tela" />
                     <ui:Label name="factory-menu-status" class="factory-status" text="Sincronizando patio mineral..." />
                 </ui:VisualElement>
                 <ui:Button name="factory-menu-close" class="factory-close" text="Fechar" />

@@ -10,6 +10,7 @@ public class AnimadorUnidade : MonoBehaviour
     private NavMeshAgent agent;
     private int velocidadeHash;
     private bool temParametroValido;
+    private float ultimaVelocidadeAplicada = float.NaN;
 
     void Start()
     {
@@ -82,7 +83,11 @@ public class AnimadorUnidade : MonoBehaviour
                     velocidade = delta.magnitude / Mathf.Max(Time.deltaTime, 0.0001f);
                 }
 
-                anim.SetFloat(velocidadeHash, velocidade);
+                if (float.IsNaN(ultimaVelocidadeAplicada) || Mathf.Abs(velocidade - ultimaVelocidadeAplicada) >= 0.025f)
+                {
+                    anim.SetFloat(velocidadeHash, velocidade);
+                    ultimaVelocidadeAplicada = velocidade;
+                }
                 _ultimaPosicao = transform.position;
             }
         }

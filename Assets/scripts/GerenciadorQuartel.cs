@@ -18,8 +18,8 @@ public class GerenciadorQuartel : MonoBehaviour
     [Header("Arsenal e Munição")]
     public int misseisArmazenados = 0;
     public int municaoArmazenada = 0;
-    public int precoMissil = 500;
-    public int precoMunicao = 100;
+    public long precoMissil = 5000000L;
+    public long precoMunicao = 100000L;
 
     [Header("Chamada Automática (Limites de Área)")]
     public float raioDeCobertura = 2000f; 
@@ -85,6 +85,8 @@ public class GerenciadorQuartel : MonoBehaviour
 
     void Awake()
     {
+        precoMissil = 5000000L;
+        precoMunicao = 100000L;
         MapearDormitorios();
         MapearEstacionamento();
         AtualizarRetanguloJanela(true);

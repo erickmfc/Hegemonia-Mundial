@@ -14,22 +14,23 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 10;
+    public int saveVersion = 12;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
-    public int creditosJogador = 5000;
+    public long creditosJogador = 5000L;
     public int petroleoJogador = 500;
     public int acoJogador = 300;
     public int energiaJogador = 100;
     public int comidaJogador = 500;
     public string mapaAtual = "Mapa_1";
     public string idioma = "pt-BR";
-    public string dificuldade = "normal";
+    public string dificuldade = "medio";
     public float tempoJogo;
     public SaveVector3 cameraPosicao;
     public SaveQuaternion cameraRotacao;
     public List<string> itensDesbloqueados = new List<string>();
     public List<SaveEntityData> entidades = new List<SaveEntityData>();
+    public List<SaveTransportManifestData> manifestosTransporte = new List<SaveTransportManifestData>();
     public List<SaveProductionOrderData> filaProducao = new List<SaveProductionOrderData>();
     public List<SaveAiStrategicStateData> estadosIA = new List<SaveAiStrategicStateData>();
     public List<SaveDeusaStateData> estadosDeusa = new List<SaveDeusaStateData>();
@@ -165,6 +166,14 @@ public class SaveEntityData
     public List<SaveVector3> pontosPatrulha = new List<SaveVector3>();
     public int indicePatrulha;
     public string seguirAlvoId;
+}
+
+[Serializable]
+public sealed class SaveTransportManifestData
+{
+    public string transporteUniqueId;
+    public bool veiculo;
+    public SaveEntityData entidade;
 }
 
 [Serializable]
@@ -424,7 +433,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         GarantirColecoesIA01();
-        dadosAtuais.saveVersion = 10;
+        dadosAtuais.saveVersion = 12;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -437,6 +446,7 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarEstadoIA01();
         CapturarEstadoDeusa();
         CapturarEntidades();
+        CapturarManifestosTransporte();
         CapturarSistemaIndustrial();
         dadosAtuais.totalDias = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : dadosAtuais.totalDias;
 
@@ -472,6 +482,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         GarantirColecoesIA01();
+        bool saveLegadoAntesDaVersao12 = dadosAtuais.saveVersion < 12;
         if (dadosAtuais.saveVersion <= 0)
         {
             dadosAtuais.saveVersion = 1;
@@ -491,6 +502,12 @@ public class SistemaSaveGame : MonoBehaviour
         AplicarDificuldadeSalva();
         AplicarRecursosSalvos();
         AplicarTempoSalvo();
+        if (saveLegadoAntesDaVersao12)
+        {
+            // JsonUtility converte o numero antigo para long sem arredondamento.
+            // A versao 12 sera gravada no proximo SalvarJogo, mantendo saves antigos carregaveis.
+            LogInfo("Save legado carregado e preparado para migracao monetaria para long (versao " + dadosAtuais.saveVersion + ").");
+        }
         LogInfo("Jogo carregado com sucesso.");
     }
 
@@ -501,11 +518,18 @@ public class SistemaSaveGame : MonoBehaviour
         caminhoDoArquivo = Path.Combine(Application.persistentDataPath, "save_partida.json");
         GarantirColecoesIA01();
         dadosAtuais.idioma = LocalizationManager.Instancia.ObterCodigoIdioma();
-        dadosAtuais.dificuldade = GameDifficultyManager.Instancia.ObterCodigoDificuldade();
+        PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
+        dadosAtuais.dificuldade = perfil.Codigo;
+        dadosAtuais.creditosJogador = perfil.DinheiroInicial;
         carregouDeSave = false;
         partidaNovaRecemIniciada = true;
         restauracaoPendente = false;
         RegistrarCenaAtual(string.IsNullOrWhiteSpace(cenaInicial) ? dadosAtuais.mapaAtual : cenaInicial);
+        if (GerenciadorRecursos.Instancia != null)
+        {
+            GerenciadorRecursos.Instancia.dinheiro = perfil.DinheiroInicial;
+            GerenciadorRecursos.Instancia.NotificarAtualizacao();
+        }
         LogInfo("Novo jogo iniciado com dados reiniciados.");
     }
 
@@ -625,6 +649,8 @@ public class SistemaSaveGame : MonoBehaviour
             }
 
             yield return null;
+
+            RestaurarManifestosTransporte();
 
             for (int i = 0; i < dadosAtuais.entidades.Count; i++)
             {
@@ -1389,6 +1415,65 @@ public class SistemaSaveGame : MonoBehaviour
         return null;
     }
 
+    public GameObject MaterializarEntidadeOperacional(SaveEntityData data, Vector3 posicao, Quaternion rotacao)
+    {
+        if (data == null)
+        {
+            return null;
+        }
+
+        GameObject prefab = ResolverPrefab(data.prefabKey);
+        if (prefab == null)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("Manifesto", "Prefab ausente: " + data.prefabKey);
+            return null;
+        }
+
+        GameObject obj = Instantiate(prefab, posicao, rotacao);
+        obj.name = string.IsNullOrWhiteSpace(data.nomeCena) ? data.prefabKey : data.nomeCena;
+        obj.transform.localScale = data.escala.ToVector3();
+
+        SaveableEntity saveable = SaveableEntity.Garantir(obj, data.prefabKey);
+        saveable.UniqueId = data.uniqueId;
+        if (!string.IsNullOrWhiteSpace(data.uniqueId))
+        {
+            saveablesPorId[data.uniqueId] = saveable;
+        }
+        IdentidadeUnidade identidade = obj.GetComponent<IdentidadeUnidade>();
+        if (identidade != null)
+        {
+            identidade.teamID = data.teamID;
+            identidade.nomeDoPais = data.nomeDoPais;
+            identidade.tipoUnidade = data.tipoUnidade;
+        }
+
+        SistemaDeDanos danos = obj.GetComponent<SistemaDeDanos>();
+        if (danos != null && data.possuiVida)
+        {
+            danos.vidaMaxima = Mathf.Max(1f, data.vidaMaxima);
+            danos.vidaAtual = Mathf.Clamp(data.vidaAtual, 0f, danos.vidaMaxima);
+        }
+
+        CombustivelUnidade combustivel = obj.GetComponent<CombustivelUnidade>();
+        if (combustivel != null && data.possuiCombustivel)
+        {
+            combustivel.capacidade = Mathf.Max(0f, data.capacidadeCombustivel);
+            combustivel.combustivelAtual = Mathf.Clamp(data.combustivelAtual, 0f, combustivel.capacidade);
+        }
+
+        ControleUnidade controle = obj.GetComponent<ControleUnidade>();
+        if (controle != null)
+        {
+            controle.DefinirModoCombate(data.modoCombateAtivo);
+            if ((data.ordemAtual == OrdemControleUnidade.Movendo || data.ordemAtual == OrdemControleUnidade.Recuando) && data.possuiDestino)
+            {
+                controle.EmitirOrdemMover(data.ultimoDestino.ToVector3());
+            }
+        }
+
+        return obj;
+    }
+
     private void LogInfo(string mensagem)
     {
         if (exibirLogsNoConsole)
@@ -1689,6 +1774,71 @@ public class SistemaSaveGame : MonoBehaviour
                 }
 
                 dadosAtuais.estoquesMineral.Add(legado);
+            }
+        }
+    }
+
+    private void CapturarManifestosTransporte()
+    {
+        if (dadosAtuais.manifestosTransporte == null)
+        {
+            dadosAtuais.manifestosTransporte = new List<SaveTransportManifestData>();
+        }
+
+        dadosAtuais.manifestosTransporte.Clear();
+        NavioTransporteTropas[] transportes = IA_UnitySearch.FindAll<NavioTransporteTropas>();
+        for (int i = 0; i < transportes.Length; i++)
+        {
+            NavioTransporteTropas transporte = transportes[i];
+            if (transporte == null) continue;
+
+            SaveableEntity saveable = SaveableEntity.Garantir(transporte.gameObject);
+            transporte.AdicionarManifestosAoSave(saveable.UniqueId, dadosAtuais.manifestosTransporte);
+        }
+
+        TransporteAnfibio[] anfibios = IA_UnitySearch.FindAll<TransporteAnfibio>();
+        for (int i = 0; i < anfibios.Length; i++)
+        {
+            TransporteAnfibio transporte = anfibios[i];
+            if (transporte == null) continue;
+
+            SaveableEntity saveable = SaveableEntity.Garantir(transporte.gameObject);
+            transporte.AdicionarManifestosAoSave(saveable.UniqueId, dadosAtuais.manifestosTransporte);
+        }
+    }
+
+    private void RestaurarManifestosTransporte()
+    {
+        if (dadosAtuais == null || dadosAtuais.manifestosTransporte == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < dadosAtuais.manifestosTransporte.Count; i++)
+        {
+            SaveTransportManifestData salvo = dadosAtuais.manifestosTransporte[i];
+            if (salvo == null || salvo.entidade == null || string.IsNullOrWhiteSpace(salvo.transporteUniqueId))
+            {
+                continue;
+            }
+
+            SaveableEntity transporteSalvavel;
+            if (!saveablesPorId.TryGetValue(salvo.transporteUniqueId, out transporteSalvavel) || transporteSalvavel == null)
+            {
+                continue;
+            }
+
+            NavioTransporteTropas transporte = transporteSalvavel.GetComponent<NavioTransporteTropas>();
+            if (transporte != null)
+            {
+                transporte.RestaurarManifesto(salvo.entidade, salvo.veiculo);
+                continue;
+            }
+
+            TransporteAnfibio anfibio = transporteSalvavel.GetComponent<TransporteAnfibio>();
+            if (anfibio != null)
+            {
+                anfibio.RestaurarManifesto(salvo.entidade, salvo.veiculo);
             }
         }
     }

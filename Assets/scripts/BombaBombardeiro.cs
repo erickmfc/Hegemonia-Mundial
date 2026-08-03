@@ -251,7 +251,7 @@ public class BombaBombardeiro : MonoBehaviour
 
         // Som
         if (somExplosao != null)
-            AudioSource.PlayClipAtPoint(somExplosao, transform.position);
+            AudioRuntime.PlayClipAtPoint(somExplosao, transform.position);
 
         // Dano em área
         int hits = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);

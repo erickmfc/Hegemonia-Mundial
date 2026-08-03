@@ -219,7 +219,7 @@ public sealed class LocalizationManager : MonoBehaviour
         Add("pause.footer", "ESC retoma a partida.", "ESC resumes the match.", "按 ESC 继续游戏。");
 
         Add("difficulty.easy", "Facil", "Easy", "简单");
-        Add("difficulty.normal", "Normal", "Normal", "普通");
+        Add("difficulty.normal", "Medio", "Medium", "普通");
         Add("difficulty.hard", "Dificil", "Hard", "困难");
         Add("difficulty.imperial", "Imperial", "Imperial", "帝国");
 

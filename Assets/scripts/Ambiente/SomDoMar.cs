@@ -26,6 +26,7 @@ public sealed class SomDoMar : MonoBehaviour
         fonte.spatialBlend = 0f;
         fonte.dopplerLevel = 0f;
         fonte.priority = Mathf.Min(fonte.priority, 96);
+        AudioSettingsService.RegistrarFonte(fonte, AudioChannel.Ambiente);
     }
 
     private void OnEnable()

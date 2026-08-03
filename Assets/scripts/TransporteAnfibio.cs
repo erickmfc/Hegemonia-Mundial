@@ -3,9 +3,11 @@ using UnityEngine.AI;
 using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using Hegemonia.AI.BrainMaster;
 
 public class TransporteAnfibio : MonoBehaviour
 {
+    private static readonly HashSet<TransporteAnfibio> TransportesAtivos = new HashSet<TransporteAnfibio>();
     [Header("Componentes da Nave")]
     public Transform portaTraseira; // Rampa (BackDoor)
     public Transform pontoDeEntrada; // Na água/terra (FRENTE da rampa)
@@ -24,6 +26,8 @@ public class TransporteAnfibio : MonoBehaviour
     [Header("Capacidade")]
     public float raioDeCaptura = 60f; 
     public List<GameObject> unidadesGuardadas = new List<GameObject>();
+    // Mantido separado da lista legada para não quebrar prefabs nem integrações já existentes.
+    [SerializeField] private List<ManifestoCargaOperacional> manifestosOperacionais = new List<ManifestoCargaOperacional>();
     public List<GameObject> unidadesNaFila = new List<GameObject>();
 
     [Header("Interface (Menu 'O')")]
@@ -64,6 +68,57 @@ public class TransporteAnfibio : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        TransportesAtivos.Add(this);
+    }
+
+    private void OnDisable()
+    {
+        TransportesAtivos.Remove(this);
+    }
+
+    public static void AcumularForcaEmbarcada(int teamId, IA_ForceSnapshot forca)
+    {
+        if (forca == null) return;
+        foreach (TransporteAnfibio transporte in TransportesAtivos)
+        {
+            if (transporte == null || !transporte.isActiveAndEnabled) continue;
+            for (int i = 0; i < transporte.manifestosOperacionais.Count; i++)
+            {
+                ManifestoCargaOperacional manifesto = transporte.manifestosOperacionais[i];
+                if (manifesto == null || manifesto.TeamId != teamId) continue;
+                forca.TotalOwnUnits++;
+                forca.TotalCombatUnits++;
+                if (manifesto.Tipo == TipoUnidade.Infantaria) forca.InfantryUnits++;
+                else if (manifesto.NomeExibicao.IndexOf("artilh", System.StringComparison.OrdinalIgnoreCase) >= 0) forca.ArtilleryUnits++;
+                else if (manifesto.Tipo == TipoUnidade.Veiculo) forca.TankUnits++;
+            }
+        }
+    }
+
+    public void AdicionarManifestosAoSave(string transporteUniqueId, List<SaveTransportManifestData> destino)
+    {
+        if (destino == null || string.IsNullOrWhiteSpace(transporteUniqueId)) return;
+        for (int i = 0; i < manifestosOperacionais.Count; i++)
+        {
+            ManifestoCargaOperacional manifesto = manifestosOperacionais[i];
+            if (manifesto == null || manifesto.entidade == null) continue;
+            destino.Add(new SaveTransportManifestData
+            {
+                transporteUniqueId = transporteUniqueId,
+                veiculo = manifesto.Tipo == TipoUnidade.Veiculo,
+                entidade = manifesto.entidade
+            });
+        }
+    }
+
+    public void RestaurarManifesto(SaveEntityData entidade, bool veiculo)
+    {
+        if (entidade == null) return;
+        manifestosOperacionais.Add(new ManifestoCargaOperacional { entidade = entidade });
+    }
+
     void Update()
     {
         // Só processa comandos se estiver selecionado
@@ -98,6 +153,22 @@ public class TransporteAnfibio : MonoBehaviour
         }
     }
 
+    private void LancarUnidadeAerea(ManifestoCargaOperacional manifesto)
+    {
+        if (manifesto == null || manifesto.Tipo != TipoUnidade.Aereo) return;
+        GameObject unidade = manifesto.Materializar(pontoDeDecolagem.position, transform.rotation);
+        if (unidade == null) return;
+
+        manifestosOperacionais.Remove(manifesto);
+        Helicoptero heli = unidade.GetComponent<Helicoptero>();
+        if (heli != null)
+        {
+            heli.Decolar(pontoDeDecolagem.position + (Vector3.up * 20f) + (transform.forward * 30f));
+        }
+    }
+
+    private int TotalCargaGuardada => unidadesGuardadas.Count + manifestosOperacionais.Count;
+
     // --- NOVO SISTEMA DE CONTROLE ---
     void IniciarEmbarque()
     {
@@ -125,7 +196,7 @@ public class TransporteAnfibio : MonoBehaviour
             
             case Estado.Fechando:
             case Estado.Navegando:
-                if (unidadesGuardadas.Count == 0)
+                if (TotalCargaGuardada == 0)
                 {
                     Debug.LogWarning("⚠️ [Transporte] Nenhuma unidade para desembarcar!");
                     return;
@@ -296,14 +367,23 @@ public class TransporteAnfibio : MonoBehaviour
             if (unidade != null)
             {
                 // Suga para dentro
-                unidade.SetActive(false);
-                unidadesGuardadas.Add(unidade);
-
                 // Recarregar vida e combustível
                 SistemaDeDanos dano = unidade.GetComponent<SistemaDeDanos>();
                 if (dano != null) dano.vidaAtual = dano.vidaMaxima;
                 CombustivelUnidade comb = unidade.GetComponent<CombustivelUnidade>();
                 if (comb != null) comb.PreencherSemCusto();
+
+                ManifestoCargaOperacional manifesto = ManifestoCargaOperacional.Capturar(unidade);
+                if (manifesto != null)
+                {
+                    manifestosOperacionais.Add(manifesto);
+                    Destroy(unidade);
+                }
+                else
+                {
+                    unidade.SetActive(false);
+                    unidadesGuardadas.Add(unidade);
+                }
             }
         }
         
@@ -457,6 +537,7 @@ public class TransporteAnfibio : MonoBehaviour
         }
         
         foreach(var r in paraRemover) unidadesGuardadas.Remove(r);
+        yield return StartCoroutine(DesembarcarManifestos(posicaoFinalNavio));
 
         Debug.Log("✅ [Transporte] Desembarque completo! Fechando rampa...");
         yield return new WaitForSeconds(3.0f);
@@ -468,6 +549,54 @@ public class TransporteAnfibio : MonoBehaviour
         }
         
         estadoAtual = Estado.Fechando;
+    }
+
+    private IEnumerator DesembarcarManifestos(Vector3 posicaoFinalNavio)
+    {
+        for (int i = manifestosOperacionais.Count - 1; i >= 0; i--)
+        {
+            ManifestoCargaOperacional manifesto = manifestosOperacionais[i];
+            if (manifesto == null || manifesto.Tipo == TipoUnidade.Aereo) continue;
+
+            bool desembarcado = false;
+            for (float distancia = 10f; distancia < 50f; distancia += 5f)
+            {
+                Vector3 pontoTeste = pontoDeEntrada.position + (transform.forward * distancia);
+                if (!NavMesh.SamplePosition(pontoTeste, out NavMeshHit hitNav, 10f, NavMesh.AllAreas)) continue;
+
+                GameObject unidade = manifesto.Materializar(hitNav.position, transform.rotation);
+                if (unidade == null) break;
+
+                NavMeshAgent nav = unidade.GetComponent<NavMeshAgent>();
+                if (nav != null)
+                {
+                    nav.enabled = false;
+                    yield return null;
+                    nav.enabled = true;
+                    if (nav.isOnNavMesh) nav.Warp(hitNav.position);
+                }
+
+                Vector3 destinoFinal = hitNav.position + (transform.forward * 20f);
+                if (NavMesh.SamplePosition(destinoFinal, out NavMeshHit hitDestino, 5f, NavMesh.AllAreas))
+                {
+                    ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
+                    if (controle != null) controle.EmitirOrdemMover(hitDestino.position);
+                    else MovimentoFallbackTransicional.TrySetNavDestination(unidade, hitDestino.position);
+                }
+
+                manifestosOperacionais.RemoveAt(i);
+                desembarcado = true;
+                break;
+            }
+
+            if (!desembarcado)
+            {
+                Debug.LogWarning("[Transporte] Manifesto sem NavMesh valido; unidade permanece a bordo.");
+            }
+
+            transform.position = posicaoFinalNavio;
+            yield return new WaitForSeconds(1.5f);
+        }
     }
 
     void AlternarMenuCarga() { menuAberto = !menuAberto; }
@@ -498,27 +627,31 @@ public class TransporteAnfibio : MonoBehaviour
         GUI.Label(new Rect(posX, posY + 10, largura, 25), "📦 MANIFESTO DE CARGA", estiloTituloMenu);
 
         float y = posY + 40;
-        if (unidadesGuardadas.Count == 0)
+        if (TotalCargaGuardada == 0)
         {
             GUI.Label(new Rect(posX + 10, y, largura - 20, 18), "Nenhuma unidade a bordo.", estiloTextoMenu);
         }
         else
         {
             int maxLinhas = Mathf.Max(1, Mathf.FloorToInt((altura - 92f) / 20f));
-            int limite = Mathf.Min(maxLinhas, unidadesGuardadas.Count);
+            int limite = Mathf.Min(maxLinhas, TotalCargaGuardada);
             for (int i = 0; i < limite; i++)
             {
-                GameObject u = unidadesGuardadas[i];
-                if (u == null) continue;
-                GUI.Label(new Rect(posX + 10, y, 120, 18), CompactarTextoMenu(u.name, 18), estiloTextoMenu);
+                GameObject u = i < unidadesGuardadas.Count ? unidadesGuardadas[i] : null;
+                ManifestoCargaOperacional manifesto = i >= unidadesGuardadas.Count
+                    ? manifestosOperacionais[i - unidadesGuardadas.Count]
+                    : null;
+                if (u == null && manifesto == null) continue;
+                GUI.Label(new Rect(posX + 10, y, 120, 18), CompactarTextoMenu(u != null ? u.name : manifesto.NomeExibicao, 18), estiloTextoMenu);
 
-                bool ehAereo = (u.GetComponent<Helicoptero>() != null);
+                bool ehAereo = u != null ? u.GetComponent<Helicoptero>() != null : manifesto.Tipo == TipoUnidade.Aereo;
                 
                 if (ehAereo)
                 {
                     if (GUI.Button(new Rect(posX + largura - 75, y, 65, 18), "DECOLAR", estiloBotaoMenu))
                     {
-                        LancarUnidadeAerea(u);
+                        if (u != null) LancarUnidadeAerea(u);
+                        else LancarUnidadeAerea(manifesto);
                         break;
                     }
                 }
@@ -529,9 +662,9 @@ public class TransporteAnfibio : MonoBehaviour
                 y += 20;
             }
 
-            if (unidadesGuardadas.Count > limite)
+            if (TotalCargaGuardada > limite)
             {
-                GUI.Label(new Rect(posX + 10, y, largura - 20, 18), "+" + (unidadesGuardadas.Count - limite) + " carga(s) a bordo", estiloTextoMenu);
+                GUI.Label(new Rect(posX + 10, y, largura - 20, 18), "+" + (TotalCargaGuardada - limite) + " carga(s) a bordo", estiloTextoMenu);
             }
         }
 

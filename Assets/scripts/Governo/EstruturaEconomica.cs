@@ -105,6 +105,7 @@ public class EstruturaEconomica : MonoBehaviour
         else if (chave.Contains("nuclear")) tipo = TipoEstruturaEconomica.UsinaNuclear;
         else if (chave.Contains("hidreletrica")) tipo = TipoEstruturaEconomica.UsinaHidreletrica;
         else if (chave.Contains("solar")) tipo = TipoEstruturaEconomica.UsinaSolar;
+        else if (chave.Contains("carvao") || chave.Contains("carvão") || chave.Contains("coal")) tipo = TipoEstruturaEconomica.UsinaCarvao;
         else if (chave.Contains("aeroporto")) tipo = TipoEstruturaEconomica.AeroportoCivil;
         else if (chave.Contains("porto")) tipo = TipoEstruturaEconomica.PortoComercial;
         // Legado
@@ -191,8 +192,14 @@ public class EstruturaEconomica : MonoBehaviour
                 if (empregosGerados <= 0) empregosGerados = 700;
                 break;
             case TipoEstruturaEconomica.UsinaSolar:
-                if (energiaProduzida <= 0f) energiaProduzida = 320f;
+                if (energiaProduzida <= 0f) energiaProduzida = 160f;
                 if (empregosGerados <= 0) empregosGerados = 90;
+                break;
+            case TipoEstruturaEconomica.UsinaCarvao:
+                if (energiaProduzida <= 0f) energiaProduzida = 240f;
+                if (empregosGerados <= 0) empregosGerados = 300;
+                if (combustivelConsumido <= 0f) combustivelConsumido = 42f;
+                if (dinheiroGerado >= 0f) dinheiroGerado = -180f;
                 break;
             // BASES MILITARES
             case TipoEstruturaEconomica.BaseMilitarPequena:

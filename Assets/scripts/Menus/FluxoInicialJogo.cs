@@ -26,6 +26,13 @@ public static class FluxoInicialJogo
             return;
         }
 
+        // No Unity Editor, o Play deve respeitar a cena que está aberta.
+        // A build continua entrando pelo menu quando inicia sem autorização.
+        if (Application.isEditor)
+        {
+            return;
+        }
+
         string cenaMenu = ConfiguracaoCenasJogo.ResolverCenaMenuPrincipal();
 
         if (ConfiguracaoCenasJogo.CenaExiste(cenaMenu))

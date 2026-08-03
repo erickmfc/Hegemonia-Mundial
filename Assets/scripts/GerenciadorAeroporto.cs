@@ -97,6 +97,8 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     [Header("⚡ Energia")]
     public bool semEnergia = false;
+    [Tooltip("Exibe o painel flutuante de status ao passar o cursor sobre o aeroporto.")]
+    [SerializeField] private bool exibirTooltipStatus = false;
     private bool mouseHover = false;
     private Texture2D _texturaTooltip;
 
@@ -1908,7 +1910,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     {
         if (Construtor.EmModoConstrucaoAtivo) return;
 
-        if (mouseHover && !(this is GerenciadorPortaAvioes))
+        if (exibirTooltipStatus && mouseHover && !(this is GerenciadorPortaAvioes))
         {
             GUIStyle boxStyle = new GUIStyle(GUI.skin.box);
             if (_texturaTooltip == null)

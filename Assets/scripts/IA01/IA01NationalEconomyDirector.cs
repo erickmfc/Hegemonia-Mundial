@@ -115,7 +115,8 @@ namespace Hegemonia.AI.IA01
                 return false;
             }
 
-            int quantity = Mathf.Clamp(desiredQuantity, 1, buyer.saldo / Mathf.Max(1, item.precoAtual));
+            int affordableQuantity = (int)Math.Min(int.MaxValue, Math.Max(0L, buyer.saldo / Math.Max(1L, item.precoAtual)));
+            int quantity = Mathf.Clamp(desiredQuantity, 1, affordableQuantity);
             if (quantity <= 0)
             {
                 lastAction = "Compra bloqueada: saldo livre insuficiente para " + resource + ".";
@@ -171,7 +172,7 @@ namespace Hegemonia.AI.IA01
             }
 
             DadosPaisGoverno buyer = null;
-            int bestSaldo = int.MinValue;
+            long bestSaldo = long.MinValue;
             for (int i = 0; i < government.Paises.Count; i++)
             {
                 DadosPaisGoverno candidate = government.Paises[i];

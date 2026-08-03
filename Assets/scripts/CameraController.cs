@@ -30,15 +30,21 @@ public class CameraController : MonoBehaviour
     private float proximaBuscaGerenteSelecao = 0f;
     private Camera cameraPrincipal;
     private Vector3 ultimaAreaNotificada;
+    private bool projecaoInicializada;
     private const float DistanciaMinimaNotificacaoSqr = 625f;
     private const float AlturaMinimaNotificacao = 5f;
 
     void Start()
     {
         cameraPrincipal = GetComponent<Camera>();
+        multiplicadorShift = Mathf.Max(12f, multiplicadorShift);
         if (cameraPrincipal != null)
         {
             cameraPrincipal.fieldOfView = campoDeVisaoBase;
+            // O mapa tem ilhas além do primeiro Terrain. Inicializar o recorte
+            // aqui evita que a câmera comece vendo água e céu antes do primeiro
+            // zoom/movimento do jogador.
+            AtualizarProjecao(transform.position.y);
         }
 
         ultimaAreaNotificada = transform.position;
@@ -63,8 +69,12 @@ public class CameraController : MonoBehaviour
         
         bool menusAbertos = MenuConstrucao.EstaAberto || MenuPier.EstaAberto || Fazenda.QualquerFazendaAberta || (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto);
 
+        long cameraTimingStart = DiagnosticoDesempenhoJogo.CapturaAtiva
+            ? System.Diagnostics.Stopwatch.GetTimestamp()
+            : 0L;
+
         // Força a substituição do Inspector se estiver salvo um valor muito baixo
-        if (multiplicadorShift < 12f) multiplicadorShift = 12f;
+        // O valor Ã© normalizado no Start/OnValidate para nÃ£o repetir esta escrita por frame.
 
         // --- 1. Controle de Velocidade (Speed Shift) ---
         float velAtual = velocidade;
@@ -91,30 +101,38 @@ public class CameraController : MonoBehaviour
 
         // --- 2. Movimento (W, A, S, D) Relativo à Câmera ---
         // Pegamos a direção "frente" e "direita" da câmera, mas zeramos o Y para não voar para o chão/céu
-        Vector3 forward = transform.forward;
-        forward.y = 0;
-        forward.Normalize();
-        Vector3 right = transform.right;
-        right.y = 0;
-        right.Normalize();
-
-        if (!menusAbertos)
+        bool moverW = !menusAbertos && Input.GetKey(KeyCode.W);
+        bool moverS = !menusAbertos && Input.GetKey(KeyCode.S);
+        bool moverD = !menusAbertos && Input.GetKey(KeyCode.D);
+        bool moverA = !menusAbertos && Input.GetKey(KeyCode.A);
+        bool moverCamera = moverW || moverS || moverD || moverA;
+        if (moverCamera)
         {
-            if (Input.GetKey("w")) pos += forward * velAtual * Time.deltaTime;
-            if (Input.GetKey("s")) pos -= forward * velAtual * Time.deltaTime;
-            if (Input.GetKey("d")) pos += right * velAtual * Time.deltaTime;
-            if (Input.GetKey("a")) pos -= right * velAtual * Time.deltaTime;
+            Vector3 forward = transform.forward;
+            forward.y = 0;
+            forward.Normalize();
+            Vector3 right = transform.right;
+            right.y = 0;
+            right.Normalize();
+
+            if (moverW) pos += forward * velAtual * Time.deltaTime;
+            if (moverS) pos -= forward * velAtual * Time.deltaTime;
+            if (moverD) pos += right * velAtual * Time.deltaTime;
+            if (moverA) pos -= right * velAtual * Time.deltaTime;
         }
 
         // --- 3. Zoom (Rodinha do Mouse e Teclado) ---
         float zoomInput = 0f;
         
         // Bloqueia Zoom se estiver sobre UI ou com Menus Abertos
-        bool mouseEmCimaDeUI = UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
-
-        if (!mouseEmCimaDeUI && !menusAbertos)
+        if (!menusAbertos)
         {
-            zoomInput = Input.GetAxis("Mouse ScrollWheel");
+            UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current;
+            bool mouseEmCimaDeUI = eventSystem != null && eventSystem.IsPointerOverGameObject();
+            if (!mouseEmCimaDeUI)
+            {
+                zoomInput = Input.GetAxis("Mouse ScrollWheel");
+            }
         }
 
         if (!menusAbertos)
@@ -141,16 +159,19 @@ public class CameraController : MonoBehaviour
         pos.y -= zoomInput * velocidadeZoom * Time.deltaTime;
         pos.y = Mathf.Clamp(pos.y, 2f, 8000f); // Teto aumentado para o atalho do Espaço
 
-        transform.position = pos;
-        NotificarMudancaDeArea(pos);
-
-        if (cameraPrincipal == null)
+        float alturaAnterior = transform.position.y;
+        bool posicaoMudou = pos != transform.position;
+        if (posicaoMudou)
         {
-            cameraPrincipal = GetComponent<Camera>();
+            transform.position = pos;
+            NotificarMudancaDeArea(pos);
         }
 
-        if (cameraPrincipal != null)
+        if (cameraPrincipal != null
+            && (!projecaoInicializada || (posicaoMudou && Mathf.Abs(pos.y - alturaAnterior) > 0.01f)))
         {
+            AtualizarProjecao(pos.y);
+            /*
             float tAltura = Mathf.InverseLerp(alturaMinParaFov, alturaMaxParaFov, pos.y);
             cameraPrincipal.fieldOfView = Mathf.Lerp(campoDeVisaoMin, campoDeVisaoMax, tAltura);
             
@@ -163,6 +184,7 @@ public class CameraController : MonoBehaviour
                 pos.y * multiplicador,
                 distanciaMinima,
                 distanciaMaxima);
+            */
         }
 
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
@@ -190,10 +212,82 @@ public class CameraController : MonoBehaviour
             else
             {
                 // Teclas para rotacionar apenas no eixo Y
-                if (Input.GetKey("q")) transform.Rotate(Vector3.up, -velocidadeRotacao * Time.deltaTime, Space.World);
-                if (Input.GetKey("e")) transform.Rotate(Vector3.up, velocidadeRotacao * Time.deltaTime, Space.World);
+                if (Input.GetKey(KeyCode.Q)) transform.Rotate(Vector3.up, -velocidadeRotacao * Time.deltaTime, Space.World);
+                if (Input.GetKey(KeyCode.E)) transform.Rotate(Vector3.up, velocidadeRotacao * Time.deltaTime, Space.World);
             }
         }
+
+        if (cameraTimingStart != 0L)
+        {
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - cameraTimingStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("camera_update_ms", elapsedMs);
+        }
+    }
+
+    private void AtualizarProjecao(float altura)
+    {
+        if (cameraPrincipal == null)
+        {
+            return;
+        }
+
+        float tAltura = Mathf.InverseLerp(alturaMinParaFov, alturaMaxParaFov, altura);
+        cameraPrincipal.fieldOfView = Mathf.Lerp(campoDeVisaoMin, campoDeVisaoMax, tAltura);
+
+        float distanciaMinima = Mathf.Max(1000f, distanciaMinimaRender);
+        float distanciaMaxima = Mathf.Max(distanciaMinima, distanciaMaximaRender);
+        float multiplicador = Mathf.Max(1f, multiplicadorDistanciaRender);
+        float distanciaPorAltura = altura * multiplicador;
+        float distanciaDasSuperficies = CalcularRecorteDasSuperficies();
+        cameraPrincipal.farClipPlane = Mathf.Clamp(
+            Mathf.Max(distanciaPorAltura, distanciaDasSuperficies),
+            distanciaMinima,
+            distanciaMaxima);
+        projecaoInicializada = true;
+    }
+
+    private float CalcularRecorteDasSuperficies()
+    {
+        if (cameraPrincipal == null)
+        {
+            return 0f;
+        }
+
+        float necessario = 0f;
+        Terrain[] terrenos = FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        foreach (Terrain terreno in terrenos)
+        {
+            if (terreno == null || !terreno.gameObject.activeInHierarchy || !terreno.enabled || EhTerrenoAuxiliarInimigo(terreno))
+            {
+                continue;
+            }
+
+            TerrainData dados = terreno.terrainData;
+            if (dados == null)
+            {
+                continue;
+            }
+
+            Vector3 escala = terreno.transform.lossyScale;
+            Vector3 tamanho = Vector3.Scale(dados.size, new Vector3(Mathf.Abs(escala.x), Mathf.Abs(escala.y), Mathf.Abs(escala.z)));
+            Vector3 centro = terreno.GetPosition() + tamanho * 0.5f;
+            float raio = tamanho.magnitude * 0.5f;
+            necessario = Mathf.Max(necessario, Vector3.Distance(cameraPrincipal.transform.position, centro) + raio + 500f);
+        }
+
+        return necessario;
+    }
+
+    private static bool EhTerrenoAuxiliarInimigo(Terrain terreno)
+    {
+        string nome = terreno != null ? terreno.gameObject.name.ToLowerInvariant() : string.Empty;
+        return nome.Contains("mapa inimigo") || nome.Contains("mapa_inimigo") || nome.Contains("enemy map");
+    }
+
+    private void OnValidate()
+    {
+        multiplicadorShift = Mathf.Max(12f, multiplicadorShift);
     }
 
     private void NotificarMudancaDeArea(Vector3 posicao)
@@ -206,7 +300,16 @@ public class CameraController : MonoBehaviour
         }
 
         ultimaAreaNotificada = posicao;
+        long notifyStart = DiagnosticoDesempenhoJogo.CapturaAtiva
+            ? System.Diagnostics.Stopwatch.GetTimestamp()
+            : 0L;
         CameraMudouArea?.Invoke(posicao);
+        if (notifyStart != 0L)
+        {
+            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - notifyStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("camera_area_notify_ms", elapsedMs);
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("camera_area_notifications");
+        }
     }
 
     GerenteSelecao ObterGerenteSelecao()

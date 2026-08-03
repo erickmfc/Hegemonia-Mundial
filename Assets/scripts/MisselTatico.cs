@@ -147,7 +147,7 @@ public class MisselTatico : MonoBehaviour
         // Som
         if (somExplosao != null)
         {
-            AudioSource.PlayClipAtPoint(somExplosao, transform.position);
+            AudioRuntime.PlayClipAtPoint(somExplosao, transform.position);
         }
         
         // Dano em Área

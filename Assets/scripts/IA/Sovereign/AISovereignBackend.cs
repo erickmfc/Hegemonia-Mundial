@@ -40,6 +40,15 @@ namespace Hegemonia.AI.Sovereign
                 return false;
             }
 
+            if (!TryValidateBuildTerritory(data, role, position, out reason))
+            {
+                DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("ia_build_territory_blocked");
+                DiagnosticoDesempenhoJogo.RegistrarEvento(
+                    "IA_Soberana_BuildBloqueado",
+                    "team=" + _teamId + " role=" + role + " pos=" + position.ToString("F1") + " motivo=" + reason);
+                return false;
+            }
+
             float spacing = ResolveStructureSpacing(role, data);
             if (IsCrowded(position, spacing, true))
             {
@@ -49,6 +58,15 @@ namespace Hegemonia.AI.Sovereign
                     return false;
                 }
                 position = relaxed;
+
+                if (!TryValidateBuildTerritory(data, role, position, out reason))
+                {
+                    DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("ia_build_territory_blocked");
+                    DiagnosticoDesempenhoJogo.RegistrarEvento(
+                        "IA_Soberana_BuildBloqueado",
+                        "team=" + _teamId + " role=" + role + " pos=" + position.ToString("F1") + " motivo=" + reason);
+                    return false;
+                }
             }
 
             GameObject created = null;
@@ -412,6 +430,12 @@ namespace Hegemonia.AI.Sovereign
                 position = perception.BaseCenter;
             }
 
+            if (position == Vector3.zero)
+            {
+                reason = "sem_base_propria_valida";
+                return false;
+            }
+
             if (RequiresCoastalPlacement(data))
             {
                 if (!NavalPlacementResolver.TryResolveStructurePose(data.prefabDaUnidade, position, rotation, out NavalPlacementResolver.StructurePose pose))
@@ -444,6 +468,132 @@ namespace Hegemonia.AI.Sovereign
             }
 
             return true;
+        }
+
+        private bool TryValidateBuildTerritory(
+            DadosConstrucao data,
+            AISovereignCatalogRole role,
+            Vector3 position,
+            out string reason)
+        {
+            reason = string.Empty;
+            int playerTeam = SistemaGovernoMundial.Instancia != null
+                ? SistemaGovernoMundial.Instancia.teamJogador
+                : 1;
+
+            if (_teamId <= 0 || _teamId == playerTeam)
+            {
+                reason = "team_ia_invalido_ou_jogador";
+                return false;
+            }
+
+            GerenteDeTerritorio territory = EnsureTerritoryManager();
+            if (territory == null)
+            {
+                reason = "gerente_territorio_aguardando";
+                return false;
+            }
+
+            int owner = territory.ObterDonoDoPonto(position);
+            if (owner == _teamId)
+            {
+                return true;
+            }
+
+            // Bandeiras/marcadores continuam sendo o mecanismo de expansao.
+            // Estruturas comuns nao podem usar essa excecao.
+            if (owner == 0 && IsTerritoryExpansionMarker(data))
+            {
+                return true;
+            }
+
+            // Pontos de agua nao recebem dono geometrico. Para nao quebrar
+            // estaleiros/plataformas, exigimos uma fronteira terrestre propria
+            // proxima; isso nao libera construcao em costa neutra distante.
+            if (owner == 0 && IsCoastalStructure(data, role) && HasFriendlyTerritoryNearby(territory, _teamId, position, 420f))
+            {
+                return true;
+            }
+
+            reason = owner == 0
+                ? "territorio_nao_reivindicado"
+                : (owner == playerTeam ? "territorio_do_jogador" : "territorio_de_outra_ia_" + owner);
+            return false;
+        }
+
+        private static GerenteDeTerritorio EnsureTerritoryManager()
+        {
+            if (GerenteDeTerritorio.Instancia != null)
+            {
+                return GerenteDeTerritorio.Instancia;
+            }
+
+            GerenteDeTerritorio existing = Object.FindFirstObjectByType<GerenteDeTerritorio>();
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            GameObject managerObject = new GameObject("GerenteDeTerritorio_Sistema");
+            return managerObject.AddComponent<GerenteDeTerritorio>();
+        }
+
+        private static bool IsTerritoryExpansionMarker(DadosConstrucao data)
+        {
+            if (data == null || data.prefabDaUnidade == null)
+            {
+                return false;
+            }
+
+            string text = IA_Text.Normalize(data.GetDisplayName() + " " + data.prefabDaUnidade.name);
+            return text.Contains("bandeira")
+                || text.Contains("flag")
+                || data.prefabDaUnidade.GetComponent<MarcadorTerritorio>() != null;
+        }
+
+        private static bool IsCoastalStructure(DadosConstrucao data, AISovereignCatalogRole role)
+        {
+            return role == AISovereignCatalogRole.Shipyard
+                || role == AISovereignCatalogRole.Platform
+                || (data != null && (data.HasCapability(IA_ConstructionCapability.Shipyard)
+                    || data.HasCapability(IA_ConstructionCapability.Pier)
+                    || data.HasCapability(IA_ConstructionCapability.Platform)));
+        }
+
+        private static bool HasFriendlyTerritoryNearby(GerenteDeTerritorio territory, int teamId, Vector3 center, float maxRadius)
+        {
+            if (territory == null)
+            {
+                return false;
+            }
+
+            float[] radii = { 0f, 32f, 72f, 128f, 192f, 256f, 320f, 420f };
+            for (int r = 0; r < radii.Length; r++)
+            {
+                float radius = radii[r];
+                if (radius > maxRadius)
+                {
+                    continue;
+                }
+
+                int samples = radius <= 0.01f ? 1 : 16;
+                for (int i = 0; i < samples; i++)
+                {
+                    Vector3 probe = center;
+                    if (samples > 1)
+                    {
+                        float angle = ((360f / samples) * i) * Mathf.Deg2Rad;
+                        probe += new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+                    }
+
+                    if (territory.ObterDonoDoPonto(probe) == teamId)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static bool RequiresCoastalPlacement(DadosConstrucao data)

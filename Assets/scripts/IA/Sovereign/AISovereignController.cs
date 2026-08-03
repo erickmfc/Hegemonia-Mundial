@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.Shared;
@@ -654,7 +655,7 @@ namespace Hegemonia.AI.Sovereign
                 Type = AISovereignOrderType.MarketBuy,
                 CounterpartyTeamId = vendedor.teamId,
                 Resource = need,
-                Quantity = Mathf.Clamp(item.CalcularQuantidadePadrao(), 20, Mathf.Max(20, pais.saldo / Mathf.Max(1, item.precoAtual))),
+                Quantity = Mathf.Clamp(item.CalcularQuantidadePadrao(), 20, (int)Math.Min(int.MaxValue, Math.Max(20L, pais.saldo / Math.Max(1L, item.precoAtual)))),
                 UnitPrice = item.precoAtual,
                 Priority = 690,
                 CooldownSeconds = 18f,
@@ -688,7 +689,7 @@ namespace Hegemonia.AI.Sovereign
                 }
 
                 RelacaoPaisGoverno rel = gov.ObterRelacao(teamId, candidate.teamId);
-                int score = candidate.saldo + rel.valor * 8 + (rel.pactoMilitar ? 120 : 0);
+                int score = (int)Math.Min(int.MaxValue, Math.Max(int.MinValue, candidate.saldo + rel.valor * 8L + (rel.pactoMilitar ? 120L : 0L)));
                 if (score > bestScore)
                 {
                     bestScore = score;

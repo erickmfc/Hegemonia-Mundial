@@ -46,6 +46,7 @@ public class MenuInicialController : MonoBehaviour
     private Text statusText;
     private Button botaoCarregar;
     private Canvas canvasMenuPrincipal;
+    private GameObject painelSelecaoCampanha;
 
     private Transform plataformaGiratoria;
     private Transform jatoPassando;
@@ -225,6 +226,7 @@ public class MenuInicialController : MonoBehaviour
             canvasMenuPrincipal = null;
             botaoCarregar = null;
             statusText = null;
+            painelSelecaoCampanha = null;
         }
 
         if (!ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
@@ -238,10 +240,77 @@ public class MenuInicialController : MonoBehaviour
 
     public void Btn_NovaCampanha()
     {
+        AbrirSelecaoCampanha();
+    }
+
+    private void AbrirSelecaoCampanha()
+    {
+        if (painelSelecaoCampanha != null || canvasMenuPrincipal == null)
+        {
+            return;
+        }
+
+        painelSelecaoCampanha = new GameObject("PainelSelecaoCampanha");
+        painelSelecaoCampanha.transform.SetParent(canvasMenuPrincipal.transform, false);
+        RectTransform fundo = painelSelecaoCampanha.AddComponent<RectTransform>();
+        fundo.anchorMin = Vector2.zero;
+        fundo.anchorMax = Vector2.one;
+        fundo.offsetMin = Vector2.zero;
+        fundo.offsetMax = Vector2.zero;
+        Image imagemFundo = painelSelecaoCampanha.AddComponent<Image>();
+        imagemFundo.color = new Color(0.008f, 0.025f, 0.035f, 0.975f);
+
+        CriarTexto("TituloCampanha", painelSelecaoCampanha.transform,
+            "SELECIONE A DIFICULDADE DA CAMPANHA", 28, FontStyle.Bold,
+            TextAnchor.MiddleCenter, corTexto, new Vector2(0.18f, 0.78f),
+            new Vector2(0.82f, 0.88f), Vector2.zero, Vector2.zero);
+        CriarTexto("SubtituloCampanha", painelSelecaoCampanha.transform,
+            "O preco dos itens permanece igual. A dificuldade altera o caixa inicial e o orcamento nacional.",
+            15, FontStyle.Normal, TextAnchor.MiddleCenter, corTextoSuave,
+            new Vector2(0.18f, 0.70f), new Vector2(0.82f, 0.77f), Vector2.zero, Vector2.zero);
+
+        RectTransform lista = new GameObject("OpcoesCampanha").AddComponent<RectTransform>();
+        lista.SetParent(painelSelecaoCampanha.transform, false);
+        lista.anchorMin = new Vector2(0.24f, 0.22f);
+        lista.anchorMax = new Vector2(0.76f, 0.68f);
+        lista.offsetMin = Vector2.zero;
+        lista.offsetMax = Vector2.zero;
+
+        float posicaoY = 0f;
+        CriarBotao(lista, "FACIL\n$120.000.000.000\nExpansao rapida e margem para erros", "F", corBotaoDestaque, true,
+            () => IniciarCampanhaSelecionada("facil"), ref posicaoY);
+        CriarBotao(lista, "MEDIO\n$70.000.000.000\nPlanejamento e desenvolvimento equilibrado", "M", corBotao, true,
+            () => IniciarCampanhaSelecionada("medio"), ref posicaoY);
+        CriarBotao(lista, "DIFICIL\n$35.000.000.000\nPriorize energia, empregos e defesa", "D", corBotao, true,
+            () => IniciarCampanhaSelecionada("dificil"), ref posicaoY);
+
+        float posicaoVoltar = 0f;
+        Button voltar = CriarBotao(painelSelecaoCampanha.transform, "VOLTAR", "X", corBotao, true,
+            FecharSelecaoCampanha, ref posicaoVoltar);
+        RectTransform voltarRect = voltar.GetComponent<RectTransform>();
+        voltarRect.anchorMin = new Vector2(0.5f, 0f);
+        voltarRect.anchorMax = new Vector2(0.5f, 0f);
+        voltarRect.pivot = new Vector2(0.5f, 0f);
+        voltarRect.anchoredPosition = new Vector2(0f, 34f);
+        voltarRect.sizeDelta = new Vector2(260f, 52f);
+    }
+
+    private void FecharSelecaoCampanha()
+    {
+        if (painelSelecaoCampanha != null)
+        {
+            Destroy(painelSelecaoCampanha);
+            painelSelecaoCampanha = null;
+        }
+    }
+
+    private void IniciarCampanhaSelecionada(string codigoDificuldade)
+    {
+        GameDifficultyManager.Instancia.AplicarCodigo(codigoDificuldade);
         string cenaCampanha = ConfiguracaoCenasJogo.ResolverCenaCampanhaPadrao();
         sistemaSave.IniciarNovoJogo(cenaCampanha);
-        DefinirStatus(LocalizationManager.T("menu.main.loading_new", "Iniciando campanha principal..."), false);
-        CarregarCena(cenaCampanha);
+        DefinirStatus("Iniciando campanha " + GameDifficultyManager.Instancia.NomeDificuldadeAtual() + "...", false);
+        CarregarCena(cenaCampanha, LoadingRequestKind.Campanha);
     }
 
     public void Btn_Tutorial()
@@ -249,7 +318,7 @@ public class MenuInicialController : MonoBehaviour
         string cenaTutorial = ConfiguracaoCenasJogo.ResolverCenaTutorial();
         sistemaSave.IniciarNovoJogo(cenaTutorial);
         DefinirStatus(LocalizationManager.T("menu.main.loading_tutorial", "Iniciando tutorial..."), false);
-        CarregarCena(cenaTutorial);
+        CarregarCena(cenaTutorial, LoadingRequestKind.Tutorial);
     }
 
     public void Btn_CarregarJogo()
@@ -274,7 +343,12 @@ public class MenuInicialController : MonoBehaviour
 
         string cenaDestino = sistemaSave.ObterCenaSalvaOuPadrao(ConfiguracaoCenasJogo.ResolverCenaCampanhaPadrao());
         DefinirStatus(LocalizationManager.T("menu.main.loading_save", "Carregando campanha salva..."), false);
-        CarregarCena(cenaDestino);
+        CarregarCena(cenaDestino, LoadingRequestKind.Save);
+    }
+
+    private void AbrirConfiguracoesAudio()
+    {
+        AudioSettingsPanelUI.Abrir(canvasMenuPrincipal != null ? canvasMenuPrincipal.transform : transform);
     }
 
     public void Btn_AlternarIdioma()
@@ -311,7 +385,7 @@ public class MenuInicialController : MonoBehaviour
 #endif
     }
 
-    private void CarregarCena(string nomeCena)
+    private void CarregarCena(string nomeCena, LoadingRequestKind tipo = LoadingRequestKind.Campanha)
     {
         Time.timeScale = 1f;
         AudioListener.pause = false;
@@ -325,7 +399,7 @@ public class MenuInicialController : MonoBehaviour
 
         DestruirInterfaceMenuAntesDaTroca();
         FluxoInicialJogo.AutorizarCarga(nomeCena);
-        SceneManager.LoadScene(nomeCena);
+        LoadingScreenService.CarregarCena(nomeCena, tipo);
     }
 
     private static void DestruirInterfaceMenuAntesDaTroca()
@@ -1021,7 +1095,7 @@ public class MenuInicialController : MonoBehaviour
         grupoBotoes.anchorMax = new Vector2(1f, 1f);
         grupoBotoes.pivot = new Vector2(0.5f, 1f);
         grupoBotoes.anchoredPosition = new Vector2(0f, -202f);
-        grupoBotoes.sizeDelta = new Vector2(0f, 548f);
+        grupoBotoes.sizeDelta = new Vector2(0f, 620f);
 
         float posicaoY = 0f;
         CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.new", "Nova Campanha"), "CP", corBotaoDestaque, true, Btn_NovaCampanha, ref posicaoY);
@@ -1029,9 +1103,9 @@ public class MenuInicialController : MonoBehaviour
         CriarBotao(grupoBotoes, "Escaramuça", "SK", corBotao, false, () => Btn_ModoIndisponivel("Escaramuça"), ref posicaoY);
         CriarBotao(grupoBotoes, "Multijogador", "MP", corBotao, false, () => Btn_ModoIndisponivel("Multijogador"), ref posicaoY);
         botaoCarregar = CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.load", "Carregar Jogo"), "LD", corBotao, true, Btn_CarregarJogo, ref posicaoY);
+        CriarBotao(grupoBotoes, "Audio", "AU", corBotao, true, AbrirConfiguracoesAudio, ref posicaoY);
         CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.language", "Idioma") + ": " + LocalizationManager.Instancia.NomeIdiomaAtual(), "LG", corBotao, true, Btn_AlternarIdioma, ref posicaoY);
-        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.difficulty", "Dificuldade") + ": " + GameDifficultyManager.Instancia.NomeDificuldadeAtual(), "DF", corBotao, true, Btn_AlternarDificuldade, ref posicaoY);
-        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.exit", "Sair"), "EX", corBotaoSair, true, Btn_Sair, ref posicaoY);
+            CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.exit", "Sair"), "EX", corBotaoSair, true, Btn_Sair, ref posicaoY);
 
         RectTransform statusBox = CriarPainel("StatusBox", coluna, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 112f), new Vector2(0f, 68f), new Color(0.035f, 0.13f, 0.15f, 0.96f));
         statusText = CriarTexto("Status", statusBox, string.Empty, 15, FontStyle.Bold, TextAnchor.MiddleLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(16f, 0f), new Vector2(-32f, 0f));
@@ -1112,7 +1186,8 @@ public class MenuInicialController : MonoBehaviour
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0.5f, 1f);
         rect.anchoredPosition = new Vector2(0f, -posicaoY);
-        rect.sizeDelta = new Vector2(0f, 60f);
+        bool multilinha = titulo.IndexOf('\n') >= 0;
+        rect.sizeDelta = new Vector2(0f, multilinha ? 94f : 60f);
 
         Image fundo = botaoObject.AddComponent<Image>();
         fundo.color = interativo ? corBase : corBotaoBloqueado;
@@ -1138,12 +1213,12 @@ public class MenuInicialController : MonoBehaviour
         RectTransform barra = CriarPainel("Accent", botaoObject.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(4f, 0f), interativo ? new Color(0.28f, 0.91f, 0.94f, 0.95f) : new Color(0.34f, 0.38f, 0.41f, 0.55f));
         barra.SetAsFirstSibling();
 
-        Text label = CriarTexto("Label", botaoObject.transform, titulo.ToUpper(), 17, FontStyle.Bold, TextAnchor.MiddleLeft, corRotulo, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(22f, 0f), new Vector2(-100f, 0f));
+        Text label = CriarTexto("Label", botaoObject.transform, titulo.ToUpper(), multilinha ? 15 : 17, FontStyle.Bold, multilinha ? TextAnchor.MiddleCenter : TextAnchor.MiddleLeft, corRotulo, new Vector2(0f, 0f), new Vector2(1f, 1f), multilinha ? new Vector2(18f, 4f) : new Vector2(22f, 0f), multilinha ? new Vector2(-80f, -4f) : new Vector2(-100f, 0f));
         label.horizontalOverflow = HorizontalWrapMode.Wrap;
         label.verticalOverflow = VerticalWrapMode.Overflow;
         label.resizeTextForBestFit = true;
-        label.resizeTextMinSize = 13;
-        label.resizeTextMaxSize = 17;
+        label.resizeTextMinSize = multilinha ? 11 : 13;
+        label.resizeTextMaxSize = multilinha ? 15 : 17;
 
         RectTransform iconBadge = CriarPainel("IconBadge", botaoObject.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(54f, 32f), new Color(0.32f, 0.85f, 0.86f, interativo ? 0.12f : 0.04f));
         Text iconText = CriarTexto("Icon", iconBadge, icone, 16, FontStyle.Bold, TextAnchor.MiddleCenter, corRotulo, new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
@@ -1151,7 +1226,7 @@ public class MenuInicialController : MonoBehaviour
         iconText.resizeTextMinSize = 12;
         iconText.resizeTextMaxSize = 16;
 
-        posicaoY += 68f;
+        posicaoY += multilinha ? 104f : 68f;
         return botao;
     }
 

@@ -415,7 +415,15 @@ public class MenuComandoController : MonoBehaviour
         // A tecla I executa o mesmo comando do botao ESTADO (ALTERNAR).
         if (Input.GetKeyDown(KeyCode.I))
         {
-            ExecutarOrdem("ESTADO_ALTERNAR");
+            bool ehTransporteTerrestre = unidadeSelecionadaMenu != null
+                && (unidadeSelecionadaMenu.GetComponent<TransporteTerrestre>() != null
+                    || unidadeSelecionadaMenu.GetComponentInParent<TransporteTerrestre>() != null
+                    || unidadeSelecionadaMenu.GetComponentInChildren<TransporteTerrestre>(true) != null);
+
+            if (!ehTransporteTerrestre)
+            {
+                ExecutarOrdem("ESTADO_ALTERNAR");
+            }
             return;
         }
 
@@ -1200,6 +1208,7 @@ public class MenuComandoController : MonoBehaviour
     private MapaItemUI CriarElementoMapa(IdentidadeUnidade id, bool amigo, string emoji)
     {
         string classFacao = amigo ? "amigo" : "inimigo";
+        bool ehImovel = EhImovelMapa(id.gameObject);
 
         var container = new VisualElement();
         container.AddToClassList("mapa-unidade");
@@ -1214,12 +1223,25 @@ public class MenuComandoController : MonoBehaviour
             container.tooltip = "Unidade controlavel pelo jogador — clique para assumir o controle";
         }
 
-        // Label com nome
+        // Imóveis não precisam ocupar o mapa com nomes longos. Mantemos um
+        // marcador mínimo, com deslocamento determinístico, para que imóveis
+        // próximos não formem uma coluna de textos sobrepostos.
         string nomeMapa = ObterNomeExibicao(id.gameObject);
-        var label = new Label(nomeMapa.Length > 28 ? nomeMapa.Substring(0, 28) + "..." : nomeMapa);
+        var label = new Label(ehImovel ? "•" : (nomeMapa.Length > 28 ? nomeMapa.Substring(0, 28) + "..." : nomeMapa));
         label.name = "mapa-label";
         label.AddToClassList("mapa-label");
         label.AddToClassList(classFacao);
+        if (ehImovel)
+        {
+            label.AddToClassList("imovel");
+            label.tooltip = nomeMapa;
+
+            int dispersao = Mathf.Abs(id.gameObject.GetInstanceID());
+            float offsetX = ((dispersao % 5) - 2) * 7f;
+            float offsetY = (((dispersao / 5) % 5) - 2) * 5f;
+            label.style.left = offsetX;
+            label.style.top = -8f + offsetY;
+        }
 
         // Marcador
         var marcador = new VisualElement();
@@ -1292,6 +1314,32 @@ public class MenuComandoController : MonoBehaviour
             Identidade = id,
             UltimoDestruido = false
         };
+    }
+
+    private static bool EhImovelMapa(GameObject obj)
+    {
+        if (obj == null) return false;
+
+        // Cobre os imóveis atuais e prefabs legados que só carregam a tag.
+        if (obj.GetComponent<Imovel>() != null || TagSafe.Matches(obj, "Imovel"))
+            return true;
+
+        // Algumas cenas colocam a identidade em um filho do prefab; nesse
+        // caso, a tag pode estar no pai ou em um filho do objeto visual.
+        for (Transform atual = obj.transform; atual != null; atual = atual.parent)
+        {
+            if (TagSafe.Matches(atual, "Imovel") || atual.GetComponent<Imovel>() != null)
+                return true;
+        }
+
+        Transform[] filhos = obj.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < filhos.Length; i++)
+        {
+            if (TagSafe.Matches(filhos[i], "Imovel") || filhos[i].GetComponent<Imovel>() != null)
+                return true;
+        }
+
+        return false;
     }
 
     private string ObterEmojiUnidade(IdentidadeUnidade id)

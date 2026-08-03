@@ -386,7 +386,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.ObterPais(1) : null;
         if (pais == null) return;
         GerenciadorRecursos recursosReais = GerenciadorRecursos.Instancia;
-        AdicionarRecurso("TESOURO", "$ " + (recursosReais != null ? recursosReais.dinheiro : pais.saldo).ToString("N0"));
+        AdicionarRecurso("TESOURO", Moeda(recursosReais != null ? recursosReais.dinheiro : pais.saldo));
         // O cabeçalho deve ler o armazem vivo. O espelho econômico pode estar
         // atrasado um ciclo, especialmente depois de uma descarga de petroleiro.
         AdicionarRecurso("PETROLEO", EstoqueReal(RecursoMercado.Petroleo).ToString("N0"));
@@ -791,7 +791,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 TabelaLinha(item != null ? item.NomeFormatado : transacao.itemId,
                     origem != null ? origem.nomePais : "Mercado",
                     destino != null ? destino.nomePais : "Mercado",
-                    transacao.quantidade.ToString("N0"), "$ " + transacao.total.ToString("N0"));
+            transacao.quantidade.ToString("N0"), Moeda(transacao.total));
             }
             if (!mercado.historico.Any(t => t != null))
                 AdicionarCard(conteudo, "SEM OPERACOES", "Ainda nao existem rotas comerciais registradas.");
@@ -804,7 +804,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         foreach (DadosItemMercado item in itens.Take(12))
         {
             string status = item.precoAtual <= 0f ? "SEM PRECO" : (item.podeComprar ? "DISPONIVEL" : "LIMITADO");
-            TabelaLinha(item.NomeFormatado, "$ " + item.precoAtual.ToString("N0"),
+            TabelaLinha(item.NomeFormatado, Moeda(item.precoAtual),
                 item.variacaoPercentual.ToString("+0.0;-0.0;0.0") + "%", item.estoqueGlobal.ToString("N0"), status);
         }
     }
@@ -827,7 +827,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
         string variacao = item.variacaoPercentual.ToString("+0.0;-0.0;0.0") + "%";
         Label detalhes = new Label(
-            "Preco unitario: $ " + item.precoAtual.ToString("N0") +
+            "Preco unitario: " + Moeda(item.precoAtual) +
             "\nVariacao: " + variacao +
             (comprar ? "\nOferta global: " + item.estoqueGlobal.ToString("N0") + (item.municaoMilitar ? " cart." : " t") : "\nSeu estoque: " + estoqueJogador.ToString("N0") + (item.municaoMilitar ? " cart." : " t")) +
             (item.municaoMilitar ? "\nCada disparo desconta um cartucho do estoque da unidade." : "\nLiquidacao no estoque agregado do armazem."));
@@ -844,7 +844,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         Action atualizarTotal = () =>
         {
             int valor = Mathf.Max(1, quantidade.value);
-            total.text = (comprar ? "TOTAL: $ " : "RECEBER: $ ") + ((long)valor * item.precoAtual).ToString("N0") + "  |  " + valor.ToString("N0") + (item.municaoMilitar ? " cart." : " t");
+            total.text = (comprar ? "TOTAL: " : "RECEBER: ") + Moeda((long)valor * item.precoAtual) + "  |  " + valor.ToString("N0") + (item.municaoMilitar ? " cart." : " t");
         };
         Toggle repeticao = null;
         quantidade.RegisterValueChangedCallback(evt =>
@@ -1119,7 +1119,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         card.AddToClassList("gov-stat-card");
         card.Add(new Label(n.nomePais + "  |  " + n.nomePresidente) { name = "nation-title" });
         card.Add(new Label("Populacao: " + n.populacao.ToString("N0") + " | Militar: " + n.populacaoMilitarAtiva.ToString("N0")));
-        card.Add(new Label("Caixa: $ " + n.saldo.ToString("N0") + " | Divida: $ " + n.divida.ToString("N0") + " | Estado: " + ObterStatusNacional(n)));
+            card.Add(new Label("Caixa: " + Moeda(n.saldo) + " | Divida: " + Moeda(n.divida) + " | Estado: " + ObterStatusNacional(n)));
         card.Add(new Label("Moeda: " + n.nomeMoeda + " | 1 " + n.nomeMoeda + " = " + n.cambioComLider.ToString("0.00") + " DH"));
         card.Add(new Label("Federacao: " + SistemaFederacoesGlobais.NomeFederacao(n.federacaoGlobal)));
         if (n.teamId != 1 && SistemaGovernoMundial.Instancia != null)
@@ -1399,24 +1399,24 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         {
             LinhaCards(new[]
             {
-                ("SALDO", "$ " + p.saldo.ToString("N0"), "state-good"),
-                ("RECEITA", "$ " + p.rendaPorSegundo.ToString("0.0") + "/s", "state-good"),
-                ("GASTOS", "$ " + p.custoManutencao.ToString("0.0") + "/s", "state-bad"),
-                ("RESERVA", "$ " + p.reservaOuro.ToString("N0"), "state-info"),
+                ("SALDO", Moeda(p.saldo), "state-good"),
+                ("RECEITA", Moeda(p.rendaPorSegundo) + "/s", "state-good"),
+                ("GASTOS", Moeda(p.custoManutencao) + "/s", "state-bad"),
+                ("RESERVA", Moeda(p.reservaOuro), "state-info"),
                 ("PODER DE COMPRA", p.PoderDeCompra.ToString("0.00"), "state-info"),
                 ("INFLACAO", p.inflacao.ToString("0.0") + "%", p.inflacao >= 8f ? "state-warn" : "state-good")
             });
 
             AdicionarCard(conteudo, "TESOURO NACIONAL",
-                "Saldo atual: $ " + p.saldo.ToString("N0") + "\n" +
-                "Receita recorrente: $ " + p.rendaPorSegundo.ToString("0.0") + "/s\n" +
-                "Gasto recorrente: $ " + p.custoManutencao.ToString("0.0") + "/s\n" +
-                "Saldo operacional: $ " + p.saldoOperacional.ToString("0.0") + "/s\n" +
-                "Reserva de ouro: " + p.reservaOuro.ToString("N0") + "\n" +
+                "Saldo atual: " + Moeda(p.saldo) + "\n" +
+                "Receita recorrente: " + Moeda(p.rendaPorSegundo) + "/s\n" +
+                "Gasto recorrente: " + Moeda(p.custoManutencao) + "/s\n" +
+                "Saldo operacional: " + Moeda(p.saldoOperacional) + "/s\n" +
+                "Reserva de ouro: " + Moeda(p.reservaOuro) + "\n" +
                 "Moeda de referencia: " + p.moedaLiderReferencia + "\n" +
                 "Cambio com lider: " + p.cambioComLider.ToString("0.00"));
             TabelaCabecalho("INDICADOR", "VALOR", "BASE", "TENDENCIA", "STATUS");
-            TabelaLinha("CAIXA", "$ " + p.saldo.ToString("N0"), "Liquidez imediata", p.saldoOperacional >= 0f ? "SUPERAVIT" : "DEFICIT", p.saldo > 1000 ? "SAUDAVEL" : "RISCO");
+            TabelaLinha("CAIXA", Moeda(p.saldo), "Liquidez imediata", p.saldoOperacional >= 0f ? "SUPERAVIT" : "DEFICIT", p.saldo > 1000 ? "SAUDAVEL" : "RISCO");
             TabelaLinha("PODER", p.PoderDeCompra.ToString("0.00"), "Indice real", "Inflacao " + p.inflacao.ToString("0.0") + "%", p.PoderDeCompra > 0.75f ? "BOM" : "FRACO");
             TabelaLinha("RESERVA", p.reservaOuro.ToString("N0"), "Ativo financeiro", "Cambio " + p.cambioComLider.ToString("0.00"), p.reservaOuro > 300f ? "OK" : "BAIXA");
             return;
@@ -1428,12 +1428,12 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
             LinhaCards(new[]
             {
-                ("RECEITA TOTAL/DIA", "$ " + rel.receitaTotalDia.ToString("N0"), "state-good"),
-                ("DESPESA TOTAL/DIA", "$ " + rel.despesaTotalDia.ToString("N0"), "state-bad"),
-                ("SALDO LÍQUIDO/DIA", "$ " + rel.saldoLiquidoDia.ToString("N0"), rel.saldoLiquidoDia >= 0m ? "state-good" : "state-bad"),
-                ("PROJEÇÃO MENSAL", "$ " + rel.projecaoMensal.ToString("N0"), rel.projecaoMensal >= 0m ? "state-good" : "state-bad"),
-                ("TESOURO ATUAL", "$ " + rel.tesouroAtual.ToString("N0"), rel.tesouroAtual > 1000f ? "state-good" : "state-warn"),
-                ("DÍVIDA TOTAL", "$ " + rel.dividaTotal.ToString("N0"), rel.dividaTotal > 0f ? "state-bad" : "state-good"),
+                ("RECEITA TOTAL/DIA", Moeda(rel.receitaTotalDia), "state-good"),
+                ("DESPESA TOTAL/DIA", Moeda(rel.despesaTotalDia), "state-bad"),
+                ("SALDO LÍQUIDO/DIA", Moeda(rel.saldoLiquidoDia), rel.saldoLiquidoDia >= 0m ? "state-good" : "state-bad"),
+                ("PROJEÇÃO MENSAL", Moeda(rel.projecaoMensal), rel.projecaoMensal >= 0m ? "state-good" : "state-bad"),
+                ("TESOURO ATUAL", Moeda(rel.tesouroAtual), rel.tesouroAtual > 1000m ? "state-good" : "state-warn"),
+                ("DÍVIDA TOTAL", Moeda(rel.dividaTotal), rel.dividaTotal > 0f ? "state-bad" : "state-good"),
                 ("INFLAÇÃO", rel.inflacao.ToString("0.0") + "%", rel.inflacao <= 5f ? "state-good" : "state-warn"),
                 ("CARGA FISCAL", rel.cargaFiscalMedia.ToString("0.0") + "%", rel.cargaFiscalMedia <= 18f ? "state-good" : "state-warn")
             });
@@ -1444,7 +1444,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             foreach (var rec in rel.receitas)
             {
                 string info = rec.detalhamento;
-                TabelaLinha(rec.nome, rec.baseCalculo, "+$ " + rec.valorDiario.ToString("N0") + "/dia", rec.tendencia, rec.status, () => MostrarMensagem(info));
+                TabelaLinha(rec.nome, rec.baseCalculo, "+" + Moeda(rec.valorDiario) + "/dia", rec.tendencia, rec.status, () => MostrarMensagem(info));
             }
 
             AdicionarCard(conteudo, "BALANÇO GERAL DE DESPESAS",
@@ -1453,7 +1453,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             foreach (var desp in rel.despesas)
             {
                 string info = desp.detalhamento;
-                TabelaLinha(desp.nome, desp.baseCalculo, "$ " + desp.valorDiario.ToString("N0") + "/dia", desp.tendencia, desp.status, () => MostrarMensagem(info));
+                TabelaLinha(desp.nome, desp.baseCalculo, Moeda(desp.valorDiario) + "/dia", desp.tendencia, desp.status, () => MostrarMensagem(info));
             }
             return;
         }
@@ -1503,7 +1503,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             ("COMERCIO", p.impostoComercio + "%", p.impostoComercio <= 12 ? "state-good" : "state-warn"),
             ("CUSTO DE VIDA", p.inflacao.ToString("0.0") + "%", p.inflacao < 6f ? "state-good" : "state-warn"),
             ("PODER DE COMPRA", p.PoderDeCompra.ToString("0.00"), "state-info"),
-            ("SALDO", "$ " + p.saldo.ToString("N0"), "state-info")
+            ("SALDO", Moeda(p.saldo), "state-info")
         });
         AdicionarCard(conteudo, "POLITICA FISCAL",
             "Impostos mais altos elevam a arrecadacao, mas tambem pressionam moradia, industria e comercio.\n" +
@@ -1538,21 +1538,21 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         }
 
         List<RegistroGastoMilitar> registros = gastos.ObterRegistrosDoTime(p.teamId).ToList();
-        int total = registros.Sum(x => Mathf.Max(0, x.valorTotal));
+        long total = registros.Sum(x => Math.Max(0L, x.valorTotal));
         int disparos = registros.Where(x => x.tipo == TipoGastoMilitar.Disparo).Sum(x => x.quantidade);
         int compras = registros.Where(x => x.tipo == TipoGastoMilitar.CompraMunicao || x.tipo == TipoGastoMilitar.CompraUnidade).Sum(x => x.quantidade);
         int fabricados = registros.Where(x => x.tipo == TipoGastoMilitar.FabricacaoMunicao).Sum(x => x.quantidade);
 
         LinhaCards(new[]
         {
-            ("GASTO REGISTRADO", "$ " + total.ToString("N0"), total > 0 ? "state-warn" : "state-info"),
+            ("GASTO REGISTRADO", Moeda(total), total > 0 ? "state-warn" : "state-info"),
             ("DISPAROS", disparos.ToString("N0"), disparos > 0 ? "state-bad" : "state-good"),
             ("COMPRAS MILITARES", compras.ToString("N0"), "state-info"),
             ("FABRICACAO", fabricados.ToString("N0"), "state-good")
         });
 
         AdicionarCard(conteudo, "CONTROLE DE GASTOS MILITARES",
-            "Cada disparo do Ares_Ar aparece como compra de um cartucho. Compras de unidades, pesquisas militares e lotes fabricados tambem entram neste historico.\nSaldo atual: $ " + p.saldo.ToString("N0"));
+            "Cada disparo do Ares_Ar aparece como compra de um cartucho. Compras de unidades, pesquisas militares e lotes fabricados tambem entram neste historico.\nSaldo atual: " + Moeda(p.saldo));
 
         TabelaCabecalho("TIPO", "ITEM", "QTD", "VALOR UNIT.", "TOTAL");
         foreach (RegistroGastoMilitar registro in registros.Take(30))
@@ -1560,7 +1560,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             if (registro == null) continue;
             string detalhe = (registro.data ?? string.Empty) + " | " + (registro.origem ?? string.Empty);
             TabelaLinha(registro.tipo.ToString(), registro.itemNome, registro.quantidade.ToString("N0") + " " + registro.unidade,
-                "$ " + registro.valorUnitario.ToString("N0"), "$ " + registro.valorTotal.ToString("N0"), () => MostrarMensagem(detalhe));
+                Moeda(registro.valorUnitario), Moeda(registro.valorTotal), () => MostrarMensagem(detalhe));
         }
         if (registros.Count == 0)
             AdicionarCard(conteudo, "SEM GASTOS MILITARES REGISTRADOS", "O historico sera preenchido quando uma unidade for comprada, fabricada, pesquisada ou disparar.");
@@ -1571,7 +1571,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         {
             TabelaLinha(municao.nome, municao.categoria,
                 gastos.ObterEstoqueMunicao(p.teamId, municao.id).ToString("N0") + " cart.",
-                "$ " + municao.valorUnitario.ToString("N0"), municao.totalDisparado.ToString("N0"),
+                Moeda(municao.valorUnitario), municao.totalDisparado.ToString("N0"),
                 () => MostrarMensagem(municao.descricao));
         }
     }
@@ -1635,7 +1635,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             LinhaCards(new[] { ("PRONTIDAO", p.nivelMilitar + "%", "state-good"), ("ARMAMENTOS", p.armamentos.ToString("N0"), "state-info"), ("URANIO", p.uranio.ToString("N0"), "state-warn"), ("PRESSAO DE GUERRA", g.PressaoGlobalGuerra().ToString("0") + "%", "state-bad") });
             AdicionarCard(conteudo, "PLANO DEFENSIVO ATUAL", $"Postura: {p.planoEstrategico}\nMilitares ativos: {p.populacaoMilitarAtiva:N0}\nReservistas: {p.reservistas:N0}\nAlistaveis: {p.alistaveis:N0}\nSituacao: {(p.emGuerra ? "EM GUERRA" : "PAZ")}");
             if (aresMunicao != null)
-                AdicionarCard(conteudo, "MUNICAO ANTIAEREA", $"{aresMunicao.nome}\nValor por cartucho: $ {aresMunicao.valorUnitario:N0}\nCarregador: {aresMunicao.capacidadeCartucho} cartuchos\nPausa de reabastecimento: {aresMunicao.tempoReabastecimento:0.0}s\nDisparos registrados: {aresMunicao.totalDisparado:N0}");
+                AdicionarCard(conteudo, "MUNICAO ANTIAEREA", $"{aresMunicao.nome}\nValor por cartucho: {Moeda(aresMunicao.valorUnitario)}\nCarregador: {aresMunicao.capacidadeCartucho} cartuchos\nPausa de reabastecimento: {aresMunicao.tempoReabastecimento:0.0}s\nDisparos registrados: {aresMunicao.totalDisparado:N0}");
             TabelaCabecalho("NACAO", "STATUS", "NIVEL MILITAR", "RELACAO", "RISCO");
             foreach (DadosPaisGoverno outro in g.Paises)
             {
@@ -1663,7 +1663,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         {
             LinhaCards(new[] { ("AEROPORTOS", aeroportos.ToString(), "state-info"), ("ESTOQUE", p.armamentos.ToString("N0"), "state-good"), ("URANIO", p.uranio.ToString("N0"), "state-warn"), ("PRONTIDAO", p.nivelMilitar + "%", "state-good") });
             string aresTexto = aresMunicao != null
-                ? $"\n\nAres_Ar: {aresMunicao.totalDisparado:N0} disparos | $ {aresMunicao.valorUnitario:N0}/cartucho | carregador {aresMunicao.capacidadeCartucho} | reabastecimento {aresMunicao.tempoReabastecimento:0.0}s"
+                ? $"\n\nAres_Ar: {aresMunicao.totalDisparado:N0} disparos | {Moeda(aresMunicao.valorUnitario)}/cartucho | carregador {aresMunicao.capacidadeCartucho} | reabastecimento {aresMunicao.tempoReabastecimento:0.0}s"
                 : string.Empty;
             AdicionarCard(conteudo, "FORCA AEREA", $"Aeroportos operacionais: {aeroportos}\nPlano atual: {p.planoEstrategico}\nPressao de guerra: {g.PressaoGlobalGuerra() * 100f:0}%" + aresTexto);
             if (p.sateliteDefesa == null)
@@ -1677,7 +1677,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 : satelite.integridade >= 45f && satelite.desempenho >= 45f ? "ATENCAO" : "CRITICO";
             AdicionarCard(conteudo, "SATELITE NACIONAL",
                 $"Status: {statusSatelite}\nProntidao: {prontidaoSatelite}\nDesempenho: {satelite.desempenho:0}%\nIntegridade: {satelite.integridade:0}%\n" +
-                $"Custo operacao: $ {satelite.custoOperacionalDiario:N0}/dia\nManutencao automatica: {(satelite.manutencaoAutomatica ? "SIM" : "NAO")}");
+                $"Custo operacao: {Moeda(satelite.custoOperacionalDiario)}/dia\nManutencao automatica: {(satelite.manutencaoAutomatica ? "SIM" : "NAO")}");
             return;
         }
 
@@ -1821,7 +1821,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 ("LINHAS", linhas.Count(l => l.EstaOcupada) + "/" + Mathf.Max(1, linhas.Count), linhas.Any(l => l.EstaLivre) ? "state-good" : "state-warn"),
                 ("REFINOS", refinosAtivos.ToString(), refinosAtivos > 0 ? "state-info" : "state-warn"),
                 ("RESERVADO", reservasAtivas.ToString() + " tipos", reservasAtivas > 0 ? "state-good" : "state-warn"),
-                ("SALDO", "$ " + p.saldo.ToString("N0"), p.saldo >= 2500 ? "state-good" : "state-warn")
+                ("SALDO", Moeda(p.saldo), p.saldo >= 2500 ? "state-good" : "state-warn")
             });
 
             if (industrial == null)
@@ -1849,7 +1849,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                     m.quantidade.ToString("N0")));
 
                 string detalhes = materiais +
-                    "\nCusto: $ " + receita.dinheiroNecessario.ToString("N0") +
+                    "\nCusto: " + Moeda(receita.dinheiroNecessario) +
                     " | Energia: " + receita.energiaNecessaria.ToString("N0") +
                     "\nDuracao: " + receita.diasNecessarios + " dias (" + (receita.diasNecessarios * 2) + " min)" +
                     "\nSaida: " + receita.quantidadeProduzida.ToString("N0") + " " + receita.unidadeResultado;
@@ -1929,7 +1929,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             string status = pesquisa == null ? "CATALOGADA" : pesquisa.concluida ? "DESBLOQUEADA" : pesquisa.emAndamento ? "EM PESQUISA" : "BLOQUEADA";
             string classe = desbloqueada ? "state-good" : pesquisa != null && pesquisa.emAndamento ? "state-info" : "state-bad";
             string corpo = municao.descricao
-                + "\nValor de mercado: $ " + municao.valorUnitario.ToString("N0")
+                + "\nValor de mercado: " + Moeda(municao.valorUnitario)
                 + " por cartucho\nCarregador: " + municao.capacidadeCartucho
                 + " | Reabastecimento: " + municao.tempoReabastecimento.ToString("0.0") + "s"
                 + "\nFabricados: " + municao.totalFabricado.ToString("N0")
@@ -2222,6 +2222,28 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         Label h = new Label(titulo); h.AddToClassList("state-info"); card.Add(h);
         Label p = new Label(texto); p.style.marginTop = 10; p.style.whiteSpace = WhiteSpace.Normal; card.Add(p);
         pai.Add(card);
+    }
+
+    private static string Moeda(long valor)
+    {
+        return ValoresDefinitivosHegemonia.FormatarDinheiro(valor);
+    }
+
+    private static string Moeda(int valor)
+    {
+        return Moeda((long)valor);
+    }
+
+    private static string Moeda(float valor)
+    {
+        return Moeda((long)Math.Round(valor, MidpointRounding.AwayFromZero));
+    }
+
+    private static string Moeda(decimal valor)
+    {
+        if (valor > long.MaxValue) return Moeda(long.MaxValue);
+        if (valor < long.MinValue) return Moeda(long.MinValue);
+        return Moeda((long)Math.Round(valor, MidpointRounding.AwayFromZero));
     }
 
     private static string Titulo(string secao, string aba) => secao.ToUpperInvariant() + " - " + aba.ToUpperInvariant();

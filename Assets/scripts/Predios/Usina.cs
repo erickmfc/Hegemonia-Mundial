@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum TipoUsina { Solar, Nuclear }
+public enum TipoUsina { Solar, Nuclear, Carvao }
 
 /// <summary>
 /// Usina de Energia genérica (Solar e Nuclear).
@@ -23,13 +23,19 @@ public class Usina : MonoBehaviour
         // Configura os valores de produção baseados no tipo de usina
         if (tipoUsina == TipoUsina.Solar)
         {
-            producaoEnergia = 320f * eficienciaBase;
+            // Solar foi reduzida em 50%; carvão usa 1,5x esta produção.
+            producaoEnergia = 160f * eficienciaBase;
             producaoDinheiro = -10f; // Custo de manutenção solar
         }
         else if (tipoUsina == TipoUsina.Nuclear)
         {
             producaoEnergia = 2200f * eficienciaBase;
             producaoDinheiro = -100f; // Custo de manutenção nuclear
+        }
+        else if (tipoUsina == TipoUsina.Carvao)
+        {
+            producaoEnergia = 240f * eficienciaBase;
+            producaoDinheiro = -180f; // Combustível, filtros, cinzas e controle ambiental
         }
 
         // Integração completa com o sistema de cidade (EstruturaEconomica)
@@ -39,7 +45,9 @@ public class Usina : MonoBehaviour
             eco = gameObject.AddComponent<EstruturaEconomica>();
         }
 
-        eco.tipo = (tipoUsina == TipoUsina.Solar) ? TipoEstruturaEconomica.UsinaSolar : TipoEstruturaEconomica.UsinaNuclear;
+        eco.tipo = tipoUsina == TipoUsina.Solar
+            ? TipoEstruturaEconomica.UsinaSolar
+            : (tipoUsina == TipoUsina.Carvao ? TipoEstruturaEconomica.UsinaCarvao : TipoEstruturaEconomica.UsinaNuclear);
         eco.energiaProduzida = producaoEnergia;
         eco.dinheiroGerado = producaoDinheiro;
         
@@ -48,6 +56,12 @@ public class Usina : MonoBehaviour
             eco.empregosGerados = 2050;
             eco.combustivelConsumido = 3f;
             eco.militaresNecessarios = 400;
+        }
+        else if (tipoUsina == TipoUsina.Carvao)
+        {
+            eco.empregosGerados = 300;
+            eco.combustivelConsumido = 42f;
+            eco.militaresNecessarios = 0;
         }
         else
         {

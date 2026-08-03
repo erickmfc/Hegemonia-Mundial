@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Math = System.Math;
 using UnityEngine.UI;
 using Hegemonia.AI.BrainMaster;
 
@@ -54,7 +55,7 @@ public class Construtor : MonoBehaviour
     public float deslocamentoPadraoEstruturaCosteira = 18f;
     public float distanciaCorrecaoSpawnNaval = 30f;
 
-    private int custoAtual = 0;
+    private long custoAtual = 0L;
     private DadosConstrucao.CategoriaItem categoriaAtual;
     private bool definindoMuro = false;
     private Vector3 pontoInicial;
@@ -944,7 +945,7 @@ public class Construtor : MonoBehaviour
                 return;
             }
             
-            int custoTotal = custoAtual * quantidade;
+            long custoTotal = custoAtual * Math.Max(0, quantidade);
             if (!TentarCobrarConstrucao(custoTotal)) return;
             
             Collider ultimoCol = null;
@@ -1010,7 +1011,7 @@ public class Construtor : MonoBehaviour
         }
     }
 
-    bool TentarCobrarConstrucao(int custo)
+    bool TentarCobrarConstrucao(long custo)
     {
         if (custo <= 0) return true;
 
@@ -1205,7 +1206,7 @@ public class Construtor : MonoBehaviour
 
             if (Input.GetMouseButtonDown(0))
             {
-                int custoTotal = Mathf.Max(0, custoAtual) * quantidadePecas;
+                long custoTotal = Math.Max(0L, custoAtual) * Math.Max(0, quantidadePecas);
                 if (!TentarCobrarConstrucao(custoTotal))
                 {
                     return;
@@ -1301,12 +1302,12 @@ public class Construtor : MonoBehaviour
         return novoPredio;
     }
 
-    public void SelecionarParaConstruir(GameObject prefab, int custo, DadosConstrucao.CategoriaItem categoria)
+    public void SelecionarParaConstruir(GameObject prefab, long custo, DadosConstrucao.CategoriaItem categoria)
     {
         SelecionarParaConstruir(prefab, custo, categoria, false);
     }
 
-    public void SelecionarParaConstruir(GameObject prefab, int custo, DadosConstrucao.CategoriaItem categoria, bool permitirForaTerritorio)
+    public void SelecionarParaConstruir(GameObject prefab, long custo, DadosConstrucao.CategoriaItem categoria, bool permitirForaTerritorio)
     {
         if (modoConstrucao)
         {

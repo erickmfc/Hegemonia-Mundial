@@ -19,6 +19,15 @@ public class SistemaEconomiaImoveis : MonoBehaviour
     public float petroleoConsumidoPorIndustria = 0.18f;
     public float rendaPorPopulacao = 0.08f;
 
+    // Fatores médios de referência. CO2 segue o fator de carvão da EIA
+    // (2,31 lb/kWh em 2023, aproximadamente 1,05 kg/kWh). SO2, NOx e PM
+    // são estimativas de referência baseadas nas tabelas AP-42 da EPA.
+    private const float HorasPorDia = 24f;
+    private const float Co2KgPorMWh = 1050f;
+    private const float So2KgPorMWh = 5.5f;
+    private const float NoxKgPorMWh = 4.5f;
+    private const float ParticulasKgPorMWh = 0.35f;
+
     public event Action OnEconomiaImoveisAtualizada;
 
     private readonly Dictionary<int, DadosEconomiaPais> economias = new Dictionary<int, DadosEconomiaPais>();
@@ -196,6 +205,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         LerTag("imovel", TipoEstruturaEconomica.Casa);
         LerTag("PesquisaMilitar", TipoEstruturaEconomica.PesquisaMilitar);
         LerTag("UsinaSolar", TipoEstruturaEconomica.UsinaSolar);
+        LerTag("UsinaCarvao", TipoEstruturaEconomica.UsinaCarvao);
     }
 
     private void LerTag(string tagName, TipoEstruturaEconomica tipo)
@@ -292,8 +302,19 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         economia.empregosDisponiveis += estrutura.empregosGerados;
         economia.comidaProduzida += estrutura.comidaProduzida * eficiencia;
         economia.petroleoProduzido += estrutura.petroleoProduzido * eficiencia;
-        economia.industriaProduzida += estrutura.industriaProduzida * eficiencia;
-        economia.energiaProduzida += estrutura.energiaProduzida * eficiencia;
+            economia.industriaProduzida += estrutura.industriaProduzida * eficiencia;
+            economia.energiaProduzida += estrutura.energiaProduzida * eficiencia;
+            if (estrutura.tipo == TipoEstruturaEconomica.UsinaSolar)
+            {
+                economia.usinasSolares++;
+                economia.energiaSolarProduzida += estrutura.energiaProduzida * eficiencia;
+            }
+            else if (estrutura.tipo == TipoEstruturaEconomica.UsinaCarvao)
+            {
+                economia.usinasCarvao++;
+                economia.energiaCarvaoProduzida += estrutura.energiaProduzida * eficiencia;
+                economia.custoUsinasCarvaoPorDia += Mathf.Abs(estrutura.dinheiroGerado * eficiencia) * GerenciadorTempoSegundosPorDia();
+            }
         economia.energiaConsumida += estrutura.energiaConsumida;
         economia.combustivelConsumido += estrutura.combustivelConsumido;
         economia.militaresNecessarios += estrutura.militaresNecessarios;
@@ -310,10 +331,17 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             case TipoEstruturaEconomica.UsinaSolar:
                 manutencaoExtra = Mathf.Max(0.25f, estrutura.energiaProduzida * 0.06f);
                 break;
+            case TipoEstruturaEconomica.UsinaCarvao:
+                manutencaoExtra = Mathf.Max(55f, estrutura.energiaProduzida * 0.22f);
+                break;
         }
         if (manutencaoExtra > 0f)
         {
             RegistrarFluxoEconomico(economia, estrutura.tipo, -manutencaoExtra);
+            if (estrutura.tipo == TipoEstruturaEconomica.UsinaCarvao)
+            {
+                economia.custoUsinasCarvaoPorDia += manutencaoExtra * GerenciadorTempoSegundosPorDia();
+            }
         }
         RegistrarFluxoEconomico(economia, TipoEstruturaEconomica.Casa, estrutura.populacaoAtual * rendaPorPopulacao);
         economia.eficienciaMedia += eficiencia;
@@ -396,8 +424,16 @@ public class SistemaEconomiaImoveis : MonoBehaviour
                 break;
             case TipoEstruturaEconomica.UsinaSolar:
                 economia.empregosDisponiveis += 4;
-                economia.energiaProduzida += 15f;
+                economia.energiaProduzida += 8f;
                 RegistrarFluxoEconomico(economia, tipo, -3f); // Custo de manutencao
+                break;
+            case TipoEstruturaEconomica.UsinaCarvao:
+                economia.empregosDisponiveis += 30;
+                economia.usinasCarvao++;
+                economia.energiaCarvaoProduzida += 24f;
+                economia.energiaProduzida += 24f;
+                economia.custoUsinasCarvaoPorDia += 180f * GerenciadorTempoSegundosPorDia();
+                RegistrarFluxoEconomico(economia, tipo, -180f);
                 break;
         }
 
@@ -449,6 +485,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             economia.eficienciaMedia = economia.estruturasContadas > 0 ? Mathf.Clamp01(economia.eficienciaMedia / economia.estruturasContadas) : 1f;
             economia.exportacaoTotal = economia.comidaProduzida + economia.petroleoProduzido + economia.industriaProduzida;
             economia.importacaoTotal = economia.deficitEnergia + economia.deficitPetroleo;
+            CalcularImpactoAmbiental(economia);
             economia.qualidadeVida = CalcularQualidadeVida(economia);
 
             // Uma partida nova sem estruturas não tem manutenção econômica
@@ -504,6 +541,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
                     break;
                 case TipoEstruturaEconomica.Energia:
                 case TipoEstruturaEconomica.UsinaSolar:
+                case TipoEstruturaEconomica.UsinaCarvao:
                 case TipoEstruturaEconomica.UsinaTermicaPequena:
                 case TipoEstruturaEconomica.UsinaTermicaGrande:
                 case TipoEstruturaEconomica.UsinaNuclear:
@@ -536,6 +574,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
                 break;
             case TipoEstruturaEconomica.Energia:
             case TipoEstruturaEconomica.UsinaSolar:
+            case TipoEstruturaEconomica.UsinaCarvao:
                 economia.receitaEnergia += valor;
                 break;
             default:
@@ -562,7 +601,38 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         qv += economia.deficitEnergia <= 0f ? 10f : -16f;
         qv += economia.deficitPetroleo <= 0f ? 4f : -8f;
         qv += economia.eficienciaMedia * 8f;
+        qv -= Mathf.Clamp(economia.poluicaoIndice * 0.08f, 0f, 8f);
         return Mathf.Clamp(qv, 0f, 100f);
+    }
+
+    private static float GerenciadorTempoSegundosPorDia()
+    {
+        GerenciadorTempo tempo = GerenciadorTempo.Instancia;
+        return tempo != null ? Mathf.Max(1f, tempo.duracaoDiaSegundos) : 30f;
+    }
+
+    private static void CalcularImpactoAmbiental(DadosEconomiaPais economia)
+    {
+        if (economia == null) return;
+
+        float energiaCarvao = Mathf.Max(0f, economia.energiaCarvaoProduzida);
+        float energiaTotal = Mathf.Max(0.001f, economia.energiaProduzida);
+        float energiaLimpa = Mathf.Max(0f, energiaTotal - energiaCarvao);
+        float geracaoCarvaoMWhDia = energiaCarvao * HorasPorDia;
+
+        economia.co2ToneladasDia = geracaoCarvaoMWhDia * Co2KgPorMWh / 1000f;
+        economia.so2KgDia = geracaoCarvaoMWhDia * So2KgPorMWh;
+        economia.noxKgDia = geracaoCarvaoMWhDia * NoxKgPorMWh;
+        economia.particulasKgDia = geracaoCarvaoMWhDia * ParticulasKgPorMWh;
+        economia.energiaFossilPercentual = energiaCarvao / energiaTotal * 100f;
+        economia.energiaLimpaPercentual = energiaLimpa / energiaTotal * 100f;
+
+        // Índice 0–100: 100 equivale a uma usina de 240 MW em operação
+        // integral por um dia. É um indicador do jogo, não limite legal.
+        float referenciaCo2Toneladas = 240f * HorasPorDia * Co2KgPorMWh / 1000f;
+        economia.poluicaoIndice = referenciaCo2Toneladas <= 0f
+            ? 0f
+            : Mathf.Clamp(economia.co2ToneladasDia / referenciaCo2Toneladas * 100f, 0f, 100f);
     }
 
     private DadosEconomiaPais ObterOuCriar(int teamId)
@@ -604,6 +674,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             case TipoEstruturaEconomica.Energia: economia.usinas++; break;
             case TipoEstruturaEconomica.PesquisaMilitar: break;
             case TipoEstruturaEconomica.UsinaSolar: economia.usinas++; break;
+            case TipoEstruturaEconomica.UsinaCarvao: economia.usinas++; break;
         }
     }
 }

@@ -229,7 +229,7 @@ namespace Hegemonia.AI.IA01
             if (!economyHealthy && !atWar) return;
 
             int populationTier = Mathf.Clamp(country.populacao / 5000, 0, 6);
-            int treasuryTier = Mathf.Clamp((country.saldo - 14000) / 9000, 0, 5);
+            int treasuryTier = Mathf.Clamp((int)Math.Max(0L, Math.Min(5L, (country.saldo - 14000L) / 9000L)), 0, 5);
             int militaryTier = Mathf.Clamp(Mathf.RoundToInt(country.nivelMilitar / 25f), 0, 4);
             int doctrineTier = Mathf.Clamp(Mathf.RoundToInt(country.pesoMilitarismo * 3f), 0, 3);
             bool powerDoctrine = country.perfilIA == PerfilPaisIA.Militarista

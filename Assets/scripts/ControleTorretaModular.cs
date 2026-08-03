@@ -60,10 +60,13 @@ public class ControleTorretaModular : MonoBehaviour
     private int indiceArmaAlternada = 0;
     private int meuTime = 1;
     private Transform minhaRaiz;
+    private ControleUnidade controleRaiz;
     private bool souAntiAereo;
     private Quaternion rotacaoInicialPecaQueGira = Quaternion.identity;
     private Vector3 eulerRepousoPecaQueGira;
     private static readonly List<IdentidadeUnidade> unidadesRegistroRadar = new List<IdentidadeUnidade>(256);
+    private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
+    private float proximaBuscaAlvo;
     
     void Start()
     {
@@ -82,6 +85,7 @@ public class ControleTorretaModular : MonoBehaviour
         IdentidadeUnidade meuID = GetComponentInParent<IdentidadeUnidade>();
         meuTime = (meuID != null) ? meuID.teamID : 1;
         minhaRaiz = transform.root;
+        controleRaiz = minhaRaiz != null ? minhaRaiz.GetComponent<ControleUnidade>() : null;
         if (pecaQueGira == null) pecaQueGira = transform;
         if (pecaQueGira != null)
         {
@@ -90,9 +94,7 @@ public class ControleTorretaModular : MonoBehaviour
         }
         souAntiAereo = DeterminarSouAntiAereo();
         
-        // Inicia busca de alvos
-        float offset = Random.Range(0f, 0.5f);
-        InvokeRepeating("ProcurarAlvo", offset, 0.4f);
+        proximaBuscaAlvo = Time.unscaledTime + Random.Range(0f, 0.5f);
     }
 
     bool DeterminarSouAntiAereo()
@@ -172,6 +174,7 @@ public class ControleTorretaModular : MonoBehaviour
     
     void Update()
     {
+        AtualizarAgendamentoBusca();
         if (bloquearMovimentoAutomatico)
         {
             alvoAtual = null;
@@ -204,6 +207,23 @@ public class ControleTorretaModular : MonoBehaviour
         {
             // Modo ocioso
             ModoOcioso();
+        }
+    }
+
+    private void AtualizarAgendamentoBusca()
+    {
+        if (modoPassivo || bloquearMovimentoAutomatico) return;
+        bool selecionada = controleRaiz != null && controleRaiz.selecionado;
+        bool emCombate = alvoAtual != null || alvoPrioritario != null;
+        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionada, emCombate);
+        float intervalo = InfraPerformanceGameplay.ResolverIntervalo(
+            emCombate || selecionada ? 0.20f : 0.40f,
+            estadoOtimizacao,
+            true,
+            true);
+        if (InfraPerformanceGameplay.DeveExecutar(this, ref proximaBuscaAlvo, intervalo))
+        {
+            ProcurarAlvo();
         }
     }
     

@@ -35,6 +35,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public float CpuMainMs;
         public float CpuRenderMs;
         public float GpuMs;
+        public float CameraUpdateMs;
+        public float CameraAreaNotifyMs;
+        public int CameraAreaNotifications;
+        public int IaBuildTerritoryBlocked;
         public int GcGen0;
         public int GcGen1;
         public int GcGen2;
@@ -68,6 +72,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public float PathfindingMs;
         public float WeaponUpdateMs;
         public float FormationUpdateMs;
+        public float TacticalIndexMs;
+        public int WeaponTargetCandidates;
+        public int RoadProbes;
+        public int LandUnitsNear;
+        public int LandUnitsMedium;
+        public int LandUnitsFar;
         public float ConstructorPreviewMs;
         public float ConstructorConfirmMs;
         public float NavalPreviewMs;
@@ -106,6 +116,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     [SerializeField] private float limiteTravamentoMs = 50f;
     [SerializeField] [Range(0.5f, 1f)] private float percentualFrameLento = 0.9f;
     [SerializeField] private float warmupInicialSegundos = 20f;
+    // FrameTimingManager e util para diagnostico, mas a captura a cada quatro
+    // frames cria custo mensuravel durante o gameplay. Doze frames ainda
+    // fornecem amostragem suficiente para detectar quedas e hitches.
+    [SerializeField] [Min(1)] private int intervaloFramesFrameTiming = 12;
 
     [Header("Saida")]
     [SerializeField] private bool exibirOverlay = true;
@@ -113,8 +127,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     [SerializeField] private bool persistirEntreCenas = true;
     [SerializeField] private KeyCode teclaAlternarOverlay = KeyCode.F8;
     [SerializeField] private KeyCode teclaAlternarCaptura = KeyCode.F9;
-    [SerializeField] private bool capturaAtivaNoInicio = true;
+    [SerializeField] private bool capturaAtivaNoInicio = false;
     [SerializeField] private bool ativarAutomaticamenteQuandoPresenteNaCena = true;
+    [Tooltip("Use somente em cenas de medicao. A captura automatica coleta FrameTiming e pode afetar o FPS medido.")]
+    [SerializeField] private bool permitirCapturaAutomatica = false;
     [SerializeField] private bool mostrarOverlayNaAtivacaoAutomatica = true;
 
     [Header("Eventos")]
@@ -124,8 +140,8 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
     private readonly List<EventoRuntime> _eventos = new List<EventoRuntime>(128);
     private readonly FrameTiming[] _frameTimings = new FrameTiming[1];
-    private readonly Dictionary<string, float> _metricasTempoAcumuladas = new Dictionary<string, float>(16);
-    private readonly Dictionary<string, int> _metricasContagem = new Dictionary<string, int>(16);
+    private readonly Dictionary<string, float> _metricasTempoAcumuladas = new Dictionary<string, float>(32);
+    private readonly Dictionary<string, int> _metricasContagem = new Dictionary<string, int>(32);
     private readonly Dictionary<string, string> _metricasTexto = new Dictionary<string, string>(8);
     private readonly StringBuilder _csvBuilder = new StringBuilder(1024);
 
@@ -163,6 +179,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     private string _overlayLine7 = string.Empty;
     private string _ultimoBlocoEventos = "Nenhum evento marcado.";
     private float _proximoRefreshOverlay;
+    private int _proximoFrameTiming;
 
     private GUIStyle _tituloStyle;
     private GUIStyle _textoStyle;
@@ -199,6 +216,11 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         }
 
         _instancia.RegistrarMetricaTempoInterna(nome, valorMs);
+    }
+
+    public static bool CapturaAtiva
+    {
+        get { return _instancia != null && _instancia._capturaAtiva; }
     }
 
     public static void IncrementarContadorMetrica(string nome, int delta = 1)
@@ -343,7 +365,9 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         Application.lowMemory += OnLowMemory;
         Application.logMessageReceived += AoLogUnity;
         ReiniciarAcumuladores(Time.unscaledTime);
-        bool ativacaoAutomatica = ativarAutomaticamenteQuandoPresenteNaCena && gameObject.scene.IsValid();
+        bool ativacaoAutomatica = permitirCapturaAutomatica
+                                 && ativarAutomaticamenteQuandoPresenteNaCena
+                                 && gameObject.scene.IsValid();
         _capturaAtiva = capturaAtivaNoInicio || ativacaoAutomatica;
 
         if (ativacaoAutomatica && !capturaAtivaNoInicio && mostrarOverlayNaAtivacaoAutomatica)
@@ -440,7 +464,11 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             _travadasNoSegundo++;
         }
 
-        CapturarFrameTiming();
+        if (Time.frameCount >= _proximoFrameTiming)
+        {
+            CapturarFrameTiming();
+            _proximoFrameTiming = Time.frameCount + Mathf.Max(1, intervaloFramesFrameTiming);
+        }
 
         if (_tempoNoSegundo >= Mathf.Max(0.25f, intervaloAmostragemSegundos))
         {
@@ -456,7 +484,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             return;
         }
 
-        if (!exibirOverlay || _instancia != this)
+        if (!exibirOverlay || !_capturaAtiva || _instancia != this)
         {
             return;
         }
@@ -545,6 +573,14 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             _ultimoResumo.GcGen2,
             _ultimoResumo.MemoriaGerenciadaMb,
             _ultimoResumo.DeltaMemoriaGerenciadaMb);
+
+        _overlayLine3 += string.Format(
+            CultureInfo.InvariantCulture,
+            " | Camera: {0:0.00} ms | area {1:0.00} ms/{2}",
+            _ultimoResumo.CameraUpdateMs,
+            _ultimoResumo.CameraAreaNotifyMs,
+            _ultimoResumo.CameraAreaNotifications);
+        _overlayLine3 += " | IA builds bloqueados: " + _ultimoResumo.IaBuildTerritoryBlocked;
 
         _overlayLine4 = "Causa provavel: " + (string.IsNullOrEmpty(_ultimoResumo.CausaProvavel)
             ? "Aguardando dados..."
@@ -793,6 +829,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         {
             _tempoInicioCaptura = Time.unscaledTime;
             ReiniciarAcumuladores(Time.unscaledTime);
+            _proximoFrameTiming = Time.frameCount;
             PrepararCsv();
             RegistrarEventoInterno(Time.unscaledTime, "Sistema", "Captura de desempenho ativada.");
         }
@@ -827,6 +864,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         LimparEventosAntigos(_inicioSegundoAtual);
         bool emWarmup = tempoFim - _tempoInicioCaptura < Mathf.Max(0f, warmupInicialSegundos);
         float uiRebuildMs = ObterTempoMetrica("ui_rebuild_ms");
+        float cameraUpdateMs = ObterTempoMetrica("camera_update_ms");
+        float cameraAreaNotifyMs = ObterTempoMetrica("camera_area_notify_ms");
+        int cameraAreaNotifications = ObterContadorMetrica("camera_area_notifications");
+        int iaBuildTerritoryBlocked = ObterContadorMetrica("ia_build_territory_blocked");
         float zonePlannerMs = ObterTempoMetrica("zone_planner_ms");
         float coastScanMs = ObterTempoMetrica("coast_scan_ms");
         float navalCandidateMs = ObterTempoMetrica("naval_candidate_ms");
@@ -849,6 +890,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         float pathfindingMs = ObterTempoMetrica("pathfinding_ms");
         float weaponUpdateMs = ObterTempoMetrica("weapon_update_ms");
         float formationUpdateMs = ObterTempoMetrica("formation_update_ms");
+        float tacticalIndexMs = ObterTempoMetrica("tactical_index_ms");
+        int weaponTargetCandidates = ObterContadorMetrica("weapon_target_candidates");
+        int roadProbes = ObterContadorMetrica("road_probes");
+        int landUnitsNear = ObterContadorMetrica("land_units_near");
+        int landUnitsMedium = ObterContadorMetrica("land_units_medium");
+        int landUnitsFar = ObterContadorMetrica("land_units_far");
         float constructorPreviewMs = ObterTempoMetrica("constructor_preview_ms");
         float constructorConfirmMs = ObterTempoMetrica("constructor_confirm_ms");
         float navalPreviewMs = ObterTempoMetrica("naval_preview_ms");
@@ -890,6 +937,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             CpuMainMs = cpuMainMs,
             CpuRenderMs = cpuRenderMs,
             GpuMs = gpuMs,
+            CameraUpdateMs = cameraUpdateMs,
+            CameraAreaNotifyMs = cameraAreaNotifyMs,
+            CameraAreaNotifications = cameraAreaNotifications,
+            IaBuildTerritoryBlocked = iaBuildTerritoryBlocked,
             GcGen0 = gcGen0,
             GcGen1 = gcGen1,
             GcGen2 = gcGen2,
@@ -923,6 +974,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             PathfindingMs = pathfindingMs,
             WeaponUpdateMs = weaponUpdateMs,
             FormationUpdateMs = formationUpdateMs,
+            TacticalIndexMs = tacticalIndexMs,
+            WeaponTargetCandidates = weaponTargetCandidates,
+            RoadProbes = roadProbes,
+            LandUnitsNear = landUnitsNear,
+            LandUnitsMedium = landUnitsMedium,
+            LandUnitsFar = landUnitsFar,
             ConstructorPreviewMs = constructorPreviewMs,
             ConstructorConfirmMs = constructorConfirmMs,
             NavalPreviewMs = navalPreviewMs,
@@ -1444,14 +1501,23 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             return;
         }
 
-        string pasta = @"C:\Users\Mathe\OneDrive\Documentos\Hegemonia-Mundial-main (1)\Hegemonia\Diagnostico fps";
-        Directory.CreateDirectory(pasta);
-        _csvPath = Path.Combine(
-            pasta,
-            "desempenho_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture) + ".csv");
-        _csvWriter = new StreamWriter(_csvPath, false, new UTF8Encoding(true));
-        _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;pior_frame_ms;frames_lentos;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes");
-        _csvWriter.Flush();
+        try
+        {
+            string pasta = Path.Combine(Application.persistentDataPath, "Diagnostico fps");
+            Directory.CreateDirectory(pasta);
+            _csvPath = Path.Combine(
+                pasta,
+                "desempenho_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture) + ".csv");
+            _csvWriter = new StreamWriter(_csvPath, false, new UTF8Encoding(true));
+            _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;pior_frame_ms;frames_lentos;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;camera_update_ms;camera_area_notify_ms;camera_area_notifications;ia_build_territory_blocked;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;tactical_index_ms;weapon_target_candidates;road_probes;land_units_near;land_units_medium;land_units_far;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes");
+            _csvWriter.Flush();
+        }
+        catch (Exception excecao)
+        {
+            _csvWriter = null;
+            _csvPath = string.Empty;
+            Debug.LogWarning("Diagnostico de desempenho: nao foi possivel criar o CSV. " + excecao.Message, this);
+        }
     }
 
     private void EscreverCsv(ResumoSegundo resumo)
@@ -1478,6 +1544,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             .Append(resumo.CpuMainMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.CpuRenderMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.GpuMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CameraUpdateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CameraAreaNotifyMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CameraAreaNotifications.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.IaBuildTerritoryBlocked.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PressaoCpuPercentual.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PressaoGpuPercentual.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.FolgaGpuPercentual.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
@@ -1511,6 +1581,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             .Append(resumo.PathfindingMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.WeaponUpdateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.FormationUpdateMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.TacticalIndexMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.WeaponTargetCandidates.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.RoadProbes.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.LandUnitsNear.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.LandUnitsMedium.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.LandUnitsFar.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.OrdersEmitted.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PoolHits.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PoolMisses.ToString(CultureInfo.InvariantCulture)).Append(';')

@@ -10,7 +10,7 @@ public class GerenciadorRecursos : MonoBehaviour
     public static GerenciadorRecursos Instancia { get; private set; }
 
     [Header("💰 Recursos Principais")]
-    public int dinheiro = 5000;
+    public long dinheiro = 5000L;
     public int petroleo = 500;
     public int aco = 300;
     public int populacaoAtual = 3200;
@@ -47,7 +47,9 @@ public class GerenciadorRecursos : MonoBehaviour
         {
             // CORREÇÃO: Se já existe um gerente (veio do Menu) mas estamos iniciando do zero (Jogo Novo/Tutorial),
             // fazemos com que o gerente antigo herde os valores que você digitou no Inspector DESTA cena atual.
-            if (SistemaSaveGame.Instancia != null && !SistemaSaveGame.Instancia.carregouDeSave)
+            if (SistemaSaveGame.Instancia != null
+                && !SistemaSaveGame.Instancia.carregouDeSave
+                && !SistemaSaveGame.Instancia.partidaNovaRecemIniciada)
             {
                 Instancia.dinheiro = this.dinheiro;
                 Instancia.petroleo = this.petroleo;
@@ -83,6 +85,11 @@ public class GerenciadorRecursos : MonoBehaviour
             comida = SistemaSaveGame.Instancia.dadosAtuais.comidaJogador;
             NotificarAtualizacao();
         }
+        else if (SistemaSaveGame.Instancia != null && SistemaSaveGame.Instancia.partidaNovaRecemIniciada && SistemaSaveGame.Instancia.dadosAtuais != null)
+        {
+            dinheiro = SistemaSaveGame.Instancia.dadosAtuais.creditosJogador;
+            NotificarAtualizacao();
+        }
     }
 
     void Update()
@@ -102,7 +109,7 @@ public class GerenciadorRecursos : MonoBehaviour
         
         if (tempoAcumulado >= 1f)
         {
-            dinheiro += Mathf.RoundToInt(dinheiroPorSegundo);
+            dinheiro += (long)Math.Round(dinheiroPorSegundo, MidpointRounding.AwayFromZero);
             petroleo += Mathf.RoundToInt(petroleoPorSegundo);
             aco += Mathf.RoundToInt(acoPorSegundo);
             energia += Mathf.RoundToInt(energiaPorSegundo);
@@ -122,24 +129,25 @@ public class GerenciadorRecursos : MonoBehaviour
     /// <summary>
     /// Usado pela Plataforma Offshore para injetar recursos
     /// </summary>
-    public void AdicionarRecurso(string tipo, int quantidade)
+    public void AdicionarRecurso(string tipo, long quantidade)
     {
+        int quantidadeRecurso = quantidade > int.MaxValue ? int.MaxValue : quantidade < int.MinValue ? int.MinValue : (int)quantidade;
         switch (tipo)
         {
             case "Petroleo":
-                petroleo += quantidade;
+                petroleo += quantidadeRecurso;
                 break;
             case "Dinheiro":
                 dinheiro += quantidade;
                 break;
             case "Aco":
-                aco += quantidade;
+                aco += quantidadeRecurso;
                 break;
             case "Energia":
-                energia += quantidade;
+                energia += quantidadeRecurso;
                 break;
             case "Comida":
-                comida += quantidade;
+                comida += quantidadeRecurso;
                 break;
         }
         NotificarAtualizacao();
@@ -148,24 +156,25 @@ public class GerenciadorRecursos : MonoBehaviour
     /// <summary>
     /// Usado pelo GestorDeConsumo para cobrar a conta
     /// </summary>
-    public void RemoverRecurso(string tipo, int quantidade)
+    public void RemoverRecurso(string tipo, long quantidade)
     {
+        int quantidadeRecurso = quantidade > int.MaxValue ? int.MaxValue : quantidade < int.MinValue ? int.MinValue : (int)quantidade;
         switch (tipo)
         {
             case "Petroleo":
-                petroleo -= quantidade;
+                petroleo -= quantidadeRecurso;
                 break;
             case "Dinheiro":
                 dinheiro -= quantidade;
                 break;
             case "Aco":
-                aco -= quantidade;
+                aco -= quantidadeRecurso;
                 break;
             case "Energia":
-                energia -= quantidade;
+                energia -= quantidadeRecurso;
                 break;
             case "Comida":
-                comida -= quantidade;
+                comida -= quantidadeRecurso;
                 break;
         }
 
@@ -189,7 +198,7 @@ public class GerenciadorRecursos : MonoBehaviour
     /// <summary>
     /// Tenta gastar recursos. Retorna true se houver recursos suficientes.
     /// </summary>
-    public bool TentarGastar(int custoDinheiro = 0, int custoPetroleo = 0, int custoAco = 0, int custoEnergia = 0)
+    public bool TentarGastar(long custoDinheiro = 0L, int custoPetroleo = 0, int custoAco = 0, int custoEnergia = 0)
     {
         if (dinheiro >= custoDinheiro && 
             petroleo >= custoPetroleo && 
@@ -209,7 +218,7 @@ public class GerenciadorRecursos : MonoBehaviour
         return false;
     }
 
-    public void AdicionarRecursos(int addDinheiro = 0, int addPetroleo = 0, int addAco = 0, int addEnergia = 0)
+    public void AdicionarRecursos(long addDinheiro = 0L, int addPetroleo = 0, int addAco = 0, int addEnergia = 0)
     {
         dinheiro += addDinheiro;
         petroleo += addPetroleo;
@@ -263,7 +272,7 @@ public class GerenciadorRecursos : MonoBehaviour
     }
 
     // Compatibilidade Legada
-    public bool TentarGastarDinheiro(int custo)
+    public bool TentarGastarDinheiro(long custo)
     {
         return TentarGastar(custoDinheiro: custo);
     }

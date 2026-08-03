@@ -1,0 +1,225 @@
+HEGEMONIA MUNDIAL
+GUIA DO JOGO PARA INICIANTES
+============================================================
+
+Este guia explica os botoes, teclas, unidades e a ordem basica de jogo.
+Selecione primeiro uma unidade ou predio: a maior parte dos comandos age
+sobre o objeto selecionado. Com um menu aberto, use os botoes do menu e ESC
+para fechar ou cancelar.
+
+1. OBJETIVO
+------------------------------------------------------------
+Proteja sua prefeitura/governo e destrua a prefeitura ou o presidente inimigo.
+Para isso, mantenha dinheiro, energia, alimento, empregos e combustivel;
+construa infraestrutura; ocupe territorio; e mantenha uma defesa equilibrada.
+
+No inicio, nao compre tudo de uma vez. Estabilize a economia e depois expanda
+a defesa.
+
+2. CAMERA E MOVIMENTO DO MAPA
+------------------------------------------------------------
+W / A / S / D       Move a camera pelo mapa.
+SHIFT               Acelera a camera enquanto estiver pressionado.
+Q / E               Gira a camera para a esquerda/direita.
+Botao direito ou
+botao do meio       Gira e inclina a camera com o mouse.
+Roda do mouse       Aproxima ou afasta a camera.
+ESPACO              Afasta/sobe a camera rapidamente.
+CTRL                Aproxima/desce a camera rapidamente.
++ / -               Aproxima ou afasta a camera.
+
+Dica: solte SHIFT antes de abrir um menu e use a velocidade alta em pulsos
+para nao perder a leitura do mapa.
+
+3. SELECAO E ORDENS
+------------------------------------------------------------
+Clique esquerdo     Seleciona uma unidade ou objeto clicavel.
+Arrastar com LMB    Seleciona varias unidades em grupo.
+Clique direito      Envia movimento ou uma ordem contextual.
+1                   Abre/fecha o painel de comando.
+ESC                 Fecha menu, cancela colocacao ou abre/fecha pausa,
+                    conforme o painel ativo.
+
+No painel de comando, os botoes mais usados sao:
+
+MOVER               Clique no botao e depois clique no destino.
+PARAR               Interrompe a ordem atual.
+ATACAR              Escolha o alvo indicado no mapa.
+PATRULHAR           Marque a rota e confirme com ENTER quando solicitado.
+SEGUIR              Escolha a unidade ou ponto que sera acompanhado.
+PASSIVO/ATIVO       Alterna o comportamento de combate.
+DESEMBARCAR         Libera tropas quando a unidade possui transporte.
+
+Com varias unidades selecionadas, uma ordem pode ser aplicada ao grupo.
+Para uma acao especial, selecione somente a unidade desejada.
+
+4. ATALHOS DOS MENUS
+------------------------------------------------------------
+C                   Abre o menu de construcao.
+M                   Abre o mapa tatico.
+B                   Abre o quartel quando houver um quartel selecionado.
+X                   Abre o menu do governo.
+Z                   Abre o menu do aeroporto quando houver aeroporto.
+V                   Abre o menu do pier quando houver pier. Para drones, V
+                    pode alternar a camera do drone quando ele estiver focado.
+F1 ou N             Mostra/expande a ajuda do jogo.
+F10                 Fecha o card de ajuda.
+TAB                 Acelera o tempo quando o runtime permitir.
+
+Dentro dos menus, clique na categoria, escolha o item, leia custo/capacidade
+e confirme no botao de compra, producao ou construcao. Se um botao estiver
+cinza, leia o requisito mostrado na interface.
+
+5. COMO CONSTRUIR
+------------------------------------------------------------
+1) Pressione C ou clique no botao de construcao.
+2) Escolha imoveis, industria, energia, agricultura, defesa ou infraestrutura.
+3) Clique no item para ver nome, custo e requisitos.
+4) Clique no mapa para posicionar a estrutura.
+5) Use R para girar a pre-visualizacao quando permitido.
+6) Clique para confirmar a construcao.
+7) Use ESC ou botao direito para cancelar a pre-visualizacao.
+
+Contorno vermelho indica local ocupado, terreno invalido ou requisito ausente.
+
+CASA                  Aumenta a capacidade de moradores.
+PREDIO MEDIO          Aumenta mais a capacidade, com custo maior.
+FAZENDA               Produz alimentos e sementes por ciclos.
+FABRICA/INDUSTRIA     Produz materiais conforme o menu e os insumos.
+USINA                 Fornece energia; compare producao, custo e poluicao.
+QUARTEL               Produz infantaria e algumas unidades terrestres.
+AEROPORTO             Opera aeronaves e depende de pista funcional.
+PORTO/PIER/ESTALEIRO  Opera embarcacoes e transportes navais.
+
+Uma construcao sem energia, insumo, emprego ou acesso pode gerar pouco ou
+nenhum retorno. Verifique o menu do governo antes de expandir.
+
+6. UNIDADES
+------------------------------------------------------------
+INFANTARIA / SOLDADOS
+- Selecione ou arraste uma caixa sobre o grupo.
+- Use clique direito para mover e ATACAR para escolher um alvo.
+- PATRULHAR protege uma area; SEGUIR acompanha uma unidade.
+- Mantenha soldados perto de cobertura, tanques e transportes.
+
+CAMINHAO OU CARRO DE TRANSPORTE
+- Selecione o caminhao/carro e aproxime-o de soldados aliados.
+- Pressione I para embarcar/puxar soldados dentro do raio de embarque.
+- O veiculo precisa ter capacidade livre; unidades de outro time nao entram.
+- Pressione P para desembarcar todos.
+- U continua aceito como atalho legado de desembarque em transportes que o
+  mantem configurado.
+- Passageiros no compartimento nao devem ser selecionados nem tratados como
+  alvos separados durante o transporte.
+
+TANQUES E BLINDADOS
+- Use MOVER para posicionar e ATACAR para definir o alvo.
+- Tanques sao fortes contra unidades terrestres, mas consomem combustivel,
+  municao e manutencao.
+- Tanques com mais de uma torre podem ter comportamentos de arma separados.
+- Nao deixe blindados sozinhos contra aeronaves ou artilharia de longo alcance.
+
+ARTILHARIA E ANTIAEREA
+- Mantenha-as atras da linha de frente.
+- Use PARAR quando precisar preservar municao e PATRULHAR para defender uma
+  rota ou setor.
+- Antiaereas sao uteis perto de cidades, aeroportos e bases.
+
+AERONAVES
+- Use aeroporto com pista funcional.
+- No menu do aeroporto, confira hangar, pista, combustivel e acoes disponiveis.
+- Avioes comerciais usam a pista para pousar e decolar; siga a ordem de pista
+  quando o menu solicitar, em vez de mandar direto para uma vaga.
+- Cacas e bombardeiros recebem destino e missao pelo painel da unidade.
+
+NAVIOS E TRANSPORTES
+- Use o menu de porto, pier ou estaleiro para operar a frota.
+- Transporte naval exige capacidade e destino validos.
+- Aproxime o navio de uma area segura antes de desembarcar tropas.
+- Proteja cargueiros e patrulhas: eles sustentam economia e logistica.
+
+7. ECONOMIA E GOVERNO
+------------------------------------------------------------
+X                   Abre o governo.
+
+No governo, acompanhe dinheiro, receita, manutencao diaria, energia,
+alimento, empregos, producao, estoque, poluicao, territorio e seguranca.
+
+A dificuldade da campanha muda o caixa inicial e os multiplicadores economicos.
+O preco de compra continua sendo o valor mostrado no menu. Confira o valor
+antes de clicar em COMPRAR ou CONSTRUIR.
+
+ORDEM RECOMENDADA NO INICIO
+1) Casas e infraestrutura minima.
+2) Energia suficiente para a cidade.
+3) Fazenda e armazenamento de comida.
+4) Fabrica somente quando houver demanda, energia e insumo.
+5) Quartel, defesa antiaerea e unidades moveis.
+6) Aeroporto, porto e expansao territorial.
+
+Se o caixa cair muito, pare compras militares e veja a manutencao no governo.
+Muitas unidades ativas podem consumir mais por dia do que a economia repoe.
+
+8. PRIMEIROS MINUTOS DA CAMPANHA
+------------------------------------------------------------
+1) No menu inicial, clique em CAMPANHA.
+2) Escolha FACIL, MEDIO ou DIFICIL.
+3) Ao entrar no mapa, abra a ajuda com F1 ou N.
+4) Selecione prefeitura/governo e confira o menu X.
+5) Selecione uma fazenda, fabrica, quartel ou aeroporto para conhecer os
+   botoes disponiveis.
+6) Mova um pequeno grupo com clique direito e pare com PARAR.
+7) Aproxime um transporte dos soldados e pressione I.
+8) Pressione P para confirmar o desembarque.
+9) Salve depois das primeiras construcoes e antes de uma operacao grande.
+
+9. DICAS DE SOBREVIVENCIA
+------------------------------------------------------------
+- Comece com poucos tipos de unidade e aprenda o alcance de cada uma.
+- Deixe dinheiro reservado para manutencao e emergencias.
+- Nao envie soldados sem transporte quando a distancia for grande.
+- Nao coloque fazendas e fabricas sem estrada, energia ou defesa.
+- Use o mapa tatico para enxergar distribuicao e ameacas.
+- Se a camera travar, solte SHIFT, feche menus e continue depois.
+- Se um botao estiver cinza, pode faltar energia, dinheiro, capacidade, pista,
+  territorio ou pesquisa.
+
+10. PROBLEMAS COMUNS
+------------------------------------------------------------
+I nao embarcou:
+- o transporte precisa estar selecionado;
+- os soldados devem estar proximos e ser do mesmo time;
+- confira capacidade livre e cooldown de embarque;
+- feche o painel de comando se ele estiver cobrindo a acao.
+
+P nao desembarcou:
+- confira se ha passageiros;
+- aproxime o veiculo de uma area com terreno/NavMesh valido;
+- tente novamente com o veiculo selecionado.
+
+Nao consigo construir:
+- abra C, escolha um item e observe o contorno no mapa;
+- verifique dinheiro, energia, terreno, territorio e sobreposicao;
+- cancele outro modo de construcao com ESC.
+
+Unidade nao se move:
+- selecione-a e envie novamente a ordem com clique direito;
+- verifique combustivel, bloqueio, terreno e destino;
+- use PARAR e depois MOVER para limpar uma ordem antiga.
+
+Aeronave nao pousa:
+- confira pista funcional, aeroporto e requisitos;
+- use o menu do aeroporto e a ordem de pista quando disponivel.
+
+11. AJUDA DENTRO DO JOGO
+------------------------------------------------------------
+F1 ou N abre a ajuda completa do painel.
+F10 fecha o card.
+Mensagens temporarias informam recusas, custos, falta de energia, falta de
+dinheiro e requisitos da acao.
+
+Este guia acompanha os comandos padrao do projeto. Se um prefab tiver um
+atalho personalizado no Inspector, esse atalho pode ter prioridade.
+
+============================================================
+FIM DO GUIA

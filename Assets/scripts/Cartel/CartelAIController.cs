@@ -13,7 +13,8 @@ namespace Hegemonia.Cartel
         SelectingBase,
         BuildingBase,
         Operational,
-        WaitingForManualCreate
+        WaitingForManualCreate,
+        WaitingForStartDay
     }
 
     public enum CartelOperationPhase
@@ -90,6 +91,9 @@ namespace Hegemonia.Cartel
 
         [Header("Ritmo da IA")]
         [Min(0.25f)] public float DecisionInterval = 1.5f;
+        [Tooltip("Dia do calendario em que o Cartel passa a existir na partida. Antes disso nao ha spawn, missao ou busca de navio.")]
+        [Min(1)] public int ActivationDay = 5;
+        [Min(0.25f)] public float ActivationCheckInterval = 1f;
         [Min(1)] public int CartelLevel = 1;
         [Min(1)] public int MissionsBeforeExpansion = 3;
         [Min(1)] public int MaxBases = 8;
@@ -177,6 +181,7 @@ namespace Hegemonia.Cartel
         private float nextDecisionTime;
         private float nextCreateRefreshTime;
         private float nextTankerScanTime;
+        private float nextActivationCheckTime;
         private float respawnAt;
         private bool respawnPending;
         private bool hasSpawnedAnyUnit;
@@ -207,7 +212,7 @@ namespace Hegemonia.Cartel
 
             if (StartAutomatically)
             {
-                Initialize();
+                TryInitializeForCurrentDay();
             }
         }
 
@@ -218,7 +223,17 @@ namespace Hegemonia.Cartel
                 return;
             }
 
-            if (!initialized || State == CartelControllerState.Disabled || Time.time < nextDecisionTime)
+            if (!initialized)
+            {
+                if (Time.unscaledTime >= nextActivationCheckTime)
+                {
+                    nextActivationCheckTime = Time.unscaledTime + Mathf.Max(0.25f, ActivationCheckInterval);
+                    TryInitializeForCurrentDay();
+                }
+                return;
+            }
+
+            if (State == CartelControllerState.Disabled || Time.time < nextDecisionTime)
             {
                 return;
             }
@@ -229,6 +244,14 @@ namespace Hegemonia.Cartel
 
         public void Initialize()
         {
+            if (!CanActivateForCurrentDay(out int currentDay))
+            {
+                initialized = false;
+                State = CartelControllerState.WaitingForStartDay;
+                StatusDebug = "Cartel aguardando o dia " + Mathf.Max(1, ActivationDay) + " (dia atual " + currentDay + ").";
+                return;
+            }
+
             initialized = true;
             respawnPending = false;
             RefreshCreates(true);
@@ -248,6 +271,24 @@ namespace Hegemonia.Cartel
 
             State = CartelControllerState.Operational;
             StatusDebug = "Cartel operacional usando apenas Creates manuais.";
+        }
+
+        private void TryInitializeForCurrentDay()
+        {
+            if (initialized || !StartAutomatically)
+            {
+                return;
+            }
+
+            Initialize();
+        }
+
+        private bool CanActivateForCurrentDay(out int currentDay)
+        {
+            currentDay = GerenciadorTempo.Instancia != null
+                ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias)
+                : 1;
+            return currentDay >= Mathf.Max(1, ActivationDay);
         }
 
         private void AoCartelReceberDano(SistemaDeDanos vitima, GameObject agressor, float dano)

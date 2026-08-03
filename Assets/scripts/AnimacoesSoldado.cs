@@ -9,6 +9,7 @@ public class AnimacoesSoldado : MonoBehaviour
     // Variável para testarmos manualmente no Inspector
     [Header("Teste Manual")]
     public bool estaAtirando = false;
+    private bool ultimoEstadoAtaque;
 
     void Start()
     {
@@ -29,7 +30,11 @@ public class AnimacoesSoldado : MonoBehaviour
 
         // 2. Controla a animação de Atirar
         // Envia o valor da nossa variável para o Animator
-        animador.SetBool("Atacando", estaAtirando);
+        if (animador != null && ultimoEstadoAtaque != estaAtirando)
+        {
+            animador.SetBool("Atacando", estaAtirando);
+            ultimoEstadoAtaque = estaAtirando;
+        }
     }
     
     // Função pública para ser chamada por outros scripts (Cérebro da IA)

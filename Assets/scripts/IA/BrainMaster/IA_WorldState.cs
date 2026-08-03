@@ -672,6 +672,11 @@ namespace Hegemonia.AI.BrainMaster
                 });
             }
 
+            // Tropas dentro de transporte continuam sendo força nacional para decisões
+            // de produção, porém não são unidades de campo, alvos ou fontes de visão.
+            NavioTransporteTropas.AcumularForcaEmbarcada(_teamId, _forceSnapshot);
+            TransporteAnfibio.AcumularForcaEmbarcada(_teamId, _forceSnapshot);
+
             BaseCenter = ComputeBaseCenter();
 
             if (_baseProbe == null)

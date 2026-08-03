@@ -70,22 +70,22 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return;
         }
 
-        itens.Add(CriarItemPadrao("comida", "Comida", RecursoMercado.Comida, 120, 24850, 76f, 58f, 0.07f));
-        itens.Add(CriarItemPadrao("comida_milho", "Milho", RecursoMercado.Comida, 84, 16200, 82f, 51f, 0.05f, "Agricola"));
-        itens.Add(CriarItemPadrao("comida_batata", "Batata", RecursoMercado.Comida, 78, 14100, 79f, 49f, 0.05f, "Agricola"));
-        itens.Add(CriarItemPadrao("comida_feijao", "Feijao", RecursoMercado.Comida, 92, 12800, 68f, 56f, 0.06f, "Agricola"));
-        itens.Add(CriarItemPadrao("comida_trigo", "Trigo", RecursoMercado.Comida, 110, 15500, 72f, 58f, 0.06f, "Agricola"));
-        itens.Add(CriarItemPadrao("comida_arroz", "Arroz", RecursoMercado.Comida, 118, 14900, 70f, 60f, 0.06f, "Agricola"));
-        itens.Add(CriarItemPadrao("comida_cana", "Cana-de-Acucar", RecursoMercado.Comida, 135, 11800, 65f, 59f, 0.07f, "Agricola"));
-        itens.Add(CriarItemPadrao("comida_algodao", "Algodao", RecursoMercado.Comida, 142, 9200, 55f, 52f, 0.08f, "Agricola"));
-        itens.Add(CriarItemPadrao("comida_soja", "Soja", RecursoMercado.Comida, 155, 13400, 67f, 63f, 0.07f, "Agricola"));
-        itens.Add(CriarItemPadrao("comida_cafe", "Cafe", RecursoMercado.Comida, 205, 7600, 44f, 61f, 0.10f, "Agricola"));
-        itens.Add(CriarItemPadrao("comida_cacau", "Cacau", RecursoMercado.Comida, 235, 6200, 40f, 64f, 0.11f, "Agricola"));
-        itens.Add(CriarItemPadrao("petroleo", "Petroleo", RecursoMercado.Petroleo, 185, 18340, 52f, 72f, 0.12f));
-        itens.Add(CriarItemPadrao("aco", "Aco", RecursoMercado.Aco, 95, 31760, 81f, 55f, 0.06f));
-        itens.Add(CriarItemPadrao("energia", "Energia", RecursoMercado.Energia, 65, 45000, 65f, 50f, 0.05f));
-        itens.Add(CriarItemPadrao("armamentos", "Armamentos", RecursoMercado.Armamentos, 420, 7420, 43f, 64f, 0.14f));
-        itens.Add(CriarItemPadrao("uranio", "Uranio", RecursoMercado.Uranio, 900, 1250, 30f, 50f, 0.16f));
+        itens.Add(CriarItemPadrao("comida", "Comida", RecursoMercado.Comida, 450, 24850, 76f, 58f, 0.07f));
+        itens.Add(CriarItemPadrao("comida_milho", "Milho", RecursoMercado.Comida, 220, 16200, 82f, 51f, 0.05f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_batata", "Batata", RecursoMercado.Comida, 180, 14100, 79f, 49f, 0.05f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_feijao", "Feijao", RecursoMercado.Comida, 650, 12800, 68f, 56f, 0.06f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_trigo", "Trigo", RecursoMercado.Comida, 250, 15500, 72f, 58f, 0.06f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_arroz", "Arroz", RecursoMercado.Comida, 400, 14900, 70f, 60f, 0.06f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_cana", "Cana-de-Acucar", RecursoMercado.Comida, 55, 11800, 65f, 59f, 0.07f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_algodao", "Algodao", RecursoMercado.Comida, 1800, 9200, 55f, 52f, 0.08f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_soja", "Soja", RecursoMercado.Comida, 500, 13400, 67f, 63f, 0.07f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_cafe", "Cafe", RecursoMercado.Comida, 4500, 7600, 44f, 61f, 0.10f, "Agricola"));
+        itens.Add(CriarItemPadrao("comida_cacau", "Cacau", RecursoMercado.Comida, 7000, 6200, 40f, 64f, 0.11f, "Agricola"));
+        itens.Add(CriarItemPadrao("petroleo", "Petroleo", RecursoMercado.Petroleo, 80, 18340, 52f, 72f, 0.12f));
+        itens.Add(CriarItemPadrao("aco", "Aco", RecursoMercado.Aco, 700, 31760, 81f, 55f, 0.06f));
+        itens.Add(CriarItemPadrao("energia", "Energia", RecursoMercado.Energia, 70, 45000, 65f, 50f, 0.05f));
+        itens.Add(CriarItemPadrao("armamentos", "Armamentos", RecursoMercado.Armamentos, 50000, 7420, 43f, 64f, 0.14f));
+        itens.Add(CriarItemPadrao("uranio", "Uranio", RecursoMercado.Uranio, 150000, 1250, 30f, 50f, 0.16f));
         NormalizarItensMercado();
         IntegracaoMercadoIndustrial.GarantirCatalogoNoMercado(this);
         SincronizarEquipamentosMilitares();
@@ -123,8 +123,8 @@ public class SistemaMercadoGlobal : MonoBehaviour
                 nome = ficha.nomeItem,
                 categoria = ficha.categoria.ToString(),
                 recurso = RecursoMercado.Nenhum,
-                precoBase = Mathf.Max(1, ficha.preco),
-                precoAtual = Mathf.Max(1, ficha.preco),
+                precoBase = (int)Math.Min(int.MaxValue, Math.Max(1L, ficha.ObterPrecoEfetivo())),
+                precoAtual = (int)Math.Min(int.MaxValue, Math.Max(1L, ficha.ObterPrecoEfetivo())),
                 estoqueGlobal = 10,
                 oferta = 45f,
                 demanda = 35f,
@@ -886,7 +886,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
             DadosPaisGoverno vendedor = governo.Paises.FirstOrDefault(p => p != null && p.teamId != pais.teamId && governo.ObterEstoque(p.teamId, ObterRecursoIdEfetivo(necessidade)) > 120);
             if (vendedor == null) continue;
 
-            int quantidade = Mathf.Min(necessidade.CalcularQuantidadePadrao(), Mathf.Max(10, pais.saldo / Mathf.Max(1, necessidade.precoAtual) / 2));
+            int quantidade = Mathf.Min(necessidade.CalcularQuantidadePadrao(), (int)Math.Min(int.MaxValue, Math.Max(10L, pais.saldo / Math.Max(1L, necessidade.precoAtual) / 2L)));
             Comprar(pais.teamId, vendedor.teamId, necessidade.id, quantidade, out _);
         }
     }
@@ -942,7 +942,8 @@ public class SistemaMercadoGlobal : MonoBehaviour
                 {
                     id = id, recursoId = "equipamento_" + id, nome = ficha.GetDisplayName(),
                     categoria = "Equipamento militar", recurso = RecursoMercado.Armamentos,
-                    precoBase = Mathf.Max(1, ficha.preco), precoAtual = Mathf.Max(1, ficha.preco),
+                    precoBase = (int)Math.Min(int.MaxValue, Math.Max(1L, ficha.ObterPrecoEfetivo())),
+                    precoAtual = (int)Math.Min(int.MaxValue, Math.Max(1L, ficha.ObterPrecoEfetivo())),
                     estoqueGlobal = 20, oferta = 45f, demanda = 40f, volatilidade = 0.10f,
                     podeComprar = true, podeVender = false
                 };
@@ -977,8 +978,8 @@ public class SistemaMercadoGlobal : MonoBehaviour
                     nome = municao.nome,
                     categoria = "Municoes",
                     recurso = RecursoMercado.Armamentos,
-                    precoBase = Mathf.Max(1, municao.valorUnitario),
-                    precoAtual = Mathf.Max(1, municao.valorUnitario),
+                    precoBase = (int)Math.Min(int.MaxValue, Math.Max(1L, municao.valorUnitario)),
+                    precoAtual = (int)Math.Min(int.MaxValue, Math.Max(1L, municao.valorUnitario)),
                     estoqueGlobal = 500,
                     oferta = 52f,
                     demanda = 48f,
@@ -994,7 +995,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
             {
                 item.nome = municao.nome;
                 item.categoria = "Municoes";
-                item.precoBase = Mathf.Max(1, municao.valorUnitario);
+                item.precoBase = (int)Math.Min(int.MaxValue, Math.Max(1L, municao.valorUnitario));
                 item.precoAtual = Mathf.Max(1, item.precoAtual);
                 item.podeComprar = true;
                 item.podeVender = true;

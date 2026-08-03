@@ -61,7 +61,7 @@ public class DestrocosEmChamas : MonoBehaviour
                 // Som
                 if(GerenciadorFXGlobal.Instancia.somExplosao != null)
                 {
-                    AudioSource.PlayClipAtPoint(GerenciadorFXGlobal.Instancia.somExplosao, transform.position);
+                    AudioRuntime.PlayClipAtPoint(GerenciadorFXGlobal.Instancia.somExplosao, transform.position);
                 }
             }
         }

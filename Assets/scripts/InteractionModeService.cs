@@ -16,6 +16,7 @@ public enum InteractionOwner
     MenuComando = 90,
     FactoryIndustryPanel = 95,
     GovernmentMenu = 96,
+    FarmPanel = 97,
     Attack = 100
 }
 

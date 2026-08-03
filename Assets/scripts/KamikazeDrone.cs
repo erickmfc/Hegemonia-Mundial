@@ -139,7 +139,7 @@ public class KamikazeDrone : MonoBehaviour
         if (somExplosao != null)
         {
             // Toca um som independente que continua rolando mesmo após o drone ser apagado
-            AudioSource.PlayClipAtPoint(somExplosao, transform.position, volumeExplosao);
+            AudioRuntime.PlayClipAtPoint(somExplosao, transform.position, volumeExplosao);
         }
 
         if (efeitoExplosao != null)

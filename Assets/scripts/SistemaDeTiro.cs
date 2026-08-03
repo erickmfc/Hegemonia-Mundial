@@ -41,14 +41,18 @@ public class SistemaDeTiro : MonoBehaviour
     private Transform minhaRaiz;
     private bool souSoldadoLeve;
     private float alcanceComMargemSqr;
+    private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
+    private float proximaBuscaAlvo;
 
     // OTIMIZAÇÃO: Buffer de colisão para evitar GC
-    private Collider[] bufferColisores = new Collider[512];
+    private readonly List<Transform> bufferAlvosTaticos = new List<Transform>(48);
 
     void Update()
     {
         // Se estiver recarregando ou em modo passivo, não faz nada
         if (recarregando || modoPassivo) return;
+
+        AtualizarAgendamentoBusca();
 
         // Decrementa o cooldown
         if (tempoParaProximoTiro > 0) tempoParaProximoTiro -= Time.deltaTime;
@@ -191,8 +195,25 @@ public class SistemaDeTiro : MonoBehaviour
         AudioRuntime.ConfigurarFonteDeArmamento(fonteAudio);
 
         // OTIMIZAÇÃO: Scan com intervalo aleatório
-        float inicioAleatorio = Random.Range(0f, 1.0f);
-        InvokeRepeating("ProcurarAlvo", inicioAleatorio, 0.5f);
+        proximaBuscaAlvo = Time.unscaledTime + Random.Range(0f, 0.5f);
+    }
+
+    private void AtualizarAgendamentoBusca()
+    {
+        bool selecionado = selecao != null && selecao.selecionado;
+        bool emCombate = alvoAtual != null || alvoPrioritario != null;
+        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, emCombate);
+
+        float intervalo = InfraPerformanceGameplay.ResolverIntervalo(
+            emCombate || selecionado ? 0.20f : 0.50f,
+            estadoOtimizacao,
+            true,
+            true);
+
+        if (InfraPerformanceGameplay.DeveExecutar(this, ref proximaBuscaAlvo, intervalo))
+        {
+            ProcurarAlvo();
+        }
     }
     
     void ProcurarAlvo()
@@ -229,22 +250,23 @@ public class SistemaDeTiro : MonoBehaviour
         }
 
         // Busca nova lista de alvos potenciais usando buffer para ZERO alocação de memória (GC Free)
-        int naviosNaArea = Physics.OverlapSphereNonAlloc(transform.position, alcanceTiro, bufferColisores, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+        long inicioBusca = InfraPerformanceGameplay.MarcarInicioMedicao();
+        InfraPerformanceGameplay.ObterInimigosProximos(transform.position, alcanceTiro,
+            minhaIdentidade != null ? minhaIdentidade.teamID : 0, bufferAlvosTaticos, 48);
         
         float menorDistancia = Mathf.Infinity;
         Transform candidato = null;
 
         // Calcula quem eu sou FORA DO LOOP para não gastar processamento (String manipulation pesada)
-        string meuNomeTag = transform.root.name.ToLower();
-        for (int i = 0; i < naviosNaArea; i++)
+        for (int i = 0; i < bufferAlvosTaticos.Count; i++)
         {
-            Collider hit = bufferColisores[i];
-            if (hit == null || hit.transform.root == minhaRaiz) continue;
-            if (!ControleSubmarino.PodeSerAlvoConvencional(hit.transform)) continue;
+            Transform alvo = bufferAlvosTaticos[i];
+            if (alvo == null || alvo.root == minhaRaiz) continue;
+            if (!ControleSubmarino.PodeSerAlvoConvencional(alvo)) continue;
 
             // Busca IdentidadeUnidade (Componente que define time)
-            IdentidadeUnidade idAlvo = hit.GetComponent<IdentidadeUnidade>();
-            if (idAlvo == null) idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
+            IdentidadeUnidade idAlvo = alvo.GetComponent<IdentidadeUnidade>();
+            if (idAlvo == null) idAlvo = alvo.GetComponentInParent<IdentidadeUnidade>();
 
             if (idAlvo != null && minhaIdentidade != null)
             {
@@ -253,16 +275,16 @@ public class SistemaDeTiro : MonoBehaviour
                 {
                     // NÃO ATIRA EM ALVOS AÉREOS A NÃO SER QUE SEJA UM SOLDADO
                     // Tenta otimizar checando o eixo Y antes para evitar ler strings atoa
-                    bool podeSerAereo = hit.transform.position.y > 6f;
+                    bool podeSerAereo = alvo.position.y > 6f;
                     
                     bool alvoAereo = podeSerAereo ||
                                      (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo) ||
-                                     hit.GetComponentInParent<Helicoptero>() != null ||
-                                     hit.GetComponentInParent<ControleAviao>() != null;
+                                     alvo.GetComponentInParent<Helicoptero>() != null ||
+                                     alvo.GetComponentInParent<ControleAviao>() != null;
 
                     if (!alvoAereo)
                     {
-                        string nm = hit.name;
+                        string nm = alvo.name;
                         alvoAereo = nm.IndexOf("aviao", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
                                     nm.IndexOf("heli", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
                                     nm.IndexOf("caca", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -278,13 +300,13 @@ public class SistemaDeTiro : MonoBehaviour
                     if (alvoAereo && !souSoldado) continue; // Tanques e caminhões cegos para os céus!
 
                     // Prioriza o mais próximo usando o transform
-                    Vector3 alvoHitCenter = hit.transform.position;
+                    Vector3 alvoHitCenter = alvo.position;
                     float d = (transform.position - alvoHitCenter).sqrMagnitude;
                     
                     if (d < menorDistancia)
                     {
                         menorDistancia = d;
-                        candidato = hit.transform;
+                        candidato = alvo;
                     }
                 }
             }
@@ -297,7 +319,8 @@ public class SistemaDeTiro : MonoBehaviour
         }
 
         // --- Limpa o buffer manual para a próxima passada ---
-        for (int i = 0; i < naviosNaArea; i++) bufferColisores[i] = null;
+        InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Arma, inicioBusca);
+        DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("weapon_target_candidates", bufferAlvosTaticos.Count);
     }
 
     private bool DeveAdiarNovaBusca()
