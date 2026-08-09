@@ -5,7 +5,6 @@
     align-items: center;
     justify-content: flex-start;
     padding-top: 0;
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     position: absolute;
     top: -1%;
     left: -5%;
@@ -43,6 +42,44 @@
     -unity-font-style: bold;
     letter-spacing: 1.5px;
     margin-right: 12px;
+}
+
+.status-title-button {
+    color: rgb(160, 220, 245);
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    padding-left: 0;
+    padding-right: 12px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    margin-right: 8px;
+    min-width: 72px;
+    -unity-font-style: bold;
+    font-size: 14px;
+    letter-spacing: 1.5px;
+    -unity-text-align: middle-left;
+}
+
+.status-title-button:hover,
+.status-title-button:focus,
+.status-title-button:active {
+    color: rgb(235, 250, 255);
+    background-color: rgba(0, 195, 255, 0.16);
+    border-width: 0;
+}
+
+.status-title-button.has-news {
+    color: rgb(245, 253, 255);
+    background-color: rgba(0, 195, 255, 0.22);
+    border-width: 1px;
+    border-color: rgba(0, 214, 255, 0.85);
+    border-radius: 5px;
+}
+
+.status-title-button.has-news.status-pulse {
+    color: rgb(255, 255, 255);
+    background-color: rgba(0, 195, 255, 0.68);
+    border-color: rgb(135, 235, 255);
 }
 
 .resources-group {
@@ -100,4 +137,258 @@
     font-size: 9px;
     margin-left: 2px;
     -unity-font-style: bold;
+}
+
+/* Painel de notificacoes */
+.notification-panel {
+    position: absolute;
+    top: 66px;
+    left: 72px;
+    width: 448px;
+    height: 432px;
+    padding: 12px;
+    background-color: rgba(23, 46, 64, 0.96);
+    border-width: 1px;
+    border-color: rgba(125, 196, 224, 0.5);
+    border-radius: 11px;
+    flex-direction: column;
+    overflow: hidden;
+    -unity-font-style: normal;
+}
+
+.notification-panel.is-hidden,
+.notification-help.is-hidden {
+    display: none;
+}
+
+.notification-header {
+    height: 38px;
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 4px;
+}
+
+.notification-heading {
+    flex-direction: row;
+    align-items: center;
+}
+
+.notification-bell {
+    width: 25px;
+    height: 25px;
+    margin-right: 8px;
+    color: rgb(241, 247, 252);
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 13px;
+    font-size: 17px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.notification-title {
+    color: rgb(241, 247, 252);
+    font-size: 16px;
+    letter-spacing: 0.7px;
+    -unity-font-style: bold;
+}
+
+.notification-close {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    color: rgba(225, 239, 248, 0.82);
+    background-color: rgba(0, 0, 0, 0.16);
+    border-width: 0;
+    border-radius: 14px;
+    font-size: 18px;
+    -unity-text-align: middle-center;
+}
+
+.notification-close:hover,
+.notification-close:focus {
+    color: white;
+    background-color: rgba(0, 195, 255, 0.34);
+}
+
+.notification-tabs {
+    height: 42px;
+    flex-shrink: 0;
+    margin-top: 4px;
+    margin-bottom: 10px;
+    padding: 4px;
+    flex-direction: row;
+    background-color: rgba(8, 25, 40, 0.44);
+    border-radius: 7px;
+}
+
+.notification-tab {
+    flex-grow: 1;
+    height: 34px;
+    margin-left: 2px;
+    margin-right: 2px;
+    padding-left: 8px;
+    padding-right: 8px;
+    color: rgba(229, 242, 249, 0.78);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-width: 0;
+    border-radius: 5px;
+    font-size: 12px;
+    -unity-text-align: middle-center;
+}
+
+.notification-tab:hover,
+.notification-tab:focus {
+    color: white;
+    background-color: rgba(0, 195, 255, 0.18);
+}
+
+.notification-tab.is-active {
+    color: rgb(232, 249, 255);
+    background-color: rgba(0, 137, 201, 0.58);
+    border-width: 1px;
+    border-color: rgba(46, 195, 255, 0.9);
+    -unity-font-style: bold;
+}
+
+.notification-list {
+    flex-grow: 1;
+    min-height: 0;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 7px;
+    padding-left: 9px;
+    padding-right: 9px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.notification-list .unity-scroll-view__content-container {
+    padding-right: 0;
+}
+
+.notification-item {
+    min-height: 68px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+    padding-left: 4px;
+    padding-right: 4px;
+    flex-direction: row;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(94, 116, 132, 0.16);
+}
+
+.notification-severity {
+    width: 27px;
+    height: 27px;
+    margin-top: 2px;
+    margin-right: 9px;
+    border-radius: 14px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.notification-severity.warning {
+    color: rgb(126, 75, 0);
+    background-color: rgb(255, 218, 117);
+}
+
+.notification-severity.info {
+    color: rgb(0, 89, 130);
+    background-color: rgb(185, 231, 249);
+}
+
+.notification-severity.success {
+    color: rgb(20, 106, 65);
+    background-color: rgb(180, 239, 202);
+}
+
+.notification-severity.critical {
+    color: rgb(137, 34, 34);
+    background-color: rgb(255, 190, 190);
+}
+
+.notification-item-copy {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.notification-item-title {
+    color: rgb(40, 60, 72);
+    font-size: 12px;
+    white-space: normal;
+    flex-shrink: 1;
+    -unity-font-style: bold;
+}
+
+.notification-item-message {
+    margin-top: 3px;
+    color: rgb(72, 88, 99);
+    font-size: 11px;
+    white-space: normal;
+    -unity-font-style: normal;
+}
+
+.notification-item-time {
+    margin-left: 8px;
+    width: 34px;
+    min-width: 34px;
+    flex-shrink: 0;
+    color: rgb(117, 135, 145);
+    font-size: 9px;
+    -unity-text-align: upper-right;
+}
+
+.notification-empty {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    color: rgb(105, 123, 133);
+    font-size: 12px;
+    -unity-text-align: middle-center;
+}
+
+.notification-help {
+    flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
+    padding: 22px 18px;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 7px;
+}
+
+.help-title {
+    color: rgb(40, 60, 72);
+    font-size: 14px;
+    white-space: normal;
+    flex-shrink: 1;
+    -unity-font-style: bold;
+}
+
+.help-copy,
+.help-tip {
+    margin-top: 12px;
+    color: rgb(72, 88, 99);
+    font-size: 11px;
+    white-space: normal;
+}
+
+.help-tip {
+    color: rgb(0, 128, 184);
+    -unity-font-style: bold;
+}
+
+@media (max-width: 720px) {
+    .notification-panel {
+        left: 8px;
+        width: 390px;
+        max-width: 92%;
+    }
 }

@@ -71,7 +71,7 @@ public static class BrainMasterNavalDiagnosticsMenu
         string poseReason = string.Empty;
         bool poseOk = false;
         NavalPlacementResolver.StructurePose pose;
-        if (NavalPlacementResolver.TryResolveStructurePose(data.prefabDaUnidade, selectedPoint, resolvedRotation, out pose))
+        if (NavalPlacementResolver.TryResolveStructurePose(data.PrefabDaUnidade, selectedPoint, resolvedRotation, out pose))
         {
             poseOk = true;
             resolvedPoint = pose.Position;

@@ -63,7 +63,7 @@ public class TaskRequest
         if (item != null)
         {
             menuItem = item;
-            targetObject = item.prefabDaUnidade;
+            targetObject = item.PrefabDaUnidade;
             cost = item.preco;
         }
         else 
@@ -127,7 +127,7 @@ public class RecebedorIA : MonoBehaviour
         TaskRequest novoPedido = new TaskRequest(quemPediu, oQue, onde, itemMenu, null, 0, prioridade, rot);
         filaDeEntrada.Enqueue(novoPedido);
         
-        Debug.Log($"[Recebedor] Requisição INTELIGENTE: {itemMenu.nomeItem} ({oQue}) de {quemPediu}, Rot={rot.eulerAngles}. Custo: {itemMenu.preco}");
+        Debug.Log($"[Recebedor] Requisição INTELIGENTE: {itemMenu.NomeItem} ({oQue}) de {quemPediu}, Rot={rot.eulerAngles}. Custo: {itemMenu.preco}");
     }
 
     public TaskRequest PegarProximoPedido()

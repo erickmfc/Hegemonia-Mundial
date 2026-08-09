@@ -49,7 +49,6 @@ public static class CodexCampaignRecovery
         EditorBuildSettings.scenes = new[]
         {
             new EditorBuildSettingsScene("Assets/Scenes/Menu cena.unity", true),
-            new EditorBuildSettingsScene("Assets/Scenes/MenuPrincipal.unity", true),
             new EditorBuildSettingsScene(CampaignPath, true),
             new EditorBuildSettingsScene("Assets/_Recovery/teste.unity", true)
         };
@@ -82,13 +81,27 @@ public static class CodexCampaignRecovery
     [MenuItem("Hegemonia/Codex/3. Preparar e gerar build final limpa")]
     public static void PrepareAndBuildFinalClean()
     {
-        StabilizeCampaignStartup();
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            return;
+        }
 
+        // A build deve empacotar exatamente a cena oficial salva. Nao rode
+        // normalizadores de recovery aqui, pois eles podem substituir
+        // posicoes e estados que o designer acabou de ajustar.
         Scene scene = EditorSceneManager.GetSceneByPath(CampaignPath);
-        ConfigureCampaignForRelease(scene);
+        bool abriuCenaParaValidacao = false;
+        if (!scene.IsValid() || !scene.isLoaded)
+        {
+            scene = EditorSceneManager.OpenScene(CampaignPath, OpenSceneMode.Additive);
+            abriuCenaParaValidacao = true;
+        }
+
         EnsureMainCampaignCamera(scene);
-        EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene, CampaignPath);
+        if (abriuCenaParaValidacao)
+        {
+            EditorSceneManager.CloseScene(scene, true);
+        }
 
         Directory.CreateDirectory(Path.GetDirectoryName(FinalOutputPath));
         string[] scenes = EditorBuildSettings.scenes
@@ -113,7 +126,8 @@ public static class CodexCampaignRecovery
 
     public static void RebuildAndPrepareFinalClean()
     {
-        RebuildCampaignFromRecovery();
+        // O build final usa a campanha oficial atual. A reconstrução de
+        // recovery continua disponível apenas como operação manual explícita.
         PrepareAndBuildFinalClean();
     }
 
@@ -170,7 +184,6 @@ public static class CodexCampaignRecovery
         EditorBuildSettings.scenes = new[]
         {
             new EditorBuildSettingsScene("Assets/Scenes/Menu cena.unity", true),
-            new EditorBuildSettingsScene("Assets/Scenes/MenuPrincipal.unity", true),
             new EditorBuildSettingsScene(CampaignPath, true),
             new EditorBuildSettingsScene("Assets/_Recovery/teste.unity", true)
         };

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Usina Carvao
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Usina de Carvao
+  descricao: Usina termica de carvao. Gera 240 MW de energia.
+  icone: {fileID: 0}
+  itemId: energia.usina.carvao
+  aliases: usina, carvao, coal, energia, power
+  capacidades: 524353
+  prefabDaUnidade: {fileID: 6218365624104048993, guid: 8e2877c49199de24da7b3b499e8acf8c, type: 3}
+  preco: 1200
+  categoria: 5
+  escalaPoder: 0
+  strategicRole: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

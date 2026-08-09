@@ -439,14 +439,14 @@ namespace Hegemonia.AI.Master
 
             GameObject created = null;
             Construtor construtor = Construtor.Instancia != null ? Construtor.Instancia : FindFirstObjectByType<Construtor>();
-            if (construtor != null && data.prefabDaUnidade != null)
+            if (construtor != null && data.PrefabDaUnidade != null)
             {
-                created = construtor.ConstruirEstruturaIA(data.prefabDaUnidade, spawnPoint, rotation);
+                created = construtor.ConstruirEstruturaIA(data.PrefabDaUnidade, spawnPoint, rotation);
             }
 
-            if (created == null && data.prefabDaUnidade != null)
+            if (created == null && data.PrefabDaUnidade != null)
             {
-                created = Instantiate(data.prefabDaUnidade, spawnPoint, rotation);
+                created = Instantiate(data.PrefabDaUnidade, spawnPoint, rotation);
             }
 
             if (created == null)
@@ -485,7 +485,7 @@ namespace Hegemonia.AI.Master
                 return false;
             }
 
-            if (data == null || data.prefabDaUnidade == null)
+            if (data == null || data.PrefabDaUnidade == null)
             {
                 return false;
             }
@@ -516,7 +516,7 @@ namespace Hegemonia.AI.Master
                     }
                 }
 
-                produced = Instantiate(data.prefabDaUnidade, spawnPoint, Quaternion.identity);
+                produced = Instantiate(data.PrefabDaUnidade, spawnPoint, Quaternion.identity);
             }
 
             if (!producedByInfrastructure && produced == null)
@@ -604,7 +604,7 @@ namespace Hegemonia.AI.Master
         private bool TryProduceViaInfrastructure(DadosConstrucao data, out GameObject produced)
         {
             produced = null;
-            string normalized = IA_Text.Normalize(data.nomeItem + " " + data.name + " " + data.prefabDaUnidade.name);
+            string normalized = IA_Text.Normalize(data.NomeItem + " " + data.name + " " + data.PrefabDaUnidade.name);
 
             if (data.categoria == DadosConstrucao.CategoriaItem.Marinha || normalized.Contains("navio") || normalized.Contains("sub"))
             {
@@ -617,7 +617,7 @@ namespace Hegemonia.AI.Master
                         continue;
                     }
 
-                    if (shipyard.ConstruirUnidade(data.prefabDaUnidade))
+                    if (shipyard.ConstruirUnidade(data.PrefabDaUnidade))
                     {
                         return true;
                     }
@@ -625,7 +625,7 @@ namespace Hegemonia.AI.Master
 
             }
 
-            bool isCommercialAircraft = data.prefabDaUnidade.GetComponent<ControleAviaoComercial>() != null
+            bool isCommercialAircraft = data.PrefabDaUnidade.GetComponent<ControleAviaoComercial>() != null
                                          || normalized.Contains("comercial");
             if (!isCommercialAircraft
                 && (data.categoria == DadosConstrucao.CategoriaItem.Aeronautica || normalized.Contains("aviao") || normalized.Contains("caca")))
@@ -639,7 +639,7 @@ namespace Hegemonia.AI.Master
                         continue;
                     }
 
-                    airport.ComprarAviao(data.prefabDaUnidade);
+                    airport.ComprarAviao(data.PrefabDaUnidade);
                     return true;
                 }
 
@@ -652,7 +652,7 @@ namespace Hegemonia.AI.Master
                         continue;
                     }
 
-                    produced = Instantiate(data.prefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
+                    produced = Instantiate(data.PrefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
                     return produced != null;
                 }
             }
@@ -666,7 +666,7 @@ namespace Hegemonia.AI.Master
                     continue;
                 }
 
-                GameObject unit = factory.ProduzirUnidade(data.prefabDaUnidade);
+                GameObject unit = factory.ProduzirUnidade(data.PrefabDaUnidade);
                 if (unit != null)
                 {
                     produced = unit;
@@ -740,14 +740,14 @@ namespace Hegemonia.AI.Master
             for (int i = 0; i < _catalogBuffer.Count; i++)
             {
                 DadosConstrucao candidate = _catalogBuffer[i];
-                if (candidate == null || candidate.prefabDaUnidade == null)
+                if (candidate == null || candidate.PrefabDaUnidade == null)
                 {
                     continue;
                 }
 
-                string byName = IA_Text.Normalize(candidate.nomeItem);
+                string byName = IA_Text.Normalize(candidate.NomeItem);
                 string byAsset = IA_Text.Normalize(candidate.name);
-                string byPrefab = IA_Text.Normalize(candidate.prefabDaUnidade.name);
+                string byPrefab = IA_Text.Normalize(candidate.PrefabDaUnidade.name);
                 if (byName == key || byAsset == key || byPrefab == key
                     || byName.Contains(key) || key.Contains(byName)
                     || byPrefab.Contains(key) || key.Contains(byPrefab))
@@ -775,7 +775,7 @@ namespace Hegemonia.AI.Master
                 if (RequiresCoastalStructure(data))
                 {
                     NavalPlacementResolver.StructurePose pose;
-                    if (!NavalPlacementResolver.TryResolveStructurePose(data.prefabDaUnidade, point, rotation, out pose))
+                    if (!NavalPlacementResolver.TryResolveStructurePose(data.PrefabDaUnidade, point, rotation, out pose))
                     {
                         return false;
                     }
@@ -869,12 +869,12 @@ namespace Hegemonia.AI.Master
 
         private bool IsNavalItem(DadosConstrucao data)
         {
-            if (data == null || data.prefabDaUnidade == null)
+            if (data == null || data.PrefabDaUnidade == null)
             {
                 return false;
             }
 
-            string n = IA_Text.Normalize(data.nomeItem + " " + data.name + " " + data.prefabDaUnidade.name);
+            string n = IA_Text.Normalize(data.NomeItem + " " + data.name + " " + data.PrefabDaUnidade.name);
             return data.categoria == DadosConstrucao.CategoriaItem.Marinha
                    || n.Contains("navio")
                    || n.Contains("sub")
@@ -884,12 +884,12 @@ namespace Hegemonia.AI.Master
 
         private bool IsNavalBuildItem(DadosConstrucao data)
         {
-            if (data == null || data.prefabDaUnidade == null)
+            if (data == null || data.PrefabDaUnidade == null)
             {
                 return false;
             }
 
-            string n = IA_Text.Normalize(data.nomeItem + " " + data.name + " " + data.prefabDaUnidade.name);
+            string n = IA_Text.Normalize(data.NomeItem + " " + data.name + " " + data.PrefabDaUnidade.name);
             return n.Contains("estaleiro")
                    || n.Contains("pier")
                    || n.Contains("plataforma");
@@ -897,23 +897,23 @@ namespace Hegemonia.AI.Master
 
         private bool RequiresCoastalStructure(DadosConstrucao data)
         {
-            if (data == null || data.prefabDaUnidade == null)
+            if (data == null || data.PrefabDaUnidade == null)
             {
                 return false;
             }
 
-            string n = IA_Text.Normalize(data.nomeItem + " " + data.name + " " + data.prefabDaUnidade.name);
+            string n = IA_Text.Normalize(data.NomeItem + " " + data.name + " " + data.PrefabDaUnidade.name);
             return n.Contains("estaleiro") || n.Contains("pier");
         }
 
         private bool IsCityHallItem(DadosConstrucao data)
         {
-            if (data == null || data.prefabDaUnidade == null)
+            if (data == null || data.PrefabDaUnidade == null)
             {
                 return false;
             }
 
-            string n = IA_Text.Normalize(data.nomeItem + " " + data.name + " " + data.prefabDaUnidade.name);
+            string n = IA_Text.Normalize(data.NomeItem + " " + data.name + " " + data.PrefabDaUnidade.name);
             return n.Contains("prefeitura")
                    || n.Contains("governo")
                    || n.Contains("capital")

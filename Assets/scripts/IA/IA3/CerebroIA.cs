@@ -218,12 +218,12 @@ public class CerebroIA : MonoBehaviour
             Vector3 alvo = Vector3.zero;
             Quaternion rotacao = Quaternion.identity;
             
-            bool ehNaval = nomeParcial.ToLower().Contains("estaleiro") || nomeParcial.ToLower().Contains("naval") || item.nomeItem.ToLower().Contains("pier");
-            bool ehAeroporto = nomeParcial.ToLower().Contains("aeroporto") || item.nomeItem.ToLower().Contains("aeroporto") || item.nomeItem.ToLower().Contains("hangar");
+        bool ehNaval = nomeParcial.ToLower().Contains("estaleiro") || nomeParcial.ToLower().Contains("naval") || item.NomeItem.ToLower().Contains("pier");
+        bool ehAeroporto = nomeParcial.ToLower().Contains("aeroporto") || item.NomeItem.ToLower().Contains("aeroporto") || item.NomeItem.ToLower().Contains("hangar");
 
             if (ehNaval)
             {
-                Debug.Log($"[CerebroIA] Planejando construção NAVAL: {item.nomeItem}");
+            Debug.Log($"[CerebroIA] Planejando construção NAVAL: {item.NomeItem}");
                 Vector3 centro = (baseMontada && ContarMeusPredios("Base") > 0) ? transform.position : transform.position; // Melhorar depois
                 
                 // Busca costa num raio grande (150m)
@@ -261,7 +261,7 @@ public class CerebroIA : MonoBehaviour
             }
             else if (ehAeroporto)
             {
-                Debug.Log($"[CerebroIA] Planejando construção de AEROPORTO afastado: {item.nomeItem}");
+            Debug.Log($"[CerebroIA] Planejando construção de AEROPORTO afastado: {item.NomeItem}");
                 float angulo = Random.Range(0, 360) * Mathf.Deg2Rad;
                 float dist = 650f; // Distância fixa para aeroportos conforme solicitado
                 Vector3 offset = new Vector3(Mathf.Cos(angulo) * dist, 0, Mathf.Sin(angulo) * dist);
@@ -287,7 +287,7 @@ public class CerebroIA : MonoBehaviour
             }
 
             recursosIA -= item.preco;
-            historicoConstrucoes.Add(item.nomeItem);
+            historicoConstrucoes.Add(item.NomeItem);
             
             recebedor.ReceberPedido(
                 "Cerebro Estrategista",
@@ -306,7 +306,7 @@ public class CerebroIA : MonoBehaviour
         if (item != null && recursosIA >= item.preco)
         {
             recursosIA -= item.preco;
-            historicoConstrucoes.Add(item.nomeItem); // Bug fix: Era item.nomeItem
+            historicoConstrucoes.Add(item.NomeItem); // Bug fix: era o nome amigavel
 
             recebedor.ReceberPedido(
                 "General IA",
@@ -320,7 +320,7 @@ public class CerebroIA : MonoBehaviour
 
     DadosConstrucao EncontrarNoMenu(string parteDoNome)
     {
-        return MenuConstrucao.catalogoGlobal.FirstOrDefault(x => x.nomeItem.IndexOf(parteDoNome, System.StringComparison.OrdinalIgnoreCase) >= 0);
+        return MenuConstrucao.catalogoGlobal.FirstOrDefault(x => x.NomeItem.IndexOf(parteDoNome, System.StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
     int ContarMeusPredios(string nomeParcial)

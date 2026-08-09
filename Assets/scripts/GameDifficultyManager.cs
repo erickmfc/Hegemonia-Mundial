@@ -160,7 +160,10 @@ public sealed class GameDifficultyManager : MonoBehaviour
 
     private void Inicializar()
     {
-        DontDestroyOnLoad(gameObject);
+        if (Application.isPlaying)
+        {
+            DontDestroyOnLoad(gameObject);
+        }
         AplicarCodigo(PlayerPrefs.GetString(PlayerPrefsKey, PerfilNormal.Codigo), false);
     }
 

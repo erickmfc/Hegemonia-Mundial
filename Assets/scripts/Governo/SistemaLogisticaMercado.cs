@@ -399,6 +399,10 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
     private void FinalizarRetorno(Viagem viagem)
     {
         if (viagem == null) return;
+        if (viagem.navio != null)
+        {
+            viagem.navio.PararNoPonto(viagem.baseNavio);
+        }
         viagens.Remove(viagem);
     }
 

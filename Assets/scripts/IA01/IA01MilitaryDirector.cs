@@ -27,6 +27,7 @@ namespace Hegemonia.AI.IA01
         private float nextPierRecoveryAt;
         private float nextPlatformRecoveryAt;
         private float nextNavalStagingAt;
+        private float nextUnlinkedNavalWarningAt;
         private float platformConfirmedAt = -1f;
         private float nextTankerAttemptAt;
         private bool tankerOrderIssued;
@@ -391,8 +392,9 @@ namespace Hegemonia.AI.IA01
                         navalIdentities++;
                     }
                 }
-                if (navalIdentities > 0)
+                if (navalIdentities > 0 && now >= nextUnlinkedNavalWarningAt)
                 {
+                    nextUnlinkedNavalWarningAt = now + 30f;
                     Debug.LogWarning(string.Format("[IA01 Military] Navios encontrados sem vínculo com o time {0}: identidades navais={1}",
                         context.TeamId, navalIdentities));
                 }
@@ -911,7 +913,7 @@ namespace Hegemonia.AI.IA01
 
         private bool TryProduceLand(DadosConstrucao item, string label)
         {
-            if (item == null || item.prefabDaUnidade == null
+            if (item == null || item.PrefabDaUnidade == null
                 || item.categoria != DadosConstrucao.CategoriaItem.Exercito
                 || IsAircraftDefinition(item)) return false;
             Fabrica[] factories = UnityEngine.Object.FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
@@ -921,7 +923,7 @@ namespace Hegemonia.AI.IA01
                 if (!BelongsToTeam(factory != null ? factory.gameObject : null)) continue;
                 if (!IsAppropriateFactory(factory, item)) continue;
                 NormalizeFactorySpawnPoints(factory);
-                GameObject produced = factory.ProduzirUnidade(item.prefabDaUnidade);
+                GameObject produced = factory.ProduzirUnidade(item.PrefabDaUnidade);
                 if (produced != null)
                 {
                     EnsureOwnedIdentity(produced, item);
@@ -978,7 +980,7 @@ namespace Hegemonia.AI.IA01
                 // Nem toda ficha de caca esta no catalogo global em runtime. O
                 // aeroporto militar ja possui a mesma referencia usada pelo
                 // jogador, portanto ela é o fallback correto e estaciona no patio.
-                GameObject aircraft = item != null ? item.prefabDaUnidade : null;
+                GameObject aircraft = item != null ? item.PrefabDaUnidade : null;
                 if (!IsUsableAircraftPrefab(aircraft) && item != null)
                 {
                     item.TryGetPrefabBasico(out aircraft);
@@ -1093,7 +1095,7 @@ namespace Hegemonia.AI.IA01
             // Proteção para prefab configurado sem o componente de serviço ou
             // para cenas com aeroportos de outros países: nasce no create do
             // aeroporto da IA, nunca em ponto genérico do mapa.
-            GameObject fallback = item != null ? item.prefabDaUnidade : null;
+            GameObject fallback = item != null ? item.PrefabDaUnidade : null;
             if (!IsUsableAircraftPrefab(fallback) && controller != null) fallback = controller.FighterPrefab;
             if (!IsUsableAircraftPrefab(fallback))
             {
@@ -1128,7 +1130,7 @@ namespace Hegemonia.AI.IA01
                 aeroportoProprio.SetarSemEnergia(false);
                 EnsureAirportIdentity(aeroportoProprio);
 
-                GameObject aeronave = item != null ? item.prefabDaUnidade : null;
+                GameObject aeronave = item != null ? item.PrefabDaUnidade : null;
                 if (!IsUsableAircraftPrefab(aeronave) && item != null)
                     item.TryGetPrefabBasico(out aeronave);
                 if (!IsUsableAircraftPrefab(aeronave))
@@ -1217,12 +1219,12 @@ namespace Hegemonia.AI.IA01
 
         private bool TryProduceNaval(DadosConstrucao item, string label)
         {
-            if (item == null || item.prefabDaUnidade == null) return false;
+            if (item == null || item.PrefabDaUnidade == null) return false;
             Estaleiro[] shipyards = UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
             for (int i = 0; i < shipyards.Length; i++)
             {
                 Estaleiro shipyard = shipyards[i];
-                if (BelongsToTeam(shipyard != null ? shipyard.gameObject : null) && shipyard.ConstruirUnidade(item.prefabDaUnidade))
+                if (BelongsToTeam(shipyard != null ? shipyard.gameObject : null) && shipyard.ConstruirUnidade(item.PrefabDaUnidade))
                 {
                     Debug.Log("[IA01 Military] Navio enfileirado no estaleiro proprio: " + shipyard.name + " -> " + item.GetDisplayName());
                     issuedNaval++;
@@ -1238,7 +1240,7 @@ namespace Hegemonia.AI.IA01
             {
                 nextShipyardRecoveryAt = Time.time + 10f;
                 Estaleiro recovered = EnsureOwnShipyard();
-                if (recovered != null && recovered.ConstruirUnidade(item.prefabDaUnidade))
+                if (recovered != null && recovered.ConstruirUnidade(item.PrefabDaUnidade))
                 {
                     Debug.Log("[IA01 Military] Estaleiro recuperado no create e navio enfileirado: " + recovered.name);
                     issuedNaval++;
@@ -1313,7 +1315,7 @@ namespace Hegemonia.AI.IA01
             for (int i = 0; i < loaded.Length; i++)
             {
                 DadosConstrucao candidate = loaded[i];
-                if (candidate == null || candidate.prefabDaUnidade == null) continue;
+                if (candidate == null || candidate.PrefabDaUnidade == null) continue;
                 if (Contains(candidate, tokens)) return candidate;
             }
             if (MenuConstrucao.catalogoGlobal != null)
@@ -1321,7 +1323,7 @@ namespace Hegemonia.AI.IA01
                 for (int i = 0; i < MenuConstrucao.catalogoGlobal.Count; i++)
                 {
                     DadosConstrucao candidate = MenuConstrucao.catalogoGlobal[i];
-                    if (candidate != null && candidate.prefabDaUnidade != null && Contains(candidate, tokens)) return candidate;
+                    if (candidate != null && candidate.PrefabDaUnidade != null && Contains(candidate, tokens)) return candidate;
                 }
             }
             return null;
@@ -1329,13 +1331,13 @@ namespace Hegemonia.AI.IA01
 
         private bool TryEmergencySpawn(DadosConstrucao item, string label, Transform anchor = null)
         {
-            if (item == null || item.prefabDaUnidade == null) return false;
+            if (item == null || item.PrefabDaUnidade == null) return false;
             if (anchor == null || controller == null || !controller.IsPositionInsidePreparedTerritory(anchor.position, 240f)) return false;
             Vector3 origin = anchor != null ? anchor.position : (controller != null ? controller.transform.position : Vector3.zero);
             Vector3 position = origin + new Vector3(UnityEngine.Random.Range(-18f, 18f), 0f, UnityEngine.Random.Range(-18f, 18f));
             if (UnityEngine.AI.NavMesh.SamplePosition(position, out UnityEngine.AI.NavMeshHit hit, 25f, UnityEngine.AI.NavMesh.AllAreas))
                 position = hit.position;
-            GameObject unit = UnityEngine.Object.Instantiate(item.prefabDaUnidade, position, Quaternion.identity);
+            GameObject unit = UnityEngine.Object.Instantiate(item.PrefabDaUnidade, position, Quaternion.identity);
             if (unit == null) return false;
             IdentidadeUnidade identity = unit.GetComponent<IdentidadeUnidade>();
             if (identity == null) identity = unit.AddComponent<IdentidadeUnidade>();
@@ -1465,8 +1467,8 @@ namespace Hegemonia.AI.IA01
             if (Contains(item, "aviao", "aeronave", "fighter", "caca", "helicopter", "helicoptero")) return true;
             try
             {
-                return item.prefabDaUnidade != null
-                    && item.prefabDaUnidade.GetComponentInChildren<ControleAviao>(true) != null;
+                return item.PrefabDaUnidade != null
+                    && item.PrefabDaUnidade.GetComponentInChildren<ControleAviao>(true) != null;
             }
             catch (MissingReferenceException)
             {

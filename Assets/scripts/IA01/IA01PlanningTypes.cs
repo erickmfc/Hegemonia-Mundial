@@ -259,12 +259,12 @@ namespace Hegemonia.AI.IA01
         public string ItemId;
         public string DisplayName;
         public IA01BuildArchetype Archetype;
-        public IA01StrategicRole StrategicRole;
-        public IA01BuildDomain Domain;
+        public IA01StrategicRole StrategicRole { get; set; }
+        public IA01BuildDomain Domain { get; set; }
         public bool IsStructure;
         public int Cost;
         public int MinimumTreasury;
-        public Vector2 Footprint;
+        public Vector2 Footprint { get; set; }
         public bool RequiresRoad;
         public bool RequiresNavalExit;
         public bool RequiresPower;

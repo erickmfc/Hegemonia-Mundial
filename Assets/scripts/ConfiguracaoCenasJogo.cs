@@ -1,10 +1,12 @@
 using UnityEngine;
+using System.Linq;
 
 public static class ConfiguracaoCenasJogo
 {
     public const string CenaMenuPrincipalCanonica = "Menu cena";
     public const string CenaMenuFallback = "MenuPrincipal";
     public const string CenaCampanhaCanonica = "cena19)";
+    public const string CaminhoCenaCampanhaCanonica = "Assets/Scenes/cena19).unity";
     public const string CenaTutorialCanonica = "teste";
 
     private static readonly string[] aliasesMenuPrincipal =
@@ -15,9 +17,8 @@ public static class ConfiguracaoCenasJogo
         "Assets/Scenes/MenuPrincipal.unity"
     };
 
-    private static readonly string[] aliasesCampanha =
+    private static readonly string[] aliasesCampanhaLegada =
     {
-        CenaCampanhaCanonica,
         "Assets/_Recovery/cena19).unity",
         "Assets/_Recovery/0 (9).unity",
         "Assets/Scenes/SampleScene.unity"
@@ -44,7 +45,37 @@ public static class ConfiguracaoCenasJogo
 
     public static string ResolverCenaCampanhaPadrao()
     {
-        return ResolverPrimeiraCenaCarregavel(aliasesCampanha);
+        // A campanha oficial nunca deve cair em uma cena de recuperacao.
+        return CenaCampanhaCanonica;
+    }
+
+    public static string NormalizarCenaCampanha(string nomeOuCaminho, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(nomeOuCaminho))
+        {
+            return fallback;
+        }
+
+        string valor = nomeOuCaminho.Trim().Replace('\\', '/');
+        if (valor == CenaCampanhaCanonica
+            || valor == CaminhoCenaCampanhaCanonica
+            || aliasesCampanhaLegada.Contains(valor))
+        {
+            return CenaCampanhaCanonica;
+        }
+
+        return CenaExiste(valor) ? valor : fallback;
+    }
+
+    public static bool EhCenaCampanhaLegada(string nomeOuCaminho)
+    {
+        if (string.IsNullOrWhiteSpace(nomeOuCaminho))
+        {
+            return false;
+        }
+
+        string valor = nomeOuCaminho.Trim().Replace('\\', '/');
+        return aliasesCampanhaLegada.Contains(valor);
     }
 
     public static string ResolverCenaTutorial()

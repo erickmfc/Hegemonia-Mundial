@@ -567,7 +567,7 @@ namespace Hegemonia.AI.IA01
 
         private static IA01StrategicRole ResolveStepRole(IA01BuildPlanStep step)
         {
-            return step.requiredRole != IA01StrategicRole.None ? step.requiredRole : step.constructionData != null ? step.constructionData.strategicRole : IA01StrategicRole.None;
+            return step.requiredRole != IA01StrategicRole.None ? step.requiredRole : step.constructionData != null ? step.constructionData.StrategicRole : IA01StrategicRole.None;
         }
 
         private void EnsurePlanIndex(IA01BuildPlan plan)

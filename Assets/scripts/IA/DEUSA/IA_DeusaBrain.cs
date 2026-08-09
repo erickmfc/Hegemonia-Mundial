@@ -638,7 +638,7 @@ namespace Hegemonia.AI.DEUSA
             Quaternion rotation = Quaternion.identity;
             IA_LotCandidate lot;
             string reason;
-            if (_context.ConstructionPlanner != null && _context.ConstructionPlanner.TryPlanBuild(data.nomeItem, zone, out lot, out reason) && lot != null)
+            if (_context.ConstructionPlanner != null && _context.ConstructionPlanner.TryPlanBuild(data.NomeItem, zone, out lot, out reason) && lot != null)
             {
                 position = lot.Position;
                 rotation = lot.Rotation;
@@ -655,7 +655,7 @@ namespace Hegemonia.AI.DEUSA
 
             IA_BuildOrderData payload = new IA_BuildOrderData
             {
-                ItemKey = data.nomeItem,
+                ItemKey = data.NomeItem,
                 Position = position,
                 Rotation = rotation,
                 Zone = zone
@@ -691,7 +691,7 @@ namespace Hegemonia.AI.DEUSA
 
             IA_ProduceOrderData payload = new IA_ProduceOrderData
             {
-                ItemKey = data.nomeItem,
+                ItemKey = data.NomeItem,
                 Quantity = 1
             };
 

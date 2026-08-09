@@ -29,7 +29,11 @@ public sealed class CartelCreatePlayModeTests
     public IEnumerator TearDown()
     {
         for (int i = objects.Count - 1; i >= 0; i--)
-            if (objects[i] != null) UnityEngine.Object.Destroy(objects[i]);
+        {
+            if (objects[i] == null) continue;
+            if (Application.isPlaying) UnityEngine.Object.Destroy(objects[i]);
+            else UnityEngine.Object.DestroyImmediate(objects[i]);
+        }
         objects.Clear();
         if (packageRoot != null) packageRoot.SetActive(packageRootWasActive);
         yield return null;

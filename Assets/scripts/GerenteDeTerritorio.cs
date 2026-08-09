@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.AI;
 
+[ExecuteAlways]
 public class GerenteDeTerritorio : MonoBehaviour
 {
     public static GerenteDeTerritorio Instancia;
@@ -25,6 +26,14 @@ public class GerenteDeTerritorio : MonoBehaviour
         else 
         {
             Destroy(gameObject);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (Instancia == this)
+        {
+            Instancia = null;
         }
     }
 

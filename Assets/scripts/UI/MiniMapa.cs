@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using Hegemonia.RTS;
 
 /// <summary>
 /// MiniMapa Circular — Estilo Scope/Radar no canto inferior direito.
@@ -57,6 +58,8 @@ public class MiniMapa : MonoBehaviour
     private List<MapaIcone> _icones = new List<MapaIcone>();
     private static readonly Dictionary<int, Sprite> _spriteCirculoCache = new Dictionary<int, Sprite>(4);
     private float _proximoRefreshIcones;
+    private float _proximoReconciliarUnidades;
+    private int _teamJogador = 1;
 
     // Shader warmup: evita compilação ao vivo durante o voo
 
@@ -66,6 +69,9 @@ public class MiniMapa : MonoBehaviour
         public RectTransform rect;
         public Image img;
         public bool ehInimigo;
+        public int teamId;
+        public Vector3 ultimaPosicaoConhecida;
+        public bool possuiUltimaPosicao;
     }
 
     // =========================================================
@@ -124,7 +130,7 @@ public class MiniMapa : MonoBehaviour
         if (Time.unscaledTime >= _proximoRefreshIcones)
         {
             _proximoRefreshIcones = Time.unscaledTime + intervaloIcones;
-            AtualizarIcones();
+            AtualizarIconesComVisibilidade();
         }
     }
 
@@ -377,8 +383,76 @@ public class MiniMapa : MonoBehaviour
         }
     }
 
+    private void AtualizarIconesComVisibilidade()
+    {
+        if (Time.unscaledTime >= _proximoReconciliarUnidades)
+        {
+            _proximoReconciliarUnidades = Time.unscaledTime + 0.5f;
+            ReconciliarUnidadesNoMapa();
+        }
+
+        _icones.RemoveAll(ic => ic.alvo == null || !ic.alvo.gameObject.activeInHierarchy);
+        for (int i = 0; i < _icones.Count; i++)
+        {
+            MapaIcone ic = _icones[i];
+            if (ic.alvo == null) continue;
+
+            IdentidadeUnidade identidade = ic.alvo.GetComponentInParent<IdentidadeUnidade>();
+            bool visivel = !ic.ehInimigo || RTSVisibilityService.Instancia == null
+                || RTSVisibilityService.Instancia.IsVisibleToTeam(_teamJogador, identidade);
+            Vector3 posicao = ic.alvo.position;
+            if (visivel)
+            {
+                ic.ultimaPosicaoConhecida = posicao;
+                ic.possuiUltimaPosicao = true;
+            }
+            else if (ic.possuiUltimaPosicao && RTSVisibilityService.Instancia != null
+                && RTSVisibilityService.Instancia.TryGetLastKnownPosition(_teamJogador, identidade, out Vector3 ultimaPosicao))
+            {
+                posicao = ultimaPosicao;
+            }
+            else
+            {
+                ic.rect.gameObject.SetActive(false);
+                _icones[i] = ic;
+                continue;
+            }
+
+            Vector3 posRelativa = _camMapa.WorldToViewportPoint(posicao);
+            float x = (posRelativa.x - 0.5f) * tamanhoUI;
+            float y = (posRelativa.y - 0.5f) * tamanhoUI;
+            ic.rect.anchoredPosition = new Vector2(x, y);
+            ic.img.color = ic.ehInimigo
+                ? (visivel ? new Color(1f, 0.2f, 0.2f) : new Color(1f, 0.45f, 0.18f, 0.45f))
+                : new Color(0.2f, 0.8f, 0.3f);
+            ic.rect.gameObject.SetActive(posRelativa.z > 0);
+            _icones[i] = ic;
+        }
+    }
+
+    private void ReconciliarUnidadesNoMapa()
+    {
+        if (GerenciadorDePartida.Instancia != null)
+        {
+            _teamJogador = GerenciadorDePartida.Instancia.idJogador;
+        }
+
+        IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        for (int i = 0; i < unidades.Length; i++)
+        {
+            IdentidadeUnidade identidade = unidades[i];
+            if (identidade == null || identidade.teamID <= 0) continue;
+            if (identidade.teamID == _teamJogador || mostrarInimigos)
+            {
+                RegistrarUnidadeNoMapa(identidade.transform, identidade.teamID != _teamJogador);
+            }
+        }
+    }
+
     public void RegistrarUnidadeNoMapa(Transform unidade, bool ehInimigo)
     {
+        if (unidade == null) return;
+
         foreach (var ic in _icones)
             if (ic.alvo == unidade) return; // Já registrado
 
@@ -397,7 +471,17 @@ public class MiniMapa : MonoBehaviour
         img.color = ehInimigo ? new Color(1f, 0.2f, 0.2f) : new Color(0.2f, 0.8f, 0.3f);
         img.sprite = ObterSpriteCirculo(16);
 
-        _icones.Add(new MapaIcone { alvo = unidade, rect = rt, img = img, ehInimigo = ehInimigo });
+        IdentidadeUnidade identidade = unidade.GetComponentInParent<IdentidadeUnidade>();
+        _icones.Add(new MapaIcone
+        {
+            alvo = unidade,
+            rect = rt,
+            img = img,
+            ehInimigo = ehInimigo,
+            teamId = identidade != null ? identidade.teamID : 0,
+            ultimaPosicaoConhecida = unidade.position,
+            possuiUltimaPosicao = !ehInimigo
+        });
     }
 
     // =========================================================

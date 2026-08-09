@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using Hegemonia.RTS;
 
 public class MenuPier : MonoBehaviour
 {
@@ -56,7 +57,7 @@ public class MenuPier : MonoBehaviour
         }
 
         // Tecla de atalho alterada para 'V' conforme solicitado
-        if (Input.GetKeyDown(KeyCode.V) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
+        if (RTSInputBindings.GetKeyDown(RTSInputAction.Pier) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
             if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             AlternarPorAtalho(pierAlvo);

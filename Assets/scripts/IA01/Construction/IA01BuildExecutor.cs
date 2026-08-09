@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -6,6 +7,7 @@ namespace Hegemonia.AI.IA01
     /// <summary>Single bridge from IA01 commands to the same construction service used by the game.</summary>
     public sealed class IA01BuildExecutor
     {
+        private static readonly HashSet<string> reportedBlocks = new HashSet<string>();
         private readonly IA01Controller controller;
         private readonly IA01RuntimeContext context;
         private readonly IA01BackendBridge backend;
@@ -27,13 +29,39 @@ namespace Hegemonia.AI.IA01
             // Um controlador persistente jamais pode materializar construcoes no
             // diorama do menu. Isso tambem protege saves antigos que mantiveram
             // uma fila de construcao pendente ao voltar para a tela inicial.
-            if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name)) return false;
-            if (definition == null || lot == null || backend == null || controller == null || context == null
-                || context.TeamId <= 1
-                || !controller.IsPositionInsidePreparedTerritory(lot.Position, 220f)
-                || !backend.TryPay(definition.Cost, allowFoundationFundingOverride)) return false;
+            if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            {
+                ReportBlocked("cena de menu");
+                return false;
+            }
+            if (definition == null || lot == null || backend == null || controller == null || context == null)
+            {
+                ReportBlocked("dependencia de execucao ausente");
+                return false;
+            }
+            if (context.TeamId <= 1)
+            {
+                ReportBlocked("teamId invalido: " + context.TeamId);
+                return false;
+            }
+            if (!controller.IsPositionInsidePreparedTerritory(lot.Position, 220f))
+            {
+                ReportBlocked(definition.DisplayName + " fora do territorio preparado em " + lot.Position.ToString("F1"));
+                return false;
+            }
+            if (!TryValidateTerrain(definition, lot, out string terrainReason))
+            {
+                ReportBlocked(definition.DisplayName + " bloqueada: " + terrainReason + " em " + lot.Position.ToString("F1"));
+                return false;
+            }
+            if (!backend.TryPay(definition.Cost, allowFoundationFundingOverride))
+            {
+                ReportBlocked(definition.DisplayName + " sem saldo para custo " + definition.Cost);
+                return false;
+            }
             if (definition.Item == null || !definition.Item.TryGetPrefabBasico(out GameObject prefab) || prefab == null)
             {
+                ReportBlocked(definition.DisplayName + " sem prefab basico");
                 backend.Refund(definition.Cost);
                 return false;
             }
@@ -41,6 +69,7 @@ namespace Hegemonia.AI.IA01
             built = backend.CreateStructure(prefab, lot.Position, lot.Rotation);
             if (built == null)
             {
+                ReportBlocked(definition.DisplayName + " retornou estrutura nula");
                 backend.Refund(definition.Cost);
                 return false;
             }
@@ -93,6 +122,8 @@ namespace Hegemonia.AI.IA01
                 || definition.StrategicRole == IA01StrategicRole.Government || definition.StrategicRole == IA01StrategicRole.Command)
             {
                 city?.RegisterCapital(built);
+                Debug.Log("[IA01 Build] Prefeitura criada no create oficial: " + built.name
+                    + " pos=" + built.transform.position.ToString("F2"));
             }
 
             IA01Manager manager = controller != null ? controller.Manager : null;
@@ -119,6 +150,60 @@ namespace Hegemonia.AI.IA01
                 Source = "IA01BuildExecutor"
             });
             lot.State = IA01LotState.UnderConstruction;
+            return true;
+        }
+
+        private static void ReportBlocked(string reason)
+        {
+            string key = string.IsNullOrWhiteSpace(reason) ? "motivo desconhecido" : reason;
+            if (!reportedBlocks.Add(key)) return;
+            Debug.LogWarning("[IA01 Build] Execucao bloqueada: " + key);
+        }
+
+        private static bool TryValidateTerrain(IA01BuildDefinition definition, IA01BuildLot lot, out string reason)
+        {
+            reason = string.Empty;
+            if (definition == null || lot == null)
+            {
+                reason = "lote ou definicao ausente";
+                return false;
+            }
+
+            if (definition.Domain == IA01BuildDomain.Water)
+            {
+                if (!NavalPlacementResolver.IsWaterAtPosition(lot.Position))
+                {
+                    reason = "estrutura aquatica fora da agua";
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Costeiras podem usar um ponto de margem preparado pelo editor; a
+            // validacao naval especifica do slot ja cuida da saida para a agua.
+            // Para todos os demais dominios, nunca deixe uma estrutura terrestre
+            // ser materializada sobre uma superficie reconhecida como agua.
+            Vector3 ponto = lot.Position;
+            if (Physics.Raycast(ponto + Vector3.up * 1000f, Vector3.down, out RaycastHit hit, 2500f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            {
+                ponto = hit.point;
+            }
+
+            ClassificacaoSuperficieMapa classificacao;
+            if (RegistroSuperficieMapa.TryClassify(ponto, out classificacao, out _, 1.5f, 2f)
+                && classificacao == ClassificacaoSuperficieMapa.Agua)
+            {
+                reason = "estrutura terrestre sobre agua";
+                return false;
+            }
+
+            if (definition.Domain != IA01BuildDomain.Coastal && NavalPlacementResolver.IsWaterAtPosition(ponto))
+            {
+                reason = "terreno selecionado e agua, mas a estrutura e terrestre";
+                return false;
+            }
+
             return true;
         }
     }

@@ -74,7 +74,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             DadosConstrucao data;
-            if (!_context.Backend.TryResolveItem(itemKey, out data) || data == null || data.prefabDaUnidade == null)
+            if (!_context.Backend.TryResolveItem(itemKey, out data) || data == null || data.PrefabDaUnidade == null)
             {
                 reason = "item nao encontrado";
                 LastSummary = "blueprint=" + ActiveBlueprint.Id
@@ -99,7 +99,7 @@ namespace Hegemonia.AI.BrainMaster
                 resolvedAnchor = _context.Brain.transform.position;
             }
 
-            if (!_context.LotPlanner.TryFindBestLot(itemKey, zone, data.prefabDaUnidade, out lot))
+            if (!_context.LotPlanner.TryFindBestLot(itemKey, zone, data.PrefabDaUnidade, out lot))
             {
                 reason = "nenhum lote valido";
                 LastSummary = "blueprint=" + ActiveBlueprint.Id

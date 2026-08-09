@@ -982,7 +982,7 @@ public class MenuGoverno : MonoBehaviour
         {
             SistemaMercadoGlobal mercado = Market();
             if (mercado == null) return;
-            foreach (DadosItemMercado item in mercado.ItensOrdenados().Where(i => i.podeComprar).Take(12))
+            foreach (DadosItemMercado item in mercado.ItensOrdenados().Where(i => i.podeComprar).Take(64))
             {
                 if (!buyRows.ContainsKey(item.id))
                     buyRows[item.id] = CreateBuyRow(page.Root.transform, item);
@@ -998,7 +998,7 @@ public class MenuGoverno : MonoBehaviour
         CreateDescription(page.Root.transform, "Acoes de venda atualizam somente as linhas e mantem a posicao do scroll.");
         CreateHeaderRow(page.Root.transform, new[] { "RECURSO", "ESTOQUE", "PRECO", "AUTO", "VENDA" }, new[] { 1.1f, 0.8f, 0.8f, 1.1f, 1.6f });
 
-        string[] ids = { "petroleo", "aco", "energia", "comida" };
+        string[] ids = MercadoIdsVendaveis();
         for (int i = 0; i < ids.Length; i++)
         {
             if (!sellRows.ContainsKey(ids[i]))
@@ -1014,6 +1014,20 @@ public class MenuGoverno : MonoBehaviour
             }
         };
         page.Refresh();
+    }
+
+    private string[] MercadoIdsVendaveis()
+    {
+        SistemaMercadoGlobal mercado = Market();
+        if (mercado == null)
+            return new[] { "energia" };
+
+        return mercado.ItensOrdenados()
+            .Where(i => i != null && i.podeVender && !i.equipamentoMilitar && !i.municaoMilitar)
+            .Select(i => i.id)
+            .Distinct()
+            .Take(64)
+            .ToArray();
     }
 
     private void BuildMarketPricesPage(PageView page)
@@ -2345,9 +2359,9 @@ public class MenuGoverno : MonoBehaviour
         ah.childControlWidth = true;
         ah.childControlHeight = true;
         ah.childForceExpandWidth = true;
-        view.Sell50 = CreateSmallButton(actions.transform, "50", corAzulBotao, () => SellRealResource(itemId, 50));
-        view.Sell200 = CreateSmallButton(actions.transform, "200", corAzulBotao, () => SellRealResource(itemId, 200));
-        view.SellAll = CreateSmallButton(actions.transform, "Tudo", new Color(0.360f, 0.100f, 0.070f, 1f), () => SellAllRealResource(itemId));
+        view.Sell50 = CreateSmallButton(actions.transform, "50", corAzulBotao, () => SellMarketResource(itemId, 50));
+        view.Sell200 = CreateSmallButton(actions.transform, "200", corAzulBotao, () => SellMarketResource(itemId, 200));
+        view.SellAll = CreateSmallButton(actions.transform, "Tudo", new Color(0.360f, 0.100f, 0.070f, 1f), () => SellAllMarketResource(itemId));
         h.enabled = true;
         return view;
     }
@@ -2478,7 +2492,7 @@ public class MenuGoverno : MonoBehaviour
         }
 
         string id = item.id == "energia" || item.id == "comida" || item.id == "aco" || item.id == "petroleo" ? item.id : "petroleo";
-        SellRealResource(id, 50);
+        SellMarketResource(id, 50);
     }
 
     private void SellRealResource(string itemId, int quantity)
@@ -2500,6 +2514,42 @@ public class MenuGoverno : MonoBehaviour
         RefreshDynamicData(true);
     }
 
+    private void SellMarketResource(string itemId, int quantity)
+    {
+        DadosItemMercado item = Market()?.ObterItem(itemId);
+        if (item == null)
+        {
+            Notificar("Venda", "Item indisponivel.");
+            return;
+        }
+
+        // Energia is the only resource allowed to bypass maritime delivery.
+        if (item.recurso == RecursoMercado.Energia || item.id == "energia")
+        {
+            SellRealResource(itemId, quantity);
+            return;
+        }
+
+        SistemaGovernoMundial gov = Government();
+        SistemaMercadoGlobal mercado = Market();
+        DadosPaisGoverno comprador = ChooseMarketPartner(gov, item, true);
+        int estoque = StockForMarket(itemId);
+        quantity = Mathf.Min(Mathf.Max(1, quantity), estoque);
+        if (mercado == null || gov == null || comprador == null || quantity <= 0)
+        {
+            Notificar("Venda", comprador == null ? "Nenhum comprador com dinheiro disponivel." : "Sem estoque para vender.");
+            return;
+        }
+
+        string msg;
+        if (mercado.Vender(paisJogadorId, comprador.teamId, item.id, quantity, out msg))
+            Notificar("Venda", msg + " | navio de carga em rota.");
+        else
+            Notificar("Venda", msg);
+
+        RefreshDynamicData(true);
+    }
+
     private void SellAllRealResource(string itemId)
     {
         int stock = RealStock(itemId);
@@ -2509,6 +2559,18 @@ public class MenuGoverno : MonoBehaviour
             return;
         }
         SellRealResource(itemId, stock);
+    }
+
+    private void SellAllMarketResource(string itemId)
+    {
+        int stock = StockForMarket(itemId);
+        if (stock <= 0)
+        {
+            Notificar("Venda", "Sem estoque para vender.");
+            return;
+        }
+
+        SellMarketResource(itemId, stock);
     }
 
     private void ToggleAutoSell(string itemId)
@@ -3190,7 +3252,9 @@ public class MenuGoverno : MonoBehaviour
         }
 
         return candidates
-            .Where(p => gov.ObterEstoque(p.teamId, item.recurso) >= item.CalcularQuantidadePadrao())
+            .Where(p => item.equipamentoMilitar || item.municaoMilitar
+                ? item.estoqueGlobal > 0
+                : gov.ObterEstoque(p.teamId, item.RecursoIdEfetivo) >= item.CalcularQuantidadePadrao())
             .OrderByDescending(p => gov.ObterRelacao(paisJogadorId, p.teamId).valor)
             .FirstOrDefault();
     }
@@ -3204,6 +3268,19 @@ public class MenuGoverno : MonoBehaviour
         if (itemId == "energia") return gr.energia;
         if (itemId == "comida") return gr.comida;
         return 0;
+    }
+
+    private int StockForMarket(string itemId)
+    {
+        DadosItemMercado item = Market()?.ObterItem(itemId);
+        if (item == null) return RealStock(itemId);
+
+        SistemaGovernoMundial gov = Government();
+        if (gov == null) return RealStock(itemId);
+        if (item.equipamentoMilitar || item.municaoMilitar)
+            return Mathf.Max(0, item.estoqueGlobal);
+
+        return Mathf.Max(0, Mathf.FloorToInt((float)gov.ObterEstoque(paisJogadorId, item.RecursoIdEfetivo)));
     }
 
     private bool AutoSellEnabled(string itemId)
@@ -3806,15 +3883,17 @@ public class MenuGoverno : MonoBehaviour
         {
             SistemaMercadoGlobal market = Menu.Market();
             DadosItemMercado item = market != null ? market.ObterItem(ItemId) : null;
-            int stock = Menu.RealStock(ItemId);
+            int stock = Menu.StockForMarket(ItemId);
             bool auto = Menu.AutoSellEnabled(ItemId);
             int autoAmount = Menu.AutoSellAmount(ItemId);
+            bool vendaDireta = ItemId == "energia";
 
             Name.text = Menu.DisplayItemName(ItemId);
             Stock.text = Menu.FormatNumber(stock);
             Price.text = item != null ? "$" + Menu.FormatNumber(item.precoAtual) : "$0";
-            AutoText.text = auto ? "Auto " + autoAmount : "Auto off";
+            AutoText.text = vendaDireta ? (auto ? "Auto " + autoAmount : "Auto off") : "Navio";
             Auto.GetComponent<Image>().color = auto ? new Color(0.070f, 0.290f, 0.130f, 1f) : Menu.corPainel2;
+            Auto.interactable = vendaDireta;
             Sell50.interactable = stock >= 50;
             Sell200.interactable = stock >= 200;
             SellAll.interactable = stock > 0;

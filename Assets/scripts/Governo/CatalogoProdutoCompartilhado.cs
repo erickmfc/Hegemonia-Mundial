@@ -521,7 +521,7 @@ public static class CatalogoProdutoCompartilhado
             dicaPesquisaFaltante = string.Empty
         };
 
-        item.aliases.Add(construcao.nomeItem);
+        item.aliases.Add(construcao.NomeItem);
         item.aliases.Add(construcao.name);
         if (temPrefab && prefab != null)
         {

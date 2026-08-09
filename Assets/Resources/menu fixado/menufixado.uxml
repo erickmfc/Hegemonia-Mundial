@@ -14,7 +14,7 @@
             
             <!-- Left Side: Title & Country -->
             <ui:VisualElement class="status-title-group">
-                <ui:Label text="STATUS" class="status-title" />
+                <ui:Button name="status-toggle" text="STATUS" class="status-title-button" />
                 <ui:VisualElement class="resource-item country-item">
                     <ui:Label text="🌍" class="resource-emoji" />
                     <ui:Label text="REPÚBLICA" name="lbl-country-val" class="resource-base-value country-text" />
@@ -115,5 +115,31 @@
 
             </ui:VisualElement>
         </ui:VisualElement>
+
     </ui:VisualElement>
+
+    <!-- Central de acontecimentos: abre pelo botao STATUS e pode ser fechada no X. -->
+        <ui:VisualElement name="notification-panel" class="notification-panel is-hidden">
+            <ui:VisualElement class="notification-header">
+                <ui:VisualElement class="notification-heading">
+                    <ui:Label text="!" class="notification-bell" />
+                    <ui:Label text="NOTIFICACOES" class="notification-title" />
+                </ui:VisualElement>
+                <ui:Button name="notification-close" text="×" class="notification-close" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="notification-tabs">
+                <ui:Button name="tab-today" text="Hoje" class="notification-tab is-active" />
+                <ui:Button name="tab-events" text="Eventos" class="notification-tab" />
+                <ui:Button name="tab-help" text="Ajuda" class="notification-tab" />
+            </ui:VisualElement>
+
+            <ui:ScrollView name="notification-list" class="notification-list" mode="Vertical" />
+
+            <ui:VisualElement name="notification-help" class="notification-help is-hidden">
+                <ui:Label text="Este painel reúne os acontecimentos importantes do país." class="help-title" />
+                <ui:Label text="Aqui aparecem necessidades do governo, alertas de recursos e notícias de outras nações. O feed é atualizado quando algo relevante acontece." class="help-copy" />
+                <ui:Label text="Clique em STATUS ou no X para fechar." class="help-tip" />
+            </ui:VisualElement>
+        </ui:VisualElement>
 </ui:UXML>

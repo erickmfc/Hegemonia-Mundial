@@ -1024,6 +1024,22 @@ public class GerenciadorAeroporto : MonoBehaviour
             idAviao.tipoUnidade = TipoUnidade.Aereo;
         }
 
+        // Publica a compra no boletim mundial. O painel STATUS consome este
+        // feed sem acoplar o aeroporto a nenhuma tela especifica.
+        if (_identidadeCacheada != null)
+        {
+            string paisAeronave = string.IsNullOrWhiteSpace(_identidadeCacheada.nomeDoPais)
+                ? "Uma nação"
+                : _identidadeCacheada.nomeDoPais;
+            string categoria = _identidadeCacheada.teamID > 1 ? "MUNDO" : "AEROPORTO";
+            string titulo = _identidadeCacheada.teamID > 1 ? "Compra militar registrada" : "Nova aeronave incorporada";
+            StatusNotificacaoFeed.Publicar(
+                categoria,
+                titulo,
+                paisAeronave + " comprou a aeronave " + prefabDeAeronave.name + ".",
+                StatusNotificacaoSeveridade.Info);
+        }
+
         CombustivelUnidade.Garantir(aeronaveNascente, true);
 
         C700TransporteAereo c700 = aeronaveNascente != null

@@ -245,8 +245,8 @@ public class MenuConstrucao : MonoBehaviour
             }
 
             catalogo.Add(ficha);
-            if (!quantidadesPorItem.ContainsKey(ficha.nomeItem))
-                quantidadesPorItem.Add(ficha.nomeItem, 1);
+            if (!quantidadesPorItem.ContainsKey(ficha.NomeItem))
+            quantidadesPorItem.Add(ficha.NomeItem, 1);
         }
         catalogo = catalogo.OrderBy(f => (int)f.categoria).ThenBy(f => f.GetDisplayName()).ToList();
         catalogoGlobal = new List<DadosConstrucao>(catalogo);
@@ -289,9 +289,9 @@ public class MenuConstrucao : MonoBehaviour
 
             DadosConstrucao fichaTemporaria = ScriptableObject.CreateInstance<DadosConstrucao>();
             fichaTemporaria.name = prefab.name;
-            fichaTemporaria.nomeItem = NomeAmigavelDoPrefab(prefab.name);
+            fichaTemporaria.NomeItem = NomeAmigavelDoPrefab(prefab.name);
             fichaTemporaria.descricao = "Imovel urbano.";
-            fichaTemporaria.prefabDaUnidade = prefab;
+            fichaTemporaria.PrefabDaUnidade = prefab;
             fichaTemporaria.preco = 100;
             fichaTemporaria.categoria = DadosConstrucao.CategoriaItem.Urbana;
             fichasEncontradas.Add(fichaTemporaria);
@@ -324,10 +324,12 @@ public class MenuConstrucao : MonoBehaviour
             catalogo = new List<DadosConstrucao>();
         }
 
+        GarantirUsinaCarvaoNoCatalogo();
+
         List<DadosConstrucao> catalogoDaCena = new List<DadosConstrucao>();
         foreach (DadosConstrucao item in catalogo)
         {
-            if (item == null || string.IsNullOrWhiteSpace(item.nomeItem))
+            if (item == null || string.IsNullOrWhiteSpace(item.NomeItem))
             {
                 continue;
             }
@@ -356,9 +358,9 @@ public class MenuConstrucao : MonoBehaviour
             }
 
             catalogoDaCena.Add(item);
-            if (!quantidadesPorItem.ContainsKey(item.nomeItem))
+        if (!quantidadesPorItem.ContainsKey(item.NomeItem))
             {
-                quantidadesPorItem.Add(item.nomeItem, 1);
+                quantidadesPorItem.Add(item.NomeItem, 1);
             }
         }
 
@@ -369,6 +371,21 @@ public class MenuConstrucao : MonoBehaviour
             .ToList();
         catalogoGlobal = new List<DadosConstrucao>(catalogo);
         CatalogoProdutoCompartilhado.RegistrarConstrucoes(catalogoGlobal);
+    }
+
+    private void GarantirUsinaCarvaoNoCatalogo()
+    {
+        DadosConstrucao usinaCarvao = Resources.Load<DadosConstrucao>("Usina Carvao");
+        if (usinaCarvao == null || catalogo.Contains(usinaCarvao))
+        {
+            return;
+        }
+
+        catalogo.Add(usinaCarvao);
+        if (!quantidadesPorItem.ContainsKey(usinaCarvao.NomeItem))
+        {
+            quantidadesPorItem.Add(usinaCarvao.NomeItem, 1);
+        }
     }
 
 #if false
@@ -435,12 +452,12 @@ public class MenuConstrucao : MonoBehaviour
             }
 
             GameObject prefab;
-            if (!item.TryGetPrefabBasico(out prefab) || string.IsNullOrWhiteSpace(item.nomeItem))
+        if (!item.TryGetPrefabBasico(out prefab) || string.IsNullOrWhiteSpace(item.NomeItem))
             {
                 continue;
             }
 
-            string nm = item.nomeItem.ToLower();
+        string nm = item.NomeItem.ToLower();
             bool isDestrocos = false;
             try
             {
@@ -511,9 +528,9 @@ public class MenuConstrucao : MonoBehaviour
         if (icbm != null && !catalogo.Contains(icbm))
         {
             catalogo.Add(icbm);
-            if (!quantidadesPorItem.ContainsKey(icbm.nomeItem))
+        if (!quantidadesPorItem.ContainsKey(icbm.NomeItem))
             {
-                quantidadesPorItem.Add(icbm.nomeItem, 1);
+            quantidadesPorItem.Add(icbm.NomeItem, 1);
             }
             Debug.Log("[MenuConstrucao] Ficha ICBM adicionada ao catalogo runtime.");
         }
@@ -1646,7 +1663,7 @@ public class MenuConstrucao : MonoBehaviour
 
         string displayName = item.GetDisplayName();
 
-        return (!string.IsNullOrEmpty(item.nomeItem) && item.nomeItem.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
+        return (!string.IsNullOrEmpty(item.NomeItem) && item.NomeItem.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
             || (!string.IsNullOrEmpty(displayName) && displayName.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
             || (!string.IsNullOrEmpty(item.descricao) && item.descricao.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
             || ObterRotuloCategoria(item.categoria).IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0;
@@ -1974,7 +1991,7 @@ public class MenuConstrucao : MonoBehaviour
 
     void CriarCardItemModerno(DadosConstrucao item)
     {
-        GameObject cardObj = CriarRetangulo("Card_" + item.nomeItem, containerBotoes);
+        GameObject cardObj = CriarRetangulo("Card_" + item.NomeItem, containerBotoes);
         Image imgBg = cardObj.AddComponent<Image>();
         imgBg.color = corCardBase;
         imgBg.raycastTarget = true;
@@ -2140,13 +2157,13 @@ public class MenuConstrucao : MonoBehaviour
         layoutQtd.childForceExpandWidth = false;
         layoutQtd.childForceExpandHeight = true;
 
-        if (!quantidadesPorItem.ContainsKey(item.nomeItem)) quantidadesPorItem[item.nomeItem] = 1;
+        if (!quantidadesPorItem.ContainsKey(item.NomeItem)) quantidadesPorItem[item.NomeItem] = 1;
 
         GameObject btnMenos = CriarBotaoSimples("-", qtdBox.transform, new Color(1,0.3f,0.3f));
 
         GameObject txtQtdObj = CriarRetangulo("TxtQtd", qtdBox.transform);
         Text tQtd = txtQtdObj.AddComponent<Text>();
-        tQtd.text = quantidadesPorItem[item.nomeItem].ToString();
+        tQtd.text = quantidadesPorItem[item.NomeItem].ToString();
         tQtd.font = ObterFontePadrao();
         tQtd.alignment = TextAnchor.MiddleCenter;
         tQtd.color = Color.white;
@@ -2186,9 +2203,9 @@ public class MenuConstrucao : MonoBehaviour
         EsticarRectTransform(txtCompObj.GetComponent<RectTransform>());
 
         Text refTextoQtd = tQtd;
-        btnMenos.GetComponent<Button>().onClick.AddListener(() => AlterarQuantidade(item.nomeItem, -1, refTextoQtd));
+        btnMenos.GetComponent<Button>().onClick.AddListener(() => AlterarQuantidade(item.NomeItem, -1, refTextoQtd));
         btnMenos.GetComponent<Button>().onClick.AddListener(() => AtualizarPainelDetalhes(item));
-        btnMais.GetComponent<Button>().onClick.AddListener(() => AlterarQuantidade(item.nomeItem, 1, refTextoQtd));
+        btnMais.GetComponent<Button>().onClick.AddListener(() => AlterarQuantidade(item.NomeItem, 1, refTextoQtd));
         btnMais.GetComponent<Button>().onClick.AddListener(() => AtualizarPainelDetalhes(item));
         btnComp.onClick.AddListener(() => AtualizarPainelDetalhes(item));
         btnComp.onClick.AddListener(() => ConstruirItem(item, imgBg));
@@ -2371,10 +2388,10 @@ public class MenuConstrucao : MonoBehaviour
 
 #if UNITY_EDITOR
         iconeResolvido = ProcurarSpriteEditor(item);
-        if (iconeResolvido == null && item.prefabDaUnidade != null)
+        if (iconeResolvido == null && item.PrefabDaUnidade != null)
         {
-            Texture2D preview = UnityEditor.AssetPreview.GetAssetPreview(item.prefabDaUnidade)
-                ?? UnityEditor.AssetPreview.GetMiniThumbnail(item.prefabDaUnidade);
+            Texture2D preview = UnityEditor.AssetPreview.GetAssetPreview(item.PrefabDaUnidade)
+                ?? UnityEditor.AssetPreview.GetMiniThumbnail(item.PrefabDaUnidade);
             if (preview != null)
             {
                 iconeResolvido = Sprite.Create(preview, new Rect(0, 0, preview.width, preview.height), new Vector2(0.5f, 0.5f));
@@ -2441,8 +2458,8 @@ public class MenuConstrucao : MonoBehaviour
             return null;
         }
 
-        string nomeItem = NormalizarTextoBuscaIcone(item.nomeItem);
-        string nomePrefab = item.prefabDaUnidade != null ? NormalizarTextoBuscaIcone(item.prefabDaUnidade.name) : string.Empty;
+        string nomeItem = NormalizarTextoBuscaIcone(item.NomeItem);
+        string nomePrefab = item.PrefabDaUnidade != null ? NormalizarTextoBuscaIcone(item.PrefabDaUnidade.name) : string.Empty;
         string[] guids = UnityEditor.AssetDatabase.FindAssets("t:Sprite", new[] { "Assets" });
 
         foreach (string guid in guids)
@@ -2705,12 +2722,12 @@ public class MenuConstrucao : MonoBehaviour
             return true;
         }
 
-        if (item.prefabDaUnidade == null)
+        if (item.PrefabDaUnidade == null)
         {
             return false;
         }
 
-        GameObject prefab = item.prefabDaUnidade;
+        GameObject prefab = item.PrefabDaUnidade;
         bool possuiIdentidadeNaval = prefab.GetComponent<IdentidadeNaval>() != null
                                    || prefab.GetComponentInChildren<IdentidadeNaval>(true) != null;
         bool ehPortaAvioes = prefab.GetComponent<GerenciadorPortaAvioes>() != null
@@ -2731,7 +2748,7 @@ public class MenuConstrucao : MonoBehaviour
             return true;
         }
 
-        string nomeComposto = (prefab.name + "_" + item.nomeItem).ToLowerInvariant();
+        string nomeComposto = (prefab.name + "_" + item.NomeItem).ToLowerInvariant();
         return nomeComposto.Contains("hangar")
             || nomeComposto.Contains("fabrica")
             || nomeComposto.Contains("quartel")
@@ -2745,12 +2762,12 @@ public class MenuConstrucao : MonoBehaviour
 
     bool EhUnidadeNaval(DadosConstrucao item)
     {
-        if (item == null || item.prefabDaUnidade == null)
+        if (item == null || item.PrefabDaUnidade == null)
         {
             return item != null && item.categoria == DadosConstrucao.CategoriaItem.Marinha;
         }
 
-        GameObject prefab = item.prefabDaUnidade;
+        GameObject prefab = item.PrefabDaUnidade;
         return item.categoria == DadosConstrucao.CategoriaItem.Marinha
             || prefab.GetComponent<IdentidadeNaval>() != null
             || prefab.GetComponentInChildren<IdentidadeNaval>(true) != null
@@ -2774,12 +2791,12 @@ public class MenuConstrucao : MonoBehaviour
 
     bool EhUnidadeAerea(DadosConstrucao item)
     {
-        if (item == null || item.prefabDaUnidade == null)
+        if (item == null || item.PrefabDaUnidade == null)
         {
             return item != null && item.categoria == DadosConstrucao.CategoriaItem.Aeronautica;
         }
 
-        GameObject prefab = item.prefabDaUnidade;
+        GameObject prefab = item.PrefabDaUnidade;
         return item.categoria == DadosConstrucao.CategoriaItem.Aeronautica
             || prefab.GetComponent<ControleAviao>() != null
             || prefab.GetComponentInChildren<ControleAviao>(true) != null
@@ -2844,13 +2861,13 @@ public class MenuConstrucao : MonoBehaviour
 
     bool EhEstruturaAereaPosicionavel(DadosConstrucao item)
     {
-        if (item == null || item.prefabDaUnidade == null)
+        if (item == null || item.PrefabDaUnidade == null)
         {
             return false;
         }
 
-        GameObject prefab = item.prefabDaUnidade;
-        string nome = (prefab.name + "_" + item.nomeItem).ToLowerInvariant();
+        GameObject prefab = item.PrefabDaUnidade;
+        string nome = (prefab.name + "_" + item.NomeItem).ToLowerInvariant();
 
         return prefab.GetComponent<GerenciadorAeroporto>() != null
             || prefab.GetComponentInChildren<GerenciadorAeroporto>(true) != null
@@ -2865,13 +2882,13 @@ public class MenuConstrucao : MonoBehaviour
 
     bool EhEstruturaNavalPosicionavel(DadosConstrucao item)
     {
-        if (item == null || item.prefabDaUnidade == null)
+        if (item == null || item.PrefabDaUnidade == null)
         {
             return false;
         }
 
-        GameObject prefab = item.prefabDaUnidade;
-        string nome = (prefab.name + "_" + item.nomeItem).ToLowerInvariant();
+        GameObject prefab = item.PrefabDaUnidade;
+        string nome = (prefab.name + "_" + item.NomeItem).ToLowerInvariant();
 
         return prefab.GetComponent<Estaleiro>() != null
             || prefab.GetComponentInChildren<Estaleiro>(true) != null
@@ -2887,13 +2904,13 @@ public class MenuConstrucao : MonoBehaviour
 
     bool EhEstruturaPosicionavel(DadosConstrucao item)
     {
-        if (item == null || item.prefabDaUnidade == null)
+        if (item == null || item.PrefabDaUnidade == null)
         {
             return false;
         }
 
-        GameObject prefab = item.prefabDaUnidade;
-        string nome = (prefab.name + "_" + item.nomeItem).ToLowerInvariant();
+        GameObject prefab = item.PrefabDaUnidade;
+        string nome = (prefab.name + "_" + item.NomeItem).ToLowerInvariant();
 
         if (item.categoria == DadosConstrucao.CategoriaItem.Urbana
             || item.categoria == DadosConstrucao.CategoriaItem.Infraestrutura
@@ -2933,12 +2950,12 @@ public class MenuConstrucao : MonoBehaviour
 
     int ObterQuantidadeParaCompra(DadosConstrucao item, bool forcarUm)
     {
-        if (item == null || string.IsNullOrEmpty(item.nomeItem) || forcarUm)
+        if (item == null || string.IsNullOrEmpty(item.NomeItem) || forcarUm)
         {
             return 1;
         }
 
-        return quantidadesPorItem.ContainsKey(item.nomeItem) ? Mathf.Max(1, quantidadesPorItem[item.nomeItem]) : 1;
+        return quantidadesPorItem.ContainsKey(item.NomeItem) ? Mathf.Max(1, quantidadesPorItem[item.NomeItem]) : 1;
     }
 
     bool TemDinheiroPara(long custo)
@@ -2970,15 +2987,15 @@ public class MenuConstrucao : MonoBehaviour
         if (gerente == null)
         {
             EmitirAvisoJogador(LocalizationManager.T("build.no_manager", "Gerente de jogo nao encontrado. Nao foi possivel iniciar a construcao."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": gerente ausente");
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": gerente ausente");
             return;
         }
 
-        if (item.prefabDaUnidade == null)
+        if (item.PrefabDaUnidade == null)
         {
-            Debug.LogError($"[MenuConstrucao] Prefab '{item.nomeItem}' faltando!");
-            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.missing_prefab", "Prefab faltando para {0}."), item.nomeItem));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": prefab faltando");
+            Debug.LogError($"[MenuConstrucao] Prefab '{item.NomeItem}' faltando!");
+            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.missing_prefab", "Prefab faltando para {0}."), item.NomeItem));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": prefab faltando");
             return;
         }
 
@@ -2992,15 +3009,15 @@ public class MenuConstrucao : MonoBehaviour
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
             EmitirAvisoJogador(motivoGovernanca);
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": " + motivoGovernanca);
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": " + motivoGovernanca);
             return;
         }
 
         if (fluxo != TipoFluxoConstrucao.Estrutura && !TemDinheiroPara(custoTotal))
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.no_money", "Fundos insuficientes para comprar {0}."), item.nomeItem));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": fundos insuficientes");
+            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.no_money", "Fundos insuficientes para comprar {0}."), item.NomeItem));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": fundos insuficientes");
             return;
         }
 
@@ -3010,11 +3027,11 @@ public class MenuConstrucao : MonoBehaviour
         // sido importado sem os componentes usuais de imóvel. Forçamos o
         // fluxo de posicionamento pela ficha, evitando que ele caia no fluxo
         // de compra de unidade terrestre ou na validação territorial comum.
-        bool ehIcbm = string.Equals(item.itemId, "foguete_icbm", System.StringComparison.OrdinalIgnoreCase)
+        bool ehIcbm = string.Equals(item.ItemId, "foguete_icbm", System.StringComparison.OrdinalIgnoreCase)
             || item.GetDisplayName().IndexOf("ICBM", System.StringComparison.OrdinalIgnoreCase) >= 0;
         if (ehIcbm)
         {
-            Debug.LogWarning($"[MenuConstrucao][ICBM] fluxo de estrutura confirmado; prefab={item.prefabDaUnidade.name}");
+            Debug.LogWarning($"[MenuConstrucao][ICBM] fluxo de estrutura confirmado; prefab={item.PrefabDaUnidade.name}");
             IniciarConstrucaoFantasma(item, cardImage);
             return;
         }
@@ -3087,17 +3104,17 @@ public class MenuConstrucao : MonoBehaviour
     void IniciarConstrucaoFantasma(DadosConstrucao item, Image cardImage)
     {
         long preco = PrecoEfetivo(item);
-        Debug.Log($"[MenuConstrucao][DEBUG] iniciar item={item?.name} nome={item?.GetDisplayName()} id={item?.itemId} prefab={(item != null && item.prefabDaUnidade != null ? item.prefabDaUnidade.name : "NULL")}");
+        Debug.Log($"[MenuConstrucao][DEBUG] iniciar item={item?.name} nome={item?.GetDisplayName()} id={item?.ItemId} prefab={(item != null && item.PrefabDaUnidade != null ? item.PrefabDaUnidade.name : "NULL")}");
         Construtor construtor = ObterOuCriarConstrutor();
         if (construtor == null)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
             EmitirAvisoJogador(LocalizationManager.T("build.no_constructor", "Construtor nao encontrado na cena. Impossivel posicionar a estrutura."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": construtor ausente");
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": construtor ausente");
             return;
         }
 
-        if (construtor.modoConstrucao && construtor.prefabSelecionado == item.prefabDaUnidade)
+        if (construtor.modoConstrucao && construtor.prefabSelecionado == item.PrefabDaUnidade)
         {
             AlternarMenu(false);
             return;
@@ -3110,15 +3127,15 @@ public class MenuConstrucao : MonoBehaviour
 
         if (cardImage != null) StartCoroutine(FlashCard(cardImage));
         bool ehIcbm = item != null &&
-            (string.Equals(item.itemId, "foguete_icbm", System.StringComparison.OrdinalIgnoreCase) ||
+            (string.Equals(item.ItemId, "foguete_icbm", System.StringComparison.OrdinalIgnoreCase) ||
              item.GetDisplayName().IndexOf("ICBM", System.StringComparison.OrdinalIgnoreCase) >= 0);
-        construtor.SelecionarParaConstruir(item.prefabDaUnidade, Math.Max(0L, preco), item.categoria, ehIcbm);
+        construtor.SelecionarParaConstruir(item.PrefabDaUnidade, Math.Max(0L, preco), item.categoria, ehIcbm);
         AlternarMenu(false);
     }
 
     void ProduzirUnidadeTerrestre(DadosConstrucao item, int quantidade, Image cardImage)
     {
-        gerente.ComprarUnidade(item.prefabDaUnidade, PrecoEfetivo(item), quantidade);
+        gerente.ComprarUnidade(item.PrefabDaUnidade, PrecoEfetivo(item), quantidade);
         if (cardImage != null) StartCoroutine(FlashCard(cardImage));
         AlternarMenu(false);
     }
@@ -3135,10 +3152,10 @@ public class MenuConstrucao : MonoBehaviour
     void ProduzirUnidadeAerea(DadosConstrucao item, int quantidade, Image cardImage)
     {
         bool isHelicopter = false;
-        if (item != null && item.prefabDaUnidade != null)
+        if (item != null && item.PrefabDaUnidade != null)
         {
-            isHelicopter = item.prefabDaUnidade.GetComponent<Helicoptero>() != null || 
-                           item.prefabDaUnidade.GetComponentInChildren<Helicoptero>(true) != null;
+            isHelicopter = item.PrefabDaUnidade.GetComponent<Helicoptero>() != null || 
+                           item.PrefabDaUnidade.GetComponentInChildren<Helicoptero>(true) != null;
         }
 
         RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
@@ -3174,7 +3191,7 @@ public class MenuConstrucao : MonoBehaviour
                 ? LocalizationManager.T("build.need_airport_or_heliport", "Bloqueado: voce precisa construir um AEROPORTO ou HELIPORTO primeiro para comprar aeronaves.")
                 : LocalizationManager.T("build.need_airport", "Bloqueado: voce precisa construir um AEROPORTO primeiro para comprar aeronaves.");
             EmitirAvisoJogador(erroMsg);
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem aeroporto ou heliporto");
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": sem aeroporto ou heliporto");
             return;
         }
 
@@ -3263,7 +3280,7 @@ public class MenuConstrucao : MonoBehaviour
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
             EmitirAvisoJogador(LocalizationManager.T("build.destination_no_power", "Aviso: o aeroporto de destino esta sem energia, mas a compra foi liberada."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem energia (ignorado pelo patch)");
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": sem energia (ignorado pelo patch)");
             // return; // <-- REMOVIDO para permitir a compra mesmo se o script de energia falhar
         }
 
@@ -3271,7 +3288,7 @@ public class MenuConstrucao : MonoBehaviour
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
             EmitirAvisoJogador(LocalizationManager.T("build.no_airport", "Erro: nenhum aeroporto ou heliporto valido encontrado para entregar esta aeronave."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": aeroporto/heliporto invalido");
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": aeroporto/heliporto invalido");
             return;
         }
 
@@ -3286,7 +3303,7 @@ public class MenuConstrucao : MonoBehaviour
             if (targetHeliporto != null)
             {
                 Vector3 spawnPos = targetHeliporto.ObterPontoDePousoMundial();
-                GameObject heliObj = Instantiate(item.prefabDaUnidade, spawnPos, targetHeliporto.transform.rotation);
+                GameObject heliObj = Instantiate(item.PrefabDaUnidade, spawnPos, targetHeliporto.transform.rotation);
                 
                 IdentidadeUnidade id = heliObj.GetComponent<IdentidadeUnidade>();
                 if (id == null) id = heliObj.AddComponent<IdentidadeUnidade>();
@@ -3306,7 +3323,7 @@ public class MenuConstrucao : MonoBehaviour
             }
             else if (targetAeroporto != null)
             {
-                targetAeroporto.ComprarAviao(item.prefabDaUnidade);
+                targetAeroporto.ComprarAviao(item.PrefabDaUnidade);
                 comprados++;
             }
         }
@@ -3314,8 +3331,8 @@ public class MenuConstrucao : MonoBehaviour
         if (comprados <= 0)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.no_money", "Fundos insuficientes para comprar {0}."), item.nomeItem));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": fundos insuficientes");
+            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.no_money", "Fundos insuficientes para comprar {0}."), item.NomeItem));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": fundos insuficientes");
             return;
         }
 
@@ -3325,7 +3342,7 @@ public class MenuConstrucao : MonoBehaviour
 
     void ProduzirUnidadeNaval(DadosConstrucao item, int quantidade, Image cardImage)
     {
-        bool ehNavioGrande = EhNavioGrande(item.prefabDaUnidade);
+        bool ehNavioGrande = EhNavioGrande(item.PrefabDaUnidade);
         List<Estaleiro> estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None)
             .Where(e => e != null && EhEstruturaDoJogador(e) && EstruturaNavalOperacional(e))
             .ToList();
@@ -3339,7 +3356,7 @@ public class MenuConstrucao : MonoBehaviour
             EmitirAvisoJogador(ehNavioGrande
                 ? LocalizationManager.T("build.need_shipyard_big", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir esse navio grande.")
                 : LocalizationManager.T("build.need_shipyard", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir navios."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": sem estrutura naval");
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": sem estrutura naval");
             return;
         }
 
@@ -3359,7 +3376,7 @@ public class MenuConstrucao : MonoBehaviour
                     continue;
                 }
 
-                if (estaleiro.ConstruirUnidade(item.prefabDaUnidade))
+                if (estaleiro.ConstruirUnidade(item.PrefabDaUnidade))
                 {
                     sucesso = true;
                     enfileirados++;
@@ -3370,8 +3387,8 @@ public class MenuConstrucao : MonoBehaviour
             if (!sucesso)
             {
                 ReembolsarDinheiro(PrecoEfetivo(item));
-                EmitirAvisoJogador(string.Format(LocalizationManager.T("build.naval_fail", "Falha ao produzir '{0}' em estruturas navais validas."), item.nomeItem));
-                DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": estrutura naval recusou");
+                EmitirAvisoJogador(string.Format(LocalizationManager.T("build.naval_fail", "Falha ao produzir '{0}' em estruturas navais validas."), item.NomeItem));
+                DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": estrutura naval recusou");
                 break;
             }
         }
@@ -3379,8 +3396,8 @@ public class MenuConstrucao : MonoBehaviour
         if (enfileirados <= 0)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.naval_none", "Nao foi possivel produzir {0}."), item.nomeItem));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.nomeItem + ": nenhum enfileirado");
+            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.naval_none", "Nao foi possivel produzir {0}."), item.NomeItem));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": nenhum enfileirado");
             return;
         }
 

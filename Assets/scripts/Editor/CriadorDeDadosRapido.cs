@@ -52,8 +52,8 @@ public class CriadorDeDadosRapido
         }
 
         // 3. Preenche os Dados Automaticamente
-        dados.nomeItem = prefabSelecionado.name.Replace("_", " ").Replace("Tank", "Tanque"); // Limpeza básica de nome
-        dados.prefabDaUnidade = prefabSelecionado;
+        dados.NomeItem = prefabSelecionado.name.Replace("_", " ").Replace("Tank", "Tanque"); // Limpeza básica de nome
+        dados.PrefabDaUnidade = prefabSelecionado;
         dados.preco = 500; // Valor padrão
         dados.descricao = $"Unidade blindada modelo {prefabSelecionado.name}.";
         

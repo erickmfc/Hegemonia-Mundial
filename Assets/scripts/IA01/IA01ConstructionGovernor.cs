@@ -123,6 +123,10 @@ namespace Hegemonia.AI.IA01
                 && buildDirector.CapitalMarker == null;
             bool openingInfrastructurePending = !foundationPending
                 && (IsOpeningInfrastructurePending() || structureCount < 13);
+            // A protecao da abertura permite concluir a infraestrutura inicial,
+            // mas nunca deve transformar saldo zero em construcao ilimitada.
+            bool openingInfrastructureFunded = openingInfrastructurePending
+                && (settings == null || treasury >= settings.MinimumConstructionReserve);
             if (foundationPending)
             {
                 // A reserva normal não pode impedir a primeira prefeitura.
@@ -143,14 +147,14 @@ namespace Hegemonia.AI.IA01
             string reason = string.Empty;
             string unfreeze = string.Empty;
 
-            if (!foundationPending && !openingInfrastructurePending && settings != null && treasury < settings.MinimumConstructionReserve)
+            if (!foundationPending && !openingInfrastructureFunded && settings != null && treasury < settings.MinimumConstructionReserve)
             {
                 frozen = true;
                 reason = "Treasury abaixo da reserva minima.";
                 unfreeze = "Aguardar saldo acima de " + settings.MinimumConstructionReserve + ".";
             }
 
-            if (!frozen && !foundationPending && !openingInfrastructurePending && settings != null && treasury < settings.EmergencyReserve)
+            if (!frozen && !foundationPending && !openingInfrastructureFunded && settings != null && treasury < settings.EmergencyReserve)
             {
                 frozen = true;
                 reason = "Treasury abaixo da reserva de emergencia.";

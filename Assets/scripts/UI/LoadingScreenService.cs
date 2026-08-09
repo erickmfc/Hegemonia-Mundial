@@ -255,7 +255,7 @@ public sealed class LoadingScreenService : MonoBehaviour
             : tipo == LoadingRequestKind.Save
                 ? "CARREGANDO CAMPANHA"
                 : "CAMPANHA / PREPARANDO OPERACAO";
-        textoDica.text = dicas.Count > 0 ? "Preparando informacoes..." : "Preparando partida...";
+        textoDica.text = dicas.Count > 0 ? "Dicas da operacao" : "Preparando partida...";
         progressoTexto.text = "CARREGANDO 0%";
         progressoBarra.fillAmount = 0f;
     }
@@ -267,8 +267,9 @@ public sealed class LoadingScreenService : MonoBehaviour
             imagemDica.texture = textura;
         }
 
-        string nome = textura != null ? textura.name : "DICA";
-        textoDica.text = nome.Replace("_", " ").Replace("-", " ");
+        // Os arquivos podem ter nomes tecnicos ou conter o nome da ferramenta
+        // que gerou a arte. O jogador deve ver apenas a informacao do jogo.
+        textoDica.text = "Dica de jogo";
         titulo.text = tipo == LoadingRequestKind.Tutorial
             ? "TUTORIAL / DICA " + indice + " DE " + total
             : "OPERACAO / DICA " + indice + " DE " + total;
@@ -279,7 +280,7 @@ public sealed class LoadingScreenService : MonoBehaviour
         titulo.text = tipo == LoadingRequestKind.Tutorial
             ? "TUTORIAL / FINALIZANDO"
             : "OPERACAO / FINALIZANDO";
-        textoDica.text = "A cena esta quase pronta...";
+        textoDica.text = "Finalizando a operacao...";
     }
 
     private void AtualizarProgresso()
@@ -358,14 +359,15 @@ public sealed class LoadingScreenService : MonoBehaviour
         ajusteAspecto.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
         ajusteAspecto.aspectRatio = 16f / 9f;
 
-        Image sombra = CriarPainel("SombraInferior", raiz.transform, new Vector2(0f, 0f), new Vector2(1f, 0.28f), new Color(0.005f, 0.012f, 0.018f, 0.84f));
+        // Faixa compacta: preserva a arte e nao cobre quase um terco da tela.
+        Image sombra = CriarPainel("SombraInferior", raiz.transform, new Vector2(0f, 0f), new Vector2(1f, 0.14f), new Color(0.005f, 0.012f, 0.018f, 0.70f));
         sombra.transform.SetAsLastSibling();
 
-        titulo = CriarTexto("Titulo", raiz.transform, "CARREGANDO", 25, FontStyle.Bold, TextAnchor.MiddleLeft, new Color(0.92f, 0.98f, 1f, 1f), new Vector2(0.05f, 0.17f), new Vector2(0.95f, 0.25f));
-        textoDica = CriarTexto("Dica", raiz.transform, "Preparando partida...", 17, FontStyle.Normal, TextAnchor.MiddleLeft, new Color(0.75f, 0.88f, 0.91f, 1f), new Vector2(0.05f, 0.11f), new Vector2(0.95f, 0.17f));
-        progressoTexto = CriarTexto("ProgressoTexto", raiz.transform, "CARREGANDO 0%", 13, FontStyle.Bold, TextAnchor.MiddleRight, new Color(0.58f, 0.9f, 0.94f, 1f), new Vector2(0.75f, 0.06f), new Vector2(0.95f, 0.11f));
+        titulo = CriarTexto("Titulo", raiz.transform, "CARREGANDO", 22, FontStyle.Bold, TextAnchor.MiddleLeft, new Color(0.92f, 0.98f, 1f, 1f), new Vector2(0.05f, 0.085f), new Vector2(0.70f, 0.135f));
+        textoDica = CriarTexto("Dica", raiz.transform, "Preparando partida...", 14, FontStyle.Normal, TextAnchor.MiddleLeft, new Color(0.75f, 0.88f, 0.91f, 1f), new Vector2(0.05f, 0.035f), new Vector2(0.38f, 0.082f));
+        progressoTexto = CriarTexto("ProgressoTexto", raiz.transform, "CARREGANDO 0%", 13, FontStyle.Bold, TextAnchor.MiddleRight, new Color(0.58f, 0.9f, 0.94f, 1f), new Vector2(0.75f, 0.085f), new Vector2(0.95f, 0.135f));
 
-        Image barraFundo = CriarPainel("BarraFundo", raiz.transform, new Vector2(0.05f, 0.055f), new Vector2(0.72f, 0.072f), new Color(0.06f, 0.12f, 0.15f, 0.94f));
+        Image barraFundo = CriarPainel("BarraFundo", raiz.transform, new Vector2(0.05f, 0.018f), new Vector2(0.72f, 0.032f), new Color(0.06f, 0.12f, 0.15f, 0.94f));
         Image barraPreenchida = CriarPainel("BarraPreenchida", barraFundo.transform, Vector2.zero, new Vector2(1f, 1f), new Color(0.23f, 0.83f, 0.9f, 0.95f));
         barraPreenchida.type = Image.Type.Filled;
         barraPreenchida.fillMethod = Image.FillMethod.Horizontal;

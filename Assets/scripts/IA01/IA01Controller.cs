@@ -134,6 +134,19 @@ namespace Hegemonia.AI.IA01
         public IA01StrategicOptions StrategicOptions => strategicOptions;
         public IA01StrategicSupport StrategicSupport => strategicSupport;
         public IA01BuildSlot CapitalSlot => cityLayout != null ? cityLayout.CapitalSlot : null;
+
+        /// <summary>
+        /// Controllers criados em runtime a partir do governo nao possuem um
+        /// layout serializado na cena. Eles usam o planejador autonomo em um
+        /// ponto seguro do proprio controller; a campanha canonica continua
+        /// usando slots preparados normalmente.
+        /// </summary>
+        public void ConfigureForAutonomousRuntime()
+        {
+            usePreparedSlots = false;
+            useScriptedOpening = false;
+            allowAutonomousExpansion = true;
+        }
         public float NonCapitalConstructionIntervalSeconds => Mathf.Max(0f, nonCapitalConstructionIntervalSeconds);
 
         /// <summary>
@@ -158,13 +171,13 @@ namespace Hegemonia.AI.IA01
             }
 
             SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
-            if (government == null)
+            if (Application.isPlaying && government == null)
             {
                 reason = "governo mundial ainda não inicializado";
                 return false;
             }
 
-            if (government.ObterPais(TeamId) == null)
+            if (Application.isPlaying && government.ObterPais(TeamId) == null)
             {
                 reason = "país da IA ainda não registrado: team=" + TeamId;
                 return false;
@@ -181,7 +194,7 @@ namespace Hegemonia.AI.IA01
                 if (layout.OwnerTeamId != TeamId || layout.OwnerNationId != NationId)
                     layout.ConfigureOwner(TeamId, NationId);
             }
-            else if (UsePreparedSlots)
+            else if (Application.isPlaying && UsePreparedSlots)
             {
                 reason = "layout preparado ausente";
                 return false;
@@ -206,7 +219,11 @@ namespace Hegemonia.AI.IA01
         public bool IsPositionInsidePreparedTerritory(Vector3 position, float margin = 220f)
         {
             IA01CityLayout layout = CityLayout;
-            if (layout == null || (layout.OwnerTeamId > 0 && layout.OwnerTeamId != TeamId)) return false;
+            if (layout == null)
+            {
+                return !UsePreparedSlots;
+            }
+            if (layout.OwnerTeamId > 0 && layout.OwnerTeamId != TeamId) return false;
 
             IA01BuildSlot[] slots = layout.GetComponentsInChildren<IA01BuildSlot>(true);
             bool foundOwnedSlot = false;
@@ -617,6 +634,11 @@ namespace Hegemonia.AI.IA01
             nationRuntime = null;
             EnsureBootstrap(false);
             RefreshEventBusSubscription();
+        }
+
+        public void ConfigureIdentity(int newNationId, int newTeamId, string newNationName)
+        {
+            ConfigureIdentity(newNationId, newTeamId, newNationName, null, null, null, null, null);
         }
 
         public void ConfigureFromGovernment(DadosPaisGoverno country, int newMatchSeed, string difficultyCode = null)

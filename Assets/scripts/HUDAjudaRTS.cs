@@ -22,7 +22,8 @@ public sealed class HUDAjudaRTS : MonoBehaviour
     private Text textoRuntime;
     private Text textoToast;
     private RectTransform painelToast;
-    private bool expandido = true;
+    // A ajuda pode ser aberta com F1/N, mas nao deve nascer cobrindo o mapa.
+    private bool expandido = false;
     private float recolherAutomaticamenteEm = -1f;
     private float toastAte = -1f;
     private Coroutine animacaoToast;
@@ -66,7 +67,8 @@ public sealed class HUDAjudaRTS : MonoBehaviour
         GarantirEventSystem();
         ConstruirInterface();
         AtualizarVisibilidadePainel(true);
-        recolherAutomaticamenteEm = Time.unscaledTime + 12f;
+        if (painel != null) painel.gameObject.SetActive(false);
+        recolherAutomaticamenteEm = -1f;
         if (!string.IsNullOrWhiteSpace(mensagemPendente))
         {
             string mensagem = mensagemPendente;
@@ -288,7 +290,38 @@ public sealed class HUDAjudaRTS : MonoBehaviour
 
         textoAtalhos.gameObject.SetActive(expandido);
         if (painel != null && !painel.gameObject.activeSelf) return;
-        painel.sizeDelta = expandido ? new Vector2(500f, 300f) : new Vector2(500f, 154f);
+        painel.sizeDelta = expandido ? new Vector2(500f, 300f) : new Vector2(380f, 128f);
+
+        if (!expandido)
+        {
+            textoCabecalho.fontSize = 17;
+            textoObjetivo.fontSize = 11;
+            textoSelecao.fontSize = 11;
+            textoRuntime.fontSize = 11;
+            textoCabecalho.rectTransform.anchoredPosition = new Vector2(14f, -10f);
+            textoCabecalho.rectTransform.sizeDelta = new Vector2(-28f, 22f);
+            textoObjetivo.rectTransform.anchoredPosition = new Vector2(14f, -38f);
+            textoObjetivo.rectTransform.sizeDelta = new Vector2(-28f, 34f);
+            textoSelecao.rectTransform.anchoredPosition = new Vector2(14f, -80f);
+            textoSelecao.rectTransform.sizeDelta = new Vector2(-28f, 24f);
+            textoRuntime.rectTransform.anchoredPosition = new Vector2(14f, 10f);
+            textoRuntime.rectTransform.sizeDelta = new Vector2(-28f, 18f);
+        }
+        else
+        {
+            textoCabecalho.fontSize = 20;
+            textoObjetivo.fontSize = 13;
+            textoSelecao.fontSize = 13;
+            textoRuntime.fontSize = 12;
+            textoCabecalho.rectTransform.anchoredPosition = new Vector2(18f, -14f);
+            textoCabecalho.rectTransform.sizeDelta = new Vector2(-36f, 28f);
+            textoObjetivo.rectTransform.anchoredPosition = new Vector2(18f, -50f);
+            textoObjetivo.rectTransform.sizeDelta = new Vector2(-36f, 48f);
+            textoSelecao.rectTransform.anchoredPosition = new Vector2(18f, -106f);
+            textoSelecao.rectTransform.sizeDelta = new Vector2(-36f, 34f);
+            textoRuntime.rectTransform.anchoredPosition = new Vector2(18f, 18f);
+            textoRuntime.rectTransform.sizeDelta = new Vector2(-36f, 24f);
+        }
 
         if (imediato && grupoCanvas != null)
         {
@@ -324,12 +357,12 @@ public sealed class HUDAjudaRTS : MonoBehaviour
         textoSelecao = CriarTexto("Selecao", painel, string.Empty, 13, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.94f, 0.98f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -106f), new Vector2(-36f, 34f));
         textoAtalhos = CriarTexto("Atalhos", painel, string.Empty, 12, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.78f, 0.88f, 0.93f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -148f), new Vector2(-36f, 108f));
         textoRuntime = CriarTexto("Runtime", painel, string.Empty, 12, FontStyle.Bold, TextAnchor.LowerLeft, new Color(0.84f, 0.97f, 0.88f, 1f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(18f, 18f), new Vector2(-36f, 24f));
-        painelToast = CriarPainel("PainelAviso", canvas.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(1100f, 76f), new Color(0.28f, 0.03f, 0.03f, 0.94f));
+        painelToast = CriarPainel("PainelAviso", canvas.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 104f), new Vector2(620f, 52f), new Color(0.28f, 0.03f, 0.03f, 0.94f));
         painelToast.pivot = new Vector2(0.5f, 0.5f);
         Outline outlineToast = painelToast.gameObject.AddComponent<Outline>();
         outlineToast.effectColor = new Color(1f, 0.25f, 0.18f, 0.95f);
         outlineToast.effectDistance = new Vector2(2f, -2f);
-        textoToast = CriarTexto("Toast", painelToast, string.Empty, 20, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(1f, 0.94f, 0.74f, 1f), new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-36f, -18f));
+        textoToast = CriarTexto("Toast", painelToast, string.Empty, 16, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(1f, 0.94f, 0.74f, 1f), new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-24f, -12f));
         painelToast.gameObject.SetActive(false);
     }
 

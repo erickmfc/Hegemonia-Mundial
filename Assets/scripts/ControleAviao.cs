@@ -7,6 +7,7 @@ using System.Collections.Generic;
 /// O CÉREBRO COMPLETO DO AVIÃO.
 /// Divide o movimento em 2 modos: Solo (rígido e guiado) e Voo (solto e realista).
 /// </summary>
+[ExecuteAlways]
 public class ControleAviao : MonoBehaviour
 {
     public enum EstadoAviao { ReservaHangar, Taxiando, ProntoNoPatio, Decolando, EmMissao, Pousando, RetornandoPraVaga }

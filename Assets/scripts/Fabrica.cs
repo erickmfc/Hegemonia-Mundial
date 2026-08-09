@@ -40,6 +40,7 @@ public class Fabrica : MonoBehaviour
 
     void Start()
     {
+        ProducaoAutomaticaEdificio.Garantir(gameObject, ProducaoAutomaticaEdificio.TipoInstalacao.Fabrica);
         // Busca automática de pontos de saída se não houver nenhum configurado
         if (pontosSaidaExtras == null || pontosSaidaExtras.Count == 0)
         {

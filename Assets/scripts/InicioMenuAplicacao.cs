@@ -19,6 +19,11 @@ public static class InicioMenuAplicacao
         string cenaAtual = SceneManager.GetActiveScene().name;
         if (ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtual)) return;
 
+        // No Editor, o Play deve respeitar a cena que o designer deixou aberta.
+        // A entrada pelo menu continua sendo responsabilidade da primeira cena
+        // do executavel e do FluxoInicialJogo quando estiver fora do Editor.
+        if (Application.isEditor) return;
+
         string menu = ConfiguracaoCenasJogo.ResolverCenaMenuPrincipal();
         if (string.IsNullOrWhiteSpace(menu) || menu == cenaAtual) return;
 

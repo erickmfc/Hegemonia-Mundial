@@ -79,10 +79,10 @@ public class GeradorUsinas : MonoBehaviour
 
         // Cria/Copia o ScriptableObject (DadosConstrucao)
         DadosConstrucao novaFicha = ScriptableObject.CreateInstance<DadosConstrucao>();
-        novaFicha.nomeItem = nome;
+        novaFicha.NomeItem = nome;
         novaFicha.descricao = $"Gera {producaoEnergia} MW de energia.";
         novaFicha.icone = fichaOrig.icone;
-        novaFicha.prefabDaUnidade = prefabFinal;
+        novaFicha.PrefabDaUnidade = prefabFinal;
         novaFicha.preco = preco;
         novaFicha.categoria = DadosConstrucao.CategoriaItem.Energia; // Categoria Energia
 

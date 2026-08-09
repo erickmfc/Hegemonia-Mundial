@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.SceneManagement;
 using System.Collections;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(UIDocument))]
 public class MenuFixadoController : MonoBehaviour
@@ -22,6 +23,20 @@ public class MenuFixadoController : MonoBehaviour
     private Label lblEnergyVal, lblEnergyBonus;
     private Label lblStorageVal;
     private Label lblMilitaryVal, lblMilitaryBonus;
+
+    // Central de acontecimentos do pais
+    private Button statusToggle, notificationClose;
+    private Button tabToday, tabEvents, tabHelp;
+    private VisualElement notificationPanel, notificationHelp;
+    private ScrollView notificationList;
+    private bool? ultimaPrefeituraOperacional;
+    private bool? ultimaSituacaoComida;
+    private int abaNotificacoes;
+    private bool painelNotificacaoAberto;
+    private bool statusTemNovidades;
+    private bool statusPulsoAtivo;
+    private bool ignorarNovidadesIniciais = true;
+    private IVisualElementScheduledItem statusPulseSchedule;
 
     private bool _activeInScene = true;
 
@@ -67,6 +82,7 @@ public class MenuFixadoController : MonoBehaviour
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
         DesregistrarEventos();
+        StatusNotificacaoFeed.OnAlterado -= AoAlterarFeedNotificacoes;
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -140,11 +156,22 @@ public class MenuFixadoController : MonoBehaviour
         lblMilitaryVal = root.Q<Label>("lbl-military-val");
         lblMilitaryBonus = root.Q<Label>("lbl-military-bonus");
 
+        ConfigurarPainelNotificacoes();
+
         ConfigurarTooltips();
         uiPronta = true;
         CheckSceneVisibility(SceneManager.GetActiveScene());
         RegistrarEventos();
+        if (StatusNotificacaoFeed.Itens.Count == 0)
+        {
+            StatusNotificacaoFeed.Publicar(
+                "MUNDO",
+                "Boletim mundial ativo",
+                "Compras militares, acordos e mudanças importantes das nações aparecerão aqui.",
+                StatusNotificacaoSeveridade.Info);
+        }
         UpdateUI();
+        ignorarNovidadesIniciais = false;
     }
 
     private void ConfigurarTooltips()
@@ -169,6 +196,7 @@ public class MenuFixadoController : MonoBehaviour
     private void RegistrarEventos()
     {
         DesregistrarEventos();
+        StatusNotificacaoFeed.OnAlterado += AoAlterarFeedNotificacoes;
         GerenciadorTempo.GarantirInstancia();
         if (GerenciadorRecursos.Instancia != null) GerenciadorRecursos.Instancia.OnRecursosAtualizados += UpdateUI;
         if (CensoImperial.Instancia != null) CensoImperial.Instancia.OnCensoAtualizado += UpdateUI;
@@ -178,10 +206,237 @@ public class MenuFixadoController : MonoBehaviour
 
     private void DesregistrarEventos()
     {
+        StatusNotificacaoFeed.OnAlterado -= AoAlterarFeedNotificacoes;
         if (GerenciadorRecursos.Instancia != null) GerenciadorRecursos.Instancia.OnRecursosAtualizados -= UpdateUI;
         if (CensoImperial.Instancia != null) CensoImperial.Instancia.OnCensoAtualizado -= UpdateUI;
         if (GerenciadorArmazens.Instancia != null) GerenciadorArmazens.Instancia.OnArmazensAtualizados -= UpdateUI;
         if (GerenciadorTempo.Instancia != null) GerenciadorTempo.Instancia.OnDataAlterada -= UpdateUI;
+    }
+
+    private void ConfigurarPainelNotificacoes()
+    {
+        statusToggle = root.Q<Button>("status-toggle");
+        notificationClose = root.Q<Button>("notification-close");
+        tabToday = root.Q<Button>("tab-today");
+        tabEvents = root.Q<Button>("tab-events");
+        tabHelp = root.Q<Button>("tab-help");
+        notificationPanel = root.Q<VisualElement>("notification-panel");
+        notificationList = root.Q<ScrollView>("notification-list");
+        notificationHelp = root.Q<VisualElement>("notification-help");
+
+        // O HUD usa um container superior deslocado para centralizar a barra.
+        // O painel fica em camada propria, entao a ancoragem inline evita que
+        // esse deslocamento empurre o feed para fora da tela.
+        if (notificationPanel != null)
+        {
+            notificationPanel.style.alignSelf = Align.FlexStart;
+            notificationPanel.style.left = 72f;
+            notificationPanel.style.marginLeft = 0f;
+            notificationPanel.style.top = 66f;
+        }
+
+        if (statusToggle != null) statusToggle.clicked += AlternarPainelNotificacoes;
+        if (notificationClose != null) notificationClose.clicked += FecharPainelNotificacoes;
+        if (tabToday != null) tabToday.clicked += () => SelecionarAbaNotificacoes(0);
+        if (tabEvents != null) tabEvents.clicked += () => SelecionarAbaNotificacoes(1);
+        if (tabHelp != null) tabHelp.clicked += () => SelecionarAbaNotificacoes(2);
+
+        if (statusToggle != null)
+        {
+            statusPulseSchedule = statusToggle.schedule.Execute(AtualizarPulsoStatus).Every(450);
+        }
+
+        SelecionarAbaNotificacoes(0);
+        FecharPainelNotificacoes();
+    }
+
+    private void AlternarPainelNotificacoes()
+    {
+        if (notificationPanel == null) return;
+
+        bool fechado = notificationPanel.ClassListContains("is-hidden");
+        notificationPanel.EnableInClassList("is-hidden", !fechado);
+        if (fechado)
+        {
+            painelNotificacaoAberto = true;
+            MarcarNotificacoesComoVistas();
+            AtualizarNotificacoes();
+        }
+        else
+        {
+            painelNotificacaoAberto = false;
+        }
+    }
+
+    private void FecharPainelNotificacoes()
+    {
+        painelNotificacaoAberto = false;
+        if (notificationPanel != null) notificationPanel.AddToClassList("is-hidden");
+    }
+
+    private void AoAlterarFeedNotificacoes()
+    {
+        if (!ignorarNovidadesIniciais && !painelNotificacaoAberto)
+        {
+            statusTemNovidades = true;
+            statusToggle?.AddToClassList("has-news");
+        }
+
+        AtualizarNotificacoes();
+    }
+
+    private void MarcarNotificacoesComoVistas()
+    {
+        statusTemNovidades = false;
+        statusPulsoAtivo = false;
+        if (statusToggle == null) return;
+
+        statusToggle.RemoveFromClassList("has-news");
+        statusToggle.RemoveFromClassList("status-pulse");
+    }
+
+    private void AtualizarPulsoStatus()
+    {
+        if (statusToggle == null) return;
+
+        if (!statusTemNovidades)
+        {
+            statusPulsoAtivo = false;
+            statusToggle.RemoveFromClassList("status-pulse");
+            return;
+        }
+
+        statusPulsoAtivo = !statusPulsoAtivo;
+        statusToggle.EnableInClassList("status-pulse", statusPulsoAtivo);
+    }
+
+    private void SelecionarAbaNotificacoes(int aba)
+    {
+        abaNotificacoes = Mathf.Clamp(aba, 0, 2);
+        if (tabToday != null) tabToday.EnableInClassList("is-active", abaNotificacoes == 0);
+        if (tabEvents != null) tabEvents.EnableInClassList("is-active", abaNotificacoes == 1);
+        if (tabHelp != null) tabHelp.EnableInClassList("is-active", abaNotificacoes == 2);
+
+        bool ajuda = abaNotificacoes == 2;
+        if (notificationList != null) notificationList.style.display = ajuda ? DisplayStyle.None : DisplayStyle.Flex;
+        if (notificationHelp != null) notificationHelp.EnableInClassList("is-hidden", !ajuda);
+        if (!ajuda) AtualizarNotificacoes();
+    }
+
+    private void AtualizarNotificacoes()
+    {
+        if (notificationList == null || abaNotificacoes == 2) return;
+
+        VisualElement content = notificationList.contentContainer;
+        content.Clear();
+
+        int itensExibidos = 0;
+        IList<StatusNotificacao> itens = StatusNotificacaoFeed.Itens;
+        for (int i = 0; i < itens.Count; i++)
+        {
+            StatusNotificacao item = itens[i];
+            if (item == null) continue;
+
+            bool eventoMundial = item.Categoria == "MUNDO"
+                || item.Categoria == "AEROPORTO"
+                || item.Categoria == "DIPLOMACIA";
+            if (abaNotificacoes == 1 && !eventoMundial) continue;
+
+            content.Add(CriarLinhaNotificacao(item));
+            itensExibidos++;
+        }
+
+        if (itensExibidos == 0)
+        {
+            Label vazio = new Label(abaNotificacoes == 1
+                ? "Nenhum evento mundial registrado."
+                : "Nenhuma notificacao pendente.");
+            vazio.AddToClassList("notification-empty");
+            content.Add(vazio);
+        }
+    }
+
+    private VisualElement CriarLinhaNotificacao(StatusNotificacao item)
+    {
+        VisualElement linha = new VisualElement();
+        linha.AddToClassList("notification-item");
+
+        Label severidade = new Label(ObterSimboloNotificacao(item.Severidade));
+        severidade.AddToClassList("notification-severity");
+        severidade.AddToClassList(item.Severidade.ToString().ToLowerInvariant());
+        linha.Add(severidade);
+
+        VisualElement copia = new VisualElement();
+        copia.AddToClassList("notification-item-copy");
+
+        Label titulo = new Label("[" + item.Categoria + "] " + item.Titulo);
+        titulo.AddToClassList("notification-item-title");
+        copia.Add(titulo);
+
+        Label mensagem = new Label(item.Mensagem);
+        mensagem.AddToClassList("notification-item-message");
+        copia.Add(mensagem);
+        linha.Add(copia);
+
+        Label horario = new Label(item.Horario);
+        horario.AddToClassList("notification-item-time");
+        linha.Add(horario);
+        return linha;
+    }
+
+    private string ObterSimboloNotificacao(StatusNotificacaoSeveridade severidade)
+    {
+        switch (severidade)
+        {
+            case StatusNotificacaoSeveridade.Warning: return "!";
+            case StatusNotificacaoSeveridade.Success: return "✓";
+            case StatusNotificacaoSeveridade.Critical: return "×";
+            default: return "i";
+        }
+    }
+
+    private void AtualizarAlertasAutomaticos(GerenciadorRecursos recursos, DadosEconomiaPais economia)
+    {
+        bool prefeituraOperacional = false;
+        ComplexoGovernamental[] complexos = FindObjectsByType<ComplexoGovernamental>(FindObjectsSortMode.None);
+        for (int i = 0; i < complexos.Length; i++)
+        {
+            ComplexoGovernamental complexo = complexos[i];
+            if (complexo == null) continue;
+
+            IdentidadeUnidade identidade = complexo.GetComponent<IdentidadeUnidade>();
+            if (complexo.ehDoJogador || (identidade != null && identidade.teamID == 1))
+            {
+                prefeituraOperacional = true;
+                break;
+            }
+        }
+
+        if (!ultimaPrefeituraOperacional.HasValue || ultimaPrefeituraOperacional.Value != prefeituraOperacional)
+        {
+            ultimaPrefeituraOperacional = prefeituraOperacional;
+            StatusNotificacaoFeed.Publicar(
+                "GOVERNO",
+                prefeituraOperacional ? "Prefeitura operacional" : "Prefeitura necessaria",
+                prefeituraOperacional
+                    ? "A sede do governo esta ativa e pronta para administrar a nação."
+                    : "Construa uma Prefeitura para centralizar o governo da nação.",
+                prefeituraOperacional ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning);
+        }
+
+        float saldoComida = economia != null ? economia.comidaProduzida - economia.comidaConsumida : 0f;
+        bool comidaEstavel = recursos != null && recursos.comida > 0.01f && saldoComida >= 0f;
+        if (!ultimaSituacaoComida.HasValue || ultimaSituacaoComida.Value != comidaEstavel)
+        {
+            ultimaSituacaoComida = comidaEstavel;
+            StatusNotificacaoFeed.Publicar(
+                "ECONOMIA",
+                comidaEstavel ? "Abastecimento normalizado" : "Atenção ao estoque de comida",
+                comidaEstavel
+                    ? "A produção atual cobre o consumo nacional."
+                    : "A nação precisa de comida: aumente a produção ou providencie importações.",
+                comidaEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning);
+        }
     }
 
     private void Update()
@@ -309,6 +564,9 @@ public class MenuFixadoController : MonoBehaviour
             lblMilitaryBonus.tooltip = "Recrutaveis: " + pais.alistaveis.ToString("N0")
                 + "\nReservistas: " + pais.reservistas.ToString("N0");
         }
+
+        AtualizarAlertasAutomaticos(r, economia);
+        AtualizarNotificacoes();
     }
 
     private void AtualizarData()

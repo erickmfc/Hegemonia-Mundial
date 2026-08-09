@@ -25,6 +25,7 @@ public class MenuPausaController : MonoBehaviour
     private Canvas canvasMenu;
     private GameObject raizMenu;
     private Text statusText;
+    private GameObject statusBoxObject;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void CriarBootstrap()
@@ -45,6 +46,14 @@ public class MenuPausaController : MonoBehaviour
 
     private void Awake()
     {
+        // O estado ético é estatico e pode sobreviver a uma troca de cena ou
+        // a uma nova execucao do Play Mode quando o Domain Reload está
+        // desativado. Nesse caso o painel já não existe, mas o relogio e as
+        // IAs continuam acreditando que a partida está pausada.
+        EstaPausado = false;
+        Time.timeScale = 1f;
+        AudioListener.pause = false;
+
         Scene cenaAtiva = SceneManager.GetActiveScene();
         if (ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtiva.name))
         {
@@ -111,7 +120,10 @@ public class MenuPausaController : MonoBehaviour
         Cursor.visible = true;
         EstaPausado = true;
         raizMenu.SetActive(true);
-        AtualizarStatus(LocalizationManager.T("pause.status", "Partida pausada."), false);
+        // O aviso de pausa nao deve ficar por cima do ultimo botao (principalmente
+        // "Sair para menu principal"). Os avisos de salvar/carregar continuam
+        // aparecendo quando realmente existe uma operacao para informar.
+        OcultarStatus();
     }
 
     private void FecharMenuVisual()
@@ -294,8 +306,10 @@ public class MenuPausaController : MonoBehaviour
         CriarBotao(botoes, LocalizationManager.T("pause.restart", "Reiniciar Partida"), "RE", corBotao, ReiniciarPartida, ref posicaoY);
         CriarBotao(botoes, LocalizationManager.T("pause.exit_menu", "Sair para Menu Principal"), "EX", corBotaoSair, SairParaMenuPrincipal, ref posicaoY);
 
-        RectTransform statusBox = CriarPainel("StatusBox", painel, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 72f), new Vector2(430f, 54f), new Color(0.07f, 0.12f, 0.15f, 0.96f));
+        RectTransform statusBox = CriarPainel("StatusBox", painel, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -204f), new Vector2(430f, 42f), new Color(0.07f, 0.12f, 0.15f, 0.96f));
+        statusBoxObject = statusBox.gameObject;
         statusText = CriarTexto("Status", statusBox, string.Empty, 16, FontStyle.Bold, TextAnchor.MiddleCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-32f, 0f));
+        statusBoxObject.SetActive(false);
         CriarTexto("Rodape", painel, LocalizationManager.T("pause.footer", "ESC retoma a partida."), 14, FontStyle.Normal, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 22f), new Vector2(-48f, 20f));
     }
 
@@ -308,6 +322,7 @@ public class MenuPausaController : MonoBehaviour
             canvasMenu = null;
             raizMenu = null;
             statusText = null;
+            statusBoxObject = null;
         }
 
         ConstruirInterface();
@@ -420,7 +435,14 @@ public class MenuPausaController : MonoBehaviour
             return;
         }
 
+        if (statusBoxObject != null) statusBoxObject.SetActive(true);
         statusText.text = mensagem;
         statusText.color = alerta ? corTextoAlerta : corTextoSuave;
+    }
+
+    private void OcultarStatus()
+    {
+        if (statusText != null) statusText.text = string.Empty;
+        if (statusBoxObject != null) statusBoxObject.SetActive(false);
     }
 }

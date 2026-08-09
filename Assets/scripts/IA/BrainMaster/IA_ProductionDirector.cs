@@ -493,7 +493,7 @@ namespace Hegemonia.AI.BrainMaster
 
             IA_ProduceOrderData payload = new IA_ProduceOrderData
             {
-                ItemKey = data.nomeItem,
+                ItemKey = data.NomeItem,
                 Quantity = 1
             };
 
@@ -504,7 +504,7 @@ namespace Hegemonia.AI.BrainMaster
                 "fila de producao otimizada",
                 priority,
                 "production",
-                "produce:" + IA_Text.Normalize(data.nomeItem),
+                "produce:" + IA_Text.Normalize(data.NomeItem),
                 cooldown,
                 payload);
 
@@ -512,15 +512,15 @@ namespace Hegemonia.AI.BrainMaster
             bool enqueued = PublishProductionIntent(request, data, priority, "fila de producao otimizada", out reason);
             if (enqueued)
             {
-                DiagnosticoDesempenhoJogo.RegistrarProducao(data.nomeItem);
-                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_OK", "item=" + data.nomeItem + " | motivo=fila de producao otimizada");
+                DiagnosticoDesempenhoJogo.RegistrarProducao(data.NomeItem);
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_OK", "item=" + data.NomeItem + " | motivo=fila de producao otimizada");
                 ArmRuntimeQueueCooldown();
             }
             else
             {
                 if (assetKind != IA01MilitaryAssetKind.Other)
                     IA01MilitaryProductionGuard.Cancel(_context.Brain != null ? _context.Brain.TeamId : 0, assetKind, Time.time);
-                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_FAIL", "item=" + data.nomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_FAIL", "item=" + data.NomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
             }
 
             return enqueued;
@@ -542,7 +542,7 @@ namespace Hegemonia.AI.BrainMaster
 
             IA_ProduceOrderData payload = new IA_ProduceOrderData
             {
-                ItemKey = data.nomeItem,
+                ItemKey = data.NomeItem,
                 Quantity = 1
             };
 
@@ -560,7 +560,7 @@ namespace Hegemonia.AI.BrainMaster
                 "preferencia aerea",
                 priority,
                 "production",
-                "produce:" + IA_Text.Normalize(data.nomeItem),
+                "produce:" + IA_Text.Normalize(data.NomeItem),
                 cooldown,
                 payload);
 
@@ -568,14 +568,14 @@ namespace Hegemonia.AI.BrainMaster
             bool enqueued = PublishProductionIntent(request, data, priority, "preferencia aerea", out reason);
             if (enqueued)
             {
-                DiagnosticoDesempenhoJogo.RegistrarProducao(data.nomeItem, "IA_Prod_Air");
-                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_OK", "item=" + data.nomeItem + " | motivo=preferencia aerea");
+                DiagnosticoDesempenhoJogo.RegistrarProducao(data.NomeItem, "IA_Prod_Air");
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_OK", "item=" + data.NomeItem + " | motivo=preferencia aerea");
                 ArmRuntimeQueueCooldown();
             }
             else
             {
                 IA01MilitaryProductionGuard.Cancel(teamId, IA01MilitaryAssetKind.Fighter, Time.time);
-                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_FAIL", "item=" + data.nomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
+                IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_FAIL", "item=" + data.NomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
             }
 
             return enqueued;
@@ -680,7 +680,7 @@ namespace Hegemonia.AI.BrainMaster
                 return string.Empty;
             }
 
-            string joined = IA_Text.Normalize(data.nomeItem + " " + data.name + " " + prefab.name);
+            string joined = IA_Text.Normalize(data.NomeItem + " " + data.name + " " + prefab.name);
             if (joined.Contains("b260") || joined.Contains("b-260") || joined.Contains("b 260"))
             {
                 return "b260";

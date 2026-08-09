@@ -9,6 +9,7 @@ using System.Collections.Generic;
 // - Rotação corrigida no MODELO VISUAL (filho) ao invés do pai, evitando conflito com a vaga do navio.
 // - Trava de Altura no pouso: Impede que o helicóptero atravesse o casco do navio (nível do mar).
 
+[ExecuteAlways]
 public class Helicoptero : MonoBehaviour
 {
     public enum AjusteDoModelo3D

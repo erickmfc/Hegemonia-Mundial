@@ -55,7 +55,7 @@ public static class ValoresDefinitivosHegemonia
     {
         if (ficha == null) return 0L;
         long valor;
-        if (TryObterPreco(ficha.itemId, ficha.nomeItem, out valor)) return valor;
+        if (TryObterPreco(ficha.ItemId, ficha.NomeItem, out valor)) return valor;
         return ficha.precoDefinitivo > 0L ? ficha.precoDefinitivo : Math.Max(0L, ficha.preco);
     }
 

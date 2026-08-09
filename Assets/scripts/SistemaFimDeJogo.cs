@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Hegemonia.RTS;
 
 [DefaultExecutionOrder(15000)]
 public class SistemaFimDeJogo : MonoBehaviour
@@ -125,6 +126,10 @@ public class SistemaFimDeJogo : MonoBehaviour
 
     public static void RegistrarResultado(TipoObjetivoFinal tipoObjetivo, bool alvoPertenceAoJogador, string nomeDaNacao, string nomeObjetivo)
     {
+        RTSGameSession.Instancia?.ReportMatchResult(
+            alvoPertenceAoJogador ? RTSMatchResult.Defeat : RTSMatchResult.Victory,
+            string.IsNullOrWhiteSpace(nomeObjetivo) ? tipoObjetivo.ToString() : nomeObjetivo);
+
         SistemaFimDeJogo sistema = ObterOuCriarInstancia();
         if (sistema == null)
         {

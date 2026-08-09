@@ -53,11 +53,11 @@ public class StudioDeIcones : EditorWindow
             string path = AssetDatabase.GUIDToAssetPath(guids[i]);
             DadosConstrucao dados = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(path);
 
-            if (dados != null && dados.prefabDaUnidade != null)
+            if (dados != null && dados.PrefabDaUnidade != null)
             {
-                EditorUtility.DisplayProgressBar("Gerando Ícones", $"Renderizando {dados.nomeItem}...", (float)i / total);
+            EditorUtility.DisplayProgressBar("Gerando Ícones", $"Renderizando {dados.NomeItem}...", (float)i / total);
                 
-                Sprite novoIcone = GerarIcone(dados.prefabDaUnidade, dados.name);
+                Sprite novoIcone = GerarIcone(dados.PrefabDaUnidade, dados.name);
                 if (novoIcone != null)
                 {
                     dados.icone = novoIcone;

@@ -7,9 +7,10 @@ using UnityEngine.SceneManagement;
 [InitializeOnLoad]
 internal static class EntrarNoMenuAoDarPlay
 {
-    // O Editor deve iniciar o Play na cena que o desenvolvedor deixou aberta.
-    // A entrada pelo menu continua sendo responsabilidade da build/runtime.
-    private const bool ForcarMenuAoDarPlay = false;
+    // A campanha oficial deve sempre entrar pelo menu, inclusive no Editor.
+    // Isso mantém o fluxo de teste igual ao da build e evita iniciar a IA01
+    // diretamente enquanto a cena de campanha ainda esta aberta.
+    private const bool ForcarMenuAoDarPlay = true;
     private const string CaminhoMenuPrincipal = "Assets/Scenes/Menu cena.unity";
     private static bool reinicioAgendado;
 
@@ -26,7 +27,7 @@ internal static class EntrarNoMenuAoDarPlay
         }
 
         Scene cenaAtual = SceneManager.GetActiveScene();
-        if (cenaAtual.name != ConfiguracaoCenasJogo.CenaCampanhaCanonica)
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtual.name))
         {
             return;
         }

@@ -187,6 +187,7 @@ namespace Hegemonia.Cartel
         private bool hasSpawnedAnyUnit;
         private bool initialized;
         private int nextMaritimeBoatIndex;
+        private bool activationDiagnosticReported;
 
         private void OnEnable()
         {
@@ -202,11 +203,17 @@ namespace Hegemonia.Cartel
 
         private void Start()
         {
+            Debug.Log("[Cartel Init] Start cena=" + SceneManager.GetActiveScene().name
+                + " automatico=" + StartAutomatically
+                + " dia=" + (GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias.ToString() : "sem-relogio"));
             if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
             {
                 State = CartelControllerState.Disabled;
                 StatusDebug = "Cartel desligado na cena de menu.";
-                enabled = false;
+                // A troca menu -> campanha pode executar Start antes de a
+                // cena de campanha virar a cena ativa. Nao desative o
+                // componente aqui: o Update passa a inicializa-lo assim que
+                // a cena correta estiver ativa.
                 return;
             }
 
@@ -244,7 +251,12 @@ namespace Hegemonia.Cartel
 
         public void Initialize()
         {
-            if (!CanActivateForCurrentDay(out int currentDay))
+            InitializeInternal(false);
+        }
+
+        private void InitializeInternal(bool enforceActivationDay)
+        {
+            if (enforceActivationDay && !CanActivateForCurrentDay(out int currentDay))
             {
                 initialized = false;
                 State = CartelControllerState.WaitingForStartDay;
@@ -255,8 +267,15 @@ namespace Hegemonia.Cartel
             initialized = true;
             respawnPending = false;
             RefreshCreates(true);
+            Debug.Log("[Cartel Init] Dia liberado; creates=" + creates.Count
+                + " basesAntes=" + bases.Count
+                + " baseCreates=" + GetCreates(CartelCreateType.CartelBaseCreate, InitialCountryId).Count
+                + " areaCreates=" + GetCreates(CartelCreateType.CartelBaseAreaCreate, InitialCountryId).Count);
             State = CartelControllerState.SelectingBase;
             EnsureInitialBase();
+            Debug.Log("[Cartel Init] Base inicial apos EnsureInitialBase: bases=" + bases.Count
+                + " estado=" + State
+                + " status=" + StatusDebug);
             if (bases.Count == 0)
             {
                 State = CartelControllerState.WaitingForManualCreate;
@@ -280,7 +299,14 @@ namespace Hegemonia.Cartel
                 return;
             }
 
-            Initialize();
+            if (!activationDiagnosticReported)
+            {
+                int dia = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 1;
+                Debug.Log("[Cartel Init] Tentando ativar: dia=" + dia + " requerido=" + ActivationDay);
+                activationDiagnosticReported = true;
+            }
+
+            InitializeInternal(true);
         }
 
         private bool CanActivateForCurrentDay(out int currentDay)
@@ -665,6 +691,14 @@ namespace Hegemonia.Cartel
             int boats = ScaleRosterCount(ValueAtLevel(BoatsByLevel, levelIndex, 2),
                 growthSteps, MaxBoatsPerBase);
 
+            // Em uma build fria a NavMesh pode terminar alguns frames depois dos
+            // Creates. Nao considere a abertura concluida enquanto alguma
+            // categoria solicitada ainda nao conseguiu nascer.
+            bool groundMembersComplete = Prefabs == null || Prefabs.GroundMemberPrefab == null;
+            bool groundVehiclesComplete = Prefabs == null || Prefabs.GroundVehiclePrefab == null;
+            bool maritimeMembersComplete = Prefabs == null || Prefabs.MaritimeMemberPrefab == null;
+            bool boatsComplete = Prefabs == null || Prefabs.PirateBoatPrefab == null;
+
             for (int i = 0; i < groundMembers
                 && runtime.GroundMembers.Count < MaxGroundMembersPerBase
                 && CountAliveUnits(groundMembers: true, groundVehicles: false, maritimeMembers: false, boats: false) < MaxTotalGroundMembers; i++)
@@ -705,6 +739,15 @@ namespace Hegemonia.Cartel
                 if (unit != null) runtime.Boats.Add(unit);
             }
 
+            groundMembersComplete = Prefabs == null || Prefabs.GroundMemberPrefab == null
+                || runtime.GroundMembers.Count >= groundMembers;
+            groundVehiclesComplete = Prefabs == null || Prefabs.GroundVehiclePrefab == null
+                || runtime.GroundVehicles.Count >= groundVehicles;
+            maritimeMembersComplete = Prefabs == null || Prefabs.MaritimeMemberPrefab == null
+                || runtime.MaritimeMembers.Count >= maritimeMembers;
+            boatsComplete = Prefabs == null || Prefabs.PirateBoatPrefab == null
+                || runtime.Boats.Count >= boats;
+
             if (AutoEmbarkMaritimeCrew)
             {
                 FixarTripulacaoNosBarcos(runtime);
@@ -717,7 +760,14 @@ namespace Hegemonia.Cartel
                 }
             }
 
-            runtime.InitialUnitsCreated = true;
+            runtime.InitialUnitsCreated = groundMembersComplete
+                && groundVehiclesComplete
+                && maritimeMembersComplete
+                && boatsComplete;
+            if (!runtime.InitialUnitsCreated)
+            {
+                StatusDebug = "Cartel aguardando terreno/NavMesh para concluir as unidades iniciais.";
+            }
         }
 
         private void CriarReforcosPeriodicos()
@@ -778,6 +828,8 @@ namespace Hegemonia.Cartel
             Vector3 position = spawn.Position + ObterOffsetDeSpawn(ordinal);
             bool unidadeTerrestre = label.IndexOf("Terrestre", StringComparison.OrdinalIgnoreCase) >= 0
                 || label.IndexOf("Veiculo", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool unidadeMaritima = label.IndexOf("Maritimo", StringComparison.OrdinalIgnoreCase) >= 0
+                || label.IndexOf("Barco", StringComparison.OrdinalIgnoreCase) >= 0;
             if (unidadeTerrestre)
             {
                 position = EncontrarPosicaoTerrestre(position);
@@ -786,22 +838,47 @@ namespace Hegemonia.Cartel
                 // malha. Em builds frias o Cartel pode iniciar antes do
                 // NavMeshSurface/layout ficar disponivel; aguardar aqui evita
                 // o erro do Unity e deixa o proximo ciclo decidir novamente.
-                NavMeshAgent agentePrefab = prefab.GetComponentInChildren<NavMeshAgent>(true);
-                if (agentePrefab != null
+                NavMeshAgent agenteNavMeshPrefab = prefab.GetComponentInChildren<NavMeshAgent>(true);
+                if (agenteNavMeshPrefab != null
                     && !NavMesh.SamplePosition(position, out NavMeshHit navMeshHit,
                         Mathf.Max(1f, GroundPlacementSampleRadius), NavMesh.AllAreas))
                 {
                     StatusDebug = "Cartel aguardando NavMesh para criar unidade terrestre.";
                     return null;
                 }
+                if (agenteNavMeshPrefab != null
+                    && NavMesh.SamplePosition(position, out NavMeshHit posicionamentoNavMesh,
+                        Mathf.Max(1f, GroundPlacementSampleRadius), NavMesh.AllAreas))
+                {
+                    // O agente deve nascer no ponto efetivamente devolvido pela
+                    // NavMesh, nao apenas em um ponto proximo que foi validado.
+                    // Se o agente estiver em um filho, compensamos o offset para
+                    // que o proprio componente tambem nasca sobre a malha.
+                    Vector3 agenteOffsetLocal = agenteNavMeshPrefab.transform.localPosition;
+                    position = posicionamentoNavMesh.position
+                        - spawn.transform.rotation * agenteOffsetLocal;
+                }
             }
-            GameObject unit = Instantiate(prefab, position, spawn.transform.rotation);
+            // Nunca deixe um NavMeshAgent habilitado durante Instantiate. O
+            // Unity inicializa o componente no proprio Instantiate e em uma
+            // build fria isso acontece antes do Warp/ajuste de posicao.
+            // Desabilitar no prefab evita o erro e permite posicionar o clone
+            // sobre a malha antes de reativar o agente.
+            NavMeshAgent agentePrefab = prefab.GetComponentInChildren<NavMeshAgent>(true);
+            bool agentePrefabEstavaAtivo = agentePrefab != null && agentePrefab.enabled;
+            if (agentePrefabEstavaAtivo) agentePrefab.enabled = false;
+            GameObject unit;
+            try
+            {
+                unit = Instantiate(prefab, position, spawn.transform.rotation);
+            }
+            finally
+            {
+                if (agentePrefabEstavaAtivo) agentePrefab.enabled = true;
+            }
             unit.name = label + "_" + runtime.CountryId + "_" + unit.GetInstanceID();
             spawn.TryReserve(unit);
-            if (unidadeTerrestre)
-            {
-                AjustarUnidadeTerrestreAoChao(unit, position);
-            }
+            if (unidadeTerrestre) AjustarUnidadeTerrestreAoChao(unit, position);
 
             if (label.IndexOf("Barco", StringComparison.OrdinalIgnoreCase) >= 0)
             {
@@ -825,10 +902,13 @@ namespace Hegemonia.Cartel
                 if (fixadorArma == null) fixadorArma = unit.AddComponent<ArmaNaMaoRuntime>();
                 fixadorArma.RepararAgora();
             }
-            bool unidadeMaritima = label.IndexOf("Maritimo", StringComparison.OrdinalIgnoreCase) >= 0
-                || label.IndexOf("Barco", StringComparison.OrdinalIgnoreCase) >= 0;
             if (unidadeMaritima)
             {
+                if (!unidadeTerrestre)
+                {
+                    NavMeshAgent agenteNaAgua = unit.GetComponentInChildren<NavMeshAgent>(true);
+                    if (agenteNaAgua != null) agenteNaAgua.enabled = false;
+                }
                 GarantirSistemaDeTiro(unit, true);
             }
             else if (unidadeTerrestre)
@@ -1459,7 +1539,20 @@ namespace Hegemonia.Cartel
             }
 
             ControleUnidade control = unit.GetComponent<ControleUnidade>();
-            if (control != null) { control.EmitirOrdemMover(position); return; }
+            if (control != null)
+            {
+                NavMeshAgent agenteTerrestre = unit.GetComponentInChildren<NavMeshAgent>(true);
+                if (agenteTerrestre != null
+                    && (!agenteTerrestre.enabled || !agenteTerrestre.isOnNavMesh))
+                {
+                    // A unidade ainda nao tem uma ancoragem terrestre valida.
+                    // Nao encaminhe a ordem para ControleUnidade, que tentaria
+                    // reativar o agente fora da malha e geraria spam de erro.
+                    return;
+                }
+                control.EmitirOrdemMover(position);
+                return;
+            }
 
             // O movimento terrestre precisa passar pela trilha oficial do projeto
             // (ControleUnidade). Nao usar NavMeshAgent.SetDestination diretamente,
@@ -1534,22 +1627,46 @@ namespace Hegemonia.Cartel
         {
             if (unidade == null) return;
 
-            NavMeshAgent agente = unidade.GetComponent<NavMeshAgent>();
-            if (agente != null && !agente.enabled)
-            {
-                agente.enabled = true;
-            }
+            NavMeshAgent agente = unidade.GetComponentInChildren<NavMeshAgent>(true);
+            if (agente != null) agente.enabled = false;
 
-            if (agente != null && agente.enabled)
+            if (agente != null)
             {
                 if (NavMesh.SamplePosition(navMeshPosition, out NavMeshHit hit,
                     Mathf.Max(1f, GroundPlacementSampleRadius), NavMesh.AllAreas))
                 {
-                    agente.Warp(hit.position);
                     navMeshPosition = hit.position;
+                    // Compensa o deslocamento do agente quando ele esta em
+                    // um filho do prefab, deixando o proprio agente sobre a
+                    // malha e nao somente o pivot visual.
+                    unidade.transform.position = hit.position
+                        - unidade.transform.rotation * agente.transform.localPosition;
                 }
             }
 
+            if (agente != null)
+            {
+                // Com agente, a posicao da NavMesh e a fonte da verdade. Uma
+                // correcao posterior pelo Bounds do visual pode mover o filho
+                // para fora da malha e o Unity emite "Failed to create agent"
+                // ao reativar o componente.
+                float raioValidacao = Mathf.Clamp(Mathf.Max(0.35f, agente.radius * 1.5f), 0.35f, 2f);
+                if (NavMesh.SamplePosition(agente.transform.position, out NavMeshHit agenteHit,
+                    raioValidacao, NavMesh.AllAreas)
+                    && Vector3.Distance(agente.transform.position, agenteHit.position) <= raioValidacao)
+                {
+                    agente.Warp(agenteHit.position);
+                    agente.enabled = true;
+                }
+                else
+                {
+                    agente.enabled = false;
+                }
+                return;
+            }
+
+            // Prefabs sem NavMeshAgent continuam recebendo a pequena correcao
+            // de contato com o solo, sem interferir na navegacao dos demais.
             Bounds bounds = default(Bounds);
             bool encontrouBounds = false;
             Collider[] colliders = unidade.GetComponentsInChildren<Collider>(true);
@@ -1566,10 +1683,6 @@ namespace Hegemonia.Cartel
                 if (Mathf.Abs(correcao) <= 8f)
                 {
                     unidade.transform.position += Vector3.up * correcao;
-                    if (agente != null && agente.enabled)
-                    {
-                        agente.Warp(unidade.transform.position);
-                    }
                 }
             }
         }

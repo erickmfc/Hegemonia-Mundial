@@ -24,6 +24,7 @@ public class SistemaGovernoMundial : MonoBehaviour
     public event Action<PropostaInternacional> OnPropostaCriada;
 
     private float proximoTick;
+    private readonly Dictionary<int, long> reservasFundacao = new Dictionary<int, long>();
 
     public IReadOnlyList<DadosPaisGoverno> Paises => paises;
     public IReadOnlyList<RelacaoPaisGoverno> Relacoes => relacoes;
@@ -928,11 +929,47 @@ public class SistemaGovernoMundial : MonoBehaviour
             return true;
         }
 
-        if (pais.saldo < valor) return false;
+        long reservaProtegida;
+        reservasFundacao.TryGetValue(teamId, out reservaProtegida);
+        if (pais.saldo < valor || pais.saldo - valor < reservaProtegida) return false;
 
         pais.saldo -= valor;
         OnGovernoAtualizado?.Invoke();
         return true;
+    }
+
+    /// <summary>
+    /// Reserva o caixa minimo da primeira capital. Gastos de outros diretores
+    /// nao podem consumir este valor antes da confirmacao da fundacao.
+    /// </summary>
+    public void DefinirReservaFundacao(int teamId, long valor)
+    {
+        if (teamId <= 0 || valor <= 0)
+        {
+            return;
+        }
+
+        reservasFundacao[teamId] = Math.Max(0L, valor);
+    }
+
+    public void LiberarReservaFundacao(int teamId)
+    {
+        if (teamId > 0)
+        {
+            reservasFundacao.Remove(teamId);
+        }
+    }
+
+    public long ObterReservaFundacao(int teamId)
+    {
+        long valor;
+        return reservasFundacao.TryGetValue(teamId, out valor) ? valor : 0L;
+    }
+
+    public long ObterSaldoDisponivelParaOperacao(int teamId)
+    {
+        DadosPaisGoverno pais = ObterPais(teamId);
+        return pais == null ? 0L : Math.Max(0L, pais.saldo - ObterReservaFundacao(teamId));
     }
 
     public void AdicionarSaldo(int teamId, long valor)

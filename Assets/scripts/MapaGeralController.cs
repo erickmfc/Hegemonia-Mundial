@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Hegemonia.RTS;
 
 /// <summary>
 /// MAPA GERAL TÁTICO - Pressione M para abrir/fechar.
@@ -264,7 +265,7 @@ public class MapaGeralController : MonoBehaviour
     void Update()
     {
         if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
-        if (Input.GetKeyDown(KeyCode.M) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
+        if (RTSInputBindings.GetKeyDown(RTSInputAction.StrategicMap) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
             if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             mapaAtivo = !mapaAtivo;
@@ -305,7 +306,7 @@ public class MapaGeralController : MonoBehaviour
         if (mapaAtivo && cameraMapa != null)
         {
             // Tecla F: alterna modo de seguir unidade selecionada
-            if (Input.GetKeyDown(KeyCode.F))
+            if (RTSInputBindings.GetKeyDown(RTSInputAction.Follow))
             {
                 _seguindoAlvo = !_seguindoAlvo;
                 if (_seguindoAlvo)
@@ -562,15 +563,24 @@ public class MapaGeralController : MonoBehaviour
             bool ehNeutro  = (id.teamID == 0);
             bool ehInimigo = (!ehAliado && !ehNeutro);
 
-            // !! FOG OF WAR: NUNCA mostrar unidades inimigas !!
-            if (ehInimigo) continue;
+            Vector3 posicaoMapa = id.transform.position;
+            bool contatoAtual = !ehInimigo || RTSVisibilityService.Instancia == null
+                || RTSVisibilityService.Instancia.IsVisibleToTeam(meuTeamID, id);
+            if (ehInimigo && !contatoAtual)
+            {
+                if (RTSVisibilityService.Instancia == null
+                    || !RTSVisibilityService.Instancia.TryGetLastKnownPosition(meuTeamID, id, out posicaoMapa))
+                {
+                    continue;
+                }
+            }
 
             bool ehPredio = (id.GetComponent<UnityEngine.AI.NavMeshAgent>() == null)
                          && (id.GetComponent<UnityEngine.AI.NavMeshObstacle>() != null
                           || id.GetComponent<Rigidbody>() == null);
 
             // Converte posição 3D para coordenadas da tela relativa à cameraMapa
-            Vector3 screenPos = cameraMapa.WorldToScreenPoint(id.transform.position);
+            Vector3 screenPos = cameraMapa.WorldToScreenPoint(posicaoMapa);
 
             // Só mostra se estiver na frente da câmera (z > 0) e dentro da tela
             if (screenPos.z <= 0) continue;
@@ -595,6 +605,12 @@ public class MapaGeralController : MonoBehaviour
             {
                 // Unidade neutra: círculo cinza
                 DesenharIcone(sx, sy, 7f, 7f, corUnidadeNeutro);
+            }
+            else if (ehInimigo)
+            {
+                DesenharIcone(sx, sy, 7f, 7f, contatoAtual
+                    ? new Color(1f, 0.2f, 0.12f, 1f)
+                    : new Color(1f, 0.35f, 0.18f, 0.45f));
             }
         }
     }

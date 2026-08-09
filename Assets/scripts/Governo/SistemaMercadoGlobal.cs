@@ -112,7 +112,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
 
         foreach (DadosConstrucao ficha in MenuConstrucao.catalogoGlobal)
         {
-            if (ficha == null || string.IsNullOrEmpty(ficha.nomeItem)) continue;
+            if (ficha == null || string.IsNullOrEmpty(ficha.NomeItem)) continue;
             string id = ficha.GetStableId();
             if (ObterItem(id) != null) continue;
 
@@ -120,7 +120,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
             {
                 id = id,
                 recursoId = id,
-                nome = ficha.nomeItem,
+                nome = ficha.NomeItem,
                 categoria = ficha.categoria.ToString(),
                 recurso = RecursoMercado.Nenhum,
                 precoBase = (int)Math.Min(int.MaxValue, Math.Max(1L, ficha.ObterPrecoEfetivo())),

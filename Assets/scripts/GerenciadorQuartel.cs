@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Hegemonia.RTS;
 
 public class GerenciadorQuartel : MonoBehaviour
 {
@@ -96,7 +97,7 @@ public class GerenciadorQuartel : MonoBehaviour
     {
         if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
         
-        if (Input.GetKeyDown(KeyCode.B) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
+        if (RTSInputBindings.GetKeyDown(RTSInputAction.Barracks) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
             if (!menuAberto)
             {

@@ -117,7 +117,7 @@ namespace Hegemonia.AI.BrainMaster
             _itemId = data.GetStableId();
             _displayName = data.GetDisplayName();
             _aliases = data.aliases ?? string.Empty;
-            _sourcePrefabName = data.prefabDaUnidade != null ? data.prefabDaUnidade.name : string.Empty;
+            _sourcePrefabName = data.PrefabDaUnidade != null ? data.PrefabDaUnidade.name : string.Empty;
             _category = data.categoria;
             _capabilities = data.GetResolvedCapabilities();
         }

@@ -18,7 +18,7 @@ public static class AplicarValoresDefinitivosEditor
             if (ficha == null) continue;
 
             long valor;
-            if (ValoresDefinitivosHegemonia.TryObterPreco(ficha.itemId, ficha.nomeItem, out valor))
+            if (ValoresDefinitivosHegemonia.TryObterPreco(ficha.ItemId, ficha.NomeItem, out valor))
             {
                 if (ficha.precoDefinitivo != valor)
                 {
@@ -30,7 +30,7 @@ public static class AplicarValoresDefinitivosEditor
             else
             {
                 semCorrespondencia++;
-                Debug.LogWarning("[ValoresDefinitivos] Sem correspondencia: " + path + " / " + ficha.nomeItem);
+                Debug.LogWarning("[ValoresDefinitivos] Sem correspondencia: " + path + " / " + ficha.NomeItem);
             }
         }
 

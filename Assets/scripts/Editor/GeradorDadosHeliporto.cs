@@ -38,21 +38,21 @@ public class GeradorDadosHeliporto
         }
 
         // Configura os valores apenas se for novo ou se estiver sem nome
-        if (novoArquivo || string.IsNullOrEmpty(dados.nomeItem))
+        if (novoArquivo || string.IsNullOrEmpty(dados.NomeItem))
         {
-            dados.nomeItem = "Heliporto";
+            dados.NomeItem = "Heliporto";
             dados.descricao = "Base para operações aéreas. Permite compra e reabastecimento de helicópteros.";
             dados.preco = 500;
             dados.categoria = DadosConstrucao.CategoriaItem.Infraestrutura;
             
             // Tenta achar o prefab HeliPad nessa mesma pasta ou no projeto
-            if (dados.prefabDaUnidade == null)
+            if (dados.PrefabDaUnidade == null)
             {
                 string[] guids = AssetDatabase.FindAssets("HeliPad t:Prefab");
                 if (guids.Length > 0)
                 {
                     string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                    dados.prefabDaUnidade = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    dados.PrefabDaUnidade = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                     Debug.Log("✅ [Gerador] Prefab 'HeliPad' vinculado automaticamente ao novo dado.");
                 }
             }

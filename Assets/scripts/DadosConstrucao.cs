@@ -31,21 +31,41 @@ public class DadosConstrucao : ScriptableObject
     }
 
     [Header("Informações Básicas")]
-    public string nomeItem = "Nome da Unidade";
+    [SerializeField] private string nomeItem = "Nome da Unidade";
+
+    public string NomeItem
+    {
+        get => nomeItem;
+        set => nomeItem = value;
+    }
     [TextArea] public string descricao = "Descrição curta...";
     public Sprite icone; // A foto que vai no botão
 
     [Header("Identidade IA")]
     [Tooltip("ID estável usado pela IA. Se vazio, o nome da ficha é usado.")]
-    public string itemId = string.Empty;
+    [SerializeField] private string itemId = string.Empty;
+
+    public string ItemId => itemId;
     [Tooltip("Aliases extras usados pela IA, separados por virgula, ; ou quebra de linha.")]
     [TextArea(1, 4)] public string aliases = string.Empty;
     [Tooltip("Capacidades explícitas. Se Auto, a IA infere pelo prefab e pela categoria.")]
-    public IA_ConstructionCapability capacidades = IA_ConstructionCapability.Auto;
+    [SerializeField] private IA_ConstructionCapability capacidades = IA_ConstructionCapability.Auto;
+
+    public IA_ConstructionCapability Capacidades
+    {
+        get => capacidades;
+        set => capacidades = value;
+    }
 
     [Header("Técnico")]
     [Tooltip("Arraste aqui o objeto AZUL da pasta (Prefab), NÃO arraste da cena!")]
-    public GameObject prefabDaUnidade; // O objeto 3D que vai ser construído
+    [SerializeField] private GameObject prefabDaUnidade; // O objeto 3D que vai ser construído
+
+    public GameObject PrefabDaUnidade
+    {
+        get => prefabDaUnidade;
+        set => prefabDaUnidade = value;
+    }
     // Campo legado mantido como int para compatibilidade com a IA e assets antigos.
     // O preco efetivo da campanha vem de ValoresDefinitivosHegemonia e usa long.
     public int preco = 100;
@@ -57,7 +77,13 @@ public class DadosConstrucao : ScriptableObject
     [Tooltip("Escala de poder NARA usada para balanceamento e leitura tática.")]
     public EscalaPoder escalaPoder = EscalaPoder.NaoClassificado;
     [Tooltip("Papel estrategico explicito usado pela IA.")]
-    public IA01StrategicRole strategicRole = IA01StrategicRole.None;
+    [SerializeField] private IA01StrategicRole strategicRole = IA01StrategicRole.None;
+
+    public IA01StrategicRole StrategicRole
+    {
+        get => strategicRole;
+        set => strategicRole = value;
+    }
 
     [Header("Balanceamento em Dados")]
     public DadosBalanceamentoUnidade balanceamento;

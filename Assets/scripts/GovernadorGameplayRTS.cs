@@ -158,7 +158,7 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
             int emCampo = ContarInstanciasDoMesmoItem(item);
             if (emCampo + quantidade > balanceamento.limiteEmCampo)
             {
-                motivo = $"Limite tatico atingido para {item.nomeItem}: {emCampo}/{balanceamento.limiteEmCampo} em campo.";
+                motivo = $"Limite tatico atingido para {item.NomeItem}: {emCampo}/{balanceamento.limiteEmCampo} em campo.";
                 return false;
             }
         }
@@ -288,12 +288,12 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
 
     private int ContarInstanciasDoMesmoItem(DadosConstrucao item)
     {
-        if (item == null || item.prefabDaUnidade == null)
+        if (item == null || item.PrefabDaUnidade == null)
         {
             return 0;
         }
 
-        string nomePrefab = item.prefabDaUnidade.name;
+        string nomePrefab = item.PrefabDaUnidade.name;
         int total = 0;
 
         RegistroEntidadesJogo.FillUnidades(_bufferUnidades);
@@ -331,7 +331,7 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
             return TipoUnidade.Estrutura;
         }
 
-        GameObject prefab = item.prefabDaUnidade;
+        GameObject prefab = item.PrefabDaUnidade;
         if (prefab == null)
         {
             switch (item.categoria)

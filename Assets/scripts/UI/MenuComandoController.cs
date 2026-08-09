@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Hegemonia.RTS;
 
 /// <summary>
 /// Menu Comando Tático — controlador principal do UI Toolkit.
@@ -380,7 +381,7 @@ public class MenuComandoController : MonoBehaviour
         // recuperar o menu quando o estado estÃ¡tico ficou desatualizado.
 
         // Tecla 1 — toggle
-        if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
+        if (RTSInputBindings.GetKeyDown(RTSInputAction.CommandMenu) || Input.GetKeyDown(KeyCode.Keypad1))
         {
             if (menuAberto) FecharMenu();
             else AbrirMenu();

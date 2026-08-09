@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using Hegemonia.RTS;
 
 /// <summary>
 /// Sistema centralizado de gerenciamento de recursos do jogo.
@@ -200,6 +201,12 @@ public class GerenciadorRecursos : MonoBehaviour
     /// </summary>
     public bool TentarGastar(long custoDinheiro = 0L, int custoPetroleo = 0, int custoAco = 0, int custoEnergia = 0)
     {
+        RTSResourceLedgerService ledger = RTSResourceLedgerService.Instancia;
+        if (ledger != null && !ledger.IsApplyingTransaction)
+        {
+            return ledger.TrySpendPlayer(new RTSResourceCost(custoDinheiro, custoPetroleo, custoAco, custoEnergia), "legacy spend");
+        }
+
         if (dinheiro >= custoDinheiro && 
             petroleo >= custoPetroleo && 
             aco >= custoAco && 
@@ -220,6 +227,13 @@ public class GerenciadorRecursos : MonoBehaviour
 
     public void AdicionarRecursos(long addDinheiro = 0L, int addPetroleo = 0, int addAco = 0, int addEnergia = 0)
     {
+        RTSResourceLedgerService ledger = RTSResourceLedgerService.Instancia;
+        if (ledger != null && !ledger.IsApplyingTransaction)
+        {
+            ledger.AddPlayer(new RTSResourceCost(addDinheiro, addPetroleo, addAco, addEnergia), "legacy add");
+            return;
+        }
+
         dinheiro += addDinheiro;
         petroleo += addPetroleo;
         aco += addAco;

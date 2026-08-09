@@ -72,7 +72,7 @@ public class GeradorFichasTeste : MonoBehaviour
     {
         // Cria uma nova instância da ficha na memória
         DadosConstrucao novaFicha = ScriptableObject.CreateInstance<DadosConstrucao>();
-        novaFicha.nomeItem = nome;
+        novaFicha.NomeItem = nome;
         novaFicha.preco = preco;
         novaFicha.categoria = categoria;
         novaFicha.descricao = desc;

@@ -24,7 +24,7 @@ public class CorretorAuditoriaFichas : EditorWindow
 
             if (ficha == null) continue;
 
-            string nome = string.IsNullOrWhiteSpace(ficha.nomeItem) ? ficha.name : ficha.nomeItem;
+            string nome = string.IsNullOrWhiteSpace(ficha.NomeItem) ? ficha.name : ficha.NomeItem;
             
             GameObject prefab = null;
             bool hasPrefab = ficha.TryGetPrefab(out prefab);

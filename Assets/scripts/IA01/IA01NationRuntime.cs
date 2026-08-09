@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.RTS;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -51,7 +52,14 @@ namespace Hegemonia.AI.IA01
         public string CapitalDiagnosticStatus => CityPlanner.CapitalDiagnostic;
         public string ConstructionModeStatus => ConstructionGovernor != null ? ConstructionGovernor.ConstructionMode.ToString() : "n/d";
         public string ConstructionStateStatus => BuildDirector != null ? BuildDirector.CurrentConstructionState.ToString() : "n/d";
-        public string ConstructionCommandStatus => BuildDirector != null ? BuildDirector.ActiveConstructionCommand : "n/d";
+        public string ConstructionCommandStatus
+        {
+            get
+            {
+                string command = BuildDirector != null ? BuildDirector.ActiveConstructionCommand : string.Empty;
+                return string.IsNullOrWhiteSpace(command) ? "Nenhum" : command;
+            }
+        }
         public string ActiveCommandIdStatus => ConstructionCommandStatus;
         public string PendingStructureIdStatus => BuildDirector != null ? BuildDirector.PendingStructureIdStatus : "n/d";
         public string ConfirmationDeadlineStatus => BuildDirector != null ? BuildDirector.ConfirmationDeadlineStatus : "n/d";
@@ -88,6 +96,8 @@ namespace Hegemonia.AI.IA01
         private string mostExpensiveModule = "n/d";
         private float mostExpensiveModuleMilliseconds;
         private long currentTreasury;
+        private bool foundationDiagnosticLogged;
+        private bool foundationCommandDiagnosticLogged;
 
         public IA01NationRuntime(IA01Controller controller, IA01RuntimeContext context, IA01NationProfile profile)
         {
@@ -205,21 +215,57 @@ namespace Hegemonia.AI.IA01
             Strategy.Arbitrate(now, Economy.IsEmergencyReserveRequired);
             UpdateObjectiveStatus(IntentBoard, country, now);
 
-            if (!marketChanged && operations < maxOperations)
+            // A prefeitura is the opening dependency of the whole nation. The
+            // market/war/military modules can consume the small slice budget
+            // before construction is reached, leaving the IA alive but with no
+            // capital and no structures. Give only this first foundation step
+            // a narrow priority; after the capital exists the normal budget is
+            // unchanged and the five-second construction cadence still applies.
+            bool foundationPending = CityPlanner != null && CityPlanner.Capital == null;
+            if ((!marketChanged || foundationPending)
+                && (operations < maxOperations || foundationPending))
             {
                 moduleStartedAt = Time.realtimeSinceStartup;
-                operations += BuildDirector.Plan(now, IntentBoard) ? 1 : 0;
+                bool planAccepted = BuildDirector != null && BuildDirector.Plan(now, IntentBoard);
+                if (foundationPending && !foundationDiagnosticLogged)
+                {
+                    StringBuilder intentSummary = new StringBuilder();
+                    foreach (IA01Intent intent in IntentBoard.All)
+                    {
+                        if (intent == null || !intent.Approved) continue;
+                        if (intentSummary.Length > 0) intentSummary.Append(",");
+                        intentSummary.Append(intent.Type);
+                    }
+                    Debug.Log("[IA01 Build] Diagnostico abertura: ops=" + operations
+                        + "/" + maxOperations + " marketChanged=" + marketChanged
+                        + " plan=" + planAccepted
+                        + " director=" + (BuildDirector != null ? BuildDirector.Status : "null")
+                        + " intents=" + intentSummary);
+                    foundationDiagnosticLogged = true;
+                }
+                operations += planAccepted ? 1 : 0;
                 TrackModule("BuildDirector", moduleStartedAt);
             }
 
             bool processQueuedCommand = BuildDirector == null
                 || !BuildDirector.HasPendingConstruction
                 || now >= BuildDirector.ConfirmationReadyAt;
-            if (operations < maxOperations && processQueuedCommand)
+            if ((operations < maxOperations || foundationPending) && processQueuedCommand)
             {
                 bool cancelConstructionCommands = (ConstructionGovernor != null && ConstructionGovernor.ConstructionMode == IA01ConstructionMode.Frozen)
                     || (BuildDirector != null && BuildDirector.CancelQueuedConstructionCommand);
-                operations += CommandQueue.ProcessOne(now, cancelConstructionCommands) ? 1 : 0;
+                bool commandProcessed = CommandQueue.ProcessOne(now, cancelConstructionCommands);
+                if (foundationPending && BuildDirector != null && BuildDirector.HasPendingConstruction
+                    && !foundationCommandDiagnosticLogged)
+                {
+                    Debug.Log("[IA01 Build] Diagnostico fila prefeitura: processado=" + commandProcessed
+                        + " cancelado=" + cancelConstructionCommands
+                        + " pendentes=" + CommandQueue.PendingCount
+                        + " estado=" + BuildDirector.CurrentConstructionState
+                        + " status=" + BuildDirector.Status);
+                    foundationCommandDiagnosticLogged = true;
+                }
+                operations += commandProcessed ? 1 : 0;
             }
 
             currentTreasury = country != null ? country.saldo : currentTreasury;
@@ -364,6 +410,13 @@ namespace Hegemonia.AI.IA01
 
         private void UpdateObjectiveStatus(IA01IntentBoard board, DadosPaisGoverno country, float now)
         {
+            IA01PopulationRecord population = context.GetPopulationSnapshot();
+            if (CityPlanner != null && CityPlanner.Capital != null && population.Total > population.HousingCapacity)
+            {
+                NextObjectiveStatus = "Objetivo: ampliar moradia.";
+                return;
+            }
+
             IA01Intent intent = board.GetBestApproved(candidate => BuildDirector == null || BuildDirector.AllowsIntent(candidate, now));
             if (intent == null)
             {
@@ -383,6 +436,9 @@ namespace Hegemonia.AI.IA01
                     NextObjectiveStatus = "Objetivo: garantir comida.";
                     break;
                 case IA01IntentType.BuildResidentialCapacity:
+                case IA01IntentType.BuildStarterHouse:
+                case IA01IntentType.BuildMediumApartment:
+                case IA01IntentType.BuildHighApartment:
                     NextObjectiveStatus = "Objetivo: ampliar moradia.";
                     break;
                 case IA01IntentType.BuildStorage:
@@ -732,6 +788,7 @@ namespace Hegemonia.AI.IA01
             lastFoundationCapitalCost = capitalCost;
             if (capitalConfirmed || profile == null || restoredFromSave || this.restoredFromSave)
             {
+                SistemaGovernoMundial.Instancia?.LiberarReservaFundacao(context.TeamId);
                 lastFoundationAvailableFunds = 0;
                 return false;
             }
@@ -746,6 +803,10 @@ namespace Hegemonia.AI.IA01
                 return false;
             }
 
+            // A reserva existe antes do primeiro comando para impedir que
+            // economia, mercado ou outro diretor consuma o caixa entre o grant
+            // e a confirmacao da prefeitura.
+            government.DefinirReservaFundacao(context.TeamId, target);
             lastFoundationAvailableFunds = Math.Max(country.saldo, (long)capitalCost);
 
             if (foundationFundingGranted && country.saldo >= Mathf.Max(1, capitalCost))
@@ -763,7 +824,15 @@ namespace Hegemonia.AI.IA01
 
             // A prefeitura e a primeira obra dependem do saldo inicial. Enquanto a sede
             // nao existe, uma sincronizacao externa nao pode consumir esse capital de partida.
-            government.AdicionarSaldo(context.TeamId, target - country.saldo);
+            if (RTSResourceLedgerService.Instancia != null)
+            {
+                RTSResourceLedgerService.Instancia.TryProtectFoundation(context.TeamId, target, out lastFoundationAvailableFunds);
+            }
+            else
+            {
+                government.AdicionarSaldo(context.TeamId, target - country.saldo);
+                lastFoundationAvailableFunds = country.saldo;
+            }
             context.SetMetric("ia01.foundation_funds_protected", target);
             context.SetMetric("ia01.foundation_capital_cost", capitalCost);
             foundationFundingGranted = true;
@@ -1068,6 +1137,16 @@ namespace Hegemonia.AI.IA01
                 return;
             }
 
+            IA01PopulationRecord population = context.GetPopulationSnapshot();
+
+            if (controller != null && controller.UseScriptedOpening && population.Total > population.HousingCapacity)
+            {
+                FoundationSequenceStatus = "Moradia urgente";
+                board.Publish(IA01IntentType.BuildResidentialCapacity, 2200, FoundationSequenceStatus, now);
+                Status = "Sequencia de fundacao: " + FoundationSequenceStatus + ".";
+                return;
+            }
+
             // A abertura roteirizada e opcional. Sem ela, a IA nao pode enfileirar
             // quartel, fabrica, aeroportos ou estruturas navais por conta propria
             // logo no carregamento da partida.
@@ -1082,6 +1161,14 @@ namespace Hegemonia.AI.IA01
                 for (int i = 0; i < FoundationSequence.Length; i++)
                 {
                     IA01IntentType step = FoundationSequence[i];
+                    bool residentialStep = step == IA01IntentType.BuildStarterHouse
+                        || step == IA01IntentType.BuildMediumApartment
+                        || step == IA01IntentType.BuildHighApartment;
+                    if (residentialStep && population.Total <= population.HousingCapacity)
+                    {
+                        continue;
+                    }
+
                     if (IsFoundationStepComplete(step) || unavailableSequenceSteps.Contains(step))
                     {
                         continue;
@@ -1108,7 +1195,7 @@ namespace Hegemonia.AI.IA01
 
             PublishBuildNeed(board, now, profile, IA01IntentType.BuildEnergy, stage, posture, structures, threatened, atWar, DeveConstruirEnergia(country), "Energia inicial");
             PublishBuildNeed(board, now, profile, IA01IntentType.BuildFoodProduction, stage, posture, structures, threatened, atWar, DeveConstruirComida(country), "Producao de alimentos");
-            PublishBuildNeed(board, now, profile, IA01IntentType.BuildResidentialCapacity, stage, posture, structures, threatened, atWar, structures < 4 || stage == IA01NationStage.Survival || stage == IA01NationStage.Stabilization, "Moradia inicial");
+            PublishBuildNeed(board, now, profile, IA01IntentType.BuildResidentialCapacity, stage, posture, structures, threatened, atWar, population.Total > population.HousingCapacity, "Moradia inicial");
             PublishBuildNeed(board, now, profile, IA01IntentType.BuildStorage, stage, posture, structures, threatened, atWar, DeveConstruirArmazenamento(), "Reserva e armazenamento");
             PublishBuildNeed(board, now, profile, IA01IntentType.BuildLogistics, stage, posture, structures, threatened, atWar, structures < 6 || stage >= IA01NationStage.UrbanDevelopment, "Acesso e logistica");
             PublishBuildNeed(board, now, profile, IA01IntentType.BuildIndustry, stage, posture, structures, threatened, atWar, structures >= 5 && stage >= IA01NationStage.Industrialization, "Base industrial");
@@ -1441,6 +1528,11 @@ namespace Hegemonia.AI.IA01
             this.buildPlan = buildPlan;
         }
 
+        public IA01BuildCatalogAdapter(DadosConstrucao explicitCapital)
+            : this(explicitCapital, null)
+        {
+        }
+
         public bool TryGetCapital(out IA01BuildDefinition definition)
         {
             intentQueryCount++;
@@ -1534,7 +1626,7 @@ namespace Hegemonia.AI.IA01
         {
             MarkExact(source, definition);
             CapitalItemIdStatus = definition.ItemId;
-            CapitalPrefabStatus = definition.Item != null && definition.Item.prefabDaUnidade != null ? definition.Item.prefabDaUnidade.name : "n/d";
+            CapitalPrefabStatus = definition.Item != null && definition.Item.PrefabDaUnidade != null ? definition.Item.PrefabDaUnidade.name : "n/d";
         }
 
         public bool TryGetForIntent(IA01IntentType intent, DadosPaisGoverno country, IA01NationStage stage, out IA01BuildDefinition definition)
@@ -1783,8 +1875,8 @@ namespace Hegemonia.AI.IA01
                 Footprint = new Vector2(Mathf.Max(8f, bounds.size.x), Mathf.Max(8f, bounds.size.z)),
                 RequiresRoad = RequiresRoadConnection(domain, archetype),
                 RequiresNavalExit = domain == IA01BuildDomain.Coastal || domain == IA01BuildDomain.Water,
-                StrategicRole = item.strategicRole,
-                MinimumStage = ResolveMinimumStage(item.strategicRole)
+                StrategicRole = item.StrategicRole,
+                MinimumStage = ResolveMinimumStage(item.StrategicRole)
             };
             definition.StrategicRole = ResolveStrategicRole(definition, item);
             definition.MinimumStage = ResolveMinimumStage(definition.StrategicRole);
@@ -1975,14 +2067,14 @@ namespace Hegemonia.AI.IA01
                 return IA01StrategicRole.None;
             }
 
-            if (item.strategicRole != IA01StrategicRole.None)
+            if (item.StrategicRole != IA01StrategicRole.None)
             {
-                return item.strategicRole;
+                return item.StrategicRole;
             }
 
             string semanticText = IA_Text.Normalize((item.GetStableId() ?? string.Empty) + " "
                 + (item.GetDisplayName() ?? string.Empty) + " "
-                + (item.nomeItem ?? string.Empty) + " "
+                + (item.NomeItem ?? string.Empty) + " "
                 + (item.aliases ?? string.Empty));
             IA_ConstructionCapability semanticCapabilities = item.GetResolvedCapabilities();
             if ((semanticCapabilities & IA_ConstructionCapability.Defense) != 0
@@ -2021,7 +2113,7 @@ namespace Hegemonia.AI.IA01
             }
 
             IA_ConstructionCapability capabilities = item.GetResolvedCapabilities();
-            bool hasExplicitCapabilities = item.capacidades != IA_ConstructionCapability.Auto;
+            bool hasExplicitCapabilities = item.Capacidades != IA_ConstructionCapability.Auto;
             if (hasExplicitCapabilities
                 && (capabilities & IA_ConstructionCapability.Defense) != 0
                 && (capabilities & IA_ConstructionCapability.Structure) != 0)
@@ -2235,7 +2327,7 @@ namespace Hegemonia.AI.IA01
 
             return IA_Text.Normalize((definition.ItemId ?? string.Empty) + " "
                 + (definition.DisplayName ?? string.Empty) + " "
-                + (definition.Item.nomeItem ?? string.Empty) + " "
+                + (definition.Item.NomeItem ?? string.Empty) + " "
                 + (definition.Item.aliases ?? string.Empty));
         }
 
@@ -2411,8 +2503,8 @@ namespace Hegemonia.AI.IA01
                 Footprint = new Vector2(Mathf.Max(8f, bounds.size.x), Mathf.Max(8f, bounds.size.z)),
                 RequiresRoad = RequiresRoadConnection(domain, archetype),
                 RequiresNavalExit = domain == IA01BuildDomain.Coastal || domain == IA01BuildDomain.Water,
-                StrategicRole = item.strategicRole,
-                MinimumStage = ResolveMinimumStage(item.strategicRole)
+                StrategicRole = item.StrategicRole,
+                MinimumStage = ResolveMinimumStage(item.StrategicRole)
             };
             return true;
         }
@@ -2420,9 +2512,9 @@ namespace Hegemonia.AI.IA01
         private static bool IsCapitalCandidate(DadosConstrucao item)
         {
             if (item == null) return false;
-            return item.strategicRole == IA01StrategicRole.Capital
-                || item.strategicRole == IA01StrategicRole.Government
-                || item.strategicRole == IA01StrategicRole.Command;
+            return item.StrategicRole == IA01StrategicRole.Capital
+                || item.StrategicRole == IA01StrategicRole.Government
+                || item.StrategicRole == IA01StrategicRole.Command;
         }
 
         private static int ScoreFallback(IA01IntentType intent, DadosConstrucao item, IA01BuildDefinition candidate)
@@ -2502,9 +2594,9 @@ namespace Hegemonia.AI.IA01
 
         private static IA01BuildArchetype InferArchetype(DadosConstrucao item, GameObject prefab)
         {
-            if (item.strategicRole == IA01StrategicRole.Capital
-                || item.strategicRole == IA01StrategicRole.Government
-                || item.strategicRole == IA01StrategicRole.Command)
+            if (item.StrategicRole == IA01StrategicRole.Capital
+                || item.StrategicRole == IA01StrategicRole.Government
+                || item.StrategicRole == IA01StrategicRole.Command)
             {
                 return IA01BuildArchetype.Command;
             }
@@ -2544,10 +2636,10 @@ namespace Hegemonia.AI.IA01
         private static bool IsAntiAirItem(DadosConstrucao item, IA_ConstructionCapability capabilities)
         {
             if (item == null) return false;
-            if (item.strategicRole == IA01StrategicRole.AntiAirDefense) return true;
+            if (item.StrategicRole == IA01StrategicRole.AntiAirDefense) return true;
             string text = IA_Text.Normalize((item.GetStableId() ?? string.Empty) + " "
                 + (item.GetDisplayName() ?? string.Empty) + " "
-                + (item.nomeItem ?? string.Empty) + " "
+                + (item.NomeItem ?? string.Empty) + " "
                 + (item.aliases ?? string.Empty));
             bool defense = (capabilities & IA_ConstructionCapability.Defense) != 0;
             return defense && ContainsAny(text, "antiaerea", "anti aerea", "anti-air", "antiair", "air defense", "defesa aerea");
@@ -2822,6 +2914,12 @@ namespace Hegemonia.AI.IA01
                 IA01BuildSlot capitalSlot = controller != null ? controller.CapitalSlot : null;
                 if (capitalSlot == null)
                 {
+                    if (controller != null && !controller.UsePreparedSlots)
+                    {
+                        origin = controller.transform.position;
+                        return true;
+                    }
+
                     reason = "capital e create oficial da capital ainda não estão prontos";
                     return false;
                 }
@@ -3052,6 +3150,7 @@ namespace Hegemonia.AI.IA01
         private float lastConstructionCompletedAt = -1f;
         private float nextNonCapitalConstructionAt;
         private bool nonCapitalCadenceArmed;
+        private string lastConstructionDiagnostic = string.Empty;
         private IA01BuildDefinition pendingDefinition;
         private IA01BuildLot pendingLot;
         private IA01Intent pendingIntent;
@@ -3382,6 +3481,7 @@ namespace Hegemonia.AI.IA01
                         {
                             if (intent.Type == IA01IntentType.BuildVehicleConstructor && !string.IsNullOrWhiteSpace(motivoFallback))
                                 reason = reason + " | fallback local: " + motivoFallback;
+                            ReportConstructionDiagnostic(intent.Type, definition, reason);
                         currentConstructionState = IA01ConstructionState.Cooldown;
                         Status = "Create fixo invalido para " + definition.DisplayName + ": " + reason;
                         RecordFailure(intent.Type, attemptKey, now, stateToken, IA01FailureCode.NoValidLot, IA01IntentBlockReason.NoLot, reason);
@@ -3462,7 +3562,16 @@ namespace Hegemonia.AI.IA01
                     pendingPrefabId = pendingPrefab.name;
                 }
                 currentLotId = lot.Key;
-                confirmationReadyAt = now + 0.05f;
+                // A fundacao e a dependencia que destrava toda a economia. Ela
+                // nao deve perder uma fatia de scheduler (ou expirar durante um
+                // frame de carregamento pesado) antes de entrar no executor. A
+                // confirmacao do registro do mundo continua acontecendo na
+                // fatia seguinte; somente o comando de fundacao fica elegivel
+                // imediatamente. As demais obras preservam a pequena janela de
+                // confirmacao usada para desacoplar planejamento e execucao.
+                confirmationReadyAt = city != null && city.Capital == null
+                    ? now
+                    : now + 0.05f;
                 confirmationDeadline = now + 8f;
                 Status = definition.UsedCatalogFallback
                     ? "Obra aprovada com fallback: " + definition.DisplayName + ". " + definition.CatalogResolution
@@ -3628,6 +3737,15 @@ namespace Hegemonia.AI.IA01
         {
             currentConstructionState = IA01ConstructionState.Executing;
             return executor != null && executor.TryExecute(definition, lot, activeConstructionCommand, pendingPrefabId, foundationBudgetOverride, out _);
+        }
+
+        private void ReportConstructionDiagnostic(IA01IntentType intent, IA01BuildDefinition definition, string reason)
+        {
+            string message = intent + " / " + (definition != null ? definition.DisplayName : "sem definicao")
+                + ": " + (string.IsNullOrWhiteSpace(reason) ? "motivo desconhecido" : reason);
+            if (string.Equals(lastConstructionDiagnostic, message, StringComparison.Ordinal)) return;
+            lastConstructionDiagnostic = message;
+            Debug.LogWarning("[IA01 Build] Lote recusado: " + message);
         }
 
         private void ConfirmBuild(bool success, IA01BuildDefinition definition, IA01BuildLot lot, IA01Intent intent, IA01IntentBoard board, float now)
@@ -4121,10 +4239,10 @@ namespace Hegemonia.AI.IA01
         private static bool IsAntiAirItem(DadosConstrucao item, IA_ConstructionCapability capabilities)
         {
             if (item == null) return false;
-            if (item.strategicRole == IA01StrategicRole.AntiAirDefense) return true;
+            if (item.StrategicRole == IA01StrategicRole.AntiAirDefense) return true;
             string text = IA_Text.Normalize((item.GetStableId() ?? string.Empty) + " "
                 + (item.GetDisplayName() ?? string.Empty) + " "
-                + (item.nomeItem ?? string.Empty) + " "
+                + (item.NomeItem ?? string.Empty) + " "
                 + (item.aliases ?? string.Empty));
             return (capabilities & IA_ConstructionCapability.Defense) != 0
                 && (text.Contains("antiaerea") || text.Contains("anti aerea") || text.Contains("anti-air")

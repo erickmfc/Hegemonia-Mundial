@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.RTS;
 
 public class PierMarinha : MonoBehaviour
 {
@@ -385,7 +386,7 @@ public class PierMarinha : MonoBehaviour
     {
         ProcessarManutencao();
 
-        if (Input.GetKeyDown(KeyCode.V) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
+        if (RTSInputBindings.GetKeyDown(RTSInputAction.Pier) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
             MenuPier.AlternarPorAtalho(this);
         }

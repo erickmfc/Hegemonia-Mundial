@@ -205,6 +205,11 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
                 AdicionarFicha(catalogoSobrescritoParaTeste[i]);
             }
 
+            // O sobrescrito representa a mesma fonte de verdade temporária usada
+            // pela auditoria. Registre-o antes das validações de integridade para
+            // que o teste e o fluxo real consultem o mesmo catálogo compartilhado.
+            CatalogoProdutoCompartilhado.RegistrarConstrucoes(fichas);
+
             return;
         }
 
@@ -244,7 +249,7 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
 
     private void AuditarFicha(DadosConstrucao ficha, ref int erros, ref int avisos, ref int eventosEmitidos, int limiteEventos)
     {
-        string nome = string.IsNullOrWhiteSpace(ficha.nomeItem) ? ficha.name : ficha.nomeItem;
+        string nome = string.IsNullOrWhiteSpace(ficha.NomeItem) ? ficha.name : ficha.NomeItem;
         string stableId = IA_Text.Normalize(ficha.GetStableId());
         CatalogoProdutoUnificadoItem catalogoCompartilhado;
         if (string.IsNullOrEmpty(stableId))
@@ -287,7 +292,7 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         bool hasPrefab = ficha != null && ficha.TryGetPrefab(out prefab);
         bool emDesenvolvimento = EhPrefabEmDesenvolvimento(nome);
 
-        if (string.IsNullOrWhiteSpace(ficha.nomeItem))
+        if (string.IsNullOrWhiteSpace(ficha.NomeItem))
         {
             avisos++;
             Emitir("AVISO", "Ficha sem nome: " + ficha.name, ref eventosEmitidos, limiteEventos);
@@ -404,8 +409,8 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         if (primeira == null || segunda == null) return false;
         if (primeira.categoria != segunda.categoria || primeira.preco != segunda.preco) return false;
 
-        string nomePrimeira = string.IsNullOrWhiteSpace(primeira.nomeItem) ? primeira.name : primeira.nomeItem;
-        string nomeSegunda = string.IsNullOrWhiteSpace(segunda.nomeItem) ? segunda.name : segunda.nomeItem;
+        string nomePrimeira = string.IsNullOrWhiteSpace(primeira.NomeItem) ? primeira.name : primeira.NomeItem;
+        string nomeSegunda = string.IsNullOrWhiteSpace(segunda.NomeItem) ? segunda.name : segunda.NomeItem;
         if (!string.Equals(nomePrimeira, nomeSegunda, System.StringComparison.OrdinalIgnoreCase)) return false;
 
         // Duas fichas podem apontar para o mesmo produto por caminhos de
@@ -490,7 +495,7 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
 
     private string DetectarCategoriaSuspeita(DadosConstrucao ficha, GameObject prefab)
     {
-        string texto = Normalizar(ficha.nomeItem + " " + prefab.name);
+        string texto = Normalizar(ficha.NomeItem + " " + prefab.name);
         if ((texto.Contains("navio") || texto.Contains("submarino") || texto.Contains("fragata") || texto.Contains("corveta") || texto.Contains("petroleiro"))
             && ficha.categoria != DadosConstrucao.CategoriaItem.Marinha)
         {

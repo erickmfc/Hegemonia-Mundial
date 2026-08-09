@@ -70,13 +70,13 @@ namespace Hegemonia.AI.Sovereign
             }
 
             GameObject created = null;
-            if (Construtor.Instancia != null && data.prefabDaUnidade != null)
+            if (Construtor.Instancia != null && data.PrefabDaUnidade != null)
             {
-                created = Construtor.Instancia.ConstruirEstruturaIA(data.prefabDaUnidade, position, rotation);
+                created = Construtor.Instancia.ConstruirEstruturaIA(data.PrefabDaUnidade, position, rotation);
             }
-            if (created == null && data.prefabDaUnidade != null)
+            if (created == null && data.PrefabDaUnidade != null)
             {
-                created = Object.Instantiate(data.prefabDaUnidade, position, rotation);
+                created = Object.Instantiate(data.PrefabDaUnidade, position, rotation);
             }
 
             if (created == null)
@@ -115,7 +115,7 @@ namespace Hegemonia.AI.Sovereign
                 return true;
             }
 
-            if (!allowEmergencySpawn || data.prefabDaUnidade == null)
+            if (!allowEmergencySpawn || data.PrefabDaUnidade == null)
             {
                 reason = "infra_indisponivel";
                 return false;
@@ -128,7 +128,7 @@ namespace Hegemonia.AI.Sovereign
                 return false;
             }
 
-            GameObject emergencial = Object.Instantiate(data.prefabDaUnidade, spawn, Quaternion.identity);
+            GameObject emergencial = Object.Instantiate(data.PrefabDaUnidade, spawn, Quaternion.identity);
             if (emergencial == null)
             {
                 reason = "spawn_emergencial_falhou";
@@ -240,7 +240,7 @@ namespace Hegemonia.AI.Sovereign
 
             foreach (DadosConstrucao item in _catalog)
             {
-                if (item == null || item.prefabDaUnidade == null)
+                if (item == null || item.PrefabDaUnidade == null)
                 {
                     continue;
                 }
@@ -302,7 +302,7 @@ namespace Hegemonia.AI.Sovereign
 
         private static bool MatchesRole(AISovereignCatalogRole role, DadosConstrucao item)
         {
-            string normalized = IA_Text.Normalize(item.GetDisplayName() + " " + item.name + " " + item.prefabDaUnidade.name);
+            string normalized = IA_Text.Normalize(item.GetDisplayName() + " " + item.name + " " + item.PrefabDaUnidade.name);
             switch (role)
             {
                 case AISovereignCatalogRole.Core:
@@ -348,7 +348,7 @@ namespace Hegemonia.AI.Sovereign
         {
             produced = null;
 
-            string normalized = IA_Text.Normalize(data.GetDisplayName() + " " + data.name + " " + data.prefabDaUnidade.name);
+            string normalized = IA_Text.Normalize(data.GetDisplayName() + " " + data.name + " " + data.PrefabDaUnidade.name);
             if (data.HasCapability(IA_ConstructionCapability.Naval) && !data.HasCapability(IA_ConstructionCapability.Structure))
             {
                 RegistroEntidadesJogo.FillEstaleiros(_shipyards);
@@ -360,7 +360,7 @@ namespace Hegemonia.AI.Sovereign
                         continue;
                     }
 
-                    if (shipyard.ConstruirUnidade(data.prefabDaUnidade))
+                    if (shipyard.ConstruirUnidade(data.PrefabDaUnidade))
                     {
                         return true;
                     }
@@ -379,7 +379,7 @@ namespace Hegemonia.AI.Sovereign
                         continue;
                     }
 
-                    airport.ComprarAviao(data.prefabDaUnidade);
+                    airport.ComprarAviao(data.PrefabDaUnidade);
                     return true;
                 }
 
@@ -392,7 +392,7 @@ namespace Hegemonia.AI.Sovereign
                         continue;
                     }
 
-                    produced = Object.Instantiate(data.prefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
+                    produced = Object.Instantiate(data.PrefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
                     return produced != null;
                 }
             }
@@ -406,7 +406,7 @@ namespace Hegemonia.AI.Sovereign
                     continue;
                 }
 
-                produced = factory.ProduzirUnidade(data.prefabDaUnidade);
+                produced = factory.ProduzirUnidade(data.PrefabDaUnidade);
                 if (produced != null)
                 {
                     return true;
@@ -419,7 +419,7 @@ namespace Hegemonia.AI.Sovereign
         private bool TryResolveBuildPose(DadosConstrucao data, AISovereignPerception perception, ref Vector3 position, ref Quaternion rotation, out string reason)
         {
             reason = string.Empty;
-            if (data == null || data.prefabDaUnidade == null)
+            if (data == null || data.PrefabDaUnidade == null)
             {
                 reason = "prefab_invalido";
                 return false;
@@ -438,7 +438,7 @@ namespace Hegemonia.AI.Sovereign
 
             if (RequiresCoastalPlacement(data))
             {
-                if (!NavalPlacementResolver.TryResolveStructurePose(data.prefabDaUnidade, position, rotation, out NavalPlacementResolver.StructurePose pose))
+                if (!NavalPlacementResolver.TryResolveStructurePose(data.PrefabDaUnidade, position, rotation, out NavalPlacementResolver.StructurePose pose))
                 {
                     reason = string.IsNullOrEmpty(pose.Reason) ? "costa_invalida" : pose.Reason;
                     return false;
@@ -540,15 +540,15 @@ namespace Hegemonia.AI.Sovereign
 
         private static bool IsTerritoryExpansionMarker(DadosConstrucao data)
         {
-            if (data == null || data.prefabDaUnidade == null)
+            if (data == null || data.PrefabDaUnidade == null)
             {
                 return false;
             }
 
-            string text = IA_Text.Normalize(data.GetDisplayName() + " " + data.prefabDaUnidade.name);
+            string text = IA_Text.Normalize(data.GetDisplayName() + " " + data.PrefabDaUnidade.name);
             return text.Contains("bandeira")
                 || text.Contains("flag")
-                || data.prefabDaUnidade.GetComponent<MarcadorTerritorio>() != null;
+                || data.PrefabDaUnidade.GetComponent<MarcadorTerritorio>() != null;
         }
 
         private static bool IsCoastalStructure(DadosConstrucao data, AISovereignCatalogRole role)

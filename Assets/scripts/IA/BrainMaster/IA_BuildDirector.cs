@@ -3095,7 +3095,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             DadosConstrucao item;
-            if (!_context.Backend.TryResolveItem(itemKey, out item) || item == null || item.prefabDaUnidade == null)
+            if (!_context.Backend.TryResolveItem(itemKey, out item) || item == null || item.PrefabDaUnidade == null)
             {
                 EndTimingScope("TryLegacyEmergencyBuild", "item=" + itemKey + " | success=false | reason=itemMissing", profileStart, 2.00f);
                 return false;
@@ -3155,11 +3155,11 @@ namespace Hegemonia.AI.BrainMaster
             Construtor construtor = Object.FindFirstObjectByType<Construtor>();
             if (construtor != null)
             {
-                built = construtor.ConstruirEstruturaIA(item.prefabDaUnidade, candidate, rotation);
+                built = construtor.ConstruirEstruturaIA(item.PrefabDaUnidade, candidate, rotation);
             }
             else
             {
-                built = Object.Instantiate(item.prefabDaUnidade, candidate, rotation);
+                built = Object.Instantiate(item.PrefabDaUnidade, candidate, rotation);
             }
 
             if (built == null)
@@ -3299,7 +3299,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             DadosConstrucao data;
-            if (!_context.Backend.TryResolveItem(itemKey, out data) || data == null || data.prefabDaUnidade == null)
+            if (!_context.Backend.TryResolveItem(itemKey, out data) || data == null || data.PrefabDaUnidade == null)
             {
                 reason = "item naval nao encontrado";
                 EndTimingScope("TryFindDirectNavalCandidate", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 2.00f);
@@ -3323,7 +3323,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            bool requiresCoast = NavalPlacementResolver.RequiresCoastalPlacement(data.prefabDaUnidade);
+            bool requiresCoast = NavalPlacementResolver.RequiresCoastalPlacement(data.PrefabDaUnidade);
             var searchAnchors = new List<Vector3>();
             TryAddNavalSearchAnchor(searchAnchors, anchor, requiresCoast);
 
@@ -3392,7 +3392,7 @@ namespace Hegemonia.AI.BrainMaster
             candidate = anchor;
             reason = "sem ponto naval direto";
 
-            bool requiresCoast = NavalPlacementResolver.RequiresCoastalPlacement(data.prefabDaUnidade);
+            bool requiresCoast = NavalPlacementResolver.RequiresCoastalPlacement(data.PrefabDaUnidade);
             float startRadius = Mathf.Max(0f, minRadius);
             float endRadius = Mathf.Max(startRadius + 24f, maxRadius);
             
@@ -3451,7 +3451,7 @@ namespace Hegemonia.AI.BrainMaster
 
                             NavalPlacementResolver.StructurePose pose;
                             Quaternion fallbackRotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
-                            if (!NavalPlacementResolver.TryResolveStructurePose(data.prefabDaUnidade, probe, fallbackRotation, out pose))
+                            if (!NavalPlacementResolver.TryResolveStructurePose(data.PrefabDaUnidade, probe, fallbackRotation, out pose))
                             {
                                 reason = pose.Reason;
                                 continue;
@@ -3613,21 +3613,21 @@ namespace Hegemonia.AI.BrainMaster
             reason = string.Empty;
 
             DadosConstrucao data;
-            if (!_context.Backend.TryResolveItem(itemKey, out data) || data == null || data.prefabDaUnidade == null)
+            if (!_context.Backend.TryResolveItem(itemKey, out data) || data == null || data.PrefabDaUnidade == null)
             {
                 reason = "item nao encontrado";
                 EndTimingScope("TryResolveBuildPose", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 1.50f);
                 return false;
             }
 
-            if (!NavalPlacementResolver.RequiresCoastalPlacement(data.prefabDaUnidade))
+            if (!NavalPlacementResolver.RequiresCoastalPlacement(data.PrefabDaUnidade))
             {
                 EndTimingScope("TryResolveBuildPose", "item=" + itemKey + " | success=true | coastal=false", profileStart, 1.50f);
                 return true;
             }
 
             NavalPlacementResolver.StructurePose pose;
-            if (!NavalPlacementResolver.TryResolveStructurePose(data.prefabDaUnidade, position, rotation, out pose))
+            if (!NavalPlacementResolver.TryResolveStructurePose(data.PrefabDaUnidade, position, rotation, out pose))
             {
                 reason = string.IsNullOrEmpty(pose.Reason) ? "costa invalida" : pose.Reason;
                 EndTimingScope("TryResolveBuildPose", "item=" + itemKey + " | success=false | reason=" + reason, profileStart, 1.50f);
@@ -4095,8 +4095,8 @@ namespace Hegemonia.AI.BrainMaster
 
             coastalAnchor = center;
             DadosConstrucao coastalStructure = _context.Backend.FindFirstAvailable("estaleiros navais", "estaleiro naval", "estaleiro", "estaleiros", "pier");
-            string coastalKey = coastalStructure != null && coastalStructure.prefabDaUnidade != null
-                ? (string.IsNullOrEmpty(coastalStructure.nomeItem) ? coastalStructure.prefabDaUnidade.name : coastalStructure.nomeItem)
+            string coastalKey = coastalStructure != null && coastalStructure.PrefabDaUnidade != null
+                ? (string.IsNullOrEmpty(coastalStructure.NomeItem) ? coastalStructure.PrefabDaUnidade.name : coastalStructure.NomeItem)
                 : "estaleiro naval";
             Vector3 reference = ResolveStrategicReference(center);
             bool foundBest = false;
@@ -4194,7 +4194,7 @@ namespace Hegemonia.AI.BrainMaster
             coastalAnchor = center;
 
             DadosConstrucao coastalStructure = _context.Backend.FindFirstAvailable("estaleiros navais", "estaleiro naval", "estaleiro", "estaleiros", "pier");
-            if (coastalStructure == null || coastalStructure.prefabDaUnidade == null)
+            if (coastalStructure == null || coastalStructure.PrefabDaUnidade == null)
             {
                 EndTimingScope("TryFindDirectCoastalAnchor", "itemMissing=true", profileStart, 2.00f);
                 return false;
@@ -4231,11 +4231,11 @@ namespace Hegemonia.AI.BrainMaster
                     }
 
                     Quaternion fallbackRotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
-                    if (NavalPlacementResolver.TryResolveStructurePose(coastalStructure.prefabDaUnidade, probe, fallbackRotation, out pose))
+                    if (NavalPlacementResolver.TryResolveStructurePose(coastalStructure.PrefabDaUnidade, probe, fallbackRotation, out pose))
                     {
                         poseResolved++;
                         string territoryReason;
-                        string probeKey = string.IsNullOrEmpty(coastalStructure.nomeItem) ? coastalStructure.prefabDaUnidade.name : coastalStructure.nomeItem;
+                        string probeKey = string.IsNullOrEmpty(coastalStructure.NomeItem) ? coastalStructure.PrefabDaUnidade.name : coastalStructure.NomeItem;
                         if (_context.Backend.BuildService.ValidateTerritoryProbe(probeKey, pose.Position, out territoryReason))
                         {
                             territoryApproved++;

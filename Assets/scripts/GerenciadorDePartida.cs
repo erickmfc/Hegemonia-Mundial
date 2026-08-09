@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Hegemonia.RTS;
 
 public class GerenciadorDePartida : MonoBehaviour
 {
@@ -29,6 +30,14 @@ public class GerenciadorDePartida : MonoBehaviour
     public void ConfigurarPartida()
     {
         SanitizarCenaDePartidaNova();
+        if (SistemaSaveGame.Instancia != null && SistemaSaveGame.Instancia.carregouDeSave)
+        {
+            RTSGameSession.Instancia?.EnterGameplay(idJogador, idIA, 1);
+        }
+        else
+        {
+            RTSGameSession.Instancia?.BeginGameplay(idJogador, idIA, 1);
+        }
         Debug.Log("[Gerenciador] Partida iniciada.");
         // Configuracoes futuras de jogo podem vir aqui
     }

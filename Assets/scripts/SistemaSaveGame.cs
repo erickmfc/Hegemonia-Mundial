@@ -7,6 +7,7 @@ using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.DEUSA;
 using Hegemonia.AI.IA01;
 using Hegemonia.AI.Shared;
+using Hegemonia.RTS;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
@@ -43,6 +44,12 @@ public class DadosDoJogo
     // Sistema Industrial: salvo permanentemente (perfil mineral nunca muda)
     public List<SavePerfilMineral>  perfisMineral  = new List<SavePerfilMineral>();
     public List<SaveEstoqueMineral> estoquesMineral = new List<SaveEstoqueMineral>();
+    public float rtsSimulationTime;
+    public int rtsSimulationTick;
+    public int rtsMatchResult;
+    public int rtsPlayerTeamId = 1;
+    public int rtsPrimaryAiTeamId = 2;
+    public List<RTSObjectiveSaveData> rtsObjectives = new List<RTSObjectiveSaveData>();
 }
 
 [Serializable]
@@ -448,6 +455,7 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarEntidades();
         CapturarManifestosTransporte();
         CapturarSistemaIndustrial();
+        CapturarRTSState();
         dadosAtuais.totalDias = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : dadosAtuais.totalDias;
 
         string json = JsonUtility.ToJson(dadosAtuais, true);
@@ -502,6 +510,7 @@ public class SistemaSaveGame : MonoBehaviour
         AplicarDificuldadeSalva();
         AplicarRecursosSalvos();
         AplicarTempoSalvo();
+        AplicarRTSState();
         if (saveLegadoAntesDaVersao12)
         {
             // JsonUtility converte o numero antigo para long sem arredondamento.
@@ -530,6 +539,7 @@ public class SistemaSaveGame : MonoBehaviour
             GerenciadorRecursos.Instancia.dinheiro = perfil.DinheiroInicial;
             GerenciadorRecursos.Instancia.NotificarAtualizacao();
         }
+        Debug.Log("[NovoJogo] modo=" + perfil.Codigo + " | dinheiro inicial=" + perfil.DinheiroInicial + " | cena=" + dadosAtuais.mapaAtual);
         LogInfo("Novo jogo iniciado com dados reiniciados.");
     }
 
@@ -564,7 +574,7 @@ public class SistemaSaveGame : MonoBehaviour
             return cenaPadrao;
         }
 
-        return dadosAtuais.mapaAtual;
+        return ConfiguracaoCenasJogo.NormalizarCenaCampanha(dadosAtuais.mapaAtual, cenaPadrao);
     }
 
     public void ApagarDados()
@@ -622,6 +632,10 @@ public class SistemaSaveGame : MonoBehaviour
 
         if (!carregouDeSave)
         {
+            // A sanitizacao pode consumir o marcador antes do Start de
+            // GerenciadorRecursos. A partida nova ainda precisa receber os
+            // valores escolhidos no menu, nunca os valores serializados da cena.
+            AplicarRecursosSalvos();
             return;
         }
 
@@ -665,6 +679,7 @@ public class SistemaSaveGame : MonoBehaviour
         AplicarCameraSalva();
         AplicarRecursosSalvos();
         AplicarTempoSalvo();
+        AplicarRTSState();
         RestaurarSistemaIndustrial();
         DiagnosticoDesempenhoJogo.RegistrarEvento("Save", "Mundo restaurado (entidades=" + (dadosAtuais.entidades != null ? dadosAtuais.entidades.Count : 0) + ")");
     }
@@ -1380,15 +1395,15 @@ public class SistemaSaveGame : MonoBehaviour
         {
             foreach (DadosConstrucao ficha in MenuConstrucao.catalogoGlobal)
             {
-                if (ficha == null || ficha.prefabDaUnidade == null)
+                if (ficha == null || ficha.PrefabDaUnidade == null)
                 {
                     continue;
                 }
 
-                string fichaKey = SaveableEntity.NormalizarPrefabKey(ficha.prefabDaUnidade.name);
-                if (string.Equals(fichaKey, key, StringComparison.OrdinalIgnoreCase) || string.Equals(ficha.nomeItem, key, StringComparison.OrdinalIgnoreCase))
+                string fichaKey = SaveableEntity.NormalizarPrefabKey(ficha.PrefabDaUnidade.name);
+                if (string.Equals(fichaKey, key, StringComparison.OrdinalIgnoreCase) || string.Equals(ficha.NomeItem, key, StringComparison.OrdinalIgnoreCase))
                 {
-                    return ficha.prefabDaUnidade;
+                    return ficha.PrefabDaUnidade;
                 }
             }
         }
@@ -1557,6 +1572,64 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         GerenciadorTempo.Instancia.RestaurarDias(Mathf.Max(1, totalDias));
+    }
+
+    private void CapturarRTSState()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        RTSGameSession session = RTSGameSession.Instancia;
+        RTSSimulationClock clock = RTSSimulationClock.Instancia;
+        if (session != null)
+        {
+            dadosAtuais.tempoJogo = session.ElapsedSeconds;
+            dadosAtuais.rtsPlayerTeamId = session.PlayerTeamId;
+            dadosAtuais.rtsPrimaryAiTeamId = session.PrimaryAiTeamId;
+            dadosAtuais.rtsMatchResult = (int)session.Result;
+        }
+
+        if (clock != null)
+        {
+            dadosAtuais.rtsSimulationTime = clock.SimulationTime;
+            dadosAtuais.rtsSimulationTick = clock.Tick;
+        }
+
+        RTSObjectiveService objectives = RTSObjectiveService.Instancia;
+        if (objectives != null)
+        {
+            dadosAtuais.rtsObjectives = objectives.CaptureState();
+        }
+    }
+
+    private void AplicarRTSState()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        RTSGameSession session = RTSGameSession.Instancia;
+        if (session != null)
+        {
+            RTSMatchResult result = Enum.IsDefined(typeof(RTSMatchResult), dadosAtuais.rtsMatchResult)
+                ? (RTSMatchResult)dadosAtuais.rtsMatchResult
+                : RTSMatchResult.None;
+            session.RestoreState(
+                dadosAtuais.rtsPlayerTeamId,
+                dadosAtuais.rtsPrimaryAiTeamId,
+                1,
+                dadosAtuais.rtsSimulationTime > 0f ? dadosAtuais.rtsSimulationTime : dadosAtuais.tempoJogo,
+                result);
+        }
+
+        RTSSimulationClock clock = RTSSimulationClock.Instancia;
+        clock?.RestoreState(dadosAtuais.rtsSimulationTime, dadosAtuais.rtsSimulationTick);
+
+        RTSObjectiveService objectives = RTSObjectiveService.Instancia;
+        objectives?.RestoreState(dadosAtuais.rtsObjectives);
     }
 
     private void MigrarIndustriaLegadaSeNecessario()

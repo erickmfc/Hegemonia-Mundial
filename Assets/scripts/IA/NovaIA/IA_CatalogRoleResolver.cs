@@ -100,7 +100,7 @@ namespace Hegemonia.AI.Master
             for (int j = 0; j < _catalog.Count; j++)
             {
                 DadosConstrucao item = _catalog[j];
-                if (item == null || item.prefabDaUnidade == null)
+                if (item == null || item.PrefabDaUnidade == null)
                 {
                     continue;
                 }
@@ -123,12 +123,12 @@ namespace Hegemonia.AI.Master
                 for (int j = 0; j < _catalog.Count; j++)
                 {
                     DadosConstrucao item = _catalog[j];
-                    if (item == null || item.prefabDaUnidade == null)
+                    if (item == null || item.PrefabDaUnidade == null)
                     {
                         continue;
                     }
 
-                    string joined = IA_Text.Normalize(item.nomeItem + " " + item.name + " " + item.prefabDaUnidade.name);
+                    string joined = IA_Text.Normalize(item.NomeItem + " " + item.name + " " + item.PrefabDaUnidade.name);
                     if (joined.Contains(alias))
                     {
                         _resolved[role] = item.GetDisplayName();

@@ -3,6 +3,21 @@ using UnityEngine;
 
 public static class RegistroEntidadesJogo
 {
+    private sealed class EntitySet<T> : HashSet<T>, System.Collections.ICollection where T : Object
+    {
+        public bool IsSynchronized => false;
+        public object SyncRoot => this;
+
+        public void CopyTo(System.Array array, int index)
+        {
+            int destino = index;
+            foreach (T item in this)
+            {
+                array.SetValue(item, destino++);
+            }
+        }
+    }
+
     public static event System.Action EntidadesAlteradas;
 
     private static readonly HashSet<IdentidadeUnidade> Unidades = new HashSet<IdentidadeUnidade>();
@@ -11,8 +26,8 @@ public static class RegistroEntidadesJogo
     private static readonly HashSet<IdentidadeIA> IdentidadesIA = new HashSet<IdentidadeIA>();
     private static readonly HashSet<Imovel> Imoveis = new HashSet<Imovel>();
     private static readonly HashSet<GerenciadorAeroporto> Aeroportos = new HashSet<GerenciadorAeroporto>();
-    private static readonly HashSet<ControleAviao> Avioes = new HashSet<ControleAviao>();
-    private static readonly HashSet<Helicoptero> Helicopteros = new HashSet<Helicoptero>();
+    private static readonly EntitySet<ControleAviao> Avioes = new EntitySet<ControleAviao>();
+    private static readonly EntitySet<Helicoptero> Helicopteros = new EntitySet<Helicoptero>();
     private static readonly HashSet<PierMarinha> Piers = new HashSet<PierMarinha>();
     private static readonly HashSet<Fabrica> Fabricas = new HashSet<Fabrica>();
     private static readonly HashSet<Estaleiro> Estaleiros = new HashSet<Estaleiro>();

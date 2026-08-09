@@ -91,6 +91,7 @@ public class Fazenda : MonoBehaviour
 
         PopularCatalogoSeNecessario();
         NormalizarCatalogoAgricola();
+        ProducaoAutomaticaEdificio.Garantir(gameObject, ProducaoAutomaticaEdificio.TipoInstalacao.Fazenda);
     }
 
     private void Start()

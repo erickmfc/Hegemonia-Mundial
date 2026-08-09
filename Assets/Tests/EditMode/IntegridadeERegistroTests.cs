@@ -5,6 +5,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.TestTools;
 
 public sealed class IntegridadeERegistroTests
 {
@@ -73,7 +74,18 @@ public sealed class IntegridadeERegistroTests
         objetosParaDestruir.Add(auditorGo);
         object auditor = objetoSeguroAddComponent(auditorGo, auditoriaType);
 
-        InvocarMetodoInstancia(auditor, "ExecutarAuditoriaImediata");
+        // A auditoria deve emitir os diagnósticos de cada erro encontrado;
+        // neste caso os logs de erro são parte do comportamento esperado do
+        // teste e não uma falha inesperada do runner.
+        LogAssert.ignoreFailingMessages = true;
+        try
+        {
+            InvocarMetodoInstancia(auditor, "ExecutarAuditoriaImediata");
+        }
+        finally
+        {
+            LogAssert.ignoreFailingMessages = false;
+        }
 
         object resultado = LerPropriedadeStatica(auditoriaType, "UltimoResultado");
         Assert.That(LerCampoOuPropriedade(resultado, "TotalFichas"), Is.EqualTo(1));

@@ -105,7 +105,24 @@ namespace Hegemonia.AI.IA01
         {
             if (instance != null && instance != this)
             {
-                Destroy(gameObject);
+                // O manager persistente da partida continua sendo a autoridade
+                // durante a troca de cenas. Desative o duplicado imediatamente
+                // para que ele não execute ticks nem seja escolhido por buscas
+                // de cena antes do Destroy realmente sair do frame.
+                enabled = false;
+                // Em algumas cenas o manager local compartilha o root com o
+                // controller e o IA01CityLayout. Remover o GameObject inteiro
+                // destruiria a infraestrutura válida da campanha.
+                bool ownsSceneInfrastructure = GetComponentInChildren<IA01Controller>(true) != null
+                    || GetComponentInChildren<IA01CityLayout>(true) != null;
+                if (ownsSceneInfrastructure)
+                {
+                    Destroy(this);
+                }
+                else
+                {
+                    Destroy(gameObject);
+                }
                 return;
             }
 
@@ -355,6 +372,7 @@ namespace Hegemonia.AI.IA01
             go.transform.SetParent(transform, false);
             IA01Controller controller = go.AddComponent<IA01Controller>();
             controller.ConfigureFromGovernment(country, matchSeed, ServiceSnapshot.DifficultyCode);
+            controller.ConfigureForAutonomousRuntime();
             RegisterController(controller);
             return controller;
         }
@@ -442,14 +460,14 @@ namespace Hegemonia.AI.IA01
             reason = string.Empty;
 
             global::SistemaGovernoMundial government = global::SistemaGovernoMundial.Instancia;
-            if (government == null)
+            if (Application.isPlaying && government == null)
             {
                 reason = "governo mundial ainda não inicializado";
                 worldReadyReason = reason;
                 return false;
             }
 
-            if (government.Paises == null || government.Paises.Count == 0)
+            if (Application.isPlaying && (government.Paises == null || government.Paises.Count == 0))
             {
                 reason = "lista de países ainda não carregada";
                 worldReadyReason = reason;

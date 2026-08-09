@@ -413,9 +413,9 @@ namespace Hegemonia.AI.IA01.Editor
                 return IA01StrategicRole.None;
             }
 
-            if (data.strategicRole != IA01StrategicRole.None)
+            if (data.StrategicRole != IA01StrategicRole.None)
             {
-                return data.strategicRole;
+                return data.StrategicRole;
             }
 
             IA_ConstructionCapability capabilities = data.GetResolvedCapabilities();

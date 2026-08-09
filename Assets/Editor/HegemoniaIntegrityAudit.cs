@@ -138,7 +138,7 @@ public static class HegemoniaIntegrityAudit
                 continue;
             }
 
-            if (item.prefabDaUnidade == null)
+            if (item.PrefabDaUnidade == null)
             {
                 semPrefab++;
                 report.AppendLine("Catalogo sem prefab: " + path);

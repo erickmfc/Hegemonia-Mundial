@@ -588,6 +588,34 @@ public class SistemaIndustrialNacional : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Adds a complete factory cycle with one government synchronization.
+    /// This avoids one economy/UI refresh per material when a factory produces
+    /// the whole catalog automatically.
+    /// </summary>
+    public int AdicionarProducaoAutomatica(int teamId, IEnumerable<QuantidadeRecursoIndustrial> lote)
+    {
+        if (teamId <= 0 || lote == null) return 0;
+
+        int adicionados = 0;
+        foreach (QuantidadeRecursoIndustrial item in lote)
+        {
+            if (item == null || string.IsNullOrWhiteSpace(item.recursoId) || item.quantidade <= 0d)
+                continue;
+
+            Armazem.Adicionar(teamId.ToString(), item.recursoId, item.quantidade);
+            adicionados++;
+        }
+
+        if (adicionados > 0)
+        {
+            SincronizarPaisEmGoverno(teamId);
+            OnSistemaAtualizado?.Invoke();
+        }
+
+        return adicionados;
+    }
+
     public bool TentarConsumir(string teamId, string recursoId, double quantidade)
     {
         bool ok = Armazem.TentarConsumir(teamId, recursoId, quantidade);
