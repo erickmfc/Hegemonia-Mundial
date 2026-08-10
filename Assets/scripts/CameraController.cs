@@ -312,6 +312,34 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Centraliza a camera principal em um alvo selecionado pelo menu de
+    /// seguimento. Mantem a altura atual e ajusta a mira para o objeto, sem
+    /// depender da camera HUD/render texture.
+    /// </summary>
+    public void FocarEm(Vector3 alvo, bool mirarNoAlvo = true)
+    {
+        Vector3 posicao = transform.position;
+        posicao.x = alvo.x;
+        posicao.z = alvo.z;
+        transform.position = posicao;
+
+        if (mirarNoAlvo)
+        {
+            Vector3 direcao = alvo - transform.position;
+            if (direcao.sqrMagnitude > 0.01f)
+            {
+                transform.rotation = Quaternion.LookRotation(direcao.normalized, Vector3.up);
+            }
+        }
+
+        NotificarMudancaDeArea(transform.position);
+        if (cameraPrincipal != null)
+        {
+            AtualizarProjecao(transform.position.y);
+        }
+    }
+
     GerenteSelecao ObterGerenteSelecao()
     {
         if (gerenteSelecaoCache == null && Time.time >= proximaBuscaGerenteSelecao)

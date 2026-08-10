@@ -44,6 +44,20 @@ public class CentroSuporteAereo : MonoBehaviour
     
     void ProcessarInput()
     {
+        // Numeros digitados em campos do Governo (compra/venda, taxas etc.)
+        // nao podem disparar a mira de ataque/suporte aereo.
+        if (MenuGoverno.EstaAberto)
+        {
+            return;
+        }
+
+        if (UnityEngine.EventSystems.EventSystem.current != null
+            && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null
+            && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null)
+        {
+            return;
+        }
+
         // 1. Ativar Mira Ataque
         if (Input.GetKeyDown(teclaAtalhoAtaque) && timerAtaque <= 0)
         {

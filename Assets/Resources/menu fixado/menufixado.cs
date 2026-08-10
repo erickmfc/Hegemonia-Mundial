@@ -29,8 +29,18 @@ public class MenuFixadoController : MonoBehaviour
     private Button tabToday, tabEvents, tabHelp;
     private VisualElement notificationPanel, notificationHelp;
     private ScrollView notificationList;
+    private VisualElement decisionBanner;
+    private Label decisionTitle, decisionMessage;
+    private Button decisionAction, decisionClose;
+    private StatusNotificacao decisionNotification;
+    private StatusNotificacao alertaDecisaoFechado;
     private bool? ultimaPrefeituraOperacional;
     private bool? ultimaSituacaoComida;
+    private bool? ultimaSituacaoEnergia;
+    private bool? ultimaSituacaoCombustivel;
+    private bool? ultimaSituacaoMunicao;
+    private bool? ultimaSituacaoManutencao;
+    private bool? ultimaSituacaoTerritorio;
     private int abaNotificacoes;
     private bool painelNotificacaoAberto;
     private bool statusTemNovidades;
@@ -171,6 +181,7 @@ public class MenuFixadoController : MonoBehaviour
                 StatusNotificacaoSeveridade.Info);
         }
         UpdateUI();
+        AtualizarAlertaPrincipal();
         ignorarNovidadesIniciais = false;
     }
 
@@ -222,6 +233,11 @@ public class MenuFixadoController : MonoBehaviour
         tabHelp = root.Q<Button>("tab-help");
         notificationPanel = root.Q<VisualElement>("notification-panel");
         notificationList = root.Q<ScrollView>("notification-list");
+        decisionBanner = root.Q<VisualElement>("decision-banner");
+        decisionTitle = root.Q<Label>("decision-title");
+        decisionMessage = root.Q<Label>("decision-message");
+        decisionAction = root.Q<Button>("decision-action");
+        decisionClose = root.Q<Button>("decision-close");
         notificationHelp = root.Q<VisualElement>("notification-help");
 
         // O HUD usa um container superior deslocado para centralizar a barra.
@@ -240,6 +256,10 @@ public class MenuFixadoController : MonoBehaviour
         if (tabToday != null) tabToday.clicked += () => SelecionarAbaNotificacoes(0);
         if (tabEvents != null) tabEvents.clicked += () => SelecionarAbaNotificacoes(1);
         if (tabHelp != null) tabHelp.clicked += () => SelecionarAbaNotificacoes(2);
+        if (decisionAction != null) decisionAction.clicked += ExecutarAcaoDecisao;
+        // UI Toolkit usa Action sem parametros; o metodo tambem aceita a
+        // opcao de descartar internamente, entao adaptamos a assinatura aqui.
+        if (decisionClose != null) decisionClose.clicked += () => FecharPainelFeebackDecisao();
 
         if (statusToggle != null)
         {
@@ -276,13 +296,98 @@ public class MenuFixadoController : MonoBehaviour
 
     private void AoAlterarFeedNotificacoes()
     {
-        if (!ignorarNovidadesIniciais && !painelNotificacaoAberto)
+        if (!ignorarNovidadesIniciais && !painelNotificacaoAberto && StatusNotificacaoFeed.PossuiNovidadeNaoDescartada)
         {
             statusTemNovidades = true;
             statusToggle?.AddToClassList("has-news");
         }
+        else if (!StatusNotificacaoFeed.PossuiNovidadeNaoDescartada)
+        {
+            statusTemNovidades = false;
+            statusToggle?.RemoveFromClassList("has-news");
+            statusToggle?.RemoveFromClassList("status-pulse");
+        }
 
         AtualizarNotificacoes();
+        AtualizarAlertaPrincipal();
+    }
+
+    private void ExecutarAcaoDecisao()
+    {
+        if (decisionNotification == null || decisionNotification.Acao == null) return;
+
+        // Fecha o aviso atual antes da acao, pois a acao pode publicar outro
+        // estado imediatamente (e esse novo estado nao deve ser escondido).
+        StatusNotificacao acao = decisionNotification;
+        FecharPainelFeebackDecisao(false);
+        alertaDecisaoFechado = null;
+        acao.Acao.Invoke();
+    }
+
+    private void FecharPainelFeebackDecisao(bool descartar = true)
+    {
+        if (decisionNotification != null)
+        {
+            alertaDecisaoFechado = decisionNotification;
+            // O fechamento vale para o estado inteiro do alerta, mesmo que o
+            // sistema atualize a mensagem no proximo ciclo.
+            if (descartar) StatusNotificacaoFeed.Descartar(decisionNotification);
+        }
+        if (decisionBanner != null) decisionBanner.AddToClassList("is-hidden");
+        decisionNotification = null;
+    }
+
+    private void AtualizarAlertaPrincipal()
+    {
+        if (decisionBanner == null) return;
+
+        StatusNotificacao escolhido = null;
+        int melhorPeso = -1;
+        // O feed guarda historico, mas o banner deve avaliar apenas o estado
+        // mais recente de cada categoria. Sem isso, um alerta antigo de energia
+        // continuava vencendo mesmo depois de a usina normalizar a rede.
+        HashSet<string> categoriasVistas = new HashSet<string>();
+        IList<StatusNotificacao> itens = StatusNotificacaoFeed.Itens;
+        for (int i = 0; i < itens.Count; i++)
+        {
+            StatusNotificacao item = itens[i];
+            if (item == null || !categoriasVistas.Add(item.Categoria)) continue;
+            if (item.Descartada) continue;
+            if (!item.TemAcao) continue;
+            // O banner sobre a cena fica reservado para risco critico. Avisos
+            // informativos e deficits cobertos pela reserva permanecem apenas
+            // no historico da aba Status.
+            if (item.Severidade != StatusNotificacaoSeveridade.Critical) continue;
+
+            int peso = item.Severidade == StatusNotificacaoSeveridade.Critical ? 3
+                : item.Severidade == StatusNotificacaoSeveridade.Warning ? 2 : 1;
+            if (peso > melhorPeso)
+            {
+                escolhido = item;
+                melhorPeso = peso;
+            }
+        }
+
+        decisionNotification = escolhido;
+        if (escolhido == null)
+        {
+            alertaDecisaoFechado = null;
+            decisionBanner.AddToClassList("is-hidden");
+            return;
+        }
+
+        // O X fecha apenas o alerta atual. Um novo estado publicado pelo jogo
+        // continua podendo aparecer sem reabrir o mesmo aviso a cada frame.
+        if (ReferenceEquals(escolhido, alertaDecisaoFechado))
+        {
+            decisionBanner.AddToClassList("is-hidden");
+            return;
+        }
+
+        decisionTitle.text = escolhido.Titulo;
+        decisionMessage.text = escolhido.Mensagem;
+        decisionAction.text = escolhido.AcaoTexto;
+        decisionBanner.RemoveFromClassList("is-hidden");
     }
 
     private void MarcarNotificacoesComoVistas()
@@ -378,6 +483,17 @@ public class MenuFixadoController : MonoBehaviour
         copia.Add(mensagem);
         linha.Add(copia);
 
+        if (item.TemAcao)
+        {
+            Button acao = new Button(item.Acao)
+            {
+                text = item.AcaoTexto,
+                tooltip = "Executar a ação recomendada"
+            };
+            acao.AddToClassList("notification-action");
+            linha.Add(acao);
+        }
+
         Label horario = new Label(item.Horario);
         horario.AddToClassList("notification-item-time");
         linha.Add(horario);
@@ -421,11 +537,25 @@ public class MenuFixadoController : MonoBehaviour
                 prefeituraOperacional
                     ? "A sede do governo esta ativa e pronta para administrar a nação."
                     : "Construa uma Prefeitura para centralizar o governo da nação.",
-                prefeituraOperacional ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning);
+                prefeituraOperacional ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning,
+                prefeituraOperacional ? string.Empty : "ABRIR CONSTRUCAO",
+                prefeituraOperacional ? null : () => AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Selecione uma Prefeitura para iniciar a fundacao."));
         }
 
-        float saldoComida = economia != null ? economia.comidaProduzida - economia.comidaConsumida : 0f;
-        bool comidaEstavel = recursos != null && recursos.comida > 0.01f && saldoComida >= 0f;
+        // A Prefeitura e a fundacao da partida. Enquanto ela nao existe,
+        // mantenha apenas esta orientacao: energia, comida e territorio so
+        // fazem sentido depois que o governo foi estabelecido.
+        if (!prefeituraOperacional)
+        {
+            return;
+        }
+
+        float consumoComida = economia != null ? Mathf.Max(1f, economia.comidaConsumida) : 1f;
+        float reservaCriticaComida = Mathf.Max(10f, consumoComida * 2f);
+        // Uma queda de producao nao interrompe o jogador enquanto ainda ha
+        // reserva para alguns ciclos. So sinaliza quando a reserva esta perto
+        // de acabar, ou ja acabou.
+        bool comidaEstavel = recursos != null && recursos.comida > reservaCriticaComida;
         if (!ultimaSituacaoComida.HasValue || ultimaSituacaoComida.Value != comidaEstavel)
         {
             ultimaSituacaoComida = comidaEstavel;
@@ -435,7 +565,179 @@ public class MenuFixadoController : MonoBehaviour
                 comidaEstavel
                     ? "A produção atual cobre o consumo nacional."
                     : "A nação precisa de comida: aumente a produção ou providencie importações.",
-                comidaEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning);
+                comidaEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Critical,
+                comidaEstavel ? string.Empty : "CONSTRUIR FAZENDA",
+                comidaEstavel ? null : () => AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Construa uma Fazenda para recuperar a producao de comida."));
+        }
+
+        float deficitEnergia = economia != null ? Mathf.Max(0f, economia.deficitEnergia) : 0f;
+        int estruturasSemEnergia = economia != null ? Mathf.Max(0, economia.estruturasSemEnergia) : 0;
+        // O retrato economico pode chegar um ciclo atrasado quando uma usina
+        // termina de ser construida. Se ja existe reserva positiva e nenhuma
+        // estrutura esta marcada sem energia, um residuo de ate 1 MW nao deve
+        // manter o alerta critico na tela.
+        if (recursos != null && recursos.energia > 0 && estruturasSemEnergia == 0 && deficitEnergia <= 1f)
+        {
+            deficitEnergia = 0f;
+        }
+        bool energiaEstavel = deficitEnergia <= 0.5f && estruturasSemEnergia <= 0;
+        float consumoEnergiaAtual = economia != null ? Mathf.Max(0f, economia.energiaConsumida) : 0f;
+        float producaoEnergiaAtual = economia != null ? Mathf.Max(0f, economia.energiaProduzida) : 0f;
+        if (!ultimaSituacaoEnergia.HasValue || ultimaSituacaoEnergia.Value != energiaEstavel)
+        {
+            ultimaSituacaoEnergia = energiaEstavel;
+            StatusNotificacaoFeed.Publicar(
+                "ENERGIA",
+                energiaEstavel ? "Energia estabilizada" : "Energia insuficiente",
+                energiaEstavel
+                    ? "A producao atual atende o consumo das estruturas."
+                    : "Consumo " + Mathf.CeilToInt(consumoEnergiaAtual) + " MW / producao "
+                        + Mathf.CeilToInt(producaoEnergiaAtual) + " MW. Deficit de "
+                        + Mathf.CeilToInt(deficitEnergia) + " MW; " + estruturasSemEnergia
+                        + " estrutura(s) sem energia.",
+                energiaEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Critical,
+                energiaEstavel ? string.Empty : "CONSTRUIR USINA",
+                energiaEstavel ? null : () => AbrirConstrucao(DadosConstrucao.CategoriaItem.Energia, "Escolha uma usina para ampliar a geracao."));
+        }
+
+        float deficitPetroleo = economia != null ? economia.deficitPetroleo : 0f;
+        bool unidadeComCombustivelBaixo = false;
+        CombustivelUnidade[] unidadesComCombustivel = FindObjectsByType<CombustivelUnidade>(FindObjectsSortMode.None);
+        int teamJogadorCombustivel = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.teamJogador : 1;
+        for (int i = 0; i < unidadesComCombustivel.Length; i++)
+        {
+            CombustivelUnidade combustivel = unidadesComCombustivel[i];
+            if (combustivel == null || !combustivel.usaCombustivel || !combustivel.EstaBaixo) continue;
+            IdentidadeUnidade identidade = combustivel.GetComponent<IdentidadeUnidade>() ?? combustivel.GetComponentInParent<IdentidadeUnidade>();
+            if (identidade == null || identidade.teamID != teamJogadorCombustivel) continue;
+            unidadeComCombustivelBaixo = true;
+            break;
+        }
+        bool combustivelEstavel = recursos.petroleo > 0 && deficitPetroleo <= 0.5f && !unidadeComCombustivelBaixo;
+        if (!ultimaSituacaoCombustivel.HasValue || ultimaSituacaoCombustivel.Value != combustivelEstavel)
+        {
+            ultimaSituacaoCombustivel = combustivelEstavel;
+            StatusNotificacaoFeed.Publicar(
+                "LOGISTICA",
+                combustivelEstavel ? "Combustivel disponivel" : "Sem combustivel",
+                combustivelEstavel
+                    ? "A reserva de petroleo cobre o consumo atual."
+                    : unidadeComCombustivelBaixo
+                        ? "Uma ou mais unidades estao com combustivel baixo; reabasteca antes de continuar."
+                        : "Estoque: " + Mathf.Max(0, recursos.petroleo) + " L; a operacao esta bloqueada por falta de combustivel.",
+                combustivelEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Critical,
+                combustivelEstavel ? string.Empty : "ABRIR INFRAESTRUTURA",
+                combustivelEstavel ? null : () => AbrirConstrucao(DadosConstrucao.CategoriaItem.Infraestrutura, "Construa producao ou armazenamento de combustivel."));
+        }
+
+        SistemaGastosMilitares.GarantirInstancia();
+        int municaoDisponivel = 0;
+        if (SistemaGastosMilitares.Instancia != null && SistemaGastosMilitares.Instancia.estoques != null)
+        {
+            int team = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.teamJogador : 1;
+            for (int i = 0; i < SistemaGastosMilitares.Instancia.estoques.Count; i++)
+            {
+                EstoqueMunicaoMilitar estoque = SistemaGastosMilitares.Instancia.estoques[i];
+                if (estoque != null && estoque.teamId == team) municaoDisponivel += Mathf.Max(0, estoque.quantidade);
+            }
+        }
+        bool precisaMunicao = economia != null && economia.militaresNecessarios > 0;
+        bool municaoEstavel = !precisaMunicao || municaoDisponivel > 0;
+        if (!ultimaSituacaoMunicao.HasValue || ultimaSituacaoMunicao.Value != municaoEstavel)
+        {
+            ultimaSituacaoMunicao = municaoEstavel;
+            StatusNotificacaoFeed.Publicar(
+                "DEFESA",
+                municaoEstavel ? "Municao disponivel" : "Municao insuficiente",
+                municaoEstavel
+                    ? "O estoque militar permite manter as unidades em operacao."
+                    : "Estoque atual: 0 cartuchos; fabrique municao antes de iniciar a proxima operacao.",
+                municaoEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning,
+                municaoEstavel ? string.Empty : "ABRIR DEFESA",
+                municaoEstavel ? null : () => AbrirGoverno("Abra Defesa > Alertas para fabricar municao."));
+        }
+
+        bool manutencaoEstavel = economia == null || economia.estruturasContadas <= 0 || economia.saldoOperacional >= 0f;
+        if (!ultimaSituacaoManutencao.HasValue || ultimaSituacaoManutencao.Value != manutencaoEstavel)
+        {
+            ultimaSituacaoManutencao = manutencaoEstavel;
+            StatusNotificacaoFeed.Publicar(
+                "ORCAMENTO",
+                manutencaoEstavel ? "Manutencao coberta" : "Manutencao pressionando o tesouro",
+                manutencaoEstavel
+                    ? "A receita operacional cobre os custos atuais."
+                    : "Custo de manutencao: $" + Mathf.CeilToInt(Mathf.Max(0f, economia.custoManutencao)) + "; o saldo operacional esta negativo.",
+                manutencaoEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning,
+                manutencaoEstavel ? string.Empty : "ABRIR ORCAMENTO",
+                manutencaoEstavel ? null : () => AbrirGoverno("Abra Economia > Orcamento para revisar a manutencao."));
+        }
+
+        int marcadoresProprios = 0;
+        MarcadorTerritorio[] marcadores = FindObjectsByType<MarcadorTerritorio>(FindObjectsSortMode.None);
+        for (int i = 0; i < marcadores.Length; i++)
+        {
+            MarcadorTerritorio marcador = marcadores[i];
+            if (marcador != null && marcador.teamID == 1) marcadoresProprios++;
+        }
+        bool possuiEstrutura = false;
+        IdentidadeUnidade[] identidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        for (int i = 0; i < identidades.Length; i++)
+        {
+            if (identidades[i] != null && identidades[i].teamID == 1 && identidades[i].tipoUnidade == TipoUnidade.Estrutura)
+            {
+                possuiEstrutura = true;
+                break;
+            }
+        }
+        bool territorioEstavel = !possuiEstrutura || marcadoresProprios > 0;
+        if (!ultimaSituacaoTerritorio.HasValue || ultimaSituacaoTerritorio.Value != territorioEstavel)
+        {
+            ultimaSituacaoTerritorio = territorioEstavel;
+            StatusNotificacaoFeed.Publicar(
+                "TERRITORIO",
+                territorioEstavel ? "Territorio sob controle" : "Territorio nao reivindicado",
+                territorioEstavel
+                    ? "As estruturas nacionais estao dentro de uma area sob sua soberania."
+                    : "A construcao esta fora de uma area reivindicada; expanda a fronteira antes de continuar.",
+                territorioEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning,
+                territorioEstavel ? string.Empty : "ABRIR MAPA",
+                territorioEstavel ? null : AbrirMapaEstrategico);
+        }
+    }
+
+    private void AbrirConstrucao(DadosConstrucao.CategoriaItem categoria, string mensagem)
+    {
+        if (MenuConstrucao.AbrirCategoria(categoria))
+        {
+            return;
+        }
+
+        HUDAjudaRTS.MostrarMensagemTemporaria(mensagem, 4f);
+    }
+
+    private void AbrirGoverno(string mensagem)
+    {
+        if (MenuGovernoNovoController.GarantirInstancia()
+            && MenuGovernoNovoController.Instancia != null)
+        {
+            MenuGovernoNovoController.Instancia.Abrir(true);
+        }
+        else
+        {
+            HUDAjudaRTS.MostrarMensagemTemporaria(mensagem, 4f);
+        }
+    }
+
+    private void AbrirMapaEstrategico()
+    {
+        MapaGeralController mapa = FindFirstObjectByType<MapaGeralController>();
+        if (mapa != null)
+        {
+            mapa.AbrirMapaEstrategico();
+        }
+        else
+        {
+            HUDAjudaRTS.MostrarMensagemTemporaria("Abra o mapa estrategico com M para localizar uma area sob sua soberania.", 4f);
         }
     }
 
@@ -524,10 +826,18 @@ public class MenuFixadoController : MonoBehaviour
                 + "\nDeficit: " + economia.deficitEmprego.ToString("0");
         }
 
-        float consumida = pais?.energiaConsumida ?? 0f;
-        float produzida = pais != null ? Mathf.Max(pais.energiaProduzida, r.energia) : Mathf.Max(0f, r.energia);
+        float consumida = Mathf.Max(0f, pais?.energiaConsumida ?? economia?.energiaConsumida ?? 0f);
+        // Estoque acumulado nao e capacidade da rede. O HUD mostra consumo
+        // versus producao, os mesmos valores usados para decidir o alerta.
+        float produzida = Mathf.Max(0f, economia?.energiaProduzida ?? 0f);
+        if (produzida <= 0.01f && pais != null) produzida = Mathf.Max(0f, pais.energiaProduzida);
 
-        SetText(lblEnergyVal, $"{consumida:0}/{produzida:0}");
+        SetText(lblEnergyVal, $"{consumida:0}/{produzida:0} MW");
+        if (lblEnergyVal != null)
+        {
+            lblEnergyVal.tooltip = "Energia: consumo atual / producao disponivel da rede (MW). Estoque: "
+                + r.energia.ToString("N0") + " MW.";
+        }
 
         if (produzida > 0.01f)
         {
@@ -535,12 +845,16 @@ public class MenuFixadoController : MonoBehaviour
             SetColor(lblEnergyVal, uso > 100f ? Color.red : (uso >= 90f ? Color.yellow : Color.white));
             SetText(lblEnergyBonus, uso > 100f ? "DÉFICIT" : $"{uso:0}% USO");
             SetColor(lblEnergyBonus, uso > 100f ? Color.red : (uso >= 90f ? Color.yellow : Color.green));
+            if (lblEnergyBonus != null)
+                lblEnergyBonus.tooltip = "Percentual da capacidade da rede que esta sendo consumido.";
         }
         else
         {
             SetColor(lblEnergyVal, consumida > 0 ? Color.red : Color.white);
             SetText(lblEnergyBonus, consumida > 0 ? "DÉFICIT" : "+0/s");
             SetColor(lblEnergyBonus, consumida > 0 ? Color.red : Color.green);
+            if (lblEnergyBonus != null)
+                lblEnergyBonus.tooltip = "Nenhuma producao de energia foi registrada na rede.";
         }
 
         if (GerenciadorArmazens.Instancia?.armazemRecursos != null)
@@ -567,6 +881,7 @@ public class MenuFixadoController : MonoBehaviour
 
         AtualizarAlertasAutomaticos(r, economia);
         AtualizarNotificacoes();
+        AtualizarAlertaPrincipal();
     }
 
     private void AtualizarData()

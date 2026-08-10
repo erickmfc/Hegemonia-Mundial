@@ -96,8 +96,8 @@
                 <!-- Energia (Energy) -->
                 <ui:VisualElement class="resource-item">
                     <ui:Label text="⚡" class="resource-emoji" />
-                    <ui:Label text="0% USO" name="lbl-energy-val" class="resource-base-value" />
-                    <ui:Label text="0/0" name="lbl-energy-bonus" class="resource-bonus-value" />
+                    <ui:Label text="0/0 MW" name="lbl-energy-val" class="resource-base-value" />
+                    <ui:Label text="SEM REDE" name="lbl-energy-bonus" class="resource-bonus-value" />
                 </ui:VisualElement>
 
                 <!-- Armazém (Storage) -->
@@ -116,6 +116,16 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+    </ui:VisualElement>
+
+    <!-- Decisao prioritaria: causa atual e proximo passo sem abrir menus. -->
+    <ui:VisualElement name="decision-banner" class="decision-banner is-hidden">
+        <ui:VisualElement class="decision-copy">
+            <ui:Label name="decision-title" class="decision-title" />
+            <ui:Label name="decision-message" class="decision-message" />
+        </ui:VisualElement>
+        <ui:Button name="decision-action" class="decision-action" />
+        <ui:Button name="decision-close" text="×" class="decision-close" tooltip="Fechar alerta" />
     </ui:VisualElement>
 
     <!-- Central de acontecimentos: abre pelo botao STATUS e pode ser fechada no X. -->

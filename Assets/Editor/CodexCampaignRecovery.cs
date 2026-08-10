@@ -10,9 +10,9 @@ using Hegemonia.AI.BrainMaster;
 
 public static class CodexCampaignRecovery
 {
-    private const string CampaignPath = "Assets/Scenes/cena19).unity";
-    private const string SafeBasePath = "Assets/Scenes/cena19 Base Segura.unity";
-    private const string RecoverySourcePath = "Assets/_Recovery/cena19).unity";
+    private const string CampaignPath = ConfiguracaoCenasJogo.CaminhoCenaCampanhaCanonica;
+    private const string SafeBasePath = "Assets/_Recovery/cena19 Base Segura.unity";
+    private const string RecoverySourcePath = "Assets/Scenes/cena19).unity";
     private const string FinalOutputPath = "C:/Users/Mathe/Desktop/Hegemonia Global Build Final/Hegemonia Global.exe";
     private const string CampaignTerrainMaterialPath = "Assets/Resources/CodexCampaignTerrainURP.mat";
 

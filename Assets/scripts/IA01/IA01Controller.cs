@@ -45,6 +45,8 @@ namespace Hegemonia.AI.IA01
         [SerializeField] private bool usePreparedSlots = true;
         [SerializeField] private bool allowAutonomousExpansion = true;
         [SerializeField] private bool enablePlanningAdvisor = true;
+        [Tooltip("Raio de seguranca para impedir que um layout/slot duplicado no lado do jogador seja usado pela IA.")]
+        [SerializeField, Min(500f)] private float maxConstructionDistanceFromController = 4200f;
 
         [Header("Progressao militar")]
         [Tooltip("Quando ativo, a reserva militar compra primeiro o menor escalao disponivel e sobe conforme a economia melhora.")]
@@ -224,6 +226,15 @@ namespace Hegemonia.AI.IA01
                 return !UsePreparedSlots;
             }
             if (layout.OwnerTeamId > 0 && layout.OwnerTeamId != TeamId) return false;
+
+            // O layout oficial fica ancorado no controlador da nação. Se um
+            // prefab/slot for duplicado na área do jogador, o envelope dos
+            // slots sozinho não basta para detectar o erro: bloqueie também
+            // qualquer create muito distante da raiz IA01.
+            float maxDistance = Mathf.Max(500f, maxConstructionDistanceFromController);
+            Vector3 fromController = position - transform.position;
+            fromController.y = 0f;
+            if (fromController.sqrMagnitude > maxDistance * maxDistance) return false;
 
             IA01BuildSlot[] slots = layout.GetComponentsInChildren<IA01BuildSlot>(true);
             bool foundOwnedSlot = false;

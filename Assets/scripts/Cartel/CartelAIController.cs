@@ -104,6 +104,16 @@ namespace Hegemonia.Cartel
         [Min(0.5f)] public float AttackDuration = 18f;
         [Min(0f)] public float ThreatRadius = 180f;
 
+        [Header("Operacao naval eficiente")]
+        [Tooltip("Intervalo do ajuste leve de rumo dos barcos. Nao executa busca global, spawn ou planejamento de IA.")]
+        [Min(0.2f)] public float MaritimeSteeringInterval = 0.55f;
+        [Tooltip("Tempo minimo entre novas ordens iguais ao casco naval. Evita replan e raycasts repetidos.")]
+        [Min(0.2f)] public float MaritimeOrderInterval = 0.80f;
+        [Tooltip("Intervalo da busca global por petroleiros. O alvo ja adquirido continua sendo seguido pelo pulso leve.")]
+        [Min(1f)] public float TankerScanInterval = 4f;
+        [Tooltip("Distancia horizontal para iniciar o roubo do petroleiro.")]
+        [Min(5f)] public float TankerRobberyDistance = 22f;
+
         [Header("Crime continuo")]
         public bool ContinuousCrime = true;
         [Min(5f)] public float ReinforcementInterval = 45f;
@@ -168,6 +178,9 @@ namespace Hegemonia.Cartel
             public int RouteIndex;
             public float Cargo;
             public float Deadline;
+            public ControleNavioRealista NavalController;
+            public Vector3 LastNavalDestination;
+            public float NextNavalOrderTime;
             public readonly List<GameObject> Members = new List<GameObject>();
         }
 
@@ -181,6 +194,7 @@ namespace Hegemonia.Cartel
         private float nextDecisionTime;
         private float nextCreateRefreshTime;
         private float nextTankerScanTime;
+        private float nextMaritimeSteeringTime;
         private float nextActivationCheckTime;
         private float respawnAt;
         private bool respawnPending;
@@ -238,6 +252,16 @@ namespace Hegemonia.Cartel
                     TryInitializeForCurrentDay();
                 }
                 return;
+            }
+
+            // A navegacao de uma operacao naval ja criada nao precisa esperar
+            // todo o ciclo de IA (que tambem processa base, reforcos e terra).
+            // Este pulso e pequeno e sem buscas globais; assim o barco segue
+            // petroleiros em movimento sem transformar a IA em custo por frame.
+            if (State != CartelControllerState.Disabled && Time.time >= nextMaritimeSteeringTime)
+            {
+                nextMaritimeSteeringTime = Time.time + Mathf.Max(0.2f, MaritimeSteeringInterval);
+                AtualizarNavegacaoNavalLeve();
             }
 
             if (State == CartelControllerState.Disabled || Time.time < nextDecisionTime)
@@ -336,7 +360,11 @@ namespace Hegemonia.Cartel
             {
                 if (operacao.Naval) SetMaritimeEscape(operacao);
                 else SetTerrestrialEscape(operacao);
-                if (alvo != null) DefinirAlvoDeTiro(operacao.Unit, alvo);
+                // O barco nao deve girar o casco inteiro para trocar tiros
+                // com quem o atingiu: isso conflita com a fuga/interceptacao,
+                // deixa-o parado e custa scans extras. A resposta naval e
+                // escapar; as unidades terrestres continuam revidando.
+                if (alvo != null && !operacao.Naval) DefinirAlvoDeTiro(operacao.Unit, alvo);
                 return;
             }
 
@@ -456,10 +484,42 @@ namespace Hegemonia.Cartel
             TryExpand();
         }
 
+        private void AtualizarNavegacaoNavalLeve()
+        {
+            CartelOperation op = maritimeOperation;
+            if (op == null || op.Unit == null || !op.Unit.activeInHierarchy) return;
+
+            // Apenas conduz a operacao ja planejada. A escolha de alvo,
+            // criacao de unidades e verificacoes de base continuam no TickAI.
+            switch (op.Phase)
+            {
+                case CartelOperationPhase.ApproachingTanker:
+                    if (op.TargetTanker == null || op.TargetTanker.petroleoCarregado <= 0) return;
+                    EmitirOrdemNaval(op, op.TargetTanker.transform.position);
+                    if (DistanciaHorizontal(op.Unit.transform.position, op.TargetTanker.transform.position)
+                        <= Mathf.Max(5f, TankerRobberyDistance))
+                    {
+                        op.Phase = CartelOperationPhase.Robbery;
+                        nextDecisionTime = Mathf.Min(nextDecisionTime, Time.time);
+                    }
+                    break;
+
+                case CartelOperationPhase.LeaveBase:
+                case CartelOperationPhase.Patrol:
+                case CartelOperationPhase.Escape:
+                case CartelOperationPhase.IslandArrival:
+                case CartelOperationPhase.CoastalMeeting:
+                case CartelOperationPhase.Parking:
+                    if (op.CurrentPoint != null && !Arrived(op.Unit, op.CurrentPoint))
+                        EmitirOrdemNaval(op, op.CurrentPoint.Position);
+                    break;
+            }
+        }
+
         private void AtualizarCachePetroleiros()
         {
             if (Time.time < nextTankerScanTime) return;
-            nextTankerScanTime = Time.time + 3f;
+            nextTankerScanTime = Time.time + Mathf.Max(1f, TankerScanInterval);
             tankerCache.Clear();
             NavioPetroleiro[] descobertos = FindObjectsByType<NavioPetroleiro>(FindObjectsSortMode.None);
             for (int i = 0; i < descobertos.Length; i++)
@@ -921,7 +981,10 @@ namespace Hegemonia.Cartel
             if (unidadeMaritima)
             {
                 SistemaDeTiro tiro = unit.GetComponent<SistemaDeTiro>();
-                tiro.modoPassivo = false;
+                // Barcos de roubo nao entram em combate autonomo. Eles so
+                // reagem se forem atacados, evitando scans e tiros contra o
+                // petroleiro que deveriam interceptar.
+                tiro.modoPassivo = true;
                 tiro.alcanceTiro = 80f;
                 tiro.intervaloEntreTiros = 0.75f;
                 tiro.capacidadePente = 30;
@@ -1010,6 +1073,21 @@ namespace Hegemonia.Cartel
                             // oficial de roubo continua sendo uma rota valida.
                             op.Route = GetCreates(CartelCreateType.CartelRobberyAreaCreate, op.Base.CountryId);
                         }
+
+                    // Mesmo sem Creates de patrulha, um petroleiro carregado
+                    // deve ser uma missao valida. Antes o barco caia direto em
+                    // Parking e permanecia parado no mar.
+                        if (op.Route.Count == 0)
+                        {
+                            NavioPetroleiro petroleiro = FindValidTanker(null, op.Unit.transform.position);
+                            if (petroleiro != null)
+                            {
+                                op.TargetTanker = petroleiro;
+                                op.CurrentPoint = null;
+                                op.Phase = CartelOperationPhase.ApproachingTanker;
+                                break;
+                            }
+                        }
                         op.RouteIndex = 0;
                         op.CurrentPoint = FirstOrNull(op.Route);
                         op.Phase = op.CurrentPoint == null ? CartelOperationPhase.Parking : CartelOperationPhase.Patrol;
@@ -1029,7 +1107,19 @@ namespace Hegemonia.Cartel
 
                     if (op.CurrentPoint == null)
                     {
-                        op.Phase = CartelOperationPhase.Parking;
+                        // Rota ausente nao pode bloquear a interceptacao:
+                        // procura um petroleiro carregado em qualquer ponto da
+                        // agua e inicia a aproximacao direta.
+                        NavioPetroleiro petroleiro = FindValidTanker(null, op.Unit.transform.position);
+                        if (petroleiro != null)
+                        {
+                            op.TargetTanker = petroleiro;
+                            op.Phase = CartelOperationPhase.ApproachingTanker;
+                        }
+                        else
+                        {
+                            op.Phase = CartelOperationPhase.Parking;
+                        }
                         break;
                     }
 
@@ -1037,6 +1127,10 @@ namespace Hegemonia.Cartel
                     if (alvoProximo != null)
                     {
                         op.TargetTanker = alvoProximo;
+                        // A partir deste ponto a operacao e uma perseguicao
+                        // direta; a rota de patrulha nao deve invalidar o alvo
+                        // no tick seguinte.
+                        op.CurrentPoint = null;
                         op.Phase = CartelOperationPhase.ApproachingTanker;
                         break;
                     }
@@ -1064,8 +1158,8 @@ namespace Hegemonia.Cartel
                     // Aproximação para roubo: o petroleiro não é alvo de combate.
                     // O alvo de tiro anterior fazia o barco parar atirando sem concluir o roubo.
                     DefinirAlvoDeTiro(op.Unit, null);
-                    SendToPosition(op.Unit, op.TargetTanker.transform.position, true);
-                    if (DistanciaHorizontal(op.Unit.transform.position, op.TargetTanker.transform.position) <= 18f)
+                    EmitirOrdemNaval(op, op.TargetTanker.transform.position);
+                    if (DistanciaHorizontal(op.Unit.transform.position, op.TargetTanker.transform.position) <= Mathf.Max(5f, TankerRobberyDistance))
                     {
                         op.Phase = CartelOperationPhase.Robbery;
                     }
@@ -1145,6 +1239,18 @@ namespace Hegemonia.Cartel
                     break;
 
                 case CartelOperationPhase.Parking:
+                    // Estacionar nao encerra a vigilancia. Um petroleiro que
+                    // ficar carregado enquanto o barco retorna deve virar uma
+                    // nova interceptacao, sem esperar outra recriacao da IA.
+                    NavioPetroleiro tankerEmEspera = FindValidTanker(null, op.Unit.transform.position);
+                    if (tankerEmEspera != null)
+                    {
+                        op.TargetTanker = tankerEmEspera;
+                        op.CurrentPoint = null;
+                        op.Phase = CartelOperationPhase.ApproachingTanker;
+                        EmitirOrdemNaval(op, tankerEmEspera.transform.position, true);
+                        break;
+                    }
                     CartelManualCreate parking = FindNearestCreate(CartelCreateType.CartelBoatParkingCreate, op.Unit.transform.position, op.Base.CountryId);
                     if (parking == null || Arrived(op.Unit, parking))
                     {
@@ -1161,8 +1267,39 @@ namespace Hegemonia.Cartel
             if (baseRuntime == null) return null;
             GameObject boat = FindNextAlive(baseRuntime.Boats, ref nextMaritimeBoatIndex);
             CartelManualCreate exit = ResolveRelatedCreate(CartelCreateType.CartelMaritimeExitCreate, baseRuntime.Candidate, baseRuntime.CountryId);
-            if (boat == null || exit == null) return null;
-            CartelOperation op = new CartelOperation { Naval = true, Unit = boat, Base = baseRuntime, CurrentPoint = exit, Phase = CartelOperationPhase.LeaveBase };
+            if (boat == null) return null;
+
+            CartelOperation op = new CartelOperation
+            {
+                Naval = true,
+                Unit = boat,
+                Base = baseRuntime,
+                CurrentPoint = exit,
+                Phase = exit != null ? CartelOperationPhase.LeaveBase : CartelOperationPhase.Patrol,
+                NavalController = boat.GetComponent<ControleNavioRealista>()
+            };
+
+            // Um Create de saida melhora a rota, mas sua ausencia nao pode
+            // deixar o barco parado. Se existir carga no mar, intercepta
+            // direto; caso contrario usa os pontos de patrulha disponiveis.
+            if (exit == null)
+            {
+                NavioPetroleiro tanker = FindValidTanker(null, boat.transform.position);
+                if (tanker != null)
+                {
+                    op.TargetTanker = tanker;
+                    op.Phase = CartelOperationPhase.ApproachingTanker;
+                    StatusDebug = "Barco do cartel interceptando petroleiro sem Create de saida.";
+                }
+                else
+                {
+                    op.Route = GetCreates(CartelCreateType.CartelMaritimePatrolCreate, baseRuntime.CountryId);
+                    if (op.Route.Count == 0)
+                        op.Route = GetCreates(CartelCreateType.CartelRobberyAreaCreate, baseRuntime.CountryId);
+                    op.CurrentPoint = FirstOrNull(op.Route);
+                    if (op.CurrentPoint == null) op.Phase = CartelOperationPhase.Parking;
+                }
+            }
             return op;
         }
 
@@ -1454,11 +1591,38 @@ namespace Hegemonia.Cartel
             {
                 NavioPetroleiro tanker = tankerCache[i];
                 if (!IsValidTanker(tanker, patrol)) continue;
-                float distance = Vector3.Distance(origin, tanker.transform.position);
-                if (distance < bestDistance)
+                float distanceSqr = (origin - tanker.transform.position).sqrMagnitude;
+                if (distanceSqr < bestDistance)
                 {
                     best = tanker;
-                    bestDistance = distance;
+                    bestDistance = distanceSqr;
+                }
+            }
+
+            // A area de roubo e uma preferencia de rota, nao uma barreira
+            // fisica. Se nenhum petroleiro estiver dentro dela, aceita o mais
+            // proximo com carga para o cartel realmente perseguir o navio.
+            if (best == null)
+            {
+                for (int i = 0; i < tankerCache.Count; i++)
+                {
+                    NavioPetroleiro tanker = tankerCache[i];
+                    if (tanker == null || tanker.petroleoCarregado <= 0) continue;
+                    switch (tanker.estadoAtual)
+                    {
+                        case NavioPetroleiro.EstadoPetroleiro.CARREGANDO:
+                        case NavioPetroleiro.EstadoPetroleiro.ACOPLANDO_PLATAFORMA:
+                        case NavioPetroleiro.EstadoPetroleiro.INDO_PLATAFORMA:
+                        case NavioPetroleiro.EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA:
+                            continue;
+                    }
+
+                    float distanceSqr = (origin - tanker.transform.position).sqrMagnitude;
+                    if (distanceSqr < bestDistance)
+                    {
+                        best = tanker;
+                        bestDistance = distanceSqr;
+                    }
                 }
             }
             return best;
@@ -1472,9 +1636,14 @@ namespace Hegemonia.Cartel
             // visual. Na build o petroleiro pode sair por outro ponto legitimo
             // e nunca registrar esse ID, bloqueando o roubo para sempre.
             // O estado operacional e a carga positiva sao a fonte de verdade.
-            CartelManualCreate robbery = FindNearestCreate(CartelCreateType.CartelRobberyAreaCreate, tanker.transform.position, string.Empty);
-            if (robbery != null && !robbery.Contains(tanker.transform.position)) return false;
-            if (robbery == null && patrol != null && !patrol.Contains(tanker.transform.position)) return false;
+            // Quando patrol e nulo a busca e global (fallback de emergencia),
+            // portanto a area configurada nao deve invalidar o alvo.
+            if (patrol != null)
+            {
+                CartelManualCreate robbery = FindNearestCreate(CartelCreateType.CartelRobberyAreaCreate, tanker.transform.position, string.Empty);
+                if (robbery != null && !robbery.Contains(tanker.transform.position)) return false;
+                if (robbery == null && !patrol.Contains(tanker.transform.position)) return false;
+            }
 
             switch (tanker.estadoAtual)
             {
@@ -1526,7 +1695,44 @@ namespace Hegemonia.Cartel
 
         private void SendTo(GameObject unit, CartelManualCreate point)
         {
-            if (point != null) SendToPosition(unit, point.Position, IsNaval(unit));
+            if (point == null) return;
+            if (maritimeOperation != null && maritimeOperation.Unit == unit)
+            {
+                EmitirOrdemNaval(maritimeOperation, point.Position);
+                return;
+            }
+            SendToPosition(unit, point.Position, IsNaval(unit));
+        }
+
+        private void EmitirOrdemNaval(CartelOperation op, Vector3 destino, bool forcar = false)
+        {
+            if (op == null || op.Unit == null) return;
+
+            destino.y = NavalPlacementResolver.ResolveSeaLevel();
+            float distanciaMinimaReplanejamento = 9f;
+            bool destinoMudou = (op.LastNavalDestination - destino).sqrMagnitude
+                >= distanciaMinimaReplanejamento * distanciaMinimaReplanejamento;
+            if (!forcar && !destinoMudou && Time.time < op.NextNavalOrderTime)
+            {
+                return;
+            }
+
+            if (op.NavalController == null)
+                op.NavalController = op.Unit.GetComponent<ControleNavioRealista>();
+
+            if (op.NavalController != null)
+            {
+                op.NavalController.DefinirDestino(destino);
+            }
+            else
+            {
+                // Mantem a compatibilidade com prefabs navais antigos que
+                // ainda usam ControleUnidade/Submarino.
+                SendToPosition(op.Unit, destino, true);
+            }
+
+            op.LastNavalDestination = destino;
+            op.NextNavalOrderTime = Time.time + Mathf.Max(0.2f, MaritimeOrderInterval);
         }
 
         private void SendToPosition(GameObject unit, Vector3 position, bool naval)
@@ -1707,7 +1913,17 @@ namespace Hegemonia.Cartel
                 GameObject other = collider.gameObject;
                 if (other == unit || other.transform.IsChildOf(unit.transform)) continue;
                 IdentidadeUnidade identity = other.GetComponentInParent<IdentidadeUnidade>();
-                if (identity != null && identity.teamID > 0 && identity.teamID != CartelTeamId) return true;
+                if (identity == null || identity.teamID <= 0 || identity.teamID == CartelTeamId) continue;
+
+                // Petroleiros sao o alvo economico da operacao, nao uma
+                // ameaca que deve disparar a fuga preventiva.
+                if (other.GetComponentInParent<NavioPetroleiro>() != null
+                    || identity.GetComponentInParent<NavioPetroleiro>() != null)
+                {
+                    continue;
+                }
+
+                return true;
             }
             return false;
         }

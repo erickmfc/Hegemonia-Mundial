@@ -1230,6 +1230,15 @@ public class ControleSubmarino : MonoBehaviour
             return false;
         }
 
+        // Cargueiros do mercado internacional sao civis. Eles nao entram na
+        // lista de alvos convencionais de radares, cacas ou torres, evitando
+        // que uma patrulha militar afunde uma rota comercial por engano.
+        if (alvo.GetComponentInParent<NavioCargaMercado>() != null
+            || alvo.GetComponentInChildren<NavioCargaMercado>(true) != null)
+        {
+            return false;
+        }
+
         return true;
     }
 

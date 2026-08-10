@@ -76,8 +76,9 @@ MonoBehaviour:
   ownerTeamId: 0
   fretado: 0
   capacidadeCarga: 5000
-  velocidadeCruzeiro: 18
+  velocidadeCruzeiro: 36
   distanciaChegada: 4
+  offsetAlturaAgua: -1.5
 --- !u!114 &8375913547464303191
 MonoBehaviour:
   m_ObjectHideFlags: 0

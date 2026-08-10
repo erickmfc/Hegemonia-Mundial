@@ -355,21 +355,55 @@ namespace Hegemonia.AI.IA01
             bool useAutonomous = forceAutonomous.Contains(step.StepId) || step.placementMode == IA01PlacementMode.AutonomousZone;
             if (useAutonomous)
             {
-                if (!controller.AllowAutonomousExpansion)
+                // Alguns planos antigos marcam os passos iniciais como
+                // AutonomousZone, mas a cena de campanha usa slots preparados
+                // e deixa a expansao autonoma desligada. Nao deixe isso travar
+                // a abertura: use a zona quando existir e, caso contrario,
+                // caia para o slot do mesmo grupo (energia, agricola, etc.).
+                if (controller.AllowAutonomousExpansion
+                    && layout.TryGetAutonomousZone(step.autonomousZoneId, out IA01BuildAutonomousZone zone)
+                    && zone.IsCompatible(definition))
                 {
-                    reason = "expansao autonoma desativada";
-                    return false;
+                    selection = new IA01BuildPlanSelection { Step = step, Definition = definition, Zone = zone, UsesPreparedSlot = false };
+                    SelectedSlotStatus = "zone:" + zone.ZoneId;
+                    SlotStateStatus = "Autonomous";
+                    reason = string.Empty;
+                    return true;
                 }
-                if (!layout.TryGetAutonomousZone(step.autonomousZoneId, out IA01BuildAutonomousZone zone) || !zone.IsCompatible(definition))
+
+                IA01BuildSlot preparedSlot = null;
+                string preparedReason = string.Empty;
+                string specializedReason = string.Empty;
+                bool preparedFallback = controller.UsePreparedSlots
+                    && !string.IsNullOrWhiteSpace(step.slotGroupId)
+                    && layout.TryGetAvailableGroupSlot(step.slotGroupId, definition, out preparedSlot, out preparedReason)
+                    && ValidateSpecializedSlot(preparedSlot, definition, out specializedReason);
+                if (preparedFallback)
                 {
-                    reason = "zona autonoma ausente ou incompativel";
-                    return false;
+                    selection = new IA01BuildPlanSelection
+                    {
+                        Step = step,
+                        Definition = definition,
+                        Slot = preparedSlot,
+                        Lot = preparedSlot.CreateLot(definition),
+                        UsesPreparedSlot = true
+                    };
+                    SelectedSlotStatus = preparedSlot.SlotId;
+                    SlotStateStatus = preparedSlot.State.ToString();
+                    AlternativeSlotsStatus = "preparados:" + step.slotGroupId;
+                    reason = string.Empty;
+                    return true;
                 }
-                selection = new IA01BuildPlanSelection { Step = step, Definition = definition, Zone = zone, UsesPreparedSlot = false };
-                SelectedSlotStatus = "zone:" + zone.ZoneId;
-                SlotStateStatus = "Autonomous";
-                reason = string.Empty;
-                return true;
+
+                if (!string.IsNullOrWhiteSpace(preparedReason))
+                    reason = preparedReason;
+                else if (!string.IsNullOrWhiteSpace(specializedReason))
+                    reason = specializedReason;
+                else if (!controller.AllowAutonomousExpansion)
+                    reason = "expansao autonoma desativada e nenhum slot preparado compativel";
+                else
+                    reason = "zona autonoma ausente/incompativel e nenhum slot preparado compativel";
+                return false;
             }
 
             if (!controller.UsePreparedSlots)

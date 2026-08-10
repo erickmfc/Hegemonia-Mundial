@@ -1,0 +1,262 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7546535248038806388
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8064233765898995968}
+  - component: {fileID: 2129234352020200774}
+  - component: {fileID: 3782589637932651063}
+  - component: {fileID: -3437835104140545132}
+  - component: {fileID: -3300914662858298690}
+  - component: {fileID: -761234567890123456}
+  - component: {fileID: -762345678901234568}
+  m_Layer: 0
+  m_Name: Centro Comercia
+  m_TagString: Imovel
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8064233765898995968
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7546535248038806388}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 785.3, y: 0.000022888184, z: 74.03466}
+  m_LocalScale: {x: 0.010135526, y: 0.008837619, z: 0.013599378}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7786143686158732121}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &2129234352020200774
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7546535248038806388}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 10, y: 38.39, z: 10}
+  m_Center: {x: 0, y: 10, z: 0}
+--- !u!114 &3782589637932651063
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7546535248038806388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6356660df3bde1b4dabe6a4dc1d7e19c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ComercioLocal
+  categoria: 5
+  porte: 2
+  capacidadeEmpresas: 60
+  limiteTrabalhadoresPredio: 4344
+  ocupacaoAutomatica: 1
+  segurancaLocal: 0.75
+  acessoTransporte: 0.75
+  concorrenciaLocal: 0.25
+  qualidadeServicos: 0.7
+  vagasMaximas: 12
+  clientesPorSegundo: 22
+  consumoEnergia: 1.5
+  precoMedioProduto: 4
+  salarioPorTrabalhador: 0.7
+  custoMercadoriasPercentual: 0.35
+  estoqueMercadorias: 250
+  estoqueMaximo: 500
+  reposicaoAutomatica: 1
+  reposicaoPorCiclo: 30
+  emFuncionamento: 0
+  motivoParada: Aguardando dados
+  trabalhadoresContratados: 0
+  vagasDisponiveis: 0
+  vendasUltimoCiclo: 0
+  salariosUltimoCiclo: 0
+  lucroUltimoCiclo: 0
+  empresasAbertas: 0
+  empresasAbertasRecentemente: 0
+  empresasFechadasRecentemente: 0
+  ocupacaoAtual: 0
+  principalNecessidade: Aguardando analise
+  empresas: []
+--- !u!114 &-3437835104140545132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7546535248038806388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 4
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
+--- !u!114 &-3300914662858298690
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7546535248038806388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 370
+  vidaAtual: 370
+  unidadeBiologica: 0
+  ehEstrutura: 1
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 2.9
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
+--- !u!114 &-761234567890123456
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7546535248038806388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
+--- !u!114 &-762345678901234568
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7546535248038806388}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 370d63f90b709ba458d6dd28aa2be0ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Imovel
+  capacidade: 0
+  distanciaConexao: 8
+  ladoEsquerdo: {fileID: 0}
+  ladoDireito: {fileID: 0}
+  conexaoRua: {fileID: 0}
+  distanciaFronteiraRua: 18
+  conexaoRuaTras: {fileID: 0}
+  distanciaFronteiraRuaTras: 18
+  gerarPavimentacaoConcreto: 1
+  pavimentoInstanciado: {fileID: 0}
+  debugLogs: 0
+  semEnergia: 0
+--- !u!1001 &5372216950300531881
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 8064233765898995968}
+    m_Modifications:
+    - target: {fileID: -6689036041284674117, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_Name
+      value: mid_rise_wall_to_wall_office_building
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.64985454
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.5388055
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 2359.0083
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -5645937942226959685, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+--- !u!4 &7786143686158732121 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: 7c0bfd79f386c3f47be6cf7d23a2d7bd, type: 3}
+  m_PrefabInstance: {fileID: 5372216950300531881}
+  m_PrefabAsset: {fileID: 0}

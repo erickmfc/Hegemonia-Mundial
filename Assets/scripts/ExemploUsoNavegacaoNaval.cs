@@ -34,6 +34,7 @@ public class ExemploUsoNavegacaoNaval : MonoBehaviour
     void Update()
     {
         if (navegacao == null) return;
+        if (MenuGoverno.EstaAberto) return;
         
         // EXEMPLO 1: Comandos por teclado (para testes)
         if (Input.GetKeyDown(KeyCode.Alpha1)) IrParaPontoA();

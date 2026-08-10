@@ -154,6 +154,9 @@ public class DadosPaisGoverno
     public int alistaveis = 0;
     public int mortosAcumulados = 0;
     [Range(0f, 100f)] public float felicidade = 70f;
+    [Header("Bonus temporarios")]
+    [Range(0f, 10f)] public float bonusFelicidadeCartel;
+    public int diaFimBonusFelicidadeCartel;
     public float mortalidade = 1f;
     public float natalidade = 1.2f;
 
@@ -176,12 +179,16 @@ public class DadosPaisGoverno
     [Range(0, 35)] public int impostoMoradia = 10;
     [Range(0, 35)] public int impostoIndustria = 15;
     [Range(0, 35)] public int impostoComercio = 12;
+    [Range(0f, 100f)] public float descontentamentoMoradia;
+    [Range(0f, 100f)] public float descontentamentoIndustria;
+    [Range(0f, 100f)] public float descontentamentoComercio;
     public float receitaMoradia;
     public float receitaIndustria;
     public float receitaComercio;
     public float receitaEnergia;
     public float custoManutencao;
     public float saldoOperacional;
+    [Range(0f, 0.50f)] public float bonusPoderCompraComercio;
 
     [Header("Economia Viva")]
     public float qualidadeVida = 55f;
@@ -261,7 +268,9 @@ public class DadosPaisGoverno
         get
         {
             float inflacaoPeso = Mathf.Clamp01(1f - inflacao / 30f);
-            return Mathf.Clamp(valorMoeda * inflacaoPeso * (0.65f + estabilidade / 200f), 0.05f, 3f);
+            float pressaoComercio = 1f - descontentamentoComercio / 250f;
+            return Mathf.Clamp(valorMoeda * inflacaoPeso * (0.65f + estabilidade / 200f)
+                * (1f + bonusPoderCompraComercio) * pressaoComercio, 0.05f, 3f);
         }
     }
 

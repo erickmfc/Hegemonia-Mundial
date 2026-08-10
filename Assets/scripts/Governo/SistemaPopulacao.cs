@@ -202,6 +202,11 @@ public static class SistemaPopulacao
             : UnityEngine.Mathf.Clamp01(1f - economia.deficitEnergia / UnityEngine.Mathf.Max(1f, economia.energiaProduzida));
         score += fatorEnergia * 0.10f;
 
+        // Empregos e produtos tornam a cidade atraente mesmo durante sua
+        // recuperacao, mas o bonus comercial e deliberadamente limitado.
+        DadosComercioNacional comercio = SistemaComercioNacional.ObterResumo(pais.teamId);
+        score += UnityEngine.Mathf.Clamp01(comercio.capacidadeAtracao / 100f) * 0.15f;
+
         // Penalidades diretas
         if (pais.emGuerra)    score -= 0.30f;
         if (pais.sancionado)  score -= 0.10f;

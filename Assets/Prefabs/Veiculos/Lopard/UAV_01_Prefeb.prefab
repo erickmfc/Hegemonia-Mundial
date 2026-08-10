@@ -149,8 +149,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
-  teamID: 2
-  nomeDoPais: Hegemonia
+  # Prefab visual/veiculo nao nasce pertencendo a uma nacao. O aeroporto,
+  # estaleiro ou fabrica aplica o teamID real no momento do spawn.
+  teamID: 0
+  nomeDoPais: 
   antygavitiEstabilidade: 5
   tipoUnidade: 3
   militaresConsumidos: 0

@@ -6,7 +6,10 @@ public static class ConfiguracaoCenasJogo
     public const string CenaMenuPrincipalCanonica = "Menu cena";
     public const string CenaMenuFallback = "MenuPrincipal";
     public const string CenaCampanhaCanonica = "cena19)";
-    public const string CaminhoCenaCampanhaCanonica = "Assets/Scenes/cena19).unity";
+    // Esta e a cena de trabalho da campanha. Ela e a mesma que o projeto
+    // carrega no Play e na build, evitando que ajustes sejam feitos em uma
+    // copia que nunca entra no jogo.
+    public const string CaminhoCenaCampanhaCanonica = "Assets/_Recovery/cena19).unity";
     public const string CenaTutorialCanonica = "teste";
 
     private static readonly string[] aliasesMenuPrincipal =
@@ -19,8 +22,7 @@ public static class ConfiguracaoCenasJogo
 
     private static readonly string[] aliasesCampanhaLegada =
     {
-        "Assets/_Recovery/cena19).unity",
-        "Assets/_Recovery/0 (9).unity",
+        "Assets/Scenes/cena19).unity",
         "Assets/Scenes/SampleScene.unity"
     };
 
@@ -45,7 +47,6 @@ public static class ConfiguracaoCenasJogo
 
     public static string ResolverCenaCampanhaPadrao()
     {
-        // A campanha oficial nunca deve cair em uma cena de recuperacao.
         return CenaCampanhaCanonica;
     }
 

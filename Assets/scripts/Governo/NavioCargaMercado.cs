@@ -20,6 +20,8 @@ public sealed class NavioCargaMercado : MonoBehaviour
     public float capacidadeCarga = CapacidadePadrao;
     public float velocidadeCruzeiro = 12f;
     public float distanciaChegada = 4f;
+    [Tooltip("Deslocamento vertical visual em relacao ao nivel do mar. Valores negativos afundam o casco.")]
+    public float offsetAlturaAgua = -1.5f;
 
     private bool emViagem;
     private Vector3 destino;
@@ -78,13 +80,13 @@ public sealed class NavioCargaMercado : MonoBehaviour
 
         Vector3 atual = transform.position;
         Vector3 alvo = destino;
-        alvo.y = nivelAgua;
+        alvo.y = nivelAgua + offsetAlturaAgua;
         Vector3 delta = alvo - atual;
         delta.y = 0f;
 
         if (delta.sqrMagnitude <= distanciaChegada * distanciaChegada)
         {
-            transform.position = new Vector3(alvo.x, nivelAgua, alvo.z);
+            transform.position = new Vector3(alvo.x, nivelAgua + offsetAlturaAgua, alvo.z);
             emViagem = false;
             Action callback = aoChegar;
             aoChegar = null;
@@ -93,7 +95,7 @@ public sealed class NavioCargaMercado : MonoBehaviour
         }
 
         Vector3 direcao = delta.normalized;
-        transform.position = Vector3.MoveTowards(atual, new Vector3(alvo.x, nivelAgua, alvo.z), velocidadeCruzeiro * Time.deltaTime);
+        transform.position = Vector3.MoveTowards(atual, new Vector3(alvo.x, nivelAgua + offsetAlturaAgua, alvo.z), velocidadeCruzeiro * Time.deltaTime);
         if (direcao.sqrMagnitude > 0.001f)
         {
             Quaternion rotacao = Quaternion.LookRotation(direcao, Vector3.up);
@@ -128,7 +130,7 @@ public sealed class NavioCargaMercado : MonoBehaviour
 
         nivelAgua = NavalPlacementResolver.ResolveSeaLevel();
         Vector3 posicao = transform.position;
-        transform.position = new Vector3(posicao.x, nivelAgua, posicao.z);
+        transform.position = new Vector3(posicao.x, nivelAgua + offsetAlturaAgua, posicao.z);
         SistemaLogisticaMercado.Instancia?.RegistrarNavio(this);
     }
 
@@ -147,6 +149,6 @@ public sealed class NavioCargaMercado : MonoBehaviour
         emViagem = false;
         aoChegar = null;
         nivelAgua = NavalPlacementResolver.ResolveSeaLevel();
-        transform.position = new Vector3(ponto.x, nivelAgua, ponto.z);
+        transform.position = new Vector3(ponto.x, nivelAgua + offsetAlturaAgua, ponto.z);
     }
 }

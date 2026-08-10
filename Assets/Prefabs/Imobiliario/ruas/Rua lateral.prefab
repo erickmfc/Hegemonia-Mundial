@@ -169,7 +169,8 @@ MonoBehaviour:
   pontoLadoEsquerdo: {fileID: 0}
   pontoLadoDireito: {fileID: 0}
   distanciaConexao: 3
-  permiteCasas: 0
+  permiteCasas: 1
+  usarTangentesDosConectores: 1
   prefabPapeamentoConcreto: {fileID: 0}
 --- !u!114 &5951253152107314413
 MonoBehaviour:
@@ -216,7 +217,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2488347406801171921}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
   m_LocalPosition: {x: -2.51, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0

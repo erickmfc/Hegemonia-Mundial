@@ -14,6 +14,7 @@ namespace Hegemonia.AI.IA01
             public int LastOperations;
             public int LastEvents;
             public float LastBudgetMs;
+            public float LastAllocatedBudgetMs;
             public string LastReason = string.Empty;
         }
 
@@ -93,7 +94,11 @@ namespace Hegemonia.AI.IA01
                 Register(controller);
                 SchedulerState state = states[controller.InstanceId];
                 bool dirty = controller.Context.IsDirty;
-                bool due = dirty || now >= state.NextDueAt;
+                // Mudancas ainda ganham prioridade no score, mas respeitam o
+                // respiro imposto a uma slice cara. Sem isso, um contexto que se
+                // mantem dirty poderia ignorar o cooldown e executar novamente
+                // em todos os frames.
+                bool due = now >= state.NextDueAt;
                 if (!due)
                 {
                     continue;
@@ -156,6 +161,7 @@ namespace Hegemonia.AI.IA01
 
                 plan.RemainingBudgetMs -= sliceMs;
                 plan.ScheduledCount++;
+                candidate.State.LastAllocatedBudgetMs = sliceMs;
                 candidate.State.LastReason = plan.Slices[plan.Slices.Count - 1].Reason;
             }
 
@@ -194,12 +200,25 @@ namespace Hegemonia.AI.IA01
                 : 0.65f;
 
             float backoff = 1f + (state.FailureCount * 0.50f);
-            if (result.Changed)
+            float allocatedBudget = Mathf.Max(0.10f, state.LastAllocatedBudgetMs);
+            float executionPressure = result.ConsumedMilliseconds / allocatedBudget;
+            bool exceededBudget = executionPressure > 1.25f;
+            if (exceededBudget)
+            {
+                // Alguns modulos ainda possuem trabalho atomico maior que o slice.
+                // Nao cancelamos a decisao em andamento; apenas damos um respiro
+                // proporcional antes da proxima rodada para evitar picos em serie.
+                backoff *= Mathf.Clamp(executionPressure, 1.25f, 5f);
+            }
+            else if (result.Changed)
             {
                 backoff *= 0.85f;
             }
 
-            state.NextDueAt = now + Mathf.Max(0.05f, cadence * backoff);
+            float cooldownForHeavySlice = result.ConsumedMilliseconds >= 50f ? 1.25f
+                : result.ConsumedMilliseconds >= 15f ? 0.45f
+                : 0f;
+            state.NextDueAt = now + Mathf.Max(0.05f, cadence * backoff, cooldownForHeavySlice);
             state.LastReason = result.LastMessage ?? string.Empty;
         }
 

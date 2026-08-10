@@ -268,39 +268,7 @@ public class MapaGeralController : MonoBehaviour
         if (RTSInputBindings.GetKeyDown(RTSInputAction.StrategicMap) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
             if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
-            mapaAtivo = !mapaAtivo;
-            if (mapaAtivo && cameraPrincipal != null)
-            {
-                cameraPrincipalPosicaoAntesDoMapa = cameraPrincipal.transform.position;
-                cameraPrincipalRotacaoAntesDoMapa = cameraPrincipal.transform.rotation;
-                cameraPrincipalFovAntesDoMapa = cameraPrincipal.fieldOfView;
-                snapshotCameraPrincipalValido = true;
-            }
-            cameraMapa.gameObject.SetActive(mapaAtivo);
-            AplicarModoMapa(mapaAtivo);
-
-            if (mapaAtivo && cameraPrincipal != null)
-            {
-                Vector3 p = cameraPrincipal.transform.position;
-                cameraMapa.transform.position = new Vector3(p.x, 1350f, p.z);
-                LimitarCameraMapa();
-                volumeAudioOriginal = AudioListener.volume;
-                AudioListener.volume = 0f;
-                RefreshCache();
-            }
-            else
-            {
-                AudioListener.volume = volumeAudioOriginal;
-                _seguindoAlvo = false;
-                _alvoSeguir = null;
-                if (snapshotCameraPrincipalValido && cameraPrincipal != null)
-                {
-                    cameraPrincipal.transform.SetPositionAndRotation(
-                        cameraPrincipalPosicaoAntesDoMapa,
-                        cameraPrincipalRotacaoAntesDoMapa);
-                    cameraPrincipal.fieldOfView = cameraPrincipalFovAntesDoMapa;
-                }
-            }
+            AlternarMapa(!mapaAtivo);
         }
 
         if (mapaAtivo && cameraMapa != null)
@@ -335,6 +303,50 @@ public class MapaGeralController : MonoBehaviour
             {
                 RefreshCache();
                 _tempoRefreshCache = Time.time + 2f;
+            }
+        }
+    }
+
+    public void AbrirMapaEstrategico()
+    {
+        if (!mapaAtivo) AlternarMapa(true);
+    }
+
+    private void AlternarMapa(bool abrir)
+    {
+        if (cameraMapa == null) return;
+
+        mapaAtivo = abrir;
+        if (mapaAtivo && cameraPrincipal != null)
+        {
+            cameraPrincipalPosicaoAntesDoMapa = cameraPrincipal.transform.position;
+            cameraPrincipalRotacaoAntesDoMapa = cameraPrincipal.transform.rotation;
+            cameraPrincipalFovAntesDoMapa = cameraPrincipal.fieldOfView;
+            snapshotCameraPrincipalValido = true;
+        }
+        cameraMapa.gameObject.SetActive(mapaAtivo);
+        AplicarModoMapa(mapaAtivo);
+
+        if (mapaAtivo && cameraPrincipal != null)
+        {
+            Vector3 p = cameraPrincipal.transform.position;
+            cameraMapa.transform.position = new Vector3(p.x, 1350f, p.z);
+            LimitarCameraMapa();
+            volumeAudioOriginal = AudioListener.volume;
+            AudioListener.volume = 0f;
+            RefreshCache();
+        }
+        else
+        {
+            AudioListener.volume = volumeAudioOriginal;
+            _seguindoAlvo = false;
+            _alvoSeguir = null;
+            if (snapshotCameraPrincipalValido && cameraPrincipal != null)
+            {
+                cameraPrincipal.transform.SetPositionAndRotation(
+                    cameraPrincipalPosicaoAntesDoMapa,
+                    cameraPrincipalRotacaoAntesDoMapa);
+                cameraPrincipal.fieldOfView = cameraPrincipalFovAntesDoMapa;
             }
         }
     }

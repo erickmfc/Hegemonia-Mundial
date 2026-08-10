@@ -312,9 +312,18 @@ public class SistemaGovernoMundial : MonoBehaviour
             {
                 economia = new DadosEconomiaPais { teamId = pais.teamId };
             }
+            DadosCulturaNacional cultura = SistemaCulturaEntretenimento.ObterResumo(pais.teamId);
+            IntegrarCulturaNaEconomia(economia, cultura, pais);
+            AtualizarDescontentamentoFiscal(pais);
+            DadosComercioNacional comercio = SistemaComercioNacional.ObterResumo(pais.teamId);
             
             AplicarEconomiaImoveis(pais, economia);
             SistemaPopulacao.Processar(pais, economia);
+            if (cultura.totalEstruturas > 0)
+            {
+                float atracaoCultural = Mathf.Clamp01(cultura.atratividadeTuristica / 20f);
+                pais.indiceAtratividade = Mathf.Clamp01(pais.indiceAtratividade * 0.85f + atracaoCultural * 0.15f);
+            }
             SistemaMilitar.Processar(pais, economia);
             AtualizarSistemasNacionais(pais);
 
@@ -343,6 +352,18 @@ public class SistemaGovernoMundial : MonoBehaviour
             // Felicidade < 40 → emigração e crise demográfica
             // ─────────────────────────────────────────────────────────────────────
             {
+                int diaFelicidade = DiaAtual();
+                if (pais.bonusFelicidadeCartel > 0f
+                    && pais.diaFimBonusFelicidadeCartel > 0
+                    && diaFelicidade >= pais.diaFimBonusFelicidadeCartel)
+                {
+                    pais.felicidade = Mathf.Clamp(pais.felicidade - pais.bonusFelicidadeCartel, 0f, 100f);
+                    pais.bonusFelicidadeCartel = 0f;
+                    pais.diaFimBonusFelicidadeCartel = 0;
+                }
+
+                float bonusCartelAtivo = Mathf.Clamp(pais.bonusFelicidadeCartel, 0f, 10f);
+                pais.felicidade = Mathf.Clamp(pais.felicidade - bonusCartelAtivo, 0f, 100f);
                 float deltaFelicidade = 0f;
 
                 // --- 1. ALIMENTAÇÃO (Peso 25%) ---
@@ -427,10 +448,22 @@ public class SistemaGovernoMundial : MonoBehaviour
                 else if (pais.indiceSatisfacaoServicos < 30f)
                     deltaFelicidade -= 0.4f;
 
+                // Servicos comerciais saudaveis podem contribuir com ate 10
+                // pontos; o efeito entra aos poucos a cada ciclo nacional.
+                deltaFelicidade += comercio.contribuicaoFelicidade * 0.04f;
+                // Cultura, lazer e turismo podem contribuir com ate 15 pontos
+                // graduais, respeitando variedade, publico e funcionamento.
+                deltaFelicidade += cultura.contribuicaoFelicidade * 0.04f;
+                // Cada setor sente o seu proprio imposto. A arrecadacao sobe,
+                // mas o descontentamento reduz felicidade e poder de compra.
+                deltaFelicidade -= (pais.descontentamentoMoradia
+                    + pais.descontentamentoIndustria
+                    + pais.descontentamentoComercio) * 0.008f;
+
                 // Aplica suavizando (quanto maior a diferença, mais lenta a mudança)
                 // Isso evita oscilações bruscas de 0→100 em poucos ticks
                 float pesoSuavizacao = Mathf.Lerp(1f, 0.5f, Mathf.Abs(deltaFelicidade) / 5f);
-                pais.felicidade = Mathf.Clamp(pais.felicidade + deltaFelicidade * pesoSuavizacao, 0f, 100f);
+                pais.felicidade = Mathf.Clamp(pais.felicidade + deltaFelicidade * pesoSuavizacao + bonusCartelAtivo, 0f, 100f);
             }
             // ─────────────────────────────────────────────────────────────────────
 
@@ -1546,6 +1579,27 @@ public class SistemaGovernoMundial : MonoBehaviour
         ProcessarEconomia();
     }
 
+    /// <summary>
+    /// Recompensa a eliminacao de um membro do cartel sem criar uma guerra
+    /// diplomatica. O bonus e mantido no nivel de felicidade por dois dias do
+    /// calendario do jogo.
+    /// </summary>
+    public void AplicarBonusFelicidadeCartel(int teamAgressor, float pontos = 10f, int duracaoDias = 2)
+    {
+        if (teamAgressor != teamJogador) return;
+
+        DadosPaisGoverno pais = ObterPais(teamJogador);
+        if (pais == null) return;
+
+        float anterior = Mathf.Clamp(pais.bonusFelicidadeCartel, 0f, 10f);
+        float novoBonus = Mathf.Clamp(anterior + Mathf.Max(0f, pontos), 0f, 10f);
+        pais.bonusFelicidadeCartel = novoBonus;
+        pais.diaFimBonusFelicidadeCartel = DiaAtual() + Mathf.Max(1, duracaoDias);
+        pais.felicidade = Mathf.Clamp(pais.felicidade + (novoBonus - anterior), 0f, 100f);
+        RegistrarNoticia("A populacao comemora a eliminacao de membros do cartel: +10% de felicidade por 2 dias.");
+        OnGovernoAtualizado?.Invoke();
+    }
+
     /// <summary>Registra a agressao e grava o agressor como inimigo do alvo.</summary>
     public void RegistrarAgressao(int vitimaTeamId, int agressorTeamId)
     {
@@ -1970,8 +2024,23 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
     }
 
+    private static void IntegrarCulturaNaEconomia(DadosEconomiaPais economia, DadosCulturaNacional cultura, DadosPaisGoverno pais)
+    {
+        if (economia == null || cultura == null || cultura.totalEstruturas <= 0) return;
+
+        economia.estruturasContadas += cultura.totalEstruturas;
+        economia.empregosDisponiveis += cultura.empregosPermanentes + cultura.empregosTemporarios;
+        economia.empregosOcupados = Mathf.Min(Mathf.Max(0, pais != null ? pais.populacaoCivil : 0), economia.empregosDisponiveis);
+        economia.energiaConsumida += cultura.consumoEnergia;
+        economia.receitaComercio += cultura.receitaIngressos + cultura.receitaTuristicaIndireta;
+        float duracaoDia = GerenciadorTempo.Instancia != null ? Mathf.Max(1f, GerenciadorTempo.Instancia.duracaoDiaSegundos) : 30f;
+        economia.custoManutencao += cultura.custoManutencaoDiario / duracaoDia;
+        economia.saldoOperacional = economia.ReceitaBruta - economia.custoManutencao;
+    }
+
     private void AplicarEconomiaImoveis(DadosPaisGoverno pais, DadosEconomiaPais economia)
     {
+        DadosComercioNacional comercio = SistemaComercioNacional.ObterResumo(pais.teamId);
         // Capacidade vem de moradia real. A prefeitura so oferece uma lotacao
         // administrativa temporaria; ela nao representa uma cidade residencial.
         int capacidadeResidencial = Mathf.Max(0, economia.moradiaTotal);
@@ -1988,6 +2057,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         pais.emprego = Mathf.Clamp01(economia.empregosOcupados / (float)populacaoParaIndicadores) * 100f;
         pais.moradia = capacidadeResidencial <= 0 ? 0f
             : Mathf.Clamp01(capacidadeResidencial / (float)populacaoParaIndicadores) * 100f;
+        pais.moradia = Mathf.Clamp(pais.moradia - pais.descontentamentoMoradia * 0.12f, 0f, 100f);
         pais.pressaoHabitacional = capacidadeResidencial <= 0
             ? (pais.populacaoCivil > 0 ? 2f : 0f)
             : (float)pais.populacaoCivil / capacidadeResidencial;
@@ -2030,8 +2100,10 @@ public class SistemaGovernoMundial : MonoBehaviour
             + economia.industriaProduzida * 4f
             + economia.petroleoProduzido * 2f
             + economia.comidaProduzida * 1.2f
+            + comercio.vendasBrutas * 0.08f
             + pais.nivelEconomico * 0.22f
             + pais.nivelIndustrial * 0.32f
+            - pais.descontentamentoIndustria * 0.12f
             - economia.deficitEnergia * 4f, 5f, 100f);
         pais.impostoMoradia = NormalizarImposto(pais.impostoMoradia);
         pais.impostoIndustria = NormalizarImposto(pais.impostoIndustria);
@@ -2042,7 +2114,11 @@ public class SistemaGovernoMundial : MonoBehaviour
         float multiplicadorDiplomatico = 1f + pais.nivelDiplomatico * 0.0018f;
         pais.receitaMoradia = economia.receitaMoradia * FatorImposto(pais.impostoMoradia) * multiplicadorEconomico;
         pais.receitaIndustria = economia.receitaIndustria * FatorImposto(pais.impostoIndustria) * multiplicadorIndustrial;
-        pais.receitaComercio = economia.receitaComercio * FatorImposto(pais.impostoComercio) * multiplicadorDiplomatico;
+        pais.receitaComercio = economia.receitaComercio * FatorImposto(pais.impostoComercio) * multiplicadorDiplomatico
+            + comercio.impostosArrecadados;
+        // Salarios pagos pelo comercio elevam o poder de compra dos moradores.
+        // O teto impede que um unico shopping distorca a moeda nacional.
+        pais.bonusPoderCompraComercio = Mathf.Clamp(comercio.salariosPagos / Mathf.Max(1f, pais.populacaoCivil) * 0.08f, 0f, 0.50f);
         pais.receitaEnergia = economia.receitaEnergia * (1f + (pais.nivelEconomico + pais.nivelIndustrial) * 0.0010f);
 
         // Partida nova: sem estruturas, tropas ou compromissos ativos não há
@@ -2147,6 +2223,16 @@ public class SistemaGovernoMundial : MonoBehaviour
     {
         valor = Mathf.Clamp(valor, 0, 35);
         return Mathf.RoundToInt(valor / 5f) * 5;
+    }
+
+    private static void AtualizarDescontentamentoFiscal(DadosPaisGoverno pais)
+    {
+        if (pais == null) return;
+        // Ate a taxa-base a categoria considera o imposto sustentavel. Acima
+        // dela, cada faixa de 5 pontos aumenta claramente o descontentamento.
+        pais.descontentamentoMoradia = Mathf.Clamp(Mathf.Max(0, pais.impostoMoradia - 10) * 3.2f, 0f, 100f);
+        pais.descontentamentoIndustria = Mathf.Clamp(Mathf.Max(0, pais.impostoIndustria - 15) * 3.2f, 0f, 100f);
+        pais.descontentamentoComercio = Mathf.Clamp(Mathf.Max(0, pais.impostoComercio - 12) * 3.2f, 0f, 100f);
     }
 
     private static float CargaFiscalMedia(DadosPaisGoverno pais)

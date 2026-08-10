@@ -58,6 +58,21 @@ public class LancadorMisselCaca : MonoBehaviour
 
     public bool TemInimigosDetectados => inimigosNaArea != null && inimigosNaArea.Count > 0;
 
+    // O modo definido no menu (ControleUnidade) e a autoridade final. O
+    // aeroporto/IA ainda pode enviar uma missao, mas nunca pode transformar
+    // uma aeronave marcada como passiva em uma unidade de ataque autonomo.
+    private bool ModoPassivoOficial => _unidadeBase != null && !_unidadeBase.ModoCombateAtivo;
+
+    public void DefinirModoPassivoPeloMenu(bool passivo)
+    {
+        modoPassivo = passivo;
+        if (passivo)
+        {
+            _alvoIAForcado = null;
+            _tempoValidadeAlvoIA = -1f;
+        }
+    }
+
     // Interface
     private Vector2 scrollPosition;
     private bool radarMinimizado = false;
@@ -71,7 +86,9 @@ public class LancadorMisselCaca : MonoBehaviour
     void Start()
     {
         if (raioDeDeteccao < 1500f) raioDeDeteccao = 1500f; // Garante que alcance bombardeiros muito altos
-        _unidadeBase = GetComponent<ControleUnidade>();
+        _unidadeBase = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>()
+            ?? GetComponentInChildren<ControleUnidade>(true);
         _vooModerno = GetComponent<ControleAviao>();
         _sistemaDanos = GetComponent<SistemaDeDanos>();
         _rb = GetComponent<Rigidbody>();
@@ -206,6 +223,13 @@ public class LancadorMisselCaca : MonoBehaviour
 
     void ProcessarPatrulhaAutomatica()
     {
+        if (ModoPassivoOficial)
+        {
+            modoPassivo = true;
+            _alvoIAForcado = null;
+            _tempoValidadeAlvoIA = -1f;
+            return;
+        }
         if (_vooModerno == null || _vooModerno.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return;
         if (voltandoParaBase) return;
 
@@ -245,6 +269,13 @@ public class LancadorMisselCaca : MonoBehaviour
 
     public void DefinirAlvoIA(Transform alvo, Vector3 alvoFallback, float duracaoSegundos = 4f)
     {
+        if (ModoPassivoOficial)
+        {
+            modoPassivo = true;
+            _alvoIAForcado = null;
+            _tempoValidadeAlvoIA = -1f;
+            return;
+        }
         _alvoIAForcado = alvo;
         _ultimoPontoAlvoIA = alvo != null ? alvo.position : alvoFallback;
         _tempoValidadeAlvoIA = Time.time + Mathf.Max(1.5f, duracaoSegundos);
@@ -268,6 +299,7 @@ public class LancadorMisselCaca : MonoBehaviour
 
     bool TentarDisparoContraAlvoIA()
     {
+        if (ModoPassivoOficial) return false;
         if (_alvoIAForcado == null || Time.time > _tempoValidadeAlvoIA) return false;
         if (_vooModerno == null || _vooModerno.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return false;
         if (voltandoParaBase || modoPassivo) return false;

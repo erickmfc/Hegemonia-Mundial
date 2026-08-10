@@ -672,15 +672,93 @@ public class SistemaMercadoGlobal : MonoBehaviour
         return true;
     }
 
+    private bool PodeNegociarComAliado(int origemTeamId, int destinoTeamId, out RelacaoPaisGoverno relacao)
+    {
+        relacao = null;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null || origemTeamId == destinoTeamId) return false;
+        relacao = governo.ObterRelacao(origemTeamId, destinoTeamId);
+        if (relacao == null || relacao.guerraDeclarada || relacao.sancaoAtiva) return false;
+        DadosPaisGoverno origem = governo.ObterPais(origemTeamId);
+        DadosPaisGoverno destino = governo.ObterPais(destinoTeamId);
+        if ((origem != null && origem.emGuerra && origem.rivalTeamId == destinoTeamId)
+            || (destino != null && destino.emGuerra && destino.rivalTeamId == origemTeamId)) return false;
+
+        // Uma rota automatica so e oferecida a paises com amizade real. Um
+        // tratado habilita relacoes boas; uma amizade excelente (60+) tambem
+        // pode abrir a rota mesmo antes da formalizacao do tratado.
+        return relacao.valor >= 40 && (relacao.tratadoComercial || relacao.valor >= 60);
+    }
+
+    private float InteresseDoPais(DadosPaisGoverno pais, DadosItemMercado item)
+    {
+        if (pais == null || item == null) return 0f;
+        float estoque = 0f;
+        if (item.municaoMilitar)
+        {
+            SistemaGastosMilitares.GarantirInstancia();
+            estoque = SistemaGastosMilitares.Instancia != null
+                ? SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(pais.teamId, item.idMunicaoMilitar)
+                : 0f;
+        }
+        else
+        {
+            estoque = SistemaGovernoMundial.Instancia != null
+                ? SistemaGovernoMundial.Instancia.ObterEstoque(pais.teamId, item.RecursoIdEfetivo)
+                : 0f;
+        }
+
+        float necessidade = Mathf.Clamp(100f - estoque / 20f, 0f, 100f);
+        if (item.demanda > item.oferta) necessidade += Mathf.Clamp(item.demanda - item.oferta, 0f, 40f);
+        return necessidade;
+    }
+
+    public DadosPaisGoverno EncontrarMelhorFornecedor(int compradorTeamId, DadosItemMercado item, int quantidade)
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null || item == null) return null;
+        return governo.Paises
+            .Where(p => p != null && p.teamId != compradorTeamId && PodeNegociarComAliado(compradorTeamId, p.teamId, out _)
+                && (item.municaoMilitar
+                    ? SistemaGastosMilitares.Instancia != null && SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(p.teamId, item.idMunicaoMilitar) >= Mathf.Max(1, quantidade)
+                    : item.equipamentoMilitar
+                        ? p.saldo >= quantidade * item.precoAtual
+                        : governo.ObterEstoque(p.teamId, item.RecursoIdEfetivo) > 0))
+            .OrderByDescending(p =>
+            {
+                RelacaoPaisGoverno rel;
+                PodeNegociarComAliado(compradorTeamId, p.teamId, out rel);
+                return (rel != null ? rel.valor : 0) * 2f + Mathf.Clamp(p.producao, 0f, 100f) + p.saldo / 10000f;
+            })
+            .FirstOrDefault();
+    }
+
+    public DadosPaisGoverno EncontrarMelhorComprador(int vendedorTeamId, DadosItemMercado item, int quantidade)
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null || item == null) return null;
+        int custo = Mathf.Max(1, quantidade) * Mathf.Max(1, item.precoAtual);
+        return governo.Paises
+            .Where(p => p != null && p.teamId != vendedorTeamId && p.saldo >= custo
+                && PodeNegociarComAliado(vendedorTeamId, p.teamId, out _))
+            .OrderByDescending(p =>
+            {
+                RelacaoPaisGoverno rel;
+                PodeNegociarComAliado(vendedorTeamId, p.teamId, out rel);
+                return (rel != null ? rel.valor : 0) * 3f
+                    + InteresseDoPais(p, item)
+                    + Mathf.Clamp(p.nivelEconomico, 0, 100) * 0.15f;
+            })
+            .FirstOrDefault();
+    }
+
     public bool ComprarAutomaticamente(int compradorTeamId, string itemId, int quantidade, out string mensagem)
     {
         DadosItemMercado item = ObterItem(itemId);
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
         if (item == null || governo == null) { mensagem = "Item indisponivel."; return false; }
-        DadosPaisGoverno fornecedor = governo.Paises.FirstOrDefault(p => p != null && p.teamId != compradorTeamId &&
-            (!item.municaoMilitar ? governo.ObterEstoque(p.teamId, ObterRecursoIdEfetivo(item)) > 0 :
-                SistemaGastosMilitares.Instancia != null && SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(p.teamId, item.idMunicaoMilitar) > 0));
-        if (fornecedor == null) { mensagem = "Nenhum fornecedor possui estoque."; return false; }
+        DadosPaisGoverno fornecedor = EncontrarMelhorFornecedor(compradorTeamId, item, quantidade);
+        if (fornecedor == null) { mensagem = "Nenhum fornecedor aliado possui estoque ou rota comercial ativa."; return false; }
         return Comprar(compradorTeamId, fornecedor.teamId, item.id, quantidade, out mensagem);
     }
 
@@ -689,9 +767,8 @@ public class SistemaMercadoGlobal : MonoBehaviour
         DadosItemMercado item = ObterItem(itemId);
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
         if (item == null || governo == null) { mensagem = "Item indisponivel."; return false; }
-        DadosPaisGoverno comprador = governo.Paises.Where(p => p != null && p.teamId != vendedorTeamId)
-            .OrderByDescending(p => p.saldo).FirstOrDefault();
-        if (comprador == null) { mensagem = "Nenhum comprador disponivel."; return false; }
+        DadosPaisGoverno comprador = EncontrarMelhorComprador(vendedorTeamId, item, quantidade);
+        if (comprador == null) { mensagem = "Nenhum pais amigo demonstrou interesse ou possui saldo para comprar."; return false; }
         return Vender(vendedorTeamId, comprador.teamId, item.id, quantidade, out mensagem);
     }
 
@@ -883,7 +960,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
             else if (pais.emGuerra && pais.armamentos < 260) necessidade = ObterItem("armamentos");
             if (necessidade == null) continue;
 
-            DadosPaisGoverno vendedor = governo.Paises.FirstOrDefault(p => p != null && p.teamId != pais.teamId && governo.ObterEstoque(p.teamId, ObterRecursoIdEfetivo(necessidade)) > 120);
+            DadosPaisGoverno vendedor = EncontrarMelhorFornecedor(pais.teamId, necessidade, 1);
             if (vendedor == null) continue;
 
             int quantidade = Mathf.Min(necessidade.CalcularQuantidadePadrao(), (int)Math.Min(int.MaxValue, Math.Max(10L, pais.saldo / Math.Max(1L, necessidade.precoAtual) / 2L)));

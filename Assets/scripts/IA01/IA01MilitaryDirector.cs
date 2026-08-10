@@ -39,6 +39,13 @@ namespace Hegemonia.AI.IA01
         private const int MinFighters = 2;
         private const int MinNaval = 1;
         private const float TankerDelayAfterPlatformSeconds = 60f;
+        // A compra de caca usa uma fila assincrona. Dez segundos era curto
+        // demais: quando o aeroporto demorava a liberar a vaga, a IA emitia
+        // outra ordem a cada ciclo e acumulava dezenas de aeronaves.
+        private const float FighterOrderTimeoutSeconds = 90f;
+        // Os eventos continuam no diagnostico; logs detalhados no Console so
+        // devem ser ligados enquanto se investiga uma patrulha especifica.
+        private const bool EmitirLogsDetalhadosDePatrulha = false;
 
         public string Status => status;
 
@@ -59,6 +66,16 @@ namespace Hegemonia.AI.IA01
             }
 
             nextTickAt = now + 2.25f;
+
+            // A Prefeitura e a fundacao da partida. A reserva militar nao deve
+            // fabricar dezenas de unidades antes de a IA ter uma sede valida;
+            // alem de quebrar a ordem da abertura, isso pesa no primeiro frame.
+            if (!TemPrefeituraOperacional())
+            {
+                status = "Reserva militar aguardando a Prefeitura.";
+                return false;
+            }
+
             RefreshCatalog();
             NormalizeOwnedNavalIdentities();
             EnsureOperationalWarZones();
@@ -72,7 +89,7 @@ namespace Hegemonia.AI.IA01
 
             // Uma fila de aeroporto que nunca liberou a aeronave não pode
             // bloquear as próximas compras da IA indefinidamente.
-            if (fighters == 0 && issuedFighters > 0 && now - lastFighterOrderAt > 10f)
+            if (fighters == 0 && issuedFighters > 0 && now - lastFighterOrderAt > FighterOrderTimeoutSeconds)
                 issuedFighters = 0;
 
             // No máximo duas ordens por ciclo para não sobrecarregar o frame.
@@ -144,6 +161,29 @@ namespace Hegemonia.AI.IA01
                 Debug.Log("[IA01 Military] " + status);
             }
             return changed;
+        }
+
+        private bool TemPrefeituraOperacional()
+        {
+            if (context == null || context.TeamId <= 0) return false;
+
+            ComplexoGovernamental[] complexos = UnityEngine.Object.FindObjectsByType<ComplexoGovernamental>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < complexos.Length; i++)
+            {
+                ComplexoGovernamental complexo = complexos[i];
+                if (complexo == null) continue;
+
+                IdentidadeUnidade identidade = complexo.GetComponent<IdentidadeUnidade>();
+                if (identidade == null)
+                    identidade = complexo.GetComponentInChildren<IdentidadeUnidade>(true);
+
+                if (identidade != null && identidade.teamID == context.TeamId)
+                    return true;
+            }
+
+            return false;
         }
 
         private void EnsureOperationalWarZones()
@@ -375,8 +415,11 @@ namespace Hegemonia.AI.IA01
                 {
                     lastNavalPatrolDay = currentDay;
                 }
-                Debug.Log(string.Format("[IA01 Military] Patrulha naval: candidatos={0} atribuídos={1} jáPatrulhando={2} recusados={3} petroleirosLogistica={4}",
-                    candidates, assigned, alreadyPatrolling, rejected, logisticsTankers));
+                if (EmitirLogsDetalhadosDePatrulha)
+                {
+                    Debug.Log(string.Format("[IA01 Military] Patrulha naval: candidatos={0} atribuídos={1} jáPatrulhando={2} recusados={3} petroleirosLogistica={4}",
+                        candidates, assigned, alreadyPatrolling, rejected, logisticsTankers));
+                }
             }
             else
             {
@@ -444,14 +487,20 @@ namespace Hegemonia.AI.IA01
                 if (control.EmitirOrdemPatrulha(route))
                 {
                     DiagnosticoDesempenhoJogo.RegistrarEvento("IA01_AirPatrol", id.name + " patrulha " + zones[0].name);
-                    Debug.Log("[IA01 Military] Patrulha aerea: " + id.name + " -> " + zones[0].name + " centro=" + zones[0].transform.position.ToString("F2"));
+                    if (EmitirLogsDetalhadosDePatrulha)
+                    {
+                        Debug.Log("[IA01 Military] Patrulha aerea: " + id.name + " -> " + zones[0].name + " centro=" + zones[0].transform.position.ToString("F2"));
+                    }
                 }
                 // Apenas um caça inicia a patrulha; a expansão pode liberar os demais.
                 break;
             }
             if (candidates > 0)
             {
-                Debug.Log("[IA01 Military] Patrulha aerea: candidatos=" + candidates + " | limite inicial=1");
+                if (EmitirLogsDetalhadosDePatrulha)
+                {
+                    Debug.Log("[IA01 Military] Patrulha aerea: candidatos=" + candidates + " | limite inicial=1");
+                }
             }
         }
 
@@ -501,7 +550,10 @@ namespace Hegemonia.AI.IA01
                 if (control.EmitirOrdemMover(ponto, true))
                 {
                     staged++;
-                    Debug.Log("[IA01 Military] Navio em ponto costeiro otimizado: " + id.name + " -> " + ponto.ToString("F2"));
+                    if (EmitirLogsDetalhadosDePatrulha)
+                    {
+                        Debug.Log("[IA01 Military] Navio em ponto costeiro otimizado: " + id.name + " -> " + ponto.ToString("F2"));
+                    }
                     if (staged >= 2) break;
                 }
             }
@@ -644,6 +696,7 @@ namespace Hegemonia.AI.IA01
             identity.teamID = context.TeamId;
             identity.nomeDoPais = controller.NationName;
             identity.tipoUnidade = TipoUnidade.Estrutura;
+            IA01BuildExecutor.NormalizeStructureIdentity(built, context.TeamId, controller.NationName);
             PlataformaOffshore platform = built.GetComponent<PlataformaOffshore>();
             if (platform != null) platform.OwnerTeamId = context.TeamId;
             Estaleiro shipyard = built.GetComponent<Estaleiro>();
@@ -1073,6 +1126,7 @@ namespace Hegemonia.AI.IA01
             identity.teamID = context.TeamId;
             identity.nomeDoPais = controller.NationName;
             identity.tipoUnidade = TipoUnidade.Estrutura;
+            IA01BuildExecutor.NormalizeStructureIdentity(built, context.TeamId, controller.NationName);
 
             GerenciadorAeroporto airport = built.GetComponent<GerenciadorAeroporto>();
             if (airport != null)
@@ -1299,6 +1353,7 @@ namespace Hegemonia.AI.IA01
             identity.teamID = context.TeamId;
             identity.nomeDoPais = controller.NationName;
             identity.tipoUnidade = TipoUnidade.Estrutura;
+            IA01BuildExecutor.NormalizeStructureIdentity(built, context.TeamId, controller.NationName);
             Estaleiro shipyard = built.GetComponent<Estaleiro>();
             if (shipyard != null)
             {

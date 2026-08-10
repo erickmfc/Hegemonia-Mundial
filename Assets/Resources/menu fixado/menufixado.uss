@@ -140,6 +140,99 @@
 }
 
 /* Painel de notificacoes */
+.decision-banner {
+    position: absolute;
+    top: 62px;
+    left: 72px;
+    width: 510px;
+    min-height: 58px;
+    max-width: 62%;
+    padding-left: 12px;
+    padding-right: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(70, 28, 18, 0.96);
+    border-left-width: 4px;
+    border-left-color: rgb(255, 177, 85);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-top-color: rgba(255, 213, 149, 0.42);
+    border-right-color: rgba(255, 213, 149, 0.24);
+    border-bottom-color: rgba(255, 213, 149, 0.24);
+    border-radius: 6px;
+}
+
+.decision-banner.is-hidden {
+    display: none;
+}
+
+.decision-copy {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.decision-title {
+    color: rgb(255, 239, 194);
+    font-size: 13px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.decision-message {
+    margin-top: 3px;
+    color: rgb(255, 225, 186);
+    font-size: 11px;
+    white-space: normal;
+}
+
+.decision-action {
+    min-width: 116px;
+    min-height: 32px;
+    margin-left: 10px;
+    color: rgb(255, 248, 224);
+    background-color: rgba(230, 112, 46, 0.82);
+    border-width: 1px;
+    border-color: rgba(255, 220, 164, 0.75);
+    border-radius: 5px;
+    -unity-font-style: bold;
+    font-size: 11px;
+}
+
+.decision-action:hover,
+.decision-action:focus {
+    background-color: rgba(255, 151, 68, 0.96);
+    color: white;
+}
+
+.decision-close {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    margin-left: 6px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    color: rgba(255, 239, 194, 0.82);
+    background-color: rgba(0, 0, 0, 0.18);
+    border-width: 0;
+    border-radius: 13px;
+    font-size: 17px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.decision-close:hover,
+.decision-close:focus {
+    color: white;
+    background-color: rgba(255, 151, 68, 0.72);
+}
+
 .notification-panel {
     position: absolute;
     top: 66px;
@@ -346,6 +439,26 @@
     -unity-text-align: upper-right;
 }
 
+.notification-action {
+    min-width: 92px;
+    min-height: 26px;
+    margin-left: 8px;
+    align-self: center;
+    color: rgb(0, 80, 118);
+    background-color: rgba(192, 232, 249, 0.92);
+    border-width: 1px;
+    border-color: rgba(0, 120, 172, 0.38);
+    border-radius: 4px;
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+.notification-action:hover,
+.notification-action:focus {
+    color: rgb(0, 48, 75);
+    background-color: rgb(220, 246, 255);
+}
+
 .notification-empty {
     flex-grow: 1;
     align-items: center;
@@ -386,6 +499,12 @@
 }
 
 @media (max-width: 720px) {
+    .decision-banner {
+        left: 8px;
+        width: 390px;
+        max-width: 92%;
+    }
+
     .notification-panel {
         left: 8px;
         width: 390px;

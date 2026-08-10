@@ -77,7 +77,8 @@ public class MenuGoverno : MonoBehaviour
         Interior,
         Defesa,
         Ciencia,
-        Trabalho
+        Trabalho,
+        DiversaoCultura
     }
 
     public enum BlocoGlobal { Nenhum, OrdemAtlas, PactoSolaris, LigaContinental }
@@ -149,6 +150,7 @@ public class MenuGoverno : MonoBehaviour
     private static readonly string[] SubDefesa = { "Comando", "Exercito", "Marinha", "Aerea", "Alertas" };
     private static readonly string[] SubCiencia = { "Pesquisa", "Tecnologias", "Projetos", "Laboratorios" };
     private static readonly string[] SubTrabalho = { "Empregos", "Setores", "Formacao", "Politicas" };
+    private static readonly string[] SubDiversao = { "Resumo", "Estruturas", "Eventos" };
 
     private readonly Dictionary<CategoriaGoverno, NavButtonView> navButtons = new Dictionary<CategoriaGoverno, NavButtonView>();
     private readonly List<SubTabView> subTabViews = new List<SubTabView>();
@@ -890,6 +892,9 @@ public class MenuGoverno : MonoBehaviour
             case CategoriaGoverno.Trabalho:
                 BuildWorkPage(page);
                 break;
+            case CategoriaGoverno.DiversaoCultura:
+                BuildCulturePage(page);
+                break;
         }
     }
 
@@ -917,6 +922,9 @@ public class MenuGoverno : MonoBehaviour
                 break;
             case CategoriaGoverno.Trabalho:
                 BuildWorkActionsPage(page);
+                break;
+            case CategoriaGoverno.DiversaoCultura:
+                BuildCultureActionsPage(page);
                 break;
             default:
                 BuildDiplomacyActionsPage(page);
@@ -1550,6 +1558,68 @@ public class MenuGoverno : MonoBehaviour
                 + "\nPeso industria: " + (p.pesoIndustria * 100f).ToString("0") + "%"
                 + "\nMoradia: " + p.moradia.ToString("0") + "%"
                 + "\nPlano atual: " + p.planoEstrategico;
+        };
+        page.Refresh();
+    }
+
+    private void BuildCulturePage(PageView page)
+    {
+        int tab = subAbaAtualIndex;
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            DadosCulturaNacional cultura = SistemaCulturaEntretenimento.ObterResumo(paisJogadorId);
+            CreateSectionTitle(page.Root.transform, "Diversao, Cultura e Turismo");
+            CreateDescription(page.Root.transform, "Estruturas caras e automaticas: o sistema mede publico, eventos, turismo, energia e retorno nacional.");
+            Text resumo = CreateInfoBlock(page.Root.transform, string.Empty);
+            resumo.text = "Total de estruturas: " + cultura.totalEstruturas
+                + "\nAtivas / fechadas: " + cultura.estruturasAtivas + " / " + cultura.estruturasFechadas
+                + "\nEstadios: " + cultura.estadios + " | Museus: " + cultura.museus + " | Torres: " + cultura.torres
+                + "\nParques: " + cultura.parques + " | Arenas: " + cultura.arenas + " | Monumentos: " + cultura.monumentos
+                + "\nCapacidade de visitantes: " + cultura.capacidadeTotalVisitantes.ToString("N0")
+                + "\nVisitantes atuais: " + cultura.visitantesAtuais.ToString("N0")
+                + "\nTuristas nacionais: " + cultura.turistasNacionais.ToString("N0")
+                + "\nTuristas internacionais: " + cultura.turistasInternacionais.ToString("N0")
+                + "\nEmpregos permanentes / temporarios: " + cultura.empregosPermanentes.ToString("N0") + " / " + cultura.empregosTemporarios.ToString("N0")
+                + "\nEventos em andamento: " + cultura.eventosEmAndamento
+                + "\nReceita direta / indireta: $" + cultura.receitaIngressos.ToString("N0") + " / $" + cultura.receitaTuristicaIndireta.ToString("N0")
+                + "\nImpostos gerados: $" + cultura.impostosGerados.ToString("N0")
+                + "\nManutencao diaria: $" + cultura.custoManutencaoDiario.ToString("N0")
+                + "\nEnergia consumida: " + cultura.consumoEnergia.ToString("0") + " MW"
+                + "\nFelicidade: +" + cultura.contribuicaoFelicidade.ToString("0.0") + " | Atratividade: +" + cultura.atratividadeTuristica.ToString("0.0") + "%"
+                + "\nPrestigio nacional: " + cultura.prestigioNacional.ToString("0.0")
+                + "\nPrincipal parada: " + cultura.principalMotivoParada;
+
+            if (tab == 1)
+            {
+                CreateSectionTitle(page.Root.transform, "Estrutura selecionada");
+                EstruturaCulturaEntretenimento selecionada = EstruturaCulturaEntretenimento.Selecionada;
+                CreateInfoBlock(page.Root.transform, selecionada != null ? selecionada.GerarDetalhe() : "Clique em uma estrutura no mapa para ver capacidade, empregos, receita e proximo evento.");
+            }
+            else if (tab == 2)
+            {
+                CreateSectionTitle(page.Root.transform, "Agenda automatica");
+                CreateInfoBlock(page.Root.transform, cultura.eventosEmAndamento > 0
+                    ? "Evento em andamento: " + cultura.proximoEvento + "\nO comercio local recebe visitantes e faturamento adicional."
+                    : "Nenhum evento em andamento. O proximo evento sera escolhido conforme publico, seguranca e prestígio.");
+            }
+        };
+        page.Refresh();
+    }
+
+    private void BuildCultureActionsPage(PageView page)
+    {
+        page.Refresh = () =>
+        {
+            ClearChildren(page.Root.transform);
+            DadosCulturaNacional cultura = SistemaCulturaEntretenimento.ObterResumo(paisJogadorId);
+            CreateSectionTitle(page.Root.transform, "Politica cultural");
+            CreateDescription(page.Root.transform, "O governo define o momento do investimento; eventos e ocupacao sao administrados automaticamente.");
+            CreateInfoBlock(page.Root.transform, "Capacidade de atrair moradores: " + cultura.capacidadeAtracao.ToString("0.0") + "%"
+                + "\nObras monumentais: " + cultura.obrasMonumentais
+                + "\nEstruturas em prejuizo: " + cultura.estruturasPrejuizo
+                + "\nRecomendacao: " + (cultura.totalEstruturas == 0 ? "construa primeiro uma estrutura local" : cultura.estruturasFechadas > 0 ? "melhore energia, transporte ou seguranca" : "rede cultural sustentavel"));
+            CreateActionButton(page.Root.transform, "ATUALIZAR AGENDA", corAzulBotao, () => RefreshDynamicData(true));
         };
         page.Refresh();
     }
@@ -3161,6 +3231,7 @@ public class MenuGoverno : MonoBehaviour
             case CategoriaGoverno.Defesa: return SubDefesa;
             case CategoriaGoverno.Ciencia: return SubCiencia;
             case CategoriaGoverno.Trabalho: return SubTrabalho;
+            case CategoriaGoverno.DiversaoCultura: return SubDiversao;
             default: return new[] { "Geral" };
         }
     }
@@ -3171,6 +3242,7 @@ public class MenuGoverno : MonoBehaviour
         {
             case CategoriaGoverno.RelacoesExteriores: return "Relacoes";
             case CategoriaGoverno.MercadoGlobal: return "Mercado";
+            case CategoriaGoverno.DiversaoCultura: return "Diversao";
             default: return categoria.ToString();
         }
     }
@@ -3181,6 +3253,7 @@ public class MenuGoverno : MonoBehaviour
         {
             case CategoriaGoverno.RelacoesExteriores: return "Relacoes Exteriores";
             case CategoriaGoverno.MercadoGlobal: return "Mercado Global";
+            case CategoriaGoverno.DiversaoCultura: return "Diversao, Cultura e Turismo";
             default: return GetShortCategoryName(categoria);
         }
     }

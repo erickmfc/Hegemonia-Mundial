@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Monumento_Nacional
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Monumento Nacional
+  descricao: Monumento cultural de grande porte, simbolo nacional e ponto turistico.
+  icone: {fileID: 0}
+  itemId: monumento_nacional
+  aliases: monumento, piramide, maravilha, cultura, turismo
+  capacidades: 0
+  prefabDaUnidade: {fileID: 9116325656904747749, guid: 0dce966b6b918ad44a04d96d04169123, type: 3}
+  preco: 12000
+  precoDefinitivo: 0
+  categoria: 6
+  escalaPoder: 1
+  strategicRole: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

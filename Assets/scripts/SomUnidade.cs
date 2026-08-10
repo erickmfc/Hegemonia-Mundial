@@ -31,6 +31,10 @@ public class SomUnidade : MonoBehaviour
     public float pitchMin = 0.8f; // Tom mínimo quando parado
     [Range(0.5f, 2f)]
     public float pitchMax = 1.5f; // Tom máximo quando em movimento rápido
+
+    [Header("Diagnostico")]
+    [Tooltip("Use somente para investigar audio. Logs de transicao geram stack traces no Editor.")]
+    public bool registrarTransicoesDeAudio = false;
     
     [Header("Configurações Específicas")]
     public float velocidadeParaMaxPitch = 10f; // Velocidade para atingir pitch máximo
@@ -43,6 +47,7 @@ public class SomUnidade : MonoBehaviour
     private float velocidadeAtual = 0f;
     private bool estaMovendo = false;
     private bool somMotorTocando = false;
+    private bool avisouClipAusente;
 
     // Cache de Componentes
     private UnityEngine.AI.NavMeshAgent agenteCached;
@@ -179,7 +184,13 @@ public class SomUnidade : MonoBehaviour
         
         if (clipParaTocar == null)
         {
-            Debug.LogWarning($"[SomUnidade] Tentou tocar som mas clip é null! Movimento: {movimento}");
+            // Sem essa trava uma unidade sem clip emitia o mesmo aviso em todos
+            // os frames, o que custa mais que o proprio audio no Unity Editor.
+            if (!avisouClipAusente)
+            {
+                Debug.LogWarning($"[SomUnidade] Tentou tocar som mas clip é null! Movimento: {movimento}");
+                avisouClipAusente = true;
+            }
             return;
         }
         
@@ -198,7 +209,10 @@ public class SomUnidade : MonoBehaviour
         
         somMotorTocando = true;
         
-        Debug.Log($"[SomUnidade] 🔊 SOM TOCANDO: {clipParaTocar.name} | Volume: {volumeMotor} | Loop: {loopMotor} | isPlaying: {audioSource.isPlaying}");
+        if (registrarTransicoesDeAudio)
+        {
+            Debug.Log($"[SomUnidade] 🔊 SOM TOCANDO: {clipParaTocar.name} | Volume: {volumeMotor} | Loop: {loopMotor} | isPlaying: {audioSource.isPlaying}");
+        }
     }
 
     void ConfigurarSonsPadrao()

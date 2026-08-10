@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Centro_Comercial
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Centro Comercial
+  descricao: Centro comercial de grande porte com lojas, alimentacao e servicos.
+  icone: {fileID: 0}
+  itemId: centro_comercial_grande
+  aliases: centro comercial, shopping, mall, galeria
+  capacidades: 0
+  prefabDaUnidade: {fileID: 7546535248038806388, guid: 075ddf5435f9cef488ce1ee55c32217e, type: 3}
+  preco: 900
+  precoDefinitivo: 0
+  categoria: 6
+  escalaPoder: 1
+  strategicRole: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

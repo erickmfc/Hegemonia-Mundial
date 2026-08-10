@@ -9,9 +9,15 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6401644448617691351}
+  - component: {fileID: -5054975532821995164}
+  - component: {fileID: 2969273965302206057}
+  - component: {fileID: 2979943570067752417}
+  - component: {fileID: 8925640637316895163}
+  - component: {fileID: 2295375031093338982}
+  - component: {fileID: -762345678901234567}
   m_Layer: 0
   m_Name: Predio comercial Pequeno
-  m_TagString: Untagged
+  m_TagString: Imovel
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -30,8 +36,157 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 9090782480823816601}
+  - {fileID: 1133982083160509187}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-5054975532821995164
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 931791791249863831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 250
+  vidaAtual: 250
+  unidadeBiologica: 0
+  ehEstrutura: 1
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 3.9
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
+--- !u!114 &2969273965302206057
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 931791791249863831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6356660df3bde1b4dabe6a4dc1d7e19c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ComercioLocal
+  categoria: 4
+  porte: 1
+  capacidadeEmpresas: 90
+  limiteTrabalhadoresPredio: 5000
+  ocupacaoAutomatica: 1
+  segurancaLocal: 0.75
+  acessoTransporte: 0.75
+  concorrenciaLocal: 0.25
+  qualidadeServicos: 0.7
+  vagasMaximas: 12
+  clientesPorSegundo: 22
+  consumoEnergia: 1.5
+  precoMedioProduto: 4
+  salarioPorTrabalhador: 0.7
+  custoMercadoriasPercentual: 0.35
+  estoqueMercadorias: 250
+  estoqueMaximo: 500
+  reposicaoAutomatica: 1
+  reposicaoPorCiclo: 30
+  emFuncionamento: 0
+  motivoParada: Aguardando dados
+  trabalhadoresContratados: 0
+  vagasDisponiveis: 0
+  vendasUltimoCiclo: 0
+  salariosUltimoCiclo: 0
+  lucroUltimoCiclo: 0
+  empresasAbertas: 0
+  empresasAbertasRecentemente: 0
+  empresasFechadasRecentemente: 0
+  ocupacaoAtual: 0
+  principalNecessidade: Aguardando analise
+  empresas: []
+--- !u!65 &2979943570067752417
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 931791791249863831}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 36.93, y: 15.25, z: 14.16}
+  m_Center: {x: 27.32, y: 8.66, z: 0}
+--- !u!114 &8925640637316895163
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 931791791249863831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 4
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
+--- !u!114 &2295375031093338982
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 931791791249863831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
+--- !u!114 &-762345678901234567
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 931791791249863831}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 370d63f90b709ba458d6dd28aa2be0ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Imovel
+  capacidade: 0
+  distanciaConexao: 8
+  ladoEsquerdo: {fileID: 0}
+  ladoDireito: {fileID: 0}
+  conexaoRua: {fileID: 0}
+  distanciaFronteiraRua: 12
+  conexaoRuaTras: {fileID: 0}
+  distanciaFronteiraRuaTras: 12
+  gerarPavimentacaoConcreto: 1
+  pavimentoInstanciado: {fileID: 0}
+  debugLogs: 0
+  semEnergia: 0
 --- !u!1001 &6388620178468603497
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -93,4 +248,78 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: 0a9c89a6e9531e443b2af9ce5b0410eb, type: 3}
   m_PrefabInstance: {fileID: 6388620178468603497}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &8205396379287340894
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 6401644448617691351}
+    m_Modifications:
+    - target: {fileID: 4641161263967933454, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 36
+      objectReference: {fileID: 0}
+    - target: {fileID: 6130954647793273378, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -15.59
+      objectReference: {fileID: 0}
+    - target: {fileID: 6244591366159885973, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_Name
+      value: Marcadores
+      objectReference: {fileID: 0}
+    - target: {fileID: 7549775883508651758, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 9.81
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 20.842346
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 3.2566237
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 7.080017
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+--- !u!4 &1133982083160509187 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 9107362815135599709, guid: 6b06942b6107dcf46bc0bc97788cae42, type: 3}
+  m_PrefabInstance: {fileID: 8205396379287340894}
   m_PrefabAsset: {fileID: 0}

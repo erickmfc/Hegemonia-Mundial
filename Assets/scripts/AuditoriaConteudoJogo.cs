@@ -38,6 +38,13 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
     private readonly List<DadosConstrucao> fichas = new List<DadosConstrucao>(256);
     private readonly StringBuilder resumoBuilder = new StringBuilder(256);
     private Coroutine rotinaAuditoria;
+    private int avisosConsoleEmitidos;
+    private int avisosConsoleSuprimidos;
+
+    [Header("Desempenho em Play Mode")]
+    [SerializeField, Min(0.5f)] private float atrasoAuditoriaSegundos = 4f;
+    [SerializeField, Min(1)] private int fichasPorFrame = 8;
+    [SerializeField, Min(0)] private int maxAvisosDetalhadosNoConsole = 4;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void GarantirInstancia()
@@ -144,19 +151,16 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
 
     private IEnumerator RodarAuditoriaAtrasada()
     {
-        yield return new WaitForSecondsRealtime(1.5f);
+        // A cena ainda esta criando objetos nos primeiros segundos. Adiar e
+        // distribuir a validacao evita disputar o mesmo frame com carregamento.
+        yield return new WaitForSecondsRealtime(atrasoAuditoriaSegundos);
+        yield return RodarAuditoriaEmEtapas();
         rotinaAuditoria = null;
-        RodarAuditoria();
     }
 
     private void RodarAuditoria()
     {
-        fichas.Clear();
-        fichasAuditadas.Clear();
-        idsEstaveisAuditados.Clear();
-        primeiraFichaPorId.Clear();
-        ColetarFichas();
-
+        PrepararAuditoria();
         int erros = 0;
         int avisos = 0;
         int eventosEmitidos = 0;
@@ -164,22 +168,67 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
 
         for (int i = 0; i < fichas.Count; i++)
         {
-            DadosConstrucao ficha = fichas[i];
-            if (ficha == null)
-            {
-                erros++;
-                Emitir("ERRO", "Ficha nula no catalogo", ref eventosEmitidos, limiteEventos);
-                continue;
-            }
-
-            AuditarFicha(ficha, ref erros, ref avisos, ref eventosEmitidos, limiteEventos);
+            AuditarFichaOuRegistrarNula(fichas[i], ref erros, ref avisos, ref eventosEmitidos, limiteEventos);
         }
 
+        FinalizarAuditoria(erros, avisos);
+    }
+
+    private IEnumerator RodarAuditoriaEmEtapas()
+    {
+        PrepararAuditoria();
+        int erros = 0;
+        int avisos = 0;
+        int eventosEmitidos = 0;
+        const int limiteEventos = 24;
+        int limitePorFrame = Mathf.Max(1, fichasPorFrame);
+
+        for (int i = 0; i < fichas.Count; i++)
+        {
+            AuditarFichaOuRegistrarNula(fichas[i], ref erros, ref avisos, ref eventosEmitidos, limiteEventos);
+            if ((i + 1) % limitePorFrame == 0)
+            {
+                yield return null;
+            }
+        }
+
+        FinalizarAuditoria(erros, avisos);
+    }
+
+    private void PrepararAuditoria()
+    {
+        fichas.Clear();
+        fichasAuditadas.Clear();
+        idsEstaveisAuditados.Clear();
+        primeiraFichaPorId.Clear();
+        avisosConsoleEmitidos = 0;
+        avisosConsoleSuprimidos = 0;
+        ColetarFichas();
+    }
+
+    private void AuditarFichaOuRegistrarNula(DadosConstrucao ficha, ref int erros, ref int avisos, ref int eventosEmitidos, int limiteEventos)
+    {
+        if (ficha == null)
+        {
+            erros++;
+            Emitir("ERRO", "Ficha nula no catalogo", ref eventosEmitidos, limiteEventos);
+            return;
+        }
+
+        AuditarFicha(ficha, ref erros, ref avisos, ref eventosEmitidos, limiteEventos);
+    }
+
+    private void FinalizarAuditoria(int erros, int avisos)
+    {
         resumoBuilder.Length = 0;
         resumoBuilder.Append("fichas=").Append(fichas.Count)
             .Append(" erros=").Append(erros)
             .Append(" avisos=").Append(avisos)
             .Append(" cena=").Append(SceneManager.GetActiveScene().name);
+        if (avisosConsoleSuprimidos > 0)
+        {
+            resumoBuilder.Append(" avisosConsoleSuprimidos=").Append(avisosConsoleSuprimidos);
+        }
 
         string resumo = resumoBuilder.ToString();
         UltimoResultado = new ResultadoAuditoriaConteudo(fichas.Count, erros, avisos, SceneManager.GetActiveScene().name);
@@ -535,9 +584,16 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         {
             Debug.LogError("[AuditoriaConteudo] " + mensagem, this);
         }
+        else if (!Application.isPlaying || avisosConsoleEmitidos < maxAvisosDetalhadosNoConsole)
+        {
+            avisosConsoleEmitidos++;
+            Debug.LogWarning("[AuditoriaConteudo] " + mensagem, this);
+        }
         else
         {
-            Debug.LogWarning("[AuditoriaConteudo] " + mensagem, this);
+            // Todos os avisos continuam no resumo/eventos; apenas evitamos que o
+            // Console do Editor cause um travamento por dezenas de logs iguais.
+            avisosConsoleSuprimidos++;
         }
     }
 }

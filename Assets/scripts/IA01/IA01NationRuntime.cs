@@ -294,7 +294,16 @@ namespace Hegemonia.AI.IA01
                 return;
             }
 
-            nextDiagnosticsAt = now + 1f;
+            // A lista abaixo monta dezenas de strings de depuracao. Fora de uma
+            // captura elas nem sao consumidas pelo gravador, portanto nao devem
+            // criar lixo de memoria durante a partida normal.
+            bool captureActive = DiagnosticoDesempenhoJogo.CapturaAtiva;
+            nextDiagnosticsAt = now + (captureActive ? 2f : 5f);
+            if (!captureActive)
+            {
+                return;
+            }
+
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_progress", ProgressionStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_objective", NextObjectiveStatus);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia01_construction", ConstructionStatus);
@@ -786,7 +795,7 @@ namespace Hegemonia.AI.IA01
         public bool EnsureFoundationFunding(bool capitalConfirmed, int capitalCost, bool restoredFromSave)
         {
             lastFoundationCapitalCost = capitalCost;
-            if (capitalConfirmed || profile == null || restoredFromSave || this.restoredFromSave)
+            if (capitalConfirmed || profile == null)
             {
                 SistemaGovernoMundial.Instancia?.LiberarReservaFundacao(context.TeamId);
                 lastFoundationAvailableFunds = 0;
@@ -805,7 +814,9 @@ namespace Hegemonia.AI.IA01
 
             // A reserva existe antes do primeiro comando para impedir que
             // economia, mercado ou outro diretor consuma o caixa entre o grant
-            // e a confirmacao da prefeitura.
+            // e a confirmacao da prefeitura. Uma campanha nova pode herdar o
+            // marcador de restore de um controlador persistente; esse marcador
+            // nunca pode pular a garantia da primeira prefeitura.
             government.DefinirReservaFundacao(context.TeamId, target);
             lastFoundationAvailableFunds = Math.Max(country.saldo, (long)capitalCost);
 
@@ -864,8 +875,13 @@ namespace Hegemonia.AI.IA01
         private static readonly IA01IntentType[] FoundationSequence =
         {
             IA01IntentType.BuildEnergy,
-            IA01IntentType.BuildFoodProduction,
+            // A casa inicial so pode ser posicionada com seguranca depois que
+            // existe uma via conectavel. A rua vem antes da moradia para a
+            // abertura nao deixar casas isoladas ou sem pavimento.
+            IA01IntentType.BuildRoad,
             IA01IntentType.BuildStarterHouse,
+            IA01IntentType.BuildFoodProduction,
+            IA01IntentType.BuildResidentialCapacity,
             IA01IntentType.BuildMediumApartment,
             IA01IntentType.BuildHighApartment,
             IA01IntentType.BuildMilitaryTent,

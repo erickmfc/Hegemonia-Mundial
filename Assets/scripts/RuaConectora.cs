@@ -15,6 +15,8 @@ public class RuaConectora : MonoBehaviour
     public float distanciaConexao = 3f;
     [Tooltip("Quando desativado, residencias nao podem usar este trecho como frente de rua.")]
     public bool permiteCasas = true;
+    [Tooltip("Usa a orientacao dos transforms de conector para definir as tangentes de entrada/saida.")]
+    public bool usarTangentesDosConectores = false;
     
     [Header("🎨 Pavement (Calçada/Concreto Opcional)")]
     public GameObject prefabPapeamentoConcreto;
@@ -97,9 +99,15 @@ public class RuaConectora : MonoBehaviour
         public Vector3 direcaoSaida;
     }
 
-    private Vector3 CalcularDirecaoSaidaSegura(Transform conector, Vector3 fallbackDir)
+    private Vector3 CalcularDirecaoSaidaSegura(Transform conector, Vector3 fallbackDir, bool inverterTangente = false)
     {
         if (conector == null) return fallbackDir;
+        if (usarTangentesDosConectores)
+        {
+            Vector3 tangente = conector.forward * (inverterTangente ? -1f : 1f);
+            tangente.y = 0f;
+            if (tangente.sqrMagnitude > 0.001f) return tangente.normalized;
+        }
         Vector3 dir = conector.position - transform.position;
         dir.y = 0;
         if (dir.sqrMagnitude > 0.001f) return dir.normalized;
@@ -120,7 +128,7 @@ public class RuaConectora : MonoBehaviour
 
     public Conector ObterConectorInicio()
     {
-        if (pontoInicio != null) return new Conector { posicao = pontoInicio.position, direcaoSaida = CalcularDirecaoSaidaSegura(pontoInicio, -transform.forward) };
+        if (pontoInicio != null) return new Conector { posicao = pontoInicio.position, direcaoSaida = CalcularDirecaoSaidaSegura(pontoInicio, -transform.forward, true) };
         return new Conector { posicao = transform.position - transform.forward * (comprimento / 2f), direcaoSaida = -transform.forward };
     }
 

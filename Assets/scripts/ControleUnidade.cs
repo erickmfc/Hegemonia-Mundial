@@ -1189,6 +1189,12 @@ public class ControleUnidade : MonoBehaviour
             alterouAlgo = true;
         }
 
+        if (lancadorMisselCaca != null)
+        {
+            lancadorMisselCaca.DefinirModoPassivoPeloMenu(!ativo);
+            alterouAlgo = true;
+        }
+
         for (int i = 0; i < cacheTorretas.Length; i++)
         {
             ControleTorreta torreta = cacheTorretas[i];

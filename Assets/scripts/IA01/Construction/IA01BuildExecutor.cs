@@ -80,6 +80,7 @@ namespace Hegemonia.AI.IA01
             identity.teamID = context.TeamId;
             identity.nomeDoPais = context.NationName;
             identity.tipoUnidade = TipoUnidade.Estrutura;
+            NormalizeStructureIdentity(built, context.TeamId, context.NationName);
             Estaleiro builtShipyard = built.GetComponent<Estaleiro>();
             if (builtShipyard != null) builtShipyard.OwnerTeamId = context.TeamId;
             PierMarinha builtPier = built.GetComponent<PierMarinha>();
@@ -151,6 +152,28 @@ namespace Hegemonia.AI.IA01
             });
             lot.State = IA01LotState.UnderConstruction;
             return true;
+        }
+
+        /// <summary>
+        /// Prefabs de edifícios podem ter sido montados a partir de uma unidade
+        /// e carregar IdentidadeUnidade em um filho. A identidade da estrutura
+        /// é única e deve ser aplicada à hierarquia inteira depois do spawn;
+        /// caso contrário um componente antigo (por exemplo team 1/2) fica
+        /// registrado no mundo e a IA passa a construir/contar no território
+        /// errado.
+        /// </summary>
+        public static void NormalizeStructureIdentity(GameObject built, int teamId, string nationName)
+        {
+            if (built == null || teamId <= 0) return;
+            IdentidadeUnidade[] identities = built.GetComponentsInChildren<IdentidadeUnidade>(true);
+            for (int i = 0; i < identities.Length; i++)
+            {
+                IdentidadeUnidade identity = identities[i];
+                if (identity == null) continue;
+                identity.teamID = teamId;
+                identity.nomeDoPais = string.IsNullOrWhiteSpace(nationName) ? "Nacao " + teamId : nationName;
+                identity.tipoUnidade = TipoUnidade.Estrutura;
+            }
         }
 
         private static void ReportBlocked(string reason)

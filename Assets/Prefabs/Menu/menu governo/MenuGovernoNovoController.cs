@@ -685,6 +685,24 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             ("TENDENCIA", tendencia.ToString("0.0") + "%", "state-info")
         });
 
+        SistemaGovernoMundial governoConectado = SistemaGovernoMundial.Instancia;
+        List<string> parceirosComerciais = new List<string>();
+        if (governoConectado != null)
+        {
+            foreach (DadosPaisGoverno pais in governoConectado.Paises)
+            {
+                if (pais == null || pais.teamId == governoConectado.teamJogador) continue;
+                RelacaoPaisGoverno relacao = governoConectado.ObterRelacao(governoConectado.teamJogador, pais.teamId);
+                if (relacao != null && !relacao.guerraDeclarada && !relacao.sancaoAtiva && relacao.valor >= 40
+                    && (relacao.tratadoComercial || relacao.valor >= 60))
+                    parceirosComerciais.Add(pais.nomePais + " (amizade " + relacao.valor + ")");
+            }
+        }
+        AdicionarCard(conteudo, "PARCEIROS COMERCIAIS CONECTADOS",
+            parceirosComerciais.Count > 0
+                ? string.Join(", ", parceirosComerciais) + ". As vendas priorizam esses paises conforme a demanda e o saldo."
+                : "Nenhum pais amigo esta conectado para comprar automaticamente. Melhore as relacoes diplomaticas ou remova sancoes.");
+
         if (abaAtual == "Comprar" || abaAtual == "Vender")
         {
             bool comprar = abaAtual == "Comprar";
@@ -935,14 +953,10 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         if (comprar)
         {
             SistemaGastosMilitares.GarantirInstancia();
-            DadosPaisGoverno vendedor = g.Paises.FirstOrDefault(p => p.teamId != 1 && (item.municaoMilitar
-                ? SistemaGastosMilitares.Instancia != null && SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(p.teamId, item.idMunicaoMilitar) > 0
-                : item.equipamentoMilitar
-                    ? p.saldo >= quantidade * item.precoAtual
-                    : g.ObterEstoque(p.teamId, item.RecursoIdEfetivo) > 0));
+            DadosPaisGoverno vendedor = m.EncontrarMelhorFornecedor(g.teamJogador, item, quantidade);
             if (vendedor == null)
             {
-                mensagem = "Nenhum fornecedor possui estoque disponivel.";
+                mensagem = "Nenhum fornecedor amigo possui estoque ou rota comercial ativa.";
             }
             else
             {
@@ -958,23 +972,17 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
             if (recursoCivilReal)
             {
-                DadosPaisGoverno comprador = g.Paises
-                    .Where(p => p != null && p.teamId != g.teamJogador && p.saldo >= quantidade * item.precoAtual)
-                    .OrderByDescending(p => p.saldo)
-                    .FirstOrDefault();
+                DadosPaisGoverno comprador = m.EncontrarMelhorComprador(g.teamJogador, item, quantidade);
                 if (comprador == null)
-                    mensagem = "Nenhum comprador possui saldo para esta operacao.";
+                    mensagem = "Nenhum pais amigo demonstrou interesse ou possui saldo para esta operacao.";
                 else
                     ok = m.Vender(g.teamJogador, comprador.teamId, item.id, quantidade, out mensagem);
             }
             else
             {
-                DadosPaisGoverno comprador = g.Paises
-                    .Where(p => p != null && p.teamId != g.teamJogador && p.saldo >= quantidade * item.precoAtual)
-                    .OrderByDescending(p => p.saldo)
-                    .FirstOrDefault();
+                DadosPaisGoverno comprador = m.EncontrarMelhorComprador(g.teamJogador, item, quantidade);
                 if (comprador == null)
-                    mensagem = "Nenhum comprador possui saldo para esta operacao.";
+                    mensagem = "Nenhum pais amigo demonstrou interesse ou possui saldo para esta operacao.";
                 else
                     ok = m.Vender(g.teamJogador, comprador.teamId, item.id, quantidade, out mensagem);
             }
@@ -1505,18 +1513,52 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             ("PODER DE COMPRA", p.PoderDeCompra.ToString("0.00"), "state-info"),
             ("SALDO", Moeda(p.saldo), "state-info")
         });
+        DadosComercioNacional comercio = SistemaComercioNacional.ObterResumo(p.teamId);
+        LinhaCards(new[]
+        {
+            ("PREDIOS COMERCIAIS", comercio.prediosComerciais.ToString(), "state-info"),
+            ("ATIVOS / PARADOS", comercio.estabelecimentosAtivos + " / " + comercio.estabelecimentosParados, comercio.estabelecimentosParados == 0 ? "state-good" : "state-warn"),
+            ("EMPREGOS", comercio.trabalhadoresContratados + "/" + comercio.empregosCriados, "state-good"),
+            ("FELICIDADE", "+" + comercio.contribuicaoFelicidade.ToString("0.0") + "/10", "state-good"),
+            ("ATRATIVIDADE", comercio.capacidadeAtracao.ToString("0") + "%", "state-info")
+        });
         AdicionarCard(conteudo, "POLITICA FISCAL",
             "Impostos mais altos elevam a arrecadacao, mas tambem pressionam moradia, industria e comercio.\n" +
             "O ideal e equilibrar receita, estabilidade e poder de compra sem travar a producao.");
+        AdicionarCard(conteudo, "COMERCIO E EMPREGOS",
+            "Predios: " + comercio.prediosComerciais + " | Ativos: " + comercio.estabelecimentosAtivos + " | Parados: " + comercio.estabelecimentosParados + "\n" +
+            "Porte: pequenos " + comercio.prediosPequenos + " | medios " + comercio.prediosMedios + " | grandes " + comercio.prediosGrandes + "\n" +
+            "Capacidade: " + comercio.capacidadeTotalEmpresas + " empresas | Abertas: " + comercio.empresasAtivas + " | Vazios: " + comercio.espacosComerciaisVazios + " | Ocupacao: " + (comercio.taxaOcupacaoPredios * 100f).ToString("0") + "%\n" +
+            "Abertas recentemente: " + comercio.empresasAbertasRecentemente + " | Fechadas recentemente: " + comercio.empresasFechadasRecentemente + "\n" +
+            "Demanda nao atendida: " + comercio.demandaNaoAtendida + " | Excesso de comercio: " + comercio.regioesComExcessoComercio + "\n" +
+            "Empregos criados: " + comercio.empregosCriados + " | Vagas: " + comercio.vagasDisponiveis + " | Contratados: " + comercio.trabalhadoresContratados + "\n" +
+            "Salarios: " + Moeda(comercio.salariosPagos) + "/s | Impostos: " + Moeda(comercio.impostosArrecadados) + "/s\n" +
+            "Mercadorias: " + comercio.mercadoriasDisponiveis + " | Consumo: " + Moeda(comercio.consumoPopulacao) + "/s | Lucro: " + Moeda(comercio.lucroTotal) + "/s\n" +
+            "Felicidade: +" + comercio.contribuicaoFelicidade.ToString("0.0") + "/10 | Atracao de moradores: " + comercio.capacidadeAtracao.ToString("0") + "%\n" +
+            "Empresas por categoria: " + string.Join(", ", comercio.empresasPorCategoria.Keys) + "\n" +
+            (comercio.estabelecimentosParados > 0 ? "Principal motivo de parada: " + comercio.principalMotivoParada : "Todos os estabelecimentos estao funcionando."));
+        if (ComercioLocal.PredioSelecionado != null)
+        {
+            ComercioLocal predio = ComercioLocal.PredioSelecionado;
+            AdicionarCard(conteudo, "PREDIO COMERCIAL SELECIONADO", predio.GerarDetalhePredio());
+            TabelaCabecalho("EMPRESA", "CATEGORIA", "FUNCIONARIOS", "VAGAS", "ESTADO");
+            int limiteEmpresasVisiveis = Mathf.Min(12, predio.Empresas.Count);
+            for (int i = 0; i < limiteEmpresasVisiveis; i++)
+            {
+                EmpresaComercial empresa = predio.Empresas[i];
+                string motivoEmpresa = string.IsNullOrEmpty(empresa.motivo) ? "Funcionamento normal" : empresa.motivo;
+                TabelaLinha("Empresa " + (i + 1), empresa.tipo.ToString(), empresa.funcionariosContratados.ToString(), empresa.vagasAbertas.ToString(), empresa.estado, () => MostrarMensagem(motivoEmpresa));
+            }
+        }
         TabelaCabecalho("IMPOSTO", "ATUAL", "EFEITO", "AJUSTE", "AÇÕES");
         
-        TabelaLinhaDuplaAcao("MORADIA", p.impostoMoradia + "%", p.moradia >= 70f ? "Base residencial ok" : "Pressao habitacional", p.impostoMoradia < 20 ? "LEVE" : "ALTO", 
+        TabelaLinhaDuplaAcao("MORADIA", p.impostoMoradia + "%", "Descontentamento: " + p.descontentamentoMoradia.ToString("0") + "%", p.impostoMoradia < 20 ? "LEVE" : "ALTO",
             () => AjustarImpostoIndividual("Moradia", 1), () => AjustarImpostoIndividual("Moradia", -1));
             
-        TabelaLinhaDuplaAcao("INDUSTRIA", p.impostoIndustria + "%", p.nivelIndustrial >= 50 ? "Base produtiva forte" : "Industria fraca", p.impostoIndustria < 20 ? "LEVE" : "ALTO", 
+        TabelaLinhaDuplaAcao("INDUSTRIA", p.impostoIndustria + "%", "Descontentamento: " + p.descontentamentoIndustria.ToString("0") + "%", p.impostoIndustria < 20 ? "LEVE" : "ALTO",
             () => AjustarImpostoIndividual("Industria", 1), () => AjustarImpostoIndividual("Industria", -1));
             
-        TabelaLinhaDuplaAcao("COMERCIO", p.impostoComercio + "%", p.estabilidade >= 60f ? "Mercado estavel" : "Mercado sensivel", p.impostoComercio < 18 ? "LEVE" : "ALTO", 
+        TabelaLinhaDuplaAcao("COMERCIO", p.impostoComercio + "%", "Descontentamento: " + p.descontentamentoComercio.ToString("0") + "%", p.impostoComercio < 18 ? "LEVE" : "ALTO",
             () => AjustarImpostoIndividual("Comercio", 1), () => AjustarImpostoIndividual("Comercio", -1));
     }
 

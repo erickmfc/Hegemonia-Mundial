@@ -381,6 +381,13 @@ public class MenuComandoController : MonoBehaviour
         // recuperar o menu quando o estado estÃ¡tico ficou desatualizado.
 
         // Tecla 1 — toggle
+        // Enquanto o Governo esta aberto, os numeros devem permanecer no
+        // campo de compra/venda e nao acionar atalhos globais.
+        if (MenuGoverno.EstaAberto)
+        {
+            return;
+        }
+
         if (RTSInputBindings.GetKeyDown(RTSInputAction.CommandMenu) || Input.GetKeyDown(KeyCode.Keypad1))
         {
             if (menuAberto) FecharMenu();
@@ -393,8 +400,6 @@ public class MenuComandoController : MonoBehaviour
             FecharMenu();
             return;
         }
-
-        if (MenuGoverno.EstaAberto) return;
 
         if (!menuAberto) return;
 
@@ -1115,6 +1120,10 @@ public class MenuComandoController : MonoBehaviour
             {
                 item.Label.EnableInClassList("selecionado", estasel);
                 item.Label.EnableInClassList("foco", estaEmFoco);
+                if (!item.Label.ClassListContains("imovel"))
+                {
+                    item.Label.style.display = estasel ? DisplayStyle.Flex : DisplayStyle.None;
+                }
             }
             if (item.Marcador != null)
             {
@@ -1228,10 +1237,22 @@ public class MenuComandoController : MonoBehaviour
         // marcador mínimo, com deslocamento determinístico, para que imóveis
         // próximos não formem uma coluna de textos sobrepostos.
         string nomeMapa = ObterNomeExibicao(id.gameObject);
-        var label = new Label(ehImovel ? "•" : (nomeMapa.Length > 28 ? nomeMapa.Substring(0, 28) + "..." : nomeMapa));
+        bool mostrarNomeUnidade = !ehImovel && amigo && controleTatico != null
+            && unidadesSelecionadasMenu.Contains(controleTatico);
+        string textoMapa = ehImovel
+            ? "•"
+            : mostrarNomeUnidade
+                ? (nomeMapa.Length > 28 ? nomeMapa.Substring(0, 28) + "..." : nomeMapa)
+                : string.Empty;
+        var label = new Label(textoMapa);
         label.name = "mapa-label";
         label.AddToClassList("mapa-label");
         label.AddToClassList(classFacao);
+        if (!ehImovel && !mostrarNomeUnidade)
+        {
+            label.style.display = DisplayStyle.None;
+        }
+        container.tooltip = nomeMapa;
         if (ehImovel)
         {
             label.AddToClassList("imovel");
@@ -2781,7 +2802,18 @@ public class MenuComandoController : MonoBehaviour
 
     private void AtualizarCameraSeguimento(GameObject alvo)
     {
-        if (alvo == null || CameraUnidadeHUD.Instancia == null)
+        if (alvo == null)
+        {
+            return;
+        }
+
+        // O painel de seguimento tambem deve mover a camera principal para o
+        // alvo escolhido na lista lateral; a camera HUD continua sendo usada
+        // para a mira/telemetria da unidade.
+        CameraController cameraPrincipal = FindFirstObjectByType<CameraController>();
+        cameraPrincipal?.FocarEm(alvo.transform.position);
+
+        if (CameraUnidadeHUD.Instancia == null)
         {
             return;
         }

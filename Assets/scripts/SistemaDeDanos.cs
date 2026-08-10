@@ -38,6 +38,7 @@ public class SistemaDeDanos : MonoBehaviour
     
     // Estados
     private bool morreu = false;
+    private int ultimoAgressorTeamId = -1;
 
     /// <summary>
     /// Resolve a identidade da entidade mesmo quando o collider, o sistema de
@@ -100,7 +101,11 @@ public class SistemaDeDanos : MonoBehaviour
 
             if (vitimaID != null && agressorID != null && vitimaID.teamID != agressorID.teamID)
             {
-                if (SistemaGovernoMundial.Instancia != null)
+                // O cartel e uma faccao criminosa, nao um pais. Ataques contra
+                // ele (ou dele) nao podem abrir uma guerra diplomatica.
+                bool envolveCartel = vitimaID.teamID == 9 || agressorID.teamID == 9;
+                ultimoAgressorTeamId = agressorID.teamID;
+                if (!envolveCartel && SistemaGovernoMundial.Instancia != null)
                 {
                     SistemaGovernoMundial.Instancia.RegistrarAgressao(vitimaID.teamID, agressorID.teamID);
                     var relacao = SistemaGovernoMundial.Instancia.ObterRelacao(vitimaID.teamID, agressorID.teamID);
@@ -129,6 +134,14 @@ public class SistemaDeDanos : MonoBehaviour
 
         if (vidaAtual <= 0)
         {
+            IdentidadeUnidade identidadeMorta = ResolverIdentidade(this);
+            if (identidadeMorta != null && identidadeMorta.teamID == 9
+                && ultimoAgressorTeamId > 0
+                && SistemaGovernoMundial.Instancia != null)
+            {
+                SistemaGovernoMundial.Instancia.AplicarBonusFelicidadeCartel(ultimoAgressorTeamId);
+            }
+
             if (unidadeBiologica) MorrerBiologico();
             else if (ehEstrutura) MorrerEstrutura();
             else StartCoroutine(SequenciaDeMorte());

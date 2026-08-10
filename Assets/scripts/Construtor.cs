@@ -84,6 +84,9 @@ public class Construtor : MonoBehaviour
     private readonly List<UnityEngine.EventSystems.RaycastResult> bufferRaycastUI = new List<UnityEngine.EventSystems.RaycastResult>(16);
     private readonly List<Material> materiaisFantasma = new List<Material>(32);
     private static readonly RaycastHitDistanceComparer ComparadorHitsConstrucao = new RaycastHitDistanceComparer();
+    private static string ultimoAvisoConstrucao;
+    private static float ultimoAvisoConstrucaoEm = -1000f;
+    private const float IntervaloAvisoConstrucao = 1.25f;
     private const float DistanciaCachePreview = 0.75f;
     private const float JanelaCachePreviewSegundos = 0.10f;
     private UnityEngine.EventSystems.PointerEventData pointerEventDataUI;
@@ -692,6 +695,10 @@ public class Construtor : MonoBehaviour
         }
 
         GameObject novo = Instantiate(prefabSelecionado, posFinal, rotFinal);
+        // Prefabs comerciais importados sem configuracao recebem o componente
+        // no momento da construcao e passam a constar no Governo.
+        ComercioLocal.GarantirNoPrefabInstanciado(novo);
+        AjustarAlturaRuaInstanciada(novo);
         if (ehIcbm)
         {
             Renderer[] renderers = novo.GetComponentsInChildren<Renderer>(true);
@@ -899,7 +906,8 @@ public class Construtor : MonoBehaviour
             prefabsPlanejadosRua[i] = prefabSegmento;
         }
 
-        float acumulado = 0f;
+        Vector3 cursorPreview = anchor;
+        Vector3 direcaoAnteriorPreview = ultimaDirecaoRuaConstruida ?? dir;
         for (int i = 0; i < quantidade; i++)
         {
             GameObject fantasma = fantasmasRua[i];
@@ -907,13 +915,19 @@ public class Construtor : MonoBehaviour
             if (fantasma == null || prefabSegmento == null) continue;
 
             fantasma.SetActive(true);
-            if (usarLateral && i == 0 && ultimaDirecaoRuaConstruida.HasValue)
+            if (usarLateral && i == 0)
             {
-                PrepararLateralParaVirada(fantasma, ultimaDirecaoRuaConstruida.Value, dir);
+                PrepararLateralParaVirada(fantasma, direcaoAnteriorPreview, dir);
+                OrientarRuaNaDirecao(fantasma, direcaoAnteriorPreview);
             }
-            OrientarRuaNaDirecao(fantasma, dir);
-            fantasma.transform.position = PosicaoRaizComInicioRua(fantasma, anchor + (dir * acumulado));
-            acumulado += ObterComprimentoRua(fantasma.GetComponent<RuaConectora>());
+            else
+            {
+                OrientarRuaNaDirecao(fantasma, dir);
+            }
+            fantasma.transform.position = PosicaoRaizComInicioRua(fantasma, cursorPreview);
+            if (i == 0) AjustarAlturaRuaInstanciada(fantasma);
+            RuaConectora ruaFantasma = fantasma.GetComponent<RuaConectora>();
+            cursorPreview = ruaFantasma != null ? GetPontoFim(ruaFantasma) : cursorPreview + dir * comprimentoReal;
         }
 
         Quaternion rotSeg = quantidade > 0 ? fantasmasRua[0].transform.rotation : Quaternion.identity;
@@ -950,8 +964,8 @@ public class Construtor : MonoBehaviour
             
             Collider ultimoCol = null;
             RuaConectora ultimaRuaConstruida = null;
-            float acumuladoCommit = 0f;
             Vector3 direcaoAnterior = ultimaDirecaoRuaConstruida ?? dir;
+            Vector3 cursorCommit = anchor;
 
             for (int i = 0; i < quantidade; i++)
             {
@@ -959,17 +973,22 @@ public class Construtor : MonoBehaviour
                     ? prefabsPlanejadosRua[i]
                     : prefabSelecionado;
                 RuaConectora prefabComponente = prefabSegmento != null ? prefabSegmento.GetComponent<RuaConectora>() : null;
-                Vector3 inicioSegmento = anchor + (dir * acumuladoCommit);
-                GameObject novo = Instantiate(prefabSegmento, inicioSegmento, rotSeg);
+                Vector3 inicioSegmento = cursorCommit;
+                GameObject novo = Instantiate(prefabSegmento, inicioSegmento, Quaternion.identity);
                 if (usarLateral && i == 0)
                 {
                     PrepararLateralParaVirada(novo, direcaoAnterior, dir);
+                    OrientarRuaNaDirecao(novo, direcaoAnterior);
                 }
-                OrientarRuaNaDirecao(novo, dir);
+                else
+                {
+                    OrientarRuaNaDirecao(novo, dir);
+                }
                 novo.transform.position = PosicaoRaizComInicioRua(novo, inicioSegmento);
                 RuaConectora rc = novo.GetComponent<RuaConectora>();
                 ultimaRuaConstruida = rc;
-                acumuladoCommit += ObterComprimentoRua(rc != null ? rc : prefabComponente);
+                if (i == 0) AjustarAlturaRuaInstanciada(novo);
+                cursorCommit = rc != null ? GetPontoFim(rc) : cursorCommit + dir * ObterComprimentoRua(prefabComponente);
                 
                 ReativarLogicaUnidade(novo);
                 EnsureCollider(novo);
@@ -1003,7 +1022,7 @@ public class Construtor : MonoBehaviour
             }
             
             // O proximo trecho nasce do conector real do ultimo segmento.
-            ultimoPontoConstruidoRua = ultimaRuaConstruida != null ? GetPontoFim(ultimaRuaConstruida) : anchor + (dir * acumuladoCommit);
+            ultimoPontoConstruidoRua = ultimaRuaConstruida != null ? GetPontoFim(ultimaRuaConstruida) : cursorCommit;
             ultimoColliderConstruidoRua = ultimoCol;
             ultimaDirecaoRuaConstruida = ultimaRuaConstruida != null ? ObterDirecaoRua(ultimaRuaConstruida) : dir;
             InvalidarPreviewSnapshot();
@@ -1033,8 +1052,43 @@ public class Construtor : MonoBehaviour
             mensagem = LocalizationManager.T("build.invalid_location", "Local de construção inválido.");
         }
 
+        string mensagemCompacta = mensagem.Replace("\n", " ").Trim();
+        if (string.Equals(ultimoAvisoConstrucao, mensagemCompacta, System.StringComparison.Ordinal)
+            && Time.unscaledTime - ultimoAvisoConstrucaoEm < IntervaloAvisoConstrucao)
+        {
+            return;
+        }
+
+        ultimoAvisoConstrucao = mensagemCompacta;
+        ultimoAvisoConstrucaoEm = Time.unscaledTime;
         Debug.LogWarning($"[Construtor] {mensagem}");
-        HUDAjudaRTS.MostrarMensagemTemporaria(mensagem.Replace("\n", "  "), 3.6f);
+
+        string normalizada = mensagem.ToLowerInvariant();
+        bool territorio = normalizada.Contains("territorio") || normalizada.Contains("território")
+            || normalizada.Contains("jurisdicao") || normalizada.Contains("jurisdição") || normalizada.Contains("soberania");
+        bool energia = normalizada.Contains("energia");
+        bool requisito = normalizada.Contains("requisito") || normalizada.Contains("depend") || normalizada.Contains("desbloque");
+        DadosConstrucao.CategoriaItem categoria = energia
+            ? DadosConstrucao.CategoriaItem.Energia
+            : requisito ? DadosConstrucao.CategoriaItem.Tecnologia : DadosConstrucao.CategoriaItem.Urbana;
+        string acaoTexto = territorio ? "VER TERRITORIO" : energia ? "CONSTRUIR USINA" : requisito ? "VER REQUISITOS" : "ABRIR CONSTRUCAO";
+        StatusNotificacaoFeed.Publicar(
+            territorio ? "TERRITORIO" : requisito ? "REQUISITOS" : "CONSTRUCAO",
+            "Construcao bloqueada",
+            mensagem.Replace("\n", " "),
+            StatusNotificacaoSeveridade.Warning,
+            acaoTexto,
+            () =>
+            {
+                if (territorio)
+                {
+                    HUDAjudaRTS.MostrarMensagemTemporaria("Abra o mapa estrategico com M para localizar uma area sob sua soberania.", 4f);
+                }
+                else if (!MenuConstrucao.AbrirCategoria(categoria))
+                {
+                    HUDAjudaRTS.MostrarMensagemTemporaria("Abra a construcao com C e revise a categoria indicada.", 4f);
+                }
+            });
     }
 
     bool EhEstruturaCosteiraPrefab(GameObject prefab)
@@ -1165,6 +1219,15 @@ public class Construtor : MonoBehaviour
                 continue;
             }
 
+            // Imovel e usado pelos predios comerciais apenas como conector de
+            // rua. Mantemos o componente desativado para nao contar comercio
+            // como residencia nem gerar moradores duplicados.
+            if (script is Imovel && unidade.GetComponent<ComercioLocal>() != null)
+            {
+                script.enabled = false;
+                continue;
+            }
+
             script.enabled = true;
         }
 
@@ -1275,6 +1338,7 @@ public class Construtor : MonoBehaviour
     {
         if (prefab == null) return null;
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
+        AjustarAlturaRuaInstanciada(novoPredio);
         EnsureCollider(novoPredio);
 
         Estaleiro estaleiro = novoPredio.GetComponent<Estaleiro>();
@@ -1542,20 +1606,9 @@ public class Construtor : MonoBehaviour
 
     void OnGUI()
     {
-        if (modoConstrucao && previewLocalInvalido && fantasmaUnico != null && !string.IsNullOrEmpty(motivoInvalido))
-        {
-            GUIStyle stylePopUp = new GUIStyle(GUI.skin.box);
-            stylePopUp.fontSize = 18;
-            stylePopUp.normal.textColor = new Color(1f, 0.3f, 0.3f);
-            stylePopUp.fontStyle = FontStyle.Bold;
-            stylePopUp.alignment = TextAnchor.MiddleCenter;
-            stylePopUp.wordWrap = true;
-
-            float largura = 450f;
-            float altura = 80f;
-            Rect popupRect = new Rect((Screen.width - largura) / 2f, Screen.height - 180f, largura, altura);
-            GUI.Box(popupRect, motivoInvalido, stylePopUp);
-        }
+        // O feedback da construção inválida fica no banner de decisão do HUD.
+        // O popup IMGUI antigo ocupava o centro da tela e duplicava a mesma
+        // mensagem a cada tentativa, competindo com a visualização do mapa.
     }
 
     void SetLayerRecursively(GameObject obj, int newLayer)
@@ -1662,7 +1715,11 @@ public class Construtor : MonoBehaviour
         nova.y = 0f;
         if (anterior.sqrMagnitude < 0.001f || nova.sqrMagnitude < 0.001f) return false;
 
-        return Vector3.Angle(anterior.normalized, nova.normalized) >= Mathf.Max(1f, anguloMinimoViradaRua);
+        float angulo = Vector3.Angle(anterior.normalized, nova.normalized);
+        // A peca lateral e um quarto de curva. Evite usa-la em pequenas
+        // correcoes de direcao, que criavam zigue-zagues e emendas abertas.
+        return angulo >= Mathf.Max(55f, anguloMinimoViradaRua)
+            && angulo <= 125f;
     }
 
     private void PrepararLateralParaVirada(GameObject objeto, Vector3 direcaoAnterior, Vector3 direcaoNova)
@@ -1771,7 +1828,11 @@ public class Construtor : MonoBehaviour
     private Vector3 ObterDirecaoRua(RuaConectora rua)
     {
         if (rua == null) return Vector3.forward;
-        Vector3 direcao = GetPontoFim(rua) - GetPontoInicio(rua);
+        Vector3 direcao = rua.ObterConectorFim().direcaoSaida;
+        if (direcao.sqrMagnitude < 0.001f)
+        {
+            direcao = GetPontoFim(rua) - GetPontoInicio(rua);
+        }
         direcao.y = 0f;
         return direcao.sqrMagnitude > 0.001f ? direcao.normalized : Vector3.forward;
     }
@@ -1797,9 +1858,18 @@ public class Construtor : MonoBehaviour
         if (direcaoDesejada.sqrMagnitude < 0.001f) return;
         direcaoDesejada.Normalize();
 
-        Vector3 direcaoAtual = ObterDirecaoRua(rua);
+        Vector3 direcaoAtual = rua.ObterConectorInicio().direcaoSaida * -1f;
+        direcaoAtual.y = 0f;
+        if (direcaoAtual.sqrMagnitude < 0.001f) direcaoAtual = ObterDirecaoRua(rua);
         Quaternion ajuste = Quaternion.FromToRotation(direcaoAtual, direcaoDesejada);
         objetoRua.transform.rotation = ajuste * objetoRua.transform.rotation;
+    }
+
+    private void AjustarAlturaRuaInstanciada(GameObject objetoRua)
+    {
+        if (objetoRua == null || objetoRua.GetComponent<RuaConectora>() == null) return;
+        float elevacao = Mathf.Max(0.12f, elevacaoRua);
+        objetoRua.transform.position += Vector3.up * elevacao;
     }
 
     private Vector3 PosicaoRaizComInicioRua(GameObject objetoRua, Vector3 inicioDesejado)

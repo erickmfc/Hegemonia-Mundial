@@ -87,7 +87,7 @@ public static class IA01LocalInfrastructureSetup
     // ao executavel ja tenha os creates unicos e os planos sincronizados.
     public static void NormalizeCampaignScene()
     {
-        const string scenePath = "Assets/Scenes/cena19).unity";
+        const string scenePath = ConfiguracaoCenasJogo.CaminhoCenaCampanhaCanonica;
         Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
         if (!NormalizeScene(scene))
         {

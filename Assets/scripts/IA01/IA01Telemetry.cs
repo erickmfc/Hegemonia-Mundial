@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
 using UnityEngine;
 
@@ -29,7 +28,6 @@ namespace Hegemonia.AI.IA01
         }
 
         private readonly Dictionary<int, NationTelemetryState> states = new Dictionary<int, NationTelemetryState>();
-        private readonly Stopwatch frameStopwatch = new Stopwatch();
         private readonly StringBuilder summaryBuilder = new StringBuilder(512);
 
         private float totalFrameMs;
@@ -162,6 +160,10 @@ namespace Hegemonia.AI.IA01
 
         public void RecordFrame(float frameMs)
         {
+            // Este valor descreve o frame do jogo observado pelo gerenciador, e nao
+            // o tempo consumido pela IA. O custo real de IA ja e registrado em
+            // RecordSlice (ia01.slice.<pais>); publicar o frame inteiro como
+            // "ia01.frame" fazia o diagnostico apontar falsamente a IA como causa.
             LastFrameMs = Mathf.Max(0f, frameMs);
             totalFrameMs += LastFrameMs;
             frameCount++;
@@ -169,7 +171,6 @@ namespace Hegemonia.AI.IA01
 
             try
             {
-                global::DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("ia01.frame", LastFrameMs);
                 global::DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("ia01.frame.count");
             }
             catch

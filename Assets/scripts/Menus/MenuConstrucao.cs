@@ -325,6 +325,7 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         GarantirUsinaCarvaoNoCatalogo();
+        GarantirComerciosNoCatalogo();
 
         List<DadosConstrucao> catalogoDaCena = new List<DadosConstrucao>();
         foreach (DadosConstrucao item in catalogo)
@@ -385,6 +386,63 @@ public class MenuConstrucao : MonoBehaviour
         if (!quantidadesPorItem.ContainsKey(usinaCarvao.NomeItem))
         {
             quantidadesPorItem.Add(usinaCarvao.NomeItem, 1);
+        }
+    }
+
+    /// <summary>
+    /// Mantem os dois edificios comerciais basicos disponiveis mesmo quando
+    /// a cena foi criada antes do catalogo de comercio. As fichas ficam em
+    /// Resources para funcionar tanto no Editor quanto no build final.
+    /// </summary>
+    private void GarantirComerciosNoCatalogo()
+    {
+        string[] caminhos =
+        {
+            "Construcoes/Predio_Comercial",
+            "Construcoes/Centro_Comercial"
+        };
+
+        for (int i = 0; i < caminhos.Length; i++)
+        {
+            DadosConstrucao ficha = Resources.Load<DadosConstrucao>(caminhos[i]);
+            if (ficha == null || catalogo.Contains(ficha))
+            {
+                continue;
+            }
+
+            bool duplicada = false;
+            GameObject prefabFicha;
+            bool temPrefabFicha = ficha.TryGetPrefabBasico(out prefabFicha);
+            for (int j = 0; j < catalogo.Count; j++)
+            {
+                DadosConstrucao existente = catalogo[j];
+                if (existente == null)
+                {
+                    continue;
+                }
+
+                if (string.Equals(existente.GetStableId(), ficha.GetStableId(), System.StringComparison.OrdinalIgnoreCase))
+                {
+                    duplicada = true;
+                    break;
+                }
+
+                GameObject prefabExistente;
+                if (temPrefabFicha && existente.TryGetPrefabBasico(out prefabExistente) && prefabExistente == prefabFicha)
+                {
+                    duplicada = true;
+                    break;
+                }
+            }
+
+            if (!duplicada)
+            {
+                catalogo.Add(ficha);
+                if (!quantidadesPorItem.ContainsKey(ficha.NomeItem))
+                {
+                    quantidadesPorItem.Add(ficha.NomeItem, 1);
+                }
+            }
         }
     }
 
@@ -1940,6 +1998,16 @@ public class MenuConstrucao : MonoBehaviour
                 if (glyphIcone != null) glyphIcone.color = corTextoSecundario;
             }
         }
+    }
+
+    public static bool AbrirCategoria(DadosConstrucao.CategoriaItem categoriaDesejada)
+    {
+        MenuConstrucao menu = Object.FindFirstObjectByType<MenuConstrucao>();
+        if (menu == null) return false;
+
+        menu.AlternarMenu(true);
+        menu.FiltrarPorCategoria(categoriaDesejada);
+        return true;
     }
 
     public void FiltrarPorCategoria(DadosConstrucao.CategoriaItem categoriaDesejada)

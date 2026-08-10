@@ -5875,7 +5875,7 @@ MonoBehaviour:
   tempoAceleracao: 6
   tempoDesaceleracao: 6
   tempoParadaEmergencia: 5
-  velocidadeMaxima: 18
+  velocidadeMaxima: 36
   velocidadeLeme: 2
   curvaMaximaGraus: 25
   coeficienteAderna: 2.5
@@ -5883,7 +5883,7 @@ MonoBehaviour:
   frequenciaOnda: 0.9
   arrastoPassivo: 0.5
   distanciaChegada: 15
-  offsetAlturaAgua: 0
+  offsetAlturaAgua: -1.5
   profundidadeVisual: 0
   anguloEntradaManobraRe: 120
   anguloSaidaManobraRe: 70

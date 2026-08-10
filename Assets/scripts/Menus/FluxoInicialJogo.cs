@@ -30,19 +30,9 @@ public static class FluxoInicialJogo
 
         // No Unity Editor, o Play deve respeitar a cena que está aberta.
         // A build continua entrando pelo menu quando inicia sem autorização.
-        if (Application.isEditor)
-        {
-            string caminhoAtual = SceneManager.GetActiveScene().path.Replace('\\', '/');
-            if (caminhoAtual != ConfiguracaoCenasJogo.CaminhoCenaCampanhaCanonica
-                && ConfiguracaoCenasJogo.EhCenaCampanhaLegada(caminhoAtual))
-            {
-                Debug.LogWarning("[FluxoInicialJogo] Cena de recuperacao detectada; carregando a campanha canonica: "
-                    + ConfiguracaoCenasJogo.CaminhoCenaCampanhaCanonica);
-                SceneManager.LoadScene(ConfiguracaoCenasJogo.CenaCampanhaCanonica);
-            }
-
-            return;
-        }
+        // No Editor, nunca troque a cena aberta pelo usuario. Isso permite
+        // testar qualquer cena diretamente sem redirecionamento automatico.
+        if (Application.isEditor) return;
 
         string cenaMenu = ConfiguracaoCenasJogo.ResolverCenaMenuPrincipal();
 
