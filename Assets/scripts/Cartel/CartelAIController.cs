@@ -125,7 +125,9 @@ namespace Hegemonia.Cartel
         [Header("Ondas de reposicao")]
         [Tooltip("A reposicao so acontece quando todas as unidades do cartel foram eliminadas.")]
         public bool RespawnOnlyWhenAllUnitsAreLost = true;
-        [Min(15f)] public float RespawnDelay = 180f;
+        [Tooltip("Dias de jogo aguardados antes da nova onda. O valor final e sorteado entre os dois limites.")]
+        [Min(1)] public int RespawnMinDays = 3;
+        [Min(1)] public int RespawnMaxDays = 5;
         [Min(1)] public int RobberiesPerCapacityDoubling = 2;
         [Min(2)] public int CapacityDoublingFactor = 2;
         [Min(0)] public int MaxCapacityDoublings = 2;
@@ -188,6 +190,7 @@ namespace Hegemonia.Cartel
         private readonly Dictionary<string, List<CartelManualCreate>> createQueryCache = new Dictionary<string, List<CartelManualCreate>>();
         private readonly List<CartelBaseRuntime> bases = new List<CartelBaseRuntime>();
         private readonly List<NavioPetroleiro> tankerCache = new List<NavioPetroleiro>();
+        private readonly List<PlataformaOffshore> platformCache = new List<PlataformaOffshore>();
         private readonly Collider[] threatOverlapBuffer = new Collider[256];
         private CartelOperation maritimeOperation;
         private CartelOperation terrestrialOperation;
@@ -196,7 +199,7 @@ namespace Hegemonia.Cartel
         private float nextTankerScanTime;
         private float nextMaritimeSteeringTime;
         private float nextActivationCheckTime;
-        private float respawnAt;
+        private int respawnAfterDay = -1;
         private bool respawnPending;
         private bool hasSpawnedAnyUnit;
         private bool initialized;
@@ -261,7 +264,15 @@ namespace Hegemonia.Cartel
             if (State != CartelControllerState.Disabled && Time.time >= nextMaritimeSteeringTime)
             {
                 nextMaritimeSteeringTime = Time.time + Mathf.Max(0.2f, MaritimeSteeringInterval);
+                bool measuringSteering = DiagnosticoDesempenhoJogo.CapturaAtiva;
+                float steeringStartedAt = measuringSteering ? Time.realtimeSinceStartup : 0f;
                 AtualizarNavegacaoNavalLeve();
+                if (measuringSteering)
+                {
+                    DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(
+                        "cartel_naval_steering_ms",
+                        (Time.realtimeSinceStartup - steeringStartedAt) * 1000f);
+                }
             }
 
             if (State == CartelControllerState.Disabled || Time.time < nextDecisionTime)
@@ -270,7 +281,17 @@ namespace Hegemonia.Cartel
             }
 
             nextDecisionTime = Time.time + Mathf.Max(0.25f, DecisionInterval);
+            bool measuringDecision = DiagnosticoDesempenhoJogo.CapturaAtiva;
+            float decisionStartedAt = measuringDecision ? Time.realtimeSinceStartup : 0f;
             TickAI();
+            if (measuringDecision)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(
+                    "cartel_decision_ms",
+                    (Time.realtimeSinceStartup - decisionStartedAt) * 1000f);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("cartel_bases", bases.Count);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("cartel_tankers_cached", tankerCache.Count);
+            }
         }
 
         public void Initialize()
@@ -525,6 +546,15 @@ namespace Hegemonia.Cartel
             for (int i = 0; i < descobertos.Length; i++)
             {
                 if (descobertos[i] != null) tankerCache.Add(descobertos[i]);
+            }
+
+            // A mesma varredura temporizada alimenta a percepcao de
+            // plataformas inimigas. Nao ha busca global por frame.
+            platformCache.Clear();
+            PlataformaOffshore[] plataformas = FindObjectsByType<PlataformaOffshore>(FindObjectsSortMode.None);
+            for (int i = 0; i < plataformas.Length; i++)
+            {
+                if (plataformas[i] != null) platformCache.Add(plataformas[i]);
             }
         }
 
@@ -846,19 +876,24 @@ namespace Hegemonia.Cartel
             if (!respawnPending)
             {
                 respawnPending = true;
-                respawnAt = Time.time + Mathf.Clamp(RespawnDelay, 15f, 420f);
+                int diaAtual = ObterDiaAtualCartel();
+                int atraso = UnityEngine.Random.Range(
+                    Mathf.Max(1, RespawnMinDays),
+                    Mathf.Max(Mathf.Max(1, RespawnMinDays), RespawnMaxDays) + 1);
+                respawnAfterDay = diaAtual + atraso;
                 maritimeOperation = null;
                 terrestrialOperation = null;
-                StatusDebug = "Cartel eliminado. Reforcos serao enviados depois do intervalo definido.";
+                StatusDebug = "Cartel eliminado. Nova onda prevista entre 3 e 5 dias (dia " + respawnAfterDay + ").";
                 return;
             }
 
-            if (Time.time < respawnAt)
+            if (ObterDiaAtualCartel() < respawnAfterDay)
             {
                 return;
             }
 
             respawnPending = false;
+            respawnAfterDay = -1;
             for (int b = 0; b < bases.Count; b++)
             {
                 CartelBaseRuntime runtime = bases[b];
@@ -954,6 +989,16 @@ namespace Hegemonia.Cartel
                 || label.IndexOf("Barco", StringComparison.OrdinalIgnoreCase) >= 0
                 ? TipoUnidade.Naval
                 : (label.IndexOf("Veiculo", StringComparison.OrdinalIgnoreCase) >= 0 ? TipoUnidade.Veiculo : TipoUnidade.Infantaria));
+            CombustivelUnidade combustivelCartel = unit.GetComponent<CombustivelUnidade>();
+            if (combustivelCartel == null && CombustivelUnidade.DeveUsarCombustivel(unit))
+            {
+                combustivelCartel = unit.AddComponent<CombustivelUnidade>();
+            }
+            if (combustivelCartel != null)
+            {
+                combustivelCartel.combustivelInfinito = true;
+                combustivelCartel.usaCombustivel = false;
+            }
             bool unidadeHumana = label.IndexOf("Terrestre", StringComparison.OrdinalIgnoreCase) >= 0
                 || label.IndexOf("Maritimo", StringComparison.OrdinalIgnoreCase) >= 0;
             if (unidadeHumana)
@@ -1904,6 +1949,18 @@ namespace Hegemonia.Cartel
         private bool HasThreatNear(GameObject unit)
         {
             if (unit == null || ThreatRadius <= 0f) return false;
+            float raioSqr = ThreatRadius * ThreatRadius;
+            for (int i = 0; i < platformCache.Count; i++)
+            {
+                PlataformaOffshore plataforma = platformCache[i];
+                if (plataforma == null || !plataforma.gameObject.activeInHierarchy) continue;
+                IdentidadeUnidade plataformaId = plataforma.GetComponentInParent<IdentidadeUnidade>();
+                if (plataformaId == null || plataformaId.teamID <= 0 || plataformaId.teamID == CartelTeamId) continue;
+                if ((plataforma.transform.position - unit.transform.position).sqrMagnitude <= raioSqr)
+                {
+                    return true;
+                }
+            }
             int colliderCount = Physics.OverlapSphereNonAlloc(unit.transform.position, ThreatRadius,
                 threatOverlapBuffer, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < colliderCount; i++)
@@ -1926,6 +1983,13 @@ namespace Hegemonia.Cartel
                 return true;
             }
             return false;
+        }
+
+        private int ObterDiaAtualCartel()
+        {
+            return GerenciadorTempo.Instancia != null
+                ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias)
+                : Mathf.Max(1, Mathf.FloorToInt(Time.time / 60f) + 1);
         }
 
         private bool HasNearbyBase(Vector3 position, float distance)

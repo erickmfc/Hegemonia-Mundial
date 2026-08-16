@@ -213,6 +213,9 @@ namespace Hegemonia.AI.IA01
     public struct IA01WorkResult
     {
         public bool Completed;
+        // Trabalho interrompido voluntariamente pelo orcamento. Nao e falha e
+        // deve voltar ao agendador logo no proximo frame disponivel.
+        public bool Deferred;
         public bool Changed;
         public int Operations;
         public int Events;
@@ -224,6 +227,7 @@ namespace Hegemonia.AI.IA01
             return new IA01WorkResult
             {
                 Completed = false,
+                Deferred = false,
                 Changed = false,
                 Operations = 0,
                 Events = 0,
@@ -232,11 +236,12 @@ namespace Hegemonia.AI.IA01
             };
         }
 
-        public static IA01WorkResult From(bool completed, bool changed, int operations, int events, float consumedMilliseconds, string message)
+        public static IA01WorkResult From(bool completed, bool changed, int operations, int events, float consumedMilliseconds, string message, bool deferred = false)
         {
             return new IA01WorkResult
             {
                 Completed = completed,
+                Deferred = deferred,
                 Changed = changed,
                 Operations = Mathf.Max(0, operations),
                 Events = Mathf.Max(0, events),

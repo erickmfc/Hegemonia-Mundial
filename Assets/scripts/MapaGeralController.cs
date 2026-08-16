@@ -11,6 +11,9 @@ using Hegemonia.RTS;
 /// </summary>
 public class MapaGeralController : MonoBehaviour
 {
+    public static MapaGeralController Instancia { get; private set; }
+    public static bool EstaAberto { get { return Instancia != null && Instancia.mapaAtivo; } }
+
     private Camera cameraPrincipal;
     private Camera cameraMapa;
     private bool mapaAtivo = false;
@@ -72,6 +75,19 @@ public class MapaGeralController : MonoBehaviour
     private bool territorioInimigoDisponivel;
 
     // --- Shader warmup (evita compilação durante o voo) ---
+
+    private void Awake()
+    {
+        Instancia = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instancia == this)
+        {
+            Instancia = null;
+        }
+    }
 
     void Start()
     {

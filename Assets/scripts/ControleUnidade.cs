@@ -462,7 +462,13 @@ public class ControleUnidade : MonoBehaviour
             }
         }
 
-        RecuperarMovimentoTerrestreSeNecessario();
+        // Replanejamento/recuperacao nao precisa disputar CPU a cada frame em
+        // tropas distantes: o NavMesh continua movendo visualmente entre ticks.
+        float intervaloRecuperacao = InfraPerformanceGameplay.ResolverIntervalo(0.35f, estadoOtimizacao, true, true);
+        if (InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickPath, intervaloRecuperacao))
+        {
+            RecuperarMovimentoTerrestreSeNecessario();
+        }
 
         float intervaloWatchdog = InfraPerformanceGameplay.ResolverIntervalo(IntervaloWatchdogOrdem, estadoOtimizacao, false, true);
         if (InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickWatchdog, intervaloWatchdog))
@@ -1139,9 +1145,21 @@ public class ControleUnidade : MonoBehaviour
 
         bool caminhoParado = agente.enabled && agente.isOnNavMesh && agente.isStopped;
         bool caminhoPerdido = agente.enabled && agente.isOnNavMesh && !agente.pathPending && !agente.hasPath;
-        if (caminhoParado || caminhoPerdido || !agente.enabled || !agente.isOnNavMesh)
+        if (!agente.enabled || !agente.isOnNavMesh)
         {
-            DiagnosticoDesempenhoJogo.RegistrarEvento("RecuperacaoMovimento", $"{name}: reativando ordem terrestre ativa");
+            // Esta unidade nao pode aceitar uma ordem terrestre. Reemitir a
+            // mesma ordem causava um ciclo eterno em veiculos externos e em
+            // petroleiros fora do NavMesh.
+            CancelarOrdemIncompativel("NavMeshAgent indisponivel para recuperacao terrestre");
+            return;
+        }
+
+        if (caminhoParado || caminhoPerdido)
+        {
+            if (DiagnosticoDesempenhoJogo.CapturaAtiva)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarEvento("RecuperacaoMovimento", name + ": reativando ordem terrestre ativa");
+            }
             ExecutarMoverParaPonto(ultimoDestinoOrdenado, false);
         }
     }
@@ -1643,6 +1661,10 @@ public class ControleUnidade : MonoBehaviour
         bool podeReemitir = PodeReemitirOrdemTravada(causa);
         if (!podeReemitir || reemissoesWatchdogOrdem >= MaxReemissoesWatchdogOrdem)
         {
+            if (!podeReemitir && CausaExigeCancelamento(causa))
+            {
+                CancelarOrdemIncompativel(causa);
+            }
             RegistrarWatchdogBloqueado(causa);
             tempoSemProgressoOrdem = Mathf.Max(0f, TempoMaximoSemProgresso - (IntervaloWatchdogOrdem * 2f));
             return;
@@ -1650,7 +1672,10 @@ public class ControleUnidade : MonoBehaviour
 
         tempoSemProgressoOrdem = 0f;
         reemissoesWatchdogOrdem++;
-        DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemTravada", $"{name}: reemitindo destino ativo ({ordemControleAtual}) tentativa {reemissoesWatchdogOrdem}/{MaxReemissoesWatchdogOrdem} causa={causa}");
+        if (DiagnosticoDesempenhoJogo.CapturaAtiva)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemTravada", name + ": reemitindo destino ativo causa=" + causa);
+        }
         if (ordemControleAtual == OrdemControleUnidade.Movendo
             || ordemControleAtual == OrdemControleUnidade.Recuando
             || ordemControleAtual == OrdemControleUnidade.Patrulhando
@@ -1745,7 +1770,30 @@ public class ControleUnidade : MonoBehaviour
                && !TextoContem(causa, "desativado")
                && !TextoContem(causa, "aeroporto")
                && !TextoContem(causa, "Sem executor")
+               && !TextoContem(causa, "Executor naval")
+               && !TextoContem(causa, "Executor submarino")
+               && !TextoContem(causa, "Executor aereo")
                && !TextoContem(causa, "caminho invalido");
+    }
+
+    private bool CausaExigeCancelamento(string causa)
+    {
+        return TextoContem(causa, "fora do NavMesh")
+               || TextoContem(causa, "desativado")
+               || TextoContem(causa, "Executor naval")
+               || TextoContem(causa, "Executor submarino")
+               || TextoContem(causa, "Executor aereo")
+               || TextoContem(causa, "Sem executor");
+    }
+
+    private void CancelarOrdemIncompativel(string causa)
+    {
+        LimparDestinoOrdenado();
+        proximaRecuperacaoMovimento = Time.unscaledTime + 4f;
+        if (DiagnosticoDesempenhoJogo.CapturaAtiva)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemCancelada", name + ": " + causa);
+        }
     }
 
     private bool TextoContem(string texto, string trecho)
@@ -1765,7 +1813,10 @@ public class ControleUnidade : MonoBehaviour
         proximoRelatorioWatchdogBloqueado = Time.unscaledTime + IntervaloRelatorioWatchdogBloqueado;
         string motivo = string.IsNullOrEmpty(causa) ? "causa nao identificada" : causa;
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_stuck_blocked");
-        DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemBloqueada", $"{name}: {ordemControleAtual} sem progresso; motivo={motivo}; tentativas={reemissoesWatchdogOrdem}; destino={ultimoDestinoOrdenado}");
+        if (DiagnosticoDesempenhoJogo.CapturaAtiva)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemBloqueada", name + ": " + motivo);
+        }
     }
 
     void LimparDestinoOrdenado()

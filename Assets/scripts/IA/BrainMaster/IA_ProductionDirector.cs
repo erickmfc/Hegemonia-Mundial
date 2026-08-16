@@ -478,13 +478,15 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             IA01MilitaryAssetKind assetKind = IA01MilitaryProductionGuard.Classify(data);
+            string orderId = string.Empty;
             bool reserved = assetKind == IA01MilitaryAssetKind.Other
                 || IA01MilitaryProductionGuard.TryReserveSingle(
                     _context.Brain != null ? _context.Brain.TeamId : 0,
                     assetKind,
                     CurrentCountFor(assetKind, GetSnapshot()),
                     Time.time,
-                    assetKind == IA01MilitaryAssetKind.Naval || assetKind == IA01MilitaryAssetKind.OilTanker ? 90f : 45f);
+                    assetKind == IA01MilitaryAssetKind.Naval || assetKind == IA01MilitaryAssetKind.OilTanker ? 180f : 45f,
+                    out orderId);
             if (!reserved)
             {
                 IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_GUARD", "ordem ja pendente para " + assetKind);
@@ -494,7 +496,8 @@ namespace Hegemonia.AI.BrainMaster
             IA_ProduceOrderData payload = new IA_ProduceOrderData
             {
                 ItemKey = data.NomeItem,
-                Quantity = 1
+                Quantity = 1,
+                ProductionOrderId = orderId
             };
 
             IA_CommandRequest request = IA_CommandFactory.Create(
@@ -512,6 +515,7 @@ namespace Hegemonia.AI.BrainMaster
             bool enqueued = PublishProductionIntent(request, data, priority, "fila de producao otimizada", out reason);
             if (enqueued)
             {
+                IA01MilitaryProductionGuard.ConfirmQueued(orderId, 0, Time.time);
                 DiagnosticoDesempenhoJogo.RegistrarProducao(data.NomeItem);
                 IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_OK", "item=" + data.NomeItem + " | motivo=fila de producao otimizada");
                 ArmRuntimeQueueCooldown();
@@ -540,14 +544,9 @@ namespace Hegemonia.AI.BrainMaster
                 return QueueProduceBest(priority, cooldown, "b260", "supra", "su11", "a_20", "a10", "warthog", "g15", "super tuk", "g_18m", "g18m", "fa1", "caca", "fighter");
             }
 
-            IA_ProduceOrderData payload = new IA_ProduceOrderData
-            {
-                ItemKey = data.NomeItem,
-                Quantity = 1
-            };
-
             int teamId = _context.Brain != null ? _context.Brain.TeamId : 0;
-            if (!IA01MilitaryProductionGuard.TryReserveSingle(teamId, IA01MilitaryAssetKind.Fighter, GetSnapshot().FixedWingAircraft, Time.time))
+            string orderId;
+            if (!IA01MilitaryProductionGuard.TryReserveSingle(teamId, IA01MilitaryAssetKind.Fighter, GetSnapshot().FixedWingAircraft, Time.time, 120f, out orderId))
             {
                 IA_RuntimeTextTrace.LogText(teamId, "IA_ProductionDirector", "AIR_PROD_GUARD", "caca ja pendente");
                 return false;
@@ -562,12 +561,18 @@ namespace Hegemonia.AI.BrainMaster
                 "production",
                 "produce:" + IA_Text.Normalize(data.NomeItem),
                 cooldown,
-                payload);
+                new IA_ProduceOrderData
+                {
+                    ItemKey = data.NomeItem,
+                    Quantity = 1,
+                    ProductionOrderId = orderId
+                });
 
             string reason;
             bool enqueued = PublishProductionIntent(request, data, priority, "preferencia aerea", out reason);
             if (enqueued)
             {
+                IA01MilitaryProductionGuard.ConfirmQueued(orderId, 0, Time.time);
                 DiagnosticoDesempenhoJogo.RegistrarProducao(data.NomeItem, "IA_Prod_Air");
                 IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_OK", "item=" + data.NomeItem + " | motivo=preferencia aerea");
                 ArmRuntimeQueueCooldown();

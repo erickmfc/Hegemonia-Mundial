@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using Hegemonia.AI.Shared;
 
 // 2. O PRIMEIRO NÍVEL DE ANÁLISE: "FILTRO DE POSSIBILIDADE"
 // Este cara diz SIM ou NÃO para coisas básicas (path, viabilidade física).
@@ -39,6 +40,7 @@ public class Analista1 : MonoBehaviour
             }
             else
             {
+                IAAutoProductionRegistry.Release(pedido.productionOrderId, Time.time);
                 // Se foi negado, devolve o dinheiro?? 
                 // COMPLEXIDADE: Se o Cerebro já pagou e foi negado aqui, o dinheiro sumiu.
                 // Idealmente deveríamos estornar.

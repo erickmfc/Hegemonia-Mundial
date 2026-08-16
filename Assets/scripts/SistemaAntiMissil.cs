@@ -17,6 +17,18 @@ public class SistemaAntiMissil : MonoBehaviour
     [Tooltip("Dot product minimo para considerar que o objeto esta vindo na nossa direcao.")]
     public float dotMinimoAmeaca = 0.4f;
 
+    [Tooltip("Quantidade de graus que a torreta pode errar antes de liberar um disparo.")]
+    [Range(2f, 25f)] public float toleranciaMiraDisparo = 10f;
+
+    [Tooltip("Evita que varias baterias amigas desperdicem interceptadores na mesma ameaca ao mesmo tempo.")]
+    public bool usarCoordenacaoGlobal = true;
+
+    [Tooltip("Tempo que uma bateria reserva uma ameaca apos um disparo confirmado.")]
+    [Min(0.2f)] public float janelaReservaAmeaca = 2.2f;
+
+    [Tooltip("Permite uma segunda bateria quando a ameaca esta prestes a atingir a area defendida.")]
+    [Min(0f)] public float janelaReforcoEmergencial = 1.25f;
+
     [Header("Antecipacao de Lancamento")]
     [Tooltip("Usa o rastreador global de misseis para antecipar ameacas antes de entrarem no radar fisico.")]
     public bool usarRastroLancamento = true;
@@ -112,16 +124,29 @@ public class SistemaAntiMissil : MonoBehaviour
     private readonly List<Transform> ameacasOrdenadas = new List<Transform>();
     private readonly List<Transform> ameacasSalva = new List<Transform>();
     private readonly List<Vector3> direcoesSalva = new List<Vector3>();
+    private readonly List<MissileThreatTracker> rastrosAtivos = new List<MissileThreatTracker>(16);
     private readonly HashSet<Transform> candidatosAvaliadosNoScan = new HashSet<Transform>();
     private readonly HashSet<Transform> ameacasRegistradasNoScan = new HashSet<Transform>();
     private readonly List<Collider> collidersMissilTemp = new List<Collider>(8);
+    private readonly List<Collider> collidersAliadosCache = new List<Collider>(48);
     private readonly Collider[] bufferAmeacas = new Collider[128];
     private static readonly Collider[] bufferAliados = new Collider[128];
     private Collider[] collidersOrigemCache;
     private Transform raizDefendidaCache;
     private float proximaVarreduraFisicaLiberada;
+    private float proximaAtualizacaoAliados;
     private Vector3 eulerRepousoBaseGiratoria;
     private Vector3 eulerRepousoCanoElevacao;
+
+    private sealed class ReservaAmeaca
+    {
+        public SistemaAntiMissil dono;
+        public float expiraEm;
+        public int disparos;
+    }
+
+    private static readonly Dictionary<Transform, ReservaAmeaca> reservasGlobais = new Dictionary<Transform, ReservaAmeaca>(64);
+    private static readonly List<Transform> reservasParaRemover = new List<Transform>(32);
 
     void Start()
     {
@@ -145,15 +170,37 @@ public class SistemaAntiMissil : MonoBehaviour
 
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
-        AudioRuntime.ConfigurarFonteDeArmamento(audioSource);
+        AudioRuntime.ConfigurarFonteDeMissel(audioSource);
 
         AtualizarCacheOrigem();
 
         float intervalo = ObterIntervaloEscaneamentoEfetivo();
-        DiagnosticoDesempenhoJogo.RegistrarEvento(
-            "AntiMissil",
-            string.Format("{0} radar ativo: intervalo={1:0.00}s alcance={2:0}m", name, intervalo, alcanceRadar));
+        if (DiagnosticoDesempenhoJogo.CapturaAtiva)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "AntiMissil",
+                string.Format("{0} radar ativo: intervalo={1:0.00}s alcance={2:0}m", name, intervalo, alcanceRadar));
+        }
         InvokeRepeating(nameof(ProcurarAmeacaMisseis), Random.Range(intervalo * 0.5f, intervalo * 1.5f), intervalo);
+    }
+
+    void OnDisable()
+    {
+        CancelInvoke(nameof(ProcurarAmeacaMisseis));
+        LiberarReservasDesteSistema();
+        alvoMissilAtual = null;
+    }
+
+    void OnValidate()
+    {
+        alcanceRadar = Mathf.Max(1f, alcanceRadar);
+        tempoDeEscaneamento = Mathf.Max(0.08f, tempoDeEscaneamento);
+        intervaloMinimoEscaneamento = Mathf.Max(0.08f, intervaloMinimoEscaneamento);
+        intervaloMinimoVarreduraFisica = Mathf.Max(0.15f, intervaloMinimoVarreduraFisica);
+        maximoCollidersProcessadosPorScan = Mathf.Clamp(maximoCollidersProcessadosPorScan, 8, 128);
+        toleranciaMiraDisparo = Mathf.Clamp(toleranciaMiraDisparo, 2f, 25f);
+        janelaReservaAmeaca = Mathf.Max(0.2f, janelaReservaAmeaca);
+        janelaReforcoEmergencial = Mathf.Max(0f, janelaReforcoEmergencial);
     }
 
     void Update()
@@ -329,8 +376,20 @@ public class SistemaAntiMissil : MonoBehaviour
             alinhamento = Vector3.Dot(direcaoAmeaca.normalized, direcaoParaMim.normalized);
         }
 
-        float bonusRastro = ameaca.GetComponentInParent<MissileThreatTracker>() != null ? 35f : 0f;
-        return distancia - (alinhamento * 60f) - bonusRastro;
+        float velocidade = Mathf.Max(ObterVelocidadeAmeacaSemAtualizar(ameaca).magnitude, velocidadeMinimaAmeaca + 1f);
+        float velocidadeDeAproximacao = velocidade * Mathf.Max(0f, alinhamento);
+        float tempoImpacto = velocidadeDeAproximacao > 1f
+            ? distancia / velocidadeDeAproximacao
+            : distancia / velocidade;
+        float bonusRastro = ameaca.GetComponentInParent<MissileThreatTracker>() != null ? 0.25f : 0f;
+
+        // Tempo estimado de chegada pesa mais que distancia bruta: um missil
+        // veloz e alinhado com a defesa deve ser tratado antes de um alvo
+        // proximo que esteja cruzando para longe.
+        return (Mathf.Clamp(tempoImpacto, 0.05f, 120f) * 100f)
+               + (distancia * 0.02f)
+               - (alinhamento * 12f)
+               - bonusRastro;
     }
 
     int DispararSalvaDefensiva()
@@ -353,7 +412,19 @@ public class SistemaAntiMissil : MonoBehaviour
             Transform alvo = ameacasSalva[i];
             if (alvo == null) continue;
 
-            AtirarInterceptador(alvo);
+            if (!TentarReservarAmeaca(alvo))
+            {
+                DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("anti_missile_target_reserved");
+                continue;
+            }
+
+            if (!AtirarInterceptador(alvo))
+            {
+                LiberarReservaAmeaca(alvo);
+                DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("anti_missile_fire_failed");
+                continue;
+            }
+
             misseisAtuais--;
             ultimoEngajamentoPorAmeaca[alvo] = Time.time;
         }
@@ -419,6 +490,12 @@ public class SistemaAntiMissil : MonoBehaviour
             return false;
         }
 
+        if (AmeacaReservadaPorOutroSistema(ameaca)
+            && CalcularTempoImpactoEstimado(ameaca) > Mathf.Max(0f, janelaReforcoEmergencial))
+        {
+            return false;
+        }
+
         float ultimoTempo;
         if (ultimoEngajamentoPorAmeaca.TryGetValue(ameaca, out ultimoTempo))
         {
@@ -429,6 +506,116 @@ public class SistemaAntiMissil : MonoBehaviour
         }
 
         return true;
+    }
+
+    float CalcularTempoImpactoEstimado(Transform ameaca)
+    {
+        if (ameaca == null) return float.MaxValue;
+
+        Vector3 paraDefesa = transform.position - ameaca.position;
+        float distancia = paraDefesa.magnitude;
+        if (distancia <= 0.1f) return 0f;
+
+        Vector3 velocidade = ObterVelocidadeAmeacaSemAtualizar(ameaca);
+        float fechamento = Vector3.Dot(velocidade, paraDefesa / distancia);
+        if (fechamento <= 1f)
+        {
+            fechamento = Mathf.Max(velocidade.magnitude, velocidadeMinimaAmeaca + 1f);
+        }
+
+        return Mathf.Clamp(distancia / fechamento, 0.05f, 120f);
+    }
+
+    static void LimparReservasGlobais()
+    {
+        reservasParaRemover.Clear();
+        foreach (KeyValuePair<Transform, ReservaAmeaca> item in reservasGlobais)
+        {
+            Transform alvo = item.Key;
+            ReservaAmeaca reserva = item.Value;
+            if (alvo == null || !alvo.gameObject.activeInHierarchy || reserva == null || reserva.dono == null || reserva.expiraEm <= Time.time)
+            {
+                reservasParaRemover.Add(alvo);
+            }
+        }
+
+        for (int i = 0; i < reservasParaRemover.Count; i++)
+        {
+            reservasGlobais.Remove(reservasParaRemover[i]);
+        }
+    }
+
+    bool AmeacaReservadaPorOutroSistema(Transform ameaca)
+    {
+        if (!usarCoordenacaoGlobal || ameaca == null) return false;
+
+        LimparReservasGlobais();
+        ReservaAmeaca reserva;
+        if (!reservasGlobais.TryGetValue(ameaca, out reserva) || reserva == null)
+        {
+            return false;
+        }
+
+        return reserva.dono != this && reserva.expiraEm > Time.time;
+    }
+
+    bool TentarReservarAmeaca(Transform ameaca)
+    {
+        if (!usarCoordenacaoGlobal || ameaca == null) return true;
+
+        LimparReservasGlobais();
+        ReservaAmeaca reserva;
+        if (reservasGlobais.TryGetValue(ameaca, out reserva) && reserva != null)
+        {
+            if (reserva.dono != this && reserva.expiraEm > Time.time)
+            {
+                return CalcularTempoImpactoEstimado(ameaca) <= Mathf.Max(0f, janelaReforcoEmergencial);
+            }
+
+            if (reserva.dono == this)
+            {
+                reserva.expiraEm = Time.time + Mathf.Max(0.2f, janelaReservaAmeaca);
+                reserva.disparos++;
+                return true;
+            }
+        }
+
+        reservasGlobais[ameaca] = new ReservaAmeaca
+        {
+            dono = this,
+            expiraEm = Time.time + Mathf.Max(0.2f, janelaReservaAmeaca),
+            disparos = 1
+        };
+        return true;
+    }
+
+    void LiberarReservasDesteSistema()
+    {
+        reservasParaRemover.Clear();
+        foreach (KeyValuePair<Transform, ReservaAmeaca> item in reservasGlobais)
+        {
+            if (item.Value != null && item.Value.dono == this)
+            {
+                reservasParaRemover.Add(item.Key);
+            }
+        }
+
+        for (int i = 0; i < reservasParaRemover.Count; i++)
+        {
+            reservasGlobais.Remove(reservasParaRemover[i]);
+        }
+    }
+
+    void LiberarReservaAmeaca(Transform ameaca)
+    {
+        if (ameaca == null) return;
+
+        ReservaAmeaca reserva;
+        if (reservasGlobais.TryGetValue(ameaca, out reserva)
+            && reserva != null && reserva.dono == this)
+        {
+            reservasGlobais.Remove(ameaca);
+        }
     }
 
     bool DirecaoEhNovaNaSalva(Vector3 direcaoHorizontal)
@@ -472,14 +659,40 @@ public class SistemaAntiMissil : MonoBehaviour
         alvoMissilAtual = null;
         Transform minhaRaiz = transform.root != null ? transform.root : transform;
 
-        RegistrarAmeacaCandidata(BuscarAmeacaRegistrada(minhaRaiz), minhaRaiz);
+        if (usarRastroLancamento)
+        {
+            rastrosAtivos.Clear();
+            MissileThreatTracker.CopiarAmeacasAtivas(rastrosAtivos);
+            for (int i = 0; i < rastrosAtivos.Count; i++)
+            {
+                MissileThreatTracker tracker = rastrosAtivos[i];
+                if (tracker == null) continue;
+                RegistrarAmeacaCandidata(tracker.RaizMissil, minhaRaiz);
+            }
 
+            // Compatibilidade com ameacas registradas por scripts antigos
+            // que ainda nao publicam um tracker completo.
+            if (ameacasOrdenadas.Count == 0)
+            {
+                RegistrarAmeacaCandidata(BuscarAmeacaRegistrada(minhaRaiz), minhaRaiz);
+            }
+        }
+
+        bool radarOciosoComRastro = usarRastroLancamento && priorizarRastroLancamento && ameacasOrdenadas.Count == 0;
         bool deveVarreduraFisica = Time.time >= proximaVarreduraFisicaLiberada
                                     && (!priorizarRastroLancamento || ameacasOrdenadas.Count == 0)
                                     && !DiagnosticoDesempenhoJogo.RuntimeSaturado();
         if (deveVarreduraFisica)
         {
-            proximaVarreduraFisicaLiberada = Time.time + ObterIntervaloVarreduraFisicaEfetivo();
+            // Com o rastreador global ativo, a varredura fisica e somente
+            // compatibilidade para misseis legados. Em repouso ela nao precisa
+            // rodar em cada bateria a cada 0,35 s.
+            float intervaloFisico = ObterIntervaloVarreduraFisicaEfetivo();
+            if (radarOciosoComRastro)
+            {
+                intervaloFisico = Mathf.Max(intervaloFisico, 0.75f);
+            }
+            proximaVarreduraFisicaLiberada = Time.time + intervaloFisico;
             quantidadeObjetos = Physics.OverlapSphereNonAlloc(
                 transform.position,
                 alcanceRadar,
@@ -527,7 +740,7 @@ public class SistemaAntiMissil : MonoBehaviour
 
         float duracaoMs = (Time.realtimeSinceStartup * 1000f) - inicioMs;
         DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("anti_missile_scan_ms", duracaoMs);
-        if (duracaoMs >= 1f || processados >= maximoCollidersProcessadosPorScan)
+        if (DiagnosticoDesempenhoJogo.CapturaAtiva && (duracaoMs >= 1f || processados >= maximoCollidersProcessadosPorScan))
         {
             DiagnosticoDesempenhoJogo.RegistrarEvento(
                 "AntiMissil",
@@ -651,6 +864,34 @@ public class SistemaAntiMissil : MonoBehaviour
         }
 
         return Vector3.zero;
+    }
+
+    Vector3 ObterVelocidadeAmeacaSemAtualizar(Transform candidato)
+    {
+        if (candidato == null) return Vector3.zero;
+
+        MissileThreatTracker tracker = candidato.GetComponentInParent<MissileThreatTracker>();
+        if (tracker != null)
+        {
+            Vector3 velocidadeTracker = tracker.ObterVelocidadeAtual();
+            if (velocidadeTracker.sqrMagnitude > 0.01f) return velocidadeTracker;
+        }
+
+        Rigidbody rb = candidato.GetComponentInParent<Rigidbody>();
+        if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
+        {
+            return rb.linearVelocity;
+        }
+
+        Vector3 ultimaPosicao;
+        if (ultimasPosicoesAmeaca.TryGetValue(candidato, out ultimaPosicao))
+        {
+            float intervalo = Mathf.Max(ObterIntervaloEscaneamentoEfetivo(), 0.02f);
+            Vector3 estimada = (candidato.position - ultimaPosicao) / intervalo;
+            if (estimada.sqrMagnitude > 0.01f) return estimada;
+        }
+
+        return ObterDirecaoMissil(candidato) * Mathf.Max(velocidadeMinimaAmeaca + 1f, 10f);
     }
 
     bool PossuiTagMisselNaHierarquia(Transform referencia)
@@ -800,7 +1041,7 @@ public class SistemaAntiMissil : MonoBehaviour
             Vector3 frente = baseGiratoria.forward;
             frente.y = 0f;
 
-            if (dir.sqrMagnitude > 0.001f && Vector3.Angle(frente, dir.normalized) > 40f)
+            if (dir.sqrMagnitude > 0.001f && Vector3.Angle(frente, dir.normalized) > Mathf.Max(2f, toleranciaMiraDisparo))
             {
                 return false;
             }
@@ -809,7 +1050,7 @@ public class SistemaAntiMissil : MonoBehaviour
         if (canoElevacao != null)
         {
             Vector3 dir = posFutura - canoElevacao.position;
-            if (dir.sqrMagnitude > 0.001f && Vector3.Angle(canoElevacao.forward, dir.normalized) > 40f)
+            if (dir.sqrMagnitude > 0.001f && Vector3.Angle(canoElevacao.forward, dir.normalized) > Mathf.Max(2f, toleranciaMiraDisparo))
             {
                 return false;
             }
@@ -818,18 +1059,18 @@ public class SistemaAntiMissil : MonoBehaviour
         return true;
     }
 
-    void AtirarInterceptador(Transform alvoDesignado)
+    bool AtirarInterceptador(Transform alvoDesignado)
     {
         float inicioMs = Time.realtimeSinceStartup * 1000f;
-        if (prefabIntercepador == null || pontosDeSaida == null || pontosDeSaida.Length == 0) return;
+        if (prefabIntercepador == null || pontosDeSaida == null || pontosDeSaida.Length == 0) return false;
 
         Transform saidaDaVez = pontosDeSaida[indexSaida];
         indexSaida = (indexSaida + 1) % pontosDeSaida.Length;
 
-        if (saidaDaVez == null) return;
+        if (saidaDaVez == null) return false;
 
         GameObject missilGerado = PoolDeObjetosCombate.Spawn(prefabIntercepador, saidaDaVez.position, saidaDaVez.rotation);
-        if (missilGerado == null) return;
+        if (missilGerado == null) return false;
 
         IgnorarColisaoComOrigem(missilGerado);
         IgnorarColisaoComAliados(missilGerado);
@@ -939,17 +1180,19 @@ public class SistemaAntiMissil : MonoBehaviour
 
         if (somDisparo != null && audioSource != null)
         {
-            audioSource.PlayOneShot(somDisparo, 0.7f);
+            audioSource.PlayOneShot(somDisparo, 0.8f);
         }
 
         float duracaoMs = (Time.realtimeSinceStartup * 1000f) - inicioMs;
         DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("anti_missile_fire_ms", duracaoMs);
-        if (duracaoMs >= 1f)
+        if (DiagnosticoDesempenhoJogo.CapturaAtiva && duracaoMs >= 1f)
         {
             DiagnosticoDesempenhoJogo.RegistrarEvento(
                 "AntiMissil",
                 string.Format("{0} disparo {1:0.00}ms alvo={2}", name, duracaoMs, alvoResolvido != null ? alvoResolvido.name : "sem alvo"));
         }
+
+        return true;
     }
 
     Transform ResolverTransformoRaiz(Collider colliderOrigem)
@@ -1048,10 +1291,10 @@ public class SistemaAntiMissil : MonoBehaviour
         float velocidadeInterceptador = Mathf.Max(ObterVelocidadeInterceptador(), 1f);
         Vector3 posicaoPrevista = alvo.position;
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 5; i++)
         {
             float distancia = Vector3.Distance(origem, posicaoPrevista);
-            float tempoInterceptacao = distancia / velocidadeInterceptador;
+            float tempoInterceptacao = Mathf.Clamp(distancia / velocidadeInterceptador, 0f, Mathf.Max(0.5f, janelaAntecipacaoSegundos));
             posicaoPrevista = alvo.position + (velocidadeAlvo * tempoInterceptacao);
         }
 
@@ -1107,18 +1350,13 @@ public class SistemaAntiMissil : MonoBehaviour
         PreencherCollidersMissil(missilGerado);
         if (collidersMissilTemp.Count == 0) return;
 
-        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, bufferAliados, mascaraVarredura, QueryTriggerInteraction.Collide);
-        int limite = Mathf.Min(
-            Mathf.Min(quantidade, bufferAliados.Length),
-            Mathf.Max(1, maximoAliadosColisaoIgnorada));
+        AtualizarCacheAliadosSeNecessario();
+        int limite = Mathf.Min(collidersAliadosCache.Count, Mathf.Max(1, maximoAliadosColisaoIgnorada));
         for (int i = 0; i < limite; i++)
         {
-            Collider colAliado = bufferAliados[i];
+            Collider colAliado = collidersAliadosCache[i];
             if (colAliado == null) continue;
             if (colAliado.transform.root == transform.root) continue;
-
-            IdentidadeUnidade identidadeAliada = colAliado.GetComponentInParent<IdentidadeUnidade>();
-            if (identidadeAliada == null || identidadeAliada.teamID != minhaIdentidade.teamID) continue;
 
             for (int j = 0; j < collidersMissilTemp.Count; j++)
             {
@@ -1127,8 +1365,43 @@ public class SistemaAntiMissil : MonoBehaviour
                 Physics.IgnoreCollision(colAliado, colMissil, true);
             }
         }
+    }
 
-        for (int i = 0; i < quantidade && i < bufferAliados.Length; i++) bufferAliados[i] = null;
+    void AtualizarCacheAliadosSeNecessario()
+    {
+        if (Time.time < proximaAtualizacaoAliados)
+        {
+            return;
+        }
+
+        proximaAtualizacaoAliados = Time.time + 0.5f;
+        collidersAliadosCache.Clear();
+
+        int quantidade = Physics.OverlapSphereNonAlloc(
+            transform.position,
+            alcanceRadar,
+            bufferAliados,
+            mascaraVarredura,
+            QueryTriggerInteraction.Collide);
+        int limite = Mathf.Min(quantidade, bufferAliados.Length);
+        for (int i = 0; i < limite; i++)
+        {
+            Collider colAliado = bufferAliados[i];
+            if (colAliado == null || colAliado.transform.root == transform.root) continue;
+
+            IdentidadeUnidade identidadeAliada = colAliado.GetComponentInParent<IdentidadeUnidade>();
+            if (identidadeAliada != null && identidadeAliada.teamID == minhaIdentidade.teamID)
+            {
+                collidersAliadosCache.Add(colAliado);
+            }
+        }
+
+        for (int i = 0; i < limite; i++) bufferAliados[i] = null;
+
+        if (quantidade > limite)
+        {
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("anti_missile_allied_cache_capped");
+        }
     }
 
     Collider[] ObterCollidersOrigem()

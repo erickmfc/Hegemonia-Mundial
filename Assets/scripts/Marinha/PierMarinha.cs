@@ -1037,7 +1037,7 @@ public class PierMarinha : MonoBehaviour
     // --- INTERFACE VISUAL DE REPARO ---
     void OnGUI()
     {
-        if (Camera.main == null) return;
+        if (Camera.main == null || IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto) return;
 
         foreach (var vaga in vagasDisponiveis)
         {

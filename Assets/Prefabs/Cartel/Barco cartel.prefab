@@ -417,7 +417,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 21
+  m_Speed: 30
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 120
@@ -471,9 +471,9 @@ MonoBehaviour:
   tempoAceleracao: 1
   tempoDesaceleracao: 3
   tempoParadaEmergencia: 10
-  velocidadeMaxima: 15
-  velocidadeLeme: 10
-  curvaMaximaGraus: 20
+  velocidadeMaxima: 40
+  velocidadeLeme: 15
+  curvaMaximaGraus: 25
   coeficienteAderna: 2.5
   alturaOnda: 0.5
   frequenciaOnda: 0.2
@@ -566,7 +566,7 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
-  dominioControleAtual: 0
+  dominioControleAtual: 1
   ordemControleAtual: 0
   modoCombateOficialAtivo: 1
   executorControleAtual: NavMeshAgent

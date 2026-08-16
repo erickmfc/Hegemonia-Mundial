@@ -74,6 +74,11 @@ public class CaminhaoTanqueAbastecimento : MonoBehaviour
 
     private void OnGUI()
     {
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto)
+        {
+            return;
+        }
+
         if (combustivelProprio != null && combustivelProprio.mostrarIndicadorMundo)
         {
             return;

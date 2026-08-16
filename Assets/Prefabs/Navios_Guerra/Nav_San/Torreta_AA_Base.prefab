@@ -55,9 +55,10 @@ MonoBehaviour:
   tempoEntreTiros: 0.1
   tamanhoCartucho: 50
   tempoRecarga: 2
-  pecaQueGira: {fileID: 0}
+  pecaQueGira: {fileID: 4902834742562507212}
   canosDaTorreta: {fileID: 0}
-  locaisDoTiro: []
+  locaisDoTiro:
+  - {fileID: 7620567572899405808}
   municaoPrefab: {fileID: 103092412673567969, guid: 428baf005c63b0b4dbf220ca6d117f22, type: 3}
   limitarInclinacao: 1
   elevacaoMinima: -10

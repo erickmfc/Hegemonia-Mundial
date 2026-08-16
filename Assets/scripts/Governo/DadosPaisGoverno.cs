@@ -37,7 +37,9 @@ public enum TipoPropostaInternacional
     Bloqueio,
     Sancao,
     PedidoAjuda,
-    PactoDefensivo
+    PactoDefensivo,
+    Alianca,
+    CessarFogo
 }
 
 public enum StatusPropostaInternacional
@@ -335,6 +337,7 @@ public class RelacaoPaisGoverno
     public bool pedidoPendente;
     public bool sancaoAtiva;
     public bool guerraDeclarada;
+    public List<RecursoMercado> embargos = new List<RecursoMercado>();
     public PosturaRelacaoPais posturaAParaB = PosturaRelacaoPais.Neutro;
     public PosturaRelacaoPais posturaBParaA = PosturaRelacaoPais.Neutro;
 

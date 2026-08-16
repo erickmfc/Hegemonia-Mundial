@@ -40,6 +40,8 @@ public class MisselNaval : MonoBehaviour
     [Header("Visual da Fumaca")]
     public Color corFumaca = new Color(0.8f, 0.8f, 0.8f, 0.5f);
     public float tamanhoFumaca = 1.5f;
+    [Tooltip("Referencia opcional da malha do missel. Se vazia, a primeira malha filha e usada para corrigir o eixo visual.")]
+    public Transform referenciaVisual;
 
     private static readonly Collider[] bufferExplosao = new Collider[32];
     private static readonly HashSet<int> alvosProcessados = new HashSet<int>();
@@ -53,6 +55,8 @@ public class MisselNaval : MonoBehaviour
     private bool jaExplodiu = false;
     private float tempoExpirar;
     private bool alvoEhAereo = false;
+    private Quaternion rotacaoVisualLocal = Quaternion.identity;
+    private Quaternion correcaoOrientacaoVisual = Quaternion.identity;
 
     void OnEnable()
     {
@@ -89,6 +93,8 @@ public class MisselNaval : MonoBehaviour
         rb.isKinematic = false;
         rb.freezeRotation = true;
 
+        ResolverOrientacaoVisual();
+
         if (sistemaFumaca != null)
         {
             sistemaFumaca.Stop();
@@ -111,7 +117,7 @@ public class MisselNaval : MonoBehaviour
         jaExplodiu = false;
         emNavegacao = false;
         tempoExpirar = Time.time + tempoMaximoVida;
-        transform.rotation = Quaternion.LookRotation(Vector3.up);
+        transform.rotation = RotacaoParaDirecao(Vector3.up);
         StartCoroutine(SequenciaDeVoo());
     }
 
@@ -123,7 +129,7 @@ public class MisselNaval : MonoBehaviour
         while (tempo < tempoEjecao)
         {
             rb.linearVelocity = Vector3.up * velocidadeAtual;
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(Vector3.up), Time.deltaTime * 5f);
+            transform.rotation = Quaternion.Slerp(transform.rotation, RotacaoParaDirecao(Vector3.up), Time.deltaTime * 5f);
             tempo += Time.deltaTime;
             yield return null;
         }
@@ -138,7 +144,7 @@ public class MisselNaval : MonoBehaviour
         {
             velocidadeAtual += aceleracaoBoost * Time.deltaTime;
             rb.linearVelocity = Vector3.up * velocidadeAtual;
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(Vector3.up), Time.deltaTime * 5f);
+            transform.rotation = Quaternion.Slerp(transform.rotation, RotacaoParaDirecao(Vector3.up), Time.deltaTime * 5f);
             tempo += Time.deltaTime;
             yield return null;
         }
@@ -205,7 +211,18 @@ public class MisselNaval : MonoBehaviour
             velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeMergulho, Time.fixedDeltaTime * 2f);
         }
 
-        rb.linearVelocity = transform.forward * velocidadeAtual;
+        // A raiz do prefab N-02 tem uma malha filha com eixo local rotacionado
+        // em 90 graus. Usar transform.forward fazia o Rigidbody seguir um
+        // eixo e o modelo apontar para outro, deixando o missel torto. O
+        // movimento agora acompanha o eixo visual corrigido.
+        Vector3 frenteVisual = ObterFrenteVisual();
+        if (frenteVisual.sqrMagnitude < 0.001f)
+        {
+            frenteVisual = vetorParaAlvo.sqrMagnitude > 0.001f
+                ? vetorParaAlvo.normalized
+                : Vector3.forward;
+        }
+        rb.linearVelocity = frenteVisual.normalized * velocidadeAtual;
 
         float distanciaDetonacao = perseguirComoAereo
             ? Mathf.Max(10f, raioDetonacaoProximidadeAerea)
@@ -224,8 +241,58 @@ public class MisselNaval : MonoBehaviour
             return;
         }
 
-        Quaternion rotacaoAlvo = Quaternion.LookRotation(direcao);
+        Quaternion rotacaoAlvo = RotacaoParaDirecao(direcao);
         transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, velocidadeGiro * Time.fixedDeltaTime);
+    }
+
+    private void ResolverOrientacaoVisual()
+    {
+        if (referenciaVisual == null)
+        {
+            MeshRenderer mesh = GetComponentInChildren<MeshRenderer>(true);
+            if (mesh == null)
+            {
+                SkinnedMeshRenderer skinned = GetComponentInChildren<SkinnedMeshRenderer>(true);
+                if (skinned != null) referenciaVisual = skinned.transform;
+            }
+            else
+            {
+                referenciaVisual = mesh.transform;
+            }
+        }
+
+        rotacaoVisualLocal = Quaternion.identity;
+        if (referenciaVisual != null && referenciaVisual != transform)
+        {
+            Transform cursor = referenciaVisual;
+            while (cursor != null && cursor != transform)
+            {
+                rotacaoVisualLocal = cursor.localRotation * rotacaoVisualLocal;
+                cursor = cursor.parent;
+            }
+        }
+
+        correcaoOrientacaoVisual = Quaternion.Inverse(rotacaoVisualLocal);
+    }
+
+    private Quaternion RotacaoParaDirecao(Vector3 direcao)
+    {
+        if (direcao.sqrMagnitude < 0.001f)
+        {
+            direcao = Vector3.forward;
+        }
+
+        direcao.Normalize();
+        Vector3 eixoUp = Mathf.Abs(Vector3.Dot(direcao, Vector3.up)) > 0.98f
+            ? Vector3.forward
+            : Vector3.up;
+        return Quaternion.LookRotation(direcao, eixoUp) * correcaoOrientacaoVisual;
+    }
+
+    private Vector3 ObterFrenteVisual()
+    {
+        Vector3 frente = transform.rotation * rotacaoVisualLocal * Vector3.forward;
+        return frente.sqrMagnitude > 0.001f ? frente.normalized : transform.forward;
     }
 
     void OnCollisionEnter(Collision collision)
@@ -269,10 +336,10 @@ public class MisselNaval : MonoBehaviour
             audioObj.transform.position = transform.position;
             AudioSource source = audioObj.AddComponent<AudioSource>();
             source.clip = somExplosao;
-            source.volume = volumeSom;
+            source.volume = Mathf.Min(Mathf.Clamp01(volumeSom), 0.8f);
             source.spatialBlend = 1f;
             source.minDistance = 3f;
-            source.maxDistance = 50f;
+            source.maxDistance = 300f;
             source.rolloffMode = AudioRolloffMode.Linear;
             source.Play();
             Destroy(audioObj, somExplosao.length + 0.5f);

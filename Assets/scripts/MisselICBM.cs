@@ -193,10 +193,10 @@ public class MisselICBM : MonoBehaviour
             
             AudioSource source = audioObj.AddComponent<AudioSource>();
             source.clip = somExplosao;
-            source.volume = 1.0f;
+            source.volume = 0.8f;
             source.spatialBlend = 1.0f;
             source.minDistance = 3f;
-            source.maxDistance = Mathf.Min(distanciaSom, 50f);
+            source.maxDistance = Mathf.Max(300f, distanciaSom);
             source.rolloffMode = AudioRolloffMode.Linear;
             source.Play();
 

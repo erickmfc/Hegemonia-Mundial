@@ -36,6 +36,7 @@ public class DadosDoJogo
     public List<SaveAiStrategicStateData> estadosIA = new List<SaveAiStrategicStateData>();
     public List<SaveDeusaStateData> estadosDeusa = new List<SaveDeusaStateData>();
     public List<SaveIA01NationState> estadosIA01 = new List<SaveIA01NationState>();
+    public IAAutoProductionSaveData producaoAutomaticaIA = new IAAutoProductionSaveData();
     public float qgPosX;
     public float qgPosY;
     public float qgPosZ;
@@ -254,9 +255,15 @@ public class SistemaSaveGame : MonoBehaviour
     private string diretorioSaves;
     private string saveSelecionadoId = string.Empty;
     private bool restauracaoPendente;
+    [Header("Desempenho de restauracao")]
+    [SerializeField, Min(1)] private int entidadesPorFrameNaRestauracao = 12;
+    [SerializeField, Min(1)] private int ordensPorFrameNaRestauracao = 24;
     private readonly List<GameObject> bufferObjetos = new List<GameObject>(512);
     private readonly List<GerenciadorAeroporto> bufferAeroportos = new List<GerenciadorAeroporto>(32);
     private readonly Dictionary<string, SaveableEntity> saveablesPorId = new Dictionary<string, SaveableEntity>(StringComparer.Ordinal);
+    // Um save costuma conter muitas instancias do mesmo prefab. Cachear tambem
+    // os misses evita varredura do catalogo/Resources para cada entidade.
+    private readonly Dictionary<string, GameObject> prefabsPorChaveSave = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
 
     public static SistemaSaveGame GarantirInstancia()
     {
@@ -440,7 +447,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         GarantirColecoesIA01();
-        dadosAtuais.saveVersion = 12;
+        dadosAtuais.saveVersion = 13;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -451,6 +458,7 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarFilaProducao();
         CapturarEstadoIAImperial();
         CapturarEstadoIA01();
+        CapturarProducaoAutomaticaIA();
         CapturarEstadoDeusa();
         CapturarEntidades();
         CapturarManifestosTransporte();
@@ -474,6 +482,7 @@ public class SistemaSaveGame : MonoBehaviour
         if (string.IsNullOrWhiteSpace(caminhoDoArquivo) || !File.Exists(caminhoDoArquivo))
         {
             dadosAtuais = new DadosDoJogo();
+            IAAutoProductionRegistry.Clear();
             carregouDeSave = false;
             partidaNovaRecemIniciada = false;
             return;
@@ -484,6 +493,7 @@ public class SistemaSaveGame : MonoBehaviour
         if (dadosAtuais == null)
         {
             dadosAtuais = new DadosDoJogo();
+            IAAutoProductionRegistry.Clear();
             carregouDeSave = false;
             partidaNovaRecemIniciada = false;
             return;
@@ -506,6 +516,10 @@ public class SistemaSaveGame : MonoBehaviour
         carregouDeSave = true;
         partidaNovaRecemIniciada = false;
         restauracaoPendente = dadosAtuais.saveVersion >= 2 && ((dadosAtuais.entidades != null && dadosAtuais.entidades.Count > 0) || (dadosAtuais.estadosIA01 != null && dadosAtuais.estadosIA01.Count > 0));
+        // Limpa ordens da sessão anterior imediatamente. A restauração tardia
+        // continua sendo repetida após a cena para manter o mesmo ponto de
+        // sincronização das demais ordens salvas.
+        IAAutoProductionRegistry.RestoreSaveData(dadosAtuais.producaoAutomaticaIA);
         AplicarIdiomaSalvo();
         AplicarDificuldadeSalva();
         AplicarRecursosSalvos();
@@ -523,6 +537,7 @@ public class SistemaSaveGame : MonoBehaviour
     public void IniciarNovoJogo(string cenaInicial = null)
     {
         dadosAtuais = new DadosDoJogo();
+        IAAutoProductionRegistry.Clear();
         saveSelecionadoId = string.Empty;
         caminhoDoArquivo = Path.Combine(Application.persistentDataPath, "save_partida.json");
         GarantirColecoesIA01();
@@ -603,6 +618,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         dadosAtuais = new DadosDoJogo();
+        IAAutoProductionRegistry.Clear();
         caminhoDoArquivo = legado;
         saveSelecionadoId = string.Empty;
         carregouDeSave = false;
@@ -654,28 +670,45 @@ public class SistemaSaveGame : MonoBehaviour
 
         LimparEntidadesPersistidasDaCena();
         saveablesPorId.Clear();
+        prefabsPorChaveSave.Clear();
 
         if (dadosAtuais.entidades != null)
         {
+            float inicioInstanciacao = Time.realtimeSinceStartup;
+            int loteEntidades = Mathf.Max(1, entidadesPorFrameNaRestauracao);
             for (int i = 0; i < dadosAtuais.entidades.Count; i++)
             {
                 InstanciarEntidadeSalva(dadosAtuais.entidades[i]);
+                if ((i + 1) % loteEntidades == 0)
+                {
+                    yield return null;
+                }
             }
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("save_restore_spawn_ms", (Time.realtimeSinceStartup - inicioInstanciacao) * 1000f);
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("save_restore_entities", dadosAtuais.entidades.Count);
 
             yield return null;
 
             RestaurarManifestosTransporte();
 
+            float inicioOrdens = Time.realtimeSinceStartup;
+            int loteOrdens = Mathf.Max(1, ordensPorFrameNaRestauracao);
             for (int i = 0; i < dadosAtuais.entidades.Count; i++)
             {
                 RestaurarOrdemEntidade(dadosAtuais.entidades[i]);
+                if ((i + 1) % loteOrdens == 0)
+                {
+                    yield return null;
+                }
             }
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("save_restore_orders_ms", (Time.realtimeSinceStartup - inicioOrdens) * 1000f);
         }
 
         RestaurarFilaProducao();
         AplicarEstadoIAImperial();
         AplicarEstadoDeusa();
         RestaurarEstadoIA01();
+        RestaurarProducaoAutomaticaIA();
         AplicarCameraSalva();
         AplicarRecursosSalvos();
         AplicarTempoSalvo();
@@ -937,6 +970,18 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         dadosAtuais.estadosIA01.Sort(CompararEstadosIA01);
+    }
+
+    private void CapturarProducaoAutomaticaIA()
+    {
+        if (dadosAtuais == null) return;
+        dadosAtuais.producaoAutomaticaIA = IAAutoProductionRegistry.CaptureSaveData();
+    }
+
+    private void RestaurarProducaoAutomaticaIA()
+    {
+        if (dadosAtuais == null) return;
+        IAAutoProductionRegistry.RestoreSaveData(dadosAtuais.producaoAutomaticaIA);
     }
 
     private void CapturarEstadoDeusa()
@@ -1391,6 +1436,12 @@ public class SistemaSaveGame : MonoBehaviour
             return null;
         }
 
+        GameObject prefabEmCache;
+        if (prefabsPorChaveSave.TryGetValue(key, out prefabEmCache))
+        {
+            return prefabEmCache;
+        }
+
         if (MenuConstrucao.catalogoGlobal != null)
         {
             foreach (DadosConstrucao ficha in MenuConstrucao.catalogoGlobal)
@@ -1403,7 +1454,7 @@ public class SistemaSaveGame : MonoBehaviour
                 string fichaKey = SaveableEntity.NormalizarPrefabKey(ficha.PrefabDaUnidade.name);
                 if (string.Equals(fichaKey, key, StringComparison.OrdinalIgnoreCase) || string.Equals(ficha.NomeItem, key, StringComparison.OrdinalIgnoreCase))
                 {
-                    return ficha.PrefabDaUnidade;
+                    return ArmazenarPrefabResolvido(key, ficha.PrefabDaUnidade);
                 }
             }
         }
@@ -1411,7 +1462,7 @@ public class SistemaSaveGame : MonoBehaviour
         GameObject resourcePrefab = Resources.Load<GameObject>(key);
         if (resourcePrefab != null)
         {
-            return resourcePrefab;
+            return ArmazenarPrefabResolvido(key, resourcePrefab);
         }
 
 #if UNITY_EDITOR
@@ -1422,12 +1473,18 @@ public class SistemaSaveGame : MonoBehaviour
             GameObject prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab != null && string.Equals(SaveableEntity.NormalizarPrefabKey(prefab.name), key, StringComparison.OrdinalIgnoreCase))
             {
-                return prefab;
+                return ArmazenarPrefabResolvido(key, prefab);
             }
         }
 #endif
 
-        return null;
+        return ArmazenarPrefabResolvido(key, null);
+    }
+
+    private GameObject ArmazenarPrefabResolvido(string key, GameObject prefab)
+    {
+        prefabsPorChaveSave[key] = prefab;
+        return prefab;
     }
 
     public GameObject MaterializarEntidadeOperacional(SaveEntityData data, Vector3 posicao, Quaternion rotacao)

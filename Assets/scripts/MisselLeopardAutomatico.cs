@@ -174,10 +174,10 @@ public class MisselLeopardAutomatico : MonoBehaviour
             audioObj.transform.position = transform.position;
             AudioSource source = audioObj.AddComponent<AudioSource>();
             source.clip = somExplosao;
-            source.volume = volumeSom;
+            source.volume = Mathf.Min(Mathf.Clamp01(volumeSom), 0.8f);
             source.spatialBlend = 1.0f;
             source.minDistance = 3f;
-            source.maxDistance = 50f;
+            source.maxDistance = 300f;
             source.rolloffMode = AudioRolloffMode.Linear;
             source.Play();
             Destroy(audioObj, somExplosao.length + 0.5f);

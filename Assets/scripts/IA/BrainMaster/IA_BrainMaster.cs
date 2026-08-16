@@ -291,6 +291,9 @@ namespace Hegemonia.AI.BrainMaster
                 _updateWatch.Stop();
 
                 coordinator.ReportFrameCost(_coordinatorSlot, (float)_updateWatch.Elapsed.TotalMilliseconds, canRunHeavy);
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(
+                    "brainmaster_scheduler_ms",
+                    (float)_updateWatch.Elapsed.TotalMilliseconds);
             }
 
             float commandNow = Time.time;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 
 namespace Hegemonia.AI.IA01
@@ -20,6 +21,7 @@ namespace Hegemonia.AI.IA01
         private float nextPatrolAt;
         private int lastNavalPatrolDay = -1;
         private int lastAirPatrolDay = -1;
+        private float nextAirPatrolScanAt;
         private int issuedFighters;
         private int issuedNaval;
         private float lastFighterOrderAt = -999f;
@@ -30,7 +32,12 @@ namespace Hegemonia.AI.IA01
         private float nextUnlinkedNavalWarningAt;
         private float platformConfirmedAt = -1f;
         private float nextTankerAttemptAt;
-        private bool tankerOrderIssued;
+        private int tankerOrdersIssued;
+        private int lastTankerOrderDay = -1;
+        private int firstNavalOrderDay = -1;
+        private float nextNavalCombatAt;
+        private readonly List<IdentidadeUnidade> navalUnitsBuffer = new List<IdentidadeUnidade>(12);
+        private readonly List<IdentidadeUnidade> airUnitsBuffer = new List<IdentidadeUnidade>(12);
         private bool warZonesEnsured;
         private string status = "Reserva militar aguardando infraestrutura.";
 
@@ -38,6 +45,13 @@ namespace Hegemonia.AI.IA01
         private const int MinTanks = 3;
         private const int MinFighters = 2;
         private const int MinNaval = 1;
+        // Limites fisicos da reserva por escalao. O escalao continua escolhendo
+        // a ficha D/C/B/A/S, mas a IA nao acumula unidades indefinidamente so
+        // porque possui caixa ou tempo de partida.
+        private static readonly int[] MaxSoldiersByTier = { 6, 8, 12, 18, 24 };
+        private static readonly int[] MaxTanksByTier = { 3, 4, 6, 8, 12 };
+        private static readonly int[] MaxFightersByTier = { 2, 3, 5, 8, 12 };
+        private static readonly int[] MaxNavalByTier = { 2, 2, 3, 4, 6 };
         private const float TankerDelayAfterPlatformSeconds = 60f;
         // A compra de caca usa uma fila assincrona. Dez segundos era curto
         // demais: quando o aeroporto demorava a liberar a vaga, a IA emitia
@@ -96,16 +110,18 @@ namespace Hegemonia.AI.IA01
             int actions = 0;
             if (soldiers < targetSoldiers && actions < 2)
             {
-                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Infantry, targetSoldiers, soldiers, now);
-                bool produced = reserved && TryProduceLand(FindSoldier(), "soldados");
+                string orderId;
+                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Infantry, targetSoldiers, soldiers, now, 45f, out orderId);
+                bool produced = reserved && TryProduceLand(FindSoldier(), "soldados", orderId);
                 if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.Infantry, now);
                 changed |= produced;
                 if (produced) actions++;
             }
             if (tanks < targetTanks && actions < 2)
             {
-                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Tank, targetTanks, tanks, now);
-                bool produced = reserved && TryProduceLand(FindTank(), "tanques");
+                string orderId;
+                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Tank, targetTanks, tanks, now, 45f, out orderId);
+                bool produced = reserved && TryProduceLand(FindTank(), "tanques", orderId);
                 if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.Tank, now);
                 changed |= produced;
                 if (produced) actions++;
@@ -116,8 +132,9 @@ namespace Hegemonia.AI.IA01
             // quando existe uma ficha valida no catalogo e uma fabrica propria.
             if (antiAir < 1 && actions < 2)
             {
-                bool reserved = IA01MilitaryProductionGuard.TryReserveSingle(context.TeamId, IA01MilitaryAssetKind.AntiAir, antiAir, now);
-                bool produced = reserved && TryProduceLand(FindAntiAir(), "Ares_Ar antiaereo");
+                string orderId;
+                bool reserved = IA01MilitaryProductionGuard.TryReserveSingle(context.TeamId, IA01MilitaryAssetKind.AntiAir, antiAir, now, 45f, out orderId);
+                bool produced = reserved && TryProduceLand(FindAntiAir(), "Ares_Ar antiaereo", orderId);
                 if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.AntiAir, now);
                 changed |= produced;
                 if (produced) actions++;
@@ -125,8 +142,9 @@ namespace Hegemonia.AI.IA01
 
             if (fighters + issuedFighters < targetFighters && actions < 2)
             {
-                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Fighter, targetFighters, fighters, now);
-                bool produced = reserved && TryProduceFighter(FindFighter(), now);
+                string orderId;
+                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Fighter, targetFighters, fighters, now, 120f, out orderId);
+                bool produced = reserved && TryProduceFighter(FindFighter(), now, orderId);
                 if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.Fighter, now);
                 changed |= produced;
                 if (produced) actions++;
@@ -135,8 +153,9 @@ namespace Hegemonia.AI.IA01
             // Assim que existir estaleiro/pier, a IA coloca pelo menos uma unidade naval.
             if (naval + issuedNaval < targetNaval && HasOwnNavalInfrastructure() && actions < 2)
             {
-                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Naval, targetNaval, naval, now, 90f);
-                bool produced = reserved && TryProduceNaval(FindNaval(), "navios");
+                string orderId;
+                bool reserved = IA01MilitaryProductionGuard.TryReserve(context.TeamId, IA01MilitaryAssetKind.Naval, targetNaval, naval, now, 180f, out orderId);
+                bool produced = reserved && TryProduceNaval(FindNaval(), "navios", orderId);
                 if (reserved && !produced) IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.Naval, now);
                 changed |= produced;
                 if (produced) actions++;
@@ -152,7 +171,14 @@ namespace Hegemonia.AI.IA01
             EnsureTankerAfterPlatform(now);
             ApplyNavalPatrols(now);
             ApplyNavalStaging(now);
+            ApplyNavalCombat(now);
             ApplyAirPatrols(now);
+            IAProductionDiagnostics fighterDiagnostics = IAAutoProductionRegistry.GetDiagnostics(
+                context.TeamId,
+                IA01MilitaryAssetKind.Fighter.ToString(),
+                targetFighters,
+                fighters);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_production_fighter", fighterDiagnostics.ToString());
             status = string.Format("Reserva militar: soldados={0}/{1} tanques={2}/{3} AA={4} cacas={5}/{6} navios={7}/{8} escalao={9}",
                 soldiers, targetSoldiers, tanks, targetTanks, antiAir, fighters, targetFighters, naval, targetNaval,
                 ProgressaoEscalaoAtiva ? ResolverEtapaEscalao() : -1);
@@ -267,7 +293,15 @@ namespace Hegemonia.AI.IA01
                 || country.modoInicialIA == ModoInicialPaisIA.GuerraTotal
                 || country.modoInicialIA == ModoInicialPaisIA.AgressivoContraJogador;
             bool economyHealthy = country.comida > 0 && country.energia > 0 && country.saldo >= 14000;
-            if (!economyHealthy && !atWar) return;
+            if (!economyHealthy && !atWar)
+            {
+                int diaEconomiaFraca = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 0;
+                if (firstNavalOrderDay >= 0 && diaEconomiaFraca >= firstNavalOrderDay + 2)
+                {
+                    naval = 2;
+                }
+                return;
+            }
 
             int populationTier = Mathf.Clamp(country.populacao / 5000, 0, 6);
             int treasuryTier = Mathf.Clamp((int)Math.Max(0L, Math.Min(5L, (country.saldo - 14000L) / 9000L)), 0, 5);
@@ -313,6 +347,21 @@ namespace Hegemonia.AI.IA01
             tanks = Mathf.Min(tanks, Mathf.Max(MinTanks, 3 + mobilizable / 8));
             fighters = Mathf.Min(fighters, Mathf.Max(MinFighters, 2 + mobilizable / 10));
             naval = Mathf.Min(naval, Mathf.Max(MinNaval, 1 + mobilizable / 14 + surge / 2));
+
+            // O segundo navio do escalao inicial so fica elegivel dois dias
+            // apos a primeira compra confirmada. Mantemos a reserva inicial
+            // de um navio para nao concentrar duas construcoes no mesmo frame.
+            int diaAtual = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 0;
+            if (firstNavalOrderDay >= 0 && diaAtual >= firstNavalOrderDay + 2)
+            {
+                naval = Mathf.Max(naval, 2);
+            }
+
+            int tier = ProgressaoEscalaoAtiva ? Mathf.Clamp(ResolverEtapaEscalao(), 0, 4) : 0;
+            soldiers = Mathf.Min(soldiers, MaxSoldiersByTier[tier]);
+            tanks = Mathf.Min(tanks, MaxTanksByTier[tier]);
+            fighters = Mathf.Min(fighters, MaxFightersByTier[tier]);
+            naval = Mathf.Min(naval, MaxNavalByTier[tier]);
         }
 
         private void ApplyNavalPatrols(float now)
@@ -444,8 +493,106 @@ namespace Hegemonia.AI.IA01
             }
         }
 
+        private void ApplyNavalCombat(float now)
+        {
+            if (now < nextNavalCombatAt || context == null) return;
+            nextNavalCombatAt = now + ResolveEtapaEscalaoCombatInterval();
+
+            RegistroEntidadesJogo.FillUnidades(navalUnitsBuffer);
+            IA01WorldState world = controller != null && controller.Runtime != null
+                ? controller.Runtime.WorldState
+                : null;
+            int limiteEngajamentos = Mathf.Clamp(ResolverEtapaEscalao() + 1, 1, 4);
+            int engajados = 0;
+            int lancadoresAtivos = 0;
+            for (int i = 0; i < navalUnitsBuffer.Count && engajados < limiteEngajamentos; i++)
+            {
+                IdentidadeUnidade identidade = navalUnitsBuffer[i];
+                if (identidade == null || identidade.teamID != context.TeamId
+                    || identidade.tipoUnidade != TipoUnidade.Naval
+                    || IsNavalStructure(identidade) || IsLogisticsTanker(identidade))
+                {
+                    continue;
+                }
+
+                ControleUnidade controle = identidade.GetComponent<ControleUnidade>()
+                    ?? identidade.GetComponentInParent<ControleUnidade>()
+                    ?? identidade.GetComponentInChildren<ControleUnidade>(true);
+                if (controle == null) continue;
+
+                LancadorNaval lancador = controle.GetComponentInChildren<LancadorNaval>(true)
+                    ?? controle.GetComponentInParent<LancadorNaval>();
+                if (lancador != null)
+                {
+                    lancador.ConfigurarPerfilIA();
+                    lancadoresAtivos++;
+                }
+
+                Transform alvo = EncontrarInimigoNavalMaisProximo(identidade.transform, world);
+                if (alvo == null) continue;
+
+                // A ordem oficial de combate liga torpedos e demais sistemas;
+                // o launcher naval continua responsável pela seleção de alvo,
+                // banco de dano projetado e cadencia de cada missil.
+                controle.DefinirModoCombate(true);
+                ControleNavioRealista navio = identidade.GetComponent<ControleNavioRealista>()
+                    ?? identidade.GetComponentInParent<ControleNavioRealista>()
+                    ?? identidade.GetComponentInChildren<ControleNavioRealista>(true);
+                if (navio != null)
+                {
+                    navio.DefinirDestinoAtaqueLateral(alvo.position, 160f, 100f);
+                }
+                engajados++;
+                DiagnosticoDesempenhoJogo.RegistrarEvento("IA01_NavalCombat", identidade.name + " -> " + alvo.name);
+            }
+
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("ia01_naval_engaged", engajados);
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("ia01_naval_launchers_active", lancadoresAtivos);
+        }
+
+        private float ResolveEtapaEscalaoCombatInterval()
+        {
+            // A reserva militar ja e fatiada por ciclo; niveis iniciais usam
+            // intervalos mais largos para manter a campanha leve.
+            switch (Mathf.Clamp(ResolverEtapaEscalao(), 0, 4))
+            {
+                case 0: return 3.0f;
+                case 1: return 2.5f;
+                case 2: return 2.0f;
+                default: return 1.6f;
+            }
+        }
+
+        private Transform EncontrarInimigoNavalMaisProximo(Transform origem, IA01WorldState world)
+        {
+            if (origem == null || world == null || world.EnemyUnits == null) return null;
+            float alcanceSqr = 900f * 900f;
+            float melhor = alcanceSqr;
+            Transform selecionado = null;
+            for (int i = 0; i < world.EnemyUnits.Count; i++)
+            {
+                IdentidadeUnidade inimigo = world.EnemyUnits[i];
+                if (inimigo == null || inimigo.tipoUnidade != TipoUnidade.Naval || !inimigo.gameObject.activeInHierarchy)
+                    continue;
+                if (inimigo.GetComponentInParent<NavioPetroleiro>() != null
+                    || inimigo.GetComponentInChildren<NavioPetroleiro>(true) != null)
+                    continue;
+                Vector3 delta = inimigo.transform.position - origem.position;
+                delta.y = 0f;
+                float distancia = delta.sqrMagnitude;
+                if (distancia < melhor)
+                {
+                    melhor = distancia;
+                    selecionado = inimigo.transform;
+                }
+            }
+            return selecionado;
+        }
+
         private void ApplyAirPatrols(float now)
         {
+            if (now < nextAirPatrolScanAt) return;
+            nextAirPatrolScanAt = now + 4f;
             IA01AirPatrolZone[] zones = controller != null
                 ? controller.GetComponentsInChildren<IA01AirPatrolZone>(true)
                 : Array.Empty<IA01AirPatrolZone>();
@@ -460,32 +607,24 @@ namespace Hegemonia.AI.IA01
             }
             if (zones.Length == 0) return;
 
-            int currentDay = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 0;
-            int interval = Mathf.Max(1, zones[0].IntervaloDias);
-            if (currentDay > 0)
-            {
-                if (lastAirPatrolDay >= 0 && currentDay - lastAirPatrolDay < interval) return;
-                lastAirPatrolDay = currentDay;
-            }
-            else if (now < 3f)
-            {
-                return;
-            }
-
-            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+            RegistroEntidadesJogo.FillUnidades(airUnitsBuffer);
             int candidates = 0;
-            for (int i = 0; i < identities.Length; i++)
+            int assigned = 0;
+            int limitePatrulha = MaxFightersByTier[Mathf.Clamp(ResolverEtapaEscalao(), 0, MaxFightersByTier.Length - 1)];
+            for (int i = 0; i < airUnitsBuffer.Count; i++)
             {
-                IdentidadeUnidade id = identities[i];
+                IdentidadeUnidade id = airUnitsBuffer[i];
                 if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Aereo) continue;
                 candidates++;
                 ControleUnidade control = id.GetComponent<ControleUnidade>()
                     ?? id.GetComponentInParent<ControleUnidade>()
                     ?? id.GetComponentInChildren<ControleUnidade>(true);
                 if (control == null || control.OrdemAtual == OrdemControleUnidade.Patrulhando) continue;
-                Vector3[] route = zones[0].CriarRota(0);
+                if (assigned >= limitePatrulha) break;
+                Vector3[] route = zones[assigned % zones.Length].CriarRota(assigned);
                 if (control.EmitirOrdemPatrulha(route))
                 {
+                    assigned++;
                     DiagnosticoDesempenhoJogo.RegistrarEvento("IA01_AirPatrol", id.name + " patrulha " + zones[0].name);
                     if (EmitirLogsDetalhadosDePatrulha)
                     {
@@ -493,10 +632,10 @@ namespace Hegemonia.AI.IA01
                     }
                 }
                 // Apenas um caça inicia a patrulha; a expansão pode liberar os demais.
-                break;
             }
             if (candidates > 0)
             {
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("ia01_air_patrol_assigned", assigned);
                 if (EmitirLogsDetalhadosDePatrulha)
                 {
                     Debug.Log("[IA01 Military] Patrulha aerea: candidatos=" + candidates + " | limite inicial=1");
@@ -609,7 +748,7 @@ namespace Hegemonia.AI.IA01
         /// </summary>
         private void EnsureTankerAfterPlatform(float now)
         {
-            if (!PermiteInfraestruturaInicialAutomatica || tankerOrderIssued) return;
+            if (!PermiteInfraestruturaInicialAutomatica) return;
 
             PlataformaOffshore plataformaPropria = null;
             PlataformaOffshore[] plataformas = UnityEngine.Object.FindObjectsByType<PlataformaOffshore>(
@@ -638,18 +777,35 @@ namespace Hegemonia.AI.IA01
                 return;
             }
 
-            if (now - platformConfirmedAt < TankerDelayAfterPlatformSeconds || now < nextTankerAttemptAt)
-                return;
-
             NavioPetroleiro[] petroleiros = UnityEngine.Object.FindObjectsByType<NavioPetroleiro>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
+            int petroleirosAtivos = 0;
             for (int i = 0; i < petroleiros.Length; i++)
             {
                 if (petroleiros[i] != null && BelongsToTeam(petroleiros[i].gameObject))
                 {
-                    tankerOrderIssued = true;
-                    return;
+                    petroleirosAtivos++;
                 }
+            }
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("ia01_tankers_active", petroleirosAtivos);
+
+            int petroleirosConhecidos = Mathf.Max(petroleirosAtivos, tankerOrdersIssued);
+            if (petroleirosConhecidos >= 4) return;
+            int diaAtual = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 0;
+            if (tankerOrdersIssued == 0 && petroleirosAtivos > 0)
+            {
+                tankerOrdersIssued = petroleirosAtivos;
+                lastTankerOrderDay = diaAtual;
+                return;
+            }
+            if (tankerOrdersIssued == 0)
+            {
+                if (now - platformConfirmedAt < TankerDelayAfterPlatformSeconds || now < nextTankerAttemptAt)
+                    return;
+            }
+            else if (diaAtual < lastTankerOrderDay + 5)
+            {
+                return;
             }
 
             DadosConstrucao fichaPetroleiro = FindTanker();
@@ -662,18 +818,31 @@ namespace Hegemonia.AI.IA01
 
             Estaleiro[] estaleiros = UnityEngine.Object.FindObjectsByType<Estaleiro>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (!IA01MilitaryProductionGuard.TryReserveSingle(
+                context.TeamId,
+                IA01MilitaryAssetKind.OilTanker,
+                petroleirosAtivos,
+                now,
+                90f,
+                out string tankerOrderId))
+            {
+                return;
+            }
             for (int i = 0; i < estaleiros.Length; i++)
             {
                 Estaleiro estaleiro = estaleiros[i];
                 if (estaleiro == null || !BelongsToTeam(estaleiro.gameObject)) continue;
-                if (!estaleiro.ConstruirUnidade(prefab)) continue;
+                if (!estaleiro.ConstruirUnidade(prefab, tankerOrderId)) continue;
+                IA01MilitaryProductionGuard.ConfirmQueued(tankerOrderId, estaleiro.GetInstanceID(), now);
 
-                tankerOrderIssued = true;
-                Debug.Log("[IA01 Military] Navio petroleiro iniciado após um dia da plataforma: "
+                tankerOrdersIssued++;
+                lastTankerOrderDay = diaAtual;
+                Debug.Log("[IA01 Military] Navio petroleiro iniciado em cadencia segura: "
                     + estaleiro.name + " -> " + prefab.name);
                 return;
             }
 
+            IA01MilitaryProductionGuard.Cancel(context.TeamId, IA01MilitaryAssetKind.OilTanker, now);
             nextTankerAttemptAt = now + 15f;
         }
 
@@ -887,24 +1056,53 @@ namespace Hegemonia.AI.IA01
 
             tierCandidates.Sort(CompararEscalaoFracoParaForte);
             int etapa = ResolverEtapaEscalao();
-            int indice = Mathf.Min(etapa, tierCandidates.Count - 1);
-            DadosConstrucao escolhido = tierCandidates[indice];
-
-            // Fichas sem classificacao sao legadas. Se houver alguma ficha
-            // classificada, priorizamos a progressao classificada; caso
-            // contrario, mantemos exatamente o primeiro item antigo.
-            if (escolhido.escalaPoder == DadosConstrucao.EscalaPoder.NaoClassificado)
+            bool existeClassificado = false;
+            for (int i = 0; i < tierCandidates.Count; i++)
             {
-                for (int i = 0; i < tierCandidates.Count; i++)
+                if (tierCandidates[i].escalaPoder != DadosConstrucao.EscalaPoder.NaoClassificado)
                 {
-                    if (tierCandidates[i].escalaPoder != DadosConstrucao.EscalaPoder.NaoClassificado)
-                    {
-                        escolhido = tierCandidates[Mathf.Min(etapa, tierCandidates.Count - 1)];
-                        break;
-                    }
+                    existeClassificado = true;
+                    break;
                 }
             }
-            return escolhido;
+
+            // Escolhe o melhor nivel desbloqueado, e nao apenas o item na
+            // posicao "etapa" da lista. Assim uma ficha D/C/B ausente nao faz
+            // a IA saltar para A/S por acidente; fichas sem classificacao ficam
+            // apenas como fallback de catalogos legados.
+            DadosConstrucao escolhido = null;
+            int melhorRank = -1;
+            for (int i = 0; i < tierCandidates.Count; i++)
+            {
+                DadosConstrucao candidato = tierCandidates[i];
+                if (existeClassificado && candidato.escalaPoder == DadosConstrucao.EscalaPoder.NaoClassificado)
+                {
+                    continue;
+                }
+
+                int rank = ResolverRankEscalao(candidato);
+                if (rank <= etapa && rank > melhorRank)
+                {
+                    escolhido = candidato;
+                    melhorRank = rank;
+                }
+            }
+
+            if (escolhido != null) return escolhido;
+
+            // Se o catalogo daquela categoria nao possui uma ficha nos niveis
+            // inferiores, usa a menor ficha classificada disponivel; assim a
+            // ausencia de D/C nao deixa a reserva vazia nem salta diretamente
+            // para a ficha mais forte.
+            for (int i = 0; i < tierCandidates.Count; i++)
+            {
+                if (!existeClassificado || tierCandidates[i].escalaPoder != DadosConstrucao.EscalaPoder.NaoClassificado)
+                {
+                    return tierCandidates[i];
+                }
+            }
+
+            return tierCandidates[0];
         }
 
         private int ResolverEtapaEscalao()
@@ -964,7 +1162,7 @@ namespace Hegemonia.AI.IA01
             }
         }
 
-        private bool TryProduceLand(DadosConstrucao item, string label)
+        private bool TryProduceLand(DadosConstrucao item, string label, string orderId = "")
         {
             if (item == null || item.PrefabDaUnidade == null
                 || item.categoria != DadosConstrucao.CategoriaItem.Exercito
@@ -980,18 +1178,19 @@ namespace Hegemonia.AI.IA01
                 if (produced != null)
                 {
                     EnsureOwnedIdentity(produced, item);
+                    IA01MilitaryProductionGuard.Complete(orderId, Time.time);
                     return true;
                 }
 
                 // Fichas/creates antigos podem ter uma Fabrica sem identidade ou
                 // com ponto de saída inválido. Ainda assim, a ordem deve gerar a
                 // unidade no próprio create da fábrica, nunca no território rival.
-                if (TryEmergencySpawn(item, label, factory.transform)) return true;
+                if (TryEmergencySpawn(item, label, factory.transform, orderId)) return true;
             }
             return false;
         }
 
-        private bool TryProduceFighter(DadosConstrucao item, float now)
+        private bool TryProduceFighter(DadosConstrucao item, float now, string orderId = "")
         {
             GerenciadorAeroporto[] airports = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             // A abertura antiga já tinha o aeroporto militar antes da primeira
@@ -1017,7 +1216,7 @@ namespace Hegemonia.AI.IA01
             }
             if (airports.Length == 0)
             {
-                return SpawnFighterAtMilitaryAirport(item);
+                return SpawnFighterAtMilitaryAirport(item, orderId);
             }
             for (int i = 0; i < airports.Length; i++)
             {
@@ -1047,7 +1246,7 @@ namespace Hegemonia.AI.IA01
                     status = "Aeroporto militar sem prefab de caca configurado.";
                     continue;
                 }
-                airport.ComprarAviaoIAImediato(aircraft);
+                airport.ComprarAviaoIAImediato(aircraft, orderId);
                 // A fila é a mesma usada pelo jogador: ela pode liberar a aeronave
                 // no próximo frame, já na vaga de estacionamento do aeroporto.
                 issuedFighters++;
@@ -1064,7 +1263,7 @@ namespace Hegemonia.AI.IA01
             // Não use um aeroporto de outra nação como motivo para a IA ficar
             // sem aviação. Se nenhum componente encontrado for o dela, o create
             // militar é a fonte segura: a aeronave nasce no próprio pátio.
-            return PermiteInfraestruturaInicialAutomatica && SpawnFighterAtMilitaryAirport(item);
+            return PermiteInfraestruturaInicialAutomatica && SpawnFighterAtMilitaryAirport(item, orderId);
         }
 
         private static bool IsUsableAircraftPrefab(GameObject prefab)
@@ -1144,7 +1343,7 @@ namespace Hegemonia.AI.IA01
             return airport;
         }
 
-        private bool SpawnFighterAtMilitaryAirport(DadosConstrucao item)
+        private bool SpawnFighterAtMilitaryAirport(DadosConstrucao item, string orderId = "")
         {
             // Proteção para prefab configurado sem o componente de serviço ou
             // para cenas com aeroportos de outros países: nasce no create do
@@ -1194,7 +1393,7 @@ namespace Hegemonia.AI.IA01
 
                 if (IsUsableAircraftPrefab(aeronave))
                 {
-                    aeroportoProprio.ComprarAviaoIAImediato(aeronave);
+                    aeroportoProprio.ComprarAviaoIAImediato(aeronave, orderId);
                     issuedFighters++;
                     lastFighterOrderAt = Time.time;
                     Debug.Log("[IA01 Military] Caca estacionado no aeroporto proprio (recuperacao): "
@@ -1259,6 +1458,7 @@ namespace Hegemonia.AI.IA01
             identity.nomeDoPais = controller.NationName;
             identity.tipoUnidade = TipoUnidade.Aereo;
             CombustivelUnidade.Garantir(unit, true);
+            IA01MilitaryProductionGuard.Complete(orderId, Time.time);
             issuedFighters++;
             lastFighterOrderAt = Time.time;
             Debug.Log("[IA01 Military] Caca liberado no create do aeroporto militar: " + fallback.name);
@@ -1271,17 +1471,18 @@ namespace Hegemonia.AI.IA01
             return BelongsToTeam(airport.gameObject);
         }
 
-        private bool TryProduceNaval(DadosConstrucao item, string label)
+        private bool TryProduceNaval(DadosConstrucao item, string label, string orderId = "")
         {
             if (item == null || item.PrefabDaUnidade == null) return false;
             Estaleiro[] shipyards = UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
             for (int i = 0; i < shipyards.Length; i++)
             {
                 Estaleiro shipyard = shipyards[i];
-                if (BelongsToTeam(shipyard != null ? shipyard.gameObject : null) && shipyard.ConstruirUnidade(item.PrefabDaUnidade))
+                if (BelongsToTeam(shipyard != null ? shipyard.gameObject : null) && shipyard.ConstruirUnidade(item.PrefabDaUnidade, orderId))
                 {
+                    IA01MilitaryProductionGuard.ConfirmQueued(orderId, shipyard.GetInstanceID(), Time.time);
                     Debug.Log("[IA01 Military] Navio enfileirado no estaleiro proprio: " + shipyard.name + " -> " + item.GetDisplayName());
-                    issuedNaval++;
+                    RegistrarCompraNaval();
                     return true;
                 }
             }
@@ -1294,14 +1495,26 @@ namespace Hegemonia.AI.IA01
             {
                 nextShipyardRecoveryAt = Time.time + 10f;
                 Estaleiro recovered = EnsureOwnShipyard();
-                if (recovered != null && recovered.ConstruirUnidade(item.PrefabDaUnidade))
+                if (recovered != null && recovered.ConstruirUnidade(item.PrefabDaUnidade, orderId))
                 {
+                    IA01MilitaryProductionGuard.ConfirmQueued(orderId, recovered.GetInstanceID(), Time.time);
                     Debug.Log("[IA01 Military] Estaleiro recuperado no create e navio enfileirado: " + recovered.name);
-                    issuedNaval++;
+                    RegistrarCompraNaval();
                     return true;
                 }
             }
             return false;
+        }
+
+        private void RegistrarCompraNaval()
+        {
+            issuedNaval++;
+            if (firstNavalOrderDay < 0)
+            {
+                firstNavalOrderDay = GerenciadorTempo.Instancia != null
+                    ? GerenciadorTempo.Instancia.totalDias
+                    : 0;
+            }
         }
 
         private Estaleiro EnsureOwnShipyard()
@@ -1384,7 +1597,7 @@ namespace Hegemonia.AI.IA01
             return null;
         }
 
-        private bool TryEmergencySpawn(DadosConstrucao item, string label, Transform anchor = null)
+        private bool TryEmergencySpawn(DadosConstrucao item, string label, Transform anchor = null, string orderId = "")
         {
             if (item == null || item.PrefabDaUnidade == null) return false;
             if (anchor == null || controller == null || !controller.IsPositionInsidePreparedTerritory(anchor.position, 240f)) return false;
@@ -1404,6 +1617,7 @@ namespace Hegemonia.AI.IA01
             if (item.categoria == DadosConstrucao.CategoriaItem.Exercito && !Contains(item, "tanque", "tank", "blindado", "veiculo", "vehicle", "carro"))
                 identity.tipoUnidade = TipoUnidade.Infantaria;
             if (identity.tipoUnidade == TipoUnidade.Aereo) issuedFighters++;
+            IA01MilitaryProductionGuard.Complete(orderId, Time.time);
             CombustivelUnidade.Garantir(unit, true);
             DiagnosticoDesempenhoJogo.RegistrarProducao(item.GetDisplayName(), "IA01_ReservaMilitar");
             return true;

@@ -1981,7 +1981,7 @@ Transform:
   m_GameObject: {fileID: 8020568957592846187}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.8018278, z: 0, w: 0.5975552}
-  m_LocalPosition: {x: 20.679, y: 5.101, z: 5.98}
+  m_LocalPosition: {x: 20.68, y: 5.101, z: 4.28}
   m_LocalScale: {x: -0.15, y: 0.019770961, z: 0.13000001}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2422,6 +2422,7 @@ MonoBehaviour:
   esperandoCliquePatrulhaGrupo: 0
   qtdPatrulhaGrupo: 1
   semEnergia: 0
+  exibirTooltipStatus: 0
   usarFilaSpawnAereoIA: 1
   intervaloSpawnIaSaudavel: 0.55
   intervaloSpawnIaPressao: 1.7

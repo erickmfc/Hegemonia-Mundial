@@ -24,11 +24,15 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private Label breadcrumb;
     private string categoria = "Relacoes";
     private string abaAtual = "Resumo";
-    private int paisSelecionado = 2;
+    // Nenhum alvo de diplomacia deve ser escolhido por acidente. O jogador e o
+    // primeiro pais ativo da cena sao os unicos valores seguros no inicio.
+    private int paisSelecionado = 1; // alvo inicial seguro; nunca apontar para uma IA inativa
     private float proximaAtualizacao;
     private bool aberturaPendente;
     private bool mercadoEstoquePrimeiro;
-    private bool mercadoSomenteDisponiveis;
+    // O mercado abre mostrando apenas o que pode ser transacionado agora;
+    // itens indisponiveis continuam acessiveis pelo filtro manual.
+    private bool mercadoSomenteDisponiveis = true;
     private string mercadoCategoria = "Todos";
 
     private static readonly string[] OrdemSecoes = new[]
@@ -240,13 +244,6 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         acoes = root.Q<ScrollView>("action-panel");
         breadcrumb = root.Q<Label>("breadcrumb");
 
-        Button fechar = root.Q<Button>("close-button");
-        if (fechar != null)
-        {
-            fechar.clicked -= FecharMenu;
-            fechar.clicked += FecharMenu;
-        }
-
         ConstruirNavegacao();
         Pronto = root != null && countryName != null && countryMeta != null && nationalStatus != null
             && recursos != null && navegacao != null && abas != null && conteudo != null && acoes != null;
@@ -262,11 +259,6 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         }
 
         AtualizarTudo(true);
-    }
-
-    private void FecharMenu()
-    {
-        Abrir(false);
     }
 
     private void AtualizarTudo(bool reconstruir)
@@ -393,8 +385,62 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         AdicionarRecurso("ACO", EstoqueReal(RecursoMercado.Aco).ToString("N0"));
         AdicionarRecurso("ENERGIA", EstoqueReal(RecursoMercado.Energia).ToString("N0"));
         AdicionarRecurso("COMIDA", EstoqueReal(RecursoMercado.Comida).ToString("N0"));
+        GerenciadorArmazens armazens = GerenciadorArmazens.Instancia;
+        string agua = armazens != null && armazens.armazemRecursos != null
+            ? Mathf.Max(0, armazens.armazemRecursos.agua).ToString("N0") + "/" + Mathf.Max(0, armazens.armazemRecursos.aguaMaximo).ToString("N0")
+            : "0/0";
+        AdicionarRecurso("AGUA", agua);
         AdicionarRecurso("POPULACAO", pais.populacaoCivil.ToString("N0"));
         AdicionarRecurso("ESTABILIDADE", pais.estabilidade.ToString("0") + "%");
+    }
+
+    private static List<DadosPaisGoverno> ObterNacoesAtivas(SistemaGovernoMundial governo)
+    {
+        List<DadosPaisGoverno> resultado = new List<DadosPaisGoverno>();
+        if (governo == null) return resultado;
+
+        HashSet<int> idsAtivos = new HashSet<int> { governo.teamJogador };
+        if (IdentidadeIA.TodasIdentidades != null)
+        {
+            foreach (IdentidadeIA identidade in IdentidadeIA.TodasIdentidades.ToArray())
+            {
+                if (identidade != null && identidade.estaAtivo && !identidade.eliminado && identidade.teamID > 1)
+                    idsAtivos.Add(identidade.teamID);
+            }
+        }
+
+        resultado.AddRange(governo.Paises.Where(p => p != null && idsAtivos.Contains(p.teamId)).OrderBy(p => p.teamId));
+        return resultado;
+    }
+
+    private bool TemAlvoDiplomatico()
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        return governo != null && paisSelecionado != governo.teamJogador && ObterNacoesAtivas(governo).Any(p => p.teamId == paisSelecionado);
+    }
+
+    private void ProporAliancaSelecionada()
+    {
+        string mensagem = "Selecione uma nacao ativa.";
+        bool ok = TemAlvoDiplomatico() && SistemaGovernoMundial.Instancia.CriarPropostaAliancaJogador(paisSelecionado, out mensagem);
+        MostrarMensagem(ok ? "Alianca enviada para analise." : mensagem);
+        MostrarPagina(abaAtual);
+    }
+
+    private void ProporPactoSelecionado()
+    {
+        string mensagem = "Selecione uma nacao ativa.";
+        bool ok = TemAlvoDiplomatico() && SistemaGovernoMundial.Instancia.CriarPropostaPactoJogador(paisSelecionado, out mensagem);
+        MostrarMensagem(ok ? "Pacto defensivo enviado para analise." : mensagem);
+        MostrarPagina(abaAtual);
+    }
+
+    private void ProporCessarFogoSelecionado()
+    {
+        string mensagem = "Selecione uma nacao ativa.";
+        bool ok = TemAlvoDiplomatico() && SistemaGovernoMundial.Instancia.CriarPropostaCessarFogoJogador(paisSelecionado, out mensagem);
+        MostrarMensagem(ok ? "Cessar-fogo enviado para analise." : mensagem);
+        MostrarPagina(abaAtual);
     }
 
     private static int EstoqueReal(RecursoMercado recurso)
@@ -452,30 +498,39 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                     Acao("ASSINAR CONCORDIA GLOBAL", () => TrocarFederacao(SistemaFederacoesGlobais.TipoFederacao.CooperacaoGlobal.ToString()));
                     Acao("ASSINAR COALIZAO AEGIS", () => TrocarFederacao(SistemaFederacoesGlobais.TipoFederacao.AliancaDefesa.ToString()), "warning");
                 }
-                Acao("PROPOR ALIANCA", () => Executar(() => SistemaGovernoMundial.Instancia.ProporAlianca(paisSelecionado), "Proposta de alianca enviada."));
-                Acao("PACTO DEFENSIVO", () => Executar(() => SistemaGovernoMundial.Instancia.ProporPactoDefensivo(paisSelecionado), "Proposta de pacto enviada."));
+                Acao("PROPOR ALIANCA", ProporAliancaSelecionada);
+                Acao("PACTO DEFENSIVO", ProporPactoSelecionado);
+                Acao("PROPOR CESSAR-FOGO", ProporCessarFogoSelecionado, "warning");
                 Acao("ENVIAR AJUDA", () => CriarProposta(TipoPropostaInternacional.Doacao, RecursoMercado.Comida, 100));
                 Acao("ROMPER ACORDO", () => Executar(() => SistemaGovernoMundial.Instancia.RomperAlianca(paisSelecionado), "Alianca encerrada."), "danger");
                 break;
             case "Aliancas":
-                Acao("CONVIDAR PAIS", () => Executar(() => SistemaGovernoMundial.Instancia.ProporAlianca(paisSelecionado), "Convite enviado."));
-                Acao("FIRMAR DEFESA MUTUA", () => Executar(() => SistemaGovernoMundial.Instancia.ProporPactoDefensivo(paisSelecionado), "Pacto defensivo proposto."));
+                Acao("CONVIDAR PAIS", ProporAliancaSelecionada);
+                Acao("FIRMAR DEFESA MUTUA", ProporPactoSelecionado);
+                Acao("NEGOCIAR CESSAR-FOGO", ProporCessarFogoSelecionado, "warning");
                 Acao("ENVIAR RECURSOS", () => CriarProposta(TipoPropostaInternacional.Doacao, RecursoMercado.Comida, 100));
                 break;
             case "Sancoes":
                 Acao("IMPOR SANCAO", () => Executar(() => SistemaGovernoMundial.Instancia.AplicarSancao(paisSelecionado), "Sancao aplicada."), "warning");
                 Acao("LEVANTAR SANCAO", () => Executar(() => SistemaGovernoMundial.Instancia.RemoverSancao(paisSelecionado), "Sancao removida."));
+                if (abaAtual == "Embargos")
+                {
+                    Acao("EMBARGAR COMIDA", () => AlterarEmbargo(RecursoMercado.Comida, true), "warning");
+                    Acao("LIBERAR COMIDA", () => AlterarEmbargo(RecursoMercado.Comida, false));
+                    Acao("EMBARGAR PETROLEO", () => AlterarEmbargo(RecursoMercado.Petroleo, true), "warning");
+                    Acao("LIBERAR PETROLEO", () => AlterarEmbargo(RecursoMercado.Petroleo, false));
+                }
                 if (abaAtual == "Emprestimos")
                 {
                     Acao("PEDIR AJUSTE ECONOMICO", () => SolicitarEmprestimo(false));
                     Acao("PEDIR CREDITO MILITAR", () => SolicitarEmprestimo(true), "warning");
                 }
-                Acao("REVER IMPACTO", () => { MostrarMensagem("Impacto das sancoes revisado."); MostrarPagina(abaAtual); });
+                Acao("REVER IMPACTO", ReverImpactoSancoes);
                 break;
             case "Economia":
                 if (abaAtual == "Gastos")
                 {
-                    Acao("ATUALIZAR GASTOS MILITARES", () => { MostrarMensagem("Relatorio de gastos atualizado."); MostrarPagina(abaAtual); });
+                    Acao("ATUALIZAR GASTOS MILITARES", AtualizarGastosMilitares);
                     Acao("ABRIR DEFESA", () => { categoria = "Defesa"; MostrarSecao("Defesa"); });
                 }
                 else if (abaAtual == "Tesouro" || abaAtual == "Orcamento")
@@ -489,7 +544,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 {
                     Acao("INVESTIR EM INDUSTRIA", () => Investir("industria"));
                     Acao("INVESTIR EM ENERGIA", () => Investir("energia"));
-                    Acao("ATUALIZAR DIAGNOSTICO", () => { MostrarMensagem("Diagnostico de producao atualizado."); MostrarPagina(abaAtual); });
+                    Acao("ATUALIZAR DIAGNOSTICO", AtualizarDiagnosticoProducao);
                 }
                 else if (abaAtual == "Impostos")
                 {
@@ -592,6 +647,47 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         MostrarPagina(abaAtual);
     }
 
+    private void ReverImpactoSancoes()
+    {
+        SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
+        SistemaMercadoGlobal.Instancia?.SimularMercado();
+        gov?.ProcessarEconomia();
+        int afetados = gov != null ? ContarRelacoes(r => r.sancaoAtiva) : 0;
+        MostrarMensagem("Impacto recalculado: " + afetados + " relacao(oes) sob sancao.");
+        MostrarPagina(abaAtual);
+    }
+
+    private void AlterarEmbargo(RecursoMercado recurso, bool ativar)
+    {
+        SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
+        string mensagem = "Selecione uma nacao ativa.";
+        bool ok = false;
+        if (TemAlvoDiplomatico() && gov != null)
+        {
+            ok = ativar
+                ? gov.AplicarEmbargo(paisSelecionado, recurso, out mensagem)
+                : gov.RemoverEmbargo(paisSelecionado, recurso, out mensagem);
+        }
+        MostrarMensagem(ok ? mensagem : "Embargo recusado: " + mensagem);
+        MostrarPagina(abaAtual);
+    }
+
+    private void AtualizarGastosMilitares()
+    {
+        SistemaGastosMilitares.GarantirInstancia();
+        MostrarMensagem("Historico de gastos militares sincronizado.");
+        MostrarPagina(abaAtual);
+    }
+
+    private void AtualizarDiagnosticoProducao()
+    {
+        SistemaEconomiaImoveis.Instancia?.Recalcular();
+        SistemaGovernoMundial.Instancia?.ProcessarEconomia();
+        MostrarMensagem("Diagnostico de producao recalculado.");
+        AtualizarRecursos();
+        MostrarPagina(abaAtual);
+    }
+
     private void MostrarMensagem(string acao)
     {
         Label rodape = root.Q<Label>("footer-message");
@@ -645,6 +741,12 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private void SolicitarEmprestimo(bool militar)
     {
         string mensagem = "Sistema federativo indisponivel.";
+        if (!TemAlvoDiplomatico())
+        {
+            MostrarMensagem("Selecione um credor ativo na aba Nacoes antes de pedir o emprestimo.");
+            MostrarPagina(abaAtual);
+            return;
+        }
         bool ok = SistemaFederacoesGlobais.Instancia != null && SistemaFederacoesGlobais.Instancia.SolicitarEmprestimo(paisSelecionado, 1, 2500f, militar, out mensagem);
         MostrarMensagem(ok ? "Emprestimo aprovado: " + mensagem : "Emprestimo recusado: " + mensagem);
         MostrarPagina(abaAtual);
@@ -689,7 +791,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         List<string> parceirosComerciais = new List<string>();
         if (governoConectado != null)
         {
-            foreach (DadosPaisGoverno pais in governoConectado.Paises)
+            foreach (DadosPaisGoverno pais in ObterNacoesAtivas(governoConectado))
             {
                 if (pais == null || pais.teamId == governoConectado.teamJogador) continue;
                 RelacaoPaisGoverno relacao = governoConectado.ObterRelacao(governoConectado.teamJogador, pais.teamId);
@@ -939,8 +1041,14 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
     private void CriarProposta(TipoPropostaInternacional tipo, RecursoMercado recurso, int quantidade)
     {
+        if (!TemAlvoDiplomatico())
+        {
+            MostrarMensagem("Selecione uma nacao ativa antes de enviar recursos.");
+            return;
+        }
         bool ok = SistemaGovernoMundial.Instancia != null && SistemaGovernoMundial.Instancia.CriarPropostaJogador(paisSelecionado, tipo, recurso, quantidade, 0, "Ordem do menu Governo");
         MostrarMensagem(ok ? "Proposta internacional registrada." : "A proposta nao pode ser criada agora.");
+        MostrarPagina(abaAtual);
     }
 
     private void Transacionar(DadosItemMercado item, int quantidade, bool comprar)
@@ -1033,7 +1141,10 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
     private int ContarRelacoes(Func<RelacaoPaisGoverno, bool> filtro)
     {
-        return SistemaGovernoMundial.Instancia.Relacoes.Count(r => r != null && r.Envolve(1, r.Outro(1)) && filtro(r));
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null) return 0;
+        HashSet<int> idsAtivos = new HashSet<int>(ObterNacoesAtivas(governo).Select(n => n.teamId));
+        return governo.Relacoes.Count(r => r != null && r.Envolve(1, r.Outro(1)) && idsAtivos.Contains(r.Outro(1)) && filtro(r));
     }
 
     private void LinhaCards((string titulo, string valor, string estado)[] dados)
@@ -1075,6 +1186,37 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             "MANTIMENTO",
             proposta.recurso.ToString(),
             proposta.quantidade.ToString("N0")
+        })
+        {
+            Label label = new Label(valor);
+            label.AddToClassList("gov-table-cell");
+            linha.Add(label);
+        }
+
+        VisualElement botoes = new VisualElement();
+        botoes.AddToClassList("gov-table-cell");
+        botoes.style.flexDirection = FlexDirection.Row;
+        string id = proposta.id;
+        Button aceitar = new Button(() => ResolverPedidoAjuda(id, StatusPropostaInternacional.Aceita)) { text = "ACEITAR" };
+        aceitar.AddToClassList("gov-row-button");
+        Button recusar = new Button(() => ResolverPedidoAjuda(id, StatusPropostaInternacional.Recusada)) { text = "RECUSAR" };
+        recusar.AddToClassList("gov-row-button");
+        botoes.Add(aceitar);
+        botoes.Add(recusar);
+        linha.Add(botoes);
+        conteudo.Add(linha);
+    }
+
+    private void TabelaPropostaDiplomatica(SistemaGovernoMundial gov, PropostaInternacional proposta)
+    {
+        VisualElement linha = new VisualElement();
+        linha.AddToClassList("gov-table-row");
+        foreach (string valor in new[]
+        {
+            gov.NomePais(proposta.origemTeamId),
+            proposta.tipo == TipoPropostaInternacional.CessarFogo ? "CESSAR-FOGO" : proposta.tipo.ToString().ToUpperInvariant(),
+            "DIPLOMACIA",
+            "ANALISE"
         })
         {
             Label label = new Label(valor);
@@ -1157,7 +1299,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             }
             card.Add(posturaBotoes);
         }
-        Button selecionar = new Button(() => { paisSelecionado = n.teamId; MostrarMensagem(n.nomePais + " selecionado."); MostrarPagina(abaAtual); }) { text = "ABRIR PAIS" };
+        Button selecionar = new Button(() => { paisSelecionado = n.teamId; MostrarMensagem(n.teamId == 1 ? "Este e o seu pais." : n.nomePais + " definido como alvo diplomatico."); MostrarPagina(abaAtual); }) { text = n.teamId == 1 ? "SEU PAIS" : "SELECIONAR ALVO" };
         selecionar.AddToClassList("gov-row-button");
         card.Add(selecionar);
         conteudo.Add(card);
@@ -1177,6 +1319,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     {
         SistemaGovernoMundial g = SistemaGovernoMundial.Instancia;
         if (g == null) { AdicionarCard(conteudo, "DADOS INDISPONIVEIS", "Relacionamentos ainda nao foram inicializados."); return; }
+        List<DadosPaisGoverno> nacoesAtivas = ObterNacoesAtivas(g);
 
         int positivas = 0, negativas = 0;
         foreach (RelacaoPaisGoverno r in g.Relacoes)
@@ -1199,12 +1342,11 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         }
         else if (abaAtual == "Crises")
         {
-            LinhaCards(new[] { ("GUERRAS", g.Paises.Count(p => p != null && p.emGuerra).ToString(), "state-bad"), ("SANCOES", g.Paises.Count(p => p != null && p.sancionado).ToString(), "state-warn"), ("TENSAO", negativas.ToString(), "state-bad"), ("NOTICIAS", g.noticias.Count.ToString(), "state-info") });
+            LinhaCards(new[] { ("GUERRAS", nacoesAtivas.Count(p => p != null && p.emGuerra).ToString(), "state-bad"), ("SANCOES", nacoesAtivas.Count(p => p != null && p.sancionado).ToString(), "state-warn"), ("TENSAO", negativas.ToString(), "state-bad"), ("NOTICIAS", g.noticias.Count.ToString(), "state-info") });
         }
         else if (abaAtual == "Nacoes")
         {
-            RegistroNacoesGoverno.GarantirInstancia();
-            IReadOnlyList<DadosPaisGoverno> registro = RegistroNacoesGoverno.Instancia != null ? RegistroNacoesGoverno.Instancia.Todos : g.Paises;
+            IReadOnlyList<DadosPaisGoverno> registro = nacoesAtivas;
             LinhaCards(new[] { ("NACOES REGISTRADAS", registro.Count.ToString(), "state-info"), ("POPULACAO", registro.Where(p => p != null).Sum(p => p.populacao).ToString("N0"), "state-good"), ("FEDERACOES", registro.Where(p => p != null && !string.IsNullOrWhiteSpace(p.federacaoGlobal)).Select(p => p.federacaoGlobal).Distinct().Count().ToString(), "state-info"), ("EM GUERRA", registro.Count(p => p != null && p.emGuerra).ToString(), "state-bad") });
             foreach (DadosPaisGoverno nacao in registro.Where(p => p != null).OrderBy(p => p.teamId))
                 CartaoNacao(nacao);
@@ -1218,7 +1360,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         if (abaAtual == "Crises")
         {
             TabelaCabecalho("PAIS", "TIPO", "RELACAO", "SITUACAO", "ACAO");
-            foreach (DadosPaisGoverno outro in g.Paises)
+            foreach (DadosPaisGoverno outro in nacoesAtivas)
             {
                 if (outro.teamId == 1) continue;
                 RelacaoPaisGoverno r = g.ObterRelacao(1, outro.teamId);
@@ -1238,7 +1380,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             if (jogador != null)
                 AdicionarCard(conteudo, "DOCUMENTO DE FILIACAO", jogador.nomePais + " / " + jogador.nomePresidente + "\nFederacao: " + SistemaFederacoesGlobais.NomeFederacao(jogador.federacaoGlobal) + "\nLegitimidade: " + jogador.legitimidadeGlobal.ToString("0") + "%\nMoeda de liquidacao internacional: Dolar Hegemonico (DH)");
             TabelaCabecalho("PAIS", "TRATADO", "PACTO", "PEDIDO", "RELACAO");
-            foreach (DadosPaisGoverno outro in g.Paises)
+            foreach (DadosPaisGoverno outro in nacoesAtivas)
             {
                 if (outro.teamId == 1) continue;
                 RelacaoPaisGoverno r = g.ObterRelacao(1, outro.teamId);
@@ -1248,7 +1390,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         }
 
         TabelaCabecalho("PAIS", "BLOCO", "RELACAO", "STATUS", "ACAO");
-        foreach (DadosPaisGoverno outro in g.Paises)
+        foreach (DadosPaisGoverno outro in nacoesAtivas)
         {
             if (outro.teamId == 1) continue;
             RelacaoPaisGoverno r = g.ObterRelacao(1, outro.teamId);
@@ -1261,12 +1403,13 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     {
         SistemaGovernoMundial g = SistemaGovernoMundial.Instancia;
         if (g == null) { AdicionarCard(conteudo, "DADOS INDISPONIVEIS", "Aliancas ainda nao foram inicializadas."); return; }
+        List<DadosPaisGoverno> nacoesAtivas = ObterNacoesAtivas(g);
         SistemaFederacoesGlobais.GarantirInstancia();
 
         List<DadosPaisGoverno> aliados = new List<DadosPaisGoverno>(g.ObterAliados(1));
         if (abaAtual == "Blocos")
         {
-            var blocos = g.Paises
+            var blocos = nacoesAtivas
                 .Where(p => p != null && !string.IsNullOrWhiteSpace(p.federacaoGlobal))
                 .GroupBy(p => p.federacaoGlobal)
                 .Select(grupo => new
@@ -1289,7 +1432,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         if (abaAtual == "Membros")
         {
             string federacao = pais.federacaoGlobal;
-            List<DadosPaisGoverno> membros = g.Paises.Where(p => p != null && p.federacaoGlobal == federacao).OrderBy(p => p.teamId).ToList();
+            List<DadosPaisGoverno> membros = nacoesAtivas.Where(p => p != null && p.federacaoGlobal == federacao).OrderBy(p => p.teamId).ToList();
             LinhaCards(new[] { ("FEDERACAO", SistemaFederacoesGlobais.NomeFederacao(federacao), "state-info"), ("MEMBROS", membros.Count.ToString(), "state-good"), ("LEGITIMIDADE", pais.legitimidadeGlobal.ToString("0") + "%", "state-warn") });
             TabelaCabecalho("PAIS", "PRESIDENTE", "LEGIT.", "MILITAR", "STATUS");
             foreach (DadosPaisGoverno membro in membros)
@@ -1299,7 +1442,10 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
         if (abaAtual == "Pedidos")
         {
-            List<PropostaInternacional> pendentes = g.ObterPropostasPendentesPara(1).ToList();
+            HashSet<int> idsAtivos = new HashSet<int>(nacoesAtivas.Select(n => n.teamId));
+            List<PropostaInternacional> pendentes = g.ObterPropostasPendentesPara(1)
+                .Where(proposta => proposta != null && idsAtivos.Contains(proposta.origemTeamId))
+                .ToList();
             LinhaCards(new[] { ("PEDIDOS", pendentes.Count.ToString(), "state-info"), ("ALIANCAS", aliados.Count.ToString(), "state-good"), ("FORCA COMBINADA", Mathf.Clamp(pais.nivelMilitar + aliados.Count * 6, 0, 100) + "%", "state-good"), ("RISCO DE RUPTURA", (100f - pais.estabilidade).ToString("0") + "%", "state-bad") });
             TabelaCabecalho("ORIGEM", "TIPO", "RECURSO", "QTD", "STATUS");
             if (pendentes.Count == 0)
@@ -1311,6 +1457,8 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             {
                 if (proposta.tipo == TipoPropostaInternacional.PedidoAjuda)
                     TabelaPedidoAjuda(g, proposta);
+                else if (proposta.tipo == TipoPropostaInternacional.Alianca || proposta.tipo == TipoPropostaInternacional.PactoDefensivo || proposta.tipo == TipoPropostaInternacional.CessarFogo)
+                    TabelaPropostaDiplomatica(g, proposta);
                 else
                     TabelaLinha(g.NomePais(proposta.origemTeamId), proposta.tipo.ToString(), proposta.recurso.ToString(), proposta.quantidade.ToString(), "ANALISAR", () => MostrarMensagem("Pedido de " + g.NomePais(proposta.origemTeamId) + " selecionado."));
             }
@@ -1321,7 +1469,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         {
             LinhaCards(new[] { ("MEMBROS ALIADOS", aliados.Count.ToString(), "state-info"), ("PACTOS ATIVOS", ContarRelacoes(r => r.pactoMilitar).ToString(), "state-good"), ("TRATADOS", ContarRelacoes(r => r.tratadoComercial).ToString(), "state-good"), ("RISCO DE RUPTURA", (100f - pais.estabilidade).ToString("0") + "%", "state-bad") });
             TabelaCabecalho("PAIS", "TRATADO", "PACTO", "RELACAO", "ACAO");
-            foreach (DadosPaisGoverno p in g.Paises.Where(x => x != null && x.teamId != 1))
+            foreach (DadosPaisGoverno p in nacoesAtivas.Where(x => x != null && x.teamId != 1))
             {
                 RelacaoPaisGoverno r = g.Relacoes.FirstOrDefault(rel => rel != null && rel.Envolve(1, p.teamId));
                 if (r == null || (!r.pactoMilitar && !r.tratadoComercial)) continue;
@@ -1344,11 +1492,13 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     {
         SistemaGovernoMundial g = SistemaGovernoMundial.Instancia;
         if (g == null) { AdicionarCard(conteudo, "DADOS INDISPONIVEIS", "Sancoes ainda nao foram inicializadas."); return; }
+        List<DadosPaisGoverno> nacoesAtivas = ObterNacoesAtivas(g);
 
         SistemaFederacoesGlobais.GarantirInstancia();
         DadosPaisGoverno jogador = g.ObterPais(1);
         int ativas = ContarRelacoes(r => r.sancaoAtiva);
-            LinhaCards(new[] { ("PAISES AFETADOS", ativas.ToString(), "state-info"), ("PRESSAO GLOBAL", (g.PressaoGlobalSancoes() * 100f).ToString("0") + "%", "state-bad"), ("RISCO DE RETALIACAO", ativas > 1 ? "ALTO" : "BAIXO", "state-warn"), ("APOIO INTERNACIONAL", Mathf.Clamp(100 - ativas * 15, 0, 100) + "%", "state-good") });
+            float pressaoAtiva = nacoesAtivas.Count > 1 ? ativas / (float)(nacoesAtivas.Count - 1) : 0f;
+            LinhaCards(new[] { ("PAISES AFETADOS", ativas.ToString(), "state-info"), ("PRESSAO GLOBAL", (pressaoAtiva * 100f).ToString("0") + "%", "state-bad"), ("RISCO DE RETALIACAO", ativas > 1 ? "ALTO" : "BAIXO", "state-warn"), ("APOIO INTERNACIONAL", Mathf.Clamp(100 - ativas * 15, 0, 100) + "%", "state-good") });
 
         if (abaAtual == "Legitimidade")
         {
@@ -1374,21 +1524,22 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
         if (abaAtual == "Pressao")
         {
-            AdicionarCard(conteudo, "PRESSAO GLOBAL", "Pais afetados: " + ativas + "\nIndice de pressao: " + (g.PressaoGlobalSancoes() * 100f).ToString("0") + "%\nRisco de retaliacao: " + (ativas > 1 ? "ALTO" : "BAIXO") + "\nApoio internacional estimado: " + Mathf.Clamp(100 - ativas * 15, 0, 100) + "%");
+            AdicionarCard(conteudo, "PRESSAO GLOBAL", "Pais afetados: " + ativas + "\nIndice de pressao: " + (pressaoAtiva * 100f).ToString("0") + "%\nRisco de retaliacao: " + (ativas > 1 ? "ALTO" : "BAIXO") + "\nApoio internacional estimado: " + Mathf.Clamp(100 - ativas * 15, 0, 100) + "%");
         }
         else if (abaAtual == "Embargos")
         {
-            AdicionarCard(conteudo, "TIPOS DE IMPACTO", "O motor atual trabalha com um estado de sancao global, sem detalhar cada embargo por recurso.\nUse a lista abaixo para rever os pais afetados.");
+            AdicionarCard(conteudo, "EMBARGOS POR RECURSO", "Selecione um alvo ativo e use as acoes ao lado para bloquear ou liberar comida e petroleo. O mercado recusa a rota embargada e atualiza as cotacoes.");
         }
 
         TabelaCabecalho("PAIS", "SANCAO", "RELACAO", "RESPOSTA", "ACAO");
-        foreach (DadosPaisGoverno p in g.Paises)
+        foreach (DadosPaisGoverno p in nacoesAtivas)
         {
             if (p.teamId == 1) continue;
             RelacaoPaisGoverno r = g.ObterRelacao(1, p.teamId);
             if (abaAtual == "Ativas" && (r == null || !r.sancaoAtiva)) continue;
             if (abaAtual == "Embargos" && (r == null || (!r.sancaoAtiva && r.valor >= 0))) continue;
-            TabelaLinha(p.nomePais, r != null && r.sancaoAtiva ? "ATIVA" : "INATIVA", r != null ? r.valor.ToString() : "0", p.emGuerra ? "HOSTIL" : "ESTAVEL", "SELECIONAR", () => { paisSelecionado = p.teamId; MostrarPagina(abaAtual); });
+            string embargoes = r != null && r.embargos != null && r.embargos.Count > 0 ? string.Join(",", r.embargos.Select(e => e.ToString())) : "NENHUM";
+            TabelaLinha(p.nomePais, abaAtual == "Embargos" ? embargoes : (r != null && r.sancaoAtiva ? "ATIVA" : "INATIVA"), r != null ? r.valor.ToString() : "0", p.emGuerra ? "HOSTIL" : "ESTAVEL", "SELECIONAR", () => { paisSelecionado = p.teamId; MostrarPagina(abaAtual); });
         }
     }
 
@@ -1679,7 +1830,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             if (aresMunicao != null)
                 AdicionarCard(conteudo, "MUNICAO ANTIAEREA", $"{aresMunicao.nome}\nValor por cartucho: {Moeda(aresMunicao.valorUnitario)}\nCarregador: {aresMunicao.capacidadeCartucho} cartuchos\nPausa de reabastecimento: {aresMunicao.tempoReabastecimento:0.0}s\nDisparos registrados: {aresMunicao.totalDisparado:N0}");
             TabelaCabecalho("NACAO", "STATUS", "NIVEL MILITAR", "RELACAO", "RISCO");
-            foreach (DadosPaisGoverno outro in g.Paises)
+            foreach (DadosPaisGoverno outro in ObterNacoesAtivas(g))
             {
                 if (outro.teamId == 1) continue; RelacaoPaisGoverno r = g.ObterRelacao(1, outro.teamId);
                 TabelaLinha(outro.nomePais, outro.emGuerra ? "HOSTIL" : "OBSERVADO", outro.nivelMilitar.ToString(), r != null ? r.valor.ToString() : "0", outro.emGuerra ? "ALTO" : "MODERADO");
@@ -1723,7 +1874,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             return;
         }
 
-        LinhaCards(new[] { ("ALERTAS", g.Paises.Count(x => x != null && x.emGuerra).ToString(), "state-bad"), ("ARMAMENTOS", p.armamentos.ToString("N0"), "state-info"), ("URANIO", p.uranio.ToString("N0"), "state-warn"), ("PRESSAO DE GUERRA", g.PressaoGlobalGuerra().ToString("0") + "%", "state-bad") });
+            LinhaCards(new[] { ("ALERTAS", ObterNacoesAtivas(g).Count(x => x != null && x.emGuerra).ToString(), "state-bad"), ("ARMAMENTOS", p.armamentos.ToString("N0"), "state-info"), ("URANIO", p.uranio.ToString("N0"), "state-warn"), ("PRESSAO DE GUERRA", g.PressaoGlobalGuerra().ToString("0") + "%", "state-bad") });
         AdicionarCard(conteudo, "ALERTAS MILITARES", UltimasNoticias(g, 6, "guerra", "alerta", "fronteira", "defesa"));
     }
 

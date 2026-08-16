@@ -25,6 +25,9 @@ public sealed class LoadingScreenService : MonoBehaviour
     [SerializeField] private int quantidadeDicasPorCarregamento = 4;
     [SerializeField] private float segundosPorDica = 4f;
 
+    [Header("Transicao")]
+    [SerializeField] private float tempoMinimoTela = 6f;
+
     private Canvas canvas;
     private Font fontePadrao;
     private GameObject raiz;
@@ -38,6 +41,7 @@ public sealed class LoadingScreenService : MonoBehaviour
     private AsyncOperation carregamentoAtual;
     private Coroutine rotinaCarregamento;
     private bool aguardandoCena;
+    private float inicioTela;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -137,11 +141,26 @@ public sealed class LoadingScreenService : MonoBehaviour
 
         CarregarCatalogoDeDicas();
         Mostrar(tipo);
+        inicioTela = Time.unscaledTime;
         rotinaCarregamento = StartCoroutine(RotinaCarregar(nomeCena, tipo));
     }
 
     private IEnumerator RotinaCarregar(string nomeCena, LoadingRequestKind tipo)
     {
+        int quantidade = Mathf.Min(Mathf.Max(0, quantidadeDicasPorCarregamento), dicas.Count);
+        float intervalo = Mathf.Max(0.25f, segundosPorDica);
+        List<Texture2D> selecionadas = quantidade > 0
+            ? SelecionarDicasSemRepetir(quantidade)
+            : new List<Texture2D>();
+
+        // A primeira dica precisa chegar a um frame visível antes de iniciar
+        // a leitura da cena pesada. Isso evita o bloqueio no botão do menu.
+        if (selecionadas.Count > 0)
+        {
+            MostrarDica(selecionadas[0], 1, selecionadas.Count, tipo);
+        }
+        yield return null;
+
         carregamentoAtual = SceneManager.LoadSceneAsync(nomeCena);
         if (carregamentoAtual == null)
         {
@@ -154,9 +173,6 @@ public sealed class LoadingScreenService : MonoBehaviour
         carregamentoAtual.allowSceneActivation = false;
         aguardandoCena = true;
 
-        int quantidade = Mathf.Min(Mathf.Max(0, quantidadeDicasPorCarregamento), dicas.Count);
-        float intervalo = Mathf.Max(0.25f, segundosPorDica);
-
         if (quantidade == 0)
         {
             AtualizarProgresso();
@@ -168,10 +184,12 @@ public sealed class LoadingScreenService : MonoBehaviour
         }
         else
         {
-            List<Texture2D> selecionadas = SelecionarDicasSemRepetir(quantidade);
             for (int i = 0; i < selecionadas.Count; i++)
             {
-                MostrarDica(selecionadas[i], i + 1, selecionadas.Count, tipo);
+                if (i > 0)
+                {
+                    MostrarDica(selecionadas[i], i + 1, selecionadas.Count, tipo);
+                }
                 float terminaEm = Time.unscaledTime + intervalo;
                 while (Time.unscaledTime < terminaEm)
                 {
@@ -186,6 +204,14 @@ public sealed class LoadingScreenService : MonoBehaviour
                 AtualizarProgresso();
                 yield return null;
             }
+        }
+
+        float tempoMinimo = Mathf.Max(0.1f, tempoMinimoTela);
+        while (Time.unscaledTime - inicioTela < tempoMinimo)
+        {
+            MostrarAguardandoCena(tipo);
+            AtualizarProgresso();
+            yield return null;
         }
 
         AtualizarProgressoFinal();
@@ -290,7 +316,13 @@ public sealed class LoadingScreenService : MonoBehaviour
             return;
         }
 
-        float progresso = Mathf.Clamp01(carregamentoAtual.progress / 0.9f);
+        float progressoCena = Mathf.Clamp01(carregamentoAtual.progress / 0.9f);
+        float minimo = Mathf.Max(0.1f, tempoMinimoTela);
+        float progressoTempo = Mathf.Clamp01((Time.unscaledTime - inicioTela) / minimo);
+        // Mantem a barra abaixo de 100% ate a cena poder ser ativada. Se a
+        // leitura terminar em poucos frames, a transicao ainda dura seis
+        // segundos e continua mostrando as dicas sem mascarar o carregamento.
+        float progresso = Mathf.Min(progressoCena, progressoTempo * 0.99f);
         progressoBarra.fillAmount = progresso;
         progressoTexto.text = "CARREGANDO " + Mathf.RoundToInt(progresso * 100f) + "%";
     }

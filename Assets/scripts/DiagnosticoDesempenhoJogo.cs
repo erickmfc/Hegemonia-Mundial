@@ -29,8 +29,11 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public float FpsMinimo;
         public float FpsMaximo;
         public float FrameMsMedio;
+        public float P95FrameMs;
         public float PiorFrameMs;
         public int FramesLentos;
+        public int FramesAcima100Ms;
+        public int FramesAcima250Ms;
         public int Travadas;
         public float CpuMainMs;
         public float CpuRenderMs;
@@ -158,6 +161,9 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     private float _fpsMaximo;
     private float _somaFrameMs;
     private float _piorFrameMs;
+    private readonly List<float> _amostrasFrameMs = new List<float>(128);
+    private int _framesAcima100Ms;
+    private int _framesAcima250Ms;
     private double _somaCpuMainMs;
     private double _somaCpuRenderMs;
     private double _somaGpuMs;
@@ -453,6 +459,15 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         _fpsMaximo = Mathf.Max(_fpsMaximo, fpsAtual);
         _somaFrameMs += frameMs;
         _piorFrameMs = Mathf.Max(_piorFrameMs, frameMs);
+        _amostrasFrameMs.Add(frameMs);
+        if (frameMs >= 100f)
+        {
+            _framesAcima100Ms++;
+        }
+        if (frameMs >= 250f)
+        {
+            _framesAcima250Ms++;
+        }
 
         if (frameMs >= frameLentoMs)
         {
@@ -548,12 +563,15 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         _overlayLine1 = string.Format(
             CultureInfo.InvariantCulture,
-            "Cena: {0} | Dif: {1} | FPS medio: {2:0.0} | Min: {3:0.0} | Max: {4:0.0} | Travadas: {5} | Warm-up: {6}",
+            "Cena: {0} | Dif: {1} | FPS medio: {2:0.0} | Min: {3:0.0} | Max: {4:0.0} | P95: {5:0.0} ms | >100: {6} | >250: {7} | Travadas: {8} | Warm-up: {9}",
             cena,
             string.IsNullOrEmpty(_ultimoResumo.Dificuldade) ? "normal" : _ultimoResumo.Dificuldade,
             _ultimoResumo.FpsMedio,
             _ultimoResumo.FpsMinimo,
             _ultimoResumo.FpsMaximo,
+            _ultimoResumo.P95FrameMs,
+            _ultimoResumo.FramesAcima100Ms,
+            _ultimoResumo.FramesAcima250Ms,
             _ultimoResumo.Travadas,
             _ultimoResumo.EmWarmup ? "sim" : "nao");
 
@@ -847,6 +865,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         float tempoFim = _inicioSegundoAtual + _tempoNoSegundo;
         float fpsMedio = _framesNoSegundo > 0 ? _somaFps / _framesNoSegundo : 0f;
         float frameMsMedio = _framesNoSegundo > 0 ? _somaFrameMs / _framesNoSegundo : 0f;
+        float p95FrameMs = CalcularPercentilFrame(0.95f);
         float cpuMainMs = _amostrasCpu > 0 ? (float)(_somaCpuMainMs / _amostrasCpu) : 0f;
         float cpuRenderMs = _amostrasCpu > 0 ? (float)(_somaCpuRenderMs / _amostrasCpu) : 0f;
         float gpuMs = _amostrasGpu > 0 ? (float)(_somaGpuMs / _amostrasGpu) : 0f;
@@ -931,8 +950,11 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             FpsMinimo = _fpsMinimo == float.MaxValue ? 0f : _fpsMinimo,
             FpsMaximo = _fpsMaximo,
             FrameMsMedio = frameMsMedio,
+            P95FrameMs = p95FrameMs,
             PiorFrameMs = _piorFrameMs,
             FramesLentos = _framesLentos,
+            FramesAcima100Ms = _framesAcima100Ms,
+            FramesAcima250Ms = _framesAcima250Ms,
             Travadas = _travadasNoSegundo,
             CpuMainMs = cpuMainMs,
             CpuRenderMs = cpuRenderMs,
@@ -1028,6 +1050,9 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         _fpsMaximo = 0f;
         _somaFrameMs = 0f;
         _piorFrameMs = 0f;
+        _amostrasFrameMs.Clear();
+        _framesAcima100Ms = 0;
+        _framesAcima250Ms = 0;
         _somaCpuMainMs = 0d;
         _somaCpuRenderMs = 0d;
         _somaGpuMs = 0d;
@@ -1063,6 +1088,18 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             _somaGpuMs += timing.gpuFrameTime;
             _amostrasGpu++;
         }
+    }
+
+    private float CalcularPercentilFrame(float percentil)
+    {
+        if (_amostrasFrameMs.Count == 0)
+        {
+            return 0f;
+        }
+
+        _amostrasFrameMs.Sort();
+        int indice = Mathf.Clamp(Mathf.CeilToInt((_amostrasFrameMs.Count - 1) * Mathf.Clamp01(percentil)), 0, _amostrasFrameMs.Count - 1);
+        return _amostrasFrameMs[indice];
     }
 
     // FIX: diagnostico revisto — GC nao mascara mais o gargalo de CPU/GPU.
@@ -1509,7 +1546,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                 pasta,
                 "desempenho_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture) + ".csv");
             _csvWriter = new StreamWriter(_csvPath, false, new UTF8Encoding(true));
-            _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;pior_frame_ms;frames_lentos;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;camera_update_ms;camera_area_notify_ms;camera_area_notifications;ia_build_territory_blocked;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;tactical_index_ms;weapon_target_candidates;road_probes;land_units_near;land_units_medium;land_units_far;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes");
+            _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;p95_frame_ms;pior_frame_ms;frames_lentos;frames_acima_100ms;frames_acima_250ms;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;camera_update_ms;camera_area_notify_ms;camera_area_notifications;ia_build_territory_blocked;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;tactical_index_ms;weapon_target_candidates;road_probes;land_units_near;land_units_medium;land_units_far;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes");
             _csvWriter.Flush();
         }
         catch (Exception excecao)
@@ -1538,8 +1575,11 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             .Append(resumo.FpsMinimo.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.FpsMaximo.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.FrameMsMedio.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.P95FrameMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.PiorFrameMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.FramesLentos.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.FramesAcima100Ms.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.FramesAcima250Ms.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.Travadas.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.CpuMainMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.CpuRenderMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')

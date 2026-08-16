@@ -457,6 +457,12 @@ public class SistemaMercadoGlobal : MonoBehaviour
             mensagem = "Comercio bloqueado por guerra.";
             return false;
         }
+        if (governo.RecursoEmbargado(compradorTeamId, vendedorTeamId, item.recurso)
+            || governo.RecursoEmbargado(vendedorTeamId, compradorTeamId, item.recurso))
+        {
+            mensagem = "Comercio bloqueado por embargo de " + item.recurso + ".";
+            return false;
+        }
 
         string recursoId = ObterRecursoIdEfetivo(item);
         SistemaGastosMilitares.GarantirInstancia();
@@ -576,6 +582,12 @@ public class SistemaMercadoGlobal : MonoBehaviour
         if (ComercioBloqueadoPorGuerra(vendedorTeamId, compradorTeamId, vendedor, comprador))
         {
             mensagem = "Comercio bloqueado por guerra.";
+            return false;
+        }
+        if (governo.RecursoEmbargado(vendedorTeamId, compradorTeamId, item.recurso)
+            || governo.RecursoEmbargado(compradorTeamId, vendedorTeamId, item.recurso))
+        {
+            mensagem = "Venda bloqueada por embargo de " + item.recurso + ".";
             return false;
         }
 

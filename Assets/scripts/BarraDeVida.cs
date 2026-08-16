@@ -16,6 +16,7 @@ public class BarraDeVida : MonoBehaviour
     private float ultimaVidaAtual = float.NaN;
     private float ultimaVidaMaxima = float.NaN;
     private bool ultimoCanvasHabilitado = true;
+    private bool escondidoPorMenu;
 
     void Start()
     {
@@ -36,12 +37,29 @@ public class BarraDeVida : MonoBehaviour
         {
             camPrincipal = Camera.main;
         }
-        if (canvasLocal != null && !canvasLocal.enabled && sistemaDeDanos != null &&
+
+        ControleUnidade unidade = GetComponentInParent<ControleUnidade>();
+        Helicoptero helicoptero = GetComponentInParent<Helicoptero>();
+        bool unidadeSelecionada = (unidade != null && unidade.selecionado)
+            || (helicoptero != null && helicoptero.selecionado);
+
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto && !unidadeSelecionada)
+        {
+            escondidoPorMenu = true;
+            if (canvasLocal != null)
+            {
+                canvasLocal.enabled = false;
+            }
+            return;
+        }
+
+        if (canvasLocal != null && !canvasLocal.enabled && !escondidoPorMenu && !unidadeSelecionada && sistemaDeDanos != null &&
             Mathf.Approximately(sistemaDeDanos.vidaAtual, ultimaVidaAtual) &&
             Mathf.Approximately(sistemaDeDanos.vidaMaxima, ultimaVidaMaxima))
         {
             return;
         }
+        escondidoPorMenu = false;
         // 1. BILLBOARD (Olhar para a câmera)
         if (camPrincipal != null) 
         {
@@ -71,7 +89,10 @@ public class BarraDeVida : MonoBehaviour
             // Esconder se 100%
             if(canvasLocal != null && esconderSeCheia)
             {
-                bool deveMostrar = (pct < 0.99f && pct > 0);
+                // Ao selecionar a unidade, o status volta a ficar visivel
+                // mesmo com vida cheia. Fora da selecao preservamos o
+                // comportamento economico de esconder barras completas.
+                bool deveMostrar = unidadeSelecionada || (pct < 0.99f && pct > 0);
                 if (ultimoCanvasHabilitado != deveMostrar)
                 {
                     canvasLocal.enabled = deveMostrar;

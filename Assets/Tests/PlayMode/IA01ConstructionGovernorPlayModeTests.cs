@@ -87,6 +87,7 @@ public sealed class IA01ConstructionGovernorPlayModeTests
         Assert.That(capitalObject, Is.Not.Null, "Capital nao foi confirmada.");
         Assert.That(GetIntMember(capitalObject, "teamID"), Is.EqualTo(GetIntMember(controller, "TeamId")));
         Assert.That(GetBoolMember(capitalObject, "ehPrefeitura"), Is.True);
+        Assert.That(GetBoolMember(controller, "HasConfirmedCapital"), Is.True, "O controlador nao reconheceu a prefeitura confirmada.");
         Assert.That(GetStringMember(runtime, "CapitalSourceStatus"), Is.Not.EqualTo("Missing"));
         Assert.That(GetStringMember(runtime, "LastConstructionCompletedAtStatus"), Is.Not.EqualTo("n/d"));
         Assert.That(GetIntMember(GetMemberValue(runtime, "BuildDirector"), "PendingCommandCount"), Is.EqualTo(0));
@@ -319,6 +320,13 @@ public sealed class IA01ConstructionGovernorPlayModeTests
             12f,
             "A fundacao nao entrou em confirmacao nem foi concluida.");
 
+        // A reserva de emergencia so pode voltar a bloquear a abertura depois
+        // de a capital ser confirmada pelo CityPlanner, nunca por um marcador
+        // de construcao parcial.
+        if (GetMemberValue(GetMemberValue(runtime, "CityPlanner"), "Capital") != null)
+        {
+            Assert.That(GetBoolMember(controller, "HasConfirmedCapital"), Is.True);
+        }
         Assert.That(GetStringMember(runtime, "CapitalSourceStatus"), Is.Not.EqualTo("Missing"));
         Assert.That(GetStringMember(runtime, "LastFailureCodeStatus"), Is.Not.EqualTo("InsufficientFunds"));
         Assert.That(GetStringMember(GetMemberValue(runtime, "BuildDirector"), "BlockReasonStatus"), Is.Not.EqualTo("Funds"));

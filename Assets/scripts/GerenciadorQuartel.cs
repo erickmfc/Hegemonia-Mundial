@@ -99,18 +99,7 @@ public class GerenciadorQuartel : MonoBehaviour
         
         if (RTSInputBindings.GetKeyDown(RTSInputAction.Barracks) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
-            if (!menuAberto)
-            {
-                FecharOutrosMenus();
-                InterfaceAberta = true;
-                menuAberto = true;
-                AtualizarRetanguloJanela(true);
-            }
-            else
-            {
-                menuAberto = false;
-                InterfaceAberta = false;
-            }
+            AlternarInterface();
         }
 
         if (recolhimentoAutomatico)
@@ -136,6 +125,22 @@ public class GerenciadorQuartel : MonoBehaviour
                     tagAtualizacaoIntel = Time.unscaledTime + 3f;
                 }
             }
+        }
+    }
+
+    public void AlternarInterface()
+    {
+        if (!menuAberto)
+        {
+            FecharOutrosMenus();
+            InterfaceAberta = true;
+            menuAberto = true;
+            AtualizarRetanguloJanela(true);
+        }
+        else
+        {
+            menuAberto = false;
+            InterfaceAberta = false;
         }
     }
 

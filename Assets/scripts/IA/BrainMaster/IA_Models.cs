@@ -217,6 +217,7 @@ namespace Hegemonia.AI.BrainMaster
     {
         public string ItemKey;
         public int Quantity;
+        public string ProductionOrderId;
     }
 
     [Serializable]

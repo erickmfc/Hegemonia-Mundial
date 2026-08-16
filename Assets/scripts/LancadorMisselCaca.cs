@@ -93,6 +93,7 @@ public class LancadorMisselCaca : MonoBehaviour
         _sistemaDanos = GetComponent<SistemaDeDanos>();
         _rb = GetComponent<Rigidbody>();
         _audioSource = GetComponent<AudioSource>();
+        AudioRuntime.ConfigurarFonteDeMissel(_audioSource);
         PoolDeObjetosCombate.Prewarm(missilCacaPrefab, Mathf.Clamp(municaoMaxima, 2, 6));
 
         if (pontosDeSaida != null && pontosDeSaida.Length > 0)
@@ -488,6 +489,11 @@ public class LancadorMisselCaca : MonoBehaviour
 
     void OnGUI()
     {
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto)
+        {
+            return;
+        }
+
         bool radarAtivoVisualmente = false;
 
         if (_unidadeBase != null && _unidadeBase.selecionado) radarAtivoVisualmente = true;

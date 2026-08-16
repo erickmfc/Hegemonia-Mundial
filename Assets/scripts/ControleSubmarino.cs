@@ -1446,7 +1446,7 @@ public class ControleSubmarino : MonoBehaviour
             return;
         }
 
-        if (MenuConstrucao.EstaAberto || MenuPier.EstaAberto || Camera.main == null)
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto || Camera.main == null)
         {
             return;
         }

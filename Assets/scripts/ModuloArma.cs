@@ -155,7 +155,18 @@ public class ModuloArma
         
         // Efeitos
         if (efeitoDisparo != null) efeitoDisparo.Play();
-        if (somDisparo != null && fonte != null) fonte.PlayOneShot(somDisparo);
+        if (somDisparo != null && fonte != null)
+        {
+            if (tipo == TipoArma.Missil)
+            {
+                AudioRuntime.ConfigurarFonteDeMissel(fonte);
+            }
+            else
+            {
+                AudioRuntime.ConfigurarFonteDeTiro(fonte);
+            }
+            fonte.PlayOneShot(somDisparo);
+        }
         
         // Atualiza estado
         cooldownAtual = intervaloTiro;

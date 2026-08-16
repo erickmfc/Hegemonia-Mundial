@@ -31,6 +31,8 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
 
     void OnEnable()
     {
+        alvo = null;
+        velocidadeAproximada = 0f;
         ultimaPosicao = transform.position;
         inicializado = true;
     }
@@ -51,6 +53,7 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
 
         if (distancia <= limite)
         {
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("anti_missile_interception_attempts");
             NeutralizarAlvo();
             DetonarSelf();
         }
@@ -92,6 +95,7 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
 
         if (TentarDetonarMissil(raiz.gameObject, raiz.position))
         {
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("anti_missile_interceptions_confirmed");
             return;
         }
 

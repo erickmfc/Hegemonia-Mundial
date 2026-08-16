@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Hegemonia.AI.Shared;
 
 public class GerenciadorAeroporto : MonoBehaviour
 {
@@ -190,21 +191,13 @@ public class GerenciadorAeroporto : MonoBehaviour
             foreach (Transform filho in decolagem) waypointsDecolagem.Add(filho);
         }
 
-        // --- SISTEMA DE EMERGÊNCIA: AUTO-GERAÇÃO DE VAGAS ---
-        // Porta-aviões já usa vagas explícitas da hierarquia ("Patio aberto > parada...").
-        // Não gerar slots extras para não criar pontos invisíveis no convés.
-        if (!(this is GerenciadorPortaAvioes) && waypointsPatio.Count < 24)
+        // A capacidade do pátio é exclusivamente a capacidade real configurada
+        // na cena. Antes este fallback criava 24 GameObjects por aeroporto,
+        // inflando a capacidade e mascarando a falta de hangar. Sem vagas reais,
+        // a aeronave permanece no hangar interno até que uma vaga seja liberada.
+        if (!(this is GerenciadorPortaAvioes) && waypointsPatio.Count == 0)
         {
-            int vagasFaltantes = 24 - waypointsPatio.Count;
-            float anguloStep = 360f / vagasFaltantes * Mathf.Deg2Rad;
-            for (int i = 0; i < vagasFaltantes; i++)
-            {
-                GameObject vagaAuto = new GameObject($"Vaga_Auto_{i}");
-                vagaAuto.transform.SetParent(patio != null ? patio : this.transform);
-                float ang = i * anguloStep;
-                vagaAuto.transform.localPosition = new Vector3(Mathf.Cos(ang) * 65f, 0, Mathf.Sin(ang) * 65f);
-                waypointsPatio.Add(vagaAuto.transform);
-            }
+            Debug.LogWarning("[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.", this);
         }
 
         if (decida != null)
@@ -393,23 +386,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Alpha7))
         {
-            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
-            if (!_identidadeVerificada) { _identidadeCacheada = GetComponent<IdentidadeUnidade>(); _identidadeVerificada = true; }
-            if (_identidadeCacheada != null && _identidadeCacheada.teamID != 1 && _identidadeCacheada.teamID != 0) return;
-
-            bool novoEstadoMenu = !menuAtivo;
-            if (novoEstadoMenu)
-            {
-                GestorMenusExclusivos.Abrir(this);
-            }
-            else
-            {
-                GestorMenusExclusivos.Fechar(this);
-            }
-
-            menuAtivo = novoEstadoMenu;
-            if (menuAeroportoUI != null) menuAeroportoUI.SetActive(menuAtivo);
-            Debug.Log("[Aeroporto] Centro de Controle " + (menuAtivo ? "ABERTO" : "FECHADO"));
+            AlternarMenuPorAtalho();
         }
 
         if (menuAtivo && !GestorMenusExclusivos.EstaAtivo(this))
@@ -558,6 +535,36 @@ public class GerenciadorAeroporto : MonoBehaviour
         CriarSinalizadorAereoNoAlvo(pontoAlvo, aviaoSelecionadoParaMissao, usarMarcadorPatrulhaNoClique);
         aviaoSelecionadoParaMissao = null;
         AtualizarModoInteracaoManualAeroporto();
+    }
+
+    public bool AlternarMenuPorAtalho()
+    {
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return false;
+        if (!_identidadeVerificada)
+        {
+            _identidadeCacheada = GetComponent<IdentidadeUnidade>();
+            _identidadeVerificada = true;
+        }
+
+        if (_identidadeCacheada != null && _identidadeCacheada.teamID != 1 && _identidadeCacheada.teamID != 0)
+        {
+            return false;
+        }
+
+        bool novoEstadoMenu = !menuAtivo;
+        if (novoEstadoMenu)
+        {
+            GestorMenusExclusivos.Abrir(this);
+        }
+        else
+        {
+            GestorMenusExclusivos.Fechar(this);
+        }
+
+        menuAtivo = novoEstadoMenu;
+        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(menuAtivo);
+        Debug.Log("[Aeroporto] Centro de Controle " + (menuAtivo ? "ABERTO" : "FECHADO"));
+        return true;
     }
 
     public void CancelarInteracaoPorConstrucao()
@@ -949,21 +956,22 @@ public class GerenciadorAeroporto : MonoBehaviour
     /// Spawn da reserva mínima da IA usando o mesmo pátio e a mesma rotina do
     /// jogador, sem deixar o primeiro caça preso no limitador da fila.
     /// </summary>
-    public void ComprarAviaoIAImediato(GameObject prefabDeAeronave)
+    public void ComprarAviaoIAImediato(GameObject prefabDeAeronave, string productionOrderId = "")
     {
         // A IA pode encontrar fichas legadas com uma referência vazia/objeto
         // quebrado. Não encaminhe esse objeto para Instantiate: isso gerava o
         // erro de prefab sem nome e interrompia a fila militar.
         if (prefabDeAeronave == null || string.IsNullOrWhiteSpace(prefabDeAeronave.name))
         {
+            IAAutoProductionRegistry.Release(productionOrderId, Time.time);
             Debug.LogWarning("[Aeroporto] Ordem da IA ignorada: prefab de aeronave invalido.", this);
             return;
         }
-        ComprarAviaoImediato(prefabDeAeronave);
+        ComprarAviaoImediato(prefabDeAeronave, productionOrderId);
     }
 
 
-    private void ComprarAviaoImediato(GameObject prefabDeAeronave)
+    private void ComprarAviaoImediato(GameObject prefabDeAeronave, string productionOrderId = "")
     {
         if (prefabDeAeronave == null)
         {
@@ -983,9 +991,15 @@ public class GerenciadorAeroporto : MonoBehaviour
         GameObject aeronaveNascente = UnityEngine.Object.Instantiate((UnityEngine.Object)prefabDeAeronave, posSpawn, Quaternion.identity) as GameObject;
         if (aeronaveNascente == null)
         {
+            IAAutoProductionRegistry.Release(productionOrderId, Time.time);
             Debug.LogError("[Aeroporto] Nao foi possivel instanciar o prefab de aeronave: " + prefabDeAeronave.name, this);
             return;
         }
+
+        // A aeronave já foi entregue ao aeroporto, mesmo que o pátio esteja
+        // cheio e ela precise aguardar no hangar interno. Não há vaga
+        // emergencial a criar para satisfazer uma ordem já materializada.
+        IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
 
         string nomePrefabNormalizado = prefabDeAeronave.name.ToLowerInvariant();
         if ((nomePrefabNormalizado.Contains("nara") || nomePrefabNormalizado.Contains("american_plane_transport"))
@@ -1158,22 +1172,28 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
-    protected IEnumerator RotinaRecebimento(ControleAviao aviao)
+    protected virtual IEnumerator RotinaRecebimento(ControleAviao aviao)
     {
         if (aviao == null) yield break;
 
-        Transform vagaDesignada = aviao.vagaRetorno != null ? aviao.vagaRetorno : ObterPrimeiraVagaLivre();
+        Transform vagaDesignada = null;
+        if (aviao.vagaRetorno != null
+            && aviao.vagaRetorno != transform
+            && aviao.vagaRetorno.IsChildOf(transform))
+        {
+            vagaDesignada = aviao.vagaRetorno;
+        }
+        else
+        {
+            vagaDesignada = ObterPrimeiraVagaLivre();
+        }
         
         if (vagaDesignada == null)
         {
-            GameObject vagaEmergencial = new GameObject($"Vaga_Emergencial_{waypointsPatio.Count}");
-            vagaEmergencial.transform.SetParent(patio != null ? patio : transform, false);
-            int indice = waypointsPatio.Count;
-            vagaEmergencial.transform.localPosition = new Vector3((indice % 6) * 14f - 35f, 0f, (indice / 6) * 16f + 45f);
-            vagaEmergencial.transform.localRotation = Quaternion.identity;
-            vagaDesignada = vagaEmergencial.transform;
-            waypointsPatio.Add(vagaDesignada);
-            Debug.LogWarning($"[Aeroporto] {name} estava sem vaga livre. Criada {vagaDesignada.name} para manter {aviao.name} visivel no patio.");
+            // Pátio lotado: a aeronave fica na reserva interna. Não crie
+            // vagas artificiais, pois elas espalhavam aviões pelo mapa.
+            GuardarNoHangarAutomatico(aviao);
+            yield break;
         }
 
         aviao.vagaRetorno = vagaDesignada;
@@ -1926,7 +1946,8 @@ public class GerenciadorAeroporto : MonoBehaviour
     {
         if (Construtor.EmModoConstrucaoAtivo) return;
 
-        if (exibirTooltipStatus && mouseHover && !(this is GerenciadorPortaAvioes))
+        if (!IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto
+            && exibirTooltipStatus && mouseHover && !(this is GerenciadorPortaAvioes))
         {
             GUIStyle boxStyle = new GUIStyle(GUI.skin.box);
             if (_texturaTooltip == null)
@@ -2821,7 +2842,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         return true;
     }
 
-    protected void ReporPatioComAvioesDoHangar()
+    protected virtual void ReporPatioComAvioesDoHangar()
     {
         for (int i = avioesNoHangar.Count - 1; i >= 0 && ObterPrimeiraVagaLivre() != null; i--)
         {

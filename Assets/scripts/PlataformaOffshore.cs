@@ -57,6 +57,8 @@ public class PlataformaOffshore : MonoBehaviour
     [Header("Fila de petroleiros")]
     [Tooltip("Quantidade de petroleiros que podem aguardar nesta plataforma. O primeiro opera; os demais ficam enfileirados.")]
     [SerializeField] private int capacidadeFilaPetroleiros = 8;
+    [Tooltip("Distancia fixa entre petroleiros aguardando a vez na plataforma.")]
+    [SerializeField, Min(25f)] private float distanciaEntrePetroleiros = 75f;
     [System.NonSerialized] private readonly List<NavioPetroleiro> _filaPetroleiros = new List<NavioPetroleiro>(8);
 
     public int PetroleirosNaFila
@@ -64,6 +66,7 @@ public class PlataformaOffshore : MonoBehaviour
         get
         {
             LimparFila();
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("platform_tanker_queue", _filaPetroleiros.Count);
             return _filaPetroleiros.Count;
         }
     }
@@ -79,6 +82,31 @@ public class PlataformaOffshore : MonoBehaviour
     public bool EhOcupante(NavioPetroleiro petroleiro)
     {
         return petroleiro != null && _petroleiroOcupante == petroleiro;
+    }
+
+    /// <summary>
+    /// Retorna a vaga fisica da fila sem criar marcadores ou executar buscas.
+    /// O indice zero e o ponto de abastecimento; os demais recuam 75 m (ou o
+    /// valor configurado) a partir dele.
+    /// </summary>
+    public Vector3 ObterPosicaoEspera(NavioPetroleiro petroleiro)
+    {
+        LimparFila();
+        if (petroleiro == null || pontoAbastecer == null) return transform.position;
+        int indice = _filaPetroleiros.IndexOf(petroleiro);
+        if (indice <= 0) return pontoAbastecer.position;
+
+        Vector3 direcao = pontoAbastecer.forward;
+        direcao.y = 0f;
+        if (direcao.sqrMagnitude < 0.01f)
+        {
+            direcao = transform.forward;
+            direcao.y = 0f;
+        }
+        direcao.Normalize();
+        Vector3 espera = pontoAbastecer.position - direcao * (Mathf.Max(25f, distanciaEntrePetroleiros) * indice);
+        espera.y = pontoAbastecer.position.y;
+        return espera;
     }
 
     private void LimparFila()

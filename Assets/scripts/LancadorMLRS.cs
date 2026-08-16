@@ -108,6 +108,10 @@ public class LancadorMLRS : MonoBehaviour
         }
 
         AudioRuntime.ConfigurarHierarquia(gameObject);
+        if (audioSourceDisparo != null)
+        {
+            AudioRuntime.ConfigurarFonteDeMissel(audioSourceDisparo);
+        }
     }
 
     void BuscarAlvo()
@@ -272,6 +276,7 @@ public class LancadorMLRS : MonoBehaviour
 
             if (audioSourceDisparo != null && somDisparo != null)
             {
+                AudioRuntime.ConfigurarFonteDeMissel(audioSourceDisparo);
                 audioSourceDisparo.PlayOneShot(somDisparo);
             }
         }

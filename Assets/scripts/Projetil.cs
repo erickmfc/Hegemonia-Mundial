@@ -97,10 +97,7 @@ public class Projetil : MonoBehaviour
         AudioSource[] audios = GetComponentsInChildren<AudioSource>();
         foreach (AudioSource a in audios)
         {
-            a.spatialBlend = 1f;
-            a.rolloffMode = AudioRolloffMode.Linear;
-            a.minDistance = 3f;
-            a.maxDistance = 50f;
+            AudioRuntime.ConfigurarFonteDeTiro(a);
         }
     }
 
@@ -314,10 +311,7 @@ public class Projetil : MonoBehaviour
             AudioSource[] audiosImpacto = fx.GetComponentsInChildren<AudioSource>();
             foreach (AudioSource a in audiosImpacto)
             {
-                a.spatialBlend = 1f;
-                a.rolloffMode = AudioRolloffMode.Linear;
-                a.minDistance = 3f;
-                a.maxDistance = 50f;
+                AudioRuntime.ConfigurarFonteDeTiro(a);
             }
 
         }

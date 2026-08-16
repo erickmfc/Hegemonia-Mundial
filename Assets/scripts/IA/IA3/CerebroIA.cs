@@ -2,6 +2,8 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Hegemonia.AI.IA01;
+using Hegemonia.AI.Shared;
 
 // O PENSADOR AUTÔNOMO
 // Agora com Plano de Dominação (Build Order) e Economia Própria
@@ -212,7 +214,7 @@ public class CerebroIA : MonoBehaviour
     void ComprarEstrutura(string nomeParcial, PriorityLevel prioridade)
     {
         var item = EncontrarNoMenu(nomeParcial);
-        if (item != null && recursosIA >= item.preco)
+        if (item != null && recursosIA >= item.preco && recebedor != null)
         {
             // Lógica Especial para NAVAL
             Vector3 alvo = Vector3.zero;
@@ -305,6 +307,13 @@ public class CerebroIA : MonoBehaviour
         var item = EncontrarNoMenu(nomeParcial);
         if (item != null && recursosIA >= item.preco)
         {
+            IdentidadeIA identity = identidade != null ? identidade : GetComponent<IdentidadeIA>();
+            int teamId = identity != null ? identity.teamID : 0;
+            IA01MilitaryAssetKind kind = IA01MilitaryProductionGuard.Classify(item);
+            string unitType = kind == IA01MilitaryAssetKind.Other ? item.GetStableId() : kind.ToString();
+            int alive = CountOwnedForProduction(teamId, kind);
+            if (!IAAutoProductionRegistry.TryReserveProduction(teamId, unitType, "ia3", alive + 1, alive, out string orderId, Time.time, 180f)) return;
+
             recursosIA -= item.preco;
             historicoConstrucoes.Add(item.NomeItem); // Bug fix: era o nome amigavel
 
@@ -313,8 +322,29 @@ public class CerebroIA : MonoBehaviour
                 ActionType.RecruitUnit,
                 Vector3.zero,
                 item,
-                prioridade
+                prioridade,
+                default,
+                orderId
             );
+        }
+    }
+
+    int CountOwnedForProduction(int teamId, IA01MilitaryAssetKind kind)
+    {
+        switch (kind)
+        {
+            case IA01MilitaryAssetKind.Infantry:
+                return IA01MilitaryProductionGuard.CountOwnedUnique(teamId, TipoUnidade.Infantaria);
+            case IA01MilitaryAssetKind.Tank:
+            case IA01MilitaryAssetKind.AntiAir:
+                return IA01MilitaryProductionGuard.CountOwnedUnique(teamId, TipoUnidade.Veiculo);
+            case IA01MilitaryAssetKind.Fighter:
+                return IA01MilitaryProductionGuard.CountOwnedUnique(teamId, TipoUnidade.Aereo);
+            case IA01MilitaryAssetKind.Naval:
+            case IA01MilitaryAssetKind.OilTanker:
+                return IA01MilitaryProductionGuard.CountOwnedUnique(teamId, TipoUnidade.Naval);
+            default:
+                return 0;
         }
     }
 

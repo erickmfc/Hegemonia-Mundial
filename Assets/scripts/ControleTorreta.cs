@@ -233,7 +233,7 @@ public class ControleTorreta : MonoBehaviour
 
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
-        fonteAudio.spatialBlend = 1f;
+        AudioRuntime.ConfigurarFonteDeTiro(fonteAudio);
 
         InicializarEfeitosDisparo();
 
@@ -277,12 +277,14 @@ public class ControleTorreta : MonoBehaviour
         if (helicopteroPai != null && pecaQueGira == null && canosDaTorreta == null)
             bloquearRotacaoAutomatica = true;
 
-        if (pecaQueGira == null) 
+        if (pecaQueGira == null)
         {
-            if (transform.childCount > 0)
-                pecaQueGira = transform.GetChild(0); 
-            else
-                bloquearRotacaoAutomatica = true; 
+            // Nunca use o primeiro filho como pivô: em vários prefabs ele é
+            // a malha inteira, o convés ou um marcador de saída. Girá-lo
+            // durante o tiro altera a estrutura visual do prefab.
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "TurretAimFallback",
+                name + ": pecaQueGira ausente; estrutura preservada");
         }
         
         if (pecaQueGira != null)
@@ -709,27 +711,11 @@ public class ControleTorreta : MonoBehaviour
             contadorTempo -= Time.deltaTime;
             if (contadorTempo <= 0f)
             {
-                bool podeDisparar;
-
-                if (pecaQueGira != null && pecaQueGira.parent != null)
-                {
-                    float anguloAtualY  = pecaQueGira.localEulerAngles.y;
-                    if (anguloAtualY > 180f) anguloAtualY -= 360f;
-
-                    float diff = Mathf.Abs(Mathf.DeltaAngle(anguloAtualY, anguloY));
-                    float tolerancia = souAntiAereo ? 45f : 8f;
-                    podeDisparar = (diff < tolerancia);
-                }
-                else
-                {
-                    Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
-                    Vector3 dirAlvo = (alvoPosicao - pecaQueGira.position);
-                    dirAlvo.y = 0f;
-                    Vector3 minhaFrente = pecaQueGira.forward;
-                    minhaFrente.y = 0f;
-                    float tolerancia = souAntiAereo ? 45f : 8f;
-                    podeDisparar = Vector3.Angle(minhaFrente, dirAlvo) < tolerancia;
-                }
+                // A permissao de tiro precisa usar a frente REAL do cano ou
+                // lancador. Comparar apenas o angulo local do pivô deixava
+                // alguns prefabs navais dispararem para o alvo com a malha
+                // ainda virada para o lado.
+                bool podeDisparar = EstaAlinhadaParaDisparar();
 
                 if (podeDisparar && estaProntoParaAtirar)
                 {
@@ -842,6 +828,54 @@ public class ControleTorreta : MonoBehaviour
         return alvoPosicao;
     }
 
+    private bool EstaAlinhadaParaDisparar()
+    {
+        if (alvoAtual == null)
+        {
+            return false;
+        }
+
+        // So use o ponto do lancador quando ele realmente sera o proximo a
+        // disparar. Depois de esgotar os misseis, a torre ainda pode usar o
+        // canhao sem ficar presa ao alinhamento de um lancador vazio.
+        bool proximoDisparoEhMissel = misselPrefab != null
+            && misseisAtuais > 0
+            && !estaRecarregandoMisseis
+            && cooldownMissel <= 0f;
+        Transform[] saidas = proximoDisparoEhMissel && locaisDoMissel != null && locaisDoMissel.Length > 0
+            ? locaisDoMissel
+            : locaisDoTiro;
+        if (saidas == null || saidas.Length == 0)
+        {
+            GarantirLocaisDeTiro();
+            saidas = proximoDisparoEhMissel && locaisDoMissel != null && locaisDoMissel.Length > 0
+                ? locaisDoMissel
+                : locaisDoTiro;
+        }
+        if (saidas == null || saidas.Length == 0)
+        {
+            return false;
+        }
+
+        int indice = Mathf.Clamp(indiceBarrilAtual, 0, saidas.Length - 1);
+        Transform saida = saidas[indice];
+        if (saida == null)
+        {
+            return false;
+        }
+
+        Vector3 direcaoAlvo = ObterPosicaoPreditaAlvo() - saida.position;
+        if (direcaoAlvo.sqrMagnitude <= 0.001f)
+        {
+            return false;
+        }
+
+        // Defesa aerea pode acompanhar alvos rapidos sem abrir um cone de
+        // tiro exagerado; armas navais de superficie exigem mira mais fina.
+        float tolerancia = souAntiAereo ? 12f : 5f;
+        return Vector3.Angle(saida.forward, direcaoAlvo) <= tolerancia;
+    }
+
     void Disparar()
     {
         bool alvoEhMissil = ObterEhMissilComCache(alvoAtual);
@@ -891,16 +925,10 @@ public class ControleTorreta : MonoBehaviour
                 return;
             }
 
+            // O projétil segue a frente visível do cano. A verificacao de
+            // alinhamento acima garante que essa direcao ja aponta para o
+            // alvo previsto antes de cada disparo.
             Vector3 direcaoDisparo = barrilDaVez.forward;
-            if (alvoAtual != null)
-            {
-                Vector3 alvoPosicao = ObterPosicaoPreditaAlvo();
-                Vector3 direcaoPredita = alvoPosicao - barrilDaVez.position;
-                if (direcaoPredita.sqrMagnitude > 0.01f)
-                {
-                    direcaoDisparo = direcaoPredita.normalized;
-                }
-            }
 
             Quaternion rotacaoDisparo = Quaternion.LookRotation(direcaoDisparo, Vector3.up);
             GameObject bala = PoolDeObjetosCombate.Spawn(prefabParaUsar, barrilDaVez.position, rotacaoDisparo);
@@ -913,7 +941,11 @@ public class ControleTorreta : MonoBehaviour
                 if (scriptBala.velocidade == 0) scriptBala.velocidade = 200f;
             }
 
-            if (somTiro != null && fonteAudio != null) fonteAudio.PlayOneShot(somTiro);
+            if (somTiro != null && fonteAudio != null)
+            {
+                AudioRuntime.ConfigurarFonteDeTiro(fonteAudio);
+                fonteAudio.PlayOneShot(somTiro);
+            }
             TocarEfeitoDisparo();
             AplicarRecuoDisparo();
 
@@ -986,7 +1018,11 @@ public class ControleTorreta : MonoBehaviour
 
         MissileThreatTracker.RegistrarLancamento(missel, this, posicaoPredita, alvoResolvido, MissileThreatTracker.EstimarVelocidade(missel));
 
-        if (somMissel != null && fonteAudio != null) fonteAudio.PlayOneShot(somMissel);
+        if (somMissel != null && fonteAudio != null)
+        {
+            AudioRuntime.ConfigurarFonteDeMissel(fonteAudio);
+            fonteAudio.PlayOneShot(somMissel);
+        }
         TocarEfeitoDisparo();
         AplicarRecuoDisparo();
     }
@@ -995,11 +1031,14 @@ public class ControleTorreta : MonoBehaviour
     {
         _alvoRecuoTransform = pecaRecuo != null
             ? pecaRecuo
-            : (canosDaTorreta != null ? canosDaTorreta : pecaQueGira);
+            : pecaQueGira;
 
         if (_alvoRecuoTransform == null)
         {
-            _alvoRecuoTransform = transform;
+            // Sem uma peca de recuo explicitamente segura, nao mova a raiz
+            // nem o conjunto estrutural do prefab durante o disparo.
+            _recuoInicializado = true;
+            return;
         }
 
         _recuoLocalOriginal = _alvoRecuoTransform.localPosition;
@@ -1018,6 +1057,7 @@ public class ControleTorreta : MonoBehaviour
         {
             InicializarRecuo();
         }
+        if (_alvoRecuoTransform == null) return;
 
         float novoRecuo = Mathf.MoveTowards(_recuoAtual, 0f, Time.deltaTime * velocidadeRetornoRecuo);
         if (!Mathf.Approximately(novoRecuo, _recuoAtual))
@@ -1038,6 +1078,7 @@ public class ControleTorreta : MonoBehaviour
         {
             InicializarRecuo();
         }
+        if (_alvoRecuoTransform == null) return;
 
         _recuoAtual = 1f;
         _alvoRecuoTransform.localPosition = _recuoLocalOriginal + Vector3.back * forcaRecuoDisparo;

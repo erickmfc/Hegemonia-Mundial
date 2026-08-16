@@ -21,6 +21,7 @@ namespace Hegemonia.AI.IA01
         [Header("Runtime")]
         [SerializeField] private float frameBudgetMilliseconds = 1.5f;
         [SerializeField] private float serviceRefreshInterval = 1f;
+        [SerializeField] private float summaryRefreshInterval = 0.25f;
         [SerializeField] private int matchSeed = 1;
 
         [Header("Debug")]
@@ -38,6 +39,7 @@ namespace Hegemonia.AI.IA01
         private readonly StringBuilder summaryBuilder = new StringBuilder(512);
 
         private float nextServiceRefreshAt;
+        private float nextRuntimeSummaryAt;
         private IA01SchedulerPlan lastPlan = new IA01SchedulerPlan();
         private bool worldReady;
         private string worldReadyReason = "aguardando inicialização do mundo";
@@ -256,6 +258,8 @@ namespace Hegemonia.AI.IA01
 
         public int ExecuteTick(float now, float frameMs, float frameBudgetOverrideMs = -1f)
         {
+            bool measureTick = DiagnosticoDesempenhoJogo.CapturaAtiva;
+            float tickStartedAt = measureTick ? Time.realtimeSinceStartup : 0f;
             PruneInvalidControllers();
             if (autoBindSceneControllers && controllers.Count == 0)
             {
@@ -267,8 +271,9 @@ namespace Hegemonia.AI.IA01
             if (!TryPrepareWorld(out string notReadyReason))
             {
                 ReportWorldNotReady(notReadyReason);
-                runtimeSummary = BuildRuntimeSummary(null);
+                RefreshRuntimeSummaryIfDue(null, now);
                 telemetry.RecordFrame(frameMs);
+                ReportTickCost(measureTick, tickStartedAt);
                 return 0;
             }
 
@@ -276,9 +281,15 @@ namespace Hegemonia.AI.IA01
             IA01SchedulerPlan plan = scheduler.BuildPlan(controllers, now, budgetMs);
             lastPlan = plan;
 
+            float executionStartedAt = Time.realtimeSinceStartup;
             executionBuffer.Clear();
             for (int i = 0; i < plan.Slices.Count; i++)
             {
+                if ((Time.realtimeSinceStartup - executionStartedAt) * 1000f >= budgetMs)
+                {
+                    break;
+                }
+
                 IA01ScheduledSlice slice = plan.Slices[i];
                 if (slice == null || slice.Controller == null)
                 {
@@ -295,13 +306,14 @@ namespace Hegemonia.AI.IA01
             }
 
             telemetry.RecordFrame(frameMs);
-            runtimeSummary = BuildRuntimeSummary(plan);
+            bool summaryRefreshed = RefreshRuntimeSummaryIfDue(plan, now);
 
-            if (logSummary)
+            if (logSummary && summaryRefreshed)
             {
                 Debug.Log("[IA01Manager] " + runtimeSummary);
             }
 
+            ReportTickCost(measureTick, tickStartedAt);
             return executionBuffer.Count;
         }
 
@@ -353,7 +365,7 @@ namespace Hegemonia.AI.IA01
                 RegisterController(controller);
             }
 
-            runtimeSummary = BuildRuntimeSummary(lastPlan);
+            RefreshRuntimeSummaryIfDue(lastPlan, Time.unscaledTime, true);
         }
 
         public IA01Controller CreateControllerFromGovernment(global::DadosPaisGoverno country)
@@ -721,6 +733,28 @@ namespace Hegemonia.AI.IA01
             if (!worldReady) summaryBuilder.Append(" worldReason=").Append(worldReadyReason ?? string.Empty);
             summaryBuilder.Append(" service=").Append(ServiceSnapshot.Report ?? string.Empty);
             return summaryBuilder.ToString();
+        }
+
+        private bool RefreshRuntimeSummaryIfDue(IA01SchedulerPlan plan, float now, bool force = false)
+        {
+            if (!force && now < nextRuntimeSummaryAt)
+            {
+                return false;
+            }
+
+            runtimeSummary = BuildRuntimeSummary(plan);
+            nextRuntimeSummaryAt = now + Mathf.Max(0.1f, summaryRefreshInterval);
+            return true;
+        }
+
+        private static void ReportTickCost(bool measuring, float startedAt)
+        {
+            if (measuring)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(
+                    "ia01_manager_ms",
+                    (Time.realtimeSinceStartup - startedAt) * 1000f);
+            }
         }
 
         private static int CompareSaveStates(SaveIA01NationState left, SaveIA01NationState right)

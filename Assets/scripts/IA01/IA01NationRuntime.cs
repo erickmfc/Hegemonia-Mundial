@@ -99,6 +99,34 @@ namespace Hegemonia.AI.IA01
         private bool foundationDiagnosticLogged;
         private bool foundationCommandDiagnosticLogged;
 
+        private enum RuntimePhase
+        {
+            World,
+            Economy,
+            Planning,
+            Market,
+            War,
+            Military,
+            Construction,
+            Build,
+            Commands,
+            Finalize
+        }
+
+        private RuntimePhase pendingPhase = RuntimePhase.World;
+        private DadosPaisGoverno pendingCountry;
+        private bool pendingRestoredFromSave;
+        private bool pendingWorldChanged;
+        private bool pendingImmediateLossRecovery;
+        private string pendingLostEntityName = string.Empty;
+        private bool pendingConstructionIntent;
+        private bool pendingThreatened;
+        private bool pendingMarketChanged;
+        private float pendingCycleStartedAt;
+
+        /// <summary>True when the current nation cycle was yielded by its time budget.</summary>
+        public bool LastExecuteDeferred { get; private set; }
+
         public IA01NationRuntime(IA01Controller controller, IA01RuntimeContext context, IA01NationProfile profile)
         {
             this.controller = controller;
@@ -154,7 +182,193 @@ namespace Hegemonia.AI.IA01
             BuildPlanRuntime?.RestoreSaveState(state.buildPlanState);
         }
 
-        public int Execute(float now, int maxOperations, bool restoredFromSave)
+        /// <summary>
+        /// Executes at most a few atomic phases. Each phase keeps its state on
+        /// this runtime so an expensive nation never monopolizes a frame.
+        /// </summary>
+        public int Execute(float now, int maxOperations, bool restoredFromSave, float maxMilliseconds)
+        {
+            if (maxOperations <= 0)
+            {
+                LastExecuteDeferred = pendingPhase != RuntimePhase.World;
+                return 0;
+            }
+
+            float startedAt = Time.realtimeSinceStartup;
+            float budgetSeconds = Mathf.Max(0.0001f, maxMilliseconds * 0.001f);
+            int operations = 0;
+            LastExecuteDeferred = false;
+
+            while (operations < maxOperations && Time.realtimeSinceStartup - startedAt < budgetSeconds)
+            {
+                float moduleStartedAt = Time.realtimeSinceStartup;
+                switch (pendingPhase)
+                {
+                    case RuntimePhase.World:
+                        pendingCycleStartedAt = moduleStartedAt;
+                        mostExpensiveModule = "n/d";
+                        mostExpensiveModuleMilliseconds = 0f;
+                        pendingCountry = SistemaGovernoMundial.Instancia != null
+                            ? SistemaGovernoMundial.Instancia.ObterPais(context.TeamId)
+                            : null;
+                        pendingRestoredFromSave = restoredFromSave;
+                        pendingWorldChanged = WorldState.Refresh(now);
+                        pendingImmediateLossRecovery = false;
+                        pendingLostEntityName = string.Empty;
+                        if (pendingWorldChanged && WorldState.TryConsumeOwnStructureLoss(out pendingLostEntityName))
+                        {
+                            IA01IntentType ignored;
+                            pendingImmediateLossRecovery = TryResolveLossRecoveryIntent(pendingLostEntityName, out ignored);
+                        }
+                        TrackModule("WorldState", moduleStartedAt);
+                        pendingPhase = RuntimePhase.Economy;
+                        operations++;
+                        break;
+
+                    case RuntimePhase.Economy:
+                        Economy.TryApplyInitialTreasury(pendingRestoredFromSave);
+                        IntentBoard.Clear();
+                        currentTreasury = pendingCountry != null ? pendingCountry.saldo : 0;
+                        EconomicModel.Refresh(pendingCountry);
+                        CityPlanner.RefreshCapital(now);
+                        int capitalCost = 0;
+                        if (CityPlanner.Capital == null && Catalog.TryGetCapital(out IA01BuildDefinition capitalDefinition))
+                        {
+                            capitalCost = capitalDefinition.Cost;
+                        }
+                        Economy.EnsureFoundationFunding(CityPlanner.Capital != null, capitalCost, pendingRestoredFromSave);
+                        currentTreasury = pendingCountry != null ? pendingCountry.saldo : currentTreasury;
+                        UpdateOperationalStatus(now, pendingCountry);
+                        TrackModule("Economy", moduleStartedAt);
+                        pendingPhase = RuntimePhase.Planning;
+                        operations++;
+                        break;
+
+                    case RuntimePhase.Planning:
+                        if (PlanningAdvisor != null)
+                        {
+                            PlanningAdvisor.Refresh(now, pendingCountry, Economy.IsEmergencyReserveRequired);
+                        }
+                        TrackModule("PlanningAdvisor", moduleStartedAt);
+                        CityPlanner.PublishNeeds(IntentBoard, now, profile, pendingCountry, Economy.IsEmergencyReserveRequired);
+                        if (pendingImmediateLossRecovery)
+                        {
+                            IA01IntentType recoveryIntent;
+                            if (TryResolveLossRecoveryIntent(pendingLostEntityName, out recoveryIntent))
+                            {
+                                IntentBoard.Publish(recoveryIntent, 3200, "Reposicao imediata apos perda", now);
+                                context.SetMetric("ia01.immediate_loss_recovery", 1d);
+                            }
+                        }
+                        pendingConstructionIntent = false;
+                        foreach (IA01Intent candidate in IntentBoard.All)
+                        {
+                            if (candidate != null && IsConstructionIntent(candidate.Type))
+                            {
+                                pendingConstructionIntent = true;
+                                break;
+                            }
+                        }
+                        pendingThreatened = IA01OperationalRules.IsCapitalThreatened(WorldState, CityPlanner.Capital, pendingCountry);
+                        TrackModule("CityPlanner", moduleStartedAt);
+                        pendingPhase = RuntimePhase.Market;
+                        operations++;
+                        break;
+
+                    case RuntimePhase.Market:
+                        pendingMarketChanged = NationalEconomy.Plan(now, IntentBoard, Economy.IsEmergencyReserveRequired, pendingConstructionIntent, pendingThreatened);
+                        TrackModule("Market", moduleStartedAt);
+                        pendingPhase = RuntimePhase.War;
+                        operations++;
+                        break;
+
+                    case RuntimePhase.War:
+                        WarDirector.Plan(now, IntentBoard, Economy.IsEmergencyReserveRequired);
+                        TrackModule("WarDirector", moduleStartedAt);
+                        pendingPhase = RuntimePhase.Military;
+                        operations++;
+                        break;
+
+                    case RuntimePhase.Military:
+                        if (MilitaryDirector != null)
+                        {
+                            MilitaryDirector.Tick(now);
+                        }
+                        TrackModule("MilitaryDirector", moduleStartedAt);
+                        pendingPhase = RuntimePhase.Construction;
+                        operations++;
+                        break;
+
+                    case RuntimePhase.Construction:
+                        ConstructionGovernor.Refresh(now, pendingCountry, WorldState, Catalog, BuildDirector);
+                        Strategy.Arbitrate(now, Economy.IsEmergencyReserveRequired);
+                        UpdateObjectiveStatus(IntentBoard, pendingCountry, now);
+                        TrackModule("ConstructionGovernor", moduleStartedAt);
+                        pendingPhase = RuntimePhase.Build;
+                        operations++;
+                        break;
+
+                    case RuntimePhase.Build:
+                        bool foundationPending = CityPlanner != null && CityPlanner.Capital == null;
+                        if (!pendingMarketChanged || foundationPending || pendingImmediateLossRecovery)
+                        {
+                            if (pendingImmediateLossRecovery && BuildDirector != null)
+                            {
+                                BuildDirector.ImmediateRecoveryRequested = true;
+                            }
+                            bool planAccepted = BuildDirector != null && BuildDirector.Plan(now, IntentBoard);
+                            if (foundationPending && !foundationDiagnosticLogged && DiagnosticoDesempenhoJogo.CapturaAtiva)
+                            {
+                                DiagnosticoDesempenhoJogo.RegistrarEvento("IA01Build", "fundacao planejada=" + planAccepted);
+                                foundationDiagnosticLogged = true;
+                            }
+                        }
+                        TrackModule("BuildDirector", moduleStartedAt);
+                        pendingPhase = RuntimePhase.Commands;
+                        operations++;
+                        break;
+
+                    case RuntimePhase.Commands:
+                        bool hasFoundationPending = CityPlanner != null && CityPlanner.Capital == null;
+                        bool processQueuedCommand = BuildDirector == null || !BuildDirector.HasPendingConstruction || now >= BuildDirector.ConfirmationReadyAt;
+                        if (processQueuedCommand)
+                        {
+                            bool cancelConstructionCommands = (ConstructionGovernor != null && ConstructionGovernor.ConstructionMode == IA01ConstructionMode.Frozen)
+                                || (BuildDirector != null && BuildDirector.CancelQueuedConstructionCommand);
+                            bool commandProcessed = CommandQueue.ProcessOne(now, cancelConstructionCommands);
+                            if (hasFoundationPending && BuildDirector != null && BuildDirector.HasPendingConstruction
+                                && !foundationCommandDiagnosticLogged && DiagnosticoDesempenhoJogo.CapturaAtiva)
+                            {
+                                DiagnosticoDesempenhoJogo.RegistrarEvento("IA01Build", "fila fundacao processada=" + commandProcessed);
+                                foundationCommandDiagnosticLogged = true;
+                            }
+                        }
+                        pendingPhase = RuntimePhase.Finalize;
+                        operations++;
+                        break;
+
+                    default:
+                        currentTreasury = pendingCountry != null ? pendingCountry.saldo : currentTreasury;
+                        context.SetMetric("ia01.city.lots_reserved", Reservations.ReservedCount);
+                        context.SetMetric("ia01.commands.pending", CommandQueue.PendingCount);
+                        context.SetMetric("ia01.world.version", WorldState.Version);
+                        lastRuntimeSliceMilliseconds = (Time.realtimeSinceStartup - pendingCycleStartedAt) * 1000f;
+                        PublishDiagnostics(now);
+                        pendingPhase = RuntimePhase.World;
+                        pendingCountry = null;
+                        pendingRestoredFromSave = false;
+                        operations++;
+                        break;
+                }
+            }
+
+            LastExecuteDeferred = pendingPhase != RuntimePhase.World;
+            return operations;
+        }
+
+        // Mantido como referencia para saves/diagnosticos antigos; o caminho de
+        // execucao usa a sobrecarga com orcamento real acima.
+        private int ExecuteLegacy(float now, int maxOperations, bool restoredFromSave)
         {
             if (maxOperations <= 0)
             {
@@ -168,7 +382,18 @@ namespace Hegemonia.AI.IA01
             DadosPaisGoverno country = government != null ? government.ObterPais(context.TeamId) : null;
             int operations = 0;
             float moduleStartedAt = Time.realtimeSinceStartup;
-            operations += WorldState.Refresh(now) ? 1 : 0;
+            bool worldChanged = WorldState.Refresh(now);
+            bool immediateLossRecovery = false;
+            string lostEntityName = string.Empty;
+            if (worldChanged && WorldState.TryConsumeOwnStructureLoss(out lostEntityName))
+            {
+                IA01IntentType recoveryIntent;
+                if (TryResolveLossRecoveryIntent(lostEntityName, out recoveryIntent))
+                {
+                    immediateLossRecovery = true;
+                }
+            }
+            operations += worldChanged ? 1 : 0;
             TrackModule("WorldState", moduleStartedAt);
             operations += Economy.TryApplyInitialTreasury(restoredFromSave) ? 1 : 0;
             IntentBoard.Clear();
@@ -188,6 +413,19 @@ namespace Hegemonia.AI.IA01
             operations += PlanningAdvisor != null && PlanningAdvisor.Refresh(now, country, Economy.IsEmergencyReserveRequired) ? 1 : 0;
             TrackModule("PlanningAdvisor", moduleStartedAt);
             CityPlanner.PublishNeeds(IntentBoard, now, profile, country, Economy.IsEmergencyReserveRequired);
+            if (immediateLossRecovery)
+            {
+                IA01IntentType recoveryIntent;
+                if (TryResolveLossRecoveryIntent(lostEntityName, out recoveryIntent))
+                {
+                    IntentBoard.Publish(
+                        recoveryIntent,
+                        3200,
+                        "Reposicao imediata apos perda: " + (string.IsNullOrWhiteSpace(lostEntityName) ? "estrutura" : lostEntityName),
+                        now);
+                    context.SetMetric("ia01.immediate_loss_recovery", 1d);
+                }
+            }
             TrackModule("CityPlanner", moduleStartedAt);
             bool constructionIntentPending = false;
             foreach (IA01Intent candidate in IntentBoard.All)
@@ -222,10 +460,14 @@ namespace Hegemonia.AI.IA01
             // a narrow priority; after the capital exists the normal budget is
             // unchanged and the five-second construction cadence still applies.
             bool foundationPending = CityPlanner != null && CityPlanner.Capital == null;
-            if ((!marketChanged || foundationPending)
-                && (operations < maxOperations || foundationPending))
+            if ((!marketChanged || foundationPending || immediateLossRecovery)
+                && (operations < maxOperations || foundationPending || immediateLossRecovery))
             {
                 moduleStartedAt = Time.realtimeSinceStartup;
+                if (immediateLossRecovery && BuildDirector != null)
+                {
+                    BuildDirector.ImmediateRecoveryRequested = true;
+                }
                 bool planAccepted = BuildDirector != null && BuildDirector.Plan(now, IntentBoard);
                 if (foundationPending && !foundationDiagnosticLogged)
                 {
@@ -275,6 +517,81 @@ namespace Hegemonia.AI.IA01
             lastRuntimeSliceMilliseconds = (Time.realtimeSinceStartup - sliceStartedAt) * 1000f;
             PublishDiagnostics(now);
             return operations;
+        }
+
+        private bool TryResolveLossRecoveryIntent(string lostEntityName, out IA01IntentType intent)
+        {
+            intent = IA01IntentType.BuildLogistics;
+            string normalized = IA_Text.Normalize(lostEntityName ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return false;
+            }
+
+            if (normalized.Contains("prefeitura") || normalized.Contains("capital") || normalized.Contains("governo"))
+            {
+                intent = IA01IntentType.EstablishCapital;
+            }
+            else if (normalized.Contains("aeroporto") || normalized.Contains("airport") || normalized.Contains("base aerea"))
+            {
+                intent = normalized.Contains("comercial") || normalized.Contains("commercial")
+                    ? IA01IntentType.BuildCommercialAirport
+                    : IA01IntentType.BuildMilitaryAirport;
+            }
+            else if (normalized.Contains("estaleiro") || normalized.Contains("shipyard") || normalized.Contains("naval yard"))
+            {
+                intent = IA01IntentType.BuildShipyard;
+            }
+            else if (normalized.Contains("pier"))
+            {
+                intent = IA01IntentType.BuildPier;
+            }
+            else if (normalized.Contains("plataforma") || normalized.Contains("offshore"))
+            {
+                intent = IA01IntentType.BuildOffshorePlatform;
+            }
+            else if (normalized.Contains("energia") || normalized.Contains("usina") || normalized.Contains("gerador") || normalized.Contains("power"))
+            {
+                intent = IA01IntentType.BuildEnergy;
+            }
+            else if (normalized.Contains("fazenda") || normalized.Contains("farm") || normalized.Contains("comida") || normalized.Contains("food"))
+            {
+                intent = IA01IntentType.BuildFoodProduction;
+            }
+            else if (normalized.Contains("armazem") || normalized.Contains("warehouse") || normalized.Contains("storage"))
+            {
+                intent = IA01IntentType.BuildStorage;
+            }
+            else if (normalized.Contains("defesa") || normalized.Contains("torreta") || normalized.Contains("turret") || normalized.Contains("ciws"))
+            {
+                intent = IA01IntentType.BuildDefense;
+            }
+            else if (normalized.Contains("construtor") || normalized.Contains("vehicle constructor") || normalized.Contains("veiculo"))
+            {
+                intent = IA01IntentType.BuildVehicleConstructor;
+            }
+            else if (normalized.Contains("fabrica") || normalized.Contains("industria") || normalized.Contains("factory") || normalized.Contains("industrial"))
+            {
+                intent = IA01IntentType.BuildIndustry;
+            }
+            else if (normalized.Contains("quartel") || normalized.Contains("barraca") || normalized.Contains("barracks") || normalized.Contains("tent"))
+            {
+                intent = IA01IntentType.BuildMilitaryTent;
+            }
+            else if (normalized.Contains("casa") || normalized.Contains("apartamento") || normalized.Contains("resid") || normalized.Contains("house"))
+            {
+                intent = IA01IntentType.BuildResidentialCapacity;
+            }
+            else if (normalized.Contains("estrada") || normalized.Contains("rua") || normalized.Contains("logistica") || normalized.Contains("road"))
+            {
+                intent = IA01IntentType.BuildLogistics;
+            }
+            else
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void TrackModule(string module, float startedAt)
@@ -570,12 +887,33 @@ namespace Hegemonia.AI.IA01
         private readonly List<IdentidadeUnidade> ownedStructures = new List<IdentidadeUnidade>(32);
         private readonly List<IdentidadeUnidade> enemyUnits = new List<IdentidadeUnidade>(32);
         private readonly List<MarcadorTerritorio> enemyCapitals = new List<MarcadorTerritorio>(8);
+        private readonly List<IdentidadeUnidade> registeredIdentities = new List<IdentidadeUnidade>(96);
+        private readonly List<MarcadorTerritorio> registeredMarkers = new List<MarcadorTerritorio>(16);
+        private readonly Dictionary<int, string> ownStructureSnapshot = new Dictionary<int, string>(32);
+        private readonly Dictionary<int, string> currentOwnStructureSnapshot = new Dictionary<int, string>(32);
         private float nextRefreshAt;
+        private bool ownStructureSnapshotInitialized;
+        private bool ownStructureLossPending;
+        private string ownStructureLossName = string.Empty;
 
         public int Version { get; private set; }
         public IReadOnlyList<IdentidadeUnidade> OwnedStructures => ownedStructures;
         public IReadOnlyList<IdentidadeUnidade> EnemyUnits => enemyUnits;
         public IReadOnlyList<MarcadorTerritorio> EnemyCapitals => enemyCapitals;
+
+        public bool TryConsumeOwnStructureLoss(out string entityName)
+        {
+            entityName = ownStructureLossName;
+            if (!ownStructureLossPending)
+            {
+                entityName = string.Empty;
+                return false;
+            }
+
+            ownStructureLossPending = false;
+            ownStructureLossName = string.Empty;
+            return true;
+        }
 
         public IA01WorldState(IA01Controller controller, IA01RuntimeContext context)
         {
@@ -594,12 +932,13 @@ namespace Hegemonia.AI.IA01
             ownedStructures.Clear();
             enemyUnits.Clear();
             enemyCapitals.Clear();
+            currentOwnStructureSnapshot.Clear();
             int ownTeam = context.TeamId;
 
-            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-            for (int i = 0; i < identities.Length; i++)
+            RegistroEntidadesJogo.FillUnidades(registeredIdentities);
+            for (int i = 0; i < registeredIdentities.Count; i++)
             {
-                IdentidadeUnidade identity = identities[i];
+                IdentidadeUnidade identity = registeredIdentities[i];
                 if (identity == null || identity.teamID <= 0)
                 {
                     continue;
@@ -608,6 +947,7 @@ namespace Hegemonia.AI.IA01
                 if (identity.teamID == ownTeam && identity.tipoUnidade == TipoUnidade.Estrutura)
                 {
                     ownedStructures.Add(identity);
+                    currentOwnStructureSnapshot[identity.GetInstanceID()] = identity.name;
                 }
                 else if (identity.teamID != ownTeam && identity.tipoUnidade != TipoUnidade.Estrutura)
                 {
@@ -615,10 +955,32 @@ namespace Hegemonia.AI.IA01
                 }
             }
 
-            MarcadorTerritorio[] markers = UnityEngine.Object.FindObjectsByType<MarcadorTerritorio>(FindObjectsSortMode.None);
-            for (int i = 0; i < markers.Length; i++)
+            if (ownStructureSnapshotInitialized && currentOwnStructureSnapshot.Count > 0 && !ownStructureLossPending)
             {
-                MarcadorTerritorio marker = markers[i];
+                foreach (KeyValuePair<int, string> previous in ownStructureSnapshot)
+                {
+                    if (currentOwnStructureSnapshot.ContainsKey(previous.Key))
+                    {
+                        continue;
+                    }
+
+                    ownStructureLossPending = true;
+                    ownStructureLossName = previous.Value ?? string.Empty;
+                    break;
+                }
+            }
+
+            ownStructureSnapshot.Clear();
+            foreach (KeyValuePair<int, string> current in currentOwnStructureSnapshot)
+            {
+                ownStructureSnapshot[current.Key] = current.Value;
+            }
+            ownStructureSnapshotInitialized = true;
+
+            RegistroEntidadesJogo.FillMarcadoresTerritorio(registeredMarkers);
+            for (int i = 0; i < registeredMarkers.Count; i++)
+            {
+                MarcadorTerritorio marker = registeredMarkers[i];
                 IdentidadeUnidade identity = marker != null ? marker.GetComponent<IdentidadeUnidade>() : null;
                 if (marker != null && marker.ehPrefeitura && identity != null && identity.teamID > 0 && identity.teamID != ownTeam)
                 {
@@ -3186,6 +3548,7 @@ namespace Hegemonia.AI.IA01
         public bool HasPendingConstruction => buildPending;
         public int PendingCommandCount => commands != null ? commands.PendingCount : 0;
         public float LastPlanningMilliseconds => lastPlanningMilliseconds;
+        public bool ImmediateRecoveryRequested { get; set; }
         public float ConfirmationReadyAt => confirmationReadyAt;
         public int CandidatesEvaluated => lots != null ? lots.CandidatesEvaluated : 0;
         public int PhysicsChecks => lots != null ? lots.PhysicsChecks : 0;
@@ -3222,6 +3585,8 @@ namespace Hegemonia.AI.IA01
         public bool Plan(float now, IA01IntentBoard board)
         {
             float startedAt = Time.realtimeSinceStartup;
+            bool bypassNonCapitalCadence = ImmediateRecoveryRequested;
+            ImmediateRecoveryRequested = false;
             try
             {
                 SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
@@ -3328,7 +3693,7 @@ namespace Hegemonia.AI.IA01
                         nextNonCapitalConstructionAt = now + GetNonCapitalConstructionInterval();
                     }
 
-                    if (now < nextNonCapitalConstructionAt)
+                    if (now < nextNonCapitalConstructionAt && !bypassNonCapitalCadence)
                     {
                         currentConstructionState = IA01ConstructionState.Cooldown;
                         currentNeed = "Abertura em fila";

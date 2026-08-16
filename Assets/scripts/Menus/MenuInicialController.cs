@@ -56,6 +56,8 @@ public class MenuInicialController : MonoBehaviour
     private Transform bocaTorreta;
     private Light flashTorreta;
     private LineRenderer linhaDisparo;
+    private GameObject aguaMenuRuntime;
+    private Material materialAguaMenuRuntime;
     private readonly List<Transform> avioesG18 = new List<Transform>();
     private readonly List<Vector3> posicoesOriginaisG18 = new List<Vector3>();
     private readonly List<WindZone> zonasVento = new List<WindZone>();
@@ -112,6 +114,7 @@ public class MenuInicialController : MonoBehaviour
         {
             DesativarControladoresCameraDaCenaMenu();
             InicializarAnimacaoCenaExistente();
+            GarantirAguaVisivelNoDiorama();
             DesativarAgentesDaCenaMenu();
             // O cenário do menu usa prefabs da campanha como diorama. Eles precisam
             // permanecer visíveis, mas sem lógica de combate/movimento para não iniciar
@@ -216,6 +219,17 @@ public class MenuInicialController : MonoBehaviour
     private void OnDestroy()
     {
         RestaurarScriptsSuspensos();
+
+        if (aguaMenuRuntime != null)
+        {
+            Destroy(aguaMenuRuntime);
+            aguaMenuRuntime = null;
+        }
+        if (materialAguaMenuRuntime != null)
+        {
+            Destroy(materialAguaMenuRuntime);
+            materialAguaMenuRuntime = null;
+        }
 
         // O canvas do menu e criado em runtime como objeto raiz. Ao trocar
         // para a campanha, destrua-o explicitamente para que a interface do
@@ -827,6 +841,96 @@ public class MenuInicialController : MonoBehaviour
         }
 
         ventoBase = 0.16f;
+    }
+
+    /// <summary>
+    /// O diorama do menu usa os terrenos da cena, mas não possui uma lâmina de
+    /// água renderizável. Cria uma superfície visual somente no menu, sem
+    /// collider e sem scripts de navegação, para que os navios não apareçam
+    /// sobre a terra. A campanha continua usando os objetos de água da cena 19.
+    /// </summary>
+    private void GarantirAguaVisivelNoDiorama()
+    {
+        if (!usarCenaDeFundoExistente || aguaMenuRuntime != null)
+        {
+            return;
+        }
+
+        GameObject aguaExistente = GameObject.Find("AguaDioramaMenu_VisualOnly");
+        if (aguaExistente != null)
+        {
+            aguaMenuRuntime = aguaExistente;
+            return;
+        }
+
+        Camera cameraAtual = ObterCameraDaCena();
+        Vector3 cameraPos = cameraAtual != null ? cameraAtual.transform.position : new Vector3(170f, 17f, 64f);
+        Vector3 forward = cameraAtual != null ? cameraAtual.transform.forward : Vector3.forward;
+        forward.y = 0f;
+        if (forward.sqrMagnitude < 0.001f)
+        {
+            forward = Vector3.forward;
+        }
+        forward.Normalize();
+
+        // Recuado no campo de visão para ficar sob os navios, sem cobrir o
+        // solo/veículos que compõem o primeiro plano do menu.
+        Vector3 centro = cameraPos + forward * 95f;
+        centro.y = 0f;
+        Ray raio = new Ray(new Vector3(centro.x, 1000f, centro.z), Vector3.down);
+        if (Physics.Raycast(raio, out RaycastHit hit, 2000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+        {
+            // Fica ligeiramente acima do terreno para não ser ocultada por
+            // pequenas ondulações do diorama; ainda mantém os cascos visíveis.
+            centro.y = hit.point.y + 0.35f;
+        }
+        else
+        {
+            centro.y = 0.35f;
+        }
+
+        aguaMenuRuntime = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        aguaMenuRuntime.name = "AguaDioramaMenu_VisualOnly";
+        aguaMenuRuntime.transform.position = centro;
+        aguaMenuRuntime.transform.rotation = Quaternion.identity;
+        aguaMenuRuntime.transform.localScale = new Vector3(24f, 1f, 9f);
+        aguaMenuRuntime.layer = 2; // Ignore Raycast: não interfere em seleção ou construção.
+
+        Collider colisor = aguaMenuRuntime.GetComponent<Collider>();
+        if (colisor != null)
+        {
+            Destroy(colisor);
+        }
+
+        MeshRenderer rendererAgua = aguaMenuRuntime.GetComponent<MeshRenderer>();
+        if (rendererAgua == null)
+        {
+            return;
+        }
+
+        Shader shaderAgua = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        if (shaderAgua == null)
+        {
+            return;
+        }
+
+        materialAguaMenuRuntime = new Material(shaderAgua)
+        {
+            name = "MaterialAguaDioramaMenu_Runtime"
+        };
+        if (materialAguaMenuRuntime.HasProperty("_BaseColor"))
+        {
+            materialAguaMenuRuntime.SetColor("_BaseColor", new Color(0.025f, 0.22f, 0.34f, 1f));
+        }
+        if (materialAguaMenuRuntime.HasProperty("_Color"))
+        {
+            materialAguaMenuRuntime.SetColor("_Color", new Color(0.025f, 0.22f, 0.34f, 1f));
+        }
+        if (materialAguaMenuRuntime.HasProperty("_Smoothness"))
+        {
+            materialAguaMenuRuntime.SetFloat("_Smoothness", 0.88f);
+        }
+        rendererAgua.sharedMaterial = materialAguaMenuRuntime;
     }
 
     private void AnimarCenaExistente()

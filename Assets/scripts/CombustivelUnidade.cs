@@ -15,6 +15,8 @@ public class CombustivelUnidade : MonoBehaviour
 {
     [Header("Config")]
     public bool usaCombustivel = true;
+    [Tooltip("Quando ativo, a unidade ignora consumo e nunca para por falta de combustivel. Usado pelo Cartel.")]
+    public bool combustivelInfinito = false;
     public ClasseCombustivelUnidade classe = ClasseCombustivelUnidade.Nenhuma;
     public float capacidade = -1f;
     public float combustivelAtual = -1f;
@@ -49,7 +51,7 @@ public class CombustivelUnidade : MonoBehaviour
     public float Capacidade => Mathf.Max(0f, capacidade);
     public bool EstaVazio => usaCombustivel && Capacidade > 0f && combustivelAtual <= 0.01f;
     public bool EstaBaixo => usaCombustivel && Capacidade > 0f && Percentual <= limiteBaixoPercentual;
-    public bool PodeOperar => !usaCombustivel || !EstaVazio;
+    public bool PodeOperar => combustivelInfinito || !usaCombustivel || !EstaVazio;
 
     private void Awake()
     {
@@ -122,7 +124,10 @@ public class CombustivelUnidade : MonoBehaviour
         }
 
         bool selecionado = EstaSelecionado();
-        if (!selecionado && !EstaBaixo)
+        // Menus continuam suprimindo indicadores de unidades distantes, mas
+        // nunca escondem o status da unidade que o jogador acabou de
+        // selecionar. Isso preserva HP/combustivel legiveis durante ordens.
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto && !selecionado)
         {
             return;
         }
@@ -133,6 +138,17 @@ public class CombustivelUnidade : MonoBehaviour
         }
 
         if (cameraCache == null)
+        {
+            return;
+        }
+
+        bool combustivelBaixoVisivel = EstaBaixo
+            && IndicadorUnidadeVisibilidade.EstaDentroDoRaioDaCamera(
+                transform,
+                cameraCache,
+                IndicadorUnidadeVisibilidade.RaioMaximoCombustivelBaixo);
+
+        if (!selecionado && !combustivelBaixoVisivel)
         {
             return;
         }
@@ -174,6 +190,14 @@ public class CombustivelUnidade : MonoBehaviour
 
     public void ConfigurarSeNecessario(bool preencher)
     {
+        if (combustivelInfinito)
+        {
+            usaCombustivel = false;
+            configurado = true;
+            paradaAplicada = false;
+            return;
+        }
+
         if (configurado && !preencher)
         {
             return;
@@ -259,6 +283,11 @@ public class CombustivelUnidade : MonoBehaviour
 
     public bool Consumir(float delta)
     {
+        if (combustivelInfinito)
+        {
+            return false;
+        }
+
         if (!usaCombustivel || Capacidade <= 0f || delta <= 0f)
         {
             return false;

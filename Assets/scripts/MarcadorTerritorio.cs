@@ -19,6 +19,16 @@ public class MarcadorTerritorio : MonoBehaviour
     // Identidade cache
     public int teamID { get; private set; }
 
+    void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
     void Start()
     {
         var id = GetComponent<IdentidadeUnidade>();
@@ -73,6 +83,7 @@ public class MarcadorTerritorio : MonoBehaviour
 
     void OnDestroy()
     {
+        RegistroEntidadesJogo.Unregister(this);
         if (GerenteDeTerritorio.Instancia != null)
         {
             GerenteDeTerritorio.Instancia.RemoverMarcador(this);

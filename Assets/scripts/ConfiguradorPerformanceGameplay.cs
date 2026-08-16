@@ -10,7 +10,8 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     public enum PerfilQualidade
     {
         Gameplay,
-        Visual
+        Visual,
+        Adaptativo
     }
 
     private struct EstadoTerrain
@@ -46,6 +47,16 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     [SerializeField] private KeyCode teclaAlternarPerfil = KeyCode.F12;
     [SerializeField] private bool iniciarEmGameplay = true;
 
+    [Header("Adaptativo")]
+    [Tooltip("Mantem a qualidade original perto da camera e reduz somente alcance distante quando a CPU/GPU fica pressionada por varios segundos.")]
+    [SerializeField] private bool usarPerfilAdaptativo = true;
+    [SerializeField] private float limitePressaoFrameMs = 19f;
+    [SerializeField] private float limitePressaoSeveraFrameMs = 25f;
+    [SerializeField] private float segundosParaAdaptar = 2.5f;
+    [SerializeField] private float segundosParaRestaurar = 5f;
+    [SerializeField] private float shadowDistanceAdaptativoLeve = 56f;
+    [SerializeField] private float shadowDistanceAdaptativoSevero = 40f;
+
     [Header("Gameplay")]
     [SerializeField] private bool desligarVolumesGlobaisExtras = true;
     [SerializeField] private bool bloquearBloomInstavelDuranteGameplay = true;
@@ -70,6 +81,10 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     private float _shadowDistanceOriginal = -1f;
     private float _lodBiasOriginal = -1f;
     private int _shadowCascadesOriginal = -1;
+    private float _mediaFrameMs;
+    private float _tempoSobPressao;
+    private float _tempoRecuperacao;
+    private int _nivelAdaptativo;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -86,7 +101,9 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
 
     private void Awake()
     {
-        _perfilAtual = iniciarEmGameplay ? PerfilQualidade.Gameplay : PerfilQualidade.Visual;
+        _perfilAtual = iniciarEmGameplay
+            ? (usarPerfilAdaptativo ? PerfilQualidade.Adaptativo : PerfilQualidade.Gameplay)
+            : PerfilQualidade.Visual;
         CapturarQualidadeOriginalSeNecessario();
         SceneManager.sceneLoaded += OnSceneLoaded;
         AplicarPerfil(_perfilAtual);
@@ -99,11 +116,16 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
 
     private void Update()
     {
+        if (_perfilAtual == PerfilQualidade.Adaptativo)
+        {
+            AtualizarPerfilAdaptativo();
+        }
+
         if (Input.GetKeyDown(teclaAlternarPerfil))
         {
-            _perfilAtual = _perfilAtual == PerfilQualidade.Gameplay
-                ? PerfilQualidade.Visual
-                : PerfilQualidade.Gameplay;
+            _perfilAtual = _perfilAtual == PerfilQualidade.Visual
+                ? (usarPerfilAdaptativo ? PerfilQualidade.Adaptativo : PerfilQualidade.Gameplay)
+                : PerfilQualidade.Visual;
 
             AplicarPerfil(_perfilAtual);
         }
@@ -117,6 +139,13 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     private void AplicarPerfil(PerfilQualidade perfil)
     {
         CapturarQualidadeOriginalSeNecessario();
+
+        if (perfil == PerfilQualidade.Adaptativo)
+        {
+            _nivelAdaptativo = 0;
+            RestaurarQualidadeVisual();
+            return;
+        }
 
         if (perfil == PerfilQualidade.Gameplay)
         {
@@ -152,6 +181,71 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
         else
         {
             RestaurarQualidadeVisual();
+        }
+    }
+
+    private void AtualizarPerfilAdaptativo()
+    {
+        float frameMs = Mathf.Clamp(Time.unscaledDeltaTime * 1000f, 0f, 200f);
+        _mediaFrameMs = _mediaFrameMs <= 0f ? frameMs : Mathf.Lerp(_mediaFrameMs, frameMs, 0.08f);
+        bool pressaoSevera = _mediaFrameMs >= limitePressaoSeveraFrameMs;
+        bool sobPressao = pressaoSevera || _mediaFrameMs >= limitePressaoFrameMs;
+
+        if (sobPressao)
+        {
+            _tempoSobPressao += Time.unscaledDeltaTime;
+            _tempoRecuperacao = 0f;
+            int alvo = pressaoSevera ? 2 : 1;
+            if (_tempoSobPressao >= segundosParaAdaptar && alvo > _nivelAdaptativo)
+            {
+                _nivelAdaptativo = alvo;
+                AplicarAdaptacaoDistante(_nivelAdaptativo);
+            }
+            return;
+        }
+
+        _tempoSobPressao = 0f;
+        _tempoRecuperacao += Time.unscaledDeltaTime;
+        if (_nivelAdaptativo > 0 && _tempoRecuperacao >= segundosParaRestaurar)
+        {
+            _nivelAdaptativo = 0;
+            RestaurarQualidadeVisual();
+        }
+    }
+
+    private void AplicarAdaptacaoDistante(int nivel)
+    {
+        CapturarQualidadeOriginalSeNecessario();
+        bool severo = nivel >= 2;
+        QualitySettings.shadowDistance = Mathf.Min(_shadowDistanceOriginal, severo ? shadowDistanceAdaptativoSevero : shadowDistanceAdaptativoLeve);
+        QualitySettings.shadowCascades = severo ? Mathf.Min(_shadowCascadesOriginal, 2) : _shadowCascadesOriginal;
+        QualitySettings.lodBias = Mathf.Min(_lodBiasOriginal, severo ? 1.35f : 1.60f);
+
+        Terrain[] terrenos = Terrain.activeTerrains;
+        float fator = severo ? 0.65f : 0.82f;
+        for (int i = 0; i < terrenos.Length; i++)
+        {
+            Terrain terreno = terrenos[i];
+            if (terreno == null) continue;
+            int key = terreno.GetInstanceID();
+            if (!_terrainsOriginais.ContainsKey(key))
+            {
+                _terrainsOriginais[key] = new EstadoTerrain
+                {
+                    DetailDistance = terreno.detailObjectDistance,
+                    TreeDistance = terreno.treeDistance,
+                    BillboardStart = terreno.treeBillboardDistance,
+                    BasemapDistance = terreno.basemapDistance,
+                    PixelError = terreno.heightmapPixelError,
+                    DrawInstanced = terreno.drawInstanced
+                };
+            }
+            EstadoTerrain original = _terrainsOriginais[key];
+            terreno.detailObjectDistance = original.DetailDistance * fator;
+            terreno.treeDistance = original.TreeDistance * fator;
+            terreno.treeBillboardDistance = original.BillboardStart * fator;
+            terreno.basemapDistance = original.BasemapDistance * fator;
+            terreno.heightmapPixelError = Mathf.Max(original.PixelError, severo ? original.PixelError * 1.35f : original.PixelError * 1.15f);
         }
     }
 

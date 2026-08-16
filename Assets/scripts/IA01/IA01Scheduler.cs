@@ -193,11 +193,20 @@ namespace Hegemonia.AI.IA01
             state.LastOperations = result.Operations;
             state.LastEvents = result.Events;
             state.LastBudgetMs = result.ConsumedMilliseconds;
-            state.FailureCount = result.Completed ? 0 : Mathf.Min(8, state.FailureCount + 1);
+            state.FailureCount = (result.Completed || result.Deferred) ? 0 : Mathf.Min(8, state.FailureCount + 1);
 
             float cadence = profile != null && identity != null
                 ? profile.ResolveCadence(identity.ExecutionMode, identity.CurrentStage, identity.NationMode)
                 : 0.65f;
+
+            if (result.Deferred)
+            {
+                // O runtime preserva a fase pendente. Retome logo, mas nunca
+                // no mesmo quadro, para que outras unidades tambem tenham vez.
+                state.NextDueAt = now + 0.02f;
+                state.LastReason = result.LastMessage ?? "budget_deferred";
+                return;
+            }
 
             float backoff = 1f + (state.FailureCount * 0.50f);
             float allocatedBudget = Mathf.Max(0.10f, state.LastAllocatedBudgetMs);

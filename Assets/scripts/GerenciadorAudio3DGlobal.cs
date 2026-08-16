@@ -28,7 +28,7 @@ public static class AudioRuntime
                 continue;
             }
 
-            ConfigurarFonte(fonte, ResolverCategoria(fonte.transform));
+            ConfigurarFonteGenerica(fonte);
         }
 
         SincronizarMotorAereoComEstado(raiz);
@@ -59,6 +59,23 @@ public static class AudioRuntime
     public static void ConfigurarFonteDeArmamento(AudioSource fonte)
     {
         ConfigurarFonte(fonte, Categoria.Armamento);
+        if (fonte != null) fonte.volume = 0.8f;
+    }
+
+    public static void ConfigurarFonteDeTiro(AudioSource fonte)
+    {
+        ConfigurarFonteDeArmamento(fonte);
+        if (fonte == null) return;
+        fonte.maxDistance = 250f;
+        fonte.volume = 0.8f;
+    }
+
+    public static void ConfigurarFonteDeMissel(AudioSource fonte)
+    {
+        ConfigurarFonteDeArmamento(fonte);
+        if (fonte == null) return;
+        fonte.maxDistance = 300f;
+        fonte.volume = 0.8f;
     }
 
     public static void ConfigurarTodasAsFontesDaCena()
@@ -88,6 +105,16 @@ public static class AudioRuntime
             || origem.GetComponentInParent<IntroVideoController>() != null)
         {
             ConfigurarFonte(fonte, Categoria.Musica);
+            return;
+        }
+
+        // Fontes criadas em runtime por lançadores/projéteis também passam
+        // por esta rotina quando o serviço de áudio revalida a cena. Preserve
+        // a regra de alcance maior dos mísseis, em vez de rebaixá-las para o
+        // limite genérico de 250 m dos tiros convencionais.
+        if (EhFonteDeMissel(fonte))
+        {
+            ConfigurarFonteDeMissel(fonte);
             return;
         }
 
@@ -140,6 +167,10 @@ public static class AudioRuntime
         fonte.minDistance = ObterDistanciaMinima(categoria);
         fonte.maxDistance = ObterDistanciaMaxima(categoria);
         fonte.priority = Mathf.Min(fonte.priority, ObterPrioridade(categoria));
+        if (categoria == Categoria.Armamento)
+        {
+            fonte.volume = 0.8f;
+        }
         AudioSettingsService.RegistrarFonte(fonte, ConverterCategoria(categoria));
     }
 
@@ -195,13 +226,32 @@ public static class AudioRuntime
             || texto.Contains("helice") || texto.Contains("rotor") || texto.Contains("jato") || texto.Contains("jet");
     }
 
+    private static bool EhFonteDeMissel(AudioSource fonte)
+    {
+        Transform origem = fonte != null ? fonte.transform : null;
+        if (origem == null) return false;
+        if (EhFonteDeMotor(fonte)) return false;
+
+        return origem.GetComponentInParent<LancadorNaval>() != null
+            || origem.GetComponentInParent<SistemaAntiMissil>() != null
+            || origem.GetComponentInParent<LancadorMLRS>() != null
+            || origem.GetComponentInParent<LancadorMisseis>() != null
+            || origem.GetComponentInParent<LancadorMisselCaca>() != null
+            || origem.GetComponentInParent<MisselNaval>() != null
+            || origem.GetComponentInParent<MisselSubmarino>() != null
+            || origem.GetComponentInParent<MisselCaca>() != null
+            || origem.GetComponentInParent<MisselEstrategicoLongoAlcance>() != null
+            || origem.GetComponentInParent<MisselICBM>() != null
+            || origem.GetComponentInParent<MisselLeopardAutomatico>() != null;
+    }
+
     private static float ObterDistanciaMaxima(Categoria categoria)
     {
         switch (categoria)
         {
             case Categoria.Aereo: return 150f;
-            case Categoria.Naval: return 50f;
-            case Categoria.Armamento: return 50f;
+            case Categoria.Naval: return 250f;
+            case Categoria.Armamento: return 250f;
             case Categoria.Terrestre: return 50f;
             default: return 50f;
         }

@@ -107,7 +107,7 @@ public class SomUnidade : MonoBehaviour
         float deltaMovimento = 0f;
         if (lastPosition != Vector3.zero)
         {
-            deltaMovimento = (transform.position - lastPosition).magnitude / Time.deltaTime;
+            deltaMovimento = (transform.position - lastPosition).magnitude / Mathf.Max(Time.deltaTime, 0.0001f);
         }
         lastPosition = transform.position;
 
@@ -123,6 +123,11 @@ public class SomUnidade : MonoBehaviour
         else
         {
             velocidadeAtual = deltaMovimento;
+        }
+
+        if (float.IsNaN(velocidadeAtual) || float.IsInfinity(velocidadeAtual))
+        {
+            velocidadeAtual = 0f;
         }
 
         if (deltaMovimento > velocidadeAtual)
@@ -162,7 +167,7 @@ public class SomUnidade : MonoBehaviour
         // Ajusta o pitch baseado na velocidade (efeito Doppler simulado)
         if (somMotorTocando)
         {
-            float proporcaoVelocidade = Mathf.Clamp01(velocidadeAtual / velocidadeParaMaxPitch);
+            float proporcaoVelocidade = Mathf.Clamp01(velocidadeAtual / Mathf.Max(0.01f, velocidadeParaMaxPitch));
             audioSource.pitch = Mathf.Lerp(pitchMin, pitchMax, proporcaoVelocidade);
             audioSource.volume = volumeMotor * Mathf.Lerp(0.7f, 1f, proporcaoVelocidade);
         }

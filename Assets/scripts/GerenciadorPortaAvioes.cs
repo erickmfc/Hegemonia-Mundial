@@ -50,10 +50,13 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     
     private bool _menuCarrierAtivo = false;
     private bool _elevadorOcupado = false;
+    private Coroutine _rotinaElevadorAtiva;
+    private readonly HashSet<int> _aeronavesAguardandoHangar = new HashSet<int>();
+    private Vector3 _posicaoElevadorConves;
+    private Vector3 _posicaoElevadorHangar;
+    private bool _posicoesElevadorInicializadas;
     private ControleAviao _selecionadoCarrier;
     private int _modoOrdemAviao = 0; // 0=Ataque/Recon, 1=Patrulha, 2=Seguir
-    private Vector2 _scrollCarrier;
-    private Vector2 _scrollMenuCarrierGeral;
     private IdentidadeUnidade _idCarrier;
     private ControleUnidade _controleUnidade;
     private Camera _cameraPrincipal;
@@ -65,7 +68,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     private readonly List<ControleAviao> _bufferScanAvioes = new List<ControleAviao>(48);
     private readonly List<Helicoptero> _bufferScanHelicopteros = new List<Helicoptero>(32);
     private float _tempoProximoScan = 0f;
-    private Vector2 _scrollHelisCarrier;
     private readonly List<Vector3> _rotaPatrulhaAviaoCarrier = new List<Vector3>();
     private readonly List<Vector3> _rotaPatrulhaHelicopteroCarrier = new List<Vector3>();
     private readonly Dictionary<int, Coroutine> _rotinasRecebimentoHeliCarrier = new Dictionary<int, Coroutine>();
@@ -77,8 +79,10 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     [Header("=== OTIMIZAÇÃO DA UI ===")]
     [Tooltip("Mantém listas resumidas por padrão no menu do porta-aviões. A lista completa continua disponível pelo botão do menu.")]
     public bool modoDesempenhoUI = true;
-    private bool _uiMostrarListaCompleta = false;
-    private const int UI_MAX_ITENS_LISTA_RESUMIDA = 10;
+    private const int UI_MAX_ITENS_LISTA_RESUMIDA = 4;
+    private int _paginaConves;
+    private int _paginaHangar;
+    private int _paginaHelis;
     private GUISkin _skinCache;
     private GUIStyle _uiLinhaCompacta;
     private GUIStyle _uiLabelCompacta;
@@ -172,6 +176,54 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         return null;
     }
 
+    // "Pistas/pouso" e um grupo de pouso real sao objetos diferentes no
+    // Sovereign. O primeiro contem uma sequencia de decolagem antiga e nao
+    // pode ser usado como glideslope de aterrissagem.
+    private bool EhGrupoDePousoReal(Transform candidato)
+    {
+        if (candidato == null) return false;
+
+        string nome = NormalizarNomeHierarquia(candidato.name);
+        return nome == "pouso" || (nome.StartsWith("pouso") && !nome.Contains("pistas"));
+    }
+
+    private Transform EncontrarGrupoDePousoReal()
+    {
+        foreach (Transform t in GetComponentsInChildren<Transform>(true))
+        {
+            if (EhGrupoDePousoReal(t)) return t;
+        }
+
+        return null;
+    }
+
+    // Mostra a orientacao dos pontos mesmo quando o gizmo do Unity esta em
+    // Global. A ponta da seta sempre acompanha o eixo azul (forward) do
+    // Transform selecionado, permitindo conferir a direcao da rota no editor.
+    private void OnDrawGizmosSelected()
+    {
+        DesenharSetasDoGrupo(grupoParadas != null ? grupoParadas : transform.Find("Patio aberto"), new Color(0.15f, 1f, 0.35f, 0.9f));
+        DesenharSetasDoGrupo(decolagem != null ? decolagem : transform.Find("Decolagem"), new Color(1f, 0.65f, 0.1f, 0.95f));
+        DesenharSetasDoGrupo(EhGrupoDePousoReal(grupoPistaLanding) ? grupoPistaLanding : EncontrarGrupoDePousoReal(), new Color(0.2f, 0.75f, 1f, 0.95f));
+    }
+
+    private void DesenharSetasDoGrupo(Transform grupo, Color cor)
+    {
+        if (grupo == null) return;
+
+        Gizmos.color = cor;
+        foreach (Transform ponto in grupo)
+        {
+            if (ponto == null) continue;
+
+            float tamanho = Mathf.Clamp(Mathf.Max(1.5f, ponto.lossyScale.magnitude * 1.5f), 2f, 8f);
+            Vector3 origem = ponto.position;
+            Vector3 direcao = ponto.forward.sqrMagnitude > 0.001f ? ponto.forward.normalized : Vector3.forward;
+            Gizmos.DrawRay(origem, direcao * tamanho);
+            Gizmos.DrawSphere(origem + direcao * tamanho, Mathf.Max(0.15f, tamanho * 0.12f));
+        }
+    }
+
     private void AutoDetectarHierarquiaSovereign()
     {
         if (grupoParadas == null)
@@ -189,30 +241,12 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             decolagem = EncontrarTransformPorNomeExato("Decolagem") ?? EncontrarTransformPorTrechos("decolagem");
         }
 
-        if (grupoPistaLanding == null)
+        if (!EhGrupoDePousoReal(grupoPistaLanding))
         {
-            grupoPistaLanding = EncontrarTransformPorNomeExato("pouso") ?? EncontrarTransformPorTrechos("pouso");
+            grupoPistaLanding = EncontrarGrupoDePousoReal();
         }
 
-        if (grupoPistaLanding == null)
-        {
-            Transform pistas = EncontrarTransformPorNomeExato("Pistas") ?? EncontrarTransformPorTrechos("pistas");
-            if (pistas != null)
-            {
-                foreach (Transform filho in pistas.GetComponentsInChildren<Transform>(true))
-                {
-                    if (filho == null || filho == pistas) continue;
-                    string nome = NormalizarNomeHierarquia(filho.name);
-                    if (nome.Contains("pouso"))
-                    {
-                        grupoPistaLanding = filho;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (decida == null && grupoPistaLanding != null)
+        if ((decida == null || !EhGrupoDePousoReal(decida)) && grupoPistaLanding != null)
         {
             decida = grupoPistaLanding;
         }
@@ -382,7 +416,9 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
 
         // 3. Mapeia Pouso (Apenas filhos diretos do grupo "Pouso", mantendo a ordem exata da hierarquia)
-        Transform pistaParaUsar = (grupoPistaLanding != null) ? grupoPistaLanding : decida;
+        Transform pistaParaUsar = EhGrupoDePousoReal(grupoPistaLanding)
+            ? grupoPistaLanding
+            : (EhGrupoDePousoReal(decida) ? decida : null);
         if (pistaParaUsar != null)
         {
             List<Transform> listaTemp = new List<Transform>();
@@ -421,6 +457,13 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
         
         // 4. Mapeia a Pista de Táxi ("Trabalho")
+        if (pistaParaUsar == null)
+        {
+            // Nao aproveita os pontos de "Pistas/pouso": eles sao decolagem,
+            // nao uma rota de aterrissagem valida.
+            waypointsDecida.Clear();
+        }
+
         Transform grupoTrabalho = EncontrarTransformPorNomeExato("Trabalho") ?? EncontrarTransformPorTrechos("trabalho");
         if (grupoTrabalho != null)
         {
@@ -460,6 +503,74 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 wpAnalise = wpAndadar;
             }
         }
+
+        InicializarPosicoesElevador();
+    }
+
+    private void InicializarPosicoesElevador()
+    {
+        if (plataformaElevador == null || _posicoesElevadorInicializadas) return;
+
+        _posicaoElevadorConves = plataformaElevador.localPosition;
+
+        // O mesh do elevador e filho de uma raiz escalada. Usar as coordenadas
+        // locais do mesh diretamente na raiz deslocava a plataforma para fora do navio.
+        Vector3 pontoConves = waypointEntradaElevador != null
+            ? waypointEntradaElevador.position
+            : transform.TransformPoint(localConvesEntrada);
+        Vector3 pontoHangar = transform.TransformPoint(localHangarFrente);
+        float deslocamentoVerticalMundo = pontoHangar.y - pontoConves.y;
+        if (Mathf.Abs(deslocamentoVerticalMundo) < 0.25f) deslocamentoVerticalMundo = -6f;
+
+        Vector3 deslocamentoLocal = plataformaElevador.parent != null
+            ? plataformaElevador.parent.InverseTransformVector(Vector3.up * deslocamentoVerticalMundo)
+            : Vector3.up * deslocamentoVerticalMundo;
+        _posicaoElevadorHangar = _posicaoElevadorConves + deslocamentoLocal;
+        _posicoesElevadorInicializadas = true;
+    }
+
+    private IEnumerator MoverElevadorPara(Vector3 destinoLocal)
+    {
+        if (plataformaElevador == null) yield break;
+        yield return StartCoroutine(MoverSuave(
+            plataformaElevador,
+            plataformaElevador.localPosition,
+            destinoLocal,
+            Mathf.Max(0.25f, tempoElevador * 0.5f)));
+    }
+
+    private Transform ObterPontoDaPlataformaElevador()
+    {
+        return waypointEntradaElevador != null ? waypointEntradaElevador : plataformaElevador;
+    }
+
+    private void PosicionarAeronaveNoElevador(ControleAviao av)
+    {
+        Transform ponto = ObterPontoDaPlataformaElevador();
+        if (av == null || ponto == null) return;
+
+        av.gameObject.SetActive(true);
+        av.transform.SetParent(ponto, false);
+        av.transform.localPosition = new Vector3(0f, av.ObterAlturaEstacionamento(), 0f);
+        av.transform.localRotation = Quaternion.identity;
+    }
+
+    private void ArmazenarAviaoNoHangarInterno(ControleAviao av)
+    {
+        if (av == null) return;
+
+        avioesNoPatio.Remove(av);
+        if (!avioesNoHangar.Contains(av)) avioesNoHangar.Add(av);
+        av.aeroportoOrigem = this;
+        av.vagaRetorno = null;
+        av.aguardandoCliqueRadar = false;
+        av.ordemParaRetorno = false;
+        av.estaEmModoVooFisico = false;
+        av.DefinirEstado(ControleAviao.EstadoAviao.ReservaHangar);
+        av.transform.SetParent(transform, false);
+        av.transform.localPosition = localHangarInterno;
+        av.transform.localRotation = Quaternion.identity;
+        av.gameObject.SetActive(false);
     }
 
     protected override void Update()
@@ -717,7 +828,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     protected override void OnGUI()
     {
-        if (!_menuCarrierAtivo) return;
+        if (!_menuCarrierAtivo)
+        {
+            DesenharIndicadorOrdemAviaoCarrier();
+            return;
+        }
         if (!GestorMenusExclusivos.EstaAtivo(this))
         {
             _menuCarrierAtivo = false;
@@ -739,17 +854,17 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
         PrepararEstilosUISeNecessario();
 
-        float menuWidth = Mathf.Clamp(Screen.width * 0.31f, 430f, 540f);
-        float menuHeight = Mathf.Min(Screen.height - 20f, 960f);
-        Rect areaMenu = new Rect(Screen.width - menuWidth - 16f, 10f, menuWidth, menuHeight);
+        float menuWidth = Mathf.Clamp(Screen.width * 0.30f, 410f, 510f);
+        float menuHeight = Mathf.Clamp(Screen.height - 92f, 540f, 820f);
+        Rect areaMenu = new Rect(16f, 68f, menuWidth, menuHeight);
         GestorMenusExclusivos.RegistrarAreaBloqueio(this, areaMenu);
         
         GUI.Box(areaMenu, "<b>⚓ COMANDO DE OPERAÇÕES NAVAIS</b>");
 
         GUILayout.BeginArea(new Rect(areaMenu.x + 10, areaMenu.y + 25, areaMenu.width - 20, areaMenu.height - 35));
 
-        GUILayout.BeginHorizontal();
-        GUILayout.Label($"<b>⚓ Status do Navio:</b> <color=cyan>{(_idCarrier != null ? _idCarrier.nomeDoPais : "USS-Carrier")}</color>", GUILayout.ExpandWidth(true));
+        GUILayout.BeginHorizontal("box");
+        GUILayout.Label($"<b>⚓ {(_idCarrier != null ? _idCarrier.nomeDoPais : "USS-Carrier")}</b>", GUILayout.ExpandWidth(true));
         if (GUILayout.Button("Fechar", GUILayout.Width(72f), GUILayout.Height(22f)))
         {
             _menuCarrierAtivo = false;
@@ -757,16 +872,15 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
         GUILayout.EndHorizontal();
 
-        GUILayout.Space(4);
-
-        float alturaScrollMenu = Mathf.Max(280f, areaMenu.height - 70f);
-        _scrollMenuCarrierGeral = GUILayout.BeginScrollView(_scrollMenuCarrierGeral, false, true, GUILayout.Height(alturaScrollMenu));
-
         GUILayout.BeginHorizontal("box");
-        GUILayout.Label("<b>Lista:</b>", GUILayout.Width(52f));
-        _uiMostrarListaCompleta = GUILayout.Toggle(_uiMostrarListaCompleta, "mostrar completa (pode pesar)");
+        GUILayout.Label($"<color=lime><b>CONVÉS</b> {avioesNoPatio.Count}</color>", GUILayout.Width(105f));
+        GUILayout.Label($"<color=orange><b>HANGAR</b> {avioesNoHangar.Count}</color>", GUILayout.Width(110f));
+        string statusElevador = _elevadorOcupado ? "<color=yellow>ELEVADOR EM USO</color>" : "<color=cyan>ELEVADOR LIVRE</color>";
+        GUILayout.Label(statusElevador, _uiLabelCompacta, GUILayout.ExpandWidth(true));
         GUILayout.EndHorizontal();
         GUILayout.Space(2);
+
+        GUILayout.BeginVertical();
 
         if (_avioesProximosNoAr.Count > 0)
         {
@@ -774,8 +888,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             GUILayout.Label("<color=cyan><b>📡 RADAR: AVIÕES NO CÉU (ALCANCE)</b></color>");
 
             int totalRadarAvioes = _avioesProximosNoAr.Count;
-            int limiteRadarAvioes = ObterLimiteListaUI(totalRadarAvioes, 6);
-            for (int i = 0; i < limiteRadarAvioes; i++)
+            int limiteRadarAvioes = ObterLimiteListaUI(totalRadarAvioes, 2);
+            for (int i = 0; i < limiteRadarAvioes && i < _avioesProximosNoAr.Count; i++)
             {
                 var av = _avioesProximosNoAr[i];
                 if (av == null) continue;
@@ -804,8 +918,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             GUILayout.Label("<color=cyan><b>📡 RADAR: HELICÓPTEROS ALIADOS</b></color>");
 
             int totalRadarHelis = _helicopterosProximosNoAr.Count;
-            int limiteRadarHelis = ObterLimiteListaUI(totalRadarHelis, 6);
-            for (int i = 0; i < limiteRadarHelis; i++)
+            int limiteRadarHelis = ObterLimiteListaUI(totalRadarHelis, 2);
+            for (int i = 0; i < limiteRadarHelis && i < _helicopterosProximosNoAr.Count; i++)
             {
                 var heli = _helicopterosProximosNoAr[i];
                 if (heli == null) continue;
@@ -850,11 +964,13 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 }
             }
             
-            _scrollCarrier = GUILayout.BeginScrollView(_scrollCarrier, GUILayout.Height(100));
-
             int totalPatio = avioesNoPatio.Count;
-            int limitePatio = _uiMostrarListaCompleta ? totalPatio : Mathf.Min(UI_MAX_ITENS_LISTA_RESUMIDA, totalPatio);
-            for (int i = 0; i < limitePatio; i++)
+            int paginasConves = Mathf.Max(1, Mathf.CeilToInt(totalPatio / (float)UI_MAX_ITENS_LISTA_RESUMIDA));
+            _paginaConves = Mathf.Clamp(_paginaConves, 0, paginasConves - 1);
+            int primeiroConves = _paginaConves * UI_MAX_ITENS_LISTA_RESUMIDA;
+            int limitePatio = Mathf.Min(totalPatio, primeiroConves + UI_MAX_ITENS_LISTA_RESUMIDA);
+            GUILayout.BeginVertical("box");
+            for (int i = primeiroConves; i < limitePatio && i < avioesNoPatio.Count; i++)
             {
                 var av = avioesNoPatio[i];
                 if (av == null) continue;
@@ -867,21 +983,21 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     _rotaPatrulhaHelicopteroCarrier.Clear();
                 }
             }
-            if (!_uiMostrarListaCompleta && totalPatio > limitePatio)
-            {
-                GUILayout.Label($"<color=grey>+{totalPatio - limitePatio} aeronave(s) ocultas (ative lista completa).</color>", _uiLabelCompacta);
-            }
-            GUILayout.EndScrollView();
+            GUILayout.EndVertical();
+            DesenharPaginacaoCarrier(ref _paginaConves, paginasConves, "CONVÉS");
 
             if (helicopterosDoAeroporto.Count > 0)
             {
                 GUILayout.Space(8);
                 GUILayout.Label("<color=orange><b>🚁 HELICÓPTEROS DO NAVIO</b></color>");
-                _scrollHelisCarrier = GUILayout.BeginScrollView(_scrollHelisCarrier, GUILayout.Height(110));
+                GUILayout.BeginVertical("box");
 
                 int totalHelis = helicopterosDoAeroporto.Count;
-                int limiteHelis = _uiMostrarListaCompleta ? totalHelis : Mathf.Min(UI_MAX_ITENS_LISTA_RESUMIDA, totalHelis);
-                for (int i = 0; i < limiteHelis; i++)
+                int paginasHelis = Mathf.Max(1, Mathf.CeilToInt(totalHelis / (float)UI_MAX_ITENS_LISTA_RESUMIDA));
+                _paginaHelis = Mathf.Clamp(_paginaHelis, 0, paginasHelis - 1);
+                int primeiroHeli = _paginaHelis * UI_MAX_ITENS_LISTA_RESUMIDA;
+                int limiteHelis = Mathf.Min(totalHelis, primeiroHeli + UI_MAX_ITENS_LISTA_RESUMIDA);
+                for (int i = primeiroHeli; i < limiteHelis && i < helicopterosDoAeroporto.Count; i++)
                 {
                     Helicoptero heli = helicopterosDoAeroporto[i];
                     if (heli == null || !HelicopteroPertenceAEstaBase(heli)) continue;
@@ -922,11 +1038,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     GUILayout.EndHorizontal();
                 }
 
-                if (!_uiMostrarListaCompleta && totalHelis > limiteHelis)
-                {
-                    GUILayout.Label($"<color=grey>+{totalHelis - limiteHelis} helicóptero(s) ocultos (ative lista completa).</color>", _uiLabelCompacta);
-                }
-                GUILayout.EndScrollView();
+                GUILayout.EndVertical();
+                DesenharPaginacaoCarrier(ref _paginaHelis, paginasHelis, "HELICOPTEROS");
             }
 
             DesenharPainelHelicopteroCarrier();
@@ -937,8 +1050,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             bool vagaDisponivel = ObterPrimeiraVagaLivre() != null;
             
             int totalHangar = avioesNoHangar.Count;
-            int limiteHangar = _uiMostrarListaCompleta ? totalHangar : Mathf.Min(UI_MAX_ITENS_LISTA_RESUMIDA, totalHangar);
-            for (int i = 0; i < limiteHangar; i++)
+            int paginasHangar = Mathf.Max(1, Mathf.CeilToInt(totalHangar / (float)UI_MAX_ITENS_LISTA_RESUMIDA));
+            _paginaHangar = Mathf.Clamp(_paginaHangar, 0, paginasHangar - 1);
+            int primeiroHangar = _paginaHangar * UI_MAX_ITENS_LISTA_RESUMIDA;
+            int limiteHangar = Mathf.Min(totalHangar, primeiroHangar + UI_MAX_ITENS_LISTA_RESUMIDA);
+            for (int i = primeiroHangar; i < limiteHangar && i < avioesNoHangar.Count; i++)
             {
                 var av = avioesNoHangar[i];
                 if (av == null) continue;
@@ -948,7 +1064,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 if (vagaDisponivel)
                 {
                     GUI.enabled = !_elevadorOcupado;
-                    if (GUILayout.Button("⬆️ Elevador", GUILayout.Width(95), GUILayout.Height(22))) StartCoroutine(RotinaElevadorSequencial(av, true));
+                    if (GUILayout.Button("⬆️ Elevador", GUILayout.Width(95), GUILayout.Height(22))) AcionarElevadorParaCima(av);
                     GUI.enabled = true;
                 }
                 else
@@ -959,10 +1075,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 }
                 GUILayout.EndHorizontal();
             }
-            if (!_uiMostrarListaCompleta && totalHangar > limiteHangar)
-            {
-                GUILayout.Label($"<color=grey>+{totalHangar - limiteHangar} aeronave(s) ocultas (ative lista completa).</color>", _uiLabelCompacta);
-            }
+            DesenharPaginacaoCarrier(ref _paginaHangar, paginasHangar, "HANGAR");
 
         GUILayout.Space(10);
 
@@ -1044,13 +1157,12 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     else
                     {
                         GUILayout.BeginHorizontal();
-                        if (GUILayout.Button("🛫 DECOLAR AO ATAQUE", GUILayout.Height(28))) IniciarRadar(0);
-                        if (GUILayout.Button("📡 DECOLAR RECON.", GUILayout.Height(28))) IniciarRadar(0); // Opcionalmente, pode forçar radar passivo
+                        if (GUILayout.Button("DECOLAR: ALVO / RECON", GUILayout.Height(28))) IniciarRadar(0);
                         GUILayout.EndHorizontal();
                         
                         GUILayout.BeginHorizontal();
-                        if (GUILayout.Button("🛡️ DECOLAR PATRULHA", GUILayout.Height(26))) IniciarRadar(1);
-                        if (GUILayout.Button("👥 DECOLAR SEGUIR", GUILayout.Height(26))) IniciarRadar(2);
+                        if (GUILayout.Button("DECOLAR: PATRULHAR", GUILayout.Height(26))) IniciarRadar(1);
+                        if (GUILayout.Button("DECOLAR: ESCOLTAR", GUILayout.Height(26))) IniciarRadar(2);
                         GUILayout.EndHorizontal();
                     }
                 }
@@ -1070,7 +1182,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 {
                     if (GUILayout.Button("⬇️ DESCER PARA HANGAR", GUILayout.Height(24))) 
                     {
-                        StartCoroutine(RotinaElevadorSequencial(_selecionadoCarrier, false));
+                        MandarParaOHangar(_selecionadoCarrier);
                         _selecionadoCarrier = null;
                     }
                 }
@@ -1084,7 +1196,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             GUILayout.EndVertical();
         }
 
-        GUILayout.EndScrollView();
+        GUILayout.EndVertical();
 
         GUILayout.Space(6);
         if (GUILayout.Button("Fechar (O)", GUILayout.Height(24)))
@@ -1104,13 +1216,53 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     private int ObterLimiteListaUI(int total, int limiteDesempenho)
     {
-        if (_uiMostrarListaCompleta)
-        {
-            return total;
-        }
-
         int limite = modoDesempenhoUI ? limiteDesempenho : UI_MAX_ITENS_LISTA_RESUMIDA;
         return Mathf.Min(Mathf.Max(1, limite), total);
+    }
+
+    // Este aviso nao registra bloqueio de interface: o clique direito continua
+    // chegando ao mapa enquanto a rota e definida.
+    private void DesenharIndicadorOrdemAviaoCarrier()
+    {
+        if (_selecionadoCarrier == null || !_selecionadoCarrier.aguardandoCliqueRadar)
+        {
+            return;
+        }
+
+        string instrucao;
+        if (_modoOrdemAviao == 1)
+        {
+            instrucao = "PATRULHA: clique direito no mar para adicionar pontos. ENTER finaliza | BACKSPACE desfaz | ESC cancela.";
+        }
+        else if (_modoOrdemAviao == 2)
+        {
+            instrucao = "ESCOLTA: clique direito sobre uma unidade aliada. ESC cancela.";
+        }
+        else
+        {
+            instrucao = "ALVO / RECON: clique direito no alvo ou no ponto do mapa. ESC cancela.";
+        }
+
+        Rect areaInstrucao = new Rect(16f, 68f, Mathf.Min(500f, Screen.width - 32f), 58f);
+        GUI.Box(areaInstrucao, "ORDEM DE VOO ATIVA");
+        GUI.Label(new Rect(areaInstrucao.x + 12f, areaInstrucao.y + 24f, areaInstrucao.width - 24f, 30f), instrucao);
+    }
+
+    private static void DesenharPaginacaoCarrier(ref int pagina, int totalPaginas, string rotulo)
+    {
+        if (totalPaginas <= 1)
+        {
+            return;
+        }
+
+        GUILayout.BeginHorizontal();
+        GUI.enabled = pagina > 0;
+        if (GUILayout.Button("‹", GUILayout.Width(28f), GUILayout.Height(20f))) pagina--;
+        GUI.enabled = pagina < totalPaginas - 1;
+        if (GUILayout.Button("›", GUILayout.Width(28f), GUILayout.Height(20f))) pagina++;
+        GUI.enabled = true;
+        GUILayout.Label($"<color=grey>{rotulo} {pagina + 1}/{totalPaginas}</color>", GUILayout.ExpandWidth(true));
+        GUILayout.EndHorizontal();
     }
 
     private static string LimparClone(string nome)
@@ -1336,6 +1488,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         _selecionadoCarrier = null;
         esperandoCliqueMassa = false;
         _menuCarrierAtivo = false;
+        GestorMenusExclusivos.Fechar(this);
         AtualizarModoInteracaoManualAeroporto();
     }
 
@@ -1348,9 +1501,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
         _modoOrdemAviao = 0;
         _rotaPatrulhaAviaoCarrier.Clear();
+        LimparLinhaPatrulhaAviaoCarrier();
         _selecionadoCarrier = null;
         esperandoCliqueMassa = false;
         _menuCarrierAtivo = false;
+        GestorMenusExclusivos.Fechar(this);
         AtualizarModoInteracaoManualAeroporto();
     }
 
@@ -1586,11 +1741,19 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     }
 
     void IniciarRadar(int modo) 
-    { 
+    {
+        if (_selecionadoCarrier == null || _selecionadoCarrier.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio)
+        {
+            return;
+        }
+
         _modoOrdemAviao = modo;
         _rotaPatrulhaAviaoCarrier.Clear();
-        _selecionadoCarrier.aguardandoCliqueRadar = true; 
-        _menuCarrierAtivo = false; 
+        _selecionadoCarrier.aguardandoCliqueRadar = true;
+        _menuCarrierAtivo = false;
+        // Fecha o bloqueio de UI antes do clique no mapa. Antes, o painel era
+        // apenas escondido e o clique direito da patrulha era descartado aqui.
+        GestorMenusExclusivos.Fechar(this);
         AtualizarModoInteracaoManualAeroporto();
     }
 
@@ -1694,49 +1857,110 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     public void AcionarElevadorParaCima(ControleAviao av)
     {
-        if (!_elevadorOcupado) StartCoroutine(RotinaElevadorSequencial(av, true));
+        if (!_elevadorOcupado) _rotinaElevadorAtiva = StartCoroutine(RotinaElevadorSequencial(av, true));
     }
 
     public void MandarParaOHangar(ControleAviao av)
     {
-        if (!_elevadorOcupado) StartCoroutine(RotinaElevadorSequencial(av, false));
+        if (!_elevadorOcupado) _rotinaElevadorAtiva = StartCoroutine(RotinaElevadorSequencial(av, false));
     }
 
     IEnumerator RotinaElevadorSequencial(ControleAviao av, bool subir)
     {
+        if (av == null || _elevadorOcupado) yield break;
+
         _elevadorOcupado = true;
-        
-        if (subir)
+        InicializarPosicoesElevador();
+
+        if (plataformaElevador == null)
         {
-            Transform v = ObterPrimeiraVagaLivre();
-            if (v != null) 
+            if (subir)
             {
-                ColocarAviaoInstantaneamenteNoPatio(av, v, true);
+                Transform vagaFallback = ObterPrimeiraVagaLivre();
+                if (vagaFallback != null)
+                {
+                    av.gameObject.SetActive(true);
+                    av.transform.SetParent(transform, false);
+                    av.transform.localPosition = localHangarFrente;
+                    av.transform.localRotation = Quaternion.identity;
+                    av.DefinirEstado(ControleAviao.EstadoAviao.Taxiando);
+                    yield return StartCoroutine(MoverSuave(av.transform, localHangarFrente, localConvesEntrada, Mathf.Max(0.25f, tempoElevador), true));
+                    avioesNoHangar.Remove(av);
+                    if (!avioesNoPatio.Contains(av)) avioesNoPatio.Add(av);
+                    av.vagaRetorno = vagaFallback;
+                    yield return StartCoroutine(av.MoverInterpolado(Vector3.zero, av.velocidadeSolo, true, vagaFallback));
+                    av.transform.SetParent(vagaFallback, true);
+                    av.transform.localPosition = new Vector3(0f, Mathf.Min(0.25f, av.ObterAlturaEstacionamento() * 0.1f), 0f);
+                    av.transform.localRotation = Quaternion.identity;
+                    av.DefinirEstado(ControleAviao.EstadoAviao.ProntoNoPatio);
+                }
             }
             else
             {
-                if (!avioesNoHangar.Contains(av)) avioesNoHangar.Add(av);
+                av.transform.SetParent(transform, true);
+                av.DefinirEstado(ControleAviao.EstadoAviao.Taxiando);
+                yield return StartCoroutine(MoverSuave(av.transform, av.transform.localPosition, localHangarInterno, Mathf.Max(0.25f, tempoElevador), true));
+                ArmazenarAviaoNoHangarInterno(av);
+            }
+
+            _elevadorOcupado = false;
+            _rotinaElevadorAtiva = null;
+            yield break;
+        }
+
+        if (subir)
+        {
+            Transform vaga = ObterPrimeiraVagaLivre();
+            if (vaga == null)
+            {
+                ArmazenarAviaoNoHangarInterno(av);
+                _elevadorOcupado = false;
+                _rotinaElevadorAtiva = null;
+                yield break;
+            }
+
+            yield return StartCoroutine(MoverElevadorPara(_posicaoElevadorHangar));
+            PosicionarAeronaveNoElevador(av);
+            av.DefinirEstado(ControleAviao.EstadoAviao.Taxiando);
+            yield return new WaitForSeconds(0.2f);
+            yield return StartCoroutine(MoverElevadorPara(_posicaoElevadorConves));
+
+            avioesNoHangar.Remove(av);
+            if (!avioesNoPatio.Contains(av)) avioesNoPatio.Add(av);
+            av.aeroportoOrigem = this;
+            av.vagaRetorno = vaga;
+            av.transform.SetParent(transform, true);
+            yield return StartCoroutine(av.MoverInterpolado(Vector3.zero, av.velocidadeSolo, true, vaga));
+            if (av != null)
+            {
+                av.transform.SetParent(vaga, true);
+                av.transform.localPosition = new Vector3(0f, Mathf.Min(0.25f, av.ObterAlturaEstacionamento() * 0.1f), 0f);
+                av.transform.localRotation = Quaternion.identity;
+                av.DefinirEstado(ControleAviao.EstadoAviao.ProntoNoPatio);
             }
         }
         else
         {
-            GuardarAviaoNoHangarInstantaneo(av, true);
-
-            if (av != null)
+            yield return StartCoroutine(MoverElevadorPara(_posicaoElevadorConves));
+            av.DefinirEstado(ControleAviao.EstadoAviao.Taxiando);
+            av.transform.SetParent(transform, true);
+            Transform pontoElevador = ObterPontoDaPlataformaElevador();
+            if (pontoElevador != null)
             {
-                av.transform.SetParent(this.transform, false);
-                av.transform.localPosition = localHangarInterno;
-                av.transform.localRotation = Quaternion.identity;
+                yield return StartCoroutine(av.MoverInterpolado(Vector3.zero, av.velocidadeSolo, true, pontoElevador));
             }
-        }
 
-        if (plataformaElevador != null)
-        {
-            plataformaElevador.localPosition = localConvesEntrada;
+            PosicionarAeronaveNoElevador(av);
+            avioesNoPatio.Remove(av);
+            if (!avioesNoHangar.Contains(av)) avioesNoHangar.Add(av);
+            av.vagaRetorno = null;
+            yield return new WaitForSeconds(0.2f);
+            yield return StartCoroutine(MoverElevadorPara(_posicaoElevadorHangar));
+            ArmazenarAviaoNoHangarInterno(av);
         }
 
         _elevadorOcupado = false;
-        yield break;
+        _rotinaElevadorAtiva = null;
     }
 
     IEnumerator MoverSuave(Transform o, Vector3 a, Vector3 b, float s, bool local = true)
@@ -1779,44 +2003,82 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         _uiLabelWrap.fontSize = 11;
     }
 
+    protected override IEnumerator RotinaRecebimento(ControleAviao av)
+    {
+        // Compras e reforcos entram no hangar. Diferente de um aeroporto em terra,
+        // o porta-avioes nunca pode criar a aeronave diretamente em uma vaga do conves.
+        ArmazenarAviaoNoHangarInterno(av);
+        yield break;
+    }
+
+    protected override void ReporPatioComAvioesDoHangar()
+    {
+        // A base chama este metodo a cada dois segundos. No carrier isso causava
+        // teleporte do hangar para o conves; a unica saida permitida e o elevador.
+    }
+
     public override void GuardarNoHangarAutomatico(ControleAviao av)
     {
-        if (av == null)
+        if (av == null) return;
+
+        av.aeroportoOrigem = this;
+        if (av.gameObject.activeInHierarchy)
         {
+            // O elevador e exclusivo do comando manual "Descer para hangar".
+            // Retornos automaticos permanecem visiveis e taxiam para o patio.
+            StartCoroutine(EstacionarAeronaveNoConves(av));
             return;
         }
 
-        av.aeroportoOrigem = this;
+        ArmazenarAviaoNoHangarInterno(av);
+    }
 
-        Transform vagaVisivel = null;
-        if (av.vagaRetorno != null && (av.vagaRetorno == transform || av.vagaRetorno.IsChildOf(transform)))
+    public IEnumerator EstacionarAeronaveNoConves(ControleAviao av)
+    {
+        if (av == null) yield break;
+
+        av.aeroportoOrigem = this;
+        avioesNoHangar.Remove(av);
+
+        Transform vaga = ObterPrimeiraVagaLivre();
+        if (vaga == null)
         {
-            vagaVisivel = av.vagaRetorno;
+            // Nunca esconde uma aeronave que acabou de pousar. Se o patio estiver
+            // lotado, ela permanece visivel no fim da pista ate liberar uma vaga.
+            av.vagaRetorno = null;
+            if (!avioesNoPatio.Contains(av)) avioesNoPatio.Add(av);
+            av.transform.SetParent(transform, true);
+            av.DefinirEstado(ControleAviao.EstadoAviao.ProntoNoPatio);
+            yield break;
+        }
+
+        av.vagaRetorno = vaga;
+        if (!avioesNoPatio.Contains(av)) avioesNoPatio.Add(av);
+        av.transform.SetParent(transform, true);
+        av.DefinirEstado(ControleAviao.EstadoAviao.RetornandoPraVaga);
+
+        yield return StartCoroutine(av.MoverInterpolado(Vector3.zero, Mathf.Max(10f, av.velocidadeSolo), true, vaga, true));
+
+        if (av == null) yield break;
+        av.transform.SetParent(vaga, true);
+        av.transform.localPosition = new Vector3(0f, Mathf.Min(0.25f, av.ObterAlturaEstacionamento() * 0.1f), 0f);
+        av.transform.localRotation = Quaternion.identity;
+        av.DefinirEstado(ControleAviao.EstadoAviao.ProntoNoPatio);
+    }
+
+    private IEnumerator AguardarElevadorParaGuardar(ControleAviao av, int id)
+    {
+        while (_elevadorOcupado && av != null) yield return null;
+        _aeronavesAguardandoHangar.Remove(id);
+        if (av == null) yield break;
+        if (av.gameObject.activeInHierarchy)
+        {
+            _rotinaElevadorAtiva = StartCoroutine(RotinaElevadorSequencial(av, false));
         }
         else
         {
-            vagaVisivel = ObterPrimeiraVagaLivre();
+            ArmazenarAviaoNoHangarInterno(av);
         }
-
-        if (vagaVisivel != null)
-        {
-            ColocarAviaoInstantaneamenteNoPatio(av, vagaVisivel, true);
-            av.transform.SetParent(this.transform, true);
-            return;
-        }
-
-        avioesNoHangar.Remove(av);
-        if (!avioesNoPatio.Contains(av))
-        {
-            avioesNoPatio.Add(av);
-        }
-
-        av.gameObject.SetActive(true);
-        av.transform.SetParent(this.transform, true);
-        av.aguardandoCliqueRadar = false;
-        av.ordemParaRetorno = false;
-        av.estaEmModoVooFisico = false;
-        av.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
     }
 
     public override void RegistrarHelicopteroControlado(Helicoptero helicoptero)

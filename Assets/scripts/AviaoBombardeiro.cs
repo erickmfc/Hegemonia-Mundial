@@ -204,6 +204,7 @@ public class AviaoBombardeiro : MonoBehaviour
     {
         ControleUnidade cu = GetComponent<ControleUnidade>();
         if (cu == null || !cu.selecionado) return;
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto) return;
 
         // Desenha botões customizados no canto para o Bombardeiro
         float w = 180f;

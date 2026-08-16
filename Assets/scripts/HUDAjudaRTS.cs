@@ -22,8 +22,10 @@ public sealed class HUDAjudaRTS : MonoBehaviour
     private Text textoRuntime;
     private Text textoToast;
     private RectTransform painelToast;
-    // A ajuda pode ser aberta com F1/N, mas nao deve nascer cobrindo o mapa.
-    private bool expandido = false;
+    // A ajuda inicia visível para orientar os primeiros comandos; depois
+    // recolhe sozinha e continua disponível por F1/N.
+    private bool expandido = true;
+    private bool usarPainelAjudaLegado;
     private float recolherAutomaticamenteEm = -1f;
     private float toastAte = -1f;
     private Coroutine animacaoToast;
@@ -64,11 +66,22 @@ public sealed class HUDAjudaRTS : MonoBehaviour
 
         Instancia = this;
         fontePadrao = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        // O HUD novo ja fornece os cards interativos e o X para fecha-los.
+        // Este servico permanece apenas para os toasts usados por sistemas
+        // antigos, sem redesenhar o painel azul de ajuda rapida.
+        usarPainelAjudaLegado = Resources.Load("menu fixado/menufixado") == null;
         GarantirEventSystem();
         ConstruirInterface();
-        AtualizarVisibilidadePainel(true);
-        if (painel != null) painel.gameObject.SetActive(false);
-        recolherAutomaticamenteEm = -1f;
+        if (usarPainelAjudaLegado)
+        {
+            AtualizarVisibilidadePainel(true);
+            recolherAutomaticamenteEm = Time.unscaledTime + 12f;
+        }
+        else if (painel != null)
+        {
+            expandido = false;
+            painel.gameObject.SetActive(false);
+        }
         if (!string.IsNullOrWhiteSpace(mensagemPendente))
         {
             string mensagem = mensagemPendente;
@@ -91,14 +104,14 @@ public sealed class HUDAjudaRTS : MonoBehaviour
     {
         // F10 sempre fecha o card. F1 alterna entre o card completo e a ajuda
         // rápida, sem deixar o atalho de fechar abrir a ajuda novamente.
-        if (Input.GetKeyDown(KeyCode.F10))
+        if (usarPainelAjudaLegado && Input.GetKeyDown(KeyCode.F10))
         {
             expandido = false;
             recolherAutomaticamenteEm = -1f;
             if (painel != null) painel.gameObject.SetActive(false);
             AtualizarVisibilidadePainel(false);
         }
-        else if (Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(teclaAlternar) || Input.GetKeyDown(KeyCode.N))
+        else if (usarPainelAjudaLegado && (Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(teclaAlternar) || Input.GetKeyDown(KeyCode.N)))
         {
             if (painel != null && !painel.gameObject.activeSelf)
             {
@@ -116,14 +129,14 @@ public sealed class HUDAjudaRTS : MonoBehaviour
             AtualizarVisibilidadePainel(false);
         }
 
-        if (expandido && recolherAutomaticamenteEm > 0f && Time.unscaledTime >= recolherAutomaticamenteEm)
+        if (usarPainelAjudaLegado && expandido && recolherAutomaticamenteEm > 0f && Time.unscaledTime >= recolherAutomaticamenteEm)
         {
             expandido = false;
             recolherAutomaticamenteEm = -1f;
             AtualizarVisibilidadePainel(false);
         }
 
-        AtualizarConteudo();
+        if (usarPainelAjudaLegado) AtualizarConteudo();
 
         float alvoAlpha = SistemaFimDeJogo.PartidaEncerrada ? 0f : 1f;
         if (grupoCanvas != null)

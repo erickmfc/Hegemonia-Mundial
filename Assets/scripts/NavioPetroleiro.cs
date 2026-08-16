@@ -143,7 +143,9 @@ public class NavioPetroleiro : ControleUnidade
                 if (plataformaAlvo != null && !plataformaAlvo.EhOcupante(this)
                     && !plataformaAlvo.TentarOcupar(this))
                 {
-                    statusDebug = "Fila da plataforma: aguardando vaga livre.";
+                    Vector3 pontoEspera = plataformaAlvo.ObterPosicaoEspera(this);
+                    ExecutarEsperaFila(pontoEspera);
+                    statusDebug = "Fila da plataforma: aguardando vaga a 75 m.";
                     return;
                 }
                 if(plataformaAlvo != null) 
@@ -552,6 +554,25 @@ public class NavioPetroleiro : ControleUnidade
         {
             Debug.LogWarning($"[Navio Petroleiro] Atracagem ainda distante ({dist:0.0} m); mantendo aproximação ao ponto azul.", this);
             timerEstado = 0f;
+        }
+    }
+
+    private void ExecutarEsperaFila(Vector3 destino)
+    {
+        destino.y = transform.position.y;
+        Vector3 delta = destino - transform.position;
+        delta.y = 0f;
+        float distancia = delta.magnitude;
+        if (distancia > 3.5f)
+        {
+            float velocidade = Mathf.Max(1f, velocidadeManobra);
+            transform.position = Vector3.MoveTowards(transform.position, destino, velocidade * Time.deltaTime);
+            if (delta.sqrMagnitude > 0.01f)
+            {
+                Quaternion rotacao = Quaternion.LookRotation(delta.normalized, Vector3.up);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotacao, 45f * Time.deltaTime);
+                transform.rotation = Quaternion.Euler(0f, transform.rotation.eulerAngles.y, 0f);
+            }
         }
     }
 

@@ -131,6 +131,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 400010, guid: 3c72352849899e344b9ed8cefd44ab79, type: 3}
   m_PrefabInstance: {fileID: 4090176795392784553}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &4090176795392386000 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400000, guid: 3c72352849899e344b9ed8cefd44ab79, type: 3}
+  m_PrefabInstance: {fileID: 4090176795392784553}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &4090176795392818697 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 100000, guid: 3c72352849899e344b9ed8cefd44ab79, type: 3}
@@ -157,7 +162,7 @@ MonoBehaviour:
   tempoEntreTiros: 0.3
   tamanhoCartucho: 50
   tempoRecarga: 4
-  pecaQueGira: {fileID: 0}
+  pecaQueGira: {fileID: 4090176795392386000}
   canosDaTorreta: {fileID: 0}
   locaisDoTiro:
   - {fileID: 3647297641779607559}

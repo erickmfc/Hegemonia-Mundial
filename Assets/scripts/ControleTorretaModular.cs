@@ -73,7 +73,7 @@ public class ControleTorretaModular : MonoBehaviour
         // Inicializa audio
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
-        fonteAudio.spatialBlend = 1f;
+        AudioRuntime.ConfigurarFonteDeTiro(fonteAudio);
         
         // Inicializa armas
         foreach (var arma in armas)

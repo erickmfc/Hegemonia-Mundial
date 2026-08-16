@@ -21,6 +21,7 @@ namespace Hegemonia.AI.BrainMaster
         public SquadService SquadService { get; private set; }
         public AbilityService AbilityService { get; private set; }
         public CommandService CommandService { get; private set; }
+        public int TeamId { get { return _teamId; } }
 
         public IA_BackendBridge(int teamId)
         {
@@ -1799,7 +1800,7 @@ namespace Hegemonia.AI.BrainMaster
             _teamId = teamId;
         }
 
-        public bool TryProduce(string itemKey, int quantity, IA_WorldState world, out int produced, out string reason)
+        public bool TryProduce(string itemKey, int quantity, IA_WorldState world, out int produced, out string reason, string productionOrderId = "")
         {
             produced = 0;
             reason = string.Empty;
@@ -1813,7 +1814,7 @@ namespace Hegemonia.AI.BrainMaster
 
             for (int i = 0; i < Mathf.Max(1, quantity); i++)
             {
-                GameObject unit = TryProduceSingle(data, world, out reason);
+                GameObject unit = TryProduceSingle(data, world, out reason, productionOrderId);
                 if (unit != null)
                 {
                     produced++;
@@ -1828,7 +1829,7 @@ namespace Hegemonia.AI.BrainMaster
             return produced > 0;
         }
 
-        private GameObject TryProduceSingle(DadosConstrucao data, IA_WorldState world, out string reason)
+        private GameObject TryProduceSingle(DadosConstrucao data, IA_WorldState world, out string reason, string productionOrderId)
         {
             reason = string.Empty;
             if (data == null || data.PrefabDaUnidade == null)
@@ -1845,23 +1846,23 @@ namespace Hegemonia.AI.BrainMaster
 
             if (IsNaval(data))
             {
-                return ProduceNaval(data, out reason);
+                return ProduceNaval(data, out reason, productionOrderId);
             }
 
             if (IsFighter(data))
             {
-                return ProduceAircraft(data, out reason);
+                return ProduceAircraft(data, out reason, productionOrderId);
             }
 
             if (IsHelicopter(data))
             {
-                return ProduceHelicopter(data, out reason);
+                return ProduceHelicopter(data, out reason, productionOrderId);
             }
 
-            return ProduceLandUnit(data, out reason);
+            return ProduceLandUnit(data, out reason, productionOrderId);
         }
 
-        private GameObject ProduceLandUnit(DadosConstrucao data, out string reason)
+        private GameObject ProduceLandUnit(DadosConstrucao data, out string reason, string productionOrderId)
         {
             reason = string.Empty;
             bool needsBarracks = IsInfantry(data);
@@ -1885,6 +1886,7 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     IA_BackendBridge.AttachConstructionMetadata(unit, data);
                     _bridge.EnsureIdentity(unit);
+                    IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
                     IA_WorldState.NotifyEntityChanged(unit.GetComponent<IdentidadeUnidade>());
                     return unit;
                 }
@@ -1894,7 +1896,7 @@ namespace Hegemonia.AI.BrainMaster
             return null;
         }
 
-        private GameObject ProduceNaval(DadosConstrucao data, out string reason)
+        private GameObject ProduceNaval(DadosConstrucao data, out string reason, string productionOrderId)
         {
             reason = string.Empty;
             string lastReason = "estaleiro indisponivel";
@@ -1912,8 +1914,9 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                if (e.ConstruirUnidade(data.PrefabDaUnidade))
+                if (e.ConstruirUnidade(data.PrefabDaUnidade, productionOrderId))
                 {
+                    IAAutoProductionRegistry.ConfirmQueued(productionOrderId, e.GetInstanceID(), Time.time);
                     RegistrarTempoDiagnostico("spawn_naval_ms", spawnStart);
                     return data.PrefabDaUnidade;
                 }
@@ -1925,7 +1928,7 @@ namespace Hegemonia.AI.BrainMaster
             return null;
         }
 
-        private GameObject ProduceAircraft(DadosConstrucao data, out string reason)
+        private GameObject ProduceAircraft(DadosConstrucao data, out string reason, string productionOrderId)
         {
             reason = string.Empty;
             long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -1949,7 +1952,7 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                airport.ComprarAviao(data.PrefabDaUnidade);
+                airport.ComprarAviaoIAImediato(data.PrefabDaUnidade, productionOrderId);
                 RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
                 return data.PrefabDaUnidade;
             }
@@ -1958,7 +1961,7 @@ namespace Hegemonia.AI.BrainMaster
             return null;
         }
 
-        private GameObject ProduceHelicopter(DadosConstrucao data, out string reason)
+        private GameObject ProduceHelicopter(DadosConstrucao data, out string reason, string productionOrderId)
         {
             reason = string.Empty;
             long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -1984,6 +1987,7 @@ namespace Hegemonia.AI.BrainMaster
                 long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
                 IA_BackendBridge.AttachConstructionMetadata(unit, data);
                 _bridge.EnsureIdentity(unit);
+                IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
                 IA_WorldState.NotifyEntityChanged(unit.GetComponent<IdentidadeUnidade>());
                 RegistrarTempoDiagnostico("prefab_init_ms", initStart);
                 RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
@@ -2294,6 +2298,20 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
+        private static int CountProductionUnits(IA01MilitaryAssetKind kind, IA_ForceSnapshot snapshot)
+        {
+            if (snapshot == null) return 0;
+            switch (kind)
+            {
+                case IA01MilitaryAssetKind.Infantry: return snapshot.InfantryUnits;
+                case IA01MilitaryAssetKind.Tank: return snapshot.TankUnits;
+                case IA01MilitaryAssetKind.Fighter: return snapshot.FixedWingAircraft;
+                case IA01MilitaryAssetKind.Naval: return snapshot.NavalUnits;
+                case IA01MilitaryAssetKind.OilTanker: return snapshot.OilTankers;
+                default: return 0;
+            }
+        }
+
         private bool ExecuteProduce(IA_CommandRequest request, IA_Context context, out string message)
         {
             IA_ProduceOrderData payload = request.Payload as IA_ProduceOrderData;
@@ -2310,9 +2328,25 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            // Compatibilidade para comandos automáticos publicados por diretores
+            // legados que ainda não carregam o id da reserva no payload.
+            if (string.IsNullOrEmpty(payload.ProductionOrderId))
+            {
+                IA01MilitaryAssetKind kind = IA01MilitaryProductionGuard.Classify(item);
+                string unitType = kind == IA01MilitaryAssetKind.Other ? item.GetStableId() : kind.ToString();
+                int alive = CountProductionUnits(kind, context != null ? context.ForceSnapshot : null);
+                string purpose = "command:" + (string.IsNullOrEmpty(request.Origin) ? "legacy" : request.Origin);
+                if (!IAAutoProductionRegistry.TryReserveProduction(_bridge.TeamId, unitType, purpose, alive + 1, alive, out payload.ProductionOrderId, Time.time, 180f))
+                {
+                    message = "ordem automatica equivalente ou meta atendida";
+                    return false;
+                }
+            }
+
             string runtimeProduceReason;
             if (ShouldThrottleProduceRuntime(context, item, out runtimeProduceReason))
             {
+                IAAutoProductionRegistry.Release(payload.ProductionOrderId, Time.time);
                 message = "producao pausada: " + runtimeProduceReason;
                 return false;
             }
@@ -2321,6 +2355,7 @@ namespace Hegemonia.AI.BrainMaster
             int totalCost = item.preco * amount;
             if (!context.Brain.TrySpend(totalCost))
             {
+                IAAutoProductionRegistry.Release(payload.ProductionOrderId, Time.time);
                 message = "credito insuficiente";
                 return false;
             }
@@ -2334,9 +2369,10 @@ namespace Hegemonia.AI.BrainMaster
             try
             {
                 int produced;
-                bool ok = _bridge.ProductionService.TryProduce(payload.ItemKey, payload.Quantity, context.WorldState, out produced, out message);
+                bool ok = _bridge.ProductionService.TryProduce(payload.ItemKey, payload.Quantity, context.WorldState, out produced, out message, payload.ProductionOrderId);
                 if (!ok || produced <= 0)
                 {
+                    IAAutoProductionRegistry.Release(payload.ProductionOrderId, Time.time);
                     context.Brain.Refund(totalCost);
                     return false;
                 }

@@ -10,7 +10,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 100026, guid: c0ff423a11c3b459e9755ea58dcc82e3, type: 3}
       propertyPath: m_Name
-      value: MilitaryBase
+      value: CartelBase
+      objectReference: {fileID: 0}
+    - target: {fileID: 100026, guid: c0ff423a11c3b459e9755ea58dcc82e3, type: 3}
+      propertyPath: m_TagString
+      value: Imovel
       objectReference: {fileID: 0}
     - target: {fileID: 400026, guid: c0ff423a11c3b459e9755ea58dcc82e3, type: 3}
       propertyPath: m_LocalScale.x
@@ -67,5 +71,79 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100026, guid: c0ff423a11c3b459e9755ea58dcc82e3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9156459219327875416}
+    - targetCorrespondingSourceObject: {fileID: 100026, guid: c0ff423a11c3b459e9755ea58dcc82e3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9001408471514723634}
+    - targetCorrespondingSourceObject: {fileID: 100026, guid: c0ff423a11c3b459e9755ea58dcc82e3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8555893944741755330}
   m_SourcePrefab: {fileID: 100100000, guid: c0ff423a11c3b459e9755ea58dcc82e3, type: 3}
+--- !u!1 &1717096751499925462 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100026, guid: c0ff423a11c3b459e9755ea58dcc82e3, type: 3}
+  m_PrefabInstance: {fileID: 1717096751499891052}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &9156459219327875416
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1717096751499925462}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 3.63, y: 5.17, z: 3.45}
+  m_Center: {x: 0, y: 1.48, z: 0}
+--- !u!114 &9001408471514723634
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1717096751499925462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 500
+  vidaAtual: 500
+  unidadeBiologica: 0
+  ehEstrutura: 1
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 1
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
+--- !u!114 &8555893944741755330
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1717096751499925462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1

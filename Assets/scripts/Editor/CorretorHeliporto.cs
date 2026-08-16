@@ -2,57 +2,112 @@ using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
 
-public class CorretorHeliporto : MonoBehaviour
+public static class CorretorHeliporto
 {
-    [MenuItem("Hegemonia/Corrigir Colisor do Heliporto")]
+    private const string HeliportoPrefabPath = "Assets/Prefabs/Heliporto/Heliporto.prefab";
+    private const string HeliportoDadosPath = "Assets/Prefabs/Heliporto/Dados_Heliporto.asset";
+    private const string UsinaCarvaoPrefabPath = "Assets/Prefabs/Energia/Usina Carvao.prefab";
+
+    [MenuItem("Hegemonia/Corrigir Conteudo de Heliporto e Usina")]
     public static void Corrigir()
     {
-        // Procura o prefab do HeliPad
-        string[] guids = AssetDatabase.FindAssets("HeliPad t:Prefab");
-        if (guids.Length == 0)
+        CorrigirHeliporto();
+        CorrigirUsinaCarvao();
+        CorrigirFichaHeliporto();
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("[Corretor] Heliporto e Usina de Carvao corrigidos.");
+    }
+
+    private static void CorrigirHeliporto()
+    {
+        GameObject root = PrefabUtility.LoadPrefabContents(HeliportoPrefabPath);
+        if (root == null)
         {
-            Debug.LogError("❌ Prefab 'HeliPad' não encontrado!");
+            Debug.LogError("[Corretor] Prefab do Heliporto nao encontrado: " + HeliportoPrefabPath);
             return;
         }
 
-        string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-
-        if (prefab != null)
+        try
         {
-            // Adiciona BoxCollider se não tiver
-            BoxCollider col = prefab.GetComponent<BoxCollider>();
-            if (col == null)
+            BoxCollider collider = root.GetComponent<BoxCollider>();
+            if (collider == null)
             {
-                col = prefab.AddComponent<BoxCollider>();
-                // Ajusta tamanho generico (assumindo que é plano)
-                col.center = new Vector3(0, 0.2f, 0);
-                col.size = new Vector3(10f, 0.5f, 10f); 
-                Debug.Log("✅ [Corretor] BoxCollider adicionado e configurado.");
-            }
-            else
-            {
-                // Garante que é grande o suficiente
-                 col.center = new Vector3(0, 0.2f, 0);
-                 col.size = new Vector3(10f, 0.5f, 10f);
-                 Debug.Log("✅ [Corretor] BoxCollider ajustado.");
+                collider = root.AddComponent<BoxCollider>();
             }
 
-            // Garante que tem o script Heliporto
-            Heliporto script = prefab.GetComponent<Heliporto>();
-            if (script == null)
+            if (collider.size == Vector3.zero)
             {
-                prefab.AddComponent<Heliporto>();
-                Debug.Log("✅ [Corretor] Script Heliporto adicionado.");
+                collider.center = new Vector3(0f, 0.2f, 0f);
+                collider.size = new Vector3(10f, 0.5f, 10f);
             }
 
-            // Define Layer Default (0) para garantir que o Raycast pegue
-            prefab.layer = 0; 
+            if (root.GetComponent<Heliporto>() == null)
+            {
+                root.AddComponent<Heliporto>();
+            }
 
-            // Salva
-            EditorUtility.SetDirty(prefab);
-            AssetDatabase.SaveAssets();
-            Debug.Log("🎉 Heliporto corrigido com sucesso! Tente construir um novo.");
+            if (root.GetComponent<SaveableEntity>() == null)
+            {
+                root.AddComponent<SaveableEntity>();
+            }
+
+            if (root.GetComponent<SistemaDeDanos>() == null)
+            {
+                SistemaDeDanos danos = root.AddComponent<SistemaDeDanos>();
+                danos.ehEstrutura = true;
+            }
+
+            root.layer = 0;
+            EditorUtility.SetDirty(root);
+            PrefabUtility.SaveAsPrefabAsset(root, HeliportoPrefabPath);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(root);
+        }
+    }
+
+    private static void CorrigirUsinaCarvao()
+    {
+        GameObject root = PrefabUtility.LoadPrefabContents(UsinaCarvaoPrefabPath);
+        if (root == null)
+        {
+            Debug.LogError("[Corretor] Prefab da Usina de Carvao nao encontrado: " + UsinaCarvaoPrefabPath);
+            return;
+        }
+
+        try
+        {
+            if (root.GetComponent<SistemaDeDanos>() == null)
+            {
+                SistemaDeDanos danos = root.AddComponent<SistemaDeDanos>();
+                danos.ehEstrutura = true;
+            }
+
+            EditorUtility.SetDirty(root);
+            PrefabUtility.SaveAsPrefabAsset(root, UsinaCarvaoPrefabPath);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(root);
+        }
+    }
+
+    private static void CorrigirFichaHeliporto()
+    {
+        DadosConstrucao dados = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(HeliportoDadosPath);
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HeliportoPrefabPath);
+        if (dados == null || prefab == null)
+        {
+            Debug.LogError("[Corretor] Ficha ou prefab do Heliporto nao encontrado.");
+            return;
+        }
+
+        if (dados.PrefabDaUnidade != prefab)
+        {
+            dados.PrefabDaUnidade = prefab;
+            EditorUtility.SetDirty(dados);
         }
     }
 }

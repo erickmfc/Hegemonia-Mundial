@@ -1598,10 +1598,16 @@ public class Helicoptero : MonoBehaviour
 
         if (rb != null)
         {
-            rb.isKinematic = true;
             rb.interpolation = RigidbodyInterpolation.None;
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            // Unity nao permite alterar velocidades de um Rigidbody cinematico.
+            // Zera o movimento enquanto ele ainda aceita fisica e so entao fixa
+            // o helicoptero na vaga movel do porta-avioes.
+            if (!rb.isKinematic)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+            rb.isKinematic = true;
         }
 
         if (audioMotor) audioMotor.Stop();

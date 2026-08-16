@@ -8,6 +8,11 @@ public static class GestorMenusExclusivos
     private static Rect areaBloqueioAtual;
     private static int ultimoFrameArea = -1;
 
+    public static bool TemMenuAtivo
+    {
+        get { return donoMenuAtivo != null; }
+    }
+
     public static void Abrir(Object dono)
     {
         if (dono == null) return;

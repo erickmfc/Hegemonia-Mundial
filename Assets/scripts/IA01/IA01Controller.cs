@@ -92,6 +92,9 @@ namespace Hegemonia.AI.IA01
         public bool IsDirty => context != null && context.IsDirty;
         public bool IsEnabled => isActiveAndEnabled;
         public IA01RuntimeContext Context => context;
+        // Exposto somente para coordenadores internos que precisam distinguir uma
+        // prefeitura realmente registrada de um marcador de construcao pendente.
+        public IA01NationRuntime Runtime => nationRuntime;
         public IA01NationProfile Profile => runtimeProfile != null ? runtimeProfile : profileAsset;
         public IA01EventBus EventBus => sharedEventBus;
         public IA01Manager Manager => attachedManager;
@@ -120,6 +123,9 @@ namespace Hegemonia.AI.IA01
         public string ProgressionStatus => nationRuntime != null ? nationRuntime.ProgressionStatus : "Runtime aguardando inicializacao.";
         public string NextObjectiveStatus => nationRuntime != null ? nationRuntime.NextObjectiveStatus : "Runtime aguardando inicializacao.";
         public bool FoundationFundingGranted => nationRuntime != null && nationRuntime.FoundationFundingGranted;
+        public bool HasConfirmedCapital => nationRuntime != null
+            && nationRuntime.CityPlanner != null
+            && nationRuntime.CityPlanner.Capital != null;
         public ComplexoGovernamental PrefeituraAnchor => prefeituraAnchor;
         public DadosConstrucao CapitalBlueprint => capitalBlueprint;
         public IA01ConstructionAnchors ConstructionAnchors => constructionAnchors != null ? constructionAnchors : GetComponentInChildren<IA01ConstructionAnchors>(true);
@@ -566,18 +572,24 @@ namespace Hegemonia.AI.IA01
                 }
             }
 
+            bool runtimeDeferred = false;
             if (nationRuntime != null && operations < budget.MaxOperations)
             {
                 nationRuntime.Economy.Refresh(country);
-                int runtimeOperations = nationRuntime.Execute(Time.unscaledTime, budget.MaxOperations - operations, restoredFromSave);
-                restoredFromSave = false;
+                float runtimeBudgetMs = Mathf.Max(0.10f, budget.MaxMilliseconds - (float)sliceStopwatch.Elapsed.TotalMilliseconds);
+                int runtimeOperations = nationRuntime.Execute(Time.unscaledTime, budget.MaxOperations - operations, restoredFromSave, runtimeBudgetMs);
+                runtimeDeferred = nationRuntime.LastExecuteDeferred;
+                if (!runtimeDeferred)
+                {
+                    restoredFromSave = false;
+                }
                 operations += runtimeOperations;
                 changed |= runtimeOperations > 0;
             }
 
             // O suporte estratégico é opcional e só trabalha quando alguma
             // integração futura foi explicitamente ativada no Inspector.
-            if (strategicSupport != null
+            if (!runtimeDeferred && strategicSupport != null
                 && (strategicSupport.Options.BallisticEnabled
                     || strategicSupport.Options.EnableStrategicLeaderIntegration
                     || strategicSupport.Options.EnableCountryTransferOperation)
@@ -586,21 +598,26 @@ namespace Hegemonia.AI.IA01
                 operations += strategicSupport.ProcessSlice(Time.unscaledTime, budget.MaxOperations - operations);
             }
 
-            if (operations < budget.MaxOperations)
+            if (!runtimeDeferred && operations < budget.MaxOperations)
             {
                 operations += gameStateBridge.Refresh(context, budget.MaxOperations - operations);
                 changed |= gameStateBridge.LastChangedResources > 0;
             }
 
-            operations += context.AdvanceMaintenance(Time.unscaledTime);
-            List<IA01DirtyReason> dirty = context.ConsumeDirtyReasons();
-            lastDirtyCount = dirty.Count;
-            changed |= dirty.Count > 0;
+            if (!runtimeDeferred)
+            {
+                operations += context.AdvanceMaintenance(Time.unscaledTime);
+            }
+            List<IA01DirtyReason> dirty = runtimeDeferred ? null : context.ConsumeDirtyReasons();
+            lastDirtyCount = dirty != null ? dirty.Count : 0;
+            changed |= dirty != null && dirty.Count > 0;
             context.SetMetric("ia01.last_slice_ms", sliceStopwatch.Elapsed.TotalMilliseconds);
             context.SetMetric("ia01.last_operations", operations);
             context.SetMetric("ia01.last_events", events);
-            lastExecutionMessage = "slice nation=" + NationId + " dirty=" + dirty.Count + " cadence=" + (Profile != null ? Profile.ResolveCadence(ExecutionMode, CurrentStage, NationMode) : fallbackCadenceSeconds).ToString("0.000", CultureInfo.InvariantCulture);
-            lastExecutionResult = IA01WorkResult.From(true, changed, operations, events, (float)sliceStopwatch.Elapsed.TotalMilliseconds, lastExecutionMessage);
+            lastExecutionMessage = runtimeDeferred
+                ? "budget_deferred nation=" + NationId
+                : "slice nation=" + NationId + " dirty=" + lastDirtyCount + " cadence=" + (Profile != null ? Profile.ResolveCadence(ExecutionMode, CurrentStage, NationMode) : fallbackCadenceSeconds).ToString("0.000", CultureInfo.InvariantCulture);
+            lastExecutionResult = IA01WorkResult.From(!runtimeDeferred, changed, operations, events, (float)sliceStopwatch.Elapsed.TotalMilliseconds, lastExecutionMessage, runtimeDeferred);
             runtimeSummary = BuildRuntimeSummary();
             return lastExecutionResult;
         }

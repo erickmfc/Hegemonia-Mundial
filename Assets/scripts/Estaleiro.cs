@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.Shared;
 
 public class Estaleiro : MonoBehaviour
 {
@@ -49,6 +50,13 @@ public class Estaleiro : MonoBehaviour
         [HideInInspector] public GameObject barCanvasObj;
         [HideInInspector] public Image barFillImage;
         [HideInInspector] public Text textProgresso;
+        [HideInInspector] public string productionOrderId = string.Empty;
+    }
+
+    private sealed class PedidoNavalAutomatico
+    {
+        public GameObject Prefab;
+        public string OrderId;
     }
 
     [Header("Estrutura e Vagas")]
@@ -58,6 +66,32 @@ public class Estaleiro : MonoBehaviour
     [Header("Configuração de Construção")]
     public float tempoDeConstrucao = 5.0f; // Tempo em segundos para construir
     public bool usarAnimacaoEscala = false; // DESATIVADO TEMPORARIAMENTE A PEDIDO
+
+    [Header("Fila Naval")]
+    [Tooltip("Quantidade maxima de navios aguardando alem dos dois slots ativos.")]
+    [SerializeField] private int limiteFilaNaval = 10;
+    [Tooltip("Tempo de carregamento entre lotes de ate dois navios.")]
+    [SerializeField] private float intervaloEntreLotes = 10f;
+
+    private readonly Queue<PedidoNavalAutomatico> filaNaval = new Queue<PedidoNavalAutomatico>(10);
+    private int naviosIniciadosNoLote;
+    private int naviosConcluidosNoLote;
+    private float liberarProximoLoteEm = -1f;
+
+    public int NaviosNaFila { get { return filaNaval.Count; } }
+    public int LimiteFilaNaval { get { return Mathf.Max(0, limiteFilaNaval); } }
+    public bool TemCapacidadeDeProducao
+    {
+        get
+        {
+            if (liberarProximoLoteEm >= 0f)
+            {
+                return filaNaval.Count < LimiteFilaNaval;
+            }
+
+            return ObterSlotLivre() != null || filaNaval.Count < LimiteFilaNaval;
+        }
+    }
 
     [Header("Visual da Barra de Progresso")]
     public GameObject prefabBarraProgresso; // Opcional: Prefab customizado
@@ -80,6 +114,24 @@ public class Estaleiro : MonoBehaviour
     void OnDisable()
     {
         RegistroEntidadesJogo.Unregister(this);
+    }
+
+    void OnDestroy()
+    {
+        if (slots != null)
+        {
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (slots[i] != null && !string.IsNullOrEmpty(slots[i].productionOrderId))
+                    IAAutoProductionRegistry.Release(slots[i].productionOrderId, Time.time);
+            }
+        }
+        while (filaNaval.Count > 0)
+        {
+            PedidoNavalAutomatico pedido = filaNaval.Dequeue();
+            if (pedido != null && !string.IsNullOrEmpty(pedido.OrderId))
+                IAAutoProductionRegistry.Release(pedido.OrderId, Time.time);
+        }
     }
     
     void Start()
@@ -352,6 +404,7 @@ public class Estaleiro : MonoBehaviour
     void Update()
     {
         if (slots == null) return;
+        ProcessarProximoLoteSePronto();
         // Processa a construção em cada slot ocupado
         foreach (var slot in slots)
         {
@@ -364,10 +417,11 @@ public class Estaleiro : MonoBehaviour
 
     public bool TemVaga
     {
-        get { return ObterSlotLivre() != null; }
+        // Nome legado usado pelo menu: agora inclui a fila pendente.
+        get { return TemCapacidadeDeProducao; }
     }
 
-    public bool ConstruirUnidade(GameObject prefabDoNavio)
+    public bool ConstruirUnidade(GameObject prefabDoNavio, string productionOrderId = "")
     {
         if (prefabDoNavio != null)
         {
@@ -386,31 +440,54 @@ public class Estaleiro : MonoBehaviour
             return false;
         }
 
-        SlotConstrucao slotLivre = null;
-
-        // REGRA ESPECÍFICA: Navios GRANDES devem procurar o slot "Atracagem_Grande"
-        bool ehNavioGrande = EhNavioGrande(prefabDoNavio);
-        
-        if (ehNavioGrande)
+        if (liberarProximoLoteEm >= 0f)
         {
-            slotLivre = ObterSlotEspecificoLivre("Atracagem_Grande");
-            if (slotLivre == null)
+            int limiteEspera = LimiteFilaNaval;
+            if (filaNaval.Count >= limiteEspera)
             {
-                Debug.LogWarning("[Estaleiro] Navio grande requer 'Atracagem_Grande', mas ela está ocupada ou não existe.");
+                Debug.LogWarning($"[Estaleiro] Fila naval cheia ({limiteEspera}). Pedido recusado.");
                 return false;
             }
+
+            filaNaval.Enqueue(new PedidoNavalAutomatico { Prefab = prefabDoNavio, OrderId = productionOrderId });
+            Debug.Log($"[Estaleiro] Navio enfileirado para o proximo lote: {prefabDoNavio.name} | fila={filaNaval.Count}/{limiteEspera}");
+            return true;
         }
 
-        // Se não for navio grande, busca qualquer slot livre
+        if (naviosIniciadosNoLote >= 2)
+        {
+            int limiteLote = LimiteFilaNaval;
+            if (filaNaval.Count >= limiteLote)
+            {
+                Debug.LogWarning($"[Estaleiro] Fila naval cheia ({limiteLote}). Pedido recusado.");
+                return false;
+            }
+
+            filaNaval.Enqueue(new PedidoNavalAutomatico { Prefab = prefabDoNavio, OrderId = productionOrderId });
+            Debug.Log($"[Estaleiro] Navio aguardando o fim do lote: {prefabDoNavio.name} | fila={filaNaval.Count}/{limiteLote}");
+            return true;
+        }
+
+        SlotConstrucao slotLivre = ObterSlotLivre();
+
         if (slotLivre == null)
         {
-            slotLivre = ObterSlotLivre();
+            int limite = LimiteFilaNaval;
+            if (filaNaval.Count >= limite)
+            {
+                Debug.LogWarning($"[Estaleiro] Fila naval cheia ({limite}). Pedido recusado.");
+                return false;
+            }
+
+            filaNaval.Enqueue(new PedidoNavalAutomatico { Prefab = prefabDoNavio, OrderId = productionOrderId });
+            Debug.Log($"[Estaleiro] Navio enfileirado: {prefabDoNavio.name} | fila={filaNaval.Count}/{limite}");
+            return true;
         }
 
         if (slotLivre != null)
         {
             long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
-            IniciarConstrucao(slotLivre, prefabDoNavio);
+            IniciarConstrucao(slotLivre, prefabDoNavio, productionOrderId);
             RegistrarTempoDiagnostico("prefab_init_ms", initStart);
             return true;
         }
@@ -482,11 +559,15 @@ public class Estaleiro : MonoBehaviour
         return null;
     }
 
-    void IniciarConstrucao(SlotConstrucao slot, GameObject prefab)
+    void IniciarConstrucao(SlotConstrucao slot, GameObject prefab, string productionOrderId = "")
     {
         slot.estaOcupado = true;
         slot.prefabAtual = prefab;
+        slot.productionOrderId = productionOrderId ?? string.Empty;
         slot.progresso = 0f;
+        naviosIniciadosNoLote++;
+        if (!string.IsNullOrEmpty(slot.productionOrderId))
+            IAAutoProductionRegistry.ConfirmConstructionStarted(slot.productionOrderId, GetInstanceID(), Time.time);
 
         // --- CRIAR BARRA DE PROGRESSO ---
         CriarBarraProgresso(slot);
@@ -599,6 +680,8 @@ public class Estaleiro : MonoBehaviour
             DiagnosticoDesempenhoJogo.RegistrarEvento("Spawn", "Navio criado: " + slot.prefabAtual.name);
         }
         navioPronto.transform.SetParent(null);
+        if (!string.IsNullOrEmpty(slot.productionOrderId))
+            IAAutoProductionRegistry.Complete(slot.productionOrderId, Time.time);
 
         // Destroi a barra
         if (slot.barCanvasObj != null)
@@ -690,7 +773,9 @@ public class Estaleiro : MonoBehaviour
             NavioCargaMercado cargueiro = navioPronto.GetComponent<NavioCargaMercado>();
             if (cargueiro == null) cargueiro = navioPronto.AddComponent<NavioCargaMercado>();
             cargueiro.Inicializar(ownerTeam, false);
-            cargueiro.PararNoPonto(destinoSaida);
+            // O cargueiro termina no mesmo ponto de atracagem dos demais
+            // navios; a logistica pode despacha-lo depois.
+            cargueiro.PararNoPonto(posFinal);
         }
 
         // Efeitos
@@ -704,6 +789,52 @@ public class Estaleiro : MonoBehaviour
 
         // Libera o slot
         LiberarSlot(slot);
+        naviosConcluidosNoLote++;
+        ProcessarFimDoLote();
+    }
+
+    void ProcessarFimDoLote()
+    {
+        if (naviosIniciadosNoLote <= 0 || naviosConcluidosNoLote < naviosIniciadosNoLote)
+        {
+            return;
+        }
+
+        if (filaNaval.Count == 0)
+        {
+            naviosIniciadosNoLote = 0;
+            naviosConcluidosNoLote = 0;
+            liberarProximoLoteEm = -1f;
+            return;
+        }
+
+        liberarProximoLoteEm = Time.time + Mathf.Max(0f, intervaloEntreLotes);
+    }
+
+    void ProcessarProximoLoteSePronto()
+    {
+        if (liberarProximoLoteEm < 0f || Time.time < liberarProximoLoteEm)
+        {
+            return;
+        }
+
+        liberarProximoLoteEm = -1f;
+        naviosIniciadosNoLote = 0;
+        naviosConcluidosNoLote = 0;
+
+        int quantidade = Mathf.Min(2, filaNaval.Count);
+        for (int i = 0; i < quantidade; i++)
+        {
+            PedidoNavalAutomatico pedido = filaNaval.Dequeue();
+            SlotConstrucao slot = ObterSlotLivre();
+            if (slot == null)
+            {
+                filaNaval.Enqueue(pedido);
+                break;
+            }
+
+            IniciarConstrucao(slot, pedido.Prefab, pedido.OrderId);
+        }
     }
 
     void NormalizarSlots()
@@ -813,6 +944,7 @@ public class Estaleiro : MonoBehaviour
         slot.estaOcupado = false;
         slot.visualAtual = null;
         slot.prefabAtual = null;
+        slot.productionOrderId = string.Empty;
         slot.progresso = 0f;
         slot.barCanvasObj = null;
         slot.barFillImage = null;

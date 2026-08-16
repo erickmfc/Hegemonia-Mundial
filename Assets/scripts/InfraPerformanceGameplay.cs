@@ -110,11 +110,21 @@ public static class InfraPerformanceGameplay
 
     public static long MarcarInicioMedicao()
     {
+        // Em jogo normal a telemetria fica desligada. Evite chamar Stopwatch
+        // milhares de vezes por frame apenas para descartar a medicao depois.
+        if (!DiagnosticoDesempenhoJogo.CapturaAtiva)
+        {
+            return 0L;
+        }
         return System.Diagnostics.Stopwatch.GetTimestamp();
     }
 
     public static void RegistrarTempoDecorrido(CategoriaBudgetGameplay categoria, long inicioTimestamp)
     {
+        if (inicioTimestamp == 0L || !DiagnosticoDesempenhoJogo.CapturaAtiva)
+        {
+            return;
+        }
         long delta = System.Diagnostics.Stopwatch.GetTimestamp() - inicioTimestamp;
         if (delta <= 0)
         {

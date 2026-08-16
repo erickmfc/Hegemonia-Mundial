@@ -1,0 +1,661 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &694452569610977197
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7777822502943138909}
+  m_Layer: 0
+  m_Name: lancador
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7777822502943138909
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 694452569610977197}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0.64, y: -2.34, z: -0.65}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3811146233838361754}
+  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+--- !u!1 &2861689926251902314
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4810225634212328584}
+  m_Layer: 0
+  m_Name: boca
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4810225634212328584
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2861689926251902314}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.009070642, y: -0.7070486, z: -0.009070642, w: 0.7070486}
+  m_LocalPosition: {x: -6.217, y: 1.005, z: -0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5679726802269966785}
+  m_LocalEulerAnglesHint: {x: -1.47, y: -90, z: 0}
+--- !u!1 &6188321973846622780
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 351606137329101998}
+  - component: {fileID: 1674304790726184847}
+  - component: {fileID: 2831368845653753397}
+  - component: {fileID: 7553982882459287357}
+  - component: {fileID: 6303108344568333708}
+  - component: {fileID: 2214475224031867332}
+  - component: {fileID: 3755169275039485619}
+  - component: {fileID: 2819859353549230922}
+  - component: {fileID: 2554319685119596160}
+  - component: {fileID: 5733874201922440726}
+  - component: {fileID: 8593301245205540383}
+  m_Layer: 0
+  m_Name: Nav MIchele
+  m_TagString: Navio
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &351606137329101998
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 68.13321, y: -0, z: -35.2}
+  m_LocalScale: {x: 2.66, y: 1.87, z: 2.75}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7223390422934630618}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &1674304790726184847
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 5, y: 7.46, z: 55.12}
+  m_Center: {x: 0, y: 2.06, z: 0}
+--- !u!195 &2831368845653753397
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 20
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 90
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 8
+  m_ObstacleAvoidanceType: 4
+--- !u!114 &7553982882459287357
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86bf21ae7ce6f5a47b74d272af475dc8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeNaval
+  nomeDoNavio: Nav MIchele
+  categoriaNavio: 1
+  estaAtracado: 0
+  velocidadeDeRe: 5
+  velocidadeRotacaoRe: 2
+--- !u!114 &6303108344568333708
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Hegemonia
+  antygavitiEstabilidade: 5
+  tipoUnidade: 2
+  militaresConsumidos: 0
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: 
+--- !u!114 &2214475224031867332
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32ce560dd3360da439531016f604e494, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
+  anelSelecao: {fileID: 0}
+  selecionado: 0
+  aguardandoVisto: 0
+  vistoAprovado: 0
+  velocidadeVoo: 8
+  dominioControleAtual: 1
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: NavMeshAgent
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
+  tamanhoSelecao: 0
+  corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
+  linhaAlcance: {fileID: 0}
+  corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
+  larguraLinha: 0.15
+  segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
+--- !u!114 &3755169275039485619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 1500
+  vidaAtual: 1500
+  unidadeBiologica: 0
+  ehEstrutura: 0
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 4.3
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 12
+  atrasoPosAfundamento: 0.6
+--- !u!54 &2819859353549230922
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &2554319685119596160
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
+  tempoAceleracao: 4
+  tempoDesaceleracao: 4
+  tempoParadaEmergencia: 4
+  velocidadeMaxima: 22
+  velocidadeLeme: 5
+  curvaMaximaGraus: 35
+  coeficienteAderna: 2.5
+  alturaOnda: 0.5
+  frequenciaOnda: 0.2
+  arrastoPassivo: 0.5
+  distanciaChegada: 15
+  offsetAlturaAgua: 0
+  profundidadeVisual: 0
+  anguloEntradaManobraRe: 120
+  anguloSaidaManobraRe: 70
+  duracaoMaximaManobraRe: 2.5
+  potenciaManobraRe: -0.5
+  bigodeiraProa: {fileID: 0}
+  rastroEsteira: {fileID: 0}
+  turbulenciaPopa: {fileID: 0}
+  modelo3D: {fileID: 0}
+  antenaRadar: {fileID: 0}
+  velocidadeAntena: 60
+  modoOperacao: 0
+  somMotorParado: {fileID: 0}
+  somMotorMovimento: {fileID: 0}
+  possuiTorpedos: 0
+  tubosTorpedo:
+  - {fileID: 0}
+  - {fileID: 0}
+  prefabTorpedo: {fileID: 0}
+  torpedosDisponiveis: 4
+  alcanceTorpedos: 600
+  cooldownTorpedo: 5
+  anguloMaximoLancamento: 90
+  torpedosNoModoAtivo: 1
+  intervaloBuscaTorpedoAtivo: 0.75
+--- !u!114 &5733874201922440726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17b026664e199e0448537a7727a1568c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LancadorNaval
+  modoAtual: 0
+  cabecaRotativa: {fileID: 0}
+  pontosDeSaida:
+  - {fileID: 8342702646291229413}
+  pontosDeSaidaTorpedo:
+  - {fileID: 8342702646291229413}
+  prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
+  prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+  torpedosSomenteNoModoAtivo: 0
+  municaoTotal: 32
+  municaoMaxima: 32
+  torpedosTotal: 8
+  torpedosMaximos: 8
+  tirosPorSalva: 4
+  intervaloEntreTiros: 0.5
+  tempoRecargaSalva: 5
+  alcanceRadar: 2500
+  intervaloVarreduraAutomatica: 0.45
+  mascaraVarredura:
+    serializedVersion: 2
+    m_Bits: 81
+  alinharBocaisSemPivo: 1
+  maxMisseisSimultaneosPorAlvo: 6
+  cooldownAutorizacaoAlvo: 1.4
+  somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
+  preaquecerMisseisNoStart: 0
+  volumeSom: 0.8
+  pitchSom: 1
+  distanciaSomMinima: 3
+  distanciaSomMaxima: 300
+  tagsInimigas:
+  - Inimigo
+  - Destrutivel
+  - Aereo
+  debugLogs: 0
+--- !u!114 &8593301245205540383
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6188321973846622780}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1
+--- !u!1 &8573703455184735539
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8342702646291229413}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8342702646291229413
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8573703455184735539}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7223390422934630618}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &4809459460984579882
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 351606137329101998}
+    m_Modifications:
+    - target: {fileID: -8450341515860502833, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_Name
+      value: torreta_front
+      objectReference: {fileID: 0}
+    - target: {fileID: -6689036041284674117, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_Name
+      value: yi_sun-shin_class_destroyer
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 2.6500003
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 2.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 2.5799997
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 9.900002
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 180
+      objectReference: {fileID: 0}
+    - target: {fileID: 3648197801476217102, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_Name
+      value: Anti aerea
+      objectReference: {fileID: 0}
+    - target: {fileID: 5425812302053847462, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      propertyPath: m_Name
+      value: cano
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8342702646291229413}
+    - targetCorrespondingSourceObject: {fileID: 895319720472983275, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4810225634212328584}
+    - targetCorrespondingSourceObject: {fileID: 8529053169704008624, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7777822502943138909}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -8450341515860502833, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2545491786263050243}
+    - targetCorrespondingSourceObject: {fileID: 3648197801476217102, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4331952066526094556}
+  m_SourcePrefab: {fileID: -5645937942226959685, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+--- !u!4 &3811146233838361754 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8529053169704008624, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+  m_PrefabInstance: {fileID: 4809459460984579882}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4624933710860461103 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -9038248014963965179, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+  m_PrefabInstance: {fileID: 4809459460984579882}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5189548425418813925 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -8450341515860502833, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+  m_PrefabInstance: {fileID: 4809459460984579882}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2545491786263050243
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5189548425418813925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37af128960c2d574f99598557ad1624e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
+  etiquetaAlvo: Inimigo
+  alcance: 1000
+  velocidadeGiro: 60
+  limitarRotacao: 1
+  anguloMinimo: -90
+  anguloMaximo: 90
+  tempoEntreTiros: 0.2
+  tamanhoCartucho: 50
+  tempoRecarga: 2
+  pecaQueGira: {fileID: 8818251354724232734}
+  canosDaTorreta: {fileID: 5679726802269966785}
+  locaisDoTiro:
+  - {fileID: 4810225634212328584}
+  municaoPrefab: {fileID: 5864298406509392469, guid: ed8f0d5525bd8b045bdb2ffb83514f53, type: 3}
+  limitarInclinacao: 1
+  elevacaoMinima: -10
+  elevacaoMaxima: 80
+  somTiro: {fileID: 8300000, guid: ec9f47083560ce74e87495f678b41437, type: 3}
+  somRecarga: {fileID: 0}
+  fogoCano: {fileID: 0}
+  fogoCanoObjeto: {fileID: 0}
+  efeitoCanoPrefab: {fileID: 0}
+  pontoEfeitoCano: {fileID: 0}
+  duracaoEfeitoCano: 1.5
+  usarRecuoAoDisparar: 1
+  pecaRecuo: {fileID: 5679726802269966785}
+  forcaRecuoDisparo: 0.12
+  velocidadeRetornoRecuo: 18
+  usarSistemaDesdobramento: 0
+  pecaParaDesdobrar: {fileID: 0}
+  tempoParaDesdobrar: 2
+  posRepouso: {x: 3.9434, y: 1.26, z: -1.36}
+  posDisparo: {x: 3.9434, y: 3.21, z: -4.29}
+  rotRepouso: {x: 0, y: 90, z: 0}
+  rotDisparo: {x: 0, y: 90, z: -86.14}
+  autoConfigurarRepousoNoStart: 1
+  tagPontoMissel: 
+  modoPassivo: 0
+  modoRadar: 0
+  bloquearMovimentoAutomatico: 0
+  interceptarMisseis: 0
+  usarMisselParaInterceptar: 1
+  interceptarTorpedos: 0
+  identificarOrigemTorpedo: 1
+  raioDeteccaoTorpedo: 150
+  prioridadeTorpedos: 0
+  debugRadar: 0
+  misselPrefab: {fileID: 0}
+  locaisDoMissel: []
+  somMissel: {fileID: 0}
+  tempoEntreMisseis: 2
+  capacidadeMisseis: 4
+  tempoRecargaMisseis: 10
+  municoesPorCano: []
+  alvoPrioritario: {fileID: 0}
+--- !u!4 &5626974961346200670 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8310929049707977868, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+  m_PrefabInstance: {fileID: 4809459460984579882}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5679726802269966785 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 895319720472983275, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+  m_PrefabInstance: {fileID: 4809459460984579882}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7223390422934630618 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+  m_PrefabInstance: {fileID: 4809459460984579882}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &8079353791800507940 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3648197801476217102, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+  m_PrefabInstance: {fileID: 4809459460984579882}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4331952066526094556
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8079353791800507940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71303ae0b6f9fa447951fb8acb05aecc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaAntiMissil
+  alcanceRadar: 800
+  tempoDeEscaneamento: 0.5
+  velocidadeMinimaAmeaca: 35
+  dotMinimoAmeaca: 0.4
+  toleranciaMiraDisparo: 10
+  usarCoordenacaoGlobal: 1
+  janelaReservaAmeaca: 2.2
+  janelaReforcoEmergencial: 1.25
+  usarRastroLancamento: 1
+  multiplicadorAntecipacaoAlcance: 1.35
+  janelaAntecipacaoSegundos: 6
+  intervaloMinimoEscaneamento: 0.25
+  intervaloMinimoVarreduraFisica: 0.35
+  mascaraVarredura:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maximoCollidersProcessadosPorScan: 48
+  priorizarRastroLancamento: 1
+  maximoAliadosColisaoIgnorada: 48
+  baseGiratoria: {fileID: 5626974961346200670}
+  canoElevacao: {fileID: 4624933710860461103}
+  velocidadeGiro: 60
+  prefabIntercepador: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+  pontosDeSaida:
+  - {fileID: 7777822502943138909}
+  tempoEntreTiros: 2
+  capacidadeMisseis: 6
+  tempoRecargaMisseis: 20
+  cartuchosMaximos: 4
+  quantidadePorCartucho: 6
+  tempoTrocaCartucho: 20
+  maximoPorSalva: 1
+  anguloMinimoNovaDirecao: 35
+  intervaloReengajamentoAmeaca: 1.2
+  somDisparo: {fileID: 8300000, guid: 30cc20ef2ed3c4f35af5120b0a841e84, type: 3}
+  modoPassivo: 0
+--- !u!4 &8818251354724232734 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4097740229879875892, guid: e578036e45f6d604bae056cc4b71249b, type: 3}
+  m_PrefabInstance: {fileID: 4809459460984579882}
+  m_PrefabAsset: {fileID: 0}

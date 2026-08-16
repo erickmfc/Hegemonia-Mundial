@@ -86,6 +86,7 @@ public class MenuConstrucao : MonoBehaviour
     private readonly List<GerenciadorAeroporto> bufferAeroportos = new List<GerenciadorAeroporto>(16);
     private readonly Dictionary<DadosConstrucao.CategoriaItem, ConfigVisualCategoria> lookupVisualCategorias = new Dictionary<DadosConstrucao.CategoriaItem, ConfigVisualCategoria>();
     private readonly Dictionary<int, Sprite> cacheIconesResolvidos = new Dictionary<int, Sprite>();
+    private Sprite[] iconesRuntimeCatalogo;
     private Sprite iconePlaceholderRuntime;
     private bool resetarScrollParaTopoPendente;
     private bool atalhosSuspensos;
@@ -149,7 +150,9 @@ public class MenuConstrucao : MonoBehaviour
             }
         }
 
-        FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Exercito);
+        // A fundacao vem antes de qualquer unidade militar. O primeiro card
+        // exibido pelo menu de construcao deve ser a Prefeitura.
+        FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Urbana);
     }
 
     void OnDestroy()
@@ -326,6 +329,7 @@ public class MenuConstrucao : MonoBehaviour
 
         GarantirUsinaCarvaoNoCatalogo();
         GarantirComerciosNoCatalogo();
+        GarantirPrefeituraNoCatalogo();
 
         List<DadosConstrucao> catalogoDaCena = new List<DadosConstrucao>();
         foreach (DadosConstrucao item in catalogo)
@@ -443,6 +447,33 @@ public class MenuConstrucao : MonoBehaviour
                     quantidadesPorItem.Add(ficha.NomeItem, 1);
                 }
             }
+        }
+    }
+
+    // A ficha original da Prefeitura fica fora de Resources. Mantemos uma
+    // copia de runtime em Resources para que ela exista no catalogo tambem em
+    // builds, cenas novas e partidas que nao serializaram a referencia.
+    private void GarantirPrefeituraNoCatalogo()
+    {
+        DadosConstrucao prefeitura = Resources.Load<DadosConstrucao>("Construcoes/Prefeitura");
+        if (prefeitura == null)
+        {
+            return;
+        }
+
+        string idPrefeitura = prefeitura.GetStableId();
+        bool jaExiste = catalogo.Any(item => item != null
+            && (item == prefeitura
+                || string.Equals(item.GetStableId(), idPrefeitura, System.StringComparison.OrdinalIgnoreCase)));
+        if (jaExiste)
+        {
+            return;
+        }
+
+        catalogo.Add(prefeitura);
+        if (!quantidadesPorItem.ContainsKey(prefeitura.NomeItem))
+        {
+            quantidadesPorItem.Add(prefeitura.NomeItem, 1);
         }
     }
 
@@ -608,8 +639,26 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         return query
-            .OrderBy(item => item.GetDisplayName())
+            .OrderBy(PrioridadeDoCard)
+            .ThenBy(item => item.GetDisplayName())
             .ToList();
+    }
+
+    private static int PrioridadeDoCard(DadosConstrucao item)
+    {
+        if (item == null)
+        {
+            return 2;
+        }
+
+        string id = item.GetStableId();
+        if (string.Equals(id, "capital.prefeitura", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        string nome = (item.NomeItem + " " + item.GetDisplayName()).ToLowerInvariant();
+        return nome.Contains("prefeitura") ? 0 : 1;
     }
 
     void DefinirTextoBuscaSemEvento(string novoTexto)
@@ -667,9 +716,7 @@ public class MenuConstrucao : MonoBehaviour
         // O Governo novo fecha o Canvas de construÃ§Ã£o sem passar pelo HUD
         // legado. Se o foco for liberado, recupera o atalho C mesmo que uma
         // cena antiga tenha deixado o sinal de suspensÃ£o preso.
-        if (atalhosSuspensos && !MenuGoverno.EstaAberto
-            && (MenuGovernoNovoController.Instancia == null
-                || !MenuGovernoNovoController.Instancia.gameObject.activeInHierarchy))
+        if (atalhosSuspensos && !MenuGoverno.EstaAberto)
         {
             atalhosSuspensos = false;
         }
@@ -2081,8 +2128,15 @@ public class MenuConstrucao : MonoBehaviour
         colors.selectedColor = Color.white;
         colors.fadeDuration = 0.05f;
         btnCard.colors = colors;
-        btnCard.onClick.AddListener(() => AtualizarPainelDetalhes(item));
-        btnCard.onClick.AddListener(() => ConstruirItem(item, imgBg));
+        // O card continua sendo uma compra rapida. A quantidade escolhida nos
+        // controles e usada por ConstruirItem; os botoes filhos (+, - e
+        // COMPRAR/CONSTRUIR) continuam tendo seus proprios listeners e nao
+        // perdem o valor ao abrir os detalhes.
+        btnCard.onClick.AddListener(() =>
+        {
+            AtualizarPainelDetalhes(item);
+            ConstruirItem(item, imgBg);
+        });
         AdicionarEventoHoverDetalhes(cardObj, item);
 
         VerticalLayoutGroup layoutCard = cardObj.AddComponent<VerticalLayoutGroup>();
@@ -2469,6 +2523,11 @@ public class MenuConstrucao : MonoBehaviour
 
         if (iconeResolvido == null)
         {
+            iconeResolvido = ProcurarSpriteRuntime(item);
+        }
+
+        if (iconeResolvido == null)
+        {
             ConfigVisualCategoria config = ObterConfigVisualCategoria(item.categoria);
             if (config != null && config.icone != null)
             {
@@ -2484,6 +2543,37 @@ public class MenuConstrucao : MonoBehaviour
         cacheIconesResolvidos[chave] = iconeResolvido;
 
         return iconeResolvido;
+    }
+
+    Sprite ProcurarSpriteRuntime(DadosConstrucao item)
+    {
+        if (item == null) return null;
+
+        if (iconesRuntimeCatalogo == null || iconesRuntimeCatalogo.Length == 0)
+        {
+            iconesRuntimeCatalogo = Resources.LoadAll<Sprite>("IconesGerados");
+        }
+
+        string nomeItem = NormalizarTextoBuscaIcone(item.NomeItem);
+        string nomePrefab = item.PrefabDaUnidade != null
+            ? NormalizarTextoBuscaIcone(item.PrefabDaUnidade.name)
+            : string.Empty;
+
+        for (int i = 0; i < iconesRuntimeCatalogo.Length; i++)
+        {
+            Sprite sprite = iconesRuntimeCatalogo[i];
+            if (sprite == null) continue;
+
+            string nomeAsset = NormalizarTextoBuscaIcone(sprite.name);
+            bool pareceMesmoItem = (!string.IsNullOrEmpty(nomeItem)
+                && (nomeAsset.Contains(nomeItem) || nomeItem.Contains(nomeAsset)))
+                || (!string.IsNullOrEmpty(nomePrefab)
+                && (nomeAsset.Contains(nomePrefab) || nomePrefab.Contains(nomeAsset)));
+
+            if (pareceMesmoItem) return sprite;
+        }
+
+        return null;
     }
 
     Sprite ObterPlaceholderRuntimeIcone()

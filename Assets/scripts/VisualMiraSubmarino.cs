@@ -48,7 +48,7 @@ public class VisualMiraSubmarino : MonoBehaviour
     
     void OnGUI()
     {
-        if (!modoAtivo) return;
+        if (!modoAtivo || IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto) return;
         
         // Desenha círculo de mira
         DesenharCirculo(posicaoMouse, raioCirculo, corMira);

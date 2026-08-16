@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.IA01;
 using Hegemonia.AI.Shared;
 using UnityEngine.AI;
 using UnityEngine;
@@ -490,8 +491,16 @@ namespace Hegemonia.AI.Master
                 return false;
             }
 
+            IA01MilitaryAssetKind assetKind = IA01MilitaryProductionGuard.Classify(data);
+            string unitType = assetKind == IA01MilitaryAssetKind.Other ? data.GetStableId() : assetKind.ToString();
+            int alive = CountOwnedForProduction(assetKind);
+            if (!IAAutoProductionRegistry.TryReserveProduction(_teamId, unitType, "novaia", alive + 1, alive, out string orderId, Time.time, 180f))
+            {
+                return false;
+            }
+
             GameObject produced;
-            bool producedByInfrastructure = TryProduceViaInfrastructure(data, out produced);
+            bool producedByInfrastructure = TryProduceViaInfrastructure(data, orderId, out produced);
             if (!producedByInfrastructure)
             {
                 Vector3 spawnPoint;
@@ -499,6 +508,7 @@ namespace Hegemonia.AI.Master
                 {
                     if (!TryResolveNavalUnitSpawnPoint(ResolveUnitSpawnPoint(), out spawnPoint))
                     {
+                        IAAutoProductionRegistry.Release(orderId, Time.time);
                         return false;
                     }
                 }
@@ -521,12 +531,14 @@ namespace Hegemonia.AI.Master
 
             if (!producedByInfrastructure && produced == null)
             {
+                IAAutoProductionRegistry.Release(orderId, Time.time);
                 return false;
             }
 
             if (produced != null)
             {
                 EnsureTeamIdentity(produced);
+                IAAutoProductionRegistry.Complete(orderId, Time.time);
             }
             return true;
         }
@@ -601,7 +613,7 @@ namespace Hegemonia.AI.Master
             return TryIssueUnload(_teamId, tag, worldPoint, priority);
         }
 
-        private bool TryProduceViaInfrastructure(DadosConstrucao data, out GameObject produced)
+        private bool TryProduceViaInfrastructure(DadosConstrucao data, string productionOrderId, out GameObject produced)
         {
             produced = null;
             string normalized = IA_Text.Normalize(data.NomeItem + " " + data.name + " " + data.PrefabDaUnidade.name);
@@ -617,8 +629,9 @@ namespace Hegemonia.AI.Master
                         continue;
                     }
 
-                    if (shipyard.ConstruirUnidade(data.PrefabDaUnidade))
+                    if (shipyard.ConstruirUnidade(data.PrefabDaUnidade, productionOrderId))
                     {
+                        IAAutoProductionRegistry.ConfirmQueued(productionOrderId, shipyard.GetInstanceID(), Time.time);
                         return true;
                     }
                 }
@@ -639,7 +652,7 @@ namespace Hegemonia.AI.Master
                         continue;
                     }
 
-                    airport.ComprarAviao(data.PrefabDaUnidade);
+                    airport.ComprarAviaoIAImediato(data.PrefabDaUnidade, productionOrderId);
                     return true;
                 }
 
@@ -653,6 +666,7 @@ namespace Hegemonia.AI.Master
                     }
 
                     produced = Instantiate(data.PrefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
+                    IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
                     return produced != null;
                 }
             }
@@ -670,11 +684,26 @@ namespace Hegemonia.AI.Master
                 if (unit != null)
                 {
                     produced = unit;
+                    IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private int CountOwnedForProduction(IA01MilitaryAssetKind kind)
+        {
+            switch (kind)
+            {
+                case IA01MilitaryAssetKind.Infantry: return IA01MilitaryProductionGuard.CountOwnedUnique(_teamId, TipoUnidade.Infantaria);
+                case IA01MilitaryAssetKind.Tank:
+                case IA01MilitaryAssetKind.AntiAir: return IA01MilitaryProductionGuard.CountOwnedUnique(_teamId, TipoUnidade.Veiculo);
+                case IA01MilitaryAssetKind.Fighter: return IA01MilitaryProductionGuard.CountOwnedUnique(_teamId, TipoUnidade.Aereo);
+                case IA01MilitaryAssetKind.Naval:
+                case IA01MilitaryAssetKind.OilTanker: return IA01MilitaryProductionGuard.CountOwnedUnique(_teamId, TipoUnidade.Naval);
+                default: return 0;
+            }
         }
 
         private bool MoveTeamUnits(Vector3 worldPoint)

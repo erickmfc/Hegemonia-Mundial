@@ -1829,7 +1829,7 @@ Transform:
   m_GameObject: {fileID: 127038957}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 7693, y: 1.0001, z: -3275.8403}
+  m_LocalPosition: {x: 12691, y: 1.0001, z: -3275.8403}
   m_LocalScale: {x: 500, y: 0, z: 1810.1158}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -6955,7 +6955,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6faac50cd29f1364e85d2ba5ad3cf834, type: 2}
   - {fileID: 11400000, guid: f1390ea10b9629d428bec86f0f558714, type: 2}
   - {fileID: 11400000, guid: 0ed38c96590e2d941ad58a353d926e58, type: 2}
-  - {fileID: 0}
+  - {fileID: 11400000, guid: d9aaaac854283fa4886dd5a3bc1c033a, type: 2}
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
@@ -17280,6 +17280,10 @@ MonoBehaviour:
   MaxBoatsPerBase: 16
   AttackDuration: 18
   ThreatRadius: 180
+  MaritimeSteeringInterval: 0.55
+  MaritimeOrderInterval: 0.8
+  TankerScanInterval: 4
+  TankerRobberyDistance: 22
   ContinuousCrime: 1
   ReinforcementInterval: 45
   ReinforcementGroundMembers: 2
@@ -18241,7 +18245,7 @@ Transform:
   m_GameObject: {fileID: 1435667635}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 10214, y: 0, z: -12177}
+  m_LocalPosition: {x: 5191, y: 0, z: -11381}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -23282,7 +23286,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -2818, y: 0, z: -12197}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 446168071}

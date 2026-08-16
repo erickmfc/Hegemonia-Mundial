@@ -27,16 +27,20 @@ public class LancadorNaval : MonoBehaviour
     public float tempoRecargaSalva = 5.0f; // Tempo entre salvas
     public float alcanceRadar = 500f;
     public float intervaloVarreduraAutomatica = 0.45f;
+    [Tooltip("Camadas consultadas pelo radar. Default/Water/Chao cobrem os alvos navais da cena sem varrer UI.")]
+    public LayerMask mascaraVarredura = (1 << 0) | (1 << 4) | (1 << 6);
+    [Tooltip("Quando nao houver pivo de torreta configurado, alinha os bocais ao alvo sem girar o casco inteiro.")]
+    public bool alinharBocaisSemPivo = true;
     public int maxMisseisSimultaneosPorAlvo = 6;
     public float cooldownAutorizacaoAlvo = 1.4f;
     public AudioClip somDisparo;
     public bool preaquecerMisseisNoStart = false;
 
     [Header("Configurações de Áudio")]
-    [Range(0f, 1f)] public float volumeSom = 1.0f;
+    [Range(0f, 1f)] public float volumeSom = 0.8f;
     [Range(0.1f, 3f)] public float pitchSom = 1.0f;
     public float distanciaSomMinima = 3f;
-    public float distanciaSomMaxima = 50f;
+    public float distanciaSomMaxima = 300f;
 
     [Header("Tags de Alvos")]
     public List<string> tagsInimigas = new List<string> { "Inimigo", "Destrutivel" };
@@ -61,6 +65,9 @@ public class LancadorNaval : MonoBehaviour
     // Visualizador de Alcance
     private LineRenderer linhaDeAlcance;
     private Camera cameraPrincipal;
+    private Transform pivoMiraResolvido;
+    private bool avisoPivoMiraEmitido;
+    private static Material materialAlcanceCompartilhado;
 
     // --- BANCO DE DADOS GLOBAL DE COMBATE DA FROTA ---
     // Compartilhado estaticamente por TODOS os navios! Impede que 5 navios atirem num barco que já vai morrer.
@@ -75,9 +82,43 @@ public class LancadorNaval : MonoBehaviour
     private static float proximaBuscaMiniMapa;
     private readonly List<Transform> bufferAlvosValidos = new List<Transform>(32);
     private float proximaVarreduraAutomatica = 0f;
+    private bool salvaEmAndamento;
+    private const float AlcanceRadarMinimo = 2000f;
+
+    /// <summary>
+    /// Perfil leve usado pela IA. Mantem a municao configurada no prefab, mas
+    /// limita a salva e espaça a animação dos lançamentos.
+    /// </summary>
+    public void ConfigurarPerfilIA()
+    {
+        tirosPorSalva = Mathf.Clamp(tirosPorSalva, 1, 2);
+        intervaloEntreTiros = Mathf.Max(0.8f, intervaloEntreTiros);
+        tempoRecargaSalva = Mathf.Max(4f, tempoRecargaSalva);
+        maxMisseisSimultaneosPorAlvo = Mathf.Clamp(maxMisseisSimultaneosPorAlvo, 1, 4);
+        if (modoAtual != ModoOperacao.Automatico)
+        {
+            DefinirModoIA(ModoOperacao.Automatico, true);
+        }
+    }
+
+    private void GarantirAlcanceRadarMinimo()
+    {
+        if (alcanceRadar < AlcanceRadarMinimo)
+        {
+            alcanceRadar = AlcanceRadarMinimo;
+        }
+
+        // Evita que uma configuracao acidental transforme cada lancador em
+        // uma varredura por frame. O perfil da IA continua podendo alongar
+        // ainda mais esse intervalo quando necessario.
+        intervaloVarreduraAutomatica = Mathf.Max(0.20f, intervaloVarreduraAutomatica);
+    }
 
     void Start()
     {
+        GarantirAlcanceRadarMinimo();
+        ResolverPivoMira();
+        proximaVarreduraAutomatica = Time.time + Mathf.Repeat(Mathf.Abs(GetInstanceID()) * 0.017f, Mathf.Max(0.05f, intervaloVarreduraAutomatica));
         cameraPrincipal = Camera.main;
         if (preaquecerMisseisNoStart)
         {
@@ -86,14 +127,19 @@ public class LancadorNaval : MonoBehaviour
         // Se Maxima não foi configurada ou menor que total inicial, ajusta
         if (municaoMaxima < municaoTotal) municaoMaxima = municaoTotal;
 
-        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
         
         // Configurações iniciais do AudioSource para 3D
         audioSource.spatialBlend = 1.0f; // Torna o som 3D
         audioSource.minDistance = distanciaSomMinima;
-        audioSource.maxDistance = distanciaSomMaxima;
+        audioSource.maxDistance = Mathf.Max(300f, distanciaSomMaxima);
         audioSource.rolloffMode = AudioRolloffMode.Linear;
         audioSource.playOnAwake = false;
+        AudioRuntime.ConfigurarFonteDeMissel(audioSource);
+        audioSource.minDistance = distanciaSomMinima;
+        audioSource.maxDistance = Mathf.Max(300f, distanciaSomMaxima);
+        audioSource.volume = Mathf.Min(Mathf.Clamp01(volumeSom), 0.8f);
 
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
         if (minhaIdentidade == null) minhaIdentidade = GetComponent<IdentidadeUnidade>();
@@ -109,6 +155,7 @@ public class LancadorNaval : MonoBehaviour
 #if UNITY_EDITOR
     private void OnValidate()
     {
+        GarantirAlcanceRadarMinimo();
         MissilePrefabAutoBinder.BindLancadorNaval(this);
     }
 
@@ -152,7 +199,12 @@ public class LancadorNaval : MonoBehaviour
         linhaDeAlcance = obj.AddComponent<LineRenderer>();
         linhaDeAlcance.useWorldSpace = true;
         
-        Material mat = new Material(Shader.Find("Sprites/Default")); 
+        if (materialAlcanceCompartilhado == null)
+        {
+            materialAlcanceCompartilhado = new Material(Shader.Find("Sprites/Default"));
+            materialAlcanceCompartilhado.name = "LancadorNaval_Alcance_Shared";
+        }
+        Material mat = materialAlcanceCompartilhado;
         Color corVermelha = Color.red; corVermelha.a = 0.5f; 
         linhaDeAlcance.material = mat;
         linhaDeAlcance.startColor = corVermelha; linhaDeAlcance.endColor = corVermelha;
@@ -312,7 +364,7 @@ public class LancadorNaval : MonoBehaviour
         // 1. Escaneia a área em busca de TODOS os alvos válidos
         List<Transform> alvosValidos = BuscarTodosInimigos();
 
-        if (alvosValidos.Count > 0)
+        if (alvosValidos.Count > 0 && !salvaEmAndamento)
         {
             // 2. Calcula distribuição de mísseis
             StartCoroutine(DispararSalvaInteligente(alvosValidos));
@@ -493,7 +545,12 @@ public class LancadorNaval : MonoBehaviour
     {
         LimparDanoProjetadoExpirado();
         LimparCooldownAutorizacaoExpirado();
-        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, radarBuffer, Physics.AllLayers, QueryTriggerInteraction.Collide);
+        int mascara = mascaraVarredura.value != 0 ? mascaraVarredura.value : Physics.AllLayers;
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceRadar, radarBuffer, mascara, QueryTriggerInteraction.Collide);
+        if (hitCount >= radarBuffer.Length)
+        {
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("naval_radar_buffer_full");
+        }
         int meuTime = (minhaIdentidade != null) ? minhaIdentidade.teamID : 1; 
 
         bufferAlvosValidos.Clear();
@@ -610,6 +667,12 @@ public class LancadorNaval : MonoBehaviour
 
     IEnumerator DispararSalvaInteligente(List<Transform> alvos)
     {
+        if (salvaEmAndamento)
+        {
+            yield break;
+        }
+
+        salvaEmAndamento = true;
         tempoUltimoDisparo = Time.time;
         int misseisDisponiveisNaSalva = Mathf.Min(tirosPorSalva, municaoTotal);
         
@@ -681,10 +744,11 @@ public class LancadorNaval : MonoBehaviour
             }
 
             // Mira visual da torre para o alvo que vai atirar
-            if (cabecaRotativa != null)
+            Transform pivoMira = pivoMiraResolvido != null ? pivoMiraResolvido : cabecaRotativa;
+            if (pivoMira != null)
             {
                 // Respeita a inclinação realista do navio sobre as ondas!
-                Vector3 direcao = alvoDaVez.position - cabecaRotativa.position;
+                Vector3 direcao = alvoDaVez.position - pivoMira.position;
                 // O eixo vertical do pai pode carregar roll/pitch do modelo
                 // importado e fazer a torreta "deitar" ao mirar. Canhoes
                 // navais mantem o plano de tiro nivelado com o mundo; o
@@ -696,7 +760,7 @@ public class LancadorNaval : MonoBehaviour
 
                 if (direcaoNoConves != Vector3.zero)
                 {
-                    cabecaRotativa.rotation = Quaternion.LookRotation(direcaoNoConves, upDoNavio);
+                    pivoMira.rotation = Quaternion.LookRotation(direcaoNoConves, upDoNavio);
                 }
             }
 
@@ -704,6 +768,42 @@ public class LancadorNaval : MonoBehaviour
             DispararUnico(alvoDaVez.position, alvoDaVez);
             
             yield return new WaitForSeconds(intervaloEntreTiros);
+        }
+        salvaEmAndamento = false;
+    }
+
+    private void ResolverPivoMira()
+    {
+        // Somente um pivô explicitamente configurado pode girar a estrutura.
+        // Escolher um filho por nome ("lancador", "boca", etc.) fazia alguns
+        // prefabs mudarem de forma durante o disparo. Sem pivô, a direção é
+        // aplicada apenas à instância do míssil no spawn.
+        pivoMiraResolvido = cabecaRotativa;
+
+        if (pivoMiraResolvido == null && !avisoPivoMiraEmitido)
+        {
+            avisoPivoMiraEmitido = true;
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "NavalAimFallback",
+                name + ": sem pivo configurado; estrutura preservada no disparo");
+        }
+    }
+
+    private void AlinharBocaisAoAlvo(Transform alvo)
+    {
+        if (alvo == null || pontosDeSaida == null) return;
+
+        for (int i = 0; i < pontosDeSaida.Length; i++)
+        {
+            Transform ponto = pontosDeSaida[i];
+            if (ponto == null) continue;
+
+            Vector3 direcao = alvo.position - ponto.position;
+            direcao.y = 0f;
+            if (direcao.sqrMagnitude > 0.01f)
+            {
+                ponto.rotation = Quaternion.LookRotation(direcao.normalized, Vector3.up);
+            }
         }
     }
 
@@ -773,10 +873,23 @@ public class LancadorNaval : MonoBehaviour
         }
 
         // Cria o projétil (míssil ou torpedo)
-        GameObject misselObj = PoolDeObjetosCombate.Spawn(prefabASpawnar, pontoDeSaida.position, pontoDeSaida.rotation);
+        Vector3 alvoFinal = alvoFixo != null ? alvoFixo.position : destino;
+        Quaternion rotacaoDisparo = pontoDeSaida.rotation;
+        Vector3 direcaoDisparo = alvoFinal - pontoDeSaida.position;
+        if (direcaoDisparo.sqrMagnitude > 0.01f)
+        {
+            rotacaoDisparo = Quaternion.LookRotation(direcaoDisparo.normalized, Vector3.up);
+        }
+
+        GameObject misselObj = PoolDeObjetosCombate.Spawn(prefabASpawnar, pontoDeSaida.position, rotacaoDisparo);
+        if (misselObj == null)
+        {
+            if (prefabASpawnar == prefabTorpedo) torpedosTotal++;
+            else municaoTotal++;
+            return;
+        }
         
         // Se tivermos um alvo fixo (Auto), atualizamos a posição, senão vai no chão (Manual)
-        Vector3 alvoFinal = alvoFixo != null ? alvoFixo.position : destino;
         
         // Configura o míssil ou torpedo
         MisselNaval scriptMissel = misselObj.GetComponent<MisselNaval>();
@@ -801,7 +914,7 @@ public class LancadorNaval : MonoBehaviour
         if (somDisparo != null && audioSource != null)
         {
             // Aplica configurações de volume e pitch antes de tocar
-            audioSource.volume = volumeSom;
+            audioSource.volume = Mathf.Min(Mathf.Clamp01(volumeSom), 0.8f);
             audioSource.pitch = pitchSom;
             audioSource.PlayOneShot(somDisparo);
         }
@@ -826,7 +939,7 @@ public class LancadorNaval : MonoBehaviour
         // 1. Só mostra se estiver selecionado!
         if (meuControle == null || !meuControle.selecionado) return;
         
-        if (MenuConstrucao.EstaAberto || MenuPier.EstaAberto) return;
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto) return;
 
         if (Camera.main == null) return;
 

@@ -18,7 +18,6 @@
                     <ui:Label text="STATUS NACIONAL" class="gov-caption" />
                     <ui:Label name="national-status" text="PAZ" class="gov-status-value" />
                 </ui:VisualElement>
-                <ui:Button name="close-button" text="X" class="gov-close" />
             </ui:VisualElement>
 
             <ui:VisualElement name="resource-bar" class="gov-resources" />

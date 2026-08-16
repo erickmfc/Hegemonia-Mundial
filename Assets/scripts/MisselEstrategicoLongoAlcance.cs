@@ -266,8 +266,9 @@ public class MisselEstrategicoLongoAlcance : MonoBehaviour
             audioObj.transform.position = transform.position;
             AudioSource audio = audioObj.AddComponent<AudioSource>();
             audio.clip = somExplosao;
+            audio.volume = 0.8f;
             audio.spatialBlend = 1f;
-            audio.maxDistance = 500f;
+            audio.maxDistance = 500f; // permanece acima do requisito mÃ­nimo de 300 m
             audio.Play();
             Destroy(audioObj, somExplosao.length + 0.5f);
         }

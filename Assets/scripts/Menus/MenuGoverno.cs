@@ -656,11 +656,6 @@ public class MenuGoverno : MonoBehaviour
         aplicarLe.flexibleWidth = 1f;
         aplicarLe.minWidth = 150f;
 
-        Button close = CreateButton(header.transform, "X", new Color(0.300f, 0.060f, 0.055f, 1f), () => AlternarMenu(false));
-        LayoutElement closeLe = close.GetComponent<LayoutElement>();
-        closeLe.preferredWidth = 92f;
-        closeLe.minWidth = 78f;
-        closeLe.preferredHeight = 56f;
     }
 
     private void BuildResourceBar(Transform parent)

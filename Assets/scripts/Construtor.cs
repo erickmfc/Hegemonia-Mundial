@@ -338,26 +338,6 @@ public class Construtor : MonoBehaviour
         return false;
     }
 
-    void LiberarPreviewCosteiroSemRestricao(Vector3 pontoMouse)
-    {
-        float nivelDoMar = NavalPlacementResolver.ResolveSeaLevel();
-        Quaternion rotacaoBase = fantasmaUnico != null ? fantasmaUnico.transform.rotation : prefabSelecionado.transform.rotation;
-
-        posicaoPreviewNaval = pontoMouse;
-        posicaoPreviewNaval.y = nivelDoMar;
-        usarPosicaoPreviewNaval = true;
-        previewLocalInvalido = false;
-        motivoInvalido = "";
-        previewUsaColocacaoNavalManual = true;
-
-        Vector3 frente = rotacaoBase * Vector3.forward;
-        frente.y = 0f;
-        if (frente.sqrMagnitude < 0.001f) frente = Vector3.forward;
-        frente.Normalize();
-        rotacaoPreviewNaval = Quaternion.LookRotation(frente, Vector3.up);
-        usarRotacaoPreviewNaval = true;
-    }
-
     void AtualizarPreviewCosteiroLeve(Vector3 pontoMouse)
     {
         Quaternion rotacaoBase = fantasmaUnico != null ? fantasmaUnico.transform.rotation : prefabSelecionado.transform.rotation;
@@ -374,7 +354,18 @@ public class Construtor : MonoBehaviour
             previewUsaColocacaoNavalManual = true;
             return;
         }
-        LiberarPreviewCosteiroSemRestricao(pontoMouse);
+        // Pier e estaleiro exigem costa real: frente na agua e traseira em
+        // terra. O fallback anterior liberava uma pose sem agua e fazia a
+        // estrutura girar procurando um mar inexistente.
+        posicaoPreviewNaval = pontoMouse;
+        posicaoPreviewNaval.y = NavalPlacementResolver.ResolveSeaLevel();
+        usarPosicaoPreviewNaval = true;
+        usarRotacaoPreviewNaval = false;
+        previewLocalInvalido = true;
+        motivoInvalido = string.IsNullOrWhiteSpace(pose.Reason)
+            ? "CONSTRUCAO COSTEIRA: posicione com a frente na agua e a traseira em terra."
+            : "CONSTRUCAO COSTEIRA: " + pose.Reason + ". Posicione com a frente na agua e a traseira em terra.";
+        previewUsaColocacaoNavalManual = false;
     }
 
     void ValidarTerritorio(Vector3 ponto, bool ehPlataforma, bool ehEstruturaCosteira)
@@ -681,11 +672,15 @@ public class Construtor : MonoBehaviour
         if (EhEstruturaCosteiraPrefab(prefabSelecionado))
         {
             NavalPlacementResolver.StructurePose poseCommit;
-            if (NavalPlacementResolver.TryResolveStructurePose(prefabSelecionado, pontoMouse, rotFinal, out poseCommit))
+            if (!NavalPlacementResolver.TryResolveStructurePose(prefabSelecionado, pontoMouse, rotFinal, out poseCommit))
             {
-                posFinal = poseCommit.Position;
-                rotFinal = poseCommit.Rotation;
+                string razao = string.IsNullOrWhiteSpace(poseCommit.Reason) ? "sem costa valida" : poseCommit.Reason;
+                AvisarConstrucao("CONSTRUCAO COSTEIRA BLOQUEADA: " + razao + ".");
+                return;
             }
+
+            posFinal = poseCommit.Position;
+            rotFinal = poseCommit.Rotation;
         }
 
         if (!TentarCobrarConstrucao(custoAtual))
@@ -923,6 +918,11 @@ public class Construtor : MonoBehaviour
             else
             {
                 OrientarRuaNaDirecao(fantasma, dir);
+                if (i == quantidade - 1)
+                {
+                    float restanteNoEixo = Vector3.Dot(posFinalPreview - cursorPreview, dir);
+                    AjustarComprimentoTrechoRua(fantasma, comprimentoReal, restanteNoEixo);
+                }
             }
             fantasma.transform.position = PosicaoRaizComInicioRua(fantasma, cursorPreview);
             if (i == 0) AjustarAlturaRuaInstanciada(fantasma);
@@ -983,6 +983,11 @@ public class Construtor : MonoBehaviour
                 else
                 {
                     OrientarRuaNaDirecao(novo, dir);
+                    if (i == quantidade - 1)
+                    {
+                        float restanteNoEixo = Vector3.Dot(posFinalPreview - cursorCommit, dir);
+                        AjustarComprimentoTrechoRua(novo, comprimentoReal, restanteNoEixo);
+                    }
                 }
                 novo.transform.position = PosicaoRaizComInicioRua(novo, inicioSegmento);
                 RuaConectora rc = novo.GetComponent<RuaConectora>();
@@ -1743,7 +1748,10 @@ public class Construtor : MonoBehaviour
     {
         if (!usarLateral || comprimentoLateral <= 0.1f)
         {
-            return Mathf.Max(1, Mathf.RoundToInt(distancia / Mathf.Max(0.1f, comprimentoReta)));
+            // O ultimo trecho e encurtado para terminar no cursor. Arredondar
+            // fazia a estrada parar ate meio segmento antes ou depois do
+            // ponto escolhido.
+            return Mathf.Max(1, Mathf.CeilToInt(distancia / Mathf.Max(0.1f, comprimentoReta)));
         }
 
         float restante = Mathf.Max(0f, distancia - comprimentoLateral);
@@ -1754,6 +1762,22 @@ public class Construtor : MonoBehaviour
             quantidade++;
         }
         return quantidade;
+    }
+
+    private void AjustarComprimentoTrechoRua(GameObject objeto, float comprimentoBase, float comprimentoDesejado)
+    {
+        if (objeto == null || comprimentoBase <= 0.1f || comprimentoDesejado <= 0.1f)
+        {
+            return;
+        }
+
+        float fator = Mathf.Clamp(comprimentoDesejado / comprimentoBase, 0.1f, 1f);
+        if (fator >= 0.995f) return;
+
+        Vector3 escala = objeto.transform.localScale;
+        escala.z = Mathf.Sign(Mathf.Approximately(escala.z, 0f) ? 1f : escala.z)
+            * Mathf.Abs(escala.z) * fator;
+        objeto.transform.localScale = escala;
     }
 
     private void GarantirFantasmaRua(int indice, GameObject prefabSegmento)

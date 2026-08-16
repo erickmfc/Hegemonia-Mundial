@@ -128,6 +128,25 @@
         <ui:Button name="decision-close" text="×" class="decision-close" tooltip="Fechar alerta" />
     </ui:VisualElement>
 
+    <ui:VisualElement name="tutorial-banner" class="tutorial-banner is-hidden">
+        <ui:VisualElement class="tutorial-copy">
+            <ui:Label name="tutorial-title" text="GUIA RAPIDO" class="tutorial-title" />
+            <ui:Label name="tutorial-message" class="tutorial-message" />
+        </ui:VisualElement>
+        <ui:Button name="tutorial-close" text="Ã—" class="tutorial-close" tooltip="Fechar tutorial" />
+    </ui:VisualElement>
+
+    <!-- Acesso rapido sempre visivel. A Prefeitura vem primeiro porque e a fundacao da partida. -->
+    <ui:VisualElement name="quick-actions" class="quick-actions">
+        <ui:Button name="quick-city-hall" text="PREFEITURA" class="quick-action quick-action-primary" tooltip="Abrir Prefeitura (Construcao)" />
+        <ui:Button name="quick-government" text="X  GOVERNO" class="quick-action" tooltip="Abrir Governo (X)" />
+        <ui:Button name="quick-construction" text="C  CONSTRUCAO" class="quick-action" tooltip="Abrir Construcao (C)" />
+        <ui:Button name="quick-pier" text="V  PIER" class="quick-action" tooltip="Abrir Pier (V)" />
+        <ui:Button name="quick-barracks" text="B  QUARTEL" class="quick-action" tooltip="Abrir Quartel (B)" />
+        <ui:Button name="quick-airport" text="Z  AEROPORTO" class="quick-action" tooltip="Abrir Aeroporto (Z)" />
+        <ui:Button name="quick-actions-close" text="X" class="quick-actions-close" tooltip="Fechar painel atual" />
+    </ui:VisualElement>
+
     <!-- Central de acontecimentos: abre pelo botao STATUS e pode ser fechada no X. -->
         <ui:VisualElement name="notification-panel" class="notification-panel is-hidden">
             <ui:VisualElement class="notification-header">

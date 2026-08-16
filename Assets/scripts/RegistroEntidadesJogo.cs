@@ -32,6 +32,7 @@ public static class RegistroEntidadesJogo
     private static readonly HashSet<Fabrica> Fabricas = new HashSet<Fabrica>();
     private static readonly HashSet<Estaleiro> Estaleiros = new HashSet<Estaleiro>();
     private static readonly HashSet<Heliporto> Heliportos = new HashSet<Heliporto>();
+    private static readonly HashSet<MarcadorTerritorio> MarcadoresTerritorio = new HashSet<MarcadorTerritorio>();
 
     public static void Register(IdentidadeUnidade unidade)
     {
@@ -225,6 +226,22 @@ public static class RegistroEntidadesJogo
         }
     }
 
+    public static void Register(MarcadorTerritorio marcador)
+    {
+        if (marcador != null && MarcadoresTerritorio.Add(marcador))
+        {
+            EntidadesAlteradas?.Invoke();
+        }
+    }
+
+    public static void Unregister(MarcadorTerritorio marcador)
+    {
+        if (marcador != null && MarcadoresTerritorio.Remove(marcador))
+        {
+            EntidadesAlteradas?.Invoke();
+        }
+    }
+
     public static void FillUnidades(List<IdentidadeUnidade> destino)
     {
         Fill(Unidades, destino);
@@ -283,6 +300,11 @@ public static class RegistroEntidadesJogo
     public static void FillHelicopteros(List<Helicoptero> destino)
     {
         Fill(Helicopteros, destino);
+    }
+
+    public static void FillMarcadoresTerritorio(List<MarcadorTerritorio> destino)
+    {
+        Fill(MarcadoresTerritorio, destino);
     }
 
     public static PierMarinha GetPrimeiroPier()

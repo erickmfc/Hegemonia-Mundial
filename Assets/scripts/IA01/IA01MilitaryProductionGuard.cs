@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 
 namespace Hegemonia.AI.IA01
@@ -17,22 +18,11 @@ namespace Hegemonia.AI.IA01
     }
 
     /// <summary>
-    /// Coordena os dois diretores que podem publicar producao para a mesma
-    /// nação. A guarda nao produz nada e nao altera a fila: apenas impede que
-    /// duas intenções simultâneas contem o mesmo deficit duas vezes.
+    /// Compatibilidade para os diretores existentes. Toda reserva passa pelo
+    /// registro central, que acompanha id, finalidade e estado da ordem.
     /// </summary>
     public static class IA01MilitaryProductionGuard
     {
-        private sealed class TeamState
-        {
-            public readonly Dictionary<IA01MilitaryAssetKind, List<float>> Pending =
-                new Dictionary<IA01MilitaryAssetKind, List<float>>();
-            public readonly Dictionary<IA01MilitaryAssetKind, int> LastObserved =
-                new Dictionary<IA01MilitaryAssetKind, int>();
-        }
-
-        private static readonly Dictionary<int, TeamState> States = new Dictionary<int, TeamState>();
-
         public static IA01MilitaryAssetKind Classify(DadosConstrucao data)
         {
             if (data == null) return IA01MilitaryAssetKind.Other;
@@ -58,33 +48,55 @@ namespace Hegemonia.AI.IA01
 
         public static bool TryReserve(int teamId, IA01MilitaryAssetKind kind, int desired, int current, float now, float ttlSeconds = 45f)
         {
-            if (teamId <= 0 || kind == IA01MilitaryAssetKind.Other || current >= desired) return false;
-            TeamState state = GetState(teamId);
-            Reconcile(state, kind, current, now);
-            List<float> pending = GetPending(state, kind);
-            if (current + pending.Count >= desired) return false;
-            pending.Add(now + Mathf.Max(8f, ttlSeconds));
-            return true;
+            return TryReserve(teamId, kind, desired, current, now, ttlSeconds, out _);
+        }
+
+        public static bool TryReserve(int teamId, IA01MilitaryAssetKind kind, int desired, int current, float now, float ttlSeconds, out string orderId)
+        {
+            return TryReserveProduction(teamId, kind, "military", desired, current, now, ttlSeconds, out orderId);
         }
 
         /// <summary>Usado pelo ProductionDirector para limitar uma ordem por tipo.</summary>
         public static bool TryReserveSingle(int teamId, IA01MilitaryAssetKind kind, int current, float now, float ttlSeconds = 45f)
         {
-            if (teamId <= 0 || kind == IA01MilitaryAssetKind.Other) return true;
-            TeamState state = GetState(teamId);
-            Reconcile(state, kind, current, now);
-            List<float> pending = GetPending(state, kind);
-            if (pending.Count > 0) return false;
-            pending.Add(now + Mathf.Max(8f, ttlSeconds));
-            return true;
+            return TryReserveSingle(teamId, kind, current, now, ttlSeconds, out _);
+        }
+
+        public static bool TryReserveSingle(int teamId, IA01MilitaryAssetKind kind, int current, float now, float ttlSeconds, out string orderId)
+        {
+            if (kind == IA01MilitaryAssetKind.Other) { orderId = string.Empty; return true; }
+            return TryReserveProduction(teamId, kind, "military", current + 1, current, now, ttlSeconds, out orderId);
         }
 
         public static void Cancel(int teamId, IA01MilitaryAssetKind kind, float now)
         {
-            if (!States.TryGetValue(teamId, out TeamState state)) return;
-            Reconcile(state, kind, state.LastObserved.ContainsKey(kind) ? state.LastObserved[kind] : 0, now);
-            List<float> pending = GetPending(state, kind);
-            if (pending.Count > 0) pending.RemoveAt(pending.Count - 1);
+            string orderId = IAAutoProductionRegistry.FindActiveOrder(teamId, kind.ToString(), "military");
+            if (!string.IsNullOrEmpty(orderId)) IAAutoProductionRegistry.Release(orderId, now);
+        }
+
+        public static bool TryReserveProduction(int teamId, IA01MilitaryAssetKind kind, string purpose, int desired, int current, float now, float ttlSeconds, out string orderId)
+        {
+            return IAAutoProductionRegistry.TryReserveProduction(teamId, kind.ToString(), purpose, desired, current, out orderId, now, Mathf.Max(8f, ttlSeconds));
+        }
+
+        public static void ConfirmQueued(string orderId, int producerInstanceId = 0, float now = -1f)
+        {
+            IAAutoProductionRegistry.ConfirmQueued(orderId, producerInstanceId, now);
+        }
+
+        public static void ConfirmConstructionStarted(string orderId, int producerInstanceId = 0, float now = -1f)
+        {
+            IAAutoProductionRegistry.ConfirmConstructionStarted(orderId, producerInstanceId, now);
+        }
+
+        public static void Complete(string orderId, float now = -1f)
+        {
+            IAAutoProductionRegistry.Complete(orderId, now);
+        }
+
+        public static void Release(string orderId, float now = -1f)
+        {
+            IAAutoProductionRegistry.Release(orderId, now);
         }
 
         public static int CountOwnedUnique(int teamId, TipoUnidade type, Func<IdentidadeUnidade, bool> filter = null)
@@ -112,40 +124,5 @@ namespace Hegemonia.AI.IA01
             return identity.transform.root != null ? identity.transform.root.GetInstanceID() : identity.GetInstanceID();
         }
 
-        private static TeamState GetState(int teamId)
-        {
-            if (!States.TryGetValue(teamId, out TeamState state))
-            {
-                state = new TeamState();
-                States.Add(teamId, state);
-            }
-            return state;
-        }
-
-        private static List<float> GetPending(TeamState state, IA01MilitaryAssetKind kind)
-        {
-            if (!state.Pending.TryGetValue(kind, out List<float> pending))
-            {
-                pending = new List<float>(4);
-                state.Pending.Add(kind, pending);
-            }
-            return pending;
-        }
-
-        private static void Reconcile(TeamState state, IA01MilitaryAssetKind kind, int current, float now)
-        {
-            List<float> pending = GetPending(state, kind);
-            for (int i = pending.Count - 1; i >= 0; i--)
-            {
-                if (pending[i] <= now) pending.RemoveAt(i);
-            }
-
-            if (state.LastObserved.TryGetValue(kind, out int previous) && current > previous)
-            {
-                int completed = Mathf.Min(current - previous, pending.Count);
-                if (completed > 0) pending.RemoveRange(0, completed);
-            }
-            state.LastObserved[kind] = Mathf.Max(0, current);
-        }
     }
 }

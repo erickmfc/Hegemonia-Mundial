@@ -97,18 +97,35 @@ public class Imovel : MonoBehaviour
 
         if (pavimentoInstanciado != null) Destroy(pavimentoInstanciado);
 
+        // A faixa deve ligar a frente real do imovel a rua. Usar o pivot do
+        // predio fazia o concreto atravessar a fachada e, em prefabs altos,
+        // ficar acima do asfalto.
+        Vector3 origem = ObterConectorFrente().posicao;
+        Vector3 destino = posicaoRua;
+        Vector3 vetorRua = destino - origem;
+        vetorRua.y = 0f;
+        float comprimentoPavimento = vetorRua.magnitude;
+        if (comprimentoPavimento < 0.25f)
+        {
+            return;
+        }
+
         pavimentoInstanciado = GameObject.CreatePrimitive(PrimitiveType.Quad);
         pavimentoInstanciado.name = "Pavimentacao_Concreto_" + name;
         Destroy(pavimentoInstanciado.GetComponent<Collider>());
 
-        pavimentoInstanciado.transform.rotation = Quaternion.Euler(90f, transform.rotation.eulerAngles.y, 0f);
+        float yawRua = Mathf.Atan2(vetorRua.x, vetorRua.z) * Mathf.Rad2Deg;
+        pavimentoInstanciado.transform.rotation = Quaternion.Euler(90f, yawRua, 0f);
 
-        Vector3 centroPavimento = (transform.position + posicaoRua) * 0.5f;
-        centroPavimento.y = transform.position.y + 0.02f;
+        Vector3 centroPavimento = (origem + destino) * 0.5f;
+        // Mantem o quad no nivel mais baixo entre a fachada e a rua, com
+        // pequena folga para nao z-fightar. Nunca herda a altura do pivot do
+        // edificio, que pode estar no topo do modelo.
+        centroPavimento.y = Mathf.Min(origem.y, destino.y) + 0.02f;
         pavimentoInstanciado.transform.position = centroPavimento;
 
         float larguraPavimento = Vector3.Distance(ObterConectorEsquerdo().posicao, ObterConectorDireito().posicao);
-        float comprimentoPavimento = Vector3.Distance(transform.position, posicaoRua);
+        larguraPavimento = Mathf.Clamp(larguraPavimento, 1f, 10f);
 
         pavimentoInstanciado.transform.localScale = new Vector3(larguraPavimento, comprimentoPavimento, 1f);
 

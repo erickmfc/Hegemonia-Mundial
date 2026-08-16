@@ -1,4 +1,5 @@
 using UnityEngine;
+using Hegemonia.AI.Shared;
 
 // 4. O EXECUTOR: "A MÃO DA IA"
 // Pega o pedido APROVADO pelos dois analistas e chama o comando real.
@@ -88,10 +89,27 @@ public class AnalistaExecutivo : MonoBehaviour
         }
 
         // Spawn FREE (Pois a IA já pagou internamente)
-        GameObject novaUnidade = Instantiate(r.targetObject, spawnPoint, Quaternion.identity);
-        
+        GameObject novaUnidade = null;
+        try
+        {
+            novaUnidade = r.targetObject != null ? Instantiate(r.targetObject, spawnPoint, Quaternion.identity) : null;
+        }
+        catch (System.Exception ex)
+        {
+            IAAutoProductionRegistry.Release(r.productionOrderId, Time.time);
+            Debug.LogWarning("[Executor] Recrutamento IA falhou: " + ex.Message);
+            return;
+        }
+
+        if (novaUnidade == null)
+        {
+            IAAutoProductionRegistry.Release(r.productionOrderId, Time.time);
+            return;
+        }
+
         // Garante que é INIMIGO (Team ID diferente)
         ConfigurarTime(novaUnidade);
+        IAAutoProductionRegistry.Complete(r.productionOrderId, Time.time);
         
         Debug.Log($"[Executor] RECRUTAMENTO IA: {r.targetObject.name} em {spawnPoint} (Time: {teamID})");
     }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using Hegemonia.AI.Shared;
 using UnityEngine.Events;
 
 // 3. O SEGUNDO NÍVEL: O "ESTRATEGISTA"
@@ -24,6 +25,10 @@ public class Analista2 : MonoBehaviour
         {
             Debug.Log($"[Analista 2] Pedido {pedido.type} de {pedido.requester} APROVADO! Enviando para Execução.");
             executor.ExecutarFinal(pedido);
+        }
+        else
+        {
+            IAAutoProductionRegistry.Release(pedido.productionOrderId, Time.time);
         }
     }
 

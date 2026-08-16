@@ -27,14 +27,18 @@ public class MenuFixadoController : MonoBehaviour
     // Central de acontecimentos do pais
     private Button statusToggle, notificationClose;
     private Button tabToday, tabEvents, tabHelp;
-    private VisualElement notificationPanel, notificationHelp;
+    private Button quickCityHall, quickGovernment, quickConstruction, quickPier, quickBarracks, quickAirport, quickActionsClose;
+    private VisualElement quickActions;
+    private VisualElement notificationPanel, notificationHelp, tutorialBanner;
     private ScrollView notificationList;
     private VisualElement decisionBanner;
     private Label decisionTitle, decisionMessage;
-    private Button decisionAction, decisionClose;
+    private Button decisionAction, decisionClose, tutorialClose;
+    private Label tutorialMessage;
     private StatusNotificacao decisionNotification;
     private StatusNotificacao alertaDecisaoFechado;
     private bool? ultimaPrefeituraOperacional;
+    private bool? ultimoAeroportoDoJogador;
     private bool? ultimaSituacaoComida;
     private bool? ultimaSituacaoEnergia;
     private bool? ultimaSituacaoCombustivel;
@@ -47,6 +51,9 @@ public class MenuFixadoController : MonoBehaviour
     private bool statusPulsoAtivo;
     private bool ignorarNovidadesIniciais = true;
     private IVisualElementScheduledItem statusPulseSchedule;
+    private const string TutorialInicialFechadoKey = "hegemonia.tutorial.menus.v2.fechado";
+    private const string BarraAcoesFechadaKey = "hegemonia.barra-acoes.v1.fechada";
+    private const string NotificacaoFechadaPrefix = "hegemonia.notificacao.fechada.";
 
     private bool _activeInScene = true;
 
@@ -104,6 +111,7 @@ public class MenuFixadoController : MonoBehaviour
             DesregistrarEventos();
             RegistrarEventos();
             UpdateUI();
+            AplicarEstadoBarraAcoes();
         }
     }
 
@@ -172,16 +180,9 @@ public class MenuFixadoController : MonoBehaviour
         uiPronta = true;
         CheckSceneVisibility(SceneManager.GetActiveScene());
         RegistrarEventos();
-        if (StatusNotificacaoFeed.Itens.Count == 0)
-        {
-            StatusNotificacaoFeed.Publicar(
-                "MUNDO",
-                "Boletim mundial ativo",
-                "Compras militares, acordos e mudanças importantes das nações aparecerão aqui.",
-                StatusNotificacaoSeveridade.Info);
-        }
         UpdateUI();
         AtualizarAlertaPrincipal();
+        MostrarTutorialInicial();
         ignorarNovidadesIniciais = false;
     }
 
@@ -239,6 +240,29 @@ public class MenuFixadoController : MonoBehaviour
         decisionAction = root.Q<Button>("decision-action");
         decisionClose = root.Q<Button>("decision-close");
         notificationHelp = root.Q<VisualElement>("notification-help");
+        tutorialBanner = root.Q<VisualElement>("tutorial-banner");
+        tutorialMessage = root.Q<Label>("tutorial-message");
+        tutorialClose = root.Q<Button>("tutorial-close");
+        quickActions = root.Q<VisualElement>("quick-actions");
+        quickActionsClose = root.Q<Button>("quick-actions-close");
+        quickCityHall = root.Q<Button>("quick-city-hall");
+        quickGovernment = root.Q<Button>("quick-government");
+        quickConstruction = root.Q<Button>("quick-construction");
+        quickPier = root.Q<Button>("quick-pier");
+        quickBarracks = root.Q<Button>("quick-barracks");
+        quickAirport = root.Q<Button>("quick-airport");
+        if (tutorialClose != null) tutorialClose.text = "X";
+        if (decisionClose != null) decisionClose.text = "X";
+        if (notificationClose != null) notificationClose.text = "X";
+        if (tutorialClose != null) tutorialClose.clicked += OcultarTutorialInicial;
+        if (quickCityHall != null) quickCityHall.clicked += AbrirPrefeituraRapida;
+        if (quickGovernment != null) quickGovernment.clicked += () => AbrirGoverno("Construa uma Prefeitura para abrir o Governo.");
+        if (quickConstruction != null) quickConstruction.clicked += () => AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Abra a construcao com C.");
+        if (quickPier != null) quickPier.clicked += AbrirPierRapido;
+        if (quickBarracks != null) quickBarracks.clicked += AbrirQuartelRapido;
+        if (quickAirport != null) quickAirport.clicked += AbrirAeroportoRapido;
+        if (quickActionsClose != null) quickActionsClose.clicked += FecharBarraAcoes;
+        AplicarEstadoBarraAcoes();
 
         // O HUD usa um container superior deslocado para centralizar a barra.
         // O painel fica em camada propria, entao a ancoragem inline evita que
@@ -294,6 +318,32 @@ public class MenuFixadoController : MonoBehaviour
         if (notificationPanel != null) notificationPanel.AddToClassList("is-hidden");
     }
 
+    private void MostrarTutorialInicial()
+    {
+        if (tutorialBanner == null) return;
+
+        if (PlayerPrefs.GetInt(TutorialInicialFechadoKey, 0) == 1)
+        {
+            tutorialBanner.AddToClassList("is-hidden");
+            return;
+        }
+
+        if (tutorialMessage != null)
+        {
+            tutorialMessage.text = "Use C para Construção, X para Governo e, após construir um aeroporto, Z para abrir o menu do aeroporto.";
+        }
+
+        tutorialBanner.RemoveFromClassList("is-hidden");
+        tutorialBanner.schedule.Execute(OcultarTutorialInicial).StartingIn(15000);
+    }
+
+    private void OcultarTutorialInicial()
+    {
+        PlayerPrefs.SetInt(TutorialInicialFechadoKey, 1);
+        PlayerPrefs.Save();
+        if (tutorialBanner != null) tutorialBanner.AddToClassList("is-hidden");
+    }
+
     private void AoAlterarFeedNotificacoes()
     {
         if (!ignorarNovidadesIniciais && !painelNotificacaoAberto && StatusNotificacaoFeed.PossuiNovidadeNaoDescartada)
@@ -331,7 +381,7 @@ public class MenuFixadoController : MonoBehaviour
             alertaDecisaoFechado = decisionNotification;
             // O fechamento vale para o estado inteiro do alerta, mesmo que o
             // sistema atualize a mensagem no proximo ciclo.
-            if (descartar) StatusNotificacaoFeed.Descartar(decisionNotification);
+            if (descartar) FecharNotificacaoPermanentemente(decisionNotification);
         }
         if (decisionBanner != null) decisionBanner.AddToClassList("is-hidden");
         decisionNotification = null;
@@ -352,12 +402,14 @@ public class MenuFixadoController : MonoBehaviour
         {
             StatusNotificacao item = itens[i];
             if (item == null || !categoriasVistas.Add(item.Categoria)) continue;
-            if (item.Descartada) continue;
+            if (item.Descartada || FoiDescartadaPermanentemente(item)) continue;
             if (!item.TemAcao) continue;
-            // O banner sobre a cena fica reservado para risco critico. Avisos
-            // informativos e deficits cobertos pela reserva permanecem apenas
-            // no historico da aba Status.
-            if (item.Severidade != StatusNotificacaoSeveridade.Critical) continue;
+            // A fundacao da Prefeitura e o unico aviso inicial que precisa
+            // ficar no card interativo, mesmo sendo Warning. Os demais avisos
+            // continuam no Status ate ficarem criticos.
+            bool orientacaoFundacao = item.Categoria == "GOVERNO"
+                && item.Severidade == StatusNotificacaoSeveridade.Warning;
+            if (item.Severidade != StatusNotificacaoSeveridade.Critical && !orientacaoFundacao) continue;
 
             int peso = item.Severidade == StatusNotificacaoSeveridade.Critical ? 3
                 : item.Severidade == StatusNotificacaoSeveridade.Warning ? 2 : 1;
@@ -440,7 +492,7 @@ public class MenuFixadoController : MonoBehaviour
         for (int i = 0; i < itens.Count; i++)
         {
             StatusNotificacao item = itens[i];
-            if (item == null) continue;
+            if (item == null || item.Descartada || FoiDescartadaPermanentemente(item)) continue;
 
             bool eventoMundial = item.Categoria == "MUNDO"
                 || item.Categoria == "AEROPORTO"
@@ -465,6 +517,7 @@ public class MenuFixadoController : MonoBehaviour
     {
         VisualElement linha = new VisualElement();
         linha.AddToClassList("notification-item");
+        linha.AddToClassList("notification-item-" + item.Severidade.ToString().ToLowerInvariant());
 
         Label severidade = new Label(ObterSimboloNotificacao(item.Severidade));
         severidade.AddToClassList("notification-severity");
@@ -497,7 +550,45 @@ public class MenuFixadoController : MonoBehaviour
         Label horario = new Label(item.Horario);
         horario.AddToClassList("notification-item-time");
         linha.Add(horario);
+        Button fechar = new Button(() => FecharNotificacaoPermanentemente(item))
+        {
+            text = "Ã—",
+            tooltip = "Fechar permanentemente"
+        };
+        fechar.text = "X";
+        fechar.AddToClassList("notification-dismiss");
+        linha.Add(fechar);
         return linha;
+    }
+
+    private string ObterChaveNotificacaoFechada(StatusNotificacao item)
+    {
+        string chave = item != null ? item.Chave : string.Empty;
+        System.Text.StringBuilder segura = new System.Text.StringBuilder(chave.Length);
+        for (int i = 0; i < chave.Length; i++)
+        {
+            char c = chave[i];
+            segura.Append(char.IsLetterOrDigit(c) ? c : '_');
+        }
+        return NotificacaoFechadaPrefix + segura;
+    }
+
+    private bool FoiDescartadaPermanentemente(StatusNotificacao item)
+    {
+        // O guia da Prefeitura deve reaparecer em cada campanha nova. Nesta
+        // partida, Descartar() ja impede que o X reabra o mesmo card.
+        if (item != null && item.Categoria == "GOVERNO") return false;
+        return item != null && PlayerPrefs.GetInt(ObterChaveNotificacaoFechada(item), 0) == 1;
+    }
+
+    private void FecharNotificacaoPermanentemente(StatusNotificacao item)
+    {
+        if (item == null) return;
+        PlayerPrefs.SetInt(ObterChaveNotificacaoFechada(item), 1);
+        PlayerPrefs.Save();
+        StatusNotificacaoFeed.Descartar(item);
+        AtualizarNotificacoes();
+        AtualizarAlertaPrincipal();
     }
 
     private string ObterSimboloNotificacao(StatusNotificacaoSeveridade severidade)
@@ -533,7 +624,7 @@ public class MenuFixadoController : MonoBehaviour
             ultimaPrefeituraOperacional = prefeituraOperacional;
             StatusNotificacaoFeed.Publicar(
                 "GOVERNO",
-                prefeituraOperacional ? "Prefeitura operacional" : "Prefeitura necessaria",
+                prefeituraOperacional ? "Prefeitura operacional" : "Construa a Prefeitura",
                 prefeituraOperacional
                     ? "A sede do governo esta ativa e pronta para administrar a nação."
                     : "Construa uma Prefeitura para centralizar o governo da nação.",
@@ -548,6 +639,33 @@ public class MenuFixadoController : MonoBehaviour
         if (!prefeituraOperacional)
         {
             return;
+        }
+
+        bool aeroportoDoJogador = false;
+        GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        for (int i = 0; i < aeroportos.Length; i++)
+        {
+            GerenciadorAeroporto aeroporto = aeroportos[i];
+            if (aeroporto == null) continue;
+            IdentidadeUnidade identidadeAeroporto = aeroporto.GetComponent<IdentidadeUnidade>();
+            if (identidadeAeroporto == null || identidadeAeroporto.teamID <= 1)
+            {
+                aeroportoDoJogador = true;
+                break;
+            }
+        }
+
+        if (!ultimoAeroportoDoJogador.HasValue || ultimoAeroportoDoJogador.Value != aeroportoDoJogador)
+        {
+            ultimoAeroportoDoJogador = aeroportoDoJogador;
+            if (aeroportoDoJogador)
+            {
+                StatusNotificacaoFeed.Publicar(
+                    "AEROPORTO",
+                    "Aeroporto pronto",
+                    "Acesse o menu do aeroporto com Z para controlar aeronaves, pistas e operacoes.",
+                    StatusNotificacaoSeveridade.Success);
+            }
         }
 
         float consumoComida = economia != null ? Mathf.Max(1f, economia.comidaConsumida) : 1f;
@@ -713,6 +831,103 @@ public class MenuFixadoController : MonoBehaviour
         }
 
         HUDAjudaRTS.MostrarMensagemTemporaria(mensagem, 4f);
+    }
+
+    private void FecharPainelAtual()
+    {
+        MenuConstrucao construcao = FindFirstObjectByType<MenuConstrucao>();
+        if (construcao != null && MenuConstrucao.EstaAberto)
+        {
+            construcao.AlternarMenu(false);
+        }
+
+        MenuPier pier = FindFirstObjectByType<MenuPier>();
+        if (pier != null) pier.FecharMenu();
+
+        MenuMisseis misseis = FindFirstObjectByType<MenuMisseis>();
+        if (misseis != null && MenuMisseis.EstaAberto) misseis.CancelarLancamento();
+
+        MenuGoverno governo = FindFirstObjectByType<MenuGoverno>();
+        if (governo != null && MenuGoverno.EstaAberto) governo.AlternarMenu(false);
+
+        MenuGovernoNovoController governoNovo = FindFirstObjectByType<MenuGovernoNovoController>();
+        if (governoNovo != null && MenuGoverno.EstaAberto) governoNovo.Abrir(false);
+
+        if (GerenciadorQuartel.InterfaceAberta)
+        {
+            GerenciadorQuartel quartel = FindFirstObjectByType<GerenciadorQuartel>();
+            if (quartel != null) quartel.AlternarInterface();
+        }
+
+        GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        for (int i = 0; i < aeroportos.Length; i++)
+        {
+            if (aeroportos[i] != null) aeroportos[i].CancelarInteracaoPorConstrucao();
+        }
+
+        Construtor construtor = FindFirstObjectByType<Construtor>();
+        if (construtor != null && construtor.modoConstrucao)
+        {
+            construtor.CancelarConstrucao(false);
+        }
+    }
+
+    private void FecharBarraAcoes()
+    {
+        FecharPainelAtual();
+        PlayerPrefs.SetInt(BarraAcoesFechadaKey, 1);
+        PlayerPrefs.Save();
+        AplicarEstadoBarraAcoes();
+    }
+
+    private void AplicarEstadoBarraAcoes()
+    {
+        if (quickActions == null) return;
+
+        bool fechada = PlayerPrefs.GetInt(BarraAcoesFechadaKey, 0) == 1;
+        quickActions.EnableInClassList("is-hidden", fechada);
+    }
+
+    private void AbrirPrefeituraRapida()
+    {
+        AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Selecione a Prefeitura para iniciar a fundacao.");
+    }
+
+    private void AbrirPierRapido()
+    {
+        if (!MenuPier.AlternarPorAtalho())
+        {
+            HUDAjudaRTS.MostrarMensagemTemporaria("Construa ou selecione um Pier para abrir este menu.", 4f);
+        }
+    }
+
+    private void AbrirQuartelRapido()
+    {
+        GerenciadorQuartel quartel = FindFirstObjectByType<GerenciadorQuartel>();
+        if (quartel == null)
+        {
+            HUDAjudaRTS.MostrarMensagemTemporaria("Construa ou selecione um Quartel para abrir este menu.", 4f);
+            return;
+        }
+
+        quartel.AlternarInterface();
+    }
+
+    private void AbrirAeroportoRapido()
+    {
+        GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        for (int i = 0; i < aeroportos.Length; i++)
+        {
+            GerenciadorAeroporto aeroporto = aeroportos[i];
+            if (aeroporto == null) continue;
+            if (aeroporto is GerenciadorPortaAvioes) continue;
+
+            IdentidadeUnidade identidade = aeroporto.GetComponent<IdentidadeUnidade>();
+            if (identidade != null && identidade.teamID != 0 && identidade.teamID != 1) continue;
+            if (aeroporto.AlternarMenuPorAtalho()) return;
+        }
+
+        HUDAjudaRTS.MostrarMensagemTemporaria("Construa um Aeroporto para abrir este menu.", 4f);
     }
 
     private void AbrirGoverno(string mensagem)

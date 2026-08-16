@@ -192,7 +192,7 @@ public class SistemaDeTiro : MonoBehaviour
 
         fonteAudio = GetComponent<AudioSource>();
         if (fonteAudio == null) fonteAudio = gameObject.AddComponent<AudioSource>();
-        AudioRuntime.ConfigurarFonteDeArmamento(fonteAudio);
+        AudioRuntime.ConfigurarFonteDeTiro(fonteAudio);
 
         // OTIMIZAÇÃO: Scan com intervalo aleatório
         proximaBuscaAlvo = Time.unscaledTime + Random.Range(0f, 0.5f);

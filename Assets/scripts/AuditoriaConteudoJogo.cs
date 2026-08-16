@@ -458,6 +458,15 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         if (primeira == null || segunda == null) return false;
         if (primeira.categoria != segunda.categoria || primeira.preco != segunda.preco) return false;
 
+        GameObject prefabPrimeiro;
+        GameObject prefabSegundo;
+        if (primeira.TryGetPrefabBasico(out prefabPrimeiro)
+            && segunda.TryGetPrefabBasico(out prefabSegundo)
+            && prefabPrimeiro == prefabSegundo)
+        {
+            return true;
+        }
+
         string nomePrimeira = string.IsNullOrWhiteSpace(primeira.NomeItem) ? primeira.name : primeira.NomeItem;
         string nomeSegunda = string.IsNullOrWhiteSpace(segunda.NomeItem) ? segunda.name : segunda.NomeItem;
         if (!string.Equals(nomePrimeira, nomeSegunda, System.StringComparison.OrdinalIgnoreCase)) return false;
@@ -530,6 +539,7 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
             if (tipo.Contains("tiro")
                 || tipo.Contains("torreta")
                 || tipo.Contains("missil")
+                || tipo.Contains("lancador")
                 || tipo.Contains("arma")
                 || tipo.Contains("canhao")
                 || tipo.Contains("torpedo")

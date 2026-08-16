@@ -231,7 +231,7 @@ MonoBehaviour:
   tempoAceleracao: 5
   tempoDesaceleracao: 5
   tempoParadaEmergencia: 5
-  velocidadeMaxima: 55
+  velocidadeMaxima: 192.5
   velocidadeLeme: 5
   curvaMaximaGraus: 10
   coeficienteAderna: 2.5
@@ -294,16 +294,16 @@ MonoBehaviour:
   tirosPorSalva: 1
   intervaloEntreTiros: 0.1
   tempoRecargaSalva: 5
-  alcanceRadar: 1700
+  alcanceRadar: 2000
   intervaloVarreduraAutomatica: 0.45
   maxMisseisSimultaneosPorAlvo: 2
   cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
   preaquecerMisseisNoStart: 0
-  volumeSom: 1
+  volumeSom: 0.8
   pitchSom: 1
   distanciaSomMinima: 50
-  distanciaSomMaxima: 100
+  distanciaSomMaxima: 300
   tagsInimigas:
   - Inimigo
   - Destrutivel

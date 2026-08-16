@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Prefeitura
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Prefeitura
+  descricao: Sede inicial do governo e fundacao da nacao.
+  icone: {fileID: 0}
+  itemId: capital.prefeitura
+  aliases: prefeitura,capital,governo
+  capacidades: 37
+  prefabDaUnidade: {fileID: 4294933399016074583, guid: 302247c9d375f5d41ab41de04df1dd24, type: 3}
+  preco: 5000
+  categoria: 6
+  escalaPoder: 2
+  strategicRole: 15
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

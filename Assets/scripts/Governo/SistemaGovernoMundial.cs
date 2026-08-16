@@ -24,6 +24,7 @@ public class SistemaGovernoMundial : MonoBehaviour
     public event Action<PropostaInternacional> OnPropostaCriada;
 
     private float proximoTick;
+    private float proximaDiplomaciaIA;
     private readonly Dictionary<int, long> reservasFundacao = new Dictionary<int, long>();
 
     public IReadOnlyList<DadosPaisGoverno> Paises => paises;
@@ -96,6 +97,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         SincronizarJogador();
         DescobrirIAsDaCena();
         ProcessarEconomia();
+        ProcessarDiplomaciaIA();
         SistemaFederacoesGlobais.GarantirInstancia();
     }
 
@@ -246,6 +248,8 @@ public class SistemaGovernoMundial : MonoBehaviour
         foreach (DadosPaisGoverno solicitante in paises)
         {
             if (solicitante == null || solicitante.teamId == teamJogador) continue;
+            bool identidadeAtiva = IdentidadeIA.TodasIdentidades != null && IdentidadeIA.TodasIdentidades.Any(identidade => identidade != null && identidade.teamID == solicitante.teamId && identidade.estaAtivo && !identidade.eliminado);
+            if (!identidadeAtiva) continue;
             if (solicitante.estabilidade > 45f && !solicitante.emGuerra && solicitante.comida > 0) continue;
 
             RecursoMercado recurso;
@@ -946,6 +950,41 @@ public class SistemaGovernoMundial : MonoBehaviour
         RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
         rel.pedidoPendente = true;
         OnGovernoAtualizado?.Invoke();
+        return true;
+    }
+
+    public bool CriarPropostaAliancaJogador(int alvoTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
+        return CriarPropostaJogador(alvoTeamId, TipoPropostaInternacional.Alianca, RecursoMercado.Nenhum, 1, 1,
+            "Proposta formal de alianca e cooperacao mutua.", "alianca:" + teamJogador + ":" + alvoTeamId);
+    }
+
+    public bool CriarPropostaPactoJogador(int alvoTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
+        return CriarPropostaJogador(alvoTeamId, TipoPropostaInternacional.PactoDefensivo, RecursoMercado.Nenhum, 1, 1,
+            "Pacto defensivo com consulta e apoio mutuo.", "pacto:" + teamJogador + ":" + alvoTeamId);
+    }
+
+    public bool CriarPropostaCessarFogoJogador(int alvoTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
+        return CriarPropostaJogador(alvoTeamId, TipoPropostaInternacional.CessarFogo, RecursoMercado.Nenhum, 1, 1,
+            "Proposta de cessar-fogo e abertura de negociacao de paz.", "cessar-fogo:" + teamJogador + ":" + alvoTeamId);
+    }
+
+    private bool ValidarAlvoDiplomatico(int alvoTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (alvoTeamId <= 0 || alvoTeamId == teamJogador || ObterPais(alvoTeamId) == null)
+        {
+            mensagem = "Selecione uma nacao ativa diferente da sua.";
+            return false;
+        }
         return true;
     }
 
@@ -1699,6 +1738,53 @@ public class SistemaGovernoMundial : MonoBehaviour
         ProcessarEconomia();
     }
 
+    public bool AplicarEmbargo(int alvoTeamId, RecursoMercado recurso, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem) || recurso == RecursoMercado.Nenhum)
+        {
+            if (string.IsNullOrEmpty(mensagem)) mensagem = "Recurso de embargo invalido.";
+            return false;
+        }
+
+        RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
+        if (rel.embargos == null) rel.embargos = new List<RecursoMercado>();
+        if (rel.embargos.Contains(recurso))
+        {
+            mensagem = "Este embargo ja esta ativo.";
+            return false;
+        }
+
+        rel.embargos.Add(recurso);
+        RegistrarNoticia("Embargo de " + recurso + " aplicado contra " + NomePais(alvoTeamId) + ".");
+        SistemaMercadoGlobal.Instancia?.SimularMercado();
+        OnGovernoAtualizado?.Invoke();
+        mensagem = "Embargo de " + recurso + " ativo.";
+        return true;
+    }
+
+    public bool RemoverEmbargo(int alvoTeamId, RecursoMercado recurso, out string mensagem)
+    {
+        mensagem = string.Empty;
+        RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
+        if (rel == null || rel.embargos == null || !rel.embargos.Remove(recurso))
+        {
+            mensagem = "Nao existe embargo deste recurso.";
+            return false;
+        }
+        RegistrarNoticia("Embargo de " + recurso + " removido de " + NomePais(alvoTeamId) + ".");
+        SistemaMercadoGlobal.Instancia?.SimularMercado();
+        OnGovernoAtualizado?.Invoke();
+        mensagem = "Embargo removido.";
+        return true;
+    }
+
+    public bool RecursoEmbargado(int origemTeamId, int destinoTeamId, RecursoMercado recurso)
+    {
+        RelacaoPaisGoverno rel = ObterRelacao(origemTeamId, destinoTeamId);
+        return rel != null && rel.embargos != null && rel.embargos.Contains(recurso);
+    }
+
     public float PressaoGlobalGuerra()
     {
         if (paises.Count == 0) return 0f;
@@ -1737,6 +1823,33 @@ public class SistemaGovernoMundial : MonoBehaviour
     private bool ExecutarProposta(PropostaInternacional proposta, out string mensagem)
     {
         mensagem = string.Empty;
+        if (proposta.tipo == TipoPropostaInternacional.Alianca)
+        {
+            RelacaoPaisGoverno rel = ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId);
+            rel.pactoMilitar = true;
+            rel.tratadoComercial = true;
+            rel.pedidoPendente = false;
+            rel.valor = Mathf.Clamp(rel.valor + 15, -100, 100);
+            mensagem = "Alianca aceita e registrada.";
+            RegistrarNoticia(NomePais(proposta.origemTeamId) + " e " + NomePais(proposta.alvoTeamId) + " firmaram uma alianca.");
+            return true;
+        }
+
+        if (proposta.tipo == TipoPropostaInternacional.CessarFogo)
+        {
+            RelacaoPaisGoverno rel = ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId);
+            rel.guerraDeclarada = false;
+            rel.pedidoPendente = false;
+            rel.valor = Mathf.Clamp(rel.valor + 25, -100, 100);
+            DadosPaisGoverno origem = ObterPais(proposta.origemTeamId);
+            DadosPaisGoverno alvo = ObterPais(proposta.alvoTeamId);
+            if (origem != null) origem.emGuerra = false;
+            if (alvo != null) alvo.emGuerra = false;
+            mensagem = "Cessar-fogo aceito; hostilidades suspensas.";
+            RegistrarNoticia(NomePais(proposta.origemTeamId) + " e " + NomePais(proposta.alvoTeamId) + " suspenderam as hostilidades.");
+            return true;
+        }
+
         SistemaMercadoGlobal mercado = SistemaMercadoGlobal.Instancia;
         DadosItemMercado item = mercado != null ? mercado.ObterItem(IdRecurso(proposta.recurso)) : null;
 
@@ -1793,6 +1906,57 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         mensagem = "Tipo de proposta sem execucao direta.";
         return false;
+    }
+
+    private void ProcessarDiplomaciaIA()
+    {
+        if (Time.unscaledTime < proximaDiplomaciaIA) return;
+        proximaDiplomaciaIA = Time.unscaledTime + 12f;
+        if (teamJogador <= 0 || IdentidadeIA.TodasIdentidades == null) return;
+
+        foreach (IdentidadeIA identidade in IdentidadeIA.TodasIdentidades.ToArray())
+        {
+            if (identidade == null || !identidade.estaAtivo || identidade.eliminado || identidade.teamID <= 1) continue;
+            DadosPaisGoverno ia = ObterPais(identidade.teamID);
+            DadosPaisGoverno jogador = ObterPais(teamJogador);
+            if (ia == null || jogador == null) continue;
+
+            RelacaoPaisGoverno rel = ObterRelacao(identidade.teamID, teamJogador);
+            bool pendente = propostas.Any(p => p != null && p.EstaPendente && p.origemTeamId == identidade.teamID && p.alvoTeamId == teamJogador);
+            if (pendente) continue;
+
+            TipoPropostaInternacional tipo;
+            string motivo;
+            bool guerraComJogador = rel.guerraDeclarada || (ia.emGuerra && ia.rivalTeamId == teamJogador);
+            if (guerraComJogador)
+            {
+                tipo = TipoPropostaInternacional.CessarFogo;
+                motivo = ia.nomePais + " propoe cessar-fogo para reduzir perdas e abrir negociacoes.";
+            }
+            else if (rel.valor >= 45 && !rel.pactoMilitar)
+            {
+                tipo = TipoPropostaInternacional.Alianca;
+                motivo = ia.nomePais + " propoe alianca por interesse diplomatico e defensivo.";
+            }
+            else
+            {
+                continue;
+            }
+
+            TentarCriarProposta(new PropostaInternacional
+            {
+                origemTeamId = identidade.teamID,
+                alvoTeamId = teamJogador,
+                tipo = tipo,
+                recurso = RecursoMercado.Nenhum,
+                quantidade = 1,
+                precoUnitario = 1,
+                prioridade = 85,
+                motivo = motivo,
+                expiraEm = Time.unscaledTime + 90f,
+                dedupKey = tipo + ":ia:" + identidade.teamID + ":" + teamJogador
+            });
+        }
     }
 
     public static string IdRecurso(RecursoMercado recurso)

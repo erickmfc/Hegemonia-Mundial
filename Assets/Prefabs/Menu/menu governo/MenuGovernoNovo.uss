@@ -35,7 +35,6 @@
 .gov-title-accent { color: rgb(224,177,74); letter-spacing: 5px; font-size: 14px; }
 .gov-status { width: 200px; flex-shrink: 0; margin-left: 8px; min-height: 64px; align-items: center; justify-content: center; border-width: 1px; border-color: rgba(54,214,220,0.45); background-color: rgba(5,27,38,0.9); }
 .gov-status-value { margin-top: 3px; color: rgb(54,214,220); font-size: 25px; -unity-font-style: bold; }
-.gov-close { width: 52px; height: 52px; flex-shrink: 0; margin-left: 14px; color: rgb(255,91,91); background-color: rgba(70,5,8,0.8); border-color: rgb(135,25,30); }
 
 .gov-resources { min-height: 80px; flex-direction: row; border-bottom-width: 1px; border-bottom-color: rgba(90,202,211,0.2); }
 .gov-resource-card { flex-grow: 1; min-width: 120px; padding: 12px 12px 10px 12px; justify-content: center; align-items: center; border-right-width: 1px; border-right-color: rgba(90,202,211,0.18); }

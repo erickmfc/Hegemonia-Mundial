@@ -316,7 +316,11 @@ public class LancadorMisseis : MonoBehaviour
         
         // Efeito Sonoro
         AudioSource audio = GetComponent<AudioSource>();
-        if(audio != null) audio.Play();
+        if (audio != null)
+        {
+            AudioRuntime.ConfigurarFonteDeMissel(audio);
+            audio.Play();
+        }
     }
 
     // Utilitário: Cria o círculo vermelho via código pra você não ter que fazer prefab
