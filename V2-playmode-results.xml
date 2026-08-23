@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="13" result="Failed(Child)" total="13" passed="7" failed="6" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:29:08Z" duration="119,0422851">
+  <test-suite type="TestSuite" id="1022" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="13" result="Failed" site="Child" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:29:08Z" duration="119.042285" total="13" passed="7" failed="6" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1018" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="13" result="Failed" site="Child" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:29:08Z" duration="119.014215" total="13" passed="7" failed="6" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="1976" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1001" name="CartelCreatePlayModeTests" fullname="CartelCreatePlayModeTests" classname="CartelCreatePlayModeTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:27:09Z" duration="0.312766" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1003" name="PlayMode_ControllerBuildsBaseInsideConfiguredArea" fullname="CartelCreatePlayModeTests.PlayMode_ControllerBuildsBaseInsideConfiguredArea" methodname="PlayMode_ControllerBuildsBaseInsideConfiguredArea" classname="CartelCreatePlayModeTests" runstate="Runnable" seed="1200473744" result="Passed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:27:09Z" duration="0.124407" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Cartel Init] Start cena=Etapa12MinimalPlayModeScene automatico=False dia=1
+[Cartel Init] Dia liberado; creates=2 basesAntes=0 baseCreates=1 areaCreates=1
+[Cartel Init] Base inicial apos EnsureInitialBase: bases=1 estado=BuildingBase status=Base criada em Pais01_BaseCreate_01 dentro da area manual.
+]]></output>
+        </test-case>
+        <test-case id="1004" name="PlayMode_ControllerChoosesCandidateFartherFromCity" fullname="CartelCreatePlayModeTests.PlayMode_ControllerChoosesCandidateFartherFromCity" methodname="PlayMode_ControllerChoosesCandidateFartherFromCity" classname="CartelCreatePlayModeTests" runstate="Runnable" seed="937922470" result="Passed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:27:09Z" duration="0.057948" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Cartel Init] Start cena=Etapa12MinimalPlayModeScene automatico=False dia=1
+[Cartel Init] Dia liberado; creates=5 basesAntes=0 baseCreates=2 areaCreates=2
+[Cartel Init] Base inicial apos EnsureInitialBase: bases=1 estado=BuildingBase status=Base criada em Pais02_BaseCreate_02 dentro da area manual.
+]]></output>
+        </test-case>
+        <test-case id="1002" name="PlayMode_CreateRegistersAndRespectsRadiusAndOccupancy" fullname="CartelCreatePlayModeTests.PlayMode_CreateRegistersAndRespectsRadiusAndOccupancy" methodname="PlayMode_CreateRegistersAndRespectsRadiusAndOccupancy" classname="CartelCreatePlayModeTests" runstate="Runnable" seed="525260771" result="Passed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:27:09Z" duration="0.052485" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1005" name="PlayMode_CreateTypeExposesAllManualCategories" fullname="CartelCreatePlayModeTests.PlayMode_CreateTypeExposesAllManualCategories" methodname="PlayMode_CreateTypeExposesAllManualCategories" classname="CartelCreatePlayModeTests" runstate="Runnable" seed="1358538708" result="Passed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:27:09Z" duration="0.043113" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1006" name="Etapa12MinimalPlayModeTests" fullname="Etapa12MinimalPlayModeTests" classname="Etapa12MinimalPlayModeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:27:09Z" duration="0.061754" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1008" name="NUnitTestRunsInPlayModeAssembly" fullname="Etapa12MinimalPlayModeTests.NUnitTestRunsInPlayModeAssembly" methodname="NUnitTestRunsInPlayModeAssembly" classname="Etapa12MinimalPlayModeTests" runstate="Runnable" seed="936416062" result="Passed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:27:09Z" duration="0.002389" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1009" name="UnityTestCreatesAndDestroysSimpleGameObject" fullname="Etapa12MinimalPlayModeTests.UnityTestCreatesAndDestroysSimpleGameObject" methodname="UnityTestCreatesAndDestroysSimpleGameObject" classname="Etapa12MinimalPlayModeTests" runstate="Runnable" seed="1548461286" result="Passed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:27:09Z" duration="0.024623" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1007" name="UnityTestStartsAndYieldsOneFrame" fullname="Etapa12MinimalPlayModeTests.UnityTestStartsAndYieldsOneFrame" methodname="UnityTestStartsAndYieldsOneFrame" classname="Etapa12MinimalPlayModeTests" runstate="Runnable" seed="1050482704" result="Passed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:27:09Z" duration="0.025356" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Etapa12MinimalPlayModeTests] UnityTest iniciou.
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1010" name="IA01ConstructionGovernorPlayModeTests" fullname="IA01ConstructionGovernorPlayModeTests" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" testcasecount="5" result="Failed" site="Child" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:29:08Z" duration="118.555142" total="5" passed="0" failed="5" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1011" name="CampaignFlow_CreatesCapital_Territory_AndPublishesHudMetrics" fullname="IA01ConstructionGovernorPlayModeTests.CampaignFlow_CreatesCapital_Territory_AndPublishesHudMetrics" methodname="CampaignFlow_CreatesCapital_Territory_AndPublishesHudMetrics" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="1932676258" result="Failed" start-time="2026-08-19 11:27:09Z" end-time="2026-08-19 11:29:08Z" duration="118.392215" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] RenderTexture.Create failed'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.Rendering.RenderPipelineManager:DoRenderLoop_Internal (UnityEngine.Rendering.RenderPipelineAsset,intptr,UnityEngine.Object,Unity.Collections.LowLevel.Unsafe.AtomicSafetyHandle)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[Mapa] Terrain configurado: nome=Terrain camadas=4 controles=1 fallback=False
+[Mapa] Terrain configurado: nome=Terrain_(0.00, 0.00, -100.00) camadas=3 controles=1 fallback=False
+[Mapa] superfícies corrigidas: terrenos=2, reativados=0, marcadores=2
+[NovoJogo] modo=medio | dinheiro inicial=70000000000 | cena=cena19)
+[AuditoriaConteudo] Torre Turistica: prefab sem collider
+[AuditoriaConteudo] Torre Turistica: prefab sem SaveableEntity para save completo
+[AuditoriaConteudo] Torre Turistica: prefab sem SistemaDeDanos
+[AuditoriaConteudo] Estadio Nacional: prefab sem collider
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=8 erros=0 avisos=9 cena=Menu cena avisosConsoleSuprimidos=5
+[Gameplay Bootstrap] cena=cena19) IA01Manager=ativo controllers=1 registrados=1 Cartel=ativo
+[Gameplay Bootstrap] controller=IA01Controller team=2 layout=ia01.layout
+[Mapa] Terrain configurado: nome=MapaMundi camadas=2 controles=1 fallback=False
+[Mapa] Terrain IA usando material de solo estavel: nome=Mapa inimigo
+[Mapa] Terrain IA usando material de solo estavel: nome=Ilha 
+[Mapa] Terrain configurado: nome=paredao inimigo camadas=1 controles=1 fallback=False
+[Mapa] Terrain configurado: nome=pais4 camadas=1 controles=1 fallback=False
+[Mapa] Terrain configurado: nome=pais3 camadas=1 controles=1 fallback=False
+[Mapa] superfícies corrigidas: terrenos=8, reativados=0, marcadores=1
+[MapaGeral] Limites do mapa: centro=(2521, -2684) metade=13580 zoomMaximo=13580.
+[MenuComando] Limites do mapa tático: centro=(2521, -2684) metade=13580.
+[Cartel Init] Start cena=cena19) automatico=True dia=1
+[Cartel Init] Tentando ativar: dia=1 requerido=5
+[IA01 WorldReady] layout, identidade e governo prontos; execução liberada.
+RenderTexture.Create failed
+RenderTexture.Create failed
+Failed to set the active render target, ensure that it is a valid render target.
+RenderTexture.Create failed
+RenderTexture.Create failed
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawDepthNormalPrepass: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawOpaqueObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawTransparentObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawDepthNormalPrepass: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawOpaqueObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawTransparentObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawDepthNormalPrepass: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawOpaqueObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawTransparentObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+]]></output>
+        </test-case>
+        <test-case id="1012" name="ConstructionGovernor_FreezesOnLowTreasury_AndReactsToPopulationFoodAndEnergy" fullname="IA01ConstructionGovernorPlayModeTests.ConstructionGovernor_FreezesOnLowTreasury_AndReactsToPopulationFoodAndEnergy" methodname="ConstructionGovernor_FreezesOnLowTreasury_AndReactsToPopulationFoodAndEnergy" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="1619107788" result="Failed" start-time="2026-08-19 11:29:08Z" end-time="2026-08-19 11:29:08Z" duration="0.040725" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] RenderTexture.Create failed'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.Rendering.RenderPipelineManager:DoRenderLoop_Internal (UnityEngine.Rendering.RenderPipelineAsset,intptr,UnityEngine.Object,Unity.Collections.LowLevel.Unsafe.AtomicSafetyHandle)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawDepthNormalPrepass: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawOpaqueObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawTransparentObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+[IA01 Planning] Planejador: prioridade=75 recomendacao=Ampliar moradia em lotes residenciais validos. | Execucao protegida: diretores atuais mantidos.
+]]></output>
+        </test-case>
+        <test-case id="1015" name="DiagnosticOverlay_DoesNotClaimNoIaData_WhenIa01MetricsExist" fullname="IA01ConstructionGovernorPlayModeTests.DiagnosticOverlay_DoesNotClaimNoIaData_WhenIa01MetricsExist" methodname="DiagnosticOverlay_DoesNotClaimNoIaData_WhenIa01MetricsExist" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="93704270" result="Failed" start-time="2026-08-19 11:29:08Z" end-time="2026-08-19 11:29:08Z" duration="0.032607" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] RenderTexture.Create failed'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.Rendering.RenderPipelineManager:DoRenderLoop_Internal (UnityEngine.Rendering.RenderPipelineAsset,intptr,UnityEngine.Object,Unity.Collections.LowLevel.Unsafe.AtomicSafetyHandle)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawDepthNormalPrepass: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawOpaqueObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawTransparentObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+]]></output>
+        </test-case>
+        <test-case id="1014" name="EstablishCapital_UsesFoundationFunding_WithoutInitialFundsBlock" fullname="IA01ConstructionGovernorPlayModeTests.EstablishCapital_UsesFoundationFunding_WithoutInitialFundsBlock" methodname="EstablishCapital_UsesFoundationFunding_WithoutInitialFundsBlock" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="1253419652" result="Failed" start-time="2026-08-19 11:29:08Z" end-time="2026-08-19 11:29:08Z" duration="0.043340" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] RenderTexture.Create failed'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.Rendering.RenderPipelineManager:DoRenderLoop_Internal (UnityEngine.Rendering.RenderPipelineAsset,intptr,UnityEngine.Object,Unity.Collections.LowLevel.Unsafe.AtomicSafetyHandle)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawDepthNormalPrepass: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawOpaqueObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawTransparentObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+]]></output>
+        </test-case>
+        <test-case id="1013" name="TwoIA01ControllersMaintainIndependentGovernorsQueuesAndTreasuries" fullname="IA01ConstructionGovernorPlayModeTests.TwoIA01ControllersMaintainIndependentGovernorsQueuesAndTreasuries" methodname="TwoIA01ControllersMaintainIndependentGovernorsQueuesAndTreasuries" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="1298613478" result="Failed" start-time="2026-08-19 11:29:08Z" end-time="2026-08-19 11:29:08Z" duration="0.034542" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] RenderTexture.Create failed'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.Rendering.RenderPipelineManager:DoRenderLoop_Internal (UnityEngine.Rendering.RenderPipelineAsset,intptr,UnityEngine.Object,Unity.Collections.LowLevel.Unsafe.AtomicSafetyHandle)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawDepthNormalPrepass: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawOpaqueObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawTransparentObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1016" name="OperacoesPortaAvioesV2PlayModeTests" fullname="OperacoesPortaAvioesV2PlayModeTests" classname="OperacoesPortaAvioesV2PlayModeTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-08-19 11:29:08Z" end-time="2026-08-19 11:29:08Z" duration="0.065200" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <output><![CDATA[SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawDepthNormalPrepass: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawOpaqueObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawTransparentObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+]]></output>
+        <test-case id="1017" name="AeronaveMantemIdentidadeDuranteCicloDeRegistro" fullname="OperacoesPortaAvioesV2PlayModeTests.AeronaveMantemIdentidadeDuranteCicloDeRegistro" methodname="AeronaveMantemIdentidadeDuranteCicloDeRegistro" classname="OperacoesPortaAvioesV2PlayModeTests" runstate="Runnable" seed="1953139759" result="Failed" start-time="2026-08-19 11:29:08Z" end-time="2026-08-19 11:29:08Z" duration="0.033134" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] RenderTexture.Create failed'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.Rendering.RenderPipelineManager:DoRenderLoop_Internal (UnityEngine.Rendering.RenderPipelineAsset,intptr,UnityEngine.Object,Unity.Collections.LowLevel.Unsafe.AtomicSafetyHandle)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+SetConstantBuffer: The current renderer does not support constant buffers. This call will have no effect.
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawDepthNormalPrepass: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawOpaqueObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+RenderTexture.Create failed
+RenderTexture.Create failed
+RenderTexture.Create failed
+DrawTransparentObjects: Unable to find surface for attachment 0
+EndRenderPass: Not inside a Renderpass
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

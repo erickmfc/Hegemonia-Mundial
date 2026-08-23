@@ -58,6 +58,10 @@ public class ControleNavioRealista : MonoBehaviour
     public TrailRenderer rastroEsteira;  // Rastro longo
     public ParticleSystem turbulenciaPopa; // Cavitação atrás
     public Transform modelo3D; // O casco visual para rotacionar
+    [Tooltip("Mantém os Creates e pontos operacionais alinhados ao mesmo balanço visual do casco.")]
+    public bool aplicarBalancoAosCreates = true;
+    [Tooltip("Grupo dos Creates que deve acompanhar o balanço. Se vazio, procura automaticamente OperacoesAereasV2.")]
+    public Transform grupoCreatesOperacoes;
     [Tooltip("Antena ou radar que gira em sentido horizontal.")]
     public Transform antenaRadar;
     [Tooltip("Velocidade de rotação da antena em graus por segundo.")]
@@ -115,6 +119,9 @@ public class ControleNavioRealista : MonoBehaviour
     private float offsetOnda;
     private Quaternion rotacaoInicialModelo;
     private Vector3 posicaoInicialModelo = Vector3.zero;
+    private Vector3 posicaoInicialGrupoCreates = Vector3.zero;
+    private Quaternion rotacaoInicialGrupoCreates = Quaternion.identity;
+    private bool grupoCreatesInicializado;
     private IdentidadeNaval identidade;
     private bool ajusteInicialFlutuacaoVerificado = false;
     private float tempoAssistenciaSaida = 0f;
@@ -166,7 +173,7 @@ public class ControleNavioRealista : MonoBehaviour
         {
             Debug.LogError("[ControleNavioRealista] NavMeshAgent não encontrado!");
         }
-        
+
         offsetOnda = Random.Range(0f, 100f);
 
         if (modelo3D == null && transform.childCount > 0)
@@ -177,6 +184,8 @@ public class ControleNavioRealista : MonoBehaviour
             rotacaoInicialModelo = modelo3D.localRotation;
             posicaoInicialModelo = modelo3D.localPosition;
         }
+
+        InicializarGrupoCreatesOperacoes();
 
         // Configuração de Áudio
         fonteAudio = GetComponent<AudioSource>();
@@ -707,6 +716,7 @@ public class ControleNavioRealista : MonoBehaviour
             Quaternion simulacaoOffsetOff = Quaternion.Euler(pitchOndaOff, 0, balancoMarOff);
             Quaternion rotacaoFinalOff = rotacaoInicialModelo * simulacaoOffsetOff;
             modelo3D.localRotation = Quaternion.Slerp(modelo3D.localRotation, rotacaoFinalOff, Time.deltaTime * 0.5f);
+            AtualizarBalancoDosCreates();
             return;
         }
 
@@ -737,6 +747,7 @@ public class ControleNavioRealista : MonoBehaviour
         Quaternion rotacaoFinal = rotacaoInicialModelo * simulacaoOffset;
         
         modelo3D.localRotation = Quaternion.Slerp(modelo3D.localRotation, rotacaoFinal, Time.deltaTime * 1.0f); // Lento e majestoso
+        AtualizarBalancoDosCreates();
 
         // 2. VIBRAÇÃO (Crash Stop)
         if (tempoVibracao > 0)
@@ -791,6 +802,43 @@ public class ControleNavioRealista : MonoBehaviour
         }
     }
 
+    private void InicializarGrupoCreatesOperacoes()
+    {
+        if (!aplicarBalancoAosCreates)
+        {
+            return;
+        }
+
+        if (grupoCreatesOperacoes == null)
+        {
+            grupoCreatesOperacoes = transform.Find("OperacoesAereasV2");
+        }
+
+        if (grupoCreatesOperacoes == null || grupoCreatesOperacoes == modelo3D)
+        {
+            return;
+        }
+
+        posicaoInicialGrupoCreates = grupoCreatesOperacoes.localPosition;
+        rotacaoInicialGrupoCreates = grupoCreatesOperacoes.localRotation;
+        grupoCreatesInicializado = true;
+    }
+
+    private void AtualizarBalancoDosCreates()
+    {
+        if (!aplicarBalancoAosCreates || !grupoCreatesInicializado || grupoCreatesOperacoes == null || modelo3D == null)
+        {
+            return;
+        }
+
+        // Usa o offset que realmente foi aplicado ao casco, incluindo a suavizacao.
+        // Assim pouso, taxiamento, vagas, elevadores e catapultas acompanham o
+        // navio sem alterar o transform raiz usado pela navegacao.
+        Quaternion offsetBalanco = Quaternion.Inverse(rotacaoInicialModelo) * modelo3D.localRotation;
+        grupoCreatesOperacoes.localPosition = offsetBalanco * posicaoInicialGrupoCreates;
+        grupoCreatesOperacoes.localRotation = offsetBalanco * rotacaoInicialGrupoCreates;
+    }
+
     void AtualizarAudio()
     {
         if (fonteAudio == null) return;
@@ -835,6 +883,11 @@ public class ControleNavioRealista : MonoBehaviour
     // Método para integração com ControleUnidade
     public void DefinirDestino(Vector3 destino)
     {
+        DefinirDestino(destino, null);
+    }
+
+    public void DefinirDestino(Vector3 destino, string ordemExternaId)
+    {
         // O diorama do menu reutiliza navios da campanha, mas não deve aceitar
         // ordens nem tentar preparar um NavMesh enquanto a partida ainda não
         // começou. A cena de campanha continua usando o fluxo normal abaixo.
@@ -853,6 +906,52 @@ public class ControleNavioRealista : MonoBehaviour
         {
             Debug.LogWarning($"[ControleNavioRealista] Destino recusado para {name}: ponto fora da água ({destino.x:F0}, {destino.z:F0}).", this);
             return;
+        }
+
+        ControleUnidade controleUnidade = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
+        bool ordemNavalCartelAtiva = controleUnidade != null
+            && !string.IsNullOrWhiteSpace(ordemExternaId)
+            && controleUnidade.PossuiOrdemMovimentoAtiva
+            && controleUnidade.OrdemMovimentoAtual != null
+            && controleUnidade.OrdemMovimentoAtual.Id == ordemExternaId
+            && controleUnidade.OrdemMovimentoAtual.Dono == nameof(ControleNavioRealista)
+            && controleUnidade.OrdemMovimentoAtual.Tipo == TipoOrdemMovimento.Naval;
+        if (ordemNavalCartelAtiva
+            && Vector3.Distance(controleUnidade.OrdemMovimentoAtual.Destino, destino) > 0.01f)
+        {
+            controleUnidade.AtualizarOrdemMovimentoExterna(
+                ordemExternaId,
+                nameof(ControleNavioRealista),
+                destino,
+                TipoOrdemMovimento.Naval);
+        }
+
+        bool ordemCentralAtiva = ordemNavalCartelAtiva || (controleUnidade != null
+            && controleUnidade.PossuiOrdemMovimentoAtiva
+            && controleUnidade.OrdemMovimentoAtual != null
+            && controleUnidade.OrdemMovimentoAtual.Dono == nameof(ControleUnidade)
+            && Vector3.Distance(controleUnidade.OrdemMovimentoAtual.Destino, destino) <= 0.01f);
+
+        if (!ordemCentralAtiva && controleUnidade != null)
+        {
+            string idOrdem = string.IsNullOrWhiteSpace(ordemExternaId)
+                ? controleUnidade.ObterOuCriarIdOrdemMovimento(
+                    "naval",
+                    destino,
+                    TipoOrdemMovimento.Naval)
+                : ordemExternaId;
+            string donoOrdem = string.IsNullOrWhiteSpace(ordemExternaId)
+                ? nameof(ControleNavioRealista)
+                : nameof(ControleNavioRealista);
+            if (!controleUnidade.RegistrarOrdemMovimentoExterna(
+                    idOrdem,
+                    donoOrdem,
+                    destino,
+                    TipoOrdemMovimento.Naval))
+            {
+                return;
+            }
         }
 
         if (TentarPrepararAgenteParaNavegacao())

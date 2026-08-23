@@ -30,6 +30,12 @@ public static class CodexMergeVisibleTerrains
     [MenuItem("Tools/Codex/Merge visible terrains into campaign")]
     public static void MergeVisibleTerrains()
     {
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(RecoveryScenePath) == null)
+        {
+            Debug.LogWarning("[Codex] A cena de recuperação não está mais no projeto; nenhuma mesclagem foi executada.");
+            return;
+        }
+
         Scene main = EditorSceneManager.OpenScene(MainScenePath, OpenSceneMode.Single);
         Scene recovery = EditorSceneManager.OpenScene(RecoveryScenePath, OpenSceneMode.Additive);
         SceneManager.SetActiveScene(main);

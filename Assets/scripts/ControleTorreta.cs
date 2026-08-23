@@ -28,12 +28,23 @@ public class ControleTorreta : MonoBehaviour
 
     [Tooltip("Tempo inativa recarregando (Segundos).")]
     public float tempoRecarga = 2.0f; 
+
+    [Tooltip("Permite disparar enquanto o alvo está sendo acompanhado, mesmo fora do alinhamento perfeito. O projétil segue a direção atual do cano e pode errar.")]
+    public bool dispararMesmoDesalinhado = false;
+    [Tooltip("Quando ativado, o projétil usa a linha predita do alvo mesmo se a animação visual do cano ainda estiver alguns graus atrasada. Usado apenas em armas com assistência de mira explícita.")]
+    public bool direcionarProjetilParaPredicao = false;
     
     [Header("Peças")]
     [Tooltip("A base que gira para os lados (Eixo Y).")]
     public Transform pecaQueGira; 
+    [Tooltip("Cria um pivô seguro no centro da malha quando a peça foi importada com vértices longe da origem.")]
+    public bool criarPivoSeguroDaMalha = false;
+    [Tooltip("Quando não existe uma peça de canos separada, permite inclinar a própria peça que gira para acompanhar alvos acima/abaixo.")]
+    public bool inclinarPecaSemCanos = false;
     [Tooltip("Opcional: A parte que levanta e abaixa (Eixo X). Deixe vazio para a base inclinar inteira.")]
     public Transform canosDaTorreta; 
+    [Tooltip("Permite procurar automaticamente um pivô de elevação entre os filhos dos locais de tiro.")]
+    public bool descobrirCanosAutomaticamente = true;
     public Transform[] locaisDoTiro;  
     public GameObject municaoPrefab; 
     
@@ -277,6 +288,8 @@ public class ControleTorreta : MonoBehaviour
         if (helicopteroPai != null && pecaQueGira == null && canosDaTorreta == null)
             bloquearRotacaoAutomatica = true;
 
+        GarantirPivoSeguroDaMalha();
+
         if (pecaQueGira == null)
         {
             // Nunca use o primeiro filho como pivô: em vários prefabs ele é
@@ -320,6 +333,45 @@ public class ControleTorreta : MonoBehaviour
                     PoolDeObjetosCombate.Prewarm(municoesPorCano[_pi], 4);
     }
     #endregion
+
+    void GarantirPivoSeguroDaMalha()
+    {
+        if (!criarPivoSeguroDaMalha || pecaQueGira == null || pecaQueGira.parent == null)
+        {
+            return;
+        }
+
+        MeshFilter filtro = pecaQueGira.GetComponent<MeshFilter>();
+        MeshRenderer renderer = pecaQueGira.GetComponent<MeshRenderer>();
+        if (filtro == null || filtro.sharedMesh == null || renderer == null)
+        {
+            return;
+        }
+
+        Vector3 centroLocal = filtro.sharedMesh.bounds.center;
+        if (centroLocal.sqrMagnitude < 0.01f)
+        {
+            return;
+        }
+
+        Transform pecaOriginal = pecaQueGira;
+        Transform paiOriginal = pecaOriginal.parent;
+        Vector3 posicaoPivoMundo = pecaOriginal.TransformPoint(centroLocal);
+        Quaternion rotacaoPivoMundo = pecaOriginal.rotation;
+
+        GameObject objetoPivo = new GameObject(pecaOriginal.name + "_PivoSeguro");
+        Transform pivo = objetoPivo.transform;
+        pivo.SetParent(paiOriginal, true);
+        pivo.position = posicaoPivoMundo;
+        pivo.rotation = rotacaoPivoMundo;
+        pivo.localScale = Vector3.one;
+
+        // Preserva a posição de repouso da malha. A partir daqui, somente o
+        // novo pivô gira, impedindo que a arma faça uma órbita em torno da
+        // origem do avião ao procurar o alvo.
+        pecaOriginal.SetParent(pivo, true);
+        pecaQueGira = pivo;
+    }
 
     #region Radar e Busca de Alvos
     void ProcurarAlvo()
@@ -702,7 +754,11 @@ public class ControleTorreta : MonoBehaviour
                 }
                 else if (canosDaTorreta == null || canosDaTorreta == pecaParaDesdobrar)
                 {
-                    Quaternion rotacaoTotal = Quaternion.Euler(rotacaoXOriginal, anguloY, rotacaoZOriginal);
+                    float pitchDaPeca = inclinarPecaSemCanos ? giroPitchAlvo : 0f;
+                    Quaternion rotacaoTotal = Quaternion.Euler(
+                        rotacaoXOriginal + pitchDaPeca,
+                        anguloY,
+                        rotacaoZOriginal);
                     pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoTotal, Time.deltaTime * velocidadeGiro);
                 }
             }
@@ -711,11 +767,11 @@ public class ControleTorreta : MonoBehaviour
             contadorTempo -= Time.deltaTime;
             if (contadorTempo <= 0f)
             {
-                // A permissao de tiro precisa usar a frente REAL do cano ou
-                // lancador. Comparar apenas o angulo local do pivô deixava
-                // alguns prefabs navais dispararem para o alvo com a malha
-                // ainda virada para o lado.
-                bool podeDisparar = EstaAlinhadaParaDisparar();
+                // A permissao de tiro normalmente exige que a frente REAL do
+                // cano esteja alinhada. O AC-130 pode abrir fogo enquanto
+                // acompanha o alvo; nesse caso o projétil mantém a direção
+                // atual do cano e pode errar, mas a torre não fica silenciosa.
+                bool podeDisparar = dispararMesmoDesalinhado || EstaAlinhadaParaDisparar();
 
                 if (podeDisparar && estaProntoParaAtirar)
                 {
@@ -925,10 +981,19 @@ public class ControleTorreta : MonoBehaviour
                 return;
             }
 
-            // O projétil segue a frente visível do cano. A verificacao de
-            // alinhamento acima garante que essa direcao ja aponta para o
-            // alvo previsto antes de cada disparo.
+            // O projétil segue a frente visível do cano. Quando a exigência
+            // de alinhamento estiver ativa, essa direção aponta para o alvo;
+            // no AC-130 ela pode estar fora do alvo de propósito.
             Vector3 direcaoDisparo = barrilDaVez.forward;
+            if (direcionarProjetilParaPredicao && alvoAtual != null)
+            {
+                Vector3 pontoPredito = ObterPosicaoPreditaAlvo();
+                Vector3 direcaoPredita = pontoPredito - barrilDaVez.position;
+                if (direcaoPredita.sqrMagnitude > 0.001f)
+                {
+                    direcaoDisparo = direcaoPredita.normalized;
+                }
+            }
 
             Quaternion rotacaoDisparo = Quaternion.LookRotation(direcaoDisparo, Vector3.up);
             GameObject bala = PoolDeObjetosCombate.Spawn(prefabParaUsar, barrilDaVez.position, rotacaoDisparo);
@@ -1442,6 +1507,11 @@ public class ControleTorreta : MonoBehaviour
 
     void GarantirCanosDaTorreta()
     {
+        if (!descobrirCanosAutomaticamente)
+        {
+            return;
+        }
+
         if (canosDaTorreta != null || locaisDoTiro == null || locaisDoTiro.Length == 0)
         {
             return;

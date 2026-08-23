@@ -56,7 +56,7 @@ namespace Hegemonia.AI.IA01.Editor
         private void AutoAssignFromScene(bool report)
         {
             bool changed = false;
-            IA01Controller[] controllers = Resources.FindObjectsOfTypeAll<IA01Controller>();
+            IA01Controller[] controllers = UnityEngine.Object.FindObjectsByType<IA01Controller>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < controllers.Length; i++)
             {
                 IA01Controller controller = controllers[i];
@@ -87,7 +87,7 @@ namespace Hegemonia.AI.IA01.Editor
 
             if (layout == null)
             {
-                IA01CityLayout[] layouts = Resources.FindObjectsOfTypeAll<IA01CityLayout>();
+                IA01CityLayout[] layouts = UnityEngine.Object.FindObjectsByType<IA01CityLayout>(FindObjectsInactive.Include, FindObjectsSortMode.None);
                 for (int i = 0; i < layouts.Length; i++)
                 {
                     if (IsSceneObject(layouts[i]))

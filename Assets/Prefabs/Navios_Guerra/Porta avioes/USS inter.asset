@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: USS inter
+  m_EditorClassIdentifier: 
+  nomeItem: USS inter
+  descricao: "Descri\xE7\xE3o curta..."
+  icone: {fileID: 21300000, guid: 5731aecdb0c13764482016a18234ed89, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
+  prefabDaUnidade: {fileID: 5971301636513872909, guid: e778fac879605f841a104458d5d623d4, type: 3}
+  preco: 1000
+  precoDefinitivo: 0
+  categoria: 1
+  escalaPoder: 1
+  strategicRole: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

@@ -51,7 +51,7 @@ public sealed class EntregaMercadoMilitar : MonoBehaviour
     {
         if (MenuConstrucao.catalogoGlobal != null)
             return MenuConstrucao.catalogoGlobal.FirstOrDefault(f => f != null && string.Equals(f.GetStableId(), id, StringComparison.OrdinalIgnoreCase));
-        return Resources.LoadAll<DadosConstrucao>(string.Empty).FirstOrDefault(f => f != null && string.Equals(f.GetStableId(), id, StringComparison.OrdinalIgnoreCase));
+        return null;
     }
 
     private static Transform EncontrarPonto(string tipo, int teamId)

@@ -109,6 +109,7 @@ namespace Hegemonia.AI.IA01.Editor
                 Field("buildPlan", "Plano de construcao"),
                 Field("cityLayout", "Layout da cidade"),
                 Field("fichasDeConstrucao", "Fichas de construcao"),
+                Field("fichasMilitaresPermitidas", "Fichas militares permitidas"),
                 Field("useScriptedOpening", "Usar abertura roteirizada"),
                 Field("usePreparedSlots", "Usar slots preparados"),
                 Field("allowAutonomousExpansion", "Permitir expansao autonoma")

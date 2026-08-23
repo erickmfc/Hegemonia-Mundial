@@ -54,6 +54,8 @@ public class Construtor : MonoBehaviour
     public float alturaDoMar = 0.0f;
     public float deslocamentoPadraoEstruturaCosteira = 18f;
     public float distanciaCorrecaoSpawnNaval = 30f;
+    [Tooltip("Permite colocar estaleiros e piers em qualquer ponto clicavel do mapa. A validacao costeira continua disponivel para IA e estruturas automaticas.")]
+    public bool permitirColocacaoNavalEmQualquerLocal = true;
 
     private long custoAtual = 0L;
     private DadosConstrucao.CategoriaItem categoriaAtual;
@@ -200,10 +202,31 @@ public class Construtor : MonoBehaviour
 
         if (ehConstrucaoNaval)
         {
-            acertouChao = TryObterPontoNoPlanoDoMar(raio, out pontoMouse);
+            bool estaleiroOuPier = EhEstaleiroOuPierPrefab(prefabSelecionado);
+            if (estaleiroOuPier && permitirColocacaoNavalEmQualquerLocal)
+            {
+                // O jogador pode construir em qualquer ponto clicavel: em terra,
+                // sobre a agua ou em mapas que usam apenas um plano visual.
+                // A estrutura continua sendo criada no ponto clicado; a logica
+                // naval tenta resolver a saida/agua somente quando for necessaria.
+                acertouChao = TryObterPontoDeConstrucaoTerrestre(raio, mascaraGeral, out pontoMouse);
+                if (!acertouChao)
+                {
+                    acertouChao = TryObterPontoNoPlanoDoMar(raio, out pontoMouse);
+                }
+            }
+            else
+            {
+                acertouChao = TryObterPontoNoPlanoDoMar(raio, out pontoMouse);
+            }
+
             if (acertouChao)
             {
-                pontoMouse.y = NavalPlacementResolver.ResolveSeaLevel();
+                if (!estaleiroOuPier || !permitirColocacaoNavalEmQualquerLocal ||
+                    Mathf.Abs(pontoMouse.y - NavalPlacementResolver.ResolveSeaLevel()) < 0.25f)
+                {
+                    pontoMouse.y = NavalPlacementResolver.ResolveSeaLevel();
+                }
                 if (ehPlataforma) pontoMouse.y = 30.0f;
                 if (!ehEstruturaCosteira && ExisteTerraAltaNoPontoMaritimo(pontoMouse, mascaraGeral)) acertouChao = false;
             }
@@ -341,6 +364,21 @@ public class Construtor : MonoBehaviour
     void AtualizarPreviewCosteiroLeve(Vector3 pontoMouse)
     {
         Quaternion rotacaoBase = fantasmaUnico != null ? fantasmaUnico.transform.rotation : prefabSelecionado.transform.rotation;
+
+        if (permitirColocacaoNavalEmQualquerLocal && EhEstaleiroOuPierPrefab(prefabSelecionado))
+        {
+            // Para colocacao manual, a ancora do jogador e a autoridade final.
+            // Nao reposicionar o preview procurando uma costa distante.
+            posicaoPreviewNaval = pontoMouse;
+            rotacaoPreviewNaval = rotacaoBase;
+            usarPosicaoPreviewNaval = true;
+            usarRotacaoPreviewNaval = true;
+            previewLocalInvalido = false;
+            motivoInvalido = string.Empty;
+            previewUsaColocacaoNavalManual = true;
+            return;
+        }
+
         NavalPlacementResolver.PlacementContext contexto = NavalPlacementResolver.BuildPlacementContext(prefabSelecionado, rotacaoBase, true);
         NavalPlacementResolver.StructurePose pose;
         if (NavalPlacementResolver.TryResolvePreviewPose(prefabSelecionado, pontoMouse, contexto, out pose))
@@ -669,7 +707,8 @@ public class Construtor : MonoBehaviour
             Debug.Log($"[Construtor][ICBM] confirmando pos={posFinal} mouse={pontoMouse} invalido={previewLocalInvalido} custo={custoAtual}", this);
         }
 
-        if (EhEstruturaCosteiraPrefab(prefabSelecionado))
+        bool colocacaoNavalLivre = permitirColocacaoNavalEmQualquerLocal && EhEstaleiroOuPierPrefab(prefabSelecionado);
+        if (EhEstruturaCosteiraPrefab(prefabSelecionado) && !colocacaoNavalLivre)
         {
             NavalPlacementResolver.StructurePose poseCommit;
             if (!NavalPlacementResolver.TryResolveStructurePose(prefabSelecionado, pontoMouse, rotFinal, out poseCommit))
@@ -1103,6 +1142,13 @@ public class Construtor : MonoBehaviour
         return nome.Contains("estaleiro") || nome.Contains("pier") || nome.Contains("plataforma") || nome.Contains("offshore");
     }
 
+    bool EhEstaleiroOuPierPrefab(GameObject prefab)
+    {
+        if (prefab == null) return false;
+        string nome = prefab.name.ToLowerInvariant();
+        return nome.Contains("estaleiro") || nome.Contains("pier");
+    }
+
     void TentarFixarSpawnNaval(GameObject estrutura, Quaternion rotacao, bool logar)
     {
         if (estrutura == null) return;
@@ -1123,7 +1169,10 @@ public class Construtor : MonoBehaviour
             if (!pareceSpawn) continue;
 
             Vector3 corrigido = estrutura.transform.position + (forward * distanciaCorrecaoSpawnNaval);
-            corrigido.y = alturaDoMar;
+            // O plano/collider de água da campanha está em Y=1. Usar o campo
+            // legado (Y=0) fazia os pontos internos do estaleiro/pier ficarem
+            // submersos mesmo quando a estrutura já estava correta.
+            corrigido.y = NavalPlacementResolver.ResolveSeaLevel();
             t.position = corrigido;
 
             if (logar) Debug.Log($"[Construtor] Spawn naval forçado em {estrutura.name} -> {t.name} para {corrigido}");
@@ -1342,6 +1391,14 @@ public class Construtor : MonoBehaviour
     public GameObject ConstruirEstruturaIA(GameObject prefab, Vector3 posicao, Quaternion rotacao)
     {
         if (prefab == null) return null;
+        // Preserva o ponto X/Z escolhido pela IA, mas alinha a raiz de
+        // estruturas costeiras ao nível real da água. A validação costeira
+        // completa continua pertencendo ao fluxo manual do Construtor.
+        if (EhEstruturaCosteiraPrefab(prefab))
+        {
+            posicao.y = NavalPlacementResolver.ResolveSeaLevel();
+        }
+
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
         AjustarAlturaRuaInstanciada(novoPredio);
         EnsureCollider(novoPredio);

@@ -62,16 +62,6 @@ namespace Hegemonia.AI.Master
                 _catalog.AddRange(MenuConstrucao.catalogoGlobal);
             }
 
-            DadosConstrucao[] fallback = Resources.FindObjectsOfTypeAll<DadosConstrucao>();
-            for (int i = 0; i < fallback.Length; i++)
-            {
-                DadosConstrucao item = fallback[i];
-                if (item != null && !_catalog.Contains(item))
-                {
-                    _catalog.Add(item);
-                }
-            }
-
             ResolveRole(IA_CatalogRole.Core, "prefeitura", "capital", "governo");
             ResolveRole(IA_CatalogRole.Barracks, "quartel", "tenda militar", "tenda");
             ResolveRole(IA_CatalogRole.Factory, "fabrica", "construtor de veiculos");

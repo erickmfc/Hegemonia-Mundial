@@ -289,11 +289,6 @@ namespace Hegemonia.AI.Sovereign
                 }
             }
 
-            DadosConstrucao[] fallback = Resources.LoadAll<DadosConstrucao>(string.Empty);
-            for (int i = 0; i < fallback.Length; i++)
-            {
-                AddCatalogItem(fallback[i]);
-            }
         }
 
         private void AddCatalogItem(DadosConstrucao item)

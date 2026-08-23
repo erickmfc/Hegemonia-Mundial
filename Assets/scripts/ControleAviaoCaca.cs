@@ -178,6 +178,29 @@ public class ControleAviaoCaca : MonoBehaviour
             return;
         }
 
+        ControleUnidade controleUnidade = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
+        bool ordemCentralAtiva = controleUnidade != null
+            && controleUnidade.PossuiOrdemMovimentoAtiva
+            && controleUnidade.OrdemMovimentoAtual != null
+            && controleUnidade.OrdemMovimentoAtual.Dono == nameof(ControleUnidade)
+            && Vector3.Distance(controleUnidade.OrdemMovimentoAtual.Destino, novoDestino) <= 0.01f;
+        if (!ordemCentralAtiva && controleUnidade != null)
+        {
+            string idOrdem = controleUnidade.ObterOuCriarIdOrdemMovimento(
+                "aereo",
+                novoDestino,
+                TipoOrdemMovimento.Aerea);
+            if (!controleUnidade.RegistrarOrdemMovimentoExterna(
+                    idOrdem,
+                    nameof(ControleAviaoCaca),
+                    novoDestino,
+                    TipoOrdemMovimento.Aerea))
+            {
+                return;
+            }
+        }
+
         destinoAtual = novoDestino;
         if (estadoAtual == EstadoVoo.Voando)
             destinoAtual.y = altitudeCruzeiro;

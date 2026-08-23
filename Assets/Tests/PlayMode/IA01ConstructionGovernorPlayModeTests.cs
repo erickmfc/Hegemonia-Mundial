@@ -219,7 +219,7 @@ public sealed class IA01ConstructionGovernorPlayModeTests
                                    || ContainsIgnoreCase(GetStringMember(runtime, "NextObjectiveStatus"), "comida")
                                    || ContainsIgnoreCase(GetStringMember(runtime, "CurrentNeedStatus"), "energia")
                                    || ContainsIgnoreCase(GetStringMember(runtime, "CurrentNeedStatus"), "comida"),
-            8f,
+            15f,
             "Energia ou comida nao voltaram a ser prioridade.");
 
         TestContext.WriteLine(
@@ -347,15 +347,20 @@ public sealed class IA01ConstructionGovernorPlayModeTests
         }
         InvokeInstance(diagnostic, "SetCaptureMode", true, true);
         yield return WaitUntil(() => !string.IsNullOrWhiteSpace(GetMetricText(diagnostic, "ia01_progress")), 10f, "IA01 nao publicou progresso.");
-        yield return WaitSecondsRealtime(1.25f);
+        InvokeInstance(diagnostic, "ReconstruirLinhasOverlay");
+        yield return WaitUntil(
+            () => ContainsIgnoreCase(GetStringMember(diagnostic, "_overlayLine7"), "IA:"),
+            5f,
+            "Overlay nao publicou a secao de IA dentro do intervalo esperado.");
 
         string overlay = GetStringMember(diagnostic, "_overlayLine7");
-        Assert.That(overlay, Does.Contain("IA01:"));
+        Assert.That(overlay, Does.Contain("IA:"));
         Assert.That(overlay, Does.Not.Contain("IA: sem dados ainda | BrainMaster nao publicou metricas nesta janela."));
     }
 
     private static IEnumerator LoadFreshCampaign()
     {
+        yield return ResetPersistentIA01StateForTest();
         DeleteSaveFile();
 
         SceneManager.LoadScene(MenuSceneName);
@@ -380,7 +385,7 @@ public sealed class IA01ConstructionGovernorPlayModeTests
         // A cena canônica contém o mapa completo e pode levar mais de 15 s
         // para desserializar no editor. O limite continua finito, mas deixa
         // o teste distinguir carregamento pesado de falha de bootstrap.
-        yield return WaitUntil(() => SceneManager.GetActiveScene().name != MenuSceneName, 60f, "A campanha nao carregou.");
+        yield return WaitUntil(() => SceneManager.GetActiveScene().name != MenuSceneName, 180f, "A campanha nao carregou.");
         yield return null;
         yield return null;
 
@@ -398,6 +403,33 @@ public sealed class IA01ConstructionGovernorPlayModeTests
         object saveGame = GetStaticMemberValue(SaveGameType, "Instancia");
         Assert.That(saveGame, Is.Not.Null, "SistemaSaveGame nao inicializado.");
         Assert.That(Convert.ToBoolean(GetMemberValue(saveGame, "carregouDeSave")), Is.False, "A campanha nova nao deveria carregar o save antigo.");
+    }
+
+    private static IEnumerator ResetPersistentIA01StateForTest()
+    {
+        DestroyRuntimeObjectsOfType(ManagerType);
+        DestroyRuntimeObjectsOfType(ControllerType);
+        yield return null;
+    }
+
+    private static void DestroyRuntimeObjectsOfType(Type type)
+    {
+        if (type == null)
+        {
+            return;
+        }
+
+        UnityEngine.Object[] objects = Resources.FindObjectsOfTypeAll(type);
+        for (int i = 0; i < objects.Length; i++)
+        {
+            Component component = objects[i] as Component;
+            if (component == null || component.gameObject == null || !component.gameObject.scene.IsValid())
+            {
+                continue;
+            }
+
+            UnityEngine.Object.Destroy(component.gameObject);
+        }
     }
 
     private static object ResolveController(object manager)

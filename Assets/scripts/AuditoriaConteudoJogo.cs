@@ -270,14 +270,9 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
             }
         }
 
-        DadosConstrucao[] fallback = Resources.FindObjectsOfTypeAll<DadosConstrucao>();
-        for (int i = 0; i < fallback.Length; i++)
-        {
-            AdicionarFicha(fallback[i]);
-        }
-
         // A auditoria pode rodar na cena de menu antes de MenuConstrucao.Start.
-        // Registra as fichas encontradas para nao depender da ordem da cena.
+        // Registra somente a fonte oficial da cena; nunca varre ScriptableObjects
+        // carregados na memoria, pois isso reintroduz fichas arquivadas.
         CatalogoProdutoCompartilhado.RegistrarConstrucoes(fichas);
     }
 

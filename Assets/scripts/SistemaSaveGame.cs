@@ -727,12 +727,14 @@ public class SistemaSaveGame : MonoBehaviour
         int unidadesRemovidas = 0;
         int estruturasIARemovidas = 0;
         int comandantesRemovidos = 0;
+        int entidadesOperacionaisSemIdentidadeRemovidas = 0;
+        HashSet<GameObject> objetosRemovidos = new HashSet<GameObject>();
 
-        IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         for (int i = 0; i < unidades.Length; i++)
         {
             IdentidadeUnidade unidade = unidades[i];
-            if (unidade == null || unidade.teamID <= 0)
+            if (unidade == null || unidade.teamID <= 0 || unidade.gameObject.scene != cena)
             {
                 continue;
             }
@@ -744,6 +746,7 @@ public class SistemaSaveGame : MonoBehaviour
             if (unidade.tipoUnidade == TipoUnidade.Estrutura && unidade.teamID > 1)
             {
                 Destroy(unidade.gameObject);
+                objetosRemovidos.Add(unidade.gameObject);
                 estruturasIARemovidas++;
                 continue;
             }
@@ -754,14 +757,17 @@ public class SistemaSaveGame : MonoBehaviour
             }
 
             Destroy(unidade.gameObject);
+            objetosRemovidos.Add(unidade.gameObject);
             unidadesRemovidas++;
         }
 
-        IdentidadeIA[] identidadesIA = FindObjectsByType<IdentidadeIA>(FindObjectsSortMode.None);
+        entidadesOperacionaisSemIdentidadeRemovidas = LimparEntidadesOperacionaisSemIdentidade(cena, objetosRemovidos);
+
+        IdentidadeIA[] identidadesIA = FindObjectsByType<IdentidadeIA>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         for (int i = 0; i < identidadesIA.Length; i++)
         {
             IdentidadeIA identidade = identidadesIA[i];
-            if (identidade == null)
+            if (identidade == null || identidade.gameObject.scene != cena)
             {
                 continue;
             }
@@ -777,12 +783,157 @@ public class SistemaSaveGame : MonoBehaviour
             }
 
             Destroy(identidade.gameObject);
+            objetosRemovidos.Add(identidade.gameObject);
             comandantesRemovidos++;
         }
 
         partidaNovaRecemIniciada = false;
-        DiagnosticoDesempenhoJogo.RegistrarEvento("Partida", "Sanitizacao de partida nova (unidades=" + unidadesRemovidas + ", estruturasIA=" + estruturasIARemovidas + ", comandantes=" + comandantesRemovidos + ")");
-        LogInfo("Sanitizacao de partida nova concluida. Unidades removidas=" + unidadesRemovidas + " | estruturas IA removidas=" + estruturasIARemovidas + " | comandantes removidos=" + comandantesRemovidos + ".");
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Partida", "Sanitizacao de partida nova (unidades=" + unidadesRemovidas + ", estruturasIA=" + estruturasIARemovidas + ", semIdentidade=" + entidadesOperacionaisSemIdentidadeRemovidas + ", comandantes=" + comandantesRemovidos + ")");
+        LogInfo("Sanitizacao de partida nova concluida. Unidades removidas=" + unidadesRemovidas + " | estruturas IA removidas=" + estruturasIARemovidas + " | entidades sem identidade removidas=" + entidadesOperacionaisSemIdentidadeRemovidas + " | comandantes removidos=" + comandantesRemovidos + ".");
+    }
+
+    private int LimparEntidadesOperacionaisSemIdentidade(Scene cena, HashSet<GameObject> objetosRemovidos)
+    {
+        HashSet<GameObject> candidatos = new HashSet<GameObject>();
+        ControleUnidade[] controles = FindObjectsByType<ControleUnidade>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < controles.Length; i++)
+        {
+            ControleUnidade controle = controles[i];
+            if (controle == null || controle.gameObject.scene != cena || controle.gameObject == gameObject
+                || objetosRemovidos.Contains(controle.gameObject)
+                || controle.GetComponent<IdentidadeUnidade>() != null
+                || PareceMarcadorOuPontoDeSpawn(controle.gameObject))
+            {
+                continue;
+            }
+
+            candidatos.Add(controle.gameObject);
+        }
+
+        IdentidadeNaval[] identidadesNavais = FindObjectsByType<IdentidadeNaval>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < identidadesNavais.Length; i++)
+        {
+            IdentidadeNaval identidadeNaval = identidadesNavais[i];
+            if (identidadeNaval == null || identidadeNaval.gameObject.scene != cena || identidadeNaval.gameObject == gameObject
+                || objetosRemovidos.Contains(identidadeNaval.gameObject)
+                || identidadeNaval.GetComponent<IdentidadeUnidade>() != null
+                || PareceMarcadorOuPontoDeSpawn(identidadeNaval.gameObject))
+            {
+                continue;
+            }
+
+            candidatos.Add(identidadeNaval.gameObject);
+        }
+
+        // Tambem existem restos visuais colocados diretamente na cena, sem
+        // qualquer componente de gameplay ou SaveableEntity. Eles nao podem
+        // sobreviver a um novo jogo se tiverem nome inequivocamente militar;
+        // marcadores e pontos de spawn sao excluidos antes dessa classificacao.
+        Renderer[] visuais = FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < visuais.Length; i++)
+        {
+            Renderer visual = visuais[i];
+            if (visual == null || visual.gameObject.scene != cena || visual.gameObject == gameObject
+                || objetosRemovidos.Contains(visual.gameObject)
+                || visual.GetComponentInParent<IdentidadeUnidade>() != null
+                || visual.GetComponentInParent<ControleUnidade>() != null
+                || visual.GetComponentInParent<IdentidadeNaval>() != null
+                || visual.GetComponentInParent<SaveableEntity>() != null
+                || PareceMarcadorOuPontoDeSpawn(visual.gameObject)
+                || !PareceVisualMilitarAntigo(visual.gameObject))
+            {
+                continue;
+            }
+
+            candidatos.Add(visual.gameObject);
+        }
+
+        // Saves antigos tambem podem ter deixado apenas o componente de save
+        // em um visual de unidade. Nao removemos qualquer SaveableEntity
+        // indiscriminadamente: somente clones/nomes inequivocamente militares,
+        // sem identidade, controle naval ou marcador de cena.
+        SaveableEntity[] saveables = FindObjectsByType<SaveableEntity>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < saveables.Length; i++)
+        {
+            SaveableEntity saveable = saveables[i];
+            if (saveable == null || saveable.gameObject.scene != cena || saveable.gameObject == gameObject
+                || objetosRemovidos.Contains(saveable.gameObject)
+                || saveable.GetComponent<IdentidadeUnidade>() != null
+                || saveable.GetComponent<ControleUnidade>() != null
+                || saveable.GetComponent<IdentidadeNaval>() != null
+                || PareceMarcadorOuPontoDeSpawn(saveable.gameObject)
+                || !PareceVisualMilitarAntigo(saveable.gameObject))
+            {
+                continue;
+            }
+
+            candidatos.Add(saveable.gameObject);
+        }
+
+        foreach (GameObject candidato in candidatos)
+        {
+            if (candidato == null || objetosRemovidos.Contains(candidato))
+            {
+                continue;
+            }
+
+            Destroy(candidato);
+            objetosRemovidos.Add(candidato);
+        }
+
+        return candidatos.Count;
+    }
+
+    private static bool PareceMarcadorOuPontoDeSpawn(GameObject objeto)
+    {
+        if (objeto == null)
+        {
+            return true;
+        }
+
+        string nome = objeto.name.ToLowerInvariant();
+        string[] tokens =
+        {
+            "marker", "marcador", "spawn", "create", "slot", "patrulha", "patrol",
+            "route", "rota", "target", "alvo", "position", "posicao", "entry",
+            "entrada", "exit", "saida", "parking", "estacionamento", "escape", "fuga", "hide"
+        };
+
+        for (int i = 0; i < tokens.Length; i++)
+        {
+            if (nome.Contains(tokens[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool PareceVisualMilitarAntigo(GameObject objeto)
+    {
+        if (objeto == null)
+        {
+            return false;
+        }
+
+        string nome = objeto.name.ToLowerInvariant();
+        string[] tokens =
+        {
+            "soldado", "soldier", "rifle", "tank", "tanque", "blindado", "artilharia",
+            "ares", "su11", "sr71", "fighter", "bomber", "aviao", "aircraft", "helicopter",
+            "destroyer", "submarine", "submarino", "carrier", "portaavioes", "navio", "ship", "f200"
+        };
+
+        for (int i = 0; i < tokens.Length; i++)
+        {
+            if (nome.Contains(tokens[i]))
+            {
+                return true;
+            }
+        }
+
+        return nome.Contains("(clone)") || nome.Contains(" clone");
     }
 
     private void CapturarRecursos()
@@ -1323,15 +1474,32 @@ public class SistemaSaveGame : MonoBehaviour
             return;
         }
 
+        bool isIa01Entity = data.teamID > 1
+            && (data.teamID == dadosAtuais.rtsPrimaryAiTeamId
+                || (IA01Manager.Instancia != null && IA01Manager.Instancia.FindControllerByTeamId(data.teamID) != null));
+        IA01Controller ia01Controller = isIa01Entity && IA01Manager.Instancia != null
+            ? IA01Manager.Instancia.FindControllerByTeamId(data.teamID)
+            : null;
+        if (!IA01MilitaryCatalogPolicy.IsAllowedSavedEntity(
+                data.teamID,
+                data.tipoUnidade,
+                data.prefabKey,
+                isIa01Entity,
+                ia01Controller != null ? ia01Controller.FichasMilitaresPermitidas : null))
+        {
+            Debug.LogWarning("[Save] Unidade IA01 fora do catálogo militar permitido ignorada: "
+                + data.prefabKey + " team=" + data.teamID + " tipo=" + data.tipoUnidade);
+            DiagnosticoDesempenhoJogo.RegistrarEvento("Save", "Unidade IA01 fora do catálogo militar permitido ignorada: " + data.prefabKey);
+            return;
+        }
+
         // Saves anteriores ao layout territorial atual podem conter estruturas
         // da IA01 em coordenadas antigas. Não mover nem apagar unidades móveis:
         // somente rejeitar a estrutura fora do envelope oficial da própria IA,
         // permitindo que o runtime a reconstrua nos Creates atuais.
         if (data.tipoUnidade == TipoUnidade.Estrutura && data.teamID > 0)
         {
-            IA01Controller controller = IA01Manager.Instancia != null
-                ? IA01Manager.Instancia.FindControllerByTeamId(data.teamID)
-                : null;
+            IA01Controller controller = ia01Controller;
             if (controller != null && controller.CityLayout != null
                 && !controller.IsPositionInsidePreparedTerritory(data.posicao.ToVector3()))
             {

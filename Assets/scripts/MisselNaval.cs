@@ -40,7 +40,10 @@ public class MisselNaval : MonoBehaviour
     [Header("Visual da Fumaca")]
     public Color corFumaca = new Color(0.8f, 0.8f, 0.8f, 0.5f);
     public float tamanhoFumaca = 1.5f;
-    [Tooltip("Referencia opcional da malha do missel. Se vazia, a primeira malha filha e usada para corrigir o eixo visual.")]
+    [Header("Orientação Visual")]
+    [Tooltip("Ativa uma correção automática para prefabs cujo eixo visual foi importado separado do eixo da raiz. Deixe desligado quando o ponto de saída já estiver configurado reto.")]
+    public bool corrigirEixoVisualAutomaticamente = false;
+    [Tooltip("Referência opcional da malha do míssil. Se vazia, a primeira malha filha é usada quando a correção automática está ativa.")]
     public Transform referenciaVisual;
 
     private static readonly Collider[] bufferExplosao = new Collider[32];
@@ -93,7 +96,10 @@ public class MisselNaval : MonoBehaviour
         rb.isKinematic = false;
         rb.freezeRotation = true;
 
-        ResolverOrientacaoVisual();
+        if (corrigirEixoVisualAutomaticamente)
+        {
+            ResolverOrientacaoVisual();
+        }
 
         if (sistemaFumaca != null)
         {
@@ -211,10 +217,10 @@ public class MisselNaval : MonoBehaviour
             velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeMergulho, Time.fixedDeltaTime * 2f);
         }
 
-        // A raiz do prefab N-02 tem uma malha filha com eixo local rotacionado
-        // em 90 graus. Usar transform.forward fazia o Rigidbody seguir um
-        // eixo e o modelo apontar para outro, deixando o missel torto. O
-        // movimento agora acompanha o eixo visual corrigido.
+        // A raiz e o ponto de saída formam o eixo de voo do míssil. A
+        // correção visual fica opcional porque aplicá-la automaticamente em
+        // um prefab que já foi orientado no Inspector cria uma segunda
+        // rotação de 90 graus.
         Vector3 frenteVisual = ObterFrenteVisual();
         if (frenteVisual.sqrMagnitude < 0.001f)
         {
@@ -286,11 +292,19 @@ public class MisselNaval : MonoBehaviour
         Vector3 eixoUp = Mathf.Abs(Vector3.Dot(direcao, Vector3.up)) > 0.98f
             ? Vector3.forward
             : Vector3.up;
-        return Quaternion.LookRotation(direcao, eixoUp) * correcaoOrientacaoVisual;
+        Quaternion rotacaoBase = Quaternion.LookRotation(direcao, eixoUp);
+        return corrigirEixoVisualAutomaticamente
+            ? rotacaoBase * correcaoOrientacaoVisual
+            : rotacaoBase;
     }
 
     private Vector3 ObterFrenteVisual()
     {
+        if (!corrigirEixoVisualAutomaticamente)
+        {
+            return transform.forward;
+        }
+
         Vector3 frente = transform.rotation * rotacaoVisualLocal * Vector3.forward;
         return frente.sqrMagnitude > 0.001f ? frente.normalized : transform.forward;
     }

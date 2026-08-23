@@ -732,7 +732,7 @@ namespace Hegemonia.AI.Sovereign
                 }
 
                 bool success = ExecuteOrder(order, out string reason);
-                _orders.Complete(order, success, now);
+                _orders.Complete(order, success, now, reason);
                 if (verboseLogs && !success)
                 {
                     Debug.Log("[AISovereign] Falha " + teamId + " ordem=" + order.Type + " motivo=" + reason);

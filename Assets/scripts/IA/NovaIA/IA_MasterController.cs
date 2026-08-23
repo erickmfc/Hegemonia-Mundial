@@ -756,16 +756,6 @@ namespace Hegemonia.AI.Master
                 _catalogBuffer.AddRange(MenuConstrucao.catalogoGlobal);
             }
 
-            DadosConstrucao[] fallback = Resources.FindObjectsOfTypeAll<DadosConstrucao>();
-            for (int i = 0; i < fallback.Length; i++)
-            {
-                DadosConstrucao candidate = fallback[i];
-                if (candidate != null && !_catalogBuffer.Contains(candidate))
-                {
-                    _catalogBuffer.Add(candidate);
-                }
-            }
-
             for (int i = 0; i < _catalogBuffer.Count; i++)
             {
                 DadosConstrucao candidate = _catalogBuffer[i];

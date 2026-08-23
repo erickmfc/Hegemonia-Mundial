@@ -201,9 +201,14 @@ namespace Hegemonia.AI.IA01
 
             if (result.Deferred)
             {
-                // O runtime preserva a fase pendente. Retome logo, mas nunca
-                // no mesmo quadro, para que outras unidades tambem tenham vez.
-                state.NextDueAt = now + 0.02f;
+                // O runtime preserva a fase pendente. Um slice atomico caro
+                // nao pode voltar em loop de 20 ms e repetir o mesmo pico.
+                state.FailureCount = Mathf.Min(8, state.FailureCount + 1);
+                float deferredCooldown = Mathf.Clamp(
+                    Mathf.Max(0.04f, result.ConsumedMilliseconds * 0.0025f),
+                    0.04f,
+                    1.25f);
+                state.NextDueAt = now + deferredCooldown;
                 state.LastReason = result.LastMessage ?? "budget_deferred";
                 return;
             }

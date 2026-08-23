@@ -40,6 +40,9 @@ namespace Hegemonia.AI.IA01
         [SerializeField] private IA01BuildPlan buildPlan;
         [SerializeField] private IA01CityLayout cityLayout;
         [SerializeField] private List<DadosConstrucao> fichasDeConstrucao = new List<DadosConstrucao>();
+        [Header("Catálogo militar permitido")]
+        [Tooltip("Fichas militares que esta IA pode produzir. Se vazio, usa somente a allowlist padrão interna.")]
+        [SerializeField] private List<DadosConstrucao> fichasMilitaresPermitidas = new List<DadosConstrucao>();
         [SerializeField] private GameObject fighterPrefab;
         [SerializeField] private bool useScriptedOpening = true;
         [SerializeField] private bool usePreparedSlots = true;
@@ -98,6 +101,7 @@ namespace Hegemonia.AI.IA01
         public IA01NationProfile Profile => runtimeProfile != null ? runtimeProfile : profileAsset;
         public IA01EventBus EventBus => sharedEventBus;
         public IA01Manager Manager => attachedManager;
+        public bool HasProductionAuthority => attachedManager != null && attachedManager.HasProductionAuthority(this);
         public string UniqueEntityId => uniqueEntityId;
         public int InstanceId => GetInstanceID();
         public int NationId => context != null ? context.NationId : ResolveNationId();
@@ -133,6 +137,7 @@ namespace Hegemonia.AI.IA01
         public IA01CityLayout CityLayout => cityLayout;
         public GameObject FighterPrefab => fighterPrefab;
         public IReadOnlyList<DadosConstrucao> FichasDeConstrucao => fichasDeConstrucao;
+        public IReadOnlyList<DadosConstrucao> FichasMilitaresPermitidas => fichasMilitaresPermitidas;
         public bool UseScriptedOpening => useScriptedOpening;
         public bool UsePreparedSlots => usePreparedSlots;
         public bool AllowAutonomousExpansion => allowAutonomousExpansion;
@@ -542,6 +547,17 @@ namespace Hegemonia.AI.IA01
             if (!IsEnabled || budget.MaxOperations <= 0 && budget.MaxEvents <= 0)
             {
                 return lastExecutionResult = IA01WorkResult.Empty("disabled_or_empty_budget");
+            }
+
+            if (attachedManager == null && autoRegisterWithManager)
+            {
+                RegisterWithManager();
+            }
+
+            if (!HasProductionAuthority)
+            {
+                lastExecutionMessage = "IA01 ProductionAuthority bloqueada por outro sistema.";
+                return lastExecutionResult = IA01WorkResult.Empty("production_authority_not_granted");
             }
 
             string worldNotReadyReason;

@@ -86,6 +86,8 @@ public class ControleUnidade : MonoBehaviour
     private float proximaRecuperacaoMovimento;
     private float proximaVerificacaoTerritorio;
     private Vector3 ultimoDestinoReplanNavMesh;
+    private ControleOrdemMovimentoRuntime controleOrdemMovimento;
+    private int sequenciaOrdemMovimento;
     private const float IntervaloWatchdogOrdem = 1.25f;
     private const float TempoMaximoSemProgresso = 7.5f;
     private const float IntervaloRelatorioWatchdogBloqueado = 8f;
@@ -103,6 +105,7 @@ public class ControleUnidade : MonoBehaviour
     [SerializeField] private string executorControleAtual = "NavMeshAgent";
     [SerializeField] private bool bloqueioControleAtivo = false;
     [SerializeField] private string motivoBloqueioControle = string.Empty;
+    [SerializeField, Min(0.1f)] private float intervaloEntreTentativasOrdem = 2f;
 
     protected virtual void Awake()
     {
@@ -129,6 +132,8 @@ public class ControleUnidade : MonoBehaviour
         c17Transporte = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
         identidadeIA = GetComponent<IdentidadeIA>();
         identidadeUnidade = GetComponent<IdentidadeUnidade>();
+        controleOrdemMovimento = new ControleOrdemMovimentoRuntime(intervaloEntreTentativasOrdem);
+        controleOrdemMovimento.EstadoAlterado += RegistrarMudancaDeEstadoDaOrdem;
 
         if (navegacaoInteligenteNaval != null)
         {
@@ -264,11 +269,25 @@ public class ControleUnidade : MonoBehaviour
 
     protected virtual void OnDisable()
     {
+        CancelarOrdemMovimentoExterna("unidade desativada");
+        OrquestradorGlobalOrdens.LiberarUnidade(
+            gameObject,
+            "unidade desativada",
+            Time.unscaledTime);
         RegistroEntidadesJogo.Unregister(this);
     }
 
     protected virtual void OnDestroy()
     {
+        CancelarOrdemMovimentoExterna("unidade destruida");
+        OrquestradorGlobalOrdens.LiberarUnidade(
+            gameObject,
+            "unidade destruida",
+            Time.unscaledTime);
+        if (controleOrdemMovimento != null)
+        {
+            controleOrdemMovimento.EstadoAlterado -= RegistrarMudancaDeEstadoDaOrdem;
+        }
         RegistroEntidadesJogo.Unregister(this);
     }
 
@@ -287,6 +306,8 @@ public class ControleUnidade : MonoBehaviour
     public OrdemControleUnidade OrdemAtual => ordemControleAtual;
     public string ExecutorAtual => executorControleAtual;
     public bool ModoCombateAtivo => modoCombateOficialAtivo;
+    public OrdemMovimento OrdemMovimentoAtual => controleOrdemMovimento != null ? controleOrdemMovimento.Atual : null;
+    public bool PossuiOrdemMovimentoAtiva => controleOrdemMovimento != null && controleOrdemMovimento.PossuiOrdemAtiva;
 
     [Header("Visual")]
     public float tamanhoSelecao = 0f; // 0 = Automatico
@@ -458,7 +479,7 @@ public class ControleUnidade : MonoBehaviour
 
             if (distanciaAoDestino <= toleranciaChegada)
             {
-                LimparDestinoOrdenado();
+                ConcluirOrdemMovimento("destino alcancado");
             }
         }
 
@@ -541,11 +562,42 @@ public class ControleUnidade : MonoBehaviour
 
     public bool EmitirOrdemMover(Vector3 destino, bool cancelarComportamentos = true)
     {
+        return EmitirOrdemMovimentoInterna(
+            destino,
+            cancelarComportamentos,
+            null,
+            nameof(ControleUnidade),
+            InferirTipoOrdemMovimento());
+    }
+
+    /// <summary>
+    /// Entrada para executores locais de logística ou de um domínio específico.
+    /// O dono e o ID ficam registrados para que o mesmo controlador possa
+    /// reemitir de forma idempotente sem disputar a unidade com outro executor.
+    /// </summary>
+    public bool EmitirOrdemMovimento(
+        Vector3 destino,
+        string dono,
+        TipoOrdemMovimento tipo,
+        bool cancelarComportamentos = true,
+        string id = null)
+    {
+        return EmitirOrdemMovimentoInterna(destino, cancelarComportamentos, id, dono, tipo);
+    }
+
+    private bool EmitirOrdemMovimentoInterna(
+        Vector3 destino,
+        bool cancelarComportamentos,
+        string id,
+        string dono,
+        TipoOrdemMovimento tipo)
+    {
         if (c17Transporte != null)
         {
             Debug.LogWarning($"[C17] Movimento generico recusado para {name}; ordem deve vir do aeroporto.");
             return false;
         }
+
         AtualizarTrilhaOficial();
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo)
@@ -554,13 +606,39 @@ public class ControleUnidade : MonoBehaviour
             return false;
         }
 
+        string idFinal = string.IsNullOrWhiteSpace(id)
+            ? ObterOuCriarIdOrdemMovimento("movimento", destino, tipo)
+            : id;
+        bool foiIdempotente;
+        if (!TentarPrepararOrdemMovimento(
+                idFinal,
+                dono,
+                destino,
+                tipo,
+                out foiIdempotente))
+        {
+            return false;
+        }
+
+        if (foiIdempotente)
+        {
+            return true;
+        }
+
         if (cancelarComportamentos || (ordemControleAtual != OrdemControleUnidade.Patrulhando && ordemControleAtual != OrdemControleUnidade.Seguindo))
         {
             ordemControleAtual = OrdemControleUnidade.Movendo;
             DefinirAlvoPrioritario(null);
         }
 
-        ExecutarMoverParaPonto(destino, cancelarComportamentos);
+        if (!ExecutarMoverParaPonto(destino, cancelarComportamentos))
+        {
+            controleOrdemMovimento.Falhar("executor recusou a ordem", Time.unscaledTime);
+            LimparDestinoOrdenado();
+            return false;
+        }
+
+        controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
         return true;
     }
@@ -571,6 +649,7 @@ public class ControleUnidade : MonoBehaviour
         AtualizarEstadoDeBloqueio();
         CancelarOrdemEspecial(false);
         DefinirAlvoPrioritario(null);
+        CancelarOrdemMovimentoExterna("ordem parada");
 
         bool alterouAlgo = false;
 
@@ -667,6 +746,22 @@ public class ControleUnidade : MonoBehaviour
             rotaFinal.Insert(0, transform.position);
         }
 
+        bool ordemPatrulhaIdempotente;
+        if (!TentarPrepararOrdemMovimento(
+                ObterOuCriarIdOrdemMovimento("patrulha", rotaFinal[0], TipoOrdemMovimento.Patrulha),
+                nameof(ControleUnidade),
+                rotaFinal[0],
+                TipoOrdemMovimento.Patrulha,
+                out ordemPatrulhaIdempotente))
+        {
+            return false;
+        }
+
+        if (ordemPatrulhaIdempotente)
+        {
+            return true;
+        }
+
         // O vinculo com aeroporto controla pouso e abastecimento, mas nao pode
         // impedir uma ordem manual enviada pelo menu satelite.
         if (helicopteroExterno != null)
@@ -674,6 +769,7 @@ public class ControleUnidade : MonoBehaviour
             CancelarOrdemEspecial(false);
             helicopteroExterno.IniciarPatrulhaAeroporto(rotaFinal);
             ordemControleAtual = OrdemControleUnidade.Patrulhando;
+            controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
             DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
             return true;
         }
@@ -687,6 +783,7 @@ public class ControleUnidade : MonoBehaviour
             if (bloqueioControleAtivo)
             {
                 DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: patrulha bloqueada ({motivoBloqueioControle})");
+                controleOrdemMovimento.Falhar(motivoBloqueioControle, Time.unscaledTime);
                 return false;
             }
 
@@ -697,6 +794,7 @@ public class ControleUnidade : MonoBehaviour
             {
                 controleAviao.IniciarMissaoCompleta(rotaFinal[0]);
             }
+            controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
             DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
             return true;
         }
@@ -705,6 +803,7 @@ public class ControleUnidade : MonoBehaviour
         if (bloqueioControleAtivo)
         {
             DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: patrulha bloqueada ({motivoBloqueioControle})");
+            controleOrdemMovimento.Falhar(motivoBloqueioControle, Time.unscaledTime);
             return false;
         }
 
@@ -726,6 +825,7 @@ public class ControleUnidade : MonoBehaviour
             }
         }
         ordemControleAtual = OrdemControleUnidade.Patrulhando;
+        controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
         return true;
     }
@@ -871,11 +971,293 @@ public class ControleUnidade : MonoBehaviour
         };
     }
 
-    private void ExecutarMoverParaPonto(Vector3 destino, bool cancelarComportamentos = true)
+    public string ObterOuCriarIdOrdemMovimento(string prefixo, Vector3 destino, TipoOrdemMovimento tipo)
+    {
+        if (controleOrdemMovimento != null
+            && controleOrdemMovimento.PossuiOrdemAtiva
+            && controleOrdemMovimento.Atual.Tipo == tipo
+            && Vector3.Distance(controleOrdemMovimento.Atual.Destino, destino) <= 0.01f)
+        {
+            return controleOrdemMovimento.Atual.Id;
+        }
+
+        sequenciaOrdemMovimento++;
+        string baseId = string.IsNullOrWhiteSpace(prefixo) ? "movimento" : prefixo.Trim();
+        return baseId + ":" + GetInstanceID() + ":" + sequenciaOrdemMovimento;
+    }
+
+    /// <summary>
+    /// Registra uma ordem que será executada por um controlador especializado
+    /// (por exemplo, ControleNavioRealista ou ControleSubmarino). O método não
+    /// envia movimento: o executor continua sendo o único responsável por
+    /// SetDestination, física naval ou rota aérea.
+    /// </summary>
+    public bool RegistrarOrdemMovimentoExterna(
+        string id,
+        string dono,
+        Vector3 destino,
+        TipoOrdemMovimento tipo,
+        OrdemControleUnidade ordem = OrdemControleUnidade.Movendo)
+    {
+        if (controleOrdemMovimento == null)
+        {
+            controleOrdemMovimento = new ControleOrdemMovimentoRuntime(intervaloEntreTentativasOrdem);
+            controleOrdemMovimento.EstadoAlterado += RegistrarMudancaDeEstadoDaOrdem;
+        }
+
+        string idFinal = string.IsNullOrWhiteSpace(id)
+            ? ObterOuCriarIdOrdemMovimento("externa", destino, tipo)
+            : id;
+        bool foiIdempotente;
+        if (!TentarPrepararOrdemMovimento(idFinal, dono, destino, tipo, out foiIdempotente))
+        {
+            return false;
+        }
+
+        if (!foiIdempotente)
+        {
+            RegistrarDestinoOrdenado(destino);
+            ordemControleAtual = ordem;
+            controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
+        }
+        return true;
+    }
+
+    public bool AtualizarOrdemMovimentoExterna(
+        string id,
+        string dono,
+        Vector3 destino,
+        TipoOrdemMovimento tipo)
+    {
+        if (controleOrdemMovimento == null
+            || !controleOrdemMovimento.PossuiOrdemAtiva
+            || controleOrdemMovimento.Atual == null
+            || !string.Equals(controleOrdemMovimento.Atual.Id, id, System.StringComparison.Ordinal)
+            || !string.Equals(controleOrdemMovimento.Atual.Dono, dono, System.StringComparison.Ordinal)
+            || controleOrdemMovimento.Atual.Tipo != tipo)
+        {
+            return false;
+        }
+
+        if (!OrquestradorGlobalOrdens.AtualizarDestino(
+                id,
+                dono,
+                gameObject,
+                destino,
+                tipo,
+                Time.unscaledTime,
+                out _))
+        {
+            return false;
+        }
+
+        if (!controleOrdemMovimento.AtualizarDestino(id, destino))
+        {
+            return false;
+        }
+
+        // Mantém o watchdog olhando para o alvo mais recente sem zerar o
+        // tempo de falta de progresso. Assim uma perseguição móvel continua
+        // protegida contra travamento real.
+        ultimoDestinoOrdenado = destino;
+        possuiDestinoOrdenado = true;
+        return true;
+    }
+
+    public bool ConcluirOrdemMovimentoExterna(string motivo = "destino alcancado")
+    {
+        return ConcluirOrdemMovimento(motivo);
+    }
+
+    public bool FalharOrdemMovimentoExterna(string motivo)
+    {
+        if (controleOrdemMovimento == null)
+        {
+            return false;
+        }
+
+        bool falhou = controleOrdemMovimento.Falhar(motivo, Time.unscaledTime);
+        if (falhou)
+        {
+            LimparDestinoOrdenado();
+        }
+        return falhou;
+    }
+
+    private bool TentarPrepararOrdemMovimento(
+        string id,
+        string dono,
+        Vector3 destino,
+        TipoOrdemMovimento tipo,
+        out bool foiIdempotente)
+    {
+        foiIdempotente = false;
+        string donoFinal = string.IsNullOrWhiteSpace(dono) ? nameof(ControleUnidade) : dono;
+        float agora = Time.unscaledTime;
+        if (!OrquestradorGlobalOrdens.TentarRegistrar(
+                id,
+                donoFinal,
+                gameObject,
+                destino,
+                tipo,
+                agora,
+                out bool ordemGlobalIdempotente,
+                out _))
+        {
+            return false;
+        }
+
+        if (ordemGlobalIdempotente)
+        {
+            if (OrquestradorGlobalOrdens.TentarObter(id, out OrquestradorGlobalOrdens.Registro registroGlobal)
+                && registroGlobal.Terminada)
+            {
+                // O ID continua conhecido para impedir que uma ordem
+                // concluida/falha/cancelada volte a chamar o executor fisico.
+                foiIdempotente = true;
+                return false;
+            }
+
+            foiIdempotente = true;
+            return true;
+        }
+
+        if (controleOrdemMovimento == null)
+        {
+            controleOrdemMovimento = new ControleOrdemMovimentoRuntime(intervaloEntreTentativasOrdem);
+            controleOrdemMovimento.EstadoAlterado += RegistrarMudancaDeEstadoDaOrdem;
+        }
+
+        if (!controleOrdemMovimento.TentarIniciar(
+                id,
+                donoFinal,
+                gameObject,
+                destino,
+                tipo,
+                agora,
+                out bool ordemLocalIdempotente))
+        {
+            OrquestradorGlobalOrdens.LiberarUnidade(
+                gameObject,
+                "executor local recusou a ordem",
+                agora);
+            return false;
+        }
+
+        if (ordemLocalIdempotente)
+        {
+            foiIdempotente = true;
+            OrquestradorGlobalOrdens.NotificarEstado(
+                controleOrdemMovimento.Atual,
+                controleOrdemMovimento.EstadoAtual,
+                controleOrdemMovimento.EstadoAtual,
+                agora);
+            return true;
+        }
+
+        if (!controleOrdemMovimento.TentarIniciarTentativa(agora))
+        {
+            controleOrdemMovimento.Falhar("nao foi possivel iniciar a tentativa", agora);
+            return false;
+        }
+
+        return true;
+    }
+
+    private TipoOrdemMovimento InferirTipoOrdemMovimento()
+    {
+        if (ordemControleAtual == OrdemControleUnidade.Patrulhando)
+        {
+            return TipoOrdemMovimento.Patrulha;
+        }
+
+        if (dominioControleAtual == DominioControleUnidade.Aereo)
+        {
+            return TipoOrdemMovimento.Aerea;
+        }
+
+        if (dominioControleAtual == DominioControleUnidade.NavalSuperficie
+            || dominioControleAtual == DominioControleUnidade.NavalSubmerso)
+        {
+            return TipoOrdemMovimento.Naval;
+        }
+
+        return TipoOrdemMovimento.Terrestre;
+    }
+
+    private bool ConcluirOrdemMovimento(string motivo)
+    {
+        bool concluiu = controleOrdemMovimento != null
+            && controleOrdemMovimento.Concluir(Time.unscaledTime);
+        LimparDestinoOrdenado();
+        if (ordemControleAtual == OrdemControleUnidade.Movendo
+            || ordemControleAtual == OrdemControleUnidade.Recuando)
+        {
+            ordemControleAtual = OrdemControleUnidade.Ociosa;
+        }
+        return concluiu;
+    }
+
+    private void CancelarOrdemMovimentoExterna(string motivo)
+    {
+        if (controleOrdemMovimento != null)
+        {
+            controleOrdemMovimento.Cancelar(motivo, Time.unscaledTime);
+        }
+        LimparDestinoOrdenado();
+    }
+
+    private void RegistrarMudancaDeEstadoDaOrdem(
+        OrdemMovimento ordem,
+        EstadoOrdemMovimento anterior,
+        EstadoOrdemMovimento novoEstado)
+    {
+        if (ordem == null || !DiagnosticoDesempenhoJogo.CapturaAtiva)
+        {
+            if (ordem != null)
+            {
+                OrquestradorGlobalOrdens.NotificarEstado(
+                    ordem,
+                    anterior,
+                    novoEstado,
+                    Time.unscaledTime);
+            }
+            return;
+        }
+
+        OrquestradorGlobalOrdens.NotificarEstado(
+            ordem,
+            anterior,
+            novoEstado,
+            Time.unscaledTime);
+
+        string prefixo = name + " id=" + ordem.Id + " dono=" + ordem.Dono;
+        if (novoEstado == EstadoOrdemMovimento.Falhou)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "OrdemFalhou",
+                prefixo + " tentativas=" + ordem.Tentativas + " motivo=" + ordem.MotivoFalhaOuCancelamento);
+            return;
+        }
+
+        if (novoEstado == EstadoOrdemMovimento.Concluida && ordem.Tentativas > 1)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "RecuperacaoMovimento",
+                prefixo + " recuperada com sucesso apos tentativa=" + ordem.Tentativas);
+            return;
+        }
+
+        DiagnosticoDesempenhoJogo.RegistrarEvento(
+            "OrdemEstado",
+            prefixo + " " + anterior + " -> " + novoEstado);
+    }
+
+    private bool ExecutarMoverParaPonto(Vector3 destino, bool cancelarComportamentos = true)
     {
         if (helicopteroExterno != null && helicopteroExterno.EstaSobControleDoAeroporto())
         {
-            return;
+            return false;
         }
 
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
@@ -885,7 +1267,7 @@ public class ControleUnidade : MonoBehaviour
             {
                 combustivel.PararPorFaltaDeCombustivel();
             }
-            return;
+            return false;
         }
 
         // --- BLOQUEIO DE ÁGUA PARA UNIDADES TERRESTRES ---
@@ -896,7 +1278,7 @@ public class ControleUnidade : MonoBehaviour
             if (ehTerrestre && classe == ClassificacaoSuperficieMapa.Agua)
             {
                 // Debug.Log($"[Bloqueio] {name} recusou mover para Água profunda.");
-                return; 
+                return false;
             }
         }
 
@@ -905,16 +1287,16 @@ public class ControleUnidade : MonoBehaviour
         if (EhUnidadeNaval() && !NavalPlacementResolver.IsWaterAtPosition(destino))
         {
             Debug.LogWarning($"[ControleUnidade] {name}: destino naval recusado porque está fora da água ({destino.x:F0}, {destino.z:F0}).", this);
-            return;
+            return false;
         }
+
+        RegistrarDestinoOrdenado(destino);
 
         if (c700TransporteAereo != null && c700TransporteAereo.EstaNoSolo && !c700TransporteAereo.AguardandoDestinoAereo)
         {
             c700TransporteAereo.ReceberOrdemMover(destino);
-            return;
+            return true;
         }
-
-        RegistrarDestinoOrdenado(destino);
 
         if (cancelarComportamentos)
         {
@@ -927,14 +1309,14 @@ public class ControleUnidade : MonoBehaviour
         if (controleAviaoCaca != null)
         {
             controleAviaoCaca.DefinirDestino(destino);
-            return;
+            return true;
         }
 
         // Avião de Passageiros / Cargueiro (Sistema de Aeroporto)
         if (c700TransporteAereo != null)
         {
             c700TransporteAereo.ReceberOrdemMover(destino);
-            return;
+            return true;
         }
 
         // Avião de Passageiros / Cargueiro (Sistema de Aeroporto)
@@ -959,21 +1341,21 @@ public class ControleUnidade : MonoBehaviour
                 // Se já estiver voando, apenas muda a coordenada do GPS
                 controleAviao.alvoGPSVoo = destino;
             }
-            return;
+            return true;
         }
 
         if (helicopteroExterno != null)
         {
             helicopteroExterno.CancelarMissaoAeroporto();
             helicopteroExterno.Decolar(destino);
-            return;
+            return true;
         }
 
         if (ehAereo)
         {
             destinoAereo = destino;
             voando = true;
-            return;
+            return true;
         }
 
         if (hovercraftTransporte != null)
@@ -986,19 +1368,19 @@ public class ControleUnidade : MonoBehaviour
                 agente.isStopped = true;
             }
 
-            return;
+            return true;
         }
 
         if (controleNavioRealista != null)
         {
             controleNavioRealista.DefinirDestino(destino);
-            return;
+            return true;
         }
 
         if (controleSubmarino != null)
         {
             controleSubmarino.DefinirDestino(destino);
-            return;
+            return true;
         }
 
         // Segurança: Se o agente não foi pego no Awake (ex: adicionado depois), pega agora.
@@ -1013,14 +1395,14 @@ public class ControleUnidade : MonoBehaviour
                 {
                     controleNavioRealista.DefinirDestino(destino);
                     // Debug.Log($"[Navegação] {name} usando Física Realista.");
-                    return;
+                    return true;
                 }
 
                 // Verifica se é Submarino
                 if (controleSubmarino != null)
                 {
                     controleSubmarino.DefinirDestino(destino);
-                    return;
+                    return true;
                 }
 
                 // Navegação normal (terrestre ou navio sem o sistema inteligente)
@@ -1029,7 +1411,7 @@ public class ControleUnidade : MonoBehaviour
             else
             {
                  // Agente fora do navmesh ou desativado - TENTA RECUPERAR!
-                 if (!gameObject.activeInHierarchy) return; // Impede erros se o objeto estiver desligado (ex: em construção)
+                  if (!gameObject.activeInHierarchy) return false; // Impede erros se o objeto estiver desligado (ex: em construção)
                  
                  try 
                  {
@@ -1050,27 +1432,30 @@ public class ControleUnidade : MonoBehaviour
                      // Só dá a ordem se a recuperação funcionou
                      if (agente.isOnNavMesh && agente.isActiveAndEnabled)
                      {
-                         if (controleNavioRealista != null)
-                         {
-                             controleNavioRealista.DefinirDestino(destino);
-                             return;
-                         }
+                          if (controleNavioRealista != null)
+                          {
+                              controleNavioRealista.DefinirDestino(destino);
+                              return true;
+                          }
 
-                        if (controleSubmarino != null)
-                        {
-                            controleSubmarino.DefinirDestino(destino);
-                             return;
+                         if (controleSubmarino != null)
+                         {
+                             controleSubmarino.DefinirDestino(destino);
+                              return true;
                          }
 
                          AplicarDestinoNavMeshComCooldown(destino, true);
                      }
                  }
-                 catch (System.Exception ex)
-                 {
-                     Debug.LogWarning($"[ControleUnidade] Falha ao recuperar NavMeshAgent para {name}: {ex.Message}");
-                 }
+                  catch (System.Exception ex)
+                  {
+                      Debug.LogWarning($"[ControleUnidade] Falha ao recuperar NavMeshAgent para {name}: {ex.Message}");
+                      return false;
+                  }
             }
         }
+
+        return agente != null && agente.enabled && agente.isOnNavMesh;
     }
 
     private void AtualizarEstadoOtimizacao()
@@ -1115,7 +1500,7 @@ public class ControleUnidade : MonoBehaviour
 
     private void RecuperarMovimentoTerrestreSeNecessario()
     {
-        if (!possuiDestinoOrdenado || ehAereo || EhUnidadeNaval() || hovercraftTransporte != null)
+        if (!possuiDestinoOrdenado || ehAereo || EhUnidadeNaval() || hovercraftTransporte != null || controleOrdemMovimento == null)
         {
             return;
         }
@@ -1143,24 +1528,11 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
-        bool caminhoParado = agente.enabled && agente.isOnNavMesh && agente.isStopped;
-        bool caminhoPerdido = agente.enabled && agente.isOnNavMesh && !agente.pathPending && !agente.hasPath;
         if (!agente.enabled || !agente.isOnNavMesh)
         {
-            // Esta unidade nao pode aceitar uma ordem terrestre. Reemitir a
-            // mesma ordem causava um ciclo eterno em veiculos externos e em
-            // petroleiros fora do NavMesh.
-            CancelarOrdemIncompativel("NavMeshAgent indisponivel para recuperacao terrestre");
+            controleOrdemMovimento.Falhar("NavMeshAgent indisponivel para recuperacao terrestre", Time.unscaledTime);
+            LimparDestinoOrdenado();
             return;
-        }
-
-        if (caminhoParado || caminhoPerdido)
-        {
-            if (DiagnosticoDesempenhoJogo.CapturaAtiva)
-            {
-                DiagnosticoDesempenhoJogo.RegistrarEvento("RecuperacaoMovimento", name + ": reativando ordem terrestre ativa");
-            }
-            ExecutarMoverParaPonto(ultimoDestinoOrdenado, false);
         }
     }
 
@@ -1617,7 +1989,7 @@ public class ControleUnidade : MonoBehaviour
 
     private void AtualizarWatchdogOrdem()
     {
-        if (!Application.isPlaying || !possuiDestinoOrdenado)
+        if (!Application.isPlaying || !possuiDestinoOrdenado || controleOrdemMovimento == null)
         {
             posicaoWatchdogAnterior = transform.position;
             tempoSemProgressoOrdem = 0f;
@@ -1634,6 +2006,8 @@ public class ControleUnidade : MonoBehaviour
         float distanciaMovida = Vector3.Distance(
             new Vector3(transform.position.x, 0f, transform.position.z),
             new Vector3(posicaoWatchdogAnterior.x, 0f, posicaoWatchdogAnterior.z));
+        float distanciaAnteriorAoDestino = Vector3.Distance(posicaoWatchdogAnterior, ultimoDestinoOrdenado);
+        float distanciaAtualAoDestino = Vector3.Distance(transform.position, ultimoDestinoOrdenado);
         posicaoWatchdogAnterior = transform.position;
 
         AtualizarEstadoDeBloqueio();
@@ -1641,13 +2015,52 @@ public class ControleUnidade : MonoBehaviour
         {
             tempoSemProgressoOrdem = 0f;
             reemissoesWatchdogOrdem = 0;
+            controleOrdemMovimento.RegistrarProgresso(Time.unscaledTime);
+            return;
+        }
+
+        // Aproximação também é progresso, mesmo quando a unidade gira ou usa
+        // um executor que não expõe velocidade diretamente.
+        if (distanciaAtualAoDestino + 0.45f < distanciaAnteriorAoDestino)
+        {
+            tempoSemProgressoOrdem = 0f;
+            controleOrdemMovimento.RegistrarProgresso(Time.unscaledTime);
+            return;
+        }
+
+        if (controleOrdemMovimento.EstadoAtual == EstadoOrdemMovimento.EsperandoNovaTentativa)
+        {
+            if (controleOrdemMovimento.PodeTentarNovamente(Time.unscaledTime))
+            {
+                ExecutarNovaTentativaOrdem();
+            }
             return;
         }
 
         if (bloqueioControleAtivo)
         {
-            RegistrarWatchdogBloqueado(string.IsNullOrEmpty(motivoBloqueioControle) ? "Bloqueio de controle ativo" : motivoBloqueioControle);
-            tempoSemProgressoOrdem = 0f;
+            string motivoBloqueio = string.IsNullOrEmpty(motivoBloqueioControle)
+                ? "Bloqueio de controle ativo"
+                : motivoBloqueioControle;
+            if (controleOrdemMovimento.AgendarNovaTentativa(Time.unscaledTime, motivoBloqueio))
+            {
+                tempoSemProgressoOrdem = 0f;
+            }
+            else
+            {
+                controleOrdemMovimento.Falhar(motivoBloqueio, Time.unscaledTime);
+                LimparDestinoOrdenado();
+            }
+            return;
+        }
+
+        if (controleOrdemMovimento.EstadoAtual == EstadoOrdemMovimento.Recalculando)
+        {
+            string motivoRecalculo = string.IsNullOrEmpty(controleOrdemMovimento.Atual.MotivoFalhaOuCancelamento)
+                ? "recalculo sem rota valida"
+                : controleOrdemMovimento.Atual.MotivoFalhaOuCancelamento;
+            controleOrdemMovimento.Falhar("tentativas esgotadas: " + motivoRecalculo, Time.unscaledTime);
+            LimparDestinoOrdenado();
             return;
         }
 
@@ -1658,31 +2071,45 @@ public class ControleUnidade : MonoBehaviour
         }
 
         string causa = DiagnosticarCausaOrdemTravada();
-        bool podeReemitir = PodeReemitirOrdemTravada(causa);
-        if (!podeReemitir || reemissoesWatchdogOrdem >= MaxReemissoesWatchdogOrdem)
+        tempoSemProgressoOrdem = 0f;
+        reemissoesWatchdogOrdem++;
+        if (controleOrdemMovimento.AgendarNovaTentativa(Time.unscaledTime, causa))
         {
-            if (!podeReemitir && CausaExigeCancelamento(causa))
-            {
-                CancelarOrdemIncompativel(causa);
-            }
-            RegistrarWatchdogBloqueado(causa);
-            tempoSemProgressoOrdem = Mathf.Max(0f, TempoMaximoSemProgresso - (IntervaloWatchdogOrdem * 2f));
             return;
         }
 
+        controleOrdemMovimento.Falhar("tentativas esgotadas: " + causa, Time.unscaledTime);
+        LimparDestinoOrdenado();
+    }
+
+    private void ExecutarNovaTentativaOrdem()
+    {
+        if (controleOrdemMovimento == null || !controleOrdemMovimento.PrepararRecalculo(Time.unscaledTime))
+        {
+            return;
+        }
+
+        AtualizarEstadoDeBloqueio();
+        if (bloqueioControleAtivo)
+        {
+            controleOrdemMovimento.Falhar(
+                string.IsNullOrEmpty(motivoBloqueioControle) ? "bloqueio durante recuperacao" : motivoBloqueioControle,
+                Time.unscaledTime);
+            LimparDestinoOrdenado();
+            return;
+        }
+
+        if (!controleOrdemMovimento.TentarIniciarTentativa(Time.unscaledTime)
+            || !ExecutarMoverParaPonto(ultimoDestinoOrdenado, false))
+        {
+            controleOrdemMovimento.Falhar("recuperacao recusada pelo executor", Time.unscaledTime);
+            LimparDestinoOrdenado();
+            return;
+        }
+
+        controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
         tempoSemProgressoOrdem = 0f;
-        reemissoesWatchdogOrdem++;
-        if (DiagnosticoDesempenhoJogo.CapturaAtiva)
-        {
-            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemTravada", name + ": reemitindo destino ativo causa=" + causa);
-        }
-        if (ordemControleAtual == OrdemControleUnidade.Movendo
-            || ordemControleAtual == OrdemControleUnidade.Recuando
-            || ordemControleAtual == OrdemControleUnidade.Patrulhando
-            || ordemControleAtual == OrdemControleUnidade.Seguindo)
-        {
-            ExecutarMoverParaPonto(ultimoDestinoOrdenado, false);
-        }
+        posicaoWatchdogAnterior = transform.position;
     }
 
     private string DiagnosticarCausaOrdemTravada()
@@ -1788,6 +2215,10 @@ public class ControleUnidade : MonoBehaviour
 
     private void CancelarOrdemIncompativel(string causa)
     {
+        if (controleOrdemMovimento != null)
+        {
+            controleOrdemMovimento.Falhar(causa, Time.unscaledTime);
+        }
         LimparDestinoOrdenado();
         proximaRecuperacaoMovimento = Time.unscaledTime + 4f;
         if (DiagnosticoDesempenhoJogo.CapturaAtiva)

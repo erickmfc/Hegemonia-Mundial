@@ -44,9 +44,8 @@ public class NavioPetroleiro : ControleUnidade
     // pois isso fazia o petroleiro do jogador entrar na logística da IA.
     private int equipeOperacaoFixa;
     private float timerEstado = 0f;
-    private Vector3 destinoNavMeshAtual;
-    private bool possuiDestinoNavMesh;
-    private float proximoReplanejamento;
+    private Vector3 destinoRotaAquatica;
+    private bool possuiRotaAquatica;
     private bool fallbackAquaticoAtivo;
     private bool avisoFallbackAquaticoEmitido;
 
@@ -136,7 +135,7 @@ public class NavioPetroleiro : ControleUnidade
                 break;
 
             case EstadoPetroleiro.INDO_PLATAFORMA:
-                ExecutarViagemNavMesh(() => MudarEstado(EstadoPetroleiro.ACOPLANDO_PLATAFORMA));
+                ExecutarViagemAquatica(() => MudarEstado(EstadoPetroleiro.ACOPLANDO_PLATAFORMA));
                 break;
 
             case EstadoPetroleiro.ACOPLANDO_PLATAFORMA:
@@ -162,7 +161,7 @@ public class NavioPetroleiro : ControleUnidade
                 break;
 
             case EstadoPetroleiro.INDO_PIER:
-                ExecutarViagemNavMesh(() => MudarEstado(EstadoPetroleiro.ACOPLANDO_PIER));
+                ExecutarViagemAquatica(() => MudarEstado(EstadoPetroleiro.ACOPLANDO_PIER));
                 break;
 
             case EstadoPetroleiro.ACOPLANDO_PIER:
@@ -231,7 +230,7 @@ public class NavioPetroleiro : ControleUnidade
                 }
                 if (plataformaAlvo != null && plataformaAlvo.pontoChegada != null)
                 {
-                    ConfigurarNavMesh(plataformaAlvo.pontoChegada.position);
+                    ConfigurarRotaAquatica(plataformaAlvo.pontoChegada.position);
                 }
                 else
                 {
@@ -253,7 +252,7 @@ public class NavioPetroleiro : ControleUnidade
 
                 if (pierAlvo != null && pierAlvo.saida_petro != null)
                 {
-                    ConfigurarNavMesh(pierAlvo.saida_petro.position);
+                    ConfigurarRotaAquatica(pierAlvo.saida_petro.position);
                 }
                 else
                 {
@@ -362,72 +361,20 @@ public class NavioPetroleiro : ControleUnidade
         }
     }
 
-    void ExecutarViagemNavMesh(System.Action aoChegar)
+    void ExecutarViagemAquatica(System.Action aoChegar)
     {
-        if (agenteNav == null || !possuiDestinoNavMesh)
+        if (!possuiRotaAquatica)
         {
             statusDebug = "Rota naval sem destino valido.";
             return;
         }
 
-        // Petroleiro navega sobre água e não deve depender do NavMesh de
-        // terra. A rota direta mantém a sequência plataforma -> píer sem
-        // interferir nas patrulhas militares das corvetas.
-        if (fallbackAquaticoAtivo)
-        {
-            ExecutarFallbackAquatico(aoChegar);
-            return;
-        }
-
-        if (!agenteNav.enabled || !agenteNav.isOnNavMesh)
-        {
-            statusDebug = "Tentando reconectar NavMesh...";
-            AtivarNavMeshNoLocal();
-            if (agenteNav.enabled && agenteNav.isOnNavMesh)
-            {
-                fallbackAquaticoAtivo = false;
-                agenteNav.SetDestination(destinoNavMeshAtual);
-            }
-            else
-            {
-                ExecutarFallbackAquatico(aoChegar);
-            }
-            return;
-        }
-
-        if (agenteNav.pathStatus == NavMeshPathStatus.PathInvalid
-            || (!agenteNav.pathPending && !agenteNav.hasPath))
-        {
-            if (Time.time >= proximoReplanejamento)
-            {
-                proximoReplanejamento = Time.time + 1.5f;
-                agenteNav.SetDestination(destinoNavMeshAtual);
-            }
-            statusDebug = "Replanejando rota naval...";
-
-            // O NavMesh terrestre pode existir no mapa, mas não cobrir o
-            // corredor de água até a plataforma/píer. Nesse caso, não deixe o
-            // petroleiro congelado: usa o deslocamento aquático seguro abaixo.
-            if (!agenteNav.pathPending && agenteNav.pathStatus == NavMeshPathStatus.PathInvalid)
-            {
-                ExecutarFallbackAquatico(aoChegar);
-            }
-            return;
-        }
-
-        if(transform.rotation.x != 0 || transform.rotation.z != 0)
-        {
-             Vector3 euler = transform.rotation.eulerAngles;
-             transform.rotation = Quaternion.Euler(0, euler.y, 0);
-        }
-
-        if (!agenteNav.pathPending
-            && agenteNav.pathStatus == NavMeshPathStatus.PathComplete
-            && !float.IsInfinity(agenteNav.remainingDistance)
-            && agenteNav.remainingDistance <= agenteNav.stoppingDistance + 0.8f)
-        {
-            aoChegar.Invoke();
-        }
+        // O petroleiro navega sobre água e não depende de NavMesh terrestre.
+        // O agente pode estar ausente, desativado ou fora do NavMesh; nenhum
+        // destino é enviado a ele e a rota continua pelo controlador aquático
+        // local, mantendo a sequência plataforma -> píer.
+        fallbackAquaticoAtivo = true;
+        ExecutarFallbackAquatico(aoChegar);
     }
 
     void ExecutarFallbackAquatico(System.Action aoChegar)
@@ -448,7 +395,7 @@ public class NavioPetroleiro : ControleUnidade
             Debug.Log("[Navio Petroleiro] Rota aquatica direta ativa para a logistica.", this);
         }
 
-        Vector3 destino = destinoNavMeshAtual;
+        Vector3 destino = destinoRotaAquatica;
         destino.y = transform.position.y;
         Vector3 delta = destino - transform.position;
         delta.y = 0f;
@@ -457,6 +404,7 @@ public class NavioPetroleiro : ControleUnidade
         {
             fallbackAquaticoAtivo = false;
             avisoFallbackAquaticoEmitido = false;
+            ConcluirOrdemMovimentoExterna("rota aquatica logistica alcancada");
             aoChegar.Invoke();
             return;
         }
@@ -690,37 +638,34 @@ public class NavioPetroleiro : ControleUnidade
         }
     }
 
-    // --- SISTEMAS DE NAVEGAÇÃO ---
+    // --- SISTEMA DE NAVEGAÇÃO AQUÁTICA ---
 
-    void ConfigurarNavMesh(Vector3 destino)
+    void ConfigurarRotaAquatica(Vector3 destino)
     {
-        destinoNavMeshAtual = destino;
-        possuiDestinoNavMesh = true;
+        destinoRotaAquatica = destino;
+        possuiRotaAquatica = true;
         fallbackAquaticoAtivo = true;
         avisoFallbackAquaticoEmitido = false;
-        proximoReplanejamento = 0f;
+
+        string idOrdem = ObterOuCriarIdOrdemMovimento(
+            "petroleiro-" + estadoAtual,
+            destino,
+            TipoOrdemMovimento.Logistica);
+        if (!RegistrarOrdemMovimentoExterna(
+                idOrdem,
+                nameof(NavioPetroleiro),
+                destino,
+                TipoOrdemMovimento.Logistica,
+                OrdemControleUnidade.Movendo))
+        {
+            possuiRotaAquatica = false;
+            return;
+        }
+
         if (agenteNav != null && agenteNav.enabled)
         {
             agenteNav.isStopped = true;
             agenteNav.enabled = false;
-        }
-    }
-
-    void AtivarNavMeshNoLocal()
-    {
-        if (agenteNav == null) return;
-        if (agenteNav.enabled && agenteNav.isOnNavMesh) return;
-
-        NavMeshHit hit;
-        // Procura chão navegável num raio de 10 metros
-        if (NavMesh.SamplePosition(transform.position, out hit, 30.0f, NavMesh.AllAreas))
-        {
-            if (!agenteNav.enabled) agenteNav.enabled = true;
-            agenteNav.Warp(hit.position);
-        }
-        else
-        {
-            Debug.LogError("[Navio] Não consegui achar NavMesh aqui! O navio vai travar.");
         }
     }
 
@@ -731,7 +676,7 @@ public class NavioPetroleiro : ControleUnidade
             agenteNav.isStopped = true;
             agenteNav.enabled = false;
         }
-        possuiDestinoNavMesh = false;
+        possuiRotaAquatica = false;
         fallbackAquaticoAtivo = false;
         avisoFallbackAquaticoEmitido = false;
     }

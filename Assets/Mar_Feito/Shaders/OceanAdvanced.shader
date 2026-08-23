@@ -212,7 +212,11 @@
 		v2f o;
 		
 		float4 world_position = mul(unity_ObjectToWorld, v.vertex);
-		world_position.y = get_water_height(world_position.xyz);
+		// Preserve the authored water-object height. The previous assignment
+		// replaced it with an absolute wave height around Y=0, while the
+		// campaign water plane/collider is authored at Y=1. That mismatch made
+		// piers, shipyards and ships appear below the visible water surface.
+		world_position.y += get_water_height(world_position.xyz);
 		
 		float interactive = 0.0;
 		for (int i = 0; i < NB_INTERACTIONS; i++)

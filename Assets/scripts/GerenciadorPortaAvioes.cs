@@ -47,6 +47,9 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     public bool debugLogs = false;
     [Tooltip("Se true, clicar no casco abre o menu. Se false, somente a tecla O controla o menu.")]
     public bool abrirMenuAoCliqueNoNavio = false;
+
+    [HideInInspector]
+    public bool operacoesV2AssumiuControle;
     
     private bool _menuCarrierAtivo = false;
     private bool _elevadorOcupado = false;
@@ -355,7 +358,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 }
             }
         }
-        
+
         if (rampaDecolagem != null)
         {
             _posicaoDefaultRampa = rampaDecolagem.localPosition;
@@ -641,6 +644,37 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             }
         }
 
+        // O V2 mantém este componente ativo somente para o input da tecla O e
+        // para o OnGUI do menu legado. Toda movimentação, taxiamento, elevador
+        // e parentesco físico ficam exclusivamente sob a autoridade do V2.
+        if (operacoesV2AssumiuControle)
+        {
+            if (_menuCarrierAtivo && !GestorMenusExclusivos.EstaAtivo(this))
+            {
+                _menuCarrierAtivo = false;
+            }
+
+            // O V2 assume a movimentacao, mas o radar continua sendo uma
+            // funcao de descoberta do menu. Sem esta leitura, o retorno abaixo
+            // fazia o painel parar de listar aeronaves em voo perto do navio.
+            if (_menuCarrierAtivo && Time.time > _tempoProximoScan)
+            {
+                EscanearAvioesNoAr();
+                EscanearHelicopterosNoAr();
+                _tempoProximoScan = Time.time + 2f;
+            }
+
+            // O menu legado continua sendo apenas a camada visual/input de
+            // compatibilidade. O destino precisa continuar sendo processado
+            // aqui para que clique direito, Enter e Esc cheguem ao V2; as
+            // rotinas antigas de movimento continuam bloqueadas.
+            if (_selecionadoCarrier != null && _selecionadoCarrier.aguardandoCliqueRadar && !_menuCarrierAtivo)
+            {
+                ProcessarOrdemAviaoCarrier();
+            }
+            return;
+        }
+
         if (_menuCarrierAtivo && !GestorMenusExclusivos.EstaAtivo(this))
         {
             _menuCarrierAtivo = false;
@@ -761,7 +795,9 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
         foreach (var av in _bufferScanAvioes)
         {
-            if (av == null || av.aeroportoOrigem == this) continue;
+            if (av == null) continue;
+            bool jaEstaNoPortaAvioes = av.transform == transform || av.transform.IsChildOf(transform);
+            if (jaEstaNoPortaAvioes) continue;
             
             // --- BLOQUEIA AVIÕES INIMIGOS E NEUTROS ---
             int aviaoTime = -1;
@@ -773,11 +809,17 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 if (idIA != null) aviaoTime = idIA.teamID;
             }
             
-            if (aviaoTime != meuTime) continue; // Pula se for de time diferente ou se não tiver time definido (-1)
+            if (aviaoTime >= 0 && meuTime > 0 && aviaoTime != meuTime) continue;
             
-            if (av.estadoAtual == ControleAviao.EstadoAviao.EmMissao || av.estadoAtual == ControleAviao.EstadoAviao.Decolando)
+            bool estaVoando = av.estaEmModoVooFisico
+                || av.estadoAtual == ControleAviao.EstadoAviao.EmMissao
+                || av.estadoAtual == ControleAviao.EstadoAviao.Decolando
+                || av.estadoAtual == ControleAviao.EstadoAviao.Pousando;
+            if (estaVoando && av.transform.parent != transform)
             {
-                float distSqr = (av.transform.position - transform.position).sqrMagnitude;
+                Vector3 delta = av.transform.position - transform.position;
+                delta.y = 0f;
+                float distSqr = delta.sqrMagnitude;
                 if (distSqr < raioRadarResgate * raioRadarResgate) _avioesProximosNoAr.Add(av);
             }
         }
@@ -898,8 +940,17 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 
                 if (GUILayout.Button("⬇️ Autorizar pouso", GUILayout.Width(140), GUILayout.Height(22)))
                 {
-                    av.DefinirBaseAlternativaEIniciarRetorno(this);
-                    _avioesProximosNoAr.RemoveAt(i);
+                    bool pousoSolicitado;
+                    if (operacoesV2AssumiuControle)
+                    {
+                        pousoSolicitado = SolicitarPousoV2(av);
+                    }
+                    else
+                    {
+                        av.DefinirBaseAlternativaEIniciarRetorno(this);
+                        pousoSolicitado = true;
+                    }
+                    if (pousoSolicitado) _avioesProximosNoAr.RemoveAt(i);
                     break;
                 }
                 GUILayout.EndHorizontal();
@@ -1100,7 +1151,10 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     if (GUILayout.Button("🔧 REPARAR E REABASTECER", GUILayout.Height(24)))
                     {
                         vidaAviao.vidaAtual = vidaAviao.vidaMaxima;
-                        ReabastecerAeronaveCarrier(_selecionadoCarrier, true);
+                        if (!SolicitarReabastecimentoV2(_selecionadoCarrier))
+                        {
+                            ReabastecerAeronaveCarrier(_selecionadoCarrier, true);
+                        }
                         LogDebug("[Porta-Aviões] Avião totalmente reparado!");
                     }
                 }
@@ -1360,6 +1414,15 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             else return;
         }
 
+        // Quando o V2 é a autoridade, este menu não pode iniciar a missão
+        // antiga diretamente. O ponto marcado é entregue ao gerenciador V2,
+        // que reserva a catapulta e executa taxiamento, lançamento e missão.
+        if (operacoesV2AssumiuControle)
+        {
+            ProcessarCliqueOrdemRadarV2(pontoAlvo);
+            return;
+        }
+
         // Lógica Especial PATRULHA
         if (_modoOrdemAviao == 1)
         {
@@ -1469,7 +1532,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             }
         }
 
-        if (Input.GetMouseButtonDown(1))
+        // Durante uma ordem aérea, os dois botões do mapa são aceitos. Isso
+        // mantém o fluxo antigo (botão direito) e também permite confirmar o
+        // destino com o clique normal, sem deixar a aeronave parada após o
+        // botão do menu.
+        if (Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(0))
         {
             ProcessarCliqueOrdemRadar();
         }
@@ -1494,6 +1561,20 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     private void EncerrarModoAviaoCarrier()
     {
+        if (operacoesV2AssumiuControle && _selecionadoCarrier != null && _modoOrdemAviao == 1)
+        {
+            if (_rotaPatrulhaAviaoCarrier.Count > 1)
+            {
+                Vector3 destino = _rotaPatrulhaAviaoCarrier[_rotaPatrulhaAviaoCarrier.Count - 1];
+                SolicitarDecolagemV2(_selecionadoCarrier, destino, true);
+            }
+            else
+            {
+                CancelarModoAviaoCarrier();
+                return;
+            }
+        }
+
         if (_selecionadoCarrier != null)
         {
             _selecionadoCarrier.aguardandoCliqueRadar = false;
@@ -1757,6 +1838,82 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         AtualizarModoInteracaoManualAeroporto();
     }
 
+    private GerenciadorOperacoesPortaAvioesV2 ObterOperacoesV2()
+    {
+        return GetComponentInChildren<GerenciadorOperacoesPortaAvioesV2>(true);
+    }
+
+    private bool SolicitarPousoV2(ControleAviao aviao)
+    {
+        if (aviao == null) return false;
+        GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+        if (v2 == null) return false;
+        bool iniciou = v2.TrySolicitarPouso(aviao);
+        if (!iniciou)
+        {
+            Debug.LogWarning($"[PortaAvioesV2] Pouso bloqueado para {aviao.name}: {v2.Registrar(aviao).Registro.motivoFalha}");
+        }
+        return iniciou;
+    }
+
+    private bool SolicitarReabastecimentoV2(ControleAviao aviao)
+    {
+        if (!operacoesV2AssumiuControle || aviao == null) return false;
+        GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+        if (v2 == null) return false;
+        v2.PrepararAeronaveParaMenu(aviao, avioesNoHangar.Contains(aviao));
+        return v2.TrySolicitarReabastecimento(aviao);
+    }
+
+    private bool SolicitarDecolagemV2(ControleAviao aviao, Vector3 destino, bool patrulha)
+    {
+        if (!operacoesV2AssumiuControle || aviao == null) return false;
+        GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+        if (v2 == null) return false;
+        v2.PrepararAeronaveParaMenu(aviao, false);
+        bool iniciou = patrulha
+            ? v2.TrySolicitarPatrulha(aviao, destino)
+            : v2.TrySolicitarDecolagem(aviao, destino);
+        if (iniciou)
+        {
+            CriarSinalizador(destino, aviao);
+            aviao.aguardandoCliqueRadar = false;
+            _selecionadoCarrier = null;
+            _menuCarrierAtivo = false;
+            esperandoCliqueMassa = false;
+            GestorMenusExclusivos.Fechar(this);
+            AtualizarModoInteracaoManualAeroporto();
+        }
+        else
+        {
+            Debug.LogWarning($"[PortaAvioesV2] Decolagem bloqueada para {aviao.name}: {v2.Registrar(aviao).Registro.motivoFalha}");
+        }
+        return iniciou;
+    }
+
+    private void ProcessarCliqueOrdemRadarV2(Vector3 pontoAlvo)
+    {
+        if (_selecionadoCarrier == null) return;
+
+        if (_modoOrdemAviao == 1)
+        {
+            Vector3 pontoPatrulha = pontoAlvo;
+            if (pontoPatrulha.y < 1f) pontoPatrulha.y = _selecionadoCarrier.transform.position.y;
+            if (_rotaPatrulhaAviaoCarrier.Count == 0)
+            {
+                Vector3 pontoInicial = _selecionadoCarrier.transform.position;
+                _rotaPatrulhaAviaoCarrier.Add(pontoInicial);
+            }
+            _rotaPatrulhaAviaoCarrier.Add(pontoPatrulha);
+            CriarSinalizador(pontoPatrulha, _selecionadoCarrier);
+            AtualizarLinhaPatrulhaAviaoCarrier(_rotaPatrulhaAviaoCarrier);
+            LogDebug("[PortaAvioesV2] Ponto de patrulha marcado; pressione Enter para decolar.");
+            return;
+        }
+
+        SolicitarDecolagemV2(_selecionadoCarrier, pontoAlvo, false);
+    }
+
     private Transform ObterVagaHelicopteroCarrier(Helicoptero heli = null)
     {
         if (heli != null)
@@ -1857,11 +2014,29 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
     public void AcionarElevadorParaCima(ControleAviao av)
     {
+        if (operacoesV2AssumiuControle)
+        {
+            GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+            if (v2 != null)
+            {
+                v2.PrepararAeronaveParaMenu(av, true);
+                if (v2.TryTrazerParaConves(av)) return;
+            }
+        }
         if (!_elevadorOcupado) _rotinaElevadorAtiva = StartCoroutine(RotinaElevadorSequencial(av, true));
     }
 
     public void MandarParaOHangar(ControleAviao av)
     {
+        if (operacoesV2AssumiuControle)
+        {
+            GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+            if (v2 != null)
+            {
+                v2.PrepararAeronaveParaMenu(av, false);
+                if (v2.TryEnviarParaHangarInterno(av)) return;
+            }
+        }
         if (!_elevadorOcupado) _rotinaElevadorAtiva = StartCoroutine(RotinaElevadorSequencial(av, false));
     }
 

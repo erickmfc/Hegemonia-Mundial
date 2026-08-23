@@ -257,6 +257,11 @@ public class ControleAviao : MonoBehaviour
 
     void OnDisable()
     {
+        // Toda rota de taxi/decolagem/pouso pertence à aeronave. Ao desativar
+        // a unidade, não deixe uma coroutine continuar usando waypoints ou
+        // vagas que já podem ter sido destruídos.
+        StopAllCoroutines();
+        rotinaRetomadaMissao = null;
         RegistroEntidadesJogo.Unregister(this);
     }
 
@@ -447,7 +452,17 @@ public class ControleAviao : MonoBehaviour
 
         while (true)
         {
+            if (this == null || gameObject == null || !gameObject.activeInHierarchy || !isActiveAndEnabled)
+            {
+                yield break;
+            }
+
             if (alvoMovelFornecido && alvoMovel == null) break; // O alvo (ex: vaga ou aeroporto) foi destruído no caminho
+
+            if (pai != null && (pai.gameObject == null || !pai.gameObject.activeInHierarchy))
+            {
+                yield break;
+            }
 
             if (!PodeIgnorarFaltaDeCombustivel() && !CombustivelUnidade.PodeOperarObjeto(gameObject))
             {
@@ -819,6 +834,42 @@ public class ControleAviao : MonoBehaviour
             sentidoOrbita = UnityEngine.Random.value >= 0.5f ? 1 : -1;
             StartCoroutine(SequenciaDeVooEPouso());
         }
+    }
+
+    /// <summary>
+    /// Recebe a aeronave depois que um gerenciador de porta-aviões já concluiu
+    /// o taxiamento, alinhamento e lançamento. Este caminho não pode chamar
+    /// SequenciaDeVooEPouso(), pois essa coroutine começa uma segunda
+    /// decolagem e reutiliza os waypoints legados do navio.
+    /// </summary>
+    public void AssumirVooAposDecolagem(Vector3 destino)
+    {
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
+        {
+            return;
+        }
+
+        if (!PodeIgnorarFaltaDeCombustivel() && !CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            PararPorFaltaDeCombustivel();
+            return;
+        }
+
+        StopAllCoroutines();
+        ordemParaRetorno = false;
+        retornoAutomaticoAposChegadaCentro = false;
+        emAtaqueMergulho = false;
+        alvoPrioritarioIA = false;
+        indiceRetanguloPatrulha = 0;
+
+        float altitudeSegura = Mathf.Max(altitudeVoo, 60f);
+        destino.y = Mathf.Max(destino.y, altitudeSegura);
+        alvoGPSVoo = destino;
+        centroDaPatrulha = destino;
+        alvoEstrategico = destino;
+        velocidadeVooAtual = Mathf.Max(velocidadeVooAtual, velocidadeMaximaVoo * 0.55f);
+        estaEmModoVooFisico = true;
+        DefinirEstado(EstadoAviao.EmMissao);
     }
 
     /// <summary>

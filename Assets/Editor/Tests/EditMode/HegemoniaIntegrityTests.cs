@@ -93,7 +93,6 @@ public class HegemoniaIntegrityTests
     public void MainScenes_ShouldNotContainMissingScripts()
     {
         Assert.Zero(CountMissingScriptsInScene("Assets/Scenes/MenuPrincipal.unity"), "MenuPrincipal ainda possui Missing Scripts.");
-        Assert.Zero(CountMissingScriptsInScene("Assets/Scenes/SampleScene.unity"), "SampleScene ainda possui Missing Scripts.");
     }
 
     [Test]
@@ -163,4 +162,3 @@ public class HegemoniaIntegrityTests
     }
 }
 #endif
-

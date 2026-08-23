@@ -26,6 +26,7 @@ namespace Hegemonia.AI.Sovereign
         private readonly List<Order> _pending = new List<Order>(64);
         private readonly HashSet<string> _dedupInQueue = new HashSet<string>();
         private readonly Dictionary<string, float> _cooldownUntil = new Dictionary<string, float>();
+        private readonly Dictionary<string, int> _failureStreak = new Dictionary<string, int>();
 
         public int PendingCount => _pending.Count;
 
@@ -81,14 +82,39 @@ namespace Hegemonia.AI.Sovereign
 
         public void Complete(Order order, bool success, float now)
         {
+            Complete(order, success, now, string.Empty);
+        }
+
+        public void Complete(Order order, bool success, float now, string reason)
+        {
             if (order == null || string.IsNullOrEmpty(order.DedupKey))
             {
                 return;
             }
 
-            if (success && order.CooldownSeconds > 0f)
+            if (success)
             {
-                _cooldownUntil[order.DedupKey] = now + Mathf.Max(0.1f, order.CooldownSeconds);
+                _failureStreak.Remove(order.DedupKey);
+                if (order.CooldownSeconds > 0f)
+                {
+                    _cooldownUntil[order.DedupKey] = now + Mathf.Max(0.1f, order.CooldownSeconds);
+                }
+            }
+            else if (!success)
+            {
+                _failureStreak.TryGetValue(order.DedupKey, out int streak);
+                streak = Mathf.Min(8, streak + 1);
+                _failureStreak[order.DedupKey] = streak;
+
+                float baseCooldown = Mathf.Max(8f, order.CooldownSeconds);
+                if (!string.IsNullOrEmpty(reason)
+                    && reason.IndexOf("territorio", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    baseCooldown = Mathf.Max(baseCooldown, 12f);
+                }
+
+                float retryCooldown = baseCooldown * Mathf.Pow(2f, Mathf.Min(3, streak - 1));
+                _cooldownUntil[order.DedupKey] = now + Mathf.Min(60f, retryCooldown);
             }
         }
 

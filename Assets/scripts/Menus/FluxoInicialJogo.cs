@@ -49,6 +49,11 @@ public static class FluxoInicialJogo
 
     private static void AoCarregarCena(Scene cena, LoadSceneMode modo)
     {
+        if (EhCenaDeTestePlayMode(cena))
+        {
+            return;
+        }
+
         if (ConfiguracaoCenasJogo.EhCenaDeMenu(cena.name))
         {
             if (Object.FindFirstObjectByType<MenuInicialController>() == null)
@@ -164,5 +169,12 @@ public static class FluxoInicialJogo
 
         cenaAutorizada = null;
         return true;
+    }
+
+    private static bool EhCenaDeTestePlayMode(Scene cena)
+    {
+        string caminho = cena.path != null ? cena.path.Replace('\\', '/') : string.Empty;
+        return caminho.StartsWith("Assets/Tests/PlayMode/", System.StringComparison.OrdinalIgnoreCase)
+            || caminho.StartsWith("Assets/InitTestScene", System.StringComparison.OrdinalIgnoreCase);
     }
 }

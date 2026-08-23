@@ -1304,6 +1304,30 @@ public class ControleSubmarino : MonoBehaviour
         }
 
         destino.y = ResolverNivelAgua();
+
+        ControleUnidade controleUnidade = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
+        bool ordemCentralAtiva = controleUnidade != null
+            && controleUnidade.PossuiOrdemMovimentoAtiva
+            && controleUnidade.OrdemMovimentoAtual != null
+            && controleUnidade.OrdemMovimentoAtual.Dono == nameof(ControleUnidade)
+            && Vector3.Distance(controleUnidade.OrdemMovimentoAtual.Destino, destino) <= 0.01f;
+        if (!ordemCentralAtiva && controleUnidade != null)
+        {
+            string idOrdem = controleUnidade.ObterOuCriarIdOrdemMovimento(
+                "submarino",
+                destino,
+                TipoOrdemMovimento.Naval);
+            if (!controleUnidade.RegistrarOrdemMovimentoExterna(
+                    idOrdem,
+                    nameof(ControleSubmarino),
+                    destino,
+                    TipoOrdemMovimento.Naval))
+            {
+                return;
+            }
+        }
+
         destinoFallback = destino;
         temDestinoFallback = true;
 

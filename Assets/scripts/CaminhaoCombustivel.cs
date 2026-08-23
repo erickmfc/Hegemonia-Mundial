@@ -37,6 +37,7 @@ public class CaminhaoCombustivel : MonoBehaviour
     private NavMeshAgent agente;
     private ControleUnidade controleUnidade; // Para impedir conflitos se o jogador mandar ele mover
     private IdentidadeUnidade identidade;
+    private Coroutine rotinaPrincipal;
 
     // LineRenderer opcional para a mangueira
     private LineRenderer linhaAbastecimento;
@@ -74,7 +75,23 @@ public class CaminhaoCombustivel : MonoBehaviour
 
     void OnEnable()
     {
-        StartCoroutine(RotinaPrincipal());
+        if (rotinaPrincipal != null) StopCoroutine(rotinaPrincipal);
+        rotinaPrincipal = StartCoroutine(RotinaPrincipal());
+    }
+
+    void OnDisable()
+    {
+        if (rotinaPrincipal != null)
+        {
+            StopCoroutine(rotinaPrincipal);
+            rotinaPrincipal = null;
+        }
+
+        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            agente.ResetPath();
+            agente.isStopped = true;
+        }
     }
 
     private IEnumerator RotinaPrincipal()
@@ -82,6 +99,11 @@ public class CaminhaoCombustivel : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(1f);
+
+            if (!isActiveAndEnabled || gameObject == null || !gameObject.activeInHierarchy)
+            {
+                yield break;
+            }
             
             if (identidade != null && identidade.teamID != 1) continue; // Só time 1 
             if (!AbastecimentoAutomaticoGlobal) continue; // Se o botão no menu do quartel não estiver ativo
@@ -349,6 +371,21 @@ public class CaminhaoCombustivel : MonoBehaviour
     {
         if (agente == null || !agente.enabled || !agente.isOnNavMesh)
         {
+            return;
+        }
+
+        if (controleUnidade != null)
+        {
+            int alvoId = alvoUnidade != null
+                ? alvoUnidade.GetInstanceID()
+                : (alvoRecargaBase != null ? alvoRecargaBase.GetInstanceID() : 0);
+            string idOrdem = "logistica:" + GetInstanceID() + ":" + estadoAtual + ":" + alvoId;
+            controleUnidade.EmitirOrdemMovimento(
+                destino,
+                nameof(CaminhaoCombustivel),
+                TipoOrdemMovimento.Logistica,
+                false,
+                idOrdem);
             return;
         }
 

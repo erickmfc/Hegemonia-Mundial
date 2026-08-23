@@ -874,14 +874,16 @@ public class LancadorNaval : MonoBehaviour
 
         // Cria o projétil (míssil ou torpedo)
         Vector3 alvoFinal = alvoFixo != null ? alvoFixo.position : destino;
-        Quaternion rotacaoDisparo = pontoDeSaida.rotation;
-        Vector3 direcaoDisparo = alvoFinal - pontoDeSaida.position;
-        if (direcaoDisparo.sqrMagnitude > 0.01f)
-        {
-            rotacaoDisparo = Quaternion.LookRotation(direcaoDisparo.normalized, Vector3.up);
-        }
 
-        GameObject misselObj = PoolDeObjetosCombate.Spawn(prefabASpawnar, pontoDeSaida.position, rotacaoDisparo);
+        // O ponto de saída é a autoridade da orientação inicial. O míssil
+        // naval pode ser vertical (VLS) ou horizontal (tubo/lançador) e o
+        // próprio projétil assume a navegação depois do lançamento. Mirar o
+        // alvo aqui ignorava a rotação configurada no prefab e fazia o corpo
+        // nascer deitado antes de começar a subir.
+        GameObject misselObj = PoolDeObjetosCombate.Spawn(
+            prefabASpawnar,
+            pontoDeSaida.position,
+            pontoDeSaida.rotation);
         if (misselObj == null)
         {
             if (prefabASpawnar == prefabTorpedo) torpedosTotal++;

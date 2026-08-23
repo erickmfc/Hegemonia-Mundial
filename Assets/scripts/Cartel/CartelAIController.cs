@@ -101,6 +101,8 @@ namespace Hegemonia.Cartel
         [Min(1)] public int MaxGroundVehiclesPerBase = 16;
         [Min(1)] public int MaxMaritimeMembersPerBase = 32;
         [Min(1)] public int MaxBoatsPerBase = 16;
+        [Tooltip("Quantidade maxima de unidades criadas por ciclo de decisao. Mantem a mesma frota, mas evita um pico de Instantiate.")]
+        [Min(1)] public int MaxSpawnsPerDecision = 1;
         [Min(0.5f)] public float AttackDuration = 18f;
         [Min(0f)] public float ThreatRadius = 180f;
 
@@ -181,8 +183,11 @@ namespace Hegemonia.Cartel
             public float Cargo;
             public float Deadline;
             public ControleNavioRealista NavalController;
+            public string NavalOrderId;
             public Vector3 LastNavalDestination;
             public float NextNavalOrderTime;
+            public float NextThreatCheckTime;
+            public bool ThreatNearCache;
             public readonly List<GameObject> Members = new List<GameObject>();
         }
 
@@ -191,6 +196,7 @@ namespace Hegemonia.Cartel
         private readonly List<CartelBaseRuntime> bases = new List<CartelBaseRuntime>();
         private readonly List<NavioPetroleiro> tankerCache = new List<NavioPetroleiro>();
         private readonly List<PlataformaOffshore> platformCache = new List<PlataformaOffshore>();
+        private readonly Dictionary<int, float> cartelOrderRetryBlockedUntil = new Dictionary<int, float>();
         private readonly Collider[] threatOverlapBuffer = new Collider[256];
         private CartelOperation maritimeOperation;
         private CartelOperation terrestrialOperation;
@@ -789,45 +795,26 @@ namespace Hegemonia.Cartel
             bool maritimeMembersComplete = Prefabs == null || Prefabs.MaritimeMemberPrefab == null;
             bool boatsComplete = Prefabs == null || Prefabs.PirateBoatPrefab == null;
 
-            for (int i = 0; i < groundMembers
-                && runtime.GroundMembers.Count < MaxGroundMembersPerBase
-                && CountAliveUnits(groundMembers: true, groundVehicles: false, maritimeMembers: false, boats: false) < MaxTotalGroundMembers; i++)
-            {
-                GameObject unit = SpawnUnit(Prefabs == null ? null : Prefabs.GroundMemberPrefab,
-                    runtime.GroundSpawn, runtime, "CartelTerrestre");
-                if (unit != null) runtime.GroundMembers.Add(unit);
-            }
+            int spawnBudget = Mathf.Max(1, MaxSpawnsPerDecision);
+            SpawnMissingUnits(runtime, runtime.GroundMembers, groundMembers,
+                Prefabs == null ? null : Prefabs.GroundMemberPrefab,
+                runtime.GroundSpawn, "CartelTerrestre", MaxGroundMembersPerBase,
+                true, false, false, false, MaxTotalGroundMembers, ref spawnBudget);
 
-            for (int i = 0; i < groundVehicles
-                && runtime.GroundVehicles.Count < MaxGroundVehiclesPerBase
-                && CountAliveUnits(groundMembers: false, groundVehicles: true, maritimeMembers: false, boats: false) < MaxTotalGroundVehicles; i++)
-            {
-                bool useSecondary = CartelLevel >= MinimumLevelForSecondaryVehicle && (i % 2 == 1);
-                GameObject groundPrefab = useSecondary && Prefabs != null && Prefabs.GroundVehiclePrefabSecondary != null
-                    ? Prefabs.GroundVehiclePrefabSecondary
-                    : (Prefabs == null ? null : Prefabs.GroundVehiclePrefab);
-                GameObject unit = SpawnUnit(groundPrefab,
-                    runtime.GroundSpawn, runtime, "CartelVeiculo");
-                if (unit != null) runtime.GroundVehicles.Add(unit);
-            }
+            SpawnMissingUnits(runtime, runtime.GroundVehicles, groundVehicles,
+                Prefabs == null ? null : Prefabs.GroundVehiclePrefab,
+                runtime.GroundSpawn, "CartelVeiculo", MaxGroundVehiclesPerBase,
+                false, true, false, false, MaxTotalGroundVehicles, ref spawnBudget);
 
-            for (int i = 0; i < maritimeMembers
-                && runtime.MaritimeMembers.Count < MaxMaritimeMembersPerBase
-                && CountAliveUnits(groundMembers: false, groundVehicles: false, maritimeMembers: true, boats: false) < MaxTotalMaritimeMembers; i++)
-            {
-                GameObject unit = SpawnUnit(Prefabs == null ? null : Prefabs.MaritimeMemberPrefab,
-                    runtime.MaritimeSpawn, runtime, "CartelMaritimo");
-                if (unit != null) runtime.MaritimeMembers.Add(unit);
-            }
+            SpawnMissingUnits(runtime, runtime.MaritimeMembers, maritimeMembers,
+                Prefabs == null ? null : Prefabs.MaritimeMemberPrefab,
+                runtime.MaritimeSpawn, "CartelMaritimo", MaxMaritimeMembersPerBase,
+                false, false, true, false, MaxTotalMaritimeMembers, ref spawnBudget);
 
-            for (int i = 0; i < boats
-                && runtime.Boats.Count < MaxBoatsPerBase
-                && CountAliveUnits(groundMembers: false, groundVehicles: false, maritimeMembers: false, boats: true) < MaxTotalBoats; i++)
-            {
-                GameObject unit = SpawnUnit(Prefabs == null ? null : Prefabs.PirateBoatPrefab,
-                    runtime.MaritimeSpawn, runtime, "CartelBarco");
-                if (unit != null) runtime.Boats.Add(unit);
-            }
+            SpawnMissingUnits(runtime, runtime.Boats, boats,
+                Prefabs == null ? null : Prefabs.PirateBoatPrefab,
+                runtime.MaritimeSpawn, "CartelBarco", MaxBoatsPerBase,
+                false, false, false, true, MaxTotalBoats, ref spawnBudget);
 
             groundMembersComplete = Prefabs == null || Prefabs.GroundMemberPrefab == null
                 || runtime.GroundMembers.Count >= groundMembers;
@@ -858,6 +845,68 @@ namespace Hegemonia.Cartel
             {
                 StatusDebug = "Cartel aguardando terreno/NavMesh para concluir as unidades iniciais.";
             }
+        }
+
+        private void SpawnMissingUnits(
+            CartelBaseRuntime runtime,
+            List<GameObject> destination,
+            int desired,
+            GameObject prefab,
+            CartelManualCreate spawn,
+            string label,
+            int perBaseLimit,
+            bool groundMembers,
+            bool groundVehicles,
+            bool maritimeMembers,
+            bool boats,
+            int globalLimit,
+            ref int spawnBudget)
+        {
+            if (runtime == null || destination == null || prefab == null || spawnBudget <= 0)
+            {
+                return;
+            }
+
+            int target = Mathf.Min(Mathf.Max(0, desired), Mathf.Max(0, perBaseLimit));
+            while (spawnBudget > 0
+                && destination.Count < target
+                && CountAliveUnits(groundMembers, groundVehicles, maritimeMembers, boats) < Mathf.Max(0, globalLimit))
+            {
+                GameObject prefabAtual = prefab;
+                if (label.IndexOf("Veiculo", StringComparison.OrdinalIgnoreCase) >= 0
+                    && CartelLevel >= MinimumLevelForSecondaryVehicle
+                    && (destination.Count % 2 == 1)
+                    && Prefabs != null
+                    && Prefabs.GroundVehiclePrefabSecondary != null)
+                {
+                    prefabAtual = Prefabs.GroundVehiclePrefabSecondary;
+                }
+
+                GameObject unit = SpawnUnitMeasured(prefabAtual, spawn, runtime, label);
+                if (unit == null)
+                {
+                    // Nao repetir o mesmo Instantiate durante este ciclo se
+                    // o Create ainda estiver sem NavMesh ou sem vaga.
+                    break;
+                }
+
+                destination.Add(unit);
+                spawnBudget--;
+            }
+        }
+
+        private GameObject SpawnUnitMeasured(GameObject prefab, CartelManualCreate spawn, CartelBaseRuntime runtime, string label)
+        {
+            bool measuring = DiagnosticoDesempenhoJogo.CapturaAtiva;
+            float startedAt = measuring ? Time.realtimeSinceStartup : 0f;
+            GameObject unit = SpawnUnit(prefab, spawn, runtime, label);
+            if (measuring)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(
+                    "cartel_spawn_ms",
+                    (Time.realtimeSinceStartup - startedAt) * 1000f);
+            }
+            return unit;
         }
 
         private void CriarReforcosPeriodicos()
@@ -1142,7 +1191,7 @@ namespace Hegemonia.Cartel
 
                 case CartelOperationPhase.Patrol:
                     DefinirAlvoDeTiro(op.Unit, null);
-                    if (HasThreatNear(op.Unit))
+                    if (HasThreatNear(op))
                     {
                         SetMaritimeEscape(op);
                         break;
@@ -1245,7 +1294,7 @@ namespace Hegemonia.Cartel
                     break;
 
                 case CartelOperationPhase.IslandArrival:
-                    if (HasThreatNear(op.Unit))
+                    if (HasThreatNear(op))
                     {
                         op.CurrentPoint = FindSafeIslandArrival(op.Base.CountryId, op.Unit.transform.position);
                     }
@@ -1321,7 +1370,8 @@ namespace Hegemonia.Cartel
                 Base = baseRuntime,
                 CurrentPoint = exit,
                 Phase = exit != null ? CartelOperationPhase.LeaveBase : CartelOperationPhase.Patrol,
-                NavalController = boat.GetComponent<ControleNavioRealista>()
+                NavalController = boat.GetComponent<ControleNavioRealista>(),
+                NavalOrderId = "cartel:naval:" + GetInstanceID() + ":" + boat.GetInstanceID()
             };
 
             // Um Create de saida melhora a rota, mas sua ausencia nao pode
@@ -1416,7 +1466,7 @@ namespace Hegemonia.Cartel
                     break;
 
                 case CartelOperationPhase.CoastalMeeting:
-                    if (HasThreatNear(op.Unit))
+                    if (HasThreatNear(op))
                     {
                         op.CurrentPoint = FindNearestCreate(CartelCreateType.CartelTerrestrialEscapeCreate, op.Unit.transform.position, op.Base.CountryId);
                         if (op.CurrentPoint != null) op.Phase = CartelOperationPhase.Escape;
@@ -1461,7 +1511,7 @@ namespace Hegemonia.Cartel
                     break;
 
                 case CartelOperationPhase.Escape:
-                    if (HasThreatNear(op.Unit))
+                    if (HasThreatNear(op))
                     {
                         CartelManualCreate hide = FindNearestCreate(CartelCreateType.CartelTerrestrialHideCreate, op.Unit.transform.position, op.Base.CountryId);
                         if (hide != null) op.CurrentPoint = hide;
@@ -1767,7 +1817,7 @@ namespace Hegemonia.Cartel
 
             if (op.NavalController != null)
             {
-                op.NavalController.DefinirDestino(destino);
+                op.NavalController.DefinirDestino(destino, op.NavalOrderId);
             }
             else
             {
@@ -1780,18 +1830,23 @@ namespace Hegemonia.Cartel
             op.NextNavalOrderTime = Time.time + Mathf.Max(0.2f, MaritimeOrderInterval);
         }
 
-        private void SendToPosition(GameObject unit, Vector3 position, bool naval)
+        private bool SendToPosition(GameObject unit, Vector3 position, bool naval)
         {
-            if (unit == null) return;
+            if (unit == null) return false;
             if (naval)
             {
                 NavegacaoInteligenteNaval navalNavigation = unit.GetComponent<NavegacaoInteligenteNaval>();
-                if (navalNavigation != null) { navalNavigation.DefinirDestino(position); return; }
+                if (navalNavigation != null) { navalNavigation.DefinirDestino(position); return true; }
             }
 
             ControleUnidade control = unit.GetComponent<ControleUnidade>();
             if (control != null)
             {
+                if (!PodeReemitirOrdemCartel(control))
+                {
+                    return false;
+                }
+
                 NavMeshAgent agenteTerrestre = unit.GetComponentInChildren<NavMeshAgent>(true);
                 if (agenteTerrestre != null
                     && (!agenteTerrestre.enabled || !agenteTerrestre.isOnNavMesh))
@@ -1799,15 +1854,84 @@ namespace Hegemonia.Cartel
                     // A unidade ainda nao tem uma ancoragem terrestre valida.
                     // Nao encaminhe a ordem para ControleUnidade, que tentaria
                     // reativar o agente fora da malha e geraria spam de erro.
-                    return;
+                    RegistrarFalhaOrdemCartel("NavMesh indisponivel");
+                    return false;
                 }
-                control.EmitirOrdemMover(position);
-                return;
+                bool aceitou = control.EmitirOrdemMover(position);
+                if (!aceitou)
+                {
+                    BloquearReemissaoCartel(control, 5f);
+                    RegistrarFalhaOrdemCartel("executor recusou a ordem");
+                }
+                else
+                {
+                    cartelOrderRetryBlockedUntil.Remove(control.GetInstanceID());
+                }
+                return aceitou;
             }
 
             // O movimento terrestre precisa passar pela trilha oficial do projeto
             // (ControleUnidade). Nao usar NavMeshAgent.SetDestination diretamente,
             // pois isso conflita com a auditoria e com o controle das outras IAs.
+            RegistrarFalhaOrdemCartel("executor ausente");
+            return false;
+        }
+
+        private void RegistrarFalhaOrdemCartel(string motivo)
+        {
+            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("cartel_order_failures");
+            if (!DiagnosticoDesempenhoJogo.CapturaAtiva)
+            {
+                return;
+            }
+
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "CartelOrdemFalhou",
+                string.IsNullOrEmpty(motivo) ? "ordem recusada" : motivo);
+        }
+
+        private bool PodeReemitirOrdemCartel(ControleUnidade control)
+        {
+            if (control == null)
+            {
+                return false;
+            }
+
+            int instanceId = control.GetInstanceID();
+            if (cartelOrderRetryBlockedUntil.TryGetValue(instanceId, out float bloqueadaAte))
+            {
+                if (Time.unscaledTime < bloqueadaAte)
+                {
+                    return false;
+                }
+
+                cartelOrderRetryBlockedUntil.Remove(instanceId);
+            }
+
+            OrdemMovimento ordem = control.OrdemMovimentoAtual;
+            if (ordem != null
+                && (ordem.Estado == EstadoOrdemMovimento.EsperandoNovaTentativa
+                    || ordem.Estado == EstadoOrdemMovimento.Falhou
+                    || ordem.Estado == EstadoOrdemMovimento.Recalculando)
+                && !string.IsNullOrEmpty(ordem.MotivoFalhaOuCancelamento)
+                && ordem.MotivoFalhaOuCancelamento.IndexOf("NavMesh", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                BloquearReemissaoCartel(control, 5f);
+                RegistrarFalhaOrdemCartel("NavMesh sem rota; nova tentativa adiada");
+                return false;
+            }
+
+            return true;
+        }
+
+        private void BloquearReemissaoCartel(ControleUnidade control, float segundos)
+        {
+            if (control == null)
+            {
+                return;
+            }
+
+            cartelOrderRetryBlockedUntil[control.GetInstanceID()] = Time.unscaledTime + Mathf.Max(1f, segundos);
         }
 
         private static void DefinirAlvoDeTiro(GameObject unit, Transform target)
@@ -1983,6 +2107,24 @@ namespace Hegemonia.Cartel
                 return true;
             }
             return false;
+        }
+
+        private bool HasThreatNear(CartelOperation operation)
+        {
+            if (operation == null || operation.Unit == null)
+            {
+                return false;
+            }
+
+            float interval = operation.Naval ? 0.75f : 1.25f;
+            if (Time.time < operation.NextThreatCheckTime)
+            {
+                return operation.ThreatNearCache;
+            }
+
+            operation.ThreatNearCache = HasThreatNear(operation.Unit);
+            operation.NextThreatCheckTime = Time.time + interval;
+            return operation.ThreatNearCache;
         }
 
         private int ObterDiaAtualCartel()

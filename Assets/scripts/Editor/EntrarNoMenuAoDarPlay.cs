@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -46,6 +47,13 @@ internal static class EntrarNoMenuAoDarPlay
         }
 
         Scene cenaAtual = SceneManager.GetActiveScene();
+        if (EhCenaDeBootstrapDeTeste(cenaAtual))
+        {
+            caminhoCenaAntesDoPlay = null;
+            SessionState.EraseString(ChaveCenaAntesDoPlay);
+            return;
+        }
+
         if (ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtual.name))
         {
             caminhoCenaAntesDoPlay = null;
@@ -112,6 +120,13 @@ internal static class EntrarNoMenuAoDarPlay
 
         caminhoCenaAntesDoPlay = null;
         SessionState.EraseString(ChaveCenaAntesDoPlay);
+    }
+
+    private static bool EhCenaDeBootstrapDeTeste(Scene cena)
+    {
+        string caminho = cena.path != null ? cena.path.Replace('\\', '/') : string.Empty;
+        return caminho.StartsWith("Assets/Tests/PlayMode/", StringComparison.OrdinalIgnoreCase)
+            || caminho.StartsWith("Assets/InitTestScene", StringComparison.OrdinalIgnoreCase);
     }
 }
 #endif

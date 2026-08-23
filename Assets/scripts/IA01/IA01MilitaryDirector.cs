@@ -20,7 +20,7 @@ namespace Hegemonia.AI.IA01
         private float nextTickAt;
         private float nextPatrolAt;
         private int lastNavalPatrolDay = -1;
-        private int lastAirPatrolDay = -1;
+
         private float nextAirPatrolScanAt;
         private int issuedFighters;
         private int issuedNaval;
@@ -59,7 +59,7 @@ namespace Hegemonia.AI.IA01
         private const float FighterOrderTimeoutSeconds = 90f;
         // Os eventos continuam no diagnostico; logs detalhados no Console so
         // devem ser ligados enquanto se investiga uma patrulha especifica.
-        private const bool EmitirLogsDetalhadosDePatrulha = false;
+        private bool EmitirLogsDetalhadosDePatrulha = false;
 
         public string Status => status;
 
@@ -940,28 +940,29 @@ namespace Hegemonia.AI.IA01
             }
 
             catalog.Clear();
-            if (MenuConstrucao.catalogoGlobal != null)
+            IReadOnlyList<DadosConstrucao> configuredMilitary = controller != null
+                ? controller.FichasMilitaresPermitidas
+                : null;
+
+            if (configuredMilitary != null && configuredMilitary.Count > 0)
             {
-                for (int i = 0; i < MenuConstrucao.catalogoGlobal.Count; i++)
-                    AddCandidate(MenuConstrucao.catalogoGlobal[i]);
+                for (int i = 0; i < configuredMilitary.Count; i++)
+                    AddCandidate(configuredMilitary[i], configuredMilitary);
             }
-
-            DadosConstrucao[] resources = Resources.LoadAll<DadosConstrucao>(string.Empty);
-            for (int i = 0; i < resources.Length; i++)
-                AddCandidate(resources[i]);
-
-            // Nem todas as fichas militares estão dentro de uma pasta Resources.
-            // O menu pode ainda não ter sido aberto quando a IA faz sua primeira
-            // reserva; inclua também os assets já carregados pelo projeto para que
-            // os tanques não desapareçam do catálogo de produção.
-            DadosConstrucao[] assetsCarregados = Resources.FindObjectsOfTypeAll<DadosConstrucao>();
-            for (int i = 0; i < assetsCarregados.Length; i++)
-                AddCandidate(assetsCarregados[i]);
+            else if (MenuConstrucao.catalogoGlobal != null)
+            {
+                // Controllers criados em runtime não têm referências
+                // serializadas. Ainda assim, só aceitam os IDs da política
+                // padrão; o catálogo global não é expandido por Resources.
+                for (int i = 0; i < MenuConstrucao.catalogoGlobal.Count; i++)
+                    AddCandidate(MenuConstrucao.catalogoGlobal[i], null);
+            }
         }
 
-        private void AddCandidate(DadosConstrucao item)
+        private void AddCandidate(DadosConstrucao item, IReadOnlyList<DadosConstrucao> configuredMilitary)
         {
             if (item == null || catalog.Contains(item)) return;
+            if (!IA01MilitaryCatalogPolicy.IsAllowed(item, configuredMilitary)) return;
             try
             {
                 GameObject prefab;
@@ -1350,7 +1351,8 @@ namespace Hegemonia.AI.IA01
             // aeroporto da IA, nunca em ponto genérico do mapa.
             GameObject fallback = item != null ? item.PrefabDaUnidade : null;
             if (!IsUsableAircraftPrefab(fallback) && controller != null) fallback = controller.FighterPrefab;
-            if (!IsUsableAircraftPrefab(fallback))
+            if (!IsUsableAircraftPrefab(fallback)
+                || !IA01MilitaryCatalogPolicy.IsAllowedPrefab(fallback, controller != null ? controller.FichasMilitaresPermitidas : null))
             {
                 status = "Reserva militar sem prefab de caca valido.";
                 return false;
@@ -1391,7 +1393,8 @@ namespace Hegemonia.AI.IA01
                 if (!IsUsableAircraftPrefab(aeronave))
                     aeronave = fallback;
 
-                if (IsUsableAircraftPrefab(aeronave))
+                if (IsUsableAircraftPrefab(aeronave)
+                    && IA01MilitaryCatalogPolicy.IsAllowedPrefab(aeronave, controller != null ? controller.FichasMilitaresPermitidas : null))
                 {
                     aeroportoProprio.ComprarAviaoIAImediato(aeronave, orderId);
                     issuedFighters++;
@@ -1579,13 +1582,16 @@ namespace Hegemonia.AI.IA01
 
         private DadosConstrucao FindStructureBlueprint(params string[] tokens)
         {
-            DadosConstrucao[] loaded = UnityEngine.Resources.FindObjectsOfTypeAll<DadosConstrucao>();
-            for (int i = 0; i < loaded.Length; i++)
+            IReadOnlyList<DadosConstrucao> configured = controller != null ? controller.FichasDeConstrucao : null;
+            if (configured != null)
             {
-                DadosConstrucao candidate = loaded[i];
-                if (candidate == null || candidate.PrefabDaUnidade == null) continue;
-                if (Contains(candidate, tokens)) return candidate;
+                for (int i = 0; i < configured.Count; i++)
+                {
+                    DadosConstrucao candidate = configured[i];
+                    if (candidate != null && candidate.PrefabDaUnidade != null && Contains(candidate, tokens)) return candidate;
+                }
             }
+
             if (MenuConstrucao.catalogoGlobal != null)
             {
                 for (int i = 0; i < MenuConstrucao.catalogoGlobal.Count; i++)

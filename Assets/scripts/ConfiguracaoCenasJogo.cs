@@ -9,8 +9,10 @@ public static class ConfiguracaoCenasJogo
     // Esta e a cena de trabalho da campanha. Ela e a mesma que o projeto
     // carrega no Play e na build, evitando que ajustes sejam feitos em uma
     // copia que nunca entra no jogo.
-    public const string CaminhoCenaCampanhaCanonica = "Assets/_Recovery/cena19).unity";
-    public const string CenaTutorialCanonica = "teste";
+    public const string CaminhoCenaCampanhaCanonica = "Assets/Scenes/cena19).unity";
+    // Demo1 e a cena de tutorial atualmente validada no projeto.
+    public const string CenaTutorialCanonica = "demo1";
+    public const string CaminhoCenaTutorialCanonica = "Assets/_Recovery/demo1.unity";
 
     private static readonly string[] aliasesMenuPrincipal =
     {
@@ -29,6 +31,7 @@ public static class ConfiguracaoCenasJogo
     private static readonly string[] aliasesTutorial =
     {
         CenaTutorialCanonica,
+        CaminhoCenaTutorialCanonica,
         "Assets/_Recovery/teste.unity",
         "Assets/Scenes/Tutorial Coast Scene Final.unity",
         "tutorial",

@@ -235,10 +235,14 @@ public class CameraController : MonoBehaviour
         cameraPrincipal.fieldOfView = Mathf.Lerp(campoDeVisaoMin, campoDeVisaoMax, tAltura);
 
         float distanciaMinima = Mathf.Max(1000f, distanciaMinimaRender);
-        float distanciaMaxima = Mathf.Max(distanciaMinima, distanciaMaximaRender);
+        float distanciaMaximaConfigurada = Mathf.Max(distanciaMinima, distanciaMaximaRender);
         float multiplicador = Mathf.Max(1f, multiplicadorDistanciaRender);
         float distanciaPorAltura = altura * multiplicador;
         float distanciaDasSuperficies = CalcularRecorteDasSuperficies();
+        // A configuração histórica de 14 km não pode cortar um tile ativo.
+        // O recorte continua limitado pelo mapa real, sem alterar a posição
+        // da câmera ou a estratégia de navegação.
+        float distanciaMaxima = Mathf.Max(distanciaMaximaConfigurada, distanciaDasSuperficies);
         cameraPrincipal.farClipPlane = Mathf.Clamp(
             Mathf.Max(distanciaPorAltura, distanciaDasSuperficies),
             distanciaMinima,
@@ -258,7 +262,11 @@ public class CameraController : MonoBehaviour
 
         foreach (Terrain terreno in terrenos)
         {
-            if (terreno == null || !terreno.gameObject.activeInHierarchy || !terreno.enabled || EhTerrenoAuxiliarInimigo(terreno))
+            // Todos os terrenos ativos da cena canônica fazem parte do mapa
+            // visível. O inicializador de superfícies mantém inclusive os
+            // terrenos auxiliares disponíveis para renderização; ignorá-los
+            // aqui reduz o far clip e faz a área da direita desaparecer.
+            if (terreno == null || !terreno.gameObject.activeInHierarchy || !terreno.enabled)
             {
                 continue;
             }

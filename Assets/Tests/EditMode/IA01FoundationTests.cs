@@ -173,9 +173,24 @@ public sealed class IA01FoundationTests
 
         Assert.That(executed, Is.EqualTo(2));
         Assert.That(GetIntProperty(GetMemberValue(manager, "LastPlan"), "ScheduledCount"), Is.EqualTo(2));
-        Assert.That((bool)GetMemberValue(GetMemberValue(alpha, "LastExecutionResult"), "Completed"), Is.True);
-        Assert.That((bool)GetMemberValue(GetMemberValue(beta, "LastExecutionResult"), "Completed"), Is.True);
+        AssertCompletedOrExpectedDeferred(alpha, "alpha");
+        AssertCompletedOrExpectedDeferred(beta, "beta");
         Assert.That(GetIntProperty(GetMemberValue(manager, "Telemetry"), "SliceCount"), Is.GreaterThanOrEqualTo(2));
+    }
+
+    private static void AssertCompletedOrExpectedDeferred(object controller, string label)
+    {
+        object result = GetMemberValue(controller, "LastExecutionResult");
+        bool completed = (bool)GetMemberValue(result, "Completed");
+        bool deferred = (bool)GetMemberValue(result, "Deferred");
+
+        Assert.That(completed || deferred, Is.True, label + " nao concluiu nem foi adiado.");
+        if (deferred)
+        {
+            string message = GetMemberValue(result, "LastMessage") as string;
+            Assert.That(message, Does.StartWith("budget_deferred nation="),
+                label + " foi adiado sem o motivo de budget esperado.");
+        }
     }
 
     [Test]

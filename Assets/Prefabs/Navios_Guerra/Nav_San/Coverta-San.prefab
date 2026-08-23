@@ -685,6 +685,7 @@ MonoBehaviour:
   executorControleAtual: NavMeshAgent
   bloqueioControleAtivo: 0
   motivoBloqueioControle: 
+  intervaloEntreTentativasOrdem: 2
   tamanhoSelecao: -2.56
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -741,6 +742,8 @@ MonoBehaviour:
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  aplicarBalancoAosCreates: 1
+  grupoCreatesOperacoes: {fileID: 0}
   antenaRadar: {fileID: 0}
   velocidadeAntena: 60
   modoOperacao: 0
@@ -800,12 +803,6 @@ MonoBehaviour:
   cabecaRotativa: {fileID: 0}
   pontosDeSaida:
   - {fileID: 2240115738432342374}
-  - {fileID: 6444933706331426960}
-  - {fileID: 3676005168923758273}
-  - {fileID: 980560482463833962}
-  - {fileID: 2856025180749542405}
-  - {fileID: 2844792711541091036}
-  - {fileID: 2705970646538616859}
   pontosDeSaidaTorpedo:
   - {fileID: 4079270930340806181}
   prefabMissel: {fileID: 1828480966644363526, guid: b08f5a92de3e8f64f86cac8213399aad, type: 3}
@@ -820,6 +817,10 @@ MonoBehaviour:
   tempoRecargaSalva: 1
   alcanceRadar: 2000
   intervaloVarreduraAutomatica: 0.45
+  mascaraVarredura:
+    serializedVersion: 2
+    m_Bits: 81
+  alinharBocaisSemPivo: 1
   maxMisseisSimultaneosPorAlvo: 2
   cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 80c0b6ef6e76cb34587ea0a341c31aba, type: 3}
@@ -2066,7 +2067,7 @@ Transform:
   m_GameObject: {fileID: 4549669802437766647}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.5, y: 0, z: 7.15}
+  m_LocalPosition: {x: 1.5, y: -0, z: 15.71}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

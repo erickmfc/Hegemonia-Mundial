@@ -174,15 +174,7 @@ public class MenuConstrucao : MonoBehaviour
             .Distinct()
             .ToList();
 
-        DadosConstrucao[] fichasResources = Resources.LoadAll<DadosConstrucao>(string.Empty);
-        for (int i = 0; i < fichasResources.Length; i++)
-        {
-            DadosConstrucao ficha = fichasResources[i];
-            if (ficha != null && !fichasConfiguradasNaCena.Contains(ficha))
-            {
-                fichasConfiguradasNaCena.Add(ficha);
-            }
-        }
+        // Scanner global removido: fichas antigas nunca devem entrar no catálogo.
 
 #if UNITY_EDITOR
         string[] fichasEssenciais =
@@ -487,23 +479,7 @@ public class MenuConstrucao : MonoBehaviour
 
         if (catalogo.Count == 0)
         {
-            DadosConstrucao[] recursos = Resources.FindObjectsOfTypeAll<DadosConstrucao>();
-            if (recursos != null && recursos.Length > 0)
-            {
-                for (int i = 0; i < recursos.Length; i++)
-                {
-                    DadosConstrucao recurso = recursos[i];
-                    if (recurso != null && !catalogo.Contains(recurso))
-                    {
-                        catalogo.Add(recurso);
-                    }
-                }
-
-                if (catalogo.Count > 0)
-                {
-                    Debug.Log("[MenuConstrucao] Catálogo preenchido via Resources com " + catalogo.Count + " fichas.");
-                }
-            }
+            // Scanner global removido: o catálogo deve vir somente da configuração oficial.
 
 #if UNITY_EDITOR
             if (catalogo.Count == 0)
@@ -2647,6 +2623,8 @@ public class MenuConstrucao : MonoBehaviour
         return null;
     }
 
+#endif
+
     string NormalizarTextoBuscaIcone(string texto)
     {
         if (string.IsNullOrWhiteSpace(texto))
@@ -2662,7 +2640,6 @@ public class MenuConstrucao : MonoBehaviour
             .Replace(")", string.Empty);
         return normalizado;
     }
-#endif
 
     void EsticarRectTransform(RectTransform rectTransform)
     {

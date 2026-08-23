@@ -47,6 +47,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 925a9b2131ca4e047b4ae9fa4be17cf9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  corrigirEixoVisualAutomaticamente: 0
   velocidadeEjecao: 15
   tempoEjecao: 2.38
   tempoBoostVertical: 2.92

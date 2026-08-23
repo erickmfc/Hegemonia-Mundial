@@ -4,6 +4,8 @@ using Hegemonia.AI.Shared;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Text;
+using Hegemonia.RTS;
+using Hegemonia.AI.Sovereign;
 
 namespace Hegemonia.AI.IA01
 {
@@ -23,6 +25,9 @@ namespace Hegemonia.AI.IA01
         [SerializeField] private float serviceRefreshInterval = 1f;
         [SerializeField] private float summaryRefreshInterval = 0.25f;
         [SerializeField] private int matchSeed = 1;
+        [Header("Agendamento global")]
+        [SerializeField] private bool usarOrquestradorGlobal = true;
+        [SerializeField, Min(0.25f)] private float frequenciaEstrategicaGlobal = 0.5f;
 
         [Header("Debug")]
         [SerializeField] private bool logSummary;
@@ -37,13 +42,25 @@ namespace Hegemonia.AI.IA01
         private readonly List<SaveIA01NationState> saveBuffer = new List<SaveIA01NationState>(8);
         private readonly List<IA01Controller> executionBuffer = new List<IA01Controller>(8);
         private readonly StringBuilder summaryBuilder = new StringBuilder(512);
+        private readonly Dictionary<int, ProductionAuthorityClaim> productionAuthorityClaims = new Dictionary<int, ProductionAuthorityClaim>(8);
+
+        private const int IA01ProductionAuthorityPriority = 400;
+
+        private struct ProductionAuthorityClaim
+        {
+            public int TeamId;
+            public string OwnerKey;
+        }
 
         private float nextServiceRefreshAt;
         private float nextRuntimeSummaryAt;
+        private float nextSliceRecordRefreshAt;
         private IA01SchedulerPlan lastPlan = new IA01SchedulerPlan();
         private bool worldReady;
         private string worldReadyReason = "aguardando inicialização do mundo";
         private string lastWorldReadyLogReason = string.Empty;
+        private const string GlobalTaskId = "ia/ia01/manager";
+        private bool registradoNoOrquestrador;
 
         public static IA01Manager Instancia
         {
@@ -152,6 +169,7 @@ namespace Hegemonia.AI.IA01
 
         private void OnEnable()
         {
+            RegistrarNoOrquestradorGlobal();
             RefreshServiceDiagnostics(true);
             if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
             {
@@ -169,6 +187,7 @@ namespace Hegemonia.AI.IA01
 
         private void OnDisable()
         {
+            RemoverDoOrquestradorGlobal();
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
@@ -182,6 +201,8 @@ namespace Hegemonia.AI.IA01
             SceneManager.sceneLoaded -= OnSceneLoaded;
             controllers.Clear();
             executionBuffer.Clear();
+            ReleaseAllProductionAuthorities();
+            RemoverDoOrquestradorGlobal();
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -212,7 +233,57 @@ namespace Hegemonia.AI.IA01
                 return;
             }
 
+            if (registradoNoOrquestrador)
+            {
+                return;
+            }
+
             ExecuteTick(Time.unscaledTime, Time.unscaledDeltaTime * 1000f, frameBudgetMilliseconds);
+        }
+
+        private void RegistrarNoOrquestradorGlobal()
+        {
+            if (!Application.isPlaying || !usarOrquestradorGlobal || registradoNoOrquestrador)
+            {
+                return;
+            }
+
+            OrquestradorGlobalSimulacao global = OrquestradorGlobalSimulacao.Instancia;
+            if (global == null || !global.HabilitarEstrategica)
+            {
+                return;
+            }
+
+            registradoNoOrquestrador = global.Registrar(
+                GlobalTaskId,
+                0,
+                CamadaSimulacao.Estrategica,
+                Mathf.Max(0.25f, frequenciaEstrategicaGlobal),
+                1.25f,
+                ExecutarTickGlobal,
+                Time.unscaledTime);
+        }
+
+        private void RemoverDoOrquestradorGlobal()
+        {
+            if (!registradoNoOrquestrador)
+            {
+                return;
+            }
+
+            OrquestradorGlobalSimulacao.Instancia?.Remover(GlobalTaskId);
+            registradoNoOrquestrador = false;
+        }
+
+        private bool ExecutarTickGlobal(float agora)
+        {
+            if (!isActiveAndEnabled || ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            {
+                return true;
+            }
+
+            ExecuteTick(agora, Time.unscaledDeltaTime * 1000f, frameBudgetMilliseconds);
+            return true;
         }
 
         public void RegisterController(IA01Controller controller)
@@ -236,6 +307,8 @@ namespace Hegemonia.AI.IA01
                 ResolveIdentityCollisionIfNeeded(controller);
             }
 
+            ClaimProductionAuthority(controller);
+
             RefreshControllerRecords(controller);
             telemetry.RegisterController(controller);
             controller.ApplyServiceDiagnostics(ServiceSnapshot);
@@ -249,11 +322,73 @@ namespace Hegemonia.AI.IA01
             }
 
             controllers.Remove(controller);
+            ReleaseProductionAuthority(controller);
             worldReady = false;
             scheduler.Unregister(controller.InstanceId);
             telemetry.UnregisterController(controller.InstanceId);
             worldRegistry.Remove(controller.UniqueEntityId);
             controller.DetachManager(this);
+        }
+
+        public bool HasProductionAuthority(IA01Controller controller)
+        {
+            if (controller == null)
+            {
+                return false;
+            }
+
+            ProductionAuthorityClaim claim;
+            if (!productionAuthorityClaims.TryGetValue(controller.GetInstanceID(), out claim))
+            {
+                return false;
+            }
+
+            return AIControlAuthority.CanIssue(claim.TeamId, claim.OwnerKey);
+        }
+
+        private void ClaimProductionAuthority(IA01Controller controller)
+        {
+            if (controller == null || controller.TeamId <= 1)
+            {
+                return;
+            }
+
+            int instanceId = controller.GetInstanceID();
+            string ownerKey = "IA01Production:" + controller.TeamId + ":" + instanceId;
+            AIControlAuthority.Claim(controller.TeamId, ownerKey, IA01ProductionAuthorityPriority);
+            productionAuthorityClaims[instanceId] = new ProductionAuthorityClaim
+            {
+                TeamId = controller.TeamId,
+                OwnerKey = ownerKey
+            };
+        }
+
+        private void ReleaseProductionAuthority(IA01Controller controller)
+        {
+            if (controller == null)
+            {
+                return;
+            }
+
+            int instanceId = controller.GetInstanceID();
+            ProductionAuthorityClaim claim;
+            if (!productionAuthorityClaims.TryGetValue(instanceId, out claim))
+            {
+                return;
+            }
+
+            AIControlAuthority.Release(claim.TeamId, claim.OwnerKey);
+            productionAuthorityClaims.Remove(instanceId);
+        }
+
+        private void ReleaseAllProductionAuthorities()
+        {
+            foreach (ProductionAuthorityClaim claim in productionAuthorityClaims.Values)
+            {
+                AIControlAuthority.Release(claim.TeamId, claim.OwnerKey);
+            }
+
+            productionAuthorityClaims.Clear();
         }
 
         public int ExecuteTick(float now, float frameMs, float frameBudgetOverrideMs = -1f)
@@ -299,7 +434,14 @@ namespace Hegemonia.AI.IA01
                 executionBuffer.Add(slice.Controller);
                 IA01WorkResult result = slice.Controller.ExecuteSlice(slice.Budget);
                 scheduler.ReportExecution(slice.Controller, result, now);
-                RefreshControllerRecords(slice.Controller);
+                // O registro de cada controller nao precisa acompanhar todo
+                // slice. Atualize no maximo um registro por janela curta e
+                // deixe a varredura completa para RefreshServiceDiagnostics.
+                if (Time.unscaledTime >= nextSliceRecordRefreshAt)
+                {
+                    RefreshControllerRecords(slice.Controller);
+                    nextSliceRecordRefreshAt = Time.unscaledTime + 0.10f;
+                }
 
                 int registryEntries = worldRegistry.CountByNation(slice.Controller.NationId);
                 telemetry.RecordSlice(slice.Controller, result, registryEntries, slice.Controller.LastDirtyCount);

@@ -26,6 +26,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public float Fim;
         public bool EmWarmup;
         public float FpsMedio;
+        public float FpsEquivalente;
         public float FpsMinimo;
         public float FpsMaximo;
         public float FrameMsMedio;
@@ -42,6 +43,13 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public float CameraAreaNotifyMs;
         public int CameraAreaNotifications;
         public int IaBuildTerritoryBlocked;
+        public float CartelDecisionMs;
+        public float CartelNavalSteeringMs;
+        public int CartelBases;
+        public int CartelTankersCached;
+        public int CartelOrdersReissued;
+        public int CartelOrderFailures;
+        public float CartelSpawnMs;
         public int GcGen0;
         public int GcGen1;
         public int GcGen2;
@@ -186,6 +194,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     private string _ultimoBlocoEventos = "Nenhum evento marcado.";
     private float _proximoRefreshOverlay;
     private int _proximoFrameTiming;
+    private string _ultimoEventoChave = string.Empty;
+    private float _ultimoEventoTempo = float.NegativeInfinity;
+
+    // Eventos identicos em sequencia nao acrescentam informacao ao diagnostico
+    // e podem crescer o buffer/CSV durante uma falha persistente.
+    private const float IntervaloMinimoEventoRepetido = 1f;
 
     private GUIStyle _tituloStyle;
     private GUIStyle _textoStyle;
@@ -434,7 +448,17 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         if (Input.GetKeyDown(teclaAlternarOverlay))
         {
-            exibirOverlay = !exibirOverlay;
+            // F8 inicia a captura de FPS sem desenhar o overlay. O F9
+            // continua disponivel para alternar a captura com o estado
+            // visual atual, preservando o atalho de inspecao detalhada.
+            if (!_capturaAtiva)
+            {
+                SetCaptureMode(true, false);
+            }
+            else
+            {
+                exibirOverlay = false;
+            }
         }
 
         if (Input.GetKeyDown(teclaAlternarCaptura))
@@ -561,12 +585,13 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             ? SceneManager.GetActiveScene().name
             : _ultimoResumo.Cena;
 
-        _overlayLine1 = string.Format(
+            _overlayLine1 = string.Format(
             CultureInfo.InvariantCulture,
-            "Cena: {0} | Dif: {1} | FPS medio: {2:0.0} | Min: {3:0.0} | Max: {4:0.0} | P95: {5:0.0} ms | >100: {6} | >250: {7} | Travadas: {8} | Warm-up: {9}",
+            "Cena: {0} | Dif: {1} | FPS medio: {2:0.0} | Equiv: {3:0.0} | Min: {4:0.0} | Max: {5:0.0} | P95: {6:0.0} ms | >100: {7} | >250: {8} | Travadas: {9} | Warm-up: {10}",
             cena,
             string.IsNullOrEmpty(_ultimoResumo.Dificuldade) ? "normal" : _ultimoResumo.Dificuldade,
             _ultimoResumo.FpsMedio,
+            _ultimoResumo.FpsEquivalente,
             _ultimoResumo.FpsMinimo,
             _ultimoResumo.FpsMaximo,
             _ultimoResumo.P95FrameMs,
@@ -674,13 +699,19 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                 : (cartel.enabled ? cartel.State.ToString() : "componente desativado");
             _overlayLine7 = string.Format(
                 CultureInfo.InvariantCulture,
-                "Cartel: {0} | Creates {1}/{2} ativos | Bases {3} | Missoes {4} | Roubos {5} | {6}",
+                "Cartel: {0} | Creates {1}/{2} ativos | Bases {3} | Missoes {4} | Roubos {5} | Decisao {6:0.0} ms | Naval {7:0.0} ms | Cache petroleiros {8} | Reemissoes {9} | Falhas {10} | Spawn {11:0.0} ms | {12}",
                 estadoCartel,
                 createsAtivos,
                 cartelCreates.Count,
                 cartel.Bases == null ? 0 : cartel.Bases.Count,
                 cartel.CompletedMissions,
                 cartel.RobberiesCompleted,
+                _ultimoResumo.CartelDecisionMs,
+                _ultimoResumo.CartelNavalSteeringMs,
+                _ultimoResumo.CartelTankersCached,
+                _ultimoResumo.CartelOrdersReissued,
+                _ultimoResumo.CartelOrderFailures,
+                _ultimoResumo.CartelSpawnMs,
                 string.IsNullOrEmpty(cartel.StatusDebug) ? "sem status" : cartel.StatusDebug);
         }
 
@@ -887,6 +918,13 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         float cameraAreaNotifyMs = ObterTempoMetrica("camera_area_notify_ms");
         int cameraAreaNotifications = ObterContadorMetrica("camera_area_notifications");
         int iaBuildTerritoryBlocked = ObterContadorMetrica("ia_build_territory_blocked");
+        float cartelDecisionMs = ObterTempoMetrica("cartel_decision_ms");
+        float cartelNavalSteeringMs = ObterTempoMetrica("cartel_naval_steering_ms");
+        int cartelBases = ObterContadorMetrica("cartel_bases");
+        int cartelTankersCached = ObterContadorMetrica("cartel_tankers_cached");
+        int cartelOrdersReissued = ObterContadorMetrica("cartel_orders_reissued");
+        int cartelOrderFailures = ObterContadorMetrica("cartel_order_failures");
+        float cartelSpawnMs = ObterTempoMetrica("cartel_spawn_ms");
         float zonePlannerMs = ObterTempoMetrica("zone_planner_ms");
         float coastScanMs = ObterTempoMetrica("coast_scan_ms");
         float navalCandidateMs = ObterTempoMetrica("naval_candidate_ms");
@@ -947,6 +985,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             Fim = tempoFim,
             EmWarmup = emWarmup,
             FpsMedio = fpsMedio,
+            FpsEquivalente = frameMsMedio > 0.01f ? 1000f / frameMsMedio : 0f,
             FpsMinimo = _fpsMinimo == float.MaxValue ? 0f : _fpsMinimo,
             FpsMaximo = _fpsMaximo,
             FrameMsMedio = frameMsMedio,
@@ -963,6 +1002,13 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             CameraAreaNotifyMs = cameraAreaNotifyMs,
             CameraAreaNotifications = cameraAreaNotifications,
             IaBuildTerritoryBlocked = iaBuildTerritoryBlocked,
+            CartelDecisionMs = cartelDecisionMs,
+            CartelNavalSteeringMs = cartelNavalSteeringMs,
+            CartelBases = cartelBases,
+            CartelTankersCached = cartelTankersCached,
+            CartelOrdersReissued = cartelOrdersReissued,
+            CartelOrderFailures = cartelOrderFailures,
+            CartelSpawnMs = cartelSpawnMs,
             GcGen0 = gcGen0,
             GcGen1 = gcGen1,
             GcGen2 = gcGen2,
@@ -1062,6 +1108,8 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         _gcGen0Inicial = GC.CollectionCount(0);
         _gcGen1Inicial = GC.CollectionCount(1);
         _gcGen2Inicial = GC.CollectionCount(2);
+        _ultimoEventoChave = string.Empty;
+        _ultimoEventoTempo = float.NegativeInfinity;
         LimparMetricasAcumuladas();
     }
 
@@ -1121,7 +1169,8 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                                  + resumo.NavalCommitMs;
 
         bool houveGcLeve = resumo.GcGen0 > 0 && resumo.GcGen1 == 0 && resumo.GcGen2 == 0 && resumo.DeltaMemoriaGerenciadaMb < 8f;
-        bool houveGcGrave = resumo.GcGen1 > 0 || resumo.GcGen2 > 0 || resumo.DeltaMemoriaGerenciadaMb >= 8f;
+        bool houveGcGrave = resumo.GcGen1 > 0 || resumo.GcGen2 > 0;
+        bool houvePressaoMemoria = resumo.DeltaMemoriaGerenciadaMb >= 8f;
         bool gargaloGpu = resumo.GpuMs > 0f
                           && resumo.GpuMs > Mathf.Max(resumo.CpuMainMs, resumo.CpuRenderMs) * 1.15f
                           && resumo.GpuMs >= orcamentoMs * 0.92f;
@@ -1164,6 +1213,16 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                     CultureInfo.InvariantCulture,
                     "GC: G0={0} G1={1} G2={2} | deltaMem={3:+0.0;-0.0;0.0} MB",
                     resumo.GcGen0, resumo.GcGen1, resumo.GcGen2,
+                    resumo.DeltaMemoriaGerenciadaMb));
+        }
+
+        if (houvePressaoMemoria && !houveGcGrave)
+        {
+            resumo.Detalhes = AcrescentarDetalhe(
+                resumo.Detalhes,
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Pressao de memoria gerenciada sem coleta Gen1/Gen2: deltaMem={0:+0.0;-0.0;0.0} MB",
                     resumo.DeltaMemoriaGerenciadaMb));
         }
 
@@ -1246,19 +1305,25 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             if (gargaloSpawnRuntime)
             {
                 return houveGcGrave
-                    ? "Build/Produce/Spawn runtime pesado + GC grave"
+                    ? "Build/Produce/Spawn runtime pesado + GC Gen1/Gen2"
+                    : houvePressaoMemoria
+                        ? "Build/Produce/Spawn runtime pesado + pressao de memoria"
                     : "Build/Produce/Spawn runtime pesado";
             }
 
             return houveGcGrave
-                ? "Gargalo de CPU na main thread + GC grave"
-                : "Gargalo de CPU na main thread";
+                ? "Gargalo de CPU na main thread + GC Gen1/Gen2"
+                : houvePressaoMemoria
+                    ? "Gargalo de CPU na main thread + pressao de memoria"
+                    : "Gargalo de CPU na main thread";
         }
 
         if (gargaloGpu)
         {
             return houveGcGrave
-                ? "Gargalo de GPU + GC grave"
+                ? "Gargalo de GPU + GC Gen1/Gen2"
+                : houvePressaoMemoria
+                    ? "Gargalo de GPU + pressao de memoria"
                 : "Gargalo de GPU";
         }
 
@@ -1270,13 +1335,20 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         if (travamentoPontual)
         {
             return houveGcGrave
-                ? "Travamento pontual + GC grave"
-                : "Travamento pontual";
+                ? "Travamento pontual + GC Gen1/Gen2"
+                : houvePressaoMemoria
+                    ? "Travamento pontual + pressao de memoria"
+                    : "Travamento pontual";
         }
 
         if (houveGcGrave)
         {
-            return "GC grave (Gen1/Gen2 ou memoria subiu muito)";
+            return "GC grave (Gen1/Gen2)";
+        }
+
+        if (houvePressaoMemoria)
+        {
+            return "Pressao de memoria gerenciada (sem Gen1/Gen2 no intervalo)";
         }
 
         if (houveGcLeve)
@@ -1518,12 +1590,23 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             return;
         }
 
+        string categoriaNormalizada = NormalizarCampoLivre(string.IsNullOrWhiteSpace(categoria) ? "Jogo" : categoria);
+        string descricaoNormalizada = NormalizarCampoLivre(descricao);
+        string chave = categoriaNormalizada + "\n" + descricaoNormalizada;
+        if (string.Equals(chave, _ultimoEventoChave, StringComparison.Ordinal)
+            && tempo - _ultimoEventoTempo < IntervaloMinimoEventoRepetido)
+        {
+            return;
+        }
+
         _eventos.Add(new EventoRuntime
         {
             Tempo = tempo,
-            Categoria = NormalizarCampoLivre(string.IsNullOrWhiteSpace(categoria) ? "Jogo" : categoria),
-            Descricao = NormalizarCampoLivre(descricao)
+            Categoria = categoriaNormalizada,
+            Descricao = descricaoNormalizada
         });
+        _ultimoEventoChave = chave;
+        _ultimoEventoTempo = tempo;
 
         if (_eventos.Count > Mathf.Max(32, maxEventosEmMemoria))
         {
@@ -1546,7 +1629,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                 pasta,
                 "desempenho_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture) + ".csv");
             _csvWriter = new StreamWriter(_csvPath, false, new UTF8Encoding(true));
-            _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;p95_frame_ms;pior_frame_ms;frames_lentos;frames_acima_100ms;frames_acima_250ms;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;camera_update_ms;camera_area_notify_ms;camera_area_notifications;ia_build_territory_blocked;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;tactical_index_ms;weapon_target_candidates;road_probes;land_units_near;land_units_medium;land_units_far;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes");
+            _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;p95_frame_ms;pior_frame_ms;frames_lentos;frames_acima_100ms;frames_acima_250ms;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;camera_update_ms;camera_area_notify_ms;camera_area_notifications;ia_build_territory_blocked;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;tactical_index_ms;weapon_target_candidates;road_probes;land_units_near;land_units_medium;land_units_far;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes;fps_equivalente;cartel_decision_ms;cartel_naval_steering_ms;cartel_bases;cartel_tankers_cached;cartel_orders_reissued;cartel_order_failures;cartel_spawn_ms");
             _csvWriter.Flush();
         }
         catch (Exception excecao)
@@ -1643,7 +1726,15 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             .Append(SanearCsv(resumo.NavalAutoDisabledReason)).Append(';')
             .Append(SanearCsv(resumo.TopOffenders)).Append(';')
             .Append(SanearCsv(resumo.CausaProvavel)).Append(';')
-            .Append(SanearCsv(resumo.Detalhes));
+            .Append(SanearCsv(resumo.Detalhes)).Append(';')
+            .Append(resumo.FpsEquivalente.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CartelDecisionMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CartelNavalSteeringMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CartelBases.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CartelTankersCached.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CartelOrdersReissued.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CartelOrderFailures.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CartelSpawnMs.ToString("0.00", CultureInfo.InvariantCulture));
 
         _csvWriter.WriteLine(_csvBuilder.ToString());
         _csvWriter.Flush();

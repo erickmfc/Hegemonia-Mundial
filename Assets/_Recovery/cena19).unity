@@ -4520,6 +4520,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e4c3d65f2425e654d955a5e0b0a24467, type: 2}
   - {fileID: 11400000, guid: 67f78e06014bf0746bf59dc44dda8e15, type: 2}
   - {fileID: 11400000, guid: b9abb8cd25535964988af08ef685b9fb, type: 2}
+  fichasMilitaresPermitidas: []
   fighterPrefab: {fileID: 2470324322742162747, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
   useScriptedOpening: 1
   usePreparedSlots: 1
@@ -6956,9 +6957,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f1390ea10b9629d428bec86f0f558714, type: 2}
   - {fileID: 11400000, guid: 0ed38c96590e2d941ad58a353d926e58, type: 2}
   - {fileID: 11400000, guid: d9aaaac854283fa4886dd5a3bc1c033a, type: 2}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 11400000, guid: 795c8d1e2fea4c449a8a61032a3aa317, type: 2}
+  - {fileID: 11400000, guid: 57a1bee48f631d44ca97f4e1682e3640, type: 2}
+  - {fileID: 11400000, guid: b98191dc7638afb428068aa4f81682e6, type: 2}
   - {fileID: 0}
   - {fileID: 0}
 --- !u!1 &544637100
@@ -12368,6 +12369,63 @@ Transform:
   - {fileID: 1143029111}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &963850076
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 519.7148
+      objectReference: {fileID: 0}
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -35.207733
+      objectReference: {fileID: 0}
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7004745
+      objectReference: {fileID: 0}
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.71367747
+      objectReference: {fileID: 0}
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -91.07
+      objectReference: {fileID: 0}
+    - target: {fileID: 1363276444028929979, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8878861334362878399, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
+      propertyPath: m_Name
+      value: USS Sovereign
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 92e810bba30e68141ab5c1b939f79b61, type: 3}
 --- !u!1 &967542490
 GameObject:
   m_ObjectHideFlags: 0
@@ -12916,6 +12974,183 @@ MonoBehaviour:
   HideRendererAtRuntime: 1
   GizmoColor: {r: 0.9, g: 0.15, b: 0.8, a: 0.9}
   DrawGizmo: 1
+--- !u!1001 &1000722485
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 497.75735
+      objectReference: {fileID: 0}
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -168.18744
+      objectReference: {fileID: 0}
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[0]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[1]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[2]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[3]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[4]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[5]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[6]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[7]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[8]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[9]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[0]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[1]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[2]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[3]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[4]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[5]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[6]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[7]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[8]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[9]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[10]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[11]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[12]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[13]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasConves.Array.data[14]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[10]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[11]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[12]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[13]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 910000000000000005, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: 'vagasHangar.Array.data[14]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 5971301636513872909, guid: e778fac879605f841a104458d5d623d4, type: 3}
+      propertyPath: m_Name
+      value: Uss Enterprise
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e778fac879605f841a104458d5d623d4, type: 3}
 --- !u!1 &1007516656
 GameObject:
   m_ObjectHideFlags: 0
@@ -14087,6 +14322,7 @@ MonoBehaviour:
   alturaDoMar: 0
   deslocamentoPadraoEstruturaCosteira: 18
   distanciaCorrecaoSpawnNaval: 30
+  permitirColocacaoNavalEmQualquerLocal: 1
 --- !u!114 &1066512839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17278,6 +17514,7 @@ MonoBehaviour:
   MaxGroundVehiclesPerBase: 16
   MaxMaritimeMembersPerBase: 32
   MaxBoatsPerBase: 16
+  MaxSpawnsPerDecision: 1
   AttackDuration: 18
   ThreatRadius: 180
   MaritimeSteeringInterval: 0.55
@@ -17291,7 +17528,8 @@ MonoBehaviour:
   ReinforcementMaritimeMembers: 1
   ReinforcementBoats: 1
   RespawnOnlyWhenAllUnitsAreLost: 1
-  RespawnDelay: 180
+  RespawnMinDays: 3
+  RespawnMaxDays: 5
   RobberiesPerCapacityDoubling: 2
   CapacityDoublingFactor: 2
   MaxCapacityDoublings: 2
@@ -18878,7 +19116,10 @@ MonoBehaviour:
   autoSpawnFromGovernment: 0
   frameBudgetMilliseconds: 1.5
   serviceRefreshInterval: 1
+  summaryRefreshInterval: 0.25
   matchSeed: 1
+  usarOrquestradorGlobal: 1
+  frequenciaEstrategicaGlobal: 0.5
   logSummary: 0
   runtimeSummary: 
 --- !u!1 &1525478895
@@ -20480,7 +20721,7 @@ MonoBehaviour:
   persistirEntreCenas: 1
   teclaAlternarOverlay: 289
   teclaAlternarCaptura: 290
-  capturaAtivaNoInicio: 0
+  capturaAtivaNoInicio: 1
   ativarAutomaticamenteQuandoPresenteNaCena: 1
   permitirCapturaAutomatica: 0
   mostrarOverlayNaAtivacaoAutomatica: 1
@@ -27062,3 +27303,5 @@ SceneRoots:
   - {fileID: 5602524265997104436}
   - {fileID: 1192107546}
   - {fileID: 265233981}
+  - {fileID: 1000722485}
+  - {fileID: 963850076}

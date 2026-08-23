@@ -122,7 +122,9 @@ namespace Hegemonia.AI.IA01
             // CapitalMarker pode existir durante uma obra ou em um estado parcial.
             // A reserva normal so pode voltar a valer depois que a CityPlanner
             // confirmou a prefeitura para esta nacao.
-            bool foundationPending = controller == null || !controller.HasConfirmedCapital;
+            bool foundationPending = controller == null
+                || !controller.HasConfirmedCapital
+                || (buildDirector != null && buildDirector.CapitalMarker == null);
             bool openingInfrastructurePending = !foundationPending
                 && (IsOpeningInfrastructurePending() || structureCount < 13);
             // A protecao da abertura permite concluir a infraestrutura inicial,

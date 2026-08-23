@@ -12,7 +12,9 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
     private const string NomeObjeto = "[InicializadorSuperficiesMapa]";
     private const string MaterialTerrainResource = "CodexCampaignTerrainURP";
     private const float MargemRecorteCamera = 500f;
-    private const float RecorteMaximoSeguro = 14000f;
+    // A cena canônica possui tiles ativos que ficam além de 14 km da
+    // câmera inicial. O limite anterior cortava a borda direita do mapa.
+    private const float RecorteMaximoSeguro = 20000f;
     private static readonly Dictionary<int, Material> MateriaisTerrainRuntime = new Dictionary<int, Material>();
     private static Texture2D TexturaTerrainFallback;
     private static Texture2D ControleTerrainFallback;

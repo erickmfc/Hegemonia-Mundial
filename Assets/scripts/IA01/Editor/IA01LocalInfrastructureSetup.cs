@@ -435,7 +435,7 @@ public static class IA01LocalInfrastructureSetup
 
     private static IA01CityLayout FindLayoutWithLocals(out List<Transform> locals)
     {
-        IA01CityLayout[] layouts = Resources.FindObjectsOfTypeAll<IA01CityLayout>();
+        IA01CityLayout[] layouts = UnityEngine.Object.FindObjectsByType<IA01CityLayout>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         IA01CityLayout fallback = null;
         locals = new List<Transform>();
         for (int i = 0; i < layouts.Length; i++)
