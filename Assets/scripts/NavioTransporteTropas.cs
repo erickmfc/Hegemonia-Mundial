@@ -66,6 +66,14 @@ public class NavioTransporteTropas : MonoBehaviour
     public float timeoutMoverAteFila = 20f;
     public float timeoutMoverInterno = 12f;
 
+    [Header("Fila de embarque otimizada")]
+    [Min(1)]
+    [Tooltip("Quantidade máxima de soldados caminhando para a entrada ao mesmo tempo.")]
+    public int maxSoldadosEntrandoSimultaneos = 12;
+    [Min(1)]
+    [Tooltip("Mantém veículos mais espaçados para não sobrecarregar o NavMesh.")]
+    public int maxVeiculosEntrandoSimultaneos = 2;
+
     [Header("Otimização de FPS")]
     [Tooltip("Limita drasticamente a renderização de botões na interface para evitar queda de FPS quando há muitas unidades.")]
     public bool modoDesempenhoUI = true;
@@ -158,6 +166,36 @@ public class NavioTransporteTropas : MonoBehaviour
     private void OnEnable()
     {
         TransportesAtivos.Add(this);
+        SincronizarEscalaMinistralSeNecessario();
+    }
+
+    /// <summary>
+    /// Partidas antigas podem restaurar um Ministral com a escala gravada no
+    /// save, ignorando uma alteração posterior feita no prefab. O prefab é a
+    /// fonte de verdade somente para o Ministral; os demais transportes e as
+    /// escalas personalizadas continuam intocados.
+    /// </summary>
+    private void SincronizarEscalaMinistralSeNecessario()
+    {
+        if (!Application.isPlaying
+            || string.IsNullOrEmpty(gameObject.name)
+            || gameObject.name.IndexOf("ministral", StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            return;
+        }
+
+        DadosConstrucao ficha = Resources.Load<DadosConstrucao>("Construcoes/Ministral");
+        GameObject prefab = ficha != null ? ficha.PrefabDaUnidade : null;
+        if (prefab == null || prefab == gameObject)
+        {
+            return;
+        }
+
+        Vector3 escalaPrefab = prefab.transform.localScale;
+        if (escalaPrefab.sqrMagnitude > 0.0001f)
+        {
+            transform.localScale = escalaPrefab;
+        }
     }
 
     private readonly List<CargaTerrestre> _veiculosCarregados = new List<CargaTerrestre>();
@@ -189,9 +227,11 @@ public class NavioTransporteTropas : MonoBehaviour
     private readonly List<Helicoptero> _bufferHelicopterosFallback = new List<Helicoptero>(32);
     private readonly HashSet<int> _vistosHelisBusca = new HashSet<int>(64);
     private readonly HashSet<int> _vistosSanearHelis = new HashSet<int>(32);
-    private Collider[] _hitsTerrestresBuffer = new Collider[256];
-    private readonly List<GameObject> _candidatosTerrestresOperacao = new List<GameObject>(128);
-    private readonly HashSet<int> _vistosTerrestresBusca = new HashSet<int>(128);
+    // Capacidade inicial alinhada ao transporte de 500 soldados: evita realocações
+    // quando uma operação em massa coleta todos os colliders de uma vez.
+    private Collider[] _hitsTerrestresBuffer = new Collider[512];
+    private readonly List<GameObject> _candidatosTerrestresOperacao = new List<GameObject>(512);
+    private readonly HashSet<int> _vistosTerrestresBusca = new HashSet<int>(512);
 
     // ======================================================
     // API Pública (IA / Debug)
@@ -346,10 +386,9 @@ public class NavioTransporteTropas : MonoBehaviour
         }
         ManterHelisNoNavio();
         LimparNulos();
-        if (_menuAberto)
-        {
-            AtualizarContagemCargaSeNecessario();
-        }
+        // O cache é O(1) e precisa estar correto mesmo com o menu fechado;
+        // isso evita recontagens e impede aceitar unidades além da capacidade.
+        AtualizarContagemCargaSeNecessario();
 
         if (_menuAberto && !GestorMenusExclusivos.EstaAtivo(this))
         {
@@ -393,9 +432,10 @@ public class NavioTransporteTropas : MonoBehaviour
 
         PrepararEstilosUISeNecessario();
 
-        float menuWidth = Mathf.Clamp(Screen.width * 0.32f, 430f, 560f);
-        float menuHeight = Mathf.Min(Screen.height - 8f, 1100f);
-        Rect areaMenu = new Rect(Screen.width - menuWidth - 16f, 10f, menuWidth, menuHeight);
+        // Mesmo posicionamento e proporção do menu do porta-aviões.
+        float menuWidth = Mathf.Clamp(Screen.width * 0.30f, 410f, 510f);
+        float menuHeight = Mathf.Clamp(Screen.height - 92f, 540f, 820f);
+        Rect areaMenu = new Rect(16f, 68f, menuWidth, menuHeight);
         GestorMenusExclusivos.RegistrarAreaBloqueio(this, areaMenu);
         GUI.Box(areaMenu, "<b>🚢 COMANDO - NAVIO TRANSPORTE DE TROPAS</b>");
 
@@ -615,6 +655,7 @@ public class NavioTransporteTropas : MonoBehaviour
         GUILayout.BeginVertical("box");
         GUILayout.Label("<b>🚁 EMBARQUE DE HELICÓPTEROS</b>");
         if (GUILayout.Button($"Puxar Helicópteros Próximos ({_qtdOperacao})", GUILayout.Height(24f))) IniciarPuxarHelicopteros(_qtdOperacao);
+        if (GUILayout.Button($"Puxar TODOS os Helicópteros ({_helisProximosCache.Count})", GUILayout.Height(24f))) IniciarPuxarHelicopteros(int.MaxValue);
         GUILayout.EndVertical();
 
         DesenharPainelHelicopteroNavio();
@@ -644,6 +685,7 @@ public class NavioTransporteTropas : MonoBehaviour
         GUILayout.EndHorizontal();
         
         if (GUILayout.Button($"Desembarcar {_qtdOperacao} Helicóptero(s)", GUILayout.Height(24f))) IniciarLiberarHelicopteros(_qtdOperacao, 0);
+        if (GUILayout.Button("Desembarcar TODOS os Helicópteros", GUILayout.Height(24f))) IniciarLiberarHelicopteros(int.MaxValue, 0);
 
         GUILayout.Space(6);
         if (GUILayout.Button("🔴 RETIRAR TODAS AS UNIDADES (TUDO) 🔴", GUILayout.Height(26f)))
@@ -842,25 +884,26 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         _caminhantesPendentes++;
         float timeoutLimit = ehSoldado ? 20f : 30f;
-        
+        float encerraEm = Time.time + timeoutLimit;
+        Transform unidadeTransform = u != null ? u.transform : null;
+        NavMeshAgent nav = u != null ? u.GetComponent<NavMeshAgent>() : null;
+        float raioPuxarSqr = raioPuxarAbsoluto * raioPuxarAbsoluto;
+        float raioPresoSqr = raioPuxarPresoNavMesh * raioPuxarPresoNavMesh;
         bool chegou = false;
-        float timer = 0f;
-        while (timer < timeoutLimit && u != null && u.activeInHierarchy && _operacaoTerrestreAtiva)
+        while (Time.time < encerraEm && u != null && unidadeTransform != null && u.activeInHierarchy && _operacaoTerrestreAtiva)
         {
-            timer += Time.deltaTime;
-            Vector3 posDiff = u.transform.position - pontoFila.position;
+            Vector3 posDiff = unidadeTransform.position - pontoFila.position;
             posDiff.y = 0f;
 
-            if (posDiff.magnitude <= raioPuxarAbsoluto)
+            if (posDiff.sqrMagnitude <= raioPuxarSqr)
             {
                 chegou = true;
                 break;
             }
 
-            var nav = u.GetComponent<NavMeshAgent>();
             if (nav != null && nav.enabled && nav.isOnNavMesh && !nav.pathPending)
             {
-                if (nav.remainingDistance <= nav.stoppingDistance + 1f && posDiff.magnitude <= raioPuxarPresoNavMesh)
+                if (nav.remainingDistance <= nav.stoppingDistance + 1f && posDiff.sqrMagnitude <= raioPresoSqr)
                 {
                     chegou = true;
                     break;
@@ -876,8 +919,8 @@ public class NavioTransporteTropas : MonoBehaviour
         else if (u != null && u.activeInHierarchy)
         {
             MostrarMensagem($"⚠️ Tempo esgotado para {LimparClone(u.name)} entrar.");
-            var nav = u.GetComponent<NavMeshAgent>();
-            if (nav != null && nav.isOnNavMesh) nav.ResetPath();
+            var navFallback = u.GetComponent<NavMeshAgent>();
+            if (navFallback != null && navFallback.isOnNavMesh) navFallback.ResetPath();
         }
 
         _caminhantesPendentes--;
@@ -909,42 +952,59 @@ public class NavioTransporteTropas : MonoBehaviour
         }
 
         int embarcados = 0;
+        int indiceCandidato = 0;
         _caminhantesPendentes = 0;
 
-        for (int i = 0; i < candidatos.Count; i++)
+        int limiteSimultaneo = modo == ModoOperacaoTerrestre.Soldados
+            ? Mathf.Max(1, maxSoldadosEntrandoSimultaneos)
+            : modo == ModoOperacaoTerrestre.Veiculos
+                ? Mathf.Max(1, maxVeiculosEntrandoSimultaneos)
+                : Mathf.Max(1, Mathf.Min(maxSoldadosEntrandoSimultaneos, 8));
+
+        int soldadosReservados = 0;
+        int veiculosReservados = 0;
+        while (indiceCandidato < candidatos.Count && _operacaoTerrestreAtiva && (qtd == int.MaxValue || embarcados < qtd))
         {
-            if (!_operacaoTerrestreAtiva || embarcados >= qtd) break;
-
-            GameObject u = candidatos[i];
-            if (u == null || !u.activeInHierarchy) continue;
-
-            bool ehSoldado = EhSoldado(u);
-            if (ehSoldado && SoldadosAtual >= capacidadeMaxSoldados) continue;
-            if (!ehSoldado && VeiculosAtual >= capacidadeMaxVeiculos) continue;
-
-            Transform pontoFila = EscolherPontoFilaMaisProximo(u.transform.position, pontosTerra);
-            if (pontoFila == null) break;
-
-            MostrarMensagem($"➡️ Chamando {LimparClone(u.name)}...");
-            OrdenarIrPara(u, pontoFila.position);
-
-            StartCoroutine(MonitorarEEmbarcarIndividual(u, ehSoldado, pontoFila));
-            embarcados++;
-            _contagemCargaSuja = true;
-
-            float tempoEspera = ehSoldado ? 2f : 7f;
-            float timerEsp = 0f;
-            while(timerEsp < tempoEspera && _operacaoTerrestreAtiva)
+            while (indiceCandidato < candidatos.Count && _caminhantesPendentes < limiteSimultaneo &&
+                   _operacaoTerrestreAtiva && (qtd == int.MaxValue || embarcados < qtd))
             {
-                timerEsp += Time.deltaTime;
-                yield return null;
+                GameObject u = candidatos[indiceCandidato++];
+                if (u == null || !u.activeInHierarchy) continue;
+
+                bool ehSoldado = EhSoldado(u);
+                if (ehSoldado)
+                {
+                    if (SoldadosAtual + soldadosReservados >= capacidadeMaxSoldados) continue;
+                    soldadosReservados++;
+                }
+                else
+                {
+                    if (VeiculosAtual + veiculosReservados >= capacidadeMaxVeiculos) continue;
+                    veiculosReservados++;
+                }
+
+                Transform pontoFila = EscolherPontoFilaMaisProximo(u.transform.position, pontosTerra);
+                if (pontoFila == null) break;
+
+                OrdenarIrPara(u, pontoFila.position);
+                StartCoroutine(MonitorarEEmbarcarIndividual(u, ehSoldado, pontoFila));
+                embarcados++;
+                _contagemCargaSuja = true;
+
+                // Espalha os comandos pelo frame para evitar pico de pathfinding.
+                if ((embarcados & 1) == 0) yield return null;
+            }
+
+            if (_caminhantesPendentes >= limiteSimultaneo)
+            {
+                while (_caminhantesPendentes >= limiteSimultaneo && _operacaoTerrestreAtiva)
+                {
+                    yield return null;
+                }
             }
         }
 
-        while (_caminhantesPendentes > 0 && _operacaoTerrestreAtiva)
-        {
-            yield return null;
-        }
+        while (_caminhantesPendentes > 0 && _operacaoTerrestreAtiva) yield return null;
 
         if (_operacaoTerrestreAtiva)
         {
@@ -1453,6 +1513,18 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         if (_idNavio != null && _idNavio.teamID != 1) return;
 
+        // Alguns prefabs navais antigos recebem ControleUnidade no primeiro
+        // clique, pelo GerenteSelecao. O Ministral pode ser um desses casos;
+        // não deixe a referência cacheada no Awake permanecer nula.
+        if (_controleUnidade == null)
+        {
+            _controleUnidade = GetComponent<ControleUnidade>();
+            if (_controleUnidade == null)
+            {
+                _controleUnidade = GetComponentInParent<ControleUnidade>();
+            }
+        }
+
         if (_controleUnidade != null && _controleUnidade.selecionado && Input.GetKeyDown(KeyCode.O))
         {
             bool novoEstado = !_menuAberto;
@@ -1793,6 +1865,15 @@ public class NavioTransporteTropas : MonoBehaviour
     // ======================================================
     private void AutoDetectarReferencias(bool forcar)
     {
+        // Prefabs operacionais já configurados não precisam varrer toda a hierarquia
+        // no Awake. Mantemos a autodetecção para Reset/legados e para referências
+        // incompletas, mas evitamos GetComponentsInChildren em cada navio pronto.
+        if (!forcar && ReferenciasOperacionaisValidas())
+        {
+            if (string.IsNullOrEmpty(descricaoParaIA)) PreencherDescricaoPadrao();
+            return;
+        }
+
         Transform entradaTerrestre = EncontrarPorNome("Entrada terrestre");
         if (entradaTerrestre != null)
         {
@@ -1845,6 +1926,29 @@ public class NavioTransporteTropas : MonoBehaviour
         }
 
         if (string.IsNullOrEmpty(descricaoParaIA)) PreencherDescricaoPadrao();
+    }
+
+    private bool ReferenciasOperacionaisValidas()
+    {
+        if (portaTerrestre == null || fila == null || corredor1 == null || chegada == null || pista == null ||
+            pontoPousoDecolagemHeli == null || stop0 == null || stop1 == null ||
+            pontosSaidaEntrada == null || pontosSaidaEntrada.Length == 0 ||
+            paradasHeli == null || paradasHeli.Length == 0)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < pontosSaidaEntrada.Length; i++)
+        {
+            if (pontosSaidaEntrada[i] == null) return false;
+        }
+
+        for (int i = 0; i < paradasHeli.Length; i++)
+        {
+            if (paradasHeli[i] == null) return false;
+        }
+
+        return true;
     }
 
     private Transform EncontrarPorNome(string nome)
@@ -2410,7 +2514,10 @@ public class NavioTransporteTropas : MonoBehaviour
             {
                 var c = _helisCarregados[j];
                 if (c == null || c.heli == null) continue;
-                if (c.paradaAtual == p && !c.emSaida)
+                // A vaga continua ocupada até a rotina de saída desvincular o
+                // helicóptero. Isso evita dois aparelhos compartilharem o mesmo
+                // ponto durante a subida e a aproximação do convés.
+                if (c.paradaAtual == p)
                 {
                     ocupada = true;
                     break;
@@ -2768,6 +2875,25 @@ public class NavioTransporteTropas : MonoBehaviour
                 Gizmos.DrawWireSphere(t.position, raioPuxarPresoNavMesh);
             }
         }
+
+        if (pontoPousoDecolagemHeli != null)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawWireSphere(pontoPousoDecolagemHeli.position, 1.5f);
+            Gizmos.DrawRay(pontoPousoDecolagemHeli.position, pontoPousoDecolagemHeli.forward * 4f);
+        }
+
+        if (paradasHeli != null)
+        {
+            for (int i = 0; i < paradasHeli.Length; i++)
+            {
+                Transform parada = paradasHeli[i];
+                if (parada == null) continue;
+                Gizmos.color = Color.green;
+                Gizmos.DrawWireCube(parada.position, new Vector3(2.5f, 0.15f, 4f));
+                Gizmos.DrawRay(parada.position, parada.forward * 2f);
+            }
+        }
     }
 
     private void PreencherDescricaoPadrao()
@@ -2786,6 +2912,11 @@ PORTA TERRESTRE:
 PONTOS TERRESTRES (fila):
 - Existem 4 pontos ao redor do navio.
 - Unidades terrestres sempre vão para o ponto em TERRA mais próximo.
+
+PONTOS DE HELICÓPTEROS:
+- O Ministral possui 15 vagas numeradas no convés.
+- Pouso/decolagem usa o ponto central; a entrada e a saída ficam separadas.
+- O menu possui comandos para operar a quantidade escolhida ou todos os helicópteros.
 
 MENU:
 - Lista veículos/soldados/helis carregados (agora com Modo Desempenho para FPS).";   }

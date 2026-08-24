@@ -442,6 +442,16 @@ public class ControleAviao : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Rotacao neutra do visual quando a aeronave esta taxiando, estacionada
+    /// ou retornando para a vaga. Aeronaves com importacao diferente podem
+    /// preservar uma correcao propria sobrescrevendo este metodo.
+    /// </summary>
+    protected virtual Quaternion ResolverRotacaoVisualNeutra()
+    {
+        return Quaternion.Euler(0f, giroLateralYInicial, 0f);
+    }
+
     public IEnumerator MoverInterpolado(Vector3 destinoFixo, float vel, bool pontoFinal = false, Transform alvoMovel = null, bool ignoreRotationSlowdown = false, bool seguirAltura = false)
     {
         float raioDeAceitacao = pontoFinal ? 0.5f : 3.5f; // Aumentado para não engasgar em waypoints muito próximos
@@ -548,7 +558,7 @@ public class ControleAviao : MonoBehaviour
                 transform.position = proximaPosicao;
             }
 
-            if (modeloMecanicoVisual != null) modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.Euler(0f, giroLateralYInicial, 0f), Time.deltaTime * 5f);
+            if (modeloMecanicoVisual != null) modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, ResolverRotacaoVisualNeutra(), Time.deltaTime * 5f);
             yield return null;
         }
 
@@ -917,7 +927,7 @@ public class ControleAviao : MonoBehaviour
 
             if (modeloMecanicoVisual != null)
             {
-                modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.Euler(0f, giroLateralYInicial, 0f), 0.45f);
+                modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, ResolverRotacaoVisualNeutra(), 0.45f);
             }
             return;
         }
@@ -977,7 +987,7 @@ public class ControleAviao : MonoBehaviour
         }
     }
 
-    public void RegistrarPatrulha(IList<Vector3> rota)
+    public virtual void RegistrarPatrulha(IList<Vector3> rota)
     {
         rotaPatrulhaSalva.Clear();
         indiceRetanguloPatrulha = 0;
@@ -1005,7 +1015,7 @@ public class ControleAviao : MonoBehaviour
         }
     }
 
-    public void AtualizarDestinoPatrulha(Vector3 destino)
+    public virtual void AtualizarDestinoPatrulha(Vector3 destino)
     {
         if (destino.y < 60f)
         {

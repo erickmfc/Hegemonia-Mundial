@@ -229,7 +229,7 @@ MonoBehaviour:
   pontosDeSaida:
   - {fileID: 0}
   pontosDeSaidaTorpedo: []
-  prefabMissel: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
+  prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 1
   municaoTotal: 6
@@ -244,7 +244,7 @@ MonoBehaviour:
   maxMisseisSimultaneosPorAlvo: 6
   cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
-  preaquecerMisseisNoStart: 0
+  preaquecerMisseisNoStart: 1
   volumeSom: 0.8
   pitchSom: 1
   distanciaSomMinima: 10

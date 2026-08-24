@@ -150,7 +150,7 @@ namespace Hegemonia.AI.IA01
             Strategy = new IA01StrategyArbiter(IntentBoard);
             BuildDirector = new IA01BuildDirector(controller, context, WorldState, ConstructionGovernor, Catalog, Reservations, FailureMemory, CommandQueue, CityPlanner, ZonePlanner, LotPlanner, BackendBridge, BuildPlanRuntime);
             WarDirector = new IA01WarDirector(controller, context, WorldState, CityPlanner, MissionDirector);
-            MilitaryDirector = new IA01MilitaryDirector(controller, context);
+            MilitaryDirector = new IA01MilitaryDirector(controller, context, BuildDirector);
             NationalEconomy = new IA01NationalEconomyDirector(context);
             PlanningAdvisor = new IA01PlanningAdvisor(context, WorldState, controller.EnablePlanningAdvisor);
         }
@@ -3491,6 +3491,25 @@ namespace Hegemonia.AI.IA01
 
     public sealed class IA01BuildDirector
     {
+        private const int PlatformRebuildCooldownDays = 5;
+        private const int MilitaryRebuildCooldownDays = 3;
+        private const int CivilianRebuildCooldownDays = 5;
+        private const float CivilianMilitaryProtectionRadius = 180f;
+        private const float PlatformNavalThreatRadius = 900f;
+        private const float PlatformNavalAimRange = 1600f;
+        private const float PlatformNavalAimDot = 0.62f;
+
+        private sealed class ObservedStructure
+        {
+            public string Name;
+            public Vector3 Position;
+            public bool IsPlatform;
+            public bool IsMilitary;
+            public bool IsCivilian;
+            public int MissingObservations;
+            public bool CooldownApplied;
+        }
+
         private readonly IA01Controller controller;
         private readonly IA01RuntimeContext context;
         private readonly IA01WorldState world;
@@ -3505,6 +3524,8 @@ namespace Hegemonia.AI.IA01
         private readonly IA01BackendBridge backend;
         private readonly IA01BuildPlanRuntime buildPlan;
         private readonly IA01BuildExecutor executor;
+        private readonly List<IdentidadeNaval> registeredNavalUnits = new List<IdentidadeNaval>(32);
+        private readonly List<IdentidadeUnidade> registeredUnits = new List<IdentidadeUnidade>(128);
         private bool buildPending;
         private string lastAttemptKey = string.Empty;
         private string lastBlockedIntent = "Nenhuma";
@@ -3535,6 +3556,15 @@ namespace Hegemonia.AI.IA01
         private IA01IntentBoard pendingBoard;
         private IA01BuildPlanSelection pendingPlanSelection;
         private float lastPlanningMilliseconds;
+        private readonly Dictionary<int, ObservedStructure> observedStructures = new Dictionary<int, ObservedStructure>(128);
+        private readonly HashSet<int> currentStructureIds = new HashSet<int>();
+        private int platformRebuildAllowedDay = -1;
+        private int militaryRebuildAllowedDay = -1;
+        private int civilianRebuildAllowedDay = -1;
+        private Vector3 lastLostPlatformPosition;
+        private float lastPlatformThreatCheckAt = -1f;
+        private Vector3 cachedPlatformThreatPosition;
+        private bool cachedPlatformThreatResult;
 
         public string Status { get; private set; } = "Aguardando intencao de construcao.";
         public string BlockedIntentStatus => lastBlockedIntent;
@@ -3591,6 +3621,7 @@ namespace Hegemonia.AI.IA01
             {
                 SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
                 DadosPaisGoverno country = government != null ? government.ObterPais(context.TeamId) : null;
+                UpdateDestroyedStructureCooldowns(GetCurrentGameDay());
                 string timeoutStateToken = failures.BuildStateToken(
                     catalog != null ? catalog.CatalogVersion : 0,
                     world != null ? world.Version : -1,
@@ -4015,6 +4046,26 @@ namespace Hegemonia.AI.IA01
             return IsIntentAllowed(intent, now);
         }
 
+        /// <summary>
+        /// O diretor militar possui uma abertura roteirizada que pode criar
+        /// pier/plataforma diretamente. Ele consulta o mesmo cooldown do
+        /// diretor de construção para não contornar a regra de reconstrução.
+        /// </summary>
+        public bool IsRebuildBlocked(IA01IntentType intentType, float now)
+        {
+            UpdateDestroyedStructureCooldowns(GetCurrentGameDay());
+            return IsRebuildCooldownActive(intentType, now);
+        }
+
+        public bool HasRecordedRebuild(IA01IntentType intentType)
+        {
+            return intentType == IA01IntentType.BuildOffshorePlatform
+                ? platformRebuildAllowedDay >= 0
+                : IsMilitaryRebuildIntent(intentType)
+                    ? militaryRebuildAllowedDay >= 0
+                    : IsCivilianRebuildIntent(intentType) && civilianRebuildAllowedDay >= 0;
+        }
+
         public string GetCooldownStatus(float now)
         {
             if (!failures.TryGetCooldown(lastAttemptKey, now, out _, out _, out float remaining, out bool requiresStateChange))
@@ -4074,12 +4125,371 @@ namespace Hegemonia.AI.IA01
                 return false;
             }
 
+            if (IsRebuildCooldownActive(intent, now))
+            {
+                return false;
+            }
+
             DadosPaisGoverno country = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.ObterPais(context.TeamId) : null;
             string regionKey = BuildRegionKey(country);
             int failureWorldVersion = intent.Type == IA01IntentType.EstablishCapital ? -1 : world.Version;
             string token = failures.BuildStateToken(catalog.CatalogVersion, failureWorldVersion, IA01OperationalRules.IsCapitalThreatened(world, city.Capital, country), country != null && country.emGuerra, LegacyTreasuryValue(country), country != null ? country.energia : 0, country != null ? country.comida : 0);
             string key = failures.BuildIntentKey(intent.Type, IA01StrategicRole.None, regionKey);
             return failures.CanAttempt(key, now, token);
+        }
+
+        private bool IsRebuildCooldownActive(IA01Intent intent, float now)
+        {
+            return intent != null && IsRebuildCooldownActive(intent.Type, now);
+        }
+
+        private bool IsRebuildCooldownActive(IA01IntentType intentType, float now)
+        {
+            int currentDay = GetCurrentGameDay();
+            if (intentType == IA01IntentType.BuildOffshorePlatform)
+            {
+                if (platformRebuildAllowedDay > currentDay)
+                {
+                    nextUnblockCondition = "Reconstrução da plataforma liberada no dia " + platformRebuildAllowedDay + ".";
+                    return true;
+                }
+
+                if (lastLostPlatformPosition != Vector3.zero && HasEnemyNavalThreatNear(lastLostPlatformPosition, now))
+                {
+                    nextUnblockCondition = "Plataforma aguardando afastamento do navio hostil que a destruiu.";
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (IsMilitaryRebuildIntent(intentType) && militaryRebuildAllowedDay > currentDay)
+            {
+                nextUnblockCondition = "Reconstrução militar liberada no dia " + militaryRebuildAllowedDay + ".";
+                return true;
+            }
+
+            if (IsCivilianRebuildIntent(intentType) && civilianRebuildAllowedDay > currentDay)
+            {
+                nextUnblockCondition = "Reconstrução civil liberada no dia " + civilianRebuildAllowedDay + ".";
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsMilitaryRebuildIntent(IA01IntentType intentType)
+        {
+            return intentType == IA01IntentType.BuildMilitaryTent
+                || intentType == IA01IntentType.BuildVehicleConstructor
+                || intentType == IA01IntentType.BuildMilitaryAirport
+                || intentType == IA01IntentType.BuildDefense
+                || intentType == IA01IntentType.BuildShipyard
+                || intentType == IA01IntentType.BuildPier;
+        }
+
+        private static bool IsCivilianRebuildIntent(IA01IntentType intentType)
+        {
+            return intentType == IA01IntentType.BuildResidentialCapacity
+                || intentType == IA01IntentType.BuildStarterHouse
+                || intentType == IA01IntentType.BuildMediumApartment
+                || intentType == IA01IntentType.BuildHighApartment;
+        }
+
+        private int GetCurrentGameDay()
+        {
+            if (GerenciadorTempo.Instancia != null)
+            {
+                return Mathf.Max(1, GerenciadorTempo.Instancia.totalDias);
+            }
+
+            // Fallback somente para cenas de teste que não instanciam o relógio.
+            return Mathf.Max(1, Mathf.FloorToInt(Time.time / 30f) + 1);
+        }
+
+        private void UpdateDestroyedStructureCooldowns(int currentDay)
+        {
+            if (world == null || world.OwnedStructures == null)
+            {
+                return;
+            }
+
+            currentStructureIds.Clear();
+            for (int i = 0; i < world.OwnedStructures.Count; i++)
+            {
+                IdentidadeUnidade identity = world.OwnedStructures[i];
+                GameObject structure = identity != null ? identity.gameObject : null;
+                if (structure == null)
+                {
+                    continue;
+                }
+
+                int instanceId = structure.GetInstanceID();
+                currentStructureIds.Add(instanceId);
+                ObservedStructure observed;
+                if (!observedStructures.TryGetValue(instanceId, out observed))
+                {
+                    observed = DescribeStructure(structure);
+                    observedStructures.Add(instanceId, observed);
+                }
+                else
+                {
+                    observed.Position = structure.transform.position;
+                    observed.MissingObservations = 0;
+                    observed.CooldownApplied = false;
+                }
+            }
+
+            foreach (KeyValuePair<int, ObservedStructure> pair in observedStructures)
+            {
+                if (currentStructureIds.Contains(pair.Key))
+                {
+                    continue;
+                }
+
+                ObservedStructure observed = pair.Value;
+                if (observed == null || observed.CooldownApplied)
+                {
+                    continue;
+                }
+
+                observed.MissingObservations++;
+                if (observed.MissingObservations < 2)
+                {
+                    continue;
+                }
+
+                observed.CooldownApplied = true;
+                if (observed.IsPlatform)
+                {
+                    platformRebuildAllowedDay = Mathf.Max(platformRebuildAllowedDay, currentDay + PlatformRebuildCooldownDays);
+                    lastLostPlatformPosition = observed.Position;
+                }
+                else if (observed.IsMilitary)
+                {
+                    militaryRebuildAllowedDay = Mathf.Max(militaryRebuildAllowedDay, currentDay + MilitaryRebuildCooldownDays);
+                }
+                else if (observed.IsCivilian)
+                {
+                    int delay = HasFriendlyMilitaryNear(observed.Position)
+                        ? MilitaryRebuildCooldownDays
+                        : CivilianRebuildCooldownDays;
+                    civilianRebuildAllowedDay = Mathf.Max(civilianRebuildAllowedDay, currentDay + delay);
+                }
+            }
+        }
+
+        private ObservedStructure DescribeStructure(GameObject structure)
+        {
+            IA_ConstructionMetadata metadata = structure.GetComponent<IA_ConstructionMetadata>();
+            if (metadata == null)
+            {
+                metadata = structure.GetComponentInChildren<IA_ConstructionMetadata>(true);
+            }
+
+            string text = IA_Text.Normalize(structure.name);
+            if (metadata != null)
+            {
+                text += " " + IA_Text.Normalize(metadata.DisplayName + " " + metadata.Aliases + " " + metadata.SourcePrefabName);
+            }
+
+            bool hasPlatformComponent = structure.GetComponent<PlataformaOffshore>() != null
+                || structure.GetComponentInChildren<PlataformaOffshore>(true) != null;
+            bool hasCivilianComponent = structure.GetComponent<Imovel>() != null
+                || structure.GetComponentInChildren<Imovel>(true) != null;
+            bool hasMilitaryComponent = structure.GetComponent<Estaleiro>() != null
+                || structure.GetComponentInChildren<Estaleiro>(true) != null
+                || structure.GetComponent<PierMarinha>() != null
+                || structure.GetComponentInChildren<PierMarinha>(true) != null
+                || structure.GetComponent<GerenciadorAeroporto>() != null
+                || structure.GetComponentInChildren<GerenciadorAeroporto>(true) != null;
+
+            bool isPlatform = hasPlatformComponent
+                || (metadata != null && metadata.IsPlatform)
+                || text.Contains("plataforma")
+                || text.Contains("offshore");
+            bool isCivilian = hasCivilianComponent
+                || (metadata != null && metadata.IsCivil)
+                || text.Contains("imovel")
+                || text.Contains("casa")
+                || text.Contains("moradia")
+                || text.Contains("residencia")
+                || text.Contains("habitacao")
+                || text.Contains("apartamento")
+                || text.Contains("village")
+                || text.Contains("predio");
+            bool isMilitary = !isPlatform && (hasMilitaryComponent
+                || (metadata != null && (metadata.IsMilitary || metadata.IsDefense || metadata.IsMilitaryAirport || metadata.IsShipyard || metadata.IsPier))
+                || text.Contains("quartel")
+                || text.Contains("tenda")
+                || text.Contains("barraca")
+                || text.Contains("construtor")
+                || text.Contains("fabrica")
+                || text.Contains("militar")
+                || text.Contains("radar")
+                || text.Contains("torreta")
+                || text.Contains("defesa")
+                || text.Contains("estaleiro")
+                || text.Contains("pier")
+                || text.Contains("lancador")
+                || text.Contains("silo"));
+
+            return new ObservedStructure
+            {
+                Name = structure.name,
+                Position = structure.transform.position,
+                IsPlatform = isPlatform,
+                IsMilitary = isMilitary,
+                IsCivilian = !isPlatform && !isMilitary && isCivilian
+            };
+        }
+
+        private bool HasFriendlyMilitaryNear(Vector3 position)
+        {
+            if (world == null || world.OwnedStructures == null || position == Vector3.zero)
+            {
+                return false;
+            }
+
+            float radiusSqr = CivilianMilitaryProtectionRadius * CivilianMilitaryProtectionRadius;
+            registeredUnits.Clear();
+            RegistroEntidadesJogo.FillUnidades(registeredUnits);
+            for (int i = 0; i < registeredUnits.Count; i++)
+            {
+                IdentidadeUnidade unit = registeredUnits[i];
+                if (unit != null
+                    && unit.teamID == context.TeamId
+                    && unit.tipoUnidade != TipoUnidade.Estrutura
+                    && unit.gameObject.activeInHierarchy
+                    && (unit.transform.position - position).sqrMagnitude <= radiusSqr)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool HasEnemyNavalThreatNear(Vector3 position, float now)
+        {
+            if ((position - cachedPlatformThreatPosition).sqrMagnitude <= 0.01f
+                && Mathf.Abs(now - lastPlatformThreatCheckAt) <= 0.001f)
+            {
+                return cachedPlatformThreatResult;
+            }
+
+            cachedPlatformThreatPosition = position;
+            lastPlatformThreatCheckAt = now;
+            cachedPlatformThreatResult = false;
+
+            if (world != null && world.EnemyUnits != null)
+            {
+                float radiusSqr = PlatformNavalThreatRadius * PlatformNavalThreatRadius;
+                for (int i = 0; i < world.EnemyUnits.Count; i++)
+                {
+                    IdentidadeUnidade enemy = world.EnemyUnits[i];
+                    if (enemy == null
+                        || enemy.tipoUnidade != TipoUnidade.Naval
+                        || !enemy.gameObject.activeInHierarchy
+                        || enemy.GetComponentInParent<NavioPetroleiro>() != null
+                        || enemy.GetComponentInChildren<NavioPetroleiro>(true) != null)
+                    {
+                        continue;
+                    }
+
+                    if ((enemy.transform.position - position).sqrMagnitude <= radiusSqr)
+                    {
+                        cachedPlatformThreatResult = true;
+                        return cachedPlatformThreatResult;
+                    }
+                }
+            }
+
+            // O mundo visível cobre a maior parte dos casos. O registro naval
+            // cobre navios fora do cone de visão da IA, que ainda podem estar
+            // guardando ou apontando para o local recém-destruído.
+            registeredNavalUnits.Clear();
+            RegistroEntidadesJogo.FillNavios(registeredNavalUnits);
+            for (int i = 0; i < registeredNavalUnits.Count; i++)
+            {
+                IdentidadeNaval navio = registeredNavalUnits[i];
+                if (navio == null || !IsEnemyNavalUnit(navio.gameObject))
+                {
+                    continue;
+                }
+
+                if (IsNavalThreateningPosition(navio.transform, position))
+                {
+                    cachedPlatformThreatResult = true;
+                    return cachedPlatformThreatResult;
+                }
+            }
+
+            ControleNavioRealista[] navios = UnityEngine.Object.FindObjectsByType<ControleNavioRealista>(FindObjectsSortMode.None);
+            for (int i = 0; i < navios.Length; i++)
+            {
+                ControleNavioRealista navio = navios[i];
+                if (navio == null || !IsEnemyNavalUnit(navio.gameObject))
+                {
+                    continue;
+                }
+
+                if (IsNavalThreateningPosition(navio.transform, position))
+                {
+                    cachedPlatformThreatResult = true;
+                    return cachedPlatformThreatResult;
+                }
+            }
+
+            ControleSubmarino[] submarinos = UnityEngine.Object.FindObjectsByType<ControleSubmarino>(FindObjectsSortMode.None);
+            for (int i = 0; i < submarinos.Length; i++)
+            {
+                ControleSubmarino submarino = submarinos[i];
+                if (submarino == null || !IsEnemyNavalUnit(submarino.gameObject))
+                {
+                    continue;
+                }
+
+                if (IsNavalThreateningPosition(submarino.transform, position))
+                {
+                    cachedPlatformThreatResult = true;
+                    return cachedPlatformThreatResult;
+                }
+            }
+
+            return cachedPlatformThreatResult;
+        }
+
+        private bool IsEnemyNavalUnit(GameObject unit)
+        {
+            IdentidadeUnidade identity = SistemaDeDanos.ResolverIdentidade(unit.transform);
+            return identity != null && identity.teamID > 0 && identity.teamID != context.TeamId;
+        }
+
+        private static bool IsNavalThreateningPosition(Transform navalUnit, Vector3 position)
+        {
+            Vector3 delta = position - navalUnit.position;
+            delta.y = 0f;
+            float distanceSqr = delta.sqrMagnitude;
+            if (distanceSqr <= PlatformNavalThreatRadius * PlatformNavalThreatRadius)
+            {
+                return true;
+            }
+
+            if (distanceSqr > PlatformNavalAimRange * PlatformNavalAimRange || distanceSqr <= 0.01f)
+            {
+                return false;
+            }
+
+            delta.Normalize();
+            Vector3 forward = navalUnit.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude <= 0.01f)
+            {
+                return false;
+            }
+
+            return Vector3.Dot(forward.normalized, delta) >= PlatformNavalAimDot;
         }
 
         private static string BuildRegionKey(DadosPaisGoverno country)
@@ -4110,6 +4520,8 @@ namespace Hegemonia.AI.IA01
                 || type == IA01IntentType.BuildMilitaryAirport
                 || type == IA01IntentType.BuildCommercialAirport
                 || type == IA01IntentType.BuildShipyard
+                || type == IA01IntentType.BuildPier
+                || type == IA01IntentType.BuildOffshorePlatform
                 || type == IA01IntentType.BuildIndustry
                 || type == IA01IntentType.BuildDefense;
         }

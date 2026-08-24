@@ -671,6 +671,13 @@ public class Estaleiro : MonoBehaviour
         Quaternion rotacaoNaval = Quaternion.LookRotation(-waterForward, Vector3.up);
 
         // 1. INSTANCIA O PREFAB CRU E INTACTO!
+        // Guardamos a escala antes do Instantiate porque os componentes do
+        // navio executam Awake durante a criação. Prefabs navais antigos ou
+        // scripts adicionados em runtime podem alterar a raiz nesse momento;
+        // a escala configurada no prefab deve ser a autoridade visual final.
+        Vector3 escalaPrefab = slot.prefabAtual != null
+            ? slot.prefabAtual.transform.localScale
+            : Vector3.one;
         long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
         GameObject navioPronto = Instantiate(slot.prefabAtual, posFinal, rotacaoNaval);
         RegistrarTempoDiagnostico("naval_instantiate_ms", instantiateStart);
@@ -680,6 +687,15 @@ public class Estaleiro : MonoBehaviour
             DiagnosticoDesempenhoJogo.RegistrarEvento("Spawn", "Navio criado: " + slot.prefabAtual.name);
         }
         navioPronto.transform.SetParent(null);
+
+        // Reaplica a escala do asset depois do Awake/OnEnable dos scripts do
+        // navio. Isso faz o aumento feito no Inspector aparecer também no
+        // navio recém-liberado pelo estaleiro e não altera sua escala durante
+        // a navegação.
+        if (navioPronto != null && escalaPrefab.sqrMagnitude > 0.0001f)
+        {
+            navioPronto.transform.localScale = escalaPrefab;
+        }
         if (!string.IsNullOrEmpty(slot.productionOrderId))
             IAAutoProductionRegistry.Complete(slot.productionOrderId, Time.time);
 

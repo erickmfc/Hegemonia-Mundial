@@ -7836,9 +7836,9 @@ MonoBehaviour:
   velocidadeMaxima: 15
   velocidadeLeme: 5
   curvaMaximaGraus: 10
-  coeficienteAderna: 2.5
-  alturaOnda: 0.56
-  frequenciaOnda: 0.27
+  coeficienteAderna: 0.18
+  alturaOnda: 0.04
+  frequenciaOnda: 0.12
   arrastoPassivo: 0.5
   distanciaChegada: 15
   offsetAlturaAgua: 7

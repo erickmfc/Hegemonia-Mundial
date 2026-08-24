@@ -5927,7 +5927,7 @@ MonoBehaviour:
   - {fileID: 4654356799291672246}
   pontosDeSaidaTorpedo:
   - {fileID: 4654356799291672246}
-  prefabMissel: {fileID: 1828480966644363526, guid: b08f5a92de3e8f64f86cac8213399aad, type: 3}
+  prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 1
   municaoTotal: 8

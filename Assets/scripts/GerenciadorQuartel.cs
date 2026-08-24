@@ -33,6 +33,21 @@ public class GerenciadorQuartel : MonoBehaviour
     public bool modoDefensivoAtivo = false; 
     private float scanDefesaTimer = 0f;
 
+    [Header("Quartel UI Toolkit V2")]
+    [Tooltip("Mantem o novo painel UI Toolkit ativo. Desative para usar o IMGUI legado como fallback.")]
+    public bool usarPainelQuartelUIToolkit = true;
+    [Tooltip("Permite apenas o protocolo administrativo de recrutamento; a criacao de unidades continua no sistema de producao existente.")]
+    public bool recrutamentoAutomatico = true;
+    public bool treinamentoAutomatico = true;
+    [Min(1)] public int metaEfetivo = 24;
+    [Min(1f)] public float tempoFormacaoSegundos = 10f;
+    [Min(1)] public int teamID = 1;
+    [Tooltip("Somente para cenas de teste: abre o painel V2 ao iniciar o Play Mode sem alterar o prefab padrão.")]
+    public bool abrirPainelAoIniciarNoPlayMode = false;
+
+    private QuartelMenuUIController painelQuartelUI;
+    private QuartelAdministracaoRuntime administracao;
+
     // UI Estilos
     public static bool InterfaceAberta = false;
     private bool menuAberto = false;
@@ -44,6 +59,8 @@ public class GerenciadorQuartel : MonoBehaviour
     private Vector2 scrollArsenal;
     private readonly List<ControleUnidade> soldadosAvulsosCache = new List<ControleUnidade>();
     private readonly List<ControleUnidade> veiculosAvulsosCache = new List<ControleUnidade>();
+    private readonly HashSet<ControleUnidade> treinamentoPassivoAplicado = new HashSet<ControleUnidade>();
+    private readonly HashSet<ControleUnidade> acolhimentosEmAndamento = new HashSet<ControleUnidade>();
     private float proximaAtualizacaoCacheCampo;
     
     private GUIStyle estiloJanela;
@@ -91,16 +108,92 @@ public class GerenciadorQuartel : MonoBehaviour
         MapearDormitorios();
         MapearEstacionamento();
         AtualizarRetanguloJanela(true);
+
+        if (usarPainelQuartelUIToolkit)
+        {
+            painelQuartelUI = GetComponent<QuartelMenuUIController>();
+            if (painelQuartelUI == null)
+            {
+                painelQuartelUI = gameObject.AddComponent<QuartelMenuUIController>();
+            }
+        }
+
+        administracao = GetComponent<QuartelAdministracaoRuntime>();
+        if (administracao == null)
+        {
+            administracao = gameObject.AddComponent<QuartelAdministracaoRuntime>();
+        }
+        administracao.teamID = Mathf.Max(1, teamID);
+        administracao.tempoFormacaoPadraoSegundos = Mathf.Max(1f, tempoFormacaoSegundos);
+
+        if (Application.isPlaying)
+        {
+            Debug.Log($"[Quartel] Awake: objeto={name}, cena={UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}, testeAuto={abrirPainelAoIniciarNoPlayMode}, uiToolkit={usarPainelQuartelUIToolkit}, painel={(painelQuartelUI != null)}", this);
+        }
+    }
+
+    private void Start()
+    {
+        if (abrirPainelAoIniciarNoPlayMode)
+        {
+            Debug.Log($"[Quartel] instância de teste iniciou: objeto={name}, ativo={isActiveAndEnabled}, uiToolkit={usarPainelQuartelUIToolkit}, painel={(painelQuartelUI != null)}, administracao={(administracao != null)}, cena={UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}", this);
+        }
+
+        if (Application.isPlaying && abrirPainelAoIniciarNoPlayMode)
+        {
+            Invoke(nameof(AbrirPainelQuartelAoIniciar), 0.75f);
+        }
+    }
+
+    private void AbrirPainelQuartelAoIniciar()
+    {
+        Debug.Log($"[Quartel] tentativa de abertura automática: objeto={name}, ativo={isActiveAndEnabled}, menuAberto={menuAberto}, painel={(painelQuartelUI != null)}", this);
+        if (this != null && isActiveAndEnabled && !menuAberto)
+        {
+            AlternarInterface();
+            Debug.Log($"[Quartel] após AlternarInterface: menuAberto={menuAberto}, painelVisivel={(painelQuartelUI != null && painelQuartelUI.EstaVisivel)}", this);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (painelQuartelUI != null)
+        {
+            painelQuartelUI.FecharInterno();
+        }
+
+        if (InterfaceAberta && !menuAberto)
+        {
+            InterfaceAberta = false;
+        }
+    }
+
+    private static bool CampoTextoQuartelEmEdicao()
+    {
+        var eventSystem = UnityEngine.EventSystems.EventSystem.current;
+        var selecionado = eventSystem != null ? eventSystem.currentSelectedGameObject : null;
+        if (selecionado == null || !selecionado.activeInHierarchy)
+            return false;
+
+        var campo = selecionado.GetComponent<UnityEngine.UI.InputField>();
+        return campo != null && campo.isFocused;
     }
 
     void Update()
     {
-        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
-        
-        if (RTSInputBindings.GetKeyDown(RTSInputAction.Barracks) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
+        bool atalhoQuartel = RTSInputBindings.GetKeyDown(RTSInputAction.Barracks)
+            || Input.GetKeyDown(KeyCode.B);
+
+        if (atalhoQuartel)
         {
+            if (!menuAberto && MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto)
+            {
+                MenuComandoController.Instancia.FecharMenu();
+            }
             AlternarInterface();
         }
+
+        if (CampoTextoQuartelEmEdicao()) return;
 
         if (recolhimentoAutomatico)
         {
@@ -136,11 +229,33 @@ public class GerenciadorQuartel : MonoBehaviour
             InterfaceAberta = true;
             menuAberto = true;
             AtualizarRetanguloJanela(true);
+            if (usarPainelQuartelUIToolkit && painelQuartelUI != null)
+            {
+                painelQuartelUI.Abrir();
+            }
         }
         else
         {
             menuAberto = false;
             InterfaceAberta = false;
+            if (painelQuartelUI != null)
+            {
+                painelQuartelUI.FecharInterno();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fecha o painel sem que a UI precise conhecer o estado interno do
+    /// gerenciador. O atalho B continua chamando AlternarInterface().
+    /// </summary>
+    public void FecharInterfacePorUI()
+    {
+        menuAberto = false;
+        InterfaceAberta = false;
+        if (painelQuartelUI != null)
+        {
+            painelQuartelUI.FecharInterno();
         }
     }
 
@@ -366,6 +481,7 @@ public class GerenciadorQuartel : MonoBehaviour
     void OnGUI()
     {
         if (!menuAberto) return;
+        if (usarPainelQuartelUIToolkit && painelQuartelUI != null && painelQuartelUI.EstaVisivel) return;
         InicializarEstilos();
 
         GUI.depth = -100;
@@ -741,13 +857,114 @@ public class GerenciadorQuartel : MonoBehaviour
     public void ReceberUnidade(ControleUnidade unidade)
     {
         if (unidade == null || !unidade.gameObject.activeInHierarchy) return;
+        if (!acolhimentosEmAndamento.Add(unidade)) return;
         SistemaDeDanos sistemaDeDanos = unidade.GetComponent<SistemaDeDanos>();
         bool biologica = (sistemaDeDanos != null && sistemaDeDanos.unidadeBiologica);
 
+        StartCoroutine(AcolherUnidadeSemDuplicacao(unidade, sistemaDeDanos, biologica));
+    }
+
+    private IEnumerator AcolherUnidadeSemDuplicacao(ControleUnidade unidade, SistemaDeDanos danos, bool biologica)
+    {
         if (biologica)
-            StartCoroutine(AcolherSoldado(unidade, sistemaDeDanos));
+            yield return StartCoroutine(AcolherSoldado(unidade, danos));
         else
-            StartCoroutine(AcolherVeiculo(unidade, sistemaDeDanos));
+            yield return StartCoroutine(AcolherVeiculo(unidade, danos));
+
+        acolhimentosEmAndamento.Remove(unidade);
+    }
+
+    public void SolicitarConvocarSelecionados()
+    {
+        ControleUnidade[] unidades = Object.FindObjectsByType<ControleUnidade>(FindObjectsSortMode.None);
+        for (int i = 0; i < unidades.Length; i++)
+        {
+            ControleUnidade unidade = unidades[i];
+            IdentidadeUnidade identidade = unidade != null ? unidade.GetComponent<IdentidadeUnidade>() : null;
+            if (unidade == null || identidade == null || identidade.teamID != teamID || !unidade.selecionado) continue;
+            unidade.selecionado = false;
+            ReceberUnidade(unidade);
+        }
+    }
+
+    public void SolicitarDesdobramentoSoldados(int quantidade)
+    {
+        DesdobrarSoldados(Mathf.Max(0, quantidade));
+    }
+
+    public void SolicitarDesdobramentoTodosVeiculos()
+    {
+        int total = veiculosNoQuartel != null ? veiculosNoQuartel.Count : 0;
+        for (int i = total - 1; i >= 0; i--)
+        {
+            DesdobrarVeiculo(veiculosNoQuartel[i]);
+        }
+    }
+
+    public void SolicitarReparosNoRaio()
+    {
+        IdentidadeUnidade[] identidades = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        float raioSqr = raioDeCobertura * raioDeCobertura;
+        for (int i = 0; i < identidades.Length; i++)
+        {
+            IdentidadeUnidade identidade = identidades[i];
+            if (identidade == null || identidade.teamID != teamID) continue;
+            ControleUnidade unidade = identidade.GetComponent<ControleUnidade>();
+            if (unidade == null || (unidade.transform.position - transform.position).sqrMagnitude > raioSqr) continue;
+            SistemaDeDanos danos = unidade.GetComponent<SistemaDeDanos>();
+            if (danos != null) danos.Reparar(9999f);
+        }
+    }
+
+    public void SolicitarResgateManual()
+    {
+        if (administracao != null)
+        {
+            administracao.RegistrarResgateManual();
+            return;
+        }
+
+        SolicitarReparosNoRaio();
+    }
+
+    public QuartelAdministracaoRuntime ObterAdministracao()
+    {
+        if (administracao == null) administracao = GetComponent<QuartelAdministracaoRuntime>();
+        return administracao;
+    }
+
+    public void SolicitarTracksNoQuartel()
+    {
+        CaminhaoCombustivel[] caminhoes = Object.FindObjectsByType<CaminhaoCombustivel>(FindObjectsSortMode.None);
+        for (int i = 0; i < caminhoes.Length; i++)
+        {
+            if (caminhoes[i] != null) caminhoes[i].ForcarRecarregarNoQuartel(this);
+        }
+    }
+
+    public void SolicitarRetornoTracks()
+    {
+        CaminhaoCombustivel[] caminhoes = Object.FindObjectsByType<CaminhaoCombustivel>(FindObjectsSortMode.None);
+        for (int i = 0; i < caminhoes.Length; i++)
+        {
+            if (caminhoes[i] == null) continue;
+            caminhoes[i].DefinirQuartelPreferencial(this);
+            caminhoes[i].ForcarRetornoBase();
+        }
+    }
+
+    public bool TentarEncomendarMisseis()
+    {
+        if (GerenciadorRecursos.Instancia == null || !GerenciadorRecursos.Instancia.TentarGastarDinheiro(precoMissil)) return false;
+        misseisArmazenados += 10;
+        return true;
+    }
+
+    public bool TentarEncomendarMunicao()
+    {
+        if (GerenciadorRecursos.Instancia == null || !GerenciadorRecursos.Instancia.TentarGastarDinheiro(precoMunicao)) return false;
+        municaoArmazenada += 100;
+        return true;
     }
 
     private IEnumerator AcolherSoldado(ControleUnidade soldado, SistemaDeDanos danos)
@@ -770,7 +987,11 @@ public class GerenciadorQuartel : MonoBehaviour
             if (danos != null) 
             {
                 danos.Reparar(9999f);
-                if (treinamentoPassivo) danos.vidaMaxima *= 1.2f; 
+                if (treinamentoPassivo && !treinamentoPassivoAplicado.Contains(soldado))
+                {
+                    danos.vidaMaxima *= 1.2f;
+                    treinamentoPassivoAplicado.Add(soldado);
+                }
             }
             soldado.gameObject.SetActive(false); 
             if (!soldadosNoDormitorio.Contains(soldado)) soldadosNoDormitorio.Add(soldado);
@@ -856,6 +1077,7 @@ public class GerenciadorQuartel : MonoBehaviour
                 if (danos != null) danos.Reparar(9999f); 
 
                 soldado.EmitirOrdemMover(pontoSaida);
+                if (administracao != null) administracao.RegistrarUnidadeDesdobrada(soldado);
                 liberados++;
             }
         }
@@ -888,6 +1110,7 @@ public class GerenciadorQuartel : MonoBehaviour
 
             Vector3 pontoSaida = waypointsEntradaEstacionamento.Count > 0 ? waypointsEntradaEstacionamento[0].position : transform.position + (transform.forward * 20f);
             veiculoEspecifico.EmitirOrdemMover(pontoSaida);
+            if (administracao != null) administracao.RegistrarUnidadeDesdobrada(veiculoEspecifico);
         }
     }
 }

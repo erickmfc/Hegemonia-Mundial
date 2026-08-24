@@ -15,6 +15,7 @@ namespace Hegemonia.AI.IA01
     {
         private readonly IA01Controller controller;
         private readonly IA01RuntimeContext context;
+        private readonly IA01BuildDirector buildDirector;
         private readonly List<DadosConstrucao> catalog = new List<DadosConstrucao>(128);
         private readonly List<DadosConstrucao> tierCandidates = new List<DadosConstrucao>(32);
         private float nextTickAt;
@@ -66,10 +67,11 @@ namespace Hegemonia.AI.IA01
         private bool ProgressaoEscalaoAtiva => controller == null || controller.ProgressiveMilitaryCatalog;
         private bool PermiteInfraestruturaInicialAutomatica => controller != null && controller.UseScriptedOpening;
 
-        public IA01MilitaryDirector(IA01Controller controller, IA01RuntimeContext context)
+        public IA01MilitaryDirector(IA01Controller controller, IA01RuntimeContext context, IA01BuildDirector buildDirector)
         {
             this.controller = controller;
             this.context = context;
+            this.buildDirector = buildDirector;
         }
 
         public bool Tick(float now)
@@ -725,11 +727,25 @@ namespace Hegemonia.AI.IA01
 
             if (!ownPier && now >= nextPierRecoveryAt)
             {
+                if (buildDirector != null && buildDirector.IsRebuildBlocked(IA01IntentType.BuildPier, now))
+                {
+                    nextPierRecoveryAt = now + 5f;
+                    return;
+                }
+
                 nextPierRecoveryAt = now + 18f;
                 BuildCoastalStructure(IA01IntentType.BuildPier, "pier", "dock");
                 return;
             }
             if (!ownPier || now < nextPlatformRecoveryAt) return;
+
+            if (buildDirector != null && buildDirector.IsRebuildBlocked(IA01IntentType.BuildOffshorePlatform, now))
+            {
+                // O local pode continuar sob ameaça naval; não cria outra
+                // plataforma no mesmo ponto enquanto o inimigo a guarda.
+                nextPlatformRecoveryAt = now + 5f;
+                return;
+            }
 
             PlataformaOffshore[] platforms = UnityEngine.Object.FindObjectsByType<PlataformaOffshore>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < platforms.Length; i++)
@@ -855,11 +871,37 @@ namespace Hegemonia.AI.IA01
             if (!controller.IsPositionInsidePreparedTerritory(anchor, 260f)) return false;
             DadosConstrucao blueprint = FindStructureBlueprint(blueprintTokens);
             if (blueprint == null || !blueprint.TryGetPrefabBasico(out GameObject prefab) || prefab == null) return false;
+
+            // A abertura roteirizada pode usar o financiamento inicial já
+            // existente. Quando isto é uma reconstrução após perda, porém,
+            // ela deve respeitar exatamente o mesmo saldo da construção normal.
+            bool isRebuild = buildDirector != null && buildDirector.HasRecordedRebuild(intent);
+            long rebuildCost = blueprint.ObterPrecoEfetivo();
+            bool rebuildPaid = false;
+            if (isRebuild && rebuildCost > 0)
+            {
+                SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
+                if (government == null || !government.TentarPagar(context.TeamId, rebuildCost))
+                {
+                    return false;
+                }
+
+                rebuildPaid = true;
+            }
+
             if (prefab.GetComponent<PlataformaOffshore>() != null)
                 anchor.y = NavalPlacementResolver.ResolveSeaLevel();
             Construtor builder = Construtor.Instancia != null ? Construtor.Instancia : UnityEngine.Object.FindFirstObjectByType<Construtor>();
             GameObject built = builder != null ? builder.ConstruirEstruturaIA(prefab, anchor, rotation) : UnityEngine.Object.Instantiate(prefab, anchor, rotation);
-            if (built == null) return false;
+            if (built == null)
+            {
+                if (rebuildPaid && SistemaGovernoMundial.Instancia != null)
+                {
+                    SistemaGovernoMundial.Instancia.AdicionarSaldo(context.TeamId, rebuildCost);
+                }
+
+                return false;
+            }
             built.transform.SetPositionAndRotation(anchor, rotation);
             IdentidadeUnidade identity = built.GetComponent<IdentidadeUnidade>() ?? built.AddComponent<IdentidadeUnidade>();
             identity.teamID = context.TeamId;

@@ -119,6 +119,13 @@ public class ControleSubmarino : MonoBehaviour
     private bool temDestinoFallback = false;
     private float proximaTentativaNavMesh = 0f;
 
+    /// <summary>
+    /// Informa se existe uma rota física ativa, inclusive quando o submarino
+    /// está usando o fallback aquático sem NavMesh.
+    /// </summary>
+    public bool TemDestinoAtivo => temDestinoFallback
+        || (agente != null && agente.enabled && (agente.pathPending || agente.hasPath));
+
     private GameObject cristalIdentificacao;
     private Renderer cristalRenderer;
     private readonly Collider[] bufferAlvos = new Collider[128];

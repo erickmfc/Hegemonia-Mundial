@@ -322,6 +322,7 @@ public class MenuConstrucao : MonoBehaviour
         GarantirUsinaCarvaoNoCatalogo();
         GarantirComerciosNoCatalogo();
         GarantirPrefeituraNoCatalogo();
+        GarantirNaviosNovosNoCatalogo();
 
         List<DadosConstrucao> catalogoDaCena = new List<DadosConstrucao>();
         foreach (DadosConstrucao item in catalogo)
@@ -466,6 +467,69 @@ public class MenuConstrucao : MonoBehaviour
         if (!quantidadesPorItem.ContainsKey(prefeitura.NomeItem))
         {
             quantidadesPorItem.Add(prefeitura.NomeItem, 1);
+        }
+    }
+
+    /// <summary>
+    /// Catálogo naval compartilhado entre as cenas principais. Cenas antigas
+    /// continuam podendo manter o próprio catálogo serializado, mas recebem
+    /// automaticamente os navios adicionados depois delas.
+    /// </summary>
+    private void GarantirNaviosNovosNoCatalogo()
+    {
+        string[] caminhos =
+        {
+            "Construcoes/F200",
+            "Construcoes/F201",
+            "Construcoes/Ministral"
+        };
+
+        for (int i = 0; i < caminhos.Length; i++)
+        {
+            DadosConstrucao ficha = Resources.Load<DadosConstrucao>(caminhos[i]);
+            if (ficha == null)
+            {
+                continue;
+            }
+
+            bool duplicada = false;
+            GameObject prefabFicha;
+            bool temPrefabFicha = ficha.TryGetPrefabBasico(out prefabFicha);
+            for (int j = 0; j < catalogo.Count; j++)
+            {
+                DadosConstrucao existente = catalogo[j];
+                if (existente == null)
+                {
+                    continue;
+                }
+
+                if (existente == ficha
+                    || string.Equals(existente.GetStableId(), ficha.GetStableId(), System.StringComparison.OrdinalIgnoreCase))
+                {
+                    duplicada = true;
+                    break;
+                }
+
+                GameObject prefabExistente;
+                if (temPrefabFicha
+                    && existente.TryGetPrefabBasico(out prefabExistente)
+                    && prefabExistente == prefabFicha)
+                {
+                    duplicada = true;
+                    break;
+                }
+            }
+
+            if (duplicada)
+            {
+                continue;
+            }
+
+            catalogo.Add(ficha);
+            if (!quantidadesPorItem.ContainsKey(ficha.NomeItem))
+            {
+                quantidadesPorItem.Add(ficha.NomeItem, 1);
+            }
         }
     }
 

@@ -596,14 +596,19 @@ public class DesenharLinhasOrdem : MonoBehaviour
         }
 
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        bool selecaoNaval = SelecaoContemUnidadeNaval();
         RaycastHit hit;
-        if (Physics.Raycast(ray, out hit))
+        if (Physics.Raycast(ray, out hit) && (!selecaoNaval || NavalPlacementResolver.IsWaterAtPosition(hit.point)))
         {
             ponto = hit.point;
+            if (selecaoNaval)
+            {
+                ponto.y = NavalPlacementResolver.ResolveSeaLevel();
+            }
             return true;
         }
 
-        if (!SelecaoContemUnidadeNaval())
+        if (!selecaoNaval)
         {
             return false;
         }
@@ -616,7 +621,8 @@ public class DesenharLinhasOrdem : MonoBehaviour
         }
 
         ponto = ray.GetPoint(distanciaPlano);
-        return true;
+        ponto.y = NavalPlacementResolver.ResolveSeaLevel();
+        return NavalPlacementResolver.IsWaterAtPosition(ponto);
     }
 
     bool SelecaoContemUnidadeNaval()
@@ -879,6 +885,7 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
     private ControleUnidade controle;
     private NavMeshAgent agente;
     private ControleNavioRealista navioRealista;
+    private ControleSubmarino submarino;
     private bool ehNaval;
     private bool ehAereo;
 
@@ -910,6 +917,7 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
         controle = GetComponent<ControleUnidade>();
         agente = GetComponent<NavMeshAgent>();
         navioRealista = GetComponent<ControleNavioRealista>();
+        submarino = GetComponent<ControleSubmarino>();
         ehNaval = controle != null && controle.EhUnidadeNaval();
         ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
     }
@@ -919,6 +927,7 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
         if (controle == null) controle = GetComponent<ControleUnidade>();
         if (agente == null) agente = GetComponent<NavMeshAgent>();
         if (navioRealista == null) navioRealista = GetComponent<ControleNavioRealista>();
+        if (submarino == null) submarino = GetComponent<ControleSubmarino>();
         ehNaval = controle != null && controle.EhUnidadeNaval();
         ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
     }
@@ -969,6 +978,15 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
 
         if (distancia < margem)
         {
+            // A chegada naval é planar. Para submarinos, comparar o Y do
+            // destino com a profundidade atual faria a ordem permanecer
+            // aberta para sempre. Concluir aqui também libera o watchdog e
+            // evita que o executor anterior dispute o próximo ponto.
+            if (controle.PossuiOrdemMovimentoAtiva)
+            {
+                controle.ConcluirOrdemMovimentoExterna("ponto de patrulha alcancado");
+            }
+
             indiceAtual++;
             if (indiceAtual >= pontos.Count)
             {
@@ -985,6 +1003,8 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
             ? controle.PossuiDestinoOrdenado
             : ehNaval && navioRealista != null
             ? navioRealista.TemDestinoAtivo
+            : ehNaval && submarino != null
+            ? submarino.TemDestinoAtivo
             : agente != null && agente.enabled && agente.isOnNavMesh
               && (agente.hasPath || agente.pathPending);
         

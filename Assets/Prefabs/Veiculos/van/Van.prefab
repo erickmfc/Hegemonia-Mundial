@@ -81,6 +81,7 @@ MonoBehaviour:
   executorControleAtual: NavMeshAgent
   bloqueioControleAtivo: 0
   motivoBloqueioControle: 
+  intervaloEntreTentativasOrdem: 2
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}

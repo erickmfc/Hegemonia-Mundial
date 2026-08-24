@@ -31,6 +31,7 @@ public class DadosDoJogo
     public SaveQuaternion cameraRotacao;
     public List<string> itensDesbloqueados = new List<string>();
     public List<SaveEntityData> entidades = new List<SaveEntityData>();
+    public List<SaveQuartelStateData> estadosQuarteis = new List<SaveQuartelStateData>();
     public List<SaveTransportManifestData> manifestosTransporte = new List<SaveTransportManifestData>();
     public List<SaveProductionOrderData> filaProducao = new List<SaveProductionOrderData>();
     public List<SaveAiStrategicStateData> estadosIA = new List<SaveAiStrategicStateData>();
@@ -51,6 +52,62 @@ public class DadosDoJogo
     public int rtsPlayerTeamId = 1;
     public int rtsPrimaryAiTeamId = 2;
     public List<RTSObjectiveSaveData> rtsObjectives = new List<RTSObjectiveSaveData>();
+}
+
+[Serializable]
+public sealed class SaveQuartelStateData
+{
+    public string quartelUniqueId;
+    public int quartelTeamID = 1;
+    public bool usarPainelQuartelUIToolkit = true;
+    public bool recolhimentoAutomatico;
+    public bool modoDefensivoAtivo;
+    public bool treinamentoPassivo = true;
+    public bool recrutamentoAutomatico = true;
+    public bool treinamentoAutomatico = true;
+    public int metaEfetivo = 24;
+    public float tempoFormacaoSegundos = 10f;
+    public int periodoFolhaDias = 15;
+    public int misseisArmazenados;
+    public int municaoArmazenada;
+    public List<string> soldadosNoDormitorio = new List<string>();
+    public List<string> veiculosNoQuartel = new List<string>();
+    public int adminUltimoDiaObservado = -1;
+    public int adminUltimoDiaRecrutamento = -1;
+    public int adminUltimoDiaFolha = -1;
+    public int adminProximoDiaFolha = -1;
+    public int adminSequenciaRecruta;
+    public int adminRecrutasConcluidos;
+    public int adminRecrutasRecrutados;
+    public long adminFolhaPagaTotal;
+    public long adminCustoFolhaDiario;
+    public long adminCustoFolhaPeriodo;
+    public int adminDiasFolhaPendentes;
+    public int adminPerdasRegistradas;
+    public List<SaveQuartelRecrutaData> adminRecrutas = new List<SaveQuartelRecrutaData>();
+    public List<SaveQuartelPerdaData> adminPerdas = new List<SaveQuartelPerdaData>();
+}
+
+[Serializable]
+public sealed class SaveQuartelRecrutaData
+{
+    public string id;
+    public int forca;
+    public int estado;
+    public float progressoSegundos;
+    public float tempoTotalSegundos;
+    public int diaRecrutamento;
+}
+
+[Serializable]
+public sealed class SaveQuartelPerdaData
+{
+    public string unidadeId;
+    public string nomeUnidade;
+    public int forca;
+    public int militares;
+    public string motivo;
+    public int dia;
 }
 
 [Serializable]
@@ -447,7 +504,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         GarantirColecoesIA01();
-        dadosAtuais.saveVersion = 13;
+        dadosAtuais.saveVersion = 14;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -460,6 +517,7 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarEstadoIA01();
         CapturarProducaoAutomaticaIA();
         CapturarEstadoDeusa();
+        CapturarEstadoQuarteis();
         CapturarEntidades();
         CapturarManifestosTransporte();
         CapturarSistemaIndustrial();
@@ -690,6 +748,7 @@ public class SistemaSaveGame : MonoBehaviour
             yield return null;
 
             RestaurarManifestosTransporte();
+            RestaurarEstadoQuarteis();
 
             float inicioOrdens = Time.realtimeSinceStartup;
             int loteOrdens = Mathf.Max(1, ordensPorFrameNaRestauracao);
@@ -1327,6 +1386,157 @@ public class SistemaSaveGame : MonoBehaviour
                 ehAviao = salvo.ehAviao,
                 ehCarrier = salvo.ehCarrier
             });
+        }
+    }
+
+    private void CapturarEstadoQuarteis()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        if (dadosAtuais.estadosQuarteis == null)
+        {
+            dadosAtuais.estadosQuarteis = new List<SaveQuartelStateData>();
+        }
+        dadosAtuais.estadosQuarteis.Clear();
+
+        GerenciadorQuartel[] quarteis = FindObjectsByType<GerenciadorQuartel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < quarteis.Length; i++)
+        {
+            GerenciadorQuartel quartel = quarteis[i];
+            if (quartel == null || quartel.gameObject.scene != SceneManager.GetActiveScene())
+            {
+                continue;
+            }
+
+            SaveableEntity saveable = SaveableEntity.Garantir(quartel.gameObject);
+            if (saveable == null || string.IsNullOrWhiteSpace(saveable.UniqueId))
+            {
+                continue;
+            }
+
+            SaveQuartelStateData salvo = new SaveQuartelStateData
+            {
+                quartelUniqueId = saveable.UniqueId,
+                quartelTeamID = quartel.teamID,
+                usarPainelQuartelUIToolkit = quartel.usarPainelQuartelUIToolkit,
+                recolhimentoAutomatico = quartel.recolhimentoAutomatico,
+                modoDefensivoAtivo = quartel.modoDefensivoAtivo,
+                treinamentoPassivo = quartel.treinamentoPassivo,
+                recrutamentoAutomatico = quartel.recrutamentoAutomatico,
+                treinamentoAutomatico = quartel.treinamentoAutomatico,
+                metaEfetivo = quartel.metaEfetivo,
+                tempoFormacaoSegundos = quartel.tempoFormacaoSegundos,
+                periodoFolhaDias = quartel.ObterAdministracao() != null ? quartel.ObterAdministracao().periodoFolhaDias : 15,
+                misseisArmazenados = quartel.misseisArmazenados,
+                municaoArmazenada = quartel.municaoArmazenada
+            };
+
+            AdicionarIdsUnidades(quartel.soldadosNoDormitorio, salvo.soldadosNoDormitorio);
+            AdicionarIdsUnidades(quartel.veiculosNoQuartel, salvo.veiculosNoQuartel);
+            QuartelAdministracaoRuntime administracao = quartel.ObterAdministracao();
+            if (administracao != null) administracao.CapturarEstadoSave(salvo);
+            dadosAtuais.estadosQuarteis.Add(salvo);
+        }
+    }
+
+    private void AdicionarIdsUnidades(List<ControleUnidade> unidades, List<string> destino)
+    {
+        if (unidades == null || destino == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < unidades.Count; i++)
+        {
+            ControleUnidade unidade = unidades[i];
+            if (unidade == null) continue;
+            SaveableEntity saveable = SaveableEntity.Garantir(unidade.gameObject);
+            if (saveable != null && !string.IsNullOrWhiteSpace(saveable.UniqueId) && !destino.Contains(saveable.UniqueId))
+            {
+                destino.Add(saveable.UniqueId);
+            }
+        }
+    }
+
+    private void RestaurarEstadoQuarteis()
+    {
+        if (dadosAtuais == null || dadosAtuais.estadosQuarteis == null || dadosAtuais.estadosQuarteis.Count == 0)
+        {
+            return;
+        }
+
+        Dictionary<string, ControleUnidade> unidadesPorId = new Dictionary<string, ControleUnidade>(StringComparer.OrdinalIgnoreCase);
+        ControleUnidade[] unidades = FindObjectsByType<ControleUnidade>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < unidades.Length; i++)
+        {
+            ControleUnidade unidade = unidades[i];
+            if (unidade == null) continue;
+            SaveableEntity saveable = SaveableEntity.Garantir(unidade.gameObject);
+            if (saveable != null && !string.IsNullOrWhiteSpace(saveable.UniqueId))
+            {
+                unidadesPorId[saveable.UniqueId] = unidade;
+            }
+        }
+
+        GerenciadorQuartel[] quarteis = FindObjectsByType<GerenciadorQuartel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < quarteis.Length; i++)
+        {
+            GerenciadorQuartel quartel = quarteis[i];
+            if (quartel == null) continue;
+            SaveableEntity saveable = SaveableEntity.Garantir(quartel.gameObject);
+            if (saveable == null || !TryEncontrarEstadoQuartel(saveable.UniqueId, out SaveQuartelStateData salvo)) continue;
+
+            quartel.usarPainelQuartelUIToolkit = salvo.usarPainelQuartelUIToolkit;
+            quartel.teamID = salvo.quartelTeamID > 0 ? salvo.quartelTeamID : quartel.teamID;
+            quartel.recolhimentoAutomatico = salvo.recolhimentoAutomatico;
+            quartel.modoDefensivoAtivo = salvo.modoDefensivoAtivo;
+            quartel.treinamentoPassivo = salvo.treinamentoPassivo;
+            quartel.recrutamentoAutomatico = salvo.recrutamentoAutomatico;
+            quartel.treinamentoAutomatico = salvo.treinamentoAutomatico;
+            quartel.metaEfetivo = Mathf.Max(1, salvo.metaEfetivo);
+            quartel.tempoFormacaoSegundos = Mathf.Max(1f, salvo.tempoFormacaoSegundos);
+            quartel.misseisArmazenados = Mathf.Max(0, salvo.misseisArmazenados);
+            quartel.municaoArmazenada = Mathf.Max(0, salvo.municaoArmazenada);
+            quartel.soldadosNoDormitorio.Clear();
+            quartel.veiculosNoQuartel.Clear();
+            RestaurarIdsUnidades(salvo.soldadosNoDormitorio, unidadesPorId, quartel.soldadosNoDormitorio);
+            RestaurarIdsUnidades(salvo.veiculosNoQuartel, unidadesPorId, quartel.veiculosNoQuartel);
+            QuartelAdministracaoRuntime administracao = quartel.ObterAdministracao();
+            if (administracao != null)
+            {
+                administracao.periodoFolhaDias = Mathf.Max(1, salvo.periodoFolhaDias > 0 ? salvo.periodoFolhaDias : administracao.periodoFolhaDias);
+                administracao.RestaurarEstadoSave(salvo);
+            }
+        }
+    }
+
+    private bool TryEncontrarEstadoQuartel(string uniqueId, out SaveQuartelStateData estado)
+    {
+        estado = null;
+        if (string.IsNullOrWhiteSpace(uniqueId) || dadosAtuais == null || dadosAtuais.estadosQuarteis == null) return false;
+        for (int i = 0; i < dadosAtuais.estadosQuarteis.Count; i++)
+        {
+            SaveQuartelStateData candidato = dadosAtuais.estadosQuarteis[i];
+            if (candidato != null && string.Equals(candidato.quartelUniqueId, uniqueId, StringComparison.OrdinalIgnoreCase))
+            {
+                estado = candidato;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void RestaurarIdsUnidades(List<string> ids, Dictionary<string, ControleUnidade> unidadesPorId, List<ControleUnidade> destino)
+    {
+        if (ids == null || unidadesPorId == null || destino == null) return;
+        for (int i = 0; i < ids.Count; i++)
+        {
+            string id = ids[i];
+            if (string.IsNullOrWhiteSpace(id) || !unidadesPorId.TryGetValue(id, out ControleUnidade unidade) || unidade == null) continue;
+            if (!destino.Contains(unidade)) destino.Add(unidade);
         }
     }
 

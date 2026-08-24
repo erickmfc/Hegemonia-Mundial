@@ -532,7 +532,7 @@ MonoBehaviour:
   maxMisseisSimultaneosPorAlvo: 2
   cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
-  preaquecerMisseisNoStart: 0
+  preaquecerMisseisNoStart: 1
   volumeSom: 0.8
   pitchSom: 1
   distanciaSomMinima: 50

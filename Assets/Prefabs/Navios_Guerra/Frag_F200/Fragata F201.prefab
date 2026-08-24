@@ -5477,7 +5477,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Aereo
-  alcance: 1000
+  alcance: 1500
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -11784,7 +11784,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Aereo
-  alcance: 120
+  alcance: 1300
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -14780,7 +14780,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 203.3, y: 2.3, z: -71.3}
-  m_LocalScale: {x: 1.2, y: 0.7, z: 1.2}
+  m_LocalScale: {x: 1.2, y: 1.27, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1021617366619821721}
@@ -14965,14 +14965,14 @@ MonoBehaviour:
   tempoDesaceleracao: 6
   tempoParadaEmergencia: 7
   velocidadeMaxima: 18
-  velocidadeLeme: 5
-  curvaMaximaGraus: 35
+  velocidadeLeme: 2
+  curvaMaximaGraus: 25
   coeficienteAderna: 2.5
   alturaOnda: 0.11
   frequenciaOnda: 0.19
   arrastoPassivo: 0.5
   distanciaChegada: 15
-  offsetAlturaAgua: 0
+  offsetAlturaAgua: 5.27
   profundidadeVisual: 0
   anguloEntradaManobraRe: 120
   anguloSaidaManobraRe: 70
@@ -15037,7 +15037,7 @@ MonoBehaviour:
   maxMisseisSimultaneosPorAlvo: 3
   cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
-  preaquecerMisseisNoStart: 0
+  preaquecerMisseisNoStart: 1
   volumeSom: 0.8
   pitchSom: 1
   distanciaSomMinima: 3

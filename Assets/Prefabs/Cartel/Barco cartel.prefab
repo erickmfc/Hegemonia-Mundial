@@ -489,6 +489,8 @@ MonoBehaviour:
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 0}
+  aplicarBalancoAosCreates: 1
+  grupoCreatesOperacoes: {fileID: 0}
   antenaRadar: {fileID: 0}
   velocidadeAntena: 60
   modoOperacao: 0
@@ -572,6 +574,7 @@ MonoBehaviour:
   executorControleAtual: NavMeshAgent
   bloqueioControleAtivo: 0
   motivoBloqueioControle: 
+  intervaloEntreTentativasOrdem: 2
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}

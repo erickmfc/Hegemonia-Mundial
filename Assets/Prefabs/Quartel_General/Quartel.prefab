@@ -1630,6 +1630,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7178213108154168215}
   - component: {fileID: 3223821858337535345}
+  - component: {fileID: -708834191034600112}
   - component: {fileID: -491623217453219740}
   - component: {fileID: 189830942053635767}
   - component: {fileID: 6409683713180380450}
@@ -1685,6 +1686,39 @@ MonoBehaviour:
   tempoOciosoPermitido: 60
   treinamentoPassivo: 1
   modoDefensivoAtivo: 0
+  usarPainelQuartelUIToolkit: 1
+  recrutamentoAutomatico: 1
+  treinamentoAutomatico: 1
+  metaEfetivo: 24
+  tempoFormacaoSegundos: 10
+  teamID: 1
+  abrirPainelAoIniciarNoPlayMode: 1
+--- !u!114 &-708834191034600112
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3543858969566675874}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d8d2a0c22a7469fb9b8f2dc5f9e1a41, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::QuartelAdministracaoRuntime
+  teamID: 1
+  recrutamentoPorDia: 4
+  tempoFormacaoPadraoSegundos: 10
+  custoFolhaPorMilitarDia: 1
+  periodoFolhaDias: 15
+  cobrarFolhaDoCaixa: 1
+  retornoAutomaticoAposAtividade: 1
+  tempoOciosoParaRetornoSegundos: 8
+  tripulacaoMinimaInfantaria: 1
+  tripulacaoMinimaVeiculo: 1
+  tripulacaoMinimaNaval: 4
+  tripulacaoMinimaAerea: 2
+  recrutas: []
+  perdas: []
 --- !u!114 &-491623217453219740
 MonoBehaviour:
   m_ObjectHideFlags: 0

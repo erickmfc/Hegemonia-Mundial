@@ -105,6 +105,8 @@ public class ControleUnidade : MonoBehaviour
     [SerializeField] private string executorControleAtual = "NavMeshAgent";
     [SerializeField] private bool bloqueioControleAtivo = false;
     [SerializeField] private string motivoBloqueioControle = string.Empty;
+    [SerializeField] private bool bloqueioAdministrativoQuartel;
+    [SerializeField] private string motivoBloqueioAdministrativoQuartel = string.Empty;
     [SerializeField, Min(0.1f)] private float intervaloEntreTentativasOrdem = 2f;
 
     protected virtual void Awake()
@@ -308,6 +310,26 @@ public class ControleUnidade : MonoBehaviour
     public bool ModoCombateAtivo => modoCombateOficialAtivo;
     public OrdemMovimento OrdemMovimentoAtual => controleOrdemMovimento != null ? controleOrdemMovimento.Atual : null;
     public bool PossuiOrdemMovimentoAtiva => controleOrdemMovimento != null && controleOrdemMovimento.PossuiOrdemAtiva;
+    public bool BloqueioAdministrativoQuartelAtivo => bloqueioAdministrativoQuartel;
+
+    /// <summary>
+    /// Bloqueio aditivo usado pelo Quartel para impedir ordens quando nao ha
+    /// militares ativos suficientes. O Quartel nao desativa o GameObject e
+    /// nao assume o executor fisico da unidade.
+    /// </summary>
+    public void DefinirBloqueioAdministrativo(bool bloquear, string motivo)
+    {
+        bloqueioAdministrativoQuartel = bloquear;
+        motivoBloqueioAdministrativoQuartel = bloquear ? (motivo ?? string.Empty) : string.Empty;
+        if (!bloquear) return;
+
+        CancelarOrdemEspecial(false);
+        CancelarOrdemMovimentoExterna(string.IsNullOrWhiteSpace(motivoBloqueioAdministrativoQuartel)
+            ? "bloqueio administrativo do Quartel"
+            : motivoBloqueioAdministrativoQuartel);
+        LimparDestinoOrdenado();
+        ordemControleAtual = OrdemControleUnidade.Parada;
+    }
 
     [Header("Visual")]
     public float tamanhoSelecao = 0f; // 0 = Automatico
@@ -741,6 +763,32 @@ public class ControleUnidade : MonoBehaviour
         AtualizarTrilhaOficial();
 
         List<Vector3> rotaFinal = new List<Vector3>(pontosPatrulha);
+
+        // Patrulha naval só pode receber pontos na água. O clique pode ter
+        // atingido uma ilha, um collider de construção ou a altura da onda;
+        // normalizar aqui evita que um ponto inválido trave o ciclo inteiro.
+        if (EhUnidadeNaval())
+        {
+            float nivelMar = NavalPlacementResolver.ResolveSeaLevel();
+            for (int i = rotaFinal.Count - 1; i >= 0; i--)
+            {
+                Vector3 ponto = rotaFinal[i];
+                ponto.y = nivelMar;
+                if (!NavalPlacementResolver.IsWaterAtPosition(ponto))
+                {
+                    rotaFinal.RemoveAt(i);
+                    continue;
+                }
+
+                rotaFinal[i] = ponto;
+            }
+
+            if (rotaFinal.Count == 0)
+            {
+                return false;
+            }
+        }
+
         if (rotaFinal.Count == 1)
         {
             rotaFinal.Insert(0, transform.position);
@@ -2376,6 +2424,14 @@ public class ControleUnidade : MonoBehaviour
         {
             bloqueioControleAtivo = true;
             motivoBloqueioControle = "Helicoptero sob controle do aeroporto";
+        }
+
+        if (bloqueioAdministrativoQuartel)
+        {
+            bloqueioControleAtivo = true;
+            motivoBloqueioControle = string.IsNullOrWhiteSpace(motivoBloqueioAdministrativoQuartel)
+                ? "Sem militares ativos para tripulacao"
+                : motivoBloqueioAdministrativoQuartel;
         }
     }
 

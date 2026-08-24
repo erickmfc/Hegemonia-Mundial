@@ -14,6 +14,10 @@ public class MissileThreatTracker : MonoBehaviour
     [SerializeField] private float tempoDeVidaInicial = 10f;
     [SerializeField] private bool destruirMissilAoExpirar = true;
 
+    private Vector3 pontoLancamento;
+    private float momentoLancamento;
+    private string nomeOrigem = string.Empty;
+
     private Transform alvoTransform;
     private Transform raizMissil;
     private Rigidbody rb;
@@ -22,6 +26,12 @@ public class MissileThreatTracker : MonoBehaviour
     public int TeamOrigem => teamOrigem;
     public bool Interceptor => interceptor;
     public Transform RaizMissil => raizMissil != null ? raizMissil : (transform.root != null ? transform.root : transform);
+    public int MissileId => missilId;
+    public Vector3 PontoLancamento => pontoLancamento;
+    public Vector3 PontoAlvoConhecido => ObterAlvoAtual();
+    public float TempoDesdeLancamento => Mathf.Max(0f, Time.time - momentoLancamento);
+    public string NomeOrigem => nomeOrigem;
+    public bool PossuiAlvoDinamico => alvoTransform != null;
 
     public static void CopiarAmeacasAtivas(List<MissileThreatTracker> destino)
     {
@@ -149,6 +159,9 @@ public class MissileThreatTracker : MonoBehaviour
         rb = raizMissil.GetComponent<Rigidbody>();
         alvoTransform = alvoDinamico;
         ultimoAlvoConhecido = alvoDinamico != null ? alvoDinamico.position : alvo;
+        pontoLancamento = raizMissil != null ? raizMissil.position : transform.position;
+        momentoLancamento = Time.time;
+        nomeOrigem = origem != null ? origem.name : "Origem desconhecida";
         interceptor = ehInterceptador;
         velocidadeEstimada = Mathf.Max(velocidade, EstimarVelocidade(raizMissil.gameObject), 1f);
         teamOrigem = ResolverTeam(origem, raizMissil);

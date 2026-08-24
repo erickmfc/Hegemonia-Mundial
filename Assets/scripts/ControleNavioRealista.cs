@@ -131,10 +131,24 @@ public class ControleNavioRealista : MonoBehaviour
     private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
     private float proximoReplanDestino;
     private Vector3 ultimoDestinoAplicado = Vector3.zero;
+    // Referências estáveis: evita procurar componentes e o estado da cena em
+    // todos os frames de cada navio durante a navegação.
+    private ControleUnidade controleUnidadeCache;
+    private bool ehCenaDeMenuCache;
     // Algumas cenas possuem água navegável sem NavMesh. Nesse caso o navio
     // continua usando a simulação hidrodinâmica, sem repetir o mesmo aviso a
     // cada frame de patrulha.
     private float proximoAvisoSemNavMesh;
+    // A navegação permanece por frame para conservar resposta e suavidade.
+    // Efeitos, áudio e chamadas nativas do agente usam ticks independentes,
+    // evitando que dezenas/centenas de navios disputem trabalho redundante.
+    private float proximoTickVisual;
+    private float proximoTickAudio;
+    private float nivelMarCache;
+    private float proximaAtualizacaoNivelMar;
+    private Vector3 ultimaPosicaoAgenteAplicada;
+    private float ultimoBaseOffsetAgente;
+    private bool poseAgenteCacheValida;
     
     // Estado dos torpedos
     private bool[] tubosTorpedoUsados;
@@ -150,6 +164,10 @@ public class ControleNavioRealista : MonoBehaviour
     {
         agente = GetComponent<NavMeshAgent>();
         rb = GetComponent<Rigidbody>();
+        controleUnidadeCache = GetComponent<ControleUnidade>();
+        if (controleUnidadeCache == null)
+            controleUnidadeCache = GetComponentInParent<ControleUnidade>();
+        ehCenaDeMenuCache = ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name);
         identidade = GetComponent<IdentidadeNaval>();
         if (identidade == null)
             identidade = GetComponentInChildren<IdentidadeNaval>();
@@ -216,7 +234,7 @@ public class ControleNavioRealista : MonoBehaviour
 
     void Update()
     {
-        if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+        if (ehCenaDeMenuCache)
         {
             return;
         }
@@ -243,8 +261,8 @@ public class ControleNavioRealista : MonoBehaviour
                     paradoPorFaltaDeCombustivel = true;
                     PararPorFaltaDeCombustivel();
                 }
-                AtualizarEfeitosVisuais();
-                AtualizarAudio();
+                AtualizarEfeitosVisuaisOtimizados();
+                AtualizarAudioOtimizados();
                 return;
             }
             paradoPorFaltaDeCombustivel = false;
@@ -268,10 +286,10 @@ public class ControleNavioRealista : MonoBehaviour
             SimularFisicaMovimento();
 
             // 4. VISUAIS
-            AtualizarEfeitosVisuais();
+            AtualizarEfeitosVisuaisOtimizados();
 
             // 5. AUDIO
-            AtualizarAudio();
+            AtualizarAudioOtimizados();
 
             float intervaloArma = InfraPerformanceGameplay.ResolverIntervalo(0.22f, estadoOtimizacao, true, true);
             if (InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickSensor, intervaloArma))
@@ -292,8 +310,7 @@ public class ControleNavioRealista : MonoBehaviour
 
     private void AtualizarEstadoOtimizacao()
     {
-        ControleUnidade controle = GetComponent<ControleUnidade>();
-        bool selecionado = controle != null && controle.selecionado;
+        bool selecionado = controleUnidadeCache != null && controleUnidadeCache.selecionado;
         bool engajado = temDestino || Mathf.Abs(potenciaAtual) > 0.05f || velocidadeVetorial.sqrMagnitude > 0.25f;
         InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, true, 220f, 520f);
     }
@@ -472,6 +489,24 @@ public class ControleNavioRealista : MonoBehaviour
             && agente.isOnNavMesh;
     }
 
+    private void AtualizarEfeitosVisuaisOtimizados()
+    {
+        float intervalo = InfraPerformanceGameplay.ResolverIntervalo(0.033f, estadoOtimizacao, false, true);
+        if (InfraPerformanceGameplay.DeveExecutar(this, ref proximoTickVisual, intervalo))
+        {
+            AtualizarEfeitosVisuais();
+        }
+    }
+
+    private void AtualizarAudioOtimizados()
+    {
+        float intervalo = InfraPerformanceGameplay.ResolverIntervalo(0.10f, estadoOtimizacao, false, true);
+        if (InfraPerformanceGameplay.DeveExecutar(this, ref proximoTickAudio, intervalo))
+        {
+            AtualizarAudio();
+        }
+    }
+
     bool TentarPrepararAgenteParaNavegacao()
     {
         if (agente == null || !gameObject.activeInHierarchy)
@@ -505,6 +540,7 @@ public class ControleNavioRealista : MonoBehaviour
                 if (NavMesh.SamplePosition(origemAgua, out hit, RaioPreparacaoNavMesh, areaMask) && hit.hit)
                 {
                     agente.Warp(hit.position);
+                    poseAgenteCacheValida = false;
                 }
             }
         }
@@ -594,7 +630,7 @@ public class ControleNavioRealista : MonoBehaviour
     
     void agentNextPositionCheck(Vector3 novaPos)
     {
-        float nivelMar = NavalPlacementResolver.ResolveSeaLevel();
+        float nivelMar = ObterNivelMarCacheado();
 
         // 1. Defina a posição visual do GameObject (Barco/Submarino) na profundidade desejada
         // Soma o offset (configurado no inspector) com a profundidade interna
@@ -618,15 +654,36 @@ public class ControleNavioRealista : MonoBehaviour
         if (agente != null && agente.enabled && agente.isOnNavMesh)
         {
             Vector3 posSimulacao = new Vector3(novaPos.x, nivelMar, novaPos.z);
-            agente.nextPosition = posSimulacao;
+            if (!poseAgenteCacheValida || (ultimaPosicaoAgenteAplicada - posSimulacao).sqrMagnitude > 0.0004f)
+            {
+                agente.nextPosition = posSimulacao;
+                ultimaPosicaoAgenteAplicada = posSimulacao;
+            }
+
+            // Mantém o agente virtual no nível do mar sem reescrever a
+            // propriedade nativa quando o valor não mudou.
+            float baseOffset = nivelMar - posVisual.y;
+            if (!poseAgenteCacheValida || Mathf.Abs(ultimoBaseOffsetAgente - baseOffset) > 0.01f)
+            {
+                agente.baseOffset = baseOffset;
+                ultimoBaseOffsetAgente = baseOffset;
+            }
+
+            poseAgenteCacheValida = true;
+        }
+    }
+
+    private float ObterNivelMarCacheado()
+    {
+        float agora = Time.unscaledTime;
+        if (agora < proximaAtualizacaoNivelMar)
+        {
+            return nivelMarCache;
         }
 
-        // 3. Ajuste o colisor (Cilindro do Agent) para que ele suba até a superfície e não fique afundado junto com o visual
-        // Mantém o agente "virtual" no nível do mar mesmo com o casco visual abaixo/acima dele.
-        if (agente != null && agente.enabled && agente.isOnNavMesh)
-        {
-            agente.baseOffset = nivelMar - posVisual.y;
-        }
+        nivelMarCache = NavalPlacementResolver.ResolveSeaLevel();
+        proximaAtualizacaoNivelMar = agora + 0.35f;
+        return nivelMarCache;
     }
 
     bool TentarCorrigirFlutuacaoInicial(float nivelMar)
@@ -710,7 +767,8 @@ public class ControleNavioRealista : MonoBehaviour
             if (rastroEsteira) rastroEsteira.emitting = false;
             
             // Mantém apenas o balanço suave do mar (sem motor)
-            float balancoMarOff = Mathf.Sin(Time.time * frequenciaOnda + offsetOnda) * 2.0f;
+            float amplitudeBalancoMarOff = Mathf.Min(2f, Mathf.Abs(coeficienteAderna));
+            float balancoMarOff = Mathf.Sin(Time.time * frequenciaOnda + offsetOnda) * amplitudeBalancoMarOff;
             float pitchOndaOff = Mathf.Cos(Time.time * (frequenciaOnda * 1.5f) + offsetOnda) * alturaOnda;
             
             Quaternion simulacaoOffsetOff = Quaternion.Euler(pitchOndaOff, 0, balancoMarOff);
@@ -734,7 +792,8 @@ public class ControleNavioRealista : MonoBehaviour
         float rollAlvo = anguloLemeAtual * coeficienteAderna * ratioVelocidade * 5.0f; // *5 para escala visual
         
         // Adiciona balanço do mar (Passive Roll)
-        float balancoMar = Mathf.Sin(Time.time * frequenciaOnda + offsetOnda) * 2.0f; // +/- 2 graus sempre
+        float amplitudeBalancoMar = Mathf.Min(2f, Mathf.Abs(coeficienteAderna));
+        float balancoMar = Mathf.Sin(Time.time * frequenciaOnda + offsetOnda) * amplitudeBalancoMar;
         
         // PITCH (Arfagem - Nariz sobe com velocidade)
         float pitchAlvo = -ratioVelocidade * 2.0f; // Nariz levanta levemente (ou desce dependendo do design, aqui levanta)
@@ -891,7 +950,7 @@ public class ControleNavioRealista : MonoBehaviour
         // O diorama do menu reutiliza navios da campanha, mas não deve aceitar
         // ordens nem tentar preparar um NavMesh enquanto a partida ainda não
         // começou. A cena de campanha continua usando o fluxo normal abaixo.
-        if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+        if (ehCenaDeMenuCache)
         {
             return;
         }
@@ -908,8 +967,7 @@ public class ControleNavioRealista : MonoBehaviour
             return;
         }
 
-        ControleUnidade controleUnidade = GetComponent<ControleUnidade>()
-            ?? GetComponentInParent<ControleUnidade>();
+        ControleUnidade controleUnidade = controleUnidadeCache;
         bool ordemNavalCartelAtiva = controleUnidade != null
             && !string.IsNullOrWhiteSpace(ordemExternaId)
             && controleUnidade.PossuiOrdemMovimentoAtiva

@@ -68,6 +68,10 @@ public class LancadorNaval : MonoBehaviour
     private Transform pivoMiraResolvido;
     private bool avisoPivoMiraEmitido;
     private static Material materialAlcanceCompartilhado;
+    private float proximaBuscaCamera;
+    private float proximaAtualizacaoVisualizador;
+    private Vector3 ultimaPosicaoVisualizador;
+    private float ultimoAlcanceVisualizador = -1f;
 
     // --- BANCO DE DADOS GLOBAL DE COMBATE DA FROTA ---
     // Compartilhado estaticamente por TODOS os navios! Impede que 5 navios atirem num barco que já vai morrer.
@@ -78,6 +82,9 @@ public class LancadorNaval : MonoBehaviour
     private static readonly HashSet<int> prefabsEmPreaquecimento = new HashSet<int>();
     private static readonly Collider[] radarBuffer = new Collider[128];
     private static readonly List<IdentidadeUnidade> unidadesRegistradasRadar = new List<IdentidadeUnidade>(256);
+    private static float proximaAtualizacaoRegistroRadar;
+    private static int cenaRegistroRadar = -1;
+    private static readonly Dictionary<int, float> proximoRegistroMiniMapaPorAlvo = new Dictionary<int, float>(128);
     private static MiniMapa miniMapaCache;
     private static float proximaBuscaMiniMapa;
     private readonly List<Transform> bufferAlvosValidos = new List<Transform>(32);
@@ -111,7 +118,7 @@ public class LancadorNaval : MonoBehaviour
         // Evita que uma configuracao acidental transforme cada lancador em
         // uma varredura por frame. O perfil da IA continua podendo alongar
         // ainda mais esse intervalo quando necessario.
-        intervaloVarreduraAutomatica = Mathf.Max(0.20f, intervaloVarreduraAutomatica);
+        intervaloVarreduraAutomatica = Mathf.Max(0.35f, intervaloVarreduraAutomatica);
     }
 
     void Start()
@@ -120,6 +127,7 @@ public class LancadorNaval : MonoBehaviour
         ResolverPivoMira();
         proximaVarreduraAutomatica = Time.time + Mathf.Repeat(Mathf.Abs(GetInstanceID()) * 0.017f, Mathf.Max(0.05f, intervaloVarreduraAutomatica));
         cameraPrincipal = Camera.main;
+        proximaBuscaCamera = Time.unscaledTime + 0.5f;
         if (preaquecerMisseisNoStart)
         {
             StartCoroutine(PreaquecerMisseisSemTravada());
@@ -218,21 +226,39 @@ public class LancadorNaval : MonoBehaviour
         if (linhaDeAlcance == null) return;
         
         bool deveMostrar = (meuControle != null && meuControle.selecionado);
-        linhaDeAlcance.enabled = deveMostrar;
-        
-        if (deveMostrar)
+        if (!deveMostrar)
         {
-            float angulo = 0f;
-            for (int i = 0; i <= 50; i++)
+            if (linhaDeAlcance.enabled)
             {
-                float x = Mathf.Sin(angulo) * alcanceRadar;
-                float z = Mathf.Cos(angulo) * alcanceRadar;
-                // Mantemos Y estático no WorldSpace para a linha não rotacionar com o balanço do barco
-                Vector3 pos = new Vector3(transform.position.x + x, transform.position.y, transform.position.z + z);
-                linhaDeAlcance.SetPosition(i, pos);
-                angulo += (2 * Mathf.PI) / 50;
+                linhaDeAlcance.enabled = false;
             }
+            return;
         }
+
+        Vector3 posicaoAtual = transform.position;
+        bool geometriaMudou = !linhaDeAlcance.enabled
+            || (posicaoAtual - ultimaPosicaoVisualizador).sqrMagnitude > 0.25f
+            || !Mathf.Approximately(alcanceRadar, ultimoAlcanceVisualizador);
+        if (!geometriaMudou && Time.unscaledTime < proximaAtualizacaoVisualizador)
+        {
+            return;
+        }
+
+        linhaDeAlcance.enabled = true;
+        float angulo = 0f;
+        for (int i = 0; i <= 50; i++)
+        {
+            float x = Mathf.Sin(angulo) * alcanceRadar;
+            float z = Mathf.Cos(angulo) * alcanceRadar;
+            // Mantemos Y estático no WorldSpace para a linha não rotacionar com o balanço do barco
+            Vector3 pos = new Vector3(posicaoAtual.x + x, posicaoAtual.y, posicaoAtual.z + z);
+            linhaDeAlcance.SetPosition(i, pos);
+            angulo += (2 * Mathf.PI) / 50;
+        }
+
+        ultimaPosicaoVisualizador = posicaoAtual;
+        ultimoAlcanceVisualizador = alcanceRadar;
+        proximaAtualizacaoVisualizador = Time.unscaledTime + 0.15f;
     }
 
     // --- SISTEMA DE RECARGA (USADO PELO PIER) ---
@@ -260,7 +286,11 @@ public class LancadorNaval : MonoBehaviour
 
     void Update()
     {
-        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        if (cameraPrincipal == null && Time.unscaledTime >= proximaBuscaCamera)
+        {
+            cameraPrincipal = Camera.main;
+            proximaBuscaCamera = Time.unscaledTime + 0.5f;
+        }
         AtualizarVisualizadorAlcance();
 
         // 1. Controle de Modos (Tecla 'I')
@@ -492,7 +522,15 @@ public class LancadorNaval : MonoBehaviour
 
     void RegistrarAlvosDoRegistroGlobal(int meuTime)
     {
-        RegistroEntidadesJogo.FillUnidades(unidadesRegistradasRadar);
+        int handleCena = gameObject.scene.handle;
+        if (handleCena != cenaRegistroRadar || Time.time >= proximaAtualizacaoRegistroRadar)
+        {
+            unidadesRegistradasRadar.Clear();
+            RegistroEntidadesJogo.FillUnidades(unidadesRegistradasRadar);
+            cenaRegistroRadar = handleCena;
+            proximaAtualizacaoRegistroRadar = Time.time + 0.35f;
+        }
+
         float alcanceSqr = alcanceRadar * alcanceRadar;
 
         for (int i = 0; i < unidadesRegistradasRadar.Count; i++)
@@ -511,7 +549,6 @@ public class LancadorNaval : MonoBehaviour
             TentarRegistrarAlvoDetectado(unidade.transform, meuTime);
         }
 
-        unidadesRegistradasRadar.Clear();
     }
 
     void RegistrarAlvoNoMiniMapa(Transform alvo)
@@ -519,6 +556,22 @@ public class LancadorNaval : MonoBehaviour
         MiniMapa miniMapa = ObterMiniMapa();
         if (miniMapa != null && miniMapa.mostrarInimigos)
         {
+            int idAlvo = alvo != null ? alvo.GetInstanceID() : 0;
+            if (idAlvo != 0
+                && proximoRegistroMiniMapaPorAlvo.TryGetValue(idAlvo, out float proximoRegistro)
+                && proximoRegistro > Time.time)
+            {
+                return;
+            }
+
+            if (idAlvo != 0)
+            {
+                proximoRegistroMiniMapaPorAlvo[idAlvo] = Time.time + 0.75f;
+                if (proximoRegistroMiniMapaPorAlvo.Count > 2048)
+                {
+                    proximoRegistroMiniMapaPorAlvo.Clear();
+                }
+            }
             miniMapa.RegistrarUnidadeNoMapa(alvo, true);
         }
     }
@@ -909,6 +962,21 @@ public class LancadorNaval : MonoBehaviour
                 int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : -1;
                 scriptTorpedo.DefinirLancador(transform, meuTime);
                 MissileThreatTracker.RegistrarLancamento(misselObj, this, alvoFinal, alvoFixo, MissileThreatTracker.EstimarVelocidade(misselObj));
+            }
+            else
+            {
+                // Alguns prefabs navais antigos usam o campo "prefabTorpedo"
+                // para o missel_sub. Ele precisa receber a mesma inicialização
+                // de voo, caso contrário nasce visível, mas fica sem comando.
+                MisselSubmarino scriptMisselSubmarino = misselObj.GetComponent<MisselSubmarino>();
+                if (scriptMisselSubmarino != null)
+                {
+                    float nivelMar = 0f;
+                    try { nivelMar = NavalPlacementResolver.ResolveSeaLevel(); } catch { }
+                    bool lancamentoSubmerso = pontoDeSaida.position.y < nivelMar - 0.5f;
+                    scriptMisselSubmarino.IniciarLancamento(alvoFinal, lancamentoSubmerso, alvoFixo);
+                    MissileThreatTracker.RegistrarLancamento(misselObj, this, alvoFinal, alvoFixo, MissileThreatTracker.EstimarVelocidade(misselObj));
+                }
             }
         }
 

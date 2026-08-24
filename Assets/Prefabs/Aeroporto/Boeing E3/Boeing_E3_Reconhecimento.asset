@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Boeing_E3_Reconhecimento
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Boeing E-3 Sentry
+  descricao: "Aeronave AWACS de reconhecimento, vigilancia e retransmissao de contatos."
+  icone: {fileID: 0}
+  itemId: boeing_e3_sentry
+  aliases: "E-3, E3, AWACS, Sentry, Boeing E-3"
+  capacidades: 34603154
+  prefabDaUnidade: {fileID: 819382474612140520, guid: f423ca1ac0ced674e9edf9a0b93e5d06, type: 3}
+  preco: 12500
+  precoDefinitivo: 0
+  categoria: 2
+  escalaPoder: 2
+  strategicRole: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []
