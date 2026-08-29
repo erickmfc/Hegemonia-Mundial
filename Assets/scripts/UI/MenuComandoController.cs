@@ -1241,12 +1241,29 @@ public class MenuComandoController : MonoBehaviour
             if (id == null || !id.gameObject.activeInHierarchy) continue;
 
             int instId = id.gameObject.GetInstanceID();
+            Hegemonia.Cartel.CartelNavalUnidade cartelNaval = id.GetComponent<Hegemonia.Cartel.CartelNavalUnidade>();
+            if (cartelNaval != null && !cartelNaval.RadarVisivel)
+            {
+                // O Cartel Naval mantém o barco no mundo, mas perde o contato
+                // no radar enquanto está em movimento. Reutiliza o marcador
+                // existente e apenas o oculta, sem apagar/recriar a camada.
+                mapaVivos.Add(instId);
+                if (mapaElementos.TryGetValue(instId, out MapaItemUI marcadorOculto)
+                    && marcadorOculto != null && marcadorOculto.Root != null)
+                {
+                    marcadorOculto.Root.style.display = DisplayStyle.None;
+                }
+                continue;
+            }
+
             bool amigo   = EhUnidadeDoJogador(id);
             bool inimigo = id.teamID > 0 && !amigo;
             if (!amigo && !inimigo) continue;
             mapaVivos.Add(instId);
 
-            Vector3 pos3D = id.transform.position;
+            Vector3 pos3D = cartelNaval != null
+                ? cartelNaval.PosicaoConhecidaRadar
+                : id.transform.position;
 
             // Converte para % (0-100) usando a janela visível
             float pctX = ((pos3D.x - xMin) / rangeX) * 100f;
@@ -1535,6 +1552,11 @@ public class MenuComandoController : MonoBehaviour
 
     private string ObterEmojiUnidade(IdentidadeUnidade id)
     {
+        if (id != null && id.GetComponent<Hegemonia.Cartel.CartelNavalUnidade>() != null)
+        {
+            return "?";
+        }
+
         switch (id.tipoUnidade)
         {
             case TipoUnidade.Aereo:     return "✈️";

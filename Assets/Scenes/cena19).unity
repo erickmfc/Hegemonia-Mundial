@@ -548,6 +548,9 @@ GameObject:
   - component: {fileID: 16361236}
   - component: {fileID: 16361238}
   - component: {fileID: 16361239}
+  - component: {fileID: 16361240}
+  - component: {fileID: 16361241}
+  - component: {fileID: 16361242}
   m_Layer: 0
   m_Name: IA02CityLayout - Uniao Carmesim
   m_TagString: Untagged
@@ -605,7 +608,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02CityLayout
   layoutId: ia02.layout.uniao.carmesim
   layoutVersion: 1
-  slotRegistry: {fileID: 16361239}
+  slotRegistry: {fileID: 16361242}
   autonomousZones: []
   capitalSlot: {fileID: 1833016296}
 --- !u!114 &16361237
@@ -642,6 +645,42 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 48250302}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlotRegistry
+--- !u!114 &16361240
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 16361234}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 2142152082}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlotRegistry
+--- !u!114 &16361241
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 16361234}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 320755264}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlotRegistry
+--- !u!114 &16361242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 16361234}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1940926007}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlotRegistry
 --- !u!1 &16798414
@@ -2169,10 +2208,10 @@ MonoBehaviour:
   exitDirection: {fileID: 903304677}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -3923,10 +3962,10 @@ MonoBehaviour:
   exitDirection: {fileID: 0}
   reservedFootprint: {x: 18, y: 18}
   safetyMargin: 1
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -15178,10 +15217,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1565860007}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -16128,10 +16167,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1460053793}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -16649,6 +16688,8 @@ MonoBehaviour:
   zoomMaximo: 400
   detectarLimitesReaisDoMapa: 1
   margemMapa: 250
+  enquadrarCoberturaCompletaAoAbrir: 0
+  margemEnquadramentoInicial: 1.08
   meuTeamID: 1
   nivelDoMar: 0
 --- !u!1 &299403021
@@ -17194,7 +17235,7 @@ Transform:
   m_GameObject: {fileID: 307940876}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1828, y: 0, z: 2826}
+  m_LocalPosition: {x: -5939, y: 0, z: -2413.7998}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -17229,10 +17270,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1950430640}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -17678,6 +17719,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalPatrolZone
   raio: 492.1
   intervaloDias: 6
+--- !u!115 &320755264
+MonoScript:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  serializedVersion: 7
+  m_DefaultReferences: {}
+  m_Icon: {fileID: 0}
+  m_Type: 0
+  m_ExecutionOrder: 0
+  m_ClassName: IA02BuildSlotRegistry
+  m_Namespace: Hegemonia.AI.IA02
+  m_AssemblyName: Assembly-CSharp
 --- !u!1 &322011397
 GameObject:
   m_ObjectHideFlags: 0
@@ -19195,10 +19251,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1785630639}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -24641,10 +24697,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1122768220}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -26642,8 +26698,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 422517069}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 9690.5, y: 0, z: -3690.5}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 5691, y: 0, z: -3177}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -28497,10 +28553,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1565927516}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -34175,7 +34231,7 @@ Transform:
   m_GameObject: {fileID: 603375090}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 541.00006, y: 0, z: 2238}
+  m_LocalPosition: {x: -3539.0002, y: 0, z: -498.83984}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -34210,10 +34266,10 @@ MonoBehaviour:
   exitDirection: {fileID: 882738109}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -39500,7 +39556,7 @@ Transform:
   m_GameObject: {fileID: 718289829}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 493.00006, y: 0, z: -36.99951}
+  m_LocalPosition: {x: 493, y: 0, z: -36.99951}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -39535,10 +39591,10 @@ MonoBehaviour:
   exitDirection: {fileID: 415868264}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -59498,10 +59554,10 @@ MonoBehaviour:
   exitDirection: {fileID: 0}
   reservedFootprint: {x: 16, y: 16}
   safetyMargin: 1
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -65082,10 +65138,10 @@ MonoBehaviour:
   exitDirection: {fileID: 755457375}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -65326,7 +65382,7 @@ Transform:
   m_GameObject: {fileID: 1180488917}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1297, y: 0, z: -267.9995}
+  m_LocalPosition: {x: -360, y: 0, z: -267.9995}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -65361,10 +65417,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1786211511}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -67068,8 +67124,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1225074632}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 350, y: 0, z: 1642}
+  m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: 201, y: 0, z: -1038}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -67110,10 +67166,10 @@ MonoBehaviour:
   exitDirection: {fileID: 870726270}
   reservedFootprint: {x: 70, y: 48}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -70745,6 +70801,8 @@ MonoBehaviour:
   zoomMaximo: 400
   detectarLimitesReaisDoMapa: 1
   margemMapa: 250
+  enquadrarCoberturaCompletaAoAbrir: 0
+  margemEnquadramentoInicial: 1.08
   meuTeamID: 1
   nivelDoMar: 0
 --- !u!1 &1299528819
@@ -74929,8 +74987,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1386466725}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.71196467, z: 0, w: 0.70221525}
-  m_LocalPosition: {x: -696, y: 0, z: 838}
+  m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: 201, y: 0, z: -598}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -74965,10 +75023,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1004255309}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -78974,7 +79032,7 @@ Transform:
   m_GameObject: {fileID: 1465673616}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3309, y: 0, z: 1811}
+  m_LocalPosition: {x: -1299, y: 0, z: 1256.5399}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -79009,10 +79067,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1904272631}
   reservedFootprint: {x: 28, y: 28}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -90378,10 +90436,10 @@ MonoBehaviour:
   exitDirection: {fileID: 1875603013}
   reservedFootprint: {x: 110, y: 60}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -96028,10 +96086,10 @@ MonoBehaviour:
   exitDirection: {fileID: 0}
   reservedFootprint: {x: 12, y: 12}
   safetyMargin: 1
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -99821,10 +99879,10 @@ MonoBehaviour:
   exitDirection: {fileID: 275280484}
   reservedFootprint: {x: 110, y: 60}
   safetyMargin: 2
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -100556,6 +100614,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 322011398}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!115 &1940926007
+MonoScript:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  serializedVersion: 7
+  m_DefaultReferences: {}
+  m_Icon: {fileID: 0}
+  m_Type: 0
+  m_ExecutionOrder: 0
+  m_ClassName: IA02BuildSlotRegistry
+  m_Namespace: Hegemonia.AI.IA02
+  m_AssemblyName: Assembly-CSharp
 --- !u!1 &1941797629
 GameObject:
   m_ObjectHideFlags: 0
@@ -100582,7 +100655,7 @@ Transform:
   m_GameObject: {fileID: 1941797629}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -514, y: 0, z: -690.9995}
+  m_LocalPosition: {x: -360, y: 0, z: -690.9995}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -100613,10 +100686,10 @@ MonoBehaviour:
   exitDirection: {fileID: 0}
   reservedFootprint: {x: 16, y: 16}
   safetyMargin: 1
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -110421,10 +110494,10 @@ MonoBehaviour:
   exitDirection: {fileID: 0}
   reservedFootprint: {x: 10, y: 10}
   safetyMargin: 1
-  ownerTeamId: 0
+  ownerTeamId: 3
   state: 0
   reservedCommandId: 
-  ownerNationId: 0
+  ownerNationId: 3
   constructedItemId: 
   reservedAt: 0
   blockReason: 
@@ -112735,6 +112808,21 @@ Transform:
   - {fileID: 1518231347}
   m_Father: {fileID: 62192066}
   m_LocalEulerAnglesHint: {x: 0, y: -90, z: 0}
+--- !u!115 &2142152082
+MonoScript:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  serializedVersion: 7
+  m_DefaultReferences: {}
+  m_Icon: {fileID: 0}
+  m_Type: 0
+  m_ExecutionOrder: 0
+  m_ClassName: IA02BuildSlotRegistry
+  m_Namespace: Hegemonia.AI.IA02
+  m_AssemblyName: Assembly-CSharp
 --- !u!1 &2143643139
 GameObject:
   m_ObjectHideFlags: 0

@@ -77,6 +77,20 @@ public sealed class MarcadorSuperficieMapa : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Recalcula explicitamente a área registrada depois que um configurador
+    /// de cena adiciona ou reposiciona filhos em tempo de edição.
+    /// </summary>
+    public void RecalcularAgora()
+    {
+        RebuildCaches();
+        AtualizarBounds();
+        if (isActiveAndEnabled)
+        {
+            RegistroSuperficieMapa.Registrar(this);
+        }
+    }
+
     private void Reset()
     {
         InferirTipoPeloNome();
