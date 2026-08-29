@@ -8,6 +8,7 @@ public class SistemaDeDanos : MonoBehaviour
     public event Action OnDano;  // Disparado quando recebe dano
     public event Action OnMorte; // Disparado quando morre
     public static event Action<SistemaDeDanos, GameObject, float> OnDanoGlobal;
+    public static event Action<SistemaDeDanos, GameObject> OnMorteGlobal;
     
     [Header("Configuração Vital")]
     public float vidaMaxima = 100f;
@@ -39,6 +40,7 @@ public class SistemaDeDanos : MonoBehaviour
     // Estados
     private bool morreu = false;
     private int ultimoAgressorTeamId = -1;
+    private GameObject ultimoAgressor;
 
     /// <summary>
     /// Resolve a identidade da entidade mesmo quando o collider, o sistema de
@@ -90,6 +92,7 @@ public class SistemaDeDanos : MonoBehaviour
         {
             agressor = InferirAgressorProximo();
         }
+        ultimoAgressor = agressor;
 
         vidaAtual -= dano;
         float porcentagem = vidaAtual / vidaMaxima;
@@ -345,7 +348,7 @@ public class SistemaDeDanos : MonoBehaviour
     void MorrerBiologico()
     {
         morreu = true;
-        OnMorte?.Invoke(); // Notifica a morte
+        NotificarMorte();
         DesativarUnidade();
         
         // Efeito de Sangue
@@ -382,7 +385,7 @@ public class SistemaDeDanos : MonoBehaviour
     {
         Debug.Log($"🧱 [SistemaDeDanos] O muro/estrutura '{gameObject.name}' chegou a vida 0! Iniciando Destruição...");
         morreu = true;
-        OnMorte?.Invoke();
+        NotificarMorte();
         DesativarUnidade();
 
         // Toca som de desmoronamento/quebra
@@ -411,7 +414,7 @@ public class SistemaDeDanos : MonoBehaviour
     IEnumerator SequenciaDeMorte()
     {
         morreu = true;
-        OnMorte?.Invoke(); // Notifica a morte
+        NotificarMorte();
         
         // ⚫ Fase 5: Colapso Total
         // 1. Desativa controles imediatamente
@@ -456,6 +459,16 @@ public class SistemaDeDanos : MonoBehaviour
 
         // 6. Remove a unidade
         Destroy(gameObject);
+    }
+
+    private void NotificarMorte()
+    {
+        // O evento global é apenas uma leitura do mesmo evento de morte que a
+        // unidade já usava. A Carta não assume a aplicação de dano nem decide
+        // quem venceu o combate.
+        CartaCombateRegistro.RegistrarUnidadeDestruida(this, ultimoAgressor);
+        OnMorteGlobal?.Invoke(this, ultimoAgressor);
+        OnMorte?.Invoke();
     }
 
     bool DeveAfundarComoEmbarcacao()

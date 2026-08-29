@@ -17,12 +17,121 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
     private RenderTexture texturaCarta;
     private bool renderPendente;
     private bool possuiRenderCache;
+    private bool centralizacaoSolicitada;
+    private Vector3 centroCentralizacaoSolicitado;
+    private float proximoRender;
     private Vector3 ultimoCentro;
     private float ultimoRaio;
     private float ultimoAspecto;
     private bool ultimaVistaInclinada;
+    private float fatorZoomNavegacao = 1f;
+    private bool atualizacaoContinua;
+    private Transform alvoRastreamento;
 
     public Texture Textura => texturaCarta;
+    public Camera CameraCarta => cameraCarta;
+    public bool EstaRastreando => alvoRastreamento != null;
+
+    /// <summary>
+    /// Atualiza a leitura do mundo enquanto a Carta está aberta sem obrigar
+    /// a interface a reconstruir o mapa quando chega uma transmissão E-3.
+    /// A captura continua limitada pelo intervalo de render do componente.
+    /// </summary>
+    public void DefinirAtualizacaoContinua(bool ativa)
+    {
+        if (atualizacaoContinua == ativa) return;
+        atualizacaoContinua = ativa;
+        if (ativa) renderPendente = true;
+    }
+
+    /// <summary>
+    /// A Carta usa uma Camera real, mas a camera nao deve acompanhar cada
+    /// mensagem de radio ou cada unidade que se move. A centralizacao e uma
+    /// acao explicita da interface.
+    /// </summary>
+    public void SolicitarCentralizacao(Vector3 centro)
+    {
+        centroCentralizacaoSolicitado = centro;
+        centralizacaoSolicitada = true;
+        fatorZoomNavegacao = 1f;
+        renderPendente = true;
+    }
+
+    /// <summary>
+    /// Inicia o acompanhamento pela câmera exclusiva da Carta. Nenhuma
+    /// câmera principal ou unidade é movida; apenas o centro desta leitura é
+    /// atualizado enquanto o alvo real permanece ativo.
+    /// </summary>
+    public void IniciarRastreamento(Transform alvo)
+    {
+        if (alvo == null) return;
+        alvoRastreamento = alvo;
+        atualizacaoContinua = true;
+        renderPendente = true;
+    }
+
+    public void PararRastreamento()
+    {
+        alvoRastreamento = null;
+    }
+
+    public void MarcarRenderNecessario()
+    {
+        renderPendente = true;
+    }
+
+    /// <summary>
+    /// Move o centro da carta sem recriar a câmera, a textura ou a interface.
+    /// O deslocamento é expresso em proporção do viewport: positivo em X/Y
+    /// acompanha o arrasto visual do mapa.
+    /// </summary>
+    public void DeslocarMapa(Vector2 deslocamentoViewport)
+    {
+        if (cameraCarta == null || !possuiRenderCache) return;
+
+        float alturaMundo = Mathf.Max(1f, cameraCarta.orthographicSize * 2f);
+        float larguraMundo = alturaMundo * Mathf.Max(1f, ultimoAspecto);
+        Vector3 centroAnterior = ultimoCentro;
+        ultimoCentro -= cameraCarta.transform.right * (deslocamentoViewport.x * larguraMundo);
+        ultimoCentro -= cameraCarta.transform.up * (deslocamentoViewport.y * alturaMundo);
+        cameraCarta.transform.position += ultimoCentro - centroAnterior;
+        renderPendente = true;
+    }
+
+    /// <summary>
+    /// Ajusta o zoom mantendo a mesma posição central e a mesma RenderTexture.
+    /// Delta positivo aproxima; delta negativo afasta.
+    /// </summary>
+    public void AjustarZoom(float delta)
+    {
+        fatorZoomNavegacao = Mathf.Clamp(
+            fatorZoomNavegacao * Mathf.Pow(1.12f, -delta),
+            0.45f,
+            2.50f);
+        AplicarZoomAtual();
+        renderPendente = true;
+    }
+
+    public float ObterZoomAtual()
+    {
+        return fatorZoomNavegacao;
+    }
+
+    public bool TryWorldToViewport(Vector3 worldPosition, out Vector3 viewportPosition)
+    {
+        viewportPosition = Vector3.zero;
+        if (cameraCarta == null) return false;
+        viewportPosition = cameraCarta.WorldToViewportPoint(worldPosition);
+        return true;
+    }
+
+    public bool TryViewportPointToRay(Vector2 viewportPosition, out Ray ray)
+    {
+        ray = default(Ray);
+        if (cameraCarta == null) return false;
+        ray = cameraCarta.ViewportPointToRay(viewportPosition);
+        return true;
+    }
 
     public Texture Renderizar(Vector3 centro, float raio, float aspecto)
     {
@@ -46,38 +155,47 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
         float tamanhoVertical = raio / Mathf.Max(0.1f, fatorVertical);
         float alturaCamera = Mathf.Max(800f, raio * 1.5f);
 
+        bool mudouModo = possuiRenderCache && ultimaVistaInclinada != vistaInclinada;
         bool mudouArea = !possuiRenderCache
-            || (centro - ultimoCentro).sqrMagnitude > 0.25f
+            || centralizacaoSolicitada
             || Mathf.Abs(raio - ultimoRaio) > 0.5f
             || Mathf.Abs(aspecto - ultimoAspecto) > 0.01f
-            || ultimaVistaInclinada != vistaInclinada;
+            || mudouModo;
 
         if (mudouArea)
         {
+            Vector3 centroEfetivo = possuiRenderCache && !centralizacaoSolicitada
+                ? ultimoCentro
+                : centroCentralizacaoSolicitado;
+            if (!possuiRenderCache && !centralizacaoSolicitada)
+            {
+                centroEfetivo = centro;
+            }
             if (vistaInclinada)
             {
-                Vector3 posicaoCamera = centro + new Vector3(0f, alturaCamera * 0.92f, -alturaCamera * 0.82f);
+                float distanciaCamera = alturaCamera * fatorZoomNavegacao;
+                Vector3 posicaoCamera = centroEfetivo + new Vector3(0f, distanciaCamera * 0.92f, -distanciaCamera * 0.82f);
                 cameraCarta.transform.SetPositionAndRotation(
                     posicaoCamera,
-                    Quaternion.LookRotation(centro - posicaoCamera, Vector3.up));
-                cameraCarta.orthographicSize = raio * 0.86f / Mathf.Max(0.1f, fatorVertical);
+                    Quaternion.LookRotation(centroEfetivo - posicaoCamera, Vector3.up));
+                cameraCarta.orthographicSize = raio * 0.86f * fatorZoomNavegacao / Mathf.Max(0.1f, fatorVertical);
             }
             else
             {
                 cameraCarta.transform.SetPositionAndRotation(
-                    new Vector3(centro.x, centro.y + alturaCamera, centro.z),
+                    new Vector3(centroEfetivo.x, centroEfetivo.y + alturaCamera, centroEfetivo.z),
                     Quaternion.Euler(90f, 0f, 0f));
-                cameraCarta.orthographicSize = tamanhoVertical;
+                cameraCarta.orthographicSize = tamanhoVertical * fatorZoomNavegacao;
             }
             cameraCarta.farClipPlane = Mathf.Clamp(alturaCamera + raio * 3f + 500f, 2000f, 20000f);
-            cameraCarta.targetTexture = texturaCarta;
 
-            ultimoCentro = centro;
+            ultimoCentro = centroEfetivo;
             ultimoRaio = raio;
             ultimoAspecto = aspecto;
             ultimaVistaInclinada = vistaInclinada;
             possuiRenderCache = true;
             renderPendente = true;
+            centralizacaoSolicitada = false;
         }
 
         // A captura acontece no LateUpdate. Camera.Render dentro do OnGUI
@@ -86,15 +204,85 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
         return texturaCarta;
     }
 
+    private void AplicarZoomAtual()
+    {
+        if (cameraCarta == null || !possuiRenderCache) return;
+
+        if (ultimaVistaInclinada)
+        {
+            float alturaCamera = Mathf.Max(800f, ultimoRaio * 1.5f) * fatorZoomNavegacao;
+            Vector3 posicaoCamera = ultimoCentro + new Vector3(0f, alturaCamera * 0.92f, -alturaCamera * 0.82f);
+            cameraCarta.transform.SetPositionAndRotation(
+                posicaoCamera,
+                Quaternion.LookRotation(ultimoCentro - posicaoCamera, Vector3.up));
+            cameraCarta.orthographicSize = ultimoRaio * 0.86f * fatorZoomNavegacao / Mathf.Max(0.1f, Mathf.Min(1f, ultimoAspecto));
+        }
+        else
+        {
+            cameraCarta.transform.position = new Vector3(
+                ultimoCentro.x,
+                ultimoCentro.y + Mathf.Max(800f, ultimoRaio * 1.5f),
+                ultimoCentro.z);
+            cameraCarta.orthographicSize = (ultimoRaio / Mathf.Max(0.1f, Mathf.Min(1f, ultimoAspecto))) * fatorZoomNavegacao;
+        }
+    }
+
     private void LateUpdate()
     {
-        if (!renderPendente || cameraCarta == null || texturaCarta == null)
+        AtualizarCentroRastreamento();
+        if (atualizacaoContinua && Time.unscaledTime >= proximoRender)
+        {
+            renderPendente = true;
+        }
+
+        if (!renderPendente || cameraCarta == null || texturaCarta == null
+            || Time.unscaledTime < proximoRender)
         {
             return;
         }
 
         renderPendente = false;
+        proximoRender = Time.unscaledTime + 0.10f;
         cameraCarta.Render();
+    }
+
+    private void AtualizarCentroRastreamento()
+    {
+        if (alvoRastreamento == null) return;
+        if (!alvoRastreamento.gameObject.activeInHierarchy)
+        {
+            alvoRastreamento = null;
+            return;
+        }
+        if (!possuiRenderCache || cameraCarta == null) return;
+
+        // O eixo Y do centro continua sendo o do terreno/câmera original;
+        // somente X/Z acompanham a posição real do míssil.
+        Vector3 novoCentro = new Vector3(alvoRastreamento.position.x, ultimoCentro.y, alvoRastreamento.position.z);
+        if ((novoCentro - ultimoCentro).sqrMagnitude < 0.25f) return;
+        ultimoCentro = novoCentro;
+        AplicarCentroAtual();
+        renderPendente = true;
+    }
+
+    private void AplicarCentroAtual()
+    {
+        if (cameraCarta == null) return;
+        if (ultimaVistaInclinada)
+        {
+            float alturaCamera = Mathf.Max(800f, ultimoRaio * 1.5f) * fatorZoomNavegacao;
+            Vector3 posicaoCamera = ultimoCentro + new Vector3(0f, alturaCamera * 0.92f, -alturaCamera * 0.82f);
+            cameraCarta.transform.SetPositionAndRotation(
+                posicaoCamera,
+                Quaternion.LookRotation(ultimoCentro - posicaoCamera, Vector3.up));
+        }
+        else
+        {
+            cameraCarta.transform.position = new Vector3(
+                ultimoCentro.x,
+                ultimoCentro.y + Mathf.Max(800f, ultimoRaio * 1.5f),
+                ultimoCentro.z);
+        }
     }
 
     private void GarantirRecursos()
@@ -143,6 +331,7 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
 
     private void OnDestroy()
     {
+        alvoRastreamento = null;
         if (cameraCarta != null)
         {
             Destroy(cameraCarta.gameObject);

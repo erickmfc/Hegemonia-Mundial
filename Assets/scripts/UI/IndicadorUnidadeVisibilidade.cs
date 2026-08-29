@@ -11,6 +11,11 @@ public static class IndicadorUnidadeVisibilidade
     {
         get
         {
+            if (QuartelMenuUIController.EntradaGlobalBloqueada)
+            {
+                return true;
+            }
+
             if (MenuConstrucao.EstaAberto
                 || MenuGoverno.EstaAberto
                 || MenuMisseis.EstaAberto

@@ -6,6 +6,7 @@ using System.Linq;
 using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.DEUSA;
 using Hegemonia.AI.IA01;
+using Hegemonia.AI.IA02;
 using Hegemonia.AI.Shared;
 using Hegemonia.RTS;
 using UnityEngine;
@@ -37,6 +38,7 @@ public class DadosDoJogo
     public List<SaveAiStrategicStateData> estadosIA = new List<SaveAiStrategicStateData>();
     public List<SaveDeusaStateData> estadosDeusa = new List<SaveDeusaStateData>();
     public List<SaveIA01NationState> estadosIA01 = new List<SaveIA01NationState>();
+    public List<SaveIA02NationState> estadosIA02 = new List<SaveIA02NationState>();
     public IAAutoProductionSaveData producaoAutomaticaIA = new IAAutoProductionSaveData();
     public float qgPosX;
     public float qgPosY;
@@ -371,6 +373,7 @@ public class SistemaSaveGame : MonoBehaviour
             // O save deve ser carregado apenas por acao explicita do jogador.
             dadosAtuais = new DadosDoJogo();
             GarantirColecoesIA01();
+            GarantirColecoesIA02();
             carregouDeSave = false;
             restauracaoPendente = false;
             AplicarIdiomaSalvo();
@@ -504,6 +507,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         GarantirColecoesIA01();
+        GarantirColecoesIA02();
         dadosAtuais.saveVersion = 14;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
@@ -515,6 +519,7 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarFilaProducao();
         CapturarEstadoIAImperial();
         CapturarEstadoIA01();
+        CapturarEstadoIA02();
         CapturarProducaoAutomaticaIA();
         CapturarEstadoDeusa();
         CapturarEstadoQuarteis();
@@ -558,6 +563,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         GarantirColecoesIA01();
+        GarantirColecoesIA02();
         bool saveLegadoAntesDaVersao12 = dadosAtuais.saveVersion < 12;
         if (dadosAtuais.saveVersion <= 0)
         {
@@ -573,7 +579,7 @@ public class SistemaSaveGame : MonoBehaviour
 
         carregouDeSave = true;
         partidaNovaRecemIniciada = false;
-        restauracaoPendente = dadosAtuais.saveVersion >= 2 && ((dadosAtuais.entidades != null && dadosAtuais.entidades.Count > 0) || (dadosAtuais.estadosIA01 != null && dadosAtuais.estadosIA01.Count > 0));
+        restauracaoPendente = dadosAtuais.saveVersion >= 2 && ((dadosAtuais.entidades != null && dadosAtuais.entidades.Count > 0) || (dadosAtuais.estadosIA01 != null && dadosAtuais.estadosIA01.Count > 0) || (dadosAtuais.estadosIA02 != null && dadosAtuais.estadosIA02.Count > 0));
         // Limpa ordens da sessão anterior imediatamente. A restauração tardia
         // continua sendo repetida após a cena para manter o mesmo ponto de
         // sincronização das demais ordens salvas.
@@ -767,6 +773,7 @@ public class SistemaSaveGame : MonoBehaviour
         AplicarEstadoIAImperial();
         AplicarEstadoDeusa();
         RestaurarEstadoIA01();
+        RestaurarEstadoIA02();
         RestaurarProducaoAutomaticaIA();
         AplicarCameraSalva();
         AplicarRecursosSalvos();
@@ -1182,6 +1189,47 @@ public class SistemaSaveGame : MonoBehaviour
         dadosAtuais.estadosIA01.Sort(CompararEstadosIA01);
     }
 
+    private void CapturarEstadoIA02()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        GarantirColecoesIA02();
+        dadosAtuais.estadosIA02.Clear();
+
+        if (IA02Manager.TryGetInstance(out IA02Manager manager) && manager != null)
+        {
+            List<SaveIA02NationState> estados = manager.CaptureSaveStates();
+            if (estados != null)
+            {
+                dadosAtuais.estadosIA02.AddRange(estados);
+            }
+
+            return;
+        }
+
+        IA02Controller[] controllers = IA_UnitySearch.FindAll<IA02Controller>();
+        if (controllers == null || controllers.Length == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < controllers.Length; i++)
+        {
+            IA02Controller controller = controllers[i];
+            if (controller == null)
+            {
+                continue;
+            }
+
+            dadosAtuais.estadosIA02.Add(controller.CaptureSaveState());
+        }
+
+        dadosAtuais.estadosIA02.Sort(CompararEstadosIA02);
+    }
+
     private void CapturarProducaoAutomaticaIA()
     {
         if (dadosAtuais == null) return;
@@ -1348,6 +1396,43 @@ public class SistemaSaveGame : MonoBehaviour
             }
 
             IA01Controller controller = EncontrarControllerIA01(controllers, state);
+            if (controller == null)
+            {
+                continue;
+            }
+
+            controller.RestoreFromSaveState(state);
+        }
+    }
+
+    private void RestaurarEstadoIA02()
+    {
+        if (dadosAtuais == null || dadosAtuais.estadosIA02 == null || dadosAtuais.estadosIA02.Count == 0)
+        {
+            return;
+        }
+
+        if (IA02Manager.TryGetInstance(out IA02Manager manager) && manager != null)
+        {
+            manager.RestoreSaveStates(dadosAtuais.estadosIA02);
+            return;
+        }
+
+        IA02Controller[] controllers = IA_UnitySearch.FindAll<IA02Controller>();
+        if (controllers == null || controllers.Length == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < dadosAtuais.estadosIA02.Count; i++)
+        {
+            SaveIA02NationState state = dadosAtuais.estadosIA02[i];
+            if (state == null)
+            {
+                continue;
+            }
+
+            IA02Controller controller = EncontrarControllerIA02(controllers, state);
             if (controller == null)
             {
                 continue;
@@ -2364,6 +2449,19 @@ public class SistemaSaveGame : MonoBehaviour
         }
     }
 
+    private void GarantirColecoesIA02()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        if (dadosAtuais.estadosIA02 == null)
+        {
+            dadosAtuais.estadosIA02 = new List<SaveIA02NationState>();
+        }
+    }
+
     private static IA01Controller EncontrarControllerIA01(IEnumerable<IA01Controller> controllers, SaveIA01NationState state)
     {
         if (controllers == null || state == null)
@@ -2407,6 +2505,80 @@ public class SistemaSaveGame : MonoBehaviour
     }
 
     private static int CompararEstadosIA01(SaveIA01NationState left, SaveIA01NationState right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return 0;
+        }
+
+        if (left == null)
+        {
+            return -1;
+        }
+
+        if (right == null)
+        {
+            return 1;
+        }
+
+        int comparacao = left.nationId.CompareTo(right.nationId);
+        if (comparacao != 0)
+        {
+            return comparacao;
+        }
+
+        comparacao = left.teamId.CompareTo(right.teamId);
+        if (comparacao != 0)
+        {
+            return comparacao;
+        }
+
+        return left.instanceId.CompareTo(right.instanceId);
+    }
+
+    private static IA02Controller EncontrarControllerIA02(IEnumerable<IA02Controller> controllers, SaveIA02NationState state)
+    {
+        if (controllers == null || state == null)
+        {
+            return null;
+        }
+
+        IA02Controller porNationId = null;
+        IA02Controller porTeamId = null;
+        IA02Controller porNome = null;
+
+        foreach (IA02Controller controller in controllers)
+        {
+            if (controller == null)
+            {
+                continue;
+            }
+
+            if (state.instanceId > 0 && controller.InstanceId == state.instanceId)
+            {
+                return controller;
+            }
+
+            if (porNationId == null && state.nationId > 0 && controller.NationId == state.nationId)
+            {
+                porNationId = controller;
+            }
+
+            if (porTeamId == null && state.teamId > 0 && controller.TeamId == state.teamId)
+            {
+                porTeamId = controller;
+            }
+
+            if (porNome == null && !string.IsNullOrWhiteSpace(state.nationName) && string.Equals(controller.NationName, state.nationName, StringComparison.Ordinal))
+            {
+                porNome = controller;
+            }
+        }
+
+        return porNationId ?? porTeamId ?? porNome;
+    }
+
+    private static int CompararEstadosIA02(SaveIA02NationState left, SaveIA02NationState right)
     {
         if (ReferenceEquals(left, right))
         {

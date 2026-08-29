@@ -87,6 +87,10 @@ public class NavioTransporteTropas : MonoBehaviour
     // ======================================================
     // Estado interno
     // ======================================================
+    [Header("Logística entre países")]
+    [Tooltip("Permite embarcar unidades de outro país somente quando existe pacto militar ativo. Países inimigos continuam bloqueados.")]
+    [SerializeField] private bool permitirTransporteDeAliadosComPacto = true;
+
     private ControleUnidade _controleUnidade;
     private IdentidadeUnidade _idNavio;
     private Camera _cameraPrincipal;
@@ -2268,7 +2272,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
             IdentidadeUnidade idU = raiz.GetComponent<IdentidadeUnidade>();
             if (idU == null) idU = raiz.GetComponentInChildren<IdentidadeUnidade>();
-            if (idU != null && meuTime > 0 && idU.teamID > 0 && idU.teamID != meuTime) continue;
+            if (idU != null && !PodeTransportarTime(meuTime, idU.teamID)) continue;
 
             if (idU != null)
             {
@@ -2434,7 +2438,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
         IdentidadeUnidade idU = h.GetComponent<IdentidadeUnidade>();
         if (idU == null) idU = h.GetComponentInParent<IdentidadeUnidade>();
-        if (idU != null && meuTime > 0 && idU.teamID > 0 && idU.teamID != meuTime) return false;
+        if (idU != null && !PodeTransportarTime(meuTime, idU.teamID)) return false;
 
         float dist = (h.transform.position - transform.position).sqrMagnitude;
         if (dist > raioSqr) return false;
@@ -2455,6 +2459,22 @@ public class NavioTransporteTropas : MonoBehaviour
     }
 
     private float ObterRaioBuscaHelisEfetivo() => Mathf.Max(raioBuscaHelis, 600f);
+
+    private bool PodeTransportarTime(int timeNavio, int timeUnidade)
+    {
+        if (timeUnidade <= 0 || timeNavio <= 0 || timeUnidade == timeNavio)
+        {
+            return true;
+        }
+
+        if (!permitirTransporteDeAliadosComPacto || SistemaGovernoMundial.Instancia == null)
+        {
+            return false;
+        }
+
+        RelacaoPaisGoverno relacao = SistemaGovernoMundial.Instancia.ObterRelacao(timeNavio, timeUnidade);
+        return relacao != null && relacao.pactoMilitar && !relacao.guerraDeclarada;
+    }
 
     private void AtualizarCacheHelisProximos()
     {

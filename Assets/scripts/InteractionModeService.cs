@@ -17,6 +17,7 @@ public enum InteractionOwner
     FactoryIndustryPanel = 95,
     GovernmentMenu = 96,
     FarmPanel = 97,
+    QuartelMenu = 98,
     Attack = 100
 }
 
@@ -113,6 +114,15 @@ public static class InteractionModeService
     public static void Request(object source, InteractionOwner owner, InteractionPolicy policy, string reason)
     {
         if (owner == InteractionOwner.None)
+        {
+            return;
+        }
+
+        // O Quartel e um modal de tela inteira. Nenhum modo de selecao,
+        // ordem, camera ou mira pode assumir a autoridade enquanto ele esta
+        // aberto, mesmo que um controlador legado tente registrar um pedido
+        // alguns frames depois.
+        if (owner != InteractionOwner.QuartelMenu && QuartelMenuUIController.EntradaGlobalBloqueada)
         {
             return;
         }
@@ -219,6 +229,24 @@ public static class InteractionModeService
 
     public static InteractionModeSnapshot CurrentSnapshot()
     {
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return new InteractionModeSnapshot
+            {
+                Owner = InteractionOwner.QuartelMenu,
+                Policy = new InteractionPolicy
+                {
+                    bloqueiaSelecao = true,
+                    bloqueiaOrdemMundo = true,
+                    bloqueiaRotacaoCamera = true,
+                    consomeLMB = true,
+                    consomeRMB = true
+                },
+                Reason = "Menu Quartel aberto",
+                SinceTime = Application.isPlaying ? Time.unscaledTime : 0f
+            };
+        }
+
         return _currentSnapshot;
     }
 

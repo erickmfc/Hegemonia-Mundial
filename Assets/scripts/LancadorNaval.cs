@@ -284,6 +284,106 @@ public class LancadorNaval : MonoBehaviour
         modoAtual = novoModo;
     }
 
+    /// <summary>
+    /// Mantem o mesmo ciclo operacional usado pela tecla I, mas permite que
+    /// o Quartel e outros paineis chamem o executor real do lancador. O modo
+    /// do controlador de superficie continua separado do modo do armamento.
+    /// </summary>
+    public string AlternarEstadoOperacional()
+    {
+        int proximo = ((int)modoAtual + 1) % 3;
+        DefinirModoIA((ModoOperacao)proximo, true);
+        return modoAtual.ToString().ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Valida uma autorização do Quartel sem criar uma segunda lógica de
+    /// combate. O disparo efetivo continua passando por DispararUnico(), que
+    /// escolhe o míssil/torpedo, a saída, o rastreamento e o pool existentes.
+    /// </summary>
+    public bool PodeLancarCoordenado(Vector3 destino, Transform alvo, bool modoAutomatico, out string motivo)
+    {
+        motivo = string.Empty;
+
+        if (!isActiveAndEnabled || !gameObject.activeInHierarchy)
+        {
+            motivo = "unidade desativada";
+            return false;
+        }
+
+        if (modoAutomatico && modoAtual != ModoOperacao.Automatico)
+        {
+            motivo = "modo operacional nao esta Automatico";
+            return false;
+        }
+
+        if (!modoAutomatico && modoAtual != ModoOperacao.Manual)
+        {
+            motivo = "modo operacional nao esta Manual";
+            return false;
+        }
+
+        if (modoAutomatico && Time.time < tempoParaAtivarAutomatico)
+        {
+            motivo = "aguardando autorizacao do modo automatico";
+            return false;
+        }
+
+        if (!PodeAtirar())
+        {
+            motivo = municaoTotal <= 0 && torpedosTotal <= 0
+                ? "sem municao"
+                : "recarga ou salva anterior em andamento";
+            return false;
+        }
+
+        if (prefabMissel == null && prefabTorpedo == null)
+        {
+            motivo = "nenhum prefab de missil ou torpedo configurado";
+            return false;
+        }
+
+        if (modoAutomatico && Vector3.Distance(transform.position, destino) > Mathf.Max(1f, alcanceRadar))
+        {
+            motivo = "fora da distancia automatica";
+            return false;
+        }
+
+        Transform minhaRaiz = transform.root != null ? transform.root : transform;
+        if (alvo != null && (alvo == minhaRaiz || alvo.IsChildOf(minhaRaiz)))
+        {
+            motivo = "alvo pertence a propria unidade";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Entrada usada pelo lançamento coordenado do Quartel. Manual pode usar
+    /// um contato além do limite de detecção automática; ainda assim conserva
+    /// a munição, saída, inicialização e registro do lançador atual.
+    /// </summary>
+    public bool TentarLancarCoordenado(Vector3 destino, Transform alvo, bool modoAutomatico, out string motivo)
+    {
+        if (!PodeLancarCoordenado(destino, alvo, modoAutomatico, out motivo)) return false;
+
+        int municaoAntes = municaoTotal;
+        int torpedosAntes = torpedosTotal;
+        tempoUltimoDisparo = Time.time;
+        alvoAtual = alvo;
+        DispararUnico(destino, alvo);
+
+        if (municaoAntes == municaoTotal && torpedosAntes == torpedosTotal)
+        {
+            motivo = "o lancador nao conseguiu criar o projetil";
+            return false;
+        }
+
+        motivo = string.Empty;
+        return true;
+    }
+
     void Update()
     {
         if (cameraPrincipal == null && Time.unscaledTime >= proximaBuscaCamera)
@@ -349,8 +449,11 @@ public class LancadorNaval : MonoBehaviour
         // Só permite atirar manualmente se ESTIVER SELECIONADO
         if (meuControle == null || !meuControle.selecionado) return;
 
-        // Se clicar com botão direito
-        if (Input.GetMouseButtonDown(1))
+        // Botão direito normal fica reservado para mover. O disparo manual
+        // usa Space ou Shift+botão direito para não competir com a ordem RTS.
+        bool teclaModificadora = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        if (Input.GetKeyDown(KeyCode.Space)
+            || (teclaModificadora && Input.GetMouseButtonDown(1)))
         {
             if (cameraPrincipal == null) return;
             Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
@@ -944,40 +1047,27 @@ public class LancadorNaval : MonoBehaviour
             return;
         }
         
-        // Se tivermos um alvo fixo (Auto), atualizamos a posição, senão vai no chão (Manual)
-        
-        // Configura o míssil ou torpedo
-        MisselNaval scriptMissel = misselObj.GetComponent<MisselNaval>();
-        if (scriptMissel != null)
+        float nivelMarAtual = 0f;
+        try { nivelMarAtual = NavalPlacementResolver.ResolveSeaLevel(); } catch { }
+        bool lancamentoSubmerso = pontoDeSaida.position.y < nivelMarAtual - 0.5f;
+
+        // Todos os prefabs navais passam pelo mesmo despacho de inicialização.
+        // Isso preserva o destino manual ou móvel e evita que um tipo novo
+        // seja criado/consuma munição sem receber seu controlador de voo.
+        if (!InicializadorLancamentoMissil.Inicializar(
+                misselObj,
+                alvoFinal,
+                alvoFixo,
+                this,
+                pontoDeSaida,
+                gameObject,
+                lancamentoSubmerso))
         {
-            scriptMissel.IniciarAtaque(alvoFinal, alvoFixo, transform);
-            MissileThreatTracker.RegistrarLancamento(misselObj, this, alvoFinal, alvoFixo, MissileThreatTracker.EstimarVelocidade(misselObj));
-        }
-        else
-        {
-            Torpedo scriptTorpedo = misselObj.GetComponent<Torpedo>();
-            if (scriptTorpedo != null)
-            {
-                scriptTorpedo.DefinirAlvo(alvoFixo);
-                int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : -1;
-                scriptTorpedo.DefinirLancador(transform, meuTime);
-                MissileThreatTracker.RegistrarLancamento(misselObj, this, alvoFinal, alvoFixo, MissileThreatTracker.EstimarVelocidade(misselObj));
-            }
-            else
-            {
-                // Alguns prefabs navais antigos usam o campo "prefabTorpedo"
-                // para o missel_sub. Ele precisa receber a mesma inicialização
-                // de voo, caso contrário nasce visível, mas fica sem comando.
-                MisselSubmarino scriptMisselSubmarino = misselObj.GetComponent<MisselSubmarino>();
-                if (scriptMisselSubmarino != null)
-                {
-                    float nivelMar = 0f;
-                    try { nivelMar = NavalPlacementResolver.ResolveSeaLevel(); } catch { }
-                    bool lancamentoSubmerso = pontoDeSaida.position.y < nivelMar - 0.5f;
-                    scriptMisselSubmarino.IniciarLancamento(alvoFinal, lancamentoSubmerso, alvoFixo);
-                    MissileThreatTracker.RegistrarLancamento(misselObj, this, alvoFinal, alvoFixo, MissileThreatTracker.EstimarVelocidade(misselObj));
-                }
-            }
+            if (prefabASpawnar == prefabTorpedo) torpedosTotal++;
+            else municaoTotal++;
+            PoolDeObjetosCombate.Release(misselObj);
+            Debug.LogError("[LancadorNaval] Prefab sem controlador de voo válido.", this);
+            return;
         }
 
         // Som

@@ -90,6 +90,11 @@ namespace Hegemonia.AI.IA01
                         return true;
                     }
                 }
+
+                // Uma lista explicitamente configurada é a fonte de verdade.
+                // Se o item não estiver nela, não deve voltar para a allowlist
+                // padrão, pois isso reintroduz unidades não autorizadas.
+                return false;
             }
 
             return DefaultAllowedIds.Contains(key);

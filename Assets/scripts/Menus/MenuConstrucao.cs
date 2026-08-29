@@ -481,7 +481,8 @@ public class MenuConstrucao : MonoBehaviour
         {
             "Construcoes/F200",
             "Construcoes/F201",
-            "Construcoes/Ministral"
+            "Construcoes/Ministral",
+            "Construcoes/C700"
         };
 
         for (int i = 0; i < caminhos.Length; i++)
@@ -753,6 +754,11 @@ public class MenuConstrucao : MonoBehaviour
 
     void Update()
     {
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return;
+        }
+
         // O Governo novo fecha o Canvas de construÃ§Ã£o sem passar pelo HUD
         // legado. Se o foco for liberado, recupera o atalho C mesmo que uma
         // cena antiga tenha deixado o sinal de suspensÃ£o preso.
@@ -917,6 +923,11 @@ public class MenuConstrucao : MonoBehaviour
 
     public void AlternarMenu(bool abrir)
     {
+        if (abrir && QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return;
+        }
+
         if (painelPrincipal == null || canvasGroupPainel == null)
         {
             Debug.LogWarning("[MenuConstrucao] Painel ausente. Reconstruindo interface em runtime.");

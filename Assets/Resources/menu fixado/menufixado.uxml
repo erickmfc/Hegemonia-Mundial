@@ -9,11 +9,11 @@
     <ui:Style src="menufixado.uss" />
 
     <!-- Top Status Bar Panel -->
-    <ui:VisualElement class="colony-status-container">
-        <ui:VisualElement class="status-bar-panel">
+    <ui:VisualElement name="status-container" class="colony-status-container">
+        <ui:VisualElement name="status-bar-panel" class="status-bar-panel">
             
             <!-- Left Side: Title & Country -->
-            <ui:VisualElement class="status-title-group">
+            <ui:VisualElement name="status-title-group" class="status-title-group">
                 <ui:Button name="status-toggle" text="STATUS" class="status-title-button" />
                 <ui:VisualElement class="resource-item country-item">
                     <ui:Label text="🌍" class="resource-emoji" />
@@ -25,89 +25,89 @@
             <ui:VisualElement class="resources-group">
                 
                 <!-- Data (Date) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-date">
                     <ui:Label text="📅" class="resource-emoji" />
                     <ui:Label text="01/01/2000" name="lbl-date-val" class="resource-base-value" />
                 </ui:VisualElement>
 
                 <!-- Dinheiro (Money) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-money">
                     <ui:Label text="💵" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-money-val" class="resource-base-value" />
                     <ui:Label text="+0/s" name="lbl-money-bonus" class="resource-bonus-value" />
                 </ui:VisualElement>
 
                 <!-- Moeda (Currency) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-currency">
                     <ui:Label text="🪙" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-currency-val" class="resource-base-value" />
                 </ui:VisualElement>
 
                 <!-- Ouro (Gold) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-gold resource-narrow">
                     <ui:Label text="💰" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-gold-val" class="resource-base-value" />
                 </ui:VisualElement>
 
                 <!-- Felicidade (Happiness) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-happy resource-narrow">
                     <ui:Label text="😃" class="resource-emoji" />
                     <ui:Label text="100%" name="lbl-happy-val" class="resource-base-value" />
                 </ui:VisualElement>
 
                 <!-- População Civil -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-pop">
                     <ui:Label text="👥" class="resource-emoji" />
                     <ui:Label text="0/0" name="lbl-pop-val" class="resource-base-value" />
                 </ui:VisualElement>
 
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-dead resource-optional">
                     <ui:Label text="☠" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-dead-val" class="resource-base-value" />
                 </ui:VisualElement>
 
                 <!-- Empregos (Jobs) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-jobs resource-optional">
                     <ui:Label text="💼" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-jobs-val" class="resource-base-value" />
                 </ui:VisualElement>
 
                 <!-- Petróleo (Oil) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-oil">
                     <ui:Label text="🛢️" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-oil-val" class="resource-base-value" />
                     <ui:Label text="+0/s" name="lbl-oil-bonus" class="resource-bonus-value" />
                 </ui:VisualElement>
 
                 <!-- Aço (Steel) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-steel">
                     <ui:Label text="🔩" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-steel-val" class="resource-base-value" />
                     <ui:Label text="+0/s" name="lbl-steel-bonus" class="resource-bonus-value" />
                 </ui:VisualElement>
 
                 <!-- Comida (Food) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-food resource-optional">
                     <ui:Label text="🌾" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-food-val" class="resource-base-value" />
                     <ui:Label text="+0/s" name="lbl-food-bonus" class="resource-bonus" />
                 </ui:VisualElement>
 
                 <!-- Energia (Energy) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-energy">
                     <ui:Label text="⚡" class="resource-emoji" />
                     <ui:Label text="0/0 MW" name="lbl-energy-val" class="resource-base-value" />
                     <ui:Label text="SEM REDE" name="lbl-energy-bonus" class="resource-bonus-value" />
                 </ui:VisualElement>
 
                 <!-- Armazém (Storage) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-storage resource-narrow">
                     <ui:Label text="📦" class="resource-emoji" />
                     <ui:Label text="0%" name="lbl-storage-val" class="resource-base-value" />
                 </ui:VisualElement>
 
                 <!-- Militares (Military) -->
-                <ui:VisualElement class="resource-item">
+                <ui:VisualElement class="resource-item resource-military">
                     <ui:Label text="🪖" class="resource-emoji" />
                     <ui:Label text="0" name="lbl-military-val" class="resource-base-value" />
                     <ui:Label text="+0" name="lbl-military-bonus" class="resource-bonus-value" />

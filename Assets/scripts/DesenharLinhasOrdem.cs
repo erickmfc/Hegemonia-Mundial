@@ -173,6 +173,14 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
     void Update()
     {
+        // O Quartel é modal. A Carta possui sua própria camada de interação;
+        // nenhum modo de ordem do mundo deve consumir o mesmo clique ou
+        // teclado enquanto ela estiver aberta.
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return;
+        }
+
         if (!modoPatrulhaAtivo && !modoSeguirAtivo && !modoAtaqueAtivo)
         {
             return;

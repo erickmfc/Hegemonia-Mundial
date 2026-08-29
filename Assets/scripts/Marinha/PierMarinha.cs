@@ -196,6 +196,10 @@ public class PierMarinha : MonoBehaviour
     public float raioDeBusca = 1500f; 
     public float velocidadeManobra = 3.5f;
 
+    [Header("Altura visual")]
+    [Tooltip("Mantém o piso do pier acima da linha d'água em todas as cenas.")]
+    [Min(0f)] public float elevacaoMinimaAcimaDoMar = 2f;
+
     [Header("Manutenção e Reparo")]
     public float reparoPorSegundo = 10f; // Cura 10HP/s
     public float intervaloRecargaMissel = 1.0f; // 1 Míssil por segundo
@@ -257,8 +261,23 @@ public class PierMarinha : MonoBehaviour
         NormalizarProprietarioDoJogador();
         SincronizarPerfilCosteiro();
         CorrigirPoseCosteiraSeNecessario();
+        // A correção costeira pode reposicionar a raiz no nível da água.
+        // A elevação precisa ser aplicada depois dela para valer em todas as
+        // cenas, inclusive em piers criados pela IA.
+        GarantirAlturaAcimaDoMar();
         StartCoroutine(RotinaBuscaConstrucao());
         RegistrarNoGerente();
+    }
+
+    private void GarantirAlturaAcimaDoMar()
+    {
+        Vector3 posicao = transform.position;
+        float alturaMinima = NavalPlacementResolver.ResolveSeaLevel() + Mathf.Max(0f, elevacaoMinimaAcimaDoMar);
+        if (posicao.y < alturaMinima)
+        {
+            posicao.y = alturaMinima;
+            transform.position = posicao;
+        }
     }
 
     void NormalizarProprietarioDoJogador()

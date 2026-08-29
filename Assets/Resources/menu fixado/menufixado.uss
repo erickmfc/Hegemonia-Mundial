@@ -1,18 +1,18 @@
 /* StyleSheet for Colony Status Bar UI */
 
 .colony-status-container {
-    width: 110%;
+    width: 100%;
     align-items: center;
     justify-content: flex-start;
     padding-top: 0;
     position: absolute;
-    top: -1%;
-    left: -5%;
+    top: 0;
+    left: 0;
 }
 
 .status-bar-panel {
     width: 100%;
-    max-width: 1760px;
+    max-width: none;
     height: 58px;
     background-color: rgba(7, 24, 39, 0.72); /* Cor anterior azul escuro */
     border-width: 1.5px;
@@ -21,8 +21,8 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    padding-left: 20px;
-    padding-right: 20px;
+    padding-left: 10px;
+    padding-right: 10px;
     
     /* Glow effect anterior */
     border-left-color: rgba(0, 195, 255, 0.55);
@@ -34,6 +34,8 @@
 .status-title-group {
     flex-direction: row;
     align-items: center;
+    flex-shrink: 0;
+    min-width: 178px;
 }
 
 .status-title {
@@ -49,11 +51,11 @@
     background-color: rgba(0, 0, 0, 0);
     border-width: 0;
     padding-left: 0;
-    padding-right: 12px;
+    padding-right: 8px;
     padding-top: 4px;
     padding-bottom: 4px;
-    margin-right: 8px;
-    min-width: 72px;
+    margin-right: 4px;
+    min-width: 64px;
     -unity-font-style: bold;
     font-size: 14px;
     letter-spacing: 1.5px;
@@ -86,20 +88,25 @@
     flex-direction: row;
     align-items: center;
     flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
     justify-content: space-between;
     flex-wrap: nowrap;
+    overflow: hidden;
 }
 
 .resource-item {
     flex-direction: row;
     align-items: center;
-    margin-left: 3px;
-    margin-right: 3px;
+    flex-shrink: 1;
+    min-width: 0;
+    margin-left: 1px;
+    margin-right: 1px;
 }
 
 .country-item {
     background-color: rgba(0, 195, 255, 0.15);
-    padding: 3px 8px;
+    padding: 2px 5px;
     border-radius: 4px;
     border-width: 1px;
     border-color: rgba(0, 195, 255, 0.3);
@@ -107,14 +114,15 @@
 
 .country-text {
     color: #e2e8f0;
-    font-size: 11px;
+    font-size: 10px;
     -unity-font-style: bold;
 }
 
 /* Emoji Icons */
 .resource-emoji {
-    font-size: 16px;
-    margin-right: 4px;
+    font-size: 13px;
+    margin-right: 2px;
+    flex-shrink: 0;
     -unity-text-align: middle-center;
 }
 
@@ -123,6 +131,10 @@
     color: rgb(240, 248, 255); /* Azul/branco anterior */
     font-size: 11px;
     -unity-font-style: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .resource-bonus {
@@ -137,6 +149,73 @@
     font-size: 9px;
     margin-left: 2px;
     -unity-font-style: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+/*
+ * Modo seguro para o UXML estatico: antes do controlador calcular a largura
+ * real, mantemos somente os indicadores essenciais. Em runtime, o controlador
+ * adiciona hud-wide quando ha espaco suficiente e reabre os campos extras.
+ */
+.resource-optional,
+.resource-narrow,
+.resource-bonus-value,
+.resource-bonus {
+    display: none;
+}
+
+.hud-wide .resource-optional,
+.hud-wide .resource-narrow,
+.hud-wide .resource-bonus-value,
+.hud-wide .resource-bonus {
+    display: flex;
+}
+
+/*
+ * A barra e persistente e tambem aparece em janelas menores do Editor e em
+ * notebooks. Nesses casos, indicadores secundarios saem da linha, mas seus
+ * valores continuam disponiveis nas notificacoes e tooltips. Isso evita
+ * comprimir o texto ate ele se sobrepor ou cortar o botao STATUS.
+ */
+.hud-compact .resource-optional,
+.hud-compact .resource-narrow {
+    display: none;
+}
+
+.hud-compact .resource-bonus-value,
+.hud-compact .resource-bonus {
+    display: none;
+}
+
+.hud-compact .status-title-group {
+    min-width: 170px;
+}
+
+.hud-compact .status-title-button {
+    min-width: 58px;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+.hud-compact .country-text {
+    font-size: 9px;
+}
+
+.hud-compact .resource-base-value {
+    font-size: 10px;
+}
+
+.hud-very-compact .resource-gold,
+.hud-very-compact .resource-happy,
+.hud-very-compact .resource-storage {
+    display: none;
+}
+
+.hud-very-compact .status-title-group {
+    min-width: 150px;
 }
 
 /* Painel de notificacoes */

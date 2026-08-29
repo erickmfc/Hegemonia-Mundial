@@ -388,38 +388,17 @@ public class LancadorMultiplo : MonoBehaviour
             return;
         }
 
-        // Tenta achar script de míssil (ICBM, Tático ou genérico)
-        MisselICBM scriptM = missel.GetComponent<MisselICBM>();
-        MisselTatico scriptT = missel.GetComponent<MisselTatico>();
-        
-        // CONFIGURAÇÃO DO ALVO NO MÍSSEL
-        if (scriptM != null)
+        Vector3 destino = alvo != null ? alvo.position : (transform.position + transform.forward * 100f);
+        if (!InicializadorLancamentoMissil.Inicializar(
+                missel,
+                destino,
+                alvo,
+                this,
+                pontoSaida,
+                gameObject))
         {
-            Debug.Log("[LancadorMultiplo] Míssil tipo ICBM detectado");
-            Vector3 destino = (alvo != null) ? alvo.position : (transform.position + transform.forward * 100f);
-            scriptM.IniciarLancamento(destino);
-            MissileThreatTracker.RegistrarLancamento(missel, this, destino, alvo, MissileThreatTracker.EstimarVelocidade(missel));
-        }
-        else if (scriptT != null)
-        {
-            Debug.Log("[LancadorMultiplo] Míssil tipo Tático detectado");
-            Vector3 destino = (alvo != null) ? alvo.position : (transform.position + transform.forward * 100f);
-            scriptT.IniciarLancamento(destino);
-            MissileThreatTracker.RegistrarLancamento(missel, this, destino, alvo, MissileThreatTracker.EstimarVelocidade(missel));
-        }
-        {
-            var projetil = missel.GetComponent<Projetil>();
-            
-            // ADICIONA O COMPONENTE SE FALTAR
-            if (projetil == null) 
-            {
-                 Debug.Log($"[LancadorMultiplo] Míssil sem script. Adicionando Projetil automaticamente.");
-                 projetil = missel.AddComponent<Projetil>();
-            }
-
-            projetil.SetDono(this.gameObject);
-            if (alvo != null) projetil.SetDirecao((alvo.position - pontoSaida.position).normalized);
-            else projetil.SetDirecao(pontoSaida.forward); // Tiro cego
+            PoolDeObjetosCombate.Release(missel);
+            Debug.LogError("[LancadorMultiplo] Prefab de míssil sem controlador de voo válido.", this);
         }
     }
 

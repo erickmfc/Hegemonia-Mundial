@@ -80,13 +80,24 @@ namespace Hegemonia.AI.Sovereign
 
         private void OnDisable()
         {
-            AISovereignRuntime.Instance.Unregister(GetInstanceID());
+            if (AISovereignRuntime.Instance != null)
+            {
+                AISovereignRuntime.Instance.Unregister(GetInstanceID());
+            }
+
             if (_authorityActive)
             {
                 AIControlAuthority.Release(teamId, _ownerKey);
                 _authorityActive = false;
             }
-            _legacyAdapter.Restore();
+
+            // OnDisable pode ocorrer durante o primeiro reload de dominio,
+            // antes de EnsureRuntimeWiring concluir. O controlador nao pode
+            // gerar um segundo erro enquanto a cena esta sendo desmontada.
+            if (_legacyAdapter != null)
+            {
+                _legacyAdapter.Restore();
+            }
         }
 
         private void Update()

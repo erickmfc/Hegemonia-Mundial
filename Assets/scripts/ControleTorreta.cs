@@ -1062,7 +1062,7 @@ public class ControleTorreta : MonoBehaviour
                     MisselICBM icbm = missel.GetComponent<MisselICBM>();
                     if (icbm != null)
                     {
-                        icbm.IniciarLancamento(posicaoPredita);
+                        icbm.IniciarLancamento(posicaoPredita, alvoResolvido);
                         inicializado = true;
                     }
                 }

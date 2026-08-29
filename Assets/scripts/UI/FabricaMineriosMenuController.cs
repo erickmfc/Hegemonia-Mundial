@@ -58,6 +58,11 @@ public sealed class FabricaMineriosMenuController : MonoBehaviour
 
     public static bool AbrirPara(Fabrica fabrica)
     {
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return false;
+        }
+
         if (fabrica == null || !fabrica.PossuiPainelIndustrial)
         {
             return false;

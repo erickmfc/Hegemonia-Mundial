@@ -55,6 +55,7 @@ public class MisselEstrategicoLongoAlcance : MonoBehaviour
     public bool CargaNuclear => cargaNuclear;
 
     private Vector3 alvo;
+    private Transform alvoTransform;
     private Component origem;
     private bool lancado;
     private bool explodiu;
@@ -65,8 +66,23 @@ public class MisselEstrategicoLongoAlcance : MonoBehaviour
 
     public void IniciarLancamento(Vector3 pontoAlvo, bool nuclear, Component lancador = null)
     {
+        IniciarLancamento(pontoAlvo, nuclear, lancador, null);
+    }
+
+    /// <summary>
+    /// Mantém o alvo móvel como referência viva. A antecipação serve apenas
+    /// para orientar a trajetória; a explosão continua condicionada à
+    /// posição real que o míssil percorreu.
+    /// </summary>
+    public void IniciarLancamento(
+        Vector3 pontoAlvo,
+        bool nuclear,
+        Component lancador,
+        Transform alvoMovel)
+    {
         // Evita que um clique em uma posição inválida deixe o míssil sem destino.
         alvo = SanitizarPontoAlvo(pontoAlvo);
+        alvoTransform = alvoMovel;
         origem = lancador;
         cargaNuclear = nuclear;
         lancado = true;
@@ -81,7 +97,7 @@ public class MisselEstrategicoLongoAlcance : MonoBehaviour
 
         PrepararFisica();
         ConfigurarTagMissil();
-        MissileThreatTracker.RegistrarLancamento(gameObject, origem, alvo, null, velocidadeMaxima);
+        MissileThreatTracker.RegistrarLancamento(gameObject, origem, alvo, alvoTransform, velocidadeMaxima);
     }
 
     private void PrepararFisica()
@@ -108,6 +124,10 @@ public class MisselEstrategicoLongoAlcance : MonoBehaviour
 
         float delta = Mathf.Max(0.0001f, Time.deltaTime);
         tempoDeVoo += delta;
+        if (alvoTransform != null && alvoTransform.gameObject.activeInHierarchy)
+        {
+            alvo = SanitizarPontoAlvo(alvoTransform.position);
+        }
         Vector3 posicaoAnterior = transform.position;
         Vector3 direcao = ResolverDirecaoDaFase();
         if (direcao.sqrMagnitude < 0.001f) direcao = transform.forward;
@@ -121,12 +141,22 @@ public class MisselEstrategicoLongoAlcance : MonoBehaviour
         Vector3 posicaoSeguinte = posicaoAnterior + transform.forward * (velocidadeAtual * delta);
         bool cruzouAlvo = faseAtual == FaseVoo.Terminal && SegmentoAtingeAlvo(posicaoAnterior, posicaoSeguinte);
 
-        // Nunca deixe o míssil expirar no céu: no limite de voo ele é resolvido
-        // no ponto designado, garantindo explosão e dano no local selecionado.
-        if (cruzouAlvo || tempoDeVoo >= tempoMaximoDeVoo)
+        // O alvo só é usado como ponto de impacto quando o segmento realmente
+        // o alcançou. Expirar não pode teletransportar o míssil nem fabricar
+        // uma explosão em coordenada diferente da trajetória percorrida.
+        if (cruzouAlvo)
         {
-            transform.position = alvo;
+            // O segmento já confirmou o impacto; preservar a posição real da
+            // trajetória evita um salto visual até uma coordenada antiga.
             IniciarImpacto();
+            return;
+        }
+
+        if (tempoDeVoo >= tempoMaximoDeVoo)
+        {
+            // Expirar longe do alvo é uma falha controlada, nunca um impacto
+            // falso no ponto em que o míssil conseguiu chegar.
+            EncerrarSemImpacto();
             return;
         }
 
@@ -134,7 +164,6 @@ public class MisselEstrategicoLongoAlcance : MonoBehaviour
 
         if (faseAtual == FaseVoo.Terminal && Vector3.Distance(transform.position, alvo) <= distanciaImpactoTerminal)
         {
-            transform.position = alvo;
             IniciarImpacto();
         }
     }
@@ -227,6 +256,15 @@ public class MisselEstrategicoLongoAlcance : MonoBehaviour
         lancado = false;
         faseAtual = FaseVoo.Impacto;
         StartCoroutine(ExplodirDepoisDoAtraso());
+    }
+
+    private void EncerrarSemImpacto()
+    {
+        if (explodiu) return;
+        lancado = false;
+        faseAtual = FaseVoo.Impacto;
+        Debug.LogWarning($"[MisselEstrategico] voo expirado sem impacto: pos={transform.position} alvo={alvo}", this);
+        PoolDeObjetosCombate.Release(gameObject);
     }
 
     private IEnumerator ExplodirDepoisDoAtraso()

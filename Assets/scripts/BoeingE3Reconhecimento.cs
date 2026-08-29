@@ -11,6 +11,7 @@ using Hegemonia.RTS;
 /// reconhecimento/retransmissao de contatos.
 /// </summary>
 [DisallowMultipleComponent]
+[DefaultExecutionOrder(10000)]
 public sealed class BoeingE3Reconhecimento : ControleAviao
 {
     public enum TipoContatoReconhecimento
@@ -25,13 +26,21 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
     [Serializable]
     public sealed class ContatoReconhecimento
     {
+        public string idContato;
         public int equipeObservadora;
         public int idAlvo;
         public int equipeAlvo;
+        public string idAlvoPersistente;
+        public string paisAlvo;
         public string nomeAlvo;
         public TipoContatoReconhecimento tipo;
         public Vector3 ultimaPosicaoConhecida;
         public float ultimaAtualizacao;
+        public string horarioDeteccao;
+        public string estado;
+        public float validadeAte;
+        public Vector3 direcao;
+        public float velocidade;
         public bool inimigo;
         public string fonte;
         public string origemAeronave;
@@ -66,6 +75,10 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
     [Min(1f)] public float taxaSubidaDescidaE3 = 18f;
     [Min(5f)] public float inclinacaoMaximaE3 = 12f;
 
+    [Header("=== AUTONOMIA E3 ===")]
+    [Tooltip("Multiplicador aplicado ao tanque aereo padrao atual de 600 unidades. 4,5x resulta em 2.700 unidades.")]
+    [Min(1f)] public float multiplicadorCapacidadeCombustivelE3 = 4.5f;
+
     private IdentidadeUnidade identidade;
     private RTSVisibilityService servicoVisibilidade;
     private float proximaVarredura;
@@ -80,8 +93,42 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
     public int EquipeReconhecimento => equipe;
     public int QuantidadeContatosAtivos => contatosAtivos.Count;
 
+    private void Awake()
+    {
+        InicializarVisualPrefab();
+    }
+
     protected override void Start()
     {
+        InicializarVisualPrefab();
+
+        altitudeCruzeiroE3 = Mathf.Max(120f, altitudeCruzeiroE3);
+        velocidadeCruzeiroE3 = Mathf.Max(60f, velocidadeCruzeiroE3);
+        velocidadeMinimaEmCurva = Mathf.Clamp(velocidadeMinimaEmCurva, 25f, velocidadeCruzeiroE3);
+        altitudeVoo = Mathf.Max(altitudeVoo, altitudeCruzeiroE3);
+        velocidadeMaximaVoo = velocidadeCruzeiroE3;
+        taxaDeGiroLeme = taxaCurvaE3;
+        aceleracaoVoo = Mathf.Min(Mathf.Max(aceleracaoVoo, 4f), 14f);
+        desaceleracaoVoo = Mathf.Min(Mathf.Max(desaceleracaoVoo, 5f), 18f);
+
+        ConfigurarCombustivelE3();
+        identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade == null) identidade = GetComponentInParent<IdentidadeUnidade>();
+        equipe = identidade != null ? identidade.teamID : 0;
+        proximaVarredura = Time.unscaledTime + 0.5f;
+
+        base.Start();
+        AplicarVisualNivelado();
+        AssinarServicoVisibilidade();
+    }
+
+    private void InicializarVisualPrefab()
+    {
+        if (visualPrefabInicializado && modeloMecanicoVisual != null)
+        {
+            return;
+        }
+
         if (modeloMecanicoVisual == null && transform.childCount > 0)
         {
             modeloMecanicoVisual = transform.GetChild(0);
@@ -96,24 +143,37 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
             rotacaoVisualPrefab = modeloMecanicoVisual.localRotation;
             visualPrefabInicializado = true;
         }
+    }
 
-        altitudeCruzeiroE3 = Mathf.Max(120f, altitudeCruzeiroE3);
-        velocidadeCruzeiroE3 = Mathf.Max(60f, velocidadeCruzeiroE3);
-        velocidadeMinimaEmCurva = Mathf.Clamp(velocidadeMinimaEmCurva, 25f, velocidadeCruzeiroE3);
-        altitudeVoo = Mathf.Max(altitudeVoo, altitudeCruzeiroE3);
-        velocidadeMaximaVoo = velocidadeCruzeiroE3;
-        taxaDeGiroLeme = taxaCurvaE3;
-        aceleracaoVoo = Mathf.Min(Mathf.Max(aceleracaoVoo, 4f), 14f);
-        desaceleracaoVoo = Mathf.Min(Mathf.Max(desaceleracaoVoo, 5f), 18f);
+    private void ConfigurarCombustivelE3()
+    {
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null)
+        {
+            combustivel = gameObject.AddComponent<CombustivelUnidade>();
+        }
 
-        identidade = GetComponent<IdentidadeUnidade>();
-        if (identidade == null) identidade = GetComponentInParent<IdentidadeUnidade>();
-        equipe = identidade != null ? identidade.teamID : 0;
-        proximaVarredura = Time.unscaledTime + 0.5f;
+        combustivel.usaCombustivel = true;
+        combustivel.combustivelInfinito = false;
+        combustivel.classe = ClasseCombustivelUnidade.Aerea;
 
-        base.Start();
-        AplicarVisualNivelado();
-        AssinarServicoVisibilidade();
+        // O padrao aereo atual e 300 x 2 = 600. O E-3 usa 4,5 vezes
+        // esse tanque, sem alterar a capacidade das demais aeronaves.
+        float capacidadeAlvo = 300f * 2f * Mathf.Max(1f, multiplicadorCapacidadeCombustivelE3);
+        if (combustivel.capacidade < capacidadeAlvo)
+        {
+            float percentualAnterior = combustivel.capacidade > 0f
+                ? Mathf.Clamp01(combustivel.combustivelAtual / combustivel.capacidade)
+                : 1f;
+            combustivel.capacidade = capacidadeAlvo;
+            combustivel.combustivelAtual = combustivel.combustivelAtual < 0f
+                ? capacidadeAlvo
+                : capacidadeAlvo * percentualAnterior;
+        }
+
+        combustivel.preencherAoIniciar = true;
+        combustivel.pararAoEsvaziar = true;
+        combustivel.ConfigurarSeNecessario(true);
     }
 
     protected override void Update()
@@ -240,10 +300,34 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
             return;
         }
 
-        // Tambem corrige o instante final das coroutines de taxi/decolagem,
-        // que podem ter deixado um pequeno roll/pitch na raiz.
+        NivelarRaizE3();
+    }
+
+    private void OnWillRenderObject()
+    {
+        // Algumas coroutines de taxi/decolagem e controladores externos podem
+        // escrever a rotação depois do LateUpdate. Corrija uma última vez
+        // antes da câmera desenhar o Boeing, sem alterar a direção horizontal
+        // usada pela navegação.
+        if (Application.isPlaying && visualPrefabInicializado && isActiveAndEnabled)
+        {
+            NivelarRaizE3();
+        }
+    }
+
+    private void NivelarRaizE3()
+    {
         Vector3 frenteNivelada = transform.forward;
         frenteNivelada.y = 0f;
+        if (frenteNivelada.sqrMagnitude <= 0.0001f)
+        {
+            // Se a raiz chegou com o nariz exatamente para cima/baixo,
+            // transform.forward não possui projeção horizontal. O rumo Y
+            // ainda é válido e permite recuperar a pose sem teletransportar
+            // nem alterar a navegação da aeronave.
+            frenteNivelada = Quaternion.Euler(0f, transform.eulerAngles.y, 0f) * Vector3.forward;
+        }
+
         if (frenteNivelada.sqrMagnitude > 0.0001f)
         {
             transform.rotation = Quaternion.LookRotation(frenteNivelada.normalized, Vector3.up);
@@ -422,19 +506,46 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
         ContatoReconhecimento contato;
         if (!contatosAtivos.TryGetValue(chave, out contato) || contato == null)
         {
+            string idPersistente = identidadeAlvo != null
+                ? ObterIdPersistente(identidadeAlvo)
+                : string.Empty;
             contato = new ContatoReconhecimento
             {
                 equipeObservadora = equipe,
-                idAlvo = idAlvo
+                idAlvo = idAlvo,
+                idContato = CriarIdContato(equipe, idAlvo, tipo, idPersistente),
+                idAlvoPersistente = idPersistente,
+                horarioDeteccao = DateTime.UtcNow.ToString("O")
             };
             contatosAtivos[chave] = contato;
         }
 
+        float momentoAtual = Time.unscaledTime;
+        float deltaTempo = momentoAtual - contato.ultimaAtualizacao;
+        if (contato.ultimaAtualizacao > 0f && deltaTempo > 0.01f)
+        {
+            Vector3 deslocamento = posicao - contato.ultimaPosicaoConhecida;
+            contato.direcao = deslocamento.sqrMagnitude > 0.01f ? deslocamento.normalized : contato.direcao;
+            contato.velocidade = deslocamento.magnitude / deltaTempo;
+        }
+
+        string idAlvoPersistenteAtual = identidadeAlvo != null
+            ? ObterIdPersistente(identidadeAlvo)
+            : contato.idAlvoPersistente;
         contato.equipeAlvo = equipeAlvo;
+        contato.idAlvoPersistente = idAlvoPersistenteAtual;
+        // O identificador representa o alvo observado, não o tipo da leitura.
+        // Um contato que muda de classificacao continua sendo o mesmo contato
+        // no Quartel e nao cria um marcador/ordem duplicado.
+        if (string.IsNullOrWhiteSpace(contato.idContato))
+            contato.idContato = CriarIdContato(equipe, idAlvo, tipo, idAlvoPersistenteAtual);
+        contato.paisAlvo = "EQUIPE " + equipeAlvo;
         contato.nomeAlvo = identidadeAlvo != null ? identidadeAlvo.name : tipo.ToString();
         contato.tipo = tipo;
         contato.ultimaPosicaoConhecida = posicao;
-        contato.ultimaAtualizacao = Time.unscaledTime;
+        contato.ultimaAtualizacao = momentoAtual;
+        contato.validadeAte = momentoAtual + Mathf.Max(1f, memoriaContato);
+        contato.estado = "ATIVO";
         contato.inimigo = inimigo;
         contato.fonte = fonte;
         contato.origemAeronave = name;
@@ -487,8 +598,10 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
         foreach (KeyValuePair<long, ContatoReconhecimento> par in contatosAtivos)
         {
             ContatoReconhecimento contato = par.Value;
-            if (contato == null || agora - contato.ultimaAtualizacao > memoriaContato)
+            if (contato == null || (contato.validadeAte > 0f && agora > contato.validadeAte)
+                || (contato.validadeAte <= 0f && agora - contato.ultimaAtualizacao > memoriaContato))
             {
+                if (contato != null) contato.estado = "EXPIRADO";
                 if (expirados == null) expirados = new List<long>();
                 expirados.Add(par.Key);
             }
@@ -503,13 +616,48 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
         long chave = ((long)equipeObservadora << 32) ^ (long)(uint)idAlvo;
         if (contatosAtivos.TryGetValue(chave, out contato)
             && contato != null
-            && Time.unscaledTime - contato.ultimaAtualizacao <= 30f)
+            && (contato.validadeAte <= 0f || Time.unscaledTime <= contato.validadeAte))
         {
             return true;
         }
 
         contato = null;
         return false;
+    }
+
+    /// <summary>
+    /// Copia os contatos ainda válidos de uma equipe para um consumidor de
+    /// coordenação. A cópia mantém a retransmissão como fonte de verdade e não
+    /// entrega ao Quartel nenhuma autoridade sobre o voo do E-3.
+    /// </summary>
+    public static void CopiarContatosAtivos(int equipeObservadora, List<ContatoReconhecimento> destino)
+    {
+        if (destino == null) return;
+
+        destino.Clear();
+        float agora = Time.unscaledTime;
+        foreach (KeyValuePair<long, ContatoReconhecimento> par in contatosAtivos)
+        {
+            ContatoReconhecimento contato = par.Value;
+            if (contato == null || contato.equipeObservadora != equipeObservadora) continue;
+            if (contato.validadeAte > 0f && agora > contato.validadeAte) continue;
+            destino.Add(contato);
+        }
+    }
+
+    private static string ObterIdPersistente(IdentidadeUnidade identidadeAlvo)
+    {
+        if (identidadeAlvo == null) return string.Empty;
+        SaveableEntity saveable = identidadeAlvo.GetComponent<SaveableEntity>();
+        if (saveable == null) saveable = identidadeAlvo.GetComponentInParent<SaveableEntity>();
+        return saveable != null ? saveable.UniqueId : string.Empty;
+    }
+
+    private static string CriarIdContato(int equipeObservadora, int idAlvo, TipoContatoReconhecimento tipo, string idPersistente)
+    {
+        if (!string.IsNullOrWhiteSpace(idPersistente))
+            return "E3-" + equipeObservadora + "-" + idPersistente + "-" + tipo;
+        return "E3-" + equipeObservadora + "-" + idAlvo + "-" + tipo;
     }
 
     private void OnDestroy()

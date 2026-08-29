@@ -21,6 +21,7 @@ public class MisselTatico : MonoBehaviour
 
     // Internas
     private Vector3 alvo;
+    private Transform alvoTransform;
     private bool lancado = false;
     private float tempoDeVida = 0;
     private Quaternion rotacaoAlvo;
@@ -31,7 +32,13 @@ public class MisselTatico : MonoBehaviour
     // Configura o alvo e inicia
     public void IniciarLancamento(Vector3 pontoAlvo)
     {
-        alvo = pontoAlvo;
+        IniciarLancamento(pontoAlvo, null);
+    }
+
+    public void IniciarLancamento(Vector3 pontoAlvo, Transform alvoMovel)
+    {
+        alvoTransform = alvoMovel;
+        alvo = alvoMovel != null ? alvoMovel.position : pontoAlvo;
         lancado = true;
         temAlvo = true;
         explodiu = false;
@@ -84,7 +91,17 @@ public class MisselTatico : MonoBehaviour
 
         tempoDeVida += Time.deltaTime;
 
+        if (alvoTransform != null)
+        {
+            alvo = alvoTransform.position;
+        }
+
+        Vector3 pontoDeMira = alvoTransform != null
+            ? GuidagemAlvoMovel.ObterPontoDeMira(alvoTransform, transform.position, velocidade, 1.5f)
+            : alvo;
+
         // 1. MOVIMENTO (Sempre em frente no eixo local Z)
+        Vector3 posicaoAnterior = transform.position;
         transform.Translate(Vector3.forward * velocidade * Time.deltaTime);
 
         // 2. GUIAGEM
@@ -98,7 +115,7 @@ public class MisselTatico : MonoBehaviour
             // Fase de Cruzeiro/Mergulho (Só começa depois do atraso)
             
             // Calcula direção para o alvo
-             Vector3 direcaoParaAlvo = (alvo - transform.position).normalized;
+             Vector3 direcaoParaAlvo = (pontoDeMira - transform.position).normalized;
              
             // Faz curva suave em direção ao alvo
             Quaternion targetRot = Quaternion.LookRotation(direcaoParaAlvo);
@@ -108,8 +125,15 @@ public class MisselTatico : MonoBehaviour
         // 3. DETECÇÃO DE IMPACTO (Manual por Distância se colisão falhar ou for muito rápido)
         if (tempoDeVida > 0.5f)
         {
-            if (Vector3.Distance(transform.position, alvo) < 2.0f)
+            bool cruzouAlvo = GuidagemAlvoMovel.TentarObterPontoMaisProximoNoSegmento(
+                posicaoAnterior,
+                transform.position,
+                alvo,
+                out Vector3 pontoImpacto,
+                Mathf.Max(2f, velocidade * Time.deltaTime));
+            if (Vector3.Distance(transform.position, alvo) < 2.0f || cruzouAlvo)
             {
+                if (cruzouAlvo) transform.position = pontoImpacto;
                 Explodir();
             }
         }
@@ -119,7 +143,30 @@ public class MisselTatico : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         if (!lancado || tempoDeVida < 0.2f) return; // Ignora o próprio lançador
-        Explodir();
+        if (PodeDetonarAoColidir(other)) Explodir();
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        if (!lancado || tempoDeVida < 0.2f) return;
+        if (PodeDetonarAoColidir(collision.collider)) Explodir();
+    }
+
+    private bool PodeDetonarAoColidir(Collider other)
+    {
+        if (other == null) return false;
+        if (other.CompareTag("Player") || other.CompareTag("Missel") || other.CompareTag("IgnorarExplosao")) return false;
+
+        if (alvoTransform != null)
+        {
+            Transform raizAlvo = alvoTransform.root != null ? alvoTransform.root : alvoTransform;
+            Transform raizColisor = other.transform.root != null ? other.transform.root : other.transform;
+            if (raizColisor == raizAlvo || other.transform.IsChildOf(raizAlvo)) return true;
+        }
+
+        if (other.isTrigger) return false;
+        // Um colisor no caminho não deve substituir a coordenada ordenada.
+        return Vector3.Distance(other.ClosestPoint(transform.position), alvo) <= 2f;
     }
 
     void Explodir()
@@ -161,7 +208,8 @@ public class MisselTatico : MonoBehaviour
             }
 
             // Causa Dano
-            SistemaDeDanos vida = h.GetComponent<SistemaDeDanos>();
+            SistemaDeDanos vida = h.GetComponent<SistemaDeDanos>()
+                ?? h.GetComponentInParent<SistemaDeDanos>();
             if (vida != null)
             {
                 vida.ReceberDano(dano);

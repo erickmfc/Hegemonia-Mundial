@@ -17,6 +17,8 @@ public class MissileThreatTracker : MonoBehaviour
     private Vector3 pontoLancamento;
     private float momentoLancamento;
     private string nomeOrigem = string.Empty;
+    private string alvoNome = string.Empty;
+    private int alvoTeam = -1;
 
     private Transform alvoTransform;
     private Transform raizMissil;
@@ -31,7 +33,30 @@ public class MissileThreatTracker : MonoBehaviour
     public Vector3 PontoAlvoConhecido => ObterAlvoAtual();
     public float TempoDesdeLancamento => Mathf.Max(0f, Time.time - momentoLancamento);
     public string NomeOrigem => nomeOrigem;
+    public string AlvoNome => alvoNome;
+    public int AlvoTeam => alvoTeam;
     public bool PossuiAlvoDinamico => alvoTransform != null;
+
+    public static bool TryObterAtivo(int id, out MissileThreatTracker resultado)
+    {
+        resultado = null;
+        for (int i = ameacasAtivas.Count - 1; i >= 0; i--)
+        {
+            MissileThreatTracker tracker = ameacasAtivas[i];
+            if (tracker == null || tracker.RaizMissil == null || !tracker.RaizMissil.gameObject.activeInHierarchy)
+            {
+                ameacasAtivas.RemoveAt(i);
+                continue;
+            }
+
+            if (tracker.MissileId == id)
+            {
+                resultado = tracker;
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static void CopiarAmeacasAtivas(List<MissileThreatTracker> destino)
     {
@@ -162,6 +187,8 @@ public class MissileThreatTracker : MonoBehaviour
         pontoLancamento = raizMissil != null ? raizMissil.position : transform.position;
         momentoLancamento = Time.time;
         nomeOrigem = origem != null ? origem.name : "Origem desconhecida";
+        alvoNome = alvoDinamico != null ? alvoDinamico.name : string.Empty;
+        alvoTeam = ResolverTeam(alvoDinamico, alvoDinamico);
         interceptor = ehInterceptador;
         velocidadeEstimada = Mathf.Max(velocidade, EstimarVelocidade(raizMissil.gameObject), 1f);
         teamOrigem = ResolverTeam(origem, raizMissil);
@@ -176,6 +203,7 @@ public class MissileThreatTracker : MonoBehaviour
         {
             ameacasAtivas.Add(this);
             registrado = true;
+            CartaCombateRegistro.RegistrarLancamento(this);
         }
     }
 
@@ -236,6 +264,7 @@ public class MissileThreatTracker : MonoBehaviour
     void RemoverRegistro()
     {
         if (!registrado) return;
+        CartaCombateRegistro.RegistrarMissilEncerrado(this);
         ameacasAtivas.Remove(this);
         registrado = false;
     }

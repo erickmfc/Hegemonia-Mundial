@@ -33,6 +33,11 @@ public class MenuMisseis : MonoBehaviour
 
     void Update()
     {
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return;
+        }
+
         AtualizarModoManualDeMira();
 
         // MODO MIRA: Se escolheu o míssil, espera clicar no chão ou apertar SPACE
@@ -71,6 +76,11 @@ public class MenuMisseis : MonoBehaviour
     // --- LÓGICA DO MENU ---
     public void AbrirMenuParaSilo(SiloNuclear silo)
     {
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return;
+        }
+
         if (modoMira) return; // Não abre menu se estiver mirando
 
         siloSlecionado = silo;

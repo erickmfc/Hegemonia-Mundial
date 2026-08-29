@@ -10,6 +10,7 @@
 .menu-root {
     position: absolute;
     left: 0; top: 0; right: 0; bottom: 0;
+    display: flex;
     flex-direction: column;
     background-color: rgba(5, 9, 12, 0.0); /* Transparent to allow seeing the 3D map */
     padding: 12px;

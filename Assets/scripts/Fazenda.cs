@@ -58,6 +58,9 @@ public class Fazenda : MonoBehaviour
     public float lote3Progresso = 0f;
 
     // Interface
+    [Header("Interação")]
+    [Tooltip("Desativado por padrão: clicar na fazenda não abre nem executa ações do assistente agrícola.")]
+    [SerializeField] private bool permitirAbrirMenuPorClique = false;
     private bool menuAberto = false;
     private Rect janelaRetangulo;
     private IdentidadeUnidade identidade;
@@ -118,7 +121,7 @@ public class Fazenda : MonoBehaviour
         // Fazendas sem lavoura ativa nao precisam executar a rotina de
         // crescimento em todos os frames. Isso evita custo acumulado quando
         // existem muitas fazendas no mapa.
-        bool houveClique = Input.GetMouseButtonDown(0);
+        bool houveClique = permitirAbrirMenuPorClique && Input.GetMouseButtonDown(0);
         if (!houveClique && !ExisteLavouraAtiva())
         {
             return;

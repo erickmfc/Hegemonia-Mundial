@@ -237,7 +237,11 @@ public class GerenteSelecao : MonoBehaviour
             }
             // -----------------------------------------------------
 
-            if (AlgumaUnidadeSelecionadaEmModoManualDeDisparo())
+            // Shift+RMB e Space ficam reservados para o disparo manual.
+            // RMB sem Shift continua sendo sempre uma ordem de movimento,
+            // inclusive nos modos Manual e Automatico.
+            bool teclaModificadora = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            if (teclaModificadora && ExisteUnidadeSelecionadaEmModoManualDeDisparo())
             {
                 return;
             }
@@ -714,10 +718,6 @@ public class GerenteSelecao : MonoBehaviour
             // O ponto alvo final individual
             Vector3 posAlvo = destinoCentral + offsetRodado;
 
-            // BLOQUEIO MANUAL
-            if (UnidadeBloqueiaMovimentoManual(alvoCtrl))
-                continue; 
-
             // NAVMESH PREDICTION: Ajuda navios em terreno acidentado / margens
             if (ehGrupoNaval)
             {
@@ -936,9 +936,6 @@ public class GerenteSelecao : MonoBehaviour
             ControleUnidade alvoCtrl = bufferSlotsFormacao[i].unidade;
             if (alvoCtrl == null) continue;
 
-            if (UnidadeBloqueiaMovimentoManual(alvoCtrl))
-                continue;
-
             int coluna = i % colunas;
             int linha = i / colunas;
 
@@ -946,17 +943,46 @@ public class GerenteSelecao : MonoBehaviour
             Vector3 posAlvo = destinoCentral + (rotacaoFormacao * posLocal);
 
             bool unidadeAnfibia = alvoCtrl.TemHovercraftTransporte;
+            bool unidadeNaval = alvoCtrl.EhUnidadeNaval();
 
-            UnityEngine.AI.NavMeshHit hit;
-            UnityEngine.AI.NavMeshAgent agenteFormacao = alvoCtrl.GetComponent<UnityEngine.AI.NavMeshAgent>();
-            int mascaraAmostragem = alvoCtrl.EhUnidadeNaval()
-                ? (agenteFormacao != null && agenteFormacao.areaMask != 0 ? agenteFormacao.areaMask : (1 << 3))
-                : (agenteFormacao != null && agenteFormacao.areaMask != 0
-                    ? agenteFormacao.areaMask
-                    : UnityEngine.AI.NavMesh.AllAreas);
-            if (!unidadeAnfibia && !usarAmostragemLeve && UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, mascaraAmostragem))
+            if (unidadeNaval)
             {
-                posAlvo = hit.position;
+                // O NavMesh geral pode encontrar uma ilha, costa ou outro
+                // collider mesmo quando o clique foi feito no mar. Para
+                // navios/submarinos a água é a autoridade de superfície;
+                // nunca deixe a amostragem terrestre substituir o destino.
+                if (!NavalPlacementResolver.IsWaterAtPosition(posAlvo)
+                    && NavalPlacementResolver.TryResolveWaterSpawn(
+                        posAlvo,
+                        direcaoMovimento,
+                        0f,
+                        80f,
+                        out Vector3 pontoAgua,
+                        out _,
+                        out _))
+                {
+                    posAlvo = pontoAgua;
+                }
+
+                if (!NavalPlacementResolver.IsWaterAtPosition(posAlvo))
+                {
+                    Debug.LogWarning(
+                        $"[GerenteSelecao] Destino naval ignorado para {alvoCtrl.name}: nenhum ponto de agua valido proximo ao clique.",
+                        alvoCtrl);
+                    continue;
+                }
+            }
+            else
+            {
+                UnityEngine.AI.NavMeshHit hit;
+                UnityEngine.AI.NavMeshAgent agenteFormacao = alvoCtrl.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                int mascaraAmostragem = agenteFormacao != null && agenteFormacao.areaMask != 0
+                    ? agenteFormacao.areaMask
+                    : UnityEngine.AI.NavMesh.AllAreas;
+                if (!unidadeAnfibia && !usarAmostragemLeve && UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, mascaraAmostragem))
+                {
+                    posAlvo = hit.position;
+                }
             }
 
             alvoCtrl.EmitirOrdemMover(posAlvo);
@@ -1048,7 +1074,7 @@ public class GerenteSelecao : MonoBehaviour
         };
     }
 
-    bool AlgumaUnidadeSelecionadaEmModoManualDeDisparo()
+    bool ExisteUnidadeSelecionadaEmModoManualDeDisparo()
     {
         for (int i = 0; i < unidadesSelecionadas.Count; i++)
         {
@@ -1058,30 +1084,20 @@ public class GerenteSelecao : MonoBehaviour
                 continue;
             }
 
-            if (UnidadeBloqueiaMovimentoManual(unidade))
+            LancadorNaval lancador = unidade.GetComponentInChildren<LancadorNaval>(true);
+            if (lancador != null && lancador.modoAtual == LancadorNaval.ModoOperacao.Manual)
+            {
+                return true;
+            }
+
+            ControleSubmarino submarino = unidade.GetComponent<ControleSubmarino>();
+            if (submarino != null && submarino.EmModoManualDisparo())
             {
                 return true;
             }
         }
 
         return false;
-    }
-
-    bool UnidadeBloqueiaMovimentoManual(ControleUnidade unidade)
-    {
-        if (unidade == null)
-        {
-            return false;
-        }
-
-        LancadorNaval lancador = unidade.GetComponentInChildren<LancadorNaval>(true);
-        if (lancador != null && lancador.modoAtual == LancadorNaval.ModoOperacao.Manual)
-        {
-            return true;
-        }
-
-        ControleSubmarino submarino = unidade.GetComponent<ControleSubmarino>();
-        return submarino != null && submarino.EmModoManualDisparo();
     }
 
     void GarantirCaixaVisual()

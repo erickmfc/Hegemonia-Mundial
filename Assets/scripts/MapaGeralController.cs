@@ -37,6 +37,9 @@ public class MapaGeralController : MonoBehaviour
     [Header("Limites automáticos do mapa")]
     [SerializeField] private bool detectarLimitesReaisDoMapa = true;
     [SerializeField] private float margemMapa = 250f;
+    [Tooltip("Quando habilitado, a demo abre mostrando toda a cobertura dos Terrains. O jogador ainda pode usar zoom e pan normalmente.")]
+    [SerializeField] private bool enquadrarCoberturaCompletaAoAbrir = false;
+    [SerializeField, Min(1f)] private float margemEnquadramentoInicial = 1.08f;
 
     [Header("Configurações de Exibição")]
     public int meuTeamID = 1; // ID do jogador (unidades aliadas a mostrar)
@@ -69,6 +72,8 @@ public class MapaGeralController : MonoBehaviour
 
     private Vector2 centroMapa = Vector2.zero;
     private float metadeMapa = 5000f;
+    private float larguraMapa = 10000f;
+    private float profundidadeMapa = 10000f;
     private bool limitesMapaInicializados;
     private Terrain terrenoInimigo;
     private Bounds limitesTerrenoInimigo;
@@ -241,6 +246,8 @@ public class MapaGeralController : MonoBehaviour
         {
             centroMapa = Vector2.zero;
             metadeMapa = metadeConfigurada;
+            larguraMapa = metadeConfigurada * 2f;
+            profundidadeMapa = metadeConfigurada * 2f;
             limitesMapaInicializados = true;
             Debug.LogWarning($"[MapaGeral] Nenhum Terrain ativo encontrado; usando limite configurado de {metadeMapa:F0}.");
             return;
@@ -253,6 +260,8 @@ public class MapaGeralController : MonoBehaviour
         maxZ += margem;
 
         centroMapa = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
+        larguraMapa = Mathf.Max(1f, maxX - minX);
+        profundidadeMapa = Mathf.Max(1f, maxZ - minZ);
         float metadeTerrain = Mathf.Max((maxX - minX) * 0.5f, (maxZ - minZ) * 0.5f);
         metadeMapa = Mathf.Max(metadeConfigurada, metadeTerrain);
         zoomMaximo = Mathf.Max(zoomMaximo, metadeMapa);
@@ -347,6 +356,10 @@ public class MapaGeralController : MonoBehaviour
         {
             Vector3 p = cameraPrincipal.transform.position;
             cameraMapa.transform.position = new Vector3(p.x, 1350f, p.z);
+            if (enquadrarCoberturaCompletaAoAbrir)
+            {
+                EnquadrarCoberturaCompleta();
+            }
             LimitarCameraMapa();
             volumeAudioOriginal = AudioListener.volume;
             AudioListener.volume = 0f;
@@ -458,6 +471,35 @@ public class MapaGeralController : MonoBehaviour
             zoomMinimo,
             zoomMaximo);
         LimitarCameraMapa();
+    }
+
+    /// <summary>
+    /// Ajusta somente o zoom da câmera do mapa para que o quadrado de
+    /// cobertura calculado a partir dos Terrains caiba na tela. A posição do
+    /// jogador e a câmera principal não são alteradas.
+    /// </summary>
+    private void EnquadrarCoberturaCompleta()
+    {
+        if (cameraMapa == null) return;
+        if (!limitesMapaInicializados) AtualizarLimitesMapa();
+
+        float margem = Mathf.Max(1f, margemEnquadramentoInicial);
+        float aspecto = cameraMapa.aspect > 0.1f
+            ? cameraMapa.aspect
+            : (float)Screen.width / Mathf.Max(1f, Screen.height);
+        // OrthographicSize is half the vertical world span. Using only the
+        // largest world half-size leaves excessive blue margins on wide
+        // screens and makes side tiles look as if they were missing.
+        float metadePorLargura = (larguraMapa * 0.5f) / Mathf.Max(0.1f, aspecto);
+        float tamanhoNecessario = Mathf.Max(
+            zoomMinimo,
+            Mathf.Max(profundidadeMapa * 0.5f, metadePorLargura) * margem);
+        zoomMaximo = Mathf.Max(zoomMaximo, tamanhoNecessario);
+        cameraMapa.orthographicSize = Mathf.Clamp(tamanhoNecessario, zoomMinimo, zoomMaximo);
+        cameraMapa.transform.position = new Vector3(
+            centroMapa.x,
+            cameraMapa.transform.position.y,
+            centroMapa.y);
     }
 
     private void AplicarModoMapa(bool ativo)

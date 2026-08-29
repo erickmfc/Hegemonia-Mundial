@@ -7,7 +7,7 @@ using Hegemonia.RTS;
 
 /// <summary>
 /// Menu Comando Tático — controlador principal do UI Toolkit.
-/// Abre/fecha com a tecla 1. Enquanto aberto, bloqueia Z/X/V/B/N/M
+/// Abre/fecha com a tecla 1. Enquanto aberto, bloqueia Z/X/V/N/M
 /// e impede cliques de seleção/ordem no mundo via InteractionModeService.
 /// </summary>
 [RequireComponent(typeof(UIDocument))]
@@ -39,6 +39,7 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     private UIDocument uiDoc;
     private VisualElement root;
+    private VisualElement menuComandoRoot;
     private bool menuAberto;
     public bool MenuAberto => menuAberto;
 
@@ -219,26 +220,84 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     // Unity lifecycle
     // -----------------------------------------------------------------------
+    private bool bindUIFeito;
+
     private void Awake()
     {
-        if (Instancia != null && Instancia != this) { Destroy(gameObject); return; }
+        if (Instancia != null && Instancia != this)
+        {
+            Destroy(this);
+            return;
+        }
         Instancia = this;
         RegistroEntidadesJogo.EntidadesAlteradas += MarcarCachesEntidadesSujo;
 
-        uiDoc = GetComponent<UIDocument>();
+        ResolverDocumento();
+    }
+
+    /// <summary>
+    /// Garante que uiDoc, panelSettings, visualTreeAsset e root estão resolvidos.
+    /// NÃO toca no display — isso é responsabilidade de AbrirMenu/FecharMenu/Start.
+    /// </summary>
+    private void ResolverDocumento()
+    {
+        if (uiDoc == null)
+        {
+            uiDoc = GetComponent<UIDocument>();
+            if (uiDoc == null)
+            {
+                uiDoc = gameObject.AddComponent<UIDocument>();
+                bindUIFeito = false;
+            }
+        }
+
+        if (uiDoc != null)
+        {
+            if (uiDoc.panelSettings == null)
+            {
+                uiDoc.panelSettings = Resources.Load<PanelSettings>("PanelSettings");
+            }
+
+            if (uiDoc.visualTreeAsset == null)
+            {
+                uiDoc.visualTreeAsset = Resources.Load<VisualTreeAsset>("MenuComando/MenuComando");
+                bindUIFeito = false;
+            }
+
+            if (root == null)
+            {
+                root = uiDoc.rootVisualElement;
+                if (root != null) bindUIFeito = false;
+            }
+        }
+
+        if (root != null && menuComandoRoot == null)
+        {
+            menuComandoRoot = root.Q<VisualElement>("menu-comando-root");
+        }
     }
 
     private void Start()
     {
-        root = uiDoc.rootVisualElement;
+        ResolverDocumento();
         menuAberto = false;
 
         AtualizarLimitesMapa();
 
-        // Oculta o menu na inicialização
-        root.style.display = DisplayStyle.None;
+        if (root != null)
+        {
+            // Oculta o container do UIDocument host
+            root.style.display = DisplayStyle.None;
+            // Oculta o elemento interno menu-comando-root
+            if (menuComandoRoot != null)
+                menuComandoRoot.style.display = DisplayStyle.None;
 
-        BindUI();
+            if (!bindUIFeito)
+            {
+                BindUI();
+                bindUIFeito = true;
+            }
+        }
         CriarRenderTextureFLIR();
         AdicionarLog("SISTEMA", "Menu Comando inicializado. Tecla [1] para abrir/fechar.", "sistema");
     }
@@ -371,27 +430,114 @@ public class MenuComandoController : MonoBehaviour
 
     private void Update()
     {
+        ResolverDocumento();
+
+        // Faz o bind do UI na primeira frame em que o root estiver disponível
+        if (root != null && !bindUIFeito)
+        {
+            // Garante que o menu começa oculto
+            root.style.display = DisplayStyle.None;
+            if (menuComandoRoot != null)
+                menuComandoRoot.style.display = DisplayStyle.None;
+            BindUI();
+            bindUIFeito = true;
+        }
+
         if (root == null || uiDoc == null)
         {
             return;
         }
 
-        // Se o Menu do Governo estiver aberto, ignora atalhos de teclado
-        // A tecla 1 Ã© tratada antes do bloqueio do Governo para permitir
-        // recuperar o menu quando o estado estÃ¡tico ficou desatualizado.
-
-        // Tecla 1 — toggle
-        // Enquanto o Governo esta aberto, os numeros devem permanecer no
-        // campo de compra/venda e nao acionar atalhos globais.
-        if (MenuGoverno.EstaAberto)
+        // Resolve o atalho do Menu Satelite antes dos bloqueios de outros
+        // modais. Um estado legado de Quartel/Governo pode permanecer marcado
+        // por um frame depois do fechamento e, se o teste vier antes daqui,
+        // o operador perde o atalho e parece que o menu travou.
+        bool solicitouMenuComando = RTSInputBindings.GetKeyDown(RTSInputAction.CommandMenu)
+            || Input.GetKeyDown(KeyCode.Alpha1)
+            || Input.GetKeyDown(KeyCode.Keypad1);
+        if (solicitouMenuComando)
         {
+            // EntradaGlobalBloqueada também cobre a janela de um frame usada
+            // para consumir cliques durante o fechamento do Quartel. Essa
+            // trava transitória não pode engolir o atalho 1; somente um modal
+            // realmente aberto deve impedir o Satélite.
+            if (GerenciadorQuartel.InterfaceAberta || MenuGoverno.EstaAberto)
+            {
+                return;
+            }
+
+            if (menuAberto) FecharMenu();
+            else AbrirMenu();
             return;
         }
 
-        if (RTSInputBindings.GetKeyDown(RTSInputAction.CommandMenu) || Input.GetKeyDown(KeyCode.Keypad1))
+        // O Quartel tem prioridade sobre a lista de teclas bloqueadas do
+        // Satélite. Algumas cenas de tutorial/demo não carregam um
+        // GerenciadorQuartel no YAML; nesse caso o atalho cria somente o
+        // controlador administrativo da cena, sem criar unidades ou dados
+        // fictícios. Nas cenas que já possuem o gerenciador, o próprio
+        // GerenciadorQuartel.Update() continua sendo a autoridade do toggle.
+        bool solicitouQuartel = RTSInputBindings.GetKeyDown(RTSInputAction.Barracks)
+            || Input.GetKeyDown(KeyCode.B);
+        if (solicitouQuartel)
         {
-            if (menuAberto) FecharMenu();
-            else AbrirMenu();
+            GerenciadorQuartel quartel = FindFirstObjectByType<GerenciadorQuartel>();
+            if (quartel == null)
+            {
+                // A demo1 mantém o Quartel real desativado enquanto o
+                // tutorial aguarda a construção. Ele ainda é o controlador
+                // correto para o painel; não crie uma segunda instância
+                // quando o prefab já está presente na cena.
+                GerenciadorQuartel[] quarteisNaCena = FindObjectsByType<GerenciadorQuartel>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+                for (int i = 0; i < quarteisNaCena.Length; i++)
+                {
+                    if (quarteisNaCena[i] != null)
+                    {
+                        quartel = quarteisNaCena[i];
+                        break;
+                    }
+                }
+            }
+
+            // O Satélite pode continuar desenhado por um frame quando a
+            // abertura vem do mesmo atalho. Fechá-lo antes de ativar o
+            // Quartel evita duas interfaces sobrepostas e não deixa o
+            // bloqueio modal do Quartel parecer um travamento da tecla 1.
+            if (menuAberto)
+                FecharMenu();
+
+            if (quartel == null)
+            {
+                GameObject objetoQuartel = new GameObject("Quartel - Controlador da Cena");
+                objetoQuartel.transform.position = Vector3.zero;
+                quartel = objetoQuartel.AddComponent<GerenciadorQuartel>();
+                quartel.teamID = 1;
+                quartel.usarPainelQuartelUIToolkit = true;
+                quartel.habilitarLancamentoCoordenado = true;
+                quartel.abrirPainelAoIniciarNoPlayMode = false;
+                quartel.AlternarInterface();
+                quartel.MarcarAtalhoBConsumidoNesteFrame();
+            }
+            else if (!quartel.gameObject.activeSelf)
+            {
+                quartel.gameObject.SetActive(true);
+                quartel.usarPainelQuartelUIToolkit = true;
+                quartel.habilitarLancamentoCoordenado = true;
+                quartel.abrirPainelAoIniciarNoPlayMode = false;
+                quartel.AlternarInterface();
+                quartel.MarcarAtalhoBConsumidoNesteFrame();
+            }
+
+            // O gerenciador já existente receberá o mesmo B no próprio
+            // Update. Apenas retornamos antes da lista de bloqueios para que
+            // o Satélite não consuma a tecla.
+            return;
+        }
+
+        if (QuartelMenuUIController.EntradaGlobalBloqueada || MenuGoverno.EstaAberto)
+        {
             return;
         }
 
@@ -537,10 +683,24 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     public void AbrirMenu()
     {
+        if (GerenciadorQuartel.InterfaceAberta || MenuGoverno.EstaAberto)
+        {
+            return;
+        }
+
         if (menuAberto) return;
         menuAberto = true;
 
-        root.style.display = DisplayStyle.Flex;
+        ResolverDocumento();
+
+        if (root != null)
+        {
+            root.style.display = DisplayStyle.Flex;
+        }
+        if (menuComandoRoot != null)
+        {
+            menuComandoRoot.style.display = DisplayStyle.Flex;
+        }
 
         // Registra bloqueio de input global
         InteractionModeService.Request(
@@ -705,7 +865,14 @@ public class MenuComandoController : MonoBehaviour
         menuAberto = false;
         modoLancamentoMissilMapaAtivo = false;
 
-        root.style.display = DisplayStyle.None;
+        if (root != null)
+        {
+            root.style.display = DisplayStyle.None;
+        }
+        if (menuComandoRoot != null)
+        {
+            menuComandoRoot.style.display = DisplayStyle.None;
+        }
 
         LiberarBloqueioInput();
 
@@ -744,6 +911,8 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     private void BindUI()
     {
+        if (root == null) return;
+        menuComandoRoot   = root.Q<VisualElement>("menu-comando-root");
         mapaUnidadesLayer = root.Q<VisualElement>("mapa-unidades-layer");
         mapaLinhasLayer   = root.Q<VisualElement>("mapa-linhas-layer");
         painelMapa        = root.Q<VisualElement>("painel-mapa");

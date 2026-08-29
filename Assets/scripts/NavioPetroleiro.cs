@@ -11,6 +11,11 @@ public class NavioPetroleiro : ControleUnidade
     public float velocidadeAcoplagem = 12.0f; // Velocidade rápida para acoplagem/desacoplagem
     public float tempoDeCarregamento = 5.0f;
 
+    [Header("Desempenho")]
+    [Tooltip("Multiplicador aplicado uma vez ao iniciar. O padrão deixa o petroleiro 2,5x mais rápido sem mudar outros navios.")]
+    [Min(0.1f)] public float multiplicadorVelocidade = 2.5f;
+    private bool velocidadeInicialAjustada;
+
     [Header("Carga")]
     public int petroleoCarregado = 0;
     public int capacidadeMaxima = 5000;
@@ -72,6 +77,7 @@ public class NavioPetroleiro : ControleUnidade
     protected override void Start()
     {
         base.Start();
+        AplicarMultiplicadorVelocidade();
         
         if (GetComponent<Rigidbody>()) GetComponent<Rigidbody>().isKinematic = true;
         if (agenteNav != null)
@@ -82,6 +88,16 @@ public class NavioPetroleiro : ControleUnidade
 
         // 🚢 Começa no MODO PASSIVO: apenas aguarda a infraestrutura estar pronta!
         MudarEstado(EstadoPetroleiro.NASCENDO);
+    }
+
+    private void AplicarMultiplicadorVelocidade()
+    {
+        if (velocidadeInicialAjustada) return;
+        velocidadeInicialAjustada = true;
+        float multiplicador = Mathf.Max(0.1f, multiplicadorVelocidade);
+        velocidadeSaidaEstaleiro *= multiplicador;
+        velocidadeManobra *= multiplicador;
+        velocidadeAcoplagem *= multiplicador;
     }
 
     // Chamado pelo Estaleiro (Opcional)

@@ -1,0 +1,128 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9abf0dfbdc5ebf3449fa0ea9af532749, type: 3}
+  m_Name: IA02NationProfile
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02NationProfile
+  profileKey: ia02.uniao.carmesim.expansionista
+  nationIdHint: 3
+  teamIdHint: 3
+  nationName: Uniao Carmesim
+  presidentName: Comando Carmesim
+  currencyName: Credit
+  currencySymbol: $
+  countryProfile: ProdutorPetroleo
+  difficultyProfile: aggressive_expansion
+  seedOffset: 0
+  personality: 7
+  doctrine: 3
+  defaultExecutionMode: 3
+  defaultNationMode: 2
+  defaultStage: 0
+  defaultPosture: 6
+  aggressionWeight: 0.95
+  cautionWeight: 0.18
+  commercialWeight: 0.32
+  diplomacyWeight: 0.12
+  militaryWeight: 0.9
+  selfSufficiencyWeight: 0.62
+  expansionWeight: 0.96
+  opportunismWeight: 0.84
+  landWeight: 0.6
+  airWeight: 0.72
+  navalWeight: 0.86
+  defenseWeight: 0.42
+  economyWeight: 0.46
+  industryWeight: 0.86
+  agricultureWeight: 0.3
+  technologyWeight: 0.64
+  riskTolerance: 82
+  militaryPriority: 0.62
+  economyPriority: 0.23
+  diplomacyPriority: 0.15
+  preferredFederation: 
+  initialTreasury: 45000
+  baseCadenceSeconds: 0.45
+  minSliceMilliseconds: 0.08
+  maxSliceMilliseconds: 0.9
+  maxOperationsPerSlice: 10
+  maxEventsPerSlice: 16
+  allowObserverWriteBacks: 0
+  preferDeterministicBoot: 1
+  allowSaveIntegration: 1
+  allowAutoBootstrap: 1
+  constructionGovernor:
+    emergencyReserve: 2500
+    minimumConstructionReserve: 1000
+    maximumConstructionBudgetPercent: 0.38
+    maximumMaintenancePercent: 0.2
+    minimumAcceptableFps: 20
+    maxIaFrameBudgetMs: 6
+    maxBuildPlannerBudgetMs: 2.5
+    maxCandidatesPerSlice: 12
+    maxPhysicsChecksPerSlice: 48
+    phaseLimits:
+    - stage: 0
+      maxTotalStructures: 2
+      maxCapital: 1
+      maxResidential: 1
+      maxFoodProduction: 1
+      maxEnergyProduction: 1
+      maxStorage: 0
+      maxLogistics: 0
+      maxIndustrial: 0
+      maxDefense: 0
+      maxCoveragePercent: 0.25
+      minimumSpacing: 18
+      reservedOpenSpacePercent: 70
+      roadSpacePercent: 0
+    - stage: 3
+      maxTotalStructures: 8
+      maxCapital: 1
+      maxResidential: 3
+      maxFoodProduction: 2
+      maxEnergyProduction: 2
+      maxStorage: 2
+      maxLogistics: 1
+      maxIndustrial: 0
+      maxDefense: 0
+      maxCoveragePercent: 0.45
+      minimumSpacing: 14
+      reservedOpenSpacePercent: 40
+      roadSpacePercent: 10
+    - stage: 4
+      maxTotalStructures: 16
+      maxCapital: 1
+      maxResidential: 6
+      maxFoodProduction: 4
+      maxEnergyProduction: 4
+      maxStorage: 3
+      maxLogistics: 3
+      maxIndustrial: 2
+      maxDefense: 1
+      maxCoveragePercent: 0.6
+      minimumSpacing: 12
+      reservedOpenSpacePercent: 25
+      roadSpacePercent: 15
+    - stage: 100
+      maxTotalStructures: 0
+      maxCapital: 1
+      maxResidential: 0
+      maxFoodProduction: 0
+      maxEnergyProduction: 0
+      maxStorage: 0
+      maxLogistics: 0
+      maxIndustrial: 0
+      maxDefense: 0
+      maxCoveragePercent: 0
+      minimumSpacing: 16
+      reservedOpenSpacePercent: 100
+      roadSpacePercent: 0

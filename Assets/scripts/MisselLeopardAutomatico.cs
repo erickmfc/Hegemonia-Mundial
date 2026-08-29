@@ -38,11 +38,15 @@ public class MisselLeopardAutomatico : MonoBehaviour
     private bool lancado = false;
     private bool emMergulho = false;
     private Rigidbody rb;
+    private Vector3 ultimaPosicaoGuiagem;
+    private bool possuiUltimaPosicaoGuiagem;
     
     public void DefinirAlvo(Transform alvo)
     {
         alvoFocado = alvo;
         lancado = true;
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
         
         // Ativa fumaça se tiver
         if (sistemaFumaca != null) sistemaFumaca.Play();
@@ -72,27 +76,31 @@ public class MisselLeopardAutomatico : MonoBehaviour
         
         if (alvoFocado != null)
         {
-            destinoFinal = alvoFocado.position;
-            ultimaPosicaoConhecida = destinoFinal;
-            
-            // PREDIÇÃO DE MOVIMENTO (Básico): Mira um pouco à frente
-            // Se o alvo tiver Rigidbody, pega a velocidade dele
-            Rigidbody rbAlvo = alvoFocado.GetComponent<Rigidbody>();
-            if(rbAlvo != null)
-            {
-                float tempoEstimado = Vector3.Distance(transform.position, destinoFinal) / (velocidadeAtual + 1f);
-                destinoFinal += rbAlvo.linearVelocity * Mathf.Clamp(tempoEstimado, 0f, 1.5f);
-            }
+            ultimaPosicaoConhecida = alvoFocado.position;
+            // A antecipação só orienta o míssil. A posição conhecida continua
+            // sendo a posição real para que uma perda de contato não crie um
+            // impacto em uma previsão antiga.
+            destinoFinal = GuidagemAlvoMovel.ObterPontoDeMira(
+                alvoFocado,
+                transform.position,
+                Mathf.Max(velocidadeAtual, velocidadeMaxima),
+                1.5f);
         }
         else
         {
             destinoFinal = ultimaPosicaoConhecida; // Vai até a última posição se alvo morrer
             // Se chegou na última posição conhecida e não explodiu, explode
-            if(Vector3.Distance(transform.position, destinoFinal) < 5f) Explodir();
+            if(Vector3.Distance(transform.position, destinoFinal) < 5f)
+            {
+                Explodir();
+                return;
+            }
         }
 
         // 2. LÓGICA DE VOO (Arco Balístico Inteligente)
         float distancia = Vector3.Distance(transform.position, destinoFinal);
+        Vector3 posicaoAlvoReal = alvoFocado != null ? alvoFocado.position : ultimaPosicaoConhecida;
+        float distanciaAlvoReal = Vector3.Distance(transform.position, posicaoAlvoReal);
         
         Vector3 direcaoDesejada;
 
@@ -140,13 +148,52 @@ public class MisselLeopardAutomatico : MonoBehaviour
         // Move
         rb.linearVelocity = transform.forward * velocidadeAtual;
 
-        // 4. DETONAÇÃO DE PROXIMIDADE
-        if (distancia < 5.0f) Explodir();
+        // 4. DETONAÇÃO DE PROXIMIDADE. O teste do segmento cobre a passagem
+        // entre dois FixedUpdates quando o alvo ou o míssil estão rápidos.
+        bool cruzouAlvo = GuidagemAlvoMovel.TentarObterPontoMaisProximoNoSegmento(
+            possuiUltimaPosicaoGuiagem ? ultimaPosicaoGuiagem : transform.position,
+            transform.position,
+            posicaoAlvoReal,
+            out Vector3 pontoImpacto,
+            Mathf.Max(5f, velocidadeAtual * Time.fixedDeltaTime));
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
+        if (distanciaAlvoReal < 5.0f || cruzouAlvo)
+        {
+            if (cruzouAlvo) transform.position = pontoImpacto;
+            Explodir();
+        }
     }
     
     // --- COLISÕES ---
-    void OnCollisionEnter(Collision col) { Explodir(); }
-    void OnTriggerEnter(Collider other) { Explodir(); }
+    void OnCollisionEnter(Collision col)
+    {
+        if (PodeDetonarAoColidir(col.collider)) Explodir();
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (PodeDetonarAoColidir(other)) Explodir();
+    }
+
+    private bool PodeDetonarAoColidir(Collider other)
+    {
+        if (!lancado || other == null) return false;
+        if (other.CompareTag("Player") || other.CompareTag("Missel") || other.CompareTag("IgnorarExplosao")) return false;
+
+        Transform raizOutro = other.transform.root != null ? other.transform.root : other.transform;
+        Transform alvoAtual = alvoFocado != null && alvoFocado.gameObject.activeInHierarchy ? alvoFocado : null;
+        if (alvoAtual != null)
+        {
+            Transform raizAlvo = alvoAtual.root != null ? alvoAtual.root : alvoAtual;
+            if (raizOutro == raizAlvo || other.transform.IsChildOf(raizAlvo)) return true;
+            if (other.isTrigger) return false;
+            return Vector3.Distance(other.ClosestPoint(transform.position), alvoAtual.position) <= 8f;
+        }
+
+        if (other.isTrigger) return false;
+        return Vector3.Distance(other.ClosestPoint(transform.position), ultimaPosicaoConhecida) <= 8f;
+    }
 
     // --- EXPLOSÃO (Idêntica ao Submarino) ---
     
@@ -160,6 +207,9 @@ public class MisselLeopardAutomatico : MonoBehaviour
     
     void Explodir()
     {
+        if (!lancado) return;
+        lancado = false;
+
         // 1. Efeitos Visuais
         CriarEfeito(efeitoVisualExplosao);
         if (efeitosVisuaisExtras != null)
@@ -188,7 +238,8 @@ public class MisselLeopardAutomatico : MonoBehaviour
         foreach (Collider obj in objetosNaArea)
         {
             // Aplica dano
-            SistemaDeDanos sistemaDano = obj.GetComponent<SistemaDeDanos>();
+            SistemaDeDanos sistemaDano = obj.GetComponent<SistemaDeDanos>()
+                ?? obj.GetComponentInParent<SistemaDeDanos>();
             if (sistemaDano != null)
             {
                 float dist = Vector3.Distance(transform.position, obj.transform.position);

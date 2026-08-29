@@ -62,11 +62,14 @@ public class Torpedo : MonoBehaviour
     // Estado interno
     private Transform alvoAtual;
     private Vector3 posicaoAlvoPerdido;
+    private bool alvoFixoPorCoordenada;
     private bool emSubida = false;
     private bool explodiu = false;
     private Vector3 direcaoAtual;
     private float distanciaPercorrida = 0f;
     private float profundidadeAtual;
+    private Vector3 ultimaPosicaoGuiagem;
+    private bool possuiUltimaPosicaoGuiagem;
     
     // Rastros de bolhas
     private float tempoProximoRastro = 0f;
@@ -80,11 +83,14 @@ public class Torpedo : MonoBehaviour
     private void OnEnable()
     {
         alvoAtual = null;
+        alvoFixoPorCoordenada = false;
         emSubida = false;
         explodiu = false;
         direcaoAtual = transform.forward;
         distanciaPercorrida = 0f;
         profundidadeAtual = transform.position.y;
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
         tempoProximoRastro = 0f;
         tempoUltimaBusca = 0f;
     }
@@ -157,6 +163,8 @@ public class Torpedo : MonoBehaviour
     {
         if (explodiu) return;
 
+        Vector3 posicaoAnterior = transform.position;
+
         // Atualizar profundidade atual
         profundidadeAtual = transform.position.y;
 
@@ -167,7 +175,8 @@ public class Torpedo : MonoBehaviour
             tempoUltimaBusca = 0f;
             
             // 1. Aquisição automática de alvos se não tiver nenhum ou se o alvo foi perdido
-            if (rastrearAlvo && (alvoAtual == null || !alvoAtual.gameObject.activeInHierarchy))
+            if (rastrearAlvo && !alvoFixoPorCoordenada
+                && (alvoAtual == null || !alvoAtual.gameObject.activeInHierarchy))
             {
                 AdquirirAlvoProximo();
             }
@@ -180,10 +189,16 @@ public class Torpedo : MonoBehaviour
         if (rastrearAlvo && alvoAtual != null && alvoAtual.gameObject.activeInHierarchy)
         {
             posicaoAlvoPerdido = alvoAtual.position;
+
+            Vector3 pontoDeMira = GuidagemAlvoMovel.ObterPontoDeMira(
+                alvoAtual,
+                transform.position,
+                Mathf.Max(velocidade, velocidadeSubida),
+                1.2f);
             
             // Calcular direção horizontal até o alvo
             Vector3 posicaoHorizontal = new Vector3(transform.position.x, 0, transform.position.z);
-            Vector3 posicaoAlvoHorizontal = new Vector3(alvoAtual.position.x, 0, alvoAtual.position.z);
+            Vector3 posicaoAlvoHorizontal = new Vector3(pontoDeMira.x, 0, pontoDeMira.z);
             Vector3 direcaoParaAlvo = (posicaoAlvoHorizontal - posicaoHorizontal).normalized;
             
             // Interpolar direção para suavizar curva
@@ -203,7 +218,27 @@ public class Torpedo : MonoBehaviour
                 }
             }
         }
-        else if (alvoAtual != null && !alvoAtual.gameObject.activeInHierarchy)
+        else if (alvoFixoPorCoordenada)
+        {
+            // Uma coordenada manual não possui Transform, mas ainda precisa
+            // de uma trajetória guiada. Sem este ramo o torpedo conservava o
+            // forward do tubo e passava longe do ponto ordenado.
+            Vector3 pontoDeMira = posicaoAlvoPerdido;
+            Vector3 posicaoHorizontal = new Vector3(transform.position.x, 0f, transform.position.z);
+            Vector3 alvoHorizontal = new Vector3(pontoDeMira.x, 0f, pontoDeMira.z);
+            Vector3 direcaoParaAlvo = (alvoHorizontal - posicaoHorizontal).normalized;
+            if (direcaoParaAlvo.sqrMagnitude > 0.0001f)
+            {
+                direcaoAtual = Vector3.Lerp(direcaoAtual, direcaoParaAlvo, taxaCurva).normalized;
+            }
+
+            float distanciaHorizontal = Vector3.Distance(posicaoHorizontal, alvoHorizontal);
+            if (!emSubida && distanciaHorizontal <= distanciaSubida)
+            {
+                emSubida = true;
+            }
+        }
+        else if (!alvoFixoPorCoordenada && alvoAtual != null && !alvoAtual.gameObject.activeInHierarchy)
         {
             // Alvo foi destruído, continuar na última posição conhecida
             alvoAtual = null;
@@ -215,8 +250,21 @@ public class Torpedo : MonoBehaviour
         if (emSubida && alvoAtual != null)
         {
             // Subir em direção ao alvo
-            Vector3 direcaoSubida = (alvoAtual.position - transform.position).normalized;
+            Vector3 pontoDeMira = GuidagemAlvoMovel.ObterPontoDeMira(
+                alvoAtual,
+                transform.position,
+                Mathf.Max(velocidade, velocidadeSubida),
+                1.2f);
+            Vector3 direcaoSubida = (pontoDeMira - transform.position).normalized;
             movimento = direcaoSubida * velocidadeSubida * Time.deltaTime;
+        }
+        else if (emSubida && alvoFixoPorCoordenada)
+        {
+            Vector3 direcaoSubida = (posicaoAlvoPerdido - transform.position).normalized;
+            if (direcaoSubida.sqrMagnitude > 0.0001f)
+            {
+                movimento = direcaoSubida * velocidadeSubida * Time.deltaTime;
+            }
         }
         else if (!emSubida)
         {
@@ -240,6 +288,8 @@ public class Torpedo : MonoBehaviour
         
         transform.position += movimento;
         transform.rotation = Quaternion.LookRotation(direcaoAtual);
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
         
         distanciaPercorrida += movimento.magnitude;
 
@@ -255,7 +305,26 @@ public class Torpedo : MonoBehaviour
         if (alvoAtual != null)
         {
             float distancia = Vector3.Distance(transform.position, alvoAtual.position);
-            if (distancia <= 3f)
+            bool cruzouAlvo = GuidagemAlvoMovel.SegmentoAtingePonto(
+                possuiUltimaPosicaoGuiagem ? posicaoAnterior : transform.position,
+                transform.position,
+                alvoAtual.position,
+                Mathf.Max(3f, movimento.magnitude * 1.15f));
+            if (distancia <= 3f || cruzouAlvo)
+            {
+                Explodir();
+                return;
+            }
+        }
+        else if (alvoFixoPorCoordenada)
+        {
+            float distancia = Vector3.Distance(transform.position, posicaoAlvoPerdido);
+            bool cruzouAlvo = GuidagemAlvoMovel.SegmentoAtingePonto(
+                possuiUltimaPosicaoGuiagem ? posicaoAnterior : transform.position,
+                transform.position,
+                posicaoAlvoPerdido,
+                Mathf.Max(3f, movimento.magnitude * 1.15f));
+            if (distancia <= 3f || cruzouAlvo)
             {
                 Explodir();
                 return;
@@ -295,8 +364,8 @@ public class Torpedo : MonoBehaviour
             bool ehNavio = navio != null;
             bool ehSubmarino = sub != null;
             bool ehAlvoNaval = false;
-            try { if (col.CompareTag(tagAlvo) || col.CompareTag("Navio") || col.CompareTag("Submarino")) ehAlvoNaval = true; } catch { }
-            try { if (col.transform.parent != null && (col.transform.parent.CompareTag("Navio") || col.transform.parent.CompareTag("Submarino"))) ehAlvoNaval = true; } catch { }
+            if (TagSafe.Matches(col, tagAlvo) || TagSafe.Matches(col, "Navio") || TagSafe.Matches(col, "Submarino")) ehAlvoNaval = true;
+            if (col.transform.parent != null && (TagSafe.Matches(col.transform.parent, "Navio") || TagSafe.Matches(col.transform.parent, "Submarino"))) ehAlvoNaval = true;
 
             if (ehNavio || ehSubmarino || ehAlvoNaval || (id != null && id.teamID != timeLancador && id.teamID != 0))
             {
@@ -339,8 +408,8 @@ public class Torpedo : MonoBehaviour
             bool ehNavio = navio != null;
             bool ehSubmarino = sub != null;
             bool ehAlvoNaval = false;
-            try { if (col.CompareTag(tagAlvo) || col.CompareTag("Navio") || col.CompareTag("Submarino")) ehAlvoNaval = true; } catch { }
-            try { if (col.transform.parent != null && (col.transform.parent.CompareTag("Navio") || col.transform.parent.CompareTag("Submarino"))) ehAlvoNaval = true; } catch { }
+            if (TagSafe.Matches(col, tagAlvo) || TagSafe.Matches(col, "Navio") || TagSafe.Matches(col, "Submarino")) ehAlvoNaval = true;
+            if (col.transform.parent != null && (TagSafe.Matches(col.transform.parent, "Navio") || TagSafe.Matches(col.transform.parent, "Submarino"))) ehAlvoNaval = true;
 
             if (ehNavio || ehSubmarino || ehAlvoNaval || (id != null && id.teamID != timeLancador && id.teamID != 0))
             {
@@ -385,8 +454,8 @@ public class Torpedo : MonoBehaviour
         bool ehSubmarino = sub != null;
 
         bool ehAlvoNaval = false;
-        try { if (other.CompareTag(tagAlvo) || other.CompareTag("Navio") || other.CompareTag("Submarino")) ehAlvoNaval = true; } catch { }
-        try { if (other.transform.parent != null && (other.transform.parent.CompareTag("Navio") || other.transform.parent.CompareTag("Submarino"))) ehAlvoNaval = true; } catch { }
+        if (TagSafe.Matches(other, tagAlvo) || TagSafe.Matches(other, "Navio") || TagSafe.Matches(other, "Submarino")) ehAlvoNaval = true;
+        if (other.transform.parent != null && (TagSafe.Matches(other.transform.parent, "Navio") || TagSafe.Matches(other.transform.parent, "Submarino"))) ehAlvoNaval = true;
 
         if (ehNavio || ehSubmarino || ehAlvoNaval || (id != null && id.teamID != timeLancador && id.teamID != 0))
         {
@@ -502,6 +571,7 @@ public class Torpedo : MonoBehaviour
 
     public void DefinirAlvo(Transform alvo)
     {
+        alvoFixoPorCoordenada = false;
         alvoAtual = alvo;
         if (alvo != null)
             posicaoAlvoPerdido = alvo.position;
@@ -509,15 +579,28 @@ public class Torpedo : MonoBehaviour
         DeterminarProfundidadeAlvo(alvo);
     }
 
+    /// <summary>
+    /// Define um ponto fixo para disparos manuais. A sobrecarga separada evita
+    /// confundir "sem Transform" com "sem destino": nesse modo o torpedo não
+    /// procura uma unidade próxima nem troca de alvo por conta própria.
+    /// </summary>
+    public void DefinirAlvo(Vector3 ponto)
+    {
+        alvoAtual = null;
+        posicaoAlvoPerdido = ponto;
+        alvoFixoPorCoordenada = true;
+        rastrearAlvo = true;
+        emSubida = false;
+        DeterminarProfundidadeAlvo(null);
+    }
+
     private void DeterminarProfundidadeAlvo(Transform alvo)
     {
         if (alvo == null) return;
         
-        bool ehSubmarino = alvo.GetComponentInParent<ControleSubmarino>() != null || 
-                           alvo.GetComponentInChildren<ControleSubmarino>() != null || 
-                           alvo.CompareTag("Submarino");
-                           
-        try { if (TagSafe.Matches(alvo, "Submarino")) ehSubmarino = true; } catch { }
+        bool ehSubmarino = alvo.GetComponentInParent<ControleSubmarino>() != null ||
+                           alvo.GetComponentInChildren<ControleSubmarino>() != null ||
+                           TagSafe.Matches(alvo, "Submarino");
         
         if (ehSubmarino)
         {

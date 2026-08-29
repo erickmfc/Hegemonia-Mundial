@@ -22,6 +22,7 @@ public class MisselICBM : MonoBehaviour
 
     // Internas
     private Vector3 alvo;
+    private Transform alvoTransform;
     private bool lancado = false;
     private bool explodiu = false;
     private float tempoDeVida = 0;
@@ -34,7 +35,17 @@ public class MisselICBM : MonoBehaviour
 
     public void IniciarLancamento(Vector3 pontoAlvo)
     {
-        alvo = pontoAlvo;
+        IniciarLancamento(pontoAlvo, null);
+    }
+
+    /// <summary>
+    /// Mantém a sobrecarga legada para coordenadas fixas e permite rastrear
+    /// uma unidade móvel quando o lançador fornece o Transform do alvo.
+    /// </summary>
+    public void IniciarLancamento(Vector3 pontoAlvo, Transform alvoMovel)
+    {
+        alvoTransform = alvoMovel;
+        alvo = alvoMovel != null ? alvoMovel.position : pontoAlvo;
         lancado = true;
         explodiu = false;
         tempoDeVida = 0;
@@ -81,9 +92,19 @@ public class MisselICBM : MonoBehaviour
 
         tempoDeVida += Time.deltaTime;
 
+        if (alvoTransform != null)
+        {
+            // A posição inicial é só a previsão de disparo. A posição viva
+            // evita impacto na coordenada antiga quando o alvo manobra.
+            alvo = alvoTransform.position;
+        }
+
         // Trajetoria robusta: sobe ate um apex fixo e inicia a descida
         // obrigatoriamente, evitando a mira dinamica que mantinha o missil no ceu.
         Vector3 posicaoAnteriorCorrigida = transform.position;
+        Vector3 pontoDeMira = alvoTransform != null
+            ? GuidagemAlvoMovel.ObterPontoDeMira(alvoTransform, transform.position, velocidade, 2.5f)
+            : alvo;
         if (!iniciouDescida && transform.position.y < alturaDoApex - 2f)
         {
             Quaternion subirCorrigido = Quaternion.LookRotation(Vector3.up);
@@ -93,7 +114,7 @@ public class MisselICBM : MonoBehaviour
         else
         {
             iniciouDescida = true;
-            Vector3 direcaoParaAlvoCorrigida = alvo - transform.position;
+            Vector3 direcaoParaAlvoCorrigida = pontoDeMira - transform.position;
             if (direcaoParaAlvoCorrigida.sqrMagnitude > 0.001f)
             {
                 Quaternion mirarAlvoCorrigido = Quaternion.LookRotation(direcaoParaAlvoCorrigida.normalized);
@@ -107,11 +128,15 @@ public class MisselICBM : MonoBehaviour
             ? Mathf.Clamp01(Vector3.Dot(alvo - posicaoAnteriorCorrigida, segmentoCorrigido) / comprimentoCorrigido)
             : 0f;
         Vector3 pontoMaisProximoCorrigido = posicaoAnteriorCorrigida + segmentoCorrigido * tCorrigido;
-        bool cruzouAlvoCorrigido = iniciouDescida && Vector3.Distance(pontoMaisProximoCorrigido, alvo) <= Mathf.Max(4f, distanciaDeImpacto);
-        bool chegouAoChaoCorrigido = iniciouDescida && transform.position.y <= alvo.y + 2f;
-        if (cruzouAlvoCorrigido || chegouAoChaoCorrigido)
+        float toleranciaImpacto = Mathf.Max(4f, distanciaDeImpacto);
+        bool cruzouAlvoCorrigido = iniciouDescida && Vector3.Distance(pontoMaisProximoCorrigido, alvo) <= toleranciaImpacto;
+        bool chegouAoAlvoCorrigido = Vector3.Distance(transform.position, alvo) <= toleranciaImpacto;
+        if (cruzouAlvoCorrigido || chegouAoAlvoCorrigido)
         {
-            transform.position = alvo;
+            // O impacto acontece no ponto em que o míssil realmente chegou.
+            // Nunca reposicionar a raiz exatamente na coordenada do alvo:
+            // isso era percebido como teletransporte quando a unidade se
+            // movia ou quando o projétil passava do ponto entre frames.
             Explodir();
         }
         return;

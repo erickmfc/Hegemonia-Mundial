@@ -323,6 +323,9 @@ public class MenuGoverno : MonoBehaviour
         if (!string.IsNullOrEmpty(cachedSceneName) && ConfiguracaoCenasJogo.EhCenaDeMenu(cachedSceneName))
             return;
 
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+            return;
+
         if (Input.GetKeyDown(teclaAtalho))
         {
             if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
@@ -348,6 +351,9 @@ public class MenuGoverno : MonoBehaviour
 
     public void AlternarMenu(bool abrir)
     {
+        if (abrir && QuartelMenuUIController.EntradaGlobalBloqueada)
+            return;
+
         GarantirAtivo(this);
         if (MenuGovernoNovoController.GarantirInstancia() && MenuGovernoNovoController.Instancia != null)
         {

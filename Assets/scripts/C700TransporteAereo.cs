@@ -72,6 +72,10 @@ public class C700TransporteAereo : MonoBehaviour
     public float distanciaCorridaDecolagem = 90f;
     [Range(0.12f, 0.50f)] public float reservaRetornoPercentual = 0.30f;
 
+    [Header("Seguranca de navegacao aerea")]
+    [Min(5f)] public float timeoutPorPontoAereo = 45f;
+    [Min(0.05f)] public float deslocamentoMinimoAereo = 0.25f;
+
     [Header("Visual")]
     public Transform modeloVisual;
     public float bankMaximo = 28f;
@@ -107,7 +111,9 @@ public class C700TransporteAereo : MonoBehaviour
     public Color corParadaMissao = new Color(1f, 0.85f, 0.2f, 0.45f);
 
     private readonly List<SlotCarga> slots = new List<SlotCarga>();
+    private readonly List<ControleUnidade> controlesRegistradosCarga = new List<ControleUnidade>(128);
     private ControleUnidade controleUnidade;
+    private ControleAviao controleAviaoLegado;
     private Rigidbody rb;
     private Coroutine rotinaMovimento;
     private Coroutine rotinaCarga;
@@ -128,6 +134,7 @@ public class C700TransporteAereo : MonoBehaviour
     private bool temDestinoVisual;
     private Vector3 destinoMissaoProgramado;
     private bool temDestinoMissaoProgramado;
+    private bool retornoAutomaticoEmAndamento;
     private GameObject marcadorPousoMissao;
     private GameObject marcadorParadaMissao;
     private LineRenderer linhaMissao;
@@ -153,18 +160,28 @@ public class C700TransporteAereo : MonoBehaviour
     private void Awake()
     {
         controleUnidade = GetComponent<ControleUnidade>();
+        controleAviaoLegado = GetComponent<ControleAviao>();
         rb = GetComponent<Rigidbody>();
+
+        // O C700 possui uma máquina de voo própria. O prefab antigo também
+        // carregava ControleAviao, o que permitia que dois Updates alterassem
+        // posição/rotação no mesmo frame. Isso causava voo de lado, perda do
+        // destino e pousos que nunca terminavam.
+        if (controleAviaoLegado != null)
+        {
+            controleAviaoLegado.enabled = false;
+        }
 
         if (rb != null)
         {
             rb.isKinematic = true;
         }
 
-        if (modeloVisual == null && transform.childCount > 0)
-        {
-            modeloVisual = transform.GetChild(0);
-        }
-
+        // O prefab C700 tem as rodas como filhos do objeto raiz e o mesh da
+        // aeronave no próprio raiz. Nunca use a primeira criança como visual:
+        // isso fazia "Rodas frente" receber banking/pitch durante o voo.
+        // Quando houver um modelo visual separado, ele deve ser ligado no
+        // Inspector explicitamente.
         if (modeloVisual != null)
         {
             rotacaoModeloBase = modeloVisual.localRotation;
@@ -197,6 +214,13 @@ public class C700TransporteAereo : MonoBehaviour
 
     private void Update()
     {
+        // Alguns gerenciadores antigos reativam o controlador genérico ao
+        // registrar a aeronave. Reafirma aqui a autoridade única do C700.
+        if (controleAviaoLegado != null && controleAviaoLegado.enabled)
+        {
+            controleAviaoLegado.enabled = false;
+        }
+
         AvaliarRetornoSeguro();
 
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
@@ -406,12 +430,19 @@ public class C700TransporteAereo : MonoBehaviour
         velocidadeSoloAtual = 0f;
         velocidadeAereaAtual = 0f;
         DefinirEstado(EstadoC700.Solo);
+        retornoAutomaticoEmAndamento = false;
         LimparMissaoProgramada();
         LimparDestinoVisual();
     }
 
     public void ReceberOrdemMover(Vector3 destino)
     {
+        if (!PontoValido(destino))
+        {
+            MostrarMensagem("Destino invalido.");
+            return;
+        }
+
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
@@ -424,7 +455,11 @@ public class C700TransporteAereo : MonoBehaviour
             return;
         }
 
-        MostrarMensagem("Abra o menu com O para definir uma missao aerea.");
+        // Ordem normal de movimento de uma unidade selecionada: para o
+        // transporte, o destino sempre representa uma pista/área de pouso.
+        // Antes era apenas uma mensagem, então o avião parecia ignorar o
+        // clique quando o modo aéreo não tinha sido armado pelo menu Z/O.
+        OrdenarVoo(destino, false);
     }
 
     public void OrdenarTaxiSolo(Vector3 destino)
@@ -439,10 +474,13 @@ public class C700TransporteAereo : MonoBehaviour
         Vector3 destinoRetorno = ObterDestinoDeRetorno();
         if (destinoRetorno == Vector3.zero)
         {
+            retornoAutomaticoEmAndamento = false;
             MostrarMensagem("Sem aeroporto de retorno configurado.");
             LogDebug("Sem aeroporto ou ponto de retorno configurado.");
             return;
         }
+
+        retornoAutomaticoEmAndamento = true;
 
         if (EstaNoSolo)
         {
@@ -523,6 +561,7 @@ public class C700TransporteAereo : MonoBehaviour
     {
         if (!EstaNoSolo || rotinaCarga != null)
         {
+            LogDebug("Embarque recusado. Estado=" + estadoAtual + " rotinaCargaAtiva=" + (rotinaCarga != null));
             return;
         }
 
@@ -570,6 +609,7 @@ public class C700TransporteAereo : MonoBehaviour
         }
 
         aguardandoDestinoAereo = false;
+        retornoAutomaticoEmAndamento = retornoAoAeroporto;
         RegistrarDestinoVisual(destinoFinal);
 
         LimparMissaoProgramada();
@@ -598,6 +638,15 @@ public class C700TransporteAereo : MonoBehaviour
             yield return StartCoroutine(RotinaDecolagem());
         }
 
+        if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            yield break;
+        }
+
+        // A altura do terreno pode ter mudado durante o taxi/decolagem e o
+        // alvo precisa ser recalculado antes da aproximação final.
+        destinoSolo = AjustarPosicaoAoSolo(destinoFinal);
+
         Vector3 direcaoParaAlvo = destinoSolo - transform.position;
         direcaoParaAlvo.y = 0f;
         float distAtualHorizontalSqr = direcaoParaAlvo.sqrMagnitude;
@@ -622,9 +671,17 @@ public class C700TransporteAereo : MonoBehaviour
             }
         }
 
-        // --- ILS GLIDESLOPE (SISTEMA DE POUSO INSTRUMENTAL REALISTA) ---
-        // Ponto 1: Início da Aproximação (1000 metros do alvo alinhado na reta da pista, a 100m de altura)
-        Vector3 pontoIaf1000m = destinoSolo - direcaoRetaPouso * 1000f + Vector3.up * Mathf.Max(100f, altitudeCruzeiro);
+        // --- ILS GLIDESLOPE ---
+        // A entrada é proporcional à distância real. O algoritmo anterior
+        // mandava aviões próximos para um desvio fixo de 1200 m somando
+        // transform.right + transform.forward; esse vetor lateral era a
+        // origem do “sair de lado” visto no jogo.
+        float distanciaEntrada = Mathf.Clamp(
+            Mathf.Max(distanciaAproximacao, Mathf.Sqrt(distAtualHorizontalSqr) * 0.65f),
+            distanciaAproximacao,
+            900f);
+        Vector3 pontoIaf1000m = destinoSolo - direcaoRetaPouso * distanciaEntrada
+            + Vector3.up * Mathf.Max(100f, altitudeCruzeiro);
         
         // Ponto 2: Reta Final (100 metros do alvo, 10m de altura descendo rasante)
         Vector3 pontoFa100m = destinoSolo - direcaoRetaPouso * 100f + Vector3.up * 10f;
@@ -634,23 +691,25 @@ public class C700TransporteAereo : MonoBehaviour
 
         DefinirEstado(EstadoC700.EmVoo);
 
-        // SE ELE ESTIVER MUITO PERTO DO DESTINO, TEM QUE SE AFASTAR PRIMEIRO PARA NAO CAIR DE BICO GIRANDO
-        // Se a distância for menor que 1500m, ele não tem rampa pra fazer os 1000m de linha reta
-        if (distAtualHorizontalSqr < 1500f * 1500f)
-        {
-            // Dá um balão pra fora usando a diagonal direita
-            Vector3 vetorFuga = (transform.right + transform.forward).normalized;
-            Vector3 pontoBalao = transform.position + vetorFuga * 1200f + Vector3.up * Mathf.Max(100f, altitudeCruzeiro);
-            yield return StartCoroutine(VoarAtePonto(pontoBalao, velocidadeCruzeiro, 60f));
-        }
-
-        // 1. Voa rápido até o Inicio da Aproximação (1000m afastado do destino)
+        // 1. Voa até o início da aproximação, sempre com direção horizontal
+        // calculada a partir do destino; não há fuga diagonal nem curva
+        // lateral oculta.
         yield return StartCoroutine(VoarAtePonto(pontoIaf1000m, velocidadeCruzeiro, 50f));
+
+        if (estadoAtual == EstadoC700.Solo || !PontoValido(transform.position))
+        {
+            yield break;
+        }
 
         DefinirEstado(EstadoC700.Aproximando);
         
         // 2. Desce o plano inclinado em linha reta perdendo 10 metros de altura a cada 100m andados
         yield return StartCoroutine(VoarAtePonto(pontoFa100m, velocidadeCruzeiro * 0.75f, 25f));
+
+        if (estadoAtual == EstadoC700.Solo || !PontoValido(transform.position))
+        {
+            yield break;
+        }
 
         DefinirEstado(EstadoC700.Pousando);
         
@@ -671,6 +730,7 @@ public class C700TransporteAereo : MonoBehaviour
 
         velocidadeAereaAtual = 0f;
         velocidadeSoloAtual = 0f;
+        retornoAutomaticoEmAndamento = false;
         DefinirEstado(EstadoC700.Solo);
         AtualizarDestinoVisualAoChegar(destinoSolo);
         LimparDestinoVisual();
@@ -970,11 +1030,36 @@ public class C700TransporteAereo : MonoBehaviour
     private IEnumerator VoarAtePonto(Vector3 alvo, float velocidadeAlvo, float distanciaParada)
     {
         float distanciaParadaSqr = distanciaParada * distanciaParada;
+        float tempoDecorrido = 0f;
+        float proximoLog = 0f;
+        float distanciaInicial = Vector3.Distance(transform.position, alvo);
+        float tempoLimite = Mathf.Max(
+            timeoutPorPontoAereo,
+            timeoutPorPontoAereo * 0.5f + distanciaInicial / Mathf.Max(velocidadeAlvo, 1f) * 3f);
+
         while (true)
         {
             if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
             {
                 PararPorFaltaDeCombustivel();
+                yield break;
+            }
+
+            tempoDecorrido += Time.deltaTime;
+            if (debugLogs && tempoDecorrido >= proximoLog)
+            {
+                proximoLog = tempoDecorrido + 1f;
+                LogDebug("Voo para ponto " + alvo + " | posicao=" + transform.position
+                    + " | distancia=" + Vector3.Distance(transform.position, alvo)
+                    + " | velocidade=" + velocidadeAereaAtual);
+            }
+            if (tempoDecorrido >= tempoLimite)
+            {
+                // Falha controlada: nunca teleporta para o waypoint e nunca
+                // deixa uma coroutine perseguindo um ponto que ja nao e
+                // alcancavel. A missao permanece no ponto seguro atual.
+                velocidadeAereaAtual = 0f;
+                LogDebug("Timeout de aproximacao aerea; mantendo posicao atual em " + transform.position);
                 yield break;
             }
 
@@ -984,14 +1069,15 @@ public class C700TransporteAereo : MonoBehaviour
                 break;
             }
 
-            AtualizarMovimentoAereo(alvo, velocidadeAlvo);
+            AtualizarMovimentoAereo(alvo, velocidadeAlvo, distanciaParada);
             yield return null;
         }
     }
 
-    private void AtualizarMovimentoAereo(Vector3 alvo, float velocidadeAlvo)
+    private void AtualizarMovimentoAereo(Vector3 alvo, float velocidadeAlvo, float distanciaParada = 0f)
     {
         Vector3 direcao = alvo - transform.position;
+        float distancia = direcao.magnitude;
         if (direcao.sqrMagnitude > 0.05f)
         {
             // --- BLOQUEIO DE MERGULHO (NOSEDIVE) ---
@@ -1013,8 +1099,46 @@ public class C700TransporteAereo : MonoBehaviour
             transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, giroVoo * Time.deltaTime);
         }
 
-        velocidadeAereaAtual = Mathf.MoveTowards(velocidadeAereaAtual, velocidadeAlvo, aceleracaoVoo * Time.deltaTime);
-        transform.position += transform.forward * velocidadeAereaAtual * Time.deltaTime;
+        // A velocidade precisa respeitar a distancia de parada. Sem essa
+        // desaceleracao o C700 passava reto pelo IAF e entrava em orbita,
+        // permanecendo em EmVoo para sempre. O limite por curva reduz a
+        // velocidade ao aproximar-se sem um snap ou teleporte.
+        float velocidadeSegura = velocidadeAlvo;
+        if (distanciaParada > 0f)
+        {
+            float distanciaFrenagem = Mathf.Max(distanciaParada, distanciaParada * 1.5f);
+            float velocidadePorFrenagem = Mathf.Sqrt(
+                Mathf.Max(0f, 2f * Mathf.Max(1f, aceleracaoVoo) * Mathf.Max(0f, distancia - distanciaParada)));
+            velocidadeSegura = Mathf.Min(velocidadeSegura, velocidadePorFrenagem);
+
+            float raioCurvaSeguro = Mathf.Max(8f, distanciaParada * 0.8f);
+            float velocidadePorCurva = Mathf.Max(8f, giroVoo * Mathf.Deg2Rad * raioCurvaSeguro * 0.75f);
+            if (distancia <= distanciaFrenagem * 2f)
+            {
+                velocidadeSegura = Mathf.Min(velocidadeSegura, velocidadePorCurva);
+            }
+
+            // A reta final do pouso tem poucos metros. Mesmo com uma curva
+            // suave, manter 30+ m/s cria uma orbita em torno do toque porque
+            // o raio de curva fica maior que a distancia restante. Reduza a
+            // velocidade progressivamente apenas nessa zona curta; as fases
+            // de cruzeiro e aproximacao continuam na velocidade normal.
+            if (distanciaParada <= 12f && distancia <= 30f)
+            {
+                float tFinal = Mathf.InverseLerp(distanciaParada, 30f, distancia);
+                float velocidadeFinal = Mathf.Lerp(4f, Mathf.Min(12f, velocidadeAlvo), tFinal);
+                velocidadeSegura = Mathf.Min(velocidadeSegura, velocidadeFinal);
+            }
+        }
+
+        velocidadeAereaAtual = Mathf.MoveTowards(velocidadeAereaAtual, velocidadeSegura, aceleracaoVoo * Time.deltaTime);
+        float deslocamento = velocidadeAereaAtual * Time.deltaTime;
+        float limiteDeslocamento = Mathf.Max(0f, distancia - deslocamentoMinimoAereo);
+        if (limiteDeslocamento > 0f)
+        {
+            deslocamento = Mathf.Min(deslocamento, limiteDeslocamento);
+            transform.position += transform.forward * deslocamento;
+        }
     }
 
     private IEnumerator TaxiarAtePosicao(Vector3 destino, float velocidadeMaxima, float velocidadeInicial = -1f, bool atualizarEstacionamento = true)
@@ -1098,6 +1222,7 @@ public class C700TransporteAereo : MonoBehaviour
         velocidadeAereaAtual = 0f;
         aguardandoDestinoAereo = false;
         prontoParaDecolarNaPista = false;
+        retornoAutomaticoEmAndamento = false;
         LimparMissaoProgramada();
         LimparDestinoVisual();
 
@@ -1134,16 +1259,25 @@ public class C700TransporteAereo : MonoBehaviour
         float consumoRetorno = combustivel.EstimarConsumoParaDistancia(distancia, Mathf.Max(45f, velocidadeCruzeiro));
         float reserva = Mathf.Max(combustivel.Capacidade * reservaRetornoPercentual, consumoRetorno * 0.40f);
 
-        if (combustivel.CombustivelAtual <= consumoRetorno + reserva)
+        if (!retornoAutomaticoEmAndamento && combustivel.CombustivelAtual <= consumoRetorno + reserva)
         {
+            retornoAutomaticoEmAndamento = true;
             OrdenarRetornoAoAeroporto();
         }
     }
 
     private IEnumerator RotinaPuxarUnidades()
     {
-        Collider[] hits = Physics.OverlapSphere(transform.position, raioBuscaCarga, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        // Unidades recém-criadas ou reposicionadas podem ainda não ter
+        // atualizado o broadphase da física no mesmo frame do comando.
+        // Sincronizamos uma única vez por embarque, nunca dentro de Update.
+        Physics.SyncTransforms();
+        // Não dependa da layer Default: unidades de cena podem estar em
+        // IgnoreRaycast ou em uma layer própria. O filtro de tipo abaixo
+        // impede que o C700 capture cenário, navios ou outra aeronave.
+        Collider[] hits = Physics.OverlapSphere(transform.position, raioBuscaCarga, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         List<GameObject> fila = new List<GameObject>();
+        LogDebug("Busca de embarque: hits=" + hits.Length + " raio=" + raioBuscaCarga);
 
         for (int i = 0; i < hits.Length; i++)
         {
@@ -1157,6 +1291,47 @@ public class C700TransporteAereo : MonoBehaviour
             {
                 fila.Add(unidade);
             }
+        }
+
+        // Fallback estruturado para tropas sem collider ou com collider em
+        // layer excluída pelo projeto. O registro é consultado somente no
+        // início da operação, nunca a cada frame.
+        controlesRegistradosCarga.Clear();
+        RegistroEntidadesJogo.FillControlesUnidade(controlesRegistradosCarga);
+        float raioBuscaSqr = Mathf.Max(1f, raioBuscaCarga) * Mathf.Max(1f, raioBuscaCarga);
+        for (int i = 0; i < controlesRegistradosCarga.Count; i++)
+        {
+            ControleUnidade controle = controlesRegistradosCarga[i];
+            if (controle == null || !controle.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            GameObject unidade = controle.transform.root != null
+                ? controle.transform.root.gameObject
+                : controle.gameObject;
+            if (unidade == null || fila.Contains(unidade))
+            {
+                continue;
+            }
+
+            Vector3 delta = unidade.transform.position - transform.position;
+            if (delta.sqrMagnitude > raioBuscaSqr)
+            {
+                continue;
+            }
+
+            if (EhValidaParaCarga(unidade))
+            {
+                fila.Add(unidade);
+            }
+        }
+
+        LogDebug("Fila de embarque validada=" + fila.Count + " espacos=" + slots.Count);
+
+        if (fila.Count == 0)
+        {
+            MostrarMensagem("Nenhuma unidade aliada valida no raio de embarque.");
         }
 
         for (int i = 0; i < fila.Count; i++)
@@ -1190,7 +1365,7 @@ public class C700TransporteAereo : MonoBehaviour
 
         RemoverComportamentosSeguir(unidade);
 
-        NavMeshAgent agente = unidade.GetComponent<NavMeshAgent>();
+        NavMeshAgent agente = ObterComponenteUnidade<NavMeshAgent>(unidade);
         if (agente != null)
         {
             if (agente.isOnNavMesh)
@@ -1200,7 +1375,7 @@ public class C700TransporteAereo : MonoBehaviour
             agente.enabled = false;
         }
 
-        Rigidbody rbUnidade = unidade.GetComponent<Rigidbody>();
+        Rigidbody rbUnidade = ObterComponenteUnidade<Rigidbody>(unidade);
         if (rbUnidade != null)
         {
             rbUnidade.isKinematic = true;
@@ -1234,6 +1409,11 @@ public class C700TransporteAereo : MonoBehaviour
         }
 
         GameObject unidade = slots[indice].unidade;
+        if (unidade == null)
+        {
+            slots[indice].unidade = null;
+            return;
+        }
         slots[indice].unidade = null;
 
         Vector3 destino = CalcularPontoDesembarque(indice);
@@ -1257,7 +1437,7 @@ public class C700TransporteAereo : MonoBehaviour
             rbUnidade.detectCollisions = true;
         }
 
-        NavMeshAgent agente = unidade.GetComponent<NavMeshAgent>();
+        NavMeshAgent agente = ObterComponenteUnidade<NavMeshAgent>(unidade);
         if (agente != null)
         {
             agente.enabled = true;
@@ -1879,15 +2059,23 @@ public class C700TransporteAereo : MonoBehaviour
         }
 
         ControleUnidade controle = hit.GetComponentInParent<ControleUnidade>();
+        if (controle == null)
+        {
+            controle = hit.GetComponentInChildren<ControleUnidade>(true);
+        }
         if (controle != null)
         {
-            return controle.gameObject;
+            return controle.transform.root != null ? controle.transform.root.gameObject : controle.gameObject;
         }
 
         NavMeshAgent agente = hit.GetComponentInParent<NavMeshAgent>();
+        if (agente == null)
+        {
+            agente = hit.GetComponentInChildren<NavMeshAgent>(true);
+        }
         if (agente != null)
         {
-            return agente.gameObject;
+            return agente.transform.root != null ? agente.transform.root.gameObject : agente.gameObject;
         }
 
         return hit.transform.root != null ? hit.transform.root.gameObject : hit.gameObject;
@@ -1905,24 +2093,24 @@ public class C700TransporteAereo : MonoBehaviour
             return false;
         }
 
-        if (unidade.GetComponent<C700TransporteAereo>() != null)
+        if (ObterComponenteUnidade<C700TransporteAereo>(unidade) != null)
         {
             return false;
         }
 
         IdentidadeUnidade minhaIdentidade = GetComponent<IdentidadeUnidade>();
-        IdentidadeUnidade identidadeUnidade = unidade.GetComponent<IdentidadeUnidade>();
+        IdentidadeUnidade identidadeUnidade = ObterComponenteUnidade<IdentidadeUnidade>(unidade);
         if (minhaIdentidade != null && identidadeUnidade != null && identidadeUnidade.teamID != minhaIdentidade.teamID)
         {
             return false;
         }
 
-        if (unidade.GetComponent<ControleAviao>() != null ||
-            unidade.GetComponent<ControleAviaoCaca>() != null ||
-            unidade.GetComponent<Helicoptero>() != null ||
-            unidade.GetComponent<ControleNavioRealista>() != null ||
-            unidade.GetComponent<ControleSubmarino>() != null ||
-            unidade.GetComponent<HovercraftTransporte>() != null)
+        if (ObterComponenteUnidade<ControleAviao>(unidade) != null ||
+            ObterComponenteUnidade<ControleAviaoCaca>(unidade) != null ||
+            ObterComponenteUnidade<Helicoptero>(unidade) != null ||
+            ObterComponenteUnidade<ControleNavioRealista>(unidade) != null ||
+            ObterComponenteUnidade<ControleSubmarino>(unidade) != null ||
+            ObterComponenteUnidade<HovercraftTransporte>(unidade) != null)
         {
             return false;
         }
@@ -1933,13 +2121,13 @@ public class C700TransporteAereo : MonoBehaviour
             return false;
         }
 
-        SistemaDeDanos danos = unidade.GetComponent<SistemaDeDanos>();
+        SistemaDeDanos danos = ObterComponenteUnidade<SistemaDeDanos>(unidade);
         if (danos != null && danos.unidadeBiologica)
         {
             return true;
         }
 
-        if (unidade.GetComponent<NavMeshAgent>() != null)
+        if (ObterComponenteUnidade<NavMeshAgent>(unidade) != null)
         {
             return true;
         }
@@ -1957,6 +2145,16 @@ public class C700TransporteAereo : MonoBehaviour
                nome.Contains("lancador");
     }
 
+    private static T ObterComponenteUnidade<T>(GameObject unidade) where T : Component
+    {
+        if (unidade == null) return null;
+        T componente = unidade.GetComponent<T>();
+        if (componente != null) return componente;
+        componente = unidade.GetComponentInParent<T>();
+        if (componente != null) return componente;
+        return unidade.GetComponentInChildren<T>(true);
+    }
+
     private bool JaEstaEmbarcada(GameObject unidade)
     {
         for (int i = 0; i < slots.Count; i++)
@@ -1971,21 +2169,21 @@ public class C700TransporteAereo : MonoBehaviour
 
     private void RemoverComportamentosSeguir(GameObject unidade)
     {
-        ControleUnidade controle = unidade.GetComponent<ControleUnidade>();
+        ControleUnidade controle = ObterComponenteUnidade<ControleUnidade>(unidade);
         if (controle != null)
         {
             controle.CancelarOrdemEspecial();
             return;
         }
 
-        ComportamentoSeguirUniversal seguirUniversal = unidade.GetComponent<ComportamentoSeguirUniversal>();
+        ComportamentoSeguirUniversal seguirUniversal = ObterComponenteUnidade<ComportamentoSeguirUniversal>(unidade);
         if (seguirUniversal != null)
         {
             seguirUniversal.enabled = false;
             Destroy(seguirUniversal);
         }
 
-        ComportamentoPatrulhaUniversal patrulhaUniversal = unidade.GetComponent<ComportamentoPatrulhaUniversal>();
+        ComportamentoPatrulhaUniversal patrulhaUniversal = ObterComponenteUnidade<ComportamentoPatrulhaUniversal>(unidade);
         if (patrulhaUniversal != null)
         {
             patrulhaUniversal.enabled = false;
@@ -2059,6 +2257,12 @@ public class C700TransporteAereo : MonoBehaviour
         float altura = ObterAlturaSolo(posicao, posicao.y);
         posicao.y = altura + offsetAlturaSolo;
         return posicao;
+    }
+
+    private static bool PontoValido(Vector3 ponto)
+    {
+        return !float.IsNaN(ponto.x) && !float.IsNaN(ponto.y) && !float.IsNaN(ponto.z)
+            && !float.IsInfinity(ponto.x) && !float.IsInfinity(ponto.y) && !float.IsInfinity(ponto.z);
     }
 
     private void AderirAoSolo()

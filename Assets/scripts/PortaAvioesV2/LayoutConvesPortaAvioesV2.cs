@@ -1,36 +1,19 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public sealed class VagaPortaAvioesV2 : MonoBehaviour
-{
-    public string id = "Vaga";
-    public TipoAeronavePortaAvioesV2 tipoPermitido = TipoAeronavePortaAvioesV2.Qualquer;
-    public float tamanhoMaximo = 12f;
-    public EstadoVagaPortaAvioesV2 estado = EstadoVagaPortaAvioesV2.Livre;
-    public string aeronaveReservadaId;
-    public string aeronaveOcupanteId;
-    public bool Reservar(string aeronaveId)
-    {
-        if (estado != EstadoVagaPortaAvioesV2.Livre || string.IsNullOrEmpty(aeronaveId)) return false;
-        estado = EstadoVagaPortaAvioesV2.Reservada; aeronaveReservadaId = aeronaveId; return true;
-    }
-    public bool Ocupar(string aeronaveId)
-    {
-        if (aeronaveReservadaId != aeronaveId && estado != EstadoVagaPortaAvioesV2.Livre) return false;
-        estado = EstadoVagaPortaAvioesV2.Ocupada; aeronaveOcupanteId = aeronaveId; aeronaveReservadaId = string.Empty; return true;
-    }
-    public void Liberar(string aeronaveId)
-    {
-        if (aeronaveReservadaId == aeronaveId) aeronaveReservadaId = string.Empty;
-        if (aeronaveOcupanteId == aeronaveId) aeronaveOcupanteId = string.Empty;
-        if (string.IsNullOrEmpty(aeronaveReservadaId) && string.IsNullOrEmpty(aeronaveOcupanteId) && estado != EstadoVagaPortaAvioesV2.Bloqueada) estado = EstadoVagaPortaAvioesV2.Livre;
-    }
-}
-
 public sealed class LayoutConvesPortaAvioesV2 : MonoBehaviour
 {
     public Transform referenciaConves, pouso, taxi, vagasExternas, catapultas, elevadores, vagasInternas, pontosServico, voo, decolagem;
     public bool interiorHangarModelado;
+    // No Enterprise o comprimento pode estar no X ou no Z dependendo da
+    // orientação do modelo importado. O calibrador grava isso no prefab para
+    // que o manager escolha a fila lateral correta sem depender de valores
+    // absolutos.
+    public bool eixoComprimentoEhX = true;
+    // Quando ativo, as posições gravadas pelo calibrador do prefab são
+    // preservadas durante AtualizarListas/Awake. Vagas novas ainda recebem a
+    // configuração padrão para não quebrar porta-aviões criados em runtime.
+    public bool layoutCalibradoManualmente;
     public List<Transform> pontosPouso = new List<Transform>();
     public List<Transform> pontosTaxi = new List<Transform>();
     public List<Transform> pontosVoo = new List<Transform>();
@@ -40,6 +23,13 @@ public sealed class LayoutConvesPortaAvioesV2 : MonoBehaviour
     public List<Transform> elevadoresLista = new List<Transform>();
     public List<Transform> catapultasLista = new List<Transform>();
     public string[] UltimosErros { get; private set; } = new string[0];
+
+    public bool VagaEstaNoLadoEsquerdo(VagaPortaAvioesV2 vaga)
+    {
+        if (vaga == null) return true;
+        Vector3 posicao = vaga.transform.localPosition;
+        return eixoComprimentoEhX ? posicao.z >= 0f : posicao.x < 0f;
+    }
 
     [ContextMenu("Criar estrutura padrão")]
     public void CriarEstruturaPadrao()
@@ -73,28 +63,28 @@ public sealed class LayoutConvesPortaAvioesV2 : MonoBehaviour
         if (taxi == null) taxi = CriarGrupo("Taxi");
 
         CriarPontos(taxi, new[] { "Acesso_Vagas_Esquerda", "Acesso_Vagas_Direita", "Cruzamento_Esquerda", "Cruzamento_Direita" });
-        ConfigurarPonto(taxi.Find("Acesso_Vagas_Esquerda"), new Vector3(-38f, .45f, 30f), 90f);
-        ConfigurarPonto(taxi.Find("Acesso_Vagas_Direita"), new Vector3(38f, .45f, 30f), -90f);
-        ConfigurarPonto(taxi.Find("Cruzamento_Esquerda"), new Vector3(-38f, .45f, 50f), 90f);
-        ConfigurarPonto(taxi.Find("Cruzamento_Direita"), new Vector3(38f, .45f, 50f), -90f);
+        ConfigurarPonto(taxi.Find("Acesso_Vagas_Esquerda"), new Vector3(-25f, .45f, 22f), 0f);
+        ConfigurarPonto(taxi.Find("Acesso_Vagas_Direita"), new Vector3(-25f, .45f, -22f), 180f);
+        ConfigurarPonto(taxi.Find("Cruzamento_Esquerda"), new Vector3(-80f, .45f, 22f), 0f);
+        ConfigurarPonto(taxi.Find("Cruzamento_Direita"), new Vector3(-80f, .45f, -22f), 180f);
 
         VagaPadrao[] vagas =
         {
-            new VagaPadrao("Vaga_Conves_01", new Vector3(-36f, .45f, -40f), 90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_02", new Vector3(-36f, .45f, -22f), 90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_03", new Vector3(-36f, .45f, -4f), 90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_04", new Vector3(-36f, .45f, 14f), 90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_05", new Vector3(36f, .45f, -40f), -90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_06", new Vector3(36f, .45f, -22f), -90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_07", new Vector3(36f, .45f, -4f), -90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_08", new Vector3(36f, .45f, 14f), -90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_09", new Vector3(-36f, .45f, 32f), 90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_10", new Vector3(-36f, .45f, 50f), 90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_11", new Vector3(36f, .45f, 32f), -90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_12", new Vector3(36f, .45f, 50f), -90f, TipoAeronavePortaAvioesV2.Caca, 12f),
-            new VagaPadrao("Vaga_Conves_13_Grande", new Vector3(-30f, .45f, 74f), 0f, TipoAeronavePortaAvioesV2.Qualquer, 24f),
-            new VagaPadrao("Vaga_Conves_14_Grande", new Vector3(0f, .45f, 74f), 0f, TipoAeronavePortaAvioesV2.Qualquer, 24f),
-            new VagaPadrao("Vaga_Conves_15_Grande", new Vector3(30f, .45f, 74f), 0f, TipoAeronavePortaAvioesV2.Qualquer, 24f)
+            new VagaPadrao("Vaga_Conves_01", new Vector3(-150f, .45f, 22f), 0f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_02", new Vector3(-110f, .45f, 22f), 0f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_03", new Vector3(-70f, .45f, 22f), 0f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_04", new Vector3(-30f, .45f, 22f), 0f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_05", new Vector3(10f, .45f, 22f), 0f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_06", new Vector3(50f, .45f, 22f), 0f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_07", new Vector3(-150f, .45f, -22f), 180f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_08", new Vector3(-110f, .45f, -22f), 180f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_09", new Vector3(-70f, .45f, -22f), 180f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_10", new Vector3(-30f, .45f, -22f), 180f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_11", new Vector3(10f, .45f, -22f), 180f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_12", new Vector3(50f, .45f, -22f), 180f, TipoAeronavePortaAvioesV2.Caca, 12f),
+            new VagaPadrao("Vaga_Conves_13_Grande", new Vector3(120f, .45f, 20f), 0f, TipoAeronavePortaAvioesV2.Qualquer, 24f),
+            new VagaPadrao("Vaga_Conves_14_Grande", new Vector3(155f, .45f, -20f), 180f, TipoAeronavePortaAvioesV2.Qualquer, 24f),
+            new VagaPadrao("Vaga_Conves_15_Grande", new Vector3(180f, .45f, 0f), 90f, TipoAeronavePortaAvioesV2.Qualquer, 24f)
         };
 
         for (int i = 0; i < vagas.Length; i++)
@@ -109,12 +99,12 @@ public sealed class LayoutConvesPortaAvioesV2 : MonoBehaviour
     {
         if (grupo == null) return;
 
-        const int colunas = 6;
+        const int colunas = 12;
         const int total = 60;
-        const float espacamentoX = 24f;
+        const float espacamentoX = 28f;
         const float espacamentoZ = 14f;
-        const float inicioX = -60f;
-        const float inicioZ = -56f;
+        const float inicioX = -154f;
+        const float inicioZ = -28f;
 
         for (int i = 0; i < total; i++)
         {
@@ -127,6 +117,7 @@ public sealed class LayoutConvesPortaAvioesV2 : MonoBehaviour
                 vaga = grupo.Find(nomeGrande);
                 if (vaga != null) vaga.name = nome;
             }
+            bool vagaExistia = vaga != null;
             if (vaga == null)
             {
                 vaga = new GameObject(nome).transform;
@@ -140,12 +131,16 @@ public sealed class LayoutConvesPortaAvioesV2 : MonoBehaviour
             float z = inicioZ + linha * espacamentoZ;
             if (grande)
             {
-                // As três vagas maiores ficam afastadas no fundo do hangar.
-                x = -60f + (indice - 13) * 60f;
-                z = 96f;
+                // As três vagas maiores ficam no corredor lateral mais amplo
+                // do hangar, sem coincidir com a grade das vagas de caça.
+                x = -154f + (indice - 13) * 154f;
+                // Mantém as vagas grandes no corredor lateral do hangar,
+                // afastadas da última linha da grade de caças (z=28).
+                z = 48f;
             }
 
-            ConfigurarPonto(vaga, new Vector3(x, .45f, z), coluna < colunas / 2 ? 90f : -90f);
+            if (!layoutCalibradoManualmente || !vagaExistia)
+                ConfigurarPonto(vaga, new Vector3(x, .45f, z), coluna < colunas / 2 ? 90f : -90f);
             VagaPortaAvioesV2 dados = vaga.GetComponent<VagaPortaAvioesV2>() ?? vaga.gameObject.AddComponent<VagaPortaAvioesV2>();
             dados.id = $"Hangar_{indice:00}";
             dados.tipoPermitido = grande ? TipoAeronavePortaAvioesV2.Qualquer : TipoAeronavePortaAvioesV2.Caca;
@@ -172,8 +167,12 @@ public sealed class LayoutConvesPortaAvioesV2 : MonoBehaviour
         {
             VagaPortaAvioesV2 vaga = vagasConves[i];
             if (vaga == null) continue;
-            bool foraDaFaixaPelaLateral = Mathf.Abs(vaga.transform.localPosition.x) >= 35f;
-            bool foraDaFaixaPeloFundo = Mathf.Abs(vaga.transform.localPosition.z) >= 40f;
+            // A pista ocupa o corredor central no eixo longitudinal detectado
+            // pelo calibrador; não dependa de X/Z fixos do modelo importado.
+            float lateral = eixoComprimentoEhX ? vaga.transform.localPosition.z : vaga.transform.localPosition.x;
+            float comprimento = eixoComprimentoEhX ? vaga.transform.localPosition.x : vaga.transform.localPosition.z;
+            bool foraDaFaixaPelaLateral = Mathf.Abs(lateral) >= 16f;
+            bool foraDaFaixaPeloFundo = Mathf.Abs(comprimento) >= 35f;
             if (!foraDaFaixaPelaLateral && !foraDaFaixaPeloFundo) erros.Add("Vaga sobre a faixa de taxi/pouso: " + vaga.name);
             if (vaga.transform.Find("Entrada") == null || vaga.transform.Find("Parada") == null) erros.Add("Vaga sem Entrada/Parada: " + vaga.name);
             for (int j = i + 1; j < vagasConves.Count; j++) if (vagasConves[j] != null && Vector2.Distance(new Vector2(vaga.transform.localPosition.x, vaga.transform.localPosition.z), new Vector2(vagasConves[j].transform.localPosition.x, vagasConves[j].transform.localPosition.z)) < 10f) erros.Add("Vagas externas sobrepostas: " + vaga.name + " / " + vagasConves[j].name);
@@ -204,7 +203,14 @@ public sealed class LayoutConvesPortaAvioesV2 : MonoBehaviour
     public void AtualizarListas()
     {
         pontosPouso = Filhos(pouso); pontosTaxi = Filhos(taxi); pontosVoo = Filhos(voo); pontosDecolagem = Filhos(decolagem); elevadoresLista = Filhos(elevadores); catapultasLista = Filhos(catapultas);
-        foreach (var e in elevadoresLista) if (e != null && e.GetComponent<ElevadorPortaAvioesV2>() == null) e.gameObject.AddComponent<ElevadorPortaAvioesV2>();
+        foreach (var e in elevadoresLista)
+        {
+            if (e == null) continue;
+            if (e.Find("Plataforma") == null) GarantirPontoFilho(e, "Plataforma", Vector3.zero);
+            ElevadorPortaAvioesV2 elevador = e.GetComponent<ElevadorPortaAvioesV2>();
+            if (elevador == null) elevador = e.gameObject.AddComponent<ElevadorPortaAvioesV2>();
+            elevador.ConfigurarReferencias();
+        }
         vagasConves = GarantirVagas(vagasExternas, false);
         if (vagasInternas != null) CriarVagasHangar60(vagasInternas);
         vagasHangar = GarantirVagas(vagasInternas, true);
@@ -216,13 +222,16 @@ public sealed class LayoutConvesPortaAvioesV2 : MonoBehaviour
     private void ConfigurarPonto(Transform ponto, Vector3 posicao, float yaw) { if (ponto == null) return; ponto.localPosition = posicao; ponto.localRotation = Quaternion.Euler(0f, yaw, 0f); }
     private void ConfigurarRotaPousoPadrao()
     {
-        ConfigurarPonto(pouso.Find("Espera_01"), new Vector3(14f, 35f, -230f), 0f);
-        ConfigurarPonto(pouso.Find("Aproximacao_Longa"), new Vector3(14f, 24f, -190f), 0f);
-        ConfigurarPonto(pouso.Find("Aproximacao_Media"), new Vector3(14f, 13f, -145f), 0f);
-        ConfigurarPonto(pouso.Find("Aproximacao_Final"), new Vector3(14f, 6f, -95f), 0f);
-        ConfigurarPonto(pouso.Find("Toque"), new Vector3(14f, .45f, -55f), 0f);
-        ConfigurarPonto(pouso.Find("Fim_Frenagem"), new Vector3(14f, .45f, -10f), 0f);
-        ConfigurarPonto(pouso.Find("Saida_Pista"), new Vector3(25f, .45f, 24f), 90f);
+        // O eixo X local é o comprimento do modelo do Enterprise. A
+        // aproximação fica fora da proa/popa e entra em linha reta pela pista;
+        // o eixo Z é reservado para a saída lateral do taxiamento.
+        ConfigurarPonto(pouso.Find("Espera_01"), new Vector3(-280f, 35f, -8f), 90f);
+        ConfigurarPonto(pouso.Find("Aproximacao_Longa"), new Vector3(-240f, 24f, -8f), 90f);
+        ConfigurarPonto(pouso.Find("Aproximacao_Media"), new Vector3(-215f, 13f, -8f), 90f);
+        ConfigurarPonto(pouso.Find("Aproximacao_Final"), new Vector3(-202f, 6f, -8f), 90f);
+        ConfigurarPonto(pouso.Find("Toque"), new Vector3(-185f, .45f, -8f), 90f);
+        ConfigurarPonto(pouso.Find("Fim_Frenagem"), new Vector3(-90f, .45f, -8f), 90f);
+        ConfigurarPonto(pouso.Find("Saida_Pista"), new Vector3(-25f, .45f, 22f), 0f);
     }
     private void CriarOuConfigurarVaga(Transform grupo, VagaPadrao especificacao, bool interna)
     {

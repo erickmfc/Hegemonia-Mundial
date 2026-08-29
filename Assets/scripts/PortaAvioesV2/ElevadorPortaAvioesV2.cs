@@ -10,8 +10,19 @@ public sealed class ElevadorPortaAvioesV2 : MonoBehaviour
     public bool ocupado { get; private set; }
 
     public bool Configurado => plataforma != null && posicaoConves != null && posicaoBaixa != null;
+
+    public void ConfigurarReferencias()
+    {
+        if (plataforma == null) plataforma = transform.Find("Plataforma");
+        if (posicaoConves == null) posicaoConves = transform.Find("Posicao_Conves");
+        if (posicaoBaixa == null) posicaoBaixa = transform.Find("Posicao_Baixa");
+    }
+
+    private void Awake() { ConfigurarReferencias(); }
+
     public IEnumerator MoverPara(bool baixo)
     {
+        ConfigurarReferencias();
         if (!Configurado) yield break;
         ocupado = true; Vector3 destino = (baixo ? posicaoBaixa : posicaoConves).position;
         while ((plataforma.position - destino).sqrMagnitude > .01f)

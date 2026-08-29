@@ -71,6 +71,11 @@ public class MenuPausaController : MonoBehaviour
 
     private void Update()
     {
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return;
+        }
+
         if (FabricaMineriosMenuController.EstaAberto || FazendaMenuController.EstaAberto)
         {
             return;

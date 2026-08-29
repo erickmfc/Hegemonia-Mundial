@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: c700
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: C700 Transporte
-  descricao: "Descri\xE7\xE3o curta..."
+  nomeItem: C700 Transporte de Tropas e Veiculos
+  descricao: Transporte aereo pesado para embarcar tropas e veiculos, decolar, pousar no destino e retornar ao aeroporto com seguranca.
   icone: {fileID: 21300000, guid: 0df6096b26930b44e9b333b8027fd508, type: 3}
   prefabDaUnidade: {fileID: 508363159047402675, guid: e22aad7e75285f3488246e93b1422aa3, type: 3}
   preco: 100

@@ -538,10 +538,10 @@ public class AviaoBombardeiro : MonoBehaviour
 
         // ─── 3. MÍSSEIS ESPECÍFICOS DO JOGO BASE ─────────────────
         var icbm = objArma.GetComponent<MisselICBM>();
-        if (icbm != null) { icbm.IniciarLancamento(pontoFinalExato); return; }
+        if (icbm != null) { icbm.IniciarLancamento(pontoFinalExato, alvoMovelRef); return; }
 
         var tatico = objArma.GetComponent<MisselTatico>();
-        if (tatico != null) { tatico.IniciarLancamento(pontoFinalExato); return; }
+        if (tatico != null) { tatico.IniciarLancamento(pontoFinalExato, alvoMovelRef); return; }
 
         // ─── 4. PROJÉTIL GENÉRICO (Fallback) ─────────────────────
         Projetil p = objArma.GetComponent<Projetil>();

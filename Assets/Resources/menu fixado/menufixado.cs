@@ -35,6 +35,7 @@ public class MenuFixadoController : MonoBehaviour
     private Label decisionTitle, decisionMessage;
     private Button decisionAction, decisionClose, tutorialClose;
     private Label tutorialMessage;
+    private VisualElement statusContainer;
     private StatusNotificacao decisionNotification;
     private StatusNotificacao alertaDecisaoFechado;
     private bool? ultimaPrefeituraOperacional;
@@ -56,6 +57,9 @@ public class MenuFixadoController : MonoBehaviour
     private const string NotificacaoFechadaPrefix = "hegemonia.notificacao.fechada.";
 
     private bool _activeInScene = true;
+    private float proximaVerificacaoLayout;
+    private int ultimaLarguraLayout = -1;
+    private int ultimaAlturaLayout = -1;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Init()
@@ -173,6 +177,7 @@ public class MenuFixadoController : MonoBehaviour
         
         lblMilitaryVal = root.Q<Label>("lbl-military-val");
         lblMilitaryBonus = root.Q<Label>("lbl-military-bonus");
+        statusContainer = root.Q<VisualElement>("status-container");
 
         ConfigurarPainelNotificacoes();
 
@@ -183,6 +188,7 @@ public class MenuFixadoController : MonoBehaviour
         UpdateUI();
         AtualizarAlertaPrincipal();
         MostrarTutorialInicial();
+        AtualizarLayoutResponsivo(true);
         ignorarNovidadesIniciais = false;
     }
 
@@ -963,6 +969,43 @@ public class MenuFixadoController : MonoBehaviour
         if (Time.frameCount % 30 == 0) RegistrarEventos();
 
         if (Time.frameCount % 60 == 0) UpdateUI();
+
+        if (Time.unscaledTime >= proximaVerificacaoLayout)
+        {
+            proximaVerificacaoLayout = Time.unscaledTime + 0.5f;
+            AtualizarLayoutResponsivo(false);
+        }
+    }
+
+    private void AtualizarLayoutResponsivo(bool forcar)
+    {
+        if (root == null) return;
+
+        float larguraResolvida = statusContainer != null ? statusContainer.resolvedStyle.width : float.NaN;
+        int largura = !float.IsNaN(larguraResolvida) && larguraResolvida > 0f
+            ? Mathf.RoundToInt(larguraResolvida)
+            : Mathf.Max(1, Screen.width);
+        int altura = Mathf.Max(1, Screen.height);
+        if (!forcar && largura == ultimaLarguraLayout && altura == ultimaAlturaLayout) return;
+
+        ultimaLarguraLayout = largura;
+        ultimaAlturaLayout = altura;
+
+        // A escala do PanelSettings e independente da resolucao do jogo. O
+        // breakpoint usa a largura real da janela para manter o HUD legivel
+        // tanto no Editor quanto no build em resolucao cheia.
+        bool compacto = largura < 1280;
+        bool muitoCompacto = largura < 900;
+        root.EnableInClassList("hud-compact", compacto);
+        root.EnableInClassList("hud-very-compact", muitoCompacto);
+        root.EnableInClassList("hud-wide", !compacto);
+
+        if (statusContainer != null)
+        {
+            statusContainer.tooltip = compacto
+                ? "HUD compacto: indicadores secundarios continuam disponiveis nas notificacoes e tooltips."
+                : string.Empty;
+        }
     }
 
     private void UpdateUI()

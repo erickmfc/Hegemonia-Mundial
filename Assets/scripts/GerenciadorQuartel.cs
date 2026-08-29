@@ -1,10 +1,131 @@
 using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Hegemonia.RTS;
+using Object = UnityEngine.Object;
+using Random = UnityEngine.Random;
 
 public class GerenciadorQuartel : MonoBehaviour
 {
+    // Mantém o arquivo marcado para recompilação após alterações externas.
+    [Serializable]
+    public sealed class ContatoMilitarQuartelV2
+    {
+        public string id;
+        public string idAlvoPersistente;
+        public int idAlvo;
+        public string nome;
+        public string tipo;
+        public int equipe;
+        public string pais;
+        public Vector3 posicao;
+        public Vector3 direcao;
+        public float velocidade;
+        public string transmissor;
+        public Vector3 posicaoTransmissor;
+        public string horario;
+        public float ultimaAtualizacao;
+        public float validadeAte;
+        public string estado;
+        public bool inimigo;
+
+        [NonSerialized] internal Transform transformAlvo;
+        [NonSerialized] internal BoeingE3Reconhecimento.ContatoReconhecimento origemE3;
+    }
+
+    [Serializable]
+    public sealed class UnidadeAbatidaQuartelV2
+    {
+        public string id;
+        public string nome;
+        public string tipo;
+        public int equipe;
+        public Vector3 posicao;
+        public string horario;
+        public string unidadeResponsavel;
+        public string modoAtaque;
+        public string resultado;
+    }
+    public enum ModoLancamentoCoordenadoV2
+    {
+        Manual,
+        Automatico
+    }
+
+    [System.Serializable]
+    public sealed class UnidadeLancamentoCoordenadoV2
+    {
+        public string id;
+        public string nome;
+        public string tipo;
+        public string modoOperacional;
+        public string sistemaLancamento;
+        public Vector3 posicao;
+        public float distanciaAoAlvo;
+        public bool selecionada;
+        public bool apta;
+        public string estadoLancamento;
+        public string motivo;
+
+        [System.NonSerialized] internal ControleUnidade controle;
+        [System.NonSerialized] internal IdentidadeUnidade identidade;
+        [System.NonSerialized] internal LancadorNaval lancadorNaval;
+        [System.NonSerialized] internal LancadorMisseis lancadorMisseis;
+        [System.NonSerialized] internal ControleSubmarino submarino;
+    }
+
+    [System.Serializable]
+    public sealed class AlvoLancamentoCoordenadoV2
+    {
+        public string id;
+        public string nome;
+        public string tipo;
+        public int equipe;
+        public Vector3 posicao;
+        public float idadeSegundos;
+        public string origem;
+        public bool inimigo;
+        public string pais;
+        public string horario;
+        public string estadoContato;
+        public Vector3 direcao;
+        public float velocidade;
+        public float validadeAte;
+
+        [System.NonSerialized] internal Transform transformAlvo;
+    }
+
+    [System.Serializable]
+    public sealed class AvaliacaoLancamentoCoordenadoV2
+    {
+        public string unidadeId;
+        public string unidadeNome;
+        public bool selecionada;
+        public bool apta;
+        public string motivo;
+        public float distanciaAoAlvo;
+    }
+
+    [System.Serializable]
+    public sealed class TrilhaLancamentoCoordenadoV2
+    {
+        public string id;
+        public string unidadeId;
+        public string unidadeNome;
+        public Vector3 pontoLancamento;
+        public Vector3 pontoImpactoPrevisto;
+        public string alvoId;
+        public string modo;
+        public string estado;
+        public string missilId;
+        public Vector3 pontoAtual;
+        public float distanciaPercorrida;
+        public float momento;
+
+        [System.NonSerialized] internal Transform alvoDinamico;
+    }
+
     [Header("Estrutura (Detectada Automaticamente)")]
     public List<Transform> dormitorios = new List<Transform>();
     public List<Transform> waypointsEntradaEstacionamento = new List<Transform>();
@@ -49,7 +170,29 @@ public class GerenciadorQuartel : MonoBehaviour
     private QuartelAdministracaoRuntime administracao;
 
     // UI Estilos
-    public static bool InterfaceAberta = false;
+    // O estado do modal precisa pertencer a uma instância viva. Um bool
+    // estático ficava preso em true quando a cena ou o GameObject do Quartel
+    // era desativado, bloqueando seleção e ordens de movimento para sempre.
+    private static GerenciadorQuartel interfaceAbertaAtual;
+    private int frameAtalhoBConsumido = -1;
+    public static bool InterfaceAberta
+    {
+        get
+        {
+            GerenciadorQuartel atual = interfaceAbertaAtual;
+            if (atual == null || !atual.isActiveAndEnabled || !atual.menuAberto)
+            {
+                if (atual != null)
+                {
+                    interfaceAbertaAtual = null;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+    }
     private bool menuAberto = false;
     private Rect janelaRetangulo;
     private int abaAtual = 0; 
@@ -62,6 +205,60 @@ public class GerenciadorQuartel : MonoBehaviour
     private readonly HashSet<ControleUnidade> treinamentoPassivoAplicado = new HashSet<ControleUnidade>();
     private readonly HashSet<ControleUnidade> acolhimentosEmAndamento = new HashSet<ControleUnidade>();
     private float proximaAtualizacaoCacheCampo;
+
+    [Header("Lançamento Coordenado do Quartel")]
+    [Tooltip("Mantém a Carta Náutica como centro de autorização, sem mover navios ou submarinos.")]
+    public bool habilitarLancamentoCoordenado = true;
+    [Min(1f)] public float memoriaTrilhasLancamentoSegundos = 30f;
+    private readonly List<IdentidadeUnidade> identidadesLancamentoCache = new List<IdentidadeUnidade>(256);
+    private readonly List<BoeingE3Reconhecimento.ContatoReconhecimento> contatosE3Lancamento = new List<BoeingE3Reconhecimento.ContatoReconhecimento>(128);
+    private readonly List<UnidadeLancamentoCoordenadoV2> unidadesLancamento = new List<UnidadeLancamentoCoordenadoV2>(64);
+    private readonly List<AlvoLancamentoCoordenadoV2> alvosLancamento = new List<AlvoLancamentoCoordenadoV2>(64);
+    private readonly List<AvaliacaoLancamentoCoordenadoV2> avaliacoesLancamento = new List<AvaliacaoLancamentoCoordenadoV2>(64);
+    private readonly List<TrilhaLancamentoCoordenadoV2> trilhasLancamento = new List<TrilhaLancamentoCoordenadoV2>(64);
+    private readonly List<ContatoMilitarQuartelV2> contatosMilitares = new List<ContatoMilitarQuartelV2>(128);
+    private readonly Dictionary<string, ContatoMilitarQuartelV2> contatosPorId = new Dictionary<string, ContatoMilitarQuartelV2>(StringComparer.Ordinal);
+    private readonly Dictionary<string, AlvoLancamentoCoordenadoV2> alvosPorId = new Dictionary<string, AlvoLancamentoCoordenadoV2>(StringComparer.Ordinal);
+    private readonly List<UnidadeAbatidaQuartelV2> unidadesAbatidas = new List<UnidadeAbatidaQuartelV2>(64);
+    private readonly HashSet<string> mortesRegistradas = new HashSet<string>(StringComparer.Ordinal);
+    private readonly Dictionary<SistemaDeDanos, Action> handlersMorte = new Dictionary<SistemaDeDanos, Action>();
+    private readonly Dictionary<SistemaDeDanos, GameObject> ultimoAgressorPorVitima = new Dictionary<SistemaDeDanos, GameObject>();
+    private readonly List<MissileThreatTracker> ameacasLancamentoCache = new List<MissileThreatTracker>(64);
+    private readonly HashSet<string> unidadesSelecionadasLancamento = new HashSet<string>();
+    private string alvoSelecionadoLancamentoId = string.Empty;
+    private bool possuiPontoAlvoManual;
+    private Vector3 pontoAlvoManual;
+    private string origemPontoAlvoManual = string.Empty;
+    private ModoLancamentoCoordenadoV2 modoLancamentoCoordenado = ModoLancamentoCoordenadoV2.Manual;
+    private float proximaAtualizacaoLancamento;
+    private int sequenciaLancamentoCoordenado;
+    private string ultimoIdOperacaoLancamento = string.Empty;
+    private string ultimoMotivoLancamento = string.Empty;
+
+    public IReadOnlyList<UnidadeLancamentoCoordenadoV2> UnidadesLancamento => unidadesLancamento;
+    public IReadOnlyList<AlvoLancamentoCoordenadoV2> AlvosLancamento => alvosLancamento;
+    public IReadOnlyList<AvaliacaoLancamentoCoordenadoV2> AvaliacoesLancamento => avaliacoesLancamento;
+    public IReadOnlyList<TrilhaLancamentoCoordenadoV2> TrilhasLancamento => trilhasLancamento;
+    public IReadOnlyList<ContatoMilitarQuartelV2> ContatosMilitares => contatosMilitares;
+    public IReadOnlyList<UnidadeAbatidaQuartelV2> UnidadesAbatidas => unidadesAbatidas;
+    public string AlvoSelecionadoLancamentoId => alvoSelecionadoLancamentoId;
+    public bool AlvoLancamentoSelecionadoValido => EncontrarAlvoLancamento(alvoSelecionadoLancamentoId) != null;
+    public bool PossuiPontoAlvoManual => possuiPontoAlvoManual;
+    public Vector3 PontoAlvoManual => pontoAlvoManual;
+    public string OrigemPontoAlvoManual => origemPontoAlvoManual;
+    public ModoLancamentoCoordenadoV2 ModoLancamentoCoordenado => modoLancamentoCoordenado;
+    public string UltimoIdOperacaoLancamento => ultimoIdOperacaoLancamento;
+    public string UltimoMotivoLancamento => ultimoMotivoLancamento;
+
+    /// <summary>
+    /// Usado apenas quando o atalho B criou este gerenciador no mesmo frame.
+    /// Evita que o Update recém-adicionado veja o mesmo GetKeyDown e feche
+    /// imediatamente o painel que acabou de abrir.
+    /// </summary>
+    public void MarcarAtalhoBConsumidoNesteFrame()
+    {
+        frameAtalhoBConsumido = Time.frameCount;
+    }
     
     private GUIStyle estiloJanela;
     private GUIStyle estiloBotao;
@@ -155,16 +352,190 @@ public class GerenciadorQuartel : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        BoeingE3Reconhecimento.OnContatoTransmitido -= AoReceberContatoDoE3;
+        BoeingE3Reconhecimento.OnContatoTransmitido += AoReceberContatoDoE3;
+        SistemaDeDanos.OnDanoGlobal -= AoDanoGlobal;
+        SistemaDeDanos.OnDanoGlobal += AoDanoGlobal;
+    }
+
     private void OnDestroy()
     {
+        DesinscreverEventosOperacionais();
         if (painelQuartelUI != null)
         {
             painelQuartelUI.FecharInterno();
         }
 
-        if (InterfaceAberta && !menuAberto)
+        menuAberto = false;
+        LimparInterfaceAberta();
+    }
+
+    private void OnDisable()
+    {
+        DesinscreverEventosOperacionais();
+        // A troca de cena e a desativação do prefab passam por OnDisable, sem
+        // necessariamente chegar a OnDestroy no mesmo frame. Limpar aqui
+        // evita que o serviço de interação mantenha um modal órfão.
+        if (painelQuartelUI != null)
         {
-            InterfaceAberta = false;
+            painelQuartelUI.FecharInterno();
+        }
+
+        menuAberto = false;
+        LimparInterfaceAberta();
+    }
+
+    private void DesinscreverEventosOperacionais()
+    {
+        BoeingE3Reconhecimento.OnContatoTransmitido -= AoReceberContatoDoE3;
+        SistemaDeDanos.OnDanoGlobal -= AoDanoGlobal;
+        foreach (KeyValuePair<SistemaDeDanos, Action> par in handlersMorte)
+        {
+            if (par.Key != null) par.Key.OnMorte -= par.Value;
+        }
+        handlersMorte.Clear();
+        ultimoAgressorPorVitima.Clear();
+    }
+
+    private void AoDanoGlobal(SistemaDeDanos vitima, GameObject agressor, float dano)
+    {
+        if (vitima == null) return;
+        ultimoAgressorPorVitima[vitima] = agressor;
+    }
+
+    private void AoReceberContatoDoE3(BoeingE3Reconhecimento.ContatoReconhecimento contato)
+    {
+        if (contato == null || contato.equipeObservadora != teamID) return;
+        float distancia = Vector3.Distance(transform.position, contato.origemAeronavePosicao);
+        float alcance = Mathf.Max(raioDeCobertura, contato.alcanceComunicacao);
+        if (distancia > alcance + 0.01f) return;
+        UpsertContatoMilitar(contato);
+    }
+
+    private void UpsertContatoMilitar(BoeingE3Reconhecimento.ContatoReconhecimento origem)
+    {
+        if (origem == null) return;
+        string id = string.IsNullOrWhiteSpace(origem.idContato)
+            ? "E3-" + origem.equipeObservadora + "-" + origem.idAlvo + "-" + origem.tipo
+            : origem.idContato;
+        ContatoMilitarQuartelV2 contato;
+        if (!contatosPorId.TryGetValue(id, out contato) || contato == null)
+        {
+            contato = new ContatoMilitarQuartelV2 { id = id };
+            contatosPorId[id] = contato;
+            contatosMilitares.Add(contato);
+        }
+
+        contato.id = id;
+        contato.idAlvo = origem.idAlvo;
+        contato.idAlvoPersistente = origem.idAlvoPersistente;
+        contato.nome = string.IsNullOrWhiteSpace(origem.nomeAlvo) ? "CONTATO " + origem.idAlvo : origem.nomeAlvo;
+        contato.tipo = origem.tipo.ToString().ToUpperInvariant();
+        contato.equipe = origem.equipeAlvo;
+        contato.pais = string.IsNullOrWhiteSpace(origem.paisAlvo) ? "EQUIPE " + origem.equipeAlvo : origem.paisAlvo;
+        contato.posicao = origem.ultimaPosicaoConhecida;
+        contato.direcao = origem.direcao;
+        contato.velocidade = origem.velocidade;
+        contato.transmissor = string.IsNullOrWhiteSpace(origem.origemAeronave) ? origem.fonte : origem.origemAeronave;
+        contato.posicaoTransmissor = origem.origemAeronavePosicao;
+        contato.horario = string.IsNullOrWhiteSpace(origem.horarioDeteccao) ? DateTime.UtcNow.ToString("O") : origem.horarioDeteccao;
+        contato.ultimaAtualizacao = origem.ultimaAtualizacao;
+        contato.validadeAte = origem.validadeAte;
+        contato.estado = string.IsNullOrWhiteSpace(origem.estado) ? "ATIVO" : origem.estado;
+        contato.inimigo = origem.inimigo;
+        contato.origemE3 = origem;
+        proximaAtualizacaoLancamento = 0f;
+    }
+
+    private void AtualizarCacheContatosMilitares()
+    {
+        contatosE3Lancamento.Clear();
+        BoeingE3Reconhecimento.CopiarContatosAtivos(teamID, contatosE3Lancamento);
+        for (int i = 0; i < contatosE3Lancamento.Count; i++)
+        {
+            BoeingE3Reconhecimento.ContatoReconhecimento contato = contatosE3Lancamento[i];
+            if (contato == null || !contato.inimigo) continue;
+            UpsertContatoMilitar(contato);
+        }
+
+        float agora = Time.unscaledTime;
+        for (int i = contatosMilitares.Count - 1; i >= 0; i--)
+        {
+            ContatoMilitarQuartelV2 contato = contatosMilitares[i];
+            if (contato == null || (contato.validadeAte > 0f && agora > contato.validadeAte))
+            {
+                if (contato != null) contatosPorId.Remove(contato.id);
+                contatosMilitares.RemoveAt(i);
+            }
+        }
+    }
+
+    private void RegistrarObservadorDeMorte(IdentidadeUnidade identidade)
+    {
+        if (identidade == null) return;
+        SistemaDeDanos danos = identidade.GetComponent<SistemaDeDanos>();
+        if (danos == null) danos = identidade.GetComponentInParent<SistemaDeDanos>();
+        if (danos == null || handlersMorte.ContainsKey(danos)) return;
+
+        IdentidadeUnidade identidadeCapturada = identidade;
+        Action handler = () => RegistrarUnidadeAbatida(identidadeCapturada, danos);
+        handlersMorte[danos] = handler;
+        danos.OnMorte += handler;
+    }
+
+    private void RegistrarUnidadeAbatida(IdentidadeUnidade identidade, SistemaDeDanos danos)
+    {
+        if (identidade == null) return;
+        string id = ObterIdLancamento(identidade.gameObject);
+        if (!mortesRegistradas.Add(id)) return;
+
+        GameObject agressor = null;
+        ultimoAgressorPorVitima.TryGetValue(danos, out agressor);
+        IdentidadeUnidade identidadeAgressora = SistemaDeDanos.ResolverIdentidade(agressor != null ? agressor.transform : null);
+        unidadesAbatidas.Insert(0, new UnidadeAbatidaQuartelV2
+        {
+            id = id,
+            nome = identidade.name,
+            tipo = identidade.tipoUnidade.ToString(),
+            equipe = identidade.teamID,
+            posicao = identidade.transform.position,
+            horario = DateTime.Now.ToString("HH:mm:ss"),
+            unidadeResponsavel = identidadeAgressora != null ? identidadeAgressora.name : "DESCONHECIDA",
+            modoAtaque = ResolverModoAtaque(agressor),
+            resultado = "UNIDADE ABATIDA"
+        });
+        if (unidadesAbatidas.Count > 64) unidadesAbatidas.RemoveAt(unidadesAbatidas.Count - 1);
+    }
+
+    private static string ResolverModoAtaque(GameObject agressor)
+    {
+        if (agressor == null) return "DESCONHECIDO";
+
+        ControleSubmarino submarino = agressor.GetComponent<ControleSubmarino>()
+            ?? agressor.GetComponentInParent<ControleSubmarino>()
+            ?? agressor.GetComponentInChildren<ControleSubmarino>(true);
+        if (submarino != null) return submarino.modoAtual.ToString().ToUpperInvariant();
+
+        LancadorNaval lancador = agressor.GetComponent<LancadorNaval>()
+            ?? agressor.GetComponentInParent<LancadorNaval>()
+            ?? agressor.GetComponentInChildren<LancadorNaval>(true);
+        if (lancador != null) return lancador.modoAtual.ToString().ToUpperInvariant();
+
+        return "ATAQUE EXTERNO";
+    }
+
+    private void RegistrarInterfaceAberta()
+    {
+        interfaceAbertaAtual = this;
+    }
+
+    private void LimparInterfaceAberta()
+    {
+        if (interfaceAbertaAtual == this)
+        {
+            interfaceAbertaAtual = null;
         }
     }
 
@@ -186,11 +557,18 @@ public class GerenciadorQuartel : MonoBehaviour
 
         if (atalhoQuartel)
         {
+            if (frameAtalhoBConsumido == Time.frameCount)
+            {
+                frameAtalhoBConsumido = -1;
+                return;
+            }
+
             if (!menuAberto && MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto)
             {
                 MenuComandoController.Instancia.FecharMenu();
             }
             AlternarInterface();
+            return;
         }
 
         if (CampoTextoQuartelEmEdicao()) return;
@@ -226,8 +604,8 @@ public class GerenciadorQuartel : MonoBehaviour
         if (!menuAberto)
         {
             FecharOutrosMenus();
-            InterfaceAberta = true;
             menuAberto = true;
+            RegistrarInterfaceAberta();
             AtualizarRetanguloJanela(true);
             if (usarPainelQuartelUIToolkit && painelQuartelUI != null)
             {
@@ -237,7 +615,7 @@ public class GerenciadorQuartel : MonoBehaviour
         else
         {
             menuAberto = false;
-            InterfaceAberta = false;
+            LimparInterfaceAberta();
             if (painelQuartelUI != null)
             {
                 painelQuartelUI.FecharInterno();
@@ -252,7 +630,7 @@ public class GerenciadorQuartel : MonoBehaviour
     public void FecharInterfacePorUI()
     {
         menuAberto = false;
-        InterfaceAberta = false;
+        LimparInterfaceAberta();
         if (painelQuartelUI != null)
         {
             painelQuartelUI.FecharInterno();
@@ -264,6 +642,27 @@ public class GerenciadorQuartel : MonoBehaviour
         if (MenuGoverno.Instancia != null) MenuGoverno.Instancia.AlternarMenu(false);
         var construtor = Object.FindFirstObjectByType<MenuConstrucao>();
         if (construtor != null && MenuConstrucao.EstaAberto) construtor.AlternarMenu(false);
+
+        MenuPier pier = Object.FindFirstObjectByType<MenuPier>();
+        if (pier != null && MenuPier.EstaAberto) pier.FecharMenu();
+
+        MenuMisseis misseis = Object.FindFirstObjectByType<MenuMisseis>();
+        if (misseis != null && MenuMisseis.EstaAberto) misseis.CancelarLancamento();
+
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto)
+        {
+            MenuComandoController.Instancia.FecharMenu();
+        }
+
+        if (FazendaMenuController.EstaAberto && FazendaMenuController.Instancia != null)
+        {
+            FazendaMenuController.Instancia.FecharParaOutraInterface();
+        }
+
+        if (FabricaMineriosMenuController.EstaAberto && FabricaMineriosMenuController.Instancia != null)
+        {
+            FabricaMineriosMenuController.Instancia.FecharParaOutraInterface();
+        }
     }
 
     private void AtualizarRetanguloJanela(bool centralizar)
@@ -521,7 +920,7 @@ public class GerenciadorQuartel : MonoBehaviour
         if (GUI.Button(new Rect(janelaRetangulo.width - 42, 4, 36, 26), "✕", estiloBotaoPerigo))
         {
             menuAberto = false;
-            InterfaceAberta = false;
+            LimparInterfaceAberta();
         }
 
         GUI.DragWindow(new Rect(0, 0, janelaRetangulo.width, 30));
@@ -925,6 +1324,599 @@ public class GerenciadorQuartel : MonoBehaviour
         }
 
         SolicitarReparosNoRaio();
+    }
+
+    /// <summary>
+    /// Atualiza somente a leitura operacional usada pela Carta Náutica. A
+    /// rotina não emite ordens, não chama EmitirOrdemMover e não toca no
+    /// Transform das unidades.
+    /// </summary>
+    public void AtualizarDadosLancamento(bool forcar = false)
+    {
+        if (!habilitarLancamentoCoordenado) return;
+        if (!forcar && Time.unscaledTime < proximaAtualizacaoLancamento) return;
+
+        proximaAtualizacaoLancamento = Time.unscaledTime + 0.75f;
+        identidadesLancamentoCache.Clear();
+        RegistroEntidadesJogo.FillUnidades(identidadesLancamentoCache);
+        if (identidadesLancamentoCache.Count == 0)
+        {
+            IdentidadeUnidade[] encontrados = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+            for (int i = 0; i < encontrados.Length; i++)
+            {
+                if (encontrados[i] != null && !identidadesLancamentoCache.Contains(encontrados[i]))
+                    identidadesLancamentoCache.Add(encontrados[i]);
+            }
+        }
+
+        AtualizarCacheContatosMilitares();
+
+        HashSet<string> idsPresentes = new HashSet<string>();
+        for (int i = 0; i < identidadesLancamentoCache.Count; i++)
+        {
+            IdentidadeUnidade identidade = identidadesLancamentoCache[i];
+            if (identidade == null || !identidade.gameObject.activeInHierarchy || identidade.teamID != teamID) continue;
+
+            RegistrarObservadorDeMorte(identidade);
+
+            ControleSubmarino submarino = ObterComponenteLancamento<ControleSubmarino>(identidade.gameObject);
+            LancadorNaval lancador = ObterComponenteLancamento<LancadorNaval>(identidade.gameObject);
+            LancadorMisseis lancadorEstrategico = ObterComponenteLancamento<LancadorMisseis>(identidade.gameObject);
+            if (submarino == null && lancador == null && lancadorEstrategico == null) continue;
+
+            string id = ObterIdLancamento(identidade.gameObject);
+            idsPresentes.Add(id);
+            UnidadeLancamentoCoordenadoV2 unidade = EncontrarUnidadeLancamento(id);
+            if (unidade == null)
+            {
+                unidade = new UnidadeLancamentoCoordenadoV2 { id = id };
+                unidadesLancamento.Add(unidade);
+            }
+
+            unidade.identidade = identidade;
+            unidade.controle = ObterComponenteLancamento<ControleUnidade>(identidade.gameObject);
+            unidade.submarino = submarino;
+            unidade.lancadorNaval = lancador;
+            unidade.lancadorMisseis = lancadorEstrategico;
+            unidade.nome = identidade.name;
+            unidade.tipo = identidade.tipoUnidade.ToString().ToUpperInvariant();
+            unidade.posicao = identidade.transform.position;
+            unidade.selecionada = unidadesSelecionadasLancamento.Contains(id);
+            unidade.sistemaLancamento = submarino != null ? "CONTROLE SUBMARINO" :
+                lancador != null ? "LANÇADOR NAVAL" : "LANÇADOR DE MÍSSEIS";
+            unidade.modoOperacional = submarino != null
+                ? submarino.modoAtual.ToString().ToUpperInvariant()
+                : lancador != null ? lancador.modoAtual.ToString().ToUpperInvariant() : "MANUAL";
+            unidade.motivo = string.Empty;
+            unidade.apta = false;
+        }
+
+        for (int i = unidadesLancamento.Count - 1; i >= 0; i--)
+        {
+            if (!idsPresentes.Contains(unidadesLancamento[i].id))
+            {
+                unidadesSelecionadasLancamento.Remove(unidadesLancamento[i].id);
+                unidadesLancamento.RemoveAt(i);
+            }
+        }
+
+        AtualizarAlvosLancamento();
+        LimparTrilhasLancamento();
+        AtualizarValidacaoLancamentoCoordenado();
+    }
+
+    public bool AlternarSelecaoLancamento(string unidadeId)
+    {
+        UnidadeLancamentoCoordenadoV2 unidade = EncontrarUnidadeLancamento(unidadeId);
+        if (unidade == null) return false;
+
+        if (!unidadesSelecionadasLancamento.Add(unidadeId))
+            unidadesSelecionadasLancamento.Remove(unidadeId);
+
+        unidade.selecionada = unidadesSelecionadasLancamento.Contains(unidadeId);
+        AtualizarValidacaoLancamentoCoordenado();
+        return unidade.selecionada;
+    }
+
+    public bool AlternarSelecaoLancamento(string unidadeId, bool substituirSelecao)
+    {
+        UnidadeLancamentoCoordenadoV2 unidade = EncontrarUnidadeLancamento(unidadeId);
+        if (unidade == null) return false;
+        if (substituirSelecao)
+        {
+            unidadesSelecionadasLancamento.Clear();
+            for (int i = 0; i < unidadesLancamento.Count; i++)
+                if (unidadesLancamento[i] != null) unidadesLancamento[i].selecionada = false;
+        }
+        return AlternarSelecaoLancamento(unidadeId);
+    }
+
+    /// <summary>
+    /// Seleciona um executor sem alterna-lo. Serve para o modificador Shift da
+    /// Carta: Ctrl alterna, Shift adiciona, e o clique simples substitui.
+    /// </summary>
+    public bool SelecionarUnidadeLancamento(string unidadeId, bool substituirSelecao = false)
+    {
+        UnidadeLancamentoCoordenadoV2 unidade = EncontrarUnidadeLancamento(unidadeId);
+        if (unidade == null) return false;
+
+        if (substituirSelecao)
+        {
+            unidadesSelecionadasLancamento.Clear();
+            for (int i = 0; i < unidadesLancamento.Count; i++)
+            {
+                if (unidadesLancamento[i] != null) unidadesLancamento[i].selecionada = false;
+            }
+        }
+
+        unidadesSelecionadasLancamento.Add(unidadeId);
+        unidade.selecionada = true;
+        AtualizarValidacaoLancamentoCoordenado();
+        return true;
+    }
+
+    public void LimparSelecaoLancamento()
+    {
+        unidadesSelecionadasLancamento.Clear();
+        for (int i = 0; i < unidadesLancamento.Count; i++)
+            if (unidadesLancamento[i] != null) unidadesLancamento[i].selecionada = false;
+        AtualizarValidacaoLancamentoCoordenado();
+    }
+
+    public bool SelecionarAlvoLancamento(string alvoId)
+    {
+        AlvoLancamentoCoordenadoV2 alvo = EncontrarAlvoLancamento(alvoId);
+        if (alvo == null) return false;
+        alvoSelecionadoLancamentoId = alvo.id;
+        AtualizarValidacaoLancamentoCoordenado();
+        return true;
+    }
+
+    public bool DefinirPontoAlvoManual(Vector3 ponto, string origem = "COORDENADAS MANUAIS")
+    {
+        const string idManual = "quartel-ponto-manual";
+        AlvoLancamentoCoordenadoV2 alvo = EncontrarAlvoLancamento(idManual);
+        if (alvo == null)
+        {
+            alvo = new AlvoLancamentoCoordenadoV2 { id = idManual };
+            alvosLancamento.Add(alvo);
+            alvosPorId[idManual] = alvo;
+        }
+        alvo.nome = "PONTO MANUAL";
+        alvo.tipo = "COORDENADA";
+        alvo.equipe = -1;
+        alvo.posicao = ponto;
+        alvo.idadeSegundos = 0f;
+        alvo.origem = origem;
+        alvo.inimigo = false;
+        alvo.pais = "N/A";
+        alvo.horario = DateTime.Now.ToString("HH:mm:ss");
+        alvo.estadoContato = "PONTO DEFINIDO PELO JOGADOR";
+        alvo.validadeAte = float.PositiveInfinity;
+        alvo.transformAlvo = null;
+        possuiPontoAlvoManual = true;
+        pontoAlvoManual = ponto;
+        origemPontoAlvoManual = origem;
+        alvoSelecionadoLancamentoId = idManual;
+        AtualizarValidacaoLancamentoCoordenado();
+        return true;
+    }
+
+    public bool UsarCoordenadasDoAlvo()
+    {
+        AlvoLancamentoCoordenadoV2 alvo = EncontrarAlvoLancamento(alvoSelecionadoLancamentoId);
+        if (alvo == null || alvo.id == "quartel-ponto-manual") return false;
+        possuiPontoAlvoManual = false;
+        pontoAlvoManual = alvo.posicao;
+        origemPontoAlvoManual = "CONTATO E-3";
+        AtualizarValidacaoLancamentoCoordenado();
+        return true;
+    }
+
+    public bool CancelarOperacaoLancamento()
+    {
+        LimparSelecaoLancamento();
+        alvoSelecionadoLancamentoId = string.Empty;
+        possuiPontoAlvoManual = false;
+        pontoAlvoManual = Vector3.zero;
+        origemPontoAlvoManual = string.Empty;
+        avaliacoesLancamento.Clear();
+        ultimoMotivoLancamento = "operacao de lancamento cancelada";
+        return true;
+    }
+
+    public bool AlternarModoOperacionalLancador(string unidadeId)
+    {
+        UnidadeLancamentoCoordenadoV2 unidade = EncontrarUnidadeLancamento(unidadeId);
+        if (unidade == null) return false;
+        if (unidade.lancadorNaval != null)
+        {
+            unidade.lancadorNaval.AlternarEstadoOperacional();
+            AtualizarDadosLancamento(true);
+            return true;
+        }
+        if (unidade.submarino != null)
+        {
+            unidade.submarino.AlternarEstadoOperacional();
+            AtualizarDadosLancamento(true);
+            return true;
+        }
+        // LancadorMisseis é o componente legado de lançamento estratégico e
+        // não possui ciclo Passivo/Manual/Automático. Ele permanece manual.
+        if (unidade.lancadorMisseis != null)
+        {
+            unidade.modoOperacional = "MANUAL";
+            unidade.motivo = "lancador estrategico opera somente em modo manual";
+            AtualizarValidacaoLancamentoCoordenado();
+            return false;
+        }
+        if (unidade.controle != null)
+        {
+            unidade.controle.AlternarEstadoOperacional();
+            AtualizarDadosLancamento(true);
+            return true;
+        }
+        return false;
+    }
+
+    public string ObterMotivoBloqueioLancamento(string unidadeId)
+    {
+        UnidadeLancamentoCoordenadoV2 unidade = EncontrarUnidadeLancamento(unidadeId);
+        if (unidade == null) return "unidade nao encontrada";
+        return unidade.apta ? "lancamento autorizado" :
+            (string.IsNullOrWhiteSpace(unidade.motivo) ? "unidade nao validada" : unidade.motivo);
+    }
+
+    public void DefinirModoLancamentoCoordenado(ModoLancamentoCoordenadoV2 modo)
+    {
+        modoLancamentoCoordenado = modo;
+        AtualizarValidacaoLancamentoCoordenado();
+    }
+
+    public void AtualizarValidacaoLancamentoCoordenado()
+    {
+        avaliacoesLancamento.Clear();
+        AlvoLancamentoCoordenadoV2 alvo = EncontrarAlvoLancamento(alvoSelecionadoLancamentoId);
+        Vector3 pontoAlvo = alvo != null ? ObterPontoAlvoLancamento(alvo) : Vector3.zero;
+
+        for (int i = 0; i < unidadesLancamento.Count; i++)
+        {
+            UnidadeLancamentoCoordenadoV2 unidade = unidadesLancamento[i];
+            if (unidade == null || !unidade.selecionada) continue;
+
+            string motivo;
+            bool apta = ValidarUnidadeLancamento(unidade, alvo, pontoAlvo, out motivo);
+            unidade.distanciaAoAlvo = alvo != null ? Vector3.Distance(unidade.posicao, pontoAlvo) : 0f;
+            unidade.apta = apta;
+            unidade.motivo = motivo;
+            avaliacoesLancamento.Add(new AvaliacaoLancamentoCoordenadoV2
+            {
+                unidadeId = unidade.id,
+                unidadeNome = unidade.nome,
+                selecionada = true,
+                apta = apta,
+                motivo = apta ? "lancamento autorizado" : motivo,
+                distanciaAoAlvo = unidade.distanciaAoAlvo
+            });
+        }
+    }
+
+    /// <summary>
+    /// Autoriza uma operação para as unidades selecionadas. Cada unidade é
+    /// validada e dispara a partir do próprio Transform; uma unidade bloqueada
+    /// não impede as demais. Nenhuma ordem de movimento é criada aqui.
+    /// </summary>
+    public bool TryExecutarLancamentoCoordenado(out string motivo)
+    {
+        motivo = string.Empty;
+        if (!habilitarLancamentoCoordenado)
+        {
+            motivo = "lancamento coordenado desabilitado no Quartel";
+            ultimoMotivoLancamento = motivo;
+            return false;
+        }
+
+        AtualizarDadosLancamento(true);
+        AlvoLancamentoCoordenadoV2 alvo = EncontrarAlvoLancamento(alvoSelecionadoLancamentoId);
+        if (alvo == null)
+        {
+            motivo = "selecione um contato transmitido pelo E-3";
+            ultimoMotivoLancamento = motivo;
+            return false;
+        }
+
+        int selecionadas = 0;
+        for (int i = 0; i < unidadesLancamento.Count; i++)
+            if (unidadesLancamento[i] != null && unidadesLancamento[i].selecionada) selecionadas++;
+        if (selecionadas == 0)
+        {
+            motivo = "selecione pelo menos um navio ou submarino compatível";
+            ultimoMotivoLancamento = motivo;
+            return false;
+        }
+
+        AtualizarValidacaoLancamentoCoordenado();
+        ultimoIdOperacaoLancamento = "QG-LANC-" + (++sequenciaLancamentoCoordenado).ToString("0000");
+        int autorizados = 0;
+        int bloqueados = 0;
+        Vector3 pontoAlvo = ObterPontoAlvoLancamento(alvo);
+
+        for (int i = 0; i < avaliacoesLancamento.Count; i++)
+        {
+            AvaliacaoLancamentoCoordenadoV2 avaliacao = avaliacoesLancamento[i];
+            UnidadeLancamentoCoordenadoV2 unidade = EncontrarUnidadeLancamento(avaliacao.unidadeId);
+            if (unidade == null) continue;
+
+            if (!avaliacao.apta)
+            {
+                bloqueados++;
+                unidade.estadoLancamento = "BLOQUEADO";
+                continue;
+            }
+
+            Transform alvoDinamico = alvo.transformAlvo != null && alvo.transformAlvo.gameObject.activeInHierarchy
+                ? alvo.transformAlvo
+                : null;
+            string falha;
+            bool lancou = false;
+            if (unidade.submarino != null)
+            {
+                lancou = unidade.submarino.TentarLancarCoordenado(pontoAlvo, alvoDinamico, modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico, out falha);
+            }
+            else if (unidade.lancadorNaval != null)
+            {
+                lancou = unidade.lancadorNaval.TentarLancarCoordenado(pontoAlvo, alvoDinamico, modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico, out falha);
+            }
+            else if (unidade.lancadorMisseis != null)
+            {
+                lancou = unidade.lancadorMisseis.TentarLancarCoordenado(
+                    pontoAlvo,
+                    alvoDinamico,
+                    modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico,
+                    out falha);
+            }
+            else
+            {
+                falha = "nenhum executor de lançamento compatível";
+            }
+
+            if (!lancou)
+            {
+                bloqueados++;
+                unidade.apta = false;
+                unidade.motivo = falha;
+                unidade.estadoLancamento = "BLOQUEADO";
+                continue;
+            }
+
+            autorizados++;
+            unidade.estadoLancamento = "LANÇAMENTO AUTORIZADO";
+            unidade.motivo = string.Empty;
+            trilhasLancamento.Add(new TrilhaLancamentoCoordenadoV2
+            {
+                id = ultimoIdOperacaoLancamento + "-" + unidade.id,
+                unidadeId = unidade.id,
+                unidadeNome = unidade.nome,
+                pontoLancamento = unidade.posicao,
+                pontoImpactoPrevisto = pontoAlvo,
+                alvoId = alvo.id,
+                modo = modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico ? "AUTOMATICO" : "MANUAL",
+                estado = "LANÇAMENTO AUTORIZADO",
+                pontoAtual = unidade.posicao,
+                distanciaPercorrida = 0f,
+                alvoDinamico = alvoDinamico,
+                momento = Time.unscaledTime
+            });
+        }
+
+        if (autorizados == 0)
+        {
+            motivo = "nenhuma unidade selecionada foi autorizada";
+            ultimoMotivoLancamento = motivo;
+            return false;
+        }
+
+        motivo = bloqueados > 0
+            ? autorizados + " lançamento(s) autorizado(s); " + bloqueados + " bloqueado(s) individualmente"
+            : autorizados + " lançamento(s) coordenado(s) autorizado(s)";
+        ultimoMotivoLancamento = motivo;
+        return true;
+    }
+
+    private void AtualizarAlvosLancamento()
+    {
+        HashSet<string> presentes = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < contatosMilitares.Count; i++)
+        {
+            ContatoMilitarQuartelV2 contato = contatosMilitares[i];
+            if (contato == null || !contato.inimigo) continue;
+
+            IdentidadeUnidade identidadeAlvo = null;
+            for (int j = 0; j < identidadesLancamentoCache.Count; j++)
+            {
+                IdentidadeUnidade candidata = identidadesLancamentoCache[j];
+                if (candidata != null
+                    && (candidata.GetInstanceID() == contato.idAlvo
+                        || (!string.IsNullOrWhiteSpace(contato.idAlvoPersistente)
+                            && string.Equals(
+                                ObterIdLancamento(candidata.gameObject),
+                                contato.idAlvoPersistente,
+                                StringComparison.Ordinal))))
+                {
+                    identidadeAlvo = candidata;
+                    break;
+                }
+            }
+
+            string id = contato.id;
+            presentes.Add(id);
+            AlvoLancamentoCoordenadoV2 alvo = EncontrarAlvoLancamento(id);
+            if (alvo == null)
+            {
+                alvo = new AlvoLancamentoCoordenadoV2 { id = id };
+                alvosLancamento.Add(alvo);
+                alvosPorId[id] = alvo;
+            }
+            alvo.nome = contato.nome;
+            alvo.tipo = contato.tipo;
+            alvo.equipe = contato.equipe;
+            alvo.posicao = contato.posicao;
+            alvo.idadeSegundos = Mathf.Max(0f, Time.unscaledTime - contato.ultimaAtualizacao);
+            alvo.origem = contato.transmissor;
+            alvo.inimigo = contato.inimigo;
+            alvo.pais = contato.pais;
+            alvo.horario = contato.horario;
+            alvo.estadoContato = contato.estado;
+            alvo.direcao = contato.direcao;
+            alvo.velocidade = contato.velocidade;
+            alvo.validadeAte = contato.validadeAte;
+            alvo.transformAlvo = identidadeAlvo != null ? identidadeAlvo.transform : null;
+        }
+
+        if (possuiPontoAlvoManual)
+        {
+            presentes.Add("quartel-ponto-manual");
+        }
+
+        for (int i = alvosLancamento.Count - 1; i >= 0; i--)
+        {
+            AlvoLancamentoCoordenadoV2 alvo = alvosLancamento[i];
+            if (alvo == null || !presentes.Contains(alvo.id))
+            {
+                if (alvo != null) alvosPorId.Remove(alvo.id);
+                alvosLancamento.RemoveAt(i);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(alvoSelecionadoLancamentoId)
+            && EncontrarAlvoLancamento(alvoSelecionadoLancamentoId) == null)
+            alvoSelecionadoLancamentoId = string.Empty;
+    }
+
+    private bool ValidarUnidadeLancamento(UnidadeLancamentoCoordenadoV2 unidade, AlvoLancamentoCoordenadoV2 alvo, Vector3 pontoAlvo, out string motivo)
+    {
+        motivo = string.Empty;
+        if (alvo == null)
+        {
+            motivo = "nenhum alvo transmitido selecionado";
+            return false;
+        }
+
+        if (modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico
+            && (!alvo.inimigo || alvo.id == "quartel-ponto-manual"))
+        {
+            motivo = "modo automatico exige um contato inimigo valido";
+            return false;
+        }
+
+        if (modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico
+            && alvo.validadeAte > 0f && Time.unscaledTime > alvo.validadeAte)
+        {
+            motivo = "contato transmitido expirado";
+            return false;
+        }
+
+        if (modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico
+            && (string.IsNullOrWhiteSpace(alvo.origem)
+                || string.Equals(alvo.estadoContato, "EXPIRADO", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(alvo.estadoContato, "PERDIDO", StringComparison.OrdinalIgnoreCase)))
+        {
+            motivo = "contato sem comunicacao valida";
+            return false;
+        }
+
+        bool automatico = modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico;
+        Transform alvoDinamico = alvo.transformAlvo != null && alvo.transformAlvo.gameObject.activeInHierarchy ? alvo.transformAlvo : null;
+        if (unidade.submarino != null)
+            return unidade.submarino.PodeLancarCoordenado(pontoAlvo, alvoDinamico, automatico, out motivo);
+        if (unidade.lancadorNaval != null)
+            return unidade.lancadorNaval.PodeLancarCoordenado(pontoAlvo, alvoDinamico, automatico, out motivo);
+        if (unidade.lancadorMisseis != null)
+            return unidade.lancadorMisseis.PodeLancarCoordenado(pontoAlvo, automatico, out motivo);
+
+        motivo = "nenhum executor de lançamento compatível";
+        return false;
+    }
+
+    private static T ObterComponenteLancamento<T>(GameObject objeto) where T : Component
+    {
+        if (objeto == null) return null;
+        T componente = objeto.GetComponent<T>();
+        if (componente == null) componente = objeto.GetComponentInParent<T>();
+        if (componente == null) componente = objeto.GetComponentInChildren<T>(true);
+        return componente;
+    }
+
+    private static string ObterIdLancamento(GameObject objeto)
+    {
+        SaveableEntity saveable = objeto != null ? objeto.GetComponent<SaveableEntity>() : null;
+        if (saveable == null && objeto != null) saveable = objeto.GetComponentInParent<SaveableEntity>();
+        if (saveable == null && objeto != null) saveable = objeto.GetComponentInChildren<SaveableEntity>(true);
+        if (saveable != null && !string.IsNullOrWhiteSpace(saveable.UniqueId)) return saveable.UniqueId;
+        return objeto == null ? "unidade-sem-objeto" : "runtime-" + objeto.GetInstanceID();
+    }
+
+    private UnidadeLancamentoCoordenadoV2 EncontrarUnidadeLancamento(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        for (int i = 0; i < unidadesLancamento.Count; i++)
+            if (unidadesLancamento[i] != null && unidadesLancamento[i].id == id) return unidadesLancamento[i];
+        return null;
+    }
+
+    private AlvoLancamentoCoordenadoV2 EncontrarAlvoLancamento(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        for (int i = 0; i < alvosLancamento.Count; i++)
+            if (alvosLancamento[i] != null && alvosLancamento[i].id == id) return alvosLancamento[i];
+        return null;
+    }
+
+    private static Vector3 ObterPontoAlvoLancamento(AlvoLancamentoCoordenadoV2 alvo)
+    {
+        if (alvo != null && alvo.transformAlvo != null && alvo.transformAlvo.gameObject.activeInHierarchy)
+            return alvo.transformAlvo.position;
+        return alvo != null ? alvo.posicao : Vector3.zero;
+    }
+
+    private void LimparTrilhasLancamento()
+    {
+        float agora = Time.unscaledTime;
+        MissileThreatTracker.CopiarAmeacasAtivas(ameacasLancamentoCache);
+        for (int i = trilhasLancamento.Count - 1; i >= 0; i--)
+        {
+            TrilhaLancamentoCoordenadoV2 trilha = trilhasLancamento[i];
+            if (trilha == null || agora - trilha.momento > Mathf.Max(1f, memoriaTrilhasLancamentoSegundos))
+            {
+                trilhasLancamento.RemoveAt(i);
+                continue;
+            }
+
+            if (trilha.alvoDinamico != null && trilha.alvoDinamico.gameObject.activeInHierarchy)
+                trilha.pontoImpactoPrevisto = trilha.alvoDinamico.position;
+
+            MissileThreatTracker melhor = null;
+            float menorDistancia = 25f * 25f;
+            for (int j = 0; j < ameacasLancamentoCache.Count; j++)
+            {
+                MissileThreatTracker ameaca = ameacasLancamentoCache[j];
+                if (ameaca == null || ameaca.NomeOrigem != trilha.unidadeNome) continue;
+                float distancia = (ameaca.PontoLancamento - trilha.pontoLancamento).sqrMagnitude;
+                if (distancia < menorDistancia)
+                {
+                    menorDistancia = distancia;
+                    melhor = ameaca;
+                }
+            }
+
+            if (melhor != null)
+            {
+                trilha.missilId = melhor.MissileId.ToString();
+                trilha.pontoAtual = melhor.RaizMissil != null ? melhor.RaizMissil.position : trilha.pontoLancamento;
+                trilha.distanciaPercorrida = Vector3.Distance(trilha.pontoLancamento, trilha.pontoAtual);
+                trilha.estado = "EM VOO";
+            }
+        }
     }
 
     public QuartelAdministracaoRuntime ObterAdministracao()

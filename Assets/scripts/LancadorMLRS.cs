@@ -224,7 +224,12 @@ public class LancadorMLRS : MonoBehaviour
 
         if (pontoDeDisparoAtual != null)
         {
-        GameObject novoMissil = PoolDeObjetosCombate.Spawn(missilPrefab, pontoDeDisparoAtual.position, pontoDeDisparoAtual.rotation);
+            GameObject novoMissil = PoolDeObjetosCombate.Spawn(missilPrefab, pontoDeDisparoAtual.position, pontoDeDisparoAtual.rotation);
+            if (novoMissil == null)
+            {
+                Debug.LogError("⛔ LEOPARD ERRO! O pool não conseguiu criar o míssil.", this);
+                return;
+            }
 
             // --- SEGURANÇA: IGNORAR COLISÃO COM O PRÓPRIO TANQUE ---
             Collider[] tankColliders = GetComponentsInChildren<Collider>();
@@ -238,38 +243,21 @@ public class LancadorMLRS : MonoBehaviour
             }
             // -------------------------------------------------------
 
-            // --- TENTATIVA UNIVERSAL DE INICIALIZAÇÃO ---
-            // Tenta ativar o míssil de todas as formas conhecidas (Leopard Novo ou Submarino Antigo)
-            
-            bool disparoSucesso = false;
-
-            // 1. Tenta script novo (Leopard Inteligente)
-            var scriptLeopard = novoMissil.GetComponent<MisselLeopardAutomatico>();
-            if (scriptLeopard != null)
+            // A lógica de busca continua sendo a do MLRS, mas a inicialização
+            // do voo precisa ser a mesma para todos os prefabs. O código
+            // anterior só configurava Leopard/Submarino e deixava ICBM,
+            // Tático, Naval ou Teleguiado sem destino.
+            if (!InicializadorLancamentoMissil.Inicializar(
+                    novoMissil,
+                    alvoAtual.position,
+                    alvoAtual,
+                    this,
+                    pontoDeDisparoAtual,
+                    gameObject))
             {
-                scriptLeopard.DefinirAlvo(alvoAtual);
-                MissileThreatTracker.RegistrarLancamento(novoMissil, this, alvoAtual.position, alvoAtual, MissileThreatTracker.EstimarVelocidade(novoMissil));
-                disparoSucesso = true;
-            }
-            
-            // 2. Tenta script antigo (Submarino) usando Vector3
-            if (!disparoSucesso)
-            {
-                var scriptSub = novoMissil.GetComponent<MisselSubmarino>();
-                if (scriptSub != null)
-                {
-                    // Lança mirando na posição atual do alvo
-                    scriptSub.IniciarLancamento(alvoAtual.position, false); // false = não submerso
-                    MissileThreatTracker.RegistrarLancamento(novoMissil, this, alvoAtual.position, alvoAtual, MissileThreatTracker.EstimarVelocidade(novoMissil));
-                    disparoSucesso = true;
-                }
-            }
-
-            // 3. Fallback (Mensagens genéricas)
-            if (!disparoSucesso)
-            {
-                novoMissil.SendMessage("DefinirAlvo", alvoAtual, SendMessageOptions.DontRequireReceiver);
-                novoMissil.SendMessage("SetTarget", alvoAtual, SendMessageOptions.DontRequireReceiver);
+                PoolDeObjetosCombate.Release(novoMissil);
+                Debug.LogError("⛔ LEOPARD ERRO! Prefab sem controlador de voo válido.", this);
+                return;
             }
 
             if (mostrarLogsDeBusca) Debug.Log("🚀 Míssil Disparado!");

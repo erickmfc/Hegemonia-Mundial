@@ -1563,7 +1563,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     {
         if (operacoesV2AssumiuControle && _selecionadoCarrier != null && _modoOrdemAviao == 1)
         {
-            if (_rotaPatrulhaAviaoCarrier.Count > 1)
+            if (_rotaPatrulhaAviaoCarrier.Count > 0)
             {
                 Vector3 destino = _rotaPatrulhaAviaoCarrier[_rotaPatrulhaAviaoCarrier.Count - 1];
                 SolicitarDecolagemV2(_selecionadoCarrier, destino, true);
@@ -1872,7 +1872,10 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (v2 == null) return false;
         v2.PrepararAeronaveParaMenu(aviao, false);
         bool iniciou = patrulha
-            ? v2.TrySolicitarPatrulha(aviao, destino)
+            ? v2.TrySolicitarPatrulha(
+                aviao,
+                destino,
+                new List<Vector3>(_rotaPatrulhaAviaoCarrier))
             : v2.TrySolicitarDecolagem(aviao, destino);
         if (iniciou)
         {
@@ -1899,11 +1902,9 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         {
             Vector3 pontoPatrulha = pontoAlvo;
             if (pontoPatrulha.y < 1f) pontoPatrulha.y = _selecionadoCarrier.transform.position.y;
-            if (_rotaPatrulhaAviaoCarrier.Count == 0)
-            {
-                Vector3 pontoInicial = _selecionadoCarrier.transform.position;
-                _rotaPatrulhaAviaoCarrier.Add(pontoInicial);
-            }
+            // A rota contém somente destinos reais. Inserir a posição atual
+            // do porta-aviões como primeiro waypoint fazia a aeronave voltar
+            // para dentro do convés logo após o lançamento.
             _rotaPatrulhaAviaoCarrier.Add(pontoPatrulha);
             CriarSinalizador(pontoPatrulha, _selecionadoCarrier);
             AtualizarLinhaPatrulhaAviaoCarrier(_rotaPatrulhaAviaoCarrier);

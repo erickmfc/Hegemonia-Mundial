@@ -195,10 +195,9 @@ public static class AuditoriaTrilhaControleUnidades
             problemas += RegistrarProblema(assetPath, go, "Prefab mistura Helicoptero com controlador aereo de aviao/transporte.");
         }
 
-        if (temC700 && !temControleAviao)
-        {
-            problemas += RegistrarProblema(assetPath, go, "C700TransporteAereo encontrado sem ControleAviao no mesmo objeto.");
-        }
+        // C700TransporteAereo é um executor completo de voo e pouso. Ele não
+        // precisa do ControleAviao legado; manter os dois criaria duas
+        // autoridades movendo o mesmo prefab no mesmo frame.
 
         bool temExecutorPrincipal = temNavioRealista || temNavioInteligente || temSubmarino || temControleAviao || temC700 || temHelicoptero;
         if (temExecutorPrincipal && !temControleUnidade)

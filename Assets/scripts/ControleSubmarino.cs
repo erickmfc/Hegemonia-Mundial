@@ -329,7 +329,11 @@ public class ControleSubmarino : MonoBehaviour
             }
         }
 
-        if (modoAtual == ModoOperacao.Manual && cursorMiraAtivo)
+        // Manual controla o armamento, nao a propulsao. O submarino deve
+        // continuar seguindo uma ordem de movimento recebida pelo RMB mesmo
+        // enquanto a mira manual estiver visivel. So pausa a marcha quando
+        // realmente nao existe uma rota ativa.
+        if (modoAtual == ModoOperacao.Manual && cursorMiraAtivo && !TemDestinoAtivo)
         {
             velocidadeAtualSimulada = 0f;
             if (agente.isOnNavMesh)
@@ -563,10 +567,10 @@ public class ControleSubmarino : MonoBehaviour
 
     private void ProcessarMiraManual()
     {
+        bool teclaModificadora = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         bool disparoSolicitado =
-            Input.GetMouseButtonDown(1) ||
-            Input.GetMouseButtonDown(0) ||
-            Input.GetKeyDown(KeyCode.Space);
+            Input.GetKeyDown(KeyCode.Space) ||
+            (teclaModificadora && Input.GetMouseButtonDown(1));
 
         if (!disparoSolicitado)
         {
@@ -630,6 +634,83 @@ public class ControleSubmarino : MonoBehaviour
 
         pontoAlvoAtual = pontoAlvo;
         DispararMissel(pontoAlvoAtual, alvoT);
+        return true;
+    }
+
+    /// <summary>
+    /// Valida uma autorização do Quartel usando o mesmo modo e a mesma carga
+    /// do controlador submarino. O Quartel não altera posição, profundidade ou
+    /// destino da unidade.
+    /// </summary>
+    public bool PodeLancarCoordenado(Vector3 pontoAlvo, Transform alvoT, bool modoAutomatico, out string motivo)
+    {
+        motivo = string.Empty;
+
+        if (!isActiveAndEnabled || !gameObject.activeInHierarchy)
+        {
+            motivo = "unidade desativada";
+            return false;
+        }
+
+        if (modoAutomatico && modoAtual != ModoOperacao.Automatico)
+        {
+            motivo = "modo operacional nao esta Automatico";
+            return false;
+        }
+
+        if (!modoAutomatico && modoAtual != ModoOperacao.Manual)
+        {
+            motivo = "modo operacional nao esta Manual";
+            return false;
+        }
+
+        if (misseisDisponiveis <= 0)
+        {
+            motivo = "sem misseis";
+            return false;
+        }
+
+        if (prefabMisselSubmarino == null)
+        {
+            motivo = "prefab de missil submarino nao configurado";
+            return false;
+        }
+
+        if (modoAutomatico && Vector3.Distance(transform.position, pontoAlvo) > Mathf.Max(1f, alcanceMisseis))
+        {
+            motivo = "fora da distancia automatica";
+            return false;
+        }
+
+        Transform minhaRaiz = transform.root != null ? transform.root : transform;
+        if (alvoT != null && (alvoT == minhaRaiz || alvoT.IsChildOf(minhaRaiz)))
+        {
+            motivo = "alvo pertence a propria unidade";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Entrada comum do lançamento coordenado. A autorização manual não usa
+    /// a distância automática; o voo do míssil continua sob MisselSubmarino.
+    /// </summary>
+    public bool TentarLancarCoordenado(Vector3 pontoAlvo, Transform alvoT, bool modoAutomatico, out string motivo)
+    {
+        if (!PodeLancarCoordenado(pontoAlvo, alvoT, modoAutomatico, out motivo)) return false;
+
+        int misseisAntes = misseisDisponiveis;
+        pontoAlvoAtual = pontoAlvo;
+        DispararMissel(pontoAlvoAtual, alvoT);
+
+        if (misseisAntes == misseisDisponiveis)
+        {
+            motivo = "nenhum slot de missil disponivel";
+            return false;
+        }
+
+        motivo = string.Empty;
         return true;
     }
 
@@ -903,6 +984,11 @@ public class ControleSubmarino : MonoBehaviour
 
     private void DispararMissel(Vector3 alvo, Transform alvoT = null)
     {
+        if (misseisUsados == null)
+        {
+            misseisUsados = new bool[locaisDisparo != null ? locaisDisparo.Length : 0];
+        }
+
         if (misseisDisponiveis <= 0)
         {
             Debug.Log("[USS Leviathan] Sem misseis disponiveis!", this);
@@ -923,12 +1009,22 @@ public class ControleSubmarino : MonoBehaviour
             }
 
             GameObject missel = PoolDeObjetosCombate.Spawn(prefabMisselSubmarino, locaisDisparo[i].position, locaisDisparo[i].rotation);
-            MisselSubmarino scriptMissel = missel.GetComponent<MisselSubmarino>();
-            if (scriptMissel != null)
+            if (missel == null)
             {
-                scriptMissel.IniciarLancamento(alvo, estaSubmerso, alvoT);
-                MissileThreatTracker.RegistrarLancamento(missel, this, alvo, alvoT, MissileThreatTracker.EstimarVelocidade(missel));
+                Debug.LogWarning("[ControleSubmarino] Pool sem míssil disponível; lançamento cancelado sem consumir munição.", this);
+                continue;
             }
+
+            MisselSubmarino scriptMissel = missel.GetComponent<MisselSubmarino>();
+            if (scriptMissel == null)
+            {
+                PoolDeObjetosCombate.Release(missel);
+                Debug.LogError("[ControleSubmarino] Prefab sem MisselSubmarino; lançamento cancelado.", this);
+                continue;
+            }
+
+            scriptMissel.IniciarLancamento(alvo, estaSubmerso, alvoT);
+            MissileThreatTracker.RegistrarLancamento(missel, this, alvo, alvoT, MissileThreatTracker.EstimarVelocidade(missel));
 
             misseisUsados[i] = true;
             misseisDisponiveis--;
@@ -964,16 +1060,35 @@ public class ControleSubmarino : MonoBehaviour
             if (tubosTorpedo[i] == null || tubosTorpedoUsados[i]) continue;
 
             GameObject torpedo = PoolDeObjetosCombate.Spawn(prefabTorpedo, tubosTorpedo[i].position, tubosTorpedo[i].rotation);
+            if (torpedo == null)
+            {
+                Debug.LogWarning("[ControleSubmarino] Pool sem torpedo disponível; lançamento cancelado sem consumir munição.", this);
+                continue;
+            }
+
             Torpedo scriptTorpedo = torpedo.GetComponent<Torpedo>();
-            if (scriptTorpedo != null)
+            if (scriptTorpedo == null)
+            {
+                PoolDeObjetosCombate.Release(torpedo);
+                Debug.LogError("[ControleSubmarino] Prefab sem Torpedo; lançamento cancelado.", this);
+                continue;
+            }
+
+            if (alvoT != null)
             {
                 scriptTorpedo.DefinirAlvo(alvoT);
-                int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : -1;
-                scriptTorpedo.DefinirLancador(transform, meuTime);
-                
-                // Registrar ameaça para sistemas de defesa
-                MissileThreatTracker.RegistrarLancamento(torpedo, this, alvo, alvoT, scriptTorpedo.velocidade);
             }
+            else
+            {
+                // Disparo por coordenada deve permanecer balístico até o
+                // ponto ordenado; não pode cair na aquisição automática.
+                scriptTorpedo.DefinirAlvo(alvo);
+            }
+            int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : -1;
+            scriptTorpedo.DefinirLancador(transform, meuTime);
+
+            // Registrar ameaça para sistemas de defesa
+            MissileThreatTracker.RegistrarLancamento(torpedo, this, alvo, alvoT, scriptTorpedo.velocidade);
 
             tubosTorpedoUsados[i] = true;
             torpedosDisponiveis--;

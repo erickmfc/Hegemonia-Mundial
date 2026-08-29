@@ -279,6 +279,11 @@ public class LancadorMisseis : MonoBehaviour
 
     void Disparar(Vector3 alvo)
     {
+        Disparar(alvo, null);
+    }
+
+    void Disparar(Vector3 alvo, Transform alvoMovel)
+    {
         if (municaoAtual <= 0)
         {
             Debug.LogWarning("[Lançador] Sem mísseis! Compre mais no menu (tecla L).");
@@ -299,15 +304,34 @@ public class LancadorMisseis : MonoBehaviour
             indiceCano = (indiceCano + 1) % pontosDeSaida.Length;
         }
 
-        // Instancia o míssil respeitando a rotação do ponto de saída (cano)
-            GameObject missil = PoolDeObjetosCombate.Spawn(missilPrefab, saida.position, saida.rotation);
-        
-        // Passa o alvo para o script de voo (MisselICBM)
-        MisselICBM scriptVoo = missil.GetComponent<MisselICBM>();
-        if (scriptVoo != null)
+        if (saida == null)
         {
-            scriptVoo.IniciarLancamento(alvo);
-            MissileThreatTracker.RegistrarLancamento(missil, this, alvo, null, MissileThreatTracker.EstimarVelocidade(missil));
+            saida = transform;
+        }
+
+        // Instancia o míssil respeitando a rotação do ponto de saída (cano)
+        GameObject missil = PoolDeObjetosCombate.Spawn(missilPrefab, saida.position, saida.rotation);
+        if (missil == null)
+        {
+            Debug.LogError("[Lançador] ERRO: o pool não conseguiu criar o míssil.", this);
+            return;
+        }
+        
+        // O prefab pode ser ICBM, tático, naval, torpedo, ar-ar ou um
+        // componente legado. Todos precisam receber o mesmo destino antes
+        // de a munição ser consumida; caso contrário o objeto nascia, mas
+        // ficava sem controlador e parecia voar para um ponto aleatório.
+        if (!InicializadorLancamentoMissil.Inicializar(
+                missil,
+                alvo,
+                alvoMovel,
+                this,
+                saida,
+                gameObject))
+        {
+            PoolDeObjetosCombate.Release(missil);
+            Debug.LogError("[Lançador] ERRO: o prefab do míssil não possui uma API de voo válida.", this);
+            return;
         }
 
         municaoAtual--;
@@ -321,6 +345,74 @@ public class LancadorMisseis : MonoBehaviour
             AudioRuntime.ConfigurarFonteDeMissel(audio);
             audio.Play();
         }
+    }
+
+    /// <summary>
+    /// Entrada usada pelo Quartel para o lançador estratégico legado. O
+    /// lançamento continua passando pelo mesmo Disparar usado pelo menu L;
+    /// esta API apenas expõe a validação sem criar um segundo armamento.
+    /// </summary>
+    public bool PodeLancarCoordenado(Vector3 destino, bool modoAutomatico, out string motivo)
+    {
+        motivo = string.Empty;
+        if (!isActiveAndEnabled || !gameObject.activeInHierarchy)
+        {
+            motivo = "unidade desativada";
+            return false;
+        }
+        if (modoAutomatico)
+        {
+            motivo = "este lancador estrategico opera somente em modo manual";
+            return false;
+        }
+        if (municaoAtual <= 0)
+        {
+            motivo = "sem misseis";
+            return false;
+        }
+        if (missilPrefab == null)
+        {
+            motivo = "prefab de missil nao configurado";
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Dispara uma coordenada manual a partir do ponto de saída configurado.
+    /// Não move a unidade e não aplica limite automático de alcance.
+    /// </summary>
+    public bool TentarLancarCoordenado(Vector3 destino, bool modoAutomatico, out string motivo)
+    {
+        return TentarLancarCoordenado(destino, null, modoAutomatico, out motivo);
+    }
+
+    /// <summary>
+    /// Variante usada pelo Quartel quando o alvo veio de um contato E-3.
+    /// Mantém a coordenada como fallback, mas permite ao MisselICBM atualizar
+    /// o ponto vivo de um alvo que manobra durante o voo.
+    /// </summary>
+    public bool TentarLancarCoordenado(Vector3 destino, Transform alvoMovel, bool modoAutomatico, out string motivo)
+    {
+        if (!PodeLancarCoordenado(destino, modoAutomatico, out motivo)) return false;
+
+        int municaoAntes = municaoAtual;
+        float recargaAntes = cronometroRecarga;
+        if (recargaAntes > 0f)
+        {
+            motivo = "lancador em recarga";
+            return false;
+        }
+
+        Disparar(destino, alvoMovel);
+        if (municaoAtual == municaoAntes)
+        {
+            motivo = "o lancador nao conseguiu criar o missil";
+            return false;
+        }
+
+        motivo = string.Empty;
+        return true;
     }
 
     // Utilitário: Cria o círculo vermelho via código pra você não ter que fazer prefab

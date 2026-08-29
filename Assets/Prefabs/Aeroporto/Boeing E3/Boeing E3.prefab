@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 8471887616805070925}
   - component: {fileID: 316442482009284323}
   - component: {fileID: 6503468448039000351}
+  - component: {fileID: 9126401837462018357}
   m_Layer: 0
   m_Name: Boeing E3
   m_TagString: Untagged
@@ -191,6 +192,33 @@ MonoBehaviour:
   taxaCurvaE3: 10
   taxaSubidaDescidaE3: 18
   inclinacaoMaximaE3: 12
+  multiplicadorCapacidadeCombustivelE3: 4.5
+--- !u!114 &9126401837462018357
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 819382474612140520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 335c85b4aedfaa0459dab195ab142338, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::CombustivelUnidade
+  usaCombustivel: 1
+  combustivelInfinito: 0
+  classe: 3
+  capacidade: 2700
+  combustivelAtual: 2700
+  consumoPorSegundoMovendo: 1.45
+  velocidadeMinimaParaConsumo: 0.05
+  limiteBaixoPercentual: 0.25
+  preencherAoIniciar: 1
+  pararAoEsvaziar: 1
+  mostrarIndicadorMundo: 1
+  offsetIndicador: {x: 0, y: 3.2, z: 0}
+  intervaloIndicador: 0.25
+  debugLogs: 0
 --- !u!1 &3900792949286696860
 GameObject:
   m_ObjectHideFlags: 0

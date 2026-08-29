@@ -171,7 +171,7 @@ public class ControleDroneHasaf : MonoBehaviour
             MisselTatico missil = missilGO.GetComponent<MisselTatico>();
             if (missil == null) missil = missilGO.AddComponent<MisselTatico>(); // Fallback
             
-            missil.IniciarLancamento(alvo.position);
+            missil.IniciarLancamento(alvo.position, alvo);
             
             // Notificar Menu Satélite
             if (MenuComandoController.Instancia != null)

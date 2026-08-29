@@ -88,6 +88,7 @@ public class ControleUnidade : MonoBehaviour
     private Vector3 ultimoDestinoReplanNavMesh;
     private ControleOrdemMovimentoRuntime controleOrdemMovimento;
     private int sequenciaOrdemMovimento;
+    private string assinaturaPatrulhaAtual = string.Empty;
     private const float IntervaloWatchdogOrdem = 1.25f;
     private const float TempoMaximoSemProgresso = 7.5f;
     private const float IntervaloRelatorioWatchdogBloqueado = 8f;
@@ -789,14 +790,16 @@ public class ControleUnidade : MonoBehaviour
             }
         }
 
-        if (rotaFinal.Count == 1)
-        {
-            rotaFinal.Insert(0, transform.position);
-        }
+        // O ponto atual nunca faz parte da rota designada. A decolagem e o
+        // executor terrestre já conhecem a posição de origem; inserir um
+        // ponto sintético aqui fazia a aeronave iniciar uma missão mirando a
+        // própria vaga/posição anterior e dava a impressão de que o novo
+        // clique do Menu Satélite tinha sido ignorado.
 
+        string assinaturaRota = CalcularAssinaturaRota(rotaFinal);
         bool ordemPatrulhaIdempotente;
         if (!TentarPrepararOrdemMovimento(
-                ObterOuCriarIdOrdemMovimento("patrulha", rotaFinal[0], TipoOrdemMovimento.Patrulha),
+                ObterOuCriarIdOrdemPatrulha(assinaturaRota),
                 nameof(ControleUnidade),
                 rotaFinal[0],
                 TipoOrdemMovimento.Patrulha,
@@ -809,6 +812,8 @@ public class ControleUnidade : MonoBehaviour
         {
             return true;
         }
+
+        assinaturaPatrulhaAtual = assinaturaRota;
 
         // O vinculo com aeroporto controla pouso e abastecimento, mas nao pode
         // impedir uma ordem manual enviada pelo menu satelite.
@@ -1032,6 +1037,41 @@ public class ControleUnidade : MonoBehaviour
         sequenciaOrdemMovimento++;
         string baseId = string.IsNullOrWhiteSpace(prefixo) ? "movimento" : prefixo.Trim();
         return baseId + ":" + GetInstanceID() + ":" + sequenciaOrdemMovimento;
+    }
+
+    private string ObterOuCriarIdOrdemPatrulha(string assinatura)
+    {
+        if (controleOrdemMovimento != null
+            && controleOrdemMovimento.PossuiOrdemAtiva
+            && controleOrdemMovimento.Atual.Tipo == TipoOrdemMovimento.Patrulha
+            && string.Equals(assinaturaPatrulhaAtual, assinatura, System.StringComparison.Ordinal))
+        {
+            return controleOrdemMovimento.Atual.Id;
+        }
+
+        sequenciaOrdemMovimento++;
+        return "patrulha:" + GetInstanceID() + ":" + sequenciaOrdemMovimento + ":" + assinatura;
+    }
+
+    private static string CalcularAssinaturaRota(IList<Vector3> rota)
+    {
+        unchecked
+        {
+            int hash = 17;
+            hash = hash * 31 + (rota != null ? rota.Count : 0);
+            if (rota != null)
+            {
+                for (int i = 0; i < rota.Count; i++)
+                {
+                    Vector3 ponto = rota[i];
+                    hash = hash * 31 + Mathf.RoundToInt(ponto.x * 10f);
+                    hash = hash * 31 + Mathf.RoundToInt(ponto.y * 10f);
+                    hash = hash * 31 + Mathf.RoundToInt(ponto.z * 10f);
+                }
+            }
+
+            return hash.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
     }
 
     /// <summary>
@@ -2453,10 +2493,9 @@ public class ControleUnidade : MonoBehaviour
             Debug.LogError($"[ControleUnidade] {name} mistura Helicoptero com controladores aereos de aviao/transporte. Essa combinacao nao e suportada na trilha oficial.", this);
         }
 
-        if (c700TransporteAereo != null && controleAviao == null)
-        {
-            Debug.LogWarning($"[ControleUnidade] {name} possui C700TransporteAereo sem ControleAviao. Revise o prefab antes da migracao final.", this);
-        }
+        // O C700 é uma aeronave de transporte com máquina de voo própria.
+        // ControleAviao é legado e fica desligado no prefab para evitar
+        // conflito de posição/rotação.
     }
 
     private void SincronizarModoCombateOficial()

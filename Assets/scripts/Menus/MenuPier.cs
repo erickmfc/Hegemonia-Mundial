@@ -35,6 +35,11 @@ public class MenuPier : MonoBehaviour
 
     void Update()
     {
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return;
+        }
+
         // O píer pode ser destruído durante um ataque enquanto a UI ainda
         // mantém a referência antiga. Fechar e limpar o alvo evita callbacks
         // de botões acessando transform/vagas de um objeto já destruído.
@@ -66,6 +71,11 @@ public class MenuPier : MonoBehaviour
 
     public static bool AlternarPorAtalho(PierMarinha pierPreferido = null)
     {
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return false;
+        }
+
         if (Time.frameCount == ultimoFrameAtalho)
         {
             return false;
@@ -108,6 +118,11 @@ public class MenuPier : MonoBehaviour
 
     public void AlternarMenu()
     {
+        if (!menuAberto && QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return;
+        }
+
         // 1. Garante que temos um Pier alvo
         if (pierAlvo == null)
         {

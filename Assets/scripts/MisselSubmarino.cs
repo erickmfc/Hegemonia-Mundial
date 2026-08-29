@@ -51,6 +51,8 @@ public class MisselSubmarino : MonoBehaviour
     private float tempoDesdeSuperficie = 0f;
     private bool naSuperficie = false;
     private Rigidbody rb;
+    private Vector3 ultimaPosicaoGuiagem;
+    private bool possuiUltimaPosicaoGuiagem;
     private static readonly Collider[] bufferExplosao = new Collider[48];
     private bool jaExplodiu = false;
     private float tempoExpirar;
@@ -91,6 +93,8 @@ public class MisselSubmarino : MonoBehaviour
 
         pontoAlvo = alvo;
         alvoTransform = alvoT;
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
         estaSubmerso = submarinSubmerso;
         lancado = true;
         tempoLancamento = Time.time;
@@ -254,6 +258,10 @@ public class MisselSubmarino : MonoBehaviour
         }
 
         if (alvoTransform != null) pontoAlvo = alvoTransform.position;
+
+        Vector3 pontoDeMira = alvoTransform != null
+            ? GuidagemAlvoMovel.ObterPontoDeMira(alvoTransform, transform.position, velocidadeAtual, 2f)
+            : pontoAlvo;
         
         // Timer do turbo
         if (naSuperficie && !modoTurboAtivo && !atingiuAlturaVoo)
@@ -261,16 +269,25 @@ public class MisselSubmarino : MonoBehaviour
             tempoDesdeSuperficie += Time.fixedDeltaTime;
         }
 
+        if (!atingiuAlturaVoo)
+        {
+            // O impulso vertical inicial não deve ser confundido com um
+            // trecho da trajetória terminal.
+            ultimaPosicaoGuiagem = transform.position;
+            possuiUltimaPosicaoGuiagem = true;
+        }
+
         if (atingiuAlturaVoo)
         {
             AtualizarVelocidade(Time.fixedDeltaTime);
             
             // --- NOVA LÓGICA DE NAVEGAÇÃO ROBUSTA ---
-            Vector3 vetorParaAlvoGlobal = pontoAlvo - transform.position;
+            Vector3 vetorParaAlvoGlobal = pontoDeMira - transform.position;
             float distanciaTotal = vetorParaAlvoGlobal.magnitude;
+            float distanciaAlvoReal = Vector3.Distance(transform.position, pontoAlvo);
             
             Vector3 posicaoHorizontal = new Vector3(transform.position.x, 0, transform.position.z);
-            Vector3 alvoHorizontal = new Vector3(pontoAlvo.x, 0, pontoAlvo.z);
+            Vector3 alvoHorizontal = new Vector3(pontoDeMira.x, 0, pontoDeMira.z);
             float distanciaHorizontal = Vector3.Distance(posicaoHorizontal, alvoHorizontal);
 
             Vector3 direcaoDesejada;
@@ -320,8 +337,17 @@ public class MisselSubmarino : MonoBehaviour
 
             // 3. DETONADOR DE PROXIMIDADE
             // Aumentado levemente para evitar missed hits por frame skipping em alta velocidade
-            if (distanciaTotal < 5.0f || (distanciaTotal < 10.0f && velocidadeAtual > 100f))
+            bool cruzouAlvo = GuidagemAlvoMovel.TentarObterPontoMaisProximoNoSegmento(
+                possuiUltimaPosicaoGuiagem ? ultimaPosicaoGuiagem : transform.position,
+                transform.position,
+                pontoAlvo,
+                out Vector3 pontoImpacto,
+                Mathf.Max(5f, velocidadeAtual * Time.fixedDeltaTime));
+            ultimaPosicaoGuiagem = transform.position;
+            possuiUltimaPosicaoGuiagem = true;
+            if (distanciaAlvoReal < 5.0f || (distanciaAlvoReal < 10.0f && velocidadeAtual > 100f) || cruzouAlvo)
             {
+                if (cruzouAlvo) transform.position = pontoImpacto;
                 Explodir();
             }
         }
@@ -340,18 +366,33 @@ public class MisselSubmarino : MonoBehaviour
         if (Time.time < tempoLancamento + 1.2f) return; // Delay de armamento para evitar explosão na ponta do cano
         if (collision.collider.CompareTag("Missel")) return;
 
-        Explodir();
+        if (PodeDetonarAoColidir(collision.collider)) Explodir();
     }
     
     void OnTriggerEnter(Collider other)
     {
         if (Time.time < tempoLancamento + 1.2f) return;
-        if (other.isTrigger) return;
-        
         string strTag = other.tag;
         if (strTag == "Player" || strTag == "Missel" || strTag == "IgnorarExplosao") return;
 
-        Explodir();
+        if (PodeDetonarAoColidir(other)) Explodir();
+    }
+
+    private bool PodeDetonarAoColidir(Collider other)
+    {
+        if (other == null) return false;
+        string tag = other.tag;
+        if (tag == "Player" || tag == "Missel" || tag == "IgnorarExplosao") return false;
+
+        if (alvoTransform != null)
+        {
+            Transform raizAlvo = alvoTransform.root != null ? alvoTransform.root : alvoTransform;
+            Transform raizColisor = other.transform.root != null ? other.transform.root : other.transform;
+            if (raizColisor == raizAlvo || other.transform.IsChildOf(raizAlvo)) return true;
+        }
+
+        if (other.isTrigger) return false;
+        return Vector3.Distance(other.ClosestPoint(transform.position), pontoAlvo) <= 8f;
     }
     
     [Header("Efeitos da Explosão")]
@@ -370,6 +411,7 @@ public class MisselSubmarino : MonoBehaviour
         }
 
         jaExplodiu = true;
+        lancado = false;
 
         // Debug eliminado para performance se necessário, mas mantido por enquanto
         // Debug.Log("Míssil explodiu!");
@@ -425,7 +467,8 @@ public class MisselSubmarino : MonoBehaviour
                 continue;
             }
 
-            SistemaDeDanos sistemaDano = obj.GetComponent<SistemaDeDanos>();
+            SistemaDeDanos sistemaDano = obj.GetComponent<SistemaDeDanos>()
+                ?? obj.GetComponentInParent<SistemaDeDanos>();
             if (sistemaDano != null)
             {
                 float distancia = Vector3.Distance(transform.position, obj.transform.position);
@@ -457,6 +500,8 @@ public class MisselSubmarino : MonoBehaviour
         tempoDesdeSuperficie = 0f;
         naSuperficie = false;
         jaExplodiu = false;
+        ultimaPosicaoGuiagem = Vector3.zero;
+        possuiUltimaPosicaoGuiagem = false;
     }
     
     void OnDrawGizmosSelected()

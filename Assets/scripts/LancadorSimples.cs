@@ -231,32 +231,24 @@ public class LancadorSimples : MonoBehaviour
         // Calcula o destino (posição atual do alvo + previsão de movimento)
         Vector3 destino = alvo != null ? alvo.position : (transform.position + transform.forward * 100f);
 
-        // Tenta inicializar o script do míssil
-        var icbm = missel.GetComponent<MisselICBM>();
-        if (icbm != null)
+        // O lançador simples também pode receber prefabs configurados para
+        // os controladores navais, aéreos ou legados. Centralizar a chamada
+        // impede que uma rajada consuma munição com mísseis sem destino.
+        if (missel == null)
         {
-            icbm.IniciarLancamento(destino);
-            MissileThreatTracker.RegistrarLancamento(missel, this, destino, alvo, MissileThreatTracker.EstimarVelocidade(missel));
+            Debug.LogError("[LançadorSimples] O pool não conseguiu criar o míssil.", this);
             yield break;
         }
-
-        var tatico = missel.GetComponent<MisselTatico>();
-        if (tatico != null)
+        if (!InicializadorLancamentoMissil.Inicializar(
+                missel,
+                destino,
+                alvo,
+                this,
+                ponto,
+                gameObject))
         {
-            tatico.IniciarLancamento(destino);
-            MissileThreatTracker.RegistrarLancamento(missel, this, destino, alvo, MissileThreatTracker.EstimarVelocidade(missel));
-            yield break;
-        }
-
-        // Fallback: Projétil genérico
-        var projetil = missel.GetComponent<Projetil>();
-        if (projetil == null) projetil = missel.AddComponent<Projetil>();
-        
-        projetil.SetDono(gameObject);
-        if (alvo != null)
-        {
-            Vector3 direcao = (alvo.position - ponto.position).normalized;
-            projetil.SetDirecao(direcao);
+            PoolDeObjetosCombate.Release(missel);
+            Debug.LogError("[LançadorSimples] Prefab de míssil sem controlador de voo válido.", this);
         }
     }
 

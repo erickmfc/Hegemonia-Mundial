@@ -872,6 +872,16 @@ public class ControleAviao : MonoBehaviour
         alvoPrioritarioIA = false;
         indiceRetanguloPatrulha = 0;
 
+        // O lançamento do porta-aviões pode entregar uma rota multiponto já
+        // registrada pelo menu. O destino recebido pelo método é apenas o
+        // último ponto usado para solicitar a decolagem; ele não deve apagar
+        // nem substituir a sequência da patrulha.
+        bool possuiRotaPatrulha = rotaPatrulhaSalva != null && rotaPatrulhaSalva.Count > 0;
+        if (possuiRotaPatrulha)
+        {
+            destino = rotaPatrulhaSalva[0];
+        }
+
         float altitudeSegura = Mathf.Max(altitudeVoo, 60f);
         destino.y = Mathf.Max(destino.y, altitudeSegura);
         alvoGPSVoo = destino;
@@ -1009,7 +1019,7 @@ public class ControleAviao : MonoBehaviour
         ultimoObjetivoMissao = rotaPatrulhaSalva[rotaPatrulhaSalva.Count - 1];
 
         // Atualiza a rota imediatamente se já estiver no ar
-        if (estadoAtual == EstadoAviao.EmMissao)
+        if (estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Decolando)
         {
             AtualizarDestinoPatrulha(rotaPatrulhaSalva[0]);
         }

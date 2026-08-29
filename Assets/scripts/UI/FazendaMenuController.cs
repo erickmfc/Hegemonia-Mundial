@@ -35,6 +35,11 @@ public sealed class FazendaMenuController : MonoBehaviour
 
     public static bool AbrirPara(Fazenda fazenda)
     {
+        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        {
+            return false;
+        }
+
         if (fazenda == null)
         {
             return false;
@@ -291,6 +296,13 @@ public sealed class FazendaMenuController : MonoBehaviour
     private void Fechar()
     {
         FecharInterno(true);
+    }
+
+    // Usado quando um modal exclusivo, como o Quartel, assume o foco.
+    // Fecha apenas a interface e preserva o estado operacional da fazenda.
+    public void FecharParaOutraInterface()
+    {
+        FecharInterno(false);
     }
 
     private void FecharInterno(bool encerrarEstado)

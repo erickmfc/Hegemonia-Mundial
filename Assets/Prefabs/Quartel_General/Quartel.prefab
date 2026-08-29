@@ -1692,7 +1692,9 @@ MonoBehaviour:
   metaEfetivo: 24
   tempoFormacaoSegundos: 10
   teamID: 1
-  abrirPainelAoIniciarNoPlayMode: 1
+  abrirPainelAoIniciarNoPlayMode: 0
+  habilitarLancamentoCoordenado: 1
+  memoriaTrilhasLancamentoSegundos: 30
 --- !u!114 &-708834191034600112
 MonoBehaviour:
   m_ObjectHideFlags: 0

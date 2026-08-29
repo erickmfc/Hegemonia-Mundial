@@ -104,6 +104,10 @@ public class MisselBombardeiro : MonoBehaviour
     {
         alvoFixo  = pontoAlvo;
         alvoMovel = null;
+        // Esta instância pode voltar pelo pool depois de um lançamento
+        // rastreado. O disparo por coordenada precisa limpar explicitamente
+        // o modo móvel para não reutilizar um alvo antigo.
+        rastrearAlvoMovel = false;
         dono      = quemLancou;
         IniciarVoo();
     }
@@ -113,6 +117,10 @@ public class MisselBombardeiro : MonoBehaviour
     {
         alvoMovel = alvomovendo;
         alvoFixo  = alvomovendo != null ? alvomovendo.position : transform.position + transform.forward * 300f;
+        // O método rastreado é a autoridade para habilitar a atualização
+        // contínua do alvo; depender do valor serializado do prefab fazia
+        // alguns bombardeiros seguirem apenas a coordenada inicial.
+        rastrearAlvoMovel = alvomovendo != null;
         dono      = quemLancou;
         IniciarVoo();
     }
@@ -164,15 +172,18 @@ public class MisselBombardeiro : MonoBehaviour
 
         // Atualiza posição do alvo móvel a cada frame
         Vector3 pontoAlvoAtual = (rastrearAlvoMovel && alvoMovel != null) ? alvoMovel.position : alvoFixo;
+        Vector3 pontoDeMira = (rastrearAlvoMovel && alvoMovel != null)
+            ? GuidagemAlvoMovel.ObterPontoDeMira(alvoMovel, transform.position, velocidadeAtual, 2f)
+            : pontoAlvoAtual;
 
         // ─── FASE 1: ARCO DE SUBIDA ──────────────────────────
         if (emArco)
         {
             // Aponta para o ponto alto acima do alvo
-            Vector3 pontoAlto = new Vector3(pontoAlvoAtual.x, pontoAlvoAtual.y + alturaDoArco, pontoAlvoAtual.z);
+            Vector3 pontoAlto = new Vector3(pontoDeMira.x, pontoDeMira.y + alturaDoArco, pontoDeMira.z);
             float distHoriz = Vector3.Distance(
                 new Vector3(transform.position.x, 0, transform.position.z),
-                new Vector3(pontoAlvoAtual.x, 0, pontoAlvoAtual.z)
+                new Vector3(pontoDeMira.x, 0, pontoDeMira.z)
             );
 
             // Transição: quando fica perto o suficiente ou subiu alto o suficiente, mergulha
@@ -191,7 +202,7 @@ public class MisselBombardeiro : MonoBehaviour
         // ─── FASE 2: MERGULHO PRECISO NO ALVO ────────────────
         else
         {
-            GirarPara(pontoAlvoAtual);
+                GirarPara(pontoDeMira);
 
             // Fusil de proximidade: detona antes de mais nada
             float distAlvo = Vector3.Distance(transform.position, pontoAlvoAtual);
@@ -203,8 +214,19 @@ public class MisselBombardeiro : MonoBehaviour
         }
 
         // Acelera progressivamente
+        Vector3 posicaoAnterior = transform.position;
         velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeMaxima, aceleracao * Time.deltaTime);
         transform.position += transform.forward * velocidadeAtual * Time.deltaTime;
+
+        if (!emArco && (Vector3.Distance(transform.position, pontoAlvoAtual) <= fusilProximidade
+            || GuidagemAlvoMovel.SegmentoAtingePonto(
+                posicaoAnterior,
+                transform.position,
+                pontoAlvoAtual,
+                Mathf.Max(fusilProximidade, velocidadeAtual * Time.deltaTime))))
+        {
+            Detonar();
+        }
     }
 
     private void GirarPara(Vector3 destino)
@@ -218,15 +240,38 @@ public class MisselBombardeiro : MonoBehaviour
     void OnCollisionEnter(Collision col)
     {
         if (!lancado || tempoVivo < atrasoGuiagem) return;
-        if (dono != null && col.gameObject.transform.IsChildOf(dono.transform)) return;
-        Detonar();
+        if (PodeDetonarAoColidir(col.collider)) Detonar();
     }
 
     void OnTriggerEnter(Collider other)
     {
         if (!lancado || tempoVivo < atrasoGuiagem) return;
-        if (dono != null && other.gameObject.transform.IsChildOf(dono.transform)) return;
-        Detonar();
+        if (PodeDetonarAoColidir(other)) Detonar();
+    }
+
+    private bool PodeDetonarAoColidir(Collider other)
+    {
+        if (other == null) return false;
+        if (other.CompareTag("Player") || other.CompareTag("Missel") || other.CompareTag("IgnorarExplosao")) return false;
+        if (dono != null)
+        {
+            Transform raizDono = dono.transform.root != null ? dono.transform.root : dono.transform;
+            Transform raizOutro = other.transform.root != null ? other.transform.root : other.transform;
+            if (raizOutro == raizDono || other.transform.IsChildOf(raizDono)) return false;
+        }
+
+        Transform alvoAtual = alvoMovel != null && alvoMovel.gameObject.activeInHierarchy ? alvoMovel : null;
+        if (alvoAtual != null)
+        {
+            Transform raizAlvo = alvoAtual.root != null ? alvoAtual.root : alvoAtual;
+            Transform raizOutro = other.transform.root != null ? other.transform.root : other.transform;
+            if (raizOutro == raizAlvo || other.transform.IsChildOf(raizAlvo)) return true;
+            if (other.isTrigger) return false;
+            return Vector3.Distance(other.ClosestPoint(transform.position), alvoAtual.position) <= fusilProximidade;
+        }
+
+        if (other.isTrigger) return false;
+        return Vector3.Distance(other.ClosestPoint(transform.position), alvoFixo) <= fusilProximidade;
     }
 
     private void Detonar()

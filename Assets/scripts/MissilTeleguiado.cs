@@ -12,12 +12,20 @@ public class MissilTeleguiado : MonoBehaviour
     public float distanciaDeImpacto = 2f;
     public float tempoDeVida = 15f;
     private float tempoExpirar;
+    private Vector3 ultimaPosicaoGuiagem;
+    private bool possuiUltimaPosicaoGuiagem;
+    private Vector3 pontoAlvoFixo;
+    private bool alvoFixoPorCoordenada;
 
     void OnEnable()
     {
         IA_CombatTelemetry.RegisterMissile();
         alvo = null;
+        pontoAlvoFixo = transform.position;
+        alvoFixoPorCoordenada = false;
         tempoExpirar = Time.time + tempoDeVida;
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
     }
 
     void OnDisable()
@@ -28,8 +36,37 @@ public class MissilTeleguiado : MonoBehaviour
 
     public void DefinirAlvo(Transform novoAlvo)
     {
+        alvoFixoPorCoordenada = false;
         alvo = ControleSubmarino.PodeSerAlvoConvencional(novoAlvo) ? novoAlvo : null;
-        tempoExpirar = Time.time + tempoDeVida;
+        AtualizarPrazoDeVoo(novoAlvo != null ? novoAlvo.position : transform.position);
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
+    }
+
+    /// <summary>
+    /// Define um ponto manual sem deixar o míssil procurar automaticamente
+    /// outra aeronave. Esse caminho é usado por lançamentos coordenados por
+    /// posição quando o prefab legado ainda contém apenas este componente.
+    /// </summary>
+    public void DefinirAlvo(Vector3 ponto)
+    {
+        alvo = null;
+        pontoAlvoFixo = ponto;
+        alvoFixoPorCoordenada = true;
+        AtualizarPrazoDeVoo(ponto);
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
+    }
+
+    // O prazo legado de 15 s era suficiente apenas para alvos próximos. Em
+    // lançamentos por coordenada o mesmo míssil era liberado no meio do mar
+    // antes de alcançar o destino. O prazo agora respeita a distância real,
+    // sem alterar velocidade, dano ou guiagem.
+    private void AtualizarPrazoDeVoo(Vector3 destino)
+    {
+        float distancia = Vector3.Distance(transform.position, destino);
+        float segundosNecessarios = distancia / Mathf.Max(velocidade, 1f) + 6f;
+        tempoExpirar = Time.time + Mathf.Max(tempoDeVida, segundosNecessarios);
     }
 
     void Update()
@@ -40,7 +77,7 @@ public class MissilTeleguiado : MonoBehaviour
             return;
         }
 
-        if (alvo == null || !ControleSubmarino.PodeSerAlvoConvencional(alvo))
+        if (!alvoFixoPorCoordenada && (alvo == null || !ControleSubmarino.PodeSerAlvoConvencional(alvo)))
         {
             alvo = null;
             BuscarNovoAlvo();
@@ -52,19 +89,42 @@ public class MissilTeleguiado : MonoBehaviour
             }
         }
 
-        Vector3 direcao = alvo.position - transform.position;
-        float distancia = direcao.magnitude;
+        Vector3 posicaoAnterior = transform.position;
+        Vector3 pontoAtual = alvoFixoPorCoordenada ? pontoAlvoFixo : alvo.position;
+        Vector3 pontoDeMira = alvoFixoPorCoordenada
+            ? pontoAlvoFixo
+            : GuidagemAlvoMovel.ObterPontoDeMira(
+                alvo,
+                transform.position,
+                Mathf.Max(velocidade, 1f),
+                1.5f);
+        Vector3 direcao = pontoDeMira - transform.position;
+        float distancia = Vector3.Distance(pontoAtual, transform.position);
         float distanciaFrame = velocidade * Time.deltaTime;
+        Vector3 direcaoNormalizada = direcao.sqrMagnitude > 0.0001f
+            ? direcao.normalized
+            : transform.forward;
+        Vector3 posicaoSeguinte = posicaoAnterior + direcaoNormalizada * distanciaFrame;
+        bool cruzouAlvo = GuidagemAlvoMovel.SegmentoAtingePonto(
+            possuiUltimaPosicaoGuiagem ? ultimaPosicaoGuiagem : posicaoAnterior,
+            posicaoSeguinte,
+            pontoAtual,
+            Mathf.Max(distanciaDeImpacto, distanciaFrame * 1.1f));
 
-        if (distancia <= distanciaDeImpacto)
+        if (distancia <= distanciaDeImpacto || cruzouAlvo)
         {
             AplicarDano();
             Liberar();
             return;
         }
 
-        transform.Translate(direcao.normalized * distanciaFrame, Space.World);
-        transform.LookAt(alvo);
+        transform.position = posicaoSeguinte;
+        if (direcao.sqrMagnitude > 0.0001f)
+        {
+            transform.rotation = Quaternion.LookRotation(direcaoNormalizada, Vector3.up);
+        }
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
     }
 
     void BuscarNovoAlvo()
@@ -104,14 +164,18 @@ public class MissilTeleguiado : MonoBehaviour
     {
         if (alvo == null) return;
 
-        SistemaDeDanos sistemaDanos = alvo.GetComponent<SistemaDeDanos>();
+        SistemaDeDanos sistemaDanos = alvo.GetComponent<SistemaDeDanos>()
+            ?? alvo.GetComponentInParent<SistemaDeDanos>()
+            ?? alvo.GetComponentInChildren<SistemaDeDanos>(true);
         if (sistemaDanos != null)
         {
             sistemaDanos.ReceberDano(dano);
             return;
         }
 
-        AtributosPredio predioAtrib = alvo.GetComponent<AtributosPredio>();
+        AtributosPredio predioAtrib = alvo.GetComponent<AtributosPredio>()
+            ?? alvo.GetComponentInParent<AtributosPredio>()
+            ?? alvo.GetComponentInChildren<AtributosPredio>(true);
         if (predioAtrib != null)
         {
             predioAtrib.vidaAtual -= dano;

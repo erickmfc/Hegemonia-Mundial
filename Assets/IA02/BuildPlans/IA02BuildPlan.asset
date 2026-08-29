@@ -1,0 +1,273 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f73013e75c736e748bab1d2a80aa9768, type: 3}
+  m_Name: IA02BuildPlan
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildPlan
+  planId: ia02.plan.expansionista
+  layoutVersion: 1
+  steps:
+  - stepId: capital.prefeitura
+    constructionData: {fileID: 11400000, guid: 4934db4bcc5643c46853021a6667ef68, type: 2}
+    requiredRole: 15
+    placementMode: 0
+    primarySlotId: ia02.local.prefeitura_01
+    slotGroupId: capital
+    autonomousZoneId: 
+    required: 1
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 1
+      target: 1
+      role: 0
+    failurePolicy: 4
+  - stepId: energia.energia.inicial
+    constructionData: {fileID: 11400000, guid: fd0ea3b7d5c1d3442958d74b1be146c6, type: 2}
+    requiredRole: 3
+    placementMode: 1
+    primarySlotId: 
+    slotGroupId: energia
+    autonomousZoneId: 
+    required: 1
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 5
+      target: 1
+      role: 0
+    failurePolicy: 1
+  - stepId: comida.comida.fazenda
+    constructionData: {fileID: 11400000, guid: e6baa00834f418749a76f99fb04f3e85, type: 2}
+    requiredRole: 2
+    placementMode: 1
+    primarySlotId: 
+    slotGroupId: agricola
+    autonomousZoneId: 
+    required: 1
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 4
+      target: 1
+      role: 0
+    failurePolicy: 1
+  - stepId: residencial.residencial.casa
+    constructionData: {fileID: 11400000, guid: e4c3d65f2425e654d955a5e0b0a24467, type: 2}
+    requiredRole: 1
+    placementMode: 1
+    primarySlotId: 
+    slotGroupId: residencial
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 4
+    cooldownAfterCompletion: 0
+    condition:
+      type: 3
+      target: 1
+      role: 0
+    failurePolicy: 1
+  - stepId: armazenamento.logistica.armazem
+    constructionData: {fileID: 11400000, guid: 67f78e06014bf0746bf59dc44dda8e15, type: 2}
+    requiredRole: 4
+    placementMode: 1
+    primarySlotId: 
+    slotGroupId: logistica
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 2
+    cooldownAfterCompletion: 0
+    condition:
+      type: 6
+      target: 1
+      role: 0
+    failurePolicy: 1
+  - stepId: naval.naval.estaleiro
+    constructionData: {fileID: 11400000, guid: b9abb8cd25535964988af08ef685b9fb, type: 2}
+    requiredRole: 19
+    placementMode: 0
+    primarySlotId: ia02.local.estaleiro
+    slotGroupId: abertura_inicial
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: abertura.militar.tenda
+    constructionData: {fileID: 11400000, guid: 33616df4113469543a3551353eee4b3b, type: 2}
+    requiredRole: 9
+    placementMode: 0
+    primarySlotId: ia02.local.tenda
+    slotGroupId: abertura_inicial
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: abertura.residencial.casa
+    constructionData: {fileID: 11400000, guid: e4c3d65f2425e654d955a5e0b0a24467, type: 2}
+    requiredRole: 1
+    placementMode: 0
+    primarySlotId: ia02.local.casa
+    slotGroupId: abertura_inicial
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: abertura.residencial.apartamento_medio
+    constructionData: {fileID: 11400000, guid: 8245c101c2a90b5418fe6d70832aabdd, type: 2}
+    requiredRole: 1
+    placementMode: 0
+    primarySlotId: ia02.local.apartamento_medio
+    slotGroupId: abertura_inicial
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: abertura.residencial.apartamento_alto
+    constructionData: {fileID: 11400000, guid: 970629437f678e448a143e3e991bf67e, type: 2}
+    requiredRole: 1
+    placementMode: 0
+    primarySlotId: ia02.local.apartamento_alto
+    slotGroupId: abertura_inicial
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: abertura.militar.construtor_veiculos
+    constructionData: {fileID: 11400000, guid: 645503ced41fcb1479239e8a947b9aef, type: 2}
+    requiredRole: 9
+    placementMode: 0
+    primarySlotId: ia02.local.construtor_veiculos
+    slotGroupId: abertura_inicial
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: abertura.aereo.aeroporto_militar
+    constructionData: {fileID: 11400000, guid: 3fc9cbfd978d005429f8ac8ea3bf478b, type: 2}
+    requiredRole: 10
+    placementMode: 0
+    primarySlotId: ia02.local.aeroporto_militar
+    slotGroupId: abertura_inicial
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: abertura.aereo.aeroporto_comercial
+    constructionData: {fileID: 11400000, guid: 5ea4839200ddaca419d8c91e33d4e697, type: 2}
+    requiredRole: 10
+    placementMode: 0
+    primarySlotId: ia02.local.aeroporto_comercial
+    slotGroupId: abertura_inicial
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: naval.pier
+    constructionData: {fileID: 11400000, guid: 049d629974210464ea2a8e621f6dc6a4, type: 2}
+    requiredRole: 17
+    placementMode: 0
+    primarySlotId: ia02.local.pier
+    slotGroupId: infraestrutura_estrategica
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: naval.plataforma
+    constructionData: {fileID: 11400000, guid: 1248a0cf1bfa3cc4fa60960cb29fed68, type: 2}
+    requiredRole: 11
+    placementMode: 1
+    primarySlotId: 
+    slotGroupId: plataformas_offshore
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: abertura.militar.quartel
+    constructionData: {fileID: 11400000, guid: 33616df4113469543a3551353eee4b3b, type: 2}
+    requiredRole: 9
+    placementMode: 0
+    primarySlotId: ia02.local.quartel
+    slotGroupId: infraestrutura_estrategica
+    autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0

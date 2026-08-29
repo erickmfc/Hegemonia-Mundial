@@ -1118,7 +1118,7 @@ public class SistemaAntiMissil : MonoBehaviour
                     if (misselSubmarino != null)
                     {
                         bool nasceuSubmerso = missilGerado.transform.position.y < 0f;
-                        misselSubmarino.IniciarLancamento(posicaoPredita, nasceuSubmerso);
+                        misselSubmarino.IniciarLancamento(posicaoPredita, nasceuSubmerso, alvoResolvido);
                         inicializado = true;
                     }
                     else
@@ -1126,7 +1126,7 @@ public class SistemaAntiMissil : MonoBehaviour
                         MisselICBM misselIcbm = missilGerado.GetComponent<MisselICBM>();
                         if (misselIcbm != null)
                         {
-                            misselIcbm.IniciarLancamento(posicaoPredita);
+                            misselIcbm.IniciarLancamento(posicaoPredita, alvoResolvido);
                             inicializado = true;
                         }
                         else

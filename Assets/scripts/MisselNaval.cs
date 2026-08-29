@@ -58,6 +58,8 @@ public class MisselNaval : MonoBehaviour
     private bool jaExplodiu = false;
     private float tempoExpirar;
     private bool alvoEhAereo = false;
+    private Vector3 ultimaPosicaoGuiagem;
+    private bool possuiUltimaPosicaoGuiagem;
     private Quaternion rotacaoVisualLocal = Quaternion.identity;
     private Quaternion correcaoOrientacaoVisual = Quaternion.identity;
 
@@ -119,12 +121,26 @@ public class MisselNaval : MonoBehaviour
         pontoAlvo = alvo;
         alvoTransform = alvoT;
         alvoEhAereo = DetectarAlvoAereo(alvoT, alvo);
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
         lancado = true;
         jaExplodiu = false;
         emNavegacao = false;
-        tempoExpirar = Time.time + tempoMaximoVida;
+        AtualizarPrazoDeVoo(alvo);
         transform.rotation = RotacaoParaDirecao(Vector3.up);
         StartCoroutine(SequenciaDeVoo());
+    }
+
+    // A vida máxima do prefab era fixa (24 s). Para um alvo de coordenada
+    // distante isso detonava o míssil antes da aproximação terminal. Mantém o
+    // mínimo configurado, mas concede o tempo físico necessário para o voo.
+    private void AtualizarPrazoDeVoo(Vector3 destino)
+    {
+        float distancia = Vector3.Distance(transform.position, destino);
+        float tempoCruzeiro = distancia / Mathf.Max(velocidadeCruzeiro, 1f);
+        float margemSeguranca = 12f;
+        float tempoNecessario = tempoEjecao + tempoBoostVertical + tempoCruzeiro + margemSeguranca;
+        tempoExpirar = Time.time + Mathf.Max(tempoMaximoVida, tempoNecessario);
     }
 
     IEnumerator SequenciaDeVoo()
@@ -173,6 +189,12 @@ public class MisselNaval : MonoBehaviour
 
         if (!emNavegacao)
         {
+            // O deslocamento vertical de ejeção não faz parte da trajetória
+            // de ataque. Atualizar a memória aqui evita testar esse trecho
+            // como se fosse um cruzamento do alvo no primeiro frame de
+            // navegação.
+            ultimaPosicaoGuiagem = transform.position;
+            possuiUltimaPosicaoGuiagem = true;
             return;
         }
 
@@ -181,7 +203,14 @@ public class MisselNaval : MonoBehaviour
             pontoAlvo = alvoTransform.position;
         }
 
-        Vector3 vetorParaAlvo = pontoAlvo - transform.position;
+        Vector3 posicaoAtual = transform.position;
+        Vector3 posicaoAnterior = possuiUltimaPosicaoGuiagem ? ultimaPosicaoGuiagem : posicaoAtual;
+        Vector3 pontoDeMira = alvoTransform != null
+            ? GuidagemAlvoMovel.ObterPontoDeMira(alvoTransform, transform.position, velocidadeAtual, 2f)
+            : pontoAlvo;
+
+        Vector3 vetorParaAlvo = pontoDeMira - transform.position;
+        float distanciaAlvoReal = Vector3.Distance(transform.position, pontoAlvo);
         float distanciaHorizontal = Vector2.Distance(
             new Vector2(transform.position.x, transform.position.z),
             new Vector2(pontoAlvo.x, pontoAlvo.z));
@@ -234,10 +263,21 @@ public class MisselNaval : MonoBehaviour
             ? Mathf.Max(10f, raioDetonacaoProximidadeAerea)
             : 10f;
 
-        if (distanciaTotal < distanciaDetonacao)
+        bool cruzouAlvo = GuidagemAlvoMovel.TentarObterPontoMaisProximoNoSegmento(
+            posicaoAnterior,
+            posicaoAtual,
+            pontoAlvo,
+            out Vector3 pontoImpacto,
+            distanciaDetonacao);
+        if (distanciaAlvoReal < distanciaDetonacao || cruzouAlvo)
         {
+            if (cruzouAlvo) transform.position = pontoImpacto;
             Explodir();
+            return;
         }
+
+        ultimaPosicaoGuiagem = transform.position;
+        possuiUltimaPosicaoGuiagem = true;
     }
 
     void GirarPara(Vector3 direcao, float velocidadeGiro)
@@ -312,7 +352,7 @@ public class MisselNaval : MonoBehaviour
     void OnCollisionEnter(Collision collision)
     {
         if (DeveIgnorarTrigger(collision.collider)) return;
-        Explodir();
+        if (PodeDetonarAoColidir(collision.collider)) Explodir();
     }
 
     void OnTriggerEnter(Collider other)
@@ -322,7 +362,7 @@ public class MisselNaval : MonoBehaviour
             return;
         }
 
-        Explodir();
+        if (PodeDetonarAoColidir(other)) Explodir();
     }
 
     void Explodir()
@@ -333,6 +373,7 @@ public class MisselNaval : MonoBehaviour
         }
 
         jaExplodiu = true;
+        lancado = false;
 
         if (efeitoExplosaoPrefab != null)
         {
@@ -387,7 +428,16 @@ public class MisselNaval : MonoBehaviour
     {
         if (other == null) return true;
         if (other.CompareTag("Player")) return true;
-        if (other.isTrigger) return true;
+        if (other.isTrigger)
+        {
+            Transform raizTrigger = other.transform.root != null ? other.transform.root : other.transform;
+            Transform raizAlvo = alvoTransform != null
+                ? (alvoTransform.root != null ? alvoTransform.root : alvoTransform)
+                : null;
+            // Áreas de radar/trigger do cenário continuam ignoradas, mas um
+            // alvo móvel pode usar um collider trigger como hitbox.
+            return raizAlvo == null || (raizTrigger != raizAlvo && !other.transform.IsChildOf(raizAlvo));
+        }
 
         Transform raizOutro = other.transform.root != null ? other.transform.root : other.transform;
         Transform raizMinha = transform.root != null ? transform.root : transform;
@@ -401,6 +451,23 @@ public class MisselNaval : MonoBehaviour
         return false;
     }
 
+    private bool PodeDetonarAoColidir(Collider other)
+    {
+        if (other == null) return false;
+
+        if (alvoTransform != null)
+        {
+            Transform raizAlvo = alvoTransform.root != null ? alvoTransform.root : alvoTransform;
+            Transform raizColisor = other.transform.root != null ? other.transform.root : other.transform;
+            if (raizColisor == raizAlvo || other.transform.IsChildOf(raizAlvo)) return true;
+        }
+
+        if (other.isTrigger) return false;
+        // Não transformar uma estrutura atravessada em impacto. Para um
+        // alvo fixo, a colisão só vale perto do ponto realmente ordenado.
+        return Vector3.Distance(other.ClosestPoint(transform.position), pontoAlvo) <= 10f;
+    }
+
     private void ResetarEstado()
     {
         pontoAlvo = Vector3.zero;
@@ -410,6 +477,8 @@ public class MisselNaval : MonoBehaviour
         emNavegacao = false;
         velocidadeAtual = 0f;
         jaExplodiu = false;
+        ultimaPosicaoGuiagem = Vector3.zero;
+        possuiUltimaPosicaoGuiagem = false;
     }
 
     private bool DetectarAlvoAereo(Transform alvo, Vector3 pontoFallback)

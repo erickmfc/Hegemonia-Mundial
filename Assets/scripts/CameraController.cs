@@ -67,7 +67,11 @@ public class CameraController : MonoBehaviour
             return;
         }
         
-        bool menusAbertos = MenuConstrucao.EstaAberto || MenuPier.EstaAberto || Fazenda.QualquerFazendaAberta || (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto);
+        bool menusAbertos = QuartelMenuUIController.EntradaGlobalBloqueada
+            || MenuConstrucao.EstaAberto
+            || MenuPier.EstaAberto
+            || Fazenda.QualquerFazendaAberta
+            || (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto);
 
         long cameraTimingStart = DiagnosticoDesempenhoJogo.CapturaAtiva
             ? System.Diagnostics.Stopwatch.GetTimestamp()
