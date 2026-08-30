@@ -2921,8 +2921,10 @@ public class MenuComandoController : MonoBehaviour
 
         if (desenhadorOrdens.modoPatrulhaAtivo)
         {
-            desenhadorOrdens.AdicionarPontoPatrulhaDoMenu(worldPos);
-            SetText(ordemFeedback, $"✔ Ponto de patrulha adicionado em {worldPos.x:F0}, {worldPos.z:F0}\nENTER confirma. ESC ou Botão Direito cancela.");
+            bool adicionado = desenhadorOrdens.AdicionarPontoPatrulhaDoMenu(worldPos);
+            SetText(ordemFeedback, adicionado
+                ? $"✔ Ponto de patrulha adicionado em {worldPos.x:F0}, {worldPos.z:F0}\nENTER confirma. ESC ou Botão Direito cancela."
+                : "⚠ Ponto naval ignorado: escolha uma área de água.");
         }
         else if (desenhadorOrdens.modoSeguirAtivo)
         {

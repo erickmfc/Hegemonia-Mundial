@@ -117,6 +117,8 @@ public class ControleSubmarino : MonoBehaviour
     private bool cursorMiraAtivo = false;
     private Vector3 destinoFallback;
     private bool temDestinoFallback = false;
+    private readonly List<Vector3> rotaAguaAtual = new List<Vector3>(16);
+    private int indiceRotaAgua;
     private float proximaTentativaNavMesh = 0f;
 
     /// <summary>
@@ -344,6 +346,12 @@ public class ControleSubmarino : MonoBehaviour
             return;
         }
 
+        if (Vector3.Distance(transform.position, destinoFallback) <= Mathf.Max(4f, agente.stoppingDistance)
+            && AvancarRotaAgua())
+        {
+            return;
+        }
+
         if (agente.hasPath && agente.remainingDistance > agente.stoppingDistance)
         {
             ExecutarMarchaFrenteRealista();
@@ -418,6 +426,11 @@ public class ControleSubmarino : MonoBehaviour
         float distancia = direcao.magnitude;
         if (distancia <= 4f)
         {
+            if (AvancarRotaAgua())
+            {
+                return;
+            }
+
             temDestinoFallback = false;
             velocidadeAtualSimulada = 0f;
             return;
@@ -1427,6 +1440,26 @@ public class ControleSubmarino : MonoBehaviour
 
         destino.y = ResolverNivelAgua();
 
+        if (temDestinoFallback && rotaAguaAtual.Count > 0
+            && Vector3.Distance(rotaAguaAtual[rotaAguaAtual.Count - 1], destino) < 2f)
+        {
+            return;
+        }
+
+        if (!NavalPlacementResolver.TryBuildWaterRoute(
+                transform.position,
+                destino,
+                18f,
+                out List<Vector3> rotaAgua))
+        {
+            Debug.LogWarning($"[USS Leviathan] Rota recusada: não existe corredor contínuo sobre água até ({destino.x:F0}, {destino.z:F0}).", this);
+            return;
+        }
+
+        rotaAguaAtual.Clear();
+        rotaAguaAtual.AddRange(rotaAgua);
+        indiceRotaAgua = 0;
+
         ControleUnidade controleUnidade = GetComponent<ControleUnidade>()
             ?? GetComponentInParent<ControleUnidade>();
         bool ordemCentralAtiva = controleUnidade != null
@@ -1450,7 +1483,7 @@ public class ControleSubmarino : MonoBehaviour
             }
         }
 
-        destinoFallback = destino;
+        destinoFallback = rotaAguaAtual[0];
         temDestinoFallback = true;
 
         if (agente != null && agente.enabled && !agente.isOnNavMesh)
@@ -1460,14 +1493,13 @@ public class ControleSubmarino : MonoBehaviour
 
         if (agente != null && agente.enabled && agente.isOnNavMesh)
         {
-            if (NavMesh.SamplePosition(destino, out NavMeshHit hitDestino, 30f, agente.areaMask == 0 ? (1 << 3) : agente.areaMask))
+            if (NavMesh.SamplePosition(destinoFallback, out NavMeshHit hitDestino, 30f, agente.areaMask == 0 ? (1 << 3) : agente.areaMask))
             {
-                destino = hitDestino.position;
-                destinoFallback = destino;
+                destinoFallback = hitDestino.position;
             }
 
             temDestinoFallback = false;
-            agente.SetDestination(destino);
+            agente.SetDestination(destinoFallback);
             agente.isStopped = false;
         }
     }
@@ -1478,6 +1510,8 @@ public class ControleSubmarino : MonoBehaviour
         lemeAtual = 0f;
         emMovimento = false;
         temDestinoFallback = false;
+        rotaAguaAtual.Clear();
+        indiceRotaAgua = 0;
 
         if (agente != null && agente.enabled && agente.isOnNavMesh)
         {
@@ -1485,6 +1519,26 @@ public class ControleSubmarino : MonoBehaviour
             agente.isStopped = true;
             agente.velocity = Vector3.zero;
         }
+    }
+
+    private bool AvancarRotaAgua()
+    {
+        if (rotaAguaAtual.Count == 0 || indiceRotaAgua >= rotaAguaAtual.Count - 1)
+        {
+            rotaAguaAtual.Clear();
+            indiceRotaAgua = 0;
+            return false;
+        }
+
+        indiceRotaAgua++;
+        destinoFallback = rotaAguaAtual[indiceRotaAgua];
+        temDestinoFallback = true;
+        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            agente.isStopped = false;
+            agente.SetDestination(destinoFallback);
+        }
+        return true;
     }
 
     // --- NAVEGACAO REALISTA ---

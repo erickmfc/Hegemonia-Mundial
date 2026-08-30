@@ -113,6 +113,8 @@ public class ControleNavioRealista : MonoBehaviour
     private Vector3 destinoAtual;
     private bool temDestino = false;
     public bool TemDestinoAtivo => temDestino;
+    private readonly List<Vector3> rotaAguaAtual = new List<Vector3>(16);
+    private int indiceRotaAgua;
     
     // Variáveis auxiliares visual
     private float tempoVibracao = 0f;
@@ -149,6 +151,7 @@ public class ControleNavioRealista : MonoBehaviour
     private Vector3 ultimaPosicaoAgenteAplicada;
     private float ultimoBaseOffsetAgente;
     private bool poseAgenteCacheValida;
+    private ParticleSystem fumacaChamineAutomatica;
     
     // Estado dos torpedos
     private bool[] tubosTorpedoUsados;
@@ -217,6 +220,7 @@ public class ControleNavioRealista : MonoBehaviour
         // Garante que os efeitos começam desligados
         if(bigodeiraProa) bigodeiraProa.Stop();
         if(turbulenciaPopa) turbulenciaPopa.Stop();
+        GarantirFumacaChamine();
 
         // Inicializar sistema de torpedos
         minhaIdentidade = GetComponent<IdentidadeUnidade>();
@@ -357,6 +361,12 @@ public class ControleNavioRealista : MonoBehaviour
             float distanciaFallback = direcaoFallback.magnitude;
             if (distanciaFallback <= distanciaChegada)
             {
+                if (AvancarRotaAgua())
+                {
+                    potenciaAlvo = 0f;
+                    return;
+                }
+
                 potenciaAlvo = 0f;
                 temDestino = false;
                 manobraReAtiva = false;
@@ -392,10 +402,17 @@ public class ControleNavioRealista : MonoBehaviour
         }
 
         float distancia = agente.remainingDistance;
+        float distanciaDoPontoRota = Vector3.Distance(transform.position, destinoAtual);
         
         // Ponto de chegada sem freio brusco longe
-        if (distancia < distanciaChegada || !agente.hasPath)
+        if (distancia < distanciaChegada || distanciaDoPontoRota < distanciaChegada || !agente.hasPath)
         {
+            if (AvancarRotaAgua())
+            {
+                potenciaAlvo = 0f;
+                return;
+            }
+
             potenciaAlvo = 0f;
             temDestino = false;
             manobraReAtiva = false;
@@ -750,6 +767,42 @@ public class ControleNavioRealista : MonoBehaviour
         return encontrou;
     }
 
+    private void GarantirFumacaChamine()
+    {
+        if (fumacaChamineAutomatica == null)
+        {
+            ParticleSystem[] particulas = GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < particulas.Length; i++)
+            {
+                ParticleSystem particula = particulas[i];
+                if (particula == null) continue;
+
+                string nome = particula.name.ToLowerInvariant();
+                bool pareceChamine = nome.Contains("fumaca") || nome.Contains("fumaça")
+                    || nome.Contains("smoke") || nome.Contains("chamine") || nome.Contains("chimney");
+                bool pareceArmamento = nome.Contains("missel") || nome.Contains("missile")
+                    || nome.Contains("torpedo") || nome.Contains("impact") || nome.Contains("explos");
+                if (pareceChamine && !pareceArmamento)
+                {
+                    fumacaChamineAutomatica = particula;
+                    break;
+                }
+            }
+        }
+
+        if (fumacaChamineAutomatica == null)
+        {
+            return;
+        }
+
+        var main = fumacaChamineAutomatica.main;
+        main.playOnAwake = false;
+        if (!fumacaChamineAutomatica.isPlaying)
+        {
+            fumacaChamineAutomatica.Play(true);
+        }
+    }
+
     void AtualizarEfeitosVisuais()
     {
         if (antenaRadar != null)
@@ -967,6 +1020,26 @@ public class ControleNavioRealista : MonoBehaviour
             return;
         }
 
+        if (temDestino && rotaAguaAtual.Count > 0
+            && Vector3.Distance(rotaAguaAtual[rotaAguaAtual.Count - 1], destino) < 2f)
+        {
+            return;
+        }
+
+        if (!NavalPlacementResolver.TryBuildWaterRoute(
+                transform.position,
+                destino,
+                ResolverFolgaNavegacao(),
+                out List<Vector3> rotaAgua))
+        {
+            Debug.LogWarning($"[ControleNavioRealista] Rota recusada para {name}: não existe corredor contínuo sobre água até ({destino.x:F0}, {destino.z:F0}).", this);
+            return;
+        }
+
+        rotaAguaAtual.Clear();
+        rotaAguaAtual.AddRange(rotaAgua);
+        indiceRotaAgua = 0;
+
         ControleUnidade controleUnidade = controleUnidadeCache;
         bool ordemNavalCartelAtiva = controleUnidade != null
             && !string.IsNullOrWhiteSpace(ordemExternaId)
@@ -1031,21 +1104,22 @@ public class ControleNavioRealista : MonoBehaviour
                 return;
             }
 
-            destinoAtual = destino;
+            destinoAtual = rotaAguaAtual[0];
             agente.isStopped = false;
             manobraReAtiva = false;
             tempoRestanteManobraRe = 0f;
             long inicioPath = InfraPerformanceGameplay.MarcarInicioMedicao();
-            bool destinoAceito = agente.SetDestination(destino);
+            bool destinoAceito = agente.SetDestination(destinoAtual);
             temDestino = destinoAceito;
 
             if (!destinoAceito)
             {
                 NavMeshHit hitDestino;
                 int areaMask = agente.areaMask == 0 ? (1 << 3) : agente.areaMask;
-                if (NavMesh.SamplePosition(destino, out hitDestino, RaioDestinoNavMesh, areaMask) && hitDestino.hit)
+                if (NavMesh.SamplePosition(destinoAtual, out hitDestino, RaioDestinoNavMesh, areaMask) && hitDestino.hit)
                 {
                     destinoAceito = agente.SetDestination(hitDestino.position);
+                    destinoAtual = hitDestino.position;
                     temDestino = destinoAceito;
                 }
             }
@@ -1064,8 +1138,8 @@ public class ControleNavioRealista : MonoBehaviour
 
         // Patrulhas navais não devem travar só porque a área de água não foi
         // bakeada. O destino fica guardado e o fallback acima conduz o casco.
-        destinoAtual = destino;
-        temDestino = destino != Vector3.zero;
+        destinoAtual = rotaAguaAtual[0];
+        temDestino = destinoAtual != Vector3.zero;
         manobraReAtiva = false;
         tempoRestanteManobraRe = 0f;
         estaDesligado = false;
@@ -1084,6 +1158,8 @@ public class ControleNavioRealista : MonoBehaviour
         anguloLemeAtual = 0f;
         velocidadeVetorial = Vector3.zero;
         temDestino = false;
+        rotaAguaAtual.Clear();
+        indiceRotaAgua = 0;
         manobraReAtiva = false;
         tempoRestanteManobraRe = 0f;
 
@@ -1099,6 +1175,38 @@ public class ControleNavioRealista : MonoBehaviour
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
+    }
+
+    private float ResolverFolgaNavegacao()
+    {
+        float raio = agente != null ? agente.radius : 0f;
+        return Mathf.Clamp(Mathf.Max(18f, raio * 1.8f), 18f, 60f);
+    }
+
+    private bool AvancarRotaAgua()
+    {
+        if (rotaAguaAtual.Count == 0 || indiceRotaAgua >= rotaAguaAtual.Count - 1)
+        {
+            rotaAguaAtual.Clear();
+            indiceRotaAgua = 0;
+            return false;
+        }
+
+        indiceRotaAgua++;
+        destinoAtual = rotaAguaAtual[indiceRotaAgua];
+        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            agente.isStopped = false;
+            if (!agente.SetDestination(destinoAtual))
+            {
+                return false;
+            }
+        }
+
+        temDestino = true;
+        manobraReAtiva = false;
+        tempoRestanteManobraRe = 0f;
+        return true;
     }
 
     public void PrepararSaidaInicial(Vector3 destinoSaida, float duracaoAssistencia = 8f)

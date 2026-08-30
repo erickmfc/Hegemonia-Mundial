@@ -7,6 +7,8 @@ using UnityEngine;
 /// </summary>
 public sealed class MdHistoriaMapaRuntime : MonoBehaviour
 {
+    private const string PrefixoParede = "LimiteMdHistoria_";
+
     [SerializeField] private Bounds mapaBounds;
     [SerializeField] private float nivelAgua;
     [SerializeField] private float alturaParedao;
@@ -20,6 +22,51 @@ public sealed class MdHistoriaMapaRuntime : MonoBehaviour
         mapaBounds = bounds;
         nivelAgua = waterLevel;
         alturaParedao = wallHeight;
+    }
+
+    private void Awake()
+    {
+        OcultarParedoesSemRemoverColisao();
+    }
+
+    private void Start()
+    {
+        OcultarParedoesSemRemoverColisao();
+    }
+
+    private void LateUpdate()
+    {
+        // Alguns fluxos de inicialização/reconstrução visual podem reativar
+        // Renderers depois do Start. Reaplica somente a parte visual do
+        // bloqueio, sem tocar nos BoxColliders que seguram as unidades.
+        OcultarParedoesSemRemoverColisao();
+    }
+
+    private void OcultarParedoesSemRemoverColisao()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Transform filho = transform.GetChild(i);
+            if (filho == null || !filho.name.StartsWith(PrefixoParede, System.StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            Renderer[] renderers = filho.GetComponentsInChildren<Renderer>(true);
+            for (int r = 0; r < renderers.Length; r++)
+            {
+                Renderer renderer = renderers[r];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                renderer.enabled = false;
+                renderer.forceRenderingOff = true;
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+            }
+        }
     }
 
     private void OnDrawGizmosSelected()

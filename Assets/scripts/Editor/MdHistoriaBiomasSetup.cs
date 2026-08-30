@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -89,6 +90,7 @@ public static class MdHistoriaBiomasSetup
 
         Bounds limites = CalcularLimites(terrenos);
         CriarParedoes(limites);
+        CriarSeaMdHistoria(terrenos, 0f);
         CriarRegistroMapa(limites);
         CriarExtensoesFronteira(terrenos);
         EditorSceneManager.MarkSceneDirty(cena);
@@ -100,7 +102,59 @@ public static class MdHistoriaBiomasSetup
             + ", fronteiras=" + fronteiras
             + ", tiles de agua=" + aguas
             + ", terrenos=" + terrenos.Length
-            + ". Paredoes físicos criados nas quatro bordas do mapa.");
+            + ". Sea/OceanAdvanced configurado e limites físicos mantidos sem renderização.");
+    }
+
+    public static void AplicarMdHistoriaEmLote()
+    {
+        Scene cena = EditorSceneManager.OpenScene(CenaAlvo, OpenSceneMode.Single);
+        if (!cena.IsValid())
+        {
+            Debug.LogError("[Md Historia] Não foi possível abrir a cena alvo em modo lote.");
+            return;
+        }
+
+        AplicarBiomasEParedoes();
+    }
+
+    [MenuItem("Hegemonia/Mapa/Md Historia/Aplicar Sea e limites sem reconfigurar terrenos", priority = 29)]
+    public static void AplicarSeaELimitesMdHistoria()
+    {
+        Scene cena = SceneManager.GetActiveScene();
+        if (!ValidarCenaAtiva(cena))
+        {
+            return;
+        }
+
+        Terrain[] terrenos = UnityEngine.Object.FindObjectsByType<Terrain>(FindObjectsSortMode.None);
+        Bounds limites = CalcularLimites(terrenos);
+        if (limites.size == Vector3.zero)
+        {
+            Debug.LogError("[Md Historia] Não há terrenos ativos para dimensionar o Sea.");
+            return;
+        }
+
+        CriarParedoes(limites);
+        CriarSeaMdHistoria(terrenos, 0f);
+        CriarRegistroMapa(limites);
+        EditorSceneManager.MarkSceneDirty(cena);
+        EditorSceneManager.SaveScene(cena);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        Debug.Log("[Md Historia] Sea e limites aplicados sem reconfigurar TerrainData.");
+    }
+
+    public static void AplicarSeaELimitesMdHistoriaEmLote()
+    {
+        Scene cena = EditorSceneManager.OpenScene(CenaAlvo, OpenSceneMode.Single);
+        if (!cena.IsValid())
+        {
+            Debug.LogError("[Md Historia] Não foi possível abrir a cena alvo em modo lote para aplicar o Sea.");
+            return;
+        }
+
+        AplicarSeaELimitesMdHistoria();
     }
 
     [MenuItem("Hegemonia/Mapa/Md Historia/Validar biomas e limites", priority = 31)]
@@ -135,7 +189,10 @@ public static class MdHistoriaBiomasSetup
                 paises++;
             }
 
-            if (!temCamada)
+            // Terrenos de água ficam sob o Sea.prefab e podem permanecer sem
+            // TerrainLayer temática; a camada única é exigida apenas para
+            // terrenos que realmente aparecem como terra.
+            if (!agua && !temCamada)
             {
                 problemas++;
                 Debug.LogWarning("[Md Historia] Terreno sem camada temática única: " + terreno.name);
@@ -548,6 +605,9 @@ public static class MdHistoriaBiomasSetup
         filtro.sharedMesh = mesh;
         MeshRenderer renderer = objeto.AddComponent<MeshRenderer>();
         renderer.sharedMaterial = material;
+        // O paredão continua com BoxCollider para bloquear a saída do mapa,
+        // mas não fica visível na câmera de jogo/satélite.
+        renderer.enabled = false;
         renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
         renderer.receiveShadows = true;
 
@@ -651,6 +711,133 @@ public static class MdHistoriaBiomasSetup
         }
         AssetDatabase.CreateAsset(material, caminho);
         return material;
+    }
+
+    private static void CriarSeaMdHistoria(IReadOnlyList<Terrain> terrenos, float nivelAgua)
+    {
+        const string raizNome = "MdHistoria_SeaSystem";
+        const string prefixoTile = "MdHistoria_SeaTile_";
+        const string nomeAgua = "Agua";
+        const string caminhoPrefab = "Assets/Mar_Feito/Models/Sea.prefab";
+        const string caminhoMaterialOrigem = "Assets/Mar_Feito/Models/Sea/Sea.mat";
+        const string caminhoMaterialOcean = "Assets/Mar_Feito/Models/Sea/Mar_Novo.mat";
+
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(caminhoPrefab);
+        Material materialOrigem = AssetDatabase.LoadAssetAtPath<Material>(caminhoMaterialOrigem);
+        Material materialOcean = AssetDatabase.LoadAssetAtPath<Material>(caminhoMaterialOcean);
+        if (prefab == null || materialOrigem == null || materialOcean == null)
+        {
+            Debug.LogError("[Md Historia] Sea.prefab, Sea.mat ou Mar_Novo.mat não encontrado; água avançada não foi criada.");
+            return;
+        }
+
+        GameObject raiz = GameObject.Find(raizNome);
+        if (raiz == null)
+        {
+            raiz = new GameObject(raizNome);
+        }
+
+        for (int i = raiz.transform.childCount - 1; i >= 0; i--)
+        {
+            Transform filho = raiz.transform.GetChild(i);
+            if (filho != null && (filho.name.StartsWith(prefixoTile, StringComparison.Ordinal) || filho.name == nomeAgua))
+            {
+                UnityEngine.Object.DestroyImmediate(filho.gameObject);
+            }
+        }
+
+        // A mesma topologia usada nas cenas de referência é um único objeto
+        // Agua com o Sea.prefab escalado para a área navegável. Isso evita
+        // emendas/gaps entre tiles e mantém a simulação OceanAdvanced em um
+        // único controlador, sem criar uma cópia alterada de Sea.mat.
+        OceanAdvanced controladorAntigo = raiz.GetComponent<OceanAdvanced>();
+        if (controladorAntigo != null)
+        {
+            UnityEngine.Object.DestroyImmediate(controladorAntigo);
+        }
+
+        GameObject agua = PrefabUtility.InstantiatePrefab(prefab, raiz.transform) as GameObject;
+        if (agua == null)
+        {
+            Debug.LogError("[Md Historia] Não foi possível instanciar o Sea.prefab.");
+            return;
+        }
+
+        agua.name = nomeAgua;
+        Bounds limites = CalcularLimites(terrenos);
+        MeshFilter filtroModelo = agua.GetComponent<MeshFilter>();
+        Mesh malha = filtroModelo != null ? filtroModelo.sharedMesh : null;
+        Vector3 tamanhoMalha = malha != null ? malha.bounds.size : new Vector3(100f, 1f, 100f);
+        float larguraMalha = Mathf.Max(1f, tamanhoMalha.x);
+        float profundidadeMalha = Mathf.Max(1f, tamanhoMalha.z);
+        agua.transform.position = new Vector3(limites.center.x, nivelAgua + 1.3f, limites.center.z);
+        agua.transform.localScale = new Vector3(
+            Mathf.Max(0.01f, limites.size.x / larguraMalha * 1.002f),
+            1f,
+            Mathf.Max(0.01f, limites.size.z / profundidadeMalha * 1.002f));
+
+        MeshRenderer renderer = agua.GetComponent<MeshRenderer>();
+        if (renderer != null)
+        {
+            renderer.sharedMaterial = materialOrigem;
+            // Preserva as configurações do prefab de referência: o Sea recebe
+            // sombras/reflexões normalmente e o shader cuida de transparência,
+            // ondas, espuma e refração.
+            EditorUtility.SetDirty(renderer);
+        }
+
+        MeshCollider collider = agua.GetComponent<MeshCollider>();
+        if (collider == null)
+        {
+            collider = agua.AddComponent<MeshCollider>();
+        }
+        collider.sharedMesh = malha;
+        collider.convex = false;
+
+        // O Sea cobre visualmente toda a extensão do mapa, mas não deve ser
+        // registrado como uma única área de Água: esse bounds global ficaria
+        // acima dos Terrains e classificaria pontos de terra como água. Os
+        // próprios tiles Terrain (mar/país/fronteira) são a fonte de verdade
+        // da classificação usada pelo controlador naval.
+        MarcadorSuperficieMapa marcador = agua.GetComponent<MarcadorSuperficieMapa>();
+        if (marcador != null)
+        {
+            UnityEngine.Object.DestroyImmediate(marcador);
+        }
+
+        OceanAdvanced ocean = agua.GetComponent<OceanAdvanced>();
+        if (ocean == null)
+        {
+            ocean = agua.AddComponent<OceanAdvanced>();
+        }
+        ocean.ocean = materialOcean;
+        Light[] luzes = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
+        for (int i = 0; i < luzes.Length; i++)
+        {
+            if (luzes[i] != null && luzes[i].type == LightType.Directional)
+            {
+                ocean.sun = luzes[i];
+                break;
+            }
+        }
+
+        // Mantém o mesmo metadado de navegação naval usado pelo Agua em Demon
+        // e Sena 19. Sem isso, uma reaplicação da ferramenta recriaria o Sea
+        // visual/físico, mas deixaria a malha fora da área Agua do NavMesh.
+        NavMeshModifier modificadorNaval = agua.GetComponent<NavMeshModifier>();
+        if (modificadorNaval == null)
+        {
+            modificadorNaval = agua.AddComponent<NavMeshModifier>();
+        }
+        modificadorNaval.overrideArea = true;
+        modificadorNaval.area = UnityEngine.AI.NavMesh.GetAreaFromName("Agua");
+        modificadorNaval.overrideGenerateLinks = false;
+        modificadorNaval.generateLinks = false;
+        modificadorNaval.ignoreFromBuild = false;
+        modificadorNaval.applyToChildren = true;
+
+        EditorUtility.SetDirty(agua);
+        Debug.Log("[Md Historia] Sea avançado configurado: objeto=Agua, material=Sea.mat, controlador=OceanAdvanced, oceano=Mar_Novo.mat.");
     }
 
     private static void CriarRegistroMapa(Bounds limites)
@@ -880,5 +1067,6 @@ public static class MdHistoriaBiomasSetup
 
         return resultado.Replace(' ', '_').Replace('(', '_').Replace(')', '_').Replace(',', '_').Replace('.', '_');
     }
+
 }
 #endif

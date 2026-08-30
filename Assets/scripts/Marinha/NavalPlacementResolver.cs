@@ -553,6 +553,311 @@ public static class NavalPlacementResolver
         return DistanceToMapEdge(position) < Mathf.Max(0f, margin);
     }
 
+    /// <summary>
+    /// Cria uma rota curta exclusivamente sobre água. O primeiro teste é uma
+    /// linha direta; quando uma ilha/continente bloqueia o trajeto, usa uma
+    /// malha 2D local e A* para contornar a costa. O método é compartilhado
+    /// por ordens do jogador e por patrulhas da IA.
+    /// </summary>
+    public static bool TryBuildWaterRoute(Vector3 start, Vector3 destination, float clearance, out List<Vector3> route)
+    {
+        route = new List<Vector3>(12);
+        float seaLevel = ResolveSeaLevel();
+        start.y = seaLevel;
+        destination.y = seaLevel;
+        clearance = Mathf.Clamp(clearance, 8f, 80f);
+
+        if (!IsWaterWithClearance(start, seaLevel, clearance)
+            || !IsWaterWithClearance(destination, seaLevel, clearance))
+        {
+            return false;
+        }
+
+        if (SegmentStaysInWater(start, destination, seaLevel, clearance))
+        {
+            route.Add(destination);
+            return true;
+        }
+
+        float distancia = Vector2.Distance(
+            new Vector2(start.x, start.z),
+            new Vector2(destination.x, destination.z));
+        float margem = Mathf.Clamp(Mathf.Max(300f, distancia * 0.18f, clearance * 8f), 300f, 1800f);
+        float minX = Mathf.Min(start.x, destination.x) - margem;
+        float maxX = Mathf.Max(start.x, destination.x) + margem;
+        float minZ = Mathf.Min(start.z, destination.z) - margem;
+        float maxZ = Mathf.Max(start.z, destination.z) + margem;
+
+        if (TryGetMapBounds(out Bounds limitesMapa))
+        {
+            minX = Mathf.Max(minX, limitesMapa.min.x);
+            maxX = Mathf.Min(maxX, limitesMapa.max.x);
+            minZ = Mathf.Max(minZ, limitesMapa.min.z);
+            maxZ = Mathf.Min(maxZ, limitesMapa.max.z);
+        }
+
+        if (maxX <= minX || maxZ <= minZ)
+        {
+            return false;
+        }
+
+        float espacamento = Mathf.Clamp(Mathf.Max(55f, clearance * 1.75f), 55f, 120f);
+        int largura = Mathf.CeilToInt((maxX - minX) / espacamento) + 1;
+        int altura = Mathf.CeilToInt((maxZ - minZ) / espacamento) + 1;
+        if (largura > 96 || altura > 96)
+        {
+            float maiorExtensao = Mathf.Max(maxX - minX, maxZ - minZ);
+            espacamento = Mathf.Max(espacamento, maiorExtensao / 94f);
+            largura = Mathf.CeilToInt((maxX - minX) / espacamento) + 1;
+            altura = Mathf.CeilToInt((maxZ - minZ) / espacamento) + 1;
+        }
+
+        largura = Mathf.Clamp(largura, 3, 96);
+        altura = Mathf.Clamp(altura, 3, 96);
+        int total = largura * altura;
+        byte[] passavel = new byte[total];
+        float[] custo = new float[total];
+        float[] prioridade = new float[total];
+        int[] anterior = new int[total];
+        bool[] fechado = new bool[total];
+        bool[] aberto = new bool[total];
+        for (int i = 0; i < total; i++)
+        {
+            custo[i] = float.PositiveInfinity;
+            prioridade[i] = float.PositiveInfinity;
+            anterior[i] = -1;
+        }
+
+        Vector2Int indiceInicio = EncontrarCelulaAguaMaisProxima(start, minX, minZ, espacamento, largura, altura, passavel, seaLevel, clearance);
+        Vector2Int indiceDestino = EncontrarCelulaAguaMaisProxima(destination, minX, minZ, espacamento, largura, altura, passavel, seaLevel, clearance);
+        if (indiceInicio.x < 0 || indiceDestino.x < 0)
+        {
+            return false;
+        }
+
+        int noInicio = indiceInicio.y * largura + indiceInicio.x;
+        int noDestino = indiceDestino.y * largura + indiceDestino.x;
+        List<int> fila = new List<int>(Mathf.Min(total, 2048));
+        custo[noInicio] = 0f;
+        prioridade[noInicio] = DistanciaHeuristica(indiceInicio, indiceDestino);
+        fila.Add(noInicio);
+        aberto[noInicio] = true;
+
+        int noAtual = -1;
+        int iteracoes = 0;
+        while (fila.Count > 0 && iteracoes++ < total * 2)
+        {
+            int melhorFila = 0;
+            for (int i = 1; i < fila.Count; i++)
+            {
+                if (prioridade[fila[i]] < prioridade[fila[melhorFila]])
+                {
+                    melhorFila = i;
+                }
+            }
+
+            noAtual = fila[melhorFila];
+            fila.RemoveAt(melhorFila);
+            aberto[noAtual] = false;
+            if (noAtual == noDestino)
+            {
+                break;
+            }
+
+            if (fechado[noAtual])
+            {
+                continue;
+            }
+            fechado[noAtual] = true;
+
+            int atualX = noAtual % largura;
+            int atualZ = noAtual / largura;
+            for (int deltaZ = -1; deltaZ <= 1; deltaZ++)
+            {
+                for (int deltaX = -1; deltaX <= 1; deltaX++)
+                {
+                    if (deltaX == 0 && deltaZ == 0) continue;
+
+                    int vizinhoX = atualX + deltaX;
+                    int vizinhoZ = atualZ + deltaZ;
+                    if (vizinhoX < 0 || vizinhoX >= largura || vizinhoZ < 0 || vizinhoZ >= altura)
+                    {
+                        continue;
+                    }
+
+                    if (deltaX != 0 && deltaZ != 0
+                        && (!CelulaAgua(vizinhoX, atualZ, minX, minZ, espacamento, largura, altura, passavel, seaLevel, clearance)
+                            || !CelulaAgua(atualX, vizinhoZ, minX, minZ, espacamento, largura, altura, passavel, seaLevel, clearance)))
+                    {
+                        continue;
+                    }
+
+                    if (!CelulaAgua(vizinhoX, vizinhoZ, minX, minZ, espacamento, largura, altura, passavel, seaLevel, clearance))
+                    {
+                        continue;
+                    }
+
+                    int noVizinho = vizinhoZ * largura + vizinhoX;
+                    if (fechado[noVizinho]) continue;
+
+                    float novoCusto = custo[noAtual] + ((deltaX != 0 && deltaZ != 0) ? 1.4142135f : 1f);
+                    if (novoCusto >= custo[noVizinho]) continue;
+
+                    custo[noVizinho] = novoCusto;
+                    anterior[noVizinho] = noAtual;
+                    prioridade[noVizinho] = novoCusto + DistanciaHeuristica(new Vector2Int(vizinhoX, vizinhoZ), indiceDestino);
+                    if (!aberto[noVizinho])
+                    {
+                        aberto[noVizinho] = true;
+                        fila.Add(noVizinho);
+                    }
+                }
+            }
+        }
+
+        if (noAtual != noDestino || (noAtual != noInicio && anterior[noAtual] < 0))
+        {
+            return false;
+        }
+
+        List<Vector3> caminho = new List<Vector3>(32);
+        int noCaminho = noDestino;
+        while (noCaminho >= 0)
+        {
+            int x = noCaminho % largura;
+            int z = noCaminho / largura;
+            caminho.Add(new Vector3(minX + x * espacamento, seaLevel, minZ + z * espacamento));
+            if (noCaminho == noInicio) break;
+            noCaminho = anterior[noCaminho];
+        }
+        caminho.Reverse();
+        caminho.Insert(0, start);
+        caminho.Add(destination);
+
+        List<Vector3> simplificado = new List<Vector3>(caminho.Count);
+        simplificado.Add(start);
+        for (int i = 1; i < caminho.Count; i++)
+        {
+            while (simplificado.Count > 1
+                && SegmentStaysInWater(simplificado[simplificado.Count - 2], caminho[i], seaLevel, clearance))
+            {
+                simplificado.RemoveAt(simplificado.Count - 1);
+            }
+            simplificado.Add(caminho[i]);
+        }
+
+        for (int i = 1; i < simplificado.Count; i++)
+        {
+            if (!SegmentStaysInWater(simplificado[i - 1], simplificado[i], seaLevel, clearance))
+            {
+                return false;
+            }
+        }
+
+        for (int i = 1; i < simplificado.Count; i++)
+        {
+            route.Add(simplificado[i]);
+        }
+
+        return route.Count > 0;
+    }
+
+    private static Vector2Int EncontrarCelulaAguaMaisProxima(
+        Vector3 ponto,
+        float minX,
+        float minZ,
+        float espacamento,
+        int largura,
+        int altura,
+        byte[] passavel,
+        float seaLevel,
+        float clearance)
+    {
+        int centroX = Mathf.Clamp(Mathf.RoundToInt((ponto.x - minX) / espacamento), 0, largura - 1);
+        int centroZ = Mathf.Clamp(Mathf.RoundToInt((ponto.z - minZ) / espacamento), 0, altura - 1);
+        for (int raio = 0; raio <= 8; raio++)
+        {
+            float melhorDistancia = float.PositiveInfinity;
+            Vector2Int melhor = new Vector2Int(-1, -1);
+            for (int z = centroZ - raio; z <= centroZ + raio; z++)
+            {
+                for (int x = centroX - raio; x <= centroX + raio; x++)
+                {
+                    if (x < 0 || x >= largura || z < 0 || z >= altura) continue;
+                    if (!CelulaAgua(x, z, minX, minZ, espacamento, largura, altura, passavel, seaLevel, clearance)) continue;
+                    float distancia = (new Vector2Int(x, z) - new Vector2Int(centroX, centroZ)).sqrMagnitude;
+                    if (distancia < melhorDistancia)
+                    {
+                        melhorDistancia = distancia;
+                        melhor = new Vector2Int(x, z);
+                    }
+                }
+            }
+            if (melhor.x >= 0) return melhor;
+        }
+        return new Vector2Int(-1, -1);
+    }
+
+    private static bool CelulaAgua(
+        int x,
+        int z,
+        float minX,
+        float minZ,
+        float espacamento,
+        int largura,
+        int altura,
+        byte[] passavel,
+        float seaLevel,
+        float clearance)
+    {
+        if (x < 0 || x >= largura || z < 0 || z >= altura) return false;
+        int indice = z * largura + x;
+        if (passavel[indice] == 1) return false;
+        if (passavel[indice] == 2) return true;
+
+        Vector3 ponto = new Vector3(minX + x * espacamento, seaLevel, minZ + z * espacamento);
+        bool agua = IsWaterWithClearance(ponto, seaLevel, clearance);
+        passavel[indice] = agua ? (byte)2 : (byte)1;
+        return agua;
+    }
+
+    private static float DistanciaHeuristica(Vector2Int a, Vector2Int b)
+    {
+        return Vector2Int.Distance(a, b);
+    }
+
+    private static bool SegmentStaysInWater(Vector3 start, Vector3 destination, float seaLevel, float clearance)
+    {
+        start.y = seaLevel;
+        destination.y = seaLevel;
+        float distancia = Vector2.Distance(
+            new Vector2(start.x, start.z),
+            new Vector2(destination.x, destination.z));
+        int amostras = Mathf.Max(2, Mathf.CeilToInt(distancia / Mathf.Clamp(Mathf.Max(22f, clearance * 0.9f), 22f, 70f)));
+        for (int i = 0; i <= amostras; i++)
+        {
+            Vector3 amostra = Vector3.Lerp(start, destination, i / (float)amostras);
+            if (!IsWaterWithClearance(amostra, seaLevel, clearance))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool IsWaterWithClearance(Vector3 ponto, float seaLevel, float clearance)
+    {
+        if (!IsWaterAtPosition(ponto, seaLevel)) return false;
+        float margem = Mathf.Max(4f, clearance);
+        for (int i = 0; i < 4; i++)
+        {
+            float angulo = i * Mathf.PI * 0.5f;
+            Vector3 amostra = ponto + new Vector3(Mathf.Cos(angulo) * margem, 0f, Mathf.Sin(angulo) * margem);
+            if (!IsWaterAtPosition(amostra, seaLevel)) return false;
+        }
+        return true;
+    }
+
     public static bool HasSafeLaunchCorridor(
         Vector3 center,
         Vector3 preferredForward,
@@ -680,6 +985,85 @@ public static class NavalPlacementResolver
         // Fallback genérico: se o chão estiver abaixo do nível do mar, consideramos água.
         float alturaChao = SampleGroundHeight(position, seaLevel);
         return alturaChao <= seaLevel + WaterTolerance;
+    }
+
+    /// <summary>
+    /// Resolve um raio de interação diretamente para a superfície navegável.
+    /// Os limites físicos do mapa continuam colidindo, mas não podem capturar
+    /// uma ordem destinada ao mar quando estão ocultos visualmente.
+    /// </summary>
+    public static bool TryResolveWaterPoint(Ray ray, out Vector3 point)
+    {
+        point = Vector3.zero;
+        float seaLevel = ResolveSeaLevel();
+        RaycastHit[] hits = Physics.RaycastAll(
+            ray,
+            Mathf.Infinity,
+            BuildRayMask(),
+            QueryTriggerInteraction.Ignore);
+
+        System.Array.Sort(hits, CompareHitsByDistance);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit hit = hits[i];
+            Collider collider = hit.collider;
+            if (collider == null || IsMapBoundaryCollider(collider) || IsDynamicObstacle(collider))
+            {
+                continue;
+            }
+
+            Vector3 candidate = hit.point;
+            candidate.y = seaLevel;
+            if (LooksLikeWater(collider) || IsWaterAtPosition(candidate, seaLevel))
+            {
+                point = candidate;
+                return true;
+            }
+        }
+
+        Plane seaPlane = new Plane(Vector3.up, new Vector3(0f, seaLevel, 0f));
+        if (seaPlane.Raycast(ray, out float distance))
+        {
+            Vector3 candidate = ray.GetPoint(distance);
+            candidate.y = seaLevel;
+            if (IsWaterAtPosition(candidate, seaLevel))
+            {
+                point = candidate;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static bool IsMapBoundaryCollider(Collider collider)
+    {
+        if (collider == null)
+        {
+            return false;
+        }
+
+        Transform current = collider.transform;
+        while (current != null)
+        {
+            string normalizedName = Normalize(current.name);
+            if (normalizedName.Contains("limitedmhistoria")
+                || normalizedName.Contains("limitemdhistoria")
+                || normalizedName.Contains("limitesmapa")
+                || normalizedName.Contains("paredaomdhistoria"))
+            {
+                return true;
+            }
+
+            if (current.GetComponent<MdHistoriaMapaRuntime>() != null)
+            {
+                return true;
+            }
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private static bool HasExplicitWaterSurfaceInScene()

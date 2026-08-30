@@ -253,13 +253,14 @@ public class DesenharLinhasOrdem : MonoBehaviour
         // ── SEGUIR ───────────────────────────────────────────────────────────
         if (modoSeguirAtivo && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)))
         {
-            if (Camera.main == null)
+            Camera cameraInteracao = ObterCameraInteracao();
+            if (cameraInteracao == null)
             {
                 return;
             }
 
             ConsumirCliqueNoFrame();
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Ray ray = cameraInteracao.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit))
             {
@@ -282,10 +283,11 @@ public class DesenharLinhasOrdem : MonoBehaviour
         // ── ATAQUE: clique esquerdo/direito define alvo ou área ──────────────
         if (modoAtaqueAtivo && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)))
         {
-            if (Camera.main == null) return;
+            Camera cameraInteracao = ObterCameraInteracao();
+            if (cameraInteracao == null) return;
 
             ConsumirCliqueNoFrame();
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Ray ray = cameraInteracao.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
 
             Vector3 pontoAtaque = Vector3.zero;
@@ -466,9 +468,20 @@ public class DesenharLinhasOrdem : MonoBehaviour
     }
 
     // ── MÉTODOS AUXILIARES CHAMADOS PELO MENU DE COMANDO ─────────────────────
-    public void AdicionarPontoPatrulhaDoMenu(Vector3 ponto)
+    public bool AdicionarPontoPatrulhaDoMenu(Vector3 ponto)
     {
-        if (!modoPatrulhaAtivo) return;
+        if (!modoPatrulhaAtivo) return false;
+
+        if (SelecaoContemUnidadeNaval())
+        {
+            ponto.y = NavalPlacementResolver.ResolveSeaLevel();
+            if (!NavalPlacementResolver.IsWaterAtPosition(ponto))
+            {
+                Debug.LogWarning("[ModoPatrulha] Ponto do Menu Satélite ignorado: escolha uma área de água.");
+                return false;
+            }
+        }
+
         pontosPatrulha.Add(ponto);
         GarantirLineRenderer();
         lineRenderer.positionCount = pontosPatrulha.Count;
@@ -477,6 +490,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
         // Marcador visual
         MostrarMarcadorPatrulha(ponto, new Color(0.15f, 0.65f, 1f, 0.95f), 12f, 2.5f);
         Debug.Log("[ModoPatrulha] Ponto adicionado via menu: " + ponto);
+        return true;
     }
 
     public void ConfirmarPatrulhaDoMenu()
@@ -598,27 +612,25 @@ public class DesenharLinhasOrdem : MonoBehaviour
     {
         ponto = Vector3.zero;
 
-        if (Camera.main == null)
+        Camera cameraInteracao = ObterCameraInteracao();
+        if (cameraInteracao == null)
         {
             return false;
         }
 
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Ray ray = cameraInteracao.ScreenPointToRay(Input.mousePosition);
         bool selecaoNaval = SelecaoContemUnidadeNaval();
+
+        if (selecaoNaval)
+        {
+            return NavalPlacementResolver.TryResolveWaterPoint(ray, out ponto);
+        }
+
         RaycastHit hit;
-        if (Physics.Raycast(ray, out hit) && (!selecaoNaval || NavalPlacementResolver.IsWaterAtPosition(hit.point)))
+        if (Physics.Raycast(ray, out hit))
         {
             ponto = hit.point;
-            if (selecaoNaval)
-            {
-                ponto.y = NavalPlacementResolver.ResolveSeaLevel();
-            }
             return true;
-        }
-
-        if (!selecaoNaval)
-        {
-            return false;
         }
 
         UnityEngine.Plane planoAgua = new UnityEngine.Plane(Vector3.up, Vector3.zero);
@@ -629,8 +641,13 @@ public class DesenharLinhasOrdem : MonoBehaviour
         }
 
         ponto = ray.GetPoint(distanciaPlano);
-        ponto.y = NavalPlacementResolver.ResolveSeaLevel();
-        return NavalPlacementResolver.IsWaterAtPosition(ponto);
+        return true;
+    }
+
+    private Camera ObterCameraInteracao()
+    {
+        Camera camera = MapaGeralController.ObterCameraDeInteracao();
+        return camera != null ? camera : Camera.main;
     }
 
     bool SelecaoContemUnidadeNaval()

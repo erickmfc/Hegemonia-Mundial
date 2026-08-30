@@ -14,6 +14,16 @@ public class MapaGeralController : MonoBehaviour
     public static MapaGeralController Instancia { get; private set; }
     public static bool EstaAberto { get { return Instancia != null && Instancia.mapaAtivo; } }
 
+    public static Camera ObterCameraDeInteracao()
+    {
+        if (Instancia != null && Instancia.mapaAtivo && Instancia.cameraMapa != null)
+        {
+            return Instancia.cameraMapa;
+        }
+
+        return Camera.main;
+    }
+
     private Camera cameraPrincipal;
     private Camera cameraMapa;
     private bool mapaAtivo = false;
@@ -322,6 +332,7 @@ public class MapaGeralController : MonoBehaviour
             }
 
             ControlarMapa();
+            ProcessarInteracaoNoMapa();
 
             // Refresh do cache a cada 2s
             if (Time.time > _tempoRefreshCache)
@@ -393,6 +404,142 @@ public class MapaGeralController : MonoBehaviour
 
         ControleUnidade cu = gerente.unidadesSelecionadas[0];
         return cu != null ? cu.transform : null;
+    }
+
+    private void ProcessarInteracaoNoMapa()
+    {
+        if (cameraMapa == null || AreaDeInterfaceMapa(Input.mousePosition))
+        {
+            return;
+        }
+
+        DesenharLinhasOrdem desenhador = Object.FindFirstObjectByType<DesenharLinhasOrdem>();
+        if (desenhador != null && (desenhador.modoPatrulhaAtivo || desenhador.modoSeguirAtivo || desenhador.modoAtaqueAtivo))
+        {
+            // Os modos de ordem têm prioridade: eles usam a mesma câmera
+            // satélite e consomem o clique para desenhar/confirmar a ordem.
+            return;
+        }
+
+        GerenteSelecao gerente = Object.FindFirstObjectByType<GerenteSelecao>();
+        if (gerente == null)
+        {
+            return;
+        }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            ControleUnidade unidade = EncontrarUnidadeAliadaNoIcone();
+            if (unidade != null)
+            {
+                if (!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift))
+                {
+                    gerente.DeselecionarTudo();
+                }
+
+                gerente.AdicionarSelecao(unidade);
+                return;
+            }
+        }
+
+        if (Input.GetMouseButtonDown(1) && gerente.unidadesSelecionadas != null && gerente.unidadesSelecionadas.Count > 0)
+        {
+            if (TryObterDestinoNoMapa(out Vector3 destino))
+            {
+                gerente.EmitirOrdemNoMapa(destino);
+            }
+        }
+    }
+
+    private ControleUnidade EncontrarUnidadeAliadaNoIcone()
+    {
+        ControleUnidade melhor = null;
+        float menorDistancia = 24f;
+        Vector2 mouse = Input.mousePosition;
+
+        for (int i = 0; i < _cacheUnidades.Count; i++)
+        {
+            IdentidadeUnidade identidade = _cacheUnidades[i];
+            if (identidade == null || identidade.teamID != meuTeamID)
+            {
+                continue;
+            }
+
+            ControleUnidade controle = identidade.GetComponent<ControleUnidade>()
+                ?? identidade.GetComponentInParent<ControleUnidade>()
+                ?? identidade.GetComponentInChildren<ControleUnidade>(true);
+            if (controle == null)
+            {
+                continue;
+            }
+
+            Vector3 tela = cameraMapa.WorldToScreenPoint(identidade.transform.position);
+            if (tela.z <= 0f)
+            {
+                continue;
+            }
+
+            float distancia = Vector2.Distance(mouse, new Vector2(tela.x, tela.y));
+            if (distancia < menorDistancia)
+            {
+                menorDistancia = distancia;
+                melhor = controle;
+            }
+        }
+
+        return melhor;
+    }
+
+    private bool TryObterDestinoNoMapa(out Vector3 destino)
+    {
+        Ray raio = cameraMapa.ScreenPointToRay(Input.mousePosition);
+        int mascara = ~(1 << 2);
+        RaycastHit[] hits = Physics.RaycastAll(raio, Mathf.Infinity, mascara, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider collider = hits[i].collider;
+            if (collider == null)
+            {
+                continue;
+            }
+
+            if (collider.GetComponentInParent<ControleUnidade>() != null
+                || collider.GetComponentInParent<UnityEngine.AI.NavMeshAgent>() != null
+                || collider.GetComponentInParent<TorreDeControle>() != null
+                || collider.GetComponentInParent<GerenciadorAeroporto>() != null
+                || collider.GetComponentInParent<Estaleiro>() != null
+                || collider.GetComponentInParent<PierMarinha>() != null
+                || collider.GetComponentInParent<Fabrica>() != null
+                || collider.GetComponentInParent<AtributosPredio>() != null
+                || collider.GetComponentInParent<Edificio>() != null
+                || collider.GetComponentInParent<MdHistoriaMapaRuntime>() != null)
+            {
+                continue;
+            }
+
+            destino = hits[i].point;
+            return true;
+        }
+
+        Plane planoMar = new Plane(Vector3.up, nivelDoMar);
+        if (planoMar.Raycast(raio, out float distanciaPlano))
+        {
+            destino = raio.GetPoint(distanciaPlano);
+            destino.y = nivelDoMar;
+            return true;
+        }
+
+        destino = Vector3.zero;
+        return false;
+    }
+
+    private bool AreaDeInterfaceMapa(Vector3 posicaoMouse)
+    {
+        float yTopo = Screen.height - posicaoMouse.y;
+        return yTopo <= 34f
+            || (posicaoMouse.x <= 205f && yTopo >= Screen.height - 108f);
     }
 
     private void OnDisable()

@@ -63,6 +63,21 @@ public class GerenteSelecao : MonoBehaviour
 
     void Update()
     {
+        // O mapa satélite possui sua própria câmera e ponte de comandos. Se
+        // este fluxo também processar o mesmo mouse, o clique volta para a
+        // câmera principal e a ordem parece não responder.
+        if (MapaGeralController.EstaAberto)
+        {
+            arrastando = false;
+            LiberarModoCaixaSelecao();
+            if (caixaSelecaoVisual != null)
+            {
+                caixaSelecaoVisual.gameObject.SetActive(false);
+                caixaSelecaoVisual.sizeDelta = Vector2.zero;
+            }
+            return;
+        }
+
         // Se o Menu Comando estiver aberto, bloqueia qualquer clique ou arrasto no mundo
         if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto)
         {
@@ -326,6 +341,11 @@ public class GerenteSelecao : MonoBehaviour
         {
             RaycastHit hit = hitsExtras != null ? hitsExtras[i] : bufferHitsClique[i];
             if (hit.collider == null)
+            {
+                continue;
+            }
+
+            if (NavalPlacementResolver.IsMapBoundaryCollider(hit.collider))
             {
                 continue;
             }
@@ -987,6 +1007,17 @@ public class GerenteSelecao : MonoBehaviour
 
             alvoCtrl.EmitirOrdemMover(posAlvo);
         }
+    }
+
+    public void EmitirOrdemNoMapa(Vector3 destino)
+    {
+        if (unidadesSelecionadas == null || unidadesSelecionadas.Count == 0)
+        {
+            return;
+        }
+
+        MostrarMarcadorDestino(destino);
+        MoverUnidadesEmGrupo(destino, null, null);
     }
 
     void ObterPegadaUnidade(ControleUnidade unidade, out float largura, out float profundidade)

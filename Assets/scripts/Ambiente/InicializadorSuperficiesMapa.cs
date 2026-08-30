@@ -22,7 +22,7 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
-        if (Object.FindFirstObjectByType<InicializadorSuperficiesMapa>() != null)
+        if (UnityEngine.Object.FindFirstObjectByType<InicializadorSuperficiesMapa>() != null)
         {
             return;
         }
@@ -145,7 +145,9 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
                 marcadoresCriados++;
             }
 
-            marcador.DefinirTipo(TipoSuperficieMapa.Chao);
+            marcador.DefinirTipo(EhTerrenoAguaMdHistoria(terrain)
+                ? TipoSuperficieMapa.Agua
+                : TipoSuperficieMapa.Chao);
         }
 
         AjustarRecorteDasCameras(terrains);
@@ -398,6 +400,30 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
     {
         string nome = terrain.name.ToLowerInvariant();
         return nome.Contains("mapa inimigo") || nome.Contains("mapa_inimigo") || nome.Contains("enemy map");
+    }
+
+    private static bool EhTerrenoAguaMdHistoria(Terrain terrain)
+    {
+        if (terrain == null || !SceneManager.GetActiveScene().name.Equals("Md Historia", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Na MD História, os tiles chamados Terrain/Terrain_(...) são o mar.
+        // Países, ilhas e faixas de fronteira continuam sendo chão. Essa
+        // distinção é consumida pelo clique naval e pelo roteador da IA.
+        string nome = terrain.name.ToLowerInvariant();
+        if (nome.Contains("pais1") || nome.Contains("pais2") || nome.Contains("pais3")
+            || nome.Contains("pais4") || nome.Contains("pais5") || nome.Contains("pais6")
+            || nome.Contains("ilha") || nome.Contains("fronteira"))
+        {
+            return false;
+        }
+
+        // O terrain_21650 e os demais tiles Terrain_... também pertencem ao
+        // mar. O editor de biomas usa a mesma convenção de nomes; manter a
+        // regra alinhada evita que o roteador naval trate esse setor como chão.
+        return nome == "terrain" || nome.StartsWith("terrain_", System.StringComparison.Ordinal);
     }
 
     private static void AjustarRecorteDasCameras(Terrain[] terrains)
