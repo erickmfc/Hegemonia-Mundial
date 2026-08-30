@@ -53,6 +53,20 @@ public class GerenteDeTerritorio : MonoBehaviour
     /// </summary>
     public int ObterDonoDoPonto(Vector3 ponto)
     {
+        // Uma parcela de fronteira reivindicada representa uma expansão
+        // contínua, não apenas o raio visual da bandeira que a fundou. A
+        // autoridade da parcela só responde quando ela está reservada ou
+        // ocupada; zonas livres continuam neutras e seguem o cálculo normal.
+        GerenciadorExpansaoFronteira expansao = GerenciadorExpansaoFronteira.Instancia;
+        ZonaFronteiraExpansionavel zona = expansao != null ? expansao.EncontrarNoPonto(ponto) : null;
+        if (zona != null
+            && zona.TeamDono > 0
+            && (zona.Estado == EstadoZonaFronteiraExpansionavel.Reservada
+                || zona.Estado == EstadoZonaFronteiraExpansionavel.Ocupada))
+        {
+            return zona.TeamDono;
+        }
+
         int donoVencedor = 0;
         // Float para achar quem vence a sobreposição num conflito do formato quadrado.
         float menorDistanciaQuadrada = float.MaxValue; 

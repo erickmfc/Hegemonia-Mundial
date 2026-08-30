@@ -791,6 +791,11 @@ public class Construtor : MonoBehaviour
         ReativarLogicaUnidade(novo);
         EnsureCollider(novo);
 
+        // Uma fundação/bandeira construída em uma parcela neutra confirma a
+        // expansão somente depois da instanciação e da cobrança. O gerenciador
+        // de fronteira não move o prédio nem substitui a jurisdição existente.
+        GerenciadorExpansaoFronteira.Instancia?.NotificarConstrucao(novo, posFinal);
+
         Estaleiro estaleiro = novo.GetComponent<Estaleiro>();
         if (estaleiro != null)
         {
