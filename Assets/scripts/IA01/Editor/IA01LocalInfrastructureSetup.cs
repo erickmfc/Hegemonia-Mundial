@@ -171,11 +171,12 @@ public static class IA01LocalInfrastructureSetup
         if (airport != null)
         {
             CreateAirPatrolZone(airport, "IA01 Patrulha Aerea - Área Inicial", new Vector3(0f, 0f, 280f));
+            CreateAirPatrolCreates(airport);
             CreateWarAdvanceZone(airport, "IA01 WarAdvanceZone Aerea", new Vector3(0f, 100f, 320f), IA01WarAdvanceZone.Dominio.Aereo);
         }
 
         EditorSceneManager.MarkSceneDirty(layout.gameObject.scene);
-        Debug.Log("[IA01] Criados os 3 locais de armazém, pier, 3 locais de plataforma e 3 áreas de patrulha naval. Posicione os marcadores sobre a água antes de salvar.", layout);
+        Debug.Log("[IA01] Criados os 3 locais de armazém, pier, 3 locais de plataforma, 3 áreas de patrulha naval e 4 Creates de patrulha aérea. Posicione os marcadores sobre a água antes de salvar.", layout);
     }
 
     [MenuItem("Tools/IA01/Criar local de quartel militar")]
@@ -350,6 +351,33 @@ public static class IA01LocalInfrastructureSetup
         }
         if (zone.GetComponent<IA01AirPatrolZone>() == null)
             Undo.AddComponent<IA01AirPatrolZone>(zone.gameObject);
+    }
+
+    private static void CreateAirPatrolCreates(Transform airport)
+    {
+        if (airport == null) return;
+
+        // Os Creates ficam dentro do aeroporto militar real. Assim os pontos
+        // acompanham a base e continuam em coordenadas locais da infraestrutura,
+        // sem criar uma cena ou um terreno separado.
+        Transform grupo = EnsureChild(airport, "IA01 Creates Patrulha Aerea", Vector3.zero);
+        Vector3[] offsets =
+        {
+            new Vector3(-620f, 0f, 460f),
+            new Vector3(620f, 0f, 460f),
+            new Vector3(620f, 0f, -460f),
+            new Vector3(-620f, 0f, -460f)
+        };
+
+        for (int ponto = 1; ponto <= 4; ponto++)
+        {
+            string nome = "Create Patrulha Aerea " + ponto.ToString("00");
+            Transform create = EnsureChild(grupo, nome, offsets[ponto - 1]);
+            if (create.GetComponent<IA01AirPatrolZone>() == null)
+                Undo.AddComponent<IA01AirPatrolZone>(create.gameObject);
+            EditorUtility.SetDirty(create.gameObject);
+        }
+        EditorUtility.SetDirty(grupo.gameObject);
     }
 
     private static void CreateWarAdvanceZone(Transform parent, string name, Vector3 localPosition, IA01WarAdvanceZone.Dominio dominio)

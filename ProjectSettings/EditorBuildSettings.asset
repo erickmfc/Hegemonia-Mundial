@@ -14,6 +14,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Recovery/demo1.unity
     guid: f36165c5da6157c40b06b520936c452b
+  - enabled: 1
+    path: Assets/_Recovery/Md Historia.unity
+    guid: 76fc1e5a7d1fa4b4682c5016eacae671
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

@@ -10,9 +10,10 @@ public static class ConfiguracaoCenasJogo
     // carrega no Play e na build, evitando que ajustes sejam feitos em uma
     // copia que nunca entra no jogo.
     public const string CaminhoCenaCampanhaCanonica = "Assets/Scenes/cena19).unity";
-    // Demo1 e a cena de tutorial atualmente validada no projeto.
-    public const string CenaTutorialCanonica = "demo1";
-    public const string CaminhoCenaTutorialCanonica = "Assets/_Recovery/demo1.unity";
+    // A cena oficial do Tutorial e a cena historica do projeto.
+    // cena19) continua sendo a campanha e permanece disponivel separadamente.
+    public const string CenaTutorialCanonica = "Md Historia";
+    public const string CaminhoCenaTutorialCanonica = "Assets/_Recovery/Md Historia.unity";
 
     private static readonly string[] aliasesMenuPrincipal =
     {
@@ -32,6 +33,8 @@ public static class ConfiguracaoCenasJogo
     {
         CenaTutorialCanonica,
         CaminhoCenaTutorialCanonica,
+        "demo1",
+        "Assets/_Recovery/demo1.unity",
         "Assets/_Recovery/teste.unity",
         "Assets/Scenes/Tutorial Coast Scene Final.unity",
         "tutorial",

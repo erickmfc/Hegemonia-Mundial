@@ -39,6 +39,7 @@ namespace Hegemonia.AI.IA02
         private float nextNavalCombatAt;
         private readonly List<IdentidadeUnidade> navalUnitsBuffer = new List<IdentidadeUnidade>(12);
         private readonly List<IdentidadeUnidade> airUnitsBuffer = new List<IdentidadeUnidade>(12);
+        private readonly List<IA02AirPatrolZone> airPatrolCreatesBuffer = new List<IA02AirPatrolZone>(4);
         private bool warZonesEnsured;
         private string status = "Reserva militar aguardando infraestrutura.";
 
@@ -381,7 +382,6 @@ namespace Hegemonia.AI.IA02
                     FindObjectsInactive.Include, FindObjectsSortMode.None);
             }
             if (zones.Length == 0) return;
-            if (zones.Length == 0) return;
 
             int currentDay = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 0;
             int interval = Mathf.Max(1, zones[0].IntervaloDias);
@@ -437,12 +437,6 @@ namespace Hegemonia.AI.IA02
                 if (control.OrdemAtual == OrdemControleUnidade.Patrulhando)
                 {
                     alreadyPatrolling++;
-                    continue;
-                }
-                // Um navio abre a patrulha contínua. Os demais são escalonados
-                // em pontos costeiros leves para não concentrar custo de rota.
-                if (assigned > 0)
-                {
                     continue;
                 }
                 IA02NavalPatrolZone zone = zones[assigned % zones.Length];
@@ -601,73 +595,192 @@ namespace Hegemonia.AI.IA02
         {
             if (now < nextAirPatrolScanAt) return;
             nextAirPatrolScanAt = now + 4f;
-            IA02AirPatrolZone[] zones = controller != null
-                ? controller.GetComponentsInChildren<IA02AirPatrolZone>(true)
-                : Array.Empty<IA02AirPatrolZone>();
-            if (zones.Length == 0)
+            airPatrolCreatesBuffer.Clear();
+            if (!TryObterCreatesPatrulhaAerea(airPatrolCreatesBuffer))
             {
-                zones = UnityEngine.Object.FindObjectsByType<IA02AirPatrolZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                EnsureAirPatrolCreates();
+                TryObterCreatesPatrulhaAerea(airPatrolCreatesBuffer);
             }
-            if (zones.Length == 0)
-            {
-                IA02AirPatrolZone created = EnsureAirPatrolZone();
-                if (created != null) zones = new[] { created };
-            }
-            if (zones.Length == 0) return;
+            if (airPatrolCreatesBuffer.Count < 4) return;
 
             RegistroEntidadesJogo.FillUnidades(airUnitsBuffer);
             int candidates = 0;
             int assigned = 0;
-            int limitePatrulha = MaxFightersByTier[Mathf.Clamp(ResolverEtapaEscalao(), 0, MaxFightersByTier.Length - 1)];
             for (int i = 0; i < airUnitsBuffer.Count; i++)
             {
                 IdentidadeUnidade id = airUnitsBuffer[i];
                 if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Aereo) continue;
-                candidates++;
                 ControleUnidade control = id.GetComponent<ControleUnidade>()
                     ?? id.GetComponentInParent<ControleUnidade>()
                     ?? id.GetComponentInChildren<ControleUnidade>(true);
-                if (control == null || control.OrdemAtual == OrdemControleUnidade.Patrulhando) continue;
-                if (assigned >= limitePatrulha) break;
-                Vector3[] route = zones[assigned % zones.Length].CriarRota(assigned);
+                ControleAviao aviao = id.GetComponent<ControleAviao>()
+                    ?? id.GetComponentInParent<ControleAviao>()
+                    ?? id.GetComponentInChildren<ControleAviao>(true);
+                if (control == null || aviao == null || !EhAeroportoMilitar(aviao.aeroportoOrigem)) continue;
+                if (control.OrdemAtual == OrdemControleUnidade.Patrulhando) continue;
+                if (aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio) continue;
+                candidates++;
+
+                Vector3[] route = CriarRotaDosCreates(airPatrolCreatesBuffer, assigned % 4);
                 if (control.EmitirOrdemPatrulha(route))
                 {
                     assigned++;
-                    DiagnosticoDesempenhoJogo.RegistrarEvento("IA02_AirPatrol", id.name + " patrulha " + zones[0].name);
+                    DiagnosticoDesempenhoJogo.RegistrarEvento("IA02_AirPatrol", id.name + " patrulha nos 4 Creates militares");
                     if (EmitirLogsDetalhadosDePatrulha)
                     {
-                        Debug.Log("[IA02 Military] Patrulha aerea: " + id.name + " -> " + zones[0].name + " centro=" + zones[0].transform.position.ToString("F2"));
+                        Debug.Log("[IA02 Military] Patrulha aerea: " + id.name + " -> ciclo Create 01/02/03/04");
                     }
                 }
-                // Apenas um caça inicia a patrulha; a expansão pode liberar os demais.
             }
             if (candidates > 0)
             {
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("ia02_air_patrol_assigned", assigned);
                 if (EmitirLogsDetalhadosDePatrulha)
                 {
-                    Debug.Log("[IA02 Military] Patrulha aerea: candidatos=" + candidates + " | limite inicial=1");
+                    Debug.Log("[IA02 Military] Patrulha aerea: candidatos=" + candidates + " | atribuídos=" + assigned);
                 }
             }
         }
 
-        private IA02AirPatrolZone EnsureAirPatrolZone()
+        private bool TryObterCreatesPatrulhaAerea(List<IA02AirPatrolZone> destino)
         {
+            if (destino == null) return false;
+            destino.Clear();
             GerenciadorAeroporto[] airports = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < airports.Length; i++)
             {
                 GerenciadorAeroporto airport = airports[i];
-                if (airport == null || !BelongsToOwnAirport(airport)) continue;
-                Transform existing = airport.transform.Find("IA02 Patrulha Aerea - Área Inicial");
-                GameObject go = existing != null ? existing.gameObject : new GameObject("IA02 Patrulha Aerea - Área Inicial");
-                if (existing == null) go.transform.SetParent(airport.transform, false);
-                go.transform.localPosition = new Vector3(0f, 0f, 280f);
-                IA02AirPatrolZone zone = go.GetComponent<IA02AirPatrolZone>();
-                if (zone == null) zone = go.AddComponent<IA02AirPatrolZone>();
-                Debug.Log("[IA02 Military] Create de patrulha aerea garantido: " + go.name + " pos=" + go.transform.position.ToString("F2"));
-                return zone;
+                if (airport == null || !BelongsToOwnAirport(airport) || !EhAeroportoMilitar(airport)) continue;
+                Transform grupo = airport.transform.Find("IA02 Creates Patrulha Aerea");
+                if (grupo == null) continue;
+                for (int ponto = 1; ponto <= 4; ponto++)
+                {
+                    Transform create = grupo.Find("Create Patrulha Aerea " + ponto.ToString("00"));
+                    IA02AirPatrolZone zone = create != null ? create.GetComponent<IA02AirPatrolZone>() : null;
+                    if (zone != null) destino.Add(zone);
+                }
+                return destino.Count >= 4;
             }
-            return null;
+
+            // A abertura da IA pode ainda estar usando o create de infraestrutura
+            // (IA02AirportBuildSlot), antes de o prefab do GerenciadorAeroporto
+            // ser instanciado. Os Creates continuam válidos nesse caso e devem
+            // ser descobertos no próprio aeroporto da IA, nunca em um aeroporto
+            // genérico ou fora do território.
+            IA02AirportBuildSlot[] airportSlots = UnityEngine.Object.FindObjectsByType<IA02AirportBuildSlot>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < airportSlots.Length; i++)
+            {
+                IA02AirportBuildSlot airport = airportSlots[i];
+                IA02BuildSlot slot = airport != null ? airport.GetComponent<IA02BuildSlot>() : null;
+                if (airport == null || slot == null || slot.OwnerTeamId != context.TeamId || !EhAeroportoMilitar(airport, slot)) continue;
+                Transform grupo = airport.transform.Find("IA02 Creates Patrulha Aerea");
+                if (grupo == null) continue;
+                for (int ponto = 1; ponto <= 4; ponto++)
+                {
+                    Transform create = grupo.Find("Create Patrulha Aerea " + ponto.ToString("00"));
+                    IA02AirPatrolZone zone = create != null ? create.GetComponent<IA02AirPatrolZone>() : null;
+                    if (zone != null) destino.Add(zone);
+                }
+                return destino.Count >= 4;
+            }
+            return false;
+        }
+
+        private int EnsureAirPatrolCreates()
+        {
+            Vector3[] offsets =
+            {
+                new Vector3(-620f, 0f, 460f),
+                new Vector3(620f, 0f, 460f),
+                new Vector3(620f, 0f, -460f),
+                new Vector3(-620f, 0f, -460f)
+            };
+            GerenciadorAeroporto[] airports = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < airports.Length; i++)
+            {
+                GerenciadorAeroporto airport = airports[i];
+                if (airport == null || !BelongsToOwnAirport(airport) || !EhAeroportoMilitar(airport)) continue;
+
+                Transform grupo = airport.transform.Find("IA02 Creates Patrulha Aerea");
+                if (grupo == null)
+                {
+                    grupo = new GameObject("IA02 Creates Patrulha Aerea").transform;
+                    grupo.SetParent(airport.transform, false);
+                }
+
+                for (int ponto = 1; ponto <= 4; ponto++)
+                {
+                    string nome = "Create Patrulha Aerea " + ponto.ToString("00");
+                    Transform create = grupo.Find(nome);
+                    if (create == null)
+                    {
+                        create = new GameObject(nome).transform;
+                        create.SetParent(grupo, false);
+                        create.localPosition = offsets[ponto - 1];
+                    }
+                    IA02AirPatrolZone zone = create.GetComponent<IA02AirPatrolZone>();
+                    if (zone == null) zone = create.gameObject.AddComponent<IA02AirPatrolZone>();
+                }
+
+                return 4;
+            }
+
+            IA02AirportBuildSlot[] airportSlots = UnityEngine.Object.FindObjectsByType<IA02AirportBuildSlot>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < airportSlots.Length; i++)
+            {
+                IA02AirportBuildSlot airport = airportSlots[i];
+                IA02BuildSlot slot = airport != null ? airport.GetComponent<IA02BuildSlot>() : null;
+                if (airport == null || slot == null || slot.OwnerTeamId != context.TeamId || !EhAeroportoMilitar(airport, slot)) continue;
+
+                Transform grupo = airport.transform.Find("IA02 Creates Patrulha Aerea");
+                if (grupo == null)
+                {
+                    grupo = new GameObject("IA02 Creates Patrulha Aerea").transform;
+                    grupo.SetParent(airport.transform, false);
+                }
+
+                for (int ponto = 1; ponto <= 4; ponto++)
+                {
+                    string nome = "Create Patrulha Aerea " + ponto.ToString("00");
+                    Transform create = grupo.Find(nome);
+                    if (create == null)
+                    {
+                        create = new GameObject(nome).transform;
+                        create.SetParent(grupo, false);
+                        create.localPosition = offsets[ponto - 1];
+                    }
+                    IA02AirPatrolZone zone = create.GetComponent<IA02AirPatrolZone>();
+                    if (zone == null) create.gameObject.AddComponent<IA02AirPatrolZone>();
+                }
+
+                return 4;
+            }
+            return 0;
+        }
+
+        private static Vector3[] CriarRotaDosCreates(IList<IA02AirPatrolZone> creates, int inicio)
+        {
+            Vector3[] rota = new Vector3[4];
+            for (int i = 0; i < rota.Length; i++)
+            {
+                rota[i] = creates[(inicio + i) % creates.Count].ObterPontoPatrulha();
+            }
+            return rota;
+        }
+
+        private static bool EhAeroportoMilitar(GerenciadorAeroporto airport)
+        {
+            if (airport == null) return false;
+            if (airport.patioMilitar != null || airport.prefabSu11 != null) return true;
+            if (airport.transform.Find("Patio_Militar") != null || airport.transform.Find("PatioMilitar") != null) return true;
+            return airport.name.IndexOf("militar", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool EhAeroportoMilitar(IA02AirportBuildSlot airport, IA02BuildSlot slot)
+        {
+            if (airport == null || slot == null) return false;
+            return slot.SlotId.IndexOf("militar", StringComparison.OrdinalIgnoreCase) >= 0
+                || airport.name.IndexOf("militar", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void ApplyNavalStaging(float now)

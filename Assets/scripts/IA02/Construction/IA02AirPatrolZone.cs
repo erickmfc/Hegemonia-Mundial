@@ -18,6 +18,18 @@ namespace Hegemonia.AI.IA02
 
         public int IntervaloDias => Mathf.Max(1, intervaloDias);
 
+        /// <summary>
+        /// Retorna o waypoint aéreo deste Create. O Transform continua sendo
+        /// filho do aeroporto militar; somente a altura de voo é acrescentada
+        /// para que o avião atravesse a região real sem tentar pousar no ponto.
+        /// </summary>
+        public Vector3 ObterPontoPatrulha()
+        {
+            Vector3 ponto = transform.position;
+            ponto.y += Mathf.Max(60f, altitude);
+            return ponto;
+        }
+
         public Vector3[] CriarRota(int indice)
         {
             // A patrulha aerea usa uma caixa retangular orientada pelo create.
