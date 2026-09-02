@@ -10,6 +10,12 @@ public class ControleNavioRealista : MonoBehaviour
     private const float RaioPreparacaoNavMesh = 45f;
     private const float RaioDestinoNavMesh = 90f;
 
+    public enum ModoNavegacaoNaval
+    {
+        DiretaSobreAgua,
+        NavMeshHibrida
+    }
+
     [Header("Configurações Físicas (Hardcore)")]
     [Tooltip("Tempo em segundos para ir de 0% a 100% de potência.")]
     public float tempoAceleracao = 8.0f; // Demorado, como pedido
@@ -69,6 +75,9 @@ public class ControleNavioRealista : MonoBehaviour
 
     [Header("Áudio e Energia")]
     public ModoOperacao modoOperacao = ModoOperacao.Ativo;
+    [Header("Navegação")]
+    [Tooltip("Navios usam rota aquática e leme diretamente por padrão. O NavMesh fica opcional para cenas que realmente tenham uma malha naval válida.")]
+    public ModoNavegacaoNaval modoNavegacao = ModoNavegacaoNaval.DiretaSobreAgua;
     public AudioClip somMotorParado;
     public AudioClip somMotorMovimento;
     private AudioSource fonteAudio;
@@ -189,6 +198,13 @@ public class ControleNavioRealista : MonoBehaviour
             agente.updatePosition = false; // Nós controlamos a posição (Soft-Sim)
             agente.updateRotation = false; // Nós controlamos a rotação (Physics)
             agente.acceleration = 9999; // Agente "NavMesh" instantâneo, nós seguimos ele
+            if (modoNavegacao == ModoNavegacaoNaval.DiretaSobreAgua)
+            {
+                // Água não precisa de um agente terrestre. Desabilitar o
+                // componente evita tentativas nativas de criar um agente em
+                // regiões sem NavMesh e mantém a rota aquática funcionando.
+                agente.enabled = false;
+            }
         }
         else
         {
@@ -280,14 +296,28 @@ public class ControleNavioRealista : MonoBehaviour
                 InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Logistica, inicioLogica);
             }
 
-            // 1. INPUT (IA ou Player via NavMesh)
-            CalcularInputNavegacao();
+            // 1-3. INPUT, MOTOR E MOVIMENTO
+            // Um navio estacionado sem ordem não precisa recalcular entrada,
+            // aceleração, leme e posição a cada frame. A ordem seguinte volta
+            // a marcar temDestino/potenciaAlvo e reativa o caminho completo
+            // imediatamente; visual, audio, combustivel e armas continuam
+            // sendo processados abaixo.
+            bool precisaSimularMovimento = temDestino
+                || manobraReAtiva
+                || Mathf.Abs(potenciaAlvo) > 0.05f
+                || Mathf.Abs(potenciaAtual) > 0.05f
+                || velocidadeVetorial.sqrMagnitude > 0.25f;
+            if (precisaSimularMovimento)
+            {
+                // 1. INPUT (IA ou Player via NavMesh)
+                CalcularInputNavegacao();
 
-            // 2. SIMULAÇÃO DE MOTOR E HELICE
-            SimularMotor();
+                // 2. SIMULAÇÃO DE MOTOR E HELICE
+                SimularMotor();
 
-            // 3. DIN MICA DE MOVIMENTO (Inércia e Drift)
-            SimularFisicaMovimento();
+                // 3. DIN MICA DE MOVIMENTO (Inércia e Drift)
+                SimularFisicaMovimento();
+            }
 
             // 4. VISUAIS
             AtualizarEfeitosVisuaisOtimizados();
@@ -314,9 +344,21 @@ public class ControleNavioRealista : MonoBehaviour
 
     private void AtualizarEstadoOtimizacao()
     {
+        // ControleUnidade pode ser adicionado pela seleção depois do Awake
+        // (caso do prefab logístico). Atualiza a referência sem alterar o
+        // executor naval nem criar um segundo caminho de movimento.
+        if (controleUnidadeCache == null)
+        {
+            controleUnidadeCache = GetComponent<ControleUnidade>()
+                ?? GetComponentInParent<ControleUnidade>();
+        }
+
         bool selecionado = controleUnidadeCache != null && controleUnidadeCache.selecionado;
         bool engajado = temDestino || Mathf.Abs(potenciaAtual) > 0.05f || velocidadeVetorial.sqrMagnitude > 0.25f;
-        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, true, 220f, 520f);
+        // Apenas navios selecionados, em movimento ou em uma situação de
+        // combate devem receber prioridade máxima. Antes, todos os navios
+        // eram marcados como "heroicos", anulando o LOD de simulação distante.
+        InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, false, 220f, 520f);
     }
 
     void VerificarInatividade()
@@ -500,7 +542,8 @@ public class ControleNavioRealista : MonoBehaviour
 
     bool AgenteProntoParaLeitura()
     {
-        return agente != null
+        return modoNavegacao == ModoNavegacaoNaval.NavMeshHibrida
+            && agente != null
             && agente.enabled
             && agente.isActiveAndEnabled
             && agente.isOnNavMesh;
@@ -526,7 +569,9 @@ public class ControleNavioRealista : MonoBehaviour
 
     bool TentarPrepararAgenteParaNavegacao()
     {
-        if (agente == null || !gameObject.activeInHierarchy)
+        if (modoNavegacao != ModoNavegacaoNaval.NavMeshHibrida
+            || agente == null
+            || !gameObject.activeInHierarchy)
         {
             return false;
         }
@@ -648,6 +693,27 @@ public class ControleNavioRealista : MonoBehaviour
     void agentNextPositionCheck(Vector3 novaPos)
     {
         float nivelMar = ObterNivelMarCacheado();
+
+        // A física pode apontar o casco para fora da polilinha entre dois
+        // frames, especialmente quando ele ainda está terminando uma curva.
+        // O A* já validou os waypoints; esta guarda valida também o segmento
+        // efetivamente percorrido pelo casco antes de aplicar o transform.
+        if (temDestino)
+        {
+            Vector3 origemPlano = transform.position;
+            origemPlano.y = nivelMar;
+            Vector3 proximaPosicaoPlano = novaPos;
+            proximaPosicaoPlano.y = nivelMar;
+            if (!NavalPlacementResolver.IsWaterSegment(
+                    origemPlano,
+                    proximaPosicaoPlano,
+                    ResolverFolgaNavegacao()))
+            {
+                potenciaAlvo = 0f;
+                velocidadeVetorial = Vector3.zero;
+                return;
+            }
+        }
 
         // 1. Defina a posição visual do GameObject (Barco/Submarino) na profundidade desejada
         // Soma o offset (configurado no inspector) com a profundidade interna
@@ -993,37 +1059,37 @@ public class ControleNavioRealista : MonoBehaviour
     }
     
     // Método para integração com ControleUnidade
-    public void DefinirDestino(Vector3 destino)
+    public bool DefinirDestino(Vector3 destino)
     {
-        DefinirDestino(destino, null);
+        return DefinirDestino(destino, null);
     }
 
-    public void DefinirDestino(Vector3 destino, string ordemExternaId)
+    public bool DefinirDestino(Vector3 destino, string ordemExternaId)
     {
         // O diorama do menu reutiliza navios da campanha, mas não deve aceitar
         // ordens nem tentar preparar um NavMesh enquanto a partida ainda não
         // começou. A cena de campanha continua usando o fluxo normal abaixo.
         if (ehCenaDeMenuCache)
         {
-            return;
+            return false;
         }
 
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
-            return;
+            return false;
         }
 
         if (!NavalPlacementResolver.IsWaterAtPosition(destino))
         {
             Debug.LogWarning($"[ControleNavioRealista] Destino recusado para {name}: ponto fora da água ({destino.x:F0}, {destino.z:F0}).", this);
-            return;
+            return false;
         }
 
         if (temDestino && rotaAguaAtual.Count > 0
             && Vector3.Distance(rotaAguaAtual[rotaAguaAtual.Count - 1], destino) < 2f)
         {
-            return;
+            return true;
         }
 
         if (!NavalPlacementResolver.TryBuildWaterRoute(
@@ -1033,12 +1099,18 @@ public class ControleNavioRealista : MonoBehaviour
                 out List<Vector3> rotaAgua))
         {
             Debug.LogWarning($"[ControleNavioRealista] Rota recusada para {name}: não existe corredor contínuo sobre água até ({destino.x:F0}, {destino.z:F0}).", this);
-            return;
+            return false;
         }
 
         rotaAguaAtual.Clear();
         rotaAguaAtual.AddRange(rotaAgua);
         indiceRotaAgua = 0;
+
+        if (controleUnidadeCache == null)
+        {
+            controleUnidadeCache = GetComponent<ControleUnidade>()
+                ?? GetComponentInParent<ControleUnidade>();
+        }
 
         ControleUnidade controleUnidade = controleUnidadeCache;
         bool ordemNavalCartelAtiva = controleUnidade != null
@@ -1081,17 +1153,18 @@ public class ControleNavioRealista : MonoBehaviour
                     destino,
                     TipoOrdemMovimento.Naval))
             {
-                return;
+                return false;
             }
         }
 
-        if (TentarPrepararAgenteParaNavegacao())
+        if (modoNavegacao == ModoNavegacaoNaval.NavMeshHibrida
+            && TentarPrepararAgenteParaNavegacao())
         {
             float cooldown = InfraPerformanceGameplay.ResolverIntervalo(1.10f, estadoOtimizacao, true, true);
             if (!InfraPerformanceGameplay.DeveAplicarReplan(destino, ref ultimoDestinoAplicado, ref proximoReplanDestino, cooldown, 6f))
             {
                 agente.isStopped = false;
-                return;
+                return true;
             }
 
             // Guarda: se o destino é praticamente o mesmo e já temos um path ativo,
@@ -1101,7 +1174,7 @@ public class ControleNavioRealista : MonoBehaviour
                 && agente.isOnNavMesh
                 && (agente.hasPath || agente.pathPending))
             {
-                return;
+                return true;
             }
 
             destinoAtual = rotaAguaAtual[0];
@@ -1133,7 +1206,7 @@ public class ControleNavioRealista : MonoBehaviour
             {
                 Debug.LogWarning($"[ControleNavioRealista] NavMesh rejeitou destino para {name} em {destino}.");
             }
-            return;
+            return destinoAceito;
         }
 
         // Patrulhas navais não devem travar só porque a área de água não foi
@@ -1144,11 +1217,13 @@ public class ControleNavioRealista : MonoBehaviour
         tempoRestanteManobraRe = 0f;
         estaDesligado = false;
         tempoInatividade = 0f;
-        if (Time.time >= proximoAvisoSemNavMesh)
+        if (modoNavegacao == ModoNavegacaoNaval.NavMeshHibrida
+            && Time.time >= proximoAvisoSemNavMesh)
         {
             Debug.LogWarning($"[ControleNavioRealista] NavMesh indisponível para {name}; usando navegação aquática direta.");
             proximoAvisoSemNavMesh = Time.time + 5f;
         }
+        return temDestino;
     }
 
     public void PararPorFaltaDeCombustivel()
@@ -1163,7 +1238,8 @@ public class ControleNavioRealista : MonoBehaviour
         manobraReAtiva = false;
         tempoRestanteManobraRe = 0f;
 
-        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        if (modoNavegacao == ModoNavegacaoNaval.NavMeshHibrida
+            && agente != null && agente.enabled && agente.isOnNavMesh)
         {
             agente.ResetPath();
             agente.isStopped = true;
@@ -1194,7 +1270,8 @@ public class ControleNavioRealista : MonoBehaviour
 
         indiceRotaAgua++;
         destinoAtual = rotaAguaAtual[indiceRotaAgua];
-        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        if (modoNavegacao == ModoNavegacaoNaval.NavMeshHibrida
+            && agente != null && agente.enabled && agente.isOnNavMesh)
         {
             agente.isStopped = false;
             if (!agente.SetDestination(destinoAtual))

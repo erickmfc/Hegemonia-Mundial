@@ -717,6 +717,31 @@ namespace Hegemonia.AI.Sovereign
                 end = start + controle.transform.forward * 120f;
             }
 
+            if (controle.EhUnidadeNaval())
+            {
+                float nivelMar = NavalPlacementResolver.ResolveSeaLevel();
+                start.y = nivelMar;
+                end.y = nivelMar;
+                Vector3 pontoAgua;
+
+                // Alvos estratégicos da IA normalmente são centros em terra.
+                // Converte o destino para a água mais próxima antes de criar a
+                // rota, mantendo os navios em patrulha sem abandonar a missão.
+                if (!NavalPlacementResolver.IsWaterAtPosition(end)
+                    && NavalPlacementResolver.TryResolveNearestWaterPoint(end, 2400f, out pontoAgua))
+                {
+                    end = pontoAgua;
+                    end.y = nivelMar;
+                }
+
+                if (!NavalPlacementResolver.IsWaterAtPosition(start)
+                    && NavalPlacementResolver.TryResolveNearestWaterPoint(start, 2400f, out pontoAgua))
+                {
+                    start = pontoAgua;
+                    start.y = nivelMar;
+                }
+            }
+
             var rota = new List<Vector3>(2)
             {
                 start,

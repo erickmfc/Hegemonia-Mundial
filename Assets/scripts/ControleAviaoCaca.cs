@@ -6,7 +6,7 @@ using System.Collections.Generic;
 public class ControleAviaoCaca : MonoBehaviour
 {
     [Header("Status de Voo")]
-    public float altitudeCruzeiro = 40f; 
+    public float altitudeCruzeiro = ControleAviao.AltitudeMinimaVooMilitar;
     [Tooltip("Altura para recolher o trem de pouso e considerar 'Voando'.")]
     public float alturaDecolagem = 15f; 
     
@@ -72,8 +72,15 @@ public class ControleAviaoCaca : MonoBehaviour
     [Tooltip("Tempo em segundos usando velocidade máxima após receber dano.")]
     public float duracaoBoostDefensivo = 4f;
 
+    private void OnValidate()
+    {
+        altitudeCruzeiro = Mathf.Max(ControleAviao.AltitudeMinimaVooMilitar, altitudeCruzeiro);
+    }
+
     void Start()
     {
+        altitudeCruzeiro = Mathf.Max(ControleAviao.AltitudeMinimaVooMilitar, altitudeCruzeiro);
+
         _controleUnidade = GetComponent<ControleUnidade>();
         _sistemaTiro = GetComponentInChildren<SistemaDeTiro>();
         _sistemaDanos = GetComponent<SistemaDeDanos>();

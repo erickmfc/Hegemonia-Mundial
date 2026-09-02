@@ -139,6 +139,15 @@ namespace Hegemonia.AI.BrainMaster
         void Tick(float now, float deltaTime);
     }
 
+    /// <summary>
+    /// Módulo que mantém o próprio ponto de continuação entre frames.
+    /// Retorna true quando a decisão lógica terminou; false mantém a fatia pendente.
+    /// </summary>
+    public interface IIAIncrementalUpdateModule : IIAUpdateModule
+    {
+        bool TickSlice(float now, float deltaTime, float budgetMs);
+    }
+
     [Serializable]
     public sealed class IA_CommandRequest
     {

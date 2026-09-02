@@ -5,7 +5,7 @@ using UnityEngine.AI;
 
 namespace Hegemonia.AI.BrainMaster
 {
-    public sealed class IA_WorldState : IIAUpdateModule
+    public sealed class IA_WorldState : IIAIncrementalUpdateModule
     {
         private const int MaxMobileVisibilityProviders = 24;
         private const int MaxStructureVisibilityProviders = 8;
@@ -66,6 +66,9 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<int, IA_EnemyObservation> _enemyMemoryById = new Dictionary<int, IA_EnemyObservation>(256);
         private readonly IA_ForceSnapshot _forceSnapshot = new IA_ForceSnapshot();
         private readonly List<int> _staleEnemyIds = new List<int>(64);
+        private readonly HashSet<int> _canonicalKeys = new HashSet<int>();
+        private readonly List<IA_StrategicTargetData> _strategicTargetPool = new List<IA_StrategicTargetData>(16);
+        private int _strategicTargetPoolCursor;
 
         private Transform _baseProbe;
         private Vector3 _fallbackCenter;
@@ -77,7 +80,14 @@ namespace Hegemonia.AI.BrainMaster
         private float _nextRegistryCleanupTime;
 
         private int _lastSeenRegistryVersion = -1;
+        private int _lastSeenEntityRegistryVersion = -1;
         private bool _snapshotDirty = true;
+        private bool _ownedRefreshInProgress;
+        private int _ownedRefreshIndex;
+        private int _mobileVisibilityBudget;
+        private int _structureVisibilityBudget;
+        private long _ownedRefreshStart;
+        private float _ownedRefreshStartedAt;
 
         private static readonly HashSet<IdentidadeUnidade> _globalRegistry = new HashSet<IdentidadeUnidade>();
         private static readonly List<IdentidadeUnidade> _registryScratch = new List<IdentidadeUnidade>(512);
@@ -96,6 +106,11 @@ namespace Hegemonia.AI.BrainMaster
         public Vector3 BaseCenter { get; private set; }
         public float LastScanTime { get; private set; }
         public IA_CombatPressure CombatPressure { get; private set; }
+
+        public int RegistryVersion
+        {
+            get { return _registryVersion; }
+        }
 
         public IA_ForceSnapshot ForceSnapshot
         {
@@ -175,7 +190,11 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
-            if (_forceRefresh || now >= _nextGlobalScanTime || _snapshotDirty || _lastSeenRegistryVersion != _registryVersion)
+            if (_forceRefresh
+                || now >= _nextGlobalScanTime
+                || _snapshotDirty
+                || _lastSeenRegistryVersion != _registryVersion
+                || _lastSeenEntityRegistryVersion != RegistroEntidadesJogo.Version)
             {
                 long refreshStart = System.Diagnostics.Stopwatch.GetTimestamp();
                 RefreshOwnedAndGlobalCache(now);
@@ -213,10 +232,173 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
+        public bool TickSlice(float now, float deltaTime, float budgetMs)
+        {
+            if (!_ownedRefreshInProgress
+                && (_forceRefresh
+                    || now >= _nextGlobalScanTime
+                    || _snapshotDirty
+                    || _lastSeenRegistryVersion != _registryVersion
+                    || _lastSeenEntityRegistryVersion != RegistroEntidadesJogo.Version))
+            {
+                BeginOwnedAndGlobalCacheRefresh(now);
+            }
+
+            if (_ownedRefreshInProgress)
+            {
+                if (!ProcessOwnedAndGlobalCacheSlice(now, budgetMs))
+                {
+                    return false;
+                }
+
+                _nextGlobalScanTime = now + 8f;
+                _nextVisibleRefreshTime = 0f;
+                _forceRefresh = false;
+            }
+
+            RefreshVisibleAndMaintenance(now);
+            return true;
+        }
+
         public void MarkDirty()
         {
             _forceRefresh = true;
             _snapshotDirty = true;
+        }
+
+        private void BeginOwnedAndGlobalCacheRefresh(float now)
+        {
+            RebuildRegistrySnapshotIfNeeded(now);
+
+            OwnUnits.Clear();
+            OwnStructures.Clear();
+            OwnCombatUnits.Clear();
+            VisibilityProviders.Clear();
+            ResetForceSnapshot();
+
+            _mobileVisibilityBudget = MaxMobileVisibilityProviders;
+            _structureVisibilityBudget = MaxStructureVisibilityProviders;
+            _ownedRefreshIndex = 0;
+            _ownedRefreshStartedAt = now;
+            _ownedRefreshStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            _ownedRefreshInProgress = true;
+        }
+
+        private bool ProcessOwnedAndGlobalCacheSlice(float now, float budgetMs)
+        {
+            long sliceStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            float sliceBudget = Mathf.Max(0.10f, budgetMs);
+
+            while (_ownedRefreshIndex < _registrySnapshot.Count)
+            {
+                RegistrySnapshotEntry snap = _registrySnapshot[_ownedRefreshIndex++];
+                if (snap.Identity == null || snap.GameObject == null || !snap.GameObject.activeInHierarchy)
+                {
+                    if (ElapsedMilliseconds(sliceStart) >= sliceBudget) return false;
+                    continue;
+                }
+
+                if (snap.TeamId != _teamId)
+                {
+                    if (ElapsedMilliseconds(sliceStart) >= sliceBudget) return false;
+                    continue;
+                }
+
+                if (snap.Cache.IsStructure)
+                {
+                    OwnStructures.Add(snap.GameObject);
+                    AccumulateStructureSnapshot(snap.Cache);
+                }
+                else
+                {
+                    OwnUnits.Add(snap.GameObject);
+                    AccumulateUnitSnapshot(snap.Cache);
+                    if (!snap.Cache.IsTransport)
+                    {
+                        OwnCombatUnits.Add(snap.GameObject);
+                    }
+                }
+
+                if (ShouldRegisterVisibilityProvider(
+                        snap.Cache,
+                        snap.Cache.IsStructure,
+                        ref _mobileVisibilityBudget,
+                        ref _structureVisibilityBudget))
+                {
+                    VisibilityProviders.Add(new IA_VisibilityProvider
+                    {
+                        Source = snap.Transform,
+                        Radius = snap.Cache.VisionRadius
+                    });
+                }
+
+                if (ElapsedMilliseconds(sliceStart) >= sliceBudget)
+                {
+                    return false;
+                }
+            }
+
+            NavioTransporteTropas.AcumularForcaEmbarcada(_teamId, _forceSnapshot);
+            TransporteAnfibio.AcumularForcaEmbarcada(_teamId, _forceSnapshot);
+            BaseCenter = ComputeBaseCenter();
+
+            if (_baseProbe == null)
+            {
+                _baseProbe = CreateVirtualBaseProbe();
+            }
+
+            _baseProbe.position = BaseCenter;
+            VisibilityProviders.Add(new IA_VisibilityProvider
+            {
+                Source = _baseProbe,
+                Radius = 260f
+            });
+
+            LastScanTime = now;
+            _ownedRefreshInProgress = false;
+            _lastSeenRegistryVersion = _registryVersion;
+            _lastSeenEntityRegistryVersion = RegistroEntidadesJogo.Version;
+            _snapshotDirty = false;
+
+            float refreshMs = ElapsedMilliseconds(_ownedRefreshStart);
+            if (refreshMs > 0f)
+            {
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("world_refresh_ms", refreshMs);
+            }
+
+            return true;
+        }
+
+        private void RefreshVisibleAndMaintenance(float now)
+        {
+            if (_forceRefresh || now >= _nextVisibleRefreshTime)
+            {
+                long visibleStart = System.Diagnostics.Stopwatch.GetTimestamp();
+                RefreshVisibleEnemies(now);
+                UpdateCombatPressure(now);
+                RegistrarMetricaTempo(
+                    "visible_enemy_ms",
+                    ElapsedMilliseconds(visibleStart));
+
+                _nextVisibleRefreshTime = now + ResolveVisibleRefreshInterval();
+            }
+
+            if (now >= _nextCleanupTime)
+            {
+                CleanupMemory(now, 120f);
+                _nextCleanupTime = now + 30f;
+            }
+
+            if (now >= _nextRegistryCleanupTime)
+            {
+                CleanupDeadRegistryEntries();
+                _nextRegistryCleanupTime = now + GlobalRegistryCleanupInterval;
+            }
+        }
+
+        private static float ElapsedMilliseconds(long start)
+        {
+            return (float)((System.Diagnostics.Stopwatch.GetTimestamp() - start) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
         }
 
         public void SetFallbackCenter(Vector3 center)
@@ -253,7 +435,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public Transform GetNearestVisibleEnemy(Vector3 fromPosition, IA_Domain preferredDomain)
         {
-            float bestDistance = float.MaxValue;
+            float bestDistanceSquared = float.MaxValue;
             Transform best = null;
             Vector3 flatFrom = Flatten(fromPosition);
 
@@ -265,15 +447,15 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                float scoreDistance = Vector3.Distance(flatFrom, Flatten(obs.Position));
+                float scoreDistanceSquared = (flatFrom - Flatten(obs.Position)).sqrMagnitude;
                 if (preferredDomain != obs.Domain)
                 {
-                    scoreDistance *= 1.15f;
+                    scoreDistanceSquared *= 1.3225f;
                 }
 
-                if (scoreDistance < bestDistance)
+                if (scoreDistanceSquared < bestDistanceSquared)
                 {
-                    bestDistance = scoreDistance;
+                    bestDistanceSquared = scoreDistanceSquared;
                     best = obs.Transform;
                 }
             }
@@ -353,6 +535,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             output.Clear();
+            _strategicTargetPoolCursor = 0;
             if (maxTargets <= 0)
             {
                 return 0;
@@ -380,14 +563,12 @@ namespace Hegemonia.AI.BrainMaster
 
                 float distance = Vector3.Distance(flatFrom, Flatten(snap.Transform.position));
                 float score = ScoreStrategicTarget(_teamId, kind, snap.Cache, distance);
-                IA_StrategicTargetData target = new IA_StrategicTargetData
-                {
-                    Kind = kind,
-                    Transform = snap.Transform,
-                    Position = snap.Transform.position,
-                    Score = score,
-                    Label = snap.Cache.NormalizedName
-                };
+                IA_StrategicTargetData target = GetReusableStrategicTarget();
+                target.Kind = kind;
+                target.Transform = snap.Transform;
+                target.Position = snap.Transform.position;
+                target.Score = score;
+                target.Label = snap.Cache.NormalizedName;
 
                 InsertStrategicTarget(output, target, maxTargets);
             }
@@ -581,6 +762,16 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
+        private IA_StrategicTargetData GetReusableStrategicTarget()
+        {
+            if (_strategicTargetPoolCursor >= _strategicTargetPool.Count)
+            {
+                _strategicTargetPool.Add(new IA_StrategicTargetData());
+            }
+
+            return _strategicTargetPool[_strategicTargetPoolCursor++];
+        }
+
         public int CountOwnByHint(params string[] hints)
         {
             if (hints == null || hints.Length == 0)
@@ -716,7 +907,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             _registryScratch.Clear();
-            HashSet<int> canonicalKeys = new HashSet<int>();
+            _canonicalKeys.Clear();
             foreach (IdentidadeUnidade id in _globalRegistry)
             {
                 _registryScratch.Add(id);
@@ -739,7 +930,7 @@ namespace Hegemonia.AI.BrainMaster
                 // Prefabs antigos podem registrar a identidade no root e em um
                 // filho. Ambos representam a mesma unidade física e não podem
                 // inflar caças/tanques/navios no diagnóstico.
-                if (!canonicalKeys.Add(ResolveCanonicalEntityKey(id)))
+                if (!_canonicalKeys.Add(ResolveCanonicalEntityKey(id)))
                 {
                     continue;
                 }
@@ -759,6 +950,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             _lastSeenRegistryVersion = _registryVersion;
+            _lastSeenEntityRegistryVersion = RegistroEntidadesJogo.Version;
             _snapshotDirty = false;
         }
 

@@ -7,6 +7,13 @@ namespace Hegemonia.AI.BrainMaster
     public sealed class IA_ProductionDirector : IIAUpdateModule
     {
         private const bool EnableHelicopterProduction = true;
+        // A força pode crescer com a capacidade do país, mas nunca apenas
+        // porque o relógio avançou. Estes são os pisos de uma nação média;
+        // a capacidade adicional vem de economia, indústria, território e
+        // infraestrutura militar.
+        private const int BaseAircraftCapacity = 20;
+        private const int BaseNavalCapacity = 15;
+        private const float CapacityRefreshInterval = 2f;
         private const float TimedAirKickoffSeconds = 8f;
         private const float TimedNavalKickoffSeconds = 9f;
         private const float StructureStabilitySeconds = 2.5f;
@@ -22,8 +29,13 @@ namespace Hegemonia.AI.BrainMaster
         private IA_BrainMaster.IA_BootstrapStage _lastBootstrapStage = IA_BrainMaster.IA_BootstrapStage.Disabled;
         private int _bootstrapShipGoalCount = -1;
         private float _nextRuntimeProductionQueueTime;
+        private float _nextTransportPlanRefreshTime;
+        private float _nextCapacityRefreshTime;
+        private int _cachedAircraftCapacity = BaseAircraftCapacity;
+        private int _cachedNavalCapacity = BaseNavalCapacity;
         private readonly List<Estaleiro> _registeredShipyardBuffer = new List<Estaleiro>();
         private readonly List<PierMarinha> _registeredPierBuffer = new List<PierMarinha>();
+        private readonly List<MarcadorTerritorio> _territoryMarkerBuffer = new List<MarcadorTerritorio>(16);
 
         public IA_ProductionDirector(IA_Context context)
         {
@@ -129,16 +141,24 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 Vector3 baseCenter = ResolveBaseCenter();
-                IA_TransportPlan transportPlan = BuildTransportPlan(
-                    now,
-                    snapshot,
-                    baseCenter,
-                    infantryCount,
-                    tankCount,
-                    artyCount,
-                    helicopterCount,
-                    fighterCount,
-                    fleetCombatCount);
+                IA_TransportPlan transportPlan = _context.TransportPlan;
+                bool transportPlanExpired = transportPlan == null
+                    || now >= _nextTransportPlanRefreshTime
+                    || snapshot.LastUpdatedTime > transportPlan.LastUpdatedTime + 0.01f;
+                if (transportPlanExpired)
+                {
+                    transportPlan = BuildTransportPlan(
+                        now,
+                        snapshot,
+                        baseCenter,
+                        infantryCount,
+                        tankCount,
+                        artyCount,
+                        helicopterCount,
+                        fighterCount,
+                        fleetCombatCount);
+                    _nextTransportPlanRefreshTime = now + ResolveStrategicCacheInterval();
+                }
                 _context.TransportPlan = transportPlan;
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
                     "transport_capacity_ready",
@@ -152,6 +172,7 @@ namespace Hegemonia.AI.BrainMaster
                                            && !transportPlan.Ready
                                            && transportPlan.RequiredCapacity >= 8;
                 bool shouldPauseGroundMass = ShouldPauseOffensiveGroundMass(transportPlan, infantryCount, tankCount, artyCount, decision);
+                ResolveProductionCapacities(now, snapshot, out int aircraftCapacity, out int navalCapacity);
 
                 int infantryTarget = 12 + (counter.AntiRush ? 8 : 0) + Mathf.RoundToInt(counter.LandWeight * 8f);
                 int tankTarget = 5 + Mathf.RoundToInt(counter.LandWeight * 6f);
@@ -159,10 +180,10 @@ namespace Hegemonia.AI.BrainMaster
                 int helicopterTarget = EnableHelicopterProduction && hasHeliport
                     ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 4f), 2, 6)
                     : 0;
-                int fighterBaseline = 2 + Mathf.RoundToInt(counter.AirWeight * 4f) + Mathf.FloorToInt(now / 120f);
+                int fighterBaseline = 2 + Mathf.RoundToInt(counter.AirWeight * 4f);
                 int fighterTarget = hasMilitaryAirport ? Mathf.Max(2, fighterBaseline) : 0;
                 int patrolShipTarget = hasNavalBase ? 1 : 0;
-                int navalBaseline = 1 + Mathf.RoundToInt(counter.NavalWeight * 4f) + Mathf.FloorToInt(now / 180f);
+                int navalBaseline = 1 + Mathf.RoundToInt(counter.NavalWeight * 4f);
                 int navalTarget = hasNavalBase ? Mathf.Max(1, navalBaseline) : 0;
                 int oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0 ? 1 : 0;
                 if (brain != null)
@@ -191,30 +212,14 @@ namespace Hegemonia.AI.BrainMaster
                     && counter.ReinforceCoast
                     ? 1
                     : 0;
-                if (_context.Brain != null && _context.Brain.WarPosture == IA_WarPosture.BalancedAggression)
-                {
-                    if (now < 300f)
-                    {
-                        infantryTarget = Mathf.Max(infantryTarget, 8);
-                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 2 : 0);
-                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 2 : 0);
-                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 1 : 0);
-                    }
-                    else if (now < 900f)
-                    {
-                        infantryTarget = Mathf.Max(infantryTarget, 14);
-                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 4 : 0);
-                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 10 : 0);
-                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 3 : 0);
-                    }
-                    else
-                    {
-                        infantryTarget = Mathf.Max(infantryTarget, 18);
-                        tankTarget = Mathf.Max(tankTarget, hasFactory ? 6 : 0);
-                        fighterTarget = Mathf.Max(fighterTarget, hasMilitaryAirport ? 14 : 0);
-                        navalTarget = Mathf.Max(navalTarget, hasNavalBase ? 4 : 0);
-                    }
-                }
+                // As decisões acima continuam respeitando a doutrina e a
+                // ameaça, mas a fila não pode ultrapassar a capacidade real
+                // do país. O clamp fica depois de todas as prioridades para
+                // que nenhum caminho alternativo escape do limite.
+                fighterTarget = hasMilitaryAirport ? Mathf.Min(fighterTarget, aircraftCapacity) : 0;
+                navalTarget = hasNavalBase ? Mathf.Min(navalTarget, navalCapacity) : 0;
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("air_production_capacity", aircraftCapacity);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("naval_production_capacity", navalCapacity);
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("fighter_target", fighterTarget);
                 int armyCount = Mathf.Max(
                     snapshot.TotalCombatUnits,
@@ -1048,6 +1053,135 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return new IA_ForceSnapshot();
+        }
+
+        private float ResolveStrategicCacheInterval()
+        {
+            if (DiagnosticoDesempenhoJogo.RuntimeSaturado())
+            {
+                return 2.0f;
+            }
+
+            if (DiagnosticoDesempenhoJogo.RuntimeSobPressao())
+            {
+                return 1.6f;
+            }
+
+            return 1.1f;
+        }
+
+        private void ResolveProductionCapacities(
+            float now,
+            IA_ForceSnapshot snapshot,
+            out int aircraftCapacity,
+            out int navalCapacity)
+        {
+            if (now < _nextCapacityRefreshTime)
+            {
+                aircraftCapacity = _cachedAircraftCapacity;
+                navalCapacity = _cachedNavalCapacity;
+                return;
+            }
+
+            int teamId = _context != null && _context.Brain != null ? _context.Brain.TeamId : 0;
+            DadosPaisGoverno country = SistemaGovernoMundial.Instancia != null && teamId > 0
+                ? SistemaGovernoMundial.Instancia.ObterPais(teamId)
+                : null;
+
+            float operationalFunds = country != null
+                ? Mathf.Max(0f, (float)country.saldo + Mathf.Max(0f, country.rendaPorSegundo - country.gastosPorSegundo) * 180f)
+                : (_context != null && _context.Brain != null ? Mathf.Max(0f, _context.Brain.Credits) : 0f);
+            float economyFactor = Mathf.Clamp01(operationalFunds / 60000f);
+            float industrialFactor = country != null
+                ? Mathf.Clamp01(country.nivelIndustrial / 100f)
+                : 0.5f;
+
+            int ownedTerritoryMarkers = CountOwnedTerritoryMarkers(teamId);
+            int structureTerritoryScore = snapshot != null
+                ? Mathf.Clamp(snapshot.TotalOwnStructures / 4, 0, 8)
+                : 0;
+            int territoryScore = Mathf.Clamp(ownedTerritoryMarkers + structureTerritoryScore, 0, 12);
+            int territoryBonus = Mathf.Clamp(territoryScore / 2, 0, 8);
+
+            int economicBonus = Mathf.RoundToInt(economyFactor * 8f);
+            int industrialBonus = Mathf.RoundToInt(industrialFactor * 10f);
+            int airportBonus = snapshot != null
+                ? snapshot.MilitaryAirportCount * 4 + snapshot.HeliportCount * 2
+                : 0;
+            int navalInfrastructureBonus = snapshot != null
+                ? snapshot.ShipyardCount * 4 + snapshot.PierCount * 2
+                : 0;
+
+            DificuldadeJogo difficulty = DificuldadeJogo.Normal;
+            PerfilDificuldadeJogo difficultyProfile = GameDifficultyManager.PerfilAtual;
+            if (difficultyProfile != null)
+            {
+                difficulty = difficultyProfile.Dificuldade;
+            }
+
+            int maximumAircraft = 36;
+            int maximumNaval = 30;
+            switch (difficulty)
+            {
+                case DificuldadeJogo.Facil:
+                    maximumAircraft = 30;
+                    maximumNaval = 24;
+                    break;
+                case DificuldadeJogo.Dificil:
+                    maximumAircraft = 46;
+                    maximumNaval = 40;
+                    break;
+                case DificuldadeJogo.Imperial:
+                    maximumAircraft = 58;
+                    maximumNaval = 52;
+                    break;
+            }
+
+            _cachedAircraftCapacity = Mathf.Clamp(
+                BaseAircraftCapacity + economicBonus + industrialBonus + territoryBonus + airportBonus,
+                BaseAircraftCapacity,
+                maximumAircraft);
+            _cachedNavalCapacity = Mathf.Clamp(
+                BaseNavalCapacity + economicBonus + industrialBonus + territoryBonus + navalInfrastructureBonus,
+                BaseNavalCapacity,
+                maximumNaval);
+            _nextCapacityRefreshTime = now + (DiagnosticoDesempenhoJogo.RuntimeSaturado() ? 3f : CapacityRefreshInterval);
+
+            aircraftCapacity = _cachedAircraftCapacity;
+            navalCapacity = _cachedNavalCapacity;
+        }
+
+        private int CountOwnedTerritoryMarkers(int teamId)
+        {
+            if (teamId <= 0)
+            {
+                return 0;
+            }
+
+            RegistroEntidadesJogo.FillMarcadoresTerritorio(_territoryMarkerBuffer);
+            int count = 0;
+            for (int i = 0; i < _territoryMarkerBuffer.Count; i++)
+            {
+                MarcadorTerritorio marker = _territoryMarkerBuffer[i];
+                if (marker == null || !marker.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                int markerTeam = marker.teamID;
+                if (markerTeam <= 0)
+                {
+                    IdentidadeUnidade identity = marker.GetComponent<IdentidadeUnidade>();
+                    markerTeam = identity != null ? identity.teamID : markerTeam;
+                }
+
+                if (markerTeam == teamId)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private IA_BattleGovernorDecision GetBattleDecision()

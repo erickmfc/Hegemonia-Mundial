@@ -20,6 +20,7 @@ public static class MdHistoriaBiomasSetup
     private const string PastaTexturas = PastaBase + "/Texturas";
     private const string PastaCamadas = PastaBase + "/Camadas";
     private const string PastaMalhas = PastaBase + "/Malhas";
+    private const int CamadasDeTerra = 3;
     private const string RaizLimites = "LimitesMapa_MdHistoria";
     private const string PrefixoParede = "LimiteMdHistoria_";
     private const string RaizExtensoes = "ExtensoesFronteira_Neutras";
@@ -179,7 +180,7 @@ public static class MdHistoriaBiomasSetup
             bool agua = esperado == Bioma.Agua;
             bool temCamada = terreno.terrainData != null
                 && terreno.terrainData.terrainLayers != null
-                && terreno.terrainData.terrainLayers.Length == 1;
+                && terreno.terrainData.terrainLayers.Length >= CamadasDeTerra;
             if (agua)
             {
                 aguas++;
@@ -195,7 +196,7 @@ public static class MdHistoriaBiomasSetup
             if (!agua && !temCamada)
             {
                 problemas++;
-                Debug.LogWarning("[Md Historia] Terreno sem camada temática única: " + terreno.name);
+                Debug.LogWarning("[Md Historia] Terreno sem mistura temática de " + CamadasDeTerra + " camadas: " + terreno.name);
             }
 
             TerrainCollider collider = terreno.GetComponent<TerrainCollider>();
@@ -324,10 +325,7 @@ public static class MdHistoriaBiomasSetup
             return;
         }
 
-        Texture2D textura = ObterTextura(bioma);
-        TerrainLayer camada = ObterCamada(bioma, textura);
-        dados.terrainLayers = new[] { camada };
-        AplicarAlphamapUnico(dados);
+        AplicarMisturaBioma(terreno, dados, bioma);
 
         terreno.drawInstanced = true;
         terreno.heightmapPixelError = bioma == Bioma.Agua ? 60f : 35f;
@@ -438,6 +436,86 @@ public static class MdHistoriaBiomasSetup
         return true;
     }
 
+    private static void AplicarMisturaBioma(Terrain terreno, TerrainData dados, Bioma bioma)
+    {
+        if (bioma == Bioma.Agua)
+        {
+            Texture2D texturaAgua = ObterTextura(bioma);
+            dados.terrainLayers = new[] { ObterCamada(bioma, texturaAgua) };
+            AplicarAlphamapUnico(dados);
+            return;
+        }
+
+        TerrainLayer[] camadas = new TerrainLayer[CamadasDeTerra];
+        for (int i = 0; i < CamadasDeTerra; i++)
+        {
+            Texture2D textura = ObterTexturaCamada(bioma, i);
+            camadas[i] = ObterCamadaCamada(bioma, i, textura);
+        }
+
+        dados.terrainLayers = camadas;
+
+        int largura = dados.alphamapWidth;
+        int altura = dados.alphamapHeight;
+        float[,,] alpha = new float[altura, largura, CamadasDeTerra];
+        Vector3 origem = terreno != null ? terreno.transform.position : Vector3.zero;
+        float semente = Mathf.Abs(origem.x * 0.00217f + origem.z * 0.00371f + (int)bioma * 11.73f);
+        for (int y = 0; y < altura; y++)
+        {
+            for (int x = 0; x < largura; x++)
+            {
+                float u = x / (float)Mathf.Max(1, largura - 1);
+                float v = y / (float)Mathf.Max(1, altura - 1);
+                float macro = Mathf.PerlinNoise(u * 3.2f + semente, v * 3.2f + semente * 0.61f);
+                float micro = Mathf.PerlinNoise(u * 11.0f + semente * 1.7f, v * 11.0f + semente * 0.37f);
+                float declive = Mathf.Clamp01(dados.GetSteepness(u, v) / 42f);
+
+                // A camada base continua dominante. As outras duas entram em
+                // manchas largas e suaves, usando declive apenas quando o
+                // bioma naturalmente pede cascalho/rocha. Assim cada país
+                // ganha leitura própria sem virar um mosaico artificial.
+                float organico = Mathf.SmoothStep(0.08f, 0.84f, macro) * 0.72f
+                    + Mathf.SmoothStep(0.18f, 0.9f, micro) * 0.16f;
+                float mineral = Mathf.SmoothStep(0.54f, 0.9f, macro) * 0.18f
+                    + declive * 0.16f;
+
+                switch (bioma)
+                {
+                    case Bioma.Arido:
+                        organico *= 0.52f;
+                        mineral += Mathf.SmoothStep(0.45f, 0.82f, macro) * 0.22f;
+                        break;
+                    case Bioma.Neve:
+                        organico *= 0.42f;
+                        mineral += declive * 0.28f;
+                        break;
+                    case Bioma.Montanhoso:
+                        organico *= 0.38f;
+                        mineral += declive * 0.64f;
+                        break;
+                    case Bioma.Floresta:
+                        organico += 0.12f;
+                        mineral *= 0.55f;
+                        break;
+                    case Bioma.Fronteira:
+                        organico *= 0.76f;
+                        mineral *= 0.72f;
+                        break;
+                }
+
+                organico = Mathf.Clamp(organico, 0.05f, 0.92f);
+                mineral = Mathf.Clamp(mineral, 0.02f, 0.72f);
+                float basePeso = 1.0f;
+                float soma = basePeso + organico + mineral;
+                alpha[y, x, 0] = basePeso / soma;
+                alpha[y, x, 1] = organico / soma;
+                alpha[y, x, 2] = mineral / soma;
+            }
+        }
+
+        dados.SetAlphamaps(0, 0, alpha);
+    }
+
     private static void AplicarAlphamapUnico(TerrainData dados)
     {
         int largura = dados.alphamapWidth;
@@ -489,6 +567,62 @@ public static class MdHistoriaBiomasSetup
         return textura;
     }
 
+    private static Texture2D ObterTexturaCamada(Bioma bioma, int camada)
+    {
+        if (camada == 0)
+        {
+            return ObterTextura(bioma);
+        }
+
+        string nome = "MdHistoria_" + bioma + "_Camada" + camada;
+        string caminho = PastaTexturas + "/" + nome + ".asset";
+        Texture2D existente = AssetDatabase.LoadAssetAtPath<Texture2D>(caminho);
+        if (existente != null)
+        {
+            return existente;
+        }
+
+        Paleta paleta = PaletaDoBioma(bioma);
+        Color escuro = paleta.Escuro;
+        Color claro = paleta.Claro;
+        if (camada == 1)
+        {
+            escuro = Color.Lerp(escuro, Color.black, 0.16f);
+            claro = Color.Lerp(claro, escuro, 0.25f);
+        }
+        else
+        {
+            Color mineral = bioma == Bioma.Montanhoso || bioma == Bioma.Neve
+                ? Cor("8B867C")
+                : bioma == Bioma.Arido ? Cor("B88D5A") : Cor("78805A");
+            escuro = Color.Lerp(escuro, mineral, 0.42f);
+            claro = Color.Lerp(claro, mineral, 0.26f);
+        }
+
+        Texture2D textura = new Texture2D(64, 64, TextureFormat.RGBA32, true, false)
+        {
+            name = nome,
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear,
+            anisoLevel = 2
+        };
+
+        for (int y = 0; y < 64; y++)
+        {
+            for (int x = 0; x < 64; x++)
+            {
+                float ruido = Mathf.PerlinNoise((x + (int)bioma * 23 + camada * 41) * 0.12f, (y + 17) * 0.12f);
+                float detalhe = Mathf.PerlinNoise((x + 31 + camada * 9) * 0.38f, (y + (int)bioma * 11) * 0.38f) * 0.14f;
+                Color cor = Color.Lerp(escuro, claro, Mathf.Clamp01(ruido * 0.82f + detalhe));
+                textura.SetPixel(x, y, cor);
+            }
+        }
+
+        textura.Apply(true, true);
+        AssetDatabase.CreateAsset(textura, caminho);
+        return textura;
+    }
+
     private static TerrainLayer ObterCamada(Bioma bioma, Texture2D textura)
     {
         string caminho = PastaCamadas + "/MdHistoria_" + bioma + ".terrainlayer";
@@ -507,6 +641,33 @@ public static class MdHistoriaBiomasSetup
             diffuseTexture = textura,
             tileSize = new Vector2(96f, 96f),
             tileOffset = Vector2.zero
+        };
+        AssetDatabase.CreateAsset(camada, caminho);
+        return camada;
+    }
+
+    private static TerrainLayer ObterCamadaCamada(Bioma bioma, int indice, Texture2D textura)
+    {
+        string nome = "MdHistoria_" + bioma + "_Camada" + indice;
+        string caminho = PastaCamadas + "/" + nome + ".terrainlayer";
+        TerrainLayer existente = AssetDatabase.LoadAssetAtPath<TerrainLayer>(caminho);
+        if (existente != null)
+        {
+            existente.diffuseTexture = textura;
+            existente.tileSize = indice == 1 ? new Vector2(128f, 128f) : new Vector2(72f, 72f);
+            existente.tileOffset = Vector2.zero;
+            existente.smoothness = indice == 2 && bioma == Bioma.Neve ? 0.28f : 0.05f;
+            EditorUtility.SetDirty(existente);
+            return existente;
+        }
+
+        TerrainLayer camada = new TerrainLayer
+        {
+            name = nome,
+            diffuseTexture = textura,
+            tileSize = indice == 1 ? new Vector2(128f, 128f) : new Vector2(72f, 72f),
+            tileOffset = Vector2.zero,
+            smoothness = indice == 2 && bioma == Bioma.Neve ? 0.28f : 0.05f
         };
         AssetDatabase.CreateAsset(camada, caminho);
         return camada;

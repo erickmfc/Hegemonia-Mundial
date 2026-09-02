@@ -17,6 +17,7 @@ namespace Hegemonia.AI.BrainMaster
             public float PeakCostMs;
             public int RunCount;
             public int OverBudgetCount;
+            public bool SliceInProgress;
         }
 
         public struct Snapshot
@@ -73,7 +74,7 @@ namespace Hegemonia.AI.BrainMaster
             {
                 int i = (startIndex + offset) % _slots.Count;
                 Slot slot = _slots[i];
-                if (now < slot.NextTick)
+                if (now < slot.NextTick && !slot.SliceInProgress)
                 {
                     continue;
                 }
@@ -92,15 +93,34 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                slot.Module.Tick(now, deltaTime);
+                IIAIncrementalUpdateModule incremental = slot.Module as IIAIncrementalUpdateModule;
+                bool completed = true;
+                if (incremental != null)
+                {
+                    float remainingBudget = Mathf.Max(0.10f, GlobalFrameBudgetMs - (float)_timer.Elapsed.TotalMilliseconds);
+                    completed = incremental.TickSlice(now, deltaTime, remainingBudget);
+                }
+                else
+                {
+                    slot.Module.Tick(now, deltaTime);
+                }
                 float moduleEnd = (float)_timer.Elapsed.TotalMilliseconds;
 
                 slot.LastCostMs = Mathf.Max(0f, moduleEnd - moduleStart);
                 slot.PeakCostMs = Mathf.Max(slot.PeakCostMs, slot.LastCostMs);
-                slot.RunCount++;
+                if (completed)
+                {
+                    slot.RunCount++;
+                }
                 if (IA_RuntimeTextTrace.ModuleTraceEnabled)
                 {
-                    IA_RuntimeTextTrace.LogModule(TraceTeamId, slot.Module.Name, "RUN", slot.LastCostMs, slot.Module.BudgetMs, "next=" + (now + Mathf.Max(MinBackoffSeconds, slot.Module.Interval)).ToString("0.000", CultureInfo.InvariantCulture));
+                    IA_RuntimeTextTrace.LogModule(
+                        TraceTeamId,
+                        slot.Module.Name,
+                        completed ? "RUN" : "SLICE",
+                        slot.LastCostMs,
+                        slot.Module.BudgetMs,
+                        "next=" + (now + Mathf.Max(MinBackoffSeconds, slot.Module.Interval)).ToString("0.000", CultureInfo.InvariantCulture));
                 }
 
                 bool moduleOverBudget = slot.LastCostMs > Mathf.Max(0.1f, slot.Module.BudgetMs);
@@ -116,13 +136,24 @@ namespace Hegemonia.AI.BrainMaster
                             slot.Module.BudgetMs));
                 }
 
-                float interval = Mathf.Max(MinBackoffSeconds, slot.Module.Interval);
-                if (moduleOverBudget)
+                if (!completed)
                 {
-                    interval += Mathf.Min(0.35f, interval * 0.5f);
+                    // A fatia pendente tem prioridade no próximo frame, mas o round-robin
+                    // abaixo continua avançando para que os demais módulos não sejam famintos.
+                    slot.SliceInProgress = true;
+                    slot.NextTick = now + Mathf.Max(0.001f, MinBackoffSeconds);
                 }
+                else
+                {
+                    slot.SliceInProgress = false;
+                    float interval = Mathf.Max(MinBackoffSeconds, slot.Module.Interval);
+                    if (moduleOverBudget)
+                    {
+                        interval += Mathf.Min(0.35f, interval * 0.5f);
+                    }
 
-                slot.NextTick = now + interval;
+                    slot.NextTick = now + interval;
+                }
                 modulesExecuted++;
                 _roundRobinIndex = (i + 1) % _slots.Count;
 
@@ -178,6 +209,7 @@ namespace Hegemonia.AI.BrainMaster
             // bootstrap. As buscas caras dele possuem locks e backoffs proprios.
             return moduleName == "IA_SemanticMapPlanner"
                    || moduleName == "IA_NavalDirector"
+                   || moduleName == "IA_AirDirector"
                    || moduleName == "IA_ThreatAnalyzer"
                    || moduleName == "IA_ZonePlanner";
         }

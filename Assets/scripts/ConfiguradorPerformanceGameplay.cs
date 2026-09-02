@@ -49,7 +49,10 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
 
     [Header("Adaptativo")]
     [Tooltip("Mantem a qualidade original perto da camera e reduz somente alcance distante quando a CPU/GPU fica pressionada por varios segundos.")]
-    [SerializeField] private bool usarPerfilAdaptativo = true;
+    // A campanha inicia no perfil Gameplay para não passar os primeiros
+    // segundos renderizando a qualidade visual completa. O perfil Visual
+    // continua disponível pelo F12 quando a máquina tiver folga.
+    [SerializeField] private bool usarPerfilAdaptativo = false;
     [SerializeField] private float limitePressaoFrameMs = 19f;
     [SerializeField] private float limitePressaoSeveraFrameMs = 25f;
     [SerializeField] private float segundosParaAdaptar = 2.5f;

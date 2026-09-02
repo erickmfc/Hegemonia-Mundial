@@ -192,7 +192,7 @@ MonoBehaviour:
   taxaCurvaE3: 10
   taxaSubidaDescidaE3: 18
   inclinacaoMaximaE3: 12
-  multiplicadorCapacidadeCombustivelE3: 4.5
+  multiplicadorCapacidadeCombustivelE3: 9
 --- !u!114 &9126401837462018357
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -208,8 +208,8 @@ MonoBehaviour:
   usaCombustivel: 1
   combustivelInfinito: 0
   classe: 3
-  capacidade: 2700
-  combustivelAtual: 2700
+  capacidade: 5400
+  combustivelAtual: 5400
   consumoPorSegundoMovendo: 1.45
   velocidadeMinimaParaConsumo: 0.05
   limiteBaixoPercentual: 0.25

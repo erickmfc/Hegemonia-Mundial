@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Hegemonia.AI.BrainMaster
 {
@@ -29,7 +30,11 @@ namespace Hegemonia.AI.BrainMaster
 
         public float Interval
         {
-            get { return 1.25f; }
+            // Md Historia inicia com a simulacao naval pesada, mas nao
+            // precisa reavaliar a mesma formacao a cada 1,25 s. Mantemos o
+            // diretor ativo e apenas damos mais espaco entre decisoes nessa
+            // cena, reduzindo alocacoes e picos da main thread.
+            get { return SceneManager.GetActiveScene().name == "Md Historia" ? 2f : 1.25f; }
         }
 
         public float BudgetMs

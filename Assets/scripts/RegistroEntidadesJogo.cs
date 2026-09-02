@@ -20,6 +20,33 @@ public static class RegistroEntidadesJogo
 
     public static event System.Action EntidadesAlteradas;
 
+    private static int _version = 1;
+
+    public static int Version
+    {
+        get { return _version; }
+    }
+
+    static RegistroEntidadesJogo()
+    {
+        // O próprio evento já é disparado por todos os Register/Unregister.
+        // Usá-lo como relógio evita que consumidores precisem assinar eventos
+        // individualmente ou fazer buscas globais para descobrir alterações.
+        EntidadesAlteradas += IncrementarVersion;
+    }
+
+    private static void IncrementarVersion()
+    {
+        unchecked
+        {
+            _version++;
+            if (_version == 0)
+            {
+                _version = 1;
+            }
+        }
+    }
+
     private static readonly HashSet<IdentidadeUnidade> Unidades = new HashSet<IdentidadeUnidade>();
     private static readonly HashSet<ControleUnidade> ControlesUnidade = new HashSet<ControleUnidade>();
     private static readonly HashSet<IdentidadeNaval> Navios = new HashSet<IdentidadeNaval>();
@@ -33,6 +60,7 @@ public static class RegistroEntidadesJogo
     private static readonly HashSet<Estaleiro> Estaleiros = new HashSet<Estaleiro>();
     private static readonly HashSet<Heliporto> Heliportos = new HashSet<Heliporto>();
     private static readonly HashSet<MarcadorTerritorio> MarcadoresTerritorio = new HashSet<MarcadorTerritorio>();
+    private static readonly HashSet<ComplexoGovernamental> ComplexosGovernamentais = new HashSet<ComplexoGovernamental>();
 
     public static void Register(IdentidadeUnidade unidade)
     {
@@ -242,6 +270,22 @@ public static class RegistroEntidadesJogo
         }
     }
 
+    public static void Register(ComplexoGovernamental complexo)
+    {
+        if (complexo != null && ComplexosGovernamentais.Add(complexo))
+        {
+            EntidadesAlteradas?.Invoke();
+        }
+    }
+
+    public static void Unregister(ComplexoGovernamental complexo)
+    {
+        if (complexo != null && ComplexosGovernamentais.Remove(complexo))
+        {
+            EntidadesAlteradas?.Invoke();
+        }
+    }
+
     public static void FillUnidades(List<IdentidadeUnidade> destino)
     {
         Fill(Unidades, destino);
@@ -305,6 +349,11 @@ public static class RegistroEntidadesJogo
     public static void FillMarcadoresTerritorio(List<MarcadorTerritorio> destino)
     {
         Fill(MarcadoresTerritorio, destino);
+    }
+
+    public static void FillComplexos(List<ComplexoGovernamental> destino)
+    {
+        Fill(ComplexosGovernamentais, destino);
     }
 
     public static PierMarinha GetPrimeiroPier()

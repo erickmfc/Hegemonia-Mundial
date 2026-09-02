@@ -554,6 +554,87 @@ public static class NavalPlacementResolver
     }
 
     /// <summary>
+    /// Capacidade de patrulha militar naval. Ser uma unidade com
+    /// TipoUnidade.Naval não é suficiente: cargueiros de mercado, petroleiros
+    /// e transportes logísticos têm máquinas próprias e não podem disputar a
+    /// ordem com o controlador de combate.
+    /// </summary>
+    public static bool IsNavalPatrolCapable(
+        IdentidadeUnidade identity,
+        ControleUnidade control,
+        out string reason)
+    {
+        reason = string.Empty;
+        GameObject root = identity != null ? identity.gameObject : (control != null ? control.gameObject : null);
+        if (root == null)
+        {
+            reason = "identidade naval ausente";
+            return false;
+        }
+
+        if (EncontrarComponente<NavioCargaMercado>(root) != null)
+        {
+            reason = "cargueiro de mercado/logística";
+            return false;
+        }
+
+        if (EncontrarComponente<NavioPetroleiro>(root) != null)
+        {
+            reason = "petroleiro controlado pela logística de petróleo";
+            return false;
+        }
+
+        if (EncontrarComponente<NavioAbastecimento>(root) != null)
+        {
+            reason = "navio de abastecimento controlado pela logística naval";
+            return false;
+        }
+
+        if (EncontrarComponente<NavioTransporteTropas>(root) != null)
+        {
+            reason = "transporte de tropas sem controlador de combate";
+            return false;
+        }
+
+        if (control == null)
+        {
+            reason = "ControleUnidade ausente";
+            return false;
+        }
+
+        // Estes são os executores que conhecem a física naval e a rota de água
+        // compartilhada. A presença de IdentidadeNaval sozinha cobre prefabs
+        // antigos que ainda dependem de NavMesh/legado, mas não é suficiente
+        // para prometer uma patrulha no mapa sem NavMesh bakeado.
+        bool possuiExecutorNaval = EncontrarComponente<ControleNavioRealista>(root) != null
+            || EncontrarComponente<ControleSubmarino>(root) != null;
+        if (!possuiExecutorNaval)
+        {
+            reason = "controlador naval/ submarino ausente";
+            return false;
+        }
+
+        return true;
+    }
+
+    public static bool IsLogisticsVessel(GameObject root)
+    {
+        if (root == null) return false;
+        return EncontrarComponente<NavioCargaMercado>(root) != null
+            || EncontrarComponente<NavioPetroleiro>(root) != null
+            || EncontrarComponente<NavioTransporteTropas>(root) != null
+            || EncontrarComponente<NavioAbastecimento>(root) != null;
+    }
+
+    private static T EncontrarComponente<T>(GameObject root) where T : Component
+    {
+        if (root == null) return null;
+        return root.GetComponent<T>()
+            ?? root.GetComponentInParent<T>()
+            ?? root.GetComponentInChildren<T>(true);
+    }
+
+    /// <summary>
     /// Cria uma rota curta exclusivamente sobre água. O primeiro teste é uma
     /// linha direta; quando uma ilha/continente bloqueia o trajeto, usa uma
     /// malha 2D local e A* para contornar a costa. O método é compartilhado
@@ -845,13 +926,26 @@ public static class NavalPlacementResolver
         return true;
     }
 
+    /// <summary>
+    /// Valida o segmento físico completo, não apenas o waypoint final.
+    /// Usado pelo executor naval de fallback para impedir que a curvatura do
+    /// casco escape da rota calculada e entre em terra.
+    /// </summary>
+    public static bool IsWaterSegment(Vector3 start, Vector3 destination, float clearance = 18f)
+    {
+        float seaLevel = ResolveSeaLevel();
+        return SegmentStaysInWater(start, destination, seaLevel, Mathf.Clamp(clearance, 8f, 80f));
+    }
+
     private static bool IsWaterWithClearance(Vector3 ponto, float seaLevel, float clearance)
     {
         if (!IsWaterAtPosition(ponto, seaLevel)) return false;
         float margem = Mathf.Max(4f, clearance);
-        for (int i = 0; i < 4; i++)
+        // Oito amostras formam uma margem radial. Quatro amostras deixavam os
+        // cantos do casco encostarem na terra quando o navio fazia uma curva.
+        for (int i = 0; i < 8; i++)
         {
-            float angulo = i * Mathf.PI * 0.5f;
+            float angulo = i * Mathf.PI * 0.25f;
             Vector3 amostra = ponto + new Vector3(Mathf.Cos(angulo) * margem, 0f, Mathf.Sin(angulo) * margem);
             if (!IsWaterAtPosition(amostra, seaLevel)) return false;
         }
@@ -911,18 +1005,10 @@ public static class NavalPlacementResolver
     {
         ClassificacaoSuperficieMapa classificacaoMarcada;
         float alturaMarcada;
-        if (RegistroSuperficieMapa.TryClassify(position, out classificacaoMarcada, out alturaMarcada))
-        {
-            if (classificacaoMarcada == ClassificacaoSuperficieMapa.Agua || classificacaoMarcada == ClassificacaoSuperficieMapa.Costa)
-            {
-                return true;
-            }
-
-            if (classificacaoMarcada == ClassificacaoSuperficieMapa.Chao)
-            {
-                return false;
-            }
-        }
+        bool possuiClassificacaoMarcada = RegistroSuperficieMapa.TryClassify(
+            position,
+            out classificacaoMarcada,
+            out alturaMarcada);
 
         float waterSurfaceHeight = float.MinValue;
         bool sawWaterSurface = false;
@@ -972,6 +1058,24 @@ public static class NavalPlacementResolver
             }
 
             return solidHeight <= effectiveWaterHeight - VisibleWaterDepthTolerance;
+        }
+
+        // O Sea explícito é a fonte de verdade quando há collider detectável.
+        // Só depois dele usamos os marcadores de terreno, pois na MD História
+        // existem tiles Terrain sobrepostos que podem classificar o mesmo X/Z
+        // como chão mesmo quando o clique acertou o mar.
+        if (possuiClassificacaoMarcada)
+        {
+            if (classificacaoMarcada == ClassificacaoSuperficieMapa.Agua
+                || classificacaoMarcada == ClassificacaoSuperficieMapa.Costa)
+            {
+                return true;
+            }
+
+            if (classificacaoMarcada == ClassificacaoSuperficieMapa.Chao)
+            {
+                return false;
+            }
         }
 
         // Se existe água explícita na cena, mas não há colisor de água detectável,
@@ -1033,6 +1137,48 @@ public static class NavalPlacementResolver
             }
         }
 
+        return false;
+    }
+
+    public static bool TryResolveNearestWaterPoint(Vector3 requested, float maxRadius, out Vector3 point)
+    {
+        float seaLevel = ResolveSeaLevel();
+        requested.y = seaLevel;
+        float clearance = 18f;
+        float radiusMax = Mathf.Max(12f, maxRadius);
+
+        // O destino devolvido ao menu já precisa acomodar o casco. Assim o
+        // clique na faixa rasa não vira um waypoint que passa na validação de
+        // superfície, mas falha quando o navio tenta iniciar a curva.
+        if (IsWaterWithClearance(requested, seaLevel, clearance))
+        {
+            point = requested;
+            return true;
+        }
+
+        // Anéis concêntricos mantêm a escolha próxima do clique e cobrem todos
+        // os quadrantes, ao contrário de uma única direção preferencial.
+        float passo = 24f;
+        for (float raio = passo; raio <= radiusMax; raio += passo)
+        {
+            int amostras = Mathf.Clamp(Mathf.CeilToInt(raio * Mathf.PI * 2f / passo), 12, 48);
+            for (int i = 0; i < amostras; i++)
+            {
+                float angulo = (i / (float)amostras) * Mathf.PI * 2f;
+                Vector3 candidato = requested + new Vector3(
+                    Mathf.Cos(angulo) * raio,
+                    0f,
+                    Mathf.Sin(angulo) * raio);
+                candidato.y = seaLevel;
+                if (IsWaterWithClearance(candidato, seaLevel, clearance))
+                {
+                    point = candidato;
+                    return true;
+                }
+            }
+        }
+
+        point = Vector3.zero;
         return false;
     }
 
@@ -1405,6 +1551,11 @@ public static class NavalPlacementResolver
         if (marcador != null)
         {
             return marcador.TipoSuperficie == TipoSuperficieMapa.Agua;
+        }
+
+        if (collider.GetComponentInParent<OceanAdvanced>() != null)
+        {
+            return true;
         }
 
         string normalizedName = Normalize(collider.name);

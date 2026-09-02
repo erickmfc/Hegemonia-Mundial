@@ -845,12 +845,30 @@ namespace Hegemonia.AI.IA02
             if (cityLayout == null) cityLayout = GetComponentInChildren<IA02CityLayout>(true);
             if (constructionAnchors == null) constructionAnchors = GetComponentInChildren<IA02ConstructionAnchors>(true);
             cityLayout?.ConfigureOwner(identity.TeamId, identity.NationId);
-            if (country != null) context.ApplyGovernmentSnapshot(country);
+            // EnsureBootstrap e chamado tambem pelas verificacoes de prontidao
+            // do scheduler. Reaplicar o mesmo snapshot a cada slice marcava o
+            // contexto como dirty continuamente e mantinha a IA em loop de
+            // trabalho, mesmo quando o pais nao havia mudado.
+            if (country != null)
+            {
+                string governmentFingerprint = BuildGovernmentFingerprint(country);
+                if (!string.Equals(governmentFingerprint, lastGovernmentFingerprint, StringComparison.Ordinal))
+                {
+                    context.ApplyGovernmentSnapshot(country);
+                    lastGovernmentFingerprint = governmentFingerprint;
+                }
+            }
             uniqueEntityId = "ia02:" + identity.NationId + ":" + identity.TeamId + ":" + InstanceId;
             if (nationRuntime == null) nationRuntime = new IA02NationRuntime(this, context, runtimeProfile);
             if (strategicSupport == null) strategicSupport = new IA02StrategicSupport(identity.NationId, strategicOptions);
             RefreshEventBusSubscription();
-            runtimeSummary = BuildRuntimeSummary();
+            // O resumo completo ja e renovado ao final de cada slice. Evite
+            // criar uma nova string em toda chamada de EnsureBootstrap, que
+            // tambem acontece nas verificacoes de prontidao do scheduler.
+            if (string.IsNullOrEmpty(runtimeSummary))
+            {
+                runtimeSummary = BuildRuntimeSummary();
+            }
         }
 
         private void RegisterWithManager()

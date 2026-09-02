@@ -6,10 +6,6 @@ public class Fazenda : MonoBehaviour
 {
     public static Fazenda FazendaAtiva; // Para fechar outras ao abrir
     public static bool QualquerFazendaAberta = false; // Pro CameraController
-    private static int frameCliqueProcessado = -1;
-    private static bool cliqueSobreUIProcessado;
-    private static bool houveHitCliqueProcessado;
-    private static RaycastHit hitCliqueProcessado;
     private static Texture2D texturaBotaoNormal;
     private static Texture2D texturaBotaoHover;
     private static Texture2D texturaJanela;
@@ -58,9 +54,6 @@ public class Fazenda : MonoBehaviour
     public float lote3Progresso = 0f;
 
     // Interface
-    [Header("Interação")]
-    [Tooltip("Desativado por padrão: clicar na fazenda não abre nem executa ações do assistente agrícola.")]
-    [SerializeField] private bool permitirAbrirMenuPorClique = false;
     private bool menuAberto = false;
     private Rect janelaRetangulo;
     private IdentidadeUnidade identidade;
@@ -121,17 +114,7 @@ public class Fazenda : MonoBehaviour
         // Fazendas sem lavoura ativa nao precisam executar a rotina de
         // crescimento em todos os frames. Isso evita custo acumulado quando
         // existem muitas fazendas no mapa.
-        bool houveClique = permitirAbrirMenuPorClique && Input.GetMouseButtonDown(0);
-        if (!houveClique && !ExisteLavouraAtiva())
-        {
-            return;
-        }
-
-        // OnGUI e o mundo recebem o mesmo Input. Quando o cursor está dentro
-        // da janela, o clique pertence ao menu e não pode atingir objetos atrás.
-        // O painel novo e feito em UI Toolkit. Ele captura somente o clique;
-        // a producao da fazenda continua correndo enquanto o painel esta aberto.
-        if (menuAberto && CliqueCapturadoPeloMenu() && houveClique)
+        if (!ExisteLavouraAtiva())
         {
             return;
         }
@@ -150,74 +133,6 @@ public class Fazenda : MonoBehaviour
             }
             comidaPorSegundoAtual = novaComidaPorSegundo;
         }
-
-        // Interação de Clique na Fazenda
-        if (!houveClique)
-        {
-            return;
-        }
-
-        ProcessarCliqueCompartilhado();
-
-        if (cliqueSobreUIProcessado)
-        {
-            return;
-        }
-
-        if (houveHitCliqueProcessado)
-        {
-            Transform alvoClique = hitCliqueProcessado.transform;
-            if (alvoClique == transform || alvoClique.IsChildOf(transform))
-            {
-                // Apenas dono do time abrem o menu (0 ou 1 costuma ser Player)
-                if (identidade == null || identidade.teamID == 1 || identidade.teamID == 0)
-                {
-                    if (MenuGoverno.Instancia != null) MenuGoverno.Instancia.AlternarMenu(false);
-
-                    // Fecha outra fazenda que estiver aberta
-                    if (FazendaAtiva != null && FazendaAtiva != this) FazendaAtiva.FecharMenu();
-
-                    menuAberto = true;
-                    FazendaAtiva = this;
-                    QualquerFazendaAberta = true;
-                    FazendaMenuController.AbrirPara(this);
-                    LogFarm("Terminal da fazenda aberto.");
-                }
-                else
-                {
-                    LogFarm("Clique ignorado: fazenda pertence ao time " + identidade.teamID + ".");
-                }
-            }
-            else
-            {
-                FecharSeCliqueFora();
-            }
-        }
-        else
-        {
-            FecharSeCliqueFora();
-        }
-    }
-
-    private static void ProcessarCliqueCompartilhado()
-    {
-        if (frameCliqueProcessado == Time.frameCount)
-        {
-            return;
-        }
-
-        frameCliqueProcessado = Time.frameCount;
-        cliqueSobreUIProcessado = UnityEngine.EventSystems.EventSystem.current != null
-            && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
-
-        houveHitCliqueProcessado = false;
-        if (cliqueSobreUIProcessado || Camera.main == null)
-        {
-            return;
-        }
-
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        houveHitCliqueProcessado = Physics.Raycast(ray, out hitCliqueProcessado, 5000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
     }
 
     public static bool CliqueCapturadoPeloMenu()
@@ -240,15 +155,6 @@ public class Fazenda : MonoBehaviour
             FazendaAtiva.janelaRetangulo.width,
             FazendaAtiva.janelaRetangulo.height);
         return bounds.Contains(Input.mousePosition);
-    }
-
-    private void FecharSeCliqueFora()
-    {
-        Rect bounds = new Rect(janelaRetangulo.x, Screen.height - janelaRetangulo.y - janelaRetangulo.height, janelaRetangulo.width, janelaRetangulo.height);
-        if (menuAberto && !bounds.Contains(Input.mousePosition))
-        {
-            FecharMenu();
-        }
     }
 
     public void FecharMenu()

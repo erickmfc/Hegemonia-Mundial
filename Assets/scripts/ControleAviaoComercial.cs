@@ -8,6 +8,8 @@ using System.Collections.Generic;
 /// </summary>
 public class ControleAviaoComercial : ControleAviao
 {
+    protected override bool EhAviaoMilitar => false;
+
     public enum TipoPropulsao { Turbina, Helice }
 
     [Header("=== PROPULSÃO COMERCIAL ===")]

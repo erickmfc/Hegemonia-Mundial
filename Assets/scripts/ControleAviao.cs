@@ -10,6 +10,13 @@ using System.Collections.Generic;
 [ExecuteAlways]
 public class ControleAviao : MonoBehaviour
 {
+    // A altitude e medida no eixo Y do mundo. 181 garante que aeronaves
+    // militares voem acima dos 180 m solicitados sem reduzir as que ja voam
+    // mais alto.
+    public const float AltitudeMinimaVooMilitar = 181f;
+
+    protected virtual bool EhAviaoMilitar => true;
+
     public enum EstadoAviao { ReservaHangar, Taxiando, ProntoNoPatio, Decolando, EmMissao, Pousando, RetornandoPraVaga }
     
     [Header("=== ESTADO ATUAL ===")]
@@ -26,7 +33,7 @@ public class ControleAviao : MonoBehaviour
     [HideInInspector] public bool aguardandoCliqueRadar = false;
     [Header("=== MISSÃO ===")]
     public bool ordemParaRetorno = false;
-    [Range(0.08f, 0.45f)] public float reservaMinimaRetornoPercentual = 0.22f;
+    [Range(0.08f, 0.45f)] public float reservaMinimaRetornoPercentual = 0.30f;
     [Range(0.15f, 0.60f)] public float reservaRetornoComDanosPercentual = 0.34f;
 
     [Header("=== FÍSICA E VELOCIDADES ===")]
@@ -101,6 +108,8 @@ public class ControleAviao : MonoBehaviour
 
     protected virtual void Start()
     {
+        GarantirAltitudeMinimaMilitar();
+
         if (modeloMecanicoVisual != null)
         {
             giroLateralYInicial = modeloMecanicoVisual.localEulerAngles.y;
@@ -174,6 +183,19 @@ public class ControleAviao : MonoBehaviour
 
         // Cacheia altura de estacionamento para uso no pátio do porta-aviões
         _alturaEstacionamentoCache = ObterAlturaEstacionamento();
+    }
+
+    protected virtual void OnValidate()
+    {
+        GarantirAltitudeMinimaMilitar();
+    }
+
+    private void GarantirAltitudeMinimaMilitar()
+    {
+        if (EhAviaoMilitar)
+        {
+            altitudeVoo = Mathf.Max(AltitudeMinimaVooMilitar, altitudeVoo);
+        }
     }
 
     private void OnDestroy()
@@ -340,7 +362,9 @@ public class ControleAviao : MonoBehaviour
             || estadoAtual == EstadoAviao.Decolando
             || estadoAtual == EstadoAviao.Pousando
             || ordemParaRetorno;
-        bool heroico = GetComponent<KamikazeDrone>() == null;
+        bool heroico = GetComponent<KamikazeDrone>() != null
+            || alvoPrioritarioIA
+            || emAtaqueMergulho;
         InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, heroico, 180f, 420f);
     }
 
@@ -462,7 +486,12 @@ public class ControleAviao : MonoBehaviour
 
         while (true)
         {
-            if (this == null || gameObject == null || !gameObject.activeInHierarchy || !isActiveAndEnabled)
+            // Uma aeronave pode ser destruída enquanto a coroutine ainda está
+            // suspensa em um yield. Primeiro diferenciamos uma referência C#
+            // nula do "fake null" do Unity antes de tocar em gameObject.
+            if (ReferenceEquals(this, null) || this == null) yield break;
+            GameObject objetoAtual = gameObject;
+            if (objetoAtual == null || !objetoAtual.activeInHierarchy || !isActiveAndEnabled)
             {
                 yield break;
             }
@@ -819,7 +848,7 @@ public class ControleAviao : MonoBehaviour
 
         if (estadoAtual == EstadoAviao.ProntoNoPatio)
         {
-            bool emPatrulhaSalva = _controleUnidade != null && _controleUnidade.OrdemAtual == OrdemControleUnidade.Patrulhando && rotaPatrulhaSalva.Count > 1;
+            bool emPatrulhaSalva = _controleUnidade != null && _controleUnidade.OrdemAtual == OrdemControleUnidade.Patrulhando && rotaPatrulhaSalva.Count > 0;
             if (!emPatrulhaSalva)
             {
                 RegistrarMissaoManual(alvoFinalGPS);
@@ -1071,9 +1100,19 @@ public class ControleAviao : MonoBehaviour
             return true;
         }
 
+        // A reserva de retorno é um limite operacional, não uma falha de
+        // emergência. A IA agora inicia o retorno com 30% de combustível,
+        // deixando margem para a aproximação, pouso e uma eventual rota de
+        // desvio sem chegar ao zero e cair.
+        const float reservaMinimaAerea = 0.30f;
+        if (combustivel.Percentual <= reservaMinimaAerea)
+        {
+            return true;
+        }
+
         float distancia = DistanciaAteBase(baseSegura);
         float consumoRetorno = combustivel.EstimarConsumoParaDistancia(distancia, Mathf.Max(60f, velocidadeMaximaVoo));
-        float reservaPercentual = percentualVida < 0.55f ? reservaRetornoComDanosPercentual : reservaMinimaRetornoPercentual;
+        float reservaPercentual = percentualVida < 0.55f ? reservaRetornoComDanosPercentual : Mathf.Max(reservaMinimaAerea, reservaMinimaRetornoPercentual);
         float reservaCombustivel = Mathf.Max(combustivel.Capacidade * reservaPercentual, consumoRetorno * 0.45f);
 
         if (percentualVida < 0.40f)
@@ -1087,7 +1126,7 @@ public class ControleAviao : MonoBehaviour
             return true;
         }
 
-        return combustivel.Percentual <= 0.12f;
+        return combustivel.Percentual <= reservaMinimaAerea;
     }
 
     private void PrepararRetornoSeguro(GerenciadorAeroporto baseSegura, string motivo)
@@ -1203,17 +1242,7 @@ public class ControleAviao : MonoBehaviour
             yield break;
         }
 
-        bool retomandoDeCarrier = aeroportoOrigem is GerenciadorPortaAvioes;
-
-        if (retomandoDeCarrier)
-        {
-            // No porta-aviões o avião deve permanecer visível e aguardando nova ordem manual.
-            // Evita o ciclo "pousa -> reabastece -> decola sozinho" que fazia ele sumir do convés.
-            rotinaRetomadaMissao = null;
-            yield break;
-        }
-
-        if (rotaPatrulhaSalva.Count > 1)
+        if (rotaPatrulhaSalva.Count > 0 && _controleUnidade != null)
         {
             _controleUnidade.EmitirOrdemPatrulha(new List<Vector3>(rotaPatrulhaSalva));
         }

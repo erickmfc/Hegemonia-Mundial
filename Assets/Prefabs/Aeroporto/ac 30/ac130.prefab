@@ -447,8 +447,8 @@ MonoBehaviour:
   usaCombustivel: 1
   combustivelInfinito: 0
   classe: 3
-  capacidade: 2400
-  combustivelAtual: 2400
+  capacidade: 3600
+  combustivelAtual: 3600
   consumoPorSegundoMovendo: 1.45
   velocidadeMinimaParaConsumo: 0.05
   limiteBaixoPercentual: 0.25

@@ -217,8 +217,14 @@ public static class InfraPerformanceGameplay
                     multiplicador *= 1.35f;
                     break;
                 case NivelProcessamentoTatico.Distante:
-                    multiplicador *= 2.10f;
+                {
+                    // Unidades distantes e sem atividade crítica podem
+                    // atualizar o cérebro com menor frequência. Movimento,
+                    // seleção e combate continuam no caminho prioritário.
+                    bool respostaCritica = estado.estaSelecionada || estado.estaEngajada || estado.heroica;
+                    multiplicador *= respostaCritica ? 2.10f : 3.50f;
                     break;
+                }
             }
 
             if (estado.estaSelecionada || estado.estaEngajada)
@@ -261,8 +267,11 @@ public static class InfraPerformanceGameplay
         int buckets = DiagnosticoDesempenhoJogo.RuntimeSaturado() ? 8 : 5;
         int bucket = owner != null ? Mathf.Abs(owner.GetInstanceID()) % buckets : 0;
         bool slotAtual = (Time.frameCount % buckets) == bucket;
-        bool atrasado = agora - proximoTick >= Mathf.Max(0.04f, intervalo * 0.5f);
-        if (!slotAtual && !atrasado)
+        // Um atraso pequeno não deve fazer centenas de unidades executarem
+        // juntas no mesmo frame. Se o atraso for grande, executa o estado
+        // atual uma vez e descarta os ticks intermediários.
+        bool atrasoCritico = agora - proximoTick >= Mathf.Max(0.12f, intervalo * 2f);
+        if (!slotAtual && !atrasoCritico)
         {
             return false;
         }

@@ -243,7 +243,25 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
 
         renderPendente = false;
         proximoRender = Time.unscaledTime + 0.10f;
-        cameraCarta.Render();
+        RenderizarCartaSemNeblina();
+    }
+
+    private void RenderizarCartaSemNeblina()
+    {
+        // RenderSettings.fog é global no Unity. A Carta é uma câmera auxiliar
+        // de leitura e não deve receber a neblina da câmera principal; caso
+        // contrário o RT pisca/escurece quando o mapa é deslocado e o terreno
+        // distante fica ilegível.
+        bool neblinaOriginal = RenderSettings.fog;
+        RenderSettings.fog = false;
+        try
+        {
+            cameraCarta.Render();
+        }
+        finally
+        {
+            RenderSettings.fog = neblinaOriginal;
+        }
     }
 
     private void AtualizarCentroRastreamento()

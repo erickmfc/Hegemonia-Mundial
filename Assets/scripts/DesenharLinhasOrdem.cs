@@ -69,9 +69,10 @@ public class DesenharLinhasOrdem : MonoBehaviour
     public void IniciarModoPatrulha(List<GameObject> selecionadosSnapshot)
     {
         DefinirAlvosModo(selecionadosSnapshot);
+        RemoverAlvosNaoAptosParaPatrulha();
         if (!ValidarAlvosModo())
         {
-            Debug.LogWarning("MODO PATRULHA: nenhuma unidade valida selecionada.");
+            Debug.LogWarning("MODO PATRULHA: nenhuma unidade com executor de patrulha compatível foi selecionada.");
             return;
         }
 
@@ -453,6 +454,36 @@ public class DesenharLinhasOrdem : MonoBehaviour
         return _alvosModo.Count > 0;
     }
 
+    private void RemoverAlvosNaoAptosParaPatrulha()
+    {
+        for (int i = _alvosModo.Count - 1; i >= 0; i--)
+        {
+            GameObject alvo = _alvosModo[i];
+            if (alvo == null)
+            {
+                _alvosModo.RemoveAt(i);
+                continue;
+            }
+
+            ControleUnidade controle = alvo.GetComponent<ControleUnidade>()
+                ?? alvo.GetComponentInParent<ControleUnidade>()
+                ?? alvo.GetComponentInChildren<ControleUnidade>(true);
+            if (controle == null || !controle.EhUnidadeNaval())
+            {
+                continue;
+            }
+
+            IdentidadeUnidade identidade = alvo.GetComponent<IdentidadeUnidade>()
+                ?? alvo.GetComponentInParent<IdentidadeUnidade>()
+                ?? alvo.GetComponentInChildren<IdentidadeUnidade>(true);
+            if (!NavalPlacementResolver.IsNavalPatrolCapable(identidade, controle, out string motivo))
+            {
+                Debug.LogWarning($"[ModoPatrulha] {alvo.name} removido da seleção de patrulha: {motivo}.");
+                _alvosModo.RemoveAt(i);
+            }
+        }
+    }
+
     private Transform ObterTransformOrigemLinha()
     {
         for (int i = 0; i < _alvosModo.Count; i++)
@@ -477,8 +508,14 @@ public class DesenharLinhasOrdem : MonoBehaviour
             ponto.y = NavalPlacementResolver.ResolveSeaLevel();
             if (!NavalPlacementResolver.IsWaterAtPosition(ponto))
             {
-                Debug.LogWarning("[ModoPatrulha] Ponto do Menu Satélite ignorado: escolha uma área de água.");
-                return false;
+                if (!NavalPlacementResolver.TryResolveNearestWaterPoint(ponto, 600f, out Vector3 pontoAgua))
+                {
+                    Debug.LogWarning("[ModoPatrulha] Ponto do Menu Satélite ignorado: não existe água navegável próxima.");
+                    return false;
+                }
+
+                ponto = pontoAgua;
+                Debug.Log($"[ModoPatrulha] Ponto do Menu Satélite ajustado para a água mais próxima: {ponto.x:F0}, {ponto.z:F0}.");
             }
         }
 
@@ -623,7 +660,23 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
         if (selecaoNaval)
         {
-            return NavalPlacementResolver.TryResolveWaterPoint(ray, out ponto);
+            if (NavalPlacementResolver.TryResolveWaterPoint(ray, out ponto))
+            {
+                return true;
+            }
+
+            Plane planoMar = new Plane(
+                Vector3.up,
+                new Vector3(0f, NavalPlacementResolver.ResolveSeaLevel(), 0f));
+            if (planoMar.Raycast(ray, out float distanciaPlanoMar))
+            {
+                return NavalPlacementResolver.TryResolveNearestWaterPoint(
+                    ray.GetPoint(distanciaPlanoMar),
+                    600f,
+                    out ponto);
+            }
+
+            return false;
         }
 
         RaycastHit hit;
@@ -719,6 +772,8 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
     void AplicarOrdemPatrulha()
     {
+        int aceitas = 0;
+        int recusadas = 0;
         for (int i = 0; i < _alvosModo.Count; i++)
         {
             GameObject alvo = _alvosModo[i];
@@ -727,10 +782,21 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 continue;
             }
 
-            ControleUnidade unidade = alvo.GetComponent<ControleUnidade>();
+            ControleUnidade unidade = alvo.GetComponent<ControleUnidade>()
+                ?? alvo.GetComponentInParent<ControleUnidade>()
+                ?? alvo.GetComponentInChildren<ControleUnidade>(true);
             if (unidade != null)
             {
-                unidade.EmitirOrdemPatrulha(pontosPatrulha);
+                bool emitida = unidade.EmitirOrdemPatrulha(pontosPatrulha);
+                if (emitida)
+                {
+                    aceitas++;
+                }
+                else
+                {
+                    recusadas++;
+                    Debug.LogWarning($"[ModoPatrulha] Ordem recusada pelo controlador de {alvo.name}; ordem atual={unidade.OrdemAtual}.");
+                }
                 continue;
             }
 
@@ -738,7 +804,16 @@ public class DesenharLinhasOrdem : MonoBehaviour
             if (helicoptero != null)
             {
                 helicoptero.IniciarPatrulhaAeroporto(new List<Vector3>(pontosPatrulha));
+                aceitas++;
             }
+        }
+
+        DiagnosticoDesempenhoJogo.RegistrarEvento(
+            "Patrulha",
+            $"Confirmação: aceitas={aceitas} recusadas={recusadas} pontos={pontosPatrulha.Count}");
+        if (aceitas == 0)
+        {
+            Debug.LogWarning("[ModoPatrulha] Nenhum controlador aceitou a ordem; a unidade permanecerá ociosa.");
         }
     }
 

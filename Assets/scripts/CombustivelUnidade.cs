@@ -619,23 +619,58 @@ public class CombustivelUnidade : MonoBehaviour
 
     private float MultiplicadorCapacidadeAerea()
     {
-        if (GetComponent<C700TransporteAereo>() != null || NomeContem("transporte") || NomeContem("cargo"))
+        // Capacidades aereas aprovadas para a frota da Md Historia.
+        // A base continua sendo 300 unidades para preservar a escala antiga
+        // do sistema e evitar alterações bruscas no consumo.
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
         {
-            return 4f;
+            return 20000f / 300f;
+        }
+
+        if (GetComponent<BoeingE3Reconhecimento>() != null)
+        {
+            return 18f; // E-3 AWACS: 5.400
+        }
+
+        if (GetComponent<ControleAviaoAC130>() != null)
+        {
+            return 12f; // AC-130: 3.600
+        }
+
+        if (GetComponent<C700TransporteAereo>() != null)
+        {
+            return 12f; // C700: 3.600
+        }
+
+        if (GetComponent<ControleAviaoComercial>() != null)
+        {
+            return 8f; // C40H: 2.400 nominais; o comercial desativa o consumo
+        }
+
+        if (GetComponent<Helicoptero>() != null)
+        {
+            if (NomeContem("flow")) return 10f; // Flow transporte: 3.000
+            if (NomeContem("supra")) return 8f; // Supra ataque: 2.400
+            return 6f; // Vans/Falcao Negro e H-RAY: 1.800
+        }
+
+        if (GetComponent<AviaoBombardeiro>() != null
+            && (NomeContem("transport") || NomeContem("transporte") || NomeContem("cargo")))
+        {
+            return 12f; // Transporte aereo pesado: 3.600
         }
 
         if (GetComponent<AviaoBombardeiro>() != null || NomeContem("bomb"))
         {
-            return 3f;
+            return 9f; // B260: 2.700
         }
 
         if (GetComponent<ControleDroneHasaf>() != null || NomeContem("hasaf"))
         {
-            // Drone Hasaf: triplo de combustível (base 300f * 6 = 1800f em vez do padrão 300f * 2 = 600f)
-            return 6f;
+            return 8f; // Drone Hasaf: 2.400
         }
 
-        return 2f;
+        return 6f; // Cacas, drones VAP e demais avioes: 1.800
     }
 
     private float MultiplicadorCapacidadeNaval()

@@ -83,6 +83,8 @@ public class ControleSubmarino : MonoBehaviour
     public Color corCristal = new Color(0.1f, 0.95f, 1f, 0.92f);
 
     [Header("Fisica de Navegacao")]
+    [Tooltip("Submarinos usam a rota aquática física por padrão. Ative somente em cenas com NavMesh naval validada.")]
+    public bool usarNavMeshParaNavegacao = false;
     [Tooltip("Velocidade maxima de rotacao do leme (graus por segundo).")]
     public float velocidadeGiroMax = 15f;
     [Tooltip("Quanto tempo o submarino demora para acelerar totalmente (inercia).")]
@@ -149,9 +151,20 @@ public class ControleSubmarino : MonoBehaviour
         agente = GetComponent<NavMeshAgent>();
         if (agente != null)
         {
-            velocidadeOriginal = agente.speed;
+            velocidadeOriginal = Mathf.Max(0.1f, agente.speed);
             agente.updateRotation = false;
             agente.acceleration = 9999f;
+            if (!usarNavMeshParaNavegacao)
+            {
+                // A rota aquática física não precisa de um agente de terra.
+                // Mantemos o componente para compatibilidade dos prefabs,
+                // mas ele não tenta criar nem recalcular uma malha inexistente.
+                agente.enabled = false;
+            }
+        }
+        else
+        {
+            velocidadeOriginal = Mathf.Max(0.1f, velocidadeOriginal > 0f ? velocidadeOriginal : 5f);
         }
 
         if (rastroAgua == null)
@@ -185,7 +198,10 @@ public class ControleSubmarino : MonoBehaviour
 
         CriarCristalIdentificacao();
         AplicarEstadoInicial();
-        StartCoroutine(PrepararAgenteNaval());
+        if (usarNavMeshParaNavegacao)
+        {
+            StartCoroutine(PrepararAgenteNaval());
+        }
         AtualizarCristalIdentificacao(true);
         AtualizarCursorMira(false);
 
@@ -305,6 +321,18 @@ public class ControleSubmarino : MonoBehaviour
 
     private void AtualizarMovimento()
     {
+        if (!usarNavMeshParaNavegacao)
+        {
+            if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
+            {
+                PararPorFaltaDeCombustivel();
+                return;
+            }
+
+            AtualizarMovimentoFallback();
+            return;
+        }
+
         if (agente == null || !agente.enabled)
         {
             return;
@@ -445,14 +473,15 @@ public class ControleSubmarino : MonoBehaviour
         velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, velocidadeOriginal, aceleracao * Time.deltaTime);
         Vector3 proximaPosicao = transform.position + transform.forward * (velocidadeAtualSimulada * Time.deltaTime);
         proximaPosicao.y = transform.position.y;
-        if (NavalPlacementResolver.IsWaterAtPosition(proximaPosicao))
+        if (NavalPlacementResolver.IsWaterSegment(transform.position, proximaPosicao, 18f))
         {
             transform.position = proximaPosicao;
         }
         else
         {
             velocidadeAtualSimulada = 0f;
-            temDestinoFallback = false;
+            // Mantém o waypoint. O submarino pode terminar de alinhar o
+            // leme no próximo frame sem cancelar a rota marítima válida.
         }
     }
 
@@ -1424,18 +1453,18 @@ public class ControleSubmarino : MonoBehaviour
     }
 
     /// <summary>Recebe destino via clique do jogador ou IA.</summary>
-    public void DefinirDestino(Vector3 destino)
+    public bool DefinirDestino(Vector3 destino)
     {
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
-            return;
+            return false;
         }
 
         if (!NavalPlacementResolver.IsWaterAtPosition(destino))
         {
             Debug.LogWarning($"[USS Leviathan] Ordem recusada: destino fora da água ({destino.x:F0}, {destino.z:F0}).", this);
-            return;
+            return false;
         }
 
         destino.y = ResolverNivelAgua();
@@ -1443,7 +1472,7 @@ public class ControleSubmarino : MonoBehaviour
         if (temDestinoFallback && rotaAguaAtual.Count > 0
             && Vector3.Distance(rotaAguaAtual[rotaAguaAtual.Count - 1], destino) < 2f)
         {
-            return;
+            return true;
         }
 
         if (!NavalPlacementResolver.TryBuildWaterRoute(
@@ -1453,7 +1482,7 @@ public class ControleSubmarino : MonoBehaviour
                 out List<Vector3> rotaAgua))
         {
             Debug.LogWarning($"[USS Leviathan] Rota recusada: não existe corredor contínuo sobre água até ({destino.x:F0}, {destino.z:F0}).", this);
-            return;
+            return false;
         }
 
         rotaAguaAtual.Clear();
@@ -1479,7 +1508,7 @@ public class ControleSubmarino : MonoBehaviour
                     destino,
                     TipoOrdemMovimento.Naval))
             {
-                return;
+                return false;
             }
         }
 
@@ -1498,10 +1527,17 @@ public class ControleSubmarino : MonoBehaviour
                 destinoFallback = hitDestino.position;
             }
 
-            temDestinoFallback = false;
-            agente.SetDestination(destinoFallback);
-            agente.isStopped = false;
+            bool destinoAceito = agente.SetDestination(destinoFallback);
+            if (destinoAceito)
+            {
+                temDestinoFallback = false;
+                agente.isStopped = false;
+            }
         }
+
+        // Se a área de água não estiver bakeada, conserva o fallback físico
+        // para que a mesma ordem continue válida sem NavMesh.
+        return temDestinoFallback || (agente != null && agente.enabled && agente.isOnNavMesh && agente.hasPath);
     }
 
     public void PararPorFaltaDeCombustivel()

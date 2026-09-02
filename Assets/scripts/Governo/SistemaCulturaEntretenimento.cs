@@ -260,6 +260,13 @@ public sealed class DadosCulturaNacional
 public sealed class SistemaCulturaEntretenimento : MonoBehaviour
 {
     // Atualiza automaticamente no ciclo nacional e no Menu Governo.
+    // A descoberta cobre apenas estruturas legadas que ainda nao se registram
+    // no OnEnable; manter uma janela maior evita varrer todos os transforms do
+    // mapa durante a partida sem alterar o registro normal das estruturas.
+    private const float IntervaloDescobertaEstruturas = 30f;
+    private static readonly string[] EventosEsportivos = { "Campeonato nacional", "Show e festival", "Final internacional" };
+    private static readonly string[] EventosCulturais = { "Exposicao cultural", "Feira de patrimonio", "Mostra historica" };
+    private static readonly string[] EventosTuristicos = { "Temporada de turismo", "Visita diplomatica", "Festival internacional" };
     public static SistemaCulturaEntretenimento Instancia { get; private set; }
     private static readonly HashSet<EstruturaCulturaEntretenimento> estruturas = new HashSet<EstruturaCulturaEntretenimento>();
     private readonly Dictionary<int, DadosCulturaNacional> relatorios = new Dictionary<int, DadosCulturaNacional>();
@@ -297,7 +304,7 @@ public sealed class SistemaCulturaEntretenimento : MonoBehaviour
         if (ConfiguracaoCenasJogo.EhCenaDeMenu(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)) return;
         if (Time.unscaledTime >= proximaDescoberta)
         {
-            proximaDescoberta = Time.unscaledTime + 5f;
+            proximaDescoberta = Time.unscaledTime + IntervaloDescobertaEstruturas;
             DescobrirEstruturas();
         }
         if (Time.unscaledTime < proximoCiclo) return;
@@ -404,10 +411,10 @@ public sealed class SistemaCulturaEntretenimento : MonoBehaviour
     private static string NomeEvento(TipoEstruturaCultura tipo, int seed)
     {
         string[] nomes = tipo == TipoEstruturaCultura.Estadio || tipo == TipoEstruturaCultura.Arena
-            ? new[] { "Campeonato nacional", "Show e festival", "Final internacional" }
+            ? EventosEsportivos
             : tipo == TipoEstruturaCultura.Museu || tipo == TipoEstruturaCultura.CentroCultural
-                ? new[] { "Exposicao cultural", "Feira de patrimonio", "Mostra historica" }
-                : new[] { "Temporada de turismo", "Visita diplomatica", "Festival internacional" };
+                ? EventosCulturais
+                : EventosTuristicos;
         return nomes[Mathf.Abs(seed) % nomes.Length];
     }
 

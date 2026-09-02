@@ -26,6 +26,8 @@ public class SistemaGovernoMundial : MonoBehaviour
     private float proximoTick;
     private float proximaDiplomaciaIA;
     private readonly Dictionary<int, long> reservasFundacao = new Dictionary<int, long>();
+    private readonly List<ComplexoGovernamental> sedesCache = new List<ComplexoGovernamental>(16);
+    private float proximaAtualizacaoSedes;
 
     public IReadOnlyList<DadosPaisGoverno> Paises => paises;
     public IReadOnlyList<RelacaoPaisGoverno> Relacoes => relacoes;
@@ -321,7 +323,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             AtualizarDescontentamentoFiscal(pais);
             DadosComercioNacional comercio = SistemaComercioNacional.ObterResumo(pais.teamId);
             
-            AplicarEconomiaImoveis(pais, economia);
+            AplicarEconomiaImoveis(pais, economia, comercio);
             SistemaPopulacao.Processar(pais, economia);
             if (cultura.totalEstruturas > 0)
             {
@@ -2202,9 +2204,12 @@ public class SistemaGovernoMundial : MonoBehaviour
         economia.saldoOperacional = economia.ReceitaBruta - economia.custoManutencao;
     }
 
-    private void AplicarEconomiaImoveis(DadosPaisGoverno pais, DadosEconomiaPais economia)
+    private void AplicarEconomiaImoveis(DadosPaisGoverno pais, DadosEconomiaPais economia, DadosComercioNacional comercio = null)
     {
-        DadosComercioNacional comercio = SistemaComercioNacional.ObterResumo(pais.teamId);
+        if (comercio == null)
+        {
+            comercio = SistemaComercioNacional.ObterResumo(pais.teamId);
+        }
         // Capacidade vem de moradia real. A prefeitura so oferece uma lotacao
         // administrativa temporaria; ela nao representa uma cidade residencial.
         int capacidadeResidencial = Mathf.Max(0, economia.moradiaTotal);
@@ -2362,14 +2367,15 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     private bool PossuiSedeAdministrativa(int teamId)
     {
-#if UNITY_2023_1_OR_NEWER
-        ComplexoGovernamental[] sedes = FindObjectsByType<ComplexoGovernamental>(FindObjectsSortMode.None);
-#else
-        ComplexoGovernamental[] sedes = FindObjectsByType<ComplexoGovernamental>(FindObjectsSortMode.None);
-#endif
-        for (int i = 0; i < sedes.Length; i++)
+        if (Time.unscaledTime >= proximaAtualizacaoSedes)
         {
-            ComplexoGovernamental sede = sedes[i];
+            RegistroEntidadesJogo.FillComplexos(sedesCache);
+            proximaAtualizacaoSedes = Time.unscaledTime + 2f;
+        }
+
+        for (int i = 0; i < sedesCache.Count; i++)
+        {
+            ComplexoGovernamental sede = sedesCache[i];
             if (sede == null || !sede.isActiveAndEnabled) continue;
             IdentidadeUnidade identidade = sede.GetComponentInParent<IdentidadeUnidade>();
             if (identidade != null && identidade.teamID == teamId) return true;

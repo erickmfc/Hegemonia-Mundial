@@ -104,7 +104,14 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
 
             terrenosJogaveis++;
 
-            terrain.enabled = true;
+            bool ehAguaVisualMdHistoria = EhTerrenoAguaMdHistoria(terrain);
+            bool ehFronteiraVisualMdHistoria = EhTerrenoFronteiraVisualMdHistoria(terrain);
+            // A MD História ainda contém tiles Terrain_... da água antiga.
+            // Eles permanecem com TerrainCollider/MarcadorSuperficieMapa para
+            // consultas de superfície e para o pathfinder, mas o Sea original
+            // é a única superfície de água que deve ser desenhada. Renderizar
+            // os dois ao mesmo tempo cria placas cinzas e linhas no horizonte.
+            terrain.enabled = !ehAguaVisualMdHistoria && !ehFronteiraVisualMdHistoria;
             TerrainCollider collider = terrain.GetComponent<TerrainCollider>();
             if (collider != null)
             {
@@ -145,7 +152,7 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
                 marcadoresCriados++;
             }
 
-            marcador.DefinirTipo(EhTerrenoAguaMdHistoria(terrain)
+            marcador.DefinirTipo(ehAguaVisualMdHistoria
                 ? TipoSuperficieMapa.Agua
                 : TipoSuperficieMapa.Chao);
         }
@@ -424,6 +431,20 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
         // mar. O editor de biomas usa a mesma convenção de nomes; manter a
         // regra alinhada evita que o roteador naval trate esse setor como chão.
         return nome == "terrain" || nome.StartsWith("terrain_", System.StringComparison.Ordinal);
+    }
+
+    private static bool EhTerrenoFronteiraVisualMdHistoria(Terrain terrain)
+    {
+        if (terrain == null || !SceneManager.GetActiveScene().name.Equals("Md Historia", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // A faixa "fronteira" é uma representação antiga do limite do mapa.
+        // O TerrainCollider continua ativo para manter o bloqueio físico e a
+        // classificação de chão; somente o desenho é removido para que o
+        // horizonte seja composto pelo mar e pela atmosfera.
+        return terrain.name.Equals("fronteira", System.StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AjustarRecorteDasCameras(Terrain[] terrains)

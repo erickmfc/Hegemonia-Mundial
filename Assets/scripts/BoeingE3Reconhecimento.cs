@@ -76,8 +76,8 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
     [Min(5f)] public float inclinacaoMaximaE3 = 12f;
 
     [Header("=== AUTONOMIA E3 ===")]
-    [Tooltip("Multiplicador aplicado ao tanque aereo padrao atual de 600 unidades. 4,5x resulta em 2.700 unidades.")]
-    [Min(1f)] public float multiplicadorCapacidadeCombustivelE3 = 4.5f;
+    [Tooltip("Multiplicador aplicado ao tanque aereo base de 600 unidades. 9x resulta em 5.400 unidades.")]
+    [Min(1f)] public float multiplicadorCapacidadeCombustivelE3 = 9f;
 
     private IdentidadeUnidade identidade;
     private RTSVisibilityService servicoVisibilidade;
@@ -157,7 +157,7 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
         combustivel.combustivelInfinito = false;
         combustivel.classe = ClasseCombustivelUnidade.Aerea;
 
-        // O padrao aereo atual e 300 x 2 = 600. O E-3 usa 4,5 vezes
+        // O tanque aereo base e 300 x 2 = 600. O E-3 usa 9 vezes
         // esse tanque, sem alterar a capacidade das demais aeronaves.
         float capacidadeAlvo = 300f * 2f * Mathf.Max(1f, multiplicadorCapacidadeCombustivelE3);
         if (combustivel.capacidade < capacidadeAlvo)

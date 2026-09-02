@@ -35,6 +35,8 @@ public struct EstadoControleUnidadeSnapshot
 
 public class ControleUnidade : MonoBehaviour
 {
+    // O controlador central encaminha ordens navais para a mesma rota de água
+    // usada pela física realista e pelas patrulhas.
     private static readonly int VelocidadeAnimatorHash = Animator.StringToHash("Velocidade");
 
     private NavMeshAgent agente;
@@ -166,7 +168,16 @@ public class ControleUnidade : MonoBehaviour
         AtualizarTrilhaOficial();
         ValidarConflitosDeControle();
         SincronizarModoCombateOficial();
-        CombustivelUnidade.Garantir(gameObject);
+        // O abastecedor mantém uma reserva logística própria em
+        // NavioAbastecimento.combustivelTotal. Não crie uma segunda reserva
+        // de consumo só porque o ControleUnidade foi adicionado pela seleção.
+        bool ehNavioAbastecimento = GetComponent<NavioAbastecimento>() != null
+            || GetComponentInParent<NavioAbastecimento>() != null
+            || GetComponentInChildren<NavioAbastecimento>(true) != null;
+        if (!ehNavioAbastecimento)
+        {
+            CombustivelUnidade.Garantir(gameObject);
+        }
     }
 
     void SanearBoxCollidersComEscalaNegativa()
@@ -608,6 +619,90 @@ public class ControleUnidade : MonoBehaviour
         return EmitirOrdemMovimentoInterna(destino, cancelarComportamentos, id, dono, tipo);
     }
 
+    private bool TryExpandNavalPatrolRoute(
+        IList<Vector3> pontos,
+        out List<Vector3> rotaExpandida,
+        out string motivo)
+    {
+        rotaExpandida = new List<Vector3>(Mathf.Max(12, pontos != null ? pontos.Count * 3 : 12));
+        motivo = string.Empty;
+        if (pontos == null || pontos.Count == 0)
+        {
+            motivo = "patrulha sem pontos";
+            return false;
+        }
+
+        float nivelMar = NavalPlacementResolver.ResolveSeaLevel();
+        Vector3 origem = transform.position;
+        origem.y = nivelMar;
+        Vector3 cursor = origem;
+        List<Vector3> âncoras = new List<Vector3>(pontos.Count);
+        for (int i = 0; i < pontos.Count; i++)
+        {
+            Vector3 ponto = pontos[i];
+            ponto.y = nivelMar;
+            if (!NavalPlacementResolver.IsWaterAtPosition(ponto))
+            {
+                motivo = "ponto de patrulha fora da água";
+                return false;
+            }
+
+            if (âncoras.Count == 0 || Vector3.Distance(âncoras[âncoras.Count - 1], ponto) > 2f)
+            {
+                âncoras.Add(ponto);
+            }
+        }
+
+        if (âncoras.Count == 0)
+        {
+            motivo = "nenhum ponto de água utilizável";
+            return false;
+        }
+
+        // Expande cada perna com o mesmo A* marítimo usado pelo controlador
+        // físico. A volta ao primeiro ponto também é validada, pois o ciclo de
+        // patrulha é fechado pelo executor universal.
+        for (int i = 0; i < âncoras.Count; i++)
+        {
+            if (!NavalPlacementResolver.TryBuildWaterRoute(cursor, âncoras[i], 18f, out List<Vector3> perna))
+            {
+                motivo = "não existe corredor contínuo de água até o ponto " + (i + 1);
+                return false;
+            }
+
+            AdicionarPontosMaritimosSemDuplicata(rotaExpandida, perna);
+            cursor = âncoras[i];
+        }
+
+        List<Vector3> fechamento = null;
+        if (âncoras.Count > 1
+            && !NavalPlacementResolver.TryBuildWaterRoute(cursor, âncoras[0], 18f, out fechamento))
+        {
+            motivo = "não existe corredor contínuo de água para fechar a patrulha";
+            return false;
+        }
+
+        if (âncoras.Count > 1)
+        {
+            AdicionarPontosMaritimosSemDuplicata(rotaExpandida, fechamento);
+        }
+
+        return rotaExpandida.Count > 0;
+    }
+
+    private static void AdicionarPontosMaritimosSemDuplicata(List<Vector3> destino, IList<Vector3> pontos)
+    {
+        if (destino == null || pontos == null) return;
+        for (int i = 0; i < pontos.Count; i++)
+        {
+            Vector3 ponto = pontos[i];
+            if (destino.Count == 0 || Vector3.Distance(destino[destino.Count - 1], ponto) > 2f)
+            {
+                destino.Add(ponto);
+            }
+        }
+    }
+
     private bool EmitirOrdemMovimentoInterna(
         Vector3 destino,
         bool cancelarComportamentos,
@@ -758,7 +853,12 @@ public class ControleUnidade : MonoBehaviour
     {
         if (pontosPatrulha == null || pontosPatrulha.Count == 0)
         {
-            return false;
+            return RecusarPatrulha("rota sem pontos");
+        }
+
+        if (NavalPlacementResolver.IsLogisticsVessel(gameObject))
+        {
+            return RecusarPatrulha("unidade logística");
         }
 
         AtualizarTrilhaOficial();
@@ -777,8 +877,19 @@ public class ControleUnidade : MonoBehaviour
                 ponto.y = nivelMar;
                 if (!NavalPlacementResolver.IsWaterAtPosition(ponto))
                 {
-                    rotaFinal.RemoveAt(i);
-                    continue;
+                    // A IA costuma indicar um objetivo estratégico em terra.
+                    // Navios devem patrulhar a faixa marítima mais próxima, em
+                    // vez de perder a rota inteira por causa desse ponto.
+                    if (NavalPlacementResolver.TryResolveNearestWaterPoint(ponto, 900f, out Vector3 pontoNaAgua))
+                    {
+                        ponto = pontoNaAgua;
+                        ponto.y = nivelMar;
+                    }
+                    else
+                    {
+                        rotaFinal.RemoveAt(i);
+                        continue;
+                    }
                 }
 
                 rotaFinal[i] = ponto;
@@ -786,7 +897,29 @@ public class ControleUnidade : MonoBehaviour
 
             if (rotaFinal.Count == 0)
             {
-                return false;
+                return RecusarPatrulha("nenhum ponto naval navegável");
+            }
+
+            if (!NavalPlacementResolver.IsNavalPatrolCapable(
+                    identidadeUnidade,
+                    this,
+                    out string motivoPatrulhaNaval))
+            {
+                return RecusarPatrulha(motivoPatrulhaNaval);
+            }
+
+            if (TryExpandNavalPatrolRoute(rotaFinal, out List<Vector3> rotaMaritimaExpandida, out string motivoRota))
+            {
+                rotaFinal = rotaMaritimaExpandida;
+            }
+            else
+            {
+                // O executor naval já recalcula cada perna quando chega ao
+                // próximo ponto. Não recuse a patrulha inteira só porque a
+                // prévia A* não conseguiu fechar todas as pernas de uma vez;
+                // isso era especialmente comum nas rotas emitidas pela IA e
+                // no primeiro clique do Menu Satélite.
+                Debug.LogWarning($"[Patrulha][{name}] prévia naval incompleta ({motivoRota}); usando âncoras de água e deixando o controlador recalcular cada perna.");
             }
         }
 
@@ -805,7 +938,7 @@ public class ControleUnidade : MonoBehaviour
                 TipoOrdemMovimento.Patrulha,
                 out ordemPatrulhaIdempotente))
         {
-            return false;
+            return RecusarPatrulha("preparação da ordem de movimento falhou");
         }
 
         if (ordemPatrulhaIdempotente)
@@ -835,7 +968,7 @@ public class ControleUnidade : MonoBehaviour
             AtualizarEstadoDeBloqueio();
             if (bloqueioControleAtivo)
             {
-                DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: patrulha bloqueada ({motivoBloqueioControle})");
+                RecusarPatrulha("bloqueio de controle: " + motivoBloqueioControle);
                 controleOrdemMovimento.Falhar(motivoBloqueioControle, Time.unscaledTime);
                 return false;
             }
@@ -855,7 +988,7 @@ public class ControleUnidade : MonoBehaviour
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo)
         {
-            DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: patrulha bloqueada ({motivoBloqueioControle})");
+            RecusarPatrulha("bloqueio de controle: " + motivoBloqueioControle);
             controleOrdemMovimento.Falhar(motivoBloqueioControle, Time.unscaledTime);
             return false;
         }
@@ -881,6 +1014,16 @@ public class ControleUnidade : MonoBehaviour
         controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
         return true;
+    }
+
+    private bool RecusarPatrulha(string motivo)
+    {
+        string detalhe = string.IsNullOrWhiteSpace(motivo) ? "motivo não informado" : motivo;
+        DiagnosticoDesempenhoJogo.RegistrarEvento(
+            "OrdemRecusada",
+            $"{name}: patrulha recusada ({detalhe}) ordem={ordemControleAtual}");
+        Debug.LogWarning($"[Patrulha][{name}] rejeitada por {detalhe}; ordem atual={ordemControleAtual}.");
+        return false;
     }
 
     public bool EmitirOrdemSeguir(Transform alvo)
@@ -1461,14 +1604,12 @@ public class ControleUnidade : MonoBehaviour
 
         if (controleNavioRealista != null)
         {
-            controleNavioRealista.DefinirDestino(destino);
-            return true;
+            return controleNavioRealista.DefinirDestino(destino);
         }
 
         if (controleSubmarino != null)
         {
-            controleSubmarino.DefinirDestino(destino);
-            return true;
+            return controleSubmarino.DefinirDestino(destino);
         }
 
         // Segurança: Se o agente não foi pego no Awake (ex: adicionado depois), pega agora.
@@ -1522,14 +1663,12 @@ public class ControleUnidade : MonoBehaviour
                      {
                           if (controleNavioRealista != null)
                           {
-                              controleNavioRealista.DefinirDestino(destino);
-                              return true;
+                              return controleNavioRealista.DefinirDestino(destino);
                           }
 
                          if (controleSubmarino != null)
                          {
-                             controleSubmarino.DefinirDestino(destino);
-                              return true;
+                             return controleSubmarino.DefinirDestino(destino);
                          }
 
                          AplicarDestinoNavMeshComCooldown(destino, true);
@@ -1716,6 +1855,17 @@ public class ControleUnidade : MonoBehaviour
     /// </summary>
     public string AlternarEstadoOperacional()
     {
+        // O navio de abastecimento usa o mesmo atalho I, mas seu ciclo é
+        // logístico (manual/automático), não o ciclo de combate
+        // ATIVO/PASSIVO do ControleNavioRealista.
+        NavioAbastecimento abastecedor = GetComponent<NavioAbastecimento>()
+            ?? GetComponentInParent<NavioAbastecimento>()
+            ?? GetComponentInChildren<NavioAbastecimento>(true);
+        if (abastecedor != null)
+        {
+            return abastecedor.AlternarModoOperacao();
+        }
+
         if (controleSubmarino != null)
         {
             return controleSubmarino.AlternarEstadoOperacional();

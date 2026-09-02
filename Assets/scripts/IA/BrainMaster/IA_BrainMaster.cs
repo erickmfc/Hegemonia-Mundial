@@ -386,32 +386,46 @@ namespace Hegemonia.AI.BrainMaster
             float militarismFactor = country != null
                 ? Mathf.Clamp01((country.nivelMilitar / 100f * 0.55f) + country.pesoMilitarismo * 0.45f)
                 : 0.45f;
+            float industrialFactor = country != null
+                ? Mathf.Clamp01(country.nivelIndustrial / 100f)
+                : 0.5f;
+            float territoryFactor = Mathf.Clamp01(snapshot.TotalOwnStructures / 24f);
             float threatFactor = country != null && country.emGuerra ? 1.35f : 1f;
             int airCapacity = Mathf.Clamp(
-                3 + Mathf.RoundToInt(((population / 5000f) * 2f + budgetFactor * 16f + militarismFactor * 10f) * threatFactor),
+                3 + Mathf.RoundToInt(((population / 5000f) * 2f + budgetFactor * 16f + militarismFactor * 10f
+                    + industrialFactor * 10f + territoryFactor * 8f) * threatFactor),
                 3,
                 powerDoctrine ? 56 : 32);
             int fleetCapacity = Mathf.Clamp(
-                2 + Mathf.RoundToInt(((population / 7000f) * 2f + budgetFactor * 12f + militarismFactor * 8f) * threatFactor),
+                2 + Mathf.RoundToInt(((population / 7000f) * 2f + budgetFactor * 12f + militarismFactor * 8f
+                    + industrialFactor * 10f + territoryFactor * 8f) * threatFactor),
                 2,
                 powerDoctrine ? 48 : 24);
-            int basePlatforms = elapsed >= 1800f ? 3 : (elapsed >= 900f ? 2 : 1);
-            int baseTankers = elapsed >= 1800f ? 3 : (elapsed >= 900f ? 2 : 1);
-            int baseCoastalDefense = elapsed >= 900f ? 3 : 2;
-            TargetShipyards = perfil.Dificuldade == DificuldadeJogo.Imperial && elapsed >= 1800f ? 2 : 1;
-            TargetPiers = perfil.Dificuldade == DificuldadeJogo.Imperial && elapsed >= 1800f ? 2 : 1;
+            bool infrastructureCapacity = budgetFactor >= 0.35f
+                                        && industrialFactor >= 0.45f
+                                        && territoryFactor >= 0.25f;
+            int basePlatforms = powerDoctrine && industrialFactor >= 0.60f ? 2 : 1;
+            int baseTankers = snapshot.HasNavalBase && infrastructureCapacity ? 2 : 1;
+            int baseCoastalDefense = powerDoctrine ? 3 : 2;
+            TargetShipyards = perfil.Dificuldade == DificuldadeJogo.Imperial && infrastructureCapacity ? 2 : 1;
+            TargetPiers = perfil.Dificuldade == DificuldadeJogo.Imperial && infrastructureCapacity ? 2 : 1;
             TargetPlatforms = perfil.AjustarMeta(basePlatforms, 1);
             TargetOilTankers = perfil.AjustarMeta(baseTankers, 1);
             TargetCoastalDefenseShips = perfil.AjustarMeta(baseCoastalDefense, 1);
             TargetRadars = perfil.AjustarMeta(1, 1);
-            TargetCiws = elapsed >= 900f ? perfil.AjustarMeta(1, 0) : 0;
+            TargetCiws = snapshot.HasMilitaryAirport && (powerDoctrine || (country != null && country.emGuerra))
+                ? perfil.AjustarMeta(1, 0)
+                : 0;
 
-            int baseFleet = elapsed < 300f ? 4 : (elapsed < 600f ? 10 : (elapsed < 1200f ? 18 : 30));
-            int baseAir = elapsed < 300f ? 5 : (elapsed < 600f ? 11 : (elapsed < 1200f ? 17 : 25));
+            // A passagem do tempo, sozinha, nao aumenta a forca. A
+            // capacidade acima cresce quando o pais realmente melhora sua
+            // economia, industria, territorio ou infraestrutura.
+            int baseFleet = 6;
+            int baseAir = 6;
             if (WarPosture == IA_WarPosture.BalancedAggression)
             {
-                baseFleet = elapsed < 300f ? 4 : (elapsed < 900f ? 8 : (elapsed < 1800f ? 12 : 16));
-                baseAir = elapsed < 300f ? 3 : (elapsed < 900f ? 9 : (elapsed < 1800f ? 13 : 18));
+                baseFleet = 4;
+                baseAir = 4;
             }
             int metaFrotaPorJogador = perfil.AjustarMetaContraJogador(PlayerFleetEstimate, 1.22f, TargetCoastalDefenseShips + 1);
             int metaArPorJogador = perfil.AjustarMetaContraJogador(PlayerAircraftEstimate, 1.28f, 2);
@@ -425,21 +439,10 @@ namespace Hegemonia.AI.BrainMaster
                 airCapacity);
             if (WarPosture == IA_WarPosture.BalancedAggression)
             {
-                if (elapsed < 300f)
-                {
-                    TargetFleet = Mathf.Max(TargetFleet, snapshot.HasNavalBase ? 1 : 0);
-                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 3 : 0);
-                }
-                else if (elapsed < 900f)
-                {
-                    TargetFleet = Mathf.Max(TargetFleet, snapshot.HasNavalBase ? 5 : 0);
-                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 11 : 0);
-                }
-                else
-                {
-                    TargetFleet = Mathf.Max(TargetFleet, snapshot.HasNavalBase ? 8 : 0);
-                    TargetAircraft = Mathf.Max(TargetAircraft, snapshot.HasMilitaryAirport ? 18 : 0);
-                }
+                int balancedFleetMinimum = snapshot.HasNavalBase ? (powerDoctrine ? 8 : 4) : 0;
+                int balancedAirMinimum = snapshot.HasMilitaryAirport ? (powerDoctrine ? 8 : 5) : 0;
+                TargetFleet = Mathf.Max(TargetFleet, Mathf.Min(balancedFleetMinimum, fleetCapacity));
+                TargetAircraft = Mathf.Max(TargetAircraft, Mathf.Min(balancedAirMinimum, airCapacity));
             }
 
             bool oilGap = snapshot.PlatformCount < TargetPlatforms

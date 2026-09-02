@@ -52,6 +52,16 @@ public class ComplexoGovernamental : MonoBehaviour
     private bool podeDecretarQuedaDoGoverno = true;
     private int ultimoFrameAbertura = -1;
 
+    private void OnEnable()
+    {
+        RegistroEntidadesJogo.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        RegistroEntidadesJogo.Unregister(this);
+    }
+
     private void Start()
     {
         identidade = GetComponent<IdentidadeUnidade>();

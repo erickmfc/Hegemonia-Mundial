@@ -2924,6 +2924,19 @@ public class GerenciadorAeroporto : MonoBehaviour
             lancadorCaca.modoPassivo = missao != 2;
         }
 
+        // Sortidas de patrulha da IA precisam ser registradas como rota, não
+        // como uma missão pontual. Assim o controlador preserva o circuito
+        // quando a aeronave retorna com 30% de combustível, é abastecida e
+        // volta a decolar.
+        if (missao == 1)
+        {
+            ControleUnidade controle = aviao.GetComponent<ControleUnidade>();
+            if (controle != null && controle.EmitirOrdemPatrulha(new List<Vector3> { alvoVoo }))
+            {
+                return true;
+            }
+        }
+
         aviao.IniciarMissaoCompleta(alvoEstrategico);
         return true;
     }

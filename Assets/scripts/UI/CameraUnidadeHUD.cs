@@ -1,5 +1,7 @@
 using UnityEngine;
 
+using UnityEngine.Rendering;
+
 [RequireComponent(typeof(Camera))]
 public class CameraUnidadeHUD : MonoBehaviour
 {
@@ -59,6 +61,8 @@ public class CameraUnidadeHUD : MonoBehaviour
     private float proximoProcessamentoMarcacao;
     private readonly RaycastHit[] hitsMarcacao = new RaycastHit[32];
     private int layerMaskMarcacao;
+    private bool neblinaSuprimidaDuranteRender;
+    private bool neblinaOriginalDuranteRender;
 
     [Header("Configurações de Foco")]
     [SerializeField] private Vector3 offsetBase = new Vector3(0f, 15f, -25f);
@@ -92,9 +96,49 @@ public class CameraUnidadeHUD : MonoBehaviour
     // disputa de neblina entre a câmera principal, minimapa e câmera HUD.
     // A câmera HUD não altera RenderSettings globalmente.
 
-    private void OnEnable() { }
+    private void OnEnable()
+    {
+        RenderPipelineManager.beginCameraRendering += AoIniciarRenderCamera;
+        RenderPipelineManager.endCameraRendering += AoFinalizarRenderCamera;
+    }
 
-    private void OnDisable() { }
+    private void OnDisable()
+    {
+        RenderPipelineManager.beginCameraRendering -= AoIniciarRenderCamera;
+        RenderPipelineManager.endCameraRendering -= AoFinalizarRenderCamera;
+        RestaurarNeblinaDepoisDoRender();
+    }
+
+    private void AoIniciarRenderCamera(ScriptableRenderContext contexto, Camera camera)
+    {
+        if (camera != minhaCamera || !camera.enabled || camera.targetTexture == null || neblinaSuprimidaDuranteRender)
+        {
+            return;
+        }
+
+        neblinaOriginalDuranteRender = RenderSettings.fog;
+        RenderSettings.fog = false;
+        neblinaSuprimidaDuranteRender = true;
+    }
+
+    private void AoFinalizarRenderCamera(ScriptableRenderContext contexto, Camera camera)
+    {
+        if (camera == minhaCamera)
+        {
+            RestaurarNeblinaDepoisDoRender();
+        }
+    }
+
+    private void RestaurarNeblinaDepoisDoRender()
+    {
+        if (!neblinaSuprimidaDuranteRender)
+        {
+            return;
+        }
+
+        RenderSettings.fog = neblinaOriginalDuranteRender;
+        neblinaSuprimidaDuranteRender = false;
+    }
 
     private void OnDestroy()
     {

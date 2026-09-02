@@ -85,6 +85,9 @@ public class PierMarinha : MonoBehaviour
     private NavioPetroleiro _petroleiroReservado;
     private NavioPetroleiro _petroleiroOcupanteLogistica;
     private float _reservaPetroleiroAte;
+    private const float IntervaloLotePetroleo = 0.35f;
+    private int _petroleoRecebidoNoLote;
+    private float _proximoRegistroPetroleo;
 
     [Header("Fila de descarga")]
     [Tooltip("Quantidade de petroleiros que podem aguardar a descarga neste pier.")]
@@ -186,10 +189,31 @@ public class PierMarinha : MonoBehaviour
         int recebido = RecursosPorTime.ReceberPetroleoNoPier(this, quantidade);
         if (recebido > 0)
         {
-            DiagnosticoDesempenhoJogo.RegistrarEvento(
-                "Petroleo",
-                "Pier time " + RecursosPorTime.ObterTeamId(this) + " recebeu " + recebido);
+            // O recurso continua sendo aplicado imediatamente. Apenas o
+            // evento de diagnóstico é agrupado para não gerar strings e
+            // registros separados quando vários petroleiros descarregam no
+            // mesmo intervalo.
+            _petroleoRecebidoNoLote += recebido;
+            if (_proximoRegistroPetroleo <= 0f)
+            {
+                _proximoRegistroPetroleo = Time.unscaledTime + IntervaloLotePetroleo;
+            }
         }
+    }
+
+    private void RegistrarLotePetroleo(bool forcar = false)
+    {
+        if (_petroleoRecebidoNoLote <= 0 || (!forcar && Time.unscaledTime < _proximoRegistroPetroleo))
+        {
+            return;
+        }
+
+        int quantidade = _petroleoRecebidoNoLote;
+        _petroleoRecebidoNoLote = 0;
+        _proximoRegistroPetroleo = 0f;
+        DiagnosticoDesempenhoJogo.RegistrarEvento(
+            "Petroleo",
+            "Pier time " + RecursosPorTime.ObterTeamId(this) + " recebeu lote " + quantidade);
     }
 
     [Header("Configurações Gerais")]
@@ -240,6 +264,7 @@ public class PierMarinha : MonoBehaviour
 
     void OnDisable()
     {
+        RegistrarLotePetroleo(true);
         RegistroEntidadesJogo.Unregister(this);
     }
 
@@ -404,6 +429,7 @@ public class PierMarinha : MonoBehaviour
     void Update()
     {
         ProcessarManutencao();
+        RegistrarLotePetroleo();
 
         if (RTSInputBindings.GetKeyDown(RTSInputAction.Pier) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {

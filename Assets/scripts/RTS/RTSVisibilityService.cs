@@ -43,6 +43,12 @@ namespace Hegemonia.RTS
         [SerializeField, Min(0.1f)] private float memoryDuration = 18f;
 
         private readonly Dictionary<int, Dictionary<int, RTSVisibilityContact>> contactsByTeam = new Dictionary<int, Dictionary<int, RTSVisibilityContact>>();
+        // A visibilidade direta usa o mesmo alcance para qualquer observador.
+        // Organizar as unidades por celula evita comparar cada unidade com
+        // todas as outras quando a partida ja acumulou muitos spawns.
+        private const float DirectVisionCellSize = 120f;
+        private readonly List<IdentidadeUnidade> unitsBuffer = new List<IdentidadeUnidade>(512);
+        private readonly Dictionary<long, List<IdentidadeUnidade>> unitsByCell = new Dictionary<long, List<IdentidadeUnidade>>(128);
         private float nextScanAt;
 
         public event Action<RTSVisibilityContact> OnContactUpdated;
@@ -167,33 +173,93 @@ namespace Hegemonia.RTS
 
         private void RefreshDirectContacts()
         {
-            IdentidadeUnidade[] units = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-            int count = Mathf.Min(units != null ? units.Length : 0, maxUnitsPerScan);
+            long scanStartedAt = InfraPerformanceGameplay.MarcarInicioMedicao();
+            RegistroEntidadesJogo.FillUnidades(unitsBuffer);
+            int count = Mathf.Min(unitsBuffer.Count, maxUnitsPerScan);
             float rangeSqr = directVisionRange * directVisionRange;
+
+            foreach (List<IdentidadeUnidade> cell in unitsByCell.Values)
+            {
+                if (cell != null)
+                {
+                    cell.Clear();
+                }
+            }
 
             for (int i = 0; i < count; i++)
             {
-                IdentidadeUnidade observer = units[i];
+                IdentidadeUnidade unit = unitsBuffer[i];
+                if (unit == null || !unit.gameObject.activeInHierarchy || unit.teamID <= 0)
+                {
+                    continue;
+                }
+
+                int cellX = Mathf.FloorToInt(unit.transform.position.x / DirectVisionCellSize);
+                int cellZ = Mathf.FloorToInt(unit.transform.position.z / DirectVisionCellSize);
+                long key = ComposeCellKey(cellX, cellZ);
+                if (!unitsByCell.TryGetValue(key, out List<IdentidadeUnidade> cell) || cell == null)
+                {
+                    cell = new List<IdentidadeUnidade>(8);
+                    unitsByCell[key] = cell;
+                }
+
+                cell.Add(unit);
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                IdentidadeUnidade observer = unitsBuffer[i];
                 if (observer == null || observer.teamID <= 0 || !observer.gameObject.activeInHierarchy)
                 {
                     continue;
                 }
 
-                for (int j = 0; j < count; j++)
+                Vector3 observerPosition = observer.transform.position;
+                int observerCellX = Mathf.FloorToInt(observerPosition.x / DirectVisionCellSize);
+                int observerCellZ = Mathf.FloorToInt(observerPosition.z / DirectVisionCellSize);
+                for (int offsetX = -1; offsetX <= 1; offsetX++)
                 {
-                    IdentidadeUnidade target = units[j];
-                    if (target == null || target == observer || target.teamID <= 0 || target.teamID == observer.teamID
-                        || !target.gameObject.activeInHierarchy)
+                    for (int offsetZ = -1; offsetZ <= 1; offsetZ++)
                     {
-                        continue;
-                    }
+                        if (!unitsByCell.TryGetValue(ComposeCellKey(observerCellX + offsetX, observerCellZ + offsetZ), out List<IdentidadeUnidade> cell)
+                            || cell == null)
+                        {
+                            continue;
+                        }
 
-                    if ((observer.transform.position - target.transform.position).sqrMagnitude <= rangeSqr)
-                    {
-                        ReportContact(observer.teamID, target, RTSDetectionSource.DirectVision);
+                        for (int j = 0; j < cell.Count; j++)
+                        {
+                            IdentidadeUnidade target = cell[j];
+                            if (target == null || target == observer || target.teamID <= 0 || target.teamID == observer.teamID)
+                            {
+                                continue;
+                            }
+
+                            if ((observerPosition - target.transform.position).sqrMagnitude <= rangeSqr)
+                            {
+                                ReportContact(observer.teamID, target, RTSDetectionSource.DirectVision);
+                            }
+                        }
                     }
                 }
             }
+
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Sensor, scanStartedAt);
+            if (scanStartedAt != 0L)
+            {
+                long elapsed = System.Diagnostics.Stopwatch.GetTimestamp() - scanStartedAt;
+                if (elapsed > 0L)
+                {
+                    DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(
+                        "visibility_scan_ms",
+                        (float)(elapsed * 1000.0 / System.Diagnostics.Stopwatch.Frequency));
+                }
+            }
+        }
+
+        private static long ComposeCellKey(int x, int z)
+        {
+            return ((long)x << 32) ^ (uint)z;
         }
 
         private void ExpireContacts()

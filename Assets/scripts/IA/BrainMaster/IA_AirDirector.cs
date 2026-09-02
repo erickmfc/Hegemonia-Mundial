@@ -1,10 +1,23 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Hegemonia.AI.BrainMaster
 {
-    public sealed class IA_AirDirector : IIAUpdateModule
+    public sealed class IA_AirDirector : IIAIncrementalUpdateModule
     {
+        private enum DecisionPhase
+        {
+            Idle,
+            FindAirEnemy,
+            FindGroundEnemy,
+            ResolvePressure,
+            DispatchIntercept,
+            DispatchBombers,
+            DispatchTransport,
+            Finish
+        }
+
         private const float ForcedAirStrikeStartSeconds = 35f;
         private readonly IA_Context _context;
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
@@ -17,6 +30,14 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<GerenciadorAeroporto, int> _readyAircraftByAirport = new Dictionary<GerenciadorAeroporto, int>(8);
         private readonly List<GameObject> _activeBombersBuffer = new List<GameObject>(8);
         private float _nextDecisionTime;
+        private DecisionPhase _decisionPhase;
+        private Vector3 _decisionBaseCenter;
+        private Transform _decisionAirEnemy;
+        private Transform _decisionGroundEnemy;
+        private Vector3 _decisionPressureTarget;
+        private long _decisionTickStart;
+        private long _decisionSensorStart;
+        private bool _readyAircraftReserveValid;
 
         public IA_AirDirector(IA_Context context)
         {
@@ -30,7 +51,9 @@ namespace Hegemonia.AI.BrainMaster
 
         public float Interval
         {
-            get { return 1.25f; }
+            // O tutorial continua usando todas as aeronaves; apenas evita
+            // recalcular a mesma decisao de esquadra em intervalos curtos.
+            get { return SceneManager.GetActiveScene().name == "Md Historia" ? 3f : 1.25f; }
         }
 
         public float BudgetMs
@@ -40,47 +63,107 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
-            long tickStart = System.Diagnostics.Stopwatch.GetTimestamp();
-            _activeAirUnitsBuffer.Clear();
-            _activeAirTransportBuffer.Clear();
-            if (_context.Brain != null && _context.Brain.IsBootstrapActive && (int)_context.Brain.BootstrapStage < (int)IA_BrainMaster.IA_BootstrapStage.ProduceAircraft)
+            // Compatibilidade para qualquer chamador legado fora do scheduler.
+            // O scheduler usa TickSlice e distribui as mesmas etapas entre frames.
+            int safety = 0;
+            while (safety++ < 16 && !TickSlice(now, deltaTime, 100f))
             {
-                return;
+            }
+        }
+
+        public bool TickSlice(float now, float deltaTime, float budgetMs)
+        {
+            if (_decisionPhase == DecisionPhase.Idle)
+            {
+                _activeAirUnitsBuffer.Clear();
+                _activeAirTransportBuffer.Clear();
+                _activeBombersBuffer.Clear();
+                _readyAircraftReserveValid = false;
+
+                if (_context == null || _context.Brain == null || _context.WorldState == null)
+                {
+                    return true;
+                }
+
+                if (_context.Brain.IsBootstrapActive
+                    && (int)_context.Brain.BootstrapStage < (int)IA_BrainMaster.IA_BootstrapStage.ProduceAircraft)
+                {
+                    return true;
+                }
+
+                if (now < _nextDecisionTime)
+                {
+                    return true;
+                }
+
+                _nextDecisionTime = now + ResolveDecisionDelay();
+                _decisionBaseCenter = _context.WorldState.BaseCenter;
+                if (_decisionBaseCenter == Vector3.zero)
+                {
+                    _decisionBaseCenter = _context.Brain.transform.position;
+                }
+
+                _decisionAirEnemy = null;
+                _decisionGroundEnemy = null;
+                _decisionPressureTarget = Vector3.zero;
+                _decisionTickStart = System.Diagnostics.Stopwatch.GetTimestamp();
+                _decisionSensorStart = _decisionTickStart;
+                _decisionPhase = DecisionPhase.FindAirEnemy;
+                return false;
             }
 
-            if (now < _nextDecisionTime)
+            // Uma fatia é uma operação curta e indivisível. O próximo frame continua
+            // na fase seguinte; nenhuma ordem já emitida é descartada.
+            switch (_decisionPhase)
             {
-                return;
+                case DecisionPhase.FindAirEnemy:
+                    _decisionAirEnemy = GetVisibleAirEnemy();
+                    _decisionPhase = DecisionPhase.FindGroundEnemy;
+                    break;
+                case DecisionPhase.FindGroundEnemy:
+                    _decisionGroundEnemy = _context.WorldState.GetNearestVisibleEnemy(_decisionBaseCenter, IA_Domain.Land);
+                    _decisionPhase = DecisionPhase.ResolvePressure;
+                    break;
+                case DecisionPhase.ResolvePressure:
+                {
+                    _decisionPressureTarget = ResolvePressureTarget(_decisionBaseCenter, now);
+                    float sensorMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - _decisionSensorStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+                    if (sensorMs > 0f)
+                    {
+                        DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("sensor_update_ms", sensorMs);
+                        DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", sensorMs);
+                    }
+                    _decisionPhase = DecisionPhase.DispatchIntercept;
+                    break;
+                }
+                case DecisionPhase.DispatchIntercept:
+                    DispatchAirIntercept(_decisionBaseCenter, _decisionAirEnemy, _decisionGroundEnemy, _decisionPressureTarget);
+                    _decisionPhase = DecisionPhase.DispatchBombers;
+                    break;
+                case DecisionPhase.DispatchBombers:
+                    DispatchStrategicBombers(_decisionBaseCenter, _decisionPressureTarget);
+                    _decisionPhase = DecisionPhase.DispatchTransport;
+                    break;
+                case DecisionPhase.DispatchTransport:
+                    DispatchAirTransport(_decisionBaseCenter, _decisionGroundEnemy, _decisionPressureTarget, now);
+                    _decisionPhase = DecisionPhase.Finish;
+                    break;
+                case DecisionPhase.Finish:
+                {
+                    DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
+                        "active_air_wings",
+                        (_activeAirUnitsBuffer.Count + _activeAirTransportBuffer.Count + _activeBombersBuffer.Count) > 0 ? 1 : 0);
+                    float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - _decisionTickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+                    if (elapsedMs > 0f)
+                    {
+                        DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("air_unit_update_ms", elapsedMs);
+                    }
+                    _decisionPhase = DecisionPhase.Idle;
+                    return true;
+                }
             }
 
-            _nextDecisionTime = now + ResolveDecisionDelay();
-            Vector3 baseCenter = _context.WorldState.BaseCenter;
-            if (baseCenter == Vector3.zero && _context.Brain != null)
-            {
-                baseCenter = _context.Brain.transform.position;
-            }
-            long sensorStart = System.Diagnostics.Stopwatch.GetTimestamp();
-            Transform airEnemy = GetVisibleAirEnemy();
-            Transform groundEnemy = _context.WorldState.GetNearestVisibleEnemy(baseCenter, IA_Domain.Land);
-            Vector3 pressureTarget = ResolvePressureTarget(baseCenter, now);
-            float sensorMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - sensorStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
-            if (sensorMs > 0f)
-            {
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("sensor_update_ms", sensorMs);
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", sensorMs);
-            }
-
-            DispatchAirIntercept(baseCenter, airEnemy, groundEnemy, pressureTarget);
-            DispatchStrategicBombers(baseCenter, now);
-            DispatchAirTransport(baseCenter, groundEnemy, pressureTarget, now);
-            DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
-                "active_air_wings",
-                (_activeAirUnitsBuffer.Count + _activeAirTransportBuffer.Count + _activeBombersBuffer.Count) > 0 ? 1 : 0);
-            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
-            if (elapsedMs > 0f)
-            {
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("air_unit_update_ms", elapsedMs);
-            }
+            return false;
         }
 
         private float ResolveDecisionDelay()
@@ -122,13 +205,15 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Transform target = airEnemy != null ? airEnemy : fallbackEnemy;
-            Vector3 patrol = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 120f, 330f, 20);
             if (target != null)
             {
-                QueueAttack("air_intercept", _activeAirUnitsBuffer, target, patrol, 87, 2.9f);
+                // Com alvo confirmado, a patrulha de fallback nao participa da
+                // ordem. Evite uma amostragem de terreno cara nesse caminho.
+                QueueAttack("air_intercept", _activeAirUnitsBuffer, target, target.position, 87, 2.9f);
             }
             else
             {
+                Vector3 patrol = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 120f, 330f, 20);
                 Vector3 fallback = pressureTarget != Vector3.zero ? pressureTarget : patrol;
                 QueueAttack("air_intercept", _activeAirUnitsBuffer, null, fallback + Vector3.up * 20f, 80, 3.1f);
             }
@@ -256,18 +341,22 @@ namespace Hegemonia.AI.BrainMaster
             IA_TransportPlan plan = _context != null ? _context.TransportPlan : null;
             bool canProjectDrop = plan == null || plan.HasLandRoute || plan.Ready;
 
-            Vector3 insertion = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.City, 90f, 260f, 22);
-            if (!canProjectDrop)
-            {
-                insertion = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 40f, 120f, 18);
-            }
-            else if (target != null)
+            Vector3 insertion;
+            if (target != null)
             {
                 insertion = target.position + Vector3.up * 6f;
             }
             else if (now >= ForcedAirStrikeStartSeconds && pressureTarget != Vector3.zero)
             {
                 insertion = pressureTarget + Vector3.up * 6f;
+            }
+            else if (!canProjectDrop)
+            {
+                insertion = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 40f, 120f, 18);
+            }
+            else
+            {
+                insertion = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.City, 90f, 260f, 22);
             }
 
             QueueMove("air_transport", _activeAirTransportBuffer, insertion, 78, 4.2f);
@@ -286,8 +375,8 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                float d = Vector3.Distance(unit.transform.position, insertion);
-                if (d <= 28f)
+                float dSquared = (unit.transform.position - insertion).sqrMagnitude;
+                if (dSquared <= 784f)
                 {
                     IA_AbilityOrderData ability = new IA_AbilityOrderData
                     {
@@ -317,7 +406,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private Transform GetVisibleAirEnemy()
         {
-            float best = float.MaxValue;
+            float bestSquared = float.MaxValue;
             Transform selected = null;
             Vector3 baseCenter = _context.WorldState.BaseCenter;
             for (int i = 0; i < _context.WorldState.VisibleEnemies.Count; i++)
@@ -328,10 +417,10 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                float distance = Vector3.Distance(baseCenter, obs.Position);
-                if (distance < best)
+                float distanceSquared = (baseCenter - obs.Position).sqrMagnitude;
+                if (distanceSquared < bestSquared)
                 {
-                    best = distance;
+                    bestSquared = distanceSquared;
                     selected = obs.Transform;
                 }
             }
@@ -461,7 +550,13 @@ namespace Hegemonia.AI.BrainMaster
 
         private void RebuildReadyAircraftReserve()
         {
+            if (_readyAircraftReserveValid)
+            {
+                return;
+            }
+
             _readyAircraftByAirport.Clear();
+            _readyAircraftReserveValid = true;
             if (_context == null || _context.WorldState == null || _context.WorldState.OwnUnits == null)
             {
                 return;
@@ -547,7 +642,7 @@ namespace Hegemonia.AI.BrainMaster
                    || normalizedName.Contains("bomb");
         }
 
-        private void DispatchStrategicBombers(Vector3 baseCenter, float now)
+        private void DispatchStrategicBombers(Vector3 baseCenter, Vector3 pressureTarget)
         {
             IA_SquadData squad = _context.SquadDirector.GetSquad(IA_SquadRole.AirIntercept);
             if (!HasUnits(squad))
@@ -584,10 +679,9 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
-                Vector3 fallbackTarget = ResolvePressureTarget(baseCenter, now);
-                if (fallbackTarget != Vector3.zero)
+                if (pressureTarget != Vector3.zero)
                 {
-                    QueueAttack("strategic_bombing_fallback", _activeBombersBuffer, null, fallbackTarget + Vector3.up * 20f, 75, 10.0f);
+                    QueueAttack("strategic_bombing_fallback", _activeBombersBuffer, null, pressureTarget + Vector3.up * 20f, 75, 10.0f);
                     DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_air", _activeBombersBuffer.Count);
                 }
             }

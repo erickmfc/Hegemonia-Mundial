@@ -127,7 +127,9 @@ public class MenuComandoController : MonoBehaviour
     private Label ordemFeedback;
     private readonly List<Button> botoesOrdem = new List<Button>(8);
     private Button botaoOrdemSelecionado;
+    private Button btnPatrulhar;
     private bool modoLancamentoMissilMapaAtivo = false;
+    private bool modoMoverMapaAtivo = false;
 
     // Mapa — cache de VisualElements por instância
     private sealed class MapaItemUI
@@ -198,6 +200,28 @@ public class MenuComandoController : MonoBehaviour
         }
 
         return controle;
+    }
+
+    private static bool UnidadeAptaParaPatrulha(ControleUnidade unidade)
+    {
+        if (unidade == null) return false;
+
+        // Aeronaves continuam usando o executor aéreo existente. Para navios,
+        // a elegibilidade é explícita: cargueiros/petroleiros/logística não
+        // podem aparecer para o jogador como unidades de patrulha militar.
+        if (!unidade.EhUnidadeNaval()
+            && !NavalPlacementResolver.IsLogisticsVessel(unidade.gameObject))
+        {
+            return true;
+        }
+
+        IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInParent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInChildren<IdentidadeUnidade>(true);
+        return NavalPlacementResolver.IsNavalPatrolCapable(
+            identidade,
+            unidade,
+            out _);
     }
 
     // Timer
@@ -864,6 +888,7 @@ public class MenuComandoController : MonoBehaviour
         if (!menuAberto) return;
         menuAberto = false;
         modoLancamentoMissilMapaAtivo = false;
+        modoMoverMapaAtivo = false;
 
         if (root != null)
         {
@@ -1013,7 +1038,7 @@ public class MenuComandoController : MonoBehaviour
         var btnEstado = root.Q<Button>("btn-estado");
         if (btnEstado != null) VincularBotaoOrdem(btnEstado, "ESTADO_ALTERNAR");
 
-        var btnPatrulhar = root.Q<Button>("btn-patrulhar");
+        btnPatrulhar = root.Q<Button>("btn-patrulhar");
         if (btnPatrulhar != null) VincularBotaoOrdem(btnPatrulhar, "PATRULHAR");
 
         var btnSeguir = root.Q<Button>("btn-seguir");
@@ -1027,6 +1052,9 @@ public class MenuComandoController : MonoBehaviour
 
         var btnTrocaCamera = root.Q<Button>("btn-troca-camera");
         if (btnTrocaCamera != null) VincularBotaoOrdem(btnTrocaCamera, "TROCAR_CAMERA");
+
+        var btnMover = root.Q<Button>("btn-mover");
+        if (btnMover != null) VincularBotaoOrdem(btnMover, "MOVER");
 
         var btnLancamento = root.Q<Button>("btn-lancar-missil");
         if (btnLancamento != null) VincularBotaoOrdem(btnLancamento, "LANCAR_MISSIL");
@@ -1405,14 +1433,22 @@ public class MenuComandoController : MonoBehaviour
     {
         string classFacao = amigo ? "amigo" : "inimigo";
         bool ehImovel = EhImovelMapa(id.gameObject);
+        bool ehFazenda = EhFazendaMapa(id.gameObject);
 
         var container = new VisualElement();
         container.AddToClassList("mapa-unidade");
         container.name = $"mapa-unit-{id.gameObject.GetInstanceID()}";
+        if (ehImovel)
+        {
+            container.AddToClassList("imovel");
+            container.AddToClassList(ehFazenda ? "fazenda" : "residencia");
+        }
         // Unidades aliadas antigas podem chegar sem o adaptador de ordens.
         // Prepara somente as unidades do jogador para que o card/marcador
         // continue selecionável; nunca adiciona controle aos inimigos.
-        ControleUnidade controleTatico = ObterControleTatico(id, amigo);
+        // Imóveis civis não entram na seleção normal do satélite. Eles só
+        // podem ser encontrados como alvo quando a ordem ATAQUE está ativa.
+        ControleUnidade controleTatico = ehImovel ? null : ObterControleTatico(id, amigo);
         if (controleTatico != null)
         {
             container.AddToClassList("controlavel");
@@ -1438,11 +1474,13 @@ public class MenuComandoController : MonoBehaviour
         {
             label.style.display = DisplayStyle.None;
         }
-        container.tooltip = nomeMapa;
+        container.tooltip = ehImovel
+            ? $"{nomeMapa} — alvo disponível somente no modo ATAQUE"
+            : nomeMapa;
         if (ehImovel)
         {
             label.AddToClassList("imovel");
-            label.tooltip = nomeMapa;
+            label.tooltip = container.tooltip;
 
             int dispersao = Mathf.Abs(id.gameObject.GetInstanceID());
             float offsetX = ((dispersao % 5) - 2) * 7f;
@@ -1494,7 +1532,8 @@ public class MenuComandoController : MonoBehaviour
                 if (desenhadorOrdens == null)
                     desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
-                if (desenhadorOrdens != null && (desenhadorOrdens.modoPatrulhaAtivo || desenhadorOrdens.modoSeguirAtivo || desenhadorOrdens.modoAtaqueAtivo))
+                if (modoMoverMapaAtivo
+                    || (desenhadorOrdens != null && (desenhadorOrdens.modoPatrulhaAtivo || desenhadorOrdens.modoSeguirAtivo || desenhadorOrdens.modoAtaqueAtivo)))
                 {
                     if (painelMapa != null)
                     {
@@ -1528,6 +1567,9 @@ public class MenuComandoController : MonoBehaviour
     {
         if (obj == null) return false;
 
+        if (EhFazendaMapa(obj))
+            return true;
+
         // Cobre os imóveis atuais e prefabs legados que só carregam a tag.
         if (obj.GetComponent<Imovel>() != null || TagSafe.Matches(obj, "Imovel"))
             return true;
@@ -1550,11 +1592,52 @@ public class MenuComandoController : MonoBehaviour
         return false;
     }
 
+    private static bool EhFazendaMapa(GameObject obj)
+    {
+        if (obj == null) return false;
+
+        return obj.GetComponent<Fazenda>() != null
+            || obj.GetComponentInParent<Fazenda>() != null
+            || obj.GetComponentInChildren<Fazenda>(true) != null;
+    }
+
+    private static bool TemComponenteNaHierarquia<T>(GameObject obj) where T : Component
+    {
+        if (obj == null) return false;
+
+        return obj.GetComponent<T>() != null
+            || obj.GetComponentInParent<T>() != null
+            || obj.GetComponentInChildren<T>(true) != null;
+    }
+
     private string ObterEmojiUnidade(IdentidadeUnidade id)
     {
-        if (id != null && id.GetComponent<Hegemonia.Cartel.CartelNavalUnidade>() != null)
-        {
+        if (id == null)
             return "?";
+
+        // Imóveis ficam como pontos discretos no satélite. Eles continuam
+        // encontráveis como alvo, mas não competem visualmente com as tropas.
+        if (EhImovelMapa(id.gameObject))
+            return "·";
+
+        // Logística naval precisa ser legível sem confundir com navio de
+        // combate: petroleiro mostra combustível e transportes mostram âncora.
+        if (TemComponenteNaHierarquia<NavioPetroleiro>(id.gameObject))
+            return "⛽";
+
+        if (id.GetComponent<Hegemonia.Cartel.CartelNavalUnidade>() != null)
+        {
+            return "⚔";
+        }
+
+        if (NavalPlacementResolver.IsLogisticsVessel(id.gameObject))
+        {
+            return "⚓";
+        }
+
+        if (id.tipoUnidade == TipoUnidade.Naval)
+        {
+            return "⚔";
         }
 
         switch (id.tipoUnidade)
@@ -2105,6 +2188,7 @@ public class MenuComandoController : MonoBehaviour
     {
         unidadesSelecionadasMenu.RemoveAll(u => u == null);
         AtualizarCacheSelecaoIds();
+        AtualizarDisponibilidadePatrulha();
         if (unidadeSelecionadaMenu == null && unidadesSelecionadasMenu.Count > 0)
         {
             unidadeSelecionadaMenu = unidadesSelecionadasMenu[0];
@@ -2434,6 +2518,29 @@ public class MenuComandoController : MonoBehaviour
         }
     }
 
+    private void AtualizarDisponibilidadePatrulha()
+    {
+        if (btnPatrulhar == null)
+        {
+            return;
+        }
+
+        bool existeUnidadeApta = false;
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            if (UnidadeAptaParaPatrulha(unidadesSelecionadasMenu[i]))
+            {
+                existeUnidadeApta = true;
+                break;
+            }
+        }
+
+        btnPatrulhar.SetEnabled(existeUnidadeApta);
+        btnPatrulhar.tooltip = existeUnidadeApta
+            ? "Iniciar patrulha com unidades compatíveis"
+            : "Cargueiros e unidades logísticas não realizam patrulha militar";
+    }
+
     private float ObterVelocidadeTelemetria(GameObject unidade, float velocidadeMpsAtual)
     {
         if (unidade == null) return 0f;
@@ -2563,6 +2670,16 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
 
+        if (ordem == "PATRULHAR")
+        {
+            snapshot.RemoveAll(u => u == null || !UnidadeAptaParaPatrulha(u.GetComponent<ControleUnidade>()));
+            if (snapshot.Count == 0)
+            {
+                SetText(ordemFeedback, "⚠ Nenhuma unidade selecionada possui patrulha compatível.");
+                return;
+            }
+        }
+
         switch (ordem)
         {
             case "ATIVO":
@@ -2597,6 +2714,7 @@ public class MenuComandoController : MonoBehaviour
 
             case "LANCAR_MISSIL":
                 modoLancamentoMissilMapaAtivo = true;
+                modoMoverMapaAtivo = false;
                 if (desenhadorOrdens != null) desenhadorOrdens.CancelarModo();
                 FecharPainelSeguimento();
                 foreach (var u in unidadesSelecionadasMenu)
@@ -2609,7 +2727,18 @@ public class MenuComandoController : MonoBehaviour
                 AdicionarLog("OPS", $"{snapshot.Count} unidade(s): marcação de alvo estratégico iniciada", "alerta");
                 break;
 
+            case "MOVER":
+                modoLancamentoMissilMapaAtivo = false;
+                modoMoverMapaAtivo = true;
+                if (desenhadorOrdens != null) desenhadorOrdens.CancelarModo();
+                FecharPainelSeguimento();
+                SetText(ordemFeedback, $"✔ [{snapshot.Count} UDS] → MOVER\nClique no mapa para definir o destino. Navios serão ajustados para a água.");
+                AdicionarLog("OPS", $"{snapshot.Count} unidade(s): ordem MOVER armada — clique no mapa", "normal");
+                break;
+
             case "PATRULHAR":
+                modoLancamentoMissilMapaAtivo = false;
+                modoMoverMapaAtivo = false;
                 if (desenhadorOrdens == null)
                     desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2626,6 +2755,8 @@ public class MenuComandoController : MonoBehaviour
                 break;
 
             case "SEGUIR":
+                modoLancamentoMissilMapaAtivo = false;
+                modoMoverMapaAtivo = false;
                 if (desenhadorOrdens == null)
                     desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2652,6 +2783,8 @@ public class MenuComandoController : MonoBehaviour
                 break;
 
             case "ATACAR":
+                modoLancamentoMissilMapaAtivo = false;
+                modoMoverMapaAtivo = false;
                 if (desenhadorOrdens == null)
                     desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2911,6 +3044,12 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
 
+        if (modoMoverMapaAtivo)
+        {
+            EnviarOrdemMoverMapa(worldPos);
+            return;
+        }
+
         if (desenhadorOrdens == null)
             desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2929,6 +3068,10 @@ public class MenuComandoController : MonoBehaviour
         else if (desenhadorOrdens.modoSeguirAtivo)
         {
             GameObject alvo = EncontrarUnidadeProxima(worldPos, 150f);
+            if (EhImovelMapa(alvo))
+            {
+                alvo = null;
+            }
             if (alvo != null)
             {
                 ConfirmarSeguimentoEspecifico(alvo);
@@ -2964,6 +3107,14 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
 
+        if (modoMoverMapaAtivo)
+        {
+            modoMoverMapaAtivo = false;
+            SetText(ordemFeedback, "Ordem MOVER cancelada.");
+            AdicionarLog("OPS", "Ordem MOVER cancelada pelo usuário.", "normal");
+            return;
+        }
+
         if (desenhadorOrdens == null)
             desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2991,6 +3142,51 @@ public class MenuComandoController : MonoBehaviour
             ? $"Lançamento estratégico preparado para {ordenadas} base(s)."
             : "Nenhuma base estratégica aceitou o alvo.");
         AdicionarLog("OPS", $"Ordem de lançamento estratégico: {ordenadas} base(s).", ordenadas > 0 ? "alerta" : "normal");
+    }
+
+    private void EnviarOrdemMoverMapa(Vector3 destino)
+    {
+        int ordenadas = 0;
+        int rejeitadas = 0;
+        float nivelMar = NavalPlacementResolver.ResolveSeaLevel();
+
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            ControleUnidade unidade = unidadesSelecionadasMenu[i];
+            if (unidade == null)
+            {
+                continue;
+            }
+
+            Vector3 destinoUnidade = destino;
+            if (unidade.EhUnidadeNaval())
+            {
+                destinoUnidade.y = nivelMar;
+                if (!NavalPlacementResolver.IsWaterAtPosition(destinoUnidade)
+                    && !NavalPlacementResolver.TryResolveNearestWaterPoint(destinoUnidade, 900f, out destinoUnidade))
+                {
+                    rejeitadas++;
+                    continue;
+                }
+            }
+
+            if (unidade.EmitirOrdemMover(destinoUnidade, true))
+            {
+                ordenadas++;
+            }
+            else
+            {
+                rejeitadas++;
+            }
+        }
+
+        modoMoverMapaAtivo = false;
+        string resumo = ordenadas > 0
+            ? $"✔ {ordenadas} unidade(s) em movimento para {destino.x:F0}, {destino.z:F0}."
+            : "⚠ Nenhuma unidade aceitou o destino selecionado.";
+        if (rejeitadas > 0) resumo += $" {rejeitadas} rejeitada(s).";
+        SetText(ordemFeedback, resumo);
+        AdicionarLog("OPS", $"Ordem MOVER enviada: {ordenadas} aceita(s), {rejeitadas} rejeitada(s).", ordenadas > 0 ? "normal" : "alerta");
     }
 
     private void AtualizarCameraSeguimento(GameObject alvo)

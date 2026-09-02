@@ -963,8 +963,14 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         float y = area.y + 42f;
         if (unidade != null)
         {
-            GUI.Label(new Rect(area.x + 12f, y, area.width - 24f, 36f), unidade.nome + "\n" + unidade.tipo + " | EQUIPE " + unidade.equipe + " | " + unidade.situacao, designerTitulo);
+            GerenciadorQuartel.UnidadeLancamentoCoordenadoV2 unidadeLancamento = EncontrarUnidadeLancamentoCarta(unidade.id);
+            string selecao = unidadeLancamento == null
+                ? "NÃO É LANÇADORA DO QUARTEL"
+                : unidadeLancamento.selecionada ? "SELECIONADA PARA DISPARO"
+                : "NÃO SELECIONADA PARA DISPARO";
+            GUI.Label(new Rect(area.x + 12f, y, area.width - 24f, 36f), "UNIDADE CLICADA  |  " + unidade.nome + "\n" + unidade.tipo + " | EQUIPE " + unidade.equipe + " | " + unidade.situacao, designerTitulo);
             y += 44f;
+            y = LinhaTelemetriaCarta(area, y, "SELEÇÃO PARA TIRO", selecao);
             y = LinhaTelemetriaCarta(area, y, "ESTADO", unidade.estado);
             y = LinhaTelemetriaCarta(area, y, "MISSAO", unidade.missao);
             y = LinhaTelemetriaCarta(area, y, "POSICAO", FormatarPosicao(unidade.posicao));
@@ -1213,8 +1219,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             string prefixo = unidade.selecionada ? "☑ " : "☐ ";
             if (GUI.Button(new Rect(xUnidades, linhaY, larguraSelecao - 3f, 30f), prefixo + EncurtarTextoDesigner(unidade.nome, 16), unidade.selecionada ? designerBotaoAtivo : designerBotaoLista))
             {
-                quartel.AlternarSelecaoLancamento(unidade.id, true);
-                PreencherCoordenadasCarta(unidade.posicao);
+                SelecionarUnidadeCarta(unidade.id, Event.current.control, Event.current.shift);
             }
             bool eLancadorEstrategico = unidade.lancadorMisseis != null;
             string rotuloModo = eLancadorEstrategico ? "MANUAL · MÍSSEIS" : unidade.modoOperacional;
@@ -1255,12 +1260,16 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         if (GUI.Button(new Rect(xControle + larguraAcao + 6f, acaoY, larguraAcao, 29f), cliqueTerrenoArmado ? "●  CLIQUE ARMADO" : "⌖  CLICAR TERRENO", cliqueTerrenoArmado ? designerBotaoAtivo : designerBotaoCompacto))
             cliqueTerrenoArmado = !cliqueTerrenoArmado;
 
-        string validacao = "Selecione um alvo E-3 e pelo menos um lançador.";
+        string validacao = "VÃO ATIRAR: " + ObterResumoLancadoresSelecionados();
         if (quartel.AvaliacoesLancamento.Count > 0)
         {
             GerenciadorQuartel.AvaliacaoLancamentoCoordenadoV2 avaliacao = quartel.AvaliacoesLancamento[0];
             validacao = EncurtarTextoDesigner(avaliacao.unidadeNome + ": " + avaliacao.motivo, 78);
             if (quartel.AvaliacoesLancamento.Count > 1) validacao += "  |  +" + (quartel.AvaliacoesLancamento.Count - 1) + " unidade(s)";
+        }
+        else if (!quartel.AlvoLancamentoSelecionadoValido)
+        {
+            validacao += " | selecione um alvo E-3";
         }
         if (!string.IsNullOrWhiteSpace(statusLancamentoFallback))
             validacao = statusLancamentoFallback;
@@ -2655,18 +2664,22 @@ public sealed class QuartelMenuUIController : MonoBehaviour
 
         for (int i = 0; i < quartel.AvaliacoesLancamento.Count; i++)
             if (quartel.AvaliacoesLancamento[i] != null && quartel.AvaliacoesLancamento[i].apta) aptas++;
+        string resumoLancadores = ObterResumoLancadoresSelecionados();
         if (estatisticasLancamentoPersistentes != null)
         {
             estatisticasLancamentoPersistentes.Clear();
             estatisticasLancamentoPersistentes.Add(LinhaInformacao("UNIDADES SELECIONADAS", selecionadas.ToString("00")));
             estatisticasLancamentoPersistentes.Add(LinhaInformacao("APTAS PARA LANÇAMENTO", aptas.ToString("00")));
             estatisticasLancamentoPersistentes.Add(LinhaInformacao("FORA DAS CONDIÇÕES AUTOMÁTICAS", Mathf.Max(0, selecionadas - aptas).ToString("00")));
+            estatisticasLancamentoPersistentes.Add(LinhaInformacao("VÃO ATIRAR", resumoLancadores));
         }
 
         if (validacaoLancamentoPersistente != null)
         {
             validacaoLancamentoPersistente.Clear();
             validacaoLancamentoPersistente.Add(Texto("RESULTADO DA VALIDAÇÃO", 12, Color.white, FontStyle.Bold));
+            validacaoLancamentoPersistente.Add(Texto("VÃO ATIRAR: " + resumoLancadores, 12,
+                selecionadas > 0 ? CorVerdeQuartel : CorAlertaQuartel, FontStyle.Bold));
             if (quartel.AvaliacoesLancamento.Count == 0)
             {
                 validacaoLancamentoPersistente.Add(Texto("Selecione um contato e uma ou mais unidades.", 12, new Color(0.66f, 0.78f, 0.78f), FontStyle.Normal));
@@ -2689,8 +2702,11 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         if (botaoConfirmarLancamento != null)
         {
             botaoConfirmarLancamento.SetEnabled(podeConfirmar);
+            botaoConfirmarLancamento.text = selecionadas > 0
+                ? "▶  LANÇAR COM: " + EncurtarTextoDesigner(resumoLancadores, 42)
+                : "▶  LANÇAR";
             botaoConfirmarLancamento.tooltip = podeConfirmar
-                ? "Executar o lançamento a partir dos lançadores selecionados"
+                ? "Executar o lançamento usando: " + resumoLancadores
                 : "Selecione um contato/ponto e pelo menos uma unidade";
         }
     }
@@ -2995,8 +3011,23 @@ public sealed class QuartelMenuUIController : MonoBehaviour
                 string id = "unidade:" + unidade.id;
                 idsMarcadoresCartaPresentes.Add(id);
                 Color cor = !unidade.aliada ? new Color(1f, 0.25f, 0.20f) : CorTipoCarta(unidade.tipo);
-                Button marcador = ObterMarcadorCarta(id, unidade.nome + " | " + unidade.estado, cor, 16f,
+                bool emFoco = unidade.id == cartaUnidadeSelecionadaId;
+                bool selecionadaParaDisparo = UnidadeLancamentoCartaEstaSelecionada(unidade.id);
+                string tooltip = (emFoco ? "UNIDADE CLICADA: " : "UNIDADE: ") + unidade.nome
+                    + " | " + unidade.estado
+                    + (selecionadaParaDisparo ? "\nSELECIONADA PARA DISPARO" : string.Empty);
+                Button marcador = ObterMarcadorCarta(id, tooltip, cor, emFoco || selecionadaParaDisparo ? 18f : 16f,
                     evt => AoSelecionarUnidadeCarta(unidade.id, evt));
+                int larguraBorda = emFoco ? 3 : selecionadaParaDisparo ? 2 : 0;
+                Color corBorda = emFoco ? Color.white : CorVerdeQuartel;
+                marcador.style.borderTopWidth = larguraBorda;
+                marcador.style.borderBottomWidth = larguraBorda;
+                marcador.style.borderLeftWidth = larguraBorda;
+                marcador.style.borderRightWidth = larguraBorda;
+                marcador.style.borderTopColor = corBorda;
+                marcador.style.borderBottomColor = corBorda;
+                marcador.style.borderLeftColor = corBorda;
+                marcador.style.borderRightColor = corBorda;
                 AtualizarPosicaoMarcador(marcador, unidade.posicao);
             }
 
@@ -3318,10 +3349,13 @@ public sealed class QuartelMenuUIController : MonoBehaviour
 
         QuartelCartaTopograficaView.UnidadeTelemetria selecionada = cartaTopograficaView != null
             ? cartaTopograficaView.EncontrarUnidade(cartaUnidadeSelecionadaId) : null;
+        GerenciadorQuartel.UnidadeLancamentoCoordenadoV2 unidadeLancamentoFoco = selecionada != null
+            ? EncontrarUnidadeLancamentoCarta(selecionada.id) : null;
         QuartelCartaTopograficaView.MissilTelemetria missilSelecionado = cartaTopograficaView != null
             ? cartaTopograficaView.EncontrarMissil(cartaMissilSelecionadoId) : null;
         GerenciadorQuartel.ContatoMilitarQuartelV2 contatoSelecionado = EncontrarContatoCarta(quartel.AlvoSelecionadoLancamentoId);
         MissileThreatTracker trackerSelecionado = ObterTrackerSelecionadoCarta();
+        string resumoLancadores = ObterResumoLancadoresSelecionados();
         bool rastreamentoEncerrado = !string.IsNullOrWhiteSpace(cartaMissilSelecionadoId)
             && cartaTerrenoRenderer != null
             && cartaTerrenoRenderer.EstaRastreando
@@ -3344,15 +3378,18 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             statusLancamentoCarta.text = rastreamentoEncerrado
                 ? "ESTADO DO DISPARO: RASTREAMENTO ENCERRADO — MÍSSIL FORA DO REGISTRO ATIVO"
                 : string.IsNullOrWhiteSpace(quartel.UltimoMotivoLancamento)
-                ? "ESTADO DO DISPARO: AGUARDANDO ORDEM"
-                : "ESTADO DO DISPARO: " + quartel.UltimoMotivoLancamento;
+                ? "ESTADO DO DISPARO: AGUARDANDO ORDEM | VÃO ATIRAR: " + resumoLancadores
+                : "ESTADO DO DISPARO: " + quartel.UltimoMotivoLancamento + " | PRÓXIMO: " + resumoLancadores;
             statusLancamentoCarta.style.color = CorTextoSecundarioQuartel;
         }
 
         if (selecionada != null)
         {
-            tituloTelemetriaCartaPersistente.text = "UNIDADE LANÇADORA  |  " + selecionada.nome;
+            tituloTelemetriaCartaPersistente.text = "UNIDADE CLICADA  |  " + selecionada.nome;
             linhasTelemetria.Add("Tipo: " + selecionada.tipo);
+            linhasTelemetria.Add("Seleção para disparo: " + (unidadeLancamentoFoco == null
+                ? "NÃO É LANÇADORA DO QUARTEL"
+                : unidadeLancamentoFoco.selecionada ? "SIM — VAI ATIRAR" : "NÃO — AINDA NÃO VAI ATIRAR"));
             linhasTelemetria.Add("Posição atual: " + FormatarPosicao(selecionada.posicao));
             linhasTelemetria.Add("Modo operacional: " + selecionada.estado);
             linhasTelemetria.Add("Estado: " + selecionada.situacao);
@@ -3365,8 +3402,16 @@ public sealed class QuartelMenuUIController : MonoBehaviour
                 ? (selecionada.combustivelPercentual * 100f).ToString("0") + "%"
                 : "SEM SENSOR"));
             linhasTelemetria.Add("Armamento: " + selecionada.armamento);
-            if (botaoSelecionarLancadorTelemetria != null)
+            if (unidadeLancamentoFoco != null && botaoSelecionarLancadorTelemetria != null)
+            {
+                botaoSelecionarLancadorTelemetria.text = unidadeLancamentoFoco.selecionada
+                    ? "✓ LANÇADORA SELECIONADA — REMOVER"
+                    : "SELECIONAR COMO LANÇADORA";
+                botaoSelecionarLancadorTelemetria.tooltip = unidadeLancamentoFoco.selecionada
+                    ? "Remover " + selecionada.nome + " da lista que vai atirar"
+                    : "Adicionar " + selecionada.nome + " à lista que vai atirar";
                 botaoSelecionarLancadorTelemetria.style.display = DisplayStyle.Flex;
+            }
         }
         else if (contatoSelecionado != null)
         {
@@ -3428,6 +3473,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         }
 
         linhasTelemetria.Add("Unidades selecionadas: " + ContarUnidadesLancamentoSelecionadas().ToString("00"));
+        linhasTelemetria.Add("VÃO ATIRAR: " + resumoLancadores);
         linhasTelemetria.Add("Modo do Quartel: " + (quartel.ModoLancamentoCoordenado == GerenciadorQuartel.ModoLancamentoCoordenadoV2.Automatico ? "AUTOMÁTICO" : "MANUAL"));
         linhasTelemetria.Add("Clique no terreno: " + (cliqueTerrenoArmado ? "ARMADO" : "DESARMADO"));
         if (quartel.UnidadesAbatidas.Count > 0)
@@ -3456,6 +3502,8 @@ public sealed class QuartelMenuUIController : MonoBehaviour
                 string idUnidade = unidade.id;
                 aeronavesPresentes.Add(idUnidade);
                 unidadesVisiveis++;
+                bool emFoco = idUnidade == cartaUnidadeSelecionadaId;
+                bool selecionadaParaDisparo = UnidadeLancamentoCartaEstaSelecionada(idUnidade);
                 Button botaoUnidade;
                 if (!botoesAeronavesCarta.TryGetValue(idUnidade, out botaoUnidade) || botaoUnidade == null)
                 {
@@ -3466,13 +3514,16 @@ public sealed class QuartelMenuUIController : MonoBehaviour
                     botoesAeronavesCarta[idUnidade] = botaoUnidade;
                     listaAeronavesCartaPersistente.Add(botaoUnidade);
                 }
-                botaoUnidade.text = (unidade.aliada ? "● " : "◆ ")
+                botaoUnidade.text = (emFoco ? "▶ " : unidade.aliada ? "● " : "◆ ")
                     + EncurtarTextoDesigner(unidade.nome, 22) + " | "
                     + EncurtarTextoDesigner(unidade.tipo, 12) + " | "
-                    + EncurtarTextoDesigner(unidade.estado, 16);
-                botaoUnidade.tooltip = "Abrir telemetria de " + unidade.nome + " | " + FormatarPosicao(unidade.posicao);
-                botaoUnidade.style.backgroundColor = unidade.id == cartaUnidadeSelecionadaId
-                    ? CorNavegacaoAtivaQuartel : CorNavegacaoQuartel;
+                    + EncurtarTextoDesigner(unidade.estado, 16)
+                    + (selecionadaParaDisparo ? " | VAI ATIRAR" : string.Empty);
+                botaoUnidade.tooltip = (emFoco ? "UNIDADE CLICADA: " : "Abrir telemetria de ") + unidade.nome
+                    + " | " + FormatarPosicao(unidade.posicao)
+                    + (selecionadaParaDisparo ? "\nSelecionada para disparo." : string.Empty);
+                botaoUnidade.style.backgroundColor = selecionadaParaDisparo
+                    ? CorNavegacaoAtivaQuartel : emFoco ? new Color(0.05f, 0.16f, 0.20f) : CorNavegacaoQuartel;
                 botaoUnidade.style.display = DisplayStyle.Flex;
             }
         }
@@ -3628,6 +3679,32 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         for (int i = 0; i < quartel.UnidadesLancamento.Count; i++)
             if (quartel.UnidadesLancamento[i] != null && quartel.UnidadesLancamento[i].selecionada) total++;
         return total;
+    }
+
+    private bool UnidadeLancamentoCartaEstaSelecionada(string idUnidade)
+    {
+        GerenciadorQuartel.UnidadeLancamentoCoordenadoV2 unidade = EncontrarUnidadeLancamentoCarta(idUnidade);
+        return unidade != null && unidade.selecionada;
+    }
+
+    private string ObterResumoLancadoresSelecionados()
+    {
+        if (quartel == null || quartel.UnidadesLancamento == null) return "NENHUMA UNIDADE";
+
+        List<string> nomes = new List<string>(3);
+        int total = 0;
+        for (int i = 0; i < quartel.UnidadesLancamento.Count; i++)
+        {
+            GerenciadorQuartel.UnidadeLancamentoCoordenadoV2 unidade = quartel.UnidadesLancamento[i];
+            if (unidade == null || !unidade.selecionada) continue;
+            total++;
+            if (nomes.Count < 3) nomes.Add(EncurtarTextoDesigner(unidade.nome, 22));
+        }
+
+        if (total == 0) return "NENHUMA UNIDADE";
+        string resumo = string.Join(", ", nomes);
+        if (total > nomes.Count) resumo += " +" + (total - nomes.Count);
+        return resumo;
     }
 
     private void AlternarModoUnidadeLancamento(string idUnidade)

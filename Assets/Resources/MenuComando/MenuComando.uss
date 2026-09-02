@@ -290,6 +290,50 @@
     margin-top: -21px;
 }
 
+/* Imóveis civis: pontos discretos e sem barra de vida para não dominar o
+   satélite. A seleção normal continua reservada às unidades controláveis;
+   imóveis só viram alvo quando o modo ATAQUE está ativo. */
+.mapa-unidade.imovel {
+    width: 16px;
+    height: 16px;
+    margin-left: -8px;
+    margin-top: -8px;
+    opacity: 0.62;
+}
+
+.mapa-unidade.imovel.fazenda {
+    opacity: 0.68;
+}
+
+.mapa-unidade.imovel .mapa-marcador {
+    width: 8px;
+    height: 8px;
+    border-width: 1px;
+    border-radius: 50%;
+    font-size: 0;
+    background-color: rgba(30, 50, 30, 0.58);
+}
+
+.mapa-unidade.imovel.residencia .mapa-marcador {
+    background-color: rgba(70, 70, 70, 0.52);
+}
+
+.mapa-unidade.imovel .mapa-hp-track {
+    display: none;
+}
+
+.mapa-unidade.imovel .mapa-sel-ring {
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-width: 1px;
+}
+
+.mapa-unidade.imovel .mapa-sel-ring.visivel {
+    scale: 1.05 1.05;
+}
+
 .mapa-unidade.controlavel .mapa-marcador {
     border-color: rgb(255, 220, 0);
 }
@@ -359,15 +403,16 @@
 
 /* Imóveis: presença no mapa sem texto grande e sem aglomerar rótulos. */
 .mapa-label.imovel {
-    width: 9px;
-    height: 9px;
+    width: 4px;
+    height: 4px;
     padding-left: 0;
     padding-right: 0;
     padding-top: 0;
     padding-bottom: 0;
-    font-size: 8px;
-    border-radius: 5px;
-    background-color: rgba(0, 0, 0, 0.7);
+    font-size: 0;
+    border-width: 0;
+    border-radius: 50%;
+    background-color: transparent;
     -unity-text-align: middle-center;
 }
 
@@ -828,6 +873,16 @@
 .btn-patrulhar:hover {
     background-color: rgba(180, 100, 0, 0.55);
     border-color: rgb(255, 170, 0);
+}
+
+.btn-mover {
+    background-color: rgba(0, 125, 120, 0.38);
+    color: rgb(100, 245, 220);
+    border-color: rgba(0, 220, 190, 0.65);
+}
+.btn-mover:hover {
+    background-color: rgba(0, 165, 150, 0.58);
+    border-color: rgb(120, 255, 230);
 }
 
 .btn-seguir {

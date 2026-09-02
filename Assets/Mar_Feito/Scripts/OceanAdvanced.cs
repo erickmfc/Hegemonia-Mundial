@@ -42,13 +42,16 @@ public class OceanAdvanced : MonoBehaviour
   
   const int NB_WAVE = 5;
   const int NB_INTERACTIONS = 64;
+  // Amplitudes moderadas para a costa da campanha: o mesmo vetor também é
+  // usado por GetWaterHeight, mantendo a água visual sincronizada com a
+  // altura usada pela flutuação e pelas colisões.
   static Wave[] waves =
   {
-    new Wave(99, 1.0f, 2.8f, 0.9f, new Vector2(1.0f,  0.2f)),
-    new Wave(60, 1.2f, 1.6f, 0.5f, new Vector2(1.0f,  3.0f)),
-    new Wave(20, 3.5f, 0.8f, 0.8f, new Vector2(2.0f,  4.0f)),
-    new Wave(30, 2.0f, 0.8f, 0.4f, new Vector2(-1.0f, 0.0f)),
-    new Wave(10, 3.0f, 0.1f, 0.9f,new Vector2(-1.0f, 1.2f))
+    new Wave(99, 1.0f, 1.2f, 0.9f, new Vector2(1.0f,  0.2f)),
+    new Wave(60, 1.2f, 0.7f, 0.5f, new Vector2(1.0f,  3.0f)),
+    new Wave(20, 3.5f, 0.35f, 0.8f, new Vector2(2.0f,  4.0f)),
+    new Wave(30, 2.0f, 0.3f, 0.4f, new Vector2(-1.0f, 0.0f)),
+    new Wave(10, 3.0f, 0.05f, 0.9f,new Vector2(-1.0f, 1.2f))
   };
 
   void Awake()

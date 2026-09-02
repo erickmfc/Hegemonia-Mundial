@@ -97,7 +97,12 @@ public class MarcadorTerritorio : MonoBehaviour
     // --- RENDERIZA O PISO "HOLOGRÁFICO" COM A COR DO PAÍS QUE VOCÊ PEDIU ---
     void CriarIdentificacaoVisual()
     {
-        if (!mostrarBordasNoJogo) return;
+        // A MD História usa o horizonte natural do Sea. A presença do
+        // configurador da própria cena suprime apenas o overlay holográfico
+        // territorial; posse, registro, raio e regras de território continuam
+        // funcionando normalmente. Em outras cenas o comportamento original
+        // permanece inalterado.
+        if (!mostrarBordasNoJogo || FindFirstObjectByType<MdHistoriaMapaRuntime>() != null) return;
 
         // --- 1. A Linha da Fronteira (Quadrada) ---
         GameObject linhaObj = new GameObject("Visual_Fronteira_" + teamID);

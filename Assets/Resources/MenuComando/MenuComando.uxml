@@ -202,6 +202,7 @@
                     <ui:Button name="btn-passivo" text="🛡 PASSIVO" class="ordem-btn btn-passivo mono" />
                     <ui:Button name="btn-lancar-missil" text="🚀 LANÇAR MÍSSIL [ÁREA]" class="ordem-btn btn-lancar-missil mono" />
                     <ui:Button name="btn-troca-camera" text="📷 CÂMERA" class="ordem-btn btn-seguir mono" />
+                    <ui:Button name="btn-mover" text="➤ MOVER" class="ordem-btn btn-mover mono" />
                     <ui:Button name="btn-patrulhar" text="🔄 PATRULHAR" class="ordem-btn btn-patrulhar mono" />
                     <ui:Button name="btn-seguir" text="👁 SEGUIR" class="ordem-btn btn-seguir mono" />
                     <ui:Button name="btn-atacar" text="🎯 ATACAR" class="ordem-btn btn-atacar mono" />

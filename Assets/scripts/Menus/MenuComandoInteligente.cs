@@ -207,6 +207,63 @@ public class MenuComandoInteligente : MonoBehaviour
         return selecionados.Count > 0;
     }
 
+    private static bool UnidadeAptaParaPatrulha(GameObject unidade)
+    {
+        if (unidade == null)
+        {
+            return false;
+        }
+
+        ControleUnidade controle = unidade.GetComponent<ControleUnidade>()
+            ?? unidade.GetComponentInParent<ControleUnidade>()
+            ?? unidade.GetComponentInChildren<ControleUnidade>(true);
+
+        // Aeronaves e unidades de superfície mantêm o fluxo histórico. Para
+        // navios, a elegibilidade é explícita: logística não pode aparecer
+        // como patrulha militar nem disputar a ordem com seu próprio sistema.
+        if (controle == null || !controle.EhUnidadeNaval())
+        {
+            return true;
+        }
+
+        IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInParent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInChildren<IdentidadeUnidade>(true);
+        return NavalPlacementResolver.IsNavalPatrolCapable(identidade, controle, out _);
+    }
+
+    private bool PossuiUnidadeAptaParaPatrulha()
+    {
+        for (int i = 0; i < selecionados.Count; i++)
+        {
+            if (UnidadeAptaParaPatrulha(selecionados[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static List<GameObject> FiltrarUnidadesAptasParaPatrulha(List<GameObject> snapshot)
+    {
+        List<GameObject> resultado = new List<GameObject>();
+        if (snapshot == null)
+        {
+            return resultado;
+        }
+
+        for (int i = 0; i < snapshot.Count; i++)
+        {
+            if (UnidadeAptaParaPatrulha(snapshot[i]))
+            {
+                resultado.Add(snapshot[i]);
+            }
+        }
+
+        return resultado;
+    }
+
     void CriarPainelBase()
     {
         GameObject canvasObj = GameObject.Find("Canvas_Gerado_Automatico");
@@ -265,7 +322,8 @@ public class MenuComandoInteligente : MonoBehaviour
             textoEstado.text = textoEstadoValor;
         }
 
-        int qtd = TemComandosInternos() ? 4 : 0;
+        bool existeUnidadeAptaParaPatrulha = PossuiUnidadeAptaParaPatrulha();
+        int qtd = TemComandosInternos() ? (existeUnidadeAptaParaPatrulha ? 4 : 3) : 0;
         for (int i = 0; i < comandosAtuais.Count; i++)
         {
             if (comandosAtuais[i] != null)
@@ -288,9 +346,12 @@ public class MenuComandoInteligente : MonoBehaviour
             AtualizarSlotInterno(botoes[slotIndex], ComandoInterno.Ativo, "ATIVO", new Color(0.8f, 0f, 0f, 1f));
             slotIndex++;
 
-            GarantirSlot(slotIndex);
-            AtualizarSlotInterno(botoes[slotIndex], ComandoInterno.Patrulhar, "PATRULHAR", new Color(0.8f, 0.5f, 0f, 1f));
-            slotIndex++;
+            if (existeUnidadeAptaParaPatrulha)
+            {
+                GarantirSlot(slotIndex);
+                AtualizarSlotInterno(botoes[slotIndex], ComandoInterno.Patrulhar, "PATRULHAR", new Color(0.8f, 0.5f, 0f, 1f));
+                slotIndex++;
+            }
 
             GarantirSlot(slotIndex);
             AtualizarSlotInterno(botoes[slotIndex], ComandoInterno.Seguir, "SEGUIR", new Color(0.5f, 0f, 0.5f, 1f));
@@ -547,7 +608,14 @@ public class MenuComandoInteligente : MonoBehaviour
                 DefinirModoCombate(snapshot, true);
                 break;
             case ComandoInterno.Patrulhar:
-                IniciarModoPatrulha(snapshot);
+                List<GameObject> unidadesPatrulha = FiltrarUnidadesAptasParaPatrulha(snapshot);
+                if (unidadesPatrulha.Count == 0)
+                {
+                    Debug.LogWarning("[MenuComandoInteligente] Patrulha não iniciada: nenhuma unidade selecionada possui executor naval compatível.");
+                    return;
+                }
+
+                IniciarModoPatrulha(unidadesPatrulha);
                 break;
             case ComandoInterno.Seguir:
                 IniciarModoSeguir(snapshot);

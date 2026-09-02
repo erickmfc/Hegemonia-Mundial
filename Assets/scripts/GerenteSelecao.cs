@@ -313,10 +313,56 @@ public class GerenteSelecao : MonoBehaviour
         return cameraPrincipal;
     }
 
+    private bool SelecaoInteiraNaval()
+    {
+        if (unidadesSelecionadas == null || unidadesSelecionadas.Count == 0)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < unidadesSelecionadas.Count; i++)
+        {
+            ControleUnidade unidade = unidadesSelecionadas[i];
+            if (unidade == null || !unidade.EhUnidadeNaval())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     bool TryResolverDestinoClique(Ray raio, int layerMaskMove, out RaycastHit hitFinal, out Vector3 destino)
     {
         hitFinal = new RaycastHit();
         destino = Vector3.zero;
+
+        // Para um grupo naval, a superfície de autoridade é a água. Não
+        // deixe o raycast genérico entregar uma ilha/terreno ao NavMesh e só
+        // descobrir o erro depois que a ordem já foi emitida.
+        if (SelecaoInteiraNaval())
+        {
+            if (NavalPlacementResolver.TryResolveWaterPoint(raio, out destino))
+            {
+                return true;
+            }
+
+            Plane planoMar = new Plane(Vector3.up, new Vector3(0f, NavalPlacementResolver.ResolveSeaLevel(), 0f));
+            if (planoMar.Raycast(raio, out float distanciaPlano))
+            {
+                Vector3 pontoSolicitado = raio.GetPoint(distanciaPlano);
+                if (NavalPlacementResolver.TryResolveNearestWaterPoint(
+                        pontoSolicitado,
+                        600f,
+                        out destino))
+                {
+                    Debug.Log($"[GerenteSelecao] Clique naval ajustado para a água mais próxima: {destino.x:F0}, {destino.z:F0}.");
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         int quantidadeHits = Physics.RaycastNonAlloc(
             raio,
@@ -1315,32 +1361,6 @@ public class GerenteSelecao : MonoBehaviour
         {
             RaycastHit toque = hitsExtras != null ? hitsExtras[i] : bufferHitsClique[i];
             if (toque.collider == null) continue;
-
-            // === NOVO: VERIFICA SE O JOGADOR CLICOU NA FÁBRICA / CONSTRUTOR DE VEÍCULOS ===
-            var fabrica = toque.transform.GetComponentInParent<Fabrica>();
-            if (fabrica != null)
-            {
-                var id = fabrica.GetComponentInParent<IdentidadeUnidade>();
-                // Certifica se a fábrica pertence ao jogador (TeamID 1)
-                if (id == null || id.teamID == 1) 
-                {
-                    if (fabrica.PossuiPainelIndustrial && FabricaMineriosMenuController.AbrirPara(fabrica))
-                    {
-                        return;
-                    }
-
-                    MenuConstrucao menu = Object.FindFirstObjectByType<MenuConstrucao>();
-                    if (menu != null)
-                    {
-                        // Abre o menu na aba do Exército
-                        if (!MenuConstrucao.EstaAberto) menu.AlternarMenu(true);
-                        menu.FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Exercito);
-                        
-                        return; // Paralisa o código para não selecionar a fábrica como "tropa"
-                    }
-                }
-            }
-            // ==============================================================================
 
             // === VERIFICA SE O JOGADOR CLICOU NO ESTALEIRO / PIER ===
             var estaleiro = toque.transform.GetComponentInParent<Estaleiro>();

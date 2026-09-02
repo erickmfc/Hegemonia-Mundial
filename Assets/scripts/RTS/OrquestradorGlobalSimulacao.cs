@@ -137,6 +137,7 @@ namespace Hegemonia.RTS
         private int despertaresDescartados;
         private int estourosOrcamento;
         private int starvation;
+        private int ticksAtrasadosDescartados;
         private float tempoTotalMs;
         private float tempoCriticoMs;
         private float maiorEspera;
@@ -374,6 +375,24 @@ namespace Hegemonia.RTS
                 if (tarefa.Aguardando) starvation++;
                 tarefa.MaiorEspera = Mathf.Max(tarefa.MaiorEspera, espera);
                 maiorEspera = Mathf.Max(maiorEspera, espera);
+
+                // Tarefas de estratégia/apoio representam estado atual. Se
+                // ficaram muito atrasadas, não reproduza decisões antigas
+                // em cascata: agenda um único cálculo novo. A camada crítica
+                // fica protegida para não atrasar comandos e combate.
+                float atrasoDescartavel = Mathf.Max(
+                    tarefa.PrazoMaximo,
+                    tarefa.Frequencia * Mathf.Max(1, maxTicksAtrasados));
+                if (tarefa.Camada != CamadaSimulacao.Critica
+                    && espera > atrasoDescartavel)
+                {
+                    tarefa.ProximaExecucao = agora + ResolverIntervalo(tarefa);
+                    tarefa.DespertarSolicitado = false;
+                    tarefa.Aguardando = false;
+                    ticksAtrasadosDescartados++;
+                    continue;
+                }
+
                 tarefa.Executando = true;
                 tarefa.DespertarSolicitado = false;
                 long inicioMedicao = Stopwatch.GetTimestamp();
@@ -460,6 +479,7 @@ namespace Hegemonia.RTS
             tarefasAguardando = 0;
             foreach (Tarefa tarefa in tarefas.Values) if (tarefa.Aguardando) tarefasAguardando++;
             DiagnosticoDesempenhoJogo.DefinirContadorMetrica("sim_scheduler_tasks", tarefas.Count);
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica("sim_scheduler_stale_skips", ticksAtrasadosDescartados);
             DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("sim_scheduler_frame_ms", tempoTotalMs);
             tempoTotalMs = 0f;
         }

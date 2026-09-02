@@ -2,7 +2,6 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine.EventSystems;
 
 public class Fabrica : MonoBehaviour
 {
@@ -82,33 +81,6 @@ public class Fabrica : MonoBehaviour
             if (ehQuartel) gerente.AtualizarPontoQuartel(pontoNascimento, pontoSaida);
             else gerente.AtualizarPontoHangar(pontoNascimento, pontoSaida);
         }
-    }
-
-    private void OnMouseDown()
-    {
-        if (!PossuiPainelIndustrial)
-        {
-            return;
-        }
-
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-        {
-            return;
-        }
-
-        InteractionModeSnapshot snapshot = InteractionModeService.CurrentSnapshot();
-        if (snapshot.HasOwner && snapshot.Owner != InteractionOwner.FactoryIndustryPanel)
-        {
-            return;
-        }
-
-        IdentidadeUnidade identidade = GetComponentInParent<IdentidadeUnidade>();
-        if (identidade != null && identidade.teamID != 1)
-        {
-            return;
-        }
-
-        FabricaMineriosMenuController.AbrirPara(this);
     }
 
     private static Dictionary<Transform, int> _contadorSlot = new Dictionary<Transform, int>();

@@ -790,6 +790,7 @@ public class Construtor : MonoBehaviour
 
         ReativarLogicaUnidade(novo);
         EnsureCollider(novo);
+        LimpezaVegetacaoConstrucao.Aplicar(novo);
 
         // Uma fundação/bandeira construída em uma parcela neutra confirma a
         // expansão somente depois da instanciação e da cobrança. O gerenciador
@@ -1041,6 +1042,7 @@ public class Construtor : MonoBehaviour
                 
                 ReativarLogicaUnidade(novo);
                 EnsureCollider(novo);
+                LimpezaVegetacaoConstrucao.Aplicar(novo);
                 
                 ultimoCol = novo.GetComponent<Collider>();
                 
@@ -1390,6 +1392,7 @@ public class Construtor : MonoBehaviour
             GameObject novoMuro = Instantiate(prefabSelecionado, pos, rotacaoFinal);
             ReativarLogicaUnidade(novoMuro);
             EnsureCollider(novoMuro);
+            LimpezaVegetacaoConstrucao.Aplicar(novoMuro);
         }
     }
 
@@ -1407,6 +1410,7 @@ public class Construtor : MonoBehaviour
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
         AjustarAlturaRuaInstanciada(novoPredio);
         EnsureCollider(novoPredio);
+        LimpezaVegetacaoConstrucao.Aplicar(novoPredio);
 
         Estaleiro estaleiro = novoPredio.GetComponent<Estaleiro>();
         if (estaleiro != null)

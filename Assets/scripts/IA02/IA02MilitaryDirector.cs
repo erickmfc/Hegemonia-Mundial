@@ -40,6 +40,14 @@ namespace Hegemonia.AI.IA02
         private readonly List<IdentidadeUnidade> navalUnitsBuffer = new List<IdentidadeUnidade>(12);
         private readonly List<IdentidadeUnidade> airUnitsBuffer = new List<IdentidadeUnidade>(12);
         private readonly List<IA02AirPatrolZone> airPatrolCreatesBuffer = new List<IA02AirPatrolZone>(4);
+        private readonly List<ComplexoGovernamental> complexosGovernamentaisBuffer = new List<ComplexoGovernamental>(16);
+        private readonly List<IdentidadeUnidade> registeredIdentitiesBuffer = new List<IdentidadeUnidade>(256);
+        private readonly List<Estaleiro> registeredShipyardsBuffer = new List<Estaleiro>(16);
+        private readonly List<PierMarinha> registeredPiersBuffer = new List<PierMarinha>(16);
+        private readonly List<Fabrica> registeredFactoriesBuffer = new List<Fabrica>(16);
+        private readonly List<GerenciadorAeroporto> registeredAirportsBuffer = new List<GerenciadorAeroporto>(16);
+        private readonly List<Vector3> ownedPortsBuffer = new List<Vector3>(16);
+        private int registeredEntityVersion = -1;
         private bool warZonesEnsured;
         private string status = "Reserva militar aguardando infraestrutura.";
 
@@ -196,12 +204,10 @@ namespace Hegemonia.AI.IA02
         {
             if (context == null || context.TeamId <= 0) return false;
 
-            ComplexoGovernamental[] complexos = UnityEngine.Object.FindObjectsByType<ComplexoGovernamental>(
-                FindObjectsInactive.Include,
-                FindObjectsSortMode.None);
-            for (int i = 0; i < complexos.Length; i++)
+            RegistroEntidadesJogo.FillComplexos(complexosGovernamentaisBuffer);
+            for (int i = 0; i < complexosGovernamentaisBuffer.Count; i++)
             {
-                ComplexoGovernamental complexo = complexos[i];
+                ComplexoGovernamental complexo = complexosGovernamentaisBuffer[i];
                 if (complexo == null) continue;
 
                 IdentidadeUnidade identidade = complexo.GetComponent<IdentidadeUnidade>();
@@ -397,15 +403,15 @@ namespace Hegemonia.AI.IA02
                 // por quase um minuto após a construção.
                 nextPatrolAt = now + 5f;
             }
-            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+            RefreshRegisteredEntityCaches();
             int assigned = 0;
             int candidates = 0;
             int alreadyPatrolling = 0;
             int rejected = 0;
-            int logisticsTankers = 0;
-            for (int i = 0; i < identities.Length; i++)
+            int logisticsOrIncompatible = 0;
+            for (int i = 0; i < registeredIdentitiesBuffer.Count; i++)
             {
-                IdentidadeUnidade id = identities[i];
+                IdentidadeUnidade id = registeredIdentitiesBuffer[i];
                 if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Naval) continue;
 
                 // Estaleiros/pieres podem carregar uma IdentidadeUnidade para
@@ -414,13 +420,6 @@ namespace Hegemonia.AI.IA02
                 // patrulha de combate genérica, pois isso interromperia o
                 // carregamento/descarregamento de petróleo.
                 if (IsNavalStructure(id)) continue;
-                if (IsLogisticsTanker(id))
-                {
-                    logisticsTankers++;
-                    continue;
-                }
-
-                candidates++;
                 // Creates antigos podem deixar a IdentidadeUnidade em um filho
                 // enquanto o controle fica no objeto raiz (ou vice-versa).
                 // Procura nos três níveis para não contar o navio sem conseguir
@@ -428,12 +427,17 @@ namespace Hegemonia.AI.IA02
                 ControleUnidade control = id.GetComponent<ControleUnidade>();
                 if (control == null) control = id.GetComponentInParent<ControleUnidade>();
                 if (control == null) control = id.GetComponentInChildren<ControleUnidade>(true);
-                if (control == null)
+                if (!NavalPlacementResolver.IsNavalPatrolCapable(id, control, out string motivoIlegibilidade))
                 {
-                    rejected++;
-                    Debug.LogWarning("[IA02 Military] Navio sem ControleUnidade para patrulha: " + id.name);
+                    logisticsOrIncompatible++;
+                    if (EmitirLogsDetalhadosDePatrulha)
+                    {
+                        Debug.Log("[IA02 Military] Navio fora da patrulha militar: " + id.name + " motivo=" + motivoIlegibilidade);
+                    }
                     continue;
                 }
+
+                candidates++;
                 if (control.OrdemAtual == OrdemControleUnidade.Patrulhando)
                 {
                     alreadyPatrolling++;
@@ -468,16 +472,16 @@ namespace Hegemonia.AI.IA02
                 }
                 if (EmitirLogsDetalhadosDePatrulha)
                 {
-                    Debug.Log(string.Format("[IA02 Military] Patrulha naval: candidatos={0} atribuídos={1} jáPatrulhando={2} recusados={3} petroleirosLogistica={4}",
-                        candidates, assigned, alreadyPatrolling, rejected, logisticsTankers));
+                    Debug.Log(string.Format("[IA02 Military] Patrulha naval: candidatos={0} atribuídos={1} jáPatrulhando={2} recusados={3} logística/incompatíveis={4}",
+                        candidates, assigned, alreadyPatrolling, rejected, logisticsOrIncompatible));
                 }
             }
             else
             {
                 int navalIdentities = 0;
-                for (int i = 0; i < identities.Length; i++)
+                for (int i = 0; i < registeredIdentitiesBuffer.Count; i++)
                 {
-                    IdentidadeUnidade id = identities[i];
+                    IdentidadeUnidade id = registeredIdentitiesBuffer[i];
                     if (id != null
                         && id.tipoUnidade == TipoUnidade.Naval
                         && !IsNavalStructure(id)
@@ -789,11 +793,11 @@ namespace Hegemonia.AI.IA02
             nextNavalStagingAt = now + 30f;
             IA02NavalPatrolZone[] zones = UnityEngine.Object.FindObjectsByType<IA02NavalPatrolZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (zones.Length == 0) return;
-            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+            RefreshRegisteredEntityCaches();
             int staged = 0;
-            for (int i = 0; i < identities.Length; i++)
+            for (int i = 0; i < registeredIdentitiesBuffer.Count; i++)
             {
-                IdentidadeUnidade id = identities[i];
+                IdentidadeUnidade id = registeredIdentitiesBuffer[i];
                 if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Naval) continue;
                 if (IsNavalStructure(id) || IsLogisticsTanker(id)) continue;
                 ControleUnidade control = id.GetComponent<ControleUnidade>()
@@ -1049,24 +1053,22 @@ namespace Hegemonia.AI.IA02
 
         private void NormalizeOwnedNavalIdentities()
         {
-            Estaleiro[] shipyards = UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
-            List<Vector3> ownedPorts = new List<Vector3>();
-            for (int i = 0; i < shipyards.Length; i++)
+            RefreshRegisteredEntityCaches();
+            ownedPortsBuffer.Clear();
+            for (int i = 0; i < registeredShipyardsBuffer.Count; i++)
             {
-                Estaleiro shipyard = shipyards[i];
-                if (shipyard != null && BelongsToTeam(shipyard.gameObject)) ownedPorts.Add(shipyard.transform.position);
+                Estaleiro shipyard = registeredShipyardsBuffer[i];
+                if (shipyard != null && BelongsToTeam(shipyard.gameObject)) ownedPortsBuffer.Add(shipyard.transform.position);
             }
-            PierMarinha[] piers = UnityEngine.Object.FindObjectsByType<PierMarinha>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            for (int i = 0; i < piers.Length; i++)
+            for (int i = 0; i < registeredPiersBuffer.Count; i++)
             {
-                if (piers[i] != null && BelongsToTeam(piers[i].gameObject)) ownedPorts.Add(piers[i].transform.position);
+                if (registeredPiersBuffer[i] != null && BelongsToTeam(registeredPiersBuffer[i].gameObject)) ownedPortsBuffer.Add(registeredPiersBuffer[i].transform.position);
             }
-            if (ownedPorts.Count == 0) return;
+            if (ownedPortsBuffer.Count == 0) return;
 
-            IdentidadeUnidade[] identities = UnityEngine.Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-            for (int i = 0; i < identities.Length; i++)
+            for (int i = 0; i < registeredIdentitiesBuffer.Count; i++)
             {
-                IdentidadeUnidade id = identities[i];
+                IdentidadeUnidade id = registeredIdentitiesBuffer[i];
                 // A identidade gravada na unidade e a fonte de verdade da
                 // propriedade. Nunca adote uma embarcacao de outro time
                 // apenas porque ela saiu perto do porto da IA. Corrija
@@ -1077,9 +1079,9 @@ namespace Hegemonia.AI.IA02
             // plataforma -> pier do seu dono.
             if (id == null || id.tipoUnidade != TipoUnidade.Naval || id.teamID > 0 || IsLogisticsTanker(id)) continue;
                 bool nearOwnedPort = false;
-                for (int p = 0; p < ownedPorts.Count; p++)
+                for (int p = 0; p < ownedPortsBuffer.Count; p++)
                 {
-                    Vector3 delta = id.transform.position - ownedPorts[p];
+                    Vector3 delta = id.transform.position - ownedPortsBuffer[p];
                     delta.y = 0f;
                     // O estaleiro libera a embarcação alguns centenas de metros
                     // mar adentro; a identidade pode estar além do create visual.
@@ -1097,6 +1099,22 @@ namespace Hegemonia.AI.IA02
                     id.nomeDoPais = controller != null ? controller.NationName : "IA02";
                 }
             }
+        }
+
+        private void RefreshRegisteredEntityCaches()
+        {
+            int version = RegistroEntidadesJogo.Version;
+            if (registeredEntityVersion == version)
+            {
+                return;
+            }
+
+            RegistroEntidadesJogo.FillUnidades(registeredIdentitiesBuffer);
+            RegistroEntidadesJogo.FillEstaleiros(registeredShipyardsBuffer);
+            RegistroEntidadesJogo.FillPiers(registeredPiersBuffer);
+            RegistroEntidadesJogo.FillFabricas(registeredFactoriesBuffer);
+            RegistroEntidadesJogo.FillAeroportos(registeredAirportsBuffer);
+            registeredEntityVersion = version;
         }
 
         private void RefreshCatalog()
@@ -1339,10 +1357,10 @@ namespace Hegemonia.AI.IA02
             if (item == null || item.PrefabDaUnidade == null
                 || item.categoria != DadosConstrucao.CategoriaItem.Exercito
                 || IsAircraftDefinition(item)) return false;
-            Fabrica[] factories = UnityEngine.Object.FindObjectsByType<Fabrica>(FindObjectsSortMode.None);
-            for (int i = 0; i < factories.Length; i++)
+            RefreshRegisteredEntityCaches();
+            for (int i = 0; i < registeredFactoriesBuffer.Count; i++)
             {
-                Fabrica factory = factories[i];
+                Fabrica factory = registeredFactoriesBuffer[i];
                 if (!BelongsToTeam(factory != null ? factory.gameObject : null)) continue;
                 if (!IsAppropriateFactory(factory, item)) continue;
                 NormalizeFactorySpawnPoints(factory);
@@ -1648,10 +1666,10 @@ namespace Hegemonia.AI.IA02
         private bool TryProduceNaval(DadosConstrucao item, string label, string orderId = "")
         {
             if (item == null || item.PrefabDaUnidade == null) return false;
-            Estaleiro[] shipyards = UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
-            for (int i = 0; i < shipyards.Length; i++)
+            RefreshRegisteredEntityCaches();
+            for (int i = 0; i < registeredShipyardsBuffer.Count; i++)
             {
-                Estaleiro shipyard = shipyards[i];
+                Estaleiro shipyard = registeredShipyardsBuffer[i];
                 if (BelongsToTeam(shipyard != null ? shipyard.gameObject : null) && shipyard.ConstruirUnidade(item.PrefabDaUnidade, orderId))
                 {
                     IA02MilitaryProductionGuard.ConfirmQueued(orderId, shipyard.GetInstanceID(), Time.time);
@@ -1863,9 +1881,9 @@ namespace Hegemonia.AI.IA02
 
         private bool HasOwnNavalInfrastructure()
         {
-            Estaleiro[] shipyards = UnityEngine.Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None);
-            for (int i = 0; i < shipyards.Length; i++)
-                if (BelongsToTeam(shipyards[i] != null ? shipyards[i].gameObject : null)) return true;
+            RefreshRegisteredEntityCaches();
+            for (int i = 0; i < registeredShipyardsBuffer.Count; i++)
+                if (BelongsToTeam(registeredShipyardsBuffer[i] != null ? registeredShipyardsBuffer[i].gameObject : null)) return true;
             if (Time.time >= nextShipyardRecoveryAt)
             {
                 nextShipyardRecoveryAt = Time.time + 10f;
