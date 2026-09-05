@@ -2806,6 +2806,14 @@ public class MenuComandoController : MonoBehaviour
                 {
                     if (u != null)
                     {
+                        var c17 = u.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
+                        if (c17 != null)
+                        {
+                            c17.ComandoZ_VoltarAeroporto();
+                            retornando++;
+                            continue;
+                        }
+
                         var aviao = u.GetComponent<ControleAviao>();
                         if (aviao != null)
                         {
@@ -2829,10 +2837,16 @@ public class MenuComandoController : MonoBehaviour
                             retornando++;
                             continue;
                         }
+
+                        ControleUnidade controleUnidade = u.GetComponent<ControleUnidade>();
+                        if (controleUnidade != null && controleUnidade.EmitirOrdemRetornarAoPontoInicial())
+                        {
+                            retornando++;
+                        }
                     }
                 }
-                SetText(ordemFeedback, $"✔ [{retornando} UDS] → RETORNANDO À BASE");
-                AdicionarLog("OPS", $"{retornando} aeronaves ordenadas a retornar à base", "normal");
+                SetText(ordemFeedback, $"✔ [{retornando} UDS] → RETORNANDO");
+                AdicionarLog("OPS", $"{retornando} unidades ordenadas a retornar", "normal");
                 break;
 
             case "TROCAR_CAMERA":

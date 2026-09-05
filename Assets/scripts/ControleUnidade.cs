@@ -75,6 +75,8 @@ public class ControleUnidade : MonoBehaviour
     // --- SISTEMA DE VELOCIDADE DINÂMICA (Para Seguir) ---
     private float velocidadeOriginalSalva = -1f;
     private bool limiteVelocidadeAtivo = false;
+    [SerializeField] private Vector3 pontoRetornoInicial;
+    [SerializeField] private bool possuiPontoRetornoInicial;
     private Vector3 ultimoDestinoOrdenado = Vector3.zero;
     private bool possuiDestinoOrdenado = false;
     private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
@@ -115,6 +117,15 @@ public class ControleUnidade : MonoBehaviour
     protected virtual void Awake()
     {
         SanearBoxCollidersComEscalaNegativa();
+        if (!possuiPontoRetornoInicial)
+        {
+            // Veículos terrestres e navais não têm um hangar como as
+            // aeronaves. Guardamos o ponto onde a unidade entrou em jogo
+            // para que o comando global "Voltar" tenha um destino útil e
+            // não pareça um botão sem resposta no menu satélite.
+            pontoRetornoInicial = transform.position;
+            possuiPontoRetornoInicial = true;
+        }
         agente = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         animatorPossuiVelocidade = PossuiParametroFloat(animator, VelocidadeAnimatorHash);
@@ -602,6 +613,28 @@ public class ControleUnidade : MonoBehaviour
             null,
             nameof(ControleUnidade),
             InferirTipoOrdemMovimento());
+    }
+
+    /// <summary>
+    /// Retorna uma unidade terrestre ou naval ao ponto em que ela foi criada
+    /// na partida. Aeronaves possuem fluxo próprio para aeroportos/hangares e
+    /// são tratadas pelo menu antes desta rota genérica.
+    /// </summary>
+    public bool EmitirOrdemRetornarAoPontoInicial()
+    {
+        if (!possuiPontoRetornoInicial)
+        {
+            pontoRetornoInicial = transform.position;
+            possuiPontoRetornoInicial = true;
+        }
+
+        string id = "retorno-inicial:" + GetInstanceID();
+        return EmitirOrdemMovimento(
+            pontoRetornoInicial,
+            nameof(ControleUnidade),
+            InferirTipoOrdemMovimento(),
+            true,
+            id);
     }
 
     /// <summary>
@@ -1644,18 +1677,27 @@ public class ControleUnidade : MonoBehaviour
                  
                  try 
                  {
-                     if (!agente.enabled) agente.enabled = true; // Força a ativação do componente
+                     int areaMaskRecuperacao = EhUnidadeNaval()
+                         ? (agente.areaMask != 0 ? agente.areaMask : (1 << 3))
+                         : NavMesh.AllAreas;
+                     NavMeshHit hit;
+                     bool pontoNavMeshValido = NavMesh.SamplePosition(transform.position, out hit, 100f, areaMaskRecuperacao);
 
-                     if (!agente.isOnNavMesh)
+                     // Nunca habilita o agente fora da malha. Isso elimina o
+                     // aviso "not close enough to the NavMesh" sem alterar o
+                     // caminho normal das unidades já posicionadas na malha.
+                     if (!agente.enabled)
                      {
-                         NavMeshHit hit;
-                          int areaMaskRecuperacao = EhUnidadeNaval()
-                              ? (agente.areaMask != 0 ? agente.areaMask : (1 << 3))
-                              : NavMesh.AllAreas;
-                          if (NavMesh.SamplePosition(transform.position, out hit, 100f, areaMaskRecuperacao))
+                         if (!pontoNavMeshValido)
                          {
-                             agente.Warp(hit.position);
+                             return false;
                          }
+                         agente.enabled = true;
+                     }
+
+                     if (!agente.isOnNavMesh && pontoNavMeshValido)
+                     {
+                         agente.Warp(hit.position);
                      }
 
                      // Só dá a ordem se a recuperação funcionou

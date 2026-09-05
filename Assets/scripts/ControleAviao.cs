@@ -35,6 +35,9 @@ public class ControleAviao : MonoBehaviour
     public bool ordemParaRetorno = false;
     [Range(0.08f, 0.45f)] public float reservaMinimaRetornoPercentual = 0.30f;
     [Range(0.15f, 0.60f)] public float reservaRetornoComDanosPercentual = 0.34f;
+    [Min(5f)] public float tempoMinimoNaAreaMissaoDireta = 20f;
+    [Min(10f)] public float timeoutMovimentoWaypoint = 90f;
+    [Min(5f)] public float timeoutFilaPortaAvioes = 45f;
 
     [Header("=== FÍSICA E VELOCIDADES ===")]
     [Tooltip("Velocidade rígida no chão para não fazer zig-zag")]
@@ -97,8 +100,10 @@ public class ControleAviao : MonoBehaviour
     protected bool retomarMissaoAposAbastecer = false;
     protected string ultimoMotivoRetorno = string.Empty;
     protected Coroutine rotinaRetomadaMissao;
+    private Coroutine rotinaMissaoAposLancamentoCarrier;
     protected int indiceRetanguloPatrulha = 0;
     private bool protecaoCombustivelCarrier = false;
+    private bool ultimoMovimentoWaypointConcluido = true;
 
     // --- CACHE DE COMPONENTES (evita GetComponent no Update) ---
     protected ControleUnidade _controleUnidade;
@@ -284,6 +289,10 @@ public class ControleAviao : MonoBehaviour
         // vagas que já podem ter sido destruídos.
         StopAllCoroutines();
         rotinaRetomadaMissao = null;
+        rotinaMissaoAposLancamentoCarrier = null;
+        ultimoMovimentoWaypointConcluido = false;
+        estaEmModoVooFisico = false;
+        ordemParaRetorno = false;
         RegistroEntidadesJogo.Unregister(this);
     }
 
@@ -291,6 +300,10 @@ public class ControleAviao : MonoBehaviour
 
     protected virtual void Update()
     {
+        // O atributo ExecuteAlways é mantido por compatibilidade com prefabs
+        // antigos, mas simulação, combustível e ordens só podem rodar durante
+        // o Play Mode. Isso evita mover uma aeronave enquanto a cena é editada.
+        if (!Application.isPlaying) return;
         if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
         if (!estaEmModoVooFisico) return;
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
@@ -478,11 +491,20 @@ public class ControleAviao : MonoBehaviour
 
     public IEnumerator MoverInterpolado(Vector3 destinoFixo, float vel, bool pontoFinal = false, Transform alvoMovel = null, bool ignoreRotationSlowdown = false, bool seguirAltura = false)
     {
+        ultimoMovimentoWaypointConcluido = false;
         float raioDeAceitacao = pontoFinal ? 0.5f : 3.5f; // Aumentado para não engasgar em waypoints muito próximos
         float raioSqr = raioDeAceitacao * raioDeAceitacao;
 
         bool alvoMovelFornecido = (alvoMovel != null);
         Transform pai = transform.parent;
+        float distanciaInicial = alvoMovelFornecido
+            ? Vector3.Distance(transform.position, alvoMovel.position)
+            : Vector3.Distance(transform.position, destinoFixo);
+        float velocidadeSegura = Mathf.Max(Mathf.Abs(vel), 1f);
+        float limiteMovimento = Mathf.Max(
+            Mathf.Max(10f, timeoutMovimentoWaypoint),
+            distanciaInicial / velocidadeSegura * 5f + 15f);
+        float inicioMovimento = Time.time;
 
         while (true)
         {
@@ -493,6 +515,12 @@ public class ControleAviao : MonoBehaviour
             GameObject objetoAtual = gameObject;
             if (objetoAtual == null || !objetoAtual.activeInHierarchy || !isActiveAndEnabled)
             {
+                yield break;
+            }
+
+            if (Time.time - inicioMovimento > limiteMovimento)
+            {
+                Debug.LogWarning($"[ControleAviao] Movimento interrompido por timeout: {name} -> {(alvoMovel != null ? alvoMovel.name : destinoFixo.ToString())}");
                 yield break;
             }
 
@@ -516,11 +544,11 @@ public class ControleAviao : MonoBehaviour
                 Vector3 destLocal = (alvoMovel != null) ? pai.InverseTransformPoint(alvoMovel.position) : pai.InverseTransformPoint(destinoFixo);
                 
                 Vector3 diffLocal = new Vector3(destLocal.x - posLocal.x, 0, destLocal.z - posLocal.z);
-                if (diffLocal.sqrMagnitude <= raioSqr) break;
+                if (diffLocal.sqrMagnitude <= raioSqr) { ultimoMovimentoWaypointConcluido = true; break; }
 
                 Vector3 vetorAteDestinoLocal = destLocal - posLocal;
                 Vector3 dirForwardLocal = transform.localRotation * Vector3.forward;
-                if (vetorAteDestinoLocal.sqrMagnitude < 16f && Vector3.Dot(dirForwardLocal, vetorAteDestinoLocal.normalized) < 0f) break;
+                if (vetorAteDestinoLocal.sqrMagnitude < 16f && Vector3.Dot(dirForwardLocal, vetorAteDestinoLocal.normalized) < 0f) { ultimoMovimentoWaypointConcluido = true; break; }
 
                 Vector3 direcaoHorizonLocal = new Vector3(vetorAteDestinoLocal.x, 0, vetorAteDestinoLocal.z).normalized;
                 if (direcaoHorizonLocal != Vector3.zero && vetorAteDestinoLocal.sqrMagnitude > 0.05f)
@@ -556,10 +584,10 @@ public class ControleAviao : MonoBehaviour
                 }
 
                 float diferencaAltura = (alvoMovel != null ? alvoMovel.position.y : destinoFixo.y) - meuPos.y;
-                if (diff.sqrMagnitude <= raioSqr && (!seguirAltura || Mathf.Abs(diferencaAltura) <= 0.15f)) break;
+                if (diff.sqrMagnitude <= raioSqr && (!seguirAltura || Mathf.Abs(diferencaAltura) <= 0.15f)) { ultimoMovimentoWaypointConcluido = true; break; }
 
                 Vector3 vetorAteDestino = (alvoMovel != null) ? (alvoMovel.position - meuPos) : (destinoFixo - meuPos);
-                if (vetorAteDestino.sqrMagnitude < 16f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f) break; 
+                if (vetorAteDestino.sqrMagnitude < 16f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f) { ultimoMovimentoWaypointConcluido = true; break; } 
 
                 Vector3 direcaoHorizon = new Vector3(vetorAteDestino.x, 0, vetorAteDestino.z).normalized;
                 Vector3 proximaPosicao = meuPos;
@@ -610,6 +638,12 @@ public class ControleAviao : MonoBehaviour
 
     public IEnumerator SeguirCaminhoDeWaypoints(List<Transform> caminho, float velInicial, float velFinal, bool aceleracaoGradativa = false, bool permitirPular = true, bool seguirAltura = false)
     {
+        if (caminho == null || caminho.Count == 0)
+        {
+            ultimoMovimentoWaypointConcluido = true;
+            yield break;
+        }
+
         int totalWaypoints = caminho.Count;
         bool carrierTakeoff = aceleracaoGradativa && aeroportoOrigem is GerenciadorPortaAvioes;
         bool carrierLanding = !aceleracaoGradativa && aeroportoOrigem is GerenciadorPortaAvioes;
@@ -728,8 +762,15 @@ public class ControleAviao : MonoBehaviour
             if (ehPrepara && carrier != null)
             {
                 // Aguarda até o ponto prepara ser liberado pelo avião anterior
+                float inicioEsperaPrepara = Time.time;
                 while (carrier.IsPreparaBusy(this))
                 {
+                    if (Time.time - inicioEsperaPrepara >= Mathf.Max(5f, timeoutFilaPortaAvioes))
+                    {
+                        Debug.LogWarning($"[ControleAviao] Fila de decolagem expirou para {name}; liberando a aeronave sem prender o porta-aviões.");
+                        ultimoMovimentoWaypointConcluido = false;
+                        yield break;
+                    }
                     yield return new WaitForSeconds(0.5f);
                 }
                 // Reserva o ponto prepara
@@ -773,6 +814,14 @@ public class ControleAviao : MonoBehaviour
             // Segurança: O waypoint pode ser destruído durante o percurso
             bool ignoreRotationSlowdown = (aceleracaoGradativa && i >= indiceCorridaPista) || carrierLanding;
             yield return StartCoroutine(MoverInterpolado(Vector3.zero, velAtual, i == totalWaypoints - 1, caminho[i], ignoreRotationSlowdown, seguirAltura));
+            if (!ultimoMovimentoWaypointConcluido)
+            {
+                if (carrier != null && carrierTakeoff)
+                {
+                    carrier.ReleasePrepara(this);
+                }
+                yield break;
+            }
             
             // Chegada no ponto prepara: sobe a rampa e aguarda 7 segundos
             if (caminho[i] != null && string.Equals(caminho[i].name.Trim(), "prepara", StringComparison.OrdinalIgnoreCase))
@@ -840,6 +889,26 @@ public class ControleAviao : MonoBehaviour
             Debug.LogWarning($"[C17] Ordem generica ignorada em {name}; use o aeroporto/C17TransporteController.");
             return;
         }
+
+        // Quando o porta-aviões V2 assumiu o navio, esta é a única entrada
+        // permitida para iniciar um voo. Antes, ordens vindas da IA ou de
+        // ControleUnidade caiam no fluxo legado e criavam uma segunda
+        // autoridade sobre o avião.
+        GerenciadorPortaAvioes carrierV2 = aeroportoOrigem as GerenciadorPortaAvioes;
+        if (carrierV2 != null && carrierV2.operacoesV2AssumiuControle)
+        {
+            bool possuiPatrulha = rotaPatrulhaSalva.Count > 0;
+            bool iniciou = possuiPatrulha
+                ? carrierV2.SolicitarPatrulhaOperacionalV2(this, rotaPatrulhaSalva)
+                : carrierV2.SolicitarDecolagemOperacionalV2(this, alvoFinalGPS);
+
+            if (!iniciou)
+            {
+                Debug.LogWarning($"[ControleAviao] Ordem V2 não iniciada para {name}; o fluxo legado foi bloqueado para evitar duas rotinas de voo.");
+            }
+            return;
+        }
+
         if (!PodeIgnorarFaltaDeCombustivel() && !CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
@@ -883,6 +952,17 @@ public class ControleAviao : MonoBehaviour
     /// </summary>
     public void AssumirVooAposDecolagem(Vector3 destino)
     {
+        AssumirVooAposDecolagem(destino, rotaPatrulhaSalva != null && rotaPatrulhaSalva.Count > 0);
+    }
+
+    /// <summary>
+    /// Entrega o controle ao voo físico depois da catapulta V2. A operação do
+    /// convés já terminou neste ponto, portanto é necessário manter uma
+    /// rotina operacional para percorrer a rota e, principalmente, atender
+    /// retorno por combustível ou pelo comando do jogador.
+    /// </summary>
+    public void AssumirVooAposDecolagem(Vector3 destino, bool emPatrulha)
+    {
         if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
         {
             return;
@@ -896,7 +976,7 @@ public class ControleAviao : MonoBehaviour
 
         StopAllCoroutines();
         ordemParaRetorno = false;
-        retornoAutomaticoAposChegadaCentro = false;
+        retornoAutomaticoAposChegadaCentro = !emPatrulha;
         emAtaqueMergulho = false;
         alvoPrioritarioIA = false;
         indiceRetanguloPatrulha = 0;
@@ -919,6 +999,116 @@ public class ControleAviao : MonoBehaviour
         velocidadeVooAtual = Mathf.Max(velocidadeVooAtual, velocidadeMaximaVoo * 0.55f);
         estaEmModoVooFisico = true;
         DefinirEstado(EstadoAviao.EmMissao);
+
+        if (rotinaMissaoAposLancamentoCarrier != null)
+        {
+            StopCoroutine(rotinaMissaoAposLancamentoCarrier);
+        }
+        rotinaMissaoAposLancamentoCarrier = StartCoroutine(RotinaMissaoAposLancamentoCarrier(emPatrulha));
+    }
+
+    private IEnumerator RotinaMissaoAposLancamentoCarrier(bool emPatrulha)
+    {
+        StartCoroutine(RecolherRodas(0.75f));
+        float instanteChegadaMissaoDireta = -1f;
+
+        while (estadoAtual == EstadoAviao.EmMissao && !ordemParaRetorno)
+        {
+            if (emPatrulha && rotaPatrulhaSalva.Count > 0)
+            {
+                Vector3 proximoPonto = rotaPatrulhaSalva[indiceRetanguloPatrulha % rotaPatrulhaSalva.Count];
+                proximoPonto.y = Mathf.Max(proximoPonto.y, altitudeVoo, 60f);
+                alvoGPSVoo = proximoPonto;
+                centroDaPatrulha = proximoPonto;
+
+                Vector3 diferenca = transform.position - proximoPonto;
+                diferenca.y = 0f;
+                float margem = Mathf.Max(45f, margemChegadaMissao);
+                if (diferenca.sqrMagnitude <= margem * margem)
+                {
+                    indiceRetanguloPatrulha = (indiceRetanguloPatrulha + 1) % rotaPatrulhaSalva.Count;
+                }
+            }
+            else
+            {
+                Vector3 objetivo = centroDaPatrulha;
+                objetivo.y = Mathf.Max(objetivo.y, altitudeVoo, 60f);
+                alvoGPSVoo = objetivo;
+
+                Vector3 diferenca = transform.position - objetivo;
+                diferenca.y = 0f;
+                float margem = Mathf.Max(65f, margemChegadaMissao);
+                if (diferenca.sqrMagnitude <= margem * margem)
+                {
+                    if (instanteChegadaMissaoDireta < 0f)
+                    {
+                        // Dá tempo para os caças detectarem e atacarem o alvo
+                        // na área antes de encerrar uma missão direta.
+                        instanteChegadaMissaoDireta = Time.time;
+                    }
+                    else if (retornoAutomaticoAposChegadaCentro && Time.time >= instanteChegadaMissaoDireta + Mathf.Max(5f, tempoMinimoNaAreaMissaoDireta))
+                    {
+                        ordemParaRetorno = true;
+                    }
+                }
+            }
+
+            yield return null;
+        }
+
+        rotinaMissaoAposLancamentoCarrier = null;
+        if (estadoAtual != EstadoAviao.EmMissao)
+        {
+            yield break;
+        }
+
+        GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
+        if (carrier != null && carrier.SolicitarPousoOperacionalV2(this))
+        {
+            yield break;
+        }
+
+        // Fallback seguro caso o layout V2 esteja ausente ou incompleto. O
+        // fluxo normal sempre usa o pouso V2 acima; aqui ao menos a aeronave
+        // não segue voando sem missão nem chega a ficar sem combustível.
+        if (carrier != null)
+        {
+            Vector3 aproximacao = ObterPontoAproximacaoDaBase(carrier);
+            aproximacao.y = Mathf.Max(transform.position.y, altitudeVoo, 60f);
+            alvoGPSVoo = aproximacao;
+
+            while (estadoAtual == EstadoAviao.EmMissao)
+            {
+                Vector3 diferenca = transform.position - aproximacao;
+                diferenca.y = 0f;
+                if (diferenca.sqrMagnitude <= 120f * 120f)
+                {
+                    break;
+                }
+                yield return null;
+            }
+
+            if (estadoAtual == EstadoAviao.EmMissao)
+            {
+                estaEmModoVooFisico = false;
+                DefinirEstado(EstadoAviao.Pousando);
+                yield return StartCoroutine(carrier.EstacionarAeronaveNoConves(this));
+                ConcluirRetornoOperacionalNoCarrier();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Chamado pelo pouso V2 depois que a aeronave ficou parada no convés.
+    /// Reabastece, rearma e só então libera uma eventual patrulha salva.
+    /// </summary>
+    public void ConcluirRetornoOperacionalNoCarrier()
+    {
+        estaEmModoVooFisico = false;
+        ordemParaRetorno = false;
+        DefinirEstado(EstadoAviao.ProntoNoPatio);
+        ProcessarServicoDeBaseAposPouso();
+        ProcessarRetomadaAposReabastecimento();
     }
 
     /// <summary>
@@ -1035,9 +1225,10 @@ public class ControleAviao : MonoBehaviour
             return;
         }
 
-        for (int i = 0; i < rota.Count; i++)
+        List<Vector3> rotaNormalizada = ConstruirRotaPatrulhaRealista(rota);
+        for (int i = 0; i < rotaNormalizada.Count; i++)
         {
-            Vector3 ponto = rota[i];
+            Vector3 ponto = rotaNormalizada[i];
             if (ponto.y < 60f)
             {
                 ponto.y = 60f;
@@ -1052,6 +1243,82 @@ public class ControleAviao : MonoBehaviour
         {
             AtualizarDestinoPatrulha(rotaPatrulhaSalva[0]);
         }
+    }
+
+    private List<Vector3> ConstruirRotaPatrulhaRealista(IList<Vector3> rota)
+    {
+        List<Vector3> resultado = new List<Vector3>(Mathf.Max(4, rota.Count));
+        if (rota.Count >= 4)
+        {
+            for (int i = 0; i < rota.Count; i++)
+            {
+                resultado.Add(rota[i]);
+            }
+            return resultado;
+        }
+
+        Vector3 primeiro = rota[0];
+        primeiro.y = Mathf.Max(primeiro.y, altitudeVoo, 60f);
+        Vector3 longitudinal;
+        if (rota.Count >= 2)
+        {
+            longitudinal = rota[1] - primeiro;
+            longitudinal.y = 0f;
+        }
+        else
+        {
+            longitudinal = primeiro - transform.position;
+            longitudinal.y = 0f;
+        }
+
+        if (longitudinal.sqrMagnitude < 1f)
+        {
+            longitudinal = transform.forward;
+            longitudinal.y = 0f;
+        }
+        longitudinal.Normalize();
+        Vector3 lateral = Vector3.Cross(Vector3.up, longitudinal).normalized;
+
+        if (rota.Count == 1)
+        {
+            float meioComprimento = Mathf.Clamp(Mathf.Max(raioOrbitaMissao * 1.15f, 300f), 300f, 900f);
+            float meioLargura = Mathf.Clamp(meioComprimento * 0.45f, 160f, 520f);
+            resultado.Add(primeiro - longitudinal * meioComprimento - lateral * meioLargura);
+            resultado.Add(primeiro + longitudinal * meioComprimento - lateral * meioLargura);
+            resultado.Add(primeiro + longitudinal * meioComprimento + lateral * meioLargura);
+            resultado.Add(primeiro - longitudinal * meioComprimento + lateral * meioLargura);
+            return resultado;
+        }
+
+        if (rota.Count == 2)
+        {
+            Vector3 segundo = rota[1];
+            segundo.y = Mathf.Max(segundo.y, altitudeVoo, 60f);
+            float meioLargura = Mathf.Clamp(Vector3.Distance(primeiro, segundo) * 0.28f, 140f, 500f);
+            resultado.Add(primeiro - lateral * meioLargura);
+            resultado.Add(segundo - lateral * meioLargura);
+            resultado.Add(segundo + lateral * meioLargura);
+            resultado.Add(primeiro + lateral * meioLargura);
+            return resultado;
+        }
+
+        // Três cliques são os três primeiros cantos. Fecha a formação em um
+        // retângulo, sem gerar uma órbita aleatória sobre a área.
+        Vector3 segundoPonto = rota[1];
+        Vector3 terceiroPonto = rota[2];
+        Vector3 deslocamentoLateral = terceiroPonto - segundoPonto;
+        deslocamentoLateral.y = 0f;
+        deslocamentoLateral = Vector3.ProjectOnPlane(deslocamentoLateral, longitudinal);
+        if (deslocamentoLateral.sqrMagnitude < 100f)
+        {
+            deslocamentoLateral = lateral * Mathf.Clamp(raioOrbitaMissao * 0.9f, 180f, 500f);
+        }
+
+        resultado.Add(primeiro);
+        resultado.Add(segundoPonto);
+        resultado.Add(segundoPonto + deslocamentoLateral);
+        resultado.Add(primeiro + deslocamentoLateral);
+        return resultado;
     }
 
     public virtual void AtualizarDestinoPatrulha(Vector3 destino)
@@ -1076,6 +1343,20 @@ public class ControleAviao : MonoBehaviour
         }
 
         GerenciadorAeroporto baseSegura = EncontrarMelhorBaseRetorno();
+        if (baseSegura == null)
+        {
+            // Sem base registrada não há destino seguro para o retorno. Ainda
+            // assim, a aeronave não pode continuar voando até zerar o tanque.
+            float reservaSemBase = Mathf.Clamp(reservaMinimaRetornoPercentual, 0.30f, 0.45f);
+            if (combustivel.Percentual <= reservaSemBase)
+            {
+                ultimoMotivoRetorno = "sem base de retorno";
+                Debug.LogWarning($"[ControleAviao] {name} atingiu a reserva sem possuir base de retorno; voo encerrado com segurança.");
+                PararPorFaltaDeCombustivel();
+            }
+            return;
+        }
+
         if (DeveRetornarAgora(combustivel, baseSegura))
         {
             PrepararRetornoSeguro(baseSegura, "combustivel");
@@ -1084,7 +1365,7 @@ public class ControleAviao : MonoBehaviour
 
     private bool DeveRetornarAgora(CombustivelUnidade combustivel, GerenciadorAeroporto baseSegura)
     {
-        if (combustivel == null)
+        if (combustivel == null || baseSegura == null)
         {
             return false;
         }
@@ -1101,10 +1382,8 @@ public class ControleAviao : MonoBehaviour
         }
 
         // A reserva de retorno é um limite operacional, não uma falha de
-        // emergência. A IA agora inicia o retorno com 30% de combustível,
-        // deixando margem para a aproximação, pouso e uma eventual rota de
-        // desvio sem chegar ao zero e cair.
-        const float reservaMinimaAerea = 0.30f;
+        // emergência. Nunca permita configurar o retorno abaixo de 30%.
+        float reservaMinimaAerea = Mathf.Clamp(reservaMinimaRetornoPercentual, 0.30f, 0.45f);
         if (combustivel.Percentual <= reservaMinimaAerea)
         {
             return true;
@@ -1131,6 +1410,11 @@ public class ControleAviao : MonoBehaviour
 
     private void PrepararRetornoSeguro(GerenciadorAeroporto baseSegura, string motivo)
     {
+        if (baseSegura == null)
+        {
+            return;
+        }
+
         ultimoMotivoRetorno = motivo;
         retomarMissaoAposAbastecer = motivo == "combustivel";
 
@@ -1149,28 +1433,9 @@ public class ControleAviao : MonoBehaviour
 
     private GerenciadorAeroporto EncontrarMelhorBaseRetorno()
     {
-        GerenciadorAeroporto melhorBase = aeroportoOrigem;
-        float melhorDistancia = DistanciaAteBase(melhorBase);
-
-        int meuTime = ObterTeamId();
-        GerenciadorPortaAvioes[] carriers = FindObjectsByType<GerenciadorPortaAvioes>(FindObjectsSortMode.None);
-        for (int i = 0; i < carriers.Length; i++)
-        {
-            GerenciadorPortaAvioes carrier = carriers[i];
-            if (carrier == null || !PertenceAoMesmoTime(carrier, meuTime))
-            {
-                continue;
-            }
-
-            float distancia = DistanciaAteBase(carrier);
-            if (distancia < melhorDistancia)
-            {
-                melhorDistancia = distancia;
-                melhorBase = carrier;
-            }
-        }
-
-        return melhorBase;
+        // A missão pertence à base que lançou a aeronave. Nunca troca
+        // silenciosamente para outro aeroporto ou porta-aviões aliado.
+        return aeroportoOrigem;
     }
 
     private float DistanciaAteBase(GerenciadorAeroporto baseDestino)
@@ -1183,37 +1448,6 @@ public class ControleAviao : MonoBehaviour
         Vector3 alvoBase = ObterPontoAproximacaoDaBase(baseDestino);
         alvoBase.y = transform.position.y;
         return Vector3.Distance(transform.position, alvoBase);
-    }
-
-    private int ObterTeamId()
-    {
-        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
-        return identidade != null ? identidade.teamID : 0;
-    }
-
-    private bool PertenceAoMesmoTime(Component componente, int meuTime)
-    {
-        if (componente == null || meuTime <= 0)
-        {
-            return true;
-        }
-
-        IdentidadeUnidade identidade = componente.GetComponent<IdentidadeUnidade>();
-        if (identidade == null)
-        {
-            identidade = componente.GetComponentInParent<IdentidadeUnidade>();
-        }
-
-        return identidade == null || identidade.teamID <= 0 || identidade.teamID == meuTime;
-    }
-
-    private bool EhCacaOperacional()
-    {
-        return GetComponent<LancadorMisselCaca>() != null
-            || GetComponent<ControleAviaoCaca>() != null
-            || gameObject.name.IndexOf("caca", StringComparison.OrdinalIgnoreCase) >= 0
-            || gameObject.name.IndexOf("fighter", StringComparison.OrdinalIgnoreCase) >= 0
-            || gameObject.name.IndexOf("jet", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private void ProcessarRetomadaAposReabastecimento()
@@ -1244,6 +1478,12 @@ public class ControleAviao : MonoBehaviour
 
         if (rotaPatrulhaSalva.Count > 0 && _controleUnidade != null)
         {
+            GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
+            if (carrier != null && carrier.SolicitarPatrulhaRetomadaV2(this, rotaPatrulhaSalva))
+            {
+                rotinaRetomadaMissao = null;
+                yield break;
+            }
             _controleUnidade.EmitirOrdemPatrulha(new List<Vector3>(rotaPatrulhaSalva));
         }
         else if (ultimoObjetivoMissao != Vector3.zero)
@@ -1367,6 +1607,15 @@ public class ControleAviao : MonoBehaviour
                     ? velocidadeMaximaVoo
                     : velocidadeMaximaVoo;
                 yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoDecolagem, velocidadeSolo, velocidadeSaidaConves, true, false));
+                if (!ultimoMovimentoWaypointConcluido)
+                {
+                    // Falha de waypoint não pode deixar a aeronave marcada
+                    // como pronta para voar nem prender a fila do convés.
+                    estaEmModoVooFisico = false;
+                    ordemParaRetorno = false;
+                    DefinirEstado(EstadoAviao.ProntoNoPatio);
+                    yield break;
+                }
                 velocidadeVooAtual = velocidadeSaidaConves;
             }
         else
@@ -1582,6 +1831,23 @@ public class ControleAviao : MonoBehaviour
         // Segue glideslope na velocidade de solo (lenta), permitindo pular waypoints já passados
         float velocidadeTaxiPouso = carrier != null ? Mathf.Max(velocidadeSolo * 2f, 18f) : velocidadeSolo * 2.4f;
         yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminhoPouso, velocidadeTaxiPouso, velocidadeTaxiPouso, false, false, true));
+        if (!ultimoMovimentoWaypointConcluido)
+        {
+            // O pouso não pode terminar em um estado fantasma se um waypoint
+            // foi destruído ou ficou inacessível. Guarda a aeronave na base,
+            // liberando a simulação aérea e os recursos da pista.
+            estaEmModoVooFisico = false;
+            ordemParaRetorno = false;
+            if (aeroportoOrigem != null)
+            {
+                aeroportoOrigem.GuardarNoHangarAutomatico(this);
+            }
+            else
+            {
+                DefinirEstado(EstadoAviao.ReservaHangar);
+            }
+            yield break;
+        }
 
         // 4. Parentar ao convés do navio
         Transform paiConves = (caminhoPouso.Count > 0 && caminhoPouso[caminhoPouso.Count - 1] != null)
@@ -1690,11 +1956,16 @@ public class ControleAviao : MonoBehaviour
     {
         if (aeroportoOrigem is GerenciadorPortaAvioes)
         {
-            GerenciadorPortaAvioes.ReabastecerAeronaveCarrier(this, false);
+            // Este pouso foi acionado pelo retorno operacional. Mesmo que a
+            // aeronave ainda tenha mais de 50%, ela deve sair do convés com
+            // tanque completo antes de retomar a patrulha.
+            GerenciadorPortaAvioes.ReabastecerAeronaveCarrier(this, true);
         }
         else
         {
-            ReabastecerSeAbaixoDe(0.50f);
+            // O retorno operacional deve deixar o tanque cheio antes da
+            // retomada automática da rota de patrulha.
+            ReabastecerSeAbaixoDe(0.99f);
         }
 
         DefinirProtecaoCombustivelCarrier(false);

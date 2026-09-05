@@ -729,6 +729,15 @@ public class Construtor : MonoBehaviour
         }
 
         GameObject novo = Instantiate(prefabSelecionado, posFinal, rotFinal);
+        GerenciadorQuartel quartelConstruido = novo.GetComponent<GerenciadorQuartel>()
+            ?? novo.GetComponentInChildren<GerenciadorQuartel>(true);
+        if (quartelConstruido != null)
+        {
+            // A instância recém-comprada não pode herdar uma UI de teste nem
+            // manter o menu Satélite bloqueado no frame seguinte.
+            quartelConstruido.PrepararAposConstrucao();
+        }
+
         // Prefabs comerciais importados sem configuracao recebem o componente
         // no momento da construcao e passam a constar no Governo.
         ComercioLocal.GarantirNoPrefabInstanciado(novo);
@@ -1295,7 +1304,22 @@ public class Construtor : MonoBehaviour
         var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent != null)
         {
-            agent.enabled = true;
+            if (UnityEngine.AI.NavMesh.SamplePosition(
+                unidade.transform.position,
+                out UnityEngine.AI.NavMeshHit pontoNavMesh,
+                8f,
+                UnityEngine.AI.NavMesh.AllAreas))
+            {
+                agent.enabled = true;
+                if (!agent.isOnNavMesh)
+                {
+                    agent.Warp(pontoNavMesh.position);
+                }
+            }
+            else
+            {
+                agent.enabled = false;
+            }
         }
 
         SetLayerRecursively(unidade, LayerMask.NameToLayer("Default"));

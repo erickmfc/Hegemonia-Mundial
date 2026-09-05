@@ -141,6 +141,7 @@ public class ControleNavioRealista : MonoBehaviour
     private float tempoRestanteManobraRe = 0f;
     private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
     private float proximoReplanDestino;
+    private float proximaTentativaRecuperacaoRota;
     private Vector3 ultimoDestinoAplicado = Vector3.zero;
     // Referências estáveis: evita procurar componentes e o estado da cena em
     // todos os frames de cada navio durante a navegação.
@@ -188,10 +189,9 @@ public class ControleNavioRealista : MonoBehaviour
         if (rb == null)
         {
             rb = gameObject.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.isKinematic = true; // Soft-Sim: Nós movemos via Transform
             Debug.LogWarning($"[ControleNavioRealista] Rigidbody adicionado automaticamente ao {name}.");
         }
+        EstabilizarRigidbodyDaSimulacao();
 
         if (agente != null)
         {
@@ -250,6 +250,39 @@ public class ControleNavioRealista : MonoBehaviour
             tubosTorpedoUsados = new bool[tubosTorpedo.Length];
             PoolDeObjetosCombate.Prewarm(prefabTorpedo, Mathf.Clamp(totalTubosValidos > 0 ? totalTubosValidos : 2, 2, 4));
         }
+    }
+
+    void Start()
+    {
+        EstabilizarRigidbodyDaSimulacao();
+        if (ehCenaDeMenuCache)
+        {
+            return;
+        }
+
+        // A navegação usa o plano do mar. Assim que sai do estaleiro, o
+        // casco recebe a altura correta sem esperar a primeira ordem.
+        float nivelMar = ObterNivelMarCacheado();
+        Vector3 posicaoInicial = transform.position;
+        posicaoInicial.y = nivelMar + profundidadeVisual + offsetAlturaAgua;
+        transform.position = posicaoInicial;
+        poseAgenteCacheValida = false;
+    }
+
+    private void EstabilizarRigidbodyDaSimulacao()
+    {
+        if (rb == null)
+        {
+            return;
+        }
+
+        rb.useGravity = false;
+        // Corpos que ja chegam cinemáticos nao aceitam escrita de velocidade
+        // no Unity 6. Só zeramos a física quando ela ainda está habilitada.
+        if (rb.isKinematic) return;
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.isKinematic = true;
     }
 
     void Update()
@@ -578,32 +611,33 @@ public class ControleNavioRealista : MonoBehaviour
 
         try
         {
+            int areaMask = agente.areaMask;
+            if (areaMask == 0)
+            {
+                areaMask = 1 << 3;
+            }
+
+            Vector3 origemAgua = transform.position;
+            origemAgua.y = NavalPlacementResolver.ResolveSeaLevel();
+            if (NavalPlacementResolver.TryResolveWaterSpawn(origemAgua, transform.forward, 0f, 220f, out Vector3 pontoAgua, out _, out _))
+            {
+                origemAgua = pontoAgua;
+            }
+
+            bool pontoNavMeshValido = NavMesh.SamplePosition(origemAgua, out NavMeshHit hit, RaioPreparacaoNavMesh, areaMask) && hit.hit;
             if (!agente.enabled)
             {
+                if (!pontoNavMeshValido)
+                {
+                    return false;
+                }
                 agente.enabled = true;
             }
 
-            if (!agente.isOnNavMesh)
+            if (!agente.isOnNavMesh && pontoNavMeshValido)
             {
-                NavMeshHit hit;
-                int areaMask = agente.areaMask;
-                if (areaMask == 0)
-                {
-                    areaMask = 1 << 3;
-                }
-
-                Vector3 origemAgua = transform.position;
-                origemAgua.y = NavalPlacementResolver.ResolveSeaLevel();
-                if (NavalPlacementResolver.TryResolveWaterSpawn(origemAgua, transform.forward, 0f, 220f, out Vector3 pontoAgua, out _, out _))
-                {
-                    origemAgua = pontoAgua;
-                }
-
-                if (NavMesh.SamplePosition(origemAgua, out hit, RaioPreparacaoNavMesh, areaMask) && hit.hit)
-                {
-                    agente.Warp(hit.position);
-                    poseAgenteCacheValida = false;
-                }
+                agente.Warp(hit.position);
+                poseAgenteCacheValida = false;
             }
         }
         catch (System.Exception ex)
@@ -647,7 +681,10 @@ public class ControleNavioRealista : MonoBehaviour
 
     void SimularFisicaMovimento()
     {
-        if (!rb.isKinematic) rb.isKinematic = true;
+        if (rb != null && (!rb.isKinematic || rb.useGravity))
+        {
+            EstabilizarRigidbodyDaSimulacao();
+        }
 
         // VELOCIDADE PURA DE TRILHO (1 Eixo): Só existe movimento na mesma linha que a frente do navio aponta
         float velReal = velocidadeVetorial.magnitude;
@@ -711,8 +748,10 @@ public class ControleNavioRealista : MonoBehaviour
             {
                 potenciaAlvo = 0f;
                 velocidadeVetorial = Vector3.zero;
+                TentarRecuperarRotaAposBloqueio(nivelMar);
                 return;
             }
+
         }
 
         // 1. Defina a posição visual do GameObject (Barco/Submarino) na profundidade desejada
@@ -754,6 +793,44 @@ public class ControleNavioRealista : MonoBehaviour
 
             poseAgenteCacheValida = true;
         }
+    }
+
+    private void TentarRecuperarRotaAposBloqueio(float nivelMar)
+    {
+        if (Time.time < proximaTentativaRecuperacaoRota || !temDestino || rotaAguaAtual.Count == 0)
+        {
+            return;
+        }
+
+        proximaTentativaRecuperacaoRota = Time.time + 0.45f;
+        Vector3 destinoFinal = rotaAguaAtual[rotaAguaAtual.Count - 1];
+        destinoFinal.y = nivelMar;
+
+        if (NavalPlacementResolver.TryBuildWaterRoute(
+                transform.position,
+                destinoFinal,
+                ResolverFolgaNavegacao(),
+                out List<Vector3> rotaRecuperada)
+            && rotaRecuperada != null
+            && rotaRecuperada.Count > 0)
+        {
+            rotaAguaAtual.Clear();
+            rotaAguaAtual.AddRange(rotaRecuperada);
+            indiceRotaAgua = 0;
+            destinoAtual = rotaAguaAtual[0];
+            manobraReAtiva = false;
+            tempoRestanteManobraRe = 0f;
+            return;
+        }
+
+        // Não mantenha uma rota impossível marcada como ativa. Patrulha e
+        // seguir poderão emitir novamente a ordem no próximo intervalo.
+        temDestino = false;
+        rotaAguaAtual.Clear();
+        indiceRotaAgua = 0;
+        destinoAtual = Vector3.zero;
+        manobraReAtiva = false;
+        tempoRestanteManobraRe = 0f;
     }
 
     private float ObterNivelMarCacheado()

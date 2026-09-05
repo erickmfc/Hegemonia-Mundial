@@ -55,6 +55,51 @@ namespace Hegemonia.RTS
         public event Action<RTSObjectiveStatus> OnObjectiveChanged;
         public IReadOnlyList<RTSObjectiveStatus> Objectives => objectives;
 
+        /// <summary>
+        /// Em uma partida com mais de uma nacao representada no mapa, a queda
+        /// de uma prefeitura individual nao pode encerrar a partida antes que
+        /// o servico confirme o estado das demais capitais.
+        /// </summary>
+        public bool DeveAdiarResultadoDePrefeitura()
+        {
+            RTSGameSession session = RTSGameSession.Instancia;
+            if (session == null || !session.IsGameplay)
+            {
+                return false;
+            }
+
+            ComplexoGovernamental[] capitals = FindObjectsByType<ComplexoGovernamental>(FindObjectsSortMode.None);
+            int primeiroTime = 0;
+            for (int i = 0; i < capitals.Length; i++)
+            {
+                ComplexoGovernamental capital = capitals[i];
+                if (capital == null || !capital.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                IdentidadeUnidade identity = capital.GetComponent<IdentidadeUnidade>();
+                int team = identity != null ? identity.teamID : (capital.ehDoJogador ? session.PlayerTeamId : 2);
+                if (team <= 0)
+                {
+                    continue;
+                }
+
+                if (primeiroTime == 0)
+                {
+                    primeiroTime = team;
+                    continue;
+                }
+
+                if (team != primeiroTime)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void Awake()
         {
             if (Instancia != null && Instancia != this)

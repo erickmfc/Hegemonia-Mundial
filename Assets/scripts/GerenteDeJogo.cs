@@ -487,6 +487,11 @@ public class GerenteDeJogo : MonoBehaviour
         }
 
 
+        // Mantém o agente desligado quando o ponto não tem NavMesh. Ativar um
+        // NavMeshAgent fora da malha gera o aviso do Unity e deixa a unidade
+        // sem rota; em pontos válidos o fluxo anterior permanece igual.
+        bool spawnNoNavMeshValido = pedido.ehNavio || pedido.ehHelicoptero;
+
         // CORREÇÃO DE ALTURA (Spawn Height Check)
         if (pedido.ehHelicoptero)
         {
@@ -510,6 +515,7 @@ public class GerenteDeJogo : MonoBehaviour
              {
                  posNascimento = hitNav.position; // Posição segura no NavMesh
                  posNascimento += Vector3.up * 0.1f; // Leve offset Y
+                 spawnNoNavMeshValido = true;
              }
              else
              {
@@ -517,6 +523,7 @@ public class GerenteDeJogo : MonoBehaviour
                  if (UnityEngine.AI.NavMesh.SamplePosition(posNascimento, out hitNav, 10.0f, UnityEngine.AI.NavMesh.AllAreas))
                  {
                      posNascimento = hitNav.position;
+                     spawnNoNavMeshValido = true;
                  }
              }
 
@@ -564,8 +571,15 @@ public class GerenteDeJogo : MonoBehaviour
         UnityEngine.AI.NavMeshAgent agent = novaUnidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent != null) 
         {
-            agent.enabled = true;
-            if (agent.isOnNavMesh) agent.isStopped = false;
+            if (!pedido.ehNavio && !spawnNoNavMeshValido)
+            {
+                agent.enabled = false;
+            }
+            else
+            {
+                agent.enabled = true;
+                if (agent.isOnNavMesh) agent.isStopped = false;
+            }
         }
         
         // --- CORREÇÃO DE FÍSICA (IMPEDE VOAR) ---

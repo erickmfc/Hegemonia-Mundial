@@ -122,6 +122,7 @@ public class ControleSubmarino : MonoBehaviour
     private readonly List<Vector3> rotaAguaAtual = new List<Vector3>(16);
     private int indiceRotaAgua;
     private float proximaTentativaNavMesh = 0f;
+    private float proximaTentativaRecuperacaoRota = 0f;
 
     /// <summary>
     /// Informa se existe uma rota física ativa, inclusive quando o submarino
@@ -480,9 +481,37 @@ public class ControleSubmarino : MonoBehaviour
         else
         {
             velocidadeAtualSimulada = 0f;
-            // Mantém o waypoint. O submarino pode terminar de alinhar o
-            // leme no próximo frame sem cancelar a rota marítima válida.
+            TentarRecuperarRotaAposBloqueio();
         }
+    }
+
+    private void TentarRecuperarRotaAposBloqueio()
+    {
+        if (Time.time < proximaTentativaRecuperacaoRota || !temDestinoFallback || rotaAguaAtual.Count == 0)
+        {
+            return;
+        }
+
+        proximaTentativaRecuperacaoRota = Time.time + 0.45f;
+        Vector3 destinoFinal = rotaAguaAtual[rotaAguaAtual.Count - 1];
+        destinoFinal.y = ResolverNivelAgua();
+        if (NavalPlacementResolver.TryBuildWaterRoute(transform.position, destinoFinal, 18f, out List<Vector3> rotaRecuperada)
+            && rotaRecuperada != null
+            && rotaRecuperada.Count > 0)
+        {
+            rotaAguaAtual.Clear();
+            rotaAguaAtual.AddRange(rotaRecuperada);
+            indiceRotaAgua = 0;
+            destinoFallback = rotaAguaAtual[0];
+            return;
+        }
+
+        // Patrulha e seguir observam TemDestinoAtivo. Liberar uma rota
+        // impossível permite que eles emitam uma nova ordem automaticamente.
+        temDestinoFallback = false;
+        rotaAguaAtual.Clear();
+        indiceRotaAgua = 0;
+        destinoFallback = Vector3.zero;
     }
 
     private void AplicarEstadoInicial()

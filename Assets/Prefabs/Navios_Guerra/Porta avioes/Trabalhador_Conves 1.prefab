@@ -142,6 +142,8 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  pontoRetornoInicial: {x: 0, y: 0, z: 0}
+  possuiPontoRetornoInicial: 0
   dominioControleAtual: 0
   ordemControleAtual: 0
   modoCombateOficialAtivo: 1

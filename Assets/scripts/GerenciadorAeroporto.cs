@@ -2773,13 +2773,6 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
     
-    private IEnumerator TrazerAviaoParaPatio(ControleAviao aviao, Transform vaga)
-    {
-        if (aviao == null) yield break;
-        ColocarAviaoInstantaneamenteNoPatio(aviao, vaga, true);
-        yield break;
-    }
-
     public virtual void GuardarNoHangarAutomatico(ControleAviao aviao)
     {
         GuardarAviaoNoHangarInstantaneo(aviao, true);
@@ -2839,6 +2832,10 @@ public class GerenciadorAeroporto : MonoBehaviour
         aviao.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
 
         if (!avioesNoPatio.Contains(aviao)) avioesNoPatio.Add(aviao);
+        // Se a aeronave havia voltado para abastecer e precisou aguardar no
+        // hangar, retoma a patrulha somente agora, quando existe uma vaga e
+        // ela está realmente pronta para decolar.
+        aviao.TentarIniciarPatrulhaPendente();
         return true;
     }
 
@@ -2922,6 +2919,14 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (lancadorCaca != null)
         {
             lancadorCaca.modoPassivo = missao != 2;
+        }
+
+        // Reconhecimento e ataque são missões pontuais. Limpa uma eventual
+        // rota de patrulha deixada pelo voo anterior antes de iniciar outra
+        // sortida, evitando que a aeronave retome um circuito antigo.
+        if (missao != 1)
+        {
+            aviao.RegistrarMissaoManual(alvoEstrategico);
         }
 
         // Sortidas de patrulha da IA precisam ser registradas como rota, não

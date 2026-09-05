@@ -74,6 +74,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     private readonly List<Vector3> _rotaPatrulhaAviaoCarrier = new List<Vector3>();
     private readonly List<Vector3> _rotaPatrulhaHelicopteroCarrier = new List<Vector3>();
     private readonly Dictionary<int, Coroutine> _rotinasRecebimentoHeliCarrier = new Dictionary<int, Coroutine>();
+    private readonly HashSet<int> _helicopterosNoHangarInterno = new HashSet<int>();
     private LineRenderer _linhaPatrulhaAviaoCarrier;
 
     // ======================================================
@@ -1056,6 +1057,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     string nomeHeli = CompactarTextoMenu(heli.ObterRotuloExibicao(), 24);
                     string statusHeli = HelicopteroEstaEmRecebimentoCarrier(heli)
                         ? "Descer h"
+                        : HelicopteroEstaNoHangarInterno(heli)
+                        ? "Hangar int."
                         : heli.EstaEstacionadoNoAeroporto()
                         ? CompactarTextoMenu(heli.ObterVagaAeroporto() != null ? heli.ObterVagaAeroporto().name : "convés", 12)
                         : "em voo";
@@ -1081,9 +1084,27 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     }
                     else
                     {
-                        GUI.enabled = false;
-                        GUILayout.Button("Convés", GUILayout.Width(95), GUILayout.Height(22));
-                        GUI.enabled = true;
+                        bool noHangar = HelicopteroEstaNoHangarInterno(heli);
+                        if (noHangar)
+                        {
+                            GUI.enabled = ObterVagaParaHelicopteroDoHangar(heli) != null;
+                            if (GUILayout.Button("⬆️ Convés", GUILayout.Width(95), GUILayout.Height(22)))
+                            {
+                                TrazerHelicopteroDoHangarInterno(heli);
+                                break;
+                            }
+                            GUI.enabled = true;
+                        }
+                        else
+                        {
+                            GUI.enabled = !HelicopteroEstaEmRecebimentoCarrier(heli);
+                            if (GUILayout.Button("⬇️ Hangar", GUILayout.Width(95), GUILayout.Height(22)))
+                            {
+                                MandarHelicopteroParaHangarInterno(heli);
+                                break;
+                            }
+                            GUI.enabled = true;
+                        }
                     }
 
                     GUILayout.EndHorizontal();
@@ -1758,6 +1779,23 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         GUILayout.Label($"<b>ORDENS DO HELICÓPTERO: 🚁 {nomeHeli}</b>");
         GUILayout.Label($"<color=cyan>{helicopteroSelecionadoParaMissao.ObterEstadoOperacionalAeroporto()}</color>");
 
+        if (HelicopteroEstaNoHangarInterno(helicopteroSelecionadoParaMissao))
+        {
+            bool vagaLivre = ObterVagaParaHelicopteroDoHangar(helicopteroSelecionadoParaMissao) != null;
+            GUI.enabled = vagaLivre;
+            if (GUILayout.Button("⬆️ TRAZER HELICÓPTERO PARA O CONVÉS", GUILayout.Height(28)))
+            {
+                TrazerHelicopteroDoHangarInterno(helicopteroSelecionadoParaMissao);
+            }
+            GUI.enabled = true;
+            if (!vagaLivre)
+            {
+                GUILayout.Label("<color=yellow>Sem vaga livre no convés.</color>");
+            }
+            GUILayout.EndVertical();
+            return;
+        }
+
         if (_modoOrdemHelicopteroCarrier != ModoOrdemHelicopteroCarrier.Nenhum)
         {
             if (_modoOrdemHelicopteroCarrier == ModoOrdemHelicopteroCarrier.Patrulha)
@@ -1856,6 +1894,54 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         return iniciou;
     }
 
+    public bool SolicitarPousoOperacionalV2(ControleAviao aviao)
+    {
+        return operacoesV2AssumiuControle && SolicitarPousoV2(aviao);
+    }
+
+    public bool SolicitarPatrulhaRetomadaV2(ControleAviao aviao, IList<Vector3> rota)
+    {
+        return SolicitarPatrulhaOperacionalV2(aviao, rota);
+    }
+
+    public bool SolicitarPatrulhaOperacionalV2(ControleAviao aviao, IList<Vector3> rota)
+    {
+        if (!operacoesV2AssumiuControle || aviao == null || rota == null || rota.Count == 0)
+        {
+            return false;
+        }
+
+        GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+        if (v2 == null)
+        {
+            return false;
+        }
+
+        v2.PrepararAeronaveParaMenu(aviao, false);
+        return v2.TrySolicitarPatrulha(aviao, rota[0], rota);
+    }
+
+    /// <summary>
+    /// Ponte entre o estado V2 e as listas lidas pelo menu legado. Sem ela o
+    /// avião terminava o elevador no convés, mas seguia listado no hangar e
+    /// não podia ser selecionado para decolar.
+    /// </summary>
+    public void SincronizarAeronaveNoConvesV2(ControleAviao aviao)
+    {
+        if (aviao == null) return;
+        avioesNoHangar.Remove(aviao);
+        if (!avioesNoPatio.Contains(aviao)) avioesNoPatio.Add(aviao);
+        aviao.aeroportoOrigem = this;
+    }
+
+    public void SincronizarAeronaveNoHangarV2(ControleAviao aviao)
+    {
+        if (aviao == null) return;
+        avioesNoPatio.Remove(aviao);
+        if (!avioesNoHangar.Contains(aviao)) avioesNoHangar.Add(aviao);
+        aviao.aeroportoOrigem = this;
+    }
+
     private bool SolicitarReabastecimentoV2(ControleAviao aviao)
     {
         if (!operacoesV2AssumiuControle || aviao == null) return false;
@@ -1892,6 +1978,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             Debug.LogWarning($"[PortaAvioesV2] Decolagem bloqueada para {aviao.name}: {v2.Registrar(aviao).Registro.motivoFalha}");
         }
         return iniciou;
+    }
+
+    public bool SolicitarDecolagemOperacionalV2(ControleAviao aviao, Vector3 destino)
+    {
+        return SolicitarDecolagemV2(aviao, destino, false);
     }
 
     private void ProcessarCliqueOrdemRadarV2(Vector3 pontoAlvo)
@@ -1968,6 +2059,66 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         _selecionadoCarrier = null;
 
         return true;
+    }
+
+    private bool HelicopteroEstaNoHangarInterno(Helicoptero heli)
+    {
+        return heli != null && _helicopterosNoHangarInterno.Contains(heli.GetInstanceID());
+    }
+
+    private void MandarHelicopteroParaHangarInterno(Helicoptero heli)
+    {
+        if (heli == null || !heli.EstaEstacionadoNoAeroporto() || HelicopteroEstaEmRecebimentoCarrier(heli))
+        {
+            return;
+        }
+
+        heli.CancelarMissaoAeroporto();
+        _helicopterosNoHangarInterno.Add(heli.GetInstanceID());
+        if (helicopteroSelecionadoParaMissao == heli)
+        {
+            helicopteroSelecionadoParaMissao = heli;
+        }
+        heli.gameObject.SetActive(false);
+    }
+
+    private void TrazerHelicopteroDoHangarInterno(Helicoptero heli)
+    {
+        if (heli == null || !HelicopteroEstaNoHangarInterno(heli))
+        {
+            return;
+        }
+
+        // A vaga que o helicóptero deixou no convés é a primeira opção. Ele
+        // continua marcado como estacionado enquanto está oculto no hangar,
+        // portanto consultar apenas ObterPrimeiraVagaLivre() faria o próprio
+        // helicóptero bloquear sua volta quando o convés estivesse cheio.
+        Transform vaga = ObterVagaParaHelicopteroDoHangar(heli);
+        if (vaga == null)
+        {
+            return;
+        }
+
+        heli.gameObject.SetActive(true);
+        heli.VincularAoAeroporto(this, vaga);
+        heli.PosicionarInstantaneamenteNaVagaAeroporto(vaga);
+        _helicopterosNoHangarInterno.Remove(heli.GetInstanceID());
+        if (!helicopterosDoAeroporto.Contains(heli)) helicopterosDoAeroporto.Add(heli);
+        helicopteroSelecionadoParaMissao = heli;
+    }
+
+    private Transform ObterVagaParaHelicopteroDoHangar(Helicoptero heli)
+    {
+        if (heli != null)
+        {
+            Transform vagaAnterior = heli.ObterVagaAeroporto();
+            if (vagaAnterior != null && (vagaAnterior == transform || vagaAnterior.IsChildOf(transform)))
+            {
+                return vagaAnterior;
+            }
+        }
+
+        return ObterPrimeiraVagaLivre();
     }
 
     private IEnumerator RotinaReceberHelicopteroNoCarrier(Helicoptero heli, Transform vaga, int heliId)

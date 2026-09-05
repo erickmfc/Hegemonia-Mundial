@@ -197,16 +197,26 @@
                 <ui:Label text="◈ ORDENS" class="panel-label mono" />
 
                 <ui:VisualElement class="ordens-grid">
-                    <ui:Button name="btn-ativo" text="⚔️ ATIVO" class="ordem-btn btn-ativo mono" />
-                    <ui:Button name="btn-estado" text="↔ ESTADO (ALTERNAR) [I]" class="ordem-btn btn-estado mono" />
-                    <ui:Button name="btn-passivo" text="🛡 PASSIVO" class="ordem-btn btn-passivo mono" />
-                    <ui:Button name="btn-lancar-missil" text="🚀 LANÇAR MÍSSIL [ÁREA]" class="ordem-btn btn-lancar-missil mono" />
-                    <ui:Button name="btn-troca-camera" text="📷 CÂMERA" class="ordem-btn btn-seguir mono" />
-                    <ui:Button name="btn-mover" text="➤ MOVER" class="ordem-btn btn-mover mono" />
-                    <ui:Button name="btn-patrulhar" text="🔄 PATRULHAR" class="ordem-btn btn-patrulhar mono" />
-                    <ui:Button name="btn-seguir" text="👁 SEGUIR" class="ordem-btn btn-seguir mono" />
-                    <ui:Button name="btn-atacar" text="🎯 ATACAR" class="ordem-btn btn-atacar mono" />
-                    <ui:Button name="btn-voltar-base" text="🏠 VOLTAR" class="ordem-btn btn-passivo mono" />
+                    <ui:VisualElement class="ordens-row">
+                        <ui:Button name="btn-ativo" text="⚔️ ATIVO" class="ordem-btn btn-ativo mono" />
+                        <ui:Button name="btn-estado" text="↔ ESTADO (ALTERNAR) [I]" class="ordem-btn btn-estado mono" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ordens-row">
+                        <ui:Button name="btn-passivo" text="🛡 PASSIVO" class="ordem-btn btn-passivo mono" />
+                        <ui:Button name="btn-lancar-missil" text="🚀 LANÇAR MÍSSIL [ÁREA]" class="ordem-btn btn-lancar-missil mono" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ordens-row">
+                        <ui:Button name="btn-troca-camera" text="📷 CÂMERA" class="ordem-btn btn-seguir mono" />
+                        <ui:Button name="btn-mover" text="➤ MOVER" class="ordem-btn btn-mover mono" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ordens-row">
+                        <ui:Button name="btn-patrulhar" text="🔄 PATRULHAR" class="ordem-btn btn-patrulhar mono" />
+                        <ui:Button name="btn-seguir" text="👁 SEGUIR" class="ordem-btn btn-seguir mono" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ordens-row">
+                        <ui:Button name="btn-atacar" text="🎯 ATACAR" class="ordem-btn btn-atacar mono" />
+                        <ui:Button name="btn-voltar-base" text="🏠 VOLTAR" class="ordem-btn btn-passivo mono" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
 
                 <ui:VisualElement class="ordens-status">

@@ -126,6 +126,18 @@ public class SistemaFimDeJogo : MonoBehaviour
 
     public static void RegistrarResultado(TipoObjetivoFinal tipoObjetivo, bool alvoPertenceAoJogador, string nomeDaNacao, string nomeObjetivo)
     {
+        // Em mapas com varias nacoes, a destruicao de uma unica prefeitura
+        // apenas elimina aquela sede. O RTSObjectiveService reavalia as
+        // capitais e decide a partida quando nao restar uma capital inimiga
+        // ou quando a capital do jogador tiver sido destruida.
+        if (tipoObjetivo == TipoObjetivoFinal.Prefeitura
+            && RTSObjectiveService.Instancia != null
+            && RTSObjectiveService.Instancia.DeveAdiarResultadoDePrefeitura())
+        {
+            Debug.Log($"[SistemaFimDeJogo] Prefeitura destruida; partida continua porque ha outras nacoes ativas: {nomeDaNacao}.");
+            return;
+        }
+
         RTSGameSession.Instancia?.ReportMatchResult(
             alvoPertenceAoJogador ? RTSMatchResult.Defeat : RTSMatchResult.Victory,
             string.IsNullOrWhiteSpace(nomeObjetivo) ? tipoObjetivo.ToString() : nomeObjetivo);

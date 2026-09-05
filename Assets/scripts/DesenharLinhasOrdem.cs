@@ -1291,6 +1291,14 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
 
         Vector3 direitaLider = new Vector3(frenteLider.z, 0f, -frenteLider.x);
         Vector3 destinoEscolta = alvoSeguido.position - (frenteLider * distanciaIdeal) + (direitaLider * offsetLateralNaval);
+        destinoEscolta.y = NavalPlacementResolver.ResolveSeaLevel();
+        if (!NavalPlacementResolver.IsWaterAtPosition(destinoEscolta)
+            && !NavalPlacementResolver.TryResolveNearestWaterPoint(destinoEscolta, 900f, out destinoEscolta))
+        {
+            // Perto da costa, a posição geométrica da formação pode cair em
+            // terra. Mantém a última rota válida e tenta de novo no próximo tick.
+            return;
+        }
 
         float distanciaLider = PlanarDistance(transform.position, alvoSeguido.position);
         float distanciaDestino = PlanarDistance(transform.position, destinoEscolta);

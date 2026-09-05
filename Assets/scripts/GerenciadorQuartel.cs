@@ -352,6 +352,36 @@ public class GerenciadorQuartel : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Um quartel comprado deve nascer como estrutura do mapa, nunca com um
+    /// modal aberto. Também cancela qualquer abertura agendada de um prefab
+    /// que tenha sido usado antes em cena de teste.
+    /// </summary>
+    public void PrepararAposConstrucao()
+    {
+        abrirPainelAoIniciarNoPlayMode = false;
+        CancelInvoke(nameof(AbrirPainelQuartelAoIniciar));
+        menuAberto = false;
+        LimparInterfaceAberta();
+
+        if (painelQuartelUI == null && usarPainelQuartelUIToolkit)
+        {
+            painelQuartelUI = GetComponent<QuartelMenuUIController>();
+        }
+
+        if (painelQuartelUI != null)
+        {
+            painelQuartelUI.FecharInterno();
+        }
+
+        // A compra encerra o fluxo de construção; o Satélite não pode ficar
+        // aberto por trás dela capturando a entrada do mapa.
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto)
+        {
+            MenuComandoController.Instancia.FecharMenu();
+        }
+    }
+
     private void OnEnable()
     {
         BoeingE3Reconhecimento.OnContatoTransmitido -= AoReceberContatoDoE3;
@@ -2085,8 +2115,22 @@ public class GerenciadorQuartel : MonoBehaviour
             var agente = veiculoEspecifico.GetComponent<UnityEngine.AI.NavMeshAgent>();
             if (agente != null)
             {
-                agente.enabled = true;
-                agente.Warp(veiculoEspecifico.transform.position);
+                if (UnityEngine.AI.NavMesh.SamplePosition(
+                    veiculoEspecifico.transform.position,
+                    out UnityEngine.AI.NavMeshHit pontoNavMesh,
+                    8f,
+                    UnityEngine.AI.NavMesh.AllAreas))
+                {
+                    agente.enabled = true;
+                    if (!agente.isOnNavMesh || Vector3.Distance(agente.transform.position, pontoNavMesh.position) > 0.05f)
+                    {
+                        agente.Warp(pontoNavMesh.position);
+                    }
+                }
+                else
+                {
+                    agente.enabled = false;
+                }
             }
             
             veiculoEspecifico.DefinirModoCombate(true);

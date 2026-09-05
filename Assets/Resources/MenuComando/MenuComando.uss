@@ -559,7 +559,7 @@
 .area-inferior {
     flex-direction: row;
     gap: 10px;
-    height: 220px;
+    height: 252px;
     flex-shrink: 0;
 }
 
@@ -581,6 +581,7 @@
     padding-top: 6px;
     padding-bottom: 6px;
     gap: 3px;
+    flex-grow: 1.25;
 }
 
 /* --- TELEMETRIA DA UNIDADE --- */
@@ -800,6 +801,18 @@
 .painel-ordens .ordens-grid {
     gap: 3px;
     margin-top: 3px;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.ordens-row {
+    flex-direction: row;
+    gap: 3px;
+    height: 30px;
+    min-height: 30px;
+    flex-shrink: 0;
 }
 
 .ordem-btn {
@@ -819,6 +832,12 @@
 .painel-ordens .ordem-btn {
     height: 30px;
     min-height: 30px;
+    width: auto;
+    max-width: none;
+    flex-basis: auto;
+    min-width: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
 }
 
 .ordem-btn:hover {
@@ -909,6 +928,8 @@
     margin-top: 6px;
     padding-top: 8px;
     picking-mode: ignore;
+    min-height: 34px;
+    flex-shrink: 0;
 }
 
 .ordem-feedback {

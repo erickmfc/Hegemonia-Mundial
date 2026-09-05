@@ -1406,7 +1406,7 @@ Transform:
   m_GameObject: {fileID: 163748473}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -220, y: 0, z: 300}
+  m_LocalPosition: {x: 14469, y: 0, z: 10481}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1426,7 +1426,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01WarAdvanceZone
   teamId: 2
   dominio: 0
-  raio: 180
+  raio: 6000
   pontos: 4
 --- !u!1 &167438664
 GameObject:
@@ -5454,9 +5454,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
   raio: 260
-  largura: 520
-  profundidade: 360
-  altitude: 120
+  largura: 5000
+  profundidade: 5000
+  altitude: 200
   intervaloDias: 1
 --- !u!1 &704224539
 GameObject:
@@ -7846,7 +7846,7 @@ Transform:
   m_GameObject: {fileID: 943471242}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1362.1665, y: 0.49999997, z: -2550.9995}
+  m_LocalPosition: {x: 1362.1665, y: 0.49999997, z: -3034}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -10862,7 +10862,7 @@ Transform:
   m_GameObject: {fileID: 1252689580}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 180, y: 0, z: 220}
+  m_LocalPosition: {x: 643, y: 0, z: 18846}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10882,7 +10882,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01WarAdvanceZone
   teamId: 2
   dominio: 0
-  raio: 180
+  raio: 8000
   pontos: 4
 --- !u!1 &1258670627
 GameObject:
@@ -12949,7 +12949,7 @@ Transform:
   m_GameObject: {fileID: 1452064263}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -620, y: 0, z: 460}
+  m_LocalPosition: {x: -1767, y: 0, z: -2280}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -12968,8 +12968,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
   raio: 260
-  largura: 520
-  profundidade: 360
+  largura: 5000
+  profundidade: 5000
   altitude: 120
   intervaloDias: 1
 --- !u!1 &1460985903
@@ -13301,7 +13301,7 @@ Transform:
   m_GameObject: {fileID: 1482588525}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 100, z: 320}
+  m_LocalPosition: {x: 0, y: 100, z: 18742}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -13321,7 +13321,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01WarAdvanceZone
   teamId: 2
   dominio: 1
-  raio: 260
+  raio: 7000
   pontos: 4
 --- !u!1 &1494686888
 GameObject:
@@ -14498,15 +14498,15 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1610848547}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.71196467, z: 0, w: 0.70221525}
-  m_LocalPosition: {x: 1582.1665, y: 0.49999997, z: -2550.9995}
+  m_LocalRotation: {x: 0, y: -0.078459024, z: 0, w: 0.99691737}
+  m_LocalPosition: {x: 6748, y: 0.49999997, z: -4039}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2041201778}
   - {fileID: 242636973}
   m_Father: {fileID: 1309340734}
-  m_LocalEulerAnglesHint: {x: 0, y: -90.79, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -9, z: 0}
 --- !u!114 &1610848549
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15569,7 +15569,7 @@ Transform:
   m_GameObject: {fileID: 1693743129}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 620, y: 0, z: -460}
+  m_LocalPosition: {x: 3200, y: 0, z: 6020}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -15588,8 +15588,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
   raio: 260
-  largura: 520
-  profundidade: 360
+  largura: 7000
+  profundidade: 1000
   altitude: 120
   intervaloDias: 1
 --- !u!1 &1698934797
@@ -20086,7 +20086,7 @@ Transform:
   m_GameObject: {fileID: 2037920797}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -620, y: 0, z: -460}
+  m_LocalPosition: {x: -620, y: 0, z: 5630}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -20105,8 +20105,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
   raio: 260
-  largura: 520
-  profundidade: 360
+  largura: 7000
+  profundidade: 2000
   altitude: 120
   intervaloDias: 1
 --- !u!1 &2040653455
@@ -20228,7 +20228,7 @@ Transform:
   m_GameObject: {fileID: 2054495693}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 620, y: 0, z: 460}
+  m_LocalPosition: {x: 5065, y: 0, z: -2294}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -20247,8 +20247,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
   raio: 260
-  largura: 520
-  profundidade: 360
+  largura: 5000
+  profundidade: 5000
   altitude: 120
   intervaloDias: 1
 --- !u!1 &2055373580
