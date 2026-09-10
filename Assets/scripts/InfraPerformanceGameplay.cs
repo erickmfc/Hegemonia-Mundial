@@ -67,6 +67,13 @@ public static class InfraPerformanceGameplay
     private static readonly Dictionary<long, CachePercepcao> CacheInimigosPorSetor = new Dictionary<long, CachePercepcao>(128);
     private static readonly Dictionary<long, List<EntradaEspacialTatica>> IndiceEspacialTatico = new Dictionary<long, List<EntradaEspacialTatica>>(256);
     private static readonly List<EntradaEspacialTatica> EntradasEspaciais = new List<EntradaEspacialTatica>(512);
+    // O indice e refeito periodicamente. Reutilizar suas entradas e celulas
+    // evita milhares de pequenas alocacoes quando ha muitas unidades em jogo.
+    // Nenhuma referencia sai deste indice entre uma atualizacao e outra.
+    private static readonly Stack<EntradaEspacialTatica> PoolEntradasEspaciais = new Stack<EntradaEspacialTatica>(512);
+    private static readonly Stack<List<EntradaEspacialTatica>> PoolCelulasEspaciais = new Stack<List<EntradaEspacialTatica>>(256);
+    private const int LimitePoolEntradasEspaciais = 1024;
+    private const int LimitePoolCelulasEspaciais = 384;
     private const float TamanhoCelulaTatica = 96f;
     private static float proximaAtualizacaoIndiceEspacial;
     private static Transform _cameraCache;
@@ -395,8 +402,7 @@ public static class InfraPerformanceGameplay
         }
 
         long inicio = MarcarInicioMedicao();
-        IndiceEspacialTatico.Clear();
-        EntradasEspaciais.Clear();
+        LiberarIndiceEspacialTatico();
         RegistroEntidadesJogo.FillControlesUnidade(BufferControles);
         Transform camera = ObterCameraPrincipal();
         int proximas = 0;
@@ -430,14 +436,12 @@ public static class InfraPerformanceGameplay
                 danos = controle.GetComponentInChildren<SistemaDeDanos>();
             }
 
-            EntradaEspacialTatica entrada = new EntradaEspacialTatica
-            {
-                controle = controle,
-                transform = transformControle,
-                identidade = identidade,
-                danos = danos,
-                teamId = team
-            };
+            EntradaEspacialTatica entrada = AlugarEntradaEspacial();
+            entrada.controle = controle;
+            entrada.transform = transformControle;
+            entrada.identidade = identidade;
+            entrada.danos = danos;
+            entrada.teamId = team;
             EntradasEspaciais.Add(entrada);
 
             if (camera != null)
@@ -454,7 +458,7 @@ public static class InfraPerformanceGameplay
             List<EntradaEspacialTatica> celula;
             if (!IndiceEspacialTatico.TryGetValue(key, out celula))
             {
-                celula = new List<EntradaEspacialTatica>(8);
+                celula = AlugarCelulaEspacial();
                 IndiceEspacialTatico.Add(key, celula);
             }
             celula.Add(entrada);
@@ -475,6 +479,63 @@ public static class InfraPerformanceGameplay
         DiagnosticoDesempenhoJogo.DefinirContadorMetrica("land_units_near", proximas);
         DiagnosticoDesempenhoJogo.DefinirContadorMetrica("land_units_medium", medias);
         DiagnosticoDesempenhoJogo.DefinirContadorMetrica("land_units_far", distantes);
+    }
+
+    private static EntradaEspacialTatica AlugarEntradaEspacial()
+    {
+        return PoolEntradasEspaciais.Count > 0
+            ? PoolEntradasEspaciais.Pop()
+            : new EntradaEspacialTatica();
+    }
+
+    private static List<EntradaEspacialTatica> AlugarCelulaEspacial()
+    {
+        if (PoolCelulasEspaciais.Count > 0)
+        {
+            return PoolCelulasEspaciais.Pop();
+        }
+
+        return new List<EntradaEspacialTatica>(8);
+    }
+
+    private static void LiberarIndiceEspacialTatico()
+    {
+        for (int i = 0; i < EntradasEspaciais.Count; i++)
+        {
+            EntradaEspacialTatica entrada = EntradasEspaciais[i];
+            if (entrada == null)
+            {
+                continue;
+            }
+
+            entrada.controle = null;
+            entrada.transform = null;
+            entrada.identidade = null;
+            entrada.danos = null;
+            entrada.teamId = 0;
+            if (PoolEntradasEspaciais.Count < LimitePoolEntradasEspaciais)
+            {
+                PoolEntradasEspaciais.Push(entrada);
+            }
+        }
+
+        EntradasEspaciais.Clear();
+
+        foreach (List<EntradaEspacialTatica> celula in IndiceEspacialTatico.Values)
+        {
+            if (celula == null)
+            {
+                continue;
+            }
+
+            celula.Clear();
+            if (PoolCelulasEspaciais.Count < LimitePoolCelulasEspaciais)
+            {
+                PoolCelulasEspaciais.Push(celula);
+            }
+        }
+
+        IndiceEspacialTatico.Clear();
     }
 
     private static long ComporChaveCelula(int x, int z)

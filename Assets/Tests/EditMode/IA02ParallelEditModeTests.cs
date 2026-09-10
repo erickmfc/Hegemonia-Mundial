@@ -10,6 +10,7 @@ using UnityEngine;
 public sealed class IA02ParallelEditModeTests
 {
     private const string CampaignScenePath = "Assets/Scenes/cena19).unity";
+    private const string HistoryScenePath = "Assets/_Recovery/Md Historia.unity";
     private const string ProfilePath = "Assets/IA02/Profiles/IA02NationProfile.asset";
     private const string PlanPath = "Assets/IA02/BuildPlans/IA02BuildPlan.asset";
 
@@ -65,6 +66,37 @@ public sealed class IA02ParallelEditModeTests
     }
 
     [Test]
+    public void CampaignScenesBlockAutomaticMilitaryProductionDuringPeacetime()
+    {
+        AssertCampaignBlocksPeacetimeMilitaryProduction(CampaignScenePath);
+        AssertCampaignBlocksPeacetimeMilitaryProduction(HistoryScenePath);
+    }
+
+    [Test]
+    public void NewAiControllersKeepPeacetimeProductionEnabledUnlessASceneOverridesIt()
+    {
+        foreach (string typeName in new[]
+                 {
+                     "Hegemonia.AI.IA01.IA01Controller",
+                     "Hegemonia.AI.IA02.IA02Controller"
+                 })
+        {
+            GameObject gameObject = new GameObject(typeName + "_DefaultProductionPolicy");
+            try
+            {
+                Component controller = gameObject.AddComponent(ResolveType(typeName));
+                PropertyInfo policy = controller.GetType().GetProperty("AllowPeacetimeMilitaryProduction");
+                Assert.That(policy, Is.Not.Null);
+                Assert.That((bool)policy.GetValue(controller), Is.True);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(gameObject);
+            }
+        }
+    }
+
+    [Test]
     public void SaveGameDeclaresSeparateIA01AndIA02StateCollections()
     {
         Type saveType = ResolveType("DadosDoJogo");
@@ -108,6 +140,16 @@ public sealed class IA02ParallelEditModeTests
         return AppDomain.CurrentDomain.GetAssemblies()
             .Select(assembly => assembly.GetType(fullName, false))
             .FirstOrDefault(type => type != null);
+    }
+
+    private static void AssertCampaignBlocksPeacetimeMilitaryProduction(string scenePath)
+    {
+        string sceneText = File.ReadAllText(scenePath);
+        int disabledPolicies = System.Text.RegularExpressions.Regex.Matches(
+            sceneText,
+            "(?m)^  allowPeacetimeMilitaryProduction: 0$").Count;
+        Assert.That(disabledPolicies, Is.EqualTo(2),
+            "A campanha precisa desativar a produção militar automática em paz para IA01 e IA02: " + scenePath);
     }
 
     private static string GetString(UnityEngine.Object asset, string propertyName)

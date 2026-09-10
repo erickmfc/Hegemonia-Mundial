@@ -9,6 +9,54 @@ using UnityEngine.TestTools;
 public sealed class MisseisAlvoMovelPlayModeTests
 {
     [UnityTest]
+    public IEnumerator MisselCacaAtingeAlvoEAplicaDano()
+    {
+        Type misselType = ResolveType("MisselCaca");
+        Type danosType = ResolveType("SistemaDeDanos");
+        GameObject alvo = new GameObject("AlvoCombateEndToEnd");
+        GameObject misselObjeto = new GameObject("MisselCombateEndToEnd");
+
+        try
+        {
+            alvo.transform.position = new Vector3(0f, 0f, 24f);
+            BoxCollider colisor = alvo.AddComponent<BoxCollider>();
+            colisor.size = new Vector3(8f, 8f, 8f);
+            Component danos = alvo.AddComponent(danosType);
+            SetField(danosType, danos, "vidaMaxima", 100f);
+            SetField(danosType, danos, "vidaAtual", 100f);
+
+            Component missel = misselObjeto.AddComponent(misselType);
+            SetField(misselType, missel, "tempoQuedaLivre", 0f);
+            SetField(misselType, missel, "velocidadeMaxima", 120f);
+            SetField(misselType, missel, "aceleracaoBoost", 120f);
+            yield return null;
+
+            MethodInfo iniciar = misselType.GetMethod(
+                "IniciarAtaque",
+                BindingFlags.Instance | BindingFlags.Public,
+                null,
+                new[] { typeof(Vector3), typeof(Vector3), typeof(Transform) },
+                null);
+            Assert.That(iniciar, Is.Not.Null);
+            iniciar.Invoke(missel, new object[] { alvo.transform.position, Vector3.zero, alvo.transform });
+
+            float limite = Time.realtimeSinceStartup + 3f;
+            while ((float)ReadField(danosType, danos, "vidaAtual") >= 100f
+                && Time.realtimeSinceStartup < limite)
+            {
+                yield return null;
+            }
+
+            Assert.That((float)ReadField(danosType, danos, "vidaAtual"), Is.LessThan(100f));
+        }
+        finally
+        {
+            UnityEngine.Object.Destroy(alvo);
+            UnityEngine.Object.Destroy(misselObjeto);
+        }
+    }
+
+    [UnityTest]
     public IEnumerator MisselTaticoAtualizaAlvoVivoSemTeletransportar()
     {
         Type misselType = ResolveType("MisselTatico");
@@ -205,5 +253,12 @@ public sealed class MisseisAlvoMovelPlayModeTests
         FieldInfo field = type.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         Assert.That(field, Is.Not.Null, "Campo não encontrado: " + name);
         field.SetValue(target, value);
+    }
+
+    private static object ReadField(Type type, object target, string name)
+    {
+        FieldInfo field = type.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        Assert.That(field, Is.Not.Null, "Campo não encontrado: " + name);
+        return field.GetValue(target);
     }
 }

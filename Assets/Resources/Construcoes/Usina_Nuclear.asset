@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Usina_Nuclear
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Usina Nuclear
+  descricao: Usina de alto custo e manutenção que estabiliza cidades de aproximadamente 400 mil habitantes.
+  icone: {fileID: 0}
+  itemId: energia.usina_nuclear
+  aliases: usina nuclear, nuclear, reator, energia nuclear, power plant
+  capacidades: 524353
+  prefabDaUnidade: {fileID: 8650943160096321376, guid: 6c27be81dda23694281e36d5eef46f96, type: 3}
+  preco: 12000
+  precoDefinitivo: 12000
+  categoria: 5
+  escalaPoder: 1
+  strategicRole: 3
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 450
+  empregosGeradosPerfil: 2050
+  usinaNuclear: 1
+  energiaNuclear: 30000
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

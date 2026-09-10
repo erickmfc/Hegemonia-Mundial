@@ -20,6 +20,8 @@ public class CombustivelUnidade : MonoBehaviour
     public ClasseCombustivelUnidade classe = ClasseCombustivelUnidade.Nenhuma;
     public float capacidade = -1f;
     public float combustivelAtual = -1f;
+    [Tooltip("Mantém a capacidade informada no Inspector para unidades com tanque especial, sem aplicar o padrão automático da classe.")]
+    public bool preservarCapacidadeConfigurada = false;
     public float consumoPorSegundoMovendo = -1f;
     public float velocidadeMinimaParaConsumo = 0.05f;
     [Range(0.01f, 0.95f)] public float limiteBaixoPercentual = 0.25f;
@@ -69,7 +71,7 @@ public class CombustivelUnidade : MonoBehaviour
 
     private void Update()
     {
-        if (!usaCombustivel || Capacidade <= 0f)
+        if (!usaCombustivel || combustivelInfinito || Capacidade <= 0f)
         {
             return;
         }
@@ -221,7 +223,8 @@ public class CombustivelUnidade : MonoBehaviour
         if ((classe == ClasseCombustivelUnidade.Aerea || classe == ClasseCombustivelUnidade.Naval) && capacidadeIdeal > 0f)
         {
             bool capacidadeAntigaPadrao = classe == ClasseCombustivelUnidade.Naval && capacidade > 0f && capacidade <= 300f;
-            bool precisaAtualizarCapacidade = capacidade <= 0f || capacidade < capacidadeIdeal || capacidadeAntigaPadrao;
+            bool precisaAtualizarCapacidade = !preservarCapacidadeConfigurada
+                && (capacidade <= 0f || capacidade < capacidadeIdeal || capacidadeAntigaPadrao);
             if (precisaAtualizarCapacidade)
             {
                 float percentualAnterior = capacidade > 0f ? Mathf.Clamp01(combustivelAtual / capacidade) : 1f;

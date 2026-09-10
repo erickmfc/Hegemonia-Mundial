@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: NavioGuardaCosteira
+  m_EditorClassIdentifier: 
+  nomeItem: Navio Guarda Costeira
+  descricao: Navio de busca e salvamento com canhao de autoprotecao. Tripulacao de 15 e capacidade para 250 pessoas.
+  icone: {fileID: 0}
+  itemId: NAVIO_GUARDA_COSTEIRA
+  aliases: navio guarda costeira; navio de resgate; busca e salvamento naval
+  capacidades: 0
+  prefabDaUnidade: {fileID: 3474791008449835462, guid: df4d46506dbf93741acfd8e9b9540038, type: 3}
+  preco: 4200
+  precoDefinitivo: 0
+  categoria: 1
+  escalaPoder: 0
+  strategicRole: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

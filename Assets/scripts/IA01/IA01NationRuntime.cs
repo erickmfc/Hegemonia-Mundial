@@ -1539,6 +1539,13 @@ namespace Hegemonia.AI.IA01
                 for (int i = 0; i < FoundationSequence.Length; i++)
                 {
                     IA01IntentType step = FoundationSequence[i];
+                    if (step == IA01IntentType.BuildMilitaryTent
+                        && controller != null
+                        && !controller.AllowAutomaticQuartel)
+                    {
+                        FoundationSequenceStatus = "Quartel automatico desativado.";
+                        continue;
+                    }
                     bool residentialStep = step == IA01IntentType.BuildStarterHouse
                         || step == IA01IntentType.BuildMediumApartment
                         || step == IA01IntentType.BuildHighApartment;
@@ -2023,6 +2030,12 @@ namespace Hegemonia.AI.IA01
                 return true;
             }
 
+            if (IsEgyptCityResidentialIntent(intent) && TryGetEgyptCityDefinition(out definition))
+            {
+                MarkExact("cidade Egito residencial", definition);
+                return true;
+            }
+
             IA01BuildDefinition bestExact = null;
             int bestPriority = int.MinValue;
             for (int i = 0; i < cachedDefinitions.Count; i++)
@@ -2041,7 +2054,7 @@ namespace Hegemonia.AI.IA01
 
                 int priority = intent == IA01IntentType.BuildDefense
                     ? (candidate.StrategicRole == IA01StrategicRole.AntiAirDefense ? 100 : 10)
-                    : ResolveInfrastructurePriority(intent, candidate);
+                    : ResolveInfrastructurePriority(intent, candidate, country);
                 if (bestExact == null
                     || priority > bestPriority
                     || (priority == bestPriority && candidate.Cost < bestExact.Cost))
@@ -2065,7 +2078,7 @@ namespace Hegemonia.AI.IA01
             return false;
         }
 
-        private static int ResolveInfrastructurePriority(IA01IntentType intent, IA01BuildDefinition candidate)
+        private static int ResolveInfrastructurePriority(IA01IntentType intent, IA01BuildDefinition candidate, DadosPaisGoverno country)
         {
             if (candidate == null || candidate.Item == null) return 0;
             string text = IA_Text.Normalize(candidate.Item.GetDisplayName() + " " + candidate.Item.name + " " + candidate.Item.aliases);
@@ -2079,7 +2092,14 @@ namespace Hegemonia.AI.IA01
             }
             if (intent == IA01IntentType.BuildFoodProduction)
             {
-                return text.Contains("fazenda") || text.Contains("farm") ? 120 : 20;
+                int level = candidate.Item.nivelIndustriaAlimentos;
+                if (level > 0)
+                {
+                    int population = country != null ? Mathf.Max(0, country.populacaoCivil) : 0;
+                    int desiredLevel = population >= 600000 ? 3 : population >= 200000 ? 2 : 1;
+                    return 220 - Mathf.Abs(level - desiredLevel) * 55;
+                }
+                return text.Contains("fazenda") || text.Contains("farm") ? 90 : 20;
             }
             return 0;
         }
@@ -2184,6 +2204,35 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildCommercialAirport: return "aeroporto_comercial";
                 default: return string.Empty;
             }
+        }
+
+        private static bool IsEgyptCityResidentialIntent(IA01IntentType intent)
+        {
+            return intent == IA01IntentType.BuildResidentialCapacity
+                || intent == IA01IntentType.BuildStarterHouse
+                || intent == IA01IntentType.BuildMediumApartment
+                || intent == IA01IntentType.BuildHighApartment;
+        }
+
+        private bool TryGetEgyptCityDefinition(out IA01BuildDefinition definition)
+        {
+            definition = null;
+            for (int i = 0; i < cachedDefinitions.Count; i++)
+            {
+                IA01BuildDefinition candidate = cachedDefinitions[i];
+                if (candidate == null || candidate.Item == null) continue;
+                if (!string.Equals(candidate.ItemId, "urbana.cidade_egito", StringComparison.OrdinalIgnoreCase)) continue;
+                candidate.Archetype = IA01BuildArchetype.Residential;
+                candidate.Domain = IA01BuildDomain.Land;
+                candidate.StrategicRole = IA01StrategicRole.Residential;
+                candidate.MinimumStage = IA01NationStage.Initialization;
+                candidate.MinimumTreasury = 0;
+                candidate.MaximumRecommendedCount = 1;
+                candidate.CatalogResolution = "Cidade Egito pré-definida no create";
+                definition = candidate;
+                return true;
+            }
+            return false;
         }
 
         private static bool TryCreateForcedOpeningDefinition(IA01IntentType intent, DadosConstrucao item, out IA01BuildDefinition definition)
@@ -2748,18 +2797,78 @@ namespace Hegemonia.AI.IA01
 
             if (MenuConstrucao.catalogoGlobal != null && MenuConstrucao.catalogoGlobal.Count > 0)
             {
+                GarantirCidadeEgitoNoCatalogo(MenuConstrucao.catalogoGlobal);
+                GarantirEconomiaAvancadaNoCatalogo(MenuConstrucao.catalogoGlobal);
                 return MenuConstrucao.catalogoGlobal;
             }
 
             if (menu != null && menu.catalogo != null && menu.catalogo.Count > 0)
             {
+                GarantirCidadeEgitoNoCatalogo(menu.catalogo);
+                GarantirEconomiaAvancadaNoCatalogo(menu.catalogo);
                 return menu.catalogo;
             }
 
             CatalogoProdutoCompartilhado.SincronizarFontesVivas();
-            return MenuConstrucao.catalogoGlobal != null && MenuConstrucao.catalogoGlobal.Count > 0
-                ? MenuConstrucao.catalogoGlobal
-                : EmptyCatalog;
+            if (MenuConstrucao.catalogoGlobal != null && MenuConstrucao.catalogoGlobal.Count > 0)
+            {
+                GarantirCidadeEgitoNoCatalogo(MenuConstrucao.catalogoGlobal);
+                GarantirEconomiaAvancadaNoCatalogo(MenuConstrucao.catalogoGlobal);
+                return MenuConstrucao.catalogoGlobal;
+            }
+
+            DadosConstrucao cidade = Resources.Load<DadosConstrucao>("Construcoes/Egito");
+            List<DadosConstrucao> fallback = new List<DadosConstrucao>();
+            if (cidade != null && cidade.TryGetPrefabBasico(out GameObject prefab) && prefab != null) fallback.Add(cidade);
+            GarantirEconomiaAvancadaNoCatalogo(fallback);
+            if (fallback.Count > 0)
+            {
+                return fallback;
+            }
+
+            return EmptyCatalog;
+        }
+
+        private static void GarantirCidadeEgitoNoCatalogo(List<DadosConstrucao> catalogo)
+        {
+            if (catalogo == null) return;
+            DadosConstrucao cidade = Resources.Load<DadosConstrucao>("Construcoes/Egito");
+            if (cidade == null || !cidade.TryGetPrefabBasico(out GameObject prefab) || prefab == null) return;
+            for (int i = 0; i < catalogo.Count; i++)
+            {
+                DadosConstrucao item = catalogo[i];
+                if (item == cidade || (item != null && string.Equals(item.GetStableId(), cidade.GetStableId(), StringComparison.OrdinalIgnoreCase))) return;
+            }
+            catalogo.Add(cidade);
+        }
+
+        private static void GarantirEconomiaAvancadaNoCatalogo(List<DadosConstrucao> catalogo)
+        {
+            if (catalogo == null) return;
+            string[] caminhos =
+            {
+                "Construcoes/Food_Industry_Level1",
+                "Construcoes/Food_Industry_Level2",
+                "Construcoes/Food_Industry_Level3",
+                "Construcoes/Usina_Nuclear",
+                "Construcoes/Mini_Pista_Logistica"
+            };
+            for (int i = 0; i < caminhos.Length; i++)
+            {
+                DadosConstrucao ficha = Resources.Load<DadosConstrucao>(caminhos[i]);
+                if (ficha == null || !ficha.TryGetPrefabBasico(out GameObject prefab) || prefab == null) continue;
+                bool duplicada = false;
+                for (int j = 0; j < catalogo.Count; j++)
+                {
+                    DadosConstrucao existente = catalogo[j];
+                    if (existente != null && string.Equals(existente.GetStableId(), ficha.GetStableId(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        duplicada = true;
+                        break;
+                    }
+                }
+                if (!duplicada) catalogo.Add(ficha);
+            }
         }
 
         private static IA01BuildArchetype ResolveArchetype(IA01IntentType intent)
@@ -3763,6 +3872,10 @@ namespace Hegemonia.AI.IA01
                 currentSector = regionKey;
                 int failureWorldVersion = intent.Type == IA01IntentType.EstablishCapital ? -1 : world.Version;
                 string stateToken = timeoutStateToken;
+                if (IA01_CityIntentAdapter.IsCityIntent(intent.Type))
+                {
+                    stateToken += "|" + IA_CityExpansionPolicy.GetPreparationStateToken(context.TeamId);
+                }
                 string attemptKey = failures.BuildIntentKey(intent.Type, IA01StrategicRole.None, regionKey);
                 lastAttemptKey = attemptKey;
                 if (!failures.CanAttempt(attemptKey, now, stateToken))
@@ -3827,6 +3940,29 @@ namespace Hegemonia.AI.IA01
                     }
                     if (!planHandled) board.Complete(intent.Type);
                     return false;
+                }
+
+                if (IA01_CityIntentAdapter.IsCityIntent(intent.Type)
+                    && IA_CityExpansionPolicy.IsCityConstruction(definition.Item))
+                {
+                    DadosEconomiaPais economy = SistemaEconomiaImoveis.Instancia != null
+                        ? SistemaEconomiaImoveis.Instancia.ObterEconomia(context.TeamId)
+                        : null;
+                    IA_CityExpansionPolicy.Assessment cityAssessment;
+                    if (!IA_CityExpansionPolicy.TryPrepareForCity(
+                        context.TeamId,
+                        country,
+                        economy,
+                        definition.Item != null ? definition.Item.PrefabDaUnidade : null,
+                        true,
+                        out cityAssessment))
+                    {
+                        currentConstructionState = IA01ConstructionState.Cooldown;
+                        Status = "Cidade aguardando preparação: " + cityAssessment.Decision + ".";
+                        context.SetMetric("ia01.city_preparation_blocked", 1d);
+                        return false;
+                    }
+                    context.SetMetric("ia01.city_preparation_blocked", 0d);
                 }
 
                 // O financiamento de fundacao ja foi concedido pelo diretor economico

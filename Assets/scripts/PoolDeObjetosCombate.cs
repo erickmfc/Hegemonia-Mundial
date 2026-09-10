@@ -248,15 +248,22 @@ public static class PoolDeObjetosCombate
         {
             Object instanciaObj = Object.Instantiate((Object)prefab, position, rotation);
             GameObject instancia = instanciaObj as GameObject;
-            if (instancia != null)
+            if (instancia == null)
             {
-                return instancia;
+                Component componente = instanciaObj as Component;
+                if (componente != null)
+                {
+                    instancia = componente.gameObject;
+                }
             }
 
-            Component componente = instanciaObj as Component;
-            if (componente != null)
+            if (instancia != null)
             {
-                return componente.gameObject;
+                // O AudioRuntime registra fontes somente na criacao. Instancias
+                // reutilizadas ja preservam essa configuracao, sem nova busca
+                // pela cena nem trabalho extra a cada Spawn.
+                AudioRuntime.ConfigurarHierarquia(instancia);
+                return instancia;
             }
 
             // Sub-asset ou tipo incompatível — destruir silenciosamente

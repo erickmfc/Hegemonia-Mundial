@@ -13,6 +13,8 @@ namespace Hegemonia.AI.IA02
         [SerializeField] private bool required;
         [SerializeField] private bool exactPosition = true;
         [SerializeField] private bool allowAlternativeSlot = true;
+        [Tooltip("Se preenchido, este slot só aceita a ficha com este itemId. Use para estruturas grandes posicionadas manualmente.")]
+        [SerializeField] private string preferredConstructionItemId = string.Empty;
         [SerializeField] private Transform buildingPoint;
         [SerializeField] private Transform unitSpawnPoint;
         [SerializeField] private Transform exitDirection;
@@ -37,6 +39,7 @@ namespace Hegemonia.AI.IA02
         public bool Required => required;
         public bool ExactPosition => exactPosition;
         public bool AllowAlternativeSlot => allowAlternativeSlot;
+        public string PreferredConstructionItemId => preferredConstructionItemId == null ? string.Empty : preferredConstructionItemId.Trim();
         public Transform BuildingPoint => buildingPoint != null ? buildingPoint : transform;
         public Transform UnitSpawnPoint => unitSpawnPoint;
         public Transform ExitDirection => exitDirection;
@@ -97,6 +100,13 @@ namespace Hegemonia.AI.IA02
             {
                 reason = "slot em estado " + state
                     + (string.IsNullOrWhiteSpace(blockReason) ? string.Empty : ": " + blockReason);
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(PreferredConstructionItemId)
+                && !string.Equals(PreferredConstructionItemId, definition.ItemId, System.StringComparison.OrdinalIgnoreCase))
+            {
+                reason = "slot reservado para " + PreferredConstructionItemId;
                 return false;
             }
 

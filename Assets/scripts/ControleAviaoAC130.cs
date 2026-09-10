@@ -72,6 +72,7 @@ public sealed class ControleAviaoAC130 : ControleAviao
     private Vector3 ultimaPosicaoAlvoRastreada;
     private Vector3 centroAtaqueSuavizado;
     private Transform alvoRastreado;
+    private ControleUnidade controleUnidade;
     private bool rastreamentoAtaqueInicializado;
     private float proximaBuscaAlvos;
     private bool orbitaInicializada;
@@ -83,6 +84,7 @@ public sealed class ControleAviaoAC130 : ControleAviao
         base.Start();
 
         torretas = GetComponentsInChildren<ControleTorreta>(true);
+        controleUnidade = GetComponent<ControleUnidade>();
         ConfigurarTorretasAC130();
         IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
         meuTime = identidade != null ? identidade.teamID : 0;
@@ -130,6 +132,16 @@ public sealed class ControleAviaoAC130 : ControleAviao
         if (!usarOrbitaLateralContinua
             || estadoAtual != EstadoAviao.EmMissao
             || ordemParaRetorno)
+        {
+            base.ManobraVooRealista(multiplicadorDanos);
+            return;
+        }
+
+        // A órbita lateral é uma decisão de combate do AC-130. Uma ordem
+        // manual de deslocamento coloca o controlador oficial em modo passivo;
+        // nesse caso o AC-130 deve seguir o destino recebido, sem substituir o
+        // GPS por um alvo detectado automaticamente.
+        if (controleUnidade != null && !controleUnidade.ModoCombateAtivo)
         {
             base.ManobraVooRealista(multiplicadorDanos);
             return;

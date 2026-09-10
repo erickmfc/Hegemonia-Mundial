@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using UnityEngine;
+using Hegemonia.AI.Shared;
 
 namespace Hegemonia.AI.IA01
 {
@@ -47,6 +48,10 @@ namespace Hegemonia.AI.IA01
         [SerializeField] private bool useScriptedOpening = true;
         [SerializeField] private bool usePreparedSlots = true;
         [SerializeField] private bool allowAutonomousExpansion = true;
+        [Tooltip("Permite que o Quartel seja criado automaticamente na abertura da partida. A construção manual continua disponível quando desativado.")]
+        [SerializeField] private bool allowAutomaticQuartel = true;
+        [Tooltip("Quando desligado, a IA mantém patrulhas e reage ao combate, mas só cria unidades militares automaticamente depois de entrar em guerra.")]
+        [SerializeField] private bool allowPeacetimeMilitaryProduction = true;
         [SerializeField] private bool enablePlanningAdvisor = true;
         [Tooltip("Raio de seguranca para impedir que um layout/slot duplicado no lado do jogador seja usado pela IA.")]
         [SerializeField, Min(500f)] private float maxConstructionDistanceFromController = 4200f;
@@ -141,6 +146,8 @@ namespace Hegemonia.AI.IA01
         public bool UseScriptedOpening => useScriptedOpening;
         public bool UsePreparedSlots => usePreparedSlots;
         public bool AllowAutonomousExpansion => allowAutonomousExpansion;
+        public bool AllowAutomaticQuartel => allowAutomaticQuartel;
+        public bool AllowPeacetimeMilitaryProduction => allowPeacetimeMilitaryProduction;
         public bool EnablePlanningAdvisor => enablePlanningAdvisor;
         public bool ProgressiveMilitaryCatalog => progressiveMilitaryCatalog;
         public bool AllowMilitaryTierAdvancement => allowMilitaryTierAdvancement;
@@ -528,6 +535,41 @@ namespace Hegemonia.AI.IA01
 
             EnsureBootstrap(false);
             nationRuntime?.RegisterHostileAggression(aggressorIdentity.teamID, aggressor.transform.position, damage);
+
+            if (EhVitimaNaval(victimIdentity, victimDamage))
+            {
+                bool missilNaval = aggressor.GetComponent<MisselNaval>() != null
+                    || aggressor.GetComponentInParent<MisselNaval>() != null
+                    || aggressor.GetComponent<MisselSubmarino>() != null
+                    || aggressor.GetComponentInParent<MisselSubmarino>() != null;
+                bool torpedo = aggressor.GetComponent<Torpedo>() != null
+                    || aggressor.GetComponentInParent<Torpedo>() != null;
+                string alvo = victimIdentity.transform.root != null ? victimIdentity.transform.root.name : victimIdentity.name;
+                WarAdvanceZoneRegistry.RegisterNavalIncident(
+                    TeamId,
+                    victimDamage.transform.position,
+                    aggressor.transform.position,
+                    aggressorIdentity.teamID,
+                    torpedo ? 1 : 0,
+                    missilNaval ? 1 : 0,
+                    damage,
+                    alvo,
+                    victimDamage.vidaAtual - damage <= 0f,
+                    false,
+                    true);
+            }
+        }
+
+        private static bool EhVitimaNaval(IdentidadeUnidade identidade, SistemaDeDanos danos)
+        {
+            if (identidade != null && identidade.tipoUnidade == TipoUnidade.Naval) return true;
+            if (danos == null) return false;
+            return danos.GetComponentInParent<ControleNavioRealista>() != null
+                || danos.GetComponentInParent<ControleSubmarino>() != null
+                || danos.GetComponentInParent<NavioPetroleiro>() != null
+                || danos.GetComponentInParent<PierMarinha>() != null
+                || danos.GetComponentInParent<Estaleiro>() != null
+                || danos.GetComponentInParent<PlataformaOffshore>() != null;
         }
 
         public void Initialize(IA01RuntimeContext suppliedContext)
@@ -803,9 +845,24 @@ namespace Hegemonia.AI.IA01
         public IA01BallisticThreatRecord RegisterBallisticImpact(Vector3 impactPosition, Vector3 predictedTargetPosition, Vector3 arrivalDirection, Vector3 probableLaunchArea, IA01BallisticMissileType missileType, IA01BallisticWarheadType warheadType, int launchCount, float damage, string infrastructureHit, int suspectedCountryId = 0, int confirmedCountryId = 0, Vector3 knownLaunchPosition = default(Vector3), bool launchPositionKnown = false, float authorshipConfidence = 0f)
         {
             EnsureBootstrap(false);
+            Vector3 lastKnown = launchPositionKnown ? knownLaunchPosition
+                : (probableLaunchArea != Vector3.zero ? probableLaunchArea : impactPosition);
+            WarAdvanceZoneRegistry.RegisterIncident(TeamId, impactPosition, lastKnown,
+                confirmedCountryId != 0 ? confirmedCountryId : suspectedCountryId,
+                0, Mathf.Max(0, launchCount), damage, infrastructureHit,
+                damage >= 100f, false, authorshipConfidence >= 0.5f);
             return strategicSupport != null
                 ? strategicSupport.RegisterBallisticImpact(impactPosition, predictedTargetPosition, arrivalDirection, probableLaunchArea, missileType, warheadType, launchCount, damage, infrastructureHit, suspectedCountryId, confirmedCountryId, knownLaunchPosition, launchPositionKnown, authorshipConfidence, Time.unscaledTime)
                 : null;
+        }
+
+        public void RegisterAirContactDetection(int attackerTeamId, Vector3 lastKnownPosition, bool attackerStillPresent = true)
+        {
+            if (attackerTeamId <= 0 || attackerTeamId == TeamId) return;
+            EnsureBootstrap(false);
+            WarAdvanceZoneRegistry.UpdateContact(TeamId, attackerTeamId, lastKnownPosition, attackerStillPresent);
+            if (attackerStillPresent)
+                nationRuntime?.RegisterHostileAggression(attackerTeamId, lastKnownPosition, 0f);
         }
 
         public bool RegisterLeaderEvent(IA01LeaderEventType eventType, string leaderId, Vector3 position, float confidence, int relatedCountryId = 0, string regionId = null, string buildingId = null, string vehicleId = null)

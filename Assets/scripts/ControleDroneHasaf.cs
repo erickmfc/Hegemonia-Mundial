@@ -113,7 +113,26 @@ public class ControleDroneHasaf : MonoBehaviour
     {
         cronometroRecarga += Time.deltaTime;
 
-        if (alvoSeguir != null)
+        // A ordem oficial é a única autoridade sobre o deslocamento. O drone
+        // pode continuar procurando alvos quando está ocioso/patrulhando, mas
+        // não pode substituir um destino manual, uma perseguição ou um ataque
+        // já emitido pelo ControleUnidade.
+        bool ordemDeMovimentoAtiva = controleUnidade != null && controleUnidade.PossuiOrdemMovimentoAtiva;
+        bool patrulhaOficialAtiva = controleUnidade != null
+            && controleUnidade.OrdemAtual == OrdemControleUnidade.Patrulhando;
+        bool deslocamentoManualAtivo = ordemDeMovimentoAtiva
+            && controleUnidade != null
+            && !controleUnidade.ModoCombateAtivo;
+
+        if (patrulhaOficialAtiva || deslocamentoManualAtivo)
+        {
+            // Uma patrulha/ordem manual nova substitui uma perseguição antiga.
+            // O executor oficial da aeronave continua sendo o único que escolhe
+            // o próximo waypoint.
+            alvoSeguir = null;
+        }
+
+        if (alvoSeguir != null && !patrulhaOficialAtiva && !deslocamentoManualAtivo)
         {
             // Seguir alvo
             if (alvoSeguir.gameObject.activeInHierarchy)
@@ -132,7 +151,7 @@ public class ControleDroneHasaf : MonoBehaviour
                 alvoSeguir = null;
             }
         }
-        else
+        else if (!ordemDeMovimentoAtiva)
         {
             // Autodisparo de patrulha contra o inimigo mais próximo em um raio de 600m
             Transform alvoInimigo = EscanearInimigoProximo(600f);
@@ -148,7 +167,11 @@ public class ControleDroneHasaf : MonoBehaviour
     public void AtribuirAlvo(Transform novoAlvo)
     {
         alvoSeguir = novoAlvo;
-        controleAviao.estadoAtual = ControleAviao.EstadoAviao.EmMissao;
+        // Alterar somente o enum deixava o ControleAviao com
+        // estaEmModoVooFisico=false; o drone aparecia como "em missão", mas
+        // o Update principal não movia mais o objeto.
+        controleAviao.DefinirEstado(ControleAviao.EstadoAviao.EmMissao);
+        controleAviao.estaEmModoVooFisico = true;
         if (novoAlvo != null)
         {
             Vector3 foco = novoAlvo.position;

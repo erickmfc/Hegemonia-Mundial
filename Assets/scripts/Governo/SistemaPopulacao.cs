@@ -61,7 +61,8 @@ public static class SistemaPopulacao
             ? (float)pais.populacaoCivil / capacidadeResidencial
             : (pais.populacaoCivil > 0 ? 2f : 0f);
 
-        float fatorAeroporto = ObterFatorAeroporto();
+        float fatorAeroporto = ObterFatorAeroporto(pais.teamId);
+        SaudePopulacionalResumo saude = CidadeSaudePopulacional.ObterResumo(pais.teamId, populacaoCivilAtual);
         bool emSuperpopulacao = pais.pressaoHabitacional > MARGEM_SUPERPOPULACAO;
 
         if (indiceAtratividade >= 0.35f && !emSuperpopulacao)
@@ -70,7 +71,7 @@ public static class SistemaPopulacao
                 ? UnityEngine.Mathf.Lerp(1f, 2.5f, (pais.felicidade - 80f) / 20f)
                 : 1f;
 
-            float fatorTotal = indiceAtratividade * bonusMigracao * fatorAeroporto;
+            float fatorTotal = indiceAtratividade * bonusMigracao * fatorAeroporto * saude.fatorCrescimento;
             float espacoLivre = UnityEngine.Mathf.Max(0f, popMax - pais.populacao);
             float deltaBase   = espacoLivre * TAXA_CRESCIMENTO_BASE * pais.natalidade;
             variacaoMigratoria = UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(deltaBase * fatorTotal));
@@ -130,6 +131,11 @@ public static class SistemaPopulacao
         evacuacaoForcada = UnityEngine.Mathf.Clamp(evacuacaoForcada, 0, UnityEngine.Mathf.Max(0, populacaoCivilAtual - mortesPorCrise));
 
         int deltaPopulacao = variacaoMigratoria - evacuacaoForcada - mortesPorCrise;
+        int mortesPorDoenca = populacaoCivilAtual > 0
+            ? UnityEngine.Mathf.Clamp(UnityEngine.Mathf.RoundToInt(populacaoCivilAtual * saude.mortalidadeExtra), 0, populacaoCivilAtual)
+            : 0;
+        deltaPopulacao -= mortesPorDoenca;
+        mortesPorCrise += mortesPorDoenca;
 
         // APLICAR DELTA NA POPULACAO
         int limiteMax = UnityEngine.Mathf.RoundToInt(popMax * MARGEM_SUPERPOPULACAO);
@@ -168,6 +174,11 @@ public static class SistemaPopulacao
         satisfacao += (economia.deficitEnergia <= 0f ? 10f
             : UnityEngine.Mathf.Max(0f, 10f - economia.deficitEnergia));
         pais.indiceSatisfacaoServicos = UnityEngine.Mathf.Clamp(satisfacao, 0f, 100f);
+        if (saude.riscoDoenca > 0f)
+        {
+            pais.felicidade = UnityEngine.Mathf.Clamp(pais.felicidade - saude.penalidadeFelicidade * 0.05f, 0f, 100f);
+            economia.custoSocial += saude.custoDiario / 24f;
+        }
     }
 
     // --- CALCULO DO INDICE DE ATRATIVIDADE (0 a 1) ---
@@ -216,8 +227,25 @@ public static class SistemaPopulacao
     }
 
     // --- FATOR DO AEROPORTO COMERCIAL ---
-    private static float ObterFatorAeroporto()
+    private static float ObterFatorAeroporto(int teamId)
     {
+        if (teamId > 0)
+        {
+#if UNITY_2023_1_OR_NEWER
+            GerenciadorAeroportoComercial[] aeroportos = UnityEngine.Object.FindObjectsByType<GerenciadorAeroportoComercial>(FindObjectsSortMode.None);
+#else
+            GerenciadorAeroportoComercial[] aeroportos = UnityEngine.Object.FindObjectsOfType<GerenciadorAeroportoComercial>();
+#endif
+            float melhor = 0f;
+            for (int i = 0; i < aeroportos.Length; i++)
+            {
+                GerenciadorAeroportoComercial aeroporto = aeroportos[i];
+                if (aeroporto == null || !aeroporto.isActiveAndEnabled || ResolverTeamIdAeroporto(aeroporto.gameObject) != teamId) continue;
+                melhor = Mathf.Max(melhor, CalcularFatorAeroporto(aeroporto));
+            }
+            if (melhor > 0f) return melhor;
+        }
+
         if (Time.frameCount != _aeroportoFrame)
         {
             _aeroportoFrame = Time.frameCount;
@@ -231,13 +259,29 @@ public static class SistemaPopulacao
         if (_aeroportoCache == null || !_aeroportoCache.isActiveAndEnabled)
             return 1f;
 
-        int passagens = _aeroportoCache.estatisticaPassagensVendidasDia;
-        int contratos  = _aeroportoCache.contratosAtivos != null ? _aeroportoCache.contratosAtivos.Count : 0;
+        return CalcularFatorAeroporto(_aeroportoCache);
+    }
+
+    private static float CalcularFatorAeroporto(GerenciadorAeroportoComercial aeroporto)
+    {
+        if (aeroporto == null) return 1f;
+        int passagens = aeroporto.estatisticaPassagensVendidasDia;
+        int contratos  = aeroporto.contratosAtivos != null ? aeroporto.contratosAtivos.Count : 0;
 
         if (passagens > 1000 || contratos >= 4) return 4f;
         if (passagens > 500  || contratos >= 3) return 3f;
         if (passagens > 200  || contratos >= 2) return 2f;
         if (passagens > 0    || contratos >= 1) return 1.5f;
         return 0.8f;
+    }
+
+    private static int ResolverTeamIdAeroporto(GameObject go)
+    {
+        if (go == null) return 1;
+        IdentidadeUnidade identity = go.GetComponentInParent<IdentidadeUnidade>();
+        if (identity != null && identity.teamID > 0) return identity.teamID;
+        IdentidadeIA identityIA = go.GetComponentInParent<IdentidadeIA>();
+        if (identityIA != null && identityIA.teamID > 0) return identityIA.teamID;
+        return SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.teamJogador : 1;
     }
 }

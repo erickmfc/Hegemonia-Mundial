@@ -47,6 +47,16 @@ public static class RegistroEntidadesJogo
         }
     }
 
+    /// <summary>
+    /// Informa aos consumidores que os dados de uma entidade registrada
+    /// mudaram sem que ela tenha sido criada ou destruída (por exemplo, uma
+    /// transferência internacional de propriedade).
+    /// </summary>
+    public static void NotificarAlteracao()
+    {
+        EntidadesAlteradas?.Invoke();
+    }
+
     private static readonly HashSet<IdentidadeUnidade> Unidades = new HashSet<IdentidadeUnidade>();
     private static readonly HashSet<ControleUnidade> ControlesUnidade = new HashSet<ControleUnidade>();
     private static readonly HashSet<IdentidadeNaval> Navios = new HashSet<IdentidadeNaval>();

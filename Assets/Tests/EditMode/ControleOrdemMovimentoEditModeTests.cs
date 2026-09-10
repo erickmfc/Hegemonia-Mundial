@@ -107,6 +107,65 @@ public sealed class ControleOrdemMovimentoEditModeTests
     }
 
     [Test]
+    public void BatchOf128UnitsKeepsOneActiveExecutionPerRepeatedOrder()
+    {
+        const int unitCount = 128;
+        var created = new List<GameObject>(unitCount);
+        try
+        {
+            for (int index = 0; index < unitCount; index++)
+            {
+                GameObject unit = new GameObject("StressOrderUnit_" + index);
+                created.Add(unit);
+                object runtime = CriarRuntime(1f);
+                Vector3 destination = new Vector3(index * 3f, 0f, index * 2f);
+                string orderId = "batch-order-" + index;
+
+                object[] first = { orderId, "StressExecutor", unit, destination, EnumOrdem("Terrestre"), 1f, false };
+                Assert.That(InvocarBool(runtime, "TentarIniciar", first), Is.True);
+                Assert.That((bool)first[6], Is.False);
+                Assert.That(InvocarBool(runtime, "TentarIniciarTentativa", 1f), Is.True);
+                Assert.That(InvocarBool(runtime, "ComecarMonitoramento", 1f), Is.True);
+
+                object[] repeated = { orderId, "StressExecutor", unit, destination, EnumOrdem("Terrestre"), 1.1f, false };
+                Assert.That(InvocarBool(runtime, "TentarIniciar", repeated), Is.True);
+                Assert.That((bool)repeated[6], Is.True);
+                Assert.That((int)Membro(Atual(runtime), "Tentativas"), Is.EqualTo(1));
+                Assert.That(Membro(Atual(runtime), "Estado").ToString(), Is.EqualTo("Monitorando"));
+            }
+        }
+        finally
+        {
+            for (int index = created.Count - 1; index >= 0; index--)
+            {
+                UnityEngine.Object.DestroyImmediate(created[index]);
+            }
+        }
+    }
+
+    [Test]
+    public void CampaignSelectionAcceptsTheControlledCountryInsteadOfOnlyTeamOne()
+    {
+        Assembly assembly = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(candidate => candidate.GetName().Name == "Assembly-CSharp");
+        Assert.That(assembly, Is.Not.Null);
+
+        Type selectionType = assembly.GetType("GerenteSelecao");
+        Assert.That(selectionType, Is.Not.Null);
+        MethodInfo canSelect = selectionType.GetMethod(
+            "EhUnidadeControlavelPeloJogador",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.That(canSelect, Is.Not.Null);
+
+        Assert.That((bool)canSelect.Invoke(null, new object[] { 2, 2 }), Is.True,
+            "A campanha deve permitir selecionar uma unidade do país atualmente controlado.");
+        Assert.That((bool)canSelect.Invoke(null, new object[] { 1, 2 }), Is.False,
+            "Uma unidade de outro país não pode ser selecionada como própria.");
+        Assert.That((bool)canSelect.Invoke(null, new object[] { -1, 4 }), Is.True,
+            "Prefabs antigos sem identidade continuam elegíveis para receber a identidade do jogador.");
+    }
+
+    [Test]
     public void PatrulhaAereaEmMissaoAceitaNovoPontoSemReinserirOPrimeiroDestino()
     {
         Assembly assembly = AppDomain.CurrentDomain.GetAssemblies()
@@ -147,7 +206,10 @@ public sealed class ControleOrdemMovimentoEditModeTests
         Assert.That(rotaField, Is.Not.Null);
         System.Collections.IList rota = (System.Collections.IList)rotaField.GetValue(aviao);
         Assert.That(rota, Has.Count.EqualTo(1));
-        Assert.That((Vector3)rota[0], Is.EqualTo(novoPonto));
+        Vector3 pontoNormalizado = (Vector3)rota[0];
+        Assert.That(pontoNormalizado.x, Is.EqualTo(novoPonto.x).Within(0.01f));
+        Assert.That(pontoNormalizado.z, Is.EqualTo(novoPonto.z).Within(0.01f));
+        Assert.That(pontoNormalizado.y, Is.GreaterThanOrEqualTo(181f));
     }
 
     [Test]

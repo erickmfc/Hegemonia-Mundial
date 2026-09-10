@@ -333,12 +333,12 @@ public class GerenciadorQuartel : MonoBehaviour
     {
         if (abrirPainelAoIniciarNoPlayMode)
         {
-            Debug.Log($"[Quartel] instância de teste iniciou: objeto={name}, ativo={isActiveAndEnabled}, uiToolkit={usarPainelQuartelUIToolkit}, painel={(painelQuartelUI != null)}, administracao={(administracao != null)}, cena={UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}", this);
-        }
-
-        if (Application.isPlaying && abrirPainelAoIniciarNoPlayMode)
-        {
-            Invoke(nameof(AbrirPainelQuartelAoIniciar), 0.75f);
+            // A opção antiga era usada apenas por cenas de teste e podia
+            // abrir um modal no momento em que o Quartel era instanciado.
+            // Mantemos o campo serializado por compatibilidade, mas toda
+            // abertura agora precisa vir do clique ou do atalho B.
+            abrirPainelAoIniciarNoPlayMode = false;
+            Debug.Log($"[Quartel] abertura automática ignorada: objeto={name}. Use clique ou tecla B.", this);
         }
     }
 

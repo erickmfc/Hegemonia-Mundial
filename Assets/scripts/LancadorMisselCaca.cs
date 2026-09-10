@@ -55,6 +55,7 @@ public class LancadorMisselCaca : MonoBehaviour
     }
     private List<AlvoDetectado> inimigosNaArea = new List<AlvoDetectado>();
     private float tempoUltimoScan = 0f;
+    private bool avisouPrefabMissilAusente;
 
     public bool TemInimigosDetectados => inimigosNaArea != null && inimigosNaArea.Count > 0;
 
@@ -109,6 +110,12 @@ public class LancadorMisselCaca : MonoBehaviour
         _meuTime = GetComponent<IdentidadeIA>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 1;
         // Evita que todos os caças escaneiem e disparem no mesmo frame.
         tempoUltimoScan = Time.time + UnityEngine.Random.Range(0.05f, 0.85f);
+
+        if (missilCacaPrefab == null)
+        {
+            Debug.LogError($"[LancadorMisselCaca] {name} está sem missilCacaPrefab; o caça não poderá disparar.", this);
+            avisouPrefabMissilAusente = true;
+        }
     }
 
 #if UNITY_EDITOR
@@ -268,6 +275,20 @@ public class LancadorMisselCaca : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Cancela somente a retomada automática que este componente agenda após
+    /// voltar à base por falta de munição. A nova ordem continua sendo
+    /// executada pelo ControleAviao, que é a autoridade única do voo.
+    /// </summary>
+    public void CancelarRetomadaAutomaticaAposNovaOrdem()
+    {
+        voltandoParaBase = false;
+        pontoPatrulha = Vector3.zero;
+        _alvoIAForcado = null;
+        _ultimoPontoAlvoIA = Vector3.zero;
+        _tempoValidadeAlvoIA = -1f;
+    }
+
     public void DefinirAlvoIA(Transform alvo, Vector3 alvoFallback, float duracaoSegundos = 4f)
     {
         if (ModoPassivoOficial)
@@ -312,7 +333,7 @@ public class LancadorMisselCaca : MonoBehaviour
             return false;
         }
 
-        Disparar(_alvoIAForcado);
+        if (!Disparar(_alvoIAForcado)) return false;
         _ultimoPontoAlvoIA = _alvoIAForcado.position;
         _tempoValidadeAlvoIA = Time.time + 1.5f;
         return true;
@@ -404,9 +425,18 @@ public class LancadorMisselCaca : MonoBehaviour
         });
     }
 
-    void Disparar(Transform alvo)
+    bool Disparar(Transform alvo)
     {
-        if (municaoAtual <= 0 || missilCacaPrefab == null || alvo == null) return;
+        if (municaoAtual <= 0 || alvo == null) return false;
+        if (missilCacaPrefab == null)
+        {
+            if (!avisouPrefabMissilAusente)
+            {
+                Debug.LogError($"[LancadorMisselCaca] {name} tentou disparar sem missilCacaPrefab.", this);
+                avisouPrefabMissilAusente = true;
+            }
+            return false;
+        }
 
         Transform saida = transform;
         if (pontosDeSaida != null && pontosDeSaida.Length > 0)
@@ -446,6 +476,7 @@ public class LancadorMisselCaca : MonoBehaviour
         cronometroRecarga = tempoRecarga;
         
         if (_audioSource != null) _audioSource.Play();
+        return true;
     }
 
     public void RecarregarCompletoNaBase()
@@ -554,7 +585,13 @@ public class LancadorMisselCaca : MonoBehaviour
 
             if (GUI.Button(new Rect(140, slotY + 5, 80, 30), "SEGUIR"))
             {
-                if (_vooModerno != null) _vooModerno.alvoGPSVoo = alvo.transform.position;
+                bool aceitouSeguimento = _unidadeBase != null
+                    ? _unidadeBase.EmitirOrdemSeguir(alvo.transform)
+                    : _vooModerno != null && _vooModerno.ReceberOrdemManual(alvo.transform.position);
+                if (!aceitouSeguimento && debugLogs)
+                {
+                    Debug.LogWarning($"[Radar] Seguimento recusado para {name}: o controlador não aceitou a ordem.");
+                }
             }
 
             GUI.enabled = (municaoAtual > 0 && cronometroRecarga <= 0);

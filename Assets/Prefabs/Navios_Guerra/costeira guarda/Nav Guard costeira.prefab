@@ -1,0 +1,595 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6132080000000011
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6132080000000012}
+  m_Layer: 0
+  m_Name: Vagas_Helicopteros_Guarda_Costeira
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6132080000000012
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6132080000000011}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6132080000000014}
+  - {fileID: 6132080000000016}
+  m_Father: {fileID: 3156667604499304453}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &6132080000000013
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6132080000000014}
+  m_Layer: 0
+  m_Name: Vaga_Helicoptero_01
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6132080000000014
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6132080000000013}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 8.5, y: 8.8, z: -37.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6132080000000012}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &6132080000000015
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6132080000000016}
+  m_Layer: 0
+  m_Name: Vaga_Helicoptero_02
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6132080000000016
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6132080000000015}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: -8.5, y: 8.8, z: -37.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6132080000000012}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
+--- !u!1 &6132080000000017
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6132080000000018}
+  m_Layer: 0
+  m_Name: Aproximacao_Helicoptero
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6132080000000018
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6132080000000017}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 8.5, y: 25, z: -37.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3156667604499304453}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &3474791008449835462
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3156667604499304453}
+  - component: {fileID: 4051986257233119554}
+  - component: {fileID: 6132080000000001}
+  - component: {fileID: 6132080000000002}
+  - component: {fileID: 6132080000000003}
+  - component: {fileID: 6132080000000004}
+  - component: {fileID: 6132080000000005}
+  - component: {fileID: 6132080000000006}
+  - component: {fileID: 6132080000000007}
+  - component: {fileID: 6132080000000008}
+  - component: {fileID: 6132080000000009}
+  - component: {fileID: 6132080000000010}
+  m_Layer: 0
+  m_Name: Nav Guard costeira
+  m_TagString: Navio
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3156667604499304453
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 663.6, y: 0, z: -28.4}
+  m_LocalScale: {x: 0.8, y: 0.8, z: 0.88}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7227730222949174341}
+  - {fileID: 6132080000000012}
+  - {fileID: 6132080000000018}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -90, z: 0}
+--- !u!114 &4051986257233119554
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9172a3be2cdf4456e7f8091a4b5c6d84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NavioGuardaCosteira
+  teamId: 1
+  nationId: 0
+  rescueUnitId: 
+  capacidadeResgate: 250
+  tripulacao: 15
+  tempoBuscaSegundos: 120
+  areaBusca: 50
+  intervaloBuscaSegundos: 0.75
+  distanciaChegada: 25
+  capacidadeNavio: 250
+  tripulacaoNavio: 15
+  tempoBuscaNavio: 120
+  vidaMinimaParaContinuar: 0.5
+  pierBase: {fileID: 0}
+--- !u!65 &6132080000000001
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 16, y: 5.98, z: 70}
+  m_Center: {x: 7.3, y: 2, z: -10.95}
+--- !u!54 &6132080000000002
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  serializedVersion: 5
+  m_Mass: 2500
+  m_LinearDamping: 0.2
+  m_AngularDamping: 0.5
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!195 &6132080000000003
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 2
+  m_Speed: 28
+  m_Acceleration: 8
+  avoidancePriority: 35
+  m_AngularSpeed: 45
+  m_StoppingDistance: 12
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 4
+  m_BaseOffset: 0
+  m_WalkableMask: 8
+  m_ObstacleAvoidanceType: 4
+--- !u!114 &6132080000000004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ba36694946111b41bd3c8a621dd2398, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleNavioRealista
+  tempoAceleracao: 6
+  tempoDesaceleracao: 8
+  tempoParadaEmergencia: 6
+  velocidadeMaxima: 28
+  velocidadeLeme: 5
+  curvaMaximaGraus: 12
+  coeficienteAderna: 2.5
+  alturaOnda: 0.5
+  frequenciaOnda: 0.2
+  arrastoPassivo: 0.5
+  distanciaChegada: 15
+  offsetAlturaAgua: 0
+  profundidadeVisual: 0
+  anguloEntradaManobraRe: 120
+  anguloSaidaManobraRe: 70
+  duracaoMaximaManobraRe: 2.5
+  potenciaManobraRe: -0.5
+  bigodeiraProa: {fileID: 0}
+  rastroEsteira: {fileID: 0}
+  turbulenciaPopa: {fileID: 0}
+  modelo3D: {fileID: 0}
+  aplicarBalancoAosCreates: 1
+  grupoCreatesOperacoes: {fileID: 0}
+  antenaRadar: {fileID: 0}
+  velocidadeAntena: 60
+  modoOperacao: 0
+  modoNavegacao: 0
+  somMotorParado: {fileID: 0}
+  somMotorMovimento: {fileID: 0}
+  possuiTorpedos: 0
+  tubosTorpedo:
+  - {fileID: 0}
+  - {fileID: 0}
+  prefabTorpedo: {fileID: 0}
+  torpedosDisponiveis: 0
+  alcanceTorpedos: 600
+  cooldownTorpedo: 5
+  anguloMaximoLancamento: 90
+  torpedosNoModoAtivo: 0
+  intervaloBuscaTorpedoAtivo: 0.75
+--- !u!114 &6132080000000005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86bf21ae7ce6f5a47b74d272af475dc8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeNaval
+  nomeDoNavio: Navio Guarda Costeira
+  categoriaNavio: 1
+  estaAtracado: 0
+  velocidadeDeRe: 5
+  velocidadeRotacaoRe: 2
+--- !u!114 &6132080000000006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9858e9b2f6518a04b84f31a08c12547d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IdentidadeUnidade
+  teamID: 1
+  nomeDoPais: Guarda Costeira
+  antygavitiEstabilidade: 5
+  tipoUnidade: 2
+  militaresConsumidos: 15
+  combustivelPorHora: 0
+  energiaConsumida: 0
+  nomeDeBatismo: Navio Guarda Costeira
+--- !u!114 &6132080000000007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
+  vidaMaxima: 650
+  vidaAtual: 650
+  unidadeBiologica: 0
+  ehEstrutura: 0
+  prefabDestrocos: {fileID: 0}
+  somExplosaoExclusivo: {fileID: 0}
+  tamanhoDoEfeito: 4.69
+  ajusteDePosicao: {x: 0, y: 0, z: 0}
+  habilitarAfundamentoNaval: 1
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
+  atrasoPosAfundamento: 0.6
+--- !u!114 &6132080000000008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32ce560dd3360da439531016f604e494, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ControleUnidade
+  anelSelecao: {fileID: 0}
+  selecionado: 0
+  aguardandoVisto: 0
+  vistoAprovado: 0
+  velocidadeVoo: 8
+  pontoRetornoInicial: {x: 0, y: 0, z: 0}
+  possuiPontoRetornoInicial: 0
+  dominioControleAtual: 1
+  ordemControleAtual: 0
+  modoCombateOficialAtivo: 1
+  executorControleAtual: ControleNavioRealista
+  bloqueioControleAtivo: 0
+  motivoBloqueioControle: 
+  bloqueioAdministrativoQuartel: 0
+  motivoBloqueioAdministrativoQuartel: 
+  intervaloEntreTentativasOrdem: 2
+  tamanhoSelecao: 0
+  corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
+  linhaAlcance: {fileID: 0}
+  corAlcance: {r: 1, g: 0, b: 0, a: 0.8}
+  larguraLinha: 0.15
+  segmentosCirculo: 50
+  linhaCaminho: {fileID: 0}
+  corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
+--- !u!114 &6132080000000009
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 335c85b4aedfaa0459dab195ab142338, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CombustivelUnidade
+  usaCombustivel: 1
+  combustivelInfinito: 0
+  classe: 2
+  capacidade: 4800
+  combustivelAtual: 4800
+  preservarCapacidadeConfigurada: 1
+  consumoPorSegundoMovendo: 0.85
+  velocidadeMinimaParaConsumo: 0.05
+  limiteBaixoPercentual: 0.25
+  preencherAoIniciar: 1
+  pararAoEsvaziar: 1
+  mostrarIndicadorMundo: 1
+  offsetIndicador: {x: 0, y: 5, z: 0}
+  intervaloIndicador: 0.25
+  debugLogs: 0
+--- !u!114 &6132080000000010
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 848bc5ee2c15183418447ba3d3a6fe30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GerenciadorPortaAvioes
+  patio: {fileID: 6132080000000012}
+  patioMilitar: {fileID: 0}
+  hangarAviao: {fileID: 0}
+  decolagem: {fileID: 0}
+  decida: {fileID: 0}
+  avioesNoPatio: []
+  avioesNoHangar: []
+  transportesC700NoPatio: []
+  helicopterosDoAeroporto: []
+  prefabDroneKamikaze: {fileID: 0}
+  precoDroneKamikaze: 1500
+  prefabSu11: {fileID: 0}
+  precoSu11: 2500
+  prefabMarcadorPatrulhaAviao: {fileID: 0}
+  prefabMarcadorBombardeiro: {fileID: 0}
+  menuAeroportoUI: {fileID: 0}
+  aviaoSelecionadoParaMissao: {fileID: 0}
+  c700SelecionadoParaMissao: {fileID: 0}
+  helicopteroSelecionadoParaMissao: {fileID: 0}
+  waypointsPatio: []
+  wpPreparacao: {fileID: 0}
+  wpPronto: {fileID: 0}
+  waypointsDecolagem: []
+  waypointsTaxi: []
+  waypointsDecida: []
+  wpAndadar: {fileID: 0}
+  wpAnalise: {fileID: 0}
+  esperandoCliqueMassa: 0
+  qtdMassaDrone: 1
+  esperandoCliquePatrulhaGrupo: 0
+  qtdPatrulhaGrupo: 1
+  semEnergia: 0
+  exibirTooltipStatus: 0
+  usarFilaSpawnAereoIA: 1
+  intervaloSpawnIaSaudavel: 0.55
+  intervaloSpawnIaPressao: 1.7
+  intervaloSpawnIaCritico: 3.5
+  antenaRotativa: {fileID: 0}
+  velGiroAntena: 45
+  rampaDecolagem: {fileID: 0}
+  plataformaElevador: {fileID: 0}
+  nivelHangar: {fileID: 0}
+  nivelConves: {fileID: 0}
+  tempoElevador: 4
+  localHangarInterno: {x: 1.52, y: -0.78, z: -2.07}
+  localHangarFrente: {x: 1.18, y: -0.78, z: 8.66}
+  localConvesEntrada: {x: 1.18, y: 6.13, z: 8.66}
+  grupoPistaLanding: {fileID: 0}
+  pontoAlinhamentoHelicoptero: {fileID: 6132080000000018}
+  waypointSaidaPista: {fileID: 0}
+  waypointEntradaElevador: {fileID: 0}
+  grupoParadas: {fileID: 6132080000000012}
+  debugLogs: 0
+  abrirMenuAoCliqueNoNavio: 1
+  operacoesV2AssumiuControle: 0
+  raioRadarResgate: 1500
+  modoDesempenhoUI: 1
+  somenteHelicopteros: 1
+  usarReservaCombustivelHelicopteros: 1
+  derivarReservaDoTanqueNaval: 1
+  percentualReservaDoTanqueNaval: 0.5
+  capacidadeReservaCombustivelHelicopteros: 0
+  reservaCombustivelHelicopteros: -1
+  taxaAbastecimentoHelicopteros: 40
+--- !u!1001 &4813799223258979253
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 3156667604499304453}
+    m_Modifications:
+    - target: {fileID: -6689036041284674117, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_Name
+      value: coast_ship_guard
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 49.99999
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 9.270108
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -17.112492
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -5645937942226959685, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+--- !u!4 &7227730222949174341 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
+  m_PrefabInstance: {fileID: 4813799223258979253}
+  m_PrefabAsset: {fileID: 0}

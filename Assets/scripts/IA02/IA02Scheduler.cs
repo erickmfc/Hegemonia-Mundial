@@ -275,6 +275,16 @@ namespace Hegemonia.AI.IA02
                 return null;
             }
 
+            // O caminho de manutencao existe apenas como protecao para uma
+            // tarefa que ficou vencida entre a montagem e a execucao do plano.
+            // Executar antes de NextDueAt anularia o cooldown: no fallback sem
+            // orquestrador, isso transformava uma IA estrategica em trabalho de
+            // todo frame. Ordens do jogador nao passam por este scheduler.
+            if (now < bestDueAt)
+            {
+                return null;
+            }
+
             return new Candidate
             {
                 Controller = bestController,

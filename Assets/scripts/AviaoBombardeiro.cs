@@ -55,6 +55,7 @@ public class AviaoBombardeiro : MonoBehaviour
 
     // --- Internas ---
     private ControleAviao controleAviao;
+    private ControleUnidade controleUnidade;
     private IdentidadeUnidade meuID;
     private SistemaDeDanos sistemaDanos;
     private bool emProcessoDeAtaque = false;
@@ -72,6 +73,7 @@ public class AviaoBombardeiro : MonoBehaviour
     void Start()
     {
         controleAviao = GetComponent<ControleAviao>();
+        controleUnidade = GetComponent<ControleUnidade>();
         meuID = GetComponent<IdentidadeUnidade>();
         sistemaDanos = GetComponent<SistemaDeDanos>();
         if (sistemaDanos == null)
@@ -113,13 +115,14 @@ public class AviaoBombardeiro : MonoBehaviour
     void LateUpdate()
     {
         SincronizarAlvoDoAeroporto();
+        bool combateOficialAtivo = controleUnidade == null || controleUnidade.ModoCombateAtivo;
 
         if (controleAviao != null && controleAviao.estaEmModoVooFisico)
         {
             Vector3 destinoForcado = controleAviao.alvoGPSVoo;
             float distanciaPreparacao = ObterDistanciaPreparacaoAtaque();
             
-            if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+            if (combateOficialAtivo && controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
             {
                 if (modoDeAtaque == ModoAtaque.AtaqueAoSolo && alvoAreaSolo != Vector3.zero)
                 {
@@ -174,16 +177,19 @@ public class AviaoBombardeiro : MonoBehaviour
                 travouDirecao = false;
             }
 
-            if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao || 
+            if (combateOficialAtivo && (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao ||
                 controleAviao.estadoAtual == ControleAviao.EstadoAviao.Decolando)
+            )
             {
-                destinoForcado.y = altitudeDeVoo;
+                destinoForcado.y = Mathf.Max(
+                    altitudeDeVoo,
+                    ControleAviao.AltitudeMinimaVooMilitar);
             }
 
             controleAviao.alvoGPSVoo = destinoForcado;
         }
 
-        if (emProcessoDeAtaque) return;
+        if (!combateOficialAtivo || emProcessoDeAtaque) return;
         if (controleAviao != null && controleAviao.estadoAtual != ControleAviao.EstadoAviao.EmMissao) return;
 
         switch (modoDeAtaque)
@@ -218,23 +224,27 @@ public class AviaoBombardeiro : MonoBehaviour
         {
             modoDeAtaque = ModoAtaque.AtaqueAoSolo;
             travouDirecao = false;
+            controleUnidade?.DefinirModoCombate(true);
         }
         
         if (GUI.Button(new Rect(x + 10, y + 40, w - 20, h), (modoDeAtaque == ModoAtaque.Patrulha ? "[X] " : "") + "Radar Patrulha"))
         {
             modoDeAtaque = ModoAtaque.Patrulha;
             travouDirecao = false;
+            controleUnidade?.DefinirModoCombate(true);
         }
 
         if (GUI.Button(new Rect(x + 10, y + 80, w - 20, h), (modoDeAtaque == ModoAtaque.AtaqueEmMassa ? "[X] " : "") + "Ataque em Massa"))
         {
             modoDeAtaque = ModoAtaque.AtaqueEmMassa;
             travouDirecao = false;
+            controleUnidade?.DefinirModoCombate(true);
         }
 
         if (GUI.Button(new Rect(x + 10, y + 120, w - 20, h), "RETORNAR BASE"))
         {
-            if (controleAviao != null) controleAviao.ordemParaRetorno = true;
+            controleUnidade?.DefinirModoCombate(false);
+            if (controleAviao != null) controleAviao.ComandoRetornarBase();
         }
     }
 
@@ -244,6 +254,7 @@ public class AviaoBombardeiro : MonoBehaviour
     private void SincronizarAlvoDoAeroporto()
     {
         if (controleAviao == null) return;
+        if (controleUnidade != null && !controleUnidade.ModoCombateAtivo) return;
 
         if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.Decolando || 
             controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
@@ -268,6 +279,20 @@ public class AviaoBombardeiro : MonoBehaviour
     private void CriarMarcadorImediato()
     {
         // Removido a pedido do usuário: o marcador 3D (X/Cilindro) não deve aparecer no mundo do jogo, apenas no mapa tático (UI)
+    }
+
+    /// <summary>
+    /// Interrompe uma sequência de lançamento que ainda poderia emitir ordem
+    /// de retorno depois que o jogador ou a IA já deu uma nova ordem de voo.
+    /// O movimento continua sob o ControleAviao; somente o executor de ataque
+    /// específico do bombardeiro é encerrado.
+    /// </summary>
+    public void CancelarAtaqueAutomaticoAposNovaOrdem()
+    {
+        StopAllCoroutines();
+        emProcessoDeAtaque = false;
+        travouDirecao = false;
+        direcaoPassagemFixa = Vector3.zero;
     }
 
     void OnDestroy()

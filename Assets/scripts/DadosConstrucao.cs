@@ -85,6 +85,20 @@ public class DadosConstrucao : ScriptableObject
         set => strategicRole = value;
     }
 
+    [Header("Perfil econômico opcional")]
+    [Tooltip("0 mantém a construção antiga. 1, 2 ou 3 transforma a ficha em Food Industry do respectivo nível.")]
+    public int nivelIndustriaAlimentos;
+    [Tooltip("Produção de comida por dia para Food Industry. Zero usa o valor padrão do nível.")]
+    public float producaoComidaPorDia;
+    [Tooltip("Manutenção diária de Food Industry ou usina nuclear.")]
+    public float manutencaoPorDia;
+    [Tooltip("Empregos do perfil econômico, quando diferente do prefab base.")]
+    public int empregosGeradosPerfil;
+    [Tooltip("Marca uma ficha de usina nuclear de alta capacidade.")]
+    public bool usinaNuclear;
+    [Tooltip("Produção de energia do perfil nuclear. Zero usa 30.000 MW equivalentes.")]
+    public float energiaNuclear;
+
     [Header("Balanceamento em Dados")]
     public DadosBalanceamentoUnidade balanceamento;
 

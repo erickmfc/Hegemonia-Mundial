@@ -154,6 +154,56 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Restaura o retrato político de uma partida sem gerar países, relações
+    /// ou nomes novos. Guerras, sanções, alianças e propostas salvas são a
+    /// autoridade depois de carregar a cena.
+    /// </summary>
+    public bool RestaurarEstadoSalvo(
+        int teamJogadorSalvo,
+        IEnumerable<DadosPaisGoverno> paisesSalvos,
+        IEnumerable<RelacaoPaisGoverno> relacoesSalvas,
+        IEnumerable<PropostaInternacional> propostasSalvas,
+        IEnumerable<string> noticiasSalvas)
+    {
+        if (paisesSalvos == null)
+        {
+            return false;
+        }
+
+        List<DadosPaisGoverno> paisesRestaurados = paisesSalvos
+            .Where(pais => pais != null)
+            .ToList();
+        if (paisesRestaurados.Count == 0)
+        {
+            return false;
+        }
+
+        teamJogador = teamJogadorSalvo > 0 ? teamJogadorSalvo : 1;
+        paises = paisesRestaurados;
+        relacoes = relacoesSalvas != null
+            ? relacoesSalvas.Where(relacao => relacao != null).ToList()
+            : new List<RelacaoPaisGoverno>();
+        propostas = propostasSalvas != null
+            ? propostasSalvas.Where(proposta => proposta != null).ToList()
+            : new List<PropostaInternacional>();
+        noticias = noticiasSalvas != null
+            ? noticiasSalvas.Where(noticia => !string.IsNullOrWhiteSpace(noticia)).ToList()
+            : new List<string>();
+
+        GarantirPosturasIniciais();
+        for (int i = 0; i < paises.Count; i++)
+        {
+            GarantirCatalogosNacionais(paises[i]);
+        }
+
+        RegistroNacoesGoverno.GarantirInstancia();
+        RegistroNacoesGoverno.Instancia?.Sincronizar(paises);
+        SistemaFederacoesGlobais.GarantirInstancia();
+        OnGovernoAtualizado?.Invoke();
+        return true;
+    }
+
     public void GarantirPaisIA(int teamId, string nomePais, string nomeMoeda, string simboloMoeda, PerfilPaisIA perfil, ModoInicialPaisIA modo)
     {
         if (teamId <= 0) return;

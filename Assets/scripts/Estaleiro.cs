@@ -421,6 +421,77 @@ public class Estaleiro : MonoBehaviour
         get { return TemCapacidadeDeProducao; }
     }
 
+    /// <summary>
+    /// Integra um navio entregue pelo mercado no mesmo estado inicial usado
+    /// por um navio liberado deste estaleiro. Sem isso a identidade mudava,
+    /// mas combustível, controlador e sistemas específicos continuavam com
+    /// os dados do prefab de origem.
+    /// </summary>
+    public bool RegistrarNavioEntregue(GameObject navio, int teamId)
+    {
+        if (navio == null)
+        {
+            return false;
+        }
+
+        int ownerTeam = Mathf.Max(1, teamId);
+        navio.transform.SetParent(null, true);
+        navio.layer = LayerMask.NameToLayer("Default");
+
+        IdentidadeUnidade idNavio = navio.GetComponent<IdentidadeUnidade>();
+        if (idNavio == null) idNavio = navio.AddComponent<IdentidadeUnidade>();
+        idNavio.teamID = ownerTeam;
+        DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null
+            ? SistemaGovernoMundial.Instancia.ObterPais(ownerTeam)
+            : null;
+        idNavio.nomeDoPais = pais != null && !string.IsNullOrEmpty(pais.nomePais)
+            ? pais.nomePais
+            : (ownerTeam == 1 ? "Hegemonia" : "Nacao " + ownerTeam);
+        idNavio.tipoUnidade = TipoUnidade.Naval;
+        CombustivelUnidade.Garantir(navio, true);
+
+        ControleUnidade controle = navio.GetComponent<ControleUnidade>();
+        if (controle == null)
+        {
+            controle = navio.AddComponent<ControleUnidade>();
+        }
+        else if (!controle.enabled)
+        {
+            controle.enabled = true;
+        }
+
+        float nivelAgua = NavalPlacementResolver.ResolveSeaLevel();
+        Vector3 ponto = pontoDeSaida != null ? pontoDeSaida.position : transform.position;
+        ponto.y = nivelAgua + offsetAltura;
+        navio.transform.position = ponto;
+        if (pontoDeSaida != null)
+        {
+            navio.transform.rotation = pontoDeSaida.rotation;
+        }
+
+        ControleSubmarino submarino = navio.GetComponent<ControleSubmarino>();
+        if (submarino != null)
+        {
+            submarino.ForcarEstadoSuperficieImediato();
+        }
+
+        NavioPetroleiro petroleiro = navio.GetComponent<NavioPetroleiro>();
+        if (petroleiro != null)
+        {
+            petroleiro.DefinirEquipeOperacao(ownerTeam);
+            petroleiro.DefinirSaidaEstaleiro(ponto);
+        }
+
+        NavioCargaMercado cargueiro = navio.GetComponent<NavioCargaMercado>();
+        if (cargueiro != null)
+        {
+            cargueiro.Inicializar(ownerTeam, false);
+            cargueiro.PararNoPonto(ponto);
+        }
+
+        return true;
+    }
+
     public bool ConstruirUnidade(GameObject prefabDoNavio, string productionOrderId = "")
     {
         if (prefabDoNavio != null)

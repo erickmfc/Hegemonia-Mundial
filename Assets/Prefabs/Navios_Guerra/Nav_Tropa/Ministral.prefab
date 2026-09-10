@@ -590,7 +590,7 @@ MonoBehaviour:
   frequenciaOnda: 0.9
   arrastoPassivo: 0.5
   distanciaChegada: 15
-  offsetAlturaAgua: -1.5
+  offsetAlturaAgua: 4.5
   profundidadeVisual: 0
   anguloEntradaManobraRe: 120
   anguloSaidaManobraRe: 70

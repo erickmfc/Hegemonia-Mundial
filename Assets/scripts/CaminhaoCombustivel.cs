@@ -38,6 +38,7 @@ public class CaminhaoCombustivel : MonoBehaviour
     private ControleUnidade controleUnidade; // Para impedir conflitos se o jogador mandar ele mover
     private IdentidadeUnidade identidade;
     private Coroutine rotinaPrincipal;
+    private readonly List<IdentidadeUnidade> unidadesRegistradas = new List<IdentidadeUnidade>(128);
 
     // LineRenderer opcional para a mangueira
     private LineRenderer linhaAbastecimento;
@@ -172,16 +173,20 @@ public class CaminhaoCombustivel : MonoBehaviour
 
     private void BuscarUnidadePrecisando()
     {
-        IdentidadeUnidade[] todas = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        float menorDist = Mathf.Infinity;
+        // O registro acompanha unidades ativadas/desativadas e evita uma busca
+        // global por cada caminhão de combustível a cada ciclo automático.
+        RegistroEntidadesJogo.FillUnidades(unidadesRegistradas);
+        float menorDistSqr = Mathf.Infinity;
         Transform melhorAlvo = null;
         CombustivelUnidade melhorCombustivel = null;
         SistemaDeDanos melhorDanos = null;
         Vector3 centroBusca = ObterCentroAreaAtuacao();
         float raioSqr = raioBuscaAtuacao * raioBuscaAtuacao;
 
-        foreach (var id in todas)
+        for (int i = 0; i < unidadesRegistradas.Count; i++)
         {
+            IdentidadeUnidade id = unidadesRegistradas[i];
+            if (id == null) continue;
             if (id.teamID != 1) continue;
             if (id.gameObject == this.gameObject) continue; // Não abastece a si mesmo
             
@@ -197,10 +202,10 @@ public class CaminhaoCombustivel : MonoBehaviour
             if (abastecerUnidades && comb != null && comb.usaCombustivel && comb.Percentual <= limiteCombustivelParaAtender) precisa = true;
             if (repararUnidades && dmg != null && dmg.vidaAtual < dmg.vidaMaxima) precisa = true;
 
-            float dist = Vector3.Distance(transform.position, id.transform.position);
-            if (precisa && dist < menorDist)
+            float distSqr = (transform.position - id.transform.position).sqrMagnitude;
+            if (precisa && distSqr < menorDistSqr)
             {
-                menorDist = dist;
+                menorDistSqr = distSqr;
                 melhorAlvo = id.transform;
                 melhorCombustivel = comb;
                 melhorDanos = dmg;

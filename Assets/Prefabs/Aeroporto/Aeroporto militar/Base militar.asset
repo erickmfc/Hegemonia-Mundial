@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Base militar
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Base Aérea Militar
+  descricao: Base aérea militar com hangar, pátio, pista e suporte de operações aéreas.
+  icone: {fileID: 21300000, guid: da0ddf798dbdb8a4c993e5036a5a04e0, type: 3}
+  itemId: base_aerea_militar
+  aliases: base aérea militar, aeroporto militar, military airport, airbase, base aerea
+  capacidades: 1681
+  prefabDaUnidade: {fileID: 4840357068689788624, guid: f663731d9da70634cb0008cf38219e42, type: 3}
+  preco: 100
+  precoDefinitivo: 0
+  categoria: 2
+  escalaPoder: 1
+  strategicRole: 10
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

@@ -1238,9 +1238,24 @@ public class ControleNavioRealista : MonoBehaviour
             && TentarPrepararAgenteParaNavegacao())
         {
             float cooldown = InfraPerformanceGameplay.ResolverIntervalo(1.10f, estadoOtimizacao, true, true);
-            if (!InfraPerformanceGameplay.DeveAplicarReplan(destino, ref ultimoDestinoAplicado, ref proximoReplanDestino, cooldown, 6f))
+            // O primeiro comando de uma ordem/patrulha precisa sempre criar
+            // um path. O cooldown só pode economizar replanejamentos quando
+            // o agente ainda possui uma rota viva; antes, uma patrulha recém
+            // criada era marcada como idempotente e acabava sem destino.
+            bool possuiRotaNavMeshAtiva = temDestino
+                && agente.isOnNavMesh
+                && (agente.hasPath || agente.pathPending);
+            if (!InfraPerformanceGameplay.DeveAplicarReplan(
+                    destino,
+                    ref ultimoDestinoAplicado,
+                    ref proximoReplanDestino,
+                    cooldown,
+                    6f,
+                    !possuiRotaNavMeshAtiva))
             {
                 agente.isStopped = false;
+                estaDesligado = false;
+                tempoInatividade = 0f;
                 return true;
             }
 

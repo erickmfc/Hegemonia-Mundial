@@ -91,6 +91,29 @@ public class CensoImperial : MonoBehaviour
         OnCensoAtualizado?.Invoke();
     }
 
+    /// <summary>
+    /// Ajusta o censo quando uma unidade ativa muda de país. O registro
+    /// original só era atualizado no nascimento e na destruição, deixando
+    /// compras internacionais invisíveis para os totais do jogador.
+    /// </summary>
+    public void AlterarEquipeUnidade(TipoUnidade tipo, int equipeAnterior, int equipeNova, GameObject go = null)
+    {
+        if (equipeAnterior == equipeNova)
+        {
+            return;
+        }
+
+        if (equipeAnterior == 1)
+        {
+            RemoverUnidade(tipo, equipeAnterior, go);
+        }
+
+        if (equipeNova == 1)
+        {
+            RegistrarUnidade(tipo, equipeNova, go);
+        }
+    }
+
     private bool EhCasa(GameObject go)
     {
         return go != null

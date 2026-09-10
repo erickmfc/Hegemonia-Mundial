@@ -22,6 +22,8 @@ public class EstruturaEconomica : MonoBehaviour
     public float petroleoProduzido;
     public float industriaProduzida;
     public float dinheiroGerado;
+    [Tooltip("Custo diário específico de Food Industry ou hospital.")]
+    public float manutencaoAlimentosPorDia;
 
     [Header("Estado")]
     public StatusEstruturaEconomica status = StatusEstruturaEconomica.Ativa;
@@ -182,10 +184,33 @@ public class EstruturaEconomica : MonoBehaviour
                 if (combustivelConsumido <= 0f) combustivelConsumido = 35f;
                 break;
             case TipoEstruturaEconomica.UsinaNuclear:
-                if (energiaProduzida <= 0f) energiaProduzida = 2200f;
+                if (energiaProduzida <= 0f) energiaProduzida = 30000f;
                 if (empregosGerados <= 0) empregosGerados = 2050; // 1800 + 250
-                if (combustivelConsumido <= 0f) combustivelConsumido = 3f;
+                if (combustivelConsumido <= 0f) combustivelConsumido = 8f;
                 if (militaresNecessarios <= 0) militaresNecessarios = 400;
+                break;
+            case TipoEstruturaEconomica.IndustriaAlimentosNivel1:
+                if (empregosGerados <= 0) empregosGerados = 60;
+                if (energiaConsumida <= 0f) energiaConsumida = 45f;
+                if (comidaProduzida <= 0f) comidaProduzida = 1200f;
+                if (manutencaoAlimentosPorDia <= 0f) manutencaoAlimentosPorDia = 25f;
+                break;
+            case TipoEstruturaEconomica.IndustriaAlimentosNivel2:
+                if (empregosGerados <= 0) empregosGerados = 120;
+                if (energiaConsumida <= 0f) energiaConsumida = 90f;
+                if (comidaProduzida <= 0f) comidaProduzida = 4500f;
+                if (manutencaoAlimentosPorDia <= 0f) manutencaoAlimentosPorDia = 70f;
+                break;
+            case TipoEstruturaEconomica.IndustriaAlimentosNivel3:
+                if (empregosGerados <= 0) empregosGerados = 240;
+                if (energiaConsumida <= 0f) energiaConsumida = 135f;
+                if (comidaProduzida <= 0f) comidaProduzida = 12000f;
+                if (manutencaoAlimentosPorDia <= 0f) manutencaoAlimentosPorDia = 180f;
+                break;
+            case TipoEstruturaEconomica.Hospital:
+                if (empregosGerados <= 0) empregosGerados = 220;
+                if (energiaConsumida <= 0f) energiaConsumida = 120f;
+                if (manutencaoAlimentosPorDia <= 0f) manutencaoAlimentosPorDia = 180f;
                 break;
             case TipoEstruturaEconomica.UsinaHidreletrica:
                 if (energiaProduzida <= 0f) energiaProduzida = 1500f;

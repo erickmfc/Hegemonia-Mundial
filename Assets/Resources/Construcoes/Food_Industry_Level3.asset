@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Food_Industry_Level3
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Food Industry - Nível 3
+  descricao: Produção alta para sustentar grandes centros urbanos.
+  icone: {fileID: 0}
+  itemId: economia.food_industry_nivel_3
+  aliases: food industry, industria de alimentos, alimentos, comida, nivel 3, farm
+  capacidades: 65
+  prefabDaUnidade: {fileID: 7005871210347569535, guid: 720935d5ec5feb44693c9f24b37199cc, type: 3}
+  preco: 4200
+  precoDefinitivo: 4200
+  categoria: 4
+  escalaPoder: 2
+  strategicRole: 2
+  nivelIndustriaAlimentos: 3
+  producaoComidaPorDia: 12000
+  manutencaoPorDia: 180
+  empregosGeradosPerfil: 240
+  usinaNuclear: 0
+  energiaNuclear: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

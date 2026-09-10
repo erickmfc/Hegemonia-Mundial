@@ -803,8 +803,14 @@ public class DesenharLinhasOrdem : MonoBehaviour
             Helicoptero helicoptero = alvo.GetComponent<Helicoptero>();
             if (helicoptero != null)
             {
-                helicoptero.IniciarPatrulhaAeroporto(new List<Vector3>(pontosPatrulha));
-                aceitas++;
+                if (helicoptero.ReceberOrdemPatrulhaAeroporto(new List<Vector3>(pontosPatrulha)))
+                {
+                    aceitas++;
+                }
+                else
+                {
+                    recusadas++;
+                }
             }
         }
 
@@ -832,14 +838,29 @@ public class DesenharLinhasOrdem : MonoBehaviour
             if (helicoptero != null)
             {
                 ControleUnidade controleHelicoptero = alvo.GetComponent<ControleUnidade>();
-                helicoptero.modoCombateAtivo = true;
                 if (controleHelicoptero != null)
                 {
-                    controleHelicoptero.DefinirModoCombate(true);
-                    controleHelicoptero.DefinirAlvoPrioritario(transformAlvo);
+                    // O emissor central cancela a patrulha anterior, registra
+                    // a ordem e só então entrega o ponto ao executor do heli.
+                    // O fallback abaixo mantém compatibilidade com prefabs
+                    // antigos que ainda não possuem ControleUnidade.
+                    bool modoCombateAnterior = helicoptero.modoCombateAtivo;
+                    bool ordemAceita = controleHelicoptero.EmitirMissaoAereaOfensiva(pontoAlvo, transformAlvo);
+                    if (ordemAceita)
+                    {
+                        helicoptero.modoCombateAtivo = true;
+                    }
+                    else
+                    {
+                        helicoptero.modoCombateAtivo = modoCombateAnterior;
+                        Debug.LogWarning($"[ModoAtaque] Ordem ofensiva recusada pelo controlador de {alvo.name}.");
+                    }
                 }
-
-                helicoptero.OrdenarAtaque(transformAlvo, pontoAlvo);
+                else
+                {
+                    helicoptero.modoCombateAtivo = true;
+                    helicoptero.OrdenarAtaque(transformAlvo, pontoAlvo);
+                }
                 continue;
             }
 
@@ -847,22 +868,42 @@ public class DesenharLinhasOrdem : MonoBehaviour
             AviaoBombardeiro bombardeiro = alvo.GetComponent<AviaoBombardeiro>();
             if (bombardeiro != null)
             {
+                AviaoBombardeiro.ModoAtaque modoAnterior = bombardeiro.modoDeAtaque;
+                Vector3 alvoAreaAnterior = bombardeiro.alvoAreaSolo;
+                Vector3 alvoMassa1Anterior = bombardeiro.alvoMassa1;
+                Vector3 alvoMassa2Anterior = bombardeiro.alvoMassa2;
                 bombardeiro.modoDeAtaque = AviaoBombardeiro.ModoAtaque.AtaqueAoSolo;
                 bombardeiro.alvoAreaSolo = pontoAlvo;
                 ControleAviao controleAviao = alvo.GetComponent<ControleAviao>();
-                if (controleAviao != null)
+                Vector3 alvoEstrategicoAnterior = controleAviao != null ? controleAviao.alvoEstrategico : Vector3.zero;
+                ControleUnidade controleBombardeiro = alvo.GetComponent<ControleUnidade>();
+                bool ordemAceita = false;
+                if (controleBombardeiro != null)
                 {
-                    controleAviao.alvoPrioritarioIA = ataqueEmAlvoEspecifico;
+                    ordemAceita = controleBombardeiro.EmitirMissaoAereaOfensiva(pontoAlvo, transformAlvo);
+                }
+                else if (controleAviao != null)
+                {
                     controleAviao.alvoEstrategico = ataqueEmAlvoEspecifico ? transformAlvo.position : pontoAlvo;
-                    if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                    ordemAceita = controleAviao.ReceberOrdemManual(pontoAlvo);
+                    if (ordemAceita)
                     {
-                        controleAviao.IniciarMissaoCompleta(pontoAlvo);
+                        controleAviao.alvoPrioritarioIA = ataqueEmAlvoEspecifico;
+                        if (ataqueEmAlvoEspecifico)
+                        {
+                            alvo.GetComponent<ControleUnidade>()?.DefinirAlvoPrioritario(transformAlvo);
+                        }
                     }
-                    else if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+                }
+                if (!ordemAceita)
+                {
+                    bombardeiro.modoDeAtaque = modoAnterior;
+                    bombardeiro.alvoAreaSolo = alvoAreaAnterior;
+                    bombardeiro.alvoMassa1 = alvoMassa1Anterior;
+                    bombardeiro.alvoMassa2 = alvoMassa2Anterior;
+                    if (controleAviao != null)
                     {
-                        controleAviao.alvoGPSVoo = pontoAlvo;
-                        controleAviao.centroDaPatrulha = pontoAlvo;
-                        controleAviao.ordemParaRetorno = false;
+                        controleAviao.alvoEstrategico = alvoEstrategicoAnterior;
                     }
                 }
                 continue;
@@ -884,18 +925,9 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 ControleAviao aviao = alvo.GetComponent<ControleAviao>();
                 if (aviao != null)
                 {
-                    aviao.alvoPrioritarioIA = ataqueEmAlvoEspecifico;
-                    unidade.DefinirModoCombate(true);
-                    if (aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                    if (!unidade.EmitirMissaoAereaOfensiva(pontoAlvo, transformAlvo))
                     {
-                        aviao.IniciarMissaoCompleta(pontoAlvo);
-                    }
-                    else if (aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
-                    {
-                        aviao.alvoGPSVoo = pontoAlvo;
-                        aviao.centroDaPatrulha = pontoAlvo;
-                        aviao.alvoEstrategico = ataqueEmAlvoEspecifico ? transformAlvo.position : pontoAlvo;
-                        aviao.ordemParaRetorno = false;
+                        Debug.LogWarning($"[ModoAtaque] Ordem ofensiva recusada pelo controlador de {alvo.name}.");
                     }
                     continue;
                 }
@@ -909,13 +941,19 @@ public class DesenharLinhasOrdem : MonoBehaviour
                     Vector3 direcaoAlvo = (pontoAlvo - unidade.transform.position).normalized;
                     float distanciaAtaque = 60f; // recua um pouco para estar em alcance
                     Vector3 posicaoAtaque = pontoAlvo - direcaoAlvo * distanciaAtaque;
-                    unidade.EmitirOrdemMover(posicaoAtaque);
+                    if (!unidade.EmitirOrdemMover(posicaoAtaque, false))
+                    {
+                        unidade.DefinirModoCombate(false);
+                    }
                 }
                 else
                 {
                     // Ataque de área: move até o ponto diretamente
                     unidade.DefinirModoCombate(true);
-                    unidade.EmitirOrdemMover(pontoAlvo);
+                    if (!unidade.EmitirOrdemMover(pontoAlvo, false))
+                    {
+                        unidade.DefinirModoCombate(false);
+                    }
                 }
                 continue;
             }
@@ -1016,8 +1054,10 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
         indiceDesignado = -1;
         controle = GetComponent<ControleUnidade>();
         agente = GetComponent<NavMeshAgent>();
-        navioRealista = GetComponent<ControleNavioRealista>();
-        submarino = GetComponent<ControleSubmarino>();
+        navioRealista = GetComponent<ControleNavioRealista>()
+            ?? GetComponentInChildren<ControleNavioRealista>(true);
+        submarino = GetComponent<ControleSubmarino>()
+            ?? GetComponentInChildren<ControleSubmarino>(true);
         ehNaval = controle != null && controle.EhUnidadeNaval();
         ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
     }
@@ -1026,8 +1066,16 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
     {
         if (controle == null) controle = GetComponent<ControleUnidade>();
         if (agente == null) agente = GetComponent<NavMeshAgent>();
-        if (navioRealista == null) navioRealista = GetComponent<ControleNavioRealista>();
-        if (submarino == null) submarino = GetComponent<ControleSubmarino>();
+        if (navioRealista == null)
+        {
+            navioRealista = GetComponent<ControleNavioRealista>()
+                ?? GetComponentInChildren<ControleNavioRealista>(true);
+        }
+        if (submarino == null)
+        {
+            submarino = GetComponent<ControleSubmarino>()
+                ?? GetComponentInChildren<ControleSubmarino>(true);
+        }
         ehNaval = controle != null && controle.EhUnidadeNaval();
         ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
     }
@@ -1121,7 +1169,26 @@ public class ComportamentoPatrulhaUniversal : MonoBehaviour
             || Time.time - tempoUltimoComando > intervaloSeguranca)
         {
             tempoUltimoComando = Time.time;
-            indiceDesignado = controle.EmitirOrdemMover(alvo, false) ? indiceAtual : -1;
+            bool ordemAceita;
+            if (ehNaval && navioRealista != null)
+            {
+                // A patrulha já possui uma ordem global ativa para o primeiro
+                // ponto. Reenviar pelo ControleUnidade nesse momento é
+                // corretamente idempotente, mas isso também pulava o executor
+                // físico. O controlador naval é a autoridade para criar ou
+                // recuperar cada perna da rota.
+                ordemAceita = navioRealista.DefinirDestino(alvo);
+            }
+            else if (ehNaval && submarino != null)
+            {
+                ordemAceita = submarino.DefinirDestino(alvo);
+            }
+            else
+            {
+                ordemAceita = controle.EmitirOrdemMover(alvo, false);
+            }
+
+            indiceDesignado = ordemAceita ? indiceAtual : -1;
         }
     }
 }

@@ -29,7 +29,11 @@ public enum TipoEstruturaEconomica
     BaseMilitarMedia,
     GrandeBaseMilitar,
     BaseAerea,
-    BaseNaval
+    BaseNaval,
+    IndustriaAlimentosNivel1,
+    IndustriaAlimentosNivel2,
+    IndustriaAlimentosNivel3,
+    Hospital
 }
 
 public enum StatusEstruturaEconomica

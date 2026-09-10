@@ -3,6 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.IA01;
+using Hegemonia.AI.IA02;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -1032,7 +1035,7 @@ public class MenuGoverno : MonoBehaviour
             return new[] { "energia" };
 
         return mercado.ItensOrdenados()
-            .Where(i => i != null && i.podeVender && !i.equipamentoMilitar && !i.municaoMilitar)
+            .Where(i => i != null && i.podeVender)
             .Select(i => i.id)
             .Distinct()
             .Take(64)
@@ -1447,6 +1450,7 @@ public class MenuGoverno : MonoBehaviour
             string ramo = tab == 1 ? "Exercito" : tab == 2 ? "Marinha" : tab == 3 ? "Aerea" : "Comando";
             Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
             stats.text = ramo
+                + "\nStatus geopolitico: " + StatusGov(p)
                 + "\nArmamentos: " + FormatNumber(p.armamentos)
                 + "\nUranio: " + FormatNumber(p.uranio)
                 + "\nPressao de guerra: " + (gov != null ? (gov.PressaoGlobalGuerra() * 100f).ToString("0") + "%" : "n/d")
@@ -1465,6 +1469,7 @@ public class MenuGoverno : MonoBehaviour
             else if (tab == 2)
             {
                 CreateDescription(page.Root.transform, "Capacidade naval, projecao maritima e cobertura de municao costeira.");
+                BuildNavalGovernmentStatus(page.Root.transform, gov);
             }
         };
         page.Refresh();
@@ -2309,13 +2314,213 @@ public class MenuGoverno : MonoBehaviour
     private void BuildDefenseAlertRows(Transform parent, DadosPaisGoverno p, SistemaGovernoMundial gov, int wars)
     {
         CreateInfoBlock(parent,
-            "Armamentos: " + FormatNumber(p.armamentos)
+            "Status geopolitico: " + StatusGov(p)
+            + "\nArmamentos: " + FormatNumber(p.armamentos)
             + "\nUranio: " + FormatNumber(p.uranio)
             + "\nPressao global: " + (gov != null ? (gov.PressaoGlobalGuerra() * 100f).ToString("0") + "%" : "n/d"));
         CreateInfoBlock(parent,
             "Paises em guerra: " + wars
             + "\nPedidos pendentes: " + PendingPlayerProposalList().Count()
             + "\nPlano atual: " + p.planoEstrategico);
+    }
+
+    private void BuildNavalGovernmentStatus(Transform parent, SistemaGovernoMundial gov)
+    {
+        DadosPaisGoverno jogador = GetPlayerGov();
+        CreateSectionTitle(parent, "Status naval conectado ao governo");
+        CreateInfoBlock(parent,
+            "Status nacional: " + (jogador != null ? StatusGov(jogador) : "n/d")
+            + "\nGuerra global: " + (gov != null ? (gov.PressaoGlobalGuerra() * 100f).ToString("0") + "%" : "n/d")
+            + "\nPaises em guerra: " + (gov != null ? gov.Paises.Count(x => x != null && x.emGuerra).ToString() : "n/d")
+            + "\nOs incidentes navais abaixo alimentam a leitura de tensao, crise e guerra sem alterar a navegacao.");
+
+        IA01Controller ia01 = FindObjectsByType<IA01Controller>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .FirstOrDefault(x => x != null && x.TeamId == 2);
+        IA02Controller ia02 = FindObjectsByType<IA02Controller>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .FirstOrDefault(x => x != null && x.TeamId == 3);
+
+        if (ia01 != null) BuildNavalGovernmentStatusIA01(parent, ia01, gov);
+        if (ia02 != null) BuildNavalGovernmentStatusIA02(parent, ia02, gov);
+        if (ia01 == null && ia02 == null)
+            CreateInfoBlock(parent, "IA01/IA02 ainda nao foram encontradas na cena.");
+
+        BuildCoastGuardGovernmentStatus(parent, gov);
+    }
+
+    private void BuildCoastGuardGovernmentStatus(Transform parent, SistemaGovernoMundial gov)
+    {
+        SistemaGuardaCosteira sistema = SistemaGuardaCosteira.Instancia;
+        if (sistema == null)
+        {
+            CreateInfoBlock(parent, "Guarda Costeira: sistema aguardando a primeira unidade entrar em jogo.");
+            return;
+        }
+
+        int team = paisJogadorId > 0 ? paisJogadorId : 1;
+        DadosPaisGoverno country = gov != null ? gov.ObterPais(team) : null;
+        List<RescueIncident> ativos = sistema.Incidentes
+            .Where(x => x != null && x.State == RescueIncidentState.Ativo && x.OwnerTeamId == team)
+            .ToList();
+        int missing = ativos.Sum(x => Mathf.Max(0, x.MissingPersonnel));
+        int rescued = ativos.Sum(x => Mathf.Max(0, x.RescuedPersonnel));
+        int available = 0;
+        int deployed = 0;
+        int damaged = 0;
+        GuardaCosteiraUnidade[] units = FindObjectsByType<GuardaCosteiraUnidade>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < units.Length; i++)
+        {
+            GuardaCosteiraUnidade unit = units[i];
+            if (unit == null || unit.TeamId != team) continue;
+            if (unit.Estado == EstadoGuardaCosteira.Disponivel) available++;
+            else if (unit.Estado == EstadoGuardaCosteira.Designada || unit.Estado == EstadoGuardaCosteira.ACaminho || unit.Estado == EstadoGuardaCosteira.Buscando || unit.Estado == EstadoGuardaCosteira.Retornando || unit.Estado == EstadoGuardaCosteira.Desembarcando) deployed++;
+            else if (unit.Estado == EstadoGuardaCosteira.Danificada) damaged++;
+        }
+
+        string status = ativos.Count == 0 ? "Operacao normal" : (missing > 0 ? "Crise de resgate" : "Resgate em andamento");
+        if (country != null && country.emGuerra) status = "Guerra / " + status;
+        else if (country != null && country.estabilidade < 35f) status = "Crise interna / " + status;
+
+        CreateInfoBlock(parent,
+            "Guarda Costeira | Status: " + status
+            + "\nUnidades disponiveis: " + available + " | em missao: " + deployed + " | danificadas: " + damaged
+            + "\nIncidentes ativos: " + ativos.Count + " | pessoas desaparecidas: " + missing + " | resgatadas: " + rescued
+            + "\nJanela de busca: 3/5/10 dias | despacho automatico: " + (sistema.despachoAutomatico ? "ativo" : "manual")
+            + "\nIntegracao: dano → incidente → resgate → efetivo/governo, por TeamId.");
+    }
+
+    private void BuildNavalGovernmentStatusIA01(Transform parent, IA01Controller controller, SistemaGovernoMundial gov)
+    {
+        IA01WarAdvanceZone[] zones = FindObjectsByType<IA01WarAdvanceZone>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(x => x != null && x.TeamId == controller.TeamId && x.Tipo == IA01WarAdvanceZone.Dominio.Naval)
+            .ToArray();
+        IA01NavalPatrolZone[] patrols = controller.GetComponentsInChildren<IA01NavalPatrolZone>(true);
+        if (patrols.Length == 0)
+            patrols = FindObjectsByType<IA01NavalPatrolZone>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .Where(x => x != null && x.name.StartsWith("IA01", StringComparison.OrdinalIgnoreCase)).ToArray();
+
+        AppendNavalGovernmentStatus(parent, gov != null ? gov.ObterPais(controller.TeamId) : null,
+            "IA01", controller.CombatStatus, controller.MilitaryStatus, controller.NextObjectiveStatus,
+            controller.WarEscalationLevel, patrols.Length, patrols.Sum(x => x.NaviosDesejados), zones);
+    }
+
+    private void BuildNavalGovernmentStatusIA02(Transform parent, IA02Controller controller, SistemaGovernoMundial gov)
+    {
+        IA02WarAdvanceZone[] zones = FindObjectsByType<IA02WarAdvanceZone>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(x => x != null && x.TeamId == controller.TeamId && x.Tipo == IA02WarAdvanceZone.Dominio.Naval)
+            .ToArray();
+        IA02NavalPatrolZone[] patrols = controller.GetComponentsInChildren<IA02NavalPatrolZone>(true);
+        if (patrols.Length == 0)
+            patrols = FindObjectsByType<IA02NavalPatrolZone>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .Where(x => x != null && x.name.StartsWith("IA02", StringComparison.OrdinalIgnoreCase)).ToArray();
+
+        AppendNavalGovernmentStatus(parent, gov != null ? gov.ObterPais(controller.TeamId) : null,
+            "IA02", controller.CombatStatus, controller.MilitaryStatus, controller.NextObjectiveStatus,
+            controller.WarEscalationLevel, patrols.Length, patrols.Sum(x => x.NaviosDesejados), zones);
+    }
+
+    private void AppendNavalGovernmentStatus(Transform parent, DadosPaisGoverno country, string label,
+        string combatStatus, string militaryStatus, string objectiveStatus, int warEscalation,
+        int patrolSectors, int desiredShips, IEnumerable<IWarAdvanceZone> zones)
+    {
+        List<IWarAdvanceZone> navalZones = zones != null ? zones.Where(x => x != null).ToList() : new List<IWarAdvanceZone>();
+        int baixa = 0;
+        int media = 0;
+        int alta = 0;
+        int critica = 0;
+        int totalAttacks = 0;
+        float totalDamage = 0f;
+        WarAdvanceIncident latest = null;
+        int defensive = 0;
+        int attack = 0;
+        int expansion = 0;
+        float now = Time.unscaledTime;
+
+        for (int i = 0; i < navalZones.Count; i++)
+        {
+            IWarAdvanceZone zone = navalZones[i];
+            if (zone is IA01WarAdvanceZone zone01)
+            {
+                zone01.LimparIncidentesExpirados(now);
+                if (zone01.TipoZona == WarAdvanceZoneType.Defensiva) defensive++;
+                else if (zone01.TipoZona == WarAdvanceZoneType.AtaqueDeGuerra) attack++;
+                else if (zone01.TipoZona == WarAdvanceZoneType.Expansao) expansion++;
+                CountNavalIncidents(zone01.IncidentesAtivos, ref baixa, ref media, ref alta, ref critica, ref totalAttacks, ref totalDamage, ref latest);
+            }
+            else if (zone is IA02WarAdvanceZone zone02)
+            {
+                zone02.LimparIncidentesExpirados(now);
+                if (zone02.TipoZona == WarAdvanceZoneType.Defensiva) defensive++;
+                else if (zone02.TipoZona == WarAdvanceZoneType.AtaqueDeGuerra) attack++;
+                else if (zone02.TipoZona == WarAdvanceZoneType.Expansao) expansion++;
+                CountNavalIncidents(zone02.IncidentesAtivos, ref baixa, ref media, ref alta, ref critica, ref totalAttacks, ref totalDamage, ref latest);
+            }
+        }
+
+        string geopoliticStatus = country != null ? StatusGov(country) : "n/d";
+        string navalStatus = ResolveNavalGovernmentStatus(geopoliticStatus, baixa, media, alta, critica);
+        string incidentText = (baixa + media + alta + critica) == 0
+            ? "Nenhum incidente naval ativo."
+            : "Incidentes: " + (baixa + media + alta + critica) + " (B:" + baixa + " M:" + media + " A:" + alta + " C:" + critica + ")"
+                + "\nAtaques registrados: " + totalAttacks
+                + "\nDano acumulado: " + totalDamage.ToString("0.0");
+        string latestText = latest == null
+            ? "Ultimo contato: nenhum"
+            : "Ultimo contato: TeamId " + latest.AttackerTeamId + " | " + latest.State + " | " + latest.MissionState
+                + " | posicao conhecida: " + FormatNavalPosition(latest.EnemyLastKnownPosition != Vector3.zero ? latest.EnemyLastKnownPosition : latest.Position);
+
+        CreateInfoBlock(parent,
+            label + " | Status naval: " + navalStatus
+            + "\nGoverno: " + geopoliticStatus + " | Escalada de guerra: " + warEscalation
+            + "\nZonas: defensiva " + defensive + " | ataque " + attack + " | expansao " + expansion
+            + "\nSetores de patrulha: " + patrolSectors + " | Navios desejados: " + desiredShips
+            + "\n" + incidentText
+            + "\n" + latestText
+            + "\nCombate: " + CompactNavalStatus(combatStatus)
+            + "\nForca: " + CompactNavalStatus(militaryStatus)
+            + "\nObjetivo: " + CompactNavalStatus(objectiveStatus));
+    }
+
+    private static void CountNavalIncidents(IReadOnlyList<WarAdvanceIncident> incidents,
+        ref int baixa, ref int media, ref int alta, ref int critica, ref int totalAttacks, ref float totalDamage,
+        ref WarAdvanceIncident latest)
+    {
+        if (incidents == null) return;
+        for (int i = 0; i < incidents.Count; i++)
+        {
+            WarAdvanceIncident incident = incidents[i];
+            if (incident == null) continue;
+            switch (incident.Severity)
+            {
+                case WarAdvanceIncidentSeverity.Media: media++; break;
+                case WarAdvanceIncidentSeverity.Alta: alta++; break;
+                case WarAdvanceIncidentSeverity.Critica: critica++; break;
+                default: baixa++; break;
+            }
+            totalAttacks += Mathf.Max(0, incident.AttackCount);
+            totalDamage += Mathf.Max(0f, incident.DamageCaused);
+            if (latest == null || incident.LastDetectionTime > latest.LastDetectionTime) latest = incident;
+        }
+    }
+
+    private static string ResolveNavalGovernmentStatus(string geopoliticStatus, int baixa, int media, int alta, int critica)
+    {
+        if (critica > 0) return geopoliticStatus == "Guerra" ? "Guerra / Crise naval critica" : "Crise naval critica";
+        if (alta > 0) return geopoliticStatus == "Guerra" ? "Guerra / Alerta naval alto" : "Crise naval alta";
+        if (media > 0) return geopoliticStatus == "Guerra" ? "Guerra / Incidentes navais" : "Tensao naval";
+        if (baixa > 0) return geopoliticStatus == "Estavel" ? "Tensao naval" : geopoliticStatus + " / alerta naval";
+        return geopoliticStatus;
+    }
+
+    private static string CompactNavalStatus(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "n/d";
+        string compact = value.Replace('\n', ' ').Replace('\r', ' ').Trim();
+        return compact.Length > 150 ? compact.Substring(0, 147) + "..." : compact;
+    }
+
+    private static string FormatNavalPosition(Vector3 position)
+    {
+        return "(" + position.x.ToString("0") + ", " + position.y.ToString("0") + ", " + position.z.ToString("0") + ")";
     }
 
     private void ResolverPropostaUI(string propostaId, StatusPropostaInternacional status, string contexto)
@@ -2430,8 +2635,12 @@ public class MenuGoverno : MonoBehaviour
         ah.childControlWidth = true;
         ah.childControlHeight = true;
         ah.childForceExpandWidth = true;
-        view.Sell50 = CreateSmallButton(actions.transform, "50", corAzulBotao, () => SellMarketResource(itemId, 50));
-        view.Sell200 = CreateSmallButton(actions.transform, "200", corAzulBotao, () => SellMarketResource(itemId, 200));
+        DadosItemMercado item = Market()?.ObterItem(itemId);
+        bool equipamento = item != null && item.equipamentoMilitar;
+        int loteRapido = equipamento ? 1 : 50;
+        int loteGrande = equipamento ? 5 : 200;
+        view.Sell50 = CreateSmallButton(actions.transform, loteRapido.ToString(), corAzulBotao, () => SellMarketResource(itemId, loteRapido));
+        view.Sell200 = CreateSmallButton(actions.transform, loteGrande.ToString(), corAzulBotao, () => SellMarketResource(itemId, loteGrande));
         view.SellAll = CreateSmallButton(actions.transform, "Tudo", new Color(0.360f, 0.100f, 0.070f, 1f), () => SellAllMarketResource(itemId));
         h.enabled = true;
         return view;
@@ -3351,8 +3560,14 @@ public class MenuGoverno : MonoBehaviour
 
         SistemaGovernoMundial gov = Government();
         if (gov == null) return RealStock(itemId);
-        if (item.equipamentoMilitar || item.municaoMilitar)
-            return Mathf.Max(0, item.estoqueGlobal);
+        if (item.equipamentoMilitar)
+            return Market() != null ? Market().ObterEstoqueEquipamento(item, paisJogadorId) : 0;
+        if (item.municaoMilitar)
+        {
+            SistemaGastosMilitares.GarantirInstancia();
+            return SistemaGastosMilitares.Instancia != null
+                ? SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(paisJogadorId, item.idMunicaoMilitar) : 0;
+        }
 
         return Mathf.Max(0, Mathf.FloorToInt((float)gov.ObterEstoque(paisJogadorId, item.RecursoIdEfetivo)));
     }
@@ -3968,8 +4183,10 @@ public class MenuGoverno : MonoBehaviour
             AutoText.text = vendaDireta ? (auto ? "Auto " + autoAmount : "Auto off") : "Navio";
             Auto.GetComponent<Image>().color = auto ? new Color(0.070f, 0.290f, 0.130f, 1f) : Menu.corPainel2;
             Auto.interactable = vendaDireta;
-            Sell50.interactable = stock >= 50;
-            Sell200.interactable = stock >= 200;
+            int loteRapido = item != null && item.equipamentoMilitar ? 1 : 50;
+            int loteGrande = item != null && item.equipamentoMilitar ? 5 : 200;
+            Sell50.interactable = stock >= loteRapido;
+            Sell200.interactable = stock >= loteGrande;
             SellAll.interactable = stock > 0;
         }
     }

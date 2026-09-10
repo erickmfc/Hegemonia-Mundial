@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Egito
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Egito - Cidade Completa
+  descricao: Cidade completa pré-pronta usada pela IA no primeiro desenvolvimento residencial.
+  icone: {fileID: 0}
+  itemId: urbana.cidade_egito
+  aliases: egito,egyto,cidade,cidade completa,complexo urbano,moradia,residencial
+  capacidades: 16777317
+  prefabDaUnidade: {fileID: 7487855898898602313, guid: 162f6d83e328d1043a5124a9dea7462a, type: 3}
+  preco: 2500
+  precoDefinitivo: 0
+  categoria: 6
+  escalaPoder: 2
+  strategicRole: 1
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

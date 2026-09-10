@@ -15657,6 +15657,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlot
   slotId: ia02.local.casa
   slotGroupId: abertura_inicial
+  preferredConstructionItemId: urbana.cidade_egito
   allowedRole: 1
   allowedDomain: 0
   required: 0
@@ -15665,7 +15666,7 @@ MonoBehaviour:
   buildingPoint: {fileID: 267097696}
   unitSpawnPoint: {fileID: 1062856640}
   exitDirection: {fileID: 1565860007}
-  reservedFootprint: {x: 28, y: 28}
+  reservedFootprint: {x: 220, y: 220}
   safetyMargin: 2
   ownerTeamId: 3
   state: 0
@@ -17281,6 +17282,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a4c3f2b1d9e8496e8c8b1a2d7f3e5c91, type: 2}
   - {fileID: 11400000, guid: d9aaaac854283fa4886dd5a3bc1c033a, type: 2}
   - {fileID: 11400000, guid: 795c8d1e2fea4c449a8a61032a3aa317, type: 2}
+  - {fileID: 11400000, guid: 22c326fdd9332f84f9db0a8a1f3e9025, type: 2}
   - {fileID: 0}
 --- !u!1 &299885441
 GameObject:
@@ -30896,6 +30898,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
   slotId: ia01.local.casa
   slotGroupId: abertura_inicial
+  preferredConstructionItemId: urbana.cidade_egito
   allowedRole: 1
   allowedDomain: 0
   required: 0
@@ -30904,7 +30907,7 @@ MonoBehaviour:
   buildingPoint: {fileID: 495015820}
   unitSpawnPoint: {fileID: 398279560}
   exitDirection: {fileID: 136041001}
-  reservedFootprint: {x: 28, y: 28}
+  reservedFootprint: {x: 220, y: 220}
   safetyMargin: 2
   ownerTeamId: 2
   state: 0
@@ -49681,6 +49684,8 @@ MonoBehaviour:
   useScriptedOpening: 1
   usePreparedSlots: 1
   allowAutonomousExpansion: 1
+  allowAutomaticQuartel: 0
+  allowPeacetimeMilitaryProduction: 0
   enablePlanningAdvisor: 1
   maxConstructionDistanceFromController: 7000
   progressiveMilitaryCatalog: 1
@@ -55396,6 +55401,8 @@ MonoBehaviour:
   useScriptedOpening: 1
   usePreparedSlots: 1
   allowAutonomousExpansion: 0
+  allowAutomaticQuartel: 0
+  allowPeacetimeMilitaryProduction: 0
   enablePlanningAdvisor: 1
   maxConstructionDistanceFromController: 4200
   progressiveMilitaryCatalog: 1

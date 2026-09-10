@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Hegemonia.AI.BrainMaster;
 
 public class SistemaMercadoGlobal : MonoBehaviour
 {
@@ -19,6 +20,10 @@ public class SistemaMercadoGlobal : MonoBehaviour
     public event Action<TransacaoMercado> OnTransacaoExecutada;
 
     private float proximoTick;
+
+    // Reutilizados nas leituras do inventário para que abrir o menu não faça
+    // uma busca global e uma nova lista a cada card renderizado.
+    private readonly List<IdentidadeUnidade> inventarioEquipamentos = new List<IdentidadeUnidade>(256);
 
     private void Awake()
     {
@@ -148,6 +153,17 @@ public class SistemaMercadoGlobal : MonoBehaviour
     public IEnumerable<DadosItemMercado> ItensOrdenados()
     {
         return itens.Where(i => i != null).OrderBy(i => i.categoria).ThenBy(i => i.nome);
+    }
+
+    /// <summary>
+    /// Retorna quantas unidades reais de um equipamento pertencem ao país.
+    /// O catálogo continua podendo ter ofertas abstratas de fornecedores, mas
+    /// a venda do jogador sempre usa o inventário que está na cena.
+    /// </summary>
+    public int ObterEstoqueEquipamento(DadosItemMercado item, int teamId)
+    {
+        if (item == null || !item.equipamentoMilitar || teamId <= 0) return 0;
+        return EncontrarEquipamentos(item, teamId, inventarioEquipamentos, false);
     }
 
     public void SimularMercado()
@@ -384,13 +400,21 @@ public class SistemaMercadoGlobal : MonoBehaviour
         string recursoId = ObterRecursoIdEfetivo(item);
         SistemaGastosMilitares.GarantirInstancia();
         SistemaGastosMilitares gastosMilitares = SistemaGastosMilitares.Instancia;
-        int disponivel = item.municaoMilitar && gastosMilitares != null
-            ? gastosMilitares.ObterEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar)
-            : governo.ObterEstoque(vendedorTeamId, recursoId);
+        int disponivel = item.equipamentoMilitar
+            ? ObterEstoqueEquipamento(item, vendedorTeamId)
+            : item.municaoMilitar && gastosMilitares != null
+                ? gastosMilitares.ObterEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar)
+                : governo.ObterEstoque(vendedorTeamId, recursoId);
         quantidade = Mathf.Min(quantidade, disponivel);
         if (quantidade <= 0)
         {
             mensagem = "Sem estoque para vender.";
+            return false;
+        }
+
+        if (item.equipamentoMilitar)
+        {
+            mensagem = "Venda de equipamento exige um comprador internacional.";
             return false;
         }
 
@@ -594,14 +618,57 @@ public class SistemaMercadoGlobal : MonoBehaviour
         string recursoId = ObterRecursoIdEfetivo(item);
         SistemaGastosMilitares.GarantirInstancia();
         SistemaGastosMilitares gastos = SistemaGastosMilitares.Instancia;
-        int disponivel = item.municaoMilitar && gastos != null
-            ? gastos.ObterEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar)
-            : governo.ObterEstoque(vendedorTeamId, recursoId);
+        int disponivel = item.equipamentoMilitar
+            ? ObterEstoqueEquipamento(item, vendedorTeamId)
+            : item.municaoMilitar && gastos != null
+                ? gastos.ObterEstoqueMunicao(vendedorTeamId, item.idMunicaoMilitar)
+                : governo.ObterEstoque(vendedorTeamId, recursoId);
         quantidade = Mathf.Min(quantidade, Mathf.Max(0, disponivel));
         if (quantidade <= 0)
         {
             mensagem = "Sem estoque para vender.";
             return false;
+        }
+
+        // Equipamentos já existentes são transferidos diretamente entre as
+        // nações. Enfileirar uma carga aqui criava uma cópia e deixava a
+        // aeronave/navio original com o vendedor.
+        if (item.equipamentoMilitar)
+        {
+            int totalEquipamento = quantidade * Mathf.Max(1, item.precoAtual);
+            if (!governo.TentarPagar(compradorTeamId, totalEquipamento))
+            {
+                mensagem = "Comprador sem dinheiro para comprar a unidade.";
+                return false;
+            }
+
+            int transferidos = TransferirEquipamentos(item, vendedorTeamId, compradorTeamId, quantidade);
+            if (transferidos != quantidade)
+            {
+                governo.AdicionarSaldo(compradorTeamId, totalEquipamento);
+                mensagem = "A unidade mudou de estado antes da transferencia.";
+                return false;
+            }
+
+            governo.AdicionarSaldo(vendedorTeamId, totalEquipamento);
+            item.oferta = Mathf.Clamp(item.oferta + quantidade / 100f, 0f, 160f);
+            TransacaoMercado equipamento = new TransacaoMercado
+            {
+                id = Guid.NewGuid().ToString("N"),
+                compradorTeamId = compradorTeamId,
+                vendedorTeamId = vendedorTeamId,
+                itemId = item.id,
+                quantidade = quantidade,
+                precoUnitario = Mathf.Max(1, item.precoAtual),
+                total = totalEquipamento,
+                frete = 0,
+                compraDoJogador = compradorTeamId == governo.teamJogador,
+                status = "ENTREGUE",
+                mensagem = vendedor.nomePais + " vendeu " + quantidade + " de " + item.nome + "; unidade transferida para " + comprador.nomePais + "."
+            };
+            RegistrarTransacao(equipamento);
+            mensagem = equipamento.mensagem;
+            return true;
         }
 
         int total = quantidade * Mathf.Max(1, item.precoAtual);
@@ -1034,7 +1101,7 @@ public class SistemaMercadoGlobal : MonoBehaviour
                     precoBase = (int)Math.Min(int.MaxValue, Math.Max(1L, ficha.ObterPrecoEfetivo())),
                     precoAtual = (int)Math.Min(int.MaxValue, Math.Max(1L, ficha.ObterPrecoEfetivo())),
                     estoqueGlobal = 20, oferta = 45f, demanda = 40f, volatilidade = 0.10f,
-                    podeComprar = true, podeVender = false
+                    podeComprar = true, podeVender = true
                 };
                 itens.Add(item);
             }
@@ -1042,10 +1109,171 @@ public class SistemaMercadoGlobal : MonoBehaviour
             item.prefabId = id;
             item.tipoEntrega = entrega;
             item.podeComprar = true;
-            item.podeVender = false;
+            // A disponibilidade por país é calculada a partir das unidades
+            // registradas; manter a oferta habilitada permite que qualquer IA
+            // com uma unidade real também possa anunciar a venda.
+            item.podeVender = true;
             item.estoqueGlobal = Mathf.Max(1, item.estoqueGlobal);
         }
         NormalizarItensMercado();
+    }
+
+    private int TransferirEquipamentos(DadosItemMercado item, int vendedorTeamId, int compradorTeamId, int quantidade)
+    {
+        if (quantidade <= 0) return 0;
+        EncontrarEquipamentos(item, vendedorTeamId, inventarioEquipamentos, false);
+        List<IdentidadeUnidade> unidadesTransferidas = new List<IdentidadeUnidade>(quantidade);
+        for (int i = 0; i < inventarioEquipamentos.Count && unidadesTransferidas.Count < quantidade; i++)
+        {
+            IdentidadeUnidade identidade = inventarioEquipamentos[i];
+            if (identidade == null || identidade.teamID != vendedorTeamId || !EquipamentoCompativel(item, identidade.gameObject)) continue;
+            unidadesTransferidas.Add(identidade);
+        }
+
+        // Só altera a posse depois de garantir o lote inteiro. Assim uma
+        // venda que não encontra todas as unidades não precisa fazer rollback
+        // parcial de identidade, censo e bases.
+        if (unidadesTransferidas.Count != quantidade)
+        {
+            return unidadesTransferidas.Count;
+        }
+
+        DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null
+            ? SistemaGovernoMundial.Instancia.ObterPais(compradorTeamId) : null;
+        for (int i = 0; i < unidadesTransferidas.Count; i++)
+        {
+            IdentidadeUnidade identidade = unidadesTransferidas[i];
+            if (identidade == null) continue;
+
+            int equipeAnterior = identidade.teamID;
+            identidade.teamID = compradorTeamId;
+            if (pais != null) identidade.nomeDoPais = pais.nomePais;
+
+            CensoImperial.Instancia?.AlterarEquipeUnidade(
+                identidade.tipoUnidade,
+                equipeAnterior,
+                compradorTeamId,
+                identidade.gameObject);
+            SincronizarEquipamentoTransferido(identidade, compradorTeamId);
+        }
+
+        RegistroEntidadesJogo.NotificarAlteracao();
+        return unidadesTransferidas.Count;
+    }
+
+    private static void SincronizarEquipamentoTransferido(IdentidadeUnidade identidade, int compradorTeamId)
+    {
+        if (identidade == null || identidade.gameObject == null) return;
+
+        GerenciadorAeroporto[] aeroportos = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+        GerenciadorAeroporto aeroportoDestino = aeroportos
+            .Where(a => a != null
+                && a.GetComponentInParent<IdentidadeUnidade>() != null
+                && a.GetComponentInParent<IdentidadeUnidade>().teamID == compradorTeamId)
+            .FirstOrDefault();
+        ControleAviao aviao = identidade.gameObject.GetComponentInChildren<ControleAviao>(true);
+        if (aviao != null)
+        {
+            for (int i = 0; i < aeroportos.Length; i++)
+            {
+                GerenciadorAeroporto aeroporto = aeroportos[i];
+                if (aeroporto == null) continue;
+                aeroporto.avioesNoPatio.Remove(aviao);
+                aeroporto.avioesNoHangar.Remove(aviao);
+            }
+
+            if (aeroportoDestino != null)
+            {
+                aeroportoDestino.RegistrarAeronaveRecebida(aviao);
+            }
+        }
+
+        C700TransporteAereo c700 = identidade.gameObject.GetComponentInChildren<C700TransporteAereo>(true);
+        if (c700 != null && aeroportoDestino != null)
+        {
+            aeroportoDestino.RegistrarTransporteAereoRecebido(c700);
+        }
+
+        Helicoptero helicoptero = identidade.gameObject.GetComponentInChildren<Helicoptero>(true);
+        if (helicoptero != null && aeroportoDestino != null)
+        {
+            aeroportoDestino.RegistrarHelicopteroRecebido(helicoptero);
+        }
+
+        NavioPetroleiro petroleiro = identidade.gameObject.GetComponentInChildren<NavioPetroleiro>(true);
+        if (petroleiro != null)
+        {
+            petroleiro.DefinirEquipeOperacao(compradorTeamId);
+        }
+
+        NavioCargaMercado cargueiro = identidade.gameObject.GetComponentInChildren<NavioCargaMercado>(true);
+        if (cargueiro != null && cargueiro.OwnerTeamId != compradorTeamId)
+        {
+            cargueiro.Inicializar(compradorTeamId, cargueiro.Fretado);
+        }
+
+        IA_WorldState.InvalidateStructureCache(identidade.gameObject.GetInstanceID());
+    }
+
+    private int EncontrarEquipamentos(DadosItemMercado item, int teamId, List<IdentidadeUnidade> destino, bool limitar, int limite = int.MaxValue)
+    {
+        destino.Clear();
+        RegistroEntidadesJogo.FillUnidades(destino);
+        int encontrados = 0;
+        for (int i = destino.Count - 1; i >= 0; i--)
+        {
+            IdentidadeUnidade identidade = destino[i];
+            if (identidade == null || !identidade.gameObject.activeInHierarchy || identidade.teamID != teamId
+                || !EquipamentoCompativel(item, identidade.gameObject))
+            {
+                destino.RemoveAt(i);
+                continue;
+            }
+            encontrados++;
+            if (limitar && encontrados >= limite)
+            {
+                destino.RemoveRange(i, destino.Count - i);
+                break;
+            }
+        }
+        return encontrados;
+    }
+
+    private static bool EquipamentoCompativel(DadosItemMercado item, GameObject objeto)
+    {
+        if (item == null || objeto == null) return false;
+        string tipo = (item.tipoEntrega ?? string.Empty).ToLowerInvariant();
+        IdentidadeUnidade identidade = objeto.GetComponent<IdentidadeUnidade>();
+        if (tipo.Contains("aeronave") && (identidade == null || identidade.tipoUnidade != TipoUnidade.Aereo)) return false;
+        if (tipo.Contains("navio") && (identidade == null || identidade.tipoUnidade != TipoUnidade.Naval)) return false;
+        DadosConstrucao ficha = MenuConstrucao.catalogoGlobal != null
+            ? MenuConstrucao.catalogoGlobal.FirstOrDefault(f => f != null && string.Equals(f.GetStableId(), item.prefabId, StringComparison.OrdinalIgnoreCase)) : null;
+        string nomeObjeto = NormalizarNomeMercado(objeto.name);
+        string nomeNavio = objeto.GetComponent<IdentidadeNaval>() != null
+            ? NormalizarNomeMercado(objeto.GetComponent<IdentidadeNaval>().nomeDoNavio) : string.Empty;
+        string[] candidatos =
+        {
+            item.id, item.prefabId, ficha != null ? ficha.NomeItem : string.Empty,
+            ficha != null && ficha.PrefabDaUnidade != null ? ficha.PrefabDaUnidade.name : string.Empty
+        };
+        for (int i = 0; i < candidatos.Length; i++)
+        {
+            string candidato = NormalizarNomeMercado(candidatos[i]);
+            if (candidato.Length >= 3 && (NomeEquipamentoBate(nomeObjeto, candidato) || NomeEquipamentoBate(nomeNavio, candidato))) return true;
+        }
+        return false;
+    }
+
+    private static bool NomeEquipamentoBate(string valor, string candidato)
+    {
+        return !string.IsNullOrEmpty(valor) && (valor == candidato || valor.StartsWith(candidato) || valor.Contains(candidato));
+    }
+
+    private static string NormalizarNomeMercado(string valor)
+    {
+        if (string.IsNullOrEmpty(valor)) return string.Empty;
+        string normalizado = IA_Text.Normalize(valor).ToLowerInvariant();
+        return new string(normalizado.Where(char.IsLetterOrDigit).ToArray());
     }
 
     private void SincronizarMunicoesAtivas()

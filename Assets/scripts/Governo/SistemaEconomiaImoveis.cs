@@ -334,6 +334,17 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             case TipoEstruturaEconomica.UsinaCarvao:
                 manutencaoExtra = Mathf.Max(55f, estrutura.energiaProduzida * 0.22f);
                 break;
+            case TipoEstruturaEconomica.UsinaNuclear:
+                // A usina nuclear entrega energia para uma cidade grande, mas
+                // exige operação, segurança e combustível muito mais caros.
+                manutencaoExtra = Mathf.Max(450f, estrutura.manutencaoAlimentosPorDia);
+                break;
+            case TipoEstruturaEconomica.IndustriaAlimentosNivel1:
+            case TipoEstruturaEconomica.IndustriaAlimentosNivel2:
+            case TipoEstruturaEconomica.IndustriaAlimentosNivel3:
+            case TipoEstruturaEconomica.Hospital:
+                manutencaoExtra = Mathf.Max(0f, estrutura.manutencaoAlimentosPorDia);
+                break;
         }
         if (manutencaoExtra > 0f)
         {
@@ -675,6 +686,11 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             case TipoEstruturaEconomica.PesquisaMilitar: break;
             case TipoEstruturaEconomica.UsinaSolar: economia.usinas++; break;
             case TipoEstruturaEconomica.UsinaCarvao: economia.usinas++; break;
+            case TipoEstruturaEconomica.IndustriaAlimentosNivel1:
+            case TipoEstruturaEconomica.IndustriaAlimentosNivel2:
+            case TipoEstruturaEconomica.IndustriaAlimentosNivel3:
+                economia.farms++;
+                break;
         }
     }
 }

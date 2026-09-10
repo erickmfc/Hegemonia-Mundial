@@ -81,6 +81,18 @@ public class SistemaArmamentoHelice : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Reabastece o canhão quando a aeronave conclui o serviço em uma base.
+    /// O recarregamento temporizado durante o voo continua sendo controlado
+    /// pelo fluxo normal deste componente.
+    /// </summary>
+    public void RecarregarCompletoNaBase()
+    {
+        balasAtuais = Mathf.Max(0, cartuchoMaximo);
+        recarregando = false;
+        cronometroTiro = 0f;
+    }
+
     void Update()
     {
         // 1. ANIMAÇÃO DA HÉLICE (Sempre roda)

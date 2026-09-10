@@ -65,6 +65,15 @@ public class IdentidadeUnidade : MonoBehaviour
             CensoImperial.Instancia.RemoverUnidade(tipoUnidade, teamID, gameObject);
         }
 
+        // Quando a Guarda Costeira registrou um incidente, a população já foi
+        // movida para DESAPARECIDOS. Não contabilizar a mesma baixa novamente.
+        if (SistemaGuardaCosteira.Instancia != null
+            && SistemaGuardaCosteira.Instancia.DeveAdiarPerdaDePessoal(this))
+        {
+            SistemaGuardaCosteira.Instancia.ConsumirPerdaAdiada(this);
+            return;
+        }
+
         // Liberar população militar consumida ao morrer
         if (militaresConsumidos > 0 && SistemaGovernoMundial.Instancia != null)
         {

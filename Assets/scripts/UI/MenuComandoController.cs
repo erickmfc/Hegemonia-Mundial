@@ -41,6 +41,8 @@ public class MenuComandoController : MonoBehaviour
     private VisualElement root;
     private VisualElement menuComandoRoot;
     private bool menuAberto;
+    // Abertura de menus deve depender de uma entrada explícita do jogador.
+    private int bloquearAberturaAteFrame = -1;
     public bool MenuAberto => menuAberto;
 
     // Zoom e Pan no mapa tático
@@ -481,6 +483,14 @@ public class MenuComandoController : MonoBehaviour
             || Input.GetKeyDown(KeyCode.Keypad1);
         if (solicitouMenuComando)
         {
+            // A confirmação da compra de uma estrutura ainda pode entregar
+            // o mesmo frame de entrada ao HUD. O satélite não deve abrir no
+            // meio do modo de construção nem capturar o jogo por acidente.
+            if (Construtor.EmModoConstrucaoAtivo || Time.frameCount <= bloquearAberturaAteFrame)
+            {
+                return;
+            }
+
             // EntradaGlobalBloqueada também cobre a janela de um frame usada
             // para consumir cliques durante o fechamento do Quartel. Essa
             // trava transitória não pode engolir o atalho 1; somente um modal
@@ -707,6 +717,11 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     public void AbrirMenu()
     {
+        if (Construtor.EmModoConstrucaoAtivo || Time.frameCount <= bloquearAberturaAteFrame)
+        {
+            return;
+        }
+
         if (GerenciadorQuartel.InterfaceAberta || MenuGoverno.EstaAberto)
         {
             return;
@@ -773,6 +788,20 @@ public class MenuComandoController : MonoBehaviour
             CameraUnidadeHUD.Instancia.DefinirTarget(unidadeSelecionadaMenu, true);
 
         AdicionarLog("COMANDO", "Menu Tático aberto. Sincronizada seleção.", "sistema");
+    }
+
+    /// <summary>
+    /// Fecha o satélite e impede apenas a reabertura espúria no frame em que
+    /// uma construção é confirmada. Os atalhos normais voltam no frame seguinte.
+    /// </summary>
+    public void BloquearAberturaAposConstrucao()
+    {
+        if (menuAberto)
+        {
+            FecharMenu();
+        }
+
+        bloquearAberturaAteFrame = Mathf.Max(bloquearAberturaAteFrame, Time.frameCount + 1);
     }
 
     private void SincronizarSelecaoComJogo()

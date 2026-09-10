@@ -26,7 +26,11 @@ public sealed class MarcadorSuperficieMapa : MonoBehaviour
     [SerializeField] private bool usarCollidersDosFilhos = true;
     [SerializeField] private bool usarRenderersDosFilhos = true;
     [SerializeField] private bool atualizarEmTempoReal = true;
+    [Tooltip("Use somente se filhos do marcador mudarem de tamanho/posicao sem mover o proprio marcador.")]
+    [SerializeField] private bool recalcularMesmoEstatico = false;
     [SerializeField] private bool desenharGizmos = true;
+    [Tooltip("Intervalo minimo entre recalculos quando a superficie esta marcada para atualizacao em tempo real.")]
+    [SerializeField, Min(0.05f)] private float intervaloAtualizacaoTempoReal = 0.25f;
 
     [Header("Fallback")]
     [SerializeField] private Vector3 tamanhoFallback = new Vector3(120f, 12f, 120f);
@@ -40,6 +44,10 @@ public sealed class MarcadorSuperficieMapa : MonoBehaviour
     private Bounds _bounds;
     private bool _hasBounds;
     private bool _cachePronto;
+    private float _proximaAtualizacaoTempoReal;
+    private Vector3 _ultimaPosicaoAtualizada;
+    private Quaternion _ultimaRotacaoAtualizada;
+    private Vector3 _ultimaEscalaAtualizada;
 
     public TipoSuperficieMapa TipoSuperficie
     {
@@ -102,6 +110,7 @@ public sealed class MarcadorSuperficieMapa : MonoBehaviour
     {
         RebuildCaches();
         AtualizarBounds();
+        RegistrarTransformAtualizado();
         RegistroSuperficieMapa.Registrar(this);
     }
 
@@ -137,8 +146,33 @@ public sealed class MarcadorSuperficieMapa : MonoBehaviour
             RebuildCaches();
         }
 
+        // Superficies de mapa quase sempre sao estaticas. Evita recalcular
+        // colliders/renderers e bounds em todos os frames, sem impedir que
+        // marcadores realmente moveis continuem sendo atualizados.
+        bool transformMudou = transform.position != _ultimaPosicaoAtualizada
+            || transform.rotation != _ultimaRotacaoAtualizada
+            || transform.localScale != _ultimaEscalaAtualizada;
+        if (!transformMudou && !recalcularMesmoEstatico)
+        {
+            return;
+        }
+
+        if (!transformMudou && Time.unscaledTime < _proximaAtualizacaoTempoReal)
+        {
+            return;
+        }
+
         AtualizarBounds();
+        RegistrarTransformAtualizado();
         RegistroSuperficieMapa.Registrar(this);
+    }
+
+    private void RegistrarTransformAtualizado()
+    {
+        _ultimaPosicaoAtualizada = transform.position;
+        _ultimaRotacaoAtualizada = transform.rotation;
+        _ultimaEscalaAtualizada = transform.localScale;
+        _proximaAtualizacaoTempoReal = Time.unscaledTime + Mathf.Max(0.05f, intervaloAtualizacaoTempoReal);
     }
 
     public bool ContainsXZ(Vector3 position, float padding = 0f)

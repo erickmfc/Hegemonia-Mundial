@@ -19,9 +19,16 @@ MonoBehaviour:
   aliases: 
   capacidades: 0
   prefabDaUnidade: {fileID: 8650943160096321376, guid: 6c27be81dda23694281e36d5eef46f96, type: 3}
-  preco: 500
+  preco: 12000
+  precoDefinitivo: 12000
   categoria: 5
   escalaPoder: 1
   strategicRole: 0
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 450
+  empregosGeradosPerfil: 2050
+  usinaNuclear: 1
+  energiaNuclear: 30000
   balanceamento: {fileID: 0}
   scriptsDeComando: []

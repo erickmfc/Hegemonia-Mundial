@@ -533,17 +533,24 @@ public class CameraUnidadeHUD : MonoBehaviour
 
             if (!ordemCombateAplicada)
             {
-            ordemCombateAplicada = targetUnit.EmitirMissaoAereaOfensiva(id.transform.position, id.transform);
-            if (!ordemCombateAplicada && (targetUnit.EhUnidadeNaval() || targetUnit.GetComponent<ControleSubmarino>() != null))
-            {
-                ordemCombateAplicada = targetUnit.EmitirMissaoNavalOfensiva(id.transform.position, id.transform, false, false);
-            }
-            if (!ordemCombateAplicada)
-            {
-                targetUnit.DefinirModoCombate(true);
-                targetUnit.DefinirAlvoPrioritario(id.transform);
-                ordemCombateAplicada = true;
-            }
+                ordemCombateAplicada = targetUnit.EmitirMissaoAereaOfensiva(id.transform.position, id.transform);
+                if (!ordemCombateAplicada && (targetUnit.EhUnidadeNaval() || targetUnit.GetComponent<ControleSubmarino>() != null))
+                {
+                    ordemCombateAplicada = targetUnit.EmitirMissaoNavalOfensiva(id.transform.position, id.transform, false, false);
+                }
+
+                // Unidades sem executor de deslocamento ainda podem travar o
+                // inimigo nas torretas. Aeronaves não: se o controlador aéreo
+                // recusou por combustível, pista, tripulação ou C17, não
+                // escreva o GPS diretamente e deixe uma missão fantasma.
+                bool possuiExecutorAereo = targetUnit.GetComponent<ControleAviao>() != null
+                    || targetUnit.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null;
+                if (!ordemCombateAplicada && !possuiExecutorAereo)
+                {
+                    targetUnit.DefinirModoCombate(true);
+                    targetUnit.DefinirAlvoPrioritario(id.transform);
+                    ordemCombateAplicada = true;
+                }
             }
         }
 
@@ -551,10 +558,13 @@ public class CameraUnidadeHUD : MonoBehaviour
         KamikazeDrone drone = targetUnit.GetComponent<KamikazeDrone>();
         ControleDroneHasaf droneHasaf = targetUnit.GetComponent<ControleDroneHasaf>();
         
-        if (aviao != null)
+        if (aviao != null && ordemCombateAplicada)
         {
             aviao.alvoEstrategico = id.transform.position;
-            aviao.alvoGPSVoo = id.transform.position;
+            // A ordem já foi aceita pelo controlador aéreo central. Não escreva
+            // alvoGPSVoo aqui: a coroutine de voo é a única autoridade sobre
+            // esse destino e uma escrita paralela podia sobrescrever patrulha,
+            // retorno ou uma nova ordem emitida no mesmo ciclo.
             
             if (drone != null)
             {
@@ -599,7 +609,18 @@ public class CameraUnidadeHUD : MonoBehaviour
         ControleDroneHasaf droneHasaf = targetUnit.GetComponent<ControleDroneHasaf>();
         if (aviao != null)
         {
-            targetUnit.EmitirMissaoAereaOfensiva(ponto, null);
+            bool ordemAceita = targetUnit.EmitirMissaoAereaOfensiva(ponto, null);
+            if (!ordemAceita)
+            {
+                if (MenuComandoController.Instancia != null)
+                {
+                    MenuComandoController.Instancia.AdicionarLog(
+                        "DRONE",
+                        $"ORDEM AÉREA RECUSADA: {targetUnit.name.ToUpper()}",
+                        "sistema");
+                }
+                return;
+            }
 
             if (droneHasaf != null)
             {

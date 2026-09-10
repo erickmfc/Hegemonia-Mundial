@@ -87,6 +87,15 @@ public class ControleAviaoCaca : MonoBehaviour
         _controleAviaoModerno = GetComponent<ControleAviao>();
         _temControleModerno = (_controleAviaoModerno != null);
 
+        // Prefabs antigos ainda podem carregar os dois componentes. Quando o
+        // controlador moderno existe, este script não controla voo nem armas;
+        // não crie cristal, áudio e callbacks desnecessários.
+        if (_temControleModerno)
+        {
+            ControlarEfeitosMotor(false);
+            return;
+        }
+
         if (_sistemaDanos != null)
         {
             _sistemaDanos.OnDano += RegistrarDanoRecebido;
@@ -182,6 +191,20 @@ public class ControleAviaoCaca : MonoBehaviour
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
+            return;
+        }
+
+        // Compatibilidade com ordens antigas (torre de controle/IA). Se o
+        // prefab também possui ControleAviao, encaminhe a ordem ao controlador
+        // moderno em vez de apenas armazená-la neste script desativado.
+        if (_controleAviaoModerno == null)
+        {
+            _controleAviaoModerno = GetComponent<ControleAviao>();
+        }
+
+        if (_controleAviaoModerno != null)
+        {
+            _controleAviaoModerno.ReceberOrdemManual(novoDestino);
             return;
         }
 
@@ -317,12 +340,6 @@ public class ControleAviaoCaca : MonoBehaviour
             {
                 Vector3 vetorParaDestino = destinoAtual - transform.position;
                 
-                if (vetorParaDestino.sqrMagnitude < 10000f && estadoAtual == EstadoVoo.Voando) // 100² = 10000
-                {
-                    destinoAtual = transform.position + (transform.right * 200f) + (transform.forward * 100f);
-                    vetorParaDestino = destinoAtual - transform.position;
-                }
-                
                 if (vetorParaDestino.sqrMagnitude > 0.1f)
                 {
                     Vector3 upRef = Mathf.Abs(Vector3.Dot(vetorParaDestino.normalized, Vector3.up)) > 0.99f ? transform.up : Vector3.up;
@@ -371,6 +388,21 @@ public class ControleAviaoCaca : MonoBehaviour
 
     public void SolicitarPouso(Vector3 pistaPosicao)
     {
+        if (_controleAviaoModerno == null)
+        {
+            _controleAviaoModerno = GetComponent<ControleAviao>();
+        }
+
+        if (_controleAviaoModerno != null)
+        {
+            // O controlador moderno já conhece a base, a aproximação e a
+            // vaga reservada. Escrever o GPS de uma pista aqui fazia uma
+            // chamada de compatibilidade disputar o destino com a coroutine
+            // oficial de retorno.
+            _controleAviaoModerno.ComandoRetornarBase();
+            return;
+        }
+
         Debug.Log("🛬 [F_C19] Recebido comando de pouso.");
         estadoAtual = EstadoVoo.Pousando;
         destinoAtual = pistaPosicao;
@@ -476,12 +508,15 @@ public class ControleAviaoCaca : MonoBehaviour
 
     void ControlarEfeitosMotor(bool ligado)
     {
-        for (int i = 0, count = fogoNosMotores.Count; i < count; i++)
+        if (fogoNosMotores != null)
         {
-            ParticleSystem ps = fogoNosMotores[i];
-            if (ps == null) continue;
-            if (ligado && !ps.isPlaying) ps.Play();
-            else if (!ligado && ps.isPlaying) ps.Stop();
+            for (int i = 0, count = fogoNosMotores.Count; i < count; i++)
+            {
+                ParticleSystem ps = fogoNosMotores[i];
+                if (ps == null) continue;
+                if (ligado && !ps.isPlaying) ps.Play();
+                else if (!ligado && ps.isPlaying) ps.Stop();
+            }
         }
         
         if (luzPosCombustao != null)

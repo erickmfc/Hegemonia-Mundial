@@ -29,8 +29,10 @@ public class Usina : MonoBehaviour
         }
         else if (tipoUsina == TipoUsina.Nuclear)
         {
-            producaoEnergia = 2200f * eficienciaBase;
-            producaoDinheiro = -100f; // Custo de manutenção nuclear
+            // Capacidade calibrada para sustentar aproximadamente 400 mil
+            // habitantes com comércio e infraestrutura ativos.
+            producaoEnergia = 30000f * eficienciaBase;
+            producaoDinheiro = -450f; // Segurança, técnicos, combustível e manutenção
         }
         else if (tipoUsina == TipoUsina.Carvao)
         {
@@ -54,8 +56,9 @@ public class Usina : MonoBehaviour
         if (tipoUsina == TipoUsina.Nuclear)
         {
             eco.empregosGerados = 2050;
-            eco.combustivelConsumido = 3f;
+            eco.combustivelConsumido = 8f;
             eco.militaresNecessarios = 400;
+            eco.manutencaoAlimentosPorDia = 450f;
         }
         else if (tipoUsina == TipoUsina.Carvao)
         {

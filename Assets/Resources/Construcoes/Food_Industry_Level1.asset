@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Food_Industry_Level1
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Food Industry - Nível 1
+  descricao: Produção básica de alimentos para a fase inicial da cidade.
+  icone: {fileID: 0}
+  itemId: economia.food_industry_nivel_1
+  aliases: food industry, industria de alimentos, alimentos, comida, nivel 1, farm
+  capacidades: 65
+  prefabDaUnidade: {fileID: 7005871210347569535, guid: 720935d5ec5feb44693c9f24b37199cc, type: 3}
+  preco: 700
+  precoDefinitivo: 700
+  categoria: 4
+  escalaPoder: 4
+  strategicRole: 2
+  nivelIndustriaAlimentos: 1
+  producaoComidaPorDia: 1200
+  manutencaoPorDia: 25
+  empregosGeradosPerfil: 60
+  usinaNuclear: 0
+  energiaNuclear: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

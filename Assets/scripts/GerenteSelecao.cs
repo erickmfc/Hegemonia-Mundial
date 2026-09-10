@@ -47,6 +47,22 @@ public class GerenteSelecao : MonoBehaviour
     private const int FramesCachePegada = 1800;
     private const int LimiteGrupoGrandeParaAmostragemLeve = 12;
 
+    private static int ObterTimeJogadorAtual()
+    {
+        return SistemaGovernoMundial.Instancia != null
+            ? Mathf.Max(1, SistemaGovernoMundial.Instancia.teamJogador)
+            : 1;
+    }
+
+    // Mantém a regra de posse independente do país escolhido na campanha.
+    // Uma unidade sem identidade continua elegível: logo abaixo ela recebe a
+    // identidade do país controlado, preservando o comportamento dos prefabs
+    // antigos que ainda nascem sem este componente.
+    private static bool EhUnidadeControlavelPeloJogador(int teamUnidade, int teamJogador)
+    {
+        return teamUnidade < 0 || teamUnidade == Mathf.Max(1, teamJogador);
+    }
+
     private Vector2 inicioMouseScreen; // Posição pura do mouse na tela
     private bool arrastando = false;
 
@@ -722,7 +738,7 @@ public class GerenteSelecao : MonoBehaviour
             {
                 // Helicópteros ganham pequenos offsets individuais no ar para não se amalgamarem
                 Vector3 deslocHeli = new Vector3(Random.Range(-5f, 5f), 0, Random.Range(-5f, 5f));
-                heli.Decolar(destinoCentral + deslocHeli);
+                u.EmitirOrdemMover(destinoCentral + deslocHeli);
                 continue; // Helicóptero resolvido
             }
 
@@ -883,7 +899,7 @@ public class GerenteSelecao : MonoBehaviour
                     {
                         continue;
                     }
-                    heli.Decolar(destinoCentral + deslocHeli);
+                    unidade.EmitirOrdemMover(destinoCentral + deslocHeli);
                 }
                 continue;
             }
@@ -1289,6 +1305,51 @@ public class GerenteSelecao : MonoBehaviour
             return unidade;
         }
 
+        ControleSubmarino submarino = origem.GetComponentInParent<ControleSubmarino>()
+            ?? origem.GetComponentInChildren<ControleSubmarino>(true);
+        if (submarino != null)
+        {
+            unidade = submarino.GetComponent<ControleUnidade>()
+                ?? submarino.GetComponentInParent<ControleUnidade>()
+                ?? submarino.GetComponentInChildren<ControleUnidade>(true);
+            if (unidade == null)
+            {
+                unidade = submarino.gameObject.AddComponent<ControleUnidade>();
+            }
+
+            if (!unidade.enabled)
+            {
+                unidade.enabled = true;
+            }
+
+            return unidade;
+        }
+
+        // Alguns prefabs navais antigos têm o executor real, mas não têm
+        // IdentidadeNaval no mesmo objeto. Nesse caso o casco ficava visível,
+        // porém o clique não encontrava um ControleUnidade para selecionar e
+        // encaminhar as ordens. Use o próprio executor como âncora e crie o
+        // adaptador apenas quando ele realmente faltar.
+        ControleNavioRealista navioRealista = origem.GetComponentInParent<ControleNavioRealista>()
+            ?? origem.GetComponentInChildren<ControleNavioRealista>(true);
+        if (navioRealista != null)
+        {
+            unidade = navioRealista.GetComponent<ControleUnidade>()
+                ?? navioRealista.GetComponentInParent<ControleUnidade>()
+                ?? navioRealista.GetComponentInChildren<ControleUnidade>(true);
+            if (unidade == null)
+            {
+                unidade = navioRealista.gameObject.AddComponent<ControleUnidade>();
+            }
+
+            if (!unidade.enabled)
+            {
+                unidade.enabled = true;
+            }
+
+            return unidade;
+        }
+
         IdentidadeNaval identidadeNaval = origem.GetComponentInParent<IdentidadeNaval>();
         if (identidadeNaval == null)
         {
@@ -1367,7 +1428,8 @@ public class GerenteSelecao : MonoBehaviour
             if (estaleiro != null)
             {
                 var idEstaleiro = estaleiro.GetComponentInParent<IdentidadeUnidade>();
-                if (idEstaleiro == null || idEstaleiro.teamID == 1)
+                if (idEstaleiro == null
+                    || EhUnidadeControlavelPeloJogador(idEstaleiro.teamID, ObterTimeJogadorAtual()))
                 {
                     MenuConstrucao menu = Object.FindFirstObjectByType<MenuConstrucao>();
                     if (menu != null)
@@ -1401,10 +1463,13 @@ public class GerenteSelecao : MonoBehaviour
             if (idIA != null) teamIdRecuperado = idIA.teamID;
         }
         
+        int teamJogadorAtual = ObterTimeJogadorAtual();
         if (teamIdRecuperado != -1)
         {
-            // Tem uma identidade definida. Se não for 1, ignora.
-            if (teamIdRecuperado != 1) return;
+            // Tem uma identidade definida. Ignore somente se ela não pertence
+            // ao país atualmente controlado (o jogador pode trocar de país em
+            // campanha ou após carregar um save).
+            if (!EhUnidadeControlavelPeloJogador(teamIdRecuperado, teamJogadorAtual)) return;
         }
         else
         {
@@ -1415,7 +1480,7 @@ public class GerenteSelecao : MonoBehaviour
 
             // --- CORREÇÃO AUTOMÁTICA (APENAS SE NÃO TIVER NENHUM SCRIPT DE IDENTIDADE) ---
             idU = unidade.gameObject.AddComponent<IdentidadeUnidade>();
-            idU.teamID = 1; // Registra como Aliado
+            idU.teamID = teamJogadorAtual; // Registra como unidade do país controlado
             idU.nomeDoPais = "Minha Nação";
             idU.tipoUnidade = unidade.EhUnidadeNaval()
                 ? TipoUnidade.Naval

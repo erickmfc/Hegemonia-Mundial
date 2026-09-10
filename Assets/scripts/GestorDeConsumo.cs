@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -32,6 +33,7 @@ public class GestorDeConsumo : MonoBehaviour
 
     private float timer;
     private int ultimoDiaCobrado = -1;
+    private readonly List<IdentidadeUnidade> unidadesRegistradas = new List<IdentidadeUnidade>(256);
 
     private void Awake()
     {
@@ -105,10 +107,12 @@ public class GestorDeConsumo : MonoBehaviour
         int teamJogador = SistemaGovernoMundial.Instancia != null
             ? SistemaGovernoMundial.Instancia.teamJogador
             : 1;
-        IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        for (int i = 0; i < unidades.Length; i++)
+        // IdentidadeUnidade mantem o registro em sincronia no OnEnable/OnDisable.
+        // A manutencao diaria nao precisa alocar uma busca global pela cena.
+        RegistroEntidadesJogo.FillUnidades(unidadesRegistradas);
+        for (int i = 0; i < unidadesRegistradas.Count; i++)
         {
-            IdentidadeUnidade unidade = unidades[i];
+            IdentidadeUnidade unidade = unidadesRegistradas[i];
             if (unidade == null || unidade.teamID != teamJogador || !unidade.gameObject.activeInHierarchy) continue;
             if (unidade.tipoUnidade == TipoUnidade.Estrutura)
             {

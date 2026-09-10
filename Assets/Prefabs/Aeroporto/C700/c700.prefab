@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: -5381591977502983394}
   - component: {fileID: -7549261984178204853}
   - component: {fileID: 3363487500830176677}
+  - component: {fileID: -612345678901234567}
   - component: {fileID: 163897241717511559}
   - component: {fileID: -2520532916029920953}
   - component: {fileID: -4392586327668773366}
@@ -238,6 +239,21 @@ MonoBehaviour:
   spawnsPorQuadroManifesto: 8
   pausaEntreLotesManifesto: 0.02
   desabilitarArmasAoIniciar: 1
+--- !u!114 &-612345678901234567
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 508363159047402675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f3e6a1b2c4d5e708192a3b4c5d6e7f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TransportLandingController
+  pistaReservada: {fileID: 0}
+  tentativasPouso: 0
+  maxTentativas: 3
 --- !u!65 &163897241717511559
 BoxCollider:
   m_ObjectHideFlags: 0

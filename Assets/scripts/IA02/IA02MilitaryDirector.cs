@@ -13,6 +13,30 @@ namespace Hegemonia.AI.IA02
     /// </summary>
     public sealed class IA02MilitaryDirector
     {
+        private sealed class AirResponseCandidate
+        {
+            public IdentidadeUnidade Identity;
+            public ControleUnidade Control;
+            public ControleAviao Aircraft;
+            public float Distance;
+            public float FuelPercent;
+            public int Ammunition;
+            public int Priority;
+        }
+
+        private sealed class NavalResponseCandidate
+        {
+            public IdentidadeUnidade Identity;
+            public ControleUnidade Control;
+            public ControleNavioRealista Ship;
+            public float Distance;
+            public float FuelPercent;
+            public float HealthPercent;
+            public int Ammunition;
+            public int Torpedoes;
+            public int Priority;
+        }
+
         private readonly IA02Controller controller;
         private readonly IA02RuntimeContext context;
         private readonly IA02BuildDirector buildDirector;
@@ -37,9 +61,20 @@ namespace Hegemonia.AI.IA02
         private int lastTankerOrderDay = -1;
         private int firstNavalOrderDay = -1;
         private float nextNavalCombatAt;
+        private float nextNavalIncidentResponseAt;
         private readonly List<IdentidadeUnidade> navalUnitsBuffer = new List<IdentidadeUnidade>(12);
         private readonly List<IdentidadeUnidade> airUnitsBuffer = new List<IdentidadeUnidade>(12);
         private readonly List<IA02AirPatrolZone> airPatrolCreatesBuffer = new List<IA02AirPatrolZone>(4);
+        private readonly List<IA02WarAdvanceZone> airWarZonesBuffer = new List<IA02WarAdvanceZone>(8);
+        private readonly List<AirResponseCandidate> airResponseCandidatesBuffer = new List<AirResponseCandidate>(32);
+        private readonly HashSet<int> airResponseAssigned = new HashSet<int>();
+        private readonly Dictionary<int, float> airResponseAssignmentUntil = new Dictionary<int, float>(32);
+        private float nextAirIncidentResponseAt;
+        private readonly List<IA02NavalPatrolZone> navalPatrolZonesBuffer = new List<IA02NavalPatrolZone>(8);
+        private readonly List<IA02WarAdvanceZone> navalWarZonesBuffer = new List<IA02WarAdvanceZone>(8);
+        private readonly List<NavalResponseCandidate> navalResponseCandidatesBuffer = new List<NavalResponseCandidate>(32);
+        private readonly HashSet<int> navalResponseAssigned = new HashSet<int>();
+        private readonly Dictionary<int, float> navalResponseAssignmentUntil = new Dictionary<int, float>(32);
         private readonly List<ComplexoGovernamental> complexosGovernamentaisBuffer = new List<ComplexoGovernamental>(16);
         private readonly List<IdentidadeUnidade> registeredIdentitiesBuffer = new List<IdentidadeUnidade>(256);
         private readonly List<Estaleiro> registeredShipyardsBuffer = new List<Estaleiro>(16);
@@ -111,6 +146,7 @@ namespace Hegemonia.AI.IA02
             int naval = CountUnits(TipoUnidade.Naval);
             ResolveTargets(out int targetSoldiers, out int targetTanks, out int targetFighters, out int targetNaval);
             bool changed = false;
+            bool productionAllowed = PermiteProducaoMilitarAutomatica();
 
             // Uma fila de aeroporto que nunca liberou a aeronave não pode
             // bloquear as próximas compras da IA indefinidamente.
@@ -119,7 +155,7 @@ namespace Hegemonia.AI.IA02
 
             // No máximo duas ordens por ciclo para não sobrecarregar o frame.
             int actions = 0;
-            if (soldiers < targetSoldiers && actions < 2)
+            if (productionAllowed && soldiers < targetSoldiers && actions < 2)
             {
                 string orderId;
                 bool reserved = IA02MilitaryProductionGuard.TryReserve(context.TeamId, IA02MilitaryAssetKind.Infantry, targetSoldiers, soldiers, now, 45f, out orderId);
@@ -128,7 +164,7 @@ namespace Hegemonia.AI.IA02
                 changed |= produced;
                 if (produced) actions++;
             }
-            if (tanks < targetTanks && actions < 2)
+            if (productionAllowed && tanks < targetTanks && actions < 2)
             {
                 string orderId;
                 bool reserved = IA02MilitaryProductionGuard.TryReserve(context.TeamId, IA02MilitaryAssetKind.Tank, targetTanks, tanks, now, 45f, out orderId);
@@ -141,7 +177,7 @@ namespace Hegemonia.AI.IA02
             // já emitidas para não comprar duplicado antes da contagem atualizar.
             // Toda IA02 procura manter pelo menos uma defesa antiaerea Ares_Ar
             // quando existe uma ficha valida no catalogo e uma fabrica propria.
-            if (antiAir < 1 && actions < 2)
+            if (productionAllowed && antiAir < 1 && actions < 2)
             {
                 string orderId;
                 bool reserved = IA02MilitaryProductionGuard.TryReserveSingle(context.TeamId, IA02MilitaryAssetKind.AntiAir, antiAir, now, 45f, out orderId);
@@ -151,7 +187,7 @@ namespace Hegemonia.AI.IA02
                 if (produced) actions++;
             }
 
-            if (fighters + issuedFighters < targetFighters && actions < 2)
+            if (productionAllowed && fighters + issuedFighters < targetFighters && actions < 2)
             {
                 string orderId;
                 bool reserved = IA02MilitaryProductionGuard.TryReserve(context.TeamId, IA02MilitaryAssetKind.Fighter, targetFighters, fighters, now, 120f, out orderId);
@@ -162,7 +198,7 @@ namespace Hegemonia.AI.IA02
             }
 
             // Assim que existir estaleiro/pier, a IA coloca pelo menos uma unidade naval.
-            if (naval + issuedNaval < targetNaval && HasOwnNavalInfrastructure() && actions < 2)
+            if (productionAllowed && naval + issuedNaval < targetNaval && HasOwnNavalInfrastructure() && actions < 2)
             {
                 string orderId;
                 bool reserved = IA02MilitaryProductionGuard.TryReserve(context.TeamId, IA02MilitaryAssetKind.Naval, targetNaval, naval, now, 180f, out orderId);
@@ -178,9 +214,13 @@ namespace Hegemonia.AI.IA02
             // Se a abertura ainda não conseguiu erguer a fábrica/aeroporto em 12 s,
             // cria a reserva em ponto seguro do próprio território. Isso mantém a IA
             // jogável sem espalhar construções ou unidades para o mapa adversário.
-            EnsurePierThenPlatform(now);
-            EnsureTankerAfterPlatform(now);
+            if (productionAllowed)
+            {
+                EnsurePierThenPlatform(now);
+                EnsureTankerAfterPlatform(now);
+            }
             ApplyNavalPatrols(now);
+            ApplyNavalIncidentResponses(now);
             ApplyNavalStaging(now);
             ApplyNavalCombat(now);
             ApplyAirPatrols(now);
@@ -190,14 +230,26 @@ namespace Hegemonia.AI.IA02
                 targetFighters,
                 fighters);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_production_fighter", fighterDiagnostics.ToString());
-            status = string.Format("Reserva militar: soldados={0}/{1} tanques={2}/{3} AA={4} cacas={5}/{6} navios={7}/{8} escalao={9}",
+            status = string.Format("Reserva militar{10}: soldados={0}/{1} tanques={2}/{3} AA={4} cacas={5}/{6} navios={7}/{8} escalao={9}",
                 soldiers, targetSoldiers, tanks, targetTanks, antiAir, fighters, targetFighters, naval, targetNaval,
-                ProgressaoEscalaoAtiva ? ResolverEtapaEscalao() : -1);
+                ProgressaoEscalaoAtiva ? ResolverEtapaEscalao() : -1,
+                productionAllowed ? string.Empty : " em paz desativada");
             if (changed)
             {
                 Debug.Log("[IA02 Military] " + status);
             }
             return changed;
+        }
+
+        private bool PermiteProducaoMilitarAutomatica()
+        {
+            if (controller == null || controller.AllowPeacetimeMilitaryProduction) return true;
+
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno pais = governo != null && context != null
+                ? governo.ObterPais(context.TeamId)
+                : null;
+            return pais != null && pais.emGuerra;
         }
 
         private bool TemPrefeituraOperacional()
@@ -405,6 +457,7 @@ namespace Hegemonia.AI.IA02
             }
             RefreshRegisteredEntityCaches();
             int assigned = 0;
+            int[] assignedBySector = new int[zones.Length];
             int candidates = 0;
             int alreadyPatrolling = 0;
             int rejected = 0;
@@ -440,11 +493,20 @@ namespace Hegemonia.AI.IA02
                 candidates++;
                 if (control.OrdemAtual == OrdemControleUnidade.Patrulhando)
                 {
-                    alreadyPatrolling++;
-                    continue;
+                    if (navalResponseAssignmentUntil.TryGetValue(id.GetInstanceID(), out float assignmentUntil)
+                        && now >= assignmentUntil)
+                    {
+                        navalResponseAssignmentUntil.Remove(id.GetInstanceID());
+                    }
+                    else
+                    {
+                        alreadyPatrolling++;
+                        continue;
+                    }
                 }
-                IA02NavalPatrolZone zone = zones[assigned % zones.Length];
-                if (!zone.TryCriarRota(assigned, out Vector3[] route))
+                int sector = EscolherSetorNaval(zones, assignedBySector);
+                IA02NavalPatrolZone zone = zones[sector];
+                if (!zone.TryCriarRota(assignedBySector[sector], out Vector3[] route))
                 {
                     rejected++;
                     if (EmitirLogsDetalhadosDePatrulha)
@@ -453,6 +515,7 @@ namespace Hegemonia.AI.IA02
                 }
                 if (control.EmitirOrdemPatrulha(route))
                 {
+                    assignedBySector[sector]++;
                     assigned++;
                     DiagnosticoDesempenhoJogo.RegistrarEvento("IA02_NavalPatrol", id.name + " patrulha " + zone.name);
                 }
@@ -497,6 +560,173 @@ namespace Hegemonia.AI.IA02
                         context.TeamId, navalIdentities));
                 }
             }
+        }
+
+        private void ApplyNavalIncidentResponses(float now)
+        {
+            if (now < nextNavalIncidentResponseAt || context == null) return;
+            nextNavalIncidentResponseAt = now + 6f;
+
+            navalWarZonesBuffer.Clear();
+            IA02WarAdvanceZone[] zones = UnityEngine.Object.FindObjectsByType<IA02WarAdvanceZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < zones.Length; i++)
+            {
+                IA02WarAdvanceZone zone = zones[i];
+                if (zone != null && zone.TeamId == context.TeamId && zone.Tipo == IA02WarAdvanceZone.Dominio.Naval
+                    && zone.TipoZona == WarAdvanceZoneType.Defensiva && zone.ResponderAtaques)
+                    navalWarZonesBuffer.Add(zone);
+            }
+            if (navalWarZonesBuffer.Count == 0) return;
+
+            RefreshRegisteredEntityCaches();
+            RegistroEntidadesJogo.FillUnidades(navalUnitsBuffer);
+            int totalNavios = 0;
+            for (int i = 0; i < navalUnitsBuffer.Count; i++)
+            {
+                IdentidadeUnidade id = navalUnitsBuffer[i];
+                if (id != null && id.teamID == context.TeamId && id.tipoUnidade == TipoUnidade.Naval
+                    && !IsNavalStructure(id) && !IsLogisticsTanker(id)) totalNavios++;
+            }
+            if (totalNavios <= 0) return;
+
+            navalResponseAssigned.Clear();
+            navalPatrolZonesBuffer.Clear();
+            navalPatrolZonesBuffer.AddRange(UnityEngine.Object.FindObjectsByType<IA02NavalPatrolZone>(FindObjectsInactive.Include, FindObjectsSortMode.None));
+            IA02WorldState world = controller != null && controller.Runtime != null ? controller.Runtime.WorldState : null;
+
+            for (int z = 0; z < navalWarZonesBuffer.Count; z++)
+            {
+                IA02WarAdvanceZone zone = navalWarZonesBuffer[z];
+                zone.LimparIncidentesExpirados(now);
+                AtualizarContatosNavais(zone, world, now);
+                for (int incidentIndex = 0; incidentIndex < zone.IncidentesAtivos.Count; incidentIndex++)
+                {
+                    WarAdvanceIncident incident = zone.IncidentesAtivos[incidentIndex];
+                    if (incident == null) continue;
+                    int responseLimit = zone.CalcularLimiteRespostaNaval(incident, totalNavios);
+                    if (responseLimit <= 0) continue;
+                    BuildNavalResponseCandidates(incident, zone);
+                    int issued = 0;
+                    for (int c = 0; c < navalResponseCandidatesBuffer.Count && issued < responseLimit; c++)
+                    {
+                        NavalResponseCandidate candidate = navalResponseCandidatesBuffer[c];
+                        int key = candidate.Identity.GetInstanceID();
+                        if (navalResponseAssigned.Contains(key)) continue;
+                        Vector3 target = incident.EnemyLastKnownPosition != Vector3.zero ? incident.EnemyLastKnownPosition : incident.Position;
+                        IA02NavalPatrolZone patrolZone = FindNearestNavalPatrolZone(target);
+                        Vector3[] route = patrolZone != null ? patrolZone.CriarRotaResposta(target, zone.RaioInvestigacao, issued + incidentIndex) : new[] { target };
+                        if (!candidate.Control.EmitirOrdemPatrulha(route)) continue;
+                        if (incident.MissionState >= WarAdvanceMissionState.Intercept)
+                            candidate.Control.DefinirModoCombate(incident.MissionState >= WarAdvanceMissionState.Combat);
+                        navalResponseAssigned.Add(key);
+                        if (zone.RetornarPatrulhaDepois) navalResponseAssignmentUntil[key] = incident.ExpirationTime;
+                        issued++;
+                        DiagnosticoDesempenhoJogo.RegistrarEvento("IA02_NavalIncidentResponse", candidate.Identity.name + " -> " + incident.MissionState + " em " + target);
+                        if (incident.MissionState >= WarAdvanceMissionState.Combat && candidate.Ship != null)
+                            candidate.Ship.DefinirDestinoAtaqueLateral(target, 160f, 100f);
+                    }
+                }
+            }
+        }
+
+        private void AtualizarContatosNavais(IA02WarAdvanceZone zone, IA02WorldState world, float now)
+        {
+            if (world == null || world.EnemyUnits == null) return;
+            for (int i = 0; i < zone.IncidentesAtivos.Count; i++)
+            {
+                WarAdvanceIncident incident = zone.IncidentesAtivos[i];
+                if (incident == null || incident.AttackerTeamId <= 0) continue;
+                Vector3 origem = incident.EnemyLastKnownPosition != Vector3.zero ? incident.EnemyLastKnownPosition : incident.Position;
+                float melhor = Mathf.Max(900f, zone.RaioInvestigacao);
+                IdentidadeUnidade contato = null;
+                for (int e = 0; e < world.EnemyUnits.Count; e++)
+                {
+                    IdentidadeUnidade enemy = world.EnemyUnits[e];
+                    if (enemy == null || enemy.teamID != incident.AttackerTeamId || enemy.tipoUnidade != TipoUnidade.Naval || !enemy.gameObject.activeInHierarchy) continue;
+                    float distancia = Vector3.Distance(enemy.transform.position, origem);
+                    if (distancia < melhor) { melhor = distancia; contato = enemy; }
+                }
+                if (contato != null) zone.AtualizarContato(incident.AttackerTeamId, contato.transform.position, true, now);
+                else if (incident.AttackerStillPresent) zone.AtualizarContato(incident.AttackerTeamId, origem, false, now);
+            }
+        }
+
+        private void BuildNavalResponseCandidates(WarAdvanceIncident incident, IA02WarAdvanceZone zone)
+        {
+            navalResponseCandidatesBuffer.Clear();
+            Vector3 target = incident.EnemyLastKnownPosition != Vector3.zero ? incident.EnemyLastKnownPosition : incident.Position;
+            bool needsWeapons = incident.MissionState >= WarAdvanceMissionState.Intercept;
+            for (int i = 0; i < navalUnitsBuffer.Count; i++)
+            {
+                IdentidadeUnidade id = navalUnitsBuffer[i];
+                if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Naval || IsNavalStructure(id) || IsLogisticsTanker(id)) continue;
+                ControleUnidade control = id.GetComponent<ControleUnidade>() ?? id.GetComponentInParent<ControleUnidade>() ?? id.GetComponentInChildren<ControleUnidade>(true);
+                ControleNavioRealista ship = id.GetComponent<ControleNavioRealista>() ?? id.GetComponentInParent<ControleNavioRealista>() ?? id.GetComponentInChildren<ControleNavioRealista>(true);
+                if (control == null || !NavalPlacementResolver.IsNavalPatrolCapable(id, control, out _)) continue;
+                CombustivelUnidade fuel = id.GetComponent<CombustivelUnidade>() ?? id.GetComponentInParent<CombustivelUnidade>() ?? id.GetComponentInChildren<CombustivelUnidade>(true);
+                float fuelPercent = fuel == null || !fuel.usaCombustivel ? 1f : fuel.Percentual;
+                SistemaDeDanos damage = id.GetComponent<SistemaDeDanos>() ?? id.GetComponentInParent<SistemaDeDanos>() ?? id.GetComponentInChildren<SistemaDeDanos>(true);
+                float healthPercent = damage == null || damage.vidaMaxima <= 0f ? 1f : Mathf.Clamp01(damage.vidaAtual / damage.vidaMaxima);
+                LancadorNaval launcher = id.GetComponent<LancadorNaval>() ?? id.GetComponentInParent<LancadorNaval>() ?? id.GetComponentInChildren<LancadorNaval>(true);
+                int missiles = launcher != null ? launcher.municaoTotal : 0;
+                int torpedoes = launcher != null ? launcher.torpedosTotal : 0;
+                if (fuelPercent < (needsWeapons ? 0.40f : 0.30f) || healthPercent < (needsWeapons ? 0.50f : 0.35f) || !CombustivelUnidade.PodeOperarObjeto(id.gameObject)) continue;
+                if (needsWeapons && (launcher == null || missiles + torpedoes <= 0)) continue;
+                float distance = Vector3.Distance(id.transform.position, target);
+                int priority = ResolveNavalCandidatePriority(control, ship, distance, zone.RaioInvestigacao);
+                if (priority < 0) continue;
+                NavalResponseCandidate candidate = new NavalResponseCandidate { Identity = id, Control = control, Ship = ship, Distance = distance, FuelPercent = fuelPercent, HealthPercent = healthPercent, Ammunition = missiles, Torpedoes = torpedoes, Priority = priority };
+                int insert = 0;
+                while (insert < navalResponseCandidatesBuffer.Count && CompareNavalCandidates(navalResponseCandidatesBuffer[insert], candidate) <= 0) insert++;
+                navalResponseCandidatesBuffer.Insert(insert, candidate);
+            }
+        }
+
+        private static int ResolveNavalCandidatePriority(ControleUnidade control, ControleNavioRealista ship, float distance, float radius)
+        {
+            if (control.OrdemAtual == OrdemControleUnidade.Patrulhando && distance <= radius) return 0;
+            if ((control.OrdemAtual == OrdemControleUnidade.Ociosa || control.OrdemAtual == OrdemControleUnidade.Parada) && distance <= radius) return 1;
+            if (ship != null && !ship.TemDestinoAtivo) return 2;
+            if (control.OrdemAtual == OrdemControleUnidade.Patrulhando) return 3;
+            if (control.OrdemAtual == OrdemControleUnidade.Ociosa || control.OrdemAtual == OrdemControleUnidade.Parada) return 4;
+            return -1;
+        }
+
+        private static int CompareNavalCandidates(NavalResponseCandidate a, NavalResponseCandidate b)
+        {
+            int priority = a.Priority.CompareTo(b.Priority);
+            if (priority != 0) return priority;
+            int distance = a.Distance.CompareTo(b.Distance);
+            if (distance != 0) return distance;
+            int health = b.HealthPercent.CompareTo(a.HealthPercent);
+            return health != 0 ? health : b.FuelPercent.CompareTo(a.FuelPercent);
+        }
+
+        private IA02NavalPatrolZone FindNearestNavalPatrolZone(Vector3 target)
+        {
+            IA02NavalPatrolZone nearest = null;
+            float best = float.MaxValue;
+            for (int i = 0; i < navalPatrolZonesBuffer.Count; i++)
+            {
+                IA02NavalPatrolZone zone = navalPatrolZonesBuffer[i];
+                if (zone == null) continue;
+                float distance = (zone.transform.position - target).sqrMagnitude;
+                if (distance < best) { best = distance; nearest = zone; }
+            }
+            return nearest;
+        }
+
+        private static int EscolherSetorNaval(IList<IA02NavalPatrolZone> zones, int[] assignedBySector)
+        {
+            int selected = 0;
+            int best = int.MaxValue;
+            for (int i = 0; i < zones.Count; i++)
+            {
+                int desired = zones[i] != null ? zones[i].NaviosDesejados : 0;
+                int score = assignedBySector[i] < desired ? assignedBySector[i] - 1000 : assignedBySector[i];
+                if (score < best) { best = score; selected = i; }
+            }
+            return selected;
         }
 
         private void ApplyNavalCombat(float now)
@@ -608,8 +838,10 @@ namespace Hegemonia.AI.IA02
             if (airPatrolCreatesBuffer.Count < 4) return;
 
             RegistroEntidadesJogo.FillUnidades(airUnitsBuffer);
+            ApplyAirIncidentResponses(now);
             int candidates = 0;
             int assigned = 0;
+            int[] assignedBySector = new int[airPatrolCreatesBuffer.Count];
             for (int i = 0; i < airUnitsBuffer.Count; i++)
             {
                 IdentidadeUnidade id = airUnitsBuffer[i];
@@ -621,13 +853,22 @@ namespace Hegemonia.AI.IA02
                     ?? id.GetComponentInParent<ControleAviao>()
                     ?? id.GetComponentInChildren<ControleAviao>(true);
                 if (control == null || aviao == null || !EhAeroportoMilitar(aviao.aeroportoOrigem)) continue;
-                if (control.OrdemAtual == OrdemControleUnidade.Patrulhando) continue;
+                int aircraftKey = id.GetInstanceID();
+                if (control.OrdemAtual == OrdemControleUnidade.Patrulhando)
+                {
+                    float assignmentUntil;
+                    if (!airResponseAssignmentUntil.TryGetValue(aircraftKey, out assignmentUntil)) continue;
+                    if (now < assignmentUntil) continue;
+                    airResponseAssignmentUntil.Remove(aircraftKey);
+                }
                 if (aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio) continue;
                 candidates++;
 
-                Vector3[] route = CriarRotaDosCreates(airPatrolCreatesBuffer, assigned % 4);
+                int sector = EscolherSetorPatrulha(airPatrolCreatesBuffer, assignedBySector, assigned);
+                Vector3[] route = CriarRotaDosCreates(airPatrolCreatesBuffer, sector, assignedBySector[sector]);
                 if (control.EmitirOrdemPatrulha(route))
                 {
+                    assignedBySector[sector]++;
                     assigned++;
                     DiagnosticoDesempenhoJogo.RegistrarEvento("IA02_AirPatrol", id.name + " patrulha nos 4 Creates militares");
                     if (EmitirLogsDetalhadosDePatrulha)
@@ -644,6 +885,189 @@ namespace Hegemonia.AI.IA02
                     Debug.Log("[IA02 Military] Patrulha aerea: candidatos=" + candidates + " | atribuídos=" + assigned);
                 }
             }
+        }
+
+        private void ApplyAirIncidentResponses(float now)
+        {
+            if (now < nextAirIncidentResponseAt) return;
+            nextAirIncidentResponseAt = now + 6f;
+
+            airWarZonesBuffer.Clear();
+            IA02WarAdvanceZone[] zones = UnityEngine.Object.FindObjectsByType<IA02WarAdvanceZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < zones.Length; i++)
+            {
+                IA02WarAdvanceZone zone = zones[i];
+                if (zone != null && zone.TeamId == context.TeamId && zone.Tipo == IA02WarAdvanceZone.Dominio.Aereo && zone.ResponderAtaques)
+                    airWarZonesBuffer.Add(zone);
+            }
+            if (airWarZonesBuffer.Count == 0) return;
+
+            int totalAeronaves = 0;
+            for (int i = 0; i < airUnitsBuffer.Count; i++)
+            {
+                IdentidadeUnidade id = airUnitsBuffer[i];
+                if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Aereo) continue;
+                ControleAviao aircraft = id.GetComponent<ControleAviao>() ?? id.GetComponentInParent<ControleAviao>() ?? id.GetComponentInChildren<ControleAviao>(true);
+                if (aircraft != null && EhAeroportoMilitar(aircraft.aeroportoOrigem) && BelongsToOwnAirport(aircraft.aeroportoOrigem)) totalAeronaves++;
+            }
+            if (totalAeronaves <= 0) return;
+
+            airResponseAssigned.Clear();
+            for (int z = 0; z < airWarZonesBuffer.Count; z++)
+            {
+                IA02WarAdvanceZone zone = airWarZonesBuffer[z];
+                zone.LimparIncidentesExpirados(now);
+                for (int incidentIndex = 0; incidentIndex < zone.IncidentesAtivos.Count; incidentIndex++)
+                {
+                    WarAdvanceIncident incident = zone.IncidentesAtivos[incidentIndex];
+                    if (incident == null) continue;
+                    bool primeiraObservacao = zone.InvestigarPrimeiro && !incident.ObservationDispatched;
+                    if (!zone.PermitirReforcos && incident.ObservationDispatched) continue;
+                    int responseLimit = zone.CalcularLimiteResposta(incident, totalAeronaves);
+                    if (primeiraObservacao)
+                        responseLimit = Mathf.Min(1, responseLimit);
+                    if (responseLimit <= 0) continue;
+                    BuildAirResponseCandidates(incident, zone, now);
+                    int issued = 0;
+                    for (int c = 0; c < airResponseCandidatesBuffer.Count && issued < responseLimit; c++)
+                    {
+                        AirResponseCandidate candidate = airResponseCandidatesBuffer[c];
+                        int key = candidate.Identity.GetInstanceID();
+                        if (airResponseAssigned.Contains(key)) continue;
+                        IA02AirPatrolZone patrolZone = FindNearestAirPatrolCreate(candidate.Aircraft, incident.EnemyLastKnownPosition != Vector3.zero ? incident.EnemyLastKnownPosition : incident.Position);
+                        if (patrolZone == null) continue;
+                        Vector3 target = incident.EnemyLastKnownPosition != Vector3.zero ? incident.EnemyLastKnownPosition : incident.Position;
+                        bool ordemAceita;
+                        if (primeiraObservacao || incident.MissionState == WarAdvanceMissionState.Recon)
+                        {
+                            Vector3[] route = patrolZone.CriarRotaResposta(target, zone.RaioInvestigacao, issued);
+                            ordemAceita = candidate.Control.EmitirOrdemPatrulha(route);
+                        }
+                        else if (incident.MissionState == WarAdvanceMissionState.Intercept)
+                        {
+                            // Interceptar ainda não significa abrir fogo: o
+                            // avião vai à última posição conhecida em modo de
+                            // deslocamento, deixando a confirmação/combate
+                            // para o próximo ciclo de contato.
+                            ordemAceita = candidate.Control.EmitirOrdemMover(target, true);
+                        }
+                        else if (incident.MissionState == WarAdvanceMissionState.Combat
+                            && (!zone.ConfirmarHostilidade || incident.Confirmed))
+                        {
+                            Transform contato = EncontrarContatoAereo(incident.AttackerTeamId, target);
+                            ordemAceita = candidate.Control.EmitirMissaoAereaOfensiva(target, contato);
+                        }
+                        else
+                        {
+                            // Sem confirmação suficiente, uma ocorrência que
+                            // já ficou intensa ainda recebe interceptação, mas
+                            // não abre fogo por engano.
+                            ordemAceita = candidate.Control.EmitirOrdemMover(target, true);
+                        }
+                        if (!ordemAceita) continue;
+                        airResponseAssigned.Add(key);
+                        if (primeiraObservacao)
+                            incident.ObservationDispatched = true;
+                        if (zone.RetornarPatrulhaDepois)
+                            airResponseAssignmentUntil[key] = incident.ExpirationTime;
+                        issued++;
+                        DiagnosticoDesempenhoJogo.RegistrarEvento("IA02_AirIncidentResponse", candidate.Identity.name + " -> " + incident.MissionState + " em " + target);
+                    }
+                }
+            }
+        }
+
+        private void BuildAirResponseCandidates(WarAdvanceIncident incident, IA02WarAdvanceZone zone, float now)
+        {
+            airResponseCandidatesBuffer.Clear();
+            Vector3 target = incident.EnemyLastKnownPosition != Vector3.zero ? incident.EnemyLastKnownPosition : incident.Position;
+            for (int i = 0; i < airUnitsBuffer.Count; i++)
+            {
+                IdentidadeUnidade id = airUnitsBuffer[i];
+                if (id == null || id.teamID != context.TeamId || id.tipoUnidade != TipoUnidade.Aereo) continue;
+                ControleUnidade control = id.GetComponent<ControleUnidade>() ?? id.GetComponentInParent<ControleUnidade>() ?? id.GetComponentInChildren<ControleUnidade>(true);
+                ControleAviao aircraft = id.GetComponent<ControleAviao>() ?? id.GetComponentInParent<ControleAviao>() ?? id.GetComponentInChildren<ControleAviao>(true);
+                if (control == null || aircraft == null || !EhAeroportoMilitar(aircraft.aeroportoOrigem) || !BelongsToOwnAirport(aircraft.aeroportoOrigem)) continue;
+                float distance = Vector3.Distance(aircraft.transform.position, target);
+                CombustivelUnidade fuel = id.GetComponent<CombustivelUnidade>() ?? id.GetComponentInParent<CombustivelUnidade>() ?? id.GetComponentInChildren<CombustivelUnidade>(true);
+                float fuelPercent = fuel == null || !fuel.usaCombustivel ? 1f : fuel.Percentual;
+                float minimumFuel = incident.MissionState == WarAdvanceMissionState.Recon ? 0.30f : 0.40f;
+                minimumFuel += Mathf.Clamp01(distance / Mathf.Max(500f, zone.RaioInvestigacao)) * 0.15f;
+                if (fuelPercent < minimumFuel || !CombustivelUnidade.PodeOperarObjeto(id.gameObject)) continue;
+                LancadorMisselCaca launcher = id.GetComponent<LancadorMisselCaca>() ?? id.GetComponentInParent<LancadorMisselCaca>() ?? id.GetComponentInChildren<LancadorMisselCaca>(true);
+                int ammunition = launcher != null ? launcher.municaoAtual : int.MaxValue;
+                if (incident.MissionState >= WarAdvanceMissionState.Intercept && launcher != null && ammunition <= 0) continue;
+                int priority = ResolveAirCandidatePriority(control, aircraft, distance, zone.RaioInvestigacao);
+                if (priority < 0) continue;
+                AirResponseCandidate candidate = new AirResponseCandidate { Identity = id, Control = control, Aircraft = aircraft, Distance = distance, FuelPercent = fuelPercent, Ammunition = ammunition, Priority = priority };
+                int insert = 0;
+                while (insert < airResponseCandidatesBuffer.Count && CompareAirCandidates(airResponseCandidatesBuffer[insert], candidate) <= 0) insert++;
+                airResponseCandidatesBuffer.Insert(insert, candidate);
+            }
+        }
+
+        private static int ResolveAirCandidatePriority(ControleUnidade control, ControleAviao aircraft, float distance, float investigationRadius)
+        {
+            if (control.OrdemAtual == OrdemControleUnidade.Patrulhando && distance <= investigationRadius) return 0;
+            if ((control.OrdemAtual == OrdemControleUnidade.Ociosa || control.OrdemAtual == OrdemControleUnidade.Parada) && distance <= investigationRadius) return 1;
+            if (aircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio && distance <= investigationRadius) return 2;
+            if (control.OrdemAtual == OrdemControleUnidade.Patrulhando) return 3;
+            if (aircraft.estadoAtual == ControleAviao.EstadoAviao.ReservaHangar) return 4;
+            if (control.OrdemAtual == OrdemControleUnidade.Ociosa || control.OrdemAtual == OrdemControleUnidade.Parada) return 5;
+            return -1;
+        }
+
+        private static int CompareAirCandidates(AirResponseCandidate a, AirResponseCandidate b)
+        {
+            int priority = a.Priority.CompareTo(b.Priority);
+            if (priority != 0) return priority;
+            int distance = a.Distance.CompareTo(b.Distance);
+            if (distance != 0) return distance;
+            return b.FuelPercent.CompareTo(a.FuelPercent);
+        }
+
+        private IA02AirPatrolZone FindNearestAirPatrolCreate(ControleAviao aircraft, Vector3 target)
+        {
+            IA02AirPatrolZone nearest = null;
+            float best = float.MaxValue;
+            for (int i = 0; i < airPatrolCreatesBuffer.Count; i++)
+            {
+                IA02AirPatrolZone create = airPatrolCreatesBuffer[i];
+                if (create == null) continue;
+                float distance = (create.transform.position - target).sqrMagnitude;
+                if (distance < best) { best = distance; nearest = create; }
+            }
+            return nearest;
+        }
+
+        private Transform EncontrarContatoAereo(int attackerTeamId, Vector3 target)
+        {
+            if (attackerTeamId <= 0) return null;
+            Transform encontrado = null;
+            float menorDistancia = float.MaxValue;
+            for (int i = 0; i < airUnitsBuffer.Count; i++)
+            {
+                IdentidadeUnidade identidade = airUnitsBuffer[i];
+                if (identidade == null || identidade.teamID != attackerTeamId
+                    || identidade.tipoUnidade != TipoUnidade.Aereo
+                    || !identidade.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                ControleAviao aeronave = identidade.GetComponent<ControleAviao>()
+                    ?? identidade.GetComponentInParent<ControleAviao>()
+                    ?? identidade.GetComponentInChildren<ControleAviao>(true);
+                if (aeronave == null) continue;
+
+                float distancia = (aeronave.transform.position - target).sqrMagnitude;
+                if (distancia < menorDistancia)
+                {
+                    menorDistancia = distancia;
+                    encontrado = aeronave.transform;
+                }
+            }
+            return encontrado;
         }
 
         private bool TryObterCreatesPatrulhaAerea(List<IA02AirPatrolZone> destino)
@@ -711,6 +1135,7 @@ namespace Hegemonia.AI.IA02
                     grupo = new GameObject("IA02 Creates Patrulha Aerea").transform;
                     grupo.SetParent(airport.transform, false);
                 }
+                CompensarEscalaDosCreates(grupo, airport.transform);
 
                 for (int ponto = 1; ponto <= 4; ponto++)
                 {
@@ -742,6 +1167,7 @@ namespace Hegemonia.AI.IA02
                     grupo = new GameObject("IA02 Creates Patrulha Aerea").transform;
                     grupo.SetParent(airport.transform, false);
                 }
+                CompensarEscalaDosCreates(grupo, airport.transform);
 
                 for (int ponto = 1; ponto <= 4; ponto++)
                 {
@@ -762,22 +1188,57 @@ namespace Hegemonia.AI.IA02
             return 0;
         }
 
-        private static Vector3[] CriarRotaDosCreates(IList<IA02AirPatrolZone> creates, int inicio)
+        private static void CompensarEscalaDosCreates(Transform grupo, Transform aeroporto)
         {
-            Vector3[] rota = new Vector3[4];
-            for (int i = 0; i < rota.Length; i++)
+            if (grupo == null || aeroporto == null) return;
+
+            // Alguns modelos importados, como a Base Militar, usam escala
+            // não uniforme na raiz. Os offsets dos Creates são coordenadas de
+            // mundo e não podem ser comprimidos por essa escala.
+            Vector3 escalaGrupo = grupo.localScale;
+            if (Mathf.Abs(escalaGrupo.x - 1f) > 0.001f
+                || Mathf.Abs(escalaGrupo.y - 1f) > 0.001f
+                || Mathf.Abs(escalaGrupo.z - 1f) > 0.001f)
             {
-                rota[i] = creates[(inicio + i) % creates.Count].ObterPontoPatrulha();
+                return;
             }
-            return rota;
+
+            Vector3 escalaPai = aeroporto.lossyScale;
+            if (Mathf.Abs(escalaPai.x - 1f) < 0.001f
+                && Mathf.Abs(escalaPai.y - 1f) < 0.001f
+                && Mathf.Abs(escalaPai.z - 1f) < 0.001f)
+            {
+                return;
+            }
+
+            grupo.localScale = new Vector3(
+                Mathf.Abs(escalaPai.x) > 0.0001f ? 1f / escalaPai.x : 1f,
+                Mathf.Abs(escalaPai.y) > 0.0001f ? 1f / escalaPai.y : 1f,
+                Mathf.Abs(escalaPai.z) > 0.0001f ? 1f / escalaPai.z : 1f);
+        }
+
+        private static int EscolherSetorPatrulha(IList<IA02AirPatrolZone> creates, int[] alocados, int fallback)
+        {
+            for (int i = 0; i < creates.Count; i++)
+            {
+                int setor = (fallback + i) % creates.Count;
+                int desejadas = creates[setor].AeronavesDesejadas;
+                if (desejadas <= 0 || alocados[setor] < desejadas) return setor;
+            }
+            return fallback % creates.Count;
+        }
+
+        private static Vector3[] CriarRotaDosCreates(IList<IA02AirPatrolZone> creates, int setor, int indiceRota)
+        {
+            if (creates == null || creates.Count == 0) return new Vector3[0];
+            // Cada Create e um setor de responsabilidade. A aeronave permanece
+            // dentro do setor escolhido, com pontos diferentes por aeronave.
+            return creates[setor % creates.Count].CriarRota(indiceRota);
         }
 
         private static bool EhAeroportoMilitar(GerenciadorAeroporto airport)
         {
-            if (airport == null) return false;
-            if (airport.patioMilitar != null || airport.prefabSu11 != null) return true;
-            if (airport.transform.Find("Patio_Militar") != null || airport.transform.Find("PatioMilitar") != null) return true;
-            return airport.name.IndexOf("militar", StringComparison.OrdinalIgnoreCase) >= 0;
+            return airport != null && airport.EhAeroportoMilitar();
         }
 
         private static bool EhAeroportoMilitar(IA02AirportBuildSlot airport, IA02BuildSlot slot)
@@ -793,6 +1254,21 @@ namespace Hegemonia.AI.IA02
             nextNavalStagingAt = now + 30f;
             IA02NavalPatrolZone[] zones = UnityEngine.Object.FindObjectsByType<IA02NavalPatrolZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (zones.Length == 0) return;
+            IA02WarAdvanceZone objectiveZone = null;
+            if (controller != null && controller.WarEscalationLevel > 0)
+            {
+                IA02WarAdvanceZone[] objectives = UnityEngine.Object.FindObjectsByType<IA02WarAdvanceZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                for (int o = 0; o < objectives.Length; o++)
+                {
+                    IA02WarAdvanceZone candidate = objectives[o];
+                    if (candidate != null && candidate.TeamId == context.TeamId && candidate.Tipo == IA02WarAdvanceZone.Dominio.Naval
+                        && candidate.TipoZona != WarAdvanceZoneType.Defensiva)
+                    {
+                        objectiveZone = candidate;
+                        break;
+                    }
+                }
+            }
             RefreshRegisteredEntityCaches();
             int staged = 0;
             for (int i = 0; i < registeredIdentitiesBuffer.Count; i++)
@@ -808,7 +1284,9 @@ namespace Hegemonia.AI.IA02
                     ?? id.GetComponentInParent<ControleNavioRealista>()
                     ?? id.GetComponentInChildren<ControleNavioRealista>(true);
                 if (navio != null && navio.TemDestinoAtivo) continue;
-                Vector3 ponto = zones[(i + 1) % zones.Length].transform.position;
+                Vector3 ponto = objectiveZone != null
+                    ? objectiveZone.ObterPonto(i)
+                    : zones[(i + 1) % zones.Length].transform.position;
                 Vector3 direcao = ponto - id.transform.position;
                 if (direcao.sqrMagnitude < 0.01f) direcao = Vector3.forward;
                 if (!NavalPlacementResolver.TryResolveWaterSpawn(ponto, direcao, 0f, 300f, out Vector3 agua, out _, out string reason))

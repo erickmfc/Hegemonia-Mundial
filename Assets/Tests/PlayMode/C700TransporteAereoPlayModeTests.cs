@@ -12,7 +12,8 @@ public sealed class C700TransporteAereoPlayModeTests
     {
         GameObject piso = CriarPiso();
         GameObject transporteObjeto = null;
-        GameObject soldado = null;
+        GameObject pistaAObjeto = null;
+        GameObject pistaBObjeto = null;
 
         try
         {
@@ -34,10 +35,15 @@ public sealed class C700TransporteAereoPlayModeTests
             Component transporte = transporteObjeto.GetComponentInChildren(tipoTransporte, true);
             Assert.That(transporte, Is.Not.Null, "O prefab do C700 precisa ter C700TransporteAereo.");
 
+            pistaAObjeto = CriarPista("MiniPista_C700_A", new Vector3(160f, 0f, 0f));
+            pistaBObjeto = CriarPista("MiniPista_C700_B", new Vector3(-500f, 0f, 0f));
+            Component pistaA = pistaAObjeto.GetComponent("MiniPistaLogistica");
+            Component pistaB = pistaBObjeto.GetComponent("MiniPistaLogistica");
+
             yield return null;
             Campo(transporte, "velocidadeCruzeiro", 100f);
             Campo(transporte, "velocidadeDecolagem", 35f);
-            Campo(transporte, "altitudeCruzeiro", 45f);
+            Campo(transporte, "altitudeCruzeiro", 35f);
             Campo(transporte, "distanciaAproximacao", 65f);
             Campo(transporte, "distanciaDescida", 30f);
             Campo(transporte, "distanciaRolagem", 20f);
@@ -45,45 +51,51 @@ public sealed class C700TransporteAereoPlayModeTests
             Campo(transporte, "debugLogs", true);
             Assert.That(Estado(transporte), Is.EqualTo("Solo"));
             Assert.That(Propriedade<int>(transporte, "CapacidadeCargaAtual"), Is.GreaterThan(0));
+            Assert.That(pistaA, Is.Not.Null);
+            Assert.That(pistaB, Is.Not.Null);
+            Assert.That(Propriedade<bool>(pistaA, "PistaValida"), Is.True, "A mini pista A precisa possuir todos os pontos fixos.");
+            Assert.That(Propriedade<bool>(pistaB, "PistaValida"), Is.True, "A mini pista B precisa possuir todos os pontos fixos.");
+            Chamar(transporte, "ReceberOrdemMover", pistaA.transform.position);
+            yield return EsperarEstado(transporte, "Estacionado", 90f);
 
-            Vector3 primeiroDestino = new Vector3(340f, 0f, 0f);
-            Chamar(transporte, "ReceberOrdemMover", primeiroDestino);
-            yield return EsperarEstadoSolo(transporte, 55f);
+            Transform estacionamentoA = Campo<Transform>(pistaA, "parkingPoint");
+            Assert.That(estacionamentoA, Is.Not.Null);
+            Assert.That(Vector3.Distance(transporte.transform.position, estacionamentoA.position), Is.LessThan(6f));
+            Assert.That(Propriedade<Component>(pistaA, "ParkingReservedBy"), Is.SameAs(transporte));
 
-            Assert.That(Estado(transporte), Is.EqualTo("Solo"));
-            Assert.That(Vector3.Distance(new Vector3(transporte.transform.position.x, 0f, transporte.transform.position.z), primeiroDestino), Is.LessThan(6f));
-            Assert.That(transporte.transform.position.y, Is.EqualTo(0.2f).Within(0.3f));
-
-            soldado = CriarSoldado(transporte.transform.position + Vector3.right * 4f);
-            yield return new WaitForFixedUpdate();
-            Chamar(transporte, "PuxarUnidadesProximas");
-            yield return new WaitForSeconds(1.5f);
-
-            Assert.That(Propriedade<int>(transporte, "QuantidadeCargaAtual"), Is.EqualTo(1), "O transporte deveria embarcar uma unidade próxima quando está no solo.");
-            Assert.That(soldado.activeSelf, Is.False, "A unidade embarcada deve ficar protegida dentro da carga.");
-
-            Chamar(transporte, "DesembarcarTudo");
-            yield return null;
-
-            Assert.That(Propriedade<int>(transporte, "QuantidadeCargaAtual"), Is.EqualTo(0));
-            Assert.That(soldado.activeSelf, Is.True, "A unidade deve voltar ao cenário ao descarregar.");
-
-            Vector3 segundoDestino = new Vector3(-300f, 0f, 80f);
-            Chamar(transporte, "ReceberOrdemMover", segundoDestino);
-            yield return EsperarEstadoSolo(transporte, 65f);
+            Assert.That(ChamarComResultado<bool>(pistaA, "AdicionarTropas", 8), Is.True);
+            Assert.That(Campo<int>(pistaA, "tropasEsperando"), Is.EqualTo(8));
+            Assert.That(ChamarComResultado<bool>(transporte, "IniciarTransportMission", pistaA, pistaB), Is.True);
+            yield return EsperarEstadoSolo(transporte, 120f);
 
             Assert.That(Estado(transporte), Is.EqualTo("Solo"));
-            Assert.That(Vector3.Distance(new Vector3(transporte.transform.position.x, 0f, transporte.transform.position.z), segundoDestino), Is.LessThan(6f));
-            Assert.That(transporte.transform.position.y, Is.EqualTo(0.2f).Within(0.3f));
+            Assert.That(Campo<int>(pistaA, "tropasEsperando"), Is.EqualTo(0));
+            Assert.That(Propriedade<bool>(pistaB, "ParkingReserved"), Is.False);
+            Assert.That(Propriedade<int>(transporte, "TropasArmazenadas"), Is.EqualTo(0));
             Assert.That(float.IsNaN(transporte.transform.position.x), Is.False);
             Assert.That(float.IsNaN(transporte.transform.position.y), Is.False);
             Assert.That(float.IsNaN(transporte.transform.position.z), Is.False);
         }
         finally
         {
-            if (soldado != null) UnityEngine.Object.Destroy(soldado);
             if (transporteObjeto != null) UnityEngine.Object.Destroy(transporteObjeto);
+            if (pistaAObjeto != null) UnityEngine.Object.Destroy(pistaAObjeto);
+            if (pistaBObjeto != null) UnityEngine.Object.Destroy(pistaBObjeto);
             if (piso != null) UnityEngine.Object.Destroy(piso);
+        }
+    }
+
+    private static IEnumerator EsperarEstado(Component transporte, string esperado, float timeout)
+    {
+        float fim = Time.realtimeSinceStartup + timeout;
+        while (transporte != null && Estado(transporte) != esperado)
+        {
+            if (Time.realtimeSinceStartup >= fim)
+            {
+                Assert.Fail("O C700 não chegou ao estado " + esperado + ". Estado atual: " + Estado(transporte) + "; posição: " + transporte.transform.position);
+            }
+
+            yield return null;
         }
     }
 
@@ -110,12 +122,16 @@ public sealed class C700TransporteAereoPlayModeTests
         return piso;
     }
 
-    private static GameObject CriarSoldado(Vector3 posicao)
+    private static GameObject CriarPista(string nome, Vector3 posicao)
     {
-        GameObject soldado = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        soldado.name = "Soldado_C700_PlayMode";
-        soldado.transform.position = posicao;
-        return soldado;
+        GameObject pistaObjeto = new GameObject(nome);
+        pistaObjeto.transform.position = posicao;
+        Type tipoPista = Type.GetType("MiniPistaLogistica, Assembly-CSharp");
+        Assert.That(tipoPista, Is.Not.Null, "A classe MiniPistaLogistica precisa estar compilada no Assembly-CSharp.");
+        Component pista = pistaObjeto.AddComponent(tipoPista);
+        Campo(pista, "teamId", 1);
+        Campo(pista, "raioAceitacaoDestino", 400f);
+        return pistaObjeto;
     }
 
     private static string Estado(Component transporte)
@@ -137,10 +153,24 @@ public sealed class C700TransporteAereoPlayModeTests
         metodo.Invoke(transporte, argumentos);
     }
 
+    private static T ChamarComResultado<T>(Component componente, string nome, params object[] argumentos)
+    {
+        MethodInfo metodo = componente.GetType().GetMethod(nome, BindingFlags.Instance | BindingFlags.Public);
+        Assert.That(metodo, Is.Not.Null, "Método público ausente: " + nome);
+        return (T)metodo.Invoke(componente, argumentos);
+    }
+
     private static void Campo(Component transporte, string nome, object valor)
     {
         FieldInfo campo = transporte.GetType().GetField(nome, BindingFlags.Instance | BindingFlags.Public);
         Assert.That(campo, Is.Not.Null, "Campo público ausente no C700: " + nome);
         campo.SetValue(transporte, valor);
+    }
+
+    private static T Campo<T>(Component componente, string nome)
+    {
+        FieldInfo campo = componente.GetType().GetField(nome, BindingFlags.Instance | BindingFlags.Public);
+        Assert.That(campo, Is.Not.Null, "Campo público ausente: " + nome);
+        return (T)campo.GetValue(componente);
     }
 }

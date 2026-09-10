@@ -288,21 +288,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d892c6a3f2e1b8a40b51090e94499746, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Fazenda
-  catalogoAgricola: []
   nomeFazenda: Fazenda Nacional
   mostrarLogs: 0
-  intervaloProducaoSegundos: 1
-  lote1Ocupado: 0
-  lote1SementeIndex: 0
-  lote1Progresso: 0
-  lote2Ocupado: 0
-  lote2SementeIndex: 0
-  lote2Progresso: 0
-  lote3Comprado: 0
-  custoLote3: 2000
-  lote3Ocupado: 0
-  lote3SementeIndex: 0
-  lote3Progresso: 0
 --- !u!65 &-8483546439033601054
 BoxCollider:
   m_ObjectHideFlags: 0

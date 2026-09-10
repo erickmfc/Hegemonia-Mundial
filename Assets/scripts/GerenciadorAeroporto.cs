@@ -95,6 +95,8 @@ public class GerenciadorAeroporto : MonoBehaviour
     private bool _modoPousoC17Pendente = false;
     private float _proximaSortidaIA = -999f;
     private float _proximoReporPatioTime = -999f;
+    private float _proximaManutencaoListas = -999f;
+    private Transform _vagaHelicopteroReserva;
 
     [Header("⚡ Energia")]
     public bool semEnergia = false;
@@ -182,8 +184,26 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (hangarAviao != null)
         {
-            wpPreparacao = hangarAviao.Find("Preparacao");
-            wpPronto = hangarAviao.Find("Pronto");
+            wpPreparacao = EncontrarFilhoPorNome(hangarAviao, "Preparacao");
+            wpPronto = EncontrarFilhoPorNome(hangarAviao, "Pronto");
+
+            // Algumas bases importadas guardam apenas um ponto "Pronto" ou
+            // apontam o campo hangarAviao diretamente para esse ponto. Nesse
+            // caso o avião não pode nascer na raiz da base: usa o ponto
+            // configurado como saída/espera do hangar para os dois estágios.
+            if (wpPreparacao == null && wpPronto == null)
+            {
+                wpPreparacao = hangarAviao;
+                wpPronto = hangarAviao;
+            }
+            else if (wpPreparacao == null)
+            {
+                wpPreparacao = wpPronto;
+            }
+            else if (wpPronto == null)
+            {
+                wpPronto = wpPreparacao;
+            }
         }
 
         if (decolagem != null)
@@ -205,6 +225,16 @@ public class GerenciadorAeroporto : MonoBehaviour
             foreach (Transform filho in decida) waypointsDecida.Add(filho);
             // Como o objeto no Unity está do inicio (Freiada) ao fim (Alinhando)
             // e o avião entra pelo Alinhando, invertemos a lista inteira!
+            waypointsDecida.Reverse();
+        }
+
+        // A nova Base Militar reaproveita a mesma sequência física da pista
+        // para a aproximação, mas seu campo decida pode apontar para um ponto
+        // sem filhos. Reusar a sequência de decolagem invertida mantém o
+        // pouso compatível com o sistema atual sem criar uma rota paralela.
+        if (waypointsDecida.Count == 0 && waypointsDecolagem.Count > 0)
+        {
+            waypointsDecida.AddRange(waypointsDecolagem);
             waypointsDecida.Reverse();
         }
 
@@ -249,8 +279,106 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     protected virtual void Start()
     {
+        DiagnosticarConfiguracaoOperacional();
         // Inicia o serviço de reparação automática
         StartCoroutine(ManutencaoDeFrota());
+    }
+
+    /// <summary>
+    /// Classificação central usada pelas IAs e pelos serviços militares.
+    /// Mantém aeroportos comerciais e porta-aviões fora da categoria militar,
+    /// mas reconhece a Base Militar mesmo quando o prefab não tem caça
+    /// configurado no Inspector.
+    /// </summary>
+    public bool EhAeroportoMilitar()
+    {
+        if (this is GerenciadorAeroportoComercial || this is GerenciadorPortaAvioes)
+        {
+            return false;
+        }
+
+        if (patioMilitar != null || prefabSu11 != null)
+        {
+            return true;
+        }
+
+        string nomeNormalizado = name == null ? string.Empty : name.ToLowerInvariant()
+            .Replace(" ", string.Empty)
+            .Replace("_", string.Empty)
+            .Replace("-", string.Empty);
+        return nomeNormalizado.Contains("militar")
+            || nomeNormalizado.Contains("baseaerea")
+            || nomeNormalizado.Contains("airbase");
+    }
+
+    private static Transform EncontrarFilhoPorNome(Transform raiz, string nome)
+    {
+        if (raiz == null || string.IsNullOrWhiteSpace(nome)) return null;
+        Transform encontrado = raiz.Find(nome);
+        if (encontrado != null) return encontrado;
+
+        Transform[] filhos = raiz.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < filhos.Length; i++)
+        {
+            Transform candidato = filhos[i];
+            if (candidato != null && string.Equals(candidato.name, nome, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return candidato;
+            }
+        }
+
+        return null;
+    }
+
+    private void DiagnosticarConfiguracaoOperacional()
+    {
+        if (!EhAeroportoMilitar()) return;
+
+        string aviso = string.Empty;
+        if (waypointsPatio == null || waypointsPatio.Count == 0) aviso += " pátio/vagas;";
+        if (wpPreparacao == null) aviso += " saída do hangar;";
+        if (wpPronto == null) aviso += " ponto pronto;";
+        if (waypointsDecolagem == null || waypointsDecolagem.Count < 2) aviso += " pista decolagem;";
+        if (waypointsDecida == null || waypointsDecida.Count < 2) aviso += " pista pouso;";
+
+        if (string.IsNullOrEmpty(aviso))
+        {
+            Debug.Log($"[Aeroporto Militar] {name}: vagas={waypointsPatio.Count}, hangar={wpPreparacao.name}, decolagem={waypointsDecolagem.Count}, pouso={waypointsDecida.Count}.", this);
+        }
+        else
+        {
+            Debug.LogWarning($"[Aeroporto Militar] {name}: referências incompletas:{aviso}", this);
+        }
+
+        LogarPontosOperacionais("Vaga", waypointsPatio);
+        LogarPontosOperacionais("Decolagem", waypointsDecolagem);
+        LogarPontosOperacionais("Pouso", waypointsDecida);
+
+        Transform[] filhos = GetComponentsInChildren<Transform>(true);
+        int creates = 0;
+        for (int i = 0; i < filhos.Length; i++)
+        {
+            Transform filho = filhos[i];
+            if (filho == null || !filho.name.StartsWith("Create Patrulha Aerea", System.StringComparison.OrdinalIgnoreCase)) continue;
+            creates++;
+            Debug.Log($"[Aeroporto Militar] {name}: {filho.name} pos={filho.position.ToString("F1")} setor local={filho.localPosition.ToString("F1")}", filho);
+        }
+
+        if (creates == 0)
+        {
+            Debug.Log($"[Aeroporto Militar] {name}: nenhum Create de patrulha no prefab; o diretor da IA poderá criá-los em runtime.", this);
+        }
+    }
+
+    private static void LogarPontosOperacionais(string tipo, IList<Transform> pontos)
+    {
+        if (pontos == null) return;
+        for (int i = 0; i < pontos.Count; i++)
+        {
+            Transform ponto = pontos[i];
+            if (ponto == null) continue;
+            Debug.Log($"[Aeroporto Militar] {tipo} {i + 1}: {ponto.name} pos={ponto.position.ToString("F1")} dir={ponto.forward.ToString("F2")}", ponto);
+        }
     }
 
     private IEnumerator ManutencaoDeFrota()
@@ -322,12 +450,53 @@ public class GerenciadorAeroporto : MonoBehaviour
             combustivel = CombustivelUnidade.Garantir(aeronave.gameObject, false);
         }
 
-        if (combustivel == null || combustivel.CombustivelAtual >= combustivel.Capacidade)
+        if (combustivel != null && combustivel.CombustivelAtual < combustivel.Capacidade)
         {
-            return;
+            ServicoAbastecimento.TentarAbastecer(combustivel, 45f * Mathf.Max(0.1f, deltaServico), out _);
         }
 
-        ServicoAbastecimento.TentarAbastecer(combustivel, 45f * Mathf.Max(0.1f, deltaServico), out _);
+        // O serviço periódico só é chamado para aeronaves já estacionadas no
+        // pátio/hangar. Rearma aqui também para que uma aeronave que ficou em
+        // reserva não dependa de pousar novamente para recuperar munição.
+        LancadorMisselCaca[] misseis = aeronave.GetComponentsInChildren<LancadorMisselCaca>(true);
+        for (int i = 0; i < misseis.Length; i++)
+        {
+            if (misseis[i] != null)
+            {
+                misseis[i].RecarregarCompletoNaBase();
+            }
+        }
+
+        LancadorMisseis[] armamentoMultiplo = aeronave.GetComponentsInChildren<LancadorMisseis>(true);
+        for (int i = 0; i < armamentoMultiplo.Length; i++)
+        {
+            if (armamentoMultiplo[i] != null)
+            {
+                armamentoMultiplo[i].municaoAtual = armamentoMultiplo[i].municaoMaxima;
+            }
+        }
+
+        SistemaArmamentoHelice[] canhoes = aeronave.GetComponentsInChildren<SistemaArmamentoHelice>(true);
+        for (int i = 0; i < canhoes.Length; i++)
+        {
+            if (canhoes[i] != null)
+            {
+                canhoes[i].RecarregarCompletoNaBase();
+            }
+        }
+
+        ControleTorretaModular[] torretas = aeronave.GetComponentsInChildren<ControleTorretaModular>(true);
+        for (int i = 0; i < torretas.Length; i++)
+        {
+            if (torretas[i] == null || torretas[i].armas == null) continue;
+            for (int j = 0; j < torretas[i].armas.Count; j++)
+            {
+                if (torretas[i].armas[j] != null)
+                {
+                    torretas[i].armas[j].municaoAtual = torretas[i].armas[j].tamanhoCartucho;
+                }
+            }
+        }
     }
 
     private void ProcessarFilaCompraAeronavesIA()
@@ -362,8 +531,16 @@ public class GerenciadorAeroporto : MonoBehaviour
     {
         ProcessarFilaCompraAeronavesIA();
         if (cameraPrincipal == null) cameraPrincipal = Camera.main;
-        RemoveNulls(helicopterosDoAeroporto);
-        LimparHelicopterosTransferidos();
+
+        // A limpeza de referencias e uma manutencao de baixa prioridade;
+        // executa em intervalo, mantendo a resposta normal dos menus e da
+        // pista sem percorrer as listas em todos os frames.
+        if (Time.unscaledTime >= _proximaManutencaoListas)
+        {
+            _proximaManutencaoListas = Time.unscaledTime + 0.5f;
+            RemoveNulls(helicopterosDoAeroporto);
+            LimparHelicopterosTransferidos();
+        }
 
         // Replenish patio from hangar periodically if space is available
         if (avioesNoHangar.Count > 0 && Time.time >= _proximoReporPatioTime)
@@ -517,18 +694,64 @@ public class GerenciadorAeroporto : MonoBehaviour
                 _modoPousoC17Pendente = false;
                 Debug.Log($"[Aeroporto] Ordem C17 confirmada em: {pontoAlvo}");
             }
-            else if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
-            {
-                aviaoSelecionadoParaMissao.IniciarMissaoCompleta(pontoAlvo);
-                Debug.Log($"[Aeroporto] Coordenadas recebidas! {aviaoSelecionadoParaMissao.gameObject.name} decolando para: {pontoAlvo}");
-            }
             else
             {
-                aviaoSelecionadoParaMissao.centroDaPatrulha = pontoAlvo;
-                aviaoSelecionadoParaMissao.alvoGPSVoo = pontoAlvo;
-                CacaVooRealista cv = aviaoSelecionadoParaMissao.GetComponent<CacaVooRealista>();
-                if (cv != null) cv.alvoGPS = pontoAlvo;
-                Debug.Log($"[Aeroporto] Rota Alterada! {aviaoSelecionadoParaMissao.gameObject.name} mudando curso para: {pontoAlvo}");
+                AviaoBombardeiro bombardeiroSelecionado = aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>();
+                AviaoBombardeiro.ModoAtaque modoAtaqueAnterior = bombardeiroSelecionado != null
+                    ? bombardeiroSelecionado.modoDeAtaque
+                    : AviaoBombardeiro.ModoAtaque.Patrulha;
+                Vector3 alvoAreaAnterior = bombardeiroSelecionado != null ? bombardeiroSelecionado.alvoAreaSolo : Vector3.zero;
+                Vector3 alvoMassa1Anterior = bombardeiroSelecionado != null ? bombardeiroSelecionado.alvoMassa1 : Vector3.zero;
+                Vector3 alvoMassa2Anterior = bombardeiroSelecionado != null ? bombardeiroSelecionado.alvoMassa2 : Vector3.zero;
+                if (bombardeiroSelecionado != null)
+                {
+                    // O painel de bombardeiro tambem precisa receber o ponto
+                    // novo. Sem isso o LateUpdate podia continuar usando o
+                    // alvoAreaSolo/alvoMassa de uma missão anterior.
+                    if (bombardeiroSelecionado.modoDeAtaque == AviaoBombardeiro.ModoAtaque.AtaqueAoSolo)
+                    {
+                        bombardeiroSelecionado.alvoAreaSolo = pontoAlvo;
+                    }
+                    else if (bombardeiroSelecionado.modoDeAtaque == AviaoBombardeiro.ModoAtaque.AtaqueEmMassa)
+                    {
+                        bombardeiroSelecionado.alvoMassa1 = pontoAlvo;
+                        bombardeiroSelecionado.alvoMassa2 = pontoAlvo;
+                    }
+                }
+
+                // O controlador moderno decide se a aeronave esta pronta,
+                // taxiando, voando ou pousando. Assim o clique nao escreve
+                // apenas o GPS e deixa a patrulha antiga disputando o alvo.
+                ControleUnidade controleAereoSelecionado = aviaoSelecionadoParaMissao.GetComponent<ControleUnidade>();
+                bool ordemAceita;
+                if (usarMarcadorPatrulhaNoClique)
+                {
+                    ordemAceita = controleAereoSelecionado != null
+                        ? controleAereoSelecionado.EmitirOrdemPatrulha(new List<Vector3> { pontoAlvo })
+                        : aviaoSelecionadoParaMissao.ReceberOrdemPatrulha(new List<Vector3> { pontoAlvo });
+                }
+                else
+                {
+                    ordemAceita = controleAereoSelecionado != null
+                        ? controleAereoSelecionado.EmitirOrdemMover(pontoAlvo, true)
+                        : aviaoSelecionadoParaMissao.ReceberOrdemManual(pontoAlvo);
+                }
+                if (!ordemAceita)
+                {
+                    if (bombardeiroSelecionado != null)
+                    {
+                        bombardeiroSelecionado.modoDeAtaque = modoAtaqueAnterior;
+                        bombardeiroSelecionado.alvoAreaSolo = alvoAreaAnterior;
+                        bombardeiroSelecionado.alvoMassa1 = alvoMassa1Anterior;
+                        bombardeiroSelecionado.alvoMassa2 = alvoMassa2Anterior;
+                    }
+                    aviaoSelecionadoParaMissao.aguardandoCliqueRadar = true;
+                    AtualizarModoInteracaoManualAeroporto();
+                    Debug.LogWarning($"[Aeroporto] Ordem recusada enquanto {aviaoSelecionadoParaMissao.gameObject.name} conclui o pouso.");
+                    return;
+                }
+
+                Debug.Log($"[Aeroporto] Coordenadas recebidas! {aviaoSelecionadoParaMissao.gameObject.name} recebeu {(usarMarcadorPatrulhaNoClique ? "patrulha" : "destino")}: {pontoAlvo}");
             }
         }
 
@@ -678,7 +901,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                 _rotaPatrulhaHelicoptero.RemoveAt(_rotaPatrulhaHelicoptero.Count - 1);
                 if (_rotaPatrulhaHelicoptero.Count > 0)
                 {
-                    helicopteroSelecionadoParaMissao.IniciarPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
+                    helicopteroSelecionadoParaMissao.ReceberOrdemPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
                 }
                 else
                 {
@@ -699,26 +922,43 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Patrulha)
         {
             _rotaPatrulhaHelicoptero.Add(pontoAlvo);
-            helicopteroSelecionadoParaMissao.IniciarPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
-            CriarSinalizador(pontoAlvo, helicopteroSelecionadoParaMissao);
-            Debug.Log($"[Aeroporto] Patrulha atualizada com {_rotaPatrulhaHelicoptero.Count} ponto(s). Clique direito adiciona mais, ENTER encerra edição.");
+            bool ordemAceita = helicopteroSelecionadoParaMissao.ReceberOrdemPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
+            if (ordemAceita)
+            {
+                CriarSinalizador(pontoAlvo, helicopteroSelecionadoParaMissao);
+                Debug.Log($"[Aeroporto] Patrulha atualizada com {_rotaPatrulhaHelicoptero.Count} ponto(s). Clique direito adiciona mais, ENTER encerra edição.");
+            }
+            else
+            {
+                _rotaPatrulhaHelicoptero.RemoveAt(_rotaPatrulhaHelicoptero.Count - 1);
+                Debug.LogWarning("[Aeroporto] O helicóptero recusou a patrulha; ponto não registrado.");
+            }
             return;
         }
 
+        bool ordemEspecialAceita = false;
         if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Reconhecimento)
         {
-            helicopteroSelecionadoParaMissao.IniciarReconhecimentoAeroporto(pontoAlvo);
+            ordemEspecialAceita = helicopteroSelecionadoParaMissao.ReceberOrdemReconhecimentoAeroporto(pontoAlvo);
         }
         else if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.AtaqueLocal)
         {
-            helicopteroSelecionadoParaMissao.IniciarAtaqueLocalAeroporto(pontoAlvo);
+            ordemEspecialAceita = helicopteroSelecionadoParaMissao.ReceberOrdemAtaqueLocalAeroporto(pontoAlvo);
         }
         else if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Transporte)
         {
             helicopteroSelecionadoParaMissao.IniciarTransporteAeroporto(pontoAlvo);
+            ordemEspecialAceita = true;
         }
 
-        CriarSinalizador(pontoAlvo, helicopteroSelecionadoParaMissao);
+        if (ordemEspecialAceita)
+        {
+            CriarSinalizador(pontoAlvo, helicopteroSelecionadoParaMissao);
+        }
+        else
+        {
+            Debug.LogWarning("[Aeroporto] O helicóptero recusou a ordem especial; nenhum sinalizador foi criado.");
+        }
         EncerrarModoHelicoptero();
     }
 
@@ -1203,20 +1443,39 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (wpPronto != null)
         {
             yield return StartCoroutine(aviao.MoverInterpolado(Vector3.zero, aviao.velocidadeSolo, false, wpPronto));
+            if (aviao == null || !aviao.MovimentoWaypointConcluido)
+            {
+                if (aviao != null) GuardarNoHangarAutomatico(aviao);
+                yield break;
+            }
         }
 
         if (aviao == null) yield break;
         
         // Vai devagarzinho pra Vaga do Pátio
         yield return StartCoroutine(aviao.MoverInterpolado(Vector3.zero, aviao.velocidadeSolo, false, vagaDesignada));
+        if (aviao == null || !aviao.MovimentoWaypointConcluido)
+        {
+            if (aviao != null) GuardarNoHangarAutomatico(aviao);
+            yield break;
+        }
         
         if (aviao != null)
         {
+            // O recebimento termina na mesma convenção do pouso: a aeronave
+            // fica presa à vaga real, com o offset de estacionamento e a
+            // rotação authored. Sem isso ela parecia pronta, mas permanecia
+            // solta no mundo e podia iniciar o próximo voo de um ponto errado.
+            aviao.transform.SetParent(vagaDesignada, true);
+            aviao.transform.localPosition = new Vector3(0f, aviao.ObterAlturaEstacionamento(), 0f);
+            aviao.transform.localRotation = Quaternion.identity;
             aviao.DefinirEstado(ControleAviao.EstadoAviao.ProntoNoPatio);
-            // A IA pode emitir a patrulha antes de a rotina de recebimento
-            // terminar. Reaplica a ordem no momento em que a aeronave fica
-            // realmente pronta, evitando que ela permaneça parada no pátio.
-            aviao.TentarIniciarPatrulhaPendente();
+            // A IA ou o jogador podem emitir uma ordem enquanto o avião ainda
+            // está saindo do hangar. Libere tanto a missão manual quanto a
+            // patrulha quando a vaga real estiver pronta; chamar somente a
+            // rotina de patrulha deixava ordens manuais presas no pátio.
+            aviao.TentarIniciarOrdemPendente();
+            aviao.TentarRetomarMissaoAposReabastecimento();
         }
     }
 
@@ -1256,6 +1515,88 @@ public class GerenciadorAeroporto : MonoBehaviour
         {
             helicopterosDoAeroporto.Add(helicoptero);
         }
+    }
+
+    /// <summary>
+    /// Registra uma aeronave que chegou por compra, transferência ou carga
+    /// especial. Esse caminho mantém o pátio/hangar e o retorno da aeronave
+    /// sincronizados, assim como acontece com uma aeronave construída aqui.
+    /// </summary>
+    public virtual bool RegistrarAeronaveRecebida(ControleAviao aviao)
+    {
+        if (aviao == null)
+        {
+            return false;
+        }
+
+        avioesNoPatio.Remove(aviao);
+        avioesNoHangar.Remove(aviao);
+        aviao.aeroportoOrigem = this;
+
+        Transform vaga = ObterPrimeiraVagaLivre();
+        if (vaga != null)
+        {
+            return ColocarAviaoInstantaneamenteNoPatio(aviao, vaga, false);
+        }
+
+        GuardarNoHangarAutomatico(aviao);
+        return avioesNoHangar.Contains(aviao);
+    }
+
+    /// <summary>Finaliza a chegada de um helicóptero no pátio ou reserva.</summary>
+    public virtual bool RegistrarHelicopteroRecebido(Helicoptero helicoptero)
+    {
+        if (helicoptero == null)
+        {
+            return false;
+        }
+
+        Transform vaga = ObterVagaHelicopteroPreferencial(false);
+        if (vaga == null)
+        {
+            RegistrarHelicopteroControlado(helicoptero);
+            helicoptero.gameObject.SetActive(false);
+            return true;
+        }
+
+        helicoptero.VincularAoAeroporto(this, vaga);
+        helicoptero.PosicionarInstantaneamenteNaVagaAeroporto(vaga);
+
+        GerenciadorPortaAvioes carrier = this as GerenciadorPortaAvioes;
+        if (carrier != null)
+        {
+            helicoptero.FixarEmVagaMovel(vaga, carrier.transform);
+        }
+
+        RegistrarHelicopteroControlado(helicoptero);
+        return true;
+    }
+
+    /// <summary>Finaliza a chegada de um C-700 no ponto grande do pátio.</summary>
+    public virtual bool RegistrarTransporteAereoRecebido(C700TransporteAereo aviao)
+    {
+        if (aviao == null)
+        {
+            return false;
+        }
+
+        aviao.DefinirAeroportoOrigem(this);
+        Transform parada = ObterParadaGrandePreferencial(false);
+        if (parada == null) parada = ObterPrimeiraVagaLivre();
+        if (parada == null) parada = ObterParadaGrandePreferencial(true);
+        if (parada == null)
+        {
+            aviao.gameObject.SetActive(false);
+            return false;
+        }
+
+        if (!transportesC700NoPatio.Contains(aviao))
+        {
+            transportesC700NoPatio.Add(aviao);
+        }
+        aviao.RegistrarPontoEstacionamento(parada);
+        aviao.FinalizarPosicionamentoNoPatio(parada);
+        return true;
     }
 
     private IEnumerator RotinaRecebimentoC700(C700TransporteAereo aviao)
@@ -1316,7 +1657,15 @@ public class GerenciadorAeroporto : MonoBehaviour
                 break;
             }
 
-            proximo.IniciarMissaoCompleta(alvo);
+            ControleUnidade controle = proximo.GetComponent<ControleUnidade>();
+            bool ordemAceita = controle != null
+                ? controle.EmitirOrdemMover(alvo, true)
+                : proximo.ReceberOrdemManual(alvo);
+            if (!ordemAceita)
+            {
+                Debug.LogWarning($"[Ataque Massa] A aeronave {proximo.name} recusou a missão.");
+                break;
+            }
             lancados++;
             
             if (lancados < quantidade) yield return new WaitForSeconds(5f);
@@ -1356,7 +1705,12 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
 
             ConfigurarAviaoParaPatrulhaEmGrupo(proximo);
-            proximo.IniciarMissaoCompleta(alvo);
+            ControleUnidade controle = proximo.GetComponent<ControleUnidade>();
+            if (controle == null || !controle.EmitirOrdemPatrulha(new List<Vector3> { alvo }))
+            {
+                Debug.LogWarning($"[Patrulha Grupo] A aeronave {proximo.name} recusou a rota.");
+                yield break;
+            }
             lancados++;
 
             if (lancados < quantidade)
@@ -1426,7 +1780,62 @@ public class GerenciadorAeroporto : MonoBehaviour
             vagaEncontrada = ProcurarVagaHelicopteroEmRaiz(transform, aceitarOcupada);
         }
 
+        // Algumas bases militares importadas possuem pista e hangar, mas não
+        // trazem os marcadores H/I/J/K/L/Q usados pelo aeroporto convencional.
+        // Sem uma vaga real, a compra do helicóptero era ocultada e depois
+        // removida da lista por não ter origem registrada. Cria uma única vaga
+        // reserva visível apenas nesse caso; aeroportos que já têm vagas
+        // continuam obedecendo a capacidade configurada na cena.
+        if (vagaEncontrada == null && !aceitarOcupada && !ExisteVagaHelicopteroConfigurada())
+        {
+            vagaEncontrada = ObterOuCriarVagaHelicopteroReserva();
+        }
+
         return vagaEncontrada;
+    }
+
+    private bool ExisteVagaHelicopteroConfigurada()
+    {
+        Transform raizBusca = patio != null ? patio : transform;
+        if (ExisteVagaHelicopteroNaRaiz(raizBusca)) return true;
+        return patio != transform && ExisteVagaHelicopteroNaRaiz(transform);
+    }
+
+    private static bool ExisteVagaHelicopteroNaRaiz(Transform raizBusca)
+    {
+        if (raizBusca == null) return false;
+
+        Transform[] filhos = raizBusca.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < filhos.Length; i++)
+        {
+            Transform candidato = filhos[i];
+            if (candidato != null && NomeEhVagaHelicopteroMilitar(candidato.name.ToLowerInvariant()))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Transform ObterOuCriarVagaHelicopteroReserva()
+    {
+        if (_vagaHelicopteroReserva != null)
+        {
+            return _vagaHelicopteroReserva;
+        }
+
+        Transform raiz = patio != null ? patio : transform;
+        GameObject marcador = new GameObject("Vaga_H_Reserva");
+        marcador.transform.SetParent(transform, true);
+
+        Vector3 posicao = raiz != null ? raiz.position : transform.position;
+        marcador.transform.position = posicao + Vector3.up * 3.5f;
+        marcador.transform.rotation = transform.rotation;
+        marcador.transform.localScale = Vector3.one;
+
+        _vagaHelicopteroReserva = marcador.transform;
+        return _vagaHelicopteroReserva;
     }
 
     protected bool HelicopteroPertenceAEstaBase(Helicoptero heli)
@@ -1684,7 +2093,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             return false;
         }
 
-        if (nome.Contains("parada"))
+        if (nome.Contains("parada") || nome.Contains("descanso") || nome.Contains("vaga grande") || nome.Contains("vaga_grande"))
         {
             return true;
         }
@@ -1866,11 +2275,27 @@ public class GerenciadorAeroporto : MonoBehaviour
             aviao.transform.rotation = transform.rotation;
         }
 
-        aviao.vagaRetorno = null;
+        // Reserve uma vaga real para o retorno mesmo quando a aeronave veio
+        // do hangar. Limpar essa referência fazia a sequência capturar o pai
+        // raiz do aeroporto como se ele fosse uma vaga.
+        Transform vagaReservada = ObterPrimeiraVagaLivre();
+        aviao.vagaRetorno = vagaReservada;
         aviao.aguardandoCliqueRadar = false;
         aviao.ordemParaRetorno = false;
         aviao.estaEmModoVooFisico = false;
         aviao.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
+        aviao.transform.SetParent(transform, true);
+        if (vagaReservada != null && !avioesNoPatio.Contains(aviao))
+        {
+            avioesNoPatio.Add(aviao);
+        }
+
+        // A ordem pode ter sido emitida enquanto a aeronave ainda estava no
+        // hangar. Este é um caminho de preparação direta (não passa por
+        // DefinirEstado), então libere explicitamente a ordem agora que ela
+        // está pronta no pátio.
+        aviao.TentarIniciarOrdemPendente();
+        aviao.TentarRetomarMissaoAposReabastecimento();
     }
 
     private void ConfigurarAviaoParaPatrulhaEmGrupo(ControleAviao aviao)
@@ -2289,8 +2714,11 @@ public class GerenciadorAeroporto : MonoBehaviour
                         GUILayout.Label($"<color=orange>✈️ Estacionado em outra base/navio: {aviaoSelecionadoParaMissao.aeroportoOrigem.name.Replace("(Clone)","")}</color>");
                         if (GUILayout.Button("🔙 REQUISITAR RETORNO IMEDIATO", GUILayout.Height(50)))
                         {
-                            aviaoSelecionadoParaMissao.aeroportoOrigem = this;
-                            aviaoSelecionadoParaMissao.IniciarMissaoCompleta(transform.position);
+                            // Transferência entre bases precisa marcar o voo
+                            // como retorno. Enviar somente a posição do
+                            // aeroporto fazia o avião chegar ao centro e
+                            // continuar orbitando sem pousar.
+                            aviaoSelecionadoParaMissao.DefinirBaseAlternativaEIniciarRetorno(this);
                             aviaoSelecionadoParaMissao = null;
                             menuAtivo = false;
                             if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
@@ -2686,32 +3114,6 @@ public class GerenciadorAeroporto : MonoBehaviour
         GUILayout.EndVertical();
     }
 
-    private void SelecionarTransporteNoMapa(C700TransporteAereo transporte)
-    {
-        if (transporte == null)
-        {
-            return;
-        }
-
-        ControleUnidade controle = transporte.GetComponent<ControleUnidade>();
-        if (controle == null)
-        {
-            return;
-        }
-
-        GerenteSelecao gerenteSelecao = FindFirstObjectByType<GerenteSelecao>();
-        if (gerenteSelecao != null)
-        {
-            gerenteSelecao.DeselecionarTudo();
-            if (!gerenteSelecao.unidadesSelecionadas.Contains(controle))
-            {
-                gerenteSelecao.unidadesSelecionadas.Add(controle);
-            }
-        }
-
-        controle.DefinirSelecao(true);
-    }
-
     private void ExecutarModoRadar(bool deveSerPassivo, bool usarMarcadorPatrulhaAviao = false)
     {
         if (aviaoSelecionadoParaMissao == null) return;
@@ -2752,6 +3154,12 @@ public class GerenciadorAeroporto : MonoBehaviour
         modeloSubsaturado.vagaRetorno = vagaOcupadaLivre; 
         modeloSubsaturado.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
         avioesNoPatio.Add(modeloSubsaturado);
+        // Esta troca usa o estado pronto diretamente, sem passar por
+        // DefinirEstado. Libere aqui uma ordem emitida enquanto a aeronave
+        // ainda estava no hangar, mantendo o mesmo contrato dos outros
+        // caminhos de saída para o pátio.
+        modeloSubsaturado.TentarIniciarOrdemPendente();
+        modeloSubsaturado.TentarRetomarMissaoAposReabastecimento();
     }
 
     private void LiberarAviaoParaPatio(ControleAviao aviaoDoHangar)
@@ -2835,7 +3243,8 @@ public class GerenciadorAeroporto : MonoBehaviour
         // Se a aeronave havia voltado para abastecer e precisou aguardar no
         // hangar, retoma a patrulha somente agora, quando existe uma vaga e
         // ela está realmente pronta para decolar.
-        aviao.TentarIniciarPatrulhaPendente();
+        aviao.TentarIniciarOrdemPendente();
+        aviao.TentarRetomarMissaoAposReabastecimento();
         return true;
     }
 
@@ -2892,11 +3301,36 @@ public class GerenciadorAeroporto : MonoBehaviour
         Vector3 alvoEstrategico = alvo;
         Vector3 alvoVoo = alvo;
         alvoVoo.y = Mathf.Max(alvoVoo.y, 60f);
+        ControleUnidade controle = aviao.GetComponent<ControleUnidade>();
+        bool ordemAceita;
+
+        // Sortidas de patrulha da IA precisam ser registradas como rota, não
+        // como uma missão pontual. Assim o controlador preserva o circuito
+        // quando a aeronave retorna com 30% de combustível, é abastecida e
+        // volta a decolar.
+        if (missao == 1)
+        {
+            ordemAceita = controle != null
+                ? controle.EmitirOrdemPatrulha(new List<Vector3> { alvoVoo })
+                : aviao.ReceberOrdemPatrulha(new List<Vector3> { alvoVoo });
+        }
+        else
+        {
+            ordemAceita = controle != null
+                ? controle.EmitirOrdemMover(alvoEstrategico, true)
+                : aviao.ReceberOrdemManual(alvoEstrategico);
+        }
+
+        // Nenhum subsistema deve ser configurado antes de o executor de voo
+        // aceitar a missão. Isso evita uma aeronave ficar armada, com alvo
+        // antigo ou em modo de combate quando a pista/combustível a recusou.
+        if (!ordemAceita)
+        {
+            return false;
+        }
+
         aviao.aguardandoCliqueRadar = false;
-        aviao.alvoPrioritarioIA = missao == 2;
         aviao.alvoEstrategico = alvoEstrategico;
-        aviao.centroDaPatrulha = alvoVoo;
-        aviao.alvoGPSVoo = alvoVoo;
 
         AviaoBombardeiro bombardeiro = aviao.GetComponent<AviaoBombardeiro>();
         if (bombardeiro != null)
@@ -2921,28 +3355,14 @@ public class GerenciadorAeroporto : MonoBehaviour
             lancadorCaca.modoPassivo = missao != 2;
         }
 
-        // Reconhecimento e ataque são missões pontuais. Limpa uma eventual
-        // rota de patrulha deixada pelo voo anterior antes de iniciar outra
-        // sortida, evitando que a aeronave retome um circuito antigo.
-        if (missao != 1)
+        if (controle != null)
         {
-            aviao.RegistrarMissaoManual(alvoEstrategico);
+            // Deslocamentos de reconhecimento/patrulha permanecem passivos;
+            // somente a missão ofensiva arma o modo de combate oficial.
+            controle.DefinirModoCombate(missao == 2);
         }
 
-        // Sortidas de patrulha da IA precisam ser registradas como rota, não
-        // como uma missão pontual. Assim o controlador preserva o circuito
-        // quando a aeronave retorna com 30% de combustível, é abastecida e
-        // volta a decolar.
-        if (missao == 1)
-        {
-            ControleUnidade controle = aviao.GetComponent<ControleUnidade>();
-            if (controle != null && controle.EmitirOrdemPatrulha(new List<Vector3> { alvoVoo }))
-            {
-                return true;
-            }
-        }
-
-        aviao.IniciarMissaoCompleta(alvoEstrategico);
+        aviao.alvoPrioritarioIA = missao == 2;
         return true;
     }
 }

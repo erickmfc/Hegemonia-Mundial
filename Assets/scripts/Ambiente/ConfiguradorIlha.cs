@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -33,6 +34,9 @@ public class ConfiguradorIlha : MonoBehaviour
     public float raioRecuperacaoNavMesh = 50f;
 
     private MarcadorSuperficieMapa _marcador;
+    // ControleUnidade ja se registra e se remove com o ciclo de vida da unidade.
+    // Reutilizar esse registro evita uma busca global de NavMeshAgent para cada ilha.
+    private readonly List<ControleUnidade> _controlesRegistrados = new List<ControleUnidade>(64);
 
     private void Reset()
     {
@@ -134,13 +138,18 @@ public class ConfiguradorIlha : MonoBehaviour
 
         Bounds area = _marcador.Bounds;
 
-        // Busca todos os NavMeshAgents na cena
-        NavMeshAgent[] agentes = FindObjectsByType<NavMeshAgent>(FindObjectsSortMode.None);
+        // O registro contem apenas unidades ativas. Alem de evitar uma varredura
+        // global, isso impede que agentes auxiliares de navios/efeitos sejam
+        // reposicionados por engano como se fossem unidades terrestres.
+        RegistroEntidadesJogo.FillControlesUnidade(_controlesRegistrados);
         int recuperados = 0;
 
-        for (int i = 0; i < agentes.Length; i++)
+        for (int i = 0; i < _controlesRegistrados.Count; i++)
         {
-            NavMeshAgent agente = agentes[i];
+            ControleUnidade controle = _controlesRegistrados[i];
+            if (controle == null) continue;
+
+            NavMeshAgent agente = controle.GetComponent<NavMeshAgent>();
             if (agente == null || !agente.enabled || !agente.gameObject.activeInHierarchy) continue;
 
             // Verifica se esta unidade está dentro dos bounds desta ilha

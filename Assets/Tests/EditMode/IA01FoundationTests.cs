@@ -346,6 +346,40 @@ public sealed class IA01FoundationTests
         Assert.That((bool)InvokeInstance(memory, "CanAttempt", key, 1000f, state + "|blueprint"), Is.True);
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SchedulerWaitsUntilCooldownExpiresEvenWhenAllNationsAreDirty(bool deferred)
+    {
+        object manager;
+        object alpha;
+        object beta;
+        BuildFoundation(out manager, out alpha, out beta);
+        object scheduler = Activator.CreateInstance(ResolveType("Hegemonia.AI.IA01.IA01Scheduler"));
+        Array controllers = Array.CreateInstance(ControllerType, 2);
+        controllers.SetValue(alpha, 0);
+        controllers.SetValue(beta, 1);
+        object initial = InvokeInstance(scheduler, "BuildPlan", controllers, 10f, 100f);
+        Assert.That((int)GetMemberValue(initial, "ScheduledCount"), Is.EqualTo(2));
+
+        object result = Activator.CreateInstance(ResolveType("Hegemonia.AI.IA01.IA01WorkResult"));
+        SetMemberValue(result, "Completed", !deferred);
+        SetMemberValue(result, "Deferred", deferred);
+        SetMemberValue(result, "ConsumedMilliseconds", deferred ? 100f : 1f);
+        InvokeInstance(scheduler, "ReportExecution", alpha, result, 10f);
+        InvokeInstance(scheduler, "ReportExecution", beta, result, 10f);
+        float alphaDue = (float)InvokeInstance(scheduler, "ResolveNextDueAt", GetIntProperty(alpha, "InstanceId"));
+        float betaDue = (float)InvokeInstance(scheduler, "ResolveNextDueAt", GetIntProperty(beta, "InstanceId"));
+        float firstDue = Mathf.Min(alphaDue, betaDue);
+        Assert.That(firstDue, Is.GreaterThan(10f));
+
+        object waiting = InvokeInstance(scheduler, "BuildPlan", controllers, firstDue - 0.001f, 100f);
+        Assert.That((int)GetMemberValue(waiting, "ScheduledCount"), Is.Zero,
+            "Maintenance must not bypass a nation's cooldown.");
+        object resumed = InvokeInstance(scheduler, "BuildPlan", controllers, firstDue, 100f);
+        Assert.That((int)GetMemberValue(resumed, "ScheduledCount"), Is.GreaterThan(0),
+            "Eligible nations must resume when their cooldown expires.");
+    }
+
     private void BuildFoundation(out object manager, out object alpha, out object beta)
     {
         alpha = CreateController("IA01_Alpha", 101, 101, "Alpha Nation", "Alpha President");

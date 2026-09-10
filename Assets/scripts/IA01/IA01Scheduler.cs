@@ -262,7 +262,10 @@ namespace Hegemonia.AI.IA01
 
                 Register(controller);
                 SchedulerState state = states[controller.InstanceId];
-                if (state.NextDueAt < bestDueAt)
+                // Maintenance must obey the same cooldown as regular work.
+                // Otherwise an idle frame immediately re-runs a cooling nation,
+                // including one deferred for exceeding its execution budget.
+                if (state.NextDueAt <= now && state.NextDueAt < bestDueAt)
                 {
                     bestDueAt = state.NextDueAt;
                     bestController = controller;

@@ -946,15 +946,20 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         card.Add(titulo);
 
         string variacao = item.variacaoPercentual.ToString("+0.0;-0.0;0.0") + "%";
+        string unidadeLabel = item.equipamentoMilitar ? " un." : item.municaoMilitar ? " cart." : " t";
+        string liquidacao = item.equipamentoMilitar
+            ? "\nA unidade sera transferida diretamente ao comprador."
+            : item.municaoMilitar
+                ? "\nCada disparo desconta um cartucho do estoque da unidade."
+                : "\nLiquidacao no estoque agregado do armazem.";
         Label detalhes = new Label(
             "Preco unitario: " + Moeda(item.precoAtual) +
             "\nVariacao: " + variacao +
-            (comprar ? "\nOferta global: " + item.estoqueGlobal.ToString("N0") + (item.municaoMilitar ? " cart." : " t") : "\nSeu estoque: " + estoqueJogador.ToString("N0") + (item.municaoMilitar ? " cart." : " t")) +
-            (item.municaoMilitar ? "\nCada disparo desconta um cartucho do estoque da unidade." : "\nLiquidacao no estoque agregado do armazem."));
+            (comprar ? "\nOferta global: " + item.estoqueGlobal.ToString("N0") + unidadeLabel : "\nSeu estoque: " + estoqueJogador.ToString("N0") + unidadeLabel) + liquidacao);
         detalhes.AddToClassList("gov-market-details");
         card.Add(detalhes);
 
-        IntegerField quantidade = new IntegerField(item.municaoMilitar ? "QUANTIDADE (CARTUCHOS)" : "QUANTIDADE (t)");
+        IntegerField quantidade = new IntegerField(item.equipamentoMilitar ? "QUANTIDADE (UNIDADES)" : item.municaoMilitar ? "QUANTIDADE (CARTUCHOS)" : "QUANTIDADE (t)");
         quantidade.value = quantidadeInicial;
         quantidade.AddToClassList("gov-quantity");
         card.Add(quantidade);
@@ -964,7 +969,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         Action atualizarTotal = () =>
         {
             int valor = Mathf.Max(1, quantidade.value);
-            total.text = (comprar ? "TOTAL: " : "RECEBER: ") + Moeda((long)valor * item.precoAtual) + "  |  " + valor.ToString("N0") + (item.municaoMilitar ? " cart." : " t");
+            total.text = (comprar ? "TOTAL: " : "RECEBER: ") + Moeda((long)valor * item.precoAtual) + "  |  " + valor.ToString("N0") + unidadeLabel;
         };
         Toggle repeticao = null;
         quantidade.RegisterValueChangedCallback(evt =>
@@ -1135,6 +1140,11 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             return SistemaGastosMilitares.Instancia != null
                 ? SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(teamId, item.idMunicaoMilitar)
                 : 0;
+        }
+        if (item != null && item.equipamentoMilitar)
+        {
+            SistemaMercadoGlobal mercado = SistemaMercadoGlobal.Instancia;
+            return mercado != null ? mercado.ObterEstoqueEquipamento(item, teamId) : 0;
         }
         return teamId == 1 ? EstoqueReal(item != null ? item.recurso : RecursoMercado.Aco) : 0;
     }

@@ -4,8 +4,8 @@ using UnityEngine;
 
 /// <summary>
 /// Production controller for farms and factories. A purchased building is
-/// immediately productive; no crop or mineral selection menu is required.
-/// The old menus remain available as optional status panels.
+/// immediately productive; farms select a food internally and never expose a
+/// crop-selection UI.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
@@ -19,20 +19,21 @@ public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
     private static readonly string[] SaidasAgricolas =
     {
         "comida_milho", "comida_batata", "comida_feijao", "comida_trigo",
-        "comida_arroz", "comida_cana", "comida_algodao", "comida_soja",
+        "comida_arroz", "comida_cana", "comida_soja",
         "comida_cafe", "comida_cacau"
     };
 
     [SerializeField] private TipoInstalacao tipo;
     [SerializeField] private float intervaloFazenda = 18f;
     [SerializeField] private float intervaloFabrica = 24f;
+    [SerializeField] private int energiaPorCicloFazenda = 2;
     [SerializeField] private bool mostrarLogs;
 
     private int teamId;
-    private float proximoCiclo;
     private System.Random aleatorio;
     private bool avisouGovernoAusente;
     private bool avisouIndustriaAusente;
+    private bool avisouEnergiaAusente;
     private int ciclosConcluidos;
     private string ultimoDestaque = "-";
     private int ultimaQuantidade;
@@ -71,12 +72,14 @@ public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
     {
         teamId = ResolverTeamId();
         float intervalo = tipo == TipoInstalacao.Fazenda ? intervaloFazenda : intervaloFabrica;
-        proximoCiclo = Time.time + Mathf.Clamp(intervalo * 0.35f, 2f, 8f);
+        float primeiroCiclo = Mathf.Clamp(intervalo * 0.35f, 2f, 8f);
+        float repeticao = Mathf.Max(5f, intervalo);
+        InvokeRepeating(nameof(ProcessarCiclo), primeiroCiclo, repeticao);
     }
 
-    private void Update()
+    private void ProcessarCiclo()
     {
-        if (!isActiveAndEnabled || Time.timeScale <= 0f || Time.time < proximoCiclo)
+        if (!isActiveAndEnabled || Time.timeScale <= 0f)
         {
             return;
         }
@@ -84,7 +87,6 @@ public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
         teamId = ResolverTeamId();
         if (teamId <= 0)
         {
-            AgendarProximoCiclo();
             return;
         }
 
@@ -96,14 +98,6 @@ public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
         {
             ProduzirFabrica();
         }
-
-        AgendarProximoCiclo();
-    }
-
-    private void AgendarProximoCiclo()
-    {
-        float intervalo = tipo == TipoInstalacao.Fazenda ? intervaloFazenda : intervaloFabrica;
-        proximoCiclo = Time.time + Mathf.Max(5f, intervalo);
     }
 
     private void ProduzirFazenda()
@@ -116,26 +110,42 @@ public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
             return;
         }
 
-        int dominante = aleatorio.Next(0, SaidasAgricolas.Length);
-        int totalComida = 0;
-        for (int i = 0; i < SaidasAgricolas.Length; i++)
+        if (!ConsumirEnergiaFazenda(governo))
         {
-            float fator = Mathf.Lerp(0.55f, 1.25f, (float)aleatorio.NextDouble());
-            if (i == dominante)
-            {
-                fator *= Mathf.Lerp(1.75f, 2.30f, (float)aleatorio.NextDouble());
-            }
-
-            int quantidade = Mathf.Max(1, Mathf.RoundToInt(7f * fator));
-            totalComida += quantidade;
-            AtualizarOfertaMercado(mercado, SaidasAgricolas[i], quantidade);
+            AvisarUmaVez(ref avisouEnergiaAusente, "energia insuficiente; producao aguardando abastecimento");
+            return;
         }
+
+        int dominante = aleatorio.Next(0, SaidasAgricolas.Length);
+        float fator = Mathf.Lerp(0.85f, 1.25f, (float)aleatorio.NextDouble());
+        int totalComida = Mathf.Max(1, Mathf.RoundToInt(42f * fator));
+        AtualizarOfertaMercado(mercado, SaidasAgricolas[dominante], totalComida);
 
         governo.AdicionarEstoque(teamId, RecursoMercado.Comida, totalComida);
         ciclosConcluidos++;
         ultimoDestaque = SaidasAgricolas[dominante];
         ultimaQuantidade = totalComida;
         RegistrarResumo("fazenda", totalComida);
+    }
+
+    private bool ConsumirEnergiaFazenda(SistemaGovernoMundial governo)
+    {
+        int custo = Mathf.Max(0, energiaPorCicloFazenda);
+        if (custo == 0) return true;
+
+        int timeJogador = governo != null ? governo.teamJogador : 1;
+        if (teamId == timeJogador && GerenciadorRecursos.Instancia != null)
+        {
+            return GerenciadorRecursos.Instancia.TentarGastar(custoEnergia: custo);
+        }
+
+        if (governo == null || governo.ObterEstoque(teamId, RecursoMercado.Energia) < custo)
+        {
+            return false;
+        }
+
+        governo.RemoverEstoque(teamId, RecursoMercado.Energia, custo);
+        return true;
     }
 
     private void ProduzirFabrica()

@@ -81,6 +81,7 @@ namespace Hegemonia.AI.IA01
             identity.nomeDoPais = context.NationName;
             identity.tipoUnidade = TipoUnidade.Estrutura;
             NormalizeStructureIdentity(built, context.TeamId, context.NationName);
+            IA_RuntimeConstructionIntegration.Apply(built, definition.Item);
             Estaleiro builtShipyard = built.GetComponent<Estaleiro>();
             if (builtShipyard != null) builtShipyard.OwnerTeamId = context.TeamId;
             PierMarinha builtPier = built.GetComponent<PierMarinha>();
@@ -173,6 +174,30 @@ namespace Hegemonia.AI.IA01
                 identity.teamID = teamId;
                 identity.nomeDoPais = string.IsNullOrWhiteSpace(nationName) ? "Nacao " + teamId : nationName;
                 identity.tipoUnidade = TipoUnidade.Estrutura;
+            }
+
+            EstruturaEconomica[] estruturas = built.GetComponentsInChildren<EstruturaEconomica>(true);
+            for (int i = 0; i < estruturas.Length; i++)
+            {
+                if (estruturas[i] != null) estruturas[i].teamId = teamId;
+            }
+
+            CidadeComplexoUrbano[] cidades = built.GetComponentsInChildren<CidadeComplexoUrbano>(true);
+            for (int i = 0; i < cidades.Length; i++)
+            {
+                if (cidades[i] != null) cidades[i].teamId = teamId;
+            }
+
+            HospitalSaude[] hospitais = built.GetComponentsInChildren<HospitalSaude>(true);
+            for (int i = 0; i < hospitais.Length; i++)
+            {
+                if (hospitais[i] != null) hospitais[i].teamId = teamId;
+            }
+
+            MiniPistaLogistica[] pistas = built.GetComponentsInChildren<MiniPistaLogistica>(true);
+            for (int i = 0; i < pistas.Length; i++)
+            {
+                if (pistas[i] != null) pistas[i].teamId = teamId;
             }
         }
 

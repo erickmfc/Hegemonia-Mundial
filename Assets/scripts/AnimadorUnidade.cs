@@ -5,12 +5,15 @@ using UnityEngine.AI;
 public class AnimadorUnidade : MonoBehaviour
 {
     [SerializeField] private string parametroVelocidade = "velocidade";
+    [Tooltip("Limita a frequencia da leitura de velocidade sem alterar o Animator nem a movimentacao da unidade.")]
+    [SerializeField, Min(0.016f)] private float intervaloLeituraVelocidade = 0.05f;
 
     private Animator anim;
     private NavMeshAgent agent;
     private int velocidadeHash;
     private bool temParametroValido;
     private float ultimaVelocidadeAplicada = float.NaN;
+    private float proximaLeituraVelocidade;
 
     void Start()
     {
@@ -64,6 +67,13 @@ public class AnimadorUnidade : MonoBehaviour
 
     void Update()
     {
+        if (Time.unscaledTime < proximaLeituraVelocidade)
+        {
+            return;
+        }
+
+        proximaLeituraVelocidade = Time.unscaledTime + Mathf.Max(0.016f, intervaloLeituraVelocidade);
+
         // Só tenta atualizar se o Animator tiver um Controller ativo e inicializado
         if (anim != null && anim.runtimeAnimatorController != null)
         {

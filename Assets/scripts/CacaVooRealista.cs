@@ -39,12 +39,15 @@ public class CacaVooRealista : MonoBehaviour
     private float empinadaPitch = 0f;
     private float _sensibilidadePitchCache;
     private Transform thisRoot;
+    private ControleAviao controleAviaoModerno;
 
     void Start()
     {
         // Garante que vai mover a base do avião e não apenas arrancar a malha visual fora do círculo
         thisRoot = transform.root;
-        
+        controleAviaoModerno = GetComponent<ControleAviao>() ?? GetComponentInParent<ControleAviao>();
+        if (controleAviaoModerno != null) return;
+
         if (modeloMecanicoVisual == null)
         {
             if (transform.childCount > 0)
@@ -72,6 +75,16 @@ public class CacaVooRealista : MonoBehaviour
 
     void Update()
     {
+        // CacaVooRealista é legado nos prefabs que já usam ControleAviao.
+        // Mesmo que uma ordem antiga ative motoresEmRota, ele não pode mover
+        // o mesmo transform em paralelo com o controlador moderno.
+        if (controleAviaoModerno != null)
+        {
+            if (motoresEmRota) AbortarVoo();
+            DesligarVFX();
+            return;
+        }
+
         if (motoresEmRota)
         {
             ManobraEInterpolacaoCurva();
@@ -86,6 +99,17 @@ public class CacaVooRealista : MonoBehaviour
 
     public void OrdenarAtaqueOuPatrulha(Vector3 novaCoordenadaAlvo)
     {
+        if (controleAviaoModerno == null)
+        {
+            controleAviaoModerno = GetComponent<ControleAviao>() ?? GetComponentInParent<ControleAviao>();
+        }
+
+        if (controleAviaoModerno != null)
+        {
+            controleAviaoModerno.ReceberOrdemManual(novaCoordenadaAlvo);
+            return;
+        }
+
         alvoGPS = novaCoordenadaAlvo;
         motoresEmRota = true;
         
@@ -95,6 +119,7 @@ public class CacaVooRealista : MonoBehaviour
             if (!somMotorJato.isPlaying) somMotorJato.Play();
         }
         
+        if (posQueimadores == null) return;
         for (int i = 0, count = posQueimadores.Length; i < count; i++)
         {
             ParticleSystem fogo = posQueimadores[i];
@@ -184,6 +209,7 @@ public class CacaVooRealista : MonoBehaviour
             somMotorJato.volume = Mathf.Lerp(somMotorJato.volume, 0f, Time.deltaTime * 2f);
             if (somMotorJato.volume <= 0.05f) somMotorJato.Stop();
         }
+        if (posQueimadores == null) return;
         for (int i = 0, count = posQueimadores.Length; i < count; i++)
         {
             ParticleSystem fogo = posQueimadores[i];

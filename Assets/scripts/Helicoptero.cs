@@ -173,7 +173,10 @@ public class Helicoptero : MonoBehaviour
     {
         // O menu satelite e a trilha oficial de ordens usam ControleUnidade como
         // contrato comum. O proprio ControleUnidade detecta Helicoptero e evita NavMesh.
-        if (GetComponent<ControleUnidade>() == null)
+        // Prefabs compostos podem manter o controlador no objeto-pai. Não
+        // adicione outro no filho, pois dois controladores passariam a disputar
+        // o mesmo executor de voo e as ordens pareceriam perder-se.
+        if (ObterControleUnidade() == null)
         {
             gameObject.AddComponent<ControleUnidade>();
         }
@@ -290,6 +293,22 @@ public class Helicoptero : MonoBehaviour
 
     public void OrdenarAtaque(Transform alvo, Vector3 pontoFallback)
     {
+        ControleUnidade controle = ObterControleUnidade();
+        if (controle != null)
+        {
+            // Prefabs modernos devem usar a mesma porta de aceite das demais
+            // aeronaves. O caminho legado abaixo permanece apenas para
+            // helicópteros que ainda não possuem ControleUnidade.
+            controle.EmitirMissaoAereaOfensiva(
+                alvo != null ? alvo.position : pontoFallback,
+                alvo);
+            return;
+        }
+
+        // Uma ordem ofensiva substitui a patrulha de aeroporto atual. Sem
+        // limpar a rota, o Update podia devolver o helicóptero ao próximo
+        // waypoint assim que ele chegasse ao ponto de ataque.
+        CancelarMissaoAeroporto();
         alvoComandoAtaque = alvo;
         modoCombateAtivo = true;
         Decolar(alvo != null ? alvo.position : pontoFallback);
@@ -407,12 +426,7 @@ public class Helicoptero : MonoBehaviour
 
                 bool pousarNoCliqueDireto = clicouEmBase || (pousarNoDestinoTatico && EhHelicopteroTransporte());
 
-                if (pousarNoCliqueDireto) VoarEPousar(h.point);
-                else
-                {
-                    Decolar(h.point);
-                    if (rotinaPousoAuto != null) StopCoroutine(rotinaPousoAuto);
-                }
+                ReceberOrdemCliqueManual(h.point, pousarNoCliqueDireto);
             }
         }
 
@@ -963,6 +977,53 @@ public class Helicoptero : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Entrada do clique direito do jogador. O clique deve passar pela mesma
+    /// autoridade das ordens do menu/IA; somente o comportamento de pouso
+    /// automático continua sendo armado aqui depois que o controlador aceita
+    /// o destino.
+    /// </summary>
+    private bool ReceberOrdemCliqueManual(Vector3 alvo, bool pousarNoDestino)
+    {
+        ControleUnidade controle = ObterControleUnidade();
+        if (controle != null)
+        {
+            Vector3 destinoVoo = AjustarDestinoParaVoo(alvo);
+            bool aceita = controle.EmitirOrdemMover(destinoVoo, true);
+            if (!aceita)
+            {
+                return false;
+            }
+
+            if (rotinaPousoAuto != null)
+            {
+                StopCoroutine(rotinaPousoAuto);
+                rotinaPousoAuto = null;
+            }
+
+            if (pousarNoDestino)
+            {
+                Vector3 destinoPouso = AjustarDestinoParaPouso(alvo);
+                rotinaPousoAuto = StartCoroutine(RotinaVoarEPousar(destinoPouso));
+            }
+
+            return true;
+        }
+
+        // Compatibilidade para objetos antigos que ainda não possuem a
+        // fachada central. Prefabs normais passam sempre pelo bloco acima.
+        if (pousarNoDestino)
+        {
+            VoarEPousar(alvo);
+        }
+        else
+        {
+            Decolar(alvo);
+        }
+
+        return true;
+    }
+
     public void VoarEPousar(Vector3 alvo)
     {
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
@@ -1109,7 +1170,10 @@ public class Helicoptero : MonoBehaviour
             {
                 // Agora não exigimos ser um porta-aviões, qualquer vaga registrada (como de aeroporto/heliporto) serve.
                 CombustivelUnidade comb = GetComponent<CombustivelUnidade>();
-                if (comb != null) comb.PreencherSemCusto();
+                GerenciadorPortaAvioes portaHelicopteros = aeroportoOrigem as GerenciadorPortaAvioes;
+                bool abastecimentoControladoPeloNavio = portaHelicopteros != null
+                    && portaHelicopteros.TentarReabastecerHelicoptero(this);
+                if (comb != null && !abastecimentoControladoPeloNavio) comb.PreencherSemCusto();
 
                 SistemaDeDanos dano = GetComponent<SistemaDeDanos>();
                 if (dano != null) dano.vidaAtual = dano.vidaMaxima;
@@ -1122,6 +1186,13 @@ public class Helicoptero : MonoBehaviour
                 foreach (var lancadorCaca in GetComponentsInChildren<LancadorMisselCaca>())
                 {
                     lancadorCaca.RecarregarCompletoNaBase();
+                }
+                foreach (var canhao in GetComponentsInChildren<SistemaArmamentoHelice>(true))
+                {
+                    if (canhao != null)
+                    {
+                        canhao.RecarregarCompletoNaBase();
+                    }
                 }
                 foreach (var torreta in GetComponentsInChildren<ControleTorretaModular>())
                 {
@@ -1139,6 +1210,16 @@ public class Helicoptero : MonoBehaviour
                     CombustivelUnidade sc = s.GetComponent<CombustivelUnidade>();
                     if (sc != null) sc.PreencherSemCusto();
                 }
+
+                // A aterrissagem só está concluída quando a vaga também fica
+                // registrada como ocupada/estacionada. Antes disso o heli
+                // parecia pousado, mas continuava solto no mundo e a base
+                // podia tentar recebê-lo novamente.
+                FinalizarPosicionamentoNaVagaAeroporto(vagaAeroporto);
+                if (aeroportoOrigem != null)
+                {
+                    aeroportoOrigem.RegistrarHelicopteroControlado(this);
+                }
             }
             if(soldadosEmbarcados.Count > 0 && desembarcarAutomaticamenteAoPousar && !pousouEmVagaRegistrada) EjetarTodos();
             disponivelParaPatrulha = true; 
@@ -1149,7 +1230,7 @@ public class Helicoptero : MonoBehaviour
         }
 
         // 4. LÓGICA DE PATRULHA
-        if (!estaPousando && missaoAtualAeroporto == 3 && rotaPatrulhaAeroporto.Count > 1)
+        if (!estaPousando && missaoAtualAeroporto == 3 && rotaPatrulhaAeroporto.Count > 0)
         {
             Vector3 alvoPatrulha = new Vector3(destino.x, transform.position.y, destino.z);
             Vector3 posPatrulhaAtual = new Vector3(transform.position.x, transform.position.y, transform.position.z);
@@ -1459,9 +1540,19 @@ public class Helicoptero : MonoBehaviour
     public int TemEspaco() { return capacidadeMaxima - soldadosEmbarcados.Count; }
     public bool TemSoldados() { return soldadosEmbarcados.Count > 0; }
 
-    public void ChamarParaHeliporto(Transform t) { VoarEPousar(t.position); }
-    public void ChamarParaHeliporto(Heliporto h) { VoarEPousar(h.transform.position); }
-    public void ChamarParaHeliporto(GameObject g) { VoarEPousar(g.transform.position); }
+    public void ChamarParaHeliporto(Transform t) { if (t != null) ReceberOrdemPouso(t.position); }
+    public void ChamarParaHeliporto(Heliporto h) { if (h != null) ReceberOrdemPouso(h.transform.position); }
+    public void ChamarParaHeliporto(GameObject g) { if (g != null) ReceberOrdemPouso(g.transform.position); }
+
+    /// <summary>
+    /// Solicita deslocamento até um heliporto com pouso ao chegar. Mantém o
+    /// contrato antigo de chamada pública, mas evita que esse comando externo
+    /// pule o ControleUnidade.
+    /// </summary>
+    public bool ReceberOrdemPouso(Vector3 alvo)
+    {
+        return ReceberOrdemCliqueManual(alvo, true);
+    }
 
     // --- MÉTODOS DE COMPATIBILIDADE DO AEROPORTO/NAVIO (MANTIDOS DA OUTRA IA) ---
     public bool controladoPeloAeroporto = false;
@@ -1615,6 +1706,31 @@ public class Helicoptero : MonoBehaviour
     }
 
     public bool TemOrigemAeroportoRegistrada() { return aeroportoOrigem != null && vagaOrigemAeroporto != null; }
+
+    /// <summary>
+    /// Entrada de compatibilidade para menus e navios que precisam emitir uma
+    /// patrulha. Quando o prefab possui ControleUnidade, a ordem passa por ele
+    /// para que estado, watchdog e cancelamento fiquem sincronizados. O método
+    /// legado continua disponível apenas para o executor interno e prefabs sem
+    /// controlador central.
+    /// </summary>
+    public bool ReceberOrdemPatrulhaAeroporto(List<Vector3> wp)
+    {
+        if (wp == null || wp.Count == 0)
+        {
+            return false;
+        }
+
+        ControleUnidade controle = ObterControleUnidade();
+        if (controle != null)
+        {
+            return controle.EmitirOrdemPatrulha(wp);
+        }
+
+        IniciarPatrulhaAeroporto(wp);
+        return true;
+    }
+
     public void IniciarPatrulhaAeroporto(List<Vector3> wp)
     {
         retomarPatrulhaDepoisDeAbastecer = false;
@@ -1625,6 +1741,43 @@ public class Helicoptero : MonoBehaviour
         missaoAtualAeroporto = 3; Decolar(rotaPatrulhaAeroporto[0]);
     }
     public void CancelarMissaoAeroporto() { missaoAtualAeroporto = 0; rotaPatrulhaAeroporto.Clear(); indicePatrulhaAeroporto = 0; }
+
+    public bool ReceberOrdemReconhecimentoAeroporto(Vector3 wp)
+    {
+        ControleUnidade controle = ObterControleUnidade();
+        if (controle != null)
+        {
+            bool aceita = controle.EmitirOrdemMover(AjustarDestinoParaVoo(wp), true);
+            if (aceita)
+            {
+                missaoAtualAeroporto = 1;
+                alvoComandoAtaque = null;
+                modoCombateAtivo = false;
+            }
+            return aceita;
+        }
+
+        IniciarReconhecimentoAeroporto(wp);
+        return true;
+    }
+
+    public bool ReceberOrdemAtaqueLocalAeroporto(Vector3 wp)
+    {
+        ControleUnidade controle = ObterControleUnidade();
+        if (controle != null)
+        {
+            bool aceita = controle.EmitirMissaoAereaOfensiva(AjustarDestinoParaVoo(wp), null);
+            if (aceita)
+            {
+                missaoAtualAeroporto = 2;
+            }
+            return aceita;
+        }
+
+        IniciarAtaqueLocalAeroporto(wp);
+        return true;
+    }
+
     public void IniciarReconhecimentoAeroporto(Vector3 wp) { CancelarMissaoAeroporto(); missaoAtualAeroporto = 1; Decolar(AjustarDestinoParaVoo(wp)); }
     public void IniciarAtaqueLocalAeroporto(Vector3 wp) { CancelarMissaoAeroporto(); missaoAtualAeroporto = 2; Decolar(AjustarDestinoParaVoo(wp)); }
     public void IniciarTransporteAeroporto(Vector3 wp) { CancelarMissaoAeroporto(); missaoAtualAeroporto = 4; VoarEPousar(AjustarDestinoParaPouso(wp)); }
@@ -1728,6 +1881,10 @@ public class Helicoptero : MonoBehaviour
 
         estacionadoNoAeroporto = true;
         vagaAeroporto = vaga;
+        if (transform.parent != vaga)
+        {
+            transform.SetParent(vaga, true);
+        }
         transform.position = ObterPosicaoEstacionadaNaVaga(vaga);
         transform.rotation = vaga.rotation;
         preparandoDecolagem = false;
@@ -1757,7 +1914,7 @@ public class Helicoptero : MonoBehaviour
 
     private void SalvarMissaoAntesDoReabastecimento()
     {
-        retomarPatrulhaDepoisDeAbastecer = missaoAtualAeroporto == 3 && rotaPatrulhaAeroporto.Count > 1;
+        retomarPatrulhaDepoisDeAbastecer = missaoAtualAeroporto == 3 && rotaPatrulhaAeroporto.Count > 0;
         if (retomarPatrulhaDepoisDeAbastecer)
         {
             rotaPatrulhaSalva.Clear();
@@ -1793,7 +1950,7 @@ public class Helicoptero : MonoBehaviour
                 Debug.Log($"[Helicoptero] Seguimento retomado apos reabastecimento: {name} alvo={alvoSeguimentoSalvo.name}");
             }
         }
-        else if (retomarPatrulhaDepoisDeAbastecer && rotaPatrulhaSalva.Count > 1)
+        else if (retomarPatrulhaDepoisDeAbastecer && rotaPatrulhaSalva.Count > 0)
         {
             List<Vector3> rota = new List<Vector3>(rotaPatrulhaSalva.Count);
             for (int i = 0; i < rotaPatrulhaSalva.Count; i++)
@@ -1814,6 +1971,10 @@ public class Helicoptero : MonoBehaviour
     {
         SalvarMissaoAntesDoReabastecimento();
         Transform vagaRetorno = vagaOrigemAeroporto != null ? vagaOrigemAeroporto : vagaAeroporto;
+        if (vagaRetorno == null && aeroportoOrigem != null)
+        {
+            vagaRetorno = aeroportoOrigem.ObterVagaHelicopteroPreferencial(false);
+        }
         if (vagaRetorno != null)
         {
             vagaAeroporto = vagaRetorno;

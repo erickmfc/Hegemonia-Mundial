@@ -132,7 +132,8 @@ public class ControleUnidade : MonoBehaviour
         AudioRuntime.ConfigurarHierarquia(gameObject);
         
         // Verifica controladores externos
-        helicopteroExterno = GetComponent<Helicoptero>();
+        helicopteroExterno = GetComponent<Helicoptero>()
+            ?? GetComponentInChildren<Helicoptero>(true);
         controleAviao = GetComponent<ControleAviao>();
         controleAviaoCaca = GetComponent<ControleAviaoCaca>();
         lancadorMisselCaca = GetComponent<LancadorMisselCaca>();
@@ -142,9 +143,15 @@ public class ControleUnidade : MonoBehaviour
         }
         c700TransporteAereo = GetComponent<C700TransporteAereo>();
         hovercraftTransporte = GetComponent<HovercraftTransporte>();
-        controleNavioRealista = GetComponent<ControleNavioRealista>();
-        navegacaoInteligenteNaval = GetComponent<NavegacaoInteligenteNaval>();
-        controleSubmarino = GetComponent<ControleSubmarino>();
+        // O casco é a autoridade do movimento naval. Prefabs antigos podem
+        // deixar o controlador em um filho do objeto selecionável; manter a
+        // busca limitada ao Awake evita custo por frame sem perder o comando.
+        controleNavioRealista = GetComponent<ControleNavioRealista>()
+            ?? GetComponentInChildren<ControleNavioRealista>(true);
+        navegacaoInteligenteNaval = GetComponent<NavegacaoInteligenteNaval>()
+            ?? GetComponentInChildren<NavegacaoInteligenteNaval>(true);
+        controleSubmarino = GetComponent<ControleSubmarino>()
+            ?? GetComponentInChildren<ControleSubmarino>(true);
         c17Transporte = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
         identidadeIA = GetComponent<IdentidadeIA>();
         identidadeUnidade = GetComponent<IdentidadeUnidade>();
@@ -350,6 +357,10 @@ public class ControleUnidade : MonoBehaviour
         CancelarOrdemMovimentoExterna(string.IsNullOrWhiteSpace(motivoBloqueioAdministrativoQuartel)
             ? "bloqueio administrativo do Quartel"
             : motivoBloqueioAdministrativoQuartel);
+        if (controleAviao != null)
+        {
+            controleAviao.CancelarOrdensPendentes();
+        }
         LimparDestinoOrdenado();
         ordemControleAtual = OrdemControleUnidade.Parada;
     }
@@ -749,9 +760,23 @@ public class ControleUnidade : MonoBehaviour
             return false;
         }
 
+        // O pouso já possui uma sequência própria de aproximação, waypoints,
+        // vaga e serviço. Recuse antes de registrar a ordem universal; se a
+        // verificação ficasse só em ControleAviao, o controlador central
+        // poderia limpar o alvo/combate atual mesmo com a nova ordem rejeitada.
+        if (controleAviao != null
+            && (controleAviao.estadoAtual == ControleAviao.EstadoAviao.Pousando
+                || controleAviao.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga))
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "OrdemRecusada",
+                $"{name}: mover recusado durante a sequência de pouso");
+            return false;
+        }
+
         AtualizarTrilhaOficial();
         AtualizarEstadoDeBloqueio();
-        if (bloqueioControleAtivo)
+        if (bloqueioControleAtivo && !PodeMoverSemTripulacao())
         {
             DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: mover bloqueado ({motivoBloqueioControle})");
             return false;
@@ -760,6 +785,14 @@ public class ControleUnidade : MonoBehaviour
         string idFinal = string.IsNullOrWhiteSpace(id)
             ? ObterOuCriarIdOrdemMovimento("movimento", destino, tipo)
             : id;
+        if (controleAviao != null && c700TransporteAereo == null)
+        {
+            destino.y = Mathf.Max(
+                destino.y,
+                controleAviao.altitudeVoo,
+                ControleAviao.AltitudeMinimaVooMilitar,
+                60f);
+        }
         bool foiIdempotente;
         if (!TentarPrepararOrdemMovimento(
                 idFinal,
@@ -773,19 +806,37 @@ public class ControleUnidade : MonoBehaviour
 
         if (foiIdempotente)
         {
+            if (cancelarComportamentos)
+            {
+                DefinirModoCombate(false);
+            }
             return true;
         }
 
+        OrdemControleUnidade ordemAntesDaExecucao = ordemControleAtual;
         if (cancelarComportamentos || (ordemControleAtual != OrdemControleUnidade.Patrulhando && ordemControleAtual != OrdemControleUnidade.Seguindo))
         {
             ordemControleAtual = OrdemControleUnidade.Movendo;
             DefinirAlvoPrioritario(null);
+            if (cancelarComportamentos)
+            {
+                // Um deslocamento manual/administrativo com cancelamento
+                // solicitado não pode continuar sendo desviado por um modo de
+                // combate antigo do mesmo controlador.
+                DefinirModoCombate(false);
+            }
         }
 
         if (!ExecutarMoverParaPonto(destino, cancelarComportamentos))
         {
             controleOrdemMovimento.Falhar("executor recusou a ordem", Time.unscaledTime);
             LimparDestinoOrdenado();
+            // A preparação da ordem acontece antes de chamar o executor aéreo.
+            // Se ele recusar (pista/base inválida, combustível ou estado de
+            // pouso), não deixe a fachada aparentar que ainda está movendo.
+            ordemControleAtual = cancelarComportamentos
+                ? OrdemControleUnidade.Ociosa
+                : ordemAntesDaExecucao;
             return false;
         }
 
@@ -799,6 +850,7 @@ public class ControleUnidade : MonoBehaviour
         AtualizarTrilhaOficial();
         AtualizarEstadoDeBloqueio();
         CancelarOrdemEspecial(false);
+        DefinirModoCombate(false);
         DefinirAlvoPrioritario(null);
         CancelarOrdemMovimentoExterna("ordem parada");
 
@@ -824,6 +876,7 @@ public class ControleUnidade : MonoBehaviour
         }
         else if (controleAviao != null)
         {
+            controleAviao.CancelarOrdensPendentes();
             controleAviao.ordemParaRetorno = true;
             alterouAlgo = true;
         }
@@ -834,7 +887,7 @@ public class ControleUnidade : MonoBehaviour
             alterouAlgo = true;
         }
 
-        if (controleAviaoCaca != null)
+        if (controleAviaoCaca != null && controleAviao == null)
         {
             controleAviaoCaca.DefinirDestino(transform.position + transform.forward * 250f);
             alterouAlgo = true;
@@ -894,9 +947,49 @@ public class ControleUnidade : MonoBehaviour
             return RecusarPatrulha("unidade logística");
         }
 
+        // A patrulha também precisa passar pela mesma trava operacional da
+        // missão pontual. Sem esta validação, helicópteros e aeronaves que já
+        // estavam sem combustível registravam a ordem no watchdog, mas o
+        // executor não conseguia sequer iniciar a decolagem.
+        if (controleAviao != null
+            && !controleAviao.PodeIgnorarFaltaDeCombustivel()
+            && !CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            return RecusarPatrulha("sem combustível operacional");
+        }
+
+        if (helicopteroExterno != null
+            && !CombustivelUnidade.PodeOperarObjeto(gameObject))
+        {
+            return RecusarPatrulha("helicóptero sem combustível operacional");
+        }
+
         AtualizarTrilhaOficial();
 
+        // Mesma proteção do movimento pontual: uma patrulha nova não pode
+        // interromper a aproximação final nem deixar a ordem oficial apontar
+        // para um voo que o executor aéreo recusou.
+        if (controleAviao != null
+            && (controleAviao.estadoAtual == ControleAviao.EstadoAviao.Pousando
+                || controleAviao.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga))
+        {
+            return RecusarPatrulha("aeronave concluindo pouso");
+        }
+
         List<Vector3> rotaFinal = new List<Vector3>(pontosPatrulha);
+        if (controleAviao != null && c700TransporteAereo == null)
+        {
+            float altitudePatrulha = Mathf.Max(
+                controleAviao.altitudeVoo,
+                ControleAviao.AltitudeMinimaVooMilitar,
+                60f);
+            for (int i = 0; i < rotaFinal.Count; i++)
+            {
+                Vector3 ponto = rotaFinal[i];
+                ponto.y = Mathf.Max(ponto.y, altitudePatrulha);
+                rotaFinal[i] = ponto;
+            }
+        }
 
         // Patrulha naval só pode receber pontos na água. O clique pode ter
         // atingido uma ilha, um collider de construção ou a altura da onda;
@@ -976,6 +1069,16 @@ public class ControleUnidade : MonoBehaviour
 
         if (ordemPatrulhaIdempotente)
         {
+            // Mesmo uma rota idêntica pode estar substituindo um modo de
+            // combate antigo. Reaplica a entrada do executor moderno para
+            // limpar esse modo sem iniciar uma segunda coroutine.
+            if (controleAviao != null)
+            {
+                if (!controleAviao.ReceberOrdemPatrulha(rotaFinal))
+                {
+                    return FalharPatrulhaRegistrada("executor aereo recusou a patrulha idempotente");
+                }
+            }
             return true;
         }
 
@@ -999,7 +1102,7 @@ public class ControleUnidade : MonoBehaviour
         if (controleAviao != null)
         {
             AtualizarEstadoDeBloqueio();
-            if (bloqueioControleAtivo)
+            if (bloqueioControleAtivo && !PodeMoverSemTripulacao())
             {
                 RecusarPatrulha("bloqueio de controle: " + motivoBloqueioControle);
                 controleOrdemMovimento.Falhar(motivoBloqueioControle, Time.unscaledTime);
@@ -1007,11 +1110,10 @@ public class ControleUnidade : MonoBehaviour
             }
 
             CancelarOrdemEspecial(false);
-            controleAviao.RegistrarPatrulha(rotaFinal);
             ordemControleAtual = OrdemControleUnidade.Patrulhando;
-            if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+            if (!controleAviao.ReceberOrdemPatrulha(rotaFinal))
             {
-                controleAviao.IniciarMissaoCompleta(rotaFinal[0]);
+                return FalharPatrulhaRegistrada("executor aereo recusou a patrulha");
             }
             controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
             DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
@@ -1019,7 +1121,7 @@ public class ControleUnidade : MonoBehaviour
         }
 
         AtualizarEstadoDeBloqueio();
-        if (bloqueioControleAtivo)
+        if (bloqueioControleAtivo && !PodeMoverSemTripulacao())
         {
             RecusarPatrulha("bloqueio de controle: " + motivoBloqueioControle);
             controleOrdemMovimento.Falhar(motivoBloqueioControle, Time.unscaledTime);
@@ -1059,6 +1161,25 @@ public class ControleUnidade : MonoBehaviour
         return false;
     }
 
+    private bool FalharPatrulhaRegistrada(string motivo)
+    {
+        string detalhe = string.IsNullOrWhiteSpace(motivo) ? "executor recusou a patrulha" : motivo;
+        RecusarPatrulha(detalhe);
+        if (controleOrdemMovimento != null)
+        {
+            controleOrdemMovimento.Falhar(detalhe, Time.unscaledTime);
+        }
+
+        // A preparação global/local já aconteceu antes de chamar o executor
+        // aéreo. Se ele recusar, limpe também o watchdog e o destino visual;
+        // caso contrário a unidade ficava ociosa, mas ainda parecia possuir
+        // uma ordem de patrulha ativa para os próximos ciclos.
+        LimparDestinoOrdenado();
+        assinaturaPatrulhaAtual = string.Empty;
+        ordemControleAtual = OrdemControleUnidade.Ociosa;
+        return false;
+    }
+
     public bool EmitirOrdemSeguir(Transform alvo)
     {
         return EmitirOrdemSeguir(alvo, -1f);
@@ -1073,13 +1194,14 @@ public class ControleUnidade : MonoBehaviour
 
         AtualizarTrilhaOficial();
         AtualizarEstadoDeBloqueio();
-        if (bloqueioControleAtivo)
+        if (bloqueioControleAtivo && !PodeMoverSemTripulacao())
         {
             DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: seguir bloqueado ({motivoBloqueioControle})");
             return false;
         }
 
         CancelarOrdemEspecial(false);
+        DefinirModoCombate(false);
 
         ComportamentoSeguirUniversal seguir = GetComponent<ComportamentoSeguirUniversal>();
         if (seguir == null)
@@ -1111,8 +1233,10 @@ public class ControleUnidade : MonoBehaviour
             if (modular != null) modular.alvoPrioritario = alvo;
         }
         
-        // Também avisa ao avião/heli, se houver
-        if (controleAviao != null && alvo != null) controleAviao.alvoPrioritarioIA = true;
+        // Também avisa ao avião, inclusive quando o alvo é limpo. Sem a
+        // segunda parte uma aeronave ficava presa em modo de ataque e a
+        // rotina de patrulha nunca voltava a assumir o destino.
+        if (controleAviao != null) controleAviao.alvoPrioritarioIA = alvo != null;
     }
 
     public bool EmitirMissaoAereaOfensiva(Vector3 pontoAlvo, Transform alvoTransform)
@@ -1125,22 +1249,22 @@ public class ControleUnidade : MonoBehaviour
             return false;
         }
 
-        DefinirModoCombate(true);
-
-        if (lancadorMisselCaca != null && alvoTransform != null)
-        {
-            lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, 6f);
-        }
-
-        if (controleAviao != null)
-        {
-            controleAviao.alvoEstrategico = pontoAlvo;
-            controleAviao.alvoGPSVoo = pontoAlvo;
-        }
-
         bool ordemEmitida = EmitirOrdemMover(pontoAlvo, true);
         if (ordemEmitida)
         {
+            // Só arma os subsistemas depois que o executor aceitou a ordem.
+            // Assim falta de combustível, tripulação ou pista não deixa a
+            // aeronave em combate sem uma missão efetivamente registrada.
+            DefinirModoCombate(true);
+            if (lancadorMisselCaca != null && alvoTransform != null)
+            {
+                lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, 6f);
+            }
+
+            if (controleAviao != null)
+            {
+                controleAviao.alvoEstrategico = pontoAlvo;
+            }
             DefinirAlvoPrioritario(alvoTransform);
         }
         return ordemEmitida;
@@ -1156,15 +1280,13 @@ public class ControleUnidade : MonoBehaviour
             return false;
         }
 
-        DefinirModoCombate(true);
-
-        if (lancadorMisselCaca != null && alvoTransform != null)
-        {
-            lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, 6f);
-        }
-
         if (controleNavioRealista != null && alvoTransform != null)
         {
+            DefinirModoCombate(true);
+            if (lancadorMisselCaca != null)
+            {
+                lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, 6f);
+            }
             controleNavioRealista.DefinirDestinoAtaqueLateral(alvoTransform.position);
             DefinirAlvoPrioritario(alvoTransform);
             return true;
@@ -1173,6 +1295,11 @@ public class ControleUnidade : MonoBehaviour
         bool ordemEmitida = EmitirOrdemMover(pontoAlvo, cancelarComportamentos);
         if (ordemEmitida)
         {
+            DefinirModoCombate(true);
+            if (lancadorMisselCaca != null && alvoTransform != null)
+            {
+                lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, 6f);
+            }
             DefinirAlvoPrioritario(alvoTransform);
         }
         return ordemEmitida;
@@ -1344,6 +1471,7 @@ public class ControleUnidade : MonoBehaviour
         if (falhou)
         {
             LimparDestinoOrdenado();
+            LimparEstadoMovimentoAposFalha();
         }
         return falhou;
     }
@@ -1462,6 +1590,15 @@ public class ControleUnidade : MonoBehaviour
         return concluiu;
     }
 
+    private void LimparEstadoMovimentoAposFalha()
+    {
+        if (ordemControleAtual == OrdemControleUnidade.Movendo
+            || ordemControleAtual == OrdemControleUnidade.Recuando)
+        {
+            ordemControleAtual = OrdemControleUnidade.Ociosa;
+        }
+    }
+
     private void CancelarOrdemMovimentoExterna(string motivo)
     {
         if (controleOrdemMovimento != null)
@@ -1519,11 +1656,6 @@ public class ControleUnidade : MonoBehaviour
 
     private bool ExecutarMoverParaPonto(Vector3 destino, bool cancelarComportamentos = true)
     {
-        if (helicopteroExterno != null && helicopteroExterno.EstaSobControleDoAeroporto())
-        {
-            return false;
-        }
-
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
@@ -1569,13 +1701,6 @@ public class ControleUnidade : MonoBehaviour
 
         // Debug.Log($"[ControleUnidade] {name} recebeu MoverParaPonto({destino})...");
 
-        // Caça Militar Aéreo
-        if (controleAviaoCaca != null)
-        {
-            controleAviaoCaca.DefinirDestino(destino);
-            return true;
-        }
-
         // Avião de Passageiros / Cargueiro (Sistema de Aeroporto)
         if (c700TransporteAereo != null)
         {
@@ -1583,28 +1708,22 @@ public class ControleUnidade : MonoBehaviour
             return true;
         }
 
-        // Avião de Passageiros / Cargueiro (Sistema de Aeroporto)
+        // O controlador moderno é a autoridade principal. Alguns prefabs
+        // antigos ainda carregam ControleAviaoCaca junto dele; enviar a ordem
+        // primeiro ao script antigo fazia o menu parecer sem resposta, pois
+        // esse script desliga o próprio movimento quando encontra o moderno.
         if (controleAviao != null)
         {
-            bool atualizacaoDePatrulhaAerea = ordemControleAtual == OrdemControleUnidade.Patrulhando && !cancelarComportamentos;
-            if (atualizacaoDePatrulhaAerea)
-            {
-                controleAviao.AtualizarDestinoPatrulha(destino);
-            }
-            else
-            {
-                controleAviao.RegistrarMissaoManual(destino);
-            }
+            // Uma única porta de entrada mantém a coroutine de voo atual
+            // sincronizada com a nova ordem. Alterar apenas alvoGPSVoo aqui
+            // permitia que uma patrulha antiga sobrescrevesse o destino.
+            return controleAviao.ReceberOrdemManual(destino);
+        }
 
-            if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
-            {
-                controleAviao.IniciarMissaoCompleta(destino);
-            }
-            else if (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao || controleAviao.estadoAtual == ControleAviao.EstadoAviao.Decolando)
-            {
-                // Se já estiver voando, apenas muda a coordenada do GPS
-                controleAviao.alvoGPSVoo = destino;
-            }
+        // Compatibilidade somente para prefabs que ainda não têm ControleAviao.
+        if (controleAviaoCaca != null)
+        {
+            controleAviaoCaca.DefinirDestino(destino);
             return true;
         }
 
@@ -2317,7 +2436,7 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
-        if (bloqueioControleAtivo)
+        if (bloqueioControleAtivo && !PodeMoverSemTripulacao())
         {
             string motivoBloqueio = string.IsNullOrEmpty(motivoBloqueioControle)
                 ? "Bloqueio de controle ativo"
@@ -2330,6 +2449,7 @@ public class ControleUnidade : MonoBehaviour
             {
                 controleOrdemMovimento.Falhar(motivoBloqueio, Time.unscaledTime);
                 LimparDestinoOrdenado();
+                LimparEstadoMovimentoAposFalha();
             }
             return;
         }
@@ -2341,6 +2461,7 @@ public class ControleUnidade : MonoBehaviour
                 : controleOrdemMovimento.Atual.MotivoFalhaOuCancelamento;
             controleOrdemMovimento.Falhar("tentativas esgotadas: " + motivoRecalculo, Time.unscaledTime);
             LimparDestinoOrdenado();
+            LimparEstadoMovimentoAposFalha();
             return;
         }
 
@@ -2360,6 +2481,7 @@ public class ControleUnidade : MonoBehaviour
 
         controleOrdemMovimento.Falhar("tentativas esgotadas: " + causa, Time.unscaledTime);
         LimparDestinoOrdenado();
+        LimparEstadoMovimentoAposFalha();
     }
 
     private void ExecutarNovaTentativaOrdem()
@@ -2370,12 +2492,13 @@ public class ControleUnidade : MonoBehaviour
         }
 
         AtualizarEstadoDeBloqueio();
-        if (bloqueioControleAtivo)
+        if (bloqueioControleAtivo && !PodeMoverSemTripulacao())
         {
             controleOrdemMovimento.Falhar(
                 string.IsNullOrEmpty(motivoBloqueioControle) ? "bloqueio durante recuperacao" : motivoBloqueioControle,
                 Time.unscaledTime);
             LimparDestinoOrdenado();
+            LimparEstadoMovimentoAposFalha();
             return;
         }
 
@@ -2384,6 +2507,7 @@ public class ControleUnidade : MonoBehaviour
         {
             controleOrdemMovimento.Falhar("recuperacao recusada pelo executor", Time.unscaledTime);
             LimparDestinoOrdenado();
+            LimparEstadoMovimentoAposFalha();
             return;
         }
 
@@ -2652,11 +2776,11 @@ public class ControleUnidade : MonoBehaviour
             return;
         }
 
-        if (helicopteroExterno != null && helicopteroExterno.EstaSobControleDoAeroporto())
-        {
-            bloqueioControleAtivo = true;
-            motivoBloqueioControle = "Helicoptero sob controle do aeroporto";
-        }
+        // O vínculo com o aeroporto é uma autoridade automática de missão,
+        // não uma indisponibilidade física. Uma ordem explícita deve poder
+        // cancelar a patrulha automática e chegar ao executor do helicóptero;
+        // combustível e bloqueio administrativo continuam sendo recusados
+        // normalmente abaixo.
 
         if (bloqueioAdministrativoQuartel)
         {
@@ -2665,6 +2789,15 @@ public class ControleUnidade : MonoBehaviour
                 ? "Sem militares ativos para tripulacao"
                 : motivoBloqueioAdministrativoQuartel;
         }
+    }
+
+    // A falta temporária de pessoal deixa a unidade inoperante para combate,
+    // mas não deve transformar um navio já comprado em um objeto sem resposta
+    // no mapa. Movimento, retorno e patrulha continuam possíveis; ataques e
+    // missões ofensivas ainda passam pelo bloqueio administrativo.
+    private bool PodeMoverSemTripulacao()
+    {
+        return bloqueioAdministrativoQuartel && EhUnidadeNaval();
     }
 
     private void ValidarConflitosDeControle()

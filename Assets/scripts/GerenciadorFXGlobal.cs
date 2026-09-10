@@ -15,6 +15,11 @@ public class GerenciadorFXGlobal : MonoBehaviour
     [Header("Sons")]
     public AudioClip somExplosao;
 
+    [Header("Desempenho")]
+    [Tooltip("Reutiliza explosões breves pelo pool de combate para evitar picos de Instantiate/Destroy.")]
+    [SerializeField] private bool reutilizarExplosoes = true;
+    [SerializeField, Min(0.1f)] private float duracaoExplosaoPooled = 4.5f;
+
     void Awake()
     {
         if (Instancia == null) Instancia = this;
@@ -28,7 +33,7 @@ public class GerenciadorFXGlobal : MonoBehaviour
     {
         if (prefabExplosao != null)
         {
-            Instantiate(prefabExplosao, posicao, Quaternion.identity);
+            CriarEfeitoTemporario(prefabExplosao, posicao, 1f);
         }
     }
 
@@ -51,6 +56,7 @@ public class GerenciadorFXGlobal : MonoBehaviour
         {
             GameObject novoFx = Instantiate(prefabAlvo, pai.position, Quaternion.identity, pai);
             novoFx.transform.localPosition = Vector3.zero; // Centraliza no pai (ou ajuste conforme necessário)
+            AudioRuntime.ConfigurarHierarquia(novoFx);
             return novoFx;
         }
         
@@ -74,11 +80,42 @@ public class GerenciadorFXGlobal : MonoBehaviour
 
         if (prefab != null)
         {
+            if (tipo == "Explosao")
+            {
+                CriarEfeitoTemporario(prefab, posicao, tamanho);
+                return;
+            }
+
+            // Fumaça/fogo podem ser associados a dano persistente. Eles não
+            // entram no pool temporal para não sumirem enquanto o alvo ainda
+            // estiver em chamas.
             GameObject fx = Instantiate(prefab, posicao, Quaternion.identity);
             fx.transform.localScale = Vector3.one * tamanho;
-            
-            // Opcional: Se for efeito de partícula sem script de auto-destruição, 
-            // idealmente deveria ter um Destroy(fx, tempo), mas deixarei a cargo do prefab.
+            AudioRuntime.ConfigurarHierarquia(fx);
         }
+    }
+
+    private GameObject CriarEfeitoTemporario(GameObject prefab, Vector3 posicao, float tamanho)
+    {
+        if (prefab == null)
+        {
+            return null;
+        }
+
+        Vector3 escala = Vector3.one * Mathf.Max(0.01f, tamanho);
+        if (reutilizarExplosoes)
+        {
+            return PoolDeObjetosCombate.SpawnTemporario(
+                prefab,
+                posicao,
+                Quaternion.identity,
+                Mathf.Max(0.1f, duracaoExplosaoPooled),
+                escala);
+        }
+
+        GameObject fx = Instantiate(prefab, posicao, Quaternion.identity);
+        fx.transform.localScale = escala;
+        AudioRuntime.ConfigurarHierarquia(fx);
+        return fx;
     }
 }

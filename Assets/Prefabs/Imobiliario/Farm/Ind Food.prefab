@@ -1,0 +1,176 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &8324178596673082665
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3520061459156001454}
+  - component: {fileID: 8147582137374131809}
+  - component: {fileID: 5090217033786231047}
+  - component: {fileID: 603283650258840748}
+  m_Layer: 0
+  m_Name: Ind Food
+  m_TagString: Imovel
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3520061459156001454
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8324178596673082665}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1945, y: -0.000030517578, z: -6628}
+  m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 4434298447405287428}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8147582137374131809
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8324178596673082665}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c2a2b6938e94e61a7a9e5a6c7d81003, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FoodIndustry
+  nivel: 2
+  producaoComidaPorDia: 4500
+  manutencaoPorDia: 70
+  empregosGerados: 120
+--- !u!114 &5090217033786231047
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8324178596673082665}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 367aaae37e633674387111b3ed658737, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EstruturaEconomica
+  tipo: 28
+  teamId: 1
+  capacidadePopulacional: 10
+  populacaoAtual: 0
+  empregosGerados: 120
+  energiaConsumida: 90
+  energiaProduzida: 0
+  combustivelConsumido: 5
+  militaresNecessarios: 0
+  comidaProduzida: 4500
+  petroleoProduzido: 0
+  industriaProduzida: 0
+  dinheiroGerado: 0.5
+  manutencaoAlimentosPorDia: 70
+  status: 0
+  eficiencia: 1
+--- !u!65 &603283650258840748
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8324178596673082665}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 855.3, y: 300, z: 115}
+  m_Center: {x: -258.8, y: 158.2, z: 364.5}
+--- !u!1001 &1948308515931168756
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 3520061459156001454}
+    m_Modifications:
+    - target: {fileID: -6689036041284674117, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_Name
+      value: low_rise_modern_condo_3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -250.25267
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 271.63037
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -5645937942226959685, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+--- !u!4 &4434298447405287428 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: 26bcbc4def2e16740a5b6aa6d735d9e6, type: 3}
+  m_PrefabInstance: {fileID: 1948308515931168756}
+  m_PrefabAsset: {fileID: 0}

@@ -16,7 +16,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 12;
+    public int saveVersion = 15;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -37,6 +37,8 @@ public class DadosDoJogo
     public List<SaveProductionOrderData> filaProducao = new List<SaveProductionOrderData>();
     public List<SaveAiStrategicStateData> estadosIA = new List<SaveAiStrategicStateData>();
     public List<SaveDeusaStateData> estadosDeusa = new List<SaveDeusaStateData>();
+    // Nulo em saves legados: evita sobrescrever a cena com listas vazias.
+    public SaveGovernoMundialData governoMundial;
     public List<SaveIA01NationState> estadosIA01 = new List<SaveIA01NationState>();
     public List<SaveIA02NationState> estadosIA02 = new List<SaveIA02NationState>();
     public IAAutoProductionSaveData producaoAutomaticaIA = new IAAutoProductionSaveData();
@@ -281,6 +283,16 @@ public class SaveAiStrategicStateData
 }
 
 [Serializable]
+public sealed class SaveGovernoMundialData
+{
+    public int teamJogador = 1;
+    public List<DadosPaisGoverno> paises = new List<DadosPaisGoverno>();
+    public List<RelacaoPaisGoverno> relacoes = new List<RelacaoPaisGoverno>();
+    public List<PropostaInternacional> propostas = new List<PropostaInternacional>();
+    public List<string> noticias = new List<string>();
+}
+
+[Serializable]
 public class SaveDeusaStateData
 {
     public int teamID;
@@ -508,7 +520,7 @@ public class SistemaSaveGame : MonoBehaviour
 
         GarantirColecoesIA01();
         GarantirColecoesIA02();
-        dadosAtuais.saveVersion = 14;
+        dadosAtuais.saveVersion = 15;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -517,6 +529,7 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarIdioma();
         CapturarDificuldade();
         CapturarFilaProducao();
+        CapturarEstadoGovernoMundial();
         CapturarEstadoIAImperial();
         CapturarEstadoIA01();
         CapturarEstadoIA02();
@@ -770,6 +783,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         RestaurarFilaProducao();
+        AplicarEstadoGovernoMundial();
         AplicarEstadoIAImperial();
         AplicarEstadoDeusa();
         RestaurarEstadoIA01();
@@ -1189,6 +1203,33 @@ public class SistemaSaveGame : MonoBehaviour
         dadosAtuais.estadosIA01.Sort(CompararEstadosIA01);
     }
 
+    private void CapturarEstadoGovernoMundial()
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null)
+        {
+            dadosAtuais.governoMundial = null;
+            return;
+        }
+
+        dadosAtuais.governoMundial = new SaveGovernoMundialData
+        {
+            teamJogador = governo.teamJogador,
+            paises = governo.paises != null
+                ? governo.paises.Where(p => p != null).ToList()
+                : new List<DadosPaisGoverno>(),
+            relacoes = governo.relacoes != null
+                ? governo.relacoes.Where(r => r != null).ToList()
+                : new List<RelacaoPaisGoverno>(),
+            propostas = governo.propostas != null
+                ? governo.propostas.Where(p => p != null).ToList()
+                : new List<PropostaInternacional>(),
+            noticias = governo.noticias != null
+                ? governo.noticias.Where(n => !string.IsNullOrWhiteSpace(n)).ToList()
+                : new List<string>()
+        };
+    }
+
     private void CapturarEstadoIA02()
     {
         if (dadosAtuais == null)
@@ -1365,6 +1406,34 @@ public class SistemaSaveGame : MonoBehaviour
                 salvo.nomeMoeda,
                 salvo.resumoNacional);
         }
+    }
+
+    private void AplicarEstadoGovernoMundial()
+    {
+        if (dadosAtuais == null || dadosAtuais.governoMundial == null)
+        {
+            return;
+        }
+
+        SaveGovernoMundialData salvo = dadosAtuais.governoMundial;
+        if (salvo.paises == null || salvo.paises.Count == 0)
+        {
+            return;
+        }
+
+        SistemaGovernoMundial.GarantirInstancia();
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null)
+        {
+            return;
+        }
+
+        governo.RestaurarEstadoSalvo(
+            salvo.teamJogador,
+            salvo.paises,
+            salvo.relacoes,
+            salvo.propostas,
+            salvo.noticias);
     }
 
     private void RestaurarEstadoIA01()

@@ -239,6 +239,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimadorUnidade
   parametroVelocidade: velocidade
+  intervaloLeituraVelocidade: 0.05
 --- !u!114 &665450950977345230
 MonoBehaviour:
   m_ObjectHideFlags: 0

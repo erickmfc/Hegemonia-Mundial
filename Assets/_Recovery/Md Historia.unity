@@ -119,6 +119,37 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &1279965
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1279966}
+  m_Layer: 0
+  m_Name: pais do usuario
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1279966
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1279965}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 476785123}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!1 &4548758
 GameObject:
   m_ObjectHideFlags: 0
@@ -994,7 +1025,7 @@ Transform:
   m_GameObject: {fileID: 106703710}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 424, y: 1.0001, z: -1590}
+  m_LocalPosition: {x: 673, y: 1.0001, z: -515}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1140,8 +1171,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02WarAdvanceZone
   teamId: 3
   dominio: 0
+  tipoZona: 0
+  donoDaRegiao: 0
   raio: 3000
   pontos: 4
+  incidentesMantidos: 8
+  duracaoBaixa: 60
+  duracaoMedia: 120
+  duracaoAlta: 240
+  duracaoCritica: 600
+  janelaAgregacaoSegundos: 180
+  responderAtaques: 1
+  prioridadeBase: 50
+  tempoMemoria: 180
+  raioInvestigacao: 3000
+  escaladaObservacao: 1
+  escaladaInterceptacao: 2
+  escaladaCombate: 4
+  reforcoMaximo: 8
+  percentualPatrulhaPreservada: 0.33
+  percentualProtecaoEstrategica: 0.16
+  reservaMinimaAeronaves: 2
+  investigarPrimeiro: 1
+  confirmarHostilidade: 1
+  atualizarUltimaPosicao: 1
+  permitirReforcos: 1
+  permitirRecuo: 1
+  retornarPatrulhaDepois: 1
+  naviosObservacao: 1
+  naviosInterceptacao: 2
+  naviosCombate: 4
+  reforcoNavalMaximo: 6
+  percentualPatrulhaNavalPreservada: 0.33
+  percentualProtecaoNaval: 0.16
+  reservaMinimaNavios: 1
 --- !u!1 &134190314
 GameObject:
   m_ObjectHideFlags: 0
@@ -1426,8 +1489,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01WarAdvanceZone
   teamId: 2
   dominio: 0
+  tipoZona: 0
+  donoDaRegiao: 0
   raio: 6000
   pontos: 4
+  incidentesMantidos: 8
+  duracaoBaixa: 60
+  duracaoMedia: 120
+  duracaoAlta: 240
+  duracaoCritica: 600
+  janelaAgregacaoSegundos: 180
+  responderAtaques: 1
+  prioridadeBase: 50
+  tempoMemoria: 180
+  raioInvestigacao: 3000
+  escaladaObservacao: 1
+  escaladaInterceptacao: 2
+  escaladaCombate: 4
+  reforcoMaximo: 8
+  percentualPatrulhaPreservada: 0.33
+  percentualProtecaoEstrategica: 0.16
+  reservaMinimaAeronaves: 2
+  investigarPrimeiro: 1
+  confirmarHostilidade: 1
+  atualizarUltimaPosicao: 1
+  permitirReforcos: 1
+  permitirRecuo: 1
+  retornarPatrulhaDepois: 1
+  naviosObservacao: 1
+  naviosInterceptacao: 2
+  naviosCombate: 4
+  reforcoNavalMaximo: 6
+  percentualPatrulhaNavalPreservada: 0.33
+  percentualProtecaoNaval: 0.16
+  reservaMinimaNavios: 1
 --- !u!1 &167438664
 GameObject:
   m_ObjectHideFlags: 0
@@ -1649,7 +1744,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02NavalPatrolZone
   raio: 3000
-  intervaloDias: 2
+  intervaloDias: 5
+  tipoSetor: 0
+  naviosDesejados: 1
 --- !u!1 &208795868
 GameObject:
   m_ObjectHideFlags: 0
@@ -1676,7 +1773,7 @@ Transform:
   m_GameObject: {fileID: 208795868}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 442, y: 0, z: 150}
+  m_LocalPosition: {x: -118, y: 0, z: 364}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1695,7 +1792,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02ExtractionZone
   teamId: 3
-  raio: 80
+  raio: 250
   vagas: 6
 --- !u!1 &223657622
 GameObject:
@@ -2103,7 +2200,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02NavalPatrolZone
   raio: 2000
-  intervaloDias: 2
+  intervaloDias: 10
+  tipoSetor: 0
+  naviosDesejados: 1
 --- !u!1 &264316602
 GameObject:
   m_ObjectHideFlags: 0
@@ -2780,6 +2879,8 @@ MonoBehaviour:
   tamanhoOrtografico: 150
   tamanhoUI: 220
   margemBorda: 20
+  resolucaoRender: 256
+  intervaloReconciliacaoSeguranca: 2
   corBorda: {r: 0.18, g: 0.15, b: 0.12, a: 1}
   corFundoRadar: {r: 0.85, g: 0.78, b: 0.6, a: 0.1}
   espessuraBorda: 8
@@ -3136,7 +3237,7 @@ Transform:
   m_GameObject: {fileID: 386948348}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 452, y: 0.5, z: 1330}
+  m_LocalPosition: {x: 452, y: 0.5, z: 823}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -4158,6 +4259,7 @@ GameObject:
   - component: {fileID: 476785123}
   - component: {fileID: 476785122}
   - component: {fileID: 476785121}
+  - component: {fileID: 476785124}
   m_Layer: 0
   m_Name: Pais1
   m_TagString: Untagged
@@ -4212,7 +4314,7 @@ Terrain:
   m_StaticShadowCaster: 0
   m_IgnoreQualitySettings: 0
   m_ReflectionProbeUsage: 1
-  m_MaterialTemplate: {fileID: -1706353552339688966, guid: 96a895a96a6898a41bea146288faf890, type: 3}
+  m_MaterialTemplate: {fileID: -3039388360736731039, guid: 4a5297bb7ca9bef459b5294bf0ea11fd, type: 3}
   m_BakeLightProbesForTrees: 1
   m_PreserveTreePrototypeLayers: 0
   m_DeringLightProbesForTrees: 1
@@ -4237,9 +4339,42 @@ Transform:
   m_LocalPosition: {x: -8600.002, y: 0, z: 20042}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1279966}
   m_Father: {fileID: 409149325}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &476785124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 476785120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
+  m_SerializedVersion: 0
+  m_AgentTypeID: 0
+  m_CollectObjects: 0
+  m_Size: {x: 10, y: 10, z: 10}
+  m_Center: {x: 0, y: 2, z: 0}
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 64
+  m_UseGeometry: 0
+  m_DefaultArea: 0
+  m_GenerateLinks: 0
+  m_IgnoreNavMeshAgent: 1
+  m_IgnoreNavMeshObstacle: 1
+  m_OverrideTileSize: 0
+  m_TileSize: 256
+  m_OverrideVoxelSize: 0
+  m_VoxelSize: 0.16666667
+  m_MinRegionArea: 2
+  m_NavMeshData: {fileID: 23800000, guid: eff7416d166713a4ebd26e9375389e3a, type: 2}
+  m_BuildHeightMesh: 0
 --- !u!1 &481519178
 GameObject:
   m_ObjectHideFlags: 0
@@ -4331,6 +4466,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalPatrolZone
   raio: 2000
   intervaloDias: 15
+  tipoSetor: 0
+  naviosDesejados: 1
 --- !u!1 &527757109
 GameObject:
   m_ObjectHideFlags: 0
@@ -4478,6 +4615,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: dfe48a4f7ec8f2f49ab7cde326a07ae7, type: 2}
   - {fileID: 11400000, guid: 0db1f9037ea1c1249b18b172ff416b1f, type: 2}
   - {fileID: 11400000, guid: 8c7a9c1a5e0f4b1f9dcd2e5a6fef3d40, type: 2}
+  - {fileID: 11400000, guid: 22c326fdd9332f84f9db0a8a1f3e9025, type: 2}
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
@@ -4642,7 +4780,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &569879210
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4730,7 +4868,7 @@ Transform:
   m_GameObject: {fileID: 569879209}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1728, y: 0, z: -1275}
+  m_LocalPosition: {x: 2573, y: 0, z: -1275}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5374,6 +5512,8 @@ MonoBehaviour:
   useScriptedOpening: 1
   usePreparedSlots: 1
   allowAutonomousExpansion: 1
+  allowAutomaticQuartel: 1
+  allowPeacetimeMilitaryProduction: 0
   enablePlanningAdvisor: 1
   maxConstructionDistanceFromController: 7000
   progressiveMilitaryCatalog: 1
@@ -5458,6 +5598,8 @@ MonoBehaviour:
   profundidade: 5000
   altitude: 200
   intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &704224539
 GameObject:
   m_ObjectHideFlags: 0
@@ -5677,7 +5819,7 @@ Transform:
   m_GameObject: {fileID: 744213719}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1083, y: 0, z: -460}
+  m_LocalPosition: {x: -1083, y: 0, z: 3585}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5697,9 +5839,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02AirPatrolZone
   raio: 500
   largura: 5000
-  profundidade: 6000
+  profundidade: 3000
   altitude: 120
   intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &746490148
 GameObject:
   m_ObjectHideFlags: 0
@@ -6023,7 +6167,8 @@ GameObject:
   - component: {fileID: 786017074}
   - component: {fileID: 786017073}
   - component: {fileID: 786017072}
-  m_Layer: 0
+  - component: {fileID: 786017075}
+  m_Layer: 6
   m_Name: pais3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6105,6 +6250,38 @@ Transform:
   m_Children: []
   m_Father: {fileID: 409149325}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &786017075
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 786017071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
+  m_SerializedVersion: 0
+  m_AgentTypeID: 0
+  m_CollectObjects: 0
+  m_Size: {x: 10, y: 10, z: 10}
+  m_Center: {x: 0, y: 2, z: 0}
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 64
+  m_UseGeometry: 0
+  m_DefaultArea: 0
+  m_GenerateLinks: 0
+  m_IgnoreNavMeshAgent: 1
+  m_IgnoreNavMeshObstacle: 1
+  m_OverrideTileSize: 0
+  m_TileSize: 256
+  m_OverrideVoxelSize: 0
+  m_VoxelSize: 0.16666667
+  m_MinRegionArea: 2
+  m_NavMeshData: {fileID: 23800000, guid: 24d6f2ff2612323459df9854a39d6b00, type: 2}
+  m_BuildHeightMesh: 0
 --- !u!1 &787444025
 GameObject:
   m_ObjectHideFlags: 0
@@ -8395,6 +8572,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02NavalPatrolZone
   raio: 2000
   intervaloDias: 2
+  tipoSetor: 0
+  naviosDesejados: 1
 --- !u!1 &989727890
 GameObject:
   m_ObjectHideFlags: 0
@@ -8552,7 +8731,7 @@ Transform:
   m_GameObject: {fileID: 998805452}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 620, y: 0, z: 1973}
+  m_LocalPosition: {x: -1297, y: 0, z: 2383}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8572,9 +8751,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02AirPatrolZone
   raio: 300
   largura: 3000
-  profundidade: 360
+  profundidade: 3000
   altitude: 120
   intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &1003061348
 GameObject:
   m_ObjectHideFlags: 0
@@ -8738,8 +8919,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02WarAdvanceZone
   teamId: 3
   dominio: 0
+  tipoZona: 0
+  donoDaRegiao: 0
   raio: 3000
   pontos: 4
+  incidentesMantidos: 8
+  duracaoBaixa: 60
+  duracaoMedia: 120
+  duracaoAlta: 240
+  duracaoCritica: 600
+  janelaAgregacaoSegundos: 180
+  responderAtaques: 1
+  prioridadeBase: 50
+  tempoMemoria: 180
+  raioInvestigacao: 3000
+  escaladaObservacao: 1
+  escaladaInterceptacao: 2
+  escaladaCombate: 4
+  reforcoMaximo: 8
+  percentualPatrulhaPreservada: 0.33
+  percentualProtecaoEstrategica: 0.16
+  reservaMinimaAeronaves: 2
+  investigarPrimeiro: 1
+  confirmarHostilidade: 1
+  atualizarUltimaPosicao: 1
+  permitirReforcos: 1
+  permitirRecuo: 1
+  retornarPatrulhaDepois: 1
+  naviosObservacao: 1
+  naviosInterceptacao: 2
+  naviosCombate: 4
+  reforcoNavalMaximo: 6
+  percentualPatrulhaNavalPreservada: 0.33
+  percentualProtecaoNaval: 0.16
+  reservaMinimaNavios: 1
 --- !u!1 &1004821141
 GameObject:
   m_ObjectHideFlags: 0
@@ -8894,7 +9107,8 @@ GameObject:
   - component: {fileID: 1012950349}
   - component: {fileID: 1012950348}
   - component: {fileID: 1012950347}
-  m_Layer: 0
+  - component: {fileID: 1012950350}
+  m_Layer: 6
   m_Name: pais4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -8976,6 +9190,38 @@ Transform:
   m_Children: []
   m_Father: {fileID: 409149325}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1012950350
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1012950346}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
+  m_SerializedVersion: 0
+  m_AgentTypeID: 0
+  m_CollectObjects: 0
+  m_Size: {x: 10, y: 10, z: 10}
+  m_Center: {x: 0, y: 2, z: 0}
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 64
+  m_UseGeometry: 0
+  m_DefaultArea: 0
+  m_GenerateLinks: 0
+  m_IgnoreNavMeshAgent: 1
+  m_IgnoreNavMeshObstacle: 1
+  m_OverrideTileSize: 0
+  m_TileSize: 256
+  m_OverrideVoxelSize: 0
+  m_VoxelSize: 0.16666667
+  m_MinRegionArea: 2
+  m_NavMeshData: {fileID: 23800000, guid: 70f380db190af4047bbc79c9bb5897f8, type: 2}
+  m_BuildHeightMesh: 0
 --- !u!1 &1027438108
 GameObject:
   m_ObjectHideFlags: 0
@@ -9194,6 +9440,8 @@ MonoBehaviour:
   useScriptedOpening: 1
   usePreparedSlots: 1
   allowAutonomousExpansion: 0
+  allowAutomaticQuartel: 1
+  allowPeacetimeMilitaryProduction: 0
   enablePlanningAdvisor: 1
   maxConstructionDistanceFromController: 4200
   progressiveMilitaryCatalog: 1
@@ -10058,7 +10306,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1113684277
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10073,7 +10321,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.Cartel.CartelNavalController
   CartelTeamId: 9
   NomeCartel: Cartel Naval
-  IniciarAutomaticamente: 1
+  IniciarAutomaticamente: 0
   SistemaAntigoContinuaDisponivel: 1
   DesativarControladorAntigoNestaCena: 1
   ControladorLegado: {fileID: 569879210}
@@ -10113,7 +10361,7 @@ Transform:
   m_GameObject: {fileID: 1113684276}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 501, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -10684,7 +10932,7 @@ Transform:
   m_GameObject: {fileID: 1235781714}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 85, y: 1.0001, z: -1563}
+  m_LocalPosition: {x: 573, y: 1.0001, z: -587}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -10882,8 +11130,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01WarAdvanceZone
   teamId: 2
   dominio: 0
+  tipoZona: 0
+  donoDaRegiao: 0
   raio: 8000
   pontos: 4
+  incidentesMantidos: 8
+  duracaoBaixa: 60
+  duracaoMedia: 120
+  duracaoAlta: 240
+  duracaoCritica: 600
+  janelaAgregacaoSegundos: 180
+  responderAtaques: 1
+  prioridadeBase: 50
+  tempoMemoria: 180
+  raioInvestigacao: 3000
+  escaladaObservacao: 1
+  escaladaInterceptacao: 2
+  escaladaCombate: 4
+  reforcoMaximo: 8
+  percentualPatrulhaPreservada: 0.33
+  percentualProtecaoEstrategica: 0.16
+  reservaMinimaAeronaves: 2
+  investigarPrimeiro: 1
+  confirmarHostilidade: 1
+  atualizarUltimaPosicao: 1
+  permitirReforcos: 1
+  permitirRecuo: 1
+  retornarPatrulhaDepois: 1
+  naviosObservacao: 1
+  naviosInterceptacao: 2
+  naviosCombate: 4
+  reforcoNavalMaximo: 6
+  percentualPatrulhaNavalPreservada: 0.33
+  percentualProtecaoNaval: 0.16
+  reservaMinimaNavios: 1
 --- !u!1 &1258670627
 GameObject:
   m_ObjectHideFlags: 0
@@ -11111,7 +11391,7 @@ Transform:
   m_GameObject: {fileID: 1310972287}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 48, y: 1.0001, z: 52}
+  m_LocalPosition: {x: 48, y: 1.0001, z: 105}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -11198,6 +11478,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalPatrolZone
   raio: 2000
   intervaloDias: 15
+  tipoSetor: 0
+  naviosDesejados: 1
 --- !u!1 &1334352391
 GameObject:
   m_ObjectHideFlags: 0
@@ -11288,7 +11570,7 @@ Transform:
   m_GameObject: {fileID: 1337123052}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4381, y: 0.5, z: 3872}
+  m_LocalPosition: {x: -4381, y: 0.5, z: 5658}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -12474,6 +12756,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalPatrolZone
   raio: 2000
   intervaloDias: 6
+  tipoSetor: 0
+  naviosDesejados: 1
 --- !u!1 &1406513604
 GameObject:
   m_ObjectHideFlags: 0
@@ -12972,6 +13256,8 @@ MonoBehaviour:
   profundidade: 5000
   altitude: 120
   intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &1460985903
 GameObject:
   m_ObjectHideFlags: 0
@@ -13321,8 +13607,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01WarAdvanceZone
   teamId: 2
   dominio: 1
+  tipoZona: 0
+  donoDaRegiao: 0
   raio: 7000
   pontos: 4
+  incidentesMantidos: 8
+  duracaoBaixa: 60
+  duracaoMedia: 120
+  duracaoAlta: 240
+  duracaoCritica: 600
+  janelaAgregacaoSegundos: 180
+  responderAtaques: 1
+  prioridadeBase: 50
+  tempoMemoria: 180
+  raioInvestigacao: 3000
+  escaladaObservacao: 1
+  escaladaInterceptacao: 2
+  escaladaCombate: 4
+  reforcoMaximo: 8
+  percentualPatrulhaPreservada: 0.33
+  percentualProtecaoEstrategica: 0.16
+  reservaMinimaAeronaves: 2
+  investigarPrimeiro: 1
+  confirmarHostilidade: 1
+  atualizarUltimaPosicao: 1
+  permitirReforcos: 1
+  permitirRecuo: 1
+  retornarPatrulhaDepois: 1
+  naviosObservacao: 1
+  naviosInterceptacao: 2
+  naviosCombate: 4
+  reforcoNavalMaximo: 6
+  percentualPatrulhaNavalPreservada: 0.33
+  percentualProtecaoNaval: 0.16
+  reservaMinimaNavios: 1
 --- !u!1 &1494686888
 GameObject:
   m_ObjectHideFlags: 0
@@ -13796,8 +14114,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02WarAdvanceZone
   teamId: 3
   dominio: 1
+  tipoZona: 0
+  donoDaRegiao: 0
   raio: 5000
   pontos: 4
+  incidentesMantidos: 8
+  duracaoBaixa: 60
+  duracaoMedia: 120
+  duracaoAlta: 240
+  duracaoCritica: 600
+  janelaAgregacaoSegundos: 180
+  responderAtaques: 1
+  prioridadeBase: 50
+  tempoMemoria: 180
+  raioInvestigacao: 3000
+  escaladaObservacao: 1
+  escaladaInterceptacao: 2
+  escaladaCombate: 4
+  reforcoMaximo: 8
+  percentualPatrulhaPreservada: 0.33
+  percentualProtecaoEstrategica: 0.16
+  reservaMinimaAeronaves: 2
+  investigarPrimeiro: 1
+  confirmarHostilidade: 1
+  atualizarUltimaPosicao: 1
+  permitirReforcos: 1
+  permitirRecuo: 1
+  retornarPatrulhaDepois: 1
+  naviosObservacao: 1
+  naviosInterceptacao: 2
+  naviosCombate: 4
+  reforcoNavalMaximo: 6
+  percentualPatrulhaNavalPreservada: 0.33
+  percentualProtecaoNaval: 0.16
+  reservaMinimaNavios: 1
 --- !u!1 &1531390121
 GameObject:
   m_ObjectHideFlags: 0
@@ -14068,7 +14418,8 @@ GameObject:
   - component: {fileID: 1561296830}
   - component: {fileID: 1561296829}
   - component: {fileID: 1561296828}
-  m_Layer: 0
+  - component: {fileID: 1561296831}
+  m_Layer: 6
   m_Name: pais5
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -14150,6 +14501,38 @@ Transform:
   m_Children: []
   m_Father: {fileID: 409149325}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1561296831
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1561296827}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
+  m_SerializedVersion: 0
+  m_AgentTypeID: 0
+  m_CollectObjects: 0
+  m_Size: {x: 10, y: 10, z: 10}
+  m_Center: {x: 0, y: 2, z: 0}
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 64
+  m_UseGeometry: 0
+  m_DefaultArea: 4
+  m_GenerateLinks: 0
+  m_IgnoreNavMeshAgent: 1
+  m_IgnoreNavMeshObstacle: 1
+  m_OverrideTileSize: 0
+  m_TileSize: 256
+  m_OverrideVoxelSize: 0
+  m_VoxelSize: 0.16666667
+  m_MinRegionArea: 2
+  m_NavMeshData: {fileID: 23800000, guid: ca9fe8c0a212b5449a12eed27c4de271, type: 2}
+  m_BuildHeightMesh: 0
 --- !u!1 &1561695972
 GameObject:
   m_ObjectHideFlags: 0
@@ -15592,6 +15975,8 @@ MonoBehaviour:
   profundidade: 1000
   altitude: 120
   intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &1698934797
 GameObject:
   m_ObjectHideFlags: 0
@@ -15713,7 +16098,7 @@ Transform:
   m_GameObject: {fileID: 1700867273}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1570, y: 0, z: 1261}
+  m_LocalPosition: {x: -1932, y: 0, z: 4132}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -15732,10 +16117,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02AirPatrolZone
   raio: 260
-  largura: 10000
-  profundidade: 10000
+  largura: 7000
+  profundidade: 5000
   altitude: 120
   intervaloDias: 5
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &1705783773
 GameObject:
   m_ObjectHideFlags: 0
@@ -17385,7 +17772,7 @@ Transform:
   m_GameObject: {fileID: 1834797059}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -620, y: 0, z: 3337}
+  m_LocalPosition: {x: -911, y: 0, z: 1725}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -17408,6 +17795,8 @@ MonoBehaviour:
   profundidade: 360
   altitude: 120
   intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &1844565557
 GameObject:
   m_ObjectHideFlags: 0
@@ -18293,6 +18682,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalPatrolZone
   raio: 2000
   intervaloDias: 3
+  tipoSetor: 0
+  naviosDesejados: 1
 --- !u!1 &1894067358
 GameObject:
   m_ObjectHideFlags: 0
@@ -18422,6 +18813,8 @@ MonoBehaviour:
   prefabFogoGrande: {fileID: 4079559363357107082, guid: 51d65cd54bf1f824f97d7fe6aecb922b, type: 3}
   prefabFogoReto: {fileID: 9169263798598525455, guid: e997d449daf194a47adae12a9a56c8e4, type: 3}
   somExplosao: {fileID: 8300000, guid: d47e6ed162da1f740ad807d00f4679f3, type: 3}
+  reutilizarExplosoes: 1
+  duracaoExplosaoPooled: 4.5
 --- !u!4 &1905580896
 Transform:
   m_ObjectHideFlags: 0
@@ -18610,6 +19003,8 @@ MonoBehaviour:
   profundidade: 360
   altitude: 120
   intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &1939125007
 GameObject:
   m_ObjectHideFlags: 0
@@ -20109,6 +20504,8 @@ MonoBehaviour:
   profundidade: 2000
   altitude: 120
   intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &2040653455
 GameObject:
   m_ObjectHideFlags: 0
@@ -20251,6 +20648,8 @@ MonoBehaviour:
   profundidade: 5000
   altitude: 120
   intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &2055373580
 GameObject:
   m_ObjectHideFlags: 0
@@ -20967,150 +21366,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1003061349}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &2109298136
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 1581410643}
-    m_Modifications:
-    - target: {fileID: 138394, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_Name
-      value: Agua
-      objectReference: {fileID: 0}
-    - target: {fileID: 138394, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 700
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 700
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 1.3
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 4000
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0.000000021855694
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 138394, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2109298141}
-    - targetCorrespondingSourceObject: {fileID: 138394, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2109298140}
-    - targetCorrespondingSourceObject: {fileID: 138394, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2109298139}
-  m_SourcePrefab: {fileID: 100100000, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
 --- !u!4 &2109298137 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 488286, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-  m_PrefabInstance: {fileID: 2109298136}
+  m_CorrespondingSourceObject: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+  m_PrefabInstance: {fileID: 121132613469654784}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &2109298138 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 138394, guid: af2652a630f9e464895d954b8ce854bd, type: 3}
-  m_PrefabInstance: {fileID: 2109298136}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &2109298139
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2109298138}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1e3fdca004f2d45fe8abbed571a8abd5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshModifier
-  m_SerializedVersion: 0
-  m_OverrideArea: 1
-  m_Area: 3
-  m_OverrideGenerateLinks: 0
-  m_GenerateLinks: 0
-  m_IgnoreFromBuild: 0
-  m_ApplyToChildren: 1
-  m_AffectedAgents: ffffffff
---- !u!114 &2109298140
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2109298138}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1ba5eef4493f04143b61cd5157c9aede, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::OceanAdvanced
-  ocean: {fileID: 2100000, guid: 5ba65d3294fbb0243870995de5f29b81, type: 2}
-  sun: {fileID: 1810942524}
---- !u!64 &2109298141
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2109298138}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 4300000, guid: b2fe5033d7fc7ab4b8badb297d040686, type: 3}
 --- !u!1 &2115589654
 GameObject:
   m_ObjectHideFlags: 0
@@ -21273,6 +21533,67 @@ Transform:
   m_Children: []
   m_Father: {fileID: 943471243}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &121132613469654784
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1581410643}
+    m_Modifications:
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 4000
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.000000021855694
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139394337, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 865720003139712229, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: m_Name
+      value: Agua
+      objectReference: {fileID: 0}
+    - target: {fileID: 5645799369686231604, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
+      propertyPath: sun
+      value: 
+      objectReference: {fileID: 1810942524}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6671a650a07003948a4b92fb02beede8, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

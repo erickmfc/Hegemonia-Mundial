@@ -323,6 +323,8 @@ public class MenuConstrucao : MonoBehaviour
         GarantirComerciosNoCatalogo();
         GarantirPrefeituraNoCatalogo();
         GarantirNaviosNovosNoCatalogo();
+        GarantirCidadeEgitoNoCatalogo();
+        GarantirEconomiaAvancadaNoCatalogo();
 
         List<DadosConstrucao> catalogoDaCena = new List<DadosConstrucao>();
         foreach (DadosConstrucao item in catalogo)
@@ -443,6 +445,79 @@ public class MenuConstrucao : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// A cidade Egito é uma estrutura urbana completa e precisa aparecer no
+    /// catálogo mesmo nas cenas antigas que não tinham a ficha serializada.
+    /// Isso também deixa a mesma ficha disponível para os catálogos das IAs.
+    /// </summary>
+    private void GarantirCidadeEgitoNoCatalogo()
+    {
+        DadosConstrucao cidade = Resources.Load<DadosConstrucao>("Construcoes/Egito");
+        if (cidade == null || catalogo.Contains(cidade))
+        {
+            return;
+        }
+
+        GameObject prefabCidade;
+        if (!cidade.TryGetPrefabBasico(out prefabCidade) || prefabCidade == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < catalogo.Count; i++)
+        {
+            DadosConstrucao existente = catalogo[i];
+            GameObject prefabExistente;
+            if (existente != null && existente.TryGetPrefabBasico(out prefabExistente) && prefabExistente == prefabCidade)
+            {
+                return;
+            }
+        }
+
+        catalogo.Add(cidade);
+        if (!quantidadesPorItem.ContainsKey(cidade.NomeItem))
+        {
+            quantidadesPorItem.Add(cidade.NomeItem, 1);
+        }
+    }
+
+    /// <summary>
+    /// Food Industry e a usina nuclear são fichas comuns às duas IAs e ao
+    /// jogador. Os prefabs continuam sendo os existentes; a ficha acrescenta
+    /// apenas o perfil de produção/manutenção.
+    /// </summary>
+    private void GarantirEconomiaAvancadaNoCatalogo()
+    {
+        string[] caminhos =
+        {
+            "Construcoes/Food_Industry_Level1",
+            "Construcoes/Food_Industry_Level2",
+            "Construcoes/Food_Industry_Level3",
+            "Construcoes/Usina_Nuclear",
+            "Construcoes/Mini_Pista_Logistica"
+        };
+
+        for (int i = 0; i < caminhos.Length; i++)
+        {
+            DadosConstrucao ficha = Resources.Load<DadosConstrucao>(caminhos[i]);
+            if (ficha == null || catalogo.Contains(ficha)) continue;
+            bool duplicada = false;
+            for (int j = 0; j < catalogo.Count; j++)
+            {
+                DadosConstrucao existente = catalogo[j];
+                if (existente != null && string.Equals(existente.GetStableId(), ficha.GetStableId(), System.StringComparison.OrdinalIgnoreCase))
+                {
+                    duplicada = true;
+                    break;
+                }
+            }
+
+            if (duplicada) continue;
+            catalogo.Add(ficha);
+            if (!quantidadesPorItem.ContainsKey(ficha.NomeItem)) quantidadesPorItem.Add(ficha.NomeItem, 1);
+        }
+    }
+
     // A ficha original da Prefeitura fica fora de Resources. Mantemos uma
     // copia de runtime em Resources para que ela exista no catalogo tambem em
     // builds, cenas novas e partidas que nao serializaram a referencia.
@@ -482,7 +557,9 @@ public class MenuConstrucao : MonoBehaviour
             "Construcoes/F200",
             "Construcoes/F201",
             "Construcoes/Ministral",
-            "Construcoes/C700"
+            "Construcoes/C700",
+            "Construcoes/UH60GuardaCosteira",
+            "Construcoes/NavioGuardaCosteira"
         };
 
         for (int i = 0; i < caminhos.Length; i++)
@@ -3339,6 +3416,7 @@ public class MenuConstrucao : MonoBehaviour
         bool ehIcbm = item != null &&
             (string.Equals(item.ItemId, "foguete_icbm", System.StringComparison.OrdinalIgnoreCase) ||
              item.GetDisplayName().IndexOf("ICBM", System.StringComparison.OrdinalIgnoreCase) >= 0);
+        construtor.DefinirFichaConstrucao(item);
         construtor.SelecionarParaConstruir(item.PrefabDaUnidade, Math.Max(0L, preco), item.categoria, ehIcbm);
         AlternarMenu(false);
     }
@@ -3362,6 +3440,9 @@ public class MenuConstrucao : MonoBehaviour
     void ProduzirUnidadeAerea(DadosConstrucao item, int quantidade, Image cardImage)
     {
         bool isHelicopter = false;
+        bool ehUH60GuardaCosteira = item != null
+            && (string.Equals(item.ItemId, "UH60_GUARDA_COSTEIRA", System.StringComparison.OrdinalIgnoreCase)
+                || item.GetDisplayName().IndexOf("guarda costeira", System.StringComparison.OrdinalIgnoreCase) >= 0);
         if (item != null && item.PrefabDaUnidade != null)
         {
             isHelicopter = item.PrefabDaUnidade.GetComponent<Helicoptero>() != null || 
@@ -3410,15 +3491,14 @@ public class MenuConstrucao : MonoBehaviour
 
         if (isHelicopter)
         {
-            // Prefer heliports with space and energy
-            targetHeliporto = meusHeliportos
-                .Where(h => h.TemEspacoParaPousar() && !HeliportoSemEnergia(h))
-                .FirstOrDefault();
-
-            if (targetHeliporto == null)
+            // O UH-60 da Guarda Costeira é administrado pela frota do
+            // aeroporto militar para aparecer no menu tático e receber as
+            // mesmas ordens de patrulha/retorno das outras aeronaves. Os
+            // demais helicópteros continuam preferindo um heliporto.
+            if (!ehUH60GuardaCosteira)
             {
                 targetHeliporto = meusHeliportos
-                    .Where(h => h.TemEspacoParaPousar())
+                    .Where(h => h.TemEspacoParaPousar() && !HeliportoSemEnergia(h))
                     .FirstOrDefault();
             }
 
@@ -3445,6 +3525,22 @@ public class MenuConstrucao : MonoBehaviour
                             if (a.ObterPrimeiraVagaLivre() != null) score += 50;
                             return score;
                         })
+                        .FirstOrDefault();
+                }
+            }
+
+            // Se o UH-60 não encontrar aeroporto, mantém o fallback para um
+            // heliporto funcional em vez de bloquear a compra.
+            if (ehUH60GuardaCosteira && targetAeroporto == null)
+            {
+                targetHeliporto = meusHeliportos
+                    .Where(h => h.TemEspacoParaPousar() && !HeliportoSemEnergia(h))
+                    .FirstOrDefault();
+
+                if (targetHeliporto == null)
+                {
+                    targetHeliporto = meusHeliportos
+                        .Where(h => h.TemEspacoParaPousar())
                         .FirstOrDefault();
                 }
             }

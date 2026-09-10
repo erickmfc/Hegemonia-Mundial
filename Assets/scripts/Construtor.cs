@@ -58,6 +58,7 @@ public class Construtor : MonoBehaviour
     public bool permitirColocacaoNavalEmQualquerLocal = true;
 
     private long custoAtual = 0L;
+    private DadosConstrucao fichaSelecionada;
     private DadosConstrucao.CategoriaItem categoriaAtual;
     private bool definindoMuro = false;
     private Vector3 pontoInicial;
@@ -722,6 +723,22 @@ public class Construtor : MonoBehaviour
             rotFinal = poseCommit.Rotation;
         }
 
+        if (IA_CityExpansionPolicy.IsCityPrefab(prefabSelecionado))
+        {
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            int teamId = governo != null ? governo.teamJogador : 1;
+            DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
+            DadosEconomiaPais economia = SistemaEconomiaImoveis.Instancia != null
+                ? SistemaEconomiaImoveis.Instancia.ObterEconomia(teamId)
+                : null;
+            IA_CityExpansionPolicy.Assessment avaliacao;
+            if (!IA_CityExpansionPolicy.TryPrepareForCity(teamId, pais, economia, prefabSelecionado, false, out avaliacao))
+            {
+                AvisarConstrucao("CIDADE ADIADA: " + avaliacao.Decision + ". Aguarde a preparação e mantenha os recursos reservados.");
+                return;
+            }
+        }
+
         if (!TentarCobrarConstrucao(custoAtual))
         {
             if (ehIcbm) Debug.LogWarning("[Construtor][ICBM] compra rejeitada por saldo insuficiente.", this);
@@ -729,6 +746,7 @@ public class Construtor : MonoBehaviour
         }
 
         GameObject novo = Instantiate(prefabSelecionado, posFinal, rotFinal);
+        IA_RuntimeConstructionIntegration.Apply(novo, fichaSelecionada);
         GerenciadorQuartel quartelConstruido = novo.GetComponent<GerenciadorQuartel>()
             ?? novo.GetComponentInChildren<GerenciadorQuartel>(true);
         if (quartelConstruido != null)
@@ -737,6 +755,7 @@ public class Construtor : MonoBehaviour
             // manter o menu Satélite bloqueado no frame seguinte.
             quartelConstruido.PrepararAposConstrucao();
         }
+        MenuComandoController.Instancia?.BloquearAberturaAposConstrucao();
 
         // Prefabs comerciais importados sem configuracao recebem o componente
         // no momento da construcao e passam a constar no Governo.
@@ -1466,6 +1485,16 @@ public class Construtor : MonoBehaviour
         SelecionarParaConstruir(prefab, custo, categoria, false);
     }
 
+    /// <summary>
+    /// Mantém a ficha junto do preview para que perfis opcionais (Food
+    /// Industry, usina nuclear e cidade) também sejam aplicados ao construir
+    /// pelo menu. Chamadas antigas que só passam prefab continuam válidas.
+    /// </summary>
+    public void DefinirFichaConstrucao(DadosConstrucao ficha)
+    {
+        fichaSelecionada = ficha;
+    }
+
     public void SelecionarParaConstruir(GameObject prefab, long custo, DadosConstrucao.CategoriaItem categoria, bool permitirForaTerritorio)
     {
         if (modoConstrucao)
@@ -1516,6 +1545,7 @@ public class Construtor : MonoBehaviour
         permitirIcbmForaTerritorio = false;
 
         modoConstrucao = false;
+        fichaSelecionada = null;
         definindoMuro = false;
         definindoRua = false;
         prefabSelecionado = null;

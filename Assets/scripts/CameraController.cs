@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -31,6 +32,8 @@ public class CameraController : MonoBehaviour
     private Camera cameraPrincipal;
     private Vector3 ultimaAreaNotificada;
     private bool projecaoInicializada;
+    private readonly List<Terrain> terrenosVisiveisCache = new List<Terrain>(8);
+    private float proximaAtualizacaoTerrenos;
     private const float DistanciaMinimaNotificacaoSqr = 625f;
     private const float AlturaMinimaNotificacao = 5f;
 
@@ -41,6 +44,7 @@ public class CameraController : MonoBehaviour
         if (cameraPrincipal != null)
         {
             cameraPrincipal.fieldOfView = campoDeVisaoBase;
+            AtualizarCacheTerrenos();
             // O mapa tem ilhas além do primeiro Terrain. Inicializar o recorte
             // aqui evita que a câmera comece vendo água e céu antes do primeiro
             // zoom/movimento do jogador.
@@ -262,10 +266,14 @@ public class CameraController : MonoBehaviour
         }
 
         float necessario = 0f;
-        Terrain[] terrenos = FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-
-        foreach (Terrain terreno in terrenos)
+        if (Time.unscaledTime >= proximaAtualizacaoTerrenos || terrenosVisiveisCache.Count == 0)
         {
+            AtualizarCacheTerrenos();
+        }
+
+        for (int i = terrenosVisiveisCache.Count - 1; i >= 0; i--)
+        {
+            Terrain terreno = terrenosVisiveisCache[i];
             // Todos os terrenos ativos da cena canônica fazem parte do mapa
             // visível. O inicializador de superfícies mantém inclusive os
             // terrenos auxiliares disponíveis para renderização; ignorá-los
@@ -289,6 +297,24 @@ public class CameraController : MonoBehaviour
         }
 
         return necessario;
+    }
+
+    private void AtualizarCacheTerrenos()
+    {
+        terrenosVisiveisCache.Clear();
+        Terrain[] terrenos = FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < terrenos.Length; i++)
+        {
+            if (terrenos[i] != null)
+            {
+                terrenosVisiveisCache.Add(terrenos[i]);
+            }
+        }
+
+        // Terrenos quase nunca são criados/removidos durante uma partida;
+        // este intervalo cobre construções/cenas especiais sem executar uma
+        // varredura global a cada movimento do zoom.
+        proximaAtualizacaoTerrenos = Time.unscaledTime + 10f;
     }
 
     private static bool EhTerrenoAuxiliarInimigo(Terrain terreno)

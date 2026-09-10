@@ -174,9 +174,18 @@ public class IA_ForcaTarefa : MonoBehaviour
             Helicoptero heli = aerea.GetComponent<Helicoptero>();
             if (heli != null) 
             {
-                heli.estaVoando = true; // Devolve o controle para o Helicóptero
-                heli.modoCombateAtivo = true;
-                heli.VoarEPousar(alvoInvasao + new Vector3(0, 0, 50)); // Manda flanquear a base!
+                Vector3 destinoEscolta = alvoInvasao + new Vector3(0, 0, 50);
+                ControleUnidade controleHeli = heli.GetComponent<ControleUnidade>();
+                if (controleHeli != null)
+                {
+                    controleHeli.EmitirMissaoAereaOfensiva(destinoEscolta, null);
+                }
+                else
+                {
+                    heli.estaVoando = true; // Compatibilidade com escoltas legadas
+                    heli.modoCombateAtivo = true;
+                    heli.VoarEPousar(destinoEscolta);
+                }
             }
         }
         
@@ -195,4 +204,3 @@ public class IA_ForcaTarefa : MonoBehaviour
         }
     }
 }
-

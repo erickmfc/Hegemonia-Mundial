@@ -105,13 +105,15 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
             terrenosJogaveis++;
 
             bool ehAguaVisualMdHistoria = EhTerrenoAguaMdHistoria(terrain);
+            bool ehAguaDeclarada = EhTerrenoAguaDeclarada(terrain);
+            bool ehAguaVisual = ehAguaVisualMdHistoria || ehAguaDeclarada;
             bool ehFronteiraVisualMdHistoria = EhTerrenoFronteiraVisualMdHistoria(terrain);
-            // A MD História ainda contém tiles Terrain_... da água antiga.
-            // Eles permanecem com TerrainCollider/MarcadorSuperficieMapa para
-            // consultas de superfície e para o pathfinder, mas o Sea original
-            // é a única superfície de água que deve ser desenhada. Renderizar
+            // A MD História ainda contém tiles Terrain_... da água antiga e
+            // cenas novas podem declarar um Terrain chamado Agua/Water. Eles
+            // permanecem com collider/marcador para consultas de superfície e
+            // pathfinder, mas o Sea explícito é a superfície desenhada. Renderizar
             // os dois ao mesmo tempo cria placas cinzas e linhas no horizonte.
-            terrain.enabled = !ehAguaVisualMdHistoria && !ehFronteiraVisualMdHistoria;
+            terrain.enabled = !ehAguaVisual && !ehFronteiraVisualMdHistoria;
             TerrainCollider collider = terrain.GetComponent<TerrainCollider>();
             if (collider != null)
             {
@@ -140,7 +142,12 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
             // ser feita no asset pelo Editor quando houver um shader Terrain
             // compatível; o runtime não substitui a aparência funcional.
 
-            if (camadaChao >= 0 && terrain.gameObject.layer != camadaChao)
+            int camadaAgua = 4;
+            if (ehAguaVisual && terrain.gameObject.layer != camadaAgua)
+            {
+                terrain.gameObject.layer = camadaAgua;
+            }
+            else if (!ehAguaVisual && camadaChao >= 0 && terrain.gameObject.layer != camadaChao)
             {
                 terrain.gameObject.layer = camadaChao;
             }
@@ -152,7 +159,7 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
                 marcadoresCriados++;
             }
 
-            marcador.DefinirTipo(ehAguaVisualMdHistoria
+            marcador.DefinirTipo(ehAguaVisual
                 ? TipoSuperficieMapa.Agua
                 : TipoSuperficieMapa.Chao);
         }
@@ -431,6 +438,26 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
         // mar. O editor de biomas usa a mesma convenção de nomes; manter a
         // regra alinhada evita que o roteador naval trate esse setor como chão.
         return nome == "terrain" || nome.StartsWith("terrain_", System.StringComparison.Ordinal);
+    }
+
+    private static bool EhTerrenoAguaDeclarada(Terrain terrain)
+    {
+        if (terrain == null)
+        {
+            return false;
+        }
+
+        // Cenas novas podem ter um Terrain usado como suporte do plano de
+        // água. O nome e a camada são a declaração explícita do autor da
+        // cena; não inferimos água dos demais Terrain_... para não alterar
+        // os terrenos que ainda serão configurados depois.
+        string nome = terrain.name.ToLowerInvariant();
+        return nome == "agua"
+            || nome == "água"
+            || nome == "water"
+            || nome == "ocean"
+            || nome == "sea"
+            || terrain.gameObject.layer == 4;
     }
 
     private static bool EhTerrenoFronteiraVisualMdHistoria(Terrain terrain)

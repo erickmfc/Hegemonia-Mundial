@@ -2639,9 +2639,20 @@ namespace Hegemonia.AI.BrainMaster
 
                 Vector3 slotDestination = ComputeAttackFormationDestination(unit, payload.Units, formationAnchor, target, i, total);
                 Vector3 movementDestination = unit.GetComponent<AviaoBombardeiro>() != null ? target : slotDestination;
-                PrepareUnitForAttack(unit, payload.Target, target);
                 bool issuedMove = TryIssueMove(unit, movementDestination);
-                bool armed = ArmUnitForAttack(unit, payload.Target, target);
+                bool movimentoAereoRecusado = !issuedMove
+                    && (unit.GetComponent<ControleAviao>() != null || unit.GetComponent<Helicoptero>() != null);
+                bool armed = !movimentoAereoRecusado
+                    && ArmUnitForAttack(unit, payload.Target, target);
+
+                // O deslocamento novo precisa ser aceito antes de rearmar a
+                // aeronave. O ControleAviao limpa alvos/retomadas anteriores
+                // ao receber uma ordem; aplicar o alvo da missão aqui evita
+                // que essa limpeza apague a própria missão de ataque.
+                if (issuedMove)
+                {
+                    FinalizarConfiguracaoDeAtaque(unit, payload.Target, target);
+                }
 
                 if (issuedMove || armed)
                 {
@@ -2733,7 +2744,10 @@ namespace Hegemonia.AI.BrainMaster
             ControleUnidade controleUnidade = unit.GetComponent<ControleUnidade>();
             if (controleUnidade != null)
             {
-                controleUnidade.EmitirOrdemMover(destination);
+                if (!controleUnidade.EmitirOrdemMover(destination))
+                {
+                    return false;
+                }
             }
             else
             {
@@ -2752,7 +2766,7 @@ namespace Hegemonia.AI.BrainMaster
             return true;
         }
 
-        private void PrepareUnitForAttack(GameObject unit, Transform target, Vector3 targetPosition)
+        private void FinalizarConfiguracaoDeAtaque(GameObject unit, Transform target, Vector3 targetPosition)
         {
             if (unit == null)
             {
@@ -2762,12 +2776,7 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 strategicTarget = target != null ? target.position : targetPosition;
             Vector3 desired = strategicTarget;
             AttackSystemsCacheEntry cache = GetOrBuildAttackCache(unit);
-            LancadorMisselCaca airLauncher = cache.AirLauncher;
-            if (airLauncher != null)
-            {
-                airLauncher.modoPassivo = false;
-                airLauncher.DefinirAlvoIA(target, desired, 4f);
-            }
+            ControleAviao modernAircraft = cache.ModernAircraft;
 
             Helicoptero helicopter = cache.Helicopter;
             if (helicopter != null)
@@ -2791,23 +2800,22 @@ namespace Hegemonia.AI.BrainMaster
                     : (Random.value < 0.35f ? AviaoBombardeiro.ModoAtaque.AtaqueEmMassa : AviaoBombardeiro.ModoAtaque.AtaqueAoSolo);
             }
 
-            ControleAviao modernAircraft = cache.ModernAircraft;
+            if (cache.Controller != null)
+            {
+                cache.Controller.DefinirModoCombate(true);
+            }
+
+            LancadorMisselCaca airLauncher = cache.AirLauncher;
+            if (airLauncher != null)
+            {
+                airLauncher.modoPassivo = false;
+                airLauncher.DefinirAlvoIA(target, desired, 4f);
+            }
+
             if (modernAircraft != null)
             {
-                if (desired.y < 60f)
-                {
-                    desired.y = 60f;
-                }
-
                 modernAircraft.alvoPrioritarioIA = true;
                 modernAircraft.alvoEstrategico = strategicTarget != Vector3.zero ? strategicTarget : desired;
-                modernAircraft.centroDaPatrulha = desired;
-                modernAircraft.alvoGPSVoo = desired;
-
-                if (modernAircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
-                {
-                    modernAircraft.IniciarMissaoCompleta(modernAircraft.alvoEstrategico);
-                }
             }
         }
 
@@ -2981,24 +2989,28 @@ namespace Hegemonia.AI.BrainMaster
                     airDestination.y = 60f;
                 }
 
+                ControleUnidade controleUnidade = unit.GetComponent<ControleUnidade>();
+                bool ordemAceita = controleUnidade != null
+                    ? controleUnidade.EmitirOrdemMover(airDestination, true)
+                    : modernAircraft.ReceberOrdemManual(airDestination);
+                if (!ordemAceita)
+                {
+                    return false;
+                }
+
                 modernAircraft.aguardandoCliqueRadar = false;
-                modernAircraft.alvoPrioritarioIA = true;
-                modernAircraft.alvoEstrategico = destination;
-                modernAircraft.centroDaPatrulha = airDestination;
-                modernAircraft.alvoGPSVoo = airDestination;
-
-                if (modernAircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                if (controleUnidade == null)
                 {
-                    modernAircraft.IniciarMissaoCompleta(destination);
+                    // Sem a fachada moderna, ainda limpe a prioridade antiga
+                    // para que um deslocamento comum não retome um ataque. No
+                    // fluxo ofensivo FinalizarConfiguracaoDeAtaque reativa o
+                    // armamento depois que o movimento foi aceito.
+                    modernAircraft.alvoPrioritarioIA = false;
+                    LancadorMisselCaca airLauncher = unit.GetComponent<LancadorMisselCaca>();
+                    if (airLauncher != null) airLauncher.modoPassivo = true;
                 }
 
-                LancadorMisselCaca airLauncher = unit.GetComponent<LancadorMisselCaca>();
-                if (airLauncher != null)
-                {
-                    airLauncher.modoPassivo = false;
-                }
-
-                return true;
+                return ordemAceita;
             }
 
             HovercraftTransporte hovercraft = unit.GetComponent<HovercraftTransporte>();
@@ -3011,7 +3023,15 @@ namespace Hegemonia.AI.BrainMaster
             Helicoptero helicopter = unit.GetComponent<Helicoptero>();
             if (helicopter != null)
             {
-                helicopter.modoCombateAtivo = true;
+                // Quando existe fachada oficial, o helicóptero precisa seguir
+                // o mesmo contrato de aceitação do avião. Só o fallback sem
+                // ControleUnidade pode chamar o executor antigo diretamente.
+                ControleUnidade helicopterController = unit.GetComponent<ControleUnidade>();
+                if (helicopterController != null)
+                {
+                    return helicopterController.EmitirOrdemMover(destination, true);
+                }
+
                 helicopter.Decolar(destination);
                 return true;
             }
@@ -3023,6 +3043,12 @@ namespace Hegemonia.AI.BrainMaster
                 if (airDestination.y < 40f)
                 {
                     airDestination.y = 40f;
+                }
+
+                ControleUnidade legacyController = unit.GetComponent<ControleUnidade>();
+                if (legacyController != null)
+                {
+                    return legacyController.EmitirOrdemMover(airDestination, true);
                 }
 
                 legacyAircraft.DefinirDestino(airDestination);

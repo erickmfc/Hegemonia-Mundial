@@ -55,6 +55,7 @@ namespace Hegemonia.AI.IA02
         private float nextServiceRefreshAt;
         private float nextRuntimeSummaryAt;
         private float nextSliceRecordRefreshAt;
+        private float nextFallbackTickAt;
         private IA02SchedulerPlan lastPlan = new IA02SchedulerPlan();
         private bool worldReady;
         private string worldReadyReason = "aguardando inicialização do mundo";
@@ -210,6 +211,7 @@ namespace Hegemonia.AI.IA02
             worldReady = false;
             worldReadyReason = "cena alterada; aguardando novo layout";
             lastWorldReadyLogReason = string.Empty;
+            nextFallbackTickAt = 0f;
             if (ConfiguracaoCenasJogo.EhCenaDeMenu(scene.name))
             {
                 return;
@@ -238,7 +240,18 @@ namespace Hegemonia.AI.IA02
                 return;
             }
 
-            ExecuteTick(Time.unscaledTime, Time.unscaledDeltaTime * 1000f, frameBudgetMilliseconds);
+            // Sem o orquestrador global (por exemplo, por feature flag ou
+            // durante a inicializacao), preserve a mesma cadencia estrategica
+            // usada pelo registro global. Antes deste limite, ExecuteTick era
+            // chamado a cada frame, mesmo quando nenhum controller estava due.
+            float now = Time.unscaledTime;
+            if (now < nextFallbackTickAt)
+            {
+                return;
+            }
+
+            nextFallbackTickAt = now + Mathf.Max(0.10f, frequenciaEstrategicaGlobal);
+            ExecuteTick(now, Time.unscaledDeltaTime * 1000f, frameBudgetMilliseconds);
         }
 
         private void RegistrarNoOrquestradorGlobal()

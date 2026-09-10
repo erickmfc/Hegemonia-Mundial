@@ -26,6 +26,12 @@ public class MiniMapa : MonoBehaviour
     [Tooltip("Margem do canto da tela")]
     public int margemBorda = 20;
 
+    [Header("Desempenho")]
+    [Tooltip("Resolucao da RenderTexture do mini-mapa. 256 atende o painel de 220 pixels sem renderizar quatro vezes mais pixels do que o necessario.")]
+    [Range(128, 512)] public int resolucaoRender = 256;
+    [Tooltip("Reconciliacao de seguranca para conteudo legado que nao se registrou no RegistroEntidadesJogo.")]
+    [Min(0.25f)] public float intervaloReconciliacaoSeguranca = 2f;
+
     [Header("Visual")]
     public Color corBorda = new Color(0.18f, 0.15f, 0.12f, 1f);
     public Color corFundoRadar = new Color(0.85f, 0.78f, 0.60f, 0.10f);
@@ -55,10 +61,13 @@ public class MiniMapa : MonoBehaviour
     private bool _canvasObjCriadaPorEsteComponente;
 
     // Ícones de unidades
-    private List<MapaIcone> _icones = new List<MapaIcone>();
+    private readonly List<MapaIcone> _icones = new List<MapaIcone>();
+    private readonly List<IdentidadeUnidade> _unidadesRegistradas = new List<IdentidadeUnidade>(128);
+    private readonly HashSet<Transform> _alvosComIcone = new HashSet<Transform>();
     private static readonly Dictionary<int, Sprite> _spriteCirculoCache = new Dictionary<int, Sprite>(4);
     private float _proximoRefreshIcones;
     private float _proximoReconciliarUnidades;
+    private int _ultimaVersaoEntidadesReconciliada = -1;
     private int _teamJogador = 1;
 
     // Shader warmup: evita compilação ao vivo durante o voo
@@ -70,6 +79,7 @@ public class MiniMapa : MonoBehaviour
         public Image img;
         public bool ehInimigo;
         public int teamId;
+        public IdentidadeUnidade identidade;
         public Vector3 ultimaPosicaoConhecida;
         public bool possuiUltimaPosicao;
     }
@@ -122,10 +132,10 @@ public class MiniMapa : MonoBehaviour
         }
 
         float intervaloIcones = DiagnosticoDesempenhoJogo.RuntimeSaturado()
-            ? 0.12f
+            ? 0.20f
             : DiagnosticoDesempenhoJogo.RuntimeSobPressao()
-                ? 0.08f
-                : 0.05f;
+                ? 0.12f
+                : 0.08f;
 
         if (Time.unscaledTime >= _proximoRefreshIcones)
         {
@@ -200,8 +210,12 @@ public class MiniMapa : MonoBehaviour
         _camObj.transform.SetParent(null);
         _camObj.transform.localScale = Vector3.one;
 
-        _rt = new RenderTexture(512, 512, 16, RenderTextureFormat.ARGB32);
+        int resolucao = Mathf.Clamp(resolucaoRender, 128, 512);
+        _rt = new RenderTexture(resolucao, resolucao, 16, RenderTextureFormat.ARGB32);
         _rt.name = "RT_MiniMapa";
+        _rt.useMipMap = false;
+        _rt.autoGenerateMips = false;
+        _rt.antiAliasing = 1;
         _rt.Create();
 
         _camMapa.orthographic = true;
@@ -209,6 +223,8 @@ public class MiniMapa : MonoBehaviour
         _camMapa.targetTexture = _rt;
         _camMapa.clearFlags = CameraClearFlags.SolidColor;
         _camMapa.backgroundColor = new Color(0.85f, 0.78f, 0.58f, 1f); // Areia
+        _camMapa.allowHDR = false;
+        _camMapa.allowMSAA = false;
         _camMapa.cullingMask = ~0; // Renderiza tudo
         _camMapa.depth = -10;
         _camMapa.farClipPlane = 2000f; // Reduzido de 3000 para menor carga de render
@@ -366,38 +382,30 @@ public class MiniMapa : MonoBehaviour
     // =========================================================
     // ÍCONES DE UNIDADES NO MAPA
     // =========================================================
-    void AtualizarIcones()
-    {
-        // Remove ícones de unidades que morreram
-        _icones.RemoveAll(ic => ic.alvo == null || !ic.alvo.gameObject.activeInHierarchy);
-        foreach (var ic in _icones)
-        {
-            if (ic.alvo == null) continue;
-            Vector3 posRelativa = _camMapa.WorldToViewportPoint(ic.alvo.position);
-
-            // Converte viewport para coordenadas locais do mini-mapa
-            float x = (posRelativa.x - 0.5f) * tamanhoUI;
-            float y = (posRelativa.y - 0.5f) * tamanhoUI;
-            ic.rect.anchoredPosition = new Vector2(x, y);
-            ic.rect.gameObject.SetActive(posRelativa.z > 0); // Esconde se atrás
-        }
-    }
-
     private void AtualizarIconesComVisibilidade()
     {
-        if (Time.unscaledTime >= _proximoReconciliarUnidades)
+        int versaoEntidades = RegistroEntidadesJogo.Version;
+        if (versaoEntidades != _ultimaVersaoEntidadesReconciliada
+            || Time.unscaledTime >= _proximoReconciliarUnidades)
         {
-            _proximoReconciliarUnidades = Time.unscaledTime + 0.5f;
+            _proximoReconciliarUnidades = Time.unscaledTime + Mathf.Max(0.25f, intervaloReconciliacaoSeguranca);
             ReconciliarUnidadesNoMapa();
+            _ultimaVersaoEntidadesReconciliada = RegistroEntidadesJogo.Version;
         }
 
-        _icones.RemoveAll(ic => ic.alvo == null || !ic.alvo.gameObject.activeInHierarchy);
+        LimparIconesInvalidos();
         for (int i = 0; i < _icones.Count; i++)
         {
             MapaIcone ic = _icones[i];
             if (ic.alvo == null) continue;
 
-            IdentidadeUnidade identidade = ic.alvo.GetComponentInParent<IdentidadeUnidade>();
+            if ((ic.ehInimigo && !mostrarInimigos) || (!ic.ehInimigo && !mostrarAliados))
+            {
+                ic.rect.gameObject.SetActive(false);
+                continue;
+            }
+
+            IdentidadeUnidade identidade = ic.identidade;
             bool visivel = !ic.ehInimigo || RTSVisibilityService.Instancia == null
                 || RTSVisibilityService.Instancia.IsVisibleToTeam(_teamJogador, identidade);
             Vector3 posicao = ic.alvo.position;
@@ -437,14 +445,17 @@ public class MiniMapa : MonoBehaviour
             _teamJogador = GerenciadorDePartida.Instancia.idJogador;
         }
 
-        IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
-        for (int i = 0; i < unidades.Length; i++)
+        // A lista registrada acompanha spawn/despawn. A reconciliacao mantem
+        // um fallback temporal, mas nao percorre todos os objetos da cena.
+        RegistroEntidadesJogo.FillUnidades(_unidadesRegistradas);
+        for (int i = 0; i < _unidadesRegistradas.Count; i++)
         {
-            IdentidadeUnidade identidade = unidades[i];
+            IdentidadeUnidade identidade = _unidadesRegistradas[i];
             if (identidade == null || identidade.teamID <= 0) continue;
-            if (identidade.teamID == _teamJogador || mostrarInimigos)
+            bool ehAliado = identidade.teamID == _teamJogador;
+            if ((ehAliado && mostrarAliados) || (!ehAliado && mostrarInimigos))
             {
-                RegistrarUnidadeNoMapa(identidade.transform, identidade.teamID != _teamJogador);
+                RegistrarUnidadeNoMapa(identidade.transform, !ehAliado);
             }
         }
     }
@@ -452,11 +463,8 @@ public class MiniMapa : MonoBehaviour
     public void RegistrarUnidadeNoMapa(Transform unidade, bool ehInimigo)
     {
         if (unidade == null) return;
-
-        foreach (var ic in _icones)
-            if (ic.alvo == unidade) return; // Já registrado
-
         if (_containerCirculo == null) return;
+        if (!_alvosComIcone.Add(unidade)) return; // Já registrado
 
         GameObject iconObj = new GameObject($"Icone_{unidade.name}");
         iconObj.transform.SetParent(_imagemMapa.transform, false);
@@ -479,9 +487,32 @@ public class MiniMapa : MonoBehaviour
             img = img,
             ehInimigo = ehInimigo,
             teamId = identidade != null ? identidade.teamID : 0,
+            identidade = identidade,
             ultimaPosicaoConhecida = unidade.position,
             possuiUltimaPosicao = !ehInimigo
         });
+    }
+
+    private void LimparIconesInvalidos()
+    {
+        for (int i = _icones.Count - 1; i >= 0; i--)
+        {
+            MapaIcone icone = _icones[i];
+            bool alvoValido = icone.alvo != null && icone.alvo.gameObject.activeInHierarchy;
+            bool uiValida = icone.rect != null && icone.img != null;
+            if (alvoValido && uiValida)
+            {
+                continue;
+            }
+
+            if (icone.rect != null)
+            {
+                Destroy(icone.rect.gameObject);
+            }
+
+            _alvosComIcone.Remove(icone.alvo);
+            _icones.RemoveAt(i);
+        }
     }
 
     // =========================================================

@@ -438,85 +438,55 @@ public class NavioPetroleiro : ControleUnidade
 
     void ExecutarAcoplagemManual(Transform alvo, EstadoPetroleiro proximo)
     {
-        if (alvo == null) 
+        AvancarAcoplagem(alvo, proximo, Time.deltaTime);
+    }
+
+    private void AvancarAcoplagem(Transform alvo, EstadoPetroleiro proximo, float deltaTime)
+    {
+        if (alvo == null)
         {
-            MudarEstado(proximo); 
-            return; 
+            MudarEstado(EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA);
+            return;
         }
 
-        timerEstado += Time.deltaTime; 
-
+        timerEstado += deltaTime;
         Vector3 destino = alvo.position;
         destino.y = transform.position.y;
-        // A atracação acontece no plano da água. Não conte a altura do
-        // marcador azul (que pode estar no deck da plataforma/pier), senão
-        // o navio chega horizontalmente mas nunca conclui a etapa.
-        float dist = Vector3.Distance(transform.position, destino);
+        Vector3 direcao = destino - transform.position;
+        float distancia = direcao.magnitude;
+        Quaternion alinhamentoFinal = Quaternion.Euler(0f, alvo.eulerAngles.y, 0f);
 
-        // Conclui a vaga azul antes do alinhamento fino da proa. Sem isso,
-        // um casco a poucos metros podia ficar preso tentando girar.
-        if (dist <= 3.5f)
+        // Only the approach steers toward the marker. Within the docking zone
+        // the berth heading owns rotation, allowing the final lateral maneuver
+        // without alternating between two contradictory headings every frame.
+        bool aproximando = distancia > 15f;
+        Quaternion orientacao = aproximando ? Quaternion.LookRotation(direcao) : alinhamentoFinal;
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, orientacao, 60f * deltaTime);
+        transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+
+        if (!aproximando || Quaternion.Angle(transform.rotation, orientacao) <= 10f)
+        {
+            float velocidade = distancia < 8f
+                ? Mathf.Lerp(2f, velocidadeAcoplagem, distancia / 8f)
+                : velocidadeAcoplagem;
+            transform.position = Vector3.MoveTowards(transform.position, destino, Mathf.Max(1f, velocidade) * deltaTime);
+        }
+
+        // Do not snap the hull through its final turn or start unloading while
+        // still pointing at the pier. Both position and heading must be ready.
+        if ((transform.position - destino).sqrMagnitude <= 0.0625f
+            && Quaternion.Angle(transform.rotation, alinhamentoFinal) <= 1f)
         {
             transform.position = destino;
-            transform.rotation = Quaternion.Euler(0, alvo.rotation.eulerAngles.y, 0);
+            transform.rotation = alinhamentoFinal;
             MudarEstado(proximo);
             return;
         }
 
-        Vector3 dirInicial = destino - transform.position;
-        dirInicial.y = 0f;
-        if (dirInicial.sqrMagnitude > 4f)
-        {
-            Quaternion rotEntrada = Quaternion.LookRotation(dirInicial.normalized);
-            float anguloEntrada = Quaternion.Angle(transform.rotation, rotEntrada);
-            if (anguloEntrada > 10f)
-            {
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotEntrada, 60f * Time.deltaTime);
-                transform.rotation = Quaternion.Euler(0, transform.rotation.eulerAngles.y, 0);
-                Debug.DrawLine(transform.position, destino, Color.cyan);
-                return;
-            }
-        }
-
-        // VELOCIDADE RÁPIDA: Usa a velocidade de acoplagem específica (12.0f)
-        float velAtual = velocidadeAcoplagem; 
-        // Desacelera apenas quando MUITO perto (últimos 8 metros) para não bater
-        if(dist < 8.0f) velAtual = Mathf.Lerp(velAtual, 2.0f, 1 - (dist / 8.0f));
-        // Garante mínimo de movimento
-        velAtual = Mathf.Max(velAtual, 1.0f);
-
-        transform.position = Vector3.MoveTowards(transform.position, destino, velAtual * Time.deltaTime);
-        
-        // ROTAÇÃO SUAVE E INTELIGENTE
-        // Longe (> 15m): Olha para o alvo
-        // Perto (<= 15m): Começa a alinhar com a rotação final do alvo
-        Quaternion rotDestino;
-        if(dist > 15.0f)
-        {
-            Vector3 dir = destino - transform.position;
-            dir.y = 0;
-            if(dir != Vector3.zero) rotDestino = Quaternion.LookRotation(dir);
-            else rotDestino = transform.rotation;
-        }
-        else
-        {
-             rotDestino = Quaternion.Euler(0, alvo.rotation.eulerAngles.y, 0);
-        }
-
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, rotDestino, 60f * Time.deltaTime);
-
-        // Debug
         Debug.DrawLine(transform.position, destino, Color.cyan);
-
-        // Condição de chegada ou Timeout de segurança (40s para garantir que não teletransporta visualmente)
-        // Conclui somente ao chegar ao ponto azul. Nunca troca de alvo por
-        // timeout distante, pois isso misturava pier/plataforma entre equipes.
-        // O ponto azul marca a vaga, não o pivô exato do casco. Uma pequena
-        // tolerância horizontal evita que colisores/boias deixem o navio
-        // eternamente em aproximação quando já está dentro da vaga.
-        if (timerEstado > 60.0f)
+        if (timerEstado > 60f)
         {
-            Debug.LogWarning($"[Navio Petroleiro] Atracagem ainda distante ({dist:0.0} m); mantendo aproximação ao ponto azul.", this);
+            Debug.LogWarning($"[Navio Petroleiro] Atracagem pendente ({distancia:0.0} m); mantendo aproximacao e alinhamento.", this);
             timerEstado = 0f;
         }
     }

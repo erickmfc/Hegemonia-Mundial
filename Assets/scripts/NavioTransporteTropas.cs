@@ -1678,7 +1678,7 @@ public class NavioTransporteTropas : MonoBehaviour
                 {
                     if (!JaTenhoHeli(_helicopteroSelecionadoParaMissao) && !HelicopteroEstaEmSaidaDoConves(_helicopteroSelecionadoParaMissao))
                     {
-                        _helicopteroSelecionadoParaMissao.IniciarPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
+                        _helicopteroSelecionadoParaMissao.ReceberOrdemPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
                     }
                 }
                 else
@@ -1705,7 +1705,7 @@ public class NavioTransporteTropas : MonoBehaviour
                         if (_rotaPatrulhaHelicoptero.Count > 0)
                         {
                             PrepararHelicopteroParaPatrulhaCombate(heliLiberado);
-                            heliLiberado.IniciarPatrulhaAeroporto(new List<Vector3>(_rotaPatrulhaHelicoptero));
+                            heliLiberado.ReceberOrdemPatrulhaAeroporto(new List<Vector3>(_rotaPatrulhaHelicoptero));
                         }
                         else
                             heliLiberado.RetornarParaVagaAeroporto();
@@ -1715,7 +1715,7 @@ public class NavioTransporteTropas : MonoBehaviour
             else
             {
                 PrepararHelicopteroParaPatrulhaCombate(_helicopteroSelecionadoParaMissao);
-                _helicopteroSelecionadoParaMissao.IniciarPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
+                _helicopteroSelecionadoParaMissao.ReceberOrdemPatrulhaAeroporto(_rotaPatrulhaHelicoptero);
             }
             return;
         }
@@ -1726,10 +1726,10 @@ public class NavioTransporteTropas : MonoBehaviour
             {
                 IniciarSaidaHelicopteroDoNavio(
                     _helicopteroSelecionadoParaMissao,
-                    heliLiberado => heliLiberado.IniciarReconhecimentoAeroporto(pontoAlvo),
+                    heliLiberado => heliLiberado.ReceberOrdemReconhecimentoAeroporto(pontoAlvo),
                     "indo para reconhecimento");
             }
-            else _helicopteroSelecionadoParaMissao.IniciarReconhecimentoAeroporto(pontoAlvo);
+            else _helicopteroSelecionadoParaMissao.ReceberOrdemReconhecimentoAeroporto(pontoAlvo);
         }
         else if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.AtaqueLocal)
         {
@@ -1737,10 +1737,10 @@ public class NavioTransporteTropas : MonoBehaviour
             {
                 IniciarSaidaHelicopteroDoNavio(
                     _helicopteroSelecionadoParaMissao,
-                    heliLiberado => heliLiberado.IniciarAtaqueLocalAeroporto(pontoAlvo),
+                    heliLiberado => heliLiberado.ReceberOrdemAtaqueLocalAeroporto(pontoAlvo),
                     "indo para ataque local");
             }
-            else _helicopteroSelecionadoParaMissao.IniciarAtaqueLocalAeroporto(pontoAlvo);
+            else _helicopteroSelecionadoParaMissao.ReceberOrdemAtaqueLocalAeroporto(pontoAlvo);
         }
         else if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Transporte)
         {

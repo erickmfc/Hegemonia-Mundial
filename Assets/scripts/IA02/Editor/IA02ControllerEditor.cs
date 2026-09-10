@@ -112,6 +112,7 @@ namespace Hegemonia.AI.IA02.Editor
                 Field("fichasMilitaresPermitidas", "Fichas militares permitidas"),
                 Field("useScriptedOpening", "Usar abertura roteirizada"),
                 Field("usePreparedSlots", "Usar slots preparados"),
+                Field("allowAutomaticQuartel", "Permitir Quartel automatico"),
                 Field("allowAutonomousExpansion", "Permitir expansao autonoma")
             });
 

@@ -42,6 +42,8 @@ public sealed class AudioSettingsService : MonoBehaviour
     private AudioMixer mixer;
     private readonly Dictionary<AudioChannel, AudioMixerGroup> gruposMixer = new Dictionary<AudioChannel, AudioMixerGroup>();
     private float proximaVarredura;
+    [Tooltip("Busca de segurança para fontes externas que não se registram pelo AudioRuntime. Fontes normais são registradas no nascimento.")]
+    [SerializeField, Min(5f)] private float intervaloVarreduraSeguranca = 15f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -81,7 +83,11 @@ public sealed class AudioSettingsService : MonoBehaviour
             return;
         }
 
-        proximaVarredura = Time.unscaledTime + 2f;
+        // A maior parte das fontes já se registra em AudioRuntime quando a
+        // unidade/efeito é criado. A busca global é somente um fallback para
+        // conteúdo antigo e não precisa percorrer a cena várias vezes por
+        // minuto.
+        proximaVarredura = Time.unscaledTime + Mathf.Max(5f, intervaloVarreduraSeguranca);
         AudioRuntime.ConfigurarTodasAsFontesDaCena();
         LimparFontesDestruidas();
     }
