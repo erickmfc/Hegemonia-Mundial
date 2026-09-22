@@ -12,7 +12,7 @@ public class NavioPetroleiro : ControleUnidade
     public float tempoDeCarregamento = 5.0f;
 
     [Header("Desempenho")]
-    [Tooltip("Multiplicador aplicado uma vez ao iniciar. O padrão deixa o petroleiro 2,5x mais rápido sem mudar outros navios.")]
+    [Tooltip("Multiplicador específico do petroleiro, aplicado uma vez ao iniciar, além do ajuste global da frota.")]
     [Min(0.1f)] public float multiplicadorVelocidade = 2.5f;
     private bool velocidadeInicialAjustada;
 
@@ -94,7 +94,8 @@ public class NavioPetroleiro : ControleUnidade
     {
         if (velocidadeInicialAjustada) return;
         velocidadeInicialAjustada = true;
-        float multiplicador = Mathf.Max(0.1f, multiplicadorVelocidade);
+        float multiplicador = Mathf.Max(0.1f, multiplicadorVelocidade)
+            * VelocidadeNavalGlobal.Multiplicador;
         velocidadeSaidaEstaleiro *= multiplicador;
         velocidadeManobra *= multiplicador;
         velocidadeAcoplagem *= multiplicador;

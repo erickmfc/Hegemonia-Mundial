@@ -160,7 +160,7 @@ MonoBehaviour:
   raioOrbitaMissao: 600
   velocidadeOrbitaMissao: 0.35
   margemChegadaMissao: 120
-  altitudeVoo: 650
+  altitudeVoo: 350
   modeloMecanicoVisual: {fileID: 3966095571627074159}
   asaBankingMaximo: 12
   arfagemPitchMaxima: 8
@@ -186,7 +186,7 @@ MonoBehaviour:
   receberInformacoesDeOutrosSensores: 1
   retransmitirParaAliados: 1
   alertarQuartelDoJogador: 1
-  altitudeCruzeiroE3: 650
+  altitudeCruzeiroE3: 350
   velocidadeCruzeiroE3: 145
   velocidadeMinimaEmCurva: 82
   taxaCurvaE3: 10

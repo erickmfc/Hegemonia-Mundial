@@ -398,10 +398,10 @@ MonoBehaviour:
   velocidadeSolo: 10
   velocidadeMaximaVoo: 70
   taxaDeGiroLeme: 20
-  raioOrbitaMissao: 350
+  raioOrbitaMissao: 400
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
-  altitudeVoo: 370
+  altitudeVoo: 350
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 45
   arfagemPitchMaxima: 20

@@ -152,7 +152,7 @@ public class ControleSubmarino : MonoBehaviour
         agente = GetComponent<NavMeshAgent>();
         if (agente != null)
         {
-            velocidadeOriginal = Mathf.Max(0.1f, agente.speed);
+            velocidadeOriginal = VelocidadeNavalGlobal.Aplicar(agente.speed);
             agente.updateRotation = false;
             agente.acceleration = 9999f;
             if (!usarNavMeshParaNavegacao)
@@ -165,7 +165,8 @@ public class ControleSubmarino : MonoBehaviour
         }
         else
         {
-            velocidadeOriginal = Mathf.Max(0.1f, velocidadeOriginal > 0f ? velocidadeOriginal : 5f);
+            float velocidadeBase = velocidadeOriginal > 0f ? velocidadeOriginal : 5f;
+            velocidadeOriginal = VelocidadeNavalGlobal.Aplicar(velocidadeBase);
         }
 
         if (rastroAgua == null)

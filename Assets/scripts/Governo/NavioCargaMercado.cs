@@ -95,7 +95,8 @@ public sealed class NavioCargaMercado : MonoBehaviour
         }
 
         Vector3 direcao = delta.normalized;
-        transform.position = Vector3.MoveTowards(atual, new Vector3(alvo.x, nivelAgua + offsetAlturaAgua, alvo.z), velocidadeCruzeiro * Time.deltaTime);
+        float velocidadeOperacional = VelocidadeNavalGlobal.Aplicar(velocidadeCruzeiro);
+        transform.position = Vector3.MoveTowards(atual, new Vector3(alvo.x, nivelAgua + offsetAlturaAgua, alvo.z), velocidadeOperacional * Time.deltaTime);
         if (direcao.sqrMagnitude > 0.001f)
         {
             Quaternion rotacao = Quaternion.LookRotation(direcao, Vector3.up);

@@ -838,6 +838,12 @@ MonoBehaviour:
   layout: {fileID: 910000000000000005}
   velocidadeTaxi: 12
   velocidadeAproximacao: 30
+  velocidadeEspera: 36
+  velocidadeAproximacaoLonga: 30
+  velocidadeAproximacaoIntermediaria: 24
+  velocidadeAproximacaoFinal: 18
+  velocidadeToque: 10
+  velocidadeSaidaPista: 8
   timeoutPorEstado: 45
   velocidadeReabastecimento: 40
   interiorHangarModelado: 0
@@ -1224,7 +1230,7 @@ Transform:
   m_GameObject: {fileID: 910000000000000100}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.0313873, y: 101.234985, z: -314.67432}
+  m_LocalPosition: {x: -3, y: 101.2, z: -690.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1254,13 +1260,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000000000000102}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.0313873, y: 72.28726, z: -267.786}
+  m_LocalRotation: {x: 0.0003471696, y: -0.10340013, z: 0.000036090838, w: 0.9946398}
+  m_LocalPosition: {x: 89.9, y: 72.3, z: -502.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 910000000000000024}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0.04, y: -11.87, z: 0}
 --- !u!1 &910000000000000104
 GameObject:
   m_ObjectHideFlags: 0
@@ -1285,13 +1291,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000000000000104}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.0313873, y: 49.12909, z: -223.24214}
+  m_LocalRotation: {x: 0, y: -0.085938536, z: 0, w: 0.9963005}
+  m_LocalPosition: {x: 38.3, y: 49.1, z: -330.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 910000000000000024}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -9.86, z: 0}
 --- !u!1 &910000000000000106
 GameObject:
   m_ObjectHideFlags: 0
@@ -1316,13 +1322,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000000000000106}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.077328086, z: 0, w: 0.9970057}
-  m_LocalPosition: {x: 5.6, y: 23.2, z: -196.2}
+  m_LocalRotation: {x: 0, y: -0.08898112, z: 0, w: 0.9960333}
+  m_LocalPosition: {x: 9.2, y: 23.2, z: -217.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 910000000000000024}
-  m_LocalEulerAnglesHint: {x: 0, y: -8.87, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -10.21, z: 0}
 --- !u!1 &910000000000000108
 GameObject:
   m_ObjectHideFlags: 0
@@ -1348,7 +1354,7 @@ Transform:
   m_GameObject: {fileID: 910000000000000108}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.09480335, z: 0, w: 0.99549603}
-  m_LocalPosition: {x: -26.5, y: 20.2, z: -41.3}
+  m_LocalPosition: {x: -9.8, y: 20.2, z: -120.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2223,7 +2229,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &910000000000000215
 Transform:
   m_ObjectHideFlags: 0
@@ -2268,7 +2274,7 @@ Transform:
   m_GameObject: {fileID: 910000000000000216}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: -3.0313873, y: 75.181366, z: 288.60742}
+  m_LocalPosition: {x: 277, y: 75, z: 1020}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2299,7 +2305,7 @@ Transform:
   m_GameObject: {fileID: 910000000000000218}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: -118.822266, y: 95.181366, z: 328.60742}
+  m_LocalPosition: {x: -229, y: 95, z: 919}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2330,7 +2336,7 @@ Transform:
   m_GameObject: {fileID: 910000000000000220}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 422, y: 55, z: 260.60742}
+  m_LocalPosition: {x: -73, y: 55, z: 868}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2398,7 +2404,9 @@ Transform:
   m_Children:
   - {fileID: 910000000000000227}
   - {fileID: 910000000000000229}
+  - {fileID: 7073698508054532006}
   - {fileID: 910000000000000231}
+  - {fileID: 5264635846513312912}
   - {fileID: 910000000000000233}
   - {fileID: 910000000000000235}
   m_Father: {fileID: 910000000000000004}
@@ -2459,7 +2467,7 @@ Transform:
   m_GameObject: {fileID: 910000000000000228}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.8, y: 20.18137, z: 146.8}
+  m_LocalPosition: {x: -17.9, y: 20.2, z: 85.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2489,13 +2497,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000000000000230}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -10, y: 20.18137, z: 187.2}
+  m_LocalRotation: {x: 0, y: 0.026613167, z: 0, w: 0.9996458}
+  m_LocalPosition: {x: -21.1, y: 20.2, z: 95.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 910000000000000225}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 3.05, z: 0}
 --- !u!1 &910000000000000232
 GameObject:
   m_ObjectHideFlags: 0
@@ -2552,7 +2560,7 @@ Transform:
   m_GameObject: {fileID: 910000000000000234}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -23.1, y: 42.18137, z: 256.6}
+  m_LocalPosition: {x: -23.1, y: 42.2, z: 352.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5665,6 +5673,37 @@ MonoBehaviour:
   estado: 0
   aeronaveReservadaId: 
   aeronaveOcupanteId: 
+--- !u!1 &1769103237881731951
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5264635846513312912}
+  m_Layer: 0
+  m_Name: Liberacao (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5264635846513312912
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1769103237881731951}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.026613167, z: 0, w: 0.9996458}
+  m_LocalPosition: {x: 8.1, y: 20.2, z: 94.1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 910000000000000225}
+  m_LocalEulerAnglesHint: {x: 0, y: 3.05, z: 0}
 --- !u!1 &1797479858784843744
 GameObject:
   m_ObjectHideFlags: 0
@@ -8840,6 +8879,13 @@ MonoBehaviour:
   grupoParadas: {fileID: 910000000000000044}
   debugLogs: 0
   abrirMenuAoCliqueNoNavio: 0
+  somenteHelicopteros: 0
+  usarReservaCombustivelHelicopteros: 0
+  derivarReservaDoTanqueNaval: 1
+  percentualReservaDoTanqueNaval: 0.5
+  capacidadeReservaCombustivelHelicopteros: 0
+  reservaCombustivelHelicopteros: -1
+  taxaAbastecimentoHelicopteros: 40
   operacoesV2AssumiuControle: 0
   raioRadarResgate: 2300
   modoDesempenhoUI: 1
@@ -9033,7 +9079,7 @@ MonoBehaviour:
   frequenciaOnda: 0.12
   arrastoPassivo: 0.5
   distanciaChegada: 15
-  offsetAlturaAgua: 7
+  offsetAlturaAgua: 2
   profundidadeVisual: 0
   anguloEntradaManobraRe: 120
   anguloSaidaManobraRe: 70
@@ -11214,6 +11260,37 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 950000000000025001}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &9106402514681924183
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7073698508054532006}
+  m_Layer: 0
+  m_Name: Alinhamento (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7073698508054532006
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9106402514681924183}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 10.8, y: 20.2, z: 85.3}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 910000000000000225}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &940000000000000001
 PrefabInstance:

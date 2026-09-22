@@ -475,10 +475,10 @@ MonoBehaviour:
   velocidadeSolo: 10
   velocidadeMaximaVoo: 80
   taxaDeGiroLeme: 35
-  raioOrbitaMissao: 350
+  raioOrbitaMissao: 400
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
-  altitudeVoo: 390
+  altitudeVoo: 350
   modeloMecanicoVisual: {fileID: 36123138936339233}
   asaBankingMaximo: 45
   arfagemPitchMaxima: 20
@@ -505,7 +505,7 @@ MonoBehaviour:
   rastroTurbinas: []
   luzesTurbina: []
   inerciaAceleracao: 1.5
-  altitudeCruzeiroComercial: 390
+  altitudeCruzeiroComercial: 350
   asaBankingComercial: 25
   arfagemPitchComercial: 12
   somMotorComercial: {fileID: 0}

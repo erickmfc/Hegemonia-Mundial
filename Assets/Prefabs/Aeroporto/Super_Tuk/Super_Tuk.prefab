@@ -591,7 +591,7 @@ MonoBehaviour:
   velocidadeSolo: 7
   velocidadeMaximaVoo: 90
   taxaDeGiroLeme: 80
-  raioOrbitaMissao: 85
+  raioOrbitaMissao: 400
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
   altitudeVoo: 181

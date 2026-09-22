@@ -686,6 +686,8 @@ public class ControleNavioRealista : MonoBehaviour
             EstabilizarRigidbodyDaSimulacao();
         }
 
+        float velocidadeMaximaOperacional = VelocidadeNavalGlobal.Aplicar(velocidadeMaxima);
+
         // VELOCIDADE PURA DE TRILHO (1 Eixo): Só existe movimento na mesma linha que a frente do navio aponta
         float velReal = velocidadeVetorial.magnitude;
         // Verifica se tá de ré (Dot Product < 0)
@@ -704,13 +706,13 @@ public class ControleNavioRealista : MonoBehaviour
 
         // 2. Aceleração (Sempre no eixo Z direcional)
         // Empurra para a potência desejada gradual
-        float velocidadeAlvoReal = (potenciaAtual * velocidadeMaxima);
+        float velocidadeAlvoReal = (potenciaAtual * velocidadeMaximaOperacional);
         
         // Aplica o acelerador hidráulico suave
         if (velReal < velocidadeAlvoReal)
-            velReal += (velocidadeMaxima * Time.deltaTime / tempoAceleracao);
+            velReal += (velocidadeMaximaOperacional * Time.deltaTime / tempoAceleracao);
         else if (velReal > velocidadeAlvoReal)
-            velReal -= (velocidadeMaxima * Time.deltaTime / tempoAceleracao);
+            velReal -= (velocidadeMaximaOperacional * Time.deltaTime / tempoAceleracao);
             
         // Fricção para atrito e estacionamento
         float dragAtual = arrastoPassivo;
@@ -718,7 +720,7 @@ public class ControleNavioRealista : MonoBehaviour
         velReal -= velReal * (Time.deltaTime * dragAtual); 
         
         // Limita a física
-        velReal = Mathf.Clamp(velReal, -velocidadeMaxima * 0.4f, velocidadeMaxima);
+        velReal = Mathf.Clamp(velReal, -velocidadeMaximaOperacional * 0.4f, velocidadeMaximaOperacional);
 
         // O TRUQUE MESTRE: Sobrescreve TODO o vetor 3D forçando o navio a NUNCA patinar.
         // O navio vai rasgar a água feito um dardo, só vai pra onde o nariz rotacionar.

@@ -17,7 +17,7 @@ public class ControleDroneHasaf : MonoBehaviour
 
     [Header("Patrulha e Seguir")]
     public float distanciaManterAlvo = 250f;
-    public float raioPatrulha = 150f;
+    public float raioPatrulha = 400f;
     private Transform alvoSeguir;
 
     void Start()

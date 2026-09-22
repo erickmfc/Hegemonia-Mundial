@@ -61,7 +61,7 @@ public class ControleAviao : MonoBehaviour
 
     [Header("=== ÓRBITA DA MISSÃO ===")]
     [Tooltip("Raio horizontal da órbita em torno da área ordenada.")]
-    public float raioOrbitaMissao = 350f;
+    public float raioOrbitaMissao = 400f;
     [Tooltip("Velocidade angular da órbita em torno do alvo/patrulha.")]
     public float velocidadeOrbitaMissao = 0.9f;
     [Tooltip("Distância para considerar que chegou ao centro inicial da missão.")]
@@ -2366,6 +2366,15 @@ public class ControleAviao : MonoBehaviour
 
         // Loop de patrulha
         KamikazeDrone droneScript = GetComponent<KamikazeDrone>();
+
+        // Fallback da patrulha automatica: circuito retangular historico.
+        // A rota desenhada pelo jogador continua tendo prioridade no bloco
+        // acima; este circuito so e usado quando nao ha pontos explicitos.
+        Vector3[] pontosRetangulo = new Vector3[4];
+        Vector3 ultimoCentroPatrulha = Vector3.zero;
+        float ultimoRaio = -1f;
+        float tempoUltimaTrocaCentro = 0f;
+        Vector3 offsetPatrulha = Vector3.zero;
         
         while (!ordemParaRetorno)
         {
@@ -2402,35 +2411,59 @@ public class ControleAviao : MonoBehaviour
                     continue;
                 }
 
-                // Sem rota explícita, a IA recebe uma órbita contínua e
-                // limitada ao redor da área. A implementação anterior usava
-                // um retângulo de raio multiplicado por sete: além de levar o
-                // avião quilômetros para fora do setor, cada canto exigia uma
-                // inversão brusca de direção.
-                float raio = Mathf.Clamp(raioOrbitaMissao, 180f, 700f);
-                float velocidadeAngular = Mathf.Clamp(velocidadeOrbitaMissao * 0.15f, 0.08f, 0.32f);
-                anguloOrbitaAtual += sentidoOrbita * velocidadeAngular * Time.deltaTime;
-                if (anguloOrbitaAtual > Mathf.PI * 2f || anguloOrbitaAtual < -Mathf.PI * 2f)
+                // Sem rota explícita, a IA recebe o circuito retangular
+                // histórico ao redor da área. O retorno/pouso continua sendo
+                // controlado pela flag de retorno e pelas reservas de voo.
+                if (Time.time - tempoUltimaTrocaCentro > 45f)
                 {
-                    anguloOrbitaAtual = Mathf.Repeat(anguloOrbitaAtual, Mathf.PI * 2f);
+                    tempoUltimaTrocaCentro = Time.time;
+                    offsetPatrulha = new Vector3(
+                        UnityEngine.Random.Range(-100f, 100f),
+                        0f,
+                        UnityEngine.Random.Range(-100f, 100f));
                 }
 
-                Vector3 centroAtualizado = centroDaPatrulha;
-                Vector3 alvoCurva = centroAtualizado + new Vector3(
-                    Mathf.Cos(anguloOrbitaAtual) * raio,
-                    0f,
-                    Mathf.Sin(anguloOrbitaAtual) * raio);
-                alvoCurva.y = Mathf.Max(centroAtualizado.y, altitudeVoo, AltitudeMinimaVooMilitar);
-                alvoGPSVoo = alvoCurva;
+                Vector3 centroAtualizado = centroDaPatrulha + offsetPatrulha;
+                float raio = Mathf.Max(280f, raioOrbitaMissao * 7f);
+                float baseY = Mathf.Max(centroAtualizado.y, altitudeVoo, AltitudeMinimaVooMilitar);
 
-                Vector3 diffPatrulha = transform.position - centroAtualizado;
-                diffPatrulha.y = 0f;
-                float raioSeguranca = raio * 2.2f;
+                if (centroAtualizado != ultimoCentroPatrulha || raio != ultimoRaio)
+                {
+                    ultimoCentroPatrulha = centroAtualizado;
+                    ultimoRaio = raio;
+
+                    pontosRetangulo[0] = centroAtualizado + new Vector3(raio * 2f, 30f, raio);
+                    pontosRetangulo[1] = centroAtualizado + new Vector3(-raio * 2f, -10f, raio);
+                    pontosRetangulo[2] = centroAtualizado + new Vector3(-raio * 2f, 30f, -raio);
+                    pontosRetangulo[3] = centroAtualizado + new Vector3(raio * 2f, -10f, -raio);
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        pontosRetangulo[i].y = Mathf.Max(
+                            baseY + ((i % 2 == 0) ? 30f : -15f),
+                            altitudeVoo,
+                            AltitudeMinimaVooMilitar);
+                    }
+                }
+
+                Vector3 alvoDest = pontosRetangulo[indiceRetanguloPatrulha % 4];
+                alvoGPSVoo = Vector3.Lerp(alvoGPSVoo, alvoDest, Time.deltaTime * 0.2f);
+
+                Vector3 posicaoHorizontal = new Vector3(transform.position.x, 0f, transform.position.z);
+                Vector3 destinoHorizontal = new Vector3(alvoDest.x, 0f, alvoDest.z);
+                if ((posicaoHorizontal - destinoHorizontal).sqrMagnitude < 40000f)
+                {
+                    indiceRetanguloPatrulha = (indiceRetanguloPatrulha + 1) % 4;
+                }
+
+                Vector3 diffPatrulha = new Vector3(
+                    transform.position.x - centroAtualizado.x,
+                    0f,
+                    transform.position.z - centroAtualizado.z);
+                float raioSeguranca = Mathf.Max(raio * 4f, 500f);
                 if (diffPatrulha.sqrMagnitude > raioSeguranca * raioSeguranca)
                 {
-                    // Recupera a aeronave para o centro sem inventar outro
-                    // ponto aleatório nem trocar o sentido da curva.
-                    alvoGPSVoo = new Vector3(centroAtualizado.x, alvoCurva.y, centroAtualizado.z);
+                    alvoGPSVoo = new Vector3(centroAtualizado.x, baseY, centroAtualizado.z);
                 }
             }
             yield return null;

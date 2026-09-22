@@ -43,6 +43,7 @@ public class MenuComandoController : MonoBehaviour
     private bool menuAberto;
     // Abertura de menus deve depender de uma entrada explícita do jogador.
     private int bloquearAberturaAteFrame = -1;
+    private bool bloquearAberturaAteEntradaDaCompraSerLiberada;
     public bool MenuAberto => menuAberto;
 
     // Zoom e Pan no mapa tático
@@ -181,6 +182,17 @@ public class MenuComandoController : MonoBehaviour
     private bool EhUnidadeDoJogador(IdentidadeUnidade identidade)
     {
         return identidade != null && identidade.teamID == TimeJogadorAtual;
+    }
+
+    // Tráfego comercial é civil do aeroporto e não deve aparecer nem ser
+    // selecionável no satélite. O teste nos pais cobre cenas antigas que
+    // colocavam a identidade em um filho do avião.
+    private static bool EhAviaoComercialNoSatelite(GameObject obj)
+    {
+        if (obj == null) return false;
+
+        return obj.GetComponent<ControleAviaoComercial>() != null
+            || obj.GetComponentInParent<ControleAviaoComercial>() != null;
     }
 
     // Unidades antigas da cena e algumas unidades criadas por produtores
@@ -490,6 +502,16 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
 
+        if (bloquearAberturaAteEntradaDaCompraSerLiberada
+            && !Construtor.EmModoConstrucaoAtivo
+            && !Input.GetMouseButton(0)
+            && !Input.GetKey(KeyCode.C)
+            && !Input.GetKey(KeyCode.Alpha1)
+            && !Input.GetKey(KeyCode.Keypad1))
+        {
+            bloquearAberturaAteEntradaDaCompraSerLiberada = false;
+        }
+
         // Resolve o atalho do Menu Satelite antes dos bloqueios de outros
         // modais. Um estado legado de Quartel/Governo pode permanecer marcado
         // por um frame depois do fechamento e, se o teste vier antes daqui,
@@ -502,15 +524,17 @@ public class MenuComandoController : MonoBehaviour
             // A confirmação da compra de uma estrutura ainda pode entregar
             // o mesmo frame de entrada ao HUD. O satélite não deve abrir no
             // meio do modo de construção nem capturar o jogo por acidente.
-            if (Construtor.EmModoConstrucaoAtivo || Time.frameCount <= bloquearAberturaAteFrame)
+            if (Construtor.EmModoConstrucaoAtivo
+                || Time.frameCount <= bloquearAberturaAteFrame
+                || bloquearAberturaAteEntradaDaCompraSerLiberada)
             {
                 return;
             }
 
-            // EntradaGlobalBloqueada também cobre a janela de um frame usada
-            // para consumir cliques durante o fechamento do Quartel. Essa
-            // trava transitória não pode engolir o atalho 1; somente um modal
-            // realmente aberto deve impedir o Satélite.
+            // EntradaGlobalBloqueada também cobre a janela usada para
+            // consumir cliques durante o fechamento do Quartel. Depois que a
+            // entrada da compra for liberada, somente um modal realmente
+            // aberto deve impedir o Satélite.
             if (GerenciadorQuartel.InterfaceAberta || MenuGoverno.EstaAberto)
             {
                 return;
@@ -733,7 +757,9 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     public void AbrirMenu()
     {
-        if (Construtor.EmModoConstrucaoAtivo || Time.frameCount <= bloquearAberturaAteFrame)
+        if (Construtor.EmModoConstrucaoAtivo
+            || Time.frameCount <= bloquearAberturaAteFrame
+            || bloquearAberturaAteEntradaDaCompraSerLiberada)
         {
             return;
         }
@@ -818,6 +844,10 @@ public class MenuComandoController : MonoBehaviour
         }
 
         bloquearAberturaAteFrame = Mathf.Max(bloquearAberturaAteFrame, Time.frameCount + 1);
+        // A confirmacao pode deixar o mouse ou a tecla de construcao ainda
+        // pressionados. Mantenha o Satelite fechado ate a entrada ser solta;
+        // assim a compra do Quartel nao reabre a interface por acidente.
+        bloquearAberturaAteEntradaDaCompraSerLiberada = true;
     }
 
     private void SincronizarSelecaoComJogo()
@@ -834,7 +864,9 @@ public class MenuComandoController : MonoBehaviour
 
         foreach (var cu in gerenteSelecao.unidadesSelecionadas)
         {
-            if (cu != null && !unidadesSelecionadasMenu.Contains(cu))
+            if (cu != null
+                && !EhAviaoComercialNoSatelite(cu.gameObject)
+                && !unidadesSelecionadasMenu.Contains(cu))
             {
                 unidadesSelecionadasMenu.Add(cu);
             }
@@ -859,7 +891,9 @@ public class MenuComandoController : MonoBehaviour
         for (int i = 0; i < ids.Length; i++)
         {
             ControleUnidade cu = EncontrarUnidadePorIdPersistente(ids[i]);
-            if (cu != null && !unidadesSelecionadasMenu.Contains(cu))
+            if (cu != null
+                && !EhAviaoComercialNoSatelite(cu.gameObject)
+                && !unidadesSelecionadasMenu.Contains(cu))
             {
                 unidadesSelecionadasMenu.Add(cu);
             }
@@ -889,6 +923,7 @@ public class MenuComandoController : MonoBehaviour
         {
             ControleUnidade cu = cacheControlesPersistencia[i];
             if (cu == null) continue;
+            if (EhAviaoComercialNoSatelite(cu.gameObject)) continue;
 
             SaveableEntity saveable = cu.GetComponent<SaveableEntity>();
             if (saveable != null && saveable.UniqueId == uniqueId)
@@ -1312,6 +1347,7 @@ public class MenuComandoController : MonoBehaviour
         {
             var id = cacheUnidadesMapa[i];
             if (id == null || !id.gameObject.activeInHierarchy) continue;
+            if (EhAviaoComercialNoSatelite(id.gameObject)) continue;
 
             int instId = id.gameObject.GetInstanceID();
             Hegemonia.Cartel.CartelNavalUnidade cartelNaval = id.GetComponent<Hegemonia.Cartel.CartelNavalUnidade>();
@@ -2006,6 +2042,11 @@ public class MenuComandoController : MonoBehaviour
             return false;
         }
 
+        if (EhAviaoComercialNoSatelite(id.gameObject))
+        {
+            return false;
+        }
+
         if (!EhUnidadeDoJogador(id))
         {
             return false;
@@ -2129,7 +2170,8 @@ public class MenuComandoController : MonoBehaviour
 
         foreach (var id in cacheUnidadesMapa)
         {
-            if (EhUnidadeDoJogador(id))
+            if (EhUnidadeDoJogador(id)
+                && !EhAviaoComercialNoSatelite(id.gameObject))
             {
                 var cu = ObterControleTatico(id, true);
                 if (cu != null)
@@ -2171,7 +2213,8 @@ public class MenuComandoController : MonoBehaviour
         for (int i = 0; i < cacheUnidadesMapa.Count; i++)
         {
             var id = cacheUnidadesMapa[i];
-            if (EhUnidadeDoJogador(id))
+            if (EhUnidadeDoJogador(id)
+                && !EhAviaoComercialNoSatelite(id.gameObject))
             {
                 var cu = ObterControleTatico(id, true);
                 if (cu != null)
@@ -2491,6 +2534,7 @@ public class MenuComandoController : MonoBehaviour
 
         foreach (var id in cacheUnidadesMapa)
         {
+            if (EhAviaoComercialNoSatelite(id != null ? id.gameObject : null)) continue;
             if (!id.gameObject.activeInHierarchy) continue;
             if (EhUnidadeDoJogador(id)) aliados++;
             else if (id.teamID > 0) inimigos++;
@@ -3329,6 +3373,7 @@ public class MenuComandoController : MonoBehaviour
         {
             var id = cacheUnidadesMapa[i];
             if (id == null || !id.gameObject.activeInHierarchy) continue;
+            if (EhAviaoComercialNoSatelite(id.gameObject)) continue;
             if (ignorarTimeJogador && EhUnidadeDoJogador(id)) continue;
 
             Vector3 delta = id.transform.position - worldPos;

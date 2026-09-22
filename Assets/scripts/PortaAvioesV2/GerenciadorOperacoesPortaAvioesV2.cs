@@ -10,6 +10,13 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
     public LayoutConvesPortaAvioesV2 layout;
     public float velocidadeTaxi = 12f;
     public float velocidadeAproximacao = 30f;
+    [Header("Velocidades por etapa do pouso (m/s)")]
+    public float velocidadeEspera = 36f;
+    public float velocidadeAproximacaoLonga = 30f;
+    public float velocidadeAproximacaoIntermediaria = 24f;
+    public float velocidadeAproximacaoFinal = 18f;
+    public float velocidadeToque = 10f;
+    public float velocidadeSaidaPista = 8f;
     public float timeoutPorEstado = 45f;
     public float velocidadeReabastecimento = 40f;
     public bool interiorHangarModelado;
@@ -284,6 +291,23 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
         legadoSuspenso?.SincronizarAeronaveNoConvesV2(controle);
     }
 
+    // Os índices seguem a ordem do grupo Pouso: Espera, Aproximação Longa,
+    // Aproximação Média, Aproximação Final, Toque e saída após a frenagem.
+    private float ObterVelocidadePouso(int indicePonto)
+    {
+        float velocidade = indicePonto switch
+        {
+            0 => velocidadeEspera,
+            1 => velocidadeAproximacaoLonga,
+            2 => velocidadeAproximacaoIntermediaria,
+            3 => velocidadeAproximacaoFinal,
+            4 => velocidadeToque,
+            _ => velocidadeSaidaPista
+        };
+
+        return Mathf.Max(.01f, velocidade);
+    }
+
     private IEnumerator Pousar(AeronaveEmbarcadaV2 a, VagaPortaAvioesV2 vaga)
     {
         SuspenderLegado(a);
@@ -294,7 +318,7 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
             Transform ponto = layout.pontosPouso[i];
             if (ponto != null)
             {
-                yield return Mover(a, ponto, velocidadeAproximacao);
+                yield return Mover(a, ponto, ObterVelocidadePouso(i));
                 if (!ChegouAoAlvo(a, ponto))
                 {
                     FalharMovimentoPortaAvioes(a, "tempo limite na aproximação de pouso");
@@ -313,7 +337,7 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
         {
             if (layout.pontosPouso[i] != null)
             {
-                yield return Mover(a, layout.pontosPouso[i], velocidadeAproximacao);
+                yield return Mover(a, layout.pontosPouso[i], ObterVelocidadePouso(i));
                 if (!ChegouAoAlvo(a, layout.pontosPouso[i]))
                 {
                     FalharMovimentoPortaAvioes(a, "tempo limite no taxiamento de pouso");
@@ -326,7 +350,7 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
         a.TentarTransicionar(EstadoOperacaoPortaAvioesV2.ToqueNoConves, Time.time);
         if (toque != null)
         {
-            yield return Mover(a, toque, velocidadeTaxi);
+            yield return Mover(a, toque, ObterVelocidadePouso(4));
             if (!ChegouAoAlvo(a, toque))
             {
                 FalharMovimentoPortaAvioes(a, "tempo limite no toque do convés");
@@ -341,7 +365,7 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
         {
             if (layout.pontosPouso[i] != null)
             {
-                yield return Mover(a, layout.pontosPouso[i], velocidadeTaxi);
+                yield return Mover(a, layout.pontosPouso[i], ObterVelocidadePouso(i));
                 if (!ChegouAoAlvo(a, layout.pontosPouso[i]))
                 {
                     FalharMovimentoPortaAvioes(a, "tempo limite na saída da pista de pouso");

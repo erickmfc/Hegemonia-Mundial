@@ -68,7 +68,7 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
     public bool alertarQuartelDoJogador = true;
 
     [Header("=== VOO AWACS ===")]
-    [Min(120f)] public float altitudeCruzeiroE3 = 650f;
+    [Min(120f)] public float altitudeCruzeiroE3 = 350f;
     [Min(60f)] public float velocidadeCruzeiroE3 = 145f;
     [Min(20f)] public float velocidadeMinimaEmCurva = 82f;
     [Min(1f)] public float taxaCurvaE3 = 10f;
